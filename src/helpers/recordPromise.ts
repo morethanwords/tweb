@@ -1,5 +1,5 @@
-import { logger } from "../lib/logger";
-import dT from "./dT";
+import {logger} from '../lib/logger';
+import dT from './dT';
 
 export function recordPromise<T extends Promise<any>>(promise: T, description: string, log?: ReturnType<typeof logger> | Console) {
   const perf = performance.now();

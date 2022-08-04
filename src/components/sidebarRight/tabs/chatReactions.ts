@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import debounce from "../../../helpers/schedulers/debounce";
-import CheckboxField from "../../checkboxField";
-import Row from "../../row";
-import { SettingSection } from "../../sidebarLeft";
-import { SliderSuperTabEventable } from "../../sliderTab";
-import { wrapStickerToRow } from "../../wrappers";
+import debounce from '../../../helpers/schedulers/debounce';
+import CheckboxField from '../../checkboxField';
+import Row from '../../row';
+import {SettingSection} from '../../sidebarLeft';
+import {SliderSuperTabEventable} from '../../sliderTab';
+import {wrapStickerToRow} from '../../wrappers';
 
 export default class AppChatReactionsTab extends SliderSuperTabEventable {
   public chatId: ChatId;
@@ -40,7 +40,7 @@ export default class AppChatReactionsTab extends SliderSuperTabEventable {
 
     const checkboxFields = availableReactions.map((availableReaction) => {
       const checkboxField = new CheckboxField({
-        toggle: true, 
+        toggle: true,
         checked: enabledReactions.has(availableReaction.reaction)
       });
 
@@ -99,7 +99,7 @@ export default class AppChatReactionsTab extends SliderSuperTabEventable {
       if(chatFull) {
         chatFull.available_reactions = newReactions;
       }
-      
+
       this.managers.appChatsManager.setChatAvailableReactions(this.chatId, newReactions);
       originalReactions = newReactions;
     };

@@ -4,16 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { attachClickEvent } from "../../../helpers/dom/clickEvent";
-import toggleDisability from "../../../helpers/dom/toggleDisability";
-import deepEqual from "../../../helpers/object/deepEqual";
-import { ChannelParticipant } from "../../../layer";
-import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
-import Button from "../../button";
-import { SettingSection } from "../../sidebarLeft";
-import { SliderSuperTabEventable } from "../../sliderTab";
-import getUserStatusString from "../../wrappers/getUserStatusString";
-import { ChatPermissions } from "./groupPermissions";
+import {attachClickEvent} from '../../../helpers/dom/clickEvent';
+import toggleDisability from '../../../helpers/dom/toggleDisability';
+import deepEqual from '../../../helpers/object/deepEqual';
+import {ChannelParticipant} from '../../../layer';
+import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
+import Button from '../../button';
+import {SettingSection} from '../../sidebarLeft';
+import {SliderSuperTabEventable} from '../../sliderTab';
+import getUserStatusString from '../../wrappers/getUserStatusString';
+import {ChatPermissions} from './groupPermissions';
 
 export default class AppUserPermissionsTab extends SliderSuperTabEventable {
   public participant: ChannelParticipant;
@@ -28,9 +28,9 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
 
     {
       const section = new SettingSection({
-        name: 'UserRestrictionsCanDo',
+        name: 'UserRestrictionsCanDo'
       });
-      
+
       const div = document.createElement('div');
       div.classList.add('chatlist-container');
       section.content.insertBefore(div, section.title);
@@ -55,7 +55,7 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
       }, this.managers);
 
       destroyListener = () => {
-        //appChatsManager.editChatDefaultBannedRights(this.chatId, p.takeOut());
+        // appChatsManager.editChatDefaultBannedRights(this.chatId, p.takeOut());
         const rights = p.takeOut();
         if(this.participant._ === 'channelParticipantBanned' && deepEqual(this.participant.banned_rights.pFlags, rights.pFlags)) {
           return;
@@ -68,7 +68,7 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
 
       this.scrollable.append(section.container);
     }
-    
+
     {
       const section = new SettingSection({});
 
@@ -84,7 +84,7 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
             toggle();
           });
         }, {listenerSetter: this.listenerSetter});
-  
+
         section.content.append(btnDeleteException);
       }
 

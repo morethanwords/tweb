@@ -4,18 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import IS_TOUCH_SUPPORTED from "../../environment/touchSupport";
-import { IS_APPLE } from "../../environment/userAgent";
-import contextMenuController from "../contextMenuController";
-import ListenerSetter from "../listenerSetter";
-import cancelEvent from "./cancelEvent";
+import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
+import {IS_APPLE} from '../../environment/userAgent';
+import contextMenuController from '../contextMenuController';
+import ListenerSetter from '../listenerSetter';
+import cancelEvent from './cancelEvent';
 
 let _cancelContextMenuOpening = false, _cancelContextMenuOpeningTimeout = 0;
 export function cancelContextMenuOpening() {
   if(_cancelContextMenuOpeningTimeout) {
     clearTimeout(_cancelContextMenuOpeningTimeout);
   }
-    
+
   _cancelContextMenuOpeningTimeout = window.setTimeout(() => {
     _cancelContextMenuOpeningTimeout = 0;
     _cancelContextMenuOpening = false;
@@ -48,7 +48,7 @@ export function attachContextMenuListener(element: HTMLElement, callback: (e: To
         onCancel();
         return;
       }
-  
+
       add('touchmove', onCancel, options);
       add('touchend', onCancel, options);
       add('touchcancel', onCancel, options);

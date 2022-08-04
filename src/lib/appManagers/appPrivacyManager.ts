@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { InputPrivacyKey, InputPrivacyRule, PrivacyRule, PrivacyKey } from "../../layer";
-import convertInputKeyToKey from "../../helpers/string/convertInputKeyToKey";
-import { AppManager } from "./manager";
+import {InputPrivacyKey, InputPrivacyRule, PrivacyRule, PrivacyKey} from '../../layer';
+import convertInputKeyToKey from '../../helpers/string/convertInputKeyToKey';
+import {AppManager} from './manager';
 
 export class AppPrivacyManager extends AppManager {
   private privacy: Partial<{
@@ -46,7 +46,7 @@ export class AppPrivacyManager extends AppManager {
         })
       });
 
-      //console.log('privacy rules', inputKey, privacyRules, privacyRules.rules);
+      // console.log('privacy rules', inputKey, privacyRules, privacyRules.rules);
 
       return privacyRules.rules;
     });
@@ -58,7 +58,7 @@ export class AppPrivacyManager extends AppManager {
     if(rules) {
       return Promise.resolve(rules);
     }
-    
+
     return this.privacy[privacyKey] = this.apiManager.invokeApi('account.getPrivacy', {
       key: {
         _: inputKey
@@ -67,7 +67,7 @@ export class AppPrivacyManager extends AppManager {
       this.appUsersManager.saveApiUsers(privacyRules.users);
       this.appChatsManager.saveApiChats(privacyRules.chats);
 
-      //console.log('privacy rules', inputKey, privacyRules, privacyRules.rules);
+      // console.log('privacy rules', inputKey, privacyRules, privacyRules.rules);
 
       return this.privacy[privacyKey] = privacyRules.rules;
     });

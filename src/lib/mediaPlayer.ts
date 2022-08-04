@@ -4,22 +4,22 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appMediaPlaybackController from "../components/appMediaPlaybackController";
-import { IS_APPLE_MOBILE, IS_MOBILE } from "../environment/userAgent";
-import IS_TOUCH_SUPPORTED from "../environment/touchSupport";
-import cancelEvent from "../helpers/dom/cancelEvent";
-import ListenerSetter, { Listener } from "../helpers/listenerSetter";
-import ButtonMenu from "../components/buttonMenu";
-import { ButtonMenuToggleHandler } from "../components/buttonMenuToggle";
-import rootScope from "./rootScope";
-import ControlsHover from "../helpers/dom/controlsHover";
-import { addFullScreenListener, cancelFullScreen, isFullScreen, requestFullScreen } from "../helpers/dom/fullScreen";
-import toHHMMSS from "../helpers/string/toHHMMSS";
-import MediaProgressLine from "../components/mediaProgressLine";
-import VolumeSelector from "../components/volumeSelector";
-import debounce from "../helpers/schedulers/debounce";
-import overlayCounter from "../helpers/overlayCounter";
-import onMediaLoad from "../helpers/onMediaLoad";
+import appMediaPlaybackController from '../components/appMediaPlaybackController';
+import {IS_APPLE_MOBILE, IS_MOBILE} from '../environment/userAgent';
+import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
+import cancelEvent from '../helpers/dom/cancelEvent';
+import ListenerSetter, {Listener} from '../helpers/listenerSetter';
+import ButtonMenu from '../components/buttonMenu';
+import {ButtonMenuToggleHandler} from '../components/buttonMenuToggle';
+import rootScope from './rootScope';
+import ControlsHover from '../helpers/dom/controlsHover';
+import {addFullScreenListener, cancelFullScreen, isFullScreen, requestFullScreen} from '../helpers/dom/fullScreen';
+import toHHMMSS from '../helpers/string/toHHMMSS';
+import MediaProgressLine from '../components/mediaProgressLine';
+import VolumeSelector from '../components/volumeSelector';
+import debounce from '../helpers/schedulers/debounce';
+import overlayCounter from '../helpers/overlayCounter';
+import onMediaLoad from '../helpers/onMediaLoad';
 
 export default class VideoPlayer extends ControlsHover {
   private static PLAYBACK_RATES = [0.5, 1, 1.5, 2];
@@ -42,9 +42,9 @@ export default class VideoPlayer extends ControlsHover {
   protected onPipClose?: () => void;
 
   constructor({video, play = false, streamable = false, duration, onPlaybackRackMenuToggle, onPip, onPipClose}: {
-    video: HTMLVideoElement, 
-    play?: boolean, 
-    streamable?: boolean, 
+    video: HTMLVideoElement,
+    play?: boolean,
+    streamable?: boolean,
     duration?: number,
     onPlaybackRackMenuToggle?: VideoPlayer['onPlaybackRackMenuToggle'],
     onPip?: VideoPlayer['onPip'],
@@ -63,8 +63,8 @@ export default class VideoPlayer extends ControlsHover {
     this.listenerSetter = new ListenerSetter();
 
     this.setup({
-      element: this.wrapper, 
-      listenerSetter: this.listenerSetter, 
+      element: this.wrapper,
+      listenerSetter: this.listenerSetter,
       canHideControls: () => {
         return !this.video.paused && (!this.playbackRateButton || !this.playbackRateButton.classList.contains('menu-open'));
       },
@@ -97,7 +97,7 @@ export default class VideoPlayer extends ControlsHover {
       }).finally(() => { // due to autoplay, play will not call
         this.wrapper.classList.toggle('is-playing', !this.video.paused);
       });
-      //(this.wrapper.querySelector('.toggle') as HTMLButtonElement).click();
+      // (this.wrapper.querySelector('.toggle') as HTMLButtonElement).click();
     }
   }
 
@@ -105,15 +105,15 @@ export default class VideoPlayer extends ControlsHover {
     const {wrapper, video, skin, listenerSetter} = this;
 
     wrapper.classList.add(skin);
-  
+
     const html = this.buildControls();
     wrapper.insertAdjacentHTML('beforeend', html);
     let timeDuration: HTMLElement;
-  
+
     if(skin === 'default') {
       this.playbackRateButton = this.wrapper.querySelector('.playback-rate') as HTMLElement;
       this.pipButton = this.wrapper.querySelector('.pip') as HTMLElement;
-      
+
       const toggle = wrapper.querySelectorAll('.toggle') as NodeListOf<HTMLElement>;
       const fullScreenButton = wrapper.querySelector('.fullscreen') as HTMLElement;
       const timeElapsed = wrapper.querySelector('#time-elapsed');
@@ -294,9 +294,9 @@ export default class VideoPlayer extends ControlsHover {
 
   protected setBtnMenuToggle() {
     const buttons: Parameters<typeof ButtonMenu>[0] = VideoPlayer.PLAYBACK_RATES.map((rate, idx) => {
-      return { 
+      return {
         // icon: VideoPlayer.PLAYBACK_RATES_ICONS[idx],
-        regularText: rate + 'x', 
+        regularText: rate + 'x',
         onClick: () => {
           appMediaPlaybackController.playbackRate = rate;
         }
@@ -305,11 +305,11 @@ export default class VideoPlayer extends ControlsHover {
     const btnMenu = ButtonMenu(buttons);
     btnMenu.classList.add('top-left');
     ButtonMenuToggleHandler(
-      this.playbackRateButton, 
+      this.playbackRateButton,
       this.onPlaybackRackMenuToggle ? () => {
         this.onPlaybackRackMenuToggle(true);
-      } : undefined, 
-      undefined, 
+      } : undefined,
+      undefined,
       this.onPlaybackRackMenuToggle ? () => {
         this.onPlaybackRackMenuToggle(false);
       } : undefined
@@ -331,7 +331,7 @@ export default class VideoPlayer extends ControlsHover {
 
     playbackRateButton.classList.add('tgico-' + VideoPlayer.PLAYBACK_RATES_ICONS[idx]);
   }
-  
+
   protected toggleFullScreen() {
     const player = this.wrapper;
 
@@ -342,7 +342,7 @@ export default class VideoPlayer extends ControlsHover {
       video.enterFullscreen();
       return;
     }
-    
+
     if(!isFullScreen()) {
       /* const videoParent = this.video.parentElement;
       const videoWhichChild = whichChild(this.video);
@@ -353,7 +353,7 @@ export default class VideoPlayer extends ControlsHover {
         this.videoWhichChild = videoWhichChild;
         player.prepend(this.video);
       } */
-  
+
       requestFullScreen(player);
     } else {
       /* if(this.videoParent) {
@@ -367,11 +367,11 @@ export default class VideoPlayer extends ControlsHover {
         this.videoParent = null;
         this.videoWhichChild = -1;
       } */
-  
+
       cancelFullScreen();
     }
   }
-  
+
   protected onFullScreen(fullScreenButton: HTMLElement) {
     const isFull = isFullScreen();
     this.wrapper.classList.toggle('ckin__fullscreen', isFull);

@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { notifyAll } from "../../../helpers/context";
-import EventListenerBase from "../../../helpers/eventListenerBase";
-import { WorkerTaskVoidTemplate } from "../../../types";
-import { MTConnection } from "./transport";
+import {notifyAll} from '../../../helpers/context';
+import EventListenerBase from '../../../helpers/eventListenerBase';
+import {WorkerTaskVoidTemplate} from '../../../types';
+import {MTConnection} from './transport';
 
 let socketId = 0;
 export interface SocketProxyTask extends WorkerTaskVoidTemplate {
@@ -52,9 +52,9 @@ export default class SocketProxied extends EventListenerBase<{
     const task: SocketProxyTask = {
       type: 'socketProxy',
       payload: {
-        type: 'setup', 
+        type: 'setup',
         payload: {
-          dcId, 
+          dcId,
           url,
           logSuffix
         },
@@ -67,7 +67,7 @@ export default class SocketProxied extends EventListenerBase<{
 
   public send(payload: Uint8Array) {
     const task: SocketProxyTask = {
-      type: 'socketProxy', 
+      type: 'socketProxy',
       payload: {
         type: 'send',
         payload,

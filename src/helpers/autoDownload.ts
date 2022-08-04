@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { State } from "../config/state";
-import rootScope from "../lib/rootScope";
+import type {State} from '../config/state';
+import rootScope from '../lib/rootScope';
 
 export type ChatAutoDownloadSettings = {
   photo: number,
@@ -31,7 +31,7 @@ export default async function getAutoDownloadSettingsByPeerId(peerId: PeerId): P
     } else {
       type = 'groups';
     }
-    
+
     if(settings.autoDownload.photo[type]) photoSizeMax = settings.autoDownloadNew.photo_size_max;
     if(settings.autoDownload.video[type]) videoSizeMax = settings.autoDownloadNew.video_size_max;
     if(settings.autoDownload.file[type]) fileSizeMax = settings.autoDownloadNew.file_size_max;

@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import indexOfAndSplice from "../helpers/array/indexOfAndSplice";
-import throttle from "../helpers/schedulers/throttle";
-import { logger, LogTypes } from "../lib/logger";
+import indexOfAndSplice from '../helpers/array/indexOfAndSplice';
+import throttle from '../helpers/schedulers/throttle';
+import {logger, LogTypes} from '../lib/logger';
 
 const PARALLEL_LIMIT = 8;
 
@@ -34,7 +34,7 @@ export default class LazyLoadQueueBase {
 
     this.queue.length = 0;
     // unreachable code
-    /* for(let item of this.inProcess) { 
+    /* for(let item of this.inProcess) {
       this.lazyLoadMedia.push(item);
     } */
   }
@@ -42,7 +42,7 @@ export default class LazyLoadQueueBase {
   public lock() {
     if(this.lockPromise) return;
 
-    //const perf = performance.now();
+    // const perf = performance.now();
     this.lockPromise = new Promise((resolve, reject) => {
       this.unlockResolve = resolve;
     });
@@ -75,9 +75,9 @@ export default class LazyLoadQueueBase {
     } */
 
     try {
-      //await new Promise((resolve) => setTimeout(resolve, 2e3));
-      //await new Promise((resolve, reject) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
-      //await item.load(item.div);
+      // await new Promise((resolve) => setTimeout(resolve, 2e3));
+      // await new Promise((resolve, reject) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
+      // await item.load(item.div);
       await this.loadItem(item);
     } catch(err) {
       const ignoreErrors: Set<ErrorType> = new Set(['NO_ENTRY_FOUND', 'STORAGE_OFFLINE']);
@@ -111,7 +111,7 @@ export default class LazyLoadQueueBase {
   protected _processQueue(item?: LazyLoadElementBase) {
     if(!this.queue.length || this.lockPromise || (this.parallelLimit > 0 && this.inProcess.size >= this.parallelLimit)) return;
 
-    //console.log('_processQueue start');
+    // console.log('_processQueue start');
     let added = 0;
     do {
       if(item) {
@@ -119,7 +119,7 @@ export default class LazyLoadQueueBase {
       } else {
         item = this.getItem();
       }
-  
+
       if(item) {
         this.processItem(item);
       } else {
@@ -129,7 +129,7 @@ export default class LazyLoadQueueBase {
       item = null;
       ++added;
     } while(this.inProcess.size < this.parallelLimit && this.queue.length);
-    //console.log('_processQueue end, added', added, this.queue.length);
+    // console.log('_processQueue end, added', added, this.queue.length);
   }
 
   public push(el: LazyLoadElementBase) {

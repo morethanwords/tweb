@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { Dialog } from "../../../../layer";
-import getDialogIndexKey from "./getDialogIndexKey";
+import {Dialog} from '../../../../layer';
+import getDialogIndexKey from './getDialogIndexKey';
 
 export default function getDialogIndex(
-  dialog: Dialog.dialog, 
+  dialog: Dialog.dialog,
   indexKey: ReturnType<typeof getDialogIndexKey> = getDialogIndexKey(dialog.folder_id)
 ) {
   return dialog?.[indexKey];

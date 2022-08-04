@@ -4,24 +4,24 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import IS_TOUCH_SUPPORTED from "../../environment/touchSupport";
-import { IS_MOBILE, IS_SAFARI } from "../../environment/userAgent";
-import assumeType from "../../helpers/assumeType";
-import callbackify from "../../helpers/callbackify";
-import { attachClickEvent } from "../../helpers/dom/clickEvent";
-import findUpClassName from "../../helpers/dom/findUpClassName";
-import getVisibleRect from "../../helpers/dom/getVisibleRect";
-import { getMiddleware } from "../../helpers/middleware";
-import noop from "../../helpers/noop";
-import { fastRaf } from "../../helpers/schedulers";
-import { Message, AvailableReaction } from "../../layer";
-import { AppManagers } from "../../lib/appManagers/managers";
-import lottieLoader from "../../lib/rlottie/lottieLoader";
-import RLottiePlayer from "../../lib/rlottie/rlottiePlayer";
-import rootScope from "../../lib/rootScope";
-import animationIntersector from "../animationIntersector";
-import Scrollable, { ScrollableBase, ScrollableX } from "../scrollable";
-import { wrapSticker } from "../wrappers";
+import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
+import {IS_MOBILE, IS_SAFARI} from '../../environment/userAgent';
+import assumeType from '../../helpers/assumeType';
+import callbackify from '../../helpers/callbackify';
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import findUpClassName from '../../helpers/dom/findUpClassName';
+import getVisibleRect from '../../helpers/dom/getVisibleRect';
+import {getMiddleware} from '../../helpers/middleware';
+import noop from '../../helpers/noop';
+import {fastRaf} from '../../helpers/schedulers';
+import {Message, AvailableReaction} from '../../layer';
+import {AppManagers} from '../../lib/appManagers/managers';
+import lottieLoader from '../../lib/rlottie/lottieLoader';
+import RLottiePlayer from '../../lib/rlottie/rlottiePlayer';
+import rootScope from '../../lib/rootScope';
+import animationIntersector from '../animationIntersector';
+import Scrollable, {ScrollableBase, ScrollableX} from '../scrollable';
+import {wrapSticker} from '../wrappers';
 
 const REACTIONS_CLASS_NAME = 'btn-menu-reactions';
 const REACTION_CLASS_NAME = REACTIONS_CLASS_NAME + '-reaction';
@@ -194,16 +194,16 @@ export class ChatReactionsMenu {
         ...options
       }).then(({render}) => render).then((player) => {
         assumeType<RLottiePlayer>(player);
-  
+
         players.appear = player;
-  
+
         player.addEventListener('enterFrame', (frameNo) => {
           if(player.maxFrame === frameNo) {
             selectLoadPromise.then((selectPlayer) => {
               assumeType<RLottiePlayer>(selectPlayer);
               appearWrapper.classList.add('hide');
               selectWrapper.classList.remove('hide');
-  
+
               if(isFirst) {
                 players.select = selectPlayer;
                 isFirst = false;
@@ -212,7 +212,7 @@ export class ChatReactionsMenu {
           }
         });
       }, noop);
-  
+
       const selectLoadPromise = wrapSticker({
         doc: reaction.select_animation,
         div: selectWrapper,
@@ -223,7 +223,7 @@ export class ChatReactionsMenu {
         return lottieLoader.waitForFirstFrame(player);
       }).catch(noop);
     }
-    
+
     scaleContainer.append(appearWrapper);
     selectWrapper && scaleContainer.append(selectWrapper);
     reactionDiv.append(scaleContainer);
@@ -270,7 +270,7 @@ export class ChatReactionsMenu {
     if(!reactionDiv) {
       return;
     }
-    
+
     const players = this.reactionsMap.get(reactionDiv);
     if(!players) {
       return;

@@ -4,18 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import wrapAlbum from "./wrappers/album";
-import wrapDocument from "./wrappers/document";
-import wrapGroupedDocuments from "./wrappers/groupedDocuments";
-import wrapLocalSticker from "./wrappers/localSticker";
-import wrapPhoto from "./wrappers/photo";
-import wrapPoll from "./wrappers/poll";
-import wrapReply from "./wrappers/reply";
-import wrapSticker from "./wrappers/sticker";
-import wrapStickerAnimation from "./wrappers/stickerAnimation";
-import wrapStickerSetThumb from "./wrappers/stickerSetThumb";
-import wrapStickerToRow from "./wrappers/stickerToRow";
-import wrapVideo from "./wrappers/video";
+import wrapAlbum from './wrappers/album';
+import wrapDocument from './wrappers/document';
+import wrapGroupedDocuments from './wrappers/groupedDocuments';
+import wrapLocalSticker from './wrappers/localSticker';
+import wrapPhoto from './wrappers/photo';
+import wrapPoll from './wrappers/poll';
+import wrapReply from './wrappers/reply';
+import wrapSticker from './wrappers/sticker';
+import wrapStickerAnimation from './wrappers/stickerAnimation';
+import wrapStickerSetThumb from './wrappers/stickerSetThumb';
+import wrapStickerToRow from './wrappers/stickerToRow';
+import wrapVideo from './wrappers/video';
 
 export {
   wrapAlbum,
@@ -29,13 +29,13 @@ export {
   wrapStickerAnimation,
   wrapStickerSetThumb,
   wrapStickerToRow,
-  wrapVideo,
+  wrapVideo
 };
 
 /* function wrapMediaWithTail(photo: MyPhoto | MyDocument, message: {mid: number, message: string}, container: HTMLElement, boxWidth: number, boxHeight: number, isOut: boolean) {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.classList.add('bubble__media-container', isOut ? 'is-out' : 'is-in');
-  
+
   const foreignObject = document.createElementNS("http://www.w3.org/2000/svg", 'foreignObject');
 
   const gotThumb = appPhotosManager.getStrippedThumbIfNeeded(photo, true);
@@ -43,7 +43,7 @@ export {
     foreignObject.append(gotThumb.image);
   }
   appPhotosManager.setAttachmentSize(photo, foreignObject, boxWidth, boxHeight);
-  
+
   const width = +foreignObject.getAttributeNS(null, 'width');
   const height = +foreignObject.getAttributeNS(null, 'height');
 
@@ -55,10 +55,10 @@ export {
 
   const clipId = 'clip' + message.mid + '_' + nextRandomInt(9999);
   svg.dataset.clipId = clipId;
-  
+
   const defs = document.createElementNS("http://www.w3.org/2000/svg", 'defs');
   let clipPathHTML: string = '';
-  
+
   if(message.message) {
     //clipPathHTML += `<rect width="${width}" height="${height}"></rect>`;
   } else {
@@ -76,7 +76,7 @@ export {
   }
 
   defs.innerHTML = `<clipPath id="${clipId}">${clipPathHTML}</clipPath>`;
-  
+
   container.style.width = parseInt(container.style.width) - 9 + 'px';
   container.classList.add('with-tail');
 
@@ -91,10 +91,10 @@ export {
   return img;
 } */
 
-// export function renderImageWithFadeIn(container: HTMLElement, 
-//   image: HTMLImageElement, 
-//   url: string, 
-//   needFadeIn: boolean, 
+// export function renderImageWithFadeIn(container: HTMLElement,
+//   image: HTMLImageElement,
+//   url: string,
+//   needFadeIn: boolean,
 //   aspecter = container,
 //   thumbImage?: HTMLImageElement
 // ) {
@@ -131,7 +131,7 @@ export {
 //           image.addEventListener('transitionend', () => {
 //             sequentialDom.mutate(() => {
 //               image.classList.remove('fade-in-new');
-  
+
 //               if(thumbImage) {
 //                 thumbImage.remove();
 //               }

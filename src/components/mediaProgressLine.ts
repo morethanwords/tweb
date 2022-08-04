@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { GrabEvent } from "../helpers/dom/attachGrabListeners";
-import appMediaPlaybackController from "./appMediaPlaybackController";
-import RangeSelector from "./rangeSelector";
+import {GrabEvent} from '../helpers/dom/attachGrabListeners';
+import appMediaPlaybackController from './appMediaPlaybackController';
+import RangeSelector from './rangeSelector';
 
 export default class MediaProgressLine extends RangeSelector {
   protected filledLoad: HTMLDivElement;
@@ -18,10 +18,10 @@ export default class MediaProgressLine extends RangeSelector {
 
   constructor(media?: HTMLAudioElement | HTMLVideoElement, streamable?: boolean, withTransition?: boolean, useTransform?: boolean) {
     super({
-      step: 1000 / 60 / 1000, 
-      min: 0, 
-      max: 1, 
-      withTransition, 
+      step: 1000 / 60 / 1000,
+      min: 0,
+      max: 1,
+      withTransition,
       useTransform
     }, 0);
 
@@ -39,7 +39,7 @@ export default class MediaProgressLine extends RangeSelector {
       this.filledLoad = document.createElement('div');
       this.filledLoad.classList.add('progress-line__filled', 'progress-line__loaded');
       this.container.prepend(this.filledLoad);
-      //this.setLoadProgress();
+      // this.setLoadProgress();
     } else if(this.filledLoad) {
       this.filledLoad.classList.toggle('hide', !streamable);
     }
@@ -76,7 +76,7 @@ export default class MediaProgressLine extends RangeSelector {
   };
 
   protected onPlay = () => {
-    let r = () => {
+    const r = () => {
       this.setProgress();
 
       this.progressRAF = this.media.paused ? 0 : window.requestAnimationFrame(r);
@@ -127,14 +127,14 @@ export default class MediaProgressLine extends RangeSelector {
         end = buf.end(i);
       }
 
-      //console.log('onProgress range:', i, buf.start(i), buf.end(i), this.media);
+      // console.log('onProgress range:', i, buf.start(i), buf.end(i), this.media);
     }
 
-    //console.log('onProgress correct range:', nearestStart, end, this.media);
+    // console.log('onProgress correct range:', nearestStart, end, this.media);
 
     const percents = this.media.duration ? end / this.media.duration : 0;
     this.filledLoad.style.width = (percents * 100) + '%';
-    //this.filledLoad.style.transform = 'scaleX(' + percents + ')';
+    // this.filledLoad.style.transform = 'scaleX(' + percents + ')';
   }
 
   protected setSeekMax() {

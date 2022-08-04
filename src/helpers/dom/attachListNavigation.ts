@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import fastSmoothScroll from "../fastSmoothScroll";
-import cancelEvent from "./cancelEvent";
-import { attachClickEvent, detachClickEvent } from "./clickEvent";
-import findUpAsChild from "./findUpAsChild";
-import findUpClassName from "./findUpClassName";
+import fastSmoothScroll from '../fastSmoothScroll';
+import cancelEvent from './cancelEvent';
+import {attachClickEvent, detachClickEvent} from './clickEvent';
+import findUpAsChild from './findUpAsChild';
+import findUpClassName from './findUpClassName';
 
 type ArrowKey = 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight';
 const HANDLE_EVENT = 'keydown';
@@ -18,14 +18,14 @@ const AXIS_Y_KEYS: ArrowKey[] = ['ArrowUp', 'ArrowDown'];
 const AXIS_X_KEYS: ArrowKey[] = ['ArrowLeft', 'ArrowRight'];
 
 export default function attachListNavigation({list, type, onSelect, once, waitForKey}: {
-  list: HTMLElement, 
+  list: HTMLElement,
   type: 'xy' | 'x' | 'y',
   onSelect: (target: Element) => void | boolean,
   once: boolean,
   waitForKey?: string[]
 }) {
   let waitForKeySet = waitForKey?.length ? new Set(waitForKey) : undefined;
-  const keyNames = new Set(type === 'xy' ? AXIS_Y_KEYS.concat(AXIS_X_KEYS) : (type === 'x' ? AXIS_X_KEYS : AXIS_Y_KEYS)); 
+  const keyNames = new Set(type === 'xy' ? AXIS_Y_KEYS.concat(AXIS_X_KEYS) : (type === 'x' ? AXIS_X_KEYS : AXIS_Y_KEYS));
 
   let target: Element;
   const getCurrentTarget = () => {
@@ -49,10 +49,10 @@ export default function attachListNavigation({list, type, onSelect, once, waitFo
 
     if(hadTarget && scrollable && scrollTo) {
       fastSmoothScroll({
-        container: scrollable, 
-        element: target as HTMLElement, 
-        position: 'center', 
-        forceDuration: 100, 
+        container: scrollable,
+        element: target as HTMLElement,
+        position: 'center',
+        forceDuration: 100,
         axis: type === 'x' ? 'x' : 'y'
       });
     }

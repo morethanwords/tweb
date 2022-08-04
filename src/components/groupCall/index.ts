@@ -4,40 +4,40 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import PopupElement from "../popups";
-import { hexToRgb } from "../../helpers/color";
-import { attachClickEvent } from "../../helpers/dom/clickEvent";
-import customProperties from "../../helpers/dom/customProperties";
-import { GroupCall, GroupCallParticipant } from "../../layer";
-import type { AppChatsManager } from "../../lib/appManagers/appChatsManager";
-import type { AppGroupCallsManager } from "../../lib/appManagers/appGroupCallsManager";
-import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
-import GROUP_CALL_STATE from "../../lib/calls/groupCallState";
-import { RLottieColor } from "../../lib/rlottie/rlottiePlayer";
-import rootScope from "../../lib/rootScope";
-import ButtonIcon from "../buttonIcon";
-import GroupCallMicrophoneIcon from "./microphoneIcon";
-import GroupCallParticipantsElement from "./participants";
-import GroupCallParticipantsVideoElement from "./participantVideos";
-import PopupPeer from "../popups/peer";
-import GroupCallDescriptionElement from "./description";
-import GroupCallTitleElement from "./title";
-import { addFullScreenListener, cancelFullScreen, isFullScreen, requestFullScreen } from "../../helpers/dom/fullScreen";
-import Scrollable from "../scrollable";
-import { MovableState } from "../movableElement";
-import animationIntersector from "../animationIntersector";
-import { IS_APPLE_MOBILE } from "../../environment/userAgent";
-import throttle from "../../helpers/schedulers/throttle";
-import IS_SCREEN_SHARING_SUPPORTED from "../../environment/screenSharingSupport";
-import GroupCallInstance from "../../lib/calls/groupCallInstance";
-import makeButton from "../call/button";
-import MovablePanel from "../../helpers/movablePanel";
-import findUpClassName from "../../helpers/dom/findUpClassName";
-import safeAssign from "../../helpers/object/safeAssign";
-import toggleClassName from "../../helpers/toggleClassName";
-import { AppManagers } from "../../lib/appManagers/managers";
-import themeController from "../../helpers/themeController";
-import groupCallsController from "../../lib/calls/groupCallsController";
+import PopupElement from '../popups';
+import {hexToRgb} from '../../helpers/color';
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import customProperties from '../../helpers/dom/customProperties';
+import {GroupCall, GroupCallParticipant} from '../../layer';
+import type {AppChatsManager} from '../../lib/appManagers/appChatsManager';
+import type {AppGroupCallsManager} from '../../lib/appManagers/appGroupCallsManager';
+import type {AppPeersManager} from '../../lib/appManagers/appPeersManager';
+import GROUP_CALL_STATE from '../../lib/calls/groupCallState';
+import {RLottieColor} from '../../lib/rlottie/rlottiePlayer';
+import rootScope from '../../lib/rootScope';
+import ButtonIcon from '../buttonIcon';
+import GroupCallMicrophoneIcon from './microphoneIcon';
+import GroupCallParticipantsElement from './participants';
+import GroupCallParticipantsVideoElement from './participantVideos';
+import PopupPeer from '../popups/peer';
+import GroupCallDescriptionElement from './description';
+import GroupCallTitleElement from './title';
+import {addFullScreenListener, cancelFullScreen, isFullScreen, requestFullScreen} from '../../helpers/dom/fullScreen';
+import Scrollable from '../scrollable';
+import {MovableState} from '../movableElement';
+import animationIntersector from '../animationIntersector';
+import {IS_APPLE_MOBILE} from '../../environment/userAgent';
+import throttle from '../../helpers/schedulers/throttle';
+import IS_SCREEN_SHARING_SUPPORTED from '../../environment/screenSharingSupport';
+import GroupCallInstance from '../../lib/calls/groupCallInstance';
+import makeButton from '../call/button';
+import MovablePanel from '../../helpers/movablePanel';
+import findUpClassName from '../../helpers/dom/findUpClassName';
+import safeAssign from '../../helpers/object/safeAssign';
+import toggleClassName from '../../helpers/toggleClassName';
+import {AppManagers} from '../../lib/appManagers/managers';
+import themeController from '../../helpers/themeController';
+import groupCallsController from '../../lib/calls/groupCallsController';
 
 export enum GROUP_CALL_PARTICIPANT_MUTED_STATE {
   UNMUTED,
@@ -75,7 +75,7 @@ export function clearMutedStateModifier(state: GROUP_CALL_PARTICIPANT_MUTED_STAT
 
 export function getColorByMutedState(state: GROUP_CALL_PARTICIPANT_MUTED_STATE) {
   const states = GROUP_CALL_PARTICIPANT_MUTED_STATE;
-  let color: RLottieColor, colorStr: 'blue' | 'green' | 'secondary' | 'red';
+  let colorStr: 'blue' | 'green' | 'secondary' | 'red';
   switch(state) {
     case states.HAND:
       colorStr = 'blue';
@@ -91,7 +91,7 @@ export function getColorByMutedState(state: GROUP_CALL_PARTICIPANT_MUTED_STATE) 
   }
 
   const propertyValue = customProperties.getProperty('gc-' + colorStr + '-text-color');
-  color = hexToRgb(propertyValue);
+  const color: RLottieColor = hexToRgb(propertyValue);
 
   return color;
 }
@@ -157,14 +157,14 @@ export default class PopupGroupCall extends PopupElement {
       const btnFullScreen = this.btnFullScreen = ButtonIcon('fullscreen');
       const btnFullScreen2 = this.btnFullScreen2 = ButtonIcon('fullscreen ' + className + '-cfs');
       const btnExitFullScreen = this.btnExitFullScreen = ButtonIcon('smallscreen');
-  
+
       attachClickEvent(btnFullScreen, this.onFullScreenClick, {listenerSetter});
       attachClickEvent(btnFullScreen2, this.onFullScreenClick, {listenerSetter});
-  
+
       attachClickEvent(btnExitFullScreen, () => {
         cancelFullScreen();
       }, {listenerSetter});
-  
+
       addFullScreenListener(this.container, this.onFullScreenChange, listenerSetter);
     }
 
@@ -234,8 +234,8 @@ export default class PopupGroupCall extends PopupElement {
         element: this.element,
         verifyTouchTarget: (e) => {
           const target = e.target;
-          if(findUpClassName(target, 'chatlist') || 
-            findUpClassName(target, 'group-call-button') || 
+          if(findUpClassName(target, 'chatlist') ||
+            findUpClassName(target, 'group-call-button') ||
             findUpClassName(target, 'btn-icon') ||
             findUpClassName(target, 'group-call-participants-video-container') ||
             isFullScreen()) {
@@ -366,7 +366,7 @@ export default class PopupGroupCall extends PopupElement {
       this.instance.toggleMuted();
     }
   };
-  
+
   private onLeaveClick = async() => {
     const hangUp = (discard: boolean) => {
       this.instance.hangUp(discard);
@@ -384,7 +384,7 @@ export default class PopupGroupCall extends PopupElement {
           callback: (checkboxes) => {
             hangUp(!!checkboxes.size);
           },
-          isDanger: true,
+          isDanger: true
         }]
       }).show();
     } else {
@@ -442,9 +442,9 @@ export default class PopupGroupCall extends PopupElement {
 
     if(buttons) {
       // window.requestAnimationFrame(() => {
-        buttons.forEach((element) => {
-          element.style.opacity = '';
-        });
+      buttons.forEach((element) => {
+        element.style.opacity = '';
+      });
       // });
     }
   };

@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import wrapEmojiText from "./wrapEmojiText";
+import wrapEmojiText from './wrapEmojiText';
 
 export default function getAbbreviation(str: string, onlyFirst = false) {
   if(!str) return '';

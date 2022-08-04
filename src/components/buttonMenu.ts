@@ -4,20 +4,20 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import contextMenuController from "../helpers/contextMenuController";
-import cancelEvent from "../helpers/dom/cancelEvent";
-import { AttachClickOptions, attachClickEvent } from "../helpers/dom/clickEvent";
-import findUpClassName from "../helpers/dom/findUpClassName";
-import ListenerSetter from "../helpers/listenerSetter";
-import { FormatterArguments, i18n, LangPackKey } from "../lib/langPack";
-import CheckboxField from "./checkboxField";
+import contextMenuController from '../helpers/contextMenuController';
+import cancelEvent from '../helpers/dom/cancelEvent';
+import {AttachClickOptions, attachClickEvent} from '../helpers/dom/clickEvent';
+import findUpClassName from '../helpers/dom/findUpClassName';
+import ListenerSetter from '../helpers/listenerSetter';
+import {FormatterArguments, i18n, LangPackKey} from '../lib/langPack';
+import CheckboxField from './checkboxField';
 
 export type ButtonMenuItemOptions = {
-  icon?: string, 
-  text?: LangPackKey, 
+  icon?: string,
+  text?: LangPackKey,
   textArgs?: FormatterArguments,
-  regularText?: string, 
-  onClick: (e: MouseEvent | TouchEvent) => void | boolean | any, 
+  regularText?: string,
+  onClick: (e: MouseEvent | TouchEvent) => void | boolean | any,
   element?: HTMLElement,
   textElement?: HTMLElement,
   options?: AttachClickOptions,
@@ -40,7 +40,7 @@ const ButtonMenuItem = (options: ButtonMenuItemOptions) => {
     textElement = options.textElement = text ? i18n(text, options.textArgs) : document.createElement('span');
     if(options.regularText) textElement.innerHTML = options.regularText;
   }
-  
+
   textElement.classList.add('btn-menu-item-text');
   el.append(textElement);
 
@@ -54,7 +54,7 @@ const ButtonMenuItem = (options: ButtonMenuItemOptions) => {
     if(menu && !menu.classList.contains('active')) {
       return;
     }
-    
+
     const result = onClick(e);
 
     if(result === false) {

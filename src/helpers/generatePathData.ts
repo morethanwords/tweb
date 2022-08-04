@@ -6,15 +6,15 @@
 
 // generate a path's arc data parameter
 
-import { MOUNT_CLASS_TO } from "../config/debug";
+import {MOUNT_CLASS_TO} from '../config/debug';
 
 // http://www.w3.org/TR/SVG/paths.html#PathDataEllipticalArcCommands
 function arcParameter(rx: number, ry: number, xAxisRotation: number, largeArcFlag: number, sweepFlag: number, x: number, y: number) {
   return [rx, ',', ry, ' ',
-          xAxisRotation, ' ',
-          largeArcFlag, ',',
-          sweepFlag, ' ',
-          x, ',', y ].join('');
+    xAxisRotation, ' ',
+    largeArcFlag, ',',
+    sweepFlag, ' ',
+    x, ',', y].join('');
 }
 
 export default function generatePathData(x: number, y: number, width: number, height: number, tl: number, tr: number, br: number, bl: number) {

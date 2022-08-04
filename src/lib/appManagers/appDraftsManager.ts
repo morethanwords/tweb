@@ -2,22 +2,22 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import { MessageEntity, DraftMessage, MessagesSaveDraft } from "../../layer";
-import tsNow from "../../helpers/tsNow";
-import stateStorage from "../stateStorage";
-import assumeType from "../../helpers/assumeType";
-import isObject from "../../helpers/object/isObject";
-import deepEqual from "../../helpers/object/deepEqual";
-import { AppManager } from "./manager";
-import generateMessageId from "./utils/messageId/generateMessageId";
-import getServerMessageId from "./utils/messageId/getServerMessageId";
+import {MessageEntity, DraftMessage, MessagesSaveDraft} from '../../layer';
+import tsNow from '../../helpers/tsNow';
+import stateStorage from '../stateStorage';
+import assumeType from '../../helpers/assumeType';
+import isObject from '../../helpers/object/isObject';
+import deepEqual from '../../helpers/object/deepEqual';
+import {AppManager} from './manager';
+import generateMessageId from './utils/messageId/generateMessageId';
+import getServerMessageId from './utils/messageId/getServerMessageId';
 
 export type MyDraftMessage = DraftMessage.draftMessage;
 
@@ -121,20 +121,20 @@ export class AppDraftsManager extends AppManager {
     if(draft1._ !== draft2._) {
       return false;
     }
-  
+
     if(draft1._ === 'draftMessage' && draft2._ === draft1._) {
       if(draft1.reply_to_msg_id !== draft2.reply_to_msg_id) {
         return false;
       }
-  
+
       if(!deepEqual(draft1.entities, draft2.entities)) {
         return false;
       }
-  
+
       if(draft1.message !== draft2.message) {
         return false;
       }
-  
+
       if(draft1.pFlags.no_webpage !== draft2.pFlags.no_webpage) {
         return false;
       }
@@ -147,15 +147,15 @@ export class AppDraftsManager extends AppManager {
     if(!draft || draft._ === 'draftMessageEmpty') {
       return true;
     }
-    
+
     if(draft.reply_to_msg_id > 0) {
       return false;
     }
-    
+
     if(!draft.message.length) {
       return true;
     }
-    
+
     return false;
   }
 
@@ -180,7 +180,7 @@ export class AppDraftsManager extends AppManager {
     }
 
     // console.warn(dT(), 'changed draft', localDraft, serverDraft)
-    let params: MessagesSaveDraft = {
+    const params: MessagesSaveDraft = {
       peer: this.appPeersManager.getInputPeerById(peerId),
       message: ''
     };
@@ -190,8 +190,8 @@ export class AppDraftsManager extends AppManager {
       draftObj = {_: 'draftMessageEmpty'};
     } else {
       assumeType<DraftMessage.draftMessage>(localDraft);
-      let message = localDraft.message;
-      let entities: MessageEntity[] = localDraft.entities;
+      const message = localDraft.message;
+      const entities: MessageEntity[] = localDraft.entities;
 
       if(localDraft.reply_to_msg_id) {
         params.reply_to_msg_id = getServerMessageId(localDraft.reply_to_msg_id);
@@ -245,7 +245,7 @@ export class AppDraftsManager extends AppManager {
     if(threadId) {
       this.syncDraft(peerId, threadId, emptyDraft as any, false, true);
     } else {
-      this.saveDraft(peerId, threadId, emptyDraft, {notify: true, force: true});  
+      this.saveDraft(peerId, threadId, emptyDraft, {notify: true, force: true});
     }
   }
 
@@ -261,7 +261,7 @@ export class AppDraftsManager extends AppManager {
     if(threadId) {
       this.syncDraft(peerId, threadId, draft, false, true);
     } else {
-      this.saveDraft(peerId, threadId, draft, {notify: true, force: true});  
+      this.saveDraft(peerId, threadId, draft, {notify: true, force: true});
     }
   }
 }

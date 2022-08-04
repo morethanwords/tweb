@@ -10,10 +10,10 @@ export default function safeReplaceObject(wasObject: any, newObject: any) {
   }
 
   for(var key in newObject) {
-    //if (newObject.hasOwnProperty(key)) { // useless
-      wasObject[key] = newObject[key];
-    //}
+    // if (newObject.hasOwnProperty(key)) { // useless
+    wasObject[key] = newObject[key];
+    // }
   }
-  
+
   return wasObject;
 }

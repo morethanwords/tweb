@@ -2,7 +2,7 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/evgeny-nadymov/telegram-react
  * Copyright (C) 2018 Evgeny Nadymov
@@ -10,13 +10,13 @@
  */
 
 import EventListenerBase from '../../helpers/eventListenerBase';
-import { logger } from '../logger';
+import {logger} from '../logger';
 import rootScope from '../rootScope';
-import { GROUP_CALL_AMPLITUDE_ANALYSE_COUNT_MAX } from './constants';
+import {GROUP_CALL_AMPLITUDE_ANALYSE_COUNT_MAX} from './constants';
 import stopTrack from './helpers/stopTrack';
 import LocalConferenceDescription from './localConferenceDescription';
-import { fixMediaLineType, WebRTCLineType } from './sdpBuilder';
-import { getAmplitude, toTelegramSource } from './utils';
+import {fixMediaLineType, WebRTCLineType} from './sdpBuilder';
+import {getAmplitude, toTelegramSource} from './utils';
 
 export type StreamItemBase = {
   type: 'input' | 'output',
@@ -31,7 +31,7 @@ export type StreamAudioItem = StreamItemBase & {kind: 'audio', streamAnalyser: A
 export type StreamVideoItem = StreamItemBase & {kind: 'video'};
 
 export type StreamAmplitude = {
-  type: "input" | "output";
+  type: 'input' | 'output';
   source: string;
   stream: MediaStream;
   track: MediaStreamTrack;
@@ -48,12 +48,12 @@ class AudioStreamAnalyser {
     const analyser = this.analyser = context.createAnalyser();
     const gain = this.gain = context.createGain();
     // const streamDestination = context.createMediaStreamDestination();
-    
+
     analyser.minDecibels = -100;
     analyser.maxDecibels = -30;
     analyser.smoothingTimeConstant = 0.05;
     analyser.fftSize = 1024;
-    
+
     // connect Web Audio API
     streamSource.connect(analyser);
     // analyser.connect(context.destination);
@@ -77,7 +77,7 @@ export default class StreamManager {
   public canCreateConferenceEntry: boolean;
   public locked: boolean;
   public types: WebRTCLineType[];
-  
+
   constructor(private interval?: number) {
     this.context = new (window.AudioContext || (window as any).webkitAudioContext)();
     this.items = [];
@@ -103,7 +103,7 @@ export default class StreamManager {
     const {context, items, inputStream, outputStream} = this;
     const kind: StreamItem['kind'] = track.kind as any;
     const source = StreamManager.getSource(stream, type);
-    
+
     // this.removeTrack(track);
     switch(type) {
       case 'input': {
@@ -125,11 +125,11 @@ export default class StreamManager {
             break;
           }
         }
-        
+
         if(kind !== 'video') {
           outputStream.addTrack(track);
         }
-        
+
         break;
       }
     }
@@ -164,12 +164,12 @@ export default class StreamManager {
   public static getSource(stream: MediaStream, type: StreamItem['type']) {
     return type === 'input' ? (stream.source || stream.id) : '' + toTelegramSource(+stream.id.substring(6));
   }
-  
+
   public removeTrack(track: MediaStreamTrack) {
     this.log('removeTrack', track);
 
     const {items} = this;
-    
+
     let handled = false;
     for(let i = 0, length = items.length; !handled && i < length; ++i) {
       const {track: t, type} = items[i];
@@ -195,36 +195,36 @@ export default class StreamManager {
         }
       }
     }
-    
+
     if(track.kind === 'audio' && this.interval) {
       this.changeTimer();
     }
   }
-  
+
   public replaceInputAudio(stream: MediaStream, oldTrack: MediaStreamTrack) {
     this.removeTrack(oldTrack);
     this.addStream(stream, 'input');
   }
-  
+
   private changeTimer() {
     if(this.timer !== undefined) {
       clearInterval(this.timer);
     }
-    
+
     if(this.items.length) {
       this.timer = window.setInterval(this.analyse, this.interval);
     }
   }
-  
+
   public getAmplitude = (item: StreamAudioItem): StreamAmplitude => {
     const {streamAnalyser, stream, track, source, type} = item;
     const analyser = streamAnalyser.analyser;
     if(!analyser) return;
-    
+
     const array = new Uint8Array(analyser.frequencyBinCount);
     analyser.getByteFrequencyData(array);
     const value = getAmplitude(array);
-    
+
     return {
       type,
       source,
@@ -233,7 +233,7 @@ export default class StreamManager {
       value
     };
   };
-  
+
   public analyse = () => {
     const all = this.counter % 3 === 0;
     const filteredItems = all ? this.items : this.items.filter((x) => x.type === 'input');
@@ -242,7 +242,7 @@ export default class StreamManager {
     if(++this.counter >= 1000) {
       this.counter = 0;
     }
-    
+
     StreamManager.ANALYSER_LISTENER.dispatchEvent('amplitude', {
       amplitudes,
       type: all ? 'all' : 'input'
@@ -266,15 +266,15 @@ export default class StreamManager {
     if(this.locked) {
       return;
     }
-    
+
     const {inputStream, direction, canCreateConferenceEntry} = this;
     const transceiverInit: RTCRtpTransceiverInit = {direction, streams: [inputStream]};
     const types = this.types.map((type) => {
       return [
-        type, 
-        /* type === 'video' || type === 'screencast' ? 
+        type,
+        /* type === 'video' || type === 'screencast' ?
           {sendEncodings: [{maxBitrate: 2500000}], ...transceiverInit} :  */
-          transceiverInit
+        transceiverInit
       ] as const;
     });
 
@@ -319,9 +319,9 @@ export default class StreamManager {
       }
 
       // try { // ! don't use await here. it will wait for adding track and fake one won't be visible in startNegotiation.
-        /* await  */sender.replaceTrack(track).catch((err) => {
-          this.log.error(err);
-        });
+      /* await  */sender.replaceTrack(track).catch((err) => {
+        this.log.error(err);
+      });
       // } catch(err) {
 
       // }

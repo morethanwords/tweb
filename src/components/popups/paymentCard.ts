@@ -4,25 +4,25 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import PopupElement from ".";
-import cardFormattingPatterns from "../../helpers/cards/cardFormattingPatterns";
-import { detectUnifiedCardBrand } from "../../helpers/cards/cardBrands";
-import formatInputValueByPattern from "../../helpers/cards/formatInputValueByPattern";
-import { validateAnyIncomplete, validateCardExpiry, validateCardNumber } from "../../helpers/cards/validateCard";
-import placeCaretAtEnd from "../../helpers/dom/placeCaretAtEnd";
-import { renderImageFromUrlPromise } from "../../helpers/dom/renderImageFromUrl";
-import noop from "../../helpers/noop";
-import { PaymentsPaymentForm } from "../../layer";
-import { LangPackKey, _i18n } from "../../lib/langPack";
-import { TelegramWebviewEvent } from "../../types";
-import CheckboxField from "../checkboxField";
-import confirmationPopup from "../confirmationPopup";
-import CountryInputField from "../countryInputField";
-import InputField, { InputFieldOptions, InputState } from "../inputField";
-import Row from "../row";
-import { SettingSection } from "../sidebarLeft";
-import { getPaymentBrandIconPath, PaymentButton, PaymentsCredentialsToken } from "./payment";
-import { createVerificationIframe } from "./paymentVerification";
+import PopupElement from '.';
+import cardFormattingPatterns from '../../helpers/cards/cardFormattingPatterns';
+import {detectUnifiedCardBrand} from '../../helpers/cards/cardBrands';
+import formatInputValueByPattern from '../../helpers/cards/formatInputValueByPattern';
+import {validateAnyIncomplete, validateCardExpiry, validateCardNumber} from '../../helpers/cards/validateCard';
+import placeCaretAtEnd from '../../helpers/dom/placeCaretAtEnd';
+import {renderImageFromUrlPromise} from '../../helpers/dom/renderImageFromUrl';
+import noop from '../../helpers/noop';
+import {PaymentsPaymentForm} from '../../layer';
+import {LangPackKey, _i18n} from '../../lib/langPack';
+import {TelegramWebviewEvent} from '../../types';
+import CheckboxField from '../checkboxField';
+import confirmationPopup from '../confirmationPopup';
+import CountryInputField from '../countryInputField';
+import InputField, {InputFieldOptions, InputState} from '../inputField';
+import Row from '../row';
+import {SettingSection} from '../sidebarLeft';
+import {getPaymentBrandIconPath, PaymentButton, PaymentsCredentialsToken} from './payment';
+import {createVerificationIframe} from './paymentVerification';
 
 export type PaymentCardDetails = {
   cardNumber: string;
@@ -60,15 +60,15 @@ export class InputFieldCorrected extends InputField {
 
     // const handleIncomplete = (t?: any) => {
     //   if(
-    //     (!lastTransformed.value && t) || 
-    //     lastTransformed.meta.autocorrectComplete || 
-    //     lastTransformed.meta.error || 
+    //     (!lastTransformed.value && t) ||
+    //     lastTransformed.meta.autocorrectComplete ||
+    //     lastTransformed.meta.error ||
     //     optional
     //   ) {
     //     return;
     //   }
-      
-      
+
+
     // };
 
     this.input.addEventListener('keydown', this.onKeyDown);
@@ -85,8 +85,8 @@ export class InputFieldCorrected extends InputField {
     const value = this.value;
     const deleting = this.lastKeyDown === 'Backspace' && (((this.lastTransformed && this.lastTransformed.value.length) || 0) - value.length) === 1;
     const result = this.lastTransformed = formatInputValueByPattern({
-      value: value, 
-      getPattern: this.options.formatMethod, 
+      value: value,
+      getPattern: this.options.formatMethod,
       deleting,
       input: this.input
     });
@@ -122,8 +122,8 @@ export class InputFieldCorrected extends InputField {
   };
 
   public validateNew(
-    value = this.lastTransformed?.value ?? '', 
-    t: any = {}, 
+    value = this.lastTransformed?.value ?? '',
+    t: any = {},
     justReturn?: boolean
   ) {
     let result: ReturnType<InputFieldCorrected['options']['validateMethod']>;
@@ -138,7 +138,7 @@ export class InputFieldCorrected extends InputField {
       !justReturn && this.setState(InputState.Error, langPackKey);
       return false;
     }
-    
+
     !justReturn && this.setState(InputState.Neutral);
     return true;
   }
@@ -182,11 +182,11 @@ export function createCountryZipFields(country?: boolean, zip?: boolean) {
         postcodeInputField?.update();
       },
       required: true,
-      autocomplete: 'country',
+      autocomplete: 'country'
     });
     if(zip) postcodeInputField = new InputFieldCorrected({
-      label: 'PaymentShippingZipPlaceholder', 
-      plainText: true, 
+      label: 'PaymentShippingZipPlaceholder',
+      plainText: true,
       inputMode: 'numeric',
       autocomplete: 'postal-code',
       formatMethod: (/* ...args */) => {
@@ -301,8 +301,8 @@ export default class PopupPaymentCard extends PopupElement<{
       });
     };
     const cardInputField = new InputFieldCorrected({
-      label: 'PaymentCardNumber', 
-      plainText: true, 
+      label: 'PaymentCardNumber',
+      plainText: true,
       inputMode: 'numeric',
       autocomplete: 'cc-number',
       formatMethod: cardFormattingPatterns.cardNumber,
@@ -319,15 +319,15 @@ export default class PopupPaymentCard extends PopupElement<{
 
     let nameInputField: InputField;
     if(nativeParams.need_cardholder_name) nameInputField = new InputField({
-      label: 'Checkout.NewCard.CardholderNamePlaceholder', 
+      label: 'Checkout.NewCard.CardholderNamePlaceholder',
       maxLength: 255,
       required: true,
-      autocomplete: 'cc-name',
+      autocomplete: 'cc-name'
     });
 
     const expireInputField = new InputFieldCorrected({
-      label: 'SecureId.Identity.Placeholder.ExpiryDate', 
-      plainText: true, 
+      label: 'SecureId.Identity.Placeholder.ExpiryDate',
+      plainText: true,
       inputMode: 'numeric',
       autocomplete: 'cc-exp',
       formatMethod: cardFormattingPatterns.cardExpiry,
@@ -335,18 +335,18 @@ export default class PopupPaymentCard extends PopupElement<{
     });
 
     const cvcInputField = new InputFieldCorrected({
-      labelText: 'CVC', 
-      plainText: true, 
+      labelText: 'CVC',
+      plainText: true,
       inputMode: 'numeric',
       autocomplete: 'cc-csc',
-      formatMethod: () => cardFormattingPatterns.cardCvc(cardInputField.value),
+      formatMethod: () => cardFormattingPatterns.cardCvc(cardInputField.value)
       // validateMethod: (...args) => _5AH3.a.cardCvc(cardInputField.value)(...args)
     });
 
     const switchFocusOrder: (InputFieldCorrected | InputField)[] = [
-      cardInputField, 
-      expireInputField, 
-      cvcInputField, 
+      cardInputField,
+      expireInputField,
+      cvcInputField,
       nameInputField
     ].filter(Boolean);
     switchFocusOrder.forEach((inputField) => {
@@ -366,13 +366,13 @@ export default class PopupPaymentCard extends PopupElement<{
         const original = inputField.options.onChange;
         inputField.options.onChange = (transformed) => {
           original?.(transformed);
-  
+
           if(document.activeElement === inputField.input && transformed.meta.autocorrectComplete) {
             for(let i = switchFocusOrder.indexOf(inputField), length = switchFocusOrder.length; i < length; ++i) {
               const nextInputField = switchFocusOrder[i];
               if(
-                nextInputField instanceof InputFieldCorrected ? 
-                !nextInputField.validateNew(undefined, undefined, true) : 
+                nextInputField instanceof InputFieldCorrected ?
+                !nextInputField.validateNew(undefined, undefined, true) :
                 !nextInputField.value
               ) {
                 placeCaretAtEnd(nextInputField.input, true);
@@ -389,15 +389,15 @@ export default class PopupPaymentCard extends PopupElement<{
     const inputFieldsRow = document.createElement('div');
     inputFieldsRow.classList.add('input-fields-row');
     inputFieldsRow.append(expireInputField.container, cvcInputField.container);
-    
+
     cardSection.content.append(...[
-      cardInputField.container, 
+      cardInputField.container,
       inputFieldsRow,
       nameInputField?.container
     ].filter(Boolean));
-    
+
     let billingSection: SettingSection;
-    let saveCheckboxField: CheckboxField;
+    // let saveCheckboxField: CheckboxField;
     const {countryInputField, postcodeInputField} = createCountryZipFields(nativeParams.need_country, nativeParams.need_zip);
     if(nativeParams.need_country || nativeParams.need_zip) {
       billingSection = new SettingSection({name: 'PaymentInfo.Billing.Title', noDelimiter: true, noShadow: true});
@@ -409,8 +409,8 @@ export default class PopupPaymentCard extends PopupElement<{
     }
 
     const canSave = !!this.paymentForm.pFlags.can_save_credentials;
-    saveCheckboxField = new CheckboxField({
-      text: 'PaymentCardSavePaymentInformation', 
+    const saveCheckboxField = new CheckboxField({
+      text: 'PaymentCardSavePaymentInformation',
       checked: !!canSave
     });
     const saveRow = new Row({
@@ -455,18 +455,18 @@ export default class PopupPaymentCard extends PopupElement<{
             'card[cvc]': data.cvc,
             'card[address_zip]': data.zip,
             'card[address_country]': data.country,
-            'card[name]': data.cardholderName,
+            'card[name]': data.cardholderName
           }).toString();
-          
+
           const response = await fetch(url.toString(), {
             method: 'POST',
             credentials: 'same-origin',
             headers: {
               'Content-Type': 'application/x-www-form-urlencoded',
-              Authorization: `Bearer ${nativeParams.publishable_key}`,
-            },
+              'Authorization': `Bearer ${nativeParams.publishable_key}`
+            }
           });
-  
+
           out = await response.json();
         } else if(nativeProvider === 'smartglocal') {
           const params = {
@@ -474,22 +474,22 @@ export default class PopupPaymentCard extends PopupElement<{
               number: data.cardNumber.replace(/[^\d]+/g, ''),
               expiration_month: data.expiryMonth,
               expiration_year: data.expiryYear,
-              security_code: data.cvc.replace(/[^\d]+/g, ''),
-            },
+              security_code: data.cvc.replace(/[^\d]+/g, '')
+            }
           };
 
-          const url = /* DEBUG_PAYMENT_SMART_GLOCAL */false
-            ? 'https://tgb-playground.smart-glocal.com/cds/v1/tokenize/card'
-            : 'https://tgb.smart-glocal.com/cds/v1/tokenize/card';
+          const url = /* DEBUG_PAYMENT_SMART_GLOCAL */false ?
+            'https://tgb-playground.smart-glocal.com/cds/v1/tokenize/card' :
+            'https://tgb.smart-glocal.com/cds/v1/tokenize/card';
 
           const response = await fetch(url, {
             method: 'POST',
             headers: {
-              Accept: 'application/json',
+              'Accept': 'application/json',
               'Content-Type': 'application/json',
-              'X-PUBLIC-TOKEN': nativeParams.public_token,
+              'X-PUBLIC-TOKEN': nativeParams.public_token
             },
-            body: JSON.stringify(params),
+            body: JSON.stringify(params)
           });
 
           const json: { // smartglocal
@@ -506,7 +506,7 @@ export default class PopupPaymentCard extends PopupElement<{
 
           out = {type: 'card', token: json.data.token}
         }
-        
+
         this.dispatchEvent('finish', {token: out, card: data});
         this.hide();
       }

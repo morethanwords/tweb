@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { SettingSection } from "..";
-import { randomLong } from "../../../helpers/random";
-import I18n from "../../../lib/langPack";
-import RadioField from "../../radioField";
-import Row, { RadioFormFromRows } from "../../row";
-import { SliderSuperTab } from "../../slider"
+import {SettingSection} from '..';
+import {randomLong} from '../../../helpers/random';
+import I18n from '../../../lib/langPack';
+import RadioField from '../../radioField';
+import Row, {RadioFormFromRows} from '../../row';
+import {SliderSuperTab} from '../../slider'
 
 export default class AppLanguageTab extends SliderSuperTab {
   protected async init() {
@@ -28,30 +28,30 @@ export default class AppLanguageTab extends SliderSuperTab {
       languages.forEach((language) => {
         const row = new Row({
           radioField: new RadioField({
-            text: language.name, 
-            name: random, 
+            text: language.name,
+            name: random,
             value: language.lang_code
           }),
           subtitle: language.native_name
         });
-        
+
         radioRows.set(language.lang_code, row);
       });
 
       const form = RadioFormFromRows([...radioRows.values()], (value) => {
         I18n.getLangPack(value);
       });
-  
+
       I18n.getCacheLangPack().then((langPack) => {
         const row = radioRows.get(langPack.lang_code);
         if(!row) {
           console.error('no row', row, langPack);
           return;
         }
-  
+
         row.radioField.setValueSilently(true);
       });
-  
+
       section.content.append(form);
     });
 

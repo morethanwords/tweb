@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { MessageEntity } from "../../layer";
-import spoiler from "./spoiler";
+import {MessageEntity} from '../../layer';
+import spoiler from './spoiler';
 
 export default function encodeSpoiler(text: string, entity: MessageEntity.messageEntitySpoiler) {
   const before = text.slice(0, entity.offset);

@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import CAN_USE_TRANSFERABLES from "../../environment/canUseTransferables";
-import readBlobAsText from "../../helpers/blob/readBlobAsText";
-import applyReplacements from "./applyReplacements";
+import CAN_USE_TRANSFERABLES from '../../environment/canUseTransferables';
+import readBlobAsText from '../../helpers/blob/readBlobAsText';
+import applyReplacements from './applyReplacements';
 
 importScripts('rlottie-wasm.js');
-//import Module, { allocate, intArrayFromString } from './rlottie-wasm';
+// import Module, { allocate, intArrayFromString } from './rlottie-wasm';
 
 const _Module = (self as any).Module as any;
 
@@ -26,12 +26,12 @@ export class RLottieItem {
   private fps: number;
 
   private dead: boolean;
-  //private context: OffscreenCanvasRenderingContext2D;
+  // private context: OffscreenCanvasRenderingContext2D;
 
   constructor(
-    private reqId: number, 
-    private width: number, 
-    private height: number/* , 
+    private reqId: number,
+    private width: number,
+    private height: number/* ,
     private canvas: OffscreenCanvas */
   ) {
 
@@ -44,7 +44,7 @@ export class RLottieItem {
 
     this.fps = Math.max(1, Math.min(60, fps || DEFAULT_FPS));
 
-    //this.context = canvas.getContext('2d');
+    // this.context = canvas.getContext('2d');
     /* let frame = 0;
     setInterval(() => {
       if(frame >= this.frameCount) frame = 0;
@@ -54,12 +54,12 @@ export class RLottieItem {
 
     try {
       this.handle = worker.Api.init();
-  
+
       // @ts-ignore
       this.stringOnWasmHeap = allocate(intArrayFromString(json), 'i8', 0);
-  
+
       this.frameCount = worker.Api.loadFromData(this.handle, this.stringOnWasmHeap);
-  
+
       worker.Api.resize(this.handle, this.width, this.height);
 
       reply('loaded', this.reqId, this.frameCount, this.fps);
@@ -71,27 +71,27 @@ export class RLottieItem {
 
   public render(frameNo: number, clamped?: Uint8ClampedArray) {
     if(this.dead || this.handle === undefined) return;
-    //return;
-  
+    // return;
+
     if(this.frameCount < frameNo || frameNo < 0) {
       return;
     }
-  
+
     try {
       worker.Api.render(this.handle, frameNo);
-  
+
       const bufferPointer = worker.Api.buffer(this.handle);
-  
+
       const data = _Module.HEAPU8.subarray(bufferPointer, bufferPointer + (this.width * this.height * 4));
-  
+
       if(!clamped) {
         clamped = new Uint8ClampedArray(data);
       } else {
         clamped.set(data);
       }
 
-      //this.context.putImageData(new ImageData(clamped, this.width, this.height), 0, 0);
-  
+      // this.context.putImageData(new ImageData(clamped, this.width, this.height), 0, 0);
+
       reply('frame', this.reqId, frameNo, clamped);
     } catch(e) {
       console.error('Render error:', e);
@@ -126,7 +126,7 @@ class RLottieWorker {
       resize: _Module.cwrap('lottie_resize', '', ['number', 'number', 'number']),
       buffer: _Module.cwrap('lottie_buffer', 'number', ['number']),
       render: _Module.cwrap('lottie_render', '', ['number', 'number']),
-      loadFromData: _Module.cwrap('lottie_load_from_data', 'number', ['number', 'number']),
+      loadFromData: _Module.cwrap('lottie_load_from_data', 'number', ['number', 'number'])
     };
   }
 
@@ -169,7 +169,7 @@ const queryableFunctions = {
         const match = json.match(/"fr":\s*?(\d+?),/);
         const frameRate = +match?.[1] || DEFAULT_FPS;
 
-        //console.log('Rendering sticker:', reqId, frameRate, 'now rendered:', Object.keys(items).length);
+        // console.log('Rendering sticker:', reqId, frameRate, 'now rendered:', Object.keys(items).length);
 
         item.init(json, frameRate);
       } catch(err) {
@@ -188,17 +188,17 @@ const queryableFunctions = {
     delete items[reqId];
   },
   renderFrame: function(reqId: number, frameNo: number, clamped?: Uint8ClampedArray) {
-    //console.log('worker renderFrame', reqId, frameNo, clamped);
+    // console.log('worker renderFrame', reqId, frameNo, clamped);
     items[reqId].render(frameNo, clamped);
   }
 };
 
 function reply(...args: any[]) {
-  if(arguments.length < 1) { 
-    throw new TypeError('reply - not enough arguments'); 
+  if(arguments.length < 1) {
+    throw new TypeError('reply - not enough arguments');
   }
 
-  //if(arguments[0] === 'frame') return;
+  // if(arguments[0] === 'frame') return;
 
   args = Array.prototype.slice.call(arguments, 1);
 
@@ -210,7 +210,7 @@ function reply(...args: any[]) {
       if(args[i] instanceof ArrayBuffer) {
         transfer.push(args[i]);
       }
-  
+
       if(args[i].buffer && args[i].buffer instanceof ArrayBuffer) {
         transfer.push(args[i].buffer);
       }

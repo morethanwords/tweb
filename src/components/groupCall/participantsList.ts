@@ -4,17 +4,17 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import positionElementByIndex from "../../helpers/dom/positionElementByIndex";
-import replaceContent from "../../helpers/dom/replaceContent";
-import { fastRaf } from "../../helpers/schedulers";
-import SortedList, { SortedElementBase } from "../../helpers/sortedList";
-import { GroupCallParticipant } from "../../layer";
-import appDialogsManager, { DialogDom, AppDialogsManager } from "../../lib/appManagers/appDialogsManager";
-import { getGroupCallParticipantMutedState } from ".";
-import GroupCallParticipantMutedIcon from "./participantMutedIcon";
-import GroupCallParticipantStatusElement from "./participantStatus";
-import type GroupCallInstance from "../../lib/calls/groupCallInstance";
-import type LazyLoadQueue from "../lazyLoadQueue";
+import positionElementByIndex from '../../helpers/dom/positionElementByIndex';
+import replaceContent from '../../helpers/dom/replaceContent';
+import {fastRaf} from '../../helpers/schedulers';
+import SortedList, {SortedElementBase} from '../../helpers/sortedList';
+import {GroupCallParticipant} from '../../layer';
+import appDialogsManager, {DialogDom, AppDialogsManager} from '../../lib/appManagers/appDialogsManager';
+import {getGroupCallParticipantMutedState} from '.';
+import GroupCallParticipantMutedIcon from './participantMutedIcon';
+import GroupCallParticipantStatusElement from './participantStatus';
+import type GroupCallInstance from '../../lib/calls/groupCallInstance';
+import type LazyLoadQueue from '../lazyLoadQueue';
 
 interface SortedParticipant extends SortedElementBase {
   dom: DialogDom,
@@ -24,7 +24,7 @@ interface SortedParticipant extends SortedElementBase {
 
 export default class GroupCallParticipantsList extends SortedList<SortedParticipant> {
   public list: HTMLUListElement;
-  
+
   protected lazyLoadQueue: LazyLoadQueue;
   protected avatarSize = 54;
   protected rippleEnabled = true;
@@ -75,7 +75,7 @@ export default class GroupCallParticipantsList extends SortedList<SortedParticip
           mutedIcon.setState(mutedState);
           status.setState(mutedState, participant);
         }); */
-        
+
         (base as SortedParticipant).dom = dom;
 
         return base as SortedParticipant;

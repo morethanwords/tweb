@@ -4,16 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { SettingSection } from "../..";
-import { AccountPassword } from "../../../../layer";
-import Button from "../../../button";
-import PasswordInputField from "../../../passwordInputField";
-import { SliderSuperTab } from "../../../slider";
-import TrackingMonkey from "../../../monkeys/tracking";
-import AppTwoStepVerificationHintTab from "./hint";
-import { InputState } from "../../../inputField";
-import cancelEvent from "../../../../helpers/dom/cancelEvent";
-import { attachClickEvent } from "../../../../helpers/dom/clickEvent";
+import {SettingSection} from '../..';
+import {AccountPassword} from '../../../../layer';
+import Button from '../../../button';
+import PasswordInputField from '../../../passwordInputField';
+import {SliderSuperTab} from '../../../slider';
+import TrackingMonkey from '../../../monkeys/tracking';
+import AppTwoStepVerificationHintTab from './hint';
+import {InputState} from '../../../inputField';
+import cancelEvent from '../../../../helpers/dom/cancelEvent';
+import {attachClickEvent} from '../../../../helpers/dom/clickEvent';
 
 export default class AppTwoStepVerificationReEnterPasswordTab extends SliderSuperTab {
   public state: AccountPassword;
@@ -50,7 +50,7 @@ export default class AppTwoStepVerificationReEnterPasswordTab extends SliderSupe
       if(passwordInputField.input.classList.contains('error')) {
         passwordInputField.setState(InputState.Neutral);
       }
-  
+
       if(e.key === 'Enter') {
         return onContinueClick();
       }
@@ -82,7 +82,7 @@ export default class AppTwoStepVerificationReEnterPasswordTab extends SliderSupe
 
     return monkey.load();
   }
-  
+
   onOpenAfterTimeout() {
     this.passwordInputField.input.focus();
   }

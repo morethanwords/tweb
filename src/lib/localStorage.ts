@@ -2,7 +2,7 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
@@ -10,10 +10,10 @@
  */
 
 import Modes from '../config/modes';
-import { IS_WORKER } from '../helpers/context';
-import { WorkerTaskTemplate } from '../types';
+import {IS_WORKER} from '../helpers/context';
+import {WorkerTaskTemplate} from '../types';
 import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
-//import { stringify } from '../helpers/json';
+// import { stringify } from '../helpers/json';
 
 class LocalStorage<Storage extends Record<string, any>> {
   private prefix = '';
@@ -41,7 +41,7 @@ class LocalStorage<Storage extends Record<string, any>> {
         try {
           value = JSON.parse(value);
         } catch(err) {
-          //console.error(err);
+          // console.error(err);
         }
       } else {
         value = undefined;
@@ -78,14 +78,14 @@ class LocalStorage<Storage extends Record<string, any>> {
     if(!saveLocal) {
       delete this.cache[key];
     }
-    
-    //if(this.useStorage) {
-      try {
-        localStorage.removeItem(this.prefix + key);
-      } catch(err) {
-        
-      }
-    //}
+
+    // if(this.useStorage) {
+    try {
+      localStorage.removeItem(this.prefix + key);
+    } catch(err) {
+
+    }
+    // }
   }
 
   /* public clear(preserveKeys: (keyof Storage)[] = this.preserveKeys) {
@@ -100,7 +100,7 @@ class LocalStorage<Storage extends Record<string, any>> {
             }
           });
         }
-        
+
         localStorage.clear();
 
         if(preserveKeys) {
@@ -119,7 +119,7 @@ class LocalStorage<Storage extends Record<string, any>> {
       keys.push(`dc${i}_auth_key`);
     }
 
-    for(let key of keys) {
+    for(const key of keys) {
       this.delete(key, true);
     }
   }
@@ -154,8 +154,8 @@ export interface LocalStorageProxyTaskResponse extends WorkerTaskTemplate {
 
 export default class LocalStorageController<Storage extends Record<string, any>> {
   private static STORAGES: LocalStorageController<any>[] = [];
-  //private log = (...args: any[]) => console.log('[SW LS]', ...args);
-  //private log = (...args: any[]) => {};
+  // private log = (...args: any[]) => console.log('[SW LS]', ...args);
+  // private log = (...args: any[]) => {};
 
   private storage: LocalStorage<Storage>;
 
@@ -172,7 +172,7 @@ export default class LocalStorageController<Storage extends Record<string, any>>
       const port = MTProtoMessagePort.getInstance<false>();
       return port.invoke('localStorageProxy', {type, args});
     }
-    
+
     args = Array.prototype.slice.call(args);
 
     // @ts-ignore

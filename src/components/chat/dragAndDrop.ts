@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import generatePathData from "../../helpers/generatePathData";
-import { FormatterArguments, i18n, LangPackKey } from "../../lib/langPack";
+import generatePathData from '../../helpers/generatePathData';
+import {FormatterArguments, i18n, LangPackKey} from '../../lib/langPack';
 
 export default class ChatDragAndDrop {
   container: HTMLDivElement;
@@ -62,12 +62,12 @@ export default class ChatDragAndDrop {
 
   onDragOver = (e: DragEvent) => {
     this.container.classList.add('is-dragover');
-    //SetTransition(this.container, 'is-dragover', true, 500);
+    // SetTransition(this.container, 'is-dragover', true, 500);
   };
 
   onDragLeave = (e: DragEvent) => {
     this.container.classList.remove('is-dragover');
-    //SetTransition(this.container, 'is-dragover', false, 500);
+    // SetTransition(this.container, 'is-dragover', false, 500);
   };
 
   onDrop = (e: DragEvent) => {
@@ -90,7 +90,7 @@ export default class ChatDragAndDrop {
     this.svg.setAttributeNS(null, 'height', `${rect.height}`);
 
     const radius = 10;
-    //const strokeWidth = 2;
+    // const strokeWidth = 2;
     const sizeX = rect.width - radius;
     const sizeY = rect.height - radius;
     const pos = radius / 2;

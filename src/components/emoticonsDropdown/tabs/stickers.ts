@@ -4,31 +4,31 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import emoticonsDropdown, { EmoticonsDropdown, EMOTICONSSTICKERGROUP, EmoticonsTab } from "..";
-import findUpAttribute from "../../../helpers/dom/findUpAttribute";
-import findUpClassName from "../../../helpers/dom/findUpClassName";
-import mediaSizes from "../../../helpers/mediaSizes";
-import { MessagesAllStickers, StickerSet } from "../../../layer";
-import { MyDocument } from "../../../lib/appManagers/appDocsManager";
-import { AppManagers } from "../../../lib/appManagers/managers";
-import { i18n } from "../../../lib/langPack";
-import wrapEmojiText from "../../../lib/richTextProcessor/wrapEmojiText";
-import rootScope from "../../../lib/rootScope";
-import animationIntersector from "../../animationIntersector";
-import LazyLoadQueue from "../../lazyLoadQueue";
-import LazyLoadQueueRepeat from "../../lazyLoadQueueRepeat";
-import { putPreloader } from "../../putPreloader";
-import PopupStickers from "../../popups/stickers";
-import Scrollable, { ScrollableX } from "../../scrollable";
-import StickyIntersector from "../../stickyIntersector";
-import { wrapSticker, wrapStickerSetThumb } from "../../wrappers";
+import emoticonsDropdown, {EmoticonsDropdown, EMOTICONSSTICKERGROUP, EmoticonsTab} from '..';
+import findUpAttribute from '../../../helpers/dom/findUpAttribute';
+import findUpClassName from '../../../helpers/dom/findUpClassName';
+import mediaSizes from '../../../helpers/mediaSizes';
+import {MessagesAllStickers, StickerSet} from '../../../layer';
+import {MyDocument} from '../../../lib/appManagers/appDocsManager';
+import {AppManagers} from '../../../lib/appManagers/managers';
+import {i18n} from '../../../lib/langPack';
+import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
+import rootScope from '../../../lib/rootScope';
+import animationIntersector from '../../animationIntersector';
+import LazyLoadQueue from '../../lazyLoadQueue';
+import LazyLoadQueueRepeat from '../../lazyLoadQueueRepeat';
+import {putPreloader} from '../../putPreloader';
+import PopupStickers from '../../popups/stickers';
+import Scrollable, {ScrollableX} from '../../scrollable';
+import StickyIntersector from '../../stickyIntersector';
+import {wrapSticker, wrapStickerSetThumb} from '../../wrappers';
 
 export class SuperStickerRenderer {
   public lazyLoadQueue: LazyLoadQueueRepeat;
   private animatedDivs: Set<HTMLDivElement> = new Set();
 
   constructor(
-    private regularLazyLoadQueue: LazyLoadQueue, 
+    private regularLazyLoadQueue: LazyLoadQueue,
     private group: string,
     private managers: AppManagers
   ) {
@@ -55,10 +55,10 @@ export class SuperStickerRenderer {
 
     // * This will wrap only a thumb
     wrapSticker({
-      doc, 
+      doc,
       div,
-      lazyLoadQueue: this.regularLazyLoadQueue, 
-      group: this.group, 
+      lazyLoadQueue: this.regularLazyLoadQueue,
+      group: this.group,
       onlyThumb: doc.animated,
       loadPromises
     });
@@ -70,13 +70,13 @@ export class SuperStickerRenderer {
     this.animatedDivs.add(div);
 
     this.lazyLoadQueue.observe({
-      div, 
+      div,
       load: this.processVisibleDiv
     });
   }
 
   private checkAnimationContainer = (div: HTMLElement, visible: boolean) => {
-    //console.error('checkAnimationContainer', div, visible);
+    // console.error('checkAnimationContainer', div, visible);
     const players = animationIntersector.getAnimations(div);
     players.forEach((player) => {
       if(!visible) {
@@ -90,25 +90,25 @@ export class SuperStickerRenderer {
   private processVisibleDiv = async(div: HTMLElement) => {
     const docId = div.dataset.docId;
     const doc = await this.managers.appDocsManager.getDoc(docId);
-    
+
     const size = mediaSizes.active.esgSticker.width;
 
-    //console.log('processVisibleDiv:', div);
+    // console.log('processVisibleDiv:', div);
 
     const promise = wrapSticker({
-      doc, 
+      doc,
       div: div as HTMLDivElement,
       width: size,
       height: size,
-      lazyLoadQueue: null, 
-      group: this.group, 
+      lazyLoadQueue: null,
+      group: this.group,
       onlyThumb: false,
       play: true,
       loop: true
     }).then(({render}) => render);
 
     promise.then(() => {
-      //clearTimeout(timeout);
+      // clearTimeout(timeout);
       this.checkAnimationContainer(div, this.lazyLoadQueue.intersector.isVisible(div));
     });
 
@@ -123,7 +123,7 @@ export class SuperStickerRenderer {
     const docId = div.dataset.docId;
     const doc = await this.managers.appDocsManager.getDoc(docId);
 
-    //console.log('STICKER INvisible:', /* div,  */docId);
+    // console.log('STICKER INvisible:', /* div,  */docId);
 
     this.checkAnimationContainer(div, false);
 
@@ -147,7 +147,7 @@ export default class StickersTab implements EmoticonsTab {
   private scroll: Scrollable;
 
   private menu: HTMLElement;
-  
+
   private mounted = false;
 
   private queueCategoryPush: {element: HTMLElement, prepend: boolean}[] = [];
@@ -161,7 +161,7 @@ export default class StickersTab implements EmoticonsTab {
   }
 
   categoryPush(categoryDiv: HTMLElement, categoryTitle: DocumentFragment | string = '', promise: Promise<MyDocument[]>, prepend?: boolean) {
-    //if((docs.length % 5) !== 0) categoryDiv.classList.add('not-full');
+    // if((docs.length % 5) !== 0) categoryDiv.classList.add('not-full');
 
     const itemsDiv = document.createElement('div');
     itemsDiv.classList.add('category-items', 'super-stickers');
@@ -182,7 +182,7 @@ export default class StickersTab implements EmoticonsTab {
 
     promise.then((documents) => {
       documents.forEach((doc) => {
-        //if(doc._ === 'documentEmpty') return;
+        // if(doc._ === 'documentEmpty') return;
         itemsDiv.append(this.superStickerRenderer.renderSticker(doc));
       });
 
@@ -225,14 +225,14 @@ export default class StickersTab implements EmoticonsTab {
       this.menu.append(button);
     }
 
-    //stickersScroll.append(categoryDiv);
+    // stickersScroll.append(categoryDiv);
 
     const promise = this.managers.appStickersManager.getStickerSet(set);
     this.categoryPush(categoryDiv, wrapEmojiText(set.title), promise.then((stickerSet) => stickerSet.documents as MyDocument[]), prepend);
     const stickerSet = await promise;
 
-    //console.log('got stickerSet', stickerSet, li);
-    
+    // console.log('got stickerSet', stickerSet, li);
+
     wrapStickerSetThumb({
       set,
       container: button,
@@ -246,15 +246,15 @@ export default class StickersTab implements EmoticonsTab {
 
   init() {
     this.content = document.getElementById('content-stickers');
-    //let stickersDiv = contentStickersDiv.querySelector('.os-content') as HTMLDivElement;
+    // let stickersDiv = contentStickersDiv.querySelector('.os-content') as HTMLDivElement;
 
     this.recentDiv = document.createElement('div');
     this.recentDiv.classList.add('sticker-category', 'stickers-recent');
 
-    let menuWrapper = this.content.previousElementSibling as HTMLDivElement;
+    const menuWrapper = this.content.previousElementSibling as HTMLDivElement;
     this.menu = menuWrapper.firstElementChild as HTMLUListElement;
 
-    let menuScroll = new ScrollableX(menuWrapper);
+    const menuScroll = new ScrollableX(menuWrapper);
 
     this.stickersDiv = document.createElement('div');
     this.stickersDiv.classList.add('stickers-categories');
@@ -279,7 +279,7 @@ export default class StickersTab implements EmoticonsTab {
 
     rootScope.addEventListener('stickers_installed', (e) => {
       const set: StickerSet.stickerSet = e;
-      
+
       if(!this.stickerSets[set.id] && this.mounted) {
         this.renderStickerSet(set, true);
       }
@@ -287,7 +287,7 @@ export default class StickersTab implements EmoticonsTab {
 
     rootScope.addEventListener('stickers_deleted', (e) => {
       const set: StickerSet.stickerSet = e;
-      
+
       if(this.stickerSets[set.id] && this.mounted) {
         const elements = this.stickerSets[set.id];
         elements.stickers.remove();
@@ -332,8 +332,8 @@ export default class StickersTab implements EmoticonsTab {
     Promise.all([
       this.managers.appStickersManager.getRecentStickers().then((stickers) => {
         this.recentStickers = stickers.stickers.slice(0, 20) as MyDocument[];
-  
-        //stickersScroll.prepend(categoryDiv);
+
+        // stickersScroll.prepend(categoryDiv);
 
         this.stickerSets['recent'] = {
           stickers: this.recentDiv,
@@ -348,7 +348,7 @@ export default class StickersTab implements EmoticonsTab {
       this.managers.appStickersManager.getAllStickers().then((res) => {
         preloader.remove();
 
-        for(let set of (res as MessagesAllStickers.messagesAllStickers).sets) {
+        for(const set of (res as MessagesAllStickers.messagesAllStickers).sets) {
           this.renderStickerSet(set);
         }
       })
@@ -364,17 +364,17 @@ export default class StickersTab implements EmoticonsTab {
     /* setInterval(() => {
       // @ts-ignore
       const players = Object.values(lottieLoader.players).filter((p) => p.width === 80);
-      
+
       console.log('STICKERS RENDERED IN PANEL:', players.length, players.filter((p) => !p.paused).length, this.superStickerRenderer.lazyLoadQueue.intersector.getVisible().length);
     }, .25e3); */
-    
+
 
     this.init = null;
   }
 
   pushRecentSticker(doc: MyDocument) {
     this.managers.appStickersManager.pushRecentSticker(doc);
-    
+
     if(!this.recentDiv?.parentElement) {
       return;
     }

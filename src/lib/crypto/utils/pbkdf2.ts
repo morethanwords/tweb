@@ -1,4 +1,4 @@
-import subtle from "../subtle";
+import subtle from '../subtle';
 
 export default async function pbkdf2(buffer: Parameters<SubtleCrypto['importKey']>[1], salt: HkdfParams['salt'], iterations: number) {
   const importKey = await subtle.importKey(
@@ -8,7 +8,7 @@ export default async function pbkdf2(buffer: Parameters<SubtleCrypto['importKey'
     false,
     [/* 'deriveKey',  */'deriveBits']
   );
-  
+
   /* await subtle.deriveKey(
     {
       name: 'PBKDF2',
@@ -26,13 +26,13 @@ export default async function pbkdf2(buffer: Parameters<SubtleCrypto['importKey'
   ); */
 
   const bits = subtle.deriveBits({
-      name: 'PBKDF2',
-      salt,
-      iterations,
-      hash: {name: 'SHA-512'},
-    },
-    importKey,
-    512
+    name: 'PBKDF2',
+    salt,
+    iterations,
+    hash: {name: 'SHA-512'}
+  },
+  importKey,
+  512
   );
 
   return bits.then((buffer) => new Uint8Array(buffer));

@@ -4,28 +4,28 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import MEDIA_MIME_TYPES_SUPPORTED from "../environment/mediaMimeTypesSupport";
-import cancelEvent from "../helpers/dom/cancelEvent";
-import { attachClickEvent, detachClickEvent } from "../helpers/dom/clickEvent";
-import setInnerHTML from "../helpers/dom/setInnerHTML";
-import mediaSizes from "../helpers/mediaSizes";
-import SearchListLoader from "../helpers/searchListLoader";
-import { Message } from "../layer";
-import type { MyDocument } from "../lib/appManagers/appDocsManager";
-import appDownloadManager from "../lib/appManagers/appDownloadManager";
-import appImManager from "../lib/appManagers/appImManager";
-import { MyMessage } from "../lib/appManagers/appMessagesManager";
-import { MyPhoto } from "../lib/appManagers/appPhotosManager";
-import getMediaFromMessage from "../lib/appManagers/utils/messages/getMediaFromMessage";
-import wrapRichText from "../lib/richTextProcessor/wrapRichText";
-import { MediaSearchContext } from "./appMediaPlaybackController";
-import AppMediaViewerBase, { MEDIA_VIEWER_CLASSNAME } from "./appMediaViewerBase";
-import { ButtonMenuItemOptions } from "./buttonMenu";
-import PopupDeleteMessages from "./popups/deleteMessages";
-import PopupForward from "./popups/forward";
-import Scrollable from "./scrollable";
-import appSidebarRight from "./sidebarRight";
-import AppSharedMediaTab from "./sidebarRight/tabs/sharedMedia";
+import MEDIA_MIME_TYPES_SUPPORTED from '../environment/mediaMimeTypesSupport';
+import cancelEvent from '../helpers/dom/cancelEvent';
+import {attachClickEvent, detachClickEvent} from '../helpers/dom/clickEvent';
+import setInnerHTML from '../helpers/dom/setInnerHTML';
+import mediaSizes from '../helpers/mediaSizes';
+import SearchListLoader from '../helpers/searchListLoader';
+import {Message} from '../layer';
+import type {MyDocument} from '../lib/appManagers/appDocsManager';
+import appDownloadManager from '../lib/appManagers/appDownloadManager';
+import appImManager from '../lib/appManagers/appImManager';
+import {MyMessage} from '../lib/appManagers/appMessagesManager';
+import {MyPhoto} from '../lib/appManagers/appPhotosManager';
+import getMediaFromMessage from '../lib/appManagers/utils/messages/getMediaFromMessage';
+import wrapRichText from '../lib/richTextProcessor/wrapRichText';
+import {MediaSearchContext} from './appMediaPlaybackController';
+import AppMediaViewerBase, {MEDIA_VIEWER_CLASSNAME} from './appMediaViewerBase';
+import {ButtonMenuItemOptions} from './buttonMenu';
+import PopupDeleteMessages from './popups/deleteMessages';
+import PopupForward from './popups/forward';
+import Scrollable from './scrollable';
+import appSidebarRight from './sidebarRight';
+import AppSharedMediaTab from './sidebarRight/tabs/sharedMedia';
 
 type AppMediaViewerTargetType = {
   element: HTMLElement,
@@ -50,7 +50,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
         const media: MyPhoto | MyDocument = getMediaFromMessage(item);
 
         if(!media) return;
-        
+
         if(isForDocument && !AppMediaViewer.isMediaCompatibleForDocumentViewer(media)) {
           return;
         }
@@ -85,19 +85,19 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       if(!mediaSizes.isMobile) return;
 
       this.content.caption.classList.add('is-focused');
-      
+
       if(captionTimeout) {
         clearTimeout(captionTimeout);
         captionTimeout = undefined;
       }
-      
+
       document.addEventListener('touchend', setCaptionTimeout, {once: true});
     });
 
     const captionScrollable = new Scrollable(this.content.caption);
     captionScrollable.onAdditionalScroll = setCaptionTimeout;
 
-    //this.content.main.append(this.content.caption);
+    // this.content.main.append(this.content.caption);
     this.wholeDiv.append(this.content.caption);
 
     attachClickEvent(this.buttons.delete, this.onDeleteClick);
@@ -119,7 +119,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     this.setBtnMenuToggle(buttons);
 
     // * constructing html end
-    
+
     this.setListeners();
   }
 
@@ -184,7 +184,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
   onForwardClick = () => {
     const target = this.target;
     if(target.mid) {
-      //appSidebarRight.forwardTab.open([target.mid]);
+      // appSidebarRight.forwardTab.open([target.mid]);
       new PopupForward({
         [target.peerId]: [target.mid]
       }, () => {
@@ -199,7 +199,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       const threadId = this.searchContext.threadId;
       const message = await this.getMessageByPeer(peerId, mid);
       this.close(e)
-      //.then(() => mediaSizes.isMobile ? appSidebarRight.sharedMediaTab.closeBtn.click() : Promise.resolve())
+      // .then(() => mediaSizes.isMobile ? appSidebarRight.sharedMediaTab.closeBtn.click() : Promise.resolve())
       .then(async() => {
         if(mediaSizes.isMobile) {
           const tab = appSidebarRight.getTab(AppSharedMediaTab);
@@ -207,11 +207,11 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
             tab.close();
           }
         }
-        
+
         appImManager.setInnerPeer({
-          peerId: message.peerId, 
-          lastMsgId: mid, 
-          type: threadId ? 'discussion' : undefined, 
+          peerId: message.peerId,
+          lastMsgId: mid,
+          type: threadId ? 'discussion' : undefined,
           threadId
         });
       });
@@ -234,7 +234,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
         entities: (message as Message.message).totalEntities
       });
     }
-    
+
     // html = 'Dandelion are a family of flowering plants that grow in many parts of the world.';
     setInnerHTML(this.content.caption.firstElementChild, html);
     this.content.caption.classList.toggle('hide', !caption);
@@ -247,7 +247,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     return this;
   }
 
-  public async openMedia(message: MyMessage, target?: HTMLElement, fromRight = 0, reverse = false, 
+  public async openMedia(message: MyMessage, target?: HTMLElement, fromRight = 0, reverse = false,
     prevTargets: AppMediaViewerTargetType[] = [], nextTargets: AppMediaViewerTargetType[] = []/* , needLoadMore = true */) {
     if(this.setMoverPromise) return this.setMoverPromise;
 
@@ -261,7 +261,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     });
 
     this.wholeDiv.classList.toggle('no-forwards', cantForwardMessage);
-    
+
     const cantDownloadMessage = cantForwardMessage;
     [this.buttons.download, this.btnMenuDownload.element].forEach((button) => {
       button.classList.toggle('hide', cantDownloadMessage);

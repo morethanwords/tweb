@@ -1,5 +1,7 @@
 // credits to https://github.com/iamdustan/smoothscroll
 
+/* eslint-disable */
+
 type ScrollableElement = (Window & typeof globalThis) | Element;
 export type SmoothScrollToOptions = Partial<{
   top: number,

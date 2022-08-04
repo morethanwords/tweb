@@ -4,24 +4,24 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { SliderSuperTab } from "../../slider";
-import AppSelectPeers from "../../appSelectPeers";
-import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
-import { MyDialogFilter as DialogFilter } from "../../../lib/storages/filters";
-import ButtonIcon from "../../buttonIcon";
-import CheckboxField from "../../checkboxField";
-import Button from "../../button";
-import AppEditFolderTab from "./editFolder";
-import I18n, { i18n, LangPackKey, _i18n, join } from "../../../lib/langPack";
-import { SettingSection } from "..";
-import { toast } from "../../toast";
-import copy from "../../../helpers/object/copy";
-import forEachReverse from "../../../helpers/array/forEachReverse";
-import setInnerHTML from "../../../helpers/dom/setInnerHTML";
-import wrapEmojiText from "../../../lib/richTextProcessor/wrapEmojiText";
-import { REAL_FOLDERS } from "../../../lib/mtproto/mtproto_config";
-import rootScope from "../../../lib/rootScope";
-import { MTAppConfig } from "../../../lib/mtproto/appConfig";
+import {SliderSuperTab} from '../../slider';
+import AppSelectPeers from '../../appSelectPeers';
+import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
+import {MyDialogFilter as DialogFilter} from '../../../lib/storages/filters';
+import ButtonIcon from '../../buttonIcon';
+import CheckboxField from '../../checkboxField';
+import Button from '../../button';
+import AppEditFolderTab from './editFolder';
+import I18n, {i18n, LangPackKey, _i18n, join} from '../../../lib/langPack';
+import {SettingSection} from '..';
+import {toast} from '../../toast';
+import copy from '../../../helpers/object/copy';
+import forEachReverse from '../../../helpers/array/forEachReverse';
+import setInnerHTML from '../../../helpers/dom/setInnerHTML';
+import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
+import {REAL_FOLDERS} from '../../../lib/mtproto/mtproto_config';
+import rootScope from '../../../lib/rootScope';
+import {MTAppConfig} from '../../../lib/mtproto/appConfig';
 
 export default class AppIncludedChatsTab extends SliderSuperTab {
   private editFolderTab: AppEditFolderTab;
@@ -46,7 +46,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
     this.confirmBtn.addEventListener('click', async() => {
       const selected = this.selector.getSelected();
 
-      //this.filter.pFlags = {};
+      // this.filter.pFlags = {};
 
       if(this.type === 'included') {
         for(const key in this.filter.pFlags) {
@@ -100,10 +100,10 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
           this.filter[otherLegacy].splice(idx, 1);
         }
       });
-      
+
       this.filter[this.type === 'included' ? 'includePeerIds' : 'excludePeerIds'] = peerIds;
       this.filter[this.type === 'included' ? 'include_peers' : 'exclude_peers'] = await Promise.all(peerIds.map((peerId) => this.managers.appPeersManager.getInputPeerById(peerId)));
-      //this.filter.pinned_peers = this.filter.pinned_peers.filter((peerId) => this.filter.include_peers.includes(peerId));
+      // this.filter.pinned_peers = this.filter.pinned_peers.filter((peerId) => this.filter.include_peers.includes(peerId));
 
       this.editFolderTab.setFilter(this.filter, false);
       this.close();
@@ -143,11 +143,11 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
   }
 
   renderResults = async(peerIds: PeerId[]) => {
-    //const other = this.type === 'included' ? this.filter.exclude_peers : this.filter.include_peers;
+    // const other = this.type === 'included' ? this.filter.exclude_peers : this.filter.include_peers;
 
     await this.managers.appUsersManager.getContacts();
     peerIds.forEach((peerId) => {
-      //if(other.includes(peerId)) return;
+      // if(other.includes(peerId)) return;
 
       const {dom} = appDialogsManager.addDialogNew({
         peerId: peerId,
@@ -158,7 +158,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
 
       const selected = this.selector.selected.has(peerId);
       dom.containerEl.append(this.checkbox(selected));
-      //if(selected) dom.listEl.classList.add('active');
+      // if(selected) dom.listEl.classList.add('active');
 
       const foundInFilters: HTMLElement[] = [];
       this.dialogsByFilters.forEach((dialogs, filter) => {
@@ -220,14 +220,14 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
     }
     categoriesSection.content.append(f);
 
-    /////////////////
+    // ///////////////
 
     const selectedPeers = (this.type === 'included' ? filter.includePeerIds : filter.excludePeerIds).slice();
 
     this.selector = new AppSelectPeers({
-      appendTo: this.container, 
-      onChange: this.onSelectChange, 
-      peerType: ['dialogs'], 
+      appendTo: this.container,
+      onChange: this.onSelectChange,
+      peerType: ['dialogs'],
       renderResultsFunc: this.renderResults,
       placeholder: 'Search',
       sectionNameLangPackKey: 'FilterChats',
@@ -272,7 +272,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
   }
 
   onSelectChange = (length: number) => {
-    //const changed = !deepEqual(this.filter, this.originalFilter);
+    // const changed = !deepEqual(this.filter, this.originalFilter);
     if(this.type === 'included') {
       this.confirmBtn.style.display = length ? '' : 'none';
     }
@@ -295,7 +295,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
     this.filter = copy(this.originalFilter);
     this.type = type;
     this.editFolderTab = editFolderTab;
-    
+
     return super.open();
   }
 }

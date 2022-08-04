@@ -1,4 +1,4 @@
-import IS_MOV_SUPPORTED from "./movSupport";
+import IS_MOV_SUPPORTED from './movSupport';
 
 const VIDEO_MIME_TYPES_SUPPORTED = new Set([
   'image/gif', // have to display it as video

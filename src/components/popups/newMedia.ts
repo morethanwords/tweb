@@ -4,29 +4,29 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type Chat from "../chat/chat";
-import InputField from "../inputField";
-import PopupElement from ".";
-import Scrollable from "../scrollable";
-import { toast } from "../toast";
-import { wrapDocument } from "../wrappers";
-import CheckboxField from "../checkboxField";
-import SendContextMenu from "../chat/sendContextMenu";
-import { createPosterFromMedia, createPosterFromVideo } from "../../helpers/createPoster";
-import { MyDocument } from "../../lib/appManagers/appDocsManager";
-import I18n, { FormatterArguments, i18n, LangPackKey } from "../../lib/langPack";
-import calcImageInBox from "../../helpers/calcImageInBox";
-import placeCaretAtEnd from "../../helpers/dom/placeCaretAtEnd";
-import { attachClickEvent } from "../../helpers/dom/clickEvent";
+import type Chat from '../chat/chat';
+import InputField from '../inputField';
+import PopupElement from '.';
+import Scrollable from '../scrollable';
+import {toast} from '../toast';
+import {wrapDocument} from '../wrappers';
+import CheckboxField from '../checkboxField';
+import SendContextMenu from '../chat/sendContextMenu';
+import {createPosterFromMedia, createPosterFromVideo} from '../../helpers/createPoster';
+import {MyDocument} from '../../lib/appManagers/appDocsManager';
+import I18n, {FormatterArguments, i18n, LangPackKey} from '../../lib/langPack';
+import calcImageInBox from '../../helpers/calcImageInBox';
+import placeCaretAtEnd from '../../helpers/dom/placeCaretAtEnd';
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport';
-import getGifDuration from "../../helpers/getGifDuration";
-import replaceContent from "../../helpers/dom/replaceContent";
-import createVideo from "../../helpers/dom/createVideo";
-import prepareAlbum from "../prepareAlbum";
-import { MediaSize } from "../../helpers/mediaSize";
-import { ThumbCache } from "../../lib/storages/thumbs";
-import onMediaLoad from "../../helpers/onMediaLoad";
-import apiManagerProxy from "../../lib/mtproto/mtprotoworker";
+import getGifDuration from '../../helpers/getGifDuration';
+import replaceContent from '../../helpers/dom/replaceContent';
+import createVideo from '../../helpers/dom/createVideo';
+import prepareAlbum from '../prepareAlbum';
+import {MediaSize} from '../../helpers/mediaSize';
+import {ThumbCache} from '../../lib/storages/thumbs';
+import onMediaLoad from '../../helpers/onMediaLoad';
+import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 
 type SendFileParams = Partial<{
   file: File,
@@ -107,7 +107,7 @@ export default class PopupNewMedia extends PopupElement {
     this.mediaContainer.classList.add('popup-photo');
     const scrollable = new Scrollable(null);
     scrollable.container.append(this.mediaContainer);
-    
+
     this.inputField = new InputField({
       placeholder: 'PreviewSender.CaptionPlaceholder',
       label: 'Caption',
@@ -149,17 +149,17 @@ export default class PopupNewMedia extends PopupElement {
     const good = this.files.length > 1;
     if(good && !this.groupCheckboxField) {
       this.groupCheckboxField = new CheckboxField({
-        text: 'PreviewSender.GroupItems', 
+        text: 'PreviewSender.GroupItems',
         name: 'group-items'
       });
       this.container.append(...[this.groupCheckboxField.label, this.mediaCheckboxField?.label, this.inputField.container].filter(Boolean));
-  
+
       this.willAttach.group = true;
       this.groupCheckboxField.setValueSilently(this.willAttach.group);
 
       this.listenerSetter.add(this.groupCheckboxField.input)('change', () => {
         const checked = this.groupCheckboxField.checked;
-  
+
         this.willAttach.group = checked;
 
         this.attachFiles();
@@ -182,7 +182,7 @@ export default class PopupNewMedia extends PopupElement {
 
       this.listenerSetter.add(this.mediaCheckboxField.input)('change', () => {
         const checked = this.mediaCheckboxField.checked;
-  
+
         this.willAttach.type = checked ? 'media' : 'document';
 
         this.attachFiles();
@@ -197,7 +197,7 @@ export default class PopupNewMedia extends PopupElement {
       const found = this.files.find((_file) => {
         return _file.lastModified === file.lastModified && _file.name === file.name && _file.size === file.size;
       });
-      
+
       return !found;
     });
 
@@ -224,7 +224,7 @@ export default class PopupNewMedia extends PopupElement {
       this.chat.input.scheduleSending(() => {
         this.send(true);
       });
-      
+
       return;
     }
 
@@ -239,7 +239,7 @@ export default class PopupNewMedia extends PopupElement {
     willAttach.isMedia = willAttach.type === 'media' ? true : undefined;
     const {sendFileDetails, isMedia} = willAttach;
 
-    //console.log('will send files with options:', willAttach);
+    // console.log('will send files with options:', willAttach);
 
     const {peerId, input} = this.chat;
 
@@ -273,7 +273,7 @@ export default class PopupNewMedia extends PopupElement {
 
       caption = undefined;
     });
-    
+
     input.replyToMsgId = this.chat.threadId;
     input.onMessageSent();
   }
@@ -301,7 +301,7 @@ export default class PopupNewMedia extends PopupElement {
         params.width = video.videoWidth;
         params.height = video.videoHeight;
         params.duration = Math.floor(video.duration);
-        
+
         const audioDecodedByteCount = (video as any).webkitAudioDecodedByteCount;
         if(audioDecodedByteCount !== undefined) {
           params.noSound = !audioDecodedByteCount;
@@ -322,17 +322,17 @@ export default class PopupNewMedia extends PopupElement {
         img.onload = () => {
           params.width = img.naturalWidth;
           params.height = img.naturalHeight;
-          
+
           itemDiv.append(img);
-          
+
           if(file.type === 'image/gif') {
             params.noSound = true;
-            
+
             Promise.all([
               getGifDuration(img).then((duration) => {
                 params.duration = Math.ceil(duration);
               }),
-              
+
               createPosterFromMedia(img).then(async(thumb) => {
                 params.thumb = {
                   url: await apiManagerProxy.invoke('createObjectURL', thumb.blob),
@@ -347,7 +347,7 @@ export default class PopupNewMedia extends PopupElement {
           }
         };
       });
-      
+
       img.src = params.objectURL = await apiManagerProxy.invoke('createObjectURL', file);
     }
 
@@ -402,17 +402,17 @@ export default class PopupNewMedia extends PopupElement {
         itemDiv.append(docDiv);
         resolve();
       };
-  
+
       if(isPhoto) {
         const img = new Image();
         img.src = params.objectURL;
         img.onload = () => {
           params.width = img.naturalWidth;
           params.height = img.naturalHeight;
-  
+
           finish();
         };
-  
+
         img.onerror = finish;
       } else {
         finish();
@@ -438,7 +438,7 @@ export default class PopupNewMedia extends PopupElement {
     willAttach.sendFileDetails.push(params);
     return promise;
   };
-  
+
   private shouldCompress(mimeType: string) {
     return this.willAttach.type === 'media' && MEDIA_MIME_TYPES_SUPPORTED.has(mimeType);
   }
@@ -474,8 +474,8 @@ export default class PopupNewMedia extends PopupElement {
       if([foundPhotos, foundVideos, foundFiles].filter((n) => n > 0).length > 1) {
         key = 'PreviewSender.SendFile';
         args.push(files.length);
-      } else 
-      
+      } else
+
       /* const sum = foundPhotos + foundVideos;
       if(sum > 1 && willAttach.group) {
         key = 'PreviewSender.SendAlbum';

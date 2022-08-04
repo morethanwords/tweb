@@ -4,18 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import contextMenuController from "../../helpers/contextMenuController";
-import { attachContextMenuListener } from "../../helpers/dom/attachContextMenuListener";
-import cancelEvent from "../../helpers/dom/cancelEvent";
-import ListenerSetter from "../../helpers/listenerSetter";
-import rootScope from "../../lib/rootScope";
-import ButtonMenu, { ButtonMenuItemOptions } from "../buttonMenu";
+import contextMenuController from '../../helpers/contextMenuController';
+import {attachContextMenuListener} from '../../helpers/dom/attachContextMenuListener';
+import cancelEvent from '../../helpers/dom/cancelEvent';
+import ListenerSetter from '../../helpers/listenerSetter';
+import rootScope from '../../lib/rootScope';
+import ButtonMenu, {ButtonMenuItemOptions} from '../buttonMenu';
 
 export default class SendMenu {
   public sendMenu: HTMLDivElement;
   private sendMenuButtons: (ButtonMenuItemOptions & {verify: () => boolean})[];
   private type: 'schedule' | 'reminder';
-  
+
   constructor(options: {
     onSilentClick: () => void,
     onScheduleClick: () => void,
@@ -40,7 +40,7 @@ export default class SendMenu {
       onClick: options.onScheduleClick,
       verify: () => this.type === 'reminder'
     }];
-  
+
     this.sendMenu = ButtonMenu(this.sendMenuButtons, options.listenerSetter);
     this.sendMenu.classList.add('menu-send', options.openSide);
 
@@ -52,7 +52,7 @@ export default class SendMenu {
       this.sendMenuButtons.forEach((button) => {
         button.element.classList.toggle('hide', !button.verify());
       });
-      
+
       cancelEvent(e);
       contextMenuController.openBtnMenu(this.sendMenu);
     }, options.listenerSetter);

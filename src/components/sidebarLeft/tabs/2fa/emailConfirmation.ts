@@ -4,20 +4,20 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { SettingSection } from "../..";
-import { AccountPassword } from "../../../../layer";
-import Button from "../../../button";
-import { SliderSuperTab } from "../../../slider";
-import AppTwoStepVerificationSetTab from "./passwordSet";
-import CodeInputField from "../../../codeInputField";
-import AppTwoStepVerificationEmailTab from "./email";
-import { putPreloader } from "../../../putPreloader";
-import { i18n, _i18n } from "../../../../lib/langPack";
-import { canFocus } from "../../../../helpers/dom/canFocus";
-import { attachClickEvent } from "../../../../helpers/dom/clickEvent";
-import replaceContent from "../../../../helpers/dom/replaceContent";
-import toggleDisability from "../../../../helpers/dom/toggleDisability";
-import wrapStickerEmoji from "../../../wrappers/stickerEmoji";
+import {SettingSection} from '../..';
+import {AccountPassword} from '../../../../layer';
+import Button from '../../../button';
+import {SliderSuperTab} from '../../../slider';
+import AppTwoStepVerificationSetTab from './passwordSet';
+import CodeInputField from '../../../codeInputField';
+import AppTwoStepVerificationEmailTab from './email';
+import {putPreloader} from '../../../putPreloader';
+import {i18n, _i18n} from '../../../../lib/langPack';
+import {canFocus} from '../../../../helpers/dom/canFocus';
+import {attachClickEvent} from '../../../../helpers/dom/clickEvent';
+import replaceContent from '../../../../helpers/dom/replaceContent';
+import toggleDisability from '../../../../helpers/dom/toggleDisability';
+import wrapStickerEmoji from '../../../wrappers/stickerEmoji';
 
 export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSuperTab {
   public codeInputField: CodeInputField;
@@ -60,7 +60,7 @@ export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSu
       length: this.length,
       onFill: (code) => {
         freeze(true);
-        
+
         this.managers.passwordManager.confirmPasswordEmail('' + code)
         .then((value) => {
           if(!value) {
@@ -80,7 +80,7 @@ export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSu
               inputField.input.classList.add('error');
               replaceContent(inputField.label, i18n('TwoStepAuth.RecoveryCodeExpired'));
               break;
-            
+
             default:
               console.error('confirm error', err);
               break;

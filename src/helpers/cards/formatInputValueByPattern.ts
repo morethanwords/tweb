@@ -1,8 +1,8 @@
-import formatValueByPattern from "./formatValueByPattern";
+import formatValueByPattern from './formatValueByPattern';
 
 export default function formatInputValueByPattern(options: {
-  value: string, 
-  getPattern: Parameters<typeof formatValueByPattern>[0], 
+  value: string,
+  getPattern: Parameters<typeof formatValueByPattern>[0],
   deleting?: boolean,
   input?: HTMLElement
 }) {

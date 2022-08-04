@@ -6,8 +6,8 @@
 
 // * Jolly Cobra's animation.ts
 
-import { fastRaf } from './schedulers';
-import deferredPromise, { CancellablePromise } from './cancellablePromise';
+import {fastRaf} from './schedulers';
+import deferredPromise, {CancellablePromise} from './cancellablePromise';
 
 interface AnimationInstance {
   isCancelled: boolean;
@@ -21,7 +21,7 @@ export function createAnimationInstance(key: AnimationInstanceKey) {
   cancelAnimationByKey(key);
 
   const instance: AnimationInstance = {
-    isCancelled: false, 
+    isCancelled: false,
     deferred: deferredPromise<void>()
   };
 
@@ -54,7 +54,7 @@ export function animateSingle(tick: Function, key: AnimationInstanceKey, instanc
     if(instance.isCancelled) {
       return;
     }
-    
+
     if(tick()) {
       animateSingle(tick, key, instance);
     } else {

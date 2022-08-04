@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type createManagers from "./createManagers";
-import { ModifyFunctionsToAsync } from "../../types";
-import apiManagerProxy from "../mtproto/mtprotoworker";
-import { AckedResult } from "../mtproto/superMessagePort";
-import noop from "../../helpers/noop";
-import dT from "../../helpers/dT";
+import type createManagers from './createManagers';
+import {ModifyFunctionsToAsync} from '../../types';
+import apiManagerProxy from '../mtproto/mtprotoworker';
+import {AckedResult} from '../mtproto/superMessagePort';
+import noop from '../../helpers/noop';
+import dT from '../../helpers/dT';
 
 // let stats: {
 //   [manager: string]: {

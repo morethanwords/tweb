@@ -4,17 +4,17 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { MOUNT_CLASS_TO } from "../config/debug";
-import { IS_MOBILE_SAFARI } from "../environment/userAgent";
-import { logger } from "../lib/logger";
-import blurActiveElement from "../helpers/dom/blurActiveElement";
-import cancelEvent from "../helpers/dom/cancelEvent";
-import isSwipingBackSafari from "../helpers/dom/isSwipingBackSafari";
-import indexOfAndSplice from "../helpers/array/indexOfAndSplice";
+import {MOUNT_CLASS_TO} from '../config/debug';
+import {IS_MOBILE_SAFARI} from '../environment/userAgent';
+import {logger} from '../lib/logger';
+import blurActiveElement from '../helpers/dom/blurActiveElement';
+import cancelEvent from '../helpers/dom/cancelEvent';
+import isSwipingBackSafari from '../helpers/dom/isSwipingBackSafari';
+import indexOfAndSplice from '../helpers/array/indexOfAndSplice';
 
 export type NavigationItem = {
-  type: 'left' | 'right' | 'im' | 'chat' | 'popup' | 'media' | 'menu' | 
-    'esg' | 'multiselect' | 'input-helper' | 'autocomplete-helper' | 'markup' | 
+  type: 'left' | 'right' | 'im' | 'chat' | 'popup' | 'media' | 'menu' |
+    'esg' | 'multiselect' | 'input-helper' | 'autocomplete-helper' | 'markup' |
     'global-search' | 'voice' | 'mobile-search' | 'filters' | 'global-search-focus',
   onPop: (canAnimate: boolean) => boolean | void,
   onEscape?: () => boolean,
@@ -57,7 +57,7 @@ export class AppNavigationController {
   }
 
   private onPopState = (e: PopStateEvent) => {
-    let hash = window.location.hash;
+    const hash = window.location.hash;
     const id: number = e.state;
     this.debug && this.log('popstate', e, this.isPossibleSwipe, hash);
     if(hash !== this.currentHash) {
@@ -91,7 +91,7 @@ export class AppNavigationController {
 
     this.manual = !this.isPossibleSwipe;
     this.handleItem(item);
-    //this.pushState(); // * prevent adding forward arrow
+    // this.pushState(); // * prevent adding forward arrow
   };
 
   private onKeyDown = (e: KeyboardEvent) => {
@@ -197,10 +197,10 @@ export class AppNavigationController {
   public backByItem(item: NavigationItem, index = this.navigations.indexOf(item)) {
     this.manual = true;
     // ! commented because 'popstate' event will be fired with delay
-    //if(index !== (this.navigations.length - 1)) {
-      this.navigations.splice(index, 1);
-      this.handleItem(item);
-    //}
+    // if(index !== (this.navigations.length - 1)) {
+    this.navigations.splice(index, 1);
+    this.handleItem(item);
+    // }
   }
 
   private onItemAdded(item: NavigationItem) {
@@ -245,7 +245,7 @@ export class AppNavigationController {
     if(!item) {
       return;
     }
-    
+
     indexOfAndSplice(this.navigations, item);
   }
 

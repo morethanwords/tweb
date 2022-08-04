@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import CheckboxField from "./checkboxField";
-import RadioField from "./radioField";
-import ripple from "./ripple";
-import { SliderSuperTab } from "./slider";
-import RadioForm from "./radioForm";
-import { i18n, LangPackKey } from "../lib/langPack";
-import replaceContent from "../helpers/dom/replaceContent";
-import setInnerHTML from "../helpers/dom/setInnerHTML";
+import CheckboxField from './checkboxField';
+import RadioField from './radioField';
+import ripple from './ripple';
+import {SliderSuperTab} from './slider';
+import RadioForm from './radioForm';
+import {i18n, LangPackKey} from '../lib/langPack';
+import replaceContent from '../helpers/dom/replaceContent';
+import setInnerHTML from '../helpers/dom/setInnerHTML';
 
 export default class Row {
   public container: HTMLElement;
@@ -69,7 +69,7 @@ export default class Row {
 
       if(options.checkboxField) {
         this.checkboxField = options.checkboxField;
-        
+
         const isToggle = options.checkboxField.label.classList.contains('checkbox-field-toggle');
         if(isToggle) {
           this.container.classList.add('row-with-toggle');
@@ -88,8 +88,8 @@ export default class Row {
 
       const i = options.radioField || options.checkboxField;
       i.label.classList.add('disable-hover');
-    } 
-    
+    }
+
     if(options.title || options.titleLangKey) {
       let c: HTMLElement;
       const titleRight = options.titleRight || options.titleRightSecondary;
@@ -169,7 +169,7 @@ export default class Row {
 
   public createMedia(size?: 'small') {
     this.container.classList.add('row-with-padding');
-    
+
     const media = this.media = document.createElement('div');
     media.classList.add('row-media');
 

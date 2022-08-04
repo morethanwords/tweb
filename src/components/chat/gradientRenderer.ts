@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { animate } from "../../helpers/animation";
-import { hexToRgb } from "../../helpers/color";
+import {animate} from '../../helpers/animation';
+import {hexToRgb} from '../../helpers/color';
 
 const WIDTH = 50;
 const HEIGHT = WIDTH;
@@ -19,29 +19,29 @@ export default class ChatBackgroundGradientRenderer {
   private readonly _scrollTails = 50;
   private _frames: ImageData[];
   private _colors: {r: number, g: number, b: number}[];
-  /* private readonly _curve = [ 
-    0, 25, 50, 75, 100, 150, 200, 250, 300, 350, 400, 500, 600, 700, 800, 900, 
-    1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1830, 1860, 1890, 1920, 
-    1950, 1980, 2010, 2040, 2070, 2100, 2130, 2160, 2190, 2220, 2250, 2280, 2310, 
-    2340, 2370, 2400, 2430, 2460, 2490, 2520, 2550, 2580, 2610, 2630, 2640, 2650, 
+  /* private readonly _curve = [
+    0, 25, 50, 75, 100, 150, 200, 250, 300, 350, 400, 500, 600, 700, 800, 900,
+    1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1830, 1860, 1890, 1920,
+    1950, 1980, 2010, 2040, 2070, 2100, 2130, 2160, 2190, 2220, 2250, 2280, 2310,
+    2340, 2370, 2400, 2430, 2460, 2490, 2520, 2550, 2580, 2610, 2630, 2640, 2650,
     2660, 2670, 2680, 2690, 2700
   ]; */
   private readonly _curve = [
-    0 , 0.25 , 0.50 , 0.75 , 1 , 1.5 , 2 , 2.5 , 3 , 3.5 , 4 , 5 , 6 , 7 , 8 , 9 , 10 , 11 , 12 ,
-    13 , 14 , 15 , 16 , 17 , 18 , 18.3 , 18.6 , 18.9 , 19.2 , 19.5 , 19.8 , 20.1 , 20.4 , 20.7 ,
-    21.0 , 21.3 , 21.6 , 21.9 , 22.2 , 22.5 , 22.8 , 23.1 , 23.4 , 23.7 , 24.0 , 24.3 , 24.6 ,
-    24.9 , 25.2 , 25.5 , 25.8 , 26.1 , 26.3 , 26.4 , 26.5 , 26.6 , 26.7 , 26.8 , 26.9 , 27 ,
+    0, 0.25, 0.50, 0.75, 1, 1.5, 2, 2.5, 3, 3.5, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+    13, 14, 15, 16, 17, 18, 18.3, 18.6, 18.9, 19.2, 19.5, 19.8, 20.1, 20.4, 20.7,
+    21.0, 21.3, 21.6, 21.9, 22.2, 22.5, 22.8, 23.1, 23.4, 23.7, 24.0, 24.3, 24.6,
+    24.9, 25.2, 25.5, 25.8, 26.1, 26.3, 26.4, 26.5, 26.6, 26.7, 26.8, 26.9, 27
   ];
   private readonly _incrementalCurve: number[];
   private readonly _positions = [
-    { x: 0.80, y: 0.10 },
-    { x: 0.60, y: 0.20 },
-    { x: 0.35, y: 0.25 },
-    { x: 0.25, y: 0.60 },
-    { x: 0.20, y: 0.90 },
-    { x: 0.40, y: 0.80 },
-    { x: 0.65, y: 0.75 },
-    { x: 0.75, y: 0.40 }
+    {x: 0.80, y: 0.10},
+    {x: 0.60, y: 0.20},
+    {x: 0.35, y: 0.25},
+    {x: 0.25, y: 0.60},
+    {x: 0.20, y: 0.90},
+    {x: 0.40, y: 0.80},
+    {x: 0.65, y: 0.75},
+    {x: 0.75, y: 0.40}
   ];
   private readonly _phases = this._positions.length;
   private _onWheelRAF: number;
@@ -96,12 +96,12 @@ export default class ChatBackgroundGradientRenderer {
     if(!curve[0] && curve.length === 1) {
       return [pos];
     }
-    
+
     const nextPos = this.getPositions(++phase % this._phases);
     const distances = nextPos.map((nextPos, idx) => {
       return {
         x: (nextPos.x - pos[idx].x) / curveMax,
-        y: (nextPos.y - pos[idx].y) / curveMax,
+        y: (nextPos.y - pos[idx].y) / curveMax
       };
     });
 
@@ -116,7 +116,7 @@ export default class ChatBackgroundGradientRenderer {
 
     return positions;
   }
- 
+
   private curPosition(phase: number, tail: number) {
     const positions = this.getNextPositions(phase, this._tails, [tail]);
     return positions[0];
@@ -139,7 +139,7 @@ export default class ChatBackgroundGradientRenderer {
       }
     }
   }
-  
+
   private onWheel = (e: {deltaY: number}) => {
     if(this._animatingToNextPosition) {
       return;
@@ -169,7 +169,7 @@ export default class ChatBackgroundGradientRenderer {
     if(id) {
       this.drawImageData(id);
     }
-    
+
     const leftLength = frames.length;
     if(!leftLength) {
       this._animatingToNextPosition = undefined;
@@ -298,7 +298,7 @@ export default class ChatBackgroundGradientRenderer {
       this._ctx.fillRect(0, 0, this._width, this._height);
       return;
     }
-    
+
     const pos = this.curPosition(this._phase, this._tail);
     this.drawGradient(pos);
   }
@@ -322,7 +322,7 @@ export default class ChatBackgroundGradientRenderer {
         nextPhaseOnIdx = i;
         value %= tails;
       }
-      
+
       curve.push(value);
     }
 
@@ -334,7 +334,7 @@ export default class ChatBackgroundGradientRenderer {
       if(last !== undefined && last > tails) {
         curve[curve.length - 1] = +last.toFixed(2);
       }
-      
+
       this._tail = last ?? 0;
 
       if(!curve.length) {
@@ -351,7 +351,7 @@ export default class ChatBackgroundGradientRenderer {
       const ids = positions.map((pos) => {
         return this.getGradientImageData(pos);
       });
-  
+
       this._frames.push(...ids);
     });
 

@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { MOUNT_CLASS_TO } from "../config/debug";
-import indexOfAndSplice from "./array/indexOfAndSplice";
-import compareValue from "./compareValue";
+import {MOUNT_CLASS_TO} from '../config/debug';
+import indexOfAndSplice from './array/indexOfAndSplice';
+import compareValue from './compareValue';
 
 /**
  * Descend sorted storage
@@ -22,7 +22,7 @@ export enum SliceEnd {
 };
 
 export interface Slice<T extends ItemType> extends Array<T> {
-  //slicedArray: SlicedArray;
+  // slicedArray: SlicedArray;
   end: SliceEnd;
 
   isEnd: (side: SliceEnd) => boolean;
@@ -55,33 +55,33 @@ export type SlicedArraySerialized<T extends ItemType> = {
 export default class SlicedArray<T extends ItemType> {
   private slices: Slice<T>[]/*  = [[7,6,5],[4,3,2],[1,0,-1]] */;
   private sliceConstructor: SliceConstructor<T>;
-  
+
   constructor() {
     // @ts-ignore
     this.sliceConstructor = SlicedArray.getSliceConstructor(this);
 
     const first = this.constructSlice();
-    //first.setEnd(SliceEnd.Bottom);
+    // first.setEnd(SliceEnd.Bottom);
     this.slices = [first];
   }
 
   private static getSliceConstructor(slicedArray: SlicedArray<ItemType>) {
     return class Slice<T> extends Array<ItemType> implements Slice<T> {
-      //slicedArray: SlicedArray;
+      // slicedArray: SlicedArray;
       end: SliceEnd = SliceEnd.None;
-  
+
       /* constructor(...items: ItemType[]) {
         super(...items);
         //this.slicedArray = slicedArray;
       } */
-  
+
       isEnd(side: SliceEnd): boolean {
         if((this.end & side) === side) {
           return true;
         }/*  else if(!this.slicedArray) {
           return false;
         } */
-  
+
         let isEnd = false;
         if(side === SliceEnd.Top) {
           const slice = slicedArray.last;
@@ -96,7 +96,7 @@ export default class SlicedArray<T extends ItemType> {
         if(isEnd) {
           this.setEnd(side);
         }
-  
+
         return isEnd;
       }
 
@@ -107,7 +107,7 @@ export default class SlicedArray<T extends ItemType> {
           both: this.isEnd(SliceEnd.Both)
         };
       }
-  
+
       setEnd(side: SliceEnd) {
         this.end |= side;
       }
@@ -137,14 +137,14 @@ export default class SlicedArray<T extends ItemType> {
   }
 
   public constructSlice(...items: T[]) {
-    //const slice = new Slice(this, ...items);
+    // const slice = new Slice(this, ...items);
     // can't pass items directly to constructor because first argument is length
     const slice = new this.sliceConstructor(items.length);
     for(let i = 0, length = items.length; i < length; ++i) {
       slice[i] = items[i];
     }
     return slice;
-    
+
     // ! code below will slow execution in 15 times
     /* const self = this;
     const p: Slice = new Proxy(slice, {
@@ -210,7 +210,7 @@ export default class SlicedArray<T extends ItemType> {
       foundSlice = this.slices[foundSliceIndex];
       lowerIndex = foundSlice.indexOf(lowerBound);
       upperIndex = foundSlice.indexOf(upperBound);
-      
+
       if(upperIndex !== -1 && -1 !== lowerIndex) {
         break;
       } else if(upperIndex !== -1 || -1 !== lowerIndex) {
@@ -249,7 +249,7 @@ export default class SlicedArray<T extends ItemType> {
       for(let i = 0, length = this.slices.length; i < (length - 1); ++i) {
         const prevSlice = this.slices[i];
         const nextSlice = this.slices[i + 1];
-  
+
         const upperIndex = prevSlice.indexOf(nextSlice[0]);
         if(upperIndex !== -1) {
           prevSlice.setEnd(nextSlice.end);
@@ -261,7 +261,7 @@ export default class SlicedArray<T extends ItemType> {
 
           --length; // respect array bounds
           --i;      // repeat from the same place
-  
+
           this.insertSlice(nextSlice, false);
         }
       }
@@ -270,12 +270,12 @@ export default class SlicedArray<T extends ItemType> {
     return this.slices[foundSliceIndex];
   }
 
-  // * 
-  
+  // *
+
   get first() {
     return this.slices[0];
   }
-  
+
   get last() {
     return this.slices[this.slices.length - 1];
   }
@@ -296,7 +296,7 @@ export default class SlicedArray<T extends ItemType> {
         return {slice, index};
       }
     }
-    
+
     return undefined;
   }
 
@@ -308,7 +308,7 @@ export default class SlicedArray<T extends ItemType> {
       if(slice.length < 2) {
         continue;
       }
-      
+
       for(; offset < slice.length; ++offset) {
         if(compareValue(maxId, slice[offset]) >= 0) {
           /* if(!offset) { // because can't find 3 in [[5,4], [2,1]]
@@ -316,7 +316,7 @@ export default class SlicedArray<T extends ItemType> {
           } */
 
           return {
-            slice, 
+            slice,
             offset: maxId === slice[offset] ? offset : offset - 1
           };
         }
@@ -357,10 +357,10 @@ export default class SlicedArray<T extends ItemType> {
       } */
     }
 
-    let sliceStart = Math.max(sliceOffset + add_offset, 0);
-    let sliceEnd = sliceOffset + add_offset + limit;
-    //const fixHalfBackLimit = add_offset && !(limit / add_offset % 2) && (sliceEnd % 2) ? 1 : 0;
-    //sliceEnd += fixHalfBackLimit;
+    const sliceStart = Math.max(sliceOffset + add_offset, 0);
+    const sliceEnd = sliceOffset + add_offset + limit;
+    // const fixHalfBackLimit = add_offset && !(limit / add_offset % 2) && (sliceEnd % 2) ? 1 : 0;
+    // sliceEnd += fixHalfBackLimit;
 
     const sliced = slice.slice(sliceStart, sliceEnd) as Slice<T>;
 
@@ -376,7 +376,7 @@ export default class SlicedArray<T extends ItemType> {
     // if(bottomFulfilled) sliced.isEnd(SliceEnd.Bottom);
 
     return {
-      slice: sliced, 
+      slice: sliced,
       offsetIdOffset: offset,
       fulfilled: SliceEnd.None | (topFulfilled && bottomFulfilled ? SliceEnd.Both : ((topFulfilled ? SliceEnd.Top : SliceEnd.None) | (bottomFulfilled ? SliceEnd.Bottom : SliceEnd.None)))
     };

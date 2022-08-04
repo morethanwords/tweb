@@ -1,5 +1,5 @@
-import assumeType from "../../../../helpers/assumeType";
-import { Message, MessageEntity } from "../../../../layer";
+import assumeType from '../../../../helpers/assumeType';
+import {Message, MessageEntity} from '../../../../layer';
 
 export default function getAlbumText(messages: Message.message[]) {
   let foundMessages = 0, message: string, totalEntities: MessageEntity[], entities: MessageEntity[];

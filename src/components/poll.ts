@@ -4,28 +4,28 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import mediaSizes from "../helpers/mediaSizes";
-import IS_TOUCH_SUPPORTED from "../environment/touchSupport";
-import appImManager from "../lib/appManagers/appImManager";
-import rootScope from "../lib/rootScope";
-import ripple from "./ripple";
-import appSidebarRight from "./sidebarRight";
-import AppPollResultsTab from "./sidebarRight/tabs/pollResults";
-import { i18n, LangPackKey } from "../lib/langPack";
-import { fastRaf } from "../helpers/schedulers";
-import SetTransition from "./singleTransition";
-import findUpClassName from "../helpers/dom/findUpClassName";
-import cancelEvent from "../helpers/dom/cancelEvent";
-import { attachClickEvent, detachClickEvent } from "../helpers/dom/clickEvent";
-import replaceContent from "../helpers/dom/replaceContent";
-import windowSize from "../helpers/windowSize";
-import { Message, MessageMedia, Poll, PollResults } from "../layer";
-import toHHMMSS from "../helpers/string/toHHMMSS";
-import StackedAvatars from "./stackedAvatars";
-import setInnerHTML from "../helpers/dom/setInnerHTML";
-import { AppManagers } from "../lib/appManagers/managers";
-import wrapEmojiText from "../lib/richTextProcessor/wrapEmojiText";
-import wrapRichText from "../lib/richTextProcessor/wrapRichText";
+import mediaSizes from '../helpers/mediaSizes';
+import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
+import appImManager from '../lib/appManagers/appImManager';
+import rootScope from '../lib/rootScope';
+import ripple from './ripple';
+import appSidebarRight from './sidebarRight';
+import AppPollResultsTab from './sidebarRight/tabs/pollResults';
+import {FormatterArguments, i18n, LangPackKey} from '../lib/langPack';
+import {fastRaf} from '../helpers/schedulers';
+import SetTransition from './singleTransition';
+import findUpClassName from '../helpers/dom/findUpClassName';
+import cancelEvent from '../helpers/dom/cancelEvent';
+import {attachClickEvent, detachClickEvent} from '../helpers/dom/clickEvent';
+import replaceContent from '../helpers/dom/replaceContent';
+import windowSize from '../helpers/windowSize';
+import {Message, MessageMedia, Poll, PollResults} from '../layer';
+import toHHMMSS from '../helpers/string/toHHMMSS';
+import StackedAvatars from './stackedAvatars';
+import setInnerHTML from '../helpers/dom/setInnerHTML';
+import {AppManagers} from '../lib/appManagers/managers';
+import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
+import wrapRichText from '../lib/richTextProcessor/wrapRichText';
 
 let lineTotalLength = 0;
 const tailLength = 9;
@@ -34,7 +34,7 @@ const fullTime = 340;
 const oneTime = fullTime / times;
 
 export const roundPercents = (percents: number[]) => {
-  //console.log('roundPercents before percents:', percents);
+  // console.log('roundPercents before percents:', percents);
 
   const sum = percents.reduce((acc, p) => acc + Math.round(p), 0);
   if(sum > 100) {
@@ -43,7 +43,7 @@ export const roundPercents = (percents: number[]) => {
     for(let i = 0; i < diff; ++i) {
       let minIndex = -1, minRemainder = 1;
       for(let k = 0; k < length; ++k) {
-        let remainder = percents[k] % 1;
+        const remainder = percents[k] % 1;
         if(remainder >= 0.5 && remainder < minRemainder) {
           minRemainder = remainder;
           minIndex = k;
@@ -51,7 +51,7 @@ export const roundPercents = (percents: number[]) => {
       }
 
       if(minIndex === -1) {
-        //throw new Error('lol chto');
+        // throw new Error('lol chto');
         return;
       }
 
@@ -63,7 +63,7 @@ export const roundPercents = (percents: number[]) => {
     for(let i = 0; i < diff; ++i) {
       let minIndex = -1, maxRemainder = 0;
       for(let k = 0; k < length; ++k) {
-        let remainder = percents[k] % 1;
+        const remainder = percents[k] % 1;
         if(remainder < 0.5 && remainder > maxRemainder) {
           maxRemainder = remainder;
           minIndex = k;
@@ -71,7 +71,7 @@ export const roundPercents = (percents: number[]) => {
       }
 
       if(minIndex === -1) {
-        //throw new Error('lol chto');
+        // throw new Error('lol chto');
         return;
       }
 
@@ -79,7 +79,7 @@ export const roundPercents = (percents: number[]) => {
     }
   }
 
-  //console.log('roundPercents after percents:', percents);
+  // console.log('roundPercents after percents:', percents);
 };
 
 /* const connectedPolls: {id: string, element: PollElement}[] = [];
@@ -99,7 +99,7 @@ rootScope.on('poll_update', (e) => {
 rootScope.addEventListener('poll_update', ({poll, results}) => {
   const pollElements = Array.from(document.querySelectorAll(`poll-element[poll-id="${poll.id}"]`)) as PollElement[];
   pollElements.forEach((pollElement) => {
-    //console.log('poll_update', poll, results);
+    // console.log('poll_update', poll, results);
     pollElement.isClosed = !!poll.pFlags.closed;
     pollElement.performResults(results, poll.chosenIndexes);
   });
@@ -216,7 +216,7 @@ export default class PollElement extends HTMLElement {
     const pollElements = Array.from(document.querySelectorAll('poll-element.is-voted')) as PollElement[];
     pollElements.forEach((pollElement) => {
       pollElement.svgLines.forEach((svg, idx) => {
-        //void svg.getBoundingClientRect(); // reflow
+        // void svg.getBoundingClientRect(); // reflow
         pollElement.setLineProgress(idx, 1);
       });
     });
@@ -228,7 +228,7 @@ export default class PollElement extends HTMLElement {
 
     if(!lineTotalLength) {
       lineTotalLength = (document.getElementById('poll-line') as any as SVGPathElement).getTotalLength();
-      //console.log('line total length:', lineTotalLength);
+      // console.log('line total length:', lineTotalLength);
       PollElement.setMaxLength();
     }
 
@@ -241,7 +241,7 @@ export default class PollElement extends HTMLElement {
       this.classList.add('disable-hover');
     }
 
-    //console.log('pollElement poll:', poll, results);
+    // console.log('pollElement poll:', poll, results);
 
     let descKey: LangPackKey;
     if(poll.pFlags) {
@@ -290,7 +290,7 @@ export default class PollElement extends HTMLElement {
         <div class="poll-avatars"></div>
       </div>
       ${votes}`;
-    
+
     setInnerHTML(this.firstElementChild, wrapEmojiText(poll.question));
 
     Array.from(this.querySelectorAll('.poll-answer-text')).forEach((el, idx) => {
@@ -313,8 +313,8 @@ export default class PollElement extends HTMLElement {
         timeLeftDiv.classList.add('poll-time');
         this.descDiv.append(timeLeftDiv);
 
-        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        //svg.setAttributeNS(null, 'viewBox', '0 0 15 15');
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        // svg.setAttributeNS(null, 'viewBox', '0 0 15 15');
         svg.classList.add('poll-quiz-timer');
 
         this.quizTimer = svg;
@@ -323,7 +323,7 @@ export default class PollElement extends HTMLElement {
         const radius = 7;
         const circumference = 2 * Math.PI * radius;
 
-        const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         circle.classList.add('poll-quiz-timer-circle');
         circle.setAttributeNS(null, 'cx', '16');
         circle.setAttributeNS(null, 'cy', '16');
@@ -332,11 +332,11 @@ export default class PollElement extends HTMLElement {
 
         svg.append(circle);
         this.descDiv.append(svg);
-        
+
         const period = poll.close_period * 1000;
         const closeTime = (poll.close_date - await rootScope.managers.timeManager.getServerTimeOffset()) * 1000;
 
-        //console.log('closeTime:', poll.close_date, serverTimeManager.serverTimeOffset, Date.now() / 1000 | 0);
+        // console.log('closeTime:', poll.close_date, serverTimeManager.serverTimeOffset, Date.now() / 1000 | 0);
 
         // let time = Date.now();
         // let percents = (closeTime - time) / period;
@@ -352,12 +352,12 @@ export default class PollElement extends HTMLElement {
           const percents = (closeTime - time) / period;
           const timeLeft = (closeTime - time) / 1000 + 1 | 0;
           timeLeftDiv.innerHTML = toHHMMSS(timeLeft);
-          
-          if (timeLeft <= 5) {
+
+          if(timeLeft <= 5) {
             timeLeftDiv.style.color = '#ee545c';
             circle.style.stroke = '#ee545c';
           }
-          //timeLeftDiv.style.visibility = 'visible';
+          // timeLeftDiv.style.visibility = 'visible';
 
           // @ts-ignore
           circle.style.strokeDashoffset = circumference + percents * circumference;
@@ -378,7 +378,7 @@ export default class PollElement extends HTMLElement {
         }, 1e3);
       }
     }
-    
+
     this.answerDivs = Array.from(this.querySelectorAll('.poll-answer')) as HTMLDivElement[];
     this.svgLines = Array.from(this.querySelectorAll('.poll-line')) as SVGSVGElement[];
     this.numberDivs = Array.from(this.querySelectorAll('.poll-answer-percents')) as HTMLDivElement[];
@@ -419,7 +419,7 @@ export default class PollElement extends HTMLElement {
         cancelEvent(e);
         /* const indexes = this.answerDivs.filter((el) => el.classList.contains('is-chosing')).map((el) => +el.dataset.index);
         if(indexes.length) {
-          
+
         } */
         if(this.chosingIndexes.length) {
           this.sendVotes(this.chosingIndexes).then(() => {
@@ -455,14 +455,14 @@ export default class PollElement extends HTMLElement {
       toggleHint.classList.add('tgico-tip', 'poll-hint');
       this.descDiv.append(toggleHint);
 
-      //let active = false;
+      // let active = false;
       attachClickEvent(toggleHint, (e) => {
         cancelEvent(e);
 
-        //active = true;
+        // active = true;
         toggleHint.classList.add('active');
         setQuizHint(results.solution, results.solution_entities, () => {
-          //active = false;
+          // active = false;
           toggleHint.classList.remove('active');
         });
       });
@@ -481,7 +481,7 @@ export default class PollElement extends HTMLElement {
     if(!target) {
       return;
     }
-    
+
     cancelEvent(e);
     const answerIndex = +target.dataset.index;
     if(this.isMultiple) {
@@ -496,7 +496,7 @@ export default class PollElement extends HTMLElement {
     } else {
       this.sendVotes([answerIndex]);
     }
-    
+
     /* target.classList.add('is-voting');
     setTimeout(() => { // simulate
       this.setResults([100, 0], answerIndex);
@@ -511,7 +511,7 @@ export default class PollElement extends HTMLElement {
     targets.forEach((target) => {
       target.classList.add('is-voting');
     });
-    
+
     this.classList.add('disable-hover');
     this.sentVote = true;
     return this.sendVotePromise = this.managers.appPollsManager.sendVote(this.message, indexes).then(() => {
@@ -573,7 +573,7 @@ export default class PollElement extends HTMLElement {
         detachClickEvent(this, this.clickHandler);
       }
     }
-    
+
     // is need update
     if(this.chosenIndexes.length || this.isRetracted || this.isClosed) {
       const percents = results.results.map((v) => results.total_voters ? v.voters / results.total_voters * 100 : 0);
@@ -589,7 +589,7 @@ export default class PollElement extends HTMLElement {
         this.isRetracted = false;
       });
     }
-    
+
     this.setVotersCount(results);
 
     if(this.isPublic) {
@@ -634,11 +634,11 @@ export default class PollElement extends HTMLElement {
     } else {
       const cb = () => {
         this.svgLines.forEach((svg, idx) => {
-          //void svg.getBoundingClientRect(); // reflow
+          // void svg.getBoundingClientRect(); // reflow
           this.setLineProgress(idx, 1);
         });
       };
-      
+
       animate ? fastRaf(cb) : cb();
     }
 
@@ -703,7 +703,8 @@ export default class PollElement extends HTMLElement {
 
   setVotersCount(results: PollResults) {
     const votersCount = results.total_voters || 0;
-    let key: LangPackKey, args = [votersCount];
+    let key: LangPackKey;
+    const args: FormatterArguments = [votersCount];
     if(this.isClosed) {
       if(this.isQuiz) key = votersCount ? 'Chat.Quiz.TotalVotes' : 'Chat.Quiz.TotalVotesResultEmpty';
       else key = votersCount ? 'Chat.Poll.TotalVotes1' : 'Chat.Poll.TotalVotesResultEmpty';
@@ -711,7 +712,7 @@ export default class PollElement extends HTMLElement {
       if(this.isQuiz) key = votersCount ? 'Chat.Quiz.TotalVotes' : 'Chat.Quiz.TotalVotesEmpty';
       else key = votersCount ? 'Chat.Poll.TotalVotes1' : 'Chat.Poll.TotalVotesEmpty';
     }
-    
+
     replaceContent(this.votersCountDiv, i18n(key, args));
   }
 
@@ -732,4 +733,4 @@ export default class PollElement extends HTMLElement {
   // у элемента могут быть ещё другие методы и свойства
 }
 
-customElements.define("poll-element", PollElement);
+customElements.define('poll-element', PollElement);

@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import forEachReverse from "./array/forEachReverse";
-import safeAssign from "./object/safeAssign";
+import forEachReverse from './array/forEachReverse';
+import safeAssign from './object/safeAssign';
 
 export type ListLoaderOptions<T extends {}, P extends {}> = {
   loadMore: ListLoader<T, P>['loadMore'],
@@ -28,7 +28,7 @@ export default class ListLoader<T extends {}, P extends {}> {
   protected processItem: (item: P) => T | Promise<T>;
   protected loadCount = 50;
   protected loadWhenLeft = 20;
-  
+
   public onJump: (item: T, older: boolean) => void;
   public onLoadedMore: () => void;
 
@@ -119,7 +119,7 @@ export default class ListLoader<T extends {}, P extends {}> {
     /* if(length > 0 ? this.loadedAllUp : this.loadedAllDown) {
       this.unsetCurrent(length > 0);
     } */
-    
+
     return {
       item: !leftLength ? item : undefined,
       leftLength

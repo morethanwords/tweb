@@ -124,7 +124,7 @@ export default class PinnedMessageBorder {
 
     // return (index + 1) * barHeight + index * GAP;
     return (index - 2) * barHeight + index * GAP;
-    //return (barHeight + GAP * 2) / 2 + (index - 2) * (barHeight + GAP);
+    // return (barHeight + GAP * 2) / 2 + (index - 2) * (barHeight + GAP);
   };
 
   private getTrackHeight = (count: number, barHeight: number) => {
@@ -139,7 +139,7 @@ export default class PinnedMessageBorder {
       this.wrapper = document.createElement('div');
       this.border.append(this.wrapper);
     }
-    
+
     if(count === 1) {
       if(this.count !== count) {
         this.wrapper.className = BASE_CLASS + '-wrapper-1';
@@ -174,12 +174,12 @@ export default class PinnedMessageBorder {
 
     this.wrapper.className = BASE_CLASS + '-wrapper';
     this.wrapper.style.cssText = `clip-path: url(#${clipPathId}); width: 2px; height: ${trackHeight}px; transform: translateY(-${trackTranslateY}px);`;
-    
+
     if(!this.svg) {
       this.svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       this.svg.setAttributeNS(null, 'height', '0');
       this.svg.setAttributeNS(null, 'width', '0');
-  
+
       this.defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
       this.defs.append(clipPath);
 
@@ -194,7 +194,7 @@ export default class PinnedMessageBorder {
     }
 
     this.mark.style.cssText = `height: ${markHeight}px; transform: translateY(${markTranslateY}px);`;
-    
+
     this.count = count;
     this.index = index;
 

@@ -6,9 +6,9 @@
 
 // Thanks to https://xn--2-umb.com/09/12/brent-pollard-rho-factorisation/
 
-import bigInt from "big-integer";
-import { bigIntFromBytes, bigIntToBytes } from "../../../../helpers/bigInt/bigIntConversion";
-import bigIntRandom from "../../../../helpers/bigInt/bigIntRandom";
+import bigInt from 'big-integer';
+import {bigIntFromBytes, bigIntToBytes} from '../../../../helpers/bigInt/bigIntConversion';
+import bigIntRandom from '../../../../helpers/bigInt/bigIntRandom';
 
 // let test = 0;
 function BrentPollardFactor(n: bigInt.BigInteger) {
@@ -25,7 +25,7 @@ function BrentPollardFactor(n: bigInt.BigInteger) {
     r: bigInt.BigInteger,
     q: bigInt.BigInteger,
     g: bigInt.BigInteger;
-  do 
+  do
     a = bigIntRandom(bigInt.one, n.minus(1));
   while(a.isZero() || a.eq(n.minus(two)));
   y = bigIntRandom(bigInt.one, n.minus(1));
@@ -128,11 +128,11 @@ export default function factorizeBrentPollardPQ(pqBytes: Uint8Array | number[]):
   factors.sort((a, b) => a.compare(b));
   if(factors.length > 2) {
     factors = [
-      factors.splice(factors.length - 2, 1)[0], 
+      factors.splice(factors.length - 2, 1)[0],
       factors.reduce((acc, v) => acc.multiply(v), bigInt.one)
     ];
   }
-  
+
   const p = factors[0], q = factors[factors.length - 1];
   return (p.lesser(q) ? [p, q] : [q, p]).map((b) => bigIntToBytes(b)) as any;
 }

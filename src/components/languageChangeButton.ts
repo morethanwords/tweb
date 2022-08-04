@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import cancelEvent from "../helpers/dom/cancelEvent";
-import { attachClickEvent } from "../helpers/dom/clickEvent";
-import loadFonts from "../helpers/dom/loadFonts";
-import { Config, LangPackDifference, LangPackString } from "../layer";
-import I18n, { LangPackKey } from "../lib/langPack";
-import rootScope from "../lib/rootScope";
-import Button from "./button";
-import { putPreloader } from "./putPreloader";
+import cancelEvent from '../helpers/dom/cancelEvent';
+import {attachClickEvent} from '../helpers/dom/clickEvent';
+import loadFonts from '../helpers/dom/loadFonts';
+import {Config, LangPackDifference, LangPackString} from '../layer';
+import I18n, {LangPackKey} from '../lib/langPack';
+import rootScope from '../lib/rootScope';
+import Button from './button';
+import {putPreloader} from './putPreloader';
 
 let set = false;
 
@@ -19,7 +19,7 @@ function getLang(): Promise<[Config.config, LangPackString[], LangPackDifference
   if(cachedPromise) return cachedPromise;
   return cachedPromise = rootScope.managers.apiManager.getConfig().then((config) => {
     if(config.suggested_lang_code !== I18n.lastRequestedLangCode) {
-      //I18n.loadLangPack(config.suggested_lang_code);
+      // I18n.loadLangPack(config.suggested_lang_code);
 
       return Promise.all([
         config,
@@ -47,7 +47,7 @@ export default function getLanguageChangeButton(appendTo: HTMLElement) {
       if(!backupString) {
         return;
       }
-      
+
       backup.push(backupString);
       I18n.strings.set(string.key as LangPackKey, string);
     });
@@ -68,7 +68,7 @@ export default function getLanguageChangeButton(appendTo: HTMLElement) {
     backup.forEach((string) => {
       I18n.strings.set(string.key as LangPackKey, string);
     });
-    
+
     attachClickEvent(btnChangeLanguage, (e) => {
       cancelEvent(e);
 

@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import getScreenStream from "./getScreenStream";
-import getStream from "./getStream";
+import getScreenStream from './getScreenStream';
+import getStream from './getStream';
 
 /**
  * ! Use multiple constraints together only with first invoke
@@ -26,11 +26,11 @@ export default function getStreamCached() {
   };
 
   return async(options: {
-    isScreen: true, 
+    isScreen: true,
     constraints: DisplayMediaStreamConstraints,
   } | {
     isScreen?: false,
-    constraints: MediaStreamConstraints, 
+    constraints: MediaStreamConstraints,
     muted: boolean
   }) => {
     const {isScreen, constraints} = options;

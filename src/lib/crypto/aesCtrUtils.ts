@@ -4,15 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import CTR from "./utils/aesCTR";
-import subtle from "./subtle";
+import CTR from './utils/aesCTR';
+import subtle from './subtle';
 
 const aesCTRs: Map<number, K> = new Map();
 let lastCTRId = -1;
 
 type K = {
-  enc: CTR, 
-  dec: CTR, 
+  enc: CTR,
+  dec: CTR,
 };
 
 export async function aesCtrPrepare({encKey, encIv, decKey, decIv}: {[k in 'encKey' | 'encIv' | 'decKey' | 'decIv']: Uint8Array}) {
@@ -28,14 +28,14 @@ export async function aesCtrPrepare({encKey, encIv, decKey, decIv}: {[k in 'encK
       [mode]
     )
   });
-  
+
   const [encCryptoKey, decCryptoKey] = await Promise.all(promises);
   const enc = new CTR('encrypt', encCryptoKey, encIv.slice());
   const dec = new CTR('decrypt', decCryptoKey, decIv.slice());
 
   const k: K = {
     enc,
-    dec, 
+    dec
   };
 
   aesCTRs.set(id, k);

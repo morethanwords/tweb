@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import IS_TOUCH_SUPPORTED from "../../environment/touchSupport";
-import EventListenerBase from "../eventListenerBase";
-import ListenerSetter from "../listenerSetter";
-import safeAssign from "../object/safeAssign";
-import findUpClassName from "./findUpClassName";
+import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
+import EventListenerBase from '../eventListenerBase';
+import ListenerSetter from '../listenerSetter';
+import safeAssign from '../object/safeAssign';
+import findUpClassName from './findUpClassName';
 
 export default class ControlsHover extends EventListenerBase<{
   toggleControls: (show: boolean) => void
@@ -26,10 +26,10 @@ export default class ControlsHover extends EventListenerBase<{
     super(false);
     this.hideControlsTimeout = 0;
   }
-  
+
   public setup(options: {
-    element: HTMLElement, 
-    listenerSetter: ListenerSetter, 
+    element: HTMLElement,
+    listenerSetter: ListenerSetter,
     canHideControls?: () => boolean,
     showOnLeaveToClassName?: string,
     ignoreClickClassName?: string
@@ -70,7 +70,7 @@ export default class ControlsHover extends EventListenerBase<{
           this.showControls(false);
           return;
         }
-        
+
         this.hideControls();
       });
     }
@@ -84,7 +84,7 @@ export default class ControlsHover extends EventListenerBase<{
 
       return;
     }
-    
+
     clearTimeout(this.hideControlsTimeout);
     this.hideControlsTimeout = 0;
 
@@ -96,11 +96,11 @@ export default class ControlsHover extends EventListenerBase<{
     } else if(!isShown) {
       return;
     }
-    
+
     this.dispatchEvent('toggleControls', false);
     this.element.classList.remove('show-controls');
   };
-  
+
   public showControls = (setHideTimeout = true) => {
     if(this.hideControlsTimeout) {
       clearTimeout(this.hideControlsTimeout);

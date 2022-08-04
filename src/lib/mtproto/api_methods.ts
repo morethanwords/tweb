@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import ctx from "../../environment/ctx";
-import { ignoreRestrictionReasons } from "../../helpers/restrictions";
-import { MethodDeclMap, User } from "../../layer";
-import { InvokeApiOptions } from "../../types";
-import { AppManager } from "../appManagers/manager";
-import { MTAppConfig } from "./appConfig";
-import { UserAuth } from "./mtproto_config";
-import { MTMessage } from "./networker";
+import ctx from '../../environment/ctx';
+import {ignoreRestrictionReasons} from '../../helpers/restrictions';
+import {MethodDeclMap, User} from '../../layer';
+import {InvokeApiOptions} from '../../types';
+import {AppManager} from '../appManagers/manager';
+import {MTAppConfig} from './appConfig';
+import {UserAuth} from './mtproto_config';
+import {MTMessage} from './networker';
 
 type HashResult = {
   hash: number,
@@ -63,25 +63,25 @@ export default abstract class ApiManagerMethods extends AppManager {
   public invokeApiAfter<T extends keyof MethodDeclMap>(method: T, params: MethodDeclMap[T]['req'] = {}, options: InvokeApiOptions = {}): Promise<MethodDeclMap[T]['res']> {
     let o = options;
     o.prepareTempMessageId = '' + ++this.afterMessageIdTemp;
-    
+
     o = {...options};
     (options as MTMessage).messageId = o.prepareTempMessageId;
 
-    //console.log('will invokeApi:', method, params, options);
+    // console.log('will invokeApi:', method, params, options);
     return this.invokeApi(method, params, o);
   }
 
   public invokeApiHashable<T extends keyof MethodDeclMap, R>(o: {
-    method: T, 
-    processResult?: (response: MethodDeclMap[T]['res']) => R, 
+    method: T,
+    processResult?: (response: MethodDeclMap[T]['res']) => R,
     processError?: (error: ApiError) => any,
-    params?: Omit<MethodDeclMap[T]['req'], 'hash'>, 
+    params?: Omit<MethodDeclMap[T]['req'], 'hash'>,
     options?: InvokeApiOptions & {cacheKey?: string}
   }) {
     // @ts-ignore
     o.params ??= {};
     o.options ??= {};
-    //console.log('will invokeApi:', method, params, options);
+    // console.log('will invokeApi:', method, params, options);
 
     const {params, options, method} = o;
 
@@ -101,10 +101,10 @@ export default abstract class ApiManagerMethods extends AppManager {
           // this.debug && this.log.warn('NotModified saved!', method, queryJSON);
           return cached.result;
         }
-        
+
         if(result.hash/*  || result.messages */) {
           const hash = result.hash/*  || this.computeHash(result.messages) */;
-          
+
           if(!this.hashes[method]) this.hashes[method] = {};
           this.hashes[method][queryJSON] = {
             hash,
@@ -115,7 +115,7 @@ export default abstract class ApiManagerMethods extends AppManager {
         if(o.processResult) {
           return o.processResult(result);
         }
-  
+
         return result;
       },
       params,
@@ -136,10 +136,10 @@ export default abstract class ApiManagerMethods extends AppManager {
   }
 
   public invokeApiSingleProcess<T extends keyof MethodDeclMap, R>(o: {
-    method: T, 
-    processResult: (response: MethodDeclMap[T]['res']) => R, 
+    method: T,
+    processResult: (response: MethodDeclMap[T]['res']) => R,
     processError?: (error: ApiError) => any,
-    params?: MethodDeclMap[T]['req'], 
+    params?: MethodDeclMap[T]['req'],
     options?: InvokeApiOptions & {cacheKey?: string}
   }): Promise<Awaited<R>> {
     o.params ??= {};
@@ -153,7 +153,7 @@ export default abstract class ApiManagerMethods extends AppManager {
     if(oldPromise) {
       return oldPromise;
     }
-    
+
     const originalPromise = this.invokeApi(method, params, options);
     const newPromise: Promise<Awaited<R>> = originalPromise.then(processResult, processError);
 
@@ -216,7 +216,7 @@ export default abstract class ApiManagerMethods extends AppManager {
             if(item.timeout) {
               clearTimeout(item.timeout);
             }
-  
+
             delete cache[queryJSON];
           }
         } catch(err) {
@@ -237,7 +237,7 @@ export default abstract class ApiManagerMethods extends AppManager {
       if(this.getAppConfigPromise !== promise) {
         return this.getAppConfigPromise;
       }
-      
+
       this.appConfig = config;
       ignoreRestrictionReasons(config.ignore_restriction_reasons ?? []);
       this.rootScope.dispatchEvent('app_config', config);

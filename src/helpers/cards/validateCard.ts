@@ -1,7 +1,7 @@
-import { CARD_BRANDS, detectCardBrand } from "./cardBrands";
+import {CARD_BRANDS, detectCardBrand} from './cardBrands';
 import formatInputValueByPattern from './formatInputValueByPattern';
-import NBSP from "../string/nbsp";
-import replaceNonNumber from "../string/replaceNonNumber";
+import NBSP from '../string/nbsp';
+import replaceNonNumber from '../string/replaceNonNumber';
 
 export type PatternValidationOptions = Partial<{
   ignoreIncomplete: boolean

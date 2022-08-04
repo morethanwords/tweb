@@ -4,21 +4,21 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type Chat from "../chat/chat";
-import PopupElement from ".";
-import CheckboxField from "../checkboxField";
-import InputField from "../inputField";
-import RadioField from "../radioField";
-import Scrollable from "../scrollable";
-import SendContextMenu from "../chat/sendContextMenu";
-import I18n, { _i18n } from "../../lib/langPack";
-import findUpTag from "../../helpers/dom/findUpTag";
-import cancelEvent from "../../helpers/dom/cancelEvent";
-import getRichValue from "../../helpers/dom/getRichValue";
-import isInputEmpty from "../../helpers/dom/isInputEmpty";
-import whichChild from "../../helpers/dom/whichChild";
-import { attachClickEvent } from "../../helpers/dom/clickEvent";
-import { Poll } from "../../layer";
+import type Chat from '../chat/chat';
+import PopupElement from '.';
+import CheckboxField from '../checkboxField';
+import InputField from '../inputField';
+import RadioField from '../radioField';
+import Scrollable from '../scrollable';
+import SendContextMenu from '../chat/sendContextMenu';
+import I18n, {_i18n} from '../../lib/langPack';
+import findUpTag from '../../helpers/dom/findUpTag';
+import cancelEvent from '../../helpers/dom/cancelEvent';
+import getRichValue from '../../helpers/dom/getRichValue';
+import isInputEmpty from '../../helpers/dom/isInputEmpty';
+import whichChild from '../../helpers/dom/whichChild';
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import {Poll} from '../../layer';
 
 const MAX_LENGTH_QUESTION = 255;
 const MAX_LENGTH_OPTION = 100;
@@ -42,12 +42,12 @@ export default class PopupCreatePoll extends PopupElement {
     super('popup-create-poll popup-new-media', {closable: true, withConfirm: 'Create', body: true, title: 'NewPoll'});
     this.construct();
   }
-  
+
   private async construct() {
     this.questionInputField = new InputField({
       placeholder: 'AskAQuestion',
-      label: 'AskAQuestion', 
-      name: 'question', 
+      label: 'AskAQuestion',
+      name: 'question',
       maxLength: MAX_LENGTH_QUESTION
     });
 
@@ -69,9 +69,9 @@ export default class PopupCreatePoll extends PopupElement {
           });
         },
         openSide: 'bottom-left',
-        onContextElement: this.btnConfirm,
+        onContextElement: this.btnConfirm
       });
-  
+
       sendMenu.setPeerId(this.chat.peerId);
 
       this.header.append(sendMenu.sendMenu);
@@ -89,26 +89,26 @@ export default class PopupCreatePoll extends PopupElement {
 
     const dd = document.createElement('div');
     dd.classList.add('poll-create-settings');
-    
+
     const settingsCaption = document.createElement('div');
     settingsCaption.classList.add('caption');
     _i18n(settingsCaption, 'Settings');
 
     if(!(await this.chat.managers.appPeersManager.isBroadcast(this.chat.peerId))) {
       this.anonymousCheckboxField = new CheckboxField({
-        text: 'NewPoll.Anonymous', 
+        text: 'NewPoll.Anonymous',
         name: 'anonymous'
       });
       this.anonymousCheckboxField.input.checked = true;
       dd.append(this.anonymousCheckboxField.label);
     }
-    
+
     this.multipleCheckboxField = new CheckboxField({
-      text: 'NewPoll.MultipleChoice', 
+      text: 'NewPoll.MultipleChoice',
       name: 'multiple'
     });
     this.quizCheckboxField = new CheckboxField({
-      text: 'NewPoll.Quiz', 
+      text: 'NewPoll.Quiz',
       name: 'quiz'
     });
 
@@ -149,7 +149,7 @@ export default class PopupCreatePoll extends PopupElement {
     quizSolutionContainer.classList.add('poll-create-questions');
 
     this.quizSolutionField = new InputField({
-      placeholder: 'NewPoll.Explanation.Placeholder', 
+      placeholder: 'NewPoll.Explanation.Placeholder',
       label: 'NewPoll.Explanation.Placeholder',
       name: 'solution',
       maxLength: MAX_LENGTH_SOLUTION
@@ -214,7 +214,7 @@ export default class PopupCreatePoll extends PopupElement {
     if(answers.length < 2) {
       return false;
     }
-    
+
     const tooLongOption = answers.find((a) => a.length > MAX_LENGTH_OPTION);
     if(tooLongOption) {
       return false;
@@ -244,14 +244,14 @@ export default class PopupCreatePoll extends PopupElement {
       this.chat.input.scheduleSending(() => {
         this.send(true);
       });
-      
+
       return;
     }
 
     this.hide();
 
-    //const randomID = [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)];
-    //const randomIDS = bigint(randomID[0]).shiftLeft(32).add(bigint(randomID[1])).toString();
+    // const randomID = [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)];
+    // const randomIDS = bigint(randomID[0]).shiftLeft(32).add(bigint(randomID[1])).toString();
 
     const pFlags: Poll['pFlags'] = {};
 
@@ -280,11 +280,11 @@ export default class PopupCreatePoll extends PopupElement {
       }),
       id: undefined
     };
-    //poll.id = randomIDS;
+    // poll.id = randomIDS;
 
     const inputMediaPoll = await this.chat.managers.appPollsManager.getInputMediaPoll(poll, this.correctAnswers, quizSolution, quizSolutionEntities);
 
-    //console.log('Will try to create poll:', inputMediaPoll);
+    // console.log('Will try to create poll:', inputMediaPoll);
 
     this.chat.managers.appMessagesManager.sendOther(this.chat.peerId, inputMediaPoll, {
       ...this.chat.getMessageSendingParams()
@@ -342,16 +342,16 @@ export default class PopupCreatePoll extends PopupElement {
     const tempId = this.tempId++;
     const idx = this.questions.childElementCount + 1;
     const questionField = new InputField({
-      placeholder: 'NewPoll.OptionsAddOption', 
+      placeholder: 'NewPoll.OptionsAddOption',
       label: 'NewPoll.OptionLabel',
       labelOptions: [idx],
-      name: 'question-' + tempId, 
+      name: 'question-' + tempId,
       maxLength: MAX_LENGTH_OPTION
     });
     this.listenerSetter.add(questionField.input)('input', this.onInput);
 
     const radioField = new RadioField({
-      text: '', 
+      text: '',
       name: 'question'
     });
     radioField.main.append(questionField.container);
@@ -373,16 +373,16 @@ export default class PopupCreatePoll extends PopupElement {
     const deleteBtn = document.createElement('span');
     deleteBtn.classList.add('btn-icon', 'tgico-close');
     questionField.container.append(deleteBtn);
-  
+
     attachClickEvent(deleteBtn, this.onDeleteClick, {listenerSetter: this.listenerSetter, once: true});
 
     this.questions.append(radioField.label);
 
     this.scrollable.scrollIntoViewNew({
-      element: this.questions.lastElementChild as HTMLElement, 
+      element: this.questions.lastElementChild as HTMLElement,
       position: 'center'
     });
-    //this.scrollable.scrollTo(this.scrollable.scrollHeight, 'top', true, true);
+    // this.scrollable.scrollTo(this.scrollable.scrollHeight, 'top', true, true);
 
     this.optionInputFields.push(questionField);
   }

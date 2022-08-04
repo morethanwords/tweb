@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import randomize from "../../../helpers/array/randomize";
-import { nextRandomUint } from "../../../helpers/random";
-import { IntermediatePacketCodec } from "./intermediate";
+import randomize from '../../../helpers/array/randomize';
+import {nextRandomUint} from '../../../helpers/random';
+import {IntermediatePacketCodec} from './intermediate';
 /*  Data packets are aligned to 4bytes. This codec adds random bytes of size
   from 0 to 3 bytes, which are ignored by decoder. */
 class PaddedIntermediatePacketCodec extends IntermediatePacketCodec {
@@ -14,17 +14,17 @@ class PaddedIntermediatePacketCodec extends IntermediatePacketCodec {
   public obfuscateTag = new Uint8Array([this.tag, this.tag, this.tag, this.tag]);
 
   public encodePacket(data: Uint8Array) {
-    let padding = randomize(new Uint8Array(nextRandomUint(8) % 3));
-    let len = data.byteLength + padding.byteLength;
+    const padding = randomize(new Uint8Array(nextRandomUint(8) % 3));
+    const len = data.byteLength + padding.byteLength;
 
-    let header = new Uint8Array(new Uint32Array([len]).buffer);
+    const header = new Uint8Array(new Uint32Array([len]).buffer);
     console.log('encodePacket', padding, len, data, header);
-    
+
     return header.concat(data, padding);
   }
 
   public readPacket(data: Uint8Array) {
-    let padLength = data.byteLength % 4;
+    const padLength = data.byteLength % 4;
     if(padLength > 0) {
       return data.slice(4, -padLength);
     }

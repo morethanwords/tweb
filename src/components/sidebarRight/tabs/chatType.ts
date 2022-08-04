@@ -4,24 +4,24 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { copyTextToClipboard } from "../../../helpers/clipboard";
-import { randomLong } from "../../../helpers/random";
-import { Chat, ChatFull, ExportedChatInvite } from "../../../layer";
-import Button from "../../button";
-import { setButtonLoader } from "../../putPreloader";
-import RadioField from "../../radioField";
-import Row, { RadioFormFromRows } from "../../row";
-import { SettingSection } from "../../sidebarLeft";
-import { toast } from "../../toast";
-import { UsernameInputField } from "../../usernameInputField";
-import { SliderSuperTabEventable } from "../../sliderTab";
-import I18n from "../../../lib/langPack";
-import PopupPeer from "../../popups/peer";
-import ButtonCorner from "../../buttonCorner";
-import { attachClickEvent } from "../../../helpers/dom/clickEvent";
-import toggleDisability from "../../../helpers/dom/toggleDisability";
-import CheckboxField from "../../checkboxField";
-import rootScope from "../../../lib/rootScope";
+import {copyTextToClipboard} from '../../../helpers/clipboard';
+import {randomLong} from '../../../helpers/random';
+import {Chat, ChatFull, ExportedChatInvite} from '../../../layer';
+import Button from '../../button';
+import {setButtonLoader} from '../../putPreloader';
+import RadioField from '../../radioField';
+import Row, {RadioFormFromRows} from '../../row';
+import {SettingSection} from '../../sidebarLeft';
+import {toast} from '../../toast';
+import {UsernameInputField} from '../../usernameInputField';
+import {SliderSuperTabEventable} from '../../sliderTab';
+import I18n from '../../../lib/langPack';
+import PopupPeer from '../../popups/peer';
+import ButtonCorner from '../../buttonCorner';
+import {attachClickEvent} from '../../../helpers/dom/clickEvent';
+import toggleDisability from '../../../helpers/dom/toggleDisability';
+import CheckboxField from '../../checkboxField';
+import rootScope from '../../../lib/rootScope';
 
 export default class AppChatTypeTab extends SliderSuperTabEventable {
   public chatId: ChatId;
@@ -41,16 +41,16 @@ export default class AppChatTypeTab extends SliderSuperTabEventable {
     const random = randomLong();
     const privateRow = new Row({
       radioField: new RadioField({
-        langKey: isBroadcast ? 'ChannelPrivate' : 'MegaPrivate', 
-        name: random, 
+        langKey: isBroadcast ? 'ChannelPrivate' : 'MegaPrivate',
+        name: random,
         value: 'private'
       }),
       subtitleLangKey: isBroadcast ? 'ChannelPrivateInfo' : 'MegaPrivateInfo'
     });
     const publicRow = new Row({
       radioField: new RadioField({
-        langKey: isBroadcast ? 'ChannelPublic' : 'MegaPublic', 
-        name: random, 
+        langKey: isBroadcast ? 'ChannelPublic' : 'MegaPublic',
+        name: random,
         value: 'public'
       }),
       subtitleLangKey: isBroadcast ? 'ChannelPublicInfo' : 'MegaPublicInfo'
@@ -71,7 +71,7 @@ export default class AppChatTypeTab extends SliderSuperTabEventable {
 
     const privateSection = new SettingSection({});
 
-    //let revoked = false;
+    // let revoked = false;
     const linkRow = new Row({
       title: (this.chatFull.exported_invite as ExportedChatInvite.chatInviteExported).link,
       subtitleLangKey: isBroadcast ? 'ChannelPrivateLinkHelp' : 'MegaPrivateLinkHelp',
@@ -89,12 +89,12 @@ export default class AppChatTypeTab extends SliderSuperTabEventable {
           langKey: 'RevokeButton',
           callback: () => {
             const toggle = toggleDisability([btnRevoke], true);
-            
+
             this.managers.appProfileManager.getChatInviteLink(this.chatId, true).then((link) => {
               toggle();
               linkRow.title.innerHTML = link;
-              //revoked = true;
-              //onChange();
+              // revoked = true;
+              // onChange();
             });
           }
         }],
@@ -116,8 +116,8 @@ export default class AppChatTypeTab extends SliderSuperTabEventable {
     const placeholder = 't.me/';
 
     const onChange = () => {
-      const changed = (privateRow.radioField.checked && (originalValue !== placeholder/*  || revoked */)) 
-        || (linkInputField.isValidToChange() && linkInputField.input.classList.contains('valid'));
+      const changed = (privateRow.radioField.checked && (originalValue !== placeholder/*  || revoked */)) ||
+        (linkInputField.isValidToChange() && linkInputField.input.classList.contains('valid'));
       applyBtn.classList.toggle('is-visible', changed);
     };
 
@@ -148,7 +148,7 @@ export default class AppChatTypeTab extends SliderSuperTabEventable {
       this.managers.appChatsManager.migrateChat(this.chatId).then((channelId) => {
         return this.managers.appChatsManager.updateUsername(channelId, username);
       }).then(() => {
-        //unsetLoader();
+        // unsetLoader();
         this.close();
       });
     }, {listenerSetter: this.listenerSetter});

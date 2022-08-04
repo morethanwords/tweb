@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import pause from "./schedulers/pause";
-import { makeMediaSize } from "./mediaSize";
-import scaleMediaElement from "./canvas/scaleMediaElement";
-import preloadVideo from "./preloadVideo";
+import pause from './schedulers/pause';
+import {makeMediaSize} from './mediaSize';
+import scaleMediaElement from './canvas/scaleMediaElement';
+import preloadVideo from './preloadVideo';
 
 export function createPosterFromMedia(media: HTMLVideoElement | HTMLImageElement) {
   let width: number, height: number;
@@ -20,8 +20,8 @@ export function createPosterFromMedia(media: HTMLVideoElement | HTMLImageElement
   }
 
   return scaleMediaElement({
-    media, 
-    mediaSize: makeMediaSize(width, height), 
+    media,
+    mediaSize: makeMediaSize(width, height),
     boxSize: makeMediaSize(320, 240),
     quality: .9
   });
@@ -38,7 +38,7 @@ export function createPosterFromVideo(video: HTMLVideoElement): ReturnType<typeo
 
       video.currentTime = 0;
     };
-    
+
     video.onerror = reject;
     video.currentTime = Math.min(video.duration, 1);
   });
@@ -49,12 +49,8 @@ export async function createPosterForVideo(url: string) {
 
   return Promise.race([
     pause(2000) as Promise<undefined>,
-    createPosterFromVideo(video),
+    createPosterFromVideo(video)
   ]);
 }
-
-
-
-
 
 

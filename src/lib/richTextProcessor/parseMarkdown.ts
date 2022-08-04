@@ -2,21 +2,21 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import { MARKDOWN_ENTITIES, MARKDOWN_REG_EXP } from ".";
-import { MessageEntity } from "../../layer";
-import combineSameEntities from "./combineSameEntities";
-import findConflictingEntity from "./findConflictingEntity";
-import mergeEntities from "./mergeEntities";
+import {MARKDOWN_ENTITIES, MARKDOWN_REG_EXP} from '.';
+import {MessageEntity} from '../../layer';
+import combineSameEntities from './combineSameEntities';
+import findConflictingEntity from './findConflictingEntity';
+import mergeEntities from './mergeEntities';
 
 export default function parseMarkdown(raw: string, currentEntities: MessageEntity[], noTrim?: boolean): string {
-  /* if(!markdownTestRegExp.test(text)) {
+  /* if(!markdownTestRegExp.test(text)) {
     return noTrim ? text : text.trim();
   } */
 
@@ -31,7 +31,7 @@ export default function parseMarkdown(raw: string, currentEntities: MessageEntit
     newTextParts.push(raw.substr(0, match.index));
     const text = (match[3] || match[8] || match[11] || match[13]);
     rawOffset -= text.length;
-    //text = text.replace(/^\s+|\s+$/g, '');
+    // text = text.replace(/^\s+|\s+$/g, '');
     rawOffset += text.length;
 
     let entity: MessageEntity;
@@ -53,7 +53,7 @@ export default function parseMarkdown(raw: string, currentEntities: MessageEntit
         }
 
         newTextParts.push(match[1] + text + match[5]);
-        
+
         rawOffset -= match[2].length + match[4].length;
       }
     } else if(match[7]) { // code|italic|bold
@@ -61,7 +61,7 @@ export default function parseMarkdown(raw: string, currentEntities: MessageEntit
 
       entity = {
         _: MARKDOWN_ENTITIES[match[7]] as (MessageEntity.messageEntityBold | MessageEntity.messageEntityCode | MessageEntity.messageEntityItalic | MessageEntity.messageEntitySpoiler)['_'],
-        //offset: matchIndex + match[6].length,
+        // offset: matchIndex + match[6].length,
         offset: matchIndex + (isSOH ? 0 : match[6].length),
         length: text.length
       };
@@ -82,10 +82,10 @@ export default function parseMarkdown(raw: string, currentEntities: MessageEntit
         offset: matchIndex,
         length: text.length
       };
-      
+
       if(pushEntity(entity)) {
         newTextParts.push(text);
-        
+
         rawOffset -= match[0].length - text.length;
       }
     } else if(match[12]) { // text url
@@ -95,7 +95,7 @@ export default function parseMarkdown(raw: string, currentEntities: MessageEntit
         offset: matchIndex,
         length: text.length
       };
-      
+
       if(pushEntity(entity)) {
         newTextParts.push(text);
 

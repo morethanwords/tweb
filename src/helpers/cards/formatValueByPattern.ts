@@ -1,17 +1,17 @@
-import accumulate from "../array/accumulate";
-import { PatternFunction } from "./patternCharacters";
+import accumulate from '../array/accumulate';
+import {PatternFunction} from './patternCharacters';
 
 function accumulateLengths(strs: string[]) {
   return accumulate(strs.map((str) => str.length), 0);
 }
 
 function formatValueByPattern(
-  getPattern: PatternFunction, 
-  value: string, 
+  getPattern: PatternFunction,
+  value: string,
   options: Partial<{
-    selectionStart: number, 
+    selectionStart: number,
     selectionEnd: number
-  }> = {}, 
+  }> = {},
   pushRest?: boolean
 ) {
   const pattern = getPattern(value);

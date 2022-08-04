@@ -4,16 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { Chat, ChatAdminRights, ChatBannedRights } from "../../../../layer";
-import { ChatRights } from "../../appChatsManager";
+import {Chat, ChatAdminRights, ChatBannedRights} from '../../../../layer';
+import {ChatRights} from '../../appChatsManager';
 
 /**
  * Check the user's ability to do an action in chat
- * @param id 
+ * @param id
  * @param action creator can still send messages to left channel. so this function shows server rights. see canSendToPeer for local rights in messages manager.
  * @param rights do not provide this parameter when checking rights for self
- * @param isThread 
- * @returns 
+ * @param isThread
+ * @returns
  */
 export default function hasRights(chat: Chat, action: ChatRights, rights?: ChatAdminRights | ChatBannedRights, isThread?: boolean) {
   if(chat._ === 'chatEmpty') return false;
@@ -90,7 +90,7 @@ export default function hasRights(chat: Chat, action: ChatRights, rights?: ChatA
     }
 
     // case 'change_info': {
-      // return adminRights || isCheckingRightsForSelf ? adminFlags[action] : !myFlags[action];
+    // return adminRights || isCheckingRightsForSelf ? adminFlags[action] : !myFlags[action];
     // }
 
     case 'change_info':

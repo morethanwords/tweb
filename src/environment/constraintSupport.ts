@@ -1,5 +1,5 @@
 export type MyMediaTrackSupportedConstraints = MediaTrackSupportedConstraints & {
-  noiseSuppression?: boolean, 
+  noiseSuppression?: boolean,
   autoGainControl?: boolean
 };
 

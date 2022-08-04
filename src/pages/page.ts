@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import pagesManager from "./pagesManager";
+import pagesManager from './pagesManager';
 
 export default class Page {
   public pageEl: HTMLDivElement;
@@ -15,7 +15,7 @@ export default class Page {
   }
 
   public async mount(...args: any[]) {
-    //this.pageEl.style.display = '';
+    // this.pageEl.style.display = '';
 
     if(this.onMount) {
       this.onMount(...args);
@@ -32,7 +32,7 @@ export default class Page {
           console.error('PAGE MOUNT ERROR:', err);
         }
       }
-      
+
       this.installed = true;
     }
 

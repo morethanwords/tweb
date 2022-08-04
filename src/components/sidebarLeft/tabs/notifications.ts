@@ -4,17 +4,17 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { SettingSection } from "..";
-import Row from "../../row";
-import CheckboxField from "../../checkboxField";
-import { InputNotifyPeer, Update } from "../../../layer";
-import { SliderSuperTabEventable } from "../../sliderTab";
-import rootScope from "../../../lib/rootScope";
-import { LangPackKey } from "../../../lib/langPack";
-import copy from "../../../helpers/object/copy";
-import convertKeyToInputKey from "../../../helpers/string/convertKeyToInputKey";
-import { MUTE_UNTIL } from "../../../lib/mtproto/mtproto_config";
-import apiManagerProxy from "../../../lib/mtproto/mtprotoworker";
+import {SettingSection} from '..';
+import Row from '../../row';
+import CheckboxField from '../../checkboxField';
+import {InputNotifyPeer, Update} from '../../../layer';
+import {SliderSuperTabEventable} from '../../sliderTab';
+import rootScope from '../../../lib/rootScope';
+import {LangPackKey} from '../../../lib/langPack';
+import copy from '../../../helpers/object/copy';
+import convertKeyToInputKey from '../../../helpers/string/convertKeyToInputKey';
+import {MUTE_UNTIL} from '../../../lib/mtproto/mtproto_config';
+import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 
 type InputNotifyKey = Exclude<InputNotifyPeer['_'], 'inputNotifyPeer'>;
 
@@ -35,12 +35,12 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
 
       const enabledRow = new Row({
         checkboxField: new CheckboxField({text: options.typeText, checked: true}),
-        subtitleLangKey: 'Loading',
+        subtitleLangKey: 'Loading'
       });
-      
+
       const previewEnabledRow = new Row({
         checkboxField: new CheckboxField({text: 'MessagePreview', checked: true}),
-        subtitleLangKey: 'Loading',
+        subtitleLangKey: 'Loading'
       });
 
       section.content.append(enabledRow.container, previewEnabledRow.container);
@@ -54,10 +54,10 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
           const muted = await this.managers.appNotificationsManager.isMuted(notifySettings);
           enabledRow.checkboxField.checked = !muted;
           previewEnabledRow.checkboxField.checked = notifySettings.show_previews;
-  
+
           return muted;
         };
-        
+
         applySettings();
 
         this.eventListener.addEventListener('destroy', async() => {
@@ -111,12 +111,12 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
 
       const contactsSignUpRow = new Row({
         checkboxField: new CheckboxField({text: 'ContactJoined', checked: true}),
-        subtitleLangKey: 'Loading',
+        subtitleLangKey: 'Loading'
       });
-      
+
       const soundRow = new Row({
         checkboxField: new CheckboxField({text: 'Notifications.Sound', checked: true, stateKey: 'settings.notifications.sound'}),
-        subtitleLangKey: 'Loading',
+        subtitleLangKey: 'Loading'
       });
 
       apiManagerProxy.getState().then((state) => {

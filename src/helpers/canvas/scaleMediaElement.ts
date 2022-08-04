@@ -1,9 +1,9 @@
-import type { MediaSize } from "../mediaSize";
+import type {MediaSize} from '../mediaSize';
 
 export default function scaleMediaElement(options: {
-  media: CanvasImageSource, 
-  mediaSize?: MediaSize, 
-  boxSize?: MediaSize, 
+  media: CanvasImageSource,
+  mediaSize?: MediaSize,
+  boxSize?: MediaSize,
   quality?: number,
   mimeType?: 'image/jpeg' | 'image/png',
   size?: MediaSize

@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-//import aesjs from 'aes-js';
-import randomize from "../../../helpers/array/randomize";
-import cryptoMessagePort from "../../crypto/cryptoMessagePort";
-import { Codec } from "./codec";
+// import aesjs from 'aes-js';
+import randomize from '../../../helpers/array/randomize';
+import cryptoMessagePort from '../../crypto/cryptoMessagePort';
+import {Codec} from './codec';
 
-/* 
+/*
 @cryptography/aes не работает с массивами которые не кратны 4, поэтому использую intermediate а не abridged
 */
 export default class Obfuscation {
@@ -36,7 +36,7 @@ export default class Obfuscation {
 
     const initPayload = new Uint8Array(64);
     randomize(initPayload);
-    
+
     while(true) {
       const val = (initPayload[3] << 24) | (initPayload[2] << 16) | (initPayload[1] << 8) | initPayload[0];
       const val2 = (initPayload[7] << 24) | (initPayload[6] << 16) | (initPayload[5] << 8) | initPayload[4];
@@ -48,13 +48,13 @@ export default class Obfuscation {
           val !== 0xeeeeeeee &&
           val !== 0xdddddddd &&
           val2 !== 0x00000000) {
-          //initPayload[56] = initPayload[57] = initPayload[58] = initPayload[59] = transport;
-          break;
+        // initPayload[56] = initPayload[57] = initPayload[58] = initPayload[59] = transport;
+        break;
       }
       randomize(initPayload);
     }
 
-    ////////////////////////initPayload.subarray(60, 62).hex = dcId;
+    // //////////////////////initPayload.subarray(60, 62).hex = dcId;
     /* initPayload.set(new Uint8Array([161, 208, 67, 71, 118, 109, 20, 111, 113, 255, 134, 10, 159, 241, 7, 44, 217, 82, 187, 76, 108, 131, 200, 186, 33, 57, 177, 251, 52, 34, 18, 54, 65, 105, 37, 89, 38, 20, 47, 168, 126, 181, 24, 138, 212, 68, 60, 150, 225, 37, 181, 4, 201, 50, 72, 151, 168, 143, 204, 169, 81, 187, 241, 23]));
     console.log('initPayload', initPayload); */
 
@@ -67,7 +67,7 @@ export default class Obfuscation {
 
     /* this.enc = new aesjs.ModeOfOperation.ctr(encKey, new aesjs.Counter(encIv as any));
     this.dec = new aesjs.ModeOfOperation.ctr(decKey, new aesjs.Counter(decIv as any)); */
-    
+
     // console.log('encKey', encKey.hex, encIv.hex);
     // console.log('decKey', decKey.hex, decIv.hex);
 
@@ -84,9 +84,9 @@ export default class Obfuscation {
     };
 
     this.id = await idPromise;
-    
+
     this.process = this._process;
-    
+
     // this.decIvCounter = new Counter(this.decIv);
     /* const key = this.cryptoEncKey = await subtle.importKey(
       'raw',
@@ -115,7 +115,7 @@ export default class Obfuscation {
     initPayload.set(codec.obfuscateTag, 56);
     const encrypted = await this.encode(initPayload.slice());
 
-    //console.log('encrypted', encrypted);
+    // console.log('encrypted', encrypted);
 
     initPayload.set(encrypted.slice(56, 64), 56);
 
@@ -137,7 +137,7 @@ export default class Obfuscation {
     } catch(err) {
       console.error('Obfuscation: error:', err);
     }
-    
+
     return res;
   }
 
@@ -152,14 +152,14 @@ export default class Obfuscation {
     } catch(err) {
       console.error('Obfuscation: error:', err);
     }
-    
+
     return res;
   } */
 
   private _process = (data: Uint8Array, operation: 'encrypt' | 'decrypt') => {
     return cryptoMessagePort.invoke('invoke', {
       method: 'aes-ctr-process',
-      args: [{id: this.id, data, operation}],
+      args: [{id: this.id, data, operation}]
     }, undefined, undefined, [data.buffer]) as Promise<Uint8Array>;
   };
 
@@ -199,7 +199,7 @@ export default class Obfuscation {
   // public encode(payload: Uint8Array) {
   //   let res = this.encNew.encrypt(payload);
   //   let bytes = new Uint8Array(bytesFromWordss(res));
-    
+
   //   return bytes;
   // }
 
@@ -217,7 +217,7 @@ export default class Obfuscation {
   //   );
 
   //   const decoded = this.decNew.update(payload);
-    
+
   //   console.log('decode', bytesToHex(decoded), 'new', n, bytesToHex(new Uint8Array(n)));
 
   //   return decoded;

@@ -4,29 +4,29 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import PopupElement, { addCancelButton } from ".";
-import setInnerHTML from "../../helpers/dom/setInnerHTML";
-import numberThousandSplitter from "../../helpers/number/numberThousandSplitter";
-import { ChatInvite } from "../../layer";
-import appImManager from "../../lib/appManagers/appImManager";
-import { i18n, _i18n } from "../../lib/langPack";
-import { NULL_PEER_ID } from "../../lib/mtproto/mtproto_config";
-import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
-import AvatarElement from "../avatar";
-import putPhoto from "../putPhoto";
-import { toastNew } from "../toast";
-import { wrapPhoto } from "../wrappers";
+import PopupElement, {addCancelButton} from '.';
+import setInnerHTML from '../../helpers/dom/setInnerHTML';
+import numberThousandSplitter from '../../helpers/number/numberThousandSplitter';
+import {ChatInvite} from '../../layer';
+import appImManager from '../../lib/appManagers/appImManager';
+import {i18n, _i18n} from '../../lib/langPack';
+import {NULL_PEER_ID} from '../../lib/mtproto/mtproto_config';
+import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
+import AvatarElement from '../avatar';
+import putPhoto from '../putPhoto';
+import {toastNew} from '../toast';
+import {wrapPhoto} from '../wrappers';
 
 // const FAKE_CHAT_ID = Number.MAX_SAFE_INTEGER - 0x1000;
 
 export default class PopupJoinChatInvite extends PopupElement {
   constructor(
-    private hash: string, 
-    private chatInvite: ChatInvite.chatInvite, 
+    private hash: string,
+    private chatInvite: ChatInvite.chatInvite
   ) {
     super('popup-join-chat-invite', {
-      closable: true, 
-      overlayClosable: true, 
+      closable: true,
+      overlayClosable: true,
       body: true,
       buttons: addCancelButton([{
         langKey: chatInvite.pFlags.request_needed ? 'RequestJoin.Button' : (chatInvite.pFlags.broadcast ? 'JoinByPeekChannelTitle' : 'JoinByPeekGroupTitle'),
@@ -63,7 +63,7 @@ export default class PopupJoinChatInvite extends PopupElement {
     appChatsManager.saveApiChat(fakeChat); */
 
     const {chatInvite, managers, hash} = this;
-    
+
     const avatarElem = new AvatarElement();
     avatarElem.classList.add('avatar-100');
     avatarElem.isDialog = false;
@@ -85,8 +85,8 @@ export default class PopupJoinChatInvite extends PopupElement {
     const title = document.createElement('div');
     title.classList.add('chat-title');
     setInnerHTML(title, wrapEmojiText(chatInvite.title));
-    //avatarElem.setAttribute('peer', '' + -fakeChat.id);
-    
+    // avatarElem.setAttribute('peer', '' + -fakeChat.id);
+
     const isBroadcast = chatInvite.pFlags.broadcast;
     const peopleCount = i18n(isBroadcast ? 'Subscribers' : 'Members', [numberThousandSplitter(chatInvite.participants_count)]);
     peopleCount.classList.add('chat-participants-count');

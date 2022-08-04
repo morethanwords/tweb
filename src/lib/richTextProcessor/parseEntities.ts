@@ -2,18 +2,18 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import { EMAIL_REG_EXP, FULL_REG_EXP } from ".";
-import TLD from "../../config/tld";
-import { MessageEntity } from "../../layer";
-import checkBrackets from "./checkBrackets";
-import getEmojiUnified from "./getEmojiUnified";
+import {EMAIL_REG_EXP, FULL_REG_EXP} from '.';
+import TLD from '../../config/tld';
+import {MessageEntity} from '../../layer';
+import checkBrackets from './checkBrackets';
+import getEmojiUnified from './getEmojiUnified';
 
 export default function parseEntities(text: string) {
   let match: any;
@@ -26,7 +26,7 @@ export default function parseEntities(text: string) {
   while((match = raw.match(FULL_REG_EXP))) {
     matchIndex = rawOffset + match.index;
 
-    //console.log('parseEntities match:', match);
+    // console.log('parseEntities match:', match);
 
     if(match[3]) { // mentions
       entities.push({
@@ -79,7 +79,7 @@ export default function parseEntities(text: string) {
         length: 1
       });
     } else if(match[8]) { // Emoji
-      //console.log('hit', match[8]);
+      // console.log('hit', match[8]);
       const unified = getEmojiUnified(match[8]);
       if(unified) {
         entities.push({

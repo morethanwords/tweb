@@ -2,7 +2,7 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/evgeny-nadymov/telegram-react
  * Copyright (C) 2018 Evgeny Nadymov
@@ -10,7 +10,7 @@
  */
 
 import StringFromLineBuilder from '../stringFromLineBuilder';
-import { addDataChannel, addExtmap, addPayloadTypes, addSsrc } from './p2PSdpBuilder';
+import {addDataChannel, addExtmap, addPayloadTypes, addSsrc} from './p2PSdpBuilder';
 
 export default class ChromeP2PSdpBuilder {
   static generateOffer(info: any) {
@@ -21,7 +21,7 @@ export default class ChromeP2PSdpBuilder {
 
     const stringBuilder = new StringFromLineBuilder();
     stringBuilder.add(
-      'v=0', 
+      'v=0',
       'o=- 1 2 IN IP4 127.0.0.1',
       's=-',
       't=0 0'
@@ -31,7 +31,7 @@ export default class ChromeP2PSdpBuilder {
       fingerprints.forEach((x: any) => {
         const {hash, fingerprint, setup} = x;
         stringBuilder.add(
-          `a=fingerprint:${hash} ${fingerprint}`, 
+          `a=fingerprint:${hash} ${fingerprint}`,
           `a=setup:${setup}`
         );
       });
@@ -44,8 +44,8 @@ export default class ChromeP2PSdpBuilder {
     }
 
     stringBuilder.add(
-      'a=group:BUNDLE 0 1 2', 
-      'a=extmap-allow-mixed', 
+      'a=group:BUNDLE 0 1 2',
+      'a=extmap-allow-mixed',
       'a=msid-semantic: WMS *'
     );
     const streamName = 'stream' + media.map((x) => x.ssrc).join('_');
@@ -89,7 +89,7 @@ export default class ChromeP2PSdpBuilder {
             stringBuilder.add(`a=msid:${streamName} video${ssrc}`);
           }
           stringBuilder.add(
-            'a=rtcp-mux', 
+            'a=rtcp-mux',
             'a=rtcp-rsize',
             addPayloadTypes(payloadTypes),
             addSsrc(type, ssrc, ssrcGroups, streamName)
@@ -113,7 +113,7 @@ export default class ChromeP2PSdpBuilder {
       'v=0',
       'o=- 1 2 IN IP4 127.0.0.1',
       's=-',
-      't=0 0',
+      't=0 0'
     );
 
     if(fingerprints) {

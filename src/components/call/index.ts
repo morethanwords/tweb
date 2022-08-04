@@ -4,31 +4,31 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import IS_SCREEN_SHARING_SUPPORTED from "../../environment/screenSharingSupport";
-import { IS_MOBILE } from "../../environment/userAgent";
-import { attachClickEvent } from "../../helpers/dom/clickEvent";
-import ControlsHover from "../../helpers/dom/controlsHover";
-import findUpClassName from "../../helpers/dom/findUpClassName";
-import { addFullScreenListener, cancelFullScreen, isFullScreen, requestFullScreen } from "../../helpers/dom/fullScreen";
-import MovablePanel from "../../helpers/movablePanel";
-import onMediaLoad from "../../helpers/onMediaLoad";
-import themeController from "../../helpers/themeController";
-import toggleClassName from "../../helpers/toggleClassName";
-import CallInstance from "../../lib/calls/callInstance";
-import CALL_STATE from "../../lib/calls/callState";
-import I18n, { i18n } from "../../lib/langPack";
-import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
-import animationIntersector from "../animationIntersector";
-import AvatarElement from "../avatar";
-import ButtonIcon from "../buttonIcon";
-import GroupCallMicrophoneIconMini from "../groupCall/microphoneIconMini";
-import { MovableState } from "../movableElement";
-import PeerTitle from "../peerTitle";
-import PopupElement from "../popups";
-import SetTransition from "../singleTransition";
-import makeButton from "./button";
-import CallDescriptionElement from "./description";
-import callVideoCanvasBlur from "./videoCanvasBlur";
+import IS_SCREEN_SHARING_SUPPORTED from '../../environment/screenSharingSupport';
+import {IS_MOBILE} from '../../environment/userAgent';
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import ControlsHover from '../../helpers/dom/controlsHover';
+import findUpClassName from '../../helpers/dom/findUpClassName';
+import {addFullScreenListener, cancelFullScreen, isFullScreen, requestFullScreen} from '../../helpers/dom/fullScreen';
+import MovablePanel from '../../helpers/movablePanel';
+import onMediaLoad from '../../helpers/onMediaLoad';
+import themeController from '../../helpers/themeController';
+import toggleClassName from '../../helpers/toggleClassName';
+import CallInstance from '../../lib/calls/callInstance';
+import CALL_STATE from '../../lib/calls/callState';
+import I18n, {i18n} from '../../lib/langPack';
+import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
+import animationIntersector from '../animationIntersector';
+import AvatarElement from '../avatar';
+import ButtonIcon from '../buttonIcon';
+import GroupCallMicrophoneIconMini from '../groupCall/microphoneIconMini';
+import {MovableState} from '../movableElement';
+import PeerTitle from '../peerTitle';
+import PopupElement from '../popups';
+import SetTransition from '../singleTransition';
+import makeButton from './button';
+import CallDescriptionElement from './description';
+import callVideoCanvasBlur from './videoCanvasBlur';
 
 const className = 'call';
 
@@ -47,7 +47,7 @@ export default class PopupCall extends PopupElement {
 
   private description: CallDescriptionElement;
   private emojisSubtitle: HTMLElement;
-  
+
   private partyStates: HTMLElement;
   private partyMutedState: HTMLElement;
 
@@ -114,7 +114,7 @@ export default class PopupCall extends PopupElement {
     emojisSubtitle.classList.add(className + '-emojis');
 
     container.append(avatarContainer, title, subtitle);
-    
+
     if(!IS_MOBILE) {
       this.btnFullScreen = ButtonIcon('fullscreen');
       this.btnExitFullScreen = ButtonIcon('smallscreen hide');
@@ -139,7 +139,7 @@ export default class PopupCall extends PopupElement {
     const mutedIcon = new GroupCallMicrophoneIconMini(false, true);
     mutedIcon.setState(false, false);
     this.partyMutedState.append(
-      mutedIcon.container, 
+      mutedIcon.container,
       stateText
     );
 
@@ -166,7 +166,7 @@ export default class PopupCall extends PopupElement {
         element: this.element,
         verifyTouchTarget: (e) => {
           const target = e.target;
-          if(findUpClassName(target, 'call-button') || 
+          if(findUpClassName(target, 'call-button') ||
             findUpClassName(target, 'btn-icon') ||
             isFullScreen()) {
             return false;
@@ -215,7 +215,7 @@ export default class PopupCall extends PopupElement {
     buttons.classList.add(className + '-buttons', 'is-first');
 
     const toggleDisability = toggleClassName.bind(null, 'btn-disabled');
-    
+
     const btnVideo = this.btnVideo = this.makeButton({
       text: 'Call.Camera',
       icon: 'videocamera_filled',
@@ -262,7 +262,7 @@ export default class PopupCall extends PopupElement {
   private constructSecondButtons() {
     const buttons = this.secondButtonsRow = document.createElement('div');
     buttons.classList.add(className + '-buttons', 'is-second');
-    
+
     this.declineI18nElement = new I18n.IntlElement({
       key: 'Call.Decline'
     });
@@ -281,7 +281,7 @@ export default class PopupCall extends PopupElement {
       callback: () => {
         this.instance.acceptCall();
       },
-      isConfirm: true,
+      isConfirm: true
     });
 
     buttons.append(btnDecline, btnAccept);
@@ -456,7 +456,7 @@ export default class PopupCall extends PopupElement {
         const popupWidth = this.movablePanel.state;
         const MAX_WIDTH_PX = 240;
         const MAX_HEIGHT_PX = 240;
-        
+
         const isVertical = video.videoHeight > video.videoWidth;
         const MAX_SIZE = isVertical ? MAX_HEIGHT_PX : MAX_WIDTH_PX;
 

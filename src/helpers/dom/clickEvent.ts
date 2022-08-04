@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type ListenerSetter from "../listenerSetter";
-import IS_TOUCH_SUPPORTED from "../../environment/touchSupport";
-import simulateEvent from "./dispatchEvent";
+import type ListenerSetter from '../listenerSetter';
+import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
+import simulateEvent from './dispatchEvent';
 
 export const CLICK_EVENT_NAME: 'mousedown' /* | 'touchend' */ | 'click' = (IS_TOUCH_SUPPORTED ? 'mousedown' : 'click') as any;
 export type AttachClickOptions = AddEventListenerOptions & Partial<{listenerSetter: ListenerSetter, touchMouseDown: true}>;
@@ -25,7 +25,7 @@ export function attachClickEvent(elem: HTMLElement | Window, callback: (e: /* To
         remove('touchmove', onTouchMove, o);
         remove('touchend', onTouchEnd, o);
       };
-  
+
       const onTouchEnd = (e: TouchEvent) => {
         remove('touchmove', onTouchMove, o);
         callback(e);
@@ -33,7 +33,7 @@ export function attachClickEvent(elem: HTMLElement | Window, callback: (e: /* To
           remove('touchstart', onTouchStart);
         }
       };
-  
+
       add('touchend', onTouchEnd, o);
       add('touchmove', onTouchMove, o);
     };
@@ -49,7 +49,7 @@ export function detachClickEvent(elem: HTMLElement, callback: (e: /* TouchEvent 
   // if(CLICK_EVENT_NAME === 'touchend') {
   //   elem.removeEventListener('touchstart', callback, options);
   // } else {
-    elem.removeEventListener(CLICK_EVENT_NAME, callback, options);
+  elem.removeEventListener(CLICK_EVENT_NAME, callback, options);
   // }
 }
 

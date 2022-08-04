@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { ChatSavedPosition } from './appManagers/appImManager';
-import type { AppDraftsManager } from './appManagers/appDraftsManager';
-import type { State } from '../config/state';
-import { MOUNT_CLASS_TO } from '../config/debug';
-import { LangPackDifference } from '../layer';
+import type {ChatSavedPosition} from './appManagers/appImManager';
+import type {AppDraftsManager} from './appManagers/appDraftsManager';
+import type {State} from '../config/state';
+import {MOUNT_CLASS_TO} from '../config/debug';
+import {LangPackDifference} from '../layer';
 import AppStorage from './storage';
 import DATABASE_STATE from '../config/databases/state';
 

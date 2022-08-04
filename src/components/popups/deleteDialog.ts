@@ -4,17 +4,17 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import PopupElement from ".";
-import type { PeerType } from "../../lib/appManagers/appPeersManager";
-import { LangPackKey } from "../../lib/langPack";
-import PeerTitle from "../peerTitle";
-import PopupPeer, { PopupPeerButtonCallbackCheckboxes, PopupPeerOptions } from "./peer";
+import PopupElement from '.';
+import type {PeerType} from '../../lib/appManagers/appPeersManager';
+import {LangPackKey} from '../../lib/langPack';
+import PeerTitle from '../peerTitle';
+import PopupPeer, {PopupPeerButtonCallbackCheckboxes, PopupPeerOptions} from './peer';
 
 export default class PopupDeleteDialog {
   constructor(
-    private peerId: PeerId, 
-    // actionType: 'leave' | 'delete', 
-    private peerType?: PeerType, 
+    private peerId: PeerId,
+    // actionType: 'leave' | 'delete',
+    private peerType?: PeerType,
     private onSelect?: (promise: Promise<any>) => void
   ) {
     this.construct();
@@ -36,13 +36,13 @@ export default class PopupDeleteDialog {
 
     const callbackLeave = (checked: PopupPeerButtonCallbackCheckboxes, flush = checkboxes && !!checked.size) => {
       let promise = managers.appChatsManager.leave(peerId.toChatId());
-      
+
       if(flush) {
         promise = promise.finally(() => {
           return managers.appMessagesManager.flushHistory(peerId);
         }) as any;
       }
-      
+
       onSelect && onSelect(promise);
     };
 
@@ -58,7 +58,7 @@ export default class PopupDeleteDialog {
           return callbackLeave(checked);
         }
       }
-      
+
       onSelect && onSelect(promise);
     };
 

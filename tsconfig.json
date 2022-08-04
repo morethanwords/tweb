@@ -74,6 +74,6 @@
     "./src/lib/*.js",
     "./src/*.js",
     "*.js",
-    "public3"
+    "./handlebarsHelpers/*.js"
   ]
 }

@@ -2,21 +2,21 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/evgeny-nadymov/telegram-react
  * Copyright (C) 2018 Evgeny Nadymov
  * https://github.com/evgeny-nadymov/telegram-react/blob/master/LICENSE
  */
 
-import type GroupCallConnectionInstance from "../calls/groupCallConnectionInstance";
-import safeReplaceObject from "../../helpers/object/safeReplaceObject";
-import { nextRandomUint } from "../../helpers/random";
-import { DataJSON, GroupCall, GroupCallParticipant, GroupCallParticipantVideoSourceGroup, InputGroupCall, PhoneJoinGroupCall, PhoneJoinGroupCallPresentation, Update, Updates } from "../../layer";
-import { logger } from "../logger";
-import { NULL_PEER_ID } from "../mtproto/mtproto_config";
-import { AppManager } from "./manager";
-import getPeerId from "./utils/peers/getPeerId";
+import type GroupCallConnectionInstance from '../calls/groupCallConnectionInstance';
+import safeReplaceObject from '../../helpers/object/safeReplaceObject';
+import {nextRandomUint} from '../../helpers/random';
+import {DataJSON, GroupCall, GroupCallParticipant, GroupCallParticipantVideoSourceGroup, InputGroupCall, PhoneJoinGroupCall, PhoneJoinGroupCallPresentation, Update, Updates} from '../../layer';
+import {logger} from '../logger';
+import {NULL_PEER_ID} from '../mtproto/mtproto_config';
+import {AppManager} from './manager';
+import getPeerId from './utils/peers/getPeerId';
 
 export type GroupCallId = GroupCall['id'];
 export type MyGroupCall = GroupCall | InputGroupCall;
@@ -41,28 +41,28 @@ export type GroupCallOutputSource = 'main' | 'presentation' | number;
 
 export class AppGroupCallsManager extends AppManager {
   private log: ReturnType<typeof logger>;
-  
+
   private groupCalls: Map<GroupCallId, MyGroupCall>;
   private participants: Map<GroupCallId, Map<PeerId, GroupCallParticipant>>;
   private nextOffsets: Map<GroupCallId, string>;
-  
+
   // private doNotDispatchParticipantUpdate: PeerId;
 
   protected after() {
     this.log = logger('GROUP-CALLS');
-    
+
     this.groupCalls = new Map();
     this.participants = new Map();
     this.nextOffsets = new Map();
-    
+
     this.apiUpdatesManager.addMultipleEventsListeners({
       updateGroupCall: (update) => {
         this.saveGroupCall(update.call, update.chat_id);
       },
-      
+
       updateGroupCallParticipants: (update) => {
         this.saveGroupCall(update.call);
-        
+
         // this.getGroupCallFull(update.call.id, true); // ! WARNING TEMP
 
         const groupCallId = update.call.id;
@@ -126,23 +126,23 @@ export class AppGroupCallsManager extends AppManager {
     }
 
     // if(!skipCounterUpdating) {
-      const groupCall = this.getGroupCall(groupCallId);
-      if(groupCall?._ === 'groupCall') {
-        let modified = false;
-        if(hasLeft) {
-          --groupCall.participants_count;
-          modified = true;
-        } else if(participant.pFlags.just_joined && !oldParticipant && !participant.pFlags.self) {
-          ++groupCall.participants_count;
-          modified = true;
-        }
-  
-        if(modified) {
-          this.rootScope.dispatchEvent('group_call_update', groupCall);
-        }
+    const groupCall = this.getGroupCall(groupCallId);
+    if(groupCall?._ === 'groupCall') {
+      let modified = false;
+      if(hasLeft) {
+        --groupCall.participants_count;
+        modified = true;
+      } else if(participant.pFlags.just_joined && !oldParticipant && !participant.pFlags.self) {
+        ++groupCall.participants_count;
+        modified = true;
       }
+
+      if(modified) {
+        this.rootScope.dispatchEvent('group_call_update', groupCall);
+      }
+    }
     // }
-    
+
     if(hasLeft) {
       participants.delete(peerId);
     }
@@ -182,13 +182,13 @@ export class AppGroupCallsManager extends AppManager {
       video_stopped: options.videoStopped,
       presentation_paused: options.presentationPaused
     });
-    
+
     // do not replace with peerId because it can be null
     // if(!processUpdate) this.doNotDispatchParticipantUpdate = getPeerId(participant.peer);
     this.apiUpdatesManager.processUpdateMessage(updates);
     // if(!processUpdate) this.doNotDispatchParticipantUpdate = undefined;
   }
-  
+
   public getGroupCall(id: GroupCallId) {
     return this.groupCalls.get(id);
   }
@@ -221,7 +221,7 @@ export class AppGroupCallsManager extends AppManager {
       }
     });
   }
-  
+
   public saveGroupCall(call: MyGroupCall, chatId?: ChatId) {
     const oldCall = this.groupCalls.get(call.id);
     const shouldUpdate = call._ !== 'inputGroupCall' && (!oldCall || oldCall._ !== 'groupCallDiscarded');
@@ -229,7 +229,7 @@ export class AppGroupCallsManager extends AppManager {
       if(shouldUpdate) {
         safeReplaceObject(oldCall, call);
       }
-      
+
       call = oldCall;
     } else {
       this.groupCalls.set(call.id, call);
@@ -287,7 +287,7 @@ export class AppGroupCallsManager extends AppManager {
 
     if(nextOffset !== '') {
       await this.apiManager.invokeApiSingleProcess({
-        method: 'phone.getGroupParticipants', 
+        method: 'phone.getGroupParticipants',
         params: {
           call: this.getGroupCallInput(id),
           ids: [],
@@ -297,11 +297,11 @@ export class AppGroupCallsManager extends AppManager {
         },
         processResult: (groupCallParticipants) => {
           const newNextOffset = groupCallParticipants.count === groupCallParticipants.participants.length ? '' : groupCallParticipants.next_offset;
-  
+
           this.appChatsManager.saveApiChats(groupCallParticipants.chats);
           this.appUsersManager.saveApiUsers(groupCallParticipants.users);
           this.saveApiParticipants(id, groupCallParticipants.participants);
-    
+
           setNextOffset(newNextOffset);
         }
       });
@@ -360,7 +360,7 @@ export class AppGroupCallsManager extends AppManager {
     } else {
       const request: PhoneJoinGroupCallPresentation = {
         call: groupCallInput,
-        params,
+        params
       };
 
       promise = this.apiManager.invokeApi('phone.joinGroupCallPresentation', request);

@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { Chat, User } from "../layer";
-import rootScope from "../lib/rootScope";
-import generateFakeIcon from "./generateFakeIcon";
-import generatePremiumIcon from "./generatePremiumIcon";
-import generateVerifiedIcon from "./generateVerifiedIcon";
+import {Chat, User} from '../layer';
+import rootScope from '../lib/rootScope';
+import generateFakeIcon from './generateFakeIcon';
+import generatePremiumIcon from './generatePremiumIcon';
+import generateVerifiedIcon from './generateVerifiedIcon';
 
 export default async function generateTitleIcons(peerId: PeerId) {
   const elements: Element[] = [];

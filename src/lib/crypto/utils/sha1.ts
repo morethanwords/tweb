@@ -1,6 +1,6 @@
-import convertToUint8Array from "../../../helpers/bytes/convertToUint8Array";
-import subtle from "../subtle";
-//import sha1 from '@cryptography/sha1';
+import convertToUint8Array from '../../../helpers/bytes/convertToUint8Array';
+import subtle from '../subtle';
+// import sha1 from '@cryptography/sha1';
 
 export default function sha1(bytes: Parameters<typeof convertToUint8Array>[0]) {
   return subtle.digest('SHA-1', convertToUint8Array(bytes)).then((b) => {
@@ -10,7 +10,7 @@ export default function sha1(bytes: Parameters<typeof convertToUint8Array>[0]) {
 
   const hashBytes: number[] = [];
 
-  let hash = sha1(String.fromCharCode.apply(null, 
+  let hash = sha1(String.fromCharCode.apply(null,
     bytes instanceof Uint8Array ? [...bytes] : [...new Uint8Array(bytes)]));
   for(let i = 0; i < hash.length; ++i) {
     hashBytes.push(hash.charCodeAt(i));

@@ -4,27 +4,27 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { attachClickEvent } from "../../../helpers/dom/clickEvent";
-import findUpTag from "../../../helpers/dom/findUpTag";
-import replaceContent from "../../../helpers/dom/replaceContent";
-import ListenerSetter from "../../../helpers/listenerSetter";
-import ScrollableLoader from "../../../helpers/scrollableLoader";
-import { ChannelParticipant, Chat, ChatBannedRights, Update } from "../../../layer";
-import { ChatRights } from "../../../lib/appManagers/appChatsManager";
-import appDialogsManager, { DIALOG_LIST_ELEMENT_TAG } from "../../../lib/appManagers/appDialogsManager";
-import { AppManagers } from "../../../lib/appManagers/managers";
-import combineParticipantBannedRights from "../../../lib/appManagers/utils/chats/combineParticipantBannedRights";
-import hasRights from "../../../lib/appManagers/utils/chats/hasRights";
-import getPeerId from "../../../lib/appManagers/utils/peers/getPeerId";
-import I18n, { i18n, join, LangPackKey } from "../../../lib/langPack";
-import rootScope from "../../../lib/rootScope";
-import CheckboxField from "../../checkboxField";
-import PopupPickUser from "../../popups/pickUser";
-import Row from "../../row";
-import { SettingSection } from "../../sidebarLeft";
-import { SliderSuperTabEventable } from "../../sliderTab";
-import { toast } from "../../toast";
-import AppUserPermissionsTab from "./userPermissions";
+import {attachClickEvent} from '../../../helpers/dom/clickEvent';
+import findUpTag from '../../../helpers/dom/findUpTag';
+import replaceContent from '../../../helpers/dom/replaceContent';
+import ListenerSetter from '../../../helpers/listenerSetter';
+import ScrollableLoader from '../../../helpers/scrollableLoader';
+import {ChannelParticipant, Chat, ChatBannedRights, Update} from '../../../layer';
+import {ChatRights} from '../../../lib/appManagers/appChatsManager';
+import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '../../../lib/appManagers/appDialogsManager';
+import {AppManagers} from '../../../lib/appManagers/managers';
+import combineParticipantBannedRights from '../../../lib/appManagers/utils/chats/combineParticipantBannedRights';
+import hasRights from '../../../lib/appManagers/utils/chats/hasRights';
+import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';
+import I18n, {i18n, join, LangPackKey} from '../../../lib/langPack';
+import rootScope from '../../../lib/rootScope';
+import CheckboxField from '../../checkboxField';
+import PopupPickUser from '../../popups/pickUser';
+import Row from '../../row';
+import {SettingSection} from '../../sidebarLeft';
+import {SliderSuperTabEventable} from '../../sliderTab';
+import {toast} from '../../toast';
+import AppUserPermissionsTab from './userPermissions';
 
 export class ChatPermissions {
   public v: Array<{
@@ -64,7 +64,7 @@ export class ChatPermissions {
     const chat: Chat.chat | Chat.channel = await this.managers.appChatsManager.getChat(options.chatId);
     const defaultBannedRights = chat.default_banned_rights;
     const rights = options.participant ? combineParticipantBannedRights(chat as Chat.channel, options.participant.banned_rights) : defaultBannedRights;
-    
+
     const restrictionText: LangPackKey = options.participant ? 'UserRestrictionsDisabled' : 'EditCantEditPermissionsPublic';
     for(const info of this.v) {
       const mainFlag = info.flags[0];
@@ -76,18 +76,18 @@ export class ChatPermissions {
       });
 
       if((
-          options.participant && 
+        options.participant &&
           defaultBannedRights.pFlags[mainFlag as keyof typeof defaultBannedRights['pFlags']]
-        ) || (
-          (chat as Chat.channel).username &&
+      ) || (
+        (chat as Chat.channel).username &&
           (
             info.flags.includes('pin_messages') ||
             info.flags.includes('change_info')
           )
-        )
+      )
       ) {
         info.checkboxField.input.disabled = true;
-        
+
         /* options.listenerSetter.add(info.checkboxField.input)('change', (e) => {
           if(!e.isTrusted) {
             return;
@@ -149,13 +149,13 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
     let chatPermissions: ChatPermissions;
     {
       const section = new SettingSection({
-        name: 'ChannelPermissionsHeader',
+        name: 'ChannelPermissionsHeader'
       });
 
       chatPermissions = new ChatPermissions({
         chatId: this.chatId,
         listenerSetter: this.listenerSetter,
-        appendTo: section.content,
+        appendTo: section.content
       }, this.managers);
 
       this.eventListener.addEventListener('destroy', () => {
@@ -164,7 +164,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
 
       this.scrollable.append(section.container);
     }
-    
+
     {
       const section = new SettingSection({
         name: 'PrivacyExceptions'
@@ -183,7 +183,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
               }, 0);
             },
             placeholder: 'ExceptionModal.Search.Placeholder',
-            peerId: -this.chatId,
+            peerId: -this.chatId
           });
         }
       });
@@ -217,7 +217,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
 
       const c = section.generateContentElement();
       c.classList.add('chatlist-container');
-      
+
       const list = appDialogsManager.createChatList({new: true});
       c.append(list);
 
@@ -230,9 +230,9 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
       }, {listenerSetter: this.listenerSetter});
 
       const setSubtitle = async(li: Element, participant: ChannelParticipant.channelParticipantBanned) => {
-        const bannedRights = participant.banned_rights;//appChatsManager.combineParticipantBannedRights(this.chatId, participant.banned_rights);
+        const bannedRights = participant.banned_rights;// appChatsManager.combineParticipantBannedRights(this.chatId, participant.banned_rights);
         const defaultBannedRights = ((await this.managers.appChatsManager.getChat(this.chatId)) as Chat.channel).default_banned_rights;
-        //const combinedRights = appChatsManager.combineParticipantBannedRights(this.chatId, bannedRights);
+        // const combinedRights = appChatsManager.combineParticipantBannedRights(this.chatId, bannedRights);
 
         const cantWhat: LangPackKey[] = []/* , canWhat: LangPackKey[] = [] */;
         chatPermissions.v.forEach((info) => {
@@ -254,7 +254,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
         }/*  else if(canWhat.length) {
           str = 'Can ' + canWhat.join(canWhat.length === 2 ? ' and ' : ', ');
         } */
-  
+
         el.classList.toggle('hide', !cantWhat.length);
       };
 
@@ -269,8 +269,8 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
 
         setSubtitle(dom.listEl, participant);
 
-        //dom.titleSpan.innerHTML = 'Chinaza Akachi';
-        //dom.lastMessageSpan.innerHTML = 'Can Add Users and Pin Messages';
+        // dom.titleSpan.innerHTML = 'Chinaza Akachi';
+        // dom.lastMessageSpan.innerHTML = 'Can Add Users and Pin Messages';
       };
 
       // this.listenerSetter.add(rootScope)('updateChannelParticipant', (update: Update.updateChannelParticipant) => {
@@ -314,10 +314,10 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
               for(const participant of res.participants) {
                 add(participant as ChannelParticipant.channelParticipantBanned, true);
               }
-  
+
               exceptionsCount = res.count;
               setLength();
-  
+
               return res.participants.length < LOAD_COUNT || res.count === list.childElementCount;
             });
           }
@@ -332,7 +332,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
         await setLoader();
       } else {
         setLength();
-        
+
         this.listenerSetter.add(rootScope)('dialog_migrate', ({migrateFrom, migrateTo}) => {
           if(this.chatId === migrateFrom) {
             this.chatId = migrateTo;

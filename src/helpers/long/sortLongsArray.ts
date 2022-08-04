@@ -1,4 +1,4 @@
-import bigInt from "big-integer";
+import bigInt from 'big-integer';
 
 export default function sortLongsArray(arr: string[]) {
   return arr.map((long) => {

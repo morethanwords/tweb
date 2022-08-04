@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import IS_TOUCH_SUPPORTED from "../environment/touchSupport";
-import { logger, LogTypes } from "../lib/logger";
-import fastSmoothScroll, { ScrollOptions } from "../helpers/fastSmoothScroll";
-import useHeavyAnimationCheck from "../hooks/useHeavyAnimationCheck";
-import cancelEvent from "../helpers/dom/cancelEvent";
+import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
+import {logger, LogTypes} from '../lib/logger';
+import fastSmoothScroll, {ScrollOptions} from '../helpers/fastSmoothScroll';
+import useHeavyAnimationCheck from '../hooks/useHeavyAnimationCheck';
+import cancelEvent from '../helpers/dom/cancelEvent';
 /*
 var el = $0;
 var height = 0;
@@ -22,15 +22,15 @@ console.log(height);
 
 /*
 Array.from($0.querySelectorAll('.bubble-content')).forEach((_el) => {
-	//_el.style.display = '';	
-	//return;
+  //_el.style.display = '';
+  //return;
 
-	let el = _el.parentElement;
-	let height = el.scrollHeight;
-	let width = el.scrollWidth;
-	el.style.width = width + 'px';
-	el.style.height = height + 'px';
-	_el.style.display = 'none';
+  let el = _el.parentElement;
+  let height = el.scrollHeight;
+  let width = el.scrollWidth;
+  el.style.width = width + 'px';
+  el.style.height = height + 'px';
+  _el.style.display = 'none';
 });
 */
 
@@ -71,7 +71,7 @@ export class ScrollableBase {
   public checkForTriggers?: () => void;
 
   public scrollProperty: 'scrollTop' | 'scrollLeft';
-  
+
   protected removeHeavyAnimationListener: () => void;
   protected addedScrollListener: boolean;
 
@@ -85,7 +85,7 @@ export class ScrollableBase {
 
       el.append(this.container);
     }
-    //this.onScroll();
+    // this.onScroll();
   }
 
   public addScrollListener() {
@@ -96,7 +96,7 @@ export class ScrollableBase {
     this.addedScrollListener = true;
     this.container.addEventListener('scroll', this.onScroll, {passive: true, capture: true});
   }
-  
+
   public removeScrollListener() {
     if(!this.addedScrollListener) {
       return;
@@ -148,7 +148,7 @@ export class ScrollableBase {
   }
 
   public scrollIntoViewNew(options: Omit<ScrollOptions, 'container'>) {
-    //return Promise.resolve();
+    // return Promise.resolve();
     return fastSmoothScroll({
       ...options,
       container: this.container
@@ -156,11 +156,11 @@ export class ScrollableBase {
   }
 
   public onScroll = () => {
-    //if(this.debug) {
-      //this.log('onScroll call', this.onScrollMeasure);
-    //}
+    // if(this.debug) {
+    // this.log('onScroll call', this.onScrollMeasure);
+    // }
 
-    //return;
+    // return;
 
     if(this.isHeavyAnimationInProgress) {
       this.cancelMeasure();
@@ -168,7 +168,7 @@ export class ScrollableBase {
       return;
     }
 
-    //if(this.onScrollMeasure || ((this.scrollLocked || (!this.onScrolledTop && !this.onScrolledBottom)) && !this.splitUp && !this.onAdditionalScroll)) return;
+    // if(this.onScrollMeasure || ((this.scrollLocked || (!this.onScrolledTop && !this.onScrolledBottom)) && !this.splitUp && !this.onAdditionalScroll)) return;
     if((!this.onScrolledTop && !this.onScrolledBottom) && !this.splitUp && !this.onAdditionalScroll) return;
     if(this.onScrollMeasure) return;
     // if(this.onScrollMeasure) window.cancelAnimationFrame(this.onScrollMeasure);
@@ -183,7 +183,7 @@ export class ScrollableBase {
       if(this.onAdditionalScroll/*  && this.lastScrollDirection !== 0 */) {
         this.onAdditionalScroll();
       }
-      
+
       if(this.checkForTriggers) {
         this.checkForTriggers();
       }
@@ -203,7 +203,7 @@ export type SliceSidesContainer = {[k in SliceSides]: boolean};
 
 export default class Scrollable extends ScrollableBase {
   public padding: HTMLElement;
-  
+
   public loadedAll: SliceSidesContainer = {top: true, bottom: false};
 
   constructor(el: HTMLElement, logPrefix = '', public onScrollOffset = 300, withPaddingContainer?: boolean) {
@@ -243,7 +243,7 @@ export default class Scrollable extends ScrollableBase {
     const maxScrollTop = scrollHeight - clientHeight;
     const scrollTop = this.lastScrollPosition;
 
-    //this.log('checkForTriggers:', scrollTop, maxScrollTop);
+    // this.log('checkForTriggers:', scrollTop, maxScrollTop);
 
     if(this.onScrolledTop && scrollTop <= this.onScrollOffset && this.lastScrollDirection <= 0/* && direction === -1 */) {
       this.onScrolledTop();
@@ -273,9 +273,9 @@ export default class Scrollable extends ScrollableBase {
   set scrollTop(y: number) {
     this.container.scrollTop = y;
   }
-  
+
   get scrollTop() {
-    //this.log.trace('get scrollTop');
+    // this.log.trace('get scrollTop');
     return this.container.scrollTop;
   }
 
@@ -295,7 +295,7 @@ export default class Scrollable extends ScrollableBase {
       }, {capture: true, passive: false, once: true});
     }
   }
-  
+
   get scrollHeight() {
     return this.container.scrollHeight;
   }
@@ -314,7 +314,7 @@ export class ScrollableX extends ScrollableBase {
           cancelEvent(e);
         }
       };
-      
+
       this.container.addEventListener('wheel', scrollHorizontally, {passive: false});
     }
 

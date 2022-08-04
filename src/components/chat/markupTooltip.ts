@@ -4,22 +4,22 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { AppImManager } from "../../lib/appManagers/appImManager";
-import ButtonIcon from "../buttonIcon";
-import IS_TOUCH_SUPPORTED from "../../environment/touchSupport";
-import { IS_APPLE, IS_MOBILE } from "../../environment/userAgent";
-import appNavigationController from "../appNavigationController";
-import { _i18n } from "../../lib/langPack";
-import cancelEvent from "../../helpers/dom/cancelEvent";
-import { attachClickEvent } from "../../helpers/dom/clickEvent";
-import getSelectedNodes from "../../helpers/dom/getSelectedNodes";
-import isSelectionEmpty from "../../helpers/dom/isSelectionEmpty";
-import { MarkdownType, markdownTags } from "../../helpers/dom/getRichElementValue";
-import getVisibleRect from "../../helpers/dom/getVisibleRect";
-import clamp from "../../helpers/number/clamp";
-import matchUrl from "../../lib/richTextProcessor/matchUrl";
-import matchUrlProtocol from "../../lib/richTextProcessor/matchUrlProtocol";
-//import { logger } from "../../lib/logger";
+import type {AppImManager} from '../../lib/appManagers/appImManager';
+import ButtonIcon from '../buttonIcon';
+import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
+import {IS_APPLE, IS_MOBILE} from '../../environment/userAgent';
+import appNavigationController from '../appNavigationController';
+import {_i18n} from '../../lib/langPack';
+import cancelEvent from '../../helpers/dom/cancelEvent';
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import getSelectedNodes from '../../helpers/dom/getSelectedNodes';
+import isSelectionEmpty from '../../helpers/dom/isSelectionEmpty';
+import {MarkdownType, markdownTags} from '../../helpers/dom/getRichElementValue';
+import getVisibleRect from '../../helpers/dom/getVisibleRect';
+import clamp from '../../helpers/number/clamp';
+import matchUrl from '../../lib/richTextProcessor/matchUrl';
+import matchUrlProtocol from '../../lib/richTextProcessor/matchUrlProtocol';
+// import { logger } from "../../lib/logger";
 
 export default class MarkupTooltip {
   public container: HTMLElement;
@@ -33,10 +33,10 @@ export default class MarkupTooltip {
   private linkInput: HTMLInputElement;
   private savedRange: Range;
   private mouseUpCounter: number = 0;
-  //private log: ReturnType<typeof logger>;
+  // private log: ReturnType<typeof logger>;
 
   constructor(private appImManager: AppImManager) {
-    //this.log = logger('MARKUP');
+    // this.log = logger('MARKUP');
   }
 
   private init() {
@@ -45,7 +45,7 @@ export default class MarkupTooltip {
 
     this.wrapper = document.createElement('div');
     this.wrapper.classList.add('markup-tooltip-wrapper');
-    
+
     const tools1 = document.createElement('div');
     const tools2 = document.createElement('div');
     tools1.classList.add('markup-tooltip-tools');
@@ -58,13 +58,13 @@ export default class MarkupTooltip {
 
       if(c !== 'link') {
         button.addEventListener('mousedown', (e) => {
-          cancelEvent(e); 
+          cancelEvent(e);
           this.appImManager.chat.input.applyMarkdown(c);
           this.cancelClosening();
-          
+
           /* this.mouseUpCounter = 0;
           this.setMouseUpEvent(); */
-          //this.hide();
+          // this.hide();
         });
       } else {
         attachClickEvent(button, (e) => {
@@ -80,7 +80,7 @@ export default class MarkupTooltip {
     _i18n(this.linkInput, 'MarkupTooltip.LinkPlaceholder', undefined, 'placeholder');
     this.linkInput.classList.add('input-clear');
     this.linkInput.addEventListener('keydown', (e) => {
-      const valid = !this.linkInput.value.length || !!matchUrl(this.linkInput.value);///^(http)|(https):\/\//i.test(this.linkInput.value);
+      const valid = !this.linkInput.value.length || !!matchUrl(this.linkInput.value);// /^(http)|(https):\/\//i.test(this.linkInput.value);
 
       if(e.key === 'Enter') {
         if(!valid) {
@@ -104,10 +104,10 @@ export default class MarkupTooltip {
     });
 
     this.linkBackButton.addEventListener('mousedown', (e) => {
-      //this.log('linkBackButton click');
+      // this.log('linkBackButton click');
       cancelEvent(e);
       this.container.classList.remove('is-link');
-      //input.value = '';
+      // input.value = '';
       this.resetSelection();
       this.setTooltipPosition();
       this.cancelClosening();
@@ -115,13 +115,13 @@ export default class MarkupTooltip {
 
     this.linkApplyButton = ButtonIcon('check markup-tooltip-link-apply', {noRipple: true});
     this.linkApplyButton.addEventListener('mousedown', (e) => {
-      //this.log('linkApplyButton click');
+      // this.log('linkApplyButton click');
       this.applyLink(e);
     });
 
     const applyDiv = document.createElement('div');
     applyDiv.classList.add('markup-tooltip-link-apply-container');
-    
+
     const delimiter1 = document.createElement('span');
     const delimiter2 = document.createElement('span');
     const delimiter3 = document.createElement('span');
@@ -131,12 +131,12 @@ export default class MarkupTooltip {
     tools1.insertBefore(delimiter1, this.buttons.link);
     applyDiv.append(delimiter3, this.linkApplyButton);
     tools2.append(this.linkBackButton, delimiter2, this.linkInput, applyDiv);
-    //tools1.insertBefore(delimiter2, this.buttons.link.nextSibling);
+    // tools1.insertBefore(delimiter2, this.buttons.link.nextSibling);
 
     this.wrapper.append(tools1, tools2);
     this.container.append(this.wrapper);
     document.body.append(this.container);
-    
+
     window.addEventListener('resize', () => {
       this.hide();
     });
@@ -152,7 +152,7 @@ export default class MarkupTooltip {
 
     const selection = document.getSelection();
     this.savedRange = selection.getRangeAt(0);
-    
+
     if(button.classList.contains('active')) {
       const startContainer = this.savedRange.startContainer;
       const anchor = startContainer.parentElement as HTMLAnchorElement;
@@ -194,12 +194,12 @@ export default class MarkupTooltip {
   }
 
   public hide() {
-    //return;
+    // return;
 
     if(this.init) return;
 
     this.container.classList.remove('is-visible');
-    //document.removeEventListener('mouseup', this.onMouseUp);
+    // document.removeEventListener('mouseup', this.onMouseUp);
     document.removeEventListener('mouseup', this.onMouseUpSingle);
     this.waitingForMouseUp = false;
 
@@ -216,7 +216,7 @@ export default class MarkupTooltip {
   public getActiveMarkupButton() {
     const nodes = getSelectedNodes();
     const parents = [...new Set(nodes.map((node) => node.parentNode))];
-    //if(parents.length > 1 && parents) return [];
+    // if(parents.length > 1 && parents) return [];
 
     const currentMarkups: Set<HTMLElement> = new Set();
     (parents as HTMLElement[]).forEach((node) => {
@@ -228,7 +228,7 @@ export default class MarkupTooltip {
         }
       }
     });
-    
+
 
     return [...currentMarkups];
   }
@@ -256,12 +256,12 @@ export default class MarkupTooltip {
     const visibleRect = getVisibleRect(undefined, this.appImManager.chat.input.messageInput, false, selectionRect);
 
     const selectionTop = visibleRect.rect.top/* selectionRect.top */ + (bodyRect.top * -1);
-    
+
     const currentTools = this.container.classList.contains('is-link') ? this.wrapper.lastElementChild : this.wrapper.firstElementChild;
 
     const sizesRect = currentTools.getBoundingClientRect();
     const top = selectionTop - sizesRect.height - 8;
-    
+
     const minX = inputRect.left;
     const maxX = (inputRect.left + inputRect.width) - Math.min(inputRect.width, sizesRect.width);
     let left: number;
@@ -276,7 +276,7 @@ export default class MarkupTooltip {
     /* const isClamped = x !== minX && x !== maxX && (left === minX || left === maxX || this.container.getBoundingClientRect().left >= maxX);
 
     if(isLinkToggle && this.container.classList.contains('is-link') && !isClamped) return; */
-    
+
     this.container.style.transform = `translate3d(${left}px, ${top}px, 0)`;
   }
 
@@ -300,21 +300,21 @@ export default class MarkupTooltip {
     }
 
     this.setActiveMarkupButton();
-    
+
     this.container.classList.remove('is-link');
     const isFirstShow = this.container.classList.contains('hide');
     if(isFirstShow) {
       this.container.classList.remove('hide');
       this.container.classList.add('no-transition');
     }
-    
+
     this.setTooltipPosition();
-    
+
     if(isFirstShow) {
       void this.container.offsetLeft; // reflow
       this.container.classList.remove('no-transition');
     }
-    
+
     this.container.classList.add('is-visible');
 
     if(!IS_MOBILE) {
@@ -326,7 +326,7 @@ export default class MarkupTooltip {
       });
     }
 
-    //this.log('selection', selectionRect, activeButton);
+    // this.log('selection', selectionRect, activeButton);
   }
 
   /* private onMouseUp = (e: Event) => {
@@ -338,7 +338,7 @@ export default class MarkupTooltip {
   }; */
 
   private onMouseUpSingle = (e?: Event) => {
-    //this.log('onMouseUpSingle');
+    // this.log('onMouseUpSingle');
     this.waitingForMouseUp = false;
 
     if(IS_TOUCH_SUPPORTED) {
@@ -360,7 +360,7 @@ export default class MarkupTooltip {
     if(this.waitingForMouseUp) return;
     this.waitingForMouseUp = true;
 
-    //this.log('setMouseUpEvent');
+    // this.log('setMouseUpEvent');
 
     document.addEventListener('mouseup', this.onMouseUpSingle, {once: true});
   }
@@ -381,7 +381,7 @@ export default class MarkupTooltip {
     if(this.addedListener) return;
     this.addedListener = true;
     document.addEventListener('selectionchange', (e) => {
-      //this.log('selectionchange');
+      // this.log('selectionchange');
 
       if(document.activeElement === this.linkInput) {
         return;

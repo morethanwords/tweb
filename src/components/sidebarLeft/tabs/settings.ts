@@ -4,30 +4,30 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { SliderSuperTab } from "../../slider";
-import ButtonMenuToggle from "../../buttonMenuToggle";
-import Button from "../../button";
-import AppPrivacyAndSecurityTab from "./privacyAndSecurity";
-import AppGeneralSettingsTab from "./generalSettings";
-import AppEditProfileTab from "./editProfile";
-import AppChatFoldersTab from "./chatFolders";
-import AppNotificationsTab from "./notifications";
-import AppLanguageTab from "./language";
-import lottieLoader from "../../../lib/rlottie/lottieLoader";
-import PopupPeer from "../../popups/peer";
-import AppDataAndStorageTab from "./dataAndStorage";
-import ButtonIcon from "../../buttonIcon";
-import PeerProfile from "../../peerProfile";
-import rootScope from "../../../lib/rootScope";
-import { SettingSection } from "..";
-import Row from "../../row";
-import AppActiveSessionsTab from "./activeSessions";
-import { i18n, LangPackKey } from "../../../lib/langPack";
-import { SliderSuperTabConstructable } from "../../sliderTab";
-import PopupAvatar from "../../popups/avatar";
-import { AccountAuthorizations, Authorization } from "../../../layer";
-import PopupElement from "../../popups";
-//import AppMediaViewer from "../../appMediaViewerNew";
+import {SliderSuperTab} from '../../slider';
+import ButtonMenuToggle from '../../buttonMenuToggle';
+import Button from '../../button';
+import AppPrivacyAndSecurityTab from './privacyAndSecurity';
+import AppGeneralSettingsTab from './generalSettings';
+import AppEditProfileTab from './editProfile';
+import AppChatFoldersTab from './chatFolders';
+import AppNotificationsTab from './notifications';
+import AppLanguageTab from './language';
+import lottieLoader from '../../../lib/rlottie/lottieLoader';
+import PopupPeer from '../../popups/peer';
+import AppDataAndStorageTab from './dataAndStorage';
+import ButtonIcon from '../../buttonIcon';
+import PeerProfile from '../../peerProfile';
+import rootScope from '../../../lib/rootScope';
+import {SettingSection} from '..';
+import Row from '../../row';
+import AppActiveSessionsTab from './activeSessions';
+import {i18n, LangPackKey} from '../../../lib/langPack';
+import {SliderSuperTabConstructable} from '../../sliderTab';
+import PopupAvatar from '../../popups/avatar';
+import {AccountAuthorizations, Authorization} from '../../../layer';
+import PopupElement from '../../popups';
+// import AppMediaViewer from "../../appMediaViewerNew";
 
 export default class AppSettingsTab extends SliderSuperTab {
   private buttons: {
@@ -49,7 +49,7 @@ export default class AppSettingsTab extends SliderSuperTab {
   protected async init() {
     this.container.classList.add('settings-container');
     this.setTitle('Settings');
-    
+
     const btnMenu = ButtonMenuToggle({}, 'bottom-left', [{
       icon: 'logout',
       text: 'EditAccount.Logout',
@@ -87,12 +87,12 @@ export default class AppSettingsTab extends SliderSuperTab {
       });
     });
     this.profile.element.lastElementChild.firstElementChild.append(changeAvatarBtn);
-    
+
     const updateChangeAvatarBtn = async() => {
       const user = await this.managers.appUsersManager.getSelf();
       changeAvatarBtn.classList.toggle('hide', user.photo?._ !== 'userProfilePhoto');
     };
-    
+
     updateChangeAvatarBtn();
     this.listenerSetter.add(rootScope)('avatar_update', (peerId) => {
       if(rootScope.myId === peerId) {
@@ -107,7 +107,7 @@ export default class AppSettingsTab extends SliderSuperTab {
     div.style.cssText = 'border-radius: 8px; overflow: hidden; width: 396px; height: 264px; flex: 0 0 auto; position: relative; margin: 10rem auto 10rem 0;';
     div.style.width = '135px';
     div.style.height = '100px';
-    
+
     const img = document.createElement('img');
     img.src = 'assets/img/pepe.jpg';
     img.classList.add('media-photo');
@@ -141,7 +141,7 @@ export default class AppSettingsTab extends SliderSuperTab {
     });
 
     this.scrollable.append(div); */
-    
+
     const buttonsDiv = document.createElement('div');
     buttonsDiv.classList.add('profile-buttons');
 
@@ -150,7 +150,7 @@ export default class AppSettingsTab extends SliderSuperTab {
       ['data', 'DataSettings', AppDataAndStorageTab],
       ['lock', 'AccountSettings.PrivacyAndSecurity', AppPrivacyAndSecurityTab],
       ['settings', 'Telegram.GeneralSettingsViewController', AppGeneralSettingsTab],
-      ['folder', 'AccountSettings.Filters', AppChatFoldersTab],
+      ['folder', 'AccountSettings.Filters', AppChatFoldersTab]
     ];
 
     const rows = b.map(([icon, langPackKey, tabConstructor]) => {

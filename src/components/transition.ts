@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import rootScope from "../lib/rootScope";
-import deferredPromise, { CancellablePromise } from "../helpers/cancellablePromise";
-import { dispatchHeavyAnimationEvent } from "../hooks/useHeavyAnimationCheck";
-import whichChild from "../helpers/dom/whichChild";
-import cancelEvent from "../helpers/dom/cancelEvent";
+import rootScope from '../lib/rootScope';
+import deferredPromise, {CancellablePromise} from '../helpers/cancellablePromise';
+import {dispatchHeavyAnimationEvent} from '../hooks/useHeavyAnimationCheck';
+import whichChild from '../helpers/dom/whichChild';
+import cancelEvent from '../helpers/dom/cancelEvent';
 
 function slideNavigation(tabContent: HTMLElement, prevTabContent: HTMLElement, toRight: boolean) {
   const width = prevTabContent.getBoundingClientRect().width;
@@ -17,7 +17,7 @@ function slideNavigation(tabContent: HTMLElement, prevTabContent: HTMLElement, t
   elements[0].style.filter = `brightness(80%)`;
   elements[0].style.transform = `translate3d(${-width * .25}px, 0, 0)`;
   elements[1].style.transform = `translate3d(${width}px, 0, 0)`;
-  
+
   tabContent.classList.add('active');
   void tabContent.offsetWidth; // reflow
 
@@ -39,24 +39,24 @@ function slideTabs(tabContent: HTMLElement, prevTabContent: HTMLElement, toRight
   //   // this.container.classList.add('sliding');
   // }
 
-  //window.requestAnimationFrame(() => {
-    const width = prevTabContent.getBoundingClientRect().width;
-    /* tabContent.style.setProperty('--width', width + 'px');
+  // window.requestAnimationFrame(() => {
+  const width = prevTabContent.getBoundingClientRect().width;
+  /* tabContent.style.setProperty('--width', width + 'px');
     prevTabContent.style.setProperty('--width', width + 'px');
 
     tabContent.classList.add('active'); */
-    //void tabContent.offsetWidth; // reflow
-    const elements = [tabContent, prevTabContent];
-    if(toRight) elements.reverse();
-    elements[0].style.transform = `translate3d(${-width}px, 0, 0)`;
-    elements[1].style.transform = `translate3d(${width}px, 0, 0)`;
-  
-    tabContent.classList.add('active');
-    void tabContent.offsetWidth; // reflow
-  
-    tabContent.style.transform = '';
-  //});
-  
+  // void tabContent.offsetWidth; // reflow
+  const elements = [tabContent, prevTabContent];
+  if(toRight) elements.reverse();
+  elements[0].style.transform = `translate3d(${-width}px, 0, 0)`;
+  elements[1].style.transform = `translate3d(${width}px, 0, 0)`;
+
+  tabContent.classList.add('active');
+  void tabContent.offsetWidth; // reflow
+
+  tabContent.style.transform = '';
+  // });
+
   return () => {
     prevTabContent.style.transform = '';
 
@@ -80,10 +80,10 @@ function slideTabs(tabContent: HTMLElement, prevTabContent: HTMLElement, toRight
 }
 
 export const TransitionSlider = (
-  content: HTMLElement, 
-  type: 'tabs' | 'navigation' | 'zoom-fade' | 'slide-fade' | 'none'/*  | 'counter' */, 
-  transitionTime: number, 
-  onTransitionEnd?: (id: number) => void, 
+  content: HTMLElement,
+  type: 'tabs' | 'navigation' | 'zoom-fade' | 'slide-fade' | 'none'/*  | 'counter' */,
+  transitionTime: number,
+  onTransitionEnd?: (id: number) => void,
   isHeavy = true
 ) => {
   let animationFunction: TransitionFunction = null;
@@ -100,17 +100,17 @@ export const TransitionSlider = (
   }
 
   content.dataset.animation = type;
-  
+
   return Transition(content, animationFunction, transitionTime, onTransitionEnd, isHeavy);
 };
 
 type TransitionFunction = (tabContent: HTMLElement, prevTabContent: HTMLElement, toRight: boolean) => void | (() => void);
 
 const Transition = (
-  content: HTMLElement, 
-  animationFunction: TransitionFunction, 
-  transitionTime: number, 
-  onTransitionEnd?: (id: number) => void, 
+  content: HTMLElement,
+  animationFunction: TransitionFunction,
+  transitionTime: number,
+  onTransitionEnd?: (id: number) => void,
   isHeavy = true,
   once = false,
   withAnimationListener = true
@@ -125,40 +125,40 @@ const Transition = (
 
     const onEndEvent = (e: TransitionEvent | AnimationEvent) => {
       cancelEvent(e);
-  
+
       if((e.target as HTMLElement).parentElement !== content) {
         return;
       }
-      
-      //console.log('Transition: transitionend', /* content, */ e, selectTab.prevId, performance.now() - animationStarted);
-  
+
+      // console.log('Transition: transitionend', /* content, */ e, selectTab.prevId, performance.now() - animationStarted);
+
       const callback = onTransitionEndCallbacks.get(e.target as HTMLElement);
       if(callback) callback();
-  
+
       if(e.target !== from) {
         return;
       }
-  
+
       if(!animationDeferred && isHeavy) return;
-  
+
       if(animationDeferred) {
         animationDeferred.resolve();
         animationDeferred = undefined;
       }
-  
+
       if(onTransitionEnd) {
         onTransitionEnd(selectTab.prevId());
       }
-  
+
       content.classList.remove('animating', 'backwards', 'disable-hover');
-  
+
       if(once) {
         content.removeEventListener(listenerName, onEndEvent/* , {capture: false} */);
         from = animationDeferred = undefined;
         onTransitionEndCallbacks.clear();
       }
     };
-  
+
     // TODO: check for transition type (transform, etc) using by animationFunction
     content.addEventListener(listenerName, onEndEvent/* , {passive: true, capture: false} */);
   }
@@ -171,11 +171,11 @@ const Transition = (
     if(id instanceof HTMLElement) {
       id = whichChild(id);
     }
-    
+
     const prevId = selectTab.prevId();
     if(id === prevId) return false;
 
-    //console.log('selectTab id:', id);
+    // console.log('selectTab id:', id);
 
     const to = content.children[id] as HTMLElement;
 
@@ -234,7 +234,7 @@ const Transition = (
 
     let onTransitionEndCallback: ReturnType<TransitionFunction>;
     if(!to) {
-      //prevTabContent.classList.remove('active');
+      // prevTabContent.classList.remove('active');
     } else {
       if(animationFunction) {
         onTransitionEndCallback = animationFunction(to, from, toRight);
@@ -245,7 +245,7 @@ const Transition = (
       to.classList.remove('from');
       to.classList.add('to');
     }
-    
+
     if(to) {
       onTransitionEndCallbacks.set(to, () => {
         to.classList.remove('to');
@@ -280,17 +280,17 @@ const Transition = (
           animationDeferred = deferredPromise<void>();
           // animationStarted = performance.now();
         }
-  
+
         dispatchHeavyAnimationEvent(animationDeferred, transitionTime * 2);
       }
     }
-    
+
     from = to;
   }
 
-  //selectTab.prevId = -1;
+  // selectTab.prevId = -1;
   selectTab.prevId = () => from ? whichChild(from) : -1;
-  
+
   return selectTab;
 };
 

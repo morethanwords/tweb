@@ -4,16 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { MOUNT_CLASS_TO } from "../config/debug";
-import IS_OPUS_SUPPORTED from "../environment/opusSupport";
-import { IS_SAFARI } from "../environment/userAgent";
-import { Modify } from "../types";
-import { logger, LogTypes } from "./logger";
-import apiManagerProxy from "./mtproto/mtprotoworker";
-import type { ConvertWebPTask } from "./webp/webpWorkerController";
+import {MOUNT_CLASS_TO} from '../config/debug';
+import IS_OPUS_SUPPORTED from '../environment/opusSupport';
+import {IS_SAFARI} from '../environment/userAgent';
+import {Modify} from '../types';
+import {logger, LogTypes} from './logger';
+import apiManagerProxy from './mtproto/mtprotoworker';
+import type {ConvertWebPTask} from './webp/webpWorkerController';
 
 type Result = {
-  bytes: Uint8Array, 
+  bytes: Uint8Array,
   waveform?: Uint8Array
 };
 
@@ -62,17 +62,17 @@ export class OpusDecodeController {
     this.worker = new Worker('decoderWorker.min.js');
     this.worker.addEventListener('message', (e) => {
       const data = e.data;
-      
+
       this.log('[DECODER] got message', data);
       if(data.type === 'done') {
-        //this.log('[DECODER] send done to wav');
+        // this.log('[DECODER] send done to wav');
         this.wavWorker.postMessage({command: 'done'});
 
         if(data.waveform) {
           this.tasks[0].waveform = data.waveform;
         }
       } else { // e.data contains decoded buffers as float32 values
-        //this.log('[DECODER] send encode to wav');
+        // this.log('[DECODER] send encode to wav');
         this.wavWorker.postMessage({
           command: 'encode',
           buffers: e.data
@@ -113,7 +113,7 @@ export class OpusDecodeController {
       this.worker.terminate();
       this.worker = null;
     }
-    
+
     if(this.wavWorker) {
       this.wavWorker.terminate();
       this.wavWorker = null;
@@ -121,27 +121,27 @@ export class OpusDecodeController {
   }
 
   public executeNewTask(task: Task) {
-    this.worker.postMessage({ 
+    this.worker.postMessage({
       command: 'init',
       decoderSampleRate: this.sampleRate,
       outputBufferSampleRate: this.sampleRate
     });
 
-    this.wavWorker.postMessage({ 
+    this.wavWorker.postMessage({
       command: 'init',
       wavBitDepth: 16,
       wavSampleRate: this.sampleRate
     });
 
-    //console.log('sending command to worker:', task);
-    //setTimeout(() => {
-      this.log('[DECODER] send decode');
-      this.worker.postMessage({
-        command: 'decode',
-        pages: task.pages,
-        waveform: task.withWaveform
-      }, IS_SAFARI ? undefined : [task.pages.buffer]);
-    //}, 1e3);
+    // console.log('sending command to worker:', task);
+    // setTimeout(() => {
+    this.log('[DECODER] send decode');
+    this.worker.postMessage({
+      command: 'decode',
+      pages: task.pages,
+      waveform: task.withWaveform
+    }, IS_SAFARI ? undefined : [task.pages.buffer]);
+    // }, 1e3);
 
     task.timeout = window.setTimeout(() => {
       this.log.error('decode timeout'/* , task */);
@@ -176,7 +176,7 @@ export class OpusDecodeController {
 
   public async decode(typedArray: Uint8Array, withWaveform = false) {
     return this.pushDecodeTask(typedArray, withWaveform).then(async(result) => {
-      const dataBlob = new Blob([result.bytes], {type: "audio/wav"});
+      const dataBlob = new Blob([result.bytes], {type: 'audio/wav'});
       return {url: await apiManagerProxy.invoke('createObjectURL', dataBlob), waveform: result.waveform};
     });
   }

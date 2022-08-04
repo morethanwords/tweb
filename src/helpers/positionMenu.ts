@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import mediaSizes from "./mediaSizes";
+import mediaSizes from './mediaSizes';
 
 export type MenuPositionPadding = {
-  top?: number, 
-  right?: number, 
-  bottom?: number, 
+  top?: number,
+  right?: number,
+  bottom?: number,
   left?: number
 };
 
@@ -18,15 +18,15 @@ const PADDING_BOTTOM = PADDING_TOP;
 const PADDING_LEFT = 8;
 const PADDING_RIGHT = PADDING_LEFT;
 export default function positionMenu({pageX, pageY}: MouseEvent | Touch, elem: HTMLElement, side?: 'left' | 'right' | 'center', additionalPadding?: MenuPositionPadding) {
-  //let {clientX, clientY} = e;
+  // let {clientX, clientY} = e;
 
   // * side mean the OPEN side
 
   const getScrollWidthFromElement = (Array.from(elem.children) as HTMLElement[]).find((element) => element.classList.contains('btn-menu-item') && !element.classList.contains('hide')) || elem;
 
-  let {scrollWidth: menuWidth} = getScrollWidthFromElement;
-  let {scrollHeight: menuHeight} = elem;
-  //let {innerWidth: windowWidth, innerHeight: windowHeight} = window;
+  const {scrollWidth: menuWidth} = getScrollWidthFromElement;
+  const {scrollHeight: menuHeight} = elem;
+  // let {innerWidth: windowWidth, innerHeight: windowHeight} = window;
   const rect = document.body.getBoundingClientRect();
   const windowWidth = rect.width;
   const windowHeight = rect.height;
@@ -54,14 +54,14 @@ export default function positionMenu({pageX, pageY}: MouseEvent | Touch, elem: H
         right: Math.min(maxLeft, pageX - menuWidth)
       },
       intermediateX: side === 'right' ? minLeft : maxLeft,
-      //intermediateX: clientX < windowWidth / 2 ? PADDING_LEFT : windowWidth - menuWidth - PADDING_LEFT,
+      // intermediateX: clientX < windowWidth / 2 ? PADDING_LEFT : windowWidth - menuWidth - PADDING_LEFT,
       y: {
         top: pageY,
         bottom: pageY - menuHeight
       },
-      //intermediateY: verticalSide === 'top' ? paddingTop : windowHeight - menuHeight - paddingTop,
+      // intermediateY: verticalSide === 'top' ? paddingTop : windowHeight - menuHeight - paddingTop,
       // intermediateY: pageY < (windowHeight / 2) ? paddingTop : windowHeight - menuHeight - paddingBottom,
-      intermediateY: maxTop,
+      intermediateY: maxTop
     };
   };
 
@@ -94,7 +94,7 @@ export default function positionMenu({pageX, pageY}: MouseEvent | Touch, elem: H
     }
 
     const possibleSide = s.find((s) => possibleSides.x[s]); */
-    let left: number;
+    // let left: number;
     /* if(possibleSide) {
       left = x[possibleSide];
       side = possibleSide;
@@ -102,8 +102,8 @@ export default function positionMenu({pageX, pageY}: MouseEvent | Touch, elem: H
       left = sides.intermediateX;
       side = undefined;
     } */
-    left = possibleSides.x[side] ? sides.x[side] : (side = 'center', sides.intermediateX);
-  
+    const left = possibleSides.x[side] ? sides.x[side] : (side = 'center', sides.intermediateX);
+
     elem.style.left = left + 'px';
   }
 
@@ -117,16 +117,14 @@ export default function positionMenu({pageX, pageY}: MouseEvent | Touch, elem: H
   } */
 
   {
-    let top: number;
+    const top = possibleSides.y[verticalSide] ? sides.y[verticalSide] : (verticalSide = 'center', sides.intermediateY);
 
-    top = possibleSides.y[verticalSide] ? sides.y[verticalSide] : (verticalSide = 'center', sides.intermediateY);
-  
     elem.style.top = top + 'px';
   }
-  
+
   elem.className = elem.className.replace(/(top|center|bottom)-(left|center|right)/g, '');
   elem.classList.add(
-    //(verticalSide === 'center' ? verticalSide : (verticalSide === 'bottom' ? 'top' : 'bottom')) +
+    // (verticalSide === 'center' ? verticalSide : (verticalSide === 'bottom' ? 'top' : 'bottom')) +
     (verticalSide === 'center' ? verticalSide : 'bottom') +
     '-' +
     (side === 'center' ? side : (side === 'left' ? 'right' : 'left')));

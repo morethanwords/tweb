@@ -2,30 +2,30 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import filterUnique from "../../helpers/array/filterUnique";
-import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
-import deferredPromise, { CancellablePromise } from "../../helpers/cancellablePromise";
-import cleanSearchText from "../../helpers/cleanSearchText";
-import cleanUsername from "../../helpers/cleanUsername";
-import tsNow from "../../helpers/tsNow";
-import isObject from "../../helpers/object/isObject";
-import safeReplaceObject from "../../helpers/object/safeReplaceObject";
-import { isRestricted } from "../../helpers/restrictions";
-import { Chat, ContactsResolvedPeer, InputContact, InputGeoPoint, InputMedia, InputPeer, InputUser, User as MTUser, UserProfilePhoto, UserStatus } from "../../layer";
-import parseEntities from "../richTextProcessor/parseEntities";
-import wrapUrl from "../richTextProcessor/wrapUrl";
-import SearchIndex from "../searchIndex";
-import { AppManager } from "./manager";
-import getPeerId from "./utils/peers/getPeerId";
-import canSendToUser from "./utils/users/canSendToUser";
-import { AppStoragesManager } from "./appStoragesManager";
+import filterUnique from '../../helpers/array/filterUnique';
+import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
+import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
+import cleanSearchText from '../../helpers/cleanSearchText';
+import cleanUsername from '../../helpers/cleanUsername';
+import tsNow from '../../helpers/tsNow';
+import isObject from '../../helpers/object/isObject';
+import safeReplaceObject from '../../helpers/object/safeReplaceObject';
+import {isRestricted} from '../../helpers/restrictions';
+import {Chat, ContactsResolvedPeer, InputContact, InputGeoPoint, InputMedia, InputPeer, InputUser, User as MTUser, UserProfilePhoto, UserStatus} from '../../layer';
+import parseEntities from '../richTextProcessor/parseEntities';
+import wrapUrl from '../richTextProcessor/wrapUrl';
+import SearchIndex from '../searchIndex';
+import {AppManager} from './manager';
+import getPeerId from './utils/peers/getPeerId';
+import canSendToUser from './utils/users/canSendToUser';
+import {AppStoragesManager} from './appStoragesManager';
 
 export type User = MTUser.user;
 export type TopPeerType = 'correspondents' | 'bots_inline';
@@ -33,14 +33,14 @@ export type MyTopPeer = {id: PeerId, rating: number};
 
 export class AppUsersManager extends AppManager {
   private storage: AppStoragesManager['storages']['users'];
-  
+
   private users: {[userId: UserId]: User};
   private usernames: {[username: string]: UserId};
   private contactsIndex: SearchIndex<UserId>;
   private contactsFillPromise: CancellablePromise<AppUsersManager['contactsList']>;
   private contactsList: Set<UserId>;
   private updatedContactsList: boolean;
-  
+
   private getTopPeersPromises: {[type in TopPeerType]?: Promise<MyTopPeer[]>};
 
   protected after() {
@@ -66,10 +66,10 @@ export class AppUsersManager extends AppManager {
             }
           }
 
-          //user.sortStatus = this.getUserStatusForSort(user.status);
+          // user.sortStatus = this.getUserStatusForSort(user.status);
           this.rootScope.dispatchEvent('user_update', userId);
           this.setUserToStateIfNeeded(user);
-        } //////else console.warn('No user by id:', userId);
+        } // ////else console.warn('No user by id:', userId);
       },
 
       updateUserPhoto: (update) => {
@@ -100,9 +100,9 @@ export class AppUsersManager extends AppManager {
         const user = this.users[userId];
         if(user) {
           this.forceUserOnline(userId);
-          
+
           this.saveApiUser({
-            ...user, 
+            ...user,
             first_name: update.first_name,
             last_name: update.last_name,
             username: update.username
@@ -125,7 +125,7 @@ export class AppUsersManager extends AppManager {
       this.appStoragesManager.loadStorage('users')
     ]).then(([state, {results: users, storage}]) => {
       this.storage = storage;
-      
+
       if(users.length) {
         for(let i = 0, length = users.length; i < length; ++i) {
           const user = users[i];
@@ -168,7 +168,7 @@ export class AppUsersManager extends AppManager {
         if(!this.appPeersManager.isUser(peerId)) {
           return;
         }
-        
+
         const userId = peerId.toUserId();
         if(!this.storage.getFromCache(userId)) {
           this.storage.set({
@@ -210,7 +210,7 @@ export class AppUsersManager extends AppManager {
       this.users = {};
       this.usernames = {};
     }
-    
+
     this.getTopPeersPromises = {};
     this.contactsIndex = this.createSearchIndex();
     this.contactsFillPromise = undefined;
@@ -275,7 +275,7 @@ export class AppUsersManager extends AppManager {
     this.apiManager.invokeApi('contacts.getContacts').then((result) => {
       if(result._ === 'contacts.contacts') {
         this.contactsList.clear();
-      
+
         this.saveApiUsers(result.users);
 
         result.contacts.forEach((contact) => {
@@ -394,8 +394,8 @@ export class AppUsersManager extends AppManager {
   }
 
   public getContactsPeerIds(
-    query?: Parameters<AppUsersManager['getContacts']>[0], 
-    includeSaved?: Parameters<AppUsersManager['getContacts']>[1], 
+    query?: Parameters<AppUsersManager['getContacts']>[0],
+    includeSaved?: Parameters<AppUsersManager['getContacts']>[1],
     sortBy?: Parameters<AppUsersManager['getContacts']>[2]
   ) {
     return this.getContacts(query, includeSaved, sortBy).then((userIds) => {
@@ -480,10 +480,10 @@ export class AppUsersManager extends AppManager {
 
     this.setUserNameToCache(user, oldUser);
 
-    if(!oldUser 
-      || oldUser.sortName === undefined 
-      || oldUser.first_name !== user.first_name 
-      || oldUser.last_name !== user.last_name) {
+    if(!oldUser ||
+      oldUser.sortName === undefined ||
+      oldUser.first_name !== user.first_name ||
+      oldUser.last_name !== user.last_name) {
       const fullName = user.first_name + (user.last_name ? ' ' + user.last_name : '');
 
       user.sortName = user.pFlags.deleted ? '' : cleanSearchText(fullName, false);
@@ -501,26 +501,26 @@ export class AppUsersManager extends AppManager {
       }
     }
 
-    //user.sortStatus = user.pFlags.bot ? -1 : this.getUserStatusForSort(user.status);
+    // user.sortStatus = user.pFlags.bot ? -1 : this.getUserStatusForSort(user.status);
 
     if(oldUser === undefined) {
       this.users[userId] = user;
     } else {
-      const changedTitle = user.first_name !== oldUser.first_name 
-        || user.last_name !== oldUser.last_name 
-        || user.username !== oldUser.username;
+      const changedTitle = user.first_name !== oldUser.first_name ||
+        user.last_name !== oldUser.last_name ||
+        user.username !== oldUser.username;
 
       const oldPhotoId = (oldUser.photo as UserProfilePhoto.userProfilePhoto)?.photo_id;
       const newPhotoId = (user.photo as UserProfilePhoto.userProfilePhoto)?.photo_id;
       const changedPhoto = oldPhotoId !== newPhotoId;
 
-      const changedAnyBadge = oldUser.pFlags.premium !== user.pFlags.premium || 
-        oldUser.pFlags.verified !== user.pFlags.verified || 
-        oldUser.pFlags.scam !== user.pFlags.scam || 
+      const changedAnyBadge = oldUser.pFlags.premium !== user.pFlags.premium ||
+        oldUser.pFlags.verified !== user.pFlags.verified ||
+        oldUser.pFlags.scam !== user.pFlags.scam ||
         oldUser.pFlags.fake !== user.pFlags.fake;
 
       /* if(user.pFlags.bot && user.bot_info_version !== oldUser.bot_info_version) {
-        
+
       } */
 
       const wasContact = !!oldUser.pFlags.contact;
@@ -536,7 +536,7 @@ export class AppUsersManager extends AppManager {
       if(changedPhoto) {
         this.rootScope.dispatchEvent('avatar_update', user.id.toPeerId());
       }
-      
+
       if(changedTitle || changedAnyBadge) {
         this.rootScope.dispatchEvent('peer_title_edit', user.id.toPeerId());
       }
@@ -619,7 +619,7 @@ export class AppUsersManager extends AppManager {
   public isContact(id: UserId) {
     return this.contactsList.has(id) || !!(this.users[id] && this.users[id].pFlags.contact);
   }
-  
+
   public isRegularUser(id: UserId) {
     const user = this.users[id];
     return user && !this.isBot(id) && !user.pFlags.deleted && !user.pFlags.support;
@@ -727,13 +727,12 @@ export class AppUsersManager extends AppManager {
       user.status._ !== 'userStatusEmpty' &&
       !user.pFlags.support &&
       !user.pFlags.deleted) {
-
       user.status = {
         _: 'userStatusOnline',
         expires: timestamp + onlineTimeFor
       };
-      
-      //user.sortStatus = this.getUserStatusForSort(user.status);
+
+      // user.sortStatus = this.getUserStatusForSort(user.status);
       this.rootScope.dispatchEvent('user_update', id);
 
       this.setUserToStateIfNeeded(user);
@@ -802,7 +801,7 @@ export class AppUsersManager extends AppManager {
       }).then((result) => {
         let topPeers: MyTopPeer[] = [];
         if(result._ === 'contacts.topPeers') {
-          //console.log(result);
+          // console.log(result);
           this.saveApiUsers(result.users);
           this.appChatsManager.saveApiChats(result.chats);
 
@@ -814,13 +813,13 @@ export class AppUsersManager extends AppManager {
             });
           }
         }
-  
+
         state.topPeersCache[type] = {
           peers: topPeers,
           cachedTime: Date.now()
         };
         this.appStateManager.pushToState('topPeersCache', state.topPeersCache);
-  
+
         return topPeers;
       });
     });
@@ -839,7 +838,7 @@ export class AppUsersManager extends AppManager {
   }
 
   public getLocated(
-    lat: number, 
+    lat: number,
     long: number,
     accuracy_radius: number,
     background: boolean = false,
@@ -853,7 +852,7 @@ export class AppUsersManager extends AppManager {
     };
 
     return this.apiManager.invokeApi('contacts.getLocated', {
-      geo_point, 
+      geo_point,
       background
     }).then((updates) => {
       this.apiUpdatesManager.processUpdateMessage(updates);
@@ -952,7 +951,7 @@ export class AppUsersManager extends AppManager {
       };
 
       user.status = status;
-      //user.sortStatus = this.getUserStatusForSort(user.status);
+      // user.sortStatus = this.getUserStatusForSort(user.status);
       this.rootScope.dispatchEvent('user_update', userId);
 
       this.setUserToStateIfNeeded(user);

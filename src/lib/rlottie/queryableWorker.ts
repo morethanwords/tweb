@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { IS_SAFARI } from "../../environment/userAgent";
-import EventListenerBase from "../../helpers/eventListenerBase";
+import {IS_SAFARI} from '../../environment/userAgent';
+import EventListenerBase from '../../helpers/eventListenerBase';
 
 export default class QueryableWorker extends EventListenerBase<{
   ready: () => void,
@@ -23,7 +23,7 @@ export default class QueryableWorker extends EventListenerBase<{
         this.cleanup();
         this.terminate();
       } catch(err) {
-        
+
       }
     };
 
@@ -52,13 +52,13 @@ export default class QueryableWorker extends EventListenerBase<{
         if(arg instanceof ArrayBuffer) {
           transfer.push(arg);
         }
-  
+
         if(typeof(arg) === 'object' && arg.buffer instanceof ArrayBuffer) {
           transfer.push(arg.buffer);
         }
       });
-  
-      //console.log('transfer', transfer);
+
+      // console.log('transfer', transfer);
       this.worker.postMessage({
         queryMethod: queryMethod,
         queryMethodArguments: args

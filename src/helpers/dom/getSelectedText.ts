@@ -12,6 +12,6 @@ export default function getSelectedText(): string {
     // @ts-ignore
     return document.selection.createRange().text;
   }
-  
+
   return '';
 }

@@ -2,21 +2,21 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import { Database } from "../config/databases";
-import { MOUNT_CLASS_TO } from "../config/debug";
-//import DATABASE_SESSION from "../config/databases/session";
-import deferredPromise, { CancellablePromise } from "../helpers/cancellablePromise";
-import { IS_WORKER } from "../helpers/context";
-import throttle from "../helpers/schedulers/throttle";
-//import { WorkerTaskTemplate } from "../types";
-import IDBStorage from "./files/idb";
+import {Database} from '../config/databases';
+import {MOUNT_CLASS_TO} from '../config/debug';
+// import DATABASE_SESSION from "../config/databases/session";
+import deferredPromise, {CancellablePromise} from '../helpers/cancellablePromise';
+import {IS_WORKER} from '../helpers/context';
+import throttle from '../helpers/schedulers/throttle';
+// import { WorkerTaskTemplate } from "../types";
+import IDBStorage from './files/idb';
 
 function noop() {}
 
@@ -41,13 +41,13 @@ const THROTTLE_TIME = 16;
 
 /* Storage extends {[name: string]: any} *//* Storage extends Record<string, any> */
 export default class AppStorage<
-  Storage extends Record<string, any>, 
+  Storage extends Record<string, any>,
   T extends Database<any>
 > {
   private static STORAGES: AppStorage<any, Database<any>>[] = [];
-  private storage: IDBStorage<T>;//new CacheStorageController('session');
+  private storage: IDBStorage<T>;// new CacheStorageController('session');
 
-  //private cache: Partial<{[key: string]: Storage[typeof key]}> = {};
+  // private cache: Partial<{[key: string]: Storage[typeof key]}> = {};
   private cache: Partial<Storage> = {};
   private useStorage: boolean;
   private savingFreezed: boolean;
@@ -87,13 +87,13 @@ export default class AppStorage<
 
         const values = keys.map((key) => this.cache[key]);
         try {
-          //console.log('setItem: will set', key/* , value */);
-          //await this.cacheStorage.delete(key); // * try to prevent memory leak in Chrome leading to 'Unexpected internal error.'
-          //await this.storage.save(key, new Response(value, {headers: {'Content-Type': 'application/json'}}));
+          // console.log('setItem: will set', key/* , value */);
+          // await this.cacheStorage.delete(key); // * try to prevent memory leak in Chrome leading to 'Unexpected internal error.'
+          // await this.storage.save(key, new Response(value, {headers: {'Content-Type': 'application/json'}}));
 
           /* if(db === DATABASE_SESSION && !('localStorage' in self)) { // * support legacy Webogram's localStorage
             self.postMessage({
-              type: 'localStorageProxy', 
+              type: 'localStorageProxy',
               payload: {
                 type: 'set',
                 keys,
@@ -103,9 +103,9 @@ export default class AppStorage<
           } */
 
           await this.storage.save(keys, values);
-          //console.log('setItem: have set', key/* , value */);
+          // console.log('setItem: have set', key/* , value */);
         } catch(e) {
-          //this.useCS = false;
+          // this.useCS = false;
           console.error('[AS]: set error:', e, keys, values);
         }
       }
@@ -129,7 +129,7 @@ export default class AppStorage<
         try {
           /* if(db === DATABASE_SESSION && !('localStorage' in self)) { // * support legacy Webogram's localStorage
             self.postMessage({
-              type: 'localStorageProxy', 
+              type: 'localStorageProxy',
               payload: {
                 type: 'delete',
                 keys
@@ -177,7 +177,7 @@ export default class AppStorage<
           const key = keys[i];
           const deferred = this.getPromises.get(key);
           if(deferred) {
-            //deferred.reject(error);
+            // deferred.reject(error);
             deferred.resolve(undefined);
             this.getPromises.delete(key);
           }
@@ -229,7 +229,7 @@ export default class AppStorage<
   }
 
   public set(obj: Partial<Storage>, onlyLocal = false) {
-    //console.log('storageSetValue', obj, callback, arguments);
+    // console.log('storageSetValue', obj, callback, arguments);
 
     const canUseStorage = this.useStorage && !onlyLocal && !this.savingFreezed;
     for(const key in obj) {
@@ -246,7 +246,7 @@ export default class AppStorage<
         //     console.warn('LocalStorage set: stringify time by JSON.stringify:', elapsedTime, key);
         //   }
         // }
-        
+
         /* perf = performance.now();
         value = stringify(value);
         console.log('LocalStorage set: stringify time by own stringify:', performance.now() - perf); */
@@ -273,7 +273,7 @@ export default class AppStorage<
     if(!saveLocal) {
       delete this.cache[key];
     }
-    
+
     if(this.useStorage) {
       this.keysToSet.delete(key);
       this.keysToDelete.add(key);
@@ -296,7 +296,7 @@ export default class AppStorage<
   public static toggleStorage(enabled: boolean, clearWrite: boolean) {
     return Promise.all(this.STORAGES.map((storage) => {
       storage.useStorage = enabled;
-      
+
       if(!IS_WORKER || !clearWrite) {
         return;
       }

@@ -2,23 +2,23 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import App from "../../config/app";
-import { MOUNT_CLASS_TO } from "../../config/debug";
-import tabId from "../../config/tabId";
-import IS_SHARED_WORKER_SUPPORTED from "../../environment/sharedWorkerSupport";
-import EventListenerBase from "../../helpers/eventListenerBase";
-import idleController from "../../helpers/idleController";
-import { logger } from "../logger";
-import rootScope from "../rootScope";
-import sessionStorage from "../sessionStorage";
-import apiManagerProxy from "./mtprotoworker";
+import App from '../../config/app';
+import {MOUNT_CLASS_TO} from '../../config/debug';
+import tabId from '../../config/tabId';
+import IS_SHARED_WORKER_SUPPORTED from '../../environment/sharedWorkerSupport';
+import EventListenerBase from '../../helpers/eventListenerBase';
+import idleController from '../../helpers/idleController';
+import {logger} from '../logger';
+import rootScope from '../rootScope';
+import sessionStorage from '../sessionStorage';
+import apiManagerProxy from './mtprotoworker';
 
 export type AppInstance = {
   id: number,
@@ -28,7 +28,7 @@ export type AppInstance = {
 
 export type InstanceDeactivateReason = 'version' | 'tabs';
 
-const CHECK_INSTANCE_INTERVAL = 5000; 
+const CHECK_INSTANCE_INTERVAL = 5000;
 const DEACTIVATE_TIMEOUT = 30000;
 const MULTIPLE_TABS_THRESHOLD = 20000;
 const IS_MULTIPLE_TABS_SUPPORTED = IS_SHARED_WORKER_SUPPORTED;
@@ -115,11 +115,11 @@ export class SingleInstance extends EventListenerBase<{
     if(this.deactivated) {
       return;
     }
-    
+
     const time = Date.now();
     const newInstance: AppInstance = {
-      id: this.instanceId, 
-      idle, 
+      id: this.instanceId,
+      idle,
       time
     };
 
@@ -138,7 +138,7 @@ export class SingleInstance extends EventListenerBase<{
       sessionStorage.set({xt_instance: newInstance});
       return;
     }
-    
+
     // this.log('check instance', newInstance, curInstance)
     if(!idle ||
         !curInstance ||

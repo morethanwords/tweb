@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { Awaited } from '../types';
+import {Awaited} from '../types';
 
 export default function callbackify<T extends Awaited<any>, R>(
-  smth: T, 
+  smth: T,
   callback: (result: Awaited<T>) => R
 ): R {
   if(smth instanceof Promise) {

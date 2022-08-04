@@ -4,66 +4,66 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appImManager from "../../lib/appManagers/appImManager";
-import rootScope from "../../lib/rootScope";
-import { SearchGroup } from "../appSearch";
-import "../avatar";
-import Scrollable, { ScrollableX } from "../scrollable";
-import InputSearch from "../inputSearch";
-import SidebarSlider from "../slider";
-import { TransitionSlider } from "../transition";
-import AppNewGroupTab from "./tabs/newGroup";
-import AppSearchSuper from "../appSearchSuper.";
-import { DateData, fillTipDates } from "../../helpers/date";
-import { MOUNT_CLASS_TO } from "../../config/debug";
-import AppSettingsTab from "./tabs/settings";
-import AppNewChannelTab from "./tabs/newChannel";
-import AppContactsTab from "./tabs/contacts";
-import AppArchivedTab from "./tabs/archivedTab";
-import AppAddMembersTab from "./tabs/addMembers";
-import I18n, { FormatterArguments, i18n, i18n_, LangPackKey } from "../../lib/langPack";
-import AppPeopleNearbyTab from "./tabs/peopleNearby";
-import { ButtonMenuItemOptions } from "../buttonMenu";
-import CheckboxField from "../checkboxField";
-import { IS_MOBILE_SAFARI } from "../../environment/userAgent";
-import appNavigationController, { NavigationItem } from "../appNavigationController";
-import findUpClassName from "../../helpers/dom/findUpClassName";
-import findUpTag from "../../helpers/dom/findUpTag";
-import PeerTitle from "../peerTitle";
-import App from "../../config/app";
-import ButtonMenuToggle from "../buttonMenuToggle";
-import replaceContent from "../../helpers/dom/replaceContent";
-import sessionStorage from "../../lib/sessionStorage";
-import { attachClickEvent, CLICK_EVENT_NAME } from "../../helpers/dom/clickEvent";
-import ButtonIcon from "../buttonIcon";
-import confirmationPopup from "../confirmationPopup";
-import IS_GEOLOCATION_SUPPORTED from "../../environment/geolocationSupport";
-import type SortedUserList from "../sortedUserList";
-import Button, { ButtonOptions } from "../button";
-import noop from "../../helpers/noop";
-import ripple from "../ripple";
-import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
-import formatNumber from "../../helpers/number/formatNumber";
-import AvatarElement from "../avatar";
-import { AppManagers } from "../../lib/appManagers/managers";
-import themeController from "../../helpers/themeController";
-import contextMenuController from "../../helpers/contextMenuController";
-import { DIALOG_LIST_ELEMENT_TAG } from "../../lib/appManagers/appDialogsManager";
-import apiManagerProxy from "../../lib/mtproto/mtprotoworker";
+import appImManager from '../../lib/appManagers/appImManager';
+import rootScope from '../../lib/rootScope';
+import {SearchGroup} from '../appSearch';
+import '../avatar';
+import Scrollable, {ScrollableX} from '../scrollable';
+import InputSearch from '../inputSearch';
+import SidebarSlider from '../slider';
+import {TransitionSlider} from '../transition';
+import AppNewGroupTab from './tabs/newGroup';
+import AppSearchSuper from '../appSearchSuper.';
+import {DateData, fillTipDates} from '../../helpers/date';
+import {MOUNT_CLASS_TO} from '../../config/debug';
+import AppSettingsTab from './tabs/settings';
+import AppNewChannelTab from './tabs/newChannel';
+import AppContactsTab from './tabs/contacts';
+import AppArchivedTab from './tabs/archivedTab';
+import AppAddMembersTab from './tabs/addMembers';
+import I18n, {FormatterArguments, i18n, i18n_, LangPackKey} from '../../lib/langPack';
+import AppPeopleNearbyTab from './tabs/peopleNearby';
+import {ButtonMenuItemOptions} from '../buttonMenu';
+import CheckboxField from '../checkboxField';
+import {IS_MOBILE_SAFARI} from '../../environment/userAgent';
+import appNavigationController, {NavigationItem} from '../appNavigationController';
+import findUpClassName from '../../helpers/dom/findUpClassName';
+import findUpTag from '../../helpers/dom/findUpTag';
+import PeerTitle from '../peerTitle';
+import App from '../../config/app';
+import ButtonMenuToggle from '../buttonMenuToggle';
+import replaceContent from '../../helpers/dom/replaceContent';
+import sessionStorage from '../../lib/sessionStorage';
+import {attachClickEvent, CLICK_EVENT_NAME} from '../../helpers/dom/clickEvent';
+import ButtonIcon from '../buttonIcon';
+import confirmationPopup from '../confirmationPopup';
+import IS_GEOLOCATION_SUPPORTED from '../../environment/geolocationSupport';
+import type SortedUserList from '../sortedUserList';
+import Button, {ButtonOptions} from '../button';
+import noop from '../../helpers/noop';
+import ripple from '../ripple';
+import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
+import formatNumber from '../../helpers/number/formatNumber';
+import AvatarElement from '../avatar';
+import {AppManagers} from '../../lib/appManagers/managers';
+import themeController from '../../helpers/themeController';
+import contextMenuController from '../../helpers/contextMenuController';
+import {DIALOG_LIST_ELEMENT_TAG} from '../../lib/appManagers/appDialogsManager';
+import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
 export class AppSidebarLeft extends SidebarSlider {
   private toolsBtn: HTMLElement;
   private backBtn: HTMLButtonElement;
-  //private searchInput = document.getElementById('global-search') as HTMLInputElement;
+  // private searchInput = document.getElementById('global-search') as HTMLInputElement;
   private inputSearch: InputSearch;
-  
+
   public archivedCount: HTMLSpanElement;
 
   private newBtnMenu: HTMLElement;
 
-  //private log = logger('SL');
+  // private log = logger('SL');
 
   private searchGroups: {[k in 'contacts' | 'globalContacts' | 'messages' | 'people' | 'recent']: SearchGroup} = {} as any;
   private searchSuper: AppSearchSuper;
@@ -80,7 +80,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
   construct(managers: AppManagers) {
     this.managers = managers;
-    //this._selectTab(0); // make first tab as default
+    // this._selectTab(0); // make first tab as default
 
     this.inputSearch = new InputSearch('Search');
     const sidebarHeader = this.sidebarEl.querySelector('.item-main .sidebar-header');
@@ -102,7 +102,7 @@ export class AppSidebarLeft extends SidebarSlider {
       this.createTab(AppContactsTab).open();
     };
 
-    //this.toolsBtn = this.sidebarEl.querySelector('.sidebar-tools-button') as HTMLButtonElement;
+    // this.toolsBtn = this.sidebarEl.querySelector('.sidebar-tools-button') as HTMLButtonElement;
     this.backBtn = this.sidebarEl.querySelector('.sidebar-back-button') as HTMLButtonElement;
 
     const btnArchive: typeof menuButtons[0] = {
@@ -160,19 +160,19 @@ export class AppSidebarLeft extends SidebarSlider {
       icon: 'darkmode',
       text: 'DarkMode',
       onClick: () => {
-        
+
       },
       checkboxField: themeCheckboxField
     }, {
       icon: 'animations',
       text: 'Animations',
       onClick: () => {
-        
+
       },
       checkboxField: new CheckboxField({
-        toggle: true, 
+        toggle: true,
         checked: true,
-        stateKey: 'settings.animationsEnabled',
+        stateKey: 'settings.animationsEnabled'
       })
     }, {
       icon: 'help',
@@ -245,7 +245,7 @@ export class AppSidebarLeft extends SidebarSlider {
     const t = document.createElement('span');
     t.classList.add('btn-menu-footer-text');
     t.innerHTML = 'Telegram Web' + App.suffix + ' '/* ' alpha ' */ + App.versionFull;
-    btnMenuFooter.append(t); 
+    btnMenuFooter.append(t);
     btnMenu.classList.add('has-footer');
     btnMenu.append(btnMenuFooter);
 
@@ -285,10 +285,10 @@ export class AppSidebarLeft extends SidebarSlider {
       if(this.updateBtn.classList.contains('is-hidden')) {
         return;
       }
-      
+
       location.reload();
     });
-    
+
     sidebarHeader.nextElementSibling.append(this.updateBtn);
 
     // setTimeout(() => {
@@ -300,7 +300,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     this.inputSearch.input.addEventListener('focus', () => this.initSearch(), {once: true});
 
-    //parseMenuButtonsTo(this.newButtons, this.newBtnMenu.firstElementChild.children);
+    // parseMenuButtonsTo(this.newButtons, this.newBtnMenu.firstElementChild.children);
 
     this.archivedCount = document.createElement('span');
     this.archivedCount.className = 'archived-count badge badge-24 badge-gray';
@@ -358,9 +358,9 @@ export class AppSidebarLeft extends SidebarSlider {
     const scrollable = new Scrollable(searchContainer);
 
     const close = () => {
-      //setTimeout(() => {
-        this.backBtn.click();
-      //}, 0);
+      // setTimeout(() => {
+      this.backBtn.click();
+      // }, 0);
     };
 
     this.searchGroups = {
@@ -396,9 +396,9 @@ export class AppSidebarLeft extends SidebarSlider {
         inputFilter: 'inputMessagesFilterRoundVoice',
         name: 'SharedVoiceTab2',
         type: 'voice'
-      }], 
-      scrollable, 
-      searchGroups: this.searchGroups, 
+      }],
+      scrollable,
+      searchGroups: this.searchGroups,
       asChatList: true,
       hideEmptyTabs: false,
       showSender: true,
@@ -410,21 +410,21 @@ export class AppSidebarLeft extends SidebarSlider {
 
     const resetSearch = () => {
       searchSuper.setQuery({
-        peerId: ''.toPeerId(), 
+        peerId: ''.toPeerId(),
         folderId: 0
       });
       searchSuper.selectTab(0);
-      searchSuper.load(true); 
+      searchSuper.load(true);
     };
 
     resetSearch();
 
-    let pickedElements: HTMLElement[] = [];
+    const pickedElements: HTMLElement[] = [];
     let selectedPeerId: PeerId = ''.toPeerId();
     let selectedMinDate = 0;
     let selectedMaxDate = 0;
     const updatePicked = () => {
-      //(this.inputSearch.input as HTMLInputElement).placeholder = pickedElements.length ? 'Search' : 'Telegram Search';
+      // (this.inputSearch.input as HTMLInputElement).placeholder = pickedElements.length ? 'Search' : 'Telegram Search';
       this.inputSearch.container.classList.toggle('is-picked-twice', pickedElements.length === 2);
       this.inputSearch.container.classList.toggle('is-picked', !!pickedElements.length);
 
@@ -504,7 +504,7 @@ export class AppSidebarLeft extends SidebarSlider {
       } else {
         selectedPeerId = ''.toPeerId();
       }
-      
+
       target.remove();
       indexOfAndSplice(pickedElements, target);
 
@@ -523,7 +523,7 @@ export class AppSidebarLeft extends SidebarSlider {
     this.inputSearch.onChange = (value) => {
       searchSuper.cleanupHTML();
       searchSuper.setQuery({
-        peerId: selectedPeerId, 
+        peerId: selectedPeerId,
         folderId: selectedPeerId ? undefined : 0,
         query: value,
         minDate: selectedMinDate,
@@ -535,7 +535,7 @@ export class AppSidebarLeft extends SidebarSlider {
       searchSuper.nav.classList.remove('hide');
       if(!value) {
       }
-      
+
       if(!selectedPeerId && value.trim()) {
         const middleware = searchSuper.middleware.get();
         Promise.all([
@@ -545,16 +545,16 @@ export class AppSidebarLeft extends SidebarSlider {
         ]).then((results) => {
           if(!middleware()) return;
           const peerIds = new Set(results[0].concat(results[1]));
-  
+
           peerIds.forEach((peerId) => {
             helper.append(renderEntity(peerId));
           });
-  
+
           searchSuper.nav.classList.toggle('hide', !!helper.innerHTML);
-          //console.log('got peerIds by value:', value, [...peerIds]);
+          // console.log('got peerIds by value:', value, [...peerIds]);
         });
       }
-      
+
       if(!selectedMinDate && value.trim()) {
         const dates: DateData[] = [];
         fillTipDates(value, dates);
@@ -581,15 +581,15 @@ export class AppSidebarLeft extends SidebarSlider {
       this.managers.appUsersManager.pushRecentSearch(peerId);
     }, {capture: true});
 
-    let peopleContainer = document.createElement('div');
+    const peopleContainer = document.createElement('div');
     peopleContainer.classList.add('search-group-scrollable');
     peopleContainer.append(this.searchGroups.people.list);
     this.searchGroups.people.container.append(peopleContainer);
-    let peopleScrollable = new ScrollableX(peopleContainer);
+    const peopleScrollable = new ScrollableX(peopleContainer);
 
     let first = true;
     let hideNewBtnMenuTimeout: number;
-    //const transition = Transition.bind(null, searchContainer.parentElement, 150);
+    // const transition = Transition.bind(null, searchContainer.parentElement, 150);
     const transition = TransitionSlider(searchContainer.parentElement, 'zoom-fade', 150, (id) => {
       if(hideNewBtnMenuTimeout) clearTimeout(hideNewBtnMenuTimeout);
 
@@ -661,7 +661,7 @@ export class AppSidebarLeft extends SidebarSlider {
 }
 
 export type SettingSectionOptions = {
-  name?: LangPackKey, 
+  name?: LangPackKey,
   nameArgs?: FormatterArguments,
   caption?: LangPackKey | true,
   captionArgs?: FormatterArguments,

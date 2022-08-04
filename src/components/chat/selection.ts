@@ -4,47 +4,47 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { AppMessagesManager, MessagesStorageKey } from "../../lib/appManagers/appMessagesManager";
-import type ChatBubbles from "./bubbles";
-import type ChatInput from "./input";
-import type Chat from "./chat";
-import IS_TOUCH_SUPPORTED from "../../environment/touchSupport";
-import Button from "../button";
-import ButtonIcon from "../buttonIcon";
-import CheckboxField from "../checkboxField";
-import PopupDeleteMessages from "../popups/deleteMessages";
-import PopupForward from "../popups/forward";
-import { toast } from "../toast";
-import SetTransition from "../singleTransition";
-import ListenerSetter from "../../helpers/listenerSetter";
-import PopupSendNow from "../popups/sendNow";
-import appNavigationController, { NavigationItem } from "../appNavigationController";
-import { IS_MOBILE_SAFARI } from "../../environment/userAgent";
-import I18n, { i18n, _i18n } from "../../lib/langPack";
-import findUpClassName from "../../helpers/dom/findUpClassName";
-import blurActiveElement from "../../helpers/dom/blurActiveElement";
-import cancelEvent from "../../helpers/dom/cancelEvent";
-import cancelSelection from "../../helpers/dom/cancelSelection";
-import getSelectedText from "../../helpers/dom/getSelectedText";
-import rootScope from "../../lib/rootScope";
-import replaceContent from "../../helpers/dom/replaceContent";
-import AppSearchSuper from "../appSearchSuper.";
-import isInDOM from "../../helpers/dom/isInDOM";
-import { randomLong } from "../../helpers/random";
-import { attachClickEvent, AttachClickOptions } from "../../helpers/dom/clickEvent";
-import findUpAsChild from "../../helpers/dom/findUpAsChild";
-import EventListenerBase from "../../helpers/eventListenerBase";
-import safeAssign from "../../helpers/object/safeAssign";
-import { AppManagers } from "../../lib/appManagers/managers";
-import { attachContextMenuListener } from "../../helpers/dom/attachContextMenuListener";
-import filterUnique from "../../helpers/array/filterUnique";
-import appImManager from "../../lib/appManagers/appImManager";
+import type {AppMessagesManager, MessagesStorageKey} from '../../lib/appManagers/appMessagesManager';
+import type ChatBubbles from './bubbles';
+import type ChatInput from './input';
+import type Chat from './chat';
+import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
+import Button from '../button';
+import ButtonIcon from '../buttonIcon';
+import CheckboxField from '../checkboxField';
+import PopupDeleteMessages from '../popups/deleteMessages';
+import PopupForward from '../popups/forward';
+import {toast} from '../toast';
+import SetTransition from '../singleTransition';
+import ListenerSetter from '../../helpers/listenerSetter';
+import PopupSendNow from '../popups/sendNow';
+import appNavigationController, {NavigationItem} from '../appNavigationController';
+import {IS_MOBILE_SAFARI} from '../../environment/userAgent';
+import I18n, {i18n, _i18n} from '../../lib/langPack';
+import findUpClassName from '../../helpers/dom/findUpClassName';
+import blurActiveElement from '../../helpers/dom/blurActiveElement';
+import cancelEvent from '../../helpers/dom/cancelEvent';
+import cancelSelection from '../../helpers/dom/cancelSelection';
+import getSelectedText from '../../helpers/dom/getSelectedText';
+import rootScope from '../../lib/rootScope';
+import replaceContent from '../../helpers/dom/replaceContent';
+import AppSearchSuper from '../appSearchSuper.';
+import isInDOM from '../../helpers/dom/isInDOM';
+import {randomLong} from '../../helpers/random';
+import {attachClickEvent, AttachClickOptions} from '../../helpers/dom/clickEvent';
+import findUpAsChild from '../../helpers/dom/findUpAsChild';
+import EventListenerBase from '../../helpers/eventListenerBase';
+import safeAssign from '../../helpers/object/safeAssign';
+import {AppManagers} from '../../lib/appManagers/managers';
+import {attachContextMenuListener} from '../../helpers/dom/attachContextMenuListener';
+import filterUnique from '../../helpers/array/filterUnique';
+import appImManager from '../../lib/appManagers/appImManager';
 
 const accumulateMapSet = (map: Map<any, Set<number>>) => {
   return [...map.values()].reduce((acc, v) => acc + v.size, 0);
 };
 
-//const MIN_CLICK_MOVE = 32; // minimum bubble height
+// const MIN_CLICK_MOVE = 32; // minimum bubble height
 
 class AppSelection extends EventListenerBase<{
   toggle: (isSelecting: boolean) => void
@@ -122,11 +122,11 @@ class AppSelection extends EventListenerBase<{
           cancelEvent(e); // ! this one will fix propagation to document loader button, etc
           document.body.classList.remove('no-select');
 
-          //this.chat.bubbles.onBubblesClick(e);
+          // this.chat.bubbles.onBubblesClick(e);
         }, {once: true, capture: true});
 
         cancelSelection();
-        //cancelEvent(e as any);
+        // cancelEvent(e as any);
         const element = this.getElementFromTarget(e.target as HTMLElement);
         if(element) {
           this.toggleByElement(element);
@@ -140,7 +140,7 @@ class AppSelection extends EventListenerBase<{
   }
 
   private onMouseDown = (e: MouseEvent) => {
-    //console.log('selection mousedown', e);
+    // console.log('selection mousedown', e);
     const element = findUpClassName(e.target, this.targetLookupClassName);
     if(e.button !== 0) {
       return;
@@ -186,7 +186,7 @@ class AppSelection extends EventListenerBase<{
 
       const isSelected = this.isMidSelected(peerId, mid);
       if(selecting === undefined) {
-        //bubblesContainer.classList.add('no-select');
+        // bubblesContainer.classList.add('no-select');
         selecting = !isSelected;
       }
 
@@ -224,7 +224,7 @@ class AppSelection extends EventListenerBase<{
       }
     };
 
-    //const foundTargets: Map<HTMLElement, true> = new Map();
+    // const foundTargets: Map<HTMLElement, true> = new Map();
     let canceledSelection = false;
     const onMouseMove = (e: MouseEvent) => {
       if(!canceledSelection) {
@@ -243,7 +243,7 @@ class AppSelection extends EventListenerBase<{
       foundTargets.set(e.target as HTMLElement, true); */
       const element = this.getElementFromTarget(e.target as HTMLElement);
       if(!element) {
-        //console.error('found no bubble', e);
+        // console.error('found no bubble', e);
         return;
       }
 
@@ -262,7 +262,7 @@ class AppSelection extends EventListenerBase<{
       }
 
       this.listenerSetter.removeManual(this.listenElement, 'mousemove', onMouseMove);
-      //bubblesContainer.classList.remove('no-select');
+      // bubblesContainer.classList.remove('no-select');
 
       // ! CANCEL USER SELECTION !
       cancelSelection();
@@ -273,7 +273,7 @@ class AppSelection extends EventListenerBase<{
     this.listenerSetter.add(document)('mouseup', onMouseUp, documentListenerOptions);
   };
 
-  private getElementsBetween = (first: HTMLElement, last: HTMLElement) => { 
+  private getElementsBetween = (first: HTMLElement, last: HTMLElement) => {
     if(first === last) {
       return [];
     }
@@ -317,12 +317,12 @@ class AppSelection extends EventListenerBase<{
       if(hasCheckbox) {
         return false;
       }
-      
+
       const checkboxField = new CheckboxField({
-        name: element.dataset.mid, 
+        name: element.dataset.mid,
         round: true
       });
-      
+
       // * if it is a render of new message
       if(this.isSelecting) { // ! avoid breaking animation on start
         if(this.isElementShouldBeSelected(element)) {
@@ -330,7 +330,7 @@ class AppSelection extends EventListenerBase<{
           element.classList.add('is-selected');
         }
       }
-      
+
       this.appendCheckbox(element, checkboxField);
     } else if(hasCheckbox) {
       this.getCheckboxInputFromElement(element).parentElement.remove();
@@ -341,17 +341,17 @@ class AppSelection extends EventListenerBase<{
   }
 
   protected getCheckboxInputFromElement(element: HTMLElement): HTMLInputElement {
-    return element.firstElementChild?.tagName === 'LABEL' && 
+    return element.firstElementChild?.tagName === 'LABEL' &&
       element.firstElementChild.firstElementChild as HTMLInputElement;
   }
 
   protected async updateContainer(forceSelection = false) {
     const size = this.selectedMids.size;
     if(!size && !forceSelection) return;
-    
-    let cantForward = !size, 
-      cantDelete = !size, 
-      cantSend = !size;
+
+    let cantForward = !size,
+      cantDelete = !size;
+    const cantSend = !size;
     for(const [peerId, mids] of this.selectedMids) {
       const storageKey: MessagesStorageKey = `${peerId}_${this.isScheduled ? 'scheduled' : 'history'}`;
       const r = await this.managers.appMessagesManager.cantForwardDeleteMids(storageKey, Array.from(mids));
@@ -360,7 +360,7 @@ class AppSelection extends EventListenerBase<{
 
       if(cantForward && cantDelete) break;
     }
-    
+
     this.onUpdateContainer && this.onUpdateContainer(cantForward, cantDelete, cantSend);
   }
 
@@ -372,9 +372,9 @@ class AppSelection extends EventListenerBase<{
     if(wasSelecting === this.isSelecting) return false;
 
     this.dispatchEvent('toggle', this.isSelecting);
-    
+
     // const bubblesContainer = this.bubbles.bubblesContainer;
-    //bubblesContainer.classList.toggle('is-selecting', !!size);
+    // bubblesContainer.classList.toggle('is-selecting', !!size);
 
     /* if(bubblesContainer.classList.contains('is-chat-input-hidden')) {
       const scrollable = this.appImManager.scrollable;
@@ -598,9 +598,9 @@ export class SearchSelection extends AppSelection {
     SetTransition(this.searchSuper.navScrollableContainer, 'is-selecting', forwards, animate ? 200 : 0, () => {
       if(!this.isSelecting) {
         this.selectionContainer.remove();
-        this.selectionContainer = 
-          this.selectionForwardBtn = 
-          this.selectionDeleteBtn = 
+        this.selectionContainer =
+          this.selectionForwardBtn =
+          this.selectionDeleteBtn =
           null;
         this.selectedText = undefined;
       }
@@ -654,10 +654,10 @@ export class SearchSelection extends AppSelection {
         }
 
         this.selectionContainer.append(...[
-          btnCancel, 
-          this.selectionCountEl, 
-          this.selectionGotoBtn, 
-          this.selectionForwardBtn, 
+          btnCancel,
+          this.selectionCountEl,
+          this.selectionGotoBtn,
+          this.selectionForwardBtn,
           this.selectionDeleteBtn
         ].filter(Boolean));
 
@@ -683,9 +683,9 @@ export default class ChatSelection extends AppSelection {
   private selectionRight: HTMLDivElement;
 
   constructor(
-    private chat: Chat, 
-    private bubbles: ChatBubbles, 
-    private input: ChatInput, 
+    private chat: Chat,
+    private bubbles: ChatBubbles,
+    private input: ChatInput,
     managers: AppManagers
   ) {
     super({
@@ -694,17 +694,17 @@ export default class ChatSelection extends AppSelection {
       verifyTarget: (e, target) => {
         // LEFT BUTTON
         // проверка внизу нужна для того, чтобы не активировать селект если target потомок .bubble
-        const bad = !this.selectedMids.size 
-          && !(e.target as HTMLElement).classList.contains('bubble')
-          && !(e.target as HTMLElement).classList.contains('document-selection')
-          && target;
+        const bad = !this.selectedMids.size &&
+          !(e.target as HTMLElement).classList.contains('bubble') &&
+          !(e.target as HTMLElement).classList.contains('document-selection') &&
+          target;
 
         return !bad;
       },
       verifyMouseMoveTarget: (e, element, selecting) => {
-        const bad = e.target !== element && 
-          !(e.target as HTMLElement).classList.contains('document-selection') && 
-          selecting === undefined && 
+        const bad = e.target !== element &&
+          !(e.target as HTMLElement).classList.contains('document-selection') &&
+          selecting === undefined &&
           !this.selectedMids.size;
         return !bad;
       },
@@ -734,7 +734,7 @@ export default class ChatSelection extends AppSelection {
         if(this.bubbles.skippedMids.has(+mid)) {
           continue;
         }
-        
+
         const bubble = this.bubbles.bubbles[mid];
         this.toggleElementCheckbox(bubble, this.isSelecting);
       }
@@ -753,7 +753,7 @@ export default class ChatSelection extends AppSelection {
         this.bubbles.getBubbleGroupedItems(bubble).forEach((item) => this.toggleElementCheckbox(item, show));
       }
     }
-    
+
     return ret;
   }
 
@@ -833,27 +833,27 @@ export default class ChatSelection extends AppSelection {
     /* let perf = performance.now();
     let checkbox = bubble.firstElementChild.tagName === 'LABEL' && bubble.firstElementChild.firstElementChild as HTMLInputElement;
     console.log('getCheckboxInputFromBubble firstElementChild time:', performance.now() - perf);
-  
+
     perf = performance.now();
     checkbox = bubble.querySelector('label input');
     console.log('getCheckboxInputFromBubble querySelector time:', performance.now() - perf); */
     /* let perf = performance.now();
     let contains = bubble.classList.contains('document-container');
     console.log('getCheckboxInputFromBubble classList time:', performance.now() - perf);
-  
+
     perf = performance.now();
     contains = bubble.className.includes('document-container');
     console.log('getCheckboxInputFromBubble className time:', performance.now() - perf); */
-  
-    return bubble.classList.contains('document-container') ? 
-      bubble.querySelector('label input') as HTMLInputElement : 
+
+    return bubble.classList.contains('document-container') ?
+      bubble.querySelector('label input') as HTMLInputElement :
       super.getCheckboxInputFromElement(bubble);
   }
 
   public canSelectBubble(bubble: HTMLElement) {
-    return !bubble.classList.contains('service') && 
-      !bubble.classList.contains('is-outgoing') && 
-      !bubble.classList.contains('bubble-first') && 
+    return !bubble.classList.contains('service') &&
+      !bubble.classList.contains('is-outgoing') &&
+      !bubble.classList.contains('bubble-first') &&
       !bubble.classList.contains('avoid-selection');
   }
 
@@ -863,23 +863,23 @@ export default class ChatSelection extends AppSelection {
     SetTransition(this.listenElement, 'is-selecting', forwards, animate ? 200 : 0, () => {
       if(!this.isSelecting) {
         this.selectionInputWrapper.remove();
-        this.selectionInputWrapper = 
-          this.selectionContainer = 
-          this.selectionSendNowBtn = 
-          this.selectionForwardBtn = 
-          this.selectionDeleteBtn = 
-          this.selectionLeft = 
-          this.selectionRight = 
+        this.selectionInputWrapper =
+          this.selectionContainer =
+          this.selectionSendNowBtn =
+          this.selectionForwardBtn =
+          this.selectionDeleteBtn =
+          this.selectionLeft =
+          this.selectionRight =
           null;
         this.selectedText = undefined;
       }
-      
+
       /* fastRaf(() => {
         this.bubbles.onScroll();
       }); */
     });
 
-    //const chatInput = this.appImManager.chatInput;
+    // const chatInput = this.appImManager.chatInput;
 
     const translateButtonsX = widthFrom < widthTo ? undefined : needTranslateX * 2;
     if(this.isSelecting) {
@@ -938,8 +938,8 @@ export default class ChatSelection extends AppSelection {
         const right = this.selectionRight = document.createElement('div');
         right.classList.add('selection-container-right');
         right.append(...[
-          this.selectionSendNowBtn, 
-          this.selectionForwardBtn, 
+          this.selectionSendNowBtn,
+          this.selectionForwardBtn,
           this.selectionDeleteBtn
         ].filter(Boolean))
 
@@ -954,7 +954,7 @@ export default class ChatSelection extends AppSelection {
         this.selectionInputWrapper.style.opacity = '0';
         this.selectionInputWrapper.append(/* background,  */this.selectionContainer);
         this.input.inputContainer.append(this.selectionInputWrapper);
-        
+
         void this.selectionInputWrapper.offsetLeft; // reflow
         // background.style.opacity = '';
         this.selectionInputWrapper.style.opacity = '';

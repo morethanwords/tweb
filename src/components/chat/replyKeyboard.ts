@@ -4,21 +4,21 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type ChatInput from "./input";
-import DropdownHover from "../../helpers/dropdownHover";
-import { KeyboardButton, ReplyMarkup } from "../../layer";
-import rootScope from "../../lib/rootScope";
-import ListenerSetter, { Listener } from "../../helpers/listenerSetter";
-import findUpClassName from "../../helpers/dom/findUpClassName";
-import IS_TOUCH_SUPPORTED from "../../environment/touchSupport";
-import findUpAsChild from "../../helpers/dom/findUpAsChild";
-import cancelEvent from "../../helpers/dom/cancelEvent";
-import { getHeavyAnimationPromise } from "../../hooks/useHeavyAnimationCheck";
-import confirmationPopup from "../confirmationPopup";
-import safeAssign from "../../helpers/object/safeAssign";
-import setInnerHTML from "../../helpers/dom/setInnerHTML";
-import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
-import { AppManagers } from "../../lib/appManagers/managers";
+import type ChatInput from './input';
+import DropdownHover from '../../helpers/dropdownHover';
+import {KeyboardButton, ReplyMarkup} from '../../layer';
+import rootScope from '../../lib/rootScope';
+import ListenerSetter, {Listener} from '../../helpers/listenerSetter';
+import findUpClassName from '../../helpers/dom/findUpClassName';
+import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
+import findUpAsChild from '../../helpers/dom/findUpAsChild';
+import cancelEvent from '../../helpers/dom/cancelEvent';
+import {getHeavyAnimationPromise} from '../../hooks/useHeavyAnimationCheck';
+import confirmationPopup from '../confirmationPopup';
+import safeAssign from '../../helpers/object/safeAssign';
+import setInnerHTML from '../../helpers/dom/setInnerHTML';
+import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
+import {AppManagers} from '../../lib/appManagers/managers';
 
 export default class ReplyKeyboard extends DropdownHover {
   private static BASE_CLASS = 'reply-keyboard';
@@ -73,7 +73,7 @@ export default class ReplyKeyboard extends DropdownHover {
         }, {once: true});
       }
     });
-    
+
     this.listenerSetter.add(this.element)('click', (e) => {
       const target = findUpClassName(e.target, 'btn');
       if(!target) {
@@ -119,7 +119,7 @@ export default class ReplyKeyboard extends DropdownHover {
   public async checkForceReply() {
     const replyMarkup = await this.getReplyMarkup();
     if(replyMarkup._ === 'replyKeyboardForceReply' &&
-      !replyMarkup.pFlags.hidden && 
+      !replyMarkup.pFlags.hidden &&
       !replyMarkup.pFlags.used) {
       replyMarkup.pFlags.used = true;
       this.chatInput.initMessageReply(replyMarkup.mid);

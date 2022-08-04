@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { PHONE_NUMBER_REG_EXP } from ".";
-import matchUrlProtocol from "./matchUrlProtocol";
+import {PHONE_NUMBER_REG_EXP} from '.';
+import matchUrlProtocol from './matchUrlProtocol';
 
 export default function wrapUrl(url: string, unsafe?: number | boolean): {url: string, onclick: string} {
   if(!matchUrlProtocol(url)) {

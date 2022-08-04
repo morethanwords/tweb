@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { Document, PhotoSize } from "../../../../layer";
-import type { DownloadOptions } from "../../../mtproto/apiFileManager";
-import getDocumentInput from "./getDocumentInput";
+import type {Document, PhotoSize} from '../../../../layer';
+import type {DownloadOptions} from '../../../mtproto/apiFileManager';
+import getDocumentInput from './getDocumentInput';
 
 export default function getDocumentDownloadOptions(doc: Document.document, thumb?: PhotoSize.photoSize, queueId?: number, onlyCache?: boolean): DownloadOptions {
   const inputFileLocation = getDocumentInput(doc, thumb?.type);
@@ -19,9 +19,9 @@ export default function getDocumentDownloadOptions(doc: Document.document, thumb
   }
 
   return {
-    dcId: doc.dc_id, 
-    location: inputFileLocation, 
-    size: thumb ? thumb.size : doc.size, 
+    dcId: doc.dc_id,
+    location: inputFileLocation,
+    size: thumb ? thumb.size : doc.size,
     mimeType,
     fileName: doc.file_name,
     queueId,

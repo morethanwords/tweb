@@ -10,40 +10,40 @@ const COLORREPLACEMENTS = [
     [0xf77e41, 0xcb7b55],
     [0xffb139, 0xf6b689],
     [0xffd140, 0xffcda7],
-    [0xffdf79, 0xffdfc5],
+    [0xffdf79, 0xffdfc5]
   ],
 
   [
     [0xf77e41, 0xa45a38],
     [0xffb139, 0xdf986b],
     [0xffd140, 0xedb183],
-    [0xffdf79, 0xf4c3a0],
+    [0xffdf79, 0xf4c3a0]
   ],
 
   [
     [0xf77e41, 0x703a17],
     [0xffb139, 0xab673d],
     [0xffd140, 0xc37f4e],
-    [0xffdf79, 0xd89667],
+    [0xffdf79, 0xd89667]
   ],
 
   [
     [0xf77e41, 0x4a2409],
     [0xffb139, 0x7d3e0e],
     [0xffd140, 0x965529],
-    [0xffdf79, 0xa96337],
+    [0xffdf79, 0xa96337]
   ],
 
   [
     [0xf77e41, 0x200f0a],
     [0xffb139, 0x412924],
     [0xffd140, 0x593d37],
-    [0xffdf79, 0x63453f],
+    [0xffdf79, 0x63453f]
   ]
 ];
 
-let convert = (value: number) => {
-	return Math.round(Math.min(Math.max(value, 0), 1) * 255);
+const convert = (value: number) => {
+  return Math.round(Math.min(Math.max(value, 0), 1) * 255);
 };
 
 type LottieShape = {
@@ -70,7 +70,7 @@ export default function applyReplacements(object: {
       k[2] = (foundReplacement[1] & 255) / 255;
     }
 
-    //console.log('foundReplacement!', foundReplacement, color.toString(16), k);
+    // console.log('foundReplacement!', foundReplacement, color.toString(16), k);
   };
 
   const checkSmth = (smth: LottieShape) => {

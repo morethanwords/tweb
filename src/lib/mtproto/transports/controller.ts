@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import App from "../../../config/app";
-import deferredPromise from "../../../helpers/cancellablePromise";
-import EventListenerBase from "../../../helpers/eventListenerBase";
-import pause from "../../../helpers/schedulers/pause";
-import { TransportType, DcConfigurator } from "../dcConfigurator";
-import type HTTP from "./http";
-import type TcpObfuscated from "./tcpObfuscated";
-import MTTransport from "./transport";
+import App from '../../../config/app';
+import deferredPromise from '../../../helpers/cancellablePromise';
+import EventListenerBase from '../../../helpers/eventListenerBase';
+import pause from '../../../helpers/schedulers/pause';
+import {TransportType, DcConfigurator} from '../dcConfigurator';
+import type HTTP from './http';
+import type TcpObfuscated from './tcpObfuscated';
+import MTTransport from './transport';
 
 export class MTTransportController extends EventListenerBase<{
   change: (opened: MTTransportController['opened']) => void,
@@ -37,7 +37,7 @@ export class MTTransportController extends EventListenerBase<{
     });
 
     // setTimeout(() => {
-      // this.waitForWebSocket();
+    // this.waitForWebSocket();
     // }, 200); // wait for first transport so won't have delay for first WS
   }
 
@@ -67,7 +67,7 @@ export class MTTransportController extends EventListenerBase<{
       if(socket.connection) {
         socket.connection.close();
       }
-      
+
       websocketPromise.resolve(false);
     }, timeout);
 
@@ -110,7 +110,7 @@ export class MTTransportController extends EventListenerBase<{
   public setTransportValue(type: TransportType, value: boolean) {
     let length = this.opened.get(type) || 0;
     length += value ? 1 : -1;
-    
+
     this.opened.set(type, length);
     this.dispatchEvent('change', this.opened);
   }

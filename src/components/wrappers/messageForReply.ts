@@ -4,23 +4,23 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import assumeType from "../../helpers/assumeType";
-import htmlToDocumentFragment from "../../helpers/dom/htmlToDocumentFragment";
-import { getRestrictionReason } from "../../helpers/restrictions";
-import escapeRegExp from "../../helpers/string/escapeRegExp";
-import limitSymbols from "../../helpers/string/limitSymbols";
-import { Message, DocumentAttribute } from "../../layer";
-import { MyDocument } from "../../lib/appManagers/appDocsManager";
-import { MyDraftMessage } from "../../lib/appManagers/appDraftsManager";
-import { MyMessage } from "../../lib/appManagers/appMessagesManager";
-import isMessageRestricted from "../../lib/appManagers/utils/messages/isMessageRestricted";
-import I18n, { LangPackKey, i18n, UNSUPPORTED_LANG_PACK_KEY } from "../../lib/langPack";
-import sortEntities from "../../lib/richTextProcessor/sortEntities";
-import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
-import wrapPlainText from "../../lib/richTextProcessor/wrapPlainText";
-import wrapRichText from "../../lib/richTextProcessor/wrapRichText";
-import rootScope from "../../lib/rootScope";
-import wrapMessageActionTextNew from "./messageActionTextNew";
+import assumeType from '../../helpers/assumeType';
+import htmlToDocumentFragment from '../../helpers/dom/htmlToDocumentFragment';
+import {getRestrictionReason} from '../../helpers/restrictions';
+import escapeRegExp from '../../helpers/string/escapeRegExp';
+import limitSymbols from '../../helpers/string/limitSymbols';
+import {Message, DocumentAttribute} from '../../layer';
+import {MyDocument} from '../../lib/appManagers/appDocsManager';
+import {MyDraftMessage} from '../../lib/appManagers/appDraftsManager';
+import {MyMessage} from '../../lib/appManagers/appMessagesManager';
+import isMessageRestricted from '../../lib/appManagers/utils/messages/isMessageRestricted';
+import I18n, {LangPackKey, i18n, UNSUPPORTED_LANG_PACK_KEY} from '../../lib/langPack';
+import sortEntities from '../../lib/richTextProcessor/sortEntities';
+import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
+import wrapPlainText from '../../lib/richTextProcessor/wrapPlainText';
+import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
+import rootScope from '../../lib/rootScope';
+import wrapMessageActionTextNew from './messageActionTextNew';
 
 export default async function wrapMessageForReply(message: MyMessage | MyDraftMessage, text: string, usingMids: number[], plain: true, highlightWord?: string, withoutMediaType?: boolean): Promise<string>;
 export default async function wrapMessageForReply(message: MyMessage | MyDraftMessage, text?: string, usingMids?: number[], plain?: false, highlightWord?: string, withoutMediaType?: boolean): Promise<DocumentFragment>;
@@ -33,10 +33,10 @@ export default async function wrapMessageForReply(message: MyMessage | MyDraftMe
       if(part === undefined && hasAlbumKey) {
         return;
       }
-      
+
       part = plain ? I18n.format(langKey, true) : i18n(langKey);
     }
-    
+
     if(plain) {
       parts.push(part);
     } else {
@@ -134,7 +134,7 @@ export default async function wrapMessageForReply(message: MyMessage | MyDraftMe
               const f = document.stickerEmojiRaw + ' ';
               addPart(undefined, plain ? f : wrapEmojiText(f));
             }
-            
+
             addPart('AttachSticker');
 
             // will combine two parts into one
@@ -169,8 +169,8 @@ export default async function wrapMessageForReply(message: MyMessage | MyDraftMe
         }
 
         default:
-          //messageText += media._;
-          ///////appMessagesManager.log.warn('Got unknown media type!', message);
+          // messageText += media._;
+          // /////appMessagesManager.log.warn('Got unknown media type!', message);
           break;
       }
     }
@@ -213,21 +213,21 @@ export default async function wrapMessageForReply(message: MyMessage | MyDraftMe
         highlightWord = highlightWord.trim();
         let found = false;
         let match: any;
-        let regExp = new RegExp(escapeRegExp(highlightWord), 'gi');
+        const regExp = new RegExp(escapeRegExp(highlightWord), 'gi');
         entities = entities.slice(); // fix leaving highlight entity
         while((match = regExp.exec(text)) !== null) {
           entities.push({_: 'messageEntityHighlight', length: highlightWord.length, offset: match.index});
           found = true;
         }
-    
+
         if(found) {
           sortEntities(entities);
         }
       }
 
       const messageWrapped = wrapRichText(text, {
-        noLinebreaks: true, 
-        entities, 
+        noLinebreaks: true,
+        entities,
         noLinks: true,
         noTextFormat: true
       });

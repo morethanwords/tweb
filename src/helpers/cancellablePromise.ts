@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import noop from "./noop";
+import noop from './noop';
 
 export interface CancellablePromise<T> extends Promise<T> {
   resolve?: (value: T) => void,
@@ -22,15 +22,15 @@ export interface CancellablePromise<T> extends Promise<T> {
 }
 
 export default function deferredPromise<T>() {
-  let deferredHelper: any = {
-    isFulfilled: false, 
+  const deferredHelper: any = {
+    isFulfilled: false,
     isRejected: false,
 
-    notify: () => {}, 
+    notify: () => {},
     notifyAll: (...args: any[]) => {
       deferredHelper.lastNotify = args;
       deferredHelper.listeners.forEach((callback: any) => callback(...args));
-    }, 
+    },
 
     listeners: [],
     addNotifyListener: (callback: (...args: any[]) => void) => {
@@ -42,17 +42,17 @@ export default function deferredPromise<T>() {
     }
   };
 
-  let deferred: CancellablePromise<T> = new Promise<T>((resolve, reject) => {
+  const deferred: CancellablePromise<T> = new Promise<T>((resolve, reject) => {
     deferredHelper.resolve = (value: T) => {
       if(deferred.isFulfilled || deferred.isRejected) return;
 
       deferred.isFulfilled = true;
       resolve(value);
     };
-    
+
     deferredHelper.reject = (...args: any[]) => {
       if(deferred.isRejected || deferred.isFulfilled) return;
-      
+
       deferred.isRejected = true;
       reject(...args);
     };
@@ -61,7 +61,7 @@ export default function deferredPromise<T>() {
   // @ts-ignore
   /* deferred.then = (resolve: (value: T) => any, reject: (...args: any[]) => any) => {
     const n = deferredPromise<ReturnType<typeof resolve>>();
-    
+
   }; */
 
   deferred.catch(noop).finally(() => {

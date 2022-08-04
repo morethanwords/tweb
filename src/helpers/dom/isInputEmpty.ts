@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import getRichValue from "./getRichValue";
+import getRichValue from './getRichValue';
 
 export default function isInputEmpty(element: HTMLElement) {
   if(element.hasAttribute('contenteditable') || element.tagName !== 'INPUT') {

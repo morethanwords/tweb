@@ -38,7 +38,7 @@ export {};
 
 //     this.sendBtn.addEventListener('click', () => {
 //       let peerIds = this.selector.getSelected().map((s) => s.toPeerId());
-      
+
 //       if(this.mids.length && peerIds.length) {
 //         this.sendBtn.classList.remove('tgico-send');
 //         this.sendBtn.disabled = true;
@@ -49,7 +49,7 @@ export {};
 //           let promises = peerIds.splice(0, 3).map((peerId) => {
 //             return appMessagesManager.forwardMessages(peerId, NULL_PEER_ID, this.mids);
 //           });
-          
+
 //           Promise.all(promises).then(() => {
 //             if(peerIds.length) {
 //               return s();
@@ -58,7 +58,7 @@ export {};
 //             }
 //           });
 //         };
-        
+
 //         s();
 //       }
 //     });
@@ -74,14 +74,14 @@ export {};
 //     this.mids = ids;
 
 //     // this.selector = new AppSelectPeers({
-//     //   appendTo: this.container, 
+//     //   appendTo: this.container,
 //     //   onChange: (length) => {
 //     //     this.sendBtn.classList.toggle('is-visible', !!length);
-//     //   }, 
-//     //   peerType: ['dialogs', 'contacts'], 
+//     //   },
+//     //   peerType: ['dialogs', 'contacts'],
 //     //   onFirstRender: () => {
 //     //     //console.log('forward rendered:', this.container.querySelector('.selector ul').childElementCount);
-        
+
 //     //     // !!!!!!!!!! UNCOMMENT BELOW IF NEED TO USE THIS CLASS
 //     //     ////////////////////////////////////////appSidebarRight.selectTab(AppSidebarRight.SLIDERITEMSIDS.forward);
 //     //     appSidebarRight.toggleSidebar(true).then(() => {
@@ -90,7 +90,7 @@ export {};
 //     //       }
 //     //     });
 //     //     document.body.classList.add('is-forward-active');
-//     //   }, 
+//     //   },
 //     //   chatRightsAction: 'send_messages'
 //     // });
 //   }

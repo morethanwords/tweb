@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import SwipeHandler, { SwipeHandlerOptions } from "../../components/swipeHandler";
-import cancelEvent from "./cancelEvent";
-import findUpClassName from "./findUpClassName";
-import isSwipingBackSafari from "./isSwipingBackSafari";
+import SwipeHandler, {SwipeHandlerOptions} from '../../components/swipeHandler';
+import cancelEvent from './cancelEvent';
+import findUpClassName from './findUpClassName';
+import isSwipingBackSafari from './isSwipingBackSafari';
 
 export type SwipeHandlerHorizontalOptions = SwipeHandlerOptions & {
   // xThreshold?: number
@@ -18,8 +18,8 @@ export default function handleHorizontalSwipe(options: SwipeHandlerHorizontalOpt
   return new SwipeHandler({
     ...options,
     verifyTouchTarget: (e) => {
-      return !findUpClassName(e.target, 'progress-line') && 
-        !isSwipingBackSafari(e) && 
+      return !findUpClassName(e.target, 'progress-line') &&
+        !isSwipingBackSafari(e) &&
         (options.verifyTouchTarget ? options.verifyTouchTarget(e) : true);
     },
     onSwipe: (xDiff, yDiff, e) => {

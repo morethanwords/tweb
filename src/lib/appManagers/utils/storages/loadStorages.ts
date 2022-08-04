@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type{ Chat } from "../../../../layer";
-import type{ Dialog } from "../../appMessagesManager";
-import type{ User } from "../../appUsersManager";
-import type { StoragesStorages } from "./createStorages";
-import { recordPromiseBound } from "../../../../helpers/recordPromise";
-import { Awaited } from "../../../../types";
-import { logger } from "../../../logger";
-import RESET_STORAGES_PROMISE from "./resetStoragesPromise";
+import type{Chat} from '../../../../layer';
+import type{Dialog} from '../../appMessagesManager';
+import type{User} from '../../appUsersManager';
+import type {StoragesStorages} from './createStorages';
+import {recordPromiseBound} from '../../../../helpers/recordPromise';
+import {Awaited} from '../../../../types';
+import {logger} from '../../../logger';
+import RESET_STORAGES_PROMISE from './resetStoragesPromise';
 
 export type StoragesResults = Awaited<ReturnType<typeof loadStoragesInner>>;
 
@@ -22,7 +22,7 @@ async function loadStoragesInner(storages: StoragesStorages) {
     const promise = storages[key].getAll();
     return recordPromise(promise, 'storage ' + (key as any as string));
   });
-  
+
   const storagesResults: {
     users: User[],
     chats: Chat[],

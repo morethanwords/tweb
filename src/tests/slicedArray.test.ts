@@ -1,4 +1,4 @@
-import SlicedArray, { Slice } from "../helpers/slicedArray";
+import SlicedArray, {Slice} from '../helpers/slicedArray';
 
 test('Slicing returns new Slice', () => {
   const sliced = new SlicedArray();
@@ -15,7 +15,7 @@ describe('Inserting', () => {
   const toSomething = (v: number) => {
     return '' + v;
   };
-    
+
   const arr = [100, 99, 98, 97, 96, 95].map(toSomething);
   const distantArr = arr.slice(-2).map((v) => toSomething(+v - 2));
   const missingArr = [arr[arr.length - 1], toSomething(+arr[arr.length - 1] - 1), distantArr[1]];
@@ -34,10 +34,10 @@ describe('Inserting', () => {
 
   test('Insert & flatten', () => {
     const idx = 2;
-  
+
     sliced.insertSlice(arr.slice(0, idx + 1));
     sliced.insertSlice(arr.slice(idx));
-  
+
     expect([...sliced.first]).toEqual(arr);
   });
 
@@ -112,7 +112,7 @@ describe('Slicing', () => {
       const {slice} = sliced.sliceMe(0, addOffset, limit);
       expect([...slice]).toEqual(values.slice(addOffset, addOffset + limit));
     });
-  
+
     test('From existing offsetId', () => {
       r((idx) => {
         const value = values[idx] || 1;

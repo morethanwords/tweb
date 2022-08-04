@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { DataJSON } from "../../../layer";
-import { JoinGroupCallJsonPayload } from "../../appManagers/appGroupCallsManager";
-import SDP from "../sdp";
-import { Ssrc } from "../types";
-import parseMediaSectionInfo from "./parseMediaSectionInfo";
+import {DataJSON} from '../../../layer';
+import {JoinGroupCallJsonPayload} from '../../appManagers/appGroupCallsManager';
+import SDP from '../sdp';
+import {Ssrc} from '../types';
+import parseMediaSectionInfo from './parseMediaSectionInfo';
 
 export default function processMediaSection(sdp: SDP, media: SDP['media'][0]) {
   const sectionInfo = parseMediaSectionInfo(sdp, media);
@@ -23,11 +23,11 @@ export default function processMediaSection(sdp: SDP, media: SDP['media'][0]) {
   // do not change this value, otherwise onconnectionstatechange won't fire
   sectionInfo.fingerprint.setup = 'active';
   const payload: JoinGroupCallJsonPayload = {
-    fingerprints: [sectionInfo.fingerprint],
-    pwd: sectionInfo.pwd,
-    ssrc: sectionInfo.source,
+    'fingerprints': [sectionInfo.fingerprint],
+    'pwd': sectionInfo.pwd,
+    'ssrc': sectionInfo.source,
     'ssrc-groups': sectionInfo.sourceGroups || [],
-    ufrag: sectionInfo.ufrag
+    'ufrag': sectionInfo.ufrag
   };
   const paramsDataJson = JSON.stringify(payload);
 
@@ -37,10 +37,10 @@ export default function processMediaSection(sdp: SDP, media: SDP['media'][0]) {
   };
 
   return {
-    params, 
-    source: sectionInfo.source, 
-    media, 
-    sourceGroups: sectionInfo.sourceGroups, 
+    params,
+    source: sectionInfo.source,
+    media,
+    sourceGroups: sectionInfo.sourceGroups,
     entry
   };
 }

@@ -4,15 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import findAndSplice from "../../helpers/array/findAndSplice";
-import assumeType from "../../helpers/assumeType";
-import callbackify from "../../helpers/callbackify";
-import callbackifyAll from "../../helpers/callbackifyAll";
-import copy from "../../helpers/object/copy";
-import { AvailableReaction, Message, MessagePeerReaction, MessagesAvailableReactions, Update, Updates } from "../../layer";
-import { ReferenceContext } from "../mtproto/referenceDatabase";
-import { AppManager } from "./manager";
-import getServerMessageId from "./utils/messageId/getServerMessageId";
+import findAndSplice from '../../helpers/array/findAndSplice';
+import assumeType from '../../helpers/assumeType';
+import callbackify from '../../helpers/callbackify';
+import callbackifyAll from '../../helpers/callbackifyAll';
+import copy from '../../helpers/object/copy';
+import {AvailableReaction, Message, MessagePeerReaction, MessagesAvailableReactions, Update, Updates} from '../../layer';
+import {ReferenceContext} from '../mtproto/referenceDatabase';
+import {AppManager} from './manager';
+import getServerMessageId from './utils/messageId/getServerMessageId';
 
 const SAVE_DOC_KEYS = [
   'static_icon' as const,
@@ -71,7 +71,7 @@ export class AppReactionsManager extends AppManager {
             if(!reaction[key]) {
               continue;
             }
-            
+
             reaction[key] = this.appDocsManager.saveDoc(reaction[key], REFERENCE_CONTEXT);
           }
         }
@@ -118,7 +118,7 @@ export class AppReactionsManager extends AppManager {
   }
 
   private unshiftQuickReaction(
-    availableReactions: AvailableReaction.availableReaction[] | PromiseLike<AvailableReaction.availableReaction[]>, 
+    availableReactions: AvailableReaction.availableReaction[] | PromiseLike<AvailableReaction.availableReaction[]>,
     quickReaction: ReturnType<AppReactionsManager['getQuickReaction']> = this.getQuickReaction()
   ) {
     return callbackifyAll([
@@ -225,8 +225,8 @@ export class AppReactionsManager extends AppManager {
     const myPeerId = this.appPeersManager.peerId;
 
     let reactions = onlyLocal ? message.reactions : copy(message.reactions);
-    let chosenReactionIdx = reactions ? reactions.results.findIndex((reactionCount) => reactionCount.pFlags.chosen) : -1;
-    let chosenReaction = chosenReactionIdx !== -1 && reactions.results[chosenReactionIdx];
+    const chosenReactionIdx = reactions ? reactions.results.findIndex((reactionCount) => reactionCount.pFlags.chosen) : -1;
+    const chosenReaction = chosenReactionIdx !== -1 && reactions.results[chosenReactionIdx];
     if(chosenReaction) { // clear current reaction
       --chosenReaction.count;
       delete chosenReaction.pFlags.chosen;
@@ -336,7 +336,7 @@ export class AppReactionsManager extends AppManager {
       reaction
     }).then((updates) => {
       assumeType<Updates.updates>(updates);
-      
+
       const editMessageUpdateIdx = updates.updates.findIndex((update) => update._ === 'updateEditMessage' || update._ === 'updateEditChannelMessage');
       if(editMessageUpdateIdx !== -1) {
         const editMessageUpdate = updates.updates[editMessageUpdateIdx] as Update.updateEditMessage | Update.updateEditChannelMessage;
@@ -360,7 +360,7 @@ export class AppReactionsManager extends AppManager {
         this.sendReactionPromises.delete(promiseKey);
       }
     });
-    
+
     this.sendReactionPromises.set(promiseKey, promise);
     return promise;
   }

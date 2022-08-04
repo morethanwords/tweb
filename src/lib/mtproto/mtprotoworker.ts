@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { Awaited } from '../../types';
-import type { CacheStorageDbName } from '../files/cacheStorage';
-import type { State } from '../../config/state';
-import type { Message, MessagePeerReaction, PeerNotifySettings } from '../../layer';
-import { CryptoMethods } from '../crypto/crypto_methods';
+import type {Awaited} from '../../types';
+import type {CacheStorageDbName} from '../files/cacheStorage';
+import type {State} from '../../config/state';
+import type {Message, MessagePeerReaction, PeerNotifySettings} from '../../layer';
+import {CryptoMethods} from '../crypto/crypto_methods';
 import rootScope from '../rootScope';
 import webpWorkerController from '../webp/webpWorkerController';
-import { MOUNT_CLASS_TO } from '../../config/debug';
+import {MOUNT_CLASS_TO} from '../../config/debug';
 import sessionStorage from '../sessionStorage';
 import webPushApiManager from './webPushApiManager';
 import appRuntimeManager from '../appManagers/appRuntimeManager';
@@ -33,8 +33,8 @@ export type Mirrors = {
 };
 
 export type MirrorTaskPayload<T extends keyof Mirrors = keyof Mirrors, K extends keyof Mirrors[T] = keyof Mirrors[T], J extends Mirrors[T][K] = Mirrors[T][K]> = {
-  name: T, 
-  key?: K, 
+  name: T,
+  key?: K,
   value: any
 };
 
@@ -99,7 +99,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
         const storageTask = payload;
         return (sessionStorage[storageTask.type] as any)(...storageTask.args);
       },
-      
+
       mirror: this.onMirrorTask
     });
 
@@ -116,11 +116,11 @@ class ApiManagerProxy extends MTProtoMessagePort {
     //     socket.close();
     //   } else if(socketTask.type === 'setup') {
     //     const socket = new Socket(socketTask.payload.dcId, socketTask.payload.url, socketTask.payload.logSuffix);
-        
+
     //     const onOpen = () => {
     //       //console.log('socketProxy onOpen');
     //       this.postMessage({
-    //         type: 'socketProxy', 
+    //         type: 'socketProxy',
     //         payload: {
     //           type: 'open',
     //           id
@@ -129,7 +129,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
     //     };
     //     const onClose = () => {
     //       this.postMessage({
-    //         type: 'socketProxy', 
+    //         type: 'socketProxy',
     //         payload: {
     //           type: 'close',
     //           id
@@ -143,7 +143,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
     //     };
     //     const onMessage = (buffer: ArrayBuffer) => {
     //       this.postMessage({
-    //         type: 'socketProxy', 
+    //         type: 'socketProxy',
     //         payload: {
     //           type: 'message',
     //           id,
@@ -170,7 +170,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
     rootScope.addEventListener('logging_out', () => {
       const toClear: CacheStorageDbName[] = ['cachedFiles', 'cachedStreamChunks'];
       Promise.all([
-        toggleStorages(false, true), 
+        toggleStorages(false, true),
         sessionStorage.clear(),
         Promise.race([
           telegramMeWebManager.setAuthorized(false),
@@ -202,7 +202,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
   private _registerServiceWorker() {
     navigator.serviceWorker.register(
       /* webpackChunkName: "sw" */
-      new URL('../serviceWorker/index.service', import.meta.url), 
+      new URL('../serviceWorker/index.service', import.meta.url),
       {scope: './'}
     ).then((registration) => {
       this.log('SW registered', registration);
@@ -221,7 +221,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
       const controller = navigator.serviceWorker.controller || registration.installing || registration.waiting || registration.active;
       this.attachServiceWorker(controller);
-      
+
       // #if MTPROTO_SW
       this.onWorkerFirstMessage(controller);
       // #endif
@@ -242,7 +242,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
     //     // this.serviceMessagePort.invokeVoid('port', undefined);
     //   }
     // });
-    
+
     // ! I hate webpack - it won't load it by using worker.register, only navigator.serviceWorker will do it.
     const worker = navigator.serviceWorker;
     this._registerServiceWorker();
@@ -281,13 +281,13 @@ class ApiManagerProxy extends MTProtoMessagePort {
     if(IS_SHARED_WORKER_SUPPORTED) {
       worker = new SharedWorker(
         /* webpackChunkName: "crypto.worker" */
-        new URL('../crypto/crypto.worker.ts', import.meta.url), 
+        new URL('../crypto/crypto.worker.ts', import.meta.url),
         {type: 'module'}
       );
     } else {
       worker = new Worker(
         /* webpackChunkName: "crypto.worker" */
-        new URL('../crypto/crypto.worker.ts', import.meta.url), 
+        new URL('../crypto/crypto.worker.ts', import.meta.url),
         {type: 'module'}
       );
     }
@@ -307,13 +307,13 @@ class ApiManagerProxy extends MTProtoMessagePort {
     if(IS_SHARED_WORKER_SUPPORTED) {
       worker = new SharedWorker(
         /* webpackChunkName: "mtproto.worker" */
-        new URL('./mtproto.worker.ts', import.meta.url), 
+        new URL('./mtproto.worker.ts', import.meta.url),
         {type: 'module'}
       );
     } else {
       worker = new Worker(
         /* webpackChunkName: "mtproto.worker" */
-        new URL('./mtproto.worker.ts', import.meta.url), 
+        new URL('./mtproto.worker.ts', import.meta.url),
         {type: 'module'}
       );
     }
@@ -333,7 +333,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
   private onWorkerFirstMessage(worker: any) {
     this.log('set webWorker');
-    
+
     // this.worker = worker;
     // #if MTPROTO_SW
     this.attachSendPort(worker);
@@ -349,7 +349,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
         this.oldVersion = stateResult.oldVersion;
         this.mirrors['state'] = stateResult.state;
         return stateResult;
-      }),
+      })
       // loadStorages(createStorages()),
     ]);
   }
@@ -398,7 +398,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
       this.mirrors[name] = value;
       return;
     }
-    
+
     const mirror = this.mirrors[name] ??= {} as any;
     if(value === undefined) {
       delete mirror[key];

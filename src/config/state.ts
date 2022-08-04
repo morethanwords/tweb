@@ -4,16 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { AppMediaPlaybackController } from "../components/appMediaPlaybackController";
-import { IS_MOBILE } from "../environment/userAgent";
-import getTimeFormat from "../helpers/getTimeFormat";
-import { nextRandomUint } from "../helpers/random";
-import { AutoDownloadSettings, NotifyPeer, PeerNotifySettings } from "../layer";
-import { TopPeerType, MyTopPeer } from "../lib/appManagers/appUsersManager";
-import DialogsStorage from "../lib/storages/dialogs";
-import FiltersStorage from "../lib/storages/filters";
-import { AuthState } from "../types";
-import App from "./app";
+import {AppMediaPlaybackController} from '../components/appMediaPlaybackController';
+import {IS_MOBILE} from '../environment/userAgent';
+import getTimeFormat from '../helpers/getTimeFormat';
+import {nextRandomUint} from '../helpers/random';
+import {AutoDownloadSettings, NotifyPeer, PeerNotifySettings} from '../layer';
+import {TopPeerType, MyTopPeer} from '../lib/appManagers/appUsersManager';
+import DialogsStorage from '../lib/storages/dialogs';
+import FiltersStorage from '../lib/storages/filters';
+import {AuthState} from '../types';
+import App from './app';
 
 const STATE_VERSION = App.version;
 const BUILD = App.build;
@@ -22,7 +22,7 @@ export type Background = {
   type?: 'color' | 'image' | 'default', // ! DEPRECATED
   blur: boolean,
   highlightningColor?: string,
-  color?: string,     
+  color?: string,
   slug?: string,        // image slug
   intensity?: number,   // pattern intensity
   id: string | number,  // wallpaper id

@@ -4,15 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appSidebarLeft, { SettingSection } from "..";
-import { InputFile } from "../../../layer";
-import InputField from "../../inputField";
-import { SliderSuperTab } from "../../slider";
-import AvatarEdit from "../../avatarEdit";
-import AppAddMembersTab from "./addMembers";
-import { _i18n } from "../../../lib/langPack";
-import ButtonCorner from "../../buttonCorner";
-import appImManager from "../../../lib/appManagers/appImManager";
+import appSidebarLeft, {SettingSection} from '..';
+import {InputFile} from '../../../layer';
+import InputField from '../../inputField';
+import {SliderSuperTab} from '../../slider';
+import AvatarEdit from '../../avatarEdit';
+import AppAddMembersTab from './addMembers';
+import {_i18n} from '../../../lib/langPack';
+import ButtonCorner from '../../buttonCorner';
+import appImManager from '../../../lib/appManagers/appImManager';
 
 export default class AppNewChannelTab extends SliderSuperTab {
   private uploadAvatar: () => Promise<InputFile> = null;
@@ -50,8 +50,8 @@ export default class AppNewChannelTab extends SliderSuperTab {
     inputWrapper.append(this.channelNameInputField.container, this.channelDescriptionInputField.container);
 
     const onLengthChange = () => {
-      this.nextBtn.classList.toggle('is-visible', !!this.channelNameInputField.value.length && 
-        !this.channelNameInputField.input.classList.contains('error') && 
+      this.nextBtn.classList.toggle('is-visible', !!this.channelNameInputField.value.length &&
+        !this.channelNameInputField.input.classList.contains('error') &&
         !this.channelDescriptionInputField.input.classList.contains('error'));
     };
 
@@ -66,7 +66,7 @@ export default class AppNewChannelTab extends SliderSuperTab {
 
       this.nextBtn.disabled = true;
       this.managers.appChatsManager.createChannel({
-        title, 
+        title,
         about,
         broadcast: true
       }).then((channelId) => {
@@ -77,7 +77,7 @@ export default class AppNewChannelTab extends SliderSuperTab {
         }
 
         appImManager.setInnerPeer({peerId: channelId.toPeerId(true)});
-        
+
         appSidebarLeft.removeTabFromHistory(this);
         this.slider.createTab(AppAddMembersTab).open({
           type: 'channel',

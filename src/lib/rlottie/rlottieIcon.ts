@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import noop from "../../helpers/noop";
-import safeAssign from "../../helpers/object/safeAssign";
-import rootScope from "../rootScope";
-import lottieLoader, { LottieAssetName } from "./lottieLoader";
-import type RLottiePlayer from "./rlottiePlayer";
-import { RLottieColor } from "./rlottiePlayer";
+import noop from '../../helpers/noop';
+import safeAssign from '../../helpers/object/safeAssign';
+import rootScope from '../rootScope';
+import lottieLoader, {LottieAssetName} from './lottieLoader';
+import type RLottiePlayer from './rlottiePlayer';
+import {RLottieColor} from './rlottiePlayer';
 
 export type RLottieIconOptions = {
   width: number,
@@ -38,7 +38,7 @@ export class RLottieIconItemPart implements RLottieIconItemPartOptions {
   public startFrame: number;
   public endFrame: number;
   public name?: string;
-  
+
   constructor(public item: RLottieIconItem, options: RLottieIconItemPartOptions) {
     safeAssign(this, options);
   }
@@ -178,10 +178,10 @@ export default class RLottieIcon {
 
       return;
     }
-    
+
     const part = item.getPart(index);
     item.player.playPart({
-      from: rootScope.settings.animationsEnabled && !this.skipAnimation ? part.startFrame : part.endFrame, 
+      from: rootScope.settings.animationsEnabled && !this.skipAnimation ? part.startFrame : part.endFrame,
       to: part.endFrame,
       callback
     });
@@ -195,7 +195,7 @@ export default class RLottieIcon {
       frame: toFrame
     });
   } */
-  
+
   public static generateEqualParts(length: number, frameCount: number): RLottieIconItemPartOptions[] {
     return new Array(length).fill(0).map((_, idx) => {
       const startFrame = idx * frameCount;

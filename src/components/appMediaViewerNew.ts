@@ -54,7 +54,7 @@
 //   protected content: {[k in 'main' | 'container' | 'media' | 'mover' | ContentAdditionType]: HTMLElement} = {} as any;
 //   protected mover: HTMLCanvasElement;
 //   public buttons: {[k in 'download' | 'close' | 'prev' | 'next' | 'mobile-close' | ButtonsAdditionType]: HTMLElement} = {} as any;
-  
+
 //   protected tempId = 0;
 //   protected preloader: ProgressivePreloader = null;
 //   protected preloaderStreamable: ProgressivePreloader = null;
@@ -65,7 +65,7 @@
 //   //protected targetContainer: HTMLElement = null;
 //   //protected loadMore: () => void = null;
 
-//   public log: ReturnType<typeof logger>; 
+//   public log: ReturnType<typeof logger>;
 
 //   protected isFirstOpen = true;
 //   protected loadMediaPromiseUp: Promise<void> = null;
@@ -101,7 +101,7 @@
 //     startTime: number,
 //     borderRadius: number[]
 //   };
-  
+
 //   constructor(topButtons: Array<keyof AppMediaViewerBase<ContentAdditionType, ButtonsAdditionType, TargetType>['buttons']>) {
 //     this.log = logger('AMV');
 //     this.preloader = new ProgressivePreloader();
@@ -177,7 +177,7 @@
 //     this.wholeDiv.append(this.overlaysDiv, this.buttons['mobile-close'], this.buttons.prev, this.buttons.next);
 
 //     // * constructing html end
-    
+
 //     this.setNewMover();
 //   }
 
@@ -198,7 +198,7 @@
 //         this.buttons.prev.style.display = 'none';
 //       }
 //     });
-    
+
 //     this.buttons.next.addEventListener('click', (e) => {
 //       cancelEvent(e);
 //       if(this.setMoverPromise) return;
@@ -310,7 +310,7 @@
 //         this.wholeDiv.classList.remove('highlight-switchers');
 //         this.highlightSwitchersTimeout = 0;
 //       }, 3e3);
-      
+
 //       return;
 //     }
 
@@ -329,7 +329,7 @@
 
 //   onKeyDown = (e: KeyboardEvent) => {
 //     //this.log('onKeyDown', e);
-    
+
 //     if(e.key === 'Escape') {
 //       this.close();
 //     } else if(e.key === 'ArrowRight') {
@@ -350,7 +350,7 @@
 //       mover.innerHTML = '';
 //       //mover.append(this.buttons.prev, this.buttons.next);
 //     }
-    
+
 //     this.removeCenterFromMover(mover);
 
 //     const wasActive = fromRight !== 0;
@@ -381,7 +381,7 @@
 //     }
 
 //     const containerRect = this.content.media.getBoundingClientRect();
-    
+
 //     let transform = '';
 //     let left: number;
 //     let top: number;
@@ -442,7 +442,7 @@
 //         }
 //         /* mediaElement = new Image();
 //         src = target.style.backgroundImage.slice(5, -2); */
-        
+
 //       } else if(target instanceof HTMLImageElement) {
 //         mediaElement = target;
 //       } else if(target instanceof HTMLVideoElement) {
@@ -566,7 +566,7 @@
 
 //       if(diff < delay) window.requestAnimationFrame(step);
 //     };
-    
+
 //     window.requestAnimationFrame(step);
 //     //step();
 
@@ -575,13 +575,13 @@
 
 //   protected renderMedia(context: AppMediaViewer['animatingContext'], percents: number) {
 //     const ctx = this.mover.getContext('2d');
-    
+
 //     //percents = transition(percents);
 //     const width = context.startWidth + (context.width - context.startWidth) * percents;
 //     const height = context.startHeight + (context.height - context.startHeight) * percents;
 //     const x = context.diffX - (context.diffX * percents);
 //     const y = context.diffY - (context.diffY * percents);
-    
+
 //     const borderRadius = context.borderRadius.map((v) => v - v * percents);
 //     const [brTl, brTr, brBr, brBl] = borderRadius;
 
@@ -656,7 +656,7 @@
 
 //       if(diff < delay) window.requestAnimationFrame(step);
 //     };
-    
+
 //     //window.requestAnimationFrame(step);
 //     step();
 //   }
@@ -758,8 +758,8 @@
 //     this.author.avatarEl.setAttribute('peer', '' + fromId);
 //     oldAvatar.parentElement.replaceChild(this.author.avatarEl, oldAvatar);
 //   }
-  
-//   protected async _openMedia(media: any, timestamp: number, fromId: number, fromRight: number, target?: HTMLElement, reverse = false, 
+
+//   protected async _openMedia(media: any, timestamp: number, fromId: number, fromRight: number, target?: HTMLElement, reverse = false,
 //     prevTargets: TargetType[] = [], nextTargets: TargetType[] = [], needLoadMore = true) {
 //     if(this.setMoverPromise) return this.setMoverPromise;
 
@@ -768,7 +768,7 @@
 //     } */
 
 //     this.setAuthorInfo(fromId, timestamp);
-    
+
 //     const isVideo = (media as MyDocument).type === 'video' || (media as MyDocument).type === 'gif';
 
 //     if(this.isFirstOpen) {
@@ -795,7 +795,7 @@
 
 //     this.buttons.prev.classList.toggle('hide', !this.prevTargets.length);
 //     this.buttons.next.classList.toggle('hide', !this.nextTargets.length);
-    
+
 //     const container = this.content.media;
 //     const useContainerAsTarget = !target;
 //     if(useContainerAsTarget) target = container;
@@ -807,16 +807,16 @@
 //       if(this.nextTargets.length < 20) {
 //         this.loadMoreMedia(!this.reverse);
 //       }
-  
+
 //       if(this.prevTargets.length < 20) {
 //         this.loadMoreMedia(this.reverse);
 //       }
 //     }
-    
+
 //     if(container.firstElementChild) {
 //       container.innerHTML = '';
 //     }
-    
+
 //     // ok set
 
 //     const wasActive = fromRight !== 0;
@@ -917,7 +917,7 @@
 //             // fix for simultaneous play
 //             appMediaPlaybackController.pause();
 //             appMediaPlaybackController.willBePlayedMedia = null;
-            
+
 //             Promise.all([canPlayThrough, onAnimationEnd]).then(() => {
 //               if(this.tempId !== tempId) {
 //                 return;
@@ -966,11 +966,11 @@
 
 //           attachCanPlay();
 //         }
-        
+
 //         //if(!video.src || media.url !== video.src) {
 //           const load = () => {
 //             const promise = media.supportsStreaming ? Promise.resolve() : appDocsManager.downloadDoc(media);
-            
+
 //             if(!media.supportsStreaming) {
 //               onAnimationEnd.then(() => {
 //                 if(!media.url) {
@@ -990,7 +990,7 @@
 //                 //if(!video.parentElement) {
 //                   div.firstElementChild.lastElementChild.append(video);
 //                 //}
-                
+
 //                 this.updateMediaSource(mover, url, 'video');
 //               } else {
 //                 renderImageFromUrl(video, url);
@@ -1010,7 +1010,7 @@
 //       //return; // set and don't move
 //       //if(wasActive) return;
 //         //return;
-        
+
 //         const load = () => {
 //           const cancellablePromise = appPhotosManager.preloadPhoto(media.id, size);
 
@@ -1019,15 +1019,15 @@
 //               this.preloader.attach(mover, true, cancellablePromise);
 //             }
 //           });
-          
+
 //           Promise.all([onAnimationEnd, cancellablePromise]).then(() => {
 //             if(this.tempId !== tempId) {
 //               this.log.warn('media viewer changed photo');
 //               return;
 //             }
-            
+
 //             ///////this.log('indochina', blob);
-  
+
 //             const url = media.url;
 //             if(target instanceof SVGSVGElement) {
 //               this.updateMediaSource(target, url, 'img');
@@ -1044,9 +1044,9 @@
 //             } else {
 //               const div = mover.firstElementChild && mover.firstElementChild.classList.contains('media-viewer-aspecter') ? mover.firstElementChild : mover;
 //               let image = new Image();
-  
+
 //               //this.log('will renderImageFromUrl:', image, div, target);
-  
+
 //               renderImageFromUrl(image, url, () => {
 //                 if(div.firstElementChild?.tagName === 'IMG') {
 //                   div.firstElementChild.remove();
@@ -1055,7 +1055,7 @@
 //                 div.append(image);
 //               });
 //             }
-  
+
 //             this.preloader.detach();
 //           }).catch((err) => {
 //             this.log.error(err);
@@ -1116,7 +1116,7 @@
 //     }]);
 
 //     // * constructing html end
-    
+
 //     this.setListeners();
 //   }
 
@@ -1208,7 +1208,7 @@
 //     const loadCount = 50;
 //     const backLimit = older ? 0 : loadCount;
 //     let maxId = this.currentMessageId;
-  
+
 //     let anchor: AppMediaViewerTargetType;
 //     if(older) {
 //       anchor = this.reverse ? this.prevTargets[0] : this.nextTargets[this.nextTargets.length - 1];
@@ -1284,8 +1284,8 @@
 //   };
 
 //   private getMediaFromMessage(message: any) {
-//     return message.action ? message.action.photo : message.media.photo 
-//       || message.media.document 
+//     return message.action ? message.action.photo : message.media.photo
+//       || message.media.document
 //       || (message.media.webpage && (message.media.webpage.document || message.media.webpage.photo));
 //   }
 
@@ -1315,7 +1315,7 @@
 //     return this;
 //   }
 
-//   public async openMedia(message: any, target?: HTMLElement, fromRight = 0, reverse = false, 
+//   public async openMedia(message: any, target?: HTMLElement, fromRight = 0, reverse = false,
 //     prevTargets: AppMediaViewer['prevTargets'] = [], nextTargets: AppMediaViewer['prevTargets'] = [], needLoadMore = true) {
 //     if(this.setMoverPromise) return this.setMoverPromise;
 
@@ -1353,7 +1353,7 @@
 //     }]);
 
 //     // * constructing html end
-    
+
 //     this.setListeners();
 //   }
 
@@ -1415,7 +1415,7 @@
 //     const photo = appPhotosManager.getPhoto(photoId);
 
 //     this.currentPhotoId = photo.id;
-  
+
 //     return super._openMedia(photo, photo.date, this.peerId, fromRight, target, false);
 //   }
 // }

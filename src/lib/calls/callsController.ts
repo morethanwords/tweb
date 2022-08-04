@@ -4,24 +4,24 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import getCallAudioAsset, { CallAudioAssetName } from "../../components/call/getAudioAsset";
-import { MOUNT_CLASS_TO } from "../../config/debug";
-import IS_CALL_SUPPORTED from "../../environment/callSupport";
-import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
-import insertInDescendSortedArray from "../../helpers/array/insertInDescendSortedArray";
-import AudioAssetPlayer from "../../helpers/audioAssetPlayer";
-import bytesCmp from "../../helpers/bytes/bytesCmp";
-import EventListenerBase from "../../helpers/eventListenerBase";
-import tsNow from "../../helpers/tsNow";
-import { PhoneCallProtocol } from "../../layer";
-import { CallId } from "../appManagers/appCallsManager";
-import { AppManagers } from "../appManagers/managers";
-import { logger } from "../logger";
-import apiManagerProxy from "../mtproto/mtprotoworker";
-import { NULL_PEER_ID } from "../mtproto/mtproto_config";
-import rootScope from "../rootScope";
-import CallInstance from "./callInstance";
-import CALL_STATE from "./callState";
+import getCallAudioAsset, {CallAudioAssetName} from '../../components/call/getAudioAsset';
+import {MOUNT_CLASS_TO} from '../../config/debug';
+import IS_CALL_SUPPORTED from '../../environment/callSupport';
+import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
+import insertInDescendSortedArray from '../../helpers/array/insertInDescendSortedArray';
+import AudioAssetPlayer from '../../helpers/audioAssetPlayer';
+import bytesCmp from '../../helpers/bytes/bytesCmp';
+import EventListenerBase from '../../helpers/eventListenerBase';
+import tsNow from '../../helpers/tsNow';
+import {PhoneCallProtocol} from '../../layer';
+import {CallId} from '../appManagers/appCallsManager';
+import {AppManagers} from '../appManagers/managers';
+import {logger} from '../logger';
+import apiManagerProxy from '../mtproto/mtprotoworker';
+import {NULL_PEER_ID} from '../mtproto/mtproto_config';
+import rootScope from '../rootScope';
+import CallInstance from './callInstance';
+import CALL_STATE from './callState';
 
 const CALL_REQUEST_TIMEOUT = 45e3;
 
@@ -56,7 +56,7 @@ export class CallsController extends EventListenerBase<{
       if(instance) {
         instance.setPhoneCall(call);
       }
-    
+
       switch(call._) {
         case 'phoneCallDiscarded': {
           if(instance) {
@@ -79,7 +79,7 @@ export class CallsController extends EventListenerBase<{
 
           break;
         }
-        
+
         case 'phoneCallRequested': {
           if(!instance) {
             /* if(!this.verifyProtocolCompatibility(call.protocol)) {
@@ -91,12 +91,12 @@ export class CallsController extends EventListenerBase<{
               isOutgoing: false,
               interlocutorUserId: call.admin_id
             });
-        
+
             instance.overrideConnectionState(CALL_STATE.PENDING);
             instance.setPhoneCall(call);
             instance.setHangUpTimeout(CALL_REQUEST_TIMEOUT, 'phoneCallDiscardReasonMissed');
           }
-          
+
           break;
         }
 
@@ -132,7 +132,7 @@ export class CallsController extends EventListenerBase<{
       if(instance?.id !== callId) {
         return;
       }
-      
+
       instance.onUpdatePhoneCallSignalingData(data);
     });
   }
@@ -156,7 +156,7 @@ export class CallsController extends EventListenerBase<{
   }) {
     const call = new CallInstance({
       managers: this.managers,
-      ...options,
+      ...options
     });
 
     call.addEventListener('state', (state) => {
@@ -220,12 +220,12 @@ export class CallsController extends EventListenerBase<{
 
   public async startCallInternal(userId: UserId, isVideo: boolean) {
     this.log('p2pStartCallInternal', userId, isVideo);
-    
+
     const fullInfo = await this.managers.appProfileManager.getProfile(userId);
     if(!fullInfo) return;
-    
+
     const {video_calls_available} = fullInfo.pFlags;
-    
+
     const call = this.createCallInstance({
       isOutgoing: true,
       interlocutorUserId: userId

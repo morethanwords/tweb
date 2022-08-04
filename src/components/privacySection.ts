@@ -4,19 +4,19 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import replaceContent from "../helpers/dom/replaceContent";
-import { randomLong } from "../helpers/random";
-import { InputPrivacyKey, InputPrivacyRule } from "../layer";
-import { AppManagers } from "../lib/appManagers/managers";
-import getPrivacyRulesDetails from "../lib/appManagers/utils/privacy/getPrivacyRulesDetails";
-import PrivacyType from "../lib/appManagers/utils/privacy/privacyType";
-import { i18n, join, LangPackKey, _i18n } from "../lib/langPack";
-import RadioField from "./radioField";
-import Row, { RadioFormFromRows } from "./row";
-import Scrollable from "./scrollable";
-import { SettingSection, generateSection } from "./sidebarLeft";
-import AppAddMembersTab from "./sidebarLeft/tabs/addMembers";
-import { SliderSuperTabEventable } from "./sliderTab";
+import replaceContent from '../helpers/dom/replaceContent';
+import {randomLong} from '../helpers/random';
+import {InputPrivacyKey, InputPrivacyRule} from '../layer';
+import {AppManagers} from '../lib/appManagers/managers';
+import getPrivacyRulesDetails from '../lib/appManagers/utils/privacy/getPrivacyRulesDetails';
+import PrivacyType from '../lib/appManagers/utils/privacy/privacyType';
+import {i18n, join, LangPackKey, _i18n} from '../lib/langPack';
+import RadioField from './radioField';
+import Row, {RadioFormFromRows} from './row';
+import Scrollable from './scrollable';
+import {SettingSection, generateSection} from './sidebarLeft';
+import AppAddMembersTab from './sidebarLeft/tabs/addMembers';
+import {SliderSuperTabEventable} from './sliderTab';
 
 export type PrivacySectionStr = LangPackKey | '' | HTMLElement;
 export default class PrivacySection {
@@ -38,8 +38,8 @@ export default class PrivacySection {
 
   constructor(public options: {
     tab: SliderSuperTabEventable,
-    title: LangPackKey, 
-    inputKey: InputPrivacyKey['_'], 
+    title: LangPackKey,
+    inputKey: InputPrivacyKey['_'],
     captions?: [PrivacySectionStr, PrivacySectionStr, PrivacySectionStr],
     appendTo?: Scrollable,
     noExceptions?: boolean,
@@ -72,17 +72,17 @@ export default class PrivacySection {
     if(options.skipTypes) {
       r = r.filter((r) => !options.skipTypes.includes(r.type));
     }
-    
+
     const random = randomLong();
     r.forEach(({type, langKey}) => {
       const row = new Row({
         radioField: new RadioField({
-          langKey, 
-          name: random, 
+          langKey,
+          name: random,
           value: '' + type
         })
       });
-      
+
       this.radioRows.set(type, row);
     });
 
@@ -97,7 +97,7 @@ export default class PrivacySection {
       const container = generateSection(options.appendTo, 'PrivacyExceptions', 'PrivacySettingsController.PeerInfo');
 
       this.exceptions = new Map([[
-        'disallow', 
+        'disallow',
         {
           titleLangKey: options.exceptionTexts[0],
           key: 'disallow',
@@ -107,7 +107,7 @@ export default class PrivacySection {
           clickable: true
         }
       ], [
-        'allow', 
+        'allow',
         {
           titleLangKey: options.exceptionTexts[1],
           key: 'allow',
@@ -186,8 +186,8 @@ export default class PrivacySection {
             ['allow',     'inputPrivacyValueAllowChatParticipants',     'inputPrivacyValueAllowUsers'],
             ['disallow',  'inputPrivacyValueDisallowChatParticipants',  'inputPrivacyValueDisallowUsers']
           ] as Array<[
-            'allow' | 'disallow', 
-            'inputPrivacyValueAllowChatParticipants' | 'inputPrivacyValueDisallowChatParticipants', 
+            'allow' | 'disallow',
+            'inputPrivacyValueAllowChatParticipants' | 'inputPrivacyValueDisallowChatParticipants',
             'inputPrivacyValueAllowUsers' | 'inputPrivacyValueDisallowUsers'
           ]>);
           for(const [k, chatKey, usersKey] of a) {
@@ -201,17 +201,17 @@ export default class PrivacySection {
               if(splitted.chats.length) {
                 rules.push({_: chatKey, chats: splitted.chats});
               }
-  
+
               if(splitted.users.length) {
                 rules.push({
-                  _: usersKey, 
+                  _: usersKey,
                   users: await Promise.all(splitted.users.map((id) => managers.appUsersManager.getUserInput(id)))
                 });
               }
             }
           }
         }
-        
+
         managers.appPrivacyManager.setPrivacy(options.inputKey, rules);
       }, {once: true});
     });
@@ -245,7 +245,7 @@ export default class PrivacySection {
     this.onRadioChange(type);
     row.radioField.input.checked = true;
   }
-  
+
   private splitPeersByType(peerIds: PeerId[]) {
     const peers = {users: [] as UserId[], chats: [] as ChatId[]};
     peerIds.forEach((peerId) => {
@@ -261,7 +261,7 @@ export default class PrivacySection {
     }
 
     return join([
-      peers.users.length ? i18n('Users', [peers.users.length]) : null, 
+      peers.users.length ? i18n('Users', [peers.users.length]) : null,
       peers.chats.length ? i18n('Chats', [peers.chats.length]) : null
     ].filter(Boolean), false);
   }

@@ -4,19 +4,19 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import SDP from "../sdp";
-import SDPMediaSection from "../sdp/mediaSection";
-import { toTelegramSource } from "../utils";
-import { parseSourceGroups } from "./parseSourceGroups";
+import SDP from '../sdp';
+import SDPMediaSection from '../sdp/mediaSection';
+import {toTelegramSource} from '../utils';
+import {parseSourceGroups} from './parseSourceGroups';
 
 export default function parseMediaSectionInfo(sdp: SDP, channel: SDPMediaSection) {
   const clientInfo = channel.lookupAttributeKeys({
     'ice-ufrag': true,
     'ice-pwd': true,
-    fingerprint: true,
-    setup: true,
-    ssrc: true,
-    mid: true,
+    'fingerprint': true,
+    'setup': true,
+    'ssrc': true,
+    'mid': true,
     'ssrc-group': false
   });
 

@@ -4,25 +4,25 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { webp2png } from './webp';
-import type { ConvertWebPTask } from './webpWorkerController';
+import {webp2png} from './webp';
+import type {ConvertWebPTask} from './webpWorkerController';
 
 const ctx = self as any as DedicatedWorkerGlobalScope;
 const tasks: ConvertWebPTask[] = [];
-//let isProcessing = false;
+// let isProcessing = false;
 
 function finishTask() {
-  //isProcessing = false;
+  // isProcessing = false;
   processTasks();
 }
 
 function processTasks() {
-  //if(isProcessing) return;
+  // if(isProcessing) return;
 
   const task = tasks.shift();
   if(!task) return;
 
-  //isProcessing = true;
+  // isProcessing = true;
 
   switch(task.type) {
     case 'convertWebp': {
@@ -34,11 +34,11 @@ function processTasks() {
       } catch(err) {
         console.error('Convert webp2png error:', err, 'payload:', task.payload);
       }
-      
+
       ctx.postMessage({
-        type: 'convertWebp', 
+        type: 'convertWebp',
         payload: {
-          fileName, 
+          fileName,
           bytes: convertedBytes
         }
       });
@@ -60,7 +60,7 @@ function scheduleTask(task: ConvertWebPTask) {
   } else {
     tasks.unshift(task);
   } */
-  
+
   processTasks();
 }
 

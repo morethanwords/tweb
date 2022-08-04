@@ -4,42 +4,42 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { MyDocument } from "../../appDocsManager";
-import type { MyPhoto } from "../../appPhotosManager";
-import type { PhotoSize, WebDocument } from "../../../../layer";
-import calcImageInBox from "../../../../helpers/calcImageInBox";
+import type {MyDocument} from '../../appDocsManager';
+import type {MyPhoto} from '../../appPhotosManager';
+import type {PhotoSize, WebDocument} from '../../../../layer';
+import calcImageInBox from '../../../../helpers/calcImageInBox';
 
 export default function choosePhotoSize(
-  photo: MyPhoto | MyDocument | WebDocument, 
-  boxWidth = 0, 
-  boxHeight = 0, 
-  useBytes = false, 
+  photo: MyPhoto | MyDocument | WebDocument,
+  boxWidth = 0,
+  boxHeight = 0,
+  useBytes = false,
   pushDocumentSize = false
 ) {
   if(window.devicePixelRatio > 1) {
     boxWidth *= 2;
     boxHeight *= 2;
   }
-  
+
   /*
-  s	box	100x100
-  m	box	320x320
-  x	box	800x800
-  y	box	1280x1280
-  w	box	2560x2560
-  a	crop	160x160
-  b	crop	320x320
-  c	crop	640x640
-  d	crop	1280x1280 */
+  s box 100x100
+  m box 320x320
+  x box 800x800
+  y box 1280x1280
+  w box 2560x2560
+  a crop  160x160
+  b crop  320x320
+  c crop  640x640
+  d crop  1280x1280 */
 
   let bestPhotoSize: PhotoSize = {_: 'photoSizeEmpty', type: ''};
   let sizes = (photo as MyPhoto).sizes || (photo as MyDocument).thumbs as PhotoSize[];
   if(pushDocumentSize && sizes && photo._ !== 'photo') {
     sizes = sizes.concat({
-      _: 'photoSize', 
-      w: photo.w, 
-      h: photo.h, 
-      size: photo.size, 
+      _: 'photoSize',
+      w: photo.w,
+      h: photo.h,
+      size: photo.size,
       type: undefined
     });
   }
@@ -61,6 +61,6 @@ export default function choosePhotoSize(
       bestPhotoSize = sizes[0];
     }
   }
-  
+
   return bestPhotoSize;
 }

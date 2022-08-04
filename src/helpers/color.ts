@@ -20,15 +20,16 @@ export type ColorRgb = [number, number, number];
 export function rgbaToHsla(r: number, g: number, b: number, a: number = 1): ColorHsla {
   r /= 255, g /= 255, b /= 255;
   const max = Math.max(r, g, b),
-        min = Math.min(r, g, b);
-  let h, s, l = (max + min) / 2;
+    min = Math.min(r, g, b);
+  let h: number, s: number;
+  const l = (max + min) / 2;
 
   if(max === min) {
     h = s = 0; // achromatic
   } else {
-    let d = max - min;
+    const d = max - min;
     s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    switch (max) {
+    switch(max) {
       case r:
         h = (g - b) / d + (g < b ? 6 : 0);
         break;
@@ -95,7 +96,7 @@ export function hslaStringToRgba(hsla: string) {
     if(val.endsWith('%')) {
       return +val.slice(0, -1);
     }
-    
+
     return +val;
   });
 

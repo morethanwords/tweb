@@ -1,6 +1,6 @@
-import pause from "../helpers/schedulers/pause";
-import splitStringByLength from "../helpers/string/splitStringByLength";
-import { MessageEntity } from "../layer";
+import pause from '../helpers/schedulers/pause';
+import splitStringByLength from '../helpers/string/splitStringByLength';
+import {MessageEntity} from '../layer';
 
 const text = 'abc def ghi jkl mno pqr stu vwx yz';
 // const text = 'abcdefghijklmnopqrstuvwxyz';
@@ -10,7 +10,7 @@ const parts = ['abc def ghi', 'jkl mno pqr', 'stu vwx yz'];
 
 async function split(str: string, maxLength: number, entities: MessageEntity[]) {
   if(str.length <= maxLength) return [str];
-  
+
   const delimiter = ' ';
   const out: {part: string, entities: MessageEntity[]}[] = [];
 
@@ -31,11 +31,11 @@ async function split(str: string, maxLength: number, entities: MessageEntity[]) 
     } else {
       good = sliced;
     }
-    
+
     if(!good.length) {
       continue;
     }
-    
+
     offset += good.length;
     out.push({part: good, entities: []});
     console.log(`'${good}'`);

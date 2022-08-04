@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
-import deepEqual from "../../helpers/object/deepEqual";
-import { renderImageFromUrlPromise } from "../../helpers/dom/renderImageFromUrl";
-import mediaSizes, { ScreenSize } from "../../helpers/mediaSizes";
+import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
+import deepEqual from '../../helpers/object/deepEqual';
+import {renderImageFromUrlPromise} from '../../helpers/dom/renderImageFromUrl';
+import mediaSizes, {ScreenSize} from '../../helpers/mediaSizes';
 
 type ChatBackgroundPatternRendererInitOptions = {
   url: string,
@@ -49,9 +49,9 @@ export default class ChatBackgroundPatternRenderer {
   public init(options: ChatBackgroundPatternRendererInitOptions) {
     // if(this.options) {
     //   if(this.options.width !== options.width || this.options.height !== options.height) {
-    //     this.createCanvasPatternPromise = 
-    //       this.pattern = 
-    //       this.exportCanvasPatternToImagePromise = 
+    //     this.createCanvasPatternPromise =
+    //       this.pattern =
+    //       this.exportCanvasPatternToImagePromise =
     //       undefined;
     //   }
     // }
@@ -61,7 +61,7 @@ export default class ChatBackgroundPatternRenderer {
 
   public renderToCanvas(canvas: HTMLCanvasElement) {
     // return this.createCanvasPattern(canvas).then(() => {
-      // return this.fillCanvas(canvas);
+    // return this.fillCanvas(canvas);
     // });
 
     return this.renderImageFromUrl(this.options.url).then(() => {
@@ -89,7 +89,7 @@ export default class ChatBackgroundPatternRenderer {
       } else {
         createPatternFrom = img;
       }
-      
+
       const perf = performance.now();
       this.pattern = canvas.getContext('2d').createPattern(createPatternFrom, 'repeat-x');
       console.warn('creating pattern time:', performance.now() - perf);
@@ -132,14 +132,14 @@ export default class ChatBackgroundPatternRenderer {
 
     let imageWidth = img.width, imageHeight = img.height;
     // if(imageHeight < height) {
-      let patternHeight = 1480 * canvas.dpr;
-      // * correct
-      // if(+canvas.dataset.originalHeight !== height) hhh *= 2 / 3;
-      // * but have to make it good
-      if(+canvas.dataset.originalHeight !== height) patternHeight *= .875;
-      const ratio = patternHeight / imageHeight;
-      imageWidth *= ratio;
-      imageHeight = patternHeight;
+    let patternHeight = 1480 * canvas.dpr;
+    // * correct
+    // if(+canvas.dataset.originalHeight !== height) hhh *= 2 / 3;
+    // * but have to make it good
+    if(+canvas.dataset.originalHeight !== height) patternHeight *= .875;
+    const ratio = patternHeight / imageHeight;
+    imageWidth *= ratio;
+    imageHeight = patternHeight;
     // }
 
     if(this.options.mask) {
@@ -183,15 +183,14 @@ export default class ChatBackgroundPatternRenderer {
 
   public setCanvasDimensions(canvas: HTMLCanvasElement) {
     const devicePixelRatio = Math.min(2, window.devicePixelRatio);
-    let width = this.options.width * devicePixelRatio, 
-      height = this.options.height * devicePixelRatio;
+    const width = this.options.width * devicePixelRatio;
+    let height = this.options.height * devicePixelRatio;
 
     canvas.dpr = devicePixelRatio;
     canvas.dataset.originalHeight = '' + height;
     if(mediaSizes.activeScreen === ScreenSize.large) height *= 1.5;
     canvas.width = width;
     canvas.height = height;
-
   }
 
   public createCanvas() {

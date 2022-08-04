@@ -4,17 +4,17 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appDialogsManager, { AppDialogsManager, DialogDom } from "../lib/appManagers/appDialogsManager";
-import { getHeavyAnimationPromise } from "../hooks/useHeavyAnimationCheck";
-import isInDOM from "../helpers/dom/isInDOM";
-import positionElementByIndex from "../helpers/dom/positionElementByIndex";
-import replaceContent from "../helpers/dom/replaceContent";
-import { fastRaf } from "../helpers/schedulers";
-import SortedList, { SortedElementBase } from "../helpers/sortedList";
-import safeAssign from "../helpers/object/safeAssign";
-import { AppManagers } from "../lib/appManagers/managers";
-import getUserStatusString from "./wrappers/getUserStatusString";
-import type LazyLoadQueue from "./lazyLoadQueue";
+import appDialogsManager, {AppDialogsManager, DialogDom} from '../lib/appManagers/appDialogsManager';
+import {getHeavyAnimationPromise} from '../hooks/useHeavyAnimationCheck';
+import isInDOM from '../helpers/dom/isInDOM';
+import positionElementByIndex from '../helpers/dom/positionElementByIndex';
+import replaceContent from '../helpers/dom/replaceContent';
+import {fastRaf} from '../helpers/schedulers';
+import SortedList, {SortedElementBase} from '../helpers/sortedList';
+import safeAssign from '../helpers/object/safeAssign';
+import {AppManagers} from '../lib/appManagers/managers';
+import getUserStatusString from './wrappers/getUserStatusString';
+import type LazyLoadQueue from './lazyLoadQueue';
 
 interface SortedUser extends SortedElementBase {
   dom: DialogDom
@@ -23,7 +23,7 @@ interface SortedUser extends SortedElementBase {
 export default class SortedUserList extends SortedList<SortedUser> {
   protected static SORT_INTERVAL = 30e3;
   public list: HTMLUListElement;
-  
+
   protected lazyLoadQueue: LazyLoadQueue;
   protected avatarSize = 48;
   protected rippleEnabled = true;
@@ -83,9 +83,9 @@ export default class SortedUserList extends SortedList<SortedUser> {
         if(!isInDOM(this.list)) {
           return callback(false);
         }
-    
+
         await getHeavyAnimationPromise();
-    
+
         if(!isInDOM(this.list)) {
           return callback(false);
         }

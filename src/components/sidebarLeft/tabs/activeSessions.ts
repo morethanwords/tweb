@@ -4,28 +4,28 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { SettingSection } from "..";
-import Button from "../../button";
-import Row from "../../row";
-import { Authorization } from "../../../layer";
-import { formatDateAccordingToTodayNew } from "../../../helpers/date";
-import ButtonMenu from "../../buttonMenu";
-import { toast } from "../../toast";
-import I18n from "../../../lib/langPack";
-import PopupPeer from "../../popups/peer";
-import findUpClassName from "../../../helpers/dom/findUpClassName";
-import { attachClickEvent } from "../../../helpers/dom/clickEvent";
-import toggleDisability from "../../../helpers/dom/toggleDisability";
-import { SliderSuperTabEventable } from "../../sliderTab";
-import findAndSplice from "../../../helpers/array/findAndSplice";
-import { attachContextMenuListener } from "../../../helpers/dom/attachContextMenuListener";
-import positionMenu from "../../../helpers/positionMenu";
-import contextMenuController from "../../../helpers/contextMenuController";
+import {SettingSection} from '..';
+import Button from '../../button';
+import Row from '../../row';
+import {Authorization} from '../../../layer';
+import {formatDateAccordingToTodayNew} from '../../../helpers/date';
+import ButtonMenu from '../../buttonMenu';
+import {toast} from '../../toast';
+import I18n from '../../../lib/langPack';
+import PopupPeer from '../../popups/peer';
+import findUpClassName from '../../../helpers/dom/findUpClassName';
+import {attachClickEvent} from '../../../helpers/dom/clickEvent';
+import toggleDisability from '../../../helpers/dom/toggleDisability';
+import {SliderSuperTabEventable} from '../../sliderTab';
+import findAndSplice from '../../../helpers/array/findAndSplice';
+import {attachContextMenuListener} from '../../../helpers/dom/attachContextMenuListener';
+import positionMenu from '../../../helpers/positionMenu';
+import contextMenuController from '../../../helpers/contextMenuController';
 
 export default class AppActiveSessionsTab extends SliderSuperTabEventable {
   public authorizations: Authorization.authorization[];
   private menuElement: HTMLElement;
-  
+
   protected init() {
     this.header.classList.add('with-border');
     this.container.classList.add('active-sessions-container');
@@ -73,7 +73,7 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
               callback: () => {
                 const toggle = toggleDisability([btnTerminate], true);
                 this.managers.apiManager.invokeApi('auth.resetAuthorizations').then((value) => {
-                  //toggleDisability([btnTerminate], false);
+                  // toggleDisability([btnTerminate], false);
                   btnTerminate.remove();
                   otherSection.container.remove();
                 }, onError).finally(() => {
@@ -85,7 +85,7 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
             descriptionLangKey: 'AreYouSureSessions'
           }).show();
         });
-  
+
         section.content.append(btnTerminate);
       }
 
@@ -116,7 +116,7 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
     let target: HTMLElement;
     const onTerminateClick = () => {
       const hash = target.dataset.hash;
-      
+
       new PopupPeer('revoke-session', {
         buttons: [{
           langKey: 'Terminate',

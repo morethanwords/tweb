@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import getEmojiEntityFromEmoji from "./getEmojiEntityFromEmoji";
-import wrapRichText from "./wrapRichText";
+import getEmojiEntityFromEmoji from './getEmojiEntityFromEmoji';
+import wrapRichText from './wrapRichText';
 
 export default function wrapSingleEmoji(emoji: string) {
   return wrapRichText(emoji, {

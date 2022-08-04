@@ -4,15 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import IS_VIBRATE_SUPPORTED from "../../environment/vibrateSupport";
-import assumeType from "../../helpers/assumeType";
-import isInDOM from "../../helpers/dom/isInDOM";
-import throttleWithRaf from "../../helpers/schedulers/throttleWithRaf";
-import { MyDocument } from "../../lib/appManagers/appDocsManager";
-import appImManager from "../../lib/appManagers/appImManager";
-import { AppManagers } from "../../lib/appManagers/managers";
-import RLottiePlayer from "../../lib/rlottie/rlottiePlayer";
-import wrapSticker from "./sticker";
+import IS_VIBRATE_SUPPORTED from '../../environment/vibrateSupport';
+import assumeType from '../../helpers/assumeType';
+import isInDOM from '../../helpers/dom/isInDOM';
+import throttleWithRaf from '../../helpers/schedulers/throttleWithRaf';
+import {MyDocument} from '../../lib/appManagers/appDocsManager';
+import appImManager from '../../lib/appManagers/appImManager';
+import {AppManagers} from '../../lib/appManagers/managers';
+import RLottiePlayer from '../../lib/rlottie/rlottiePlayer';
+import wrapSticker from './sticker';
 
 export default function wrapStickerAnimation({
   size,
@@ -84,7 +84,7 @@ export default function wrapStickerAnimation({
     if(!isInDOM(target)) {
       return;
     }
-    
+
     const rect = target.getBoundingClientRect();
     /* const boxWidth = Math.max(rect.width, rect.height);
     const boxHeight = Math.max(rect.width, rect.height);

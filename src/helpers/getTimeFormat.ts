@@ -7,6 +7,6 @@ export default function getTimeFormat(): 'h12' | 'h23' {
   //     return resolvedOptions.hour12 ? 'h12' : 'h23';
   //   }
   // } catch(err) {
-    return new Date().toLocaleString().match(/\s(AM|PM)/) ? 'h12' : 'h23';
+  return new Date().toLocaleString().match(/\s(AM|PM)/) ? 'h12' : 'h23';
   // }
 }

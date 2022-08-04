@@ -4,15 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { i18n, LangPackKey } from "../lib/langPack";
-import ripple from "./ripple";
+import {i18n, LangPackKey} from '../lib/langPack';
+import ripple from './ripple';
 
 export type ButtonOptions = Partial<{
-  noRipple: true, 
-  onlyMobile: true, 
-  icon: string, 
-  rippleSquare: true, 
-  text: LangPackKey, 
+  noRipple: true,
+  onlyMobile: true,
+  icon: string,
+  rippleSquare: true,
+  text: LangPackKey,
   disabled: boolean,
   asDiv: boolean
 }>;

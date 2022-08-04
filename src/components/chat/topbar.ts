@@ -4,47 +4,47 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { Channel } from "../../lib/appManagers/appChatsManager";
-import type { AppSidebarRight } from "../sidebarRight";
-import type Chat from "./chat";
-import { RIGHT_COLUMN_ACTIVE_CLASSNAME } from "../sidebarRight";
-import mediaSizes, { ScreenSize } from "../../helpers/mediaSizes";
-import { IS_SAFARI } from "../../environment/userAgent";
-import rootScope from "../../lib/rootScope";
-import AvatarElement from "../avatar";
-import Button from "../button";
-import ButtonIcon from "../buttonIcon";
-import ButtonMenuToggle from "../buttonMenuToggle";
-import ChatAudio from "./audio";
-import ChatPinnedMessage from "./pinnedMessage";
-import { ButtonMenuItemOptions } from "../buttonMenu";
-import ListenerSetter from "../../helpers/listenerSetter";
-import PopupDeleteDialog from "../popups/deleteDialog";
-import appNavigationController from "../appNavigationController";
-import { LEFT_COLUMN_ACTIVE_CLASSNAME } from "../sidebarLeft";
-import PeerTitle from "../peerTitle";
-import { i18n } from "../../lib/langPack";
-import findUpClassName from "../../helpers/dom/findUpClassName";
-import blurActiveElement from "../../helpers/dom/blurActiveElement";
-import cancelEvent from "../../helpers/dom/cancelEvent";
-import { attachClickEvent } from "../../helpers/dom/clickEvent";
-import findUpTag from "../../helpers/dom/findUpTag";
-import { toast, toastNew } from "../toast";
-import replaceContent from "../../helpers/dom/replaceContent";
-import { ChatFull, Chat as MTChat, GroupCall } from "../../layer";
-import PopupPickUser from "../popups/pickUser";
-import PopupPeer from "../popups/peer";
-import AppEditContactTab from "../sidebarRight/tabs/editContact";
-import appMediaPlaybackController from "../appMediaPlaybackController";
-import IS_GROUP_CALL_SUPPORTED from "../../environment/groupCallSupport";
-import IS_CALL_SUPPORTED from "../../environment/callSupport";
-import { CallType } from "../../lib/calls/types";
-import PopupMute from "../popups/mute";
-import { AppManagers } from "../../lib/appManagers/managers";
-import hasRights from "../../lib/appManagers/utils/chats/hasRights";
-import wrapPeerTitle from "../wrappers/peerTitle";
-import groupCallsController from "../../lib/calls/groupCallsController";
-import apiManagerProxy from "../../lib/mtproto/mtprotoworker";
+import type {Channel} from '../../lib/appManagers/appChatsManager';
+import type {AppSidebarRight} from '../sidebarRight';
+import type Chat from './chat';
+import {RIGHT_COLUMN_ACTIVE_CLASSNAME} from '../sidebarRight';
+import mediaSizes, {ScreenSize} from '../../helpers/mediaSizes';
+import {IS_SAFARI} from '../../environment/userAgent';
+import rootScope from '../../lib/rootScope';
+import AvatarElement from '../avatar';
+import Button from '../button';
+import ButtonIcon from '../buttonIcon';
+import ButtonMenuToggle from '../buttonMenuToggle';
+import ChatAudio from './audio';
+import ChatPinnedMessage from './pinnedMessage';
+import {ButtonMenuItemOptions} from '../buttonMenu';
+import ListenerSetter from '../../helpers/listenerSetter';
+import PopupDeleteDialog from '../popups/deleteDialog';
+import appNavigationController from '../appNavigationController';
+import {LEFT_COLUMN_ACTIVE_CLASSNAME} from '../sidebarLeft';
+import PeerTitle from '../peerTitle';
+import {i18n} from '../../lib/langPack';
+import findUpClassName from '../../helpers/dom/findUpClassName';
+import blurActiveElement from '../../helpers/dom/blurActiveElement';
+import cancelEvent from '../../helpers/dom/cancelEvent';
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import findUpTag from '../../helpers/dom/findUpTag';
+import {toast, toastNew} from '../toast';
+import replaceContent from '../../helpers/dom/replaceContent';
+import {ChatFull, Chat as MTChat, GroupCall} from '../../layer';
+import PopupPickUser from '../popups/pickUser';
+import PopupPeer from '../popups/peer';
+import AppEditContactTab from '../sidebarRight/tabs/editContact';
+import appMediaPlaybackController from '../appMediaPlaybackController';
+import IS_GROUP_CALL_SUPPORTED from '../../environment/groupCallSupport';
+import IS_CALL_SUPPORTED from '../../environment/callSupport';
+import {CallType} from '../../lib/calls/types';
+import PopupMute from '../popups/mute';
+import {AppManagers} from '../../lib/appManagers/managers';
+import hasRights from '../../lib/appManagers/utils/chats/hasRights';
+import wrapPeerTitle from '../wrappers/peerTitle';
+import groupCallsController from '../../lib/calls/groupCallsController';
+import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -63,7 +63,7 @@ export default class ChatTopbar {
   private btnMute: HTMLButtonElement;
   private btnSearch: HTMLButtonElement;
   private btnMore: HTMLElement;
-  
+
   private chatAudio: ChatAudio;
   public pinnedMessage: ChatPinnedMessage;
 
@@ -77,8 +77,8 @@ export default class ChatTopbar {
   private chatInfoContainer: HTMLDivElement;
 
   constructor(
-    private chat: Chat, 
-    private appSidebarRight: AppSidebarRight, 
+    private chat: Chat,
+    private appSidebarRight: AppSidebarRight,
     private managers: AppManagers
   ) {
     this.listenerSetter = new ListenerSetter();
@@ -88,7 +88,7 @@ export default class ChatTopbar {
   }
 
   public construct() {
-    //this.chat.log.error('Topbar construction');
+    // this.chat.log.error('Topbar construction');
 
     this.container = document.createElement('div');
     this.container.classList.add('sidebar-header', 'topbar', 'hide');
@@ -143,14 +143,14 @@ export default class ChatTopbar {
     }
 
     this.chatUtils.append(...[
-      // this.chatAudio ? this.chatAudio.divAndCaption.container : null, 
-      this.pinnedMessage ? this.pinnedMessage.pinnedMessageContainer.divAndCaption.container : null, 
-      this.btnJoin, 
-      this.btnPinned, 
-      this.btnCall, 
-      this.btnGroupCall, 
-      this.btnMute, 
-      this.btnSearch, 
+      // this.chatAudio ? this.chatAudio.divAndCaption.container : null,
+      this.pinnedMessage ? this.pinnedMessage.pinnedMessageContainer.divAndCaption.container : null,
+      this.btnJoin,
+      this.btnPinned,
+      this.btnCall,
+      this.btnGroupCall,
+      this.btnMute,
+      this.btnSearch,
       this.btnMore
     ].filter(Boolean));
 
@@ -181,19 +181,19 @@ export default class ChatTopbar {
         if(findUpClassName(e.target, 'progress-line')) {
           return;
         }
-        
+
         const mid = +container.dataset.mid;
         if(container.classList.contains('pinned-message')) {
-          //if(!this.pinnedMessage.locked) {
-            this.pinnedMessage.followPinnedMessage(mid);
-          //}
+          // if(!this.pinnedMessage.locked) {
+          this.pinnedMessage.followPinnedMessage(mid);
+          // }
         } else {
           const peerId = container.dataset.peerId.toPeerId();
           const searchContext = appMediaPlaybackController.getSearchContext();
           this.chat.appImManager.setInnerPeer({
-            peerId, 
-            lastMsgId: mid, 
-            type: searchContext.isScheduled ? 'scheduled' : (searchContext.threadId ? 'discussion' : undefined), 
+            peerId,
+            lastMsgId: mid,
+            type: searchContext.isScheduled ? 'scheduled' : (searchContext.threadId ? 'discussion' : undefined),
             threadId: searchContext.threadId
           });
         }
@@ -213,7 +213,7 @@ export default class ChatTopbar {
         cancelEvent(e);
       }
 
-      //const item = appNavigationController.findItemByType('chat');
+      // const item = appNavigationController.findItemByType('chat');
       // * return manually to chat by arrow, since can't get back to
       if(mediaSizes.activeScreen === ScreenSize.medium && document.body.classList.contains(LEFT_COLUMN_ACTIVE_CLASSNAME)) {
         this.chat.appImManager.setPeer({peerId: this.peerId});
@@ -238,7 +238,7 @@ export default class ChatTopbar {
     if(!element) {
       return;
     }
-    
+
     this.buttonsToVerify.push({element, verify});
   }
 
@@ -253,7 +253,7 @@ export default class ChatTopbar {
         // delete button
         this.menuButtons[this.menuButtons.length - 1].element.lastChild.replaceWith(i18n(deleteButtonText));
       }
-  
+
       const buttons = this.buttonsToVerify.concat(isMenuOpen ? this.menuButtons : []);
       const results = await Promise.all(buttons.map(async(button) => {
         return {
@@ -280,7 +280,7 @@ export default class ChatTopbar {
     }
 
     if(type) {
-      if(((await this.managers.appPeersManager.isBroadcast(this.peerId)) && type === 'group') || 
+      if(((await this.managers.appPeersManager.isBroadcast(this.peerId)) && type === 'group') ||
         ((await this.managers.appPeersManager.isAnyGroup(this.peerId)) && type === 'broadcast')) {
         return false;
       }
@@ -428,7 +428,7 @@ export default class ChatTopbar {
                   callback: () => {
                     reject();
                   },
-                  isCancel: true,
+                  isCancel: true
                 }],
                 peerId,
                 overlayClosable: true
@@ -526,7 +526,7 @@ export default class ChatTopbar {
 
   public constructPeerHelpers() {
     this.avatarElement = this.constructAvatar();
-    
+
     this.subtitle = document.createElement('div');
     this.subtitle.classList.add('info');
 
@@ -571,7 +571,7 @@ export default class ChatTopbar {
     this.listenerSetter.add(rootScope)('chat_update', async(chatId) => {
       if(this.peerId === chatId.toPeerId(true)) {
         const chat = await this.managers.appChatsManager.getChat(chatId) as Channel/*  | Chat */;
-        
+
         this.btnJoin.classList.toggle('hide', !(chat as Channel)?.pFlags?.left);
         this.setUtilsWidth();
         this.verifyButtons();
@@ -607,9 +607,9 @@ export default class ChatTopbar {
         const middleware = this.chat.bubbles.getMiddleware();
         apiManagerProxy.getState().then((state) => {
           if(!middleware()) return;
-  
+
           this.pinnedMessage.hidden = !!state.hiddenPinnedMessages[this.chat.peerId];
-  
+
           if(isTopMessage) {
             this.pinnedMessage.unsetScrollDownListener();
             this.pinnedMessage.testMid(mid, 0); // * because slider will not let get bubble by document.elementFromPoint
@@ -635,15 +635,15 @@ export default class ChatTopbar {
       }
     });
   }
-  
+
   public constructDiscussionHelpers() {
     this.pinnedMessage = new ChatPinnedMessage(this, this.chat, this.managers);
   }
 
   public openPinned(byCurrent: boolean) {
     this.chat.appImManager.setInnerPeer({
-      peerId: this.peerId, 
-      lastMsgId: byCurrent ? +this.pinnedMessage.pinnedMessageContainer.divAndCaption.container.dataset.mid : 0, 
+      peerId: this.peerId,
+      lastMsgId: byCurrent ? +this.pinnedMessage.pinnedMessageContainer.divAndCaption.container.dataset.mid : 0,
       type: 'pinned'
     });
   }
@@ -665,10 +665,10 @@ export default class ChatTopbar {
   };
 
   public destroy() {
-    //this.chat.log.error('Topbar destroying');
+    // this.chat.log.error('Topbar destroying');
     this.listenerSetter.removeAll();
     window.clearInterval(this.setPeerStatusInterval);
-    
+
     if(this.pinnedMessage) {
       this.pinnedMessage.destroy(); // * возможно это можно не делать
     }
@@ -720,21 +720,21 @@ export default class ChatTopbar {
         this.avatarElement.replaceWith(newAvatar);
         this.avatarElement = newAvatar;
       }
-  
+
       this.setUtilsWidth();
-  
+
       this.verifyButtons();
-  
+
       if(this.pinnedMessage) { // * replace with new one
         if(this.chat.type === 'chat') {
           if(this.chat.wasAlreadyUsed) { // * change
             const newPinnedMessage = new ChatPinnedMessage(this, this.chat, this.managers);
             this.pinnedMessage.pinnedMessageContainer.divAndCaption.container.replaceWith(newPinnedMessage.pinnedMessageContainer.divAndCaption.container);
             this.pinnedMessage.destroy();
-            //this.pinnedMessage.pinnedMessageContainer.toggle(true);
+            // this.pinnedMessage.pinnedMessageContainer.toggle(true);
             this.pinnedMessage = newPinnedMessage;
           }
-          
+
           this.pinnedMessage.hidden = !!state.hiddenPinnedMessages[peerId];
         } else if(this.chat.type === 'discussion') {
           this.pinnedMessage.pinnedMid = this.chat.threadId;
@@ -743,7 +743,7 @@ export default class ChatTopbar {
           this.pinnedMessage._setPinnedMessage();
         }
       }
-  
+
       setTitleCallback();
       setStatusCallback && setStatusCallback();
       this.setMutedState();
@@ -797,7 +797,7 @@ export default class ChatTopbar {
           peerId,
           dialog: true,
           withIcons: true
-        }),
+        })
         // generateTitleIcons(peerId)
       ]);
 
@@ -822,7 +822,7 @@ export default class ChatTopbar {
     if(!this.btnMute) return;
 
     const peerId = this.peerId;
-    let muted = await this.managers.appNotificationsManager.isPeerLocalMuted(peerId, false);
+    const muted = await this.managers.appNotificationsManager.isPeerLocalMuted(peerId, false);
     if(await this.managers.appPeersManager.isBroadcast(peerId)) { // not human
       this.btnMute.classList.remove('tgico-mute', 'tgico-unmute');
       this.btnMute.classList.add(muted ? 'tgico-unmute' : 'tgico-mute');
@@ -834,34 +834,33 @@ export default class ChatTopbar {
 
   // ! У МЕНЯ ПРОСТО СГОРЕЛО, САФАРИ КОНЧЕННЫЙ БРАУЗЕР - ЕСЛИ НЕ СКРЫВАТЬ БЛОК, ТО ПРИ ПЕРЕВОРОТЕ ЭКРАНА НА АЙФОНЕ БЛОК БУДЕТ НЕПРАВИЛЬНО ШИРИНЫ, ДАЖЕ БЕЗ ЭТОЙ ФУНКЦИИ!
   public setUtilsWidth = (resize = false) => {
-    //return;
+    // return;
     if(this.setUtilsRAF) window.cancelAnimationFrame(this.setUtilsRAF);
 
     if(IS_SAFARI && resize) {
       this.chatUtils.classList.add('hide');
     }
 
-    //mutationObserver.disconnect();
+    // mutationObserver.disconnect();
     this.setUtilsRAF = window.requestAnimationFrame(() => {
-      
-      //mutationRAF = window.requestAnimationFrame(() => {
-        
-        //setTimeout(() => {
-          if(IS_SAFARI && resize) {
-            this.chatUtils.classList.remove('hide');
-          }
-          /* this.chatInfo.style.removeProperty('--utils-width');
-          void this.chatInfo.offsetLeft; // reflow */
-          const width = /* chatUtils.scrollWidth */this.chatUtils.getBoundingClientRect().width;
-          this.chat.log('utils width:', width);
-          this.container.style.setProperty('--utils-width', width + 'px');
-          //this.chatInfo.classList.toggle('have-utils-width', !!width);
-        //}, 0);
-        
-        this.setUtilsRAF = 0;
+      // mutationRAF = window.requestAnimationFrame(() => {
 
-        //mutationObserver.observe(chatUtils, observeOptions);
-      //});
+      // setTimeout(() => {
+      if(IS_SAFARI && resize) {
+        this.chatUtils.classList.remove('hide');
+      }
+      /* this.chatInfo.style.removeProperty('--utils-width');
+          void this.chatInfo.offsetLeft; // reflow */
+      const width = /* chatUtils.scrollWidth */this.chatUtils.getBoundingClientRect().width;
+      this.chat.log('utils width:', width);
+      this.container.style.setProperty('--utils-width', width + 'px');
+      // this.chatInfo.classList.toggle('have-utils-width', !!width);
+      // }, 0);
+
+      this.setUtilsRAF = 0;
+
+      // mutationObserver.observe(chatUtils, observeOptions);
+      // });
     });
   };
 
@@ -885,10 +884,10 @@ export default class ChatTopbar {
 
     const peerId = this.peerId;
     return this.chat.appImManager.setPeerStatus(
-      peerId, 
-      this.subtitle, 
-      needClear, 
-      false, 
+      peerId,
+      this.subtitle,
+      needClear,
+      false,
       () => peerId === this.peerId
     );
   };

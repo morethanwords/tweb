@@ -11,6 +11,9 @@ const replace = require(__dirname + '/in/schema_replace_types.json');
 
 const mtproto = schema.API;
 
+const TABULATION = '  ';
+const NEW_LINE = '\n';
+
 for(const constructor of additional) {
   const additionalParams = constructor.params || (constructor.params = []);
   additionalParams.forEach(param => {
@@ -171,7 +174,7 @@ function serializeObject(object, outArray, space) {
 
     if(isObject(value)) { // only pFlags
       outArray.push(`${space}${key}?: Partial<{`);
-      serializeObject(value, outArray, space + '\t');
+      serializeObject(value, outArray, space + TABULATION);
       outArray.push(`${space}}>`);
     } else {
       outArray.push(`${space}${key}: ${value}`);
@@ -226,11 +229,11 @@ for(const type in types) {
   const camelizedType = camelizeName(type, true);
 
   const csTypes = cs.map(name => {
-    const str = `export type ${camelizeName(name, false)} = {\n`;
+    const str = `export type ${camelizeName(name, false)} = {${NEW_LINE}`;
 
-    const params = serializeObject(constructors[name], [], '\t\t');
+    const params = serializeObject(constructors[name], [], TABULATION + TABULATION);
 
-    return str + params.join(',\n').replace(/\{,/g, '{') + '\n\t};';
+    return str + params.join(`,${NEW_LINE}`).replace(/\{,/g, '{') + `${NEW_LINE}${TABULATION}};`;
   });
   
 
@@ -240,7 +243,7 @@ for(const type in types) {
 export type ${camelizedType} = ${cs.map(name => camelizedType + '.' + camelizeName(name, false)).join(' | ')};
 
 export namespace ${camelizedType} {
-  ${csTypes.join('\n\n\t')}
+  ${csTypes.join(`${NEW_LINE}${NEW_LINE}${TABULATION}`)}
 }
 
 `;
@@ -249,11 +252,11 @@ export namespace ${camelizedType} {
 
   //console.log(types['InputUser']);
 
-out += `export interface ConstructorDeclMap {\n`;
+out += `export interface ConstructorDeclMap {${NEW_LINE}`;
 for(const predicate in constructorsTypes) {
-  out += `\t'${predicate}': ${constructorsTypes[predicate]},\n`;
+  out += `${TABULATION}'${predicate}': ${constructorsTypes[predicate]},${NEW_LINE}`;
 }
-out += `}\n\n`;
+out += `}${NEW_LINE}${NEW_LINE}`;
 
 /** @type {{[method: string]: {req: string, res: string}}} */
 const methodsMap = {};
@@ -270,21 +273,21 @@ mtproto.methods.forEach((_method) => {
     res: processParamType(type, false, {'JSONValue': 'any'}/* , overrideMethodTypes */)
   };
 
-  let str = `export type ${camelizedMethod} = {\n`;
+  let str = `export type ${camelizedMethod} = {${NEW_LINE}`;
 
   const object = processParams(params, {}, false/* , overrideMethodTypes */);
 
-  const serialized = serializeObject(object, [], '\t');
+  const serialized = serializeObject(object, [], TABULATION);
 
-  str += serialized.join(',\n').replace(/\{,/g, '{') + '\n};\n\n';
+  str += serialized.join(`,${NEW_LINE}`).replace(/\{,/g, '{') + `${NEW_LINE}};${NEW_LINE}${NEW_LINE}`;
   out += str;
 });
 
-out += `export interface MethodDeclMap {\n`;
+out += `export interface MethodDeclMap {${NEW_LINE}`;
 for(const method in methodsMap) {
-  out += `\t'${method}': {req: ${methodsMap[method].req}, res: ${methodsMap[method].res}},\n`;
+  out += `${TABULATION}'${method}': {req: ${methodsMap[method].req}, res: ${methodsMap[method].res}},${NEW_LINE}`;
 }
-out += `}\n\n`;
+out += `}${NEW_LINE}${NEW_LINE}`;
 
 const path = process.argv[2];
 const writePathTo = (path || __dirname + '/out/') + 'layer.d.ts';

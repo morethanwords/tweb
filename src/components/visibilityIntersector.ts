@@ -39,7 +39,7 @@ export default class VisibilityIntersector {
 
         changed[entry.isIntersecting ? 'unshift' : 'push']({target, visible: entry.isIntersecting});
 
-        //onVisibilityChange(target, entry.isIntersecting);
+        // onVisibilityChange(target, entry.isIntersecting);
       });
 
       changed.forEach((smth) => {
@@ -78,13 +78,13 @@ export default class VisibilityIntersector {
   public refresh() {
     this.observer.disconnect();
 
-    //window.requestAnimationFrame(() => {
-      const targets = [...this.items.keys()];
-      for(const target of targets) {
-        //this.items.set(target, false);
-        this.observer.observe(target);
-      }
-    //});
+    // window.requestAnimationFrame(() => {
+    const targets = [...this.items.keys()];
+    for(const target of targets) {
+      // this.items.set(target, false);
+      this.observer.observe(target);
+    }
+    // });
   }
 
   public refreshVisible() {

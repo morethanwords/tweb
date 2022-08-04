@@ -4,42 +4,42 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { MyDocument } from "../../lib/appManagers/appDocsManager";
-import type Chat from "./chat";
-import IS_TOUCH_SUPPORTED from "../../environment/touchSupport";
-import ButtonMenu, { ButtonMenuItemOptions } from "../buttonMenu";
-import PopupDeleteMessages from "../popups/deleteMessages";
-import PopupForward from "../popups/forward";
-import PopupPinMessage from "../popups/unpinMessage";
-import { copyTextToClipboard } from "../../helpers/clipboard";
-import PopupSendNow from "../popups/sendNow";
-import { toast } from "../toast";
-import I18n, { i18n, LangPackKey } from "../../lib/langPack";
-import findUpClassName from "../../helpers/dom/findUpClassName";
-import cancelEvent from "../../helpers/dom/cancelEvent";
-import { attachClickEvent, simulateClickEvent } from "../../helpers/dom/clickEvent";
-import isSelectionEmpty from "../../helpers/dom/isSelectionEmpty";
-import { Message, Poll, Chat as MTChat, MessageMedia, AvailableReaction } from "../../layer";
-import PopupReportMessages from "../popups/reportMessages";
-import assumeType from "../../helpers/assumeType";
-import PopupSponsored from "../popups/sponsored";
-import ListenerSetter from "../../helpers/listenerSetter";
-import { getMiddleware } from "../../helpers/middleware";
-import PeerTitle from "../peerTitle";
-import StackedAvatars from "../stackedAvatars";
-import { IS_APPLE } from "../../environment/userAgent";
-import PopupReactedList from "../popups/reactedList";
-import { ChatReactionsMenu, REACTION_CONTAINER_SIZE } from "./reactionsMenu";
-import getPeerId from "../../lib/appManagers/utils/peers/getPeerId";
-import getServerMessageId from "../../lib/appManagers/utils/messageId/getServerMessageId";
-import { AppManagers } from "../../lib/appManagers/managers";
-import positionMenu, { MenuPositionPadding } from "../../helpers/positionMenu";
-import contextMenuController from "../../helpers/contextMenuController";
-import { attachContextMenuListener } from "../../helpers/dom/attachContextMenuListener";
-import filterAsync from "../../helpers/array/filterAsync";
-import appDownloadManager from "../../lib/appManagers/appDownloadManager";
-import { SERVICE_PEER_ID } from "../../lib/mtproto/mtproto_config";
-import { MessagesStorageKey } from "../../lib/appManagers/appMessagesManager";
+import type {MyDocument} from '../../lib/appManagers/appDocsManager';
+import type Chat from './chat';
+import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
+import ButtonMenu, {ButtonMenuItemOptions} from '../buttonMenu';
+import PopupDeleteMessages from '../popups/deleteMessages';
+import PopupForward from '../popups/forward';
+import PopupPinMessage from '../popups/unpinMessage';
+import {copyTextToClipboard} from '../../helpers/clipboard';
+import PopupSendNow from '../popups/sendNow';
+import {toast} from '../toast';
+import I18n, {i18n, LangPackKey} from '../../lib/langPack';
+import findUpClassName from '../../helpers/dom/findUpClassName';
+import cancelEvent from '../../helpers/dom/cancelEvent';
+import {attachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent';
+import isSelectionEmpty from '../../helpers/dom/isSelectionEmpty';
+import {Message, Poll, Chat as MTChat, MessageMedia, AvailableReaction} from '../../layer';
+import PopupReportMessages from '../popups/reportMessages';
+import assumeType from '../../helpers/assumeType';
+import PopupSponsored from '../popups/sponsored';
+import ListenerSetter from '../../helpers/listenerSetter';
+import {getMiddleware} from '../../helpers/middleware';
+import PeerTitle from '../peerTitle';
+import StackedAvatars from '../stackedAvatars';
+import {IS_APPLE} from '../../environment/userAgent';
+import PopupReactedList from '../popups/reactedList';
+import {ChatReactionsMenu, REACTION_CONTAINER_SIZE} from './reactionsMenu';
+import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
+import getServerMessageId from '../../lib/appManagers/utils/messageId/getServerMessageId';
+import {AppManagers} from '../../lib/appManagers/managers';
+import positionMenu, {MenuPositionPadding} from '../../helpers/positionMenu';
+import contextMenuController from '../../helpers/contextMenuController';
+import {attachContextMenuListener} from '../../helpers/dom/attachContextMenuListener';
+import filterAsync from '../../helpers/array/filterAsync';
+import appDownloadManager from '../../lib/appManagers/appDownloadManager';
+import {SERVICE_PEER_ID} from '../../lib/mtproto/mtproto_config';
+import {MessagesStorageKey} from '../../lib/appManagers/appMessagesManager';
 
 export default class ChatContextMenu {
   private buttons: (ButtonMenuItemOptions & {verify: () => boolean | Promise<boolean>, notDirect?: () => boolean, withSelection?: true, isSponsored?: true})[];
@@ -68,7 +68,7 @@ export default class ChatContextMenu {
   private canOpenReactedList: boolean;
 
   constructor(
-    private chat: Chat, 
+    private chat: Chat,
     private managers: AppManagers
   ) {
     this.listenerSetter = new ListenerSetter();
@@ -78,7 +78,7 @@ export default class ChatContextMenu {
 
   public attachTo(element: HTMLElement) {
     this.attachListenerSetter.removeAll();
-    
+
     if(IS_TOUCH_SUPPORTED/*  && false */) {
       attachClickEvent(element, (e) => {
         if(this.chat.selection.isSelecting) {
@@ -102,10 +102,10 @@ export default class ChatContextMenu {
           '.attachment',
           '.reply-markup-button'
         ];
-        let good = !(e.target as HTMLElement).closest(badSelectors.join(', '));
+        const good = !(e.target as HTMLElement).closest(badSelectors.join(', '));
         if(good) {
           cancelEvent(e);
-          //onContextMenu((e as TouchEvent).changedTouches[0]);
+          // onContextMenu((e as TouchEvent).changedTouches[0]);
           // onContextMenu((e as TouchEvent).changedTouches ? (e as TouchEvent).changedTouches[0] : e as MouseEvent);
           this.onContextMenu(e);
         }
@@ -133,16 +133,16 @@ export default class ChatContextMenu {
 
     let mid = +bubble.dataset.mid;
     if(!mid) return;
-    
+
     const r = async() => {
       const isSponsored = this.isSponsored = mid < 0;
       this.isSelectable = this.chat.selection.canSelectBubble(bubble);
       this.peerId = this.chat.peerId;
-      //this.msgID = msgID;
+      // this.msgID = msgID;
       this.target = e.target as HTMLElement;
       this.isTextSelected = !isSelectionEmpty();
       this.isAnchorTarget = this.target.tagName === 'A' && (
-        (this.target as HTMLAnchorElement).target === '_blank' || 
+        (this.target as HTMLAnchorElement).target === '_blank' ||
         this.target.classList.contains('anchor-url')
       );
       this.isUsernameTarget = this.target.tagName === 'A' && this.target.classList.contains('mention');
@@ -155,8 +155,8 @@ export default class ChatContextMenu {
 
         const mids = await this.chat.getMidsByMid(mid);
         if(mids.length > 1) {
-          const selectedMid = this.chat.selection.isMidSelected(this.peerId, mid) ? 
-            mid : 
+          const selectedMid = this.chat.selection.isMidSelected(this.peerId, mid) ?
+            mid :
             mids.find((mid) => this.chat.selection.isMidSelected(this.peerId, mid));
           if(selectedMid) {
             mid = selectedMid;
@@ -184,7 +184,7 @@ export default class ChatContextMenu {
       if(!initResult) {
         return;
       }
-      
+
       element = initResult.element;
       const {cleanup, destroy, menuPadding, reactionsMenu, reactionsMenuPosition} = initResult;
       let isReactionsMenuVisible = false;
@@ -196,21 +196,21 @@ export default class ChatContextMenu {
         if(reactionsMenuPosition === 'horizontal') {
           const offsetSize = element[/* reactionsMenuPosition === 'vertical' ? 'offsetHeight' :  */'offsetWidth'];
           // if(reactionsMenu.scrollable.container.scrollWidth > offsetWidth) {
-            const INNER_CONTAINER_PADDING = 8;
-            const visibleLength = (offsetSize - INNER_CONTAINER_PADDING) / REACTION_CONTAINER_SIZE;
-            const nextVisiblePart = visibleLength % 1;
-            const MIN_NEXT_VISIBLE_PART = 0.65;
-            if(nextVisiblePart < MIN_NEXT_VISIBLE_PART) {
-              const minSize = (offsetSize + (MIN_NEXT_VISIBLE_PART - nextVisiblePart) * REACTION_CONTAINER_SIZE) | 0;
-              element.style[/* reactionsMenuPosition === 'vertical' ? 'minHeight' :  */'minWidth'] = minSize + 'px';
-            }
+          const INNER_CONTAINER_PADDING = 8;
+          const visibleLength = (offsetSize - INNER_CONTAINER_PADDING) / REACTION_CONTAINER_SIZE;
+          const nextVisiblePart = visibleLength % 1;
+          const MIN_NEXT_VISIBLE_PART = 0.65;
+          if(nextVisiblePart < MIN_NEXT_VISIBLE_PART) {
+            const minSize = (offsetSize + (MIN_NEXT_VISIBLE_PART - nextVisiblePart) * REACTION_CONTAINER_SIZE) | 0;
+            element.style[/* reactionsMenuPosition === 'vertical' ? 'minHeight' :  */'minWidth'] = minSize + 'px';
+          }
           // }
         }
       }
-      
+
       const side: 'left' | 'right' = bubble.classList.contains('is-in') ? 'left' : 'right';
-      //bubble.parentElement.append(element);
-      //appImManager.log('contextmenu', e, bubble, side);
+      // bubble.parentElement.append(element);
+      // appImManager.log('contextmenu', e, bubble, side);
       positionMenu((e as TouchEvent).touches ? (e as TouchEvent).touches[0] : e as MouseEvent, element, side, menuPadding);
 
       if(reactionsMenu) {
@@ -242,7 +242,7 @@ export default class ChatContextMenu {
         reactionsMenu.container.classList.add('is-visible');
       }
     };
-    
+
     r();
   };
 
@@ -266,12 +266,12 @@ export default class ChatContextMenu {
       return filterAsync(buttons, async(button) => {
         let good: boolean;
 
-        //if((appImManager.chatSelection.isSelecting && !button.withSelection) || (button.withSelection && !appImManager.chatSelection.isSelecting)) {
+        // if((appImManager.chatSelection.isSelecting && !button.withSelection) || (button.withSelection && !appImManager.chatSelection.isSelecting)) {
         if(this.chat.selection.isSelecting && !button.withSelection) {
           good = false;
         } else {
-          good = this.isOverBubble || IS_TOUCH_SUPPORTED || true ? 
-            await button.verify() : 
+          good = this.isOverBubble || IS_TOUCH_SUPPORTED || true ?
+            await button.verify() :
             button.notDirect && await button.verify() && button.notDirect();
         }
 
@@ -312,9 +312,9 @@ export default class ChatContextMenu {
       icon: 'reply',
       text: 'Reply',
       onClick: this.onReplyClick,
-      verify: async() => await this.chat.canSend() && 
-        !this.message.pFlags.is_outgoing && 
-        !!this.chat.input.messageInput && 
+      verify: async() => await this.chat.canSend() &&
+        !this.message.pFlags.is_outgoing &&
+        !!this.chat.input.messageInput &&
         this.chat.type !== 'scheduled'/* ,
       cancelEvent: true */
     }, {
@@ -386,16 +386,16 @@ export default class ChatContextMenu {
       icon: 'pin',
       text: 'Message.Context.Pin',
       onClick: this.onPinClick,
-      verify: async() => !this.message.pFlags.is_outgoing && 
-        this.message._ !== 'messageService' && 
-        !this.message.pFlags.pinned && 
-        await this.managers.appPeersManager.canPinMessage(this.peerId) && 
-        this.chat.type !== 'scheduled',
+      verify: async() => !this.message.pFlags.is_outgoing &&
+        this.message._ !== 'messageService' &&
+        !this.message.pFlags.pinned &&
+        await this.managers.appPeersManager.canPinMessage(this.peerId) &&
+        this.chat.type !== 'scheduled'
     }, {
       icon: 'unpin',
       text: 'Message.Context.Unpin',
       onClick: this.onUnpinClick,
-      verify: async() => (this.message as Message.message).pFlags.pinned && await this.managers.appPeersManager.canPinMessage(this.peerId),
+      verify: async() => (this.message as Message.message).pFlags.pinned && await this.managers.appPeersManager.canPinMessage(this.peerId)
     }, {
       icon: 'download',
       text: 'MediaViewer.Context.Download',
@@ -406,10 +406,10 @@ export default class ChatContextMenu {
         if(this.message.pFlags.is_outgoing) {
           return false;
         }
-        
+
         const doc: MyDocument = ((this.message as Message.message).media as MessageMedia.messageMediaDocument)?.document as any;
         if(!doc) return false;
-        
+
         let hasTarget = !!IS_TOUCH_SUPPORTED;
         const isGoodType = !doc.type || !(['gif', 'video', 'sticker'] as MyDocument['type'][]).includes(doc.type);
         if(isGoodType) hasTarget = hasTarget || !!findUpClassName(this.target, 'document') || !!findUpClassName(this.target, 'audio');
@@ -442,8 +442,8 @@ export default class ChatContextMenu {
       icon: 'forward',
       text: 'Message.Context.Selection.Forward',
       onClick: this.onForwardClick,
-      verify: () => this.chat.selection.selectionForwardBtn && 
-        this.isSelected && 
+      verify: () => this.chat.selection.selectionForwardBtn &&
+        this.isSelected &&
         !this.chat.selection.selectionForwardBtn.hasAttribute('disabled'),
       notDirect: () => true,
       withSelection: true
@@ -510,7 +510,7 @@ export default class ChatContextMenu {
   private async init() {
     this.cleanup();
     this.setButtons();
-    
+
     const filteredButtons = await this.filterButtons(this.buttons);
     if(!filteredButtons.length) {
       return;
@@ -545,7 +545,7 @@ export default class ChatContextMenu {
           fakeText = i18n('Chat.Context.ReactedFast', [reactedLength]);
         } else {
           fakeText = i18n(
-            recentReactions.length === participantsCount ? 'Chat.Context.ReactedFast' : 'Chat.Context.Reacted', 
+            recentReactions.length === participantsCount ? 'Chat.Context.ReactedFast' : 'Chat.Context.Reacted',
             [recentReactions.length, participantsCount]
           );
         }
@@ -572,11 +572,11 @@ export default class ChatContextMenu {
         }
 
         const reactions = result.combined;
-        const reactedLength = participantsCount === undefined ? 
-          result.reactionsCount : 
+        const reactedLength = participantsCount === undefined ?
+          result.reactionsCount :
           (
-            isViewingReactions ? 
-              reactions.filter((reaction) => reaction.reaction).length : 
+            isViewingReactions ?
+              reactions.filter((reaction) => reaction.reaction).length :
               reactions.length
           );
 
@@ -585,7 +585,7 @@ export default class ChatContextMenu {
           fakeElem = new PeerTitle({
             peerId: reactions[0].peerId,
             onlyFirstName: true,
-            dialog: false,
+            dialog: false
           }).element;
 
           if(!isViewingReactions || result.readParticipants.length <= 1) {
@@ -594,7 +594,7 @@ export default class ChatContextMenu {
         } else if(isViewingReactions) {
           const isFull = reactedLength === reactions.length || participantsCount === undefined;
           fakeElem = i18n(
-            isFull ? 'Chat.Context.ReactedFast' : 'Chat.Context.Reacted', 
+            isFull ? 'Chat.Context.ReactedFast' : 'Chat.Context.Reacted',
             isFull ? [reactedLength] : [reactedLength, reactions.length]
           );
         } else {
@@ -618,7 +618,7 @@ export default class ChatContextMenu {
 
           // if(reactions.length > 1) {
           // if(isViewingReactions) {
-            this.canOpenReactedList = true;
+          this.canOpenReactedList = true;
           // }
         }
       });
@@ -655,7 +655,7 @@ export default class ChatContextMenu {
     this.chat.container.append(element);
 
     return {
-      element, 
+      element,
       cleanup: () => {
         this.cleanup();
         reactionsMenu && reactionsMenu.cleanup();
@@ -688,8 +688,8 @@ export default class ChatContextMenu {
 
   private onCopyClick = async() => {
     if(isSelectionEmpty()) {
-      const mids = this.chat.selection.isSelecting ? 
-        [...this.chat.selection.selectedMids.get(this.peerId)].sort((a, b) => a - b) : 
+      const mids = this.chat.selection.isSelecting ?
+        [...this.chat.selection.selectedMids.get(this.peerId)].sort((a, b) => a - b) :
         [this.mid];
 
       const parts: string[] = await Promise.all(mids.map(async(mid) => {
@@ -702,7 +702,7 @@ export default class ChatContextMenu {
       copyTextToClipboard(str);
     } else {
       document.execCommand('copy');
-      //cancelSelection();
+      // cancelSelection();
     }
   };
 

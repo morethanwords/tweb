@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { putPreloader } from '../components/putPreloader';
+import {putPreloader} from '../components/putPreloader';
 import mediaSizes from '../helpers/mediaSizes';
-import { AccountPassword } from '../layer';
+import {AccountPassword} from '../layer';
 import Page from './page';
 import Button from '../components/button';
 import PasswordInputField from '../components/passwordInputField';
@@ -14,7 +14,7 @@ import PasswordMonkey from '../components/monkeys/password';
 import I18n from '../lib/langPack';
 import LoginPage from './loginPage';
 import cancelEvent from '../helpers/dom/cancelEvent';
-import { attachClickEvent } from '../helpers/dom/clickEvent';
+import {attachClickEvent} from '../helpers/dom/clickEvent';
 import htmlToSpan from '../helpers/dom/htmlToSpan';
 import replaceContent from '../helpers/dom/replaceContent';
 import toggleDisability from '../helpers/dom/toggleDisability';
@@ -24,7 +24,7 @@ import rootScope from '../lib/rootScope';
 const TEST = false;
 let passwordInput: HTMLInputElement;
 
-let onFirstMount = (): Promise<any> => {
+const onFirstMount = (): Promise<any> => {
   const page = new LoginPage({
     className: 'page-password',
     withInputWrapper: true,
@@ -48,7 +48,7 @@ let onFirstMount = (): Promise<any> => {
 
   let getStateInterval: number;
 
-  let getState = () => {
+  const getState = () => {
     // * just to check session relevance
     if(!getStateInterval) {
       getStateInterval = window.setInterval(getState, 10e3);
@@ -66,7 +66,7 @@ let onFirstMount = (): Promise<any> => {
   };
 
   let state: AccountPassword;
-  
+
   const onSubmit = (e?: Event) => {
     if(e) {
       cancelEvent(e);
@@ -78,7 +78,7 @@ let onFirstMount = (): Promise<any> => {
     }
 
     const toggle = toggleDisability([passwordInput, btnNext], true);
-    let value = passwordInput.value;
+    const value = passwordInput.value;
 
     btnNextI18n.update({key: 'PleaseWait'});
     const preloader = putPreloader(btnNext);
@@ -87,8 +87,8 @@ let onFirstMount = (): Promise<any> => {
     passwordInputField.setValueSilently(value); // prevent saving suggestion
 
     rootScope.managers.passwordManager.check(value, state).then((response) => {
-      //console.log('passwordManager response:', response);
-        
+      // console.log('passwordManager response:', response);
+
       switch(response._) {
         case 'auth.authorization':
           clearInterval(getStateInterval);
@@ -106,21 +106,21 @@ let onFirstMount = (): Promise<any> => {
     }).catch((err: any) => {
       toggle();
       passwordInputField.input.classList.add('error');
-      
+
       switch(err.type) {
         default:
-          //btnNext.innerText = err.type;
+          // btnNext.innerText = err.type;
           btnNextI18n.update({key: 'PASSWORD_HASH_INVALID'});
           passwordInput.select();
           break;
       }
 
       preloader.remove();
-  
+
       getState();
     });
   };
-  
+
   attachClickEvent(btnNext, onSubmit);
 
   passwordInput.addEventListener('keypress', function(this, e) {
@@ -142,9 +142,9 @@ let onFirstMount = (): Promise<any> => {
 };
 
 const page = new Page('page-password', true, onFirstMount, null, () => {
-  //if(!isAppleMobile) {
-    passwordInput.focus();
-  //}
+  // if(!isAppleMobile) {
+  passwordInput.focus();
+  // }
 
   rootScope.managers.appStateManager.pushToState('authState', {_: 'authStatePassword'});
 });

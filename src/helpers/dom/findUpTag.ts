@@ -10,7 +10,7 @@ export default function findUpTag(el: any, tag: string): HTMLElement {
 
   while(el.parentElement) {
     el = el.parentElement;
-    if(el.tagName === tag) 
+    if(el.tagName === tag)
       return el;
   }
   return null; */

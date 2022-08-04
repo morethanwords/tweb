@@ -4,30 +4,30 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { GroupCallConnectionType, GroupCallId, GroupCallOutputSource } from "../appManagers/appGroupCallsManager";
-import { IS_SAFARI } from "../../environment/userAgent";
-import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
-import safeAssign from "../../helpers/object/safeAssign";
-import throttle from "../../helpers/schedulers/throttle";
-import { GroupCall, GroupCallParticipant } from "../../layer";
-import { logger } from "../logger";
-import { NULL_PEER_ID } from "../mtproto/mtproto_config";
-import rootScope from "../rootScope";
-import CallInstanceBase, { TryAddTrackOptions } from "./callInstanceBase";
-import GroupCallConnectionInstance from "./groupCallConnectionInstance";
-import GROUP_CALL_STATE from "./groupCallState";
-import getScreenConstraints from "./helpers/getScreenConstraints";
-import getScreenStream from "./helpers/getScreenStream";
-import getStream from "./helpers/getStream";
-import getVideoConstraints from "./helpers/getVideoConstraints";
-import stopTrack from "./helpers/stopTrack";
-import localConferenceDescription from "./localConferenceDescription";
-import { WebRTCLineType } from "./sdpBuilder";
-import StreamManager from "./streamManager";
-import { Ssrc } from "./types";
-import getPeerId from "../appManagers/utils/peers/getPeerId";
-import { AppManagers } from "../appManagers/managers";
-import { generateSelfVideo, makeSsrcFromParticipant, makeSsrcsFromParticipant } from "./groupCallsController";
+import type {GroupCallConnectionType, GroupCallId, GroupCallOutputSource} from '../appManagers/appGroupCallsManager';
+import {IS_SAFARI} from '../../environment/userAgent';
+import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
+import safeAssign from '../../helpers/object/safeAssign';
+import throttle from '../../helpers/schedulers/throttle';
+import {GroupCall, GroupCallParticipant} from '../../layer';
+import {logger} from '../logger';
+import {NULL_PEER_ID} from '../mtproto/mtproto_config';
+import rootScope from '../rootScope';
+import CallInstanceBase, {TryAddTrackOptions} from './callInstanceBase';
+import GroupCallConnectionInstance from './groupCallConnectionInstance';
+import GROUP_CALL_STATE from './groupCallState';
+import getScreenConstraints from './helpers/getScreenConstraints';
+import getScreenStream from './helpers/getScreenStream';
+import getStream from './helpers/getStream';
+import getVideoConstraints from './helpers/getVideoConstraints';
+import stopTrack from './helpers/stopTrack';
+import localConferenceDescription from './localConferenceDescription';
+import {WebRTCLineType} from './sdpBuilder';
+import StreamManager from './streamManager';
+import {Ssrc} from './types';
+import getPeerId from '../appManagers/utils/peers/getPeerId';
+import {AppManagers} from '../appManagers/managers';
+import {generateSelfVideo, makeSsrcFromParticipant, makeSsrcsFromParticipant} from './groupCallsController';
 
 export default class GroupCallInstance extends CallInstanceBase<{
   state: (state: GROUP_CALL_STATE) => void,
@@ -41,10 +41,10 @@ export default class GroupCallInstance extends CallInstanceBase<{
   public connections: {[k in GroupCallConnectionType]?: GroupCallConnectionInstance};
   public groupCall: GroupCall;
   public participant: GroupCallParticipant;
-  
+
   // will be set with negotiation
   public joined: boolean;
-  
+
   private pinnedSources: Array<GroupCallOutputSource>;
   private participantsSsrcs: Map<PeerId, Ssrc[]>;
   private hadAutoPinnedSources: Set<GroupCallOutputSource>;
@@ -221,7 +221,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
 
       const stream = await getScreenStream(getScreenConstraints());
       const streamManager = new StreamManager();
-      
+
       const connectionInstance = this.createConnectionInstance({
         streamManager,
         type,
@@ -229,7 +229,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
           type
         }
       });
-      
+
       const connection = connectionInstance.createPeerConnection();
       connection.addEventListener('negotiationneeded', () => {
         connectionInstance.negotiate();
@@ -240,7 +240,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
           this.stopScreenSharing();
         }
       }, {once: true});
-      
+
       connectionInstance.createDescription();
       connectionInstance.addInputVideoStream(stream);
     } catch(err) {
@@ -337,9 +337,9 @@ export default class GroupCallInstance extends CallInstanceBase<{
     if(isDiscarded) {
       return;
     }
-    
+
     if(!rejoin) {
-      let d = discard || (this.joined ? this.connections.main.sources.audio.source : undefined);
+      const d = discard || (this.joined ? this.connections.main.sources.audio.source : undefined);
       this.managers.appGroupCallsManager.hangUp(this.id, d);
     }
   }
@@ -347,7 +347,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
   public tryAddTrack(options: Omit<TryAddTrackOptions, 'streamManager'>) {
     const {description} = this;
     const source = super.tryAddTrack(options);
-    
+
     if(options.type === 'output') {
       const entry = description.getEntryBySource(+source);
       this.getParticipantByPeerId(entry.peerId).then((participant) => {
@@ -390,9 +390,9 @@ export default class GroupCallInstance extends CallInstanceBase<{
       }
 
       // if(isCurrentCall) {
-        const muted = options.muted;
-        if(muted !== undefined) {
-          /* const isAdmin = appChatsManager.hasRights(currentGroupCall.chatId, 'manage_call');
+      const muted = options.muted;
+      if(muted !== undefined) {
+        /* const isAdmin = appChatsManager.hasRights(currentGroupCall.chatId, 'manage_call');
           if(isAdmin) {
             if(muted) {
               participant.pFlags.muted = true;
@@ -401,19 +401,19 @@ export default class GroupCallInstance extends CallInstanceBase<{
               participant.pFlags.can_self_unmute = true;
             }
           } else  */if(participant.pFlags.self) {
-            if(muted) {
-              participant.pFlags.muted = true;
-            } else if(participant.pFlags.can_self_unmute) {
-              delete participant.pFlags.muted;
-            }
-          }/*  else {
+          if(muted) {
+            participant.pFlags.muted = true;
+          } else if(participant.pFlags.can_self_unmute) {
+            delete participant.pFlags.muted;
+          }
+        }/*  else {
             if(muted) {
               participant.pFlags.muted_by_you = true;
             } else {
               delete participant.pFlags.muted_by_you;
             }
           } */
-        }
+      }
       // }
 
       /* const a: [keyof GroupCallParticipant['pFlags'], keyof typeof options][] = [
@@ -548,8 +548,8 @@ export default class GroupCallInstance extends CallInstanceBase<{
       //   description.bundleMids.push(entry.mid);
       //   entry.setDirection('recvonly');
       // } else {
-        ssrc.type === 'video' && entry.setEndpoint(ssrc.endpoint);
-        entry.createTransceiver(connection, {direction: 'recvonly'});
+      ssrc.type === 'video' && entry.setEndpoint(ssrc.endpoint);
+      entry.createTransceiver(connection, {direction: 'recvonly'});
       // }
 
       modifiedTypes.add(entry.type);

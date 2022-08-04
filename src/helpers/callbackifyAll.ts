@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { Awaited } from '../types';
+import {Awaited} from '../types';
 
 export default function callbackifyAll<T extends readonly unknown[] | [], R extends any>(
-  values: T, 
+  values: T,
   callback: (result: { -readonly [P in keyof T]: Awaited<T[P]> }) => R
 ): PromiseLike<R> | R {
   if(values.some((value) => value instanceof Promise)) {

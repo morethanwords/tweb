@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import deferredPromise, { CancellablePromise } from "./cancellablePromise";
-import { getHeavyAnimationPromise } from "../hooks/useHeavyAnimationCheck";
-import { fastRaf } from "./schedulers";
-import { ArgumentTypes } from "../types";
+import deferredPromise, {CancellablePromise} from './cancellablePromise';
+import {getHeavyAnimationPromise} from '../hooks/useHeavyAnimationCheck';
+import {fastRaf} from './schedulers';
+import {ArgumentTypes} from '../types';
 
 type HeavyQueue<T extends HeavyQueue<any>> = {
-  items: ArgumentTypes<T['process']>[], 
+  items: ArgumentTypes<T['process']>[],
   process: (...args: any[]) => ReturnType<T['process']>,
   context: any,
   promise?: CancellablePromise<ReturnType<T['process']>[]>
@@ -22,7 +22,7 @@ export default function addHeavyTask<T extends HeavyQueue<T>>(queue: T, method: 
   if(!queue.items.length) {
     return Promise.resolve([]) as typeof promise;
   }
-  
+
   const promise = queue.promise = deferredPromise();
   heavyQueue[method](queue);
   processHeavyQueue();
@@ -76,13 +76,13 @@ function timedChunk<T extends HeavyQueue<T>>(queue: HeavyQueue<T>) {
 
       if(todo.length > 0) {
         fastRaf(f);
-        //setTimeout(f, 25);
+        // setTimeout(f, 25);
       } else {
         resolve(results);
       }
     };
 
     fastRaf(f);
-    //setTimeout(f, 25);
+    // setTimeout(f, 25);
   }).then(queue.promise.resolve, queue.promise.reject);
 }

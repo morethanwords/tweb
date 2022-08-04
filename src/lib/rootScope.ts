@@ -4,31 +4,31 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall } from "../layer";
-import type { AppMessagesManager, Dialog, MessagesStorageKey, MyMessage } from "./appManagers/appMessagesManager";
-import type { MyDialogFilter } from "./storages/filters";
-import type { Folder } from "./storages/dialogs";
-import type { UserTyping } from "./appManagers/appProfileManager";
-import type { MyDraftMessage } from "./appManagers/appDraftsManager";
-import type { ConnectionStatusChange } from "./mtproto/connectionStatus";
-import type { GroupCallId } from "./appManagers/appGroupCallsManager";
-import type { AppManagers } from "./appManagers/managers";
-import type { State } from "../config/state";
-import type { Progress } from "./appManagers/appDownloadManager";
-import type { CallId } from "./appManagers/appCallsManager";
-import { NULL_PEER_ID, UserAuth } from "./mtproto/mtproto_config";
-import EventListenerBase from "../helpers/eventListenerBase";
-import { MOUNT_CLASS_TO } from "../config/debug";
-import MTProtoMessagePort from "./mtproto/mtprotoMessagePort";
-import { IS_WORKER } from "../helpers/context";
-import { MTAppConfig } from "./mtproto/appConfig";
+import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall} from '../layer';
+import type {AppMessagesManager, Dialog, MessagesStorageKey, MyMessage} from './appManagers/appMessagesManager';
+import type {MyDialogFilter} from './storages/filters';
+import type {Folder} from './storages/dialogs';
+import type {UserTyping} from './appManagers/appProfileManager';
+import type {MyDraftMessage} from './appManagers/appDraftsManager';
+import type {ConnectionStatusChange} from './mtproto/connectionStatus';
+import type {GroupCallId} from './appManagers/appGroupCallsManager';
+import type {AppManagers} from './appManagers/managers';
+import type {State} from '../config/state';
+import type {Progress} from './appManagers/appDownloadManager';
+import type {CallId} from './appManagers/appCallsManager';
+import {NULL_PEER_ID, UserAuth} from './mtproto/mtproto_config';
+import EventListenerBase from '../helpers/eventListenerBase';
+import {MOUNT_CLASS_TO} from '../config/debug';
+import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
+import {IS_WORKER} from '../helpers/context';
+import {MTAppConfig} from './mtproto/appConfig';
 
 export type BroadcastEvents = {
   'chat_full_update': ChatId,
   'chat_update': ChatId,
 
   'channel_update': ChatId,
-  
+
   'user_update': UserId,
   'user_auth': UserAuth,
   'user_full_update': UserId,
@@ -48,17 +48,17 @@ export type BroadcastEvents = {
   'filter_order': number[],
 
   'folder_unread': Omit<Folder, 'dialogs' | 'dispatchUnreadTimeout'>,
-  
+
   'dialog_draft': {peerId: PeerId, dialog: Dialog, drop: boolean, draft: MyDraftMessage | undefined},
   'dialog_unread': {peerId: PeerId, dialog: Dialog},
   'dialog_flush': {peerId: PeerId, dialog: Dialog},
   'dialog_drop': {peerId: PeerId, dialog?: Dialog},
   'dialog_migrate': {migrateFrom: PeerId, migrateTo: PeerId},
-  //'dialog_top': Dialog,
+  // 'dialog_top': Dialog,
   'dialog_notify_settings': Dialog,
   // 'dialog_order': {dialog: Dialog, pos: number},
   'dialogs_multiupdate': {[peerId: PeerId]: Dialog},
-  
+
   'history_append': {storageKey: MessagesStorageKey, message: Message.message},
   'history_update': {storageKey: MessagesStorageKey, message: MyMessage, sequential?: boolean},
   'history_reply_markup': {peerId: PeerId},
@@ -66,8 +66,8 @@ export type BroadcastEvents = {
   'history_delete': {peerId: PeerId, msgs: Set<number>},
   'history_forbidden': PeerId,
   'history_reload': PeerId,
-  //'history_request': void,
-  
+  // 'history_request': void,
+
   'message_edit': {storageKey: MessagesStorageKey, peerId: PeerId, mid: number, message: MyMessage},
   'message_sent': {storageKey: MessagesStorageKey, tempId: number, tempMessage: any, mid: number, message: MyMessage},
   'messages_views': {peerId: PeerId, mid: number, views: number}[],
@@ -90,36 +90,36 @@ export type BroadcastEvents = {
   'state_cleared': void,
   'state_synchronized': ChatId | void,
   'state_synchronizing': ChatId | void,
-  
+
   'contacts_update': UserId,
   'avatar_update': PeerId,
   'poll_update': {poll: Poll, results: PollResults},
   'invalidate_participants': ChatId,
-  //'channel_settings': {channelId: number},
+  // 'channel_settings': {channelId: number},
   'webpage_updated': {id: WebPage.webPage['id'], msgs: {peerId: PeerId, mid: number, isScheduled: boolean}[]},
 
   'connection_status_change': ConnectionStatusChange,
   'settings_updated': {key: string, value: any, settings: State['settings']},
   'draft_updated': {peerId: PeerId, threadId: number, draft: MyDraftMessage | undefined, force?: boolean},
-  
+
   'background_change': void,
-  
+
   'privacy_update': Update.updatePrivacy,
-  
+
   'notify_settings': Update.updateNotifySettings,
   'notify_peer_type_settings': {key: Exclude<NotifyPeer['_'], 'notifyPeer'>, settings: PeerNotifySettings},
 
   'notification_reset': string,
   'notification_cancel': string,
-  
+
   'language_change': string,
-  
+
   'theme_change': void,
 
   'media_play': void,
-  
+
   'emoji_recent': string,
-  
+
   'download_progress': Progress,
   'document_downloading': DocId,
   'document_downloaded': DocId,
@@ -191,7 +191,7 @@ export class RootScope extends EventListenerBase<BroadcastEventsListeners> {
   public getConnectionStatus() {
     return this.connectionStatus;
   }
-  
+
   public dispatchEventSingle(...args: any[]) {
     // @ts-ignore
     super.dispatchEvent(...args);

@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import pause from "../../helpers/schedulers/pause";
+import pause from '../../helpers/schedulers/pause';
 
 const ctx = self as any as ServiceWorkerGlobalScope;
 export const CACHE_ASSETS_NAME = 'cachedAssets';
@@ -25,11 +25,11 @@ export async function requestCache(event: FetchEvent) {
     // const cache = await ctx.caches.open(CACHE_ASSETS_NAME);
     const cache = await timeoutRace(ctx.caches.open(CACHE_ASSETS_NAME));
     const file = await timeoutRace(cache.match(event.request, {ignoreVary: true}));
-  
+
     if(file && isCorrectResponse(file)) {
       return file;
     }
-  
+
     const headers: HeadersInit = {'Vary': '*'};
     let response = await fetch(event.request, {headers});
     if(isCorrectResponse(response)) {
@@ -41,7 +41,7 @@ export async function requestCache(event: FetchEvent) {
         cache.put(event.request, response.clone());
       }
     }
-  
+
     return response;
   } catch(err) {
     return fetch(event.request);

@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { LangPackKey, i18n } from "../lib/langPack";
+import {LangPackKey, i18n} from '../lib/langPack';
 
 export default class LoginPage {
   public element: HTMLElement;
@@ -21,8 +21,8 @@ export default class LoginPage {
     subtitleLangKey?: LangPackKey,
   }) {
     this.element = document.body.querySelector('.' + options.className) as HTMLDivElement;
-    //this.element = document.createElement('div');
-    //this.element.className = 'page-' + options.className;
+    // this.element = document.createElement('div');
+    // this.element.className = 'page-' + options.className;
 
     this.container = document.createElement('div');
     this.container.className = 'container center-align';
@@ -40,7 +40,7 @@ export default class LoginPage {
     if(options.subtitleLangKey) {
       this.subtitle.append(i18n(options.subtitleLangKey));
     }
-    
+
     this.container.append(this.imageDiv, this.title, this.subtitle);
 
     if(options.withInputWrapper) {

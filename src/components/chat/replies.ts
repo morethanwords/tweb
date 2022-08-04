@@ -4,16 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { Message } from "../../layer";
-import rootScope from "../../lib/rootScope";
-import ripple from "../ripple";
-import I18n from "../../lib/langPack";
-import replaceContent from "../../helpers/dom/replaceContent";
-import StackedAvatars from "../stackedAvatars";
-import formatNumber from "../../helpers/number/formatNumber";
-import { AppManagers } from "../../lib/appManagers/managers";
-import getPeerId from "../../lib/appManagers/utils/peers/getPeerId";
-import type LazyLoadQueue from "../lazyLoadQueue";
+import {Message} from '../../layer';
+import rootScope from '../../lib/rootScope';
+import ripple from '../ripple';
+import I18n from '../../lib/langPack';
+import replaceContent from '../../helpers/dom/replaceContent';
+import StackedAvatars from '../stackedAvatars';
+import formatNumber from '../../helpers/number/formatNumber';
+import {AppManagers} from '../../lib/appManagers/managers';
+import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
+import type LazyLoadQueue from '../lazyLoadQueue';
 
 const TAG_NAME = 'replies-element';
 
@@ -32,7 +32,7 @@ export default class RepliesElement extends HTMLElement {
   public stackedAvatars: StackedAvatars;
   public text: I18n.IntlElement;
   public managers: AppManagers;
-  
+
   private updated = false;
 
   constructor() {
@@ -92,7 +92,7 @@ export default class RepliesElement extends HTMLElement {
       if(!leftPart.parentElement) {
         this.prepend(leftPart);
       }
-  
+
       if(!this.text) {
         this.text = new I18n.IntlElement();
       }

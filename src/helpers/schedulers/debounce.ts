@@ -1,19 +1,19 @@
 // * Jolly Cobra's schedulers
 
-import ctx from "../../environment/ctx";
-import { AnyFunction, Awaited } from "../../types";
-import noop from "../noop";
+import ctx from '../../environment/ctx';
+import {AnyFunction, Awaited} from '../../types';
+import noop from '../noop';
 
-export type DebounceReturnType<F extends AnyFunction> = { 
-  (...args: Parameters<F>): Promise<Awaited<ReturnType<F>>>; 
-  clearTimeout(): void; 
+export type DebounceReturnType<F extends AnyFunction> = {
+  (...args: Parameters<F>): Promise<Awaited<ReturnType<F>>>;
+  clearTimeout(): void;
 };
 
 export default function debounce<F extends AnyFunction>(
   fn: F,
   ms: number,
   shouldRunFirst = true,
-  shouldRunLast = true,
+  shouldRunLast = true
 ): DebounceReturnType<F> {
   let waitingTimeout: number;
   let waitingPromise: Promise<Awaited<ReturnType<F>>>, resolve: (result: any) => void, reject: () => void;
@@ -49,7 +49,7 @@ export default function debounce<F extends AnyFunction>(
       if(shouldRunLast && (!shouldRunFirst || hadNewCall)) {
         invoke(args);
       }
-      
+
       // if debounce was called during invoking
       if(waitingTimeout === _waitingTimeout) {
         waitingTimeout = waitingPromise = resolve = reject = undefined;

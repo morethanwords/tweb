@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { WebDocument } from "../../layer";
-import type { MyDocument } from "../appManagers/appDocsManager";
-import type { MyPhoto } from "../appManagers/appPhotosManager";
+import type {WebDocument} from '../../layer';
+import type {MyDocument} from '../appManagers/appDocsManager';
+import type {MyPhoto} from '../appManagers/appPhotosManager';
 
 export type ThumbCache = {
-  downloaded: number, 
+  downloaded: number,
   url: string,
   type: string
 };

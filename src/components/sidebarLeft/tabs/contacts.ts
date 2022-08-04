@@ -4,20 +4,20 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { SliderSuperTab } from "../../slider";
-import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
-import InputSearch from "../../inputSearch";
-import { IS_MOBILE } from "../../../environment/userAgent";
-import { canFocus } from "../../../helpers/dom/canFocus";
-import windowSize from "../../../helpers/windowSize";
-import ButtonCorner from "../../buttonCorner";
-import { attachClickEvent } from "../../../helpers/dom/clickEvent";
-import PopupCreateContact from "../../popups/createContact";
-import SortedUserList from "../../sortedUserList";
-import { getMiddleware } from "../../../helpers/middleware";
-import replaceContent from "../../../helpers/dom/replaceContent";
-import rootScope from "../../../lib/rootScope";
-import PopupElement from "../../popups";
+import {SliderSuperTab} from '../../slider';
+import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
+import InputSearch from '../../inputSearch';
+import {IS_MOBILE} from '../../../environment/userAgent';
+import {canFocus} from '../../../helpers/dom/canFocus';
+import windowSize from '../../../helpers/windowSize';
+import ButtonCorner from '../../buttonCorner';
+import {attachClickEvent} from '../../../helpers/dom/clickEvent';
+import PopupCreateContact from '../../popups/createContact';
+import SortedUserList from '../../sortedUserList';
+import {getMiddleware} from '../../../helpers/middleware';
+import replaceContent from '../../../helpers/dom/replaceContent';
+import rootScope from '../../../lib/rootScope';
+import PopupElement from '../../popups';
 
 // TODO: поиск по людям глобальный, если не нашло в контактах никого
 
@@ -25,7 +25,7 @@ export default class AppContactsTab extends SliderSuperTab {
   private inputSearch: InputSearch;
   private middleware: ReturnType<typeof getMiddleware>;
   private sortedUserList: SortedUserList;
-  
+
   protected init() {
     this.container.id = 'contacts-container';
 

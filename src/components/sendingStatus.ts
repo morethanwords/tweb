@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { Message } from "../layer";
+import {Message} from '../layer';
 /* import findUpClassName from "../helpers/dom/findUpClassName";
 import rootScope from "../lib/rootScope";
 import Transition from "./transition"; */
@@ -17,17 +17,17 @@ export enum SENDING_STATUS {
 }
 
 export function getSendingStatus(message: Message.message | Message.messageService) {
-  return message.pFlags.is_outgoing ? 
+  return message.pFlags.is_outgoing ?
     SENDING_STATUS.Pending : (
-      message.pFlags.unread ? 
-      SENDING_STATUS.Sent : 
+      message.pFlags.unread ?
+      SENDING_STATUS.Sent :
       SENDING_STATUS.Read
     );
 }
 
 export function setSendingStatus(
-  container: HTMLElement, 
-  message?: Message.message | Message.messageService, 
+  container: HTMLElement,
+  message?: Message.message | Message.messageService,
   disableAnimationIfRippleFound?: boolean
 ) {
   let className: 'check' | 'checks' | 'sending';
@@ -45,13 +45,13 @@ export function setSendingStatus(
     container.textContent = '';
     return;
   }
-  
+
   const iconClassName = 'tgico-' + className;
   const lastElement = container.lastElementChild as HTMLElement;
   if(lastElement && lastElement.classList.contains(iconClassName)) {
     return;
   }
-  
+
   const element = document.createElement('i');
   element.classList.add('sending-status-icon', /* 'transition-item', */ iconClassName);
   container.append(element);

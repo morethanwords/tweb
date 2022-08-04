@@ -4,35 +4,35 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import MEDIA_MIME_TYPES_SUPPORTED from "../../environment/mediaMimeTypesSupport";
-import { CancellablePromise } from "../../helpers/cancellablePromise";
-import { clearBadCharsAndTrim } from "../../helpers/cleanSearchText";
-import { formatFullSentTime } from "../../helpers/date";
-import { simulateClickEvent, attachClickEvent } from "../../helpers/dom/clickEvent";
-import replaceContent from "../../helpers/dom/replaceContent";
-import formatBytes from "../../helpers/formatBytes";
-import { MediaSizeType } from "../../helpers/mediaSizes";
-import noop from "../../helpers/noop";
-import { Message, MessageMedia, WebPage } from "../../layer";
-import { MyDocument } from "../../lib/appManagers/appDocsManager";
-import appDownloadManager, { Progress } from "../../lib/appManagers/appDownloadManager";
-import appImManager from "../../lib/appManagers/appImManager";
-import { AppManagers } from "../../lib/appManagers/managers";
-import getDownloadMediaDetails from "../../lib/appManagers/utils/download/getDownloadMediaDetails";
-import choosePhotoSize from "../../lib/appManagers/utils/photos/choosePhotoSize";
-import { joinElementsWith } from "../../lib/langPack";
-import { MAX_FILE_SAVE_SIZE } from "../../lib/mtproto/mtproto_config";
-import wrapPlainText from "../../lib/richTextProcessor/wrapPlainText";
-import rootScope from "../../lib/rootScope";
-import type { ThumbCache } from "../../lib/storages/thumbs";
-import { MediaSearchContext } from "../appMediaPlaybackController";
-import AudioElement from "../audio";
-import LazyLoadQueue from "../lazyLoadQueue";
-import { MiddleEllipsisElement } from "../middleEllipsis";
-import ProgressivePreloader from "../preloader";
+import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport';
+import {CancellablePromise} from '../../helpers/cancellablePromise';
+import {clearBadCharsAndTrim} from '../../helpers/cleanSearchText';
+import {formatFullSentTime} from '../../helpers/date';
+import {simulateClickEvent, attachClickEvent} from '../../helpers/dom/clickEvent';
+import replaceContent from '../../helpers/dom/replaceContent';
+import formatBytes from '../../helpers/formatBytes';
+import {MediaSizeType} from '../../helpers/mediaSizes';
+import noop from '../../helpers/noop';
+import {Message, MessageMedia, WebPage} from '../../layer';
+import {MyDocument} from '../../lib/appManagers/appDocsManager';
+import appDownloadManager, {Progress} from '../../lib/appManagers/appDownloadManager';
+import appImManager from '../../lib/appManagers/appImManager';
+import {AppManagers} from '../../lib/appManagers/managers';
+import getDownloadMediaDetails from '../../lib/appManagers/utils/download/getDownloadMediaDetails';
+import choosePhotoSize from '../../lib/appManagers/utils/photos/choosePhotoSize';
+import {joinElementsWith} from '../../lib/langPack';
+import {MAX_FILE_SAVE_SIZE} from '../../lib/mtproto/mtproto_config';
+import wrapPlainText from '../../lib/richTextProcessor/wrapPlainText';
+import rootScope from '../../lib/rootScope';
+import type {ThumbCache} from '../../lib/storages/thumbs';
+import {MediaSearchContext} from '../appMediaPlaybackController';
+import AudioElement from '../audio';
+import LazyLoadQueue from '../lazyLoadQueue';
+import {MiddleEllipsisElement} from '../middleEllipsis';
+import ProgressivePreloader from '../preloader';
 import wrapPhoto from './photo';
-import wrapSenderToPeer from "./senderToPeer";
-import wrapSentTime from "./sentTime";
+import wrapSenderToPeer from './senderToPeer';
+import wrapSentTime from './sentTime';
 
 rootScope.addEventListener('document_downloading', (docId) => {
   const elements = Array.from(document.querySelectorAll(`.document[data-doc-id="${docId}"]`)) as HTMLElement[];
@@ -44,7 +44,7 @@ rootScope.addEventListener('document_downloading', (docId) => {
 });
 
 export default async function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showSender, searchContext, loadPromises, autoDownloadSize, lazyLoadQueue, sizeType, managers = rootScope.managers, cacheContext}: {
-  message: Message.message, 
+  message: Message.message,
   withTime?: boolean,
   fontWeight?: number,
   voiceAsMusic?: boolean,
@@ -70,7 +70,7 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
     audioElement.noAutoDownload = noAutoDownload;
     audioElement.lazyLoadQueue = lazyLoadQueue;
     audioElement.loadPromises = loadPromises;
-    
+
     if(voiceAsMusic) audioElement.voiceAsMusic = voiceAsMusic;
     if(searchContext) audioElement.searchContext = searchContext;
     if(showSender) audioElement.showSender = showSender;
@@ -81,13 +81,13 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
     return audioElement;
   }
 
-  let extSplitted = doc.file_name ? doc.file_name.split('.') : '';
+  const extSplitted = doc.file_name ? doc.file_name.split('.') : '';
   let ext = '';
-  ext = extSplitted.length > 1 && Array.isArray(extSplitted) ? 
-    clearBadCharsAndTrim(extSplitted.pop().split(' ', 1)[0].toLowerCase()) : 
+  ext = extSplitted.length > 1 && Array.isArray(extSplitted) ?
+    clearBadCharsAndTrim(extSplitted.pop().split(' ', 1)[0].toLowerCase()) :
     'file';
 
-  let docDiv = document.createElement('div');
+  const docDiv = document.createElement('div');
   docDiv.classList.add('document', `ext-${ext}`);
   docDiv.dataset.docId = '' + doc.id;
 
@@ -108,7 +108,7 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
     docDiv.classList.add('document-with-thumb');
     hasThumb = true;
 
-    let imgs: (HTMLImageElement | HTMLCanvasElement)[] = [];
+    const imgs: (HTMLImageElement | HTMLCanvasElement)[] = [];
     // ! WARNING, use thumbs for check when thumb will be generated for media
     if(message.pFlags.is_outgoing && ['photo', 'video'].includes(doc.type)) {
       icoDiv.innerHTML = `<img src="${cacheContext.url}">`;
@@ -116,10 +116,10 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
     } else {
       const perf = performance.now();
       const wrapped = await wrapPhoto({
-        photo: doc, 
-        message: null, 
-        container: icoDiv, 
-        boxWidth: 54, 
+        photo: doc,
+        message: null,
+        container: icoDiv,
+        boxWidth: 54,
         boxHeight: 54,
         loadPromises,
         withoutPreloader: true,
@@ -141,16 +141,16 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
     icoDiv.append(icoTextEl);
   }
 
-  //let fileName = stringMiddleOverflow(doc.file_name || 'Unknown.file', 26);
-  let fileName = doc.file_name ? wrapPlainText(doc.file_name) : 'Unknown.file';
+  // let fileName = stringMiddleOverflow(doc.file_name || 'Unknown.file', 26);
+  const fileName = doc.file_name ? wrapPlainText(doc.file_name) : 'Unknown.file';
   const descriptionEl = document.createElement('div');
   descriptionEl.classList.add('document-description');
   const bytesContainer = document.createElement('span');
   const bytesEl = formatBytes(doc.size);
   const bytesJoiner = ' / ';
-  
+
   const descriptionParts: (HTMLElement | string | DocumentFragment)[] = [bytesEl];
-  
+
   if(withTime) {
     descriptionParts.push(formatFullSentTime(message.date));
   }
@@ -235,7 +235,7 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
     });
 
     // b && b.classList.add('hide');
-    
+
     let d = formatBytes(0);
     bytesContainer.style.visibility = 'hidden';
     // bytesContainer.replaceWith(sizeContainer);

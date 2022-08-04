@@ -5,13 +5,13 @@
  */
 
 import mediaSizes from '../helpers/mediaSizes';
-import { AuthSentCode, AuthSentCodeType, AuthSignIn } from '../layer';
+import {AuthSentCode, AuthSentCodeType, AuthSignIn} from '../layer';
 import Page from './page';
 import pageSignIn from './pageSignIn';
 import TrackingMonkey from '../components/monkeys/tracking';
 import CodeInputField from '../components/codeInputField';
-import { i18n, LangPackKey } from '../lib/langPack';
-import { randomLong } from '../helpers/random';
+import {i18n, LangPackKey} from '../lib/langPack';
+import {randomLong} from '../helpers/random';
 import replaceContent from '../helpers/dom/replaceContent';
 import rootScope from '../lib/rootScope';
 
@@ -21,7 +21,7 @@ let headerElement: HTMLHeadElement = null;
 let sentTypeElement: HTMLParagraphElement = null;
 let codeInput: HTMLInputElement;
 
-let onFirstMount = (): Promise<any> => {
+const onFirstMount = (): Promise<any> => {
   const CODELENGTH = (authCode.type as AuthSentCodeType.authSentCodeTypeApp).length;
 
   const codeInputField = new CodeInputField({
@@ -58,12 +58,12 @@ let onFirstMount = (): Promise<any> => {
       phone_code: code
     };
 
-    //console.log('invoking auth.signIn with params:', params);
+    // console.log('invoking auth.signIn with params:', params);
 
     rootScope.managers.apiManager.invokeApi('auth.signIn', params, {ignoreErrors: true})
     .then((response) => {
-      //console.log('auth.signIn response:', response);
-      
+      // console.log('auth.signIn response:', response);
+
       switch(response._) {
         case 'auth.authorization':
           rootScope.managers.apiManager.setUser(response.user);
@@ -74,7 +74,7 @@ let onFirstMount = (): Promise<any> => {
           cleanup();
           break;
         case 'auth.authorizationSignUpRequired':
-          //console.log('Registration needed!');
+          // console.log('Registration needed!');
 
           import('./pageSignUp').then((m) => {
             m.default.mount({
@@ -93,7 +93,7 @@ let onFirstMount = (): Promise<any> => {
       let good = false;
       switch(err.type) {
         case 'SESSION_PASSWORD_NEEDED':
-          //console.warn('pageAuthCode: SESSION_PASSWORD_NEEDED');
+          // console.warn('pageAuthCode: SESSION_PASSWORD_NEEDED');
           good = true;
           err.handled = true;
           await (await import('./pagePassword')).default.mount(); // lol
@@ -150,10 +150,10 @@ const page = new Page('page-authCode', true, onFirstMount, (_authCode: typeof au
     case 'auth.sentCodeTypeSms':
       key = 'Login.Code.SentSms';
       break;
-    case 'auth.sentCodeTypeApp': 
+    case 'auth.sentCodeTypeApp':
       key = 'Login.Code.SentInApp';
       break;
-    case 'auth.sentCodeTypeCall': 
+    case 'auth.sentCodeTypeCall':
       key = 'Login.Code.SentCall';
       break;
     default:

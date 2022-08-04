@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { WebPushApiManager } from "../mtproto/webPushApiManager";
-import type { PushNotificationObject } from "./push";
-import type { MyUploadFile } from "../mtproto/apiFileManager";
-import SuperMessagePort from "../mtproto/superMessagePort";
-import { MOUNT_CLASS_TO } from "../../config/debug";
+import type {WebPushApiManager} from '../mtproto/webPushApiManager';
+import type {PushNotificationObject} from './push';
+import type {MyUploadFile} from '../mtproto/apiFileManager';
+import SuperMessagePort from '../mtproto/superMessagePort';
+import {MOUNT_CLASS_TO} from '../../config/debug';
 
 export type ServicePushPingTaskPayload = {
   localNotifications: boolean,

@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import EventListenerBase from "../helpers/eventListenerBase";
-import ListenerSetter from "../helpers/listenerSetter";
-import { AppManagers } from "../lib/appManagers/managers";
-import { i18n, LangPackKey } from "../lib/langPack";
-import ButtonIcon from "./buttonIcon";
-import Scrollable from "./scrollable";
-import SidebarSlider from "./slider";
+import EventListenerBase from '../helpers/eventListenerBase';
+import ListenerSetter from '../helpers/listenerSetter';
+import {AppManagers} from '../lib/appManagers/managers';
+import {i18n, LangPackKey} from '../lib/langPack';
+import ButtonIcon from './buttonIcon';
+import Scrollable from './scrollable';
+import SidebarSlider from './slider';
 
 export interface SliderTab {
   onOpen?: () => void,
@@ -74,7 +74,7 @@ export default class SliderSuperTab implements SliderTab {
     if(this.slider) {
       this.slider.addTab(this);
     }
-    
+
     this.listenerSetter = new ListenerSetter();
   }
 

@@ -4,19 +4,19 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import cancelEvent from "../helpers/dom/cancelEvent";
-import simulateEvent from "../helpers/dom/dispatchEvent";
-import documentFragmentToHTML from "../helpers/dom/documentFragmentToHTML";
-import findUpAttribute from "../helpers/dom/findUpAttribute";
-import getRichValue from "../helpers/dom/getRichValue";
-import isInputEmpty from "../helpers/dom/isInputEmpty";
-import selectElementContents from "../helpers/dom/selectElementContents";
-import setInnerHTML from "../helpers/dom/setInnerHTML";
-import { MessageEntity } from "../layer";
-import { i18n, LangPackKey, _i18n } from "../lib/langPack";
-import mergeEntities from "../lib/richTextProcessor/mergeEntities";
-import parseEntities from "../lib/richTextProcessor/parseEntities";
-import wrapDraftText from "../lib/richTextProcessor/wrapDraftText";
+import cancelEvent from '../helpers/dom/cancelEvent';
+import simulateEvent from '../helpers/dom/dispatchEvent';
+import documentFragmentToHTML from '../helpers/dom/documentFragmentToHTML';
+import findUpAttribute from '../helpers/dom/findUpAttribute';
+import getRichValue from '../helpers/dom/getRichValue';
+import isInputEmpty from '../helpers/dom/isInputEmpty';
+import selectElementContents from '../helpers/dom/selectElementContents';
+import setInnerHTML from '../helpers/dom/setInnerHTML';
+import {MessageEntity} from '../layer';
+import {i18n, LangPackKey, _i18n} from '../lib/langPack';
+import mergeEntities from '../lib/richTextProcessor/mergeEntities';
+import parseEntities from '../lib/richTextProcessor/parseEntities';
+import wrapDraftText from '../lib/richTextProcessor/wrapDraftText';
 
 let init = () => {
   document.addEventListener('paste', (e) => {
@@ -52,12 +52,12 @@ let init = () => {
         html = match[1].trim();
       }
 
-      let span: HTMLElement = document.createElement('span');
+      const span: HTMLElement = document.createElement('span');
       span.innerHTML = html;
 
       let curChild = span.firstChild;
       while(curChild) { // * fix whitespace between elements like <p>asd</p>\n<p>zxc</p>
-        let nextSibling = curChild.nextSibling;
+        const nextSibling = curChild.nextSibling;
         if(curChild.nodeType === 3) {
           if(!curChild.nodeValue.trim()) {
             curChild.remove();
@@ -72,13 +72,13 @@ let init = () => {
         text = richValue.value;
         entities = richValue.entities;
         usePlainText = false;
-  
+
         let entities2 = parseEntities(text);
         entities2 = entities2.filter(filterEntity);
         mergeEntities(entities, entities2);
       }
     }
-    
+
     if(usePlainText) {
       text = plainText;
       entities = parseEntities(text);
@@ -87,7 +87,7 @@ let init = () => {
 
     const fragment = wrapDraftText(text, {entities});
     text = documentFragmentToHTML(fragment);
-    
+
     window.document.execCommand('insertHTML', false, text);
   });
 
@@ -118,12 +118,12 @@ export enum InputState {
 };
 
 export type InputFieldOptions = {
-  placeholder?: LangPackKey, 
-  label?: LangPackKey, 
+  placeholder?: LangPackKey,
+  label?: LangPackKey,
   labelOptions?: any[],
   labelText?: string | DocumentFragment,
-  name?: string, 
-  maxLength?: number, 
+  name?: string,
+  maxLength?: number,
   showLengthOn?: number,
   plainText?: true,
   required?: boolean,
@@ -193,11 +193,11 @@ export default class InputField {
       `;
 
       input = this.container.firstElementChild as HTMLElement;
-      //input.addEventListener('input', () => checkAndSetRTL(input));
+      // input.addEventListener('input', () => checkAndSetRTL(input));
     }
 
     input.setAttribute('dir', 'auto');
-    
+
     if(options.inputMode) {
       input.inputMode = options.inputMode;
     }
@@ -230,7 +230,7 @@ export default class InputField {
         const isError = diff < 0;
         input.classList.toggle('error', isError);
 
-        //this.onLengthChange && this.onLengthChange(inputLength, isError);
+        // this.onLengthChange && this.onLengthChange(inputLength, isError);
 
         if(isError || diff <= showLengthOn) {
           this.setLabel();
@@ -288,7 +288,7 @@ export default class InputField {
 
   get value() {
     return this.options.plainText ? (this.input as HTMLInputElement).value : getRichValue(this.input, false).value;
-    //return getRichValue(this.input);
+    // return getRichValue(this.input);
   }
 
   set value(value: string) {
@@ -310,8 +310,8 @@ export default class InputField {
   }
 
   public isValid() {
-    return !this.input.classList.contains('error') && 
-      (!this.validate || this.validate()) && 
+    return !this.input.classList.contains('error') &&
+      (!this.validate || this.validate()) &&
       (!this.required || !isInputEmpty(this.input));
   }
 
@@ -325,7 +325,7 @@ export default class InputField {
     }
 
     if(silent) {
-      this.setValueSilently(value, false); 
+      this.setValueSilently(value, false);
     } else {
       this.value = value;
     }

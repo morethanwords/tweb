@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { formatFullSentTimeRaw } from "../../helpers/date";
-import { User } from "../../layer";
-import { LangPackKey, i18n } from "../../lib/langPack";
-import { REPLIES_PEER_ID, SERVICE_PEER_ID } from "../../lib/mtproto/mtproto_config";
+import {formatFullSentTimeRaw} from '../../helpers/date';
+import {User} from '../../layer';
+import {LangPackKey, i18n} from '../../lib/langPack';
+import {REPLIES_PEER_ID, SERVICE_PEER_ID} from '../../lib/mtproto/mtproto_config';
 
 export default function getUserStatusString(user: User.user): HTMLElement {
   if(!user) {
@@ -40,22 +40,22 @@ export default function getUserStatusString(user: User.user): HTMLElement {
           key = 'Lately';
           break;
         }
-  
+
         case 'userStatusLastWeek': {
           key = 'WithinAWeek';
           break;
         }
-  
+
         case 'userStatusLastMonth': {
           key = 'WithinAMonth';
           break;
         }
-        
+
         case 'userStatusOffline': {
           const date = user.status.was_online;
           const today = new Date();
           const now = today.getTime() / 1000 | 0;
-          
+
           const diff = now - date;
           if(diff < 60) {
             key = 'Peer.Status.justNow';
@@ -72,15 +72,15 @@ export default function getUserStatusString(user: User.user): HTMLElement {
             const {dateEl, timeEl} = formatFullSentTimeRaw(date);
             args = [dateEl, timeEl];
           }
-          
+
           break;
         }
-  
+
         case 'userStatusOnline': {
           key = 'Online';
           break;
         }
-  
+
         default: {
           key = 'ALongTimeAgo';
           break;
@@ -90,6 +90,6 @@ export default function getUserStatusString(user: User.user): HTMLElement {
       break;
     }
   }
-  
+
   return i18n(key, args);
 }

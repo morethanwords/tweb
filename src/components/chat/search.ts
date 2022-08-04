@@ -4,23 +4,23 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type ChatTopbar from "./topbar";
-import AppSearch, { SearchGroup } from "../appSearch";
-import PopupDatePicker from "../popups/datePicker";
-import ripple from "../ripple";
-import InputSearch from "../inputSearch";
-import type Chat from "./chat";
-import findUpTag from "../../helpers/dom/findUpTag";
-import cancelEvent from "../../helpers/dom/cancelEvent";
-import whichChild from "../../helpers/dom/whichChild";
-import replaceContent from "../../helpers/dom/replaceContent";
-import { i18n } from "../../lib/langPack";
-import ListenerSetter from "../../helpers/listenerSetter";
-import { attachClickEvent } from "../../helpers/dom/clickEvent";
-import appNavigationController, { NavigationItem } from "../appNavigationController";
-import { IS_MOBILE_SAFARI } from "../../environment/userAgent";
-import PopupElement from "../popups";
-import { DIALOG_LIST_ELEMENT_TAG } from "../../lib/appManagers/appDialogsManager";
+import type ChatTopbar from './topbar';
+import AppSearch, {SearchGroup} from '../appSearch';
+import PopupDatePicker from '../popups/datePicker';
+import ripple from '../ripple';
+import InputSearch from '../inputSearch';
+import type Chat from './chat';
+import findUpTag from '../../helpers/dom/findUpTag';
+import cancelEvent from '../../helpers/dom/cancelEvent';
+import whichChild from '../../helpers/dom/whichChild';
+import replaceContent from '../../helpers/dom/replaceContent';
+import {i18n} from '../../lib/langPack';
+import ListenerSetter from '../../helpers/listenerSetter';
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import appNavigationController, {NavigationItem} from '../appNavigationController';
+import {IS_MOBILE_SAFARI} from '../../environment/userAgent';
+import PopupElement from '../popups';
+import {DIALOG_LIST_ELEMENT_TAG} from '../../lib/appManagers/appDialogsManager';
 
 export default class ChatSearch {
   private element: HTMLElement;
@@ -58,13 +58,13 @@ export default class ChatSearch {
     const attachClick = (element: HTMLElement, callback: (e: MouseEvent) => void) => {
       attachClickEvent(element, callback, {listenerSetter});
     };
-    
+
     attachClick(this.backBtn, () => {
       this.destroy();
     });
 
     this.inputSearch = new InputSearch('Search');
-    
+
     // Results
     this.results = document.createElement('div');
     this.results.classList.add('chat-search-results', 'chatlist-container');
@@ -89,7 +89,7 @@ export default class ChatSearch {
     });
     this.appSearch.beginSearch(this.chat.peerId, this.chat.threadId);
 
-    //appImManager.topbar.parentElement.insertBefore(this.results, appImManager.bubblesContainer);
+    // appImManager.topbar.parentElement.insertBefore(this.results, appImManager.bubblesContainer);
     this.chat.bubbles.container.append(this.results);
 
     // Footer
@@ -122,7 +122,7 @@ export default class ChatSearch {
     this.controls.append(this.upBtn, this.downBtn);
 
     this.footer.append(this.foundCountEl, this.dateBtn, this.controls);
-    
+
     this.topbar.container.parentElement.insertBefore(this.footer, chat.input.chatInput);
 
     // Append container
@@ -144,7 +144,7 @@ export default class ChatSearch {
           this.destroy();
         }
       };
-  
+
       appNavigationController.pushItem(this.navigationItem);
     }
   }

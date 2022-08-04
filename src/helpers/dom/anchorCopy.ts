@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { toastNew } from "../../components/toast";
-import { copyTextToClipboard } from "../clipboard";
-import cancelEvent from "./cancelEvent";
-import { attachClickEvent } from "./clickEvent";
+import {toastNew} from '../../components/toast';
+import {copyTextToClipboard} from '../clipboard';
+import cancelEvent from './cancelEvent';
+import {attachClickEvent} from './clickEvent';
 
 export default function anchorCopy(options: Partial<{
   // href: string,

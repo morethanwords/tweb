@@ -1,11 +1,11 @@
 // * Jolly Cobra's schedulers
 
-import { AnyToVoidFunction } from "../../types";
+import {AnyToVoidFunction} from '../../types';
 
 export default function throttle<F extends AnyToVoidFunction>(
   fn: F,
   ms: number,
-  shouldRunFirst = true,
+  shouldRunFirst = true
 ) {
   let interval: number | null = null;
   let isPending: boolean;
@@ -23,7 +23,7 @@ export default function throttle<F extends AnyToVoidFunction>(
       }
 
       interval = setInterval(() => {
-        if (!isPending) {
+        if(!isPending) {
           clearInterval(interval!);
           interval = null;
           return;

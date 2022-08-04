@@ -4,21 +4,21 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import EventListenerBase, { EventListenerListeners } from "../../helpers/eventListenerBase";
-import noop from "../../helpers/noop";
-import { logger } from "../logger";
-import getAudioConstraints from "./helpers/getAudioConstraints";
-import getScreenConstraints from "./helpers/getScreenConstraints";
-import getStreamCached from "./helpers/getStreamCached";
-import getVideoConstraints from "./helpers/getVideoConstraints";
-import stopTrack from "./helpers/stopTrack";
-import LocalConferenceDescription from "./localConferenceDescription";
-import StreamManager, { StreamItem } from "./streamManager";
+import EventListenerBase, {EventListenerListeners} from '../../helpers/eventListenerBase';
+import noop from '../../helpers/noop';
+import {logger} from '../logger';
+import getAudioConstraints from './helpers/getAudioConstraints';
+import getScreenConstraints from './helpers/getScreenConstraints';
+import getStreamCached from './helpers/getStreamCached';
+import getVideoConstraints from './helpers/getVideoConstraints';
+import stopTrack from './helpers/stopTrack';
+import LocalConferenceDescription from './localConferenceDescription';
+import StreamManager, {StreamItem} from './streamManager';
 
 export type TryAddTrackOptions = {
-  stream: MediaStream, 
-  track: MediaStreamTrack, 
-  type: StreamItem['type'], 
+  stream: MediaStream,
+  track: MediaStreamTrack,
+  type: StreamItem['type'],
   source?: string
 };
 
@@ -91,9 +91,9 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
       audio: audio && getAudioConstraints(),
       video: video && getVideoConstraints()
     };
-    
+
     return this.getStream({
-      constraints, 
+      constraints,
       muted
     }).then((stream) => {
       this.onInputStream(stream);
@@ -130,8 +130,8 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
 
   public onTrack(event: RTCTrackEvent) {
     this.tryAddTrack({
-      stream: event.streams[0], 
-      track: event.track, 
+      stream: event.streams[0],
+      track: event.track,
       type: 'output'
     });
   }
@@ -139,13 +139,13 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
   public saveInputVideoStream(stream: MediaStream, type?: string) {
     const track = stream.getVideoTracks()[0];
     this.tryAddTrack({
-      stream, 
-      track, 
-      type: 'input', 
+      stream,
+      track,
+      type: 'input',
       source: type || 'main'
     });
   }
-  
+
   public tryAddTrack({stream, track, type, source}: TryAddTrackOptions) {
     if(!source) {
       source = StreamManager.getSource(stream, type);
@@ -156,7 +156,7 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
     const isOutput = type === 'output';
 
     const {player, elements, streamManager} = this;
-    
+
     const tagName = track.kind as StreamItem['kind'];
     const isVideo = tagName === 'video';
 
@@ -170,7 +170,7 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
         // element.remove();
       }, {once: true});
     }
-    
+
     if(isOutput) {
       streamManager.addTrack(stream, track, type);
     }
@@ -188,7 +188,7 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
           (element as any).setSinkId(outputDeviceId);
         }
       }
-      
+
       if(!isVideo) {
         player.appendChild(element);
       } else {
@@ -205,7 +205,7 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
 
       // ! EVEN IF MEDIASTREAM IS THE SAME NEW TRACK WON'T PLAY WITHOUT REPLACING IT WHEN NEW PARTICIPANT IS ENTERING !
       // if(element.srcObject !== useStream) {
-        element.srcObject = useStream;
+      element.srcObject = useStream;
       // }
     }
 
@@ -229,7 +229,7 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
 
       const {streamManager, description} = this;
       streamManager.addStream(stream, 'input');
-      
+
       if(description) {
         streamManager.appendToConference(description);
       }

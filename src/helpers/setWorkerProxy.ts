@@ -8,7 +8,7 @@ export default function setWorkerProxy() {
   // * hook worker constructor to set search parameters (test, debug, etc)
   const workerHandler = {
     construct(target: any, args: any) {
-      //console.log(target, args);
+      // console.log(target, args);
       const url = args[0] + location.search;
 
       return new target(url);
@@ -16,7 +16,7 @@ export default function setWorkerProxy() {
   };
 
   [
-    Worker, 
+    Worker,
     typeof(SharedWorker) !== 'undefined' && SharedWorker
   ].forEach((w) => {
     if(!w) return;

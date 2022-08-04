@@ -4,21 +4,21 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appDialogsManager, { DIALOG_LIST_ELEMENT_TAG } from "../lib/appManagers/appDialogsManager";
-import type { Dialog } from "../lib/appManagers/appMessagesManager";
-import rootScope from "../lib/rootScope";
-import ButtonMenu, { ButtonMenuItemOptions } from "./buttonMenu";
-import PopupDeleteDialog from "./popups/deleteDialog";
-import { i18n } from "../lib/langPack";
-import findUpTag from "../helpers/dom/findUpTag";
-import PopupPeer from "./popups/peer";
-import AppChatFoldersTab from "./sidebarLeft/tabs/chatFolders";
-import appSidebarLeft from "./sidebarLeft";
-import { toastNew } from "./toast";
-import PopupMute from "./popups/mute";
-import { AppManagers } from "../lib/appManagers/managers";
-import positionMenu from "../helpers/positionMenu";
-import contextMenuController from "../helpers/contextMenuController";
+import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '../lib/appManagers/appDialogsManager';
+import type {Dialog} from '../lib/appManagers/appMessagesManager';
+import rootScope from '../lib/rootScope';
+import ButtonMenu, {ButtonMenuItemOptions} from './buttonMenu';
+import PopupDeleteDialog from './popups/deleteDialog';
+import {i18n} from '../lib/langPack';
+import findUpTag from '../helpers/dom/findUpTag';
+import PopupPeer from './popups/peer';
+import AppChatFoldersTab from './sidebarLeft/tabs/chatFolders';
+import appSidebarLeft from './sidebarLeft';
+import {toastNew} from './toast';
+import PopupMute from './popups/mute';
+import {AppManagers} from '../lib/appManagers/managers';
+import positionMenu from '../helpers/positionMenu';
+import contextMenuController from '../helpers/contextMenuController';
 
 export default class DialogsContextMenu {
   private element: HTMLElement;
@@ -48,8 +48,8 @@ export default class DialogsContextMenu {
       text: 'ChatList.Context.Pin',
       onClick: this.onPinClick,
       verify: async() => {
-        const isPinned = this.filterId > 1 ? 
-          (await this.managers.appMessagesManager.getFilter(this.filterId)).pinnedPeerIds.includes(this.dialog.peerId) : 
+        const isPinned = this.filterId > 1 ?
+          (await this.managers.appMessagesManager.getFilter(this.filterId)).pinnedPeerIds.includes(this.dialog.peerId) :
           !!this.dialog.pFlags?.pinned;
         return !isPinned;
       }
@@ -58,8 +58,8 @@ export default class DialogsContextMenu {
       text: 'ChatList.Context.Unpin',
       onClick: this.onPinClick,
       verify: async() => {
-        const isPinned = this.filterId > 1 ? 
-          (await this.managers.appMessagesManager.getFilter(this.filterId)).pinnedPeerIds.includes(this.dialog.peerId) : 
+        const isPinned = this.filterId > 1 ?
+          (await this.managers.appMessagesManager.getFilter(this.filterId)).pinnedPeerIds.includes(this.dialog.peerId) :
           !!this.dialog.pFlags?.pinned;
         return isPinned;
       }
@@ -68,14 +68,14 @@ export default class DialogsContextMenu {
       text: 'ChatList.Context.Mute',
       onClick: this.onMuteClick,
       verify: async() => {
-        return this.selectedId !== rootScope.myId && !(await this.managers.appNotificationsManager.isPeerLocalMuted(this.dialog.peerId)); 
+        return this.selectedId !== rootScope.myId && !(await this.managers.appNotificationsManager.isPeerLocalMuted(this.dialog.peerId));
       }
     }, {
       icon: 'unmute',
       text: 'ChatList.Context.Unmute',
       onClick: this.onUnmuteClick,
       verify: async() => {
-        return this.selectedId !== rootScope.myId && (await this.managers.appNotificationsManager.isPeerLocalMuted(this.dialog.peerId)); 
+        return this.selectedId !== rootScope.myId && (await this.managers.appNotificationsManager.isPeerLocalMuted(this.dialog.peerId));
       }
     }, {
       icon: 'archive',
@@ -135,7 +135,7 @@ export default class DialogsContextMenu {
   private onUnmuteClick = () => {
     this.managers.appMessagesManager.togglePeerMute(this.selectedId, false);
   };
-  
+
   private onMuteClick = () => {
     new PopupMute(this.selectedId);
   };
@@ -164,11 +164,11 @@ export default class DialogsContextMenu {
     }
 
     let li: HTMLElement = null;
-    
+
     try {
       li = findUpTag(e.target, DIALOG_LIST_ELEMENT_TAG);
     } catch(e) {}
-    
+
     if(!li) return;
 
     if(e instanceof MouseEvent) e.preventDefault();
@@ -181,16 +181,16 @@ export default class DialogsContextMenu {
       this.filterId = appDialogsManager.filterId;
       this.selectedId = li.dataset.peerId.toPeerId();
       this.dialog = await this.managers.appMessagesManager.getDialogOnly(this.selectedId);
-  
+
       await Promise.all(this.buttons.map(async(button) => {
         const good = await button.verify();
-  
+
         button.element.classList.toggle('hide', !good);
       }));
-  
+
       // delete button
       this.buttons[this.buttons.length - 1].element.lastChild.replaceWith(i18n(await this.managers.appPeersManager.getDeleteButtonText(this.selectedId)));
-  
+
       li.classList.add('menu-open');
       positionMenu(e, this.element);
       contextMenuController.openBtnMenu(this.element, () => {

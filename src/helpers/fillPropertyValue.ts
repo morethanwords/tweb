@@ -5,7 +5,7 @@
  */
 
 export default function fillPropertyValue(str: string) {
-  let splitted = str.split(' ');
+  const splitted = str.split(' ');
   if(splitted.length !== 4) {
     if(!splitted[0]) splitted[0] = '0px';
     for(let i = splitted.length; i < 4; ++i) {

@@ -17,7 +17,7 @@ export default function insertInDescendSortedArray<T extends {[smth in K]?: numb
         // console.warn('same pos', pos, sortProperty, prev, next);
         return pos;
       }
-      
+
       array.splice(pos, 1);
     }
   }

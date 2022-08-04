@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import DEBUG from "../../config/debug";
-import ctx from "../../environment/ctx";
-import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
-import { IS_WORKER } from "../../helpers/context";
-import EventListenerBase from "../../helpers/eventListenerBase";
-import { Awaited, WorkerTaskTemplate, WorkerTaskVoidTemplate } from "../../types";
-import { logger } from "../logger";
+import DEBUG from '../../config/debug';
+import ctx from '../../environment/ctx';
+import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
+import {IS_WORKER} from '../../helpers/context';
+import EventListenerBase from '../../helpers/eventListenerBase';
+import {Awaited, WorkerTaskTemplate, WorkerTaskVoidTemplate} from '../../types';
+import {logger} from '../logger';
 
 type SuperMessagePortTask = WorkerTaskTemplate & {
   transfer?: Transferable[]
@@ -91,7 +91,7 @@ type Listeners = Record<string, ListenerCallback>;
 // const PING_TIMEOUT = DEBUG && false ? 0x7FFFFFFF : 10000;
 
 export default class SuperMessagePort<
-  Workers extends Listeners, 
+  Workers extends Listeners,
   Masters extends Listeners,
   IsMaster extends boolean,
   Receive extends Listeners = IsMaster extends true ? Masters : Workers,
@@ -146,7 +146,7 @@ export default class SuperMessagePort<
       invoke: this.processInvokeTask,
       ping: this.processPingTask,
       pong: this.processPongTask,
-      close: this.processCloseTask,
+      close: this.processCloseTask
       // open: this.processOpenTask
     };
   }
@@ -222,7 +222,7 @@ export default class SuperMessagePort<
 
   public detachPort(port: ListenPort) {
     this.log.warn('disconnecting port');
-    
+
     indexOfAndSplice(this.listenPorts, port);
     indexOfAndSplice(this.sendPorts, port as any);
 
@@ -267,7 +267,7 @@ export default class SuperMessagePort<
   };
 
   protected /* async */ releasePending() {
-    //return;
+    // return;
 
     if(/* !this.listenPorts.length || !this.sendPorts.length ||  */this.releasingPending) {
       return;
@@ -311,7 +311,7 @@ export default class SuperMessagePort<
           // if(IS_SERVICE_WORKER && !port) {
           //   notifyAll(task);
           // } else {
-            this.postMessage(ports, task);
+          this.postMessage(ports, task);
           // }
         } catch(err) {
           this.log.error('postMessage error:', err, task, ports);
@@ -409,7 +409,7 @@ export default class SuperMessagePort<
   protected processInvokeTask = async(task: InvokeTask, source: MessageEventSource, event: MessageEvent) => {
     const id = task.id;
     const innerTask = task.payload;
-    
+
     let resultTaskPayload: ResultTask['payload'];
     let resultTask: ResultTask, ackTask: AckTask;
     if(!innerTask.void) {
@@ -455,7 +455,7 @@ export default class SuperMessagePort<
       if(isPromise) {
         result = await result;
       }
-  
+
       resultTaskPayload.result = result;
     } catch(error) {
       this.log.error('worker task error:', error, task);
@@ -524,7 +524,7 @@ export default class SuperMessagePort<
       promise.finally(() => {
         clearInterval(interval);
       });
-  
+
       const interval = ctx.setInterval(() => {
         this.log.error('task still has no result', task, port);
       }, 5e3);

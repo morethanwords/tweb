@@ -3,7 +3,7 @@ export default function timeout(delay: number): Promise<Response> {
     setTimeout(() => {
       resolve(new Response('', {
         status: 408,
-        statusText: 'Request timed out.',
+        statusText: 'Request timed out.'
       }));
     }, delay);
   }));

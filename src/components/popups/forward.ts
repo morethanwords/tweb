@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appImManager from "../../lib/appManagers/appImManager";
-import PopupPickUser from "./pickUser";
+import appImManager from '../../lib/appManagers/appImManager';
+import PopupPickUser from './pickUser';
 
 export default class PopupForward extends PopupPickUser {
   constructor(
-    peerIdMids: {[fromPeerId: PeerId]: number[]}, 
-    onSelect?: (peerId: PeerId) => Promise<void> | void, 
+    peerIdMids: {[fromPeerId: PeerId]: number[]},
+    onSelect?: (peerId: PeerId) => Promise<void> | void,
     overrideOnSelect = false
   ) {
     super({

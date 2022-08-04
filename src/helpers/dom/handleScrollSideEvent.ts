@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type ListenerSetter from "../listenerSetter";
-import IS_TOUCH_SUPPORTED from "../../environment/touchSupport";
+import type ListenerSetter from '../listenerSetter';
+import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
 
 export default function handleScrollSideEvent(elem: HTMLElement, side: 'top' | 'bottom', callback: () => void, listenerSetter: ListenerSetter) {
   if(IS_TOUCH_SUPPORTED) {
@@ -30,9 +30,9 @@ export default function handleScrollSideEvent(elem: HTMLElement, side: 'top' | '
       if(side === 'bottom' && isDown) callback();
       else if(side === 'top' && !isDown) callback();
       lastY = clientY;
-      //alert('isDown: ' + !!isDown);
+      // alert('isDown: ' + !!isDown);
     };
-    
+
     const onTouchEnd = () => {
       listenerSetter.removeManual(elem, 'touchmove', onTouchMove, options);
       listenerSetter.removeManual(elem, 'touchend', onTouchEnd, options);
@@ -40,7 +40,7 @@ export default function handleScrollSideEvent(elem: HTMLElement, side: 'top' | '
   } else {
     listenerSetter.add(elem)('wheel', (e) => {
       const isDown = e.deltaY > 0;
-      //this.log('wheel', e, isDown);
+      // this.log('wheel', e, isDown);
       if(side === 'bottom' && isDown) callback();
       else if(side === 'top' && !isDown) callback();
     }, {passive: true});

@@ -4,32 +4,32 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import ctx from "../../environment/ctx";
-import { IS_SAFARI } from "../../environment/userAgent";
-import safeAssign from "../../helpers/object/safeAssign";
-import debounce from "../../helpers/schedulers/debounce";
-import { GroupCallParticipantVideoSourceGroup, PhoneCall, PhoneCallDiscardReason, PhoneCallProtocol, Update } from "../../layer";
-import { emojiFromCodePoints } from "../../vendor/emoji";
-import type { CallId } from "../appManagers/appCallsManager";
-import type { AppManagers } from "../appManagers/managers";
-import { logger } from "../logger";
-import apiManagerProxy from "../mtproto/mtprotoworker";
-import CallConnectionInstance from "./callConnectionInstance";
-import CallInstanceBase from "./callInstanceBase";
-import callsController from "./callsController";
-import CALL_STATE from "./callState";
-import { GROUP_CALL_AMPLITUDE_ANALYSE_INTERVAL_MS } from "./constants";
-import parseSignalingData from "./helpers/parseSignalingData";
-import stopTrack from "./helpers/stopTrack";
-import localConferenceDescription, { ConferenceEntry, generateSsrc } from "./localConferenceDescription";
-import getCallProtocol from "./p2P/getCallProtocol";
-import getRtcConfiguration from "./p2P/getRtcConfiguration";
-import P2PEncryptor from "./p2P/p2PEncryptor";
-import { p2pParseCandidate, P2PSdpBuilder } from "./p2P/p2PSdpBuilder";
-import { parseSdp } from "./sdp/utils";
-import { WebRTCLineType } from "./sdpBuilder";
-import StreamManager from "./streamManager";
-import { AudioCodec, CallMediaState, CallSignalingData, DiffieHellmanInfo, P2PAudioCodec, P2PVideoCodec, VideoCodec } from "./types";
+import ctx from '../../environment/ctx';
+import {IS_SAFARI} from '../../environment/userAgent';
+import safeAssign from '../../helpers/object/safeAssign';
+import debounce from '../../helpers/schedulers/debounce';
+import {GroupCallParticipantVideoSourceGroup, PhoneCall, PhoneCallDiscardReason, PhoneCallProtocol, Update} from '../../layer';
+import {emojiFromCodePoints} from '../../vendor/emoji';
+import type {CallId} from '../appManagers/appCallsManager';
+import type {AppManagers} from '../appManagers/managers';
+import {logger} from '../logger';
+import apiManagerProxy from '../mtproto/mtprotoworker';
+import CallConnectionInstance from './callConnectionInstance';
+import CallInstanceBase from './callInstanceBase';
+import callsController from './callsController';
+import CALL_STATE from './callState';
+import {GROUP_CALL_AMPLITUDE_ANALYSE_INTERVAL_MS} from './constants';
+import parseSignalingData from './helpers/parseSignalingData';
+import stopTrack from './helpers/stopTrack';
+import localConferenceDescription, {ConferenceEntry, generateSsrc} from './localConferenceDescription';
+import getCallProtocol from './p2P/getCallProtocol';
+import getRtcConfiguration from './p2P/getRtcConfiguration';
+import P2PEncryptor from './p2P/p2PEncryptor';
+import {p2pParseCandidate, P2PSdpBuilder} from './p2P/p2PSdpBuilder';
+import {parseSdp} from './sdp/utils';
+import {WebRTCLineType} from './sdpBuilder';
+import StreamManager from './streamManager';
+import {AudioCodec, CallMediaState, CallSignalingData, DiffieHellmanInfo, P2PAudioCodec, P2PVideoCodec, VideoCodec} from './types';
 
 export default class CallInstance extends CallInstanceBase<{
   state: (state: CALL_STATE) => void,
@@ -52,7 +52,7 @@ export default class CallInstance extends CallInstanceBase<{
 
   public offerReceived: boolean;
   public offerSent: boolean;
-  
+
   public createdParticipantEntries: boolean;
   public release: () => Promise<void>;
   public _connectionState: CALL_STATE;
@@ -62,7 +62,7 @@ export default class CallInstance extends CallInstanceBase<{
   public discardReason: string;
 
   private managers: AppManagers;
-  
+
   private hangUpTimeout: number;
 
   private mediaStates: {
@@ -73,7 +73,7 @@ export default class CallInstance extends CallInstanceBase<{
   private sendMediaState: () => Promise<void>;
 
   private decryptQueue: Uint8Array[];
-  
+
   private getEmojisFingerprintPromise: Promise<CallInstance['emojisFingerprint']>;
   private emojisFingerprint: [string, string, string, string];
 
@@ -98,7 +98,7 @@ export default class CallInstance extends CallInstanceBase<{
     }
 
     safeAssign(this, options);
-    
+
     this.createdAt = Date.now();
     this.offerReceived = false;
     this.offerSent = false;
@@ -123,12 +123,12 @@ export default class CallInstance extends CallInstanceBase<{
 
     let mediaState: CallMediaState = {
       '@type': 'MediaState',
-      type: 'input',
-      lowBattery: false,
-      muted: true,
-      screencastState: 'inactive',
-      videoRotation: 0,
-      videoState: 'inactive'
+      'type': 'input',
+      'lowBattery': false,
+      'muted': true,
+      'screencastState': 'inactive',
+      'videoRotation': 0,
+      'videoState': 'inactive'
     };
 
     const self = this;
@@ -329,7 +329,7 @@ export default class CallInstance extends CallInstanceBase<{
     if(this.isClosing || !canAccept) {
       return;
     }
-    
+
     // this.clearHangUpTimeout();
     this.overrideConnectionState(CALL_STATE.EXCHANGING_KEYS);
 
@@ -343,7 +343,7 @@ export default class CallInstance extends CallInstanceBase<{
         b: dh.a,
         g_b: dh.g_a,
         g_b_hash: dh.g_a_hash,
-        p: dh.p,
+        p: dh.p
       };
 
       return this.managers.apiManager.invokeApi('phone.acceptCall', {
@@ -369,9 +369,9 @@ export default class CallInstance extends CallInstanceBase<{
     this.getEmojisFingerprint();
 
     this.overrideConnectionState();
-    
+
     const {isOutgoing, encryptionKey, streamManager} = this;
-    
+
     const configuration = getRtcConfiguration(this.call as PhoneCall.phoneCall);
     this.log('joinCall configuration', configuration);
     if(!configuration) return;
@@ -379,7 +379,7 @@ export default class CallInstance extends CallInstanceBase<{
     const connectionInstance = this.connectionInstance = new CallConnectionInstance({
       call: this,
       streamManager,
-      log: this.log.bindPrefix('connection'),
+      log: this.log.bindPrefix('connection')
     });
 
     const connection = connectionInstance.createPeerConnection(configuration);
@@ -388,7 +388,7 @@ export default class CallInstance extends CallInstanceBase<{
       if(this.connectedAt === undefined && state === CALL_STATE.CONNECTED) {
         this.connectedAt = Date.now();
       }
-      
+
       this.dispatchEvent('state', state);
     });
     connection.addEventListener('negotiationneeded', () => {
@@ -408,7 +408,7 @@ export default class CallInstance extends CallInstanceBase<{
     });
 
     const description = connectionInstance.createDescription();
-    
+
     this.encryptor = new P2PEncryptor(isOutgoing, encryptionKey);
     this.decryptor = new P2PEncryptor(!isOutgoing, encryptionKey);
 
@@ -417,7 +417,7 @@ export default class CallInstance extends CallInstanceBase<{
     if(isOutgoing) {
       connectionInstance.appendStreamToConference();
     }
-    
+
     this.createDataChannel();
 
     this.processDecryptQueue();
@@ -426,7 +426,7 @@ export default class CallInstance extends CallInstanceBase<{
   private createDataChannelEntry() {
     const dataChannelEntry = this.description.createEntry('application');
     dataChannelEntry.setDirection('sendrecv');
-    dataChannelEntry.sendEntry = dataChannelEntry.recvEntry = dataChannelEntry; 
+    dataChannelEntry.sendEntry = dataChannelEntry.recvEntry = dataChannelEntry;
   }
 
   private createDataChannel() {
@@ -477,25 +477,25 @@ export default class CallInstance extends CallInstanceBase<{
     /* if(data['@type'] === 'InitialSetup') {
       this.filterNotVP8(data);
     } */
-    
+
     const json = JSON.stringify(data);
     const arr = new TextEncoder().encode(json);
     const {bytes} = await this.encryptor.encryptRawPacket(arr);
-    
+
     this.log('sendCallSignalingData', this.id, json);
     await this.managers.apiManager.invokeApi('phone.sendSignalingData', {
       peer: await this.managers.appCallsManager.getCallInput(this.id),
       data: bytes
     });
   }
-  
+
   public sendIceCandidate(iceCandidate: RTCIceCandidate) {
     this.log('sendIceCandidate', iceCandidate);
     const {candidate, sdpMLineIndex} = iceCandidate;
     if(sdpMLineIndex !== 0) {
       return;
     }
-    
+
     const parsed = p2pParseCandidate(candidate);
     // const parsed = {sdpString: candidate};
     /* if(parsed.address.ip !== '') {
@@ -503,8 +503,8 @@ export default class CallInstance extends CallInstanceBase<{
     } */
 
     this.sendCallSignalingData({
-      '@type': 'Candidates', 
-      candidates: [parsed]
+      '@type': 'Candidates',
+      'candidates': [parsed]
     });
   }
 
@@ -515,14 +515,14 @@ export default class CallInstance extends CallInstanceBase<{
     // this.clearHangUpTimeout();
     this.overrideConnectionState(CALL_STATE.EXCHANGING_KEYS);
     const {key, key_fingerprint} = await this.managers.appCallsManager.computeKey((call as PhoneCall.phoneCallAccepted).g_b, dh.a, dh.p);
-    
+
     const phonePhoneCall = await this.managers.apiManager.invokeApi('phone.confirmCall', {
       peer: await this.managers.appCallsManager.getCallInput(id),
       protocol: protocol,
       g_a: dh.g_a,
       key_fingerprint: key_fingerprint
     });
-    
+
     this.encryptionKey = key;
     await this.managers.appCallsManager.savePhonePhoneCall(phonePhoneCall);
     this.joinCall();
@@ -561,7 +561,7 @@ export default class CallInstance extends CallInstanceBase<{
     const isAnswer = false;
 
     const description = this.description;
-    let bundle = description.entries.map((entry) => entry.mid);
+    const bundle = description.entries.map((entry) => entry.mid);
     const sdpDescription: RTCSessionDescriptionInit = {
       type: isAnswer ? 'answer' : 'offer',
       sdp: description.generateSdp({
@@ -577,11 +577,11 @@ export default class CallInstance extends CallInstanceBase<{
     answer = await connection.createAnswer();
 
     await connection.setLocalDescription(answer);
-    
+
     const initialSetup = parseSignalingData(parseSdp(answer.sdp));
     this.log('[InitialSetup] send 1');
     this.sendCallSignalingData(initialSetup);
-    
+
     this.unlockStreamManager();
   }
 
@@ -621,7 +621,7 @@ export default class CallInstance extends CallInstanceBase<{
       this.onMutedChange();
     }
   }
-  
+
   private onMutedChange() {
     const isMuted = this.isMuted;
     this.dispatchEvent('muted', isMuted);
@@ -668,21 +668,21 @@ export default class CallInstance extends CallInstanceBase<{
         'rtcp-fbs': payloadType.feedbackTypes
       }
     });
-    
+
     const codec: AudioCodec = {
       'rtp-hdrexts': _codec.rtpExtensions,
       'payload-types': payloadTypes
     };
-    
+
     return codec;
   }
 
   private setDataToDescription(data: CallSignalingData.initialSetup) {
     this.description.setData({
       transport: {
-        pwd: data.pwd,
-        ufrag: data.ufrag,
-        fingerprints: data.fingerprints,
+        'pwd': data.pwd,
+        'ufrag': data.ufrag,
+        'fingerprints': data.fingerprints,
         'rtcp-mux': true
       },
       audio: this.performCodec(data.audio),
@@ -705,7 +705,7 @@ export default class CallInstance extends CallInstanceBase<{
 
   public async applyCallSignalingData(data: CallSignalingData) {
     this.log('applyCallSignalingData', this, data);
-    
+
     const {connection, description} = this.connectionInstance;
 
     switch(data['@type']) {
@@ -736,7 +736,7 @@ export default class CallInstance extends CallInstanceBase<{
           if(entry) {
             return;
           }
-          
+
           const sendRecvEntry = description.findFreeSendRecvEntry(ssrc.type, false);
           entry = new ConferenceEntry(sendRecvEntry.mid, ssrc.type);
           entry.setDirection('sendrecv');
@@ -750,7 +750,7 @@ export default class CallInstance extends CallInstanceBase<{
         const isAnswer = this.offerSent;
         this.offerSent = false;
 
-        let bundle = description.entries.map((entry) => entry.mid);
+        const bundle = description.entries.map((entry) => entry.mid);
         const sdpDescription: RTCSessionDescriptionInit = {
           type: isAnswer ? 'answer' : 'offer',
           sdp: description.generateSdp({
@@ -773,7 +773,7 @@ export default class CallInstance extends CallInstanceBase<{
 
         break;
       }
-      
+
       case 'Candidates': {
         for(const candidate of data.candidates) {
           const init: RTCIceCandidateInit = P2PSdpBuilder.generateCandidate(candidate);
@@ -781,7 +781,7 @@ export default class CallInstance extends CallInstanceBase<{
           const iceCandidate = new RTCIceCandidate(init);
           this.candidates.push(iceCandidate);
         }
-        
+
         await this.tryToReleaseCandidates();
         break;
       }
@@ -831,10 +831,10 @@ export default class CallInstance extends CallInstanceBase<{
     if(!length) {
       return;
     }
-    
+
     const queue = this.decryptQueue.slice();
     this.decryptQueue.length = 0;
-    
+
     for(const data of queue) {
       const decryptedData = await encryptor.decryptRawPacket(data);
       if(!decryptedData) {
@@ -842,7 +842,7 @@ export default class CallInstance extends CallInstanceBase<{
       }
 
       // this.log('[update] updateNewCallSignalingData', update, decryptedData);
-      
+
       const str = new TextDecoder().decode(decryptedData);
       try {
         const signalingData: CallSignalingData = JSON.parse(str);

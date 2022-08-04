@@ -4,24 +4,24 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import App from "../../../../config/app";
-import DEBUG from "../../../../config/debug";
-import { AutoDownloadPeerTypeSettings, State, STATE_INIT } from "../../../../config/state";
-import compareVersion from "../../../../helpers/compareVersion";
-import copy from "../../../../helpers/object/copy";
-import validateInitObject from "../../../../helpers/object/validateInitObject";
-import { UserAuth } from "../../../mtproto/mtproto_config";
-import rootScope from "../../../rootScope";
-import stateStorage from "../../../stateStorage";
-import sessionStorage from "../../../sessionStorage";
-import { recordPromiseBound } from "../../../../helpers/recordPromise";
+import App from '../../../../config/app';
+import DEBUG from '../../../../config/debug';
+import {AutoDownloadPeerTypeSettings, State, STATE_INIT} from '../../../../config/state';
+import compareVersion from '../../../../helpers/compareVersion';
+import copy from '../../../../helpers/object/copy';
+import validateInitObject from '../../../../helpers/object/validateInitObject';
+import {UserAuth} from '../../../mtproto/mtproto_config';
+import rootScope from '../../../rootScope';
+import stateStorage from '../../../stateStorage';
+import sessionStorage from '../../../sessionStorage';
+import {recordPromiseBound} from '../../../../helpers/recordPromise';
 // import RESET_STORAGES_PROMISE from "../storages/resetStoragesPromise";
-import { StoragesResults } from "../storages/loadStorages";
-import { logger } from "../../../logger";
+import {StoragesResults} from '../storages/loadStorages';
+import {logger} from '../../../logger';
 
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
 // const REFRESH_EVERY = 1e3;
-//const REFRESH_EVERY_WEEK = 24 * 60 * 60 * 1000 * 7; // 7 days
+// const REFRESH_EVERY_WEEK = 24 * 60 * 60 * 1000 * 7; // 7 days
 
 const STATE_VERSION = STATE_INIT.version;
 const BUILD = STATE_INIT.build;
@@ -29,13 +29,13 @@ const BUILD = STATE_INIT.build;
 const ALL_KEYS = Object.keys(STATE_INIT) as any as Array<keyof State>;
 
 const REFRESH_KEYS: Array<keyof State> = [
-  'contactsListCachedTime', 
+  'contactsListCachedTime',
   'stateCreatedTime',
-  'maxSeenMsgId', 
+  'maxSeenMsgId',
   'filtersArr'
 ];
 
-//const REFRESH_KEYS_WEEK = ['dialogs', 'allDialogsLoaded', 'updates', 'pinnedOrders'] as any as Array<keyof State>;
+// const REFRESH_KEYS_WEEK = ['dialogs', 'allDialogsLoaded', 'updates', 'pinnedOrders'] as any as Array<keyof State>;
 
 async function loadStateInner() {
   const log = logger('STATE-LOADER');
@@ -45,7 +45,7 @@ async function loadStateInner() {
 
   const promises = ALL_KEYS.map((key) => recordPromise(stateStorage.get(key), 'state ' + key))
   .concat(
-    recordPromise(sessionStorage.get('user_auth'), 'auth'), 
+    recordPromise(sessionStorage.get('user_auth'), 'auth'),
     recordPromise(sessionStorage.get('state_id'), 'auth'),
     recordPromise(sessionStorage.get('k_build'), 'auth')
   )
@@ -69,12 +69,12 @@ async function loadStateInner() {
           target[key] = new Proxy(prop, getHandler(path || key));
           return target[key];
         }
-        
+
         return prop;
       },
       set(target: any, key: any, value: any) {
         console.log('Setting', target, `.${key} to equal`, value, path);
-    
+
         target[key] = value;
 
         // @ts-ignore
@@ -137,14 +137,14 @@ async function loadStateInner() {
     keys.push('user_auth');
     values.push(typeof(auth) === 'number' || typeof(auth) === 'string' ? {dcID: values[0] || App.baseDcId, date: Date.now() / 1000 | 0, id: auth.toPeerId(false)} as UserAuth : auth);
 
-    let obj: any = {};
+    const obj: any = {};
     keys.forEach((key, idx) => {
       obj[key] = values[idx];
     });
 
     await sessionStorage.set(obj);
   }
-  
+
   /* if(!auth) { // try to read Webogram's session from localStorage
     try {
       const keys = Object.keys(localStorage);
@@ -172,8 +172,8 @@ async function loadStateInner() {
   if(auth) {
     // ! Warning ! DON'T delete this
     state.authState = {_: 'authStateSignedIn'};
-    rootScope.dispatchEvent('user_auth', typeof(auth) === 'number' || typeof(auth) === 'string' ? 
-      {dcID: 0, date: Date.now() / 1000 | 0, id: auth.toPeerId(false)} : 
+    rootScope.dispatchEvent('user_auth', typeof(auth) === 'number' || typeof(auth) === 'string' ?
+      {dcID: 0, date: Date.now() / 1000 | 0, id: auth.toPeerId(false)} :
       auth); // * support old version
   }
 
@@ -226,12 +226,12 @@ async function loadStateInner() {
 
         // const s = appStateManager.storagesResults[key as keyof AppStateManager['storagesResults']];
         // if(s?.length) {
-          // appStateManager.resetStorages.add(key as keyof AppStateManager['storagesResults']);
-          // s.length = 0;
+        // appStateManager.resetStorages.add(key as keyof AppStateManager['storagesResults']);
+        // s.length = 0;
         // }
       });
     };
-    
+
     r(REFRESH_KEYS);
 
     /* if((state.stateCreatedTime + REFRESH_EVERY_WEEK) < time) {
@@ -242,8 +242,8 @@ async function loadStateInner() {
       r(REFRESH_KEYS_WEEK);
     } */
   }
-  
-  //state = this.state = new Proxy(state, getHandler());
+
+  // state = this.state = new Proxy(state, getHandler());
 
   // * support old version
   if(!state.settings.hasOwnProperty('theme') && state.settings.hasOwnProperty('nightTheme')) {
@@ -265,9 +265,9 @@ async function loadStateInner() {
   const autoDownloadSettings = state.settings.autoDownload;
   if(autoDownloadSettings?.private !== undefined) {
     const oldTypes = [
-      'contacts' as const, 
-      'private' as const, 
-      'groups' as const, 
+      'contacts' as const,
+      'private' as const,
+      'groups' as const,
       'channels' as const
     ];
 
@@ -310,13 +310,13 @@ async function loadStateInner() {
       let migrated = false;
       state.settings.themes.forEach((theme, idx, arr) => {
         if((
-          theme.name === 'day' && 
-          theme.background.slug === 'ByxGo2lrMFAIAAAAmkJxZabh8eM' && 
-          theme.background.type === 'image' 
+          theme.name === 'day' &&
+          theme.background.slug === 'ByxGo2lrMFAIAAAAmkJxZabh8eM' &&
+          theme.background.type === 'image'
         ) || (
-          theme.name === 'night' && 
-          theme.background.color === '#0f0f0f' && 
-          theme.background.type === 'color' 
+          theme.name === 'night' &&
+          theme.background.color === '#0f0f0f' &&
+          theme.background.type === 'color'
         )) {
           const newTheme = STATE_INIT.settings.themes.find((newTheme) => newTheme.name === theme.name);
           if(newTheme) {
@@ -330,7 +330,7 @@ async function loadStateInner() {
         pushToState('settings', state.settings);
       }
     }
-    
+
     if(compareVersion(state.version, STATE_VERSION) !== 0) {
       newVersion = STATE_VERSION;
       oldVersion = state.version;
@@ -350,8 +350,8 @@ async function loadStateInner() {
   if(DEBUG) {
     log('state res', state, copy(state));
   }
-  
-  //return resolve();
+
+  // return resolve();
 
   log.warn('total', performance.now() - totalPerf);
 

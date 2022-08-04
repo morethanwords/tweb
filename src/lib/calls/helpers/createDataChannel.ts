@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { Logger, logger } from "../../logger";
+import {Logger, logger} from '../../logger';
 
 export default function createDataChannel(connection: RTCPeerConnection, dict?: RTCDataChannelInit, log?: Logger) {
   // return;

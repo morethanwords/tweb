@@ -4,30 +4,30 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import forEachReverse from "../../helpers/array/forEachReverse";
-import throttle from "../../helpers/schedulers/throttle";
-import { GroupCallConnectionType, JoinGroupCallJsonPayload } from "../appManagers/appGroupCallsManager";
-import { AppManagers } from "../appManagers/managers";
-import rootScope from "../rootScope";
-import CallConnectionInstanceBase, { CallConnectionInstanceOptions } from "./callConnectionInstanceBase";
-import GroupCallInstance from "./groupCallInstance";
-import filterServerCodecs from "./helpers/filterServerCodecs";
-import fixLocalOffer from "./helpers/fixLocalOffer";
-import processMediaSection from "./helpers/processMediaSection";
-import { ConferenceEntry } from "./localConferenceDescription";
-import SDP from "./sdp";
-import SDPMediaSection from "./sdp/mediaSection";
-import { WebRTCLineType } from "./sdpBuilder";
-import { UpdateGroupCallConnectionData } from "./types";
+import forEachReverse from '../../helpers/array/forEachReverse';
+import throttle from '../../helpers/schedulers/throttle';
+import {GroupCallConnectionType, JoinGroupCallJsonPayload} from '../appManagers/appGroupCallsManager';
+import {AppManagers} from '../appManagers/managers';
+import rootScope from '../rootScope';
+import CallConnectionInstanceBase, {CallConnectionInstanceOptions} from './callConnectionInstanceBase';
+import GroupCallInstance from './groupCallInstance';
+import filterServerCodecs from './helpers/filterServerCodecs';
+import fixLocalOffer from './helpers/fixLocalOffer';
+import processMediaSection from './helpers/processMediaSection';
+import {ConferenceEntry} from './localConferenceDescription';
+import SDP from './sdp';
+import SDPMediaSection from './sdp/mediaSection';
+import {WebRTCLineType} from './sdpBuilder';
+import {UpdateGroupCallConnectionData} from './types';
 
 export default class GroupCallConnectionInstance extends CallConnectionInstanceBase {
   private groupCall: GroupCallInstance;
   public updateConstraints?: boolean;
   private type: GroupCallConnectionType;
   private options: {
-    type: Extract<GroupCallConnectionType, 'main'>, 
-    isMuted?: boolean, 
-    joinVideo?: boolean, 
+    type: Extract<GroupCallConnectionType, 'main'>,
+    isMuted?: boolean,
+    joinVideo?: boolean,
     rejoin?: boolean
   } | {
     type: Extract<GroupCallConnectionType, 'presentation'>,
@@ -50,13 +50,13 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
   }
 
   public createPeerConnection() {
-    return this.connection || super.createPeerConnection({ 
-      iceServers: [], 
-      iceTransportPolicy: 'all', 
-      bundlePolicy: 'max-bundle', 
-      rtcpMuxPolicy: 'require', 
-      iceCandidatePoolSize: 0, 
-      // sdpSemantics: "unified-plan", 
+    return this.connection || super.createPeerConnection({
+      iceServers: [],
+      iceTransportPolicy: 'all',
+      bundlePolicy: 'max-bundle',
+      rtcpMuxPolicy: 'require',
+      iceCandidatePoolSize: 0
+      // sdpSemantics: "unified-plan",
       // extmapAllowMixed: true,
     });
   }
@@ -121,7 +121,7 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
       const processed = processMediaSection(localSdp, section);
 
       this.sources[processed.entry.type as 'video' | 'audio'] = processed.entry;
-      
+
       return processed;
     });
 
@@ -173,7 +173,7 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
     const isNewConnection = connection.iceConnectionState === 'new' && !description.getEntryByMid('0').source;
     const log = this.log.bindPrefix('startNegotiation');
     log('start');
-    
+
     const originalOffer = await connection.createOffer({iceRestart: false});
 
     if(isNewConnection && this.dataChannel) {
@@ -182,7 +182,7 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
     }
 
     const {sdp: localSdp, offer} = fixLocalOffer({
-      offer: originalOffer, 
+      offer: originalOffer,
       data: description
     });
 
@@ -200,7 +200,7 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
         this.log.error('[tdweb] joinGroupCall error', e);
       }
     }
-    
+
     /* if(!data) {
       log('abort 0');
       this.closeConnectionAndStream(connection, streamManager);
@@ -217,7 +217,7 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
       this.closeConnectionAndStream(connection, streamManager);
       return;
     } */
-    
+
     const isAnswer = true;
     // const _bundleMids = bundleMids.slice();
     const entriesToDelete: ConferenceEntry[] = [];
@@ -253,8 +253,8 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
     const answerDescription: RTCSessionDescriptionInit = {
       type: 'answer',
       sdp: description.generateSdp({
-        bundle, 
-        entries, 
+        bundle,
+        entries,
         isAnswer
       })
     };
@@ -306,7 +306,7 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
     }
 
     this.log('maybeUpdateRemoteVideoConstraints');
-    
+
     // * https://github.com/TelegramMessenger/tgcalls/blob/6f2746e04c9b040f8c8dfc64d916a1853d09c4ce/tgcalls/group/GroupInstanceCustomImpl.cpp#L2549
     type VideoConstraints = {minHeight?: number, maxHeight: number};
     const obj: {
@@ -345,13 +345,13 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
       this.updateConstraintsInterval = window.setInterval(this.maybeUpdateRemoteVideoConstraints.bind(this), 5000);
     }
   }
-  
+
   public addInputVideoStream(stream: MediaStream) {
     // const {sources} = this;
     // if(sources?.video) {
-      // const source = this.sources.video.source;
-      // stream.source = '' + source;
-      this.groupCall.saveInputVideoStream(stream, this.type);
+    // const source = this.sources.video.source;
+    // stream.source = '' + source;
+    this.groupCall.saveInputVideoStream(stream, this.type);
     // }
 
     this.streamManager.addStream(stream, 'input');

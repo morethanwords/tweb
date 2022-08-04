@@ -2,14 +2,14 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import MTTransport, { MTConnectionConstructable } from './transports/transport';
+import MTTransport, {MTConnectionConstructable} from './transports/transport';
 import Modes from '../../config/modes';
 import App from '../../config/app';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
@@ -21,9 +21,9 @@ import HTTP from './transports/http';
 // #if MTPROTO_HAS_WS
 import Socket from './transports/websocket';
 import TcpObfuscated from './transports/tcpObfuscated';
-import { IS_WEB_WORKER } from '../../helpers/context';
-import { DcId } from '../../types';
-import { getEnvironment } from '../../environment/utils';
+import {IS_WEB_WORKER} from '../../helpers/context';
+import {DcId} from '../../types';
+import {getEnvironment} from '../../environment/utils';
 
 // #if !MTPROTO_SW && SAFARI_PROXY_WEBSOCKET
 import SocketProxied from './transports/socketProxied';
@@ -61,13 +61,13 @@ export function constructTelegramWebSocketUrl(dcId: DcId, connectionType: Connec
 export class DcConfigurator {
   private sslSubdomains = ['pluto', 'venus', 'aurora', 'vesta', 'flora'];
 
-  private dcOptions = Modes.test
-    ? [
+  private dcOptions = Modes.test ?
+    [
       {id: 1, host: '149.154.175.10',  port: 80},
       {id: 2, host: '149.154.167.40',  port: 80},
       {id: 3, host: '149.154.175.117', port: 80}
-    ]
-    : [
+    ] :
+    [
       {id: 1, host: '149.154.175.50',  port: 80},
       {id: 2, host: '149.154.167.50',  port: 80},
       {id: 3, host: '149.154.175.100', port: 80},
@@ -104,7 +104,7 @@ export class DcConfigurator {
       const path = Modes.test ? 'apiw_test1' : 'apiw1';
       chosenServer = 'https://' + subdomain + '.web.telegram.org/' + path;
     } else {
-      for(let dcOption of this.dcOptions) {
+      for(const dcOption of this.dcOptions) {
         if(dcOption.id === dcId) {
           chosenServer = 'http://' + dcOption.host + (dcOption.port !== 80 ? ':' + dcOption.port : '') + '/apiw1';
           break;
@@ -118,9 +118,9 @@ export class DcConfigurator {
   // #endif
 
   public chooseServer(
-    dcId: DcId, 
-    connectionType: ConnectionType = 'client', 
-    transportType: TransportType = Modes.transport, 
+    dcId: DcId,
+    connectionType: ConnectionType = 'client',
+    transportType: TransportType = Modes.transport,
     reuse = true,
     premium?: boolean
   ) {
@@ -154,22 +154,22 @@ export class DcConfigurator {
       // #else
       transport = this.transportHTTP(dcId, connectionType, premium);
       // #endif
-  
+
       if(!transport) {
         console.error('No chosenServer!', dcId);
         return null;
       }
-      
+
       if(reuse) {
         transports.push(transport);
       }
-      
+
       return transport;
     }
-  
+
     return transports[0];
   }
-  
+
   public static removeTransport<T>(obj: any, transport: T) {
     for(const transportType in obj) {
       // @ts-ignore

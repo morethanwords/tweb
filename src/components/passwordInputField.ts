@@ -5,8 +5,8 @@
  */
 
 // import { IS_MOBILE_SAFARI, IS_SAFARI } from "../environment/userAgent";
-import cancelEvent from "../helpers/dom/cancelEvent";
-import InputField, { InputFieldOptions } from "./inputField";
+import cancelEvent from '../helpers/dom/cancelEvent';
+import InputField, {InputFieldOptions} from './inputField';
 
 export default class PasswordInputField extends InputField {
   public passwordVisible = false;

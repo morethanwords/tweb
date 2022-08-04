@@ -4,37 +4,37 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { ChatRights } from "../../lib/appManagers/appChatsManager";
-import type { AppImManager } from "../../lib/appManagers/appImManager";
-import type { MessagesStorageKey } from "../../lib/appManagers/appMessagesManager";
-import EventListenerBase from "../../helpers/eventListenerBase";
-import { logger, LogTypes } from "../../lib/logger";
-import rootScope from "../../lib/rootScope";
-import appSidebarRight from "../sidebarRight";
-import ChatBubbles from "./bubbles";
-import ChatContextMenu from "./contextMenu";
-import ChatInput from "./input";
-import ChatSelection from "./selection";
-import ChatTopbar from "./topbar";
-import { NULL_PEER_ID, REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
-import SetTransition from "../singleTransition";
-import AppPrivateSearchTab from "../sidebarRight/tabs/search";
-import renderImageFromUrl from "../../helpers/dom/renderImageFromUrl";
-import mediaSizes from "../../helpers/mediaSizes";
-import ChatSearch from "./search";
-import IS_TOUCH_SUPPORTED from "../../environment/touchSupport";
-import getAutoDownloadSettingsByPeerId, { ChatAutoDownloadSettings } from "../../helpers/autoDownload";
-import ChatBackgroundGradientRenderer from "./gradientRenderer";
-import ChatBackgroundPatternRenderer from "./patternRenderer";
-import pause from "../../helpers/schedulers/pause";
-import { AppManagers } from "../../lib/appManagers/managers";
-import SlicedArray from "../../helpers/slicedArray";
-import themeController from "../../helpers/themeController";
-import AppSharedMediaTab from "../sidebarRight/tabs/sharedMedia";
-import noop from "../../helpers/noop";
-import middlewarePromise from "../../helpers/middlewarePromise";
-import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
-import { Message } from "../../layer";
+import type {ChatRights} from '../../lib/appManagers/appChatsManager';
+import type {AppImManager} from '../../lib/appManagers/appImManager';
+import type {MessagesStorageKey} from '../../lib/appManagers/appMessagesManager';
+import EventListenerBase from '../../helpers/eventListenerBase';
+import {logger, LogTypes} from '../../lib/logger';
+import rootScope from '../../lib/rootScope';
+import appSidebarRight from '../sidebarRight';
+import ChatBubbles from './bubbles';
+import ChatContextMenu from './contextMenu';
+import ChatInput from './input';
+import ChatSelection from './selection';
+import ChatTopbar from './topbar';
+import {NULL_PEER_ID, REPLIES_PEER_ID} from '../../lib/mtproto/mtproto_config';
+import SetTransition from '../singleTransition';
+import AppPrivateSearchTab from '../sidebarRight/tabs/search';
+import renderImageFromUrl from '../../helpers/dom/renderImageFromUrl';
+import mediaSizes from '../../helpers/mediaSizes';
+import ChatSearch from './search';
+import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
+import getAutoDownloadSettingsByPeerId, {ChatAutoDownloadSettings} from '../../helpers/autoDownload';
+import ChatBackgroundGradientRenderer from './gradientRenderer';
+import ChatBackgroundPatternRenderer from './patternRenderer';
+import pause from '../../helpers/schedulers/pause';
+import {AppManagers} from '../../lib/appManagers/managers';
+import SlicedArray from '../../helpers/slicedArray';
+import themeController from '../../helpers/themeController';
+import AppSharedMediaTab from '../sidebarRight/tabs/sharedMedia';
+import noop from '../../helpers/noop';
+import middlewarePromise from '../../helpers/middlewarePromise';
+import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
+import {Message} from '../../layer';
 
 export type ChatType = 'chat' | 'pinned' | 'replies' | 'discussion' | 'scheduled';
 
@@ -82,7 +82,7 @@ export default class Chat extends EventListenerBase<{
 
   public isAnyGroup: boolean;
   public isMegagroup: boolean;
-  
+
   constructor(
     public appImManager: AppImManager,
     public managers: AppManagers
@@ -100,7 +100,7 @@ export default class Chat extends EventListenerBase<{
     // * constructor end
 
     this.log = logger('CHAT', LogTypes.Log | LogTypes.Warn | LogTypes.Debug | LogTypes.Error);
-    //this.log.error('Chat construction');
+    // this.log.error('Chat construction');
 
     this.peerId = NULL_PEER_ID;
 
@@ -117,9 +117,9 @@ export default class Chat extends EventListenerBase<{
     let item: HTMLElement;
     const isColorBackground = !!theme.background.color && !theme.background.slug && !theme.background.intensity;
     if(
-      isColorBackground && 
-      document.documentElement.style.cursor === 'grabbing' && 
-      this.gradientRenderer && 
+      isColorBackground &&
+      document.documentElement.style.cursor === 'grabbing' &&
+      this.gradientRenderer &&
       !this.patternRenderer
     ) {
       this.gradientCanvas.dataset.colors = theme.background.color;
@@ -134,16 +134,16 @@ export default class Chat extends EventListenerBase<{
     const previousGradientCanvas = this.gradientCanvas;
     const previousPatternCanvas = this.patternCanvas;
 
-    this.gradientRenderer = 
-      this.patternRenderer = 
-      this.gradientCanvas = 
-      this.patternCanvas = 
-      // this.renderDarkPattern = 
+    this.gradientRenderer =
+      this.patternRenderer =
+      this.gradientCanvas =
+      this.patternCanvas =
+      // this.renderDarkPattern =
       undefined;
 
     const intensity = theme.background.intensity && theme.background.intensity / 100;
     const isDarkPattern = !!intensity && intensity < 0;
-    
+
     let patternRenderer: ChatBackgroundPatternRenderer;
     let patternCanvas = item?.firstElementChild as HTMLCanvasElement;
     let gradientCanvas: HTMLCanvasElement;
@@ -176,7 +176,7 @@ export default class Chat extends EventListenerBase<{
           //       if(this.backgroundTempId !== tempId) {
           //         return;
           //       }
-                
+
           //       gradientCanvas.style.webkitMaskImage = `url(${url})`;
           //     });
           //   };
@@ -234,7 +234,7 @@ export default class Chat extends EventListenerBase<{
         }
 
         const append = [
-          gradientCanvas, 
+          gradientCanvas,
           // isDarkPattern && this.renderDarkPattern ? undefined : patternCanvas
           patternCanvas
         ].filter(Boolean);
@@ -266,14 +266,15 @@ export default class Chat extends EventListenerBase<{
             return;
           }
 
-          let promise: Promise<any>;
+          // let promise: Promise<any>;
           // if(isDarkPattern && this.renderDarkPattern) {
           //   promise = this.renderDarkPattern();
           // } else {
-            promise = Promise.resolve();
+          // const promise = Promise.resolve();
           // }
-          
-          promise.then(cb);
+
+          // promise.then(cb);
+          cb();
         });
       } else if(url) {
         renderImageFromUrl(item, url, cb);
@@ -368,7 +369,7 @@ export default class Chat extends EventListenerBase<{
   }
 
   public destroy() {
-    //const perf = performance.now();
+    // const perf = performance.now();
 
     this.topbar.destroy();
     this.bubbles.destroy();
@@ -386,7 +387,7 @@ export default class Chat extends EventListenerBase<{
 
     this.container.remove();
 
-    //this.log.error('Chat destroy time:', performance.now() - perf);
+    // this.log.error('Chat destroy time:', performance.now() - perf);
   }
 
   public cleanup(helperToo = true) {
@@ -394,7 +395,7 @@ export default class Chat extends EventListenerBase<{
     this.topbar.cleanup();
     this.selection.cleanup();
   }
-  
+
   public async onChangePeer(m: ReturnType<typeof middlewarePromise>) {
     const {peerId} = this;
 
@@ -499,7 +500,7 @@ export default class Chat extends EventListenerBase<{
     const callbacksPromise = Promise.all([
       this.topbar.finishPeerChange(isTarget),
       this.bubbles.finishPeerChange(),
-      this.input.finishPeerChange(startParam),
+      this.input.finishPeerChange(startParam)
     ]);
 
     const [callbacks] = await Promise.all([

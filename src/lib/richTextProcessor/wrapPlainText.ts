@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { MessageEntity } from "../../layer";
-import encodeSpoiler from "./encodeSpoiler";
+import {MessageEntity} from '../../layer';
+import encodeSpoiler from './encodeSpoiler';
 
 /**
  * ! This function is still unsafe to use with .innerHTML
@@ -23,7 +23,7 @@ export default function wrapPlainText(text: string, entities: MessageEntity[] = 
   // }
 
   // return wrapRichText(text, {
-  //   entities, 
+  //   entities,
   //   noEncoding: true,
   //   noTextFormat: true,
   //   noLinebreaks: true,

@@ -4,30 +4,30 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type Chat from "./chat";
-import debounce from "../../helpers/schedulers/debounce";
-import { WebDocument } from "../../layer";
-import { MyDocument } from "../../lib/appManagers/appDocsManager";
-import LazyLoadQueue from "../lazyLoadQueue";
-import Scrollable from "../scrollable";
-import { wrapPhoto } from "../wrappers";
-import AutocompleteHelper from "./autocompleteHelper";
-import AutocompleteHelperController from "./autocompleteHelperController";
-import Button from "../button";
-import { attachClickEvent } from "../../helpers/dom/clickEvent";
-import { MyPhoto } from "../../lib/appManagers/appPhotosManager";
-import assumeType from "../../helpers/assumeType";
-import GifsMasonry from "../gifsMasonry";
-import { SuperStickerRenderer } from "../emoticonsDropdown/tabs/stickers";
-import mediaSizes from "../../helpers/mediaSizes";
-import readBlobAsDataURL from "../../helpers/blob/readBlobAsDataURL";
-import setInnerHTML from "../../helpers/dom/setInnerHTML";
-import renderImageWithFadeIn from "../../helpers/dom/renderImageWithFadeIn";
-import { AppManagers } from "../../lib/appManagers/managers";
-import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
-import wrapRichText from "../../lib/richTextProcessor/wrapRichText";
-import generateQId from "../../lib/appManagers/utils/inlineBots/generateQId";
-import appDownloadManager from "../../lib/appManagers/appDownloadManager";
+import type Chat from './chat';
+import debounce from '../../helpers/schedulers/debounce';
+import {WebDocument} from '../../layer';
+import {MyDocument} from '../../lib/appManagers/appDocsManager';
+import LazyLoadQueue from '../lazyLoadQueue';
+import Scrollable from '../scrollable';
+import {wrapPhoto} from '../wrappers';
+import AutocompleteHelper from './autocompleteHelper';
+import AutocompleteHelperController from './autocompleteHelperController';
+import Button from '../button';
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import {MyPhoto} from '../../lib/appManagers/appPhotosManager';
+import assumeType from '../../helpers/assumeType';
+import GifsMasonry from '../gifsMasonry';
+import {SuperStickerRenderer} from '../emoticonsDropdown/tabs/stickers';
+import mediaSizes from '../../helpers/mediaSizes';
+import readBlobAsDataURL from '../../helpers/blob/readBlobAsDataURL';
+import setInnerHTML from '../../helpers/dom/setInnerHTML';
+import renderImageWithFadeIn from '../../helpers/dom/renderImageWithFadeIn';
+import {AppManagers} from '../../lib/appManagers/managers';
+import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
+import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
+import generateQId from '../../lib/appManagers/utils/inlineBots/generateQId';
+import appDownloadManager from '../../lib/appManagers/appDownloadManager';
 
 const ANIMATION_GROUP = 'INLINE-HELPER';
 // const GRID_ITEMS = 5;
@@ -41,15 +41,15 @@ export default class InlineHelper extends AutocompleteHelper {
   public checkQuery: (peerId: PeerId, username: string, query: string) => ReturnType<InlineHelper['_checkQuery']>;
 
   constructor(
-    appendTo: HTMLElement, 
+    appendTo: HTMLElement,
     controller: AutocompleteHelperController,
     private chat: Chat,
     private managers: AppManagers
   ) {
     super({
-      appendTo, 
+      appendTo,
       controller,
-      listType: 'xy', 
+      listType: 'xy',
       waitForKey: ['ArrowUp', 'ArrowDown'],
       onSelect: (target) => {
         if(!target) return false; // can happen when there is only button
@@ -58,7 +58,7 @@ export default class InlineHelper extends AutocompleteHelper {
           const queryAndResultIds = generateQId(queryId, (target as HTMLElement).dataset.resultId);
           this.managers.appInlineBotsManager.sendInlineResult(peerId.toPeerId(), botId, queryAndResultIds, {
             ...this.chat.getMessageSendingParams(),
-            clearDraft: true,
+            clearDraft: true
           });
 
           this.chat.input.onMessageSent(true, true);
@@ -71,7 +71,7 @@ export default class InlineHelper extends AutocompleteHelper {
     this.addEventListener('visible', () => {
       setTimeout(() => { // it is not rendered yet
         this.scrollable.container.scrollTop = 0;
-      }, 0); 
+      }, 0);
     });
 
     this.checkQuery = debounce(this._checkQuery, 200, true, true);
@@ -115,7 +115,7 @@ export default class InlineHelper extends AutocompleteHelper {
 
       this.lazyLoadQueue.clear();
       this.superStickerRenderer.clear();
-      
+
       const loadPromises: Promise<any>[] = [];
       const isGallery = !!botResults.pFlags.gallery;
       // botResults.results.length = 3;
@@ -123,7 +123,7 @@ export default class InlineHelper extends AutocompleteHelper {
         const container = document.createElement('div');
         container.classList.add('inline-helper-result');
         container.dataset.resultId = item.id;
-  
+
         const preview = isGallery ? undefined : document.createElement('div');
         if(preview) {
           preview.classList.add('inline-helper-result-preview');
@@ -140,24 +140,24 @@ export default class InlineHelper extends AutocompleteHelper {
           const title = document.createElement('div');
           title.classList.add('inline-helper-result-title');
           setInnerHTML(title, wrapEmojiText(item.title));
-    
+
           const description = document.createElement('div');
           description.classList.add('inline-helper-result-description');
           setInnerHTML(description, wrapRichText(item.description, {
             noCommands: true,
             noLinks: true
           }));
-    
+
           container.append(title, description);
-  
+
           const separator = document.createElement('div');
           separator.classList.add('inline-helper-separator');
-    
+
           list.append(separator);
         } else {
           container.classList.add('grid-item');
         }
-        
+
         if(item._ === 'botInlineResult') {
           if(item.thumb && item.thumb.mime_type.indexOf('image/') === 0) {
             let mediaContainer: HTMLElement;
@@ -168,7 +168,7 @@ export default class InlineHelper extends AutocompleteHelper {
               mediaContainer = container;
             }
 
-            mediaContainer.classList.add('media-container'); 
+            mediaContainer.classList.add('media-container');
             isGallery && mediaContainer.classList.add('no-border-radius');
 
             this.lazyLoadQueue.push({
@@ -271,7 +271,7 @@ export default class InlineHelper extends AutocompleteHelper {
         }
 
         this.onChangeScreen();
-  
+
         this.toggle(!botResults.results.length && !botResults.switch_pm);
         this.scrollable.scrollTop = 0;
       });

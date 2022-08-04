@@ -4,15 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import blobConstruct from "../../helpers/blob/blobConstruct";
+import blobConstruct from '../../helpers/blob/blobConstruct';
 import StreamWriter from './streamWriter';
 
 export default class MemoryWriter implements StreamWriter {
   private bytes: Uint8Array;
-  
+
   constructor(
-    private mimeType: string, 
-    private size: number, 
+    private mimeType: string,
+    private size: number,
     private saveFileCallback?: (blob: Blob) => Promise<Blob>
   ) {
     this.bytes = new Uint8Array(size);
@@ -44,7 +44,7 @@ export default class MemoryWriter implements StreamWriter {
     if(saveToStorage && this.saveFileCallback) {
       this.saveFileCallback(blob);
     }
-    
+
     return blob;
   }
 

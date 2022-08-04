@@ -7,10 +7,10 @@
 import App from './config/app';
 import blurActiveElement from './helpers/dom/blurActiveElement';
 import cancelEvent from './helpers/dom/cancelEvent';
-import { IS_STICKY_INPUT_BUGGED } from './helpers/dom/fixSafariStickyInputFocusing';
+import {IS_STICKY_INPUT_BUGGED} from './helpers/dom/fixSafariStickyInputFocusing';
 import loadFonts from './helpers/dom/loadFonts';
 import IS_EMOJI_SUPPORTED from './environment/emojiSupport';
-import { IS_ANDROID, IS_APPLE, IS_APPLE_MOBILE, IS_FIREFOX, IS_MOBILE, IS_MOBILE_SAFARI, IS_SAFARI } from './environment/userAgent';
+import {IS_ANDROID, IS_APPLE, IS_APPLE_MOBILE, IS_FIREFOX, IS_MOBILE, IS_MOBILE_SAFARI, IS_SAFARI} from './environment/userAgent';
 import './materialize.scss';
 import './scss/style.scss';
 import pause from './helpers/schedulers/pause';
@@ -51,10 +51,10 @@ document.addEventListener('DOMContentLoaded', async() => {
 
     lastVH = vh;
 
-    //const vh = document.documentElement.scrollHeight * 0.01;
+    // const vh = document.documentElement.scrollHeight * 0.01;
     document.documentElement.style.setProperty('--vh', `${vh}px`);
 
-    //console.log('setVH', vh, setViewportVH ? w : window);
+    // console.log('setVH', vh, setViewportVH ? w : window);
 
     /* if(setViewportVH && userAgent.isSafari && touchSupport.isTouchSupported && document.activeElement && (document.activeElement as HTMLElement).blur) {
       const rect = document.activeElement.getBoundingClientRect();
@@ -111,7 +111,7 @@ document.addEventListener('DOMContentLoaded', async() => {
         toggleResizeMode();
       }
     };
-    
+
     overlayCounter.addEventListener('change', () => {
       toggleResizeMode();
     });
@@ -129,7 +129,7 @@ document.addEventListener('DOMContentLoaded', async() => {
 
   // prevent firefox image dragging
   document.addEventListener('dragstart', (e) => {
-    if((e.target as HTMLElement)?.tagName === "IMG") {
+    if((e.target as HTMLElement)?.tagName === 'IMG') {
       e.preventDefault();
       return false;
     }
@@ -154,7 +154,7 @@ document.addEventListener('DOMContentLoaded', async() => {
     if(IS_SAFARI) {
       document.documentElement.classList.add('is-safari');
     }
-    
+
     // document.documentElement.classList.add('emoji-supported');
 
     if(IS_APPLE_MOBILE) {
@@ -187,12 +187,12 @@ document.addEventListener('DOMContentLoaded', async() => {
     }, {capture: true, passive: false}); */
   }
 
-  let perf = performance.now();
+  const perf = performance.now();
 
   // await pause(1000000);
 
   const langPromise = I18n.getCacheLangPack();
-  
+
   const [stateResult, langPack] = await Promise.all([
     // loadState(),
     apiManagerProxy.sendState().then(([stateResult]) => stateResult),
@@ -252,29 +252,29 @@ document.addEventListener('DOMContentLoaded', async() => {
         pushModule.default.forceUnsubscribe();
       });
     } catch(err) {
-      
+
     }
 
     let pagePromise: Promise<void>;
-    //langPromise.then(async() => {
-      switch(authState._) {
-        case 'authStateSignIn': 
-          pagePromise = (await import('./pages/pageSignIn')).default.mount();
-          break;
-        case 'authStateSignQr': 
-          pagePromise = (await import('./pages/pageSignQR')).default.mount();
-          break;
-        case 'authStateAuthCode':
-          pagePromise = (await import('./pages/pageAuthCode')).default.mount(authState.sentCode);
-          break;
-        case 'authStatePassword':
-          pagePromise = (await import('./pages/pagePassword')).default.mount();
-          break;
-        case 'authStateSignUp':
-          pagePromise = (await import('./pages/pageSignUp')).default.mount(authState.authCode);
-          break;
-      }
-    //});
+    // langPromise.then(async() => {
+    switch(authState._) {
+      case 'authStateSignIn':
+        pagePromise = (await import('./pages/pageSignIn')).default.mount();
+        break;
+      case 'authStateSignQr':
+        pagePromise = (await import('./pages/pageSignQR')).default.mount();
+        break;
+      case 'authStateAuthCode':
+        pagePromise = (await import('./pages/pageAuthCode')).default.mount(authState.sentCode);
+        break;
+      case 'authStatePassword':
+        pagePromise = (await import('./pages/pagePassword')).default.mount();
+        break;
+      case 'authStateSignUp':
+        pagePromise = (await import('./pages/pageSignUp')).default.mount(authState.authCode);
+        break;
+    }
+    // });
 
     if(scrollable) {
       // wait for text appear
@@ -282,11 +282,11 @@ document.addEventListener('DOMContentLoaded', async() => {
         await pagePromise;
       }
 
-      const promise = 'fonts' in document ? 
+      const promise = 'fonts' in document ?
         Promise.race([
-          pause(1000), 
+          pause(1000),
           document.fonts.ready
-        ]) : 
+        ]) :
         Promise.resolve();
       fadeInWhenFontsReady(scrollable, promise);
     }
@@ -300,7 +300,7 @@ document.addEventListener('DOMContentLoaded', async() => {
           "_": "auth.sentCodeTypeSms",
           "length": 5
         },
-        "phone_code_hash": "",	
+        "phone_code_hash": "",
         "next_type": {
           "_": "auth.codeTypeCall"
         },
@@ -313,7 +313,7 @@ document.addEventListener('DOMContentLoaded', async() => {
       (await import('./pages/pagePassword')).default.mount();
 
       (await import('./pages/pageSignUp')).default.mount({
-        "phone_code_hash": "",	
+        "phone_code_hash": "",
         "phone_number": ""
       });
     }, 500); */

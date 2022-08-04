@@ -6,9 +6,9 @@
 
 // * Jolly Cobra's fastSmoothScroll slightly patched
 
-import { dispatchHeavyAnimationEvent } from '../hooks/useHeavyAnimationCheck';
-import { fastRaf, fastRafPromise } from './schedulers';
-import { animateSingle, cancelAnimationByKey } from './animation';
+import {dispatchHeavyAnimationEvent} from '../hooks/useHeavyAnimationCheck';
+import {fastRaf, fastRafPromise} from './schedulers';
+import {animateSingle, cancelAnimationByKey} from './animation';
 import rootScope from '../lib/rootScope';
 import isInDOM from './dom/isInDOM';
 
@@ -60,7 +60,7 @@ export default function fastSmoothScroll(options: ScrollOptions) {
   if(options.axis === undefined) {
     options.axis = 'y';
   }
-  //return;
+  // return;
 
   if(!rootScope.settings.animationsEnabled) {
     options.forceDirection = FocusDirection.Static;
@@ -88,18 +88,18 @@ function scrollWithJs(options: ScrollOptions): Promise<void> {
     cancelAnimationByKey(container);
     return Promise.resolve();
   }
-  
+
   const rectStartKey = axis === 'y' ? 'top' : 'left';
   const rectEndKey = axis === 'y' ? 'bottom' : 'right';
   const sizeKey = axis === 'y' ? 'height' : 'width';
   const scrollSizeKey = axis === 'y' ? 'scrollHeight' : 'scrollWidth';
   const scrollPositionKey = axis === 'y' ? 'scrollTop' : 'scrollLeft';
 
-  //const { offsetTop: elementTop, offsetHeight: elementHeight } = element;
+  // const { offsetTop: elementTop, offsetHeight: elementHeight } = element;
   const elementRect = element.getBoundingClientRect();
   const containerRect = container.getBoundingClientRect ? container.getBoundingClientRect() : document.body.getBoundingClientRect();
 
-  //const transformable = container.firstElementChild as HTMLElement;
+  // const transformable = container.firstElementChild as HTMLElement;
 
   const elementPosition = elementRect[rectStartKey] - containerRect[rectStartKey];
   const elementSize = element[scrollSizeKey]; // margin is exclusive in DOMRect
@@ -226,7 +226,7 @@ function scrollWithJs(options: ScrollOptions): Promise<void> {
 
     return willContinue;
   };
-  
+
   return animateSingle(tickTransform, container); */
 
   /* return new Promise((resolve) => {
@@ -248,7 +248,7 @@ function scrollWithJs(options: ScrollOptions): Promise<void> {
 
     const currentPath = path * (1 - transition(t));
     container[scrollPositionKey] = Math.round(target - currentPath);
-    
+
     return t < 1;
   };
 
@@ -269,11 +269,11 @@ function scrollWithJs(options: ScrollOptions): Promise<void> {
     transformable.classList.remove('no-transition');
     void transformable.offsetLeft; // reflow
     fastRaf(() => {
-      
+
       container[scrollPositionKey] = Math.round(target);
       //transformable.style.minHeight = ``;
     });
-    
+
   }); */
 
   if(options.startCallback) {

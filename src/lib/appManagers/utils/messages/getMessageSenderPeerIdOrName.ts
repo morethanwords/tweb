@@ -1,5 +1,5 @@
-import { Message } from "../../../../layer";
-import type { MyMessage } from "../../appMessagesManager";
+import {Message} from '../../../../layer';
+import type {MyMessage} from '../../appMessagesManager';
 
 export default function getMessageSenderPeerIdOrName(message: MyMessage) {
   if(message.fromId) {

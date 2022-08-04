@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import clearMessageId from "./clearMessageId";
+import clearMessageId from './clearMessageId';
 
 /**
  * * will ignore outgoing offset

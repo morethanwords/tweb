@@ -4,31 +4,31 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import cancelEvent from "../helpers/dom/cancelEvent";
-import { attachClickEvent } from "../helpers/dom/clickEvent";
-import ListenerSetter from "../helpers/listenerSetter";
-import GROUP_CALL_STATE from "../lib/calls/groupCallState";
-import rootScope from "../lib/rootScope";
-import ButtonIcon from "./buttonIcon";
-import TopbarWeave from "./topbarWeave";
-import SetTransition from "./singleTransition";
-import PopupGroupCall from "./groupCall";
-import GroupCallDescriptionElement from "./groupCall/description";
-import GroupCallTitleElement from "./groupCall/title";
-import PopupElement from "./popups";
-import throttle from "../helpers/schedulers/throttle";
-import GroupCallInstance from "../lib/calls/groupCallInstance";
-import CALL_STATE from "../lib/calls/callState";
-import replaceContent from "../helpers/dom/replaceContent";
-import PeerTitle from "./peerTitle";
-import CallDescriptionElement from "./call/description";
-import PopupCall from "./call";
-import GroupCallMicrophoneIconMini from "./groupCall/microphoneIconMini";
-import CallInstance from "../lib/calls/callInstance";
-import { AppManagers } from "../lib/appManagers/managers";
-import groupCallsController from "../lib/calls/groupCallsController";
-import StreamManager from "../lib/calls/streamManager";
-import callsController from "../lib/calls/callsController";
+import cancelEvent from '../helpers/dom/cancelEvent';
+import {attachClickEvent} from '../helpers/dom/clickEvent';
+import ListenerSetter from '../helpers/listenerSetter';
+import GROUP_CALL_STATE from '../lib/calls/groupCallState';
+import rootScope from '../lib/rootScope';
+import ButtonIcon from './buttonIcon';
+import TopbarWeave from './topbarWeave';
+import SetTransition from './singleTransition';
+import PopupGroupCall from './groupCall';
+import GroupCallDescriptionElement from './groupCall/description';
+import GroupCallTitleElement from './groupCall/title';
+import PopupElement from './popups';
+import throttle from '../helpers/schedulers/throttle';
+import GroupCallInstance from '../lib/calls/groupCallInstance';
+import CALL_STATE from '../lib/calls/callState';
+import replaceContent from '../helpers/dom/replaceContent';
+import PeerTitle from './peerTitle';
+import CallDescriptionElement from './call/description';
+import PopupCall from './call';
+import GroupCallMicrophoneIconMini from './groupCall/microphoneIconMini';
+import CallInstance from '../lib/calls/callInstance';
+import {AppManagers} from '../lib/appManagers/managers';
+import groupCallsController from '../lib/calls/groupCallsController';
+import StreamManager from '../lib/calls/streamManager';
+import callsController from '../lib/calls/callsController';
 
 function convertCallStateToGroupState(state: CALL_STATE, isMuted: boolean) {
   switch(state) {
@@ -53,12 +53,12 @@ export default class TopbarCall {
   private groupCallDescription: GroupCallDescriptionElement;
   private groupCallMicrophoneIconMini: GroupCallMicrophoneIconMini;
   private callDescription: CallDescriptionElement;
-  
+
   private currentDescription: GroupCallDescriptionElement | CallDescriptionElement;
 
   private instance: GroupCallInstance | any/* CallInstance */;
   private instanceListenerSetter: ListenerSetter;
-  
+
   constructor(
     private managers: AppManagers
   ) {
@@ -79,7 +79,7 @@ export default class TopbarCall {
     listenerSetter.add(groupCallsController)('instance', (instance) => {
       this.updateInstance(instance);
     });
-    
+
     listenerSetter.add(rootScope)('group_call_update', (groupCall) => {
       const instance = groupCallsController.groupCall;
       if(instance?.id === groupCall.id) {
@@ -108,7 +108,7 @@ export default class TopbarCall {
   private clearCurrentInstance() {
     if(!this.instance) return;
     this.center.textContent = '';
-    
+
     if(this.currentDescription) {
       this.currentDescription.detach();
       this.currentDescription = undefined;
@@ -127,7 +127,7 @@ export default class TopbarCall {
     const isChangingInstance = this.instance !== instance;
     if(isChangingInstance) {
       this.clearCurrentInstance();
-      
+
       this.instance = instance;
       this.instanceListenerSetter = new ListenerSetter();
 
@@ -144,12 +144,12 @@ export default class TopbarCall {
     }
 
     const isMuted = this.instance.isMuted;
-    let state = instance instanceof GroupCallInstance ? instance.state : convertCallStateToGroupState(instance.connectionState, isMuted);
+    const state = instance instanceof GroupCallInstance ? instance.state : convertCallStateToGroupState(instance.connectionState, isMuted);
 
     const {weave} = this;
 
     weave.componentDidMount();
-    
+
     const isClosed = state === GROUP_CALL_STATE.CLOSED;
     if((!document.body.classList.contains('is-calling') || isChangingInstance) || isClosed) {
       if(isClosed) {
@@ -162,11 +162,11 @@ export default class TopbarCall {
         this.clearCurrentInstance();
       }: undefined);
     }
-    
+
     if(isClosed) {
       return;
     }
-    
+
     weave.setCurrentState(state, true);
     // if(state === GROUP_CALL_STATE.CONNECTING) {
     //   weave.setCurrentState(state, true);
@@ -181,7 +181,7 @@ export default class TopbarCall {
     //   weave.setAmplitude(1); */
     //   weave.setCurrentState(state, true);
     // }
-    
+
     this.setTitle(instance);
     this.setDescription(instance);
     this.groupCallMicrophoneIconMini.setState(!isMuted);
@@ -208,7 +208,7 @@ export default class TopbarCall {
     left.classList.add(CLASS_NAME + '-left');
 
     const groupCallMicrophoneIconMini = this.groupCallMicrophoneIconMini = new GroupCallMicrophoneIconMini();
-    
+
     const mute = ButtonIcon();
     mute.append(groupCallMicrophoneIconMini.container);
     left.append(mute);
@@ -216,26 +216,26 @@ export default class TopbarCall {
     const throttledMuteClick = throttle(() => {
       this.instance.toggleMuted();
     }, 600, true);
-    
+
     attachClickEvent(mute, (e) => {
       cancelEvent(e);
       throttledMuteClick();
     }, {listenerSetter});
-    
+
     const center = this.center = document.createElement('div');
     center.classList.add(CLASS_NAME + '-center');
-    
+
     this.groupCallTitle = new GroupCallTitleElement(center);
     this.groupCallDescription = new GroupCallDescriptionElement(left);
 
     this.callDescription = new CallDescriptionElement(left);
-    
+
     const right = document.createElement('div');
     right.classList.add(CLASS_NAME + '-right');
-    
+
     const end = ButtonIcon('endcall_filled');
     right.append(end);
-    
+
     attachClickEvent(end, (e) => {
       cancelEvent(e);
 
@@ -256,7 +256,7 @@ export default class TopbarCall {
         if(PopupElement.getPopups(PopupGroupCall).length) {
           return;
         }
-        
+
         new PopupGroupCall().show();
       } else if(this.instance instanceof CallInstance) {
         const popups = PopupElement.getPopups(PopupCall);
@@ -267,13 +267,13 @@ export default class TopbarCall {
         new PopupCall(this.instance).show();
       }
     }, {listenerSetter});
-    
+
     container.append(left, center, right);
 
     const weave = this.weave = new TopbarWeave();
     const weaveContainer = weave.render(CLASS_NAME + '-weave');
     container.prepend(weaveContainer);
-    
+
     document.getElementById('column-center').prepend(container);
     weave.componentDidMount();
   }

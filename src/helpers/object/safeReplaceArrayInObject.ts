@@ -1,10 +1,10 @@
 /**
  * Will be used for FILE_REFERENCE_EXPIRED
- * @param key 
- * @param wasObject 
- * @param newObject 
+ * @param key
+ * @param wasObject
+ * @param newObject
  */
- export default function safeReplaceArrayInObject<K>(key: K, wasObject: any, newObject: any) {
+export default function safeReplaceArrayInObject<K>(key: K, wasObject: any, newObject: any) {
   if('byteLength' in newObject[key]) { // Uint8Array
     newObject[key] = [...newObject[key]];
   }

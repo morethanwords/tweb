@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { PrivacyRule } from "../../../../layer";
-import PrivacyType from "./privacyType";
+import {PrivacyRule} from '../../../../layer';
+import PrivacyType from './privacyType';
 
 export default function getPrivacyRulesDetails(rules: PrivacyRule[]) {
   const types: PrivacyType[] = [];
 
   type peers = {users: UserId[], chats: ChatId[]};
-  let allowPeers: peers = {users: [], chats: []}, disallowPeers: peers = {users: [], chats: []};
+  const allowPeers: peers = {users: [], chats: []}, disallowPeers: peers = {users: [], chats: []};
   rules.forEach((rule) => {
     switch(rule._) {
       case 'privacyValueAllowAll':
@@ -20,7 +20,7 @@ export default function getPrivacyRulesDetails(rules: PrivacyRule[]) {
       case 'privacyValueDisallowAll':
         types.push(0);
         break;
-      case 'privacyValueAllowContacts': 
+      case 'privacyValueAllowContacts':
         types.push(1);
         break;
       /* case 'privacyValueDisallowContacts':

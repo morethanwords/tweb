@@ -15,9 +15,9 @@ const set = (elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLVideoE
 
 // проблема функции в том, что она не подходит для ссылок, пригодна только для blob'ов, потому что обычным ссылкам нужен 'load' каждый раз.
 export default function renderImageFromUrl(
-  elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLVideoElement, 
-  url: string, 
-  callback?: () => void, 
+  elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLVideoElement,
+  url: string,
+  callback?: () => void,
   useCache = true
 ) {
   if(!url) {
@@ -30,22 +30,22 @@ export default function renderImageFromUrl(
     if(elem) {
       set(elem, url);
     }
-    
+
     callback && callback();
     // callback && getHeavyAnimationPromise().then(() => callback());
   } else {
     const isImage = elem instanceof HTMLImageElement;
     const loader = isImage ? elem as HTMLImageElement : new Image();
-    //const loader = new Image();
+    // const loader = new Image();
     loader.src = url;
-    //let perf = performance.now();
+    // let perf = performance.now();
     loader.addEventListener('load', () => {
       if(!isImage && elem) {
         set(elem, url);
       }
 
       loadedURLs[url] = true;
-      //console.log('onload:', url, performance.now() - perf);
+      // console.log('onload:', url, performance.now() - perf);
       // TODO: переделать прогрузки аватаров до начала анимации, иначе с этим ожиданием они неприятно появляются
       // callback && getHeavyAnimationPromise().then(() => callback());
       callback && callback();

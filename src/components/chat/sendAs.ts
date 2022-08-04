@@ -4,23 +4,23 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
-import callbackify from "../../helpers/callbackify";
-import ListenerSetter from "../../helpers/listenerSetter";
-import { getMiddleware } from "../../helpers/middleware";
-import { modifyAckedPromise } from "../../helpers/modifyAckedResult";
-import { ChatFull } from "../../layer";
-import { AppManagers } from "../../lib/appManagers/managers";
-import getPeerId from "../../lib/appManagers/utils/peers/getPeerId";
-import { i18n } from "../../lib/langPack";
-import { AckedResult } from "../../lib/mtproto/superMessagePort";
-import rootScope from "../../lib/rootScope";
-import AvatarElement from "../avatar";
-import ButtonMenu, { ButtonMenuItemOptions } from "../buttonMenu";
-import ButtonMenuToggle from "../buttonMenuToggle";
-import PeerTitle from "../peerTitle";
-import SetTransition from "../singleTransition";
-import getChatMembersString from "../wrappers/getChatMembersString";
+import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
+import callbackify from '../../helpers/callbackify';
+import ListenerSetter from '../../helpers/listenerSetter';
+import {getMiddleware} from '../../helpers/middleware';
+import {modifyAckedPromise} from '../../helpers/modifyAckedResult';
+import {ChatFull} from '../../layer';
+import {AppManagers} from '../../lib/appManagers/managers';
+import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
+import {i18n} from '../../lib/langPack';
+import {AckedResult} from '../../lib/mtproto/superMessagePort';
+import rootScope from '../../lib/rootScope';
+import AvatarElement from '../avatar';
+import ButtonMenu, {ButtonMenuItemOptions} from '../buttonMenu';
+import ButtonMenuToggle from '../buttonMenuToggle';
+import PeerTitle from '../peerTitle';
+import SetTransition from '../singleTransition';
+import getChatMembersString from '../wrappers/getChatMembersString';
 
 const SEND_AS_ANIMATION_DURATION = 300;
 
@@ -46,7 +46,7 @@ export default class ChatSendAs {
     this.listenerSetter = new ListenerSetter();
     this.construct();
   }
-  
+
   private construct() {
     this.container = document.createElement('div');
     this.container.classList.add('new-message-send-as-container');
@@ -75,8 +75,8 @@ export default class ChatSendAs {
     };
 
     ButtonMenuToggle({
-      noRipple: true, 
-      listenerSetter: this.listenerSetter, 
+      noRipple: true,
+      listenerSetter: this.listenerSetter,
       container: this.container
     }, 'top-right', sendAsButtons, () => {
       onSendAsMenuToggle(true);
@@ -122,7 +122,7 @@ export default class ChatSendAs {
             peerIds.unshift(sendAsPeerId);
             this.updateButtons(peerIds);
           };
-          
+
           if(rootScope.settings.animationsEnabled) {
             setTimeout(executeButtonsUpdate, 250);
           } else {
@@ -147,7 +147,7 @@ export default class ChatSendAs {
       if(!idx) {
         avatar.classList.add('active');
       }
-      
+
       button.element.prepend(avatar);
     });
 
@@ -162,12 +162,12 @@ export default class ChatSendAs {
         return;
       }
     }
-    
+
     if(!previousAvatar) {
       skipAnimation = true;
     }
-    
-    let useRafs = skipAnimation ? 0 : 2;
+
+    const useRafs = skipAnimation ? 0 : 2;
     const duration = skipAnimation ? 0 : SEND_AS_ANIMATION_DURATION;
     const avatar = this.avatar = new AvatarElement();
     avatar.classList.add('new-message-send-as-avatar', 'avatar-30');
@@ -176,13 +176,13 @@ export default class ChatSendAs {
       peerId: sendAsPeerId
     });
 
-    SetTransition(avatar, 'is-visible', true, duration, undefined, useRafs);    
+    SetTransition(avatar, 'is-visible', true, duration, undefined, useRafs);
     if(previousAvatar) {
       SetTransition(previousAvatar, 'is-visible', false, duration, () => {
         previousAvatar.remove();
       }, useRafs);
     }
-    
+
     this.container.append(avatar);
   }
 
@@ -203,7 +203,7 @@ export default class ChatSendAs {
       };
     });
   }
-  
+
   public async updateManual(skipAnimation?: boolean): Promise<() => void> {
     const peerId = this.peerId;
     if(this.updatingPromise || !(await this.managers.appPeersManager.isChannel(peerId))) {
@@ -228,7 +228,7 @@ export default class ChatSendAs {
 
     const updatingPromise = this.updatingPromise = callbackify(result, async(sendAsPeerId) => {
       if(!middleware() || sendAsPeerId === undefined) return;
-      
+
       await this.changeSendAsPeerId(sendAsPeerId, skipAnimation);
       if(!middleware()) return;
 

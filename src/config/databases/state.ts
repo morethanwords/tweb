@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { Database } from '.';
-import type { IDBIndex } from '../../lib/files/idb';
+import type {Database} from '.';
+import type {IDBIndex} from '../../lib/files/idb';
 
 const DATABASE_STATE: Database<'session' | 'stickerSets' | 'users' | 'chats' | 'messages' | 'dialogs'> = {
   name: 'tweb',
@@ -19,7 +19,7 @@ const DATABASE_STATE: Database<'session' | 'stickerSets' | 'users' | 'chats' | '
   }, {
     name: 'chats'
   }, {
-    name: 'dialogs',
+    name: 'dialogs'
     // indexes: [
     //   ...(new Array(20 + 2).fill(0)).map((_, idx) => {
     //     const name = `index_${idx}`;

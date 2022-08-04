@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { MESSAGE_ID_OFFSET, MESSAGE_ID_INCREMENT } from ".";
+import {MESSAGE_ID_OFFSET, MESSAGE_ID_INCREMENT} from '.';
 
 export default function generateMessageId(messageId: number) {
   const q = MESSAGE_ID_OFFSET;

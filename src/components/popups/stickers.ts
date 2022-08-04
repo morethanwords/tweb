@@ -4,22 +4,22 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import PopupElement from ".";
-import type { AppStickersManager } from "../../lib/appManagers/appStickersManager";
-import { wrapSticker } from "../wrappers";
-import LazyLoadQueue from "../lazyLoadQueue";
-import { putPreloader } from "../putPreloader";
-import animationIntersector from "../animationIntersector";
-import appImManager from "../../lib/appManagers/appImManager";
-import mediaSizes from "../../helpers/mediaSizes";
-import { i18n } from "../../lib/langPack";
-import Button from "../button";
-import findUpClassName from "../../helpers/dom/findUpClassName";
-import toggleDisability from "../../helpers/dom/toggleDisability";
-import { attachClickEvent } from "../../helpers/dom/clickEvent";
-import { toastNew } from "../toast";
-import setInnerHTML from "../../helpers/dom/setInnerHTML";
-import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
+import PopupElement from '.';
+import type {AppStickersManager} from '../../lib/appManagers/appStickersManager';
+import {wrapSticker} from '../wrappers';
+import LazyLoadQueue from '../lazyLoadQueue';
+import {putPreloader} from '../putPreloader';
+import animationIntersector from '../animationIntersector';
+import appImManager from '../../lib/appManagers/appImManager';
+import mediaSizes from '../../helpers/mediaSizes';
+import {i18n} from '../../lib/langPack';
+import Button from '../button';
+import findUpClassName from '../../helpers/dom/findUpClassName';
+import toggleDisability from '../../helpers/dom/toggleDisability';
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import {toastNew} from '../toast';
+import setInnerHTML from '../../helpers/dom/setInnerHTML';
+import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 
 const ANIMATION_GROUP = 'STICKERS-POPUP';
 
@@ -56,7 +56,7 @@ export default class PopupStickers extends PopupElement {
 
     this.scrollable.append(div);
     this.body.append(this.stickersFooter);
-    
+
     // const editButton = document.createElement('button');
     // editButton.classList.add('btn-primary');
 
@@ -112,17 +112,17 @@ export default class PopupStickers extends PopupElement {
         if(doc._ === 'documentEmpty') {
           return;
         }
-        
+
         const div = document.createElement('div');
         div.classList.add('sticker-set-sticker');
 
         const size = mediaSizes.active.esgSticker.width;
-        
+
         await wrapSticker({
-          doc, 
-          div, 
-          lazyLoadQueue, 
-          group: ANIMATION_GROUP, 
+          doc,
+          div,
+          lazyLoadQueue,
+          group: ANIMATION_GROUP,
           play: true,
           loop: true,
           width: size,

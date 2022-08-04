@@ -4,112 +4,112 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { AppImManager, ChatSavedPosition } from "../../lib/appManagers/appImManager";
-import type { HistoryResult, MyMessage } from "../../lib/appManagers/appMessagesManager";
-import type { MyDocument } from "../../lib/appManagers/appDocsManager";
-import type Chat from "./chat";
-import { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
-import IS_TOUCH_SUPPORTED from "../../environment/touchSupport";
-import { logger } from "../../lib/logger";
-import rootScope from "../../lib/rootScope";
-import BubbleGroups from "./bubbleGroups";
-import PopupDatePicker from "../popups/datePicker";
-import PopupForward from "../popups/forward";
-import PopupStickers from "../popups/stickers";
-import ProgressivePreloader from "../preloader";
-import Scrollable, { SliceSides } from "../scrollable";
-import StickyIntersector from "../stickyIntersector";
-import animationIntersector from "../animationIntersector";
-import mediaSizes from "../../helpers/mediaSizes";
-import { IS_ANDROID, IS_APPLE, IS_MOBILE, IS_SAFARI } from "../../environment/userAgent";
-import I18n, { FormatterArguments, i18n, langPack, LangPackKey, UNSUPPORTED_LANG_PACK_KEY, _i18n } from "../../lib/langPack";
-import AvatarElement from "../avatar";
-import ripple from "../ripple";
-import { wrapAlbum, wrapPhoto, wrapVideo, wrapDocument, wrapSticker, wrapPoll, wrapGroupedDocuments } from "../wrappers";
-import { MessageRender } from "./messageRender";
-import LazyLoadQueue from "../lazyLoadQueue";
-import ListenerSetter from "../../helpers/listenerSetter";
-import PollElement from "../poll";
-import AudioElement from "../audio";
-import { ChatInvite, Document, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, ReplyMarkup, SponsoredMessage, Update, User, WebPage } from "../../layer";
-import { BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
-import { FocusDirection, ScrollStartCallbackDimensions } from "../../helpers/fastSmoothScroll";
-import useHeavyAnimationCheck, { getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation } from "../../hooks/useHeavyAnimationCheck";
-import { fastRaf, fastRafPromise } from "../../helpers/schedulers";
-import deferredPromise from "../../helpers/cancellablePromise";
-import RepliesElement from "./replies";
-import DEBUG from "../../config/debug";
-import { SliceEnd } from "../../helpers/slicedArray";
-import PeerTitle from "../peerTitle";
-import findUpClassName from "../../helpers/dom/findUpClassName";
-import findUpTag from "../../helpers/dom/findUpTag";
-import { toast, toastNew } from "../toast";
-import { getElementByPoint } from "../../helpers/dom/getElementByPoint";
-import { getMiddleware } from "../../helpers/middleware";
-import cancelEvent from "../../helpers/dom/cancelEvent";
-import { attachClickEvent, simulateClickEvent } from "../../helpers/dom/clickEvent";
-import htmlToDocumentFragment from "../../helpers/dom/htmlToDocumentFragment";
-import reflowScrollableElement from "../../helpers/dom/reflowScrollableElement";
-import replaceContent from "../../helpers/dom/replaceContent";
-import setInnerHTML from "../../helpers/dom/setInnerHTML";
-import whichChild from "../../helpers/dom/whichChild";
-import { cancelAnimationByKey } from "../../helpers/animation";
-import assumeType from "../../helpers/assumeType";
-import debounce, { DebounceReturnType } from "../../helpers/schedulers/debounce";
-import { SEND_WHEN_ONLINE_TIMESTAMP } from "../../lib/mtproto/constants";
-import windowSize from "../../helpers/windowSize";
-import { formatPhoneNumber } from "../../helpers/formatPhoneNumber";
-import AppMediaViewer from "../appMediaViewer";
-import SetTransition from "../singleTransition";
-import handleHorizontalSwipe from "../../helpers/dom/handleHorizontalSwipe";
-import findUpAttribute from "../../helpers/dom/findUpAttribute";
-import findUpAsChild from "../../helpers/dom/findUpAsChild";
-import formatCallDuration from "../../helpers/formatCallDuration";
-import IS_CALL_SUPPORTED from "../../environment/callSupport";
-import Button from "../button";
-import { CallType } from "../../lib/calls/types";
-import getVisibleRect from "../../helpers/dom/getVisibleRect";
-import PopupJoinChatInvite from "../popups/joinChatInvite";
-import { InternalLink, INTERNAL_LINK_TYPE } from "../../lib/appManagers/internalLink";
-import ReactionsElement, { REACTIONS_ELEMENTS } from "./reactions";
-import type ReactionElement from "./reaction";
-import RLottiePlayer from "../../lib/rlottie/rlottiePlayer";
-import pause from "../../helpers/schedulers/pause";
-import ScrollSaver from "../../helpers/scrollSaver";
-import getObjectKeysAndSort from "../../helpers/object/getObjectKeysAndSort";
-import forEachReverse from "../../helpers/array/forEachReverse";
-import formatNumber from "../../helpers/number/formatNumber";
-import getViewportSlice from "../../helpers/dom/getViewportSlice";
-import SuperIntersectionObserver from "../../helpers/dom/superIntersectionObserver";
-import generateFakeIcon from "../generateFakeIcon";
-import copyFromElement from "../../helpers/dom/copyFromElement";
-import PopupElement from "../popups";
-import setAttachmentSize from "../../helpers/setAttachmentSize";
-import wrapWebPageDescription from "../wrappers/webPageDescription";
-import wrapWebPageTitle from "../wrappers/webPageTitle";
-import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
-import wrapRichText from "../../lib/richTextProcessor/wrapRichText";
-import wrapMessageActionTextNew from "../wrappers/messageActionTextNew";
-import isMentionUnread from "../../lib/appManagers/utils/messages/isMentionUnread";
-import getMediaFromMessage from "../../lib/appManagers/utils/messages/getMediaFromMessage";
-import getPeerColorById from "../../lib/appManagers/utils/peers/getPeerColorById";
-import getPeerId from "../../lib/appManagers/utils/peers/getPeerId";
-import getServerMessageId from "../../lib/appManagers/utils/messageId/getServerMessageId";
-import generateMessageId from "../../lib/appManagers/utils/messageId/generateMessageId";
-import { AppManagers } from "../../lib/appManagers/managers";
-import { Awaited } from "../../types";
-import idleController from "../../helpers/idleController";
-import overlayCounter from "../../helpers/overlayCounter";
-import { cancelContextMenuOpening } from "../../helpers/dom/attachContextMenuListener";
-import contextMenuController from "../../helpers/contextMenuController";
-import { AckedResult } from "../../lib/mtproto/superMessagePort";
-import middlewarePromise from "../../helpers/middlewarePromise";
-import { EmoticonsDropdown } from "../emoticonsDropdown";
-import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
-import noop from "../../helpers/noop";
-import getAlbumText from "../../lib/appManagers/utils/messages/getAlbumText";
-import paymentsWrapCurrencyAmount from "../../helpers/paymentsWrapCurrencyAmount";
-import PopupPayment from "../popups/payment";
+import type {AppImManager, ChatSavedPosition} from '../../lib/appManagers/appImManager';
+import type {HistoryResult, MyMessage} from '../../lib/appManagers/appMessagesManager';
+import type {MyDocument} from '../../lib/appManagers/appDocsManager';
+import type Chat from './chat';
+import {CHAT_ANIMATION_GROUP} from '../../lib/appManagers/appImManager';
+import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
+import {logger} from '../../lib/logger';
+import rootScope from '../../lib/rootScope';
+import BubbleGroups from './bubbleGroups';
+import PopupDatePicker from '../popups/datePicker';
+import PopupForward from '../popups/forward';
+import PopupStickers from '../popups/stickers';
+import ProgressivePreloader from '../preloader';
+import Scrollable, {SliceSides} from '../scrollable';
+import StickyIntersector from '../stickyIntersector';
+import animationIntersector from '../animationIntersector';
+import mediaSizes from '../../helpers/mediaSizes';
+import {IS_ANDROID, IS_APPLE, IS_MOBILE, IS_SAFARI} from '../../environment/userAgent';
+import I18n, {FormatterArguments, i18n, langPack, LangPackKey, UNSUPPORTED_LANG_PACK_KEY, _i18n} from '../../lib/langPack';
+import AvatarElement from '../avatar';
+import ripple from '../ripple';
+import {wrapAlbum, wrapPhoto, wrapVideo, wrapDocument, wrapSticker, wrapPoll, wrapGroupedDocuments} from '../wrappers';
+import {MessageRender} from './messageRender';
+import LazyLoadQueue from '../lazyLoadQueue';
+import ListenerSetter from '../../helpers/listenerSetter';
+import PollElement from '../poll';
+import AudioElement from '../audio';
+import {ChatInvite, Document, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, ReplyMarkup, SponsoredMessage, Update, User, WebPage} from '../../layer';
+import {BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID} from '../../lib/mtproto/mtproto_config';
+import {FocusDirection, ScrollStartCallbackDimensions} from '../../helpers/fastSmoothScroll';
+import useHeavyAnimationCheck, {getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation} from '../../hooks/useHeavyAnimationCheck';
+import {fastRaf, fastRafPromise} from '../../helpers/schedulers';
+import deferredPromise from '../../helpers/cancellablePromise';
+import RepliesElement from './replies';
+import DEBUG from '../../config/debug';
+import {SliceEnd} from '../../helpers/slicedArray';
+import PeerTitle from '../peerTitle';
+import findUpClassName from '../../helpers/dom/findUpClassName';
+import findUpTag from '../../helpers/dom/findUpTag';
+import {toast, toastNew} from '../toast';
+import {getElementByPoint} from '../../helpers/dom/getElementByPoint';
+import {getMiddleware} from '../../helpers/middleware';
+import cancelEvent from '../../helpers/dom/cancelEvent';
+import {attachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent';
+import htmlToDocumentFragment from '../../helpers/dom/htmlToDocumentFragment';
+import reflowScrollableElement from '../../helpers/dom/reflowScrollableElement';
+import replaceContent from '../../helpers/dom/replaceContent';
+import setInnerHTML from '../../helpers/dom/setInnerHTML';
+import whichChild from '../../helpers/dom/whichChild';
+import {cancelAnimationByKey} from '../../helpers/animation';
+import assumeType from '../../helpers/assumeType';
+import debounce, {DebounceReturnType} from '../../helpers/schedulers/debounce';
+import {SEND_WHEN_ONLINE_TIMESTAMP} from '../../lib/mtproto/constants';
+import windowSize from '../../helpers/windowSize';
+import {formatPhoneNumber} from '../../helpers/formatPhoneNumber';
+import AppMediaViewer from '../appMediaViewer';
+import SetTransition from '../singleTransition';
+import handleHorizontalSwipe from '../../helpers/dom/handleHorizontalSwipe';
+import findUpAttribute from '../../helpers/dom/findUpAttribute';
+import findUpAsChild from '../../helpers/dom/findUpAsChild';
+import formatCallDuration from '../../helpers/formatCallDuration';
+import IS_CALL_SUPPORTED from '../../environment/callSupport';
+import Button from '../button';
+import {CallType} from '../../lib/calls/types';
+import getVisibleRect from '../../helpers/dom/getVisibleRect';
+import PopupJoinChatInvite from '../popups/joinChatInvite';
+import {InternalLink, INTERNAL_LINK_TYPE} from '../../lib/appManagers/internalLink';
+import ReactionsElement, {REACTIONS_ELEMENTS} from './reactions';
+import type ReactionElement from './reaction';
+import RLottiePlayer from '../../lib/rlottie/rlottiePlayer';
+import pause from '../../helpers/schedulers/pause';
+import ScrollSaver from '../../helpers/scrollSaver';
+import getObjectKeysAndSort from '../../helpers/object/getObjectKeysAndSort';
+import forEachReverse from '../../helpers/array/forEachReverse';
+import formatNumber from '../../helpers/number/formatNumber';
+import getViewportSlice from '../../helpers/dom/getViewportSlice';
+import SuperIntersectionObserver from '../../helpers/dom/superIntersectionObserver';
+import generateFakeIcon from '../generateFakeIcon';
+import copyFromElement from '../../helpers/dom/copyFromElement';
+import PopupElement from '../popups';
+import setAttachmentSize from '../../helpers/setAttachmentSize';
+import wrapWebPageDescription from '../wrappers/webPageDescription';
+import wrapWebPageTitle from '../wrappers/webPageTitle';
+import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
+import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
+import wrapMessageActionTextNew from '../wrappers/messageActionTextNew';
+import isMentionUnread from '../../lib/appManagers/utils/messages/isMentionUnread';
+import getMediaFromMessage from '../../lib/appManagers/utils/messages/getMediaFromMessage';
+import getPeerColorById from '../../lib/appManagers/utils/peers/getPeerColorById';
+import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
+import getServerMessageId from '../../lib/appManagers/utils/messageId/getServerMessageId';
+import generateMessageId from '../../lib/appManagers/utils/messageId/generateMessageId';
+import {AppManagers} from '../../lib/appManagers/managers';
+import {Awaited} from '../../types';
+import idleController from '../../helpers/idleController';
+import overlayCounter from '../../helpers/overlayCounter';
+import {cancelContextMenuOpening} from '../../helpers/dom/attachContextMenuListener';
+import contextMenuController from '../../helpers/contextMenuController';
+import {AckedResult} from '../../lib/mtproto/superMessagePort';
+import middlewarePromise from '../../helpers/middlewarePromise';
+import {EmoticonsDropdown} from '../emoticonsDropdown';
+import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
+import noop from '../../helpers/noop';
+import getAlbumText from '../../lib/appManagers/utils/messages/getAlbumText';
+import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
+import PopupPayment from '../popups/payment';
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
@@ -143,8 +143,8 @@ const DO_NOT_UPDATE_MESSAGE_REACTIONS = false;
 const DO_NOT_UPDATE_MESSAGE_REPLY = false;
 
 type Bubble = {
-  bubble: HTMLElement, 
-  mids: Set<number>, 
+  bubble: HTMLElement,
+  mids: Set<number>,
   groupedId?: string
 };
 
@@ -162,7 +162,7 @@ export default class ChatBubbles {
   private getHistoryTopPromise: Promise<boolean>;
   private getHistoryBottomPromise: Promise<boolean>;
 
-  //public messagesCount: number = -1;
+  // public messagesCount: number = -1;
 
   private unreadOut = new Set<number>();
   public needUpdate: {replyToPeerId: PeerId, replyMid: number, mid: number}[] = []; // if need wrapSingleMessage
@@ -171,11 +171,11 @@ export default class ChatBubbles {
   public skippedMids: Set<number> = new Set();
   public bubblesNewByGroupedId: {[groupId: string]: Bubble} = {};
   public bubblesNew: {[mid: string]: Bubble} = {};
-  private dateMessages: {[timestamp: number]: { 
-    div: HTMLElement, 
-    firstTimestamp: number, 
+  private dateMessages: {[timestamp: number]: {
+    div: HTMLElement,
+    firstTimestamp: number,
     container: HTMLElement,
-    timeout?: number 
+    timeout?: number
   }} = {};
 
   private scrolledDown = true;
@@ -235,7 +235,7 @@ export default class ChatBubbles {
 
   private previousStickyDate: HTMLElement;
   private sponsoredMessage: SponsoredMessage.sponsoredMessage;
-  
+
   private hoverBubble: HTMLElement;
   private hoverReaction: HTMLElement;
   private sliceViewportDebounced: DebounceReturnType<ChatBubbles['sliceViewport']>;
@@ -259,12 +259,12 @@ export default class ChatBubbles {
   // private reactions: Map<number, ReactionsElement>;
 
   constructor(
-    private chat: Chat, 
+    private chat: Chat,
     private managers: AppManagers
   ) {
     this.log = this.chat.log;
-    //this.chat.log.error('Bubbles construction');
-    
+    // this.chat.log.error('Bubbles construction');
+
     this.listenerSetter = new ListenerSetter();
 
     this.constructBubbles();
@@ -308,7 +308,7 @@ export default class ChatBubbles {
       if(this.bubbles[mid] !== bubble) return;
 
       // await getHeavyAnimationPromise();
-      
+
       const item = this.bubbleGroups.getItemByBubble(bubble);
       if(!item) { // probably a group item
         log && log.error('no item by bubble', bubble);
@@ -326,9 +326,9 @@ export default class ChatBubbles {
         indexOfAndSplice(_items, item);
         const foundItem = this.bubbleGroups.findGroupSiblingByItem(newItem, _items);
         if(
-          group === foundItem?.group 
-          || (group === this.bubbleGroups.getLastGroup() && group.items.length === 1 && newItem.dateTimestamp === item.dateTimestamp) 
-          || (this.peerId === rootScope.myId && sequential && newItem.dateTimestamp === item.dateTimestamp)
+          group === foundItem?.group ||
+          (group === this.bubbleGroups.getLastGroup() && group.items.length === 1 && newItem.dateTimestamp === item.dateTimestamp) ||
+          (this.peerId === rootScope.myId && sequential && newItem.dateTimestamp === item.dateTimestamp)
         ) {
           log && log('item has correct position', item);
           this.bubbleGroups.changeBubbleMid(bubble, mid);
@@ -448,7 +448,7 @@ export default class ChatBubbles {
         if(!mids.length || getMainMidForGrouped(mids) !== mid || bubbles[mid] !== _bubble) {
           return;
         }
-  
+
         if(bubbles[mid] !== _bubble) {
           return;
         }
@@ -501,7 +501,7 @@ export default class ChatBubbles {
                 const timeSpan = div.querySelector('.time');
                 const newDiv = await wrapDocument({message});
                 div.replaceWith(newDiv);
-                
+
                 if(timeSpan) {
                   newDiv.querySelector('.document').append(timeSpan);
                 }
@@ -537,7 +537,7 @@ export default class ChatBubbles {
             this.scrollToBubbleIfLast(bubble);
           });
         }
-        
+
         // set new mids to album items for mediaViewer
         if(groupedId) {
           const item = (bubble.querySelector(`.grouped-item[data-mid="${tempId}"]`) as HTMLElement) || bubble; // * it can be .document-container
@@ -562,7 +562,7 @@ export default class ChatBubbles {
 
     this.listenerSetter.add(rootScope)('album_edit', ({peerId, messages, deletedMids}) => {
       if(peerId !== this.peerId) return;
-      
+
       const mids = messages.map(({mid}) => mid);
       const oldMids = mids.concat(Array.from(deletedMids));
       const wasMainMid = getMainMidForGrouped(oldMids);
@@ -614,7 +614,7 @@ export default class ChatBubbles {
             scrollSaver = this.createScrollSaver(false);
             scrollSaver.save();
           }
-  
+
           const key = message.peerId + '_' + message.mid;
           const set = REACTIONS_ELEMENTS.get(key);
           if(set) {
@@ -654,7 +654,7 @@ export default class ChatBubbles {
           if(!bubble) return;
 
           const message = (await this.chat.getMessage(mid)) as Message.message;
-          
+
           MessageRender.setReply({
             chat: this.chat,
             bubble,
@@ -669,7 +669,7 @@ export default class ChatBubbles {
 
     this.listenerSetter.add(this.scrollable.container)('mousedown', (e) => {
       if(e.button !== 0) return;
-      
+
       const code: HTMLElement = findUpTag(e.target, 'CODE');
       if(code) {
         cancelEvent(e);
@@ -689,7 +689,7 @@ export default class ChatBubbles {
 
           // SetTransition(dateBubble, 'kek', stuck, this.previousStickyDate ? 300 : 0);
           // if(this.previousStickyDate) {
-            // dateBubble.classList.add('kek');
+          // dateBubble.classList.add('kek');
           // }
 
           dateBubble.classList.toggle('is-sticky', stuck);
@@ -703,7 +703,7 @@ export default class ChatBubbles {
 
       if(this.previousStickyDate) {
         // fastRaf(() => {
-          // this.bubblesContainer.classList.add('has-sticky-dates');
+        // this.bubblesContainer.classList.add('has-sticky-dates');
         // });
       }
     });
@@ -769,14 +769,14 @@ export default class ChatBubbles {
     if(this.chat.type !== 'pinned' && this.chat.type !== 'scheduled') {
       if(!IS_MOBILE) {
         this.listenerSetter.add(container)('dblclick', async(e) => {
-          if(this.chat.selection.isSelecting || 
+          if(this.chat.selection.isSelecting ||
             !(await this.chat.canSend())) {
             return;
           }
-          
+
           const target = e.target as HTMLElement;
-          const bubble = target.classList.contains('bubble') ? 
-            target : 
+          const bubble = target.classList.contains('bubble') ?
+            target :
             (target.classList.contains('document-selection') ? target.parentElement : null);
           if(bubble && !bubble.classList.contains('bubble-first')) {
             const mid = +bubble.dataset.mid;
@@ -784,7 +784,7 @@ export default class ChatBubbles {
             if(message.pFlags.is_outgoing) {
               return;
             }
-            
+
             this.chat.input.initMessageReply(mid);
           }
         });
@@ -801,13 +801,13 @@ export default class ChatBubbles {
             if(this.chat.selection.isSelecting || !(await this.chat.canSend())) {
               return false;
             }
-  
+
             // cancelEvent(e);
             target = findUpClassName(e.target, 'bubble');
             if(target) {
               SetTransition(target, className, true, 250);
               void target.offsetLeft; // reflow
-  
+
               if(!icon) {
                 icon = document.createElement('span');
                 icon.classList.add('tgico-reply_filled', 'bubble-gesture-reply-icon');
@@ -815,20 +815,20 @@ export default class ChatBubbles {
                 icon.classList.remove('is-visible');
                 icon.style.opacity = '';
               }
-  
+
               target/* .querySelector('.bubble-content') */.append(icon);
             }
-  
+
             return !!target;
           },
           onSwipe: (xDiff, yDiff) => {
             shouldReply = xDiff >= replyAfter;
-  
+
             if(shouldReply && !icon.classList.contains('is-visible')) {
               icon.classList.add('is-visible');
             }
             icon.style.opacity = '' + Math.min(1, xDiff / replyAfter);
-  
+
             const x = -Math.max(0, Math.min(MAX, xDiff));
             target.style.transform = `translateX(${x}px)`;
             cancelContextMenuOpening();
@@ -841,10 +841,10 @@ export default class ChatBubbles {
                 icon.remove();
               }
             });
-  
+
             fastRaf(() => {
               _target.style.transform = ``;
-  
+
               if(shouldReply) {
                 const {mid} = _target.dataset;
                 this.chat.input.initMessageReply(+mid);
@@ -881,7 +881,7 @@ export default class ChatBubbles {
       if(this.peerId !== message.peerId) return;
       this.renderNewMessage(message);
     });
-    
+
     this.listenerSetter.add(rootScope)('history_delete', ({peerId, msgs}) => {
       if(peerId === this.peerId) {
         this.deleteMessagesByIds(Array.from(msgs));
@@ -918,7 +918,7 @@ export default class ChatBubbles {
         if(hadRights !== hasRights) {
           const callbacks = await Promise.all([
             this.finishPeerChange(),
-            this.chat.input.finishPeerChange(),
+            this.chat.input.finishPeerChange()
           ]);
 
           callbacks.forEach((callback) => callback());
@@ -946,7 +946,7 @@ export default class ChatBubbles {
           if(this.bubbles[message.mid] !== bubble) {
             return;
           }
-          
+
           this.safeRenderMessage(message, true, bubble);
         });
       }
@@ -960,7 +960,7 @@ export default class ChatBubbles {
 
           const bubble = this.bubbles[mid];
           if(!bubble) continue;
-  
+
           const postViewsElements = Array.from(bubble.querySelectorAll('.post-views')) as HTMLElement[];
           if(!postViewsElements.length) continue;
 
@@ -1087,7 +1087,7 @@ export default class ChatBubbles {
       if(rAF) window.cancelAnimationFrame(rAF);
       rAF = window.requestAnimationFrame(single ? onResizeEnd : () => {
         rAF = window.requestAnimationFrame(onResizeEnd);
-        //this.log('resize after RAF', part);
+        // this.log('resize after RAF', part);
       });
     };
 
@@ -1104,7 +1104,7 @@ export default class ChatBubbles {
 
       const entry = entries[0];
       const height = entry.contentRect.height;/* Math.ceil(entry.contentRect.height); */
-      
+
       if(!wasHeight) {
         wasHeight = height;
         return;
@@ -1123,9 +1123,9 @@ export default class ChatBubbles {
         } */
 
         if(realDiff < 0 && this.scrollable.isScrolledDown) {
-          //if(isSafari) { // * fix opening keyboard while ESG is active 
-            part = -realDiff;
-          //}
+          // if(isSafari) { // * fix opening keyboard while ESG is active
+          part = -realDiff;
+          // }
 
           skip = true;
           setEndRAF(false);
@@ -1143,7 +1143,7 @@ export default class ChatBubbles {
         const needScrollTop = this.scrollable.scrollTop + diff;
         this.scrollable.setScrollTopSilently(needScrollTop);
       }
-      
+
       setEndRAF(false);
 
       part = _part;
@@ -1278,19 +1278,19 @@ export default class ChatBubbles {
     let lastVisible: HTMLElement;
 
     // if(this.chatInner.classList.contains('is-scrolling')) {
-      const {scrollTop} = this.scrollable.container;
-      const isOverflown = scrollTop > 0;
-      if(isOverflown) {
-        for(const timestamp of timestamps) {
-          const dateMessage = this.dateMessages[timestamp];
-          const visibleRect = getVisibleRect(dateMessage.container, this.scrollable.container);
-          if(visibleRect && visibleRect.overflow.top) {
-            lastVisible = dateMessage.div;
-          } else if(lastVisible) {
-            break;
-          }
+    const {scrollTop} = this.scrollable.container;
+    const isOverflown = scrollTop > 0;
+    if(isOverflown) {
+      for(const timestamp of timestamps) {
+        const dateMessage = this.dateMessages[timestamp];
+        const visibleRect = getVisibleRect(dateMessage.container, this.scrollable.container);
+        if(visibleRect && visibleRect.overflow.top) {
+          lastVisible = dateMessage.div;
+        } else if(lastVisible) {
+          break;
         }
       }
+    }
     // }
 
     if(lastVisible === this.previousStickyDate) {
@@ -1368,7 +1368,7 @@ export default class ChatBubbles {
       }
 
       // return;
-      
+
       return this.managers.appMessagesManager.readHistory(this.peerId, maxId, this.chat.threadId).catch((err: any) => {
         this.log.error('readHistory err:', err);
         this.managers.appMessagesManager.readHistory(this.peerId, maxId, this.chat.threadId);
@@ -1422,7 +1422,7 @@ export default class ChatBubbles {
     try {
       bubble = findUpClassName(target, 'bubble');
     } catch(err) {}
-    
+
     if(!bubble && !this.chat.selection.isSelecting) {
       const avatar = findUpClassName(target, 'user-avatar');
       if(!avatar) {
@@ -1466,14 +1466,14 @@ export default class ChatBubbles {
       }
 
       cancelEvent(e);
-      //console.log('bubble click', e);
+      // console.log('bubble click', e);
 
       if(IS_TOUCH_SUPPORTED && this.chat.selection.selectedText) {
         this.chat.selection.selectedText = undefined;
         return;
       }
 
-      //this.chatSelection.toggleByBubble(bubble);
+      // this.chatSelection.toggleByBubble(bubble);
       this.chat.selection.toggleByElement(findUpClassName(target, 'grouped-item') || bubble);
       return;
     }
@@ -1495,14 +1495,14 @@ export default class ChatBubbles {
     const buyButton: HTMLElement = findUpClassName(target, 'is-buy');
     if(buyButton) {
       cancelEvent(e);
-      
+
       const message = await this.chat.getMessage(+bubble.dataset.mid);
       if(!message) {
         return;
       }
 
       new PopupPayment(
-        message as Message.message, 
+        message as Message.message,
         await this.managers.appPaymentsManager.getInputInvoiceByPeerId(message.peerId, message.mid)
       );
       return;
@@ -1576,7 +1576,7 @@ export default class ChatBubbles {
           this.managers.appMessagesManager.getDiscussionMessage(this.peerId, message.mid).then((message) => {
             this.chat.appImManager.setInnerPeer({
               peerId: replies.channel_id.toPeerId(true),
-              type: 'discussion', 
+              type: 'discussion',
               threadId: (message as MyMessage).mid
             });
           });
@@ -1593,7 +1593,7 @@ export default class ChatBubbles {
         const message = el.innerText + ' ';
         this.managers.appDraftsManager.setDraft(this.peerId, this.chat.threadId, message);
         cancelEvent(e);
-        
+
         return;
       }
     }
@@ -1606,9 +1606,9 @@ export default class ChatBubbles {
       if(typeof(peerIdStr) === 'string' || savedFrom) {
         if(savedFrom) {
           const [peerId, mid] = savedFrom.split('_');
-  
+
           this.chat.appImManager.setInnerPeer({
-            peerId: peerId.toPeerId(), 
+            peerId: peerId.toPeerId(),
             lastMsgId: +mid
           });
         } else {
@@ -1624,7 +1624,7 @@ export default class ChatBubbles {
       return;
     }
 
-    //this.log('chatInner click:', target);
+    // this.log('chatInner click:', target);
     // const isVideoComponentElement = target.tagName === 'SPAN' && findUpClassName(target, 'media-container');
     /* if(isVideoComponentElement) {
       const video = target.parentElement.querySelector('video') as HTMLElement;
@@ -1648,12 +1648,12 @@ export default class ChatBubbles {
     }
 
     const documentDiv = findUpClassName(target, 'document-with-thumb');
-    if((target.tagName === 'IMG' && !target.classList.contains('emoji') && !target.classList.contains('document-thumb')) 
-      || target.classList.contains('album-item')
+    if((target.tagName === 'IMG' && !target.classList.contains('emoji') && !target.classList.contains('document-thumb')) ||
+      target.classList.contains('album-item') ||
       // || isVideoComponentElement
-      || (target.tagName === 'VIDEO' && !bubble.classList.contains('round'))
-      || (documentDiv && !documentDiv.querySelector('.preloader-container'))
-      || target.classList.contains('canvas-thumbnail')) {
+      (target.tagName === 'VIDEO' && !bubble.classList.contains('round')) ||
+      (documentDiv && !documentDiv.querySelector('.preloader-container')) ||
+      target.classList.contains('canvas-thumbnail')) {
       const groupedItem = findUpClassName(target, 'album-item') || findUpClassName(target, 'document-container');
       const preloader = (groupedItem || bubble).querySelector<HTMLElement>('.preloader-container');
       if(preloader) {
@@ -1684,11 +1684,11 @@ export default class ChatBubbles {
         /* if(isSingleMedia && !this.bubbles[id].classList.contains(SINGLE_MEDIA_CLASSNAME)) {
           return false;
         }  */
-        //if(!this.scrollable.visibleElements.find((e) => e.element === this.bubbles[id])) return false;
+        // if(!this.scrollable.visibleElements.find((e) => e.element === this.bubbles[id])) return false;
 
         const message = await this.chat.getMessage(mid);
         const media = getMediaFromMessage(message);
-        
+
         return media && f(media) && mid;
       }))).filter(Boolean).sort((a, b) => a - b);
 
@@ -1720,7 +1720,7 @@ export default class ChatBubbles {
           const hasAspecter = !!this.bubbles[id].querySelector('.media-container-aspecter');
           elements.forEach((element) => {
             if(hasAspecter && !findUpClassName(element, 'media-container-aspecter')) return;
-            let albumItem = findUpClassName(element, 'album-item');
+            const albumItem = findUpClassName(element, 'album-item');
             const parent = albumItem || element.parentElement;
             if(parents.has(parent)) return;
             parents.add(parent);
@@ -1735,7 +1735,7 @@ export default class ChatBubbles {
 
       targets.sort((a, b) => a.mid - b.mid);
 
-      let idx = targets.findIndex((t) => t.mid === messageId);
+      const idx = targets.findIndex((t) => t.mid === messageId);
 
       if(DEBUG) {
         this.log('open mediaViewer single with ids:', ids, idx, targets);
@@ -1755,20 +1755,20 @@ export default class ChatBubbles {
         isScheduled: this.chat.type === 'scheduled'
       })
       .openMedia(message, targets[idx].element, 0, true, targets.slice(0, idx), targets.slice(idx + 1));
-      
-      //appMediaViewer.openMedia(message, target as HTMLImageElement);
+
+      // appMediaViewer.openMedia(message, target as HTMLImageElement);
       return;
     }
-    
+
     if(['IMG', 'DIV', 'SPAN'/* , 'A' */].indexOf(target.tagName) === -1) target = findUpTag(target, 'DIV');
-    
+
     if(['DIV', 'SPAN'].indexOf(target.tagName) !== -1/*  || target.tagName === 'A' */) {
       if(target.classList.contains('goto-original')) {
         const savedFrom = bubble.dataset.savedFrom;
         const [peerId, mid] = savedFrom.split('_');
-        ////this.log('savedFrom', peerId, msgID);
+        // //this.log('savedFrom', peerId, msgID);
         this.chat.appImManager.setInnerPeer({
-          peerId: peerId.toPeerId(), 
+          peerId: peerId.toPeerId(),
           lastMsgId: +mid
         });
         return;
@@ -1778,16 +1778,16 @@ export default class ChatBubbles {
         new PopupForward({
           [this.peerId]: await this.managers.appMessagesManager.getMidsByMessage(message)
         });
-        //appSidebarRight.forwardTab.open([mid]);
+        // appSidebarRight.forwardTab.open([mid]);
         return;
       }
-      
+
       let isReplyClick = false;
-      
+
       try {
         isReplyClick = !!findUpClassName(e.target, 'reply');
       } catch(err) {}
-      
+
       if(isReplyClick && bubble.classList.contains('is-reply')/*  || bubble.classList.contains('forwarded') */) {
         const bubbleMid = +bubble.dataset.mid;
         this.replyFollowHistory.push(bubbleMid);
@@ -1798,9 +1798,9 @@ export default class ChatBubbles {
         const replyToMid = message.reply_to.reply_to_msg_id;
 
         this.chat.appImManager.setInnerPeer({
-          peerId: replyToPeerId, 
-          lastMsgId: replyToMid, 
-          type: this.chat.type, 
+          peerId: replyToPeerId,
+          lastMsgId: replyToMid,
+          type: this.chat.type,
           threadId: this.chat.threadId
         });
 
@@ -1809,18 +1809,18 @@ export default class ChatBubbles {
         } else {
           this.chat.appImManager.setInnerPeer(this.peerId, originalMessageId);
         } */
-        //this.chat.setMessageId(, originalMessageId);
+        // this.chat.setMessageId(, originalMessageId);
       }
     }
-    
-    //console.log('chatInner click', e);
+
+    // console.log('chatInner click', e);
   };
 
   public async onGoDownClick() {
     if(!this.replyFollowHistory.length) {
       this.chat.setMessageId(/* , dialog.top_message */);
       // const dialog = this.appMessagesManager.getDialogByPeerId(this.peerId)[0];
-      
+
       // if(dialog) {
       //   this.chat.setPeer(this.peerId/* , dialog.top_message */);
       // } else {
@@ -1887,8 +1887,8 @@ export default class ChatBubbles {
       if(this.bubbles[mid] && !this.skippedMids.has(mid)) {
         // const maxId = Math.max(...mids); // * because in scheduled album can be rendered by lowest mid during sending
         return {
-          bubble: this.bubbles[mid], 
-          mid: mid,
+          bubble: this.bubbles[mid],
+          mid: mid
           // message: await this.chat.getMessage(maxId) as Message.message
         };
       }
@@ -1939,13 +1939,13 @@ export default class ChatBubbles {
   }
 
   public loadMoreHistory(top: boolean, justLoad = false) {
-    //this.log('loadMoreHistory', top);
+    // this.log('loadMoreHistory', top);
     if(
-      !this.peerId || 
-      /* TEST_SCROLL || */ 
-      this.chat.setPeerPromise || 
-      this.isHeavyAnimationInProgress || 
-      (top && (this.getHistoryTopPromise || this.scrollable.loadedAll.top)) || 
+      !this.peerId ||
+      /* TEST_SCROLL || */
+      this.chat.setPeerPromise ||
+      this.isHeavyAnimationInProgress ||
+      (top && (this.getHistoryTopPromise || this.scrollable.loadedAll.top)) ||
       (!top && (this.getHistoryBottomPromise || this.scrollable.loadedAll.bottom))
     ) {
       return;
@@ -1958,7 +1958,7 @@ export default class ChatBubbles {
     .filter((id) => id > 0 && !this.skippedMids.has(id))
     .sort((a, b) => a - b);
     if(!history.length) return;
-    
+
     if(top) {
       if(DEBUG) {
         this.log('Will load more (up) history by id:', history[0], 'maxId:', history[history.length - 1], justLoad/* , history */);
@@ -1966,9 +1966,9 @@ export default class ChatBubbles {
 
       this.getHistory1(history[0], true, undefined, undefined, justLoad);
     } else {
-      //let dialog = this.appMessagesManager.getDialogByPeerId(this.peerId)[0];
+      // let dialog = this.appMessagesManager.getDialogByPeerId(this.peerId)[0];
       // const historyMaxId = await this.chat.getHistoryMaxId();
-          
+
       // // if scroll down after search
       // if(history.indexOf(historyMaxId) !== -1) {
       //   this.setLoaded('bottom', true);
@@ -1984,7 +1984,7 @@ export default class ChatBubbles {
   }
 
   public onScroll = (ignoreHeavyAnimation?: boolean, scrollDimensions?: ScrollStartCallbackDimensions) => {
-    //return;
+    // return;
 
     if(this.isHeavyAnimationInProgress) {
       if(this.sliceViewportDebounced) {
@@ -1999,15 +1999,15 @@ export default class ChatBubbles {
       if(this.chat.topbar.pinnedMessage) {
         this.chat.topbar.pinnedMessage.setCorrectIndexThrottled(this.scrollable.lastScrollDirection);
       }
-  
+
       if(this.sliceViewportDebounced) {
         this.sliceViewportDebounced();
       }
-  
+
       this.setStickyDateManually();
     }
-    
-    //lottieLoader.checkAnimations(false, 'chat');
+
+    // lottieLoader.checkAnimations(false, 'chat');
 
     if(scrollDimensions && scrollDimensions.distanceToEnd < SCROLLED_DOWN_THRESHOLD && this.scrolledDown) {
       return;
@@ -2021,13 +2021,13 @@ export default class ChatBubbles {
       } else if(!this.chatInner.classList.contains('is-scrolling')) {
         this.chatInner.classList.add('is-scrolling');
       }
-  
+
       this.isScrollingTimeout = window.setTimeout(() => {
         this.chatInner.classList.remove('is-scrolling');
         this.isScrollingTimeout = 0;
       }, 1350 + (scrollDimensions?.duration ?? 0));
     }
-    
+
     if(distanceToEnd < SCROLLED_DOWN_THRESHOLD && (this.scrollable.loadedAll.bottom || this.chat.setPeerPromise || !this.peerId)) {
       this.container.classList.add('scrolled-down');
       this.scrolledDown = true;
@@ -2050,7 +2050,7 @@ export default class ChatBubbles {
 
     /* const getScrollOffset = () => {
       //return Math.round(Math.max(300, appPhotosManager.windowH / 1.5));
-      return 300; 
+      return 300;
     };
 
     window.addEventListener('resize', () => {
@@ -2062,7 +2062,7 @@ export default class ChatBubbles {
     this.scrollable.onAdditionalScroll = this.onScroll;
     this.scrollable.onScrolledTop = () => this.loadMoreHistory(true);
     this.scrollable.onScrolledBottom = () => this.loadMoreHistory(false);
-    //this.scrollable.attachSentinels(undefined, 300);
+    // this.scrollable.attachSentinels(undefined, 300);
 
     if(IS_TOUCH_SUPPORTED && false) {
       this.scrollable.container.addEventListener('touchmove', () => {
@@ -2093,9 +2093,9 @@ export default class ChatBubbles {
   public async updateUnreadByDialog() {
     const historyStorage = await this.chat.getHistoryStorage();
     const maxId = this.peerId === rootScope.myId ? historyStorage.readMaxId : historyStorage.readOutboxMaxId;
-    
-    ///////this.log('updateUnreadByDialog', maxId, dialog, this.unreadOut);
-    
+
+    // /////this.log('updateUnreadByDialog', maxId, dialog, this.unreadOut);
+
     for(const msgId of this.unreadOut) {
       if(msgId > 0 && msgId <= maxId) {
         const bubble = this.bubbles[msgId];
@@ -2105,20 +2105,20 @@ export default class ChatBubbles {
           if(bubble.classList.contains('is-outgoing')) {
             continue;
           }
-          
+
           bubble.classList.remove('is-sent', 'is-sending', 'is-outgoing'); // is-sending can be when there are bulk of updates (e.g. sending command to Stickers bot)
           bubble.classList.add('is-read');
         }
       }
     }
   }
-  
+
   public deleteMessagesByIds(mids: number[], permanent = true, ignoreOnScroll?: boolean) {
     let deleted = false;
     mids.forEach((mid) => {
       const bubble = this.bubbles[mid];
       if(!bubble) return;
-      
+
       deleted = true;
       /* const mounted = this.getMountedBubble(mid);
       if(!mounted) return; */
@@ -2154,7 +2154,7 @@ export default class ChatBubbles {
     if(permanent && this.chat.selection.isSelecting) {
       this.chat.selection.deleteSelectedMids(this.peerId, mids);
     }
-    
+
     animationIntersector.checkAnimations(false, CHAT_ANIMATION_GROUP);
     this.deleteEmptyDateGroups();
 
@@ -2208,10 +2208,10 @@ export default class ChatBubbles {
     });
     return promise;
   }
-  
+
   private async _renderNewMessage(message: MyMessage, scrolledDown?: boolean) {
     if(!this.scrollable.loadedAll.bottom) { // seems search active or sliced
-      //this.log('renderNewMessagesByIds: seems search is active, skipping render:', mids);
+      // this.log('renderNewMessagesByIds: seems search is active, skipping render:', mids);
       const setPeerPromise = this.chat.setPeerPromise;
       if(setPeerPromise) {
         const middleware = this.getMiddleware();
@@ -2243,8 +2243,8 @@ export default class ChatBubbles {
 
     if(!scrolledDown) {
       scrolledDown = this.scrolledDown && (
-        !this.scrollingToBubble || 
-        this.scrollingToBubble === this.getLastBubble() || 
+        !this.scrollingToBubble ||
+        this.scrollingToBubble === this.getLastBubble() ||
         this.scrollingToBubble === this.chatInner
       );
     }
@@ -2256,9 +2256,9 @@ export default class ChatBubbles {
     if(scrolledDown) {
       promise.then(() => {
         if(!middleware()) return;
-        //this.log('renderNewMessagesByIDs: messagesQueuePromise after', this.scrollable.isScrolledDown);
-        //this.scrollable.scrollTo(this.scrollable.scrollHeight, 'top', true, true, 5000);
-        //const bubble = this.bubbles[Math.max(...mids)];
+        // this.log('renderNewMessagesByIDs: messagesQueuePromise after', this.scrollable.isScrolledDown);
+        // this.scrollable.scrollTo(this.scrollable.scrollHeight, 'top', true, true, 5000);
+        // const bubble = this.bubbles[Math.max(...mids)];
 
         let bubble: HTMLElement;
         if(this.chat.type === 'scheduled') {
@@ -2271,7 +2271,7 @@ export default class ChatBubbles {
           promise.then(unsetPadding);
         }
 
-        //this.scrollable.scrollIntoViewNew(this.chatInner, 'end');
+        // this.scrollable.scrollIntoViewNew(this.chatInner, 'end');
 
         /* setTimeout(() => {
           this.log('messagesQueuePromise afterafter:', this.chatInner.childElementCount, this.scrollable.scrollHeight);
@@ -2288,7 +2288,7 @@ export default class ChatBubbles {
   }
 
   public scrollToBubble(
-    element: HTMLElement, 
+    element: HTMLElement,
     position: ScrollLogicalPosition,
     forceDirection?: FocusDirection,
     forceDuration?: number
@@ -2306,9 +2306,9 @@ export default class ChatBubbles {
       if(item.group.firstItem === item && whichChild(item.group.container) === (this.stickyIntersector ? STICKY_OFFSET : 1)) {
         const dateGroup = item.group.container.parentElement;
         // if(whichChild(dateGroup) === 0) {
-          fallbackToElementStartWhenCentering = dateGroup;
-          // position = 'start';
-          // element = dateGroup;
+        fallbackToElementStartWhenCentering = dateGroup;
+        // position = 'start';
+        // element = dateGroup;
         // }
       }
     }
@@ -2318,19 +2318,19 @@ export default class ChatBubbles {
       element = this.getLastDateGroup();
     } */
 
-    let margin = 4; // * 4 = .25rem
+    const margin = 4; // * 4 = .25rem
     /* if(isLastBubble && this.chat.type === 'chat' && this.bubblesContainer.classList.contains('is-chat-input-hidden')) {
       margin = 20;
     } */
 
     const isChangingHeight = (this.chat.input.messageInput && this.chat.input.messageInput.classList.contains('is-changing-height')) || this.chat.container.classList.contains('is-toggling-helper');
     const promise = this.scrollable.scrollIntoViewNew({
-      element, 
-      position, 
-      margin, 
-      forceDirection, 
-      forceDuration, 
-      axis: 'y', 
+      element,
+      position,
+      margin,
+      forceDirection,
+      forceDuration,
+      axis: 'y',
       getNormalSize: isChangingHeight ? ({rect}) => {
         // return rect.height;
 
@@ -2355,7 +2355,7 @@ export default class ChatBubbles {
     if(forceDirection === FocusDirection.Static) {
       this.scrollable.lastScrollPosition = this.scrollable.scrollTop;
     }
-    
+
     return promise;
   }
 
@@ -2415,12 +2415,12 @@ export default class ChatBubbles {
 
   private createDateBubble(timestamp: number, date: Date = new Date(timestamp * 1000)) {
     let dateElement: HTMLElement;
-      
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const isScheduled = this.chat.type === 'scheduled';
-    
+
     if(today.getTime() === date.getTime()) {
       dateElement = i18n(isScheduled ? 'Chat.Date.ScheduledForToday' : 'Date.Today');
     } else if(isScheduled && timestamp === SEND_WHEN_ONLINE_TIMESTAMP) {
@@ -2444,7 +2444,7 @@ export default class ChatBubbles {
         dateElement = i18n('Chat.Date.ScheduledFor', [dateElement]);
       }
     }
-    
+
     const bubble = document.createElement('div');
     bubble.className = 'bubble service is-date';
     const bubbleContent = document.createElement('div');
@@ -2485,7 +2485,8 @@ export default class ChatBubbles {
       };
 
       const haveTimestamps = getObjectKeysAndSort(this.dateMessages, 'asc');
-      let i = 0, length = haveTimestamps.length, insertBefore: HTMLElement; // there can be 'first bubble' (e.g. bot description) so can't insert by index
+      const length = haveTimestamps.length;
+      let i = 0, insertBefore: HTMLElement; // there can be 'first bubble' (e.g. bot description) so can't insert by index
       for(; i < haveTimestamps.length; ++i) {
         const t = haveTimestamps[i];
         insertBefore = this.dateMessages[t].container;
@@ -2522,7 +2523,7 @@ export default class ChatBubbles {
   }
 
   public destroy() {
-    //this.chat.log.error('Bubbles destroying');
+    // this.chat.log.error('Bubbles destroying');
 
     this.destroyScrollable();
 
@@ -2539,7 +2540,7 @@ export default class ChatBubbles {
 
   public cleanup(bubblesToo = false) {
     this.bubbles = {}; // clean it before so sponsored message won't be deleted faster on peer changing
-    ////console.time('appImManager cleanup');
+    // //console.time('appImManager cleanup');
     this.setLoaded('top', false, false);
     this.setLoaded('bottom', false, false);
 
@@ -2560,27 +2561,27 @@ export default class ChatBubbles {
     this.needUpdate.length = 0;
     this.lazyLoadQueue.clear();
     this.renderNewPromises.clear();
-    
+
     // clear messages
     if(bubblesToo) {
       this.scrollable.container.textContent = '';
       this.cleanupPlaceholders();
     }
-    
+
     this.firstUnreadBubble = null;
     this.attachedUnreadBubble = false;
-    
+
     this.messagesQueue.length = 0;
     this.messagesQueuePromise = null;
-    
+
     this.getHistoryTopPromise = this.getHistoryBottomPromise = undefined;
     this.fetchNewPromise = undefined;
     this.getSponsoredMessagePromise = undefined;
-    
+
     if(this.stickyIntersector) {
       this.stickyIntersector.disconnect();
     }
-    
+
     if(this.observer) {
       this.observer.disconnect();
 
@@ -2592,7 +2593,7 @@ export default class ChatBubbles {
     }
 
     this.middleware.clean();
-    
+
     this.onAnimateLadder = undefined;
     this.resolveLadderAnimation = undefined;
     this.attachPlaceholderOnRender = undefined;
@@ -2601,7 +2602,7 @@ export default class ChatBubbles {
     this.previousStickyDate = undefined;
 
     this.scrollingToBubble = undefined;
-    ////console.timeEnd('appImManager cleanup');
+    // //console.timeEnd('appImManager cleanup');
 
     this.isTopPaddingSet = false;
 
@@ -2664,7 +2665,7 @@ export default class ChatBubbles {
     }
 
     const historyStorage = await m(this.chat.getHistoryStorage());
-    let topMessage = chatType === 'pinned' ? await m(this.managers.appMessagesManager.getPinnedMessagesMaxId(peerId)) : historyStorage.maxId ?? 0;
+    const topMessage = chatType === 'pinned' ? await m(this.managers.appMessagesManager.getPinnedMessagesMaxId(peerId)) : historyStorage.maxId ?? 0;
     const isTarget = lastMsgId !== undefined;
 
     // * this one will fix topMessage for null message in history (e.g. channel comments with only 1 comment and it is a topMessage)
@@ -2680,7 +2681,7 @@ export default class ChatBubbles {
       }
 
       if(savedPosition) {
-        
+
       } else if(topMessage) {
         readMaxId = await m(this.managers.appMessagesManager.getReadMaxIdIfUnread(peerId, this.chat.threadId));
         const dialog = await m(this.managers.appMessagesManager.getDialogOnly(peerId));
@@ -2694,7 +2695,7 @@ export default class ChatBubbles {
           lastMsgId = readMaxId;
         } else {
           lastMsgId = topMessage;
-          //lastMsgID = topMessage;
+          // lastMsgID = topMessage;
         }
       }
     }
@@ -2713,7 +2714,7 @@ export default class ChatBubbles {
           this.highlightBubble(mounted.bubble);
           this.chat.dispatchEvent('setPeer', lastMsgId, false);
         } else if(topMessage && !isJump) {
-          //log('will scroll down', this.scroll.scrollTop, this.scroll.scrollHeight);
+          // log('will scroll down', this.scroll.scrollTop, this.scroll.scrollHeight);
           // scrollable.setScrollTopSilently(scrollable.scrollHeight);
           this.scrollToEnd();
           this.chat.dispatchEvent('setPeer', lastMsgId, true);
@@ -2722,7 +2723,7 @@ export default class ChatBubbles {
         if(startParam !== undefined) {
           this.chat.input.setStartParam(startParam);
         }
-        
+
         return null;
       }
     } else {
@@ -2747,8 +2748,8 @@ export default class ChatBubbles {
 
     let maxBubbleId = 0;
     if(samePeer) {
-      let el = this.getBubbleByPoint('bottom'); // ! this may not work if being called when chat is hidden
-      //this.chat.log('[PM]: setCorrectIndex: get last element perf:', performance.now() - perf, el);
+      const el = this.getBubbleByPoint('bottom'); // ! this may not work if being called when chat is hidden
+      // this.chat.log('[PM]: setCorrectIndex: get last element perf:', performance.now() - perf, el);
       if(el) {
         maxBubbleId = +el.dataset.mid;
       }
@@ -2809,7 +2810,7 @@ export default class ChatBubbles {
       await m(this.chat.finishPeerChange(isTarget, isJump, lastMsgId, startParam));
       this.scrollable.container.textContent = '';
       // oldContainer.textContent = '';
-      //oldChatInner.remove();
+      // oldChatInner.remove();
       this.preloader.attach(this.container);
     }
 
@@ -2820,7 +2821,7 @@ export default class ChatBubbles {
     const setPeerPromise = m(promise).then(async() => {
       log.warn('promise fulfilled');
 
-      let mountedByLastMsgId = haveToScrollToBubble ? await m(lastMsgId ? this.getMountedBubble(lastMsgId) : {bubble: this.getLastBubble()}) : undefined;
+      const mountedByLastMsgId = haveToScrollToBubble ? await m(lastMsgId ? this.getMountedBubble(lastMsgId) : {bubble: this.getLastBubble()}) : undefined;
       if(cached && !samePeer) {
         log.warn('finishing peer change');
         await m(this.chat.finishPeerChange(isTarget, isJump, lastMsgId, startParam)); // * костыль
@@ -2863,11 +2864,11 @@ export default class ChatBubbles {
       animationIntersector.unlockGroup(CHAT_ANIMATION_GROUP);
       animationIntersector.checkAnimations(false, CHAT_ANIMATION_GROUP/* , true */);
 
-      //fastRaf(() => {
-        this.lazyLoadQueue.unlock();
-      //});
+      // fastRaf(() => {
+      this.lazyLoadQueue.unlock();
+      // });
 
-      //if(dialog && lastMsgID && lastMsgID !== topMessage && (this.bubbles[lastMsgID] || this.firstUnreadBubble)) {
+      // if(dialog && lastMsgID && lastMsgID !== topMessage && (this.bubbles[lastMsgID] || this.firstUnreadBubble)) {
       if(savedPosition) {
         scrollable.setScrollTopSilently(savedPosition.top);
         /* const mountedByLastMsgId = this.getMountedBubble(lastMsgId);
@@ -2899,7 +2900,7 @@ export default class ChatBubbles {
         if(!bubble?.parentElement) {
           bubble = this.findNextMountedBubbleByMsgId(lastMsgId, false) || this.findNextMountedBubbleByMsgId(lastMsgId, true);
         }
-        
+
         let promise: Promise<void>;
         // ! sometimes there can be no bubble
         if(bubble) {
@@ -2927,7 +2928,7 @@ export default class ChatBubbles {
       }
 
       // if(!cached) {
-        this.onRenderScrollSet();
+      this.onRenderScrollSet();
       // }
 
       this.onScroll();
@@ -2937,7 +2938,7 @@ export default class ChatBubbles {
         scrollable.checkForTriggers();
 
         // if(cached) {
-          // this.onRenderScrollSet();
+        // this.onRenderScrollSet();
         // }
       });
 
@@ -2951,10 +2952,10 @@ export default class ChatBubbles {
           samePeer,
           savedPosition,
           topMessage
-        }),
+        })
       ]).then(() => {
         log('scrolledAllDown:', scrollable.loadedAll.bottom);
-        //if(!this.unreaded.length && dialog) { // lol
+        // if(!this.unreaded.length && dialog) { // lol
         if(scrollable.loadedAll.bottom && topMessage && !this.unreaded.size) { // lol
           this.onScrolledAllDown();
         }
@@ -2967,7 +2968,7 @@ export default class ChatBubbles {
         }
       }
 
-      //this.chatInner.classList.remove('disable-hover', 'is-scrolling'); // warning, performance!
+      // this.chatInner.classList.remove('disable-hover', 'is-scrolling'); // warning, performance!
     }).catch((err) => {
       log.error('getHistory promise error:', err);
       if(!middleware()) {
@@ -3070,7 +3071,7 @@ export default class ChatBubbles {
         this.fetchNewPromise = undefined;
       });
     };
-    
+
     if(samePeer) {
       setTimeout(f, 30e3);
     } else {
@@ -3095,17 +3096,17 @@ export default class ChatBubbles {
     return () => {
       this.chatInner.classList.toggle('has-rights', canWrite);
       this.container.classList.toggle('is-chat-input-hidden', !canWrite);
-  
+
       this.chatInner.classList.toggle('is-chat', isAnyGroup);
       this.chatInner.classList.toggle('is-channel', isChannel);
-  
+
       this.createResizeObserver();
     };
   }
 
   public renderMessagesQueue(options: ChatBubbles['messagesQueue'][0]) {
     this.messagesQueue.push(options);
-    return this.setMessagesQueuePromise();    
+    return this.setMessagesQueuePromise();
   }
 
   public setMessagesQueuePromise() {
@@ -3114,7 +3115,7 @@ export default class ChatBubbles {
     if(this.messagesQueuePromise) {
       return this.messagesQueuePromise;
     }
-    
+
     const middleware = this.getMiddleware();
     const log = this.log.bindPrefix('queue');
     const possibleError = PEER_CHANGED_ERROR;
@@ -3158,7 +3159,7 @@ export default class ChatBubbles {
       // if(groups.length > 2 && loadQueue.length === 1) {
       //   debugger;
       // }
-      
+
       const promises = loadQueue.reduce((acc, details) => {
         const perf = performance.now();
 
@@ -3201,7 +3202,7 @@ export default class ChatBubbles {
 
       const {restoreScroll, scrollSaver} = this.prepareToSaveScroll(reverse);
       // if(this.messagesQueueOnRender) {
-        // this.messagesQueueOnRender();
+      // this.messagesQueueOnRender();
       // }
 
       if(this.messagesQueueOnRenderAdditional) {
@@ -3213,7 +3214,7 @@ export default class ChatBubbles {
         if(scrollSaver) {
           scrollSaver.replaceSaved(oldBubble, bubble);
         }
-        
+
         if(!loadQueue.find((details) => details.bubble === bubble)) {
           continue;
         }
@@ -3226,7 +3227,7 @@ export default class ChatBubbles {
 
         this.bubblesToReplace.delete(bubble);
       }
-      
+
       if(this.chat.selection.isSelecting) {
         loadQueue.forEach(({bubble}) => {
           this.chat.selection.toggleElementCheckbox(bubble, true);
@@ -3252,7 +3253,7 @@ export default class ChatBubbles {
       }
 
       // this.setStickyDateManually();
-      
+
       if(this.messagesQueue.length) {
         log('have new messages to render');
         return processQueue();
@@ -3281,8 +3282,8 @@ export default class ChatBubbles {
   }
 
   public groupBubbles(items: Array<{
-    // Awaited<ReturnType<ChatBubbles['safeRenderMessage']>> & 
-    bubble: HTMLElement, 
+    // Awaited<ReturnType<ChatBubbles['safeRenderMessage']>> &
+    bubble: HTMLElement,
     message: Message.message | Message.messageService
   }/*  & {
     unmountIfFound?: boolean
@@ -3300,7 +3301,7 @@ export default class ChatBubbles {
         }
       });
     }
-    
+
     items.forEach(({bubble, message}) => {
       this.bubbleGroups.prepareForGrouping(bubble, message);
     });
@@ -3322,7 +3323,7 @@ export default class ChatBubbles {
     }
 
     return {
-      groups: [...groups], 
+      groups: [...groups],
       avatarPromises
     };
   }
@@ -3332,9 +3333,9 @@ export default class ChatBubbles {
   }
 
   private async safeRenderMessage(
-    message: Message.message | Message.messageService, 
-    reverse?: boolean, 
-    bubble?: HTMLElement, 
+    message: Message.message | Message.messageService,
+    reverse?: boolean,
+    bubble?: HTMLElement,
     updatePosition = true,
     processResult?: (result: ReturnType<ChatBubbles['renderMessage']>, bubble: HTMLElement) => typeof result
   ) {
@@ -3355,8 +3356,8 @@ export default class ChatBubbles {
       newBubble.dataset.timestamp = '' + message.date;
 
       // const bubbleNew: Bubble = this.bubblesNew[message.mid] ??= {
-      //   bubble: newBubble, 
-      //   mids: new Set(), 
+      //   bubble: newBubble,
+      //   mids: new Set(),
       //   groupedId
       // };
 
@@ -3376,7 +3377,7 @@ export default class ChatBubbles {
       if(processResult) {
         originalPromise = processResult(originalPromise, bubble);
       }
-      
+
       const promise = originalPromise.then((r) => ((r && middleware() ? {...r, updatePosition} : undefined) as typeof result));
 
       this.renderMessagesQueue(promise.catch(() => undefined));
@@ -3400,11 +3401,11 @@ export default class ChatBubbles {
     this.renderingMessages.delete(message.mid);
     return result;
   }
-  
+
   // reverse means top
   private async renderMessage(
-    message: Message.message | Message.messageService, 
-    reverse = false, 
+    message: Message.message | Message.messageService,
+    reverse = false,
     bubble: HTMLElement
   ) {
     // if(DEBUG) {
@@ -3435,30 +3436,27 @@ export default class ChatBubbles {
     if(isMessage) {
       reactionsMessage = groupedId ? albumMessages[0] : message;
     }
-    
+
     // * can't use 'message.pFlags.out' here because this check will be used to define side of message (left-right)
     const our = this.chat.isOurMessage(message);
-    
+
     const messageDiv = document.createElement('div');
     messageDiv.classList.add('message');
-    
-    let bubbleContainer: HTMLDivElement;
-    let contentWrapper: HTMLElement;
-    
-    contentWrapper = document.createElement('div');
+
+    const contentWrapper = document.createElement('div');
     contentWrapper.classList.add('bubble-content-wrapper');
-    
-    bubbleContainer = document.createElement('div');
+
+    const bubbleContainer = document.createElement('div');
     bubbleContainer.classList.add('bubble-content');
-    
+
     bubble.classList.add('bubble');
     contentWrapper.append(bubbleContainer);
     bubble.append(contentWrapper);
 
     if(!our && !message.pFlags.out && this.observer) {
-      //this.log('not our message', message, message.pFlags.unread);
-      const isUnread = message.pFlags.unread || 
-        isMentionUnread(message)/*  || 
+      // this.log('not our message', message, message.pFlags.unread);
+      const isUnread = message.pFlags.unread ||
+        isMentionUnread(message)/*  ||
         (this.historyStorage.readMaxId !== undefined && this.historyStorage.readMaxId < message.mid) */;
       if(isUnread) {
         this.observer.observe(bubble, this.unreadedObserverCallback);
@@ -3515,17 +3513,17 @@ export default class ChatBubbles {
 
     let messageMessage: string, totalEntities: MessageEntity[];
     if(isMessage) {
-      if((messageMedia as MessageMedia.messageMediaDocument)?.document && 
+      if((messageMedia as MessageMedia.messageMediaDocument)?.document &&
         !['video', 'gif'].includes(((messageMedia as MessageMedia.messageMediaDocument).document as MyDocument).type)) {
         // * just filter these cases for documents caption
       } else if(groupedId && albumMustBeRenderedFull) {
         const t = getAlbumText(albumMessages);
         messageMessage = t.message;
-        //totalEntities = t.entities;
+        // totalEntities = t.entities;
         totalEntities = t.totalEntities;
       } else if(((messageMedia as MessageMedia.messageMediaDocument)?.document as MyDocument)?.type !== 'sticker') {
         messageMessage = message.message;
-        //totalEntities = message.entities;
+        // totalEntities = message.entities;
         totalEntities = message.totalEntities;
       }
     } else {
@@ -3536,11 +3534,11 @@ export default class ChatBubbles {
         };
       }
     }
-    
+
     /* let richText = wrapRichText(messageMessage, {
       entities: totalEntities
     }); */
-    let richText = wrapRichText(messageMessage, {
+    const richText = wrapRichText(messageMessage, {
       entities: totalEntities,
       passEntities: this.passEntities
     });
@@ -3549,26 +3547,26 @@ export default class ChatBubbles {
     let isStandaloneMedia = false;
     let needToSetHTML = true;
     if(totalEntities && !messageMedia) {
-      let emojiEntities = totalEntities.filter((e) => e._ === 'messageEntityEmoji');
-      let strLength = messageMessage.length;
-      let emojiStrLength = emojiEntities.reduce((acc, curr) => acc + curr.length, 0);
-      
+      const emojiEntities = totalEntities.filter((e) => e._ === 'messageEntityEmoji');
+      const strLength = messageMessage.length;
+      const emojiStrLength = emojiEntities.reduce((acc, curr) => acc + curr.length, 0);
+
       if(emojiStrLength === strLength && emojiEntities.length <= 3 && totalEntities.length === emojiEntities.length) {
         if(rootScope.settings.emoji.big) {
-          let sticker = await this.managers.appStickersManager.getAnimatedEmojiSticker(messageMessage);
+          const sticker = await this.managers.appStickersManager.getAnimatedEmojiSticker(messageMessage);
           if(emojiEntities.length === 1 && !messageMedia && sticker) {
             messageMedia = {
               _: 'messageMediaDocument',
               document: sticker
             };
           } else {
-            let attachmentDiv = document.createElement('div');
+            const attachmentDiv = document.createElement('div');
             attachmentDiv.classList.add('attachment');
-            
+
             setInnerHTML(attachmentDiv, richText);
-            
+
             bubble.classList.add('emoji-' + emojiEntities.length + 'x');
-            
+
             bubbleContainer.append(attachmentDiv);
           }
 
@@ -3577,10 +3575,10 @@ export default class ChatBubbles {
           canHaveTail = false;
           needToSetHTML = false;
         }
-        
+
         bubble.classList.add('can-have-big-emoji');
       }
-      
+
       /* if(strLength === emojiStrLength) {
         messageDiv.classList.add('emoji-only');
         messageDiv.classList.add('message-empty');
@@ -3592,13 +3590,13 @@ export default class ChatBubbles {
     }
 
     const timeSpan = MessageRender.setTime({
-      chatType: this.chat.type, 
+      chatType: this.chat.type,
       message,
       reactionsMessage
     });
     messageDiv.append(timeSpan);
     bubbleContainer.prepend(messageDiv);
-    //bubble.prepend(timeSpan, messageDiv); // that's bad
+    // bubble.prepend(timeSpan, messageDiv); // that's bad
 
     if(isMessage && message.views) {
       bubble.classList.add('channel-post');
@@ -3609,7 +3607,7 @@ export default class ChatBubbles {
         bubbleContainer.prepend(forward);
         bubble.classList.add('with-beside-button');
       }
-  
+
       if(!message.pFlags.is_outgoing && this.observer) {
         this.observer.observe(bubble, this.viewsObserverCallback);
       }
@@ -3632,7 +3630,7 @@ export default class ChatBubbles {
           let text: DocumentFragment | HTMLElement | string = wrapRichText(button.text, {noLinks: true, noLinebreaks: true});
 
           let buttonEl: HTMLButtonElement | HTMLAnchorElement;
-          
+
           switch(button._) {
             case 'keyboardButtonUrl': {
               const r = wrapRichText(' ', {
@@ -3663,7 +3661,7 @@ export default class ChatBubbles {
                   if(peerId) {
                     return peerId;
                   }
-                  
+
                   return new Promise<PeerId>((resolve, reject) => {
                     const popup = new PopupForward({
                       [this.peerId]: []
@@ -3676,7 +3674,7 @@ export default class ChatBubbles {
                     });
                   });
                 });
-                
+
                 promise.then((peerId) => {
                   const threadId = this.peerId === peerId ? this.chat.threadId : undefined;
                   this.chat.appImManager.setInnerPeer({peerId});
@@ -3704,7 +3702,7 @@ export default class ChatBubbles {
               break;
             }
           }
-          
+
           buttonEl.classList.add('reply-markup-button', 'rp', 'tgico');
           if(typeof(text) === 'string') {
             buttonEl.insertAdjacentHTML('beforeend', text);
@@ -3722,13 +3720,13 @@ export default class ChatBubbles {
 
       attachClickEvent(containerDiv, (e) => {
         let target = e.target as HTMLElement;
-        
+
         if(!target.classList.contains('reply-markup-button')) target = findUpClassName(target, 'reply-markup-button');
         if(
-          !target 
-          || target.classList.contains('is-link') 
-          || target.classList.contains('is-switch-inline')
-          || target.classList.contains('is-buy')
+          !target ||
+          target.classList.contains('is-link') ||
+          target.classList.contains('is-switch-inline') ||
+          target.classList.contains('is-buy')
         ) return;
 
         cancelEvent(e);
@@ -3746,8 +3744,8 @@ export default class ChatBubbles {
           if(typeof callbackAnswer.message === 'string' && callbackAnswer.message.length) {
             toast(wrapRichText(callbackAnswer.message, {noLinks: true, noLinebreaks: true}));
           }
-          
-          //console.log('callbackButtonClick callbackAnswer:', callbackAnswer);
+
+          // console.log('callbackButtonClick callbackAnswer:', callbackAnswer);
         });
       });
 
@@ -3755,7 +3753,7 @@ export default class ChatBubbles {
       bubble.classList.add('with-reply-markup');
       contentWrapper.append(containerDiv);
     }
-    
+
     const isOutgoing = message.pFlags.is_outgoing/*  && this.peerId !== rootScope.myId */;
     if(our) {
       if(message.pFlags.unread || isOutgoing) this.unreadOut.add(message.mid);
@@ -3788,28 +3786,28 @@ export default class ChatBubbles {
     if(messageMedia/*  && messageMedia._ === 'messageMediaPhoto' */) {
       let attachmentDiv = document.createElement('div');
       attachmentDiv.classList.add('attachment');
-      
+
       if(!messageMessage) {
         bubble.classList.add('is-message-empty');
       }
-      
+
       let processingWebPage = false;
-      
+
       /* if(isMessage)  */switch(messageMedia._) {
         case 'messageMediaPhoto': {
           const photo = messageMedia.photo;
-          ////////this.log('messageMediaPhoto', photo);
+          // //////this.log('messageMediaPhoto', photo);
 
           if(!messageMessage) {
             canHaveTail = false;
           }
-          
+
           if(canHideNameIfMedia) {
-            bubble.classList.add('hide-name');  
+            bubble.classList.add('hide-name');
           }
 
           bubble.classList.add('photo');
-          
+
           if(albumMustBeRenderedFull && groupedId && albumMids.length !== 1) {
             bubble.classList.add('is-album', 'is-grouped');
             wrapAlbum({
@@ -3820,44 +3818,44 @@ export default class ChatBubbles {
               lazyLoadQueue: this.lazyLoadQueue,
               chat: this.chat,
               loadPromises,
-              autoDownload: this.chat.autoDownload,
+              autoDownload: this.chat.autoDownload
             });
 
             break;
           }
-          
+
           const withTail = !IS_ANDROID && canHaveTail && !withReplies && USE_MEDIA_TAILS;
           if(withTail) bubble.classList.add('with-media-tail');
           wrapPhoto({
-            photo: photo as Photo.photo, 
+            photo: photo as Photo.photo,
             message,
             container: attachmentDiv,
-            withTail, 
-            isOut, 
+            withTail,
+            isOut,
             lazyLoadQueue: this.lazyLoadQueue,
             middleware: this.getMiddleware(),
             loadPromises,
-            autoDownloadSize: this.chat.autoDownload.photo,
+            autoDownloadSize: this.chat.autoDownload.photo
           });
 
           break;
         }
-        
+
         case 'messageMediaWebPage': {
           processingWebPage = true;
-          
-          let webPage: WebPage = messageMedia.webpage;
-          ////////this.log('messageMediaWebPage', webpage);
+
+          const webPage: WebPage = messageMedia.webpage;
+          // //////this.log('messageMediaWebPage', webpage);
           if(webPage._ !== 'webPage') {
             break;
-          } 
-          
+          }
+
           bubble.classList.add('webpage');
-          
-          let box = document.createElement('div');
+
+          const box = document.createElement('div');
           box.classList.add('web');
-          
-          let quote = document.createElement('div');
+
+          const quote = document.createElement('div');
           quote.classList.add('quote');
 
           let previewResizer: HTMLDivElement, preview: HTMLDivElement;
@@ -3870,13 +3868,13 @@ export default class ChatBubbles {
             previewResizer.append(preview);
           }
 
-          let quoteTextDiv = document.createElement('div');
+          const quoteTextDiv = document.createElement('div');
           quoteTextDiv.classList.add('quote-text');
-          
+
           const doc = webPage.document as MyDocument;
           if(doc) {
             if(doc.type === 'gif' || doc.type === 'video' || doc.type === 'round') {
-              //if(doc.size <= 20e6) {
+              // if(doc.size <= 20e6) {
               const mediaSize = doc.type === 'round' ? mediaSizes.active.round : mediaSizes.active.webpage;
               if(doc.type === 'round') {
                 bubble.classList.add('round');
@@ -3885,9 +3883,9 @@ export default class ChatBubbles {
                 bubble.classList.add('video');
               }
               wrapVideo({
-                doc, 
-                container: preview, 
-                message: message as Message.message, 
+                doc,
+                container: preview,
+                message: message as Message.message,
                 boxWidth: mediaSize.width,
                 boxHeight: mediaSize.height,
                 lazyLoadQueue: this.lazyLoadQueue,
@@ -3898,7 +3896,7 @@ export default class ChatBubbles {
                 autoDownload: this.chat.autoDownload,
                 noInfo: message.mid < 0
               });
-              //}
+              // }
             } else {
               const docDiv = await wrapDocument({
                 message: message as Message.message,
@@ -3917,11 +3915,11 @@ export default class ChatBubbles {
               preview.append(docDiv);
               preview.classList.add('preview-with-document');
               quoteTextDiv.classList.add('has-document');
-              //messageDiv.classList.add((webpage.type || 'document') + '-message');
-              //doc = null;
+              // messageDiv.classList.add((webpage.type || 'document') + '-message');
+              // doc = null;
             }
           }
-          
+
           if(previewResizer) {
             quoteTextDiv.append(previewResizer);
           }
@@ -3941,7 +3939,7 @@ export default class ChatBubbles {
 
           const title = wrapWebPageTitle(webPage);
           if(title.textContent) {
-            let titleDiv = document.createElement('div');
+            const titleDiv = document.createElement('div');
             titleDiv.classList.add('title');
             const strong = document.createElement('strong');
             setInnerHTML(strong, title);
@@ -3952,7 +3950,7 @@ export default class ChatBubbles {
 
           const description = wrapWebPageDescription(webPage);
           if(description.textContent) {
-            let textDiv = document.createElement('div');
+            const textDiv = document.createElement('div');
             textDiv.classList.add('text');
             setInnerHTML(textDiv, description);
             quoteTextDiv.append(textDiv);
@@ -3985,62 +3983,62 @@ export default class ChatBubbles {
             }
 
             wrapPhoto({
-              photo, 
-              message, 
-              container: preview, 
-              boxWidth: isSquare ? 0 : mediaSizes.active.webpage.width, 
-              boxHeight: isSquare ? 0 : mediaSizes.active.webpage.height, 
-              isOut, 
-              lazyLoadQueue: this.lazyLoadQueue, 
+              photo,
+              message,
+              container: preview,
+              boxWidth: isSquare ? 0 : mediaSizes.active.webpage.width,
+              boxHeight: isSquare ? 0 : mediaSizes.active.webpage.height,
+              isOut,
+              lazyLoadQueue: this.lazyLoadQueue,
               middleware: this.getMiddleware(),
               loadPromises,
               withoutPreloader: isSquare,
-              autoDownloadSize: this.chat.autoDownload.photo,
+              autoDownloadSize: this.chat.autoDownload.photo
             });
           }
-          
+
           box.append(quote);
-          
-          //bubble.prepend(box);
+
+          // bubble.prepend(box);
           // if(timeSpan.parentElement === messageDiv) {
-            messageDiv.insertBefore(box, timeSpan);
+          messageDiv.insertBefore(box, timeSpan);
           // } else {
           //   messageDiv.append(box);
           // }
-          
-          //this.log('night running', bubble.scrollHeight);
-          
+
+          // this.log('night running', bubble.scrollHeight);
+
           break;
         }
-        
+
         case 'messageMediaDocument': {
           const doc = messageMedia.document as MyDocument;
 
-          //this.log('messageMediaDocument', doc, bubble);
-          
+          // this.log('messageMediaDocument', doc, bubble);
+
           if(doc.sticker/*  && doc.size <= 1e6 */) {
             bubble.classList.add('sticker');
             canHaveTail = false;
             isStandaloneMedia = true;
-            
+
             if(doc.animated) {
               bubble.classList.add('sticker-animated');
             }
-            
+
             const sizes = mediaSizes.active;
             const size = bubble.classList.contains('emoji-big') ? sizes.emojiSticker : (doc.animated ? sizes.animatedSticker : sizes.staticSticker);
             setAttachmentSize(doc, attachmentDiv, size.width, size.height);
-            //let preloader = new ProgressivePreloader(attachmentDiv, false);
+            // let preloader = new ProgressivePreloader(attachmentDiv, false);
             bubbleContainer.style.minWidth = attachmentDiv.style.width;
             bubbleContainer.style.minHeight = attachmentDiv.style.height;
-            //appPhotosManager.setAttachmentSize(doc, bubble);
+            // appPhotosManager.setAttachmentSize(doc, bubble);
             wrapSticker({
-              doc, 
+              doc,
               div: attachmentDiv,
               middleware: this.getMiddleware(),
               lazyLoadQueue: this.lazyLoadQueue,
               group: CHAT_ANIMATION_GROUP,
-              //play: !!message.pending || !multipleRender,
+              // play: !!message.pending || !multipleRender,
               play: true,
               loop: true,
               emoji: bubble.classList.contains('emoji-big') ? messageMessage : undefined,
@@ -4048,7 +4046,7 @@ export default class ChatBubbles {
               loadPromises
             });
           } else if(doc.type === 'video' || doc.type === 'gif' || doc.type === 'round'/*  && doc.size <= 20e6 */) {
-            //this.log('never get free 2', doc);
+            // this.log('never get free 2', doc);
 
             const isRound = doc.type === 'round';
             if(isRound) {
@@ -4062,11 +4060,11 @@ export default class ChatBubbles {
             if(canHideNameIfMedia) {
               bubble.classList.add('hide-name');
             }
-            
+
             bubble.classList.add(isRound ? 'round' : 'video');
             if(albumMustBeRenderedFull && groupedId && albumMids.length !== 1) {
               bubble.classList.add('is-album', 'is-grouped');
-  
+
               wrapAlbum({
                 messages: albumMessages,
                 attachmentDiv,
@@ -4075,18 +4073,18 @@ export default class ChatBubbles {
                 lazyLoadQueue: this.lazyLoadQueue,
                 chat: this.chat,
                 loadPromises,
-                autoDownload: this.chat.autoDownload,
+                autoDownload: this.chat.autoDownload
               });
             } else {
               const withTail = !IS_ANDROID && !IS_APPLE && !isRound && canHaveTail && !withReplies && USE_MEDIA_TAILS;
               if(withTail) bubble.classList.add('with-media-tail');
               wrapVideo({
-                doc, 
-                container: attachmentDiv, 
-                message: message as Message.message, 
+                doc,
+                container: attachmentDiv,
+                message: message as Message.message,
                 boxWidth: mediaSizes.active.regular.width,
-                boxHeight: mediaSizes.active.regular.height, 
-                withTail, 
+                boxHeight: mediaSizes.active.regular.height,
+                withTail,
                 isOut,
                 lazyLoadQueue: this.lazyLoadQueue,
                 middleware: this.getMiddleware(),
@@ -4150,8 +4148,8 @@ export default class ChatBubbles {
           const title = document.createElement('div');
           title.classList.add('bubble-call-title');
 
-          _i18n(title, isOut ? 
-            (action.pFlags.video ? 'CallMessageVideoOutgoing' : 'CallMessageOutgoing') : 
+          _i18n(title, isOut ?
+            (action.pFlags.video ? 'CallMessageVideoOutgoing' : 'CallMessageOutgoing') :
             (action.pFlags.video ? 'CallMessageVideoIncoming' : 'CallMessageIncoming'));
 
           const subtitle = document.createElement('div');
@@ -4192,7 +4190,7 @@ export default class ChatBubbles {
         }
 
         case 'messageMediaContact': {
-          //this.log('wrapping contact', message);
+          // this.log('wrapping contact', message);
 
           const contact = messageMedia;
           const contactDiv = document.createElement('div');
@@ -4237,7 +4235,7 @@ export default class ChatBubbles {
 
         case 'messageMediaPoll': {
           bubble.classList.remove('is-message-empty');
-          
+
           const pollElement = wrapPoll(message);
           messageDiv.prepend(pollElement);
           messageDiv.classList.add('poll-message');
@@ -4269,10 +4267,10 @@ export default class ChatBubbles {
           if(photo) {
             const mediaSize = mediaSizes.active.invoice;
             wrapPhoto({
-              photo, 
+              photo,
               container: attachmentDiv,
-              withTail: false, 
-              isOut, 
+              withTail: false,
+              isOut,
               lazyLoadQueue: this.lazyLoadQueue,
               middleware: this.getMiddleware(),
               loadPromises,
@@ -4291,7 +4289,7 @@ export default class ChatBubbles {
           const titleDiv = document.createElement('div');
           titleDiv.classList.add('bubble-primary-color');
           setInnerHTML(titleDiv, wrapEmojiText(messageMedia.title));
-          
+
           const richText = wrapEmojiText(messageMedia.description);
           messageDiv.prepend(...[titleDiv, !photo && priceEl, richText].filter(Boolean));
 
@@ -4300,7 +4298,7 @@ export default class ChatBubbles {
 
           break;
         }
-        
+
         default:
           attachmentDiv = undefined;
           bubble.classList.remove('is-message-empty');
@@ -4308,7 +4306,7 @@ export default class ChatBubbles {
           this.log.warn('unrecognized media type:', messageMedia._, message);
           break;
       }
-      
+
       if(!processingWebPage && attachmentDiv) {
         bubbleContainer.append(attachmentDiv);
       }
@@ -4327,7 +4325,7 @@ export default class ChatBubbles {
     }
 
     let savedFrom = '';
-    
+
     // const needName = ((peerId.isAnyChat() && (peerId !== message.fromId || our)) && message.fromId !== rootScope.myId) || message.viaBotId;
     const needName = (message.fromId !== rootScope.myId && this.chat.isAnyGroup) || message.viaBotId || (message as Message.message).pFlags.sponsored;
     if(needName || fwdFrom || message.reply_to_mid) { // chat
@@ -4335,21 +4333,21 @@ export default class ChatBubbles {
       let titleVia: typeof title;
 
       const isForwardFromChannel = message.from_id && message.from_id._ === 'peerChannel' && message.fromId === fwdFromId;
-      
-      let isHidden = fwdFrom && !fwdFrom.from_id;
+
+      const isHidden = fwdFrom && !fwdFrom.from_id;
       if(message.viaBotId) {
         titleVia = document.createElement('span');
         titleVia.innerText = '@' + (await this.managers.appUsersManager.getUser(message.viaBotId)).username;
         titleVia.classList.add('peer-title');
         bubble.classList.add('must-have-name');
       }
-      
+
       if(isHidden) {
-        ///////this.log('message to render hidden', message);
+        // /////this.log('message to render hidden', message);
         title = document.createElement('span');
         setInnerHTML(title, wrapEmojiText(fwdFrom.from_name));
         title.classList.add('peer-title');
-        //title = fwdFrom.from_name;
+        // title = fwdFrom.from_name;
         bubble.classList.add('hidden-profile');
       } else {
         title = new PeerTitle({peerId: fwdFromId || message.fromId}).element;
@@ -4363,20 +4361,20 @@ export default class ChatBubbles {
           message
         });
       }
-      
-      //this.log(title);
-      
+
+      // this.log(title);
+
       let nameDiv: HTMLElement;
       if((fwdFromId || fwdFrom)) {
         if(this.peerId !== rootScope.myId && !isForwardFromChannel) {
           bubble.classList.add('forwarded');
         }
-        
+
         if(message.savedFrom) {
           savedFrom = message.savedFrom;
           title.dataset.savedFrom = savedFrom;
         }
-        
+
         nameDiv = document.createElement('div');
         title.dataset.peerId = '' + fwdFromId;
 
@@ -4451,7 +4449,7 @@ export default class ChatBubbles {
       bubble.dataset.savedFrom = savedFrom;
       bubble.classList.add('with-beside-button');
     }
-    
+
     bubble.classList.add(isOut ? 'is-out' : 'is-in');
 
     if(withReplies) {
@@ -4519,7 +4517,7 @@ export default class ChatBubbles {
             reactionsMessage
           });
         }
-        
+
         reactionsElement.append(timeSpan);
 
         if(!documentMessageDiv) {
@@ -4532,7 +4530,7 @@ export default class ChatBubbles {
       } else {
         const timeSpan = Array.from(bubble.querySelectorAll('.time')).pop();
         reactionsElement.append(timeSpan);
-        
+
         messageDiv.append(reactionsElement);
       }
     }
@@ -4548,12 +4546,12 @@ export default class ChatBubbles {
     log('save');
     const scrollSaver = this.createScrollSaver(reverse);
     scrollSaver.save(); // * let's save scroll position by point before the slicing, not after
-    
+
     if(this.getRenderedLength() && !this.chat.setPeerPromise) {
       const viewportSlice = this.getViewportSlice();
       this.deleteViewportSlice(viewportSlice, true);
     }
-    
+
     // scrollSaver.save(); // ! slicing will corrupt scroll position
     // const saved = scrollSaver.getSaved();
     // const hadScroll = saved.scrollHeight !== saved.clientHeight;
@@ -4606,7 +4604,7 @@ export default class ChatBubbles {
         if(firstSlice.isEnd(SliceEnd.Bottom) && (!firstSlice.length || history.includes(firstSlice[0]))) {
           isEnd.bottom = true;
         }
-        
+
         if(lastSlice.isEnd(SliceEnd.Top) && (!lastSlice.length || history.includes(lastSlice[lastSlice.length - 1]))) {
           isEnd.top = true;
         }
@@ -4652,12 +4650,12 @@ export default class ChatBubbles {
     if(!this.container.classList.contains(className)) {
       const isLoading = !this.preloader.detached;
 
-      if(isLoading || 
+      if(isLoading ||
         (
           state ??= {
             scrollHeight: this.scrollable.scrollHeight,
             clientHeight: this.scrollable.container.clientHeight
-          }, 
+          },
           state.scrollHeight !== state.clientHeight
         )
       ) {
@@ -4665,7 +4663,7 @@ export default class ChatBubbles {
           const dateMessage = this.dateMessages[timestamp];
           dateMessage.div.classList.add('is-sticky');
         } */
-        
+
         const middleware = this.getMiddleware();
         const callback = () => {
           if(!middleware()) return;
@@ -4681,7 +4679,7 @@ export default class ChatBubbles {
         return;
       }
     }
-    
+
     this.willScrollOnLoad = undefined;
   }
 
@@ -4696,20 +4694,20 @@ export default class ChatBubbles {
       }
 
       this.chat.setMessageId((history.messages[0] as MyMessage).mid);
-      //console.log('got history date:', history);
+      // console.log('got history date:', history);
     });
   };
 
   public requestHistory(maxId: number, loadCount: number, backLimit: number) {
-    //const middleware = this.getMiddleware();
+    // const middleware = this.getMiddleware();
     if(this.chat.type === 'chat' || this.chat.type === 'discussion') {
       return this.managers.acknowledged.appMessagesManager.getHistory(this.peerId, maxId, loadCount, backLimit, this.chat.threadId);
     } else if(this.chat.type === 'pinned') {
       return this.managers.acknowledged.appMessagesManager.getSearch({
-        peerId: this.peerId, 
-        inputFilter: {_: 'inputMessagesFilterPinned'}, 
-        maxId, 
-        limit: loadCount, 
+        peerId: this.peerId,
+        inputFilter: {_: 'inputMessagesFilterPinned'},
+        maxId,
+        limit: loadCount,
         backLimit
       }).then((ackedResult) => {
         return {
@@ -4772,10 +4770,10 @@ export default class ChatBubbles {
     const topIds = sortedMids.slice(sortedMids.findIndex((mid) => targetMid > mid));
     const middleIds = isAdditionRender ? [] : [targetMid];
     const bottomIds = isAdditionRender ? [] : sortedMids.slice(0, sortedMids.findIndex((mid) => targetMid >= mid)).reverse();
-    
+
     if(DEBUG) {
-      log('targeting mid:', targetMid, maxId, additionMsgId, 
-        topIds.map((m) => getServerMessageId(m)), 
+      log('targeting mid:', targetMid, maxId, additionMsgId,
+        topIds.map((m) => getServerMessageId(m)),
         bottomIds.map((m) => getServerMessageId(m)));
     }
 
@@ -4795,8 +4793,8 @@ export default class ChatBubbles {
         }
 
         lastMsDelay = ((idx + offsetIndex) || 0.1) * delay;
-        //lastMsDelay = (idx + offsetIndex) * delay;
-        //lastMsDelay = (idx || 0.1) * 1000;
+        // lastMsDelay = (idx + offsetIndex) * delay;
+        // lastMsDelay = (idx || 0.1) * 1000;
 
         const contentWrapper = bubble.lastElementChild as HTMLElement;
         const elementsToAnimate: HTMLElement[] = [contentWrapper];
@@ -4809,7 +4807,7 @@ export default class ChatBubbles {
           element.classList.add('zoom-fade', 'can-zoom-fade');
           element.style.transitionDelay = lastMsDelay + 'ms';
         });
-        
+
         if(idx === (mids.length - 1)) {
           const onTransitionEnd = (e: TransitionEvent) => {
             if(e.target !== contentWrapper) {
@@ -4856,7 +4854,7 @@ export default class ChatBubbles {
       promise = Promise.all(promises);
 
       dispatchHeavyAnimationEvent(promise, Math.max(...delays) + 200) // * 200 - transition time
-      .then(() => { 
+      .then(() => {
         fastRaf(() => {
           setBubbles.forEach((element) => {
             element.style.transitionDelay = '';
@@ -4866,7 +4864,7 @@ export default class ChatBubbles {
           this.chatInner.classList.remove('zoom-fading');
         });
 
-        // ! в хроме, каким-то образом из-за zoom-fade класса начинает прыгать скролл при подгрузке сообщений вверх, 
+        // ! в хроме, каким-то образом из-за zoom-fade класса начинает прыгать скролл при подгрузке сообщений вверх,
         // ! т.е. скролл не ставится, так же, как в сафари при translateZ на блок выше scrollable
         // if(!IS_SAFARI) {
         //   this.needReflowScroll = true;
@@ -4878,15 +4876,15 @@ export default class ChatBubbles {
   }
 
   private async renderEmptyPlaceholder(
-    type: 'group' | 'saved' | 'noMessages' | 'noScheduledMessages' | 'greeting' | 'restricted', 
-    bubble: HTMLElement, 
-    message: any, 
+    type: 'group' | 'saved' | 'noMessages' | 'noScheduledMessages' | 'greeting' | 'restricted',
+    bubble: HTMLElement,
+    message: any,
     elements: (Node | string)[]
   ) {
     const BASE_CLASS = 'empty-bubble-placeholder';
     bubble.classList.add(BASE_CLASS, BASE_CLASS + '-' + type);
 
-    let title: HTMLElement; 
+    let title: HTMLElement;
     if(type === 'group') title = i18n('GroupEmptyTitle1');
     else if(type === 'saved') title = i18n('ChatYourSelfTitle');
     else if(type === 'noMessages' || type === 'greeting') title = i18n('NoMessages');
@@ -4925,19 +4923,19 @@ export default class ChatBubbles {
       stickerDiv.classList.add(BASE_CLASS + '-sticker');
 
       const middleware = this.getMiddleware();
-      
+
       await this.managers.appStickersManager.getGreetingSticker().then(async(doc) => {
         if(!middleware()) return;
 
         const loadPromises: Promise<any>[] = [];
         await wrapSticker({
-          doc, 
+          doc,
           // doc: appDocsManager.getDoc("5431607541660389336"), // cubigator mockup
           div: stickerDiv,
           middleware,
           lazyLoadQueue: this.lazyLoadQueue,
           group: CHAT_ANIMATION_GROUP,
-          //play: !!message.pending || !multipleRender,
+          // play: !!message.pending || !multipleRender,
           play: true,
           loop: true,
           withThumb: true,
@@ -4953,9 +4951,9 @@ export default class ChatBubbles {
       });
 
       // this.renderMessagesQueue({
-      //   message, 
-      //   bubble, 
-      //   reverse: false, 
+      //   message,
+      //   bubble,
+      //   reverse: false,
       //   promises: [loadPromise]
       // });
 
@@ -4971,7 +4969,7 @@ export default class ChatBubbles {
           return span;
         })
       );
-  
+
       if(type === 'group') {
         listElements.forEach((elem) => {
           const i = document.createElement('span');
@@ -5053,7 +5051,7 @@ export default class ChatBubbles {
               _: INTERNAL_LINK_TYPE.JOIN_CHAT,
               invite: sponsoredMessage.chat_invite_hash
             };
-            
+
             this.chat.appImManager.processInternalLink(link);
           };
         } else {
@@ -5111,7 +5109,7 @@ export default class ChatBubbles {
       if(noTransition) {
         const setOn = bubble.firstElementChild;
         setOn.classList.add('no-transition');
-        
+
         if(this.chat.setPeerPromise) {
           this.chat.setPeerPromise.catch(noop).finally(() => {
             setOn.classList.remove('no-transition');
@@ -5154,7 +5152,7 @@ export default class ChatBubbles {
       }
 
       // if(!isSponsored) {
-        this.emptyPlaceholderBubble = bubble;
+      this.emptyPlaceholderBubble = bubble;
       // }
 
       return result;
@@ -5163,7 +5161,7 @@ export default class ChatBubbles {
 
   private generateLocalMessageId(addOffset = 0) {
     // const INCREMENT = 0x10;
-    let offset = (this.chat.type === 'scheduled' ? -1 : 0) + addOffset;
+    const offset = (this.chat.type === 'scheduled' ? -1 : 0) + addOffset;
     // offset = generateMessageId(offset);
     // id: -Math.abs(+this.peerId * INCREMENT + offset),
     const id = -Math.abs(offset);
@@ -5203,7 +5201,7 @@ export default class ChatBubbles {
   public getViewportSlice() {
     // this.log.trace('viewport slice');
     return getViewportSlice({
-      overflowElement: this.scrollable.container, 
+      overflowElement: this.scrollable.container,
       selector: '.bubbles-date-group .bubble:not(.is-date)',
       extraSize: Math.max(700, windowSize.height) * 2
     });
@@ -5237,7 +5235,7 @@ export default class ChatBubbles {
       scrollSaver = this.createScrollSaver(!!invisibleTop.length);
       scrollSaver.save();
     }
-    
+
     this.deleteMessagesByIds(mids, false, true);
 
     if(scrollSaver) {
@@ -5282,7 +5280,7 @@ export default class ChatBubbles {
       if(side === 'bottom' && await this.managers.appPeersManager.isBroadcast(this.peerId)/*  && false */) {
         this.toggleSponsoredMessage(value);
       }
-  
+
       if(side === 'top' && value && await this.managers.appPeersManager.isBot(this.peerId)) {
         return this.renderBotPlaceholder();
       }
@@ -5315,7 +5313,7 @@ export default class ChatBubbles {
           message.pFlags.sponsored = true;
           message.sponsoredMessage = sponsoredMessage;
         }, SPONSORED_MESSAGE_ID_OFFSET);
-  
+
         return Promise.all([
           messagePromise,
           this.getHistoryTopPromise, // wait for top load and execute rendering after or with it
@@ -5338,7 +5336,7 @@ export default class ChatBubbles {
 
   private async renderBotPlaceholder() {
     const _log = this.log.bindPrefix('bot placeholder');
-      
+
     const middleware = this.getMiddleware();
     const result = await this.managers.acknowledged.appProfileManager.getProfile(this.peerId.toUserId());
     _log('getting profile, cached:', result.cached);
@@ -5379,16 +5377,16 @@ export default class ChatBubbles {
   }
 
   public async checkIfEmptyPlaceholderNeeded() {
-    if(this.scrollable.loadedAll.top && 
-      this.scrollable.loadedAll.bottom && 
-      this.emptyPlaceholderBubble === undefined && 
+    if(this.scrollable.loadedAll.top &&
+      this.scrollable.loadedAll.bottom &&
+      this.emptyPlaceholderBubble === undefined &&
       (
-        this.chat.isRestricted || 
-        !(await this.chat.getHistoryStorage()).count || 
+        this.chat.isRestricted ||
+        !(await this.chat.getHistoryStorage()).count ||
         (
-          !Object.keys(this.bubbles).length || 
+          !Object.keys(this.bubbles).length ||
           // ! WARNING ! ! ! ! ! ! REPLACE LINE ABOVE WITH THESE
-          Object.keys(this.bubbles).length && 
+          Object.keys(this.bubbles).length &&
           !this.getRenderedLength()
         ) ||
         (this.chat.type === 'scheduled' && !Object.keys(this.bubbles).length)
@@ -5419,21 +5417,21 @@ export default class ChatBubbles {
 
       if(!justLoad) {
         // preload more
-        //if(!isFirstMessageRender) {
-          if(this.chat.type === 'chat'/*  || this.chat.type === 'discussion' */) {
-            /* const storage = this.appMessagesManager.getHistoryStorage(peerId, this.chat.threadId);
+        // if(!isFirstMessageRender) {
+        if(this.chat.type === 'chat'/*  || this.chat.type === 'discussion' */) {
+          /* const storage = this.appMessagesManager.getHistoryStorage(peerId, this.chat.threadId);
             const isMaxIdInHistory = storage.history.indexOf(maxId) !== -1;
             if(isMaxIdInHistory || true) { // * otherwise it is a search or jump */
-              setTimeout(() => {
-                if(reverse) {
-                  this.loadMoreHistory(true, true);
-                } else {
-                  this.loadMoreHistory(false, true);
-                }
-              }, 0);
-            //}
-          }
-        //}
+          setTimeout(() => {
+            if(reverse) {
+              this.loadMoreHistory(true, true);
+            } else {
+              this.loadMoreHistory(false, true);
+            }
+          }, 0);
+          // }
+        }
+        // }
       }
     });
 
@@ -5449,23 +5447,23 @@ export default class ChatBubbles {
    * @param justLoad do not render
    */
   public async getHistory(
-    maxId = 0, 
-    reverse = false, 
-    isBackLimit = false, 
-    additionMsgId = 0, 
+    maxId = 0,
+    reverse = false,
+    isBackLimit = false,
+    additionMsgId = 0,
     justLoad = false,
     middleware?: () => boolean
   ): Promise<{cached: boolean, promise: Promise<void>, waitPromise: Promise<any>}> {
     const peerId = this.peerId;
 
     const isBroadcast = await this.managers.appPeersManager.isBroadcast(peerId);
-    //console.time('appImManager call getHistory');
+    // console.time('appImManager call getHistory');
     const pageCount = Math.min(30, windowSize.height / 40/*  * 1.25 */ | 0);
-    //const loadCount = Object.keys(this.bubbles).length > 0 ? 50 : pageCount;
+    // const loadCount = Object.keys(this.bubbles).length > 0 ? 50 : pageCount;
     const realLoadCount = isBroadcast ? 20 : (Object.keys(this.bubbles).length > 0 ? Math.max(35, pageCount) : pageCount);
-    //const realLoadCount = pageCount;//const realLoadCount = 50;
+    // const realLoadCount = pageCount;//const realLoadCount = 50;
     let loadCount = realLoadCount;
-    
+
     /* if(TEST_SCROLL) {
       //loadCount = 1;
       if(Object.keys(this.bubbles).length > 0)
@@ -5480,16 +5478,16 @@ export default class ChatBubbles {
         return {cached: false, promise: Promise.resolve(), waitPromise: Promise.resolve()};
       }
     }
-    
-    ////console.time('render history total');
-    
+
+    // //console.time('render history total');
+
     let backLimit = 0;
     if(isBackLimit) {
       backLimit = loadCount;
 
       if(!reverse) { // if not jump
         loadCount = 0;
-        //maxId = this.appMessagesManager.incrementMessageId(maxId, 1);
+        // maxId = this.appMessagesManager.incrementMessageId(maxId, 1);
       }
     }
 
@@ -5515,13 +5513,13 @@ export default class ChatBubbles {
       }
     }
 
-    /* const result = additionMsgID ? 
-      {history: [additionMsgID]} : 
+    /* const result = additionMsgID ?
+      {history: [additionMsgID]} :
       appMessagesManager.getHistory(this.peerId, maxId, loadCount, backLimit); */
     let result: AckedResult<MyHistoryResult> = await this.requestHistory(maxId, loadCount, backLimit) as any;
     let resultPromise: typeof result['result'];
 
-    //const isFirstMessageRender = !!additionMsgID && result.cached && !appMessagesManager.getMessage(additionMsgID).grouped_id;
+    // const isFirstMessageRender = !!additionMsgID && result.cached && !appMessagesManager.getMessage(additionMsgID).grouped_id;
     const isAdditionRender = additionMsgIds?.length && !result.cached;
     const isFirstMessageRender = (this.isFirstLoad && backLimit && !result.cached) || isAdditionRender;
     if(isAdditionRender) {
@@ -5532,7 +5530,7 @@ export default class ChatBubbles {
         result: Promise.resolve({history: additionMsgIds})
       };
 
-      //additionMsgID = 0;
+      // additionMsgID = 0;
     }
 
     this.isFirstLoad = false;
@@ -5585,7 +5583,7 @@ export default class ChatBubbles {
         this.log.error('getHistory error:', err);
         throw err;
       });
-      
+
       return promise;
     };
 
@@ -5612,7 +5610,7 @@ export default class ChatBubbles {
         if(--times) return;
 
         this.messagesQueueOnRenderAdditional = undefined;
-        
+
         const promise = this.animateAsLadder(additionMsgId, additionMsgIds, isAdditionRender, backLimit, maxId);
         promise.then(() => {
           setTimeout(() => { // preload messages
@@ -5651,7 +5649,7 @@ export default class ChatBubbles {
     .find((i) => i > readMaxId);
 
     if(readMaxId && this.bubbles[readMaxId]) {
-      let bubble = this.bubbles[readMaxId];
+      const bubble = this.bubbles[readMaxId];
       if(this.firstUnreadBubble && this.firstUnreadBubble !== bubble) {
         this.firstUnreadBubble.classList.remove('is-first-unread');
         this.firstUnreadBubble = null;

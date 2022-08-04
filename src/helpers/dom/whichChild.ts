@@ -8,7 +8,7 @@ export default function whichChild(elem: Node) {
   if(!elem.parentNode) {
     return -1;
   }
-  
+
   let i = 0;
   // @ts-ignore
   while((elem = elem.previousElementSibling) !== null) ++i;

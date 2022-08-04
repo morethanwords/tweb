@@ -2,14 +2,14 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import { MessageEntity } from "../../layer";
+import {MessageEntity} from '../../layer';
 
 export type MarkdownType = 'bold' | 'italic' | 'underline' | 'strikethrough' | 'monospace' | 'link' | 'mentionName' | 'spoiler';
 export type MarkdownTag = {
@@ -86,7 +86,7 @@ const BLOCK_TAG_NAMES = new Set([
 
 export default function getRichElementValue(node: HTMLElement, lines: string[], line: string[], selNode?: Node, selOffset?: number, entities?: MessageEntity[], offset = {offset: 0}) {
   if(node.nodeType === 3) { // TEXT
-    let nodeValue = node.nodeValue;
+    const nodeValue = node.nodeValue;
 
     /* const tabulation = node.parentElement?.closest(tabulationMatch + ', [contenteditable]');
     if(tabulation?.getAttribute('contenteditable') === null) {
@@ -104,7 +104,7 @@ export default function getRichElementValue(node: HTMLElement, lines: string[], 
     if(entities && nodeValue.length) {
       if(node.parentNode) {
         const parentElement = node.parentElement;
-        
+
         // let closestTag: MarkdownTag, closestElementByTag: Element, closestDepth = Infinity;
         for(const type in markdownTags) {
           const tag = markdownTags[type as MarkdownType];

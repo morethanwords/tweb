@@ -2,16 +2,16 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type { AccountPassword, AccountUpdatePasswordSettings, InputCheckPasswordSRP, PasswordKdfAlgo } from '../../layer';
+import type {AccountPassword, AccountUpdatePasswordSettings, InputCheckPasswordSRP, PasswordKdfAlgo} from '../../layer';
 import randomize from '../../helpers/array/randomize';
-import { AppManager } from '../appManagers/manager';
+import {AppManager} from '../appManagers/manager';
 
 export class PasswordManager extends AppManager {
   public getState(): Promise<AccountPassword> {
@@ -26,8 +26,8 @@ export class PasswordManager extends AppManager {
     newPassword?: string,
     currentPassword?: string
   } = {}) {
-    //state = Object.assign({}, state);
-    //state.new_algo = Object.assign({}, state.new_algo);
+    // state = Object.assign({}, state);
+    // state.new_algo = Object.assign({}, state.new_algo);
 
     return this.getState().then((state) => {
       let currentHashPromise: Promise<InputCheckPasswordSRP>;
@@ -40,7 +40,7 @@ export class PasswordManager extends AppManager {
           email: settings.email
         }
       };
-  
+
       if(settings.currentPassword) {
         currentHashPromise = this.cryptoWorker.invokeCrypto('computeSRP', settings.currentPassword, state, false) as any;
       } else {
@@ -48,25 +48,25 @@ export class PasswordManager extends AppManager {
           _: 'inputCheckPasswordEmpty'
         });
       }
-  
+
       // * https://core.telegram.org/api/srp#setting-a-new-2fa-password, but still there is a mistake, TDesktop passes 'new_algo' everytime
       const newAlgo = state.new_algo as PasswordKdfAlgo.passwordKdfAlgoSHA256SHA256PBKDF2HMACSHA512iter100000SHA256ModPow;
       const salt1 = new Uint8Array(newAlgo.salt1.length + 32);
       randomize(salt1);
       salt1.set(newAlgo.salt1, 0);
       newAlgo.salt1 = salt1;
-  
+
       if(settings.newPassword) {
         newHashPromise = this.cryptoWorker.invokeCrypto('computeSRP', settings.newPassword, state, true) as any;
       } else {
         newHashPromise = Promise.resolve(new Uint8Array());
       }
-  
+
       return Promise.all([currentHashPromise, newHashPromise]).then((hashes) => {
         params.password = hashes[0];
         params.new_settings.new_algo = newAlgo;
         params.new_settings.new_password_hash = hashes[1];
-  
+
         return this.apiManager.invokeApi('account.updatePasswordSettings', params);
       });
     });
@@ -78,7 +78,7 @@ export class PasswordManager extends AppManager {
 
   public check(password: string, state: AccountPassword, options: any = {}) {
     return this.getInputCheckPassword(password, state).then((inputCheckPassword) => {
-      //console.log('SRP', inputCheckPassword);
+      // console.log('SRP', inputCheckPassword);
       return this.apiManager.invokeApi('auth.checkPassword', {
         password: inputCheckPassword as InputCheckPasswordSRP.inputCheckPasswordSRP
       }, options).then((auth) => {

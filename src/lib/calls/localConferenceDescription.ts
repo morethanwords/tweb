@@ -2,7 +2,7 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/evgeny-nadymov/telegram-react
  * Copyright (C) 2018 Evgeny Nadymov
@@ -11,9 +11,9 @@
 
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import safeAssign from '../../helpers/object/safeAssign';
-import { GroupCallParticipantVideoSourceGroup } from '../../layer';
-import { fixMediaLineType, SDPBuilder, WebRTCLineType, WEBRTC_MEDIA_PORT } from './sdpBuilder';
-import { AudioCodec, GroupCallConnectionTransport, Ssrc, UpdateGroupCallConnectionData, VideoCodec } from './types';
+import {GroupCallParticipantVideoSourceGroup} from '../../layer';
+import {fixMediaLineType, SDPBuilder, WebRTCLineType, WEBRTC_MEDIA_PORT} from './sdpBuilder';
+import {AudioCodec, GroupCallConnectionTransport, Ssrc, UpdateGroupCallConnectionData, VideoCodec} from './types';
 
 export class ConferenceEntry {
   public source: number;
@@ -24,7 +24,7 @@ export class ConferenceEntry {
   public port: string;
   public endpoint: string;
   public peerId: PeerId;
-  
+
   public sendEntry: ConferenceEntry;
   public recvEntry: ConferenceEntry;
 
@@ -84,12 +84,12 @@ export function generateSsrc(type: WebRTCLineType, source: number | GroupCallPar
     sourceGroups = source;
     source = sourceGroups[0].sources[0];
   }
-  
+
   return {
     endpoint,
     type,
     source,
-    sourceGroups,
+    sourceGroups
   };
 }
 
@@ -100,13 +100,13 @@ export default class LocalConferenceDescription implements UpdateGroupCallConnec
   public readonly audio?: AudioCodec;
   public readonly video: VideoCodec;
   public readonly screencast?: VideoCodec;
-  
+
   private maxSeenId: number;
   public readonly entries: ConferenceEntry[];
   private entriesByMid: Map<ConferenceEntry['mid'], ConferenceEntry>;
   private entriesBySource: Map<ConferenceEntry['source'], ConferenceEntry>;
   private entriesByPeerId: Map<ConferenceEntry['peerId'], Set<ConferenceEntry>>;
-  
+
   constructor(public connection: RTCPeerConnection) {
     this.sessionId = '' + Date.now();
     // this.ssrcs = [];
@@ -157,7 +157,7 @@ export default class LocalConferenceDescription implements UpdateGroupCallConnec
 
     set.add(entry);
   }
-  
+
   public findEntry(verify: Parameters<LocalConferenceDescription['entries']['find']>[0]) {
     return this.entries.find(verify);
   }
@@ -174,7 +174,7 @@ export default class LocalConferenceDescription implements UpdateGroupCallConnec
 
     return entry;
   }
-  
+
   public getEntryByMid(mid: ConferenceEntry['mid']) {
     return this.entriesByMid.get(mid);
   }

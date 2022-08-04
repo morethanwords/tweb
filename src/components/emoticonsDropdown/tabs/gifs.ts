@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import emoticonsDropdown, { EmoticonsDropdown, EmoticonsTab, EMOTICONSSTICKERGROUP } from "..";
-import GifsMasonry from "../../gifsMasonry";
-import Scrollable from "../../scrollable";
-import { putPreloader } from "../../putPreloader";
-import { AppManagers } from "../../../lib/appManagers/managers";
+import emoticonsDropdown, {EmoticonsDropdown, EmoticonsTab, EMOTICONSSTICKERGROUP} from '..';
+import GifsMasonry from '../../gifsMasonry';
+import Scrollable from '../../scrollable';
+import {putPreloader} from '../../putPreloader';
+import {AppManagers} from '../../../lib/appManagers/managers';
 
 export default class GifsTab implements EmoticonsTab {
   private content: HTMLElement;

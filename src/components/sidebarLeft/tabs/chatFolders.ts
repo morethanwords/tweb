@@ -4,25 +4,25 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { MyDialogFilter } from "../../../lib/storages/filters";
-import type { DialogFilterSuggested } from "../../../layer";
-import type _rootScope from "../../../lib/rootScope";
-import { SliderSuperTab } from "../../slider";
-import lottieLoader, { LottieLoader } from "../../../lib/rlottie/lottieLoader";
-import { toast } from "../../toast";
-import Button from "../../button";
-import rootScope from "../../../lib/rootScope";
-import AppEditFolderTab from "./editFolder";
-import Row from "../../row";
-import { SettingSection } from "..";
-import { i18n, i18n_, LangPackKey, join } from "../../../lib/langPack";
-import cancelEvent from "../../../helpers/dom/cancelEvent";
-import { attachClickEvent } from "../../../helpers/dom/clickEvent";
-import positionElementByIndex from "../../../helpers/dom/positionElementByIndex";
-import RLottiePlayer from "../../../lib/rlottie/rlottiePlayer";
-import wrapEmojiText from "../../../lib/richTextProcessor/wrapEmojiText";
-import { FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS } from "../../../lib/mtproto/mtproto_config";
-import replaceContent from "../../../helpers/dom/replaceContent";
+import type {MyDialogFilter} from '../../../lib/storages/filters';
+import type {DialogFilterSuggested} from '../../../layer';
+import type _rootScope from '../../../lib/rootScope';
+import {SliderSuperTab} from '../../slider';
+import lottieLoader, {LottieLoader} from '../../../lib/rlottie/lottieLoader';
+import {toast} from '../../toast';
+import Button from '../../button';
+import rootScope from '../../../lib/rootScope';
+import AppEditFolderTab from './editFolder';
+import Row from '../../row';
+import {SettingSection} from '..';
+import {i18n, i18n_, LangPackKey, join} from '../../../lib/langPack';
+import cancelEvent from '../../../helpers/dom/cancelEvent';
+import {attachClickEvent} from '../../../helpers/dom/clickEvent';
+import positionElementByIndex from '../../../helpers/dom/positionElementByIndex';
+import RLottiePlayer from '../../../lib/rlottie/rlottiePlayer';
+import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
+import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '../../../lib/mtproto/mtproto_config';
+import replaceContent from '../../../helpers/dom/replaceContent';
 
 export default class AppChatFoldersTab extends SliderSuperTab {
   private createFolderBtn: HTMLElement;
@@ -35,25 +35,25 @@ export default class AppChatFoldersTab extends SliderSuperTab {
   private loadAnimationPromise: ReturnType<LottieLoader['waitForFirstFrame']>;
 
   private async renderFolder(
-    dialogFilter: DialogFilterSuggested | MyDialogFilter, 
-    container?: HTMLElement, 
+    dialogFilter: DialogFilterSuggested | MyDialogFilter,
+    container?: HTMLElement,
     row?: Row,
     append?: boolean
   ) {
     let filter: MyDialogFilter;
     let description = '';
-    let d: HTMLElement[] = [];
+    const d: HTMLElement[] = [];
     if(dialogFilter._ === 'dialogFilterSuggested') {
       filter = dialogFilter.filter as MyDialogFilter;
       description = dialogFilter.description;
     } else {
       filter = dialogFilter;
 
-      let enabledFilters = Object.keys(filter.pFlags).length;
+      const enabledFilters = Object.keys(filter.pFlags).length;
       /* (['include_peers', 'exclude_peers'] as ['include_peers', 'exclude_peers']).forEach((key) => {
         enabledFilters += +!!filter[key].length;
       }); */
-      
+
       if(enabledFilters === 1) {
         const pFlags = filter.pFlags;
         let k: LangPackKey;
@@ -67,7 +67,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
           d.push(i18n(k));
         }
       }
-      
+
       if(!d.length) {
         const folder = await this.managers.dialogsStorage.getFolderDialogs(filter.id);
         let chats = 0, channels = 0, groups = 0;
@@ -83,7 +83,6 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       }
     }
 
-    let div: HTMLElement;
     if(!row) {
       row = new Row({
         title: filter.id === FOLDER_ID_ALL ? i18n('FilterAllChats') : wrapEmojiText(filter.title),
@@ -94,7 +93,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       if(d.length) {
         row.subtitle.append(...join(d));
       }
-  
+
       if(dialogFilter._ === 'dialogFilter') {
         const filterId = filter.id;
         if(!this.filtersRendered[filter.id] && filter.id !== FOLDER_ID_ALL) {
@@ -114,18 +113,18 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       row.subtitle.append(...join(d));
     }
 
-    div = row.container;
+    const div = row.container;
 
     if(append) {
       const localId = (filter as MyDialogFilter).localId;
       if(localId !== undefined) {
-         // ! header will be at 0 index
+        // ! header will be at 0 index
         positionElementByIndex(div, div.parentElement || container, localId);
       } else if(container) {
         container.append(div);
       }
     }
-    
+
     return div;
   }
 
@@ -137,11 +136,11 @@ export default class AppChatFoldersTab extends SliderSuperTab {
 
     this.stickerContainer = document.createElement('div');
     this.stickerContainer.classList.add('sticker-container');
-    
+
     const caption = document.createElement('div');
     caption.classList.add('caption');
     i18n_({element: caption, key: 'ChatList.Filter.Header'});
-    
+
     this.createFolderBtn = Button('btn-primary btn-color-primary btn-control tgico', {
       text: 'ChatList.Filter.NewTitle',
       icon: 'add'
@@ -203,7 +202,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       if(filterRendered) {
         /* for(const suggested of this.suggestedFilters) {
           if(deepEqual(suggested.filter, filter)) {
-            
+
           }
         } */
         this.getSuggestedFilters();
@@ -219,7 +218,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       order.filter((filterId) => !!this.filtersRendered[filterId]).forEach((filterId, idx) => {
         const filterRendered = this.filtersRendered[filterId];
         const container = filterRendered.container;
-        positionElementByIndex(container, container.parentElement, idx + 1); // ! + 1 due to header 
+        positionElementByIndex(container, container.parentElement, idx + 1); // ! + 1 due to header
       });
     });
 

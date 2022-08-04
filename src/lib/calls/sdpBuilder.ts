@@ -2,18 +2,18 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/evgeny-nadymov/telegram-react
  * Copyright (C) 2018 Evgeny Nadymov
  * https://github.com/evgeny-nadymov/telegram-react/blob/master/LICENSE
  */
 
-import { IS_FIREFOX } from '../../environment/userAgent';
-import LocalConferenceDescription, { ConferenceEntry } from './localConferenceDescription';
+import {IS_FIREFOX} from '../../environment/userAgent';
+import LocalConferenceDescription, {ConferenceEntry} from './localConferenceDescription';
 import StringFromLineBuilder from './stringFromLineBuilder';
-import { GroupCallConnectionTransport, PayloadType, UpdateGroupCallConnectionData } from './types';
-import { fromTelegramSource } from './utils';
+import {GroupCallConnectionTransport, PayloadType, UpdateGroupCallConnectionData} from './types';
+import {fromTelegramSource} from './utils';
 
 // screencast is for Peer-to-Peer only
 export type WebRTCLineTypeTrue = 'video' | 'audio' | 'application';
@@ -74,7 +74,7 @@ export class SDPBuilder extends StringFromLineBuilder {
       'a=max-message-size:262144'
     );
   } */
-  
+
   public addHeader(sId: string, bundleMids: string[]) {
     const bundle = bundleMids.join(' ');
     return this.add(
@@ -89,7 +89,7 @@ export class SDPBuilder extends StringFromLineBuilder {
       'a=msid-semantic:WMS *'
     );
   }
-  
+
   public addTransport(transport: GroupCallConnectionTransport, skipCandidates?: boolean) {
     this.add(
       `a=ice-ufrag:${transport.ufrag}`,
@@ -154,13 +154,13 @@ export class SDPBuilder extends StringFromLineBuilder {
     } else {
       addSource(source);
     }
-  
+
     return this;
   }
 
   public addSsrcEntry(entry: ConferenceEntry, data: ConferenceData, isAnswer?: boolean) {
     const add = (...x: string[]) => this.add(...x);
-    
+
     const {type, mid, direction, port} = entry;
     const transport = data.transport;
 
@@ -180,13 +180,13 @@ export class SDPBuilder extends StringFromLineBuilder {
         `a=mid:${mid}`
       );
     }
-    
+
     const payloadTypes = !isApplication ? codec['payload-types'] : [{id: 5000} as PayloadType];
     const ids = payloadTypes.map((type) => type.id);
     add(
       generateMediaFirstLine(type, port, ids),
       'c=IN IP4 0.0.0.0',
-      `a=rtcp:${port} IN IP4 0.0.0.0`,
+      `a=rtcp:${port} IN IP4 0.0.0.0`
     );
 
     if(transport['rtcp-mux']) {
@@ -205,7 +205,7 @@ export class SDPBuilder extends StringFromLineBuilder {
 
     // a=bundle-only
     add(`a=${setDirection}`);
-    
+
     // this.addTransport(transport, isAnswer);
     this.addTransport(transport);
 
@@ -216,10 +216,10 @@ export class SDPBuilder extends StringFromLineBuilder {
           add(`a=extmap:${hdrext.id} ${hdrext.uri}`);
         });
       }
-  
+
       payloadTypes.forEach((type) => {
         add(`a=rtpmap:${type.id} ${type.name}/${type.clockrate}${type.channels && type.channels > 1 ? `/${type.channels}` : ''}`);
-  
+
         const parameters = type.parameters;
         if(Array.isArray(parameters)) {
           if(parameters.length) {
@@ -232,7 +232,7 @@ export class SDPBuilder extends StringFromLineBuilder {
           }
           add(`a=fmtp:${type.id} ${p.join(';')}`);
         }
-  
+
         const fbs = type['rtcp-fbs'];
         if(fbs?.length) {
           fbs.forEach((fb) => {
@@ -250,12 +250,12 @@ export class SDPBuilder extends StringFromLineBuilder {
 
     return this;
   }
-  
+
   public addConference(options: {
-    conference: LocalConferenceDescription, 
+    conference: LocalConferenceDescription,
     bundle: string[],
     entries: ConferenceEntry[],
-    isAnswer?: boolean, 
+    isAnswer?: boolean,
   }) {
     const {conference, entries, bundle, isAnswer} = options;
     this.addHeader(conference.sessionId, bundle);
@@ -271,7 +271,7 @@ export class SDPBuilder extends StringFromLineBuilder {
 
     return this;
   }
-  
+
   public static fromConference(options: Parameters<SDPBuilder['addConference']>[0]) {
     return new SDPBuilder().addConference(options).finalize();
   }

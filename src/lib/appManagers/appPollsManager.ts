@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import copy from "../../helpers/object/copy";
-import { InputMedia, Message, MessageEntity, MessageMedia, Poll, PollResults } from "../../layer";
-import { logger, LogTypes } from "../logger";
-import parseMarkdown from "../richTextProcessor/parseMarkdown";
-import { AppManager } from "./manager";
-import getServerMessageId from "./utils/messageId/getServerMessageId";
+import copy from '../../helpers/object/copy';
+import {InputMedia, Message, MessageEntity, MessageMedia, Poll, PollResults} from '../../layer';
+import {logger, LogTypes} from '../logger';
+import parseMarkdown from '../richTextProcessor/parseMarkdown';
+import {AppManager} from './manager';
+import getServerMessageId from './utils/messageId/getServerMessageId';
 
 export class AppPollsManager extends AppManager {
   public polls: {[id: string]: Poll} = {};
@@ -32,7 +32,7 @@ export class AppPollsManager extends AppManager {
         const ret = this.savePoll(poll, results as any);
         poll = ret.poll;
         results = ret.results;
-        
+
         this.rootScope.dispatchEvent('poll_update', {poll, results: results as any});
       }
     });
@@ -80,7 +80,7 @@ export class AppPollsManager extends AppManager {
 
   public getPoll(pollId: string): {poll: Poll, results: PollResults} {
     return {
-      poll: this.polls[pollId], 
+      poll: this.polls[pollId],
       results: this.results[pollId]
     };
   }
@@ -108,7 +108,7 @@ export class AppPollsManager extends AppManager {
   public updatePollToMessage(message: Message.message, add: boolean) {
     const {id} = (message.media as MessageMedia.messageMediaPoll).poll;
     let set = this.pollToMessages[id];
-    
+
     if(!add && !set) {
       return;
     }
@@ -134,7 +134,7 @@ export class AppPollsManager extends AppManager {
     const options: Uint8Array[] = optionIds.map((index) => {
       return poll.answers[index].option;
     });
-    
+
     const messageId = message.mid;
     const peerId = message.peerId;
     const inputPeer = this.appPeersManager.getInputPeerById(peerId);
@@ -186,7 +186,7 @@ export class AppPollsManager extends AppManager {
 
   public stopPoll(message: any) {
     const poll: Poll = message.media.poll;
-    
+
     if(poll.pFlags.closed) return Promise.resolve();
 
     const newPoll = copy(poll);
@@ -194,7 +194,7 @@ export class AppPollsManager extends AppManager {
     return this.appMessagesManager.editMessage(message, undefined, {
       newMedia: this.getInputMediaPoll(newPoll)
     }).then(() => {
-      //console.log('stopped poll');
+      // console.log('stopped poll');
     }, err => {
       this.log.error('stopPoll error:', err);
     });

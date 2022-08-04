@@ -4,21 +4,21 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import Modes from "../../../config/modes";
-import { logger, LogTypes } from "../../logger";
-import MTPNetworker from "../networker";
-import Obfuscation from "./obfuscation";
-import MTTransport, { MTConnection, MTConnectionConstructable } from "./transport";
+import Modes from '../../../config/modes';
+import {logger, LogTypes} from '../../logger';
+import MTPNetworker from '../networker';
+import Obfuscation from './obfuscation';
+import MTTransport, {MTConnection, MTConnectionConstructable} from './transport';
 // import intermediatePacketCodec from './intermediate';
 import abridgedPacketCodec from './abridged';
 // import paddedIntermediatePacketCodec from './padded';
-import { ConnectionStatus } from "../connectionStatus";
+import {ConnectionStatus} from '../connectionStatus';
 
 // #if MTPROTO_AUTO
-import transportController from "./controller";
-import bytesToHex from "../../../helpers/bytes/bytesToHex";
-import networkStats from "../networkStats";
-import ctx from "../../../environment/ctx";
+import transportController from './controller';
+import bytesToHex from '../../../helpers/bytes/bytesToHex';
+import networkStats from '../networkStats';
+import ctx from '../../../environment/ctx';
 // #endif
 
 export default class TcpObfuscated implements MTTransport {
@@ -27,9 +27,9 @@ export default class TcpObfuscated implements MTTransport {
   public networker: MTPNetworker;
 
   private pending: Array<Partial<{
-    resolve: any, 
-    reject: any, 
-    body: Uint8Array, 
+    resolve: any,
+    reject: any,
+    body: Uint8Array,
     encoded?: Uint8Array,
     bodySent: boolean
   }>> = [];
@@ -44,13 +44,13 @@ export default class TcpObfuscated implements MTTransport {
   private reconnectTimeout: number;
   private releasingPending: boolean;
 
-  //private debugPayloads: MTPNetworker['debugRequests'] = [];
+  // private debugPayloads: MTPNetworker['debugRequests'] = [];
 
   constructor(
-    private Connection: MTConnectionConstructable, 
-    private dcId: number, 
-    private url: string, 
-    private logSuffix: string, 
+    private Connection: MTConnectionConstructable,
+    private dcId: number,
+    private url: string,
+    private logSuffix: string,
     private retryTimeout: number
   ) {
     let logTypes = LogTypes.Error | LogTypes.Log;
@@ -100,7 +100,7 @@ export default class TcpObfuscated implements MTTransport {
     data = this.codec.readPacket(data);
 
     if(this.networker) { // authenticated!
-      //this.pending = this.pending.filter((p) => p.body); // clear pending
+      // this.pending = this.pending.filter((p) => p.body); // clear pending
 
       this.debug && this.log.debug('redirecting to networker', data.length);
       this.networker.parseResponse(data).then((response) => {
@@ -112,16 +112,16 @@ export default class TcpObfuscated implements MTTransport {
           this.log.error('handleMessage networker processMessage error', err);
         }
 
-        //this.releasePending();
+        // this.releasePending();
       }).catch((err) => {
         this.log.error('handleMessage networker parseResponse error', err);
       });
 
-      //this.dd();
+      // this.dd();
       return;
     }
 
-    //console.log('got hex:', data.hex);
+    // console.log('got hex:', data.hex);
     const pending = this.pending.shift();
     if(!pending) {
       this.debug && this.log.debug('no pending for res:', bytesToHex(data));
@@ -133,7 +133,7 @@ export default class TcpObfuscated implements MTTransport {
 
   private onClose = () => {
     this.clear();
-    
+
     let needTimeout: number, retryAt: number;
     if(this.autoReconnect) {
       const time = Date.now();
@@ -141,7 +141,7 @@ export default class TcpObfuscated implements MTTransport {
       needTimeout = !isNaN(diff) && diff < this.retryTimeout ? this.retryTimeout - diff : 0;
       retryAt = time + needTimeout;
     }
-    
+
     if(this.networker) {
       this.networker.setConnectionStatus(ConnectionStatus.Closed, retryAt);
       this.pending.length = 0;
@@ -187,7 +187,7 @@ export default class TcpObfuscated implements MTTransport {
 
     this.log('trying to reconnect...');
     this.lastCloseTime = Date.now();
-    
+
     if(!this.networker) {
       for(const pending of this.pending) {
         if(pending.bodySent) {
@@ -269,7 +269,7 @@ export default class TcpObfuscated implements MTTransport {
     if(this.url === url) {
       return;
     }
-    
+
     this.url = url;
     this.forceReconnect();
   }
@@ -277,9 +277,9 @@ export default class TcpObfuscated implements MTTransport {
   private encodeBody(body: Uint8Array) {
     const toEncode = this.codec.encodePacket(body);
 
-    //this.log('send before obf:', /* body.hex, nonce.hex, */ toEncode.hex);
+    // this.log('send before obf:', /* body.hex, nonce.hex, */ toEncode.hex);
     const encoded = this.obfuscation.encode(toEncode);
-    //this.log('send after obf:', enc.hex);
+    // this.log('send after obf:', enc.hex);
 
     return encoded;
   }
@@ -289,7 +289,7 @@ export default class TcpObfuscated implements MTTransport {
 
     const encoded: typeof body = /* this.connected ? this.encodeBody(body) :  */undefined;
 
-    //return;
+    // return;
 
     if(this.networker) {
       this.pending.push({body, encoded});
@@ -307,7 +307,7 @@ export default class TcpObfuscated implements MTTransport {
 
   private async releasePending(/* tt = false */) {
     if(!this.connected || this.releasingPending) {
-      //this.connect();
+      // this.connect();
       return;
     }
 
@@ -318,20 +318,19 @@ export default class TcpObfuscated implements MTTransport {
       return;
     } */
 
-    //this.log('-> messages to send:', this.pending.length);
+    // this.log('-> messages to send:', this.pending.length);
     let length = this.pending.length;
     let sent = false;
-    //for(let i = length - 1; i >= 0; --i) {
+    // for(let i = length - 1; i >= 0; --i) {
     for(let i = 0; i < length; ++i) {
       const pending = this.pending[i];
       if(!pending) {
         break;
       }
-      
+
       const {body, bodySent} = pending;
       if(body && !bodySent) {
-
-        //this.debugPayloads.push({before: body.slice(), after: enc});
+        // this.debugPayloads.push({before: body.slice(), after: enc});
 
         this.debug && this.log.debug('-> body length to send:', body.length);
 
@@ -346,7 +345,7 @@ export default class TcpObfuscated implements MTTransport {
 
         networkStats.addSent(this.dcId, encoded.byteLength);
         this.connection.send(encoded);
-        
+
         if(!pending.resolve) { // remove if no response needed
           this.pending.splice(i--, 1);
           length--;
@@ -355,7 +354,7 @@ export default class TcpObfuscated implements MTTransport {
         }
 
         sent = true;
-        //delete pending.body;
+        // delete pending.body;
       }
     }
 

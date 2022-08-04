@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { Layouter, RectPart } from "./groupedLayout";
+import {Layouter, RectPart} from './groupedLayout';
 
 export default function prepareAlbum(options: {
   container: HTMLElement,
@@ -63,19 +63,19 @@ export default function prepareAlbum(options: {
     if(options.forMedia) {
       const mediaDiv = document.createElement('div');
       mediaDiv.classList.add('album-item-media');
-  
+
       div.append(mediaDiv);
     }
 
     // @ts-ignore
-    //div.style.backgroundColor = '#' + Math.floor(Math.random() * (2 ** 24 - 1)).toString(16).padStart(6, '0');
+    // div.style.backgroundColor = '#' + Math.floor(Math.random() * (2 ** 24 - 1)).toString(16).padStart(6, '0');
   });
 
   /* if(options.forMedia) {
     layout.forEach((_, i) => {
       const mediaDiv = document.createElement('div');
       mediaDiv.classList.add('album-item-media');
-  
+
       options.container.children[i].append(mediaDiv);
     });
   } */

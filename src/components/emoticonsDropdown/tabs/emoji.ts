@@ -4,32 +4,32 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import emoticonsDropdown, { EmoticonsDropdown, EmoticonsTab } from "..";
-import cancelEvent from "../../../helpers/dom/cancelEvent";
-import findUpClassName from "../../../helpers/dom/findUpClassName";
-import { fastRaf } from "../../../helpers/schedulers";
-import pause from "../../../helpers/schedulers/pause";
-import appImManager from "../../../lib/appManagers/appImManager";
-import { i18n, LangPackKey } from "../../../lib/langPack";
-import rootScope from "../../../lib/rootScope";
-import { emojiFromCodePoints } from "../../../vendor/emoji";
-import { putPreloader } from "../../putPreloader";
-import Scrollable from "../../scrollable";
-import StickyIntersector from "../../stickyIntersector";
-import IS_EMOJI_SUPPORTED from "../../../environment/emojiSupport";
-import IS_TOUCH_SUPPORTED from "../../../environment/touchSupport";
-import blurActiveElement from "../../../helpers/dom/blurActiveElement";
-import Emoji from "../../../config/emoji";
-import { AppManagers } from "../../../lib/appManagers/managers";
-import fixEmoji from "../../../lib/richTextProcessor/fixEmoji";
-import wrapEmojiText from "../../../lib/richTextProcessor/wrapEmojiText";
-import wrapSingleEmoji from "../../../lib/richTextProcessor/wrapSingleEmoji";
+import emoticonsDropdown, {EmoticonsDropdown, EmoticonsTab} from '..';
+import cancelEvent from '../../../helpers/dom/cancelEvent';
+import findUpClassName from '../../../helpers/dom/findUpClassName';
+import {fastRaf} from '../../../helpers/schedulers';
+import pause from '../../../helpers/schedulers/pause';
+import appImManager from '../../../lib/appManagers/appImManager';
+import {i18n, LangPackKey} from '../../../lib/langPack';
+import rootScope from '../../../lib/rootScope';
+import {emojiFromCodePoints} from '../../../vendor/emoji';
+import {putPreloader} from '../../putPreloader';
+import Scrollable from '../../scrollable';
+import StickyIntersector from '../../stickyIntersector';
+import IS_EMOJI_SUPPORTED from '../../../environment/emojiSupport';
+import IS_TOUCH_SUPPORTED from '../../../environment/touchSupport';
+import blurActiveElement from '../../../helpers/dom/blurActiveElement';
+import Emoji from '../../../config/emoji';
+import {AppManagers} from '../../../lib/appManagers/managers';
+import fixEmoji from '../../../lib/richTextProcessor/fixEmoji';
+import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
+import wrapSingleEmoji from '../../../lib/richTextProcessor/wrapSingleEmoji';
 
 const loadedURLs: Set<string> = new Set();
 export function appendEmoji(emoji: string, container: HTMLElement, prepend = false, unify = false) {
-  //const emoji = details.unified;
-  //const emoji = (details.unified as string).split('-')
-  //.reduce((prev, curr) => prev + String.fromCodePoint(parseInt(curr, 16)), '');
+  // const emoji = details.unified;
+  // const emoji = (details.unified as string).split('-')
+  // .reduce((prev, curr) => prev + String.fromCodePoint(parseInt(curr, 16)), '');
 
   const spanEmoji = document.createElement('span');
   spanEmoji.classList.add('super-emoji');
@@ -47,7 +47,7 @@ export function appendEmoji(emoji: string, container: HTMLElement, prepend = fal
     return;
   } */
 
-  //console.log(kek);
+  // console.log(kek);
 
   spanEmoji.append(kek);
 
@@ -59,7 +59,7 @@ export function appendEmoji(emoji: string, container: HTMLElement, prepend = fal
 
   if(spanEmoji.firstElementChild?.tagName === 'IMG') {
     const image = spanEmoji.firstElementChild as HTMLImageElement;
-    
+
     const url = image.src;
     if(!loadedURLs.has(url)) {
       image.setAttribute('loading', 'lazy');
@@ -88,8 +88,8 @@ export function appendEmoji(emoji: string, container: HTMLElement, prepend = fal
     }
   }
 
-  //spanEmoji = spanEmoji.firstElementChild as HTMLSpanElement;
-  //spanEmoji.setAttribute('emoji', emoji);
+  // spanEmoji = spanEmoji.firstElementChild as HTMLSpanElement;
+  // spanEmoji.setAttribute('emoji', emoji);
   if(prepend) container.prepend(spanEmoji);
   else container.appendChild(spanEmoji);
 }
@@ -101,7 +101,7 @@ export function getEmojiFromElement(element: HTMLElement) {
   if(element.tagName === 'SPAN' && !element.classList.contains('emoji') && element.firstElementChild) {
     element = element.firstElementChild as HTMLElement;
   }
-  
+
   return element.getAttribute('alt') || element.innerText;
 }
 
@@ -125,14 +125,14 @@ export default class EmojiTab implements EmoticonsTab {
     this.content = document.getElementById('content-emoji') as HTMLDivElement;
 
     const categories: LangPackKey[] = [
-      'Emoji.SmilesAndPeople', 
-      'Emoji.AnimalsAndNature', 
-      'Emoji.FoodAndDrink', 
-      'Emoji.TravelAndPlaces', 
-      'Emoji.ActivityAndSport', 
-      'Emoji.Objects', 
+      'Emoji.SmilesAndPeople',
+      'Emoji.AnimalsAndNature',
+      'Emoji.FoodAndDrink',
+      'Emoji.TravelAndPlaces',
+      'Emoji.ActivityAndSport',
+      'Emoji.Objects',
       /* 'Emoji.Symbols',  */
-      'Emoji.Flags', 
+      'Emoji.Flags',
       'Skin Tones' as any
     ];
     const divs: {
@@ -157,17 +157,17 @@ export default class EmojiTab implements EmoticonsTab {
         s = [];
         sorted.set(category, s);
       }
-      
+
       s[+i.slice(1) || 0] = emoji;
     }
 
-    //console.log('emoticons sorted:', sorted);
+    // console.log('emoticons sorted:', sorted);
 
-    //Object.keys(sorted).forEach((c) => sorted[c].sort((a, b) => a - b));
+    // Object.keys(sorted).forEach((c) => sorted[c].sort((a, b) => a - b));
 
     sorted.delete(categories.pop());
 
-    //console.time('emojiParse');
+    // console.time('emojiParse');
     sorted.forEach((emojis, category) => {
       const div = document.createElement('div');
       div.classList.add('emoji-category');
@@ -186,22 +186,22 @@ export default class EmojiTab implements EmoticonsTab {
           console.log('append emoji', emoji, emojiUnicode(emoji));
         } */
 
-        let emoji = emojiFromCodePoints(unified);
-        //if(emoji.includes('🕵')) {
-          //console.log('toCodePoints', toCodePoints(emoji));
-          //emoji = emoji.replace(/(\u200d[\u2640\u2642\u2695])(?!\ufe0f)/, '\ufe0f$1');
-          // const zwjIndex = emoji.indexOf('\u200d');
-          // if(zwjIndex !== -1 && !emoji.includes('\ufe0f')) {
-          //   /* if(zwjIndex !== (emoji.length - 1)) {
-          //     emoji = emoji.replace(/(\u200d)/g, '\ufe0f$1');
-          //   } */
+        const emoji = emojiFromCodePoints(unified);
+        // if(emoji.includes('🕵')) {
+        // console.log('toCodePoints', toCodePoints(emoji));
+        // emoji = emoji.replace(/(\u200d[\u2640\u2642\u2695])(?!\ufe0f)/, '\ufe0f$1');
+        // const zwjIndex = emoji.indexOf('\u200d');
+        // if(zwjIndex !== -1 && !emoji.includes('\ufe0f')) {
+        //   /* if(zwjIndex !== (emoji.length - 1)) {
+        //     emoji = emoji.replace(/(\u200d)/g, '\ufe0f$1');
+        //   } */
 
-          //   emoji += '\ufe0f';
-          //   //emoji += '\ufe0f';
-          // }
+        //   emoji += '\ufe0f';
+        //   //emoji += '\ufe0f';
+        // }
 
-          //debugger;
-        //}
+        // debugger;
+        // }
 
         appendEmoji(emoji/* .replace(/[\ufe0f\u2640\u2642\u2695]/g, '') */, itemsDiv, false/* , false */);
 
@@ -213,12 +213,12 @@ export default class EmojiTab implements EmoticonsTab {
       divs[category] = div;
     });
 
-    //console.timeEnd('emojiParse');
+    // console.timeEnd('emojiParse');
 
     const menu = this.menu = this.content.previousElementSibling as HTMLElement;
     const emojiScroll = this.scroll = new Scrollable(this.content, 'EMOJI');
 
-    //emojiScroll.setVirtualContainer(emojiScroll.container);
+    // emojiScroll.setVirtualContainer(emojiScroll.container);
 
     const preloader = putPreloader(this.content, true);
 
@@ -247,11 +247,11 @@ export default class EmojiTab implements EmoticonsTab {
       categories.unshift('Emoji.Recent');
       categories.map((category) => {
         const div = divs[category];
-  
+
         if(!div) {
           console.error('no div by category:', category);
         }
-  
+
         emojiScroll.container.append(div);
         this.stickyIntersector.observeStickyHeaderChanges(div);
         return div;
@@ -291,7 +291,7 @@ export default class EmojiTab implements EmoticonsTab {
 
   onContentClick = (e: MouseEvent) => {
     cancelEvent(e);
-    
+
     const emoji = getEmojiFromElement(e.target as HTMLElement);
     if(!emoji) {
       return;

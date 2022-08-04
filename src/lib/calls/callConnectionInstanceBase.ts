@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import safeAssign from "../../helpers/object/safeAssign";
-import { logger } from "../logger";
-import createDataChannel from "./helpers/createDataChannel";
-import createPeerConnection from "./helpers/createPeerConnection";
-import LocalConferenceDescription from "./localConferenceDescription";
-import StreamManager from "./streamManager";
-import { Ssrc } from "./types";
+import safeAssign from '../../helpers/object/safeAssign';
+import {logger} from '../logger';
+import createDataChannel from './helpers/createDataChannel';
+import createPeerConnection from './helpers/createPeerConnection';
+import LocalConferenceDescription from './localConferenceDescription';
+import StreamManager from './streamManager';
+import {Ssrc} from './types';
 
 export type CallConnectionInstanceOptions = {
   streamManager: StreamManager,
@@ -78,7 +78,7 @@ export default abstract class CallConnectionInstanceBase {
   protected abstract negotiateInternal(): CallConnectionInstanceBase['negotiating'];
 
   public negotiate() {
-    let promise = this.negotiating;
+    const promise = this.negotiating;
     if(promise) {
       return promise;
     }

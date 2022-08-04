@@ -1,4 +1,4 @@
-import getDeepProperty from "./getDeepProperty";
+import getDeepProperty from './getDeepProperty';
 
 export default function setDeepProperty(object: any, key: string, value: any) {
   const splitted = key.split('.');

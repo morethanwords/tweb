@@ -2,18 +2,18 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import { TLSerialization } from "./tl_utils";
+import {TLSerialization} from './tl_utils';
 import cryptoWorker from '../crypto/cryptoMessagePort';
-import Modes from "../../config/modes";
-import bytesFromHex from "../../helpers/bytes/bytesFromHex";
-import bytesToHex from "../../helpers/bytes/bytesToHex";
+import Modes from '../../config/modes';
+import bytesFromHex from '../../helpers/bytes/bytesFromHex';
+import bytesToHex from '../../helpers/bytes/bytesToHex';
 import bigInt from 'big-integer';
 
 export type RSAPublicKeyHex = {
@@ -22,11 +22,10 @@ export type RSAPublicKeyHex = {
 };
 
 export class RSAKeysManager {
-
   /**
    *  Server public key, obtained from here: https://core.telegram.org/api/obtaining_api_id
-   * 
-   * 
+   *
+   *
    *  -----BEGIN RSA PUBLIC KEY-----
    *  MIIBCgKCAQEA6LszBcC1LGzyr992NzE0ieY+BSaOW622Aa9Bd4ZHLl+TuFQ4lo4g
    *  5nKaMBwK/BIb9xUfg0Q29/2mgIR6Zr9krM7HjuIcCzFvDtr+L0GQjae9H0pRB2OO
@@ -45,7 +44,7 @@ export class RSAKeysManager {
    *  b11Z/YHz2UXYtXADwL/m5pTpKBUtJBXkOQIDAQAB
    *  -----END RSA PUBLIC KEY-----
    *
-   * Bytes can be got via 
+   * Bytes can be got via
    * $ openssl rsa -in rsa.pem -RSAPublicKey_in -pubout > pub.pem
    * $ openssl rsa -pubin -in pub.pem -text -noout
    */
@@ -106,7 +105,7 @@ export class RSAKeysManager {
       return cryptoWorker.invokeCrypto('sha1', buffer).then((bytes) => {
         const fingerprintBytes = bytes.slice(-8);
         fingerprintBytes.reverse();
-  
+
         this.publicKeysParsed[bytesToHex(fingerprintBytes).toLowerCase()] = {
           modulus: keyParsed.modulus,
           exponent: keyParsed.exponent
@@ -115,7 +114,7 @@ export class RSAKeysManager {
     })).then(() => {
       this.prepared = true;
 
-      //console.log('[MT] Prepared keys');
+      // console.log('[MT] Prepared keys');
       this.preparePromise = null;
     });
   }
@@ -130,7 +129,7 @@ export class RSAKeysManager {
         fingerprintHex = new Array(16 - fingerprintHex.length).fill('0').join('') + fingerprintHex;
       }
 
-      //console.log(fingerprintHex, this.publicKeysParsed);
+      // console.log(fingerprintHex, this.publicKeysParsed);
       const foundKey = this.publicKeysParsed[fingerprintHex];
       if(foundKey) {
         return Object.assign({

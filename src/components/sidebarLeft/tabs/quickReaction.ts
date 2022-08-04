@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { SettingSection } from "..";
-import RadioField from "../../radioField";
-import Row, { RadioFormFromRows } from "../../row";
-import SliderSuperTab from "../../sliderTab";
-import { wrapStickerToRow } from "../../wrappers";
+import {SettingSection} from '..';
+import RadioField from '../../radioField';
+import Row, {RadioFormFromRows} from '../../row';
+import SliderSuperTab from '../../sliderTab';
+import {wrapStickerToRow} from '../../wrappers';
 
 export default class AppQuickReactionTab extends SliderSuperTab {
   protected init() {

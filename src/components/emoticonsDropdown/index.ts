@@ -4,31 +4,31 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import IS_TOUCH_SUPPORTED from "../../environment/touchSupport";
-import appImManager from "../../lib/appManagers/appImManager";
-import rootScope from "../../lib/rootScope";
-import animationIntersector from "../animationIntersector";
-import { horizontalMenu } from "../horizontalMenu";
-import LazyLoadQueue from "../lazyLoadQueue";
-import Scrollable, { ScrollableX } from "../scrollable";
-import appSidebarRight from "../sidebarRight";
-import StickyIntersector from "../stickyIntersector";
-import EmojiTab from "./tabs/emoji";
-import GifsTab from "./tabs/gifs";
-import StickersTab from "./tabs/stickers";
-import { MOUNT_CLASS_TO } from "../../config/debug";
-import AppGifsTab from "../sidebarRight/tabs/gifs";
-import AppStickersTab from "../sidebarRight/tabs/stickers";
-import findUpClassName from "../../helpers/dom/findUpClassName";
-import findUpTag from "../../helpers/dom/findUpTag";
-import blurActiveElement from "../../helpers/dom/blurActiveElement";
-import whichChild from "../../helpers/dom/whichChild";
-import cancelEvent from "../../helpers/dom/cancelEvent";
-import DropdownHover from "../../helpers/dropdownHover";
-import pause from "../../helpers/schedulers/pause";
-import { IS_APPLE_MOBILE } from "../../environment/userAgent";
-import { AppManagers } from "../../lib/appManagers/managers";
-import type LazyLoadQueueIntersector from "../lazyLoadQueueIntersector";
+import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
+import appImManager from '../../lib/appManagers/appImManager';
+import rootScope from '../../lib/rootScope';
+import animationIntersector from '../animationIntersector';
+import {horizontalMenu} from '../horizontalMenu';
+import LazyLoadQueue from '../lazyLoadQueue';
+import Scrollable, {ScrollableX} from '../scrollable';
+import appSidebarRight from '../sidebarRight';
+import StickyIntersector from '../stickyIntersector';
+import EmojiTab from './tabs/emoji';
+import GifsTab from './tabs/gifs';
+import StickersTab from './tabs/stickers';
+import {MOUNT_CLASS_TO} from '../../config/debug';
+import AppGifsTab from '../sidebarRight/tabs/gifs';
+import AppStickersTab from '../sidebarRight/tabs/stickers';
+import findUpClassName from '../../helpers/dom/findUpClassName';
+import findUpTag from '../../helpers/dom/findUpTag';
+import blurActiveElement from '../../helpers/dom/blurActiveElement';
+import whichChild from '../../helpers/dom/whichChild';
+import cancelEvent from '../../helpers/dom/cancelEvent';
+import DropdownHover from '../../helpers/dropdownHover';
+import pause from '../../helpers/schedulers/pause';
+import {IS_APPLE_MOBILE} from '../../environment/userAgent';
+import {AppManagers} from '../../lib/appManagers/managers';
+import type LazyLoadQueueIntersector from '../lazyLoadQueueIntersector';
 
 export const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
 
@@ -65,7 +65,7 @@ export class EmoticonsDropdown extends DropdownHover {
 
     this.addEventListener('open', async() => {
       if(IS_TOUCH_SUPPORTED) {
-        //appImManager.chat.input.saveScroll();
+        // appImManager.chat.input.saveScroll();
         if(blurActiveElement()) {
           await pause(100);
         }
@@ -78,7 +78,7 @@ export class EmoticonsDropdown extends DropdownHover {
       this.savedRange = this.getGoodRange();
 
       EmoticonsDropdown.lazyLoadQueue.lock();
-      //EmoticonsDropdown.lazyLoadQueue.unlock();
+      // EmoticonsDropdown.lazyLoadQueue.unlock();
       animationIntersector.lockIntersectionGroup(EMOTICONSSTICKERGROUP);
     });
 
@@ -92,7 +92,7 @@ export class EmoticonsDropdown extends DropdownHover {
 
     this.addEventListener('close', () => {
       EmoticonsDropdown.lazyLoadQueue.lock();
-      //EmoticonsDropdown.lazyLoadQueue.lock();
+      // EmoticonsDropdown.lazyLoadQueue.lock();
 
       // нужно залочить группу и выключить стикеры
       animationIntersector.lockIntersectionGroup(EMOTICONSSTICKERGROUP);
@@ -163,11 +163,11 @@ export class EmoticonsDropdown extends DropdownHover {
 
       const event = new Event('input', {bubbles: true, cancelable: true});
       appImManager.chat.input.messageInput.dispatchEvent(event);
-      //appSidebarRight.stickersTab.init();
+      // appSidebarRight.stickersTab.init();
 
       cancelEvent(e);
     });
-    
+
     const HIDE_EMOJI_TAB = IS_APPLE_MOBILE;
 
     const INIT_TAB_ID = HIDE_EMOJI_TAB ? 1 : 0;
@@ -191,7 +191,7 @@ export class EmoticonsDropdown extends DropdownHover {
     if(this.tabId === id) {
       return;
     }
-    
+
     animationIntersector.checkAnimations(true, EMOTICONSSTICKERGROUP);
 
     this.tabId = id;
@@ -232,7 +232,7 @@ export class EmoticonsDropdown extends DropdownHover {
     };
 
     const stickyIntersector = new StickyIntersector(scroll.container, (stuck, target) => {
-      //console.log('sticky scrollTOp', stuck, target, scroll.container.scrollTop);
+      // console.log('sticky scrollTOp', stuck, target, scroll.container.scrollTop);
 
       if(Math.abs(jumpedTo - scroll.container.scrollTop) <= 1) {
         return;
@@ -279,7 +279,7 @@ export class EmoticonsDropdown extends DropdownHover {
 
       scroll.container.scrollTop = jumpedTo = offsetTop;
 
-      //console.log('set scrollTop:', offsetTop);
+      // console.log('set scrollTop:', offsetTop);
     });
 
     return {stickyIntersector, setActive};
@@ -290,7 +290,7 @@ export class EmoticonsDropdown extends DropdownHover {
     target = findUpTag(target, 'DIV');
 
     if(!target) return false;
-    
+
     const fileId = target.dataset.docId;
     if(!fileId) return false;
 

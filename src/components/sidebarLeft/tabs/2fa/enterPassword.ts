@@ -4,29 +4,29 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import AppTwoStepVerificationTab from ".";
-import { SettingSection } from "../..";
-import cancelEvent from "../../../../helpers/dom/cancelEvent";
-import { canFocus } from "../../../../helpers/dom/canFocus";
-import { attachClickEvent } from "../../../../helpers/dom/clickEvent";
-import replaceContent from "../../../../helpers/dom/replaceContent";
-import setInnerHTML from "../../../../helpers/dom/setInnerHTML";
-import { AccountPassword } from "../../../../layer";
-import I18n, { i18n } from "../../../../lib/langPack";
-import wrapEmojiText from "../../../../lib/richTextProcessor/wrapEmojiText";
-import Button from "../../../button";
-import { putPreloader } from "../../../putPreloader";
-import PasswordMonkey from "../../../monkeys/password";
-import PasswordInputField from "../../../passwordInputField";
-import { SliderSuperTab } from "../../../slider";
-import AppTwoStepVerificationReEnterPasswordTab from "./reEnterPassword";
+import AppTwoStepVerificationTab from '.';
+import {SettingSection} from '../..';
+import cancelEvent from '../../../../helpers/dom/cancelEvent';
+import {canFocus} from '../../../../helpers/dom/canFocus';
+import {attachClickEvent} from '../../../../helpers/dom/clickEvent';
+import replaceContent from '../../../../helpers/dom/replaceContent';
+import setInnerHTML from '../../../../helpers/dom/setInnerHTML';
+import {AccountPassword} from '../../../../layer';
+import I18n, {i18n} from '../../../../lib/langPack';
+import wrapEmojiText from '../../../../lib/richTextProcessor/wrapEmojiText';
+import Button from '../../../button';
+import {putPreloader} from '../../../putPreloader';
+import PasswordMonkey from '../../../monkeys/password';
+import PasswordInputField from '../../../passwordInputField';
+import {SliderSuperTab} from '../../../slider';
+import AppTwoStepVerificationReEnterPasswordTab from './reEnterPassword';
 
 export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperTab {
   public state: AccountPassword;
   public passwordInputField: PasswordInputField;
   public plainPassword: string;
   public isFirst = true;
-  
+
   protected init() {
     const isNew = !this.state.pFlags.has_password || this.plainPassword;
     this.container.classList.add('two-step-verification', 'two-step-verification-enter-password');
@@ -63,7 +63,7 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
         textEl.key = 'Continue';
         textEl.update();
       }
-  
+
       if(e.key === 'Enter') {
         return onContinueClick();
       }
@@ -82,15 +82,15 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
     if(!isNew) {
       let getStateInterval: number;
 
-      let getState = () => {
+      const getState = () => {
         // * just to check session relevance
         if(!getStateInterval) {
           getStateInterval = window.setInterval(getState, 10e3);
         }
-  
+
         return this.managers.passwordManager.getState().then((_state) => {
           this.state = _state;
-  
+
           if(this.state.hint) {
             setInnerHTML(passwordInputField.label, wrapEmojiText(this.state.hint));
           } else {
@@ -98,7 +98,7 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
           }
         });
       };
-  
+
       const submit = (e?: Event) => {
         if(!verifyInput()) {
           cancelEvent(e);
@@ -109,11 +109,11 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
         textEl.key = 'PleaseWait';
         textEl.update();
         const preloader = putPreloader(btnContinue);
-  
+
         const plainPassword = passwordInputField.value;
         this.managers.passwordManager.check(passwordInputField.value, this.state).then((auth) => {
           console.log(auth);
-  
+
           if(auth._ === 'auth.authorization') {
             clearInterval(getStateInterval);
             if(monkey) monkey.remove();
@@ -126,21 +126,21 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
         }, (err) => {
           btnContinue.removeAttribute('disabled');
           passwordInputField.input.classList.add('error');
-          
+
           switch(err.type) {
             default:
-              //btnContinue.innerText = err.type;
+              // btnContinue.innerText = err.type;
               textEl.key = 'PASSWORD_HASH_INVALID';
               textEl.update();
               preloader.remove();
               passwordInputField.select();
               break;
           }
-  
+
           getState();
         });
       };
-  
+
       onContinueClick = submit;
 
       getState();

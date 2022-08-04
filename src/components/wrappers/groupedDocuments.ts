@@ -4,15 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import setInnerHTML from "../../helpers/dom/setInnerHTML";
-import { MediaSizeType } from "../../helpers/mediaSizes";
-import { Message } from "../../layer";
-import { AppManagers } from "../../lib/appManagers/managers";
-import wrapRichText from "../../lib/richTextProcessor/wrapRichText";
-import { MediaSearchContext } from "../appMediaPlaybackController";
-import Chat from "../chat/chat";
-import LazyLoadQueue from "../lazyLoadQueue";
-import wrapDocument from "./document";
+import setInnerHTML from '../../helpers/dom/setInnerHTML';
+import {MediaSizeType} from '../../helpers/mediaSizes';
+import {Message} from '../../layer';
+import {AppManagers} from '../../lib/appManagers/managers';
+import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
+import {MediaSearchContext} from '../appMediaPlaybackController';
+import Chat from '../chat/chat';
+import LazyLoadQueue from '../lazyLoadQueue';
+import wrapDocument from './document';
 
 export default async function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, messageDiv, chat, loadPromises, autoDownloadSize, lazyLoadQueue, searchContext, useSearch, sizeType, managers}: {
   albumMustBeRenderedFull: boolean,
@@ -54,7 +54,7 @@ export default async function wrapGroupedDocuments({albumMustBeRenderedFull, mes
 
     const wrapper = document.createElement('div');
     wrapper.classList.add('document-wrapper');
-    
+
     if(message.message) {
       const messageDiv = document.createElement('div');
       messageDiv.classList.add('document-message');
@@ -71,7 +71,7 @@ export default async function wrapGroupedDocuments({albumMustBeRenderedFull, mes
       const selection = document.createElement('div');
       selection.classList.add('document-selection');
       container.append(selection);
-      
+
       container.classList.add('grouped-item');
 
       if(idx === 0) {

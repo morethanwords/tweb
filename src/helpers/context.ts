@@ -29,7 +29,7 @@ const postMessage = (listener: WindowClient | DedicatedWorkerGlobalScope, ...arg
 const notifyServiceWorker = (all: boolean, ...args: any[]) => {
   getWindowClients().then((listeners) => {
     if(!listeners.length) {
-      //console.trace('no listeners?', self, listeners);
+      // console.trace('no listeners?', self, listeners);
       return;
     }
 

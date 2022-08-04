@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import replaceContent from "../../helpers/dom/replaceContent";
-import limitSymbols from "../../helpers/string/limitSymbols";
-import appImManager, { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
-import choosePhotoSize from "../../lib/appManagers/utils/photos/choosePhotoSize";
-import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
-import DivAndCaption from "../divAndCaption";
-import { wrapPhoto, wrapSticker } from "../wrappers";
-import wrapMessageForReply from "../wrappers/messageForReply";
+import replaceContent from '../../helpers/dom/replaceContent';
+import limitSymbols from '../../helpers/string/limitSymbols';
+import appImManager, {CHAT_ANIMATION_GROUP} from '../../lib/appManagers/appImManager';
+import choosePhotoSize from '../../lib/appManagers/utils/photos/choosePhotoSize';
+import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
+import DivAndCaption from '../divAndCaption';
+import {wrapPhoto, wrapSticker} from '../wrappers';
+import wrapMessageForReply from '../wrappers/messageForReply';
 
 const MEDIA_SIZE = 32;
 
@@ -46,12 +46,12 @@ export async function wrapReplyDivAndCaption(options: {
     subtitleEl.textContent = '';
     subtitleEl.append(await wrapMessageForReply(message, undefined, undefined, undefined, undefined, true));
 
-    //console.log('wrap reply', media);
+    // console.log('wrap reply', media);
 
     if(media.webpage) {
       media = media.webpage;
     }
-    
+
     if(media.photo || (media.document && media.document.thumbs?.length)/* ['video', 'sticker', 'gif', 'round', 'photo', 'audio'].indexOf(media.document.type) !== -1) */) {
       middleware = appImManager.chat.bubbles.getMiddleware();
       const lazyLoadQueue = appImManager.chat.bubbles.lazyLoadQueue;
@@ -63,7 +63,7 @@ export async function wrapReplyDivAndCaption(options: {
           div: mediaEl,
           lazyLoadQueue,
           group: CHAT_ANIMATION_GROUP,
-          //onlyThumb: media.document.sticker === 2,
+          // onlyThumb: media.document.sticker === 2,
           width: MEDIA_SIZE,
           height: MEDIA_SIZE,
           middleware,
@@ -137,7 +137,7 @@ export default class ReplyContainer extends DivAndCaption<(title: string | HTMLE
         mediaEl: this.mediaEl,
         message
       });
-      
+
       this.container.classList.toggle('is-media', isMediaSet);
       if(isMediaSet) {
         this.content.prepend(this.mediaEl);

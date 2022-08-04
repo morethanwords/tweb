@@ -1,5 +1,5 @@
-import type getProxiedManagers from "./getProxiedManagers";
-import type { AppManager } from "./manager";
+import type getProxiedManagers from './getProxiedManagers';
+import type {AppManager} from './manager';
 
 // export type AppManagers = {
 //   appPeersManager: AppPeersManager;

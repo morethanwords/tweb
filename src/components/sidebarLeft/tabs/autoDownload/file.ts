@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import formatBytes from "../../../../helpers/formatBytes";
-import debounce from "../../../../helpers/schedulers/debounce";
-import I18n from "../../../../lib/langPack";
-import rootScope from "../../../../lib/rootScope";
-import { SliderSuperTabEventable } from "../../../sliderTab";
-import { RangeSettingSelector } from "../generalSettings";
-import { autoDownloadPeerTypeSection } from "./photo";
+import formatBytes from '../../../../helpers/formatBytes';
+import debounce from '../../../../helpers/schedulers/debounce';
+import I18n from '../../../../lib/langPack';
+import rootScope from '../../../../lib/rootScope';
+import {SliderSuperTabEventable} from '../../../sliderTab';
+import {RangeSettingSelector} from '../generalSettings';
+import {autoDownloadPeerTypeSection} from './photo';
 
 export default class AppAutoDownloadFileTab extends SliderSuperTabEventable {
   protected init() {

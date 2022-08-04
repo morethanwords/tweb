@@ -4,34 +4,34 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import PopupGroupCall from ".";
-import filterAsync from "../../helpers/array/filterAsync";
-import contextMenuController from "../../helpers/contextMenuController";
-import { attachContextMenuListener } from "../../helpers/dom/attachContextMenuListener";
-import cancelEvent from "../../helpers/dom/cancelEvent";
-import findUpClassName from "../../helpers/dom/findUpClassName";
-import { addFullScreenListener, isFullScreen } from "../../helpers/dom/fullScreen";
-import ListenerSetter from "../../helpers/listenerSetter";
-import noop from "../../helpers/noop";
-import safeAssign from "../../helpers/object/safeAssign";
-import positionMenu from "../../helpers/positionMenu";
-import ScrollableLoader from "../../helpers/scrollableLoader";
-import { GroupCallParticipant } from "../../layer";
-import type { AppChatsManager } from "../../lib/appManagers/appChatsManager";
-import type { AppGroupCallsManager } from "../../lib/appManagers/appGroupCallsManager";
-import appImManager from "../../lib/appManagers/appImManager";
-import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
-import { AppManagers } from "../../lib/appManagers/managers";
-import getPeerId from "../../lib/appManagers/utils/peers/getPeerId";
-import GroupCallInstance from "../../lib/calls/groupCallInstance";
-import rootScope from "../../lib/rootScope";
-import ButtonMenu, { ButtonMenuItemOptions } from "../buttonMenu";
-import confirmationPopup from "../confirmationPopup";
-import PeerTitle from "../peerTitle";
-import PopupElement from "../popups";
-import Scrollable from "../scrollable";
-import GroupCallParticipantsList from "./participantsList";
-import GroupCallParticipantsVideoElement from "./participantVideos";
+import PopupGroupCall from '.';
+import filterAsync from '../../helpers/array/filterAsync';
+import contextMenuController from '../../helpers/contextMenuController';
+import {attachContextMenuListener} from '../../helpers/dom/attachContextMenuListener';
+import cancelEvent from '../../helpers/dom/cancelEvent';
+import findUpClassName from '../../helpers/dom/findUpClassName';
+import {addFullScreenListener, isFullScreen} from '../../helpers/dom/fullScreen';
+import ListenerSetter from '../../helpers/listenerSetter';
+import noop from '../../helpers/noop';
+import safeAssign from '../../helpers/object/safeAssign';
+import positionMenu from '../../helpers/positionMenu';
+import ScrollableLoader from '../../helpers/scrollableLoader';
+import {GroupCallParticipant} from '../../layer';
+import type {AppChatsManager} from '../../lib/appManagers/appChatsManager';
+import type {AppGroupCallsManager} from '../../lib/appManagers/appGroupCallsManager';
+import appImManager from '../../lib/appManagers/appImManager';
+import type {AppPeersManager} from '../../lib/appManagers/appPeersManager';
+import {AppManagers} from '../../lib/appManagers/managers';
+import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
+import GroupCallInstance from '../../lib/calls/groupCallInstance';
+import rootScope from '../../lib/rootScope';
+import ButtonMenu, {ButtonMenuItemOptions} from '../buttonMenu';
+import confirmationPopup from '../confirmationPopup';
+import PeerTitle from '../peerTitle';
+import PopupElement from '../popups';
+import Scrollable from '../scrollable';
+import GroupCallParticipantsList from './participantsList';
+import GroupCallParticipantsVideoElement from './participantVideos';
 
 export class GroupCallParticipantContextMenu {
   private buttons: (ButtonMenuItemOptions & {verify: (peerId: PeerId) => boolean | Promise<boolean>})[];
@@ -42,7 +42,7 @@ export class GroupCallParticipantContextMenu {
   private instance: GroupCallInstance;
   private canManageCall: boolean;
   private managers: AppManagers;
-  
+
   constructor(options: {
     listenerSetter: ListenerSetter,
     onContextElement: HTMLElement,
@@ -98,7 +98,7 @@ export class GroupCallParticipantContextMenu {
     this.managers = options.managers;
     this.instance = options.instance;
     this.chatId = this.instance.chatId;
-  
+
     this.element = ButtonMenu(this.buttons, listenerSetter);
     this.element.classList.add('group-call-participant-menu', 'night');
 
@@ -127,7 +127,7 @@ export class GroupCallParticipantContextMenu {
         button.element.classList.toggle('hide', !good);
         return good;
       });
-      
+
       positionMenu((e as TouchEvent).touches ? (e as TouchEvent).touches[0] : e as MouseEvent, this.element, 'right');
       contextMenuController.openBtnMenu(this.element);
     }, listenerSetter);
@@ -196,7 +196,7 @@ export default class GroupCallParticipantsElement {
     // const invite = Button(`btn-primary btn-transparent ${className}-invite`, {icon: 'adduser', text: 'VoiceChat.Invite.InviteMembers'});
 
     const sortedList = this.sortedList = new GroupCallParticipantsList(this.instance);
-    
+
     const {instance, listenerSetter} = this;
     this.contextMenu = new GroupCallParticipantContextMenu({
       ...options,
@@ -229,7 +229,7 @@ export default class GroupCallParticipantsElement {
           participants.forEach((participant) => {
             this.updateParticipant(participant);
           });
-          
+
           return isEnd;
         });
       }
@@ -279,7 +279,7 @@ export default class GroupCallParticipantsElement {
       this.updateParticipant(participant);
     });
   }
-  
+
   public destroy() {
     this.sortedList.destroy();
     this.groupCallParticipantsVideo.destroy();

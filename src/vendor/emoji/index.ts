@@ -21,7 +21,7 @@ export function toCodePoints(unicodeSurrogates: string): Array<string> {
     if(previous) {
       points.push((0x10000 + ((previous - 0xd800) << 10) + (char - 0xdc00)).toString(16));
       previous = 0;
-    } else if (char > 0xd800 && char <= 0xdbff) {
+    } else if(char > 0xd800 && char <= 0xdbff) {
       previous = char;
     } else {
       points.push(char.toString(16));
@@ -36,7 +36,7 @@ export function toCodePoints(unicodeSurrogates: string): Array<string> {
 }
 
 export function getEmojiToneIndex(input: string) {
-  let match = input.match(/[\uDFFB-\uDFFF]/);
+  const match = input.match(/[\uDFFB-\uDFFF]/);
   return match ? 5 - (57343 - match[0].charCodeAt(0)) : 0;
 }
 

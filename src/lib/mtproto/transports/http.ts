@@ -5,8 +5,8 @@
  */
 
 import pause from '../../../helpers/schedulers/pause';
-import { DcId } from '../../../types';
-import { logger, LogTypes } from '../../logger';
+import {DcId} from '../../../types';
+import {logger, LogTypes} from '../../logger';
 import type MTPNetworker from '../networker';
 import MTTransport from './transport';
 import Modes from '../../../config/modes';
@@ -21,8 +21,8 @@ export default class HTTP implements MTTransport {
   private log: ReturnType<typeof logger>;
 
   private pending: Array<{
-    resolve: (body: Uint8Array) => void, 
-    reject: any, 
+    resolve: (body: Uint8Array) => void,
+    reject: any,
     body: Uint8Array
   }> = [];
   private releasing: boolean;
@@ -30,13 +30,13 @@ export default class HTTP implements MTTransport {
   public connected: boolean;
   private destroyed: boolean;
   private debug: boolean;
-  
+
   constructor(protected dcId: DcId, protected url: string, logSuffix: string) {
     this.debug = Modes.debug && false;
 
     let logTypes = LogTypes.Error | LogTypes.Log;
     if(this.debug) logTypes |= LogTypes.Debug;
-    
+
     this.log = logger(`HTTP-${dcId}` + logSuffix, logTypes);
     this.log('constructor');
 
@@ -51,8 +51,8 @@ export default class HTTP implements MTTransport {
     return fetch(this.url, {method: 'POST', body, mode}).then((response) => {
       if(response.status !== 200 && !mode) {
         response.arrayBuffer().then((buffer) => {
-          this.log.error('not 200', 
-            new TextDecoder("utf-8").decode(new Uint8Array(buffer)));
+          this.log.error('not 200',
+            new TextDecoder('utf-8').decode(new Uint8Array(buffer)));
         });
 
         throw response;
@@ -68,7 +68,7 @@ export default class HTTP implements MTTransport {
       return response.arrayBuffer().then((buffer) => {
         networkStats.addReceived(this.dcId, buffer.byteLength);
         return new Uint8Array(buffer);
-      }); 
+      });
     }, (err) => {
       this.setConnected(false);
       throw err;

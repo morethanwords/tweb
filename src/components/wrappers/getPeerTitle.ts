@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import limitSymbols from "../../helpers/string/limitSymbols";
-import { Chat } from "../../layer";
-import { AppManagers } from "../../lib/appManagers/managers";
-import I18n from "../../lib/langPack";
-import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
-import rootScope from "../../lib/rootScope";
+import limitSymbols from '../../helpers/string/limitSymbols';
+import {Chat} from '../../layer';
+import {AppManagers} from '../../lib/appManagers/managers';
+import I18n from '../../lib/langPack';
+import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
+import rootScope from '../../lib/rootScope';
 
 export default async function getPeerTitle(peerId: PeerId, plainText: true, onlyFirstName?: boolean, _limitSymbols?: number, managers?: AppManagers): Promise<string>;
 export default async function getPeerTitle(peerId: PeerId, plainText?: false, onlyFirstName?: boolean, _limitSymbols?: number, managers?: AppManagers): Promise<DocumentFragment>;
@@ -18,7 +18,7 @@ export default async function getPeerTitle(peerId: PeerId, plainText = false, on
   if(!peerId) {
     peerId = rootScope.myId;
   }
-  
+
   let title = '';
   if(peerId.isUser()) {
     const user = await managers.appUsersManager.getUser(peerId.toUserId());
@@ -39,6 +39,6 @@ export default async function getPeerTitle(peerId: PeerId, plainText = false, on
   if(_limitSymbols !== undefined) {
     title = limitSymbols(title, _limitSymbols, _limitSymbols);
   }
-  
+
   return plainText ? title : wrapEmojiText(title);
 }

@@ -12,7 +12,7 @@ export enum ConnectionStatus {
 };
 
 export type ConnectionStatusChange = {
-  _: 'networkerStatus', 
+  _: 'networkerStatus',
   status: ConnectionStatus,
   dcId: number,
   name: string,

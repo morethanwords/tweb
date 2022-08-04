@@ -1,5 +1,5 @@
-import copy from "./copy";
-import isObject from "./isObject";
+import copy from './copy';
+import isObject from './isObject';
 
 export default function validateInitObject(initObject: any, currentObject: any, onReplace?: (key: string) => void, previousKey?: string) {
   for(const key in initObject) {

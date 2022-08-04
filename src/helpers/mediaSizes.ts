@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { MOUNT_CLASS_TO } from "../config/debug";
-import EventListenerBase from "./eventListenerBase";
-import { makeMediaSize, MediaSize } from "./mediaSize";
+import {MOUNT_CLASS_TO} from '../config/debug';
+import EventListenerBase from './eventListenerBase';
+import {makeMediaSize, MediaSize} from './mediaSize';
 
 type MediaTypeSizes = {
   regular: MediaSize,
@@ -93,8 +93,8 @@ class MediaSizes extends EventListenerBase<{
 
   private handleResize = () => {
     const innerWidth = window.innerWidth;
-    //this.isMobile = innerWidth <= 720;
-    
+    // this.isMobile = innerWidth <= 720;
+
     let activeScreen = this.screenSizes[0].key;
     for(let i = this.screenSizes.length - 1; i >= 0; --i) {
       if(this.screenSizes[i].value < innerWidth) {
@@ -108,13 +108,13 @@ class MediaSizes extends EventListenerBase<{
     this.isMobile = this.activeScreen === ScreenSize.mobile;
     this.active = this.isMobile ? this.sizes.handhelds : this.sizes.desktop;
 
-    //console.time('esg');
-    //const computedStyle = window.getComputedStyle(document.documentElement);
-    //this.active.esgSticker.width = parseFloat(computedStyle.getPropertyValue('--esg-sticker-size'));
-    //console.timeEnd('esg');
+    // console.time('esg');
+    // const computedStyle = window.getComputedStyle(document.documentElement);
+    // this.active.esgSticker.width = parseFloat(computedStyle.getPropertyValue('--esg-sticker-size'));
+    // console.timeEnd('esg');
 
     if(wasScreen !== activeScreen) {
-      //console.log('changeScreen', this.activeScreen, activeScreen);
+      // console.log('changeScreen', this.activeScreen, activeScreen);
 
       if(wasScreen !== undefined) {
         this.dispatchEvent('changeScreen', wasScreen, activeScreen);
@@ -129,7 +129,7 @@ class MediaSizes extends EventListenerBase<{
       for(let i in this.active) {
         // @ts-ignore
         let size = this.active[i];
-        size.width = innerWidth 
+        size.width = innerWidth
       }
     } */
   };

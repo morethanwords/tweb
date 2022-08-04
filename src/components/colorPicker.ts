@@ -1,16 +1,16 @@
-import { ColorHsla, ColorRgba, hexaToHsla, hslaToRgba, rgbaToHexa as rgbaToHexa, rgbaToHsla } from "../helpers/color";
-import attachGrabListeners from "../helpers/dom/attachGrabListeners";
-import clamp from "../helpers/number/clamp";
-import InputField, { InputState } from "./inputField";
+import {ColorHsla, ColorRgba, hexaToHsla, hslaToRgba, rgbaToHexa as rgbaToHexa, rgbaToHsla} from '../helpers/color';
+import attachGrabListeners from '../helpers/dom/attachGrabListeners';
+import clamp from '../helpers/number/clamp';
+import InputField, {InputState} from './inputField';
 
-export type ColorPickerColor = { 
-  hsl: string; 
-  rgb: string; 
-  hex: string; 
-  hsla: string; 
-  rgba: string; 
-  hexa: string; 
-  rgbaArray: ColorRgba; 
+export type ColorPickerColor = {
+  hsl: string;
+  rgb: string;
+  hex: string;
+  hsla: string;
+  rgba: string;
+  hexa: string;
+  rgbaArray: ColorRgba;
 };
 
 export default class ColorPicker {
@@ -18,14 +18,14 @@ export default class ColorPicker {
   public container: HTMLElement;
 
   private boxRect: DOMRect;
-  //private boxDraggerRect: DOMRect;
+  // private boxDraggerRect: DOMRect;
   private hueRect: DOMRect;
-  //private hueDraggerRect: DOMRect;
+  // private hueDraggerRect: DOMRect;
 
-	private hue = 0;
-	private saturation = 100;
-	private lightness = 50;
-	private alpha = 1;
+  private hue = 0;
+  private saturation = 100;
+  private lightness = 50;
+  private alpha = 1;
   private elements: {
     box: SVGSVGElement,
     boxDragger: SVGSVGElement,
@@ -112,7 +112,7 @@ export default class ColorPicker {
 
       value = '#' + value;
       this.hexInputField.setValueSilently(value);
-      
+
       if(valid) {
         this.setColor(value, false, true);
       }
@@ -145,7 +145,7 @@ export default class ColorPicker {
     attachGrabListeners(this.elements.box as any, () => {
       this.onGrabStart();
       this.boxRect = this.elements.box.getBoundingClientRect();
-      //this.boxDraggerRect = this.elements.boxDragger.getBoundingClientRect();
+      // this.boxDraggerRect = this.elements.boxDragger.getBoundingClientRect();
     }, (pos) => {
       this.saturationHandler(pos.x, pos.y);
     }, () => {
@@ -157,7 +157,7 @@ export default class ColorPicker {
     attachGrabListeners(this.elements.hue as any, () => {
       this.onGrabStart();
       this.hueRect = this.elements.hue.getBoundingClientRect();
-      //this.hueDraggerRect = this.elements.hueDragger.getBoundingClientRect();
+      // this.hueDraggerRect = this.elements.hueDragger.getBoundingClientRect();
     }, (pos) => {
       this.hueHandler(pos.x);
     }, () => {
@@ -248,12 +248,12 @@ export default class ColorPicker {
 
     const percents = eventX / this.hueRect.width;
     this.hue = Math.round(360 * percents);
-    
+
     const hsla = `hsla(${this.hue}, 100%, 50%, ${this.alpha})`;
 
     this.elements.hueDragger.setAttributeNS(null, 'x', (percents * 100) + '%');
     this.elements.hueDragger.setAttributeNS(null, 'fill', hsla);
-    
+
     this.elements.saturation.lastElementChild.setAttributeNS(null, 'stop-color', hsla);
 
     if(update) {
@@ -270,7 +270,7 @@ export default class ColorPicker {
 
     const posX = eventX / maxX * 100;
     const posY = eventY / maxY * 100;
-    
+
     const boxDragger = this.elements.boxDragger;
     boxDragger.setAttributeNS(null, 'x', posX + '%');
     boxDragger.setAttributeNS(null, 'y', posY + '%');

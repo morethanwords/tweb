@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import callbackify from "../../helpers/callbackify";
-import deferredPromise, { CancellablePromise } from "../../helpers/cancellablePromise";
-import cryptoMessagePort from "../crypto/cryptoMessagePort";
-import MTProtoMessagePort from "../mtproto/mtprotoMessagePort";
-import appStateManager from "./appStateManager";
-import { AppStoragesManager } from "./appStoragesManager";
-import createManagers from "./createManagers";
+import callbackify from '../../helpers/callbackify';
+import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
+import cryptoMessagePort from '../crypto/cryptoMessagePort';
+import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
+import appStateManager from './appStateManager';
+import {AppStoragesManager} from './appStoragesManager';
+import createManagers from './createManagers';
 
 type Managers = Awaited<ReturnType<typeof createManagers>>;
 
@@ -41,7 +41,7 @@ export class AppManagersManager {
       if(this.cryptoPortAttached) {
         return;
       }
-      
+
       this.cryptoPortAttached = true;
       const port = event.ports[0];
       cryptoMessagePort.attachPort(port);
@@ -51,7 +51,7 @@ export class AppManagersManager {
 
   public async createManagers() {
     const appStoragesManager = new AppStoragesManager();
-    
+
     await Promise.all([
       // new Promise(() => {}),
       appStoragesManager.loadStorages(),

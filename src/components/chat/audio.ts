@@ -4,25 +4,25 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManager";
-import type ChatTopbar from "./topbar";
-import rootScope from "../../lib/rootScope";
-import appMediaPlaybackController, { AppMediaPlaybackController } from "../appMediaPlaybackController";
-import DivAndCaption from "../divAndCaption";
-import PinnedContainer from "./pinnedContainer";
-import Chat from "./chat";
-import cancelEvent from "../../helpers/dom/cancelEvent";
-import { attachClickEvent } from "../../helpers/dom/clickEvent";
-import replaceContent from "../../helpers/dom/replaceContent";
-import PeerTitle from "../peerTitle";
-import { i18n } from "../../lib/langPack";
-import { formatFullSentTime } from "../../helpers/date";
-import ButtonIcon from "../buttonIcon";
-import { DocumentAttribute } from "../../layer";
-import MediaProgressLine from "../mediaProgressLine";
-import VolumeSelector from "../volumeSelector";
-import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
-import { AppManagers } from "../../lib/appManagers/managers";
+import type {AppMessagesManager} from '../../lib/appManagers/appMessagesManager';
+import type ChatTopbar from './topbar';
+import rootScope from '../../lib/rootScope';
+import appMediaPlaybackController, {AppMediaPlaybackController} from '../appMediaPlaybackController';
+import DivAndCaption from '../divAndCaption';
+import PinnedContainer from './pinnedContainer';
+import Chat from './chat';
+import cancelEvent from '../../helpers/dom/cancelEvent';
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import replaceContent from '../../helpers/dom/replaceContent';
+import PeerTitle from '../peerTitle';
+import {i18n} from '../../lib/langPack';
+import {formatFullSentTime} from '../../helpers/date';
+import ButtonIcon from '../buttonIcon';
+import {DocumentAttribute} from '../../layer';
+import MediaProgressLine from '../mediaProgressLine';
+import VolumeSelector from '../volumeSelector';
+import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
+import {AppManagers} from '../../lib/appManagers/managers';
 
 export default class ChatAudio extends PinnedContainer {
   private toggleEl: HTMLElement;
@@ -33,17 +33,17 @@ export default class ChatAudio extends PinnedContainer {
 
   constructor(protected topbar: ChatTopbar, protected chat: Chat, protected managers: AppManagers) {
     super({
-      topbar, 
-      chat, 
-      listenerSetter: topbar.listenerSetter, 
-      className: 'audio', 
+      topbar,
+      chat,
+      listenerSetter: topbar.listenerSetter,
+      className: 'audio',
       divAndCaption: new DivAndCaption(
-        'pinned-audio', 
+        'pinned-audio',
         (title: string | HTMLElement | DocumentFragment, subtitle: string | HTMLElement | DocumentFragment) => {
           replaceContent(this.divAndCaption.title, title);
           replaceContent(this.divAndCaption.subtitle, subtitle);
         }
-      ), 
+      ),
       onClose: () => {
         appMediaPlaybackController.stop();
       },
@@ -148,14 +148,14 @@ export default class ChatAudio extends PinnedContainer {
   private onStop = () => {
     this.toggle(true);
   };
-  
+
   private onMediaPlay = ({doc, message, media, playbackParams}: ReturnType<AppMediaPlaybackController['getPlayingDetails']>) => {
     let title: string | HTMLElement | DocumentFragment, subtitle: string | HTMLElement | DocumentFragment;
     const isMusic = doc.type !== 'voice' && doc.type !== 'round';
     if(!isMusic) {
       title = new PeerTitle({peerId: message.fromId, fromName: message.fwd_from?.from_name}).element;
 
-      //subtitle = 'Voice message';
+      // subtitle = 'Voice message';
       subtitle = formatFullSentTime(message.date);
     } else {
       const audioAttribute = doc.attributes.find((attr) => attr._ === 'documentAttributeAudio') as DocumentAttribute.documentAttributeAudio;

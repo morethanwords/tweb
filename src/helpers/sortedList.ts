@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import insertInDescendSortedArray from "./array/insertInDescendSortedArray";
-import { getMiddleware } from "./middleware";
-import safeAssign from "./object/safeAssign";
+import insertInDescendSortedArray from './array/insertInDescendSortedArray';
+import {getMiddleware} from './middleware';
+import safeAssign from './object/safeAssign';
 
 export type SortedElementId = PeerId;
 export type SortedElementBase = {
-  id: SortedElementId, 
+  id: SortedElementId,
   index: number
 };
 
@@ -71,7 +71,7 @@ export default class SortedList<SortedElement extends SortedElementBase> {
       }
 
       this._updateList();
-  
+
       callback(true);
     });
   }
@@ -89,9 +89,9 @@ export default class SortedList<SortedElement extends SortedElementBase> {
   }
 
   public add(
-    id: SortedElementId, 
-    batch = false, 
-    updateElementWith?: SortedList<SortedElement>['updateElementWith'], 
+    id: SortedElementId,
+    batch = false,
+    updateElementWith?: SortedList<SortedElement>['updateElementWith'],
     updateBatch = batch
   ) {
     let element = this.get(id);
@@ -116,9 +116,9 @@ export default class SortedList<SortedElement extends SortedElementBase> {
     if(!element) {
       return false;
     }
-    
+
     this.elements.delete(id);
-    
+
     const idx = this.sorted.indexOf(element);
     if(idx !== -1) {
       this.sorted.splice(idx, 1);
@@ -143,9 +143,9 @@ export default class SortedList<SortedElement extends SortedElementBase> {
   }
 
   public async update(
-    id: SortedElementId, 
-    batch = false, 
-    element = this.get(id), 
+    id: SortedElementId,
+    batch = false,
+    element = this.get(id),
     updateElementWith?: SortedList<SortedElement>['updateElementWith']
   ) {
     if(!element) {

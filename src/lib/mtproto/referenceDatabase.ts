@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { Photo } from "../../layer";
-import { logger } from "../logger";
-import bytesToHex from "../../helpers/bytes/bytesToHex";
-import deepEqual from "../../helpers/object/deepEqual";
-import { AppManager } from "../appManagers/manager";
-import makeError from "../../helpers/makeError";
+import {Photo} from '../../layer';
+import {logger} from '../logger';
+import bytesToHex from '../../helpers/bytes/bytesToHex';
+import deepEqual from '../../helpers/object/deepEqual';
+import {AppManager} from '../appManagers/manager';
+import makeError from '../../helpers/makeError';
 
 export type ReferenceContext = ReferenceContext.referenceContextProfilePhoto | ReferenceContext.referenceContextMessage | ReferenceContext.referenceContextEmojiesSounds | ReferenceContext.referenceContextReactions | ReferenceContext.referenceContextUserFull;
 export namespace ReferenceContext {
@@ -41,11 +41,11 @@ export namespace ReferenceContext {
 export type ReferenceBytes = Photo.photo['file_reference'];
 export type ReferenceContexts = Set<ReferenceContext>;
 
-//type ReferenceBytes = Uint8Array;
+// type ReferenceBytes = Uint8Array;
 
 export class ReferenceDatabase extends AppManager {
   private contexts: Map<ReferenceBytes, ReferenceContexts> = new Map();
-  //private references: Map<ReferenceBytes, number[]> = new Map();
+  // private references: Map<ReferenceBytes, number[]> = new Map();
   private links: {[hex: string]: ReferenceBytes} = {};
   private log = logger('RD', undefined, true);
   private refreshEmojiesSoundsPromise: Promise<any>;
@@ -53,18 +53,18 @@ export class ReferenceDatabase extends AppManager {
   // constructor() {
   //   super();
 
-    // apiManager.addTaskListener('refreshReference', (task: RefreshReferenceTask) => {
-    //   const originalPayload = task.payload;
+  // apiManager.addTaskListener('refreshReference', (task: RefreshReferenceTask) => {
+  //   const originalPayload = task.payload;
 
-    //   assumeType<RefreshReferenceTaskResponse>(task);
-    //   task.originalPayload = originalPayload;
+  //   assumeType<RefreshReferenceTaskResponse>(task);
+  //   task.originalPayload = originalPayload;
 
-    //   this.refreshReference(originalPayload).then((bytes) => {
-    //     task.payload = bytes;
-    //   }, (err) => {
-    //     task.error = err;
-    //   }).then(() => apiManager.postMessage(task));
-    // });
+  //   this.refreshReference(originalPayload).then((bytes) => {
+  //     task.payload = bytes;
+  //   }, (err) => {
+  //     task.error = err;
+  //   }).then(() => apiManager.postMessage(task));
+  // });
   // }
 
   public saveContext(reference: ReferenceBytes, context: ReferenceContext, contexts?: ReferenceContexts) {
@@ -73,7 +73,7 @@ export class ReferenceDatabase extends AppManager {
       contexts = new Set();
       this.contexts.set(reference, contexts);
     }
-    
+
     this.links[bytesToHex(reference)] = reference;
     for(const _context of contexts) {
       if(deepEqual(_context, context)) {
@@ -132,7 +132,7 @@ export class ReferenceDatabase extends AppManager {
     switch(context?.type) {
       case 'message': {
         promise = this.appMessagesManager.wrapSingleMessage(context.peerId, context.messageId, true);
-        break; 
+        break;
         // .then(() => {
         //   console.log('FILE_REFERENCE_EXPIRED: got message', context, appMessagesManager.getMessage((context as ReferenceContext.referenceContextMessage).messageId).media, reference);
         // });

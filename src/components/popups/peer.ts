@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import AvatarElement from "../avatar";
-import PopupElement, { addCancelButton, PopupButton, PopupOptions } from ".";
-import { i18n, LangPackKey } from "../../lib/langPack";
-import CheckboxField, { CheckboxFieldOptions } from "../checkboxField";
-import setInnerHTML from "../../helpers/dom/setInnerHTML";
+import AvatarElement from '../avatar';
+import PopupElement, {addCancelButton, PopupButton, PopupOptions} from '.';
+import {i18n, LangPackKey} from '../../lib/langPack';
+import CheckboxField, {CheckboxFieldOptions} from '../checkboxField';
+import setInnerHTML from '../../helpers/dom/setInnerHTML';
 
 export type PopupPeerButton = Omit<PopupButton, 'callback'> & Partial<{callback: PopupPeerButtonCallback}>;
 export type PopupPeerButtonCallbackCheckboxes = Set<LangPackKey>;
@@ -32,10 +32,10 @@ export default class PopupPeer extends PopupElement {
 
   constructor(private className: string, options: PopupPeerOptions = {}) {
     super('popup-peer' + (className ? ' ' + className : ''), {
-      overlayClosable: true, 
+      overlayClosable: true,
       ...options,
       title: true,
-      buttons: options.buttons && addCancelButton(options.buttons),
+      buttons: options.buttons && addCancelButton(options.buttons)
     });
 
     if(options.peerId) {
@@ -62,13 +62,13 @@ export default class PopupPeer extends PopupElement {
       p.classList.add('popup-description');
       if(options.descriptionLangKey) p.append(i18n(options.descriptionLangKey, options.descriptionLangArgs));
       else if(options.description) setInnerHTML(p, options.description);
-  
+
       fragment.append(p);
     }
 
     if(options.checkboxes) {
       this.container.classList.add('have-checkbox');
-      
+
       options.checkboxes.forEach((o) => {
         o.withRipple = true;
         const checkboxField = new CheckboxField(o);

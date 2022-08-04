@@ -1,6 +1,6 @@
 export default function getScreenConstraints(skipAudio?: boolean) {
   const constraints: DisplayMediaStreamConstraints = {
-   video: {
+    video: {
       // @ts-ignore
       // cursor: 'always',
       width: {max: 1920},

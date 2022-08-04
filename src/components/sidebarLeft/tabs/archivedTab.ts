@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
-import { SliderSuperTab } from "../../slider";
-import { FOLDER_ID_ARCHIVE, REAL_FOLDER_ID } from "../../../lib/mtproto/mtproto_config";
+import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
+import {SliderSuperTab} from '../../slider';
+import {FOLDER_ID_ARCHIVE, REAL_FOLDER_ID} from '../../../lib/mtproto/mtproto_config';
 
 export default class AppArchivedTab extends SliderSuperTab {
   private static filterId: REAL_FOLDER_ID = FOLDER_ID_ARCHIVE;
@@ -21,13 +21,13 @@ export default class AppArchivedTab extends SliderSuperTab {
     if(!appDialogsManager.sortedLists[AppArchivedTab.filterId]) {
       const chatList = appDialogsManager.createChatList();
       const scrollable = appDialogsManager.generateScrollable(chatList, {
-        title: undefined, 
-        id: AppArchivedTab.filterId, 
+        title: undefined,
+        id: AppArchivedTab.filterId,
         localId: FOLDER_ID_ARCHIVE
       });
       scrollable.container.append(chatList);
       appDialogsManager.setListClickListener(chatList, null, true);
-      //appDialogsManager.setListClickListener(archivedChatList, null, true); // * to test peer changing
+      // appDialogsManager.setListClickListener(archivedChatList, null, true); // * to test peer changing
     }
 
     const scrollable = appDialogsManager.scrollables[AppArchivedTab.filterId];

@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import StreamWriter from "./streamWriter";
+import StreamWriter from './streamWriter';
 
 export default abstract class FileStorage {
   public abstract getFile(fileName: string): Promise<any>;

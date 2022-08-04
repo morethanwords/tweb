@@ -4,21 +4,21 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { SliderSuperTab } from "../../slider";
-import InputSearch from "../../inputSearch";
-import LazyLoadQueue from "../../lazyLoadQueue";
-import appImManager from "../../../lib/appManagers/appImManager";
-import PopupStickers from "../../popups/stickers";
-import animationIntersector from "../../animationIntersector";
-import { wrapSticker } from "../../wrappers";
-import appSidebarRight from "..";
-import { StickerSet, StickerSetCovered } from "../../../layer";
-import { i18n } from "../../../lib/langPack";
-import findUpClassName from "../../../helpers/dom/findUpClassName";
-import { attachClickEvent } from "../../../helpers/dom/clickEvent";
-import forEachReverse from "../../../helpers/array/forEachReverse";
-import setInnerHTML from "../../../helpers/dom/setInnerHTML";
-import wrapEmojiText from "../../../lib/richTextProcessor/wrapEmojiText";
+import {SliderSuperTab} from '../../slider';
+import InputSearch from '../../inputSearch';
+import LazyLoadQueue from '../../lazyLoadQueue';
+import appImManager from '../../../lib/appManagers/appImManager';
+import PopupStickers from '../../popups/stickers';
+import animationIntersector from '../../animationIntersector';
+import {wrapSticker} from '../../wrappers';
+import appSidebarRight from '..';
+import {StickerSet, StickerSetCovered} from '../../../layer';
+import {i18n} from '../../../lib/langPack';
+import findUpClassName from '../../../helpers/dom/findUpClassName';
+import {attachClickEvent} from '../../../helpers/dom/clickEvent';
+import forEachReverse from '../../../helpers/array/forEachReverse';
+import setInnerHTML from '../../../helpers/dom/setInnerHTML';
+import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
 
 export default class AppStickersTab extends SliderSuperTab {
   private inputSearch: InputSearch;
@@ -61,7 +61,7 @@ export default class AppStickersTab extends SliderSuperTab {
         e.cancelBubble = true;
 
         button.setAttribute('disabled', 'true');
-        
+
         this.managers.appStickersManager.getStickerSet({id, access_hash}).then((full) => {
           this.managers.appStickersManager.toggleStickerSet(full.set).then((changed) => {
             if(changed) {
@@ -70,7 +70,7 @@ export default class AppStickersTab extends SliderSuperTab {
               button.classList.toggle('gray', !!full.set.installed_date);
             }
           }).finally(() => {
-            //button.style.width = set.installed_date ? '68px' : '52px';
+            // button.style.width = set.installed_date ? '68px' : '52px';
             button.removeAttribute('disabled');
           });
         });
@@ -89,7 +89,7 @@ export default class AppStickersTab extends SliderSuperTab {
   }
 
   public renderSet(set: StickerSet.stickerSet) {
-    //console.log('renderSet:', set);
+    // console.log('renderSet:', set);
     const div = document.createElement('div');
     div.classList.add('sticker-set');
 
@@ -106,17 +106,17 @@ export default class AppStickersTab extends SliderSuperTab {
     countDiv.classList.add('sticker-set-count');
     countDiv.append(i18n('Stickers', [set.count]));
     details.append(countDiv);
-    
+
     const button = document.createElement('button');
     button.classList.add('btn-primary', 'btn-color-primary', 'sticker-set-button');
     button.append(i18n(set.installed_date ? 'Stickers.SearchAdded' : 'Stickers.SearchAdd'));
-   // button.style.width = set.installed_date ? '68px' : '52px';
+    // button.style.width = set.installed_date ? '68px' : '52px';
 
     if(set.installed_date) {
       button.classList.add('gray');
     }
 
-    //ripple(button);
+    // ripple(button);
 
     header.append(details, button);
 
@@ -132,8 +132,8 @@ export default class AppStickersTab extends SliderSuperTab {
     }
 
     this.managers.appStickersManager.getStickerSet(set).then((set) => {
-      //console.log('renderSet got set:', set);
-      
+      // console.log('renderSet got set:', set);
+
       for(let i = 0; i < count; ++i) {
         const div = stickersDiv.children[i] as HTMLDivElement;
         const doc = set.documents[i];
@@ -142,10 +142,10 @@ export default class AppStickersTab extends SliderSuperTab {
         }
 
         wrapSticker({
-          doc, 
-          div, 
-          lazyLoadQueue: this.lazyLoadQueue, 
-          group: 'STICKERS-SEARCH', 
+          doc,
+          div,
+          lazyLoadQueue: this.lazyLoadQueue,
+          group: 'STICKERS-SEARCH',
           /* play: false,
           loop: false, */
           play: true,
@@ -219,7 +219,7 @@ export default class AppStickersTab extends SliderSuperTab {
     forEachReverse(children, el => {
       const id = el.dataset.stickerSet;
       const index = coveredSets.findIndex((covered) => covered.set.id === id);
-  
+
       if(index !== -1) {
         coveredSets.splice(index, 1);
       } else if(!query || !el.dataset.title.toLowerCase().includes(query.toLowerCase())) {
@@ -242,7 +242,7 @@ export default class AppStickersTab extends SliderSuperTab {
         return;
       }
 
-      //console.log('search result:', coveredSets);
+      // console.log('search result:', coveredSets);
 
       coveredSets = this.filterRendered(query, coveredSets);
       coveredSets.forEach((set) => {

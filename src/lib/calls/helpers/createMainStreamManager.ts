@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { GROUP_CALL_AMPLITUDE_ANALYSE_INTERVAL_MS } from "../constants";
-import StreamManager from "../streamManager";
-import getAudioConstraints from "./getAudioConstraints";
-import getStream from "./getStream";
-import getVideoConstraints from "./getVideoConstraints";
+import {GROUP_CALL_AMPLITUDE_ANALYSE_INTERVAL_MS} from '../constants';
+import StreamManager from '../streamManager';
+import getAudioConstraints from './getAudioConstraints';
+import getStream from './getStream';
+import getVideoConstraints from './getVideoConstraints';
 
 export default async function createMainStreamManager(muted?: boolean, joinVideo?: boolean) {
   const constraints: MediaStreamConstraints = {
@@ -17,7 +17,7 @@ export default async function createMainStreamManager(muted?: boolean, joinVideo
   };
 
   const streamManager = new StreamManager(GROUP_CALL_AMPLITUDE_ANALYSE_INTERVAL_MS);
-  
+
   try {
     const stream = await getStream(constraints, muted);
     streamManager.addStream(stream, 'input');

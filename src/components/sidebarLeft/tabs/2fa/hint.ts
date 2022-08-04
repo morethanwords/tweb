@@ -4,17 +4,17 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { SettingSection } from "../..";
-import { AccountPassword } from "../../../../layer";
-import Button from "../../../button";
-import { SliderSuperTab } from "../../../slider";
-import InputField from "../../../inputField";
-import AppTwoStepVerificationEmailTab from "./email";
-import { toast } from "../../../toast";
-import I18n from "../../../../lib/langPack";
-import cancelEvent from "../../../../helpers/dom/cancelEvent";
-import { attachClickEvent } from "../../../../helpers/dom/clickEvent";
-import wrapStickerEmoji from "../../../wrappers/stickerEmoji";
+import {SettingSection} from '../..';
+import {AccountPassword} from '../../../../layer';
+import Button from '../../../button';
+import {SliderSuperTab} from '../../../slider';
+import InputField from '../../../inputField';
+import AppTwoStepVerificationEmailTab from './email';
+import {toast} from '../../../toast';
+import I18n from '../../../../lib/langPack';
+import cancelEvent from '../../../../helpers/dom/cancelEvent';
+import {attachClickEvent} from '../../../../helpers/dom/clickEvent';
+import wrapStickerEmoji from '../../../wrappers/stickerEmoji';
 
 export default class AppTwoStepVerificationHintTab extends SliderSuperTab {
   public inputField: InputField;
@@ -60,7 +60,7 @@ export default class AppTwoStepVerificationHintTab extends SliderSuperTab {
       if(e) {
         cancelEvent(e);
       }
-      
+
       const hint = saveHint ? inputField.value : undefined;
       if(hint && this.newPassword === hint) {
         toast(I18n.format('PasswordAsHintError', true));

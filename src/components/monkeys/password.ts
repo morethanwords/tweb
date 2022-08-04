@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import lottieLoader, { LottieLoader } from "../../lib/rlottie/lottieLoader";
-import RLottiePlayer from "../../lib/rlottie/rlottiePlayer";
-import PasswordInputField from "../passwordInputField";
+import lottieLoader, {LottieLoader} from '../../lib/rlottie/lottieLoader';
+import RLottiePlayer from '../../lib/rlottie/rlottiePlayer';
+import PasswordInputField from '../passwordInputField';
 
 export default class PasswordMonkey {
   public container: HTMLElement;
@@ -28,18 +28,18 @@ export default class PasswordMonkey {
       width: this.size,
       height: this.size,
       noCache: true
-    //}, 'assets/img/TwoFactorSetupMonkeyClose.tgs').then((_animation) => {
+    // }, 'assets/img/TwoFactorSetupMonkeyClose.tgs').then((_animation) => {
     }, 'TwoFactorSetupMonkeyPeek').then((_animation) => {
-      //return;
+      // return;
       this.animation = _animation;
       this.animation.addEventListener('enterFrame', currentFrame => {
-        //console.log('enterFrame', currentFrame, this.needFrame);
+        // console.log('enterFrame', currentFrame, this.needFrame);
 
         if((this.animation.direction === 1 && currentFrame >= this.needFrame) ||
           (this.animation.direction === -1 && currentFrame <= this.needFrame)) {
-            this.animation.setSpeed(1);
-            this.animation.pause();
-        } 
+          this.animation.setSpeed(1);
+          this.animation.pause();
+        }
       });
 
       this.passwordInputField.onVisibilityClickAdditional = () => {

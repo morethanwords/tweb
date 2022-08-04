@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import attachGrabListeners, { GrabEvent } from "../helpers/dom/attachGrabListeners";
-import clamp from "../helpers/number/clamp";
-import safeAssign from "../helpers/object/safeAssign";
+import attachGrabListeners, {GrabEvent} from '../helpers/dom/attachGrabListeners';
+import clamp from '../helpers/number/clamp';
+import safeAssign from '../helpers/object/safeAssign';
 
 export default class RangeSelector {
   public container: HTMLDivElement;
@@ -18,7 +18,7 @@ export default class RangeSelector {
   protected _removeListeners: () => void;
 
   private events: Partial<{
-    //onMouseMove: ProgressLine['onMouseMove'],
+    // onMouseMove: ProgressLine['onMouseMove'],
     onMouseDown: RangeSelector['onMouseDown'],
     onMouseUp: RangeSelector['onMouseUp'],
     onScrub: (value: number) => void
@@ -41,7 +41,7 @@ export default class RangeSelector {
       withTransition?: RangeSelector['withTransition'],
       useTransform?: RangeSelector['useTransform'],
       vertical?: RangeSelector['vertical']
-    }, 
+    },
     value = 0
   ) {
     safeAssign(this, options);
@@ -61,7 +61,7 @@ export default class RangeSelector {
 
     const seek = this.seek = document.createElement('input');
     seek.classList.add('progress-line__seek');
-    //seek.setAttribute('max', '0');
+    // seek.setAttribute('max', '0');
     seek.type = 'range';
     seek.step = '' + this.step;
     seek.min = '' + this.min;
@@ -76,7 +76,7 @@ export default class RangeSelector {
     const index = stepStr.indexOf('.');
     this.decimals = index === -1 ? 0 : stepStr.length - index - 1;
 
-    //this.setListeners();
+    // this.setListeners();
 
     this.container.append(this.filled, seek);
   }
@@ -131,7 +131,7 @@ export default class RangeSelector {
   public setFilled(value: number) {
     let percents = (value - this.min) / (this.max - this.min);
     percents = clamp(percents, 0, 1);
-    
+
     // using scaleX and width even with vertical because it will be rotated
     if(this.useTransform) {
       this.filled.style.transform = `scaleX(${percents})`;
@@ -149,12 +149,12 @@ export default class RangeSelector {
     if((value - this.min) < ((this.max - this.min) / 2)) {
       value -= this.step / 10;
     }
-    
+
     value = +value.toFixed(this.decimals);
     value = clamp(value, this.min, this.max);
 
-    //this.seek.value = '' + value;
-    //this.onInput();
+    // this.seek.value = '' + value;
+    // this.onInput();
 
     this.setProgress(value);
     this.events?.onScrub && this.events.onScrub(value);
@@ -169,7 +169,7 @@ export default class RangeSelector {
     }
 
     this.seek.removeEventListener('input', this.onInput);
-    
+
     this.events = {};
   }
 }

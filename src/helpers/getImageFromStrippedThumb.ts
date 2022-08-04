@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { PhotoSize } from "../layer";
-import { MyDocument } from "../lib/appManagers/appDocsManager";
-import { MyPhoto } from "../lib/appManagers/appPhotosManager";
-import { renderImageFromUrlPromise } from "./dom/renderImageFromUrl";
-import getPreviewURLFromThumb from "./getPreviewURLFromThumb";
+import {PhotoSize} from '../layer';
+import {MyDocument} from '../lib/appManagers/appDocsManager';
+import {MyPhoto} from '../lib/appManagers/appPhotosManager';
+import {renderImageFromUrlPromise} from './dom/renderImageFromUrl';
+import getPreviewURLFromThumb from './getPreviewURLFromThumb';
 import blur from './blur';
 
 export default function getImageFromStrippedThumb(photo: MyPhoto | MyDocument, thumb: PhotoSize.photoCachedSize | PhotoSize.photoStrippedSize, useBlur: boolean) {
@@ -25,6 +25,6 @@ export default function getImageFromStrippedThumb(photo: MyPhoto | MyDocument, t
   }
 
   element.classList.add('thumbnail');
-  
+
   return {image: element, loadPromise};
 }

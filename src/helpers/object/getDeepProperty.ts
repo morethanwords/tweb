@@ -5,10 +5,10 @@ export default function getDeepProperty(object: any, key: string) {
     if(!key) {
       return;
     }
-    
+
     // @ts-ignore
     o = o[key];
   });
-  
+
   return o;
 }

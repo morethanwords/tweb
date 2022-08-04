@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { MessageEntity } from "../../layer";
-import wrapRichText from "./wrapRichText";
+import {MessageEntity} from '../../layer';
+import wrapRichText from './wrapRichText';
 
 export default function wrapDraftText(text: string, options: Partial<{
   entities: MessageEntity[]
@@ -15,7 +15,7 @@ export default function wrapDraftText(text: string, options: Partial<{
   }
 
   return wrapRichText(text, {
-    entities: options.entities, 
+    entities: options.entities,
     noLinks: true,
     wrappingDraft: true,
     passEntities: {

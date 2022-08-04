@@ -4,23 +4,23 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import PopupElement from ".";
-import accumulate from "../../helpers/array/accumulate";
-import { attachClickEvent } from "../../helpers/dom/clickEvent";
-import paymentsWrapCurrencyAmount from "../../helpers/paymentsWrapCurrencyAmount";
-import { PaymentsPaymentForm, PaymentsValidatedRequestedInfo, ShippingOption } from "../../layer";
-import Button from "../button";
-import RadioField from "../radioField";
-import Row, { RadioFormFromRows } from "../row";
-import { SettingSection } from "../sidebarLeft";
-import { PaymentButton } from "./payment";
+import PopupElement from '.';
+import accumulate from '../../helpers/array/accumulate';
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
+import {PaymentsPaymentForm, PaymentsValidatedRequestedInfo, ShippingOption} from '../../layer';
+import Button from '../button';
+import RadioField from '../radioField';
+import Row, {RadioFormFromRows} from '../row';
+import {SettingSection} from '../sidebarLeft';
+import {PaymentButton} from './payment';
 
 export default class PopupPaymentShippingMethods extends PopupElement<{
   finish: (shippingOption: ShippingOption) => void
 }> {
   constructor(
-    private paymentForm: PaymentsPaymentForm, 
-    private requestedInfo: PaymentsValidatedRequestedInfo, 
+    private paymentForm: PaymentsPaymentForm,
+    private requestedInfo: PaymentsValidatedRequestedInfo,
     private shippingOption: ShippingOption
   ) {
     super('popup-payment popup-payment-shipping-methods', {
@@ -45,7 +45,7 @@ export default class PopupPaymentShippingMethods extends PopupElement<{
           value: shippingOption.id
         }),
         subtitle: paymentsWrapCurrencyAmount(
-          accumulate(shippingOption.prices.map(({amount}) => +amount), 0), 
+          accumulate(shippingOption.prices.map(({amount}) => +amount), 0),
           this.paymentForm.invoice.currency
         )
       });
@@ -65,7 +65,7 @@ export default class PopupPaymentShippingMethods extends PopupElement<{
     section.content.append(form);
 
     this.scrollable.append(section.container);
-    
+
     const payButton = PaymentButton({
       key: 'PaymentInfo.Done',
       onClick: () => {

@@ -11,9 +11,9 @@ export default class SDPMediaLineParts {
   #ids: string[];
 
   constructor(
-    type: SDPMediaLineParts['type'], 
-    port: SDPMediaLineParts['port'], 
-    protocol: SDPMediaLineParts['protocol'], 
+    type: SDPMediaLineParts['type'],
+    port: SDPMediaLineParts['port'],
+    protocol: SDPMediaLineParts['protocol'],
     ids: SDPMediaLineParts['ids']
   ) {
     this.#type = type;
@@ -25,7 +25,7 @@ export default class SDPMediaLineParts {
   public get type() {
     return this.#type;
   }
-  
+
   public get port() {
     return this.#port;
   }

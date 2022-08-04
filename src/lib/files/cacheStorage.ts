@@ -19,7 +19,7 @@ export default class CacheStorageController implements FileStorage {
 
   private useStorage = true;
 
-  //private log: ReturnType<typeof logger> = logger('CS');
+  // private log: ReturnType<typeof logger> = logger('CS');
 
   constructor(private dbName: CacheStorageDbName) {
     if(Modes.test) {
@@ -29,7 +29,7 @@ export default class CacheStorageController implements FileStorage {
     if(CacheStorageController.STORAGES.length) {
       this.useStorage = CacheStorageController.STORAGES[0].useStorage;
     }
-    
+
     this.openDatabase();
     CacheStorageController.STORAGES.push(this);
   }
@@ -64,7 +64,7 @@ export default class CacheStorageController implements FileStorage {
     // console.time(str);
     return this.get(fileName).then((response) => {
       if(!response) {
-        //console.warn('getFile:', response, fileName);
+        // console.warn('getFile:', response, fileName);
         throw makeError('NO_ENTRY_FOUND');
       }
 
@@ -77,7 +77,7 @@ export default class CacheStorageController implements FileStorage {
   }
 
   public saveFile(fileName: string, blob: Blob | Uint8Array) {
-    //return Promise.resolve(blobConstruct([blob]));
+    // return Promise.resolve(blobConstruct([blob]));
     if(!(blob instanceof Blob)) {
       blob = blobConstruct(blob);
     }
@@ -87,7 +87,7 @@ export default class CacheStorageController implements FileStorage {
         'Content-Length': '' + blob.size
       }
     });
-    
+
     return this.save(fileName, response).then(() => blob as Blob);
   }
 
@@ -100,7 +100,7 @@ export default class CacheStorageController implements FileStorage {
       let rejected = false;
       const timeout = setTimeout(() => {
         reject();
-        //console.warn('CACHESTORAGE TIMEOUT');
+        // console.warn('CACHESTORAGE TIMEOUT');
         rejected = true;
       }, 15e3);
 
@@ -139,7 +139,7 @@ export default class CacheStorageController implements FileStorage {
       if(!clearWrite) {
         return;
       }
-      
+
       if(!enabled) {
         return storage.deleteAll();
       }

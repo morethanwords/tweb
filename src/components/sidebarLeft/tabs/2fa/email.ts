@@ -4,20 +4,20 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { SettingSection } from "../..";
-import { AccountPassword } from "../../../../layer";
-import Button from "../../../button";
-import { SliderSuperTab } from "../../../slider";
-import InputField from "../../../inputField";
-import { putPreloader } from "../../../putPreloader";
-import AppTwoStepVerificationSetTab from "./passwordSet";
-import AppTwoStepVerificationEmailConfirmationTab from "./emailConfirmation";
-import PopupPeer from "../../../popups/peer";
-import cancelEvent from "../../../../helpers/dom/cancelEvent";
-import { canFocus } from "../../../../helpers/dom/canFocus";
-import { attachClickEvent } from "../../../../helpers/dom/clickEvent";
-import matchEmail from "../../../../lib/richTextProcessor/matchEmail";
-import wrapStickerEmoji from "../../../wrappers/stickerEmoji";
+import {SettingSection} from '../..';
+import {AccountPassword} from '../../../../layer';
+import Button from '../../../button';
+import {SliderSuperTab} from '../../../slider';
+import InputField from '../../../inputField';
+import {putPreloader} from '../../../putPreloader';
+import AppTwoStepVerificationSetTab from './passwordSet';
+import AppTwoStepVerificationEmailConfirmationTab from './emailConfirmation';
+import PopupPeer from '../../../popups/peer';
+import cancelEvent from '../../../../helpers/dom/cancelEvent';
+import {canFocus} from '../../../../helpers/dom/canFocus';
+import {attachClickEvent} from '../../../../helpers/dom/clickEvent';
+import matchEmail from '../../../../lib/richTextProcessor/matchEmail';
+import wrapStickerEmoji from '../../../wrappers/stickerEmoji';
 
 export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
   public inputField: InputField;
@@ -132,11 +132,11 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
         }, {
           langKey: 'YourEmailSkip',
           callback: () => {
-            //inputContent.classList.add('sidebar-left-section-disabled');
+            // inputContent.classList.add('sidebar-left-section-disabled');
             toggleButtons(true);
             putPreloader(btnSkip);
             this.managers.passwordManager.updateSettings({
-              hint: this.hint, 
+              hint: this.hint,
               currentPassword: this.plainPassword,
               newPassword: this.newPassword,
               email: ''
@@ -146,8 +146,8 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
               toggleButtons(false);
             });
           },
-          isDanger: true,
-        }], 
+          isDanger: true
+        }],
         titleLangKey: 'YourEmailSkipWarning',
         descriptionLangKey: 'YourEmailSkipWarningText'
       });

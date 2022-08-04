@@ -4,19 +4,19 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import forEachReverse from "../../helpers/array/forEachReverse";
-import positionElementByIndex from "../../helpers/dom/positionElementByIndex";
-import { Message, ReactionCount } from "../../layer";
-import appImManager from "../../lib/appManagers/appImManager";
-import { AppManagers } from "../../lib/appManagers/managers";
-import rootScope from "../../lib/rootScope";
-import ReactionElement, { ReactionLayoutType, REACTION_DISPLAY_BLOCK_COUNTER_AT } from "./reaction";
+import forEachReverse from '../../helpers/array/forEachReverse';
+import positionElementByIndex from '../../helpers/dom/positionElementByIndex';
+import {Message, ReactionCount} from '../../layer';
+import appImManager from '../../lib/appManagers/appImManager';
+import {AppManagers} from '../../lib/appManagers/managers';
+import rootScope from '../../lib/rootScope';
+import ReactionElement, {ReactionLayoutType, REACTION_DISPLAY_BLOCK_COUNTER_AT} from './reaction';
 
 const CLASS_NAME = 'reactions';
 const TAG_NAME = CLASS_NAME + '-element';
 
 const REACTIONS_ELEMENTS: Map<string, Set<ReactionsElement>> = new Map();
-export { REACTIONS_ELEMENTS };
+export {REACTIONS_ELEMENTS};
 
 export default class ReactionsElement extends HTMLElement {
   private message: Message.message;
@@ -33,7 +33,7 @@ export default class ReactionsElement extends HTMLElement {
     this.sorted = [];
     this.managers = rootScope.managers;
   }
-  
+
   connectedCallback() {
     let set = REACTIONS_ELEMENTS.get(this.key);
     if(!set) {
@@ -98,63 +98,63 @@ export default class ReactionsElement extends HTMLElement {
 
     const availableReactionsResult = this.managers.appReactionsManager.getAvailableReactions();
     // callbackify(availableReactionsResult, () => {
-      const counts = hasReactions ? (
-        availableReactionsResult instanceof Promise ? 
-          reactions.results : 
+    const counts = hasReactions ? (
+        availableReactionsResult instanceof Promise ?
+          reactions.results :
           reactions.results.filter((reactionCount) => {
             return this.managers.appReactionsManager.isReactionActive(reactionCount.reaction);
           })
       ) : [];
 
-      forEachReverse(this.sorted, (reactionElement, idx, arr) => {
-        const reaction = reactionElement.reactionCount.reaction;
-        const found = counts.some((reactionCount) => reactionCount.reaction === reaction);
-        if(!found) {
-          arr.splice(idx, 1);
-          reactionElement.remove();
-        }
-      });
-
-      const totalReactions = counts.reduce((acc, c) => acc + c.count, 0);
-      const canRenderAvatars = reactions && !!reactions.pFlags.can_see_list && totalReactions < REACTION_DISPLAY_BLOCK_COUNTER_AT;
-      this.sorted = counts.map((reactionCount, idx) => {
-        const reactionElementIdx = this.sorted.findIndex((reactionElement) => reactionElement.reactionCount.reaction === reactionCount.reaction);
-        let reactionElement = reactionElementIdx !== -1 && this.sorted[reactionElementIdx];
-        if(!reactionElement) {
-          reactionElement = new ReactionElement();
-          reactionElement.init(this.type);
-        }
-
-        positionElementByIndex(reactionElement, this, idx);
-        
-        const recentReactions = reactions.recent_reactions ? reactions.recent_reactions.filter((reaction) => reaction.reaction === reactionCount.reaction) : [];
-        reactionElement.reactionCount = {...reactionCount};
-        reactionElement.setCanRenderAvatars(canRenderAvatars);
-        reactionElement.render(this.isPlaceholder);
-        reactionElement.renderCounter();
-        reactionElement.renderAvatars(recentReactions);
-        reactionElement.setIsChosen();
-
-        return reactionElement;
-      });
-
-      // this.sorted.forEach((reactionElement, idx) => {
-      //   /* if(this.type === 'block' && this.childElementCount !== this.sorted.length) { // because of appended time
-      //     idx += 1;
-      //   } */
-
-      //   positionElementByIndex(reactionElement, this, idx);
-      // });
-
-      if(!this.isPlaceholder && changedResults?.length) {
-        if(this.isConnected) {
-          this.handleChangedResults(changedResults);
-        } else {
-          this.onConnectCallback = () => {
-            this.handleChangedResults(changedResults);
-          };
-        }
+    forEachReverse(this.sorted, (reactionElement, idx, arr) => {
+      const reaction = reactionElement.reactionCount.reaction;
+      const found = counts.some((reactionCount) => reactionCount.reaction === reaction);
+      if(!found) {
+        arr.splice(idx, 1);
+        reactionElement.remove();
       }
+    });
+
+    const totalReactions = counts.reduce((acc, c) => acc + c.count, 0);
+    const canRenderAvatars = reactions && !!reactions.pFlags.can_see_list && totalReactions < REACTION_DISPLAY_BLOCK_COUNTER_AT;
+    this.sorted = counts.map((reactionCount, idx) => {
+      const reactionElementIdx = this.sorted.findIndex((reactionElement) => reactionElement.reactionCount.reaction === reactionCount.reaction);
+      let reactionElement = reactionElementIdx !== -1 && this.sorted[reactionElementIdx];
+      if(!reactionElement) {
+        reactionElement = new ReactionElement();
+        reactionElement.init(this.type);
+      }
+
+      positionElementByIndex(reactionElement, this, idx);
+
+      const recentReactions = reactions.recent_reactions ? reactions.recent_reactions.filter((reaction) => reaction.reaction === reactionCount.reaction) : [];
+      reactionElement.reactionCount = {...reactionCount};
+      reactionElement.setCanRenderAvatars(canRenderAvatars);
+      reactionElement.render(this.isPlaceholder);
+      reactionElement.renderCounter();
+      reactionElement.renderAvatars(recentReactions);
+      reactionElement.setIsChosen();
+
+      return reactionElement;
+    });
+
+    // this.sorted.forEach((reactionElement, idx) => {
+    //   /* if(this.type === 'block' && this.childElementCount !== this.sorted.length) { // because of appended time
+    //     idx += 1;
+    //   } */
+
+    //   positionElementByIndex(reactionElement, this, idx);
+    // });
+
+    if(!this.isPlaceholder && changedResults?.length) {
+      if(this.isConnected) {
+        this.handleChangedResults(changedResults);
+      } else {
+        this.onConnectCallback = () => {
+          this.handleChangedResults(changedResults);
+        };
+      }
+    }
     // });
 
     // ! тут вообще не должно быть этого кода, но пока он побудет тут

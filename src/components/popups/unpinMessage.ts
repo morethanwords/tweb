@@ -4,21 +4,21 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import PopupElement, { addCancelButton } from ".";
-import PopupPeer, { PopupPeerButtonCallbackCheckboxes, PopupPeerOptions } from "./peer";
-import rootScope from "../../lib/rootScope";
-import { FormatterArguments, LangPackKey } from "../../lib/langPack";
-import PeerTitle from "../peerTitle";
+import PopupElement, {addCancelButton} from '.';
+import PopupPeer, {PopupPeerButtonCallbackCheckboxes, PopupPeerOptions} from './peer';
+import rootScope from '../../lib/rootScope';
+import {FormatterArguments, LangPackKey} from '../../lib/langPack';
+import PeerTitle from '../peerTitle';
 
 export default class PopupPinMessage {
   constructor(private peerId: PeerId, private mid: number, private unpin?: true, private onConfirm?: () => void) {
     this.construct();
   }
-  
+
   private async construct() {
     const {peerId, mid, unpin, onConfirm} = this;
-    let title: LangPackKey, description: LangPackKey, descriptionArgs: FormatterArguments, 
-      buttons: PopupPeerOptions['buttons'] = [], checkboxes: PopupPeerOptions['checkboxes'] = [];
+    let title: LangPackKey, description: LangPackKey, descriptionArgs: FormatterArguments;
+    const buttons: PopupPeerOptions['buttons'] = [], checkboxes: PopupPeerOptions['checkboxes'] = [];
 
     const managers = PopupElement.MANAGERS;
 
@@ -59,7 +59,7 @@ export default class PopupPinMessage {
         title = 'UnpinMessageAlertTitle';
         description = 'Chat.Confirm.Unpin';
       }
-      
+
       buttons.push({
         langKey: buttonText,
         isDanger: true,
@@ -68,7 +68,7 @@ export default class PopupPinMessage {
     } else {
       title = 'PinMessageAlertTitle';
       const pinButtonText: LangPackKey = 'PinMessage';
-      
+
       if(peerId.isAnyChat()) {
         buttons.push({
           langKey: pinButtonText,
@@ -79,7 +79,7 @@ export default class PopupPinMessage {
           description = 'PinMessageAlertChannel';
         } else {
           description = 'PinMessageAlert';
-  
+
           checkboxes.push({
             text: 'PinNotify',
             checked: true

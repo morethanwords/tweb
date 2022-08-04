@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import attachListNavigation from "../../helpers/dom/attachListNavigation";
-import EventListenerBase from "../../helpers/eventListenerBase";
-import { IS_MOBILE } from "../../environment/userAgent";
-import rootScope from "../../lib/rootScope";
-import appNavigationController, { NavigationItem } from "../appNavigationController";
-import SetTransition from "../singleTransition";
-import AutocompleteHelperController from "./autocompleteHelperController";
-import safeAssign from "../../helpers/object/safeAssign";
+import attachListNavigation from '../../helpers/dom/attachListNavigation';
+import EventListenerBase from '../../helpers/eventListenerBase';
+import {IS_MOBILE} from '../../environment/userAgent';
+import rootScope from '../../lib/rootScope';
+import appNavigationController, {NavigationItem} from '../appNavigationController';
+import SetTransition from '../singleTransition';
+import AutocompleteHelperController from './autocompleteHelperController';
+import safeAssign from '../../helpers/object/safeAssign';
 
 export default class AutocompleteHelper extends EventListenerBase<{
   hidden: () => void,
@@ -43,12 +43,12 @@ export default class AutocompleteHelper extends EventListenerBase<{
     super(false);
 
     safeAssign(this, options);
-    
+
     this.container = document.createElement('div');
     this.container.classList.add('autocomplete-helper', 'z-depth-1');
-    
+
     options.appendTo.append(this.container);
-    
+
     this.attachNavigation();
 
     this.controller && this.controller.addHelper(this);
@@ -69,7 +69,7 @@ export default class AutocompleteHelper extends EventListenerBase<{
 
     const list = this.list;
     const {attach, detach, resetTarget} = attachListNavigation({
-      list, 
+      list,
       type: this.listType,
       onSelect: this.onSelect,
       once: true,
@@ -115,7 +115,7 @@ export default class AutocompleteHelper extends EventListenerBase<{
     if(this.init) {
       return;
     }
-    
+
     if(hide === undefined) {
       hide = this.container.classList.contains('is-visible') && !this.container.classList.contains('backwards');
     }
@@ -155,13 +155,13 @@ export default class AutocompleteHelper extends EventListenerBase<{
     }
 
     SetTransition(
-      this.container, 
-      'is-visible', 
-      !hide, 
-      rootScope.settings.animationsEnabled && !skipAnimation ? 300 : 0, 
+      this.container,
+      'is-visible',
+      !hide,
+      rootScope.settings.animationsEnabled && !skipAnimation ? 300 : 0,
       () => {
         this.hidden && this.dispatchEvent('hidden');
-      }, 
+      },
       useRafs
     );
   }

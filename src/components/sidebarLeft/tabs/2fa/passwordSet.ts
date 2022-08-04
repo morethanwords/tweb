@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { SettingSection } from "../..";
-import { attachClickEvent } from "../../../../helpers/dom/clickEvent";
-import Button from "../../../button";
-import { SliderSuperTab } from "../../../slider";
-import wrapStickerEmoji from "../../../wrappers/stickerEmoji";
-import AppSettingsTab from "../settings";
+import {SettingSection} from '../..';
+import {attachClickEvent} from '../../../../helpers/dom/clickEvent';
+import Button from '../../../button';
+import {SliderSuperTab} from '../../../slider';
+import wrapStickerEmoji from '../../../wrappers/stickerEmoji';
+import AppSettingsTab from '../settings';
 
 export default class AppTwoStepVerificationSetTab extends SliderSuperTab {
   protected init() {

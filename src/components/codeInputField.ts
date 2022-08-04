@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import InputField, { InputFieldOptions } from "./inputField";
+import InputField, {InputFieldOptions} from './inputField';
 
 export default class CodeInputField extends InputField {
   constructor(options: InputFieldOptions & {
@@ -25,17 +25,17 @@ export default class CodeInputField extends InputField {
     this.input.addEventListener('input', (e) => {
       this.input.classList.remove('error');
       this.setLabel();
-  
+
       const value = this.value.replace(/\D/g, '').slice(0, options.length);
       this.setValueSilently(value);
-  
+
       const length = this.value.length;
       if(length === options.length) { // submit code
         options.onFill(this.value);
       } else if(length === lastLength) {
         return;
       }
-  
+
       lastLength = length;
     });
   }

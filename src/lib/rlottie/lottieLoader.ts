@@ -4,20 +4,20 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import animationIntersector from "../../components/animationIntersector";
-import { MOUNT_CLASS_TO } from '../../config/debug';
+import animationIntersector from '../../components/animationIntersector';
+import {MOUNT_CLASS_TO} from '../../config/debug';
 import pause from '../../helpers/schedulers/pause';
-import { logger, LogTypes } from "../logger";
-import RLottiePlayer, { RLottieOptions } from './rlottiePlayer';
+import {logger, LogTypes} from '../logger';
+import RLottiePlayer, {RLottieOptions} from './rlottiePlayer';
 import QueryableWorker from './queryableWorker';
 import blobConstruct from '../../helpers/blob/blobConstruct';
 import rootScope from '../rootScope';
-import apiManagerProxy from "../mtproto/mtprotoworker";
+import apiManagerProxy from '../mtproto/mtprotoworker';
 
-export type LottieAssetName = 'EmptyFolder' | 'Folders_1' | 'Folders_2' | 
-  'TwoFactorSetupMonkeyClose' | 'TwoFactorSetupMonkeyCloseAndPeek' | 
-  'TwoFactorSetupMonkeyCloseAndPeekToIdle' | 'TwoFactorSetupMonkeyIdle' | 
-  'TwoFactorSetupMonkeyPeek' | 'TwoFactorSetupMonkeyTracking' | 
+export type LottieAssetName = 'EmptyFolder' | 'Folders_1' | 'Folders_2' |
+  'TwoFactorSetupMonkeyClose' | 'TwoFactorSetupMonkeyCloseAndPeek' |
+  'TwoFactorSetupMonkeyCloseAndPeekToIdle' | 'TwoFactorSetupMonkeyIdle' |
+  'TwoFactorSetupMonkeyPeek' | 'TwoFactorSetupMonkeyTracking' |
   'voice_outlined2' | 'voip_filled' | 'voice_mini';
 
 export class LottieLoader {
@@ -94,7 +94,7 @@ export class LottieLoader {
     if(!this.isWebAssemblySupported) {
       return this.loadPromise as any;
     }
-    
+
     if(!this.loaded) {
       this.loadLottieWorkers();
     }
@@ -135,7 +135,7 @@ export class LottieLoader {
     if(!this.isWebAssemblySupported) {
       return this.loadPromise as any;
     }
-    //params.autoplay = true;
+    // params.autoplay = true;
 
     if(!this.loaded) {
       await this.loadLottieWorkers();
@@ -174,9 +174,9 @@ export class LottieLoader {
 
     this.log.debug('onPlayerLoaded');
     rlPlayer.onLoad(frameCount, fps);
-    //rlPlayer.addListener('firstFrame', () => {
-      //animationIntersector.addAnimation(player, group);
-    //}, true);
+    // rlPlayer.addListener('firstFrame', () => {
+    // animationIntersector.addAnimation(player, group);
+    // }, true);
   };
 
   private onFrame = (reqId: number, frameNo: number, frame: Uint8ClampedArray) => {
@@ -189,7 +189,7 @@ export class LottieLoader {
     if(rlPlayer.clamped !== undefined) {
       rlPlayer.clamped = frame;
     }
-    
+
     rlPlayer.renderFrame(frame, frameNo);
   };
 
@@ -220,7 +220,7 @@ export class LottieLoader {
 
   private initPlayer(el: HTMLElement, options: RLottieOptions) {
     const rlPlayer = new RLottiePlayer({
-      el, 
+      el,
       worker: this.workers[this.curWorkerNum++],
       options
     });

@@ -4,16 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type Chat from "./chat";
-import type ChatTopbar from "./topbar";
-import mediaSizes from "../../helpers/mediaSizes";
-import DivAndCaption from "../divAndCaption";
-import ripple from "../ripple";
-import ListenerSetter from "../../helpers/listenerSetter";
-import cancelEvent from "../../helpers/dom/cancelEvent";
-import { attachClickEvent } from "../../helpers/dom/clickEvent";
-import { Message } from "../../layer";
-import safeAssign from "../../helpers/object/safeAssign";
+import type Chat from './chat';
+import type ChatTopbar from './topbar';
+import mediaSizes from '../../helpers/mediaSizes';
+import DivAndCaption from '../divAndCaption';
+import ripple from '../ripple';
+import ListenerSetter from '../../helpers/listenerSetter';
+import cancelEvent from '../../helpers/dom/cancelEvent';
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import {Message} from '../../layer';
+import safeAssign from '../../helpers/object/safeAssign';
 
 const classNames: string[] = ['is-pinned-message-shown', 'is-pinned-audio-shown'];
 const CLASSNAME_BASE = 'pinned-container';
@@ -29,7 +29,7 @@ export default class PinnedContainer {
   protected listenerSetter: ListenerSetter;
   public className: string;
   public divAndCaption: DivAndCaption<(title: string | HTMLElement | DocumentFragment, subtitle: string | HTMLElement | DocumentFragment, message?: any) => void>;
-  
+
   protected floating = false;
 
   public onClose?: () => void | Promise<boolean>;
@@ -50,10 +50,10 @@ export default class PinnedContainer {
     divAndCaption.title.classList.add(CLASSNAME_BASE + '-title');
     divAndCaption.subtitle.classList.add(CLASSNAME_BASE + '-subtitle');
     divAndCaption.content.classList.add(CLASSNAME_BASE + '-content');
-    
+
     this.btnClose = document.createElement('button');
     this.btnClose.classList.add(CLASSNAME_BASE + '-close', `pinned-${className}-close`, 'btn-icon', 'tgico-close');
-    
+
     this.wrapper = document.createElement('div');
     this.wrapper.classList.add(CLASSNAME_BASE + '-wrapper');
     ripple(this.wrapper);
@@ -90,24 +90,24 @@ export default class PinnedContainer {
     }
 
     // const scrollable = this.chat.bubbles.scrollable;
-    
+
     const isFloating = (this.floating || mediaSizes.isMobile) && !hide;
     // const scrollTop = isFloating || this.divAndCaption.container.classList.contains('is-floating') ? scrollable.scrollTop : undefined;
 
     this.divAndCaption.container.classList.toggle('is-floating', isFloating);
     this.divAndCaption.container.classList.toggle('hide', hide);
-    
+
     this.topbar.container.classList.toggle('is-pinned-floating', isFloating);
     this.topbar.container.classList.toggle(`is-pinned-${this.className}-shown`, !hide);
-    
+
     // const active = classNames.filter((className) => this.topbar.container.classList.contains(className));
     // const maxActive = hide ? 0 : 1;
-    
+
     // * not sure when it became unneeded
     // if(scrollTop !== undefined && active.length <= maxActive/*  && !scrollable.isScrolledDown */) {
     //   scrollable.scrollTop = scrollTop + ((hide ? -1 : 1) * HEIGHT);
     // }
-    
+
     this.topbar.setFloating();
     this.topbar.setUtilsWidth();
   }

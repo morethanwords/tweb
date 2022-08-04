@@ -2,7 +2,7 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
@@ -10,10 +10,10 @@
  */
 
 import sessionStorage from '../sessionStorage';
-import { nextRandomUint } from '../../helpers/random';
-import { WorkerTaskVoidTemplate } from '../../types';
+import {nextRandomUint} from '../../helpers/random';
+import {WorkerTaskVoidTemplate} from '../../types';
 import ulongFromInts from '../../helpers/long/ulongFromInts';
-import { AppManager } from '../appManagers/manager';
+import {AppManager} from '../appManagers/manager';
 
 /*
 let lol: any = {};
@@ -52,13 +52,12 @@ export class TimeManager extends AppManager {
     });
 
 
-
     // * migrated from ServerTimeManager
     /* const timestampNow = tsNow(true);
     this.midnightNoOffset = timestampNow - (timestampNow % 86400);
     this.midnightOffseted = new Date();
     this.midnightOffseted.setHours(0, 0, 0, 0);
-    
+
     this.midnightOffset = this.midnightNoOffset - (Math.floor(+this.midnightOffseted / 1000)); */
 
     /* this.timeParams = {
@@ -110,8 +109,8 @@ export class TimeManager extends AppManager {
 
       this.timeOffset = newTimeOffset;
     }
-    
-    //console.log('[TimeManager]: Apply server time', serverTime, localTime, newTimeOffset, changed);
+
+    // console.log('[TimeManager]: Apply server time', serverTime, localTime, newTimeOffset, changed);
 
     return changed;
   }

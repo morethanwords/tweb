@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import findAndSpliceAll from "../helpers/array/findAndSpliceAll";
-import LazyLoadQueueIntersector, { LazyLoadElement } from "./lazyLoadQueueIntersector";
-import VisibilityIntersector, { OnVisibilityChange } from "./visibilityIntersector";
+import findAndSpliceAll from '../helpers/array/findAndSpliceAll';
+import LazyLoadQueueIntersector, {LazyLoadElement} from './lazyLoadQueueIntersector';
+import VisibilityIntersector, {OnVisibilityChange} from './visibilityIntersector';
 
 export default class LazyLoadQueueRepeat extends LazyLoadQueueIntersector {
   private _queue: Map<HTMLElement, LazyLoadElement> = new Map();
@@ -22,7 +22,7 @@ export default class LazyLoadQueueRepeat extends LazyLoadQueueIntersector {
           this.queue.unshift(item || this._queue.get(target));
         });
       }
-  
+
       this.onVisibilityChange && this.onVisibilityChange(target, visible);
       this.setProcessQueueTimeout();
     });

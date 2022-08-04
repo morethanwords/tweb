@@ -6,22 +6,22 @@
 
 import '../polyfill'; // just to include
 
-import bytesModPow from "../../helpers/bytes/bytesModPow";
-import gzipUncompress from "../../helpers/gzipUncompress";
-import listenMessagePort from "../../helpers/listenMessagePort";
-import getEmojisFingerprint from "../calls/helpers/getEmojisFingerprint";
-import computeDhKey from "./computeDhKey";
-import cryptoMessagePort from "./cryptoMessagePort";
-import { CryptoMethods } from "./crypto_methods";
-import generateDh from "./generateDh";
-import computeSRP from "./srp";
-import { aesEncryptSync, aesDecryptSync } from "./utils/aesIGE";
-import factorizeBrentPollardPQ from "./utils/factorize/BrentPollard";
-import pbkdf2 from "./utils/pbkdf2";
-import rsaEncrypt from "./utils/rsa";
-import sha1 from "./utils/sha1";
-import sha256 from "./utils/sha256";
-import { aesCtrDestroy, aesCtrPrepare, aesCtrProcess } from './aesCtrUtils';
+import bytesModPow from '../../helpers/bytes/bytesModPow';
+import gzipUncompress from '../../helpers/gzipUncompress';
+import listenMessagePort from '../../helpers/listenMessagePort';
+import getEmojisFingerprint from '../calls/helpers/getEmojisFingerprint';
+import computeDhKey from './computeDhKey';
+import cryptoMessagePort from './cryptoMessagePort';
+import {CryptoMethods} from './crypto_methods';
+import generateDh from './generateDh';
+import computeSRP from './srp';
+import {aesEncryptSync, aesDecryptSync} from './utils/aesIGE';
+import factorizeBrentPollardPQ from './utils/factorize/BrentPollard';
+import pbkdf2 from './utils/pbkdf2';
+import rsaEncrypt from './utils/rsa';
+import sha1 from './utils/sha1';
+import sha256 from './utils/sha256';
+import {aesCtrDestroy, aesCtrPrepare, aesCtrProcess} from './aesCtrUtils';
 
 console.log('CryptoWorker start');
 
@@ -33,8 +33,8 @@ const cryptoMethods: CryptoMethods = {
   'aes-decrypt': aesDecryptSync,
   'rsa-encrypt': rsaEncrypt,
   'factorize': factorizeBrentPollardPQ,
-  // 'factorize-tdlib': factorizeTdlibPQ, 
-  // 'factorize-new-new': pqPrimeLeemonNew, 
+  // 'factorize-tdlib': factorizeTdlibPQ,
+  // 'factorize-new-new': pqPrimeLeemonNew,
   'mod-pow': bytesModPow,
   'gzipUncompress': gzipUncompress,
   'computeSRP': computeSRP,

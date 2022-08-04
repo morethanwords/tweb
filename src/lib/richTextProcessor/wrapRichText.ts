@@ -4,20 +4,20 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { EMOJI_VERSION } from "../../environment/emojiVersionsSupport";
-import { SITE_HASHTAGS } from ".";
-import { EmojiVersions } from "../../config/emoji";
-import IS_EMOJI_SUPPORTED from "../../environment/emojiSupport";
-import { IS_SAFARI } from "../../environment/userAgent";
-import buildURLHash from "../../helpers/buildURLHash";
-import copy from "../../helpers/object/copy";
-import encodeEntities from "../../helpers/string/encodeEntities";
-import { MessageEntity } from "../../layer";
-import encodeSpoiler from "./encodeSpoiler";
-import parseEntities from "./parseEntities";
-import setBlankToAnchor from "./setBlankToAnchor";
-import wrapUrl from "./wrapUrl";
-import EMOJI_VERSIONS_SUPPORTED from "../../environment/emojiVersionsSupport";
+import type {EMOJI_VERSION} from '../../environment/emojiVersionsSupport';
+import {SITE_HASHTAGS} from '.';
+import {EmojiVersions} from '../../config/emoji';
+import IS_EMOJI_SUPPORTED from '../../environment/emojiSupport';
+import {IS_SAFARI} from '../../environment/userAgent';
+import buildURLHash from '../../helpers/buildURLHash';
+import copy from '../../helpers/object/copy';
+import encodeEntities from '../../helpers/string/encodeEntities';
+import {MessageEntity} from '../../layer';
+import encodeSpoiler from './encodeSpoiler';
+import parseEntities from './parseEntities';
+import setBlankToAnchor from './setBlankToAnchor';
+import wrapUrl from './wrapUrl';
+import EMOJI_VERSIONS_SUPPORTED from '../../environment/emojiVersionsSupport';
 
 /**
  * * Expecting correctly sorted nested entities (RichTextProcessor.sortEntities)
@@ -30,7 +30,7 @@ export default function wrapRichText(text: string, options: Partial<{
   noLinebreaks: boolean,
   noCommands: boolean,
   wrappingDraft: boolean,
-  //mustWrapEmoji: boolean,
+  // mustWrapEmoji: boolean,
   fromBot: boolean,
   noTextFormat: boolean,
   passEntities: Partial<{
@@ -104,7 +104,7 @@ export default function wrapRichText(text: string, options: Partial<{
 
     nasty.usedLength = endPartOffset;
 
-    let element: HTMLElement, 
+    let element: HTMLElement,
       property: 'textContent' | 'alt' = 'textContent',
       usedText = false;
     switch(entity._) {
@@ -157,7 +157,7 @@ export default function wrapRichText(text: string, options: Partial<{
 
         break;
       }
-      
+
       case 'messageEntityPre':
       case 'messageEntityCode': {
         if(options.wrappingDraft) {
@@ -166,10 +166,10 @@ export default function wrapRichText(text: string, options: Partial<{
         } else if(!options.noTextFormat) {
           element = document.createElement('code');
         }
-        
+
         break;
       }
-        
+
       // case 'messageEntityPre': {
       //   if(options.wrappingDraft) {
       //     element = document.createElement('span');
@@ -183,7 +183,7 @@ export default function wrapRichText(text: string, options: Partial<{
       //       usedText = true;
       //     }
       //   }
-        
+
       //   break;
       // }
 
@@ -230,17 +230,17 @@ export default function wrapRichText(text: string, options: Partial<{
           }
         }
 
-        //if(!(options.wrappingDraft && isSupported)) { // * fix safari emoji
+        // if(!(options.wrappingDraft && isSupported)) { // * fix safari emoji
         if(!isSupported) { // no wrapping needed
           // if(isSupported) { // ! contenteditable="false" нужен для поля ввода, иначе там будет меняться шрифт в Safari, или же рендерить смайлик напрямую, без контейнера
           //   insertPart(entity, '<span class="emoji">', '</span>');
           // } else {
-            element = document.createElement('img');
-            (element as HTMLImageElement).src = `assets/img/emoji/${entity.unicode}.png`;
-            property = 'alt';
-            element.className = 'emoji';
+          element = document.createElement('img');
+          (element as HTMLImageElement).src = `assets/img/emoji/${entity.unicode}.png`;
+          property = 'alt';
+          element.className = 'emoji';
           // }
-        //} else if(options.mustWrapEmoji) {
+        // } else if(options.mustWrapEmoji) {
         } else if(!options.wrappingDraft) {
           element = document.createElement('span');
           element.className = 'emoji';
@@ -253,7 +253,7 @@ export default function wrapRichText(text: string, options: Partial<{
 
         break;
       }
-      
+
       case 'messageEntityCaret': {
         element = document.createElement('span');
         element.className = 'composer-sel';
@@ -266,7 +266,7 @@ export default function wrapRichText(text: string, options: Partial<{
       //   } else {
       //     insertPart(entity, '<br/>');
       //   }
-        
+
       //   break;
       // }
 
@@ -283,8 +283,8 @@ export default function wrapRichText(text: string, options: Partial<{
           onclick = wrapped.onclick;
 
           if(entity._ === 'messageEntityTextUrl') {
-            if(nextEntity?._ === 'messageEntityUrl' && 
-              nextEntity.length === entity.length && 
+            if(nextEntity?._ === 'messageEntityUrl' &&
+              nextEntity.length === entity.length &&
               nextEntity.offset === entity.offset) {
               nasty.i++;
             }
@@ -293,7 +293,7 @@ export default function wrapRichText(text: string, options: Partial<{
               masked = true;
             }
           } else {
-            //inner = encodeEntities(replaceUrlEncodings(entityText));
+            // inner = encodeEntities(replaceUrlEncodings(entityText));
           }
 
           const currentContext = !!onclick;
@@ -305,9 +305,9 @@ export default function wrapRichText(text: string, options: Partial<{
             onclick = undefined;
           }
 
-          const href = (currentContext || typeof electronHelpers === 'undefined') 
-            ? url
-            : `javascript:electronHelpers.openExternal('${url}');`;
+          const href = (currentContext || typeof electronHelpers === 'undefined') ?
+            url :
+            `javascript:electronHelpers.openExternal('${url}');`;
 
           element = document.createElement('a');
           element.className = 'anchor-url';
@@ -334,7 +334,7 @@ export default function wrapRichText(text: string, options: Partial<{
 
         break;
       }
-        
+
       case 'messageEntityHashtag': {
         const contextUrl = !options.noLinks && SITE_HASHTAGS[contextSite];
         if(contextUrl) {
@@ -379,7 +379,7 @@ export default function wrapRichText(text: string, options: Partial<{
 
           // insertPart(entity, `<a class="mention" href="${contextUrl.replace('{1}', encodeURIComponent(username))}"${contextExternal ? ' target="_blank" rel="noopener noreferrer"' : ''}>`, '</a>');
         }
-        
+
         break;
       }
 
@@ -401,7 +401,7 @@ export default function wrapRichText(text: string, options: Partial<{
           container.append(element);
           fragment.append(container);
         }
-        
+
         break;
       }
     }
@@ -439,7 +439,7 @@ export default function wrapRichText(text: string, options: Partial<{
         (element || fragment).append(nasty.text.slice(nasty.usedLength, endOffset));
         nasty.usedLength = endOffset;
       }
-      
+
       lastElement = fragment;
       nasty.lastEntity = undefined;
     } else if(entity.length > partText.length && element) {

@@ -1,9 +1,9 @@
 // Thanks to https://github.com/tdlib/td/blob/3f54c301ead1bbe6529df4ecfb63c7f645dd181c/tdutils/td/utils/crypto.cpp#L234
 
-import bigInt from "big-integer";
-import { bigIntFromBytes, bigIntToBytes } from "../../../../helpers/bigInt/bigIntConversion";
-import bigIntRandom from "../../../../helpers/bigInt/bigIntRandom";
-import { nextRandomUint } from "../../../../helpers/random";
+import bigInt from 'big-integer';
+import {bigIntFromBytes, bigIntToBytes} from '../../../../helpers/bigInt/bigIntConversion';
+import bigIntRandom from '../../../../helpers/bigInt/bigIntRandom';
+import {nextRandomUint} from '../../../../helpers/random';
 
 export function factorizeSmallPQ(pq: bigInt.BigInteger) {
   if(pq.lesser(2) || pq.greater(bigInt.one.shiftLeft(63))) {
@@ -17,9 +17,9 @@ export function factorizeSmallPQ(pq: bigInt.BigInteger) {
     x: bigInt.BigInteger,
     y: bigInt.BigInteger,
     z: bigInt.BigInteger,
-    i: number, 
-    iter: number, 
-    lim: number, 
+    i: number,
+    iter: number,
+    lim: number,
     j: number;
 
   let g = bigInt.zero;
@@ -90,7 +90,7 @@ export function factorizeBiqPQ(pqBytes: Uint8Array | number[]): [Uint8Array, Uin
     for(let j = 1; j < lim; j++) {
       iter++;
       a = a.mod(a).multiply(pq); // BigNum::mod_mul(a, a, a, pq, context);
-      
+
       a = a.add(t);
       if(a.compare(pq) >= 0) {
         a = a.subtract(pq);
@@ -131,7 +131,7 @@ export default function factorizeTdlibPQ(pqBytes: Uint8Array | number[]): [Uint8
   for(let i = 0; i < size; i++) {
     pq = pq.shiftLeft(8).or(pqBytes[i]);
   }
-  
+
   const p = factorizeSmallPQ(pq);
   if(p.isZero() || pq.mod(p).notEquals(bigInt.zero)) {
     return;

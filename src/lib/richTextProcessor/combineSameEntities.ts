@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { MessageEntity } from "../../layer";
+import {MessageEntity} from '../../layer';
 
 const CAN_COMBINE_ENTITIES: Set<MessageEntity['_']> = new Set([
   'messageEntityBold',
@@ -17,7 +17,7 @@ const CAN_COMBINE_ENTITIES: Set<MessageEntity['_']> = new Set([
   'messageEntitySpoiler'
 ]);
 export default function combineSameEntities(entities: MessageEntity[]) {
-  //entities = entities.slice();
+  // entities = entities.slice();
   for(let i = 0; i < entities.length; ++i) {
     const entity = entities[i];
 
@@ -34,5 +34,5 @@ export default function combineSameEntities(entities: MessageEntity[]) {
       }
     } while(nextEntityIdx !== -1);
   }
-  //return entities;
+  // return entities;
 }

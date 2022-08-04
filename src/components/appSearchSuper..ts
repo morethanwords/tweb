@@ -4,73 +4,73 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appDialogsManager, { DIALOG_LIST_ELEMENT_TAG } from "../lib/appManagers/appDialogsManager";
-import type { MyInputMessagesFilter, MyMessage } from "../lib/appManagers/appMessagesManager";
-import { logger } from "../lib/logger";
-import rootScope from "../lib/rootScope";
-import { SearchGroup, SearchGroupType } from "./appSearch";
-import { horizontalMenu } from "./horizontalMenu";
-import LazyLoadQueue from "./lazyLoadQueue";
-import { putPreloader } from "./putPreloader";
-import ripple from "./ripple";
-import Scrollable, { ScrollableX } from "./scrollable";
-import { wrapDocument, wrapPhoto, wrapVideo } from "./wrappers";
-import useHeavyAnimationCheck, { getHeavyAnimationPromise } from "../hooks/useHeavyAnimationCheck";
-import I18n, { LangPackKey, i18n } from "../lib/langPack";
-import findUpClassName from "../helpers/dom/findUpClassName";
-import { getMiddleware } from "../helpers/middleware";
-import { ChannelParticipant, ChatFull, ChatParticipant, ChatParticipants, Document, Message, MessageMedia, Photo, WebPage } from "../layer";
-import SortedUserList from "./sortedUserList";
-import findUpTag from "../helpers/dom/findUpTag";
-import appSidebarRight from "./sidebarRight";
-import mediaSizes from "../helpers/mediaSizes";
-import appImManager from "../lib/appManagers/appImManager";
-import positionElementByIndex from "../helpers/dom/positionElementByIndex";
-import cleanSearchText from "../helpers/cleanSearchText";
-import IS_TOUCH_SUPPORTED from "../environment/touchSupport";
-import handleTabSwipe from "../helpers/dom/handleTabSwipe";
-import windowSize from "../helpers/windowSize";
-import { formatPhoneNumber } from "../helpers/formatPhoneNumber";
-import ButtonMenu, { ButtonMenuItemOptions } from "./buttonMenu";
-import PopupForward from "./popups/forward";
-import PopupDeleteMessages from "./popups/deleteMessages";
-import Row from "./row";
-import htmlToDocumentFragment from "../helpers/dom/htmlToDocumentFragment";
-import { SearchSelection } from "./chat/selection";
-import cancelEvent from "../helpers/dom/cancelEvent";
-import { attachClickEvent, simulateClickEvent } from "../helpers/dom/clickEvent";
-import { MyDocument } from "../lib/appManagers/appDocsManager";
-import AppMediaViewer from "./appMediaViewer";
-import lockTouchScroll from "../helpers/dom/lockTouchScroll";
-import copy from "../helpers/object/copy";
-import getObjectKeysAndSort from "../helpers/object/getObjectKeysAndSort";
-import safeAssign from "../helpers/object/safeAssign";
-import escapeRegExp from "../helpers/string/escapeRegExp";
-import findAndSplice from "../helpers/array/findAndSplice";
-import { ScrollStartCallbackDimensions } from "../helpers/fastSmoothScroll";
-import setInnerHTML from "../helpers/dom/setInnerHTML";
-import { AppManagers } from "../lib/appManagers/managers";
-import choosePhotoSize from "../lib/appManagers/utils/photos/choosePhotoSize";
-import wrapWebPageDescription from "./wrappers/webPageDescription";
-import wrapWebPageTitle from "./wrappers/webPageTitle";
-import getAbbreviation from "../lib/richTextProcessor/getAbbreviation";
-import matchUrl from "../lib/richTextProcessor/matchUrl";
-import wrapPlainText from "../lib/richTextProcessor/wrapPlainText";
-import wrapRichText from "../lib/richTextProcessor/wrapRichText";
-import wrapSenderToPeer from "./wrappers/senderToPeer";
-import wrapSentTime from "./wrappers/sentTime";
-import getMediaFromMessage from "../lib/appManagers/utils/messages/getMediaFromMessage";
-import filterMessagesByInputFilter from "../lib/appManagers/utils/messages/filterMessagesByInputFilter";
-import getChatMembersString from "./wrappers/getChatMembersString";
-import getUserStatusString from "./wrappers/getUserStatusString";
-import getParticipantPeerId from "../lib/appManagers/utils/chats/getParticipantPeerId";
-import { Awaited } from "../types";
-import { attachContextMenuListener } from "../helpers/dom/attachContextMenuListener";
-import contextMenuController from "../helpers/contextMenuController";
-import positionMenu from "../helpers/positionMenu";
-import apiManagerProxy from "../lib/mtproto/mtprotoworker";
+import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '../lib/appManagers/appDialogsManager';
+import type {MyInputMessagesFilter, MyMessage} from '../lib/appManagers/appMessagesManager';
+import {logger} from '../lib/logger';
+import rootScope from '../lib/rootScope';
+import {SearchGroup, SearchGroupType} from './appSearch';
+import {horizontalMenu} from './horizontalMenu';
+import LazyLoadQueue from './lazyLoadQueue';
+import {putPreloader} from './putPreloader';
+import ripple from './ripple';
+import Scrollable, {ScrollableX} from './scrollable';
+import {wrapDocument, wrapPhoto, wrapVideo} from './wrappers';
+import useHeavyAnimationCheck, {getHeavyAnimationPromise} from '../hooks/useHeavyAnimationCheck';
+import I18n, {LangPackKey, i18n} from '../lib/langPack';
+import findUpClassName from '../helpers/dom/findUpClassName';
+import {getMiddleware} from '../helpers/middleware';
+import {ChannelParticipant, ChatFull, ChatParticipant, ChatParticipants, Document, Message, MessageMedia, Photo, WebPage} from '../layer';
+import SortedUserList from './sortedUserList';
+import findUpTag from '../helpers/dom/findUpTag';
+import appSidebarRight from './sidebarRight';
+import mediaSizes from '../helpers/mediaSizes';
+import appImManager from '../lib/appManagers/appImManager';
+import positionElementByIndex from '../helpers/dom/positionElementByIndex';
+import cleanSearchText from '../helpers/cleanSearchText';
+import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
+import handleTabSwipe from '../helpers/dom/handleTabSwipe';
+import windowSize from '../helpers/windowSize';
+import {formatPhoneNumber} from '../helpers/formatPhoneNumber';
+import ButtonMenu, {ButtonMenuItemOptions} from './buttonMenu';
+import PopupForward from './popups/forward';
+import PopupDeleteMessages from './popups/deleteMessages';
+import Row from './row';
+import htmlToDocumentFragment from '../helpers/dom/htmlToDocumentFragment';
+import {SearchSelection} from './chat/selection';
+import cancelEvent from '../helpers/dom/cancelEvent';
+import {attachClickEvent, simulateClickEvent} from '../helpers/dom/clickEvent';
+import {MyDocument} from '../lib/appManagers/appDocsManager';
+import AppMediaViewer from './appMediaViewer';
+import lockTouchScroll from '../helpers/dom/lockTouchScroll';
+import copy from '../helpers/object/copy';
+import getObjectKeysAndSort from '../helpers/object/getObjectKeysAndSort';
+import safeAssign from '../helpers/object/safeAssign';
+import escapeRegExp from '../helpers/string/escapeRegExp';
+import findAndSplice from '../helpers/array/findAndSplice';
+import {ScrollStartCallbackDimensions} from '../helpers/fastSmoothScroll';
+import setInnerHTML from '../helpers/dom/setInnerHTML';
+import {AppManagers} from '../lib/appManagers/managers';
+import choosePhotoSize from '../lib/appManagers/utils/photos/choosePhotoSize';
+import wrapWebPageDescription from './wrappers/webPageDescription';
+import wrapWebPageTitle from './wrappers/webPageTitle';
+import getAbbreviation from '../lib/richTextProcessor/getAbbreviation';
+import matchUrl from '../lib/richTextProcessor/matchUrl';
+import wrapPlainText from '../lib/richTextProcessor/wrapPlainText';
+import wrapRichText from '../lib/richTextProcessor/wrapRichText';
+import wrapSenderToPeer from './wrappers/senderToPeer';
+import wrapSentTime from './wrappers/sentTime';
+import getMediaFromMessage from '../lib/appManagers/utils/messages/getMediaFromMessage';
+import filterMessagesByInputFilter from '../lib/appManagers/utils/messages/filterMessagesByInputFilter';
+import getChatMembersString from './wrappers/getChatMembersString';
+import getUserStatusString from './wrappers/getUserStatusString';
+import getParticipantPeerId from '../lib/appManagers/utils/chats/getParticipantPeerId';
+import {Awaited} from '../types';
+import {attachContextMenuListener} from '../helpers/dom/attachContextMenuListener';
+import contextMenuController from '../helpers/contextMenuController';
+import positionMenu from '../helpers/positionMenu';
+import apiManagerProxy from '../lib/mtproto/mtprotoworker';
 
-//const testScroll = false;
+// const testScroll = false;
 
 export type SearchSuperType = MyInputMessagesFilter/*  | 'members' */;
 export type SearchSuperContext = {
@@ -135,21 +135,21 @@ class SearchContextMenu {
         this.peerId = item.dataset.peerId.toPeerId();
         this.mid = +item.dataset.mid;
         this.isSelected = searchSuper.selection.isMidSelected(this.peerId, this.mid);
-  
+
         await Promise.all(this.buttons.map(async(button) => {
           let good: boolean;
-  
+
           if(this.isSelected && !button.withSelection) {
             good = false;
           } else {
             good = button.verify ? await button.verify() : true;
           }
-  
+
           button.element.classList.toggle('hide', !good);
         }));
-  
+
         item.classList.add('menu-open');
-  
+
         positionMenu(e, this.element);
         contextMenuController.openBtnMenu(this.element, () => {
           item.classList.remove('menu-open');
@@ -176,7 +176,7 @@ class SearchContextMenu {
       icon: 'forward',
       text: 'Message.Context.Selection.Forward',
       onClick: this.onForwardClick,
-      verify: () => this.isSelected && 
+      verify: () => this.isSelected &&
         !this.searchSuper.selection.selectionForwardBtn.classList.contains('hide'),
       withSelection: true
     }, {
@@ -248,9 +248,9 @@ class SearchContextMenu {
 }
 
 export type ProcessSearchSuperResult = {
-  message: Message.message, 
-  middleware: () => boolean, 
-  promises: Promise<any>[], 
+  message: Message.message,
+  middleware: () => boolean,
+  promises: Promise<any>[],
   elemsToAppend: {element: HTMLElement, message: any}[],
   inputFilter: MyInputMessagesFilter,
   searchGroup?: SearchGroup
@@ -268,7 +268,7 @@ export default class AppSearchSuper {
   public navScrollable: ScrollableX;
   private tabsMenu: HTMLElement;
   private prevTabId = -1;
-  
+
   private lazyLoadQueue = new LazyLoadQueue();
   public middleware = getMiddleware();
 
@@ -287,7 +287,7 @@ export default class AppSearchSuper {
 
   private log = logger('SEARCH-SUPER');
   public selectTab: ReturnType<typeof horizontalMenu>;
-  
+
   private monthContainers: Partial<{
     [type in SearchSuperType]: {
       [timestamp: number]: {
@@ -370,7 +370,7 @@ export default class AppSearchSuper {
     let unlockScroll: ReturnType<typeof lockTouchScroll>;
     if(IS_TOUCH_SUPPORTED) {
       handleTabSwipe({
-        element: this.tabsContainer, 
+        element: this.tabsContainer,
         onSwipe: (xDiff, yDiff, e) => {
           const prevId = this.selectTab.prevId();
           const children = Array.from(this.tabsMenu.children) as HTMLElement[];
@@ -423,27 +423,27 @@ export default class AppSearchSuper {
 
     this.scrollable.onScrolledBottom = () => {
       if(this.mediaTab.contentTab && this.canLoadMediaTab(this.mediaTab)/* && false */) {
-        //this.log('onScrolledBottom will load media');
+        // this.log('onScrolledBottom will load media');
         this.load(true);
       }
     };
-    //this.scroll.attachSentinels(undefined, 400);
+    // this.scroll.attachSentinels(undefined, 400);
 
     this.selectTab = horizontalMenu(this.tabsMenu, this.tabsContainer, (id, tabContent, animate) => {
       if(this.prevTabId === id && !this.skipScroll) {
         this.scrollable.scrollIntoViewNew({
-          element: this.container, 
+          element: this.container,
           position: 'start',
           startCallback: this.scrollStartCallback
         });
         return;
       }
-      
+
       const newMediaTab = this.mediaTabs[id];
       if(this.onChangeTab) {
         this.onChangeTab(newMediaTab);
       }
-      
+
       const fromMediaTab = this.mediaTab;
       this.mediaTab = newMediaTab;
 
@@ -458,41 +458,41 @@ export default class AppSearchSuper {
         let scrollTop = this.scrollable.scrollTop;
         if(scrollTop < offsetTop) {
           this.scrollable.scrollIntoViewNew({
-            element: this.container, 
+            element: this.container,
             position: 'start',
             startCallback: this.scrollStartCallback
           });
           scrollTop = offsetTop;
         }
-        
+
         fromMediaTab.scroll = {scrollTop: scrollTop, scrollHeight: this.scrollable.scrollHeight};
-  
+
         if(newMediaTab.scroll === undefined) {
           const rect = this.container.getBoundingClientRect();
           const rect2 = this.container.parentElement.getBoundingClientRect();
           const diff = rect.y - rect2.y;
-  
+
           if(scrollTop > diff) {
             newMediaTab.scroll = {scrollTop: diff, scrollHeight: 0};
           }
         }
-  
+
         if(newMediaTab.scroll) {
           const diff = fromMediaTab.scroll.scrollTop - newMediaTab.scroll.scrollTop;
-          //console.log('what you gonna do', this.goingHard, diff);
-  
-          //this.scrollable.scrollTop = scrollTop;
+          // console.log('what you gonna do', this.goingHard, diff);
+
+          // this.scrollable.scrollTop = scrollTop;
           if(diff/*  && diff < 0 */) {
             /* if(diff > -(fromMediaTab.contentTab.scrollHeight + this.nav.scrollHeight)) {
               fromMediaTab.contentTab.style.transform = `translateY(${diff}px)`;
               this.scrollable.scrollTop = scrollTop - diff;
             } else { */
-              newMediaTab.contentTab.style.transform = `translateY(${diff}px)`;
-            //}
+            newMediaTab.contentTab.style.transform = `translateY(${diff}px)`;
+            // }
           }
         }
       }
-      
+
       /* if(this.prevTabId !== -1 && nav.offsetTop) {
         this.scrollable.scrollTop -= nav.offsetTop;
       } */
@@ -501,15 +501,15 @@ export default class AppSearchSuper {
       this.scroll.setVirtualContainer(this.sharedMediaSelected); */
 
       if(this.prevTabId !== -1 && !newMediaTab.contentTab.childElementCount) { // quick brown fix
-        //this.contentContainer.classList.remove('loaded');
+        // this.contentContainer.classList.remove('loaded');
         this.load(true);
       }
 
       this.prevTabId = id;
     }, () => {
       this.scrollable.onScroll();
-      
-      //console.log('what y', this.tabSelected.style.transform);
+
+      // console.log('what y', this.tabSelected.style.transform);
       if(this.mediaTab.scroll !== undefined) {
         this.mediaTab.contentTab.style.transform = '';
         this.scrollable.scrollTop = this.mediaTab.scroll.scrollTop;
@@ -529,11 +529,11 @@ export default class AppSearchSuper {
         this.selection.toggleByElement(findUpClassName(e.target, 'search-super-item'));
       }
     }, {capture: true, passive: false});
-    
+
     const onMediaClick = async(className: string, targetClassName: string, inputFilter: MyInputMessagesFilter, e: MouseEvent) => {
       const target = findUpClassName(e.target as HTMLDivElement, className);
       if(!target) return;
-      
+
       const mid = +target.dataset.mid;
       if(!mid) {
         this.log.warn('no messageId by click on target:', target);
@@ -545,15 +545,15 @@ export default class AppSearchSuper {
       const targets = (Array.from(this.tabs[inputFilter].querySelectorAll('.' + targetClassName)) as HTMLElement[]).map((el) => {
         const containerEl = findUpClassName(el, className);
         return {
-          element: el, 
-          mid: +containerEl.dataset.mid, 
+          element: el,
+          mid: +containerEl.dataset.mid,
           peerId: containerEl.dataset.peerId.toPeerId()
         };
       });
 
-      //const ids = Object.keys(this.mediaDivsByIds).map((k) => +k).sort((a, b) => a - b);
+      // const ids = Object.keys(this.mediaDivsByIds).map((k) => +k).sort((a, b) => a - b);
       const idx = targets.findIndex((item) => item.mid === mid && item.peerId === peerId);
-      
+
       const message = await this.managers.appMessagesManager.getMessageByPeer(peerId, mid);
       new AppMediaViewer()
       .setSearchContext(this.copySearchContext(inputFilter))
@@ -599,8 +599,8 @@ export default class AppSearchSuper {
   private processEmptyFilter({message, searchGroup}: ProcessSearchSuperResult) {
     const loadPromises: Promise<any>[] = [];
     const {dom} = appDialogsManager.addDialogNew({
-      peerId: message.peerId, 
-      container: searchGroup.list, 
+      peerId: message.peerId,
+      container: searchGroup.list,
       avatarSize: 54,
       loadPromises
     });
@@ -609,9 +609,9 @@ export default class AppSearchSuper {
       dialog: {
         _: 'dialog',
         peerId: message.peerId
-      } as any,  
-      lastMessage: message, 
-      dom, 
+      } as any,
+      lastMessage: message,
+      dom,
       highlightWord: this.searchContext.query
     });
 
@@ -624,7 +624,7 @@ export default class AppSearchSuper {
 
     const div = document.createElement('div');
     div.classList.add('grid-item');
-    //this.log(message, photo);
+    // this.log(message, photo);
 
     let wrapped: Awaited<ReturnType<typeof wrapPhoto>>;
     const size = choosePhotoSize(media, 200, 200);
@@ -696,10 +696,10 @@ export default class AppSearchSuper {
       let url: string, display_url: string, sliced: string;
 
       if(!entity) {
-        //this.log.error('NO ENTITY:', message);
+        // this.log.error('NO ENTITY:', message);
         const match = matchUrl(message.message);
         if(!match) {
-          //this.log.error('NO ENTITY AND NO MATCH:', message);
+          // this.log.error('NO ENTITY AND NO MATCH:', message);
           return;
         }
 
@@ -710,7 +710,7 @@ export default class AppSearchSuper {
 
       if(entity?._ === 'messageEntityTextUrl') {
         url = entity.url;
-        //display_url = sliced;
+        // display_url = sliced;
       } else {
         url = url || sliced;
       }
@@ -738,11 +738,11 @@ export default class AppSearchSuper {
       }
     }
 
-    let previewDiv = document.createElement('div');
+    const previewDiv = document.createElement('div');
     previewDiv.classList.add('preview', 'row-media');
-    
-    //this.log('wrapping webpage', webpage);
-    
+
+    // this.log('wrapping webpage', webpage);
+
     if(webpage.photo) {
       const res = wrapPhoto({
         container: previewDiv,
@@ -761,8 +761,8 @@ export default class AppSearchSuper {
       previewDiv.classList.add('empty');
       setInnerHTML(previewDiv, getAbbreviation(webpage.title || webpage.display_url || webpage.description || webpage.url, true));
     }
-    
-    let title = wrapWebPageTitle(webpage);
+
+    const title = wrapWebPageTitle(webpage);
 
     const subtitleFragment = wrapWebPageDescription(webpage);
     const aFragment = htmlToDocumentFragment(wrapRichText(webpage.url || ''));
@@ -784,9 +784,9 @@ export default class AppSearchSuper {
     if(this.showSender) {
       subtitleFragment.append('\n', await wrapSenderToPeer(message));
     }
-    
+
     if(!title.textContent) {
-      //title = new URL(webpage.url).hostname;
+      // title = new URL(webpage.url).hostname;
       title.append(wrapPlainText(webpage.display_url.split('/', 1)[0]));
     }
 
@@ -803,7 +803,7 @@ export default class AppSearchSuper {
     mediaDiv.classList.add('row-media'); */
 
     row.container.append(previewDiv);
-    
+
     /* ripple(div);
     div.append(previewDiv);
     div.insertAdjacentHTML('beforeend', `
@@ -812,12 +812,12 @@ export default class AppSearchSuper {
     <div class="url">${url}</div>
     ${sender}
     `); */
-    
+
     if(row.container.innerText.trim().length) {
       return {message, element: row.container};
     }
   }
-  
+
   public async performSearchResult(messages: any[], mediaTab: SearchSuperMediaTab, append = true) {
     const elemsToAppend: {element: HTMLElement, message: any}[] = [];
     const sharedMediaDiv: HTMLElement = mediaTab.contentTab;
@@ -826,7 +826,7 @@ export default class AppSearchSuper {
     let inputFilter = mediaTab.inputFilter;
 
     await getHeavyAnimationPromise();
-    
+
     let searchGroup: SearchGroup;
     if(inputFilter === 'inputMessagesFilterPhotoVideo' && !!this.searchContext.query.trim()) {
       inputFilter = 'inputMessagesFilterEmpty';
@@ -858,7 +858,7 @@ export default class AppSearchSuper {
         processCallback = this.processPhotoVideoFilter;
         break;
       }
-      
+
       case 'inputMessagesFilterVoice':
       case 'inputMessagesFilterRoundVoice':
       case 'inputMessagesFilterMusic':
@@ -866,14 +866,14 @@ export default class AppSearchSuper {
         processCallback = this.processDocumentFilter;
         break;
       }
-      
+
       case 'inputMessagesFilterUrl': {
         processCallback = this.processUrlFilter;
         break;
       }
 
       default:
-        //this.log.warn('death is my friend', messages);
+        // this.log.warn('death is my friend', messages);
         break;
     }
 
@@ -893,7 +893,7 @@ export default class AppSearchSuper {
       const awaited = (await Promise.all(results)).filter(Boolean);
       elemsToAppend.push(...awaited.filter(Boolean));
     }
-    
+
     if(searchGroup && searchGroup.list.childElementCount) {
       searchGroup.setActive();
     }
@@ -905,11 +905,11 @@ export default class AppSearchSuper {
     if(promises.length) {
       await Promise.all(promises);
       if(!middleware()) {
-        //this.log.warn('peer changed');
+        // this.log.warn('peer changed');
         return;
       }
     }
-    
+
     if(elemsToAppend.length) {
       const method = append ? 'append' : 'prepend';
       elemsToAppend.forEach((details) => {
@@ -925,10 +925,10 @@ export default class AppSearchSuper {
         }
       });
     }
-    
-    //if(type !== 'inputMessagesFilterEmpty') {
-      this.afterPerforming(inputFilter === 'inputMessagesFilterEmpty' ? 1 : messages.length, sharedMediaDiv);
-    //}
+
+    // if(type !== 'inputMessagesFilterEmpty') {
+    this.afterPerforming(inputFilter === 'inputMessagesFilterEmpty' ? 1 : messages.length, sharedMediaDiv);
+    // }
   }
 
   private afterPerforming(length: number, contentTab: HTMLElement) {
@@ -938,7 +938,7 @@ export default class AppSearchSuper {
         child.remove();
       });
 
-      //this.contentContainer.classList.add('loaded');
+      // this.contentContainer.classList.add('loaded');
 
       if(!length && !contentTab.childElementCount) {
         const div = document.createElement('div');
@@ -954,7 +954,7 @@ export default class AppSearchSuper {
     const renderedPeerIds: Set<PeerId> = new Set();
     const middleware = this.middleware.get();
 
-    for(let i in this.searchGroups) {
+    for(const i in this.searchGroups) {
       const group = this.searchGroups[i as SearchGroupType];
       this.tabs.inputMessagesFilterEmpty.append(group.container);
       group.clear();
@@ -967,12 +967,12 @@ export default class AppSearchSuper {
           if(renderedPeerIds.has(peerId)) {
             return;
           }
-  
+
           renderedPeerIds.add(peerId);
-  
+
           const {dom} = appDialogsManager.addDialogNew({
-            peerId: peerId, 
-            container: group.list, 
+            peerId: peerId,
+            container: group.list,
             avatarSize: 48,
             autonomous: group.autonomous
           });
@@ -996,24 +996,24 @@ export default class AppSearchSuper {
             } else {
               username = '@' + username;
             }
-  
+
             dom.lastMessageSpan.innerHTML = '<i>' + username + '</i>';
           }
         });
-  
+
         group.toggle();
       };
-  
+
       const onLoad = <T>(arg: T) => {
         if(!middleware()) {
           return;
         }
-  
-        //this.loadedContacts = true;
-  
+
+        // this.loadedContacts = true;
+
         return arg;
       };
-  
+
       return Promise.all([
         this.managers.appUsersManager.getContactsPeerIds(query, true)
         .then(onLoad)
@@ -1022,7 +1022,7 @@ export default class AppSearchSuper {
             setResults(contacts, this.searchGroups.contacts, true);
           }
         }),
-  
+
         this.managers.appUsersManager.searchContacts(query, 20)
         .then(onLoad)
         .then((contacts) => {
@@ -1035,7 +1035,7 @@ export default class AppSearchSuper {
             if(this.searchGroups.globalContacts.nameEl.lastElementChild !== this.searchGroups.globalContacts.nameEl.firstElementChild) {
               this.searchGroups.globalContacts.nameEl.lastElementChild.remove();
             }
-            
+
             if(this.searchGroups.globalContacts.list.childElementCount > 3) {
               const showMore = document.createElement('div');
               showMore.classList.add('search-group__show-more');
@@ -1052,7 +1052,7 @@ export default class AppSearchSuper {
             }
           }
         }),
-  
+
         this.managers.appMessagesManager.getConversations(query, 0, 20, 0)
         .then(onLoad)
         .then((value) => {
@@ -1067,23 +1067,23 @@ export default class AppSearchSuper {
           if(!middleware()) {
             return;
           }
-    
+
           this.searchGroups.recent.list.innerHTML = '';
-    
+
           state.recentSearch.slice(0, 20).forEach(async(peerId) => {
-            let {dom} = appDialogsManager.addDialogNew({
+            const {dom} = appDialogsManager.addDialogNew({
               peerId: peerId,
               container: this.searchGroups.recent.list,
               meAsSaved: true,
               avatarSize: 48,
               autonomous: true
             });
-    
-            dom.lastMessageSpan.append(await (peerId.isUser() ? 
-              getUserStatusString(await this.managers.appUsersManager.getUser(peerId.toUserId())) : 
+
+            dom.lastMessageSpan.append(await (peerId.isUser() ?
+              getUserStatusString(await this.managers.appUsersManager.getUser(peerId.toUserId())) :
               getChatMembersString(peerId.toChatId())));
           });
-    
+
           if(!state.recentSearch.length) {
             this.searchGroups.recent.clear();
           } else if(setActive) {
@@ -1101,19 +1101,19 @@ export default class AppSearchSuper {
             peers = peers.slice();
             peers.splice(idx, 1);
           }
-          //console.log('got top categories:', categories);
+          // console.log('got top categories:', categories);
           if(peers.length) {
             peers.forEach((peer) => {
               appDialogsManager.addDialogNew({
-                peerId: peer.id, 
-                container: this.searchGroups.people.list, 
+                peerId: peer.id,
+                container: this.searchGroups.people.list,
                 onlyFirstName: true,
                 avatarSize: 54,
                 autonomous: false
               });
             });
           }
-    
+
           this.searchGroups.people.setActive();
         }),
 
@@ -1135,10 +1135,10 @@ export default class AppSearchSuper {
           return;
         }
       }
-      
+
       if(!this.membersList) {
         this.membersList = new SortedUserList({
-          lazyLoadQueue: this.lazyLoadQueue, 
+          lazyLoadQueue: this.lazyLoadQueue,
           rippleEnabled: false,
           managers: this.managers
         });
@@ -1153,7 +1153,7 @@ export default class AppSearchSuper {
           if(mediaSizes.isMobile) {
             promise = appSidebarRight.toggleSidebar(false);
           }
-          
+
           promise.then(() => {
             appImManager.setInnerPeer({peerId});
           });
@@ -1184,7 +1184,7 @@ export default class AppSearchSuper {
           return;
         }
 
-        let list = mediaTab.contentTab.firstElementChild as HTMLUListElement;
+        const list = mediaTab.contentTab.firstElementChild as HTMLUListElement;
         this.nextRates[mediaTab.inputFilter] = (list ? list.childElementCount : 0) + participants.participants.length;
 
         if(participants.participants.length < LOAD_COUNT) {
@@ -1199,18 +1199,18 @@ export default class AppSearchSuper {
           return;
         }
 
-        //console.log('anymore', chatFull);
+        // console.log('anymore', chatFull);
         this.loaded[mediaTab.inputFilter] = true;
         const participants = (chatFull as ChatFull.chatFull).participants;
         if(participants._ === 'chatParticipantsForbidden') {
           return;
         }
-        
+
         return renderParticipants(participants.participants);
       });
     }
 
-    return this.loadPromises[mediaTab.inputFilter] = promise.finally(() => { 
+    return this.loadPromises[mediaTab.inputFilter] = promise.finally(() => {
       if(!middleware()) {
         return;
       }
@@ -1247,12 +1247,12 @@ export default class AppSearchSuper {
     const promise = this.loadPromises[type] = Promise.resolve().then(async() => {
       // render from cache
       if(history.length && this.usedFromHistory[type] < history.length && !justLoad) {
-        let messages: any[] = [];
+        const messages: any[] = [];
         let used = Math.max(0, this.usedFromHistory[type]);
         let slicedLength = 0;
 
         do {
-          let ids = history.slice(used, used + loadCount);
+          const ids = history.slice(used, used + loadCount);
           used += ids.length;
           slicedLength += ids.length;
 
@@ -1260,7 +1260,7 @@ export default class AppSearchSuper {
 
           messages.push(...this.filterMessagesByType(notFilteredMessages, type));
         } while(slicedLength < loadCount && used < history.length);
-        
+
         // если перебор
         /* if(slicedLength > loadCount) {
           let diff = messages.length - loadCount;
@@ -1269,21 +1269,21 @@ export default class AppSearchSuper {
         } */
 
         this.usedFromHistory[type] = used;
-        //if(messages.length) {
-          return this.performSearchResult(messages, mediaTab).finally(() => {
-            setTimeout(() => {
-              this.scrollable.checkForTriggers();
-            }, 0);
-          });
-        //}
+        // if(messages.length) {
+        return this.performSearchResult(messages, mediaTab).finally(() => {
+          setTimeout(() => {
+            this.scrollable.checkForTriggers();
+          }, 0);
+        });
+        // }
       }
-      
-      let maxId = history.length ? history[history.length - 1].mid : 0;
+
+      const maxId = history.length ? history[history.length - 1].mid : 0;
 
       const value = await this.managers.appMessagesManager.getSearch({
         ...this.searchContext,
         inputFilter: {_: type},
-        maxId, 
+        maxId,
         limit: loadCount,
         nextRate: this.nextRates[type] ??= 0
       });
@@ -1291,14 +1291,14 @@ export default class AppSearchSuper {
       history.push(...value.history.map((m) => ({mid: m.mid, peerId: m.peerId})));
 
       if(!middleware()) {
-        //this.log.warn('peer changed');
+        // this.log.warn('peer changed');
         return;
       }
 
       // ! Фикс случая, когда не загружаются документы при открытой панели разработчиков (происходит из-за того, что не совпадают критерии отбора документов в getSearch)
       if(value.history.length < loadCount || (this.searchContext.folderId !== undefined && !value.next_rate) || value.history.length === value.count) {
-      //if((value.count || history.length === value.count) && history.length >= value.count) {
-        //this.log(logStr + 'loaded all media', value, loadCount);
+      // if((value.count || history.length === value.count) && history.length >= value.count) {
+        // this.log(logStr + 'loaded all media', value, loadCount);
         this.loaded[type] = true;
       }
 
@@ -1314,13 +1314,13 @@ export default class AppSearchSuper {
         promise.then(() => {
           setTimeout(() => {
             if(!middleware()) return;
-            //this.log('will preload more');
+            // this.log('will preload more');
             if(this.mediaTab === mediaTab) {
               const promise = this.load(true, true);
               if(promise) {
                 promise.then(() => {
                   if(!middleware()) return;
-                  //this.log('preloaded more');
+                  // this.log('preloaded more');
                   setTimeout(() => {
                     this.scrollable.checkForTriggers();
                   }, 0);
@@ -1331,9 +1331,9 @@ export default class AppSearchSuper {
         });
       }
 
-      //if(value.history.length) {
-        return this.performSearchResult(this.filterMessagesByType(value.history, type), mediaTab);
-      //}
+      // if(value.history.length) {
+      return this.performSearchResult(this.filterMessagesByType(value.history, type), mediaTab);
+      // }
     }).catch((err) => {
       this.log.error('load error:', err);
     }).finally(() => {
@@ -1382,7 +1382,7 @@ export default class AppSearchSuper {
 
       mediaTab.menuTab.classList.toggle('hide', !counter.count);
       mediaTab.menuTab.classList.remove('active');
-      //mediaTab.contentTab.classList.toggle('hide', !counter.count);
+      // mediaTab.contentTab.classList.toggle('hide', !counter.count);
 
       if(counter.count) {
         if(firstMediaTab === undefined) {
@@ -1410,7 +1410,7 @@ export default class AppSearchSuper {
       this.navScrollableContainer.classList.toggle('hide', count <= 1);
     }
   }
-  
+
   public async load(single = false, justLoad = false) {
     const peerId = this.searchContext.peerId;
     this.log('load', single, peerId, this.loadPromises);
@@ -1425,7 +1425,7 @@ export default class AppSearchSuper {
       this.loadFirstTimePromise = undefined;
       this.firstLoad = false;
     }
-    
+
     let toLoad = single ? [this.mediaTab] : this.mediaTabs.filter((t) => t !== this.mediaTab);
     toLoad = toLoad.filter((mediaTab) => {
       return this.canLoadMediaTab(mediaTab);
@@ -1449,7 +1449,7 @@ export default class AppSearchSuper {
       this.log.error('Load error all promises:', err);
     });
   }
-  
+
   public getMonthContainerByTimestamp(timestamp: number, type: SearchSuperType) {
     const date = new Date(timestamp * 1000);
     date.setHours(0, 0, 0);
@@ -1492,7 +1492,7 @@ export default class AppSearchSuper {
           break;
         }
       }
-      
+
       containers[dateTimestamp] = {container, items};
       positionElementByIndex(container, this.tabs[type], i);
     }
@@ -1559,7 +1559,7 @@ export default class AppSearchSuper {
       tab.contentTab.innerHTML = '';
 
       if(this.hideEmptyTabs) {
-        //tab.menuTab.classList.add('hide');
+        // tab.menuTab.classList.add('hide');
         this.container.classList.add('hide');
         this.container.parentElement.classList.add('search-empty');
       }
@@ -1567,14 +1567,14 @@ export default class AppSearchSuper {
       if(tab.type === 'chats') {
         return;
       }
-      
+
       if(!this.historyStorage[tab.inputFilter]) {
         const parent = tab.contentTab.parentElement;
-        //if(!testScroll) {
-          if(!parent.querySelector('.preloader')) {
-            putPreloader(parent, true);
-          }
-        //}
+        // if(!testScroll) {
+        if(!parent.querySelector('.preloader')) {
+          putPreloader(parent, true);
+        }
+        // }
 
         const empty = parent.querySelector('.content-empty');
         if(empty) {
@@ -1619,10 +1619,10 @@ export default class AppSearchSuper {
   }
 
   public setQuery({peerId, query, threadId, historyStorage, folderId, minDate, maxDate}: {
-    peerId: PeerId, 
-    query?: string, 
-    threadId?: number, 
-    historyStorage?: AppSearchSuper['historyStorage'], 
+    peerId: PeerId,
+    query?: string,
+    threadId?: number,
+    historyStorage?: AppSearchSuper['historyStorage'],
     folderId?: number,
     minDate?: number,
     maxDate?: number
@@ -1636,7 +1636,7 @@ export default class AppSearchSuper {
       minDate,
       maxDate
     };
-    
+
     this.historyStorage = historyStorage ?? {};
 
     this.cleanup();

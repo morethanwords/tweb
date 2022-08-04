@@ -4,19 +4,19 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { MyDocument } from './appDocsManager';
-import { Document, InputFileLocation, InputStickerSet, MessagesAllStickers, MessagesFeaturedStickers, MessagesFoundStickerSets, MessagesRecentStickers, MessagesStickers, MessagesStickerSet, PhotoSize, StickerPack, StickerSet, StickerSetCovered } from '../../layer';
-import { Modify } from '../../types';
+import type {MyDocument} from './appDocsManager';
+import {Document, InputFileLocation, InputStickerSet, MessagesAllStickers, MessagesFeaturedStickers, MessagesFoundStickerSets, MessagesRecentStickers, MessagesStickers, MessagesStickerSet, PhotoSize, StickerPack, StickerSet, StickerSetCovered} from '../../layer';
+import {Modify} from '../../types';
 import AppStorage from '../storage';
 import DATABASE_STATE from '../../config/databases/state';
 import assumeType from '../../helpers/assumeType';
 import fixBase64String from '../../helpers/fixBase64String';
 import forEachReverse from '../../helpers/array/forEachReverse';
 import findAndSplice from '../../helpers/array/findAndSplice';
-import { AppManager } from './manager';
+import {AppManager} from './manager';
 import fixEmoji from '../richTextProcessor/fixEmoji';
 import ctx from '../../environment/ctx';
-import { getEnvironment } from '../../environment/utils';
+import {getEnvironment} from '../../environment/utils';
 
 const CACHE_TIME = 3600e3;
 
@@ -48,7 +48,7 @@ export class AppStickersManager extends AppManager {
 
   private sounds: Record<string, MyDocument>;
   private getAnimatedEmojiSoundsPromise: Promise<void>;
-  
+
   protected after() {
     this.getStickerSetPromises = {};
     this.getStickersByEmoticonsPromises = {};
@@ -89,7 +89,7 @@ export class AppStickersManager extends AppManager {
         this.greetingStickers.sort((a, b) => Math.random() - Math.random());
       });
     }
-    
+
     return this.getGreetingStickersPromise.then(() => {
       let doc: Document.document;
       if(!justPreload) {
@@ -140,15 +140,15 @@ export class AppStickersManager extends AppManager {
           stickerset: this.getStickerSetInput(set),
           hash: 0
         }) as MyMessagesStickerSet;
-  
+
         const saveById = params.saveById ? id : stickerSet.set.id;
         this.saveStickerSet(stickerSet, saveById);
-  
+
         resolve(stickerSet);
       } catch(err) {
         resolve(null);
       }
-      
+
       delete this.getStickerSetPromises[id];
     });
   }
@@ -185,7 +185,7 @@ export class AppStickersManager extends AppManager {
         //   bytes[0] = bytes[1] = bytes[2] = bytes[3] = bytes[4] = 0;
         //   sound.access_hash += '999';
         // }
-        
+
         const doc = this.appDocsManager.saveDoc({
           _: 'document',
           pFlags: {},
@@ -202,7 +202,7 @@ export class AppStickersManager extends AppManager {
           date: 0,
           dc_id: config.this_dc,
           file_reference: bytes,
-          mime_type: 'audio/ogg',
+          mime_type: 'audio/ogg'
           // size: 101010 // test loading everytime
         }, {
           type: 'emojiesSounds'
@@ -264,7 +264,7 @@ export class AppStickersManager extends AppManager {
     const preloadEmojiPromise = this.getAnimatedEmojiStickerSet().then(() => {
       return this.getAnimatedEmojiSticker(emoji);
     });
-    
+
     return Promise.all([
       preloadEmojiPromise,
       this.preloadAnimatedEmojiStickerAnimation(emoji)
@@ -284,7 +284,7 @@ export class AppStickersManager extends AppManager {
       if(!doc) {
         return;
       }
-      
+
       const sound = this.getAnimatedEmojiSoundDocument(emoji);
       return Promise.all([
         this.apiFileManager.downloadMedia({media: doc}),
@@ -294,9 +294,9 @@ export class AppStickersManager extends AppManager {
       });
     });
   }
-  
+
   public saveStickerSet(res: Omit<MessagesStickerSet.messagesStickerSet, '_'>, id: DocId) {
-    //console.log('stickers save set', res);w
+    // console.log('stickers save set', res);w
 
     const newSet: MessagesStickerSet = {
       _: 'messages.stickerSet',
@@ -304,7 +304,7 @@ export class AppStickersManager extends AppManager {
       packs: res.packs,
       documents: res.documents as Document[]
     };
-    
+
     let stickerSet = this.storage.getFromCache(id);
     if(stickerSet) {
       Object.assign(stickerSet, newSet);
@@ -313,8 +313,8 @@ export class AppStickersManager extends AppManager {
     }
 
     this.saveStickers(res.documents);
-    
-    //console.log('stickers wrote', this.stickerSets);
+
+    // console.log('stickers wrote', this.stickerSets);
     const needSave = stickerSet.set.installed_date || LOCAL_IDS_SET.has(id as any);
     stickerSet.refreshTime = Date.now();
     this.storage.set({[id]: stickerSet}, !needSave);
@@ -431,7 +431,7 @@ export class AppStickersManager extends AppManager {
   public async searchStickerSets(query: string, excludeFeatured = true) {
     const flags = excludeFeatured ? 1 : 0;
     const res = await this.apiManager.invokeApiHashable({
-      method: 'messages.searchStickerSets', 
+      method: 'messages.searchStickerSets',
       params: {
         flags,
         exclude_featured: excludeFeatured || undefined,
@@ -456,7 +456,7 @@ export class AppStickersManager extends AppManager {
 
     const foundSaved: StickerSetCovered[] = [];
     const cache = this.storage.getCache();
-    for(let id in cache) {
+    for(const id in cache) {
       const {set} = cache[id];
 
       if(set.title.toLowerCase().includes(query.toLowerCase()) && !res.sets.find((c) => c.set.id === set.id)) {
@@ -469,7 +469,7 @@ export class AppStickersManager extends AppManager {
 
   public getAllStickers() {
     return this.apiManager.invokeApiHashable({
-      method: 'messages.getAllStickers', 
+      method: 'messages.getAllStickers',
       processResult: (allStickers) => {
         assumeType<MessagesAllStickers.messagesAllStickers>(allStickers);
 
@@ -497,7 +497,7 @@ export class AppStickersManager extends AppManager {
 
     return this.getStickersByEmoticonsPromises[emoticon] = Promise.all([
       this.apiManager.invokeApiHashable({
-        method: 'messages.getStickers', 
+        method: 'messages.getStickers',
         params: {
           emoticon
         },
@@ -509,7 +509,7 @@ export class AppStickersManager extends AppManager {
       const foundStickers = (messagesStickers as MessagesStickers.messagesStickers).stickers.map((sticker) => this.appDocsManager.saveDoc(sticker));
       const cachedStickersAnimated: Document.document[] = [], cachedStickersStatic: Document.document[] = [];
 
-      //console.log('getStickersByEmoticon', messagesStickers, installedSets, recentStickers);
+      // console.log('getStickersByEmoticon', messagesStickers, installedSets, recentStickers);
 
       const iteratePacks = (packs: StickerPack.stickerPack[]) => {
         for(const pack of packs) {

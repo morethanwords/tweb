@@ -10,7 +10,7 @@ export default function findUpAttribute(el: any, attribute: string): HTMLElement
 
   while(el.parentElement) {
     el = el.parentElement;
-    if(el.getAttribute(attribute) !== null) 
+    if(el.getAttribute(attribute) !== null)
       return el;
   }
   return null; */

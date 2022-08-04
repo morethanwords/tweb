@@ -8,16 +8,16 @@
 import '../mtproto/mtproto.worker';
 // #endif
 
-import { logger, LogTypes } from '../logger';
-import { CACHE_ASSETS_NAME, requestCache } from './cache';
+import {logger, LogTypes} from '../logger';
+import {CACHE_ASSETS_NAME, requestCache} from './cache';
 import onStreamFetch from './stream';
-import { closeAllNotifications, onPing } from './push';
+import {closeAllNotifications, onPing} from './push';
 import CacheStorageController from '../files/cacheStorage';
-import { IS_SAFARI } from '../../environment/userAgent';
-import ServiceMessagePort, { ServiceDownloadTaskPayload } from './serviceMessagePort';
+import {IS_SAFARI} from '../../environment/userAgent';
+import ServiceMessagePort, {ServiceDownloadTaskPayload} from './serviceMessagePort';
 import listenMessagePort from '../../helpers/listenMessagePort';
-import { getWindowClients } from '../../helpers/context';
-import { MessageSendPort } from '../mtproto/superMessagePort';
+import {getWindowClients} from '../../helpers/context';
+import {MessageSendPort} from '../mtproto/superMessagePort';
 import noop from '../../helpers/noop';
 import makeError from '../../helpers/makeError';
 
@@ -42,7 +42,7 @@ const sendMessagePortIfNeeded = (source: MessageSendPort) => {
 
 const onWindowConnected = (source: WindowClient) => {
   log('window connected', source.id);
-  
+
   if(source.frameType === 'none') {
     log.warn('maybe a bugged Safari starting window', source.id);
     return;
@@ -80,7 +80,7 @@ serviceMessagePort.addMultipleEventsListeners({
   hello: (payload, source) => {
     onWindowConnected(source as any as WindowClient);
   },
-  
+
   download: (payload) => {
     const {id} = payload;
     if(downloadMap.has(id)) {
@@ -92,10 +92,10 @@ serviceMessagePort.addMultipleEventsListeners({
     const transformStream = new TransformStream<DownloadType, DownloadType>(/* {
       start: (_controller) => controller = _controller,
     }, {
-      highWaterMark: 1, 
+      highWaterMark: 1,
       size: (chunk) => chunk.byteLength
     }, new CountQueuingStrategy({highWaterMark: 4}) */);
-    
+
     const {readable, writable} = transformStream;
     const writer = writable.getWriter();
     // const promise = deferredPromise<void>();
@@ -109,13 +109,13 @@ serviceMessagePort.addMultipleEventsListeners({
       log.error('closed writer');
       downloadMap.delete(id);
     });
-    
+
     const item: DownloadItem = {
-      ...payload, 
+      ...payload,
       transformStream,
       readableStream: readable,
       writableStream: writable,
-      writer,
+      writer
       // promise,
       // controller
     };
@@ -167,7 +167,7 @@ getWindowClients().then((windowClients) => {
   });
 });
 
-let connectedWindows: Set<string> = new Set();
+const connectedWindows: Set<string> = new Set();
 listenMessagePort(serviceMessagePort, undefined, (source) => {
   const isWindowClient = source instanceof WindowClient;
   if(!isWindowClient || !connectedWindows.has(source.id)) {
@@ -196,8 +196,8 @@ listenMessagePort(serviceMessagePort, undefined, (source) => {
 const onFetch = (event: FetchEvent): void => {
   // #if !DEBUG
   if(
-    !IS_SAFARI && 
-    event.request.url.indexOf(location.origin + '/') === 0 && 
+    !IS_SAFARI &&
+    event.request.url.indexOf(location.origin + '/') === 0 &&
     event.request.url.match(/\.(js|css|jpe?g|json|wasm|png|mp3|svg|tgs|ico|woff2?|ttf|webmanifest?)(?:\?.*)?$/)
   ) {
     return event.respondWith(requestCache(event));
@@ -208,7 +208,7 @@ const onFetch = (event: FetchEvent): void => {
     const [, url, scope, params] = /http[:s]+\/\/.*?(\/(.*?)(?:$|\/(.*)$))/.exec(event.request.url) || [];
 
     // log.debug('[fetch]:', event);
-  
+
     switch(scope) {
       case 'stream': {
         onStreamFetch(event, params);
@@ -231,7 +231,7 @@ const onFetch = (event: FetchEvent): void => {
     log.error('fetch error', err);
     event.respondWith(new Response('', {
       status: 500,
-      statusText: 'Internal Server Error',
+      statusText: 'Internal Server Error'
     }));
   }
 };

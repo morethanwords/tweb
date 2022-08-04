@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { SliderSuperTab } from "../../slider";
-import AppSelectPeers from "../../appSelectPeers";
-import { setButtonLoader } from "../../putPreloader";
-import { LangPackKey, _i18n } from "../../../lib/langPack";
-import ButtonCorner from "../../buttonCorner";
+import {SliderSuperTab} from '../../slider';
+import AppSelectPeers from '../../appSelectPeers';
+import {setButtonLoader} from '../../putPreloader';
+import {LangPackKey, _i18n} from '../../../lib/langPack';
+import ButtonCorner from '../../buttonCorner';
 
 export default class AppAddMembersTab extends SliderSuperTab {
   private nextBtn: HTMLButtonElement;
@@ -22,7 +22,7 @@ export default class AppAddMembersTab extends SliderSuperTab {
     this.nextBtn = ButtonCorner({icon: 'arrow_next'});
     this.content.append(this.nextBtn);
     this.scrollable.container.remove();
-    
+
     this.nextBtn.addEventListener('click', () => {
       const peerIds = this.selector.getSelected().map((sel) => sel.toPeerId());
 
@@ -54,7 +54,7 @@ export default class AppAddMembersTab extends SliderSuperTab {
   public open(options: {
     title: LangPackKey,
     placeholder: LangPackKey,
-    type: AppAddMembersTab['peerType'], 
+    type: AppAddMembersTab['peerType'],
     takeOut?: AppAddMembersTab['takeOut'],
     skippable: boolean,
     selectedPeerIds?: PeerId[]
@@ -68,10 +68,10 @@ export default class AppAddMembersTab extends SliderSuperTab {
 
     const isPrivacy = this.peerType === 'privacy';
     this.selector = new AppSelectPeers({
-      appendTo: this.content, 
+      appendTo: this.content,
       onChange: this.skippable ? null : (length) => {
         this.nextBtn.classList.toggle('is-visible', !!length);
-      }, 
+      },
       peerType: [isPrivacy ? 'dialogs' : 'contacts'],
       placeholder: options.placeholder,
       exceptSelf: isPrivacy,

@@ -1,4 +1,4 @@
-import type ENVIRONMENT from ".";
+import type ENVIRONMENT from '.';
 
 let environment: typeof ENVIRONMENT;
 export function getEnvironment() {

@@ -4,20 +4,20 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { PhotoSize, WebDocument } from "../layer";
-import { REPLIES_HIDDEN_CHANNEL_ID } from "../lib/mtproto/mtproto_config";
-import { MyDocument } from "../lib/appManagers/appDocsManager";
-import { MyPhoto } from "../lib/appManagers/appPhotosManager";
-import choosePhotoSize from "../lib/appManagers/utils/photos/choosePhotoSize";
-import { MediaSize, makeMediaSize } from "./mediaSize";
-import isWebDocument from "../lib/appManagers/utils/webDocs/isWebDocument";
+import {PhotoSize, WebDocument} from '../layer';
+import {REPLIES_HIDDEN_CHANNEL_ID} from '../lib/mtproto/mtproto_config';
+import {MyDocument} from '../lib/appManagers/appDocsManager';
+import {MyPhoto} from '../lib/appManagers/appPhotosManager';
+import choosePhotoSize from '../lib/appManagers/utils/photos/choosePhotoSize';
+import {MediaSize, makeMediaSize} from './mediaSize';
+import isWebDocument from '../lib/appManagers/utils/webDocs/isWebDocument';
 
 export default function setAttachmentSize(
-  photo: MyPhoto | MyDocument | WebDocument, 
-  element: HTMLElement | SVGForeignObjectElement, 
-  boxWidth: number, 
-  boxHeight: number, 
-  noZoom = true, 
+  photo: MyPhoto | MyDocument | WebDocument,
+  element: HTMLElement | SVGForeignObjectElement,
+  boxWidth: number,
+  boxHeight: number,
+  noZoom = true,
   message?: any,
   pushDocumentSize?: boolean,
   photoSize?: ReturnType<typeof choosePhotoSize>
@@ -30,8 +30,8 @@ export default function setAttachmentSize(
   if(!photoSize) {
     photoSize = choosePhotoSize(photo, boxWidth, boxHeight, undefined, pushDocumentSize);
   }
-  //console.log('setAttachmentSize', photo, photo.sizes[0].bytes, div);
-  
+  // console.log('setAttachmentSize', photo, photo.sizes[0].bytes, div);
+
   let size: MediaSize;
   const isDocument = photo._ === 'document';
   if(isDocument || _isWebDocument) {
@@ -51,10 +51,10 @@ export default function setAttachmentSize(
       boxSize = size = size.aspectCovered(makeMediaSize(200, 200));
     }
 
-    if(message && 
-      (message.message || 
-        message.reply_to_mid || 
-        message.media.webpage || 
+    if(message &&
+      (message.message ||
+        message.reply_to_mid ||
+        message.media.webpage ||
         (message.replies && message.replies.pFlags.comments && message.replies.channel_id.toChatId() !== REPLIES_HIDDEN_CHANNEL_ID)
       )
     ) { // make sure that bubble block is human-readable
@@ -76,9 +76,9 @@ export default function setAttachmentSize(
 
   //   //console.log('set dimensions to svg element:', element, w, h);
   // } else {
-    element.style.width = boxSize.width + 'px';
-    element.style.height = boxSize.height + 'px';
+  element.style.width = boxSize.width + 'px';
+  element.style.height = boxSize.height + 'px';
   // }
-  
+
   return {photoSize, size, isFit};
 }

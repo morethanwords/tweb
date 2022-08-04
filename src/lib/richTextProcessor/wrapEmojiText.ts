@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import parseEntities from "./parseEntities";
-import wrapRichText from "./wrapRichText";
+import parseEntities from './parseEntities';
+import wrapRichText from './wrapRichText';
 
 export default function wrapEmojiText(text: string, isDraft = false) {
   if(!text) return wrapRichText('');
 
-  let entities = parseEntities(text).filter((e) => e._ === 'messageEntityEmoji');
+  const entities = parseEntities(text).filter((e) => e._ === 'messageEntityEmoji');
   return wrapRichText(text, {entities, wrappingDraft: isDraft});
 }

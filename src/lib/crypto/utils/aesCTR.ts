@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { BigInteger } from "big-integer";
-import { bigIntFromBytes, bigIntToBytes } from "../../../helpers/bigInt/bigIntConversion";
-import addPadding from "../../../helpers/bytes/addPadding";
-import subtle from "../subtle";
+import {BigInteger} from 'big-integer';
+import {bigIntFromBytes, bigIntToBytes} from '../../../helpers/bigInt/bigIntConversion';
+import addPadding from '../../../helpers/bytes/addPadding';
+import subtle from '../subtle';
 
 const COUNTER_LENGTH = 16;
 
@@ -19,7 +19,7 @@ export default class CTR {
   private counter: BigInteger;
   private queue: {data: Uint8Array, resolve: (data: Uint8Array) => void}[];
   private releasing: boolean;
-  
+
   constructor(mode: 'encrypt' | 'decrypt', cryptoKey: CryptoKey, counter: Uint8Array) {
     this.mode = mode;
     this.cryptoKey = cryptoKey;
@@ -49,12 +49,12 @@ export default class CTR {
 
   private async perform(data: Uint8Array) {
     const arrayBuffer: ArrayBuffer = await subtle[this.mode]({
-        name: 'AES-CTR',
-        counter: addPadding(bigIntToBytes(this.counter), COUNTER_LENGTH, true, true, true),
-        length: 128
-      },
-      this.cryptoKey,
-      data
+      name: 'AES-CTR',
+      counter: addPadding(bigIntToBytes(this.counter), COUNTER_LENGTH, true, true, true),
+      length: 128
+    },
+    this.cryptoKey,
+    data
     );
 
     return arrayBuffer;
@@ -62,7 +62,7 @@ export default class CTR {
 
   private async _update(data: Uint8Array) {
     let toEncrypt = data;
-    let head: Uint8Array, tail: Uint8Array;
+    let head: Uint8Array/* , tail: Uint8Array */;
     if(this.leftLength) {
       // const leftLength = this.encLeft.byteLength;
       const leftLength = this.leftLength;
@@ -79,7 +79,7 @@ export default class CTR {
       this.counter = this.counter.add(1);
     }
 
-    tail = new Uint8Array(await this.perform(toEncrypt));
+    const tail = new Uint8Array(await this.perform(toEncrypt));
 
     const result = head ? head.concat(tail) : tail;
 

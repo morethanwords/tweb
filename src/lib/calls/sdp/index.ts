@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import SDPMediaSection from "./mediaSection";
-import SDPSessionSection from "./sessionSection";
+import SDPMediaSection from './mediaSection';
+import SDPSessionSection from './sessionSection';
 
-export type AttributeKey = 'group' | 'rtcp' | 'ice-ufrag' | 
-  'ice-pwd' | 'ice-options' | 'fingerprint' | 'setup' | 
-  'mid' | 'extmap' | 'sendonly' | 'msid' | 'rtcp-mux' | 
+export type AttributeKey = 'group' | 'rtcp' | 'ice-ufrag' |
+  'ice-pwd' | 'ice-options' | 'fingerprint' | 'setup' |
+  'mid' | 'extmap' | 'sendonly' | 'msid' | 'rtcp-mux' |
   'rtpmap' | 'rtcp-fb' | 'fmtp' | 'ssrc' | 'ssrc-group' |
   'extmap-allow-mixed' | 'msid-semantic';
 

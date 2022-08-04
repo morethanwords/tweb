@@ -8,7 +8,7 @@
   * https://core.telegram.org/api/files#vector-thumbnails
   */
 export default function getPathFromBytes(bytes: Uint8Array) {
-  const lookup = "AACAAAAHAAALMAAAQASTAVAAAZaacaaaahaaalmaaaqastava.az0123456789-,";
+  const lookup = 'AACAAAAHAAALMAAAQASTAVAAAZaacaaaahaaalmaaaqastava.az0123456789-,';
 
   let path = 'M';
   for(let i = 0, length = bytes.length; i < length; ++i) {
@@ -20,7 +20,7 @@ export default function getPathFromBytes(bytes: Uint8Array) {
       if(num >= 128) {
         path += ',';
       } else if(num >= 64) {
-        path += '-'; 
+        path += '-';
       }
       path += '' + (num & 63);
     }

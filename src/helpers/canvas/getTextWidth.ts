@@ -20,11 +20,11 @@ export default function getTextWidth(text: string, font: string) {
     context.font = font;
   }
 
-  //context.font = font;
+  // context.font = font;
   const metrics = context.measureText(text);
   // console.log('getTextWidth perf:', performance.now() - perf);
   return metrics.width;
-  //return Math.round(metrics.width);
+  // return Math.round(metrics.width);
 }
 
 // MOUNT_CLASS_TO && (MOUNT_CLASS_TO.getTextWidth = getTextWidth);

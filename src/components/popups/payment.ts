@@ -4,43 +4,43 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import PopupElement from ".";
-import Currencies from "../../config/currencies";
-import { FontFamily, FontSize } from "../../config/font";
-import accumulate from "../../helpers/array/accumulate";
-import getTextWidth from "../../helpers/canvas/getTextWidth";
-import { detectUnifiedCardBrand } from "../../helpers/cards/cardBrands";
-import { attachClickEvent, simulateClickEvent } from "../../helpers/dom/clickEvent";
-import findUpAsChild from "../../helpers/dom/findUpAsChild";
-import findUpClassName from "../../helpers/dom/findUpClassName";
-import placeCaretAtEnd from "../../helpers/dom/placeCaretAtEnd";
-import { renderImageFromUrlPromise } from "../../helpers/dom/renderImageFromUrl";
-import replaceContent from "../../helpers/dom/replaceContent";
-import setInnerHTML from "../../helpers/dom/setInnerHTML";
-import toggleDisability from "../../helpers/dom/toggleDisability";
-import { formatPhoneNumber } from "../../helpers/formatPhoneNumber";
-import paymentsWrapCurrencyAmount from "../../helpers/paymentsWrapCurrencyAmount";
-import ScrollSaver from "../../helpers/scrollSaver";
-import tsNow from "../../helpers/tsNow";
-import { AccountTmpPassword, InputInvoice, InputPaymentCredentials, LabeledPrice, Message, MessageMedia, PaymentRequestedInfo, PaymentSavedCredentials, PaymentsPaymentForm, PaymentsPaymentReceipt, PaymentsValidatedRequestedInfo, PostAddress, ShippingOption } from "../../layer";
-import I18n, { i18n, LangPackKey, _i18n } from "../../lib/langPack";
-import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
-import wrapRichText from "../../lib/richTextProcessor/wrapRichText";
-import rootScope from "../../lib/rootScope";
-import AvatarElement from "../avatar";
-import Button from "../button";
-import CheckboxField from "../checkboxField";
-import PeerTitle from "../peerTitle";
-import { putPreloader } from "../putPreloader";
-import Row from "../row";
-import { toastNew } from "../toast";
-import { wrapPhoto } from "../wrappers";
-import wrapPeerTitle from "../wrappers/peerTitle";
-import PopupPaymentCard, { PaymentCardDetails, PaymentCardDetailsResult } from "./paymentCard";
-import PopupPaymentCardConfirmation from "./paymentCardConfirmation";
-import PopupPaymentShipping, { PaymentShippingAddress } from "./paymentShipping";
-import PopupPaymentShippingMethods from "./paymentShippingMethods";
-import PopupPaymentVerification from "./paymentVerification";
+import PopupElement from '.';
+import Currencies from '../../config/currencies';
+import {FontFamily, FontSize} from '../../config/font';
+import accumulate from '../../helpers/array/accumulate';
+import getTextWidth from '../../helpers/canvas/getTextWidth';
+import {detectUnifiedCardBrand} from '../../helpers/cards/cardBrands';
+import {attachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent';
+import findUpAsChild from '../../helpers/dom/findUpAsChild';
+import findUpClassName from '../../helpers/dom/findUpClassName';
+import placeCaretAtEnd from '../../helpers/dom/placeCaretAtEnd';
+import {renderImageFromUrlPromise} from '../../helpers/dom/renderImageFromUrl';
+import replaceContent from '../../helpers/dom/replaceContent';
+import setInnerHTML from '../../helpers/dom/setInnerHTML';
+import toggleDisability from '../../helpers/dom/toggleDisability';
+import {formatPhoneNumber} from '../../helpers/formatPhoneNumber';
+import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
+import ScrollSaver from '../../helpers/scrollSaver';
+import tsNow from '../../helpers/tsNow';
+import {AccountTmpPassword, InputInvoice, InputPaymentCredentials, LabeledPrice, Message, MessageMedia, PaymentRequestedInfo, PaymentSavedCredentials, PaymentsPaymentForm, PaymentsPaymentReceipt, PaymentsValidatedRequestedInfo, PostAddress, ShippingOption} from '../../layer';
+import I18n, {i18n, LangPackKey, _i18n} from '../../lib/langPack';
+import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
+import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
+import rootScope from '../../lib/rootScope';
+import AvatarElement from '../avatar';
+import Button from '../button';
+import CheckboxField from '../checkboxField';
+import PeerTitle from '../peerTitle';
+import {putPreloader} from '../putPreloader';
+import Row from '../row';
+import {toastNew} from '../toast';
+import {wrapPhoto} from '../wrappers';
+import wrapPeerTitle from '../wrappers/peerTitle';
+import PopupPaymentCard, {PaymentCardDetails, PaymentCardDetailsResult} from './paymentCard';
+import PopupPaymentCardConfirmation from './paymentCardConfirmation';
+import PopupPaymentShipping, {PaymentShippingAddress} from './paymentShipping';
+import PopupPaymentShippingMethods from './paymentShippingMethods';
+import PopupPaymentVerification from './paymentVerification';
 
 const iconPath = 'assets/img/';
 const icons = [
@@ -52,7 +52,7 @@ const icons = [
   'mastercard',
   'visa',
   'unionpay',
-  'logo',
+  'logo'
 ];
 
 export function getPaymentBrandIconPath(brand: string) {
@@ -102,8 +102,8 @@ export default class PopupPayment extends PopupElement {
   private tipButtonsMap: Map<number, HTMLElement>;
 
   constructor(
-    private message: Message.message, 
-    private inputInvoice: InputInvoice, 
+    private message: Message.message,
+    private inputInvoice: InputInvoice,
     private paymentForm?: PaymentsPaymentForm | PaymentsPaymentReceipt
   ) {
     super('popup-payment', {
@@ -127,7 +127,7 @@ export default class PopupPayment extends PopupElement {
       if(confirmed) {
         return;
       }
-      
+
       confirmed = true;
       if(popupPaymentVerification) {
         popupPaymentVerification.hide();
@@ -160,7 +160,7 @@ export default class PopupPayment extends PopupElement {
     const mediaInvoice = message?.media as MessageMedia.messageMediaInvoice;
     const isReceipt = mediaInvoice ? !!mediaInvoice.receipt_msg_id : paymentForm._ === 'payments.paymentReceipt';
     const isTest = mediaInvoice ? mediaInvoice.pFlags.test : paymentForm.invoice.pFlags.test;
-    
+
     const photo = mediaInvoice ? mediaInvoice.photo : paymentForm.photo;
     const title = mediaInvoice ? mediaInvoice.title : paymentForm.title;
     const description = mediaInvoice ? mediaInvoice.description : paymentForm.description;
@@ -213,7 +213,7 @@ export default class PopupPayment extends PopupElement {
 
     const peerTitle = new PeerTitle();
     botName.append(peerTitle.element);
-    
+
     details.append(linesEl);
     itemEl.append(details);
     this.scrollable.append(itemEl);
@@ -229,7 +229,7 @@ export default class PopupPayment extends PopupElement {
       else paymentForm = await this.managers.appPaymentsManager.getPaymentForm(inputInvoice);
       this.paymentForm = paymentForm;
     }
-    
+
     let savedInfo = (paymentForm as PaymentsPaymentForm).saved_info || (paymentForm as PaymentsPaymentReceipt).info;
     const savedCredentials = (paymentForm as PaymentsPaymentForm).saved_credentials;
     let [lastRequestedInfo, passwordState, providerPeerTitle] = await Promise.all([
@@ -239,7 +239,7 @@ export default class PopupPayment extends PopupElement {
     ]);
 
     // console.log(paymentForm, lastRequestedInfo);
-    
+
     const wrapAmount = (amount: string | number, skipSymbol?: boolean) => {
       return paymentsWrapCurrencyAmount(amount, currency, skipSymbol);
     };
@@ -270,13 +270,13 @@ export default class PopupPayment extends PopupElement {
     const makePricesElements = (prices: LabeledPrice[]) => {
       return prices.map((price) => {
         const {amount, label} = price;
-  
+
         const _label = makeLabel();
         _label.left.textContent = label;
-  
+
         const wrappedAmount = wrapAmount(Math.abs(+amount));
         _label.right.textContent = (amount < 0 ? '-' : '') + wrappedAmount;
-  
+
         return _label.label;
       });
     };
@@ -324,7 +324,7 @@ export default class PopupPayment extends PopupElement {
       const setInputValue = (amount: string | number) => {
         amount = Math.min(+amount, +invoice.max_tip_amount);
         const wrapped = wrapAmount(amount, true);
-        
+
         input.value = wrapped;
         // input.textContent = wrapped;
         if(document.activeElement === input) {
@@ -365,13 +365,12 @@ export default class PopupPayment extends PopupElement {
         }
 
         // setTimeout(() => {
-          ignoreNextSelectionChange = haveToIgnoreEvents;
-          placeCaretAtEnd(input);
+        ignoreNextSelectionChange = haveToIgnoreEvents;
+        placeCaretAtEnd(input);
         // }, 0);
       };
 
       const onFocus = () => {
-
         // cancelEvent(e);
         setTimeout(() => {
           ignoreNextSelectionChange = haveToIgnoreEvents;
@@ -393,13 +392,13 @@ export default class PopupPayment extends PopupElement {
         setInputValue(getTipsAmount());
       });
 
-      let s = [currencyData.symbol, currencyData.space_between ? ' ' : ''];
+      const s = [currencyData.symbol, currencyData.space_between ? ' ' : ''];
       if(!currencyData.symbol_left) s.reverse();
       tipsLabel.right[currencyData.symbol_left ? 'prepend' : 'append'](s.join(''));
 
       pricesElements.push(tipsLabel.label);
 
-      // 
+      //
       const tipsEl = document.createElement('div');
       tipsEl.classList.add(tipsClassName);
 
@@ -456,7 +455,7 @@ export default class PopupPayment extends PopupElement {
     prices.append(...pricesElements);
     itemEl.append(prices);
 
-    ///
+    // /
 
     const setRowIcon = async(row: Row, icon?: string) => {
       const img = document.createElement('img');
@@ -615,7 +614,7 @@ export default class PopupPayment extends PopupElement {
         titleLangKey: 'PaymentShippingAddress',
         clickable: !isReceipt && onShippingAddressClick.bind(null, undefined)
       });
-      
+
       let lastShippingPricesElements: HTMLElement[];
       shippingMethodRow = createRow({
         icon: 'car',
@@ -670,7 +669,7 @@ export default class PopupPayment extends PopupElement {
       shippingMethodRow,
       shippingNameRow,
       shippingEmailRow,
-      shippingPhoneRow,
+      shippingPhoneRow
     ].filter(Boolean);
 
     const acceptTermsCheckboxField = isRecurring && new CheckboxField({
@@ -690,8 +689,8 @@ export default class PopupPayment extends PopupElement {
       ...rows.map((row) => row.container),
       ...recurringElements
     ].filter(Boolean));
-    
-    ///
+
+    // /
     let popupPaymentVerification: PopupPaymentVerification, lastTmpPasword: AccountTmpPassword;
     const onClick = () => {
       const missingInfo = invoice.pFlags.name_requested && !savedInfo?.name ? 'name' : (invoice.pFlags.email_requested && !savedInfo?.email ? 'email' : (invoice.pFlags.phone_requested && !savedInfo?.phone ? 'phone' : undefined));
@@ -707,7 +706,7 @@ export default class PopupPayment extends PopupElement {
         onShippingAddressClick(missingInfo);
         return;
       }
-      
+
       if(!previousCardDetails && !lastTmpPasword) {
         if(!savedCredentials) {
           onMethodClick();
@@ -719,7 +718,7 @@ export default class PopupPayment extends PopupElement {
             passwordState = undefined;
             lastTmpPasword = tmpPassword;
             simulateClickEvent(payButton);
-  
+
             // * reserve 5 seconds
             const diff = tmpPassword.valid_until - tsNow(true) - 5;
             setTimeout(() => {
@@ -729,7 +728,7 @@ export default class PopupPayment extends PopupElement {
             }, diff * 1000);
           });
         });
-        
+
         return;
       }
 
@@ -751,14 +750,14 @@ export default class PopupPayment extends PopupElement {
 
         try {
           const paymentResult = await this.managers.appPaymentsManager.sendPaymentForm(
-            inputInvoice, 
-            (paymentForm as PaymentsPaymentForm).form_id, 
-            lastRequestedInfo?.id, 
-            lastShippingOption?.id, 
-            credentials, 
+            inputInvoice,
+            (paymentForm as PaymentsPaymentForm).form_id,
+            lastRequestedInfo?.id,
+            lastShippingOption?.id,
+            credentials,
             getTipsAmount()
           );
-  
+
           if(paymentResult._ === 'payments.paymentResult') {
             onConfirmed();
           } else {

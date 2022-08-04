@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import isAnyChat from "../lib/appManagers/utils/peers/isAnyChat";
-import isUser from "../lib/appManagers/utils/peers/isUser";
+import isAnyChat from '../lib/appManagers/utils/peers/isAnyChat';
+import isUser from '../lib/appManagers/utils/peers/isUser';
 
 String.prototype.toUserId = function() {
   return (+this).toUserId();
@@ -41,19 +41,21 @@ Number.prototype.isPeerId = function() {
 
 [
   ['isUser' as const, isUser],
-  ['isAnyChat' as const, isAnyChat],
+  ['isAnyChat' as const, isAnyChat]
 ].forEach((value) => {
   const newMethod = Array.isArray(value) ? value[0] : value;
   const originMethod = Array.isArray(value) ? value[1] : value;
   // @ts-ignore
   String.prototype[newMethod] = function() {
     // @ts-ignore
+    // eslint-disable-next-line no-useless-call
     return originMethod.call(null, this.toString());
   };
 
   // @ts-ignore
   Number.prototype[newMethod] = function() {
     // @ts-ignore
+    // eslint-disable-next-line no-useless-call
     return originMethod.call(null, this);
   };
 });

@@ -4,21 +4,21 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type ChatInput from "./input";
-import type { MessageEntity } from "../../layer";
-import AutocompleteHelperController from "./autocompleteHelperController";
-import AutocompletePeerHelper from "./autocompletePeerHelper";
-import { AppManagers } from "../../lib/appManagers/managers";
+import type ChatInput from './input';
+import type {MessageEntity} from '../../layer';
+import AutocompleteHelperController from './autocompleteHelperController';
+import AutocompletePeerHelper from './autocompletePeerHelper';
+import {AppManagers} from '../../lib/appManagers/managers';
 
 export default class MentionsHelper extends AutocompletePeerHelper {
   constructor(
-    appendTo: HTMLElement, 
-    controller: AutocompleteHelperController, 
-    chatInput: ChatInput, 
+    appendTo: HTMLElement,
+    controller: AutocompleteHelperController,
+    chatInput: ChatInput,
     private managers: AppManagers
   ) {
     super(
-      appendTo, 
+      appendTo,
       controller,
       'mentions-helper',
       (target) => {
@@ -36,7 +36,7 @@ export default class MentionsHelper extends AutocompletePeerHelper {
               user_id: user.id
             };
           }
-  
+
           str += ' ';
           chatInput.insertAtCaret(str, entity);
         });
@@ -51,7 +51,7 @@ export default class MentionsHelper extends AutocompletePeerHelper {
     const middleware = this.controller.getMiddleware();
     this.managers.appProfileManager.getMentions(peerId && peerId.toChatId(), trimmed, topMsgId).then(async(peerIds) => {
       if(!middleware()) return;
-      
+
       const username = trimmed.slice(1).toLowerCase();
 
       const p = peerIds.map(async(peerId) => {

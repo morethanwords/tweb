@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import VisibilityIntersector from "./visibilityIntersector";
-import findAndSpliceAll from "../helpers/array/findAndSpliceAll";
-import findAndSplice from "../helpers/array/findAndSplice";
-import LazyLoadQueueIntersector, { LazyLoadElement } from "./lazyLoadQueueIntersector";
+import VisibilityIntersector from './visibilityIntersector';
+import findAndSpliceAll from '../helpers/array/findAndSpliceAll';
+import findAndSplice from '../helpers/array/findAndSplice';
+import LazyLoadQueueIntersector, {LazyLoadElement} from './lazyLoadQueueIntersector';
 
 export default class LazyLoadQueue extends LazyLoadQueueIntersector {
   constructor(parallelLimit?: number) {
@@ -26,7 +26,7 @@ export default class LazyLoadQueue extends LazyLoadQueueIntersector {
       findAndSpliceAll(this.queue, (i) => i.div === target).forEach((item) => {
         item.wasSeen = true;
         this.queue.unshift(item);
-        //this.processQueue(item);
+        // this.processQueue(item);
       });
 
       this.setProcessQueueTimeout();
@@ -53,7 +53,7 @@ export default class LazyLoadQueue extends LazyLoadQueueIntersector {
     } else  */if(!el.hasOwnProperty('wasSeen')) {
       el.wasSeen = false;
     }
-    
+
     return true;
   }
 }

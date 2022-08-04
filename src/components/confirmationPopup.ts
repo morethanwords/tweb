@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { addCancelButton } from "./popups";
-import PopupPeer, { PopupPeerOptions } from "./popups/peer";
+import {addCancelButton} from './popups';
+import PopupPeer, {PopupPeerOptions} from './popups/peer';
 
 // type PopupConfirmationOptions = Pick<PopupPeerOptions, 'titleLangKey'>;
 export type PopupConfirmationOptions = PopupPeerOptions & {

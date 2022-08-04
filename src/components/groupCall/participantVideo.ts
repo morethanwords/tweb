@@ -4,17 +4,17 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { GroupCallParticipant } from "../../layer";
-import type { GroupCallOutputSource } from "../../lib/appManagers/appGroupCallsManager";
-import { i18n } from "../../lib/langPack";
-import PeerTitle from "../peerTitle";
-import { getGroupCallParticipantMutedState } from ".";
-import GroupCallParticipantMutedIcon from "./participantMutedIcon";
-import GroupCallParticipantStatusElement from "./participantStatus";
-import GroupCallInstance from "../../lib/calls/groupCallInstance";
-import callVideoCanvasBlur from "../call/videoCanvasBlur";
-import getPeerId from "../../lib/appManagers/utils/peers/getPeerId";
-import { AppManagers } from "../../lib/appManagers/managers";
+import {GroupCallParticipant} from '../../layer';
+import type {GroupCallOutputSource} from '../../lib/appManagers/appGroupCallsManager';
+import {i18n} from '../../lib/langPack';
+import PeerTitle from '../peerTitle';
+import {getGroupCallParticipantMutedState} from '.';
+import GroupCallParticipantMutedIcon from './participantMutedIcon';
+import GroupCallParticipantStatusElement from './participantStatus';
+import GroupCallInstance from '../../lib/calls/groupCallInstance';
+import callVideoCanvasBlur from '../call/videoCanvasBlur';
+import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
+import {AppManagers} from '../../lib/appManagers/managers';
 
 const className = 'group-call-participant-video';
 
@@ -44,7 +44,7 @@ export default class GroupCallParticipantVideoElement {
     this.right.classList.add(className + '-info-right');
 
     this.info.append(this.left, this.right);
-    
+
     this.container.append(this.info);
   }
 
@@ -59,18 +59,18 @@ export default class GroupCallParticipantVideoElement {
     } else if(this.header) {
       return;
     }
-    
+
     // if(!this.header) {
-      this.header = document.createElement('div');
-      this.header.classList.add(className + '-header');
-  
-      const icon = document.createElement('i');
-      icon.classList.add('group-call-pin-icon', 'tgico-pin');
-      this.header.append(icon);
-  
-      this.container.append(this.header);
+    this.header = document.createElement('div');
+    this.header.classList.add(className + '-header');
+
+    const icon = document.createElement('i');
+    icon.classList.add('group-call-pin-icon', 'tgico-pin');
+    this.header.append(icon);
+
+    this.container.append(this.header);
     // }
-    
+
     // this.container.classList.toggle('is-pinned', value);
   }
 
@@ -102,7 +102,7 @@ export default class GroupCallParticipantVideoElement {
 
     const canvas = callVideoCanvasBlur(video);
     canvas.classList.add(className + '-blur');
-    
+
     this.container.prepend(canvas, video);
 
     this.updateParticipant(participant);

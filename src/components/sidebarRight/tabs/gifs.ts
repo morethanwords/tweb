@@ -4,18 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { SliderSuperTab } from "../../slider";
-import InputSearch from "../../inputSearch";
-import animationIntersector from "../../animationIntersector";
-import appSidebarRight from "..";
-import { AppInlineBotsManager } from "../../../lib/appManagers/appInlineBotsManager";
-import GifsMasonry from "../../gifsMasonry";
-import appImManager from "../../../lib/appManagers/appImManager";
-import type { MyDocument } from "../../../lib/appManagers/appDocsManager";
-import mediaSizes from "../../../helpers/mediaSizes";
-import findUpClassName from "../../../helpers/dom/findUpClassName";
-import { attachClickEvent } from "../../../helpers/dom/clickEvent";
-import { NULL_PEER_ID } from "../../../lib/mtproto/mtproto_config";
+import {SliderSuperTab} from '../../slider';
+import InputSearch from '../../inputSearch';
+import animationIntersector from '../../animationIntersector';
+import appSidebarRight from '..';
+import {AppInlineBotsManager} from '../../../lib/appManagers/appInlineBotsManager';
+import GifsMasonry from '../../gifsMasonry';
+import appImManager from '../../../lib/appManagers/appImManager';
+import type {MyDocument} from '../../../lib/appManagers/appDocsManager';
+import mediaSizes from '../../../helpers/mediaSizes';
+import findUpClassName from '../../../helpers/dom/findUpClassName';
+import {attachClickEvent} from '../../../helpers/dom/clickEvent';
+import {NULL_PEER_ID} from '../../../lib/mtproto/mtproto_config';
 
 const ANIMATIONGROUP = 'GIFS-SEARCH';
 
@@ -33,22 +33,22 @@ export default class AppGifsTab extends SliderSuperTab {
 
   protected init() {
     this.container.id = 'search-gifs-container';
-    
+
     this.inputSearch = new InputSearch('SearchGifsTitle', (value) => {
       this.reset();
       this.search(value);
     });
-    
+
     this.title.replaceWith(this.inputSearch.container);
-    
+
     this.gifsDiv = document.createElement('div');
     this.gifsDiv.classList.add('gifs-masonry');
     attachClickEvent(this.gifsDiv, this.onGifsClick, {listenerSetter: this.listenerSetter});
-    
+
     this.scrollable.append(this.gifsDiv);
-    
+
     this.masonry = new GifsMasonry(this.gifsDiv, ANIMATIONGROUP, this.scrollable);
-    //this.backBtn.parentElement.append(this.inputSearch.container);
+    // this.backBtn.parentElement.append(this.inputSearch.container);
   }
 
   private onGifsClick = (e: MouseEvent | TouchEvent) => {
@@ -105,7 +105,7 @@ export default class AppGifsTab extends SliderSuperTab {
 
     try {
       this.searchPromise = this.managers.appInlineBotsManager.getInlineResults(NULL_PEER_ID, this.gifBotPeerId, query, this.nextOffset);
-      const { results, next_offset } = await this.searchPromise;
+      const {results, next_offset} = await this.searchPromise;
 
       if(this.inputSearch.value !== query) {
         return;

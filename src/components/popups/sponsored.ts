@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import I18n, { i18n } from "../../lib/langPack";
-import PopupPeer from "./peer";
+import I18n, {i18n} from '../../lib/langPack';
+import PopupPeer from './peer';
 
 export default class PopupSponsored extends PopupPeer {
   constructor() {

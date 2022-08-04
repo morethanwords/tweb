@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import Scrollable from "../components/scrollable";
-import safeAssign from "./object/safeAssign";
+import Scrollable from '../components/scrollable';
+import safeAssign from './object/safeAssign';
 
 export default class ScrollableLoader {
   public loading = false;
@@ -24,12 +24,12 @@ export default class ScrollableLoader {
       this.load();
     };
   }
-  
+
   public load() {
     if(this.loaded) {
       return Promise.resolve();
     }
-    
+
     if(this.loading) {
       return this.promise;
     }

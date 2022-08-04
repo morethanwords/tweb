@@ -4,18 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { ReportReason } from "../../layer";
-import InputField from "../inputField";
-import { toastNew } from "../toast";
-import wrapStickerEmoji from "../wrappers/stickerEmoji";
-import PopupPeer from "./peer";
+import {ReportReason} from '../../layer';
+import InputField from '../inputField';
+import {toastNew} from '../toast';
+import wrapStickerEmoji from '../wrappers/stickerEmoji';
+import PopupPeer from './peer';
 
 export default class PopupReportMessagesConfirm extends PopupPeer {
   public static STICKER_EMOJI = '👮‍♀️';
   constructor(peerId: PeerId, mids: number[], reason: ReportReason['_'], onConfirm?: () => void) {
     super('popup-report-messages-confirm', {
-      noTitle: true, 
-      descriptionLangKey: 'ReportInfo', 
+      noTitle: true,
+      descriptionLangKey: 'ReportInfo',
       buttons: [{
         langKey: 'ReportChat',
         callback: () => {
@@ -32,7 +32,7 @@ export default class PopupReportMessagesConfirm extends PopupPeer {
             });
           });
         }
-      }], 
+      }],
       body: true
     });
 
@@ -42,7 +42,7 @@ export default class PopupReportMessagesConfirm extends PopupPeer {
       div,
       emoji: PopupReportMessagesConfirm.STICKER_EMOJI,
       width: size,
-      height: size,
+      height: size
     }).then(({render}) => render).finally(() => {
       this.show();
     });

@@ -4,15 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import App from "../../config/app";
-import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
-import isObject from "../../helpers/object/isObject";
-import validateInitObject from "../../helpers/object/validateInitObject";
-import I18n from "../langPack";
-import fixEmoji from "../richTextProcessor/fixEmoji";
-import SearchIndex from "../searchIndex";
-import stateStorage from "../stateStorage";
-import { AppManager } from "./manager";
+import App from '../../config/app';
+import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
+import isObject from '../../helpers/object/isObject';
+import validateInitObject from '../../helpers/object/validateInitObject';
+import I18n from '../langPack';
+import fixEmoji from '../richTextProcessor/fixEmoji';
+import SearchIndex from '../searchIndex';
+import stateStorage from '../stateStorage';
+import {AppManager} from './manager';
 
 type EmojiLangPack = {
   keywords: {
@@ -31,7 +31,7 @@ const EMOJI_LANG_PACK: EmojiLangPack = {
 const RECENT_MAX_LENGTH = 36;
 
 export class AppEmojiManager extends AppManager {
-  private static POPULAR_EMOJI = ["😂", "😘", "❤️", "😍", "😊", "😁", "👍", "☺️", "😔", "😄", "😭", "💋", "😒", "😳", "😜", "🙈", "😉", "😃", "😢", "😝", "😱", "😡", "😏", "😞", "😅", "😚", "🙊", "😌", "😀", "😋", "😆", "👌", "😐", "😕"];
+  private static POPULAR_EMOJI = ['😂', '😘', '❤️', '😍', '😊', '😁', '👍', '☺️', '😔', '😄', '😭', '💋', '😒', '😳', '😜', '🙈', '😉', '😃', '😢', '😝', '😱', '😡', '😏', '😞', '😅', '😚', '🙊', '😌', '😀', '😋', '😆', '👌', '😐', '😕'];
   private keywordLangPacks: {
     [langCode: string]: EmojiLangPack
   } = {};
@@ -127,7 +127,7 @@ export class AppEmojiManager extends AppManager {
         from_version: pack.version
       }).then((keywordsDifference) => {
         pack.version = keywordsDifference.version;
-        
+
         const packKeywords = pack.keywords;
         const keywords = keywordsDifference.keywords;
         for(let i = 0, length = keywords.length; i < length; ++i) {
@@ -188,8 +188,8 @@ export class AppEmojiManager extends AppManager {
     this.indexEmojis();
 
     q = q.toLowerCase().replace(/_/g, ' ');
-    
-    //const perf = performance.now();
+
+    // const perf = performance.now();
     let emojis: Array<string>;
     if(q.trim()) {
       const set = this.index.search(q);
@@ -199,7 +199,7 @@ export class AppEmojiManager extends AppManager {
     }
 
     emojis = Array.from(new Set(emojis));
-    //console.log('searchEmojis', q, 'time', performance.now() - perf);
+    // console.log('searchEmojis', q, 'time', performance.now() - perf);
 
     /* for(let i = 0, length = emojis.length; i < length; ++i) {
       if(emojis[i].includes(zeroWidthJoiner) && !emojis[i].includes('\ufe0f')) {

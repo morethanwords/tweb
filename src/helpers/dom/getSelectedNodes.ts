@@ -11,12 +11,12 @@ export default function getSelectedNodes() {
     const range = selection.getRangeAt(i);
     let {startContainer, endContainer} = range;
     if(endContainer.nodeType !== 3) endContainer = endContainer.firstChild;
-    
+
     while(startContainer && startContainer !== endContainer) {
       nodes.push(startContainer.nodeType === 3 ? startContainer : startContainer.firstChild);
       startContainer = startContainer.nextSibling;
     }
-    
+
     if(nodes[nodes.length - 1] !== endContainer) {
       nodes.push(endContainer);
     }

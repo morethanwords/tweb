@@ -9,18 +9,18 @@ export default function createDownloadAnchor(url: string, fileName: string, onRe
   a.href = url;
   a.download = fileName;
   a.target = '_blank';
-  
+
   a.style.position = 'absolute';
   a.style.top = '1px';
   a.style.left = '1px';
-  
+
   document.body.append(a);
 
   try {
     const clickEvent = document.createEvent('MouseEvents');
     clickEvent.initMouseEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
     a.dispatchEvent(clickEvent);
-  } catch (e) {
+  } catch(e) {
     console.error('Download click error', e);
     try {
       a.click();
@@ -28,7 +28,7 @@ export default function createDownloadAnchor(url: string, fileName: string, onRe
       window.open(url as string, '_blank');
     }
   }
-  
+
   setTimeout(() => {
     a.remove();
     onRemove && onRemove();

@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appImManager from "../../lib/appManagers/appImManager";
-import SidebarSlider from "../slider";
-import mediaSizes, { ScreenSize } from "../../helpers/mediaSizes";
-import AppSharedMediaTab from "./tabs/sharedMedia";
-import { MOUNT_CLASS_TO } from "../../config/debug";
-import { AppManagers } from "../../lib/appManagers/managers";
+import appImManager from '../../lib/appManagers/appImManager';
+import SidebarSlider from '../slider';
+import mediaSizes, {ScreenSize} from '../../helpers/mediaSizes';
+import AppSharedMediaTab from './tabs/sharedMedia';
+import {MOUNT_CLASS_TO} from '../../config/debug';
+import {AppManagers} from '../../lib/appManagers/managers';
 
 export const RIGHT_COLUMN_ACTIVE_CLASSNAME = 'is-right-column-shown';
 
@@ -47,13 +47,13 @@ export class AppSidebarRight extends SidebarSlider {
   }
 
   public replaceSharedMediaTab(tab: AppSharedMediaTab) {
-    let previousTab = this.sharedMediaTab;
+    const previousTab = this.sharedMediaTab;
     if(previousTab) {
       const wasActive = previousTab.container.classList.contains('active');
       if(wasActive) {
         tab.container.classList.add('active');
       }
-      
+
       previousTab.container.replaceWith(tab.container);
     } else {
       this.tabsContainer.prepend(tab.container);
@@ -114,18 +114,18 @@ export class AppSidebarRight extends SidebarSlider {
             hidden.push({element: bubble, height: bubble.scrollHeight});
           }
         }
-  
+
         for(const item of hidden) {
           item.element.style.minHeight = item.height + 'px';
           (item.element.firstElementChild as HTMLElement).style.display = 'none';
           item.element.style.width = '1px';
         }
-  
+
         //console.log('hidden', hidden);
         observer.disconnect();
-  
+
         set();
-  
+
         setTimeout(() => {
           for(const item of hidden) {
             item.element.style.minHeight = '';
@@ -136,7 +136,7 @@ export class AppSidebarRight extends SidebarSlider {
           resolve();
         }, 200);
       });
-  
+
       const length = Object.keys(appImManager.bubbles).length;
       if(length) {
         for(const i in appImManager.bubbles) {

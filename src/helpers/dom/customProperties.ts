@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import rootScope from "../../lib/rootScope";
+import rootScope from '../../lib/rootScope';
 
 export type CustomProperty = string;
 
@@ -20,7 +20,7 @@ export class CustomProperties {
       const cache = this.cache;
       this.cache = {};
 
-      for(let i in cache) {
+      for(const i in cache) {
         this.getProperty(i);
       }
     });

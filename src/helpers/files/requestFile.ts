@@ -16,7 +16,7 @@ export default function requestFile(accept?: string) {
         reject('NO_FILE_SELECTED');
         return;
       }
-  
+
       resolve(file);
     }, {once: true});
   }).finally(() => {

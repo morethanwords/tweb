@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { InputInvoice, InputPaymentCredentials, PaymentRequestedInfo, PaymentsPaymentForm } from "../../layer";
-import { AppManager } from "./manager";
-import getServerMessageId from "./utils/messageId/getServerMessageId";
+import {InputInvoice, InputPaymentCredentials, PaymentRequestedInfo, PaymentsPaymentForm} from '../../layer';
+import {AppManager} from './manager';
+import getServerMessageId from './utils/messageId/getServerMessageId';
 
 export default class AppPaymentsManager extends AppManager {
   public getInputInvoiceBySlug(slug: string): InputInvoice.inputInvoiceSlug {
@@ -15,7 +15,7 @@ export default class AppPaymentsManager extends AppManager {
       slug
     };
   }
-  
+
   public getInputInvoiceByPeerId(peerId: PeerId, mid: number): InputInvoice.inputInvoiceMessage {
     return {
       _: 'inputInvoiceMessage',
@@ -29,7 +29,7 @@ export default class AppPaymentsManager extends AppManager {
       invoice
     }).then((paymentForm) => {
       this.appUsersManager.saveApiUsers(paymentForm.users);
-      
+
       return paymentForm;
     });
   }
@@ -40,7 +40,7 @@ export default class AppPaymentsManager extends AppManager {
       msg_id: getServerMessageId(mid)
     }).then((paymentForm) => {
       this.appUsersManager.saveApiUsers(paymentForm.users);
-      
+
       return paymentForm;
     });
   }

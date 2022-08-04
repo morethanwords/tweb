@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { horizontalMenu } from "./horizontalMenu";
-import { TransitionSlider } from "./transition";
-import appNavigationController, { NavigationItem } from "./appNavigationController";
-import SliderSuperTab, { SliderSuperTabConstructable, SliderTab } from "./sliderTab";
-import { attachClickEvent } from "../helpers/dom/clickEvent";
-import indexOfAndSplice from "../helpers/array/indexOfAndSplice";
-import safeAssign from "../helpers/object/safeAssign";
-import { AppManagers } from "../lib/appManagers/managers";
+import {horizontalMenu} from './horizontalMenu';
+import {TransitionSlider} from './transition';
+import appNavigationController, {NavigationItem} from './appNavigationController';
+import SliderSuperTab, {SliderSuperTabConstructable, SliderTab} from './sliderTab';
+import {attachClickEvent} from '../helpers/dom/clickEvent';
+import indexOfAndSplice from '../helpers/array/indexOfAndSplice';
+import safeAssign from '../helpers/object/safeAssign';
+import {AppManagers} from '../lib/appManagers/managers';
 
 const TRANSITION_TIME = 250;
 
@@ -66,7 +66,7 @@ export default class SidebarSlider {
       return false;
     }
 
-    //console.log('sidebar-close-button click:', this.historyTabIDs);
+    // console.log('sidebar-close-button click:', this.historyTabIDs);
     const closingId = this.historyTabIds.pop(); // pop current
     this.onCloseTab(closingId, animate, isNavigation);
 
@@ -89,7 +89,7 @@ export default class SidebarSlider {
       if(tab.onOpen) {
         tab.onOpen();
       }
-  
+
       if(tab.onOpenAfterTimeout) {
         setTimeout(() => {
           tab.onOpenAfterTimeout();
@@ -97,16 +97,16 @@ export default class SidebarSlider {
       }
     }
 
-    //if(!this.canHideFirst || this.historyTabIds.length) {
-      appNavigationController.pushItem({
-        type: this.navigationType, 
-        onPop: (canAnimate) => {
-          this.closeTab(undefined, canAnimate, true);
-          return true;
-        }
-      });
-    //}
-    
+    // if(!this.canHideFirst || this.historyTabIds.length) {
+    appNavigationController.pushItem({
+      type: this.navigationType,
+      onPop: (canAnimate) => {
+        this.closeTab(undefined, canAnimate, true);
+        return true;
+      }
+    });
+    // }
+
     this.historyTabIds.push(id);
     this._selectTab(id instanceof SliderSuperTab ? id.container : id);
     return true;
@@ -126,7 +126,7 @@ export default class SidebarSlider {
       }
 
       this.removeTabFromHistory(tab);
-      //appNavigationController.removeByType(this.navigationType, true);
+      // appNavigationController.removeByType(this.navigationType, true);
     }
   }
 

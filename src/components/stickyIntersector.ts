@@ -24,12 +24,12 @@ export default class StickyIntersector {
         const targetInfo = entry.boundingClientRect;
         const stickyTarget = entry.target.parentElement;
         const rootBoundsInfo = entry.rootBounds;
-  
+
         // Started sticking.
         if(targetInfo.bottom < rootBoundsInfo.top) {
           this.handler(true, stickyTarget);
         }
-  
+
         // Stopped sticking.
         if(targetInfo.bottom >= rootBoundsInfo.top &&
             targetInfo.bottom < rootBoundsInfo.bottom) {
@@ -38,7 +38,7 @@ export default class StickyIntersector {
       }
     }, {threshold: 0, root: this.container});
   }
-  
+
   private observeElements() {
     this.elementsObserver = new IntersectionObserver((entries) => {
       const entry = entries

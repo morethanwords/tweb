@@ -2,7 +2,7 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/evgeny-nadymov/telegram-react
  * Copyright (C) 2018 Evgeny Nadymov
@@ -27,7 +27,7 @@ export default class StringFromLineBuilder {
     this.newLine.push(word);
     return this;
   }
-  
+
   public addJoined(separator = '') {
     this.add(this.newLine.join(separator));
     this.newLine = [];

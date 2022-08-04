@@ -4,18 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import mediaSizes from "../../helpers/mediaSizes";
-import preloadAnimatedEmojiSticker from "../../helpers/preloadAnimatedEmojiSticker";
-import { MyDocument } from "../../lib/appManagers/appDocsManager";
-import { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
-import { AppManagers } from "../../lib/appManagers/managers";
-import rootScope from "../../lib/rootScope";
-import { EmoticonsDropdown } from "../emoticonsDropdown";
-import { SuperStickerRenderer } from "../emoticonsDropdown/tabs/stickers";
-import LazyLoadQueue from "../lazyLoadQueue";
-import Scrollable from "../scrollable";
-import AutocompleteHelper from "./autocompleteHelper";
-import AutocompleteHelperController from "./autocompleteHelperController";
+import mediaSizes from '../../helpers/mediaSizes';
+import preloadAnimatedEmojiSticker from '../../helpers/preloadAnimatedEmojiSticker';
+import {MyDocument} from '../../lib/appManagers/appDocsManager';
+import {CHAT_ANIMATION_GROUP} from '../../lib/appManagers/appImManager';
+import {AppManagers} from '../../lib/appManagers/managers';
+import rootScope from '../../lib/rootScope';
+import {EmoticonsDropdown} from '../emoticonsDropdown';
+import {SuperStickerRenderer} from '../emoticonsDropdown/tabs/stickers';
+import LazyLoadQueue from '../lazyLoadQueue';
+import Scrollable from '../scrollable';
+import AutocompleteHelper from './autocompleteHelper';
+import AutocompleteHelperController from './autocompleteHelperController';
 
 export default class StickersHelper extends AutocompleteHelper {
   private scrollable: Scrollable;
@@ -24,17 +24,17 @@ export default class StickersHelper extends AutocompleteHelper {
   private onChangeScreen: () => void;
 
   constructor(
-    appendTo: HTMLElement, 
+    appendTo: HTMLElement,
     controller: AutocompleteHelperController,
     private managers: AppManagers
   ) {
     super({
-      appendTo, 
+      appendTo,
       controller,
-      listType: 'xy', 
+      listType: 'xy',
       onSelect: (target) => {
         return !EmoticonsDropdown.onMediaClick({target}, true);
-      }, 
+      },
       waitForKey: ['ArrowUp', 'ArrowDown']
     });
 

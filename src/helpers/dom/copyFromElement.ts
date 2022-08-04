@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { copyTextToClipboard } from "../clipboard";
+import {copyTextToClipboard} from '../clipboard';
 // import SelectionSaver from "../selectionSaver";
 // import selectElementContents from "./selectElementContents";
 

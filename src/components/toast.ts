@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import replaceContent from "../helpers/dom/replaceContent";
-import { FormatterArguments, i18n, LangPackKey } from "../lib/langPack";
+import replaceContent from '../helpers/dom/replaceContent';
+import {FormatterArguments, i18n, LangPackKey} from '../lib/langPack';
 
 const toastEl = document.createElement('div');
 toastEl.classList.add('toast');

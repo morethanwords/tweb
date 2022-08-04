@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { Theme } from "../config/state";
-import IS_TOUCH_SUPPORTED from "../environment/touchSupport";
-import rootScope from "../lib/rootScope";
-import { hslaStringToHex } from "./color";
+import type {Theme} from '../config/state';
+import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
+import rootScope from '../lib/rootScope';
+import {hslaStringToHex} from './color';
 
 export class ThemeController {
   private themeColor: string;
@@ -45,9 +45,9 @@ export class ThemeController {
     try {
       const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
       const checkDarkMode = () => {
-        //const theme = this.getTheme();
+        // const theme = this.getTheme();
         this.systemTheme = darkModeMediaQuery.matches ? 'night' : 'day';
-        //const newTheme = this.getTheme();
+        // const newTheme = this.getTheme();
 
         if(rootScope.myId) {
           rootScope.dispatchEvent('theme_change');

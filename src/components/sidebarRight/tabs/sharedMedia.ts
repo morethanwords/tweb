@@ -4,24 +4,24 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import rootScope from "../../../lib/rootScope";
-import AppSearchSuper, { SearchSuperType } from "../../appSearchSuper.";
-import SidebarSlider, { SliderSuperTab } from "../../slider";
-import { TransitionSlider } from "../../transition";
-import AppEditChatTab from "./editChat";
-import PeerTitle from "../../peerTitle";
-import AppEditContactTab from "./editContact";
-import Button from "../../button";
-import ButtonIcon from "../../buttonIcon";
-import { i18n, LangPackKey } from "../../../lib/langPack";
-import { toastNew } from "../../toast";
-import AppAddMembersTab from "../../sidebarLeft/tabs/addMembers";
-import PopupPickUser from "../../popups/pickUser";
-import PopupPeer, { PopupPeerButtonCallbackCheckboxes, PopupPeerCheckboxOptions } from "../../popups/peer";
-import ButtonCorner from "../../buttonCorner";
-import { attachClickEvent } from "../../../helpers/dom/clickEvent";
-import PeerProfile from "../../peerProfile";
-import { Message } from "../../../layer";
+import rootScope from '../../../lib/rootScope';
+import AppSearchSuper, {SearchSuperType} from '../../appSearchSuper.';
+import SidebarSlider, {SliderSuperTab} from '../../slider';
+import {TransitionSlider} from '../../transition';
+import AppEditChatTab from './editChat';
+import PeerTitle from '../../peerTitle';
+import AppEditContactTab from './editContact';
+import Button from '../../button';
+import ButtonIcon from '../../buttonIcon';
+import {i18n, LangPackKey} from '../../../lib/langPack';
+import {toastNew} from '../../toast';
+import AppAddMembersTab from '../../sidebarLeft/tabs/addMembers';
+import PopupPickUser from '../../popups/pickUser';
+import PopupPeer, {PopupPeerButtonCallbackCheckboxes, PopupPeerCheckboxOptions} from '../../popups/peer';
+import ButtonCorner from '../../buttonCorner';
+import {attachClickEvent} from '../../../helpers/dom/clickEvent';
+import PeerProfile from '../../peerProfile';
+import {Message} from '../../../layer';
 
 const historiesStorage: {
   [peerId: PeerId]: Partial<{
@@ -46,7 +46,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
   }
 
   public init() {
-    //const perf = performance.now();
+    // const perf = performance.now();
 
     this.container.classList.add('shared-media-container', 'profile-container');
 
@@ -61,13 +61,13 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     const transitionContainer = document.createElement('div');
     transitionContainer.className = 'transition slide-fade';
-    
+
     const transitionFirstItem = document.createElement('div');
     transitionFirstItem.classList.add('transition-item');
 
     this.title.append(i18n('Profile'));
     this.editBtn = ButtonIcon('edit');
-    //const moreBtn = ButtonIcon('more');
+    // const moreBtn = ButtonIcon('more');
 
     transitionFirstItem.append(this.title, this.editBtn/* , moreBtn */);
 
@@ -87,12 +87,12 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     this.profile = new PeerProfile(this.managers, this.scrollable);
     this.profile.init();
-    
+
     this.scrollable.append(this.profile.element);
 
     const HEADER_HEIGHT = 56;
     this.scrollable.onAdditionalScroll = () => {
-      const rect = this.searchSuper.nav.getBoundingClientRect(); 
+      const rect = this.searchSuper.nav.getBoundingClientRect();
       if(!rect.width) return;
 
       const top = rect.top - 1;
@@ -116,7 +116,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     attachClickEvent(this.closeBtn, (e) => {
       if(this.closeBtn.firstElementChild.classList.contains('state-back')) {
         this.scrollable.scrollIntoViewNew({
-          element: this.scrollable.container.firstElementChild as HTMLElement, 
+          element: this.scrollable.container.firstElementChild as HTMLElement,
           position: 'start'
         });
         transition(0);
@@ -140,7 +140,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         } else {
           tab.peerId = this.peerId;
         }
-        
+
         tab.open();
       }
     });
@@ -160,7 +160,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     this.listenerSetter.add(rootScope)('history_multiappend', (message) => {
       this.renderNewMessages(message);
     });
-    
+
     this.listenerSetter.add(rootScope)('history_delete', ({peerId, msgs}) => {
       this.deleteDeletedMessages(peerId, Array.from(msgs));
     });
@@ -170,7 +170,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       this.renderNewMessages(message);
     });
 
-    //this.container.prepend(this.closeBtn.parentElement);
+    // this.container.prepend(this.closeBtn.parentElement);
 
     this.searchSuper = new AppSearchSuper({
       mediaTabs: [{
@@ -197,10 +197,10 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         inputFilter: 'inputMessagesFilterRoundVoice',
         name: 'SharedVoiceTab2',
         type: 'voice'
-      }], 
+      }],
       scrollable: this.scrollable,
       onChangeTab: (mediaTab) => {
-        let timeout = mediaTab.type === 'members' && rootScope.settings.animationsEnabled ? 250 : 0;
+        const timeout = mediaTab.type === 'members' && rootScope.settings.animationsEnabled ? 250 : 0;
         setTimeout(() => {
           btnAddMembers.classList.toggle('is-hidden', mediaTab.type !== 'members');
         }, timeout);
@@ -283,7 +283,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
           toastNew({langPackKey: 'InviteToGroupError'});
         }
       };
-      
+
       if(isChannel) {
         const tab = this.slider.createTab(AppAddMembersTab);
         tab.open({
@@ -312,12 +312,12 @@ export default class AppSharedMediaTab extends SliderSuperTab {
                 .catch(onError);
               });
             }, 0);
-          },
+          }
         });
       }
     });
 
-    //console.log('construct shared media time:', performance.now() - perf);
+    // console.log('construct shared media time:', performance.now() - perf);
   }
 
   public async renderNewMessages(message: Message.message | Message.messageService) {
@@ -414,13 +414,13 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     }
 
     this.searchSuper.setQuery({
-      peerId, 
-      //threadId, 
+      peerId,
+      // threadId,
       historyStorage: historiesStorage[peerId] ??= {}
     });
 
     this.profile.setPeer(peerId, threadId);
-    
+
     return true;
   }
 

@@ -4,16 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import rootScope from "../lib/rootScope";
-import { i18n } from "../lib/langPack";
-import replaceContent from "../helpers/dom/replaceContent";
-import { NULL_PEER_ID } from "../lib/mtproto/mtproto_config";
-import limitSymbols from "../helpers/string/limitSymbols";
-import setInnerHTML from "../helpers/dom/setInnerHTML";
-import { AppManagers } from "../lib/appManagers/managers";
-import wrapEmojiText from "../lib/richTextProcessor/wrapEmojiText";
-import getPeerTitle from "./wrappers/getPeerTitle";
-import generateTitleIcons from "./generateTitleIcons";
+import rootScope from '../lib/rootScope';
+import {i18n} from '../lib/langPack';
+import replaceContent from '../helpers/dom/replaceContent';
+import {NULL_PEER_ID} from '../lib/mtproto/mtproto_config';
+import limitSymbols from '../helpers/string/limitSymbols';
+import setInnerHTML from '../helpers/dom/setInnerHTML';
+import {AppManagers} from '../lib/appManagers/managers';
+import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
+import getPeerTitle from './wrappers/getPeerTitle';
+import generateTitleIcons from './generateTitleIcons';
 
 export type PeerTitleOptions = {
   peerId?: PeerId,
@@ -32,7 +32,7 @@ rootScope.addEventListener('peer_title_edit', (peerId) => {
   const elements = Array.from(document.querySelectorAll(`.peer-title[data-peer-id="${peerId}"]`)) as HTMLElement[];
   elements.forEach((element) => {
     const peerTitle = weakMap.get(element);
-    //console.log('in the summer silence i was doing nothing', peerTitle, peerId);
+    // console.log('in the summer silence i was doing nothing', peerTitle, peerId);
 
     if(peerTitle) {
       peerTitle.update();
@@ -60,7 +60,7 @@ export default class PeerTitle {
     if(options) {
       this.update(options);
     }
-    
+
     weakMap.set(this.element, this);
   }
 
@@ -111,7 +111,7 @@ export default class PeerTitle {
         inner.classList.add('peer-title-inner');
         hasInner = true;
         setInnerHTML(inner, title);
-        
+
         const fragment = document.createDocumentFragment();
         fragment.append(inner, ...icons);
         setInnerHTML(this.element, fragment);

@@ -4,15 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { MOUNT_CLASS_TO } from "../../config/debug";
-import type { getEnvironment } from "../../environment/utils";
-import type loadState from "../appManagers/utils/state/loadState";
-import type { StoragesResults } from "../appManagers/utils/storages/loadStorages";
-import type { LocalStorageProxyTask } from "../localStorage";
-import type { Awaited } from "../../types";
-import type { Mirrors, MirrorTaskPayload, NotificationBuildTaskPayload, TabState } from "./mtprotoworker";
-import type toggleStorages from "../../helpers/toggleStorages";
-import SuperMessagePort from "./superMessagePort";
+import {MOUNT_CLASS_TO} from '../../config/debug';
+import type {getEnvironment} from '../../environment/utils';
+import type loadState from '../appManagers/utils/state/loadState';
+import type {StoragesResults} from '../appManagers/utils/storages/loadStorages';
+import type {LocalStorageProxyTask} from '../localStorage';
+import type {Awaited} from '../../types';
+import type {Mirrors, MirrorTaskPayload, NotificationBuildTaskPayload, TabState} from './mtprotoworker';
+import type toggleStorages from '../../helpers/toggleStorages';
+import SuperMessagePort from './superMessagePort';
 
 export type MTProtoManagerTaskPayload = {name: string, method: string, args: any[]};
 

@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { MOUNT_CLASS_TO } from '../../config/debug';
-import deferredPromise, { CancellablePromise } from '../../helpers/cancellablePromise';
-import { WorkerTaskVoidTemplate } from '../../types';
+import {MOUNT_CLASS_TO} from '../../config/debug';
+import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
+import {WorkerTaskVoidTemplate} from '../../types';
 
 export interface ConvertWebPTask extends WorkerTaskVoidTemplate {
-  type: 'convertWebp', 
+  type: 'convertWebp',
   payload: {
-    fileName: string, 
+    fileName: string,
     bytes: Uint8Array
   }
 };
@@ -19,7 +19,7 @@ export interface ConvertWebPTask extends WorkerTaskVoidTemplate {
 export class WebpWorkerController {
   private worker: Worker;
   private convertPromises: {[fileName: string]: CancellablePromise<Uint8Array>} = {};
-  
+
   private init() {
     this.worker = new Worker(new URL('./webp.worker.ts', import.meta.url));
     this.worker.addEventListener('message', (e) => {
@@ -47,7 +47,7 @@ export class WebpWorkerController {
     if(this.convertPromises.hasOwnProperty(fileName)) {
       return this.convertPromises[fileName];
     }
-    
+
     const convertPromise = deferredPromise<Uint8Array>();
 
     this.postMessage({type: 'convertWebp', payload: {fileName, bytes}});

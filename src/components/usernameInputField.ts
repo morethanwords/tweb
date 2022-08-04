@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import ListenerSetter from "../helpers/listenerSetter";
-import debounce from "../helpers/schedulers/debounce";
-import { LangPackKey } from "../lib/langPack";
-import InputField, { InputFieldOptions, InputState } from "./inputField";
-import isUsernameValid from "../lib/richTextProcessor/isUsernameValid";
-import { AppManagers } from "../lib/appManagers/managers";
+import ListenerSetter from '../helpers/listenerSetter';
+import debounce from '../helpers/schedulers/debounce';
+import {LangPackKey} from '../lib/langPack';
+import InputField, {InputFieldOptions, InputState} from './inputField';
+import isUsernameValid from '../lib/richTextProcessor/isUsernameValid';
+import {AppManagers} from '../lib/appManagers/managers';
 
 export class UsernameInputField extends InputField {
   private checkUsernamePromise: Promise<any>;
@@ -25,7 +25,7 @@ export class UsernameInputField extends InputField {
   };
 
   constructor(
-    options: UsernameInputField['options'], 
+    options: UsernameInputField['options'],
     private managers: AppManagers
   ) {
     super(options);
@@ -35,7 +35,7 @@ export class UsernameInputField extends InputField {
     options.listenerSetter.add(this.input)('input', () => {
       const value = this.getValue();
 
-      //console.log('userNameInput:', value);
+      // console.log('userNameInput:', value);
       if(value === this.originalValue || !value.length) {
         this.setState(InputState.Neutral);
         this.options.onChange && this.options.onChange();

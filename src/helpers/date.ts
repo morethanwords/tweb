@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { MOUNT_CLASS_TO } from "../config/debug";
-import I18n, { i18n } from "../lib/langPack";
+import {MOUNT_CLASS_TO} from '../config/debug';
+import I18n, {i18n} from '../lib/langPack';
 
 export const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 export const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -110,7 +110,7 @@ export function formatTime(date: Date) {
 MOUNT_CLASS_TO && (MOUNT_CLASS_TO.formatDateAccordingToTodayNew = formatDateAccordingToTodayNew);
 
 export const getFullDate = (date: Date, options: Partial<{
-  noTime: true, 
+  noTime: true,
   noSeconds: true,
   monthAsNumber: true,
   leadingZero: true
@@ -118,19 +118,19 @@ export const getFullDate = (date: Date, options: Partial<{
   const joiner = options.monthAsNumber ? '.' : ' ';
   const time = ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2) + (options.noSeconds ? '' : ':' + ('0' + date.getSeconds()).slice(-2));
 
-  return (options.leadingZero ? ('0' + date.getDate()).slice(-2) : date.getDate()) + 
-    joiner + (options.monthAsNumber ? ('0' + (date.getMonth() + 1)).slice(-2) : months[date.getMonth()]) + 
-    joiner + date.getFullYear() + 
+  return (options.leadingZero ? ('0' + date.getDate()).slice(-2) : date.getDate()) +
+    joiner + (options.monthAsNumber ? ('0' + (date.getMonth() + 1)).slice(-2) : months[date.getMonth()]) +
+    joiner + date.getFullYear() +
     (options.noTime ? '' : ', ' + time);
 };
 
 // https://github.com/DrKLO/Telegram/blob/d52b2c921abd3c1e8d6368858313ad0cb0468c07/TMessagesProj/src/main/java/org/telegram/ui/Adapters/FiltersView.java
 const minYear = 2013;
-const yearPattern = new RegExp("20[0-9]{1,2}");
-const monthYearOrDayPattern = new RegExp("(\\w{3,}) ([0-9]{0,4})", 'i');
-const yearOrDayAndMonthPattern = new RegExp("([0-9]{0,4}) (\\w{2,})", 'i');
-const shortDate = new RegExp("^([0-9]{1,4})(\\.| |/|\\-)([0-9]{1,4})$", 'i');
-const longDate = new RegExp("^([0-9]{1,2})(\\.| |/|\\-)([0-9]{1,2})(\\.| |/|\\-)([0-9]{1,4})$", 'i');
+const yearPattern = new RegExp('20[0-9]{1,2}');
+const monthYearOrDayPattern = new RegExp('(\\w{3,}) ([0-9]{0,4})', 'i');
+const yearOrDayAndMonthPattern = new RegExp('([0-9]{0,4}) (\\w{2,})', 'i');
+const shortDate = new RegExp('^([0-9]{1,4})(\\.| |/|\\-)([0-9]{1,4})$', 'i');
+const longDate = new RegExp('^([0-9]{1,2})(\\.| |/|\\-)([0-9]{1,2})(\\.| |/|\\-)([0-9]{1,4})$', 'i');
 const numberOfDaysEachMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 export type DateData = {
   title: string,
@@ -144,7 +144,7 @@ export function fillTipDates(query: string, dates: DateData[]) {
     return;
   }
 
-  if("today".indexOf(q) === 0) {
+  if('today'.indexOf(q) === 0) {
     const date = new Date();
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -165,7 +165,7 @@ export function fillTipDates(query: string, dates: DateData[]) {
     return;
   }
 
-  if("yesterday".indexOf(q) === 0) {
+  if('yesterday'.indexOf(q) === 0) {
     const date = new Date();
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -227,12 +227,12 @@ export function fillTipDates(query: string, dates: DateData[]) {
         const month = k - 1;
         createForMonthYear(dates, month, selectedYear);
         return;
-      } else if (k1 <= 12) {
+      } else if(k1 <= 12) {
         const day = k - 1;
         const month = k1 - 1;
         createForDayMonth(dates, day, month);
       }
-    } else if (k >= minYear && k1 <= 12) {
+    } else if(k >= minYear && k1 <= 12) {
       const selectedYear = k;
       const month = k1 - 1;
       createForMonthYear(dates, month, selectedYear);
@@ -261,7 +261,7 @@ export function fillTipDates(query: string, dates: DateData[]) {
       const date = new Date();
       date.setFullYear(year, month, day);
       date.setHours(0, 0, 0);
-      
+
       const minDate = date.getTime();
       date.setFullYear(year, month, day + 1);
       date.setHours(0, 0, 0);
@@ -347,7 +347,7 @@ export function fillTipDates(query: string, dates: DateData[]) {
         const day = k - 1;
         createForDayMonth(dates, day, month);
         return;
-      } else if (k >= minYear) {
+      } else if(k >= minYear) {
         const selectedYear = k;
         createForMonthYear(dates, month, selectedYear);
       }
@@ -381,7 +381,7 @@ function createForDayMonth(dates: DateData[], day: number, month: number) {
   if(validDateForMonth(day, month)) {
     const currentYear = new Date().getFullYear();
     const today = Date.now();
-    
+
     for(let i = currentYear; i >= minYear; i--) {
       if(month === 1 && day === 28 && !isLeapYear(i)) {
         continue;
@@ -390,7 +390,7 @@ function createForDayMonth(dates: DateData[], day: number, month: number) {
       const date = new Date();
       date.setFullYear(i, month, day + 1);
       date.setHours(0, 0, 0);
-      
+
       const minDate = date.getTime();
       if(minDate > today) {
         continue;
@@ -488,10 +488,10 @@ function getDayOfWeek(q: string) {
   if(q.length <= 3) {
     return -1;
   }
-  
+
   for(let i = 0; i < 7; i++) {
     c.setDate(c.getDate() + 1);
-    
+
     if(formatWeekLong(c.getTime()).toLowerCase().indexOf(q) === 0) {
       return c.getDay();
     }

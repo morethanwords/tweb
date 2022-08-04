@@ -1,9 +1,9 @@
-import { IS_ANDROID } from "../../environment/userAgent";
-import createArray from "../array/createArray";
-import cacheCallback from "../cacheCallback";
-import replaceNonNumber from "../string/replaceNonNumber";
-import { CARD_BRANDS, detectCardBrand } from "./cardBrands";
-import patternCharacters from "./patternCharacters";
+import {IS_ANDROID} from '../../environment/userAgent';
+import createArray from '../array/createArray';
+import cacheCallback from '../cacheCallback';
+import replaceNonNumber from '../string/replaceNonNumber';
+import {CARD_BRANDS, detectCardBrand} from './cardBrands';
+import patternCharacters from './patternCharacters';
 
 const digit = patternCharacters.digit;
 const capitalCharacter = patternCharacters.capitalCharacter;

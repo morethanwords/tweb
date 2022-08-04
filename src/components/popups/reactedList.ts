@@ -4,18 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import PopupElement from ".";
-import { Message } from "../../layer";
-import { SettingSection } from "../sidebarLeft";
-import ReactionsElement from "../chat/reactions";
-import { horizontalMenu } from "../horizontalMenu";
-import Scrollable from "../scrollable";
-import ScrollableLoader from "../../helpers/scrollableLoader";
-import appDialogsManager from "../../lib/appManagers/appDialogsManager";
-import replaceContent from "../../helpers/dom/replaceContent";
-import { wrapSticker } from "../wrappers";
-import ReactionElement from "../chat/reaction";
-import getUserStatusString from "../wrappers/getUserStatusString";
+import PopupElement from '.';
+import {Message} from '../../layer';
+import {SettingSection} from '../sidebarLeft';
+import ReactionsElement from '../chat/reactions';
+import {horizontalMenu} from '../horizontalMenu';
+import Scrollable from '../scrollable';
+import ScrollableLoader from '../../helpers/scrollableLoader';
+import appDialogsManager from '../../lib/appManagers/appDialogsManager';
+import replaceContent from '../../helpers/dom/replaceContent';
+import {wrapSticker} from '../wrappers';
+import ReactionElement from '../chat/reaction';
+import getUserStatusString from '../wrappers/getUserStatusString';
 
 export default class PopupReactedList extends PopupElement {
   constructor(
@@ -60,7 +60,7 @@ export default class PopupReactedList extends PopupElement {
     reactionsElement.render();
     reactionsElement.classList.add('no-stripe');
     reactionsElement.classList.remove('has-no-reactions');
-    
+
     reactionsElement.append(this.btnClose);
 
     this.header.append(reactionsElement);
@@ -97,7 +97,7 @@ export default class PopupReactedList extends PopupElement {
 
       }
     }
-    
+
     newMessage.reactions.results.forEach((reactionCount) => {
       const scrollable = new Scrollable(undefined);
       scrollable.container.classList.add('tabs-tab');
@@ -138,7 +138,7 @@ export default class PopupReactedList extends PopupElement {
               container: chatlist,
               avatarSize: 54,
               rippleEnabled: false,
-              meAsSaved: false,
+              meAsSaved: false
             });
 
             if(reaction) {
@@ -152,7 +152,7 @@ export default class PopupReactedList extends PopupElement {
                 width: 24,
                 height: 24
               });
-  
+
               dom.listEl.append(stickerContainer);
             }
 
@@ -180,7 +180,7 @@ export default class PopupReactedList extends PopupElement {
       if(prevId !== -1) {
         (reactionsElement.children[prevId] as ReactionElement).setIsChosen(false);
       }
-      
+
       reaction.setIsChosen(true);
 
       const loader = loaders.get(tabContent);

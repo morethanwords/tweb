@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-//import { MOUNT_CLASS_TO } from "../config/debug";
-import type { ArgumentTypes, SuperReturnType } from "../types";
-import findAndSplice from "./array/findAndSplice";
+// import { MOUNT_CLASS_TO } from "../config/debug";
+import type {ArgumentTypes, SuperReturnType} from '../types';
+import findAndSplice from './array/findAndSplice';
 
 // class EventSystem {
 //   wm: WeakMap<any, Record<any, Set<any>>> = new WeakMap();
@@ -33,14 +33,14 @@ import findAndSplice from "./array/findAndSplice";
 //     if (!listenersForEvent) return;
 //     listenersForEvent.delete(listener);
 //   };
-  
+
 //   /* fire(target, event) {
 //      let listeners = this.wm.get(target);
 //      if (!listeners) return;
 //      let listenersForEvent = listeners[event];
 //      if (!listenersForEvent) return;
 //      for (let handler of handlers) {
-//          setTimeout(handler, 0, event, target); // we use a setTimeout here because we want event triggering to be asynchronous. 
+//          setTimeout(handler, 0, event, target); // we use a setTimeout here because we want event triggering to be asynchronous.
 //      }
 //   }; */
 // }
@@ -61,7 +61,7 @@ export type EventListenerListeners = Record<string, Function>;
 
 type ListenerObject<T> = {callback: T, options: boolean | AddEventListenerOptions};
 
-// type EventLitenerCallback<T> = (data: T) => 
+// type EventLitenerCallback<T> = (data: T) =>
 // export default class EventListenerBase<Listeners extends {[name: string]: Function}> {
 export default class EventListenerBase<Listeners extends EventListenerListeners> {
   protected listeners: Partial<{
@@ -88,14 +88,14 @@ export default class EventListenerBase<Listeners extends EventListenerListeners>
 
     if(this.listenerResults.hasOwnProperty(name)) {
       callback(...this.listenerResults[name]);
-      
+
       if((options as AddEventListenerOptions)?.once) {
         this.listeners[name].pop();
         return;
       }
     }
-    
-    //e.add(this, name, {callback, once});
+
+    // e.add(this, name, {callback, once});
   }
 
   public addMultipleEventsListeners(obj: {
@@ -110,7 +110,7 @@ export default class EventListenerBase<Listeners extends EventListenerListeners>
     if(this.listeners[name]) {
       findAndSplice(this.listeners[name], l => l.callback === callback);
     }
-    //e.remove(this, name, callback);
+    // e.remove(this, name, callback);
   }
 
   protected invokeListenerCallback<T extends keyof Listeners, L extends ListenerObject<any>>(name: T, listener: L, ...args: ArgumentTypes<L['callback']>) {
@@ -166,7 +166,7 @@ export default class EventListenerBase<Listeners extends EventListenerListeners>
   }
 
   public cleanup() {
-    this.listeners = {}; 
+    this.listeners = {};
     this.listenerResults = {};
   }
 }

@@ -2,7 +2,7 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
@@ -14,18 +14,18 @@ import transportController from './transports/controller';
 import MTTransport from './transports/transport';
 // #endif
 
-import type { UserAuth } from './mtproto_config';
+import type {UserAuth} from './mtproto_config';
 import sessionStorage from '../sessionStorage';
-import MTPNetworker, { MTMessage } from './networker';
-import { ConnectionType, constructTelegramWebSocketUrl, DcConfigurator, TransportType } from './dcConfigurator';
-import { logger } from '../logger';
-import type { DcAuthKey, DcId, DcServerSalt, InvokeApiOptions } from '../../types';
-import type { MethodDeclMap } from '../../layer';
-import deferredPromise, { CancellablePromise } from '../../helpers/cancellablePromise';
+import MTPNetworker, {MTMessage} from './networker';
+import {ConnectionType, constructTelegramWebSocketUrl, DcConfigurator, TransportType} from './dcConfigurator';
+import {logger} from '../logger';
+import type {DcAuthKey, DcId, DcServerSalt, InvokeApiOptions} from '../../types';
+import type {MethodDeclMap} from '../../layer';
+import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import App from '../../config/app';
-import { MOUNT_CLASS_TO } from '../../config/debug';
-import { IDB } from '../files/idb';
-import CryptoWorker from "../crypto/cryptoMessagePort";
+import {MOUNT_CLASS_TO} from '../../config/debug';
+import {IDB} from '../files/idb';
+import CryptoWorker from '../crypto/cryptoMessagePort';
 import ctx from '../../environment/ctx';
 import noop from '../../helpers/noop';
 import Modes from '../../config/modes';
@@ -34,7 +34,7 @@ import bytesToHex from '../../helpers/bytes/bytesToHex';
 import isObject from '../../helpers/object/isObject';
 import pause from '../../helpers/schedulers/pause';
 import ApiManagerMethods from './api_methods';
-import { getEnvironment } from '../../environment/utils';
+import {getEnvironment} from '../../environment/utils';
 import toggleStorages from '../../helpers/toggleStorages';
 import type TcpObfuscated from './transports/tcpObfuscated';
 
@@ -59,12 +59,12 @@ export class ApiManager extends ApiManagerMethods {
       }
     }
   };
-  
+
   private cachedExportPromise: {[x: number]: Promise<unknown>};
   private gettingNetworkers: {[dcIdAndType: string]: Promise<MTPNetworker>};
   private baseDcId: DcId;
-  
-  //public telegramMeNotified = false;
+
+  // public telegramMeNotified = false;
 
   private log: ReturnType<typeof logger>;
 
@@ -128,18 +128,18 @@ export class ApiManager extends ApiManagerMethods {
     });
   }
 
-  //private lol = false;
-  
+  // private lol = false;
+
   // constructor() {
-    //MtpSingleInstanceService.start();
-    
-    /* AppStorage.get<number>('dc').then((dcId) => {
+  // MtpSingleInstanceService.start();
+
+  /* AppStorage.get<number>('dc').then((dcId) => {
       if(dcId) {
         this.baseDcId = dcId;
       }
     }); */
   // }
-  
+
   /* public telegramMeNotify(newValue: boolean) {
     if(this.telegramMeNotified !== newValue) {
       this.telegramMeNotified = newValue;
@@ -151,7 +151,7 @@ export class ApiManager extends ApiManagerMethods {
     // #if MTPROTO_HTTP_UPLOAD
     // @ts-ignore
     const transportType: TransportType = connectionType === 'upload' && getEnvironment().IS_SAFARI ? 'https' : 'websocket';
-    //const transportType: TransportType = connectionType !== 'client' ? 'https' : 'websocket';
+    // const transportType: TransportType = connectionType !== 'client' ? 'https' : 'websocket';
     // #else
     // @ts-ignore
     const transportType: TransportType = this.transportType;
@@ -234,7 +234,7 @@ export class ApiManager extends ApiManagerMethods {
 
     return this.baseDcId;
   }
-  
+
   public async setUserAuth(userAuth: UserAuth | UserId) {
     if(typeof(userAuth) === 'string' || typeof(userAuth) === 'number') {
       userAuth = {dcID: 0, date: Date.now() / 1000 | 0, id: userAuth.toPeerId(false)};
@@ -250,8 +250,8 @@ export class ApiManager extends ApiManagerMethods {
     sessionStorage.set({
       user_auth: userAuth
     });
-    
-    //this.telegramMeNotify(true);
+
+    // this.telegramMeNotify(true);
   }
 
   public setBaseDcId(dcId: DcId) {
@@ -268,7 +268,7 @@ export class ApiManager extends ApiManagerMethods {
       dc: this.baseDcId
     });
   }
-  
+
   public async logOut() {
     if(this.loggingOut) {
       return;
@@ -276,15 +276,15 @@ export class ApiManager extends ApiManagerMethods {
 
     this.loggingOut = true;
     const storageKeys: Array<DcAuthKey> = [];
-    
+
     const prefix = 'dc';
     for(let dcId = 1; dcId <= 5; dcId++) {
       storageKeys.push(prefix + dcId + '_auth_key' as any);
     }
-    
+
     // WebPushApiManager.forceUnsubscribe(); // WARNING // moved to worker's master
     const storageResult = await Promise.all(storageKeys.map((key) => sessionStorage.get(key)));
-    
+
     const logoutPromises: Promise<any>[] = [];
     for(let i = 0; i < storageResult.length; i++) {
       if(storageResult[i]) {
@@ -294,7 +294,7 @@ export class ApiManager extends ApiManagerMethods {
 
     const clear = async() => {
       this.baseDcId = undefined;
-      //this.telegramMeNotify(false);
+      // this.telegramMeNotify(false);
       await toggleStorages(false, true);
       IDB.closeDatabases();
       this.rootScope.dispatchEvent('logging_out');
@@ -302,8 +302,8 @@ export class ApiManager extends ApiManagerMethods {
 
     setTimeout(clear, 1e3);
 
-    //return;
-    
+    // return;
+
     return Promise.all(logoutPromises).catch((error) => {
       error.handled = true;
     }).finally(clear)/* .then(() => {
@@ -314,10 +314,10 @@ export class ApiManager extends ApiManagerMethods {
   private generateNetworkerGetKey(dcId: DcId, transportType: TransportType, connectionType: ConnectionType) {
     return [dcId, transportType, connectionType].join('-');
   }
-  
+
   public getNetworker(dcId: DcId, options: InvokeApiOptions = {}): Promise<MTPNetworker> {
     const connectionType: ConnectionType = options.fileDownload ? 'download' : (options.fileUpload ? 'upload' : 'client');
-    //const connectionType: ConnectionType = 'client';
+    // const connectionType: ConnectionType = 'client';
 
     const transportType = this.getTransportType(connectionType);
     if(!this.cachedNetworkers[transportType]) {
@@ -332,7 +332,7 @@ export class ApiManager extends ApiManagerMethods {
     if(!(dcId in cache)) {
       cache[dcId] = [];
     }
-    
+
     const networkers = cache[dcId];
     // @ts-ignore
     const maxNetworkers = connectionType === 'client' || transportType === 'https' ? 1 : (this.rootScope.premium ? PREMIUM_FILE_NETWORKERS_COUNT : REGULAR_FILE_NETWORKERS_COUNT);
@@ -344,12 +344,12 @@ export class ApiManager extends ApiManagerMethods {
           break;
         }
       }
-      
+
       const networker = networkers.splice(found ? i : maxNetworkers - 1, 1)[0];
       networkers.unshift(networker);
       return Promise.resolve(networker);
     }
-    
+
     let getKey = this.generateNetworkerGetKey(dcId, transportType, connectionType);
     if(this.gettingNetworkers[getKey]) {
       return this.gettingNetworkers[getKey];
@@ -357,7 +357,7 @@ export class ApiManager extends ApiManagerMethods {
 
     const ak: DcAuthKey = `dc${dcId}_auth_key` as any;
     const ss: DcServerSalt = `dc${dcId}_server_salt` as any;
-    
+
     let transport = this.chooseServer(dcId, connectionType, transportType);
     return this.gettingNetworkers[getKey] = Promise.all([ak, ss].map((key) => sessionStorage.get(key)))
     .then(async([authKeyHex, serverSaltHex]) => {
@@ -366,21 +366,21 @@ export class ApiManager extends ApiManagerMethods {
         if(!serverSaltHex || serverSaltHex.length !== 16) {
           serverSaltHex = 'AAAAAAAAAAAAAAAA';
         }
-        
+
         const authKey = bytesFromHex(authKeyHex);
         const authKeyId = (await CryptoWorker.invokeCrypto('sha1', authKey)).slice(-8);
         const serverSalt = bytesFromHex(serverSaltHex);
-        
+
         networker = this.networkerFactory.getNetworker(dcId, authKey, authKeyId, serverSalt, options);
       } else {
         try { // if no saved state
           const auth = await this.authorizer.auth(dcId);
-  
+
           sessionStorage.set({
             [ak]: bytesToHex(auth.authKey),
             [ss]: bytesToHex(auth.serverSalt)
           });
-          
+
           networker = this.networkerFactory.getNetworker(dcId, auth.authKey, auth.authKeyId, auth.serverSalt, options);
         } catch(_error) {
           error = _error;
@@ -404,7 +404,7 @@ export class ApiManager extends ApiManagerMethods {
       /* networker.onConnectionStatusChange = (online) => {
         console.log('status:', online);
       }; */
-      
+
       delete this.gettingNetworkers[getKey];
 
       if(error) {
@@ -445,15 +445,15 @@ export class ApiManager extends ApiManagerMethods {
     if(networker.onDrain) {
       return;
     }
-    
-    const checkPromise: Promise<boolean> = networker.isFileNetworker ? 
-      Promise.resolve(true) : 
+
+    const checkPromise: Promise<boolean> = networker.isFileNetworker ?
+      Promise.resolve(true) :
       this.getBaseDcId().then((baseDcId) => networker.dcId !== baseDcId);
     checkPromise.then((canRelease) => {
       if(networker.onDrain) {
         return;
       }
-      
+
       if(canRelease) {
         networker.onDrain = () => this.onNetworkerDrain(networker);
         networker.setDrainTimeout();
@@ -465,9 +465,9 @@ export class ApiManager extends ApiManagerMethods {
     this.updatesProcessor = callback;
     this.networkerFactory.setUpdatesProcessor(callback);
   }
-  
-  public invokeApi<T extends keyof MethodDeclMap>(method: T, params: MethodDeclMap[T]['req'] = {}, options: InvokeApiOptions = {}): CancellablePromise<MethodDeclMap[T]["res"]> {
-    ///////this.log('Invoke api', method, params, options);
+
+  public invokeApi<T extends keyof MethodDeclMap>(method: T, params: MethodDeclMap[T]['req'] = {}, options: InvokeApiOptions = {}): CancellablePromise<MethodDeclMap[T]['res']> {
+    // /////this.log('Invoke api', method, params, options);
 
     /* if(!this.lol) {
       networkerFactory.updatesProcessor({_: 'new_session_created'}, true);
@@ -489,7 +489,7 @@ export class ApiManager extends ApiManagerMethods {
         if(!cachedNetworker || !cachedNetworker.isStopped()) {
           this.log.error('Request is still processing:', method, params, options, 'time:', (Date.now() - startTime) / 1000);
         }
-        //this.cachedUploadNetworkers[2].requestMessageStatus();
+        // this.cachedUploadNetworkers[2].requestMessageStatus();
       }, 5e3);
 
       deferred.catch(noop).finally(() => {
@@ -504,7 +504,7 @@ export class ApiManager extends ApiManagerMethods {
         error = {message: error};
       }
 
-      if((error.code === 401 && error.type === 'SESSION_REVOKED') || 
+      if((error.code === 401 && error.type === 'SESSION_REVOKED') ||
         (error.code === 406 && error.type === 'AUTH_KEY_DUPLICATED')) {
         this.logOut();
       }
@@ -512,11 +512,11 @@ export class ApiManager extends ApiManagerMethods {
       if(options.ignoreErrors) {
         throw error;
       }
-      
+
       if(error.code === 406) {
         error.handled = true;
       }
-      
+
       if(!options.noErrorBox) {
         error.input = method;
         error.stack = stack || (error.originalError && error.originalError.stack) || error.stack || (new Error()).stack;
@@ -527,7 +527,7 @@ export class ApiManager extends ApiManagerMethods {
             } else {
               // ErrorService.show({error: error}); // WARNING
             }
-            
+
             error.handled = true;
           }
         }, 100);
@@ -535,11 +535,11 @@ export class ApiManager extends ApiManagerMethods {
 
       throw error;
     };
-    
+
     let dcId: DcId;
-    
+
     let cachedNetworker: MTPNetworker;
-    let stack = (new Error()).stack || 'empty stack';
+    const stack = (new Error()).stack || 'empty stack';
     const performRequest = (): Promise<any> => {
       if(afterMessageId) {
         const after = this.afterMessageTempIds[afterMessageId];
@@ -558,18 +558,18 @@ export class ApiManager extends ApiManagerMethods {
       }
 
       return promise.catch((error: ApiError) => {
-        //if(!options.ignoreErrors) {
+        // if(!options.ignoreErrors) {
         if(error.type !== 'FILE_REFERENCE_EXPIRED'/*  && error.type !== 'MSG_WAIT_FAILED' */) {
           this.log.error('Error', error.code, error.type, this.baseDcId, dcId, method, params);
         }
-        
+
         if(error.code === 401 && this.baseDcId === dcId) {
           if(error.type !== 'SESSION_PASSWORD_NEEDED') {
             sessionStorage.delete('dc')
             sessionStorage.delete('user_auth'); // ! возможно тут вообще не нужно это делать, но нужно проверить случай с USER_DEACTIVATED (https://core.telegram.org/api/errors)
-            //this.telegramMeNotify(false);
+            // this.telegramMeNotify(false);
           }
-          
+
           throw error;
         } else if(error.code === 401 && this.baseDcId && dcId !== this.baseDcId) {
           if(this.cachedExportPromise[dcId] === undefined) {
@@ -581,10 +581,10 @@ export class ApiManager extends ApiManagerMethods {
                 }, {dcId, noErrorBox: true}).then(exportResolve, exportReject);
               }, exportReject);
             });
-            
+
             this.cachedExportPromise[dcId] = promise;
           }
-          
+
           return this.cachedExportPromise[dcId].then(() => performRequest());
         } else if(error.code === 303) {
           const newDcId = +error.type.match(/^(PHONE_MIGRATE_|NETWORK_MIGRATE_|USER_MIGRATE_)(\d+)/)[2] as DcId;
@@ -594,7 +594,7 @@ export class ApiManager extends ApiManagerMethods {
             } else {
               this.setBaseDcId(newDcId);
             }
-            
+
             return this.invokeApi(method, params, options);
           }
         } else if(error.code === 400 && error.type.indexOf('FILE_MIGRATE') === 0) {
@@ -610,11 +610,11 @@ export class ApiManager extends ApiManagerMethods {
           return performRequest();
         } else if(!options.rawError && error.code === 420) {
           const waitTime = +error.type.match(/^FLOOD_WAIT_(\d+)/)[1] || 1;
-          
+
           if(waitTime > (options.floodMaxTimeout !== undefined ? options.floodMaxTimeout : 60) && !options.prepareTempMessageId) {
             throw error;
           }
-          
+
           return pause(waitTime/* (waitTime + 5) */ * 1000).then(() => performRequest());
         } else if(!options.rawError && ['MSG_WAIT_FAILED', 'MSG_WAIT_TIMEOUT'].includes(error.type)) {
           const after = this.afterMessageTempIds[afterMessageId];
@@ -631,7 +631,7 @@ export class ApiManager extends ApiManagerMethods {
               throw error;
             }
           }
-          
+
           options.waitTime = options.waitTime ? Math.min(60, options.waitTime * 1.5) : 1;
           return pause(options.waitTime * 1000).then(() => performRequest());
         } else if(error.type === 'UNKNOWN' || error.type === 'MTPROTO_CLUSTER_INVALID') { // cluster invalid - request from regular user to premium endpoint
@@ -641,7 +641,7 @@ export class ApiManager extends ApiManagerMethods {
         }
       });
     }
-    
+
     let p: Promise<MTPNetworker>;
     if(dcId = (options.dcId || this.baseDcId)) {
       p = this.getNetworker(dcId, options);

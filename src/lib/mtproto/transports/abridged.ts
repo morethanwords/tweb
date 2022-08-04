@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-//import { bytesFromHex, addPadding } from "../../bin_utils";
-import { Codec } from "./codec";
+// import { bytesFromHex, addPadding } from "../../bin_utils";
+import {Codec} from './codec';
 
 class AbridgedPacketCodec implements Codec {
   public tag = 0xef;
@@ -17,13 +17,13 @@ class AbridgedPacketCodec implements Codec {
     if(len < 127) {
       header = new Uint8Array([len]);
     } else { // Length: payload length, divided by four, and encoded as 3 length bytes (little endian)
-      //header = new Uint8Array([0x7f, ...addPadding(bytesFromHex(len.toString(16)).reverse(), 3, true)/* .reverse() */]);
+      // header = new Uint8Array([0x7f, ...addPadding(bytesFromHex(len.toString(16)).reverse(), 3, true)/* .reverse() */]);
       header = new Uint8Array([0x7f, len & 0xFF, (len >> 8) & 0xFF, (len >> 16) & 0xFF]);
-      //console.log('got nobody cause im braindead', header, len);
+      // console.log('got nobody cause im braindead', header, len);
     }
-    
+
     return header.concat(data);
-    //return new Uint8Array([...header, ...data]);
+    // return new Uint8Array([...header, ...data]);
   }
 
   public readPacket(data: Uint8Array) {
@@ -33,7 +33,7 @@ class AbridgedPacketCodec implements Codec {
 
       return data.slice(4, length << 2 + 1); // need +1
     }
-    
+
     return data.slice(1, length << 2 + 1); // need +1
   }
 }

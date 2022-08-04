@@ -1,6 +1,6 @@
 // * Jolly Cobra's schedulers
 
-import { AnyToVoidFunction } from "../../types";
+import {AnyToVoidFunction} from '../../types';
 
 export default function throttleWith<F extends AnyToVoidFunction>(schedulerFn: AnyToVoidFunction, fn: F) {
   let waiting = false;
@@ -9,7 +9,7 @@ export default function throttleWith<F extends AnyToVoidFunction>(schedulerFn: A
   return (..._args: Parameters<F>) => {
     args = _args;
 
-    if (!waiting) {
+    if(!waiting) {
       waiting = true;
 
       schedulerFn(() => {

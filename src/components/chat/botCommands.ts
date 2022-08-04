@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type ChatInput from "./input";
-import callbackify from "../../helpers/callbackify";
-import AutocompletePeerHelper from "./autocompletePeerHelper";
-import { processPeerFullForCommands } from "./commandsHelper";
-import { AppManagers } from "../../lib/appManagers/managers";
+import type ChatInput from './input';
+import callbackify from '../../helpers/callbackify';
+import AutocompletePeerHelper from './autocompletePeerHelper';
+import {processPeerFullForCommands} from './commandsHelper';
+import {AppManagers} from '../../lib/appManagers/managers';
 
 const CLASS_NAME = 'bot-commands';
 export default class ChatBotCommands extends AutocompletePeerHelper {
@@ -39,7 +39,7 @@ export default class ChatBotCommands extends AutocompletePeerHelper {
     return callbackify(this.managers.appProfileManager.getProfile(userId), (full) => {
       if(!middleware()) return;
       const filtered = processPeerFullForCommands(userId.toPeerId(false), full);
-      
+
       const PADDING_TOP = 8;
       // const PADDING_BOTTOM = 8;
       const PADDING_BOTTOM = 24;
@@ -47,8 +47,8 @@ export default class ChatBotCommands extends AutocompletePeerHelper {
       this.container.style.setProperty('--height', height + 'px');
 
       this.render(filtered);
-      
-      // this.container.style.top = 
+
+      // this.container.style.top =
     });
   }
 }

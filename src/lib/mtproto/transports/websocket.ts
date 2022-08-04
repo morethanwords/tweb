@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { logger, LogTypes } from '../../logger';
+import {logger, LogTypes} from '../../logger';
 import Modes from '../../../config/modes';
 import EventListenerBase from '../../../helpers/eventListenerBase';
-import { MTConnection } from './transport';
+import {MTConnection} from './transport';
 
 // let closeSocketBefore = Date.now() + 30e3;
 // let closeSocketAfter = Date.now() + 10e3;
@@ -44,7 +44,7 @@ export default class Socket extends EventListenerBase<{
     this.ws.removeEventListener('message', this.handleMessage);
     this.ws = undefined;
   }
-  
+
   private connect() {
     this.ws = new WebSocket(this.url, 'binary');
     this.ws.binaryType = 'arraybuffer';
@@ -73,7 +73,7 @@ export default class Socket extends EventListenerBase<{
     }
     this.handleClose();
   }
-  
+
   private handleOpen = () => {
     this.log('opened');
 

@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import CallConnectionInstanceBase, { CallConnectionInstanceOptions } from "./callConnectionInstanceBase";
-import CallInstance from "./callInstance";
-import parseSignalingData from "./helpers/parseSignalingData";
-import { parseSdp } from "./sdp/utils";
+import CallConnectionInstanceBase, {CallConnectionInstanceOptions} from './callConnectionInstanceBase';
+import CallInstance from './callInstance';
+import parseSignalingData from './helpers/parseSignalingData';
+import {parseSdp} from './sdp/utils';
 
 export default class CallConnectionInstance extends CallConnectionInstanceBase {
   private call: CallInstance;

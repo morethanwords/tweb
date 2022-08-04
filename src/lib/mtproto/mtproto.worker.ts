@@ -8,16 +8,16 @@
 import '../polyfill';
 import '../../helpers/peerIdPolyfill';
 
-import cryptoWorker from "../crypto/cryptoMessagePort";
-import { setEnvironment } from '../../environment/utils';
+import cryptoWorker from '../crypto/cryptoMessagePort';
+import {setEnvironment} from '../../environment/utils';
 import appStateManager from '../appManagers/appStateManager';
 import transportController from './transports/controller';
 import MTProtoMessagePort from './mtprotoMessagePort';
 import RESET_STORAGES_PROMISE from '../appManagers/utils/storages/resetStoragesPromise';
 import appManagersManager from '../appManagers/appManagersManager';
 import listenMessagePort from '../../helpers/listenMessagePort';
-import { logger } from '../logger';
-import { State } from '../../config/state';
+import {logger} from '../logger';
+import {State} from '../../config/state';
 import toggleStorages from '../../helpers/toggleStorages';
 import appTabsManager from '../appManagers/appTabsManager';
 import ServiceMessagePort from '../serviceWorker/serviceMessagePort';
@@ -40,7 +40,7 @@ const port = new MTProtoMessagePort<false>();
 port.addMultipleEventsListeners({
   environment: (environment) => {
     setEnvironment(environment);
-    
+
     transportController.waitForWebSocket();
   },
 
@@ -58,7 +58,7 @@ port.addMultipleEventsListeners({
     appStateManager.userId = userId;
     appStateManager.newVersion = newVersion;
     appStateManager.oldVersion = oldVersion;
-    
+
     (Object.keys(state) as any as (keyof State)[]).forEach((key) => {
       appStateManager.pushToState(key, state[key], true, !pushedKeys.includes(key));
     });
@@ -104,12 +104,12 @@ port.addMultipleEventsListeners({
 
   createObjectURL: (blob) => {
     return URL.createObjectURL(blob);
-  },
+  }
 
   // socketProxy: (task) => {
   //   const socketTask = task.payload;
   //   const id = socketTask.id;
-    
+
   //   const socketProxied = socketsProxied.get(id);
   //   if(socketTask.type === 'message') {
   //     socketProxied.dispatchEvent('message', socketTask.payload);

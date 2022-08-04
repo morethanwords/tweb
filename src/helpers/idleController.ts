@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import IS_TOUCH_SUPPORTED from "../environment/touchSupport";
-import EventListenerBase from "./eventListenerBase";
+import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
+import EventListenerBase from './eventListenerBase';
 
 const FOCUS_EVENT_NAME = IS_TOUCH_SUPPORTED ? 'touchstart' : 'mousemove';
 
@@ -26,7 +26,7 @@ export class IdleController extends EventListenerBase<{
 
     window.addEventListener('blur', () => {
       this.isIdle = true;
-      
+
       window.addEventListener('focus', () => {
         this.isIdle = false;
       }, {once: true});

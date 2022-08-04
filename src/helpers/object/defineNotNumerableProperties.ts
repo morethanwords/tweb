@@ -1,5 +1,5 @@
 export default function defineNotNumerableProperties<T extends any>(obj: T, names: (keyof T)[]) {
-  //const perf = performance.now();
+  // const perf = performance.now();
   const props = {writable: true, configurable: true};
   const out: {[name in keyof T]?: typeof props} = {};
   names.forEach((name) => {
@@ -8,5 +8,5 @@ export default function defineNotNumerableProperties<T extends any>(obj: T, name
     }
   });
   Object.defineProperties(obj, out);
-  //console.log('defineNotNumerableProperties time:', performance.now() - perf);
+  // console.log('defineNotNumerableProperties time:', performance.now() - perf);
 }

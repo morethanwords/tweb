@@ -4,15 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { attachClickEvent } from "../../helpers/dom/clickEvent";
-import findUpClassName from "../../helpers/dom/findUpClassName";
-import whichChild from "../../helpers/dom/whichChild";
-import preloadAnimatedEmojiSticker from "../../helpers/preloadAnimatedEmojiSticker";
-import { ReportReason } from "../../layer";
-import { LangPackKey } from "../../lib/langPack";
-import Button from "../button";
-import PopupPeer from "./peer";
-import PopupReportMessagesConfirm from "./reportMessagesConfirm";
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import findUpClassName from '../../helpers/dom/findUpClassName';
+import whichChild from '../../helpers/dom/whichChild';
+import preloadAnimatedEmojiSticker from '../../helpers/preloadAnimatedEmojiSticker';
+import {ReportReason} from '../../layer';
+import {LangPackKey} from '../../lib/langPack';
+import Button from '../button';
+import PopupPeer from './peer';
+import PopupReportMessagesConfirm from './reportMessagesConfirm';
 
 export default class PopupReportMessages extends PopupPeer {
   constructor(peerId: PeerId, mids: number[], onConfirm?: () => void) {
@@ -48,7 +48,7 @@ export default class PopupReportMessages extends PopupPeer {
         new PopupReportMessagesConfirm(peerId, mids, reason, onConfirm);
       });
     }, {listenerSetter: this.listenerSetter});
-    
+
     this.body.style.margin = '0 -1rem';
     this.buttonsEl.style.marginTop = '.5rem';
 

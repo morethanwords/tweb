@@ -2,18 +2,18 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import App from "../../config/app";
-import { MOUNT_CLASS_TO } from "../../config/debug";
-import Modes from "../../config/modes";
-import loadScript from "../../helpers/dom/loadScript";
-import tsNow from "../../helpers/tsNow";
+import App from '../../config/app';
+import {MOUNT_CLASS_TO} from '../../config/debug';
+import Modes from '../../config/modes';
+import loadScript from '../../helpers/dom/loadScript';
+import tsNow from '../../helpers/tsNow';
 import sessionStorage from '../sessionStorage';
 
 export class TelegramMeWebManager {
@@ -36,7 +36,7 @@ export class TelegramMeWebManager {
 
       sessionStorage.set({
         tgme_sync: {
-          canRedirect, 
+          canRedirect,
           ts
         }
       });

@@ -4,21 +4,21 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { DialogFilter, Update } from "../../layer";
-import type { Dialog } from '../appManagers/appMessagesManager';
-import forEachReverse from "../../helpers/array/forEachReverse";
-import copy from "../../helpers/object/copy";
-import { AppManager } from "../appManagers/manager";
-import findAndSplice from "../../helpers/array/findAndSplice";
-import assumeType from "../../helpers/assumeType";
-import { FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS, REAL_FOLDER_ID, START_LOCAL_ID } from "../mtproto/mtproto_config";
-import makeError from "../../helpers/makeError";
+import type {DialogFilter, Update} from '../../layer';
+import type {Dialog} from '../appManagers/appMessagesManager';
+import forEachReverse from '../../helpers/array/forEachReverse';
+import copy from '../../helpers/object/copy';
+import {AppManager} from '../appManagers/manager';
+import findAndSplice from '../../helpers/array/findAndSplice';
+import assumeType from '../../helpers/assumeType';
+import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS, REAL_FOLDER_ID, START_LOCAL_ID} from '../mtproto/mtproto_config';
+import makeError from '../../helpers/makeError';
 
 export type MyDialogFilter = DialogFilter.dialogFilter;
 
 const convertment = [
-  ['pinned_peers', 'pinnedPeerIds'], 
-  ['exclude_peers', 'excludePeerIds'], 
+  ['pinned_peers', 'pinnedPeerIds'],
+  ['exclude_peers', 'excludePeerIds'],
   ['include_peers', 'includePeerIds']
 ] as ['pinned_peers' | 'exclude_peers' | 'include_peers', 'pinnedPeerIds' | 'excludePeerIds' | 'includePeerIds'][];
 
@@ -35,7 +35,7 @@ const LOCAL_FILTER: MyDialogFilter = {
   pinned_peers: [],
   excludePeerIds: [],
   includePeerIds: [],
-  pinnedPeerIds: [],
+  pinnedPeerIds: []
 };
 
 export default class FiltersStorage extends AppManager {
@@ -140,7 +140,7 @@ export default class FiltersStorage extends AppManager {
       this.filters = {};
       this.filtersArr = [];
       this.reloadedPeerIds = new Set();
-      
+
       this.localFilters = {};
       for(const filterId of REAL_FOLDERS) {
         this.localFilters[filterId] = this.generateLocalFilter(filterId as REAL_FOLDER_ID);
@@ -154,7 +154,7 @@ export default class FiltersStorage extends AppManager {
     if(update.filter) {
       this.saveDialogFilter(update.filter as any);
     } else if(this.filters[update.id]) { // Папка удалена
-      //this.getDialogFilters(true);
+      // this.getDialogFilters(true);
       this.rootScope.dispatchEvent('filter_delete', this.filters[update.id]);
       delete this.filters[update.id];
       findAndSplice(this.filtersArr, (filter) => (filter as DialogFilter.dialogFilter).id === update.id);
@@ -164,7 +164,7 @@ export default class FiltersStorage extends AppManager {
   };
 
   private onUpdateDialogFilters = (update: Update.updateDialogFilters) => {
-    //console.warn('updateDialogFilters', update);
+    // console.warn('updateDialogFilters', update);
 
     const oldFilters = copy(this.filters);
 
@@ -181,7 +181,7 @@ export default class FiltersStorage extends AppManager {
   };
 
   private onUpdateDialogFilterOrder = (update: Update.updateDialogFilterOrder) => {
-    //console.log('updateDialogFilterOrder', update);
+    // console.log('updateDialogFilterOrder', update);
 
     const order = update.order.slice();
     if(!order.includes(FOLDER_ID_ARCHIVE)) {
@@ -255,12 +255,12 @@ export default class FiltersStorage extends AppManager {
       }
     } else {
       const userId = peerId.toUserId();
-      
+
       // bots
       if(this.appUsersManager.isBot(userId)) {
         return !!pFlags.bots;
       }
-      
+
       // non_contacts
       if(pFlags.non_contacts && !this.appUsersManager.isContact(userId)) {
         return true;
@@ -296,7 +296,7 @@ export default class FiltersStorage extends AppManager {
 
       this.onUpdateDialogFilter({
         _: 'updateDialogFilter',
-        id: +filterId,
+        id: +filterId
       });
     }
   }
@@ -311,16 +311,16 @@ export default class FiltersStorage extends AppManager {
       filter.pinned_peers.splice(index, 1);
       filter.pinnedPeerIds.splice(index, 1);
     }
-    
+
     if(!wasPinned) {
       if(filter.pinned_peers.length >= (await this.apiManager.getConfig()).pinned_infolder_count_max) {
         return Promise.reject(makeError('PINNED_DIALOGS_TOO_MUCH'));
       }
-      
+
       filter.pinned_peers.unshift(this.appPeersManager.getInputPeerById(peerId));
       filter.pinnedPeerIds.unshift(peerId);
     }
-    
+
     return this.updateDialogFilter(filter);
   }
 
@@ -339,7 +339,7 @@ export default class FiltersStorage extends AppManager {
       id: filter.id,
       filter: remove ? undefined : this.getOutputDialogFilter(filter)
     }).then((bool: boolean) => { // возможно нужна проверка и откат, если результат не ТРУ
-      //console.log('updateDialogFilter bool:', bool);
+      // console.log('updateDialogFilter bool:', bool);
 
       if(bool) {
         /* if(!this.filters[filter.id]) {
@@ -502,7 +502,7 @@ export default class FiltersStorage extends AppManager {
       });
 
       this.filterIncludedPinnedPeers(filter);
-    
+
       filter.include_peers = filter.pinned_peers.concat(filter.include_peers);
       filter.includePeerIds = filter.pinnedPeerIds.concat(filter.includePeerIds);
     }
@@ -513,9 +513,9 @@ export default class FiltersStorage extends AppManager {
     } else {
       this.filters[filter.id] = filter;
     }
-    
+
     this.setLocalId(filter);
-    
+
     if(!silent) {
       if(update) {
         this.rootScope.dispatchEvent('filter_update', filter);

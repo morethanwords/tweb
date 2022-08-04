@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import InputField from "../inputField";
-import lottieLoader from "../../lib/rlottie/lottieLoader";
-import RLottiePlayer from "../../lib/rlottie/rlottiePlayer";
+import InputField from '../inputField';
+import lottieLoader from '../../lib/rlottie/lottieLoader';
+import RLottiePlayer from '../../lib/rlottie/rlottiePlayer';
 
 export default class TrackingMonkey {
   public container: HTMLElement;
@@ -52,25 +52,25 @@ export default class TrackingMonkey {
         this.idleAnimation.stop(true);
         this.idleAnimation.canvas.style.display = 'none';
       }
-      
+
       this.animation.canvas.style.display = '';
     } else {
       /* const cb = (frameNo: number) => {
         if(frameNo <= 1) { */
-          /* idleAnimation.play();
+      /* idleAnimation.play();
           idleAnimation.canvas.style.display = '';
           animation.canvas.style.display = 'none'; */
       /*     animation.removeListener('enterFrame', cb);
         }
       };
       animation.addListener('enterFrame', cb); */
-      
+
       frame = 0;
     }
-    //animation.playSegments([1, 2]);
+    // animation.playSegments([1, 2]);
 
     const direction = this.needFrame > frame ? -1 : 1;
-    //console.log('keydown', length, frame, direction);
+    // console.log('keydown', length, frame, direction);
 
     this.animation.setDirection(direction);
     if(this.needFrame !== 0 && frame === 0) {
@@ -79,11 +79,11 @@ export default class TrackingMonkey {
     /* let diff = Math.abs(needFrame - frame * direction);
     if((diff / 20) > 1) animation.setSpeed(diff / 20 | 0); */
     this.needFrame = frame;
-    
+
     this.animation.play();
 
     /* animation.goToAndStop(15, true); */
-    //animation.goToAndStop(length / max * );
+    // animation.goToAndStop(length / max * );
   }
 
   public load() {
@@ -120,9 +120,9 @@ export default class TrackingMonkey {
         }
 
         this.animation.addEventListener('enterFrame', currentFrame => {
-          //console.log('enterFrame', currentFrame, needFrame);
-          //let currentFrame = Math.round(e.currentTime);
-          
+          // console.log('enterFrame', currentFrame, needFrame);
+          // let currentFrame = Math.round(e.currentTime);
+
           if((this.animation.direction === 1 && currentFrame >= this.needFrame) ||
             (this.animation.direction === -1 && currentFrame <= this.needFrame)) {
             this.animation.setSpeed(1);
@@ -130,8 +130,8 @@ export default class TrackingMonkey {
           }
 
           if(currentFrame === 0 && this.needFrame === 0) {
-            //animation.curFrame = 0;
-            
+            // animation.curFrame = 0;
+
             if(this.idleAnimation) {
               this.idleAnimation.canvas.style.display = '';
               this.idleAnimation.play();
@@ -139,7 +139,7 @@ export default class TrackingMonkey {
             }
           }
         });
-        //console.log(animation.getDuration(), animation.getDuration(true));
+        // console.log(animation.getDuration(), animation.getDuration(true));
 
         return lottieLoader.waitForFirstFrame(_animation);
       })

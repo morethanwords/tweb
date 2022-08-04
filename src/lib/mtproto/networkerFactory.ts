@@ -2,19 +2,19 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type { ConnectionStatusChange } from "./connectionStatus";
-import MTPNetworker from "./networker";
-import { InvokeApiOptions } from "../../types";
-import App from "../../config/app";
-import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
-import { AppManager } from "../appManagers/manager";
+import type {ConnectionStatusChange} from './connectionStatus';
+import MTPNetworker from './networker';
+import {InvokeApiOptions} from '../../types';
+import App from '../../config/app';
+import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
+import {AppManager} from '../appManagers/manager';
 
 export class NetworkerFactory extends AppManager {
   private networkers: MTPNetworker[] = [];
@@ -37,7 +37,7 @@ export class NetworkerFactory extends AppManager {
   }
 
   public getNetworker(dcId: number, authKey: Uint8Array, authKeyId: Uint8Array, serverSalt: Uint8Array, options: InvokeApiOptions) {
-    //console.log('NetworkerFactory: creating new instance of MTPNetworker:', dcId, options);
+    // console.log('NetworkerFactory: creating new instance of MTPNetworker:', dcId, options);
     const networker = new MTPNetworker(this, this.timeManager, dcId, authKey, authKeyId, serverSalt, options);
     this.networkers.push(networker);
     return networker;
@@ -49,7 +49,7 @@ export class NetworkerFactory extends AppManager {
 
       this.akStopped = false;
       this.updatesProcessor && this.updatesProcessor({_: 'new_session_created'});
-      
+
       for(const networker of stoppedNetworkers) {
         networker.scheduleRequest();
       }

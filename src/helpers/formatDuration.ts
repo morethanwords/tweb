@@ -10,12 +10,12 @@ export default function formatDuration(duration: number, showLast = 2) {
     duration = 1;
   }
 
-  let d: {duration: number, type: DurationType}[] = [];
+  const d: {duration: number, type: DurationType}[] = [];
   const p = [
     {m: 1, t: 's'},
-    {m: 60, t: 'm'}, 
-    {m: 60, t: 'h'}, 
-    {m: 24, t: 'd'}, 
+    {m: 60, t: 'm'},
+    {m: 60, t: 'h'},
+    {m: 24, t: 'd'},
     {m: 7, t: 'w'}
   ] as Array<{m?: number, t: DurationType}>
   const s = 1;
@@ -40,6 +40,6 @@ export default function formatDuration(duration: number, showLast = 2) {
       out.splice(i, 1);
     }
   }
-  
+
   return out;
 }

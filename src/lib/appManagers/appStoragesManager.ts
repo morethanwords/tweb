@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { logger } from "../logger";
-import { AppManager } from "./manager";
-import createStorages from "./utils/storages/createStorages";
-import loadStorages from "./utils/storages/loadStorages";
+import {logger} from '../logger';
+import {AppManager} from './manager';
+import createStorages from './utils/storages/createStorages';
+import loadStorages from './utils/storages/loadStorages';
 
 export class AppStoragesManager extends AppManager {
   private storages: ReturnType<typeof createStorages>;
@@ -27,7 +27,7 @@ export class AppStoragesManager extends AppManager {
   public loadStorages() {
     return loadStorages(this.storages);
     // loadStorages(this.storages).then((storagesResults) => {
-      // this.loadPromise.resolve(storagesResults);
+    // this.loadPromise.resolve(storagesResults);
     // });
 
     // return this.loadPromise;

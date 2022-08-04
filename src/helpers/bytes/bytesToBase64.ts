@@ -20,15 +20,15 @@ export default function bytesToBase64(bytes: number[] | Uint8Array) {
 }
 
 export function uint6ToBase64(nUint6: number) {
-  return nUint6 < 26
-    ? nUint6 + 65
-    : nUint6 < 52
-      ? nUint6 + 71
-      : nUint6 < 62
-        ? nUint6 - 4
-        : nUint6 === 62
-          ? 43
-          : nUint6 === 63
-            ? 47
-            : 65;
+  return nUint6 < 26 ?
+    nUint6 + 65 :
+    nUint6 < 52 ?
+      nUint6 + 71 :
+      nUint6 < 62 ?
+        nUint6 - 4 :
+        nUint6 === 62 ?
+          43 :
+          nUint6 === 63 ?
+            47 :
+            65;
 }

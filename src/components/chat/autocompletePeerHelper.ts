@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import setInnerHTML from "../../helpers/dom/setInnerHTML";
-import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
-import AvatarElement from "../avatar";
-import PeerTitle from "../peerTitle";
-import Scrollable from "../scrollable";
-import AutocompleteHelper from "./autocompleteHelper";
-import AutocompleteHelperController from "./autocompleteHelperController";
+import setInnerHTML from '../../helpers/dom/setInnerHTML';
+import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
+import AvatarElement from '../avatar';
+import PeerTitle from '../peerTitle';
+import Scrollable from '../scrollable';
+import AutocompleteHelper from './autocompleteHelper';
+import AutocompleteHelperController from './autocompleteHelperController';
 
 export default class AutocompletePeerHelper extends AutocompleteHelper {
   protected static BASE_CLASS = 'autocomplete-peer-helper';
@@ -18,15 +18,15 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
   private scrollable: Scrollable;
 
   constructor(
-    appendTo: HTMLElement, 
-    controller: AutocompleteHelperController, 
-    protected className: string, 
+    appendTo: HTMLElement,
+    controller: AutocompleteHelperController,
+    protected className: string,
     onSelect: (target: Element) => boolean | void
   ) {
     super({
-      appendTo, 
+      appendTo,
       controller,
-      listType: 'y', 
+      listType: 'y',
       onSelect
     });
 
@@ -89,14 +89,14 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
     const div = document.createElement('div');
     div.classList.add(BASE, options.className);
     div.dataset.peerId = '' + options.peerId;
-  
+
     const avatar = new AvatarElement();
     avatar.classList.add('avatar-30', BASE + '-avatar', options.className + '-avatar');
     avatar.updateWithOptions({
       isDialog: false,
       peerId: options.peerId
     });
-  
+
     const name = document.createElement('div');
     name.classList.add(BASE + '-name', options.className + '-name');
     if(!options.name) {
@@ -109,7 +109,7 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
     } else {
       setInnerHTML(name, wrapEmojiText(options.name));
     }
-  
+
     div.append(avatar, name);
 
     if(options.description) {
@@ -118,7 +118,7 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
       setInnerHTML(description, wrapEmojiText(options.description));
       div.append(description);
     }
-  
+
     return div;
   }
 }

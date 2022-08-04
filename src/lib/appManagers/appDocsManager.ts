@@ -2,27 +2,27 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import { AccountWallPapers, Document, MessagesSavedGifs, PhotoSize, WallPaper } from '../../layer';
-import { ReferenceContext } from '../mtproto/referenceDatabase';
-import { getFullDate } from '../../helpers/date';
+import {AccountWallPapers, Document, MessagesSavedGifs, PhotoSize, WallPaper} from '../../layer';
+import {ReferenceContext} from '../mtproto/referenceDatabase';
+import {getFullDate} from '../../helpers/date';
 import isObject from '../../helpers/object/isObject';
 import safeReplaceArrayInObject from '../../helpers/object/safeReplaceArrayInObject';
-import { AppManager } from './manager';
+import {AppManager} from './manager';
 import wrapPlainText from '../richTextProcessor/wrapPlainText';
 import assumeType from '../../helpers/assumeType';
-import { getEnvironment } from '../../environment/utils';
-import { isServiceWorkerOnline } from '../mtproto/mtproto.worker';
+import {getEnvironment} from '../../environment/utils';
+import {isServiceWorkerOnline} from '../mtproto/mtproto.worker';
 import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
 import getDocumentInput from './utils/docs/getDocumentInput';
 import getDocumentURL from './utils/docs/getDocumentURL';
-import type { ThumbCache } from '../storages/thumbs';
+import type {ThumbCache} from '../storages/thumbs';
 
 export type MyDocument = Document.document;
 
@@ -31,7 +31,7 @@ export type MyDocument = Document.document;
 const EXTENSION_MIME_TYPE_MAP = {
   mov: 'video/quicktime',
   gif: 'image/gif',
-  pdf: 'application/pdf',
+  pdf: 'application/pdf'
 };
 
 type WallPaperId = WallPaper.wallPaper['id'];
@@ -79,8 +79,8 @@ export class AppDocsManager extends AppManager {
       safeReplaceArrayInObject('file_reference', oldDoc, doc);
       this.referenceDatabase.saveContext(doc.file_reference, context);
     }
-    
-    //console.log('saveDoc', apiDoc, this.docs[apiDoc.id]);
+
+    // console.log('saveDoc', apiDoc, this.docs[apiDoc.id]);
     // if(oldDoc) {
     //   //if(doc._ !== 'documentEmpty' && doc._ === d._) {
     //     if(doc.thumbs) {
@@ -105,9 +105,9 @@ export class AppDocsManager extends AppManager {
     }
 
     // * exclude from state
-    // defineNotNumerableProperties(doc, [/* 'thumbs',  */'type', 'h', 'w', 'file_name', 
-    // 'file', 'duration', 'downloaded', 'url', 'audioTitle', 
-    // 'audioPerformer', 'sticker', 'stickerEmoji', 'stickerEmojiRaw', 
+    // defineNotNumerableProperties(doc, [/* 'thumbs',  */'type', 'h', 'w', 'file_name',
+    // 'file', 'duration', 'downloaded', 'url', 'audioTitle',
+    // 'audioPerformer', 'sticker', 'stickerEmoji', 'stickerEmojiRaw',
     // 'stickerSetInput', 'stickerThumbConverted', 'animated', 'supportsStreaming']);
 
     for(let i = 0, length = doc.attributes.length; i < length; ++i) {
@@ -129,7 +129,7 @@ export class AppDocsManager extends AppManager {
           doc.duration = attribute.duration;
           doc.w = attribute.w;
           doc.h = attribute.h;
-          //apiDoc.supportsStreaming = attribute.pFlags?.supports_streaming/*  && apiDoc.size > 524288 */;
+          // apiDoc.supportsStreaming = attribute.pFlags?.supports_streaming/*  && apiDoc.size > 524288 */;
           if(/* apiDoc.thumbs &&  */attribute.pFlags.round_message) {
             doc.type = 'round';
           } else /* if(apiDoc.thumbs) */ {
@@ -180,7 +180,7 @@ export class AppDocsManager extends AppManager {
           break;
       }
     }
-    
+
     if(!doc.mime_type) {
       const ext = (doc.file_name || '').split('.').pop();
       // @ts-ignore
@@ -222,7 +222,7 @@ export class AppDocsManager extends AppManager {
     if(isServiceWorkerOnline()) {
       if((doc.type === 'gif' && doc.size > 8e6) || doc.type === 'audio' || doc.type === 'video'/*  || doc.mime_type.indexOf('video/') === 0 */) {
         doc.supportsStreaming = true;
-        
+
         const cacheContext = this.thumbsStorage.getCacheContext(doc);
         if(!cacheContext.url) {
           this.thumbsStorage.setCacheContextURL(doc, undefined, getDocumentURL(doc), 0);
@@ -233,7 +233,7 @@ export class AppDocsManager extends AppManager {
     // for testing purposes
     // doc.supportsStreaming = false;
     // doc.url = ''; // * this will break upload urls
-    
+
     if(!doc.file_name) {
       doc.file_name = '';
     }
@@ -254,7 +254,7 @@ export class AppDocsManager extends AppManager {
 
     return doc;
   }
-  
+
   public getDoc(docId: DocId | MyDocument): MyDocument {
     return isObject<MyDocument>(docId) ? docId : this.docs[docId];
   }
@@ -279,7 +279,7 @@ export class AppDocsManager extends AppManager {
     }
 
     const cached = this.stickerCachedThumbs[doc.id] ??= {};
-  
+
     const thumb = cached[toneIndex];
     if(thumb && thumb.w >= width && thumb.h >= height) {
       return;
@@ -327,7 +327,7 @@ export class AppDocsManager extends AppManager {
       w: 0,
       location: {} as any,
       size: file.size,
-      type: 'full',
+      type: 'full'
     } as PhotoSize.photoSize;
     let document: MyDocument = {
       _: 'document',
@@ -359,7 +359,7 @@ export class AppDocsManager extends AppManager {
 
     this.uploadingWallPapers[id] = {
       cacheContext,
-      file,
+      file
     };
 
     return wallpaper;
@@ -375,8 +375,8 @@ export class AppDocsManager extends AppManager {
         file: inputFile,
         mime_type: file.type,
         settings: {
-          _: 'wallPaperSettings',
-          
+          _: 'wallPaperSettings'
+
         }
       }).then((wallPaper) => {
         assumeType<WallPaper.wallPaper>(wallPaper);

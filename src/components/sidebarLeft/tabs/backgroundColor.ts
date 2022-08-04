@@ -4,18 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { SettingSection } from "..";
-import { Theme } from "../../../config/state";
-import { hexaToRgba } from "../../../helpers/color";
-import { attachClickEvent } from "../../../helpers/dom/clickEvent";
-import findUpClassName from "../../../helpers/dom/findUpClassName";
-import highlightningColor from "../../../helpers/highlightningColor";
-import throttle from "../../../helpers/schedulers/throttle";
-import themeController from "../../../helpers/themeController";
-import appImManager from "../../../lib/appManagers/appImManager";
-import rootScope from "../../../lib/rootScope";
-import ColorPicker, { ColorPickerColor } from "../../colorPicker";
-import { SliderSuperTab } from "../../slider";
+import {SettingSection} from '..';
+import {Theme} from '../../../config/state';
+import {hexaToRgba} from '../../../helpers/color';
+import {attachClickEvent} from '../../../helpers/dom/clickEvent';
+import findUpClassName from '../../../helpers/dom/findUpClassName';
+import highlightningColor from '../../../helpers/highlightningColor';
+import throttle from '../../../helpers/schedulers/throttle';
+import themeController from '../../../helpers/themeController';
+import appImManager from '../../../lib/appManagers/appImManager';
+import rootScope from '../../../lib/rootScope';
+import ColorPicker, {ColorPickerColor} from '../../colorPicker';
+import {SliderSuperTab} from '../../slider';
 
 export default class AppBackgroundColorTab extends SliderSuperTab {
   private colorPicker: ColorPicker;
@@ -115,14 +115,14 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
       const rgba = hexaToRgba(hex);
       const background = this.theme.background;
       const hsla = highlightningColor(rgba);
-    
+
       background.id = '2';
       background.intensity = 0;
       background.slug = '';
       background.color = hex.toLowerCase();
       background.highlightningColor = hsla;
       this.managers.appStateManager.pushToState('settings', rootScope.settings);
-    
+
       appImManager.applyCurrentTheme(undefined, undefined, true);
       this.setActive();
     }
@@ -138,14 +138,14 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
 
       const color = (background.color || '').split(',')[0];
       const isColored = !!color && !background.slug;
-      
+
       // * set active if type is color
       if(isColored) {
         this.colorPicker.onChange = this.onColorChange;
       }
 
       this.colorPicker.setColor(color || '#cccccc');
-      
+
       if(!isColored) {
         this.colorPicker.onChange = this.onColorChange;
       }

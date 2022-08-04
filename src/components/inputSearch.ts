@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-//import { getRichValue } from "../helpers/dom";
-import { LangPackKey } from "../lib/langPack";
-import InputField from "./inputField";
+// import { getRichValue } from "../helpers/dom";
+import {LangPackKey} from '../lib/langPack';
+import InputField from './inputField';
 
 export default class InputSearch {
   public container: HTMLElement;
@@ -45,13 +45,13 @@ export default class InputSearch {
 
     this.container.append(searchIcon, this.clearBtn);
   }
-  
+
   onInput = () => {
     if(!this.onChange) return;
 
-    let value = this.value;
+    const value = this.value;
 
-    //this.input.classList.toggle('is-empty', !value.trim());
+    // this.input.classList.toggle('is-empty', !value.trim());
 
     if(value !== this.prevValue) {
       this.prevValue = value;

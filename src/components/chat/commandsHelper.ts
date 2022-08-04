@@ -4,32 +4,32 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type ChatInput from "./input";
-import type { BotInfo, ChatFull, UserFull } from "../../layer";
-import AutocompleteHelperController from "./autocompleteHelperController";
-import AutocompletePeerHelper from "./autocompletePeerHelper";
-import SearchIndex from "../../lib/searchIndex";
-import { AppManagers } from "../../lib/appManagers/managers";
+import type ChatInput from './input';
+import type {BotInfo, ChatFull, UserFull} from '../../layer';
+import AutocompleteHelperController from './autocompleteHelperController';
+import AutocompletePeerHelper from './autocompletePeerHelper';
+import SearchIndex from '../../lib/searchIndex';
+import {AppManagers} from '../../lib/appManagers/managers';
 
 export function processPeerFullForCommands(peerId: PeerId, full: ChatFull.chatFull | ChatFull.channelFull | UserFull.userFull, query?: string) {
   const botInfos: BotInfo.botInfo[] = [].concat(full.bot_info);
-  let index: SearchIndex<string>; 
-  
+  let index: SearchIndex<string>;
+
   if(query !== undefined) {
     index = new SearchIndex<string>({
       ignoreCase: true
     });
   }
-  
+
   type T = {peerId: PeerId, name: string, description: string, index: number, command: string};
   const commands: Map<string, T> = new Map();
   botInfos.forEach((botInfo) => {
     botInfo.commands.forEach(({command, description}, idx) => {
       const c = '/' + command;
       commands.set(command, {
-        peerId: botInfo.user_id ? botInfo.user_id.toPeerId(false) : peerId, 
-        command: command, 
-        name: c, 
+        peerId: botInfo.user_id ? botInfo.user_id.toPeerId(false) : peerId,
+        command: command,
+        name: c,
         description: description,
         index: idx
       });
@@ -49,18 +49,18 @@ export function processPeerFullForCommands(peerId: PeerId, full: ChatFull.chatFu
   }
 
   out = out.sort((a, b) => commands.get(a.command).index - commands.get(b.command).index);
-  
+
   return out;
 }
 
 export default class CommandsHelper extends AutocompletePeerHelper {
   constructor(
-    appendTo: HTMLElement, 
-    controller: AutocompleteHelperController, 
-    chatInput: ChatInput, 
+    appendTo: HTMLElement,
+    controller: AutocompleteHelperController,
+    chatInput: ChatInput,
     private managers: AppManagers
   ) {
-    super(appendTo, 
+    super(appendTo,
       controller,
       'commands-helper',
       (target) => {

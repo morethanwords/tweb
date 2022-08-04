@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { getEnvironment } from "../../environment/utils";
-import safeReplaceObject from "../../helpers/object/safeReplaceObject";
-import { nextRandomUint } from "../../helpers/random";
-import { InputPhoneCall, MessagesDhConfig, PhoneCall, PhoneCallDiscardReason, PhoneCallProtocol, PhonePhoneCall } from "../../layer";
-import { AppManager } from "./manager";
+import {getEnvironment} from '../../environment/utils';
+import safeReplaceObject from '../../helpers/object/safeReplaceObject';
+import {nextRandomUint} from '../../helpers/random';
+import {InputPhoneCall, MessagesDhConfig, PhoneCall, PhoneCallDiscardReason, PhoneCallProtocol, PhonePhoneCall} from '../../layer';
+import {AppManager} from './manager';
 
 export type CallId = PhoneCall['id'];
 
@@ -16,7 +16,7 @@ export type MyPhoneCall = Exclude<PhoneCall, PhoneCall.phoneCallEmpty | PhoneCal
 
 export class AppCallsManager extends AppManager {
   private calls: Map<CallId, MyPhoneCall>;
-  
+
   protected after() {
     this.calls = new Map();
 
@@ -38,7 +38,7 @@ export class AppCallsManager extends AppManager {
   public computeKey(g_b: Uint8Array, a: Uint8Array, p: Uint8Array) {
     return this.cryptoWorker.invokeCrypto('compute-dh-key', g_b, a, p);
   }
-  
+
   public saveCall(call: PhoneCall) {
     const isDiscarded = call._ === 'phoneCallDiscarded';
     const oldCall = this.calls.get(call.id);
@@ -50,7 +50,7 @@ export class AppCallsManager extends AppManager {
       if(isDiscarded) {
         this.calls.delete(call.id);
       }
-      
+
       call = oldCall;
     } else if(!isDiscarded) {
       this.calls.set(call.id, call as any);
@@ -60,11 +60,11 @@ export class AppCallsManager extends AppManager {
 
     return call;
   }
-  
+
   public getCall(callId: CallId) {
     return this.calls.get(callId);
   }
-  
+
   public getCallInput(id: CallId): InputPhoneCall {
     const call = this.getCall(id);
     return {

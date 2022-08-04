@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { Database } from '.';
+import {Database} from '.';
 
 const DATABASE_SESSION: Database<'session'> = {
   name: 'telegram',

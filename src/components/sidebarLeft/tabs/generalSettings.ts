@@ -4,28 +4,28 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { generateSection, SettingSection } from "..";
-import RangeSelector from "../../rangeSelector";
-import Button from "../../button";
-import CheckboxField from "../../checkboxField";
-import RadioField from "../../radioField";
-import rootScope from "../../../lib/rootScope";
-import { IS_APPLE } from "../../../environment/userAgent";
-import Row from "../../row";
-import AppBackgroundTab from "./background";
-import { LangPackKey, _i18n } from "../../../lib/langPack";
-import { attachClickEvent } from "../../../helpers/dom/clickEvent";
-import assumeType from "../../../helpers/assumeType";
-import { MessagesAllStickers, StickerSet } from "../../../layer";
-import { wrapStickerSetThumb, wrapStickerToRow } from "../../wrappers";
-import LazyLoadQueue from "../../lazyLoadQueue";
-import PopupStickers from "../../popups/stickers";
-import eachMinute from "../../../helpers/eachMinute";
-import { SliderSuperTabEventable } from "../../sliderTab";
-import IS_GEOLOCATION_SUPPORTED from "../../../environment/geolocationSupport";
-import AppQuickReactionTab from "./quickReaction";
-import wrapEmojiText from "../../../lib/richTextProcessor/wrapEmojiText";
-import { State } from "../../../config/state";
+import {generateSection, SettingSection} from '..';
+import RangeSelector from '../../rangeSelector';
+import Button from '../../button';
+import CheckboxField from '../../checkboxField';
+import RadioField from '../../radioField';
+import rootScope from '../../../lib/rootScope';
+import {IS_APPLE} from '../../../environment/userAgent';
+import Row from '../../row';
+import AppBackgroundTab from './background';
+import {LangPackKey, _i18n} from '../../../lib/langPack';
+import {attachClickEvent} from '../../../helpers/dom/clickEvent';
+import assumeType from '../../../helpers/assumeType';
+import {MessagesAllStickers, StickerSet} from '../../../layer';
+import {wrapStickerSetThumb, wrapStickerToRow} from '../../wrappers';
+import LazyLoadQueue from '../../lazyLoadQueue';
+import PopupStickers from '../../popups/stickers';
+import eachMinute from '../../../helpers/eachMinute';
+import {SliderSuperTabEventable} from '../../sliderTab';
+import IS_GEOLOCATION_SUPPORTED from '../../../environment/geolocationSupport';
+import AppQuickReactionTab from './quickReaction';
+import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
+import {State} from '../../../config/state';
 
 export class RangeSettingSelector {
   public container: HTMLDivElement;
@@ -35,10 +35,10 @@ export class RangeSettingSelector {
   public onChange: (value: number) => void;
 
   constructor(
-    name: LangPackKey, 
-    step: number, 
-    initialValue: number, 
-    minValue: number, 
+    name: LangPackKey,
+    step: number,
+    initialValue: number,
+    minValue: number,
     maxValue: number,
     writeValue = true
   ) {
@@ -63,8 +63,8 @@ export class RangeSettingSelector {
     details.append(nameDiv, valueDiv);
 
     this.range = new RangeSelector({
-      step, 
-      min: minValue, 
+      step,
+      min: minValue,
       max: maxValue
     }, initialValue);
     this.range.setListeners();
@@ -75,7 +75,7 @@ export class RangeSettingSelector {
         }
 
         if(writeValue) {
-          //console.log('font size scrub:', value);
+          // console.log('font size scrub:', value);
           valueDiv.innerText = '' + value;
         }
       }
@@ -95,7 +95,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
 
     {
       const container = section('Settings');
-      
+
       const range = new RangeSettingSelector('TextSize', 1, rootScope.settings.messagesTextSize, 12, 20);
       range.onChange = (value) => {
         rootScope.managers.appStateManager.setByKey('settings.messagesTextSize', value);
@@ -108,12 +108,12 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
       });
 
       const animationsCheckboxField = new CheckboxField({
-        text: 'EnableAnimations', 
-        name: 'animations', 
+        text: 'EnableAnimations',
+        name: 'animations',
         stateKey: 'settings.animationsEnabled',
         withRipple: true
       });
-      
+
       container.append(range.container, chatBackgroundButton, animationsCheckboxField.label);
     }
 
@@ -127,9 +127,9 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
 
       const enterRow = new Row({
         radioField: new RadioField({
-          langKey: 'General.SendShortcut.Enter', 
-          name, 
-          value: 'enter', 
+          langKey: 'General.SendShortcut.Enter',
+          name,
+          value: 'enter',
           stateKey
         }),
         subtitleLangKey: 'General.SendShortcut.NewLine.ShiftEnter'
@@ -138,13 +138,13 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
       const ctrlEnterRow = new Row({
         radioField: new RadioField({
           name,
-          value: 'ctrlEnter', 
+          value: 'ctrlEnter',
           stateKey
         }),
         subtitleLangKey: 'General.SendShortcut.NewLine.Enter'
       });
       _i18n(ctrlEnterRow.radioField.main, 'General.SendShortcut.CtrlEnter', [IS_APPLE ? '⌘' : 'Ctrl']);
-      
+
       form.append(enterRow.container, ctrlEnterRow.container);
       container.append(form);
     }
@@ -159,9 +159,9 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
 
       const kilometersRow = new Row({
         radioField: new RadioField({
-          langKey: 'DistanceUnitsKilometers', 
-          name, 
-          value: 'kilometers', 
+          langKey: 'DistanceUnitsKilometers',
+          name,
+          value: 'kilometers',
           stateKey
         })
       });
@@ -170,11 +170,11 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
         radioField: new RadioField({
           langKey: 'DistanceUnitsMiles',
           name,
-          value: 'miles', 
+          value: 'miles',
           stateKey
         })
       });
-      
+
       form.append(kilometersRow.container, milesRow.container);
       container.append(form);
     }
@@ -188,16 +188,16 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
       const stateKey = 'settings.timeFormat';
 
       const formats: [State['settings']['timeFormat'], LangPackKey][] = [
-        ['h12', 'General.TimeFormat.h12'], 
+        ['h12', 'General.TimeFormat.h12'],
         ['h23', 'General.TimeFormat.h23']
       ];
 
       const rows = formats.map(([format, langPackKey]) => {
         const row = new Row({
           radioField: new RadioField({
-            langKey: langPackKey, 
-            name, 
-            value: format, 
+            langKey: langPackKey,
+            name,
+            value: format,
             stateKey
           })
         });
@@ -209,8 +209,8 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
         const date = new Date();
 
         formats.forEach(([format], idx) => {
-          const str = date.toLocaleTimeString("en-us-u-hc-" + format, {
-            hour: '2-digit', 
+          const str = date.toLocaleTimeString('en-us-u-hc-' + format, {
+            hour: '2-digit',
             minute: '2-digit'
           });
 
@@ -228,21 +228,21 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
       const container = section('Emoji');
 
       const suggestCheckboxField = new CheckboxField({
-        text: 'GeneralSettings.EmojiPrediction', 
-        name: 'suggest-emoji', 
+        text: 'GeneralSettings.EmojiPrediction',
+        name: 'suggest-emoji',
         stateKey: 'settings.emoji.suggest',
         withRipple: true
       });
       const bigCheckboxField = new CheckboxField({
-        text: 'GeneralSettings.BigEmoji', 
-        name: 'emoji-big', 
+        text: 'GeneralSettings.BigEmoji',
+        name: 'emoji-big',
         stateKey: 'settings.emoji.big',
         withRipple: true
       });
 
       container.append(suggestCheckboxField.label, bigCheckboxField.label);
     }
-    
+
     {
       const section = new SettingSection({name: 'Telegram.InstalledStickerPacksController', caption: 'StickersBotInfo'});
 
@@ -269,14 +269,14 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
       this.listenerSetter.add(rootScope)('quick_reaction', renderQuickReaction);
 
       const suggestCheckboxField = new CheckboxField({
-        text: 'Stickers.SuggestStickers', 
-        name: 'suggest', 
+        text: 'Stickers.SuggestStickers',
+        name: 'suggest',
         stateKey: 'settings.stickers.suggest',
         withRipple: true
       });
       const loopCheckboxField = new CheckboxField({
-        text: 'InstalledStickers.LoopAnimated', 
-        name: 'loop', 
+        text: 'InstalledStickers.LoopAnimated',
+        name: 'loop',
         stateKey: 'settings.stickers.loop',
         withRipple: true
       });
@@ -326,15 +326,15 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
 
       this.listenerSetter.add(rootScope)('stickers_installed', (e) => {
         const set: StickerSet.stickerSet = e;
-        
+
         if(!stickerSets[set.id]) {
           renderStickerSet(set, 'prepend');
         }
       });
-  
+
       this.listenerSetter.add(rootScope)('stickers_deleted', (e) => {
         const set: StickerSet.stickerSet = e;
-        
+
         if(stickerSets[set.id]) {
           stickerSets[set.id].container.remove();
           delete stickerSets[set.id];

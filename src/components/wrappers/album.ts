@@ -4,18 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { ChatAutoDownloadSettings } from "../../helpers/autoDownload";
-import mediaSizes from "../../helpers/mediaSizes";
-import { Message, PhotoSize } from "../../layer";
-import { AppManagers } from "../../lib/appManagers/managers";
-import getMediaFromMessage from "../../lib/appManagers/utils/messages/getMediaFromMessage";
-import choosePhotoSize from "../../lib/appManagers/utils/photos/choosePhotoSize";
-import rootScope from "../../lib/rootScope";
-import Chat from "../chat/chat";
-import LazyLoadQueue from "../lazyLoadQueue";
-import prepareAlbum from "../prepareAlbum";
-import wrapPhoto from "./photo";
-import wrapVideo from "./video";
+import {ChatAutoDownloadSettings} from '../../helpers/autoDownload';
+import mediaSizes from '../../helpers/mediaSizes';
+import {Message, PhotoSize} from '../../layer';
+import {AppManagers} from '../../lib/appManagers/managers';
+import getMediaFromMessage from '../../lib/appManagers/utils/messages/getMediaFromMessage';
+import choosePhotoSize from '../../lib/appManagers/utils/photos/choosePhotoSize';
+import rootScope from '../../lib/rootScope';
+import Chat from '../chat/chat';
+import LazyLoadQueue from '../lazyLoadQueue';
+import prepareAlbum from '../prepareAlbum';
+import wrapPhoto from './photo';
+import wrapVideo from './video';
 
 export default function wrapAlbum({messages, attachmentDiv, middleware, uploading, lazyLoadQueue, isOut, chat, loadPromises, autoDownload, managers = rootScope.managers}: {
   messages: Message.message[],

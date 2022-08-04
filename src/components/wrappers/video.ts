@@ -4,33 +4,33 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { IS_SAFARI } from "../../environment/userAgent";
-import { animateSingle } from "../../helpers/animation";
-import { ChatAutoDownloadSettings } from "../../helpers/autoDownload";
-import deferredPromise from "../../helpers/cancellablePromise";
-import cancelEvent from "../../helpers/dom/cancelEvent";
-import { attachClickEvent } from "../../helpers/dom/clickEvent";
-import createVideo from "../../helpers/dom/createVideo";
-import isInDOM from "../../helpers/dom/isInDOM";
-import renderImageFromUrl from "../../helpers/dom/renderImageFromUrl";
-import mediaSizes, { ScreenSize } from "../../helpers/mediaSizes";
-import onMediaLoad from "../../helpers/onMediaLoad";
-import throttleWithRaf from "../../helpers/schedulers/throttleWithRaf";
-import sequentialDom from "../../helpers/sequentialDom";
-import toHHMMSS from "../../helpers/string/toHHMMSS";
-import { Message, PhotoSize } from "../../layer";
-import { MyDocument } from "../../lib/appManagers/appDocsManager";
-import appDownloadManager from "../../lib/appManagers/appDownloadManager";
-import appImManager from "../../lib/appManagers/appImManager";
-import { AppManagers } from "../../lib/appManagers/managers";
-import { NULL_PEER_ID } from "../../lib/mtproto/mtproto_config";
-import rootScope from "../../lib/rootScope";
-import { ThumbCache } from "../../lib/storages/thumbs";
-import animationIntersector from "../animationIntersector";
-import appMediaPlaybackController, { MediaSearchContext } from "../appMediaPlaybackController";
-import { findMediaTargets } from "../audio";
-import LazyLoadQueue from "../lazyLoadQueue";
-import ProgressivePreloader from "../preloader";
+import {IS_SAFARI} from '../../environment/userAgent';
+import {animateSingle} from '../../helpers/animation';
+import {ChatAutoDownloadSettings} from '../../helpers/autoDownload';
+import deferredPromise from '../../helpers/cancellablePromise';
+import cancelEvent from '../../helpers/dom/cancelEvent';
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import createVideo from '../../helpers/dom/createVideo';
+import isInDOM from '../../helpers/dom/isInDOM';
+import renderImageFromUrl from '../../helpers/dom/renderImageFromUrl';
+import mediaSizes, {ScreenSize} from '../../helpers/mediaSizes';
+import onMediaLoad from '../../helpers/onMediaLoad';
+import throttleWithRaf from '../../helpers/schedulers/throttleWithRaf';
+import sequentialDom from '../../helpers/sequentialDom';
+import toHHMMSS from '../../helpers/string/toHHMMSS';
+import {Message, PhotoSize} from '../../layer';
+import {MyDocument} from '../../lib/appManagers/appDocsManager';
+import appDownloadManager from '../../lib/appManagers/appDownloadManager';
+import appImManager from '../../lib/appManagers/appImManager';
+import {AppManagers} from '../../lib/appManagers/managers';
+import {NULL_PEER_ID} from '../../lib/mtproto/mtproto_config';
+import rootScope from '../../lib/rootScope';
+import {ThumbCache} from '../../lib/storages/thumbs';
+import animationIntersector from '../animationIntersector';
+import appMediaPlaybackController, {MediaSearchContext} from '../appMediaPlaybackController';
+import {findMediaTargets} from '../audio';
+import LazyLoadQueue from '../lazyLoadQueue';
+import ProgressivePreloader from '../preloader';
 import wrapPhoto from './photo';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
@@ -59,12 +59,12 @@ mediaSizes.addEventListener('changeScreen', (from, to) => {
 });
 
 export default async function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, withoutPreloader, loadPromises, noPlayButton, size, searchContext, autoDownload, managers = rootScope.managers}: {
-  doc: MyDocument, 
-  container?: HTMLElement, 
-  message?: Message.message, 
-  boxWidth?: number, 
-  boxHeight?: number, 
-  withTail?: boolean, 
+  doc: MyDocument,
+  container?: HTMLElement,
+  message?: Message.message,
+  boxWidth?: number,
+  boxHeight?: number,
+  withTail?: boolean,
   isOut?: boolean,
   middleware?: () => boolean,
   lazyLoadQueue?: LazyLoadQueue,
@@ -85,7 +85,7 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
   const canAutoplay = /* doc.sticker ||  */(
     (
       doc.type !== 'video' || (
-        doc.size <= MAX_VIDEO_AUTOPLAY_SIZE && 
+        doc.size <= MAX_VIDEO_AUTOPLAY_SIZE &&
         !isAlbumItem
       )
     ) && (doc.type === 'gif' ? rootScope.settings.autoPlay.gifs : rootScope.settings.autoPlay.videos)
@@ -96,7 +96,7 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
     spanTime = document.createElement('span');
     spanTime.classList.add('video-time');
     container.append(spanTime);
-  
+
     let needPlayButton = false;
     if(doc.type !== 'gif') {
       spanTime.innerText = toHHMMSS(doc.duration, false);
@@ -124,21 +124,21 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
     }
   }
 
-  let res: {
+  const res: {
     thumb?: typeof photoRes,
     loadPromise: Promise<any>
   } = {} as any;
 
   if(doc.mime_type === 'image/gif') {
     const photoRes = await wrapPhoto({
-      photo: doc, 
-      message, 
-      container, 
-      boxWidth, 
-      boxHeight, 
-      withTail, 
-      isOut, 
-      lazyLoadQueue, 
+      photo: doc,
+      message,
+      container,
+      boxWidth,
+      boxHeight,
+      withTail,
+      isOut,
+      lazyLoadQueue,
       middleware,
       withoutPreloader,
       loadPromises,
@@ -183,7 +183,7 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
     }
     circle.style.strokeDasharray = roundVideoCircumference + ' ' + roundVideoCircumference;
     circle.style.strokeDashoffset = '' + roundVideoCircumference;
-    
+
     spanTime.classList.add('tgico');
 
     const isUnread = message.pFlags.media_unread;
@@ -211,20 +211,20 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
           if(isInDOM(globalVideo)) {
             return;
           }
-  
+
           globalVideo.removeEventListener('play', onPlay);
           globalVideo.removeEventListener('timeupdate', throttledTimeUpdate);
           globalVideo.removeEventListener('pause', onPaused);
           globalVideo.removeEventListener('ended', onEnded);
         });
       };
-  
+
       const onFrame = () => {
         ctx.drawImage(globalVideo, 0, 0);
-  
+
         const offset = roundVideoCircumference - globalVideo.currentTime / globalVideo.duration * roundVideoCircumference;
         circle.style.strokeDashoffset = '' + offset;
-  
+
         return !globalVideo.paused;
       };
 
@@ -232,7 +232,7 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
         if(!globalVideo.duration) {
           return;
         }
-  
+
         if(!isInDOM(globalVideo)) {
           clear();
           return;
@@ -241,78 +241,78 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
         if(globalVideo.paused) {
           onFrame();
         }
-  
+
         spanTime.innerText = toHHMMSS(globalVideo.duration - globalVideo.currentTime, false);
       };
 
       const throttledTimeUpdate = throttleWithRaf(onTimeUpdate);
-  
+
       const onPlay = () => {
         video.classList.add('hide');
         divRound.classList.remove('is-paused');
         animateSingle(onFrame, canvas);
-  
+
         if(preloader && preloader.preloader && preloader.preloader.classList.contains('manual')) {
           preloader.onClick();
         }
       };
-  
+
       const onPaused = () => {
         if(!isInDOM(globalVideo)) {
           clear();
           return;
         }
-  
+
         divRound.classList.add('is-paused');
       };
-  
+
       const onEnded = () => {
         video.classList.remove('hide');
         divRound.classList.add('is-paused');
-        
+
         video.currentTime = 0;
         spanTime.innerText = toHHMMSS(globalVideo.duration, false);
-  
+
         if(globalVideo.currentTime) {
           globalVideo.currentTime = 0;
         }
       };
-  
+
       globalVideo.addEventListener('play', onPlay);
       globalVideo.addEventListener('timeupdate', throttledTimeUpdate);
       globalVideo.addEventListener('pause', onPaused);
       globalVideo.addEventListener('ended', onEnded);
-  
+
       attachClickEvent(canvas, (e) => {
         cancelEvent(e);
-  
+
         // ! костыль
         if(preloader && !preloader.detached) {
           preloader.onClick();
         }
-        
+
         // ! can't use it here. on Safari iOS video won't start.
         /* if(globalVideo.readyState < 2) {
           return;
         } */
-  
+
         if(globalVideo.paused) {
           const hadSearchContext = !!searchContext;
           if(appMediaPlaybackController.setSearchContext(searchContext || {
-            peerId: NULL_PEER_ID, 
-            inputFilter: {_: 'inputMessagesFilterEmpty'}, 
+            peerId: NULL_PEER_ID,
+            inputFilter: {_: 'inputMessagesFilterEmpty'},
             useSearch: false
           })) {
             const [prev, next] = !hadSearchContext ? [] : findMediaTargets(divRound, message.mid/* , searchContext.useSearch */);
             appMediaPlaybackController.setTargets({peerId: message.peerId, mid: message.mid}, prev, next);
           }
-          
+
           globalVideo.play();
         } else {
           globalVideo.pause();
         }
       });
-  
+
       if(globalVideo.paused) {
         if(globalVideo.duration && globalVideo.currentTime !== globalVideo.duration && globalVideo.currentTime > 0) {
           onFrame();
@@ -339,14 +339,14 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
   let photoRes: Awaited<ReturnType<typeof wrapPhoto>>;
   if(message) {
     photoRes = await wrapPhoto({
-      photo: doc, 
-      message, 
-      container, 
-      boxWidth, 
-      boxHeight, 
-      withTail, 
-      isOut, 
-      lazyLoadQueue, 
+      photo: doc,
+      message,
+      container,
+      boxWidth,
+      boxHeight,
+      withTail,
+      isOut,
+      lazyLoadQueue,
       middleware,
       withoutPreloader: true,
       loadPromises,
@@ -411,9 +411,9 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
   const renderDeferred = deferredPromise<void>();
   video.addEventListener('error', (e) => {
     if(video.error.code !== 4) {
-      console.error("Error " + video.error.code + "; details: " + video.error.message);
+      console.error('Error ' + video.error.code + '; details: ' + video.error.message);
     }
-    
+
     if(preloader && !uploadFileName) {
       preloader.detach();
     }
@@ -440,7 +440,7 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
       if(!video.videoWidth) {
         return;
       }
-      
+
       spanTime.innerText = toHHMMSS(video.duration - video.currentTime, false);
     };
 
@@ -459,7 +459,7 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
 
   video.muted = true;
   video.loop = true;
-  //video.play();
+  // video.play();
   video.autoplay = true;
 
   let loadPhotoThumbFunc = noAutoDownload && photoRes?.preloader?.loadFunc;
@@ -542,8 +542,8 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
       load();
     }, {capture: true, once: true});
   } else {
-    res.loadPromise = !lazyLoadQueue ? 
-      (await load()).render : 
+    res.loadPromise = !lazyLoadQueue ?
+      (await load()).render :
       (lazyLoadQueue.push({div: container, load: () => load().then(({render}) => render)}), Promise.resolve());
   }
 

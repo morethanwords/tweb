@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { hexToRgb } from "../../helpers/color";
-import { Message } from "../../layer";
-import getPeerColorById from "../../lib/appManagers/utils/peers/getPeerColorById";
-import ReplyContainer from "../chat/replyContainer";
+import {hexToRgb} from '../../helpers/color';
+import {Message} from '../../layer';
+import getPeerColorById from '../../lib/appManagers/utils/peers/getPeerColorById';
+import ReplyContainer from '../chat/replyContainer';
 
 export default function wrapReply(
-  title: Parameters<ReplyContainer['fill']>[0], 
-  subtitle: Parameters<ReplyContainer['fill']>[1], 
+  title: Parameters<ReplyContainer['fill']>[0],
+  subtitle: Parameters<ReplyContainer['fill']>[1],
   message?: Message.message | Message.messageService,
   setColorPeerId?: PeerId
 ) {

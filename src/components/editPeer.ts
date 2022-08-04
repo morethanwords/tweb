@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { InputFile } from "../layer";
-import AvatarEdit from "./avatarEdit";
-import AvatarElement from "./avatar";
-import InputField from "./inputField";
-import ListenerSetter from "../helpers/listenerSetter";
-import ButtonCorner from "./buttonCorner";
-import safeAssign from "../helpers/object/safeAssign";
+import {InputFile} from '../layer';
+import AvatarEdit from './avatarEdit';
+import AvatarElement from './avatar';
+import InputField from './inputField';
+import ListenerSetter from '../helpers/listenerSetter';
+import ButtonCorner from './buttonCorner';
+import safeAssign from '../helpers/object/safeAssign';
 
 export default class EditPeer {
   public nextBtn: HTMLButtonElement;
@@ -50,14 +50,14 @@ export default class EditPeer {
       this.avatarElem = document.createElement('avatar-element') as AvatarElement;
       this.avatarElem.classList.add('avatar-placeholder', 'avatar-' + this.avatarSize);
       this.avatarElem.updateWithOptions({peerId: this.peerId});
-  
+
       if(!options.doNotEditAvatar) {
         this.avatarEdit = new AvatarEdit((_upload) => {
           this.uploadAvatar = _upload;
           this.handleChange();
           this.avatarElem.remove();
         });
-  
+
         this.avatarEdit.container.append(this.avatarElem);
       }
     }

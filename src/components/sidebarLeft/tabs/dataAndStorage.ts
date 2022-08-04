@@ -4,25 +4,25 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { AutoDownloadPeerTypeSettings, STATE_INIT } from "../../../config/state";
-import { SettingSection } from "..";
-import { attachClickEvent } from "../../../helpers/dom/clickEvent";
-import replaceContent from "../../../helpers/dom/replaceContent";
-import toggleDisability from "../../../helpers/dom/toggleDisability";
-import formatBytes from "../../../helpers/formatBytes";
-import copy from "../../../helpers/object/copy";
-import deepEqual from "../../../helpers/object/deepEqual";
-import { FormatterArguments, i18n, join, LangPackKey } from "../../../lib/langPack";
-import rootScope from "../../../lib/rootScope";
-import Button from "../../button";
-import CheckboxField from "../../checkboxField";
-import confirmationPopup from "../../confirmationPopup";
-import Row from "../../row";
-import { SliderSuperTabEventable, SliderSuperTabEventableConstructable } from "../../sliderTab";
-import AppAutoDownloadFileTab from "./autoDownload/file";
-import AppAutoDownloadPhotoTab from "./autoDownload/photo";
-import AppAutoDownloadVideoTab from "./autoDownload/video";
-import apiManagerProxy from "../../../lib/mtproto/mtprotoworker";
+import {AutoDownloadPeerTypeSettings, STATE_INIT} from '../../../config/state';
+import {SettingSection} from '..';
+import {attachClickEvent} from '../../../helpers/dom/clickEvent';
+import replaceContent from '../../../helpers/dom/replaceContent';
+import toggleDisability from '../../../helpers/dom/toggleDisability';
+import formatBytes from '../../../helpers/formatBytes';
+import copy from '../../../helpers/object/copy';
+import deepEqual from '../../../helpers/object/deepEqual';
+import {FormatterArguments, i18n, join, LangPackKey} from '../../../lib/langPack';
+import rootScope from '../../../lib/rootScope';
+import Button from '../../button';
+import CheckboxField from '../../checkboxField';
+import confirmationPopup from '../../confirmationPopup';
+import Row from '../../row';
+import {SliderSuperTabEventable, SliderSuperTabEventableConstructable} from '../../sliderTab';
+import AppAutoDownloadFileTab from './autoDownload/file';
+import AppAutoDownloadPhotoTab from './autoDownload/photo';
+import AppAutoDownloadVideoTab from './autoDownload/video';
+import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 
 const AUTO_DOWNLOAD_FOR_KEYS: {[k in keyof AutoDownloadPeerTypeSettings]: LangPackKey} = {
   contacts: 'AutoDownloadContacts',
@@ -42,20 +42,20 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
       const state = await apiManagerProxy.getState();
 
       const autoCheckboxField = new CheckboxField({
-        text: 'AutoDownloadMedia', 
+        text: 'AutoDownloadMedia',
         name: 'auto',
         checked: !state.settings.autoDownloadNew.pFlags.disabled,
         withRipple: true
       });
 
       const onChange = () => {
-        toggleDisability([resetButton], 
-          deepEqual(state.settings.autoDownload, STATE_INIT.settings.autoDownload) && 
+        toggleDisability([resetButton],
+          deepEqual(state.settings.autoDownload, STATE_INIT.settings.autoDownload) &&
           deepEqual(state.settings.autoDownloadNew, STATE_INIT.settings.autoDownloadNew));
       };
 
       const setSubtitles = () => {
-        this.setAutoDownloadSubtitle(photoRow, state.settings.autoDownload.photo, /* state.settings.autoDownloadNew.photo_size_max */);
+        this.setAutoDownloadSubtitle(photoRow, state.settings.autoDownload.photo /* state.settings.autoDownloadNew.photo_size_max */);
         this.setAutoDownloadSubtitle(videoRow, state.settings.autoDownload.video/* , state.settings.autoDownloadNew.video_size_max */);
         this.setAutoDownloadSubtitle(fileRow, state.settings.autoDownload.file, state.settings.autoDownloadNew.file_size_max);
       };
@@ -69,7 +69,7 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
           onChange();
         }, {once: true});
       };
-      
+
       const photoRow = new Row({
         titleLangKey: 'AutoDownloadPhotos',
         subtitle: '',
@@ -126,7 +126,7 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
         [photoRow, videoRow, fileRow].forEach((row) => {
           row.container.classList.toggle('is-disabled', disabled);
         });
-        
+
         this.managers.appStateManager.setByKey('settings', settings);
 
         onChange();
@@ -143,7 +143,7 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
         fileRow.container,
         resetButton
       );
-      
+
       this.scrollable.append(section.container);
     }
 
@@ -151,14 +151,14 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
       const section = new SettingSection({name: 'AutoplayMedia'});
 
       const gifsCheckboxField = new CheckboxField({
-        text: 'AutoplayGIF', 
-        name: 'gifs', 
+        text: 'AutoplayGIF',
+        name: 'gifs',
         stateKey: 'settings.autoPlay.gifs',
         withRipple: true
       });
       const videosCheckboxField = new CheckboxField({
-        text: 'AutoplayVideo', 
-        name: 'videos', 
+        text: 'AutoplayVideo',
+        name: 'videos',
         stateKey: 'settings.autoPlay.videos',
         withRipple: true
       });
@@ -170,8 +170,9 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
   }
 
   private setAutoDownloadSubtitle(row: Row, settings: AutoDownloadPeerTypeSettings, sizeMax?: number) {
-    let key: LangPackKey, args: FormatterArguments = [];
-    
+    let key: LangPackKey;
+    const args: FormatterArguments = [];
+
     const peerKeys = Object.keys(settings) as (keyof typeof AUTO_DOWNLOAD_FOR_KEYS)[];
     const enabledKeys = peerKeys.map((key) => settings[key] ? AUTO_DOWNLOAD_FOR_KEYS[key] : undefined).filter(Boolean);
     if(!enabledKeys.length || sizeMax === 0) {
@@ -184,14 +185,14 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
       } else {
         key = isAll ? 'AutoDownloadOnAllChats' : 'AutoDownloadOnFor';
       }
-  
+
       if(!isAll) {
         const fragment = document.createElement('span');
         fragment.append(...join(enabledKeys.map((key) => i18n(key)), true, false));
         args.push(fragment);
       }
     }
-    
+
     replaceContent(row.subtitle, i18n(key, args));
   }
 }

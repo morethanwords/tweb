@@ -1,4 +1,4 @@
-import { IS_APPLE_MOBILE } from "../environment/userAgent";
+import {IS_APPLE_MOBILE} from '../environment/userAgent';
 
 export default function onMediaLoad(media: HTMLMediaElement, readyState = media.HAVE_METADATA, useCanplayOnIos?: boolean) {
   return new Promise<void>((resolve) => {

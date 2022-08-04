@@ -4,22 +4,22 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { SliderSuperTab } from "../../slider"
-import InputField from "../../inputField";
-import EditPeer from "../../editPeer";
-import { SettingSection } from "../../sidebarLeft";
-import Row from "../../row";
-import CheckboxField from "../../checkboxField";
-import Button from "../../button";
-import PeerTitle from "../../peerTitle";
-import rootScope from "../../../lib/rootScope";
-import PopupPeer from "../../popups/peer";
-import { addCancelButton } from "../../popups";
-import { i18n } from "../../../lib/langPack";
-import { attachClickEvent } from "../../../helpers/dom/clickEvent";
-import toggleDisability from "../../../helpers/dom/toggleDisability";
-import getPeerId from "../../../lib/appManagers/utils/peers/getPeerId";
-import formatUserPhone from "../../wrappers/formatUserPhone";
+import {SliderSuperTab} from '../../slider'
+import InputField from '../../inputField';
+import EditPeer from '../../editPeer';
+import {SettingSection} from '../../sidebarLeft';
+import Row from '../../row';
+import CheckboxField from '../../checkboxField';
+import Button from '../../button';
+import PeerTitle from '../../peerTitle';
+import rootScope from '../../../lib/rootScope';
+import PopupPeer from '../../popups/peer';
+import {addCancelButton} from '../../popups';
+import {i18n} from '../../../lib/langPack';
+import {attachClickEvent} from '../../../helpers/dom/clickEvent';
+import toggleDisability from '../../../helpers/dom/toggleDisability';
+import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';
+import formatUserPhone from '../../wrappers/formatUserPhone';
 
 export default class AppEditContactTab extends SliderSuperTab {
   private nameInputField: InputField;
@@ -38,7 +38,7 @@ export default class AppEditContactTab extends SliderSuperTab {
 
       const inputWrapper = document.createElement('div');
       inputWrapper.classList.add('input-wrapper');
-  
+
       this.nameInputField = new InputField({
         label: 'FirstName',
         name: 'contact-name',
@@ -62,7 +62,7 @@ export default class AppEditContactTab extends SliderSuperTab {
           this.lastNameInputField.setOriginalValue(user.last_name);
         }
       }
-      
+
       inputWrapper.append(this.nameInputField.container, this.lastNameInputField.container);
       inputFields.push(this.nameInputField, this.lastNameInputField);
 
@@ -78,19 +78,19 @@ export default class AppEditContactTab extends SliderSuperTab {
         const div = document.createElement('div');
         div.classList.add('avatar-edit');
         div.append(this.editPeer.avatarElem);
-  
+
         const notificationsCheckboxField = new CheckboxField({
           text: 'Notifications'
         });
-  
+
         notificationsCheckboxField.input.addEventListener('change', (e) => {
           if(!e.isTrusted) {
             return;
           }
-  
+
           this.managers.appMessagesManager.togglePeerMute(this.peerId);
         });
-  
+
         this.listenerSetter.add(rootScope)('notify_settings', async(update) => {
           if(update.peer._ !== 'notifyPeer') return;
           const peerId = getPeerId(update.peer.peer);
@@ -101,14 +101,14 @@ export default class AppEditContactTab extends SliderSuperTab {
             }
           }
         });
-  
+
         const profileNameDiv = document.createElement('div');
         profileNameDiv.classList.add('profile-name');
         profileNameDiv.append(new PeerTitle({
           peerId: this.peerId
         }).element);
-        //profileNameDiv.innerHTML = 'Karen Stanford';
-  
+        // profileNameDiv.innerHTML = 'Karen Stanford';
+
         const profileSubtitleDiv = document.createElement('div');
         profileSubtitleDiv.classList.add('profile-subtitle');
         profileSubtitleDiv.append(i18n('EditContact.OriginalName'));
@@ -119,7 +119,7 @@ export default class AppEditContactTab extends SliderSuperTab {
           const notificationsRow = new Row({
             checkboxField: notificationsCheckboxField
           });
-    
+
           const enabled = !(await this.managers.appNotificationsManager.isPeerLocalMuted(this.peerId, false));
           notificationsCheckboxField.checked = enabled;
 
@@ -147,9 +147,9 @@ export default class AppEditContactTab extends SliderSuperTab {
         this.editPeer.nextBtn.disabled = true;
 
         this.managers.appUsersManager.addContact(
-          this.peerId, 
-          this.nameInputField.value, 
-          this.lastNameInputField.value, 
+          this.peerId,
+          this.nameInputField.value,
+          this.lastNameInputField.value,
           (await this.managers.appUsersManager.getUser(this.peerId)).phone
         ).finally(() => {
           this.editPeer.nextBtn.removeAttribute('disabled');
@@ -160,7 +160,7 @@ export default class AppEditContactTab extends SliderSuperTab {
 
     if(!isNew) {
       const section = new SettingSection({
-        
+
       });
 
       const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'PeerInfo.DeleteContact'});

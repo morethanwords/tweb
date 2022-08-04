@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import rootScope from "../../lib/rootScope";
-import PopupElement, { addCancelButton } from ".";
-import PopupPeer, { PopupPeerButtonCallbackCheckboxes, PopupPeerOptions } from "./peer";
-import { ChatType } from "../chat/chat";
-import { i18n, LangPackKey } from "../../lib/langPack";
-import PeerTitle from "../peerTitle";
-import hasRights from "../../lib/appManagers/utils/chats/hasRights";
-import filterAsync from "../../helpers/array/filterAsync";
+import rootScope from '../../lib/rootScope';
+import PopupElement, {addCancelButton} from '.';
+import PopupPeer, {PopupPeerButtonCallbackCheckboxes, PopupPeerOptions} from './peer';
+import {ChatType} from '../chat/chat';
+import {i18n, LangPackKey} from '../../lib/langPack';
+import PeerTitle from '../peerTitle';
+import hasRights from '../../lib/appManagers/utils/chats/hasRights';
+import filterAsync from '../../helpers/array/filterAsync';
 
 export default class PopupDeleteMessages {
   constructor(private peerId: PeerId, private mids: number[], private type: ChatType, private onConfirm?: () => void) {
@@ -35,28 +35,28 @@ export default class PopupDeleteMessages {
       }
     };
 
-    let title: LangPackKey, titleArgs: any[], description: LangPackKey, descriptionArgs: any[], buttons: PopupPeerOptions['buttons'], checkboxes: PopupPeerOptions['checkboxes'] = [];
+    const buttons: PopupPeerOptions['buttons'] = [{
+      langKey: 'Delete',
+      isDanger: true,
+      callback
+    }];
+    const checkboxes: PopupPeerOptions['checkboxes'] = [];
+    let title: LangPackKey, titleArgs: any[], description: LangPackKey, descriptionArgs: any[];
     if(mids.length === 1) {
       title = 'DeleteSingleMessagesTitle';
     } else {
       title = 'DeleteMessagesTitle';
       titleArgs = [i18n('messages', [mids.length])];
     }
-    
+
     if(await managers.appPeersManager.isMegagroup(peerId)) {
       description = mids.length === 1 ? 'AreYouSureDeleteSingleMessageMega' : 'AreYouSureDeleteFewMessagesMega';
     } else {
       description = mids.length === 1 ? 'AreYouSureDeleteSingleMessage' : 'AreYouSureDeleteFewMessages';
     }
 
-    buttons = [{
-      langKey: 'Delete',
-      isDanger: true,
-      callback
-    }];
-
     if(peerId === rootScope.myId || type === 'scheduled') {
-      
+
     } else {
       if(peerId.isUser()) {
         checkboxes.push({
@@ -85,7 +85,7 @@ export default class PopupDeleteMessages {
 
               description = 'DeleteMessagesTextGroup';
               descriptionArgs = [i18n('messages', [canRevoke.length])];
-              //description = `You can also delete the ${canRevoke.length} message${canRevoke.length > 1 ? 's' : ''} you sent from the inboxes of other group members by pressing "${buttonText}".`;
+              // description = `You can also delete the ${canRevoke.length} message${canRevoke.length > 1 ? 's' : ''} you sent from the inboxes of other group members by pressing "${buttonText}".`;
             }
           }
         } else {

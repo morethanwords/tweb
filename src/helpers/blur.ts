@@ -22,9 +22,9 @@ if(!IS_CANVAS_FILTER_SUPPORTED) {
 }
 
 function processBlurNext(
-  img: HTMLImageElement, 
-  radius: number, 
-  iterations: number, 
+  img: HTMLImageElement,
+  radius: number,
+  iterations: number,
   canvas: HTMLCanvasElement = document.createElement('canvas')
 ) {
   canvas.width = img.width;
@@ -57,32 +57,32 @@ export default function blur(dataUri: string, radius: number = RADIUS, iteration
 
   const canvas = document.createElement('canvas');
   canvas.className = 'canvas-thumbnail';
-  
+
   let cached = cache.get(dataUri);
   if(!cached) {
     const promise: CacheValue['promise'] = new Promise((resolve) => {
-      //return resolve(dataUri);
+      // return resolve(dataUri);
       requireBlurPromise.then(() => {
         const img = new Image();
         img.onload = () => {
           // if(IS_CANVAS_FILTER_SUPPORTED) {
-            // resolve(processBlurNext(img, radius, iterations));
+          // resolve(processBlurNext(img, radius, iterations));
           // } else {
-            const promise = addHeavyTask({
-              items: [[img, radius, iterations, canvas]],
-              context: null,
-              process: processBlurNext
-            }, 'unshift');
-            
-            promise.then(() => {
-              resolve();
-            });
+          const promise = addHeavyTask({
+            items: [[img, radius, iterations, canvas]],
+            context: null,
+            process: processBlurNext
+          }, 'unshift');
+
+          promise.then(() => {
+            resolve();
+          });
           // }
         };
         img.src = dataUri;
       });
     });
-  
+
     cache.set(dataUri, cached = {
       canvas,
       promise

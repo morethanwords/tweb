@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { AttributeMap } from ".";
-import { NoExtraProperties } from "../../../types";
-import SDPAttributes from "./attributes";
-import SDPLine from "./line";
+import {AttributeMap} from '.';
+import {NoExtraProperties} from '../../../types';
+import SDPAttributes from './attributes';
+import SDPLine from './line';
 
 export type SDPMediaDirection = 'sendonly' | 'recvonly' | 'inactive' | 'sendrecv';
 export default class SDPMediaSection {

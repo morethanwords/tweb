@@ -1,5 +1,5 @@
-import { AuthSentCode } from "./layer";
-import type { ApiError } from "./lib/mtproto/apiManager";
+import {AuthSentCode} from './layer';
+import type {ApiError} from './lib/mtproto/apiManager';
 
 export type DcId = number;
 export type TrueDcId = 1 | 2 | 3 | 4 | 5;
@@ -20,7 +20,7 @@ export type InvokeApiOptions = Partial<{
   prepareTempMessageId: string,
   afterMessageId: string,
   resultType: string,
-  
+
   timeout: number,
   waitTime: number,
   stopTime: number,
@@ -38,7 +38,7 @@ export type WorkerTaskVoidTemplate = Omit<WorkerTaskTemplate, 'id'>;
 
 export type Modify<T, R> = Omit<T, keyof R> & R;
 
-//export type Parameters<T> = T extends (... args: infer T) => any ? T : never; 
+// export type Parameters<T> = T extends (... args: infer T) => any ? T : never;
 
 export type ArgumentTypes<F extends Function> = F extends (...args: infer A) => any ? A : never;
 export type SuperReturnType<F extends Function> = F extends (...args: any) => any ? ReturnType<F> : never;
@@ -68,7 +68,7 @@ type GrowExp<A extends Array<any>, N extends number, P extends Array<Array<any>>
 export type FixedSizeArray<T, N extends number> = N extends 0 ? [] : N extends 1 ? [T] : GrowExp<[T, T], N, [[T]]>;
 
 // taken somewhere from stackoverflow
-// First, define a type that, when passed a union of keys, creates an object which 
+// First, define a type that, when passed a union of keys, creates an object which
 // cannot have those properties. I couldn't find a way to use this type directly,
 // but it can be used with the below type.
 type Impossible<K extends keyof any> = {
@@ -124,7 +124,7 @@ export type SendMessageEmojiInteractionData = {
 /**
  * @link https://core.telegram.org/api/web-events#postmessage-api
  */
- export type TelegramWebviewEventMap = {
+export type TelegramWebviewEventMap = {
   payment_form_submit: {
     credentials: any,
     title: string

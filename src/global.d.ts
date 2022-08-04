@@ -1,5 +1,5 @@
-import type ListenerSetter from "./helpers/listenerSetter";
-import type { Chat, Document, User } from "./layer";
+import type ListenerSetter from './helpers/listenerSetter';
+import type {Chat, Document, User} from './layer';
 
 declare global {
   interface AddEventListenerOptions extends EventListenerOptions {
@@ -32,10 +32,10 @@ declare global {
   type LocalFileError = ApiFileManagerError | ReferenceError | StorageError;
   type LocalErrorType = LocalFileError | NetworkerError | FiltersError | 'UNKNOWN';
 
-  type ServerErrorType = 'FILE_REFERENCE_EXPIRED' | 'SESSION_REVOKED' | 'AUTH_KEY_DUPLICATED' | 
+  type ServerErrorType = 'FILE_REFERENCE_EXPIRED' | 'SESSION_REVOKED' | 'AUTH_KEY_DUPLICATED' |
     'SESSION_PASSWORD_NEEDED' | 'CONNECTION_NOT_INITED' | 'ERROR_EMPTY' | 'MTPROTO_CLUSTER_INVALID' |
     'BOT_PRECHECKOUT_TIMEOUT' | 'TMP_PASSWORD_INVALID' | 'PASSWORD_HASH_INVALID' | 'CHANNEL_PRIVATE';
-  
+
   type ErrorType = LocalErrorType | ServerErrorType;
 
   interface Error {

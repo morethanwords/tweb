@@ -1,10 +1,10 @@
-import customProperties from "../dom/customProperties";
-import clamp from "../number/clamp";
+import customProperties from '../dom/customProperties';
+import clamp from '../number/clamp';
 
 export default class Shimmer {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
-  private font = "30pt Helvetica";
+  private font = '30pt Helvetica';
   private currTime = Date.now();
   private diffTime = 0;
   private spread = 0;
@@ -14,23 +14,23 @@ export default class Shimmer {
   private lightSource = 0;
   private inc = 0.032;
   private lightSpread = 0.55;
-  private animations = ['slide','slide','slide','slide'];
+  private animations = ['slide', 'slide', 'slide', 'slide'];
   private currentAnimationIndex = 0;
   private text: string;
   private fillStyle: CanvasRenderingContext2D['fillStyle'];
-  
+
   private keepTime() {
     this.diffTime = Date.now() - this.currTime;
     this.currTime = Date.now();
   }
-  
+
   private cycleAnimation() {
     ++this.currentAnimationIndex;
     if(this.currentAnimationIndex >= this.animations.length) {
       this.currentAnimationIndex = 0;
     }
   }
-  
+
   private animate() {
     const currentAnimation = this.animations[this.currentAnimationIndex];
     if(currentAnimation === 'glow') {
@@ -38,12 +38,12 @@ export default class Shimmer {
     } else if(currentAnimation === 'slide') {
       return this.animateSlide(); // return slide gradient
     } else {
-      console.log("unknown animation type: " + String(currentAnimation));
+      console.log('unknown animation type: ' + String(currentAnimation));
     }
   }
-  
+
   private animateGlow() {
-    var glowEnd = 255, 
+    var glowEnd = 255,
       rgbStart = 68,
       r = rgbStart,
       g = r,
@@ -54,22 +54,22 @@ export default class Shimmer {
     return () => {
       var smartInc = increment * (this.diffTime / (1000 / 60));
       if(this.paused) {
-        if((Date.now() - this.pausedTime) > interval){
+        if((Date.now() - this.pausedTime) > interval) {
           r = rgbStart;
           this.cycleAnimation()
           this.paused = false;
         }
       } else {
         r = parseInt('' + (r + smartInc));
-        if(r >= glowEnd){
+        if(r >= glowEnd) {
           this.paused = true;
           this.pausedTime = Date.now()
         }
       }
-      return "rgb("+ r + "," + r + "," + r + ")";
+      return 'rgb('+ r + ',' + r + ',' + r + ')';
     };
   }
-  
+
   private animateSlide(): CanvasGradient {
     var gradient = this.ctx.createLinearGradient(0, 0, this.canvas.width, 0),
       smartInc = this.inc * (this.diffTime / (1000 / 60)),
@@ -78,14 +78,14 @@ export default class Shimmer {
       lightCenter;
     if(this.paused) {
       if((Date.now() - this.pausedTime) > this.pauseInterval) {
-        this.lightSource = -0.6; 
+        this.lightSource = -0.6;
         this.cycleAnimation()
         this.paused = false;
         return this.animateSlide();
       }
     } else {
       this.lightSource += smartInc;
-      if(this.lightSource > (1 + this.lightSpread)) { 
+      if(this.lightSource > (1 + this.lightSpread)) {
         this.paused = true;
         this.pausedTime = Date.now();
       }
@@ -94,16 +94,16 @@ export default class Shimmer {
     lightCenter = clamp(this.lightSource, 0, 1);
     lightLeft = clamp(this.lightSource - this.lightSpread, 0, 1);
     lightRight = clamp(this.lightSource + this.lightSpread, 0, 1);
-    
+
     const backgroundColor = customProperties.getProperty('background-color-true');
     const shimmerColor = customProperties.getProperty('surface-color');
     gradient.addColorStop(lightLeft, backgroundColor);
     gradient.addColorStop(lightCenter, shimmerColor);
     gradient.addColorStop(lightRight, backgroundColor);
-    
+
     return gradient;
   }
-  
+
   public settings(dict: Partial<{
     canvas: Shimmer['canvas'],
     fillStyle: Shimmer['fillStyle'],
@@ -124,7 +124,7 @@ export default class Shimmer {
 
     this.canvas.classList.add('shimmer-canvas');
   }
-  
+
   public on() {
     const {width, height} = this.canvas;
     // record the time we ran:

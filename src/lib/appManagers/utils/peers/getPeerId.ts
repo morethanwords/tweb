@@ -1,6 +1,6 @@
-import isObject from "../../../../helpers/object/isObject";
-import { InputPeer, Peer } from "../../../../layer";
-import { NULL_PEER_ID } from "../../../mtproto/mtproto_config";
+import isObject from '../../../../helpers/object/isObject';
+import {InputPeer, Peer} from '../../../../layer';
+import {NULL_PEER_ID} from '../../../mtproto/mtproto_config';
 
 export default function getPeerId(peerId: {user_id: UserId} | {channel_id: ChatId} | {chat_id: ChatId} | InputPeer | PeerId | string): PeerId {
   if(peerId !== undefined && ((peerId as string).isPeerId ? (peerId as string).isPeerId() : false)) return peerId as PeerId;
@@ -20,7 +20,7 @@ export default function getPeerId(peerId: {user_id: UserId} | {channel_id: ChatI
     return NULL_PEER_ID; // maybe it is an inputPeerSelf
   // } else if(!peerId) return 'u0';
   } else if(!peerId) return NULL_PEER_ID;
-  
+
   const isUser = (peerId as string).charAt(0) === 'u';
   const peerParams = (peerId as string).substr(1).split('_');
 

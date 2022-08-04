@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import generateMessageId from "./generateMessageId";
-import getServerMessageId from "./getServerMessageId";
+import generateMessageId from './generateMessageId';
+import getServerMessageId from './getServerMessageId';
 
 export default function incrementMessageId(messageId: number, increment: number) {
   return generateMessageId(getServerMessageId(messageId) + increment);

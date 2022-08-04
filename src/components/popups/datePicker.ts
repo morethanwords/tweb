@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import PopupElement, { PopupOptions } from ".";
-import { attachClickEvent } from "../../helpers/dom/clickEvent";
-import mediaSizes from "../../helpers/mediaSizes";
-import I18n, { i18n, LangPackKey } from "../../lib/langPack";
-import InputField from "../inputField";
+import PopupElement, {PopupOptions} from '.';
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import mediaSizes from '../../helpers/mediaSizes';
+import I18n, {FormatterArguments, i18n, LangPackKey} from '../../lib/langPack';
+import InputField from '../inputField';
 
 export default class PopupDatePicker extends PopupElement {
   protected controlsDiv: HTMLElement;
@@ -32,16 +32,16 @@ export default class PopupDatePicker extends PopupElement {
   protected minutesInputField: InputField;
 
   constructor(initDate: Date, public onPick: (timestamp: number) => void, protected options: Partial<{
-    noButtons: true, 
-    noTitle: true, 
+    noButtons: true,
+    noTitle: true,
     minDate: Date,
     maxDate: Date
     withTime: true,
     showOverflowMonths: true
   }> & PopupOptions = {}) {
     super('popup-date-picker', {
-      body: true, 
-      overlayClosable: true, 
+      body: true,
+      overlayClosable: true,
       buttons: options.noButtons ? [] : [{
         langKey: 'JumpToDate',
         callback: () => {
@@ -74,7 +74,7 @@ export default class PopupDatePicker extends PopupElement {
     this.nextBtn = document.createElement('button');
     this.nextBtn.classList.add('btn-icon', 'tgico-down', 'date-picker-next');
     attachClickEvent(this.nextBtn, this.onNextClick, {listenerSetter: this.listenerSetter});
-    
+
     this.monthTitle = document.createElement('div');
     this.monthTitle.classList.add('date-picker-month-title');
 
@@ -140,12 +140,12 @@ export default class PopupDatePicker extends PopupElement {
       this.selectedDate = initDate;
 
       initDate.setMinutes(initDate.getMinutes() + 10);
-      
+
       this.hoursInputField.setValueSilently(('0' + initDate.getHours()).slice(-2));
       this.minutesInputField.setValueSilently(('0' + initDate.getMinutes()).slice(-2));
 
       initDate.setHours(0, 0, 0, 0);
-      
+
       this.timeDiv.append(this.hoursInputField.container, delimiter, this.minutesInputField.container);
 
       attachClickEvent(this.btnConfirm, () => {
@@ -168,8 +168,8 @@ export default class PopupDatePicker extends PopupElement {
     popupCenterer.append(this.container);
     this.element.append(popupCenterer);
 
-    //const passed = (initDate.getTime() - (initDate.getTimezoneOffset() * 60000)) % 86400000;
-    //this.selectedDate = this.maxDate = new Date(initDate.getTime() - passed);
+    // const passed = (initDate.getTime() - (initDate.getTimezoneOffset() * 60000)) % 86400000;
+    // this.selectedDate = this.maxDate = new Date(initDate.getTime() - passed);
     initDate.setHours(0, 0, 0, 0);
     this.selectedDate = initDate;
 
@@ -210,7 +210,7 @@ export default class PopupDatePicker extends PopupElement {
     if(this.selectedMonth.getTime() === this.minMonth.getTime()) {
       this.prevBtn.setAttribute('disabled', 'true');
     }
-    
+
     this.nextBtn.removeAttribute('disabled');
   };
 
@@ -226,7 +226,7 @@ export default class PopupDatePicker extends PopupElement {
   };
 
   onDateClick = (e: MouseEvent) => {
-    //cancelEvent(e);
+    // cancelEvent(e);
     const target = e.target as HTMLElement;
 
     if(!target.dataset.timestamp) return;
@@ -237,7 +237,7 @@ export default class PopupDatePicker extends PopupElement {
     }
 
     this.selectedEl = target;
-    
+
     target.classList.add('active');
     const timestamp = +target.dataset.timestamp;
 
@@ -249,7 +249,8 @@ export default class PopupDatePicker extends PopupElement {
 
   public setTimeTitle() {
     if(this.btnConfirm && this.selectedDate) {
-      let key: LangPackKey, args: any[] = [];
+      let key: LangPackKey;
+      const args: FormatterArguments = [];
       const date = new Date();
       date.setHours(0, 0, 0, 0);
 
@@ -257,7 +258,7 @@ export default class PopupDatePicker extends PopupElement {
         minute: '2-digit',
         hour: '2-digit'
       };
-      
+
       const sendDate = new Date(this.selectedDate.getTime());
       sendDate.setHours(+this.hoursInputField.value, +this.minutesInputField.value);
 
@@ -293,8 +294,8 @@ export default class PopupDatePicker extends PopupElement {
   }
 
   public setTitle() {
-    //const splitted = this.selectedDate.toString().split(' ', 3);
-    //this.title.innerText = splitted[0] + ', ' + splitted[1] + ' ' + splitted[2];
+    // const splitted = this.selectedDate.toString().split(' ', 3);
+    // this.title.innerText = splitted[0] + ', ' + splitted[1] + ' ' + splitted[2];
     this.title.textContent = '';
     this.title.append(new I18n.IntlDateElement({
       date: this.selectedDate,
@@ -331,7 +332,7 @@ export default class PopupDatePicker extends PopupElement {
 
     this.monthTitle.textContent = '';
     this.monthTitle.append(new I18n.IntlDateElement({date: firstDate, options}).element);
-    //this.monthTitle.innerText = (this.timeDiv && mediaSizes.isMobile ? monthName.slice(0, 3) : monthName) + ' ' + this.selectedMonth.getFullYear();
+    // this.monthTitle.innerText = (this.timeDiv && mediaSizes.isMobile ? monthName.slice(0, 3) : monthName) + ' ' + this.selectedMonth.getFullYear();
 
     if(this.month) {
       this.month.remove();
@@ -343,7 +344,7 @@ export default class PopupDatePicker extends PopupElement {
     const weekStartDate = new Date();
     const day = weekStartDate.getDay();
     if(day !== 1) {
-      weekStartDate.setHours(-24 * (day - 1)); 
+      weekStartDate.setHours(-24 * (day - 1));
     }
 
     for(let i = 0; i < 7; ++i) {

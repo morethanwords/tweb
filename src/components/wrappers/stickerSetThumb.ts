@@ -4,15 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import createVideo from "../../helpers/dom/createVideo";
-import renderImageFromUrl from "../../helpers/dom/renderImageFromUrl";
-import { StickerSet } from "../../layer";
-import appDownloadManager from "../../lib/appManagers/appDownloadManager";
-import { AppManagers } from "../../lib/appManagers/managers";
-import lottieLoader from "../../lib/rlottie/lottieLoader";
-import rootScope from "../../lib/rootScope";
-import LazyLoadQueue from "../lazyLoadQueue";
-import wrapSticker from "./sticker";
+import createVideo from '../../helpers/dom/createVideo';
+import renderImageFromUrl from '../../helpers/dom/renderImageFromUrl';
+import {StickerSet} from '../../layer';
+import appDownloadManager from '../../lib/appManagers/appDownloadManager';
+import {AppManagers} from '../../lib/appManagers/managers';
+import lottieLoader from '../../lib/rlottie/lottieLoader';
+import rootScope from '../../lib/rootScope';
+import LazyLoadQueue from '../lazyLoadQueue';
+import wrapSticker from './sticker';
 
 export default async function wrapStickerSetThumb({set, lazyLoadQueue, container, group, autoplay, width, height, managers = rootScope.managers}: {
   set: StickerSet.stickerSet,
@@ -58,7 +58,7 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
           }
 
           media.classList.add('media-sticker');
-  
+
           return promise.then((blob) => {
             renderImageFromUrl(media, URL.createObjectURL(blob), () => {
               container.append(media);
@@ -76,7 +76,7 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
   if(stickerSet.documents[0]._ !== 'documentEmpty') { // as thumb will be used first sticker
     wrapSticker({
       doc: stickerSet.documents[0],
-      div: container, 
+      div: container,
       group: group,
       lazyLoadQueue,
       managers

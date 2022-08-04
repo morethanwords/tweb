@@ -2,22 +2,22 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type { Chat, ChatPhoto, DialogPeer, InputChannel, InputDialogPeer, InputNotifyPeer, InputPeer, Peer, Update, User, UserProfilePhoto } from "../../layer";
-import type { LangPackKey } from "../langPack";
-import { getRestrictionReason } from "../../helpers/restrictions";
-import isObject from "../../helpers/object/isObject";
-import { AppManager } from "./manager";
-import getPeerId from "./utils/peers/getPeerId";
-import isUser from "./utils/peers/isUser";
-import isAnyChat from "./utils/peers/isAnyChat";
-import { NULL_PEER_ID } from "../mtproto/mtproto_config";
+import type {Chat, ChatPhoto, DialogPeer, InputChannel, InputDialogPeer, InputNotifyPeer, InputPeer, Peer, Update, User, UserProfilePhoto} from '../../layer';
+import type {LangPackKey} from '../langPack';
+import {getRestrictionReason} from '../../helpers/restrictions';
+import isObject from '../../helpers/object/isObject';
+import {AppManager} from './manager';
+import getPeerId from './utils/peers/getPeerId';
+import isUser from './utils/peers/isUser';
+import isAnyChat from './utils/peers/isAnyChat';
+import {NULL_PEER_ID} from '../mtproto/mtproto_config';
 
 export type PeerType = 'channel' | 'chat' | 'megagroup' | 'group' | 'saved';
 export class AppPeersManager extends AppManager {
@@ -38,9 +38,9 @@ export class AppPeersManager extends AppManager {
       return;
     }
 
-    const photo = peerId.isUser() 
-      ? this.appUsersManager.getUserPhoto(peerId.toUserId())
-      : this.appChatsManager.getChatPhoto(peerId.toChatId());
+    const photo = peerId.isUser() ?
+      this.appUsersManager.getUserPhoto(peerId.toUserId()) :
+      this.appChatsManager.getChatPhoto(peerId.toChatId());
 
     return photo._ !== 'chatPhotoEmpty' && photo._ !== 'userProfilePhotoEmpty' ? photo : undefined;
   }
@@ -54,7 +54,7 @@ export class AppPeersManager extends AppManager {
     if(chat && chat.migrated_to && chat.pFlags.deactivated) {
       return getPeerId(chat.migrated_to as InputChannel.inputChannel);
     }
-    
+
     return false;
   }
 
@@ -83,9 +83,9 @@ export class AppPeersManager extends AppManager {
   }
 
   public getPeer(peerId: PeerId) {
-    return peerId.isUser()
-      ? this.appUsersManager.getUser(peerId.toUserId())
-      : this.appChatsManager.getChat(peerId.toChatId());
+    return peerId.isUser() ?
+      this.appUsersManager.getUser(peerId.toUserId()) :
+      this.appChatsManager.getChat(peerId.toChatId());
   }
 
   public getPeerId(peerId: Parameters<typeof getPeerId>[0]) {
@@ -126,7 +126,7 @@ export class AppPeersManager extends AppManager {
   public isUser(peerId: PeerId)/* : peerId is UserId */ {
     return isUser(peerId);
   }
-  
+
   public isAnyChat(peerId: PeerId) {
     return isAnyChat(peerId);
   }
@@ -192,7 +192,7 @@ export class AppPeersManager extends AppManager {
       }
     } else {
       return {
-        _: 'inputNotifyPeer', 
+        _: 'inputNotifyPeer',
         peer: this.getInputPeerById(peerId)
       };
     }
@@ -258,7 +258,7 @@ export class AppPeersManager extends AppManager {
       case 'megagroup':
       case 'group':
         return this.appChatsManager.hasRights(peerId.toChatId(), 'delete_chat') ? 'DeleteMega' : 'ChatList.Context.LeaveGroup';
-      
+
       default:
         return 'ChatList.Context.DeleteChat';
     }

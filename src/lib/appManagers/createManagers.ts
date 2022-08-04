@@ -4,47 +4,47 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { PasswordManager } from "../mtproto/passwordManager";
-import { ReferenceDatabase } from "../mtproto/referenceDatabase";
-import DialogsStorage from "../storages/dialogs";
-import FiltersStorage from "../storages/filters";
-import { ApiUpdatesManager } from "./apiUpdatesManager";
-import { AppAvatarsManager } from "./appAvatarsManager";
-import { AppCallsManager } from "./appCallsManager";
-import { AppChatsManager } from "./appChatsManager";
-import { AppDocsManager } from "./appDocsManager";
-import { AppDraftsManager } from "./appDraftsManager";
-import { AppEmojiManager } from "./appEmojiManager";
-import { AppGroupCallsManager } from "./appGroupCallsManager";
-import { AppInlineBotsManager } from "./appInlineBotsManager";
-import { AppMessagesIdsManager } from "./appMessagesIdsManager";
-import { AppMessagesManager } from "./appMessagesManager";
-import { AppNotificationsManager } from "./appNotificationsManager";
-import { AppPeersManager } from "./appPeersManager";
-import { AppPhotosManager } from "./appPhotosManager";
-import { AppPollsManager } from "./appPollsManager";
-import { AppPrivacyManager } from "./appPrivacyManager";
-import { AppProfileManager } from "./appProfileManager";
-import { AppReactionsManager } from "./appReactionsManager";
-import { AppStickersManager } from "./appStickersManager";
-import { AppUsersManager } from "./appUsersManager";
-import { AppWebPagesManager } from "./appWebPagesManager";
-import { ApiFileManager } from "../mtproto/apiFileManager";
-import { ApiManager } from "../mtproto/apiManager";
-import ctx from "../../environment/ctx";
-import PeersStorage from "../storages/peers";
-import ThumbsStorage from "../storages/thumbs";
-import { NetworkerFactory } from "../mtproto/networkerFactory";
-import { RootScope } from "../rootScope";
-import { Authorizer } from "../mtproto/authorizer";
-import { DcConfigurator } from "../mtproto/dcConfigurator";
-import { TimeManager } from "../mtproto/timeManager";
-import { AppStoragesManager } from "./appStoragesManager";
-import cryptoMessagePort from "../crypto/cryptoMessagePort";
-import appStateManager from "./appStateManager";
-import filterUnique from "../../helpers/array/filterUnique";
-import AppWebDocsManager from "./appWebDocsManager";
-import AppPaymentsManager from "./appPaymentsManager";
+import {PasswordManager} from '../mtproto/passwordManager';
+import {ReferenceDatabase} from '../mtproto/referenceDatabase';
+import DialogsStorage from '../storages/dialogs';
+import FiltersStorage from '../storages/filters';
+import {ApiUpdatesManager} from './apiUpdatesManager';
+import {AppAvatarsManager} from './appAvatarsManager';
+import {AppCallsManager} from './appCallsManager';
+import {AppChatsManager} from './appChatsManager';
+import {AppDocsManager} from './appDocsManager';
+import {AppDraftsManager} from './appDraftsManager';
+import {AppEmojiManager} from './appEmojiManager';
+import {AppGroupCallsManager} from './appGroupCallsManager';
+import {AppInlineBotsManager} from './appInlineBotsManager';
+import {AppMessagesIdsManager} from './appMessagesIdsManager';
+import {AppMessagesManager} from './appMessagesManager';
+import {AppNotificationsManager} from './appNotificationsManager';
+import {AppPeersManager} from './appPeersManager';
+import {AppPhotosManager} from './appPhotosManager';
+import {AppPollsManager} from './appPollsManager';
+import {AppPrivacyManager} from './appPrivacyManager';
+import {AppProfileManager} from './appProfileManager';
+import {AppReactionsManager} from './appReactionsManager';
+import {AppStickersManager} from './appStickersManager';
+import {AppUsersManager} from './appUsersManager';
+import {AppWebPagesManager} from './appWebPagesManager';
+import {ApiFileManager} from '../mtproto/apiFileManager';
+import {ApiManager} from '../mtproto/apiManager';
+import ctx from '../../environment/ctx';
+import PeersStorage from '../storages/peers';
+import ThumbsStorage from '../storages/thumbs';
+import {NetworkerFactory} from '../mtproto/networkerFactory';
+import {RootScope} from '../rootScope';
+import {Authorizer} from '../mtproto/authorizer';
+import {DcConfigurator} from '../mtproto/dcConfigurator';
+import {TimeManager} from '../mtproto/timeManager';
+import {AppStoragesManager} from './appStoragesManager';
+import cryptoMessagePort from '../crypto/cryptoMessagePort';
+import appStateManager from './appStateManager';
+import filterUnique from '../../helpers/array/filterUnique';
+import AppWebDocsManager from './appWebDocsManager';
+import AppPaymentsManager from './appPaymentsManager';
 
 export default function createManagers(appStoragesManager: AppStoragesManager, userId: UserId) {
   const managers = {
@@ -96,7 +96,7 @@ export default function createManagers(appStoragesManager: AppStoragesManager, u
     if(!manager) {
       continue;
     }
-    
+
     if((manager as AppMessagesManager).setManagers) {
       (manager as AppMessagesManager).setManagers(managers as any);
       delete (manager as AppMessagesManager).setManagers;

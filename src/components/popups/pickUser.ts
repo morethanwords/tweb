@@ -4,17 +4,17 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import IS_TOUCH_SUPPORTED from "../../environment/touchSupport";
-import AppSelectPeers from "../appSelectPeers";
-import PopupElement from ".";
-import { LangPackKey, _i18n } from "../../lib/langPack";
+import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
+import AppSelectPeers from '../appSelectPeers';
+import PopupElement from '.';
+import {LangPackKey, _i18n} from '../../lib/langPack';
 
 export default class PopupPickUser extends PopupElement {
   protected selector: AppSelectPeers;
-  
+
   constructor(options: {
-    peerTypes: AppSelectPeers['peerType'], 
-    onSelect?: (peerId: PeerId) => Promise<void> | void, 
+    peerTypes: AppSelectPeers['peerType'],
+    onSelect?: (peerId: PeerId) => Promise<void> | void,
     placeholder: LangPackKey,
     chatRightsAction?: AppSelectPeers['chatRightsAction'],
     peerId?: number,
@@ -23,11 +23,11 @@ export default class PopupPickUser extends PopupElement {
     super('popup-forward', {closable: true, overlayClosable: true, body: true, title: true});
 
     this.selector = new AppSelectPeers({
-      appendTo: this.body, 
+      appendTo: this.body,
       onChange: async() => {
         const selected = this.selector.getSelected();
         const peerId = selected[selected.length - 1].toPeerId();
-        
+
         if(options.onSelect) {
           const res = options.onSelect(peerId);
           if(res instanceof Promise) {
@@ -41,8 +41,8 @@ export default class PopupPickUser extends PopupElement {
 
         this.selector = null;
         this.hide();
-      }, 
-      peerType: options.peerTypes, 
+      },
+      peerType: options.peerTypes,
       onFirstRender: () => {
         this.show();
         this.selector.checkForTriggers(); // ! due to zero height before mounting
@@ -50,8 +50,8 @@ export default class PopupPickUser extends PopupElement {
         if(!IS_TOUCH_SUPPORTED) {
           this.selector.input.focus();
         }
-      }, 
-      chatRightsAction: options.chatRightsAction, 
+      },
+      chatRightsAction: options.chatRightsAction,
       multiSelect: false,
       rippleEnabled: false,
       avatarSize: 46,
@@ -61,7 +61,7 @@ export default class PopupPickUser extends PopupElement {
       managers: this.managers
     });
 
-    //this.scrollable = new Scrollable(this.body);
+    // this.scrollable = new Scrollable(this.body);
 
     this.title.append(this.selector.input);
   }

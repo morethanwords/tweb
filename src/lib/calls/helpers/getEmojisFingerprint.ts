@@ -16,7 +16,7 @@ function readBigIntFromBytesBE(bytes: Uint8Array) {
     const b = bigInt(bytes[i]);
     value = value.or(_bits ? b.shiftLeft(_bits) : b);
   }
-  
+
   return value;
 }
 

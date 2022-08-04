@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import SDP from ".";
-import splitStringByLimitWithRest from "../../../helpers/string/splitStringByLimitWithRest";
-import UniqueNumberGenerator from "../../../helpers/uniqueNumberGenerator";
-import SDPLine from "./line";
-import SDPMediaSection from "./mediaSection";
-import SDPSessionSection from "./sessionSection";
+import SDP from '.';
+import splitStringByLimitWithRest from '../../../helpers/string/splitStringByLimitWithRest';
+import UniqueNumberGenerator from '../../../helpers/uniqueNumberGenerator';
+import SDPLine from './line';
+import SDPMediaSection from './mediaSection';
+import SDPSessionSection from './sessionSection';
 
 export function parseSdp(str: string) {
   function createSection() {
@@ -20,7 +20,8 @@ export function parseSdp(str: string) {
     }
   }
 
-  let sessionSection: SDPSessionSection = null, mediaSections: SDPMediaSection[] = [], lines: SDPLine[] = [];
+  let sessionSection: SDPSessionSection = null, lines: SDPLine[] = [];
+  const mediaSections: SDPMediaSection[] = [];
   str.split(/\r?\n/).forEach((lineStr) => {
     if(!isIncorrectSdpLine(lineStr)) {
       const line = parseSdpLine(lineStr);

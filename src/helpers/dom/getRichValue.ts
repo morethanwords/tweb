@@ -2,18 +2,18 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import { MOUNT_CLASS_TO } from "../../config/debug";
-import { MessageEntity } from "../../layer";
-import combineSameEntities from "../../lib/richTextProcessor/combineSameEntities";
-import sortEntities from "../../lib/richTextProcessor/sortEntities";
-import getRichElementValue from "./getRichElementValue";
+import {MOUNT_CLASS_TO} from '../../config/debug';
+import {MessageEntity} from '../../layer';
+import combineSameEntities from '../../lib/richTextProcessor/combineSameEntities';
+import sortEntities from '../../lib/richTextProcessor/sortEntities';
+import getRichElementValue from './getRichElementValue';
 
 export default function getRichValue(field: HTMLElement, withEntities = true) {
   const lines: string[] = [];
@@ -41,7 +41,7 @@ export default function getRichValue(field: HTMLElement, withEntities = true) {
     sortEntities(entities);
   }
 
-  //console.log('getRichValue:', value, entities);
+  // console.log('getRichValue:', value, entities);
 
   return {value, entities};
 }

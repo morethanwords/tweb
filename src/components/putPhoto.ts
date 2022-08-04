@@ -4,26 +4,26 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import getPreviewURLFromBytes from "../helpers/bytes/getPreviewURLFromBytes";
-import { renderImageFromUrlPromise } from "../helpers/dom/renderImageFromUrl";
-import replaceContent from "../helpers/dom/replaceContent";
-import setInnerHTML from "../helpers/dom/setInnerHTML";
-import { recordPromise } from "../helpers/recordPromise";
-import sequentialDom from "../helpers/sequentialDom";
-import { UserProfilePhoto, ChatPhoto } from "../layer";
-import type { PeerPhotoSize } from "../lib/appManagers/appAvatarsManager";
-import getPeerColorById from "../lib/appManagers/utils/peers/getPeerColorById";
-import { NULL_PEER_ID, REPLIES_PEER_ID } from "../lib/mtproto/mtproto_config";
-import getAbbreviation from "../lib/richTextProcessor/getAbbreviation";
-import rootScope from "../lib/rootScope";
-import getPeerInitials from "./wrappers/getPeerInitials";
+import getPreviewURLFromBytes from '../helpers/bytes/getPreviewURLFromBytes';
+import {renderImageFromUrlPromise} from '../helpers/dom/renderImageFromUrl';
+import replaceContent from '../helpers/dom/replaceContent';
+import setInnerHTML from '../helpers/dom/setInnerHTML';
+import {recordPromise} from '../helpers/recordPromise';
+import sequentialDom from '../helpers/sequentialDom';
+import {UserProfilePhoto, ChatPhoto} from '../layer';
+import type {PeerPhotoSize} from '../lib/appManagers/appAvatarsManager';
+import getPeerColorById from '../lib/appManagers/utils/peers/getPeerColorById';
+import {NULL_PEER_ID, REPLIES_PEER_ID} from '../lib/mtproto/mtproto_config';
+import getAbbreviation from '../lib/richTextProcessor/getAbbreviation';
+import rootScope from '../lib/rootScope';
+import getPeerInitials from './wrappers/getPeerInitials';
 
 export async function putAvatar(
-  div: HTMLElement, 
-  peerId: PeerId, 
-  photo: UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto, 
-  size: PeerPhotoSize, 
-  img = new Image(), 
+  div: HTMLElement,
+  peerId: PeerId,
+  photo: UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto,
+  size: PeerPhotoSize,
+  img = new Image(),
   onlyThumb = false
 ) {
   const r = await rootScope.managers.acknowledged.appAvatarsManager.loadAvatar(peerId, photo, size);
@@ -79,7 +79,7 @@ export async function putAvatar(
         if(div.childElementCount) {
           sequentialDom.mutateElement(img, () => {
             div.dataset.color = '';
-            
+
             if(animate) {
               img.classList.remove('fade-in');
             }
@@ -100,16 +100,16 @@ export async function putAvatar(
   await (renderThumbPromise || renderPromise);
 
   return {
-    cached, 
+    cached,
     loadPromise: renderThumbPromise || renderPromise,
     thumbImage
   };
 }
 
 function set(
-  div: HTMLElement, 
-  innerHTML: Parameters<typeof setInnerHTML>[1], 
-  color: string, 
+  div: HTMLElement,
+  innerHTML: Parameters<typeof setInnerHTML>[1],
+  color: string,
   icon: string
 ) {
   setInnerHTML(div, innerHTML);
@@ -120,22 +120,22 @@ function set(
 
 // peerId === peerId || title
 export default async function putPhoto(
-  div: HTMLElement, 
-  peerId: PeerId, 
-  isDialog = false, 
-  title = '', 
-  onlyThumb = false, 
+  div: HTMLElement,
+  peerId: PeerId,
+  isDialog = false,
+  title = '',
+  onlyThumb = false,
   isBig?: boolean
 ) {
   const myId = rootScope.myId;
-  
+
   if(peerId === myId && isDialog) {
     set(div, '', '', 'tgico-saved');
     return;
   }
 
   const managers = rootScope.managers;
-  
+
   if(peerId !== NULL_PEER_ID && peerId.isUser()) {
     const user = await managers.appUsersManager.getUser(peerId);
     if(user && user.pFlags && user.pFlags.deleted) {
@@ -143,7 +143,7 @@ export default async function putPhoto(
       return;
     }
   }
-  
+
   const size: PeerPhotoSize = isBig ? 'photo_big' : 'photo_small';
   const photo = await managers.appPeersManager.getPeerPhoto(peerId);
   const avatarAvailable = !!photo;
@@ -161,7 +161,7 @@ export default async function putPhoto(
 
     const abbr = await (title ? getAbbreviation(title) : getPeerInitials(peerId, managers));
     set(div, abbr, color, '');
-    //return Promise.resolve(true);
+    // return Promise.resolve(true);
   }
 
   if(avatarAvailable/*  && false */) {

@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { Chat, User } from "../../layer";
-import getAbbreviation from "../../lib/richTextProcessor/getAbbreviation";
-import rootScope from "../../lib/rootScope";
+import {Chat, User} from '../../layer';
+import getAbbreviation from '../../lib/richTextProcessor/getAbbreviation';
+import rootScope from '../../lib/rootScope';
 
 export default async function getPeerInitials(peerId: PeerId, managers = rootScope.managers) {
   const peer: Chat | User = await managers.appPeersManager.getPeer(peerId);

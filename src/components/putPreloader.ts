@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { MOUNT_CLASS_TO } from "../config/debug";
+import {MOUNT_CLASS_TO} from '../config/debug';
 
 export function putPreloader(elem: Element, returnDiv = false): HTMLElement {
   const html = `
@@ -23,7 +23,7 @@ export function putPreloader(elem: Element, returnDiv = false): HTMLElement {
 
     return div;
   }
-  
+
   elem.insertAdjacentHTML('beforeend', html);
   return elem.lastElementChild as HTMLElement;
 }

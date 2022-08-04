@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import InputField from "../../inputField";
-import { SliderSuperTab } from "../../slider";
-import EditPeer from "../../editPeer";
-import { UsernameInputField } from "../../usernameInputField";
-import { i18n, i18n_ } from "../../../lib/langPack";
-import { attachClickEvent } from "../../../helpers/dom/clickEvent";
-import rootScope from "../../../lib/rootScope";
-import { generateSection, SettingSection } from "..";
+import InputField from '../../inputField';
+import {SliderSuperTab} from '../../slider';
+import EditPeer from '../../editPeer';
+import {UsernameInputField} from '../../usernameInputField';
+import {i18n, i18n_} from '../../../lib/langPack';
+import {attachClickEvent} from '../../../helpers/dom/clickEvent';
+import rootScope from '../../../lib/rootScope';
+import {generateSection, SettingSection} from '..';
 
 // TODO: аватарка не поменяется в этой вкладке после изменения почему-то (если поставить в другом клиенте, и потом тут проверить, для этого ещё вышел в чатлист)
 
@@ -20,7 +20,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
   private lastNameInputField: InputField;
   private bioInputField: InputField;
   private usernameInputField: InputField;
-  
+
   private profileUrlContainer: HTMLDivElement;
   private profileUrlAnchor: HTMLAnchorElement;
 
@@ -36,7 +36,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
       const section = generateSection(this.scrollable, undefined, 'Bio.Description');
       const inputWrapper = document.createElement('div');
       inputWrapper.classList.add('input-wrapper');
-  
+
       const appConfig = await this.managers.apiManager.getAppConfig();
       this.firstNameInputField = new InputField({
         label: 'EditProfile.FirstNameLabel',
@@ -53,9 +53,9 @@ export default class AppEditProfileTab extends SliderSuperTab {
         name: 'bio',
         maxLength: rootScope.premium ? appConfig.about_length_limit_premium : appConfig.about_length_limit_default
       });
-  
+
       inputWrapper.append(this.firstNameInputField.container, this.lastNameInputField.container, this.bioInputField.container);
-      
+
       const caption = document.createElement('div');
       caption.classList.add('caption');
       i18n_({element: caption, key: 'Bio.Description'});
@@ -104,7 +104,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
 
       const profileUrlContainer = this.profileUrlContainer = document.createElement('div');
       profileUrlContainer.classList.add('profile-url-container');
-      
+
       const profileUrlAnchor = this.profileUrlAnchor = document.createElement('a');
       profileUrlAnchor.classList.add('profile-url');
       profileUrlAnchor.href = '#';
@@ -122,8 +122,8 @@ export default class AppEditProfileTab extends SliderSuperTab {
     attachClickEvent(this.editPeer.nextBtn, () => {
       this.editPeer.nextBtn.disabled = true;
 
-      let promises: Promise<any>[] = [];
-      
+      const promises: Promise<any>[] = [];
+
       promises.push(this.managers.appProfileManager.updateProfile(this.firstNameInputField.value, this.lastNameInputField.value, this.bioInputField.value).then(() => {
         this.close();
       }, (err) => {
@@ -163,7 +163,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
       this.profileUrlContainer.style.display = 'none';
     } else {
       this.profileUrlContainer.style.display = '';
-      let url = 'https://t.me/' + this.usernameInputField.value;
+      const url = 'https://t.me/' + this.usernameInputField.value;
       this.profileUrlAnchor.innerText = url;
       this.profileUrlAnchor.href = url;
     }

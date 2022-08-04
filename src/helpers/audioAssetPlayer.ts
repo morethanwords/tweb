@@ -51,7 +51,7 @@ export default class AudioAssetPlayer<AssetName extends string> {
     if(!this.audio) {
       return;
     }
-    
+
     this.audio.pause();
   }
 

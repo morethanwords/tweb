@@ -4,24 +4,24 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import IS_PARALLAX_SUPPORTED from "../environment/parallaxSupport";
-import IS_TOUCH_SUPPORTED from "../environment/touchSupport";
-import findAndSplice from "../helpers/array/findAndSplice";
-import cancelEvent from "../helpers/dom/cancelEvent";
-import { attachClickEvent } from "../helpers/dom/clickEvent";
-import filterChatPhotosMessages from "../helpers/filterChatPhotosMessages";
-import ListenerSetter from "../helpers/listenerSetter";
-import ListLoader from "../helpers/listLoader";
-import { fastRaf } from "../helpers/schedulers";
-import { Message, ChatFull, MessageAction, Photo } from "../layer";
-import type { AppMessagesManager } from "../lib/appManagers/appMessagesManager";
-import { AppManagers } from "../lib/appManagers/managers";
-import choosePhotoSize from "../lib/appManagers/utils/photos/choosePhotoSize";
-import { openAvatarViewer } from "./avatar";
-import { putAvatar } from "./putPhoto";
-import Scrollable from "./scrollable";
-import SwipeHandler from "./swipeHandler";
-import { wrapPhoto } from "./wrappers";
+import IS_PARALLAX_SUPPORTED from '../environment/parallaxSupport';
+import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
+import findAndSplice from '../helpers/array/findAndSplice';
+import cancelEvent from '../helpers/dom/cancelEvent';
+import {attachClickEvent} from '../helpers/dom/clickEvent';
+import filterChatPhotosMessages from '../helpers/filterChatPhotosMessages';
+import ListenerSetter from '../helpers/listenerSetter';
+import ListLoader from '../helpers/listLoader';
+import {fastRaf} from '../helpers/schedulers';
+import {Message, ChatFull, MessageAction, Photo} from '../layer';
+import type {AppMessagesManager} from '../lib/appManagers/appMessagesManager';
+import {AppManagers} from '../lib/appManagers/managers';
+import choosePhotoSize from '../lib/appManagers/utils/photos/choosePhotoSize';
+import {openAvatarViewer} from './avatar';
+import {putAvatar} from './putPhoto';
+import Scrollable from './scrollable';
+import SwipeHandler from './swipeHandler';
+import {wrapPhoto} from './wrappers';
 
 const LOAD_NEAREST = 3;
 
@@ -68,7 +68,7 @@ export default class PeerProfileAvatars {
     /* const previousIcon = document.createElement('i');
     previousIcon.classList.add(PeerProfileAvatars.BASE_CLASS + '-arrow-icon', 'tgico-previous');
     this.arrowBack.append(previousIcon); */
-    
+
     this.arrowNext = document.createElement('div');
     this.arrowNext.classList.add(PeerProfileAvatars.BASE_CLASS + '-arrow', PeerProfileAvatars.BASE_CLASS + '-arrow-next', 'tgico-avatarnext');
 
@@ -84,7 +84,7 @@ export default class PeerProfileAvatars {
     const checkScrollTop = () => {
       if(this.scrollable.scrollTop !== 0) {
         this.scrollable.scrollIntoViewNew({
-          element: this.scrollable.container.firstElementChild as HTMLElement, 
+          element: this.scrollable.container.firstElementChild as HTMLElement,
           position: 'start'
         });
         return false;
@@ -118,8 +118,8 @@ export default class PeerProfileAvatars {
       const x = e.pageX;
 
       const clickX = x - rect.left;
-      if((!this.listLoader.previous.length && !this.listLoader.next.length) 
-        || (clickX > (rect.width * SWITCH_ZONE) && clickX < (rect.width - rect.width * SWITCH_ZONE))) {
+      if((!this.listLoader.previous.length && !this.listLoader.next.length) ||
+        (clickX > (rect.width * SWITCH_ZONE) && clickX < (rect.width - rect.width * SWITCH_ZONE))) {
         const peerId = this.peerId;
 
         const targets: {element: HTMLElement, item: Photo.photo['id'] | Message.messageService}[] = [];
@@ -140,21 +140,21 @@ export default class PeerProfileAvatars {
       } else {
         const centerX = rect.right - (rect.width / 2);
         const toRight = x > centerX;
-  
+
         // this.avatars.classList.remove('no-transition');
         // fastRaf(() => {
-          this.avatars.classList.add('no-transition');
-          void this.avatars.offsetLeft; // reflow
+        this.avatars.classList.add('no-transition');
+        void this.avatars.offsetLeft; // reflow
 
-          let distance: number;
-          if(this.listLoader.index === 0 && !toRight) distance = this.listLoader.count - 1;
-          else if(this.listLoader.index === (this.listLoader.count - 1) && toRight) distance = -(this.listLoader.count - 1);
-          else distance = toRight ? 1 : -1;
-          this.listLoader.go(distance);
+        let distance: number;
+        if(this.listLoader.index === 0 && !toRight) distance = this.listLoader.count - 1;
+        else if(this.listLoader.index === (this.listLoader.count - 1) && toRight) distance = -(this.listLoader.count - 1);
+        else distance = toRight ? 1 : -1;
+        this.listLoader.go(distance);
 
-          fastRaf(() => {
-            this.avatars.classList.remove('no-transition');
-          });
+        fastRaf(() => {
+          this.avatars.classList.remove('no-transition');
+        });
         // });
       }
     }, {listenerSetter: this.listenerSetter});
@@ -166,9 +166,9 @@ export default class PeerProfileAvatars {
       }, {once: true});
     };
 
-    let width = 0, x = 0, lastDiffX = 0, lastIndex = 0, minX = 0;
+    let width = 0, x = 0, lastDiffX = 0, /* lastIndex = 0, */ minX = 0;
     const swipeHandler = this.swipeHandler = new SwipeHandler({
-      element: this.avatars, 
+      element: this.avatars,
       onSwipe: (xDiff, yDiff) => {
         lastDiffX = xDiff;
         let lastX = x + xDiff * -PeerProfileAvatars.SCALE;
@@ -176,9 +176,9 @@ export default class PeerProfileAvatars {
         else if(lastX < minX) lastX = minX;
 
         this.avatars.style.transform = PeerProfileAvatars.TRANSLATE_TEMPLATE.replace('{x}', lastX + 'px');
-        //console.log(xDiff, yDiff);
+        // console.log(xDiff, yDiff);
         return false;
-      }, 
+      },
       verifyTouchTarget: (e) => {
         if(!checkScrollTop()) {
           cancelNextClick();
@@ -189,7 +189,7 @@ export default class PeerProfileAvatars {
         }
 
         return true;
-      }, 
+      },
       onFirstSwipe: () => {
         const rect = this.avatars.getBoundingClientRect();
         width = rect.width;
@@ -198,7 +198,7 @@ export default class PeerProfileAvatars {
         /* lastIndex = whichChild(this.tabs.querySelector('.active'));
         x = -width * lastIndex; */
         x = rect.left - this.container.getBoundingClientRect().left;
-        
+
         this.avatars.style.transform = PeerProfileAvatars.TRANSLATE_TEMPLATE.replace('{x}', x + 'px');
 
         this.container.classList.add('is-swiping');
@@ -208,8 +208,8 @@ export default class PeerProfileAvatars {
       onReset: () => {
         const addIndex = Math.ceil(Math.abs(lastDiffX) / (width / PeerProfileAvatars.SCALE)) * (lastDiffX >= 0 ? 1 : -1);
         cancelNextClick();
-        
-        //console.log(addIndex);
+
+        // console.log(addIndex);
 
         this.avatars.classList.remove('no-transition');
         fastRaf(() => {
@@ -270,7 +270,7 @@ export default class PeerProfileAvatars {
           if(!listLoader.current) {
             promises.push(this.managers.appProfileManager.getChatFull(peerId.toChatId()));
           }
-          
+
           promises.push(this.managers.appMessagesManager.getSearch({
             peerId,
             maxId: Number.MAX_SAFE_INTEGER,
@@ -291,11 +291,11 @@ export default class PeerProfileAvatars {
               const message = findAndSplice(value.history, (message) => {
                 return ((message as Message.messageService).action as MessageAction.messageActionChannelEditPhoto).photo.id === chatFull.chat_photo.id;
               }) as Message.messageService;
-              
+
               listLoader.current = message || await this.managers.appMessagesManager.generateFakeAvatarMessage(this.peerId, chatFull.chat_photo);
             }
 
-            //console.log('avatars loaded:', value);
+            // console.log('avatars loaded:', value);
             return {
               count: value.count,
               items: value.history
@@ -306,7 +306,7 @@ export default class PeerProfileAvatars {
       processItem: this.processItem,
       onJump: (item, older) => {
         const id = this.listLoader.index;
-        //const nextId = Math.max(0, id);
+        // const nextId = Math.max(0, id);
         const x = 100 * PeerProfileAvatars.SCALE * id;
         this.avatars.style.transform = PeerProfileAvatars.TRANSLATE_TEMPLATE.replace('{x}', `-${x}%`);
 
@@ -350,8 +350,8 @@ export default class PeerProfileAvatars {
 
     let photo: Photo.photo;
     if(photoId) {
-      photo = typeof(photoId) !== 'object' ? 
-        await this.managers.appPhotosManager.getPhoto(photoId) : 
+      photo = typeof(photoId) !== 'object' ?
+        await this.managers.appPhotosManager.getPhoto(photoId) :
         (photoId.action as MessageAction.messageActionChannelEditPhoto).photo as Photo.photo;
     }
 
@@ -367,7 +367,7 @@ export default class PeerProfileAvatars {
           size: choosePhotoSize(photo, 420, 420, false),
           withoutPreloader: true
         });
-  
+
         [res.images.thumb, res.images.full].filter(Boolean).forEach((img) => {
           img.classList.add('avatar-photo');
         });

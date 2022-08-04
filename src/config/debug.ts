@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import Modes from "./modes";
+import Modes from './modes';
 
 export const DEBUG = (process.env.NODE_ENV !== 'production' || Modes.debug)/*  && false */;
 const ctx: any = typeof(window) !== 'undefined' ? window : self;
 export const MOUNT_CLASS_TO: any = DEBUG || true/*  && false */ ? ctx : {};
 export default DEBUG;
 
-//let m = DEBUG;
+// let m = DEBUG;
 /* if(!DEBUG) {
   ctx.sandpitTurtle = () => {
     //if(!m) {
@@ -20,7 +20,7 @@ export default DEBUG;
       }
       //m = true;
     //}
-  
+
     //DEBUG = !DEBUG;
   };
 } */

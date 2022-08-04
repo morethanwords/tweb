@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { Message, MessageMedia, MessageEntity, MessageAction } from "../../../../layer";
-import matchUrl from "../../../richTextProcessor/matchUrl";
-import type { MyDocument } from "../../appDocsManager";
-import type { MyInputMessagesFilter, MyMessage } from "../../appMessagesManager";
+import {Message, MessageMedia, MessageEntity, MessageAction} from '../../../../layer';
+import matchUrl from '../../../richTextProcessor/matchUrl';
+import type {MyDocument} from '../../appDocsManager';
+import type {MyInputMessagesFilter, MyMessage} from '../../appMessagesManager';
 
 export default function filterMessagesByInputFilter(inputFilter: MyInputMessagesFilter, history: Array<Message.message | Message.messageService>, limit: number) {
   if(inputFilter === 'inputMessagesFilterEmpty') {
@@ -26,7 +26,7 @@ export default function filterMessagesByInputFilter(inputFilter: MyInputMessages
     avatar: boolean,
     url: boolean
   }> = {},
-    neededDocTypes: MyDocument['type'][] = [], 
+    neededDocTypes: MyDocument['type'][] = [],
     excludeDocTypes: MyDocument['type'][] = []/* ,
     neededFlags: string[] = [] */;
 
@@ -80,11 +80,11 @@ export default function filterMessagesByInputFilter(inputFilter: MyInputMessages
       neededContents['avatar'] = true;
       break;
 
-    /* case 'inputMessagesFilterPinned':
+      /* case 'inputMessagesFilterPinned':
       neededFlags.push('pinned');
       break; */
 
-    /* case 'inputMessagesFilterMyMentions':
+      /* case 'inputMessagesFilterMyMentions':
       neededContents['mentioned'] = true;
       break; */
 
@@ -106,15 +106,15 @@ export default function filterMessagesByInputFilter(inputFilter: MyInputMessages
     const message: Message.message | Message.messageService = history[i];
     if(!message) continue;
 
-    //|| (neededContents['mentioned'] && message.totalEntities.find((e: any) => e._ === 'messageEntityMention'));
+    // || (neededContents['mentioned'] && message.totalEntities.find((e: any) => e._ === 'messageEntityMention'));
 
     let found = false;
     if(message._ === 'message') {
       if(message.media && neededContents[message.media._]/*  && !message.fwd_from */) {
         const doc = (message.media as MessageMedia.messageMediaDocument).document as MyDocument;
-        if(doc && 
+        if(doc &&
           (
-            (neededDocTypes.length && !neededDocTypes.includes(doc.type)) || 
+            (neededDocTypes.length && !neededDocTypes.includes(doc.type)) ||
             excludeDocTypes.includes(doc.type)
           )
         ) {
@@ -128,12 +128,12 @@ export default function filterMessagesByInputFilter(inputFilter: MyInputMessages
           found = true;
         }
       }
-    } else if(neededContents['avatar'] && 
-      message.action && 
+    } else if(neededContents['avatar'] &&
+      message.action &&
       ([
-        'messageActionChannelEditPhoto' as const, 
-        'messageActionChatEditPhoto' as const, 
-        'messageActionChannelEditVideo' as const, 
+        'messageActionChannelEditPhoto' as const,
+        'messageActionChatEditPhoto' as const,
+        'messageActionChannelEditVideo' as const,
         'messageActionChatEditVideo' as const
       ] as MessageAction['_'][]).includes(message.action._)) {
       found = true;

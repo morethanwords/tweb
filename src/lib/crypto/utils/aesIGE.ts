@@ -4,11 +4,11 @@ import bytesFromWordss from '../../../helpers/bytes/bytesFromWordss';
 import bytesToWordss from '../../../helpers/bytes/bytesToWordss';
 
 export default function aesSync(bytes: Uint8Array, keyBytes: Uint8Array, ivBytes: Uint8Array, encrypt = true) {
-  //console.log(dT(), 'AES start', bytes, keyBytes, ivBytes);
+  // console.log(dT(), 'AES start', bytes, keyBytes, ivBytes);
 
   const cipher = new IGE(bytesToWordss(keyBytes), bytesToWordss(ivBytes));
   const performedBytes = cipher[encrypt ? 'encrypt' : 'decrypt'](bytesToWordss(bytes));
-  //console.log(dT(), 'AES finish');
+  // console.log(dT(), 'AES finish');
 
   return bytesFromWordss(performedBytes);
 }

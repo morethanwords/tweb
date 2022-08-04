@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import Page from "./page";
-import lottieLoader from "../lib/rlottie/lottieLoader";
-import { horizontalMenu } from "../components/horizontalMenu";
-import { MOUNT_CLASS_TO } from "../config/debug";
-import fastSmoothScroll from "../helpers/fastSmoothScroll";
-import whichChild from "../helpers/dom/whichChild";
+import Page from './page';
+import lottieLoader from '../lib/rlottie/lottieLoader';
+import {horizontalMenu} from '../components/horizontalMenu';
+import {MOUNT_CLASS_TO} from '../config/debug';
+import fastSmoothScroll from '../helpers/fastSmoothScroll';
+import whichChild from '../helpers/dom/whichChild';
 
 class PagesManager {
   private pageId = -1;
@@ -33,7 +33,7 @@ class PagesManager {
     if(page.isAuthPage) {
       this.pagesDiv.style.display = '';
 
-      let id = whichChild(page.pageEl);
+      const id = whichChild(page.pageEl);
       if(this.pageId === id) return;
 
       this.selectTab(id);
@@ -43,13 +43,12 @@ class PagesManager {
       }
 
 
-
       this.pageId = id;
 
       if(this.scrollableDiv) {
         fastSmoothScroll({
-          container: this.scrollableDiv, 
-          element: this.scrollableDiv.firstElementChild as HTMLElement, 
+          container: this.scrollableDiv,
+          element: this.scrollableDiv.firstElementChild as HTMLElement,
           position: 'start'
         });
       }

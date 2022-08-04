@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { UserProfilePhoto, ChatPhoto, InputFileLocation } from "../../layer";
-import { DownloadOptions } from "../mtproto/apiFileManager";
-import { AppManager } from "./manager";
+import {UserProfilePhoto, ChatPhoto, InputFileLocation} from '../../layer';
+import {DownloadOptions} from '../mtproto/apiFileManager';
+import {AppManager} from './manager';
 
 export type PeerPhotoSize = 'photo_small' | 'photo_big';
 
@@ -16,7 +16,7 @@ export class AppAvatarsManager extends AppManager {
       [size in PeerPhotoSize]?: string | Promise<string>
     }
   } = {};
-  
+
   protected after() {
     this.rootScope.addEventListener('avatar_update', (peerId) => {
       this.removeFromAvatarsCache(peerId);
@@ -31,7 +31,7 @@ export class AppAvatarsManager extends AppManager {
 
     return !!(saved && saved[size] && !(saved[size] instanceof Promise));
   }
-  
+
   public removeFromAvatarsCache(peerId: PeerId) {
     if(this.savedAvatarURLs[peerId]) {
       delete this.savedAvatarURLs[peerId];
@@ -45,11 +45,11 @@ export class AppAvatarsManager extends AppManager {
         saved = this.savedAvatarURLs[peerId] = {};
       }
 
-      //console.warn('will invoke downloadSmallFile:', peerId);
+      // console.warn('will invoke downloadSmallFile:', peerId);
       const peerPhotoFileLocation: InputFileLocation.inputPeerPhotoFileLocation = {
-        _: 'inputPeerPhotoFileLocation', 
+        _: 'inputPeerPhotoFileLocation',
         pFlags: {},
-        peer: this.appPeersManager.getInputPeerById(peerId), 
+        peer: this.appPeersManager.getInputPeerById(peerId),
         photo_id: photo.photo_id
       };
 

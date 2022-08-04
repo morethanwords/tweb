@@ -2,18 +2,18 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import { Database } from '../../config/databases';
+import {Database} from '../../config/databases';
 import Modes from '../../config/modes';
 import makeError from '../../helpers/makeError';
 import safeAssign from '../../helpers/object/safeAssign';
-import { logger } from '../logger';
+import {logger} from '../logger';
 
 /**
  * https://developer.mozilla.org/en-US/docs/Web/API/IDBObjectStore/createIndex
@@ -25,7 +25,7 @@ export type IDBIndex = {
 };
 
 export type IDBStore = {
-  name: string, 
+  name: string,
   indexes?: IDBIndex[]
 };
 
@@ -123,7 +123,7 @@ export class IDB {
         let calledNew = false;
 
         this.log('Opened');
-  
+
         db.onerror = (error) => {
           this.storageIsAvailable = false;
           this.log.error('Error creating/accessing IndexedDB database', error);
@@ -138,7 +138,7 @@ export class IDB {
         db.onabort = (e) => {
           this.log.error('abort:', e);
           const transaction = e.target as IDBTransaction;
-          
+
           this.openDatabase(calledNew = true);
 
           if(transaction.onerror) {
@@ -154,14 +154,14 @@ export class IDB {
 
         resolve(this.db = db);
       };
-  
+
       request.onerror = (event) => {
         finished = true;
         this.storageIsAvailable = false;
         this.log.error('Error creating/accessing IndexedDB database', event);
         reject(event);
       };
-  
+
       request.onupgradeneeded = (event) => {
         finished = true;
         this.log.warn('performing idb upgrade from', event.oldVersion, 'to', event.newVersion);
@@ -174,7 +174,7 @@ export class IDB {
               db.deleteObjectStore(store.name);
             //}
           } */
-    
+
           if(!db.objectStoreNames.contains(store.name)) {
             createObjectStore(db, store);
           } else {
@@ -237,11 +237,11 @@ export default class IDBStorage<T extends Database<any>, StoreName extends strin
     const promises = dbNames.map((dbName) => {
       return new Promise<void>((resolve, reject) => {
         const deleteRequest = indexedDB.deleteDatabase(dbName);
-  
+
         deleteRequest.onerror = () => {
           reject();
         };
-  
+
         deleteRequest.onsuccess = () => {
           resolve();
         };
@@ -252,7 +252,7 @@ export default class IDBStorage<T extends Database<any>, StoreName extends strin
   } */
 
   public delete(entryName: string | string[], storeName?: StoreName): Promise<void> {
-    //return Promise.resolve();
+    // return Promise.resolve();
     if(!Array.isArray(entryName)) {
       entryName = [].concat(entryName);
     }
@@ -282,7 +282,7 @@ export default class IDBStorage<T extends Database<any>, StoreName extends strin
       entryName = [].concat(entryName);
       value = [].concat(value);
     }
-    
+
     return this.getObjectStore('readwrite', (objectStore) => {
       return (entryName as string[]).map((entryName, idx) => objectStore.put(value[idx], entryName));
     }, DEBUG ? 'save: ' + entryName.join(', ') : '', storeName);
@@ -323,10 +323,10 @@ export default class IDBStorage<T extends Database<any>, StoreName extends strin
           resolve(blob);
         }, reject);
       }
-  
+
       reader.onerror = reject;
     });
-    
+
 
     try {
       reader.readAsDataURL(blob);
@@ -352,7 +352,7 @@ export default class IDBStorage<T extends Database<any>, StoreName extends strin
       request.onsuccess = function(event) {
         resolve();
       };
-  
+
       request.onerror = reject;
     });
   }
@@ -364,7 +364,7 @@ export default class IDBStorage<T extends Database<any>, StoreName extends strin
   public get<T>(entryName: string[], storeName?: StoreName): Promise<T[]>;
   public get<T>(entryName: string, storeName?: StoreName): Promise<T>;
   public get<T>(entryName: string | string[], storeName?: StoreName): Promise<T> | Promise<T[]> {
-    //return Promise.reject();
+    // return Promise.reject();
 
     if(!Array.isArray(entryName)) {
       entryName = [].concat(entryName);
@@ -380,9 +380,9 @@ export default class IDBStorage<T extends Database<any>, StoreName extends strin
   }
 
   private getObjectStore<T>(
-    mode: IDBTransactionMode, 
-    callback: (objectStore: IDBObjectStore) => IDBRequest | IDBRequest[], 
-    log?: string, 
+    mode: IDBTransactionMode,
+    callback: (objectStore: IDBObjectStore) => IDBRequest | IDBRequest[],
+    log?: string,
     storeName = this.storeName
   ) {
     let perf: number;
@@ -429,16 +429,16 @@ export default class IDBStorage<T extends Database<any>, StoreName extends strin
         if(waitForTransactionComplete) {
           transaction.oncomplete = () => onComplete(/* 'transaction' */);
         }
-  
+
         const timeout = setTimeout(() => {
           this.log.error('transaction not finished', transaction, log);
         }, 10000);
-  
+
         /* transaction.addEventListener('abort', (e) => {
           //handleError();
           this.log.error('IndexedDB: transaction abort!', transaction.error);
         }); */
-  
+
         const callbackResult = callback(transaction.objectStore(storeName));
 
         const isArray = Array.isArray(callbackResult);
@@ -488,7 +488,7 @@ export default class IDBStorage<T extends Database<any>, StoreName extends strin
           resolve(result);
           console.timeEnd('getAllEntries');
         }
-  
+
         request.onerror = reject;
       });
     });
@@ -508,7 +508,7 @@ export default class IDBStorage<T extends Database<any>, StoreName extends strin
           resolve(!!cursor);
           console.timeEnd('isFileExists');
         }
-  
+
         request.onerror = reject;
       });
     });

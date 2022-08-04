@@ -4,22 +4,22 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import ripple from "../ripple";
-import animationIntersector from "../animationIntersector";
-import appNavigationController, { NavigationItem } from "../appNavigationController";
-import { i18n, LangPackKey, _i18n } from "../../lib/langPack";
-import findUpClassName from "../../helpers/dom/findUpClassName";
-import blurActiveElement from "../../helpers/dom/blurActiveElement";
-import ListenerSetter from "../../helpers/listenerSetter";
-import { attachClickEvent, simulateClickEvent } from "../../helpers/dom/clickEvent";
-import isSendShortcutPressed from "../../helpers/dom/isSendShortcutPressed";
-import cancelEvent from "../../helpers/dom/cancelEvent";
-import EventListenerBase, { EventListenerListeners } from "../../helpers/eventListenerBase";
-import { addFullScreenListener, getFullScreenElement } from "../../helpers/dom/fullScreen";
-import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
-import { AppManagers } from "../../lib/appManagers/managers";
-import overlayCounter from "../../helpers/overlayCounter";
-import Scrollable from "../scrollable";
+import ripple from '../ripple';
+import animationIntersector from '../animationIntersector';
+import appNavigationController, {NavigationItem} from '../appNavigationController';
+import {i18n, LangPackKey, _i18n} from '../../lib/langPack';
+import findUpClassName from '../../helpers/dom/findUpClassName';
+import blurActiveElement from '../../helpers/dom/blurActiveElement';
+import ListenerSetter from '../../helpers/listenerSetter';
+import {attachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent';
+import isSendShortcutPressed from '../../helpers/dom/isSendShortcutPressed';
+import cancelEvent from '../../helpers/dom/cancelEvent';
+import EventListenerBase, {EventListenerListeners} from '../../helpers/eventListenerBase';
+import {addFullScreenListener, getFullScreenElement} from '../../helpers/dom/fullScreen';
+import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
+import {AppManagers} from '../../lib/appManagers/managers';
+import overlayCounter from '../../helpers/overlayCounter';
+import Scrollable from '../scrollable';
 
 export type PopupButton = {
   text?: string,
@@ -32,9 +32,9 @@ export type PopupButton = {
 };
 
 export type PopupOptions = Partial<{
-  closable: boolean, 
-  overlayClosable: boolean, 
-  withConfirm: LangPackKey | boolean, 
+  closable: boolean,
+  overlayClosable: boolean,
+  withConfirm: LangPackKey | boolean,
   body: boolean,
   confirmShortcutIsSendShortcut: boolean,
   withoutOverlay: boolean,
@@ -89,7 +89,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
   protected managers: AppManagers;
 
   protected scrollable: Scrollable;
-  
+
   protected buttons: Array<PopupButton>;
 
   constructor(className: string, options: PopupOptions = {}) {
@@ -105,7 +105,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
       if(typeof(options.title) === 'string') {
         _i18n(this.title, options.title);
       }
-      
+
       this.header.append(this.title);
     }
 
@@ -117,7 +117,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     if(options.closable) {
       this.btnClose = document.createElement('span');
       this.btnClose.classList.add('btn-icon', 'popup-close', 'tgico-close');
-      //ripple(this.closeBtn);
+      // ripple(this.closeBtn);
       this.header.prepend(this.btnClose);
 
       attachClickEvent(this.btnClose, this.hide, {listenerSetter: this.listenerSetter, once: true});
@@ -172,27 +172,27 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     if(buttons?.length) {
       const buttonsDiv = this.buttonsEl = document.createElement('div');
       buttonsDiv.classList.add('popup-buttons');
-      
+
       const buttonsElements = buttons.map((b) => {
         const button = document.createElement('button');
         button.className = 'btn' + (b.isDanger ? ' danger' : ' primary');
-        
+
         ripple(button);
-        
+
         if(b.text) {
           button.innerHTML =  b.text;
         } else {
           button.append(i18n(b.langKey, b.langArgs));
         }
-        
+
         attachClickEvent(button, () => {
           b.callback && b.callback();
           this.destroy();
         }, {listenerSetter: this.listenerSetter, once: true});
-        
+
         return b.element = button;
       });
-      
+
       if(!btnConfirmOnEnter && buttons.length === 2) {
         const button = buttons.find((button) => !button.isCancel);
         if(button) {
@@ -240,22 +240,22 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
 
     // cannot add event instantly because keydown propagation will fire it
     // if(this.btnConfirmOnEnter) {
-      setTimeout(() => {
-        if(!this.element.classList.contains('active')) {
+    setTimeout(() => {
+      if(!this.element.classList.contains('active')) {
+        return;
+      }
+
+      this.listenerSetter.add(document.body)('keydown', (e) => {
+        if(PopupElement.POPUPS[PopupElement.POPUPS.length - 1] !== this) {
           return;
         }
 
-        this.listenerSetter.add(document.body)('keydown', (e) => {
-          if(PopupElement.POPUPS[PopupElement.POPUPS.length - 1] !== this) {
-            return;
-          }
-          
-          if(this.confirmShortcutIsSendShortcut ? isSendShortcutPressed(e) : e.key === 'Enter') {
-            simulateClickEvent(this.btnConfirmOnEnter);
-            cancelEvent(e);
-          }
-        });
-      }, 0);
+        if(this.confirmShortcutIsSendShortcut ? isSendShortcutPressed(e) : e.key === 'Enter') {
+          simulateClickEvent(this.btnConfirmOnEnter);
+          cancelEvent(e);
+        }
+      });
+    }, 0);
     // }
   }
 

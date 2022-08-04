@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import AvatarListLoader from "../helpers/avatarListLoader";
-import { Photo } from "../layer";
-import appDownloadManager from "../lib/appManagers/appDownloadManager";
-import appImManager from "../lib/appManagers/appImManager";
-import rootScope from "../lib/rootScope";
-import AppMediaViewerBase from "./appMediaViewerBase";
+import AvatarListLoader from '../helpers/avatarListLoader';
+import {Photo} from '../layer';
+import appDownloadManager from '../lib/appManagers/appDownloadManager';
+import appImManager from '../lib/appManagers/appImManager';
+import rootScope from '../lib/rootScope';
+import AppMediaViewerBase from './appMediaViewerBase';
 
 type AppMediaViewerAvatarTargetType = {element: HTMLElement, photoId: Photo.photo['id']};
 export default class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete', AppMediaViewerAvatarTargetType> {
@@ -31,7 +31,7 @@ export default class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete
     } */]);
 
     // * constructing html end
-    
+
     this.setListeners();
   }
 
@@ -45,7 +45,7 @@ export default class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete
 
   onDownloadClick = async() => {
     appDownloadManager.downloadToDisc({
-      media: await this.managers.appPhotosManager.getPhoto(this.target.photoId), 
+      media: await this.managers.appPhotosManager.getPhoto(this.target.photoId),
       queueId: appImManager.chat.bubbles.lazyLoadQueue.queueId
     });
   };

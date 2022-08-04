@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import cancelEvent from "../helpers/dom/cancelEvent";
-import IS_TOUCH_SUPPORTED from "../environment/touchSupport";
-import safeAssign from "../helpers/object/safeAssign";
-import contextMenuController from "../helpers/contextMenuController";
+import cancelEvent from '../helpers/dom/cancelEvent';
+import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
+import safeAssign from '../helpers/object/safeAssign';
+import contextMenuController from '../helpers/contextMenuController';
 
 const getEvent = (e: TouchEvent | MouseEvent) => {
   return (e as TouchEvent).touches ? (e as TouchEvent).touches[0] : e as MouseEvent;
@@ -48,7 +48,7 @@ export default class SwipeHandler {
 
   constructor(options: SwipeHandlerOptions) {
     safeAssign(this, options);
-    
+
     this.setCursorTo = this.element;
 
     this.setListeners();
@@ -76,7 +76,7 @@ export default class SwipeHandler {
 
   public setCursor(cursor: SwipeHandler['cursor']) {
     this.cursor = cursor;
-    
+
     if(!IS_TOUCH_SUPPORTED && this.hadMove) {
       this.setCursorTo.style.setProperty('cursor', this.cursor, 'important');
     }
@@ -152,16 +152,16 @@ export default class SwipeHandler {
     }
 
     // if(Math.abs(xDiff) > Math.abs(yDiff)) { /*most significant*/
-    //   if(xDiff > 0) { /* left swipe */ 
+    //   if(xDiff > 0) { /* left swipe */
 
     //   } else { /* right swipe */
 
-    //   }                       
+    //   }
     // } else {
-    //   if(yDiff > 0) { /* up swipe */ 
-        
+    //   if(yDiff > 0) { /* up swipe */
+
     //   } else { /* down swipe */
-        
+
     //   }
     // }
 

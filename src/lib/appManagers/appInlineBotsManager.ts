@@ -2,30 +2,30 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type { MyDocument } from "./appDocsManager";
-import type { MyPhoto } from "./appPhotosManager";
-import type { MyTopPeer } from "./appUsersManager";
-import { BotInlineResult, GeoPoint, InputGeoPoint, InputMedia, MessageEntity, MessageMedia, MessagesBotResults, ReplyMarkup } from "../../layer";
-import insertInDescendSortedArray from "../../helpers/array/insertInDescendSortedArray";
-import { AppManager } from "./manager";
-import getPhotoMediaInput from "./utils/photos/getPhotoMediaInput";
-import getServerMessageId from "./utils/messageId/getServerMessageId";
-import generateQId from "./utils/inlineBots/generateQId";
-import getDocumentMediaInput from "./utils/docs/getDocumentMediaInput";
-import { AppMessagesManager } from "./appMessagesManager";
+import type {MyDocument} from './appDocsManager';
+import type {MyPhoto} from './appPhotosManager';
+import type {MyTopPeer} from './appUsersManager';
+import {BotInlineResult, GeoPoint, InputGeoPoint, InputMedia, MessageEntity, MessageMedia, MessagesBotResults, ReplyMarkup} from '../../layer';
+import insertInDescendSortedArray from '../../helpers/array/insertInDescendSortedArray';
+import {AppManager} from './manager';
+import getPhotoMediaInput from './utils/photos/getPhotoMediaInput';
+import getServerMessageId from './utils/messageId/getServerMessageId';
+import generateQId from './utils/inlineBots/generateQId';
+import getDocumentMediaInput from './utils/docs/getDocumentMediaInput';
+import {AppMessagesManager} from './appMessagesManager';
 
 export class AppInlineBotsManager extends AppManager {
   private inlineResults: {[queryAndResultIds: string]: BotInlineResult} = {};
   private setHash: {
     [botId: UserId]: {
-      peerId: PeerId, 
+      peerId: PeerId,
       time: number
     }
   } = {};
@@ -54,18 +54,18 @@ export class AppInlineBotsManager extends AppManager {
       /* if(botResults.switch_pm) {
         botResults.switch_pm.rText = wrapRichText(botResults.switch_pm.text, {noLinebreaks: true, noLinks: true});
       } */
-      
+
       botResults.results.forEach((result) => {
         if(result._ === 'botInlineMediaResult') {
           if(result.document) {
             result.document = this.appDocsManager.saveDoc(result.document);
           }
-          
+
           if(result.photo) {
             result.photo = this.appPhotosManager.savePhoto(result.photo);
           }
         }
-        
+
         this.inlineResults[generateQId(queryId, result.id)] = result;
       });
 
@@ -91,7 +91,7 @@ export class AppInlineBotsManager extends AppManager {
       insertInDescendSortedArray(topPeers, topPeer, 'rating');
 
       this.appStateManager.setKeyValueToStorage('topPeersCache');
-      
+
       // rootScope.$broadcast('inline_bots_popular')
     });
   }
@@ -100,7 +100,7 @@ export class AppInlineBotsManager extends AppManager {
     this.setHash[botId] = {peerId: fromPeerId, time: Date.now()};
     return this.appMessagesManager.startBot(botId, undefined, startParam);
   }
-  
+
   /*
   function resolveInlineMention (username) {
     return AppPeersManager.resolveUsername(username).then(function (peerId) {
@@ -132,7 +132,7 @@ export class AppInlineBotsManager extends AppManager {
         return $q.reject(error)
       })
     }
-    
+
     function regroupWrappedResults (results, rowW, rowH) {
       if (!results ||
         !results[0] ||
@@ -163,7 +163,7 @@ export class AppInlineBotsManager extends AppManager {
           }
           ratios.push(w / h)
         })
-        
+
         var rows = []
         var curCnt = 0
         var curW = 0
@@ -181,7 +181,7 @@ export class AppInlineBotsManager extends AppManager {
         if (curCnt) {
           rows.push(curCnt)
         }
-        
+
         var i = 0
         var thumbs = []
         var lastRowI = rows.length - 1
@@ -203,7 +203,7 @@ export class AppInlineBotsManager extends AppManager {
             result.thumbW = Math.floor(thumbW) - 2
             result.thumbH = Math.floor(thumbH) - 2
           })
-          
+
           i += rowCnt
         })
       } */
@@ -234,11 +234,11 @@ export class AppInlineBotsManager extends AppManager {
       data: button.data
     }, {/* timeout: 1,  */stopTime: -1, noErrorBox: true});
   }
-      
+
   /* function gameButtonClick (id) {
     var message = AppMessagesManager.getMessage(id)
     var peerId = AppMessagesManager.getMessagePeer(message)
-    
+
     return MtpApiManager.invokeApi('messages.getBotCallbackAnswer', {
       peer: AppPeersManager.getInputPeerByID(peerId),
       msg_id: AppMessagesIDsManager.getMessageLocalID(id)
@@ -281,7 +281,7 @@ export class AppInlineBotsManager extends AppManager {
     if(inlineResult.send_message.reply_markup) {
       options.replyMarkup = inlineResult.send_message.reply_markup;
     }
-    
+
     if(inlineResult.send_message._ === 'botInlineMessageText') {
       options.entities = inlineResult.send_message.entities;
       this.appMessagesManager.sendText(peerId, inlineResult.send_message.message, options);
@@ -315,7 +315,7 @@ export class AppInlineBotsManager extends AppManager {
 
           break;
         }
-        
+
         case 'botInlineMessageMediaVenue': {
           inputMedia = {
             _: 'inputMediaVenue',
@@ -392,7 +392,7 @@ export class AppInlineBotsManager extends AppManager {
       this.appMessagesManager.sendOther(peerId, inputMedia, options);
     }
   }
-  
+
   /* function checkGeoLocationAccess (botID) {
     var key = 'bot_access_geo' + botID
     return Storage.get(key).then(function (geoAccess) {

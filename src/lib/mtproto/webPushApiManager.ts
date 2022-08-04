@@ -2,25 +2,25 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type { PushNotificationObject } from "../serviceWorker/push";
-import type { ServicePushPingTaskPayload } from "../serviceWorker/serviceMessagePort";
-import type { NotificationSettings } from "../appManagers/uiNotificationsManager";
-import { MOUNT_CLASS_TO } from "../../config/debug";
-import { logger } from "../logger";
-import apiManagerProxy from "./mtprotoworker";
-import I18n, { LangPackKey } from "../langPack";
-import { IS_MOBILE } from "../../environment/userAgent";
-import appRuntimeManager from "../appManagers/appRuntimeManager";
-import copy from "../../helpers/object/copy";
-import singleInstance from "./singleInstance";
-import EventListenerBase from "../../helpers/eventListenerBase";
+import type {PushNotificationObject} from '../serviceWorker/push';
+import type {ServicePushPingTaskPayload} from '../serviceWorker/serviceMessagePort';
+import type {NotificationSettings} from '../appManagers/uiNotificationsManager';
+import {MOUNT_CLASS_TO} from '../../config/debug';
+import {logger} from '../logger';
+import apiManagerProxy from './mtprotoworker';
+import I18n, {LangPackKey} from '../langPack';
+import {IS_MOBILE} from '../../environment/userAgent';
+import appRuntimeManager from '../appManagers/appRuntimeManager';
+import copy from '../../helpers/object/copy';
+import singleInstance from './singleInstance';
+import EventListenerBase from '../../helpers/eventListenerBase';
 
 export type PushSubscriptionNotifyType = 'init' | 'subscribe' | 'unsubscribe';
 export type PushSubscriptionNotifyEvent = `push_${PushSubscriptionNotifyType}`;
@@ -117,7 +117,7 @@ export class WebPushApiManager extends EventListenerBase<{
     if(!this.isAvailable) {
       return;
     }
-    
+
     navigator.serviceWorker.ready.then((reg) => {
       reg.pushManager.getSubscription().then((subscription) => {
         this.isPushEnabled = false;
@@ -235,7 +235,7 @@ export class WebPushApiManager extends EventListenerBase<{
         this.pushSubscriptionNotify(event);
         return;
       }
-      
+
       this.log.warn('Push', event, subscriptionObj);
       this.dispatchEvent(('push_' + event) as PushSubscriptionNotifyEvent, {
         tokenType: 10,

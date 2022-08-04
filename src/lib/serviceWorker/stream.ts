@@ -4,15 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import readBlobAsUint8Array from "../../helpers/blob/readBlobAsUint8Array";
-import deferredPromise, { CancellablePromise } from "../../helpers/cancellablePromise";
-import debounce from "../../helpers/schedulers/debounce";
-import { InputFileLocation } from "../../layer";
-import CacheStorageController from "../files/cacheStorage";
-import { DownloadOptions, MyUploadFile } from "../mtproto/apiFileManager";
-import { getMtprotoMessagePort, log, serviceMessagePort } from "./index.service";
-import { ServiceRequestFilePartTaskPayload } from "./serviceMessagePort";
-import timeout from "./timeout";
+import readBlobAsUint8Array from '../../helpers/blob/readBlobAsUint8Array';
+import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
+import debounce from '../../helpers/schedulers/debounce';
+import {InputFileLocation} from '../../layer';
+import CacheStorageController from '../files/cacheStorage';
+import {DownloadOptions, MyUploadFile} from '../mtproto/apiFileManager';
+import {getMtprotoMessagePort, log, serviceMessagePort} from './index.service';
+import {ServiceRequestFilePartTaskPayload} from './serviceMessagePort';
+import timeout from './timeout';
 
 const deferredPromises: Map<MessagePort, {[taskId: string]: CancellablePromise<MyUploadFile>}> = new Map();
 const cacheStorage = new CacheStorageController('cachedStreamChunks');
@@ -101,12 +101,12 @@ class Stream {
     if(!promises) {
       deferredPromises.set(mtprotoMessagePort, promises = {});
     }
-    
+
     let deferred = promises[taskId];
     if(deferred) {
       return deferred.then((uploadFile) => uploadFile.bytes);
     }
-    
+
     this.loadedOffsets.add(alignedOffset);
 
     deferred = promises[taskId] = deferredPromise();
@@ -136,7 +136,7 @@ class Stream {
     if(!USE_CACHE) {
       return Promise.resolve();
     }
-    
+
     const key = this.getChunkKey(alignedOffset, limit);
     return cacheStorage.getFile(key).then((blob: Blob) => {
       return fromPreload ? new Uint8Array() : readBlobAsUint8Array(blob);
@@ -215,13 +215,13 @@ class Stream {
     }
 
     return this.requestFilePart(alignedOffset, limit).then((ab) => {
-      //log.debug('[stream] requestFilePart result:', result);
+      // log.debug('[stream] requestFilePart result:', result);
 
       // if(isSafari) {
       if(offset !== alignedOffset || end !== (alignedOffset + limit)) {
         ab = ab.slice(offset - alignedOffset, end - alignedOffset + 1);
       }
-      
+
       const headers: Record<string, string> = {
         'Accept-Ranges': 'bytes',
         'Content-Range': `bytes ${offset}-${offset + ab.byteLength - 1}/${this.info.size || '*'}`,
@@ -233,13 +233,13 @@ class Stream {
       }
 
       // simulate slow connection
-      //setTimeout(() => {
-        return new Response(ab, {
-          status: 206,
-          statusText: 'Partial Content',
-          headers,
-        });
-      //}, 2.5e3);
+      // setTimeout(() => {
+      return new Response(ab, {
+        status: 206,
+        statusText: 'Partial Content',
+        headers
+      });
+      // }, 2.5e3);
     });
   }
 
@@ -261,7 +261,7 @@ export default function onStreamFetch(event: FetchEvent, params: string) {
   const info: DownloadOptions = JSON.parse(decodeURIComponent(params));
   const stream = Stream.get(info);
 
-  //log.debug('[stream]', url, offset, end);
+  // log.debug('[stream]', url, offset, end);
 
   event.respondWith(Promise.race([
     timeout(45 * 1000),
@@ -278,8 +278,8 @@ function responseForSafariFirstRange(range: StreamRange, mimeType: string, size:
         'Accept-Ranges': 'bytes',
         'Content-Range': `bytes 0-1/${size || '*'}`,
         'Content-Length': '2',
-        'Content-Type': mimeType || 'video/mp4',
-      },
+        'Content-Type': mimeType || 'video/mp4'
+      }
     });
   }
 

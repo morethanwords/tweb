@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { WebPDecoder } from '../../vendor/libwebp-0.2.0';
-import { encode } from 'fast-png';
+import {WebPDecoder} from '../../vendor/libwebp-0.2.0';
+import {encode} from 'fast-png';
 
 export function webp2png(data: Uint8Array) {
   const decoder = new WebPDecoder();
@@ -33,7 +33,7 @@ export function webp2png(data: Uint8Array) {
       width: buffer.width,
       height: buffer.height,
       channels: 4,
-      depth: 8,
+      depth: 8
     });
 
     return {status, bytes: pngData};

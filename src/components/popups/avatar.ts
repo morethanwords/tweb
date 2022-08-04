@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { AppDownloadManager } from "../../lib/appManagers/appDownloadManager";
-import resizeableImage from "../../lib/cropper";
-import PopupElement from ".";
-import { _i18n } from "../../lib/langPack";
-import { attachClickEvent } from "../../helpers/dom/clickEvent";
-import readBlobAsDataURL from "../../helpers/blob/readBlobAsDataURL";
-import rootScope from "../../lib/rootScope";
-import appDownloadManager from "../../lib/appManagers/appDownloadManager";
+import type {AppDownloadManager} from '../../lib/appManagers/appDownloadManager';
+import resizeableImage from '../../lib/cropper';
+import PopupElement from '.';
+import {_i18n} from '../../lib/langPack';
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import readBlobAsDataURL from '../../helpers/blob/readBlobAsDataURL';
+import rootScope from '../../lib/rootScope';
+import appDownloadManager from '../../lib/appManagers/appDownloadManager';
 
 export default class PopupAvatar extends PopupElement {
   private cropContainer: HTMLElement;
@@ -56,13 +56,13 @@ export default class PopupAvatar extends PopupElement {
         this.image = new Image();
         this.cropContainer.append(this.image);
         this.image.src = contents;
-  
+
         this.image.onload = () => {
           /* let {w, h} = calcImageInBox(this.image.naturalWidth, this.image.naturalHeight, 460, 554);
           cropContainer.style.width = w + 'px';
           cropContainer.style.height = h + 'px'; */
           this.show();
-  
+
           this.cropper = resizeableImage(this.image, this.canvas);
           this.input.value = '';
         };
@@ -105,8 +105,8 @@ export default class PopupAvatar extends PopupElement {
   }
 
   public darkenCanvas() {
-    let ctx = this.canvas.getContext('2d');
-    ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+    const ctx = this.canvas.getContext('2d');
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
   }
 }

@@ -23,20 +23,20 @@ export default function factorizePollardRhoPQ(n: number): number {
   /* no prime divisor for 1 */
   if(n === 1)
     return n;
-    
+
   /* even number means one of the divisors is 2 */
   if(n % 2 === 0)
     return 2;
-    
+
   /* we will pick from the range [2, N) */
   let x = Math.floor(Math.random() * (-n + 1));
   let y = x;
-    
+
   /* the constant in f(x).
   * Algorithm can be re-run with a different c
   * if it throws failure for a composite. */
-  let c = Math.floor(Math.random() * (-n + 1));
-    
+  const c = Math.floor(Math.random() * (-n + 1));
+
   /* Initialize candidate divisor (or result) */
   let d = 1;
   /* until the prime factor isn't obtained.

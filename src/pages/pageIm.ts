@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import blurActiveElement from "../helpers/dom/blurActiveElement";
-import loadFonts from "../helpers/dom/loadFonts";
-import I18n from "../lib/langPack";
-import rootScope from "../lib/rootScope";
-import Page from "./page";
+import blurActiveElement from '../helpers/dom/blurActiveElement';
+import loadFonts from '../helpers/dom/loadFonts';
+import I18n from '../lib/langPack';
+import rootScope from '../lib/rootScope';
+import Page from './page';
 
-let onFirstMount = () => {
+const onFirstMount = () => {
   rootScope.managers.appStateManager.pushToState('authState', {_: 'authStateSignedIn'});
   // ! TOO SLOW
   /* appStateManager.saveState(); */
@@ -24,8 +24,8 @@ let onFirstMount = () => {
   }
 
   page.pageEl.style.display = '';
-  
-  //AudioContext && global.navigator && global.navigator.mediaDevices && global.navigator.mediaDevices.getUserMedia && global.WebAssembly;
+
+  // AudioContext && global.navigator && global.navigator.mediaDevices && global.navigator.mediaDevices.getUserMedia && global.WebAssembly;
 
   /* // @ts-ignore
   var AudioContext = globalThis.AudioContext || globalThis.webkitAudioContext;
@@ -36,7 +36,7 @@ let onFirstMount = () => {
   alert('navigator.mediaDevices.getUserMedia:' + typeof(navigator.mediaDevices?.getUserMedia));
   alert('global.WebAssembly:' + typeof(WebAssembly)); */
 
-  //(Array.from(document.getElementsByClassName('rp')) as HTMLElement[]).forEach((el) => ripple(el));
+  // (Array.from(document.getElementsByClassName('rp')) as HTMLElement[]).forEach((el) => ripple(el));
 
   blurActiveElement();
 

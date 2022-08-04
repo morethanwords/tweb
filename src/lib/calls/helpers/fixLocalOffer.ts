@@ -4,16 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import forEachReverse from "../../../helpers/array/forEachReverse";
-import copy from "../../../helpers/object/copy";
-import { ConferenceEntry } from "../localConferenceDescription";
-import { parseSdp, addSimulcast } from "../sdp/utils";
-import { generateMediaFirstLine, SDPBuilder } from "../sdpBuilder";
-import { UpdateGroupCallConnectionData } from "../types";
-import parseMediaSectionInfo from "./parseMediaSectionInfo";
+import forEachReverse from '../../../helpers/array/forEachReverse';
+import copy from '../../../helpers/object/copy';
+import {ConferenceEntry} from '../localConferenceDescription';
+import {parseSdp, addSimulcast} from '../sdp/utils';
+import {generateMediaFirstLine, SDPBuilder} from '../sdpBuilder';
+import {UpdateGroupCallConnectionData} from '../types';
+import parseMediaSectionInfo from './parseMediaSectionInfo';
 
 export default function fixLocalOffer(options: {
-  offer: RTCSessionDescriptionInit, 
+  offer: RTCSessionDescriptionInit,
   data: UpdateGroupCallConnectionData,
   skipAddingMulticast?: boolean
   // mids?: string[]
@@ -67,11 +67,11 @@ export default function fixLocalOffer(options: {
 
     const codecIds = payloadTypes.map((payload) => '' + payload.id);
     const correctMLine = generateMediaFirstLine(section.mediaType, undefined, codecIds);
-    
+
     if(localMLine !== correctMLine) {
       const sectionInfo = parseMediaSectionInfo(sdp, section);
 
-      let newData = {...data};
+      const newData = {...data};
       newData.transport = copy(newData.transport);
       newData.transport.ufrag = sectionInfo.ufrag;
       newData.transport.pwd = sectionInfo.pwd;

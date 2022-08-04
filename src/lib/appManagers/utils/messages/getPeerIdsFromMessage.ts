@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { Message, MessageAction, MessageMedia } from "../../../../layer";
-import getPeerId from "../peers/getPeerId";
+import {Message, MessageAction, MessageMedia} from '../../../../layer';
+import getPeerId from '../peers/getPeerId';
 
 export default function getPeerIdsFromMessage(message: Message.message | Message.messageService) {
   const peerIds: number[] = [
@@ -44,7 +44,7 @@ export default function getPeerIdsFromMessage(message: Message.message | Message
 
     const chatIds: ChatId[] = [
       (action as MessageAction.messageActionChatMigrateTo).channel_id,
-      (action as MessageAction.messageActionChannelMigrateFrom).chat_id,
+      (action as MessageAction.messageActionChannelMigrateFrom).chat_id
     ];
     peerIds.push(...chatIds.filter(Boolean).map((chatId) => chatId.toPeerId(true)));
   }

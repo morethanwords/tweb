@@ -4,34 +4,34 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { generateSection } from "..";
-import { averageColor, averageColorFromCanvas } from "../../../helpers/averageColor";
-import blur from "../../../helpers/blur";
-import deferredPromise, { CancellablePromise } from "../../../helpers/cancellablePromise";
-import { attachClickEvent } from "../../../helpers/dom/clickEvent";
-import findUpClassName from "../../../helpers/dom/findUpClassName";
-import highlightningColor from "../../../helpers/highlightningColor";
-import copy from "../../../helpers/object/copy";
-import sequentialDom from "../../../helpers/sequentialDom";
-import ChatBackgroundGradientRenderer from "../../chat/gradientRenderer";
-import { Document, PhotoSize, WallPaper } from "../../../layer";
-import { MyDocument } from "../../../lib/appManagers/appDocsManager";
-import appDownloadManager, { AppDownloadManager, DownloadBlob } from "../../../lib/appManagers/appDownloadManager";
-import appImManager from "../../../lib/appManagers/appImManager";
-import rootScope from "../../../lib/rootScope";
-import Button from "../../button";
-import CheckboxField from "../../checkboxField";
-import ProgressivePreloader from "../../preloader";
-import { SliderSuperTab } from "../../slider";
-import { wrapPhoto } from "../../wrappers";
-import AppBackgroundColorTab from "./backgroundColor";
-import choosePhotoSize from "../../../lib/appManagers/utils/photos/choosePhotoSize";
-import { STATE_INIT, Theme } from "../../../config/state";
-import themeController from "../../../helpers/themeController";
-import requestFile from "../../../helpers/files/requestFile";
-import { renderImageFromUrlPromise } from "../../../helpers/dom/renderImageFromUrl";
-import scaleMediaElement from "../../../helpers/canvas/scaleMediaElement";
-import { MediaSize } from "../../../helpers/mediaSize";
+import {generateSection} from '..';
+import {averageColor, averageColorFromCanvas} from '../../../helpers/averageColor';
+import blur from '../../../helpers/blur';
+import deferredPromise, {CancellablePromise} from '../../../helpers/cancellablePromise';
+import {attachClickEvent} from '../../../helpers/dom/clickEvent';
+import findUpClassName from '../../../helpers/dom/findUpClassName';
+import highlightningColor from '../../../helpers/highlightningColor';
+import copy from '../../../helpers/object/copy';
+import sequentialDom from '../../../helpers/sequentialDom';
+import ChatBackgroundGradientRenderer from '../../chat/gradientRenderer';
+import {Document, PhotoSize, WallPaper} from '../../../layer';
+import {MyDocument} from '../../../lib/appManagers/appDocsManager';
+import appDownloadManager, {AppDownloadManager, DownloadBlob} from '../../../lib/appManagers/appDownloadManager';
+import appImManager from '../../../lib/appManagers/appImManager';
+import rootScope from '../../../lib/rootScope';
+import Button from '../../button';
+import CheckboxField from '../../checkboxField';
+import ProgressivePreloader from '../../preloader';
+import {SliderSuperTab} from '../../slider';
+import {wrapPhoto} from '../../wrappers';
+import AppBackgroundColorTab from './backgroundColor';
+import choosePhotoSize from '../../../lib/appManagers/utils/photos/choosePhotoSize';
+import {STATE_INIT, Theme} from '../../../config/state';
+import themeController from '../../../helpers/themeController';
+import requestFile from '../../../helpers/files/requestFile';
+import {renderImageFromUrlPromise} from '../../../helpers/dom/renderImageFromUrl';
+import scaleMediaElement from '../../../helpers/canvas/scaleMediaElement';
+import {MediaSize} from '../../../helpers/mediaSize';
 
 export default class AppBackgroundTab extends SliderSuperTab {
   private grid: HTMLElement;
@@ -67,8 +67,8 @@ export default class AppBackgroundTab extends SliderSuperTab {
       attachClickEvent(resetButton, this.onResetClick, {listenerSetter: this.listenerSetter});
 
       const blurCheckboxField = this.blurCheckboxField = new CheckboxField({
-        text: 'ChatBackground.Blur', 
-        name: 'blur', 
+        text: 'ChatBackground.Blur',
+        name: 'blur',
         checked: this.theme.background.blur,
         withRipple: true
       });
@@ -86,7 +86,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
           if((wallpaper as WallPaper.wallPaper).pFlags.pattern || wallpaper._ === 'wallPaperNoFile') {
             return;
           }
-          
+
           this.setBackgroundDocument(wallpaper);
         }, 100);
       });
@@ -187,7 +187,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
   private addWallPaper(wallPaper: WallPaper, append = true) {
     const colors = this.getColorsFromWallPaper(wallPaper);
     const hasFile = wallPaper._ === 'wallPaper';
-    if((hasFile && wallPaper.pFlags.pattern && !colors)/*  || 
+    if((hasFile && wallPaper.pFlags.pattern && !colors)/*  ||
       (wallpaper.document as MyDocument).mime_type.indexOf('application/') === 0 */) {
       return;
     }
@@ -250,7 +250,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
     if(wallPaper.settings && wallPaper.settings.background_color !== undefined) {
       const {canvas} = ChatBackgroundGradientRenderer.create(colors);
       canvas.classList.add('background-colors-canvas');
-      
+
       if(isDark && hasFile) {
         wrapped.then(({loadPromises}) => {
           loadPromises.full.then(async() => {
@@ -283,11 +283,11 @@ export default class AppBackgroundTab extends SliderSuperTab {
       this.setBackgroundDocument(wallpaper);
       return;
     }
-    
+
     const key = this.getWallPaperKey(wallpaper);
     if(this.clicked.has(key)) return;
     this.clicked.add(key);
-    
+
     const doc = wallpaper.document as MyDocument;
     const preloader = new ProgressivePreloader({
       cancelable: true,
@@ -315,7 +315,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
 
     load();
 
-    //console.log(doc);
+    // console.log(doc);
   };
 
   private saveToCache = (slug: string, url: string) => {
@@ -325,7 +325,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
   };
 
   private setBackgroundDocument = (wallPaper: WallPaper) => {
-    let _tempId = ++this.tempId;
+    const _tempId = ++this.tempId;
     const middleware = () => _tempId === this.tempId;
 
     const doc = (wallPaper as WallPaper.wallPaper).document as MyDocument;
@@ -347,7 +347,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
 
       const background = this.theme.background;
       const onReady = (url?: string) => {
-        //const perf = performance.now();
+        // const perf = performance.now();
         let getPixelPromise: Promise<Uint8ClampedArray>;
         if(url && !this.theme.background.color) {
           getPixelPromise = averageColor(url);
@@ -361,10 +361,10 @@ export default class AppBackgroundTab extends SliderSuperTab {
             deferred.resolve();
             return;
           }
-          
+
           const hsla = highlightningColor(Array.from(pixel) as any);
           // const hsla = 'rgba(0, 0, 0, 0.3)';
-          //console.log(doc, hsla, performance.now() - perf);
+          // console.log(doc, hsla, performance.now() - perf);
 
           const slug = (wallPaper as WallPaper.wallPaper).slug ?? '';
           background.id = wallPaper.id;

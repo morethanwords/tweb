@@ -5,8 +5,8 @@ try {
   const ctx = document.createElement('canvas').getContext('webgl');
   const extension = ctx.getExtension('WEBGL_debug_renderer_info');
   const renderer: string = extension && ctx.getParameter(extension.UNMASKED_RENDERER_WEBGL) || '';
-  if((renderer.match(/Apple/) && !renderer.match(/Apple GPU/)) || 
-    ctx.getSupportedExtensions().indexOf("WEBGL_compressed_texture_s3tc_srgb") === -1) {
+  if((renderer.match(/Apple/) && !renderer.match(/Apple GPU/)) ||
+    ctx.getSupportedExtensions().indexOf('WEBGL_compressed_texture_s3tc_srgb') === -1) {
     IS_APPLE_MX = true;
   }
 } catch(err) {

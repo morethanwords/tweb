@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { attachClickEvent } from "../../helpers/dom/clickEvent";
-import { SEND_WHEN_ONLINE_TIMESTAMP } from "../../lib/mtproto/constants";
-import Button from "../button";
-import PopupDatePicker from "./datePicker";
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import {SEND_WHEN_ONLINE_TIMESTAMP} from '../../lib/mtproto/constants';
+import Button from '../button';
+import PopupDatePicker from './datePicker';
 
 const getMinDate = () => {
   const date = new Date();
-  //date.setDate(date.getDate() - 1);
+  // date.setDate(date.getDate() - 1);
   date.setHours(0, 0, 0, 0);
   return date;
 };

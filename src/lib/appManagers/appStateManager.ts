@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { State } from '../../config/state';
+import type {State} from '../../config/state';
 import rootScope from '../rootScope';
 import stateStorage from '../stateStorage';
 import setDeepProperty from '../../helpers/object/setDeepProperty';
@@ -25,12 +25,12 @@ export class AppStateManager {
 
   public setByKey(key: string, value: any) {
     setDeepProperty(this.state, key, value);
-    
+
     const first = key.split('.')[0] as keyof State;
     if(first === 'settings') {
       rootScope.dispatchEvent('settings_updated', {key, value, settings: this.state.settings});
     }
-    
+
     this.pushToState(first, this.state[first]);
   }
 
@@ -44,7 +44,7 @@ export class AppStateManager {
 
   public setKeyValueToStorage<T extends keyof State>(key: T, value: State[T] = this.state[key], onlyLocal?: boolean) {
     MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {name: 'state', key, value});
-    
+
     this.storage.set({
       [key]: value
     }, onlyLocal);

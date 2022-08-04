@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import PopupElement from ".";
-import placeCaretAtEnd from "../../helpers/dom/placeCaretAtEnd";
-import { AccountPassword, AccountTmpPassword } from "../../layer";
-import { InputState } from "../inputField";
-import PasswordInputField from "../passwordInputField";
-import { SettingSection } from "../sidebarLeft";
-import { PaymentButton } from "./payment";
+import PopupElement from '.';
+import placeCaretAtEnd from '../../helpers/dom/placeCaretAtEnd';
+import {AccountPassword, AccountTmpPassword} from '../../layer';
+import {InputState} from '../inputField';
+import PasswordInputField from '../passwordInputField';
+import {SettingSection} from '../sidebarLeft';
+import {PaymentButton} from './payment';
 
 export default class PopupPaymentCardConfirmation extends PopupElement<{
   finish: (tmpPassword: AccountTmpPassword) => void

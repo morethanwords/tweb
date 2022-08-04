@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import PopupPeer from "./peer";
+import PopupPeer from './peer';
 
 export default class PopupSendNow extends PopupPeer {
   constructor(peerId: PeerId, mids: number[], onConfirm?: () => void) {
@@ -19,7 +19,7 @@ export default class PopupSendNow extends PopupPeer {
         }
       }]
     });
-    
+
     this.show();
   }
 }

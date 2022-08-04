@@ -4,26 +4,26 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import rootScope from "../lib/rootScope";
-import { MyDocument } from "../lib/appManagers/appDocsManager";
-import deferredPromise, { CancellablePromise } from "../helpers/cancellablePromise";
-import { IS_APPLE, IS_SAFARI } from "../environment/userAgent";
-import { MOUNT_CLASS_TO } from "../config/debug";
-import simulateEvent from "../helpers/dom/dispatchEvent";
-import type { SearchSuperContext } from "./appSearchSuper.";
-import { Document, DocumentAttribute, Message, PhotoSize } from "../layer";
-import IS_TOUCH_SUPPORTED from "../environment/touchSupport";
-import I18n from "../lib/langPack";
-import SearchListLoader from "../helpers/searchListLoader";
-import copy from "../helpers/object/copy";
-import deepEqual from "../helpers/object/deepEqual";
-import ListenerSetter from "../helpers/listenerSetter";
-import { AppManagers } from "../lib/appManagers/managers";
-import getMediaFromMessage from "../lib/appManagers/utils/messages/getMediaFromMessage";
-import getPeerTitle from "./wrappers/getPeerTitle";
-import appDownloadManager from "../lib/appManagers/appDownloadManager";
-import onMediaLoad from "../helpers/onMediaLoad";
-import EventListenerBase from "../helpers/eventListenerBase";
+import rootScope from '../lib/rootScope';
+import {MyDocument} from '../lib/appManagers/appDocsManager';
+import deferredPromise, {CancellablePromise} from '../helpers/cancellablePromise';
+import {IS_APPLE, IS_SAFARI} from '../environment/userAgent';
+import {MOUNT_CLASS_TO} from '../config/debug';
+import simulateEvent from '../helpers/dom/dispatchEvent';
+import type {SearchSuperContext} from './appSearchSuper.';
+import {Document, DocumentAttribute, Message, PhotoSize} from '../layer';
+import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
+import I18n from '../lib/langPack';
+import SearchListLoader from '../helpers/searchListLoader';
+import copy from '../helpers/object/copy';
+import deepEqual from '../helpers/object/deepEqual';
+import ListenerSetter from '../helpers/listenerSetter';
+import {AppManagers} from '../lib/appManagers/managers';
+import getMediaFromMessage from '../lib/appManagers/utils/messages/getMediaFromMessage';
+import getPeerTitle from './wrappers/getPeerTitle';
+import appDownloadManager from '../lib/appManagers/appDownloadManager';
+import onMediaLoad from '../helpers/onMediaLoad';
+import EventListenerBase from '../helpers/eventListenerBase';
 
 // TODO: Safari: проверить стрим, включить его и сразу попробовать включить видео или другую песню
 // TODO: Safari: попробовать замаскировать подгрузку последнего чанка
@@ -49,13 +49,13 @@ export type MediaSearchContext = SearchSuperContext & Partial<{
 }>;
 
 type MediaDetails = {
-  peerId: PeerId, 
-  mid: number, 
-  docId: DocId, 
+  peerId: PeerId,
+  mid: number,
+  docId: DocId,
   doc: MyDocument,
   message: Message.message,
   clean?: boolean,
-  isScheduled?: boolean, 
+  isScheduled?: boolean,
   isSingle?: boolean
 };
 
@@ -77,7 +77,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
   private waitingMediaForLoad: Map<PeerId, Map<number, CancellablePromise<void>>> = new Map();
   private waitingScheduledMediaForLoad: AppMediaPlaybackController['waitingMediaForLoad'] = new Map();
   private waitingDocumentsForLoad: {[docId: string]: Set<HTMLMediaElement>} = {};
-  
+
   public willBePlayedMedia: HTMLMediaElement;
   private searchContext: MediaSearchContext;
 
@@ -107,7 +107,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
   construct(managers: AppManagers) {
     this.managers = managers;
     this.container = document.createElement('div');
-    //this.container.style.cssText = 'position: absolute; top: -10000px; left: -10000px;';
+    // this.container.style.cssText = 'position: absolute; top: -10000px; left: -10000px;';
     this.container.style.cssText = 'display: none;';
     document.body.append(this.container);
 
@@ -154,8 +154,8 @@ export class AppMediaPlaybackController extends EventListenerBase<{
 
     const properties: {[key: PropertyKey]: PropertyDescriptor} = {};
     const keys = [
-      'volume' as const, 
-      'muted' as const, 
+      'volume' as const,
+      'muted' as const,
       'playbackRate' as const,
       'loop' as const,
       'round' as const
@@ -194,8 +194,8 @@ export class AppMediaPlaybackController extends EventListenerBase<{
   public getPlaybackParams() {
     const {volume, muted, playbackRate, playbackRates, loop, round} = this;
     return {
-      volume, 
-      muted, 
+      volume,
+      muted,
       playbackRate,
       playbackRates,
       loop,
@@ -211,7 +211,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     this._loop = params.loop;
     this._round = params.round;
   }
-  
+
   public seekBackward = (details: MediaSessionActionDetails, media = this.playingMedia) => {
     if(media) {
       media.currentTime = Math.max(0, media.currentTime - (details.seekOffset || SEEK_OFFSET));
@@ -247,12 +247,12 @@ export class AppMediaPlaybackController extends EventListenerBase<{
 
     const doc = getMediaFromMessage(message) as Document.document;
     storage.set(mid, media = document.createElement(doc.type === 'round' || doc.type === 'video' ? 'video' : 'audio'));
-    //const source = document.createElement('source');
-    //source.type = doc.type === 'voice' && !opusDecodeController.isPlaySupported() ? 'audio/wav' : doc.mime_type;
+    // const source = document.createElement('source');
+    // source.type = doc.type === 'voice' && !opusDecodeController.isPlaySupported() ? 'audio/wav' : doc.mime_type;
 
     if(doc.type === 'round') {
       media.setAttribute('playsinline', 'true');
-      //media.muted = true;
+      // media.muted = true;
     }
 
     const details: MediaDetails = {
@@ -267,9 +267,9 @@ export class AppMediaPlaybackController extends EventListenerBase<{
 
     this.mediaDetails.set(media, details);
 
-    //media.autoplay = true;
+    // media.autoplay = true;
     media.volume = 1;
-    //media.append(source);
+    // media.append(source);
 
     this.container.append(media);
 
@@ -282,7 +282,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
         this.managers.appMessagesManager.readMessages(peerId, [mid]);
       }, {once: true});
     }
-    
+
     /* const onError = (e: Event) => {
       //console.log('appMediaPlaybackController: video onError', e);
 
@@ -311,8 +311,8 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     }
 
     deferred.then(async() => {
-      //media.autoplay = true;
-      //console.log('will set media url:', media, doc, doc.type, doc.url);
+      // media.autoplay = true;
+      // console.log('will set media url:', media, doc, doc.type, doc.url);
 
       if(doc.supportsStreaming || (await this.managers.thumbsStorage.getCacheContext(doc)).url) {
         this.onMediaDocumentLoad(media);
@@ -326,7 +326,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
         appDownloadManager.downloadMediaURL({media: doc});
       }
     }/* , onError */);
-    
+
     return media;
   }
 
@@ -373,17 +373,17 @@ export class AppMediaPlaybackController extends EventListenerBase<{
         return;
       } */
 
-      //media.volume = 0;
+      // media.volume = 0;
       const currentTime = media.currentTime;
-      //this.setSafariBuffering(media, true);
+      // this.setSafariBuffering(media, true);
 
       media.addEventListener('progress', () => {
         media.currentTime = media.duration - 1;
 
         media.addEventListener('progress', () => {
           media.currentTime = currentTime;
-          //media.volume = 1;
-          //this.setSafariBuffering(media, false);
+          // media.volume = 1;
+          // this.setSafariBuffering(media, false);
 
           if(!media.paused) {
             media.play()/* .catch(() => {}) */;
@@ -410,7 +410,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
       }
     }
   }
-  
+
   /**
    * Only for audio
    */
@@ -432,7 +432,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     await onMediaLoad(playingMedia, undefined, false); // have to wait for load, otherwise on macOS won't set
 
     const doc = getMediaFromMessage(message) as MyDocument;
-    
+
     const artwork: MediaImage[] = [];
 
     const isVoice = doc.type === 'voice' || doc.type === 'round';
@@ -477,7 +477,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
         //     if(this.playingMedia !== playingMedia || !url) {
         //       return;
         //     }
-  
+
         //     this.setNewMediadata(message);
         //   });
         // }
@@ -540,8 +540,8 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     const details = this.mediaDetails.get(media);
     return details.message;
     // const {peerId, mid} = details;
-    // const message = details.isScheduled ? 
-    //   this.managers.appMessagesManager.getScheduledMessageByPeer(peerId, mid) : 
+    // const message = details.isScheduled ?
+    //   this.managers.appMessagesManager.getScheduledMessageByPeer(peerId, mid) :
     //   this.managers.appMessagesManager.getMessageByPeer(peerId, mid);
     // return message;
   }
@@ -566,7 +566,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     const details = this.mediaDetails.get(media);
     const {peerId, mid} = details;
 
-    //console.log('appMediaPlaybackController: video playing', this.currentPeerId, this.playingMedia, media);
+    // console.log('appMediaPlaybackController: video playing', this.currentPeerId, this.playingMedia, media);
 
     const pip = this.pip;
     if(pip) {
@@ -596,7 +596,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
             jumpLength = idx + 1;
           }
         }
-  
+
         if(idx !== -1) {
           if(jumpLength) {
             this.go(jumpLength, false);
@@ -640,12 +640,12 @@ export class AppMediaPlaybackController extends EventListenerBase<{
 
     this.onPause(e);
 
-    //console.log('on media end');
+    // console.log('on media end');
 
     const listLoader = this.listLoader;
-    if(this.lockedSwitchers || 
-      (!this.round && listLoader.current && !listLoader.next.length) || 
-      !listLoader.getNext().length || 
+    if(this.lockedSwitchers ||
+      (!this.round && listLoader.current && !listLoader.next.length) ||
+      !listLoader.getNext().length ||
       !this.next()) {
       this.stop();
       this.dispatchEvent('stop');
@@ -712,17 +712,17 @@ export class AppMediaPlaybackController extends EventListenerBase<{
         const storage = s.get(peerId);
         if(storage) {
           storage.delete(details.mid);
-    
+
           if(!storage.size) {
             s.delete(peerId);
           }
         }
-    
+
         media.remove();
-  
+
         this.mediaDetails.delete(media);
       }
-  
+
       this.playingMedia = undefined;
       this.playingMediaType = undefined;
     }
@@ -740,7 +740,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     } */
 
     media.play();
-    
+
     setTimeout(() => {
       this.resolveWaitingForLoadMedia(peerId, mid, isScheduled);
     }, 0);
@@ -900,11 +900,11 @@ export class AppMediaPlaybackController extends EventListenerBase<{
 
         this.pauseMediaInOtherTabs();
       };
-  
+
       if(!media.paused) {
         onPlay();
       }
-  
+
       media.addEventListener('play', onPlay);
     } else { // maybe it's voice recording
       this.pauseMediaInOtherTabs();
@@ -925,7 +925,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
           this.next() || this.previous();
         }
       }
-      
+
       // If it's still not cleaned
       if(this.playingMedia === media) {
         this.playingMedia = undefined;

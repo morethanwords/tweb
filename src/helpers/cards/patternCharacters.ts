@@ -1,5 +1,5 @@
-import { fixBuggedNumbers } from "../string/buggedNumbers";
-import replaceNonNumber from "../string/replaceNonNumber";
+import {fixBuggedNumbers} from '../string/buggedNumbers';
+import replaceNonNumber from '../string/replaceNonNumber';
 
 export type PatternCharacter = {
   type: 'optional',

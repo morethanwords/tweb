@@ -4,26 +4,26 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type ChatInput from "./input";
-import { appendEmoji, getEmojiFromElement } from "../emoticonsDropdown/tabs/emoji";
-import { ScrollableX } from "../scrollable";
-import AutocompleteHelper from "./autocompleteHelper";
-import AutocompleteHelperController from "./autocompleteHelperController";
-import { AppManagers } from "../../lib/appManagers/managers";
+import type ChatInput from './input';
+import {appendEmoji, getEmojiFromElement} from '../emoticonsDropdown/tabs/emoji';
+import {ScrollableX} from '../scrollable';
+import AutocompleteHelper from './autocompleteHelper';
+import AutocompleteHelperController from './autocompleteHelperController';
+import {AppManagers} from '../../lib/appManagers/managers';
 
 export default class EmojiHelper extends AutocompleteHelper {
   private scrollable: ScrollableX;
 
   constructor(
-    appendTo: HTMLElement, 
-    controller: AutocompleteHelperController, 
-    chatInput: ChatInput, 
+    appendTo: HTMLElement,
+    controller: AutocompleteHelperController,
+    chatInput: ChatInput,
     private managers: AppManagers
   ) {
     super({
       appendTo,
-      controller, 
-      listType: 'x', 
+      controller,
+      listType: 'x',
       onSelect: (target) => {
         chatInput.onEmojiSelected(getEmojiFromElement(target as any), true);
       }
@@ -56,7 +56,7 @@ export default class EmojiHelper extends AutocompleteHelper {
       this.init();
       this.init = null;
     }
-    
+
     emojis = emojis.slice(0, 80);
 
     if(emojis.length) {
@@ -86,9 +86,9 @@ export default class EmojiHelper extends AutocompleteHelper {
       if(!middleware()) {
         return;
       }
-      
+
       this.render(emojis, firstChar !== ':');
-      //console.log(emojis);
+      // console.log(emojis);
     });
   }
 }

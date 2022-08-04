@@ -1,14 +1,14 @@
 export default function splitStringByLength(str: string, maxLength: number) {
   if(str.length < maxLength) return [str];
   let length = 0, lastSliceStartIndex = 0, arrayIndex = 0;
-  const delimiter = ' ';//'\n';
+  const delimiter = ' ';// '\n';
   const out: string[] = [];
 
   const cut = (end?: number) => {
     let part = str.slice(lastSliceStartIndex, end);
     const _arrayIndex = arrayIndex++;
     if(part.length > maxLength) {
-      let overflowPart = part.slice(maxLength);
+      const overflowPart = part.slice(maxLength);
       const splitted = splitStringByLength(overflowPart, maxLength);
       splitted.forEach((part) => {
         out[arrayIndex++] = part;
@@ -39,7 +39,7 @@ export default function splitStringByLength(str: string, maxLength: number) {
     if((length + partLength) > maxLength) {
       cut(length);
     }
-    
+
     lastIndex = index;
     length += partLength;
   } while(true);

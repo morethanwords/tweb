@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import PopupElement from ".";
-import appImManager from "../../lib/appManagers/appImManager";
-import { TelegramWebviewEventCallback } from "../../types";
+import PopupElement from '.';
+import appImManager from '../../lib/appManagers/appImManager';
+import {TelegramWebviewEventCallback} from '../../types';
 
 const weakMap: WeakMap<Window, TelegramWebviewEventCallback> = new WeakMap();
 window.addEventListener('message', (e) => {
@@ -14,7 +14,7 @@ window.addEventListener('message', (e) => {
   if(!callback) {
     return;
   }
-  
+
   callback(JSON.parse(e.data));
 });
 

@@ -4,15 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import rootScope from "../lib/rootScope";
-import { IS_SAFARI } from "../environment/userAgent";
-import { MOUNT_CLASS_TO } from "../config/debug";
-import isInDOM from "../helpers/dom/isInDOM";
-import RLottiePlayer from "../lib/rlottie/rlottiePlayer";
-import indexOfAndSplice from "../helpers/array/indexOfAndSplice";
-import forEachReverse from "../helpers/array/forEachReverse";
-import idleController from "../helpers/idleController";
-import appMediaPlaybackController from "./appMediaPlaybackController";
+import rootScope from '../lib/rootScope';
+import {IS_SAFARI} from '../environment/userAgent';
+import {MOUNT_CLASS_TO} from '../config/debug';
+import isInDOM from '../helpers/dom/isInDOM';
+import RLottiePlayer from '../lib/rlottie/rlottiePlayer';
+import indexOfAndSplice from '../helpers/array/indexOfAndSplice';
+import forEachReverse from '../helpers/array/forEachReverse';
+import idleController from '../helpers/idleController';
+import appMediaPlaybackController from './appMediaPlaybackController';
 
 export interface AnimationItem {
   el: HTMLElement,
@@ -28,7 +28,7 @@ export class AnimationIntersector {
   private byGroups: {[group: string]: AnimationItem[]} = {};
   private lockedGroups: {[group: string]: true} = {};
   private onlyOnePlayableGroup: string = '';
-  
+
   private intersectionLockedGroups: {[group: string]: true} = {};
   private videosLocked = false;
 
@@ -49,7 +49,7 @@ export class AnimationIntersector {
             if(entry.isIntersecting) {
               this.visible.add(player);
               this.checkAnimation(player, false);
-              
+
               /* if(animation instanceof HTMLVideoElement && animation.dataset.src) {
                 animation.src = animation.dataset.src;
                 animation.load();
@@ -57,10 +57,10 @@ export class AnimationIntersector {
             } else {
               this.visible.delete(player);
               this.checkAnimation(player, true);
-              
+
               const animation = player.animation;
               if(animation instanceof RLottiePlayer/*  && animation.cachingDelta === 2 */) {
-                //console.warn('will clear cache', player);
+                // console.warn('will clear cache', player);
                 animation.clearCache();
               }/*  else if(animation instanceof HTMLVideoElement && animation.src) {
                 animation.dataset.src = animation.src;
@@ -115,7 +115,7 @@ export class AnimationIntersector {
   }
 
   public removeAnimation(player: AnimationItem) {
-    //console.log('destroy animation');
+    // console.log('destroy animation');
     const {el, animation} = player;
     animation.remove();
 
@@ -133,15 +133,15 @@ export class AnimationIntersector {
         delete this.byGroups[player.group];
       }
     }
-  
+
     this.observer.unobserve(el);
     this.visible.delete(player);
   }
 
   public addAnimation(animation: RLottiePlayer | HTMLVideoElement, group = '') {
     const player = {
-      el: animation instanceof RLottiePlayer ? animation.el : animation, 
-      animation: animation, 
+      el: animation instanceof RLottiePlayer ? animation.el : animation,
+      animation: animation,
       group
     };
 
@@ -159,10 +159,10 @@ export class AnimationIntersector {
     // if(rootScope.idle.isIDLE) return;
 
     if(group !== undefined && !this.byGroups[group]) {
-      //console.warn('no animation group:', group);
+      // console.warn('no animation group:', group);
       return;
     }
-    
+
     const groups = group !== undefined /* && false */ ? [group] : Object.keys(this.byGroups);
 
     for(const group of groups) {
@@ -176,7 +176,7 @@ export class AnimationIntersector {
 
   public checkAnimation(player: AnimationItem, blurred = false, destroy = false) {
     const {el, animation, group} = player;
-    //return;
+    // return;
     if((destroy || (!isInDOM(el) && !this.lockedGroups[group]))/*  && false */) {
       this.removeAnimation(player);
       return;
@@ -184,16 +184,16 @@ export class AnimationIntersector {
 
     if(blurred || (this.onlyOnePlayableGroup && this.onlyOnePlayableGroup !== group) || (animation instanceof HTMLVideoElement && this.videosLocked)) {
       if(!animation.paused) {
-        //console.warn('pause animation:', animation);
+        // console.warn('pause animation:', animation);
         animation.pause();
       }
-    } else if(animation.paused && 
-      this.visible.has(player) && 
-      animation.autoplay && 
+    } else if(animation.paused &&
+      this.visible.has(player) &&
+      animation.autoplay &&
       (!this.onlyOnePlayableGroup || this.onlyOnePlayableGroup === group) &&
       (!idleController.isIdle || this.overrideIdleGroups.has(player.group))
     ) {
-      //console.warn('play animation:', animation);
+      // console.warn('play animation:', animation);
       animation.play();
     }
   }

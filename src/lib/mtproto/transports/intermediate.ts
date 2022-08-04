@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { Codec } from "./codec";
+import {Codec} from './codec';
 
 export class IntermediatePacketCodec implements Codec {
   public tag = 0xee;
   public obfuscateTag = new Uint8Array([this.tag, this.tag, this.tag, this.tag]);
 
-  //private lol = 0;
+  // private lol = 0;
 
   public encodePacket(data: Uint8Array) {
     if((data.length % 4) !== 0) {
@@ -20,7 +20,7 @@ export class IntermediatePacketCodec implements Codec {
     const len = data.length;
     const header = new Uint8Array(new Int32Array([/* ++this.lol >= 25 ? 0x80000001 :  */len]).buffer);
 
-    //console.log('got nobody cause im braindead', header, len, /* data,  */data.buffer.byteLength === data.length);
+    // console.log('got nobody cause im braindead', header, len, /* data,  */data.buffer.byteLength === data.length);
     return header.concat(data);
   }
 

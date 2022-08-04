@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { SliderSuperTabEventable } from "../../../sliderTab";
-import PrivacySection from "../../../privacySection";
-import { i18n, LangPackKey } from "../../../../lib/langPack";
-import anchorCopy from "../../../../helpers/dom/anchorCopy";
-import PrivacyType from "../../../../lib/appManagers/utils/privacy/privacyType";
+import {SliderSuperTabEventable} from '../../../sliderTab';
+import PrivacySection from '../../../privacySection';
+import {i18n, LangPackKey} from '../../../../lib/langPack';
+import anchorCopy from '../../../../helpers/dom/anchorCopy';
+import PrivacyType from '../../../../lib/appManagers/utils/privacy/privacyType';
 
 export default class AppPrivacyPhoneNumberTab extends SliderSuperTabEventable {
   protected async init() {
@@ -19,9 +19,9 @@ export default class AppPrivacyPhoneNumberTab extends SliderSuperTabEventable {
     const formatted = '+' + (await this.managers.appUsersManager.getSelf()).phone;
     const captionEl = document.createElement('div');
     captionEl.append(
-      i18n('PrivacyPhoneInfo'), 
-      document.createElement('br'), 
-      document.createElement('br'), 
+      i18n('PrivacyPhoneInfo'),
+      document.createElement('br'),
+      document.createElement('br'),
       i18n('PrivacyPhoneInfo4'),
       document.createElement('br'),
       anchorCopy({

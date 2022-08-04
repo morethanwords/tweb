@@ -4,24 +4,24 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
-import { formatTime } from "../../helpers/date";
-import htmlToSpan from "../../helpers/dom/htmlToSpan";
-import setInnerHTML from "../../helpers/dom/setInnerHTML";
-import formatCallDuration from "../../helpers/formatCallDuration";
-import paymentsWrapCurrencyAmount from "../../helpers/paymentsWrapCurrencyAmount";
-import { Message, MessageAction } from "../../layer";
-import { MyMessage } from "../../lib/appManagers/appMessagesManager";
-import getPeerId from "../../lib/appManagers/utils/peers/getPeerId";
-import I18n, { FormatterArgument, FormatterArguments, i18n, join, langPack, LangPackKey, _i18n } from "../../lib/langPack";
-import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
-import wrapPlainText from "../../lib/richTextProcessor/wrapPlainText";
-import wrapRichText from "../../lib/richTextProcessor/wrapRichText";
-import rootScope from "../../lib/rootScope";
-import PeerTitle from "../peerTitle";
-import getPeerTitle from "./getPeerTitle";
-import wrapJoinVoiceChatAnchor from "./joinVoiceChatAnchor";
-import wrapMessageForReply from "./messageForReply";
+import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
+import {formatTime} from '../../helpers/date';
+import htmlToSpan from '../../helpers/dom/htmlToSpan';
+import setInnerHTML from '../../helpers/dom/setInnerHTML';
+import formatCallDuration from '../../helpers/formatCallDuration';
+import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
+import {Message, MessageAction} from '../../layer';
+import {MyMessage} from '../../lib/appManagers/appMessagesManager';
+import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
+import I18n, {FormatterArgument, FormatterArguments, i18n, join, langPack, LangPackKey, _i18n} from '../../lib/langPack';
+import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
+import wrapPlainText from '../../lib/richTextProcessor/wrapPlainText';
+import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
+import rootScope from '../../lib/rootScope';
+import PeerTitle from '../peerTitle';
+import getPeerTitle from './getPeerTitle';
+import wrapJoinVoiceChatAnchor from './joinVoiceChatAnchor';
+import wrapMessageForReply from './messageForReply';
 
 async function wrapLinkToMessage(message: Message.message | Message.messageService, plain?: boolean) {
   const a = document.createElement('i');
@@ -47,7 +47,7 @@ export default async function wrapMessageActionTextNewUnsafe(message: MyMessage,
     }
   } else {
     let _ = action._;
-    //let suffix = '';
+    // let suffix = '';
     let langPackKey: LangPackKey;
     let args: Array<FormatterArgument | Promise<FormatterArgument>>;
 
@@ -113,7 +113,8 @@ export default async function wrapMessageActionTextNewUnsafe(message: MyMessage,
           args.push(getNameDivHTML(message.fromId, plain));
         }
 
-        let k: LangPackKey, _args: FormatterArguments = [];
+        let k: LangPackKey;
+        const _args: FormatterArguments = [];
         if(daysToStart < 1 && date.getDate() === today.getDate()) {
           k = 'TodayAtFormattedWithToday';
         } else if(daysToStart < 2 && date.getDate() === tomorrowDate.getDate()) {
@@ -121,7 +122,7 @@ export default async function wrapMessageActionTextNewUnsafe(message: MyMessage,
         } else {
           k = 'formatDateAtTime';
           _args.push(new I18n.IntlDateElement({
-            date, 
+            date,
             options: {
               day: '2-digit',
               month: '2-digit',
@@ -144,7 +145,7 @@ export default async function wrapMessageActionTextNewUnsafe(message: MyMessage,
         } else {
           args = [getNameDivHTML(message.fromId, plain)];
         }
-        
+
         break;
       }
 
@@ -153,9 +154,9 @@ export default async function wrapMessageActionTextNewUnsafe(message: MyMessage,
         const pinnedMessage = await managers.appMessagesManager.getMessageByPeer(peerId, message.reply_to_mid);
 
         args = [
-          getNameDivHTML(message.fromId, plain),
+          getNameDivHTML(message.fromId, plain)
         ];
-        
+
         if(!pinnedMessage/*  || true */) {
           langPackKey = 'ActionPinnedNoText';
 
@@ -208,8 +209,8 @@ export default async function wrapMessageActionTextNewUnsafe(message: MyMessage,
       case 'messageActionChatDeleteUser':
       case 'messageActionChatAddUsers':
       case 'messageActionChatAddUser': {
-        const users = (action as MessageAction.messageActionChatAddUser).users 
-          || [(action as MessageAction.messageActionChatDeleteUser).user_id];
+        const users = (action as MessageAction.messageActionChatAddUser).users ||
+          [(action as MessageAction.messageActionChatDeleteUser).user_id];
 
         args = [getNameDivHTML(message.fromId, plain)];
 
@@ -219,7 +220,7 @@ export default async function wrapMessageActionTextNewUnsafe(message: MyMessage,
             false,
             plain
           );
-          
+
           if(plain) {
             args.push(...joined);
           } else {
@@ -258,10 +259,10 @@ export default async function wrapMessageActionTextNewUnsafe(message: MyMessage,
 
         if(message.reply_to_mid) {
           const invoiceMessage = await managers.appMessagesManager.getMessageByPeer(
-            message.reply_to?.reply_to_peer_id ? getPeerId(message.reply_to.reply_to_peer_id) : message.peerId, 
+            message.reply_to?.reply_to_peer_id ? getPeerId(message.reply_to.reply_to_peer_id) : message.peerId,
             message.reply_to_mid
           );
-          
+
           if(!invoiceMessage) {
             managers.appMessagesManager.fetchMessageReplyTo(message);
           } else {
@@ -293,6 +294,6 @@ export default async function wrapMessageActionTextNewUnsafe(message: MyMessage,
       return _i18n(element, langPackKey, waited);
     }
 
-    //str = !langPackKey || langPackKey[0].toUpperCase() === langPackKey[0] ? langPackKey : getNameDivHTML(message.fromId) + langPackKey + (suffix ? ' ' : '');
+    // str = !langPackKey || langPackKey[0].toUpperCase() === langPackKey[0] ? langPackKey : getNameDivHTML(message.fromId) + langPackKey + (suffix ? ' ' : '');
   }
 }

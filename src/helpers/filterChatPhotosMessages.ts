@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { Message, MessageAction } from "../layer";
-import type { MyMessage } from "../lib/appManagers/appMessagesManager";
-import forEachReverse from "./array/forEachReverse";
+import type {Message, MessageAction} from '../layer';
+import type {MyMessage} from '../lib/appManagers/appMessagesManager';
+import forEachReverse from './array/forEachReverse';
 
 export default function filterChatPhotosMessages(value: {
   count: number;

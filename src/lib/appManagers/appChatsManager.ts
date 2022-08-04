@@ -2,33 +2,33 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import deepEqual from "../../helpers/object/deepEqual";
-import isObject from "../../helpers/object/isObject";
-import safeReplaceObject from "../../helpers/object/safeReplaceObject";
-import { ChannelParticipant, ChannelsCreateChannel, Chat, ChatAdminRights, ChatBannedRights, ChatInvite, ChatPhoto, InputChannel, InputChatPhoto, InputFile, InputPeer, SponsoredMessage, Update, Updates } from "../../layer";
-import { isRestricted } from "../../helpers/restrictions";
-import { AppManager } from "./manager";
-import hasRights from "./utils/chats/hasRights";
-import getParticipantPeerId from "./utils/chats/getParticipantPeerId";
-import { AppStoragesManager } from "./appStoragesManager";
+import deepEqual from '../../helpers/object/deepEqual';
+import isObject from '../../helpers/object/isObject';
+import safeReplaceObject from '../../helpers/object/safeReplaceObject';
+import {ChannelParticipant, ChannelsCreateChannel, Chat, ChatAdminRights, ChatBannedRights, ChatInvite, ChatPhoto, InputChannel, InputChatPhoto, InputFile, InputPeer, SponsoredMessage, Update, Updates} from '../../layer';
+import {isRestricted} from '../../helpers/restrictions';
+import {AppManager} from './manager';
+import hasRights from './utils/chats/hasRights';
+import getParticipantPeerId from './utils/chats/getParticipantPeerId';
+import {AppStoragesManager} from './appStoragesManager';
 
 export type Channel = Chat.channel;
 export type ChatRights = keyof ChatBannedRights['pFlags'] | keyof ChatAdminRights['pFlags'] | 'change_type' | 'change_permissions' | 'delete_chat' | 'view_participants';
 
 export class AppChatsManager extends AppManager {
   private storage: AppStoragesManager['storages']['chats'];
-  
+
   private chats: {[id: ChatId]: Chat.channel | Chat.chat | any};
-  //private usernames: any;
-  //private channelAccess: any;
-  //private megagroups: {[id: number]: true};
+  // private usernames: any;
+  // private channelAccess: any;
+  // private megagroups: {[id: number]: true};
 
   protected after() {
     this.clear(true);
@@ -100,7 +100,7 @@ export class AppChatsManager extends AppManager {
           if(chat.username) {
             delete this.usernames[cleanUsername(chat.username)];
           } */
-          
+
           this.storage.delete(chatId);
           delete this.chats[chatId];
         }
@@ -121,7 +121,7 @@ export class AppChatsManager extends AppManager {
     /* if(chat._ !== 'chat' && chat._ !== 'channel') {
       return;
     } */
-    
+
     // * exclude from state
     // defineNotNumerableProperties(chat, ['rTitle', 'initials']);
 
@@ -171,7 +171,7 @@ export class AppChatsManager extends AppManager {
       if(changedPhoto) {
         this.rootScope.dispatchEvent('avatar_update', peerId);
       }
-  
+
       if(changedTitle || changedAnyBadge) {
         this.rootScope.dispatchEvent('peer_title_edit', peerId);
       }
@@ -194,11 +194,11 @@ export class AppChatsManager extends AppManager {
 
   /**
    * Check the user's ability to do an action in chat
-   * @param id 
+   * @param id
    * @param action creator can still send messages to left channel. so this function shows server rights. see canSendToPeer for local rights in messages manager.
    * @param rights do not provide this parameter when checking rights for self
-   * @param isThread 
-   * @returns 
+   * @param isThread
+   * @returns
    */
   public hasRights(id: ChatId, action: ChatRights, rights?: ChatAdminRights | ChatBannedRights, isThread?: boolean) {
     return hasRights(this.getChat(id), action, rights, isThread);
@@ -211,7 +211,7 @@ export class AppChatsManager extends AppManager {
         return Promise.resolve();
       }
     }
-    
+
     return this.apiManager.invokeApi('messages.editChatDefaultBannedRights', {
       peer: this.appPeersManager.getInputPeerById(id.toPeerId(true)),
       banned_rights
@@ -251,12 +251,12 @@ export class AppChatsManager extends AppManager {
   public isInChat(id: ChatId) {
     let good = true;
     const chat: Chat = this.getChat(id);
-    if(chat._ === 'channelForbidden' 
-      || chat._ === 'chatForbidden' 
-      || chat._ === 'chatEmpty' 
-      || (chat as Chat.chat).pFlags.left 
-      // || (chat as any).pFlags.kicked 
-      || (chat as Chat.chat).pFlags.deactivated) {
+    if(chat._ === 'channelForbidden' ||
+      chat._ === 'chatForbidden' ||
+      chat._ === 'chatEmpty' ||
+      (chat as Chat.chat).pFlags.left ||
+      // || (chat as any).pFlags.kicked
+      (chat as Chat.chat).pFlags.deactivated) {
       good = false;
     }
 
@@ -402,7 +402,7 @@ export class AppChatsManager extends AppManager {
   }
 
   private onChatUpdated = (chatId: ChatId, updates?: any) => {
-    //console.log('onChatUpdated', chatId, updates);
+    // console.log('onChatUpdated', chatId, updates);
 
     this.apiUpdatesManager.processUpdateMessage(updates);
     if(updates?.updates?.length && this.isChannel(chatId)) {
@@ -456,11 +456,11 @@ export class AppChatsManager extends AppManager {
   }
 
   public deleteChat(id: ChatId) {
-    //return this.leaveChat(id).then(() => {
-      return this.apiManager.invokeApi('messages.deleteChat', {
-        chat_id: id
-      });
-    //});
+    // return this.leaveChat(id).then(() => {
+    return this.apiManager.invokeApi('messages.deleteChat', {
+      chat_id: id
+    });
+    // });
   }
 
   public migrateChat(id: ChatId): Promise<ChatId> {
@@ -586,7 +586,7 @@ export class AppChatsManager extends AppManager {
       pFlags: {}
     });
   }
-  
+
   public kickFromChannel(id: ChatId, participant: PeerId | ChannelParticipant) {
     return this.editBanned(id, participant, {
       _: 'chatBannedRights',
@@ -661,7 +661,7 @@ export class AppChatsManager extends AppManager {
 
   public getSendAs(channelId: ChatId) {
     return this.apiManager.invokeApiSingleProcess({
-      method: 'channels.getSendAs', 
+      method: 'channels.getSendAs',
       params: {
         peer: this.getChannelInputPeer(channelId)
       },

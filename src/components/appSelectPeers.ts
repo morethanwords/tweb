@@ -4,38 +4,38 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { ChatRights } from "../lib/appManagers/appChatsManager";
-import type { Dialog } from "../lib/appManagers/appMessagesManager";
-import appDialogsManager from "../lib/appManagers/appDialogsManager";
-import rootScope from "../lib/rootScope";
-import Scrollable from "./scrollable";
-import { FocusDirection } from "../helpers/fastSmoothScroll";
-import CheckboxField from "./checkboxField";
-import { i18n, LangPackKey, _i18n } from "../lib/langPack";
-import findUpAttribute from "../helpers/dom/findUpAttribute";
-import findUpClassName from "../helpers/dom/findUpClassName";
-import PeerTitle from "./peerTitle";
-import cancelEvent from "../helpers/dom/cancelEvent";
-import replaceContent from "../helpers/dom/replaceContent";
-import debounce from "../helpers/schedulers/debounce";
-import windowSize from "../helpers/windowSize";
-import type { IsPeerType } from "../lib/appManagers/appPeersManager";
-import { generateDelimiter, SettingSection } from "./sidebarLeft";
-import { attachClickEvent } from "../helpers/dom/clickEvent";
-import filterUnique from "../helpers/array/filterUnique";
-import indexOfAndSplice from "../helpers/array/indexOfAndSplice";
-import safeAssign from "../helpers/object/safeAssign";
-import findAndSplice from "../helpers/array/findAndSplice";
-import AvatarElement from "./avatar";
-import { AppManagers } from "../lib/appManagers/managers";
-import filterAsync from "../helpers/array/filterAsync";
-import getParticipantPeerId from "../lib/appManagers/utils/chats/getParticipantPeerId";
-import getChatMembersString from "./wrappers/getChatMembersString";
-import getUserStatusString from "./wrappers/getUserStatusString";
-import { Chat, User } from "../layer";
-import canSendToUser from "../lib/appManagers/utils/users/canSendToUser";
-import hasRights from "../lib/appManagers/utils/chats/hasRights";
-import getDialogIndex from "../lib/appManagers/utils/dialogs/getDialogIndex";
+import type {ChatRights} from '../lib/appManagers/appChatsManager';
+import type {Dialog} from '../lib/appManagers/appMessagesManager';
+import appDialogsManager from '../lib/appManagers/appDialogsManager';
+import rootScope from '../lib/rootScope';
+import Scrollable from './scrollable';
+import {FocusDirection} from '../helpers/fastSmoothScroll';
+import CheckboxField from './checkboxField';
+import {i18n, LangPackKey, _i18n} from '../lib/langPack';
+import findUpAttribute from '../helpers/dom/findUpAttribute';
+import findUpClassName from '../helpers/dom/findUpClassName';
+import PeerTitle from './peerTitle';
+import cancelEvent from '../helpers/dom/cancelEvent';
+import replaceContent from '../helpers/dom/replaceContent';
+import debounce from '../helpers/schedulers/debounce';
+import windowSize from '../helpers/windowSize';
+import type {IsPeerType} from '../lib/appManagers/appPeersManager';
+import {generateDelimiter, SettingSection} from './sidebarLeft';
+import {attachClickEvent} from '../helpers/dom/clickEvent';
+import filterUnique from '../helpers/array/filterUnique';
+import indexOfAndSplice from '../helpers/array/indexOfAndSplice';
+import safeAssign from '../helpers/object/safeAssign';
+import findAndSplice from '../helpers/array/findAndSplice';
+import AvatarElement from './avatar';
+import {AppManagers} from '../lib/appManagers/managers';
+import filterAsync from '../helpers/array/filterAsync';
+import getParticipantPeerId from '../lib/appManagers/utils/chats/getParticipantPeerId';
+import getChatMembersString from './wrappers/getChatMembersString';
+import getUserStatusString from './wrappers/getUserStatusString';
+import {Chat, User} from '../layer';
+import canSendToUser from '../lib/appManagers/utils/users/canSendToUser';
+import hasRights from '../lib/appManagers/utils/chats/hasRights';
+import getDialogIndex from '../lib/appManagers/utils/dialogs/getDialogIndex';
 
 type SelectSearchPeerType = 'contacts' | 'dialogs' | 'channelParticipants';
 
@@ -50,11 +50,11 @@ export default class AppSelectPeers {
   private chatsContainer = document.createElement('div');
   public scrollable: Scrollable;
   private selectedScrollable: Scrollable;
-  
+
   private selectedContainer: HTMLElement;
   public input: HTMLInputElement;
-  
-  //public selected: {[peerId: PeerId]: HTMLElement} = {};
+
+  // public selected: {[peerId: PeerId]: HTMLElement} = {};
   public selected = new Set<PeerId | string>();
 
   public freezed = false;
@@ -87,21 +87,21 @@ export default class AppSelectPeers {
   private placeholder: LangPackKey;
 
   private selfPresence: LangPackKey = 'Presence.YourChat';
-  
+
   private needSwitchList = false;
 
   private sectionNameLangPackKey: LangPackKey;
 
   private managers: AppManagers;
-  
+
   constructor(options: {
-    appendTo: AppSelectPeers['appendTo'], 
-    onChange?: AppSelectPeers['onChange'], 
-    peerType?: AppSelectPeers['peerType'], 
+    appendTo: AppSelectPeers['appendTo'],
+    onChange?: AppSelectPeers['onChange'],
+    peerType?: AppSelectPeers['peerType'],
     peerId?: AppSelectPeers['peerId'],
-    onFirstRender?: () => void, 
-    renderResultsFunc?: AppSelectPeers['renderResultsFunc'], 
-    chatRightsAction?: AppSelectPeers['chatRightsAction'], 
+    onFirstRender?: () => void,
+    renderResultsFunc?: AppSelectPeers['renderResultsFunc'],
+    chatRightsAction?: AppSelectPeers['chatRightsAction'],
     multiSelect?: AppSelectPeers['multiSelect'],
     rippleEnabled?: AppSelectPeers['rippleEnabled'],
     avatarSize?: AppSelectPeers['avatarSize'],
@@ -123,7 +123,7 @@ export default class AppSelectPeers {
         this.scrollable.setVirtualContainer(this.list);
         this.needSwitchList = false;
       }
-      
+
       peerIds = peerIds.filter((peerId) => {
         const notRendered = !this.renderedPeerIds.has(peerId);
         if(notRendered) this.renderedPeerIds.add(peerId);
@@ -163,25 +163,25 @@ export default class AppSelectPeers {
     if(this.multiSelect) {
       const section = new SettingSection({});
       section.innerContainer.classList.add('selector-search-section');
-      let topContainer = document.createElement('div');
+      const topContainer = document.createElement('div');
       topContainer.classList.add('selector-search-container');
-  
+
       this.selectedContainer = document.createElement('div');
       this.selectedContainer.classList.add('selector-search');
-      
+
       this.selectedContainer.append(this.input);
       topContainer.append(this.selectedContainer);
       this.selectedScrollable = new Scrollable(topContainer);
-  
+
       // let delimiter = document.createElement('hr');
 
       attachClickEvent(this.selectedContainer, (e) => {
         if(this.freezed) return;
         let target = e.target as HTMLElement;
         target = findUpClassName(target, 'selector-user');
-  
+
         if(!target) return;
-  
+
         const peerId = target.dataset.key;
         const li = this.chatsContainer.querySelector('[data-peer-id="' + peerId + '"]') as HTMLElement;
         if(!li) {
@@ -221,7 +221,7 @@ export default class AppSelectPeers {
         return;
       }
 
-      //target.classList.toggle('active');
+      // target.classList.toggle('active');
       if(this.selected.has(key)) {
         this.remove(key);
       } else {
@@ -246,7 +246,7 @@ export default class AppSelectPeers {
 
     // WARNING TIMEOUT
     setTimeout(() => {
-      let getResultsPromise = this.getMoreResults() as Promise<any>;
+      const getResultsPromise = this.getMoreResults() as Promise<any>;
       if(options.onFirstRender) {
         getResultsPromise.then(() => {
           options.onFirstRender();
@@ -261,13 +261,13 @@ export default class AppSelectPeers {
       if(this.peerType.includes('contacts') || this.peerType.includes('dialogs')) {
         this.cachedContacts = null;
       }
-      
+
       if(this.peerType.includes('dialogs')) {
         this.folderId = 0;
         this.offsetIndex = 0;
       }
 
-      for(let i in this.tempIds) {
+      for(const i in this.tempIds) {
         // @ts-ignore
         ++this.tempIds[i];
       }
@@ -279,18 +279,18 @@ export default class AppSelectPeers {
       this.query = value;
       this.renderedPeerIds.clear();
       this.needSwitchList = true;
-      
-      //console.log('selectPeers input:', this.query);
+
+      // console.log('selectPeers input:', this.query);
       this.getMoreResults();
     }
   };
 
   private async renderSaved() {
     if(
-      !this.exceptSelf && 
-      !this.offsetIndex && 
-      this.folderId === 0 && 
-      this.peerType.includes('dialogs') && 
+      !this.exceptSelf &&
+      !this.offsetIndex &&
+      this.folderId === 0 &&
+      this.peerType.includes('dialogs') &&
       (!this.query || await this.managers.appUsersManager.testSelfSearch(this.query))
     ) {
       await this.renderResultsFunc([rootScope.myId]);
@@ -311,7 +311,7 @@ export default class AppSelectPeers {
     if(this.loadedWhat.dialogs && this.loadedWhat.archived) {
       return;
     }
-    
+
     // в десктопе - сначала без группы, потом архивные, потом контакты без сообщений
     const pageCount = windowSize.height / 72 * 1.25 | 0;
 
@@ -342,7 +342,7 @@ export default class AppSelectPeers {
     }
 
     this.renderResultsFunc(dialogs.map((dialog) => dialog.peerId));
-    
+
     if(value.isEnd) {
       if(!this.loadedWhat.dialogs) {
         await this.renderSaved();
@@ -395,7 +395,7 @@ export default class AppSelectPeers {
       ]);
 
       this.promise = promise;
-      let [cachedContacts, searchResult] = await promise;
+      const [cachedContacts, searchResult] = await promise;
       if(this.tempIds.contacts !== tempId) {
         return;
       }
@@ -420,11 +420,11 @@ export default class AppSelectPeers {
     }
 
     // if(this.cachedContacts.length) {
-      const pageCount = windowSize.height / 72 * 1.25 | 0;
-      const arr = this.cachedContacts.splice(0, pageCount);
-      this.renderResultsFunc(arr);
+    const pageCount = windowSize.height / 72 * 1.25 | 0;
+    const arr = this.cachedContacts.splice(0, pageCount);
+    this.renderResultsFunc(arr);
     // }
-    
+
     if(!this.cachedContacts.length) {
       this.loadedWhat.contacts = true;
 
@@ -450,7 +450,7 @@ export default class AppSelectPeers {
     if(this.tempIds.channelParticipants !== tempId) {
       return;
     }
-    
+
     const peerIds = participants.participants.map((participant) => {
       return getParticipantPeerId(participant);
     });
@@ -482,15 +482,15 @@ export default class AppSelectPeers {
 
       //   promises.push(loadAllDialogsPromise);
       // }
-  
+
       if((this.peerType.includes('dialogs')/*  || this.loadedWhat.contacts */) && !this.loadedWhat.archived) { // to load non-contacts
         promises.push(this.getMoreDialogs());
-  
+
         if(!this.loadedWhat.archived) {
           return promises;
         }
       }
-      
+
       if((this.peerType.includes('contacts') || this.peerType.includes('dialogs')) && !this.loadedWhat.contacts) {
         promises.push(this.getMoreContacts());
       }
@@ -498,10 +498,10 @@ export default class AppSelectPeers {
       if(this.peerType.includes('channelParticipants') && !this.loadedWhat.channelParticipants) {
         promises.push(this.getMoreChannelParticipants());
       }
-  
+
       return promises;
     };
-    
+
     const promises = get();
     const promise = Promise.all(promises);
     if(promises.length) {
@@ -512,7 +512,7 @@ export default class AppSelectPeers {
   }
 
   private async renderResults(peerIds: PeerId[]) {
-    //console.log('will renderResults:', peerIds);
+    // console.log('will renderResults:', peerIds);
 
     // оставим только неконтакты с диалогов
     if(!this.peerType.includes('dialogs') && this.loadedWhat.contacts) {
@@ -534,7 +534,7 @@ export default class AppSelectPeers {
         const checkboxField = new CheckboxField();
 
         if(selected) {
-          //dom.listEl.classList.add('active');
+          // dom.listEl.classList.add('active');
           checkboxField.input.checked = true;
         }
 
@@ -555,7 +555,7 @@ export default class AppSelectPeers {
   }
 
   public add(key: PeerId | string, title?: string | HTMLElement, scroll = true) {
-    //console.trace('add');
+    // console.trace('add');
     this.selected.add(key);
 
     if(!this.multiSelect) {
@@ -598,22 +598,22 @@ export default class AppSelectPeers {
     div.insertAdjacentElement('afterbegin', avatarEl);
 
     this.selectedContainer.insertBefore(div, this.input);
-    //this.selectedScrollable.scrollTop = this.selectedScrollable.scrollHeight;
+    // this.selectedScrollable.scrollTop = this.selectedScrollable.scrollHeight;
     this.onChange && this.onChange(this.selected.size);
-    
+
     if(scroll) {
       this.selectedScrollable.scrollIntoViewNew({
-        element: this.input, 
+        element: this.input,
         position: 'center'
       });
     }
-    
+
     return div;
   }
 
   public remove(key: PeerId | string) {
     if(!this.multiSelect) return;
-    //const div = this.selected[peerId];
+    // const div = this.selected[peerId];
     const div = this.selectedContainer.querySelector(`[data-key="${key}"]`) as HTMLElement;
     div.classList.remove('scale-in');
     void div.offsetWidth;
@@ -643,8 +643,8 @@ export default class AppSelectPeers {
 
     window.requestAnimationFrame(() => { // ! not the best place for this raf though it works
       this.selectedScrollable.scrollIntoViewNew({
-        element: this.input, 
-        position: 'center', 
+        element: this.input,
+        position: 'center',
         forceDirection: FocusDirection.Static
       });
     });

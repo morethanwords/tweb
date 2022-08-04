@@ -4,18 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import callbackify from "../../helpers/callbackify";
-import formatNumber from "../../helpers/number/formatNumber";
-import { fastRaf } from "../../helpers/schedulers";
-import { MessagePeerReaction, ReactionCount } from "../../layer";
-import { AppManagers } from "../../lib/appManagers/managers";
-import getPeerId from "../../lib/appManagers/utils/peers/getPeerId";
-import RLottiePlayer from "../../lib/rlottie/rlottiePlayer";
-import rootScope from "../../lib/rootScope";
-import SetTransition from "../singleTransition";
-import StackedAvatars from "../stackedAvatars";
-import { wrapSticker, wrapStickerAnimation } from "../wrappers";
-import { Awaited } from "../../types";
+import callbackify from '../../helpers/callbackify';
+import formatNumber from '../../helpers/number/formatNumber';
+import {fastRaf} from '../../helpers/schedulers';
+import {MessagePeerReaction, ReactionCount} from '../../layer';
+import {AppManagers} from '../../lib/appManagers/managers';
+import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
+import RLottiePlayer from '../../lib/rlottie/rlottiePlayer';
+import rootScope from '../../lib/rootScope';
+import SetTransition from '../singleTransition';
+import StackedAvatars from '../stackedAvatars';
+import {wrapSticker, wrapStickerAnimation} from '../wrappers';
+import {Awaited} from '../../types';
 
 const CLASS_NAME = 'reaction';
 const TAG_NAME = CLASS_NAME + '-element';
@@ -46,7 +46,7 @@ export default class ReactionElement extends HTMLElement {
   public get reactionCount() {
     return this._reactionCount;
   }
-  
+
   public set reactionCount(reactionCount: ReactionCount) {
     this._reactionCount = reactionCount;
   }
@@ -71,7 +71,7 @@ export default class ReactionElement extends HTMLElement {
       this.stickerContainer.classList.add(CLASS_NAME + '-sticker');
       this.append(this.stickerContainer);
     }
-    
+
     const reactionCount = this.reactionCount;
     if(!doNotRenderSticker && !hadStickerContainer) {
       const availableReaction = this.managers.appReactionsManager.getReaction(reactionCount.reaction);

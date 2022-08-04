@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type EventListenerBase from "./eventListenerBase";
+import type EventListenerBase from './eventListenerBase';
 
 export type Listener = {
-  element: ListenerElement, 
-  event: ListenerEvent, 
-  callback: ListenerCallback, 
+  element: ListenerElement,
+  event: ListenerEvent,
+  callback: ListenerCallback,
   options?: ListenerOptions,
 
   onceFired?: true, // will be set only when options.once is set
@@ -57,7 +57,7 @@ export default class ListenerSetter {
         this.remove(listener);
         listener.onceFired = true;
       };
-      
+
       // @ts-ignore
       listener.element.addEventListener(listener.event, listener.onceCallback, listener.options);
     }
@@ -80,16 +80,16 @@ export default class ListenerSetter {
   }
 
   public removeManual<T extends ListenerElement>(
-    element: T, 
-    event: ListenerEvent, 
-    callback: ListenerCallback, 
+    element: T,
+    event: ListenerEvent,
+    callback: ListenerCallback,
     options?: ListenerOptions
   ) {
     let listener: Listener;
     for(const _listener of this.listeners) {
-      if(_listener.element === element && 
-        _listener.event === event && 
-        _listener.callback === callback && 
+      if(_listener.element === element &&
+        _listener.event === event &&
+        _listener.callback === callback &&
         _listener.options === options) {
         listener = _listener;
         break;

@@ -4,16 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appSidebarLeft, { SettingSection } from "..";
-import { InputFile } from "../../../layer";
-import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
-import InputField from "../../inputField";
-import { SliderSuperTab } from "../../slider";
-import AvatarEdit from "../../avatarEdit";
-import I18n from "../../../lib/langPack";
-import ButtonCorner from "../../buttonCorner";
-import getUserStatusString from "../../wrappers/getUserStatusString";
-import appImManager from "../../../lib/appManagers/appImManager";
+import appSidebarLeft, {SettingSection} from '..';
+import {InputFile} from '../../../layer';
+import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
+import InputField from '../../inputField';
+import {SliderSuperTab} from '../../slider';
+import AvatarEdit from '../../avatarEdit';
+import I18n from '../../../lib/langPack';
+import ButtonCorner from '../../buttonCorner';
+import getUserStatusString from '../../wrappers/getUserStatusString';
+import appImManager from '../../../lib/appManagers/appImManager';
 
 interface OpenStreetMapInterface {
   place_id?: number;
@@ -84,11 +84,11 @@ export default class AppNewGroupTab extends SliderSuperTab {
       if(this.isGeoChat) {
         if(!this.userLocationAddress || !this.userLocationCoords) return;
         promise = this.managers.appChatsManager.createChannel({
-          title, 
-          about: '', 
+          title,
+          about: '',
           geo_point: {
             _: 'inputGeoPoint',
-            ...this.userLocationCoords, 
+            ...this.userLocationCoords
           },
           address: this.userLocationAddress,
           megagroup: true
@@ -113,7 +113,7 @@ export default class AppNewGroupTab extends SliderSuperTab {
               this.managers.appChatsManager.editPhoto(chatId, inputFile);
             });
           }
-          
+
           return chatId;
         });
       }
@@ -180,7 +180,7 @@ export default class AppNewGroupTab extends SliderSuperTab {
         dom.lastMessageSpan.append(getUserStatusString(await this.managers.appUsersManager.getUser(userId)));
       }));
     });
-    
+
     return result;
   }
 
@@ -191,12 +191,12 @@ export default class AppNewGroupTab extends SliderSuperTab {
         long: location.coords.longitude
       };
 
-      let uri = "https://nominatim.openstreetmap.org/reverse";
-      uri += "?lat="+location.coords.latitude;
-      uri += "&lon="+location.coords.longitude;
-      uri += "&format=json";
-      uri += "&addressdetails=1";
-      uri += "&accept-language=en";
+      let uri = 'https://nominatim.openstreetmap.org/reverse';
+      uri += '?lat='+location.coords.latitude;
+      uri += '&lon='+location.coords.longitude;
+      uri += '&format=json';
+      uri += '&addressdetails=1';
+      uri += '&accept-language=en';
       fetch(uri)
       .then((response) => response.json())
       .then((response: OpenStreetMapInterface) => {

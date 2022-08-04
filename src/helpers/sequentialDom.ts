@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { fastRaf } from "./schedulers";
-import deferredPromise, { CancellablePromise } from "./cancellablePromise";
-import { MOUNT_CLASS_TO } from "../config/debug";
-import isInDOM from "./dom/isInDOM";
+import {fastRaf} from './schedulers';
+import deferredPromise, {CancellablePromise} from './cancellablePromise';
+import {MOUNT_CLASS_TO} from '../config/debug';
+import isInDOM from './dom/isInDOM';
 
 class SequentialDom {
   private promises: Partial<{
@@ -27,7 +27,7 @@ class SequentialDom {
     if(callback !== undefined) {
       promise.then(() => callback());
     }
-    
+
     return promise;
   }
 
@@ -41,8 +41,8 @@ class SequentialDom {
 
   /**
    * Will fire instantly if element is not connected
-   * @param element 
-   * @param callback 
+   * @param element
+   * @param callback
    */
   public mutateElement(element: HTMLElement, callback?: VoidFunction) {
     const isConnected = isInDOM(element);

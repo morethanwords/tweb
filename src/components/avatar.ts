@@ -4,21 +4,21 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import rootScope from "../lib/rootScope";
-import { Message, Photo } from "../layer";
-import type LazyLoadQueue from "./lazyLoadQueue";
-import { attachClickEvent } from "../helpers/dom/clickEvent";
-import cancelEvent from "../helpers/dom/cancelEvent";
-import AppMediaViewer from "./appMediaViewer";
-import AppMediaViewerAvatar from "./appMediaViewerAvatar";
-import isObject from "../helpers/object/isObject";
-import { ArgumentTypes } from "../types";
-import putPhoto from "./putPhoto";
-import { recordPromise } from "../helpers/recordPromise";
+import rootScope from '../lib/rootScope';
+import {Message, Photo} from '../layer';
+import type LazyLoadQueue from './lazyLoadQueue';
+import {attachClickEvent} from '../helpers/dom/clickEvent';
+import cancelEvent from '../helpers/dom/cancelEvent';
+import AppMediaViewer from './appMediaViewer';
+import AppMediaViewerAvatar from './appMediaViewerAvatar';
+import isObject from '../helpers/object/isObject';
+import {ArgumentTypes} from '../types';
+import putPhoto from './putPhoto';
+import {recordPromise} from '../helpers/recordPromise';
 
 const onAvatarUpdate = (peerId: PeerId) => {
   (Array.from(document.querySelectorAll('avatar-element[data-peer-id="' + peerId + '"]')) as AvatarElement[]).forEach((elem) => {
-    //console.log('updating avatar:', elem);
+    // console.log('updating avatar:', elem);
     elem.update();
   });
 };
@@ -31,11 +31,11 @@ rootScope.addEventListener('peer_title_edit', async(peerId) => {
 });
 
 export async function openAvatarViewer(
-  target: HTMLElement, 
-  peerId: PeerId, 
-  middleware: () => boolean, 
-  message?: any, 
-  prevTargets?: {element: HTMLElement, item: Photo.photo['id'] | Message.messageService}[], 
+  target: HTMLElement,
+  peerId: PeerId,
+  middleware: () => boolean,
+  message?: any,
+  prevTargets?: {element: HTMLElement, item: Photo.photo['id'] | Message.messageService}[],
   nextTargets?: typeof prevTargets
 ) {
   let photo = await rootScope.managers.appProfileManager.getFullPhoto(peerId);
@@ -53,12 +53,12 @@ export async function openAvatarViewer(
     const inputFilter = 'inputMessagesFilterChatPhotos';
     if(!message) {
       message = await rootScope.managers.appMessagesManager.getSearch({
-        peerId, 
-        inputFilter: {_: inputFilter}, 
-        maxId: 0, 
-        limit: 1 
+        peerId,
+        inputFilter: {_: inputFilter},
+        maxId: 0,
+        limit: 1
       }).then((value) => {
-        //console.log(lol);
+        // console.log(lol);
         // ! by descend
         return value.history[0];
       });
@@ -75,7 +75,7 @@ export async function openAvatarViewer(
         if(!hadMessage) {
           message = rootScope.managers.appMessagesManager.generateFakeAvatarMessage(peerId, photo);
         } else {
-          
+
         }
       }
 
@@ -88,7 +88,7 @@ export async function openAvatarViewer(
       new AppMediaViewer()
       .setSearchContext({
         peerId,
-        inputFilter: {_: inputFilter},
+        inputFilter: {_: inputFilter}
       })
       .openMedia(message, getTarget(), undefined, undefined, prevTargets ? f(prevTargets) : undefined, nextTargets ? f(nextTargets) : undefined);
 
@@ -100,17 +100,17 @@ export async function openAvatarViewer(
     if(!isObject(message) && message) {
       photo = await rootScope.managers.appPhotosManager.getPhoto(message);
     }
-    
+
     const f = (arr: typeof prevTargets) => arr.map((el) => ({
       element: el.element,
       photoId: el.item as string
     }));
 
     new AppMediaViewerAvatar(peerId).openMedia(
-      photo.id, 
-      getTarget(), 
-      undefined, 
-      prevTargets ? f(prevTargets) : undefined, 
+      photo.id,
+      getTarget(),
+      undefined,
+      prevTargets ? f(prevTargets) : undefined,
       nextTargets ? f(nextTargets) : undefined
     );
   }
@@ -149,7 +149,7 @@ export default class AvatarElement extends HTMLElement {
     attachClickEvent(this, async(e) => {
       cancelEvent(e);
       if(loading) return;
-      //console.log('avatar clicked');
+      // console.log('avatar clicked');
       const peerId = this.peerId;
       loading = true;
       await openAvatarViewer(this, this.peerId, () => this.peerId === peerId);
@@ -158,7 +158,7 @@ export default class AvatarElement extends HTMLElement {
   }
 
   public updateOptions(options: Partial<ArgumentTypes<AvatarElement['updateWithOptions']>[0]>) {
-    for(let i in options) {
+    for(const i in options) {
       // @ts-ignore
       this[i] = options[i];
     }
@@ -216,17 +216,17 @@ export default class AvatarElement extends HTMLElement {
       if(!seen.has(this.peerId)) {
         if(this.addedToQueue) return;
         this.addedToQueue = true;
-        
+
         let set = believeMe.get(this.peerId);
         if(!set) {
           set = new Set();
           believeMe.set(this.peerId, set);
         }
-  
+
         set.add(this);
 
         this.lazyLoadQueue.push({
-          div: this, 
+          div: this,
           load: () => {
             seen.add(this.peerId);
             return this.update();
@@ -237,10 +237,10 @@ export default class AvatarElement extends HTMLElement {
       } else if(this.addedToQueue) {
         this.lazyLoadQueue.unobserve(this);
       }
-    } 
-    
+    }
+
     seen.add(this.peerId);
-    
+
     const promise = this.r();
 
     if(this.addedToQueue) {
@@ -254,7 +254,7 @@ export default class AvatarElement extends HTMLElement {
       set.delete(this);
       const arr = Array.from(set);
       believeMe.delete(this.peerId);
-      
+
 
       for(let i = 0, length = arr.length; i < length; ++i) {
         arr[i].update();

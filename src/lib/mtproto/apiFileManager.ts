@@ -2,53 +2,53 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type { ReferenceBytes } from "./referenceDatabase";
-import Modes from "../../config/modes";
-import deferredPromise, { CancellablePromise } from "../../helpers/cancellablePromise";
-import { randomLong } from "../../helpers/random";
-import { Document, InputFile, InputFileLocation, InputWebFileLocation, Photo, PhotoSize, UploadFile, UploadWebFile, WebDocument } from "../../layer";
-import { DcId } from "../../types";
-import CacheStorageController from "../files/cacheStorage";
-import { logger, LogTypes } from "../logger";
-import assumeType from "../../helpers/assumeType";
-import ctx from "../../environment/ctx";
-import noop from "../../helpers/noop";
-import readBlobAsArrayBuffer from "../../helpers/blob/readBlobAsArrayBuffer";
-import bytesToHex from "../../helpers/bytes/bytesToHex";
-import findAndSplice from "../../helpers/array/findAndSplice";
-import fixFirefoxSvg from "../../helpers/fixFirefoxSvg";
-import { AppManager } from "../appManagers/manager";
-import { getEnvironment } from "../../environment/utils";
-import MTProtoMessagePort from "./mtprotoMessagePort";
-import getFileNameForUpload from "../../helpers/getFileNameForUpload";
-import type { Progress } from "../appManagers/appDownloadManager";
-import getDownloadMediaDetails from "../appManagers/utils/download/getDownloadMediaDetails";
-import networkStats from "./networkStats";
-import getDownloadFileNameFromOptions from "../appManagers/utils/download/getDownloadFileNameFromOptions";
-import { getServiceMessagePort } from "./mtproto.worker";
-import StreamWriter from "../files/streamWriter";
-import FileStorage from "../files/fileStorage";
-import fileNameRFC from "../../helpers/string/fileNameRFC";
-import { MAX_FILE_SAVE_SIZE } from "./mtproto_config";
-import throttle from "../../helpers/schedulers/throttle";
-import makeError from "../../helpers/makeError";
+import type {ReferenceBytes} from './referenceDatabase';
+import Modes from '../../config/modes';
+import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
+import {randomLong} from '../../helpers/random';
+import {Document, InputFile, InputFileLocation, InputWebFileLocation, Photo, PhotoSize, UploadFile, UploadWebFile, WebDocument} from '../../layer';
+import {DcId} from '../../types';
+import CacheStorageController from '../files/cacheStorage';
+import {logger, LogTypes} from '../logger';
+import assumeType from '../../helpers/assumeType';
+import ctx from '../../environment/ctx';
+import noop from '../../helpers/noop';
+import readBlobAsArrayBuffer from '../../helpers/blob/readBlobAsArrayBuffer';
+import bytesToHex from '../../helpers/bytes/bytesToHex';
+import findAndSplice from '../../helpers/array/findAndSplice';
+import fixFirefoxSvg from '../../helpers/fixFirefoxSvg';
+import {AppManager} from '../appManagers/manager';
+import {getEnvironment} from '../../environment/utils';
+import MTProtoMessagePort from './mtprotoMessagePort';
+import getFileNameForUpload from '../../helpers/getFileNameForUpload';
+import type {Progress} from '../appManagers/appDownloadManager';
+import getDownloadMediaDetails from '../appManagers/utils/download/getDownloadMediaDetails';
+import networkStats from './networkStats';
+import getDownloadFileNameFromOptions from '../appManagers/utils/download/getDownloadFileNameFromOptions';
+import {getServiceMessagePort} from './mtproto.worker';
+import StreamWriter from '../files/streamWriter';
+import FileStorage from '../files/fileStorage';
+import fileNameRFC from '../../helpers/string/fileNameRFC';
+import {MAX_FILE_SAVE_SIZE} from './mtproto_config';
+import throttle from '../../helpers/schedulers/throttle';
+import makeError from '../../helpers/makeError';
 
 type Delayed = {
-  offset: number, 
-  writePromise: CancellablePromise<void>, 
+  offset: number,
+  writePromise: CancellablePromise<void>,
   writeDeferred: CancellablePromise<void>
 };
 
 export type DownloadOptions = {
-  dcId: DcId, 
-  location: InputFileLocation | InputWebFileLocation, 
+  dcId: DcId,
+  location: InputFileLocation | InputWebFileLocation,
   size?: number,
   fileName?: string,
   mimeType?: string,
@@ -174,13 +174,13 @@ export class ApiFileManager extends AppManager {
   private downloadCheck(dcId: string | number) {
     const downloadPull = this.downloadPulls[dcId];
     const downloadLimit = dcId === 'upload' ? 24 : (this.rootScope.premium ? PREMIUM_DOWNLOAD_DELTA : REGULAR_DOWNLOAD_DELTA);
-    //const downloadLimit = Infinity;
+    // const downloadLimit = Infinity;
 
     if(this.downloadActives[dcId] >= downloadLimit || !downloadPull?.length) {
       return false;
     }
 
-    //const data = downloadPull.shift();
+    // const data = downloadPull.shift();
     const data = findAndSplice(downloadPull, (d) => d.queueId === 0) || findAndSplice(downloadPull, (d) => d.queueId === this.queueId) || downloadPull.shift();
     const activeDelta = data.activeDelta || 1;
 
@@ -203,7 +203,7 @@ export class ApiFileManager extends AppManager {
 
       this.downloadActives[dcId] -= activeDelta;
       this.downloadCheck(dcId);
-      
+
       networkPromise.reject(error);
     }).finally(() => {
       promise.then(data.deferred.resolve, data.deferred.reject);
@@ -211,7 +211,7 @@ export class ApiFileManager extends AppManager {
   }
 
   public setQueueId(queueId: number) {
-    //this.log.error('setQueueId', queueId);
+    // this.log.error('setQueueId', queueId);
     this.queueId = queueId;
   }
 
@@ -257,7 +257,7 @@ export class ApiFileManager extends AppManager {
 
         // * IMPORTANT: reference can be changed in previous request
         const reference = (location as InputFileLocation.inputDocumentFileLocation).file_reference?.slice();
-        
+
         const promise = /* pause(1000).then(() =>  */this.apiManager.invokeApi('upload.getFile', {
           location,
           offset,
@@ -318,13 +318,13 @@ export class ApiFileManager extends AppManager {
   }
 
   private uncompressTGS = (bytes: Uint8Array, fileName: string) => {
-    //this.log('uncompressTGS', bytes, bytes.slice().buffer);
+    // this.log('uncompressTGS', bytes, bytes.slice().buffer);
     // slice нужен потому что в uint8array - 5053 length, в arraybuffer - 5084
     return this.cryptoWorker.invokeCrypto('gzipUncompress', bytes.slice().buffer, false) as Promise<Uint8Array>;
   };
 
   private uncompressTGV = (bytes: Uint8Array, fileName: string) => {
-    //this.log('uncompressTGS', bytes, bytes.slice().buffer);
+    // this.log('uncompressTGS', bytes, bytes.slice().buffer);
     // slice нужен потому что в uint8array - 5053 length, в arraybuffer - 5084
     const buffer = bytes.slice().buffer;
     if(getEnvironment().IS_FIREFOX) {
@@ -350,7 +350,7 @@ export class ApiFileManager extends AppManager {
   };
 
   private refreshReference(
-    inputFileLocation: InputFileLocation.inputDocumentFileLocation, 
+    inputFileLocation: InputFileLocation.inputDocumentFileLocation,
     reference: typeof inputFileLocation['file_reference'],
     hex = bytesToHex(reference)
   ) {
@@ -359,7 +359,7 @@ export class ApiFileManager extends AppManager {
       const deferred = deferredPromise<ReferenceBytes>();
 
       r = this.refreshReferencePromises[hex] = {
-        deferred,
+        deferred
 
         // ! I don't remember what it was for...
         // timeout: ctx.setTimeout(() => {
@@ -432,7 +432,7 @@ export class ApiFileManager extends AppManager {
     } */
 
     if(cachedPromise) {
-      //this.log('downloadFile cachedPromise');
+      // this.log('downloadFile cachedPromise');
 
       if(size) {
         return cachedPromise.then((blob) => {
@@ -475,12 +475,12 @@ export class ApiFileManager extends AppManager {
     if(downloadId) {
       const headers = {
         'Content-Type': 'application/octet-stream; charset=utf-8',
-        'Content-Disposition': "attachment; filename*=UTF-8''" + fileNameRFC(options.fileName),
+        'Content-Disposition': 'attachment; filename*=UTF-8\'\'' + fileNameRFC(options.fileName),
         // 'Content-Disposition': `attachment; filename="${options.fileName}"`,
         // 'Content-Type': 'application/octet-stream; charset=utf-8',
         ...(size ? {'Content-Length': size} : {})
       };
-  
+
       const serviceMessagePort = getServiceMessagePort();
       const promise = serviceMessagePort.invoke('download', {
         fileName,
@@ -524,7 +524,7 @@ export class ApiFileManager extends AppManager {
     }
 
     fileStorage.getFile(fileName).then(async(blob: Blob) => {
-      //throw '';
+      // throw '';
 
       if(blob.size < size) {
         if(!options.onlyCache) {
@@ -541,24 +541,24 @@ export class ApiFileManager extends AppManager {
         return;
       }
 
-      //this.log('not cached', fileName);
+      // this.log('not cached', fileName);
       const limit = options.limitPart || this.getLimitPart(size, false);
       const writerPromise = fileStorage.getWriter(fileName, size || limit, mimeType);
 
       const writer = cacheWriter = await writerPromise;
-      
+
       let offset: number;
-      let startOffset = 0;
+      const startOffset = 0;
       let writePromise: CancellablePromise<void> = Promise.resolve(),
         writeDeferred: CancellablePromise<void>;
-      //const maxRequests = 13107200 / limit; // * 100 Mb speed
+      // const maxRequests = 13107200 / limit; // * 100 Mb speed
       const maxRequests = Infinity;
 
       const processDownloaded = async(bytes: Uint8Array) => {
         if(process) {
-          //const perf = performance.now();
+          // const perf = performance.now();
           const processed = await process(bytes, fileName);
-          //this.log('downloadFile process downloaded time', performance.now() - perf, mimeType, process);
+          // this.log('downloadFile process downloaded time', performance.now() - perf, mimeType, process);
           return processed;
         }
 
@@ -586,7 +586,7 @@ export class ApiFileManager extends AppManager {
 
       let done = 0;
       const superpuper = async() => {
-        //if(!delayed.length) return;
+        // if(!delayed.length) return;
 
         const {offset, writePromise, writeDeferred} = delayed.shift();
         try {
@@ -696,7 +696,7 @@ export class ApiFileManager extends AppManager {
     let promise = this.getDownload(fileName);
     if(!promise) {
       promise = this.download(downloadOptions);
-      
+
       if(isDocument && !thumb) {
         this.rootScope.dispatchEvent('document_downloading', (media as Document.document).id);
         promise.catch(noop).finally(() => {
@@ -736,13 +736,13 @@ export class ApiFileManager extends AppManager {
   }
 
   public upload({file, fileName}: {file: Blob | File, fileName?: string}) {
-    const fileSize = file.size, 
+    const fileSize = file.size,
       isBigFile = fileSize >= 10485760;
 
     let canceled = false,
       resolved = false,
-      doneParts = 0,
-      partSize = this.getLimitPart(fileSize, true);
+      doneParts = 0;
+    const partSize = this.getLimitPart(fileSize, true);
 
     fileName ||= getFileNameForUpload(file);
 
@@ -766,7 +766,7 @@ export class ApiFileManager extends AppManager {
       deferred.reject(makeError('FILE_TOO_BIG'));
       return deferred;
     }
-    
+
     let errorHandler = (error: ApiError) => {
       if(error?.type !== 'UPLOAD_CANCELED') {
         this.log.error('Up Error', error);
@@ -801,17 +801,17 @@ export class ApiFileManager extends AppManager {
               u[i] = 0;
             }
             buffer = u.buffer; */
-  
+
             /* setTimeout(() => {
               doneParts++;
               uploadResolve();
-  
+
               //////this.log('Progress', doneParts * partSize / fileSize);
 
               self.log('done part', part, doneParts);
-  
+
               deferred.notify({done: doneParts * partSize, total: fileSize});
-  
+
               if(doneParts >= totalParts) {
                 deferred.resolve(resultInputFile);
                 resolved = true;
@@ -825,7 +825,7 @@ export class ApiFileManager extends AppManager {
               file_total_parts: totalParts,
               bytes: buffer/* new Uint8Array(buffer) */
             } as any, {
-              //startMaxLength: partSize + 256,
+              // startMaxLength: partSize + 256,
               fileUpload: true
             }).then(() => {
               if(canceled) {
@@ -835,7 +835,7 @@ export class ApiFileManager extends AppManager {
               ++doneParts;
               const progress: Progress = {done: doneParts * partSize, offset, total: fileSize, fileName};
               deferred.notify(progress);
-  
+
               if(doneParts >= totalParts) {
                 deferred.resolve(resultInputFile);
                 resolved = true;
@@ -855,7 +855,7 @@ export class ApiFileManager extends AppManager {
     };
 
     const maxRequests = Infinity;
-    //const maxRequests = 10;
+    // const maxRequests = 10;
     /* for(let i = 0; i < 10; ++i) {
       process();
     } */

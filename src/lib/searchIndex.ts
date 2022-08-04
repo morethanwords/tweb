@@ -2,14 +2,14 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import { processSearchText, ProcessSearchTextOptions } from '../helpers/cleanSearchText';
+import {processSearchText, ProcessSearchTextOptions} from '../helpers/cleanSearchText';
 import flatten from '../helpers/array/flatten';
 
 export default class SearchIndex<SearchWhat> {
@@ -34,7 +34,7 @@ export default class SearchIndex<SearchWhat> {
     }
 
     this.fullTexts.set(id, searchText);
-    
+
     /* const shortIndexes = searchIndex.shortIndexes;
     searchText.split(' ').forEach((searchWord) => {
       let len = Math.min(searchWord.length, 3),
@@ -91,7 +91,7 @@ export default class SearchIndex<SearchWhat> {
 
     newFoundObjs.sort((a, b) => a.fullTextLength - b.fullTextLength || b.foundChars - a.foundChars);
 
-    //newFoundObjs.sort((a, b) => a.fullText.localeCompare(b.fullText));
+    // newFoundObjs.sort((a, b) => a.fullText.localeCompare(b.fullText));
     const newFoundObjs2: Set<SearchWhat> = new Set(newFoundObjs.map((o) => o.what));
 
     return newFoundObjs2;

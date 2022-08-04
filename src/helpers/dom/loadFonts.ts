@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import pause from "../schedulers/pause";
+import pause from '../schedulers/pause';
 
 const texts = ['b', 'б'];
 type FontType = 'text' | 'icons' | 'monospace';
@@ -29,7 +29,7 @@ export default function loadFonts(types: {[type in FontType]?: string[] | 'all'}
   if(!('fonts' in document)) {
     return Promise.resolve();
   }
-  
+
   const promises: Promise<any>[] = [];
   for(const type in types) {
     let _texts = types[type as FontType];

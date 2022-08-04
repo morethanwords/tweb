@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import AvatarElement from "./avatar";
-import type LazyLoadQueue from "./lazyLoadQueue";
+import AvatarElement from './avatar';
+import type LazyLoadQueue from './lazyLoadQueue';
 
 const CLASS_NAME = 'stacked-avatars';
 const AVATAR_CLASS_NAME = CLASS_NAME + '-avatar';
@@ -61,7 +61,7 @@ export default class StackedAvatars {
         lazyLoadQueue: this.lazyLoadQueue,
         peerId: peerId
       });
-      
+
       if(!avatarElem.parentNode) {
         avatarContainer.append(avatarElem);
       }

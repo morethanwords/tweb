@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import MovableElement, { MovableElementOptions, MovableState } from "../components/movableElement";
-import IS_TOUCH_SUPPORTED from "../environment/touchSupport";
-import ListenerSetter from "./listenerSetter";
-import mediaSizes, { ScreenSize } from "./mediaSizes";
-import safeAssign from "./object/safeAssign";
+import MovableElement, {MovableElementOptions, MovableState} from '../components/movableElement';
+import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
+import ListenerSetter from './listenerSetter';
+import mediaSizes, {ScreenSize} from './mediaSizes';
+import safeAssign from './object/safeAssign';
 
 export default class MovablePanel {
   #movable: MovableElement;
@@ -16,7 +16,7 @@ export default class MovablePanel {
   private previousState: MovableState;
   private onResize: () => void;
   private movableOptions: MovableElementOptions;
-  
+
   constructor(options: {
     listenerSetter: ListenerSetter,
     previousState: MovableState,
@@ -61,12 +61,12 @@ export default class MovablePanel {
       }
 
       movable = this.#movable = new MovableElement(this.movableOptions);
-  
+
       movable.state = this.previousState;
       if(this.previousState.top === undefined) {
         movable.setPositionToCenter();
       }
-  
+
       if(this.onResize) {
         this.listenerSetter.add(movable)('resize', this.onResize);
       }

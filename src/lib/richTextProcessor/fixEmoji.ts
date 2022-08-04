@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { MessageEntity } from "../../layer";
+import {MessageEntity} from '../../layer';
 
 export default function fixEmoji(text: string, entities?: MessageEntity[]) {
   /* if(!IS_EMOJI_SUPPORTED) {
@@ -26,7 +26,7 @@ export default function fixEmoji(text: string, entities?: MessageEntity[]) {
         }
       });
     }
-    
+
     // console.log([match, offset, string]);
     return match + '\ufe0f';
   });

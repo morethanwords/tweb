@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { MyDocument } from "../lib/appManagers/appDocsManager";
-import rootScope from "../lib/rootScope";
+import type {MyDocument} from '../lib/appManagers/appDocsManager';
+import rootScope from '../lib/rootScope';
 
 const savingLottiePreview: {[docId: DocId]: {width: number, height: number}} = {};
 
@@ -39,13 +39,13 @@ export async function saveLottiePreview(doc: MyDocument, canvas: HTMLCanvasEleme
   const promise = new Promise<Blob>((resolve) => {
     canvas.toBlob((blob) => resolve(blob));
   });
-  
+
   const blob = await promise;
   if(savingLottiePreview[key] !== saving) {
     return;
   }
 
-  //console.log('got lottie preview', doc, blob, URL.createObjectURL(blob));
+  // console.log('got lottie preview', doc, blob, URL.createObjectURL(blob));
 
   rootScope.managers.appDocsManager.saveLottiePreview(doc.id, blob, width, height, toneIndex);
 

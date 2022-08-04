@@ -4,24 +4,24 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { SliderSuperTab } from "../../slider"
-import InputField from "../../inputField";
-import EditPeer from "../../editPeer";
-import { SettingSection } from "../../sidebarLeft";
-import Row from "../../row";
-import Button from "../../button";
-import { ChatRights } from "../../../lib/appManagers/appChatsManager";
-import { Chat, ChatFull } from "../../../layer";
-import AppChatTypeTab from "./chatType";
-import rootScope from "../../../lib/rootScope";
-import AppGroupPermissionsTab from "./groupPermissions";
-import { i18n, LangPackKey } from "../../../lib/langPack";
-import PopupDeleteDialog from "../../popups/deleteDialog";
-import { attachClickEvent } from "../../../helpers/dom/clickEvent";
-import toggleDisability from "../../../helpers/dom/toggleDisability";
-import CheckboxField from "../../checkboxField";
-import AppChatReactionsTab from "./chatReactions";
-import hasRights from "../../../lib/appManagers/utils/chats/hasRights";
+import {SliderSuperTab} from '../../slider'
+import InputField from '../../inputField';
+import EditPeer from '../../editPeer';
+import {SettingSection} from '../../sidebarLeft';
+import Row from '../../row';
+import Button from '../../button';
+import {ChatRights} from '../../../lib/appManagers/appChatsManager';
+import {Chat, ChatFull} from '../../../layer';
+import AppChatTypeTab from './chatType';
+import rootScope from '../../../lib/rootScope';
+import AppGroupPermissionsTab from './groupPermissions';
+import {i18n, LangPackKey} from '../../../lib/langPack';
+import PopupDeleteDialog from '../../popups/deleteDialog';
+import {attachClickEvent} from '../../../helpers/dom/clickEvent';
+import toggleDisability from '../../../helpers/dom/toggleDisability';
+import CheckboxField from '../../checkboxField';
+import AppChatReactionsTab from './chatReactions';
+import hasRights from '../../../lib/appManagers/utils/chats/hasRights';
 
 export default class AppEditChatTab extends SliderSuperTab {
   private chatNameInputField: InputField;
@@ -39,7 +39,7 @@ export default class AppEditChatTab extends SliderSuperTab {
 
     this.container.classList.add('edit-peer-container', 'edit-group-container');
     this.setTitle('Edit');
-    
+
     let chatFull = await this.managers.appProfileManager.getChatFull(this.chatId, true);
 
     const chat: Chat.chat | Chat.channel = await this.managers.appChatsManager.getChat(this.chatId);
@@ -73,7 +73,7 @@ export default class AppEditChatTab extends SliderSuperTab {
 
       const inputWrapper = document.createElement('div');
       inputWrapper.classList.add('input-wrapper');
-  
+
       this.chatNameInputField = new InputField({
         label: isBroadcast ? 'EnterChannelName' : 'CreateGroup.NameHolder',
         name: 'chat-name',
@@ -85,12 +85,12 @@ export default class AppEditChatTab extends SliderSuperTab {
         name: 'chat-description',
         maxLength: 255
       });
-      
+
       this.chatNameInputField.setOriginalValue(chat.title);
       this.descriptionInputField.setOriginalValue(chatFull.about);
 
       inputWrapper.append(this.chatNameInputField.container, this.descriptionInputField.container);
-      
+
       inputFields.push(this.chatNameInputField, this.descriptionInputField);
 
       this.editPeer = new EditPeer({
@@ -101,7 +101,7 @@ export default class AppEditChatTab extends SliderSuperTab {
       this.content.append(this.editPeer.nextBtn);
 
       section.content.append(this.editPeer.avatarEdit.container, inputWrapper);
-    
+
       if(canChangeType) {
         const chatTypeRow = new Row({
           titleLangKey: isBroadcast ? 'ChannelType' : 'GroupType',
@@ -144,7 +144,7 @@ export default class AppEditChatTab extends SliderSuperTab {
               if(this.tempId !== tempId) {
                 return;
               }
-              
+
               this.listenerSetter.add(tab.eventListener)('destroy', setReactionsLength);
             });
           }
@@ -181,7 +181,7 @@ export default class AppEditChatTab extends SliderSuperTab {
             tab.chatId = this.chatId;
             tab.open();
           },
-          icon: 'permissions',
+          icon: 'permissions'
         });
 
         const setPermissionsLength = async() => {
@@ -189,7 +189,7 @@ export default class AppEditChatTab extends SliderSuperTab {
           permissionsRow.subtitle.innerHTML = flags.reduce((acc, f) => acc + +hasRights(chat, f, (chat as Chat.chat).default_banned_rights), 0) + '/' + flags.length;
         };
 
-        setPermissionsLength();        
+        setPermissionsLength();
         section.content.append(permissionsRow.container);
 
         this.listenerSetter.add(rootScope)('chat_update', (chatId) => {
@@ -212,8 +212,8 @@ export default class AppEditChatTab extends SliderSuperTab {
 
       attachClickEvent(this.editPeer.nextBtn, () => {
         this.editPeer.nextBtn.disabled = true;
-  
-        let promises: Promise<any>[] = [];
+
+        const promises: Promise<any>[] = [];
 
         const id = this.chatId;
         if(this.chatNameInputField.isValidToChange()) {
@@ -229,14 +229,14 @@ export default class AppEditChatTab extends SliderSuperTab {
             return this.managers.appChatsManager.editPhoto(id, inputFile);
           }));
         }
-  
+
         Promise.race(promises).finally(() => {
           this.editPeer.nextBtn.removeAttribute('disabled');
           this.close();
         });
       }, {listenerSetter: this.listenerSetter});
 
-      
+
       /* if(appChatsManager.hasRights(-this.peerId, 'change_info')) {
         const discussionRow = new Row({
           titleLangKey: 'PeerInfo.Discussion',
@@ -314,7 +314,7 @@ export default class AppEditChatTab extends SliderSuperTab {
 
         onChatUpdate();
         addChatUpdateListener(onChatUpdate);
-  
+
         section.content.append(showChatHistoryCheckboxField.label);
       }
 

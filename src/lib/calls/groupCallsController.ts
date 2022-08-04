@@ -4,23 +4,23 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import getGroupCallAudioAsset from "../../components/groupCall/getAudioAsset";
-import { MOUNT_CLASS_TO } from "../../config/debug";
-import EventListenerBase from "../../helpers/eventListenerBase";
-import { GroupCallParticipant, GroupCallParticipantVideo, GroupCallParticipantVideoSourceGroup } from "../../layer";
-import { GroupCallId, GroupCallConnectionType } from "../appManagers/appGroupCallsManager";
-import { AppManagers } from "../appManagers/managers";
-import { logger } from "../logger";
-import rootScope from "../rootScope";
-import GroupCallInstance from "./groupCallInstance";
-import GROUP_CALL_STATE from "./groupCallState";
-import createMainStreamManager from "./helpers/createMainStreamManager";
-import { generateSsrc } from "./localConferenceDescription";
-import { WebRTCLineType } from "./sdpBuilder";
-import StreamManager from "./streamManager";
-import { Ssrc } from "./types";
+import getGroupCallAudioAsset from '../../components/groupCall/getAudioAsset';
+import {MOUNT_CLASS_TO} from '../../config/debug';
+import EventListenerBase from '../../helpers/eventListenerBase';
+import {GroupCallParticipant, GroupCallParticipantVideo, GroupCallParticipantVideoSourceGroup} from '../../layer';
+import {GroupCallId, GroupCallConnectionType} from '../appManagers/appGroupCallsManager';
+import {AppManagers} from '../appManagers/managers';
+import {logger} from '../logger';
+import rootScope from '../rootScope';
+import GroupCallInstance from './groupCallInstance';
+import GROUP_CALL_STATE from './groupCallState';
+import createMainStreamManager from './helpers/createMainStreamManager';
+import {generateSsrc} from './localConferenceDescription';
+import {WebRTCLineType} from './sdpBuilder';
+import StreamManager from './streamManager';
+import {Ssrc} from './types';
 
-let IS_MUTED = true;
+const IS_MUTED = true;
 
 export function makeSsrcsFromParticipant(participant: GroupCallParticipant) {
   return [
@@ -63,7 +63,7 @@ export class GroupCallsController extends EventListenerBase<{
       const {currentGroupCall} = this;
       if(currentGroupCall?.id === groupCall.id) {
         currentGroupCall.groupCall = groupCall;
-        
+
         if(groupCall._ === 'groupCallDiscarded') {
           currentGroupCall.hangUp(false, false, true);
         }
@@ -94,7 +94,7 @@ export class GroupCallsController extends EventListenerBase<{
     this.stopConnectingSound();
     this.audioAsset.playSoundWithTimeout('group_call_connect.mp3', true, 2500);
   }
-  
+
   public stopConnectingSound() {
     this.audioAsset.stopSound();
     this.audioAsset.cancelDelayedPlay();
@@ -104,7 +104,7 @@ export class GroupCallsController extends EventListenerBase<{
     this.audioAsset.createAudio();
 
     this.log(`joinGroupCall chatId=${chatId} id=${groupCallId} muted=${muted} rejoin=${rejoin}`);
-    
+
     let streamManager: StreamManager;
     if(rejoin) {
       streamManager = this.currentGroupCall.connections.main.streamManager;
@@ -167,52 +167,52 @@ export class GroupCallsController extends EventListenerBase<{
         log('ontrack', event);
         currentGroupCall.onTrack(event);
       });
-  
+
       connection.addEventListener('iceconnectionstatechange', () => {
         currentGroupCall.dispatchEvent('state', currentGroupCall.state);
-        
+
         const {iceConnectionState} = connection;
         if(iceConnectionState === 'disconnected' || iceConnectionState === 'checking' || iceConnectionState === 'new') {
           this.startConnectingSound();
         } else {
           this.stopConnectingSound();
         }
-        
+
         switch(iceConnectionState) {
           case 'checking': {
             break;
           }
-          
+
           case 'closed': {
             currentGroupCall.hangUp();
             break;
           }
-          
+
           case 'completed': {
             break;
           }
-          
+
           case 'connected': {
             if(!currentGroupCall.joined) {
               currentGroupCall.joined = true;
               this.audioAsset.playSound('group_call_start.mp3');
               this.managers.appGroupCallsManager.getGroupCallParticipants(groupCallId);
             }
-            
+
             break;
           }
-          
+
           case 'disconnected': {
             break;
           }
-          
+
           case 'failed': {
-            //TODO: replace with ICE restart
+            // TODO: replace with ICE restart
             currentGroupCall.hangUp();
             // connection.restartIce();
             break;
           }
-          
+
           case 'new': {
             break;
           }

@@ -1,6 +1,6 @@
-import { GroupCallParticipant, GroupCallParticipantVideoSourceGroup } from "../../layer";
-import type { logger } from "../logger";
-import { WebRTCLineType } from "./sdpBuilder";
+import {GroupCallParticipant, GroupCallParticipantVideoSourceGroup} from '../../layer';
+import type {logger} from '../logger';
+import {WebRTCLineType} from './sdpBuilder';
 
 export type GroupCallConnectionTransport = {
   candidates?: {
@@ -164,7 +164,7 @@ declare global {
   interface RTCPeerConnection {
     log: ReturnType<typeof logger>;
   }
-  
+
   interface RTCDataChannel {
     log: ReturnType<typeof logger>;
   }

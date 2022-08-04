@@ -18,11 +18,11 @@ export default async function getFilesFromEvent(e: ClipboardEvent | DragEvent, o
         files.push(entry.type);
       } else {
         const itemFile = item.getAsFile(); // * Safari can't handle entry.file with pasting
-        const file = entry instanceof File ? 
-          entry : 
+        const file = entry instanceof File ?
+          entry :
           (
-            entry instanceof DataTransferItem ? 
-              entry.getAsFile() : 
+            entry instanceof DataTransferItem ?
+              entry.getAsFile() :
               await new Promise((resolve, reject) => entry.file(resolve, (err: any) => resolve(itemFile)))
           );
 
@@ -53,13 +53,13 @@ export default async function getFilesFromEvent(e: ClipboardEvent | DragEvent, o
         promises.push(scanFiles(entry, item));
       }
     }
-    
+
     await Promise.all(promises);
   }
 
   /* if(!onlyTypes) {
     console.log('getFilesFromEvent: got files:', e, files);
   } */
-  
+
   return files;
 }

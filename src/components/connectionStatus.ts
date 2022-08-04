@@ -4,21 +4,21 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import App from "../config/app";
-import DEBUG from "../config/debug";
-import replaceContent from "../helpers/dom/replaceContent";
-import { LangPackKey, i18n } from "../lib/langPack";
-import { logger } from "../lib/logger";
-import rootScope from "../lib/rootScope";
-import Button from "./button";
-import ProgressivePreloader from "./preloader";
-import SetTransition from "./singleTransition";
+import App from '../config/app';
+import DEBUG from '../config/debug';
+import replaceContent from '../helpers/dom/replaceContent';
+import {LangPackKey, i18n} from '../lib/langPack';
+import {logger} from '../lib/logger';
+import rootScope from '../lib/rootScope';
+import Button from './button';
+import ProgressivePreloader from './preloader';
+import SetTransition from './singleTransition';
 import sessionStorage from '../lib/sessionStorage';
-import { ConnectionStatus } from "../lib/mtproto/connectionStatus";
-import cancelEvent from "../helpers/dom/cancelEvent";
-import { attachClickEvent } from "../helpers/dom/clickEvent";
-import { AppManagers } from "../lib/appManagers/managers";
-import singleInstance from "../lib/mtproto/singleInstance";
+import {ConnectionStatus} from '../lib/mtproto/connectionStatus';
+import cancelEvent from '../helpers/dom/cancelEvent';
+import {attachClickEvent} from '../helpers/dom/clickEvent';
+import {AppManagers} from '../lib/appManagers/managers';
+import singleInstance from '../lib/mtproto/singleInstance';
 
 export default class ConnectionStatusComponent {
   public static CHANGE_STATE_DELAY = 1000;
@@ -42,7 +42,7 @@ export default class ConnectionStatusComponent {
 
   constructor(private managers: AppManagers, chatsContainer: HTMLElement) {
     this.log = logger('CS', undefined, undefined);
-  
+
     this.statusContainer = document.createElement('div');
     this.statusContainer.classList.add('connection-status'/* , 'hide' */);
 
@@ -101,7 +101,7 @@ export default class ConnectionStatusComponent {
       if(!baseDcId) {
         baseDcId = App.baseDcId;
       }
-      
+
       if(this.setFirstConnectionTimeout) {
         clearTimeout(this.setFirstConnectionTimeout);
         this.setFirstConnectionTimeout = 0;
@@ -117,7 +117,7 @@ export default class ConnectionStatusComponent {
       if(online && !this.hadConnect) {
         this.hadConnect = true;
       }
-      
+
       this.timedOut = status && status.status === ConnectionStatus.TimedOut;
       this.connecting = !online;
       this.retryAt = status && status.retryAt;
@@ -168,7 +168,7 @@ export default class ConnectionStatusComponent {
           };
           const interval = setInterval(setTime, 1e3);
           setTime();
-  
+
           const a = this.getA('ConnectionStatus.Reconnect', () => this.managers.networkerFactory.forceReconnectTimeout());
           this.setStatusText('ConnectionStatus.ReconnectIn', [timerSpan, a]);
         } else {
@@ -192,7 +192,7 @@ export default class ConnectionStatusComponent {
       };
 
       this.setStateTimeout = window.setTimeout(cb, timeout);
-      //cb();
+      // cb();
       /* if(timeout) this.setStateTimeout = window.setTimeout(cb, timeout);
       else cb(); */
     });

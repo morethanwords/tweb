@@ -6,9 +6,9 @@
 
 // * Jolly Cobra's useHeavyAnimationCheck.ts, patched
 
-import { AnyToVoidFunction } from '../types';
+import {AnyToVoidFunction} from '../types';
 import ListenerSetter from '../helpers/listenerSetter';
-import deferredPromise, { CancellablePromise } from '../helpers/cancellablePromise';
+import deferredPromise, {CancellablePromise} from '../helpers/cancellablePromise';
 import DEBUG from '../config/debug';
 import pause from '../helpers/schedulers/pause';
 import EventListenerBase from '../helpers/eventListenerBase';
@@ -35,7 +35,7 @@ export function dispatchHeavyAnimationEvent(promise: Promise<any>, timeout?: num
     isAnimating = true;
     DEBUG && log('start');
   }
-  
+
   ++promisesInQueue;
   DEBUG && log('attach promise, length:', promisesInQueue, timeout);
 
@@ -87,19 +87,19 @@ export default function(
   handleAnimationEnd: AnyToVoidFunction,
   listenerSetter?: ListenerSetter
 ) {
-  //useEffect(() => {
-    if(isAnimating) {
-      handleAnimationStart();
-    }
+  // useEffect(() => {
+  if(isAnimating) {
+    handleAnimationStart();
+  }
 
-    const add = listenerSetter ? listenerSetter.add(eventListener) : eventListener.addEventListener.bind(eventListener);
-    const remove = listenerSetter ? listenerSetter.removeManual.bind(listenerSetter, eventListener) : eventListener.removeEventListener.bind(eventListener);
-    add(ANIMATION_START_EVENT, handleAnimationStart);
-    add(ANIMATION_END_EVENT, handleAnimationEnd);
+  const add = listenerSetter ? listenerSetter.add(eventListener) : eventListener.addEventListener.bind(eventListener);
+  const remove = listenerSetter ? listenerSetter.removeManual.bind(listenerSetter, eventListener) : eventListener.removeEventListener.bind(eventListener);
+  add(ANIMATION_START_EVENT, handleAnimationStart);
+  add(ANIMATION_END_EVENT, handleAnimationEnd);
 
-    return () => {
-      remove(ANIMATION_END_EVENT, handleAnimationEnd);
-      remove(ANIMATION_START_EVENT, handleAnimationStart);
-    };
-  //}, [handleAnimationEnd, handleAnimationStart]);
+  return () => {
+    remove(ANIMATION_END_EVENT, handleAnimationEnd);
+    remove(ANIMATION_START_EVENT, handleAnimationStart);
+  };
+  // }, [handleAnimationEnd, handleAnimationStart]);
 }

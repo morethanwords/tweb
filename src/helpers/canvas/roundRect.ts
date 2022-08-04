@@ -1,11 +1,11 @@
 export default function roundRect(
-  ctx: CanvasRenderingContext2D, 
-  x: number, 
-  y: number, 
-  width: number, 
-  height: number, 
-  radius: {[k in 'tl' | 'tr' | 'br' | 'bl']?: number} | number, 
-  fill?: boolean, 
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: {[k in 'tl' | 'tr' | 'br' | 'bl']?: number} | number,
+  fill?: boolean,
   stroke?: boolean
 ) {
   const dpr = ctx.canvas.dpr;

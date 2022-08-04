@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import SDPAttributeInner from "./attributeInner";
-import SDPLine from "./line";
+import SDPAttributeInner from './attributeInner';
+import SDPLine from './line';
 
 export default class SDPAttributes {
   #lines: SDPLine[];
@@ -32,7 +32,7 @@ export default class SDPAttributes {
           linesArray = [];
           attributesMap.set(key, linesArray);
         }
-        
+
         linesArray.push(value || '');
       }
     });

@@ -2,7 +2,7 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
@@ -10,12 +10,12 @@
  */
 
 import DEBUG from '../../config/debug';
-import { ConstructorDeclMap, Message, MessageEntity, MessageFwdHeader, Peer, Update, Updates } from '../../layer';
-import { logger, LogTypes } from '../logger';
+import {ConstructorDeclMap, Message, MessageEntity, MessageFwdHeader, Peer, Update, Updates} from '../../layer';
+import {logger, LogTypes} from '../logger';
 import assumeType from '../../helpers/assumeType';
 import App from '../../config/app';
 import filterUnique from '../../helpers/array/filterUnique';
-import { AppManager } from './manager';
+import {AppManager} from './manager';
 import parseMarkdown from '../richTextProcessor/parseMarkdown';
 import ctx from '../../environment/ctx';
 import EventListenerBase from '../../helpers/eventListenerBase';
@@ -96,7 +96,7 @@ class ApiUpdatesManager {
       state.date = pendingUpdatesData.date;
     }
     delete state.pendingSeqUpdates[nextSeq];
-  
+
     if(!this.popPendingSeqUpdate() &&
       state.syncPending &&
       state.syncPending.seqAwaiting &&
@@ -108,7 +108,7 @@ class ApiUpdatesManager {
         delete state.syncPending.seqAwaiting;
       }
     }
-  
+
     return true;
   }
 
@@ -122,7 +122,7 @@ class ApiUpdatesManager {
       return a.pts - b.pts;
     });
     // this.log('pop update', channelId, curState.pendingPtsUpdates)
-  
+
     let curPts = curState.pts;
     let goodPts = 0;
     let goodIndex = 0;
@@ -134,13 +134,13 @@ class ApiUpdatesManager {
         goodIndex = i;
       }
     }
-  
+
     if(!goodPts) {
       return false;
     }
-  
+
     this.debug && this.log.debug('pop pending pts updates', goodPts, curState.pendingPtsUpdates.slice(0, goodIndex + 1));
-  
+
     curState.pts = goodPts;
     for(let i = 0; i <= goodIndex; ++i) {
       const update = curState.pendingPtsUpdates[i];
@@ -149,7 +149,7 @@ class ApiUpdatesManager {
       this.saveUpdate(update);
     }
     curState.pendingPtsUpdates.splice(0, goodIndex + 1);
-  
+
     if(!curState.pendingPtsUpdates.length && curState.syncPending) {
       if(!curState.syncPending.seqAwaiting) {
         clearTimeout(curState.syncPending.timeout);
@@ -158,7 +158,7 @@ class ApiUpdatesManager {
         delete curState.syncPending.ptsAwaiting;
       }
     }
-  
+
     return true;
   }
 
@@ -182,32 +182,32 @@ class ApiUpdatesManager {
     const processOpts = {
       date: updateMessage.date,
       seq: updateMessage.seq,
-      seqStart: updateMessage.seq_start,
-      //ignoreSyncLoading: options.ignoreSyncLoading
+      seqStart: updateMessage.seq_start
+      // ignoreSyncLoading: options.ignoreSyncLoading
     };
 
     this.debug && this.log.debug('processUpdateMessage', updateMessage);
-  
+
     switch(updateMessage._) {
       case 'updatesTooLong':
       case 'new_session_created':
         this.forceGetDifference();
         break;
-  
+
       case 'updateShort':
         this.processUpdate(updateMessage.update, processOpts);
         break;
-  
+
       case 'updateShortMessage':
       case 'updateShortChatMessage': {
         assumeType<Updates.updateShortChatMessage | Updates.updateShortMessage>(updateMessage);
         this.debug && this.log.debug('updateShortMessage | updateShortChatMessage', {...updateMessage});
         const isOut = updateMessage.pFlags.out;
         const fromId = (updateMessage as Updates.updateShortChatMessage).from_id || (isOut ? this.appPeersManager.peerId : (updateMessage as Updates.updateShortMessage).user_id);
-        const toId = (updateMessage as Updates.updateShortChatMessage).chat_id
-          ? (updateMessage as Updates.updateShortChatMessage).chat_id.toPeerId(true)
-          : ((updateMessage as Updates.updateShortMessage).user_id.toPeerId(false) || this.appPeersManager.peerId);
-  
+        const toId = (updateMessage as Updates.updateShortChatMessage).chat_id ?
+          (updateMessage as Updates.updateShortChatMessage).chat_id.toPeerId(true) :
+          ((updateMessage as Updates.updateShortMessage).user_id.toPeerId(false) || this.appPeersManager.peerId);
+
         this.processUpdate({
           _: 'updateNewMessage',
           message: {
@@ -227,40 +227,40 @@ class ApiUpdatesManager {
         }, processOpts);
         break;
       }
-  
+
       case 'updatesCombined':
       case 'updates':
         this.appUsersManager.saveApiUsers(updateMessage.users, options.override);
         this.appChatsManager.saveApiChats(updateMessage.chats, options.override);
-  
+
         updateMessage.updates.forEach((update: Update) => {
           this.processUpdate(update, processOpts);
         });
         break;
-  
+
       default:
         this.log.warn('Unknown update message', updateMessage);
     }
   };
-  
+
   private getDifference(first = false): Promise<void> {
     // this.trace('Get full diff')
     const updatesState = this.updatesState;
-    let wasSyncing = updatesState.syncLoading;
+    const wasSyncing = updatesState.syncLoading;
     if(!wasSyncing) {
       updatesState.pendingSeqUpdates = {};
       updatesState.pendingPtsUpdates = [];
     }
-  
+
     if(updatesState.syncPending) {
       clearTimeout(updatesState.syncPending.timeout);
       updatesState.syncPending = null;
     }
 
     const promise = this.apiManager.invokeApi('updates.getDifference', {
-      pts: updatesState.pts, 
+      pts: updatesState.pts,
       pts_total_limit: first /* && false  */? /* 50 */1200 : undefined,
-      date: updatesState.date, 
+      date: updatesState.date,
       qts: -1
     }, {
       timeout: 0x7fffffff
@@ -285,7 +285,7 @@ class ApiUpdatesManager {
 
         // Should be first because of updateMessageID
         // this.log('applying', differenceResult.other_updates.length, 'other updates')
-    
+
         differenceResult.other_updates.forEach((update) => {
           switch(update._) {
             case 'updateChannelTooLong':
@@ -294,7 +294,7 @@ class ApiUpdatesManager {
               this.processUpdate(update);
               return;
           }
-          
+
           this.saveUpdate(update);
         });
 
@@ -316,15 +316,15 @@ class ApiUpdatesManager {
         updatesState.pts = differenceResult.pts;
         updatesState.date = (Date.now() / 1000 | 0) + this.timeManager.getServerTimeOffset();
         delete updatesState.seq;
-        
+
         this.channelStates = {};
-        
+
         this.log.warn('getDifference:', differenceResult._);
         this.onDifferenceTooLong();
       }
-  
+
       // this.log('apply diff', updatesState.seq, updatesState.pts)
-  
+
       if(differenceResult._ === 'updates.differenceSlice') {
         return this.getDifference();
       } else {
@@ -335,7 +335,7 @@ class ApiUpdatesManager {
     if(!wasSyncing) {
       this.justAName(updatesState, promise);
     }
-  
+
     return promise;
   }
 
@@ -351,7 +351,7 @@ class ApiUpdatesManager {
       channelState.syncPending = null;
     }
 
-    //this.log.trace('Get channel diff', appChatsManager.getChat(channelId), channelState.pts);
+    // this.log.trace('Get channel diff', appChatsManager.getChat(channelId), channelState.pts);
     const promise = this.apiManager.invokeApi('updates.getChannelDifference', {
       channel: this.appChatsManager.getChannelInput(channelId),
       filter: {_: 'channelMessagesFilterEmpty'},
@@ -360,12 +360,12 @@ class ApiUpdatesManager {
     }, {timeout: 0x7fffffff}).then((differenceResult) => {
       this.debug && this.log.debug('Get channel diff result', differenceResult)
       channelState.pts = 'pts' in differenceResult ? differenceResult.pts : undefined;
-  
+
       if(differenceResult._ === 'updates.channelDifferenceEmpty') {
         this.debug && this.log.debug('apply channel empty diff', differenceResult);
         return;
       }
-  
+
       if(differenceResult._ === 'updates.channelDifferenceTooLong') {
         this.debug && this.log.debug('channel diff too long', differenceResult);
         delete this.channelStates[channelId];
@@ -373,16 +373,16 @@ class ApiUpdatesManager {
         this.saveUpdate({_: 'updateChannelReload', channel_id: channelId});
         return;
       }
-  
+
       this.appUsersManager.saveApiUsers(differenceResult.users);
       this.appChatsManager.saveApiChats(differenceResult.chats);
-  
+
       // Should be first because of updateMessageID
       this.debug && this.log.debug('applying', differenceResult.other_updates.length, 'channel other updates');
       differenceResult.other_updates.forEach((update) => {
         this.saveUpdate(update);
       });
-  
+
       this.debug && this.log.debug('applying', differenceResult.new_messages.length, 'channel new messages');
       differenceResult.new_messages.forEach((apiMessage) => {
         this.saveUpdate({
@@ -392,9 +392,9 @@ class ApiUpdatesManager {
           pts_count: 0
         });
       });
-  
+
       this.debug && this.log.debug('apply channel diff', channelState.pts);
-  
+
       if(differenceResult._ === 'updates.channelDifference' &&
         !differenceResult.pFlags['final']) {
         return this.getChannelDifference(channelId);
@@ -429,7 +429,7 @@ class ApiUpdatesManager {
       state.syncLoading = null;
     });
   }
-  
+
   public addChannelState(channelId: ChatId, pts: number) {
     if(!pts) {
       throw new Error('Add channel state without pts ' + channelId);
@@ -484,16 +484,16 @@ class ApiUpdatesManager {
         }
         break;
     }
-  
+
     const {pts, pts_count} = update as Update.updateNewMessage;
     const curState = channelId ? this.getChannelState(channelId, pts) : this.updatesState;
-  
+
     // this.log.log('process', channelId, curState.pts, update)
-  
+
     if(curState.syncLoading/*  && !options.ignoreSyncLoading */) {
       return false;
     }
-  
+
     if(update._ === 'updateChannelTooLong') {
       if(!curState.lastPtsUpdateTime ||
           curState.lastPtsUpdateTime < (Date.now() - SYNC_DELAY)) {
@@ -502,7 +502,7 @@ class ApiUpdatesManager {
       }
       return false;
     }
-  
+
     if(update._ === 'updateNewMessage' ||
         update._ === 'updateEditMessage' ||
         update._ === 'updateNewChannelMessage' ||
@@ -528,10 +528,10 @@ class ApiUpdatesManager {
       // this.log.log('skip update, missing channel', channelId, update)
       return false;
     }
-  
+
     let popPts: boolean;
     let popSeq: boolean;
-  
+
     if(pts) {
       const newPts = curState.pts + (pts_count || 0);
       if(newPts < pts) {
@@ -562,7 +562,7 @@ class ApiUpdatesManager {
       if(pts > curState.pts) {
         curState.pts = pts;
         popPts = true;
-  
+
         curState.lastPtsUpdateTime = Date.now();
       } else if(pts_count) {
         // this.log.warn('Duplicate update', update)
@@ -575,16 +575,16 @@ class ApiUpdatesManager {
     } else if(!channelId && options.seq > 0) {
       const seq = options.seq;
       const seqStart = options.seqStart || seq;
-  
+
       if(seqStart !== curState.seq + 1) {
         if(seqStart > curState.seq) {
           this.debug && this.log.warn('Seq hole', curState, curState.syncPending && curState.syncPending.seqAwaiting);
-  
+
           if(curState.pendingSeqUpdates[seqStart] === undefined) {
             curState.pendingSeqUpdates[seqStart] = {seq, date: options.date, updates: []};
           }
           curState.pendingSeqUpdates[seqStart].updates.push(update);
-  
+
           if(!curState.syncPending) {
             curState.syncPending = {
               timeout: ctx.setTimeout(() => {
@@ -606,7 +606,7 @@ class ApiUpdatesManager {
           return false;
         }
       }
-  
+
       if(curState.seq !== seq) {
         curState.seq = seq;
         if(options.date && curState.date < options.date) {
@@ -616,9 +616,9 @@ class ApiUpdatesManager {
         popSeq = true;
       }
     }
-  
+
     this.saveUpdate(update);
-  
+
     if(popPts) {
       this.popPendingPtsUpdate(channelId);
     } else if(popSeq) {
@@ -627,23 +627,23 @@ class ApiUpdatesManager {
   }
 
   public saveUpdate(update: Update) {
-    //this.debug && this.log('saveUpdate', update);
+    // this.debug && this.log('saveUpdate', update);
     this.dispatchEvent(update._, update as any);
   }
-  
+
   public attach(langCode?: string) {
     if(this.attached) return;
 
-    //return;
+    // return;
 
     this.log('attach');
-    
+
     this.attached = true;
 
     this.appStateManager.getState().then(({updates: state}) => {
       const newVersion = this.appStateManager.newVersion/*  || '0.8.6' */;
 
-      //rootScope.broadcast('state_synchronizing');
+      // rootScope.broadcast('state_synchronizing');
       if(!state || !state.pts || !state.date/*  || !state.seq */) { // seq can be undefined because of updates.differenceTooLong
         this.log('will get new state');
 
@@ -653,12 +653,12 @@ class ApiUpdatesManager {
             this.updatesState.pts = stateResult.pts;
             this.updatesState.date = stateResult.date;
             this.saveUpdatesState();
-            //setTimeout(() => {
-              this.updatesState.syncLoading = null;
-              resolve();
-              //rootScope.broadcast('state_synchronized');
-            //}, 1000);
-        
+            // setTimeout(() => {
+            this.updatesState.syncLoading = null;
+            resolve();
+            // rootScope.broadcast('state_synchronized');
+            // }, 1000);
+
           // ! for testing
           // updatesState.seq = 1
           // updatesState.pts = stateResult.pts - 5000
@@ -678,9 +678,9 @@ class ApiUpdatesManager {
         state.seq = 503; */
 
         Object.assign(this.updatesState, state);
-        
+
         this.log('will get difference', Object.assign({}, state));
-        
+
         this.getDifference(true)/* .finally(() => {
           if(this.updatesState.syncLoading) {
             rootScope.broadcast('state_synchronizing');
@@ -691,7 +691,7 @@ class ApiUpdatesManager {
       this.apiManager.setUpdatesProcessor(this.processUpdateMessage);
 
       // this.updatesState.syncLoading.then(() => {
-        this.setProxy();
+      this.setProxy();
       // });
 
       if(newVersion) {
@@ -707,12 +707,12 @@ class ApiUpdatesManager {
             .then((text) => {
               const langStr = strs[lang] || strs.en;
               const pre = `**Telegram Web${App.suffix} ${langStr} ${newVersion}**\n\n`;
-  
+
               text = pre + text;
-  
+
               const entities: MessageEntity[] = [];
               const message = parseMarkdown(text, entities);
-  
+
               const update: Update.updateServiceNotification = {
                 _: 'updateServiceNotification',
                 entities,
@@ -726,14 +726,14 @@ class ApiUpdatesManager {
               this.processLocalUpdate(update);
             });
           };
-          
+
           const languages = filterUnique([langCode, 'en']);
           for(const language of languages) {
             try {
               await getChangelog(language);
               break;
             } catch(err) {
-              
+
             }
           }
         });
@@ -747,4 +747,4 @@ interface ApiUpdatesManager extends EventListenerBase<{
 }>, AppManager {}
 applyMixins(ApiUpdatesManager, [EventListenerBase, AppManager]);
 
-export { ApiUpdatesManager };
+export {ApiUpdatesManager};

@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { FileURLType, getFileURL } from "../../../../helpers/fileName";
-import { Document, PhotoSize } from "../../../../layer";
-import getDocumentDownloadOptions from "./getDocumentDownloadOptions";
+import {FileURLType, getFileURL} from '../../../../helpers/fileName';
+import {Document, PhotoSize} from '../../../../layer';
+import getDocumentDownloadOptions from './getDocumentDownloadOptions';
 
 export default function getDocumentURL(doc: Document.document, download = false, thumb?: PhotoSize.photoSize) {
   let type: FileURLType;

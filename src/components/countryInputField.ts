@@ -4,24 +4,24 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import IS_EMOJI_SUPPORTED from "../environment/emojiSupport";
-import cancelEvent from "../helpers/dom/cancelEvent";
-import simulateEvent from "../helpers/dom/dispatchEvent";
-import findUpClassName from "../helpers/dom/findUpClassName";
-import findUpTag from "../helpers/dom/findUpTag";
-import replaceContent from "../helpers/dom/replaceContent";
-import setInnerHTML from "../helpers/dom/setInnerHTML";
-import fastSmoothScroll from "../helpers/fastSmoothScroll";
-import { randomLong } from "../helpers/random";
-import { HelpCountry, HelpCountryCode } from "../layer";
-import I18n, { i18n } from "../lib/langPack";
-import wrapEmojiText from "../lib/richTextProcessor/wrapEmojiText";
-import rootScope from "../lib/rootScope";
-import { getCountryEmoji } from "../vendor/emoji";
-import InputField, { InputFieldOptions } from "./inputField";
-import Scrollable from "./scrollable";
+import IS_EMOJI_SUPPORTED from '../environment/emojiSupport';
+import cancelEvent from '../helpers/dom/cancelEvent';
+import simulateEvent from '../helpers/dom/dispatchEvent';
+import findUpClassName from '../helpers/dom/findUpClassName';
+import findUpTag from '../helpers/dom/findUpTag';
+import replaceContent from '../helpers/dom/replaceContent';
+import setInnerHTML from '../helpers/dom/setInnerHTML';
+import fastSmoothScroll from '../helpers/fastSmoothScroll';
+import {randomLong} from '../helpers/random';
+import {HelpCountry, HelpCountryCode} from '../layer';
+import I18n, {i18n} from '../lib/langPack';
+import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
+import rootScope from '../lib/rootScope';
+import {getCountryEmoji} from '../vendor/emoji';
+import InputField, {InputFieldOptions} from './inputField';
+import Scrollable from './scrollable';
 
-let countries: HelpCountry.helpCountry[]; 
+let countries: HelpCountry.helpCountry[];
 const setCountries = () => {
   countries = I18n.countriesList
   .filter((country) => !country.pFlags?.hidden)
@@ -51,7 +51,7 @@ export default class CountryInputField extends InputField {
     super({
       label: 'Country',
       name: randomLong(),
-      ...options,
+      ...options
     });
 
     if(init) {
@@ -77,16 +77,16 @@ export default class CountryInputField extends InputField {
 
     let initSelect = () => {
       initSelect = null;
-  
+
       countries.forEach((c) => {
         const emoji = getCountryEmoji(c.iso2);
-  
+
         const liArr: Array<HTMLLIElement> = [];
         for(let i = 0, length = Math.min(c.country_codes.length, options.noPhoneCodes ? 1 : Infinity); i < length; ++i) {
           const countryCode = c.country_codes[i];
           const li = document.createElement('li');
-  
-          let wrapped = wrapEmojiText(emoji);
+
+          const wrapped = wrapEmojiText(emoji);
           if(IS_EMOJI_SUPPORTED) {
             const spanEmoji = document.createElement('span');
             setInnerHTML(spanEmoji, wrapped);
@@ -94,11 +94,11 @@ export default class CountryInputField extends InputField {
           } else {
             setInnerHTML(li, wrapped);
           }
-          
+
           const el = i18n(c.default_name as any);
           el.dataset.defaultName = c.default_name;
           li.append(el);
-  
+
           if(!options.noPhoneCodes) {
             const span = document.createElement('span');
             span.classList.add('phone-code');
@@ -109,20 +109,20 @@ export default class CountryInputField extends InputField {
           liArr.push(li);
           selectList.append(li);
         }
-  
+
         this.liMap.set(c.iso2, liArr);
       });
-      
+
       selectList.addEventListener('mousedown', (e) => {
         if(e.button !== 0) { // other buttons but left shall not pass
           return;
         }
-        
+
         const target = findUpTag(e.target, 'LI')
         this.selectCountryByTarget(target);
-        //console.log('clicked', e, countryName, phoneCode);
+        // console.log('clicked', e, countryName, phoneCode);
       });
-  
+
       this.container.appendChild(selectWrapper);
     };
 
@@ -147,10 +147,10 @@ export default class CountryInputField extends InputField {
       this.select();
 
       fastSmoothScroll({
-        // container: page.pageEl.parentElement.parentElement, 
+        // container: page.pageEl.parentElement.parentElement,
         container: findUpClassName(this.container, 'scrollable-y'),
-        element: this.input, 
-        position: 'start', 
+        element: this.input,
+        position: 'start',
         margin: 4
       });
 
@@ -178,7 +178,7 @@ export default class CountryInputField extends InputField {
 
     /* false && this.input.addEventListener('blur', function(this: typeof this.input, e) {
       hidePicker();
-      
+
       e.cancelBubble = true;
     }, {capture: true}); */
 
@@ -186,12 +186,12 @@ export default class CountryInputField extends InputField {
       const key = e.key;
       if(e.ctrlKey || key === 'Control') return false;
 
-      //let i = new RegExp('^' + this.value, 'i');
-      let _value = this.value.toLowerCase();
-      let matches: HelpCountry[] = [];
+      // let i = new RegExp('^' + this.value, 'i');
+      const _value = this.value.toLowerCase();
+      const matches: HelpCountry[] = [];
       countries.forEach((c) => {
         const names = [
-          c.name, 
+          c.name,
           c.default_name,
           c.iso2
         ];
@@ -203,7 +203,7 @@ export default class CountryInputField extends InputField {
           }
         });
 
-        let good = !!names.filter(Boolean).find((str) => str.toLowerCase().indexOf(_value) !== -1)/*  === 0 */;//i.test(c.name);
+        const good = !!names.filter(Boolean).find((str) => str.toLowerCase().indexOf(_value) !== -1)/*  === 0 */;// i.test(c.name);
 
         this.liMap.get(c.iso2).forEach((li) => li.style.display = good ? '' : 'none');
         if(good) matches.push(c);
@@ -270,7 +270,7 @@ export default class CountryInputField extends InputField {
     simulateEvent(this.input, 'input');
     this.lastCountrySelected = countries.find((c) => c.default_name === defaultName);
     this.lastCountryCodeSelected = countryCode && this.lastCountrySelected.country_codes.find((_countryCode) => _countryCode.country_code === countryCode);
-    
+
     this.options.onCountryChange?.(this.lastCountrySelected, this.lastCountryCodeSelected);
     this.hidePicker();
   }

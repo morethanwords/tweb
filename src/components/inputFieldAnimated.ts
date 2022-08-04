@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { _i18n } from "../lib/langPack";
-import InputField, { InputFieldOptions } from "./inputField";
-import SetTransition from "./singleTransition";
+import {_i18n} from '../lib/langPack';
+import InputField, {InputFieldOptions} from './inputField';
+import SetTransition from './singleTransition';
 
 export default class InputFieldAnimated extends InputField {
   public inputFake: HTMLElement;
 
-  //public onLengthChange: (length: number, isOverflow: boolean) => void;
+  // public onLengthChange: (length: number, isOverflow: boolean) => void;
   // protected wasInputFakeClientHeight: number;
   // protected showScrollDebounced: () => void;
 
@@ -49,7 +49,7 @@ export default class InputFieldAnimated extends InputField {
 
     const TRANSITION_DURATION_FACTOR = 50;
     const transitionDuration = Math.round(
-      TRANSITION_DURATION_FACTOR * Math.log(Math.abs(newHeight - currentHeight)),
+      TRANSITION_DURATION_FACTOR * Math.log(Math.abs(newHeight - currentHeight))
     );
 
     // this.wasInputFakeClientHeight = clientHeight;

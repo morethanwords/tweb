@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { TabState } from "../mtproto/mtprotoworker";
-import { MOUNT_CLASS_TO } from "../../config/debug";
-import MTProtoMessagePort from "../mtproto/mtprotoMessagePort";
+import type {TabState} from '../mtproto/mtprotoworker';
+import {MOUNT_CLASS_TO} from '../../config/debug';
+import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
 
 type Tab = {
   source: MessageEventSource,
@@ -38,7 +38,7 @@ export class AppTabsManager {
       source,
       state: undefined
     };
-  
+
     this.tabs.set(source, tab);
   }
 

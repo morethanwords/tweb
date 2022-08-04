@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appSidebarRight from "..";
-import { attachClickEvent } from "../../../helpers/dom/clickEvent";
-import AppSearch, { SearchGroup } from "../../appSearch";
-import ButtonIcon from "../../buttonIcon";
-import InputSearch from "../../inputSearch";
-import PopupElement from "../../popups";
-import PopupDatePicker from "../../popups/datePicker";
-import { SliderSuperTab } from "../../slider";
+import appSidebarRight from '..';
+import {attachClickEvent} from '../../../helpers/dom/clickEvent';
+import AppSearch, {SearchGroup} from '../../appSearch';
+import ButtonIcon from '../../buttonIcon';
+import InputSearch from '../../inputSearch';
+import PopupElement from '../../popups';
+import PopupDatePicker from '../../popups/datePicker';
+import {SliderSuperTab} from '../../slider';
 
 export default class AppPrivateSearchTab extends SliderSuperTab {
   private inputSearch: InputSearch;
@@ -52,7 +52,7 @@ export default class AppPrivateSearchTab extends SliderSuperTab {
       this.peerId = peerId;
       this.threadId = threadId;
       this.onDatePick = onDatePick;
-  
+
       this.btnPickDate.classList.toggle('hide', !this.onDatePick);
       if(this.onDatePick) {
         attachClickEvent(this.btnPickDate, () => {
@@ -61,7 +61,7 @@ export default class AppPrivateSearchTab extends SliderSuperTab {
       }
 
       query && this.appSearch.searchInput.inputField.setValueSilently(query);
-  
+
       appSidebarRight.toggleSidebar(true);
     } else {
       this.appSearch.beginSearch(this.peerId, this.threadId, query);

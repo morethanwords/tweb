@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { AppManagers } from "../../lib/appManagers/managers";
-import rootScope from "../../lib/rootScope";
-import wrapSticker from "./sticker"
+import {AppManagers} from '../../lib/appManagers/managers';
+import rootScope from '../../lib/rootScope';
+import wrapSticker from './sticker'
 
 export default async function wrapStickerEmoji({emoji, div, width, height, managers = rootScope.managers}: {
   emoji: string,

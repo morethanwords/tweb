@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { attachClickEvent } from "../../helpers/dom/clickEvent";
-import ListenerSetter from "../../helpers/listenerSetter";
-import { i18n, LangPackKey } from "../../lib/langPack";
-import ripple from "../ripple";
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import ListenerSetter from '../../helpers/listenerSetter';
+import {i18n, LangPackKey} from '../../lib/langPack';
+import ripple from '../ripple';
 
 export default function makeButton(className: string, listenerSetter: ListenerSetter, options: {
   text?: LangPackKey | HTMLElement,

@@ -4,17 +4,17 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import ripple from "./ripple";
-import { LangPackKey, _i18n } from "../lib/langPack";
-import getDeepProperty from "../helpers/object/getDeepProperty";
-import rootScope from "../lib/rootScope";
-import apiManagerProxy from "../lib/mtproto/mtprotoworker";
+import ripple from './ripple';
+import {LangPackKey, _i18n} from '../lib/langPack';
+import getDeepProperty from '../helpers/object/getDeepProperty';
+import rootScope from '../lib/rootScope';
+import apiManagerProxy from '../lib/mtproto/mtprotoworker';
 
 export type CheckboxFieldOptions = {
   text?: LangPackKey,
   textArgs?: any[],
-  name?: string, 
-  round?: boolean, 
+  name?: string,
+  round?: boolean,
   toggle?: boolean,
   stateKey?: string,
   stateValues?: any[],
@@ -101,23 +101,23 @@ export default class CheckboxField {
     } else {
       const box = document.createElement('div');
       box.classList.add('checkbox-box');
-  
-      const checkSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+
+      const checkSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       checkSvg.classList.add('checkbox-box-check');
       checkSvg.setAttributeNS(null, 'viewBox', '0 0 24 24');
-      const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+      const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
       use.setAttributeNS(null, 'href', '#check');
       use.setAttributeNS(null, 'x', '-1');
       checkSvg.append(use);
-  
+
       const bg = document.createElement('div');
       bg.classList.add('checkbox-box-background');
-  
+
       const border = document.createElement('div');
       border.classList.add('checkbox-box-border');
-  
+
       box.append(border, bg, checkSvg);
-  
+
       label.append(box);
     }
 
@@ -128,7 +128,7 @@ export default class CheckboxField {
     if(options.withRipple) {
       label.classList.add('checkbox-ripple', 'hover-effect');
       ripple(label, undefined, undefined, true);
-      //label.prepend(input);
+      // label.prepend(input);
     } else if(options.withHover) {
       label.classList.add('hover-effect');
     }
@@ -142,7 +142,7 @@ export default class CheckboxField {
     /* if(this.checked === checked) {
       return;
     } */
-    
+
     this.setValueSilently(checked);
 
     const event = new Event('change', {bubbles: true, cancelable: true});

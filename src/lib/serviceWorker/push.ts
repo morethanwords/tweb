@@ -2,20 +2,20 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import { Database } from "../../config/databases";
-import DATABASE_STATE from "../../config/databases/state";
-import { IS_FIREFOX } from "../../environment/userAgent";
-import deepEqual from "../../helpers/object/deepEqual";
-import IDBStorage from "../files/idb";
-import { log, serviceMessagePort } from "./index.service";
-import { ServicePushPingTaskPayload } from "./serviceMessagePort";
+import {Database} from '../../config/databases';
+import DATABASE_STATE from '../../config/databases/state';
+import {IS_FIREFOX} from '../../environment/userAgent';
+import deepEqual from '../../helpers/object/deepEqual';
+import IDBStorage from '../files/idb';
+import {log, serviceMessagePort} from './index.service';
+import {ServicePushPingTaskPayload} from './serviceMessagePort';
 
 const ctx = self as any as ServiceWorkerGlobalScope;
 const defaultBaseUrl = location.protocol + '//' + location.hostname + location.pathname.split('/').slice(0, -1).join('/') + '/';
@@ -23,7 +23,7 @@ const defaultBaseUrl = location.protocol + '//' + location.hostname + location.p
 export type PushNotificationObject = {
   loc_key: string,
   loc_args: string[],
-  //user_id: number, // should be number
+  // user_id: number, // should be number
   custom: {
     channel_id?: string, // should be number
     chat_id?: string, // should be number
@@ -46,8 +46,8 @@ class SomethingGetter<T extends Database<any>, Storage extends Record<string, an
   private storage: IDBStorage<T>;
 
   constructor(
-    db: T, 
-    storeName: typeof db['stores'][number]['name'], 
+    db: T,
+    storeName: typeof db['stores'][number]['name'],
     private defaults: {
       [Property in keyof Storage]: ((value: Storage[Property]) => Storage[Property]) | Storage[Property]
     }
@@ -117,17 +117,17 @@ ctx.addEventListener('push', (event) => {
 
   let hasActiveWindows = false;
   const checksPromise = Promise.all([
-    getter.get('push_mute_until'), 
+    getter.get('push_mute_until'),
     ctx.clients.matchAll({type: 'window'})
   ]).then((result) => {
     const [muteUntil, clientList] = result;
-    
+
     log('matched clients', clientList);
     hasActiveWindows = clientList.length > 0;
     if(hasActiveWindows) {
       throw 'Supress notification because some instance is alive';
     }
-    
+
     const nowTime = Date.now();
     if(userInvisibleIsSupported() &&
         muteUntil &&
@@ -218,7 +218,7 @@ ctx.addEventListener('notificationclick', (event) => {
 
 ctx.addEventListener('notificationclose', onCloseNotification);
 
-let notifications: Set<Notification> = new Set();
+const notifications: Set<Notification> = new Set();
 let pendingNotification: PushNotificationObject;
 function pushToNotifications(notification: Notification) {
   if(!notifications.has(notification)) {

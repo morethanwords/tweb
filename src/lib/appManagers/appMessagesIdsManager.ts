@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { MESSAGE_ID_INCREMENT } from "./utils/messageId";
-import generateMessageId from "./utils/messageId/generateMessageId";
+import {MESSAGE_ID_INCREMENT} from './utils/messageId';
+import generateMessageId from './utils/messageId/generateMessageId';
 
 export class AppMessagesIdsManager {
   private tempNum = 0;

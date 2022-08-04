@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import rootScope from "../lib/rootScope";
+import rootScope from '../lib/rootScope';
 
 const SetTransition = (
-  element: HTMLElement, 
-  className: string, 
-  forwards: boolean, 
-  duration: number, 
-  onTransitionEnd?: () => void, 
+  element: HTMLElement,
+  className: string,
+  forwards: boolean,
+  duration: number,
+  onTransitionEnd?: () => void,
   useRafs?: number
 ) => {
   const {timeout, raf} = element.dataset;
@@ -50,7 +50,7 @@ const SetTransition = (
     }
 
     element.classList.remove('animating');
-    
+
     onTransitionEnd && onTransitionEnd();
   };
 

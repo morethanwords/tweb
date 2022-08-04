@@ -4,18 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import PopupElement from ".";
-import placeCaretAtEnd from "../../helpers/dom/placeCaretAtEnd";
-import { InputInvoice, PaymentRequestedInfo, PaymentsPaymentForm, PaymentsValidatedRequestedInfo } from "../../layer";
-import matchEmail from "../../lib/richTextProcessor/matchEmail";
-import CheckboxField from "../checkboxField";
-import CountryInputField from "../countryInputField";
-import InputField from "../inputField";
-import Row from "../row";
-import { SettingSection } from "../sidebarLeft";
-import TelInputField from "../telInputField";
-import { PaymentButton } from "./payment";
-import { createCountryZipFields, handleInputFieldsOnChange, InputFieldCorrected } from "./paymentCard";
+import PopupElement from '.';
+import placeCaretAtEnd from '../../helpers/dom/placeCaretAtEnd';
+import {InputInvoice, PaymentRequestedInfo, PaymentsPaymentForm, PaymentsValidatedRequestedInfo} from '../../layer';
+import matchEmail from '../../lib/richTextProcessor/matchEmail';
+import CheckboxField from '../checkboxField';
+import CountryInputField from '../countryInputField';
+import InputField from '../inputField';
+import Row from '../row';
+import {SettingSection} from '../sidebarLeft';
+import TelInputField from '../telInputField';
+import {PaymentButton} from './payment';
+import {createCountryZipFields, handleInputFieldsOnChange, InputFieldCorrected} from './paymentCard';
 
 export type PaymentShippingAddress = PaymentRequestedInfo;
 
@@ -25,7 +25,7 @@ export default class PopupPaymentShipping extends PopupElement<{
   finish: (o: {shippingAddress: PaymentShippingAddress, requestedInfo: PaymentsValidatedRequestedInfo}) => void
 }> {
   constructor(
-    private paymentForm: PaymentsPaymentForm, 
+    private paymentForm: PaymentsPaymentForm,
     private inputInvoice: InputInvoice,
     private focus?: ShippingFocusField
   ) {
@@ -45,10 +45,10 @@ export default class PopupPaymentShipping extends PopupElement<{
     const invoice = paymentForm.invoice;
     const savedInfo = this.paymentForm.saved_info;
 
-    let addressSection: SettingSection, 
-      address1InputField: InputField, 
-      address2InputField: InputField, 
-      cityInputField: InputField, 
+    let addressSection: SettingSection,
+      address1InputField: InputField,
+      address2InputField: InputField,
+      cityInputField: InputField,
       stateInputField: InputField,
       countryInputField: CountryInputField,
       postcodeInputField: InputFieldCorrected;
@@ -98,12 +98,12 @@ export default class PopupPaymentShipping extends PopupElement<{
       receiverSection.content.append(...[
         nameInputField,
         emailInputField,
-        telInputField,
+        telInputField
       ].filter(Boolean).map((inputField) => inputField.container));
     }
 
     const saveCheckboxField = new CheckboxField({
-      text: 'PaymentShippingSave', 
+      text: 'PaymentShippingSave',
       checked: true
     });
     const saveRow = new Row({
@@ -130,21 +130,21 @@ export default class PopupPaymentShipping extends PopupElement<{
             state: stateInputField.value,
             // country: countryInputField.value,
             country_iso2: selectedCountry?.iso2,
-            post_code: postcodeInputField.value,
+            post_code: postcodeInputField.value
           },
           name: nameInputField?.value,
           email: emailInputField?.value,
           phone: telInputField?.value
         };
-  
+
         try {
           const requestedInfo = await this.managers.appPaymentsManager.validateRequestedInfo(this.inputInvoice, data, saveCheckboxField?.checked);
-    
+
           this.dispatchEvent('finish', {
             shippingAddress: data,
             requestedInfo
           });
-  
+
           this.hide();
         } catch(err: any) {
           const errorMap: {[err: string]: InputField} = {
@@ -159,13 +159,13 @@ export default class PopupPaymentShipping extends PopupElement<{
             REQ_INFO_EMAIL_INVALID: emailInputField,
             REQ_INFO_PHONE_INVALID: telInputField
           };
-          
+
           const inputField = errorMap[(err as ApiError).type];
           if(inputField) {
             inputField.setError();
             (err as any).handled = true;
           }
-          
+
           throw err;
         }
       }
@@ -213,7 +213,7 @@ export default class PopupPaymentShipping extends PopupElement<{
         email: emailInputField,
         phone: telInputField
       };
-      
+
       focusField = focusMap[this.focus];
     } else {
       focusField = address1InputField;

@@ -4,25 +4,25 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { SliderSuperTab } from "../../slider";
-import { SettingSection } from "..";
-import ButtonMenu from "../../buttonMenu";
-import appDialogsManager, { DIALOG_LIST_ELEMENT_TAG } from "../../../lib/appManagers/appDialogsManager";
-import PopupPickUser from "../../popups/pickUser";
-import rootScope from "../../../lib/rootScope";
-import findUpTag from "../../../helpers/dom/findUpTag";
-import ButtonCorner from "../../buttonCorner";
-import { attachClickEvent } from "../../../helpers/dom/clickEvent";
-import formatUserPhone from "../../wrappers/formatUserPhone";
-import getUserStatusString from "../../wrappers/getUserStatusString";
-import { attachContextMenuListener } from "../../../helpers/dom/attachContextMenuListener";
-import positionMenu from "../../../helpers/positionMenu";
-import contextMenuController from "../../../helpers/contextMenuController";
+import {SliderSuperTab} from '../../slider';
+import {SettingSection} from '..';
+import ButtonMenu from '../../buttonMenu';
+import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '../../../lib/appManagers/appDialogsManager';
+import PopupPickUser from '../../popups/pickUser';
+import rootScope from '../../../lib/rootScope';
+import findUpTag from '../../../helpers/dom/findUpTag';
+import ButtonCorner from '../../buttonCorner';
+import {attachClickEvent} from '../../../helpers/dom/clickEvent';
+import formatUserPhone from '../../wrappers/formatUserPhone';
+import getUserStatusString from '../../wrappers/getUserStatusString';
+import {attachContextMenuListener} from '../../../helpers/dom/attachContextMenuListener';
+import positionMenu from '../../../helpers/positionMenu';
+import contextMenuController from '../../../helpers/contextMenuController';
 
 export default class AppBlockedUsersTab extends SliderSuperTab {
   public peerIds: PeerId[];
   private menuElement: HTMLElement;
-  
+
   protected init() {
     this.header.classList.add('with-border');
     this.container.classList.add('blocked-users-container');
@@ -44,9 +44,9 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
         peerTypes: ['contacts'],
         placeholder: 'BlockModal.Search.Placeholder',
         onSelect: (peerId) => {
-          //console.log('block', peerId);
+          // console.log('block', peerId);
           this.managers.appUsersManager.toggleBlock(peerId, true);
-        },
+        }
       });
     }, {listenerSetter: this.listenerSetter});
 
@@ -71,8 +71,8 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
         else dom.lastMessageSpan.append(user.username ? '@' + user.username : getUserStatusString(user));
       }
 
-      //dom.titleSpan.innerHTML = 'Raaid El Syed';
-      //dom.lastMessageSpan.innerHTML = '+1 234 567891';
+      // dom.titleSpan.innerHTML = 'Raaid El Syed';
+      // dom.lastMessageSpan.innerHTML = '+1 234 567891';
     };
 
     for(const peerId of this.peerIds) {

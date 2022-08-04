@@ -4,54 +4,54 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import deferredPromise from "../helpers/cancellablePromise";
-import mediaSizes from "../helpers/mediaSizes";
-import IS_TOUCH_SUPPORTED from "../environment/touchSupport";
-import { IS_MOBILE_SAFARI, IS_SAFARI } from "../environment/userAgent";
-import type { MyDocument } from "../lib/appManagers/appDocsManager";
-import type { MyPhoto } from "../lib/appManagers/appPhotosManager";
-import { logger } from "../lib/logger";
-import VideoPlayer from "../lib/mediaPlayer";
-import rootScope from "../lib/rootScope";
-import animationIntersector from "./animationIntersector";
-import appMediaPlaybackController, { AppMediaPlaybackController } from "./appMediaPlaybackController";
-import AvatarElement from "./avatar";
-import ButtonIcon from "./buttonIcon";
-import { ButtonMenuItemOptions } from "./buttonMenu";
-import ButtonMenuToggle from "./buttonMenuToggle";
-import ProgressivePreloader from "./preloader";
-import SwipeHandler from "./swipeHandler";
-import { formatFullSentTime } from "../helpers/date";
-import appNavigationController, { NavigationItem } from "./appNavigationController";
-import { Message } from "../layer";
-import findUpClassName from "../helpers/dom/findUpClassName";
-import renderImageFromUrl, { renderImageFromUrlPromise } from "../helpers/dom/renderImageFromUrl";
-import getVisibleRect from "../helpers/dom/getVisibleRect";
-import cancelEvent from "../helpers/dom/cancelEvent";
-import fillPropertyValue from "../helpers/fillPropertyValue";
-import generatePathData from "../helpers/generatePathData";
-import replaceContent from "../helpers/dom/replaceContent";
-import PeerTitle from "./peerTitle";
-import { doubleRaf, fastRaf } from "../helpers/schedulers";
-import RangeSelector from "./rangeSelector";
-import windowSize from "../helpers/windowSize";
-import ListLoader from "../helpers/listLoader";
-import EventListenerBase from "../helpers/eventListenerBase";
-import { MyMessage } from "../lib/appManagers/appMessagesManager";
-import { NULL_PEER_ID } from "../lib/mtproto/mtproto_config";
-import { isFullScreen } from "../helpers/dom/fullScreen";
-import { attachClickEvent } from "../helpers/dom/clickEvent";
-import SearchListLoader from "../helpers/searchListLoader";
-import createVideo from "../helpers/dom/createVideo";
-import { AppManagers } from "../lib/appManagers/managers";
-import getStrippedThumbIfNeeded from "../helpers/getStrippedThumbIfNeeded";
-import setAttachmentSize from "../helpers/setAttachmentSize";
-import wrapEmojiText from "../lib/richTextProcessor/wrapEmojiText";
-import LazyLoadQueueBase from "./lazyLoadQueueBase";
-import overlayCounter from "../helpers/overlayCounter";
-import { ThumbCache } from "../lib/storages/thumbs";
-import appDownloadManager from "../lib/appManagers/appDownloadManager";
-import wrapPeerTitle from "./wrappers/peerTitle";
+import deferredPromise from '../helpers/cancellablePromise';
+import mediaSizes from '../helpers/mediaSizes';
+import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
+import {IS_MOBILE_SAFARI, IS_SAFARI} from '../environment/userAgent';
+import type {MyDocument} from '../lib/appManagers/appDocsManager';
+import type {MyPhoto} from '../lib/appManagers/appPhotosManager';
+import {logger} from '../lib/logger';
+import VideoPlayer from '../lib/mediaPlayer';
+import rootScope from '../lib/rootScope';
+import animationIntersector from './animationIntersector';
+import appMediaPlaybackController, {AppMediaPlaybackController} from './appMediaPlaybackController';
+import AvatarElement from './avatar';
+import ButtonIcon from './buttonIcon';
+import {ButtonMenuItemOptions} from './buttonMenu';
+import ButtonMenuToggle from './buttonMenuToggle';
+import ProgressivePreloader from './preloader';
+import SwipeHandler from './swipeHandler';
+import {formatFullSentTime} from '../helpers/date';
+import appNavigationController, {NavigationItem} from './appNavigationController';
+import {Message} from '../layer';
+import findUpClassName from '../helpers/dom/findUpClassName';
+import renderImageFromUrl, {renderImageFromUrlPromise} from '../helpers/dom/renderImageFromUrl';
+import getVisibleRect from '../helpers/dom/getVisibleRect';
+import cancelEvent from '../helpers/dom/cancelEvent';
+import fillPropertyValue from '../helpers/fillPropertyValue';
+import generatePathData from '../helpers/generatePathData';
+import replaceContent from '../helpers/dom/replaceContent';
+import PeerTitle from './peerTitle';
+import {doubleRaf, fastRaf} from '../helpers/schedulers';
+import RangeSelector from './rangeSelector';
+import windowSize from '../helpers/windowSize';
+import ListLoader from '../helpers/listLoader';
+import EventListenerBase from '../helpers/eventListenerBase';
+import {MyMessage} from '../lib/appManagers/appMessagesManager';
+import {NULL_PEER_ID} from '../lib/mtproto/mtproto_config';
+import {isFullScreen} from '../helpers/dom/fullScreen';
+import {attachClickEvent} from '../helpers/dom/clickEvent';
+import SearchListLoader from '../helpers/searchListLoader';
+import createVideo from '../helpers/dom/createVideo';
+import {AppManagers} from '../lib/appManagers/managers';
+import getStrippedThumbIfNeeded from '../helpers/getStrippedThumbIfNeeded';
+import setAttachmentSize from '../helpers/setAttachmentSize';
+import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
+import LazyLoadQueueBase from './lazyLoadQueueBase';
+import overlayCounter from '../helpers/overlayCounter';
+import {ThumbCache} from '../lib/storages/thumbs';
+import appDownloadManager from '../lib/appManagers/appDownloadManager';
+import wrapPeerTitle from './wrappers/peerTitle';
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
@@ -65,8 +65,8 @@ const ZOOM_MAX_VALUE = 4;
 export const MEDIA_VIEWER_CLASSNAME = 'media-viewer';
 
 export default class AppMediaViewerBase<
-  ContentAdditionType extends string, 
-  ButtonsAdditionType extends string, 
+  ContentAdditionType extends string,
+  ButtonsAdditionType extends string,
   TargetType extends {element: HTMLElement
 }> extends EventListenerBase<{
   setMoverBefore: () => void,
@@ -79,15 +79,15 @@ export default class AppMediaViewerBase<
   protected buttons: {[k in 'download' | 'close' | 'prev' | 'next' | 'mobile-close' | 'zoom' | ButtonsAdditionType]: HTMLElement} = {} as any;
   protected topbar: HTMLElement;
   protected moversContainer: HTMLElement;
-  
+
   protected tempId = 0;
   protected preloader: ProgressivePreloader = null;
   protected preloaderStreamable: ProgressivePreloader = null;
 
-  //protected targetContainer: HTMLElement = null;
-  //protected loadMore: () => void = null;
+  // protected targetContainer: HTMLElement = null;
+  // protected loadMore: () => void = null;
 
-  protected log: ReturnType<typeof logger>; 
+  protected log: ReturnType<typeof logger>;
 
   protected isFirstOpen = true;
 
@@ -120,7 +120,7 @@ export default class AppMediaViewerBase<
   protected zoomSwipeStartY = 0;
   protected zoomSwipeX = 0;
   protected zoomSwipeY = 0;
-  
+
   protected ctrlKeyDown: boolean;
   protected releaseSingleMedia: ReturnType<AppMediaPlaybackController['setSingleMedia']>;
   protected navigationItem: NavigationItem;
@@ -136,7 +136,7 @@ export default class AppMediaViewerBase<
   }
 
   constructor(
-    protected listLoader: ListLoader<TargetType, any>, 
+    protected listLoader: ListLoader<TargetType, any>,
     topButtons: Array<keyof AppMediaViewerBase<ContentAdditionType, ButtonsAdditionType, TargetType>['buttons']>
   ) {
     super(false);
@@ -169,29 +169,29 @@ export default class AppMediaViewerBase<
     topbarLeft.classList.add(MEDIA_VIEWER_CLASSNAME + '-topbar-left');
 
     this.buttons['mobile-close'] = ButtonIcon('close', {onlyMobile: true});
-    
+
     // * author
     this.author.container = document.createElement('div');
     this.author.container.classList.add(MEDIA_VIEWER_CLASSNAME + '-author', 'no-select');
     const authorRight = document.createElement('div');
-    
+
     this.author.avatarEl = new AvatarElement();
     this.author.avatarEl.classList.add(MEDIA_VIEWER_CLASSNAME + '-userpic', 'avatar-44');
-    
+
     this.author.nameEl = document.createElement('div');
     this.author.nameEl.classList.add(MEDIA_VIEWER_CLASSNAME + '-name');
-    
+
     this.author.date = document.createElement('div');
     this.author.date.classList.add(MEDIA_VIEWER_CLASSNAME + '-date');
-    
+
     authorRight.append(this.author.nameEl, this.author.date);
-    
+
     this.author.container.append(this.author.avatarEl, authorRight);
-    
+
     // * buttons
     const buttonsDiv = document.createElement('div');
     buttonsDiv.classList.add(MEDIA_VIEWER_CLASSNAME + '-buttons');
-    
+
     topButtons.concat(['download', 'zoom', 'close']).forEach((name) => {
       const button = ButtonIcon(name, {noRipple: true});
       this.buttons[name] = button;
@@ -210,9 +210,9 @@ export default class AppMediaViewerBase<
     attachClickEvent(this.zoomElements.btnIn, () => this.changeZoom(true));
 
     this.zoomElements.rangeSelector = new RangeSelector({
-      step: ZOOM_STEP, 
-      min: ZOOM_MIN_VALUE, 
-      max: ZOOM_MAX_VALUE, 
+      step: ZOOM_STEP,
+      min: ZOOM_MIN_VALUE,
+      max: ZOOM_MAX_VALUE,
       withTransition: true
     }, ZOOM_INITIAL_VALUE);
     this.zoomElements.rangeSelector.setListeners();
@@ -241,7 +241,7 @@ export default class AppMediaViewerBase<
     mainDiv.append(this.content.main);
     this.overlaysDiv.append(mainDiv);
     // * overlays end
-    
+
     topbarLeft.append(this.buttons['mobile-close'], this.author.container);
     topbar.append(topbarLeft, buttonsDiv);
 
@@ -279,7 +279,7 @@ export default class AppMediaViewerBase<
       button.addEventListener('click', (e) => {
         cancelEvent(e);
         if(this.setMoverPromise) return;
-  
+
         this.listLoader.go(moveLength);
       });
     });
@@ -302,16 +302,16 @@ export default class AppMediaViewerBase<
 
     if(IS_TOUCH_SUPPORTED) {
       const swipeHandler = new SwipeHandler({
-        element: this.wholeDiv, 
+        element: this.wholeDiv,
         onSwipe: (xDiff, yDiff) => {
           if(isFullScreen()) {
             return;
           }
-          //console.log(xDiff, yDiff);
+          // console.log(xDiff, yDiff);
 
           const percents = Math.abs(xDiff) / windowSize.width;
           if(percents > .2 || xDiff > 125) {
-            //console.log('will swipe', xDiff);
+            // console.log('will swipe', xDiff);
 
             if(xDiff < 0) {
               this.buttons.prev.click();
@@ -329,7 +329,7 @@ export default class AppMediaViewerBase<
           }
 
           return false;
-        }, 
+        },
         verifyTouchTarget: (evt) => {
           // * Fix for seek input
           if((evt.target as HTMLElement).tagName === 'INPUT' || findUpClassName(evt.target, 'media-viewer-caption')) {
@@ -390,7 +390,7 @@ export default class AppMediaViewerBase<
       } else {
         this.zoomSwipeHandler.setListeners();
       }
-      
+
       this.zoomElements.rangeSelector.setProgress(zoomValue);
     } else if(!enable) {
       this.zoomSwipeHandler.removeListeners();
@@ -515,7 +515,7 @@ export default class AppMediaViewerBase<
         this.wholeDiv.classList.remove('highlight-switchers');
         this.highlightSwitchersTimeout = 0;
       }, 3e3);
-      
+
       return;
     }
 
@@ -539,13 +539,13 @@ export default class AppMediaViewerBase<
   };
 
   private onKeyDown = (e: KeyboardEvent) => {
-    //this.log('onKeyDown', e);
+    // this.log('onKeyDown', e);
     if(overlayCounter.overlaysActive > 1) {
       return;
     }
 
     const key = e.key;
-    
+
     let good = true;
     if(key === 'ArrowRight') {
       this.buttons.next.click();
@@ -603,16 +603,16 @@ export default class AppMediaViewerBase<
 
     if(!closing) {
       mover.innerHTML = '';
-      //mover.append(this.buttons.prev, this.buttons.next);
+      // mover.append(this.buttons.prev, this.buttons.next);
     }
-    
+
     const zoomValue = this.isZooming() && closing /* && false */ ? this.zoomElements.rangeSelector.value : ZOOM_INITIAL_VALUE;
     /* if(!(zoomValue > 1 && closing)) */ this.removeCenterFromMover(mover);
 
     const wasActive = fromRight !== 0;
 
     const delay = rootScope.settings.animationsEnabled ? (wasActive ? 350 : 200) : 0;
-    //let delay = wasActive ? 350 : 10000;
+    // let delay = wasActive ? 350 : 10000;
 
     /* if(wasActive) {
       this.moveTheMover(mover);
@@ -668,7 +668,7 @@ export default class AppMediaViewerBase<
     }
 
     const containerRect = this.content.media.getBoundingClientRect();
-    
+
     let transform = '';
     let left: number;
     let top: number;
@@ -723,7 +723,7 @@ export default class AppMediaViewerBase<
         aspecter.classList.add('media-viewer-aspecter'/* , 'disable-hover' */);
         mover.prepend(aspecter);
       }
-      
+
       aspecter.style.cssText = `width: ${rect.width}px; height: ${rect.height}px; transform: scale3d(${containerRect.width / rect.width}, ${containerRect.height / rect.height}, 1);`;
     }
 
@@ -744,7 +744,7 @@ export default class AppMediaViewerBase<
     if(!wasActive) {
       mover.style.borderRadius = borderRadius;
     }
-    //let borderRadius = '0px 0px 0px 0px';
+    // let borderRadius = '0px 0px 0px 0px';
 
     if(closing && zoomValue !== 1) {
       // const width = this.moversContainer.scrollWidth * scaleX;
@@ -782,7 +782,7 @@ export default class AppMediaViewerBase<
       if(this.setMoverAnimationPromise === deferred) {
         this.setMoverAnimationPromise = null;
       }
-      
+
       clearTimeout(timeout);
     });
 
@@ -807,7 +807,6 @@ export default class AppMediaViewerBase<
         }
         /* mediaElement = new Image();
         src = target.style.backgroundImage.slice(5, -2); */
-        
       } else if(target instanceof HTMLImageElement) {
         mediaElement = new Image();
         src = target.src;
@@ -820,7 +819,7 @@ export default class AppMediaViewerBase<
 
         const {width, height} = containerRect;
 
-        const newSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        const newSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         newSvg.setAttributeNS(null, 'width', '' + width);
         newSvg.setAttributeNS(null, 'height', '' + height);
 
@@ -843,13 +842,13 @@ export default class AppMediaViewerBase<
             } else {
               x = 2 / scaleX;
             }
-            
+
             y = height;
-  
+
             return `translate(${x}, ${y}) scale(${+sX / scaleX}, ${+sY / scaleY})`;
           });
           use.setAttributeNS(null, 'transform', transform);
-  
+
           // и новый RECT
           path = defs.firstElementChild.lastElementChild as SVGPathElement;
 
@@ -864,7 +863,7 @@ export default class AppMediaViewerBase<
         const foreignObject = newSvg.lastElementChild;
         foreignObject.setAttributeNS(null, 'width', '' + containerRect.width);
         foreignObject.setAttributeNS(null, 'height', '' + containerRect.height);
-        
+
         mover.prepend(newSvg);
       }
 
@@ -896,7 +895,7 @@ export default class AppMediaViewerBase<
           }
         });
       } */
-  
+
       mover.style.display = '';
 
       fastRaf(() => {
@@ -907,7 +906,7 @@ export default class AppMediaViewerBase<
         mover.classList.remove('center');
         void mover.offsetLeft; // reflow
       } */
-      
+
       if(target instanceof SVGSVGElement) {
         path = mover.querySelector('path');
 
@@ -922,7 +921,7 @@ export default class AppMediaViewerBase<
 
       this.toggleWholeActive(false);
 
-      //return ret;
+      // return ret;
 
       setTimeout(() => {
         mover.style.borderRadius = borderRadius;
@@ -947,25 +946,25 @@ export default class AppMediaViewerBase<
 
     mover.classList.add('opening');
 
-    //await new Promise((resolve) => setTimeout(resolve, 0));
-    //await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    // await new Promise((resolve) => setTimeout(resolve, 0));
+    // await new Promise((resolve) => window.requestAnimationFrame(resolve));
     // * одного RAF'а недостаточно, иногда анимация с одним не срабатывает (преимущественно на мобильных)
     await doubleRaf();
 
     // чтобы проверить установленную позицию - раскомментировать
     // throw '';
 
-    //await new Promise((resolve) => setTimeout(resolve, 5e3));
+    // await new Promise((resolve) => setTimeout(resolve, 5e3));
 
     mover.style.transform = `translate3d(${containerRect.left}px,${containerRect.top}px,0) scale3d(1,1,1)`;
-    //mover.style.transform = `translate(-50%,-50%) scale(1,1)`;
+    // mover.style.transform = `translate(-50%,-50%) scale(1,1)`;
     needOpacity && (mover.style.opacity = ''/* closing ? '0' : '' */);
 
     if(aspecter) {
       this.setFullAspect(aspecter, containerRect, rect);
     }
 
-    //throw '';
+    // throw '';
 
     setTimeout(() => {
       mover.style.borderRadius = '';
@@ -984,8 +983,8 @@ export default class AppMediaViewerBase<
           aspecter.style.cssText = '';
           void mover.offsetLeft; // reflow
         }
-        
-        //aspecter.classList.remove('disable-hover');
+
+        // aspecter.classList.remove('disable-hover');
       }
 
       // эти строки нужны для установки центральной позиции, в случае ресайза это будет нужно
@@ -1033,16 +1032,16 @@ export default class AppMediaViewerBase<
     /* if(proportion === 1) {
       aspecter.style.cssText = '';
     } else { */
-      if(proportion > 0) {
-        width = height * proportion;
-      } else {
-        height = width * proportion;
-      }
+    if(proportion > 0) {
+      width = height * proportion;
+    } else {
+      height = width * proportion;
+    }
 
-      //this.log('will set style aspecter:', `width: ${width}px; height: ${height}px; transform: scale(${containerRect.width / width}, ${containerRect.height / height});`);
+    // this.log('will set style aspecter:', `width: ${width}px; height: ${height}px; transform: scale(${containerRect.width / width}, ${containerRect.height / height});`);
 
-      aspecter.style.cssText = `width: ${width}px; height: ${height}px; transform: scale3d(${containerRect.width / width}, ${containerRect.height / height}, 1);`;
-    //}
+    aspecter.style.cssText = `width: ${width}px; height: ${height}px; transform: scale3d(${containerRect.width / width}, ${containerRect.height / height}, 1);`;
+    // }
   }
 
   protected sizeTailPath(path: SVGPathElement, rect: DOMRect, scaleX: number, delay: number, upscale: boolean, isOut: boolean, borderRadius: string) {
@@ -1068,14 +1067,14 @@ export default class AppMediaViewerBase<
 
       if(diff < delay) fastRaf(step);
     };
-    
-    //window.requestAnimationFrame(step);
+
+    // window.requestAnimationFrame(step);
     step();
   }
 
   protected removeCenterFromMover(mover: HTMLElement) {
     if(mover.classList.contains('center')) {
-      //const rect = mover.getBoundingClientRect();
+      // const rect = mover.getBoundingClientRect();
       const rect = this.content.media.getBoundingClientRect();
       mover.style.transform = `translate3d(${rect.left}px,${rect.top}px,0)`;
       mover.classList.remove('center');
@@ -1089,7 +1088,7 @@ export default class AppMediaViewerBase<
 
     this.removeCenterFromMover(mover);
 
-    //mover.classList.remove('active');
+    // mover.classList.remove('active');
     mover.classList.add('moving');
 
     if(mover.dataset.timeout) { // и это тоже всё из-за скейла видео, так бы это не нужно было
@@ -1100,12 +1099,12 @@ export default class AppMediaViewerBase<
 
     const newTransform = mover.style.transform.replace(/translate3d\((.+?),/, (match, p1) => {
       const x = toLeft ? -rect.width : windowW;
-      //const x = toLeft ? -(rect.right + (rect.width / 2)) : windowW / 2;
+      // const x = toLeft ? -(rect.right + (rect.width / 2)) : windowW / 2;
 
       return match.replace(p1, x + 'px');
     });
 
-    ////////this.log('set newTransform:', newTransform, mover.style.transform, toLeft);
+    // //////this.log('set newTransform:', newTransform, mover.style.transform, toLeft);
     mover.style.transform = newTransform;
 
     setTimeout(() => {
@@ -1129,33 +1128,33 @@ export default class AppMediaViewerBase<
   }
 
   protected updateMediaSource(target: HTMLElement, url: string, tagName: 'video' | 'img') {
-    //if(target instanceof SVGSVGElement) {
-      const el = target.tagName.toLowerCase() === tagName ? target : target.querySelector(tagName) as HTMLElement;
-      if(el && !findUpClassName(target, 'document')) {
-        if(findUpClassName(target, 'attachment')) {
-          // two parentElements because element can be contained in aspecter
-          const preloader = target.parentElement.parentElement.querySelector('.preloader-container') as HTMLElement;
-          if(preloader) {
-            if(tagName === 'video') {
-              if(preloader.classList.contains('manual')) {
-                preloader.click();
-                // return;
-              }
-    
-              return;
+    // if(target instanceof SVGSVGElement) {
+    const el = target.tagName.toLowerCase() === tagName ? target : target.querySelector(tagName) as HTMLElement;
+    if(el && !findUpClassName(target, 'document')) {
+      if(findUpClassName(target, 'attachment')) {
+        // two parentElements because element can be contained in aspecter
+        const preloader = target.parentElement.parentElement.querySelector('.preloader-container') as HTMLElement;
+        if(preloader) {
+          if(tagName === 'video') {
+            if(preloader.classList.contains('manual')) {
+              preloader.click();
+              // return;
             }
-            
-            preloader.remove();
+
+            return;
           }
-        }
 
-        renderImageFromUrl(el, url);
-
-        // ! костыль, но он тут даже и не нужен
-        if(el.classList.contains('thumbnail') && el.parentElement.classList.contains('media-container-aspecter')) {
-          el.classList.remove('thumbnail');
+          preloader.remove();
         }
       }
+
+      renderImageFromUrl(el, url);
+
+      // ! костыль, но он тут даже и не нужен
+      if(el.classList.contains('thumbnail') && el.parentElement.classList.contains('media-container-aspecter')) {
+        el.classList.remove('thumbnail');
+      }
+    }
     /* } else {
 
     } */
@@ -1177,7 +1176,7 @@ export default class AppMediaViewerBase<
       title.classList.add('peer-title');
     }
 
-    let oldAvatar = this.author.avatarEl;
+    const oldAvatar = this.author.avatarEl;
     const newAvatar = this.author.avatarEl = (oldAvatar.cloneNode() as AvatarElement);
 
     return Promise.all([
@@ -1197,16 +1196,16 @@ export default class AppMediaViewerBase<
       oldAvatar.replaceWith(this.author.avatarEl);
     });
   }
-  
+
   protected async _openMedia(
-    media: MyDocument | MyPhoto, 
-    timestamp: number, 
-    fromId: PeerId | string, 
-    fromRight: number, 
-    target?: HTMLElement, 
-    reverse = false, 
-    prevTargets: TargetType[] = [], 
-    nextTargets: TargetType[] = [], 
+    media: MyDocument | MyPhoto,
+    timestamp: number,
+    fromId: PeerId | string,
+    fromRight: number,
+    target?: HTMLElement,
+    reverse = false,
+    prevTargets: TargetType[] = [],
+    nextTargets: TargetType[] = [],
     message?: MyMessage
     /* , needLoadMore = true */
   ) {
@@ -1217,17 +1216,17 @@ export default class AppMediaViewerBase<
     } */
 
     const setAuthorPromise = this.setAuthorInfo(fromId, timestamp);
-    
+
     const isDocument = media._ === 'document';
     const isVideo = isDocument && media.mime_type && ((['video', 'gif'] as MyDocument['type'][]).includes(media.type) || media.mime_type.indexOf('video/') === 0);
 
     if(this.isFirstOpen) {
-      //this.targetContainer = targetContainer;
+      // this.targetContainer = targetContainer;
       // this.needLoadMore = needLoadMore;
       this.isFirstOpen = false;
       this.listLoader.setTargets(prevTargets, nextTargets, reverse);
       (window as any).appMediaViewer = this;
-      //this.loadMore = loadMore;
+      // this.loadMore = loadMore;
 
       /* if(appSidebarRight.historyTabIDs.slice(-1)[0] === AppSidebarRight.SLIDERITEMSIDS.forward) {
         appSidebarRight.forwardTab.closeBtn.click();
@@ -1241,12 +1240,12 @@ export default class AppMediaViewerBase<
       }, 0);
     }
 
-    //if(prevTarget && (!prevTarget.parentElement || !this.isElementVisible(this.targetContainer, prevTarget))) prevTarget = null;
-    //if(nextTarget && (!nextTarget.parentElement || !this.isElementVisible(this.targetContainer, nextTarget))) nextTarget = null;
+    // if(prevTarget && (!prevTarget.parentElement || !this.isElementVisible(this.targetContainer, prevTarget))) prevTarget = null;
+    // if(nextTarget && (!nextTarget.parentElement || !this.isElementVisible(this.targetContainer, nextTarget))) nextTarget = null;
 
     this.buttons.prev.classList.toggle('hide', !this.listLoader.previous.length);
     this.buttons.next.classList.toggle('hide', !this.listLoader.next.length);
-    
+
     const container = this.content.media;
     const useContainerAsTarget = !target || target === container;
     if(useContainerAsTarget) target = container;
@@ -1257,7 +1256,7 @@ export default class AppMediaViewerBase<
     if(container.firstElementChild) {
       container.innerHTML = '';
     }
-    
+
     // ok set
 
     const wasActive = fromRight !== 0;
@@ -1283,7 +1282,7 @@ export default class AppMediaViewerBase<
             if(this.setMoverAnimationPromise) {
               return false;
             }
-            
+
             this.close();
           }
         };
@@ -1292,12 +1291,12 @@ export default class AppMediaViewerBase<
       }
     }
 
-    ////////this.log('wasActive:', wasActive);
+    // //////this.log('wasActive:', wasActive);
 
     const mover = this.content.mover;
 
     const maxWidth = windowSize.width;
-    //const maxWidth = this.pageEl.scrollWidth;
+    // const maxWidth = this.pageEl.scrollWidth;
     // TODO: const maxHeight = mediaSizes.isMobile ? appPhotosManager.windowH : appPhotosManager.windowH - 100;
     let padding = 0;
     const windowH = windowSize.height;
@@ -1341,32 +1340,32 @@ export default class AppMediaViewerBase<
 
     let setMoverPromise: Promise<void>;
     if(isVideo) {
-      ////////this.log('will wrap video', media, size);
+      // //////this.log('will wrap video', media, size);
 
       // потому что для safari нужно создать элемент из event'а
       // const video = document.createElement('video');
       const useController = message && media.type !== 'gif';
-      const video = /* useController ? 
-        appMediaPlaybackController.addMedia(message, false, true) as HTMLVideoElement : 
+      const video = /* useController ?
+        appMediaPlaybackController.addMedia(message, false, true) as HTMLVideoElement :
          */createVideo({pip: useController});
 
       const set = () => this.setMoverToTarget(target, false, fromRight).then(({onAnimationEnd}) => {
-      //return; // set and don't move
-      //if(wasActive) return;
-        //return;
-  
+      // return; // set and don't move
+      // if(wasActive) return;
+        // return;
+
         const div = mover.firstElementChild && mover.firstElementChild.classList.contains('media-viewer-aspecter') ? mover.firstElementChild : mover;
-        //const video = mover.querySelector('video') || document.createElement('video');
-  
+        // const video = mover.querySelector('video') || document.createElement('video');
+
         const moverVideo = mover.querySelector('video');
         if(moverVideo) {
           moverVideo.remove();
         }
-  
-        //video.src = '';
-  
+
+        // video.src = '';
+
         video.setAttribute('playsinline', 'true');
-  
+
         // * fix for playing video if viewer is closed (https://contest.com/javascript-web-bonus/entry1425#issue11629)
         video.addEventListener('timeupdate', () => {
           if(this.tempId !== tempId) {
@@ -1378,13 +1377,13 @@ export default class AppMediaViewerBase<
           video.src = '';
           video.load();
         }, {once: true});
-  
+
         if(IS_SAFARI) {
           // test stream
           // video.controls = true;
           video.autoplay = true;
         }
-  
+
         if(media.type === 'gif') {
           video.muted = true;
           video.autoplay = true;
@@ -1392,15 +1391,15 @@ export default class AppMediaViewerBase<
         } else if(media.duration < 60) {
           video.loop = true;
         }
-  
+
         // if(!video.parentElement) {
-          div.append(video);
+        div.append(video);
         // }
-  
+
         const canPlayThrough = new Promise((resolve) => {
           video.addEventListener('canplay', resolve, {once: true});
         });
-  
+
         const createPlayer = () => {
           if(media.type !== 'gif') {
             video.dataset.ckin = 'default';
@@ -1410,12 +1409,12 @@ export default class AppMediaViewerBase<
               if(this.tempId !== tempId) {
                 return;
               }
-  
+
               // const play = useController ? appMediaPlaybackController.willBePlayedMedia === video : true;
               const play = true;
               const player = this.videoPlayer = new VideoPlayer({
-                video, 
-                play, 
+                video,
+                play,
                 streamable: supportsStreaming,
                 onPlaybackRackMenuToggle: (open) => {
                   this.wholeDiv.classList.toggle('hide-caption', !!open);
@@ -1477,19 +1476,19 @@ export default class AppMediaViewerBase<
             });
           }
         };
-  
+
         if(supportsStreaming) {
           onAnimationEnd.then(() => {
             if(video.readyState < video.HAVE_FUTURE_DATA) {
               console.log('ppp 1');
               preloader.attach(mover, true);
             }
-  
+
             /* canPlayThrough.then(() => {
               preloader.detach();
             }); */
           });
-  
+
           const attachCanPlay = () => {
             video.addEventListener('canplay', () => {
               console.log('ppp 2');
@@ -1497,18 +1496,18 @@ export default class AppMediaViewerBase<
               video.parentElement.classList.remove('is-buffering');
             }, {once: true});
           };
-  
+
           video.addEventListener('waiting', () => {
             const loading = video.networkState === video.NETWORK_LOADING;
             const isntEnoughData = video.readyState < video.HAVE_FUTURE_DATA;
-  
-            //this.log('video waiting for progress', loading, isntEnoughData);
+
+            // this.log('video waiting for progress', loading, isntEnoughData);
             if(loading && isntEnoughData) {
               attachCanPlay();
-  
+
               console.log('ppp 3');
               preloader.attach(mover, true);
-  
+
               // поставлю класс для плеера, чтобы убрать большую иконку пока прелоадер на месте
               video.parentElement.classList.add('is-buffering');
             }
@@ -1519,108 +1518,108 @@ export default class AppMediaViewerBase<
               cancelEvent(e);
             });
           }
-  
+
           attachCanPlay();
         }
-        
-        //if(!video.src || media.url !== video.src) {
-          const load = async() => {
-            /* if(useController) {
+
+        // if(!video.src || media.url !== video.src) {
+        const load = async() => {
+          /* if(useController) {
               appMediaPlaybackController.resolveWaitingForLoadMedia(message.peerId, message.mid, message.pFlags.is_scheduled);
             } */
 
-            const promise: Promise<any> = supportsStreaming ? Promise.resolve() : appDownloadManager.downloadMediaURL({media});
-            
-            if(!supportsStreaming) {
-              onAnimationEnd.then(async() => {
-                if(!(await getCacheContext()).url) {
-                  console.log('ppp 4');
-                  preloader.attach(mover, true, promise);
-                }
-              });
+          const promise: Promise<any> = supportsStreaming ? Promise.resolve() : appDownloadManager.downloadMediaURL({media});
+
+          if(!supportsStreaming) {
+            onAnimationEnd.then(async() => {
+              if(!(await getCacheContext()).url) {
+                console.log('ppp 4');
+                preloader.attach(mover, true, promise);
+              }
+            });
+          }
+
+          Promise.all([promise, onAnimationEnd]).then(async() => {
+            if(this.tempId !== tempId) {
+              this.log.warn('media viewer changed video');
+              return;
             }
-  
-            Promise.all([promise, onAnimationEnd]).then(async() => {
-              if(this.tempId !== tempId) {
-                this.log.warn('media viewer changed video');
-                return;
+
+            const url = (await getCacheContext()).url;
+
+            video.addEventListener('error', () => {
+              if(video.error.code !== 4) {
+                this.log.error('Error ' + video.error.code + '; details: ' + video.error.message);
               }
 
-              const url = (await getCacheContext()).url;
+              if(preloader) {
+                preloader.detach();
+              }
+            }, {once: true});
 
-              video.addEventListener('error', () => {
-                if(video.error.code !== 4) {
-                  this.log.error("Error " + video.error.code + "; details: " + video.error.message);
-                }
-      
-                if(preloader) {
-                  preloader.detach();
+            if(target instanceof SVGSVGElement/*  && (video.parentElement || !isSafari) */) { // if video exists
+              // if(!video.parentElement) {
+              div.firstElementChild.lastElementChild.append(video);
+              // }
+            } else {
+              renderImageFromUrl(video, url);
+            }
+
+            // * have to set options (especially playbackRate) after src
+            // * https://github.com/videojs/video.js/issues/2516
+            if(useController) {
+              this.releaseSingleMedia = appMediaPlaybackController.setSingleMedia(video, message as Message.message);
+
+              this.addEventListener('setMoverBefore', () => {
+                if(this.releaseSingleMedia) {
+                  this.releaseSingleMedia();
+                  this.releaseSingleMedia = undefined;
                 }
               }, {once: true});
+            }
 
-              if(target instanceof SVGSVGElement/*  && (video.parentElement || !isSafari) */) { // if video exists
-                //if(!video.parentElement) {
-                  div.firstElementChild.lastElementChild.append(video);
-                //}
-              } else {
-                renderImageFromUrl(video, url);
-              }
+            this.updateMediaSource(target, url, 'video');
 
-              // * have to set options (especially playbackRate) after src
-              // * https://github.com/videojs/video.js/issues/2516
-              if(useController) {
-                this.releaseSingleMedia = appMediaPlaybackController.setSingleMedia(video, message as Message.message);
+            createPlayer();
+          });
 
-                this.addEventListener('setMoverBefore', () => {
-                  if(this.releaseSingleMedia) {
-                    this.releaseSingleMedia();
-                    this.releaseSingleMedia = undefined;
-                  }
-                }, {once: true});
-              }
+          return promise;
+        };
 
-              this.updateMediaSource(target, url, 'video');
-
-              createPlayer();
-            });
-  
-            return promise;
-          };
-  
-          this.lazyLoadQueue.unshift({load});
-        //} else createPlayer();
+        this.lazyLoadQueue.unshift({load});
+        // } else createPlayer();
       });
 
       setMoverPromise = thumbPromise.then(set);
     } else {
       const set = () => this.setMoverToTarget(target, false, fromRight).then(({onAnimationEnd}) => {
-      //return; // set and don't move
-      //if(wasActive) return;
-        //return;
-        
+      // return; // set and don't move
+      // if(wasActive) return;
+        // return;
+
         const load = async() => {
           const cancellablePromise = isDocument ? appDownloadManager.downloadMediaURL({media}) : appDownloadManager.downloadMediaURL({media, thumb: size});
-  
+
           onAnimationEnd.then(async() => {
             if(!(await getCacheContext()).url) {
               this.preloader.attachPromise(cancellablePromise);
-              //this.preloader.attach(mover, true, cancellablePromise);
+              // this.preloader.attach(mover, true, cancellablePromise);
             }
           });
-          
+
           Promise.all([onAnimationEnd, cancellablePromise]).then(async() => {
             if(this.tempId !== tempId) {
               this.log.warn('media viewer changed photo');
               return;
             }
-            
-            ///////this.log('indochina', blob);
-    
+
+            // /////this.log('indochina', blob);
+
             const url = (await getCacheContext()).url;
             if(target instanceof SVGSVGElement) {
               this.updateMediaSource(target, url, 'img');
               this.updateMediaSource(mover, url, 'img');
-  
+
               if(mediaSizes.isMobile) {
                 const imgs = mover.querySelectorAll('img');
                 if(imgs && imgs.length) {
@@ -1633,35 +1632,35 @@ export default class AppMediaViewerBase<
               const div = mover.firstElementChild && mover.firstElementChild.classList.contains('media-viewer-aspecter') ? mover.firstElementChild : mover;
               const haveImage = div.firstElementChild?.tagName === 'IMG' ? div.firstElementChild as HTMLImageElement : null;
               if(!haveImage || haveImage.src !== url)  {
-                let image = new Image();
+                const image = new Image();
                 image.classList.add('thumbnail');
-    
-                //this.log('will renderImageFromUrl:', image, div, target);
-    
+
+                // this.log('will renderImageFromUrl:', image, div, target);
+
                 renderImageFromUrl(image, url, () => {
                   this.updateMediaSource(target, url, 'img');
-  
+
                   if(haveImage) {
                     fastRaf(() => {
                       haveImage.remove();
                     });
                   }
-    
+
                   div.append(image);
                 });
               }
             }
-    
-            //this.preloader.detach();
+
+            // this.preloader.detach();
           }).catch((err) => {
             this.log.error(err);
             this.preloader.attach(mover);
             this.preloader.setManual();
           });
-  
+
           return cancellablePromise;
         };
-  
+
         this.lazyLoadQueue.unshift({load});
       });
 

@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import sequentialDom from "../sequentialDom";
-import renderImageFromUrl from "./renderImageFromUrl";
+import sequentialDom from '../sequentialDom';
+import renderImageFromUrl from './renderImageFromUrl';
 
 export default function renderImageWithFadeIn(
-  container: HTMLElement, 
-  image: HTMLImageElement, 
-  url: string, 
-  needFadeIn: boolean, 
+  container: HTMLElement,
+  image: HTMLImageElement,
+  url: string,
+  needFadeIn: boolean,
   aspecter = container,
   thumbImage?: HTMLElement
 ) {
@@ -38,7 +38,7 @@ export default function renderImageWithFadeIn(
           image.addEventListener('animationend', () => {
             sequentialDom.mutate(() => {
               image.classList.remove('fade-in');
-  
+
               if(thumbImage) {
                 thumbImage.remove();
               }

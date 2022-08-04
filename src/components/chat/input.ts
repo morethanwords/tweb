@@ -4,48 +4,48 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { MyDocument } from "../../lib/appManagers/appDocsManager";
-import type { AppImManager } from '../../lib/appManagers/appImManager';
-import type { MyDraftMessage } from '../../lib/appManagers/appDraftsManager';
+import type {MyDocument} from '../../lib/appManagers/appDocsManager';
+import type {AppImManager} from '../../lib/appManagers/appImManager';
+import type {MyDraftMessage} from '../../lib/appManagers/appDraftsManager';
 import type Chat from './chat';
 import Recorder from '../../../public/recorder.min';
-import IS_TOUCH_SUPPORTED from "../../environment/touchSupport";
-//import Recorder from '../opus-recorder/dist/recorder.min';
-import opusDecodeController from "../../lib/opusDecodeController";
-import ButtonMenu, { ButtonMenuItemOptions } from '../buttonMenu';
-import emoticonsDropdown from "../emoticonsDropdown";
-import PopupCreatePoll from "../popups/createPoll";
+import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
+// import Recorder from '../opus-recorder/dist/recorder.min';
+import opusDecodeController from '../../lib/opusDecodeController';
+import ButtonMenu, {ButtonMenuItemOptions} from '../buttonMenu';
+import emoticonsDropdown from '../emoticonsDropdown';
+import PopupCreatePoll from '../popups/createPoll';
 import PopupForward from '../popups/forward';
 import PopupNewMedia from '../popups/newMedia';
-import { toast } from "../toast";
-import { wrapReply } from "../wrappers";
+import {toast} from '../toast';
+import {wrapReply} from '../wrappers';
 import InputField from '../inputField';
-import { MessageEntity, DraftMessage, WebPage, Message, ChatFull, UserFull } from '../../layer';
+import {MessageEntity, DraftMessage, WebPage, Message, ChatFull, UserFull} from '../../layer';
 import StickersHelper from './stickersHelper';
 import ButtonIcon from '../buttonIcon';
 import ButtonMenuToggle from '../buttonMenuToggle';
-import ListenerSetter, { Listener } from '../../helpers/listenerSetter';
+import ListenerSetter, {Listener} from '../../helpers/listenerSetter';
 import Button from '../button';
 import PopupSchedule from '../popups/schedule';
 import SendMenu from './sendContextMenu';
 import rootScope from '../../lib/rootScope';
 import PopupPinMessage from '../popups/unpinMessage';
 import tsNow from '../../helpers/tsNow';
-import appNavigationController, { NavigationItem } from '../appNavigationController';
-import { IS_MOBILE, IS_MOBILE_SAFARI } from '../../environment/userAgent';
-import I18n, { i18n, join, LangPackKey } from '../../lib/langPack';
-import { generateTail } from './bubbles';
+import appNavigationController, {NavigationItem} from '../appNavigationController';
+import {IS_MOBILE, IS_MOBILE_SAFARI} from '../../environment/userAgent';
+import I18n, {i18n, join, LangPackKey} from '../../lib/langPack';
+import {generateTail} from './bubbles';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import ButtonCorner from '../buttonCorner';
 import blurActiveElement from '../../helpers/dom/blurActiveElement';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import cancelSelection from '../../helpers/dom/cancelSelection';
-import { attachClickEvent, simulateClickEvent } from '../../helpers/dom/clickEvent';
+import {attachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent';
 import getRichValue from '../../helpers/dom/getRichValue';
 import isInputEmpty from '../../helpers/dom/isInputEmpty';
 import isSendShortcutPressed from '../../helpers/dom/isSendShortcutPressed';
 import placeCaretAtEnd from '../../helpers/dom/placeCaretAtEnd';
-import { MarkdownType, markdownTags } from '../../helpers/dom/getRichElementValue';
+import {MarkdownType, markdownTags} from '../../helpers/dom/getRichElementValue';
 import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 import EmojiHelper from './emojiHelper';
 import CommandsHelper from './commandsHelper';
@@ -57,16 +57,16 @@ import ReplyKeyboard from './replyKeyboard';
 import InlineHelper from './inlineHelper';
 import debounce from '../../helpers/schedulers/debounce';
 import noop from '../../helpers/noop';
-import { putPreloader } from '../putPreloader';
+import {putPreloader} from '../putPreloader';
 import SetTransition from '../singleTransition';
 import PeerTitle from '../peerTitle';
-import { fastRaf } from '../../helpers/schedulers';
+import {fastRaf} from '../../helpers/schedulers';
 import PopupDeleteMessages from '../popups/deleteMessages';
-import fixSafariStickyInputFocusing, { IS_STICKY_INPUT_BUGGED } from '../../helpers/dom/fixSafariStickyInputFocusing';
+import fixSafariStickyInputFocusing, {IS_STICKY_INPUT_BUGGED} from '../../helpers/dom/fixSafariStickyInputFocusing';
 import PopupPeer from '../popups/peer';
 import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport';
 import appMediaPlaybackController from '../appMediaPlaybackController';
-import { BOT_START_PARAM, NULL_PEER_ID } from '../../lib/mtproto/mtproto_config';
+import {BOT_START_PARAM, NULL_PEER_ID} from '../../lib/mtproto/mtproto_config';
 import setCaretAt from '../../helpers/dom/setCaretAt';
 import CheckboxField from '../checkboxField';
 import DropdownHover from '../../helpers/dropdownHover';
@@ -87,13 +87,13 @@ import wrapDraftText from '../../lib/richTextProcessor/wrapDraftText';
 import wrapDraft from '../wrappers/draft';
 import wrapMessageForReply from '../wrappers/messageForReply';
 import getServerMessageId from '../../lib/appManagers/utils/messageId/getServerMessageId';
-import { AppManagers } from '../../lib/appManagers/managers';
-import contextMenuController from "../../helpers/contextMenuController";
-import { emojiFromCodePoints } from "../../vendor/emoji";
-import { modifyAckedPromise } from "../../helpers/modifyAckedResult";
-import ChatSendAs from "./sendAs";
-import filterAsync from "../../helpers/array/filterAsync";
-import InputFieldAnimated from "../inputFieldAnimated";
+import {AppManagers} from '../../lib/appManagers/managers';
+import contextMenuController from '../../helpers/contextMenuController';
+import {emojiFromCodePoints} from '../../vendor/emoji';
+import {modifyAckedPromise} from '../../helpers/modifyAckedResult';
+import ChatSendAs from './sendAs';
+import filterAsync from '../../helpers/array/filterAsync';
+import InputFieldAnimated from '../inputFieldAnimated';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -141,7 +141,7 @@ export default class ChatInput {
     hideCaption: ButtonMenuItemOptions,
     container: HTMLElement,
     modifyArgs?: ButtonMenuItemOptions[]
-  };  
+  };
   private forwardHover: DropdownHover;
   private forwardWasDroppingAuthor: boolean;
 
@@ -204,7 +204,7 @@ export default class ChatInput {
   private fakeRowsWrapper: HTMLDivElement;
 
   private previousQuery: string;
-  
+
   private releaseMediaPlayback: () => void;
 
   private botStartBtn: HTMLButtonElement;
@@ -226,8 +226,8 @@ export default class ChatInput {
   public sendAsPeerId: PeerId;
 
   constructor(
-    private chat: Chat, 
-    private appImManager: AppImManager, 
+    private chat: Chat,
+    private appImManager: AppImManager,
     private managers: AppManagers
   ) {
     this.listenerSetter = new ListenerSetter();
@@ -277,11 +277,11 @@ export default class ChatInput {
     // this.listenerSetter.add(window.visualViewport)('resize', () => {
     //   const scrollable = this.chat.bubbles.scrollable;
     //   const wasScrolledDown = scrollable.isScrolledDown;
-      
+
     //   /* if(wasScrolledDown) {
     //     this.saveScroll();
     //   } */
-      
+
     //   // @ts-ignore
     //   let newHeight = window.visualViewport.height;
     //   const diff = height - newHeight;
@@ -299,7 +299,7 @@ export default class ChatInput {
     //     height = newHeight;
 
     //     scrollable.scrollTop = needScrollTop;
-        
+
     //     console.log('resize after', scrollable.scrollTop, scrollable.container.clientHeight, scrollable.scrollHeight, scrollable.isScrolledDown, scrollable.lastScrollTop, isScrolledDown);
 
     //     /* if(isScrolledDown) {
@@ -329,7 +329,7 @@ export default class ChatInput {
       if(setScrollTopTimeout) clearTimeout(setScrollTopTimeout);
       setScrollTopTimeout = window.setTimeout(() => { // * try again for scrolled down Android Chrome
         scrollable.scrollTop = needScrollTop;
-        
+
         //console.log('resize after', scrollable.scrollTop, scrollable.container.clientHeight, scrollable.scrollHeight, scrollable.isScrolledDown, scrollable.lastScrollTop, isScrolledDown);
         setScrollTopTimeout = 0;
       }, 0);
@@ -432,7 +432,7 @@ export default class ChatInput {
     groups.forEach((group) => {
       const container = RadioForm(group.elements.map((e) => {
         return {
-          container: e, 
+          container: e,
           input: e.querySelector('input')
         };
       }), group.onChange);
@@ -488,7 +488,7 @@ export default class ChatInput {
           if(!middleware()) {
             return;
           }
-          
+
           if(mid) {
             this.chat.setMessageId(mid);
           }
@@ -597,7 +597,7 @@ export default class ChatInput {
     this.attachMenu.classList.add('attach-file', 'tgico-attach');
     this.attachMenu.classList.remove('tgico-more');
 
-    //this.inputContainer.append(this.sendMenu);
+    // this.inputContainer.append(this.sendMenu);
 
     this.recordTimeEl = document.createElement('div');
     this.recordTimeEl.classList.add('record-time');
@@ -652,7 +652,7 @@ export default class ChatInput {
           return !this.isInputEmpty() || !!Object.keys(this.forwarding).length;
         }
       });
-      
+
       this.btnSendContainer.append(this.sendMenu.sendMenu);
     }
 
@@ -745,8 +745,8 @@ export default class ChatInput {
 
     try {
       this.recorder = new Recorder({
-        //encoderBitRate: 32,
-        //encoderPath: "../dist/encoderWorker.min.js",
+        // encoderBitRate: 32,
+        // encoderPath: "../dist/encoderWorker.min.js",
         encoderSampleRate: 48000,
         monitorGain: 0,
         numberOfChannels: 1,
@@ -760,11 +760,11 @@ export default class ChatInput {
     this.updateSendBtn();
 
     this.listenerSetter.add(this.fileInput)('change', (e) => {
-      let files = (e.target as HTMLInputElement & EventTarget).files;
+      const files = (e.target as HTMLInputElement & EventTarget).files;
       if(!files.length) {
         return;
       }
-      
+
       PopupElement.createPopup(PopupNewMedia, this.chat, Array.from(files).slice(), this.willAttachType);
       this.fileInput.value = '';
     }, false);
@@ -795,7 +795,7 @@ export default class ChatInput {
         this.chatInput.classList.remove('is-locked');
         this.recordRippleEl.style.transform = '';
       };
-  
+
       this.recorder.ondataavailable = (typedArray: Uint8Array) => {
         if(this.releaseMediaPlayback) {
           this.releaseMediaPlayback();
@@ -818,18 +818,18 @@ export default class ChatInput {
 
         const {peerId, threadId} = this.chat;
         const replyToMsgId = this.replyToMsgId;
-  
+
         const duration = (Date.now() - this.recordStartTime) / 1000 | 0;
         const dataBlob = new Blob([typedArray], {type: 'audio/ogg'});
         /* const fileName = new Date().toISOString() + ".opus";
         console.log('Recorder data received', typedArray, dataBlob); */
 
-        //let perf = performance.now();
+        // let perf = performance.now();
         opusDecodeController.decode(typedArray, true).then((result) => {
-          //console.log('WAVEFORM!:', /* waveform,  */performance.now() - perf);
-  
+          // console.log('WAVEFORM!:', /* waveform,  */performance.now() - perf);
+
           opusDecodeController.setKeepAlive(false);
-  
+
           // тут objectURL ставится уже с audio/wav
           this.managers.appMessagesManager.sendFile(peerId, dataBlob, {
             isVoiceMessage: true,
@@ -921,27 +921,27 @@ export default class ChatInput {
     const oldFakeWrapperTo = this.fakeWrapperTo;
     let transform = '', borderRadius = '', needTranslateX: number;
     // if(forwards) {]
-      const fakeSelectionRect = fakeSelectionWrapper.getBoundingClientRect();
-      const fakeRowsRect = this.fakeRowsWrapper.getBoundingClientRect();
-      const widthFrom = fakeRowsRect.width;
-      const widthTo = fakeSelectionRect.width;
+    const fakeSelectionRect = fakeSelectionWrapper.getBoundingClientRect();
+    const fakeRowsRect = this.fakeRowsWrapper.getBoundingClientRect();
+    const widthFrom = fakeRowsRect.width;
+    const widthTo = fakeSelectionRect.width;
 
-      if(widthFrom !== widthTo) {
-        const scale = (widthTo/*  - 8 */) / widthFrom;
-        const initTranslateX = (widthFrom - widthTo) / 2;
-        needTranslateX = fakeSelectionRect.left - fakeRowsRect.left - initTranslateX;
+    if(widthFrom !== widthTo) {
+      const scale = (widthTo/*  - 8 */) / widthFrom;
+      const initTranslateX = (widthFrom - widthTo) / 2;
+      needTranslateX = fakeSelectionRect.left - fakeRowsRect.left - initTranslateX;
 
-        if(forwards) {
-          transform = `translateX(${needTranslateX}px) scaleX(${scale})`;
-          // transform = `translateX(0px) scaleX(${scale})`;
-  
-          if(scale < 1) {
-            const br = 12;
-            borderRadius = '' + (br + br * (1 - scale)) + 'px';
-          }
+      if(forwards) {
+        transform = `translateX(${needTranslateX}px) scaleX(${scale})`;
+        // transform = `translateX(0px) scaleX(${scale})`;
+
+        if(scale < 1) {
+          const br = 12;
+          borderRadius = '' + (br + br * (1 - scale)) + 'px';
         }
-        //scale = widthTo / widthFrom;
       }
+      // scale = widthTo / widthFrom;
+    }
     // }
 
     this.fakeWrapperTo = neededFakeContainer;
@@ -953,16 +953,16 @@ export default class ChatInput {
     this.rowsWrapper.style.borderRadius = borderRadius;
 
     return {
-      transform, 
-      borderRadius, 
+      transform,
+      borderRadius,
       needTranslateX: oldFakeWrapperTo && (
           (
-            neededFakeContainer && 
-            neededFakeContainer.classList.contains('chat-input-control') && 
+            neededFakeContainer &&
+            neededFakeContainer.classList.contains('chat-input-control') &&
             oldFakeWrapperTo === this.fakeSelectionWrapper
           ) || oldFakeWrapperTo.classList.contains('chat-input-control')
         ) ? needTranslateX * -.5 : needTranslateX,
-      widthFrom, 
+      widthFrom,
       widthTo
     };
   }
@@ -984,9 +984,9 @@ export default class ChatInput {
     if(this.chat.selection.isSelecting) {
       return this.fakeSelectionWrapper;
     } else if(
-      startParam !== undefined || 
-      !(await this.chat.canSend()) || 
-      this.chat.type === 'pinned' || 
+      startParam !== undefined ||
+      !(await this.chat.canSend()) ||
+      this.chat.type === 'pinned' ||
       await this.chat.isStartButtonNeeded()
     ) {
       return this.controlContainer;
@@ -1014,7 +1014,7 @@ export default class ChatInput {
     if(e) {
       cancelEvent(e);
     }
-    
+
     this.recordCanceled = true;
     this.recorder.stop();
     opusDecodeController.setKeepAlive(false);
@@ -1068,7 +1068,7 @@ export default class ChatInput {
     if(!this.goDownUnreadBadge) {
       return;
     }
-    
+
     const dialog = await this.managers.appMessagesManager.getDialogOnly(this.chat.peerId);
     const count = dialog?.unread_count;
     this.goDownUnreadBadge.innerText = '' + (count || '');
@@ -1083,7 +1083,7 @@ export default class ChatInput {
 
   public saveDraft() {
     if(!this.chat.peerId || this.editMsgId || this.chat.type === 'scheduled') return;
-    
+
     const {value, entities} = getRichValue(this.messageInputField.input);
 
     let draft: DraftMessage.draftMessage;
@@ -1104,7 +1104,7 @@ export default class ChatInput {
   }
 
   public destroy() {
-    //this.chat.log.error('Input destroying');
+    // this.chat.log.error('Input destroying');
 
     this.listenerSetter.removeAll();
   }
@@ -1133,7 +1133,7 @@ export default class ChatInput {
 
   public async setDraft(draft?: MyDraftMessage, fromUpdate = true, force = false) {
     if((!force && !isInputEmpty(this.messageInput)) || this.chat.type === 'scheduled') return false;
-    
+
     if(!draft) {
       draft = await this.managers.appDraftsManager.getDraft(this.chat.peerId, this.chat.threadId);
 
@@ -1155,7 +1155,7 @@ export default class ChatInput {
             });
           });
         }
-        
+
         return false;
       }
     }
@@ -1218,18 +1218,18 @@ export default class ChatInput {
     const peerId = this.chat.peerId;
 
     const {forwardElements, btnScheduled, replyKeyboard, sendMenu, goDownBtn, chatInput, botCommandsToggle} = this;
-    
+
     const previousSendAs = this.sendAs;
     const sendAs = this.createSendAs();
 
     const [
-      isBroadcast, 
-      canPinMessage, 
-      isBot, 
-      canSend, 
-      neededFakeContainer, 
-      ackedPeerFull, 
-      ackedScheduledMids, 
+      isBroadcast,
+      canPinMessage,
+      isBot,
+      canSend,
+      neededFakeContainer,
+      ackedPeerFull,
+      ackedScheduledMids,
       setSendAsCallback,
       filteredAttachMenuButtons
     ] = await Promise.all([
@@ -1248,26 +1248,26 @@ export default class ChatInput {
 
     return () => {
       // console.warn('[input] finishpeerchange start');
-      
+
       chatInput.classList.remove('hide');
       goDownBtn.classList.toggle('is-broadcast', isBroadcast);
       goDownBtn.classList.remove('hide');
-  
+
       if(this.goDownUnreadBadge) {
         this.setUnreadCount();
       }
-  
+
       if(this.chat.type === 'pinned') {
         chatInput.classList.toggle('can-pin', canPinMessage);
       }/*  else if(this.chat.type === 'chat') {
       } */
-  
+
       if(forwardElements) {
         this.forwardWasDroppingAuthor = false;
         forwardElements.showCaption.checkboxField.setValueSilently(true);
         forwardElements.showSender.checkboxField.setValueSilently(true);
       }
-  
+
       if(btnScheduled && ackedScheduledMids) {
         btnScheduled.classList.add('hide');
         const middleware = this.chat.bubbles.getMiddleware();
@@ -1276,11 +1276,11 @@ export default class ChatInput {
           btnScheduled.classList.toggle('hide', !mids.length);
         });
       }
-  
+
       if(this.newMessageWrapper) {
         this.updateOffset(null, false, true);
       }
-  
+
       if(botCommandsToggle) {
         this.hasBotCommands = undefined;
         this.botCommands.toggle(true, undefined, true);
@@ -1303,26 +1303,26 @@ export default class ChatInput {
       if(setSendAsCallback) {
         setSendAsCallback();
       }
-  
+
       if(replyKeyboard) {
         replyKeyboard.setPeer(peerId);
       }
-  
+
       if(sendMenu) {
         sendMenu.setPeerId(peerId);
       }
-      
+
       if(this.messageInput) {
         this.updateMessageInput(canSend, placeholderKey, filteredAttachMenuButtons);
       } else if(this.pinnedControlBtn) {
         this.pinnedControlBtn.append(i18n(canPinMessage ? 'Chat.Input.UnpinAll' : 'Chat.Pinned.DontShow'));
       }
-  
+
       // * testing
       // this.startParam = this.appPeersManager.isBot(peerId) ? '123' : undefined;
-      
+
       this.startParam = startParam;
-  
+
       this._center(neededFakeContainer, false);
 
       // console.warn('[input] finishpeerchange ends');
@@ -1352,10 +1352,10 @@ export default class ChatInput {
       if(!botCommandsToggle.parentElement) {
         return;
       }
-      
+
       botCommandsToggle.remove();
     }
-    
+
     const forwards = show;
     const useRafs = botCommandsToggle.parentElement ? 0 : 2;
 
@@ -1374,7 +1374,7 @@ export default class ChatInput {
     } else if(await this.managers.appPeersManager.isBroadcast(peerId)) {
       key = 'ChannelBroadcast';
     } else if(
-      (this.sendAsPeerId !== undefined && this.sendAsPeerId !== rootScope.myId) || 
+      (this.sendAsPeerId !== undefined && this.sendAsPeerId !== rootScope.myId) ||
       await this.managers.appMessagesManager.isAnonymousSending(peerId)
     ) {
       key = 'SendAnonymously';
@@ -1431,12 +1431,12 @@ export default class ChatInput {
         this.messageInputField.onFakeInput();
       }
     }
-    
+
     if(attachMenu) {
       attachMenu.toggleAttribute('disabled', !visible.length);
       attachMenu.classList.toggle('btn-disabled', !visible.length);
     }
-    
+
     this.updateSendBtn();
   }
 
@@ -1453,7 +1453,7 @@ export default class ChatInput {
     this.messageInput = this.messageInputField.input;
     this.messageInput.classList.add('no-scrollbar');
     this.attachMessageInputListeners();
-    
+
     if(IS_STICKY_INPUT_BUGGED) {
       fixSafariStickyInputFocusing(this.messageInput);
     }
@@ -1480,10 +1480,10 @@ export default class ChatInput {
         if(key === 'PageUp') {
           const range = document.createRange();
           const sel = window.getSelection();
-          
+
           range.setStart(this.messageInput.childNodes[0] || this.messageInput, 0);
           range.collapse(true);
-          
+
           sel.removeAllRanges();
           sel.addRange(range);
         } else {
@@ -1495,7 +1495,7 @@ export default class ChatInput {
     if(IS_TOUCH_SUPPORTED) {
       attachClickEvent(this.messageInput, (e) => {
         this.appImManager.selectTab(1); // * set chat tab for album orientation
-        //this.saveScroll();
+        // this.saveScroll();
         emoticonsDropdown.toggle(false);
       }, {listenerSetter: this.listenerSetter});
 
@@ -1503,7 +1503,7 @@ export default class ChatInput {
         this.restoreScroll();
       }); */
 
-      /* if(isSafari) {  
+      /* if(isSafari) {
         this.listenerSetter.add(this.messageInput)('mousedown', () => {
           window.requestAnimationFrame(() => {
             window.requestAnimationFrame(() => {
@@ -1537,7 +1537,7 @@ export default class ChatInput {
         if(this.chat.bubbles.scrollable.loadedAll.bottom) {
           this.managers.appMessagesManager.readAllHistory(this.chat.peerId, this.chat.threadId);
         }
-      }); 
+      });
     }
   }
 
@@ -1591,7 +1591,7 @@ export default class ChatInput {
 
     const command = commandsMap[type];
 
-    //type = 'monospace';
+    // type = 'monospace';
 
     const saveExecuted = this.prepareDocumentExecute();
     const executed: any[] = [];
@@ -1632,10 +1632,10 @@ export default class ChatInput {
     }; */
 
     executed.push(document.execCommand('styleWithCSS', false, 'true'));
-    
+
     if(type === 'monospace' || type === 'spoiler') {
       let haveThisType = false;
-      //executed.push(document.execCommand('styleWithCSS', false, 'true'));
+      // executed.push(document.execCommand('styleWithCSS', false, 'true'));
 
       const selection = window.getSelection();
       if(!selection.isCollapsed) {
@@ -1648,7 +1648,7 @@ export default class ChatInput {
         }
       }
 
-      //executed.push(document.execCommand('removeFormat', false, null));
+      // executed.push(document.execCommand('removeFormat', false, null));
 
       if(haveThisType) {
         executed.push(this.resetCurrentFormatting());
@@ -1661,7 +1661,7 @@ export default class ChatInput {
 
     executed.push(document.execCommand('styleWithCSS', false, 'false'));
 
-    //checkForSingle();
+    // checkForSingle();
     saveExecuted();
     if(this.appImManager.markupTooltip) {
       this.appImManager.markupTooltip.setActiveMarkupButton();
@@ -1700,11 +1700,11 @@ export default class ChatInput {
       } else {
         this.applyMarkdown(applyMarkdown);
       }
-  
+
       cancelEvent(e); // cancel legacy event
     }
 
-    //return;
+    // return;
     if(code === 'KeyZ') {
       let html = this.messageInput.innerHTML;
 
@@ -1744,15 +1744,15 @@ export default class ChatInput {
       alert('not single');
     } */
 
-    //console.log('messageInput input', this.messageInput.innerText);
-    //const value = this.messageInput.innerText;
+    // console.log('messageInput input', this.messageInput.innerText);
+    // const value = this.messageInput.innerText;
     const {value: richValue, entities: markdownEntities, caretPos} = getRichValueWithCaret(this.messageInputField.input);
-      
-    //const entities = parseEntities(value);
+
+    // const entities = parseEntities(value);
     const value = parseMarkdown(richValue, markdownEntities, true);
     const entities = mergeEntities(markdownEntities, parseEntities(value));
 
-    //this.chat.log('messageInput entities', richValue, value, markdownEntities, caretPos);
+    // this.chat.log('messageInput entities', richValue, value, markdownEntities, caretPos);
 
     if(this.canRedoFromHTML && !this.lockRedo && this.messageInput.innerHTML !== this.canRedoFromHTML) {
       this.canRedoFromHTML = '';
@@ -1773,7 +1773,7 @@ export default class ChatInput {
           }
         }
 
-        //console.log('messageInput url:', url);
+        // console.log('messageInput url:', url);
 
         if(this.lastUrl !== url) {
           this.lastUrl = url;
@@ -1782,7 +1782,7 @@ export default class ChatInput {
             if(this.getWebPagePromise === promise) this.getWebPagePromise = undefined;
             if(this.lastUrl !== url) return;
             if(webpage._  === 'webPage') {
-              //console.log('got webpage: ', webpage);
+              // console.log('got webpage: ', webpage);
 
               this.setTopInfo('webpage', () => {}, webpage.site_name || webpage.title || 'Webpage', webpage.description || webpage.url || '');
               delete this.noWebPage;
@@ -1799,7 +1799,7 @@ export default class ChatInput {
       this.lastUrl = '';
       delete this.noWebPage;
       this.willSendWebPage = null;
-      
+
       if(this.helperType) {
         this.helperFunc();
       } else {
@@ -1905,7 +1905,7 @@ export default class ChatInput {
       entities.splice(insertCaretAtIndex, 0, caretEntity);
     }
 
-    //const saveExecuted = this.prepareDocumentExecute();
+    // const saveExecuted = this.prepareDocumentExecute();
     // can't exec .value here because it will instantly check for autocomplete
     const value = documentFragmentToHTML(wrapDraftText(newValue, {entities}));
     this.messageInputField.setValueSilently(value);
@@ -1919,9 +1919,9 @@ export default class ChatInput {
     // but it's needed to be checked only here
     this.onMessageInput();
 
-    //saveExecuted();
+    // saveExecuted();
 
-    //document.execCommand('insertHTML', true, wrapEmojiText(emoji));
+    // document.execCommand('insertHTML', true, wrapEmojiText(emoji));
   }
 
   public onEmojiSelected = (emoji: string, autocomplete: boolean) => {
@@ -1929,7 +1929,7 @@ export default class ChatInput {
   };
 
   private async checkAutocomplete(value?: string, caretPos?: number, entities?: MessageEntity[]) {
-    //return;
+    // return;
 
     if(value === undefined) {
       const r = getRichValueWithCaret(this.messageInputField.input, true);
@@ -1954,7 +1954,7 @@ export default class ChatInput {
     }
 
     this.previousQuery = value;
-    
+
     const matches = value.match(ChatInput.AUTO_COMPLETE_REG_EXP);
     let foundHelper: AutocompleteHelper;
     if(matches) {
@@ -1963,8 +1963,8 @@ export default class ChatInput {
       let query = matches[2];
       const firstChar = query[0];
 
-      if(this.stickersHelper && 
-        rootScope.settings.stickers.suggest && 
+      if(this.stickersHelper &&
+        rootScope.settings.stickers.suggest &&
         await this.chat.canSend('send_stickers') &&
         entity?._ === 'messageEntityEmoji' && entity.length === value.length && !entity.offset) {
         foundHelper = this.stickersHelper;
@@ -1986,7 +1986,7 @@ export default class ChatInput {
         }
       }
     }
-    
+
     foundHelper = this.checkInlineAutocomplete(value, foundHelper);
 
     this.autocompleteHelperController.hideOtherHelpers(foundHelper);
@@ -2001,7 +2001,7 @@ export default class ChatInput {
         const username = inlineMatch[1];
         const query = value.slice(inlineMatch[0].length);
         needPlaceholder = inlineMatch[0].length === value.length;
-  
+
         foundHelper = this.inlineHelper;
 
         if(!this.btnPreloader) {
@@ -2011,7 +2011,7 @@ export default class ChatInput {
         } else {
           SetTransition(this.btnPreloader, 'show', true, 400);
         }
-        
+
         this.inlineHelper.checkQuery(this.chat.peerId, username, query).then(({user, renderPromise}) => {
           if(needPlaceholder && user.bot_inline_placeholder) {
             this.messageInput.dataset.inlinePlaceholder = user.bot_inline_placeholder;
@@ -2023,7 +2023,7 @@ export default class ChatInput {
         }).catch(noop);
       }
     }
-    
+
     if(!needPlaceholder) {
       delete this.messageInput.dataset.inlinePlaceholder;
     }
@@ -2072,10 +2072,10 @@ export default class ChatInput {
       this.recorder.start().then(() => {
         this.releaseMediaPlayback = appMediaPlaybackController.setSingleMedia();
         this.recordCanceled = false;
-        
+
         this.setRecording(true);
         opusDecodeController.setKeepAlive(true);
-        
+
         const showDiscardPopup = () => {
           new PopupPeer('popup-cancel-record', {
             titleLangKey: 'DiscardVoiceMessageTitle',
@@ -2117,13 +2117,13 @@ export default class ChatInput {
 
         const analyser = context.createAnalyser();
         sourceNode.connect(analyser);
-        //analyser.connect(context.destination);
+        // analyser.connect(context.destination);
         analyser.fftSize = 32;
 
         const frequencyData = new Uint8Array(analyser.frequencyBinCount);
         const max = frequencyData.length * 255;
         const min = 54 / 150;
-        let r = () => {
+        const r = () => {
           if(!this.recording) return;
 
           analyser.getByteFrequencyData(frequencyData);
@@ -2132,16 +2132,16 @@ export default class ChatInput {
           frequencyData.forEach((value) => {
             sum += value;
           });
-          
-          let percents = Math.min(1, (sum / max) + min);
-          //console.log('frequencyData', frequencyData, percents);
+
+          const percents = Math.min(1, (sum / max) + min);
+          // console.log('frequencyData', frequencyData, percents);
 
           this.recordRippleEl.style.transform = `scale(${percents})`;
 
-          let diff = Date.now() - this.recordStartTime;
-          let ms = diff % 1000;
+          const diff = Date.now() - this.recordStartTime;
+          const ms = diff % 1000;
 
-          let formatted = toHHMMSS(diff / 1000) + ',' + ('00' + Math.round(ms / 10)).slice(-2);
+          const formatted = toHHMMSS(diff / 1000) + ',' + ('00' + Math.round(ms / 10)).slice(-2);
 
           this.recordTimeEl.innerText = formatted;
 
@@ -2182,9 +2182,9 @@ export default class ChatInput {
       const lastUrl = this.lastUrl;
       let needReturn = false;
       if(this.helperType) {
-        //if(this.helperFunc) {
-          await this.helperFunc();
-        //}
+        // if(this.helperFunc) {
+        await this.helperFunc();
+        // }
 
         needReturn = true;
       }
@@ -2221,7 +2221,7 @@ export default class ChatInput {
 
   private onHelperClick = (e: Event) => {
     cancelEvent(e);
-      
+
     if(!findUpClassName(e.target, 'reply')) return;
     if(this.helperType === 'forward') {
       const {forwardElements} = this;
@@ -2270,10 +2270,10 @@ export default class ChatInput {
     }
 
     if(IS_TOUCH_SUPPORTED) {
-      //this.messageInput.innerText = '';
+      // this.messageInput.innerText = '';
     } else {
-      //this.attachMessageInputField();
-      //this.messageInput.innerText = '';
+      // this.attachMessageInputField();
+      // this.messageInput.innerText = '';
 
       // clear executions
       this.canRedoFromHTML = '';
@@ -2361,7 +2361,7 @@ export default class ChatInput {
 
     const {value, entities} = getRichValue(this.messageInputField.input);
 
-    //return;
+    // return;
     if(editMsgId) {
       const message = this.editMessage;
       if(value.trim() || message.media) {
@@ -2397,17 +2397,17 @@ export default class ChatInput {
     if(this.forwarding) {
       const forwarding = copy(this.forwarding);
       // setTimeout(() => {
-        for(const fromPeerId in forwarding) {
-          this.managers.appMessagesManager.forwardMessages(peerId, fromPeerId.toPeerId(), forwarding[fromPeerId], {
-            ...sendingParams,
-            dropAuthor: this.forwardElements && this.forwardElements.hideSender.checkboxField.checked,
-            dropCaptions: this.isDroppingCaptions()
-          });
-        }
+      for(const fromPeerId in forwarding) {
+        this.managers.appMessagesManager.forwardMessages(peerId, fromPeerId.toPeerId(), forwarding[fromPeerId], {
+          ...sendingParams,
+          dropAuthor: this.forwardElements && this.forwardElements.hideSender.checkboxField.checked,
+          dropCaptions: this.isDroppingCaptions()
+        });
+      }
 
-        if(!value) {
-          this.onMessageSent();
-        }
+      if(!value) {
+        this.onMessageSent();
+      }
       // }, 0);
     }
 
@@ -2431,7 +2431,7 @@ export default class ChatInput {
     if(document) {
       this.managers.appMessagesManager.sendFile(this.chat.peerId, document, {
         ...this.chat.getMessageSendingParams(),
-        isMedia: true, 
+        isMedia: true,
         clearDraft: clearDraft || undefined
       });
       this.onMessageSent(clearDraft, true);
@@ -2442,7 +2442,7 @@ export default class ChatInput {
 
       return true;
     }
-    
+
     return false;
   }
 
@@ -2487,7 +2487,7 @@ export default class ChatInput {
 
   public initMessagesForward(fromPeerIdsMids: {[fromPeerId: PeerId]: number[]}) {
     const f = async() => {
-      //const peerTitles: string[]
+      // const peerTitles: string[]
       const fromPeerIds = Object.keys(fromPeerIdsMids).map((fromPeerId) => fromPeerId.toPeerId());
       const smth: Set<string> = new Set();
       let length = 0, messagesWithCaptionsLength = 0;
@@ -2551,7 +2551,7 @@ export default class ChatInput {
         const fromPeerId = fromPeerIds[0];
         const mids = fromPeerIdsMids[fromPeerId];
         firstMessage = (await this.managers.appMessagesManager.getMessageByPeer(fromPeerId, mids[0])) as Message.message;
-  
+
         usingFullAlbum = !!firstMessage.grouped_id;
         if(usingFullAlbum) {
           const albumMids = await this.managers.appMessagesManager.getMidsByMessage(firstMessage);
@@ -2567,19 +2567,19 @@ export default class ChatInput {
         const mids = fromPeerIdsMids[fromPeerIds[0]];
         const replyFragment = await wrapMessageForReply(firstMessage, undefined, mids);
         subtitleFragment.append(
-          senderTitles, 
-          delimiter, 
+          senderTitles,
+          delimiter,
           replyFragment
         );
       } else {
         subtitleFragment.append(
-          i18n('Chat.Accessory.Forward.From'), 
-          delimiter, 
+          i18n('Chat.Accessory.Forward.From'),
+          delimiter,
           senderTitles
         );
       }
-  
-      let newReply = this.setTopInfo('forward', f, title, subtitleFragment);
+
+      const newReply = this.setTopInfo('forward', f, title, subtitleFragment);
 
       forwardElements.modifyArgs.forEach((b, idx) => {
         const text = b.textElement;
@@ -2594,7 +2594,7 @@ export default class ChatInput {
 
       this.forwarding = fromPeerIdsMids;
     };
-    
+
     f();
   }
 
@@ -2602,7 +2602,7 @@ export default class ChatInput {
     if(this.replyToMsgId === mid) {
       return;
     }
-    
+
     let message = await this.chat.getMessage(mid);
     const f = () => {
       let peerTitleEl: HTMLElement;
@@ -2644,7 +2644,7 @@ export default class ChatInput {
       delete this.noWebPage;
       this.willSendWebPage = null;
     }
-    
+
     if(type !== 'reply') {
       this.replyToMsgId = undefined;
       this.forwarding = undefined;
@@ -2681,11 +2681,11 @@ export default class ChatInput {
   }
 
   public setTopInfo(
-    type: ChatInputHelperType, 
-    callerFunc: () => void, 
-    title: Parameters<typeof wrapReply>[0] = '', 
-    subtitle: Parameters<typeof wrapReply>[1] = '', 
-    input?: string, 
+    type: ChatInputHelperType,
+    callerFunc: () => void,
+    title: Parameters<typeof wrapReply>[0] = '',
+    subtitle: Parameters<typeof wrapReply>[1] = '',
+    input?: string,
     message?: any
   ) {
     if(this.willSendWebPage && type === 'reply') {
@@ -2697,7 +2697,7 @@ export default class ChatInput {
       this.helperType = type;
       this.helperFunc = callerFunc;
     }
-    
+
     const replyParent = this.replyElements.container;
     const oldReply = replyParent.lastElementChild.previousElementSibling;
     const haveReply = oldReply.classList.contains('reply');

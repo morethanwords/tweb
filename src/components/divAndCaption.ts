@@ -17,7 +17,7 @@ export default class DivAndCaption<T> {
 
     this.border = document.createElement('div');
     this.border.classList.add(className + '-border');
-    
+
     this.content = document.createElement('div');
     this.content.classList.add(className + '-content');
 

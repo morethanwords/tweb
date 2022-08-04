@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { MyMessage } from "../../lib/appManagers/appMessagesManager";
-import wrapMessageActionTextNewUnsafe from "./messageActionTextNewUnsafe";
+import {MyMessage} from '../../lib/appManagers/appMessagesManager';
+import wrapMessageActionTextNewUnsafe from './messageActionTextNewUnsafe';
 
 export default async function wrapMessageActionTextNew(message: MyMessage, plain: true): Promise<string>;
 export default async function wrapMessageActionTextNew(message: MyMessage, plain?: false): Promise<HTMLElement>;

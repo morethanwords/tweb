@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import cancelEvent from "../helpers/dom/cancelEvent";
-import { attachClickEvent } from "../helpers/dom/clickEvent";
-import ListenerSetter from "../helpers/listenerSetter";
-import rootScope from "../lib/rootScope";
-import appMediaPlaybackController from "./appMediaPlaybackController";
-import RangeSelector from "./rangeSelector";
+import cancelEvent from '../helpers/dom/cancelEvent';
+import {attachClickEvent} from '../helpers/dom/clickEvent';
+import ListenerSetter from '../helpers/listenerSetter';
+import rootScope from '../lib/rootScope';
+import appMediaPlaybackController from './appMediaPlaybackController';
+import RangeSelector from './rangeSelector';
 
 export default class VolumeSelector extends RangeSelector {
   private static ICONS = ['volume_off', 'volume_mute', 'volume_down', 'volume_up'];
@@ -18,8 +18,8 @@ export default class VolumeSelector extends RangeSelector {
 
   constructor(protected listenerSetter: ListenerSetter, protected vertical = false) {
     super({
-      step: 0.01, 
-      min: 0, 
+      step: 0.01,
+      min: 0,
       max: 1,
       vertical
     }, 1);
@@ -29,11 +29,11 @@ export default class VolumeSelector extends RangeSelector {
       onScrub: currentTime => {
         const value = Math.max(Math.min(currentTime, 1), 0);
 
-        //console.log('volume scrub:', currentTime, value);
+        // console.log('volume scrub:', currentTime, value);
 
         appMediaPlaybackController.muted = false;
         appMediaPlaybackController.volume = value;
-      },
+      }
 
       /* onMouseUp: (e) => {
         cancelEvent(e.event);

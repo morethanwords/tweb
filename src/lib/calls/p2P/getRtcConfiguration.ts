@@ -2,14 +2,14 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/evgeny-nadymov/telegram-react
  * Copyright (C) 2018 Evgeny Nadymov
  * https://github.com/evgeny-nadymov/telegram-react/blob/master/LICENSE
  */
 
-import { PhoneCall } from "../../../layer";
+import {PhoneCall} from '../../../layer';
 
 export default function getRtcConfiguration(call: PhoneCall.phoneCall): RTCConfiguration {
   const iceServers: RTCIceServer[] = [];
@@ -36,7 +36,7 @@ export default function getRtcConfiguration(call: PhoneCall.phoneCall): RTCConfi
             urls.push(`stun:[${ipv6}]:${port}`);
           }
         }
-        
+
         if(urls.length > 0) {
           iceServers.push({
             urls,
@@ -48,7 +48,7 @@ export default function getRtcConfiguration(call: PhoneCall.phoneCall): RTCConfi
       }
     }
   });
-  
+
   return {
     iceServers,
     iceTransportPolicy: call.pFlags.p2p_allowed ? 'all' : 'relay'

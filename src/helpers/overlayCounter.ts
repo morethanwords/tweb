@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import EventListenerBase from "./eventListenerBase";
+import EventListenerBase from './eventListenerBase';
 
 export class OverlayCounter extends EventListenerBase<{
   change: (isActive: boolean) => void

@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import splitStringByLimitWithRest from "../../../helpers/string/splitStringByLimitWithRest";
+import splitStringByLimitWithRest from '../../../helpers/string/splitStringByLimitWithRest';
 
 export default class SDPAttributeInner {
   #key: string;
@@ -53,7 +53,7 @@ export default class SDPAttributeInner {
     SDPAttributeInner.fill(this);
     return this.#nestedMap.get(key) || new SDPAttributeInner(key, [], ':', true);
   }
-  
+
   private static fill(attribute: SDPAttributeInner) {
     if(attribute.#nestedMap !== null) {
       return;
@@ -65,18 +65,18 @@ export default class SDPAttributeInner {
       const values = map.get(key) || [];
       map.set(key, [...values, rest || '']);
     });
-  
+
     const nestedMap = attribute.#nestedMap = SDPAttributeInner.makeAttributes(map);
     attribute.#keys = Array.from(nestedMap.keys());
   }
 
   private static makeAttributes(innerParts: Map<string, Array<string>>) {
     const out: Map<string, SDPAttributeInner> = new Map();
-  
+
     innerParts.forEach((lines, key) => {
       out.set(key, new SDPAttributeInner(key, lines));
     });
-  
+
     return out;
   }
 }

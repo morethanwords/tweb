@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { InputFileLocation, InputStickerSet, InputWebFileLocation } from "../layer";
-import type { DownloadOptions } from "../lib/mtproto/apiFileManager";
+import type {InputFileLocation, InputStickerSet, InputWebFileLocation} from '../layer';
+import type {DownloadOptions} from '../lib/mtproto/apiFileManager';
 
 const FILENAME_JOINER = '_';
 
@@ -13,7 +13,7 @@ export function getFileNameByLocation(location: InputFileLocation | InputWebFile
   fileName: string,
   downloadId: string
 }>) {
-  const fileName = '';//(options?.fileName || '').split('.');
+  const fileName = '';// (options?.fileName || '').split('.');
   const ext = fileName[fileName.length - 1] || '';
 
   let str: string;
@@ -31,11 +31,11 @@ export function getFileNameByLocation(location: InputFileLocation | InputWebFile
     case 'inputPeerPhotoFileLocation':
       str = ['peerPhoto', location.photo_id, location.pFlags.big ? 'big' : 'small'].join(FILENAME_JOINER);
       break;
-    
+
     case 'inputStickerSetThumb': {
-      const id = (location.stickerset as InputStickerSet.inputStickerSetID).id || 
-        (location.stickerset as InputStickerSet.inputStickerSetShortName).short_name || 
-        (location.stickerset as InputStickerSet.inputStickerSetDice).emoticon || 
+      const id = (location.stickerset as InputStickerSet.inputStickerSetID).id ||
+        (location.stickerset as InputStickerSet.inputStickerSetShortName).short_name ||
+        (location.stickerset as InputStickerSet.inputStickerSetDice).emoticon ||
         location.stickerset._;
       str = ['stickerSetThumb', id, location.thumb_version].join(FILENAME_JOINER);
       break;
@@ -63,10 +63,10 @@ export function getFileNameByLocation(location: InputFileLocation | InputWebFile
 
 export type FileURLType = 'photo' | 'thumb' | 'document' | 'stream' | 'download';
 export function getFileURL(type: FileURLType, options: DownloadOptions) {
-  //console.log('getFileURL', location);
-  //const perf = performance.now();
+  // console.log('getFileURL', location);
+  // const perf = performance.now();
   const encoded = encodeURIComponent(JSON.stringify(options));
-  //console.log('getFileURL encode:', performance.now() - perf, encoded);
+  // console.log('getFileURL encode:', performance.now() - perf, encoded);
 
   return '/' + type + '/' + encoded;
 }

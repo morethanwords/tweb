@@ -4,46 +4,46 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { putPreloader } from "../components/putPreloader";
+import {putPreloader} from '../components/putPreloader';
 import Scrollable from '../components/scrollable';
-import Page from "./page";
-import InputField from "../components/inputField";
-import CheckboxField from "../components/checkboxField";
-import Button from "../components/button";
-import fastSmoothScroll from "../helpers/fastSmoothScroll";
-import IS_TOUCH_SUPPORTED from "../environment/touchSupport";
-import App from "../config/app";
-import I18n, { _i18n, i18n } from "../lib/langPack";
-import lottieLoader from "../lib/rlottie/lottieLoader";
-import ripple from "../components/ripple";
-import findUpTag from "../helpers/dom/findUpTag";
-import findUpClassName from "../helpers/dom/findUpClassName";
-import { randomLong } from "../helpers/random";
-import pageSignQR from "./pageSignQR";
-import getLanguageChangeButton from "../components/languageChangeButton";
-import cancelEvent from "../helpers/dom/cancelEvent";
-import { attachClickEvent } from "../helpers/dom/clickEvent";
-import replaceContent from "../helpers/dom/replaceContent";
-import toggleDisability from "../helpers/dom/toggleDisability";
-import sessionStorage from "../lib/sessionStorage";
-import { DcAuthKey } from "../types";
-import placeCaretAtEnd from "../helpers/dom/placeCaretAtEnd";
-import { HelpCountry, HelpCountryCode } from "../layer";
-import { getCountryEmoji } from "../vendor/emoji";
-import simulateEvent from "../helpers/dom/dispatchEvent";
-import stateStorage from "../lib/stateStorage";
-import rootScope from "../lib/rootScope";
-import TelInputField from "../components/telInputField";
-import IS_EMOJI_SUPPORTED from "../environment/emojiSupport";
-import setInnerHTML from "../helpers/dom/setInnerHTML";
-import wrapEmojiText from "../lib/richTextProcessor/wrapEmojiText";
-import apiManagerProxy from "../lib/mtproto/mtprotoworker";
-import CountryInputField from "../components/countryInputField";
+import Page from './page';
+import InputField from '../components/inputField';
+import CheckboxField from '../components/checkboxField';
+import Button from '../components/button';
+import fastSmoothScroll from '../helpers/fastSmoothScroll';
+import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
+import App from '../config/app';
+import I18n, {_i18n, i18n} from '../lib/langPack';
+import lottieLoader from '../lib/rlottie/lottieLoader';
+import ripple from '../components/ripple';
+import findUpTag from '../helpers/dom/findUpTag';
+import findUpClassName from '../helpers/dom/findUpClassName';
+import {randomLong} from '../helpers/random';
+import pageSignQR from './pageSignQR';
+import getLanguageChangeButton from '../components/languageChangeButton';
+import cancelEvent from '../helpers/dom/cancelEvent';
+import {attachClickEvent} from '../helpers/dom/clickEvent';
+import replaceContent from '../helpers/dom/replaceContent';
+import toggleDisability from '../helpers/dom/toggleDisability';
+import sessionStorage from '../lib/sessionStorage';
+import {DcAuthKey} from '../types';
+import placeCaretAtEnd from '../helpers/dom/placeCaretAtEnd';
+import {HelpCountry, HelpCountryCode} from '../layer';
+import {getCountryEmoji} from '../vendor/emoji';
+import simulateEvent from '../helpers/dom/dispatchEvent';
+import stateStorage from '../lib/stateStorage';
+import rootScope from '../lib/rootScope';
+import TelInputField from '../components/telInputField';
+import IS_EMOJI_SUPPORTED from '../environment/emojiSupport';
+import setInnerHTML from '../helpers/dom/setInnerHTML';
+import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
+import apiManagerProxy from '../lib/mtproto/mtprotoworker';
+import CountryInputField from '../components/countryInputField';
 
-//import _countries from '../countries_pretty.json';
+// import _countries from '../countries_pretty.json';
 let btnNext: HTMLButtonElement = null, btnQr: HTMLButtonElement;
 
-let onFirstMount = () => {
+const onFirstMount = () => {
   /* if(Modes.test) {
     Countries.push({
       _: 'help.country',
@@ -55,11 +55,11 @@ let onFirstMount = () => {
       }],
       iso2: 'KK'
     });
-  
+
     console.log('Added test country to list!');
   } */
 
-  //const countries: Country[] = _countries.default.filter((c) => c.emoji);
+  // const countries: Country[] = _countries.default.filter((c) => c.emoji);
   // const countries: Country[] = Countries.filter((c) => c.emoji).sort((a, b) => a.name.localeCompare(b.name));
   // const countries = I18n.countriesList.filter((country) => !country.pFlags?.hidden);
 
@@ -88,20 +88,20 @@ let onFirstMount = () => {
       lottieLoader.loadLottieWorkers();
 
       const {country, code} = formatted || {};
-      let countryName = country ? country.name || country.default_name : ''/* 'Unknown' */;
+      const countryName = country ? country.name || country.default_name : ''/* 'Unknown' */;
       if(countryName !== countryInputField.value && (
-          !lastCountrySelected || 
+        !lastCountrySelected ||
           !country ||
           !code || (
-            lastCountrySelected !== country && 
+          lastCountrySelected !== country &&
             lastCountryCodeSelected.country_code !== code.country_code
-          )
         )
+      )
       ) {
         countryInputField.override(country, code, countryName);
       }
-  
-      //if(country && (telInputField.value.length - 1) >= (country.pattern ? country.pattern.length : 9)) {
+
+      // if(country && (telInputField.value.length - 1) >= (country.pattern ? country.pattern.length : 9)) {
       if(country || (telInputField.value.length - 1) > 1) {
         btnNext.style.visibility = '';
       } else {
@@ -113,7 +113,7 @@ let onFirstMount = () => {
   const telEl = telInputField.input;
 
   telEl.addEventListener('keypress', (e) => {
-    //console.log('keypress', this.value);
+    // console.log('keypress', this.value);
     if(!btnNext.style.visibility &&/* this.value.length >= 9 && */ e.key === 'Enter') {
       return onSubmit();
     }
@@ -124,7 +124,7 @@ let onFirstMount = () => {
   });*/
 
   const signedCheckboxField = new CheckboxField({
-    text: 'Login.KeepSigned', 
+    text: 'Login.KeepSigned',
     name: 'keepSession',
     withRipple: true,
     checked: true
@@ -133,7 +133,7 @@ let onFirstMount = () => {
   signedCheckboxField.input.addEventListener('change', () => {
     const keepSigned = signedCheckboxField.checked;
     rootScope.managers.appStateManager.pushToState('keepSigned', keepSigned);
-    
+
     apiManagerProxy.toggleStorages(keepSigned, true);
   });
 
@@ -159,9 +159,9 @@ let onFirstMount = () => {
     replaceContent(btnNext, i18n('PleaseWait'));
     putPreloader(btnNext);
 
-    //return;
+    // return;
 
-    let phone_number = telInputField.value;
+    const phone_number = telInputField.value;
     rootScope.managers.apiManager.invokeApi('auth.sendCode', {
       phone_number: phone_number,
       api_id: App.id,
@@ -169,9 +169,9 @@ let onFirstMount = () => {
       settings: {
         _: 'codeSettings' // that's how we sending Type
       }
-      //lang_code: navigator.language || 'en'
+      // lang_code: navigator.language || 'en'
     }).then((code) => {
-      //console.log('got code', code);
+      // console.log('got code', code);
 
       import('./pageAuthCode').then((m) => m.default.mount(Object.assign(code, {phone_number: phone_number})));
     }).catch((err) => {
@@ -196,7 +196,7 @@ let onFirstMount = () => {
 
   btnQr = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'Login.QR.Login'});
 
-  let qrMounted = false;
+  const qrMounted = false;
   btnQr.addEventListener('click', () => {
     pageSignQR.mount();
     /* const promise = import('./pageSignQR');
@@ -232,7 +232,7 @@ let onFirstMount = () => {
 
   page.pageEl.querySelector('.container').append(h4, subtitle, inputWrapper);
 
-  let tryAgain = () => {
+  const tryAgain = () => {
     rootScope.managers.apiManager.invokeApi('help.getNearestDc').then((nearestDcResult) => {
       const langPack = stateStorage.getFromCache('langPack');
       if(langPack && !langPack.countries?.hash) {
@@ -271,18 +271,18 @@ let onFirstMount = () => {
             rootScope.managers.apiManager.getNetworkerVoid(dcId/* , {fileDownload: true} */).finally(g);
           }, /* done.includes(dcId) ? 0 :  */3000);
         };
-        
+
         g();
       });
-      
+
       return nearestDcResult;
     }).then((nearestDcResult) => {
       if(!countryInputField.value.length && !telInputField.value.length) {
         countryInputField.selectCountryByIso2(nearestDcResult.country);
       }
-  
-      //console.log('woohoo', nearestDcResult, country);
-    })//.catch(tryAgain);
+
+      // console.log('woohoo', nearestDcResult, country);
+    })// .catch(tryAgain);
   };
 
   if(!IS_TOUCH_SUPPORTED) {

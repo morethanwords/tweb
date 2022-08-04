@@ -4,17 +4,17 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { MyDocument } from "../lib/appManagers/appDocsManager";
-import { wrapVideo } from "./wrappers";
-import animationIntersector from "./animationIntersector";
-import Scrollable from "./scrollable";
-import deferredPromise, { CancellablePromise } from "../helpers/cancellablePromise";
-import renderImageFromUrl from "../helpers/dom/renderImageFromUrl";
-import calcImageInBox from "../helpers/calcImageInBox";
-import { doubleRaf } from "../helpers/schedulers";
-import { AppManagers } from "../lib/appManagers/managers";
-import rootScope from "../lib/rootScope";
-import LazyLoadQueueRepeat2 from "./lazyLoadQueueRepeat2";
+import type {MyDocument} from '../lib/appManagers/appDocsManager';
+import {wrapVideo} from './wrappers';
+import animationIntersector from './animationIntersector';
+import Scrollable from './scrollable';
+import deferredPromise, {CancellablePromise} from '../helpers/cancellablePromise';
+import renderImageFromUrl from '../helpers/dom/renderImageFromUrl';
+import calcImageInBox from '../helpers/calcImageInBox';
+import {doubleRaf} from '../helpers/schedulers';
+import {AppManagers} from '../lib/appManagers/managers';
+import rootScope from '../lib/rootScope';
+import LazyLoadQueueRepeat2 from './lazyLoadQueueRepeat2';
 
 const width = 400;
 const maxSingleWidth = width - 100;
@@ -27,9 +27,9 @@ export default class GifsMasonry {
   private managers: AppManagers;
 
   constructor(
-    private element: HTMLElement, 
-    private group: string, 
-    private scrollable: Scrollable, 
+    private element: HTMLElement,
+    private group: string,
+    private scrollable: Scrollable,
     attach = true
   ) {
     this.managers = rootScope.managers;
@@ -55,19 +55,19 @@ export default class GifsMasonry {
       this.attach();
     }
   }
-  
+
   private onScroll = () => {
     if(this.timeout) {
       clearTimeout(this.timeout);
     } else {
       this.scrollPromise = deferredPromise<void>();
-      //animationIntersector.checkAnimations(true, group);
+      // animationIntersector.checkAnimations(true, group);
     }
 
     this.timeout = window.setTimeout(() => {
       this.timeout = 0;
       this.scrollPromise.resolve();
-      //animationIntersector.checkAnimations(false, group);
+      // animationIntersector.checkAnimations(false, group);
     }, 150);
   };
 
@@ -90,7 +90,7 @@ export default class GifsMasonry {
       return;
     }
 
-    //console.log('processVisibleDiv');
+    // console.log('processVisibleDiv');
 
     const load = () => {
       const docId = div.dataset.docId;
@@ -99,11 +99,11 @@ export default class GifsMasonry {
           doc,
           container: div as HTMLDivElement,
           lazyLoadQueue: null,
-          //lazyLoadQueue: EmoticonsDropdown.lazyLoadQueue,
+          // lazyLoadQueue: EmoticonsDropdown.lazyLoadQueue,
           group: this.group,
-          noInfo: true,
+          noInfo: true
         });
-    
+
         const promise = res.loadPromise;
         promise.finally(() => {
           const video = div.querySelector('video');
@@ -123,7 +123,7 @@ export default class GifsMasonry {
             }, 0);
           }
 
-          //clearTimeout(timeout);
+          // clearTimeout(timeout);
           if(!this.lazyLoadQueue.intersector.isVisible(div)) {
             this.processInvisibleDiv(div);
           }
@@ -139,14 +139,14 @@ export default class GifsMasonry {
       return promise;
     };
 
-    //return load();
-    
+    // return load();
+
     this.lazyLoadQueue.push({div, load});
   }
 
   public processInvisibleDiv = (div: HTMLElement) => {
     return this.scrollPromise.then(async() => {
-      //return;
+      // return;
 
       if(this.lazyLoadQueue.intersector.isVisible(div)) {
         return;
@@ -154,17 +154,17 @@ export default class GifsMasonry {
 
       const video = div.querySelector('video');
       const img = div.querySelector('img');
-  
+
       if(img) {
         img && img.classList.remove('hide');
-  
+
         await doubleRaf();
       }
 
       if(this.lazyLoadQueue.intersector.isVisible(div)) {
         return;
       }
-  
+
       if(video) {
         video.remove();
         video.src = '';
@@ -199,21 +199,21 @@ export default class GifsMasonry {
 
     line.push(gif); */
 
-    //console.log('gif:', gif, w, h);
+    // console.log('gif:', gif, w, h);
 
     const div = document.createElement('div');
     div.classList.add('gif', 'fade-in-transition');
     div.style.width = size.width + 'px';
     div.style.opacity = '0';
-    //div.style.height = h + 'px';
+    // div.style.height = h + 'px';
     div.dataset.docId = '' + doc.id;
 
     appendTo.append(div);
 
-    //this.lazyLoadQueue.observe({div, load: this.processVisibleDiv});
+    // this.lazyLoadQueue.observe({div, load: this.processVisibleDiv});
     this.lazyLoadQueue.observe(div);
 
-    //let preloader = new ProgressivePreloader(div);
+    // let preloader = new ProgressivePreloader(div);
 
     // const gotThumb = this.managers.appDocsManager.getThumb(doc, false);
 

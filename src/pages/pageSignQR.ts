@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { DcId } from '../types';
+import type {DcId} from '../types';
 import Page from './page';
-import { AuthAuthorization, AuthLoginToken } from '../layer';
+import {AuthAuthorization, AuthLoginToken} from '../layer';
 import App from '../config/app';
 import Button from '../components/button';
-import { _i18n, i18n, LangPackKey } from '../lib/langPack';
+import {_i18n, i18n, LangPackKey} from '../lib/langPack';
 import rootScope from '../lib/rootScope';
-import { putPreloader } from '../components/putPreloader';
+import {putPreloader} from '../components/putPreloader';
 import getLanguageChangeButton from '../components/languageChangeButton';
 import pause from '../helpers/schedulers/pause';
 import fixBase64String from '../helpers/fixBase64String';
@@ -20,7 +20,7 @@ import bytesToBase64 from '../helpers/bytes/bytesToBase64';
 
 const FETCH_INTERVAL = 3;
 
-let onFirstMount = async() => {
+const onFirstMount = async() => {
   const pageElement = page.pageEl;
   const imageDiv = pageElement.querySelector('.auth-image') as HTMLDivElement;
 
@@ -53,7 +53,7 @@ let onFirstMount = async() => {
     import('./pageSignIn').then((m) => m.default.mount());
     stop = true;
   });
-  
+
   const results = await Promise.all([
     import('qr-code-styling' as any)
   ]);
@@ -64,8 +64,8 @@ let onFirstMount = async() => {
     stop = true;
     cachedPromise = null;
   }, {once: true});
-  
-  let options: {dcId?: DcId, ignoreErrors: true} = {ignoreErrors: true};
+
+  const options: {dcId?: DcId, ignoreErrors: true} = {ignoreErrors: true};
   let prevToken: Uint8Array | number[];
 
   const iterate = async(isLoop: boolean) => {
@@ -75,14 +75,14 @@ let onFirstMount = async() => {
         api_hash: App.hash,
         except_ids: []
       }, {ignoreErrors: true});
-  
+
       if(loginToken._ === 'auth.loginTokenMigrateTo') {
         if(!options.dcId) {
           options.dcId = loginToken.dc_id as DcId;
           rootScope.managers.apiManager.setBaseDcId(loginToken.dc_id);
-          //continue;
+          // continue;
         }
-        
+
         loginToken = await rootScope.managers.apiManager.invokeApi('auth.importLoginToken', {
           token: loginToken.token
         }, options) as AuthLoginToken.authLoginToken;
@@ -102,8 +102,8 @@ let onFirstMount = async() => {
       if(!prevToken || !bytesCmp(prevToken, loginToken.token)) {
         prevToken = loginToken.token;
 
-        let encoded = bytesToBase64(loginToken.token);
-        let url = "tg://login?token=" + fixBase64String(encoded, true);
+        const encoded = bytesToBase64(loginToken.token);
+        const url = 'tg://login?token=' + fixBase64String(encoded, true);
 
         const style = window.getComputedStyle(document.documentElement);
         const surfaceColor = style.getPropertyValue('--surface-color').trim();
@@ -124,7 +124,7 @@ let onFirstMount = async() => {
             };
             reader.readAsDataURL(blob);
           });
-          //return URL.createObjectURL(blob);
+          // return URL.createObjectURL(blob);
         });
 
         const qrCode = new QRCodeStyling({
@@ -147,7 +147,7 @@ let onFirstMount = async() => {
             color: surfaceColor
           },
           qrOptions: {
-            errorCorrectionLevel: "L"
+            errorCorrectionLevel: 'L'
           }
         });
 
@@ -193,9 +193,9 @@ let onFirstMount = async() => {
       }
 
       if(isLoop) {
-        let timestamp = Date.now() / 1000;
-        let diff = loginToken.expires - timestamp - await rootScope.managers.timeManager.getServerTimeOffset();
-  
+        const timestamp = Date.now() / 1000;
+        const diff = loginToken.expires - timestamp - await rootScope.managers.timeManager.getServerTimeOffset();
+
         await pause(diff > FETCH_INTERVAL ? 1e3 * FETCH_INTERVAL : 1e3 * diff | 0);
       }
     } catch(err) {
@@ -219,7 +219,7 @@ let onFirstMount = async() => {
     return false;
   };
 
-  //await iterate(false);
+  // await iterate(false);
 
   return async() => {
     stop = false;
@@ -228,7 +228,7 @@ let onFirstMount = async() => {
       if(stop) {
         break;
       }
-  
+
       const needBreak = await iterate(true);
       if(needBreak) {
         break;
@@ -241,7 +241,7 @@ let cachedPromise: Promise<() => Promise<void>>;
 const page = new Page('page-signQR', true, () => {
   return cachedPromise;
 }, () => {
-  //console.log('onMount');
+  // console.log('onMount');
   if(!cachedPromise) cachedPromise = onFirstMount();
   cachedPromise.then((func) => {
     func();

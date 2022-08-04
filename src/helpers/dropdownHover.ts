@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { attachClickEvent } from "./dom/clickEvent";
-import findUpAsChild from "./dom/findUpAsChild";
-import EventListenerBase from "./eventListenerBase";
-import ListenerSetter from "./listenerSetter";
-import IS_TOUCH_SUPPORTED from "../environment/touchSupport";
-import safeAssign from "./object/safeAssign";
+import {attachClickEvent} from './dom/clickEvent';
+import findUpAsChild from './dom/findUpAsChild';
+import EventListenerBase from './eventListenerBase';
+import ListenerSetter from './listenerSetter';
+import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
+import safeAssign from './object/safeAssign';
 
 const KEEP_OPEN = false;
 const TOGGLE_TIMEOUT = 200;
@@ -46,7 +46,7 @@ export default class DropdownHover extends EventListenerBase<{
       }, {listenerSetter});
     } else {
       listenerSetter.add(button)('mouseover', (e) => {
-        //console.log('onmouseover button');
+        // console.log('onmouseover button');
         if(firstTime) {
           listenerSetter.add(button)('mouseout', this.onMouseOut);
           firstTime = false;
@@ -83,14 +83,14 @@ export default class DropdownHover extends EventListenerBase<{
           return;
         }
 
-        //console.log('onmouseover element');
+        // console.log('onmouseover element');
         clearTimeout(this.displayTimeout);
       };
     }
   }
 
   public toggle = async(enable?: boolean) => {
-    //if(!this.element) return;
+    // if(!this.element) return;
     const willBeActive = (!!this.element.style.display && enable === undefined) || enable;
     if(this.init) {
       if(willBeActive) {
@@ -104,7 +104,7 @@ export default class DropdownHover extends EventListenerBase<{
     if(willBeActive === this.isActive()) {
       return;
     }
-    
+
     if((this.element.style.display && enable === undefined) || enable) {
       const res = this.dispatchResultableEvent('open');
       await Promise.all(res);
@@ -154,7 +154,7 @@ export default class DropdownHover extends EventListenerBase<{
       } */
     }
 
-    //animationIntersector.checkAnimations(false, EMOTICONSSTICKERGROUP);
+    // animationIntersector.checkAnimations(false, EMOTICONSSTICKERGROUP);
   };
 
   public isActive() {

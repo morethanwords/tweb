@@ -4,26 +4,26 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
-import { MyDialogFilter as DialogFilter } from "../../../lib/storages/filters";
-import lottieLoader, { LottieLoader } from "../../../lib/rlottie/lottieLoader";
-import { SliderSuperTab } from "../../slider";
-import { toast } from "../../toast";
-import InputField from "../../inputField";
-import ButtonIcon from "../../buttonIcon";
-import ButtonMenuToggle from "../../buttonMenuToggle";
-import { ButtonMenuItemOptions } from "../../buttonMenu";
-import Button from "../../button";
-import AppIncludedChatsTab from "./includedChats";
-import { i18n, LangPackKey } from "../../../lib/langPack";
-import { SettingSection } from "..";
-import PopupPeer from "../../popups/peer";
-import RLottiePlayer from "../../../lib/rlottie/rlottiePlayer";
-import copy from "../../../helpers/object/copy";
-import deepEqual from "../../../helpers/object/deepEqual";
-import documentFragmentToHTML from "../../../helpers/dom/documentFragmentToHTML";
-import wrapDraftText from "../../../lib/richTextProcessor/wrapDraftText";
-import filterAsync from "../../../helpers/array/filterAsync";
+import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
+import {MyDialogFilter as DialogFilter} from '../../../lib/storages/filters';
+import lottieLoader, {LottieLoader} from '../../../lib/rlottie/lottieLoader';
+import {SliderSuperTab} from '../../slider';
+import {toast} from '../../toast';
+import InputField from '../../inputField';
+import ButtonIcon from '../../buttonIcon';
+import ButtonMenuToggle from '../../buttonMenuToggle';
+import {ButtonMenuItemOptions} from '../../buttonMenu';
+import Button from '../../button';
+import AppIncludedChatsTab from './includedChats';
+import {i18n, LangPackKey} from '../../../lib/langPack';
+import {SettingSection} from '..';
+import PopupPeer from '../../popups/peer';
+import RLottiePlayer from '../../../lib/rlottie/rlottiePlayer';
+import copy from '../../../helpers/object/copy';
+import deepEqual from '../../../helpers/object/deepEqual';
+import documentFragmentToHTML from '../../../helpers/dom/documentFragmentToHTML';
+import wrapDraftText from '../../../lib/richTextProcessor/wrapDraftText';
+import filterAsync from '../../../helpers/array/filterAsync';
 
 const MAX_FOLDER_NAME_LENGTH = 12;
 
@@ -88,7 +88,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
 
     const inputWrapper = document.createElement('div');
     inputWrapper.classList.add('input-wrapper');
-    
+
     this.nameInputField = new InputField({
       label: 'FilterNameHint',
       maxLength: MAX_FOLDER_NAME_LENGTH
@@ -194,7 +194,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
 
       let include = (Array.from(includedFlagsContainer.children) as HTMLElement[]).slice(1).reduce((acc, el) => acc + +!el.style.display, 0);
       include += this.filter.include_peers.length;
-      
+
       if(!include) {
         toast('Please choose at least one chat for this folder.');
         return;
@@ -223,7 +223,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
         this.confirmBtn.removeAttribute('disabled');
       });
     });
-    
+
     this.nameInputField.input.addEventListener('input', () => {
       this.filter.title = this.nameInputField.value;
       this.editCheckForChange();
@@ -280,7 +280,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
       this.menuBtn.classList.remove('hide');
       this.confirmBtn.classList.add('hide');
     }
-    
+
     const filter = this.filter;
     this.nameInputField.value = documentFragmentToHTML(wrapDraftText(filter.title));
 
@@ -298,7 +298,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
       const hasPeer = async(peerId: PeerId) => {
         return !!(await this.managers.appMessagesManager.getDialogOnly(peerId)) || (peerId.isUser() ? (await this.managers.appUsersManager.getUser(peerId.toUserId()))._ === 'user' : false);
       };
-      
+
       const filtered = await filterAsync(peers, (peerId) => hasPeer(peerId));
       peers.length = 0;
       peers.push(...filtered);
@@ -328,7 +328,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
           showMore.remove();
         }
       };
-      
+
       section.generateContentElement().append(ul);
 
       let showMore: HTMLElement;

@@ -2,17 +2,17 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import { ReferenceContext } from "../mtproto/referenceDatabase";
-import { WebPage } from "../../layer";
-import safeReplaceObject from "../../helpers/object/safeReplaceObject";
-import { AppManager } from "./manager";
+import {ReferenceContext} from '../mtproto/referenceDatabase';
+import {WebPage} from '../../layer';
+import safeReplaceObject from '../../helpers/object/safeReplaceObject';
+import {AppManager} from './manager';
 
 const photoTypeSet = new Set(['photo', 'video', 'gif', 'document']);
 
@@ -25,7 +25,7 @@ export class AppWebPagesManager extends AppManager {
   private pendingWebPages: {
     [webPageId: string]: Set<WebPageMessageKey>
   } = {};
-  
+
   protected after() {
     this.apiUpdatesManager.addMultipleEventsListeners({
       updateWebPage: (update) => {
@@ -33,14 +33,14 @@ export class AppWebPagesManager extends AppManager {
       }
     });
   }
-  
+
   public saveWebPage(apiWebPage: WebPage, messageKey?: WebPageMessageKey, mediaContext?: ReferenceContext) {
     if(apiWebPage._ === 'webPageNotModified') return;
     const {id} = apiWebPage;
 
     const oldWebPage = this.webpages[id];
-    const isUpdated = oldWebPage && 
-      oldWebPage._ === apiWebPage._ && 
+    const isUpdated = oldWebPage &&
+      oldWebPage._ === apiWebPage._ &&
       (oldWebPage as WebPage.webPage).hash === (oldWebPage as WebPage.webPage).hash;
 
     if(apiWebPage._ === 'webPage') {
@@ -49,19 +49,19 @@ export class AppWebPagesManager extends AppManager {
       } else {
         delete apiWebPage.photo;
       }
-  
+
       if(apiWebPage.document?._ === 'document') {
         apiWebPage.document = this.appDocsManager.saveDoc(apiWebPage.document, mediaContext);
       } else {
         if(apiWebPage.type === 'document') {
           delete apiWebPage.type;
         }
-  
+
         delete apiWebPage.document;
       }
 
       const siteName = apiWebPage.site_name;
-      let shortTitle = apiWebPage.title || apiWebPage.author || siteName || '';
+      const shortTitle = apiWebPage.title || apiWebPage.author || siteName || '';
       if(siteName && shortTitle === siteName) {
         delete apiWebPage.site_name;
       }
@@ -74,26 +74,26 @@ export class AppWebPagesManager extends AppManager {
         apiWebPage.type = 'photo';
       }
     }
-    
+
     let pendingSet = this.pendingWebPages[id];
     if(messageKey) {
       if(!pendingSet) pendingSet = this.pendingWebPages[id] = new Set();
       pendingSet.add(messageKey);
     }
-    
+
     if(oldWebPage === undefined) {
       this.webpages[id] = apiWebPage;
     } else {
       safeReplaceObject(oldWebPage, apiWebPage);
     }
-    
+
     if(!messageKey && pendingSet !== undefined && isUpdated) {
       const msgs: {peerId: PeerId, mid: number, isScheduled: boolean}[] = [];
       pendingSet.forEach((value) => {
         const [peerId, mid, isScheduled] = value.split('_');
         msgs.push({
-          peerId: peerId.toPeerId(), 
-          mid: +mid, 
+          peerId: peerId.toPeerId(),
+          mid: +mid,
           isScheduled: !!isScheduled
         });
       });
@@ -137,7 +137,7 @@ export class AppWebPagesManager extends AppManager {
       },
       params: {
         url
-      },
+      }
     });
   }
 }

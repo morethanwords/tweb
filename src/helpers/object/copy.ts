@@ -1,25 +1,25 @@
 export default function copy<T>(obj: T): T {
-  //in case of premitives
-  if(obj === null || typeof(obj) !== "object") {
+  // in case of premitives
+  if(obj === null || typeof(obj) !== 'object') {
     return obj;
   }
- 
-  //date objects should be 
+
+  // date objects should be
   if(obj instanceof Date) {
     return new Date(obj.getTime()) as any;
   }
- 
-  //handle Array
+
+  // handle Array
   if(Array.isArray(obj)) {
     // @ts-ignore
     const clonedArr: T = obj.map((el) => copy(el)) as any as T;
     return clonedArr;
   }
- 
-  //lastly, handle objects
+
+  // lastly, handle objects
   // @ts-ignore
-  let clonedObj = new obj.constructor();
-  for(var prop in obj){
+  const clonedObj = new obj.constructor();
+  for(var prop in obj) {
     if(obj.hasOwnProperty(prop)) {
       clonedObj[prop] = copy(obj[prop]);
     }

@@ -2,7 +2,7 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
@@ -10,7 +10,7 @@
  */
 
 import emojiRegExp from '../../vendor/emoji/regex';
-import { MessageEntity } from '../../layer';
+import {MessageEntity} from '../../layer';
 
 const EmojiHelper = {
   emojiMap: (code: string) => { return code; },
@@ -72,12 +72,12 @@ export const USERNAME_REG_EXP = '[a-zA-Z\\d_]{5,32}';
 export const BOT_COMMAND_REG_EXP = '\\/([a-zA-Z\\d_]{1,32})(?:@(' + USERNAME_REG_EXP + '))?(\\b|$)';
 export const FULL_REG_EXP = new RegExp('(^| )(@)(' + USERNAME_REG_EXP + ')|(' + URL_REG_EXP + ')|(\\n)|(' + emojiRegExp + ')|(^|[\\s\\(\\]])(#[' + ALPHA_NUMERIC_REG_EXP + ']{2,64})|(^|\\s)' + BOT_COMMAND_REG_EXP, 'i');
 export const EMAIL_REG_EXP = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-//const markdownTestRegExp = /[`_*@~]/;
+// const markdownTestRegExp = /[`_*@~]/;
 export const MARKDOWN_REG_EXP = /(^|\s|\n)(````?)([\s\S]+?)(````?)([\s\n\.,:?!;]|$)|(^|\s|\x01)(`|~~|\*\*|__|_-_|\|\|)([^\n]+?)\7([\x01\s\.,:?!;]|$)|@(\d+)\s*\((.+?)\)|(\[(.+?)\]\((.+?)\))/m;
 export const SITE_HASHTAGS: {[siteName: string]: string} = {
-  Telegram: 'tg://search_hashtag?hashtag={1}',
-  Twitter: 'https://twitter.com/hashtag/{1}',
-  Instagram: 'https://instagram.com/explore/tags/{1}/',
+  'Telegram': 'tg://search_hashtag?hashtag={1}',
+  'Twitter': 'https://twitter.com/hashtag/{1}',
+  'Instagram': 'https://instagram.com/explore/tags/{1}/',
   'Google Plus': 'https://plus.google.com/explore/{1}'
 };
 
@@ -103,7 +103,7 @@ export const PASS_CONFLICTING_ENTITIES: Set<MessageEntity['_']> = new Set([
   'messageEntityLinebreak',
   'messageEntityCaret'
 ]);
-for(let i in MARKDOWN_ENTITIES) {
+for(const i in MARKDOWN_ENTITIES) {
   PASS_CONFLICTING_ENTITIES.add(MARKDOWN_ENTITIES[i]);
 }
 
@@ -118,7 +118,6 @@ export const PHONE_NUMBER_REG_EXP = /^\+\d+$/;
     return all
   })
 } */
-
 
 
 /* export function replaceUrlEncodings(urlWithEncoded: string) {

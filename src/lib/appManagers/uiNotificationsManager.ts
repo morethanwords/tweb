@@ -4,29 +4,29 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import getPeerTitle from "../../components/wrappers/getPeerTitle";
-import wrapMessageForReply from "../../components/wrappers/messageForReply";
-import { MOUNT_CLASS_TO } from "../../config/debug";
-import { FontFamily } from "../../config/font";
-import { IS_MOBILE } from "../../environment/userAgent";
-import IS_VIBRATE_SUPPORTED from "../../environment/vibrateSupport";
-import deferredPromise, { CancellablePromise } from "../../helpers/cancellablePromise";
-import idleController from "../../helpers/idleController";
-import deepEqual from "../../helpers/object/deepEqual";
-import tsNow from "../../helpers/tsNow";
-import { Message, MessagePeerReaction, PeerNotifySettings } from "../../layer";
-import I18n, { FormatterArguments, LangPackKey } from "../langPack";
-import apiManagerProxy from "../mtproto/mtprotoworker";
-import singleInstance from "../mtproto/singleInstance";
-import webPushApiManager, { PushSubscriptionNotify } from "../mtproto/webPushApiManager";
-import fixEmoji from "../richTextProcessor/fixEmoji";
-import wrapPlainText from "../richTextProcessor/wrapPlainText";
-import rootScope from "../rootScope";
-import appImManager from "./appImManager";
-import appRuntimeManager from "./appRuntimeManager";
-import { AppManagers } from "./managers";
-import generateMessageId from "./utils/messageId/generateMessageId";
-import getPeerId from "./utils/peers/getPeerId";
+import getPeerTitle from '../../components/wrappers/getPeerTitle';
+import wrapMessageForReply from '../../components/wrappers/messageForReply';
+import {MOUNT_CLASS_TO} from '../../config/debug';
+import {FontFamily} from '../../config/font';
+import {IS_MOBILE} from '../../environment/userAgent';
+import IS_VIBRATE_SUPPORTED from '../../environment/vibrateSupport';
+import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
+import idleController from '../../helpers/idleController';
+import deepEqual from '../../helpers/object/deepEqual';
+import tsNow from '../../helpers/tsNow';
+import {Message, MessagePeerReaction, PeerNotifySettings} from '../../layer';
+import I18n, {FormatterArguments, LangPackKey} from '../langPack';
+import apiManagerProxy from '../mtproto/mtprotoworker';
+import singleInstance from '../mtproto/singleInstance';
+import webPushApiManager, {PushSubscriptionNotify} from '../mtproto/webPushApiManager';
+import fixEmoji from '../richTextProcessor/fixEmoji';
+import wrapPlainText from '../richTextProcessor/wrapPlainText';
+import rootScope from '../rootScope';
+import appImManager from './appImManager';
+import appRuntimeManager from './appRuntimeManager';
+import {AppManagers} from './managers';
+import generateMessageId from './utils/messageId/generateMessageId';
+import getPeerId from './utils/peers/getPeerId';
 
 type MyNotification = Notification & {
   hidden?: boolean,
@@ -80,7 +80,7 @@ export class UiNotificationsManager {
 
   private registeredDevice: any;
   private pushInited = false;
-  
+
   private managers: AppManagers;
   private setAppBadge: (contents?: any) => Promise<void>;
 
@@ -128,7 +128,7 @@ export class UiNotificationsManager {
     rootScope.addEventListener('notification_cancel', (str) => {
       this.cancel(str);
     });
-    
+
     if(this.setAppBadge) {
       rootScope.addEventListener('folder_unread', (folder) => {
         if(folder.id === 0) {
@@ -157,7 +157,7 @@ export class UiNotificationsManager {
     });
 
     rootScope.addEventListener('dialogs_multiupdate', () => {
-      //unregisterTopMsgs()
+      // unregisterTopMsgs()
       this.topMessagesDeferred.resolve();
     }, {once: true});
 
@@ -238,11 +238,11 @@ export class UiNotificationsManager {
             fixEmoji(peerReaction.reaction), // can be plain heart
             notificationMessage
           ];
-  
+
           /* if(isAnyChat) {
             args.unshift(appPeersManager.getPeerTitle(message.fromId, true));
           } */
-  
+
           notificationMessage = I18n.format(langPackKey, true, args);
         }
       }
@@ -272,7 +272,7 @@ export class UiNotificationsManager {
     notification.message = notificationMessage;
     notification.key = 'msg' + message.mid;
     notification.tag = peerString;
-    notification.silent = true;//message.pFlags.silent || false;
+    notification.silent = true;// message.pFlags.silent || false;
 
     const peerPhoto = await this.managers.appPeersManager.getPeerPhoto(peerId);
     if(peerPhoto) {
@@ -312,47 +312,47 @@ export class UiNotificationsManager {
         } else {
           this.titleChanged = true;
           document.title = I18n.format('Notifications.Count', true, [count]);
-          //this.setFavicon('assets/img/favicon_unread.ico');
+          // this.setFavicon('assets/img/favicon_unread.ico');
 
           // fetch('assets/img/favicon.ico')
           // .then((res) => res.blob())
           // .then((blob) => {
-            // const img = document.createElement('img');
-            // img.src = URL.createObjectURL(blob);
+          // const img = document.createElement('img');
+          // img.src = URL.createObjectURL(blob);
 
-            const canvas = document.createElement('canvas');
-            canvas.width = 32 * window.devicePixelRatio;
-            canvas.height = canvas.width;
-  
-            const ctx = canvas.getContext('2d');
-            ctx.beginPath();
-            ctx.arc(canvas.width / 2, canvas.height / 2, canvas.width / 2, 0, 2 * Math.PI, false);
-            ctx.fillStyle = '#3390ec';
-            ctx.fill();
+          const canvas = document.createElement('canvas');
+          canvas.width = 32 * window.devicePixelRatio;
+          canvas.height = canvas.width;
 
-            let fontSize = 24;
-            let str = '' + count;
-            if(count < 10) {
-              fontSize = 22;
-            } else if(count < 100) {
-              fontSize = 20;
-            } else {
-              str = '99+';
-              fontSize = 16;
-            }
+          const ctx = canvas.getContext('2d');
+          ctx.beginPath();
+          ctx.arc(canvas.width / 2, canvas.height / 2, canvas.width / 2, 0, 2 * Math.PI, false);
+          ctx.fillStyle = '#3390ec';
+          ctx.fill();
 
-            fontSize *= window.devicePixelRatio;
-            
-            ctx.font = `700 ${fontSize}px ${FontFamily}`;
-            ctx.textBaseline = 'middle';
-            ctx.textAlign = 'center';
-            ctx.fillStyle = 'white';
-            ctx.fillText(str, canvas.width / 2, canvas.height * .5625);
+          let fontSize = 24;
+          let str = '' + count;
+          if(count < 10) {
+            fontSize = 22;
+          } else if(count < 100) {
+            fontSize = 20;
+          } else {
+            str = '99+';
+            fontSize = 16;
+          }
 
-            /* const ctx = canvas.getContext('2d');
+          fontSize *= window.devicePixelRatio;
+
+          ctx.font = `700 ${fontSize}px ${FontFamily}`;
+          ctx.textBaseline = 'middle';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = 'white';
+          ctx.fillText(str, canvas.width / 2, canvas.height * .5625);
+
+          /* const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height); */
-  
-            this.setFavicon(canvas.toDataURL());
+
+          this.setFavicon(canvas.toDataURL());
           // });
         }
       }, 1000);
@@ -373,8 +373,8 @@ export class UiNotificationsManager {
   }
 
   public notify(data: NotifyOptions) {
-    //console.log('notify', data, rootScope.idle.isIDLE, this.notificationsUiSupport, this.stopped);
-    
+    // console.log('notify', data, rootScope.idle.isIDLE, this.notificationsUiSupport, this.stopped);
+
     if(this.stopped) {
       return;
     }
@@ -442,7 +442,7 @@ export class UiNotificationsManager {
     if('Notification' in window) {
       try {
         if(data.tag) {
-          for(let i in this.notificationsShown) {
+          for(const i in this.notificationsShown) {
             const notification = this.notificationsShown[i];
             if(typeof(notification) !== 'boolean' && notification.tag === data.tag) {
               notification.hidden = true;
@@ -457,7 +457,7 @@ export class UiNotificationsManager {
           silent: data.silent || false
         });
 
-        //console.log('notify constructed notification');
+        // console.log('notify constructed notification');
       } catch(e) {
         this.notificationsUiSupport = false;
         webPushApiManager.setLocalNotificationsDisabled();
@@ -610,14 +610,14 @@ export class UiNotificationsManager {
     /* if(notificationsMsSiteMode) {
       window.external.msSiteModeClearIconOverlay()
     } else { */
-      for(const i in this.notificationsShown) {
-        const notification = this.notificationsShown[i];
-        try {
-          if(typeof(notification) !== 'boolean' && notification.close) {
-            notification.close();
-          }
-        } catch(e) {}
-      }
+    for(const i in this.notificationsShown) {
+      const notification = this.notificationsShown[i];
+      try {
+        if(typeof(notification) !== 'boolean' && notification.close) {
+          notification.close();
+        }
+      } catch(e) {}
+    }
     /* } */
     this.notificationsShown = {};
     this.notificationsCount = 0;

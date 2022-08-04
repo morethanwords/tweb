@@ -1,24 +1,24 @@
-import IS_CALL_SUPPORTED from "./callSupport";
-import CAN_USE_TRANSFERABLES from "./canUseTransferables";
-import IS_CANVAS_FILTER_SUPPORTED from "./canvasFilterSupport";
-import IS_EMOJI_SUPPORTED from "./emojiSupport";
-import IS_GEOLOCATION_SUPPORTED from "./geolocationSupport";
-import IS_GROUP_CALL_SUPPORTED from "./groupCallSupport";
-import IMAGE_MIME_TYPES_SUPPORTED from "./imageMimeTypesSupport";
-import MEDIA_MIME_TYPES_SUPPORTED from "./mediaMimeTypesSupport";
-import IS_MOV_SUPPORTED from "./movSupport";
-import IS_PARALLAX_SUPPORTED from "./parallaxSupport";
-import IS_SCREEN_SHARING_SUPPORTED from "./screenSharingSupport";
-import IS_TOUCH_SUPPORTED from "./touchSupport";
-import IS_VIBRATE_SUPPORTED from "./vibrateSupport";
-import VIDEO_MIME_TYPES_SUPPORTED from "./videoMimeTypesSupport";
-import IS_WEBM_SUPPORTED from "./webmSupport";
-import IS_WEBP_SUPPORTED from "./webpSupport";
-import IS_WEBRTC_SUPPORTED from "./webrtcSupport";
-import * as userAgent from "./userAgent";
-import IS_OPUS_SUPPORTED from "./opusSupport";
-import IS_SHARED_WORKER_SUPPORTED from "./sharedWorkerSupport";
-import IS_APPLE_MX from "./appleMx";
+import IS_CALL_SUPPORTED from './callSupport';
+import CAN_USE_TRANSFERABLES from './canUseTransferables';
+import IS_CANVAS_FILTER_SUPPORTED from './canvasFilterSupport';
+import IS_EMOJI_SUPPORTED from './emojiSupport';
+import IS_GEOLOCATION_SUPPORTED from './geolocationSupport';
+import IS_GROUP_CALL_SUPPORTED from './groupCallSupport';
+import IMAGE_MIME_TYPES_SUPPORTED from './imageMimeTypesSupport';
+import MEDIA_MIME_TYPES_SUPPORTED from './mediaMimeTypesSupport';
+import IS_MOV_SUPPORTED from './movSupport';
+import IS_PARALLAX_SUPPORTED from './parallaxSupport';
+import IS_SCREEN_SHARING_SUPPORTED from './screenSharingSupport';
+import IS_TOUCH_SUPPORTED from './touchSupport';
+import IS_VIBRATE_SUPPORTED from './vibrateSupport';
+import VIDEO_MIME_TYPES_SUPPORTED from './videoMimeTypesSupport';
+import IS_WEBM_SUPPORTED from './webmSupport';
+import IS_WEBP_SUPPORTED from './webpSupport';
+import IS_WEBRTC_SUPPORTED from './webrtcSupport';
+import * as userAgent from './userAgent';
+import IS_OPUS_SUPPORTED from './opusSupport';
+import IS_SHARED_WORKER_SUPPORTED from './sharedWorkerSupport';
+import IS_APPLE_MX from './appleMx';
 
 const ENVIRONMENT = {
   CAN_USE_TRANSFERABLES,

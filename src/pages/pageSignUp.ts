@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { CancellablePromise } from '../helpers/cancellablePromise';
-import type { InputFile } from '../layer';
-import type { AuthState } from '../types';
+import type {CancellablePromise} from '../helpers/cancellablePromise';
+import type {InputFile} from '../layer';
+import type {AuthState} from '../types';
 import Button from '../components/button';
 import InputField from '../components/inputField';
-import { putPreloader } from '../components/putPreloader';
+import {putPreloader} from '../components/putPreloader';
 import PopupAvatar from '../components/popups/avatar';
-import I18n, { i18n } from '../lib/langPack';
+import I18n, {i18n} from '../lib/langPack';
 import LoginPage from './loginPage';
 import Page from './page';
 import blurActiveElement from '../helpers/dom/blurActiveElement';
@@ -42,7 +42,7 @@ const onFirstMount = () => {
   addIco.className = 'tgico tgico-cameraadd';
 
   page.imageDiv.append(avatarPreview, addIco);
-  
+
   let uploadAvatar: () => CancellablePromise<InputFile>;
   page.imageDiv.addEventListener('click', () => {
     PopupElement.createPopup(PopupAvatar).open(avatarPreview, (_uploadAvatar) => {
@@ -54,24 +54,24 @@ const onFirstMount = () => {
     const name = nameInputField.value || '';
     const lastName = lastNameInputField.value || '';
 
-    const fullName = name || lastName 
-      ? (name + ' ' + lastName).trim() 
-      : '';
-    
+    const fullName = name || lastName ?
+      (name + ' ' + lastName).trim() :
+      '';
+
     if(fullName) replaceContent(page.title, wrapEmojiText(fullName));
     else replaceContent(page.title, i18n('YourName'));
   };
 
-  let sendAvatar = () => new Promise<void>((resolve, reject) => {
+  const sendAvatar = () => new Promise<void>((resolve, reject) => {
     if(!uploadAvatar) {
-      //console.log('User has not selected avatar');
+      // console.log('User has not selected avatar');
       return resolve();
     }
 
-    //console.log('invoking uploadFile...');
+    // console.log('invoking uploadFile...');
     uploadAvatar().then((inputFile) => {
-      //console.log('uploaded smthn', inputFile);
-  
+      // console.log('uploaded smthn', inputFile);
+
       rootScope.managers.appProfileManager.uploadProfilePhoto(inputFile).then(resolve, reject);
     }, reject);
   });
@@ -117,15 +117,15 @@ const onFirstMount = () => {
       last_name: lastName
     };
 
-    //console.log('invoking auth.signUp with params:', params);
+    // console.log('invoking auth.signUp with params:', params);
 
     btnI18n.update({key: 'PleaseWait'});
     const preloader = putPreloader(this);
 
     rootScope.managers.apiManager.invokeApi('auth.signUp', params)
     .then((response) => {
-      //console.log('auth.signUp response:', response);
-      
+      // console.log('auth.signUp response:', response);
+
       switch(response._) {
         case 'auth.authorization': // success
           rootScope.managers.apiManager.setUser(response.user);
@@ -135,7 +135,7 @@ const onFirstMount = () => {
               m.default.mount();
             });
           });
-          
+
           break;
         default:
           btnI18n.update({key: response._ as any});

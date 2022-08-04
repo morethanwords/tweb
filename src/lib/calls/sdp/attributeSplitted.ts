@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { AttributeKey } from ".";
+import {AttributeKey} from '.';
 
 export default class SDPAttributeSplitted {
   #key: AttributeKey;

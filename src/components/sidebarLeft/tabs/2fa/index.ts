@@ -4,17 +4,17 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { SettingSection } from "../..";
-import { attachClickEvent } from "../../../../helpers/dom/clickEvent";
-import { AccountPassword } from "../../../../layer";
-import { _i18n } from "../../../../lib/langPack";
-import Button from "../../../button";
-import PopupPeer from "../../../popups/peer";
-import { SliderSuperTab } from "../../../slider";
-import wrapStickerEmoji from "../../../wrappers/stickerEmoji";
-import AppSettingsTab from "../settings";
-import AppTwoStepVerificationEmailTab from "./email";
-import AppTwoStepVerificationEnterPasswordTab from "./enterPassword";
+import {SettingSection} from '../..';
+import {attachClickEvent} from '../../../../helpers/dom/clickEvent';
+import {AccountPassword} from '../../../../layer';
+import {_i18n} from '../../../../lib/langPack';
+import Button from '../../../button';
+import PopupPeer from '../../../popups/peer';
+import {SliderSuperTab} from '../../../slider';
+import wrapStickerEmoji from '../../../wrappers/stickerEmoji';
+import AppSettingsTab from '../settings';
+import AppTwoStepVerificationEmailTab from './email';
+import AppTwoStepVerificationEnterPasswordTab from './enterPassword';
 
 export default class AppTwoStepVerificationTab extends SliderSuperTab {
   public state: AccountPassword;
@@ -66,8 +66,8 @@ export default class AppTwoStepVerificationTab extends SliderSuperTab {
                 this.close();
               });
             },
-            isDanger: true,
-          }], 
+            isDanger: true
+          }],
           titleLangKey: 'TurnPasswordOffQuestionTitle',
           descriptionLangKey: 'TurnPasswordOffQuestion'
         });
@@ -93,7 +93,7 @@ export default class AppTwoStepVerificationTab extends SliderSuperTab {
       inputWrapper.classList.add('input-wrapper');
 
       const btnSetPassword = Button('btn-primary btn-color-primary', {text: 'TwoStepVerificationSetPassword'});
-      
+
       inputWrapper.append(btnSetPassword);
       c.append(inputWrapper);
 

@@ -4,22 +4,22 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { SliderSuperTab } from "../../slider";
-import ButtonCorner from "../../buttonCorner";
-import AppNewGroupTab from "./newGroup";
-import { toast } from "../../toast";
-import { ButtonMenuItemOptions } from "../../buttonMenu";
-import { i18n, join, _i18n } from "../../../lib/langPack";
+import {SliderSuperTab} from '../../slider';
+import ButtonCorner from '../../buttonCorner';
+import AppNewGroupTab from './newGroup';
+import {toast} from '../../toast';
+import {ButtonMenuItemOptions} from '../../buttonMenu';
+import {i18n, join, _i18n} from '../../../lib/langPack';
 import rootScope from '../../../lib/rootScope';
-import { wrapSticker } from "../../wrappers";
-import SortedUserList from "../../sortedUserList";
-import { PeerLocated, Update, Updates } from "../../../layer";
-import { SettingChatListSection } from "..";
-import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
-import { attachClickEvent } from "../../../helpers/dom/clickEvent";
-import confirmationPopup from "../../confirmationPopup";
-import getPeerId from "../../../lib/appManagers/utils/peers/getPeerId";
-import type LazyLoadQueue from "../../lazyLoadQueue";
+import {wrapSticker} from '../../wrappers';
+import SortedUserList from '../../sortedUserList';
+import {PeerLocated, Update, Updates} from '../../../layer';
+import {SettingChatListSection} from '..';
+import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
+import {attachClickEvent} from '../../../helpers/dom/clickEvent';
+import confirmationPopup from '../../confirmationPopup';
+import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';
+import type LazyLoadQueue from '../../lazyLoadQueue';
 
 export default class AppPeopleNearbyTab extends SliderSuperTab {
   private latestLocationSaved: {latitude: number, longitude: number, accuracy: number};
@@ -74,7 +74,7 @@ export default class AppPeopleNearbyTab extends SliderSuperTab {
 
   //   const m = () => {
   //     const sortedUserList = new SortedUserList({
-  //       avatarSize: 42, 
+  //       avatarSize: 42,
   //       createChatListOptions: {
   //         dialogSize: 48,
   //         new: true
@@ -101,10 +101,10 @@ export default class AppPeopleNearbyTab extends SliderSuperTab {
   //     });
 
   //     appDialogsManager.setListClickListener(sortedUserList.list, undefined, undefined, false);
-      
+
   //     return sortedUserList;
   //   };
-    
+
   //   const peopleSection = this.peopleSection = new SettingChatListSection({
   //     name: 'PeopleNearbyHeader',
   //     sortedList: m()
@@ -211,16 +211,16 @@ export default class AppPeopleNearbyTab extends SliderSuperTab {
           });
 
           this.errorCategory.classList.toggle('hide', !!(usersCounter || groupsCounter));
-          this.errorCategory.innerHTML = "No groups or channels found around you.";
+          this.errorCategory.innerHTML = 'No groups or channels found around you.';
         });
       }, (error) => {
         this.errorCategory.classList.remove('hide');
         this.retryBtn.classList.add('is-visible');
         this.retryBtn.addEventListener('click', this.open);
         if(error instanceof GeolocationPositionError) {
-          this.errorCategory.innerHTML = "Location permission denied. Click below to retry.";
+          this.errorCategory.innerHTML = 'Location permission denied. Click below to retry.';
         } else {
-          this.errorCategory.innerHTML = "An error has occurred. Please retry later clicking the button below.";
+          this.errorCategory.innerHTML = 'An error has occurred. Please retry later clicking the button below.';
         }
       });
     });
@@ -287,8 +287,8 @@ export default class AppPeopleNearbyTab extends SliderSuperTab {
         Math.sqrt(
           (0.5 - Math.cos((lat2 - lat1) * p)) +
           (
-            Math.cos(lat1 * p) * Math.cos(lat2 * p)
-            * (1 - Math.cos((long2 - long1) * p)/2)
+            Math.cos(lat1 * p) * Math.cos(lat2 * p) *
+            (1 - Math.cos((long2 - long1) * p)/2)
           )
         )
       )

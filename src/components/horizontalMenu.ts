@@ -4,20 +4,20 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { TransitionSlider } from "./transition";
-import { ScrollableX } from "./scrollable";
-import rootScope from "../lib/rootScope";
-import { fastRaf } from "../helpers/schedulers";
-import { FocusDirection } from "../helpers/fastSmoothScroll";
-import findUpAsChild from "../helpers/dom/findUpAsChild";
-import whichChild from "../helpers/dom/whichChild";
+import {TransitionSlider} from './transition';
+import {ScrollableX} from './scrollable';
+import rootScope from '../lib/rootScope';
+import {fastRaf} from '../helpers/schedulers';
+import {FocusDirection} from '../helpers/fastSmoothScroll';
+import findUpAsChild from '../helpers/dom/findUpAsChild';
+import whichChild from '../helpers/dom/whichChild';
 
 export function horizontalMenu(
-  tabs: HTMLElement, 
-  content: HTMLElement, 
-  onClick?: (id: number, tabContent: HTMLDivElement, animate: boolean) => void | boolean | Promise<void | boolean>, 
-  onTransitionEnd?: () => void, 
-  transitionTime = 250, 
+  tabs: HTMLElement,
+  content: HTMLElement,
+  onClick?: (id: number, tabContent: HTMLDivElement, animate: boolean) => void | boolean | Promise<void | boolean>,
+  onTransitionEnd?: () => void,
+  transitionTime = 250,
   scrollableX?: ScrollableX
 ) {
   const selectTab = TransitionSlider(content, tabs || content.dataset.animation === 'tabs' ? 'tabs' : 'navigation', transitionTime, onTransitionEnd);
@@ -49,10 +49,10 @@ export function horizontalMenu(
 
     if(scrollableX) {
       scrollableX.scrollIntoViewNew({
-        element: target.parentElement.children[id] as HTMLElement, 
-        position: 'center', 
-        forceDirection: animate ? undefined : FocusDirection.Static, 
-        forceDuration: transitionTime, 
+        element: target.parentElement.children[id] as HTMLElement,
+        position: 'center',
+        forceDirection: animate ? undefined : FocusDirection.Static,
+        forceDuration: transitionTime,
         axis: 'x'
       });
     }
@@ -65,32 +65,32 @@ export function horizontalMenu(
     if(target.classList.contains('active') || id === prevId) {
       return false;
     }
-    
+
     const mutateCallback = animate ? fastRaf : (cb: () => void) => cb();
-    
+
     const prev = tabs.querySelector(tagName.toLowerCase() + '.active') as HTMLElement;
     if(prev) {
       mutateCallback(() => {
         prev.classList.remove('active');
       });
     }
-    
+
     // a great stripe from Jolly Cobra
     if(useStripe && prevId !== -1 && animate) {
       mutateCallback(() => {
         const indicator = target.querySelector('i')!;
         const currentIndicator = target.parentElement.children[prevId].querySelector('i')!;
-  
+
         currentIndicator.classList.remove('animate');
         indicator.classList.remove('animate');
-  
+
         // We move and resize our indicator so it repeats the position and size of the previous one.
         const shiftLeft = currentIndicator.parentElement.parentElement.offsetLeft - indicator.parentElement.parentElement.offsetLeft;
         const scaleFactor = currentIndicator.clientWidth / indicator.clientWidth;
         indicator.style.transform = `translate3d(${shiftLeft}px, 0, 0) scale3d(${scaleFactor}, 1, 1)`;
 
-        //console.log(`translate3d(${shiftLeft}px, 0, 0) scale3d(${scaleFactor}, 1, 1)`);
-  
+        // console.log(`translate3d(${shiftLeft}px, 0, 0) scale3d(${scaleFactor}, 1, 1)`);
+
         fastRaf(() => {
           // Now we remove the transform to let it animate to its own position and size.
           indicator.classList.add('animate');
@@ -102,21 +102,21 @@ export function horizontalMenu(
     mutateCallback(() => {
       target.classList.add('active');
     });
-    
+
     selectTab(id, animate);
   };
 
   const useStripe = !tabs.classList.contains('no-stripe');
 
-  //const tagName = tabs.classList.contains('menu-horizontal-div') ? 'BUTTON' : 'LI';
+  // const tagName = tabs.classList.contains('menu-horizontal-div') ? 'BUTTON' : 'LI';
   const tagName = tabs.firstElementChild.tagName;
   tabs.addEventListener('click', function(e) {
     let target = e.target as HTMLElement;
-    
+
     target = findUpAsChild(target, tabs);
-    
-    //console.log('tabs click:', target);
-    
+
+    // console.log('tabs click:', target);
+
     if(!target) return false;
 
     let id: number;

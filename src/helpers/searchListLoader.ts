@@ -4,16 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { MediaSearchContext } from "../components/appMediaPlaybackController";
-import type { SearchSuperContext } from "../components/appSearchSuper.";
-import type { Message } from "../layer";
-import type { MessagesStorageKey, MyMessage } from "../lib/appManagers/appMessagesManager";
-import { AppManagers } from "../lib/appManagers/managers";
-import incrementMessageId from "../lib/appManagers/utils/messageId/incrementMessageId";
-import rootScope from "../lib/rootScope";
-import forEachReverse from "./array/forEachReverse";
-import filterChatPhotosMessages from "./filterChatPhotosMessages";
-import ListLoader, { ListLoaderOptions } from "./listLoader";
+import type {MediaSearchContext} from '../components/appMediaPlaybackController';
+import type {SearchSuperContext} from '../components/appSearchSuper.';
+import type {Message} from '../layer';
+import type {MessagesStorageKey, MyMessage} from '../lib/appManagers/appMessagesManager';
+import {AppManagers} from '../lib/appManagers/managers';
+import incrementMessageId from '../lib/appManagers/utils/messageId/incrementMessageId';
+import rootScope from '../lib/rootScope';
+import forEachReverse from './array/forEachReverse';
+import filterChatPhotosMessages from './filterChatPhotosMessages';
+import ListLoader, {ListLoaderOptions} from './listLoader';
 
 export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}> extends ListLoader<Item, Message.message> {
   public searchContext: MediaSearchContext;
@@ -23,8 +23,8 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
   private managers: AppManagers;
 
   constructor(options: Omit<ListLoaderOptions<Item, Message.message>, 'loadMore'> & {
-    onEmptied?: () => void, 
-    isInner?: boolean, 
+    onEmptied?: () => void,
+    isInner?: boolean,
     managers?: AppManagers
   } = {}) {
     super({
@@ -75,12 +75,12 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
 
     if(!options.isInner) {
       this.otherSideLoader = new SearchListLoader({
-        ...options, 
+        ...options,
         isInner: true
       });
 
       // this.otherSideLoader.onLoadedMore = () => {
-        
+
       // };
     }
   }
@@ -253,7 +253,7 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
       } else if(this.otherSideLoader) {
         length = ret.leftLength;
         ret = this.otherSideLoader.goUnsafe(length, dispatchJump);
-  
+
         if(ret.item) {
           this.unsetCurrent(length > 0);
         }
@@ -270,10 +270,10 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
   protected setLoaded(down: boolean, value: boolean) {
     const changed = super.setLoaded(down, value);
 
-    if(changed && 
-      this.otherSideLoader && 
-      value && 
-      this.searchContext?.useSearch !== false/*  && 
+    if(changed &&
+      this.otherSideLoader &&
+      value &&
+      this.searchContext?.useSearch !== false/*  &&
       (this.reverse ? this.loadedAllUp : this.loadedAllDown) */) {
       const reverse = this.loadedAllUp;
       this.otherSideLoader.setSearchContext({

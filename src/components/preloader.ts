@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { CancellablePromise } from "../helpers/cancellablePromise";
-import SetTransition from "./singleTransition";
-import { fastRaf } from "../helpers/schedulers";
-import cancelEvent from "../helpers/dom/cancelEvent";
-import { attachClickEvent } from "../helpers/dom/clickEvent";
-import isInDOM from "../helpers/dom/isInDOM";
-import safeAssign from "../helpers/object/safeAssign";
+import {CancellablePromise} from '../helpers/cancellablePromise';
+import SetTransition from './singleTransition';
+import {fastRaf} from '../helpers/schedulers';
+import cancelEvent from '../helpers/dom/cancelEvent';
+import {attachClickEvent} from '../helpers/dom/clickEvent';
+import isInDOM from '../helpers/dom/isInDOM';
+import safeAssign from '../helpers/object/safeAssign';
 
 const TRANSITION_TIME = 200;
 
@@ -19,7 +19,7 @@ export default class ProgressivePreloader {
   public circle: SVGCircleElement;
   private cancelSvg: SVGSVGElement;
   private downloadSvg: HTMLElement;
-  
+
   private tempId = 0;
   public detached = true;
 
@@ -37,8 +37,8 @@ export default class ProgressivePreloader {
 
   constructor(options?: Partial<{
     isUpload: ProgressivePreloader['isUpload'],
-    cancelable: ProgressivePreloader['cancelable'], 
-    streamable: ProgressivePreloader['streamable'], 
+    cancelable: ProgressivePreloader['cancelable'],
+    streamable: ProgressivePreloader['streamable'],
     tryAgainOnFail: ProgressivePreloader['tryAgainOnFail'],
     attachMethod: ProgressivePreloader['attachMethod']
   }>) {
@@ -66,7 +66,7 @@ export default class ProgressivePreloader {
       if(options.bold) {
         this.preloader.classList.add('preloader-bold');
       }
-  
+
       if(this.streamable) {
         this.preloader.classList.add('preloader-streamable');
       }
@@ -81,7 +81,7 @@ export default class ProgressivePreloader {
     this.construct = null;
 
     this.constructContainer();
-    
+
     this.preloader.innerHTML = `
     <div class="you-spin-me-round">
     <svg xmlns="http://www.w3.org/2000/svg" class="preloader-circular" viewBox="${this.streamable ? '25 25 50 50' : '27 27 54 54'}">
@@ -115,7 +115,7 @@ export default class ProgressivePreloader {
     } else {
       this.preloader.classList.add('preloader-swing');
     }
-    
+
     this.circle = this.preloader.firstElementChild.firstElementChild.firstElementChild as SVGCircleElement;
 
     if(this.cancelable) {
@@ -165,7 +165,7 @@ export default class ProgressivePreloader {
 
       const elapsedTime = Date.now() - startTime;
 
-      //console.log('[PP]: end', this.detached, performance.now());
+      // console.log('[PP]: end', this.detached, performance.now());
 
       if(!err && this.cancelable) {
         this.setProgress(100);
@@ -191,10 +191,10 @@ export default class ProgressivePreloader {
           this.detach();
         }
       }
-      
+
       this.promise = promise = null;
     };
-    
+
     promise
     .then(() => onEnd(null))
     .catch((err) => onEnd(err));
@@ -207,7 +207,7 @@ export default class ProgressivePreloader {
 
         if(tempId !== this.tempId) return;
 
-        //console.log('preloader download', promise, details);
+        // console.log('preloader download', promise, details);
         const percents = details.done / details.total * 100;
         this.setProgress(percents);
       });
@@ -242,53 +242,53 @@ export default class ProgressivePreloader {
       this.setProgress(0);
     }
   }
-  
+
   public detach() {
     if(this.detached) {
       return;
     }
-    //return;
+    // return;
 
     this.detached = true;
 
-    //return;
-    
+    // return;
+
     if(this.preloader && this.preloader.parentElement) {
-      /* setTimeout(() =>  *///fastRaf(() => {
-        /* if(!this.detached) return;
+      /* setTimeout(() =>  */// fastRaf(() => {
+      /* if(!this.detached) return;
         this.detached = true; */
 
-        // fastRaf(() => {
-          //console.log('[PP]: detach after rAF', this.detached, performance.now());
+      // fastRaf(() => {
+      // console.log('[PP]: detach after rAF', this.detached, performance.now());
 
-          // if(!this.detached || !this.preloader.parentElement) {
-          //   return;
-          // }
+      // if(!this.detached || !this.preloader.parentElement) {
+      //   return;
+      // }
 
-          SetTransition(this.preloader, 'is-visible', false, TRANSITION_TIME, () => {
-            this.preloader.remove();
-          }, 1);
-        // });
-      //})/* , 5e3) */;
+      SetTransition(this.preloader, 'is-visible', false, TRANSITION_TIME, () => {
+        this.preloader.remove();
+      }, 1);
+      // });
+      // })/* , 5e3) */;
     }
   }
-  
+
   public setProgress(percents: number) {
     if(!this.totalLength && !isInDOM(this.circle)) {
       return;
     }
-    
+
     if(percents === 0) {
       this.circle.style.strokeDasharray = '';
       return;
     }
-    
+
     try {
       if(!this.totalLength) {
         this.totalLength = this.circle.getTotalLength();
       }
 
-      //console.log('setProgress', (percents / 100 * totalLength));
+      // console.log('setProgress', (percents / 100 * totalLength));
       this.circle.style.strokeDasharray = '' + Math.max(5, percents / 100 * this.totalLength) + ', ' + this.totalLength;
     } catch(err) {}
   }

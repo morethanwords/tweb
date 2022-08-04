@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type SuperMessagePort from "../lib/mtproto/superMessagePort";
-import ctx from "../environment/ctx";
+import type SuperMessagePort from '../lib/mtproto/superMessagePort';
+import ctx from '../environment/ctx';
 
 export default function listenMessagePort(
-  messagePort: SuperMessagePort<any, any, any>, 
+  messagePort: SuperMessagePort<any, any, any>,
   onConnect?: (source: MessageEventSource) => void,
   onDisconnect?: (source: MessageEventSource) => void
 ) {

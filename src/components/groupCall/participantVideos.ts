@@ -4,18 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { attachClickEvent } from "../../helpers/dom/clickEvent";
-import ControlsHover from "../../helpers/dom/controlsHover";
-import findUpClassName from "../../helpers/dom/findUpClassName";
-import ListenerSetter from "../../helpers/listenerSetter";
-import safeAssign from "../../helpers/object/safeAssign";
-import { GroupCallParticipant } from "../../layer";
-import { GroupCallOutputSource } from "../../lib/appManagers/appGroupCallsManager";
-import { AppManagers } from "../../lib/appManagers/managers";
-import getPeerId from "../../lib/appManagers/utils/peers/getPeerId";
-import GroupCallInstance from "../../lib/calls/groupCallInstance";
-import rootScope from "../../lib/rootScope";
-import GroupCallParticipantVideoElement, { GroupCallParticipantVideoType } from "./participantVideo";
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import ControlsHover from '../../helpers/dom/controlsHover';
+import findUpClassName from '../../helpers/dom/findUpClassName';
+import ListenerSetter from '../../helpers/listenerSetter';
+import safeAssign from '../../helpers/object/safeAssign';
+import {GroupCallParticipant} from '../../layer';
+import {GroupCallOutputSource} from '../../lib/appManagers/appGroupCallsManager';
+import {AppManagers} from '../../lib/appManagers/managers';
+import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
+import GroupCallInstance from '../../lib/calls/groupCallInstance';
+import rootScope from '../../lib/rootScope';
+import GroupCallParticipantVideoElement, {GroupCallParticipantVideoType} from './participantVideo';
 
 export default class GroupCallParticipantsVideoElement extends ControlsHover {
   private container: HTMLDivElement;
@@ -40,7 +40,7 @@ export default class GroupCallParticipantsVideoElement extends ControlsHover {
     const className = 'group-call-participants-video';
     const container = this.container = document.createElement('div');
     this.container.classList.add(className + '-container');
-    
+
     options.appendTo.append(container);
 
     this.participantsElements = new Map();
@@ -71,9 +71,9 @@ export default class GroupCallParticipantsVideoElement extends ControlsHover {
       const element = this.containers.get(container);
       if(this.instance.pinnedSource === element.source) {
         this.instance.unpinAll();
-        return;  
+        return;
       }
-      
+
       this.instance.pinSource(element.source);
     }, {listenerSetter});
 
@@ -137,12 +137,12 @@ export default class GroupCallParticipantsVideoElement extends ControlsHover {
         this.setElementDisplay(element, this.instance.pinnedSource);
         participantElements.set(type, element);
         element.setParticipant(participant, type, video);
-    
+
         this.container.prepend(element.container);
       } else {
         participantElements.delete(type);
         element.container.remove();
-        
+
         if(!participantElements.size) {
           this.participantsElements.delete(peerId);
           this.containers.delete(element.container);

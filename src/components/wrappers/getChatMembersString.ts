@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import numberThousandSplitter from "../../helpers/number/numberThousandSplitter";
-import { Chat, ChatParticipants } from "../../layer";
-import { i18n, LangPackKey } from "../../lib/langPack";
-import rootScope from "../../lib/rootScope";
+import numberThousandSplitter from '../../helpers/number/numberThousandSplitter';
+import {Chat, ChatParticipants} from '../../layer';
+import {i18n, LangPackKey} from '../../lib/langPack';
+import rootScope from '../../lib/rootScope';
 
 export default async function getChatMembersString(chatId: ChatId, managers = rootScope.managers) {
   const chat: Chat = await managers.appChatsManager.getChat(chatId);
@@ -30,6 +30,6 @@ export default async function getChatMembersString(chatId: ChatId, managers = ro
   const isBroadcast = (chat as Chat.channel).pFlags.broadcast;
   count = count || 1;
 
-  let key: LangPackKey = isBroadcast ? 'Peer.Status.Subscribers' : 'Peer.Status.Member';
+  const key: LangPackKey = isBroadcast ? 'Peer.Status.Subscribers' : 'Peer.Status.Member';
   return i18n(key, [numberThousandSplitter(count)]);
 }

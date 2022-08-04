@@ -4,44 +4,44 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { SettingSection } from "../..";
-import { LangPackKey } from "../../../../lib/langPack";
-import CheckboxField from "../../../checkboxField";
-import { SliderSuperTabEventable } from "../../../sliderTab";
+import {SettingSection} from '../..';
+import {LangPackKey} from '../../../../lib/langPack';
+import CheckboxField from '../../../checkboxField';
+import {SliderSuperTabEventable} from '../../../sliderTab';
 
 export function autoDownloadPeerTypeSection(type: 'photo' | 'video' | 'file', title: LangPackKey) {
   const section = new SettingSection({name: title});
 
   const key = 'settings.autoDownload.' + type + '.';
   const contactsCheckboxField = new CheckboxField({
-    text: 'AutodownloadContacts', 
+    text: 'AutodownloadContacts',
     name: 'contacts',
     stateKey: key + 'contacts',
     withRipple: true
   });
   const privateCheckboxField = new CheckboxField({
-    text: 'AutodownloadPrivateChats', 
+    text: 'AutodownloadPrivateChats',
     name: 'private',
     stateKey: key + 'private',
     withRipple: true
   });
   const groupsCheckboxField = new CheckboxField({
-    text: 'AutodownloadGroupChats', 
+    text: 'AutodownloadGroupChats',
     name: 'groups',
     stateKey: key + 'groups',
     withRipple: true
   });
   const channelsCheckboxField = new CheckboxField({
-    text: 'AutodownloadChannels', 
+    text: 'AutodownloadChannels',
     name: 'channels',
     stateKey: key + 'channels',
     withRipple: true
   });
 
   section.content.append(
-    contactsCheckboxField.label, 
-    privateCheckboxField.label, 
-    groupsCheckboxField.label, 
+    contactsCheckboxField.label,
+    privateCheckboxField.label,
+    groupsCheckboxField.label,
     channelsCheckboxField.label
   );
 

@@ -5,9 +5,9 @@
  */
 
 export default function getVisibleRect(
-  element: HTMLElement, 
-  overflowElement: HTMLElement, 
-  lookForSticky?: boolean, 
+  element: HTMLElement,
+  overflowElement: HTMLElement,
+  lookForSticky?: boolean,
   rect = element.getBoundingClientRect(),
   overflowRect = overflowElement.getBoundingClientRect()
 ) {
@@ -22,10 +22,10 @@ export default function getVisibleRect(
     }
   }
 
-  if(rect.top >= overflowBottom
-    || rect.bottom <= overflowTop
-    || rect.right <= overflowLeft
-    || rect.left >= overflowRight) {
+  if(rect.top >= overflowBottom ||
+    rect.bottom <= overflowTop ||
+    rect.right <= overflowLeft ||
+    rect.left >= overflowRight) {
     return null;
   }
 

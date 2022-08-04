@@ -2,23 +2,23 @@
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
- * 
+ *
  * Originally from:
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import { Photo, PhotoSize, PhotosPhotos } from "../../layer";
-import { ReferenceContext } from "../mtproto/referenceDatabase";
-import isObject from "../../helpers/object/isObject";
-import safeReplaceArrayInObject from "../../helpers/object/safeReplaceArrayInObject";
-import { AppManager } from "./manager";
+import {Photo, PhotoSize, PhotosPhotos} from '../../layer';
+import {ReferenceContext} from '../mtproto/referenceDatabase';
+import isObject from '../../helpers/object/isObject';
+import safeReplaceArrayInObject from '../../helpers/object/safeReplaceArrayInObject';
+import {AppManager} from './manager';
 
 export type MyPhoto = Photo.photo;
 
 // TIMES = 2 DUE TO SIDEBAR AND CHAT
-//let TEST_FILE_REFERENCE = "5440692274120994569", TEST_FILE_REFERENCE_TIMES = 2;
+// let TEST_FILE_REFERENCE = "5440692274120994569", TEST_FILE_REFERENCE_TIMES = 2;
 
 export class AppPhotosManager extends AppManager {
   private photos: {
@@ -57,7 +57,7 @@ export class AppPhotosManager extends AppManager {
 
     return this.photos[photo.id] = photo;
   }
-  
+
   public getUserPhotos(userId: UserId, maxId: Photo.photo['id'] = '0', limit: number = 20) {
     const inputUser = this.appUsersManager.getUserInput(userId);
     return this.apiManager.invokeApiCacheable('photos.getUserPhotos', {
@@ -79,7 +79,7 @@ export class AppPhotosManager extends AppManager {
           photoIds.splice(idx, 1);
         }
       }
-      
+
       return {
         count: (photosResult as PhotosPhotos.photosPhotosSlice).count || photoIds.length,
         photos: photoIds
@@ -106,7 +106,7 @@ export class AppPhotosManager extends AppManager {
 
     return isDownloaded;
   } */
-  
+
   public getPhoto(photoId: any/* MyPhoto | string */): MyPhoto {
     return isObject(photoId) ? photoId as MyPhoto : this.photos[photoId as any as string];
   }

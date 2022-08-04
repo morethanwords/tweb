@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { AppManagers } from "../../lib/appManagers/managers";
-import rootScope from "../../lib/rootScope";
-import PollElement from "../poll";
+import {AppManagers} from '../../lib/appManagers/managers';
+import rootScope from '../../lib/rootScope';
+import PollElement from '../poll';
 
 export default function wrapPoll(message: any, managers: AppManagers = rootScope.managers) {
   const elem = new PollElement();

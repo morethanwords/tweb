@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { SliderSuperTab } from "../../slider";
-import appSidebarRight from "..";
-import { roundPercents } from "../../poll";
-import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
-import ripple from "../../ripple";
-import { i18n } from "../../../lib/langPack";
-import setInnerHTML from "../../../helpers/dom/setInnerHTML";
-import wrapEmojiText from "../../../lib/richTextProcessor/wrapEmojiText";
+import {SliderSuperTab} from '../../slider';
+import appSidebarRight from '..';
+import {roundPercents} from '../../poll';
+import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
+import ripple from '../../ripple';
+import {i18n} from '../../../lib/langPack';
+import setInnerHTML from '../../../helpers/dom/setInnerHTML';
+import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
 
 export default class AppPollResultsTab extends SliderSuperTab {
   private resultsDiv: HTMLElement;
@@ -79,7 +79,7 @@ export default class AppPollResultsTab extends SliderSuperTab {
             const {dom} = appDialogsManager.addDialogNew({
               peerId: vote.user_id.toPeerId(false),
               container: list,
-              rippleEnabled: false, 
+              rippleEnabled: false,
               meAsSaved: false,
               avatarSize: 32
             });
@@ -90,7 +90,7 @@ export default class AppPollResultsTab extends SliderSuperTab {
             left -= votesList.votes.length;
             (showMore.lastElementChild as HTMLElement).replaceWith(i18n('PollResults.LoadMore', [Math.min(20, left)]));
           }
-          
+
           offset = votesList.next_offset;
           limit = 20;
 

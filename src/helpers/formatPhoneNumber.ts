@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { HelpCountry, HelpCountryCode } from "../layer";
-import I18n from "../lib/langPack";
+import {HelpCountry, HelpCountryCode} from '../layer';
+import I18n from '../lib/langPack';
 
 let sortedCountries: HelpCountry[];
 type PrefixCountry = {country: HelpCountry, code: HelpCountryCode};
@@ -27,7 +27,7 @@ export function formatPhoneNumber(originalStr: string): {
   leftPattern: string
 } {
   originalStr = originalStr || '';
-  
+
   if(!prefixes.size) {
     I18n.countriesList.forEach((country) => {
       country.country_codes.forEach((code) => {
@@ -44,13 +44,13 @@ export function formatPhoneNumber(originalStr: string): {
 
   // return {formatted: originalStr, country: undefined as any, leftPattern: ''};
   let str = originalStr.replace(/\D/g, '');
-  let phoneCode = str.slice(0, maxPrefixLength);
-  
-  ////console.log('str', str, phoneCode);
+  const phoneCode = str.slice(0, maxPrefixLength);
+
+  // //console.log('str', str, phoneCode);
   // if(!sortedCountries) {
   //   sortedCountries = I18n.countriesList.slice().sort((a, b) => b.country_codes[0].country_code.length - a.country_codes[0].country_code.length);
   // }
-  
+
   // let country = sortedCountries.find((c) => {
   //   return c.country_codes.find((c) => phoneCode.indexOf(c.replace(/\D/g, '')) === 0);
   // });
@@ -65,16 +65,16 @@ export function formatPhoneNumber(originalStr: string): {
 
   if(!prefixCountry) {
     return {
-      formatted: str, 
-      country: undefined, 
-      code: undefined, 
+      formatted: str,
+      country: undefined,
+      code: undefined,
       leftPattern: ''
     };
   }
 
   // country = /* PhoneCodesMain[country.phoneCode] ||  */country;
   const country = prefixCountry.country;
-  
+
   const patterns = prefixCountry.code.patterns || [];
   const searchForPattern = str.slice(prefixCountry.code.country_code.length); // splice country code
   let pattern = '', mostMatchedPatternMatches = 0, mostMatchedPattern = '';
@@ -108,7 +108,7 @@ export function formatPhoneNumber(originalStr: string): {
       str = str.slice(0, idx) + ' ' + str.slice(idx);
     }
   });
-  
+
   /* if(country.pattern) {
     str = str.slice(0, country.pattern.length);
   } */
@@ -120,6 +120,6 @@ export function formatPhoneNumber(originalStr: string): {
     leftPattern = leftPattern.replace(/X/g, '‒');
     // leftPattern = leftPattern.replace(/X/g, '0');
   }
-  
+
   return {formatted: str, country, code: prefixCountry.code, leftPattern};
 }
