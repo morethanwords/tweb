@@ -23,6 +23,14 @@
     line-height: 1;
     text-align: center;
 
+    &-text {
+      opacity: 0;
+
+      @include animation-level(2) {
+        transition: opacity .2s ease-in-out;
+      }
+    }
+
     .document:not(.document-with-thumb) & {
       padding: 1.5625rem .25rem 0 .25rem;
 
@@ -43,8 +51,8 @@
       position: absolute;
       top: 0;
       right: 0;
-      width: var(--size);
-      height: var(--size);
+      // width: var(--size);
+      // height: var(--size);
       border-bottom-left-radius: .25rem;
       border-style: solid;
       border-width: calc(var(--size) / 2);
@@ -52,25 +60,54 @@
       border-bottom-color: rgba(0, 0, 0, .25);
       border-top-color: var(--message-background-color);
       border-right-color: var(--message-background-color);
+
+      @include animation-level(2) {
+        transition: border-width .2s ease-in-out;
+      }
+    }
+  }
+
+  &:not(.downloaded) {
+    @include hover() {
+      .document-ico:after {
+        border-width: 0;
+      }
+
+      .document-ico-text {
+        opacity: 0;
+      }
+
+      .preloader-container {
+        opacity: 1 !important;
+      }
+    }
+  }
+
+  &:not(.downloading) {
+    .document-ico-text {
+      opacity: 1;
+    }
+
+    .preloader-container {
+      opacity: 0 !important;
+    }
+  }
+
+  &.downloading {
+    .document-ico:after {
+      border-width: 0;
     }
   }
   
-  &-ico, 
-  &-download {
+  &-ico {
     font-size: 1.125rem;
     background-size: contain;
   }
 
   &-ico, 
-  &-name {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  &-download {
-    background-color: var(--background-color);
-    border-radius: $border-radius;
+  &-name,
+  &-size {
+    @include text-overflow();
   }
 
   &.ext-zip {
@@ -95,7 +132,7 @@
     }
 
     .document-download {
-      background-color: rgba(0, 0, 0, .15);
+      background-color: rgba(0, 0, 0, .2);
     }
 
     .preloader-circular {
@@ -123,13 +160,12 @@
   }
 
   &-size {
-    white-space: nowrap;
     color: var(--secondary-text-color);
     font-size: var(--font-size-14);
     line-height: var(--line-height-14);
     //padding-right: 32px;
-    text-overflow: ellipsis;
-    overflow: hidden;
+    pointer-events: none;
+    position: relative;
   }
 
   .preloader-container {

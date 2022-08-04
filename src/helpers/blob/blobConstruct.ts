@@ -16,17 +16,7 @@ export default function blobConstruct<T extends Uint8Array | string>(blobParts: 
     blobParts = [blobParts];
   }
 
-  let blob;
   const safeMimeType = blobSafeMimeType(mimeType);
-  try {
-    blob = new Blob(blobParts, {type: safeMimeType});
-  } catch(e) {
-    // @ts-ignore
-    let bb = new BlobBuilder;
-    blobParts.forEach((blobPart: any) => {
-      bb.append(blobPart);
-    });
-    blob = bb.getBlob(safeMimeType);
-  }
+  const blob = new Blob(blobParts, {type: safeMimeType});
   return blob;
 }

@@ -24,7 +24,7 @@ import type { MethodDeclMap } from '../../layer';
 import deferredPromise, { CancellablePromise } from '../../helpers/cancellablePromise';
 import App from '../../config/app';
 import { MOUNT_CLASS_TO } from '../../config/debug';
-import { IDB } from '../idb';
+import { IDB } from '../files/idb';
 import CryptoWorker from "../crypto/cryptoMessagePort";
 import ctx from '../../environment/ctx';
 import noop from '../../helpers/noop';
@@ -37,17 +37,6 @@ import ApiManagerMethods from './api_methods';
 import { getEnvironment } from '../../environment/utils';
 import toggleStorages from '../../helpers/toggleStorages';
 import type TcpObfuscated from './transports/tcpObfuscated';
-
-export type ApiError = Partial<{
-  code: number,
-  type: string,
-  description: string,
-  originalError: any,
-  stack: string,
-  handled: boolean,
-  input: string,
-  message: ApiError
-}>;
 
 /* class RotatableArray<T> {
   public array: Array<T> = [];

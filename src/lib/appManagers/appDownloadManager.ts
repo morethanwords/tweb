@@ -4,21 +4,20 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { ApiFileManager, DownloadMediaOptions, DownloadOptions } from "../mtproto/apiFileManager";
+import type { DownloadMediaOptions, DownloadOptions } from "../mtproto/apiFileManager";
+import type { AppMessagesManager } from "./appMessagesManager";
 import deferredPromise, { CancellablePromise } from "../../helpers/cancellablePromise";
-import { Document, InputFile, Photo, PhotoSize, WebDocument } from "../../layer";
-import { getFileNameByLocation } from "../../helpers/fileName";
+import { InputFile, Photo, PhotoSize } from "../../layer";
 import getFileNameForUpload from "../../helpers/getFileNameForUpload";
 import { AppManagers } from "./managers";
 import rootScope from "../rootScope";
 import { MOUNT_CLASS_TO } from "../../config/debug";
-import getDocumentDownloadOptions from "./utils/docs/getDocumentDownloadOptions";
-import getPhotoDownloadOptions from "./utils/photos/getPhotoDownloadOptions";
-import createDownloadAnchor from "../../helpers/dom/createDownloadAnchor";
 import noop from "../../helpers/noop";
 import getDownloadMediaDetails from "./utils/download/getDownloadMediaDetails";
 import getDownloadFileNameFromOptions from "./utils/download/getDownloadFileNameFromOptions";
-import { AppMessagesManager } from "./appMessagesManager";
+import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
+import { MAX_FILE_SAVE_SIZE } from "../mtproto/mtproto_config";
+import createDownloadAnchor from "../../helpers/dom/createDownloadAnchor";
 
 export type ResponseMethodBlob = 'blob';
 export type ResponseMethodJson = 'json';
@@ -35,10 +34,10 @@ export type Download = DownloadBlob | DownloadUrl/*  | DownloadJson */;
 export type Progress = {done: number, fileName: string, total: number, offset: number};
 export type ProgressCallback = (details: Progress) => void;
 
-type DownloadType = 'url' | 'blob' | 'void';
+type DownloadType = 'url' | 'blob' | 'void' | 'disc';
 
 export class AppDownloadManager {
-  private downloads: {[fileName: string]: {main: Download, url?: Download, blob?: Download, void?: Download}} = {};
+  private downloads: {[fileName: string]: {main: Download} & {[type in DownloadType]?: Download}} = {};
   private progress: {[fileName: string]: Progress} = {};
   // private progressCallbacks: {[fileName: string]: Array<ProgressCallback>} = {};
   private managers: AppManagers;
@@ -84,7 +83,7 @@ export class AppDownloadManager {
       };
   
       deferred.catch(() => {
-        this.clearDownload(fileName);
+        this.clearDownload(fileName, type);
       }).finally(() => {
         delete this.progress[fileName];
         // delete this.progressCallbacks[fileName];
@@ -98,6 +97,13 @@ export class AppDownloadManager {
         
         // @ts-ignore
         deferred[key] = main[key].bind(main);
+      });
+    }
+
+    const haveToClear = type === 'disc';
+    if(haveToClear) {
+      deferred.catch(noop).finally(() => {
+        this.clearDownload(fileName, type);
       });
     }
 
@@ -115,8 +121,18 @@ export class AppDownloadManager {
     return deferred as CancellablePromise<Awaited<T>>;
   }
 
-  private clearDownload(fileName: string) {
-    delete this.downloads[fileName];
+  private clearDownload(fileName: string, type?: DownloadType) {
+    const downloads = this.downloads[fileName];
+    if(!downloads) {
+      return;
+    }
+
+    delete downloads[type];
+    
+    const length = Object.keys(downloads).length;
+    if(!length || (downloads.main && length === 1)) {
+      delete this.downloads[fileName];
+    }
   }
 
   public getUpload(fileName: string): ReturnType<AppMessagesManager['sendFile']>['promise'] {
@@ -161,7 +177,15 @@ export class AppDownloadManager {
     const {downloadOptions, fileName} = getDownloadMediaDetails(options);
     
     return this.d(fileName, () => {
-      const cb = type === 'url' ? this.managers.apiFileManager.downloadMediaURL : (type === 'void' ? this.managers.apiFileManager.downloadMediaVoid : this.managers.apiFileManager.downloadMedia);
+      let cb: any;
+      if(type === 'url') {
+        cb = this.managers.apiFileManager.downloadMediaURL;
+      } else if(type === 'void' || type === 'disc') {
+        cb = this.managers.apiFileManager.downloadMediaVoid;
+      } else if(type === 'blob') {
+        cb = this.managers.apiFileManager.downloadMedia;
+      }
+
       return cb(options);
     }, type) as any;
   }
@@ -207,20 +231,58 @@ export class AppDownloadManager {
     if(!isDocument && !options.thumb) {
       options.thumb = (media as Photo.photo).sizes.slice().pop() as PhotoSize.photoSize;
     }
-    
-    const promise = this.downloadMedia(options);
-    promise.then((blob) => {
-      const url = URL.createObjectURL(blob);
-      const downloadOptions = isDocument ? 
-        getDocumentDownloadOptions(media) : 
-        getPhotoDownloadOptions(media as any, options.thumb);
-      const fileName = (options.media as Document.document).file_name || getFileNameByLocation(downloadOptions.location);
-      createDownloadAnchor(url, fileName, () => {
-        URL.revokeObjectURL(url);
-      });
-    }, noop);
 
-    return promise;
+    const {downloadOptions, fileName} = getDownloadMediaDetails(options);
+    if(downloadOptions.size && downloadOptions.size > MAX_FILE_SAVE_SIZE) {
+      const id = '' + (Math.random() * 0x7FFFFFFF | 0);
+      const url = `/download/${id}`;
+      options.downloadId = id;
+  
+      const promise = this.downloadMedia(options, 'disc');
+  
+      let iframe: HTMLIFrameElement;
+      const onProgress = () => {
+        iframe = document.createElement('iframe');
+        iframe.hidden = true;
+        // iframe.src = sw.scope + fileName;
+        iframe.src = url;
+        document.body.append(iframe);
+  
+        indexOfAndSplice(promise.listeners, onProgress);
+      };
+  
+      promise.addNotifyListener(onProgress);
+      promise.catch(noop).finally(() => {
+        setTimeout(() => {
+          iframe?.remove();
+        }, 1000);
+      });
+  
+      return promise;
+    } else {
+      const promise = this.downloadMedia(options, 'blob');
+      promise.then((blob) => {
+        const url = URL.createObjectURL(blob);
+        createDownloadAnchor(url, downloadOptions.fileName || fileName, () => {
+          URL.revokeObjectURL(url);
+        });
+      });
+      return promise;
+    }
+    
+    // const promise = this.downloadMedia(options);
+    // promise.then((blob) => {
+    //   const url = URL.createObjectURL(blob);
+    //   const downloadOptions = isDocument ? 
+    //     getDocumentDownloadOptions(media) : 
+    //     getPhotoDownloadOptions(media as any, options.thumb);
+    //   const fileName = (options.media as Document.document).file_name || getFileNameByLocation(downloadOptions.location);
+    //   createDownloadAnchor(url, fileName, () => {
+    //     URL.revokeObjectURL(url);
+    //   });
+    // }, noop);
+
+    // return promise;
   }
 }
 

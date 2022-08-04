@@ -22,7 +22,6 @@ import CryptoWorker from "../crypto/cryptoMessagePort";
 import { logger, LogTypes } from "../logger";
 import DEBUG from "../../config/debug";
 import { Awaited, DcId } from "../../types";
-import { ApiError } from "./apiManager";
 import addPadding from "../../helpers/bytes/addPadding";
 import bytesCmp from "../../helpers/bytes/bytesCmp";
 import bytesFromHex from "../../helpers/bytes/bytesFromHex";

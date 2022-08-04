@@ -503,7 +503,7 @@ export default class ChatBubbles {
                 div.replaceWith(newDiv);
                 
                 if(timeSpan) {
-                  newDiv.querySelector('.document-size').append(timeSpan);
+                  newDiv.querySelector('.document').append(timeSpan);
                 }
               });
             }
@@ -4127,7 +4127,7 @@ export default class ChatBubbles {
               nameContainer = newNameContainer;
             }
 
-            const lastContainer = messageDiv.lastElementChild.querySelector('.document-message, .document-size, .audio');
+            const lastContainer = messageDiv.lastElementChild.querySelector('.document-message, .document, .audio');
             // lastContainer && lastContainer.append(timeSpan.cloneNode(true));
             lastContainer && lastContainer.append(timeSpan);
 

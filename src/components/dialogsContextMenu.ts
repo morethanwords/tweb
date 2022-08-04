@@ -108,7 +108,7 @@ export default class DialogsContextMenu {
   };
 
   private onPinClick = () => {
-    this.managers.appMessagesManager.toggleDialogPin(this.selectedId, this.filterId).catch(async(err) => {
+    this.managers.appMessagesManager.toggleDialogPin(this.selectedId, this.filterId).catch(async(err: ApiError) => {
       if(err.type === 'PINNED_DIALOGS_TOO_MUCH') {
         if(this.filterId >= 1) {
           toastNew({langPackKey: 'PinFolderLimitReached'});

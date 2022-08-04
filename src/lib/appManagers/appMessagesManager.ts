@@ -59,6 +59,7 @@ import appTabsManager from "./appTabsManager";
 import MTProtoMessagePort from "../mtproto/mtprotoMessagePort";
 import getAlbumText from "./utils/messages/getAlbumText";
 import pause from "../../helpers/schedulers/pause";
+import makeError from "../../helpers/makeError";
 
 //console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -3077,7 +3078,7 @@ export class AppMessagesManager extends AppManager {
         (this.rootScope.premium ? appConfig.dialogs_folder_pinned_limit_premium : appConfig.dialogs_folder_pinned_limit_default) : 
         (this.rootScope.premium ? appConfig.dialogs_pinned_limit_premium : appConfig.dialogs_pinned_limit_default);
       if(this.dialogsStorage.getPinnedOrders(filterId).length >= max) {
-        return Promise.reject({type: 'PINNED_DIALOGS_TOO_MUCH'});
+        return Promise.reject(makeError('PINNED_DIALOGS_TOO_MUCH'));
       }
     }
 

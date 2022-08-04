@@ -10,7 +10,8 @@ import type { DownloadOptions } from "../lib/mtproto/apiFileManager";
 const FILENAME_JOINER = '_';
 
 export function getFileNameByLocation(location: InputFileLocation | InputWebFileLocation, options?: Partial<{
-  fileName: string
+  fileName: string,
+  downloadId: string
 }>) {
   const fileName = '';//(options?.fileName || '').split('.');
   const ext = fileName[fileName.length - 1] || '';
@@ -57,7 +58,7 @@ export function getFileNameByLocation(location: InputFileLocation | InputWebFile
     }
   }
 
-  return str + (ext ? '.' + ext : ext);
+  return str + (options.downloadId || '') + (ext ? '.' + ext : ext);
 }
 
 export type FileURLType = 'photo' | 'thumb' | 'document' | 'stream' | 'download';

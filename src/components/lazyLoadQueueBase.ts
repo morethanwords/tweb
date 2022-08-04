@@ -80,7 +80,8 @@ export default class LazyLoadQueueBase {
       //await item.load(item.div);
       await this.loadItem(item);
     } catch(err) {
-      if(!['NO_ENTRY_FOUND', 'STORAGE_OFFLINE'].includes(err as string)) {
+      const ignoreErrors: Set<ErrorType> = new Set(['NO_ENTRY_FOUND', 'STORAGE_OFFLINE']);
+      if(!ignoreErrors.has((err as ApiError)?.type)) {
         this.log.error('loadMediaQueue error:', err/* , item */);
       }
     }

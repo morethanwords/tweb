@@ -207,7 +207,7 @@ export default class MTPNetworker {
     const suffix = this.isFileUpload ? '-U' : this.isFileDownload ? '-D' : '';
     this.name = 'NET-' + dcId + suffix;
     //this.log = logger(this.name, this.upload && this.dcId === 2 ? LogLevels.debug | LogLevels.warn | LogLevels.log | LogLevels.error : LogLevels.error);
-    this.log = logger(this.name, LogTypes.Log | LogTypes.Debug | LogTypes.Error | LogTypes.Warn, undefined);
+    this.log = logger(this.name, LogTypes.Log /* | LogTypes.Debug */ | LogTypes.Error | LogTypes.Warn);
     this.log('constructor'/* , this.authKey, this.authKeyID, this.serverSalt */);
 
     // Test resend after bad_server_salt
@@ -1310,9 +1310,10 @@ export default class MTPNetworker {
     if(!(this.transport instanceof HTTP)) return promise;
     /// #endif
     
-    const baseError = {
+    const baseError: ApiError = {
       code: 406,
       type: 'NETWORK_BAD_RESPONSE',
+      // @ts-ignore
       transport: this.transport
     };
     
@@ -1596,13 +1597,13 @@ export default class MTPNetworker {
     }
   }
 
-  private processError(rawError: {error_message: string, error_code: number}) {
+  private processError(rawError: {error_message: string, error_code: number}): ApiError {
     const matches = (rawError.error_message || '').match(/^([A-Z_0-9]+\b)(: (.+))?/) || [];
     rawError.error_code = rawError.error_code;
   
     return {
       code: !rawError.error_code || rawError.error_code <= 0 ? 500 : rawError.error_code,
-      type: matches[1] || 'UNKNOWN',
+      type: matches[1] as any || 'UNKNOWN',
       description: matches[3] || ('CODE#' + rawError.error_code + ' ' + rawError.error_message),
       originalError: rawError
     };

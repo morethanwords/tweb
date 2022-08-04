@@ -27,6 +27,12 @@ export type ServiceRequestFilePartTaskPayload = {
   limit: number
 };
 
+export type ServiceDownloadTaskPayload = {
+  fileName: string,
+  headers: any,
+  id: string,
+};
+
 export type ServiceEvent = {
   port: (payload: void, source: MessageEventSource, event: MessageEvent) => void
 };
@@ -36,7 +42,13 @@ export default class ServiceMessagePort<Master extends boolean = false> extends 
   notificationsClear: () => void,
   toggleStorages: (payload: {enabled: boolean, clearWrite: boolean}) => void,
   pushPing: (payload: ServicePushPingTaskPayload, source: MessageEventSource, event: MessageEvent) => void,
-  hello: (payload: void, source: MessageEventSource, event: MessageEvent) => void
+  hello: (payload: void, source: MessageEventSource, event: MessageEvent) => void,
+
+  // from mtproto worker
+  download: (payload: ServiceDownloadTaskPayload) => void,
+  downloadChunk: (payload: {id: ServiceDownloadTaskPayload['id'], chunk: Uint8Array}) => void
+  downloadFinalize: (payload: ServiceDownloadTaskPayload['id']) => void,
+  downloadCancel: (payload: ServiceDownloadTaskPayload['id']) => void
 }, {
   // to main thread
   pushClick: (payload: PushNotificationObject) => void,

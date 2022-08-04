@@ -9,6 +9,7 @@ import { logger } from "../logger";
 import bytesToHex from "../../helpers/bytes/bytesToHex";
 import deepEqual from "../../helpers/object/deepEqual";
 import { AppManager } from "../appManagers/manager";
+import makeError from "../../helpers/makeError";
 
 export type ReferenceContext = ReferenceContext.referenceContextProfilePhoto | ReferenceContext.referenceContextMessage | ReferenceContext.referenceContextEmojiesSounds | ReferenceContext.referenceContextReactions | ReferenceContext.referenceContextUserFull;
 export namespace ReferenceContext {
@@ -173,7 +174,7 @@ export class ReferenceDatabase extends AppManager {
 
       this.log.error('refreshReference: no new context, reference before:', hex, 'after:', newHex, context);
 
-      throw 'NO_NEW_CONTEXT';
+      throw makeError('NO_NEW_CONTEXT');
     });
   }
 

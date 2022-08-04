@@ -21,6 +21,7 @@ import { AppManagers } from "../../lib/appManagers/managers";
 import getDownloadMediaDetails from "../../lib/appManagers/utils/download/getDownloadMediaDetails";
 import choosePhotoSize from "../../lib/appManagers/utils/photos/choosePhotoSize";
 import { joinElementsWith } from "../../lib/langPack";
+import { MAX_FILE_SAVE_SIZE } from "../../lib/mtproto/mtproto_config";
 import wrapPlainText from "../../lib/richTextProcessor/wrapPlainText";
 import rootScope from "../../lib/rootScope";
 import type { ThumbCache } from "../../lib/storages/thumbs";
@@ -94,6 +95,7 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
 
   const icoDiv = document.createElement('div');
   icoDiv.classList.add('document-ico');
+  let icoTextEl: HTMLElement;
 
   const hadContext = !!cacheContext;
   const getCacheContext = () => {
@@ -101,8 +103,10 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
   };
 
   cacheContext = await getCacheContext();
+  let hasThumb = false;
   if((doc.thumbs?.length || (message.pFlags.is_outgoing && cacheContext.url && doc.type === 'photo'))/*  && doc.mime_type !== 'image/gif' */) {
     docDiv.classList.add('document-with-thumb');
+    hasThumb = true;
 
     let imgs: (HTMLImageElement | HTMLCanvasElement)[] = [];
     // ! WARNING, use thumbs for check when thumb will be generated for media
@@ -131,14 +135,20 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
 
     imgs.forEach((img) => img.classList.add('document-thumb'));
   } else {
-    icoDiv.innerText = ext;
+    icoTextEl = document.createElement('span');
+    icoTextEl.classList.add('document-ico-text');
+    icoTextEl.innerText = ext;
+    icoDiv.append(icoTextEl);
   }
 
   //let fileName = stringMiddleOverflow(doc.file_name || 'Unknown.file', 26);
   let fileName = doc.file_name ? wrapPlainText(doc.file_name) : 'Unknown.file';
   const descriptionEl = document.createElement('div');
   descriptionEl.classList.add('document-description');
+  const bytesContainer = document.createElement('span');
   const bytesEl = formatBytes(doc.size);
+  const bytesJoiner = ' / ';
+  
   const descriptionParts: (HTMLElement | string | DocumentFragment)[] = [bytesEl];
   
   if(withTime) {
@@ -149,8 +159,16 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
     descriptionParts.push(await wrapSenderToPeer(message));
   }
 
+  if(!withTime && !showSender) {
+    const b = document.createElement('span');
+    const bytesMaxEl = formatBytes(doc.size);
+    b.append(bytesJoiner, bytesMaxEl);
+    b.style.visibility = 'hidden';
+    descriptionParts.push(b);
+  }
+
   docDiv.innerHTML = `
-  ${(cacheContext.downloaded && !uploadFileName) || !message.mid ? '' : `<div class="document-download"></div>`}
+  ${(cacheContext.downloaded && !uploadFileName) || !message.mid || !hasThumb ? '' : `<div class="document-download"></div>`}
   <div class="document-name"></div>
   <div class="document-size"></div>
   `;
@@ -169,7 +187,8 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
   }
 
   const sizeDiv = docDiv.querySelector('.document-size') as HTMLElement;
-  sizeDiv.append(...joinElementsWith(descriptionParts, ' · '));
+  bytesContainer.append(...joinElementsWith(descriptionParts, ' · '));
+  sizeDiv.append(bytesContainer);
 
   docDiv.prepend(icoDiv);
 
@@ -179,12 +198,20 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
 
   let downloadDiv: HTMLElement, preloader: ProgressivePreloader = null;
   const onLoad = () => {
+    if(doc.size <= MAX_FILE_SAVE_SIZE) {
+      docDiv.classList.add('downloaded');
+    }
+
+    docDiv.classList.remove('downloading');
+
     if(downloadDiv) {
-      downloadDiv.classList.add('downloaded');
-      const _downloadDiv = downloadDiv;
-      setTimeout(() => {
-        _downloadDiv.remove();
-      }, 200);
+      if(downloadDiv !== icoDiv) {
+        const _downloadDiv = downloadDiv;
+        setTimeout(() => {
+          _downloadDiv.remove();
+        }, 200);
+      }
+
       downloadDiv = null;
     }
 
@@ -194,17 +221,26 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
   };
 
   const addByteProgress = (promise: CancellablePromise<any>) => {
+    docDiv.classList.add('downloading');
+
     const sizeContainer = document.createElement('span');
-    promise.then(() => {
-      onLoad();
-      sizeContainer.replaceWith(bytesEl);
-    }, () => {
-      replaceContent(sizeContainer, bytesEl);
+    const _bytesContainer = formatBytes(doc.size);
+    sizeContainer.style.position = 'absolute';
+    sizeContainer.style.left = '0';
+    promise.then(onLoad, noop).finally(() => {
+      // sizeContainer.replaceWith(bytesContainer);
+      bytesContainer.style.visibility = '';
+      sizeContainer.remove();
+      // b && b.classList.remove('hide');
     });
+
+    // b && b.classList.add('hide');
     
     let d = formatBytes(0);
-    bytesEl.replaceWith(sizeContainer);
-    sizeContainer.append(d, ' / ', bytesEl);
+    bytesContainer.style.visibility = 'hidden';
+    // bytesContainer.replaceWith(sizeContainer);
+    sizeContainer.append(d, bytesJoiner, _bytesContainer);
+    bytesContainer.parentElement.append(sizeContainer);
     promise.addNotifyListener((progress: Progress) => {
       const _d = formatBytes(progress.done);
       d.replaceWith(_d);
@@ -236,6 +272,10 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
       download = appDownloadManager.downloadToDisc({media: doc, queueId});
     }
 
+    download.catch(() => {
+      docDiv.classList.remove('downloading');
+    });
+
     if(downloadDiv) {
       preloader.attach(downloadDiv, true, download);
       addByteProgress(download);
@@ -244,14 +284,15 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
 
   const {fileName: downloadFileName} = getDownloadMediaDetails({media: doc});
   if(await managers.apiFileManager.isDownloading(downloadFileName)) {
-    downloadDiv = docDiv.querySelector('.document-download');
+    downloadDiv = docDiv.querySelector('.document-download') || icoDiv;
     const promise = appDownloadManager.downloadMediaVoid({media: doc});
 
     preloader = new ProgressivePreloader();
     preloader.attach(downloadDiv, false, promise);
     preloader.setDownloadFunction(load);
+    addByteProgress(promise);
   } else if(!cacheContext.downloaded || uploadFileName) {
-    downloadDiv = docDiv.querySelector('.document-download');
+    downloadDiv = docDiv.querySelector('.document-download') || icoDiv;
     preloader = new ProgressivePreloader({
       isUpload: !!uploadFileName
     });

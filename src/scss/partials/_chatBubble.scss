@@ -1490,6 +1490,13 @@ $bubble-beside-button-width: 38px;
     }
   }
 
+  .document {
+    .time {
+      height: 0;
+      align-self: flex-start;
+    }
+  }
+
   /* .document,
   .audio {
     .time.tgico {

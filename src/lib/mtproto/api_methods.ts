@@ -9,7 +9,6 @@ import { ignoreRestrictionReasons } from "../../helpers/restrictions";
 import { MethodDeclMap, User } from "../../layer";
 import { InvokeApiOptions } from "../../types";
 import { AppManager } from "../appManagers/manager";
-import { ApiError } from "./apiManager";
 import { MTAppConfig } from "./appConfig";
 import { UserAuth } from "./mtproto_config";
 import { MTMessage } from "./networker";

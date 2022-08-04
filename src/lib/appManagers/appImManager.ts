@@ -76,7 +76,7 @@ import generateMessageId from './utils/messageId/generateMessageId';
 import getUserStatusString from '../../components/wrappers/getUserStatusString';
 import getChatMembersString from '../../components/wrappers/getChatMembersString';
 import { STATE_INIT } from '../../config/state';
-import CacheStorageController from '../cacheStorage';
+import CacheStorageController from '../files/cacheStorage';
 import themeController from '../../helpers/themeController';
 import overlayCounter from '../../helpers/overlayCounter';
 import appDialogsManager from './appDialogsManager';

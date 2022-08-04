@@ -7,7 +7,6 @@
 import PopupElement from ".";
 import placeCaretAtEnd from "../../helpers/dom/placeCaretAtEnd";
 import { AccountPassword, AccountTmpPassword } from "../../layer";
-import { ApiError } from "../../lib/mtproto/apiManager";
 import { InputState } from "../inputField";
 import PasswordInputField from "../passwordInputField";
 import { SettingSection } from "../sidebarLeft";

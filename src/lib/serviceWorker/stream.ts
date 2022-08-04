@@ -8,7 +8,7 @@ import readBlobAsUint8Array from "../../helpers/blob/readBlobAsUint8Array";
 import deferredPromise, { CancellablePromise } from "../../helpers/cancellablePromise";
 import debounce from "../../helpers/schedulers/debounce";
 import { InputFileLocation } from "../../layer";
-import CacheStorageController from "../cacheStorage";
+import CacheStorageController from "../files/cacheStorage";
 import { DownloadOptions, MyUploadFile } from "../mtproto/apiFileManager";
 import { getMtprotoMessagePort, log, serviceMessagePort } from "./index.service";
 import { ServiceRequestFilePartTaskPayload } from "./serviceMessagePort";
@@ -140,8 +140,8 @@ class Stream {
     const key = this.getChunkKey(alignedOffset, limit);
     return cacheStorage.getFile(key).then((blob: Blob) => {
       return fromPreload ? new Uint8Array() : readBlobAsUint8Array(blob);
-    }, (error) => {
-      if(error === 'NO_ENTRY_FOUND') {
+    }, (error: ApiError) => {
+      if(error.type === 'NO_ENTRY_FOUND') {
         return;
       }
     });

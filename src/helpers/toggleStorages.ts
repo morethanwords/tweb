@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import CacheStorageController from "../lib/cacheStorage";
+import CacheStorageController from "../lib/files/cacheStorage";
 import AppStorage from "../lib/storage";
 import sessionStorage from "../lib/sessionStorage";
 import noop from "./noop";

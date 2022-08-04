@@ -5,7 +5,6 @@
  */
 
 import type { DcId } from '../types';
-import type { ApiError } from '../lib/mtproto/apiManager';
 import Page from './page';
 import { AuthAuthorization, AuthLoginToken } from '../layer';
 import App from '../config/app';

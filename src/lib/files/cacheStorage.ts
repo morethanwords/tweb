@@ -4,15 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import Modes from '../config/modes';
-import blobConstruct from '../helpers/blob/blobConstruct';
-import FileManager from './fileManager';
-//import { MOUNT_CLASS_TO } from './mtproto/mtproto_config';
-//import { logger } from './polyfill';
+import Modes from '../../config/modes';
+import blobConstruct from '../../helpers/blob/blobConstruct';
+import MemoryWriter from './memoryWriter';
+import FileManager from './memoryWriter';
+import FileStorage from './fileStorage';
+import makeError from '../../helpers/makeError';
 
 export type CacheStorageDbName = 'cachedFiles' | 'cachedStreamChunks' | 'cachedAssets';
 
-export default class CacheStorageController {
+export default class CacheStorageController implements FileStorage {
   private static STORAGES: CacheStorageController[] = [];
   private openDbPromise: Promise<Cache>;
 
@@ -64,7 +65,7 @@ export default class CacheStorageController {
     return this.get(fileName).then((response) => {
       if(!response) {
         //console.warn('getFile:', response, fileName);
-        throw 'NO_ENTRY_FOUND';
+        throw makeError('NO_ENTRY_FOUND');
       }
 
       const promise = response[method]();
@@ -92,7 +93,7 @@ export default class CacheStorageController {
 
   public timeoutOperation<T>(callback: (cache: Cache) => Promise<T>) {
     if(!this.useStorage) {
-      return Promise.reject('STORAGE_OFFLINE');
+      return Promise.reject(makeError('STORAGE_OFFLINE'));
     }
 
     return new Promise<T>(async(resolve, reject) => {
@@ -123,12 +124,12 @@ export default class CacheStorageController {
     });
   }
 
-  public getFileWriter(fileName: string, fileSize: number, mimeType: string) {
-    const fakeWriter = FileManager.getFakeFileWriter(mimeType, fileSize, (blob) => {
+  public getWriter(fileName: string, fileSize: number, mimeType: string) {
+    const writer = new MemoryWriter(mimeType, fileSize, (blob) => {
       return this.saveFile(fileName, blob).catch(() => blob);
     });
 
-    return Promise.resolve(fakeWriter);
+    return Promise.resolve(writer);
   }
 
   public static toggleStorage(enabled: boolean, clearWrite: boolean) {

@@ -16,7 +16,7 @@ import deferredPromise, { CancellablePromise } from "../helpers/cancellablePromi
 import { IS_WORKER } from "../helpers/context";
 import throttle from "../helpers/schedulers/throttle";
 //import { WorkerTaskTemplate } from "../types";
-import IDBStorage from "./idb";
+import IDBStorage from "./files/idb";
 
 function noop() {}
 
@@ -166,8 +166,9 @@ export default class AppStorage<
         }
 
         // console.log('[AS]: get time', keys, performance.now() - perf);
-      }, (error) => {
-        if(!['NO_ENTRY_FOUND', 'STORAGE_OFFLINE'].includes(error)) {
+      }, (error: ApiError) => {
+        const ignoreErrors: Set<ErrorType> = new Set(['NO_ENTRY_FOUND', 'STORAGE_OFFLINE']);
+        if(!ignoreErrors.has(error.type)) {
           this.useStorage = false;
           console.error('[AS]: get error:', error, keys, storeName);
         }

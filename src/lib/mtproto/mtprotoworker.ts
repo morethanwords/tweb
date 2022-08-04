@@ -5,7 +5,7 @@
  */
 
 import type { Awaited } from '../../types';
-import type { CacheStorageDbName } from '../cacheStorage';
+import type { CacheStorageDbName } from '../files/cacheStorage';
 import type { State } from '../../config/state';
 import type { Message, MessagePeerReaction, PeerNotifySettings } from '../../layer';
 import { CryptoMethods } from '../crypto/crypto_methods';
@@ -246,6 +246,8 @@ class ApiManagerProxy extends MTProtoMessagePort {
     // ! I hate webpack - it won't load it by using worker.register, only navigator.serviceWorker will do it.
     const worker = navigator.serviceWorker;
     this._registerServiceWorker();
+
+    // worker.startMessages();
 
     worker.addEventListener('controllerchange', () => {
       this.log.warn('controllerchange');

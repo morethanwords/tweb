@@ -9,10 +9,11 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import { Database } from '../config/databases';
-import Modes from '../config/modes';
-import safeAssign from '../helpers/object/safeAssign';
-import { logger } from './logger';
+import { Database } from '../../config/databases';
+import Modes from '../../config/modes';
+import makeError from '../../helpers/makeError';
+import safeAssign from '../../helpers/object/safeAssign';
+import { logger } from '../logger';
 
 /**
  * https://developer.mozilla.org/en-US/docs/Web/API/IDBObjectStore/createIndex
@@ -111,7 +112,7 @@ export class IDB {
     let finished = false;
     setTimeout(() => {
       if(!finished) {
-        request.onerror({type: 'IDB_CREATE_TIMEOUT'} as Event);
+        request.onerror(makeError('IDB_CREATE_TIMEOUT') as Event);
       }
     }, 3000);
 

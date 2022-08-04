@@ -5,7 +5,7 @@
  */
 
 import type { Database } from '.';
-import type { IDBIndex } from '../../lib/idb';
+import type { IDBIndex } from '../../lib/files/idb';
 
 const DATABASE_STATE: Database<'session' | 'stickerSets' | 'users' | 'chats' | 'messages' | 'dialogs'> = {
   name: 'tweb',

@@ -13,7 +13,7 @@ import { Database } from "../../config/databases";
 import DATABASE_STATE from "../../config/databases/state";
 import { IS_FIREFOX } from "../../environment/userAgent";
 import deepEqual from "../../helpers/object/deepEqual";
-import IDBStorage from "../idb";
+import IDBStorage from "../files/idb";
 import { log, serviceMessagePort } from "./index.service";
 import { ServicePushPingTaskPayload } from "./serviceMessagePort";
 

@@ -12,6 +12,7 @@ import { AppManager } from "../appManagers/manager";
 import findAndSplice from "../../helpers/array/findAndSplice";
 import assumeType from "../../helpers/assumeType";
 import { FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS, REAL_FOLDER_ID, START_LOCAL_ID } from "../mtproto/mtproto_config";
+import makeError from "../../helpers/makeError";
 
 export type MyDialogFilter = DialogFilter.dialogFilter;
 
@@ -313,7 +314,7 @@ export default class FiltersStorage extends AppManager {
     
     if(!wasPinned) {
       if(filter.pinned_peers.length >= (await this.apiManager.getConfig()).pinned_infolder_count_max) {
-        return Promise.reject({type: 'PINNED_DIALOGS_TOO_MUCH'});
+        return Promise.reject(makeError('PINNED_DIALOGS_TOO_MUCH'));
       }
       
       filter.pinned_peers.unshift(this.appPeersManager.getInputPeerById(peerId));

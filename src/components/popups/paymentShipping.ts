@@ -5,14 +5,9 @@
  */
 
 import PopupElement from ".";
-import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import placeCaretAtEnd from "../../helpers/dom/placeCaretAtEnd";
-import toggleDisability from "../../helpers/dom/toggleDisability";
-import { InputInvoice, Message, PaymentRequestedInfo, PaymentsPaymentForm, PaymentsValidatedRequestedInfo } from "../../layer";
-import getServerMessageId from "../../lib/appManagers/utils/messageId/getServerMessageId";
-import { ApiError } from "../../lib/mtproto/apiManager";
+import { InputInvoice, PaymentRequestedInfo, PaymentsPaymentForm, PaymentsValidatedRequestedInfo } from "../../layer";
 import matchEmail from "../../lib/richTextProcessor/matchEmail";
-import Button from "../button";
 import CheckboxField from "../checkboxField";
 import CountryInputField from "../countryInputField";
 import InputField from "../inputField";
