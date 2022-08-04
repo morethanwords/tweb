@@ -9,14 +9,14 @@
  * https://github.com/evgeny-nadymov/telegram-react/blob/master/LICENSE
  */
 
-/// NOTE: telegram returns sign source, while webrtc uses unsign source internally
-/// unsign => sign
+// NOTE: telegram returns sign source, while webrtc uses unsign source internally
+// unsign => sign
 export function toTelegramSource(source: number) {
 	return source << 0;
 }
 
-/// NOTE: telegram returns sign source, while webrtc uses unsign source internally
-/// sign => unsign
+// NOTE: telegram returns sign source, while webrtc uses unsign source internally
+// sign => unsign
 export function fromTelegramSource(source: number) {
 	return source >>> 0;
 }

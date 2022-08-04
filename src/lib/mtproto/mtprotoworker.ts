@@ -74,9 +74,9 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
     this.log('constructor');
 
-    /// #if !MTPROTO_SW
+    // #if !MTPROTO_SW
     this.registerWorker();
-    /// #endif
+    // #endif
 
     this.registerServiceWorker();
     this.registerCryptoWorker();
@@ -222,9 +222,9 @@ class ApiManagerProxy extends MTProtoMessagePort {
       const controller = navigator.serviceWorker.controller || registration.installing || registration.waiting || registration.active;
       this.attachServiceWorker(controller);
       
-      /// #if MTPROTO_SW
+      // #if MTPROTO_SW
       this.onWorkerFirstMessage(controller);
-      /// #endif
+      // #endif
     }, (err) => {
       this.log.error('SW registration failed!', err);
 
@@ -260,16 +260,16 @@ class ApiManagerProxy extends MTProtoMessagePort {
       });
     });
 
-    /// #if MTPROTO_SW
+    // #if MTPROTO_SW
     this.attachListenPort(worker);
-    /// #else
+    // #else
     this.serviceMessagePort.attachListenPort(worker);
     this.serviceMessagePort.addMultipleEventsListeners({
       port: (payload, source, event) => {
         this.invokeVoid('serviceWorkerPort', undefined, undefined, [event.ports[0]]);
       }
     });
-    /// #endif
+    // #endif
 
     worker.addEventListener('messageerror', (e) => {
       this.log.error('SW messageerror:', e);
@@ -299,7 +299,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.attachWorkerToPort(worker, cryptoMessagePort, 'crypto');
   }
 
-  /// #if !MTPROTO_SW
+  // #if !MTPROTO_SW
   private registerWorker() {
     // return;
 
@@ -320,7 +320,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
     this.onWorkerFirstMessage(worker);
   }
-  /// #endif
+  // #endif
 
   private attachWorkerToPort(worker: SharedWorker | Worker, messagePort: SuperMessagePort<any, any, any>, type: string) {
     const port: MessagePort = (worker as SharedWorker).port || worker as any;
@@ -335,11 +335,11 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.log('set webWorker');
     
     // this.worker = worker;
-    /// #if MTPROTO_SW
+    // #if MTPROTO_SW
     this.attachSendPort(worker);
-    /// #else
+    // #else
     this.attachWorkerToPort(worker, this, 'mtproto');
-    /// #endif
+    // #endif
   }
 
   private loadState() {
@@ -362,11 +362,11 @@ class ApiManagerProxy extends MTProtoMessagePort {
     });
   }
 
-  /// #if MTPROTO_WORKER
+  // #if MTPROTO_WORKER
   public invokeCrypto<Method extends keyof CryptoMethods>(method: Method, ...args: Parameters<CryptoMethods[typeof method]>): Promise<Awaited<ReturnType<CryptoMethods[typeof method]>>> {
     return cryptoMessagePort.invokeCrypto(method, ...args);
   }
-  /// #endif
+  // #endif
 
   public async toggleStorages(enabled: boolean, clearWrite: boolean) {
     await toggleStorages(enabled, clearWrite);

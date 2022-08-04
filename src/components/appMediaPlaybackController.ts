@@ -415,7 +415,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
    * Only for audio
    */
   public isSafariBuffering(media: HTMLMediaElement) {
-    /// @ts-ignore
+    // @ts-ignore
     return !!media.safariBuffering;
   }
 

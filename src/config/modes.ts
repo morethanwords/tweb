@@ -21,20 +21,20 @@ const Modes = {
   transport: 'websocket' as TransportType
 };
 
-/// #if MTPROTO_HAS_HTTP
+// #if MTPROTO_HAS_HTTP
 Modes.http = location.search.indexOf('http=1') > 0;
-/// #endif
+// #endif
 
-/// #if MTPROTO_HTTP || !MTPROTO_HAS_WS
+// #if MTPROTO_HTTP || !MTPROTO_HAS_WS
 Modes.http = true;
-/// #endif
+// #endif
 
 if(Modes.http) {
   Modes.transport = 'https';
 }
 
-/// #if MTPROTO_SW
+// #if MTPROTO_SW
 Modes.asServiceWorker = true;
-/// #endif
+// #endif
 
 export default Modes;

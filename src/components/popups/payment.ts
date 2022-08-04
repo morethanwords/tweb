@@ -399,7 +399,7 @@ export default class PopupPayment extends PopupElement {
 
       pricesElements.push(tipsLabel.label);
 
-      /// 
+      // 
       const tipsEl = document.createElement('div');
       tipsEl.classList.add(tipsClassName);
 

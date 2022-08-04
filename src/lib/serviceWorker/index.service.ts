@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-/// #if MTPROTO_SW
+// #if MTPROTO_SW
 import '../mtproto/mtproto.worker';
-/// #endif
+// #endif
 
 import { logger, LogTypes } from '../logger';
 import { CACHE_ASSETS_NAME, requestCache } from './cache';
@@ -24,7 +24,7 @@ import makeError from '../../helpers/makeError';
 export const log = logger('SW', LogTypes.Error | LogTypes.Debug | LogTypes.Log | LogTypes.Warn);
 const ctx = self as any as ServiceWorkerGlobalScope;
 
-/// #if !MTPROTO_SW
+// #if !MTPROTO_SW
 let _mtprotoMessagePort: MessagePort;
 export const getMtprotoMessagePort = () => _mtprotoMessagePort;
 
@@ -191,10 +191,10 @@ listenMessagePort(serviceMessagePort, undefined, (source) => {
     }
   }
 });
-/// #endif
+// #endif
 
 const onFetch = (event: FetchEvent): void => {
-  /// #if !DEBUG
+  // #if !DEBUG
   if(
     !IS_SAFARI && 
     event.request.url.indexOf(location.origin + '/') === 0 && 
@@ -202,7 +202,7 @@ const onFetch = (event: FetchEvent): void => {
   ) {
     return event.respondWith(requestCache(event));
   }
-  /// #endif
+  // #endif
 
   try {
     const [, url, scope, params] = /http[:s]+\/\/.*?(\/(.*?)(?:$|\/(.*)$))/.exec(event.request.url) || [];

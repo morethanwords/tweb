@@ -9,9 +9,9 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-/// #if MTPROTO_AUTO
+// #if MTPROTO_AUTO
 import transportController from "./transports/controller";
-/// #endif
+// #endif
 
 import { TLSerialization, TLDeserialization } from "./tl_utils";
 import { TransportType } from "./dcConfigurator";
@@ -114,9 +114,9 @@ export class Authorizer extends AppManager {
 
   private transportType: TransportType;
 
-  /// #if MTPROTO_AUTO
+  // #if MTPROTO_AUTO
   private getTransportTypePromise: Promise<void>;
-  /// #endif
+  // #endif
   
   protected after() {
     this.cached = {};
@@ -584,7 +584,7 @@ export class Authorizer extends AppManager {
     }
   }
 
-  /// #if MTPROTO_AUTO
+  // #if MTPROTO_AUTO
   private getTransportType() {
     if(this.getTransportTypePromise) return this.getTransportTypePromise;
     return this.getTransportTypePromise = transportController.pingTransports().then(({websocket}) => {
@@ -592,7 +592,7 @@ export class Authorizer extends AppManager {
       this.log('will use transport:', this.transportType);
     });
   }
-  /// #endif
+  // #endif
   
   public auth(dcId: DcId) {
     let promise = this.cached[dcId];
@@ -601,9 +601,9 @@ export class Authorizer extends AppManager {
     }
 
     promise = new Promise(async(resolve, reject) => {
-      /// #if MTPROTO_AUTO
+      // #if MTPROTO_AUTO
       await this.getTransportType();
-      /// #endif
+      // #endif
 
       let error: ApiError;
       let _try = 1;

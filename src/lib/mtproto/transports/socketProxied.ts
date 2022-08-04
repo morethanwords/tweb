@@ -36,7 +36,7 @@ export interface SocketProxyCloseTask extends WorkerTaskVoidTemplate {
   id: number
 };
 
-/// #if !MTPROTO_SW
+// #if !MTPROTO_SW
 export default class SocketProxied extends EventListenerBase<{
   open: () => void,
   message: (buffer: ArrayBuffer) => any,
@@ -92,4 +92,4 @@ export default class SocketProxied extends EventListenerBase<{
 }
 export const socketsProxied: Map<number, SocketProxied> = new Map();
 
-/// #endif
+// #endif

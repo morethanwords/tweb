@@ -11,10 +11,10 @@ import type MTPNetworker from '../networker';
 import MTTransport from './transport';
 import Modes from '../../../config/modes';
 
-/// #if MTPROTO_AUTO
+// #if MTPROTO_AUTO
 import transportController from './controller';
 import networkStats from '../networkStats';
-/// #endif
+// #endif
 
 export default class HTTP implements MTTransport {
   public networker: MTPNetworker;
@@ -82,9 +82,9 @@ export default class HTTP implements MTTransport {
 
     this.connected = connected;
 
-    /// #if MTPROTO_AUTO
+    // #if MTPROTO_AUTO
     transportController.setTransportValue('https', connected);
-    /// #endif
+    // #endif
   }
 
   public destroy() {

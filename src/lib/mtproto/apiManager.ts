@@ -9,10 +9,10 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-/// #if MTPROTO_AUTO
+// #if MTPROTO_AUTO
 import transportController from './transports/controller';
 import MTTransport from './transports/transport';
-/// #endif
+// #endif
 
 import type { UserAuth } from './mtproto_config';
 import sessionStorage from '../sessionStorage';
@@ -93,11 +93,11 @@ export class ApiManager extends ApiManagerMethods {
 
     this.transportType = Modes.transport;
 
-    /// #if MTPROTO_AUTO
+    // #if MTPROTO_AUTO
     transportController.addEventListener('transport', (transportType) => {
       this.changeTransportType(transportType);
     });
-    /// #endif
+    // #endif
   }
 
   protected after() {
@@ -148,14 +148,14 @@ export class ApiManager extends ApiManagerMethods {
   } */
 
   private getTransportType(connectionType: ConnectionType) {
-    /// #if MTPROTO_HTTP_UPLOAD
+    // #if MTPROTO_HTTP_UPLOAD
     // @ts-ignore
     const transportType: TransportType = connectionType === 'upload' && getEnvironment().IS_SAFARI ? 'https' : 'websocket';
     //const transportType: TransportType = connectionType !== 'client' ? 'https' : 'websocket';
-    /// #else
+    // #else
     // @ts-ignore
     const transportType: TransportType = this.transportType;
-    /// #endif
+    // #endif
 
     return transportType;
   }

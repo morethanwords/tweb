@@ -4,7 +4,7 @@ const MediaQueryPlugin = require('media-query-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const postcssPresetEnv = require('postcss-preset-env');
 // const ServiceWorkerWebpackPlugin = require('serviceworker-webpack-plugin');
-const { RetryChunkLoadPlugin } = require('webpack-retry-chunk-load-plugin');
+const {RetryChunkLoadPlugin} = require('webpack-retry-chunk-load-plugin');
 const fs = require('fs');
 const Dotenv = require('dotenv-webpack');
 const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
@@ -24,20 +24,20 @@ const MTPROTO_HTTP = false;
 const MTPROTO_AUTO = true;
 
 const opts = {
-  MTPROTO_WORKER: true,
-  MTPROTO_SW: false,
-  MTPROTO_HTTP: MTPROTO_HTTP,
-  MTPROTO_HTTP_UPLOAD: false,
-  MTPROTO_AUTO: MTPROTO_AUTO,       // use HTTPS when WS is unavailable
-  MTPROTO_HAS_HTTP: MTPROTO_AUTO || MTPROTO_HTTP,
-  MTPROTO_HAS_WS: MTPROTO_AUTO || !MTPROTO_HTTP,
-  SAFARI_PROXY_WEBSOCKET: false,
-  DEBUG: devMode,
+  'MTPROTO_WORKER': true,
+  'MTPROTO_SW': false,
+  'MTPROTO_HTTP': MTPROTO_HTTP,
+  'MTPROTO_HTTP_UPLOAD': false,
+  'MTPROTO_AUTO': MTPROTO_AUTO, // use HTTPS when WS is unavailable
+  'MTPROTO_HAS_HTTP': MTPROTO_AUTO || MTPROTO_HTTP,
+  'MTPROTO_HAS_WS': MTPROTO_AUTO || !MTPROTO_HTTP,
+  'SAFARI_PROXY_WEBSOCKET': false,
+  'DEBUG': devMode,
 
-  version: 3,
-  'ifdef-verbose': devMode,         // add this for verbose output
-  'ifdef-triple-slash': true,       // add this to use double slash comment instead of default triple slash
-  'ifdef-fill-with-blanks': true    // add this to remove code with blank spaces instead of "//" comments
+  'version': 3,
+  'ifdef-verbose': devMode, // add this for verbose output
+  'ifdef-triple-slash': false, // add this to use double slash comment instead of default triple slash
+  'ifdef-fill-with-blanks': true, // add this to remove code with blank spaces instead of "//" comments
 };
 
 const domain = 'yourdomain.com';
@@ -45,17 +45,17 @@ const localIp = '192.168.92.78';
 
 const middleware = (req, res, next) => {
   let IP = '';
-  if(req.headers['cf-connecting-ip']) {
+  if (req.headers['cf-connecting-ip']) {
     IP = req.headers['cf-connecting-ip'];
   } else {
     IP = req.connection.remoteAddress.split(':').pop();
   }
 
-  if(!allowedIPs.includes(IP) && !/^192\.168\.\d{1,3}\.\d{1,3}$/.test(IP)) {
+  if (!allowedIPs.includes(IP) && !/^192\.168\.\d{1,3}\.\d{1,3}$/.test(IP)) {
     console.log('Bad IP connecting: ' + IP, req.url);
     res.status(404).send('Nothing interesting here.');
   } else {
-    if(req.url.indexOf('/assets/') !== 0) {
+    if (req.url.indexOf('/assets/') !== 0) {
       console.log(req.url, IP);
     }
 
@@ -69,7 +69,7 @@ module.exports = {
       {
         test: /\.scss$/,
         use: [
-          devMode ? 'style-loader' : MiniCssExtractPlugin.loader,/* {
+          devMode ? 'style-loader' : MiniCssExtractPlugin.loader, /* {
             loader: MiniCssExtractPlugin.loader,
             options: {
               hmr: devMode,
@@ -83,10 +83,10 @@ module.exports = {
           {
             loader: 'css-loader',
             options: {
-              url: false
-            }
+              url: false,
+            },
           },
-          
+
           devMode ? undefined : MediaQueryPlugin.loader,
           {
             loader: 'postcss-loader',
@@ -101,17 +101,17 @@ module.exports = {
               postcssOptions: {
                 plugins: [
                   postcssPresetEnv(),
-                ]
-              }
-            }
+                ],
+              },
+            },
           },
           {
             loader: 'sass-loader',
             options: {
-              sourceMap: devMode
-            }
-          }
-        ].filter(Boolean)
+              sourceMap: devMode,
+            },
+          },
+        ].filter(Boolean),
       },
       // {
       //   test: /\.worker\.ts$/i,
@@ -123,9 +123,9 @@ module.exports = {
       {
         test: /\.ts?$/,
         use: [
-          //{ loader: 'babel-loader', options: require('./babel.config') },
-          'ts-loader', 
-          {loader: 'ifdef-loader', options: opts}
+          // { loader: 'babel-loader', options: require('./babel.config') },
+          'ts-loader',
+          {loader: 'ifdef-loader', options: opts},
         ],
         exclude: /node_modules/,
       },
@@ -133,16 +133,16 @@ module.exports = {
         test: /\.hbs$/,
         loader: 'handlebars-loader',
         options: {
-          helperDirs: __dirname + '/handlebarsHelpers'
-        }
+          helperDirs: __dirname + '/handlebarsHelpers',
+        },
         // loader: 'handlebars-loader?helperDirs[]=' + __dirname + '/handlebarsHelpers',
         // use: [
         //   'handlebars-loader'
         // ]
-      }
+      },
     ],
   },
-  
+
   resolve: {
     extensions: ['.ts', '.js'],
   },
@@ -156,7 +156,7 @@ module.exports = {
     index: './src/index.ts',
     pluralPolyfill: './src/lib/pluralPolyfill.ts'
   }, */
-  //devtool: 'inline-source-map',
+  // devtool: 'inline-source-map',
 
   output: {
     globalObject: 'this',
@@ -167,7 +167,7 @@ module.exports = {
     // Webpack 5
     clean: {
       keep: keepAsset,
-    }
+    },
   },
 
   devServer: {
@@ -180,34 +180,34 @@ module.exports = {
     // public: useLocal ? undefined : domain,
     // sockHost: useLocal ? undefined : domain,
     // overlay: true,
-    
+
     // static: {
-      // directory: path.join(__dirname, 'public')
+    // directory: path.join(__dirname, 'public')
     // },
     compress: true,
     http2: useLocalNotLocal ? true : (useLocal ? undefined : true),
     https: useLocal ? undefined : {
       key: fs.readFileSync(__dirname + '/certs/server-key.pem', 'utf8'),
-      cert: fs.readFileSync(__dirname + '/certs/server-cert.pem', 'utf8')
+      cert: fs.readFileSync(__dirname + '/certs/server-cert.pem', 'utf8'),
     },
     allowedHosts: useLocal ? undefined : [
-      domain
+      domain,
     ],
     host: useLocalNotLocal ? localIp : (useLocal ? undefined : '0.0.0.0'),
-    //host: domain, // '0.0.0.0'
+    // host: domain, // '0.0.0.0'
     port: useLocal ? undefined : 443,
-    
-    
+
+
     // Webpack 5
     hot: false,
     setupMiddlewares: useLocal ? undefined : (middlewares, devServer) => {
       middlewares.push(middleware);
-    
+
       return middlewares;
     },
     client: {
       overlay: true,
-      progress: false
+      progress: false,
     },
   },
 
@@ -216,7 +216,7 @@ module.exports = {
       analyzerMode: 'static',
       openAnalyzer: false,
       generateStatsFile: false,
-      defaultSizes: 'gzip'
+      defaultSizes: 'gzip',
     }),
 
     new Dotenv(),
@@ -226,27 +226,27 @@ module.exports = {
     //   filename: 'sw.js',
     //   //excludes: ['**/*'],
     //   includes: [
-    //     '**/*.js', 
-    //     '**/*.css', 
-    //     '**/*.json', 
-    //     '**/*.wasm', 
-    //     '**/*.mp3', 
-    //     '**/*.svg', 
-    //     '**/*.tgs', 
-    //     '**/*.ico', 
-    //     '**/*.woff', 
-    //     '**/*.woff2', 
-    //     '**/*.ttf', 
+    //     '**/*.js',
+    //     '**/*.css',
+    //     '**/*.json',
+    //     '**/*.wasm',
+    //     '**/*.mp3',
+    //     '**/*.svg',
+    //     '**/*.tgs',
+    //     '**/*.ico',
+    //     '**/*.woff',
+    //     '**/*.woff2',
+    //     '**/*.ttf',
     //     '**/*.webmanifest'
     //   ],
     // }),
-    
+
     new HtmlWebpackPlugin({
       title: 'Telegram Web',
       description: 'Telegram is a cloud-based mobile and desktop messaging app with a focus on security and speed.',
       url: 'https://web.telegram.org/k/',
       filename: 'index.html',
-      //template: 'public/index_template.html',
+      // template: 'public/index_template.html',
       template: 'src/index.hbs',
       inject: 'body', // true, 'head'
       scriptLoading: 'blocking',
@@ -260,8 +260,8 @@ module.exports = {
         keepClosingSlash: true,
         minifyJS: true,
         minifyCSS: true,
-        minifyURLs: true
-      }, 
+        minifyURLs: true,
+      },
       chunks: 'all',
       excludeChunks: [],
     }),
@@ -272,7 +272,7 @@ module.exports = {
           match: /(mtproto).*\.js$/,
           attributes: {rel: 'modulepreload'},
         },
-      ]
+      ],
     }),
 
     new MiniCssExtractPlugin({
@@ -284,12 +284,12 @@ module.exports = {
 
     new MediaQueryPlugin({
       include: [
-        'style'
+        'style',
       ],
       queries: {
         'only screen and (max-width: 720px)': 'mobile',
         'only screen and (min-width: 721px)': 'desktop',
-      }
+      },
     }),
 
     new RetryChunkLoadPlugin({
@@ -304,10 +304,10 @@ module.exports = {
       maxRetries: 999999,
       // optional list of chunks to which retry script should be injected
       // if not set will add retry script to all chunks that have webpack script loading
-      //chunks: ['chunkName'],
+      // chunks: ['chunkName'],
       // optional code to be executed in the browser context if after all retries chunk is not loaded.
       // if not set - nothing will happen and error will be returned to the chunk loader.
-      //lastResortScript: "window.location.href='/500.html';",
+      // lastResortScript: "window.location.href='/500.html';",
     }),
   ].filter(Boolean),
 };
