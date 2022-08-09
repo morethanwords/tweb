@@ -14,6 +14,7 @@ import I18n from '../../../lib/langPack';
 import ButtonCorner from '../../buttonCorner';
 import getUserStatusString from '../../wrappers/getUserStatusString';
 import appImManager from '../../../lib/appManagers/appImManager';
+import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 
 interface OpenStreetMapInterface {
   place_id?: number;

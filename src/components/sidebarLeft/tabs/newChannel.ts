@@ -13,6 +13,7 @@ import AppAddMembersTab from './addMembers';
 import {_i18n} from '../../../lib/langPack';
 import ButtonCorner from '../../buttonCorner';
 import appImManager from '../../../lib/appManagers/appImManager';
+import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 
 export default class AppNewChannelTab extends SliderSuperTab {
   private uploadAvatar: () => Promise<InputFile> = null;

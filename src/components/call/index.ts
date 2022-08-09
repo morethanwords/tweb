@@ -10,6 +10,7 @@ import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import ControlsHover from '../../helpers/dom/controlsHover';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import {addFullScreenListener, cancelFullScreen, isFullScreen, requestFullScreen} from '../../helpers/dom/fullScreen';
+import replaceContent from '../../helpers/dom/replaceContent';
 import MovablePanel from '../../helpers/movablePanel';
 import onMediaLoad from '../../helpers/onMediaLoad';
 import themeController from '../../helpers/themeController';

@@ -1575,11 +1575,12 @@ export default class ChatBubbles {
           if(target.classList.contains('is-receipt-link')) {
             const message = await this.managers.appMessagesManager.getMessageByPeer(peerId.toPeerId(), +mid);
             if(message) {
-              new PopupPayment(message as Message.message, this.peerId, +bubble.dataset.mid);
+              const inputInvoice = await this.managers.appPaymentsManager.getInputInvoiceByPeerId(this.peerId, +bubble.dataset.mid);
+              new PopupPayment(message as Message.message, inputInvoice);
             }
           } else {
             this.chat.appImManager.setInnerPeer({
-              peerId: peerId.toPeerId(), 
+              peerId: peerId.toPeerId(),
               lastMsgId: +mid
             });
           }
