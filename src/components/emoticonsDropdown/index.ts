@@ -29,6 +29,7 @@ import pause from '../../helpers/schedulers/pause';
 import {IS_APPLE_MOBILE} from '../../environment/userAgent';
 import {AppManagers} from '../../lib/appManagers/managers';
 import type LazyLoadQueueIntersector from '../lazyLoadQueueIntersector';
+import {simulateClickEvent} from '../../helpers/dom/clickEvent';
 
 export const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
 
@@ -176,7 +177,7 @@ export class EmoticonsDropdown extends DropdownHover {
       (this.tabsEl.children[1] as HTMLElement).classList.add('hide');
     }
 
-    (this.tabsEl.children[INIT_TAB_ID + 1] as HTMLLIElement).click(); // set emoji tab
+    simulateClickEvent(this.tabsEl.children[INIT_TAB_ID + 1] as HTMLElement); // set emoji tab
     if(this.tabs[INIT_TAB_ID].init) {
       this.tabs[INIT_TAB_ID].init(); // onTransitionEnd не вызовется, т.к. это первая открытая вкладка
     }
@@ -185,6 +186,10 @@ export class EmoticonsDropdown extends DropdownHover {
     this.checkRights();
 
     return super.init();
+  }
+
+  public getElement() {
+    return this.element;
   }
 
   private onSelectTabClick = (id: number) => {
@@ -248,11 +253,11 @@ export class EmoticonsDropdown extends DropdownHover {
       setActive(which);
 
       if(menuScroll) {
-        if(which < menu.childElementCount - 4) {
-          menuScroll.container.scrollLeft = (which - 3) * 47;
-        } else {
-          menuScroll.container.scrollLeft = which * 47;
-        }
+        menuScroll.scrollIntoViewNew({
+          element: menu.children[which] as HTMLElement,
+          position: 'center',
+          axis: 'x'
+        });
       }
     });
 

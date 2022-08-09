@@ -60,7 +60,7 @@ export default class AppNewChannelTab extends SliderSuperTab {
 
     this.nextBtn = ButtonCorner({icon: 'arrow_next'});
 
-    this.nextBtn.addEventListener('click', () => {
+    attachClickEvent(this.nextBtn, () => {
       const title = this.channelNameInputField.value;
       const about = this.channelDescriptionInputField.value;
 
@@ -89,7 +89,7 @@ export default class AppNewChannelTab extends SliderSuperTab {
           }
         });
       });
-    });
+    }, {listenerSetter: this.listenerSetter});
 
     this.content.append(this.nextBtn);
     section.content.append(this.avatarEdit.container, inputWrapper);

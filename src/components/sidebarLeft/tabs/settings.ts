@@ -27,6 +27,7 @@ import {SliderSuperTabConstructable} from '../../sliderTab';
 import PopupAvatar from '../../popups/avatar';
 import {AccountAuthorizations, Authorization} from '../../../layer';
 import PopupElement from '../../popups';
+import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 // import AppMediaViewer from "../../appMediaViewerNew";
 
 export default class AppSettingsTab extends SliderSuperTab {
@@ -50,7 +51,7 @@ export default class AppSettingsTab extends SliderSuperTab {
     this.container.classList.add('settings-container');
     this.setTitle('Settings');
 
-    const btnMenu = ButtonMenuToggle({}, 'bottom-left', [{
+    const btnMenu = ButtonMenuToggle({listenerSetter: this.listenerSetter}, 'bottom-left', [{
       icon: 'logout',
       text: 'EditAccount.Logout',
       onClick: () => {
@@ -78,14 +79,14 @@ export default class AppSettingsTab extends SliderSuperTab {
     const fillPromise = this.profile.fillProfileElements();
 
     const changeAvatarBtn = Button('btn-circle btn-corner z-depth-1 profile-change-avatar', {icon: 'cameraadd'});
-    changeAvatarBtn.addEventListener('click', () => {
+    attachClickEvent(changeAvatarBtn, () => {
       const canvas = document.createElement('canvas');
       PopupElement.createPopup(PopupAvatar).open(canvas, (upload) => {
         upload().then((inputFile) => {
           return this.managers.appProfileManager.uploadProfilePhoto(inputFile);
         });
       });
-    });
+    }, {listenerSetter: this.listenerSetter});
     this.profile.element.lastElementChild.firstElementChild.append(changeAvatarBtn);
 
     const updateChangeAvatarBtn = async() => {
@@ -160,7 +161,8 @@ export default class AppSettingsTab extends SliderSuperTab {
         clickable: () => {
           this.slider.createTab(tabConstructor).open();
           // new tabConstructor(this.slider, true).open();
-        }
+        },
+        listenerSetter: this.listenerSetter
       });
     });
 
@@ -181,7 +183,8 @@ export default class AppSettingsTab extends SliderSuperTab {
             this.updateActiveSessions(true);
           }, {once: true});
           tab.open();
-        }
+        },
+        listenerSetter: this.listenerSetter
       }),
 
       this.languageRow = new Row({
@@ -190,7 +193,8 @@ export default class AppSettingsTab extends SliderSuperTab {
         icon: 'language',
         clickable: () => {
           this.slider.createTab(AppLanguageTab).open();
-        }
+        },
+        listenerSetter: this.listenerSetter
       })
     );
 
@@ -204,10 +208,10 @@ export default class AppSettingsTab extends SliderSuperTab {
 
     this.scrollable.append(this.profile.element/* profileSection.container */, buttonsSection.container);
 
-    this.buttons.edit.addEventListener('click', () => {
+    attachClickEvent(this.buttons.edit, () => {
       const tab = this.slider.createTab(AppEditProfileTab);
       tab.open();
-    });
+    }, {listenerSetter: this.listenerSetter});
 
     lottieLoader.loadLottieWorkers();
 
@@ -234,5 +238,10 @@ export default class AppSettingsTab extends SliderSuperTab {
       this.authorizations = auths.authorizations;
       this.devicesRow.titleRight.textContent = '' + this.authorizations.length;
     });
+  }
+
+  public onCloseAfterTimeout() {
+    this.profile.destroy();
+    return super.onCloseAfterTimeout();
   }
 }

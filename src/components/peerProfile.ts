@@ -104,7 +104,8 @@ export default class PeerProfile {
         const full = await this.managers.appProfileManager.getProfileByPeerId(this.peerId);
         copyTextToClipboard(full.about);
         toast(I18n.format('BioCopied', true));
-      }
+      },
+      listenerSetter: this.listenerSetter
     });
 
     this.bio.title.classList.add('pre-wrap');
@@ -117,7 +118,8 @@ export default class PeerProfile {
         const peer: Channel | User.user = await this.managers.appPeersManager.getPeer(this.peerId);
         copyTextToClipboard('@' + peer.username);
         toast(I18n.format('UsernameCopied', true));
-      }
+      },
+      listenerSetter: this.listenerSetter
     });
 
     this.phone = new Row({
@@ -128,7 +130,8 @@ export default class PeerProfile {
         const peer: User = await this.managers.appUsersManager.getUser(this.peerId);
         copyTextToClipboard('+' + peer.phone);
         toast(I18n.format('PhoneCopied', true));
-      }
+      },
+      listenerSetter: this.listenerSetter
     });
 
     this.link = new Row({
@@ -141,7 +144,8 @@ export default class PeerProfile {
         // copyTextToClipboard(chatFull.exported_invite.link);
         toast(I18n.format('LinkCopied', true));
         // });
-      }
+      },
+      listenerSetter: this.listenerSetter
     });
 
     this.location = new Row({
@@ -163,7 +167,8 @@ export default class PeerProfile {
       this.notifications = new Row({
         checkboxField: new CheckboxField({toggle: true}),
         titleLangKey: 'Notifications',
-        icon: 'unmute'
+        icon: 'unmute',
+        listenerSetter: this.listenerSetter
       });
 
       listenerSetter.add(this.notifications.checkboxField.input)('change', (e) => {
@@ -457,5 +462,6 @@ export default class PeerProfile {
   public destroy() {
     this.clearSetMoreDetailsTimeout();
     clearInterval(this.setPeerStatusInterval);
+    this.avatars?.cleanup();
   }
 }

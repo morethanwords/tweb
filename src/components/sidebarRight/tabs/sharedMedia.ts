@@ -85,7 +85,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     // * body
 
-    this.profile = new PeerProfile(this.managers, this.scrollable);
+    this.profile = new PeerProfile(this.managers, this.scrollable, this.listenerSetter);
     this.profile.init();
 
     this.scrollable.append(this.profile.element);
@@ -124,7 +124,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       } else if(!this.scrollable.isHeavyAnimationInProgress) {
         this.slider.onCloseBtnClick();
       }
-    });
+    }, {listenerSetter: this.listenerSetter});
 
     attachClickEvent(this.editBtn, (e) => {
       let tab: AppEditChatTab | AppEditContactTab;
@@ -143,7 +143,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
         tab.open();
       }
-    });
+    }, {listenerSetter: this.listenerSetter});
 
     this.listenerSetter.add(rootScope)('contacts_update', (userId) => {
       if(this.peerId === userId) {
@@ -217,7 +217,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     const btnAddMembers = ButtonCorner({icon: 'addmember_filled'});
     this.content.append(btnAddMembers);
 
-    btnAddMembers.addEventListener('click', async() => {
+    attachClickEvent(btnAddMembers, async() => {
       const peerId = this.peerId;
       const id = this.peerId.toChatId();
       const isChannel = await this.managers.appChatsManager.isChannel(id);
@@ -315,7 +315,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
           }
         });
       }
-    });
+    }, {listenerSetter: this.listenerSetter});
 
     // console.log('construct shared media time:', performance.now() - perf);
   }
@@ -458,5 +458,6 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     this.destroyable = true;
     this.onCloseAfterTimeout();
     this.profile.destroy();
+    this.searchSuper.destroy();
   }
 }

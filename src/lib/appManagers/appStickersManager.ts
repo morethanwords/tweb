@@ -72,6 +72,12 @@ export class AppStickersManager extends AppManager {
         const stickerSet = update.stickerset as MyMessagesStickerSet;
         this.saveStickerSet(stickerSet, stickerSet.set.id);
         this.rootScope.dispatchEvent('stickers_installed', stickerSet.set);
+      },
+
+      updateRecentStickers: () => {
+        this.getRecentStickers().then(({stickers}) => {
+          this.rootScope.dispatchEvent('stickers_recent', stickers as MyDocument[]);
+        });
       }
     });
   }
@@ -103,7 +109,7 @@ export class AppStickersManager extends AppManager {
     });
   }
 
-  public saveStickers(docs: Document[]) {
+  private saveStickers(docs: Document[]) {
     forEachReverse(docs, (doc, idx) => {
       doc = this.appDocsManager.saveDoc(doc);
 
@@ -295,9 +301,7 @@ export class AppStickersManager extends AppManager {
     });
   }
 
-  public saveStickerSet(res: Omit<MessagesStickerSet.messagesStickerSet, '_'>, id: DocId) {
-    // console.log('stickers save set', res);w
-
+  private saveStickerSet(res: Omit<MessagesStickerSet.messagesStickerSet, '_'>, id: DocId) {
     const newSet: MessagesStickerSet = {
       _: 'messages.stickerSet',
       set: res.set,
@@ -401,6 +405,8 @@ export class AppStickersManager extends AppManager {
   }
 
   public async toggleStickerSet(set: StickerSet.stickerSet) {
+    set = this.storage.getFromCache(set.id).set;
+
     if(set.installed_date) {
       const res = await this.apiManager.invokeApi('messages.uninstallStickerSet', {
         stickerset: this.getStickerSetInput(set)
@@ -559,7 +565,8 @@ export class AppStickersManager extends AppManager {
     });
   }
 
-  public pushRecentSticker(doc: MyDocument) {
+  public pushRecentSticker(docId: DocId) {
+    const doc = this.appDocsManager.getDoc(docId);
     const docEmoticon = fixEmoji(doc.stickerEmojiRaw);
     for(const emoticon in this.getStickersByEmoticonsPromises) {
       const promise = this.getStickersByEmoticonsPromises[emoticon];
@@ -572,5 +579,10 @@ export class AppStickersManager extends AppManager {
         }
       });
     }
+  }
+
+  public clearRecentStickers() {
+    this.rootScope.dispatchEvent('stickers_recent', []);
+    return this.apiManager.invokeApi('messages.clearRecentStickers');
   }
 }

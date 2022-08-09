@@ -12,6 +12,8 @@ import RadioForm from './radioForm';
 import {i18n, LangPackKey} from '../lib/langPack';
 import replaceContent from '../helpers/dom/replaceContent';
 import setInnerHTML from '../helpers/dom/setInnerHTML';
+import {attachClickEvent} from '../helpers/dom/clickEvent';
+import ListenerSetter from '../helpers/listenerSetter';
 
 export default class Row {
   public container: HTMLElement;
@@ -40,7 +42,9 @@ export default class Row {
     clickable: boolean | ((e: Event) => void),
     navigationTab: SliderSuperTab,
     havePadding: boolean,
-    noRipple: boolean
+    noRipple: boolean,
+    noWrap: boolean,
+    listenerSetter: ListenerSetter
   }> = {}) {
     this.container = document.createElement(options.radioField || options.checkboxField ? 'label' : 'div');
     this.container.classList.add('row');
@@ -80,9 +84,12 @@ export default class Row {
         }
 
         if(!options.noCheckboxSubtitle && !isToggle) {
-          this.checkboxField.input.addEventListener('change', () => {
+          const onChange = () => {
             replaceContent(this.subtitle, i18n(this.checkboxField.input.checked ? 'Checkbox.Enabled' : 'Checkbox.Disabled'));
-          });
+          };
+
+          if(options.listenerSetter) options.listenerSetter.add(this.checkboxField.input)('change', onChange);
+          else this.checkboxField.input.addEventListener('change', onChange);
         }
       }
 
@@ -104,6 +111,7 @@ export default class Row {
       this.title = document.createElement('div');
       this.title.classList.add('row-title');
       this.title.setAttribute('dir', 'auto');
+      if(options.noWrap) this.title.classList.add('no-wrap');
       if(options.title) {
         if(typeof(options.title) === 'string') {
           this.title.innerHTML = options.title;
@@ -149,10 +157,10 @@ export default class Row {
 
     if(options.clickable || options.radioField || options.checkboxField) {
       if(typeof(options.clickable) === 'function') {
-        this.container.addEventListener('click', (e) => {
+        attachClickEvent(this.container, (e) => {
           if(this.freezed) return;
           (options.clickable as any)(e);
-        });
+        }, {listenerSetter: options.listenerSetter});
       }
 
       this.container.classList.add('row-clickable', 'hover-effect');

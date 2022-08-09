@@ -117,7 +117,8 @@ export default class AppEditContactTab extends SliderSuperTab {
 
         if(!isNew) {
           const notificationsRow = new Row({
-            checkboxField: notificationsCheckboxField
+            checkboxField: notificationsCheckboxField,
+            listenerSetter: this.listenerSetter
           });
 
           const enabled = !(await this.managers.appNotificationsManager.isPeerLocalMuted(this.peerId, false));

@@ -152,7 +152,7 @@ export default class SidebarSlider {
       if(tab.onCloseAfterTimeout) {
         setTimeout(() => {
           tab.onCloseAfterTimeout();
-        }, TRANSITION_TIME);
+        }, TRANSITION_TIME + 30);
       }
     }
   }

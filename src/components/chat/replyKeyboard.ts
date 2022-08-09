@@ -19,6 +19,7 @@ import safeAssign from '../../helpers/object/safeAssign';
 import setInnerHTML from '../../helpers/dom/setInnerHTML';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import {AppManagers} from '../../lib/appManagers/managers';
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
 
 export default class ReplyKeyboard extends DropdownHover {
   private static BASE_CLASS = 'reply-keyboard';
@@ -74,7 +75,7 @@ export default class ReplyKeyboard extends DropdownHover {
       }
     });
 
-    this.listenerSetter.add(this.element)('click', (e) => {
+    attachClickEvent(this.element, (e) => {
       const target = findUpClassName(e.target, 'btn');
       if(!target) {
         return;
@@ -103,7 +104,7 @@ export default class ReplyKeyboard extends DropdownHover {
       }
 
       this.toggle(false);
-    });
+    }, {listenerSetter: this.listenerSetter});
 
     return super.init();
   }

@@ -52,6 +52,7 @@ const icons = [
   'mastercard',
   'visa',
   'unionpay',
+  'mir',
   'logo'
 ];
 
@@ -134,17 +135,6 @@ export default class PopupPayment extends PopupElement {
       }
 
       this.hide();
-      showSuccessToast();
-    };
-
-    const showSuccessToast = () => {
-      toastNew({
-        langPackKey: 'PaymentInfoHint',
-        langPackArguments: [
-          paymentsWrapCurrencyAmount(getTotalTotal(), currency),
-          wrapEmojiText(title)
-        ]
-      });
     };
 
     let {paymentForm, message} = this;
@@ -182,7 +172,7 @@ export default class PopupPayment extends PopupElement {
     let photoEl: HTMLElement;
     if(photo) {
       photoEl = document.createElement('div');
-      photoEl.classList.add(detailsClassName + '-photo', 'media-container-cover');
+      photoEl.classList.add(detailsClassName + '-photo', 'media-container-contain');
       wrapPhoto({
         photo: photo,
         container: photoEl,
@@ -238,7 +228,11 @@ export default class PopupPayment extends PopupElement {
       wrapPeerTitle({peerId: paymentForm.provider_id.toPeerId()})
     ]);
 
-    // console.log(paymentForm, lastRequestedInfo);
+    console.log(paymentForm, lastRequestedInfo);
+
+    await peerTitle.update({peerId: paymentForm.bot_id.toPeerId()});
+    preloaderContainer.remove();
+    this.element.classList.remove('is-loading');
 
     const wrapAmount = (amount: string | number, skipSymbol?: boolean) => {
       return paymentsWrapCurrencyAmount(amount, currency, skipSymbol);
@@ -274,8 +268,8 @@ export default class PopupPayment extends PopupElement {
         const _label = makeLabel();
         _label.left.textContent = label;
 
-        const wrappedAmount = wrapAmount(Math.abs(+amount));
-        _label.right.textContent = (amount < 0 ? '-' : '') + wrappedAmount;
+        const wrappedAmount = wrapAmount(amount);
+        _label.right.textContent = wrappedAmount;
 
         return _label.label;
       });
@@ -303,7 +297,7 @@ export default class PopupPayment extends PopupElement {
     _i18n(totalLabel.left, 'PaymentTransactionTotal');
     const totalAmount = accumulate(invoice.prices.map(({amount}) => +amount), 0);
 
-    const canTip = invoice.max_tip_amount !== undefined;
+    const canTip = (invoice.max_tip_amount !== undefined && !isReceipt) || !!(paymentForm as PaymentsPaymentReceipt).tip_amount;
     if(canTip) {
       const tipsClassName = className + '-tips';
 
@@ -331,7 +325,7 @@ export default class PopupPayment extends PopupElement {
           placeCaretAtEnd(input);
         }
 
-        unsetActiveTip();
+        unsetActiveTip && unsetActiveTip();
         const tipEl = this.tipButtonsMap.get(amount);
         if(tipEl) {
           tipEl.classList.add('active');
@@ -350,7 +344,12 @@ export default class PopupPayment extends PopupElement {
       input.classList.add('input-clear', tipsClassName + '-input');
       tipsLabel.right.append(input);
 
-      tipsLabel.label.style.cursor = 'text';
+      if(!isReceipt) {
+        tipsLabel.label.style.cursor = 'text';
+      } else {
+        tipsLabel.label.classList.add('disable-hover');
+      }
+
       tipsLabel.label.addEventListener('mousedown', (e) => {
         if(!findUpAsChild(e.target, input)) {
           placeCaretAtEnd(input);
@@ -399,53 +398,58 @@ export default class PopupPayment extends PopupElement {
       pricesElements.push(tipsLabel.label);
 
       //
-      const tipsEl = document.createElement('div');
-      tipsEl.classList.add(tipsClassName);
+      let unsetActiveTip: () => void;
+      if(!isReceipt) {
+        const tipsEl = document.createElement('div');
+        tipsEl.classList.add(tipsClassName);
 
-      const tipClassName = tipsClassName + '-tip';
-      const tipButtons = invoice.suggested_tip_amounts.map((tipAmount) => {
-        const button = Button(tipClassName, {noRipple: true});
-        button.textContent = wrapAmount(tipAmount);
+        const tipClassName = tipsClassName + '-tip';
+        const tipButtons = invoice.suggested_tip_amounts.map((tipAmount) => {
+          const button = Button(tipClassName, {noRipple: true});
+          button.textContent = wrapAmount(tipAmount);
 
-        this.tipButtonsMap.set(+tipAmount, button);
-        return button;
-      });
+          this.tipButtonsMap.set(+tipAmount, button);
+          return button;
+        });
 
-      const unsetActiveTip = () => {
-        const prevTipEl = tipsEl.querySelector('.active');
-        if(prevTipEl) {
-          prevTipEl.classList.remove('active');
-        }
-      };
+        unsetActiveTip = () => {
+          const prevTipEl = tipsEl.querySelector('.active');
+          if(prevTipEl) {
+            prevTipEl.classList.remove('active');
+          }
+        };
 
-      attachClickEvent(tipsEl, (e) => {
-        const tipEl = findUpClassName(e.target, tipClassName);
-        if(!tipEl) {
-          return;
-        }
+        attachClickEvent(tipsEl, (e) => {
+          const tipEl = findUpClassName(e.target, tipClassName);
+          if(!tipEl) {
+            return;
+          }
 
-        let tipAmount = 0;
-        if(tipEl.classList.contains('active')) {
-          tipEl.classList.remove('active');
-        } else {
-          unsetActiveTip();
-          tipEl.classList.add('active');
+          let tipAmount = 0;
+          if(tipEl.classList.contains('active')) {
+            tipEl.classList.remove('active');
+          } else {
+            unsetActiveTip();
+            tipEl.classList.add('active');
 
-          for(const [amount, el] of this.tipButtonsMap) {
-            if(el === tipEl) {
-              tipAmount = amount;
-              break;
+            for(const [amount, el] of this.tipButtonsMap) {
+              if(el === tipEl) {
+                tipAmount = amount;
+                break;
+              }
             }
           }
-        }
 
-        setInputValue(tipAmount);
-      });
+          setInputValue(tipAmount);
+        });
 
-      setInputValue(0);
+        setInputValue(0);
 
-      tipsEl.append(...tipButtons);
-      pricesElements.push(tipsEl);
+        tipsEl.append(...tipButtons);
+        pricesElements.push(tipsEl);
+      } else {
+        setInputValue((paymentForm as PaymentsPaymentReceipt).tip_amount);
+      }
     } else {
       setTotal();
     }
@@ -476,6 +480,7 @@ export default class PopupPayment extends PopupElement {
         options.subtitleLangKey = options.titleLangKey;
       }
 
+      options.noWrap = true;
       const row = new Row(options);
       row.container.classList.add(className + '-row');
 
@@ -489,7 +494,7 @@ export default class PopupPayment extends PopupElement {
     const setRowTitle = (row: Row, textContent: string) => {
       row.title.textContent = textContent;
       if(!textContent) {
-        const e = I18n.weakMap.get(row.subtitle) as I18n.IntlElement;
+        const e = I18n.weakMap.get(row.subtitle.firstElementChild as HTMLElement) as I18n.IntlElement;
         row.title.append(i18n(e.key));
       }
 
@@ -558,7 +563,8 @@ export default class PopupPayment extends PopupElement {
 
       const postAddress = shippingAddress.shipping_address;
       setRowTitle(shippingAddressRow, [postAddress.city, postAddress.street_line1, postAddress.street_line2].filter(Boolean).join(', '));
-      shippingMethodRow.container.classList.remove('hide');
+
+      shippingMethodRow.container.classList.toggle('hide', !lastRequestedInfo && !isReceipt);
     } : undefined;
 
     const setShippingInfo = (info: PaymentRequestedInfo) => {
@@ -601,7 +607,13 @@ export default class PopupPayment extends PopupElement {
         shippingAmount = accumulate(shippingOption.prices.map(({amount}) => +amount), 0);
         lastShippingPricesElements = makePricesElements(shippingOption.prices);
         let l = totalLabel.label;
-        if(canTip) l = l.previousElementSibling.previousElementSibling as any;
+        if(canTip) {
+          l = l.previousElementSibling as any;
+          if(!isReceipt) {
+            l = l.previousElementSibling as any;
+          }
+        }
+
         lastShippingPricesElements.forEach((element) => l.parentElement.insertBefore(element, l));
 
         setTotal();
@@ -617,7 +629,7 @@ export default class PopupPayment extends PopupElement {
 
       let lastShippingPricesElements: HTMLElement[];
       shippingMethodRow = createRow({
-        icon: 'car',
+        icon: 'shipping',
         titleLangKey: 'PaymentCheckoutShippingMethod',
         clickable: !isReceipt && (onShippingMethodClick = () => {
           new PopupPaymentShippingMethods(paymentForm as PaymentsPaymentForm, lastRequestedInfo, lastShippingOption).addEventListener('finish', (shippingOption) => {
@@ -762,6 +774,11 @@ export default class PopupPayment extends PopupElement {
             onConfirmed();
           } else {
             popupPaymentVerification = new PopupPaymentVerification(paymentResult.url);
+            popupPaymentVerification.addEventListener('finish', () => {
+              popupPaymentVerification = undefined;
+
+              onConfirmed();
+            });
             await new Promise<void>((resolve, reject) => {
               popupPaymentVerification.addEventListener('close', () => {
                 popupPaymentVerification = undefined;
@@ -773,11 +790,6 @@ export default class PopupPayment extends PopupElement {
                   reject(err);
                 }
               });
-            });
-
-            popupPaymentVerification.addEventListener('finish', () => {
-              popupPaymentVerification = undefined;
-              onConfirmed();
             });
           }
         } catch(err) {

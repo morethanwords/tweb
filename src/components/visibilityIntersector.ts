@@ -5,20 +5,21 @@
  */
 
 type TargetType = HTMLElement;
-export type OnVisibilityChange = (target: TargetType, visible: boolean) => void;
+export type OnVisibilityChangeItem = {target: TargetType, visible: boolean, entry: IntersectionObserverEntry};
+export type OnVisibilityChange = (item: OnVisibilityChangeItem) => void;
 
 export default class VisibilityIntersector {
   private observer: IntersectionObserver;
   private items: Map<TargetType, boolean> = new Map();
   private locked = false;
 
-  constructor(onVisibilityChange: OnVisibilityChange) {
+  constructor(onVisibilityChange: OnVisibilityChange, options?: IntersectionObserverInit) {
     this.observer = new IntersectionObserver((entries) => {
       if(this.locked) {
         return;
       }
 
-      const changed: {target: TargetType, visible: boolean}[] = [];
+      const changed: OnVisibilityChangeItem[] = [];
 
       entries.forEach((entry) => {
         const target = entry.target as TargetType;
@@ -37,15 +38,19 @@ export default class VisibilityIntersector {
           return;
         } */
 
-        changed[entry.isIntersecting ? 'unshift' : 'push']({target, visible: entry.isIntersecting});
+        const change: typeof changed[0] = {target, visible: entry.isIntersecting, entry};
+
+        // ! order will be incorrect so can't use it
+        // changed[entry.isIntersecting ? 'unshift' : 'push'](change);
+        changed.push(change);
 
         // onVisibilityChange(target, entry.isIntersecting);
       });
 
-      changed.forEach((smth) => {
-        onVisibilityChange(smth.target, smth.visible);
+      changed.forEach((item) => {
+        onVisibilityChange(item);
       });
-    });
+    }, options);
   }
 
   public getVisible() {

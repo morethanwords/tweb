@@ -37,7 +37,7 @@ const opts = {
   'version': 3,
   'ifdef-verbose': devMode, // add this for verbose output
   'ifdef-triple-slash': false, // add this to use double slash comment instead of default triple slash
-  'ifdef-fill-with-blanks': true, // add this to remove code with blank spaces instead of "//" comments
+  'ifdef-fill-with-blanks': true // add this to remove code with blank spaces instead of "//" comments
 };
 
 const domain = 'yourdomain.com';
@@ -45,17 +45,17 @@ const localIp = '192.168.92.78';
 
 const middleware = (req, res, next) => {
   let IP = '';
-  if (req.headers['cf-connecting-ip']) {
+  if(req.headers['cf-connecting-ip']) {
     IP = req.headers['cf-connecting-ip'];
   } else {
     IP = req.connection.remoteAddress.split(':').pop();
   }
 
-  if (!allowedIPs.includes(IP) && !/^192\.168\.\d{1,3}\.\d{1,3}$/.test(IP)) {
+  if(!allowedIPs.includes(IP) && !/^192\.168\.\d{1,3}\.\d{1,3}$/.test(IP)) {
     console.log('Bad IP connecting: ' + IP, req.url);
     res.status(404).send('Nothing interesting here.');
   } else {
-    if (req.url.indexOf('/assets/') !== 0) {
+    if(req.url.indexOf('/assets/') !== 0) {
       console.log(req.url, IP);
     }
 
@@ -83,8 +83,8 @@ module.exports = {
           {
             loader: 'css-loader',
             options: {
-              url: false,
-            },
+              url: false
+            }
           },
 
           devMode ? undefined : MediaQueryPlugin.loader,
@@ -100,18 +100,18 @@ module.exports = {
               // Webpack 5
               postcssOptions: {
                 plugins: [
-                  postcssPresetEnv(),
-                ],
-              },
-            },
+                  postcssPresetEnv()
+                ]
+              }
+            }
           },
           {
             loader: 'sass-loader',
             options: {
-              sourceMap: devMode,
-            },
-          },
-        ].filter(Boolean),
+              sourceMap: devMode
+            }
+          }
+        ].filter(Boolean)
       },
       // {
       //   test: /\.worker\.ts$/i,
@@ -125,26 +125,26 @@ module.exports = {
         use: [
           // { loader: 'babel-loader', options: require('./babel.config') },
           'ts-loader',
-          {loader: 'ifdef-loader', options: opts},
+          {loader: 'ifdef-loader', options: opts}
         ],
-        exclude: /node_modules/,
+        exclude: /node_modules/
       },
       {
         test: /\.hbs$/,
         loader: 'handlebars-loader',
         options: {
-          helperDirs: __dirname + '/handlebarsHelpers',
-        },
+          helperDirs: __dirname + '/handlebarsHelpers'
+        }
         // loader: 'handlebars-loader?helperDirs[]=' + __dirname + '/handlebarsHelpers',
         // use: [
         //   'handlebars-loader'
         // ]
-      },
-    ],
+      }
+    ]
   },
 
   resolve: {
-    extensions: ['.ts', '.js'],
+    extensions: ['.ts', '.js']
   },
 
   entry: './src/index.ts',
@@ -166,8 +166,8 @@ module.exports = {
 
     // Webpack 5
     clean: {
-      keep: keepAsset,
-    },
+      keep: keepAsset
+    }
   },
 
   devServer: {
@@ -188,10 +188,10 @@ module.exports = {
     http2: useLocalNotLocal ? true : (useLocal ? undefined : true),
     https: useLocal ? undefined : {
       key: fs.readFileSync(__dirname + '/certs/server-key.pem', 'utf8'),
-      cert: fs.readFileSync(__dirname + '/certs/server-cert.pem', 'utf8'),
+      cert: fs.readFileSync(__dirname + '/certs/server-cert.pem', 'utf8')
     },
     allowedHosts: useLocal ? undefined : [
-      domain,
+      domain
     ],
     host: useLocalNotLocal ? localIp : (useLocal ? undefined : '0.0.0.0'),
     // host: domain, // '0.0.0.0'
@@ -207,8 +207,8 @@ module.exports = {
     },
     client: {
       overlay: true,
-      progress: false,
-    },
+      progress: false
+    }
   },
 
   plugins: [
@@ -216,7 +216,7 @@ module.exports = {
       analyzerMode: 'static',
       openAnalyzer: false,
       generateStatsFile: false,
-      defaultSizes: 'gzip',
+      defaultSizes: 'gzip'
     }),
 
     new Dotenv(),
@@ -260,36 +260,36 @@ module.exports = {
         keepClosingSlash: true,
         minifyJS: true,
         minifyCSS: true,
-        minifyURLs: true,
+        minifyURLs: true
       },
       chunks: 'all',
-      excludeChunks: [],
+      excludeChunks: []
     }),
 
     new HtmlWebpackInjectPreload({
       files: [
         {
           match: /(mtproto).*\.js$/,
-          attributes: {rel: 'modulepreload'},
-        },
-      ],
+          attributes: {rel: 'modulepreload'}
+        }
+      ]
     }),
 
     new MiniCssExtractPlugin({
       // Options similar to the same options in webpackOptions.output
       // both options are optional
       filename: '[name].[contenthash].css',
-      chunkFilename: '[id].[contenthash].css',
+      chunkFilename: '[id].[contenthash].css'
     }),
 
     new MediaQueryPlugin({
       include: [
-        'style',
+        'style'
       ],
       queries: {
         'only screen and (max-width: 720px)': 'mobile',
-        'only screen and (min-width: 721px)': 'desktop',
-      },
+        'only screen and (min-width: 721px)': 'desktop'
+      }
     }),
 
     new RetryChunkLoadPlugin({
@@ -301,13 +301,13 @@ module.exports = {
       // optional value to set the amount of time in milliseconds before trying to load the chunk again. Default is 0
       retryDelay: 3000,
       // optional value to set the maximum number of retries to load the chunk. Default is 1
-      maxRetries: 999999,
+      maxRetries: 999999
       // optional list of chunks to which retry script should be injected
       // if not set will add retry script to all chunks that have webpack script loading
       // chunks: ['chunkName'],
       // optional code to be executed in the browser context if after all retries chunk is not loaded.
       // if not set - nothing will happen and error will be returned to the chunk loader.
       // lastResortScript: "window.location.href='/500.html';",
-    }),
-  ].filter(Boolean),
+    })
+  ].filter(Boolean)
 };

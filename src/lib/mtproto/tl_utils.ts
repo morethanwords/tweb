@@ -17,15 +17,13 @@ import isObject from '../../helpers/object/isObject';
 import gzipUncompress from '../../helpers/gzipUncompress';
 import bigInt from 'big-integer';
 import ulongFromInts from '../../helpers/long/ulongFromInts';
+import { safeBigInt } from '../../helpers/bigInt/bigIntConstants';
+import { bigIntToSigned, bigIntToUnsigned } from '../../helpers/bigInt/bigIntConversion';
 
 const boolFalse = +Schema.API.constructors.find((c) => c.predicate === 'boolFalse').id;
 const boolTrue = +Schema.API.constructors.find((c) => c.predicate === 'boolTrue').id;
 const vector = +Schema.API.constructors.find((c) => c.predicate === 'vector').id;
 const gzipPacked = +Schema.MTProto.constructors.find((c) => c.predicate === 'gzip_packed').id;
-
-const safeBigInt = bigInt(Number.MAX_SAFE_INTEGER);
-const ulongBigInt = bigInt(bigInt[2]).pow(64);
-const longBigInt = ulongBigInt.divide(bigInt[2]);
 
 class TLSerialization {
   private maxLength = 2048; // 2Kb
@@ -151,11 +149,7 @@ class TLSerialization {
       }
     }
 
-    let _bigInt = bigInt(sLong as string);
-    if(_bigInt.isNegative()) { // make it unsigned
-      _bigInt = ulongBigInt.add(_bigInt);
-    }
-
+    const _bigInt = bigIntToUnsigned(bigInt(sLong as string));
     const {quotient, remainder} = _bigInt.divmod(0x100000000);
     const high = quotient.toJSNumber();
     const low = remainder.toJSNumber();
@@ -504,8 +498,8 @@ class TLDeserialization<FetchLongAs extends Long> {
     const iHigh = this.readInt((field || '') + ':long[high]');
 
     let ulong = ulongFromInts(iHigh, iLow);
-    if(/* !unsigned &&  */!this.mtproto && ulong.greater(longBigInt)) { // make it signed
-      ulong = ulong.minus(ulongBigInt);
+    if(/* !unsigned &&  */!this.mtproto) { // make it signed
+      ulong = bigIntToSigned(ulong);
     }
 
     if(!this.mtproto) {

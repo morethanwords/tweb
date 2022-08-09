@@ -75,7 +75,8 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
         subtitle: '',
         clickable: () => {
           openTab(AppAutoDownloadPhotoTab);
-        }
+        },
+        listenerSetter: this.listenerSetter
       });
 
       const videoRow = new Row({
@@ -83,7 +84,8 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
         subtitle: '',
         clickable: () => {
           openTab(AppAutoDownloadVideoTab);
-        }
+        },
+        listenerSetter: this.listenerSetter
       });
 
       const fileRow = new Row({
@@ -91,7 +93,8 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
         subtitle: '',
         clickable: () => {
           openTab(AppAutoDownloadFileTab);
-        }
+        },
+        listenerSetter: this.listenerSetter
       });
 
       const resetButton = Button('btn-primary btn-transparent primary', {icon: 'delete', text: 'ResetAutomaticMediaDownload'});
@@ -154,13 +157,15 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
         text: 'AutoplayGIF',
         name: 'gifs',
         stateKey: 'settings.autoPlay.gifs',
-        withRipple: true
+        withRipple: true,
+        listenerSetter: this.listenerSetter
       });
       const videosCheckboxField = new CheckboxField({
         text: 'AutoplayVideo',
         name: 'videos',
         stateKey: 'settings.autoPlay.videos',
-        withRipple: true
+        withRipple: true,
+        listenerSetter: this.listenerSetter
       });
 
       section.content.append(gifsCheckboxField.label, videosCheckboxField.label);

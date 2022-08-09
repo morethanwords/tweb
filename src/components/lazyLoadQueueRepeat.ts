@@ -11,10 +11,11 @@ import VisibilityIntersector, {OnVisibilityChange} from './visibilityIntersector
 export default class LazyLoadQueueRepeat extends LazyLoadQueueIntersector {
   private _queue: Map<HTMLElement, LazyLoadElement> = new Map();
 
-  constructor(parallelLimit?: number, protected onVisibilityChange?: OnVisibilityChange) {
+  constructor(parallelLimit?: number, protected onVisibilityChange?: OnVisibilityChange, options?: IntersectionObserverInit) {
     super(parallelLimit);
 
-    this.intersector = new VisibilityIntersector((target, visible) => {
+    this.intersector = new VisibilityIntersector((item) => {
+      const {target, visible} = item;
       const spliced = findAndSpliceAll(this.queue, (i) => i.div === target);
       if(visible) {
         const items = spliced.length ? spliced : [this._queue.get(target)];
@@ -23,9 +24,9 @@ export default class LazyLoadQueueRepeat extends LazyLoadQueueIntersector {
         });
       }
 
-      this.onVisibilityChange && this.onVisibilityChange(target, visible);
+      this.onVisibilityChange && this.onVisibilityChange(item);
       this.setProcessQueueTimeout();
-    });
+    }, options);
   }
 
   public clear() {

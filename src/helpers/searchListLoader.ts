@@ -191,20 +191,20 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
     }
   }
 
-  public getPrevious() {
+  public getPrevious(withOtherSide?: boolean) {
     let previous = this.previous;
 
-    if(this.otherSideLoader) {
+    if(this.otherSideLoader && withOtherSide) {
       previous = previous.concat(this.otherSideLoader.previous);
     }
 
     return previous;
   }
 
-  public getNext() {
+  public getNext(withOtherSide?: boolean) {
     let next = this.next;
 
-    if(this.otherSideLoader) {
+    if(this.otherSideLoader && withOtherSide) {
       next = next.concat(this.otherSideLoader.next);
     }
 

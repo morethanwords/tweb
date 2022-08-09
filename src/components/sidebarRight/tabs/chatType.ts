@@ -78,7 +78,8 @@ export default class AppChatTypeTab extends SliderSuperTabEventable {
       clickable: () => {
         copyTextToClipboard((this.chatFull.exported_invite as ExportedChatInvite.chatInviteExported).link);
         toast(I18n.format('LinkCopied', true));
-      }
+      },
+      listenerSetter: this.listenerSetter
     });
 
     const btnRevoke = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'RevokeLink'});

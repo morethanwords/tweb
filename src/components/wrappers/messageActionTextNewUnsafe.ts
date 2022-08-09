@@ -267,7 +267,10 @@ export default async function wrapMessageActionTextNewUnsafe(message: MyMessage,
             managers.appMessagesManager.fetchMessageReplyTo(message);
           } else {
             langPackKey = isRecurringUsed ? 'Chat.Service.PaymentSentRecurringUsed' : (isRecurringInit ? 'Chat.Service.PaymentSentRecurringInit' : 'Chat.Service.PaymentSent1');
-            args.push(wrapLinkToMessage(invoiceMessage, plain));
+            args.push(wrapLinkToMessage(invoiceMessage, plain).then((el) => {
+              el.classList.add('is-receipt-link');
+              return el;
+            }));
           }
         }
 

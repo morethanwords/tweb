@@ -4030,7 +4030,8 @@ export class AppMessagesManager extends AppManager {
     if(message._ === 'messageService' && message.action._ === 'messageActionPaymentSent' && message.reply_to) {
       this.rootScope.dispatchEvent('payment_sent', {
         peerId: message.reply_to.reply_to_peer_id ? this.appPeersManager.getPeerId(message.reply_to.reply_to_peer_id) : message.peerId,
-        mid: message.reply_to_mid
+        mid: message.reply_to_mid,
+        receiptMessage: message
       });
     }
 
@@ -4259,8 +4260,8 @@ export class AppMessagesManager extends AppManager {
       }
 
       releaseUnreadCount();
-      this.rootScope.dispatchEvent('dialogs_multiupdate', {[peerId]: dialog});
       this.dialogsStorage.setDialogToState(dialog);
+      this.rootScope.dispatchEvent('dialogs_multiupdate', {[peerId]: dialog});
     }
   };
 
@@ -4320,8 +4321,8 @@ export class AppMessagesManager extends AppManager {
       if(isTopMessage || (message as Message.message).grouped_id) {
         const updatedDialogs: {[peerId: PeerId]: Dialog} = {};
         updatedDialogs[peerId] = dialog;
-        this.rootScope.dispatchEvent('dialogs_multiupdate', updatedDialogs);
         this.dialogsStorage.setDialogToState(dialog);
+        this.rootScope.dispatchEvent('dialogs_multiupdate', updatedDialogs);
       }
     }
   };

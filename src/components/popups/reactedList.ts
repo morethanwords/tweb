@@ -185,7 +185,7 @@ export default class PopupReactedList extends PopupElement {
 
       const loader = loaders.get(tabContent);
       loader.load();
-    });
+    }, undefined, undefined, undefined, this.listenerSetter);
 
     // selectTab(hasAllReactions && hasReadParticipants ? 1 : 0, false);
     selectTab(0, false);

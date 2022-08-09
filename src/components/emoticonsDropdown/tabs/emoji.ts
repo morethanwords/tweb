@@ -24,6 +24,7 @@ import {AppManagers} from '../../../lib/appManagers/managers';
 import fixEmoji from '../../../lib/richTextProcessor/fixEmoji';
 import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
 import wrapSingleEmoji from '../../../lib/richTextProcessor/wrapSingleEmoji';
+import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 
 const loadedURLs: Set<string> = new Set();
 export function appendEmoji(emoji: string, container: HTMLElement, prepend = false, unify = false) {
@@ -258,7 +259,7 @@ export default class EmojiTab implements EmoticonsTab {
       });
     });
 
-    this.content.addEventListener('click', this.onContentClick);
+    attachClickEvent(this.content, this.onContentClick);
     this.init = null;
 
     rootScope.addEventListener('emoji_recent', (emoji) => {

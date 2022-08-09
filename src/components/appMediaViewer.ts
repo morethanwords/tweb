@@ -7,6 +7,8 @@
 import MEDIA_MIME_TYPES_SUPPORTED from '../environment/mediaMimeTypesSupport';
 import cancelEvent from '../helpers/dom/cancelEvent';
 import {attachClickEvent, detachClickEvent} from '../helpers/dom/clickEvent';
+import findUpClassName from '../helpers/dom/findUpClassName';
+import findUpTag from '../helpers/dom/findUpTag';
 import setInnerHTML from '../helpers/dom/setInnerHTML';
 import mediaSizes from '../helpers/mediaSizes';
 import SearchListLoader from '../helpers/searchListLoader';
@@ -68,7 +70,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     this.content.main.prepend(stub); */
 
     this.content.caption = document.createElement('div');
-    this.content.caption.classList.add(MEDIA_VIEWER_CLASSNAME + '-caption'/* , 'media-viewer-stub' */);
+    this.content.caption.classList.add(MEDIA_VIEWER_CLASSNAME + '-caption', 'message'/* , 'media-viewer-stub' */);
 
     let captionTimeout: number;
     const setCaptionTimeout = () => {
@@ -129,8 +131,10 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     attachClickEvent(this.author.container, this.onAuthorClick);
 
     const onCaptionClick = (e: MouseEvent) => {
-      if(e.target instanceof HTMLAnchorElement) { // close viewer if it's t.me/ redirect
-        const onclick = (e.target as HTMLElement).getAttribute('onclick');
+      const a = findUpTag(e.target, 'A');
+      const spoiler = findUpClassName(e.target, 'spoiler');
+      if(a instanceof HTMLAnchorElement && (!spoiler || this.content.caption.classList.contains('is-spoiler-visible'))) { // close viewer if it's t.me/ redirect
+        const onclick = a.getAttribute('onclick');
         if(!onclick || onclick.includes('showMaskedAlert')) {
           return;
         }
@@ -138,15 +142,15 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
         cancelEvent(e);
 
         this.close().then(() => {
-          detachClickEvent(this.content.caption, onCaptionClick, {capture: true});
-          (e.target as HTMLAnchorElement).click();
+          this.content.caption.removeEventListener('click', onCaptionClick, {capture: true});
+          a.click();
         });
 
         return false;
       }
     };
 
-    attachClickEvent(this.content.caption, onCaptionClick, {capture: true});
+    this.content.caption.addEventListener('click', onCaptionClick, {capture: true});
   }
 
   /* public close(e?: MouseEvent) {

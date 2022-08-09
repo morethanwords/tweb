@@ -69,6 +69,8 @@ import {attachContextMenuListener} from '../helpers/dom/attachContextMenuListene
 import contextMenuController from '../helpers/contextMenuController';
 import positionMenu from '../helpers/positionMenu';
 import apiManagerProxy from '../lib/mtproto/mtprotoworker';
+import ListenerSetter from '../helpers/listenerSetter';
+import SwipeHandler from './swipeHandler';
 
 // const testScroll = false;
 
@@ -107,7 +109,8 @@ class SearchContextMenu {
 
   constructor(
     private attachTo: HTMLElement,
-    private searchSuper: AppSearchSuper
+    private searchSuper: AppSearchSuper,
+    private listenerSetter: ListenerSetter
   ) {
     this.managers = searchSuper.managers;
 
@@ -162,7 +165,7 @@ class SearchContextMenu {
     if(IS_TOUCH_SUPPORTED) {
 
     } else {
-      attachContextMenuListener(attachTo, onContextMenu as any);
+      attachContextMenuListener(attachTo, onContextMenu as any, listenerSetter);
     }
   }
 
@@ -323,14 +326,18 @@ export default class AppSearchSuper {
   public managers: AppManagers;
   private loadFirstTimePromise: Promise<void>;
 
+  private listenerSetter: ListenerSetter;
+  private swipeHandler: SwipeHandler;
+
   constructor(options: Pick<AppSearchSuper, 'mediaTabs' | 'scrollable' | 'searchGroups' | 'asChatList' | 'groupByMonth' | 'hideEmptyTabs' | 'onChangeTab' | 'showSender' | 'managers'>) {
     safeAssign(this, options);
 
     this.container = document.createElement('div');
     this.container.classList.add('search-super');
 
-    this.searchContextMenu = new SearchContextMenu(this.container, this);
-    this.selection = new SearchSelection(this, this.managers);
+    this.listenerSetter = new ListenerSetter();
+    this.searchContextMenu = new SearchContextMenu(this.container, this, this.listenerSetter);
+    this.selection = new SearchSelection(this, this.managers, this.listenerSetter);
 
     const navScrollableContainer = this.navScrollableContainer = document.createElement('div');
     navScrollableContainer.classList.add('search-super-tabs-scrollable', 'menu-horizontal-scrollable', 'sticky');
@@ -369,7 +376,7 @@ export default class AppSearchSuper {
 
     let unlockScroll: ReturnType<typeof lockTouchScroll>;
     if(IS_TOUCH_SUPPORTED) {
-      handleTabSwipe({
+      this.swipeHandler = handleTabSwipe({
         element: this.tabsContainer,
         onSwipe: (xDiff, yDiff, e) => {
           const prevId = this.selectTab.prevId();
@@ -521,14 +528,14 @@ export default class AppSearchSuper {
       }
 
       this.onTransitionEnd();
-    }, undefined, navScrollable);
+    }, undefined, navScrollable, this.listenerSetter);
 
     attachClickEvent(this.tabsContainer, (e) => {
       if(this.selection.isSelecting) {
         cancelEvent(e);
         this.selection.toggleByElement(findUpClassName(e.target, 'search-super-item'));
       }
-    }, {capture: true, passive: false});
+    }, {capture: true, passive: false, listenerSetter: this.listenerSetter});
 
     const onMediaClick = async(className: string, targetClassName: string, inputFilter: MyInputMessagesFilter, e: MouseEvent) => {
       const target = findUpClassName(e.target as HTMLDivElement, className);
@@ -560,8 +567,8 @@ export default class AppSearchSuper {
       .openMedia(message, targets[idx].element, 0, false, targets.slice(0, idx), targets.slice(idx + 1));
     };
 
-    attachClickEvent(this.tabs.inputMessagesFilterPhotoVideo, onMediaClick.bind(null, 'grid-item', 'grid-item', 'inputMessagesFilterPhotoVideo'));
-    attachClickEvent(this.tabs.inputMessagesFilterDocument, onMediaClick.bind(null, 'document-with-thumb', 'media-container', 'inputMessagesFilterDocument'));
+    attachClickEvent(this.tabs.inputMessagesFilterPhotoVideo, onMediaClick.bind(null, 'grid-item', 'grid-item', 'inputMessagesFilterPhotoVideo'), {listenerSetter: this.listenerSetter});
+    attachClickEvent(this.tabs.inputMessagesFilterDocument, onMediaClick.bind(null, 'document-with-thumb', 'media-container', 'inputMessagesFilterDocument'), {listenerSetter: this.listenerSetter});
 
     /* attachClickEvent(this.tabs.inputMessagesFilterUrl, (e) => {
       const target = e.target as HTMLElement;
@@ -581,7 +588,7 @@ export default class AppSearchSuper {
       this.lazyLoadQueue.lock();
     }, () => {
       this.lazyLoadQueue.unlockAndRefresh(); // ! maybe not so efficient
-    });
+    }, this.listenerSetter);
   }
 
   private onTransitionStart = () => {
@@ -920,7 +927,7 @@ export default class AppSearchSuper {
         element.dataset.peerId = '' + message.peerId;
         monthContainer.items[method](element);
 
-        if(this.selection.isSelecting) {
+        if(this.selection?.isSelecting) {
           this.selection.toggleElementCheckbox(element, true);
         }
       });
@@ -1524,7 +1531,7 @@ export default class AppSearchSuper {
       this.usedFromHistory[mediaTab.inputFilter] = -1;
     });
 
-    if(this.selection.isSelecting) {
+    if(this.selection?.isSelecting) {
       this.selection.cancelSelection();
     }
 
@@ -1640,5 +1647,19 @@ export default class AppSearchSuper {
     this.historyStorage = historyStorage ?? {};
 
     this.cleanup();
+  }
+
+  public destroy() {
+    this.listenerSetter.removeAll();
+    this.scrollable.destroy();
+    this.swipeHandler?.removeListeners();
+    this.selection?.cleanup();
+
+    this.scrollStartCallback = undefined;
+    this.onChangeTab = undefined;
+    this.selectTab = undefined;
+    this.searchContextMenu = undefined;
+    this.swipeHandler = undefined;
+    this.selection = undefined;
   }
 }

@@ -439,6 +439,11 @@ export default class Chat extends EventListenerBase<{
       this.inited = true;
     }
 
+    // const appMediaViewer = (window as any).appMediaViewer as AppMediaViewerBase<any, any, any>;
+    // if(appMediaViewer) {
+    //   appMediaViewer.close();
+    // }
+
     const samePeer = this.peerId === peerId;
     if(!samePeer) {
       this.appImManager.dispatchEvent('peer_changing', this);
@@ -453,6 +458,11 @@ export default class Chat extends EventListenerBase<{
       this.cleanup(true);
       this.bubbles.setPeer(false, peerId);
       this.appImManager.dispatchEvent('peer_changed', peerId);
+
+      appSidebarRight.replaceSharedMediaTab();
+      this.destroySharedMediaTab();
+      this.sharedMediaTab = undefined;
+
       return;
     }
 

@@ -143,6 +143,13 @@ export class ScrollableBase {
     this.removeHeavyAnimationListener = undefined;
   }
 
+  public destroy() {
+    this.removeListeners();
+    this.onAdditionalScroll = undefined;
+    this.onScrolledTop = undefined;
+    this.onScrolledBottom = undefined;
+  }
+
   public append(element: HTMLElement) {
     this.container.append(element);
   }
@@ -172,7 +179,8 @@ export class ScrollableBase {
     if((!this.onScrolledTop && !this.onScrolledBottom) && !this.splitUp && !this.onAdditionalScroll) return;
     if(this.onScrollMeasure) return;
     // if(this.onScrollMeasure) window.cancelAnimationFrame(this.onScrollMeasure);
-    this.onScrollMeasure = window.requestAnimationFrame(() => {
+    // this.onScrollMeasure = window.requestAnimationFrame(() => {
+    this.onScrollMeasure = window.setTimeout(() => {
       this.onScrollMeasure = 0;
 
       const scrollPosition = this.container[this.scrollProperty];
@@ -187,12 +195,14 @@ export class ScrollableBase {
       if(this.checkForTriggers) {
         this.checkForTriggers();
       }
-    });
+    // });
+    }, 200);
   };
 
   public cancelMeasure() {
     if(this.onScrollMeasure) {
-      window.cancelAnimationFrame(this.onScrollMeasure);
+      // window.cancelAnimationFrame(this.onScrollMeasure);
+      clearTimeout(this.onScrollMeasure);
       this.onScrollMeasure = 0;
     }
   }

@@ -584,23 +584,29 @@ export class AppMediaPlaybackController extends EventListenerBase<{
       const listLoader = this.listLoader;
       const current = listLoader.getCurrent();
       if(!current || !verify(current)) {
-        const previous = listLoader.getPrevious();
-
-        let idx = previous.findIndex(verify);
         let jumpLength: number;
-        if(idx !== -1) {
-          jumpLength = -(previous.length - idx);
-        } else {
-          idx = listLoader.getNext().findIndex(verify);
+
+        for(const withOtherSide of [false, true]) {
+          const previous = listLoader.getPrevious(withOtherSide);
+
+          let idx = previous.findIndex(verify);
           if(idx !== -1) {
-            jumpLength = idx + 1;
+            jumpLength = -(previous.length - idx);
+          } else {
+            const next = listLoader.getNext(withOtherSide);
+            idx = next.findIndex(verify);
+            if(idx !== -1) {
+              jumpLength = idx + 1;
+            }
+          }
+
+          if(jumpLength !== undefined) {
+            break;
           }
         }
 
-        if(idx !== -1) {
-          if(jumpLength) {
-            this.go(jumpLength, false);
-          }
+        if(jumpLength) {
+          this.go(jumpLength, false);
         } else {
           this.setTargets({peerId, mid});
         }
@@ -645,7 +651,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     const listLoader = this.listLoader;
     if(this.lockedSwitchers ||
       (!this.round && listLoader.current && !listLoader.next.length) ||
-      !listLoader.getNext().length ||
+      !listLoader.getNext(true).length ||
       !this.next()) {
       this.stop();
       this.dispatchEvent('stop');

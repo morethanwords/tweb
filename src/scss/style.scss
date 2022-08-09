@@ -542,9 +542,9 @@ input, [contenteditable=true] {
   background-color: transparent;
 }
 
-[contenteditable] [style*="bold"] {
-  font-weight: var(--font-weight-bold) !important;
-}
+// [contenteditable] [style*="bold"] {
+//   font-weight: var(--font-weight-bold) !important;
+// }
 
 input, textarea {
 	-webkit-appearance: none;
@@ -969,13 +969,13 @@ img.emoji {
   width: 100%;
 	display: grid;
 	grid-template-columns: repeat(auto-fill, var(--esg-sticker-size)); // 64px
-	grid-column-gap: 1px;
+	// grid-column-gap: 1px;
 	justify-content: space-between;
 }
 
 .super-sticker {
   @include hover-background-effect() {
-    border-radius: 10px;
+    border-radius: $border-radius-medium;
   }
   
   /* &:nth-child(5n+5) {
@@ -1268,6 +1268,16 @@ middle-ellipsis-element {
 //     height: 100%;
 //   }
 // }
+
+.media-container-contain {
+  position: relative;
+
+  .media-photo {
+    object-fit: contain;
+    max-width: 100%;
+    max-height: 100%;
+  }
+}
 
 .media-container-cover {
   position: relative;

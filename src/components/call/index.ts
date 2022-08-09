@@ -441,7 +441,7 @@ export default class PopupCall extends PopupElement {
 
     if(!this.emojisSubtitle.textContent && connectionState < CALL_STATE.EXCHANGING_KEYS) {
       Promise.resolve(instance.getEmojisFingerprint()).then((emojis) => {
-        this.emojisSubtitle.append(wrapEmojiText(emojis.join('')));
+        replaceContent(this.emojisSubtitle, wrapEmojiText(emojis.join('')));
       });
     }
 

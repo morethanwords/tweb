@@ -16,6 +16,7 @@ function makeValidationError(code?: string) {
   } : null;
 }
 
+// Luhn algorithm
 function validateCompleteCardNumber(card: string) {
   const t = '0'.charCodeAt(0);
   const n = card.length % 2;
@@ -61,7 +62,11 @@ function getCardInfoByNumber(card: string) {
 }
 
 function makeCardNumberError(str: string, length: number, ignoreIncomplete: boolean) {
-  return str.length >= length ? (validateCompleteCardNumber(str) ? null : makeValidationError('invalid')) : (ignoreIncomplete ? null : makeValidationError('incomplete'));
+  if(str.length >= length) {
+    return validateCompleteCardNumber(str) || detectCardBrand(str) === 'mir' ? null : makeValidationError('invalid');
+  }
+
+  return ignoreIncomplete ? null : makeValidationError('incomplete');
 }
 
 export function validateCardNumber(str: string, options: PatternValidationOptions = {}) {

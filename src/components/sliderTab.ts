@@ -107,10 +107,8 @@ export default class SliderSuperTab implements SliderTab {
     if(this.destroyable) { // ! WARNING, пока что это будет работать только с самой последней внутренней вкладкой !
       this.slider.tabs.delete(this);
       this.container.remove();
-    }
-
-    if(this.listenerSetter) {
-      this.listenerSetter.removeAll();
+      this.scrollable.destroy();
+      this.listenerSetter?.removeAll();
     }
   }
 

@@ -24,7 +24,7 @@ import {MOUNT_CLASS_TO} from '../../config/debug';
 import appNavigationController from '../../components/appNavigationController';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import I18n, {i18n, join, LangPackKey} from '../langPack';
-import {ChatFull, ChatInvite, ChatParticipant, ChatParticipants, Message, SendMessageAction} from '../../layer';
+import {ChatFull, ChatInvite, ChatParticipant, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction} from '../../layer';
 import {hslaStringToHex} from '../../helpers/color';
 import PeerTitle from '../../components/peerTitle';
 import PopupPeer from '../../components/popups/peer';
@@ -87,8 +87,10 @@ import groupCallsController from '../calls/groupCallsController';
 import callsController from '../calls/callsController';
 import getFilesFromEvent from '../../helpers/files/getFilesFromEvent';
 import apiManagerProxy from '../mtproto/mtprotoworker';
-import wrapPeerTitle from '../../components/wrappers/peerTitle';
 import appRuntimeManager from './appRuntimeManager';
+import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
+import findUpClassName from '../../helpers/dom/findUpClassName';
+import {CLICK_EVENT_NAME} from '../../helpers/dom/clickEvent';
 import PopupPayment from '../../components/popups/payment';
 
 export const CHAT_ANIMATION_GROUP = 'chat';
@@ -349,6 +351,59 @@ export class AppImManager extends EventListenerBase<{
       });
     });
 
+    rootScope.addEventListener('payment_sent', async({peerId, mid, receiptMessage}) => {
+      const message = await this.managers.appMessagesManager.getMessageByPeer(peerId, mid);
+      if(!message) {
+        return;
+      }
+
+      const action = receiptMessage.action as MessageAction.messageActionPaymentSent;
+      toastNew({
+        langPackKey: 'PaymentInfoHint',
+        langPackArguments: [
+          paymentsWrapCurrencyAmount(action.total_amount, action.currency),
+          wrapEmojiText(((message as Message.message).media as MessageMedia.messageMediaInvoice).title)
+        ]
+      });
+    });
+
+    (window as any).onSpoilerClick = (e: MouseEvent) => {
+      const spoiler = findUpClassName(e.target, 'spoiler');
+      const parentElement = findUpClassName(spoiler, 'message') || spoiler.parentElement;
+
+      const className = 'is-spoiler-visible';
+      const isVisible = parentElement.classList.contains(className);
+      if(!isVisible) {
+        cancelEvent(e);
+
+        if(CLICK_EVENT_NAME !== 'click') {
+          window.addEventListener('click', cancelEvent, {capture: true, once: true});
+        }
+      }
+
+      const duration = 400 / 2;
+      const showDuration = 5000;
+      const useRafs = !isVisible ? 2 : 0;
+      if(useRafs) {
+        parentElement.classList.add('will-change');
+      }
+
+      const spoilerTimeout = parentElement.dataset.spoilerTimeout;
+      if(spoilerTimeout !== null) {
+        clearTimeout(+spoilerTimeout);
+        delete parentElement.dataset.spoilerTimeout;
+      }
+
+      SetTransition(parentElement, className, true, duration, () => {
+        parentElement.dataset.spoilerTimeout = '' + window.setTimeout(() => {
+          SetTransition(parentElement, className, false, duration, () => {
+            parentElement.classList.remove('will-change');
+            delete parentElement.dataset.spoilerTimeout;
+          });
+        }, showDuration);
+      }, useRafs);
+    };
+
     apiManagerProxy.addEventListener('notificationBuild', (options) => {
       if(this.chat.peerId === options.message.peerId && !idleController.isIdle) {
         return;
@@ -360,13 +415,7 @@ export class AppImManager extends EventListenerBase<{
     this.addEventListener('peer_changed', async(peerId) => {
       document.body.classList.toggle('has-chat', !!peerId);
 
-      let str: string;
-      if(peerId) {
-        const username = await this.managers.appPeersManager.getPeerUsername(peerId);
-        str = username ? '@' + username : '' + peerId;
-      }
-
-      appNavigationController.overrideHash(str);
+      this.overrideHash(peerId);
 
       apiManagerProxy.updateTabState('chatPeerIds', this.chats.map((chat) => chat.peerId).filter(Boolean));
     });
@@ -1513,6 +1562,16 @@ export class AppImManager extends EventListenerBase<{
     }
   };
 
+  private async overrideHash(peerId?: PeerId) {
+    let str: string;
+    if(peerId) {
+      const username = await this.managers.appPeersManager.getPeerUsername(peerId);
+      str = username ? '@' + username : '' + peerId;
+    }
+
+    appNavigationController.overrideHash(str);
+  }
+
   public selectTab(id: number, animate?: boolean) {
     if(animate === false) { // * will be used for Safari iOS history swipe
       disableTransition([appSidebarLeft.sidebarEl, this.columnEl, appSidebarRight.sidebarEl]);
@@ -1521,6 +1580,9 @@ export class AppImManager extends EventListenerBase<{
     document.body.classList.toggle(LEFT_COLUMN_ACTIVE_CLASSNAME, id === 0);
 
     const prevTabId = this.tabId;
+    if(prevTabId !== -1) {
+      this.overrideHash(id > 0 ? this.chat?.peerId : undefined);
+    }
 
     this.log('selectTab', id, prevTabId);
 

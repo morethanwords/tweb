@@ -254,6 +254,7 @@ export default class PopupPaymentCard extends PopupElement<{
         }
       });
 
+      // putPreloader(this.body, true);
       this.body.append(iframe);
       this.show();
     }

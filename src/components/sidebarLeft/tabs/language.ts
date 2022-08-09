@@ -21,11 +21,22 @@ export default class AppLanguageTab extends SliderSuperTab {
 
     const radioRows: Map<string, Row> = new Map();
 
-    const promise = this.managers.apiManager.invokeApiCacheable('langpack.getLanguages', {
-      lang_pack: 'macos'
-    }).then((languages) => {
+    const promise = Promise.all([
+      this.managers.apiManager.invokeApiCacheable('langpack.getLanguages', {
+        lang_pack: 'web'
+      }),
+      this.managers.apiManager.invokeApiCacheable('langpack.getLanguages', {
+        lang_pack: 'macos'
+      }),
+    ]).then(([languages1, languages2]) => {
+      const rendered: Set<string> = new Set();
+      const webLangCodes = languages1.map((language) => language.lang_code);
+
       const random = randomLong();
-      languages.forEach((language) => {
+      languages1.concat(languages2).forEach((language) => {
+        if(rendered.has(language.lang_code)) return;
+        rendered.add(language.lang_code);
+
         const row = new Row({
           radioField: new RadioField({
             text: language.name,
@@ -39,7 +50,7 @@ export default class AppLanguageTab extends SliderSuperTab {
       });
 
       const form = RadioFormFromRows([...radioRows.values()], (value) => {
-        I18n.getLangPack(value);
+        I18n.getLangPack(value, webLangCodes.includes(value));
       });
 
       I18n.getCacheLangPack().then((langPack) => {

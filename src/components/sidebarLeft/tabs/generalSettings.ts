@@ -111,7 +111,8 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
         text: 'EnableAnimations',
         name: 'animations',
         stateKey: 'settings.animationsEnabled',
-        withRipple: true
+        withRipple: true,
+        listenerSetter: this.listenerSetter
       });
 
       container.append(range.container, chatBackgroundButton, animationsCheckboxField.label);
@@ -231,13 +232,15 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
         text: 'GeneralSettings.EmojiPrediction',
         name: 'suggest-emoji',
         stateKey: 'settings.emoji.suggest',
-        withRipple: true
+        withRipple: true,
+        listenerSetter: this.listenerSetter
       });
       const bigCheckboxField = new CheckboxField({
         text: 'GeneralSettings.BigEmoji',
         name: 'emoji-big',
         stateKey: 'settings.emoji.big',
-        withRipple: true
+        withRipple: true,
+        listenerSetter: this.listenerSetter
       });
 
       container.append(suggestCheckboxField.label, bigCheckboxField.label);
@@ -251,7 +254,8 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
         havePadding: true,
         clickable: () => {
           this.slider.createTab(AppQuickReactionTab).open();
-        }
+        },
+        listenerSetter: this.listenerSetter
       });
 
       const renderQuickReaction = () => {
@@ -272,13 +276,15 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
         text: 'Stickers.SuggestStickers',
         name: 'suggest',
         stateKey: 'settings.stickers.suggest',
-        withRipple: true
+        withRipple: true,
+        listenerSetter: this.listenerSetter
       });
       const loopCheckboxField = new CheckboxField({
         text: 'InstalledStickers.LoopAnimated',
         name: 'loop',
         stateKey: 'settings.stickers.loop',
-        withRipple: true
+        withRipple: true,
+        listenerSetter: this.listenerSetter
       });
 
       const stickerSets: {[id: string]: Row} = {};
@@ -294,7 +300,8 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
           havePadding: true,
           clickable: () => {
             new PopupStickers({id: stickerSet.id, access_hash: stickerSet.access_hash}).show();
-          }
+          },
+          listenerSetter: this.listenerSetter
         });
 
         stickerSets[stickerSet.id] = row;

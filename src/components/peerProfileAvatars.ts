@@ -409,5 +409,6 @@ export default class PeerProfileAvatars {
   public cleanup() {
     this.listenerSetter.removeAll();
     this.swipeHandler.removeListeners();
+    this.intersectionObserver?.disconnect();
   }
 }

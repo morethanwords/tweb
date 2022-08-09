@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import VisibilityIntersector from './visibilityIntersector';
+import VisibilityIntersector, {OnVisibilityChangeItem} from './visibilityIntersector';
 import findAndSpliceAll from '../helpers/array/findAndSpliceAll';
 import findAndSplice from '../helpers/array/findAndSplice';
 import LazyLoadQueueIntersector, {LazyLoadElement} from './lazyLoadQueueIntersector';
@@ -16,7 +16,7 @@ export default class LazyLoadQueue extends LazyLoadQueueIntersector {
     this.intersector = new VisibilityIntersector(this.onVisibilityChange);
   }
 
-  private onVisibilityChange = (target: HTMLElement, visible: boolean) => {
+  private onVisibilityChange = ({target, visible}: OnVisibilityChangeItem) => {
     if(visible) {
       /* if(DEBUG) {
         this.log('isIntersecting', target);

@@ -34,7 +34,7 @@ export default class GifsMasonry {
   ) {
     this.managers = rootScope.managers;
 
-    this.lazyLoadQueue = new LazyLoadQueueRepeat2(undefined, (target, visible) => {
+    this.lazyLoadQueue = new LazyLoadQueueRepeat2(undefined, ({target, visible}) => {
       if(visible) {
         this.processVisibleDiv(target);
       } else {

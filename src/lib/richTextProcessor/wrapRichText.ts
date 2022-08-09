@@ -18,6 +18,7 @@ import parseEntities from './parseEntities';
 import setBlankToAnchor from './setBlankToAnchor';
 import wrapUrl from './wrapUrl';
 import EMOJI_VERSIONS_SUPPORTED from '../../environment/emojiVersionsSupport';
+import {CLICK_EVENT_NAME} from '../../helpers/dom/clickEvent';
 
 /**
  * * Expecting correctly sorted nested entities (RichTextProcessor.sortEntities)
@@ -400,6 +401,8 @@ export default function wrapRichText(text: string, options: Partial<{
           usedText = true;
           container.append(element);
           fragment.append(container);
+
+          container[`on${CLICK_EVENT_NAME}`] = (window as any).onSpoilerClick;
         }
 
         break;
@@ -419,7 +422,7 @@ export default function wrapRichText(text: string, options: Partial<{
       (lastElement || fragment).append(element);
     }
 
-    while(nextEntity && nextEntity.offset < (endOffset - 1)) {
+    while(nextEntity && nextEntity.offset < endOffset) {
       ++nasty.i;
 
       (element || fragment).append(wrapRichText(nasty.text, {

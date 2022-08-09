@@ -48,7 +48,10 @@ export default class DropdownHover extends EventListenerBase<{
       listenerSetter.add(button)('mouseover', (e) => {
         // console.log('onmouseover button');
         if(firstTime) {
-          listenerSetter.add(button)('mouseout', this.onMouseOut);
+          listenerSetter.add(button)('mouseout', (e) => {
+            clearTimeout(this.displayTimeout);
+            this.onMouseOut(e);
+          });
           firstTime = false;
         }
 
@@ -61,9 +64,8 @@ export default class DropdownHover extends EventListenerBase<{
   }
 
   private onMouseOut = (e: MouseEvent) => {
-    if(KEEP_OPEN) return;
+    if(KEEP_OPEN || !this.isActive()) return;
     clearTimeout(this.displayTimeout);
-    if(!this.isActive()) return;
 
     const toElement = (e as any).toElement as Element;
     if(toElement && findUpAsChild(toElement, this.element)) {

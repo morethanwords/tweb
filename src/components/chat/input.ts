@@ -1633,7 +1633,7 @@ export default class ChatInput {
 
     executed.push(document.execCommand('styleWithCSS', false, 'true'));
 
-    if(type === 'monospace' || type === 'spoiler') {
+    const checkType = (type: MarkdownType) => {
       let haveThisType = false;
       // executed.push(document.execCommand('styleWithCSS', false, 'true'));
 
@@ -1648,14 +1648,30 @@ export default class ChatInput {
         }
       }
 
+      return haveThisType;
+    };
+
+    // * monospace can't be combined with different types
+    if(type === 'monospace' || type === 'spoiler') {
+      // executed.push(document.execCommand('styleWithCSS', false, 'true'));
+
+      const haveThisType = checkType(type);
       // executed.push(document.execCommand('removeFormat', false, null));
 
       if(haveThisType) {
-        executed.push(this.resetCurrentFormatting());
+        executed.push(this.resetCurrentFontFormatting());
       } else {
+        if(type === 'monospace' || checkType('monospace')) {
+          executed.push(this.resetCurrentFormatting());
+        }
+
         executed.push(typeof(command) === 'function' ? command() : document.execCommand(command, false, null));
       }
     } else {
+      if(checkType('monospace')) {
+        executed.push(this.resetCurrentFormatting());
+      }
+
       executed.push(typeof(command) === 'function' ? command() : document.execCommand(command, false, null));
     }
 
@@ -1671,6 +1687,10 @@ export default class ChatInput {
   }
 
   private resetCurrentFormatting() {
+    return document.execCommand('removeFormat', false, null);
+  }
+
+  private resetCurrentFontFormatting() {
     return document.execCommand('fontName', false, 'Roboto');
   }
 
@@ -1823,7 +1843,7 @@ export default class ChatInput {
         // document.execCommand('styleWithCSS', false, 'true');
         setTimeout(() => {
           if(document.activeElement === this.messageInput) {
-            this.resetCurrentFormatting();
+            this.resetCurrentFontFormatting();
           }
         }, 0);
         // document.execCommand('styleWithCSS', false, 'false');

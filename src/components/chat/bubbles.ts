@@ -1509,41 +1509,6 @@ export default class ChatBubbles {
       return;
     }
 
-    const spoiler: HTMLElement = findUpClassName(target, 'spoiler');
-    if(spoiler) {
-      const messageDiv = findUpClassName(spoiler, 'message');
-
-      const className = 'is-spoiler-visible';
-      const isVisible = messageDiv.classList.contains(className);
-      if(!isVisible) {
-        cancelEvent(e);
-      }
-
-      const duration = 400 / 2;
-      const showDuration = 5000;
-      const useRafs = !isVisible ? 2 : 0;
-      if(useRafs) {
-        messageDiv.classList.add('will-change');
-      }
-
-      const spoilerTimeout = messageDiv.dataset.spoilerTimeout;
-      if(spoilerTimeout !== null) {
-        clearTimeout(+spoilerTimeout);
-        delete messageDiv.dataset.spoilerTimeout;
-      }
-
-      SetTransition(messageDiv, className, true, duration, () => {
-        messageDiv.dataset.spoilerTimeout = '' + window.setTimeout(() => {
-          SetTransition(messageDiv, className, false, duration, () => {
-            messageDiv.classList.remove('will-change');
-            delete messageDiv.dataset.spoilerTimeout;
-          });
-        }, showDuration);
-      }, useRafs);
-
-      return;
-    }
-
     const reactionElement = findUpTag(target, 'REACTION-ELEMENT') as ReactionElement;
     if(reactionElement) {
       cancelEvent(e);
@@ -1607,11 +1572,17 @@ export default class ChatBubbles {
       if(typeof(peerIdStr) === 'string' || savedFrom) {
         if(savedFrom) {
           const [peerId, mid] = savedFrom.split('_');
-
-          this.chat.appImManager.setInnerPeer({
-            peerId: peerId.toPeerId(),
-            lastMsgId: +mid
-          });
+          if(target.classList.contains('is-receipt-link')) {
+            const message = await this.managers.appMessagesManager.getMessageByPeer(peerId.toPeerId(), +mid);
+            if(message) {
+              new PopupPayment(message as Message.message, this.peerId, +bubble.dataset.mid);
+            }
+          } else {
+            this.chat.appImManager.setInnerPeer({
+              peerId: peerId.toPeerId(), 
+              lastMsgId: +mid
+            });
+          }
         } else {
           const peerId = peerIdStr.toPeerId();
           if(peerId !== NULL_PEER_ID) {
@@ -2519,8 +2490,7 @@ export default class ChatBubbles {
   }
 
   private destroyScrollable() {
-    this.scrollable.removeListeners();
-    this.scrollable.onScrolledTop = this.scrollable.onScrolledBottom = this.scrollable.onAdditionalScroll = null;
+    this.scrollable.destroy();
   }
 
   public destroy() {
@@ -2566,6 +2536,7 @@ export default class ChatBubbles {
     // clear messages
     if(bubblesToo) {
       this.scrollable.container.textContent = '';
+      this.chatInner.textContent = '';
       this.cleanupPlaceholders();
     }
 
@@ -2854,7 +2825,7 @@ export default class ChatBubbles {
         this.attachPlaceholderOnRender();
       }
 
-      if(!isTarget && this.chat.type === 'chat') {
+      if(!isTarget && this.chat.type === 'chat' && this.chat.topbar.pinnedMessage) {
         this.chat.topbar.pinnedMessage.setCorrectIndex(0);
       }
 

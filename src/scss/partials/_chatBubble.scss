@@ -2799,6 +2799,7 @@ $bubble-beside-button-width: 38px;
     overflow: hidden;
     min-height: 2.5rem;
     display: flex;
+    border-radius: .375rem;
 
     &:last-child {
       border-bottom-left-radius: $border-radius-big;
@@ -2808,7 +2809,7 @@ $bubble-beside-button-width: 38px;
 
   &-button {
     padding: .5625rem 0;
-    border-radius: 6px;
+    border-radius: inherit;
     z-index: 2;
     font-size: .875rem;
     user-select: none;

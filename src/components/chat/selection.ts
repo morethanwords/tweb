@@ -533,7 +533,7 @@ export class SearchSelection extends AppSelection {
 
   private isPrivate: boolean;
 
-  constructor(private searchSuper: AppSearchSuper, managers: AppManagers) {
+  constructor(private searchSuper: AppSearchSuper, managers: AppManagers, listenerSetter: ListenerSetter) {
     super({
       managers,
       verifyTarget: (e, target) => !!target && this.isSelecting,
@@ -544,7 +544,7 @@ export class SearchSelection extends AppSelection {
     });
 
     this.isPrivate = !searchSuper.showSender;
-    this.attachListeners(searchSuper.container, new ListenerSetter());
+    this.attachListeners(searchSuper.container, listenerSetter);
   }
 
   /* public appendCheckbox(element: HTMLElement, checkboxField: CheckboxField) {
@@ -615,7 +615,7 @@ export class SearchSelection extends AppSelection {
         this.selectionContainer.classList.add(BASE_CLASS + '-container');
 
         const btnCancel = ButtonIcon(`close ${BASE_CLASS}-cancel`, {noRipple: true});
-        this.listenerSetter.add(btnCancel)('click', () => this.cancelSelection(), {once: true});
+        attachClickEvent(btnCancel, () => this.cancelSelection(), {listenerSetter: this.listenerSetter, once: true});
 
         this.selectionCountEl = document.createElement('div');
         this.selectionCountEl.classList.add(BASE_CLASS + '-count');

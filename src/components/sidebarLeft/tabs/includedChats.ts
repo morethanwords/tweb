@@ -22,6 +22,7 @@ import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
 import {REAL_FOLDERS} from '../../../lib/mtproto/mtproto_config';
 import rootScope from '../../../lib/rootScope';
 import {MTAppConfig} from '../../../lib/mtproto/appConfig';
+import {attachClickEvent, simulateClickEvent} from '../../../helpers/dom/clickEvent';
 
 export default class AppIncludedChatsTab extends SliderSuperTab {
   private editFolderTab: AppEditFolderTab;
@@ -43,7 +44,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
 
     this.header.append(this.confirmBtn);
 
-    this.confirmBtn.addEventListener('click', async() => {
+    attachClickEvent(this.confirmBtn, async() => {
       const selected = this.selector.getSelected();
 
       // this.filter.pFlags = {};
@@ -107,7 +108,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
 
       this.editFolderTab.setFilter(this.filter, false);
       this.close();
-    });
+    }, {listenerSetter: this.listenerSetter});
 
     const onAppConfig = (appConfig: MTAppConfig) => {
       this.limit = rootScope.premium ? appConfig.dialog_filters_chats_limit_premium : appConfig.dialog_filters_chats_limit_default;
@@ -266,7 +267,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
     for(const flag in filter.pFlags) {
       // @ts-ignore
       if(details.hasOwnProperty(flag) && !!filter.pFlags[flag]) {
-        (categoriesSection.content.querySelector(`[data-peer-id="${flag}"]`) as HTMLElement).click();
+        simulateClickEvent(categoriesSection.content.querySelector(`[data-peer-id="${flag}"]`) as HTMLElement);
       }
     }
   }

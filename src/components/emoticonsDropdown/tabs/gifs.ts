@@ -9,6 +9,7 @@ import GifsMasonry from '../../gifsMasonry';
 import Scrollable from '../../scrollable';
 import {putPreloader} from '../../putPreloader';
 import {AppManagers} from '../../../lib/appManagers/managers';
+import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 
 export default class GifsTab implements EmoticonsTab {
   private content: HTMLElement;
@@ -20,7 +21,7 @@ export default class GifsTab implements EmoticonsTab {
   init() {
     this.content = document.getElementById('content-gifs');
     const gifsContainer = this.content.firstElementChild as HTMLDivElement;
-    gifsContainer.addEventListener('click', EmoticonsDropdown.onMediaClick);
+    attachClickEvent(gifsContainer, EmoticonsDropdown.onMediaClick);
 
     const scroll = new Scrollable(this.content, 'GIFS');
     const masonry = new GifsMasonry(gifsContainer, EMOTICONSSTICKERGROUP, scroll);
