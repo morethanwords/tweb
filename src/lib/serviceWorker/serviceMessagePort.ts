@@ -28,9 +28,8 @@ export type ServiceRequestFilePartTaskPayload = {
 };
 
 export type ServiceDownloadTaskPayload = {
-  fileName: string,
   headers: any,
-  id: string,
+  id: string
 };
 
 export type ServiceEvent = {

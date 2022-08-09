@@ -18,7 +18,6 @@ import {DcId} from '../../types';
 import CacheStorageController from '../files/cacheStorage';
 import {logger, LogTypes} from '../logger';
 import assumeType from '../../helpers/assumeType';
-import ctx from '../../environment/ctx';
 import noop from '../../helpers/noop';
 import readBlobAsArrayBuffer from '../../helpers/blob/readBlobAsArrayBuffer';
 import bytesToHex from '../../helpers/bytes/bytesToHex';
@@ -32,13 +31,15 @@ import type {Progress} from '../appManagers/appDownloadManager';
 import getDownloadMediaDetails from '../appManagers/utils/download/getDownloadMediaDetails';
 import networkStats from './networkStats';
 import getDownloadFileNameFromOptions from '../appManagers/utils/download/getDownloadFileNameFromOptions';
-import {getServiceMessagePort} from './mtproto.worker';
 import StreamWriter from '../files/streamWriter';
 import FileStorage from '../files/fileStorage';
-import fileNameRFC from '../../helpers/string/fileNameRFC';
 import {MAX_FILE_SAVE_SIZE} from './mtproto_config';
 import throttle from '../../helpers/schedulers/throttle';
 import makeError from '../../helpers/makeError';
+import readBlobAsUint8Array from '../../helpers/blob/readBlobAsUint8Array';
+import DownloadStorage from '../files/downloadStorage';
+import copy from '../../helpers/object/copy';
+import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 
 type Delayed = {
   offset: number,
@@ -82,10 +83,13 @@ export type MyUploadFile = UploadFile.uploadFile | UploadWebFile.uploadWebFile;
 //   originalPayload: ReferenceBytes
 // };
 
-const MAX_FILE_PART_SIZE = 1 * 1024 * 1024;
+const MAX_DOWNLOAD_FILE_PART_SIZE = 1 * 1024 * 1024;
+const MAX_UPLOAD_FILE_PART_SIZE = 512 * 1024;
+const MIN_PART_SIZE = 128 * 1024;
+const AVG_PART_SIZE = 512 * 1024;
 
-const REGULAR_DOWNLOAD_DELTA = 36;
-const PREMIUM_DOWNLOAD_DELTA = 72;
+const REGULAR_DOWNLOAD_DELTA = (9 * 512 * 1024) / MIN_PART_SIZE;
+const PREMIUM_DOWNLOAD_DELTA = REGULAR_DOWNLOAD_DELTA * 2;
 
 const IGNORE_ERRORS: Set<ErrorType> = new Set([
   'DOWNLOAD_CANCELED',
@@ -96,10 +100,15 @@ const IGNORE_ERRORS: Set<ErrorType> = new Set([
 
 export class ApiFileManager extends AppManager {
   private cacheStorage = new CacheStorageController('cachedFiles');
+  private downloadStorage = new DownloadStorage();
 
   private downloadPromises: {
     [fileName: string]: DownloadPromise
   } = {};
+
+  // private downloadToDiscPromises: {
+  //   [fileName: string]: DownloadPromise
+  // } = {};
 
   private uploadPromises: {
     [fileName: string]: CancellablePromise<InputFile>
@@ -133,6 +142,7 @@ export class ApiFileManager extends AppManager {
 
   private maxUploadParts = 4000;
   private maxDownloadParts = 8000;
+  private webFileDcId: DcId;
 
   protected after() {
     setInterval(() => { // clear old promises
@@ -143,6 +153,10 @@ export class ApiFileManager extends AppManager {
         }
       }
     }, 1800e3);
+
+    this.rootScope.addEventListener('config', (config) => {
+      this.webFileDcId = config.webfile_dc_id;
+    });
 
     this.rootScope.addEventListener('app_config', (appConfig) => {
       this.maxUploadParts = this.rootScope.premium ? appConfig.upload_max_fileparts_premium : appConfig.upload_max_fileparts_default;
@@ -173,7 +187,7 @@ export class ApiFileManager extends AppManager {
 
   private downloadCheck(dcId: string | number) {
     const downloadPull = this.downloadPulls[dcId];
-    const downloadLimit = dcId === 'upload' ? 24 : (this.rootScope.premium ? PREMIUM_DOWNLOAD_DELTA : REGULAR_DOWNLOAD_DELTA);
+    const downloadLimit = /* dcId === 'upload' ? 24 :  */(this.rootScope.premium ? PREMIUM_DOWNLOAD_DELTA : REGULAR_DOWNLOAD_DELTA);
     // const downloadLimit = Infinity;
 
     if(this.downloadActives[dcId] >= downloadLimit || !downloadPull?.length) {
@@ -187,7 +201,7 @@ export class ApiFileManager extends AppManager {
     this.downloadActives[dcId] += activeDelta;
 
     const promise = data.cb();
-    const networkPromise = networkStats.waitForChunk(dcId as DcId, activeDelta * 1024 * 128);
+    const networkPromise = networkStats.waitForChunk(dcId as DcId, activeDelta * MIN_PART_SIZE);
     Promise.race([
       promise,
       networkPromise
@@ -235,7 +249,7 @@ export class ApiFileManager extends AppManager {
 
   public requestWebFilePart(dcId: DcId, location: InputWebFileLocation, offset: number, limit: number, id = 0, queueId = 0, checkCancel?: () => void) {
     return this.downloadRequest(dcId, id, async() => { // do not remove async, because checkCancel will throw an error
-      checkCancel && checkCancel();
+      checkCancel?.();
 
       return this.apiManager.invokeApi('upload.getWebFile', {
         location,
@@ -248,17 +262,26 @@ export class ApiFileManager extends AppManager {
     }, this.getDelta(limit), queueId);
   }
 
-  public requestFilePart(dcId: DcId, location: InputFileLocation, offset: number, limit: number, id = 0, queueId = 0, checkCancel?: () => void) {
+  public requestFilePart(
+    dcId: DcId,
+    location: InputFileLocation,
+    offset: number,
+    limit: number,
+    id = 0,
+    queueId = 0,
+    checkCancel?: () => void
+  ) {
     return this.downloadRequest(dcId, id, async() => { // do not remove async, because checkCancel will throw an error
-      checkCancel && checkCancel();
+      checkCancel?.();
 
       const invoke = async(): Promise<MyUploadFile> => {
-        checkCancel && checkCancel(); // do not remove async, because checkCancel will throw an error
+        checkCancel?.(); // do not remove async, because checkCancel will throw an error
 
         // * IMPORTANT: reference can be changed in previous request
         const reference = (location as InputFileLocation.inputDocumentFileLocation).file_reference?.slice();
 
-        const promise = /* pause(1000).then(() =>  */this.apiManager.invokeApi('upload.getFile', {
+        const promise = // pause(offset > (100 * 1024 * 1024) ? 10000000 : 0).then(() =>
+        this.apiManager.invokeApi('upload.getFile', {
           location,
           offset,
           limit
@@ -268,6 +291,8 @@ export class ApiFileManager extends AppManager {
         }) as Promise<MyUploadFile>/* ) */;
 
         return promise.catch((err: ApiError) => {
+          checkCancel?.();
+
           if(err.type === 'FILE_REFERENCE_EXPIRED') {
             return this.refreshReference(location as InputFileLocation.inputDocumentFileLocation, reference).then(invoke);
           }
@@ -295,19 +320,22 @@ export class ApiFileManager extends AppManager {
   } */
 
   private getDelta(bytes: number) {
-    return bytes / 1024 / 128;
+    return bytes / MIN_PART_SIZE;
   }
 
   private getLimitPart(size: number, isUpload: boolean): number {
     if(!size) { // * sometimes size can be 0 (e.g. avatars, webDocuments)
-      return 512 * 1024;
+      return AVG_PART_SIZE;
     }
 
-    let bytes = 128 * 1024;
+    // return 1 * 1024 * 1024;
+
+    let bytes = MIN_PART_SIZE;
 
     const maxParts = isUpload ? this.maxUploadParts : this.maxDownloadParts;
+    const maxPartSize = isUpload ? MAX_UPLOAD_FILE_PART_SIZE : MAX_DOWNLOAD_FILE_PART_SIZE;
     // usually it will stick to 512Kb size if the file is too big
-    while((size / bytes) > maxParts && bytes < MAX_FILE_PART_SIZE) {
+    while((size / bytes) > maxParts && bytes < maxPartSize) {
       bytes *= 2;
     }
     /* if(size < 1e6 || !size) bytes = 512;
@@ -399,201 +427,230 @@ export class ApiFileManager extends AppManager {
     return this.uploadPromises[fileName];
   }
 
+  private getConvertMethod(mimeType: string) {
+    let process: ApiFileManager['uncompressTGS'] | ApiFileManager['convertWebp'];
+    if(mimeType === 'application/x-tgwallpattern') {
+      process = this.uncompressTGV;
+      mimeType = 'image/svg+xml';
+    } else if(mimeType === 'image/webp' && !getEnvironment().IS_WEBP_SUPPORTED) {
+      process = this.convertWebp;
+      mimeType = 'image/png';
+    } else if(mimeType === 'application/x-tgsticker') {
+      process = this.uncompressTGS;
+      mimeType = 'application/json';
+    } else if(mimeType === 'audio/ogg' && !getEnvironment().IS_OPUS_SUPPORTED) {
+      process = this.convertOpus;
+      mimeType = 'audio/wav';
+    }
+
+    return {mimeType, process};
+  }
+
+  private allocateDeferredPromises(startOffset: number, size: number, limitPart: number) {
+    const delayed: Delayed[] = [];
+    let offset = startOffset;
+    let writePromise: CancellablePromise<void> = Promise.resolve(),
+      writeDeferred: CancellablePromise<void>;
+    do {
+      writeDeferred = deferredPromise<void>();
+      delayed.push({offset, writePromise, writeDeferred});
+      writePromise = writeDeferred;
+      offset += limitPart;
+    } while(offset < size);
+
+    return delayed;
+  }
+
   public download(options: DownloadOptions): DownloadPromise {
     const size = options.size ?? 0;
     const {dcId, location, downloadId} = options;
 
-    let process: ApiFileManager['uncompressTGS'] | ApiFileManager['convertWebp'];
-
-    if(downloadId) {
-
-    } else if(options.mimeType === 'application/x-tgwallpattern') {
-      process = this.uncompressTGV;
-      options.mimeType = 'image/svg+xml';
-    } else if(options.mimeType === 'image/webp' && !getEnvironment().IS_WEBP_SUPPORTED) {
-      process = this.convertWebp;
-      options.mimeType = 'image/png';
-    } else if(options.mimeType === 'application/x-tgsticker') {
-      process = this.uncompressTGS;
-      options.mimeType = 'application/json';
-    } else if(options.mimeType === 'audio/ogg' && !getEnvironment().IS_OPUS_SUPPORTED) {
-      process = this.convertOpus;
-      options.mimeType = 'audio/wav';
-    }
+    const originalMimeType = options.mimeType;
+    const convertMethod = this.getConvertMethod(originalMimeType);
+    const {process} = convertMethod;
+    options.mimeType = convertMethod.mimeType || 'image/jpeg';
 
     const fileName = getDownloadFileNameFromOptions(options);
-    const cachedPromise = options.downloadId ? undefined : this.downloadPromises[fileName];
-    let fileStorage: FileStorage = this.getFileStorage();
+    const cacheFileName = downloadId ? getDownloadFileNameFromOptions({...copy(options), downloadId: undefined}) : fileName;
+    const cacheStorage: FileStorage = this.getFileStorage();
+    const downloadStorage: FileStorage = downloadId ? this.downloadStorage : undefined;
+    let deferred: DownloadPromise = downloadId ? undefined : this.downloadPromises[fileName];
 
-    this.debug && this.log('downloadFile', fileName, size, location, options.mimeType);
+    this.debug && this.log('downloadFile', fileName, options);
 
-    /* if(options.queueId) {
-      this.log.error('downloadFile queueId:', fileName, options.queueId);
-    } */
-
-    if(cachedPromise) {
-      // this.log('downloadFile cachedPromise');
-
-      if(size) {
-        return cachedPromise.then((blob) => {
-          if(blob instanceof Blob && blob.size < size) {
-            this.debug && this.log('downloadFile need to deleteFile, wrong size:', blob.size, size);
-
-            return this.delete(fileName).then(() => {
-              return this.download(options);
-            }).catch(() => {
-              return this.download(options);
-            });
-          } else {
-            return blob;
-          }
-        });
-      } else {
-        return cachedPromise;
-      }
+    if(deferred) {
+      return deferred;
     }
 
-    const deferred: DownloadPromise = deferredPromise();
-    const mimeType = options.mimeType || 'image/jpeg';
+    // if(deferred) {
+    //   if(size) {
+    //     return deferred.then(async(blob) => {
+    //       if(blob instanceof Blob && blob.size < size) {
+    //         this.debug && this.log('downloadFile need to deleteFile, wrong size:', blob.size, size);
 
-    let error: ApiError;
-    let resolved = false;
-    let cacheWriter: StreamWriter;
-    let errorHandler = (_error: typeof error) => {
-      error = _error;
-      delete this.downloadPromises[fileName];
-      deferred.reject(error);
-      errorHandler = () => {};
+    //         try {
+    //           await this.delete(fileName);
+    //         } finally {
+    //           return this.download(options);
+    //         }
+    //       } else {
+    //         return blob;
+    //       }
+    //     });
+    //   } else {
+    //     return deferred;
+    //   }
+    // }
 
-      if(cacheWriter && (!error || error.type !== 'DOWNLOAD_CANCELED')) {
-        cacheWriter.truncate?.();
+    const errorHandler = (item: typeof cachePrepared, error: ApiError) => {
+      if(item?.error) {
+        return;
+      }
+
+      for(const p of prepared) {
+        if(item && item !== p) {
+          continue;
+        }
+
+        p.error = error;
+        p.deferred.reject(error);
       }
     };
 
     const id = this.tempId++;
+    const limitPart = options.limitPart || this.getLimitPart(size, false);
 
-    if(downloadId) {
-      const headers = {
-        'Content-Type': 'application/octet-stream; charset=utf-8',
-        'Content-Disposition': 'attachment; filename*=UTF-8\'\'' + fileNameRFC(options.fileName),
-        // 'Content-Disposition': `attachment; filename="${options.fileName}"`,
-        // 'Content-Type': 'application/octet-stream; charset=utf-8',
-        ...(size ? {'Content-Length': size} : {})
-      };
+    let getFile: FileStorage['getFile'] = cacheStorage.getFile.bind(cacheStorage);
 
-      const serviceMessagePort = getServiceMessagePort();
-      const promise = serviceMessagePort.invoke('download', {
-        fileName,
-        headers,
-        id: downloadId
+    let cachePrepared: ReturnType<FileStorage['prepareWriting']> & {writer?: StreamWriter, error?: ApiError},
+      downloadPrepared: typeof cachePrepared;
+    const prepared: (typeof cachePrepared)[] = [];
+    const possibleSize = size || limitPart;
+
+    const getErrorsCount = () => prepared.reduce((acc, item) => acc + +!!item.error, 0);
+
+    const attach = (item: typeof cachePrepared, fileName: string) => {
+      const {deferred} = item;
+      const _errorHandler = errorHandler.bind(null, item);
+
+      deferred.cancel = () => deferred.reject(makeError('DOWNLOAD_CANCELED'));
+      deferred.catch((error) => {
+        _errorHandler(error);
+        item.writer?.truncate?.();
+      }).finally(() => {
+        if(this.downloadPromises[fileName] === deferred) {
+          delete this.downloadPromises[fileName];
+        }
+
+        delete item.writer;
+        indexOfAndSplice(prepared, item);
       });
 
-      promise.catch(errorHandler);
-      deferred.catch(() => {
-        getServiceMessagePort().invoke('downloadCancel', downloadId);
-      });
+      this.downloadPromises[fileName] = deferred;
 
-      class f implements StreamWriter {
-        constructor() {
+      prepared.push(item);
+    };
 
-        }
-
-        public async write(part: Uint8Array, offset?: number) {
-          return serviceMessagePort.invoke('downloadChunk', {
-            id: downloadId,
-            chunk: part
-          });
-        }
-
-        public finalize(saveToStorage?: boolean): Promise<Blob> {
-          return serviceMessagePort.invoke('downloadFinalize', downloadId).then(() => null);
-        }
-      }
-
-      class d implements FileStorage {
-        public getFile(fileName: string): Promise<any> {
-          return Promise.reject();
-        }
-
-        public getWriter(fileName: string, fileSize: number, mimeType: string): Promise<StreamWriter> {
-          return Promise.resolve(new f());
-        }
-      }
-
-      fileStorage = new d();
+    if(cacheStorage && (!downloadStorage || possibleSize <= MAX_FILE_SAVE_SIZE)) {
+      cachePrepared = cacheStorage.prepareWriting(cacheFileName, possibleSize, options.mimeType)
+      attach(cachePrepared, cacheFileName);
     }
 
-    fileStorage.getFile(fileName).then(async(blob: Blob) => {
-      // throw '';
+    if(downloadStorage) {
+      downloadPrepared = downloadStorage.prepareWriting({
+        fileName: options.fileName, // it's doc file_name
+        downloadId,
+        size: possibleSize
+      });
+      attach(downloadPrepared, fileName);
 
-      if(blob.size < size) {
-        if(!options.onlyCache) {
-          await this.delete(fileName);
-        }
-
-        throw false;
+      if(cachePrepared) { // cancel cache too
+        downloadPrepared.deferred.catch((err) => cachePrepared.deferred.reject(err));
       }
 
-      deferred.resolve(blob);
+      // this.downloadToDiscPromises[cacheFileName] = deferred;
+      // deferred.catch(noop).finally(() => {
+      //   if(this.downloadToDiscPromises[cacheFileName] === deferred) {
+      //     delete this.downloadToDiscPromises[cacheFileName];
+      //   }
+      // });
+    }
+
+    deferred = downloadPrepared?.deferred ?? cachePrepared.deferred;
+
+    if(downloadStorage && process) { // then have to load file again
+      getFile = downloadStorage.getFile.bind(downloadStorage);
+    }
+
+    getFile(cacheFileName).then(async(blob: Blob) => {
+      checkCancel();
+
+      // if(blob.size < size) {
+      //   if(!options.onlyCache) {
+      //     await this.delete(cacheFileName);
+      //     checkCancel();
+      //   }
+
+      //   throw makeError('NO_ENTRY_FOUND');
+      // }
+
+      if(downloadPrepared) {
+        const writer = downloadPrepared.writer = downloadPrepared.getWriter();
+        checkCancel();
+
+        const arr = await readBlobAsUint8Array(blob);
+        checkCancel();
+        await writer.write(arr);
+        checkCancel();
+
+        downloadPrepared.deferred.resolve(await writer.finalize());
+      }
+
+      if(cachePrepared) {
+        cachePrepared.deferred.resolve(blob);
+      }
     }).catch(async(err: ApiError) => {
       if(options.onlyCache) {
-        errorHandler(err);
+        errorHandler(null, err);
         return;
       }
 
-      // this.log('not cached', fileName);
-      const limit = options.limitPart || this.getLimitPart(size, false);
-      const writerPromise = fileStorage.getWriter(fileName, size || limit, mimeType);
+      prepared.forEach((p) => {
+        p.writer = p.getWriter();
+      });
 
-      const writer = cacheWriter = await writerPromise;
-
-      let offset: number;
-      const startOffset = 0;
-      let writePromise: CancellablePromise<void> = Promise.resolve(),
-        writeDeferred: CancellablePromise<void>;
-      // const maxRequests = 13107200 / limit; // * 100 Mb speed
       const maxRequests = Infinity;
 
-      const processDownloaded = async(bytes: Uint8Array) => {
-        if(process) {
-          // const perf = performance.now();
-          const processed = await process(bytes, fileName);
-          // this.log('downloadFile process downloaded time', performance.now() - perf, mimeType, process);
-          return processed;
-        }
+      const isWebFile = location._ === 'inputWebFileLocation';
+      const requestPart = (isWebFile ? this.requestWebFilePart : this.requestFilePart).bind(this);
 
-        return bytes;
-      };
+      if(isWebFile && this.webFileDcId === undefined) {
+        await this.apiManager.getConfig();
+        checkCancel();
+      }
 
-      const r = location._ === 'inputWebFileLocation' ? this.requestWebFilePart.bind(this) : this.requestFilePart.bind(this);
+      const delayed = this.allocateDeferredPromises(0, size, limitPart);
 
-      const delayed: Delayed[] = [];
-      offset = startOffset;
-      do {
-        writeDeferred = deferredPromise<void>();
-        delayed.push({offset, writePromise, writeDeferred});
-        writePromise = writeDeferred;
-        offset += limit;
-      } while(offset < size);
-
-      const progress: Progress = {done: 0, offset, total: size, fileName};
+      const progress: Progress = {done: 0, offset: 0, total: size, fileName};
       const dispatchProgress = () => {
-        progress.done = done;
-        deferred.notify?.(progress);
+        try {
+          checkCancel();
+          progress.done = done;
+          this.rootScope.dispatchEvent('download_progress', progress);
+        } catch(err) {}
       };
 
       const throttledDispatchProgress = throttle(dispatchProgress, 50, true);
 
       let done = 0;
       const superpuper = async() => {
-        // if(!delayed.length) return;
-
         const {offset, writePromise, writeDeferred} = delayed.shift();
         try {
           checkCancel();
 
-          // @ts-ignore
-          const result = await r(dcId, location as any, offset, limit, id, options.queueId, checkCancel);
+          const requestPerf = performance.now();
+          const result = await requestPart(dcId, location as any, offset, limitPart, id, options.queueId, checkCancel);
+          const requestTime = performance.now() - requestPerf;
 
           const bytes = result.bytes;
 
@@ -603,7 +660,7 @@ export class ApiFileManager extends AppManager {
 
           const byteLength = bytes.byteLength;
           this.debug && this.log('downloadFile requestFilePart result:', fileName, result);
-          const isFinal = (offset + limit) >= size || !byteLength;
+          const isFinal = (offset + limitPart) >= size || !byteLength;
           if(byteLength) {
             done += byteLength;
 
@@ -613,67 +670,64 @@ export class ApiFileManager extends AppManager {
               throttledDispatchProgress();
             }
 
+            const writeQueuePerf = performance.now();
             await writePromise;
             checkCancel();
+            const writeQueueTime = performance.now() - writeQueuePerf;
 
-            // const perf = performance.now();
-            await writer.write(bytes, offset);
+            const perf = performance.now();
+            await Promise.all(prepared.map(({writer}) => writer?.write(bytes, offset)));
             checkCancel();
-            // downloadId && this.log('write time', performance.now() - perf);
+            // downloadId && this.log('write time', performance.now() - perf, 'request time', requestTime, 'queue time', writeQueueTime);
           }
 
           if(isFinal && process) {
-            const bytes = writer.getParts();
-            const processedResult = await processDownloaded(bytes);
-            checkCancel();
+            const promises = prepared
+            .filter(({writer}) => writer?.getParts && writer.replaceParts)
+            .map(async({writer}) => {
+              const bytes = writer.getParts();
+              const processedResult = await process(bytes, cacheFileName);
+              writer.replaceParts(processedResult);
+            });
 
-            writer.replaceParts(processedResult);
+            await Promise.all(promises);
+            checkCancel();
           }
 
           writeDeferred.resolve();
 
           if(isFinal) {
-            resolved = true;
-
             const realSize = size || byteLength;
-            if(!size) {
-              writer.trim(realSize);
+            if(!size || byteLength < size) {
+              prepared.forEach(({writer}) => writer?.trim?.(realSize));
             }
 
-            deferred.resolve(await writer.finalize(realSize <= MAX_FILE_SAVE_SIZE));
+            const saveToStorage = realSize <= MAX_FILE_SAVE_SIZE;
+            prepared.forEach((item) => {
+              const {deferred, writer} = item;
+              if(deferred.isFulfilled || deferred.isRejected || !writer) {
+                return;
+              }
+
+              const result = writer.finalize(saveToStorage);
+              deferred.resolve(result);
+            });
           }
         } catch(err) {
-          errorHandler(err as ApiError);
+          errorHandler(null, err as ApiError);
         }
       };
 
       for(let i = 0, length = Math.min(maxRequests, delayed.length); i < length; ++i) {
         superpuper();
       }
-    });
+    }).catch(noop);
 
     const checkCancel = () => {
-      if(error) {
-        throw error;
+      if(getErrorsCount() === prepared.length) {
+        throw prepared[0].error;
       }
     };
-
-    deferred.cancel = () => {
-      if(!error && !resolved) {
-        const error = makeError('DOWNLOAD_CANCELED');
-        errorHandler(error);
-      }
-    };
-
-    deferred.notify = (progress: Progress) => {
-      this.rootScope.dispatchEvent('download_progress', progress);
-    };
-
-    this.downloadPromises[fileName] = deferred;
-
-    deferred.catch(noop).finally(() => {
-      delete this.downloadPromises[fileName];
-    });
 
     return deferred;
   }
@@ -736,23 +790,14 @@ export class ApiFileManager extends AppManager {
   }
 
   public upload({file, fileName}: {file: Blob | File, fileName?: string}) {
-    const fileSize = file.size,
-      isBigFile = fileSize >= 10485760;
-
-    let canceled = false,
-      resolved = false,
-      doneParts = 0;
-    const partSize = this.getLimitPart(fileSize, true);
-
     fileName ||= getFileNameForUpload(file);
 
+    const fileSize = file.size;
+    const isBigFile = fileSize >= 10485760;
+    const partSize = this.getLimitPart(fileSize, true);
     const activeDelta = this.getDelta(partSize);
-
     const totalParts = Math.ceil(fileSize / partSize);
     const fileId = randomLong();
-
-    let _part = 0;
-
     const resultInputFile: InputFile = {
       _: isBigFile ? 'inputFileBig' : 'inputFile',
       id: fileId as any,
@@ -767,6 +812,7 @@ export class ApiFileManager extends AppManager {
       return deferred;
     }
 
+    let canceled = false, resolved = false;
     let errorHandler = (error: ApiError) => {
       if(error?.type !== 'UPLOAD_CANCELED') {
         this.log.error('Up Error', error);
@@ -774,74 +820,47 @@ export class ApiFileManager extends AppManager {
 
       deferred.reject(error);
       canceled = true;
-      errorHandler = () => {};
+      errorHandler = noop;
     };
 
     const method = isBigFile ? 'upload.saveBigFilePart' : 'upload.saveFilePart';
-
     const id = this.tempId++;
 
     const self = this;
     function* generator() {
+      let _part = 0, doneParts = 0;
       for(let offset = 0; offset < fileSize; offset += partSize) {
         const part = _part++; // 0, 1
-        yield self.downloadRequest('upload', id, () => {
+        yield self.downloadRequest('upload', id, async() => {
+          checkCancel();
+
           const blob = file.slice(offset, offset + partSize);
+          const buffer = await readBlobAsArrayBuffer(blob);
+          checkCancel();
 
-          return readBlobAsArrayBuffer(blob).then((buffer) => {
+          self.debug && self.log('Upload file part, isBig:', isBigFile, part, buffer.byteLength, new Uint8Array(buffer).length, new Uint8Array(buffer).slice().length);
+
+          return self.apiManager.invokeApi(method, {
+            file_id: fileId,
+            file_part: part,
+            file_total_parts: totalParts,
+            bytes: buffer
+          } as any, {
+            fileUpload: true
+          }).then(() => {
             if(canceled) {
-              throw makeError('UPLOAD_CANCELED');
+              return;
             }
 
-            self.debug && self.log('Upload file part, isBig:', isBigFile, part, buffer.byteLength, new Uint8Array(buffer).length, new Uint8Array(buffer).slice().length);
+            ++doneParts;
+            const progress: Progress = {done: doneParts * partSize, offset, total: fileSize, fileName};
+            deferred.notify(progress);
 
-            /* const u = new Uint8Array(buffer.byteLength);
-            for(let i = 0; i < u.length; ++i) {
-              //u[i] = Math.random() * 255 | 0;
-              u[i] = 0;
+            if(doneParts >= totalParts) {
+              deferred.resolve(resultInputFile);
+              resolved = true;
             }
-            buffer = u.buffer; */
-
-            /* setTimeout(() => {
-              doneParts++;
-              uploadResolve();
-
-              //////this.log('Progress', doneParts * partSize / fileSize);
-
-              self.log('done part', part, doneParts);
-
-              deferred.notify({done: doneParts * partSize, total: fileSize});
-
-              if(doneParts >= totalParts) {
-                deferred.resolve(resultInputFile);
-                resolved = true;
-              }
-            }, 1250);
-            return; */
-
-            return self.apiManager.invokeApi(method, {
-              file_id: fileId,
-              file_part: part,
-              file_total_parts: totalParts,
-              bytes: buffer/* new Uint8Array(buffer) */
-            } as any, {
-              // startMaxLength: partSize + 256,
-              fileUpload: true
-            }).then(() => {
-              if(canceled) {
-                return;
-              }
-
-              ++doneParts;
-              const progress: Progress = {done: doneParts * partSize, offset, total: fileSize, fileName};
-              deferred.notify(progress);
-
-              if(doneParts >= totalParts) {
-                deferred.resolve(resultInputFile);
-                resolved = true;
-              }
-            }, errorHandler);
-          });
+          }, errorHandler);
         }, activeDelta).catch(errorHandler);
       }
     }
@@ -855,13 +874,15 @@ export class ApiFileManager extends AppManager {
     };
 
     const maxRequests = Infinity;
-    // const maxRequests = 10;
-    /* for(let i = 0; i < 10; ++i) {
-      process();
-    } */
     for(let i = 0, length = Math.min(maxRequests, totalParts); i < length; ++i) {
       process();
     }
+
+    const checkCancel = () => {
+      if(canceled) {
+        throw makeError('UPLOAD_CANCELED');
+      }
+    };
 
     deferred.cancel = () => {
       if(!canceled && !resolved) {
@@ -875,7 +896,9 @@ export class ApiFileManager extends AppManager {
     };
 
     deferred.finally(() => {
-      delete this.uploadPromises[fileName];
+      if(this.uploadPromises[fileName] === deferred) {
+        delete this.uploadPromises[fileName];
+      }
     });
 
     return this.uploadPromises[fileName] = deferred;

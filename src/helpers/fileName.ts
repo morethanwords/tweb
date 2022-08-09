@@ -58,7 +58,7 @@ export function getFileNameByLocation(location: InputFileLocation | InputWebFile
     }
   }
 
-  return str + (options.downloadId || '') + (ext ? '.' + ext : ext);
+  return str + (options.downloadId ? '_download' : '') + (ext ? '.' + ext : ext);
 }
 
 export type FileURLType = 'photo' | 'thumb' | 'document' | 'stream' | 'download';

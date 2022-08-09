@@ -23,6 +23,10 @@
     line-height: 1;
     text-align: center;
 
+    html.is-safari & {
+      -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%); // fix safari overflow
+    }
+
     &-text {
       opacity: 0;
 

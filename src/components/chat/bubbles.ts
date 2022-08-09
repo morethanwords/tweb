@@ -522,6 +522,7 @@ export default class ChatBubbles {
               (element as any).onLoad(true);
             } else {
               element.dataset.docId = '' + doc.id;
+              (element as any).doc = doc;
             }
           }
         } else if(poll) {

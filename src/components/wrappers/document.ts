@@ -90,6 +90,7 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
   const docDiv = document.createElement('div');
   docDiv.classList.add('document', `ext-${ext}`);
   docDiv.dataset.docId = '' + doc.id;
+  (docDiv as any).doc = doc;
 
   // return docDiv;
 
@@ -236,25 +237,28 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
 
     // b && b.classList.add('hide');
 
-    let d = formatBytes(0);
+    const format = (bytes: number) => formatBytes(bytes);
+    let d = format(0);
     bytesContainer.style.visibility = 'hidden';
     // bytesContainer.replaceWith(sizeContainer);
     sizeContainer.append(d, bytesJoiner, _bytesContainer);
     bytesContainer.parentElement.append(sizeContainer);
     promise.addNotifyListener((progress: Progress) => {
-      const _d = formatBytes(progress.done);
+      const _d = format(progress.done);
       d.replaceWith(_d);
       d = _d;
     });
   };
 
-  const load = async(e?: Event) => {
+  // ! DO NOT USE ASYNC/AWAIT HERE ! SAFARI WON'T LET DOWNLOAD THE FILE BECAUSE OF ASYNC
+  const load = (e?: Event) => {
     const save = !e || e.isTrusted;
-    const doc = await managers.appDocsManager.getDoc(docDiv.dataset.docId);
+    const doc = (docDiv as any).doc;
+    // const doc = await managers.appDocsManager.getDoc(docDiv.dataset.docId);
     let download: CancellablePromise<any>;
     const queueId = appImManager.chat.bubbles ? appImManager.chat.bubbles.lazyLoadQueue.queueId : undefined;
     if(!save) {
-      download = appDownloadManager.downloadMediaVoid({media: doc, queueId});
+      download = appDownloadManager.downloadToDisc({media: doc, queueId}, true);
     } else if(doc.type === 'pdf') {
       const canOpenAfter = /* managers.appDocsManager.downloading.has(doc.id) ||  */!preloader || preloader.detached;
       download = appDownloadManager.downloadMediaURL({media: doc, queueId});
@@ -282,10 +286,10 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
     }
   };
 
-  const {fileName: downloadFileName} = getDownloadMediaDetails({media: doc});
+  const {fileName: downloadFileName} = getDownloadMediaDetails({media: doc, downloadId: '1'});
   if(await managers.apiFileManager.isDownloading(downloadFileName)) {
     downloadDiv = docDiv.querySelector('.document-download') || icoDiv;
-    const promise = appDownloadManager.downloadMediaVoid({media: doc});
+    const promise = appDownloadManager.downloadToDisc({media: doc}, true);
 
     preloader = new ProgressivePreloader();
     preloader.attach(downloadDiv, false, promise);

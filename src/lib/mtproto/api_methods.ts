@@ -6,7 +6,7 @@
 
 import ctx from '../../environment/ctx';
 import {ignoreRestrictionReasons} from '../../helpers/restrictions';
-import {MethodDeclMap, User} from '../../layer';
+import {Config, MethodDeclMap, User} from '../../layer';
 import {InvokeApiOptions} from '../../types';
 import {AppManager} from '../appManagers/manager';
 import {MTAppConfig} from './appConfig';
@@ -43,8 +43,8 @@ export default abstract class ApiManagerMethods extends AppManager {
     }
   } = {};
 
+  private config: Config;
   private appConfig: MTAppConfig;
-  private getAppConfigPromise: Promise<MTAppConfig>;
 
   constructor() {
     super();
@@ -140,7 +140,7 @@ export default abstract class ApiManagerMethods extends AppManager {
     processResult: (response: MethodDeclMap[T]['res']) => R,
     processError?: (error: ApiError) => any,
     params?: MethodDeclMap[T]['req'],
-    options?: InvokeApiOptions & {cacheKey?: string}
+    options?: InvokeApiOptions & {cacheKey?: string, overwrite?: boolean}
   }): Promise<Awaited<R>> {
     o.params ??= {};
     o.options ??= {};
@@ -154,10 +154,32 @@ export default abstract class ApiManagerMethods extends AppManager {
       return oldPromise;
     }
 
+    const getNewPromise = () => {
+      const promise = map.get(cacheKey);
+      return promise === p ? undefined : promise;
+    }
+
     const originalPromise = this.invokeApi(method, params, options);
-    const newPromise: Promise<Awaited<R>> = originalPromise.then(processResult, processError);
+    const newPromise: Promise<Awaited<R>> = originalPromise.then((result) => {
+      return getNewPromise() || processResult(result);
+    }, (error) => {
+      const promise = getNewPromise();
+      if(promise) {
+        return promise;
+      }
+
+      if(!processError) {
+        throw error;
+      }
+
+      return processError(error);
+    });
 
     const p = newPromise.finally(() => {
+      if(map.get(cacheKey) !== p) {
+        return;
+      }
+
       map.delete(cacheKey);
       if(!map.size) {
         delete cache[method];
@@ -226,24 +248,38 @@ export default abstract class ApiManagerMethods extends AppManager {
     }
   }
 
-  public getConfig() {
-    return this.invokeApiCacheable('help.getConfig');
+  public getConfig(overwrite?: boolean) {
+    if(this.config && !overwrite) {
+      return this.config;
+    }
+
+    return this.invokeApiSingleProcess({
+      method: 'help.getConfig',
+      params: {},
+      processResult: (config) => {
+        this.config = config;
+        this.rootScope.dispatchEvent('config', config);
+        return config;
+      },
+      options: {overwrite}
+    });
   }
 
   public getAppConfig(overwrite?: boolean) {
-    if(this.appConfig && !overwrite) return this.appConfig;
-    if(this.getAppConfigPromise && !overwrite) return this.getAppConfigPromise;
-    const promise: Promise<MTAppConfig> = this.getAppConfigPromise = this.invokeApi('help.getAppConfig').then((config: MTAppConfig) => {
-      if(this.getAppConfigPromise !== promise) {
-        return this.getAppConfigPromise;
-      }
+    if(this.appConfig && !overwrite) {
+      return this.appConfig;
+    }
 
-      this.appConfig = config;
-      ignoreRestrictionReasons(config.ignore_restriction_reasons ?? []);
-      this.rootScope.dispatchEvent('app_config', config);
-      return config;
+    return this.invokeApiSingleProcess({
+      method: 'help.getAppConfig',
+      params: {},
+      processResult: (config: MTAppConfig) => {
+        this.appConfig = config;
+        ignoreRestrictionReasons(config.ignore_restriction_reasons ?? []);
+        this.rootScope.dispatchEvent('app_config', config);
+        return config;
+      },
+      options: {overwrite}
     });
-
-    return promise;
   }
 }

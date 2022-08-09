@@ -10,6 +10,7 @@ import MemoryWriter from './memoryWriter';
 import FileManager from './memoryWriter';
 import FileStorage from './fileStorage';
 import makeError from '../../helpers/makeError';
+import deferredPromise from '../../helpers/cancellablePromise';
 
 export type CacheStorageDbName = 'cachedFiles' | 'cachedStreamChunks' | 'cachedAssets';
 
@@ -124,12 +125,17 @@ export default class CacheStorageController implements FileStorage {
     });
   }
 
-  public getWriter(fileName: string, fileSize: number, mimeType: string) {
-    const writer = new MemoryWriter(mimeType, fileSize, (blob) => {
-      return this.saveFile(fileName, blob).catch(() => blob);
-    });
+  public prepareWriting(fileName: string, fileSize: number, mimeType: string) {
+    return {
+      deferred: deferredPromise<Blob>(),
+      getWriter: () => {
+        const writer = new MemoryWriter(mimeType, fileSize, (blob) => {
+          return this.saveFile(fileName, blob).catch(() => blob);
+        });
 
-    return Promise.resolve(writer);
+        return writer;
+      }
+    };
   }
 
   public static toggleStorage(enabled: boolean, clearWrite: boolean) {

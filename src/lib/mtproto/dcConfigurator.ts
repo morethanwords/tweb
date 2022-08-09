@@ -51,7 +51,7 @@ export function getTelegramConnectionSuffix(connectionType: ConnectionType) {
 // #if MTPROTO_HAS_WS
 export function constructTelegramWebSocketUrl(dcId: DcId, connectionType: ConnectionType, premium?: boolean) {
   const suffix = getTelegramConnectionSuffix(connectionType);
-  const path = connectionType !== 'client' ? 'apiws' + (premium ? PREMIUM_SUFFIX : TEST_SUFFIX) : ('apiws' + TEST_SUFFIX);
+  const path = connectionType !== 'client' ? 'apiws' + TEST_SUFFIX + (premium ? PREMIUM_SUFFIX : '') : ('apiws' + TEST_SUFFIX);
   const chosenServer = `wss://${App.suffix.toLowerCase()}ws${dcId}${suffix}.web.telegram.org/${path}`;
 
   return chosenServer;

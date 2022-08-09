@@ -9,7 +9,7 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import {AccountWallPapers, Document, MessagesSavedGifs, PhotoSize, WallPaper} from '../../layer';
+import {AccountWallPapers, Document, DocumentAttribute, MessagesSavedGifs, PhotoSize, WallPaper} from '../../layer';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
 import {getFullDate} from '../../helpers/date';
 import isObject from '../../helpers/object/isObject';
@@ -23,6 +23,7 @@ import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
 import getDocumentInput from './utils/docs/getDocumentInput';
 import getDocumentURL from './utils/docs/getDocumentURL';
 import type {ThumbCache} from '../storages/thumbs';
+import makeError from '../../helpers/makeError';
 
 export type MyDocument = Document.document;
 
@@ -216,7 +217,10 @@ export class AppDocsManager extends AppManager {
 
     if(doc.type === 'voice' || doc.type === 'round') {
       // browser will identify extension
-      doc.file_name = doc.type + '_' + getFullDate(new Date(doc.date * 1000), {monthAsNumber: true, leadingZero: true}).replace(/[:\.]/g, '-').replace(', ', '_');
+      const attribute = doc.attributes.find((attribute) => attribute._ === 'documentAttributeFilename') as DocumentAttribute.documentAttributeFilename;
+      const ext = attribute && attribute.file_name.split('.').pop();
+      const date = getFullDate(new Date(doc.date * 1000), {monthAsNumber: true, leadingZero: true}).replace(/[:\.]/g, '-').replace(', ', '_');
+      doc.file_name = `${doc.type}_${date}${ext ? '.' + ext : ''}`;
     }
 
     if(isServiceWorkerOnline()) {
@@ -400,6 +404,7 @@ export class AppDocsManager extends AppManager {
 
   public requestDocPart(docId: DocId, dcId: number, offset: number, limit: number) {
     const doc = this.getDoc(docId);
+    if(!doc) return Promise.reject(makeError('NO_DOC'));
     return this.apiFileManager.requestFilePart(dcId, getDocumentInput(doc), offset, limit);
   }
 }

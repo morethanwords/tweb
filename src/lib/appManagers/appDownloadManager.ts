@@ -16,8 +16,7 @@ import noop from '../../helpers/noop';
 import getDownloadMediaDetails from './utils/download/getDownloadMediaDetails';
 import getDownloadFileNameFromOptions from './utils/download/getDownloadFileNameFromOptions';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import {MAX_FILE_SAVE_SIZE} from '../mtproto/mtproto_config';
-import createDownloadAnchor from '../../helpers/dom/createDownloadAnchor';
+import makeError from '../../helpers/makeError';
 
 export type ResponseMethodBlob = 'blob';
 export type ResponseMethodJson = 'json';
@@ -38,6 +37,7 @@ type DownloadType = 'url' | 'blob' | 'void' | 'disc';
 
 export class AppDownloadManager {
   private downloads: {[fileName: string]: {main: Download} & {[type in DownloadType]?: Download}} = {};
+  // private downloadsToDisc: {[fileName: string]: Download} = {};
   private progress: {[fileName: string]: Progress} = {};
   // private progressCallbacks: {[fileName: string]: Array<ProgressCallback>} = {};
   private managers: AppManagers;
@@ -45,15 +45,14 @@ export class AppDownloadManager {
   public construct(managers: AppManagers) {
     this.managers = managers;
     rootScope.addEventListener('download_progress', (details) => {
-      this.progress[details.fileName] = details;
-
       // const callbacks = this.progressCallbacks[details.fileName];
       // if(callbacks) {
       //   callbacks.forEach((callback) => callback(details));
       // }
 
       const download = this.downloads[details.fileName];
-      if(download) {
+      if(download?.main?.notifyAll) {
+        this.progress[details.fileName] = details;
         download.main.notifyAll(details);
       }
     });
@@ -69,17 +68,12 @@ export class AppDownloadManager {
       };
 
       deferred.cancel = () => {
-        // try {
-        const error = new Error('Download canceled');
-        error.name = 'AbortError';
+        const error = makeError('DOWNLOAD_CANCELED');
 
         this.managers.apiFileManager.cancelDownload(fileName);
 
         deferred.reject(error);
-        deferred.cancel = () => {};
-        /* } catch(err) {
-
-        } */
+        deferred.cancel = noop;
       };
 
       deferred.catch(() => {
@@ -225,50 +219,92 @@ export class AppDownloadManager {
   //   }
   // }
 
-  public downloadToDisc(options: DownloadMediaOptions) {
+  public downloadToDisc(options: DownloadMediaOptions, justAttach?: boolean) {
     const media = options.media;
     const isDocument = media._ === 'document';
     if(!isDocument && !options.thumb) {
       options.thumb = (media as Photo.photo).sizes.slice().pop() as PhotoSize.photoSize;
     }
 
-    const {downloadOptions, fileName} = getDownloadMediaDetails(options);
-    if(downloadOptions.size && downloadOptions.size > MAX_FILE_SAVE_SIZE) {
-      const id = '' + (Math.random() * 0x7FFFFFFF | 0);
-      const url = `/download/${id}`;
-      options.downloadId = id;
+    // const {fileName: cacheFileName} = getDownloadMediaDetails(options);
+    // if(justAttach) {
+    //   const promise = this.downloadsToDisc[cacheFileName];
+    //   if(promise) {
+    //     return promise;
+    //   }
+    // }
 
-      const promise = this.downloadMedia(options, 'disc');
+    // const {downloadOptions, fileName} = getDownloadMediaDetails(options);
+    // if(downloadOptions.size && downloadOptions.size > MAX_FILE_SAVE_SIZE) {
+    const id = '' + (Math.random() * 0x7FFFFFFF | 0);
+    // const id = 'test';
+    const url = `/download/${id}`;
+    options.downloadId = id;
 
-      let iframe: HTMLIFrameElement;
-      const onProgress = () => {
-        iframe = document.createElement('iframe');
-        iframe.hidden = true;
-        // iframe.src = sw.scope + fileName;
-        iframe.src = url;
-        document.body.append(iframe);
+    const promise = this.downloadMedia(options, 'disc');
+    // this.downloadsToDisc[cacheFileName] = promise;
 
-        indexOfAndSplice(promise.listeners, onProgress);
-      };
-
-      promise.addNotifyListener(onProgress);
-      promise.catch(noop).finally(() => {
-        setTimeout(() => {
-          iframe?.remove();
-        }, 1000);
-      });
-
-      return promise;
-    } else {
-      const promise = this.downloadMedia(options, 'blob');
-      promise.then((blob) => {
-        const url = URL.createObjectURL(blob);
-        createDownloadAnchor(url, downloadOptions.fileName || fileName, () => {
-          URL.revokeObjectURL(url);
-        });
-      });
+    if(justAttach) {
       return promise;
     }
+
+    const iframe = document.createElement('iframe');
+    iframe.hidden = true;
+    iframe.src = url;
+    document.body.append(iframe);
+    // createDownloadAnchor(url, 'asd.txt');
+
+    // const events = [
+    //   'emptied',
+    //   'abort',
+    //   'suspend',
+    //   'reset',
+    //   'error',
+    //   'ended',
+    //   'load'
+    // ].forEach((event) => {
+    //   iframe.addEventListener(event, () => alert(event));
+    //   iframe.contentWindow.addEventListener(event, () => alert(event));
+    // });
+
+    let element: HTMLElement, hadProgress = false;
+    const onProgress = () => {
+      if(hadProgress) {
+        return;
+      }
+
+      hadProgress = true;
+      element = iframe;
+
+      indexOfAndSplice(promise.listeners, onProgress);
+    };
+
+    promise.addNotifyListener(onProgress);
+    promise.catch(noop).finally(() => {
+      if(!hadProgress) {
+        onProgress();
+      }
+
+      setTimeout(() => {
+        element?.remove();
+      }, 1000);
+
+      // if(this.downloadsToDisc[cacheFileName] === promise) {
+      //   delete this.downloadsToDisc[cacheFileName];
+      // }
+    });
+
+    return promise;
+    // } else {
+    //   const promise = this.downloadMedia(options, 'blob');
+    //   promise.then((blob) => {
+    //     const url = URL.createObjectURL(blob);
+    //     createDownloadAnchor(url, downloadOptions.fileName || fileName, () => {
+    //       URL.revokeObjectURL(url);
+    //     });
+    //   });
+    //   return promise;
+    // }
 
     // const promise = this.downloadMedia(options);
     // promise.then((blob) => {

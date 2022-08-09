@@ -86,8 +86,8 @@ export default class Socket extends EventListenerBase<{
     this.close();
   };
 
-  private handleClose = () => {
-    this.log('closed'/* , event, this.pending, this.ws.bufferedAmount */);
+  private handleClose = (e?: CloseEvent) => {
+    this.log('closed', e/* , this.pending, this.ws.bufferedAmount */);
 
     this.removeListeners();
     this.dispatchEvent('close');

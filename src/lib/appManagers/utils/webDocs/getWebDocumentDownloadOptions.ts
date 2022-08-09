@@ -3,7 +3,7 @@ import {DownloadOptions} from '../../../mtproto/apiFileManager';
 
 export default function getWebDocumentDownloadOptions(webDocument: WebDocument): DownloadOptions {
   return {
-    dcId: 4,
+    dcId: 0,
     location: {
       _: 'inputWebFileLocation',
       access_hash: (webDocument as WebDocument.webDocument).access_hash,

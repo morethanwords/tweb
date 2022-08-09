@@ -14,12 +14,11 @@ import onStreamFetch from './stream';
 import {closeAllNotifications, onPing} from './push';
 import CacheStorageController from '../files/cacheStorage';
 import {IS_SAFARI} from '../../environment/userAgent';
-import ServiceMessagePort, {ServiceDownloadTaskPayload} from './serviceMessagePort';
+import ServiceMessagePort from './serviceMessagePort';
 import listenMessagePort from '../../helpers/listenMessagePort';
 import {getWindowClients} from '../../helpers/context';
 import {MessageSendPort} from '../mtproto/superMessagePort';
-import noop from '../../helpers/noop';
-import makeError from '../../helpers/makeError';
+import handleDownload from './download';
 
 export const log = logger('SW', LogTypes.Error | LogTypes.Debug | LogTypes.Log | LogTypes.Warn);
 const ctx = self as any as ServiceWorkerGlobalScope;
@@ -52,19 +51,6 @@ const onWindowConnected = (source: WindowClient) => {
   connectedWindows.add(source.id);
 };
 
-type DownloadType = Uint8Array;
-type DownloadItem = ServiceDownloadTaskPayload & {
-  transformStream: TransformStream<DownloadType, DownloadType>,
-  readableStream: ReadableStream<DownloadType>,
-  writableStream: WritableStream<DownloadType>,
-  writer: WritableStreamDefaultWriter<DownloadType>,
-  // controller: TransformStreamDefaultController<DownloadType>,
-  // promise: CancellablePromise<void>,
-  used?: boolean
-};
-const downloadMap: Map<string, DownloadItem> = new Map();
-const DOWNLOAD_ERROR = makeError('UNKNOWN');
-
 export const serviceMessagePort = new ServiceMessagePort<false>();
 serviceMessagePort.addMultipleEventsListeners({
   notificationsClear: closeAllNotifications,
@@ -79,85 +65,13 @@ serviceMessagePort.addMultipleEventsListeners({
 
   hello: (payload, source) => {
     onWindowConnected(source as any as WindowClient);
-  },
-
-  download: (payload) => {
-    const {id} = payload;
-    if(downloadMap.has(id)) {
-      return;
-    }
-
-    // const writableStrategy = new ByteLengthQueuingStrategy({highWaterMark: 1024 * 1024});
-    // let controller: TransformStreamDefaultController<DownloadType>;
-    const transformStream = new TransformStream<DownloadType, DownloadType>(/* {
-      start: (_controller) => controller = _controller,
-    }, {
-      highWaterMark: 1,
-      size: (chunk) => chunk.byteLength
-    }, new CountQueuingStrategy({highWaterMark: 4}) */);
-
-    const {readable, writable} = transformStream;
-    const writer = writable.getWriter();
-    // const promise = deferredPromise<void>();
-    // promise.catch(noop).finally(() => {
-    //   downloadMap.delete(id);
-    // });
-
-    // writer.closed.then(promise.resolve, promise.reject);
-
-    writer.closed.catch(noop).finally(() => {
-      log.error('closed writer');
-      downloadMap.delete(id);
-    });
-
-    const item: DownloadItem = {
-      ...payload,
-      transformStream,
-      readableStream: readable,
-      writableStream: writable,
-      writer
-      // promise,
-      // controller
-    };
-
-    downloadMap.set(id, item);
-
-    return writer.closed.catch(() => {throw DOWNLOAD_ERROR;});
-    // return promise;
-  },
-
-  downloadChunk: ({id, chunk}) => {
-    const item = downloadMap.get(id);
-    if(!item) {
-      return Promise.reject();
-    }
-
-    // return item.controller.enqueue(chunk);
-    return item.writer.write(chunk);
-  },
-
-  downloadFinalize: (id) => {
-    const item = downloadMap.get(id);
-    if(!item) {
-      return Promise.reject();
-    }
-
-    // item.promise.resolve();
-    // return item.controller.terminate();
-    return item.writer.close();
-  },
-
-  downloadCancel: (id) => {
-    const item = downloadMap.get(id);
-    if(!item) {
-      return;
-    }
-
-    // item.promise.reject();
-    // return item.controller.error();
-    return item.writer.abort();
   }
 });
+
+const {
+  onDownloadFetch,
+  onClosedWindows: onDownloadClosedWindows
+} = handleDownload(serviceMessagePort);
 
 // * service worker can be killed, so won't get 'hello' event
 getWindowClients().then((windowClients) => {
@@ -184,11 +98,7 @@ listenMessagePort(serviceMessagePort, undefined, (source) => {
       _mtprotoMessagePort = undefined;
     }
 
-    if(downloadMap.size) {
-      for(const [id, item] of downloadMap) {
-        item.writer.abort().catch(noop);
-      }
-    }
+    onDownloadClosedWindows();
   }
 });
 // #endif
@@ -216,14 +126,7 @@ const onFetch = (event: FetchEvent): void => {
       }
 
       case 'download': {
-        const item = downloadMap.get(params);
-        if(!item || item.used) {
-          break;
-        }
-
-        item.used = true;
-        const response = new Response(item.transformStream.readable, {headers: item.headers});
-        event.respondWith(response);
+        onDownloadFetch(event, params);
         break;
       }
     }
@@ -231,7 +134,8 @@ const onFetch = (event: FetchEvent): void => {
     log.error('fetch error', err);
     event.respondWith(new Response('', {
       status: 500,
-      statusText: 'Internal Server Error'
+      statusText: 'Internal Server Error',
+      headers: {'Cache-Control': 'no-cache'}
     }));
   }
 };
@@ -242,13 +146,13 @@ const onChangeState = () => {
 
 ctx.addEventListener('install', (event) => {
   log('installing');
-  event.waitUntil(ctx.skipWaiting()); // Activate worker immediately
+  event.waitUntil(ctx.skipWaiting().then(() => log('skipped waiting'))); // Activate worker immediately
 });
 
 ctx.addEventListener('activate', (event) => {
   log('activating', ctx);
-  event.waitUntil(ctx.caches.delete(CACHE_ASSETS_NAME));
-  event.waitUntil(ctx.clients.claim());
+  event.waitUntil(ctx.caches.delete(CACHE_ASSETS_NAME).then(() => log('cleared assets cache')));
+  event.waitUntil(ctx.clients.claim().then(() => log('claimed clients')));
 });
 
 // ctx.onerror = (error) => {
