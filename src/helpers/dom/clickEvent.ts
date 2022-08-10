@@ -45,11 +45,11 @@ export function attachClickEvent(elem: HTMLElement | Window, callback: (e: /* To
   add(CLICK_EVENT_NAME, callback, options);
 }
 
-export function detachClickEvent(elem: HTMLElement, callback: (e: /* TouchEvent |  */MouseEvent) => void, options?: AddEventListenerOptions) {
+export function detachClickEvent(elem: HTMLElement | Window, callback: (e: /* TouchEvent |  */MouseEvent) => void, options?: AddEventListenerOptions) {
   // if(CLICK_EVENT_NAME === 'touchend') {
   //   elem.removeEventListener('touchstart', callback, options);
   // } else {
-  elem.removeEventListener(CLICK_EVENT_NAME, callback, options);
+  elem.removeEventListener(CLICK_EVENT_NAME, callback as any, options);
   // }
 }
 

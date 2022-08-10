@@ -177,6 +177,10 @@ Utility Classes
   pointer-events: none !important;
 }
 
+.reflect-x {
+  transform: scaleX(-1);
+}
+
 /* .flex-grow {
   flex-grow: 1;
 }

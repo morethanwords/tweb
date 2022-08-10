@@ -16,7 +16,7 @@ export default function getDownloadMediaDetails(options: DownloadMediaOptions) {
 
   let downloadOptions: DownloadOptions;
   if(media._ === 'document') downloadOptions = getDocumentDownloadOptions(media, thumb as any, queueId, onlyCache);
-  else if(media._ === 'photo') downloadOptions = getPhotoDownloadOptions(media, thumb, queueId, onlyCache);
+  else if(media._ === 'photo') downloadOptions = getPhotoDownloadOptions(media, thumb as any, queueId, onlyCache);
   else if(isWebDocument(media)) downloadOptions = getWebDocumentDownloadOptions(media);
 
   downloadOptions.downloadId = options.downloadId;

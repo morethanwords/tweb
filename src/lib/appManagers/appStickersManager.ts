@@ -249,7 +249,7 @@ export class AppStickersManager extends AppManager {
     const id = isAnimation ? EMOJI_ANIMATIONS_SET_LOCAL_ID : EMOJI_SET_LOCAL_ID;
     const stickerSet = this.storage.getFromCache(id);
     // const stickerSet = await this.getStickerSet({id});
-    if(!stickerSet || !stickerSet.documents) return;
+    if(!stickerSet?.documents) return;
 
     if(isAnimation) {
       if(['🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎'].includes(emoji)) {
@@ -293,12 +293,17 @@ export class AppStickersManager extends AppManager {
 
       const sound = this.getAnimatedEmojiSoundDocument(emoji);
       return Promise.all([
-        this.apiFileManager.downloadMedia({media: doc}),
-        sound ? this.apiFileManager.downloadMedia({media: sound}) : undefined
+        this.preloadSticker(doc.id),
+        sound ? this.preloadSticker(sound.id) : undefined
       ]).then(() => {
         return {doc, sound};
       });
     });
+  }
+
+  public preloadSticker(docId: DocId, isPremiumEffect?: boolean) {
+    const doc = this.appDocsManager.getDoc(docId);
+    return this.apiFileManager.downloadMedia({media: doc, thumb: isPremiumEffect ? doc.video_thumbs?.[0] : undefined});
   }
 
   private saveStickerSet(res: Omit<MessagesStickerSet.messagesStickerSet, '_'>, id: DocId) {

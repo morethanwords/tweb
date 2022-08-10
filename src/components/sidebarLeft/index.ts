@@ -240,7 +240,7 @@ export class AppSidebarLeft extends SidebarSlider {
     btnMenuFooter.classList.add('btn-menu-footer');
     btnMenuFooter.addEventListener(CLICK_EVENT_NAME, (e) => {
       e.stopPropagation();
-      contextMenuController.closeBtnMenu();
+      contextMenuController.close();
     });
     const t = document.createElement('span');
     t.classList.add('btn-menu-footer-text');

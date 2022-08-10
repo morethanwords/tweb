@@ -62,7 +62,7 @@ const ButtonMenuItem = (options: ButtonMenuItemOptions) => {
     }
 
     if(!keepOpen) {
-      contextMenuController.closeBtnMenu();
+      contextMenuController.close();
     }
 
     if(checkboxField && !noCheckboxClickListener/*  && result !== false */) {

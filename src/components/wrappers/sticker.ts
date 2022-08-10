@@ -19,13 +19,14 @@ import onMediaLoad from '../../helpers/onMediaLoad';
 import {isSavingLottiePreview, saveLottiePreview} from '../../helpers/saveLottiePreview';
 import throttle from '../../helpers/schedulers/throttle';
 import sequentialDom from '../../helpers/sequentialDom';
-import {PhotoSize} from '../../layer';
+import {PhotoSize, VideoSize} from '../../layer';
 import {MyDocument} from '../../lib/appManagers/appDocsManager';
 import appDownloadManager from '../../lib/appManagers/appDownloadManager';
 import appImManager from '../../lib/appManagers/appImManager';
 import {AppManagers} from '../../lib/appManagers/managers';
 import getServerMessageId from '../../lib/appManagers/utils/messageId/getServerMessageId';
 import choosePhotoSize from '../../lib/appManagers/utils/photos/choosePhotoSize';
+import getStickerEffectThumb from '../../lib/appManagers/utils/stickers/getStickerEffectThumb';
 import lottieLoader from '../../lib/rlottie/lottieLoader';
 import RLottiePlayer from '../../lib/rlottie/rlottiePlayer';
 import rootScope from '../../lib/rootScope';
@@ -35,9 +36,15 @@ import {SendMessageEmojiInteractionData} from '../../types';
 import {getEmojiToneIndex} from '../../vendor/emoji';
 import animationIntersector from '../animationIntersector';
 import LazyLoadQueue from '../lazyLoadQueue';
+import PopupStickers from '../popups/stickers';
+import {hideToast, toastNew} from '../toast';
 import wrapStickerAnimation from './stickerAnimation';
 
-export default async function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn, needUpscale, skipRatio, static: asStatic, managers = rootScope.managers}: {
+// https://github.com/telegramdesktop/tdesktop/blob/master/Telegram/SourceFiles/history/view/media/history_view_sticker.cpp#L40
+const STICKER_EFFECT_MULTIPLIER = 1 + 0.245 * 2;
+const EMOJI_EFFECT_MULTIPLIER = 3;
+
+export default async function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn, needUpscale, skipRatio, static: asStatic, managers = rootScope.managers, fullThumb, isOut}: {
   doc: MyDocument,
   div: HTMLElement,
   middleware?: () => boolean,
@@ -55,7 +62,9 @@ export default async function wrapSticker({doc, div, middleware, lazyLoadQueue, 
   needUpscale?: boolean,
   skipRatio?: number,
   static?: boolean,
-  managers?: AppManagers
+  managers?: AppManagers,
+  fullThumb?: PhotoSize | VideoSize,
+  isOut?: boolean
 }) {
   const stickerType = doc.sticker;
   if(stickerType === 1) {
@@ -118,17 +127,23 @@ export default async function wrapSticker({doc, div, middleware, lazyLoadQueue, 
     return cacheContext = await managers.thumbsStorage.getCacheContext(doc, type);
   };
 
+  const isAnimated = !asStatic && (stickerType === 2 || stickerType === 3);
+
+  const effectThumb = getStickerEffectThumb(doc);
+  if(isOut !== undefined && effectThumb && !isOut) {
+    div.classList.add('reflect-x');
+  }
+
   if(asStatic && stickerType !== 1) {
     const thumb = choosePhotoSize(doc, width, height, false) as PhotoSize.photoSize;
     await getCacheContext(thumb.type);
   } else {
-    await getCacheContext();
+    await getCacheContext(fullThumb?.type);
   }
 
   const toneIndex = emoji ? getEmojiToneIndex(emoji) : -1;
   const downloaded = cacheContext.downloaded && !needFadeIn;
 
-  const isAnimated = !asStatic && (stickerType === 2 || stickerType === 3);
   const isThumbNeededForType = isAnimated;
   const lottieCachedThumb = stickerType === 2 || stickerType === 3 ? await managers.appDocsManager.getLottieCachedThumb(doc.id, toneIndex) : undefined;
 
@@ -293,7 +308,7 @@ export default async function wrapSticker({doc, div, middleware, lazyLoadQueue, 
 
       // appDocsManager.downloadDocNew(doc.id).promise.then((res) => res.json()).then(async(json) => {
       // fetch(doc.url).then((res) => res.json()).then(async(json) => {
-      return await appDownloadManager.downloadMedia({media: doc, queueId: lazyLoadQueue?.queueId})
+      return await appDownloadManager.downloadMedia({media: doc, queueId: lazyLoadQueue?.queueId, thumb: fullThumb})
       .then(async(blob) => {
         // console.timeEnd('download sticker' + doc.id);
         // console.log('loaded sticker:', doc, div/* , blob */);
@@ -406,24 +421,18 @@ export default async function wrapSticker({doc, div, middleware, lazyLoadQueue, 
               return;
             }
 
-            const bubble = findUpClassName(div, 'bubble');
-            const isOut = bubble.classList.contains('is-out');
-
             const {animationDiv} = wrapStickerAnimation({
               doc,
               middleware,
               side: isOut ? 'right' : 'left',
               size: 280,
               target: div,
-              play: true
+              play: true,
+              withRandomOffset: true
             });
 
-            if(bubble) {
-              if(isOut) {
-                animationDiv.classList.add('is-out');
-              } else {
-                animationDiv.classList.add('is-in');
-              }
+            if(isOut !== undefined && !isOut) {
+              animationDiv.classList.add('reflect-x');
             }
 
             if(!sendInteractionThrottled) {
@@ -463,6 +472,54 @@ export default async function wrapSticker({doc, div, middleware, lazyLoadQueue, 
 
               sendInteractionThrottled();
             }
+          });
+        } else if(effectThumb && isOut !== undefined) {
+          managers.appStickersManager.preloadSticker(doc.id, true);
+
+          let playing = false;
+          attachClickEvent(div, async(e) => {
+            cancelEvent(e);
+            if(playing) {
+              const a = document.createElement('a');
+              a.onclick = () => {
+                hideToast();
+                new PopupStickers(doc.stickerSetInput).show();
+              };
+
+              toastNew({
+                langPackKey: 'Sticker.Premium.Click.Info',
+                langPackArguments: [a]
+              });
+
+              return;
+            }
+
+            playing = true;
+
+            const {animationDiv, stickerPromise} = wrapStickerAnimation({
+              doc,
+              middleware,
+              side: isOut ? 'right' : 'left',
+              size: width * STICKER_EFFECT_MULTIPLIER,
+              target: div,
+              play: true,
+              fullThumb: effectThumb
+            });
+
+            if(isOut !== undefined && !isOut) {
+              animationDiv.classList.add('reflect-x');
+            }
+
+            stickerPromise.then((player) => {
+              const onFrame = (frameNo: number) => {
+                if(frameNo === player.maxFrame) {
+                  playing = false;
+                  player.removeEventListener('enterFrame', onFrame);
+                }
+              };
+
+              player.addEventListener('enterFrame', onFrame);
+            });
           });
         }
 

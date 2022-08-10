@@ -10,12 +10,6 @@
 
   // @include sidebar-transform(true);
 
-  &.is-in {
-    .rlottie {
-      transform: scaleX(-1);
-    }
-  }
-
   &-container {
     position: absolute; 
     top: 0; 

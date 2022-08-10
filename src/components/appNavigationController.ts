@@ -15,7 +15,8 @@ import indexOfAndSplice from '../helpers/array/indexOfAndSplice';
 export type NavigationItem = {
   type: 'left' | 'right' | 'im' | 'chat' | 'popup' | 'media' | 'menu' |
     'esg' | 'multiselect' | 'input-helper' | 'autocomplete-helper' | 'markup' |
-    'global-search' | 'voice' | 'mobile-search' | 'filters' | 'global-search-focus',
+    'global-search' | 'voice' | 'mobile-search' | 'filters' | 'global-search-focus' |
+    'toast',
   onPop: (canAnimate: boolean) => boolean | void,
   onEscape?: () => boolean,
   noHistory?: boolean,

@@ -4016,7 +4016,8 @@ export default class ChatBubbles {
               loop: true,
               emoji: bubble.classList.contains('emoji-big') ? messageMessage : undefined,
               withThumb: true,
-              loadPromises
+              loadPromises,
+              isOut
             });
           } else if(doc.type === 'video' || doc.type === 'gif' || doc.type === 'round'/*  && doc.size <= 20e6 */) {
             // this.log('never get free 2', doc);

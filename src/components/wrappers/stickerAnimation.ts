@@ -8,6 +8,7 @@ import IS_VIBRATE_SUPPORTED from '../../environment/vibrateSupport';
 import assumeType from '../../helpers/assumeType';
 import isInDOM from '../../helpers/dom/isInDOM';
 import throttleWithRaf from '../../helpers/schedulers/throttleWithRaf';
+import {PhotoSize, VideoSize} from '../../layer';
 import {MyDocument} from '../../lib/appManagers/appDocsManager';
 import appImManager from '../../lib/appManagers/appImManager';
 import {AppManagers} from '../../lib/appManagers/managers';
@@ -22,7 +23,9 @@ export default function wrapStickerAnimation({
   side,
   skipRatio,
   play,
-  managers
+  managers,
+  fullThumb,
+  withRandomOffset
 }: {
   size: number,
   doc: MyDocument,
@@ -31,7 +34,9 @@ export default function wrapStickerAnimation({
   side: 'left' | 'center' | 'right',
   skipRatio?: number,
   play: boolean,
-  managers?: AppManagers
+  managers?: AppManagers,
+  fullThumb?: PhotoSize | VideoSize,
+  withRandomOffset?: boolean
 }) {
   const animationDiv = document.createElement('div');
   animationDiv.classList.add('emoji-animation');
@@ -52,7 +57,8 @@ export default function wrapStickerAnimation({
     play,
     group: 'none',
     skipRatio,
-    managers
+    managers,
+    fullThumb
   }).then(({render}) => render).then((animation) => {
     assumeType<RLottiePlayer>(animation);
     animation.addEventListener('enterFrame', (frameNo) => {
@@ -77,9 +83,9 @@ export default function wrapStickerAnimation({
     return r > max ? -r % max : r;
   };
 
-  const randomOffsetX = generateRandomSigned(16);
-  const randomOffsetY = generateRandomSigned(4);
-  const stableOffsetX = size / 8 * (side === 'right' ? 1 : -1);
+  const randomOffsetX = withRandomOffset ? generateRandomSigned(16) : 0;
+  const randomOffsetY = withRandomOffset ? generateRandomSigned(4) : 0;
+  const stableOffsetX = /* size / 8 */16 * (side === 'right' ? 1 : -1);
   const setPosition = () => {
     if(!isInDOM(target)) {
       return;

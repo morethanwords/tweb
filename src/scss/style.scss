@@ -699,12 +699,26 @@ input:-webkit-autofill:active {
   color: #fff;
   font-size: 1rem;
   border-radius: $border-radius-medium;
-  animation: fade-in-opacity-fade-out-opacity 3s linear forwards;
   z-index: 5;
-  max-width: 22.5rem;
+  max-width: unquote('min(30rem, calc(100vw - 2rem))');
+  opacity: 0;
+  backdrop-filter: blur(25px);
+
+  &.is-visible {
+    opacity: 1;
+  }
+
+  @include animation-level(2) {
+    transition: opacity var(--transition-standard-in);
+  }
 
   b {
     color: inherit;
+  }
+
+  a {
+    color: #60a5e9!important;
+    cursor: pointer;
   }
 }
 

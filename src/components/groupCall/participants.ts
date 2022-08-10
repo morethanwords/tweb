@@ -136,7 +136,7 @@ export class GroupCallParticipantContextMenu {
       if(this.instance.id === groupCallId) {
         const peerId = getPeerId(participant.peer);
         if(this.targetPeerId === peerId) {
-          contextMenuController.closeBtnMenu();
+          contextMenuController.close();
         }
       }
     });
@@ -147,7 +147,7 @@ export class GroupCallParticipantContextMenu {
       appendTo = isFull ? PopupElement.getPopups(PopupGroupCall)[0].getContainer(): document.body;
 
       if(!isFull) {
-        contextMenuController.closeBtnMenu();
+        contextMenuController.close();
       }
     }, listenerSetter);
   }

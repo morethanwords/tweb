@@ -49,7 +49,7 @@ const ButtonMenuToggleHandler = (el: HTMLElement, onOpen?: (e: Event) => void | 
     cancelEvent(e);
 
     if(el.classList.contains('menu-open')) {
-      contextMenuController.closeBtnMenu();
+      contextMenuController.close();
     } else {
       const result = onOpen && onOpen(e);
       const open = () => {

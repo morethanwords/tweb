@@ -605,13 +605,13 @@ export default class Chat extends EventListenerBase<{
   }
 
   public isOurMessage(message: Message.message | Message.messageService) {
-    return message.fromId === rootScope.myId || (message.pFlags.out && this.isMegagroup);
+    return message.fromId === rootScope.myId || (!!message.pFlags.out && this.isMegagroup);
   }
 
   public isOutMessage(message: Message.message | Message.messageService) {
     const fwdFrom = (message as Message.message).fwd_from;
     const isOut = this.isOurMessage(message) && (!fwdFrom || this.peerId !== rootScope.myId);
-    return isOut;
+    return !!isOut;
   }
 
   public isAvatarNeeded(message: Message.message | Message.messageService) {

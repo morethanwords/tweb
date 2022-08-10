@@ -5,24 +5,58 @@
  */
 
 import replaceContent from '../helpers/dom/replaceContent';
+import OverlayClickHandler from '../helpers/overlayClickHandler';
 import {FormatterArguments, i18n, LangPackKey} from '../lib/langPack';
 
 const toastEl = document.createElement('div');
 toastEl.classList.add('toast');
-export function toast(content: string | Node) {
-  replaceContent(toastEl, content);
-  document.body.append(toastEl);
+let timeout: number;
 
-  if(toastEl.dataset.timeout) clearTimeout(+toastEl.dataset.timeout);
-  toastEl.dataset.timeout = '' + setTimeout(() => {
+const x = new OverlayClickHandler('toast');
+x.addEventListener('toggle', (open) => {
+  if(!open) {
+    hideToast();
+  }
+});
+
+export function hideToast() {
+  x.close();
+
+  toastEl.classList.remove('is-visible');
+  timeout && clearTimeout(+timeout);
+
+  timeout = window.setTimeout(() => {
     toastEl.remove();
-    delete toastEl.dataset.timeout;
-  }, 3000);
+    timeout = undefined;
+  }, 200);
+}
+
+export function toast(content: string | Node, onClose?: () => void) {
+  x.close();
+
+  replaceContent(toastEl, content);
+
+  if(!toastEl.parentElement) {
+    document.body.append(toastEl);
+    void toastEl.offsetLeft; // reflow
+  }
+
+  toastEl.classList.add('is-visible');
+
+  timeout && clearTimeout(+timeout);
+  x.open(toastEl);
+
+  timeout = window.setTimeout(hideToast, 3000);
+
+  if(onClose) {
+    x.addEventListener('toggle', onClose, {once: true});
+  }
 }
 
 export function toastNew(options: Partial<{
   langPackKey: LangPackKey,
-  langPackArguments: FormatterArguments
+  langPackArguments: FormatterArguments,
+  onClose: () => void
 }>) {
-  toast(i18n(options.langPackKey, options.langPackArguments));
+  toast(i18n(options.langPackKey, options.langPackArguments), options.onClose);
 }

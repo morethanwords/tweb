@@ -1119,6 +1119,7 @@ const lang = {
   'Schedule.SendToday': 'Send today at %@',
   'Schedule.SendDate': 'Send on %@ at %@',
   'Schedule.SendWhenOnline': 'Send When Online',
+  'Sticker.Premium.Click.Info': 'This pack contains premium stickers like this one. [View Pack]()',
   'Stickers.Recent': 'Recent',
   // "Stickers.Favorite": "Favorite",
   'StickerSet.DontExist': 'Sorry, this sticker set doesn\'t seem to exist.',

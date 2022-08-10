@@ -4,27 +4,17 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appNavigationController from '../components/appNavigationController';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
-import {IS_MOBILE_SAFARI} from '../environment/userAgent';
-import cancelEvent from './dom/cancelEvent';
-import {CLICK_EVENT_NAME} from './dom/clickEvent';
-import EventListenerBase from './eventListenerBase';
 import mediaSizes from './mediaSizes';
+import OverlayClickHandler from './overlayClickHandler';
 
-class ContextMenuController extends EventListenerBase<{
-  toggle: (open: boolean) => void
-}> {
-  private openedMenu: HTMLElement;
-  private menuOverlay: HTMLElement;
-  private openedMenuOnClose: () => void;
-
+class ContextMenuController extends OverlayClickHandler {
   constructor() {
-    super();
+    super('menu', true);
 
     mediaSizes.addEventListener('resize', () => {
-      if(this.openedMenu) {
-        this.closeBtnMenu();
+      if(this.element) {
+        this.close();
       }
 
       /* if(openedMenu && (openedMenu.style.top || openedMenu.style.left)) {
@@ -33,118 +23,53 @@ class ContextMenuController extends EventListenerBase<{
 
         console.log(innerWidth, innerHeight, rect);
       } */
-    })
+    });
   }
 
   public isOpened() {
-    return !!this.openedMenu;
+    return !!this.element;
   }
 
   private onMouseMove = (e: MouseEvent) => {
-    const rect = this.openedMenu.getBoundingClientRect();
+    const rect = this.element.getBoundingClientRect();
     const {clientX, clientY} = e;
 
     const diffX = clientX >= rect.right ? clientX - rect.right : rect.left - clientX;
     const diffY = clientY >= rect.bottom ? clientY - rect.bottom : rect.top - clientY;
 
     if(diffX >= 100 || diffY >= 100) {
-      this.closeBtnMenu();
+      this.close();
       // openedMenu.parentElement.click();
     }
     // console.log('mousemove', diffX, diffY);
   };
 
-  private onClick = (e: MouseEvent | TouchEvent) => {
-    // cancelEvent(e);
-    this.closeBtnMenu();
-  };
-
-  // ! no need in this due to the same handler in appNavigationController
-  /* const onKeyDown = (e: KeyboardEvent) => {
-    if(e.key === 'Escape') {
-      closeBtnMenu();
-      cancelEvent(e);
-    }
-  }; */
-
-  public closeBtnMenu = () => {
-    if(this.openedMenu) {
-      this.openedMenu.classList.remove('active');
-      this.openedMenu.parentElement.classList.remove('menu-open');
-      // openedMenu.previousElementSibling.remove(); // remove overlay
-      if(this.menuOverlay) this.menuOverlay.remove();
-      this.openedMenu = undefined;
-
-      this.dispatchEvent('toggle', false);
+  public close() {
+    if(this.element) {
+      this.element.classList.remove('active');
+      this.element.parentElement.classList.remove('menu-open');
     }
 
-    if(this.openedMenuOnClose) {
-      this.openedMenuOnClose();
-      this.openedMenuOnClose = undefined;
-    }
+    super.close();
 
     if(!IS_TOUCH_SUPPORTED) {
       window.removeEventListener('mousemove', this.onMouseMove);
-      // window.removeEventListener('keydown', onKeyDown, {capture: true});
-      window.removeEventListener('contextmenu', this.onClick);
     }
+  }
 
-    document.removeEventListener(CLICK_EVENT_NAME, this.onClick);
+  public openBtnMenu(element: HTMLElement, onClose?: () => void) {
+    super.open(element);
 
-    if(!IS_MOBILE_SAFARI) {
-      appNavigationController.removeByType('menu');
+    this.element.classList.add('active');
+    this.element.parentElement.classList.add('menu-open');
+
+    if(onClose) {
+      this.addEventListener('toggle', onClose, {once: true});
     }
-  };
-
-  public openBtnMenu(menuElement: HTMLElement, onClose?: () => void) {
-    this.closeBtnMenu();
-
-    if(!IS_MOBILE_SAFARI) {
-      appNavigationController.pushItem({
-        type: 'menu',
-        onPop: (canAnimate) => {
-          this.closeBtnMenu();
-        }
-      });
-    }
-
-    this.openedMenu = menuElement;
-    this.openedMenu.classList.add('active');
-    this.openedMenu.parentElement.classList.add('menu-open');
-
-    if(!this.menuOverlay) {
-      this.menuOverlay = document.createElement('div');
-      this.menuOverlay.classList.add('btn-menu-overlay');
-
-      // ! because this event must be canceled, and can't cancel on menu click (below)
-      this.menuOverlay.addEventListener(CLICK_EVENT_NAME, (e) => {
-        cancelEvent(e);
-        this.onClick(e);
-      });
-    }
-
-    this.openedMenu.parentElement.insertBefore(this.menuOverlay, this.openedMenu);
-
-    // document.body.classList.add('disable-hover');
-
-    this.openedMenuOnClose = onClose;
 
     if(!IS_TOUCH_SUPPORTED) {
       window.addEventListener('mousemove', this.onMouseMove);
-      // window.addEventListener('keydown', onKeyDown, {capture: true});
-      window.addEventListener('contextmenu', this.onClick, {once: true});
     }
-
-    /* // ! because this event must be canceled, and can't cancel on menu click (below)
-    overlay.addEventListener(CLICK_EVENT_NAME, (e) => {
-      cancelEvent(e);
-      onClick(e);
-    }); */
-
-    // ! safari iOS doesn't handle window click event on overlay, idk why
-    document.addEventListener(CLICK_EVENT_NAME, this.onClick);
-
-    this.dispatchEvent('toggle', true);
   }
 }
 

@@ -13,7 +13,7 @@ import type {ReferenceBytes} from './referenceDatabase';
 import Modes from '../../config/modes';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import {randomLong} from '../../helpers/random';
-import {Document, InputFile, InputFileLocation, InputWebFileLocation, Photo, PhotoSize, UploadFile, UploadWebFile, WebDocument} from '../../layer';
+import {Document, InputFile, InputFileLocation, InputWebFileLocation, Photo, PhotoSize, UploadFile, UploadWebFile, VideoSize, WebDocument} from '../../layer';
 import {DcId} from '../../types';
 import CacheStorageController from '../files/cacheStorage';
 import {logger, LogTypes} from '../logger';
@@ -62,7 +62,7 @@ export type DownloadOptions = {
 
 export type DownloadMediaOptions = {
   media: Photo.photo | Document.document | WebDocument,
-  thumb?: PhotoSize,
+  thumb?: PhotoSize | VideoSize,
   queueId?: number,
   onlyCache?: boolean,
   downloadId?: string

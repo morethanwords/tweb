@@ -411,8 +411,8 @@ export default class ChatContextMenu {
         if(!doc) return false;
 
         let hasTarget = !!IS_TOUCH_SUPPORTED;
-        const isGoodType = !doc.type || !(['gif', 'video', 'sticker'] as MyDocument['type'][]).includes(doc.type);
-        if(isGoodType) hasTarget = hasTarget || !!findUpClassName(this.target, 'document') || !!findUpClassName(this.target, 'audio');
+        const isGoodType = !doc.type || !(['gif', 'video'/* , 'sticker' */] as MyDocument['type'][]).includes(doc.type);
+        if(isGoodType) hasTarget ||= !!findUpClassName(this.target, 'document') || !!findUpClassName(this.target, 'audio') || !!findUpClassName(this.target, 'media-sticker-wrapper');
         return isGoodType && hasTarget;
       }
     }, {

@@ -4,15 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {Document, PhotoSize} from '../../../../layer';
+import type {Document, PhotoSize, VideoSize} from '../../../../layer';
 import type {DownloadOptions} from '../../../mtproto/apiFileManager';
 import getDocumentInput from './getDocumentInput';
 
-export default function getDocumentDownloadOptions(doc: Document.document, thumb?: PhotoSize.photoSize, queueId?: number, onlyCache?: boolean): DownloadOptions {
+export default function getDocumentDownloadOptions(doc: Document.document, thumb?: PhotoSize.photoSize | VideoSize, queueId?: number, onlyCache?: boolean): DownloadOptions {
   const inputFileLocation = getDocumentInput(doc, thumb?.type);
 
   let mimeType: string;
-  if(thumb) {
+  if(thumb?._ === 'photoSize') {
     mimeType = doc.sticker ? 'image/webp' : 'image/jpeg'/* doc.mime_type */;
   } else {
     mimeType = doc.mime_type || 'application/octet-stream';
