@@ -8,6 +8,7 @@ import IS_VIBRATE_SUPPORTED from '../../environment/vibrateSupport';
 import assumeType from '../../helpers/assumeType';
 import isInDOM from '../../helpers/dom/isInDOM';
 import throttleWithRaf from '../../helpers/schedulers/throttleWithRaf';
+import windowSize from '../../helpers/windowSize';
 import {PhotoSize, VideoSize} from '../../layer';
 import {MyDocument} from '../../lib/appManagers/appDocsManager';
 import appImManager from '../../lib/appManagers/appImManager';
@@ -45,6 +46,13 @@ export default function wrapStickerAnimation({
   animationDiv.style.width = size + 'px';
   animationDiv.style.height = size + 'px';
 
+  let animation: RLottiePlayer;
+  const unmountAnimation = () => {
+    animation?.remove();
+    animationDiv.remove();
+    appImManager.chat.bubbles.scrollable.container.removeEventListener('scroll', onScroll);
+  };
+
   const stickerPromise = wrapSticker({
     div: animationDiv,
     doc,
@@ -59,13 +67,12 @@ export default function wrapStickerAnimation({
     skipRatio,
     managers,
     fullThumb
-  }).then(({render}) => render).then((animation) => {
-    assumeType<RLottiePlayer>(animation);
+  }).then(({render}) => render).then((_animation) => {
+    assumeType<RLottiePlayer>(_animation);
+    animation = _animation;
     animation.addEventListener('enterFrame', (frameNo) => {
-      if(frameNo === animation.maxFrame) {
-        animation.remove();
-        animationDiv.remove();
-        appImManager.chat.bubbles.scrollable.container.removeEventListener('scroll', onScroll);
+      if(frameNo === animation.maxFrame || !isInDOM(target)) {
+        unmountAnimation();
       }
     });
 
@@ -88,6 +95,7 @@ export default function wrapStickerAnimation({
   const stableOffsetX = /* size / 8 */16 * (side === 'right' ? 1 : -1);
   const setPosition = () => {
     if(!isInDOM(target)) {
+      unmountAnimation();
       return;
     }
 
@@ -104,6 +112,12 @@ export default function wrapStickerAnimation({
     // const y = rect.bottom - size + size / 4;
     const y = rect.top + ((rect.height - size) / 2) + (side === 'center' ? 0 : randomOffsetY);
     // animationDiv.style.transform = `translate(${x}px, ${y}px)`;
+
+    if(y <= -size || y >= windowSize.height) {
+      unmountAnimation();
+      return;
+    }
+
     animationDiv.style.top = y + 'px';
     animationDiv.style.left = x + 'px';
   };

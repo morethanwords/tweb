@@ -27,7 +27,7 @@ import {AppManagers} from '../../lib/appManagers/managers';
 import {NULL_PEER_ID} from '../../lib/mtproto/mtproto_config';
 import rootScope from '../../lib/rootScope';
 import {ThumbCache} from '../../lib/storages/thumbs';
-import animationIntersector from '../animationIntersector';
+import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
 import appMediaPlaybackController, {MediaSearchContext} from '../appMediaPlaybackController';
 import {findMediaTargets} from '../audio';
 import LazyLoadQueue from '../lazyLoadQueue';
@@ -71,7 +71,7 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
   lazyLoadQueue?: LazyLoadQueue,
   noInfo?: boolean,
   noPlayButton?: boolean,
-  group?: string,
+  group?: AnimationItemGroup,
   onlyPreview?: boolean,
   withoutPreloader?: boolean,
   loadPromises?: Promise<any>[],

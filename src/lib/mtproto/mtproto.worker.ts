@@ -132,6 +132,7 @@ appTabsManager.start();
 listenMessagePort(port, (source) => {
   appTabsManager.addTab(source);
 
+  // port.invokeVoid('hello', undefined, source);
   // if(!sentHello) {
   //   port.invokeVoid('hello', undefined, source);
   //   sentHello = true;

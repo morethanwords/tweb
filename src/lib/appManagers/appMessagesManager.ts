@@ -60,6 +60,7 @@ import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
 import getAlbumText from './utils/messages/getAlbumText';
 import pause from '../../helpers/schedulers/pause';
 import makeError from '../../helpers/makeError';
+import getStickerEffectThumb from './utils/stickers/getStickerEffectThumb';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -2091,7 +2092,7 @@ export class AppMessagesManager extends AppManager {
 
       keys.forEach((key) => {
         // @ts-ignore
-        message[key] = originalMessage[key];
+        message[key] = copy(originalMessage[key]);
       });
 
       const document = (message.media as MessageMedia.messageMediaDocument)?.document as MyDocument;
@@ -2099,6 +2100,13 @@ export class AppMessagesManager extends AppManager {
         const types: MyDocument['type'][] = ['round', 'voice'];
         if(types.includes(document.type)) {
           (message as MyMessage).pFlags.media_unread = true;
+        }
+
+        if(document.sticker && !this.rootScope.premium) {
+          const effectThumb = getStickerEffectThumb(document);
+          if(effectThumb) {
+            (message.media as MessageMedia.messageMediaDocument).pFlags.nopremium = true;
+          }
         }
       }
 

@@ -1116,7 +1116,8 @@ export default class AppSearchSuper {
                 container: this.searchGroups.people.list,
                 onlyFirstName: true,
                 avatarSize: 54,
-                autonomous: false
+                autonomous: false,
+                noIcons: this.searchGroups.people.noIcons
               });
             });
           }

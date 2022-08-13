@@ -151,7 +151,8 @@ export default class AppStickersTab extends SliderSuperTab {
           play: true,
           loop: true,
           width: 68,
-          height: 68
+          height: 68,
+          withLock: true
         });
       }
     });

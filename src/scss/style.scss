@@ -126,6 +126,8 @@ $chat-input-inner-padding-handhelds: .25rem;
   --peer-avatar-pink-top: #e0a2f3;
   --peer-avatar-pink-bottom: #d669ed;
 
+  --premium-gradient: linear-gradient(52.62deg, #6B93FF 12.22%, #976FFF 50.25%, #E46ACE 98.83%);
+
   @include respond-to(handhelds) {
     --right-column-width: 100vw;
     --esg-sticker-size: 68px;
@@ -590,6 +592,12 @@ input:-webkit-autofill:active {
   .c-ripple__circle {
     background-color: var(--light-primary-color);
   }
+}
+
+.color-premium {
+  background: var(--premium-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .blue:before, .primary:before, .danger:before {
@@ -1338,6 +1346,38 @@ middle-ellipsis-element {
   height: 100%;
   max-width: 100%;
   max-height: 100%;
+
+  &-wrapper {
+    &.is-premium-sticker {
+      &:before {
+        // content: " ";
+        position: absolute;
+        bottom: .125rem;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 1.25rem;
+        height: 1.25rem;
+        background: rgba(0, 0, 0, .2);
+        // backdrop-filter: blur(25px) saturate(1.5);
+        border-radius: 50%;
+        color: #fff;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-image: var(--lock-url);
+        background-repeat: no-repeat;
+        background-size: cover;
+      }
+
+      @include premium(true) {
+        &:before,
+        &:after {
+          content: none;
+        }
+      }
+    }
+  }
 }
 
 .media-round {

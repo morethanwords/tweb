@@ -8,6 +8,7 @@ import IS_WEBP_SUPPORTED from '../../environment/webpSupport';
 import assumeType from '../../helpers/assumeType';
 import getPathFromBytes from '../../helpers/bytes/getPathFromBytes';
 import deferredPromise from '../../helpers/cancellablePromise';
+import computeLockColor from '../../helpers/computeLockColor';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import createVideo from '../../helpers/dom/createVideo';
@@ -34,7 +35,7 @@ import type {ThumbCache} from '../../lib/storages/thumbs';
 import webpWorkerController from '../../lib/webp/webpWorkerController';
 import {SendMessageEmojiInteractionData} from '../../types';
 import {getEmojiToneIndex} from '../../vendor/emoji';
-import animationIntersector from '../animationIntersector';
+import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
 import LazyLoadQueue from '../lazyLoadQueue';
 import PopupStickers from '../popups/stickers';
 import {hideToast, toastNew} from '../toast';
@@ -44,12 +45,14 @@ import wrapStickerAnimation from './stickerAnimation';
 const STICKER_EFFECT_MULTIPLIER = 1 + 0.245 * 2;
 const EMOJI_EFFECT_MULTIPLIER = 3;
 
-export default async function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn, needUpscale, skipRatio, static: asStatic, managers = rootScope.managers, fullThumb, isOut}: {
+const locksUrls: {[docId: string]: string} = {};
+
+export default async function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn, needUpscale, skipRatio, static: asStatic, managers = rootScope.managers, fullThumb, isOut, noPremium, withLock}: {
   doc: MyDocument,
   div: HTMLElement,
   middleware?: () => boolean,
   lazyLoadQueue?: LazyLoadQueue,
-  group?: string,
+  group?: AnimationItemGroup,
   play?: boolean,
   onlyThumb?: boolean,
   emoji?: string,
@@ -64,7 +67,9 @@ export default async function wrapSticker({doc, div, middleware, lazyLoadQueue, 
   static?: boolean,
   managers?: AppManagers,
   fullThumb?: PhotoSize | VideoSize,
-  isOut?: boolean
+  isOut?: boolean,
+  noPremium?: boolean,
+  withLock?: boolean
 }) {
   const stickerType = doc.sticker;
   if(stickerType === 1) {
@@ -132,6 +137,13 @@ export default async function wrapSticker({doc, div, middleware, lazyLoadQueue, 
   const effectThumb = getStickerEffectThumb(doc);
   if(isOut !== undefined && effectThumb && !isOut) {
     div.classList.add('reflect-x');
+  }
+
+  const willHaveLock = effectThumb && withLock;
+  if(willHaveLock) {
+    div.classList.add('is-premium-sticker', 'tgico-premium_lock');
+    const lockUrl = locksUrls[doc.id];
+    lockUrl && div.style.setProperty('--lock-url', `url(${lockUrl})`);
   }
 
   if(asStatic && stickerType !== 1) {
@@ -331,6 +343,11 @@ export default async function wrapSticker({doc, div, middleware, lazyLoadQueue, 
 
         // const deferred = deferredPromise<void>();
 
+        const setLockColor = willHaveLock ? () => {
+          const lockUrl = locksUrls[doc.id] ??= computeLockColor(animation.canvas);
+          div.style.setProperty('--lock-url', `url(${lockUrl})`);
+        } : undefined;
+
         animation.addEventListener('firstFrame', () => {
           const element = div.firstElementChild;
           if(needFadeIn !== false) {
@@ -365,6 +382,10 @@ export default async function wrapSticker({doc, div, middleware, lazyLoadQueue, 
 
           if(withThumb !== false) {
             saveLottiePreview(doc, animation.canvas, toneIndex);
+          }
+
+          if(willHaveLock) {
+            setLockColor();
           }
 
           // deferred.resolve();
@@ -472,54 +493,6 @@ export default async function wrapSticker({doc, div, middleware, lazyLoadQueue, 
 
               sendInteractionThrottled();
             }
-          });
-        } else if(effectThumb && isOut !== undefined) {
-          managers.appStickersManager.preloadSticker(doc.id, true);
-
-          let playing = false;
-          attachClickEvent(div, async(e) => {
-            cancelEvent(e);
-            if(playing) {
-              const a = document.createElement('a');
-              a.onclick = () => {
-                hideToast();
-                new PopupStickers(doc.stickerSetInput).show();
-              };
-
-              toastNew({
-                langPackKey: 'Sticker.Premium.Click.Info',
-                langPackArguments: [a]
-              });
-
-              return;
-            }
-
-            playing = true;
-
-            const {animationDiv, stickerPromise} = wrapStickerAnimation({
-              doc,
-              middleware,
-              side: isOut ? 'right' : 'left',
-              size: width * STICKER_EFFECT_MULTIPLIER,
-              target: div,
-              play: true,
-              fullThumb: effectThumb
-            });
-
-            if(isOut !== undefined && !isOut) {
-              animationDiv.classList.add('reflect-x');
-            }
-
-            stickerPromise.then((player) => {
-              const onFrame = (frameNo: number) => {
-                if(frameNo === player.maxFrame) {
-                  playing = false;
-                  player.removeEventListener('enterFrame', onFrame);
-                }
-              };
-
-              player.addEventListener('enterFrame', onFrame);
-            });
           });
         }
 
@@ -633,5 +606,71 @@ export default async function wrapSticker({doc, div, middleware, lazyLoadQueue, 
     }
   }
 
+  if(stickerType === 2 && effectThumb && isOut !== undefined && !noPremium) {
+    attachStickerEffectHandler({
+      container: div,
+      doc,
+      managers,
+      middleware,
+      isOut,
+      width,
+      loadPromise
+    });
+  }
+
   return {render: loadPromise};
+}
+
+function attachStickerEffectHandler({container, doc, managers, middleware, isOut, width, loadPromise}: {
+  container: HTMLElement,
+  doc: MyDocument,
+  managers: AppManagers,
+  middleware: () => boolean,
+  isOut: boolean,
+  width: number,
+  loadPromise: Promise<any>
+}) {
+  managers.appStickersManager.preloadSticker(doc.id, true);
+
+  let playing = false;
+  attachClickEvent(container, async(e) => {
+    cancelEvent(e);
+    if(playing) {
+      const a = document.createElement('a');
+      a.onclick = () => {
+        hideToast();
+        new PopupStickers(doc.stickerSetInput).show();
+      };
+
+      toastNew({
+        langPackKey: 'Sticker.Premium.Click.Info',
+        langPackArguments: [a]
+      });
+
+      return;
+    }
+
+    playing = true;
+
+    await loadPromise;
+    const {animationDiv, stickerPromise} = wrapStickerAnimation({
+      doc,
+      middleware,
+      side: isOut ? 'right' : 'left',
+      size: width * STICKER_EFFECT_MULTIPLIER,
+      target: container,
+      play: true,
+      fullThumb: getStickerEffectThumb(doc)
+    });
+
+    if(isOut !== undefined && !isOut) {
+      animationDiv.classList.add('reflect-x');
+    }
+
+    stickerPromise.then((player) => {
+      player.addEventListener('destroy', () => {
+        playing = false;
+      });
+    });
+  });
 }

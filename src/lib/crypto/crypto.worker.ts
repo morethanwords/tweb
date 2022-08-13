@@ -22,6 +22,7 @@ import rsaEncrypt from './utils/rsa';
 import sha1 from './utils/sha1';
 import sha256 from './utils/sha256';
 import {aesCtrDestroy, aesCtrPrepare, aesCtrProcess} from './aesCtrUtils';
+import ctx from '../../environment/ctx';
 
 console.log('CryptoWorker start');
 
@@ -46,10 +47,16 @@ const cryptoMethods: CryptoMethods = {
   'aes-ctr-destroy': aesCtrDestroy
 };
 
-cryptoMessagePort.addEventListener('invoke', ({method, args}) => {
-  // @ts-ignore
-  const result: any = cryptoMethods[method](...args);
-  return result;
+cryptoMessagePort.addMultipleEventsListeners({
+  invoke: ({method, args}) => {
+    // @ts-ignore
+    const result: any = cryptoMethods[method](...args);
+    return result;
+  },
+
+  terminate: () => {
+    ctx.close();
+  }
 });
 
 if(typeof(MessageChannel) !== 'undefined') listenMessagePort(cryptoMessagePort, (source) => {

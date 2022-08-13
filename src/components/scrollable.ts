@@ -9,6 +9,7 @@ import {logger, LogTypes} from '../lib/logger';
 import fastSmoothScroll, {ScrollOptions} from '../helpers/fastSmoothScroll';
 import useHeavyAnimationCheck from '../hooks/useHeavyAnimationCheck';
 import cancelEvent from '../helpers/dom/cancelEvent';
+import {IS_ANDROID} from '../environment/userAgent';
 /*
 var el = $0;
 var height = 0;
@@ -51,6 +52,8 @@ const scrollsIntersector = new IntersectionObserver((entries) => {
     }
   }
 }); */
+
+const SCROLL_THROTTLE = IS_ANDROID ? 200 : 24;
 
 export class ScrollableBase {
   protected log: ReturnType<typeof logger>;
@@ -196,7 +199,7 @@ export class ScrollableBase {
         this.checkForTriggers();
       }
     // });
-    }, 200);
+    }, SCROLL_THROTTLE);
   };
 
   public cancelMeasure() {

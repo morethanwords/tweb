@@ -29,7 +29,7 @@ import MTProtoMessagePort from './mtprotoMessagePort';
 import getFileNameForUpload from '../../helpers/getFileNameForUpload';
 import type {Progress} from '../appManagers/appDownloadManager';
 import getDownloadMediaDetails from '../appManagers/utils/download/getDownloadMediaDetails';
-import networkStats from './networkStats';
+// import networkStats from './networkStats';
 import getDownloadFileNameFromOptions from '../appManagers/utils/download/getDownloadFileNameFromOptions';
 import StreamWriter from '../files/streamWriter';
 import FileStorage from '../files/fileStorage';
@@ -89,7 +89,8 @@ const MIN_PART_SIZE = 128 * 1024;
 const AVG_PART_SIZE = 512 * 1024;
 
 const REGULAR_DOWNLOAD_DELTA = (9 * 512 * 1024) / MIN_PART_SIZE;
-const PREMIUM_DOWNLOAD_DELTA = REGULAR_DOWNLOAD_DELTA * 2;
+// const PREMIUM_DOWNLOAD_DELTA = REGULAR_DOWNLOAD_DELTA * 2;
+const PREMIUM_DOWNLOAD_DELTA = (56 * 512 * 1024) / MIN_PART_SIZE;
 
 const IGNORE_ERRORS: Set<ErrorType> = new Set([
   'DOWNLOAD_CANCELED',
@@ -201,15 +202,15 @@ export class ApiFileManager extends AppManager {
     this.downloadActives[dcId] += activeDelta;
 
     const promise = data.cb();
-    const networkPromise = networkStats.waitForChunk(dcId as DcId, activeDelta * MIN_PART_SIZE);
-    Promise.race([
-      promise,
-      networkPromise
-    ]).then(() => {
+    // const networkPromise = networkStats.waitForChunk(dcId as DcId, activeDelta * MIN_PART_SIZE);
+    /* Promise.race([
+      promise
+      // networkPromise
+    ]) */promise.then(() => {
       this.downloadActives[dcId] -= activeDelta;
       this.downloadCheck(dcId);
 
-      networkPromise.resolve();
+      // networkPromise.resolve();
     }, (error: ApiError) => {
       if(!error?.type || !IGNORE_ERRORS.has(error.type)) {
         this.log.error('downloadCheck error:', error);
@@ -218,7 +219,7 @@ export class ApiFileManager extends AppManager {
       this.downloadActives[dcId] -= activeDelta;
       this.downloadCheck(dcId);
 
-      networkPromise.reject(error);
+      // networkPromise.reject(error);
     }).finally(() => {
       promise.then(data.deferred.resolve, data.deferred.reject);
     });
@@ -543,7 +544,7 @@ export class ApiFileManager extends AppManager {
         }
 
         delete item.writer;
-        indexOfAndSplice(prepared, item);
+        // indexOfAndSplice(prepared, item);
       });
 
       this.downloadPromises[fileName] = deferred;

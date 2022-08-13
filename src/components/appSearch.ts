@@ -23,7 +23,8 @@ export class SearchGroup {
     className?: string,
     clickable = true,
     public autonomous = true,
-    public onFound?: () => void
+    public onFound?: () => void,
+    public noIcons?: boolean
   ) {
     this.list = appDialogsManager.createChatList();
     this.container = document.createElement('div');
@@ -87,7 +88,13 @@ export default class AppSearch {
 
   private scrollable: Scrollable;
 
-  constructor(public container: HTMLElement, public searchInput: InputSearch, public searchGroups: {[group in SearchGroupType]: SearchGroup}, public onSearch?: (count: number) => void) {
+  constructor(
+    public container: HTMLElement,
+    public searchInput: InputSearch,
+    public searchGroups: {[group in SearchGroupType]: SearchGroup},
+    public onSearch?: (count: number) => void,
+    public noIcons?: boolean
+  ) {
     this.scrollable = new Scrollable(this.container);
     this.listsContainer = this.scrollable.container as HTMLDivElement;
     for(const i in this.searchGroups) {
@@ -200,7 +207,8 @@ export default class AppSearch {
             avatarSize: 54,
             meAsSaved: false,
             message,
-            query
+            query,
+            noIcons: this.noIcons
           });
         } catch(err) {
           console.error('[appSearch] render search result', err);

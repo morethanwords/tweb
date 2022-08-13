@@ -6,7 +6,7 @@
 
 import {SliderSuperTab} from '../../slider';
 import InputSearch from '../../inputSearch';
-import animationIntersector from '../../animationIntersector';
+import animationIntersector, {AnimationItemGroup} from '../../animationIntersector';
 import appSidebarRight from '..';
 import {AppInlineBotsManager} from '../../../lib/appManagers/appInlineBotsManager';
 import GifsMasonry from '../../gifsMasonry';
@@ -17,7 +17,7 @@ import findUpClassName from '../../../helpers/dom/findUpClassName';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import {NULL_PEER_ID} from '../../../lib/mtproto/mtproto_config';
 
-const ANIMATIONGROUP = 'GIFS-SEARCH';
+const ANIMATIONGROUP: AnimationItemGroup = 'GIFS-SEARCH';
 
 export default class AppGifsTab extends SliderSuperTab {
   private inputSearch: InputSearch;

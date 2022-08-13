@@ -27,6 +27,7 @@ import IS_SHARED_WORKER_SUPPORTED from '../../environment/sharedWorkerSupport';
 import toggleStorages from '../../helpers/toggleStorages';
 import idleController from '../../helpers/idleController';
 import ServiceMessagePort from '../serviceWorker/serviceMessagePort';
+import App from '../../config/app';
 
 export type Mirrors = {
   state: State
@@ -81,6 +82,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.registerServiceWorker();
     this.registerCryptoWorker();
 
+    // const perf = performance.now();
     this.addMultipleEventsListeners({
       convertWebp: ({fileName, bytes}) => {
         return webpWorkerController.convert(fileName, bytes);
@@ -101,6 +103,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
       },
 
       mirror: this.onMirrorTask
+
+      // hello: () => {
+      //   this.log.error('time hello', performance.now() - perf);
+      // }
     });
 
     // this.addTaskListener('socketProxy', (task) => {
@@ -276,27 +282,61 @@ class ApiManagerProxy extends MTProtoMessagePort {
     });
   }
 
-  private registerCryptoWorker() {
-    let worker: SharedWorker | Worker;
-    if(IS_SHARED_WORKER_SUPPORTED) {
-      worker = new SharedWorker(
-        /* webpackChunkName: "crypto.worker" */
-        new URL('../crypto/crypto.worker.ts', import.meta.url),
-        {type: 'module'}
-      );
-    } else {
-      worker = new Worker(
-        /* webpackChunkName: "crypto.worker" */
-        new URL('../crypto/crypto.worker.ts', import.meta.url),
-        {type: 'module'}
-      );
-    }
+  private async registerCryptoWorker() {
+    const get = (url: string) => {
+      return fetch(url).then((response) => response.text()).then((text) => {
+        text = 'var a = importScripts; importScripts = (url) => {console.log(`wut`, url); return a(url.slice(5));};' + text;
+        const blob = new Blob([text], {type: 'application/javascript'});
+        return blob;
+      });
+    };
 
-    cryptoMessagePort.addEventListener('port', (payload, source, event) => {
-      this.invokeVoid('cryptoPort', undefined, undefined, [event.ports[0]]);
+    const workerHandler = {
+      construct(target: any, args: any): any {
+        const url = args[0] + location.search;
+        return {url};
+      }
+    };
+
+    const originals = [
+      Worker,
+      typeof(SharedWorker) !== 'undefined' && SharedWorker
+    ].filter(Boolean);
+    originals.forEach((w) => window[w.name as any] = new Proxy(w, workerHandler));
+
+    const worker: SharedWorker | Worker = new Worker(
+      /* webpackChunkName: "crypto.worker" */
+      new URL('../crypto/crypto.worker.ts', import.meta.url),
+      {type: 'module'}
+    );
+
+    originals.forEach((w) => window[w.name as any] = w as any);
+
+    const blob = await get((worker as any).url);
+    const urlsPromise = await this.invoke('createProxyWorkerURLs', blob);
+    const workers = urlsPromise.map((url) => {
+      return new (IS_SHARED_WORKER_SUPPORTED ? SharedWorker : Worker)(url, {type: 'module'});
     });
 
-    this.attachWorkerToPort(worker, cryptoMessagePort, 'crypto');
+    // let cryptoWorkers = workers.length;
+    cryptoMessagePort.addEventListener('port', (payload, source, event) => {
+      this.invokeVoid('cryptoPort', undefined, undefined, [event.ports[0]]);
+      // .then((attached) => {
+      //   if(!attached && cryptoWorkers-- > 1) {
+      //     this.log.error('terminating unneeded crypto worker');
+
+      //     cryptoMessagePort.invokeVoid('terminate', undefined, source);
+      //     const worker = workers.find((worker) => (worker as SharedWorker).port === source || (worker as any) === source);
+      //     if((worker as SharedWorker).port) (worker as SharedWorker).port.close();
+      //     else (worker as Worker).terminate();
+      //     cryptoMessagePort.detachPort(source);
+      //   }
+      // });
+    });
+
+    workers.forEach((worker) => {
+      this.attachWorkerToPort(worker, cryptoMessagePort, 'crypto');
+    });
   }
 
   // #if !MTPROTO_SW

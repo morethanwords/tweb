@@ -12,15 +12,23 @@ import {IS_WORKER} from '../../helpers/context';
 
 type CryptoEvent = {
   invoke: <T extends keyof CryptoMethods>(payload: {method: T, args: Parameters<CryptoMethods[T]>}) => ReturnType<CryptoMethods[T]>,
-  port: (payload: void, source: MessageEventSource, event: MessageEvent) => void
+  port: (payload: void, source: MessageEventSource, event: MessageEvent) => void,
+  terminate: () => void
 };
 
 export class CryptoMessagePort<Master extends boolean = false> extends SuperMessagePort<CryptoEvent, CryptoEvent, Master> {
+  private lastIndex: number;
+
   constructor() {
     super('CRYPTO');
+    this.lastIndex = -1;
   }
 
-  public invokeCrypto<T extends keyof CryptoMethods>(method: T, ...args: Parameters<CryptoMethods[T]>): Promise<Awaited<ReturnType<CryptoMethods[T]>>> {
+  public invokeCryptoNew<T extends keyof CryptoMethods>({method, args, transfer}: {
+    method: T,
+    args: Parameters<CryptoMethods[T]>,
+    transfer?: Transferable[]
+  }): Promise<Awaited<ReturnType<CryptoMethods[T]>>> {
     const payload = {method, args};
     const listeners = this.listeners['invoke'];
     if(listeners?.length) { // already in worker
@@ -37,8 +45,15 @@ export class CryptoMessagePort<Master extends boolean = false> extends SuperMess
       // }
     }
 
+    const sendPortIndex = method === 'aes-encrypt' || method === 'aes-decrypt' ?
+      this.lastIndex = (this.lastIndex + 1) % this.sendPorts.length :
+      0;
     // @ts-ignore
-    return this.invoke('invoke', payload);
+    return this.invoke('invoke', payload, undefined, this.sendPorts[sendPortIndex], transfer);
+  }
+
+  public invokeCrypto<T extends keyof CryptoMethods>(method: T, ...args: Parameters<CryptoMethods[T]>): Promise<Awaited<ReturnType<CryptoMethods[T]>>> {
+    return this.invokeCryptoNew({method, args});
   }
 }
 

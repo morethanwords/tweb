@@ -28,8 +28,9 @@ import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
 import generateQId from '../../lib/appManagers/utils/inlineBots/generateQId';
 import appDownloadManager from '../../lib/appManagers/appDownloadManager';
+import {AnimationItemGroup} from '../animationIntersector';
 
-const ANIMATION_GROUP = 'INLINE-HELPER';
+const ANIMATION_GROUP: AnimationItemGroup = 'INLINE-HELPER';
 // const GRID_ITEMS = 5;
 
 export default class InlineHelper extends AutocompleteHelper {

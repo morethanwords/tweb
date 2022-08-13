@@ -2028,9 +2028,10 @@ export class AppDialogsManager {
     autonomous?: boolean,
     lazyLoadQueue?: LazyLoadQueue,
     loadPromises?: Promise<any>[],
-    fromName?: string
+    fromName?: string,
+    noIcons?: boolean
   }) {
-    return this.addDialog(options.peerId, options.container, options.rippleEnabled, options.onlyFirstName, options.meAsSaved, options.append, options.avatarSize, options.autonomous, options.lazyLoadQueue, options.loadPromises, options.fromName);
+    return this.addDialog(options.peerId, options.container, options.rippleEnabled, options.onlyFirstName, options.meAsSaved, options.append, options.avatarSize, options.autonomous, options.lazyLoadQueue, options.loadPromises, options.fromName, options.noIcons);
   }
 
   public addDialog(
@@ -2044,7 +2045,8 @@ export class AppDialogsManager {
     autonomous = !!container,
     lazyLoadQueue?: LazyLoadQueue,
     loadPromises?: Promise<any>[],
-    fromName?: string
+    fromName?: string,
+    noIcons?: boolean
   ) {
     // const dialog = await this.getDialog(_dialog);
     const avatarEl = new AvatarElement();
@@ -2070,7 +2072,7 @@ export class AppDialogsManager {
       dialog: meAsSaved,
       onlyFirstName,
       plainText: false,
-      withIcons: true
+      withIcons: !noIcons
     });
 
     if(loadPromises) {

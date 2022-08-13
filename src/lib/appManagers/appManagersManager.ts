@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import App from '../../config/app';
 import callbackify from '../../helpers/callbackify';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import cryptoMessagePort from '../crypto/cryptoMessagePort';
@@ -16,10 +17,13 @@ type Managers = Awaited<ReturnType<typeof createManagers>>;
 
 export class AppManagersManager {
   private managers: Managers | Promise<Managers>;
-  private cryptoPortAttached: boolean;
+  private cryptoWorkersURLs: string[];
+  private cryptoPortsAttached: number;
   private cryptoPortPromise: CancellablePromise<void>;
 
   constructor() {
+    this.cryptoWorkersURLs = [];
+    this.cryptoPortsAttached = 0;
     this.cryptoPortPromise = deferredPromise();
     this.cryptoPortPromise.then(() => {
       this.cryptoPortPromise = undefined;
@@ -38,14 +42,28 @@ export class AppManagersManager {
     });
 
     port.addEventListener('cryptoPort', (payload, source, event) => {
-      if(this.cryptoPortAttached) {
+      const port = event.ports[0];
+      if(this.cryptoPortsAttached >= this.cryptoWorkersURLs.length) {
+        port.close();
         return;
       }
 
-      this.cryptoPortAttached = true;
-      const port = event.ports[0];
+      ++this.cryptoPortsAttached;
       cryptoMessagePort.attachPort(port);
-      this.cryptoPortPromise.resolve();
+      this.cryptoPortPromise?.resolve();
+      return;
+    });
+
+    port.addEventListener('createProxyWorkerURLs', (blob) => {
+      const length = this.cryptoWorkersURLs.length;
+      const maxLength = App.cryptoWorkers;
+      if(length) {
+        return this.cryptoWorkersURLs;
+      }
+
+      const newURLs = new Array(maxLength - length).fill(undefined).map(() => URL.createObjectURL(blob));
+      this.cryptoWorkersURLs.push(...newURLs);
+      return newURLs;
     });
   }
 

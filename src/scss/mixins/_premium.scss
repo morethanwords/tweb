@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-@mixin premium($not: false) {
-  @if $not {
-    body:not(.is-premium) & {
+@mixin premium($yes: true) {
+  @if $yes {
+    body.is-premium & {
       @content;
     }
   } @else {
-    body.is-premium & {
+    body:not(.is-premium) & {
       @content;
     }
   }

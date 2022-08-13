@@ -19,7 +19,7 @@ import {AppManagers} from '../../lib/appManagers/managers';
 import lottieLoader from '../../lib/rlottie/lottieLoader';
 import RLottiePlayer from '../../lib/rlottie/rlottiePlayer';
 import rootScope from '../../lib/rootScope';
-import animationIntersector from '../animationIntersector';
+import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
 import Scrollable, {ScrollableBase, ScrollableX} from '../scrollable';
 import {wrapSticker} from '../wrappers';
 
@@ -44,7 +44,7 @@ export class ChatReactionsMenu {
   public container: HTMLElement;
   private reactionsMap: Map<HTMLElement, ChatReactionsMenuPlayers>;
   public scrollable: ScrollableBase;
-  private animationGroup: string;
+  private animationGroup: AnimationItemGroup;
   private middleware: ReturnType<typeof getMiddleware>;
   private message: Message.message;
 
@@ -74,7 +74,7 @@ export class ChatReactionsMenu {
     // });
 
     this.reactionsMap = new Map();
-    this.animationGroup = 'CHAT-MENU-REACTIONS-' + Date.now();
+    this.animationGroup = `CHAT-MENU-REACTIONS-${Date.now()}`;
     animationIntersector.setOverrideIdleGroup(this.animationGroup, true);
 
     if(!IS_TOUCH_SUPPORTED) {

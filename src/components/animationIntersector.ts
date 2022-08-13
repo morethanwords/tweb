@@ -14,9 +14,12 @@ import forEachReverse from '../helpers/array/forEachReverse';
 import idleController from '../helpers/idleController';
 import appMediaPlaybackController from './appMediaPlaybackController';
 
+export type AnimationItemGroup = '' | 'none' | 'chat' | 'lock' |
+  'STICKERS-POPUP' | 'emoticons-dropdown' | 'STICKERS-SEARCH' | 'GIFS-SEARCH' |
+  `CHAT-MENU-REACTIONS-${number}` | 'INLINE-HELPER' | 'GENERAL-SETTINGS';
 export interface AnimationItem {
   el: HTMLElement,
-  group: string,
+  group: AnimationItemGroup,
   animation: RLottiePlayer | HTMLVideoElement
 };
 
@@ -25,11 +28,11 @@ export class AnimationIntersector {
   private visible: Set<AnimationItem> = new Set();
 
   private overrideIdleGroups: Set<string>;
-  private byGroups: {[group: string]: AnimationItem[]} = {};
-  private lockedGroups: {[group: string]: true} = {};
-  private onlyOnePlayableGroup: string = '';
+  private byGroups: {[group in AnimationItemGroup]?: AnimationItem[]} = {};
+  private lockedGroups: {[group in AnimationItemGroup]?: true} = {};
+  private onlyOnePlayableGroup: AnimationItemGroup = '';
 
-  private intersectionLockedGroups: {[group: string]: true} = {};
+  private intersectionLockedGroups: {[group in AnimationItemGroup]?: true} = {};
   private videosLocked = false;
 
   constructor() {
@@ -40,11 +43,11 @@ export class AnimationIntersector {
         const target = entry.target;
 
         for(const group in this.byGroups) {
-          if(this.intersectionLockedGroups[group]) {
+          if(this.intersectionLockedGroups[group as AnimationItemGroup]) {
             continue;
           }
 
-          const player = this.byGroups[group].find((p) => p.el === target);
+          const player = this.byGroups[group as AnimationItemGroup].find((p) => p.el === target);
           if(player) {
             if(entry.isIntersecting) {
               this.visible.add(player);
@@ -104,7 +107,7 @@ export class AnimationIntersector {
   public getAnimations(element: HTMLElement) {
     const found: AnimationItem[] = [];
     for(const group in this.byGroups) {
-      for(const player of this.byGroups[group]) {
+      for(const player of this.byGroups[group as AnimationItemGroup]) {
         if(player.el === element) {
           found.push(player);
         }
@@ -138,8 +141,8 @@ export class AnimationIntersector {
     this.visible.delete(player);
   }
 
-  public addAnimation(animation: RLottiePlayer | HTMLVideoElement, group = '') {
-    const player = {
+  public addAnimation(animation: RLottiePlayer | HTMLVideoElement, group: AnimationItemGroup = '') {
+    const player: AnimationItem = {
       el: animation instanceof RLottiePlayer ? animation.el : animation,
       animation: animation,
       group
@@ -151,11 +154,11 @@ export class AnimationIntersector {
       }
     }
 
-    (this.byGroups[group] ?? (this.byGroups[group] = [])).push(player);
+    (this.byGroups[group as AnimationItemGroup] ??= []).push(player);
     this.observer.observe(player.el);
   }
 
-  public checkAnimations(blurred?: boolean, group?: string, destroy = false) {
+  public checkAnimations(blurred?: boolean, group?: AnimationItemGroup, destroy = false) {
     // if(rootScope.idle.isIDLE) return;
 
     if(group !== undefined && !this.byGroups[group]) {
@@ -163,7 +166,7 @@ export class AnimationIntersector {
       return;
     }
 
-    const groups = group !== undefined /* && false */ ? [group] : Object.keys(this.byGroups);
+    const groups = group !== undefined /* && false */ ? [group] : Object.keys(this.byGroups) as AnimationItemGroup[];
 
     for(const group of groups) {
       const animations = this.byGroups[group];
@@ -198,20 +201,20 @@ export class AnimationIntersector {
     }
   }
 
-  public setOnlyOnePlayableGroup(group: string) {
+  public setOnlyOnePlayableGroup(group: AnimationItemGroup) {
     this.onlyOnePlayableGroup = group;
   }
 
-  public lockGroup(group: string) {
+  public lockGroup(group: AnimationItemGroup) {
     this.lockedGroups[group] = true;
   }
 
-  public unlockGroup(group: string) {
+  public unlockGroup(group: AnimationItemGroup) {
     delete this.lockedGroups[group];
     this.checkAnimations(undefined, group);
   }
 
-  public refreshGroup(group: string) {
+  public refreshGroup(group: AnimationItemGroup) {
     const animations = this.byGroups[group];
     if(animations && animations.length) {
       animations.forEach((animation) => {
@@ -226,11 +229,11 @@ export class AnimationIntersector {
     }
   }
 
-  public lockIntersectionGroup(group: string) {
+  public lockIntersectionGroup(group: AnimationItemGroup) {
     this.intersectionLockedGroups[group] = true;
   }
 
-  public unlockIntersectionGroup(group: string) {
+  public unlockIntersectionGroup(group: AnimationItemGroup) {
     delete this.intersectionLockedGroups[group];
     this.refreshGroup(group);
   }

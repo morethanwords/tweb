@@ -13,7 +13,7 @@ import Modes from '../../../config/modes';
 
 // #if MTPROTO_AUTO
 import transportController from './controller';
-import networkStats from '../networkStats';
+// import networkStats from '../networkStats';
 // #endif
 
 export default class HTTP implements MTTransport {
@@ -47,7 +47,7 @@ export default class HTTP implements MTTransport {
     const length = body.length;
     this.debug && this.log.debug('-> body length to send:', length);
 
-    networkStats.addSent(this.dcId, length);
+    // networkStats.addSent(this.dcId, length);
     return fetch(this.url, {method: 'POST', body, mode}).then((response) => {
       if(response.status !== 200 && !mode) {
         response.arrayBuffer().then((buffer) => {
@@ -66,7 +66,7 @@ export default class HTTP implements MTTransport {
       // }
 
       return response.arrayBuffer().then((buffer) => {
-        networkStats.addReceived(this.dcId, buffer.byteLength);
+        // networkStats.addReceived(this.dcId, buffer.byteLength);
         return new Uint8Array(buffer);
       });
     }, (err) => {

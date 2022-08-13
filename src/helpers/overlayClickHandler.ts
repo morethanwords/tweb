@@ -32,7 +32,10 @@ export default class OverlayClickHandler extends EventListenerBase<{
       return;
     }
 
-    cancelEvent(e);
+    if(this.listenerOptions?.capture) {
+      cancelEvent(e);
+    }
+
     this.close();
   };
 

@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import animationIntersector from '../../components/animationIntersector';
+import animationIntersector, {AnimationItemGroup} from '../../components/animationIntersector';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import pause from '../../helpers/schedulers/pause';
 import {logger, LogTypes} from '../logger';
@@ -131,7 +131,11 @@ export class LottieLoader {
     ]).then(() => player);
   }
 
-  public async loadAnimationWorker(params: RLottieOptions, group = params.group || '', middleware?: () => boolean): Promise<RLottiePlayer> {
+  public async loadAnimationWorker(
+    params: RLottieOptions,
+    group: AnimationItemGroup = params.group || '',
+    middleware?: () => boolean
+  ): Promise<RLottiePlayer> {
     if(!this.isWebAssemblySupported) {
       return this.loadPromise as any;
     }

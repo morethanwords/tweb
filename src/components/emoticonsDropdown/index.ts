@@ -7,7 +7,7 @@
 import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
 import appImManager from '../../lib/appManagers/appImManager';
 import rootScope from '../../lib/rootScope';
-import animationIntersector from '../animationIntersector';
+import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
 import {horizontalMenu} from '../horizontalMenu';
 import LazyLoadQueue from '../lazyLoadQueue';
 import Scrollable, {ScrollableX} from '../scrollable';
@@ -31,7 +31,7 @@ import {AppManagers} from '../../lib/appManagers/managers';
 import type LazyLoadQueueIntersector from '../lazyLoadQueueIntersector';
 import {simulateClickEvent} from '../../helpers/dom/clickEvent';
 
-export const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
+export const EMOTICONSSTICKERGROUP: AnimationItemGroup = 'emoticons-dropdown';
 
 export interface EmoticonsTab {
   init: () => void,

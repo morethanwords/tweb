@@ -12,6 +12,7 @@ import mediaSizes from '../../helpers/mediaSizes';
 import clamp from '../../helpers/number/clamp';
 import lottieLoader from './lottieLoader';
 import QueryableWorker from './queryableWorker';
+import {AnimationItemGroup} from '../../components/animationIntersector';
 
 export type RLottieOptions = {
   container: HTMLElement,
@@ -21,7 +22,7 @@ export type RLottieOptions = {
   loop?: boolean,
   width?: number,
   height?: number,
-  group?: string,
+  group?: AnimationItemGroup,
   noCache?: boolean,
   needUpscale?: boolean,
   skipRatio?: number,
@@ -86,7 +87,8 @@ export default class RLottiePlayer extends EventListenerBase<{
   enterFrame: (frameNo: number) => void,
   ready: () => void,
   firstFrame: () => void,
-  cached: () => void
+  cached: () => void,
+  destroy: () => void
 }> {
   private static reqId = 0;
 
@@ -241,6 +243,7 @@ export default class RLottiePlayer extends EventListenerBase<{
       this.canvas.classList.add('rlottie');
       this.canvas.width = this.width;
       this.canvas.height = this.height;
+      this.canvas.dpr = pixelRatio;
     }
 
     this.context = this.canvas.getContext('2d');
@@ -354,8 +357,9 @@ export default class RLottiePlayer extends EventListenerBase<{
     this.pause();
     this.sendQuery('destroy');
     if(this.cacheName) cache.releaseCache(this.cacheName);
-    this.cleanup();
+    this.dispatchEvent('destroy');
     // this.removed = true;
+    this.cleanup();
   }
 
   private applyColor(frame: Uint8ClampedArray) {

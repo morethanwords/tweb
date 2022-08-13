@@ -25,7 +25,8 @@ const App = {
   domains: [MAIN_DOMAIN] as string[],
   baseDcId: 2 as DcId,
   isMainDomain: location.hostname === MAIN_DOMAIN,
-  suffix: 'K'
+  suffix: 'K',
+  cryptoWorkers: 4
 };
 
 if(App.isMainDomain) { // use Webogram credentials then

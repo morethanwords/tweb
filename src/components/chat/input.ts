@@ -94,6 +94,7 @@ import {modifyAckedPromise} from '../../helpers/modifyAckedResult';
 import ChatSendAs from './sendAs';
 import filterAsync from '../../helpers/array/filterAsync';
 import InputFieldAnimated from '../inputFieldAnimated';
+import getStickerEffectThumb from '../../lib/appManagers/utils/stickers/getStickerEffectThumb';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -2448,22 +2449,26 @@ export default class ChatInput {
       return false;
     }
 
-    if(document) {
-      this.managers.appMessagesManager.sendFile(this.chat.peerId, document, {
-        ...this.chat.getMessageSendingParams(),
-        isMedia: true,
-        clearDraft: clearDraft || undefined
-      });
-      this.onMessageSent(clearDraft, true);
-
-      if(document.type === 'sticker') {
-        emoticonsDropdown.stickersTab?.pushRecentSticker(document);
-      }
-
-      return true;
+    if(!document) {
+      return false;
     }
 
-    return false;
+    if(getStickerEffectThumb(document) && !rootScope.premium) {
+      return false;
+    }
+
+    this.managers.appMessagesManager.sendFile(this.chat.peerId, document, {
+      ...this.chat.getMessageSendingParams(),
+      isMedia: true,
+      clearDraft: clearDraft || undefined
+    });
+    this.onMessageSent(clearDraft, true);
+
+    if(document.type === 'sticker') {
+      emoticonsDropdown.stickersTab?.pushRecentSticker(document);
+    }
+
+    return true;
   }
 
   private canToggleHideAuthor() {

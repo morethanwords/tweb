@@ -40,9 +40,9 @@ export class AppStickersManager extends AppManager {
   private storage = new AppStorage<Record<Long, MyMessagesStickerSet>, typeof DATABASE_STATE>(DATABASE_STATE, 'stickerSets');
 
   private getStickerSetPromises: {[setId: Long]: Promise<MyMessagesStickerSet>};
-  private getStickersByEmoticonsPromises: {[emoticon: string]: Promise<Document[]>};
+  private getStickersByEmoticonsPromises: {[emoticon: string]: Promise<MyDocument[]>};
 
-  private greetingStickers: Document.document[];
+  private greetingStickers: MyDocument[];
   private getGreetingStickersTimeout: number;
   private getGreetingStickersPromise: Promise<void>;
 
@@ -407,6 +407,14 @@ export class AppStickersManager extends AppManager {
     });
 
     return res.sets;
+  }
+
+  public async getPromoPremiumStickers() {
+    return this.getStickersByEmoticon('⭐️⭐️', false);
+  }
+
+  public async getPremiumStickers() {
+    return this.getStickersByEmoticon('📂⭐️', false);
   }
 
   public async toggleStickerSet(set: StickerSet.stickerSet) {

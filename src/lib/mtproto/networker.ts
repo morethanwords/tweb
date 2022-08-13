@@ -112,6 +112,7 @@ const RESEND_OPTIONS: MTMessageOptions = {
   notContentRelated: true
 };
 let invokeAfterMsgConstructor: number;
+let networkerTempId = 0;
 
 export default class MTPNetworker {
   private authKeyUint8: Uint8Array;
@@ -178,6 +179,7 @@ export default class MTPNetworker {
   private pingPromise: Promise<void>;
   // private pingInterval: number;
   private lastPingTime: number;
+  private lastPingStartTime: number;
   private lastPingDelayDisconnectId: string;
   // #endif
   // public onConnectionStatusChange: (online: boolean) => void;
@@ -207,7 +209,7 @@ export default class MTPNetworker {
     const suffix = this.isFileUpload ? '-U' : this.isFileDownload ? '-D' : '';
     this.name = 'NET-' + dcId + suffix;
     // this.log = logger(this.name, this.upload && this.dcId === 2 ? LogLevels.debug | LogLevels.warn | LogLevels.log | LogLevels.error : LogLevels.error);
-    this.log = logger(this.name, LogTypes.Log /* | LogTypes.Debug */ | LogTypes.Error | LogTypes.Warn);
+    this.log = logger(this.name + (suffix ? '' : '-C') + '-' + networkerTempId++, LogTypes.Log/*  | LogTypes.Debug */ | LogTypes.Error | LogTypes.Warn);
     this.log('constructor'/* , this.authKey, this.authKeyID, this.serverSalt */);
 
     // Test resend after bad_server_salt
@@ -563,7 +565,7 @@ export default class MTPNetworker {
     const lastPingTime = Math.min(this.lastPingTime ?? 0, pingMaxTime);
     const disconnectDelay = Math.round(delays.disconnectDelayMin + lastPingTime / pingMaxTime * (delays.disconnectDelayMax - delays.disconnectDelayMin));
     const timeoutTime = disconnectDelay * 1000;
-    const startTime = Date.now();
+    const startTime = this.lastPingStartTime = Date.now();
     const pingId = this.lastPingDelayDisconnectId = randomLong();
     const options: MTMessageOptions = {notContentRelated: true};
     this.wrapMtpCall('ping_delay_disconnect', {
@@ -571,14 +573,15 @@ export default class MTPNetworker {
       disconnect_delay: disconnectDelay
     }, options);
 
-    this.debug && this.log.debug(`sendPingDelayDisconnect: ping, timeout=${timeoutTime}, lastPingTime=${this.lastPingTime}, msgId=${options.messageId}`);
+    const log = this.log.bindPrefix('sendPingDelayDisconnect');
+    this.debug && log.debug(`ping, timeout=${timeoutTime}, lastPingTime=${this.lastPingTime}, msgId=${options.messageId}, pingId=${pingId}`);
     const rejectTimeout = ctx.setTimeout(deferred.reject, timeoutTime);
 
     const onResolved = (reason: string) => {
       clearTimeout(rejectTimeout);
       const elapsedTime = Date.now() - startTime;
       this.lastPingTime = elapsedTime / 1000;
-      this.debug && this.log.debug(`sendPingDelayDisconnect: pong, reason='${reason}', time=${lastPingTime}, msgId=${options.messageId}`);
+      this.debug && log.debug(`pong, reason='${reason}', time=${lastPingTime}, msgId=${options.messageId}`);
       if(elapsedTime > timeoutTime) {
         throw undefined;
       } else {
@@ -593,7 +596,7 @@ export default class MTPNetworker {
         return;
       }
 
-      this.log.error('sendPingDelayDisconnect: catch, closing connection', this.lastPingTime, options.messageId);
+      log.error('catch, closing connection', this.lastPingTime, options.messageId);
       transport.connection.close();
     };
 

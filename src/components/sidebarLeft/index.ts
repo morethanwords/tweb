@@ -367,7 +367,7 @@ export class AppSidebarLeft extends SidebarSlider {
       contacts: new SearchGroup('SearchAllChatsShort', 'contacts', undefined, undefined, undefined, undefined, close),
       globalContacts: new SearchGroup('GlobalSearch', 'contacts', undefined, undefined, undefined, undefined, close),
       messages: new SearchGroup('SearchMessages', 'messages'),
-      people: new SearchGroup(false, 'contacts', true, 'search-group-people', true, false, close),
+      people: new SearchGroup(false, 'contacts', true, 'search-group-people', true, false, close, true),
       recent: new SearchGroup('Recent', 'contacts', true, 'search-group-recent', true, true, close)
     };
 

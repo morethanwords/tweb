@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import animationIntersector from '../../components/animationIntersector';
+import animationIntersector, {AnimationItemGroup} from '../../components/animationIntersector';
 import appSidebarLeft, {LEFT_COLUMN_ACTIVE_CLASSNAME} from '../../components/sidebarLeft';
 import appSidebarRight, {RIGHT_COLUMN_ACTIVE_CLASSNAME} from '../../components/sidebarRight';
 import mediaSizes, {ScreenSize} from '../../helpers/mediaSizes';
@@ -93,7 +93,7 @@ import findUpClassName from '../../helpers/dom/findUpClassName';
 import {CLICK_EVENT_NAME} from '../../helpers/dom/clickEvent';
 import PopupPayment from '../../components/popups/payment';
 
-export const CHAT_ANIMATION_GROUP = 'chat';
+export const CHAT_ANIMATION_GROUP: AnimationItemGroup = 'chat';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -414,6 +414,8 @@ export class AppImManager extends EventListenerBase<{
 
     this.addEventListener('peer_changed', async(peerId) => {
       document.body.classList.toggle('has-chat', !!peerId);
+
+      this.emojiAnimationContainer.textContent = '';
 
       this.overrideHash(peerId);
 

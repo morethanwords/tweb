@@ -157,10 +157,11 @@ export default class Obfuscation {
   } */
 
   private _process = (data: Uint8Array, operation: 'encrypt' | 'decrypt') => {
-    return cryptoMessagePort.invoke('invoke', {
+    return cryptoMessagePort.invokeCryptoNew({
       method: 'aes-ctr-process',
-      args: [{id: this.id, data, operation}]
-    }, undefined, undefined, [data.buffer]) as Promise<Uint8Array>;
+      args: [{id: this.id, data, operation}],
+      transfer: [data.buffer]
+    }) as Promise<Uint8Array>;
   };
 
   public encode(payload: Uint8Array) {

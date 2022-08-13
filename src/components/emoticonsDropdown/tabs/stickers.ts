@@ -5,16 +5,15 @@
  */
 
 import emoticonsDropdown, {EmoticonsDropdown, EMOTICONSSTICKERGROUP, EmoticonsTab} from '..';
-import findUpAttribute from '../../../helpers/dom/findUpAttribute';
 import findUpClassName from '../../../helpers/dom/findUpClassName';
 import mediaSizes from '../../../helpers/mediaSizes';
 import {MessagesAllStickers, StickerSet} from '../../../layer';
 import {MyDocument} from '../../../lib/appManagers/appDocsManager';
 import {AppManagers} from '../../../lib/appManagers/managers';
-import {i18n} from '../../../lib/langPack';
+import {i18n, LangPackKey} from '../../../lib/langPack';
 import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
 import rootScope from '../../../lib/rootScope';
-import animationIntersector from '../../animationIntersector';
+import animationIntersector, {AnimationItemGroup} from '../../animationIntersector';
 import LazyLoadQueue from '../../lazyLoadQueue';
 import LazyLoadQueueRepeat from '../../lazyLoadQueueRepeat';
 import {putPreloader} from '../../putPreloader';
@@ -36,7 +35,7 @@ export class SuperStickerRenderer {
 
   constructor(
     private regularLazyLoadQueue: LazyLoadQueue,
-    private group: string,
+    private group: AnimationItemGroup,
     private managers: AppManagers,
     private options?: IntersectionObserverInit
   ) {
@@ -117,7 +116,8 @@ export class SuperStickerRenderer {
       group: this.group,
       onlyThumb: false,
       play: true,
-      loop: true
+      loop: true,
+      withLock: true
     }).then(({render}) => render);
 
     promise.then(() => {
@@ -157,7 +157,8 @@ type StickersTabCategory = {
   items: {
     document: MyDocument,
     element: HTMLElement
-  }[]
+  }[],
+  pos?: number
 };
 
 const RECENT_STICKERS_COUNT = 20;
@@ -168,6 +169,7 @@ export default class StickersTab implements EmoticonsTab {
   private categories: {[id: string]: StickersTabCategory};
   private categoriesMap: Map<HTMLElement, StickersTabCategory>;
   private categoriesIntersector: VisibilityIntersector;
+  private localCategoryIndex: number;
 
   private scroll: Scrollable;
   private menu: HTMLElement;
@@ -178,6 +180,7 @@ export default class StickersTab implements EmoticonsTab {
   constructor(private managers: AppManagers) {
     this.categories = {};
     this.categoriesMap = new Map();
+    this.localCategoryIndex = 0;
   }
 
   private createCategory(stickerSet: StickerSet.stickerSet, _title: HTMLElement | DocumentFragment) {
@@ -264,7 +267,8 @@ export default class StickersTab implements EmoticonsTab {
     const category = this.createCategory(set, wrapEmojiText(set.title));
     const {menuTab, menuTabPadding, container} = category.elements;
 
-    positionElementByIndex(menuTab, this.menu, prepend ? 1 : 0xFFFF);
+    const pos = prepend ? this.localCategoryIndex : 0xFFFF;
+    positionElementByIndex(menuTab, this.menu, pos);
 
     const promise = this.managers.appStickersManager.getStickerSet(set);
     this.categoryAppendStickers(
@@ -273,7 +277,7 @@ export default class StickersTab implements EmoticonsTab {
     );
     // const stickerSet = await promise;
 
-    positionElementByIndex(container, this.scroll.container, prepend ? 1 : 0xFFFF, -1);
+    positionElementByIndex(container, this.scroll.container, pos, -1);
 
     wrapStickerSetThumb({
       set,
@@ -367,11 +371,18 @@ export default class StickersTab implements EmoticonsTab {
 
     const preloader = putPreloader(this.content, true);
 
-    const recentCategory = this.createCategory({id: 'recent'} as any, i18n('Stickers.Recent'));
-    recentCategory.elements.title.classList.add('disable-hover');
-    recentCategory.elements.menuTab.classList.add('tgico-recent', 'active');
-    recentCategory.elements.menuTabPadding.remove();
-    this.toggleRecentCategory(recentCategory, false);
+    const createLocalCategory = (id: string, title: LangPackKey, icon?: string) => {
+      const category = this.createCategory({id} as any, i18n(title));
+      category.elements.title.classList.add('disable-hover');
+      icon && category.elements.menuTab.classList.add('tgico-' + icon);
+      category.elements.menuTabPadding.remove();
+      category.pos = this.localCategoryIndex++;
+      this.toggleLocalCategory(category, false);
+      return category;
+    };
+
+    const recentCategory = createLocalCategory('recent', 'Stickers.Recent', 'recent');
+    recentCategory.elements.menuTab.classList.add('active');
 
     const clearButton = ButtonIcon('close', {noRipple: true});
     recentCategory.elements.title.append(clearButton);
@@ -391,24 +402,42 @@ export default class StickersTab implements EmoticonsTab {
       const sliced = stickers.slice(0, RECENT_STICKERS_COUNT) as MyDocument[];
 
       clearCategoryItems(recentCategory);
-      this.toggleRecentCategory(recentCategory, !!sliced.length);
+      this.toggleLocalCategory(recentCategory, !!sliced.length);
       this.categoryAppendStickers(recentCategory, Promise.resolve(sliced));
     };
 
-    Promise.all([
+    const premiumCategory = createLocalCategory('premium', 'PremiumStickersShort');
+    const s = document.createElement('span');
+    s.classList.add('tgico-star', 'color-premium');
+    premiumCategory.elements.menuTab.append(s);
+
+    const promises = [
       this.managers.appStickersManager.getRecentStickers().then((stickers) => {
-        preloader.remove();
         onRecentStickers(stickers.stickers as MyDocument[]);
       }),
 
       this.managers.appStickersManager.getAllStickers().then((res) => {
-        preloader.remove();
-
         for(const set of (res as MessagesAllStickers.messagesAllStickers).sets) {
           this.renderStickerSet(set);
         }
+      }),
+
+      this.managers.appStickersManager.getPremiumStickers().then((stickers) => {
+        const length = stickers.length;
+        this.toggleLocalCategory(premiumCategory, rootScope.premium && !!length);
+        this.categoryAppendStickers(premiumCategory, Promise.resolve(stickers));
+
+        rootScope.addEventListener('premium_toggle', (isPremium) => {
+          this.toggleLocalCategory(this.categories['premium'], isPremium && !!length);
+        });
       })
-    ]).finally(() => {
+    ];
+
+    Promise.race(promises).finally(() => {
+      preloader.remove();
+    });
+
+    Promise.all(promises).finally(() => {
       this.mounted = true;
       setTyping();
       setActive(0);
@@ -482,13 +511,14 @@ export default class StickersTab implements EmoticonsTab {
     this.init = null;
   }
 
-  private toggleRecentCategory(category: StickersTabCategory, visible: boolean) {
+  private toggleLocalCategory(category: StickersTabCategory, visible: boolean) {
     if(!visible) {
       category.elements.menuTab.remove();
       category.elements.container.remove();
     } else {
-      positionElementByIndex(category.elements.menuTab, this.menu, 0);
-      positionElementByIndex(category.elements.container, this.scroll.container, 0);
+      const pos = category.pos;
+      positionElementByIndex(category.elements.menuTab, this.menu, pos);
+      positionElementByIndex(category.elements.container, this.scroll.container, pos);
     }
 
     // category.elements.container.classList.toggle('hide', !visible);
@@ -518,7 +548,7 @@ export default class StickersTab implements EmoticonsTab {
     }
 
     this.setCategoryItemsHeight(category);
-    this.toggleRecentCategory(category, true);
+    this.toggleLocalCategory(category, true);
   }
 
   onClose() {

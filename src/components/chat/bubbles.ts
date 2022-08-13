@@ -110,6 +110,7 @@ import noop from '../../helpers/noop';
 import getAlbumText from '../../lib/appManagers/utils/messages/getAlbumText';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
 import PopupPayment from '../popups/payment';
+import isInDOM from '../../helpers/dom/isInDOM';
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
@@ -1044,6 +1045,19 @@ export default class ChatBubbles {
           this.managers.appChatsManager.viewSponsoredMessage(this.peerId.toChatId(), sponsoredMessage.random_id);
         }
       }
+    }
+  };
+
+  private stickerEffectObserverCallback = (entry: IntersectionObserverEntry) => {
+    if(entry.isIntersecting) {
+      this.observer.unobserve(entry.target, this.stickerEffectObserverCallback);
+
+      const attachmentDiv: HTMLElement = entry.target.querySelector('.attachment');
+      getHeavyAnimationPromise().then(() => {
+        if(isInDOM(attachmentDiv)) {
+          simulateClickEvent(attachmentDiv);
+        }
+      });
     }
   };
 
@@ -2110,6 +2124,8 @@ export default class ChatBubbles {
 
         this.observer.unobserve(bubble, this.viewsObserverCallback);
         this.viewsMids.delete(mid);
+
+        this.observer.unobserve(bubble, this.stickerEffectObserverCallback);
       }
 
       if(this.emptyPlaceholderBubble === bubble) {
@@ -3426,15 +3442,13 @@ export default class ChatBubbles {
     contentWrapper.append(bubbleContainer);
     bubble.append(contentWrapper);
 
-    if(!our && !message.pFlags.out && this.observer) {
+    const isInUnread = !our && !message.pFlags.out && (message.pFlags.unread ||
+      isMentionUnread(message)/*  ||
+      (this.historyStorage.readMaxId !== undefined && this.historyStorage.readMaxId < message.mid) */);
+    if(isInUnread && this.observer) {
       // this.log('not our message', message, message.pFlags.unread);
-      const isUnread = message.pFlags.unread ||
-        isMentionUnread(message)/*  ||
-        (this.historyStorage.readMaxId !== undefined && this.historyStorage.readMaxId < message.mid) */;
-      if(isUnread) {
-        this.observer.observe(bubble, this.unreadedObserverCallback);
-        this.unreaded.set(bubble, message.mid);
-      }
+      this.observer.observe(bubble, this.unreadedObserverCallback);
+      this.unreaded.set(bubble, message.mid);
     }
 
     const loadPromises: Promise<any>[] = [];
@@ -4017,8 +4031,13 @@ export default class ChatBubbles {
               emoji: bubble.classList.contains('emoji-big') ? messageMessage : undefined,
               withThumb: true,
               loadPromises,
-              isOut
+              isOut,
+              noPremium: messageMedia?.pFlags?.nopremium
             });
+
+            if(isInUnread || isOutgoing/*  || true */) {
+              this.observer.observe(bubble, this.stickerEffectObserverCallback);
+            }
           } else if(doc.type === 'video' || doc.type === 'gif' || doc.type === 'round'/*  && doc.size <= 20e6 */) {
             // this.log('never get free 2', doc);
 

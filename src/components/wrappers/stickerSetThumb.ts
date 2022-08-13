@@ -11,7 +11,7 @@ import appDownloadManager from '../../lib/appManagers/appDownloadManager';
 import {AppManagers} from '../../lib/appManagers/managers';
 import lottieLoader from '../../lib/rlottie/lottieLoader';
 import rootScope from '../../lib/rootScope';
-import animationIntersector from '../animationIntersector';
+import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
 import LazyLoadQueue from '../lazyLoadQueue';
 import wrapSticker from './sticker';
 
@@ -19,7 +19,7 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
   set: StickerSet.stickerSet,
   lazyLoadQueue: LazyLoadQueue,
   container: HTMLElement,
-  group: string,
+  group: AnimationItemGroup,
   autoplay: boolean,
   width: number,
   height: number,

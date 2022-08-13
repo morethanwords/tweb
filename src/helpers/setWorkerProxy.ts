@@ -8,8 +8,10 @@ export default function setWorkerProxy() {
   // * hook worker constructor to set search parameters (test, debug, etc)
   const workerHandler = {
     construct(target: any, args: any) {
-      // console.log(target, args);
-      const url = args[0] + location.search;
+      let url = args[0] + '';
+      if(url.indexOf('blob:') !== 0) {
+        url += location.search;
+      }
 
       return new target(url);
     }
@@ -18,8 +20,7 @@ export default function setWorkerProxy() {
   [
     Worker,
     typeof(SharedWorker) !== 'undefined' && SharedWorker
-  ].forEach((w) => {
-    if(!w) return;
+  ].filter(Boolean).forEach((w) => {
     window[w.name as any] = new Proxy(w, workerHandler);
   });
 }

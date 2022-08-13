@@ -748,6 +748,7 @@ const lang = {
   'PaymentCheckoutName': 'Name',
   'ClearRecentStickersAlertTitle': 'Clear recent stickers',
   'ClearRecentStickersAlertMessage': 'Do you want to clear all your recent stickers?',
+  'PremiumStickersShort': 'Premium',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

@@ -9,7 +9,7 @@ import type {AppStickersManager} from '../../lib/appManagers/appStickersManager'
 import {wrapSticker} from '../wrappers';
 import LazyLoadQueue from '../lazyLoadQueue';
 import {putPreloader} from '../putPreloader';
-import animationIntersector from '../animationIntersector';
+import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
 import appImManager from '../../lib/appManagers/appImManager';
 import mediaSizes from '../../helpers/mediaSizes';
 import {i18n} from '../../lib/langPack';
@@ -21,7 +21,7 @@ import {toastNew} from '../toast';
 import setInnerHTML from '../../helpers/dom/setInnerHTML';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 
-const ANIMATION_GROUP = 'STICKERS-POPUP';
+const ANIMATION_GROUP: AnimationItemGroup = 'STICKERS-POPUP';
 
 export default class PopupStickers extends PopupElement {
   private stickersFooter: HTMLElement;
@@ -126,7 +126,8 @@ export default class PopupStickers extends PopupElement {
           play: true,
           loop: true,
           width: size,
-          height: size
+          height: size,
+          withLock: true
         });
 
         return div;

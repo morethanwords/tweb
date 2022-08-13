@@ -6,7 +6,7 @@
 
 import type {MyDocument} from '../lib/appManagers/appDocsManager';
 import {wrapVideo} from './wrappers';
-import animationIntersector from './animationIntersector';
+import animationIntersector, {AnimationItemGroup} from './animationIntersector';
 import Scrollable from './scrollable';
 import deferredPromise, {CancellablePromise} from '../helpers/cancellablePromise';
 import renderImageFromUrl from '../helpers/dom/renderImageFromUrl';
@@ -28,7 +28,7 @@ export default class GifsMasonry {
 
   constructor(
     private element: HTMLElement,
-    private group: string,
+    private group: AnimationItemGroup,
     private scrollable: Scrollable,
     attach = true
   ) {

@@ -17,7 +17,7 @@ import {ConnectionStatus} from '../connectionStatus';
 // #if MTPROTO_AUTO
 import transportController from './controller';
 import bytesToHex from '../../../helpers/bytes/bytesToHex';
-import networkStats from '../networkStats';
+// import networkStats from '../networkStats';
 import ctx from '../../../environment/ctx';
 // #endif
 
@@ -94,7 +94,7 @@ export default class TcpObfuscated implements MTTransport {
   };
 
   private onMessage = async(buffer: ArrayBuffer) => {
-    networkStats.addReceived(this.dcId, buffer.byteLength);
+    // networkStats.addReceived(this.dcId, buffer.byteLength);
 
     let data = await this.obfuscation.decode(new Uint8Array(buffer));
     data = this.codec.readPacket(data);
@@ -343,7 +343,7 @@ export default class TcpObfuscated implements MTTransport {
           break;
         }
 
-        networkStats.addSent(this.dcId, encoded.byteLength);
+        // networkStats.addSent(this.dcId, encoded.byteLength);
         this.connection.send(encoded);
 
         if(!pending.resolve) { // remove if no response needed
