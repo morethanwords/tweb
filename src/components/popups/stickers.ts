@@ -33,7 +33,7 @@ export default class PopupStickers extends PopupElement {
     this.title.append(i18n('Loading'));
 
     this.addEventListener('close', () => {
-      animationIntersector.setOnlyOnePlayableGroup('');
+      animationIntersector.setOnlyOnePlayableGroup();
     });
 
     const div = document.createElement('div');

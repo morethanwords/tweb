@@ -26,7 +26,9 @@ export default function wrapStickerAnimation({
   play,
   managers,
   fullThumb,
-  withRandomOffset
+  withRandomOffset,
+  relativeEffect,
+  loopEffect
 }: {
   size: number,
   doc: MyDocument,
@@ -37,7 +39,9 @@ export default function wrapStickerAnimation({
   play: boolean,
   managers?: AppManagers,
   fullThumb?: PhotoSize | VideoSize,
-  withRandomOffset?: boolean
+  withRandomOffset?: boolean,
+  relativeEffect?: boolean,
+  loopEffect?: boolean
 }) {
   const animationDiv = document.createElement('div');
   animationDiv.classList.add('emoji-animation');
@@ -59,7 +63,7 @@ export default function wrapStickerAnimation({
     middleware,
     withThumb: false,
     needFadeIn: false,
-    loop: false,
+    loop: !!loopEffect,
     width: size,
     height: size,
     play,
@@ -71,7 +75,7 @@ export default function wrapStickerAnimation({
     assumeType<RLottiePlayer>(_animation);
     animation = _animation;
     animation.addEventListener('enterFrame', (frameNo) => {
-      if(frameNo === animation.maxFrame || !isInDOM(target)) {
+      if((!loopEffect && frameNo === animation.maxFrame) || !isInDOM(target)) {
         unmountAnimation();
       }
     });
@@ -92,7 +96,6 @@ export default function wrapStickerAnimation({
 
   const randomOffsetX = withRandomOffset ? generateRandomSigned(16) : 0;
   const randomOffsetY = withRandomOffset ? generateRandomSigned(4) : 0;
-  const stableOffsetX = /* size / 8 */16 * (side === 'right' ? 1 : -1);
   const setPosition = () => {
     if(!isInDOM(target)) {
       unmountAnimation();
@@ -100,35 +103,46 @@ export default function wrapStickerAnimation({
     }
 
     const rect = target.getBoundingClientRect();
-    /* const boxWidth = Math.max(rect.width, rect.height);
-    const boxHeight = Math.max(rect.width, rect.height);
-    const x = rect.left + ((boxWidth - size) / 2);
-    const y = rect.top + ((boxHeight - size) / 2); */
+
+    const factor = rect.width / 200;
+    const stableOffsetX = side === 'center' ? 0 : 16 * (side === 'right' ? 1 : -1) * factor;
+    // const stableOffsetY = side === 'center' ? 0 : -50 * factor;
+    const stableOffsetY = side === 'center' ? 0 : 0 * factor;
 
     const rectX = side === 'right' ? rect.right : rect.left;
+    const rectY = rect.top;
 
-    const addOffsetX = side === 'center' ? (rect.width - size) / 2 : (side === 'right' ? -size : 0) + stableOffsetX + randomOffsetX;
+    const addOffsetX = (side === 'center' ? (rect.width - size) / 2 : (side === 'right' ? -size : 0)) + stableOffsetX + randomOffsetX;
+    const addOffsetY = (side === 'center' || true ? (rect.height - size) / 2 : 0) + stableOffsetY + randomOffsetY;
     const x = rectX + addOffsetX;
-    // const y = rect.bottom - size + size / 4;
-    const y = rect.top + ((rect.height - size) / 2) + (side === 'center' ? 0 : randomOffsetY);
-    // animationDiv.style.transform = `translate(${x}px, ${y}px)`;
+    const y = rectY + addOffsetY;
 
     if(y <= -size || y >= windowSize.height) {
       unmountAnimation();
       return;
     }
 
-    animationDiv.style.top = y + 'px';
-    animationDiv.style.left = x + 'px';
+    if(relativeEffect) {
+      if(side !== 'center') animationDiv.style[side] = Math.abs(stableOffsetX) * -1 + 'px';
+      else animationDiv.style.left = addOffsetX + 'px';
+      animationDiv.style.top = addOffsetY + 'px';
+    } else {
+      animationDiv.style.top = y + 'px';
+      animationDiv.style.left = x + 'px';
+    }
   };
 
   const onScroll = throttleWithRaf(setPosition);
-
   appImManager.chat.bubbles.scrollable.container.addEventListener('scroll', onScroll);
 
   setPosition();
 
-  appImManager.emojiAnimationContainer.append(animationDiv);
+  if(relativeEffect) {
+    animationDiv.classList.add('is-relative');
+    target.parentElement.append(animationDiv);
+  } else {
+    appImManager.emojiAnimationContainer.append(animationDiv);
+  }
 
   return {animationDiv, stickerPromise};
 }

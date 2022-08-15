@@ -84,6 +84,10 @@ type ModifyFunctionsToAsync<T> = {
   [key in keyof T]: T[key] extends (...args: infer A) => infer R ? (R extends PromiseLike<infer O> ? T[key] : (...args: A) => Promise<Awaited<R>>) : T[key]
 };
 
+export type Mutable<T> = {
+  -readonly [K in keyof T]: T[K];
+};
+
 export type AuthState = AuthState.signIn | AuthState.signQr | AuthState.authCode | AuthState.password | AuthState.signUp | AuthState.signedIn;
 export namespace AuthState {
   export type signIn = {

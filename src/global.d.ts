@@ -30,7 +30,7 @@ declare global {
   type FiltersError = 'PINNED_DIALOGS_TOO_MUCH';
 
   type LocalFileError = ApiFileManagerError | ReferenceError | StorageError;
-  type LocalErrorType = LocalFileError | NetworkerError | FiltersError | 'UNKNOWN' | 'NO_DOC';
+  type LocalErrorType = LocalFileError | NetworkerError | FiltersError | 'UNKNOWN' | 'NO_DOC' | 'MIDDLEWARE';
 
   type ServerErrorType = 'FILE_REFERENCE_EXPIRED' | 'SESSION_REVOKED' | 'AUTH_KEY_DUPLICATED' |
     'SESSION_PASSWORD_NEEDED' | 'CONNECTION_NOT_INITED' | 'ERROR_EMPTY' | 'MTPROTO_CLUSTER_INVALID' |

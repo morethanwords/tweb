@@ -16,7 +16,7 @@ import appMediaPlaybackController from './appMediaPlaybackController';
 
 export type AnimationItemGroup = '' | 'none' | 'chat' | 'lock' |
   'STICKERS-POPUP' | 'emoticons-dropdown' | 'STICKERS-SEARCH' | 'GIFS-SEARCH' |
-  `CHAT-MENU-REACTIONS-${number}` | 'INLINE-HELPER' | 'GENERAL-SETTINGS';
+  `CHAT-MENU-REACTIONS-${number}` | 'INLINE-HELPER' | 'GENERAL-SETTINGS' | 'STICKER-VIEWER';
 export interface AnimationItem {
   el: HTMLElement,
   group: AnimationItemGroup,
@@ -201,7 +201,11 @@ export class AnimationIntersector {
     }
   }
 
-  public setOnlyOnePlayableGroup(group: AnimationItemGroup) {
+  public getOnlyOnePlayableGroup() {
+    return this.onlyOnePlayableGroup;
+  }
+
+  public setOnlyOnePlayableGroup(group: AnimationItemGroup = '') {
     this.onlyOnePlayableGroup = group;
   }
 

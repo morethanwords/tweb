@@ -12,7 +12,8 @@ const SetTransition = (
   forwards: boolean,
   duration: number,
   onTransitionEnd?: () => void,
-  useRafs?: number
+  useRafs?: number,
+  onTransitionStart?: () => void
 ) => {
   const {timeout, raf} = element.dataset;
   if(timeout !== undefined) {
@@ -36,7 +37,7 @@ const SetTransition = (
   if(useRafs && rootScope.settings.animationsEnabled && duration) {
     element.dataset.raf = '' + window.requestAnimationFrame(() => {
       delete element.dataset.raf;
-      SetTransition(element, className, forwards, duration, onTransitionEnd, useRafs - 1);
+      SetTransition(element, className, forwards, duration, onTransitionEnd, useRafs - 1, onTransitionStart);
     });
 
     return;
@@ -54,9 +55,10 @@ const SetTransition = (
 
     element.classList.remove('animating');
 
-    onTransitionEnd && onTransitionEnd();
+    onTransitionEnd?.();
   };
 
+  onTransitionStart?.();
   if(!rootScope.settings.animationsEnabled || !duration) {
     element.classList.remove('animating', 'backwards');
     afterTimeout();

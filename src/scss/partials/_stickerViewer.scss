@@ -1,0 +1,133 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+ .sticker-viewer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 4;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:before {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background-color: rgba(0, 0, 0, .6);
+    opacity: 0;
+    content: " ";
+
+    @include animation-level(2) {
+      transition: opacity var(--sticker-viewer-open-transition-out);
+    }
+  }
+
+  &.is-visible {
+    &:not(.backwards) {
+      &:before {
+        opacity: 1;
+
+        @include animation-level(2) {
+          transition: opacity var(--sticker-viewer-open-transition-in);
+        }
+      }
+
+      .sticker-viewer-transformer:not(.is-switching) {
+        transform: translateX(var(--translateX)) scale(1, 1) !important;
+
+        @include animation-level(2) {
+          transition: transform var(--sticker-viewer-open-transition-in);
+        }
+      }
+
+      .sticker-viewer-emoji,
+      .sticker-viewer-sticker,
+      .emoji-animation {
+        opacity: 1;
+
+        @include animation-level(2) {
+          transition: opacity var(--sticker-viewer-open-transition-in);
+        }
+      }
+
+      .sticker-viewer-sticker:not(.is-overflow) {
+        @include animation-level(2) {
+          transition: opacity 0s;
+        }
+      }
+    }
+  }
+
+  &-transformer {
+    --translateX: 0;
+    position: absolute;
+    // transform: translateX(0) scale(1);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 360px;
+    height: 360px;
+
+    &.has-effect {
+      width: 280px;
+      height: 280px;
+
+      .sticker-viewer-emoji {
+        top: -5.5rem;
+      }
+    }
+
+    @include animation-level(2) {
+      transition: transform var(--sticker-viewer-open-transition-out);
+    }
+
+    &.is-switching {
+      transform: translateX(var(--translateX)) scale(1) !important;
+      opacity: 1 !important;
+
+      @include animation-level(2) {
+        transition: transform var(--sticker-viewer-switch-transition), opacity var(--sticker-viewer-switch-transition) !important;
+      }
+
+      &:not(.backwards) {
+        transform: scale(0.4) translateX(var(--translateX)) !important;
+        opacity: 0 !important;
+      }
+    }
+  }
+
+  &-emoji {
+    position: absolute;
+    top: -3rem;
+    transform: translateX(var(--translateX)) scale(2);
+  }
+
+  &-sticker {
+    position: absolute;
+  }
+
+  // &-sticker,
+  // .emoji-animation {
+  //   margin-left: var(--margin-left);
+  //   margin-right: var(--margin-right);
+  // }
+
+  &-emoji,
+  &-sticker,
+  .emoji-animation {
+    opacity: 0;
+
+    @include animation-level(2) {
+      transition: opacity var(--sticker-viewer-open-transition-out);
+    }
+  }
+}

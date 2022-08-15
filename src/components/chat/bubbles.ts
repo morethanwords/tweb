@@ -111,6 +111,7 @@ import getAlbumText from '../../lib/appManagers/utils/messages/getAlbumText';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
 import PopupPayment from '../popups/payment';
 import isInDOM from '../../helpers/dom/isInDOM';
+import getStickerEffectThumb from '../../lib/appManagers/utils/stickers/getStickerEffectThumb';
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
@@ -1234,9 +1235,6 @@ export default class ChatBubbles {
             needFadeIn: false
           }).then(({render}) => render).then((player) => {
             assumeType<RLottiePlayer>(player);
-            if(!middleware()) {
-              return;
-            }
 
             player.addEventListener('firstFrame', () => {
               if(!middleware()) {
@@ -1254,7 +1252,7 @@ export default class ChatBubbles {
               this.managers.appReactionsManager.sendReaction(message, availableReaction.reaction);
               this.unhoverPrevious();
             }, {listenerSetter: this.listenerSetter});
-          });
+          }, noop);
         });
       } else if(hoverReaction.dataset.loaded) {
         this.setHoverVisible(hoverReaction, true);
@@ -4035,7 +4033,7 @@ export default class ChatBubbles {
               noPremium: messageMedia?.pFlags?.nopremium
             });
 
-            if(isInUnread || isOutgoing/*  || true */) {
+            if(getStickerEffectThumb(doc) && (isInUnread || isOutgoing)/*  || true */) {
               this.observer.observe(bubble, this.stickerEffectObserverCallback);
             }
           } else if(doc.type === 'video' || doc.type === 'gif' || doc.type === 'round'/*  && doc.size <= 20e6 */) {

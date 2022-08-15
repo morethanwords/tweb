@@ -68,6 +68,10 @@ $chat-input-inner-padding-handhelds: .25rem;
   --btn-menu-transition: .2s cubic-bezier(.4, 0, .2, 1);
   --esg-transition: var(--btn-menu-transition);
   --input-transition: .2s ease-out;
+  --sticker-viewer-open-transition-in: .2s var(--transition-standard-easing);
+  --sticker-viewer-open-transition-out: .2s var(--transition-standard-easing);
+  // --sticker-viewer-switch-transition: .2s cubic-bezier(.07,1.21,.56,1.2);
+  --sticker-viewer-switch-transition: .2s cubic-bezier(.12,1.1,.56,1.2);
   --popup-transition-function: cubic-bezier(.4, 0, .2, 1);
   --popup-transition-time: .15s;
   //--layer-transition: .3s cubic-bezier(.33, 1, .68, 1);
@@ -357,6 +361,7 @@ $chat-input-inner-padding-handhelds: .25rem;
 @import "partials/reactions";
 @import "partials/reaction";
 @import "partials/stackedAvatars";
+@import "partials/stickerViewer";
 
 @import "partials/popups/popup";
 @import "partials/popups/editAvatar";
