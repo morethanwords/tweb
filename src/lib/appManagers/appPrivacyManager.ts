@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {InputPrivacyKey, InputPrivacyRule, PrivacyRule, PrivacyKey} from '../../layer';
+import {InputPrivacyKey, InputPrivacyRule, PrivacyRule, PrivacyKey, GlobalPrivacySettings} from '../../layer';
 import convertInputKeyToKey from '../../helpers/string/convertInputKeyToKey';
 import {AppManager} from './manager';
 
@@ -71,5 +71,13 @@ export class AppPrivacyManager extends AppManager {
 
       return this.privacy[privacyKey] = privacyRules.rules;
     });
+  }
+
+  public getGlobalPrivacySettings() {
+    return this.apiManager.invokeApi('account.getGlobalPrivacySettings')
+  }
+
+  public setGlobalPrivacySettings(settings: GlobalPrivacySettings) {
+    return this.apiManager.invokeApi('account.setGlobalPrivacySettings', {settings});
   }
 }

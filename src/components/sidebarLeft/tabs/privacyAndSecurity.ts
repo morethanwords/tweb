@@ -250,79 +250,90 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
     }
 
     const promises: Promise<any>[] = [];
-    {
-      const section = new SettingSection({name: 'Privacy.SensitiveContent'});
-      section.container.classList.add('hide');
 
-      promises.push(this.managers.apiManager.invokeApi('account.getContentSettings').then((settings) => {
-        if(!settings.pFlags.sensitive_can_change) {
+    {
+      const section = new SettingSection({name: 'NewChatsFromNonContacts', caption: 'ArchiveAndMuteInfo'});
+
+      const checkboxField = new CheckboxField({text: 'ArchiveAndMute'});
+      const row = new Row({
+        checkboxField,
+        noCheckboxSubtitle: true
+      });
+
+      section.content.append(row.container);
+
+      let enabled: boolean, destroyed: boolean;
+      this.eventListener.addEventListener('destroy', () => {
+        destroyed = true;
+        if(enabled === undefined) return;
+        this.managers.appPrivacyManager.setGlobalPrivacySettings({
+          _: 'globalPrivacySettings',
+          archive_and_mute_new_noncontact_peers: checkboxField.checked
+        });
+      }, {once: true});
+
+      const promise = Promise.all([
+        this.managers.apiManager.getAppConfig(),
+        this.managers.appPrivacyManager.getGlobalPrivacySettings()
+      ]).then(([appConfig, settings]) => {
+        if(destroyed) {
           return;
         }
 
-        const enabled = settings.pFlags.sensitive_enabled;
+        const onPremiumToggle = (isPremium: boolean) => {
+          section.container.classList.toggle('hide', !isPremium && !appConfig.autoarchive_setting_available);
+        };
 
-        const sensitiveRow = new Row({
-          checkboxField: new CheckboxField({text: 'PrivacyAndSecurity.SensitiveText', checked: enabled}),
-          subtitleLangKey: 'PrivacyAndSecurity.SensitiveDesc',
-          noCheckboxSubtitle: true
-        });
+        this.listenerSetter.add(rootScope)('premium_toggle', onPremiumToggle);
+        onPremiumToggle(rootScope.premium);
 
-        section.content.append(sensitiveRow.container);
-        section.container.classList.remove('hide');
+        enabled = settings.archive_and_mute_new_noncontact_peers;
 
-        this.eventListener.addEventListener('destroy', () => {
-          const _enabled = sensitiveRow.checkboxField.checked;
-          const isChanged = _enabled !== enabled;
-          if(!isChanged) {
-            return;
-          }
+        checkboxField.setValueSilently(enabled);
+      });
 
-          this.managers.apiManager.invokeApi('account.setContentSettings', {
-            sensitive_enabled: _enabled
-          });
-        }, {once: true});
-      }));
+      promises.push(promise);
 
       this.scrollable.append(section.container);
     }
 
     {
-      const section = new SettingSection({name: 'FilterChats'});
+      const section = new SettingSection({name: 'Privacy.SensitiveContent', caption: 'PrivacyAndSecurity.SensitiveDesc'});
+      section.container.classList.add('hide');
 
-      const onDeleteClick = () => {
-        const popup = new PopupPeer('popup-delete-drafts', {
-          buttons: [{
-            langKey: 'Delete',
-            callback: () => {
-              const toggle = toggleDisability([deleteButton], true);
-              this.managers.appDraftsManager.clearAllDrafts().then(() => {
-                toggle();
-              });
-            },
-            isDanger: true
-          }],
-          titleLangKey: 'AreYouSureClearDraftsTitle',
-          descriptionLangKey: 'AreYouSureClearDrafts'
+      const checkboxField = new CheckboxField({text: 'PrivacyAndSecurity.SensitiveText'});
+      const row = new Row({
+        checkboxField,
+        noCheckboxSubtitle: true
+      });
+
+      section.content.append(row.container);
+
+      let enabled: boolean;
+      this.eventListener.addEventListener('destroy', () => {
+        if(enabled === undefined) return;
+        const _enabled = row.checkboxField.checked;
+        const isChanged = _enabled !== enabled;
+        if(!isChanged) {
+          return;
+        }
+
+        this.managers.apiManager.invokeApi('account.setContentSettings', {
+          sensitive_enabled: _enabled
         });
+      }, {once: true});
 
-        popup.show();
-      };
+      const promise = this.managers.apiManager.invokeApi('account.getContentSettings').then((settings) => {
+        if(!settings.pFlags.sensitive_can_change) {
+          return;
+        }
 
-      const deleteButton = Button('btn-primary btn-transparent', {icon: 'delete', text: 'PrivacyDeleteCloudDrafts'});
-      this.listenerSetter.add(deleteButton)('click', onDeleteClick);
-      section.content.append(deleteButton);
+        enabled = settings.pFlags.sensitive_enabled;
+        checkboxField.setValueSilently(enabled);
+        section.container.classList.remove('hide');
+      });
 
-      /* promises.push(apiManager.invokeApi('messages.getAllDrafts').then((drafts) => {
-        const draftsRow = new Row({
-          titleLangKey: 'PrivacyDeleteCloudDrafts',
-          subtitleLangKey: 'Drafts',
-          subtitleLangArgs: [(drafts as Updates.updates).updates.length],
-          icon: 'delete',
-          clickable: onDeleteClick
-        });
-
-        section.content.append(draftsRow.container);
-      })); */
+      promises.push(promise);
 
       this.scrollable.append(section.container);
     }
@@ -365,6 +376,47 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       const clearButton = Button('btn-primary btn-transparent', {icon: 'delete', text: 'PrivacyPaymentsClear'});
       this.listenerSetter.add(clearButton)('click', onClearClick);
       section.content.append(clearButton);
+
+      this.scrollable.append(section.container);
+    }
+
+    {
+      const section = new SettingSection({name: 'FilterChats'});
+
+      const onDeleteClick = () => {
+        const popup = new PopupPeer('popup-delete-drafts', {
+          buttons: [{
+            langKey: 'Delete',
+            callback: () => {
+              const toggle = toggleDisability([deleteButton], true);
+              this.managers.appDraftsManager.clearAllDrafts().then(() => {
+                toggle();
+              });
+            },
+            isDanger: true
+          }],
+          titleLangKey: 'AreYouSureClearDraftsTitle',
+          descriptionLangKey: 'AreYouSureClearDrafts'
+        });
+
+        popup.show();
+      };
+
+      const deleteButton = Button('btn-primary btn-transparent', {icon: 'delete', text: 'PrivacyDeleteCloudDrafts'});
+      this.listenerSetter.add(deleteButton)('click', onDeleteClick);
+      section.content.append(deleteButton);
+
+      /* promises.push(apiManager.invokeApi('messages.getAllDrafts').then((drafts) => {
+        const draftsRow = new Row({
+          titleLangKey: 'PrivacyDeleteCloudDrafts',
+          subtitleLangKey: 'Drafts',
+          subtitleLangArgs: [(drafts as Updates.updates).updates.length],
+          icon: 'delete',
+          clickable: onDeleteClick
+        });
+
+        section.content.append(draftsRow.container);
+      })); */
 
       this.scrollable.append(section.container);
     }
