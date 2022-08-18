@@ -17,6 +17,8 @@ import renderImageFromUrl from '../../helpers/dom/renderImageFromUrl';
 import getImageFromStrippedThumb from '../../helpers/getImageFromStrippedThumb';
 import getPreviewURLFromThumb from '../../helpers/getPreviewURLFromThumb';
 import makeError from '../../helpers/makeError';
+import {makeMediaSize} from '../../helpers/mediaSize';
+import mediaSizes from '../../helpers/mediaSizes';
 import onMediaLoad from '../../helpers/onMediaLoad';
 import {isSavingLottiePreview, saveLottiePreview} from '../../helpers/saveLottiePreview';
 import throttle from '../../helpers/schedulers/throttle';
@@ -79,12 +81,12 @@ export default async function wrapSticker({doc, div, middleware, lazyLoadQueue, 
     asStatic = true;
   }
 
-  if(!width) {
-    width = !emoji ? 200 : undefined;
-  }
-
-  if(!height) {
-    height = !emoji ? 200 : undefined;
+  if(!width && !height) {
+    const sizes = mediaSizes.active;
+    const boxSize = emoji ? sizes.emojiSticker : (doc.animated ? sizes.animatedSticker : sizes.staticSticker);
+    const size = makeMediaSize(doc.w, doc.h).aspectFitted(boxSize);
+    width = size.width;
+    height = size.height;
   }
 
   if(stickerType === 2) {

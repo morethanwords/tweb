@@ -17,13 +17,15 @@ const ACTIVE_CLASS_NAME = 'active';
 const AXIS_Y_KEYS: ArrowKey[] = ['ArrowUp', 'ArrowDown'];
 const AXIS_X_KEYS: ArrowKey[] = ['ArrowLeft', 'ArrowRight'];
 
-export default function attachListNavigation({list, type, onSelect, once, waitForKey}: {
+export type ListNavigationOptions = {
   list: HTMLElement,
   type: 'xy' | 'x' | 'y',
-  onSelect: (target: Element) => void | boolean,
+  onSelect: (target: Element) => void | boolean | Promise<boolean>,
   once: boolean,
   waitForKey?: string[]
-}) {
+};
+
+export default function attachListNavigation({list, type, onSelect, once, waitForKey}: ListNavigationOptions) {
   let waitForKeySet = waitForKey?.length ? new Set(waitForKey) : undefined;
   const keyNames = new Set(type === 'xy' ? AXIS_Y_KEYS.concat(AXIS_X_KEYS) : (type === 'x' ? AXIS_X_KEYS : AXIS_Y_KEYS));
 
@@ -118,7 +120,7 @@ export default function attachListNavigation({list, type, onSelect, once, waitFo
   list.classList.add('navigable-list');
 
   const onMouseMove = (e: MouseEvent) => {
-    const target = findUpAsChild(e.target, list) as HTMLElement;
+    const target = findUpAsChild(e.target as HTMLElement, list) as HTMLElement;
     if(!target) {
       return;
     }
@@ -129,7 +131,7 @@ export default function attachListNavigation({list, type, onSelect, once, waitFo
   const onClick = (e: Event) => {
     cancelEvent(e); // cancel keyboard closening
 
-    const target = findUpAsChild(e.target, list) as HTMLElement;
+    const target = findUpAsChild(e.target as HTMLElement, list) as HTMLElement;
     if(!target) {
       return;
     }
@@ -138,8 +140,8 @@ export default function attachListNavigation({list, type, onSelect, once, waitFo
     fireSelect(getCurrentTarget());
   };
 
-  const fireSelect = (target: Element) => {
-    const canContinue = onSelect(target);
+  const fireSelect = async(target: Element) => {
+    const canContinue = await onSelect(target);
     if(canContinue !== undefined ? !canContinue : once) {
       detach();
     }

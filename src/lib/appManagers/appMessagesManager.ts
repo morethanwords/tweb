@@ -61,6 +61,7 @@ import getAlbumText from './utils/messages/getAlbumText';
 import pause from '../../helpers/schedulers/pause';
 import makeError from '../../helpers/makeError';
 import getStickerEffectThumb from './utils/stickers/getStickerEffectThumb';
+import getDocumentInput from './utils/docs/getDocumentInput';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -682,9 +683,9 @@ export class AppMessagesManager extends AppManager {
       size: MediaSize
     },
     duration: number,
-    background: true,
-    silent: true,
-    clearDraft: true,
+    background: boolean,
+    silent: boolean,
+    clearDraft: boolean,
     scheduleDate: number,
     noSound: boolean,
 
@@ -930,16 +931,9 @@ export class AppMessagesManager extends AppManager {
 
     message.send = () => {
       if(isDocument) {
-        const {id, access_hash, file_reference} = file as MyDocument;
-
         const inputMedia: InputMedia = {
           _: 'inputMediaDocument',
-          id: {
-            _: 'inputDocument',
-            id,
-            access_hash,
-            file_reference
-          }
+          id: getDocumentInput(file)
         };
 
         sentDeferred.resolve(inputMedia);
@@ -1465,10 +1459,10 @@ export class AppMessagesManager extends AppManager {
   } */
 
   private beforeMessageSending(message: Message.message, options: Partial<{
-    isGroupedItem: true,
-    isScheduled: true,
+    isGroupedItem: boolean,
+    isScheduled: boolean,
     threadId: number,
-    clearDraft: true,
+    clearDraft: boolean,
     sequential: boolean,
     processAfter?: (cb: () => void) => void
   }> = {}) {

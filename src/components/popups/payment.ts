@@ -351,7 +351,7 @@ export default class PopupPayment extends PopupElement {
       }
 
       tipsLabel.label.addEventListener('mousedown', (e) => {
-        if(!findUpAsChild(e.target, input)) {
+        if(!findUpAsChild(e.target as HTMLElement, input)) {
           placeCaretAtEnd(input);
         }
       });

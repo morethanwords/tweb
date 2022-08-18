@@ -6,8 +6,8 @@
 
 import {getFileNameByLocation} from '../../../../helpers/fileName';
 import {Document} from '../../../../layer';
-import getDocumentInput from './getDocumentInput';
+import getDocumentInputFileLocation from './getDocumentInputFileLocation';
 
 export default function getDocumentInputFileName(doc: Document.document, thumbSize?: string) {
-  return getFileNameByLocation(getDocumentInput(doc, thumbSize), {fileName: doc.file_name});
+  return getFileNameByLocation(getDocumentInputFileLocation(doc, thumbSize), {fileName: doc.file_name});
 }

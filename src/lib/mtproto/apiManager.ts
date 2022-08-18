@@ -103,7 +103,7 @@ export class ApiManager extends ApiManagerMethods {
   protected after() {
     this.apiUpdatesManager.addMultipleEventsListeners({
       updateConfig: () => {
-        this.getConfig();
+        this.getConfig(true);
         this.getAppConfig(true);
       }
     });

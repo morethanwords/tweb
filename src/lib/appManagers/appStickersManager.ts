@@ -5,7 +5,7 @@
  */
 
 import type {MyDocument} from './appDocsManager';
-import {Document, InputFileLocation, InputStickerSet, MessagesAllStickers, MessagesFeaturedStickers, MessagesFoundStickerSets, MessagesRecentStickers, MessagesStickers, MessagesStickerSet, PhotoSize, StickerPack, StickerSet, StickerSetCovered} from '../../layer';
+import {Document, InputFileLocation, InputStickerSet, MessagesAllStickers, MessagesFavedStickers, MessagesFeaturedStickers, MessagesFoundStickerSets, MessagesRecentStickers, MessagesStickers, MessagesStickerSet, PhotoSize, StickerPack, StickerSet, StickerSetCovered, Update} from '../../layer';
 import {Modify} from '../../types';
 import AppStorage from '../storage';
 import DATABASE_STATE from '../../config/databases/state';
@@ -17,6 +17,7 @@ import {AppManager} from './manager';
 import fixEmoji from '../richTextProcessor/fixEmoji';
 import ctx from '../../environment/ctx';
 import {getEnvironment} from '../../environment/utils';
+import getDocumentInput from './utils/docs/getDocumentInput';
 
 const CACHE_TIME = 3600e3;
 
@@ -49,6 +50,9 @@ export class AppStickersManager extends AppManager {
   private sounds: Record<string, MyDocument>;
   private getAnimatedEmojiSoundsPromise: Promise<void>;
 
+  private favedStickers: MyDocument[];
+  private recentStickers: MyDocument[];
+
   protected after() {
     this.getStickerSetPromises = {};
     this.getStickersByEmoticonsPromises = {};
@@ -57,6 +61,7 @@ export class AppStickersManager extends AppManager {
     this.rootScope.addEventListener('user_auth', () => {
       setTimeout(() => {
         this.getAnimatedEmojiStickerSet();
+        this.getFavedStickersStickers();
       }, 1000);
 
       if(!this.getGreetingStickersPromise && this.getGreetingStickersTimeout === undefined) {
@@ -67,6 +72,8 @@ export class AppStickersManager extends AppManager {
       }
     });
 
+    this.rootScope.addEventListener('app_config', () => this.onStickersUpdated('faved', true));
+
     this.apiUpdatesManager.addMultipleEventsListeners({
       updateNewStickerSet: (update) => {
         const stickerSet = update.stickerset as MyMessagesStickerSet;
@@ -74,11 +81,17 @@ export class AppStickersManager extends AppManager {
         this.rootScope.dispatchEvent('stickers_installed', stickerSet.set);
       },
 
-      updateRecentStickers: () => {
-        this.getRecentStickers().then(({stickers}) => {
-          this.rootScope.dispatchEvent('stickers_recent', stickers as MyDocument[]);
-        });
-      }
+      updateRecentStickers: () => this.onStickersUpdated('recent', true),
+
+      updateFavedStickers: () => this.onStickersUpdated('faved', true)
+    });
+  }
+
+  private async onStickersUpdated(type: 'faved' | 'recent', overwrite: boolean) {
+    const stickers = await (type === 'faved' ? this.getFavedStickersStickers(overwrite) : this.getRecentStickersStickers(overwrite));
+    this.rootScope.dispatchEvent('stickers_updated', {
+      type,
+      stickers
     });
   }
 
@@ -233,12 +246,53 @@ export class AppStickersManager extends AppManager {
       processResult: (res) => {
         assumeType<MessagesRecentStickers.messagesRecentStickers>(res);
 
+        this.recentStickers = res.stickers as MyDocument[];
         this.saveStickers(res.stickers);
         return res;
       }
     });
 
     return res;
+  }
+
+  public getRecentStickersStickers(overwrite?: boolean) {
+    if(overwrite) this.recentStickers = undefined;
+    else if(this.recentStickers) return this.recentStickers;
+    return this.getRecentStickers().then(() => this.recentStickers);
+  }
+
+  public saveRecentSticker(docId: DocId, unsave?: boolean, attached?: boolean) {
+    const doc = this.appDocsManager.getDoc(docId);
+
+    findAndSplice(this.recentStickers, (_doc) => _doc.id === docId);
+    if(!unsave) {
+      this.recentStickers.unshift(doc);
+
+      const docEmoticon = fixEmoji(doc.stickerEmojiRaw);
+      for(const emoticon in this.getStickersByEmoticonsPromises) {
+        const promise = this.getStickersByEmoticonsPromises[emoticon];
+        promise.then((stickers) => {
+          const _doc = findAndSplice(stickers, (_doc) => _doc.id === doc.id);
+          if(_doc) {
+            stickers.unshift(_doc);
+          } else if(emoticon.includes(docEmoticon)) {
+            stickers.unshift(doc);
+          }
+        });
+      }
+    }
+
+    this.rootScope.dispatchEvent('sticker_updated', {type: 'recent', faved: !unsave, document: doc});
+
+    if(unsave) {
+      this.onStickersUpdated('recent', false);
+    }
+
+    return this.apiManager.invokeApi('messages.saveRecentSticker', {
+      id: getDocumentInput(doc),
+      unsave,
+      attached
+    });
   }
 
   private cleanEmoji(emoji: string) {
@@ -409,12 +463,62 @@ export class AppStickersManager extends AppManager {
     return res.sets;
   }
 
-  public async getPromoPremiumStickers() {
+  public getPromoPremiumStickers() {
     return this.getStickersByEmoticon('⭐️⭐️', false);
   }
 
-  public async getPremiumStickers() {
+  public getPremiumStickers() {
     return this.getStickersByEmoticon('📂⭐️', false);
+  }
+
+  public getFavedStickers() {
+    return this.apiManager.invokeApiHashable({
+      method: 'messages.getFavedStickers',
+      processResult: (favedStickers) => {
+        assumeType<MessagesFavedStickers.messagesFavedStickers>(favedStickers);
+        this.saveStickers(favedStickers.stickers);
+        this.favedStickers = favedStickers.stickers as MyDocument[];
+        return favedStickers;
+      }
+    });
+  }
+
+  public getFavedStickersStickers(overwrite?: boolean) {
+    if(overwrite) this.favedStickers = undefined;
+    else if(this.favedStickers) return this.favedStickers;
+    return this.getFavedStickers().then(() => this.favedStickers);
+  }
+
+  public async getFavedStickersLimit() {
+    const appConfig = await this.apiManager.getAppConfig();
+    return this.rootScope.premium ? appConfig.stickers_faved_limit_premium : appConfig.stickers_faved_limit_default;
+  }
+
+  public async faveSticker(docId: DocId, unfave?: boolean) {
+    if(!this.favedStickers) {
+      await this.getFavedStickersStickers();
+    }
+
+    const limit = await this.getFavedStickersLimit();
+
+    const doc = this.appDocsManager.getDoc(docId);
+    findAndSplice(this.favedStickers, (_doc) => _doc.id === doc.id);
+
+    if(!unfave) {
+      this.favedStickers.unshift(doc);
+      const spliced = this.favedStickers.splice(limit, this.favedStickers.length - limit);
+    }
+
+    this.rootScope.dispatchEvent('sticker_updated', {type: 'faved', faved: !unfave, document: doc});
+
+    return this.apiManager.invokeApi('messages.faveSticker', {
+      id: getDocumentInput(doc),
+      unfave
+    }).then(() => {
+      if(unfave) {
+        this.onStickersUpdated('faved', true);
+      }
+    });
   }
 
   public async toggleStickerSet(set: StickerSet.stickerSet) {
@@ -578,24 +682,12 @@ export class AppStickersManager extends AppManager {
     });
   }
 
-  public pushRecentSticker(docId: DocId) {
-    const doc = this.appDocsManager.getDoc(docId);
-    const docEmoticon = fixEmoji(doc.stickerEmojiRaw);
-    for(const emoticon in this.getStickersByEmoticonsPromises) {
-      const promise = this.getStickersByEmoticonsPromises[emoticon];
-      promise.then((stickers) => {
-        const _doc = findAndSplice(stickers, _doc => _doc.id === doc.id);
-        if(_doc) {
-          stickers.unshift(_doc);
-        } else if(emoticon.includes(docEmoticon)) {
-          stickers.unshift(doc);
-        }
-      });
-    }
-  }
-
   public clearRecentStickers() {
-    this.rootScope.dispatchEvent('stickers_recent', []);
+    if(this.recentStickers) {
+      this.recentStickers.length = 0;
+      this.onStickersUpdated('recent', false);
+    }
+
     return this.apiManager.invokeApi('messages.clearRecentStickers');
   }
 }

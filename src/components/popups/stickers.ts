@@ -20,6 +20,7 @@ import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import {toastNew} from '../toast';
 import setInnerHTML from '../../helpers/dom/setInnerHTML';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
+import createStickersContextMenu from '../../helpers/dom/createStickersContextMenu';
 
 const ANIMATION_GROUP: AnimationItemGroup = 'STICKERS-POPUP';
 
@@ -34,6 +35,7 @@ export default class PopupStickers extends PopupElement {
 
     this.addEventListener('close', () => {
       animationIntersector.setOnlyOnePlayableGroup();
+      destroy();
     });
 
     const div = document.createElement('div');
@@ -57,10 +59,10 @@ export default class PopupStickers extends PopupElement {
     this.scrollable.append(div);
     this.body.append(this.stickersFooter);
 
-    // const editButton = document.createElement('button');
-    // editButton.classList.add('btn-primary');
-
-    // this.stickersFooter.append(editButton);
+    const {destroy} = createStickersContextMenu({
+      listenTo: this.stickersDiv,
+      isStickerPack: true
+    });
 
     this.loadStickerSet();
   }
@@ -69,11 +71,9 @@ export default class PopupStickers extends PopupElement {
     const target = findUpClassName(e.target, 'sticker-set-sticker');
     if(!target) return;
 
-    const fileId = target.dataset.docId;
-    if(appImManager.chat.input.sendMessageWithDocument(fileId)) {
+    const docId = target.dataset.docId;
+    if(appImManager.chat.input.sendMessageWithDocument(docId)) {
       this.hide();
-    } else {
-      console.warn('got no doc by id:', fileId);
     }
   };
 

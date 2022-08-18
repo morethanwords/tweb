@@ -141,7 +141,7 @@ export default function ripple(
       findUpClassName(e.target as HTMLElement, 'c-ripple') !== r
   ) && (
     attachListenerTo === elem ||
-      !findUpAsChild(e.target, attachListenerTo)
+      !findUpAsChild(e.target as HTMLElement, attachListenerTo)
   );
 
   // TODO: rename this variable

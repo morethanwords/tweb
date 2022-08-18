@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import attachListNavigation from '../../helpers/dom/attachListNavigation';
+import attachListNavigation, {ListNavigationOptions} from '../../helpers/dom/attachListNavigation';
 import EventListenerBase from '../../helpers/eventListenerBase';
 import {IS_MOBILE} from '../../environment/userAgent';
 import rootScope from '../../lib/rootScope';
@@ -28,7 +28,7 @@ export default class AutocompleteHelper extends EventListenerBase<{
 
   protected controller: AutocompleteHelperController;
   protected listType: 'xy' | 'x' | 'y';
-  protected onSelect: (target: Element) => boolean | void;
+  protected onSelect: ListNavigationOptions['onSelect'];
   protected waitForKey?: string[];
 
   protected navigationItem: NavigationItem;

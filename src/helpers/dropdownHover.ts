@@ -25,6 +25,7 @@ export default class DropdownHover extends EventListenerBase<{
   protected displayTimeout: number;
   protected forceClose = false;
   protected inited = false;
+  protected ignoreMouseOut = false;
 
   constructor(options: {
     element: DropdownHover['element']
@@ -63,11 +64,15 @@ export default class DropdownHover extends EventListenerBase<{
     }
   }
 
-  private onMouseOut = (e: MouseEvent) => {
+  protected onMouseOut = (e: MouseEvent) => {
     if(KEEP_OPEN || !this.isActive()) return;
     clearTimeout(this.displayTimeout);
 
-    const toElement = (e as any).toElement as Element;
+    if(this.ignoreMouseOut) {
+      return;
+    }
+
+    const toElement = (e as any).toElement as HTMLElement;
     if(toElement && findUpAsChild(toElement, this.element)) {
       return;
     }
@@ -161,5 +166,9 @@ export default class DropdownHover extends EventListenerBase<{
 
   public isActive() {
     return this.element.classList.contains('active');
+  }
+
+  public setIgnoreMouseOut(ignore: boolean) {
+    this.ignoreMouseOut = ignore;
   }
 }

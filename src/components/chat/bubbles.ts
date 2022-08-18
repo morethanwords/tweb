@@ -945,7 +945,7 @@ export default class ChatBubbles {
           return;
         }
 
-        awaited.forEach(({bubble, message}) => {
+        awaited.filter(Boolean).forEach(({bubble, message}) => {
           if(this.bubbles[message.mid] !== bubble) {
             return;
           }
@@ -4011,8 +4011,9 @@ export default class ChatBubbles {
             }
 
             const sizes = mediaSizes.active;
-            const size = bubble.classList.contains('emoji-big') ? sizes.emojiSticker : (doc.animated ? sizes.animatedSticker : sizes.staticSticker);
-            setAttachmentSize(doc, attachmentDiv, size.width, size.height);
+            const isEmoji = bubble.classList.contains('emoji-big');
+            const boxSize = isEmoji ? sizes.emojiSticker : (doc.animated ? sizes.animatedSticker : sizes.staticSticker);
+            setAttachmentSize(doc, attachmentDiv, boxSize.width, boxSize.height);
             // let preloader = new ProgressivePreloader(attachmentDiv, false);
             bubbleContainer.style.minWidth = attachmentDiv.style.width;
             bubbleContainer.style.minHeight = attachmentDiv.style.height;
@@ -4026,7 +4027,7 @@ export default class ChatBubbles {
               // play: !!message.pending || !multipleRender,
               play: true,
               loop: true,
-              emoji: bubble.classList.contains('emoji-big') ? messageMessage : undefined,
+              emoji: isEmoji ? messageMessage : undefined,
               withThumb: true,
               loadPromises,
               isOut,

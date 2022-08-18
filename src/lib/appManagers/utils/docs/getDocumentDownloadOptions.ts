@@ -6,10 +6,10 @@
 
 import type {Document, PhotoSize, VideoSize} from '../../../../layer';
 import type {DownloadOptions} from '../../../mtproto/apiFileManager';
-import getDocumentInput from './getDocumentInput';
+import getDocumentInputFileLocation from './getDocumentInputFileLocation';
 
 export default function getDocumentDownloadOptions(doc: Document.document, thumb?: PhotoSize.photoSize | VideoSize, queueId?: number, onlyCache?: boolean): DownloadOptions {
-  const inputFileLocation = getDocumentInput(doc, thumb?.type);
+  const inputFileLocation = getDocumentInputFileLocation(doc, thumb?.type);
 
   let mimeType: string;
   if(thumb?._ === 'photoSize') {

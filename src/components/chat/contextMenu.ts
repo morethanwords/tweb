@@ -281,6 +281,21 @@ export default class ChatContextMenu {
   }
 
   private setButtons() {
+    const verifyFavoriteSticker = async(toAdd: boolean) => {
+      const doc = ((this.message as Message.message).media as MessageMedia.messageMediaDocument)?.document;
+      if(!(doc as MyDocument)?.sticker) {
+        return false;
+      }
+
+      const favedStickers = await this.managers.acknowledged.appStickersManager.getFavedStickersStickers();
+      if(!favedStickers.cached) {
+        return false;
+      }
+
+      const found = (await favedStickers.result).some((_doc) => _doc.id === doc.id);
+      return toAdd ? !found : found;
+    };
+
     this.buttons = [{
       icon: 'send2',
       text: 'MessageScheduleSend',
@@ -317,6 +332,16 @@ export default class ChatContextMenu {
         !!this.chat.input.messageInput &&
         this.chat.type !== 'scheduled'/* ,
       cancelEvent: true */
+    }, {
+      icon: 'favourites',
+      text: 'AddToFavorites',
+      onClick: this.onFaveStickerClick.bind(this, false),
+      verify: () => verifyFavoriteSticker(true)
+    }, {
+      icon: 'favourites',
+      text: 'DeleteFromFavorites',
+      onClick: this.onFaveStickerClick.bind(this, true),
+      verify: () => verifyFavoriteSticker(false)
     }, {
       icon: 'edit',
       text: 'Edit',
@@ -680,6 +705,11 @@ export default class ChatContextMenu {
 
   private onReplyClick = () => {
     this.chat.input.initMessageReply(this.mid);
+  };
+
+  private onFaveStickerClick = (unfave?: boolean) => {
+    const docId = ((this.message as Message.message).media as MessageMedia.messageMediaDocument).document.id;
+    this.managers.appStickersManager.faveSticker(docId, unfave);
   };
 
   private onEditClick = () => {

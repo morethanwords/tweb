@@ -95,6 +95,7 @@ import ChatSendAs from './sendAs';
 import filterAsync from '../../helpers/array/filterAsync';
 import InputFieldAnimated from '../inputFieldAnimated';
 import getStickerEffectThumb from '../../lib/appManagers/utils/stickers/getStickerEffectThumb';
+import PopupStickers from '../popups/stickers';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -1058,6 +1059,9 @@ export default class ChatInput {
           if(!middleware()) {
             return;
           }
+
+          const popups = PopupElement.getPopups(PopupStickers);
+          popups.forEach((popup) => popup.hide());
 
           this.appImManager.openScheduled(peerId);
         }, 0);
@@ -2435,7 +2439,12 @@ export default class ChatInput {
     // this.onMessageSent();
   }
 
-  public async sendMessageWithDocument(document: MyDocument | string, force = false, clearDraft = false) {
+  public async sendMessageWithDocument(
+    document: MyDocument | DocId,
+    force = false,
+    clearDraft = false,
+    silent = false
+  ) {
     document = await this.managers.appDocsManager.getDoc(document);
 
     const flag = document.type === 'sticker' ? 'send_stickers' : (document.type === 'gif' ? 'send_gifs' : 'send_media');
@@ -2445,7 +2454,7 @@ export default class ChatInput {
     }
 
     if(this.chat.type === 'scheduled' && !force) {
-      this.scheduleSending(() => this.sendMessageWithDocument(document, true, clearDraft));
+      this.scheduleSending(() => this.sendMessageWithDocument(document, true, clearDraft, silent));
       return false;
     }
 
@@ -2460,12 +2469,13 @@ export default class ChatInput {
     this.managers.appMessagesManager.sendFile(this.chat.peerId, document, {
       ...this.chat.getMessageSendingParams(),
       isMedia: true,
-      clearDraft: clearDraft || undefined
+      clearDraft: clearDraft || undefined,
+      silent
     });
     this.onMessageSent(clearDraft, true);
 
     if(document.type === 'sticker') {
-      emoticonsDropdown.stickersTab?.pushRecentSticker(document);
+      emoticonsDropdown.stickersTab?.unshiftRecentSticker(document);
     }
 
     return true;

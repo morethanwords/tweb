@@ -32,8 +32,8 @@ export default class StickersHelper extends AutocompleteHelper {
       appendTo,
       controller,
       listType: 'xy',
-      onSelect: (target) => {
-        return !EmoticonsDropdown.onMediaClick({target}, true);
+      onSelect: async(target) => {
+        return !(await EmoticonsDropdown.onMediaClick({target}, true));
       },
       waitForKey: ['ArrowUp', 'ArrowDown']
     });

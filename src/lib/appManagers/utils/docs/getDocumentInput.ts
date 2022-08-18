@@ -1,17 +1,11 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
+import {InputDocument} from '../../../../layer';
+import type {MyDocument} from '../../appDocsManager';
 
-import {Document, InputFileLocation} from '../../../../layer';
-
-export default function getInput(doc: Document.document, thumbSize?: string): InputFileLocation.inputDocumentFileLocation {
+export default function getDocumentInput(doc: MyDocument): InputDocument {
   return {
-    _: 'inputDocumentFileLocation',
+    _: 'inputDocument',
     id: doc.id,
     access_hash: doc.access_hash,
-    file_reference: doc.file_reference,
-    thumb_size: thumbSize
+    file_reference: doc.file_reference
   };
 }

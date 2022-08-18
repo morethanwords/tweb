@@ -24,11 +24,11 @@ export default class OverlayClickHandler extends EventListenerBase<{
     protected withOverlay?: boolean
   ) {
     super(false);
-    this.listenerOptions = withOverlay ? undefined : {capture: true};
+    this.listenerOptions = withOverlay ? {} : {capture: true};
   }
 
   protected onClick = (e: MouseEvent | TouchEvent) => {
-    if(this.element && findUpAsChild(e.target, this.element)) {
+    if(this.element && findUpAsChild(e.target as HTMLElement, this.element)) {
       return;
     }
 
@@ -48,7 +48,7 @@ export default class OverlayClickHandler extends EventListenerBase<{
 
     if(!IS_TOUCH_SUPPORTED) {
       // window.removeEventListener('keydown', onKeyDown, {capture: true});
-      window.removeEventListener('contextmenu', this.onClick);
+      window.removeEventListener('contextmenu', this.onClick, this.listenerOptions);
     }
 
     document.removeEventListener(CLICK_EVENT_NAME, this.onClick, this.listenerOptions);
@@ -89,7 +89,7 @@ export default class OverlayClickHandler extends EventListenerBase<{
 
     if(!IS_TOUCH_SUPPORTED) {
       // window.addEventListener('keydown', onKeyDown, {capture: true});
-      window.addEventListener('contextmenu', this.onClick, {once: true});
+      window.addEventListener('contextmenu', this.onClick, {...this.listenerOptions, once: true});
     }
 
     /* // ! because this event must be canceled, and can't cancel on menu click (below)

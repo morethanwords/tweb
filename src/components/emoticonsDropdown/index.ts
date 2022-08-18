@@ -30,6 +30,7 @@ import {IS_APPLE_MOBILE} from '../../environment/userAgent';
 import {AppManagers} from '../../lib/appManagers/managers';
 import type LazyLoadQueueIntersector from '../lazyLoadQueueIntersector';
 import {simulateClickEvent} from '../../helpers/dom/clickEvent';
+import overlayCounter from '../../helpers/overlayCounter';
 
 export const EMOTICONSSTICKERGROUP: AnimationItemGroup = 'emoticons-dropdown';
 
@@ -88,7 +89,7 @@ export class EmoticonsDropdown extends DropdownHover {
       EmoticonsDropdown.lazyLoadQueue.unlock();
       EmoticonsDropdown.lazyLoadQueue.refresh();
 
-      this.container.classList.remove('disable-hover');
+      // this.container.classList.remove('disable-hover');
     });
 
     this.addEventListener('close', () => {
@@ -106,7 +107,7 @@ export class EmoticonsDropdown extends DropdownHover {
       EmoticonsDropdown.lazyLoadQueue.unlock();
       EmoticonsDropdown.lazyLoadQueue.refresh();
 
-      this.container.classList.remove('disable-hover');
+      // this.container.classList.remove('disable-hover');
 
       this.savedRange = undefined;
     });
@@ -182,6 +183,26 @@ export class EmoticonsDropdown extends DropdownHover {
       this.tabs[INIT_TAB_ID].init(); // onTransitionEnd не вызовется, т.к. это первая открытая вкладка
     }
 
+    if(!IS_TOUCH_SUPPORTED) {
+      let lastMouseMoveEvent: MouseEvent, mouseMoveEventAttached = false;
+      const onMouseMove = (e: MouseEvent) => {
+        lastMouseMoveEvent = e;
+      };
+      overlayCounter.addEventListener('change', (isActive) => {
+        if(isActive) {
+          if(!mouseMoveEventAttached) {
+            document.body.addEventListener('mousemove', onMouseMove);
+            mouseMoveEventAttached = true;
+          }
+        } else if(mouseMoveEventAttached) {
+          document.body.removeEventListener('mousemove', onMouseMove);
+          if(lastMouseMoveEvent) {
+            this.onMouseOut(lastMouseMoveEvent);
+          }
+        }
+      });
+    }
+
     appImManager.addEventListener('peer_changed', this.checkRights);
     this.checkRights();
 
@@ -204,15 +225,17 @@ export class EmoticonsDropdown extends DropdownHover {
     this.deleteBtn.classList.toggle('hide', this.tabId !== 0);
   };
 
-  private checkRights = () => {
+  private checkRights = async() => {
     const {peerId, threadId} = appImManager.chat;
     const children = this.tabsEl.children;
     const tabsElements = Array.from(children) as HTMLElement[];
 
-    const canSendStickers = this.managers.appMessagesManager.canSendToPeer(peerId, threadId, 'send_stickers');
-    tabsElements[2].toggleAttribute('disabled', !canSendStickers);
+    const [canSendStickers, canSendGifs] = await Promise.all([
+      this.managers.appMessagesManager.canSendToPeer(peerId, threadId, 'send_stickers'),
+      this.managers.appMessagesManager.canSendToPeer(peerId, threadId, 'send_gifs')
+    ]);
 
-    const canSendGifs = this.managers.appMessagesManager.canSendToPeer(peerId, threadId, 'send_gifs');
+    tabsElements[2].toggleAttribute('disabled', !canSendStickers);
     tabsElements[3].toggleAttribute('disabled', !canSendGifs);
 
     const active = this.tabsEl.querySelector('.active');
@@ -290,30 +313,34 @@ export class EmoticonsDropdown extends DropdownHover {
     return {stickyIntersector, setActive};
   };
 
-  public static onMediaClick = (e: {target: EventTarget | Element}, clearDraft = false) => {
+  public static onMediaClick = async(e: {target: EventTarget | Element}, clearDraft = false, silent?: boolean) => {
     let target = e.target as HTMLElement;
     target = findUpTag(target, 'DIV');
 
     if(!target) return false;
 
-    const fileId = target.dataset.docId;
-    if(!fileId) return false;
+    const docId = target.dataset.docId;
+    if(!docId) return false;
 
-    if(appImManager.chat.input.sendMessageWithDocument(fileId, undefined, clearDraft)) {
+    return this.sendDocId(docId, clearDraft, silent);
+  };
+
+  public static async sendDocId(docId: DocId, clearDraft?: boolean, silent?: boolean) {
+    if(await appImManager.chat.input.sendMessageWithDocument(docId, undefined, clearDraft, silent)) {
       /* dropdown.classList.remove('active');
       toggleEl.classList.remove('active'); */
       if(emoticonsDropdown.container) {
         emoticonsDropdown.forceClose = true;
-        emoticonsDropdown.container.classList.add('disable-hover');
+        // emoticonsDropdown.container.classList.add('disable-hover');
         emoticonsDropdown.toggle(false);
       }
 
       return true;
     } else {
-      console.warn('got no doc by id:', fileId);
+      console.warn('got no doc by id:', docId);
       return false;
     }
-  };
+  }
 
   public addLazyLoadQueueRepeat(lazyLoadQueue: LazyLoadQueueIntersector, processInvisibleDiv: (div: HTMLElement) => void) {
     this.addEventListener('close', () => {

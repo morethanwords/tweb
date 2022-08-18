@@ -87,7 +87,8 @@ export type BroadcastEvents = {
 
   'stickers_installed': StickerSet.stickerSet,
   'stickers_deleted': StickerSet.stickerSet,
-  'stickers_recent': MyDocument[],
+  'stickers_updated': {type: 'recent' | 'faved', stickers: MyDocument[]},
+  'sticker_updated': {type: 'recent' | 'faved', document: MyDocument, faved: boolean},
 
   'state_cleared': void,
   'state_synchronized': ChatId | void,

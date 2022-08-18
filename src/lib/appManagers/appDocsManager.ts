@@ -20,7 +20,7 @@ import assumeType from '../../helpers/assumeType';
 import {getEnvironment} from '../../environment/utils';
 import {isServiceWorkerOnline} from '../mtproto/mtproto.worker';
 import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
-import getDocumentInput from './utils/docs/getDocumentInput';
+import getDocumentInputFileLocation from './utils/docs/getDocumentInputFileLocation';
 import getDocumentURL from './utils/docs/getDocumentURL';
 import type {ThumbCache} from '../storages/thumbs';
 import makeError from '../../helpers/makeError';
@@ -405,6 +405,6 @@ export class AppDocsManager extends AppManager {
   public requestDocPart(docId: DocId, dcId: number, offset: number, limit: number) {
     const doc = this.getDoc(docId);
     if(!doc) return Promise.reject(makeError('NO_DOC'));
-    return this.apiFileManager.requestFilePart(dcId, getDocumentInput(doc), offset, limit);
+    return this.apiFileManager.requestFilePart(dcId, getDocumentInputFileLocation(doc), offset, limit);
   }
 }

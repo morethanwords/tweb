@@ -17,13 +17,16 @@ import isObject from '../../helpers/object/isObject';
 import gzipUncompress from '../../helpers/gzipUncompress';
 import bigInt from 'big-integer';
 import ulongFromInts from '../../helpers/long/ulongFromInts';
-import { safeBigInt } from '../../helpers/bigInt/bigIntConstants';
-import { bigIntToSigned, bigIntToUnsigned } from '../../helpers/bigInt/bigIntConversion';
+import {safeBigInt} from '../../helpers/bigInt/bigIntConstants';
+import {bigIntToSigned, bigIntToUnsigned} from '../../helpers/bigInt/bigIntConversion';
 
 const boolFalse = +Schema.API.constructors.find((c) => c.predicate === 'boolFalse').id;
 const boolTrue = +Schema.API.constructors.find((c) => c.predicate === 'boolTrue').id;
 const vector = +Schema.API.constructors.find((c) => c.predicate === 'vector').id;
 const gzipPacked = +Schema.MTProto.constructors.find((c) => c.predicate === 'gzip_packed').id;
+
+// * using slice to have a new buffer, otherwise the buffer will be copied to main thread
+const sliceMethod: 'slice' | 'subarray' = 'slice'; // subarray
 
 class TLSerialization {
   private maxLength = 2048; // 2Kb
@@ -565,7 +568,7 @@ class TLDeserialization<FetchLongAs extends Long> {
         (this.byteView[this.offset++] << 16);
     }
 
-    const bytes = this.byteView.subarray(this.offset, this.offset + len);
+    const bytes = this.byteView[sliceMethod](this.offset, this.offset + len);
     this.offset += len;
 
     // Padding
@@ -587,7 +590,7 @@ class TLDeserialization<FetchLongAs extends Long> {
 
     const len = bits / 8;
     if(typed) {
-      const result = this.byteView.subarray(this.offset, this.offset + len);
+      const result = this.byteView[sliceMethod](this.offset, this.offset + len);
       this.offset += len;
       return result;
     }
@@ -614,7 +617,7 @@ class TLDeserialization<FetchLongAs extends Long> {
 
     if(typed) {
       const bytes = new Uint8Array(len);
-      bytes.set(this.byteView.subarray(this.offset, this.offset + len));
+      bytes.set(this.byteView[sliceMethod](this.offset, this.offset + len));
       this.offset += len;
       return bytes;
     }

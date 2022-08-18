@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-export default function findUpAsChild(el: any, parent: any) {
+export default function findUpAsChild(el: HTMLElement, parent: HTMLElement): HTMLElement {
   if(el.parentElement === parent) return el;
 
   while(el.parentElement) {

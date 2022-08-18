@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+$btn-menu-z-index: 4;
+
 .btn, 
 .btn-icon {
   background: none;
@@ -97,7 +99,7 @@
   visibility: hidden;
   position: absolute;
   background-color: var(--menu-background-color);
-  z-index: 3;
+  z-index: $btn-menu-z-index;
   top: 100%;
   padding: .3125rem 0;
   border-radius: $border-radius-medium;
@@ -324,7 +326,7 @@
     right: 0;
     top: 0;
     bottom: 0;
-    z-index: 3;
+    z-index: $btn-menu-z-index;
     cursor: default;
     user-select: none;
     //background-color: rgba(0, 0, 0, .2);

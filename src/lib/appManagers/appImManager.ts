@@ -52,7 +52,7 @@ import confirmationPopup from '../../components/confirmationPopup';
 import IS_GROUP_CALL_SUPPORTED from '../../environment/groupCallSupport';
 import IS_CALL_SUPPORTED from '../../environment/callSupport';
 import {CallType} from '../calls/types';
-import {Modify, SendMessageEmojiInteractionData} from '../../types';
+import {Awaited, Modify, SendMessageEmojiInteractionData} from '../../types';
 import htmlToSpan from '../../helpers/dom/htmlToSpan';
 import getVisibleRect from '../../helpers/dom/getVisibleRect';
 import {attachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent';
@@ -579,12 +579,20 @@ export class AppImManager extends EventListenerBase<{
         const doc = await this.managers.appDocsManager.getDoc(docId);
         if(!middleware()) return;
 
-        const {ready, transformer} = await doThatSticker({
-          doc,
-          mediaContainer,
-          middleware,
-          lockGroups: true
-        });
+        let result: Awaited<ReturnType<typeof doThatSticker>>;
+        try {
+          result = await doThatSticker({
+            doc,
+            mediaContainer,
+            middleware,
+            lockGroups: true
+          });
+          if(!result) return;
+        } catch(err) {
+          return;
+        }
+
+        const {ready, transformer} = result;
 
         previousTransformer = transformer;
 
@@ -614,12 +622,20 @@ export class AppImManager extends EventListenerBase<{
         const doc = await this.managers.appDocsManager.getDoc(docId);
         if(!middleware()) return;
 
-        const {ready, transformer} = await doThatSticker({
-          doc,
-          mediaContainer,
-          middleware,
-          isSwitching: true
-        });
+        let r: Awaited<ReturnType<typeof doThatSticker>>;
+        try {
+          r = await doThatSticker({
+            doc,
+            mediaContainer,
+            middleware,
+            isSwitching: true
+          });
+          if(!r) return;
+        } catch(err) {
+          return;
+        }
+
+        const {ready, transformer} = r;
 
         const _previousTransformer = previousTransformer;
         SetTransition(_previousTransformer, 'is-switching', true, switchDuration, () => {
@@ -658,6 +674,18 @@ export class AppImManager extends EventListenerBase<{
 
       document.addEventListener('mousemove', onMousePreMove, {once: true});
       document.addEventListener('mouseup', onMouseUp, {once: true});
+    });
+
+    rootScope.addEventListener('sticker_updated', ({type, faved}) => {
+      if(type === 'faved') {
+        toastNew({
+          langPackKey: faved ? 'AddedToFavorites' : 'RemovedFromFavorites'
+        });
+      } else if(!faved) {
+        toastNew({
+          langPackKey: 'RemovedFromRecent'
+        });
+      }
     });
 
     apiManagerProxy.addEventListener('notificationBuild', (options) => {
