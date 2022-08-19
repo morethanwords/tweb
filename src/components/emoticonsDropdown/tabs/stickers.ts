@@ -32,6 +32,8 @@ import createStickersContextMenu from '../../../helpers/dom/createStickersContex
 import findUpAsChild from '../../../helpers/dom/findUpAsChild';
 import forEachReverse from '../../../helpers/array/forEachReverse';
 import {MTAppConfig} from '../../../lib/mtproto/appConfig';
+import attachStickerViewerListeners from '../../stickerViewer';
+import ListenerSetter from '../../../helpers/listenerSetter';
 
 export class SuperStickerRenderer {
   public lazyLoadQueue: LazyLoadQueueRepeat;
@@ -566,6 +568,8 @@ export default class StickersTab implements EmoticonsTab {
     mediaSizes.addEventListener('resize', resizeCategories);
 
     emoticonsDropdown.addEventListener('opened', resizeCategories);
+
+    attachStickerViewerListeners({listenTo: this.content, listenerSetter: new ListenerSetter()});
 
     createStickersContextMenu({
       listenTo: this.content,

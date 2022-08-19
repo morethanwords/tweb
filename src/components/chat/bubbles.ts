@@ -112,6 +112,7 @@ import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount
 import PopupPayment from '../popups/payment';
 import isInDOM from '../../helpers/dom/isInDOM';
 import getStickerEffectThumb from '../../lib/appManagers/utils/stickers/getStickerEffectThumb';
+import attachStickerViewerListeners from '../stickerViewer';
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
@@ -667,6 +668,7 @@ export default class ChatBubbles {
       });
     });
 
+    attachStickerViewerListeners({listenTo: this.scrollable.container, listenerSetter: this.listenerSetter});
     attachClickEvent(this.scrollable.container, this.onBubblesClick, {listenerSetter: this.listenerSetter});
     // this.listenerSetter.add(this.bubblesContainer)('click', this.onBubblesClick/* , {capture: true, passive: false} */);
 
@@ -902,7 +904,7 @@ export default class ChatBubbles {
     });
 
     this.listenerSetter.add(rootScope)('dialogs_multiupdate', (dialogs) => {
-      if(dialogs[this.peerId]) {
+      if(dialogs.has(this.peerId)) {
         this.chat.input.setUnreadCount();
       }
     });

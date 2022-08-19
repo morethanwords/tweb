@@ -19,6 +19,7 @@ import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import forEachReverse from '../../../helpers/array/forEachReverse';
 import setInnerHTML from '../../../helpers/dom/setInnerHTML';
 import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
+import attachStickerViewerListeners from '../../stickerViewer';
 
 export default class AppStickersTab extends SliderSuperTab {
   private inputSearch: InputSearch;
@@ -40,6 +41,8 @@ export default class AppStickersTab extends SliderSuperTab {
     this.setsDiv = document.createElement('div');
     this.setsDiv.classList.add('sticker-sets');
     this.scrollable.append(this.setsDiv);
+
+    attachStickerViewerListeners({listenTo: this.setsDiv, listenerSetter: this.listenerSetter});
 
     attachClickEvent(this.setsDiv, (e) => {
       const sticker = findUpClassName(e.target, 'sticker-set-sticker');

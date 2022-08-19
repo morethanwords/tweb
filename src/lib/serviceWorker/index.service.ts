@@ -20,7 +20,7 @@ import {getWindowClients} from '../../helpers/context';
 import {MessageSendPort} from '../mtproto/superMessagePort';
 import handleDownload from './download';
 
-export const log = logger('SW', LogTypes.Error | LogTypes.Debug | LogTypes.Log | LogTypes.Warn);
+export const log = logger('SW', LogTypes.Error | LogTypes.Debug | LogTypes.Log | LogTypes.Warn, true);
 const ctx = self as any as ServiceWorkerGlobalScope;
 
 // #if !MTPROTO_SW

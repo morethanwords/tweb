@@ -735,7 +735,7 @@ export default class ChatInput {
       });
 
       this.listenerSetter.add(rootScope)('dialogs_multiupdate', (dialogs) => {
-        if(dialogs[this.chat.peerId]) {
+        if(dialogs.has(this.chat.peerId)) {
           if(this.startParam === BOT_START_PARAM) {
             this.setStartParam();
           } else { // updateNewMessage comes earlier than dialog appers

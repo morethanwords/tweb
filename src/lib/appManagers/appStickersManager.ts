@@ -18,6 +18,7 @@ import fixEmoji from '../richTextProcessor/fixEmoji';
 import ctx from '../../environment/ctx';
 import {getEnvironment} from '../../environment/utils';
 import getDocumentInput from './utils/docs/getDocumentInput';
+import getStickerEffectThumb from './utils/stickers/getStickerEffectThumb';
 
 const CACHE_TIME = 3600e3;
 
@@ -673,7 +674,8 @@ export class AppStickersManager extends AppManager {
       const stickers = [...new Set(cachedStickersAnimated.concat(cachedStickersStatic, foundStickers))]/* .filter((doc) => !doc.animated) */;
 
       forEachReverse(stickers, (sticker, idx, arr) => {
-        if(sticker.sticker === 3 && !getEnvironment().IS_WEBM_SUPPORTED) {
+        if((sticker.sticker === 3 && !getEnvironment().IS_WEBM_SUPPORTED) ||
+          (!this.rootScope.premium && getStickerEffectThumb(sticker))) {
           arr.splice(idx, 1);
         }
       });

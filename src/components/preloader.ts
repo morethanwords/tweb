@@ -229,14 +229,15 @@ export default class ProgressivePreloader {
       this.attachPromise(promise);
     }
 
+    let useRafs = 0;
     if(this.detached || this.preloader.parentElement !== elem) {
-      const useRafs = isInDOM(this.preloader) ? 1 : 2;
+      useRafs = isInDOM(this.preloader) ? 1 : 2;
       if(this.preloader.parentElement !== elem) {
         elem[this.attachMethod](this.preloader);
       }
-
-      SetTransition(this.preloader, 'is-visible', true, TRANSITION_TIME, undefined, useRafs);
     }
+
+    SetTransition(this.preloader, 'is-visible', true, TRANSITION_TIME, undefined, useRafs);
 
     if(this.cancelable && reset) {
       this.setProgress(0);
@@ -253,7 +254,7 @@ export default class ProgressivePreloader {
 
     // return;
 
-    if(this.preloader && this.preloader.parentElement) {
+    if(this.preloader?.parentElement) {
       /* setTimeout(() =>  */// fastRaf(() => {
       /* if(!this.detached) return;
         this.detached = true; */

@@ -518,8 +518,7 @@ export class AppDialogsManager {
     });
 
     rootScope.addEventListener('dialogs_multiupdate', (dialogs) => {
-      for(const peerId in dialogs) {
-        const dialog = dialogs[peerId];
+      for(const [peerId, dialog] of dialogs) {
         this.updateDialog(dialog);
 
         if(this.processContact) {

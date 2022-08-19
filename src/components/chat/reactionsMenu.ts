@@ -105,6 +105,7 @@ export class ChatReactionsMenu {
     callbackify(result, (reactions) => {
       if(!middleware() || !reactions.length) return;
       reactions.forEach((reaction) => {
+        if(reaction.pFlags.premium && !rootScope.premium) return;
         this.renderReaction(reaction);
       });
 

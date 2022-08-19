@@ -199,11 +199,19 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
 
   let downloadDiv: HTMLElement, preloader: ProgressivePreloader = null;
   const onLoad = () => {
+    docDiv.classList.remove('downloading');
+
+    if(/* !hasThumb ||  */(doc.size > MAX_FILE_SAVE_SIZE && !uploadFileName)) {
+      preloader.setManual();
+      preloader.attach(downloadDiv);
+      preloader.preloader.classList.add('manual');
+      preloader.setDownloadFunction(load);
+      return;
+    }
+
     if(doc.size <= MAX_FILE_SAVE_SIZE) {
       docDiv.classList.add('downloaded');
     }
-
-    docDiv.classList.remove('downloading');
 
     if(downloadDiv) {
       if(downloadDiv !== icoDiv) {

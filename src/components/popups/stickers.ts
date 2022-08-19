@@ -21,6 +21,7 @@ import {toastNew} from '../toast';
 import setInnerHTML from '../../helpers/dom/setInnerHTML';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import createStickersContextMenu from '../../helpers/dom/createStickersContextMenu';
+import attachStickerViewerListeners from '../stickerViewer';
 
 const ANIMATION_GROUP: AnimationItemGroup = 'STICKERS-POPUP';
 
@@ -63,6 +64,8 @@ export default class PopupStickers extends PopupElement {
       listenTo: this.stickersDiv,
       isStickerPack: true
     });
+
+    attachStickerViewerListeners({listenTo: this.stickersDiv, listenerSetter: this.listenerSetter});
 
     this.loadStickerSet();
   }

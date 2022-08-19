@@ -58,7 +58,7 @@ export type BroadcastEvents = {
   // 'dialog_top': Dialog,
   'dialog_notify_settings': Dialog,
   // 'dialog_order': {dialog: Dialog, pos: number},
-  'dialogs_multiupdate': {[peerId: PeerId]: Dialog},
+  'dialogs_multiupdate': Map<PeerId, Dialog>,
 
   'history_append': {storageKey: MessagesStorageKey, message: Message.message},
   'history_update': {storageKey: MessagesStorageKey, message: MyMessage, sequential?: boolean},

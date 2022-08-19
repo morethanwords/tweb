@@ -26,6 +26,8 @@ const downloadMap: Map<string, DownloadItem> = new Map();
 const DOWNLOAD_ERROR = makeError('UNKNOWN');
 const DOWNLOAD_TEST = false;
 
+(self as any).downloadMap = downloadMap;
+
 type A = Parameters<ServiceMessagePort<false>['addMultipleEventsListeners']>[0];
 
 const events: A = {

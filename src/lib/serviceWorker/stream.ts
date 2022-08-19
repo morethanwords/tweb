@@ -18,7 +18,7 @@ const deferredPromises: Map<MessagePort, {[taskId: string]: CancellablePromise<M
 const cacheStorage = new CacheStorageController('cachedStreamChunks');
 const CHUNK_TTL = 86400;
 const CHUNK_CACHED_TIME_HEADER = 'Time-Cached';
-const USE_CACHE = false;
+const USE_CACHE = true;
 
 const clearOldChunks = () => {
   return cacheStorage.timeoutOperation((cache) => {

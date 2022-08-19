@@ -196,7 +196,7 @@ export class AppMessagesManager extends AppManager {
   public migratedToFrom: {[peerId: PeerId]: PeerId} = {};
 
   private newDialogsHandlePromise: Promise<any>;
-  private newDialogsToHandle: {[peerId: PeerId]: Dialog} = {};
+  private newDialogsToHandle: Map<PeerId, Dialog> = new Map();
   public newUpdatesAfterReloadToHandle: {[peerId: PeerId]: Set<Update>} = {};
 
   private notificationsHandlePromise = 0;
@@ -1907,7 +1907,7 @@ export class AppMessagesManager extends AppManager {
 
       let maxSeenIdIncremented = offsetDate ? true : false;
       let hasPrepend = false;
-      const noIdsDialogs: {[peerId: PeerId]: Dialog} = {};
+      const noIdsDialogs: Map<PeerId, Dialog> = new Map();
       const setFolderId: REAL_FOLDER_ID = folderId === GLOBAL_FOLDER_ID ? FOLDER_ID_ALL : folderId;
       const saveGlobalOffset = folderId === GLOBAL_FOLDER_ID;
       forEachReverse((dialogsResult.dialogs as Dialog[]), (dialog) => {
@@ -1941,16 +1941,15 @@ export class AppMessagesManager extends AppManager {
         // ! это может случиться, если запрос идёт не по папке 0, а по 1. почему-то read'ов нет
         // ! в итоге, чтобы получить 1 диалог, делается первый запрос по папке 0, потом запрос для архивных по папке 1, и потом ещё перезагрузка архивного диалога
         if(!getServerMessageId(dialog.read_inbox_max_id) && !getServerMessageId(dialog.read_outbox_max_id)) {
-          noIdsDialogs[dialog.peerId] = dialog;
+          noIdsDialogs.set(dialog.peerId, dialog);
 
           this.log.error('noIdsDialogs', dialog, params);
         }
       });
 
-      const keys = Object.keys(noIdsDialogs);
-      if(keys.length) {
+      if(noIdsDialogs.size) {
         // setTimeout(() => { // test bad situation
-        const peerIds = keys.map((key) => key.toPeerId());
+        const peerIds = [...noIdsDialogs.keys()];
         const promises = peerIds.map((peerId) => this.reloadConversation(peerId));
         Promise.all(promises).then(() => {
           this.rootScope.dispatchEvent('dialogs_multiupdate', noIdsDialogs);
@@ -1988,7 +1987,7 @@ export class AppMessagesManager extends AppManager {
       if(hasPrepend) {
         this.scheduleHandleNewDialogs();
       } else {
-        this.rootScope.dispatchEvent('dialogs_multiupdate', {});
+        this.rootScope.dispatchEvent('dialogs_multiupdate', new Map());
       }
 
       const dialogs = (dialogsResult as MessagesDialogs.messagesDialogsSlice).dialogs;
@@ -2402,31 +2401,7 @@ export class AppMessagesManager extends AppManager {
     }
 
     return this.doFlushHistory(this.appPeersManager.getInputPeerById(peerId), justClear, revoke).then(() => {
-      [
-        this.historiesStorage,
-        this.threadsStorage,
-        this.searchesStorage,
-        this.pinnedMessages,
-        this.pendingAfterMsgs,
-        this.pendingTopMsgs
-      ].forEach((s) => {
-        delete s[peerId];
-      });
-
-      const m = this.needSingleMessages.get(peerId);
-      if(m) {
-        m.clear();
-      }
-
-      [
-        this.messagesStorageByPeerId,
-        this.scheduledMessagesStorage
-      ].forEach((s) => {
-        const ss = s[peerId];
-        if(ss) {
-          ss.clear();
-        }
-      });
+      this.flushStoragesByPeerId(peerId);
 
       if(justClear) {
         this.rootScope.dispatchEvent('dialog_flush', {peerId, dialog: this.getDialogOnly(peerId)});
@@ -2441,6 +2416,38 @@ export class AppMessagesManager extends AppManager {
         }
 
         this.dialogsStorage.dropDialogOnDeletion(peerId);
+      }
+    });
+  }
+
+  private flushStoragesByPeerId(peerId: PeerId) {
+    [
+      this.historiesStorage,
+      this.threadsStorage,
+      this.searchesStorage,
+      this.pinnedMessages,
+      this.pendingAfterMsgs,
+      this.pendingTopMsgs
+    ].forEach((s) => {
+      delete s[peerId];
+    });
+
+    const needSingleMessages = this.needSingleMessages.get(peerId);
+    if(needSingleMessages) {
+      for(const [mid, promise] of needSingleMessages) {
+        promise.resolve(this.generateEmptyMessage(mid));
+      }
+
+      needSingleMessages.clear();
+    }
+
+    [
+      this.messagesStorageByPeerId,
+      this.scheduledMessagesStorage
+    ].forEach((s) => {
+      const ss = s[peerId];
+      if(ss) {
+        ss.clear();
       }
     });
   }
@@ -3558,12 +3565,11 @@ export class AppMessagesManager extends AppManager {
 
   private handleNewDialogs = () => {
     let newMaxSeenId = 0;
-    const obj = this.newDialogsToHandle;
-    for(const peerId in obj) {
-      const dialog = obj[peerId];
+    const map = this.newDialogsToHandle;
+    for(const [peerId, dialog] of map) {
       if(!dialog) {
         this.reloadConversation(peerId.toPeerId());
-        delete obj[peerId];
+        map.delete(peerId);
       } else {
         this.dialogsStorage.pushDialog(dialog);
         if(!this.appPeersManager.isChannel(peerId.toPeerId())) {
@@ -3578,13 +3584,13 @@ export class AppMessagesManager extends AppManager {
       this.incrementMaxSeenId(newMaxSeenId);
     }
 
-    this.rootScope.dispatchEvent('dialogs_multiupdate', obj);
-    this.newDialogsToHandle = {};
+    this.rootScope.dispatchEvent('dialogs_multiupdate', map);
+    this.newDialogsToHandle.clear();
   };
 
   public scheduleHandleNewDialogs(peerId?: PeerId, dialog?: Dialog) {
     if(peerId !== undefined) {
-      this.newDialogsToHandle[peerId] = dialog;
+      this.newDialogsToHandle.set(peerId, dialog);
     }
 
     if(this.newDialogsHandlePromise) return this.newDialogsHandlePromise;
@@ -4263,7 +4269,7 @@ export class AppMessagesManager extends AppManager {
 
       releaseUnreadCount();
       this.dialogsStorage.setDialogToState(dialog);
-      this.rootScope.dispatchEvent('dialogs_multiupdate', {[peerId]: dialog});
+      this.rootScope.dispatchEvent('dialogs_multiupdate', new Map([[peerId, dialog]]));
     }
   };
 
@@ -4321,10 +4327,8 @@ export class AppMessagesManager extends AppManager {
       });
 
       if(isTopMessage || (message as Message.message).grouped_id) {
-        const updatedDialogs: {[peerId: PeerId]: Dialog} = {};
-        updatedDialogs[peerId] = dialog;
         this.dialogsStorage.setDialogToState(dialog);
-        this.rootScope.dispatchEvent('dialogs_multiupdate', updatedDialogs);
+        this.rootScope.dispatchEvent('dialogs_multiupdate', new Map([[peerId, dialog]]));
       }
     }
   };
@@ -4599,9 +4603,7 @@ export class AppMessagesManager extends AppManager {
   private onUpdateChannelReload = (update: Update.updateChannelReload) => {
     const peerId = update.channel_id.toPeerId(true);
 
-    this.dialogsStorage.dropDialog(peerId);
-
-    delete this.historiesStorage[peerId];
+    this.flushStoragesByPeerId(peerId);
     this.reloadConversation(peerId).then(() => {
       this.rootScope.dispatchEvent('history_reload', peerId);
     });
@@ -5651,9 +5653,7 @@ export class AppMessagesManager extends AppManager {
         });
 
         if(this.isMessageIsTopMessage(message)) {
-          this.rootScope.dispatchEvent('dialogs_multiupdate', {
-            [peerId]: this.getDialogOnly(peerId)
-          });
+          this.rootScope.dispatchEvent('dialogs_multiupdate', new Map([[peerId, this.getDialogOnly(peerId)]]));
         }
       }
 

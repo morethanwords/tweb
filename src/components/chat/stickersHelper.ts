@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import ListenerSetter from '../../helpers/listenerSetter';
 import mediaSizes from '../../helpers/mediaSizes';
 import preloadAnimatedEmojiSticker from '../../helpers/preloadAnimatedEmojiSticker';
 import {MyDocument} from '../../lib/appManagers/appDocsManager';
@@ -14,6 +15,7 @@ import {EmoticonsDropdown} from '../emoticonsDropdown';
 import {SuperStickerRenderer} from '../emoticonsDropdown/tabs/stickers';
 import LazyLoadQueue from '../lazyLoadQueue';
 import Scrollable from '../scrollable';
+import attachStickerViewerListeners from '../stickerViewer';
 import AutocompleteHelper from './autocompleteHelper';
 import AutocompleteHelperController from './autocompleteHelperController';
 
@@ -22,6 +24,7 @@ export default class StickersHelper extends AutocompleteHelper {
   private superStickerRenderer: SuperStickerRenderer;
   private lazyLoadQueue: LazyLoadQueue;
   private onChangeScreen: () => void;
+  private listenerSetter: ListenerSetter;
 
   constructor(
     appendTo: HTMLElement,
@@ -52,6 +55,9 @@ export default class StickersHelper extends AutocompleteHelper {
       if(this.onChangeScreen) {
         mediaSizes.removeEventListener('changeScreen', this.onChangeScreen);
         this.onChangeScreen = undefined;
+
+        this.listenerSetter.removeAll();
+        this.listenerSetter = undefined;
       }
 
       rootScope.dispatchEvent('choosing_sticker', false);
@@ -105,6 +111,9 @@ export default class StickersHelper extends AutocompleteHelper {
             this.list.style.width = width + 'px';
           };
           mediaSizes.addEventListener('changeScreen', this.onChangeScreen);
+
+          this.listenerSetter = new ListenerSetter();
+          attachStickerViewerListeners({listenTo: this.container, listenerSetter: this.listenerSetter});
         }
 
         this.onChangeScreen();
