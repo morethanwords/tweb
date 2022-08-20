@@ -18,7 +18,7 @@ export default function getPhotoDownloadOptions(photo: MyPhoto | MyDocument, pho
   }
 
   // maybe it's a thumb
-  const isPhoto = (photoSize._ === 'photoSize' || photoSize._ === 'photoSizeProgressive') && photo.access_hash && photo.file_reference;
+  const isPhoto = !!((photoSize._ === 'photoSize' || photoSize._ === 'photoSizeProgressive') && photo.access_hash && photo.file_reference);
   const location: InputFileLocation.inputPhotoFileLocation | InputFileLocation.inputDocumentFileLocation = {
     _: isDocument ? 'inputDocumentFileLocation' : 'inputPhotoFileLocation',
     id: photo.id,
@@ -31,6 +31,7 @@ export default function getPhotoDownloadOptions(photo: MyPhoto | MyDocument, pho
     dcId: photo.dc_id,
     location,
     size: isPhoto ? (photoSize as PhotoSize.photoSize).size : undefined,
+    mimeType: 'image/jpeg',
     queueId,
     onlyCache
   };

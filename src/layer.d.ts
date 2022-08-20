@@ -3307,7 +3307,6 @@ export namespace Document {
     access_hash: string | number,
     file_reference: Uint8Array | number[],
     date: number,
-    mime_type: string,
     video_thumbs?: Array<VideoSize>,
     dc_id: number,
     attributes: Array<DocumentAttribute>,
@@ -3326,7 +3325,8 @@ export namespace Document {
     }>,
     animated?: boolean,
     supportsStreaming?: boolean,
-    size?: number
+    size?: number,
+    mime_type?: MTMimeType
   };
 }
 
@@ -5924,20 +5924,20 @@ export namespace WebDocument {
     url: string,
     access_hash: string | number,
     size: number,
-    mime_type: string,
     attributes: Array<DocumentAttribute>,
     h?: number,
-    w?: number
+    w?: number,
+    mime_type?: MTMimeType
   };
 
   export type webDocumentNoProxy = {
     _: 'webDocumentNoProxy',
     url: string,
     size: number,
-    mime_type: string,
     attributes: Array<DocumentAttribute>,
     h?: number,
-    w?: number
+    w?: number,
+    mime_type?: MTMimeType
   };
 }
 

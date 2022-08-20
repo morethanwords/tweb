@@ -14,7 +14,8 @@
     {"name": "stickerThumbConverted", "type": "true"},
     {"name": "animated", "type": "boolean"},
     {"name": "supportsStreaming", "type": "boolean"},
-    {"name": "size", "type": "number"}
+    {"name": "size", "type": "number"},
+    {"name": "mime_type", "type": "MTMimeType"}
   ]
 }, {
   "predicate": "photoSizeProgressive",
@@ -349,12 +350,14 @@
   "predicate": "webDocument",
   "params": [
     {"name": "h", "type": "number"},
-    {"name": "w", "type": "number"}
+    {"name": "w", "type": "number"},
+    {"name": "mime_type", "type": "MTMimeType"}
   ]
 }, {
   "predicate": "webDocumentNoProxy",
   "params": [
     {"name": "h", "type": "number"},
-    {"name": "w", "type": "number"}
+    {"name": "w", "type": "number"},
+    {"name": "mime_type", "type": "MTMimeType"}
   ]
 }]

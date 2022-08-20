@@ -40,6 +40,7 @@ import readBlobAsUint8Array from '../../helpers/blob/readBlobAsUint8Array';
 import DownloadStorage from '../files/downloadStorage';
 import copy from '../../helpers/object/copy';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
+import {MIME_TYPE_EXTENSION_MAP} from '../../environment/mimeTypeMap';
 
 type Delayed = {
   offset: number,
@@ -52,7 +53,7 @@ export type DownloadOptions = {
   location: InputFileLocation | InputWebFileLocation,
   size?: number,
   fileName?: string,
-  mimeType?: string,
+  mimeType?: MTMimeType,
   limitPart?: number,
   queueId?: number,
   onlyCache?: boolean,
@@ -428,7 +429,7 @@ export class ApiFileManager extends AppManager {
     return this.uploadPromises[fileName];
   }
 
-  private getConvertMethod(mimeType: string) {
+  private getConvertMethod(mimeType: MTMimeType) {
     let process: ApiFileManager['uncompressTGS'] | ApiFileManager['convertWebp'];
     if(mimeType === 'application/x-tgwallpattern') {
       process = this.uncompressTGV;
@@ -558,8 +559,17 @@ export class ApiFileManager extends AppManager {
     }
 
     if(downloadStorage) {
+      let downloadFileName = options.fileName; // it's doc file_name
+      if(!downloadFileName) {
+        downloadFileName = cacheFileName;
+        const ext = MIME_TYPE_EXTENSION_MAP[options.mimeType];
+        if(ext) {
+          downloadFileName += '.' + ext;
+        }
+      }
+
       downloadPrepared = downloadStorage.prepareWriting({
-        fileName: options.fileName, // it's doc file_name
+        fileName: downloadFileName,
         downloadId,
         size: possibleSize
       });

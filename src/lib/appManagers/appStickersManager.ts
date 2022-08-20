@@ -5,6 +5,7 @@
  */
 
 import type {MyDocument} from './appDocsManager';
+import type {DownloadOptions} from '../mtproto/apiFileManager';
 import {Document, InputFileLocation, InputStickerSet, MessagesAllStickers, MessagesFavedStickers, MessagesFeaturedStickers, MessagesFoundStickerSets, MessagesRecentStickers, MessagesStickers, MessagesStickerSet, PhotoSize, StickerPack, StickerSet, StickerSetCovered, Update} from '../../layer';
 import {Modify} from '../../types';
 import AppStorage from '../storage';
@@ -384,7 +385,7 @@ export class AppStickersManager extends AppManager {
     this.storage.set({[id]: stickerSet}, !needSave);
   }
 
-  public getStickerSetThumbDownloadOptions(stickerSet: StickerSet.stickerSet) {
+  public getStickerSetThumbDownloadOptions(stickerSet: StickerSet.stickerSet): DownloadOptions {
     const thumb = stickerSet.thumbs.find((thumb) => thumb._ === 'photoSize') as PhotoSize.photoSize;
     const dcId = stickerSet.thumb_dc_id;
 

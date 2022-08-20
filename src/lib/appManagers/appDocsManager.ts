@@ -24,16 +24,11 @@ import getDocumentInputFileLocation from './utils/docs/getDocumentInputFileLocat
 import getDocumentURL from './utils/docs/getDocumentURL';
 import type {ThumbCache} from '../storages/thumbs';
 import makeError from '../../helpers/makeError';
+import {EXTENSION_MIME_TYPE_MAP} from '../../environment/mimeTypeMap';
 
 export type MyDocument = Document.document;
 
 // TODO: если залить картинку файлом, а потом перезайти в диалог - превьюшка заново скачается
-
-const EXTENSION_MIME_TYPE_MAP = {
-  mov: 'video/quicktime',
-  gif: 'image/gif',
-  pdf: 'application/pdf'
-};
 
 type WallPaperId = WallPaper.wallPaper['id'];
 
@@ -340,7 +335,7 @@ export class AppDocsManager extends AppManager {
       dc_id: 0,
       file_reference: [],
       id,
-      mime_type: file.type,
+      mime_type: file.type as MTMimeType,
       size: file.size,
       date: Date.now() / 1000,
       pFlags: {},

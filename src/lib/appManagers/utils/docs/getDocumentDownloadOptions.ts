@@ -11,7 +11,7 @@ import getDocumentInputFileLocation from './getDocumentInputFileLocation';
 export default function getDocumentDownloadOptions(doc: Document.document, thumb?: PhotoSize.photoSize | VideoSize, queueId?: number, onlyCache?: boolean): DownloadOptions {
   const inputFileLocation = getDocumentInputFileLocation(doc, thumb?.type);
 
-  let mimeType: string;
+  let mimeType: MTMimeType;
   if(thumb?._ === 'photoSize') {
     mimeType = doc.sticker ? 'image/webp' : 'image/jpeg'/* doc.mime_type */;
   } else {
