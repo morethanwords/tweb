@@ -121,7 +121,7 @@ export default class DialogsContextMenu {
             }, {
               langKey: 'FiltersSetupPinAlert',
               callback: () => {
-                appSidebarLeft.createTab(AppChatFoldersTab);
+                appSidebarLeft.createTab(AppChatFoldersTab).open();
               }
             }],
             descriptionLangKey: 'PinToTopLimitReached2',

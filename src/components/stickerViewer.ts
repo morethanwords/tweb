@@ -7,6 +7,7 @@
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import cancelEvent from '../helpers/dom/cancelEvent';
 import {simulateClickEvent, attachClickEvent} from '../helpers/dom/clickEvent';
+import findUpAsChild from '../helpers/dom/findUpAsChild';
 import findUpClassName from '../helpers/dom/findUpClassName';
 import getVisibleRect from '../helpers/dom/getVisibleRect';
 import ListenerSetter from '../helpers/listenerSetter';
@@ -273,7 +274,8 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter}:
     };
 
     const onMousePreMove = (e: MouseEvent) => {
-      if(!findUpClassName(e.target, findClassName)) {
+      if(!findUpAsChild(e.target as HTMLElement, mediaContainer)) {
+        document.removeEventListener('mousemove', onMousePreMove);
         onMouseUp();
       }
     };
@@ -293,7 +295,6 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter}:
         attachClickEvent(document.body, cancelEvent, {capture: true, once: true});
       }
 
-      document.removeEventListener('mousemove', onMousePreMove);
       document.removeEventListener('mousemove', onMouseMove);
     };
 
