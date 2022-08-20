@@ -285,7 +285,17 @@ class ApiManagerProxy extends MTProtoMessagePort {
   private async registerCryptoWorker() {
     const get = (url: string) => {
       return fetch(url).then((response) => response.text()).then((text) => {
-        text = 'var a = importScripts; importScripts = (url) => {console.log(`wut`, url); return a(url.slice(5));};' + text;
+        const pathnameSplitted = location.pathname.split('/');
+        pathnameSplitted[pathnameSplitted.length - 1] = '';
+        const pre = location.origin + pathnameSplitted.join('/');
+        text = `
+        var originalImportScripts = importScripts; 
+        importScripts = (url) => {
+          console.log('importScripts', url);
+          var newUrl = '${pre}' + url.split('/').pop();
+          return originalImportScripts(newUrl);
+        };
+        ${text}`;
         const blob = new Blob([text], {type: 'application/javascript'});
         return blob;
       });

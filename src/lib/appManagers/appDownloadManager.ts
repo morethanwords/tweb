@@ -238,7 +238,7 @@ export class AppDownloadManager {
     // if(downloadOptions.size && downloadOptions.size > MAX_FILE_SAVE_SIZE) {
     const id = '' + (Math.random() * 0x7FFFFFFF | 0);
     // const id = 'test';
-    const url = `/download/${id}`;
+    const url = `download/${id}`;
     options.downloadId = id;
 
     const promise = this.downloadMedia(options, 'disc');

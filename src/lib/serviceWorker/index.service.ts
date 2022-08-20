@@ -115,7 +115,8 @@ const onFetch = (event: FetchEvent): void => {
   // #endif
 
   try {
-    const [, url, scope, params] = /http[:s]+\/\/.*?(\/(.*?)(?:$|\/(.*)$))/.exec(event.request.url) || [];
+    // const [, url, scope, params] = /http[:s]+\/\/.*?(\/(.*?)(?:$|\/(.*)$))/.exec(event.request.url) || [];
+    const [scope, params] = event.request.url.split('/').slice(-2);
 
     // log.debug('[fetch]:', event);
 

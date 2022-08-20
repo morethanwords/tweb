@@ -68,5 +68,5 @@ export function getFileURL(type: FileURLType, options: DownloadOptions) {
   const encoded = encodeURIComponent(JSON.stringify(options));
   // console.log('getFileURL encode:', performance.now() - perf, encoded);
 
-  return '/' + type + '/' + encoded;
+  return /* '/' +  */type + '/' + encoded;
 }

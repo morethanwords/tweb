@@ -181,6 +181,11 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
   middleEllipsisEl.textContent = fileName;
   // setInnerHTML(middleEllipsisEl, fileName);
 
+  // * new media popup
+  if(!message.mid) {
+    docDiv.classList.add('downloaded');
+  }
+
   nameDiv.append(middleEllipsisEl);
 
   if(showSender) {
