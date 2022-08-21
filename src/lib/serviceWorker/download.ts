@@ -139,7 +139,7 @@ export default function handleDownload(serviceMessagePort: ServiceMessagePort<fa
 }
 
 function onDownloadFetch(event: FetchEvent, params: string) {
-  event.respondWith(pause(100).then(() => {
+  const promise = pause(100).then(() => {
     const item = downloadMap.get(params);
     if(!item || (item.used && !DOWNLOAD_TEST)) {
       return;
@@ -149,9 +149,9 @@ function onDownloadFetch(event: FetchEvent, params: string) {
     const stream = item.readableStream;
     const response = new Response(stream, {headers: item.headers});
     return response;
-  }));
+  });
 
-  // event.respondWith(response);
+  event.respondWith(promise);
 }
 
 function cancelAllDownloads() {

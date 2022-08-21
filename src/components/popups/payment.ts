@@ -221,7 +221,7 @@ export default class PopupPayment extends PopupElement {
     }
 
     let savedInfo = (paymentForm as PaymentsPaymentForm).saved_info || (paymentForm as PaymentsPaymentReceipt).info;
-    const savedCredentials = (paymentForm as PaymentsPaymentForm).saved_credentials;
+    const savedCredentials = (paymentForm as PaymentsPaymentForm).saved_credentials?.[0];
     let [lastRequestedInfo, passwordState, providerPeerTitle] = await Promise.all([
       !isReceipt && savedInfo && this.managers.appPaymentsManager.validateRequestedInfo(inputInvoice, savedInfo),
       savedCredentials && this.managers.passwordManager.getState(),

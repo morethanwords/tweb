@@ -24,6 +24,10 @@ export function processPeerFullForCommands(peerId: PeerId, full: ChatFull.chatFu
   type T = {peerId: PeerId, name: string, description: string, index: number, command: string};
   const commands: Map<string, T> = new Map();
   botInfos.forEach((botInfo) => {
+    if(!botInfo.commands) {
+      return;
+    }
+
     botInfo.commands.forEach(({command, description}, idx) => {
       const c = '/' + command;
       commands.set(command, {

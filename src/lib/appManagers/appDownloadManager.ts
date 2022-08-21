@@ -6,6 +6,7 @@
 
 import type {DownloadMediaOptions, DownloadOptions} from '../mtproto/apiFileManager';
 import type {AppMessagesManager} from './appMessagesManager';
+import type {MyDocument} from './appDocsManager';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import {InputFile, Photo, PhotoSize} from '../../layer';
 import getFileNameForUpload from '../../helpers/getFileNameForUpload';
@@ -17,6 +18,11 @@ import getDownloadMediaDetails from './utils/download/getDownloadMediaDetails';
 import getDownloadFileNameFromOptions from './utils/download/getDownloadFileNameFromOptions';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import makeError from '../../helpers/makeError';
+import createDownloadAnchor from '../../helpers/dom/createDownloadAnchor';
+import {getFileNameByLocation} from '../../helpers/fileName';
+import getDocumentDownloadOptions from './utils/docs/getDocumentDownloadOptions';
+import getPhotoDownloadOptions from './utils/photos/getPhotoDownloadOptions';
+import apiManagerProxy from '../mtproto/mtprotoworker';
 
 export type ResponseMethodBlob = 'blob';
 export type ResponseMethodJson = 'json';
@@ -167,17 +173,21 @@ export class AppDownloadManager {
     return this.d(fileName, () => this.managers.apiFileManager.download(options), 'blob') as any;
   }
 
-  public downloadMedia(options: DownloadMediaOptions, type: DownloadType = 'blob'): DownloadBlob {
+  public downloadMedia(options: DownloadMediaOptions, type: DownloadType = 'blob', promiseBefore?: Promise<any>): DownloadBlob {
     const {downloadOptions, fileName} = getDownloadMediaDetails(options);
 
     return this.d(fileName, () => {
       let cb: any;
       if(type === 'url') {
         cb = this.managers.apiFileManager.downloadMediaURL;
-      } else if(type === 'void' || type === 'disc') {
+      } else if(type === 'void'/*  || type === 'disc' */) {
         cb = this.managers.apiFileManager.downloadMediaVoid;
-      } else if(type === 'blob') {
+      } else /* if(type === 'blob') */ {
         cb = this.managers.apiFileManager.downloadMedia;
+      }
+
+      if(promiseBefore) {
+        return promiseBefore.then(() => cb(options));
       }
 
       return cb(options);
@@ -241,19 +251,23 @@ export class AppDownloadManager {
     const url = `download/${id}`;
     options.downloadId = id;
 
-    const promise = this.downloadMedia(options, 'disc');
+    const pingPromise = apiManagerProxy.pingServiceWorkerWithIframe();
+
+    const promise = this.downloadMedia(options, 'disc', pingPromise);
     // this.downloadsToDisc[cacheFileName] = promise;
 
     if(justAttach) {
-      // * force SW to keep alive
-      fetch(url, {headers: {'Cache-Control': 'no-cache'}}).then((response) => response.status);
       return promise;
     }
 
     const iframe = document.createElement('iframe');
     iframe.hidden = true;
-    iframe.src = url;
-    document.body.append(iframe);
+
+    pingPromise.then(() => {
+      iframe.src = url;
+      document.body.append(iframe);
+    });
+
     // createDownloadAnchor(url, 'asd.txt');
 
     // const events = [
@@ -282,7 +296,20 @@ export class AppDownloadManager {
     };
 
     promise.addNotifyListener(onProgress);
-    promise.catch(noop).finally(() => {
+    promise.then((blob) => {
+      if(!blob) {
+        return;
+      }
+
+      const url = URL.createObjectURL(blob);
+      const downloadOptions = isDocument ?
+        getDocumentDownloadOptions(media) :
+        getPhotoDownloadOptions(media as any, options.thumb as PhotoSize.photoSize);
+      const fileName = (options.media as MyDocument).file_name || getFileNameByLocation(downloadOptions.location);
+      createDownloadAnchor(url, downloadOptions.fileName || fileName, () => {
+        URL.revokeObjectURL(url);
+      });
+    }).catch(noop).finally(() => {
       if(!hadProgress) {
         onProgress();
       }
@@ -297,30 +324,6 @@ export class AppDownloadManager {
     });
 
     return promise;
-    // } else {
-    //   const promise = this.downloadMedia(options, 'blob');
-    //   promise.then((blob) => {
-    //     const url = URL.createObjectURL(blob);
-    //     createDownloadAnchor(url, downloadOptions.fileName || fileName, () => {
-    //       URL.revokeObjectURL(url);
-    //     });
-    //   });
-    //   return promise;
-    // }
-
-    // const promise = this.downloadMedia(options);
-    // promise.then((blob) => {
-    //   const url = URL.createObjectURL(blob);
-    //   const downloadOptions = isDocument ?
-    //     getDocumentDownloadOptions(media) :
-    //     getPhotoDownloadOptions(media as any, options.thumb);
-    //   const fileName = (options.media as Document.document).file_name || getFileNameByLocation(downloadOptions.location);
-    //   createDownloadAnchor(url, fileName, () => {
-    //     URL.revokeObjectURL(url);
-    //   });
-    // }, noop);
-
-    // return promise;
   }
 }
 

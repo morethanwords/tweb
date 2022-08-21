@@ -41,6 +41,7 @@ import DownloadStorage from '../files/downloadStorage';
 import copy from '../../helpers/object/copy';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import {MIME_TYPE_EXTENSION_MAP} from '../../environment/mimeTypeMap';
+import {getServiceMessagePort} from './mtproto.worker';
 
 type Delayed = {
   offset: number,
@@ -465,7 +466,12 @@ export class ApiFileManager extends AppManager {
 
   public download(options: DownloadOptions): DownloadPromise {
     const size = options.size ?? 0;
-    const {dcId, location, downloadId} = options;
+    const {dcId, location} = options;
+    let {downloadId} = options;
+    if(downloadId && !getServiceMessagePort()) {
+      this.log.error('download fallback to blob', options);
+      downloadId = undefined;
+    }
 
     const originalMimeType = options.mimeType;
     const convertMethod = this.getConvertMethod(originalMimeType);

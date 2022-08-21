@@ -132,6 +132,11 @@ const onFetch = (event: FetchEvent): void => {
         onDownloadFetch(event, params);
         break;
       }
+
+      case 'ping': {
+        event.respondWith(new Response('pong'));
+        break;
+      }
     }
   } catch(err) {
     log.error('fetch error', err);

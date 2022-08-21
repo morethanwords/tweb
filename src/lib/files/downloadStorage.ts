@@ -10,7 +10,6 @@ import fileNameRFC from '../../helpers/string/fileNameRFC';
 import {getServiceMessagePort} from '../mtproto/mtproto.worker';
 import DownloadWriter from './downloadWriter';
 import FileStorage from './fileStorage';
-import StreamWriter from './streamWriter';
 
 export default class DownloadStorage implements FileStorage {
   public getFile(fileName: string): Promise<any> {

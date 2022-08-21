@@ -28,6 +28,7 @@ import toggleStorages from '../../helpers/toggleStorages';
 import idleController from '../../helpers/idleController';
 import ServiceMessagePort from '../serviceWorker/serviceMessagePort';
 import App from '../../config/app';
+import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 
 export type Mirrors = {
   state: State
@@ -63,6 +64,8 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
   public serviceMessagePort: ServiceMessagePort<true>;
   private lastServiceWorker: ServiceWorker;
+
+  private pingServiceWorkerPromise: CancellablePromise<void>;
 
   constructor() {
     super();
@@ -197,6 +200,34 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.log('Passing environment:', ENVIRONMENT);
     this.invoke('environment', ENVIRONMENT);
     // this.sendState();
+  }
+
+  public pingServiceWorkerWithIframe() {
+    if(this.pingServiceWorkerPromise) {
+      return this.pingServiceWorkerPromise;
+    }
+
+    const promise = this.pingServiceWorkerPromise = deferredPromise<void>();
+    const iframe = document.createElement('iframe');
+    iframe.hidden = true;
+    const onLoad = () => {
+      setTimeout(() => { // ping once in 10 seconds
+        this.pingServiceWorkerPromise = undefined;
+      }, 10e3);
+
+      clearTimeout(timeout);
+      iframe.remove();
+      iframe.removeEventListener('load', onLoad);
+      iframe.removeEventListener('error', onLoad);
+      promise.resolve();
+    };
+    iframe.addEventListener('load', onLoad);
+    iframe.addEventListener('error', onLoad);
+    iframe.src = 'ping/' + (Math.random() * 0xFFFFFFFF);
+    document.body.append(iframe);
+
+    const timeout = window.setTimeout(onLoad, 1e3);
+    return promise;
   }
 
   private attachServiceWorker(serviceWorker: ServiceWorker) {
