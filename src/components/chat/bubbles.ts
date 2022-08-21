@@ -1805,7 +1805,7 @@ export default class ChatBubbles {
 
   public async onGoDownClick() {
     if(!this.replyFollowHistory.length) {
-      this.onScroll(true, undefined, true);
+      // this.onScroll(true, undefined, true);
       this.chat.setMessageId(/* , dialog.top_message */);
       // const dialog = this.appMessagesManager.getDialogByPeerId(this.peerId)[0];
 
@@ -5267,7 +5267,7 @@ export default class ChatBubbles {
     log('change', side, value);
 
     this.scrollable.loadedAll[side] = value;
-
+    this.scrollable.onScroll(); // ! WARNING
     // return;
 
     if(!checkPlaceholders) {
