@@ -296,6 +296,8 @@ const Transition = (
 
   // selectTab.prevId = -1;
   selectTab.prevId = () => from ? whichChild(from) : -1;
+  selectTab.getFrom = () => from;
+  selectTab.setFrom = (_from: HTMLElement) => from = _from;
 
   return selectTab;
 };

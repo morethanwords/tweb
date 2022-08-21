@@ -49,7 +49,17 @@ export class AppSidebarRight extends SidebarSlider {
   public replaceSharedMediaTab(tab?: AppSharedMediaTab) {
     const previousTab = this.sharedMediaTab;
     if(previousTab) {
+      const idx = this.historyTabIds.indexOf(previousTab);
+
+      if(this._selectTab.getFrom() === previousTab.container) {
+        this._selectTab.setFrom(tab.container);
+      }
+
       if(tab) {
+        if(idx !== -1) {
+          this.historyTabIds[idx] = tab;
+        }
+
         const wasActive = previousTab.container.classList.contains('active');
         if(wasActive) {
           tab.container.classList.add('active');
@@ -57,6 +67,10 @@ export class AppSidebarRight extends SidebarSlider {
 
         previousTab.container.replaceWith(tab.container);
       } else {
+        if(idx !== -1) {
+          this.historyTabIds.splice(idx, 1);
+        }
+
         previousTab.container.remove();
       }
     } else {
