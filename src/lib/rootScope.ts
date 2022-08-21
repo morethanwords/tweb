@@ -196,6 +196,10 @@ export class RootScope extends EventListenerBase<BroadcastEventsListeners> {
     return this.connectionStatus;
   }
 
+  public getPremium() {
+    return this.premium;
+  }
+
   public dispatchEventSingle(...args: any[]) {
     // @ts-ignore
     super.dispatchEvent(...args);

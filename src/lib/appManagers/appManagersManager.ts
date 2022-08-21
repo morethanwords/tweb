@@ -51,7 +51,6 @@ export class AppManagersManager {
       ++this.cryptoPortsAttached;
       cryptoMessagePort.attachPort(port);
       this.cryptoPortPromise?.resolve();
-      return;
     });
 
     port.addEventListener('createProxyWorkerURLs', (blob) => {

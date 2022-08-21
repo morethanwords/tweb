@@ -1480,7 +1480,7 @@ export default class AppMediaViewerBase<
         if(supportsStreaming) {
           onAnimationEnd.then(() => {
             if(video.readyState < video.HAVE_FUTURE_DATA) {
-              console.log('ppp 1');
+              // console.log('ppp 1');
               preloader.attach(mover, true);
             }
 
@@ -1491,7 +1491,7 @@ export default class AppMediaViewerBase<
 
           const attachCanPlay = () => {
             video.addEventListener('canplay', () => {
-              console.log('ppp 2');
+              // console.log('ppp 2');
               preloader.detach();
               video.parentElement.classList.remove('is-buffering');
             }, {once: true});
@@ -1505,7 +1505,7 @@ export default class AppMediaViewerBase<
             if(loading && isntEnoughData) {
               attachCanPlay();
 
-              console.log('ppp 3');
+              // console.log('ppp 3');
               preloader.attach(mover, true);
 
               // поставлю класс для плеера, чтобы убрать большую иконку пока прелоадер на месте
@@ -1533,7 +1533,7 @@ export default class AppMediaViewerBase<
           if(!supportsStreaming) {
             onAnimationEnd.then(async() => {
               if(!(await getCacheContext()).url) {
-                console.log('ppp 4');
+                // console.log('ppp 4');
                 preloader.attach(mover, true, promise);
               }
             });

@@ -159,9 +159,12 @@ export class ScrollableBase {
 
   public scrollIntoViewNew(options: Omit<ScrollOptions, 'container'>) {
     // return Promise.resolve();
+    this.removeListeners();
     return fastSmoothScroll({
       ...options,
       container: this.container
+    }).finally(() => {
+      this.setListeners();
     });
   }
 

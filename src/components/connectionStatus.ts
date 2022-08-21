@@ -54,7 +54,7 @@ export default class ConnectionStatusComponent {
     chatsContainer.prepend(this.statusContainer);
 
     rootScope.addEventListener('connection_status_change', (status) => {
-      console.log(status);
+      // console.log(status);
 
       this.setConnectionStatus();
     });

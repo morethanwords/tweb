@@ -200,6 +200,10 @@ document.addEventListener('DOMContentLoaded', async() => {
   ]);
   I18n.setTimeFormat(stateResult.state.settings.timeFormat);
 
+  rootScope.managers.rootScope.getPremium().then((isPremium) => {
+    rootScope.premium = isPremium;
+  });
+
   themeController.setThemeListener();
 
   if(langPack.appVersion !== App.langPackVersion) {

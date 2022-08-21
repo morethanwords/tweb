@@ -35,12 +35,13 @@ const sendMessagePort = (source: MessageSendPort) => {
 
 const sendMessagePortIfNeeded = (source: MessageSendPort) => {
   if(!connectedWindows.size && !_mtprotoMessagePort) {
+    log('sending message port for mtproto');
     sendMessagePort(source);
   }
 };
 
 const onWindowConnected = (source: WindowClient) => {
-  log('window connected', source.id);
+  log('window connected', source.id, 'windows before', connectedWindows.size);
 
   if(source.frameType === 'none') {
     log.warn('maybe a bugged Safari starting window', source.id);
@@ -82,14 +83,15 @@ getWindowClients().then((windowClients) => {
 });
 
 const connectedWindows: Set<string> = new Set();
+(self as any).connectedWindows = connectedWindows;
 listenMessagePort(serviceMessagePort, undefined, (source) => {
   const isWindowClient = source instanceof WindowClient;
   if(!isWindowClient || !connectedWindows.has(source.id)) {
     return;
   }
 
-  log('window disconnected');
   connectedWindows.delete(source.id);
+  log('window disconnected, left', connectedWindows.size);
   if(!connectedWindows.size) {
     log.warn('no windows left');
 

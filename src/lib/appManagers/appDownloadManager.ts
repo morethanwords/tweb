@@ -245,6 +245,8 @@ export class AppDownloadManager {
     // this.downloadsToDisc[cacheFileName] = promise;
 
     if(justAttach) {
+      // * force SW to keep alive
+      fetch(url, {headers: {'Cache-Control': 'no-cache'}}).then((response) => response.status);
       return promise;
     }
 

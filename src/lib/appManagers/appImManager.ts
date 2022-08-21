@@ -173,7 +173,7 @@ export class AppImManager extends EventListenerBase<{
 
     appMediaPlaybackController.construct(managers);
     uiNotificationsManager.construct(managers);
-    // uiNotificationsManager.start();
+    uiNotificationsManager.start();
 
     this.log = logger('IM', LogTypes.Log | LogTypes.Warn | LogTypes.Debug | LogTypes.Error);
 

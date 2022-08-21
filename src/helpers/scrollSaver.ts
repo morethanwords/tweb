@@ -129,6 +129,11 @@ export default class ScrollSaver {
     const {scrollTop, scrollHeight} = this.scrollable;
     this.scrollHeight = scrollHeight;
 
+    if(!this.elements.length) { // maybe all messages have been deleted
+      this._restore(useReflow);
+      return;
+    }
+
     let anchor: ScrollSaver['elements'][0];
     // for(let i = this.elements.length - 1; i >= 0; --i) {
     //   const _anchor = this.elements[i];

@@ -80,6 +80,9 @@ export default class Chat extends EventListenerBase<{
   public sharedMediaTabs: AppSharedMediaTab[];
   // public renderDarkPattern: () => Promise<void>;
 
+  public isBot: boolean;
+  public isChannel: boolean;
+  public isBroadcast: boolean;
   public isAnyGroup: boolean;
   public isMegagroup: boolean;
 
@@ -404,18 +407,33 @@ export default class Chat extends EventListenerBase<{
       searchTab.close();
     }
 
-    const [noForwards, isRestricted, isAnyGroup, _, isMegagroup] = await m(Promise.all([
+    const [
+      noForwards,
+      isRestricted,
+      isAnyGroup,
+      _,
+      isMegagroup,
+      isBroadcast,
+      isChannel,
+      isBot
+    ] = await m(Promise.all([
       this.managers.appPeersManager.noForwards(peerId),
       this.managers.appPeersManager.isRestricted(peerId),
       this._isAnyGroup(peerId),
       this.setAutoDownloadMedia(),
-      this.managers.appPeersManager.isMegagroup(peerId)
+      this.managers.appPeersManager.isMegagroup(peerId),
+      this.managers.appPeersManager.isBroadcast(peerId),
+      this.managers.appPeersManager.isChannel(peerId),
+      this.managers.appPeersManager.isBot(peerId)
     ]));
 
     this.noForwards = noForwards;
     this.isRestricted = isRestricted;
     this.isAnyGroup = isAnyGroup;
     this.isMegagroup = isMegagroup;
+    this.isBroadcast = isBroadcast;
+    this.isChannel = isChannel;
+    this.isBot = isBot;
 
     this.container.classList.toggle('no-forwards', this.noForwards);
 
