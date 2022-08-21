@@ -28,20 +28,26 @@ import {wrapSticker} from './wrappers';
 import {STICKER_EFFECT_MULTIPLIER} from './wrappers/sticker';
 
 let hasViewer = false;
-export default function attachStickerViewerListeners({listenTo, listenerSetter}: {
+export default function attachStickerViewerListeners({listenTo, listenerSetter, selector}: {
   listenerSetter: ListenerSetter,
-  listenTo: HTMLElement
+  listenTo: HTMLElement,
+  selector?: string
 }) {
   if(IS_TOUCH_SUPPORTED) {
     return;
   }
 
+  const findTarget = (e: MouseEvent, checkForParent?: boolean) => {
+    const s = selector || `.media-sticker-wrapper`;
+    const el = (e.target as HTMLElement).closest(s) as HTMLElement;
+    return el && (!checkForParent || findUpAsChild(el, listenTo)) ? el : undefined;
+  };
+
   const managers = rootScope.managers;
-  const findClassName = 'media-sticker-wrapper';
 
   listenerSetter.add(listenTo)('mousedown', (e) => {
     if(hasViewer || e.buttons > 1 || e.button !== 0) return;
-    let mediaContainer = findUpClassName(e.target, findClassName);
+    let mediaContainer = findTarget(e);
     if(!mediaContainer) {
       return;
     }
@@ -228,7 +234,7 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter}:
     }, 125);
 
     const onMouseMove = async(e: MouseEvent) => {
-      const newMediaContainer = findUpClassName(e.target, 'media-sticker-wrapper');
+      const newMediaContainer = findTarget(e, true);
       if(!newMediaContainer || mediaContainer === newMediaContainer) {
         return;
       }

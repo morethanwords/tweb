@@ -668,7 +668,7 @@ export default class ChatBubbles {
       });
     });
 
-    attachStickerViewerListeners({listenTo: this.scrollable.container, listenerSetter: this.listenerSetter});
+    attachStickerViewerListeners({listenTo: this.scrollable.container, listenerSetter: this.listenerSetter, selector: '.attachment.media-sticker-wrapper'});
     attachClickEvent(this.scrollable.container, this.onBubblesClick, {listenerSetter: this.listenerSetter});
     // this.listenerSetter.add(this.bubblesContainer)('click', this.onBubblesClick/* , {capture: true, passive: false} */);
 
