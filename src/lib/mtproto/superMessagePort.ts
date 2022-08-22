@@ -9,6 +9,7 @@ import ctx from '../../environment/ctx';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import {IS_WORKER} from '../../helpers/context';
 import EventListenerBase from '../../helpers/eventListenerBase';
+import makeError from '../../helpers/makeError';
 import {Awaited, WorkerTaskTemplate, WorkerTaskVoidTemplate} from '../../types';
 import {logger} from '../logger';
 
@@ -61,7 +62,12 @@ interface CloseTask extends SuperMessagePortTask {
 //   type: 'open'
 // }
 
-type Task = InvokeTask | ResultTask | AckTask | PingTask | PongTask | BatchTask | CloseTask/*  | OpenTask */;
+interface LockTask extends SuperMessagePortTask {
+  type: 'lock',
+  payload: string
+}
+
+type Task = InvokeTask | ResultTask | AckTask | PingTask | PongTask | BatchTask | CloseTask/*  | OpenTask */ | LockTask;
 type TaskMap = {
   [type in Task as type['type']]?: (task: Extract<Task, type>, source: MessageEventSource, event: MessageEvent<any>) => void | Promise<any>
 };
@@ -133,7 +139,11 @@ export default class SuperMessagePort<
     this.log = logger('MP' + (logSuffix ? '-' + logSuffix : ''));
     this.debug = DEBUG;
 
-    if(typeof(window) !== 'undefined') {
+    if('locks' in navigator) {
+      const id = 'lock-' + Date.now() + (Math.random() * 0xFFFF | 0);
+      navigator.locks.request(id, () => new Promise(() => {}));
+      this.pushTask(this.createTask('lock', id));
+    } else if(typeof(window) !== 'undefined') {
       window.addEventListener('beforeunload', () => {
         const task = this.createTask('close', undefined);
         this.postMessage(undefined, task);
@@ -146,8 +156,9 @@ export default class SuperMessagePort<
       invoke: this.processInvokeTask,
       ping: this.processPingTask,
       pong: this.processPongTask,
-      close: this.processCloseTask
-      // open: this.processOpenTask
+      close: this.processCloseTask,
+      // open: this.processOpenTask,
+      lock: this.processLockTask
     };
   }
 
@@ -231,7 +242,7 @@ export default class SuperMessagePort<
 
     this.onPortDisconnect?.(port as any);
 
-    const error = new Error('PORT_DISCONNECTED');
+    const error = makeError('PORT_DISCONNECTED');
     for(const id in this.awaiting) {
       const task = this.awaiting[id];
       if(task.port === port) {
@@ -405,6 +416,12 @@ export default class SuperMessagePort<
   // protected processOpenTask = (task: OpenTask, source: MessageEventSource, event: MessageEvent) => {
   //   this.onPortConnect?.(source);
   // };
+
+  protected processLockTask = (task: LockTask, source: MessageEventSource, event: MessageEvent) => {
+    navigator.locks.request(task.payload, () => {
+      this.processCloseTask(undefined, source, undefined);
+    });
+  };
 
   protected processInvokeTask = async(task: InvokeTask, source: MessageEventSource, event: MessageEvent) => {
     const id = task.id;

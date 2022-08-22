@@ -223,7 +223,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
     };
     iframe.addEventListener('load', onLoad);
     iframe.addEventListener('error', onLoad);
-    iframe.src = 'ping/' + (Math.random() * 0xFFFFFFFF);
+    iframe.src = 'ping/' + (Math.random() * 0xFFFFFFFF | 0);
     document.body.append(iframe);
 
     const timeout = window.setTimeout(onLoad, 1e3);
