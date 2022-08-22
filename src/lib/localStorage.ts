@@ -32,7 +32,7 @@ class LocalStorage<Storage extends Record<string, any>> {
     } else if(this.useStorage) {
       let value: Storage[T];
       try {
-        value = localStorage.getItem(this.prefix + key as string) as any;
+        value = localStorage.getItem(this.prefix + (key as string)) as any;
       } catch(err) {
         this.useStorage = false;
       }
@@ -73,7 +73,7 @@ class LocalStorage<Storage extends Record<string, any>> {
 
   public delete(key: keyof Storage, saveLocal = false) {
     // ! it is needed here
-    key = '' + key;
+    key = '' + (key as string);
 
     if(!saveLocal) {
       delete this.cache[key];
@@ -81,7 +81,7 @@ class LocalStorage<Storage extends Record<string, any>> {
 
     // if(this.useStorage) {
     try {
-      localStorage.removeItem(this.prefix + key);
+      localStorage.removeItem(this.prefix + (key as string));
     } catch(err) {
 
     }

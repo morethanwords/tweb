@@ -268,7 +268,7 @@ export default class AppStorage<
     } */
 
     // ! it is needed here
-    key = '' + key;
+    key = '' + (key as string);
 
     if(!saveLocal) {
       delete this.cache[key];
