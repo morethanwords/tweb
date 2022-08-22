@@ -2722,8 +2722,8 @@ export class AppMessagesManager extends AppManager {
       }
     } */
 
+    let unsupported = false;
     if(isMessage && message.media) {
-      let unsupported = false;
       switch(message.media._) {
         case 'messageMediaEmpty': {
           delete message.media;
@@ -2787,13 +2787,17 @@ export class AppMessagesManager extends AppManager {
           break;
         }
       }
+    }
 
-      if(unsupported) {
-        message.media = {_: 'messageMediaUnsupported'};
-        message.message = '';
-        delete message.entities;
-        delete message.totalEntities;
-      }
+    if(isMessage && !unsupported && message.entities) {
+      unsupported = message.entities.some((entity) => entity._ === 'messageEntityCustomEmoji');
+    }
+
+    if(isMessage && unsupported) {
+      message.media = {_: 'messageMediaUnsupported'};
+      message.message = '';
+      delete message.entities;
+      delete message.totalEntities;
     }
 
     if(!isMessage && message.action) {
