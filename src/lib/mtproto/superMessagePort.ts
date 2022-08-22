@@ -139,15 +139,17 @@ export default class SuperMessagePort<
     this.log = logger('MP' + (logSuffix ? '-' + logSuffix : ''));
     this.debug = DEBUG;
 
-    if('locks' in navigator) {
-      const id = 'lock-' + Date.now() + (Math.random() * 0xFFFF | 0);
-      navigator.locks.request(id, () => new Promise(() => {}));
-      this.pushTask(this.createTask('lock', id));
-    } else if(typeof(window) !== 'undefined') {
-      window.addEventListener('beforeunload', () => {
-        const task = this.createTask('close', undefined);
-        this.postMessage(undefined, task);
-      });
+    if(typeof(window) !== 'undefined') {
+      if('locks' in navigator) {
+        const id = 'lock-' + Date.now() + (Math.random() * 0xFFFF | 0);
+        navigator.locks.request(id, () => new Promise(() => {}));
+        this.pushTask(this.createTask('lock', id));
+      } else {
+        window.addEventListener('beforeunload', () => {
+          const task = this.createTask('close', undefined);
+          this.postMessage(undefined, task);
+        });
+      }
     }
 
     this.processTaskMap = {
