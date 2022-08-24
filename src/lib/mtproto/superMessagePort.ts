@@ -5,6 +5,7 @@
  */
 
 import DEBUG from '../../config/debug';
+import tabId from '../../config/tabId';
 import ctx from '../../environment/ctx';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import {IS_WORKER} from '../../helpers/context';
@@ -127,7 +128,9 @@ export default class SuperMessagePort<
   protected onPortDisconnect: (source: MessageEventSource) => void;
   // protected onPortConnect: (source: MessageEventSource) => void;
 
-  constructor(logSuffix?: string) {
+  protected resolveLocks: Map<SendPort, () => void>;
+
+  constructor(protected logSuffix?: string) {
     super(false);
 
     this.listenPorts = [];
@@ -138,19 +141,7 @@ export default class SuperMessagePort<
     this.pending = new Map();
     this.log = logger('MP' + (logSuffix ? '-' + logSuffix : ''));
     this.debug = DEBUG;
-
-    if(typeof(window) !== 'undefined') {
-      if('locks' in navigator) {
-        const id = 'lock-' + Date.now() + (Math.random() * 0xFFFF | 0);
-        navigator.locks.request(id, () => new Promise(() => {}));
-        this.pushTask(this.createTask('lock', id));
-      } else {
-        window.addEventListener('beforeunload', () => {
-          const task = this.createTask('close', undefined);
-          this.postMessage(undefined, task);
-        });
-      }
-    }
+    this.resolveLocks = new Map();
 
     this.processTaskMap = {
       result: this.processResultTask,
@@ -192,6 +183,22 @@ export default class SuperMessagePort<
 
     // const task = this.createTask('open', undefined);
     // this.postMessage(port, task);
+
+    if(typeof(window) !== 'undefined') {
+      if('locks' in navigator) {
+        const id = ['lock', tabId, this.logSuffix || '', Math.random() * 0x7FFFFFFF | 0].join('-');
+        this.log.warn('created lock', id);
+        const promise = new Promise<void>((resolve) => this.resolveLocks.set(port, resolve))
+        .then(() => this.resolveLocks.delete(port));
+        navigator.locks.request(id, () => promise);
+        this.pushTask(this.createTask('lock', id));
+      } else {
+        window.addEventListener('beforeunload', () => {
+          const task = this.createTask('close', undefined);
+          this.postMessage(undefined, task);
+        });
+      }
+    }
 
     this.releasePending();
   }
@@ -243,6 +250,9 @@ export default class SuperMessagePort<
     (port as MessagePort).close?.();
 
     this.onPortDisconnect?.(port as any);
+
+    const resolveLock = this.resolveLocks.get(port as SendPort);
+    resolveLock?.();
 
     const error = makeError('PORT_DISCONNECTED');
     for(const id in this.awaiting) {

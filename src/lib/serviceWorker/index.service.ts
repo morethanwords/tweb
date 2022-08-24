@@ -48,6 +48,7 @@ const onWindowConnected = (source: WindowClient) => {
     return;
   }
 
+  log('windows', Array.from(connectedWindows));
   sendMessagePortIfNeeded(source);
   connectedWindows.add(source.id);
 };
@@ -85,8 +86,10 @@ getWindowClients().then((windowClients) => {
 const connectedWindows: Set<string> = new Set();
 (self as any).connectedWindows = connectedWindows;
 listenMessagePort(serviceMessagePort, undefined, (source) => {
+  log('something has disconnected', source);
   const isWindowClient = source instanceof WindowClient;
   if(!isWindowClient || !connectedWindows.has(source.id)) {
+    log.warn('it is not a window');
     return;
   }
 

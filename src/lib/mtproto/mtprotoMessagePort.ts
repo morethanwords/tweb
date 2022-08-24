@@ -31,7 +31,7 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   cryptoPort: (payload: void, source: MessageEventSource, event: MessageEvent) => void,
   createObjectURL: (blob: Blob) => string,
   tabState: (payload: TabState, source: MessageEventSource) => void,
-  createProxyWorkerURLs: (blob: Blob) => string[],
+  createProxyWorkerURLs: (payload: {originalUrl: string, blob: Blob}) => string[],
 } & MTProtoBroadcastEvent, {
   convertWebp: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,
   convertOpus: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,

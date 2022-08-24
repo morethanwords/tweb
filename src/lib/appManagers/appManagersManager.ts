@@ -5,6 +5,7 @@
  */
 
 import App from '../../config/app';
+import {MOUNT_CLASS_TO} from '../../config/debug';
 import callbackify from '../../helpers/callbackify';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import cryptoMessagePort from '../crypto/cryptoMessagePort';
@@ -53,16 +54,21 @@ export class AppManagersManager {
       this.cryptoPortPromise?.resolve();
     });
 
-    port.addEventListener('createProxyWorkerURLs', (blob) => {
-      const length = this.cryptoWorkersURLs.length;
+    port.addEventListener('createProxyWorkerURLs', ({originalUrl, blob}) => {
+      let length = this.cryptoWorkersURLs.length;
+      if(!length) {
+        this.cryptoWorkersURLs.push(originalUrl);
+        ++length;
+      }
+
       const maxLength = App.cryptoWorkers;
-      if(length) {
+      if(length === maxLength) {
         return this.cryptoWorkersURLs;
       }
 
       const newURLs = new Array(maxLength - length).fill(undefined).map(() => URL.createObjectURL(blob));
       this.cryptoWorkersURLs.push(...newURLs);
-      return newURLs;
+      return this.cryptoWorkersURLs;
     });
   }
 
@@ -85,4 +91,5 @@ export class AppManagersManager {
 }
 
 const appManagersManager = new AppManagersManager();
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appManagersManager = appManagersManager);
 export default appManagersManager;
