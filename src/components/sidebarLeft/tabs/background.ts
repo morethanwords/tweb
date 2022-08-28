@@ -208,7 +208,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
     const media = document.createElement('div');
     media.classList.add('grid-item-media');
 
-    let wrapped: ReturnType<typeof wrapPhoto>, size: PhotoSize;
+    let wrapped: ReturnType<typeof wrapPhoto>, size: ReturnType<typeof choosePhotoSize>;
     if(hasFile) {
       size = choosePhotoSize(doc, 200, 200);
       wrapped = wrapPhoto({

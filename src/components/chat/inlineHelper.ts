@@ -22,7 +22,7 @@ import {SuperStickerRenderer} from '../emoticonsDropdown/tabs/stickers';
 import mediaSizes from '../../helpers/mediaSizes';
 import readBlobAsDataURL from '../../helpers/blob/readBlobAsDataURL';
 import setInnerHTML from '../../helpers/dom/setInnerHTML';
-import renderImageWithFadeIn from '../../helpers/dom/renderImageWithFadeIn';
+import renderMediaWithFadeIn from '../../helpers/dom/renderMediaWithFadeIn';
 import {AppManagers} from '../../lib/appManagers/managers';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
@@ -188,7 +188,7 @@ export default class InlineHelper extends AutocompleteHelper {
                   const image = new Image();
                   image.classList.add('media-photo');
                   readBlobAsDataURL(blob).then((dataURL) => {
-                    renderImageWithFadeIn(mediaContainer, image, dataURL, true);
+                    renderMediaWithFadeIn(mediaContainer, image, dataURL, true);
                   });
                 });
               }

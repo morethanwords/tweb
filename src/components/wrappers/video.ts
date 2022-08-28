@@ -14,12 +14,13 @@ import createVideo from '../../helpers/dom/createVideo';
 import isInDOM from '../../helpers/dom/isInDOM';
 import renderImageFromUrl from '../../helpers/dom/renderImageFromUrl';
 import mediaSizes, {ScreenSize} from '../../helpers/mediaSizes';
+import noop from '../../helpers/noop';
 import onMediaLoad from '../../helpers/onMediaLoad';
 import {fastRaf} from '../../helpers/schedulers';
 import throttle from '../../helpers/schedulers/throttle';
 import sequentialDom from '../../helpers/sequentialDom';
 import toHHMMSS from '../../helpers/string/toHHMMSS';
-import {Message, PhotoSize} from '../../layer';
+import {Message, PhotoSize, VideoSize} from '../../layer';
 import {MyDocument} from '../../lib/appManagers/appDocsManager';
 import appDownloadManager from '../../lib/appManagers/appDownloadManager';
 import appImManager from '../../lib/appManagers/appImManager';
@@ -59,7 +60,7 @@ mediaSizes.addEventListener('changeScreen', (from, to) => {
   }
 });
 
-export default async function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, withoutPreloader, loadPromises, noPlayButton, size, searchContext, autoDownload, managers = rootScope.managers}: {
+export default async function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, withoutPreloader, loadPromises, noPlayButton, photoSize, videoSize, searchContext, autoDownload, managers = rootScope.managers}: {
   doc: MyDocument,
   container?: HTMLElement,
   message?: Message.message,
@@ -76,7 +77,8 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
   withoutPreloader?: boolean,
   loadPromises?: Promise<any>[],
   autoDownload?: ChatAutoDownloadSettings,
-  size?: PhotoSize,
+  photoSize?: PhotoSize,
+  videoSize?: VideoSize,
   searchContext?: MediaSearchContext,
   managers?: AppManagers
 }) {
@@ -144,7 +146,7 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
       withoutPreloader,
       loadPromises,
       autoDownloadSize,
-      size,
+      size: photoSize,
       managers
     });
 
@@ -354,7 +356,7 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
       withoutPreloader: true,
       loadPromises,
       autoDownloadSize: autoDownload?.photo,
-      size,
+      size: photoSize,
       managers
     });
 
@@ -386,7 +388,7 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
 
   let cacheContext: ThumbCache;
   const getCacheContext = async() => {
-    return cacheContext = await managers.thumbsStorage.getCacheContext(doc);
+    return cacheContext = await managers.thumbsStorage.getCacheContext(doc, videoSize?.type);
   };
 
   await getCacheContext();
@@ -425,18 +427,6 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
       renderDeferred.resolve();
     }
   }, {once: true});
-
-  onMediaLoad(video).then(() => {
-    if(group) {
-      animationIntersector.addAnimation(video, group);
-    }
-
-    if(preloader && !uploadFileName) {
-      preloader.detach();
-    }
-
-    renderDeferred.resolve();
-  });
 
   if(doc.type === 'video') {
     const onTimeUpdate = () => {
@@ -478,7 +468,13 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
     let loadPromise: Promise<any> = Promise.resolve();
     if((preloader && !uploadFileName) || withoutPreloader) {
       if(!cacheContext.downloaded && !doc.supportsStreaming) {
-        const promise = loadPromise = managers.apiFileManager.downloadMediaURL({media: doc, queueId: lazyLoadQueue?.queueId, onlyCache: noAutoDownload});
+        const promise = loadPromise = appDownloadManager.downloadMediaURL({
+          media: doc,
+          queueId: lazyLoadQueue?.queueId,
+          onlyCache: noAutoDownload,
+          thumb: videoSize
+        });
+
         if(preloader) {
           preloader.attach(container, false, promise);
         }
@@ -512,8 +508,21 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
       }
 
       await getCacheContext();
+
+      onMediaLoad(video).then(() => {
+        if(group) {
+          animationIntersector.addAnimation(video, group);
+        }
+
+        if(preloader && !uploadFileName) {
+          preloader.detach();
+        }
+
+        renderDeferred.resolve();
+      });
+
       renderImageFromUrl(video, cacheContext.url);
-    }, () => {});
+    }, noop);
 
     return {download: loadPromise, render: renderDeferred};
   };

@@ -304,6 +304,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.serviceMessagePort.addMultipleEventsListeners({
       port: (payload, source, event) => {
         this.invokeVoid('serviceWorkerPort', undefined, undefined, [event.ports[0]]);
+      },
+
+      hello: (payload, source) => {
+        this.serviceMessagePort.resendLockTask(source);
       }
     });
     // #endif

@@ -227,7 +227,8 @@ $inactive-opacity: .4;
     }
   }
 
-  &-prev-button, &-next-button {
+  &-prev-button,
+  &-next-button {
     cursor: pointer;
     position: absolute;
     color: #fff;
@@ -302,7 +303,9 @@ $inactive-opacity: .4;
       height: 100%;
     }
 
-    img, video {
+    img,
+    video,
+    .canvas-thumbnail {
       width: 100%;
       height: 100%;
       max-width: 100%;
@@ -324,7 +327,8 @@ $inactive-opacity: .4;
 
     // !SAFARI
     svg {
-      img, video {
+      img,
+      video {
         position: unset;
       }
     }
@@ -395,7 +399,8 @@ $inactive-opacity: .4;
       } */
 
       img:not(.thumbnail), 
-      video {
+      video,
+      .canvas-thumbnail {
         /* height: auto;
         width: auto; */
         object-fit: contain;
@@ -410,7 +415,8 @@ $inactive-opacity: .4;
     }
 
     &.hiding {
-      img, video {
+      img,
+      video {
         opacity: 0;
       }
     }
@@ -437,7 +443,8 @@ $inactive-opacity: .4;
     z-index: 5;
     padding: 0 1.25rem;
 
-    .btn-icon, .media-viewer-author {
+    .btn-icon,
+    .media-viewer-author {
       color: #fff;
       opacity: $inactive-opacity;
 

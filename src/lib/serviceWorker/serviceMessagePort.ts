@@ -51,6 +51,7 @@ export default class ServiceMessagePort<Master extends boolean = false> extends 
 }, {
   // to main thread
   pushClick: (payload: PushNotificationObject) => void,
+  hello: (payload: void, source: MessageEventSource) => void,
 
   // to mtproto worker
   requestFilePart: (payload: ServiceRequestFilePartTaskPayload) => Promise<MyUploadFile> | MyUploadFile

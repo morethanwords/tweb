@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import onMediaLoad from '../onMediaLoad';
+
 // import { getHeavyAnimationPromise } from "../../hooks/useHeavyAnimationCheck";
 
 export const loadedURLs: {[url: string]: boolean} = {};
@@ -22,17 +24,24 @@ export default function renderImageFromUrl(
 ) {
   if(!url) {
     console.error('renderImageFromUrl: no url?', elem, url);
-    callback && callback();
+    callback?.();
     return;
   }
 
-  if(((loadedURLs[url]/*  && false */) && useCache) || elem instanceof HTMLVideoElement) {
+  const isVideo = elem instanceof HTMLVideoElement;
+  if(((loadedURLs[url]/*  && false */) && useCache) || isVideo) {
     if(elem) {
       set(elem, url);
     }
 
-    callback && callback();
-    // callback && getHeavyAnimationPromise().then(() => callback());
+    if(callback) {
+      if(isVideo) {
+        onMediaLoad(elem).then(callback);
+      } else {
+        callback?.();
+      }
+      // callback && getHeavyAnimationPromise().then(() => callback());
+    }
   } else {
     const isImage = elem instanceof HTMLImageElement;
     const loader = isImage ? elem as HTMLImageElement : new Image();
@@ -48,7 +57,7 @@ export default function renderImageFromUrl(
       // console.log('onload:', url, performance.now() - perf);
       // TODO: переделать прогрузки аватаров до начала анимации, иначе с этим ожиданием они неприятно появляются
       // callback && getHeavyAnimationPromise().then(() => callback());
-      callback && callback();
+      callback?.();
     }, {once: true});
 
     if(callback) {

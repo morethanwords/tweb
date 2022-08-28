@@ -109,7 +109,7 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
     docDiv.classList.add('document-with-thumb');
     hasThumb = true;
 
-    const imgs: (HTMLImageElement | HTMLCanvasElement)[] = [];
+    const imgs: (HTMLImageElement | HTMLCanvasElement | HTMLVideoElement)[] = [];
     // ! WARNING, use thumbs for check when thumb will be generated for media
     if(message.pFlags.is_outgoing && ['photo', 'video'].includes(doc.type)) {
       icoDiv.innerHTML = `<img src="${cacheContext.url}">`;

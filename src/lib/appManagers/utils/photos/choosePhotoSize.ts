@@ -6,8 +6,9 @@
 
 import type {MyDocument} from '../../appDocsManager';
 import type {MyPhoto} from '../../appPhotosManager';
-import type {PhotoSize, WebDocument} from '../../../../layer';
+import type {PhotoSize, VideoSize, WebDocument} from '../../../../layer';
 import calcImageInBox from '../../../../helpers/calcImageInBox';
+import {THUMB_TYPE_FULL} from '../../../mtproto/mtproto_config';
 
 export default function choosePhotoSize(
   photo: MyPhoto | MyDocument | WebDocument,
@@ -32,15 +33,15 @@ export default function choosePhotoSize(
   c crop  640x640
   d crop  1280x1280 */
 
-  let bestPhotoSize: PhotoSize = {_: 'photoSizeEmpty', type: ''};
-  let sizes = (photo as MyPhoto).sizes || (photo as MyDocument).thumbs as PhotoSize[];
+  let sizes: PhotoSize[] = (photo as MyPhoto).sizes || (photo as MyDocument).thumbs as PhotoSize[];
+  let bestPhotoSize: typeof sizes[0] = {_: 'photoSizeEmpty', type: THUMB_TYPE_FULL};
   if(pushDocumentSize && sizes && photo._ !== 'photo') {
     sizes = sizes.concat({
       _: 'photoSize',
       w: photo.w,
       h: photo.h,
       size: photo.size,
-      type: undefined
+      type: THUMB_TYPE_FULL
     });
   }
 

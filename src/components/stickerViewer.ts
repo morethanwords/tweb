@@ -302,9 +302,10 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
       }
 
       document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp, {capture: true});
     };
 
     document.addEventListener('mousemove', onMousePreMove);
-    document.addEventListener('mouseup', onMouseUp, {once: true});
+    document.addEventListener('mouseup', onMouseUp, {once: true, capture: true});
   });
 }

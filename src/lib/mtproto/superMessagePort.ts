@@ -128,7 +128,8 @@ export default class SuperMessagePort<
   protected onPortDisconnect: (source: MessageEventSource) => void;
   // protected onPortConnect: (source: MessageEventSource) => void;
 
-  protected resolveLocks: Map<SendPort, () => void>;
+  protected heldLocks: Map<SendPort, {resolve: () => void, id: string}>;
+  protected requestedLocks: Map<string, SendPort>;
 
   constructor(protected logSuffix?: string) {
     super(false);
@@ -141,7 +142,8 @@ export default class SuperMessagePort<
     this.pending = new Map();
     this.log = logger('MP' + (logSuffix ? '-' + logSuffix : ''));
     this.debug = DEBUG;
-    this.resolveLocks = new Map();
+    this.heldLocks = new Map();
+    this.requestedLocks = new Map();
 
     this.processTaskMap = {
       result: this.processResultTask,
@@ -188,10 +190,10 @@ export default class SuperMessagePort<
       if('locks' in navigator) {
         const id = ['lock', tabId, this.logSuffix || '', Math.random() * 0x7FFFFFFF | 0].join('-');
         this.log.warn('created lock', id);
-        const promise = new Promise<void>((resolve) => this.resolveLocks.set(port, resolve))
-        .then(() => this.resolveLocks.delete(port));
+        const promise = new Promise<void>((resolve) => this.heldLocks.set(port, {resolve, id}))
+        .then(() => this.heldLocks.delete(port));
         navigator.locks.request(id, () => promise);
-        this.pushTask(this.createTask('lock', id));
+        this.resendLockTask(port);
       } else {
         window.addEventListener('beforeunload', () => {
           const task = this.createTask('close', undefined);
@@ -201,6 +203,15 @@ export default class SuperMessagePort<
     }
 
     this.releasePending();
+  }
+
+  public resendLockTask(port: SendPort) {
+    const lock = this.heldLocks.get(port);
+    if(!lock) {
+      return;
+    }
+
+    this.pushTask(this.createTask('lock', lock.id), port);
   }
 
   // ! Can't rely on ping because timers can be suspended
@@ -251,8 +262,8 @@ export default class SuperMessagePort<
 
     this.onPortDisconnect?.(port as any);
 
-    const resolveLock = this.resolveLocks.get(port as SendPort);
-    resolveLock?.();
+    const heldLock = this.heldLocks.get(port as SendPort);
+    heldLock?.resolve();
 
     const error = makeError('PORT_DISCONNECTED');
     for(const id in this.awaiting) {
@@ -430,8 +441,15 @@ export default class SuperMessagePort<
   // };
 
   protected processLockTask = (task: LockTask, source: MessageEventSource, event: MessageEvent) => {
-    navigator.locks.request(task.payload, () => {
+    const id = task.payload;
+    if(this.requestedLocks.has(id)) {
+      return;
+    }
+
+    this.requestedLocks.set(id, source);
+    navigator.locks.request(id, () => {
       this.processCloseTask(undefined, source, undefined);
+      this.requestedLocks.delete(id);
     });
   };
 
@@ -556,7 +574,7 @@ export default class SuperMessagePort<
 
       const interval = ctx.setInterval(() => {
         this.log.error('task still has no result', task, port);
-      }, 5e3);
+      }, 60e3);
     } else if(false) {
       // let timedOut = false;
       const startTime = Date.now();

@@ -10,8 +10,9 @@ import type {ThumbCache} from '../lib/storages/thumbs';
 import getImageFromStrippedThumb from './getImageFromStrippedThumb';
 
 export default function getStrippedThumbIfNeeded(photo: MyPhoto | MyDocument, cacheContext: ThumbCache, useBlur: boolean, ignoreCache = false) {
-  if(!cacheContext.downloaded || (['video', 'gif'] as MyDocument['type'][]).includes((photo as MyDocument).type) || ignoreCache) {
-    if(photo._ === 'document' && cacheContext.downloaded && !ignoreCache) {
+  const isVideo = (['video', 'gif'] as MyDocument['type'][]).includes((photo as MyDocument).type);
+  if(!cacheContext.downloaded || isVideo || ignoreCache) {
+    if(photo._ === 'document' && cacheContext.downloaded && !ignoreCache && !isVideo) {
       return null;
     }
 

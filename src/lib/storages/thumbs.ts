@@ -7,6 +7,7 @@
 import type {WebDocument} from '../../layer';
 import type {MyDocument} from '../appManagers/appDocsManager';
 import type {MyPhoto} from '../appManagers/appPhotosManager';
+import {THUMB_TYPE_FULL} from '../mtproto/mtproto_config';
 
 export type ThumbCache = {
   downloaded: number,
@@ -20,7 +21,7 @@ export type ThumbsCache = {
   }
 };
 
-const thumbFullSize = 'full';
+const thumbFullSize = THUMB_TYPE_FULL;
 
 export type ThumbStorageMedia = MyPhoto | MyDocument | WebDocument;
 

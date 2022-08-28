@@ -25,6 +25,7 @@ import getDocumentURL from './utils/docs/getDocumentURL';
 import type {ThumbCache} from '../storages/thumbs';
 import makeError from '../../helpers/makeError';
 import {EXTENSION_MIME_TYPE_MAP} from '../../environment/mimeTypeMap';
+import {THUMB_TYPE_FULL} from '../mtproto/mtproto_config';
 
 export type MyDocument = Document.document;
 
@@ -326,7 +327,7 @@ export class AppDocsManager extends AppManager {
       w: 0,
       location: {} as any,
       size: file.size,
-      type: 'full'
+      type: THUMB_TYPE_FULL
     } as PhotoSize.photoSize;
     let document: MyDocument = {
       _: 'document',

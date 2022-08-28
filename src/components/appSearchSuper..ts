@@ -647,7 +647,7 @@ export default class AppSearchSuper {
         onlyPreview: true,
         withoutPreloader: true,
         noPlayButton: true,
-        size
+        photoSize: size
       })).thumb;
     } else {
       wrapped = await wrapPhoto({

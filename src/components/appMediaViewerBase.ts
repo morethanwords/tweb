@@ -787,15 +787,33 @@ export default class AppMediaViewerBase<
     });
 
     if(!closing) {
-      let mediaElement: HTMLImageElement | HTMLVideoElement;
+      let mediaElement: HTMLImageElement | HTMLVideoElement | HTMLCanvasElement;
       let src: string;
 
-      if(target instanceof HTMLVideoElement) {
-        const elements = Array.from(target.parentElement.querySelectorAll('img')) as HTMLImageElement[];
-        if(elements.length) {
-          target = elements.pop();
+      // if(target instanceof HTMLVideoElement) {
+      const selector = 'video, img, .canvas-thumbnail';
+      const queryFrom = target.matches(selector) ? target.parentElement : target;
+      const elements = Array.from(queryFrom.querySelectorAll(selector)) as HTMLImageElement[];
+      if(elements.length) {
+        target = elements.pop();
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        if(target instanceof HTMLImageElement) {
+          canvas.width = target.naturalWidth;
+          canvas.height = target.naturalHeight;
+        } else if(target instanceof HTMLVideoElement) {
+          canvas.width = target.videoWidth;
+          canvas.height = target.videoHeight;
+        } else if(target instanceof HTMLCanvasElement) {
+          canvas.width = target.width;
+          canvas.height = target.height;
         }
+
+        canvas.className = 'canvas-thumbnail thumbnail media-photo';
+        context.drawImage(target as HTMLImageElement | HTMLCanvasElement, 0, 0);
+        target = canvas;
       }
+      // }
 
       if(target.tagName === 'DIV' || target.tagName === 'AVATAR-ELEMENT') { // useContainerAsTarget
         const images = Array.from(target.querySelectorAll('img')) as HTMLImageElement[];
@@ -865,6 +883,8 @@ export default class AppMediaViewerBase<
         foreignObject.setAttributeNS(null, 'height', '' + containerRect.height);
 
         mover.prepend(newSvg);
+      } else if(target instanceof HTMLCanvasElement) {
+        mediaElement = target;
       }
 
       if(aspecter) {

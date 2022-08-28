@@ -49,8 +49,9 @@ const onWindowConnected = (source: WindowClient) => {
   }
 
   log('windows', Array.from(connectedWindows));
+  serviceMessagePort.invokeVoid('hello', undefined, source);
   sendMessagePortIfNeeded(source);
-  connectedWindows.add(source.id);
+  connectedWindows.set(source.id, source);
 };
 
 export const serviceMessagePort = new ServiceMessagePort<false>();
@@ -83,7 +84,7 @@ getWindowClients().then((windowClients) => {
   });
 });
 
-const connectedWindows: Set<string> = new Set();
+const connectedWindows: Map<string, WindowClient> = new Map();
 (self as any).connectedWindows = connectedWindows;
 listenMessagePort(serviceMessagePort, undefined, (source) => {
   log('something has disconnected', source);

@@ -25,7 +25,7 @@ import {MyPhoto} from './appPhotosManager';
 import {getFileNameByLocation} from '../../helpers/fileName';
 import DEBUG from '../../config/debug';
 import SlicedArray, {Slice, SliceEnd} from '../../helpers/slicedArray';
-import {FOLDER_ID_ALL, MUTE_UNTIL, NULL_PEER_ID, REAL_FOLDER_ID, REPLIES_HIDDEN_CHANNEL_ID, REPLIES_PEER_ID, SERVICE_PEER_ID} from '../mtproto/mtproto_config';
+import {FOLDER_ID_ALL, MUTE_UNTIL, NULL_PEER_ID, REAL_FOLDER_ID, REPLIES_HIDDEN_CHANNEL_ID, REPLIES_PEER_ID, SERVICE_PEER_ID, THUMB_TYPE_FULL} from '../mtproto/mtproto_config';
 import telegramMeWebManager from '../mtproto/telegramMeWebManager';
 import {getMiddleware} from '../../helpers/middleware';
 import assumeType from '../../helpers/assumeType';
@@ -758,7 +758,7 @@ export class AppMessagesManager extends AppManager {
         _: 'photoSize',
         w: options.width,
         h: options.height,
-        type: 'full',
+        type: THUMB_TYPE_FULL,
         location: null,
         size: file.size
       } as PhotoSize.photoSize;
@@ -842,7 +842,7 @@ export class AppMessagesManager extends AppManager {
           _: 'photoSize',
           w: options.width,
           h: options.height,
-          type: 'full',
+          type: THUMB_TYPE_FULL,
           size: file.size
         };
       } else if(attachType === 'video') {
@@ -4947,7 +4947,7 @@ export class AppMessagesManager extends AppManager {
         if(/* photo._ !== 'photoEmpty' */photo) {
           const newPhotoSize = newPhoto.sizes[newPhoto.sizes.length - 1];
           const cacheContext = this.thumbsStorage.getCacheContext(newPhoto, newPhotoSize.type);
-          const oldCacheContext = this.thumbsStorage.getCacheContext(photo, 'full');
+          const oldCacheContext = this.thumbsStorage.getCacheContext(photo, THUMB_TYPE_FULL);
           Object.assign(cacheContext, oldCacheContext);
 
           const photoSize = newPhoto.sizes[newPhoto.sizes.length - 1] as PhotoSize.photoSize;

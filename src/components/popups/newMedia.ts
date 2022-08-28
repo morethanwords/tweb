@@ -27,6 +27,7 @@ import {MediaSize} from '../../helpers/mediaSize';
 import {ThumbCache} from '../../lib/storages/thumbs';
 import onMediaLoad from '../../helpers/onMediaLoad';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
+import {THUMB_TYPE_FULL} from '../../lib/mtproto/mtproto_config';
 
 type SendFileParams = Partial<{
   file: File,
@@ -377,7 +378,7 @@ export default class PopupNewMedia extends PopupElement {
       cacheContext = {
         url: params.objectURL,
         downloaded: file.size,
-        type: 'full'
+        type: THUMB_TYPE_FULL
       };
     }
 
