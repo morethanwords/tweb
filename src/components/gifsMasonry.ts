@@ -9,7 +9,6 @@ import {wrapVideo} from './wrappers';
 import animationIntersector, {AnimationItemGroup} from './animationIntersector';
 import Scrollable from './scrollable';
 import deferredPromise, {CancellablePromise} from '../helpers/cancellablePromise';
-import renderImageFromUrl from '../helpers/dom/renderImageFromUrl';
 import calcImageInBox from '../helpers/calcImageInBox';
 import {doubleRaf} from '../helpers/schedulers';
 import {AppManagers} from '../lib/appManagers/managers';
@@ -90,8 +89,6 @@ export default class GifsMasonry {
       return;
     }
 
-    // console.log('processVisibleDiv');
-
     const load = () => {
       const docId = div.dataset.docId;
       const promise = Promise.all([this.managers.appDocsManager.getDoc(docId), this.scrollPromise]).then(async([doc]) => {
@@ -101,16 +98,17 @@ export default class GifsMasonry {
           lazyLoadQueue: null,
           // lazyLoadQueue: EmoticonsDropdown.lazyLoadQueue,
           group: this.group,
-          noInfo: true
+          noInfo: true,
+          noPreview: true
         });
 
         const promise = res.loadPromise;
         promise.finally(() => {
           const video = div.querySelector('video');
+          const thumb = div.querySelector('img, canvas');
 
-          div.style.opacity = '';
-          const img = div.querySelector('img');
-          img && img.classList.add('hide');
+          // div.style.opacity = '';
+          thumb && thumb.classList.add('hide');
 
           if(video && !video.parentElement) {
             setTimeout(() => {
@@ -153,10 +151,10 @@ export default class GifsMasonry {
       }
 
       const video = div.querySelector('video');
-      const img = div.querySelector('img');
+      const thumb = div.querySelector('img, canvas');
 
-      if(img) {
-        img && img.classList.remove('hide');
+      if(thumb) {
+        thumb.classList.remove('hide');
 
         await doubleRaf();
       }
@@ -188,55 +186,25 @@ export default class GifsMasonry {
     const willUseWidth = Math.min(maxSingleWidth, width, gifWidth);
     const size = calcImageInBox(gifWidth, gifHeight, willUseWidth, height);
 
-    /* wastedWidth += w;
-
-    if(wastedWidth === width || h < height) {
-      wastedWidth = 0;
-      console.log('completed line', i, line);
-      line = [];
-      continue;
-    }
-
-    line.push(gif); */
-
-    // console.log('gif:', gif, w, h);
-
     const div = document.createElement('div');
-    div.classList.add('gif', 'fade-in-transition');
+    div.classList.add('gif'/* , 'fade-in-transition' */);
     div.style.width = size.width + 'px';
-    div.style.opacity = '0';
+    // div.style.opacity = '0';
     // div.style.height = h + 'px';
     div.dataset.docId = '' + doc.id;
 
     appendTo.append(div);
 
-    // this.lazyLoadQueue.observe({div, load: this.processVisibleDiv});
     this.lazyLoadQueue.observe(div);
 
     // let preloader = new ProgressivePreloader(div);
 
-    // const gotThumb = this.managers.appDocsManager.getThumb(doc, false);
-
-    // const willBeAPoster = !!gotThumb;
-    // let img: HTMLImageElement;
-    // if(willBeAPoster) {
-    //   img = new Image();
-    //   img.classList.add('media-poster');
-
-    //   if(!gotThumb.cacheContext.url) {
-    //     gotThumb.promise.then(() => {
-    //       img.src = gotThumb.cacheContext.url;
-    //     });
-    //   }
-    // }
-
-    // const afterRender = () => {
-    //   if(img) {
-    //     div.append(img);
-    //     div.style.opacity = '';
-    //   }
-    // };
-
-    // (gotThumb?.cacheContext?.url ? renderImageFromUrl(img, gotThumb.cacheContext.url, afterRender) : afterRender());
+    wrapVideo({
+      doc,
+      container: div as HTMLDivElement,
+      lazyLoadQueue: null,
+      noInfo: true,
+      onlyPreview: true
+    });
   }
 }

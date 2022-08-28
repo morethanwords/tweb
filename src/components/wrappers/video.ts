@@ -13,6 +13,7 @@ import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import createVideo from '../../helpers/dom/createVideo';
 import isInDOM from '../../helpers/dom/isInDOM';
 import renderImageFromUrl from '../../helpers/dom/renderImageFromUrl';
+import getStrippedThumbIfNeeded from '../../helpers/getStrippedThumbIfNeeded';
 import mediaSizes, {ScreenSize} from '../../helpers/mediaSizes';
 import noop from '../../helpers/noop';
 import onMediaLoad from '../../helpers/onMediaLoad';
@@ -60,7 +61,7 @@ mediaSizes.addEventListener('changeScreen', (from, to) => {
   }
 });
 
-export default async function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, withoutPreloader, loadPromises, noPlayButton, photoSize, videoSize, searchContext, autoDownload, managers = rootScope.managers}: {
+export default async function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, noPreview, withoutPreloader, loadPromises, noPlayButton, photoSize, videoSize, searchContext, autoDownload, managers = rootScope.managers}: {
   doc: MyDocument,
   container?: HTMLElement,
   message?: Message.message,
@@ -74,6 +75,7 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
   noPlayButton?: boolean,
   group?: AnimationItemGroup,
   onlyPreview?: boolean,
+  noPreview?: boolean,
   withoutPreloader?: boolean,
   loadPromises?: Promise<any>[],
   autoDownload?: ChatAutoDownloadSettings,
@@ -373,13 +375,32 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
       video.height = +foreignObject.getAttributeNS(null, 'height');
       foreignObject.append(video);
     }
-  } else { // * gifs masonry
-    // const gotThumb = managers.appDocsManager.getThumb(doc, false);
-    // if(gotThumb) {
-    //   gotThumb.promise.then(() => {
-    //     video.poster = gotThumb.cacheContext.url;
-    //   });
-    // }
+  } else if(!noPreview) { // * gifs masonry
+    const gotThumb = getStrippedThumbIfNeeded(doc, {} as ThumbCache, true);
+    if(gotThumb) {
+      const thumbImage = gotThumb.image;
+      thumbImage.classList.add('media-poster');
+      container.append(thumbImage);
+      res.thumb = {
+        loadPromises: {
+          thumb: gotThumb.loadPromise,
+          full: Promise.resolve()
+        },
+        images: {
+          thumb: thumbImage,
+          full: null
+        },
+        preloader: null,
+        aspecter: null
+      };
+
+      loadPromises?.push(gotThumb.loadPromise);
+      res.loadPromise = gotThumb.loadPromise;
+    }
+  }
+
+  if(onlyPreview) {
+    return res;
   }
 
   if(!video.parentElement && container) {
@@ -559,6 +580,10 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
     res.loadPromise = !lazyLoadQueue ?
       (await load()).render :
       (lazyLoadQueue.push({div: container, load: () => load().then(({render}) => render)}), Promise.resolve());
+  }
+
+  if(res.thumb) {
+    await res.thumb.loadPromises.thumb;
   }
 
   return res;

@@ -1948,7 +1948,7 @@ $bubble-beside-button-width: 38px;
   &:not(.webpage) {
     &.photo, 
     &.video {
-      .bubble-content > .name {
+      &:not(.is-reply) .bubble-content > .name {
         //padding-bottom: .2675rem;
         padding-bottom: 6px;
       }
