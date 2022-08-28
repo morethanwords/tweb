@@ -416,7 +416,8 @@ $inactive-opacity: .4;
 
     &.hiding {
       img,
-      video {
+      video,
+      .canvas-thumbnail {
         opacity: 0;
       }
     }
@@ -565,7 +566,8 @@ $inactive-opacity: .4;
     }
 
     &.no-forwards {
-      img {
+      img,
+      .canvas-thumbnail {
         pointer-events: none;
       }
 
