@@ -6,7 +6,7 @@
 
 .spoiler {
   --anim: .4s ease;
-  position: relative;
+  // position: relative; // ! idk what it was for
   background-color: var(--spoiler-background-color);
   
   &-text {
@@ -23,16 +23,20 @@
   font-family: inherit !important;
 }
 
-.message {
-  &.will-change {
-    .spoiler {
-      // box-shadow: 0 0 var(--spoiler-background-color);
-
-      &-text {
-        filter: blur(6px);
-      }
-    }
+.spoilers-container {
+  .custom-emoji-canvas {
+    z-index: -1;
   }
+
+  // &.will-change {
+  //   .spoiler {
+  //     // box-shadow: 0 0 var(--spoiler-background-color);
+
+  //     &-text {
+  //       filter: blur(6px);
+  //     }
+  //   }
+  // }
 
   &.is-spoiler-visible {
     &.animating {
@@ -40,7 +44,7 @@
         transition: /* box-shadow var(--anim), */ background-color var(--anim);
 
         &-text {
-          transition: opacity var(--anim), filter var(--anim);
+          transition: opacity var(--anim)/* , filter var(--anim) */;
         }
       }
     }
@@ -51,17 +55,17 @@
         // box-shadow: 0 0 30px 30px transparent;
     
         &-text {
-          filter: blur(0);
+          // filter: blur(0);
           opacity: 1;
         }
       }
     }
 
-    &.backwards {
-      .spoiler-text {
-        filter: blur(3px);
-      }
-    }
+    // &.backwards {
+    //   .spoiler-text {
+    //     filter: blur(3px);
+    //   }
+    // }
   }
 
   &:not(.is-spoiler-visible) {

@@ -43,7 +43,8 @@ const onFirstMount = () => {
   return Promise.all([
     loadFonts()/* .then(() => new Promise((resolve) => window.requestAnimationFrame(resolve))) */,
     import('../lib/appManagers/appDialogsManager')
-  ]).then(() => {
+  ]).then(([_, appDialogsManager]) => {
+    appDialogsManager.default.start();
     setTimeout(() => {
       document.getElementById('auth-pages').remove();
     }, 1e3);

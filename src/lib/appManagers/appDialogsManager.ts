@@ -234,7 +234,7 @@ export class AppDialogsManager {
   private managers: AppManagers;
   private selectTab: ReturnType<typeof horizontalMenu>;
 
-  constructor() {
+  public start() {
     const managers = this.managers = getProxiedManagers();
 
     this.contextMenu = new DialogsContextMenu(managers);

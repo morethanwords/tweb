@@ -11,8 +11,9 @@ import {logger, LogTypes} from '../logger';
 import RLottiePlayer, {RLottieOptions} from './rlottiePlayer';
 import QueryableWorker from './queryableWorker';
 import blobConstruct from '../../helpers/blob/blobConstruct';
-import rootScope from '../rootScope';
 import apiManagerProxy from '../mtproto/mtprotoworker';
+import IS_WEB_ASSEMBLY_SUPPORTED from '../../environment/webAssemblySupport';
+import makeError from '../../helpers/makeError';
 
 export type LottieAssetName = 'EmptyFolder' | 'Folders_1' | 'Folders_2' |
   'TwoFactorSetupMonkeyClose' | 'TwoFactorSetupMonkeyCloseAndPeek' |
@@ -21,12 +22,12 @@ export type LottieAssetName = 'EmptyFolder' | 'Folders_1' | 'Folders_2' |
   'voice_outlined2' | 'voip_filled' | 'voice_mini';
 
 export class LottieLoader {
-  private isWebAssemblySupported = typeof(WebAssembly) !== 'undefined';
-  private loadPromise: Promise<void> = !this.isWebAssemblySupported ? Promise.reject() : undefined;
+  private loadPromise: Promise<void> = !IS_WEB_ASSEMBLY_SUPPORTED ? Promise.reject() : undefined;
   private loaded = false;
 
   private workersLimit = 4;
   private players: {[reqId: number]: RLottiePlayer} = {};
+  private playersByCacheName: {[cacheName: string]: Set<RLottiePlayer>} = {};
 
   private workers: QueryableWorker[] = [];
   private curWorkerNum = 0;
@@ -35,7 +36,7 @@ export class LottieLoader {
 
   public getAnimation(element: HTMLElement) {
     for(const i in this.players) {
-      if(this.players[i].el === element) {
+      if(this.players[i].el.includes(element)) {
         return this.players[i];
       }
     }
@@ -91,7 +92,7 @@ export class LottieLoader {
   }
 
   public loadAnimationFromURL(params: Omit<RLottieOptions, 'animationData'>, url: string): Promise<RLottiePlayer> {
-    if(!this.isWebAssemblySupported) {
+    if(!IS_WEB_ASSEMBLY_SUPPORTED) {
       return this.loadPromise as any;
     }
 
@@ -136,22 +137,30 @@ export class LottieLoader {
     group: AnimationItemGroup = params.group || '',
     middleware?: () => boolean
   ): Promise<RLottiePlayer> {
-    if(!this.isWebAssemblySupported) {
+    if(!IS_WEB_ASSEMBLY_SUPPORTED) {
       return this.loadPromise as any;
     }
-    // params.autoplay = true;
 
     if(!this.loaded) {
       await this.loadLottieWorkers();
     }
 
     if(middleware && !middleware()) {
-      throw new Error('middleware');
+      throw makeError('MIDDLEWARE');
     }
 
+    if(params.sync) {
+      const cacheName = RLottiePlayer.CACHE.generateName(params.name, params.width, params.height, params.color, params.toneIndex);
+      const players = this.playersByCacheName[cacheName];
+      if(players?.size) {
+        return Promise.resolve(players.entries().next().value[0]);
+      }
+    }
+
+    const containers = Array.isArray(params.container) ? params.container : [params.container];
     if(!params.width || !params.height) {
-      params.width = parseInt(params.container.style.width);
-      params.height = parseInt(params.container.style.height);
+      params.width = parseInt(containers[0].style.width);
+      params.height = parseInt(containers[0].style.height);
     }
 
     if(!params.width || !params.height) {
@@ -160,7 +169,7 @@ export class LottieLoader {
 
     params.group = group;
 
-    const player = this.initPlayer(params.container, params);
+    const player = this.initPlayer(containers, params);
 
     if(group !== 'none') {
       animationIntersector.addAnimation(player, group);
@@ -170,42 +179,41 @@ export class LottieLoader {
   }
 
   private onPlayerLoaded = (reqId: number, frameCount: number, fps: number) => {
-    const rlPlayer = this.players[reqId];
-    if(!rlPlayer) {
+    const player = this.players[reqId];
+    if(!player) {
       this.log.warn('onPlayerLoaded on destroyed player:', reqId, frameCount);
       return;
     }
 
     this.log.debug('onPlayerLoaded');
-    rlPlayer.onLoad(frameCount, fps);
-    // rlPlayer.addListener('firstFrame', () => {
-    // animationIntersector.addAnimation(player, group);
-    // }, true);
+    player.onLoad(frameCount, fps);
   };
 
-  private onFrame = (reqId: number, frameNo: number, frame: Uint8ClampedArray) => {
-    const rlPlayer = this.players[reqId];
-    if(!rlPlayer) {
+  private onFrame = (reqId: number, frameNo: number, frame: Uint8ClampedArray | ImageBitmap) => {
+    const player = this.players[reqId];
+    if(!player) {
       this.log.warn('onFrame on destroyed player:', reqId, frameNo);
       return;
     }
 
-    if(rlPlayer.clamped !== undefined) {
-      rlPlayer.clamped = frame;
+    if(player.clamped !== undefined && frame instanceof Uint8ClampedArray) {
+      player.clamped = frame;
     }
 
-    rlPlayer.renderFrame(frame, frameNo);
+    player.renderFrame(frame, frameNo);
   };
 
   private onPlayerError = (reqId: number, error: Error) => {
-    const rlPlayer = this.players[reqId];
-    if(rlPlayer) {
-      // ! will need refactoring later, this is not the best way to remove the animation
-      const animations = animationIntersector.getAnimations(rlPlayer.el);
-      animations.forEach((animation) => {
-        animationIntersector.checkAnimation(animation, true, true);
-      });
+    const player = this.players[reqId];
+    if(!player) {
+      return;
     }
+
+    // ! will need refactoring later, this is not the best way to remove the animation
+    const animations = animationIntersector.getAnimations(player.el[0]);
+    animations.forEach((animation) => {
+      animationIntersector.checkAnimation(animation, true, true);
+    });
   };
 
   public onDestroy(reqId: number) {
@@ -213,6 +221,10 @@ export class LottieLoader {
   }
 
   public destroyWorkers() {
+    if(!IS_WEB_ASSEMBLY_SUPPORTED) {
+      return;
+    }
+
     this.workers.forEach((worker, idx) => {
       worker.terminate();
       this.log('worker #' + idx + ' terminated');
@@ -220,23 +232,40 @@ export class LottieLoader {
 
     this.log('workers destroyed');
     this.workers.length = 0;
+    this.curWorkerNum = 0;
+    this.loaded = false;
+    this.loadPromise = undefined;
   }
 
-  private initPlayer(el: HTMLElement, options: RLottieOptions) {
-    const rlPlayer = new RLottiePlayer({
+  private initPlayer(el: RLottiePlayer['el'], options: RLottieOptions) {
+    const player = new RLottiePlayer({
       el,
       worker: this.workers[this.curWorkerNum++],
       options
     });
 
-    this.players[rlPlayer.reqId] = rlPlayer;
+    const {reqId, cacheName} = player;
+    this.players[reqId] = player;
+
+    const playersByCacheName = cacheName ? this.playersByCacheName[cacheName] ??= new Set() : undefined;
+    if(cacheName) {
+      playersByCacheName.add(player);
+    }
+
     if(this.curWorkerNum >= this.workers.length) {
       this.curWorkerNum = 0;
     }
 
-    rlPlayer.loadFromData(options.animationData);
+    player.addEventListener('destroy', () => {
+      this.onDestroy(reqId);
+      if(playersByCacheName.delete(player) && !playersByCacheName.size) {
+        delete this.playersByCacheName[cacheName];
+      }
+    });
 
-    return rlPlayer;
+    player.loadFromData(options.animationData);
+
+    return player;
   }
 }
 

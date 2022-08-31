@@ -2789,9 +2789,9 @@ export class AppMessagesManager extends AppManager {
       }
     }
 
-    if(isMessage && !unsupported && message.entities) {
-      unsupported = message.entities.some((entity) => entity._ === 'messageEntityCustomEmoji');
-    }
+    // if(isMessage && !unsupported && message.entities) {
+    //   unsupported = message.entities.some((entity) => entity._ === 'messageEntityCustomEmoji');
+    // }
 
     if(isMessage && unsupported) {
       message.media = {_: 'messageMediaUnsupported'};

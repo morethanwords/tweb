@@ -50,10 +50,10 @@ export default class TrackingMonkey {
 
       if(this.idleAnimation) {
         this.idleAnimation.stop(true);
-        this.idleAnimation.canvas.style.display = 'none';
+        this.idleAnimation.canvas[0].style.display = 'none';
       }
 
-      this.animation.canvas.style.display = '';
+      this.animation.canvas[0].style.display = '';
     } else {
       /* const cb = (frameNo: number) => {
         if(frameNo <= 1) { */
@@ -116,7 +116,7 @@ export default class TrackingMonkey {
         this.animation = _animation;
 
         if(!this.inputField.value.length) {
-          this.animation.canvas.style.display = 'none';
+          this.animation.canvas[0].style.display = 'none';
         }
 
         this.animation.addEventListener('enterFrame', currentFrame => {
@@ -133,9 +133,9 @@ export default class TrackingMonkey {
             // animation.curFrame = 0;
 
             if(this.idleAnimation) {
-              this.idleAnimation.canvas.style.display = '';
+              this.idleAnimation.canvas[0].style.display = '';
               this.idleAnimation.play();
-              this.animation.canvas.style.display = 'none';
+              this.animation.canvas[0].style.display = 'none';
             }
           }
         });

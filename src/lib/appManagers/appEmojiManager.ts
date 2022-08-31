@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type {MyDocument} from './appDocsManager';
 import App from '../../config/app';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import isObject from '../../helpers/object/isObject';
@@ -13,6 +14,8 @@ import fixEmoji from '../richTextProcessor/fixEmoji';
 import SearchIndex from '../searchIndex';
 import stateStorage from '../stateStorage';
 import {AppManager} from './manager';
+import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
+import pause from '../../helpers/schedulers/pause';
 
 type EmojiLangPack = {
   keywords: {
@@ -43,6 +46,9 @@ export class AppEmojiManager extends AppManager {
 
   private recent: string[];
   private getRecentEmojisPromise: Promise<AppEmojiManager['recent']>;
+
+  private getCustomEmojiDocumentsPromise: Promise<any>;
+  private getCustomEmojiDocumentPromises: Map<DocId, CancellablePromise<MyDocument>> = new Map();
 
   /* public getPopularEmoji() {
     return stateStorage.get('emojis_popular').then((popEmojis) => {
@@ -229,5 +235,62 @@ export class AppEmojiManager extends AppManager {
       this.appStateManager.pushToState('recentEmoji', recent);
       this.rootScope.dispatchEvent('emoji_recent', emoji);
     });
+  }
+
+  public getCustomEmojiDocuments(docIds: DocId[]) {
+    return this.apiManager.invokeApi('messages.getCustomEmojiDocuments', {document_id: docIds}).then((documents) => {
+      return documents.map((doc) => {
+        return this.appDocsManager.saveDoc(doc, {
+          type: 'customEmoji',
+          docId: doc.id
+        });
+      });
+    });
+  }
+
+  public getCachedCustomEmojiDocuments(docIds: DocId[]) {
+    return docIds.map((docId) => this.appDocsManager.getDoc(docId));
+  }
+
+  private setDebouncedGetCustomEmojiDocuments() {
+    if(this.getCustomEmojiDocumentsPromise || !this.getCustomEmojiDocumentPromises.size) {
+      return;
+    }
+
+    this.getCustomEmojiDocumentsPromise = pause(0).then(() => {
+      const allIds = [...this.getCustomEmojiDocumentPromises.keys()];
+      do {
+        const ids = allIds.splice(0, 100);
+        this.getCustomEmojiDocuments(ids).then((docs) => {
+          docs.forEach((doc, idx) => {
+            const docId = ids[idx];
+            const deferred = this.getCustomEmojiDocumentPromises.get(docId);
+            this.getCustomEmojiDocumentPromises.delete(docId);
+            deferred.resolve(doc);
+          });
+        }).finally(() => {
+          this.setDebouncedGetCustomEmojiDocuments();
+        });
+      } while(allIds.length);
+    });
+  }
+
+  public getCustomEmojiDocument(id: DocId) {
+    let promise = this.getCustomEmojiDocumentPromises.get(id);
+    if(promise) {
+      return promise;
+    }
+
+    const doc = this.appDocsManager.getDoc(id);
+    if(doc) {
+      return Promise.resolve(doc);
+    }
+
+    promise = deferredPromise();
+    this.getCustomEmojiDocumentPromises.set(id, promise);
+
+    this.setDebouncedGetCustomEmojiDocuments();
+
+    return promise;
   }
 }

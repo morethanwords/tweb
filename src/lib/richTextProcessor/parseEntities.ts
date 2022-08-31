@@ -79,7 +79,6 @@ export default function parseEntities(text: string) {
         length: 1
       });
     } else if(match[8]) { // Emoji
-      // console.log('hit', match[8]);
       const unified = getEmojiUnified(match[8]);
       if(unified) {
         entities.push({

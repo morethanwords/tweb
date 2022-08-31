@@ -70,7 +70,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     this.content.main.prepend(stub); */
 
     this.content.caption = document.createElement('div');
-    this.content.caption.classList.add(MEDIA_VIEWER_CLASSNAME + '-caption', 'message'/* , 'media-viewer-stub' */);
+    this.content.caption.classList.add(MEDIA_VIEWER_CLASSNAME + '-caption', 'spoilers-container'/* , 'media-viewer-stub' */);
 
     let captionTimeout: number;
     const setCaptionTimeout = () => {

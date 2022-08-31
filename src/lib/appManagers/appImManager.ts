@@ -25,7 +25,6 @@ import appNavigationController from '../../components/appNavigationController';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import I18n, {i18n, join, LangPackKey} from '../langPack';
 import {ChatFull, ChatInvite, ChatParticipant, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction} from '../../layer';
-import {hslaStringToHex} from '../../helpers/color';
 import PeerTitle from '../../components/peerTitle';
 import PopupPeer from '../../components/popups/peer';
 import blurActiveElement from '../../helpers/dom/blurActiveElement';
@@ -92,15 +91,6 @@ import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import {CLICK_EVENT_NAME} from '../../helpers/dom/clickEvent';
 import PopupPayment from '../../components/popups/payment';
-import {getMiddleware} from '../../helpers/middleware';
-import {wrapSticker} from '../../components/wrappers';
-import windowSize from '../../helpers/windowSize';
-import getStickerEffectThumb from './utils/stickers/getStickerEffectThumb';
-import {makeMediaSize} from '../../helpers/mediaSize';
-import RLottiePlayer from '../rlottie/rlottiePlayer';
-import type {MyDocument} from './appDocsManager';
-import deferredPromise from '../../helpers/cancellablePromise';
-import {STICKER_EFFECT_MULTIPLIER} from '../../components/wrappers/sticker';
 
 export const CHAT_ANIMATION_GROUP: AnimationItemGroup = 'chat';
 
@@ -380,7 +370,7 @@ export class AppImManager extends EventListenerBase<{
 
     (window as any).onSpoilerClick = (e: MouseEvent) => {
       const spoiler = findUpClassName(e.target, 'spoiler');
-      const parentElement = findUpClassName(spoiler, 'message') || spoiler.parentElement;
+      const parentElement = findUpClassName(spoiler, 'spoilers-container') || spoiler.parentElement;
 
       const className = 'is-spoiler-visible';
       const isVisible = parentElement.classList.contains(className);
