@@ -742,7 +742,7 @@ export default function wrapRichText(text: string, options: Partial<{
 
     const size = options.customEmojiSize || mediaSizes.active.customEmoji;
     const loadPromise = managers.appEmojiManager.getCachedCustomEmojiDocuments(docIds).then((docs) => {
-      console.log(docs);
+      // console.log(docs);
       if(middleware && !middleware()) return;
 
       const loadPromises: Promise<any>[] = [];

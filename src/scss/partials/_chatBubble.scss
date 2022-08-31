@@ -617,6 +617,7 @@ $bubble-beside-button-width: 38px;
 
     .attachment {
       --custom-emoji-size: var(--emoji-size);
+      border-radius: 0 !important;
 
       img.emoji {
         width: var(--emoji-size);
@@ -629,7 +630,7 @@ $bubble-beside-button-width: 38px;
     &:not(.sticker) {
       .attachment {
         padding-top: .5rem;
-        padding-bottom: 1.5rem;
+        padding-bottom: 1rem;
         //max-width: fit-content!important;
         max-height: fit-content!important;
 

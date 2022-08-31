@@ -24,12 +24,9 @@
 
   .media-sticker,
   .rlottie {
+    margin: 0;
     width: inherit !important;
     height: inherit !important;
-  }
-
-  .media-sticker.thumbnail {
-    margin: 0;
   }
 
   &-canvas {
