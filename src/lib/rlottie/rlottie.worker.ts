@@ -5,6 +5,7 @@
  */
 
 import CAN_USE_TRANSFERABLES from '../../environment/canUseTransferables';
+import IS_IMAGE_BITMAP_SUPPORTED from '../../environment/imageBitmapSupport';
 import readBlobAsText from '../../helpers/blob/readBlobAsText';
 import applyReplacements from './applyReplacements';
 
@@ -27,6 +28,8 @@ export class RLottieItem {
 
   private dead: boolean;
   // private context: OffscreenCanvasRenderingContext2D;
+
+  private imageData: ImageData;
 
   constructor(
     private reqId: number,
@@ -62,10 +65,14 @@ export class RLottieItem {
 
       worker.Api.resize(this.handle, this.width, this.height);
 
-      reply('loaded', this.reqId, this.frameCount, this.fps);
+      reply(['loaded', this.reqId, this.frameCount, this.fps]);
+
+      if(IS_IMAGE_BITMAP_SUPPORTED) {
+        this.imageData = new ImageData(this.width, this.height);
+      }
     } catch(e) {
       console.error('init RLottieItem error:', e);
-      reply('error', this.reqId, e);
+      reply(['error', this.reqId, e]);
     }
   }
 
@@ -84,19 +91,26 @@ export class RLottieItem {
 
       const data = _Module.HEAPU8.subarray(bufferPointer, bufferPointer + (this.width * this.height * 4));
 
-      if(!clamped) {
-        clamped = new Uint8ClampedArray(data);
+      if(this.imageData) {
+        this.imageData.data.set(data);
+        createImageBitmap(this.imageData).then((imageBitmap) => {
+          reply(['frame', this.reqId, frameNo, imageBitmap], [imageBitmap]);
+        });
       } else {
-        clamped.set(data);
+        if(!clamped) {
+          clamped = new Uint8ClampedArray(data);
+        } else {
+          clamped.set(data);
+        }
+
+        // this.context.putImageData(new ImageData(clamped, this.width, this.height), 0, 0);
+
+        reply(['frame', this.reqId, frameNo, clamped], [clamped]);
       }
-
-      // this.context.putImageData(new ImageData(clamped, this.width, this.height), 0, 0);
-
-      reply('frame', this.reqId, frameNo, clamped);
     } catch(e) {
       console.error('Render error:', e);
       this.dead = true;
-      reply('error', this.reqId, e);
+      reply(['error', this.reqId, e]);
     }
   }
 
@@ -132,7 +146,7 @@ class RLottieWorker {
 
   public init() {
     this.initApi();
-    reply('ready');
+    reply(['ready']);
   }
 }
 
@@ -174,7 +188,7 @@ const queryableFunctions = {
         item.init(json, frameRate);
       } catch(err) {
         console.error('Invalid file for sticker:', json);
-        reply('error', reqId, err);
+        reply(['error', reqId, err]);
       }
     });
   },
@@ -193,31 +207,8 @@ const queryableFunctions = {
   }
 };
 
-function reply(...args: any[]) {
-  if(arguments.length < 1) {
-    throw new TypeError('reply - not enough arguments');
-  }
-
-  // if(arguments[0] === 'frame') return;
-
-  args = Array.prototype.slice.call(arguments, 1);
-
-  if(!CAN_USE_TRANSFERABLES) {
-    postMessage({queryMethodListener: arguments[0], queryMethodArguments: args});
-  } else {
-    const transfer: ArrayBuffer[] = [];
-    for(let i = 0; i < args.length; ++i) {
-      if(args[i] instanceof ArrayBuffer) {
-        transfer.push(args[i]);
-      }
-
-      if(args[i].buffer && args[i].buffer instanceof ArrayBuffer) {
-        transfer.push(args[i].buffer);
-      }
-    }
-
-    postMessage({queryMethodListener: arguments[0], queryMethodArguments: args}, transfer);
-  }
+function reply(args: any[], transfer?: Transferable[]) {
+  postMessage({queryMethodListener: args.shift(), queryMethodArguments: args}, CAN_USE_TRANSFERABLES ? transfer : undefined);
 }
 
 onmessage = function(e) {

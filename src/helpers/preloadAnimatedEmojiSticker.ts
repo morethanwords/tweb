@@ -33,7 +33,7 @@ export default function preloadAnimatedEmojiSticker(emoji: string, width?: numbe
       }, 'none');
 
       animation.addEventListener('firstFrame', () => {
-        saveLottiePreview(doc, animation.canvas, toneIndex);
+        saveLottiePreview(doc, animation.canvas[0], toneIndex);
         animation.remove();
       }, {once: true});
     });

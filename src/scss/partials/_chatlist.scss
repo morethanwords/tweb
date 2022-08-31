@@ -479,6 +479,7 @@ ul.chatlist {
   .user-title, 
   .user-last-message {
     flex-grow: 1;
+    position: relative; // * for custom emoji
 
     i {
       font-style: normal;

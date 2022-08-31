@@ -134,6 +134,7 @@ export class AppDocsManager extends AppManager {
           }
           break;
 
+        case 'documentAttributeCustomEmoji':
         case 'documentAttributeSticker':
           if(attribute.alt !== undefined) {
             doc.stickerEmojiRaw = attribute.alt;
@@ -153,7 +154,7 @@ export class AppDocsManager extends AppManager {
             doc.sticker = 1;
           } else if(doc.mime_type === 'video/webm') {
             if(!getEnvironment().IS_WEBM_SUPPORTED) {
-              return;
+              break;
             }
 
             doc.type = 'sticker';

@@ -10,12 +10,12 @@ import {IS_ANDROID, IS_APPLE_MOBILE, IS_APPLE, IS_SAFARI} from '../../environmen
 import EventListenerBase from '../../helpers/eventListenerBase';
 import mediaSizes from '../../helpers/mediaSizes';
 import clamp from '../../helpers/number/clamp';
-import lottieLoader from './lottieLoader';
 import QueryableWorker from './queryableWorker';
 import {AnimationItemGroup} from '../../components/animationIntersector';
+import IS_IMAGE_BITMAP_SUPPORTED from '../../environment/imageBitmapSupport';
 
 export type RLottieOptions = {
-  container: HTMLElement,
+  container: HTMLElement | HTMLElement[],
   canvas?: HTMLCanvasElement,
   autoplay?: boolean,
   animationData: Blob,
@@ -31,27 +31,58 @@ export type RLottieOptions = {
   inverseColor?: RLottieColor,
   name?: string,
   skipFirstFrameRendering?: boolean,
-  toneIndex?: number
+  toneIndex?: number,
+  sync?: boolean
 };
 
 type RLottieCacheMap = Map<number, Uint8ClampedArray>;
+type RLottieCacheMapNew = Map<number, HTMLCanvasElement | ImageBitmap>;
+type RLottieCacheMapURLs = Map<number, string>;
+type RLottieCacheItem = {
+  frames: RLottieCacheMap,
+  framesNew: RLottieCacheMapNew,
+  framesURLs: RLottieCacheMapURLs,
+  clearCache: () => void,
+  counter: number
+};
+
 class RLottieCache {
-  private cache: Map<string, {frames: RLottieCacheMap, counter: number}>;
+  private cache: Map<string, RLottieCacheItem>;
 
   constructor() {
     this.cache = new Map();
   }
 
+  public static createCache(): RLottieCacheItem {
+    const cache: RLottieCacheItem = {
+      frames: new Map(),
+      framesNew: new Map(),
+      framesURLs: new Map(),
+      clearCache: () => {
+        cache.framesNew.forEach((value) => {
+          (value as ImageBitmap).close?.();
+        });
+
+        cache.frames.clear();
+        cache.framesNew.clear();
+        cache.framesURLs.clear();
+      },
+      counter: 0
+    };
+
+    return cache;
+  }
+
   public getCache(name: string) {
     let cache = this.cache.get(name);
     if(!cache) {
-      this.cache.set(name, cache = {frames: new Map(), counter: 0});
+      this.cache.set(name, cache = RLottieCache.createCache());
     } else {
       // console.warn('[RLottieCache] cache will be reused', cache);
     }
 
     ++cache.counter;
-    return cache.frames;
+    return cache;
   }
 
   public releaseCache(name: string) {
@@ -90,6 +121,7 @@ export default class RLottiePlayer extends EventListenerBase<{
   cached: () => void,
   destroy: () => void
 }> {
+  public static CACHE = cache;
   private static reqId = 0;
 
   public reqId = 0;
@@ -97,8 +129,8 @@ export default class RLottiePlayer extends EventListenerBase<{
   private frameCount: number;
   private fps: number;
   private skipDelta: number;
-  private name: string;
-  private cacheName: string;
+  public name: string;
+  public cacheName: string;
   private toneIndex: number;
 
   private worker: QueryableWorker;
@@ -106,9 +138,9 @@ export default class RLottiePlayer extends EventListenerBase<{
   private width = 0;
   private height = 0;
 
-  public el: HTMLElement;
-  public canvas: HTMLCanvasElement;
-  private context: CanvasRenderingContext2D;
+  public el: HTMLElement[];
+  public canvas: HTMLCanvasElement[];
+  private contexts: CanvasRenderingContext2D[];
 
   public paused = true;
   // public paused = false;
@@ -127,7 +159,7 @@ export default class RLottiePlayer extends EventListenerBase<{
   // private caching = false;
   // private removed = false;
 
-  private frames: RLottieCacheMap;
+  private cache: RLottieCacheItem;
   private imageData: ImageData;
   public clamped: Uint8ClampedArray;
   private cachingDelta = 0;
@@ -146,8 +178,11 @@ export default class RLottiePlayer extends EventListenerBase<{
   private skipFirstFrameRendering: boolean;
   private playToFrameOnFrameCallback: (frameNo: number) => void;
 
+  public overrideRender: (frame: ImageData | HTMLCanvasElement | ImageBitmap) => void;
+  private renderedFirstFrame: boolean;
+
   constructor({el, worker, options}: {
-    el: HTMLElement,
+    el: RLottiePlayer['el'],
     worker: QueryableWorker,
     options: RLottieOptions
   }) {
@@ -175,6 +210,10 @@ export default class RLottiePlayer extends EventListenerBase<{
     this.skipFirstFrameRendering = options.skipFirstFrameRendering;
     this.toneIndex = options.toneIndex;
 
+    if(this.name) {
+      this.cacheName = cache.generateName(this.name, this.width, this.height, this.color, this.toneIndex);
+    }
+
     // * Skip ratio (30fps)
     let skipRatio: number;
     if(options.skipRatio !== undefined) skipRatio = options.skipRatio;
@@ -187,33 +226,19 @@ export default class RLottiePlayer extends EventListenerBase<{
     // options.needUpscale = true;
 
     // * Pixel ratio
-    // const pixelRatio = window.devicePixelRatio;
-    const pixelRatio = clamp(window.devicePixelRatio, 1, 2);
-    if(pixelRatio > 1) {
-      // this.cachingEnabled = true;//this.width < 100 && this.height < 100;
-      if(options.needUpscale) {
-        this.width = Math.round(this.width * pixelRatio);
-        this.height = Math.round(this.height * pixelRatio);
-      } else if(pixelRatio > 1) {
-        if(this.width > 100 && this.height > 100) {
-          if(IS_APPLE || !mediaSizes.isMobile) {
-            /* this.width = Math.round(this.width * (pixelRatio - 1));
-            this.height = Math.round(this.height * (pixelRatio - 1)); */
-            this.width = Math.round(this.width * pixelRatio);
-            this.height = Math.round(this.height * pixelRatio);
-          } else if(pixelRatio > 2.5) {
-            this.width = Math.round(this.width * (pixelRatio - 1.5));
-            this.height = Math.round(this.height * (pixelRatio - 1.5));
-          }
-        } else {
-          this.width = Math.round(this.width * Math.max(1.5, pixelRatio - 1.5));
-          this.height = Math.round(this.height * Math.max(1.5, pixelRatio - 1.5));
+    let pixelRatio = clamp(window.devicePixelRatio, 1, 2);
+    if(pixelRatio > 1 && !options.needUpscale) {
+      if(this.width > 100 && this.height > 100) {
+        if(!IS_APPLE && mediaSizes.isMobile) {
+          pixelRatio = 1;
         }
+      } else if(this.width > 60 && this.height > 60) {
+        pixelRatio = Math.max(1.5, pixelRatio - 1.5);
       }
     }
 
-    this.width = Math.round(this.width);
-    this.height = Math.round(this.height);
+    this.width = Math.round(this.width * pixelRatio);
+    this.height = Math.round(this.height * pixelRatio);
 
     // options.noCache = true;
 
@@ -230,35 +255,36 @@ export default class RLottiePlayer extends EventListenerBase<{
     }
 
     // this.cachingDelta = Infinity;
+    // this.cachingDelta = 0;
     // if(isApple) {
     //   this.cachingDelta = 0; //2 // 50%
     // }
 
-    /* this.width *= 0.8;
-    this.height *= 0.8; */
-
-    // console.log("RLottiePlayer width:", this.width, this.height, options);
     if(!this.canvas) {
-      this.canvas = document.createElement('canvas');
-      this.canvas.classList.add('rlottie');
-      this.canvas.width = this.width;
-      this.canvas.height = this.height;
-      this.canvas.dpr = pixelRatio;
+      this.canvas = this.el.map(() => {
+        const canvas = document.createElement('canvas');
+        canvas.classList.add('rlottie');
+        canvas.width = this.width;
+        canvas.height = this.height;
+        canvas.dpr = pixelRatio;
+        return canvas;
+      });
     }
 
-    this.context = this.canvas.getContext('2d');
+    this.contexts = this.canvas.map((canvas) => canvas.getContext('2d'));
 
-    if(CAN_USE_TRANSFERABLES) {
-      this.clamped = new Uint8ClampedArray(this.width * this.height * 4);
+    if(!IS_IMAGE_BITMAP_SUPPORTED) {
+      this.imageData = new ImageData(this.width, this.height);
+
+      if(CAN_USE_TRANSFERABLES) {
+        this.clamped = new Uint8ClampedArray(this.width * this.height * 4);
+      }
     }
-
-    this.imageData = new ImageData(this.width, this.height);
 
     if(this.name) {
-      this.cacheName = cache.generateName(this.name, this.width, this.height, this.color, this.toneIndex);
-      this.frames = cache.getCache(this.cacheName);
+      this.cache = cache.getCache(this.cacheName);
     } else {
-      this.frames = new Map();
+      this.cache = RLottieCache.createCache();
     }
   }
 
@@ -267,30 +293,25 @@ export default class RLottiePlayer extends EventListenerBase<{
       return;
     }
 
-    if(this.cacheName && cache.getCacheCounter(this.cacheName) > 1) { // skip clearing because same sticker can be still visible
+    if(this.cacheName && this.cache.counter > 1) { // skip clearing because same sticker can be still visible
       return;
     }
 
-    this.frames.clear();
+    this.cache.clearCache();
   }
 
-  public sendQuery(methodName: string, ...args: any[]) {
-    // console.trace('RLottie sendQuery:', methodName);
-    this.worker.sendQuery(methodName, this.reqId, ...args);
+  public sendQuery(args: any[]) {
+    this.worker.sendQuery([args.shift(), this.reqId, ...args]);
   }
 
   public loadFromData(data: RLottieOptions['animationData']) {
-    this.sendQuery('loadFromData', data, this.width, this.height, this.toneIndex/* , this.canvas.transferControlToOffscreen() */);
+    this.sendQuery(['loadFromData', data, this.width, this.height, this.toneIndex/* , this.canvas.transferControlToOffscreen() */]);
   }
 
   public play() {
     if(!this.paused) {
       return;
     }
-
-    // return;
-
-    // console.log('RLOTTIE PLAY' + this.reqId);
 
     this.paused = false;
     this.setMainLoop();
@@ -352,13 +373,10 @@ export default class RLottiePlayer extends EventListenerBase<{
   }
 
   public remove() {
-    // alert('remove');
-    lottieLoader.onDestroy(this.reqId);
     this.pause();
-    this.sendQuery('destroy');
+    this.sendQuery(['destroy']);
     if(this.cacheName) cache.releaseCache(this.cacheName);
     this.dispatchEvent('destroy');
-    // this.removed = true;
     this.cleanup();
   }
 
@@ -387,40 +405,73 @@ export default class RLottiePlayer extends EventListenerBase<{
     }
   }
 
-  public renderFrame2(frame: Uint8ClampedArray, frameNo: number) {
+  public renderFrame2(frame: Uint8ClampedArray | HTMLCanvasElement | ImageBitmap, frameNo: number) {
     /* this.setListenerResult('enterFrame', frameNo);
     return; */
 
     try {
-      if(this.color) {
-        this.applyColor(frame);
-      }
+      if(frame instanceof Uint8ClampedArray) {
+        if(this.color) {
+          this.applyColor(frame);
+        }
 
-      if(this.inverseColor) {
-        this.applyInversing(frame);
-      }
+        if(this.inverseColor) {
+          this.applyInversing(frame);
+        }
 
-      this.imageData.data.set(frame);
+        this.imageData.data.set(frame);
+      }
 
       // this.context.putImageData(new ImageData(frame, this.width, this.height), 0, 0);
-      // let perf = performance.now();
-      this.context.putImageData(this.imageData, 0, 0);
-      // console.log('renderFrame2 perf:', performance.now() - perf);
+      this.contexts.forEach((context, idx) => {
+        let cachedSource: HTMLCanvasElement | ImageBitmap = this.cache.framesNew.get(frameNo);
+        if(!(frame instanceof Uint8ClampedArray)) {
+          cachedSource = frame;
+        } else if(idx > 0) {
+          cachedSource = this.canvas[0];
+        }
+
+        if(!cachedSource) {
+          // console.log('drawing from data');
+          const c = document.createElement('canvas');
+          c.width = context.canvas.width;
+          c.height = context.canvas.height;
+          c.getContext('2d').putImageData(this.imageData, 0, 0);
+          this.cache.framesNew.set(frameNo, c);
+          cachedSource = c;
+        }
+
+        if(this.overrideRender && this.renderedFirstFrame) {
+          this.overrideRender(cachedSource || this.imageData);
+        } else if(cachedSource) {
+          // console.log('drawing from canvas');
+          context.clearRect(0, 0, cachedSource.width, cachedSource.height);
+          context.drawImage(cachedSource, 0, 0);
+        } else {
+          context.putImageData(this.imageData, 0, 0);
+        }
+
+        if(!this.renderedFirstFrame) {
+          this.renderedFirstFrame = true;
+        }
+      });
+
+      this.dispatchEvent('enterFrame', frameNo);
     } catch(err) {
       console.error('RLottiePlayer renderFrame error:', err/* , frame */, this.width, this.height);
       this.autoplay = false;
       this.pause();
-      return;
     }
-
-    // console.log('set result enterFrame', frameNo);
-    this.dispatchEvent('enterFrame', frameNo);
   }
 
-  public renderFrame(frame: Uint8ClampedArray, frameNo: number) {
-    // console.log('renderFrame', frameNo, this);
-    if(this.cachingDelta && (frameNo % this.cachingDelta || !frameNo) && !this.frames.has(frameNo)) {
-      this.frames.set(frameNo, new Uint8ClampedArray(frame));// frame;
+  public renderFrame(frame: Parameters<RLottiePlayer['renderFrame2']>[0], frameNo: number) {
+    const canCacheFrame = this.cachingDelta && (frameNo % this.cachingDelta || !frameNo);
+    if(canCacheFrame) {
+      if(frame instanceof Uint8ClampedArray && !this.cache.frames.has(frameNo)) {
+        this.cache.frames.set(frameNo, new Uint8ClampedArray(frame));// frame;
+      } else if(IS_IMAGE_BITMAP_SUPPORTED && frame instanceof ImageBitmap && !this.cache.framesNew.has(frameNo)) {
+        this.cache.framesNew.set(frameNo, frame);
+      }
     }
 
     /* if(!this.listenerResults.hasOwnProperty('cached')) {
@@ -434,14 +485,15 @@ export default class RLottiePlayer extends EventListenerBase<{
 
     if(this.frInterval) {
       const now = Date.now(), delta = now - this.frThen;
-      // console.log(`renderFrame delta${this.reqId}:`, this, delta, this.frInterval);
 
       if(delta < 0) {
+        const timeout = this.frInterval > -delta ? -delta % this.frInterval : this.frInterval;
         if(this.rafId) clearTimeout(this.rafId);
-        return this.rafId = window.setTimeout(() => {
+        this.rafId = window.setTimeout(() => {
           this.renderFrame2(frame, frameNo);
-        }, this.frInterval > -delta ? -delta % this.frInterval : this.frInterval);
+        }, timeout);
         // await new Promise((resolve) => setTimeout(resolve, -delta % this.frInterval));
+        return;
       }
     }
 
@@ -449,15 +501,18 @@ export default class RLottiePlayer extends EventListenerBase<{
   }
 
   public requestFrame(frameNo: number) {
-    const frame = this.frames.get(frameNo);
-    if(frame) {
+    const frame = this.cache.frames.get(frameNo);
+    const frameNew = this.cache.framesNew.get(frameNo);
+    if(frameNew) {
+      this.renderFrame(frameNew, frameNo);
+    } else if(frame) {
       this.renderFrame(frame, frameNo);
     } else {
       if(this.clamped && !this.clamped.length) { // fix detached
         this.clamped = new Uint8ClampedArray(this.width * this.height * 4);
       }
 
-      this.sendQuery('renderFrame', frameNo, this.clamped);
+      this.sendQuery(['renderFrame', frameNo, this.clamped]);
     }
   }
 
@@ -644,8 +699,8 @@ export default class RLottiePlayer extends EventListenerBase<{
     this.addEventListener('enterFrame', () => {
       this.dispatchEvent('firstFrame');
 
-      if(!this.canvas.parentNode && this.el) {
-        this.el.appendChild(this.canvas);
+      if(!this.canvas[0].parentNode && this.el && !this.overrideRender) {
+        this.el.forEach((container, idx) => container.append(this.canvas[idx]));
       }
 
       // console.log('enterFrame firstFrame');
@@ -672,6 +727,7 @@ export default class RLottiePlayer extends EventListenerBase<{
       };
 
       this.addEventListener('enterFrame', this.frameListener);
+      // setInterval(this.frameListener, this.frInterval);
 
       // ! fix autoplaying since there will be no animationIntersector for it,
       if(this.group === 'none' && this.autoplay) {

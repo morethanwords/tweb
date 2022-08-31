@@ -153,6 +153,7 @@
   &-subtitle {
     font-size: var(--font-size-14);
     line-height: var(--line-height-14);
+    position: relative; // ! WARNING (for custom emoji)
 
     @include text-overflow();
   }

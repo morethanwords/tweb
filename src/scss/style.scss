@@ -114,6 +114,8 @@ $chat-input-inner-padding-handhelds: .25rem;
   --call-button-size: 3.375rem;
   --call-button-margin: 2rem;
 
+  --custom-emoji-size: 1.125rem;
+
   // https://github.com/overtake/TelegramSwift/blob/5cc7d2475fe4738a6aa0486c23eaf80a89d33b97/submodules/TGUIKit/TGUIKit/PresentationTheme.swift#L2054
   --peer-avatar-red-top: #ff885e;
   --peer-avatar-red-bottom: #ff516a;
@@ -362,6 +364,7 @@ $chat-input-inner-padding-handhelds: .25rem;
 @import "partials/reaction";
 @import "partials/stackedAvatars";
 @import "partials/stickerViewer";
+@import "partials/customEmoji";
 
 @import "partials/popups/popup";
 @import "partials/popups/editAvatar";
@@ -913,12 +916,13 @@ hr {
 
 span.emoji {
   display: inline !important;
-  vertical-align: unset !important;
   //line-height: 1em;
   //font-size: 1em;
-
+  
   font-family: apple color emoji,segoe ui emoji,noto color emoji,android emoji,emojisymbols,emojione mozilla,twemoji mozilla,segoe ui symbol;
+  vertical-align: unset !important;
   line-height: 1 !important;
+  // vertical-align: text-top !important;
 }
 
 // non-Retina device

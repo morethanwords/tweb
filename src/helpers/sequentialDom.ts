@@ -49,7 +49,7 @@ class SequentialDom {
     const promise = isConnected ? this.mutate() : Promise.resolve();
 
     if(callback !== undefined) {
-      if(isConnected) {
+      if(!isConnected) {
         callback();
       } else {
         promise.then(() => callback());

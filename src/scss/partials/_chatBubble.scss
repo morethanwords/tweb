@@ -608,10 +608,22 @@ $bubble-beside-button-width: 38px;
   }
   
   &.emoji-big {
+    --emoji-size: 1rem;
     font-size: 0;
 
     .bubble-content {
       line-height: 1;
+    }
+
+    .attachment {
+      --custom-emoji-size: var(--emoji-size);
+
+      img.emoji {
+        width: var(--emoji-size);
+        height: var(--emoji-size);
+        max-width: 64px;
+        max-height: 64px;
+      }
     }
     
     &:not(.sticker) {
@@ -620,6 +632,11 @@ $bubble-beside-button-width: 38px;
         padding-bottom: 1.5rem;
         //max-width: fit-content!important;
         max-height: fit-content!important;
+
+        display: block;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-size: var(--emoji-size);
         
         span.emoji {
           height: auto;
@@ -637,6 +654,10 @@ $bubble-beside-button-width: 38px;
       .message {
         margin-top: -1.125rem;
       }
+
+      .bubble-content {
+        max-width: unquote('min(420px, 100%)');
+      }
     }
     
     /* &.sticker .bubble-content {
@@ -644,33 +665,6 @@ $bubble-beside-button-width: 38px;
       max-height: 140px !important;
       user-select: none !important;
     } */
-  }
-  
-  &.emoji-1x .attachment {
-    font-size: 96px;
-    
-    img.emoji {
-      height: 64px;
-      width: 64px;
-    }
-  }
-  
-  &.emoji-2x .attachment {
-    font-size: 64px;
-    
-    img.emoji {
-      height: 48px;
-      width: 48px;
-    }
-  } 
-  
-  &.emoji-3x .attachment {
-    font-size: 52px;
-    
-    img.emoji {
-      height: 32px;
-      width: 32px;
-    }
   }
   
   &.just-media {

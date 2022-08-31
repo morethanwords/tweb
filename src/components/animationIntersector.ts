@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type {CustomEmojiRendererElement} from '../lib/richTextProcessor/wrapRichText';
 import rootScope from '../lib/rootScope';
 import {IS_SAFARI} from '../environment/userAgent';
 import {MOUNT_CLASS_TO} from '../config/debug';
@@ -13,14 +14,15 @@ import indexOfAndSplice from '../helpers/array/indexOfAndSplice';
 import forEachReverse from '../helpers/array/forEachReverse';
 import idleController from '../helpers/idleController';
 import appMediaPlaybackController from './appMediaPlaybackController';
+import {fastRaf} from '../helpers/schedulers';
 
 export type AnimationItemGroup = '' | 'none' | 'chat' | 'lock' |
   'STICKERS-POPUP' | 'emoticons-dropdown' | 'STICKERS-SEARCH' | 'GIFS-SEARCH' |
-  `CHAT-MENU-REACTIONS-${number}` | 'INLINE-HELPER' | 'GENERAL-SETTINGS' | 'STICKER-VIEWER';
+  `CHAT-MENU-REACTIONS-${number}` | 'INLINE-HELPER' | 'GENERAL-SETTINGS' | 'STICKER-VIEWER' | 'EMOJI';
 export interface AnimationItem {
   el: HTMLElement,
   group: AnimationItemGroup,
-  animation: RLottiePlayer | HTMLVideoElement
+  animation: RLottiePlayer | HTMLVideoElement | CustomEmojiRendererElement
 };
 
 export class AnimationIntersector {
@@ -47,33 +49,35 @@ export class AnimationIntersector {
             continue;
           }
 
-          const player = this.byGroups[group as AnimationItemGroup].find((p) => p.el === target);
-          if(player) {
-            if(entry.isIntersecting) {
-              this.visible.add(player);
-              this.checkAnimation(player, false);
-
-              /* if(animation instanceof HTMLVideoElement && animation.dataset.src) {
-                animation.src = animation.dataset.src;
-                animation.load();
-              } */
-            } else {
-              this.visible.delete(player);
-              this.checkAnimation(player, true);
-
-              const animation = player.animation;
-              if(animation instanceof RLottiePlayer/*  && animation.cachingDelta === 2 */) {
-                // console.warn('will clear cache', player);
-                animation.clearCache();
-              }/*  else if(animation instanceof HTMLVideoElement && animation.src) {
-                animation.dataset.src = animation.src;
-                animation.src = '';
-                animation.load();
-              } */
-            }
-
-            break;
+          const animation = this.byGroups[group as AnimationItemGroup].find((p) => p.el === target);
+          if(!animation) {
+            continue;
           }
+
+          if(entry.isIntersecting) {
+            this.visible.add(animation);
+            this.checkAnimation(animation, false);
+
+            /* if(animation instanceof HTMLVideoElement && animation.dataset.src) {
+              animation.src = animation.dataset.src;
+              animation.load();
+            } */
+          } else {
+            this.visible.delete(animation);
+            this.checkAnimation(animation, true);
+
+            const _animation = animation.animation;
+            if(_animation instanceof RLottiePlayer/*  && animation.cachingDelta === 2 */) {
+              // console.warn('will clear cache', player);
+              _animation.clearCache();
+            }/*  else if(animation instanceof HTMLVideoElement && animation.src) {
+              animation.dataset.src = animation.src;
+              animation.src = '';
+              animation.load();
+            } */
+          }
+
+          break;
         }
       }
     });
@@ -118,7 +122,6 @@ export class AnimationIntersector {
   }
 
   public removeAnimation(player: AnimationItem) {
-    // console.log('destroy animation');
     const {el, animation} = player;
     animation.remove();
 
@@ -141,21 +144,21 @@ export class AnimationIntersector {
     this.visible.delete(player);
   }
 
-  public addAnimation(animation: RLottiePlayer | HTMLVideoElement, group: AnimationItemGroup = '') {
-    const player: AnimationItem = {
-      el: animation instanceof RLottiePlayer ? animation.el : animation,
-      animation: animation,
+  public addAnimation(_animation: AnimationItem['animation'], group: AnimationItemGroup = '') {
+    const animation: AnimationItem = {
+      el: _animation instanceof RLottiePlayer ? _animation.el[0] : (_animation instanceof HTMLVideoElement ? _animation : _animation.canvas),
+      animation: _animation,
       group
     };
 
-    if(animation instanceof RLottiePlayer) {
-      if(!rootScope.settings.stickers.loop && animation.loop) {
-        animation.loop = rootScope.settings.stickers.loop;
+    if(_animation instanceof RLottiePlayer) {
+      if(!rootScope.settings.stickers.loop && _animation.loop) {
+        _animation.loop = rootScope.settings.stickers.loop;
       }
     }
 
-    (this.byGroups[group as AnimationItemGroup] ??= []).push(player);
-    this.observer.observe(player.el);
+    (this.byGroups[group as AnimationItemGroup] ??= []).push(animation);
+    this.observer.observe(animation.el);
   }
 
   public checkAnimations(blurred?: boolean, group?: AnimationItemGroup, destroy = false) {
@@ -171,8 +174,8 @@ export class AnimationIntersector {
     for(const group of groups) {
       const animations = this.byGroups[group];
 
-      forEachReverse(animations, (player) => {
-        this.checkAnimation(player, blurred, destroy);
+      forEachReverse(animations, (animation) => {
+        this.checkAnimation(animation, blurred, destroy);
       });
     }
   }
@@ -180,7 +183,7 @@ export class AnimationIntersector {
   public checkAnimation(player: AnimationItem, blurred = false, destroy = false) {
     const {el, animation, group} = player;
     // return;
-    if((destroy || (!isInDOM(el) && !this.lockedGroups[group]))/*  && false */) {
+    if(destroy || (!this.lockedGroups[group] && !isInDOM(el))) {
       this.removeAnimation(player);
       return;
     }
@@ -220,17 +223,19 @@ export class AnimationIntersector {
 
   public refreshGroup(group: AnimationItemGroup) {
     const animations = this.byGroups[group];
-    if(animations && animations.length) {
-      animations.forEach((animation) => {
-        this.observer.unobserve(animation.el);
-      });
-
-      window.requestAnimationFrame(() => {
-        animations.forEach((animation) => {
-          this.observer.observe(animation.el);
-        });
-      });
+    if(!animations?.length) {
+      return;
     }
+
+    animations.forEach((animation) => {
+      this.observer.unobserve(animation.el);
+    });
+
+    fastRaf(() => {
+      animations.forEach((animation) => {
+        this.observer.observe(animation.el);
+      });
+    });
   }
 
   public lockIntersectionGroup(group: AnimationItemGroup) {
@@ -244,7 +249,5 @@ export class AnimationIntersector {
 }
 
 const animationIntersector = new AnimationIntersector();
-if(MOUNT_CLASS_TO) {
-  MOUNT_CLASS_TO.animationIntersector = animationIntersector;
-}
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.animationIntersector = animationIntersector);
 export default animationIntersector;

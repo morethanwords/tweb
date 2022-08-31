@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {IS_SAFARI} from '../../environment/userAgent';
+import CAN_USE_TRANSFERABLES from '../../environment/canUseTransferables';
 import EventListenerBase from '../../helpers/eventListenerBase';
 
 export default class QueryableWorker extends EventListenerBase<{
   ready: () => void,
-  frame: (reqId: number, frameNo: number, frame: Uint8ClampedArray) => void,
+  frame: (reqId: number, frameNo: number, frame: Uint8ClampedArray | ImageBitmap) => void,
   loaded: (reqId: number, frameCount: number, fps: number) => void,
   error: (reqId: number, error: Error) => void,
   workerError: (error: ErrorEvent) => void
@@ -40,29 +40,10 @@ export default class QueryableWorker extends EventListenerBase<{
     this.worker.terminate();
   }
 
-  public sendQuery(queryMethod: string, ...args: any[]) {
-    if(IS_SAFARI) {
-      this.worker.postMessage({
-        queryMethod: queryMethod,
-        queryMethodArguments: args
-      });
-    } else {
-      const transfer: Transferable[] = [];
-      args.forEach((arg) => {
-        if(arg instanceof ArrayBuffer) {
-          transfer.push(arg);
-        }
-
-        if(typeof(arg) === 'object' && arg.buffer instanceof ArrayBuffer) {
-          transfer.push(arg.buffer);
-        }
-      });
-
-      // console.log('transfer', transfer);
-      this.worker.postMessage({
-        queryMethod: queryMethod,
-        queryMethodArguments: args
-      }, transfer);
-    }
+  public sendQuery(args: any[], transfer?: Transferable[]) {
+    this.worker.postMessage({
+      queryMethod: args.shift(),
+      queryMethodArguments: args
+    }, CAN_USE_TRANSFERABLES ? transfer: undefined);
   }
 }
