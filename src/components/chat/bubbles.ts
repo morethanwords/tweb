@@ -565,6 +565,19 @@ export default class ChatBubbles {
       this.safeRenderMessage(message, true, bubble);
     });
 
+    this.listenerSetter.add(rootScope)('message_error', async({storageKey, tempId}) => {
+      if(storageKey !== this.chat.messagesStorageKey) return;
+
+      const bubble = this.bubbles[tempId];
+      if(!bubble) return;
+
+      await getHeavyAnimationPromise();
+      if(this.bubbles[tempId] !== bubble) return;
+
+      bubble.classList.remove('is-outgoing');
+      bubble.classList.add('is-error');
+    });
+
     this.listenerSetter.add(rootScope)('album_edit', ({peerId, messages, deletedMids}) => {
       if(peerId !== this.peerId) return;
 
@@ -2094,7 +2107,7 @@ export default class ChatBubbles {
         if(bubble) {
           this.unreadOut.delete(msgId);
 
-          if(bubble.classList.contains('is-outgoing')) {
+          if(bubble.classList.contains('is-outgoing') || bubble.classList.contains('is-error')) {
             continue;
           }
 
@@ -3764,12 +3777,13 @@ export default class ChatBubbles {
     if(our) {
       if(message.pFlags.unread || isOutgoing) this.unreadOut.add(message.mid);
       let status = '';
-      if(isOutgoing) status = 'is-sending';
+      if(message.error) status = 'is-error';
+      else if(isOutgoing) status = 'is-sending';
       else status = message.pFlags.unread || (message as Message.message).pFlags.is_scheduled ? 'is-sent' : 'is-read';
       bubble.classList.add(status);
     }
 
-    if(isOutgoing) {
+    if(isOutgoing && !message.error) {
       bubble.classList.add('is-outgoing');
     }
 

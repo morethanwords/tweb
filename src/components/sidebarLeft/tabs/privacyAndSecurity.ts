@@ -32,6 +32,7 @@ import PrivacyType from '../../../lib/appManagers/utils/privacy/privacyType';
 import confirmationPopup, {PopupConfirmationOptions} from '../../confirmationPopup';
 import noop from '../../../helpers/noop';
 import {toastNew} from '../../toast';
+import AppPrivacyVoicesTab from './privacy/voices';
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;
@@ -209,6 +210,19 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         listenerSetter: this.listenerSetter
       });
 
+      const voicesRow = rowsByKeys['inputPrivacyKeyVoiceMessages'] = new Row({
+        titleLangKey: 'PrivacyVoiceMessagesTitle',
+        subtitleLangKey: SUBTITLE,
+        clickable: () => {
+          if(!rootScope.premium) {
+            toastNew({langPackKey: 'PrivacyVoiceMessagesPremiumOnly'});
+          } else {
+            this.slider.createTab(AppPrivacyVoicesTab).open();
+          }
+        },
+        listenerSetter: this.listenerSetter
+      });
+
       const updatePrivacyRow = (key: InputPrivacyKey['_']) => {
         const row = rowsByKeys[key];
         if(!row) {
@@ -236,7 +250,8 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         photoVisibilityRow.container,
         callRow.container,
         linkAccountRow.container,
-        groupChatsAddRow.container
+        groupChatsAddRow.container,
+        voicesRow.container
       );
       this.scrollable.append(section.container);
 

@@ -17,10 +17,9 @@ import emoticonsDropdown from '../emoticonsDropdown';
 import PopupCreatePoll from '../popups/createPoll';
 import PopupForward from '../popups/forward';
 import PopupNewMedia from '../popups/newMedia';
-import {toast} from '../toast';
+import {toast, toastNew} from '../toast';
 import {wrapReply} from '../wrappers';
-import InputField from '../inputField';
-import {MessageEntity, DraftMessage, WebPage, Message, ChatFull, UserFull} from '../../layer';
+import {MessageEntity, DraftMessage, WebPage, Message, UserFull} from '../../layer';
 import StickersHelper from './stickersHelper';
 import ButtonIcon from '../buttonIcon';
 import ButtonMenuToggle from '../buttonMenuToggle';
@@ -96,6 +95,7 @@ import filterAsync from '../../helpers/array/filterAsync';
 import InputFieldAnimated from '../inputFieldAnimated';
 import getStickerEffectThumb from '../../lib/appManagers/utils/stickers/getStickerEffectThumb';
 import PopupStickers from '../popups/stickers';
+import wrapPeerTitle from '../wrappers/peerTitle';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -2086,13 +2086,31 @@ export default class ChatInput {
         this.sendMessage();
       }
     } else {
-      if(this.chat.peerId.isAnyChat() && !(await this.chat.canSend('send_media'))) {
+      const isAnyChat = this.chat.peerId.isAnyChat();
+      if(isAnyChat && !(await this.chat.canSend('send_media'))) {
         toast(POSTING_MEDIA_NOT_ALLOWED);
         return;
       }
 
       this.chatInput.classList.add('is-locked');
       blurActiveElement();
+
+      let restricted = false;
+      if(!isAnyChat) {
+        const userFull = await this.managers.appProfileManager.getProfile(this.chat.peerId.toUserId());
+        if(userFull?.pFlags.voice_messages_forbidden) {
+          toastNew({
+            langPackKey: 'Chat.SendVoice.PrivacyError',
+            langPackArguments: [await wrapPeerTitle({peerId: this.chat.peerId})]
+          });
+          restricted = true;
+        }
+      }
+
+      if(restricted) {
+        this.chatInput.classList.remove('is-locked');
+        return;
+      }
 
       this.recorder.start().then(() => {
         this.releaseMediaPlayback = appMediaPlaybackController.setSingleMedia();
@@ -2427,6 +2445,13 @@ export default class ChatInput {
           ...sendingParams,
           dropAuthor: this.forwardElements && this.forwardElements.hideSender.checkboxField.checked,
           dropCaptions: this.isDroppingCaptions()
+        }).catch(async(err: ApiError) => {
+          if(err.type === 'VOICE_MESSAGES_FORBIDDEN') {
+            toastNew({
+              langPackKey: 'Chat.SendVoice.PrivacyError',
+              langPackArguments: [await wrapPeerTitle({peerId})]
+            });
+          }
         });
       }
 

@@ -30,9 +30,11 @@ export function setSendingStatus(
   message?: Message.message | Message.messageService,
   disableAnimationIfRippleFound?: boolean
 ) {
-  let className: 'check' | 'checks' | 'sending';
+  let className: 'check' | 'checks' | 'sending' | 'sendingerror';
   if(message?.pFlags.out) {
-    if(message.pFlags.is_outgoing) {
+    if(message.error) {
+      className = 'sendingerror';
+    } else if(message.pFlags.is_outgoing) {
       className = 'sending';
     } else if(message.pFlags.unread) {
       className = 'check';

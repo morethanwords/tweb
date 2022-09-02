@@ -6,13 +6,19 @@
 
 import type {MyDocument} from '../lib/appManagers/appDocsManager';
 import type {MyPhoto} from '../lib/appManagers/appPhotosManager';
+import {THUMB_TYPE_FULL} from '../lib/mtproto/mtproto_config';
 import type {ThumbCache} from '../lib/storages/thumbs';
 import getImageFromStrippedThumb from './getImageFromStrippedThumb';
 
 export default function getStrippedThumbIfNeeded(photo: MyPhoto | MyDocument, cacheContext: ThumbCache, useBlur: boolean, ignoreCache = false) {
   const isVideo = (['video', 'gif'] as MyDocument['type'][]).includes((photo as MyDocument).type);
   if(!cacheContext.downloaded || isVideo || ignoreCache) {
-    if(photo._ === 'document' && cacheContext.downloaded && !ignoreCache && !isVideo) {
+    if(
+      photo._ === 'document' &&
+      cacheContext.downloaded &&
+      !ignoreCache &&
+      (!isVideo || cacheContext.type !== THUMB_TYPE_FULL)
+    ) {
       return null;
     }
 

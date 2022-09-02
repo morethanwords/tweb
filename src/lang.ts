@@ -759,6 +759,10 @@ const lang = {
   'NewChatsFromNonContacts': 'New chats from unknown users',
   'ArchiveAndMute': 'Archive and Mute',
   'ArchiveAndMuteInfo': 'Automatically archive and mute new chats, groups and channels from non-contacts.',
+  'PrivacyVoiceMessages': 'Voice Messages',
+  'PrivacyVoiceMessagesTitle': 'Who can send me voice or video messages?',
+  'PrivacyVoiceMessagesInfo': 'You can restrict who can send you voice or video messages with granular precision.',
+  'PrivacyVoiceMessagesPremiumOnly': 'Only subscribers of *Telegram Premium* can restrict receiving voice messages.',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
@@ -835,6 +839,7 @@ const lang = {
   'Chat.DropQuickDesc': 'in a quick way',
   'Chat.DropAsFilesDesc': 'without compression',
   'Chat.Edit.Cancel.Text': 'Are you sure you want to discard all changes?',
+  'Chat.SendVoice.PrivacyError': '%@ doesn\'t accept voice and video messages',
   'Chat.Service.Call.Cancelled': 'Cancelled',
   'Chat.Service.Call.Missed': 'Missed',
   'Chat.Service.PeerJoinedTelegram': '%@ joined Telegram',

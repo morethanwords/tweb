@@ -1892,7 +1892,12 @@ export default class MTPNetworker {
         } */
         const pingId = message.ping_id;
         if(this.lastPingDelayDisconnectId === pingId) {
-          this.pingDelayDisconnectDeferred.resolve('pong');
+          const deferred = this.pingDelayDisconnectDeferred;
+          if(deferred) {
+            deferred.resolve('pong');
+          } else {
+            this.log('ping deferred deleted', pingId);
+          }
         }
 
         break;

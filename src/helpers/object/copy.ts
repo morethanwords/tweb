@@ -16,6 +16,11 @@ export default function copy<T>(obj: T): T {
     return clonedArr;
   }
 
+  if(ArrayBuffer.isView(obj)) {
+    // @ts-ignore
+    return obj.slice();
+  }
+
   // lastly, handle objects
   // @ts-ignore
   const clonedObj = new obj.constructor();

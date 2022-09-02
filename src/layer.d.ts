@@ -881,14 +881,15 @@ export namespace Message {
     viaBotId?: PeerId,
     clear_history?: boolean,
     pending?: boolean,
-    error?: any,
+    error?: ApiError,
     send?: () => Promise<any>,
     totalEntities?: MessageEntity[],
     reply_to_mid?: number,
     savedFrom?: string,
     sponsoredMessage?: SponsoredMessage.sponsoredMessage,
     promise?: CancellablePromise<void>,
-    uploadingFileName?: string
+    uploadingFileName?: string,
+    storageKey?: MessagesStorageKey
   };
 
   export type messageService = {
@@ -920,11 +921,12 @@ export namespace Message {
     rReply?: string,
     viaBotId?: PeerId,
     pending?: boolean,
-    error?: any,
+    error?: ApiError,
     send?: () => Promise<any>,
     random_id?: string,
     reply_to_mid?: number,
-    clear_history?: boolean
+    clear_history?: boolean,
+    storageKey?: MessagesStorageKey
   };
 }
 

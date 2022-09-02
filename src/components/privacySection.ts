@@ -192,7 +192,7 @@ export default class PrivacySection {
           ]>);
           for(const [k, chatKey, usersKey] of a) {
             if(this.exceptions.get(k).row.container.classList.contains('hide')) {
-              return;
+              continue;
             }
 
             const _peerIds = this.peerIds[k];

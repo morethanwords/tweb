@@ -2566,6 +2566,14 @@ $bubble-beside-button-width: 38px;
     }
   }
 
+  &.is-error {
+    .time:after, 
+    .time .inner:after {
+      content: $tgico-sendingerror;
+      color: var(--message-error-color);
+    }
+  }
+
   /* &.is-reply .name {
     display: none;
   } */

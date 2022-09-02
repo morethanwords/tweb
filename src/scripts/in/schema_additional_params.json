@@ -90,7 +90,7 @@
     {"name": "viaBotId", "type": "PeerId"},
     {"name": "clear_history", "type": "boolean"},
     {"name": "pending", "type": "boolean"},
-    {"name": "error", "type": "any"},
+    {"name": "error", "type": "ApiError"},
     {"name": "send", "type": "() => Promise<any>"},
     {"name": "totalEntities", "type": "MessageEntity[]"},
     {"name": "reply_to_mid", "type": "number"},
@@ -99,7 +99,8 @@
     {"name": "local", "type": "true"},
     {"name": "sponsoredMessage", "type": "SponsoredMessage.sponsoredMessage"},
     {"name": "promise", "type": "CancellablePromise<void>"},
-    {"name": "uploadingFileName", "type": "string"}
+    {"name": "uploadingFileName", "type": "string"},
+    {"name": "storageKey", "type": "MessagesStorageKey"}
   ]
 }, {
   "predicate": "messageService",
@@ -114,12 +115,13 @@
     {"name": "viaBotId", "type": "PeerId"},
     {"name": "is_single", "type": "true"},
     {"name": "pending", "type": "boolean"},
-    {"name": "error", "type": "any"},
+    {"name": "error", "type": "ApiError"},
     {"name": "send", "type": "() => Promise<any>"},
     {"name": "random_id", "type": "string"},
     {"name": "reply_to_mid", "type": "number"},
     {"name": "clear_history", "type": "boolean"},
-    {"name": "local", "type": "true"}
+    {"name": "local", "type": "true"},
+    {"name": "storageKey", "type": "MessagesStorageKey"}
   ]
 }, {
   "predicate": "messageEmpty",

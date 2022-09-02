@@ -228,6 +228,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   --message-primary-color: var(--primary-color);
   --light-filled-message-primary-color: var(--light-filled-primary-color);
   --message-secondary-color: var(--secondary-color);
+  --message-error-color: var(--danger-color);
 
   $message-out-background-color: #eeffde;
   @include splitColor(message-out-background-color, $message-out-background-color, true, true);
@@ -300,6 +301,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   --message-checkbox-color: var(--primary-color);
   --message-checkbox-border-color: #fff;
   --message-secondary-color: var(--secondary-color);
+  --message-error-color: #fff;
 
   $message-out-background-color: #8774E1;
   //@include splitColor(message-out-background-color, #ae582d, true, true);
@@ -1636,6 +1638,10 @@ hr {
       background: var(--background);
     }
   } */
+
+  .tgico-sendingerror {
+    color: var(--danger-color);
+  }
 
   &-icon {
     position: absolute;

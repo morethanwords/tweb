@@ -530,17 +530,13 @@ export class AppMessagesManager extends AppManager {
       };
     }
 
-    const toggleError = (on: boolean) => {
-      if(on) {
-        message.error = true;
-      } else {
-        delete message.error;
-      }
+    const toggleError = (error?: ApiError) => {
+      this.onMessagesSendError([message], error);
       this.rootScope.dispatchEvent('messages_pending');
     };
 
     message.send = () => {
-      toggleError(false);
+      toggleError();
       const sentRequestOptions: PendingAfterMsg = {};
       if(this.pendingAfterMsgs[peerId]) {
         sentRequestOptions.afterMessageId = this.pendingAfterMsgs[peerId].messageId;
@@ -637,9 +633,10 @@ export class AppMessagesManager extends AppManager {
         // ApiUpdatesManager.processUpdateMessage(upd)
         // }, 5000)
         message.promise.resolve();
-      }, (error: any) => {
-        toggleError(true);
+      }, (error: ApiError) => {
+        toggleError(error);
         message.promise.reject(error);
+        throw error;
       }).finally(() => {
         if(this.pendingAfterMsgs[peerId] === sentRequestOptions) {
           delete this.pendingAfterMsgs[peerId];
@@ -916,13 +913,8 @@ export class AppMessagesManager extends AppManager {
       this.uploadFilePromises[uploadingFileName] = sentDeferred;
     }
 
-    const toggleError = (on: boolean) => {
-      if(on) {
-        message.error = true;
-      } else {
-        delete message.error;
-      }
-
+    const toggleError = (error?: ApiError) => {
+      this.onMessagesSendError([message], error);
       this.rootScope.dispatchEvent('messages_pending');
     };
 
@@ -1012,8 +1004,9 @@ export class AppMessagesManager extends AppManager {
             }
 
             sentDeferred.resolve(inputMedia);
-          }, (/* error */) => {
-            toggleError(true);
+          }, (error: ApiError) => {
+            toggleError(error);
+            throw error;
           });
 
           return sentDeferred;
@@ -1057,7 +1050,7 @@ export class AppMessagesManager extends AppManager {
           send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined
         }).then((updates) => {
           this.apiUpdatesManager.processUpdateMessage(updates);
-        }, (error) => {
+        }, (error: ApiError) => {
           if(attachType === 'photo' &&
             error.code === 400 &&
             (error.type === 'PHOTO_INVALID_DIMENSIONS' ||
@@ -1068,7 +1061,7 @@ export class AppMessagesManager extends AppManager {
             return;
           }
 
-          toggleError(true);
+          toggleError(error);
           throw error;
         });
       });
@@ -1173,13 +1166,8 @@ export class AppMessagesManager extends AppManager {
     // * test pending
     // return;
 
-    const toggleError = (message: any, on: boolean) => {
-      if(on) {
-        message.error = true;
-      } else {
-        delete message.error;
-      }
-
+    const toggleError = (message: Message.message, error?: ApiError) => {
+      this.onMessagesSendError([message], error);
       this.rootScope.dispatchEvent('messages_pending');
     };
 
@@ -1201,8 +1189,8 @@ export class AppMessagesManager extends AppManager {
           }).then((updates) => {
             this.apiUpdatesManager.processUpdateMessage(updates);
             deferred.resolve();
-          }, (error) => {
-            messages.forEach((message) => toggleError(message, true));
+          }, (error: ApiError) => {
+            messages.forEach((message) => toggleError(message, error));
             deferred.reject(error);
           });
         }
@@ -1243,13 +1231,9 @@ export class AppMessagesManager extends AppManager {
         }
 
         return inputSingleMedia;
-      }).catch((err: any) => {
-        if(err.name === 'AbortError') {
-          return null;
-        }
-
+      }).catch((err: ApiError) => {
         this.log.error('sendAlbum upload item error:', err, message);
-        toggleError(message, true);
+        toggleError(message, err);
         throw err;
       });
     });
@@ -1366,19 +1350,8 @@ export class AppMessagesManager extends AppManager {
 
     message.media = media;
 
-    const toggleError = (on: boolean) => {
-      /* const historyMessage = this.messagesForHistory[messageId];
-      if (on) {
-        message.error = true
-        if (historyMessage) {
-          historyMessage.error = true
-        }
-      } else {
-        delete message.error
-        if (historyMessage) {
-          delete historyMessage.error
-        }
-      } */
+    const toggleError = (error?: ApiError) => {
+      this.onMessagesSendError([message], error);
       this.rootScope.dispatchEvent('messages_pending');
     };
 
@@ -1428,8 +1401,9 @@ export class AppMessagesManager extends AppManager {
         }
 
         this.apiUpdatesManager.processUpdateMessage(updates);
-      }, (error) => {
-        toggleError(true);
+      }, (error: ApiError) => {
+        toggleError(error);
+        throw error;
       }).finally(() => {
         if(this.pendingAfterMsgs[peerId] === sentRequestOptions) {
           delete this.pendingAfterMsgs[peerId];
@@ -1469,6 +1443,7 @@ export class AppMessagesManager extends AppManager {
     const messageId = message.id;
     const peerId = this.getMessagePeer(message);
     const storage = options.isScheduled ? this.getScheduledMessagesStorage(peerId) : this.getHistoryMessagesStorage(peerId);
+    message.storageKey = storage.key;
     const callbacks: Array<() => void> = [];
     if(options.isScheduled) {
       // if(!options.isGroupedItem) {
@@ -2146,6 +2121,9 @@ export class AppMessagesManager extends AppManager {
     }, sentRequestOptions).then((updates) => {
       this.log('forwardMessages updates:', updates);
       this.apiUpdatesManager.processUpdateMessage(updates);
+    }, (error: ApiError) => {
+      this.onMessagesSendError(newMessages, error);
+      throw error;
     }).finally(() => {
       if(this.pendingAfterMsgs[peerId] === sentRequestOptions) {
         delete this.pendingAfterMsgs[peerId];
@@ -2171,6 +2149,26 @@ export class AppMessagesManager extends AppManager {
     //   deleted: true,
     //   pFlags: {}
     // };
+  }
+
+  private onMessagesSendError(messages: Message.message[], error?: ApiError) {
+    messages.forEach((message) => {
+      if(message.error === error) {
+        return;
+      }
+
+      if(error) {
+        message.error = error;
+        this.rootScope.dispatchEvent('message_error', {storageKey: message.storageKey, tempId: message.mid, error});
+
+        const dialog = this.getDialogOnly(message.peerId);
+        if(dialog) {
+          this.rootScope.dispatchEvent('dialog_unread', {peerId: message.peerId, dialog});
+        }
+      } else {
+        delete message.error;
+      }
+    });
   }
 
   public getMessagesStorageByKey(key: MessagesStorageKey) {
@@ -3208,7 +3206,7 @@ export class AppMessagesManager extends AppManager {
       message.pFlags.out ||
       this.appChatsManager.getChat(message.peerId.toChatId())._ === 'chat' ||
       this.appChatsManager.hasRights(message.peerId.toChatId(), 'delete_messages')
-    ) && !message.pFlags.is_outgoing;
+    ) && (!message.pFlags.is_outgoing || !!message.error);
   }
 
   public getReplyKeyboard(peerId: PeerId) {
