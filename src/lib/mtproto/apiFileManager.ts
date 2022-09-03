@@ -698,6 +698,12 @@ export class ApiFileManager extends AppManager {
             // downloadId && this.log('write time', performance.now() - perf, 'request time', requestTime, 'queue time', writeQueueTime);
           }
 
+          if(isFinal) {
+            if(!size || done < size) {
+              prepared.forEach(({writer}) => writer?.trim?.(done));
+            }
+          }
+
           if(isFinal && process) {
             const promises = prepared
             .filter(({writer}) => writer?.getParts && writer.replaceParts)
@@ -714,12 +720,7 @@ export class ApiFileManager extends AppManager {
           writeDeferred.resolve();
 
           if(isFinal) {
-            const realSize = size || byteLength;
-            if(!size || byteLength < size) {
-              prepared.forEach(({writer}) => writer?.trim?.(realSize));
-            }
-
-            const saveToStorage = realSize <= MAX_FILE_SAVE_SIZE;
+            const saveToStorage = done <= MAX_FILE_SAVE_SIZE;
             prepared.forEach((item) => {
               const {deferred, writer} = item;
               if(deferred.isFulfilled || deferred.isRejected || !writer) {
