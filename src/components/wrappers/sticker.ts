@@ -713,7 +713,7 @@ export async function onEmojiStickerClick({event, container, managers, peerId, m
     doc,
     middleware,
     side: isOut ? 'right' : 'left',
-    size: 280,
+    size: 360,
     target: container,
     play: true,
     withRandomOffset: true

@@ -5276,7 +5276,7 @@ export default class ChatBubbles {
     const mids = invisible.map(({element}) => +element.dataset.mid);
 
     let scrollSaver: ScrollSaver;
-    if(!!invisibleTop.length !== !!invisibleBottom.length && !ignoreScrollSaving) {
+    if(/* !!invisibleTop.length !== !!invisibleBottom.length &&  */!ignoreScrollSaving) {
       scrollSaver = this.createScrollSaver(!!invisibleTop.length);
       scrollSaver.save();
     }

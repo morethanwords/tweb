@@ -23,12 +23,12 @@ import IS_CUSTOM_EMOJI_SUPPORTED from '../../environment/customEmojiSupport';
 import rootScope from '../rootScope';
 import mediaSizes from '../../helpers/mediaSizes';
 import {wrapSticker} from '../../components/wrappers';
-import RLottiePlayer, {getLottiePixelRatio} from '../rlottie/rlottiePlayer';
+import RLottiePlayer from '../rlottie/rlottiePlayer';
 import animationIntersector from '../../components/animationIntersector';
 import type {MyDocument} from '../appManagers/appDocsManager';
 import LazyLoadQueue from '../../components/lazyLoadQueue';
 import {Awaited} from '../../types';
-import sequentialDom from '../../helpers/sequentialDom';
+// import sequentialDom from '../../helpers/sequentialDom';
 import {MediaSize} from '../../helpers/mediaSize';
 import IS_WEBM_SUPPORTED from '../../environment/webmSupport';
 
@@ -55,6 +55,9 @@ export class CustomEmojiRendererElement extends HTMLElement {
 
   public middleware: () => boolean;
   public keys: string[];
+
+  public lastRect: DOMRect;
+  public isDimensionsSet: boolean;
 
   constructor() {
     super();
@@ -126,7 +129,11 @@ export class CustomEmojiRendererElement extends HTMLElement {
   }
 
   public render(offsetsMap: ReturnType<CustomEmojiRendererElement['getOffsets']>) {
-    const {context, canvas} = this;
+    const {context, canvas, isDimensionsSet} = this;
+    if(!isDimensionsSet) {
+      this.setDimensionsFromRect();
+    }
+
     const {width, height, dpr} = canvas;
     for(const [containers, player] of this.players) {
       const frame = topFrames.get(player);
@@ -186,17 +193,27 @@ export class CustomEmojiRendererElement extends HTMLElement {
     this.canvas.remove();
   }
 
-  public setDimensions() {
-    const {canvas} = this;
-    sequentialDom.mutateElement(canvas, () => {
-      const rect = canvas.getBoundingClientRect();
-      this.setDimensionsFromRect(rect);
-    });
-  }
+  // public setDimensions() {
+  //   const {canvas} = this;
+  //   sequentialDom.mutateElement(canvas, () => {
+  //     const rect = canvas.getBoundingClientRect();
+  //     this.setDimensionsFromRect(rect);
+  //   });
+  // }
 
-  public setDimensionsFromRect(rect: DOMRect) {
+  public setDimensionsFromRect(rect: DOMRect = this.lastRect) {
     const {canvas} = this;
-    const dpr = canvas.dpr ??= getLottiePixelRatio(rect.width, rect.height);
+    const {dpr} = canvas;
+
+    if(this.lastRect !== rect) {
+      this.lastRect = rect;
+    }
+
+    if(!rect || !dpr) {
+      return;
+    }
+
+    this.isDimensionsSet = true;
     canvas.width = Math.round(rect.width * dpr);
     canvas.height = Math.round(rect.height * dpr);
   }
