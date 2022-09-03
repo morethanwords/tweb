@@ -114,6 +114,21 @@ const cache = new RLottieCache();
 
 export type RLottieColor = [number, number, number];
 
+export function getLottiePixelRatio(width: number, height: number, needUpscale?: boolean) {
+  let pixelRatio = clamp(window.devicePixelRatio, 1, 2);
+  if(pixelRatio > 1 && !needUpscale) {
+    if(width > 90 && height > 90) {
+      if(!IS_APPLE && mediaSizes.isMobile) {
+        pixelRatio = 1;
+      }
+    } else if(width > 60 && height > 60) {
+      pixelRatio = Math.max(1.5, pixelRatio - 1.5);
+    }
+  }
+
+  return pixelRatio;
+}
+
 export default class RLottiePlayer extends EventListenerBase<{
   enterFrame: (frameNo: number) => void,
   ready: () => void,
@@ -226,16 +241,7 @@ export default class RLottiePlayer extends EventListenerBase<{
     // options.needUpscale = true;
 
     // * Pixel ratio
-    let pixelRatio = clamp(window.devicePixelRatio, 1, 2);
-    if(pixelRatio > 1 && !options.needUpscale) {
-      if(this.width > 100 && this.height > 100) {
-        if(!IS_APPLE && mediaSizes.isMobile) {
-          pixelRatio = 1;
-        }
-      } else if(this.width > 60 && this.height > 60) {
-        pixelRatio = Math.max(1.5, pixelRatio - 1.5);
-      }
-    }
+    const pixelRatio = getLottiePixelRatio(this.width, this.height, options.needUpscale);
 
     this.width = Math.round(this.width * pixelRatio);
     this.height = Math.round(this.height * pixelRatio);

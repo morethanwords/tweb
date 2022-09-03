@@ -25,7 +25,7 @@ import {IS_ANDROID, IS_APPLE, IS_MOBILE, IS_SAFARI} from '../../environment/user
 import I18n, {FormatterArguments, i18n, langPack, LangPackKey, UNSUPPORTED_LANG_PACK_KEY, _i18n} from '../../lib/langPack';
 import AvatarElement from '../avatar';
 import ripple from '../ripple';
-import {wrapAlbum, wrapPhoto, wrapVideo, wrapDocument, wrapSticker, wrapPoll, wrapGroupedDocuments} from '../wrappers';
+import {wrapAlbum, wrapPhoto, wrapVideo, wrapDocument, wrapSticker, wrapPoll, wrapGroupedDocuments, wrapStickerAnimation} from '../wrappers';
 import {MessageRender} from './messageRender';
 import LazyLoadQueue from '../lazyLoadQueue';
 import ListenerSetter from '../../helpers/listenerSetter';
@@ -97,7 +97,7 @@ import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import getServerMessageId from '../../lib/appManagers/utils/messageId/getServerMessageId';
 import generateMessageId from '../../lib/appManagers/utils/messageId/generateMessageId';
 import {AppManagers} from '../../lib/appManagers/managers';
-import {Awaited} from '../../types';
+import {Awaited, SendMessageEmojiInteractionData} from '../../types';
 import idleController from '../../helpers/idleController';
 import overlayCounter from '../../helpers/overlayCounter';
 import {cancelContextMenuOpening} from '../../helpers/dom/attachContextMenuListener';
@@ -114,6 +114,11 @@ import isInDOM from '../../helpers/dom/isInDOM';
 import getStickerEffectThumb from '../../lib/appManagers/utils/stickers/getStickerEffectThumb';
 import attachStickerViewerListeners from '../stickerViewer';
 import {makeMediaSize, MediaSize} from '../../helpers/mediaSize';
+import lottieLoader from '../../lib/rlottie/lottieLoader';
+import appDownloadManager from '../../lib/appManagers/appDownloadManager';
+import onMediaLoad from '../../helpers/onMediaLoad';
+import throttle from '../../helpers/schedulers/throttle';
+import {onEmojiStickerClick} from '../wrappers/sticker';
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
@@ -1549,6 +1554,19 @@ export default class ChatBubbles {
 
       const message = reactionsElement.getMessage();
       this.managers.appReactionsManager.sendReaction(message, reactionCount.reaction);
+
+      return;
+    }
+
+    const stickerEmojiEl = findUpAttribute(target, 'data-sticker-emoji');
+    if(stickerEmojiEl) {
+      onEmojiStickerClick({
+        event: e,
+        container: stickerEmojiEl,
+        managers: this.managers,
+        middleware: this.getMiddleware(),
+        peerId: this.peerId
+      });
 
       return;
     }

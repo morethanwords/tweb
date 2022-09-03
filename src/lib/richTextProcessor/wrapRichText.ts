@@ -23,7 +23,7 @@ import IS_CUSTOM_EMOJI_SUPPORTED from '../../environment/customEmojiSupport';
 import rootScope from '../rootScope';
 import mediaSizes from '../../helpers/mediaSizes';
 import {wrapSticker} from '../../components/wrappers';
-import RLottiePlayer from '../rlottie/rlottiePlayer';
+import RLottiePlayer, {getLottiePixelRatio} from '../rlottie/rlottiePlayer';
 import animationIntersector from '../../components/animationIntersector';
 import type {MyDocument} from '../appManagers/appDocsManager';
 import LazyLoadQueue from '../../components/lazyLoadQueue';
@@ -196,7 +196,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
 
   public setDimensionsFromRect(rect: DOMRect) {
     const {canvas} = this;
-    const dpr = canvas.dpr ??= Math.min(2, window.devicePixelRatio);
+    const dpr = canvas.dpr ??= getLottiePixelRatio(rect.width, rect.height);
     canvas.width = Math.round(rect.width * dpr);
     canvas.height = Math.round(rect.height * dpr);
   }

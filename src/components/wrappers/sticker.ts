@@ -81,6 +81,10 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
 }) {
   div = Array.isArray(div) ? div : [div];
 
+  if(isCustomEmoji) {
+    emoji = doc.stickerEmojiRaw;
+  }
+
   const stickerType = doc.sticker;
   if(stickerType === 1) {
     asStatic = true;
@@ -101,6 +105,10 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
 
   div.forEach((div) => {
     div.dataset.docId = '' + doc.id;
+    if(emoji) {
+      div.dataset.stickerEmoji = emoji;
+    }
+
     div.classList.add('media-sticker-wrapper');
   });
 
@@ -162,7 +170,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
     await getCacheContext(fullThumb?.type);
   }
 
-  const toneIndex = emoji ? getEmojiToneIndex(emoji) : -1;
+  const toneIndex = emoji && !isCustomEmoji ? getEmojiToneIndex(emoji) : -1;
   const downloaded = cacheContext.downloaded && !needFadeIn;
 
   const isThumbNeededForType = isAnimated;
@@ -357,7 +365,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
 
         const animation = await lottieLoader.loadAnimationWorker({
           container: (div as HTMLElement[])[0],
-          loop: loop && !emoji,
+          loop: loop && (!emoji || isCustomEmoji),
           autoplay: play,
           animationData: blob,
           width,
@@ -427,109 +435,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
         }, {once: true});
 
         if(emoji) {
-          const data: SendMessageEmojiInteractionData = {
-            a: [],
-            v: 1
-          };
-
-          let sendInteractionThrottled: () => void;
-
           managers.appStickersManager.preloadAnimatedEmojiStickerAnimation(emoji);
-
-          const container = (div as HTMLElement[])[0];
-          attachClickEvent(container, async(e) => {
-            cancelEvent(e);
-            const animation = lottieLoader.getAnimation(container);
-
-            if(animation.paused) {
-              const doc = await managers.appStickersManager.getAnimatedEmojiSoundDocument(emoji);
-              if(doc) {
-                const audio = document.createElement('audio');
-                audio.style.display = 'none';
-                container.parentElement.append(audio);
-
-                try {
-                  const url = await appDownloadManager.downloadMediaURL({media: doc});
-
-                  audio.src = url;
-                  audio.play();
-                  await onMediaLoad(audio, undefined, true);
-
-                  audio.addEventListener('ended', () => {
-                    audio.src = '';
-                    audio.remove();
-                  }, {once: true});
-                } catch(err) {
-
-                }
-              }
-
-              animation.autoplay = true;
-              animation.restart();
-            }
-
-            const peerId = appImManager.chat.peerId;
-            if(!peerId.isUser()) {
-              return;
-            }
-
-            const doc = await managers.appStickersManager.getAnimatedEmojiSticker(emoji, true);
-            if(!doc) {
-              return;
-            }
-
-            const {animationDiv} = wrapStickerAnimation({
-              doc,
-              middleware,
-              side: isOut ? 'right' : 'left',
-              size: 280,
-              target: container,
-              play: true,
-              withRandomOffset: true
-            });
-
-            if(isOut !== undefined && !isOut) {
-              animationDiv.classList.add('reflect-x');
-            }
-
-            if(!sendInteractionThrottled) {
-              sendInteractionThrottled = throttle(() => {
-                const length = data.a.length;
-                if(!length) {
-                  return;
-                }
-
-                const firstTime = data.a[0].t;
-
-                data.a.forEach((a) => {
-                  a.t = (a.t - firstTime) / 1000;
-                });
-
-                const bubble = findUpClassName(container, 'bubble');
-                managers.appMessagesManager.setTyping(appImManager.chat.peerId, {
-                  _: 'sendMessageEmojiInteraction',
-                  msg_id: getServerMessageId(+bubble.dataset.mid),
-                  emoticon: emoji,
-                  interaction: {
-                    _: 'dataJSON',
-                    data: JSON.stringify(data)
-                  }
-                }, true);
-
-                data.a.length = 0;
-              }, 1000, false);
-            }
-
-            // using a trick here: simulated event from interlocutor's interaction won't fire ours
-            if(e.isTrusted) {
-              data.a.push({
-                i: 1,
-                t: Date.now()
-              });
-
-              sendInteractionThrottled();
-            }
-          });
         }
 
         return animation;
@@ -721,4 +627,110 @@ function attachStickerEffectHandler({container, doc, managers, middleware, isOut
       });
     });
   });
+}
+
+export async function onEmojiStickerClick({event, container, managers, peerId, middleware}: {
+  event: Event,
+  container: HTMLElement,
+  managers: AppManagers,
+  peerId: PeerId,
+  middleware: () => boolean
+}) {
+  if(!peerId.isUser()) {
+    return;
+  }
+
+  cancelEvent(event);
+
+  const bubble = findUpClassName(container, 'bubble');
+  const emoji = container.dataset.stickerEmoji;
+  const data: SendMessageEmojiInteractionData = (container as any).emojiData ??= {
+    a: [],
+    v: 1
+  };
+
+  const sendInteractionThrottled: () => void = (container as any).sendInteractionThrottled = throttle(() => {
+    const length = data.a.length;
+    if(!length) {
+      return;
+    }
+
+    const firstTime = data.a[0].t;
+
+    data.a.forEach((a) => {
+      a.t = (a.t - firstTime) / 1000;
+    });
+
+    const bubble = findUpClassName(container, 'bubble');
+    managers.appMessagesManager.setTyping(appImManager.chat.peerId, {
+      _: 'sendMessageEmojiInteraction',
+      msg_id: getServerMessageId(+bubble.dataset.mid),
+      emoticon: emoji,
+      interaction: {
+        _: 'dataJSON',
+        data: JSON.stringify(data)
+      }
+    }, true);
+
+    data.a.length = 0;
+  }, 1000, false);
+
+  const animation = lottieLoader.getAnimation(container);
+  if(animation.paused) {
+    const doc = await managers.appStickersManager.getAnimatedEmojiSoundDocument(emoji);
+    if(doc) {
+      const audio = document.createElement('audio');
+      audio.style.display = 'none';
+      container.parentElement.append(audio);
+
+      try {
+        const url = await appDownloadManager.downloadMediaURL({media: doc});
+
+        audio.src = url;
+        audio.play();
+        await onMediaLoad(audio, undefined, true);
+
+        audio.addEventListener('ended', () => {
+          audio.src = '';
+          audio.remove();
+        }, {once: true});
+      } catch(err) {
+
+      }
+    }
+
+    animation.autoplay = true;
+    animation.restart();
+  }
+
+  const doc = await managers.appStickersManager.getAnimatedEmojiSticker(emoji, true);
+  if(!doc) {
+    return;
+  }
+
+  const isOut = bubble ? bubble.classList.contains('is-out') : undefined;
+  const {animationDiv} = wrapStickerAnimation({
+    doc,
+    middleware,
+    side: isOut ? 'right' : 'left',
+    size: 280,
+    target: container,
+    play: true,
+    withRandomOffset: true
+  });
+
+  if(isOut !== undefined && !isOut) {
+    animationDiv.classList.add('reflect-x');
+  }
+
+  // using a trick here: simulated event from interlocutor's interaction won't fire ours
+  if(event.isTrusted) {
+    data.a.push({
+      i: 1,
+      t: Date.now()
+    });
+
+    sendInteractionThrottled();
+  }
+  // });
 }

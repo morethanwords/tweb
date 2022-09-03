@@ -282,7 +282,7 @@ export class AppImManager extends EventListenerBase<{
       if(typing?.action?._ === 'sendMessageEmojiInteraction') {
         const action = typing.action;
         const bubble = chat.bubbles.bubbles[generateMessageId(typing.action.msg_id)];
-        if(bubble && bubble.classList.contains('emoji-big') && bubble.classList.contains('sticker') && getVisibleRect(bubble, chat.bubbles.scrollable.container)) {
+        if(bubble && bubble.classList.contains('emoji-big') && getVisibleRect(bubble, chat.bubbles.scrollable.container)) {
           const stickerWrapper: HTMLElement = bubble.querySelector('.media-sticker-wrapper:not(.bubble-hover-reaction-sticker):not(.reaction-sticker)');
 
           const data: SendMessageEmojiInteractionData = JSON.parse(action.interaction.data);

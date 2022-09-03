@@ -645,12 +645,12 @@ $bubble-beside-button-width: 38px;
         }
       }
 
-      .chat:not(.no-forwards) & {
-        .attachment {
-          cursor: text;
-          user-select: text;
-        }
-      }
+      // .chat:not(.no-forwards) & {
+      //   .attachment {
+      //     cursor: text;
+      //     user-select: text;
+      //   }
+      // }
 
       .message {
         margin-top: -1.125rem;
