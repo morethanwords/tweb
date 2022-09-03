@@ -61,7 +61,7 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
       };
 
       const openTab = (tabConstructor: SliderSuperTabEventableConstructable) => {
-        const tab = new tabConstructor(this.slider, true);
+        const tab = this.slider.createTab(tabConstructor);
         tab.open();
 
         this.listenerSetter.add(tab.eventListener)('destroy', () => {
@@ -109,6 +109,7 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
           const settings = rootScope.settings;
           settings.autoDownloadNew = copy(STATE_INIT.settings.autoDownloadNew);
           settings.autoDownload = copy(STATE_INIT.settings.autoDownload);
+          state.settings = settings;
           this.managers.appStateManager.setByKey('settings', settings);
 
           setSubtitles();
