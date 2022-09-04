@@ -546,6 +546,10 @@ export class AppImManager extends EventListenerBase<{
     this.addAnchorListener<{pathnameParams: ['addstickers', string]}>({
       name: 'addstickers',
       callback: ({pathnameParams}) => {
+        if(!pathnameParams[1]) {
+          return;
+        }
+
         const link: InternalLink = {
           _: INTERNAL_LINK_TYPE.STICKER_SET,
           set: pathnameParams[1]
@@ -977,7 +981,8 @@ export class AppImManager extends EventListenerBase<{
 
   private addAnchorListener<Params extends {pathnameParams?: any, uriParams?: any}>(options: {
     name: 'showMaskedAlert' | 'execBotCommand' | 'searchByHashtag' | 'addstickers' | 'im' |
-          'resolve' | 'privatepost' | 'addstickers' | 'voicechat' | 'joinchat' | 'join' | 'invoice',
+          'resolve' | 'privatepost' | 'addstickers' | 'voicechat' | 'joinchat' | 'join' | 'invoice' |
+          'emoji',
     protocol?: 'tg',
     callback: (params: Params, element?: HTMLAnchorElement) => boolean | any,
     noPathnameParams?: boolean,
@@ -986,11 +991,18 @@ export class AppImManager extends EventListenerBase<{
     (window as any)[(options.protocol ? options.protocol + '_' : '') + options.name] = (element?: HTMLAnchorElement/* , e: Event */) => {
       cancelEvent(null);
 
-      const href = element.href;
+      let href = element.href;
       let pathnameParams: any[];
       let uriParams: any;
 
-      if(!options.noPathnameParams) pathnameParams = new URL(element.href).pathname.split('/').slice(1);
+      const u = new URL(href);
+      const match = u.host.match(/(.+?)\.t(?:elegram)?\.me/);
+      if(match) {
+        u.pathname = match[1] + (u.pathname === '/' ? '' : u.pathname);
+        href = u.toString();
+      }
+
+      if(!options.noPathnameParams) pathnameParams = new URL(href).pathname.split('/').slice(1);
       if(!options.noUriParams) uriParams = this.parseUriParams(href);
 
       const res = options.callback({pathnameParams, uriParams} as Params, element);
