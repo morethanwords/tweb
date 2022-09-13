@@ -23,6 +23,7 @@ import isWebDocument from '../../lib/appManagers/utils/webDocs/isWebDocument';
 import createVideo from '../../helpers/dom/createVideo';
 import noop from '../../helpers/noop';
 import {THUMB_TYPE_FULL} from '../../lib/mtproto/mtproto_config';
+import {Middleware} from '../../helpers/middleware';
 
 export default async function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size, withoutPreloader, loadPromises, autoDownloadSize, noBlur, noThumb, noFadeIn, blurAfter, managers = rootScope.managers}: {
   photo: MyPhoto | MyDocument | WebDocument,
@@ -33,7 +34,7 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
   withTail?: boolean,
   isOut?: boolean,
   lazyLoadQueue?: LazyLoadQueue,
-  middleware?: () => boolean,
+  middleware?: Middleware,
   size?: PhotoSize | VideoSize,
   withoutPreloader?: boolean,
   loadPromises?: Promise<any>[],

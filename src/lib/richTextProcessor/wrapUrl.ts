@@ -37,7 +37,7 @@ export default function wrapUrl(url: string, unsafe?: number | boolean) {
       case 'addemoji':
       case 'voicechat':
       case 'invoice':
-        if(path.length !== 1) {
+        if(path.length !== 1 && !tgMeMatch[1]) {
           onclick = path[0];
           break;
         }

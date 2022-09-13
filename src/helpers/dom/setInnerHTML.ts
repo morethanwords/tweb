@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-export default function setInnerHTML(elem: Element, html: string | DocumentFragment) {
+export default function setInnerHTML(elem: Element, html: string | DocumentFragment | Element) {
   elem.setAttribute('dir', 'auto');
   if(typeof(html) === 'string') {
     if(!html) elem.textContent = '';

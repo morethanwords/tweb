@@ -29,8 +29,8 @@ $chat-padding-handhelds: .5rem;
 $chat-input-inner-padding: .5rem;
 $chat-input-inner-padding-handhelds: .25rem;
 
-@function hover-color($color) {
-  @return rgba($color, $hover-alpha);
+@function hover-color($color, $alpha: $hover-alpha) {
+  @return rgba($color, $alpha);
 }
 
 @function rgba-to-rgb($rgba, $background: #fff) {
@@ -100,6 +100,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   --font-size-14: 14px;
   --font-size-12: 12px;
   --esg-sticker-size: 80px;
+  --esg-custom-emoji-size: 32px;
   --disabled-opacity: .3;
   --round-video-size: 280px;
   --menu-box-shadow: 0px 0px 10px var(--menu-box-shadow-color);
@@ -215,7 +216,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   --chatlist-pinned-color: #a2abb2;
   --badge-text-color: #fff;
   --link-color: #00488f;
-  --ripple-color: rgba(0, 0, 0, .08);
+  --ripple-color: rgba(0, 0, 0, #{$hover-alpha});
   --poll-circle-color: var(--border-color);
   --spoiler-background-color: #e3e5e8;
   --spoiler-draft-background-color: #d9d9d9;
@@ -290,7 +291,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   --chatlist-pinned-color: var(--secondary-color);
   --badge-text-color: #fff;
   --link-color: var(--primary-color);
-  --ripple-color: rgba(255, 255, 255, .08);
+  --ripple-color: rgba(255, 255, 255, #{$hover-alpha});
   --poll-circle-color: #fff;
   --spoiler-background-color: #373e4e;
   --spoiler-draft-background-color: #484848;
@@ -1285,7 +1286,7 @@ middle-ellipsis-element {
 }
 
 .rlottie-vector {
-  fill: rgba(0, 0, 0, .08);
+  fill: rgba(0, 0, 0, $hover-alpha);
 }
 
 .canvas-thumbnail {

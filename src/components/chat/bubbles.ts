@@ -45,7 +45,7 @@ import findUpClassName from '../../helpers/dom/findUpClassName';
 import findUpTag from '../../helpers/dom/findUpTag';
 import {toast, toastNew} from '../toast';
 import {getElementByPoint} from '../../helpers/dom/getElementByPoint';
-import {getMiddleware} from '../../helpers/middleware';
+import {getMiddleware, Middleware} from '../../helpers/middleware';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import {attachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent';
 import htmlToDocumentFragment from '../../helpers/dom/htmlToDocumentFragment';
@@ -210,7 +210,7 @@ export default class ChatBubbles {
 
   public lazyLoadQueue: LazyLoadQueue;
 
-  private middleware = getMiddleware();
+  private middlewareHelper = getMiddleware();
 
   private log: ReturnType<typeof logger>;
 
@@ -2142,6 +2142,8 @@ export default class ChatBubbles {
       const bubble = this.bubbles[mid];
       if(!bubble) return;
 
+      bubble.middlewareHelper.destroy();
+
       deleted = true;
       /* const mounted = this.getMountedBubble(mid);
       if(!mounted) return; */
@@ -2617,7 +2619,7 @@ export default class ChatBubbles {
       this.viewsMids.clear();
     }
 
-    this.middleware.clean();
+    this.middlewareHelper.clean();
 
     this.onAnimateLadder = undefined;
     this.resolveLadderAnimation = undefined;
@@ -3354,7 +3356,7 @@ export default class ChatBubbles {
   }
 
   public getMiddleware(additionalCallback?: () => boolean) {
-    return this.middleware.get(additionalCallback);
+    return this.middlewareHelper.get(additionalCallback);
   }
 
   private async safeRenderMessage(
@@ -3368,7 +3370,8 @@ export default class ChatBubbles {
       return;
     }
 
-    const middleware = this.getMiddleware();
+    const middlewareHelper = this.getMiddleware().create();
+    const middleware = middlewareHelper.get();
 
     let result: Awaited<ReturnType<ChatBubbles['renderMessage']>> & {updatePosition: typeof updatePosition};
     try {
@@ -3376,6 +3379,7 @@ export default class ChatBubbles {
 
       // const groupedId = (message as Message.message).grouped_id;
       const newBubble = document.createElement('div');
+      newBubble.middlewareHelper = middlewareHelper;
       newBubble.dataset.mid = '' + message.mid;
       newBubble.dataset.peerId = '' + message.peerId;
       newBubble.dataset.timestamp = '' + message.date;
@@ -3389,6 +3393,7 @@ export default class ChatBubbles {
       // bubbleNew.mids.add(message.mid);
 
       if(bubble) {
+        bubble.middlewareHelper.destroy();
         this.skippedMids.delete(message.mid);
 
         this.bubblesToEject.add(bubble);
@@ -3398,7 +3403,7 @@ export default class ChatBubbles {
       }
 
       bubble = this.bubbles[message.mid] = newBubble;
-      let originalPromise = this.renderMessage(message, reverse, bubble);
+      let originalPromise = this.renderMessage(message, reverse, bubble, middleware);
       if(processResult) {
         originalPromise = processResult(originalPromise, bubble);
       }
@@ -3431,7 +3436,8 @@ export default class ChatBubbles {
   private async renderMessage(
     message: Message.message | Message.messageService,
     reverse = false,
-    bubble: HTMLElement
+    bubble: HTMLElement,
+    middleware: Middleware
   ) {
     // if(DEBUG) {
     //   this.log('message to render:', message);
@@ -3588,7 +3594,8 @@ export default class ChatBubbles {
       passEntities: this.passEntities,
       loadPromises,
       lazyLoadQueue: this.lazyLoadQueue,
-      customEmojiSize
+      customEmojiSize,
+      middleware
     });
 
     let canHaveTail = true;
@@ -4074,7 +4081,7 @@ export default class ChatBubbles {
             wrapSticker({
               doc,
               div: attachmentDiv,
-              middleware: this.getMiddleware(),
+              middleware,
               lazyLoadQueue: this.lazyLoadQueue,
               group: CHAT_ANIMATION_GROUP,
               // play: !!message.pending || !multipleRender,
@@ -4113,7 +4120,7 @@ export default class ChatBubbles {
               wrapAlbum({
                 messages: albumMessages,
                 attachmentDiv,
-                middleware: this.getMiddleware(),
+                middleware,
                 isOut: our,
                 lazyLoadQueue: this.lazyLoadQueue,
                 chat: this.chat,
@@ -4132,7 +4139,7 @@ export default class ChatBubbles {
                 withTail,
                 isOut,
                 lazyLoadQueue: this.lazyLoadQueue,
-                middleware: this.getMiddleware(),
+                middleware,
                 group: CHAT_ANIMATION_GROUP,
                 loadPromises,
                 autoDownload: this.chat.autoDownload,
@@ -4317,7 +4324,7 @@ export default class ChatBubbles {
               withTail: false,
               isOut,
               lazyLoadQueue: this.lazyLoadQueue,
-              middleware: this.getMiddleware(),
+              middleware,
               loadPromises,
               boxWidth: mediaSize.width,
               boxHeight: mediaSize.height

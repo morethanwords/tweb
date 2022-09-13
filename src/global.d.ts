@@ -1,4 +1,5 @@
 import type ListenerSetter from './helpers/listenerSetter';
+import type {Middleware, MiddlewareHelper} from './helpers/middleware';
 import type {Chat, Document, User} from './layer';
 
 declare global {
@@ -10,6 +11,11 @@ declare global {
 
   interface HTMLCanvasElement {
     dpr?: number
+  }
+
+  interface HTMLElement {
+    middlewareHelper?: MiddlewareHelper;
+    middleware?: Middleware;
   }
 
   type UserId = User.user['id'];
@@ -65,4 +71,6 @@ declare global {
   declare const electronHelpers: {
     openExternal(url): void;
   } | undefined;
+
+  type DOMRectMinified = {top: number, right: number, bottom: number, left: number};
 }

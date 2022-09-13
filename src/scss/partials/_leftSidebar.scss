@@ -673,27 +673,6 @@
       padding-bottom: .5rem;
     } */
   }
-
-  .row {
-    .btn-primary {
-      height: 1.875rem;
-      padding: 0 .75rem;
-      font-size: .9375rem;
-      width: auto;
-      transition: width 0.2s;
-      margin: 0;
-      position: absolute;
-      right: 1rem;
-      top: 50%;
-      transform: translateY(-50%);
-      border-radius: .9375rem;
-      line-height: 1.875rem;
-
-      body.animation-level-0 & {
-        transition: none;
-      }
-    }
-  }
 }
 
 .edit-folder-container {

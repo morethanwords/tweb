@@ -171,9 +171,7 @@ export class LottieLoader {
 
     const player = this.initPlayer(containers, params);
 
-    if(group !== 'none') {
-      animationIntersector.addAnimation(player, group);
-    }
+    animationIntersector.addAnimation(player, group);
 
     return player;
   }

@@ -6,6 +6,7 @@
 
 import {ChatAutoDownloadSettings} from '../../helpers/autoDownload';
 import mediaSizes from '../../helpers/mediaSizes';
+import {Middleware} from '../../helpers/middleware';
 import {Message, PhotoSize} from '../../layer';
 import {AppManagers} from '../../lib/appManagers/managers';
 import getMediaFromMessage from '../../lib/appManagers/utils/messages/getMediaFromMessage';
@@ -20,7 +21,7 @@ import wrapVideo from './video';
 export default function wrapAlbum({messages, attachmentDiv, middleware, uploading, lazyLoadQueue, isOut, chat, loadPromises, autoDownload, managers = rootScope.managers}: {
   messages: Message.message[],
   attachmentDiv: HTMLElement,
-  middleware?: () => boolean,
+  middleware?: Middleware,
   lazyLoadQueue?: LazyLoadQueue,
   uploading?: boolean,
   isOut: boolean,

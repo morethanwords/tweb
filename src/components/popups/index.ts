@@ -20,6 +20,7 @@ import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import {AppManagers} from '../../lib/appManagers/managers';
 import overlayCounter from '../../helpers/overlayCounter';
 import Scrollable from '../scrollable';
+import {getMiddleware, MiddlewareHelper} from '../../helpers/middleware';
 
 export type PopupButton = {
   text?: string,
@@ -92,6 +93,8 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
 
   protected buttons: Array<PopupButton>;
 
+  protected middlewareHelper: MiddlewareHelper;
+
   constructor(className: string, options: PopupOptions = {}) {
     super(false);
     this.element.classList.add('popup');
@@ -109,6 +112,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
       this.header.append(this.title);
     }
 
+    this.middlewareHelper = getMiddleware();
     this.listenerSetter = new ListenerSetter();
     this.managers = PopupElement.MANAGERS;
 
@@ -268,6 +272,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     this.element.classList.add('hiding');
     this.element.classList.remove('active');
     this.listenerSetter.removeAll();
+    this.middlewareHelper.destroy();
 
     if(!this.withoutOverlay) {
       overlayCounter.isOverlayActive = false;

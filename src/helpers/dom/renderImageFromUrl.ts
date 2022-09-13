@@ -48,7 +48,8 @@ export default function renderImageFromUrl(
     // const loader = new Image();
     loader.src = url;
     // let perf = performance.now();
-    loader.addEventListener('load', () => {
+
+    const onLoad = () => {
       if(!isImage && elem) {
         set(elem, url);
       }
@@ -58,14 +59,18 @@ export default function renderImageFromUrl(
       // TODO: переделать прогрузки аватаров до начала анимации, иначе с этим ожиданием они неприятно появляются
       // callback && getHeavyAnimationPromise().then(() => callback());
       callback?.();
-    }, {once: true});
 
-    if(callback) {
-      loader.addEventListener('error', (err) => {
-        console.error('Render image from url failed:', err, url, loader);
-        callback();
-      });
-    }
+      loader.removeEventListener('error', onError);
+    };
+
+    const onError = (err: ErrorEvent) => {
+      console.error('Render image from url failed:', err, url, loader);
+      loader.removeEventListener('load', onLoad);
+      callback?.();
+    };
+
+    loader.addEventListener('load', onLoad, {once: true});
+    loader.addEventListener('error', onError, {once: true});
   }
 }
 

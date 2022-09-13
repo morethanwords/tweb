@@ -55,10 +55,13 @@ export class AppStickersManager extends AppManager {
   private favedStickers: MyDocument[];
   private recentStickers: MyDocument[];
 
+  private names: Record<string, InputStickerSet.inputStickerSetID>;
+
   protected after() {
     this.getStickerSetPromises = {};
     this.getStickersByEmoticonsPromises = {};
     this.sounds = {};
+    this.names = {};
 
     this.rootScope.addEventListener('user_auth', () => {
       setTimeout(() => {
@@ -133,25 +136,43 @@ export class AppStickersManager extends AppManager {
     });
   }
 
-  public async getStickerSet(set: MyStickerSetInput, params: Partial<{
+  private canUseStickerSetCache(set: MyMessagesStickerSet, useCache?: boolean) {
+    return set && set.documents?.length && ((Date.now() - set.refreshTime) < CACHE_TIME || useCache);
+  }
+
+  public getStickerSet(set: MyStickerSetInput, params: Partial<{
     overwrite: boolean,
     useCache: boolean,
     saveById: boolean
-  }> = {}): Promise<MyMessagesStickerSet> {
-    const id = set.id;
+  }> = {}): Promise<MyMessagesStickerSet> | MyMessagesStickerSet {
+    let {id} = set;
+    if(!set.access_hash) {
+      set = this.names[id] || set;
+      id = set.id;
+    }
+
     if(this.getStickerSetPromises[id]) {
       return this.getStickerSetPromises[id];
     }
 
-    return this.getStickerSetPromises[id] = new Promise(async(resolve) => {
+    if(!params.overwrite) {
+      const cachedSet = this.storage.getFromCache(id);
+      if(this.canUseStickerSetCache(cachedSet, params.useCache)) {
+        return cachedSet;
+      }
+    }
+
+    const promise = this.getStickerSetPromises[id] = new Promise(async(resolve) => {
       if(!params.overwrite) {
-        // const perf = performance.now();
         const cachedSet = await this.storage.get(id);
-        if(cachedSet && cachedSet.documents?.length && ((Date.now() - cachedSet.refreshTime) < CACHE_TIME || params.useCache)) {
+        if(this.canUseStickerSetCache(cachedSet, params.useCache)) {
           this.saveStickers(cachedSet.documents);
           resolve(cachedSet);
-          delete this.getStickerSetPromises[id];
-          // console.log('get sticker set from cache time', id, performance.now() - perf);
+
+          if(this.getStickerSetPromises[id] === promise) {
+            delete this.getStickerSetPromises[id];
+          }
+
           return;
         }
       }
@@ -170,8 +191,12 @@ export class AppStickersManager extends AppManager {
         resolve(null);
       }
 
-      delete this.getStickerSetPromises[id];
+      if(this.getStickerSetPromises[id] === promise) {
+        delete this.getStickerSetPromises[id];
+      }
     });
+
+    return promise;
   }
 
   public getAnimatedEmojiStickerSet() {
@@ -377,6 +402,10 @@ export class AppStickersManager extends AppManager {
       stickerSet = this.storage.setToCache(id, newSet);
     }
 
+    if(stickerSet.set.short_name) {
+      this.names[stickerSet.set.short_name] = this.getStickerSetInput(newSet.set) as any;
+    }
+
     this.saveStickers(res.documents);
 
     // console.log('stickers wrote', this.stickerSets);
@@ -551,6 +580,10 @@ export class AppStickersManager extends AppManager {
     }
 
     return false;
+  }
+
+  public toggleStickerSets(sets: StickerSet.stickerSet[]) {
+    return Promise.all(sets.map((set) => this.toggleStickerSet(set)));
   }
 
   public async searchStickerSets(query: string, excludeFeatured = true) {

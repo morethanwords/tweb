@@ -5,6 +5,7 @@
  */
 
 import replaceContent from '../../helpers/dom/replaceContent';
+import {Middleware} from '../../helpers/middleware';
 import limitSymbols from '../../helpers/string/limitSymbols';
 import {Document, MessageMedia, Photo, WebPage} from '../../layer';
 import appImManager, {CHAT_ANIMATION_GROUP} from '../../lib/appManagers/appImManager';
@@ -42,7 +43,7 @@ export async function wrapReplyDivAndCaption(options: {
   let messageMedia: MessageMedia | WebPage.webPage = message?.media;
   let setMedia = false, isRound = false;
   const mediaChildren = mediaEl ? Array.from(mediaEl.children).slice() : [];
-  let middleware: () => boolean;
+  let middleware: Middleware;
   if(messageMedia && mediaEl) {
     subtitleEl.textContent = '';
     subtitleEl.append(await wrapMessageForReply(message, undefined, undefined, undefined, undefined, true));

@@ -4,12 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import windowSize from '../windowSize';
+
 export default function getVisibleRect(
   element: HTMLElement,
   overflowElement: HTMLElement,
   lookForSticky?: boolean,
-  rect = element.getBoundingClientRect(),
-  overflowRect = overflowElement.getBoundingClientRect()
+  rect: DOMRectMinified = element.getBoundingClientRect(),
+  overflowRect: DOMRectMinified = overflowElement.getBoundingClientRect()
 ) {
   let {top: overflowTop, right: overflowRight, bottom: overflowBottom, left: overflowLeft} = overflowRect;
 
@@ -38,10 +40,8 @@ export default function getVisibleRect(
     horizontal: 0 as 0 | 1 | 2
   };
 
-  // @ts-ignore
-  const w: any = 'visualViewport' in window ? window.visualViewport : window;
-  const windowWidth = w.width || w.innerWidth;
-  const windowHeight = w.height || w.innerHeight;
+  const windowWidth = windowSize.width;
+  const windowHeight = windowSize.height;
 
   return {
     rect: {

@@ -19,7 +19,7 @@ import findUpClassName from '../../helpers/dom/findUpClassName';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import {attachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent';
 import isSelectionEmpty from '../../helpers/dom/isSelectionEmpty';
-import {Message, Poll, Chat as MTChat, MessageMedia, AvailableReaction} from '../../layer';
+import {Message, Poll, Chat as MTChat, MessageMedia, AvailableReaction, MessageEntity, InputStickerSet, StickerSet, Document} from '../../layer';
 import PopupReportMessages from '../popups/reportMessages';
 import assumeType from '../../helpers/assumeType';
 import PopupSponsored from '../popups/sponsored';
@@ -40,9 +40,14 @@ import filterAsync from '../../helpers/array/filterAsync';
 import appDownloadManager from '../../lib/appManagers/appDownloadManager';
 import {SERVICE_PEER_ID} from '../../lib/mtproto/mtproto_config';
 import {MessagesStorageKey} from '../../lib/appManagers/appMessagesManager';
+import filterUnique from '../../helpers/array/filterUnique';
+import replaceContent from '../../helpers/dom/replaceContent';
+import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
+import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
+import PopupStickers from '../popups/stickers';
 
 export default class ChatContextMenu {
-  private buttons: (ButtonMenuItemOptions & {verify: () => boolean | Promise<boolean>, notDirect?: () => boolean, withSelection?: true, isSponsored?: true})[];
+  private buttons: (ButtonMenuItemOptions & {verify: () => boolean | Promise<boolean>, notDirect?: () => boolean, withSelection?: true, isSponsored?: true, localName?: 'views' | 'emojis'})[];
   private element: HTMLElement;
 
   private isSelectable: boolean;
@@ -66,6 +71,8 @@ export default class ChatContextMenu {
   private viewerPeerId: PeerId;
   private middleware: ReturnType<typeof getMiddleware>;
   private canOpenReactedList: boolean;
+
+  private emojiInputsPromise: CancellablePromise<InputStickerSet.inputStickerSetID[]>;
 
   constructor(
     private chat: Chat,
@@ -508,7 +515,8 @@ export default class ChatContextMenu {
         }
       },
       verify: async() => !this.peerId.isUser() && (!!(this.message as Message.message).reactions?.recent_reactions?.length || await this.managers.appMessagesManager.canViewMessageReadParticipants(this.message)),
-      notDirect: () => true
+      notDirect: () => true,
+      localName: 'views'
     }, {
       icon: 'delete danger',
       text: 'Delete',
@@ -529,6 +537,20 @@ export default class ChatContextMenu {
       },
       verify: () => false,
       isSponsored: true
+    }, {
+      // icon: 'smile',
+      text: 'Loading',
+      onClick: () => {
+        this.emojiInputsPromise.then((inputs) => {
+          new PopupStickers(inputs, true).show();
+        });
+      },
+      verify: () => {
+        const entities = (this.message as Message.message).entities;
+        return entities?.some((entity) => entity._ === 'messageEntityCustomEmoji');
+      },
+      notDirect: () => true,
+      localName: 'emojis'
     }];
   }
 
@@ -545,12 +567,14 @@ export default class ChatContextMenu {
     element.id = 'bubble-contextmenu';
     element.classList.add('contextmenu');
 
-    const viewsButton = filteredButtons.find((button) => !button.icon);
+    const viewsButton = filteredButtons.find((button) => button.localName === 'views');
     if(viewsButton) {
       const reactions = (this.message as Message.message).reactions;
       const recentReactions = reactions?.recent_reactions;
       const isViewingReactions = !!recentReactions?.length;
-      const participantsCount = await this.managers.appMessagesManager.canViewMessageReadParticipants(this.message) ? ((await this.managers.appPeersManager.getPeer(this.peerId)) as MTChat.chat).participants_count : undefined;
+      const participantsCount = await this.managers.appMessagesManager.canViewMessageReadParticipants(this.message) ?
+        ((await this.managers.appPeersManager.getPeer(this.peerId)) as MTChat.chat).participants_count :
+        undefined;
       const reactedLength = reactions ? reactions.results.reduce((acc, r) => acc + r.count, 0) : undefined;
 
       viewsButton.element.classList.add('tgico-' + (isViewingReactions ? 'reactions' : 'checks'));
@@ -675,6 +699,55 @@ export default class ChatContextMenu {
           left: paddingLeft
         };
       }
+    }
+
+    const emojisButton = filteredButtons.find((button) => button.localName === 'emojis');
+    if(emojisButton) {
+      emojisButton.element.classList.add('is-multiline');
+      emojisButton.element.parentElement.insertBefore(document.createElement('hr'), emojisButton.element);
+
+      const setPadding = () => {
+        menuPadding ??= {};
+        menuPadding.bottom = 24;
+      };
+
+      const entities = (this.message as Message.message).entities.filter((entity) => entity._ === 'messageEntityCustomEmoji') as MessageEntity.messageEntityCustomEmoji[];
+      const docIds = filterUnique(entities.map((entity) => entity.document_id));
+      const inputsPromise = this.emojiInputsPromise = deferredPromise();
+      await this.managers.appEmojiManager.getCachedCustomEmojiDocuments(docIds).then(async(docs) => {
+        const p = async(docs: Document.document[]) => {
+          const s: Map<StickerSet['id'], InputStickerSet.inputStickerSetID> = new Map();
+          docs.forEach((doc) => {
+            if(!doc || s.has(doc.stickerSetInput.id)) {
+              return;
+            }
+
+            s.set(doc.stickerSetInput.id, doc.stickerSetInput);
+          });
+
+          const inputs = [...s.values()];
+          inputsPromise.resolve(inputs);
+          if(s.size === 1) {
+            const result = await this.managers.acknowledged.appStickersManager.getStickerSet(inputs[0]);
+            const promise = result.result.then((set) => {
+              const el = i18n('MessageContainsEmojiPack', [wrapEmojiText(set.set.title)]);
+              replaceContent(emojisButton.textElement, el);
+            });
+
+            return result.cached ? promise : (setPadding(), undefined);
+          }
+
+          replaceContent(emojisButton.textElement, i18n('MessageContainsEmojiPacks', [s.size]));
+        };
+
+        if(docs.some((doc) => !doc)) {
+          setPadding();
+          this.managers.appEmojiManager.getCustomEmojiDocuments(docIds).then(p);
+        } else {
+          return p(docs);
+        }
+      });
+      // emojisButton.element.append(i18n('Loading'));
     }
 
     this.chat.container.append(element);

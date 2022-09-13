@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {CustomEmojiRendererElement} from '../lib/richTextProcessor/wrapRichText';
+import {CustomEmojiRendererElement} from '../lib/richTextProcessor/wrapRichText';
 import rootScope from '../lib/rootScope';
 import {IS_SAFARI} from '../environment/userAgent';
 import {MOUNT_CLASS_TO} from '../config/debug';
@@ -22,7 +22,16 @@ export type AnimationItemGroup = '' | 'none' | 'chat' | 'lock' |
 export interface AnimationItem {
   el: HTMLElement,
   group: AnimationItemGroup,
-  animation: RLottiePlayer | HTMLVideoElement | CustomEmojiRendererElement
+  animation: AnimationItemWrapper
+};
+
+export interface AnimationItemWrapper {
+  remove: () => void;
+  paused: boolean;
+  pause: () => any;
+  play: () => any;
+  autoplay: boolean;
+  // onVisibilityChange?: (visible: boolean) => boolean;
 };
 
 export class AnimationIntersector {
@@ -145,8 +154,21 @@ export class AnimationIntersector {
   }
 
   public addAnimation(_animation: AnimationItem['animation'], group: AnimationItemGroup = '') {
+    if(group === 'none') {
+      return;
+    }
+
+    let el: HTMLElement;
+    if(_animation instanceof RLottiePlayer) {
+      el = _animation.el[0];
+    } else if(_animation instanceof CustomEmojiRendererElement) {
+      el = _animation.canvas;
+    } else if(_animation instanceof HTMLElement) {
+      el = _animation;
+    }
+
     const animation: AnimationItem = {
-      el: _animation instanceof RLottiePlayer ? _animation.el[0] : (_animation instanceof HTMLVideoElement ? _animation : _animation.canvas),
+      el,
       animation: _animation,
       group
     };
@@ -188,7 +210,10 @@ export class AnimationIntersector {
       return;
     }
 
-    if(blurred || (this.onlyOnePlayableGroup && this.onlyOnePlayableGroup !== group) || (animation instanceof HTMLVideoElement && this.videosLocked)) {
+    if(blurred ||
+      (this.onlyOnePlayableGroup && this.onlyOnePlayableGroup !== group) ||
+      (animation instanceof HTMLVideoElement && this.videosLocked)
+    ) {
       if(!animation.paused) {
         // console.warn('pause animation:', animation);
         animation.pause();

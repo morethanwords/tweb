@@ -343,7 +343,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
           return;
         }
 
-        enabled = settings.pFlags.sensitive_enabled;
+        enabled = !!settings.pFlags.sensitive_enabled;
         checkboxField.setValueSilently(enabled);
         section.container.classList.remove('hide');
       });

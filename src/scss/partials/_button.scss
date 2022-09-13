@@ -202,13 +202,14 @@ $btn-menu-z-index: 4;
   }
 
   &-item {
+    --padding-vertical: .25rem;
     --padding-left: .75rem;
     --padding-right: .75rem;
     --icon-margin: 1.25rem;
     --icon-size: 1.25rem;
     display: flex;
     position: relative;
-    padding: 0 var(--padding-right) 0 var(--padding-left);
+    padding: var(--padding-vertical) var(--padding-right) var(--padding-vertical) var(--padding-left);
     height: 2rem;
     cursor: pointer !important;
     pointer-events: all !important;
@@ -270,7 +271,7 @@ $btn-menu-z-index: 4;
 
       &,
       &-fake {
-        margin-top: 1px;
+        // margin-top: 1px;
         pointer-events: none;
       }
 
@@ -308,6 +309,19 @@ $btn-menu-z-index: 4;
       /* @include respond-to(handhelds) {
         margin-right: -.875rem;
       } */
+    }
+
+    &.is-multiline {
+      height: auto;
+      font-size: .75rem;
+      width: fit-content;
+      min-width: calc(100% - .625rem);
+      max-width: fit-content;
+
+      .btn-menu-item-text {
+        white-space: pre-wrap;
+        width: fit-content;
+      }
     }
   }
 
@@ -365,8 +379,13 @@ $btn-menu-z-index: 4;
 
   hr {
     padding: 0;
-    margin: .5rem 0;
+    margin: .3125rem 0;
     display: block !important;
+
+    margin-left: auto;
+    margin-right: auto;
+    width: calc(100% - 1.875rem);
+    opacity: .6;
   }
 
   .badge {

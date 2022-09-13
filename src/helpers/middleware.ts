@@ -4,19 +4,87 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-// * will change .cleaned and new instance will be created
-export const getMiddleware = () => {
-  let cleanupObj = {cleaned: false};
-  return {
-    clean: () => {
-      cleanupObj.cleaned = true;
-      cleanupObj = {cleaned: false};
-    },
-    get: (additionalCallback?: () => boolean) => {
-      const _cleanupObj = cleanupObj;
-      return () => {
-        return !_cleanupObj.cleaned && (!additionalCallback || additionalCallback());
-      };
-    }
-  };
+import indexOfAndSplice from './array/indexOfAndSplice';
+import makeError from './makeError';
+
+export type Middleware = {
+  (): boolean;
+  create(): MiddlewareHelper;
+  onClean: (callback: VoidFunction) => void;
+  onDestroy: (callback: VoidFunction) => void;
 };
+
+const createDetails = (): {
+  cleaned?: boolean,
+  inner: MiddlewareHelper[],
+  onCleanCallbacks: VoidFunction[]
+} => ({
+  cleaned: false,
+  inner: [],
+  onCleanCallbacks: []
+});
+
+const MIDDLEWARE_ERROR = makeError('MIDDLEWARE');
+
+// * onClean == cancel promises, etc
+// * onDestroy == destructor
+export class MiddlewareHelper {
+  private details = createDetails();
+  private onDestroyCallbacks: VoidFunction[] = [];
+  private parent: MiddlewareHelper;
+  private destroyed: boolean;
+
+  public clean() {
+    const details = this.details;
+    details.cleaned = true;
+    details.inner.splice(0, details.inner.length).forEach((helper) => helper.destroy());
+    details.onCleanCallbacks.splice(0, details.onCleanCallbacks.length).forEach((callback) => callback());
+    this.details = createDetails();
+  }
+
+  public destroy() {
+    this.destroyed = true;
+    this.clean();
+    this.onDestroyCallbacks.splice(0, this.onDestroyCallbacks.length).forEach((callback) => callback());
+
+    if(this.parent) {
+      indexOfAndSplice(this.parent.details.inner, this);
+      this.parent = undefined;
+    }
+  }
+
+  public get(additionalCallback?: () => boolean) {
+    const details = this.details;
+
+    const middleware: Middleware = () => {
+      return !details.cleaned && (!additionalCallback || additionalCallback());
+    };
+
+    middleware.create = () => {
+      if(!middleware()) throw MIDDLEWARE_ERROR;
+      const helper = new MiddlewareHelper();
+      helper.parent = this;
+      details.inner.push(helper);
+      return helper;
+    };
+
+    middleware.onClean = (callback) => {
+      if(!middleware()) return callback();
+      details.onCleanCallbacks.push(callback);
+    };
+
+    middleware.onDestroy = this.onDestroy;
+
+    return middleware;
+  }
+
+  public onDestroy = (callback: VoidFunction) => {
+    if(this.destroyed) return callback();
+    this.onDestroyCallbacks.push(callback);
+  };
+}
+
+// * will change .cleaned and new instance will be created
+export function getMiddleware() {
+  return new MiddlewareHelper();
+}

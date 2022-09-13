@@ -14,6 +14,7 @@ import replaceContent from '../helpers/dom/replaceContent';
 import setInnerHTML from '../helpers/dom/setInnerHTML';
 import {attachClickEvent} from '../helpers/dom/clickEvent';
 import ListenerSetter from '../helpers/listenerSetter';
+import Button from './button';
 
 export default class Row {
   public container: HTMLElement;
@@ -26,6 +27,8 @@ export default class Row {
   public radioField: RadioField;
 
   public freezed = false;
+
+  public buttonRight: HTMLElement;
 
   constructor(options: Partial<{
     icon: string,
@@ -44,7 +47,9 @@ export default class Row {
     havePadding: boolean,
     noRipple: boolean,
     noWrap: boolean,
-    listenerSetter: ListenerSetter
+    listenerSetter: ListenerSetter,
+    buttonRight?: HTMLElement | boolean,
+    buttonRightLangKey: LangPackKey
   }> = {}) {
     this.container = document.createElement(options.radioField || options.checkboxField ? 'label' : 'div');
     this.container.classList.add('row');
@@ -172,6 +177,13 @@ export default class Row {
       /* if(options.radioField || options.checkboxField) {
         this.container.prepend(this.container.lastElementChild);
       } */
+    }
+
+    if(options.buttonRight || options.buttonRightLangKey) {
+      this.buttonRight = options.buttonRight instanceof HTMLElement ?
+        options.buttonRight :
+        Button('btn-primary btn-color-primary', {text: options.buttonRightLangKey});
+      this.container.append(this.buttonRight);
     }
   }
 

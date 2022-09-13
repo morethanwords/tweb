@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+@use "sass:math";
+
 $row-border-radius: $border-radius-medium;
 
 .row {
@@ -167,5 +169,28 @@ $row-border-radius: $border-radius-medium;
 
   &.menu-open {
     background-color: var(--light-secondary-text-color);
+  }
+
+  > .btn-primary {
+    height: 1.875rem;
+    padding: 0 .75rem;
+    font-size: .9375rem;
+    width: auto;
+    margin: 0;
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    border-radius: .9375rem;
+    line-height: 1.875rem;
+
+    @include animation-level(2) {
+      transition: width 0.2s, background-color .2s, color .2s;
+    }
+
+    &.active {
+      background-color: var(--light-primary-color) !important;
+      color: var(--primary-color);
+    }
   }
 }

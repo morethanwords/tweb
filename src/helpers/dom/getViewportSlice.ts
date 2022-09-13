@@ -8,14 +8,25 @@ import getVisibleRect from './getVisibleRect';
 
 export type ViewportSlicePart = {element: HTMLElement, rect: DOMRect, visibleRect: ReturnType<typeof getVisibleRect>}[];
 
-export default function getViewportSlice({overflowElement, selector, extraSize}: {
+export default function getViewportSlice({overflowElement, overflowRect, selector, extraSize, elements}: {
   overflowElement: HTMLElement,
-  selector: string,
-  extraSize?: number
+  overflowRect?: DOMRectMinified,
+  extraSize?: number,
+  selector?: string,
+  elements?: HTMLElement[]
 }) {
   // const perf = performance.now();
-  const overflowRect = overflowElement.getBoundingClientRect();
-  const elements = Array.from(overflowElement.querySelectorAll<HTMLElement>(selector));
+  overflowRect ??= overflowElement.getBoundingClientRect();
+  elements ??= Array.from(overflowElement.querySelectorAll<HTMLElement>(selector));
+
+  if(extraSize) {
+    overflowRect = {
+      top: overflowRect.top - extraSize,
+      right: overflowRect.right + extraSize,
+      bottom: overflowRect.bottom + extraSize,
+      left: overflowRect.left - extraSize
+    };
+  }
 
   const invisibleTop: ViewportSlicePart = [],
     visible: typeof invisibleTop = [],
@@ -43,29 +54,29 @@ export default function getViewportSlice({overflowElement, selector, extraSize}:
     });
   }
 
-  if(extraSize && visible.length) {
-    const maxTop = visible[0].rect.top;
-    const minTop = maxTop - extraSize;
-    const minBottom = visible[visible.length - 1].rect.bottom;
-    const maxBottom = minBottom + extraSize;
+  // if(extraSize && visible.length) {
+  //   const maxTop = visible[0].rect.top;
+  //   const minTop = maxTop - extraSize;
+  //   const minBottom = visible[visible.length - 1].rect.bottom;
+  //   const maxBottom = minBottom + extraSize;
 
-    for(let length = invisibleTop.length, i = length - 1; i >= 0; --i) {
-      const element = invisibleTop[i];
-      if(element.rect.top >= minTop) {
-        invisibleTop.splice(i, 1);
-        visible.unshift(element);
-      }
-    }
+  //   for(let length = invisibleTop.length, i = length - 1; i >= 0; --i) {
+  //     const element = invisibleTop[i];
+  //     if(element.rect.top >= minTop) {
+  //       invisibleTop.splice(i, 1);
+  //       visible.unshift(element);
+  //     }
+  //   }
 
-    for(let i = 0, length = invisibleBottom.length; i < length; ++i) {
-      const element = invisibleBottom[i];
-      if(element.rect.bottom <= maxBottom) {
-        invisibleBottom.splice(i--, 1);
-        --length;
-        visible.push(element);
-      }
-    }
-  }
+  //   for(let i = 0, length = invisibleBottom.length; i < length; ++i) {
+  //     const element = invisibleBottom[i];
+  //     if(element.rect.bottom <= maxBottom) {
+  //       invisibleBottom.splice(i--, 1);
+  //       --length;
+  //       visible.push(element);
+  //     }
+  //   }
+  // }
 
   // console.log('getViewportSlice time:', performance.now() - perf);
 

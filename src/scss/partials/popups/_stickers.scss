@@ -21,6 +21,13 @@
     }
   }
 
+  .scrollable {
+    &.is-loading {
+      min-height: 9rem;
+      position: relative;
+    }
+  }
+
   .sticker-set-footer {
     padding: 8px 0;
   }
@@ -47,24 +54,32 @@
   .sticker-set {
     margin: .0625rem 0;
 
-    &-stickers {    
+    .row-title {
+      font-weight: var(--font-weight-bold);
+    }
+
+    &-stickers {
+      --per-row: 5;
+      --item-size: var(--esg-sticker-size);
       padding: 0 5px;
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(var(--per-row), 1fr);
+      position: relative;
 
       @include respond-to(handhelds) {
-        grid-template-columns: repeat(4, 1fr);
+        --per-row: 4;
       }
 
-      &.is-loading {
-        min-height: 9rem;
-        position: relative;
+      &.is-emojis {
+        --per-row: 10 !important;
+        --item-size: var(--esg-custom-emoji-size);
+        --custom-emoji-size: var(--esg-custom-emoji-size);
       }
     }
 
-    &-sticker {
-      width: var(--esg-sticker-size);
-      height: var(--esg-sticker-size);
+    .media-sticker-wrapper {
+      width: var(--item-size);
+      height: var(--item-size);
       margin-bottom: 2px;
       justify-self: center;
       cursor: pointer;

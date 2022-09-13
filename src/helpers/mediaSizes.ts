@@ -20,7 +20,8 @@ type MediaTypeSizes = {
   round: MediaSize,
   documentName: MediaSize,
   invoice: MediaSize,
-  customEmoji: MediaSize
+  customEmoji: MediaSize,
+  esgCustomEmoji: MediaSize
 };
 
 export type MediaSizeType = keyof MediaTypeSizes;
@@ -58,7 +59,8 @@ class MediaSizes extends EventListenerBase<{
       round: makeMediaSize(200, 200),
       documentName: makeMediaSize(200, 0),
       invoice: makeMediaSize(240, 240),
-      customEmoji: makeMediaSize(18, 18)
+      customEmoji: makeMediaSize(18, 18),
+      esgCustomEmoji: makeMediaSize(32, 32)
     },
     desktop: {
       regular: makeMediaSize(420, 340),
@@ -72,7 +74,8 @@ class MediaSizes extends EventListenerBase<{
       round: makeMediaSize(280, 280),
       documentName: makeMediaSize(240, 0),
       invoice: makeMediaSize(320, 260),
-      customEmoji: makeMediaSize(18, 18)
+      customEmoji: makeMediaSize(18, 18),
+      esgCustomEmoji: makeMediaSize(32, 32)
     }
   };
 

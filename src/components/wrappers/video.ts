@@ -15,6 +15,7 @@ import isInDOM from '../../helpers/dom/isInDOM';
 import renderImageFromUrl from '../../helpers/dom/renderImageFromUrl';
 import getStrippedThumbIfNeeded from '../../helpers/getStrippedThumbIfNeeded';
 import mediaSizes, {ScreenSize} from '../../helpers/mediaSizes';
+import {Middleware} from '../../helpers/middleware';
 import noop from '../../helpers/noop';
 import onMediaLoad from '../../helpers/onMediaLoad';
 import {fastRaf} from '../../helpers/schedulers';
@@ -69,7 +70,7 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
   boxHeight?: number,
   withTail?: boolean,
   isOut?: boolean,
-  middleware?: () => boolean,
+  middleware?: Middleware,
   lazyLoadQueue?: LazyLoadQueue,
   noInfo?: boolean,
   noPlayButton?: boolean,

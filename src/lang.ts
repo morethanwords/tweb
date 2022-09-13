@@ -763,6 +763,18 @@ const lang = {
   'PrivacyVoiceMessagesTitle': 'Who can send me voice or video messages?',
   'PrivacyVoiceMessagesInfo': 'You can restrict who can send you voice or video messages with granular precision.',
   'PrivacyVoiceMessagesPremiumOnly': 'Only subscribers of *Telegram Premium* can restrict receiving voice messages.',
+  'EmojiCount': {
+    'other_value': '%1$d emoji'
+  },
+  'AddEmojiNotFound': 'Emoji pack not found.',
+  'MessageContainsEmojiPack': 'This message contains emoji from %s pack.',
+  'MessageContainsEmojiPacks': {
+    'other_value': 'This message contains emoji from **%d Packs**.'
+  },
+  'EmojiPackCount': {
+    'one_value': '%1$d Emoji Pack',
+    'other_value': '%1$d Emoji Packs'
+  },
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

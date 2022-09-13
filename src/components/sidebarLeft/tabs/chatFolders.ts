@@ -87,7 +87,8 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       row = new Row({
         title: filter.id === FOLDER_ID_ALL ? i18n('FilterAllChats') : wrapEmojiText(filter.title),
         subtitle: description,
-        clickable: filter.id !== FOLDER_ID_ALL
+        clickable: filter.id !== FOLDER_ID_ALL,
+        buttonRightLangKey: dialogFilter._ === 'dialogFilterSuggested' ? 'Add' : undefined
       });
 
       if(d.length) {
@@ -125,7 +126,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       }
     }
 
-    return div;
+    return row;
   }
 
   protected async init() {
@@ -274,11 +275,10 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       Array.from(this.suggestedSection.content.children).slice(1).forEach((el) => el.remove());
 
       for(const filter of suggestedFilters) {
-        const div = await this.renderFolder(filter);
-        const button = Button('btn-primary btn-color-primary', {text: 'Add'});
-        div.append(button);
-        this.suggestedSection.content.append(div);
+        const row = await this.renderFolder(filter);
+        this.suggestedSection.content.append(row.container);
 
+        const button = row.buttonRight;
         attachClickEvent(button, async(e) => {
           cancelEvent(e);
 
@@ -296,7 +296,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
 
           this.managers.filtersStorage.createDialogFilter(f, true).then((bool) => {
             if(bool) {
-              div.remove();
+              row.container.remove();
             }
           }).finally(() => {
             button.removeAttribute('disabled');

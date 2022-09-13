@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type {AnimationItemGroup, AnimationItemWrapper} from '../../components/animationIntersector';
 import CAN_USE_TRANSFERABLES from '../../environment/canUseTransferables';
 import IS_APPLE_MX from '../../environment/appleMx';
 import {IS_ANDROID, IS_APPLE_MOBILE, IS_APPLE, IS_SAFARI} from '../../environment/userAgent';
@@ -11,8 +12,8 @@ import EventListenerBase from '../../helpers/eventListenerBase';
 import mediaSizes from '../../helpers/mediaSizes';
 import clamp from '../../helpers/number/clamp';
 import QueryableWorker from './queryableWorker';
-import {AnimationItemGroup} from '../../components/animationIntersector';
 import IS_IMAGE_BITMAP_SUPPORTED from '../../environment/imageBitmapSupport';
+import framesCache, {FramesCache, FramesCacheItem} from '../../helpers/framesCache';
 
 export type RLottieOptions = {
   container: HTMLElement | HTMLElement[],
@@ -34,83 +35,6 @@ export type RLottieOptions = {
   toneIndex?: number,
   sync?: boolean
 };
-
-type RLottieCacheMap = Map<number, Uint8ClampedArray>;
-type RLottieCacheMapNew = Map<number, HTMLCanvasElement | ImageBitmap>;
-type RLottieCacheMapURLs = Map<number, string>;
-type RLottieCacheItem = {
-  frames: RLottieCacheMap,
-  framesNew: RLottieCacheMapNew,
-  framesURLs: RLottieCacheMapURLs,
-  clearCache: () => void,
-  counter: number
-};
-
-class RLottieCache {
-  private cache: Map<string, RLottieCacheItem>;
-
-  constructor() {
-    this.cache = new Map();
-  }
-
-  public static createCache(): RLottieCacheItem {
-    const cache: RLottieCacheItem = {
-      frames: new Map(),
-      framesNew: new Map(),
-      framesURLs: new Map(),
-      clearCache: () => {
-        cache.framesNew.forEach((value) => {
-          (value as ImageBitmap).close?.();
-        });
-
-        cache.frames.clear();
-        cache.framesNew.clear();
-        cache.framesURLs.clear();
-      },
-      counter: 0
-    };
-
-    return cache;
-  }
-
-  public getCache(name: string) {
-    let cache = this.cache.get(name);
-    if(!cache) {
-      this.cache.set(name, cache = RLottieCache.createCache());
-    } else {
-      // console.warn('[RLottieCache] cache will be reused', cache);
-    }
-
-    ++cache.counter;
-    return cache;
-  }
-
-  public releaseCache(name: string) {
-    const cache = this.cache.get(name);
-    if(cache && !--cache.counter) {
-      this.cache.delete(name);
-      // console.warn('[RLottieCache] released cache', cache);
-    }
-  }
-
-  public getCacheCounter(name: string) {
-    const cache = this.cache.get(name);
-    return cache?.counter;
-  }
-
-  public generateName(name: string, width: number, height: number, color: RLottieColor, toneIndex: number) {
-    return [
-      name,
-      width,
-      height,
-      // color ? rgbaToHexa(color) : ''
-      color ? 'colored' : '',
-      toneIndex || ''
-    ].filter(Boolean).join('-');
-  }
-}
-
-const cache = new RLottieCache();
 
 export type RLottieColor = [number, number, number];
 
@@ -135,8 +59,8 @@ export default class RLottiePlayer extends EventListenerBase<{
   firstFrame: () => void,
   cached: () => void,
   destroy: () => void
-}> {
-  public static CACHE = cache;
+}> implements AnimationItemWrapper {
+  public static CACHE = framesCache;
   private static reqId = 0;
 
   public reqId = 0;
@@ -165,7 +89,7 @@ export default class RLottiePlayer extends EventListenerBase<{
   public _autoplay: boolean; // ! will be used to store original value for settings.stickers.loop
   public loop = true;
   private _loop: boolean; // ! will be used to store original value for settings.stickers.loop
-  private group = '';
+  public group: AnimationItemGroup = '';
 
   private frInterval: number;
   private frThen: number;
@@ -174,7 +98,7 @@ export default class RLottiePlayer extends EventListenerBase<{
   // private caching = false;
   // private removed = false;
 
-  private cache: RLottieCacheItem;
+  private cache: FramesCacheItem;
   private imageData: ImageData;
   public clamped: Uint8ClampedArray;
   private cachingDelta = 0;
@@ -226,7 +150,7 @@ export default class RLottiePlayer extends EventListenerBase<{
     this.toneIndex = options.toneIndex;
 
     if(this.name) {
-      this.cacheName = cache.generateName(this.name, this.width, this.height, this.color, this.toneIndex);
+      this.cacheName = RLottiePlayer.CACHE.generateName(this.name, this.width, this.height, this.color, this.toneIndex);
     }
 
     // * Skip ratio (30fps)
@@ -288,9 +212,9 @@ export default class RLottiePlayer extends EventListenerBase<{
     }
 
     if(this.name) {
-      this.cache = cache.getCache(this.cacheName);
+      this.cache = RLottiePlayer.CACHE.getCache(this.cacheName);
     } else {
-      this.cache = RLottieCache.createCache();
+      this.cache = FramesCache.createCache();
     }
   }
 
@@ -381,7 +305,7 @@ export default class RLottiePlayer extends EventListenerBase<{
   public remove() {
     this.pause();
     this.sendQuery(['destroy']);
-    if(this.cacheName) cache.releaseCache(this.cacheName);
+    if(this.cacheName) RLottiePlayer.CACHE.releaseCache(this.cacheName);
     this.dispatchEvent('destroy');
     this.cleanup();
   }
@@ -713,7 +637,7 @@ export default class RLottiePlayer extends EventListenerBase<{
 
       // let lastTime = this.frThen;
       this.frameListener = () => {
-        if(this.paused) {
+        if(this.paused || !this.currentMethod) {
           return;
         }
 
@@ -735,7 +659,7 @@ export default class RLottiePlayer extends EventListenerBase<{
       this.addEventListener('enterFrame', this.frameListener);
       // setInterval(this.frameListener, this.frInterval);
 
-      // ! fix autoplaying since there will be no animationIntersector for it,
+      // ! fix autoplaying since there will be no animationIntersector for it
       if(this.group === 'none' && this.autoplay) {
         this.play();
       }

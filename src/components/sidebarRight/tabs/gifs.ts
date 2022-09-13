@@ -51,12 +51,12 @@ export default class AppGifsTab extends SliderSuperTab {
     // this.backBtn.parentElement.append(this.inputSearch.container);
   }
 
-  private onGifsClick = (e: MouseEvent | TouchEvent) => {
+  private onGifsClick = async(e: MouseEvent | TouchEvent) => {
     const target = findUpClassName(e.target, 'gif');
     if(!target) return;
 
     const fileId = target.dataset.docId;
-    if(appImManager.chat.input.sendMessageWithDocument(fileId)) {
+    if(await appImManager.chat.input.sendMessageWithDocument(fileId)) {
       if(mediaSizes.isMobile) {
         appSidebarRight.onCloseBtnClick();
       }

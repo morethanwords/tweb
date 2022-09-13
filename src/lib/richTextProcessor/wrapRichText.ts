@@ -24,13 +24,18 @@ import rootScope from '../rootScope';
 import mediaSizes from '../../helpers/mediaSizes';
 import {wrapSticker} from '../../components/wrappers';
 import RLottiePlayer from '../rlottie/rlottiePlayer';
-import animationIntersector from '../../components/animationIntersector';
+import animationIntersector, {AnimationItemGroup} from '../../components/animationIntersector';
 import type {MyDocument} from '../appManagers/appDocsManager';
 import LazyLoadQueue from '../../components/lazyLoadQueue';
 import {Awaited} from '../../types';
-// import sequentialDom from '../../helpers/sequentialDom';
 import {MediaSize} from '../../helpers/mediaSize';
 import IS_WEBM_SUPPORTED from '../../environment/webmSupport';
+import assumeType from '../../helpers/assumeType';
+import noop from '../../helpers/noop';
+import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
+import findUpClassName from '../../helpers/dom/findUpClassName';
+import getViewportSlice from '../../helpers/dom/getViewportSlice';
+import {getMiddleware, Middleware} from '../../helpers/middleware';
 
 const resizeObserver = new ResizeObserver((entries) => {
   for(const entry of entries) {
@@ -40,24 +45,103 @@ const resizeObserver = new ResizeObserver((entries) => {
 });
 
 class CustomEmojiElement extends HTMLElement {
+  public elements: CustomEmojiElement[];
+  public renderer: CustomEmojiRendererElement;
+  public player: RLottiePlayer | HTMLVideoElement;
+  public paused: boolean;
+  public syncedPlayer: SyncedPlayer;
 
+  constructor() {
+    super();
+    this.paused = true;
+  }
+
+  public connectedCallback() {
+    if(this.player) {
+      animationIntersector.addAnimation(this, this.renderer.animationGroup);
+    }
+
+    this.connectedCallback = undefined;
+  }
+
+  public disconnectedCallback() {
+    if(this.syncedPlayer) {
+      this.syncedPlayer.pausedElements.delete(this);
+    }
+
+    // otherwise https://bugs.chromium.org/p/chromium/issues/detail?id=1144736#c27 will happen
+    this.textContent = '';
+
+    this.disconnectedCallback = this.elements = this.renderer = this.player = this.syncedPlayer = undefined;
+  }
+
+  public pause() {
+    if(this.paused) {
+      return;
+    }
+
+    this.paused = true;
+
+    if(this.player instanceof HTMLVideoElement) {
+      this.renderer.lastPausedVideo = this.player;
+      this.player.pause();
+    }
+
+    if(this.syncedPlayer && !this.syncedPlayer.pausedElements.has(this)) {
+      this.syncedPlayer.pausedElements.add(this);
+
+      if(this.syncedPlayer.pausedElements.size === this.syncedPlayer.elementsCounter) {
+        this.syncedPlayer.player.pause();
+      }
+    }
+  }
+
+  public play() {
+    if(!this.paused) {
+      return;
+    }
+
+    this.paused = false;
+
+    if(this.player instanceof HTMLVideoElement) {
+      this.player.currentTime = this.renderer.lastPausedVideo?.currentTime || this.player.currentTime;
+      this.player.play().catch(noop);
+    }
+
+    if(this.syncedPlayer && this.syncedPlayer.pausedElements.has(this)) {
+      this.syncedPlayer.pausedElements.delete(this);
+
+      if(this.syncedPlayer.pausedElements.size !== this.syncedPlayer.elementsCounter) {
+        this.player.play();
+      }
+    }
+  }
+
+  public remove() {
+    this.elements = this.renderer = this.player = undefined;
+  }
+
+  public get autoplay() {
+    return true;
+  }
 }
 
 export class CustomEmojiRendererElement extends HTMLElement {
   public canvas: HTMLCanvasElement;
   public context: CanvasRenderingContext2D;
 
-  public players: Map<CustomEmojiElement[], RLottiePlayer>;
-  public clearedContainers: Set<CustomEmojiElement[]>;
-
-  public paused: boolean;
-  public autoplay: boolean;
-
-  public middleware: () => boolean;
-  public keys: string[];
+  public playersSynced: Map<CustomEmojiElement[], RLottiePlayer | HTMLVideoElement>;
+  public syncedElements: Map<SyncedPlayer, CustomEmojiElement[]>;
+  public clearedElements: Set<CustomEmojiElement[]>;
+  public lastPausedVideo: HTMLVideoElement;
 
   public lastRect: DOMRect;
   public isDimensionsSet: boolean;
+
+  public animationGroup: AnimationItemGroup;
+  public size: MediaSize;
+
+  public lazyLoadQueue: LazyLoadQueue;
 
   constructor() {
     super();
@@ -68,36 +152,49 @@ export class CustomEmojiRendererElement extends HTMLElement {
     this.context = this.canvas.getContext('2d');
     this.append(this.canvas);
 
-    this.paused = false;
-    this.autoplay = true;
-    this.players = new Map();
-    this.clearedContainers = new Set();
-    this.keys = [];
+    this.playersSynced = new Map();
+    this.syncedElements = new Map();
+    this.clearedElements = new Set();
+
+    this.animationGroup = 'EMOJI';
   }
 
   public connectedCallback() {
     // this.setDimensions();
-    animationIntersector.addAnimation(this, 'EMOJI');
+    // animationIntersector.addAnimation(this, this.animationGroup);
     resizeObserver.observe(this.canvas);
+    emojiRenderers.push(this);
 
     this.connectedCallback = undefined;
   }
 
   public disconnectedCallback() {
-    for(const key of this.keys) {
-      const l = lotties.get(key);
-      if(!l) {
+    for(const [syncedPlayer, elements] of this.syncedElements) {
+      if(syncedPlayers.get(syncedPlayer.key) !== syncedPlayer) {
         continue;
       }
 
-      if(!--l.counter) {
-        if(l.player instanceof RLottiePlayer) {
-          l.player.remove();
+      if(elements) {
+        syncedPlayer.elementsCounter -= elements.length;
+      }
+
+      if(!--syncedPlayer.counter) {
+        if(syncedPlayer.player) {
+          const frame = syncedPlayersFrames.get(syncedPlayer.player);
+          if(frame) {
+            (frame as ImageBitmap).close?.();
+            syncedPlayersFrames.delete(syncedPlayer.player);
+          }
+
+          syncedPlayersFrames.delete(syncedPlayer.player);
+          syncedPlayer.player.overrideRender = noop;
+          syncedPlayer.player.remove();
+          syncedPlayer.player = undefined;
         }
 
-        lotties.delete(key);
+        syncedPlayers.delete(syncedPlayer.key);
 
-        if(!lotties.size) {
+        if(!syncedPlayers.size) {
           clearRenderInterval();
         }
       }
@@ -105,20 +202,60 @@ export class CustomEmojiRendererElement extends HTMLElement {
 
     resizeObserver.unobserve(this.canvas);
 
-    this.disconnectedCallback = undefined;
+    indexOfAndSplice(emojiRenderers, this);
+    this.playersSynced.clear();
+    this.syncedElements.clear();
+    this.clearedElements.clear();
+    this.lazyLoadQueue?.clear();
+    this.middlewareHelper?.clean();
+
+    this.disconnectedCallback = this.lastPausedVideo = this.lazyLoadQueue = undefined;
   }
 
   public getOffsets(offsetsMap: Map<CustomEmojiElement[], {top: number, left: number}[]> = new Map()) {
-    for(const [containers, player] of this.players) {
-      const offsets = containers.map((container) => {
-        return {
-          top: container.offsetTop,
-          left: container.offsetLeft
-        };
+    if(!this.playersSynced.size) {
+      return offsetsMap;
+    }
+
+    const overflowElement = findUpClassName(this, 'scrollable') || this.offsetParent as HTMLElement;
+    const overflowRect = overflowElement.getBoundingClientRect();
+    const rect = this.getBoundingClientRect();
+
+    for(const elements of this.playersSynced.keys()) {
+      const {visible} = getViewportSlice({
+        overflowElement,
+        overflowRect,
+        elements,
+        extraSize: this.size.height * 2.5 // let's add some margin
       });
 
-      offsetsMap.set(containers, offsets);
+      const offsets = visible.map(({rect: elementRect}) => {
+        const top = elementRect.top - rect.top;
+        const left = elementRect.left - rect.left;
+        return {top, left};
+      });
+
+      if(offsets.length) {
+        offsetsMap.set(elements, offsets);
+      }
     }
+
+    // const rect = this.getBoundingClientRect();
+    // const visibleRect = getVisibleRect(this, overflowElement, undefined, rect);
+    // const minTop = visibleRect ? visibleRect.rect.top - this.size.height : 0;
+    // const maxTop = Infinity;
+    // for(const elements of this.playersSynced.keys()) {
+    //   const offsets = elements.map((element) => {
+    //     const elementRect = element.getBoundingClientRect();
+    //     const top = elementRect.top - rect.top;
+    //     const left = elementRect.left - rect.left;
+    //     return top >= minTop && (top + elementRect.height) <= maxTop ? {top, left} : undefined;
+    //   }).filter(Boolean);
+
+    //   if(offsets.length) {
+    //     offsetsMap.set(elements, offsets);
+    //   }
+    // }
 
     return offsetsMap;
   }
@@ -135,24 +272,24 @@ export class CustomEmojiRendererElement extends HTMLElement {
     }
 
     const {width, height, dpr} = canvas;
-    for(const [containers, player] of this.players) {
-      const frame = topFrames.get(player);
+    for(const [elements, offsets] of offsetsMap) {
+      const player = this.playersSynced.get(elements);
+      const frame = syncedPlayersFrames.get(player);
       if(!frame) {
         continue;
       }
 
       const isImageData = frame instanceof ImageData;
-      const {width: stickerWidth, height: stickerHeight} = player.canvas[0];
-      const offsets = offsetsMap.get(containers);
-      const maxTop = height - stickerHeight;
-      const maxLeft = width - stickerWidth;
+      const {width: frameWidth, height: frameHeight} = frame;
+      const maxTop = height - frameHeight;
+      const maxLeft = width - frameWidth;
 
-      if(!this.clearedContainers.has(containers)) {
-        containers.forEach((container) => {
-          container.textContent = '';
+      if(!this.clearedElements.has(elements)) {
+        elements.forEach((element) => {
+          element.textContent = '';
         });
 
-        this.clearedContainers.add(containers);
+        this.clearedElements.add(elements);
       }
 
       offsets.forEach(({top, left}) => {
@@ -165,15 +302,15 @@ export class CustomEmojiRendererElement extends HTMLElement {
           context.putImageData(frame as ImageData, left, top);
         } else {
           // context.clearRect(left, top, width, height);
-          context.drawImage(frame as ImageBitmap, left, top, stickerWidth, stickerHeight);
+          context.drawImage(frame as ImageBitmap, left, top, frameWidth, frameHeight);
         }
       });
     }
   }
 
   public checkForAnyFrame() {
-    for(const [containers, player] of this.players) {
-      if(topFrames.has(player)) {
+    for(const player of this.playersSynced.values()) {
+      if(syncedPlayersFrames.has(player)) {
         return true;
       }
     }
@@ -181,16 +318,8 @@ export class CustomEmojiRendererElement extends HTMLElement {
     return false;
   }
 
-  public pause() {
-    this.paused = true;
-  }
-
-  public play() {
-    this.paused = false;
-  }
-
   public remove() {
-    this.canvas.remove();
+    // this.canvas.remove();
   }
 
   // public setDimensions() {
@@ -219,51 +348,61 @@ export class CustomEmojiRendererElement extends HTMLElement {
   }
 }
 
-type R = CustomEmojiRendererElement;
+type CustomEmojiRenderer = CustomEmojiRendererElement;
+type SyncedPlayer = {
+  player: RLottiePlayer,
+  middlewares: Set<() => boolean>,
+  pausedElements: Set<CustomEmojiElement>,
+  elementsCounter: number,
+  counter: number,
+  key: string
+};
+type CustomEmojiFrame = Parameters<RLottiePlayer['overrideRender']>[0] | HTMLVideoElement;
 
-let renderInterval: number;
-const top: Array<R> = [];
-const topFrames: Map<RLottiePlayer, Parameters<RLottiePlayer['overrideRender']>[0]> = new Map();
-const lotties: Map<string, {player: Promise<RLottiePlayer> | RLottiePlayer, middlewares: Set<() => boolean>, counter: number}> = new Map();
-const rerere = () => {
-  const t = top.filter((r) => !r.paused && r.isConnected && r.checkForAnyFrame());
+const CUSTOM_EMOJI_INSTANT_PLAY = true; // do not wait for animationIntersector
+let emojiRenderInterval: number;
+const emojiRenderers: Array<CustomEmojiRenderer> = [];
+const syncedPlayers: Map<string, SyncedPlayer> = new Map();
+const syncedPlayersFrames: Map<RLottiePlayer | HTMLVideoElement, CustomEmojiFrame> = new Map();
+const renderEmojis = () => {
+  const t = emojiRenderers.filter((r) => r.isConnected && r.checkForAnyFrame());
   if(!t.length) {
     return;
   }
 
-  const offsetsMap: Map<CustomEmojiElement[], {top: number, left: number}[]> = new Map();
-  for(const r of t) {
-    r.getOffsets(offsetsMap);
+  const o = t.map((renderer) => {
+    const offsets = renderer.getOffsets();
+    return offsets.size ? [renderer, offsets] as const : undefined;
+  }).filter(Boolean);
+
+  for(const [renderer] of o) {
+    renderer.clearCanvas();
   }
 
-  for(const r of t) {
-    r.clearCanvas();
-  }
-
-  for(const r of t) {
-    r.render(offsetsMap);
+  for(const [renderer, offsets] of o) {
+    renderer.render(offsets);
   }
 };
 const CUSTOM_EMOJI_FPS = 60;
 const CUSTOM_EMOJI_FRAME_INTERVAL = 1000 / CUSTOM_EMOJI_FPS;
 const setRenderInterval = () => {
-  if(renderInterval) {
+  if(emojiRenderInterval) {
     return;
   }
 
-  renderInterval = window.setInterval(rerere, CUSTOM_EMOJI_FRAME_INTERVAL);
-  rerere();
+  emojiRenderInterval = window.setInterval(renderEmojis, CUSTOM_EMOJI_FRAME_INTERVAL);
+  renderEmojis();
 };
 const clearRenderInterval = () => {
-  if(!renderInterval) {
+  if(!emojiRenderInterval) {
     return;
   }
 
-  clearInterval(renderInterval);
-  renderInterval = undefined;
+  clearInterval(emojiRenderInterval);
+  emojiRenderInterval = undefined;
 };
 
-(window as any).lotties = lotties;
+(window as any).syncedPlayers = syncedPlayers;
 
 customElements.define('custom-emoji-element', CustomEmojiElement);
 customElements.define('custom-emoji-renderer-element', CustomEmojiRendererElement);
@@ -288,6 +427,8 @@ export default function wrapRichText(text: string, options: Partial<{
   noEncoding: boolean,
 
   contextHashtag?: string,
+
+  // ! recursive, do not provide
   nasty?: {
     i: number,
     usedLength: number,
@@ -296,11 +437,13 @@ export default function wrapRichText(text: string, options: Partial<{
   },
   voodoo?: boolean,
   customEmojis?: {[docId: DocId]: CustomEmojiElement[]},
-  loadPromises?: Promise<any>[],
-  middleware?: () => boolean,
   wrappingSpoiler?: boolean,
+
+  loadPromises?: Promise<any>[],
+  middleware?: Middleware,
   lazyLoadQueue?: LazyLoadQueue,
-  customEmojiSize?: MediaSize
+  customEmojiSize?: MediaSize,
+  animationGroup?: AnimationItemGroup
 }> = {}) {
   const fragment = document.createDocumentFragment();
   if(!text) {
@@ -751,30 +894,40 @@ export default function wrapRichText(text: string, options: Partial<{
   const docIds = Object.keys(customEmojis) as DocId[];
   if(docIds.length) {
     const managers = rootScope.managers;
-    const middleware = options.middleware;
+    const size = options.customEmojiSize || mediaSizes.active.customEmoji;
     const renderer = new CustomEmojiRendererElement();
-    renderer.middleware = middleware;
-    top.push(renderer);
+    // const middleware = () => !!renderer.disconnectedCallback && (!options.middleware || options.middleware());
+    let middleware: Middleware;
+    if(options.middleware) {
+      middleware = options.middleware;
+      options.middleware.onDestroy(() => {
+        renderer.disconnectedCallback?.();
+      });
+    } else {
+      renderer.middlewareHelper = getMiddleware();
+      middleware = renderer.middlewareHelper.get();
+    }
+
+    renderer.animationGroup = options.animationGroup;
+    renderer.size = size;
     fragment.prepend(renderer);
 
-    const size = options.customEmojiSize || mediaSizes.active.customEmoji;
     const loadPromise = managers.appEmojiManager.getCachedCustomEmojiDocuments(docIds).then((docs) => {
-      // console.log(docs);
       if(middleware && !middleware()) return;
 
       const loadPromises: Promise<any>[] = [];
-      const wrap = (doc: MyDocument, _loadPromises?: Promise<any>[]): Promise<Awaited<ReturnType<typeof wrapSticker>> & {onRender?: () => void}> => {
-        const containers = customEmojis[doc.id];
+      const wrap = (doc: MyDocument, _loadPromises?: Promise<any>[]) => {
+        const elements = customEmojis[doc.id];
         const isLottie = doc.sticker === 2;
 
         const loadPromises: Promise<any>[] = [];
         const promise = wrapSticker({
-          div: containers,
+          div: elements,
           doc,
           width: size.width,
           height: size.height,
           loop: true,
-          play: true,
+          play: CUSTOM_EMOJI_INSTANT_PLAY,
           managers,
           isCustomEmoji: true,
           group: 'none',
@@ -782,20 +935,20 @@ export default function wrapRichText(text: string, options: Partial<{
           middleware,
           exportLoad: true,
           needFadeIn: false,
-          loadStickerMiddleware: isLottie && middleware ? () => {
-            if(lotties.get(key) !== l) {
+          loadStickerMiddleware: isLottie && middleware ? middleware.create().get(() => {
+            if(syncedPlayers.get(key) !== syncedPlayer) {
               return false;
             }
 
-            let good = !l.middlewares.size;
-            for(const middleware of l.middlewares) {
+            let good = !syncedPlayer.middlewares.size;
+            for(const middleware of syncedPlayer.middlewares) {
               if(middleware()) {
                 good = true;
               }
             }
 
             return good;
-          } : undefined,
+          }) : undefined,
           static: doc.mime_type === 'video/webm' && !IS_WEBM_SUPPORTED
         });
 
@@ -803,49 +956,138 @@ export default function wrapRichText(text: string, options: Partial<{
           promise.then(() => _loadPromises.push(...loadPromises));
         }
 
-        if(!isLottie) {
-          return promise;
+        const addition: {
+          onRender?: (_p: Awaited<Awaited<typeof promise>['render']>) => Promise<void>,
+          elements: typeof elements
+        } = {
+          elements
+        };
+
+        if(doc.sticker === 1) {
+          return promise.then((res) => ({...res, ...addition}));
         }
 
-        const onRender = (player: Awaited<Awaited<typeof promise>['render']>) => Promise.all(loadPromises).then(() => {
-          if(player instanceof RLottiePlayer && (!middleware || middleware())) {
-            l.player = player;
+        // eslint-disable-next-line prefer-const
+        addition.onRender = (_p) => Promise.all(loadPromises).then(() => {
+          if((middleware && !middleware()) || !doc.animated) {
+            return;
+          }
 
-            const playerCanvas = player.canvas[0];
-            renderer.canvas.dpr = playerCanvas.dpr;
-            renderer.players.set(containers, player);
+          const players = Array.isArray(_p) ? _p as HTMLVideoElement[] : [_p as RLottiePlayer];
+          const player = Array.isArray(players) ? players[0] : players;
+          assumeType<RLottiePlayer | HTMLVideoElement>(player);
+          elements.forEach((element, idx) => {
+            const player = players[idx] || players[0];
+            element.renderer = renderer;
+            element.elements = elements;
+            element.player = player;
 
-            setRenderInterval();
+            if(syncedPlayer) {
+              element.syncedPlayer = syncedPlayer;
+              if(element.paused) {
+                element.syncedPlayer.pausedElements.add(element);
+              }
+            }
+
+            if(element.isConnected) {
+              animationIntersector.addAnimation(element, element.renderer.animationGroup);
+            }
+          });
+
+          if(syncedPlayer) {
+            syncedPlayer.elementsCounter += elements.length;
+            syncedPlayer.middlewares.delete(middleware);
+            renderer.syncedElements.set(syncedPlayer, elements);
+          }
+
+          if(player instanceof RLottiePlayer) {
+            syncedPlayer.player = player;
+            renderer.playersSynced.set(elements, player);
+            renderer.canvas.dpr = player.canvas[0].dpr;
+            player.group = renderer.animationGroup;
 
             player.overrideRender ??= (frame) => {
-              topFrames.set(player, frame);
+              syncedPlayersFrames.set(player, frame);
               // frames.set(containers, frame);
             };
 
-            l.middlewares.delete(middleware);
+            setRenderInterval();
+          } else if(player instanceof HTMLVideoElement) {
+            // player.play();
+
+            // const cache = framesCache.getCache(key);
+            // let {width, height} = renderer.size;
+            // width *= dpr;
+            // height *= dpr;
+
+            // const onFrame = (frame: ImageBitmap | HTMLCanvasElement) => {
+            //   topFrames.set(player, frame);
+            //   player.requestVideoFrameCallback(callback);
+            // };
+
+            // let frameNo = -1, lastTime = 0;
+            // const callback: VideoFrameRequestCallback = (now, metadata) => {
+            //   const time = player.currentTime;
+            //   if(lastTime > time) {
+            //     frameNo = -1;
+            //   }
+
+            //   const _frameNo = ++frameNo;
+            //   lastTime = time;
+            //   // const frameNo = Math.floor(player.currentTime * 1000 / CUSTOM_EMOJI_FRAME_INTERVAL);
+            //   // const frameNo = metadata.presentedFrames;
+            //   const imageBitmap = cache.framesNew.get(_frameNo);
+
+            //   if(imageBitmap) {
+            //     onFrame(imageBitmap);
+            //   } else if(IS_IMAGE_BITMAP_SUPPORTED) {
+            //     createImageBitmap(player, {resizeWidth: width, resizeHeight: height}).then((imageBitmap) => {
+            //       cache.framesNew.set(_frameNo, imageBitmap);
+            //       if(frameNo === _frameNo) onFrame(imageBitmap);
+            //     });
+            //   } else {
+            //     const canvas = document.createElement('canvas');
+            //     const context = canvas.getContext('2d');
+            //     canvas.width = width;
+            //     canvas.height = height;
+            //     context.drawImage(player, 0, 0);
+            //     cache.framesNew.set(_frameNo, canvas);
+            //     onFrame(canvas);
+            //   }
+            // };
+
+            // // player.requestVideoFrameCallback(callback);
+            // // setInterval(callback, CUSTOM_EMOJI_FRAME_INTERVAL);
           }
         });
 
+        let syncedPlayer: SyncedPlayer;
         const key = [doc.id, size.width, size.height].join('-');
-        renderer.keys.push(key);
-        let l = lotties.get(key);
-        if(!l) {
-          l = {
-            player: undefined,
-            middlewares: new Set(),
-            counter: 0
-          };
+        if(isLottie) {
+          syncedPlayer = syncedPlayers.get(key);
+          if(!syncedPlayer) {
+            syncedPlayer = {
+              player: undefined,
+              middlewares: new Set(),
+              pausedElements: new Set(),
+              elementsCounter: 0,
+              counter: 0,
+              key
+            };
 
-          lotties.set(key, l);
+            syncedPlayers.set(key, syncedPlayer);
+          }
+
+          renderer.syncedElements.set(syncedPlayer, undefined);
+
+          ++syncedPlayer.counter;
+
+          if(middleware) {
+            syncedPlayer.middlewares.add(middleware);
+          }
         }
 
-        ++l.counter;
-
-        if(middleware) {
-          l.middlewares.add(middleware);
-        }
-
-        return promise.then((res) => ({...res, onRender}));
+        return promise.then((res) => ({...res, ...addition}));
       };
 
       const missing: DocId[] = [];
@@ -865,12 +1107,29 @@ export default function wrapRichText(text: string, options: Partial<{
 
       const loadFromPromises = (promises: typeof cachedPromises) => {
         return Promise.all(promises).then((arr) => {
-          const promises = arr.map(({load, onRender}) => {
+          const promises = arr.map(({load, onRender, elements}) => {
             if(!load) {
               return;
             }
 
-            return load().then(onRender);
+            const l = () => load().then(onRender);
+
+            if(renderer.lazyLoadQueue) {
+              elements.forEach((element) => {
+                renderer.lazyLoadQueue.push({
+                  div: element,
+                  load: () => {
+                    elements.forEach((element) => {
+                      renderer.lazyLoadQueue.unobserve(element);
+                    });
+
+                    return l();
+                  }
+                });
+              });
+            } else {
+              return l();
+            }
           });
 
           return Promise.all(promises);
@@ -890,6 +1149,7 @@ export default function wrapRichText(text: string, options: Partial<{
           load
         });
       } else {
+        renderer.lazyLoadQueue = new LazyLoadQueue();
         load();
       }
 

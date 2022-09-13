@@ -18,7 +18,7 @@ import {wrapDocument, wrapPhoto, wrapVideo} from './wrappers';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise} from '../hooks/useHeavyAnimationCheck';
 import I18n, {LangPackKey, i18n} from '../lib/langPack';
 import findUpClassName from '../helpers/dom/findUpClassName';
-import {getMiddleware} from '../helpers/middleware';
+import {getMiddleware, Middleware} from '../helpers/middleware';
 import {ChannelParticipant, ChatFull, ChatParticipant, ChatParticipants, Document, Message, MessageMedia, Photo, WebPage} from '../layer';
 import SortedUserList from './sortedUserList';
 import findUpTag from '../helpers/dom/findUpTag';
@@ -252,7 +252,7 @@ class SearchContextMenu {
 
 export type ProcessSearchSuperResult = {
   message: Message.message,
-  middleware: () => boolean,
+  middleware: Middleware,
   promises: Promise<any>[],
   elemsToAppend: {element: HTMLElement, message: any}[],
   inputFilter: MyInputMessagesFilter,

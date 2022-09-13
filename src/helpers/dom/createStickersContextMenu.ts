@@ -18,9 +18,10 @@ export default function createStickersContextMenu(options: {
   verifyRecent?: (target: HTMLElement) => boolean,
   appendTo?: HTMLElement,
   onOpen?: () => any,
-  onClose?: () => any
+  onClose?: () => any,
+  onSend?: () => any
 }) {
-  const {listenTo, isStickerPack, verifyRecent, appendTo, onOpen, onClose} = options;
+  const {listenTo, isStickerPack, verifyRecent, appendTo, onOpen, onClose, onSend} = options;
   let target: HTMLElement, doc: MyDocument;
   const verifyFavoriteSticker = async(toAdd: boolean) => {
     const favedStickers = await rootScope.managers.acknowledged.appStickersManager.getFavedStickersStickers();
@@ -64,7 +65,10 @@ export default function createStickersContextMenu(options: {
     }, {
       icon: 'mute',
       text: 'Chat.Send.WithoutSound',
-      onClick: () => EmoticonsDropdown.sendDocId(doc.id, false, true),
+      onClick: () => {
+        onSend?.();
+        return EmoticonsDropdown.sendDocId(doc.id, false, true);
+      },
       verify: () => !!(appImManager.chat.peerId && appImManager.chat.peerId !== rootScope.myId)
     }, {
       icon: 'schedule',

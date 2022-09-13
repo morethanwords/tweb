@@ -331,17 +331,13 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
         }
       });
 
-      this.listenerSetter.add(rootScope)('stickers_installed', (e) => {
-        const set: StickerSet.stickerSet = e;
-
+      this.listenerSetter.add(rootScope)('stickers_installed', (set) => {
         if(!stickerSets[set.id]) {
           renderStickerSet(set, 'prepend');
         }
       });
 
-      this.listenerSetter.add(rootScope)('stickers_deleted', (e) => {
-        const set: StickerSet.stickerSet = e;
-
+      this.listenerSetter.add(rootScope)('stickers_deleted', (set) => {
         if(stickerSets[set.id]) {
           stickerSets[set.id].container.remove();
           delete stickerSets[set.id];

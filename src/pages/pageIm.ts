@@ -42,8 +42,9 @@ const onFirstMount = () => {
 
   return Promise.all([
     loadFonts()/* .then(() => new Promise((resolve) => window.requestAnimationFrame(resolve))) */,
-    import('../lib/appManagers/appDialogsManager')
-  ]).then(([_, appDialogsManager]) => {
+    import('../lib/appManagers/appDialogsManager'),
+    'requestVideoFrameCallback' in HTMLVideoElement.prototype ? Promise.resolve() : import('../helpers/dom/requestVideoFrameCallbackPolyfill')
+  ]).then(([_, appDialogsManager, __]) => {
     appDialogsManager.default.start();
     setTimeout(() => {
       document.getElementById('auth-pages').remove();

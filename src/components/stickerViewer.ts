@@ -12,7 +12,7 @@ import findUpClassName from '../helpers/dom/findUpClassName';
 import getVisibleRect from '../helpers/dom/getVisibleRect';
 import ListenerSetter from '../helpers/listenerSetter';
 import {makeMediaSize} from '../helpers/mediaSize';
-import {getMiddleware} from '../helpers/middleware';
+import {getMiddleware, Middleware} from '../helpers/middleware';
 import {doubleRaf} from '../helpers/schedulers';
 import pause from '../helpers/schedulers/pause';
 import windowSize from '../helpers/windowSize';
@@ -70,7 +70,7 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
     const doThatSticker = async({mediaContainer, doc, middleware, lockGroups, isSwitching}: {
       mediaContainer: HTMLElement,
       doc: MyDocument,
-      middleware: () => boolean,
+      middleware: Middleware,
       lockGroups?: boolean,
       isSwitching?: boolean
     }) => {
@@ -129,7 +129,7 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
       transformer.append(stickerContainer, stickerEmoji);
       container.append(transformer);
 
-      const player = await wrapSticker({
+      const o = await wrapSticker({
         doc,
         div: stickerContainer,
         group,
@@ -150,6 +150,8 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
       if(!container.parentElement) {
         document.body.append(container);
       }
+
+      const player = Array.isArray(o) ? o[0] : o;
 
       const firstFramePromise = player instanceof RLottiePlayer ?
         new Promise<void>((resolve) => player.addEventListener('firstFrame', resolve, {once: true})) :

@@ -7,6 +7,7 @@
 import IS_VIBRATE_SUPPORTED from '../../environment/vibrateSupport';
 import assumeType from '../../helpers/assumeType';
 import isInDOM from '../../helpers/dom/isInDOM';
+import {Middleware} from '../../helpers/middleware';
 import throttleWithRaf from '../../helpers/schedulers/throttleWithRaf';
 import windowSize from '../../helpers/windowSize';
 import {PhotoSize, VideoSize} from '../../layer';
@@ -32,7 +33,7 @@ export default function wrapStickerAnimation({
 }: {
   size: number,
   doc: MyDocument,
-  middleware?: () => boolean,
+  middleware?: Middleware,
   target: HTMLElement,
   side: 'left' | 'center' | 'right',
   skipRatio?: number,

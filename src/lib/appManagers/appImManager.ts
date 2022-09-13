@@ -543,20 +543,41 @@ export class AppImManager extends EventListenerBase<{
       }
     });
 
-    this.addAnchorListener<{pathnameParams: ['addstickers', string]}>({
-      name: 'addstickers',
-      callback: ({pathnameParams}) => {
-        if(!pathnameParams[1]) {
-          return;
+    ([
+      ['addstickers', INTERNAL_LINK_TYPE.STICKER_SET],
+      ['addemoji', INTERNAL_LINK_TYPE.EMOJI_SET]
+    ] as [
+      'addstickers' | 'addemoji',
+      INTERNAL_LINK_TYPE.STICKER_SET | INTERNAL_LINK_TYPE.EMOJI_SET
+    ][]).forEach(([name, type]) => {
+      this.addAnchorListener<{pathnameParams: [typeof name, string]}>({
+        name,
+        callback: ({pathnameParams}) => {
+          if(!pathnameParams[1]) {
+            return;
+          }
+
+          const link: InternalLink = {
+            _: type,
+            set: pathnameParams[1]
+          };
+
+          this.processInternalLink(link);
         }
+      });
 
-        const link: InternalLink = {
-          _: INTERNAL_LINK_TYPE.STICKER_SET,
-          set: pathnameParams[1]
-        };
-
-        this.processInternalLink(link);
-      }
+      this.addAnchorListener<{
+        uriParams: {
+          set: string
+        }
+      }>({
+        name,
+        protocol: 'tg',
+        callback: ({uriParams}) => {
+          const link = this.makeLink(type, uriParams);
+          this.processInternalLink(link);
+        }
+      });
     });
 
     // * t.me/invoice/asdasdad
@@ -689,19 +710,6 @@ export class AppImManager extends EventListenerBase<{
       protocol: 'tg',
       callback: ({uriParams}) => {
         const link = this.makeLink(INTERNAL_LINK_TYPE.PRIVATE_POST, uriParams);
-        this.processInternalLink(link);
-      }
-    });
-
-    this.addAnchorListener<{
-      uriParams: {
-        set: string
-      }
-    }>({
-      name: 'addstickers',
-      protocol: 'tg',
-      callback: ({uriParams}) => {
-        const link = this.makeLink(INTERNAL_LINK_TYPE.STICKER_SET, uriParams);
         this.processInternalLink(link);
       }
     });
@@ -889,8 +897,9 @@ export class AppImManager extends EventListenerBase<{
         break;
       }
 
+      case INTERNAL_LINK_TYPE.EMOJI_SET:
       case INTERNAL_LINK_TYPE.STICKER_SET: {
-        new PopupStickers({id: link.set}).show();
+        new PopupStickers({id: link.set}, link._ === INTERNAL_LINK_TYPE.EMOJI_SET).show();
         break;
       }
 
@@ -982,7 +991,7 @@ export class AppImManager extends EventListenerBase<{
   private addAnchorListener<Params extends {pathnameParams?: any, uriParams?: any}>(options: {
     name: 'showMaskedAlert' | 'execBotCommand' | 'searchByHashtag' | 'addstickers' | 'im' |
           'resolve' | 'privatepost' | 'addstickers' | 'voicechat' | 'joinchat' | 'join' | 'invoice' |
-          'emoji',
+          'addemoji',
     protocol?: 'tg',
     callback: (params: Params, element?: HTMLAnchorElement) => boolean | any,
     noPathnameParams?: boolean,
