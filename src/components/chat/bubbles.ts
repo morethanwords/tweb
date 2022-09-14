@@ -264,6 +264,7 @@ export default class ChatBubbles {
   private setPeerTempId: number = 0;
 
   private renderNewPromises: Set<Promise<any>> = new Set();
+  private updateGradient: boolean;
 
   // private reactions: Map<number, ReactionsElement>;
 
@@ -887,17 +888,14 @@ export default class ChatBubbles {
     this.listenerSetter.add(rootScope)('history_append', async({storageKey, message}) => {
       if(storageKey !== this.chat.messagesStorageKey) return;
 
+      if(rootScope.settings.animationsEnabled) {
+        this.updateGradient = true;
+      }
+
       if(!this.scrollable.loadedAll.bottom) {
         this.chat.setMessageId();
       } else {
         this.renderNewMessage(message, true);
-      }
-
-      if(rootScope.settings.animationsEnabled) {
-        const gradientRenderer = this.chat.gradientRenderer;
-        if(gradientRenderer) {
-          gradientRenderer.toNextPosition();
-        }
       }
     });
 
@@ -2375,6 +2373,12 @@ export default class ChatBubbles {
       startCallback: (dimensions) => {
         // this.onScroll(true, this.scrolledDown && dimensions.distanceToEnd <= SCROLLED_DOWN_THRESHOLD ? undefined : dimensions);
         this.onScroll(true, dimensions);
+
+        if(this.updateGradient) {
+          const {gradientRenderer} = this.chat;
+          gradientRenderer?.toNextPosition(dimensions.getProgress);
+          this.updateGradient = undefined;
+        }
       }
     });
 
@@ -2604,6 +2608,7 @@ export default class ChatBubbles {
     this.getHistoryTopPromise = this.getHistoryBottomPromise = undefined;
     this.fetchNewPromise = undefined;
     this.getSponsoredMessagePromise = undefined;
+    this.updateGradient = undefined;
 
     if(this.stickyIntersector) {
       this.stickyIntersector.disconnect();

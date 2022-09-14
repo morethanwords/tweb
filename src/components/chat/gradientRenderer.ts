@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {animate} from '../../helpers/animation';
+import {animateSingle} from '../../helpers/animation';
 import {hexToRgb} from '../../helpers/color';
 
 const WIDTH = 50;
@@ -19,13 +19,6 @@ export default class ChatBackgroundGradientRenderer {
   private readonly _scrollTails = 50;
   private _frames: ImageData[];
   private _colors: {r: number, g: number, b: number}[];
-  /* private readonly _curve = [
-    0, 25, 50, 75, 100, 150, 200, 250, 300, 350, 400, 500, 600, 700, 800, 900,
-    1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1830, 1860, 1890, 1920,
-    1950, 1980, 2010, 2040, 2070, 2100, 2130, 2160, 2190, 2220, 2250, 2280, 2310,
-    2340, 2370, 2400, 2430, 2460, 2490, 2520, 2550, 2580, 2610, 2630, 2640, 2650,
-    2660, 2670, 2680, 2690, 2700
-  ]; */
   private readonly _curve = [
     0, 0.25, 0.50, 0.75, 1, 1.5, 2, 2.5, 3, 3.5, 4, 5, 6, 7, 8, 9, 10, 11, 12,
     13, 14, 15, 16, 17, 18, 18.3, 18.6, 18.9, 19.2, 19.5, 19.8, 20.1, 20.4, 20.7,
@@ -59,6 +52,9 @@ export default class ChatBackgroundGradientRenderer {
 
   private _addedScrollListener: boolean;
   private _animatingToNextPosition: boolean;
+  private _nextPositionTail: number;
+  private _nextPositionTails: number;
+  private _nextPositionLeft: number;
 
   constructor() {
     const diff = this._tails / this._curve[this._curve.length - 1];
@@ -79,10 +75,7 @@ export default class ChatBackgroundGradientRenderer {
 
   private getPositions(shift: number) {
     const positions = this._positions.slice();
-    while(shift > 0) {
-      positions.push(positions.shift());
-      --shift;
-    }
+    positions.push(...positions.splice(0, shift));
 
     const result: typeof positions = [];
     for(let i = 0; i < positions.length; i += 2) {
@@ -151,31 +144,52 @@ export default class ChatBackgroundGradientRenderer {
     }
   };
 
+  private changeTailAndDraw(diff: number) {
+    this.changeTail(diff);
+    const curPos = this.curPosition(this._phase, this._tail);
+    this.drawGradient(curPos);
+  }
+
   private drawOnWheel = () => {
-    let diff = this._scrollDelta / this._scrollTails;
+    const value = this._scrollDelta / this._scrollTails;
     this._scrollDelta %= this._scrollTails;
-    diff = diff > 0 ? Math.floor(diff) : Math.ceil(diff);
+    const diff = value > 0 ? Math.floor(value) : Math.ceil(value);
     if(diff) {
-      this.changeTail(diff);
-      const curPos = this.curPosition(this._phase, this._tail);
-      this.drawGradient(curPos);
+      this.changeTailAndDraw(diff);
     }
     this._onWheelRAF = undefined;
   };
 
-  private drawNextPositionAnimated = () => {
-    const frames = this._frames;
-    const id = frames.shift();
+  private drawNextPositionAnimated = (getProgress?: () => number) => {
+    let done: boolean, id: ImageData;
+    if(getProgress) {
+      const value = getProgress();
+      done = value >= 1;
+      const nextPositionTail = this._nextPositionTail ?? 0;
+      const tail = this._nextPositionTail = this._nextPositionTails * value;
+      const diff = tail - nextPositionTail;
+      if(diff) {
+        this._nextPositionLeft -= diff;
+        this.changeTailAndDraw(diff);
+      }
+    } else {
+      const frames = this._frames;
+      id = frames.shift();
+      done = !frames.length;
+    }
+
     if(id) {
       this.drawImageData(id);
     }
 
-    const leftLength = frames.length;
-    if(!leftLength) {
+    if(done) {
+      this._nextPositionLeft = undefined;
+      this._nextPositionTails = undefined;
+      this._nextPositionTail = undefined;
       this._animatingToNextPosition = undefined;
     }
 
-    return !!leftLength;
+    return !done;
   };
 
   private getGradientImageData(positions: {x: number, y: number}[]) {
@@ -303,8 +317,17 @@ export default class ChatBackgroundGradientRenderer {
     this.drawGradient(pos);
   }
 
-  public toNextPosition() {
+  public toNextPosition(getProgress?: () => number) {
     if(this._colors.length < 2) {
+      return;
+    }
+
+    if(getProgress) {
+      this._nextPositionLeft = this._tails + (this._nextPositionLeft ?? 0);
+      this._nextPositionTails = this._nextPositionLeft;
+      this._nextPositionTail = undefined;
+      this._animatingToNextPosition = true;
+      animateSingle(this.drawNextPositionAnimated.bind(this, getProgress), this);
       return;
     }
 
@@ -356,10 +379,14 @@ export default class ChatBackgroundGradientRenderer {
     });
 
     this._animatingToNextPosition = true;
-    animate(this.drawNextPositionAnimated);
+    animateSingle(this.drawNextPositionAnimated, this);
   }
 
+  // public toNextPositionThrottled = throttle(this.toNextPosition.bind(this), 100, true);
+
   public scrollAnimate(start?: boolean) {
+    // return;
+
     if(this._colors.length < 2 && start) {
       return;
     }

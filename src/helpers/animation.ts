@@ -27,7 +27,9 @@ export function createAnimationInstance(key: AnimationInstanceKey) {
 
   instances.set(key, instance);
   instance.deferred.then(() => {
-    instances.delete(key);
+    if(getAnimationInstance(key) === instance) {
+      instances.delete(key);
+    }
   });
 
   return instance;

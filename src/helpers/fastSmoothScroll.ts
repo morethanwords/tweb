@@ -32,6 +32,7 @@ export type ScrollStartCallbackDimensions = {
   duration: number,
   containerRect: DOMRect,
   elementRect: DOMRect,
+  getProgress: () => number
 };
 
 export type ScrollOptions = {
@@ -243,13 +244,16 @@ function scrollWithJs(options: ScrollOptions): Promise<void> {
   */
 
   const transition = absPath < SHORT_TRANSITION_MAX_DISTANCE ? shortTransition : longTransition;
-  const tick = () => {
+  const getProgress = () => {
     const t = duration ? Math.min((Date.now() - startAt) / duration, 1) : 1;
-
-    const currentPath = path * (1 - transition(t));
+    return transition(t);
+  };
+  const tick = () => {
+    const value = getProgress();
+    const currentPath = path * (1 - value);
     container[scrollPositionKey] = Math.round(target - currentPath);
 
-    return t < 1;
+    return value < 1;
   };
 
   if(!duration || !path) {
@@ -285,7 +289,8 @@ function scrollWithJs(options: ScrollOptions): Promise<void> {
       path,
       duration,
       containerRect,
-      elementRect
+      elementRect,
+      getProgress
     });
   }
 
