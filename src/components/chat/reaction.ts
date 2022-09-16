@@ -16,6 +16,7 @@ import SetTransition from '../singleTransition';
 import StackedAvatars from '../stackedAvatars';
 import {wrapSticker, wrapStickerAnimation} from '../wrappers';
 import {Awaited} from '../../types';
+import noop from '../../helpers/noop';
 
 const CLASS_NAME = 'reaction';
 const TAG_NAME = CLASS_NAME + '-element';
@@ -186,26 +187,33 @@ export default class ReactionElement extends HTMLElement {
           skipRatio: 1,
           play: false,
           managers: this.managers
-        }).stickerPromise
+        }).stickerPromise.catch(noop)
       ]).then(([iconPlayer, aroundPlayer]) => {
         const remove = () => {
           // if(!isInDOM(div)) return;
-          fastRaf(() => {
-            // if(!isInDOM(div)) return;
-            iconPlayer.remove();
-            div.remove();
-            this.stickerContainer.classList.remove('has-animation');
-          });
+          iconPlayer.remove();
+          div.remove();
+          this.stickerContainer.classList.remove('has-animation');
+        };
+
+        if(!aroundPlayer) {
+          remove();
+          return;
+        }
+
+        const removeOnFrame = () => {
+          // if(!isInDOM(div)) return;
+          fastRaf(remove);
         };
 
         iconPlayer.addEventListener('enterFrame', (frameNo) => {
           if(frameNo === iconPlayer.maxFrame) {
             if(this.wrapStickerPromise) { // wait for fade in animation
               this.wrapStickerPromise.then(() => {
-                setTimeout(remove, 1e3);
+                setTimeout(removeOnFrame, 1e3);
               });
             } else {
-              remove();
+              removeOnFrame();
             }
           }
         });

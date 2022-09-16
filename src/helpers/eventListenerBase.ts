@@ -84,7 +84,7 @@ export default class EventListenerBase<Listeners extends EventListenerListeners>
   }
 
   public addEventListener<T extends keyof Listeners>(name: T, callback: Listeners[T], options?: boolean | AddEventListenerOptions) {
-    (this.listeners[name] ?? (this.listeners[name] = [])).push({callback, options}); // ! add before because if you don't, you won't be able to delete it from callback
+    (this.listeners[name] ??= []).push({callback, options}); // ! add before because if you don't, you won't be able to delete it from callback
 
     if(this.listenerResults.hasOwnProperty(name)) {
       callback(...this.listenerResults[name]);
@@ -108,7 +108,7 @@ export default class EventListenerBase<Listeners extends EventListenerListeners>
 
   public removeEventListener<T extends keyof Listeners>(name: T, callback: Listeners[T], options?: boolean | AddEventListenerOptions) {
     if(this.listeners[name]) {
-      findAndSplice(this.listeners[name], l => l.callback === callback);
+      findAndSplice(this.listeners[name], (l) => l.callback === callback);
     }
     // e.remove(this, name, callback);
   }

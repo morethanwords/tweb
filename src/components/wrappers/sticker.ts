@@ -700,8 +700,8 @@ export async function onEmojiStickerClick({event, container, managers, peerId, m
     data.a.length = 0;
   }, 1000, false);
 
-  const animation = lottieLoader.getAnimation(container);
-  if(animation.paused) {
+  const animation = !container.classList.contains('custom-emoji') ? lottieLoader.getAnimation(container) : undefined;
+  if(animation?.paused) {
     const doc = await managers.appStickersManager.getAnimatedEmojiSoundDocument(emoji);
     if(doc) {
       const audio = document.createElement('audio');

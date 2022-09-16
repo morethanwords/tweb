@@ -1168,7 +1168,9 @@ export default class AppMediaViewerBase<
         }
       }
 
-      renderImageFromUrl(el, url);
+      if((el as HTMLImageElement).src !== url) {
+        renderImageFromUrl(el, url);
+      }
 
       // ! костыль, но он тут даже и не нужен
       if(el.classList.contains('thumbnail') && el.parentElement.classList.contains('media-container-aspecter')) {

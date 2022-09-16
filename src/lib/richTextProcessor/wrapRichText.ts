@@ -437,7 +437,6 @@ export default function wrapRichText(text: string, options: Partial<{
   },
   voodoo?: boolean,
   customEmojis?: {[docId: DocId]: CustomEmojiElement[]},
-  wrappingSpoiler?: boolean,
 
   loadPromises?: Promise<any>[],
   middleware?: Middleware,
@@ -478,7 +477,8 @@ export default function wrapRichText(text: string, options: Partial<{
       }
     } else if((entity.offset + entity.length) > textLength) {
       entity = copy(entity);
-      entity.length = entity.offset + entity.length - textLength;
+      // entity.length = entity.offset + entity.length - textLength;
+      entity.length = textLength - entity.offset;
     }
 
     if(entity.length) {
@@ -621,7 +621,7 @@ export default function wrapRichText(text: string, options: Partial<{
           break;
         }
 
-        if(nextEntity?._ === 'messageEntityEmoji') {
+        while(nextEntity?._ === 'messageEntityEmoji' && nextEntity.offset < endOffset) {
           ++nasty.i;
           nasty.lastEntity = nextEntity;
           nasty.usedLength += nextEntity.length;
@@ -808,7 +808,9 @@ export default function wrapRichText(text: string, options: Partial<{
           const encoded = encodeSpoiler(nasty.text, entity);
           nasty.text = encoded.text;
           partText = encoded.entityText;
-          nasty.usedLength += partText.length;
+          if(endPartOffset !== endOffset) {
+            nasty.usedLength += endOffset - endPartOffset;
+          }
           let n: MessageEntity;
           for(; n = entities[nasty.i + 1], n && n.offset < endOffset;) {
             // nasty.usedLength += n.length;

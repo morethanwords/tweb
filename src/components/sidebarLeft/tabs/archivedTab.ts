@@ -32,8 +32,8 @@ export default class AppArchivedTab extends SliderSuperTab {
 
     const scrollable = appDialogsManager.scrollables[AppArchivedTab.filterId];
     this.scrollable.container.replaceWith(scrollable.container);
-    this.scrollable = scrollable;
-
+    // ! DO NOT UNCOMMENT NEXT LINE - chats will stop loading on scroll after closing the tab
+    // this.scrollable = scrollable;
     return appDialogsManager.setFilterIdAndChangeTab(AppArchivedTab.filterId).then(({cached, renderPromise}) => {
       if(cached) {
         return renderPromise;

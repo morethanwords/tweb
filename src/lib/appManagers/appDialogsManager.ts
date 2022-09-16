@@ -1003,6 +1003,7 @@ export class AppDialogsManager {
       let loadCount = windowSize.height / 72 * 1.25 | 0;
       let offsetIndex = 0;
 
+      const doNotRenderChatList = this.doNotRenderChatList; // cache before awaits
       const {index: currentOffsetIndex} = this.getOffsetIndex(side);
       if(currentOffsetIndex) {
         if(side === 'top') {
@@ -1045,7 +1046,7 @@ export class AppDialogsManager {
 
         const a = await getConversationsResult;
         const result = await a.result;
-        if(this.loadDialogsRenderPromise !== renderPromise || this.doNotRenderChatList) {
+        if(this.loadDialogsRenderPromise !== renderPromise || doNotRenderChatList) {
           reject();
           cachedInfoPromise.reject();
           return;

@@ -2328,7 +2328,7 @@ export default class ChatBubbles {
     // * if it's a start, then scroll to start of the group
     if(bubble && position !== 'end') {
       const item = this.bubbleGroups.getItemByBubble(bubble);
-      if(item.group.firstItem === item && whichChild(item.group.container) === (this.stickyIntersector ? STICKY_OFFSET : 1)) {
+      if(item && item.group.firstItem === item && whichChild(item.group.container) === (this.stickyIntersector ? STICKY_OFFSET : 1)) {
         const dateGroup = item.group.container.parentElement;
         // if(whichChild(dateGroup) === 0) {
         fallbackToElementStartWhenCentering = dateGroup;
@@ -3600,7 +3600,8 @@ export default class ChatBubbles {
       loadPromises,
       lazyLoadQueue: this.lazyLoadQueue,
       customEmojiSize,
-      middleware
+      middleware,
+      animationGroup: CHAT_ANIMATION_GROUP
     });
 
     let canHaveTail = true;
@@ -4521,6 +4522,8 @@ export default class ChatBubbles {
 
       if(isFooter) {
         canHaveTail = true;
+      } else {
+        bubble.classList.add('with-beside-replies');
       }
     }
 

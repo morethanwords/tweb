@@ -7,7 +7,8 @@
 import IS_VIBRATE_SUPPORTED from '../../environment/vibrateSupport';
 import assumeType from '../../helpers/assumeType';
 import isInDOM from '../../helpers/dom/isInDOM';
-import {Middleware} from '../../helpers/middleware';
+import makeError from '../../helpers/makeError';
+import {getMiddleware, Middleware} from '../../helpers/middleware';
 import throttleWithRaf from '../../helpers/schedulers/throttleWithRaf';
 import windowSize from '../../helpers/windowSize';
 import {PhotoSize, VideoSize} from '../../layer';
@@ -53,10 +54,14 @@ export default function wrapStickerAnimation({
 
   let animation: RLottiePlayer;
   const unmountAnimation = () => {
+    middlewareHelper.clean();
     animation?.remove();
     animationDiv.remove();
     appImManager.chat.bubbles.scrollable.container.removeEventListener('scroll', onScroll);
   };
+
+  const middlewareHelper = middleware?.create() ?? getMiddleware();
+  middleware = middlewareHelper.get();
 
   const stickerPromise = wrapSticker({
     div: animationDiv,
@@ -74,6 +79,11 @@ export default function wrapStickerAnimation({
     fullThumb
   }).then(({render}) => render).then((_animation) => {
     assumeType<RLottiePlayer>(_animation);
+    if(!middleware()) {
+      _animation.remove();
+      throw makeError('MIDDLEWARE');
+    }
+
     animation = _animation;
     animation.addEventListener('enterFrame', (frameNo) => {
       if((!loopEffect && frameNo === animation.maxFrame) || !isInDOM(target)) {

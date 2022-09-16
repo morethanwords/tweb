@@ -708,7 +708,7 @@ export default class ChatTopbar {
     return () => {
       this.btnMute && this.btnMute.classList.toggle('hide', !isBroadcast);
       if(this.btnJoin) {
-        if(isAnyChat) {
+        if(isAnyChat && !this.chat.isRestricted) {
           replaceContent(this.btnJoin, i18n(isBroadcast ? 'Chat.Subscribe' : 'ChannelJoin'));
           this.btnJoin.classList.toggle('hide', !chat?.pFlags?.left);
         } else {
@@ -783,10 +783,15 @@ export default class ChatTopbar {
     } else if(this.chat.type === 'discussion') {
       if(count === undefined) {
         const result = await this.managers.acknowledged.appMessagesManager.getHistory(peerId, 0, 1, 0, this.chat.threadId);
+        if(!middleware()) return;
         if(result.cached) {
           const historyResult = await result.result;
+          if(!middleware()) return;
           count = historyResult.count;
-        } else result.result.then((historyResult) => this.setTitle(historyResult.count));
+        } else result.result.then((historyResult) => {
+          if(!middleware()) return;
+          this.setTitle(historyResult.count);
+        });
       }
 
       if(count === undefined) titleEl = i18n('Loading');

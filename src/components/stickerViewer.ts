@@ -180,6 +180,7 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
 
           player.addEventListener('enterFrame', c);
         });
+        if(!middleware()) return;
         player.pause();
       } else if(player instanceof HTMLVideoElement) {
         player.currentTime = (mediaContainer.querySelector('video') as HTMLVideoElement).currentTime;
@@ -283,7 +284,6 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
 
     const onMousePreMove = (e: MouseEvent) => {
       if(!findUpAsChild(e.target as HTMLElement, mediaContainer)) {
-        document.removeEventListener('mousemove', onMousePreMove);
         onMouseUp();
       }
     };
@@ -303,6 +303,7 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
         attachClickEvent(document.body, cancelEvent, {capture: true, once: true});
       }
 
+      document.removeEventListener('mousemove', onMousePreMove);
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp, {capture: true});
     };

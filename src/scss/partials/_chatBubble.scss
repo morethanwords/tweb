@@ -1753,7 +1753,7 @@ $bubble-beside-button-width: 38px;
       }
     }
 
-    &.with-replies:not(.sticker) .message {
+    &.with-replies:not(.sticker):not(.with-beside-replies) .message {
       bottom: 55px;
     }
 
@@ -1785,6 +1785,10 @@ $bubble-beside-button-width: 38px;
   &.with-replies .attachment {
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
+  }
+
+  &.with-beside-replies .bubble-content {
+    min-height: 5.5rem;
   }
   
   .time {

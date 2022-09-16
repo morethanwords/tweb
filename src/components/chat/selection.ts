@@ -14,7 +14,6 @@ import ButtonIcon from '../buttonIcon';
 import CheckboxField from '../checkboxField';
 import PopupDeleteMessages from '../popups/deleteMessages';
 import PopupForward from '../popups/forward';
-import {toast} from '../toast';
 import SetTransition from '../singleTransition';
 import ListenerSetter from '../../helpers/listenerSetter';
 import PopupSendNow from '../popups/sendNow';
@@ -26,7 +25,6 @@ import blurActiveElement from '../../helpers/dom/blurActiveElement';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import cancelSelection from '../../helpers/dom/cancelSelection';
 import getSelectedText from '../../helpers/dom/getSelectedText';
-import rootScope from '../../lib/rootScope';
 import replaceContent from '../../helpers/dom/replaceContent';
 import AppSearchSuper from '../appSearchSuper.';
 import isInDOM from '../../helpers/dom/isInDOM';
@@ -58,7 +56,7 @@ class AppSelection extends EventListenerBase<{
   protected isScheduled: boolean;
   protected listenElement: HTMLElement;
 
-  protected onToggleSelection: (forwards: boolean, animate: boolean) => void;
+  protected onToggleSelection: (forwards: boolean, animate: boolean) => void | Promise<void>;
   protected onUpdateContainer: (cantForward: boolean, cantDelete: boolean, cantSend: boolean) => void;
   protected onCancelSelection: () => void;
   protected toggleByMid: (peerId: PeerId, mid: number) => void;
@@ -361,7 +359,7 @@ class AppSelection extends EventListenerBase<{
       if(cantForward && cantDelete) break;
     }
 
-    this.onUpdateContainer && this.onUpdateContainer(cantForward, cantDelete, cantSend);
+    this.onUpdateContainer?.(cantForward, cantDelete, cantSend);
   }
 
   public toggleSelection(toggleCheckboxes = true, forceSelection = false) {
@@ -404,7 +402,7 @@ class AppSelection extends EventListenerBase<{
     blurActiveElement();
 
     const forwards = !!size || forceSelection;
-    this.onToggleSelection && this.onToggleSelection(forwards, !this.doNotAnimate);
+    const toggleResult = this.onToggleSelection?.(forwards, !this.doNotAnimate);
 
     if(!IS_MOBILE_SAFARI) {
       if(forwards) {
@@ -420,7 +418,7 @@ class AppSelection extends EventListenerBase<{
     }
 
     if(forceSelection) {
-      this.updateContainer(forceSelection);
+      (toggleResult || Promise.resolve()).then(() => this.updateContainer(forceSelection));
     }
 
     return true;
@@ -972,7 +970,7 @@ export default class ChatSelection extends AppSelection {
     replaceContent(this.selectionCountEl, i18n('messages', [this.length()]));
     this.selectionSendNowBtn && this.selectionSendNowBtn.toggleAttribute('disabled', cantSend);
     this.selectionForwardBtn && this.selectionForwardBtn.toggleAttribute('disabled', cantForward);
-    this.selectionDeleteBtn.toggleAttribute('disabled', cantDelete);
+    this.selectionDeleteBtn && this.selectionDeleteBtn.toggleAttribute('disabled', cantDelete);
   };
 
   protected onCancelSelection = async() => {
