@@ -244,16 +244,14 @@ function scrollWithJs(options: ScrollOptions): Promise<void> {
   */
 
   const transition = absPath < SHORT_TRANSITION_MAX_DISTANCE ? shortTransition : longTransition;
-  const getProgress = () => {
-    const t = duration ? Math.min((Date.now() - startAt) / duration, 1) : 1;
-    return transition(t);
-  };
+  const getProgress = () => duration ? Math.min((Date.now() - startAt) / duration, 1) : 1;
   const tick = () => {
-    const value = getProgress();
+    const t = getProgress();
+    const value = transition(t);
     const currentPath = path * (1 - value);
     container[scrollPositionKey] = Math.round(target - currentPath);
 
-    return value < 1;
+    return t < 1;
   };
 
   if(!duration || !path) {

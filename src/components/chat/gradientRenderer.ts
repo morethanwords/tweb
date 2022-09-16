@@ -6,6 +6,8 @@
 
 import {animateSingle} from '../../helpers/animation';
 import {hexToRgb} from '../../helpers/color';
+import {easeOutCubicApply} from '../../helpers/easing/easeOutCubic';
+import {easeOutQuadApply} from '../../helpers/easing/easeOutQuad';
 
 const WIDTH = 50;
 const HEIGHT = WIDTH;
@@ -165,8 +167,9 @@ export default class ChatBackgroundGradientRenderer {
     if(getProgress) {
       const value = getProgress();
       done = value >= 1;
+      const transitionValue = easeOutQuadApply(value, 1);
       const nextPositionTail = this._nextPositionTail ?? 0;
-      const tail = this._nextPositionTail = this._nextPositionTails * value;
+      const tail = this._nextPositionTail = this._nextPositionTails * transitionValue;
       const diff = tail - nextPositionTail;
       if(diff) {
         this._nextPositionLeft -= diff;

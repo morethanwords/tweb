@@ -234,6 +234,8 @@ export class AppDialogsManager {
   private managers: AppManagers;
   private selectTab: ReturnType<typeof horizontalMenu>;
 
+  private doNotRenderChatList: boolean;
+
   public start() {
     const managers = this.managers = getProxiedManagers();
 
@@ -695,12 +697,19 @@ export class AppDialogsManager {
       addFiltersPromise = this.managers.filtersStorage.getDialogFilters().then(addFilters);
     }
 
+    this.doNotRenderChatList = true;
     const loadDialogsPromise = this.onChatsScroll();
     await loadDialogsPromise;
-    this.loadDialogsRenderPromise = undefined;
+
+    // show the placeholder before the filters, and then will reset to the default tab again
+    if(!haveFilters) {
+      this.selectTab(0, false);
+    }
 
     addFiltersPromise && await addFiltersPromise;
     // this.folders.menu.children[0].classList.add('active');
+
+    this.doNotRenderChatList = undefined;
 
     this.filterId = -1;
     this.selectTab(0, false);
@@ -1036,7 +1045,7 @@ export class AppDialogsManager {
 
         const a = await getConversationsResult;
         const result = await a.result;
-        if(this.loadDialogsRenderPromise !== renderPromise) {
+        if(this.loadDialogsRenderPromise !== renderPromise || this.doNotRenderChatList) {
           reject();
           cachedInfoPromise.reject();
           return;
