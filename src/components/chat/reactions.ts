@@ -6,9 +6,11 @@
 
 import forEachReverse from '../../helpers/array/forEachReverse';
 import positionElementByIndex from '../../helpers/dom/positionElementByIndex';
+import {Middleware, MiddlewareHelper} from '../../helpers/middleware';
 import {Message, ReactionCount} from '../../layer';
 import appImManager from '../../lib/appManagers/appImManager';
 import {AppManagers} from '../../lib/appManagers/managers';
+import reactionsEqual from '../../lib/appManagers/utils/reactions/reactionsEqual';
 import rootScope from '../../lib/rootScope';
 import ReactionElement, {ReactionLayoutType, REACTION_DISPLAY_BLOCK_COUNTER_AT} from './reaction';
 
@@ -26,11 +28,14 @@ export default class ReactionsElement extends HTMLElement {
   private sorted: ReactionElement[];
   private onConnectCallback: () => void;
   private managers: AppManagers;
+  private middleware: Middleware;
+  private middlewareHelpers: Map<ReactionElement, MiddlewareHelper>;
 
   constructor() {
     super();
     this.classList.add(CLASS_NAME);
     this.sorted = [];
+    this.middlewareHelpers = new Map();
     this.managers = rootScope.managers;
   }
 
@@ -64,13 +69,25 @@ export default class ReactionsElement extends HTMLElement {
     return this.message;
   }
 
-  public init(message: Message.message, type: ReactionLayoutType, isPlaceholder?: boolean) {
+  public init(
+    message: Message.message,
+    type: ReactionLayoutType,
+    middleware: Middleware,
+    isPlaceholder = this.isPlaceholder
+  ) {
     if(this.key !== undefined) {
       this.disconnectedCallback();
     }
 
+    if(this.middleware !== middleware) {
+      middleware.onDestroy(() => {
+        this.middlewareHelpers.clear();
+      });
+    }
+
     this.message = message;
     this.key = this.message.peerId + '_' + this.message.mid;
+    this.middleware = middleware;
     this.isPlaceholder = isPlaceholder;
 
     if(this.type !== type) {
@@ -82,7 +99,7 @@ export default class ReactionsElement extends HTMLElement {
   }
 
   public changeMessage(message: Message.message) {
-    return this.init(message, this.type, this.isPlaceholder);
+    return this.init(message, this.type, this.middleware);
   }
 
   public update(message: Message.message, changedResults?: ReactionCount[]) {
@@ -99,35 +116,46 @@ export default class ReactionsElement extends HTMLElement {
     const availableReactionsResult = this.managers.appReactionsManager.getAvailableReactions();
     // callbackify(availableReactionsResult, () => {
     const counts = hasReactions ? (
-        availableReactionsResult instanceof Promise ?
-          reactions.results :
-          reactions.results.filter((reactionCount) => {
-            return this.managers.appReactionsManager.isReactionActive(reactionCount.reaction);
-          })
+      reactions.results
+        // availableReactionsResult instanceof Promise ?
+        //   reactions.results :
+        //   reactions.results.filter((reactionCount) => {
+        //     return this.managers.appReactionsManager.isReactionActive(reactionCount.reaction);
+        //   })
       ) : [];
+
+    if(this.message.peerId.isUser()) {
+      counts.sort((a, b) => (b.count - a.count) || ((b.chosen_order ?? 0) - (a.chosen_order ?? 0)));
+    } else {
+      counts.sort((a, b) => (b.count - a.count) || ((a.chosen_order ?? 0) - (b.chosen_order ?? 0)));
+    }
 
     forEachReverse(this.sorted, (reactionElement, idx, arr) => {
       const reaction = reactionElement.reactionCount.reaction;
-      const found = counts.some((reactionCount) => reactionCount.reaction === reaction);
+      const found = counts.some((reactionCount) => reactionsEqual(reactionCount.reaction, reaction));
       if(!found) {
+        const middlewareHelper = this.middlewareHelpers.get(reactionElement);
+        middlewareHelper.destroy();
+        this.middlewareHelpers.delete(reactionElement);
         arr.splice(idx, 1);
         reactionElement.remove();
       }
     });
 
     const totalReactions = counts.reduce((acc, c) => acc + c.count, 0);
-    const canRenderAvatars = reactions && !!reactions.pFlags.can_see_list && totalReactions < REACTION_DISPLAY_BLOCK_COUNTER_AT;
+    const canRenderAvatars = reactions && (!!reactions.pFlags.can_see_list || this.message.peerId.isUser()) && totalReactions < REACTION_DISPLAY_BLOCK_COUNTER_AT;
     this.sorted = counts.map((reactionCount, idx) => {
-      const reactionElementIdx = this.sorted.findIndex((reactionElement) => reactionElement.reactionCount.reaction === reactionCount.reaction);
-      let reactionElement = reactionElementIdx !== -1 && this.sorted[reactionElementIdx];
+      let reactionElement = this.sorted.find((reactionElement) => reactionsEqual(reactionElement.reactionCount.reaction, reactionCount.reaction));
       if(!reactionElement) {
+        const middlewareHelper = this.middleware.create();
         reactionElement = new ReactionElement();
-        reactionElement.init(this.type);
+        reactionElement.init(this.type, middlewareHelper.get());
+        this.middlewareHelpers.set(reactionElement, middlewareHelper);
       }
 
       positionElementByIndex(reactionElement, this, idx);
 
-      const recentReactions = reactions.recent_reactions ? reactions.recent_reactions.filter((reaction) => reaction.reaction === reactionCount.reaction) : [];
+      const recentReactions = reactions.recent_reactions ? reactions.recent_reactions.filter((reaction) => reactionsEqual(reaction.reaction, reactionCount.reaction)) : [];
       reactionElement.reactionCount = {...reactionCount};
       reactionElement.setCanRenderAvatars(canRenderAvatars);
       reactionElement.render(this.isPlaceholder);
@@ -179,10 +207,8 @@ export default class ReactionsElement extends HTMLElement {
     if(this.message.peerId !== appImManager.chat.peerId) return;
 
     changedResults.forEach((reactionCount) => {
-      const reactionElement = this.sorted.find((reactionElement) => reactionElement.reactionCount.reaction === reactionCount.reaction);
-      if(reactionElement) {
-        reactionElement.fireAroundAnimation();
-      }
+      const reactionElement = this.sorted.find((reactionElement) => reactionsEqual(reactionElement.reactionCount.reaction, reactionCount.reaction));
+      reactionElement?.fireAroundAnimation();
     });
   }
 }

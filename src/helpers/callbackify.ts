@@ -9,7 +9,7 @@ import {Awaited} from '../types';
 export default function callbackify<T extends Awaited<any>, R>(
   smth: T,
   callback: (result: Awaited<T>) => R
-): R {
+): Promise<Awaited<R>> | R {
   if(smth instanceof Promise) {
     // @ts-ignore
     return smth.then(callback);

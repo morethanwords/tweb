@@ -16,8 +16,7 @@ import AppBackgroundTab from './background';
 import {LangPackKey, _i18n} from '../../../lib/langPack';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import assumeType from '../../../helpers/assumeType';
-import {MessagesAllStickers, StickerSet} from '../../../layer';
-import {wrapStickerSetThumb, wrapStickerToRow} from '../../wrappers';
+import {AvailableReaction, MessagesAllStickers, StickerSet} from '../../../layer';
 import LazyLoadQueue from '../../lazyLoadQueue';
 import PopupStickers from '../../popups/stickers';
 import eachMinute from '../../../helpers/eachMinute';
@@ -26,6 +25,8 @@ import IS_GEOLOCATION_SUPPORTED from '../../../environment/geolocationSupport';
 import AppQuickReactionTab from './quickReaction';
 import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
 import {State} from '../../../config/state';
+import wrapStickerSetThumb from '../../wrappers/stickerSetThumb';
+import wrapStickerToRow from '../../wrappers/stickerToRow';
 
 export class RangeSettingSelector {
   public container: HTMLDivElement;
@@ -259,10 +260,16 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
       });
 
       const renderQuickReaction = () => {
-        Promise.resolve(this.managers.appReactionsManager.getQuickReaction()).then((reaction) => {
+        this.managers.appReactionsManager.getQuickReaction().then((reaction) => {
+          if(reaction._ === 'availableReaction') {
+            return reaction.static_icon;
+          } else {
+            return this.managers.appEmojiManager.getCustomEmojiDocument(reaction.document_id);
+          }
+        }).then((doc) => {
           wrapStickerToRow({
             row: reactionsRow,
-            doc: reaction.static_icon,
+            doc,
             size: 'small'
           });
         });

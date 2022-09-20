@@ -11,7 +11,7 @@ import {toast} from '../../toast';
 import {ButtonMenuItemOptions} from '../../buttonMenu';
 import {i18n, join, _i18n} from '../../../lib/langPack';
 import rootScope from '../../../lib/rootScope';
-import {wrapSticker} from '../../wrappers';
+import wrapSticker from '../../wrappers/sticker';
 import SortedUserList from '../../sortedUserList';
 import {PeerLocated, Update, Updates} from '../../../layer';
 import {SettingChatListSection} from '..';

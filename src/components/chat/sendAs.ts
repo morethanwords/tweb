@@ -232,9 +232,10 @@ export default class ChatSendAs {
       await this.changeSendAsPeerId(sendAsPeerId, skipAnimation);
       if(!middleware()) return;
 
-      this.managers.appChatsManager.getSendAs(chatId).then((peers) => {
+      this.managers.appChatsManager.getSendAs(chatId).then((sendAsPeers) => {
         if(!middleware()) return;
 
+        const peers = sendAsPeers.filter((sendAsPeer) => !sendAsPeer.pFlags.premium_required).map((sendAsPeer) => sendAsPeer.peer);
         const peerIds = peers.map((peer) => getPeerId(peer));
         this.sendAsPeerIds = peerIds.slice();
 

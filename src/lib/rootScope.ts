@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config} from '../layer';
+import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config, Reaction} from '../layer';
 import type {AppMessagesManager, Dialog, MessagesStorageKey, MyMessage} from './appManagers/appMessagesManager';
 import type {MyDialogFilter} from './storages/filters';
 import type {Folder} from './storages/dialogs';
@@ -137,7 +137,7 @@ export type BroadcastEvents = {
   'call_update': PhoneCall,
   'call_signaling': {callId: CallId, data: Uint8Array},
 
-  'quick_reaction': string,
+  'quick_reaction': Reaction,
 
   'service_notification': Update.updateServiceNotification,
 

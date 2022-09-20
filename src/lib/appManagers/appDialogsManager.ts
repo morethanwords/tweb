@@ -28,7 +28,7 @@ import PeerTitle from '../../components/peerTitle';
 import I18n, {FormatterArguments, i18n, LangPackKey, _i18n} from '../langPack';
 import findUpTag from '../../helpers/dom/findUpTag';
 import lottieLoader from '../rlottie/lottieLoader';
-import {wrapPhoto} from '../../components/wrappers';
+import wrapPhoto from '../../components/wrappers/photo';
 import AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
 import appSidebarLeft, {SettingSection} from '../../components/sidebarLeft';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';

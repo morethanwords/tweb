@@ -7,29 +7,29 @@
 import tsNow from '../../helpers/tsNow';
 import {LangPackKey} from '../../lib/langPack';
 import {MUTE_UNTIL} from '../../lib/mtproto/mtproto_config';
-import RadioField from '../radioField';
-import Row, {RadioFormFromRows} from '../row';
+import {RadioFormFromValues} from '../row';
 import PopupPeer from './peer';
 
 const ONE_HOUR = 3600;
-const times: {time: number, langKey: LangPackKey}[] = [{
-  time: ONE_HOUR,
-  langKey: 'ChatList.Mute.1Hour'
+const times: {value: number | string, langPackKey: LangPackKey, checked?: boolean}[] = [{
+  value: ONE_HOUR,
+  langPackKey: 'ChatList.Mute.1Hour'
 }, {
-  time: ONE_HOUR * 4,
-  langKey: 'ChatList.Mute.4Hours'
+  value: ONE_HOUR * 4,
+  langPackKey: 'ChatList.Mute.4Hours'
 }, {
-  time: ONE_HOUR * 8,
-  langKey: 'ChatList.Mute.8Hours'
+  value: ONE_HOUR * 8,
+  langPackKey: 'ChatList.Mute.8Hours'
 }, {
-  time: ONE_HOUR * 24,
-  langKey: 'ChatList.Mute.1Day'
+  value: ONE_HOUR * 24,
+  langPackKey: 'ChatList.Mute.1Day'
 }, {
-  time: ONE_HOUR * 24 * 3,
-  langKey: 'ChatList.Mute.3Days'
+  value: ONE_HOUR * 24 * 3,
+  langPackKey: 'ChatList.Mute.3Days'
 }, {
-  time: -1,
-  langKey: 'ChatList.Mute.Forever'
+  value: -1,
+  langPackKey: 'ChatList.Mute.Forever',
+  checked: true
 }];
 
 export default class PopupMute extends PopupPeer {
@@ -46,27 +46,12 @@ export default class PopupMute extends PopupPeer {
       body: true
     });
 
-    const name = 'mute-time';
-    const rows = times.map((time) => {
-      const row = new Row({
-        radioField: new RadioField({
-          langKey: time.langKey,
-          name,
-          value: '' + time.time
-        })
-      });
-
-      return row;
-    });
-
     let time: number;
-    const radioForm = RadioFormFromRows(rows, (value) => {
+    const radioForm = RadioFormFromValues(times, (value) => {
       time = +value;
     });
 
     this.body.append(radioForm);
-
-    rows[rows.length - 1].radioField.checked = true;
 
     this.show();
   }

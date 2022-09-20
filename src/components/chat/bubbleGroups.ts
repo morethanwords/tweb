@@ -77,16 +77,17 @@ class BubbleGroup {
       peerTitle: !fwdFromId && fwdFrom && fwdFrom.from_name ? /* '🔥 FF 🔥' */fwdFrom.from_name : undefined
     });
 
-    this.avatarLoadPromise = Promise.all([
-      avatarLoadPromise,
-      peerId && peerId.isUser() ? this.chat.managers.appUsersManager.getUser(peerId.toUserId()) : undefined
-    ]).then(([result, user]) => {
-      if(user?.pFlags?.premium) {
-        avatar.classList.add('is-premium', 'tgico-star');
-      }
+    // this.avatarLoadPromise = Promise.all([
+    //   avatarLoadPromise,
+    //   peerId && peerId.isUser() ? this.chat.managers.appUsersManager.getUser(peerId.toUserId()) : undefined
+    // ]).then(([result, user]) => {
+    //   if(user?.pFlags?.premium) {
+    //     avatar.classList.add('is-premium', 'tgico-star');
+    //   }
 
-      return result;
-    });
+    //   return result;
+    // });
+    this.avatarLoadPromise = avatarLoadPromise;
 
     this.avatarContainer.append(this.avatar);
     this.container.append(this.avatarContainer);

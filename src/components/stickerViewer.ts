@@ -24,7 +24,7 @@ import RLottiePlayer from '../lib/rlottie/rlottiePlayer';
 import rootScope from '../lib/rootScope';
 import animationIntersector, {AnimationItemGroup} from './animationIntersector';
 import SetTransition from './singleTransition';
-import {wrapSticker} from './wrappers';
+import wrapSticker from './wrappers/sticker';
 import {STICKER_EFFECT_MULTIPLIER} from './wrappers/sticker';
 
 let hasViewer = false;

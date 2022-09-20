@@ -12,8 +12,10 @@ import appImManager, {CHAT_ANIMATION_GROUP} from '../../lib/appManagers/appImMan
 import choosePhotoSize from '../../lib/appManagers/utils/photos/choosePhotoSize';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import DivAndCaption from '../divAndCaption';
-import {wrapPhoto, wrapSticker, wrapVideo} from '../wrappers';
 import wrapMessageForReply from '../wrappers/messageForReply';
+import wrapPhoto from '../wrappers/photo';
+import wrapSticker from '../wrappers/sticker';
+import wrapVideo from '../wrappers/video';
 
 const MEDIA_SIZE = 32;
 

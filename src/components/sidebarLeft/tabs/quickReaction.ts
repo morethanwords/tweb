@@ -5,10 +5,11 @@
  */
 
 import {SettingSection} from '..';
+import {AvailableReaction} from '../../../layer';
 import RadioField from '../../radioField';
 import Row, {RadioFormFromRows} from '../../row';
 import SliderSuperTab from '../../sliderTab';
-import {wrapStickerToRow} from '../../wrappers';
+import wrapStickerToRow from '../../wrappers/stickerToRow';
 
 export default class AppQuickReactionTab extends SliderSuperTab {
   protected init() {
@@ -46,7 +47,7 @@ export default class AppQuickReactionTab extends SliderSuperTab {
           size: 'small'
         });
 
-        if(availableReaction.reaction === quickReaction.reaction) {
+        if(availableReaction.reaction === (quickReaction as AvailableReaction).reaction) {
           radioField.setValueSilently(true);
         }
 
@@ -54,7 +55,7 @@ export default class AppQuickReactionTab extends SliderSuperTab {
       });
 
       const form = RadioFormFromRows(rows, (value) => {
-        this.managers.appReactionsManager.setDefaultReaction(value);
+        this.managers.appReactionsManager.setDefaultReaction({_: 'reactionEmoji', emoticon: value});
       });
 
       section.content.append(form);

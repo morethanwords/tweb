@@ -880,6 +880,14 @@
       &.full-width {
         margin: 0 !important;
       }
+
+      > .media-sticker-wrapper {
+        width: 86px;
+        height: 86px;
+        margin: 1px auto 29px;
+        flex: 0 0 auto;
+        position: relative;
+      }
     }
   
     &-name {
@@ -923,14 +931,6 @@
     &-disabled {
       pointer-events: none !important;
       opacity: .25;
-    }
-
-    .media-sticker-wrapper {
-      width: 86px;
-      height: 86px;
-      margin: 1px auto 29px;
-      flex: 0 0 auto;
-      position: relative;
     }
 
     .chatlist {

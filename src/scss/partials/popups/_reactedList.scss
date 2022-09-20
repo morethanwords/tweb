@@ -5,6 +5,8 @@
  */
 
 .popup-reacted-list {
+  --size: 1.5rem;
+  --custom-emoji-size: var(--size);
   $parent: ".popup";
 
   #{$parent} {
@@ -31,8 +33,8 @@
   }
 
   .reaction {
+    --reaction-size: var(--size);
     --additional-height: .75rem;
-    --reaction-size: 1.5rem;
     --margin: .5rem;
     // --background-color: var(--secondary-color);
     --background-color: var(--light-filled-primary-color);
@@ -73,10 +75,11 @@
   }
 
   .reacted-list-reaction-icon {
-    width: 1.5rem;
-    height: 1.5rem;
-    margin: 0;
+    width: var(--size);
+    height: var(--size);
     top: 50%;
     transform: translateY(-50%);
+    position: relative;
+    display: flex;
   }
 }

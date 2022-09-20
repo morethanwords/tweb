@@ -25,7 +25,6 @@ import {IS_ANDROID, IS_APPLE, IS_MOBILE, IS_SAFARI} from '../../environment/user
 import I18n, {FormatterArguments, i18n, langPack, LangPackKey, UNSUPPORTED_LANG_PACK_KEY, _i18n} from '../../lib/langPack';
 import AvatarElement from '../avatar';
 import ripple from '../ripple';
-import {wrapAlbum, wrapPhoto, wrapVideo, wrapDocument, wrapSticker, wrapPoll, wrapGroupedDocuments, wrapStickerAnimation} from '../wrappers';
 import {MessageRender} from './messageRender';
 import LazyLoadQueue from '../lazyLoadQueue';
 import ListenerSetter from '../../helpers/listenerSetter';
@@ -114,12 +113,15 @@ import isInDOM from '../../helpers/dom/isInDOM';
 import getStickerEffectThumb from '../../lib/appManagers/utils/stickers/getStickerEffectThumb';
 import attachStickerViewerListeners from '../stickerViewer';
 import {makeMediaSize, MediaSize} from '../../helpers/mediaSize';
-import lottieLoader from '../../lib/rlottie/lottieLoader';
-import appDownloadManager from '../../lib/appManagers/appDownloadManager';
-import onMediaLoad from '../../helpers/onMediaLoad';
-import throttle from '../../helpers/schedulers/throttle';
-import {onEmojiStickerClick} from '../wrappers/sticker';
+import wrapSticker, {onEmojiStickerClick} from '../wrappers/sticker';
+import wrapAlbum from '../wrappers/album';
+import wrapDocument from '../wrappers/document';
+import wrapGroupedDocuments from '../wrappers/groupedDocuments';
+import wrapPhoto from '../wrappers/photo';
+import wrapPoll from '../wrappers/poll';
+import wrapVideo from '../wrappers/video';
 
+export const USER_REACTIONS_INLINE = false;
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
   'messageActionHistoryClear',
@@ -150,6 +152,17 @@ const DO_NOT_SLICE_VIEWPORT_ON_RENDER = false;
 const DO_NOT_UPDATE_MESSAGE_VIEWS = false;
 const DO_NOT_UPDATE_MESSAGE_REACTIONS = false;
 const DO_NOT_UPDATE_MESSAGE_REPLY = false;
+
+const BIG_EMOJI_SIZES: {[size: number]: number} = {
+  1: 96,
+  2: 90,
+  3: 84,
+  4: 72,
+  5: 60,
+  6: 48,
+  7: 36
+};
+const BIG_EMOJI_SIZES_LENGTH = Object.keys(BIG_EMOJI_SIZES).length;
 
 type Bubble = {
   bubble: HTMLElement,
@@ -600,20 +613,20 @@ export default class ChatBubbles {
       this.safeRenderMessage(message, true, bubble);
     });
 
-    this.listenerSetter.add(rootScope)('peer_title_edit', async(peerId) => {
-      if(peerId.isUser()) {
-        const middleware = this.getMiddleware();
-        const user = await this.managers.appUsersManager.getUser(peerId.toUserId());
-        if(!middleware()) return;
+    // this.listenerSetter.add(rootScope)('peer_title_edit', async(peerId) => {
+    //   if(peerId.isUser()) {
+    //     const middleware = this.getMiddleware();
+    //     const user = await this.managers.appUsersManager.getUser(peerId.toUserId());
+    //     if(!middleware()) return;
 
-        const isPremium = user?.pFlags?.premium;
-        const groups = this.bubbleGroups.groups.filter((group) => group.avatar?.peerId === peerId);
-        groups.forEach((group) => {
-          group.avatar.classList.toggle('is-premium', isPremium);
-          group.avatar.classList.toggle('tgico-star', isPremium);
-        });
-      }
-    });
+    //     const isPremium = user?.pFlags?.premium;
+    //     const groups = this.bubbleGroups.groups.filter((group) => group.avatar?.peerId === peerId);
+    //     groups.forEach((group) => {
+    //       group.avatar.classList.toggle('is-premium', isPremium);
+    //       group.avatar.classList.toggle('tgico-star', isPremium);
+    //     });
+    //   }
+    // });
 
     if(this.chat.type !== 'scheduled' && !DO_NOT_UPDATE_MESSAGE_REACTIONS/*  && false */) {
       this.listenerSetter.add(rootScope)('messages_reactions', async(arr) => {
@@ -1268,7 +1281,7 @@ export default class ChatBubbles {
             attachClickEvent(hoverReaction, (e) => {
               cancelEvent(e); // cancel triggering selection
 
-              this.managers.appReactionsManager.sendReaction(message, availableReaction.reaction);
+              this.managers.appReactionsManager.sendReaction(message, availableReaction);
               this.unhoverPrevious();
             }, {listenerSetter: this.listenerSetter});
           }, noop);
@@ -1557,7 +1570,7 @@ export default class ChatBubbles {
     }
 
     const stickerEmojiEl = findUpAttribute(target, 'data-sticker-emoji');
-    if(stickerEmojiEl) {
+    if(stickerEmojiEl && stickerEmojiEl.parentElement.querySelectorAll('[data-sticker-emoji]').length === 1 && bubble.classList.contains('emoji-big')) {
       onEmojiStickerClick({
         event: e,
         container: stickerEmojiEl,
@@ -3576,17 +3589,11 @@ export default class ChatBubbles {
       const emojiStrLength = emojiEntities.reduce((acc, curr) => acc + curr.length, 0);
 
       if(emojiStrLength === strLength /* && emojiEntities.length <= 3 *//*  && totalEntities.length === emojiEntities.length */) {
-        bigEmojis = Math.min(4, emojiEntities.length);
+        bigEmojis = Math.min(BIG_EMOJI_SIZES_LENGTH, emojiEntities.length);
 
         customEmojiSize = mediaSizes.active.customEmoji;
-        const sizes: {[size: number]: number} = {
-          1: 96,
-          2: 64,
-          3: 52,
-          4: 36
-        };
 
-        const size = sizes[bigEmojis];
+        const size = BIG_EMOJI_SIZES[bigEmojis];
         if(size) {
           customEmojiSize = makeMediaSize(size, size);
           bubble.style.setProperty('--emoji-size', size + 'px');
@@ -4408,7 +4415,7 @@ export default class ChatBubbles {
         // title = fwdFrom.from_name;
         bubble.classList.add('hidden-profile');
       } else {
-        title = new PeerTitle({peerId: fwdFromId || message.fromId}).element;
+        title = new PeerTitle({peerId: fwdFromId || message.fromId, withPremiumIcon: true}).element;
       }
 
       if(message.reply_to_mid && message.reply_to_mid !== this.chat.threadId && isMessage) {
@@ -4438,6 +4445,7 @@ export default class ChatBubbles {
 
         if((this.peerId === rootScope.myId || this.peerId === REPLIES_PEER_ID || isForwardFromChannel) && !isStandaloneMedia) {
           nameDiv.style.color = getPeerColorById(fwdFromId, false);
+          nameDiv.classList.add('colored-name');
           nameDiv.append(title);
         } else {
           /* const fromTitle = message.fromId === this.myID || appPeersManager.isBroadcast(fwdFromId || message.fromId) ? '' : `<div class="name" data-peer-id="${message.fromId}" style="color: ${appPeersManager.getPeerColorByID(message.fromId, false)};">${appPeersManager.getPeerTitle(message.fromId)}</div>`;
@@ -4461,6 +4469,7 @@ export default class ChatBubbles {
 
           if(!our) {
             nameDiv.style.color = getPeerColorById(message.fromId, false);
+            nameDiv.classList.add('colored-name');
           }
 
           nameDiv.dataset.peerId = '' + message.fromId;
@@ -4546,8 +4555,13 @@ export default class ChatBubbles {
     return ret;
   }
 
-  private appendReactionsElementToBubble(bubble: HTMLElement, message: Message.message, reactionsMessage: Message.message, changedResults?: ReactionCount[]) {
-    if(this.peerId.isUser()/*  || true */) {
+  private appendReactionsElementToBubble(
+    bubble: HTMLElement,
+    message: Message.message,
+    reactionsMessage: Message.message,
+    changedResults?: ReactionCount[]
+  ) {
+    if(this.peerId.isUser() && USER_REACTIONS_INLINE/*  || true */) {
       return;
     }
 
@@ -4558,7 +4572,7 @@ export default class ChatBubbles {
     // message = this.appMessagesManager.getMessageWithReactions(message);
 
     const reactionsElement = new ReactionsElement();
-    reactionsElement.init(reactionsMessage, 'block');
+    reactionsElement.init(reactionsMessage, 'block', bubble.middlewareHelper.get());
     reactionsElement.render(changedResults);
 
     if(bubble.classList.contains('is-message-empty')) {

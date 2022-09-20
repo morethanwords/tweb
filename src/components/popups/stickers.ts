@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import PopupElement from '.';
 import type {AppStickersManager} from '../../lib/appManagers/appStickersManager';
-import {wrapSticker} from '../wrappers';
+import PopupElement from '.';
+import wrapSticker from '../wrappers/sticker';
 import LazyLoadQueue from '../lazyLoadQueue';
 import {putPreloader} from '../putPreloader';
 import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
@@ -22,11 +22,11 @@ import setInnerHTML from '../../helpers/dom/setInnerHTML';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import createStickersContextMenu from '../../helpers/dom/createStickersContextMenu';
 import attachStickerViewerListeners from '../stickerViewer';
-import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
-import {Document, MessageEntity, StickerSet} from '../../layer';
+import {Document, StickerSet} from '../../layer';
 import Row from '../row';
 import replaceContent from '../../helpers/dom/replaceContent';
 import rootScope from '../../lib/rootScope';
+import wrapCustomEmoji from '../wrappers/customEmoji';
 
 const ANIMATION_GROUP: AnimationItemGroup = 'STICKERS-POPUP';
 
@@ -175,29 +175,14 @@ export default class PopupStickers extends PopupElement {
 
       const docs = set.documents.filter((doc) => doc?._ === 'document') as Document.document[];
       if(isEmojis) {
-        let text = '';
-        const entities: MessageEntity[] = [];
-        docs.forEach((doc) => {
-          entities.push({
-            _: 'messageEntityCustomEmoji',
-            offset: text.length,
-            length: doc.stickerEmojiRaw.length,
-            document_id: doc.id
-          });
-
-          text += doc.stickerEmojiRaw;
-        });
-
-        const wrapped = wrapRichText(text, {
-          entities,
+        divs = [wrapCustomEmoji({
+          docIds: docs.map((doc) => doc.id),
           loadPromises,
           animationGroup: ANIMATION_GROUP,
-          customEmojiSize: mediaSizes.active.esgCustomEmoji,
+          size: mediaSizes.active.esgCustomEmoji,
           middleware
           // lazyLoadQueue
-        });
-
-        divs = [wrapped];
+        })];
 
         itemsContainer.classList.add('is-emojis');
       } else {

@@ -293,4 +293,8 @@ export class AppEmojiManager extends AppManager {
 
     return promise;
   }
+
+  public getCustomEmojis() {
+    return this.appStickersManager.getEmojiStickers();
+  }
 }

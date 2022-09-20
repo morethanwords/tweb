@@ -223,7 +223,8 @@ export namespace InputMedia {
     payload: Uint8Array,
     provider: string,
     provider_data: DataJSON,
-    start_param?: string
+    start_param?: string,
+    extended_media?: InputMedia
   };
 
   export type inputMediaGeoLive = {
@@ -513,6 +514,7 @@ export namespace User {
     restriction_reason?: Array<RestrictionReason>,
     bot_inline_placeholder?: string,
     lang_code?: string,
+    emoji_status?: EmojiStatus,
     sortName?: string
   };
 }
@@ -690,7 +692,7 @@ export namespace ChatFull {
     theme_emoticon?: string,
     requests_pending?: number,
     recent_requesters?: Array<string | number>,
-    available_reactions?: Array<string>
+    available_reactions?: ChatReactions
   };
 
   export type channelFull = {
@@ -742,7 +744,7 @@ export namespace ChatFull {
     requests_pending?: number,
     recent_requesters?: Array<string | number>,
     default_send_as?: Peer,
-    available_reactions?: Array<string>
+    available_reactions?: ChatReactions
   };
 }
 
@@ -1008,7 +1010,8 @@ export namespace MessageMedia {
     receipt_msg_id?: number,
     currency: string,
     total_amount: string | number,
-    start_param: string
+    start_param: string,
+    extended_media?: MessageExtendedMedia
   };
 
   export type messageMediaGeoLive = {
@@ -2016,7 +2019,7 @@ export namespace MessagesFilter {
 /**
  * @link https://core.telegram.org/type/Update
  */
-export type Update = Update.updateNewMessage | Update.updateMessageID | Update.updateDeleteMessages | Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChatParticipants | Update.updateUserStatus | Update.updateUserName | Update.updateUserPhoto | Update.updateNewEncryptedMessage | Update.updateEncryptedChatTyping | Update.updateEncryption | Update.updateEncryptedMessagesRead | Update.updateChatParticipantAdd | Update.updateChatParticipantDelete | Update.updateDcOptions | Update.updateNotifySettings | Update.updateServiceNotification | Update.updatePrivacy | Update.updateUserPhone | Update.updateReadHistoryInbox | Update.updateReadHistoryOutbox | Update.updateWebPage | Update.updateReadMessagesContents | Update.updateChannelTooLong | Update.updateChannel | Update.updateNewChannelMessage | Update.updateReadChannelInbox | Update.updateDeleteChannelMessages | Update.updateChannelMessageViews | Update.updateChatParticipantAdmin | Update.updateNewStickerSet | Update.updateStickerSetsOrder | Update.updateStickerSets | Update.updateSavedGifs | Update.updateBotInlineQuery | Update.updateBotInlineSend | Update.updateEditChannelMessage | Update.updateBotCallbackQuery | Update.updateEditMessage | Update.updateInlineBotCallbackQuery | Update.updateReadChannelOutbox | Update.updateDraftMessage | Update.updateReadFeaturedStickers | Update.updateRecentStickers | Update.updateConfig | Update.updatePtsChanged | Update.updateChannelWebPage | Update.updateDialogPinned | Update.updatePinnedDialogs | Update.updateBotWebhookJSON | Update.updateBotWebhookJSONQuery | Update.updateBotShippingQuery | Update.updateBotPrecheckoutQuery | Update.updatePhoneCall | Update.updateLangPackTooLong | Update.updateLangPack | Update.updateFavedStickers | Update.updateChannelReadMessagesContents | Update.updateContactsReset | Update.updateChannelAvailableMessages | Update.updateDialogUnreadMark | Update.updateMessagePoll | Update.updateChatDefaultBannedRights | Update.updateFolderPeers | Update.updatePeerSettings | Update.updatePeerLocated | Update.updateNewScheduledMessage | Update.updateDeleteScheduledMessages | Update.updateTheme | Update.updateGeoLiveViewed | Update.updateLoginToken | Update.updateMessagePollVote | Update.updateDialogFilter | Update.updateDialogFilterOrder | Update.updateDialogFilters | Update.updatePhoneCallSignalingData | Update.updateChannelMessageForwards | Update.updateReadChannelDiscussionInbox | Update.updateReadChannelDiscussionOutbox | Update.updatePeerBlocked | Update.updateChannelUserTyping | Update.updatePinnedMessages | Update.updatePinnedChannelMessages | Update.updateChat | Update.updateGroupCallParticipants | Update.updateGroupCall | Update.updatePeerHistoryTTL | Update.updateChatParticipant | Update.updateChannelParticipant | Update.updateBotStopped | Update.updateGroupCallConnection | Update.updateBotCommands | Update.updatePendingJoinRequests | Update.updateBotChatInviteRequester | Update.updateMessageReactions | Update.updateAttachMenuBots | Update.updateWebViewResultSent | Update.updateBotMenuButton | Update.updateSavedRingtones | Update.updateTranscribedAudio | Update.updateReadFeaturedEmojiStickers | Update.updateNewDiscussionMessage | Update.updateDeleteDiscussionMessages | Update.updateChannelReload;
+export type Update = Update.updateNewMessage | Update.updateMessageID | Update.updateDeleteMessages | Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChatParticipants | Update.updateUserStatus | Update.updateUserName | Update.updateUserPhoto | Update.updateNewEncryptedMessage | Update.updateEncryptedChatTyping | Update.updateEncryption | Update.updateEncryptedMessagesRead | Update.updateChatParticipantAdd | Update.updateChatParticipantDelete | Update.updateDcOptions | Update.updateNotifySettings | Update.updateServiceNotification | Update.updatePrivacy | Update.updateUserPhone | Update.updateReadHistoryInbox | Update.updateReadHistoryOutbox | Update.updateWebPage | Update.updateReadMessagesContents | Update.updateChannelTooLong | Update.updateChannel | Update.updateNewChannelMessage | Update.updateReadChannelInbox | Update.updateDeleteChannelMessages | Update.updateChannelMessageViews | Update.updateChatParticipantAdmin | Update.updateNewStickerSet | Update.updateStickerSetsOrder | Update.updateStickerSets | Update.updateSavedGifs | Update.updateBotInlineQuery | Update.updateBotInlineSend | Update.updateEditChannelMessage | Update.updateBotCallbackQuery | Update.updateEditMessage | Update.updateInlineBotCallbackQuery | Update.updateReadChannelOutbox | Update.updateDraftMessage | Update.updateReadFeaturedStickers | Update.updateRecentStickers | Update.updateConfig | Update.updatePtsChanged | Update.updateChannelWebPage | Update.updateDialogPinned | Update.updatePinnedDialogs | Update.updateBotWebhookJSON | Update.updateBotWebhookJSONQuery | Update.updateBotShippingQuery | Update.updateBotPrecheckoutQuery | Update.updatePhoneCall | Update.updateLangPackTooLong | Update.updateLangPack | Update.updateFavedStickers | Update.updateChannelReadMessagesContents | Update.updateContactsReset | Update.updateChannelAvailableMessages | Update.updateDialogUnreadMark | Update.updateMessagePoll | Update.updateChatDefaultBannedRights | Update.updateFolderPeers | Update.updatePeerSettings | Update.updatePeerLocated | Update.updateNewScheduledMessage | Update.updateDeleteScheduledMessages | Update.updateTheme | Update.updateGeoLiveViewed | Update.updateLoginToken | Update.updateMessagePollVote | Update.updateDialogFilter | Update.updateDialogFilterOrder | Update.updateDialogFilters | Update.updatePhoneCallSignalingData | Update.updateChannelMessageForwards | Update.updateReadChannelDiscussionInbox | Update.updateReadChannelDiscussionOutbox | Update.updatePeerBlocked | Update.updateChannelUserTyping | Update.updatePinnedMessages | Update.updatePinnedChannelMessages | Update.updateChat | Update.updateGroupCallParticipants | Update.updateGroupCall | Update.updatePeerHistoryTTL | Update.updateChatParticipant | Update.updateChannelParticipant | Update.updateBotStopped | Update.updateGroupCallConnection | Update.updateBotCommands | Update.updatePendingJoinRequests | Update.updateBotChatInviteRequester | Update.updateMessageReactions | Update.updateAttachMenuBots | Update.updateWebViewResultSent | Update.updateBotMenuButton | Update.updateSavedRingtones | Update.updateTranscribedAudio | Update.updateReadFeaturedEmojiStickers | Update.updateUserEmojiStatus | Update.updateRecentEmojiStatuses | Update.updateRecentReactions | Update.updateMoveStickerSetToTop | Update.updateMessageExtendedMedia | Update.updateNewDiscussionMessage | Update.updateDeleteDiscussionMessages | Update.updateChannelReload;
 
 export namespace Update {
   export type updateNewMessage = {
@@ -2256,7 +2259,12 @@ export namespace Update {
   };
 
   export type updateStickerSets = {
-    _: 'updateStickerSets'
+    _: 'updateStickerSets',
+    flags?: number,
+    pFlags?: Partial<{
+      masks?: true,
+      emojis?: true,
+    }>
   };
 
   export type updateSavedGifs = {
@@ -2741,6 +2749,37 @@ export namespace Update {
     _: 'updateReadFeaturedEmojiStickers'
   };
 
+  export type updateUserEmojiStatus = {
+    _: 'updateUserEmojiStatus',
+    user_id: string | number,
+    emoji_status: EmojiStatus
+  };
+
+  export type updateRecentEmojiStatuses = {
+    _: 'updateRecentEmojiStatuses'
+  };
+
+  export type updateRecentReactions = {
+    _: 'updateRecentReactions'
+  };
+
+  export type updateMoveStickerSetToTop = {
+    _: 'updateMoveStickerSetToTop',
+    flags?: number,
+    pFlags?: Partial<{
+      masks?: true,
+      emojis?: true,
+    }>,
+    stickerset: string | number
+  };
+
+  export type updateMessageExtendedMedia = {
+    _: 'updateMessageExtendedMedia',
+    peer: Peer,
+    msg_id: number,
+    extended_media: MessageExtendedMedia
+  };
+
   export type updateNewDiscussionMessage = {
     _: 'updateNewDiscussionMessage',
     message?: Message
@@ -3050,7 +3089,8 @@ export namespace Config {
     webfile_dc_id: number,
     suggested_lang_code?: string,
     lang_pack_version?: number,
-    base_lang_pack_version?: number
+    base_lang_pack_version?: number,
+    reactions_default?: Reaction
   };
 }
 
@@ -3928,7 +3968,8 @@ export namespace AccountPassword {
     new_algo: PasswordKdfAlgo,
     new_secure_algo: SecurePasswordKdfAlgo,
     secure_random: Uint8Array,
-    pending_reset_date?: number
+    pending_reset_date?: number,
+    login_email_pattern?: string
   };
 }
 
@@ -4056,7 +4097,7 @@ export namespace ChatInvite {
 /**
  * @link https://core.telegram.org/type/InputStickerSet
  */
-export type InputStickerSet = InputStickerSet.inputStickerSetEmpty | InputStickerSet.inputStickerSetID | InputStickerSet.inputStickerSetShortName | InputStickerSet.inputStickerSetAnimatedEmoji | InputStickerSet.inputStickerSetDice | InputStickerSet.inputStickerSetAnimatedEmojiAnimations | InputStickerSet.inputStickerSetPremiumGifts;
+export type InputStickerSet = InputStickerSet.inputStickerSetEmpty | InputStickerSet.inputStickerSetID | InputStickerSet.inputStickerSetShortName | InputStickerSet.inputStickerSetAnimatedEmoji | InputStickerSet.inputStickerSetDice | InputStickerSet.inputStickerSetAnimatedEmojiAnimations | InputStickerSet.inputStickerSetPremiumGifts | InputStickerSet.inputStickerSetEmojiGenericAnimations | InputStickerSet.inputStickerSetEmojiDefaultStatuses;
 
 export namespace InputStickerSet {
   export type inputStickerSetEmpty = {
@@ -4089,6 +4130,14 @@ export namespace InputStickerSet {
 
   export type inputStickerSetPremiumGifts = {
     _: 'inputStickerSetPremiumGifts'
+  };
+
+  export type inputStickerSetEmojiGenericAnimations = {
+    _: 'inputStickerSetEmojiGenericAnimations'
+  };
+
+  export type inputStickerSetEmojiDefaultStatuses = {
+    _: 'inputStickerSetEmojiDefaultStatuses'
   };
 }
 
@@ -4133,6 +4182,7 @@ export namespace MessagesStickerSet {
     _: 'messages.stickerSet',
     set: StickerSet,
     packs: Array<StickerPack>,
+    keywords: Array<StickerKeyword>,
     documents: Array<Document>,
     refreshTime?: number
   };
@@ -5114,7 +5164,7 @@ export namespace AuthCodeType {
 /**
  * @link https://core.telegram.org/type/auth.SentCodeType
  */
-export type AuthSentCodeType = AuthSentCodeType.authSentCodeTypeApp | AuthSentCodeType.authSentCodeTypeSms | AuthSentCodeType.authSentCodeTypeCall | AuthSentCodeType.authSentCodeTypeFlashCall | AuthSentCodeType.authSentCodeTypeMissedCall;
+export type AuthSentCodeType = AuthSentCodeType.authSentCodeTypeApp | AuthSentCodeType.authSentCodeTypeSms | AuthSentCodeType.authSentCodeTypeCall | AuthSentCodeType.authSentCodeTypeFlashCall | AuthSentCodeType.authSentCodeTypeMissedCall | AuthSentCodeType.authSentCodeTypeEmailCode | AuthSentCodeType.authSentCodeTypeSetUpEmailRequired;
 
 export namespace AuthSentCodeType {
   export type authSentCodeTypeApp = {
@@ -5141,6 +5191,27 @@ export namespace AuthSentCodeType {
     _: 'auth.sentCodeTypeMissedCall',
     prefix: string,
     length: number
+  };
+
+  export type authSentCodeTypeEmailCode = {
+    _: 'auth.sentCodeTypeEmailCode',
+    flags?: number,
+    pFlags?: Partial<{
+      apple_signin_allowed?: true,
+      google_signin_allowed?: true,
+    }>,
+    email_pattern: string,
+    length: number,
+    next_phone_login_date?: number
+  };
+
+  export type authSentCodeTypeSetUpEmailRequired = {
+    _: 'auth.sentCodeTypeSetUpEmailRequired',
+    flags?: number,
+    pFlags?: Partial<{
+      apple_signin_allowed?: true,
+      google_signin_allowed?: true,
+    }>
   };
 }
 
@@ -5437,6 +5508,7 @@ export namespace StickerSetCovered {
     _: 'stickerSetFullCovered',
     set: StickerSet,
     packs: Array<StickerPack>,
+    keywords: Array<StickerKeyword>,
     documents: Array<Document>
   };
 }
@@ -6715,8 +6787,8 @@ export namespace ChannelAdminLogEventAction {
 
   export type channelAdminLogEventActionChangeAvailableReactions = {
     _: 'channelAdminLogEventActionChangeAvailableReactions',
-    prev_value: Array<string>,
-    new_value: Array<string>
+    prev_value: ChatReactions,
+    new_value: ChatReactions
   };
 }
 
@@ -9422,7 +9494,7 @@ export type ChannelsSendAsPeers = ChannelsSendAsPeers.channelsSendAsPeers;
 export namespace ChannelsSendAsPeers {
   export type channelsSendAsPeers = {
     _: 'channels.sendAsPeers',
-    peers: Array<Peer>,
+    peers: Array<SendAsPeer>,
     chats: Array<Chat>,
     users: Array<User>
   };
@@ -9478,10 +9550,8 @@ export namespace ReactionCount {
   export type reactionCount = {
     _: 'reactionCount',
     flags?: number,
-    pFlags?: Partial<{
-      chosen?: true,
-    }>,
-    reaction: string,
+    chosen_order?: number,
+    reaction: Reaction,
     count: number
   };
 }
@@ -9593,7 +9663,7 @@ export namespace MessagePeerReaction {
       unread?: true,
     }>,
     peer_id: Peer,
-    reaction: string
+    reaction: Reaction
   };
 }
 
@@ -9919,8 +9989,7 @@ export namespace HelpPremiumPromo {
     status_entities: Array<MessageEntity>,
     video_sections: Array<string>,
     videos: Array<Document>,
-    currency: string,
-    monthly_amount: string | number,
+    period_options: Array<PremiumSubscriptionOption>,
     users: Array<User>
   };
 }
@@ -9974,6 +10043,239 @@ export namespace PaymentFormMethod {
     _: 'paymentFormMethod',
     url: string,
     title: string
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/EmojiStatus
+ */
+export type EmojiStatus = EmojiStatus.emojiStatusEmpty | EmojiStatus.emojiStatus | EmojiStatus.emojiStatusUntil;
+
+export namespace EmojiStatus {
+  export type emojiStatusEmpty = {
+    _: 'emojiStatusEmpty'
+  };
+
+  export type emojiStatus = {
+    _: 'emojiStatus',
+    document_id: string | number
+  };
+
+  export type emojiStatusUntil = {
+    _: 'emojiStatusUntil',
+    document_id: string | number,
+    until: number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/account.EmojiStatuses
+ */
+export type AccountEmojiStatuses = AccountEmojiStatuses.accountEmojiStatusesNotModified | AccountEmojiStatuses.accountEmojiStatuses;
+
+export namespace AccountEmojiStatuses {
+  export type accountEmojiStatusesNotModified = {
+    _: 'account.emojiStatusesNotModified'
+  };
+
+  export type accountEmojiStatuses = {
+    _: 'account.emojiStatuses',
+    hash: string | number,
+    statuses: Array<EmojiStatus>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/Reaction
+ */
+export type Reaction = Reaction.reactionEmpty | Reaction.reactionEmoji | Reaction.reactionCustomEmoji;
+
+export namespace Reaction {
+  export type reactionEmpty = {
+    _: 'reactionEmpty'
+  };
+
+  export type reactionEmoji = {
+    _: 'reactionEmoji',
+    emoticon: string
+  };
+
+  export type reactionCustomEmoji = {
+    _: 'reactionCustomEmoji',
+    document_id: string | number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/ChatReactions
+ */
+export type ChatReactions = ChatReactions.chatReactionsNone | ChatReactions.chatReactionsAll | ChatReactions.chatReactionsSome;
+
+export namespace ChatReactions {
+  export type chatReactionsNone = {
+    _: 'chatReactionsNone'
+  };
+
+  export type chatReactionsAll = {
+    _: 'chatReactionsAll',
+    flags?: number,
+    pFlags?: Partial<{
+      allow_custom?: true,
+    }>
+  };
+
+  export type chatReactionsSome = {
+    _: 'chatReactionsSome',
+    reactions: Array<Reaction>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/messages.Reactions
+ */
+export type MessagesReactions = MessagesReactions.messagesReactionsNotModified | MessagesReactions.messagesReactions;
+
+export namespace MessagesReactions {
+  export type messagesReactionsNotModified = {
+    _: 'messages.reactionsNotModified'
+  };
+
+  export type messagesReactions = {
+    _: 'messages.reactions',
+    hash: string | number,
+    reactions: Array<Reaction>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/EmailVerifyPurpose
+ */
+export type EmailVerifyPurpose = EmailVerifyPurpose.emailVerifyPurposeLoginSetup | EmailVerifyPurpose.emailVerifyPurposeLoginChange | EmailVerifyPurpose.emailVerifyPurposePassport;
+
+export namespace EmailVerifyPurpose {
+  export type emailVerifyPurposeLoginSetup = {
+    _: 'emailVerifyPurposeLoginSetup',
+    phone_number: string,
+    phone_code_hash: string
+  };
+
+  export type emailVerifyPurposeLoginChange = {
+    _: 'emailVerifyPurposeLoginChange'
+  };
+
+  export type emailVerifyPurposePassport = {
+    _: 'emailVerifyPurposePassport'
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/EmailVerification
+ */
+export type EmailVerification = EmailVerification.emailVerificationCode | EmailVerification.emailVerificationGoogle | EmailVerification.emailVerificationApple;
+
+export namespace EmailVerification {
+  export type emailVerificationCode = {
+    _: 'emailVerificationCode',
+    code: string
+  };
+
+  export type emailVerificationGoogle = {
+    _: 'emailVerificationGoogle',
+    token: string
+  };
+
+  export type emailVerificationApple = {
+    _: 'emailVerificationApple',
+    token: string
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/account.EmailVerified
+ */
+export type AccountEmailVerified = AccountEmailVerified.accountEmailVerified | AccountEmailVerified.accountEmailVerifiedLogin;
+
+export namespace AccountEmailVerified {
+  export type accountEmailVerified = {
+    _: 'account.emailVerified',
+    email: string
+  };
+
+  export type accountEmailVerifiedLogin = {
+    _: 'account.emailVerifiedLogin',
+    email: string,
+    sent_code: AuthSentCode
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/PremiumSubscriptionOption
+ */
+export type PremiumSubscriptionOption = PremiumSubscriptionOption.premiumSubscriptionOption;
+
+export namespace PremiumSubscriptionOption {
+  export type premiumSubscriptionOption = {
+    _: 'premiumSubscriptionOption',
+    flags?: number,
+    pFlags?: Partial<{
+      current?: true,
+      can_purchase_upgrade?: true,
+    }>,
+    months: number,
+    currency: string,
+    amount: string | number,
+    bot_url: string,
+    store_product?: string
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/SendAsPeer
+ */
+export type SendAsPeer = SendAsPeer.sendAsPeer;
+
+export namespace SendAsPeer {
+  export type sendAsPeer = {
+    _: 'sendAsPeer',
+    flags?: number,
+    pFlags?: Partial<{
+      premium_required?: true,
+    }>,
+    peer: Peer
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/MessageExtendedMedia
+ */
+export type MessageExtendedMedia = MessageExtendedMedia.messageExtendedMediaPreview | MessageExtendedMedia.messageExtendedMedia;
+
+export namespace MessageExtendedMedia {
+  export type messageExtendedMediaPreview = {
+    _: 'messageExtendedMediaPreview',
+    flags?: number,
+    w?: number,
+    h?: number,
+    thumb?: PhotoSize,
+    video_duration?: number
+  };
+
+  export type messageExtendedMedia = {
+    _: 'messageExtendedMedia',
+    media: MessageMedia
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/StickerKeyword
+ */
+export type StickerKeyword = StickerKeyword.stickerKeyword;
+
+export namespace StickerKeyword {
+  export type stickerKeyword = {
+    _: 'stickerKeyword',
+    document_id: string | number,
+    keyword: Array<string>
   };
 }
 
@@ -10986,6 +11288,41 @@ export interface ConstructorDeclMap {
   'privacyKeyVoiceMessages': PrivacyKey.privacyKeyVoiceMessages,
   'paymentFormMethod': PaymentFormMethod.paymentFormMethod,
   'inputWebFileAudioAlbumThumbLocation': InputWebFileLocation.inputWebFileAudioAlbumThumbLocation,
+  'emojiStatusEmpty': EmojiStatus.emojiStatusEmpty,
+  'emojiStatus': EmojiStatus.emojiStatus,
+  'emojiStatusUntil': EmojiStatus.emojiStatusUntil,
+  'updateUserEmojiStatus': Update.updateUserEmojiStatus,
+  'updateRecentEmojiStatuses': Update.updateRecentEmojiStatuses,
+  'account.emojiStatusesNotModified': AccountEmojiStatuses.accountEmojiStatusesNotModified,
+  'account.emojiStatuses': AccountEmojiStatuses.accountEmojiStatuses,
+  'reactionEmpty': Reaction.reactionEmpty,
+  'reactionEmoji': Reaction.reactionEmoji,
+  'reactionCustomEmoji': Reaction.reactionCustomEmoji,
+  'chatReactionsNone': ChatReactions.chatReactionsNone,
+  'chatReactionsAll': ChatReactions.chatReactionsAll,
+  'chatReactionsSome': ChatReactions.chatReactionsSome,
+  'messages.reactionsNotModified': MessagesReactions.messagesReactionsNotModified,
+  'messages.reactions': MessagesReactions.messagesReactions,
+  'updateRecentReactions': Update.updateRecentReactions,
+  'updateMoveStickerSetToTop': Update.updateMoveStickerSetToTop,
+  'auth.sentCodeTypeEmailCode': AuthSentCodeType.authSentCodeTypeEmailCode,
+  'auth.sentCodeTypeSetUpEmailRequired': AuthSentCodeType.authSentCodeTypeSetUpEmailRequired,
+  'emailVerifyPurposeLoginSetup': EmailVerifyPurpose.emailVerifyPurposeLoginSetup,
+  'emailVerifyPurposeLoginChange': EmailVerifyPurpose.emailVerifyPurposeLoginChange,
+  'emailVerifyPurposePassport': EmailVerifyPurpose.emailVerifyPurposePassport,
+  'emailVerificationCode': EmailVerification.emailVerificationCode,
+  'emailVerificationGoogle': EmailVerification.emailVerificationGoogle,
+  'emailVerificationApple': EmailVerification.emailVerificationApple,
+  'account.emailVerified': AccountEmailVerified.accountEmailVerified,
+  'account.emailVerifiedLogin': AccountEmailVerified.accountEmailVerifiedLogin,
+  'premiumSubscriptionOption': PremiumSubscriptionOption.premiumSubscriptionOption,
+  'inputStickerSetEmojiGenericAnimations': InputStickerSet.inputStickerSetEmojiGenericAnimations,
+  'inputStickerSetEmojiDefaultStatuses': InputStickerSet.inputStickerSetEmojiDefaultStatuses,
+  'sendAsPeer': SendAsPeer.sendAsPeer,
+  'messageExtendedMediaPreview': MessageExtendedMedia.messageExtendedMediaPreview,
+  'messageExtendedMedia': MessageExtendedMedia.messageExtendedMedia,
+  'updateMessageExtendedMedia': Update.updateMessageExtendedMedia,
+  'stickerKeyword': StickerKeyword.stickerKeyword,
   'messageEntityEmoji': MessageEntity.messageEntityEmoji,
   'messageEntityHighlight': MessageEntity.messageEntityHighlight,
   'messageEntityLinebreak': MessageEntity.messageEntityLinebreak,
@@ -11033,9 +11370,11 @@ export type AuthSignUp = {
 };
 
 export type AuthSignIn = {
+  flags?: number,
   phone_number: string,
   phone_code_hash: string,
-  phone_code: string
+  phone_code?: string,
+  email_verification?: EmailVerification
 };
 
 export type AuthLogOut = {
@@ -11239,6 +11578,7 @@ export type MessagesSendMessage = {
   background?: boolean,
   clear_draft?: boolean,
   noforwards?: boolean,
+  update_stickersets_order?: boolean,
   peer: InputPeer,
   reply_to_msg_id?: number,
   message: string,
@@ -11255,6 +11595,7 @@ export type MessagesSendMedia = {
   background?: boolean,
   clear_draft?: boolean,
   noforwards?: boolean,
+  update_stickersets_order?: boolean,
   peer: InputPeer,
   reply_to_msg_id?: number,
   media: InputMedia,
@@ -12366,6 +12707,7 @@ export type MessagesSendMultiMedia = {
   background?: boolean,
   clear_draft?: boolean,
   noforwards?: boolean,
+  update_stickersets_order?: boolean,
   peer: InputPeer,
   reply_to_msg_id?: number,
   multi_media: Array<InputSingleMedia>,
@@ -12458,12 +12800,13 @@ export type AccountVerifyPhone = {
 };
 
 export type AccountSendVerifyEmailCode = {
+  purpose: EmailVerifyPurpose,
   email: string
 };
 
 export type AccountVerifyEmail = {
-  email: string,
-  code: string
+  purpose: EmailVerifyPurpose,
+  verification: EmailVerification
 };
 
 export type HelpGetDeepLinkInfo = {
@@ -13340,9 +13683,10 @@ export type ChannelsDeleteParticipantHistory = {
 export type MessagesSendReaction = {
   flags?: number,
   big?: boolean,
+  add_to_recent?: boolean,
   peer: InputPeer,
   msg_id: number,
-  reaction?: string
+  reaction?: Array<Reaction>
 };
 
 export type MessagesGetMessagesReactions = {
@@ -13354,14 +13698,14 @@ export type MessagesGetMessageReactionsList = {
   flags?: number,
   peer: InputPeer,
   id: number,
-  reaction?: string,
+  reaction?: Reaction,
   offset?: string,
   limit: number
 };
 
 export type MessagesSetChatAvailableReactions = {
   peer: InputPeer,
-  available_reactions: Array<string>
+  available_reactions: ChatReactions
 };
 
 export type MessagesGetAvailableReactions = {
@@ -13369,7 +13713,7 @@ export type MessagesGetAvailableReactions = {
 };
 
 export type MessagesSetDefaultReaction = {
-  reaction: string
+  reaction: Reaction
 };
 
 export type MessagesTranslateText = {
@@ -13435,6 +13779,7 @@ export type MessagesRequestWebView = {
   url?: string,
   start_param?: string,
   theme_params?: DataJSON,
+  platform: string,
   reply_to_msg_id?: number,
   send_as?: InputPeer
 };
@@ -13453,7 +13798,8 @@ export type MessagesRequestSimpleWebView = {
   flags?: number,
   bot: InputUser,
   url: string,
-  theme_params?: DataJSON
+  theme_params?: DataJSON,
+  platform: string
 };
 
 export type MessagesSendWebViewResultMessage = {
@@ -13559,6 +13905,47 @@ export type MessagesGetEmojiStickers = {
 
 export type MessagesGetFeaturedEmojiStickers = {
   hash: string | number
+};
+
+export type AccountUpdateEmojiStatus = {
+  emoji_status: EmojiStatus
+};
+
+export type AccountGetDefaultEmojiStatuses = {
+  hash: string | number
+};
+
+export type AccountGetRecentEmojiStatuses = {
+  hash: string | number
+};
+
+export type AccountClearRecentEmojiStatuses = {
+
+};
+
+export type MessagesReportReaction = {
+  peer: InputPeer,
+  id: number,
+  reaction_peer: InputPeer
+};
+
+export type MessagesGetTopReactions = {
+  limit: number,
+  hash: string | number
+};
+
+export type MessagesGetRecentReactions = {
+  limit: number,
+  hash: string | number
+};
+
+export type MessagesClearRecentReactions = {
+
+};
+
+export type MessagesGetExtendedMedia = {
+  peer: InputPeer,
+  id: Array<number>
 };
 
 export interface MethodDeclMap {
@@ -13808,7 +14195,7 @@ export interface MethodDeclMap {
   'account.sendVerifyPhoneCode': {req: AccountSendVerifyPhoneCode, res: AuthSentCode},
   'account.verifyPhone': {req: AccountVerifyPhone, res: boolean},
   'account.sendVerifyEmailCode': {req: AccountSendVerifyEmailCode, res: AccountSentEmailCode},
-  'account.verifyEmail': {req: AccountVerifyEmail, res: boolean},
+  'account.verifyEmail': {req: AccountVerifyEmail, res: AccountEmailVerified},
   'help.getDeepLinkInfo': {req: HelpGetDeepLinkInfo, res: HelpDeepLinkInfo},
   'contacts.getSaved': {req: ContactsGetSaved, res: Array<SavedContact>},
   'channels.getLeftChannels': {req: ChannelsGetLeftChannels, res: MessagesChats},
@@ -14009,5 +14396,14 @@ export interface MethodDeclMap {
   'messages.getCustomEmojiDocuments': {req: MessagesGetCustomEmojiDocuments, res: Array<Document>},
   'messages.getEmojiStickers': {req: MessagesGetEmojiStickers, res: MessagesAllStickers},
   'messages.getFeaturedEmojiStickers': {req: MessagesGetFeaturedEmojiStickers, res: MessagesFeaturedStickers},
+  'account.updateEmojiStatus': {req: AccountUpdateEmojiStatus, res: boolean},
+  'account.getDefaultEmojiStatuses': {req: AccountGetDefaultEmojiStatuses, res: AccountEmojiStatuses},
+  'account.getRecentEmojiStatuses': {req: AccountGetRecentEmojiStatuses, res: AccountEmojiStatuses},
+  'account.clearRecentEmojiStatuses': {req: AccountClearRecentEmojiStatuses, res: boolean},
+  'messages.reportReaction': {req: MessagesReportReaction, res: boolean},
+  'messages.getTopReactions': {req: MessagesGetTopReactions, res: MessagesReactions},
+  'messages.getRecentReactions': {req: MessagesGetRecentReactions, res: MessagesReactions},
+  'messages.clearRecentReactions': {req: MessagesClearRecentReactions, res: boolean},
+  'messages.getExtendedMedia': {req: MessagesGetExtendedMedia, res: Updates},
 }
 

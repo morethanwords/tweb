@@ -14,7 +14,7 @@ import {i18n, LangPackKey} from '../../../lib/langPack';
 import rootScope from '../../../lib/rootScope';
 import {emojiFromCodePoints} from '../../../vendor/emoji';
 import {putPreloader} from '../../putPreloader';
-import Scrollable from '../../scrollable';
+import Scrollable, {ScrollableX} from '../../scrollable';
 import StickyIntersector from '../../stickyIntersector';
 import IS_EMOJI_SUPPORTED from '../../../environment/emojiSupport';
 import IS_TOUCH_SUPPORTED from '../../../environment/touchSupport';
@@ -25,6 +25,8 @@ import fixEmoji from '../../../lib/richTextProcessor/fixEmoji';
 import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
 import wrapSingleEmoji from '../../../lib/richTextProcessor/wrapSingleEmoji';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
+import {StickersTabCategory} from './stickers';
+import positionElementByIndex from '../../../helpers/dom/positionElementByIndex';
 
 const loadedURLs: Set<string> = new Set();
 export function appendEmoji(emoji: string, container: HTMLElement, prepend = false, unify = false) {
@@ -125,24 +127,25 @@ export default class EmojiTab implements EmoticonsTab {
   init() {
     this.content = document.getElementById('content-emoji') as HTMLDivElement;
 
-    const categories: LangPackKey[] = [
-      'Emoji.SmilesAndPeople',
-      'Emoji.AnimalsAndNature',
-      'Emoji.FoodAndDrink',
-      'Emoji.TravelAndPlaces',
-      'Emoji.ActivityAndSport',
-      'Emoji.Objects',
-      /* 'Emoji.Symbols',  */
-      'Emoji.Flags',
-      'Skin Tones' as any
+    const EMOJI_RECENT_CATEGORY: (typeof EMOJI_CATEGORIES)[0] = ['Emoji.Recent', 'recent'];
+    const EMOJI_CATEGORIES: [LangPackKey, string][] = [
+      ['Emoji.SmilesAndPeople', 'smile'],
+      ['Emoji.AnimalsAndNature', 'animals'],
+      ['Emoji.FoodAndDrink', 'eats'],
+      ['Emoji.TravelAndPlaces', 'car'],
+      ['Emoji.ActivityAndSport', 'sport'],
+      ['Emoji.Objects', 'lamp'],
+      // ['Emoji.Symbols', 'info'],
+      ['Emoji.Flags', 'flag'],
+      ['Skin Tones' as any, '']
     ];
     const divs: {
-      [category in LangPackKey]?: HTMLDivElement
+      [category in LangPackKey]?: StickersTabCategory
     } = {};
 
-    const sorted: Map<LangPackKey, string[]> = new Map([
+    const sorted: Map<(typeof EMOJI_CATEGORIES)[0], string[]> = new Map([
       [
-        'Emoji.Recent',
+        EMOJI_RECENT_CATEGORY,
         []
       ]
     ]);
@@ -150,7 +153,7 @@ export default class EmojiTab implements EmoticonsTab {
     for(const emoji in Emoji) {
       const details = Emoji[emoji];
       const i = '' + details;
-      const category = categories[+i[0] - 1];
+      const category = EMOJI_CATEGORIES[+i[0] - 1];
       if(!category) continue; // maybe it's skin tones
 
       let s = sorted.get(category);
@@ -162,25 +165,20 @@ export default class EmojiTab implements EmoticonsTab {
       s[+i.slice(1) || 0] = emoji;
     }
 
-    // console.log('emoticons sorted:', sorted);
+    sorted.delete(EMOJI_CATEGORIES.pop());
 
-    // Object.keys(sorted).forEach((c) => sorted[c].sort((a, b) => a - b));
+    sorted.forEach((emojis, emojiCategory) => {
+      const titleLangPackKey = emojiCategory[0];
+      const category = new StickersTabCategory({
+        id: titleLangPackKey,
+        overflowElement: this.content,
+        title: i18n(titleLangPackKey),
+        getElementMediaSize: () => undefined
+      });
 
-    sorted.delete(categories.pop());
-
-    // console.time('emojiParse');
-    sorted.forEach((emojis, category) => {
-      const div = document.createElement('div');
-      div.classList.add('emoji-category');
-
-      const titleDiv = document.createElement('div');
-      titleDiv.classList.add('category-title');
-      titleDiv.append(i18n(category));
-
-      const itemsDiv = document.createElement('div');
-      itemsDiv.classList.add('super-emojis');
-
-      div.append(titleDiv, itemsDiv);
+      category.elements.menuTab.classList.add('tgico', 'tgico-' + emojiCategory[1]);
+      category.elements.menuTabPadding.remove();
+      category.elements.items.classList.add('super-emojis');
 
       emojis.forEach((unified) => {
         /* if(emojiUnicode(emoji) === '1f481-200d-2642') {
@@ -204,59 +202,58 @@ export default class EmojiTab implements EmoticonsTab {
         // debugger;
         // }
 
-        appendEmoji(emoji/* .replace(/[\ufe0f\u2640\u2642\u2695]/g, '') */, itemsDiv, false/* , false */);
+        appendEmoji(emoji/* .replace(/[\ufe0f\u2640\u2642\u2695]/g, '') */, category.elements.items, false/* , false */);
 
         /* if(category === 'Smileys & Emotion') {
           console.log('appended emoji', emoji, itemsDiv.children[itemsDiv.childElementCount - 1].innerHTML, emojiUnicode(emoji));
         } */
       });
 
-      divs[category] = div;
+      divs[titleLangPackKey] = category;
     });
 
-    // console.timeEnd('emojiParse');
+    const menuWrapper = this.content.previousElementSibling as HTMLElement;
+    const menu = this.menu = menuWrapper.firstElementChild as HTMLElement;
+    const menuScroll = new ScrollableX(menuWrapper);
 
-    const menu = this.menu = this.content.previousElementSibling as HTMLElement;
     const emojiScroll = this.scroll = new Scrollable(this.content, 'EMOJI');
-
-    // emojiScroll.setVirtualContainer(emojiScroll.container);
 
     const preloader = putPreloader(this.content, true);
 
     Promise.all([
       pause(200),
-      this.managers.appEmojiManager.getRecentEmojis().then((recent) => {
-        const hasRecent = !!recent.length;
-        const activeId = hasRecent ? 0 : 1;
-        this.menu.children[0].classList.toggle('hide', !hasRecent);
-        this.menu.children[activeId].classList.add('active');
-        const m = EmoticonsDropdown.menuOnClick(menu, emojiScroll, undefined, activeId);
-        this.stickyIntersector = m.stickyIntersector;
-        this.setMenuActive = m.setActive;
-        return recent;
-      })
+      this.managers.appEmojiManager.getRecentEmojis()
     ]).then(([_, recent]) => {
       preloader.remove();
 
-      this.recentItemsDiv = divs['Emoji.Recent'].querySelector('.super-emojis');
+      const m = EmoticonsDropdown.menuOnClick(menu, emojiScroll, menuScroll);
+      this.stickyIntersector = m.stickyIntersector;
+      this.setMenuActive = m.setActive;
+
+      const hasRecent = !!recent.length;
+      const activeId = hasRecent ? 0 : 1;
+      const recentCategory = divs[EMOJI_RECENT_CATEGORY[0]];
+      recentCategory.elements.menuTab.classList.toggle('hide', !hasRecent);
+
+      this.recentItemsDiv = recentCategory.elements.items;
       for(const emoji of recent) {
         appendEmoji(emoji, this.recentItemsDiv);
       }
 
-      this.recentItemsDiv.parentElement.classList.toggle('hide', !this.recentItemsDiv.childElementCount);
+      recentCategory.elements.container.classList.toggle('hide', !this.recentItemsDiv.childElementCount);
 
-      categories.unshift('Emoji.Recent');
-      categories.map((category) => {
-        const div = divs[category];
+      EMOJI_CATEGORIES.unshift(EMOJI_RECENT_CATEGORY);
+      EMOJI_CATEGORIES.map(([id], idx) => {
+        const category = divs[id];
 
-        if(!div) {
-          console.error('no div by category:', category);
-        }
-
-        emojiScroll.container.append(div);
-        this.stickyIntersector.observeStickyHeaderChanges(div);
-        return div;
+        positionElementByIndex(category.elements.menuTab, menu, idx);
+        emojiScroll.container.append(category.elements.container);
+        this.stickyIntersector.observeStickyHeaderChanges(category.elements.container);
+        return category;
       });
+
+      this.menu.children[activeId].classList.add('active');
+      this.setMenuActive(activeId);
     });
 
     attachClickEvent(this.content, this.onContentClick);

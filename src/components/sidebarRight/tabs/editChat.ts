@@ -22,6 +22,7 @@ import toggleDisability from '../../../helpers/dom/toggleDisability';
 import CheckboxField from '../../checkboxField';
 import AppChatReactionsTab from './chatReactions';
 import hasRights from '../../../lib/appManagers/utils/chats/hasRights';
+import replaceContent from '../../../helpers/dom/replaceContent';
 
 export default class AppEditChatTab extends SliderSuperTab {
   private chatNameInputField: InputField;
@@ -155,8 +156,17 @@ export default class AppEditChatTab extends SliderSuperTab {
         const availableReactions = await this.managers.appReactionsManager.getAvailableReactions();
         const availableReactionsLength = availableReactions.filter((availableReaction) => !availableReaction.pFlags.inactive).length;
         const setReactionsLength = () => {
-          const reactions = chatFull.available_reactions ?? [];
-          reactionsRow.subtitle.innerHTML = reactions.length + '/' + availableReactionsLength;
+          const chatAvailableReactions = chatFull.available_reactions ?? {_: 'chatReactionsNone'};
+          if(chatAvailableReactions._ === 'chatReactionsSome') {
+            const length = chatAvailableReactions.reactions.length;
+            if(length === availableReactionsLength) {
+              replaceContent(reactionsRow.subtitle, i18n('ReactionsAll'));
+            } else {
+              reactionsRow.subtitle.textContent = length + '/' + availableReactionsLength;
+            }
+          } else {
+            replaceContent(reactionsRow.subtitle, i18n(chatAvailableReactions._ === 'chatReactionsAll' ? 'ReactionsAll' : 'Checkbox.Disabled'));
+          }
         };
 
         setReactionsLength();

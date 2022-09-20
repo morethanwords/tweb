@@ -23,7 +23,8 @@ export type PeerTitleOptions = {
   dialog?: boolean,
   limitSymbols?: number,
   managers?: AppManagers,
-  withIcons?: boolean
+  withIcons?: boolean,
+  withPremiumIcon?: boolean
 };
 
 const weakMap: WeakMap<HTMLElement, PeerTitle> = new WeakMap();
@@ -32,11 +33,7 @@ rootScope.addEventListener('peer_title_edit', (peerId) => {
   const elements = Array.from(document.querySelectorAll(`.peer-title[data-peer-id="${peerId}"]`)) as HTMLElement[];
   elements.forEach((element) => {
     const peerTitle = weakMap.get(element);
-    // console.log('in the summer silence i was doing nothing', peerTitle, peerId);
-
-    if(peerTitle) {
-      peerTitle.update();
-    }
+    peerTitle?.update();
   });
 });
 
@@ -51,6 +48,7 @@ export default class PeerTitle {
   private managers: AppManagers;
   private hasInner: boolean;
   private withIcons: boolean;
+  private withPremiumIcon: boolean;
 
   constructor(options?: PeerTitleOptions) {
     this.element = document.createElement('span');
@@ -103,7 +101,7 @@ export default class PeerTitle {
       const managers = this.managers ?? rootScope.managers;
       const [title, icons] = await Promise.all([
         getPeerTitle(this.peerId, this.plainText, this.onlyFirstName, this.limitSymbols, managers),
-        this.withIcons && generateTitleIcons(this.peerId)
+        (this.withIcons && generateTitleIcons(this.peerId)) || (this.withPremiumIcon && generateTitleIcons(this.peerId, true, true))
       ]);
 
       if(icons?.length) {

@@ -15,7 +15,7 @@ declare global {
 
   interface HTMLElement {
     middlewareHelper?: MiddlewareHelper;
-    middleware?: Middleware;
+    // middleware?: Middleware;
   }
 
   type UserId = User.user['id'];

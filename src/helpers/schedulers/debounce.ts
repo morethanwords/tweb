@@ -7,6 +7,7 @@ import noop from '../noop';
 export type DebounceReturnType<F extends AnyFunction> = {
   (...args: Parameters<F>): Promise<Awaited<ReturnType<F>>>;
   clearTimeout(): void;
+  isDebounced(): boolean;
 };
 
 export default function debounce<F extends AnyFunction>(
@@ -70,6 +71,8 @@ export default function debounce<F extends AnyFunction>(
       hadNewCall = false;
     }
   };
+
+  debounce.isDebounced = () => !!waitingTimeout;
 
   return debounce;
 }

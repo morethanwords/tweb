@@ -10,18 +10,18 @@ import generateFakeIcon from './generateFakeIcon';
 import generatePremiumIcon from './generatePremiumIcon';
 import generateVerifiedIcon from './generateVerifiedIcon';
 
-export default async function generateTitleIcons(peerId: PeerId) {
+export default async function generateTitleIcons(peerId: PeerId, noVerifiedIcon?: boolean, noFakeIcon?: boolean, noPremiumIcon?: boolean) {
   const elements: Element[] = [];
   const peer: Chat | User = await rootScope.managers.appPeersManager.getPeer(peerId);
-  if((peer as Chat.channel).pFlags.verified) {
+  if((peer as Chat.channel).pFlags.verified && !noVerifiedIcon) {
     elements.push(generateVerifiedIcon());
   }
 
-  if((peer as Chat.channel).pFlags.fake || (peer as User.user).pFlags.scam) {
+  if(((peer as Chat.channel).pFlags.fake || (peer as User.user).pFlags.scam) && !noFakeIcon) {
     elements.push(generateFakeIcon((peer as User.user).pFlags.scam));
   }
 
-  if((peer as User.user).pFlags.premium) {
+  if((peer as User.user).pFlags.premium && !noPremiumIcon) {
     elements.push(generatePremiumIcon());
   }
 

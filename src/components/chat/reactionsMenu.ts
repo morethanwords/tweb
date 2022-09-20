@@ -14,14 +14,14 @@ import getVisibleRect from '../../helpers/dom/getVisibleRect';
 import {getMiddleware} from '../../helpers/middleware';
 import noop from '../../helpers/noop';
 import {fastRaf} from '../../helpers/schedulers';
-import {Message, AvailableReaction} from '../../layer';
+import {Message, AvailableReaction, Reaction} from '../../layer';
 import {AppManagers} from '../../lib/appManagers/managers';
 import lottieLoader from '../../lib/rlottie/lottieLoader';
 import RLottiePlayer from '../../lib/rlottie/rlottiePlayer';
 import rootScope from '../../lib/rootScope';
 import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
 import Scrollable, {ScrollableBase, ScrollableX} from '../scrollable';
-import {wrapSticker} from '../wrappers';
+import wrapSticker from '../wrappers/sticker';
 
 const REACTIONS_CLASS_NAME = 'btn-menu-reactions';
 const REACTION_CLASS_NAME = REACTIONS_CLASS_NAME + '-reaction';
@@ -37,7 +37,7 @@ type ChatReactionsMenuPlayers = {
   appear?: RLottiePlayer,
   selectWrapper: HTMLElement,
   appearWrapper: HTMLElement,
-  reaction: string
+  reaction: Reaction
 };
 export class ChatReactionsMenu {
   public widthContainer: HTMLElement;
@@ -158,7 +158,7 @@ export class ChatReactionsMenu {
     const players: ChatReactionsMenuPlayers = {
       selectWrapper,
       appearWrapper,
-      reaction: reaction.reaction
+      reaction: {_: 'reactionEmoji', emoticon: reaction.reaction}
     };
     this.reactionsMap.set(reactionDiv, players);
 

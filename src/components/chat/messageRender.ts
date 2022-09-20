@@ -14,9 +14,8 @@ import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import rootScope from '../../lib/rootScope';
 import type LazyLoadQueue from '../lazyLoadQueue';
 import PeerTitle from '../peerTitle';
-import {wrapReply} from '../wrappers';
+import wrapReply from '../wrappers/reply';
 import Chat, {ChatType} from './chat';
-import ReactionsElement from './reactions';
 import RepliesElement from './replies';
 
 const NBSP = '&nbsp;';
@@ -44,11 +43,14 @@ export namespace MessageRender {
     const date = new Date(message.date * 1000);
     const args: (HTMLElement | string)[] = [];
 
-    let editedSpan: HTMLElement, sponsoredSpan: HTMLElement, reactionsElement: ReactionsElement, reactionsMessage: Message.message;
+    let editedSpan: HTMLElement,
+      sponsoredSpan: HTMLElement;
+      // reactionsElement: ReactionsElement,
+      // reactionsMessage: Message.message;
 
     const isSponsored = !!(message as Message.message).pFlags.sponsored;
     const isMessage = !('action' in message) && !isSponsored;
-    let hasReactions: boolean;
+    // let hasReactions: boolean;
 
     const time: HTMLElement = isSponsored ? undefined : formatTime(date);
     if(isMessage) {
@@ -81,15 +83,15 @@ export namespace MessageRender {
         args.unshift(i);
       }
 
-      if(message.peer_id._ === 'peerUser'/*  && message.reactions?.results?.length */) {
-        hasReactions = true;
+      // if(USER_REACTIONS_INLINE && message.peer_id._ === 'peerUser'/*  && message.reactions?.results?.length */) {
+      //   hasReactions = true;
 
-        reactionsMessage = options.reactionsMessage;
-        reactionsElement = new ReactionsElement();
-        reactionsElement.init(reactionsMessage, 'inline', true);
-        reactionsElement.render();
-        args.unshift(reactionsElement);
-      }
+      //   reactionsMessage = options.reactionsMessage;
+      //   reactionsElement = new ReactionsElement();
+      //   reactionsElement.init(reactionsMessage, 'inline', true);
+      //   reactionsElement.render();
+      //   args.unshift(reactionsElement);
+      // }
     } else if(isSponsored) {
       args.push(sponsoredSpan = makeSponsored());
     }
@@ -120,11 +122,11 @@ export namespace MessageRender {
     if(sponsoredSpan) {
       clonedArgs[clonedArgs.indexOf(sponsoredSpan)] = makeSponsored();
     }
-    if(reactionsElement) {
-      const _reactionsElement = clonedArgs[clonedArgs.indexOf(reactionsElement)] = new ReactionsElement();
-      _reactionsElement.init(reactionsMessage, 'inline');
-      _reactionsElement.render();
-    }
+    // if(reactionsElement) {
+    //   const _reactionsElement = clonedArgs[clonedArgs.indexOf(reactionsElement)] = new ReactionsElement();
+    //   _reactionsElement.init(reactionsMessage, 'inline');
+    //   _reactionsElement.render();
+    // }
     clonedArgs = clonedArgs.map((a) => a instanceof HTMLElement && !a.classList.contains('i18n') && !a.classList.contains('reactions') ? a.cloneNode(true) as HTMLElement : a);
     if(time) {
       clonedArgs[clonedArgs.length - 1] = formatTime(date); // clone time

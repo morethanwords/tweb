@@ -23,7 +23,6 @@ import Button from '../../button';
 import CheckboxField from '../../checkboxField';
 import ProgressivePreloader from '../../preloader';
 import {SliderSuperTab} from '../../slider';
-import {wrapPhoto} from '../../wrappers';
 import AppBackgroundColorTab from './backgroundColor';
 import choosePhotoSize from '../../../lib/appManagers/utils/photos/choosePhotoSize';
 import {STATE_INIT, Theme} from '../../../config/state';
@@ -32,6 +31,7 @@ import requestFile from '../../../helpers/files/requestFile';
 import {renderImageFromUrlPromise} from '../../../helpers/dom/renderImageFromUrl';
 import scaleMediaElement from '../../../helpers/canvas/scaleMediaElement';
 import {MediaSize} from '../../../helpers/mediaSize';
+import wrapPhoto from '../../wrappers/photo';
 
 export default class AppBackgroundTab extends SliderSuperTab {
   private grid: HTMLElement;

@@ -302,8 +302,11 @@ export class EmoticonsDropdown extends DropdownHover {
         return;
       }
 
-      const element = (scroll.splitUp || scroll.container).children[which] as HTMLElement;
-      const offsetTop = element.offsetTop + 1; // * due to stickyIntersector
+      let offsetTop = 0;
+      if(which > 0) {
+        const element = (scroll.splitUp || scroll.container).children[which] as HTMLElement;
+        offsetTop = element.offsetTop + 1; // * due to stickyIntersector
+      }
 
       scroll.container.scrollTop = jumpedTo = offsetTop;
 

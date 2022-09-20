@@ -5,7 +5,6 @@
  */
 
 import type {MyDocument} from '../lib/appManagers/appDocsManager';
-import {wrapVideo} from './wrappers';
 import animationIntersector, {AnimationItemGroup} from './animationIntersector';
 import Scrollable from './scrollable';
 import deferredPromise, {CancellablePromise} from '../helpers/cancellablePromise';
@@ -14,6 +13,7 @@ import {doubleRaf} from '../helpers/schedulers';
 import {AppManagers} from '../lib/appManagers/managers';
 import rootScope from '../lib/rootScope';
 import LazyLoadQueueRepeat2 from './lazyLoadQueueRepeat2';
+import wrapVideo from './wrappers/video';
 
 const width = 400;
 const maxSingleWidth = width - 100;

@@ -6,17 +6,21 @@
 
 import callbackify from '../../helpers/callbackify';
 import formatNumber from '../../helpers/number/formatNumber';
-import {fastRaf} from '../../helpers/schedulers';
-import {MessagePeerReaction, ReactionCount} from '../../layer';
+import {Document, MessagePeerReaction, ReactionCount} from '../../layer';
 import {AppManagers} from '../../lib/appManagers/managers';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
-import RLottiePlayer from '../../lib/rlottie/rlottiePlayer';
 import rootScope from '../../lib/rootScope';
 import SetTransition from '../singleTransition';
 import StackedAvatars from '../stackedAvatars';
-import {wrapSticker, wrapStickerAnimation} from '../wrappers';
 import {Awaited} from '../../types';
+import wrapSticker from '../wrappers/sticker';
+import wrapCustomEmoji from '../wrappers/customEmoji';
+import wrapStickerAnimation from '../wrappers/stickerAnimation';
+import {makeMediaSize} from '../../helpers/mediaSize';
+import RLottiePlayer from '../../lib/rlottie/rlottiePlayer';
+import {fastRaf} from '../../helpers/schedulers';
 import noop from '../../helpers/noop';
+import {Middleware} from '../../helpers/middleware';
 
 const CLASS_NAME = 'reaction';
 const TAG_NAME = CLASS_NAME + '-element';
@@ -37,6 +41,7 @@ export default class ReactionElement extends HTMLElement {
   private _reactionCount: ReactionCount;
   private wrapStickerPromise: Awaited<ReturnType<typeof wrapSticker>>['render'];
   private managers: AppManagers;
+  private middleware: Middleware;
 
   constructor() {
     super();
@@ -56,9 +61,10 @@ export default class ReactionElement extends HTMLElement {
     return this.reactionCount.count;
   }
 
-  public init(type: ReactionLayoutType) {
+  public init(type: ReactionLayoutType, middleware: Middleware) {
     this.type = type;
     this.classList.add(CLASS_NAME + '-' + type);
+    this.middleware = middleware;
   }
 
   public setCanRenderAvatars(canRenderAvatars: boolean) {
@@ -75,31 +81,47 @@ export default class ReactionElement extends HTMLElement {
 
     const reactionCount = this.reactionCount;
     if(!doNotRenderSticker && !hadStickerContainer) {
-      const availableReaction = this.managers.appReactionsManager.getReaction(reactionCount.reaction);
-      callbackify(availableReaction, (availableReaction) => {
-        if(!availableReaction.center_icon) {
-          this.stickerContainer.classList.add('is-static');
-        }
-
-        if(availableReaction.pFlags.inactive) {
-          this.classList.add('is-inactive');
-        }
-
-        const size = this.type === 'inline' ? REACTION_INLINE_SIZE : REACTION_BLOCK_SIZE;
-        const wrapPromise = this.wrapStickerPromise = wrapSticker({
-          div: this.stickerContainer,
-          doc: availableReaction.center_icon ?? availableReaction.static_icon,
-          width: size,
-          height: size,
-          static: true,
-          managers: this.managers
-        }).then(({render}) => render).finally(() => {
-          if(this.wrapStickerPromise === wrapPromise) {
-            this.wrapStickerPromise = undefined;
+      const reaction = reactionCount.reaction;
+      if(reaction._ === 'reactionEmoji') {
+        const availableReaction = this.managers.appReactionsManager.getReaction(reaction.emoticon);
+        callbackify(availableReaction, (availableReaction) => {
+          if(!availableReaction.center_icon) {
+            this.stickerContainer.classList.add('is-static');
           }
+
+          if(availableReaction.pFlags.inactive) {
+            this.classList.add('is-inactive');
+          }
+
+          this.renderDoc(availableReaction.center_icon ?? availableReaction.static_icon);
         });
-      });
+      } else if(reaction._ === 'reactionCustomEmoji') {
+        this.stickerContainer.classList.add('is-custom');
+        const wrapped = wrapCustomEmoji({
+          docIds: [reaction.document_id],
+          size: makeMediaSize(REACTION_BLOCK_SIZE, REACTION_BLOCK_SIZE)
+        });
+
+        this.stickerContainer.append(wrapped);
+      }
     }
+  }
+
+  private renderDoc(doc: Document.document) {
+    const size = this.type === 'inline' ? REACTION_INLINE_SIZE : REACTION_BLOCK_SIZE;
+    const wrapPromise = this.wrapStickerPromise = wrapSticker({
+      div: this.stickerContainer,
+      doc,
+      width: size,
+      height: size,
+      static: true,
+      managers: this.managers,
+      middleware: this.middleware
+    }).then(({render}) => render).finally(() => {
+      if(this.wrapStickerPromise === wrapPromise) {
+        this.wrapStickerPromise = undefined;
+      }
+    });
   }
 
   public renderCounter() {
@@ -150,7 +172,7 @@ export default class ReactionElement extends HTMLElement {
     this.stackedAvatars.render(recentReactions.map((reaction) => getPeerId(reaction.peer_id)));
   }
 
-  public setIsChosen(isChosen = !!this.reactionCount.pFlags.chosen) {
+  public setIsChosen(isChosen = this.reactionCount.chosen_order !== undefined) {
     if(this.type === 'inline') return;
     const wasChosen = this.classList.contains('is-chosen') && !this.classList.contains('backwards');
     if(wasChosen !== isChosen) {
@@ -159,7 +181,9 @@ export default class ReactionElement extends HTMLElement {
   }
 
   public fireAroundAnimation() {
-    callbackify(this.managers.appReactionsManager.getReaction(this.reactionCount.reaction), (availableReaction) => {
+    const reaction = this.reactionCount.reaction;
+    if(reaction._ !== 'reactionEmoji') return;
+    callbackify(this.managers.appReactionsManager.getReaction(reaction.emoticon), (availableReaction) => {
       const size = this.type === 'inline' ? REACTION_INLINE_SIZE + 14 : REACTION_BLOCK_SIZE + 18;
       const div = document.createElement('div');
       div.classList.add(CLASS_NAME + '-sticker-activate');
@@ -176,7 +200,8 @@ export default class ReactionElement extends HTMLElement {
           skipRatio: 1,
           group: 'none',
           needFadeIn: false,
-          managers: this.managers
+          managers: this.managers,
+          middleware: this.middleware
         }).then(({render}) => render as Promise<RLottiePlayer>),
 
         wrapStickerAnimation({
@@ -186,7 +211,8 @@ export default class ReactionElement extends HTMLElement {
           side: 'center',
           skipRatio: 1,
           play: false,
-          managers: this.managers
+          managers: this.managers,
+          middleware: this.middleware
         }).stickerPromise.catch(noop)
       ]).then(([iconPlayer, aroundPlayer]) => {
         const remove = () => {

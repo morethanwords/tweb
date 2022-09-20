@@ -12,6 +12,9 @@ export interface MTAppConfig {
   youtube_pip?:                              string;
   qr_login_camera?:                          boolean;
   qr_login_code?:                            string;
+  reactions_in_chat_max?:                    number;
+  reactions_user_max_default?:               number;
+  reactions_user_max_premium?:               number;
   dialog_filters_enabled?:                   boolean;
   dialog_filters_tooltip?:                   boolean;
   ignore_restriction_reasons?:               string[];
@@ -23,7 +26,6 @@ export interface MTAppConfig {
   round_video_encoding?:                     RoundVideoEncoding;
   chat_read_mark_expire_period?:             number;
   chat_read_mark_size_threshold?:            number;
-  reactions_default?:                        string;
   reactions_uniq_max?:                       number;
   ringtone_duration_max?:                    number;
   ringtone_size_max?:                        number;

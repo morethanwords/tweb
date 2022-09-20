@@ -13,7 +13,7 @@ import LazyLoadQueueBase from '../../components/lazyLoadQueueBase';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import tsNow from '../../helpers/tsNow';
 import {randomLong} from '../../helpers/random';
-import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile} from '../../layer';
+import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction} from '../../layer';
 import {ArgumentTypes, InvokeApiOptions} from '../../types';
 import {logger, LogTypes} from '../logger';
 import type {ApiFileManager} from '../mtproto/apiFileManager';
@@ -62,6 +62,7 @@ import pause from '../../helpers/schedulers/pause';
 import makeError from '../../helpers/makeError';
 import getStickerEffectThumb from './utils/stickers/getStickerEffectThumb';
 import getDocumentInput from './utils/docs/getDocumentInput';
+import reactionsEqual from './utils/reactions/reactionsEqual';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -5012,7 +5013,7 @@ export class AppMessagesManager extends AppManager {
   public async getMessageReactionsListAndReadParticipants(
     message: Message.message,
     limit?: number,
-    reaction?: string,
+    reaction?: Reaction,
     offset?: string,
     skipReadParticipants?: boolean,
     skipReactionsList?: boolean
@@ -5044,7 +5045,7 @@ export class AppMessagesManager extends AppManager {
         }
       });
 
-      let combined: {peerId: PeerId, reaction?: string}[] = messageReactionsList.reactions.map((reaction) => ({peerId: this.appPeersManager.getPeerId(reaction.peer_id), reaction: reaction.reaction}));
+      let combined: {peerId: PeerId, reaction?: Reaction}[] = messageReactionsList.reactions.map((reaction) => ({peerId: this.appPeersManager.getPeerId(reaction.peer_id), reaction: reaction.reaction}));
       combined = combined.concat(filteredReadParticipants.map((readPeerId) => ({peerId: readPeerId})));
 
       return {
@@ -5882,16 +5883,16 @@ export class AppMessagesManager extends AppManager {
       const results = message.reactions?.results ?? [];
       const previousResults = previousReactions?.results ?? [];
       const changedResults = results.filter((reactionCount) => {
-        const previousReactionCount = previousResults.find((_reactionCount) => _reactionCount.reaction === reactionCount.reaction);
+        const previousReactionCount = previousResults.find((_reactionCount) => reactionsEqual(_reactionCount.reaction, reactionCount.reaction));
         return (
           message.pFlags.out && (
             !previousReactionCount ||
             reactionCount.count > previousReactionCount.count
           )
         ) || (
-          reactionCount.pFlags.chosen && (
+          reactionCount.chosen_order !== undefined && (
             !previousReactionCount ||
-            !previousReactionCount.pFlags.chosen
+            previousReactionCount.chosen_order === undefined
           )
         );
       });

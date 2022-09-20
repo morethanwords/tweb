@@ -12,7 +12,7 @@
 import deepEqual from '../../helpers/object/deepEqual';
 import isObject from '../../helpers/object/isObject';
 import safeReplaceObject from '../../helpers/object/safeReplaceObject';
-import {ChannelParticipant, ChannelsCreateChannel, Chat, ChatAdminRights, ChatBannedRights, ChatInvite, ChatPhoto, InputChannel, InputChatPhoto, InputFile, InputPeer, SponsoredMessage, Update, Updates} from '../../layer';
+import {ChannelParticipant, ChannelsCreateChannel, Chat, ChatAdminRights, ChatBannedRights, ChatInvite, ChatPhoto, ChatReactions, InputChannel, InputChatPhoto, InputFile, InputPeer, SponsoredMessage, Update, Updates} from '../../layer';
 import {isRestricted} from '../../helpers/restrictions';
 import {AppManager} from './manager';
 import hasRights from './utils/chats/hasRights';
@@ -643,7 +643,12 @@ export class AppChatsManager extends AppManager {
     });
   }
 
-  public setChatAvailableReactions(id: ChatId, reactions: Array<string>) {
+  public setChatAvailableReactions(id: ChatId, reactions: ChatReactions) {
+    const chatFull = this.appProfileManager.getCachedFullChat(id);
+    if(chatFull) {
+      chatFull.available_reactions = reactions;
+    }
+
     return this.apiManager.invokeApi('messages.setChatAvailableReactions', {
       peer: this.getInputPeer(id),
       available_reactions: reactions

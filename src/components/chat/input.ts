@@ -18,7 +18,6 @@ import PopupCreatePoll from '../popups/createPoll';
 import PopupForward from '../popups/forward';
 import PopupNewMedia from '../popups/newMedia';
 import {toast, toastNew} from '../toast';
-import {wrapReply} from '../wrappers';
 import {MessageEntity, DraftMessage, WebPage, Message, UserFull} from '../../layer';
 import StickersHelper from './stickersHelper';
 import ButtonIcon from '../buttonIcon';
@@ -96,6 +95,7 @@ import InputFieldAnimated from '../inputFieldAnimated';
 import getStickerEffectThumb from '../../lib/appManagers/utils/stickers/getStickerEffectThumb';
 import PopupStickers from '../popups/stickers';
 import wrapPeerTitle from '../wrappers/peerTitle';
+import wrapReply from '../wrappers/reply';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';

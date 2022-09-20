@@ -105,11 +105,11 @@ $row-border-radius: $border-radius-medium;
   }
 
   .radio-field,
-  .radio-field-main,
+  .radio-field:not(.radio-field-right) .radio-field-main,
   .checkbox-field {
     position: unset;
   }
-
+  
   .radio-field,
   .checkbox-field {
     --offset-left: 1rem;

@@ -232,10 +232,11 @@ export class UiNotificationsManager {
       } else {
         notificationMessage = await wrapMessageForReply(message, undefined, undefined, true);
 
-        if(peerReaction) {
+        const reaction = peerReaction?.reaction;
+        if(reaction?._ === 'reactionEmoji') {
           const langPackKey: LangPackKey = /* isAnyChat ? 'Notification.Group.Reacted' :  */'Notification.Contact.Reacted';
           const args: FormatterArguments = [
-            fixEmoji(peerReaction.reaction), // can be plain heart
+            fixEmoji(reaction.emoticon), // can be plain heart
             notificationMessage
           ];
 

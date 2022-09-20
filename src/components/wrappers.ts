@@ -4,33 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import wrapAlbum from './wrappers/album';
-import wrapDocument from './wrappers/document';
-import wrapGroupedDocuments from './wrappers/groupedDocuments';
-import wrapLocalSticker from './wrappers/localSticker';
-import wrapPhoto from './wrappers/photo';
-import wrapPoll from './wrappers/poll';
-import wrapReply from './wrappers/reply';
-import wrapSticker from './wrappers/sticker';
-import wrapStickerAnimation from './wrappers/stickerAnimation';
-import wrapStickerSetThumb from './wrappers/stickerSetThumb';
-import wrapStickerToRow from './wrappers/stickerToRow';
-import wrapVideo from './wrappers/video';
-
-export {
-  wrapAlbum,
-  wrapDocument,
-  wrapGroupedDocuments,
-  wrapLocalSticker,
-  wrapPhoto,
-  wrapPoll,
-  wrapReply,
-  wrapSticker,
-  wrapStickerAnimation,
-  wrapStickerSetThumb,
-  wrapStickerToRow,
-  wrapVideo
-};
+export {};
 
 /* function wrapMediaWithTail(photo: MyPhoto | MyDocument, message: {mid: number, message: string}, container: HTMLElement, boxWidth: number, boxHeight: number, isOut: boolean) {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");

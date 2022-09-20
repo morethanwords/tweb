@@ -1790,6 +1790,11 @@ $bubble-beside-button-width: 38px;
   &.with-beside-replies .bubble-content {
     min-height: 5.5rem;
   }
+
+  .colored-name .premium-icon {
+    opacity: .6;
+    color: inherit;
+  }
   
   .time {
     visibility: hidden; // * can't use color transparent here, because in name can be emoji

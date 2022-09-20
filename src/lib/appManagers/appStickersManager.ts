@@ -392,7 +392,8 @@ export class AppStickersManager extends AppManager {
       _: 'messages.stickerSet',
       set: res.set,
       packs: res.packs,
-      documents: res.documents as Document[]
+      documents: res.documents as Document[],
+      keywords: res.keywords
     };
 
     let stickerSet = this.storage.getFromCache(id);
@@ -484,7 +485,7 @@ export class AppStickersManager extends AppManager {
         });
 
         res.sets.forEach((covered) => {
-          this.saveStickerSet({set: covered.set, documents: [], packs: []}, covered.set.id);
+          this.saveStickerSet({set: covered.set, documents: [], packs: [], keywords: []}, covered.set.id);
         });
 
         return res;
@@ -605,7 +606,7 @@ export class AppStickersManager extends AppManager {
         });
 
         res.sets.forEach((covered) => {
-          this.saveStickerSet({set: covered.set, documents: [], packs: []}, covered.set.id);
+          this.saveStickerSet({set: covered.set, documents: [], packs: [], keywords: []}, covered.set.id);
         });
 
         return res;
@@ -625,20 +626,29 @@ export class AppStickersManager extends AppManager {
     return res.sets.concat(foundSaved);
   }
 
+  private processAllStickersResult = (allStickers: MessagesAllStickers) => {
+    assumeType<MessagesAllStickers.messagesAllStickers>(allStickers);
+
+    forEachReverse(allStickers.sets, (stickerSet, idx, arr) => {
+      if(stickerSet.pFlags.videos && !getEnvironment().IS_WEBM_SUPPORTED) {
+        arr.splice(idx, 1);
+      }
+    });
+
+    return allStickers;
+  };
+
   public getAllStickers() {
     return this.apiManager.invokeApiHashable({
       method: 'messages.getAllStickers',
-      processResult: (allStickers) => {
-        assumeType<MessagesAllStickers.messagesAllStickers>(allStickers);
+      processResult: this.processAllStickersResult
+    });
+  }
 
-        forEachReverse(allStickers.sets, (stickerSet, idx, arr) => {
-          if(stickerSet.pFlags.videos && !getEnvironment().IS_WEBM_SUPPORTED) {
-            arr.splice(idx, 1);
-          }
-        });
-
-        return allStickers;
-      }
+  public getEmojiStickers() {
+    return this.apiManager.invokeApiHashable({
+      method: 'messages.getEmojiStickers',
+      processResult: this.processAllStickersResult
     });
   }
 

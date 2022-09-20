@@ -6,10 +6,10 @@
 
 .custom-emoji {
   display: inline;
-  width: var(--custom-emoji-size);
-  height: var(--custom-emoji-size);
-  min-height: var(--custom-emoji-size);
-  min-width: var(--custom-emoji-size);
+  width: var(--custom-emoji-size) !important;
+  height: var(--custom-emoji-size) !important;
+  min-width: var(--custom-emoji-size) !important;
+  min-height: var(--custom-emoji-size) !important;
   position: relative;
   // pointer-events: none;
 
@@ -27,6 +27,8 @@
     margin: 0;
     width: inherit !important;
     height: inherit !important;
+    max-width: inherit !important;
+    max-height: inherit !important;
   }
 
   &-canvas {

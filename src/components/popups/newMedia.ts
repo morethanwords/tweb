@@ -9,7 +9,6 @@ import InputField from '../inputField';
 import PopupElement from '.';
 import Scrollable from '../scrollable';
 import {toast} from '../toast';
-import {wrapDocument} from '../wrappers';
 import CheckboxField from '../checkboxField';
 import SendContextMenu from '../chat/sendContextMenu';
 import {createPosterFromMedia, createPosterFromVideo} from '../../helpers/createPoster';
@@ -28,6 +27,7 @@ import {ThumbCache} from '../../lib/storages/thumbs';
 import onMediaLoad from '../../helpers/onMediaLoad';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import {THUMB_TYPE_FULL} from '../../lib/mtproto/mtproto_config';
+import wrapDocument from '../wrappers/document';
 
 type SendFileParams = Partial<{
   file: File,

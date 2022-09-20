@@ -206,3 +206,24 @@ export default class Row {
 export const RadioFormFromRows = (rows: Row[], onChange: (value: string) => void) => {
   return RadioForm(rows.map((r) => ({container: r.container, input: r.radioField.input})), onChange);
 };
+
+export const RadioFormFromValues = (values: {langPackKey: LangPackKey, value: number | string, checked?: boolean}[], onChange: Parameters<typeof RadioFormFromRows>[1]) => {
+  const name = 'name-' + (Math.random() * 0x7FFFFF | 0);
+  const rows = values.map(({langPackKey, value, checked}) => {
+    const row = new Row({
+      radioField: new RadioField({
+        langKey: langPackKey,
+        name,
+        value: '' + value
+      })
+    });
+
+    if(checked) {
+      row.radioField.checked = checked;
+    }
+
+    return row;
+  });
+
+  return RadioFormFromRows(rows, onChange);
+};

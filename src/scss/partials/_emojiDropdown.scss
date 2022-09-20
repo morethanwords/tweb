@@ -48,10 +48,37 @@
 		overflow: hidden;
 		height: 100%;
 
-    .menu-horizontal-div {
-			z-index: 4;
-			background-color: var(--surface-color);
+    .menu-wrapper {
+			padding: 0;
+			height: var(--menu-height);
+			max-width: 100%;
+      position: relative;
+      border-bottom: 1px solid var(--border-color);
+      background-color: var(--surface-color);
 		}
+
+    .menu-horizontal-div {
+      z-index: 4;
+			background-color: var(--surface-color);
+
+      &-item {
+        flex: 0 0 auto;
+        padding: .25rem;
+        margin: 0 .3125rem;
+  
+        &-padding {
+          width: 100%;
+          height: 100%;
+          position: relative;
+        }
+        
+        &.active {
+          &:not(.tgico) {
+            background-color: var(--light-secondary-text-color);
+          }
+        }
+      }
+    }
 	}
 
 	.emoji-tabs {
@@ -126,13 +153,6 @@
     .super-emojis {
       padding: 0 .5rem;
     }
-
-		@include respond-to(handhelds) {
-			.menu-horizontal-div-item {
-				flex: unset;
-				padding: 0;
-			}
-		}
 	}
 	
 	.emoji-category {
@@ -165,34 +185,5 @@
 		.category-items {
       padding: 0 .3125rem;
 		}
-
-		.menu-wrapper {
-			padding: 0;
-			height: var(--menu-height);
-			max-width: 100%;
-      position: relative;
-      border-bottom: 1px solid var(--border-color);
-      background-color: var(--surface-color);
-		}
-
-    .menu-horizontal-div {
-      &-item {
-        flex: 0 0 auto;
-        padding: .25rem;
-        margin: 0 .3125rem;
-  
-        &-padding {
-          width: 100%;
-          height: 100%;
-          position: relative;
-        }
-        
-        &.active {
-          &:not(.tgico-recent):not(.tgico-saved) {
-            background-color: var(--light-secondary-text-color);
-          }
-        }
-      }
-    }
 	}
 }

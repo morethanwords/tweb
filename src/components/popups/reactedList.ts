@@ -5,7 +5,7 @@
  */
 
 import PopupElement from '.';
-import {Message} from '../../layer';
+import {Message, Reaction} from '../../layer';
 import {SettingSection} from '../sidebarLeft';
 import ReactionsElement from '../chat/reactions';
 import {horizontalMenu} from '../horizontalMenu';
@@ -13,9 +13,11 @@ import Scrollable from '../scrollable';
 import ScrollableLoader from '../../helpers/scrollableLoader';
 import appDialogsManager from '../../lib/appManagers/appDialogsManager';
 import replaceContent from '../../helpers/dom/replaceContent';
-import {wrapSticker} from '../wrappers';
+import wrapSticker from '../wrappers/sticker';
 import ReactionElement from '../chat/reaction';
 import getUserStatusString from '../wrappers/getUserStatusString';
+import {makeMediaSize} from '../../helpers/mediaSize';
+import wrapCustomEmoji from '../wrappers/customEmoji';
 
 export default class PopupReactedList extends PopupElement {
   constructor(
@@ -27,10 +29,11 @@ export default class PopupReactedList extends PopupElement {
   }
 
   private async init() {
+    const middleware = this.middlewareHelper.get();
     const message = await this.managers.appMessagesManager.getGroupsFirstMessage(this.message);
-
+    if(!middleware()) return;
     const canViewReadParticipants = await this.managers.appMessagesManager.canViewMessageReadParticipants(message);
-
+    if(!middleware()) return;
     // this.body.append(generateDelimiter());
 
     const reactionsElement = new ReactionsElement();
@@ -52,11 +55,12 @@ export default class PopupReactedList extends PopupElement {
     newMessage.reactions.results = newMessage.reactions.results.map((reactionCount) => {
       return {
         ...reactionCount,
+        chosen_order: undefined,
         pFlags: {}
       };
     });
 
-    reactionsElement.init(newMessage, 'block');
+    reactionsElement.init(newMessage, 'block', this.middlewareHelper.get());
     reactionsElement.render();
     reactionsElement.classList.add('no-stripe');
     reactionsElement.classList.remove('has-no-reactions');
@@ -84,6 +88,7 @@ export default class PopupReactedList extends PopupElement {
     if(canViewReadParticipants) {
       try {
         const readUserIds = await this.managers.appMessagesManager.getMessageReadParticipants(message.peerId, message.mid);
+        if(!middleware()) return;
         if(!readUserIds.length) {
           throw '';
         }
@@ -118,11 +123,14 @@ export default class PopupReactedList extends PopupElement {
       section.content.append(chatlist);
       scrollable.container.append(section.container);
 
-      const skipReadParticipants = reactionCount.reaction !== 'checks';
-      const skipReactionsList = reactionCount.reaction === 'checks';
-      if(['checks', 'reactions'].includes(reactionCount.reaction)) {
+      const skipReadParticipants = (reactionCount.reaction as any) !== 'checks';
+      const skipReactionsList = (reactionCount.reaction as any) === 'checks';
+      if(['checks', 'reactions'].includes(reactionCount.reaction as any)) {
         reactionCount.reaction = undefined;
       }
+
+      const size = 24;
+      const mediaSize = makeMediaSize(size, size);
 
       let nextOffset: string;
       const loader = new ScrollableLoader({
@@ -144,14 +152,24 @@ export default class PopupReactedList extends PopupElement {
             if(reaction) {
               const stickerContainer = document.createElement('div');
               stickerContainer.classList.add('reacted-list-reaction-icon');
-              const availableReaction = await this.managers.appReactionsManager.getReactionCached(reaction);
 
-              wrapSticker({
-                doc: availableReaction.static_icon,
-                div: stickerContainer,
-                width: 24,
-                height: 24
-              });
+              if(reaction._ === 'reactionEmoji') {
+                const availableReaction = await this.managers.appReactionsManager.getReactionCached(reaction.emoticon);
+
+                wrapSticker({
+                  doc: availableReaction.static_icon,
+                  div: stickerContainer,
+                  width: 24,
+                  height: 24,
+                  middleware
+                });
+              } else if(reaction._ === 'reactionCustomEmoji') {
+                stickerContainer.append(wrapCustomEmoji({
+                  docIds: [reaction.document_id],
+                  size: mediaSize,
+                  middleware
+                }));
+              }
 
               dom.listEl.append(stickerContainer);
             }
@@ -195,11 +213,11 @@ export default class PopupReactedList extends PopupElement {
 
   private createFakeReaction(icon: string, count: number) {
     const reaction = new ReactionElement();
-    reaction.init('block');
+    reaction.init('block', this.middlewareHelper.get());
     reaction.reactionCount = {
       _: 'reactionCount',
       count: count,
-      reaction: icon
+      reaction: icon as any
     };
     reaction.setCanRenderAvatars(false);
     reaction.renderCounter();

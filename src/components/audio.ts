@@ -5,7 +5,6 @@
  */
 
 import type {MyDocument} from '../lib/appManagers/appDocsManager';
-import {wrapPhoto} from './wrappers';
 import ProgressivePreloader from './preloader';
 import appMediaPlaybackController, {MediaItem, MediaSearchContext} from './appMediaPlaybackController';
 import {DocumentAttribute, Message} from '../layer';
@@ -36,6 +35,7 @@ import wrapSenderToPeer from './wrappers/senderToPeer';
 import wrapSentTime from './wrappers/sentTime';
 import getMediaFromMessage from '../lib/appManagers/utils/messages/getMediaFromMessage';
 import appDownloadManager from '../lib/appManagers/appDownloadManager';
+import wrapPhoto from './wrappers/photo';
 
 rootScope.addEventListener('messages_media_read', ({mids, peerId}) => {
   mids.forEach((mid) => {

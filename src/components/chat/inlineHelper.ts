@@ -10,7 +10,6 @@ import {WebDocument} from '../../layer';
 import {MyDocument} from '../../lib/appManagers/appDocsManager';
 import LazyLoadQueue from '../lazyLoadQueue';
 import Scrollable from '../scrollable';
-import {wrapPhoto} from '../wrappers';
 import AutocompleteHelper from './autocompleteHelper';
 import AutocompleteHelperController from './autocompleteHelperController';
 import Button from '../button';
@@ -29,6 +28,7 @@ import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
 import generateQId from '../../lib/appManagers/utils/inlineBots/generateQId';
 import appDownloadManager from '../../lib/appManagers/appDownloadManager';
 import {AnimationItemGroup} from '../animationIntersector';
+import wrapPhoto from '../wrappers/photo';
 
 const ANIMATION_GROUP: AnimationItemGroup = 'INLINE-HELPER';
 // const GRID_ITEMS = 5;

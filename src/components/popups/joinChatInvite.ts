@@ -15,7 +15,7 @@ import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import AvatarElement from '../avatar';
 import putPhoto from '../putPhoto';
 import {toastNew} from '../toast';
-import {wrapPhoto} from '../wrappers';
+import wrapPhoto from '../wrappers/photo';
 
 // const FAKE_CHAT_ID = Number.MAX_SAFE_INTEGER - 0x1000;
 

@@ -775,6 +775,14 @@ const lang = {
     'one_value': '%1$d Emoji Pack',
     'other_value': '%1$d Emoji Packs'
   },
+  'ReactionsAll': 'All',
+  'EnableSomeReactionsInfo': 'Members of the group can use only certain approved emoji as reactions to messages.',
+  'EnableAllReactionsInfo': 'Members of the group can use any emoji as reactions to messages.',
+  'DisableReactionsInfo': 'Members of the group can’t add any reactions to messages.',
+  'OnlyAllowThisReactions': 'Only allow these reactions',
+  'AllReactions': 'All reactions',
+  'SomeReactions': 'Some reactions',
+  'NoReactions': 'No reactions',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

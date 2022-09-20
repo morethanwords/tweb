@@ -19,7 +19,7 @@ import findUpClassName from '../../helpers/dom/findUpClassName';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import {attachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent';
 import isSelectionEmpty from '../../helpers/dom/isSelectionEmpty';
-import {Message, Poll, Chat as MTChat, MessageMedia, AvailableReaction, MessageEntity, InputStickerSet, StickerSet, Document} from '../../layer';
+import {Message, Poll, Chat as MTChat, MessageMedia, AvailableReaction, MessageEntity, InputStickerSet, StickerSet, Document, Reaction} from '../../layer';
 import PopupReportMessages from '../popups/reportMessages';
 import assumeType from '../../helpers/assumeType';
 import PopupSponsored from '../popups/sponsored';
@@ -545,13 +545,28 @@ export default class ChatContextMenu {
           new PopupStickers(inputs, true).show();
         });
       },
-      verify: () => {
-        const entities = (this.message as Message.message).entities;
-        return entities?.some((entity) => entity._ === 'messageEntityCustomEmoji');
-      },
+      verify: () => !!this.getUniqueCustomEmojisFromMessage(this.message).length,
       notDirect: () => true,
       localName: 'emojis'
     }];
+  }
+
+  private getUniqueCustomEmojisFromMessage(message: Message) {
+    const docIds: DocId[] = [];
+
+    const entities = (message as Message.message).entities;
+    if(entities) {
+      const filtered = entities.filter((entity) => entity._ === 'messageEntityCustomEmoji') as MessageEntity.messageEntityCustomEmoji[];
+      docIds.push(...filtered.map((entity) => entity.document_id));
+    }
+
+    const reactions = (message as Message.message).reactions;
+    if(reactions) {
+      const results = reactions.results.filter((reactionCount) => reactionCount.reaction._ === 'reactionCustomEmoji');
+      docIds.push(...results.map((reactionCount) => (reactionCount.reaction as Reaction.reactionCustomEmoji).document_id));
+    }
+
+    return filterUnique(docIds);
   }
 
   private async init() {
@@ -711,9 +726,9 @@ export default class ChatContextMenu {
         menuPadding.bottom = 24;
       };
 
-      const entities = (this.message as Message.message).entities.filter((entity) => entity._ === 'messageEntityCustomEmoji') as MessageEntity.messageEntityCustomEmoji[];
-      const docIds = filterUnique(entities.map((entity) => entity.document_id));
+      const docIds = this.getUniqueCustomEmojisFromMessage(this.message);
       const inputsPromise = this.emojiInputsPromise = deferredPromise();
+
       await this.managers.appEmojiManager.getCachedCustomEmojiDocuments(docIds).then(async(docs) => {
         const p = async(docs: Document.document[]) => {
           const s: Map<StickerSet['id'], InputStickerSet.inputStickerSetID> = new Map();

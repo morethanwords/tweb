@@ -22,7 +22,7 @@ import {CLICK_EVENT_NAME} from '../../helpers/dom/clickEvent';
 import IS_CUSTOM_EMOJI_SUPPORTED from '../../environment/customEmojiSupport';
 import rootScope from '../rootScope';
 import mediaSizes from '../../helpers/mediaSizes';
-import {wrapSticker} from '../../components/wrappers';
+import wrapSticker from '../../components/wrappers/sticker';
 import RLottiePlayer from '../rlottie/rlottiePlayer';
 import animationIntersector, {AnimationItemGroup} from '../../components/animationIntersector';
 import type {MyDocument} from '../appManagers/appDocsManager';
@@ -65,6 +65,10 @@ class CustomEmojiElement extends HTMLElement {
   }
 
   public disconnectedCallback() {
+    if(this.isConnected) { // prepend on sibling can invoke disconnectedCallback
+      return;
+    }
+
     if(this.syncedPlayer) {
       this.syncedPlayer.pausedElements.delete(this);
     }
@@ -169,6 +173,10 @@ export class CustomEmojiRendererElement extends HTMLElement {
   }
 
   public disconnectedCallback() {
+    if(this.isConnected) {
+      return;
+    }
+
     for(const [syncedPlayer, elements] of this.syncedElements) {
       if(syncedPlayers.get(syncedPlayer.key) !== syncedPlayer) {
         continue;
@@ -218,6 +226,10 @@ export class CustomEmojiRendererElement extends HTMLElement {
     }
 
     const overflowElement = findUpClassName(this, 'scrollable') || this.offsetParent as HTMLElement;
+    if(!overflowElement) {
+      return offsetsMap;
+    }
+
     const overflowRect = overflowElement.getBoundingClientRect();
     const rect = this.getBoundingClientRect();
 

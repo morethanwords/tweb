@@ -14,7 +14,6 @@ import LazyLoadQueue from './lazyLoadQueue';
 import {putPreloader} from './putPreloader';
 import ripple from './ripple';
 import Scrollable, {ScrollableX} from './scrollable';
-import {wrapDocument, wrapPhoto, wrapVideo} from './wrappers';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise} from '../hooks/useHeavyAnimationCheck';
 import I18n, {LangPackKey, i18n} from '../lib/langPack';
 import findUpClassName from '../helpers/dom/findUpClassName';
@@ -71,6 +70,9 @@ import positionMenu from '../helpers/positionMenu';
 import apiManagerProxy from '../lib/mtproto/mtprotoworker';
 import ListenerSetter from '../helpers/listenerSetter';
 import SwipeHandler from './swipeHandler';
+import wrapDocument from './wrappers/document';
+import wrapPhoto from './wrappers/photo';
+import wrapVideo from './wrappers/video';
 
 // const testScroll = false;
 

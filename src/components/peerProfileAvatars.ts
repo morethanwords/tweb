@@ -21,7 +21,7 @@ import {openAvatarViewer} from './avatar';
 import {putAvatar} from './putPhoto';
 import Scrollable from './scrollable';
 import SwipeHandler from './swipeHandler';
-import {wrapPhoto} from './wrappers';
+import wrapPhoto from './wrappers/photo';
 
 const LOAD_NEAREST = 3;
 

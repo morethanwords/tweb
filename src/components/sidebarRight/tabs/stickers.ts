@@ -10,7 +10,6 @@ import LazyLoadQueue from '../../lazyLoadQueue';
 import appImManager from '../../../lib/appManagers/appImManager';
 import PopupStickers from '../../popups/stickers';
 import animationIntersector from '../../animationIntersector';
-import {wrapSticker} from '../../wrappers';
 import appSidebarRight from '..';
 import {StickerSet, StickerSetCovered} from '../../../layer';
 import {i18n} from '../../../lib/langPack';
@@ -20,6 +19,7 @@ import forEachReverse from '../../../helpers/array/forEachReverse';
 import setInnerHTML from '../../../helpers/dom/setInnerHTML';
 import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
 import attachStickerViewerListeners from '../../stickerViewer';
+import wrapSticker from '../../wrappers/sticker';
 
 export default class AppStickersTab extends SliderSuperTab {
   private inputSearch: InputSearch;

@@ -20,7 +20,6 @@ import {putPreloader} from '../../putPreloader';
 import PopupStickers from '../../popups/stickers';
 import Scrollable, {ScrollableX} from '../../scrollable';
 import StickyIntersector from '../../stickyIntersector';
-import {wrapSticker, wrapStickerSetThumb} from '../../wrappers';
 import findAndSplice from '../../../helpers/array/findAndSplice';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import positionElementByIndex from '../../../helpers/dom/positionElementByIndex';
@@ -34,6 +33,9 @@ import forEachReverse from '../../../helpers/array/forEachReverse';
 import {MTAppConfig} from '../../../lib/mtproto/appConfig';
 import attachStickerViewerListeners from '../../stickerViewer';
 import ListenerSetter from '../../../helpers/listenerSetter';
+import wrapSticker from '../../wrappers/sticker';
+import wrapStickerSetThumb from '../../wrappers/stickerSetThumb';
+import {MediaSize} from '../../../helpers/mediaSize';
 
 export class SuperStickerRenderer {
   public lazyLoadQueue: LazyLoadQueueRepeat;
@@ -151,60 +153,40 @@ export class SuperStickerRenderer {
   };
 }
 
-type StickersTabCategory = {
-  elements: {
+export class StickersTabCategory {
+  public elements: {
     container: HTMLElement,
     title: HTMLElement,
     items: HTMLElement,
     menuTab: HTMLElement,
     menuTabPadding: HTMLElement
-  },
-  set: StickerSet.stickerSet,
-  items: {
+  };
+  public items: {
     document: MyDocument,
     element: HTMLElement
-  }[],
-  mounted?: boolean,
-  id: string,
-  limit?: number
-};
+  }[];
+  public mounted: boolean;
+  public id: string;
+  public limit: number;
 
-export default class StickersTab implements EmoticonsTab {
-  private content: HTMLElement;
+  private overflowElement: HTMLElement;
+  private getElementMediaSize: () => MediaSize;
 
-  private categories: {[id: string]: StickersTabCategory};
-  private categoriesMap: Map<HTMLElement, StickersTabCategory>;
-  private categoriesIntersector: VisibilityIntersector;
-  private localCategories: StickersTabCategory[];
-
-  private scroll: Scrollable;
-  private menu: HTMLElement;
-  private mounted = false;
-  private stickyIntersector: StickyIntersector;
-  private superStickerRenderer: SuperStickerRenderer;
-
-  constructor(private managers: AppManagers) {
-    this.categories = {};
-    this.categoriesMap = new Map();
-    this.localCategories = [];
-  }
-
-  private setFavedLimit(appConfig: MTAppConfig) {
-    const limit = rootScope.premium ? appConfig.stickers_faved_limit_premium : appConfig.stickers_faved_limit_default;
-    const category = this.categories['faved'];
-    category.limit = limit;
-  }
-
-  private createCategory(stickerSet: StickerSet.stickerSet, _title: HTMLElement | DocumentFragment) {
+  constructor(options: {
+    id: string,
+    title: HTMLElement | DocumentFragment,
+    overflowElement: HTMLElement,
+    getElementMediaSize: () => MediaSize
+  }) {
     const container = document.createElement('div');
-    container.classList.add('emoji-category', 'hide');
+    container.classList.add('emoji-category');
 
     const items = document.createElement('div');
-    items.classList.add('category-items', 'super-stickers');
+    items.classList.add('category-items');
 
     const title = document.createElement('div');
     title.classList.add('category-title');
-    title.append(_title);
+    title.append(options.title);
 
     const menuTab = ButtonIcon(undefined, {noRipple: true});
     menuTab.classList.add('menu-horizontal-div-item');
@@ -214,21 +196,70 @@ export default class StickersTab implements EmoticonsTab {
 
     menuTab.append(menuTabPadding);
 
-    const category: StickersTabCategory = {
-      elements: {
-        container,
-        title,
-        items,
-        menuTab,
-        menuTabPadding
-      },
-      set: stickerSet,
-      items: [],
-      id: '' + stickerSet.id
-    };
-
     container.append(title, items);
 
+    this.elements = {
+      container,
+      title,
+      items,
+      menuTab,
+      menuTabPadding
+    };
+    this.id = options.id;
+    this.items = [];
+
+    this.overflowElement = options.overflowElement;
+    this.getElementMediaSize = options.getElementMediaSize;
+  }
+
+  public setCategoryItemsHeight() {
+    const containerWidth = this.overflowElement.getBoundingClientRect().width - 10;
+    const elementSize = this.getElementMediaSize().width;
+
+    const itemsPerRow = Math.floor(containerWidth / elementSize);
+    const rows = Math.ceil(this.items.length / itemsPerRow);
+    const height = rows * elementSize;
+
+    this.elements.items.style.minHeight = height + 'px';
+  }
+}
+
+type S = StickersTabCategory & {set?: StickerSet};
+
+class EmoticonsTabC {
+  protected content: HTMLElement;
+
+  protected categories: {[id: string]: S};
+  protected categoriesMap: Map<HTMLElement, S>;
+  protected categoriesIntersector: VisibilityIntersector;
+  protected localCategories: StickersTabCategory[];
+
+  protected scroll: Scrollable;
+  protected menu: HTMLElement;
+  protected mounted = false;
+  protected stickyIntersector: StickyIntersector;
+
+  constructor(
+    protected managers: AppManagers
+  ) {
+    this.categories = {};
+    this.categoriesMap = new Map();
+    this.localCategories = [];
+  }
+
+  protected createCategory(stickerSet: StickerSet, title: HTMLElement | DocumentFragment) {
+    const category: S = new StickersTabCategory({
+      id: '' + stickerSet.id,
+      title,
+      overflowElement: this.content,
+      getElementMediaSize: () => mediaSizes.active.esgSticker
+    });
+
+    category.elements.items.classList.add('super-stickers');
+    const container = category.elements.container;
+    container.classList.add('hide');
+
+    category.set = stickerSet;
     this.categories[stickerSet.id] = category;
     this.categoriesMap.set(container, category);
 
@@ -236,6 +267,41 @@ export default class StickersTab implements EmoticonsTab {
     this.stickyIntersector.observeStickyHeaderChanges(container);
 
     return category;
+  }
+
+  protected isCategoryVisible(category: StickersTabCategory) {
+    return this.categoriesIntersector.getVisible().includes(category.elements.container);
+  }
+
+  protected toggleLocalCategory(category: StickersTabCategory, visible: boolean) {
+    if(!visible) {
+      category.elements.menuTab.remove();
+      category.elements.container.remove();
+    } else {
+      let idx = this.localCategories.indexOf(category);
+      const notMounted = this.localCategories.slice(0, idx).filter((category) => !category.mounted);
+      idx -= notMounted.length;
+      positionElementByIndex(category.elements.menuTab, this.menu, idx);
+      positionElementByIndex(category.elements.container, this.scroll.container, idx);
+    }
+
+    category.mounted = visible;
+    // category.elements.container.classList.toggle('hide', !visible);
+  }
+
+  protected onLocalCategoryUpdate(category: StickersTabCategory) {
+    category.setCategoryItemsHeight();
+    this.toggleLocalCategory(category, !!category.items.length);
+  }
+}
+
+export default class StickersTab extends EmoticonsTabC implements EmoticonsTab {
+  private superStickerRenderer: SuperStickerRenderer;
+
+  private setFavedLimit(appConfig: MTAppConfig) {
+    const limit = rootScope.premium ? appConfig.stickers_faved_limit_premium : appConfig.stickers_faved_limit_default;
+    const category = this.categories['faved'];
+    category.limit = limit;
   }
 
   private categoryAppendStickers(
@@ -256,24 +322,9 @@ export default class StickersTab implements EmoticonsTab {
         }
       });
 
-      this.setCategoryItemsHeight(category);
+      category.setCategoryItemsHeight();
       container.classList.remove('hide');
     });
-  }
-
-  private isCategoryVisible(category: StickersTabCategory) {
-    return this.categoriesIntersector.getVisible().includes(category.elements.container);
-  }
-
-  private setCategoryItemsHeight(category: StickersTabCategory) {
-    const containerWidth = this.content.getBoundingClientRect().width - 10;
-    const stickerSize = mediaSizes.active.esgSticker.width;
-
-    const itemsPerRow = Math.floor(containerWidth / stickerSize);
-    const rows = Math.ceil(category.items.length / itemsPerRow);
-    const height = rows * stickerSize;
-
-    category.elements.items.style.minHeight = height + 'px';
   }
 
   private async renderStickerSet(set: StickerSet.stickerSet, prepend = false) {
@@ -305,9 +356,8 @@ export default class StickersTab implements EmoticonsTab {
 
   public init() {
     this.content = document.getElementById('content-stickers');
-    const menuWrapper = this.content.previousElementSibling as HTMLDivElement;
-    this.menu = menuWrapper.firstElementChild as HTMLUListElement;
-
+    const menuWrapper = this.content.previousElementSibling as HTMLElement;
+    const menu = this.menu = menuWrapper.firstElementChild as HTMLElement;
     const menuScroll = new ScrollableX(menuWrapper);
 
     this.scroll = new Scrollable(this.content, 'STICKERS');
@@ -334,7 +384,6 @@ export default class StickersTab implements EmoticonsTab {
 
     const onCategoryVisibility: OnVisibilityChange = ({target, visible, entry}) => {
       const category = this.categoriesMap.get(target);
-      // console.log('roll the windows up', category, target, visible, entry);
       if(!visible) {
         category.elements.items.textContent = '';
       } else {
@@ -356,7 +405,7 @@ export default class StickersTab implements EmoticonsTab {
       if(findUpClassName(target, 'category-title')) {
         const container = findUpClassName(target, 'emoji-category');
         const category = this.categoriesMap.get(container);
-        if(category.set.id === 'recent') {
+        if(category.id === 'recent') {
           return;
         }
 
@@ -379,7 +428,7 @@ export default class StickersTab implements EmoticonsTab {
       setTyping();
     });
 
-    const {stickyIntersector, setActive} = EmoticonsDropdown.menuOnClick(this.menu, this.scroll, menuScroll);
+    const {stickyIntersector, setActive} = EmoticonsDropdown.menuOnClick(menu, this.scroll, menuScroll);
     this.stickyIntersector = stickyIntersector;
 
     const preloader = putPreloader(this.content, true);
@@ -388,7 +437,7 @@ export default class StickersTab implements EmoticonsTab {
       const category = this.createCategory({id} as any, i18n(title));
       this.localCategories.push(category);
       category.elements.title.classList.add('disable-hover');
-      icon && category.elements.menuTab.classList.add('tgico-' + icon);
+      icon && category.elements.menuTab.classList.add('tgico', 'tgico-' + icon);
       category.elements.menuTabPadding.remove();
       this.toggleLocalCategory(category, false);
       return category;
@@ -423,7 +472,6 @@ export default class StickersTab implements EmoticonsTab {
 
     const recentCategory = createLocalCategory('recent', 'Stickers.Recent', 'recent');
     recentCategory.limit = 20;
-    // recentCategory.elements.menuTab.classList.add('active');
 
     const clearButton = ButtonIcon('close', {noRipple: true});
     recentCategory.elements.title.append(clearButton);
@@ -561,7 +609,7 @@ export default class StickersTab implements EmoticonsTab {
 
     const resizeCategories = () => {
       for(const [container, category] of this.categoriesMap) {
-        this.setCategoryItemsHeight(category);
+        category.setCategoryItemsHeight();
       }
     };
 
@@ -583,27 +631,6 @@ export default class StickersTab implements EmoticonsTab {
     });
 
     this.init = null;
-  }
-
-  private toggleLocalCategory(category: StickersTabCategory, visible: boolean) {
-    if(!visible) {
-      category.elements.menuTab.remove();
-      category.elements.container.remove();
-    } else {
-      let idx = this.localCategories.indexOf(category);
-      const notMounted = this.localCategories.slice(0, idx).filter((category) => !category.mounted);
-      idx -= notMounted.length;
-      positionElementByIndex(category.elements.menuTab, this.menu, idx);
-      positionElementByIndex(category.elements.container, this.scroll.container, idx);
-    }
-
-    category.mounted = visible;
-    // category.elements.container.classList.toggle('hide', !visible);
-  }
-
-  private onLocalCategoryUpdate(category: StickersTabCategory) {
-    this.setCategoryItemsHeight(category);
-    this.toggleLocalCategory(category, !!category.items.length);
   }
 
   public deleteSticker(category: StickersTabCategory, doc: MyDocument, batch?: boolean) {
