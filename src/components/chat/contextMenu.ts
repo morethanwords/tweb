@@ -432,19 +432,28 @@ export default class ChatContextMenu {
       icon: 'download',
       text: 'MediaViewer.Context.Download',
       onClick: () => {
-        appDownloadManager.downloadToDisc({media: (this.message as any).media.document});
+        appDownloadManager.downloadToDisc({media: (this.message as any).media?.document || (this.message as any).media.photo});
       },
       verify: () => {
         if(this.message.pFlags.is_outgoing) {
           return false;
         }
 
-        const doc: MyDocument = ((this.message as Message.message).media as MessageMedia.messageMediaDocument)?.document as any;
-        if(!doc) return false;
+        const isPhoto: boolean = 'photo' in (this.message as Message.message).media;
+        let isGoodType = false
+
+        if(isPhoto) {
+          isGoodType = true;
+        } else {
+          const doc: MyDocument = ((this.message as Message.message).media as MessageMedia.messageMediaDocument)?.document as any;
+          if(!doc) return false;
+          isGoodType = doc.type && (['gif', 'video'/* , 'sticker' */] as MyDocument['type'][]).includes(doc.type)
+        }
 
         let hasTarget = !!IS_TOUCH_SUPPORTED;
-        const isGoodType = !doc.type || !(['gif', 'video'/* , 'sticker' */] as MyDocument['type'][]).includes(doc.type);
-        if(isGoodType) hasTarget ||= !!findUpClassName(this.target, 'document') || !!findUpClassName(this.target, 'audio') || !!findUpClassName(this.target, 'media-sticker-wrapper');
+
+        if(isGoodType) hasTarget ||= !!findUpClassName(this.target, 'document') || !!findUpClassName(this.target, 'audio') || !!findUpClassName(this.target, 'media-sticker-wrapper') || !!findUpClassName(this.target, 'media-photo') || !!findUpClassName(this.target, 'media-video');
+
         return isGoodType && hasTarget;
       }
     }, {
