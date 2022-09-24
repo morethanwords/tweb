@@ -435,7 +435,7 @@ export default class ChatContextMenu {
         appDownloadManager.downloadToDisc({media: (this.message as any).media?.document || (this.message as any).media.photo});
       },
       verify: () => {
-        if(this.message.pFlags.is_outgoing) {
+        if(this.message.pFlags.is_outgoing || this.noForwards) {
           return false;
         }
 
