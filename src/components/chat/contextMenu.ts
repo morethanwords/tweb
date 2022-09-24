@@ -439,7 +439,10 @@ export default class ChatContextMenu {
           return false;
         }
 
-        const isPhoto: boolean = 'photo' in (this.message as Message.message).media;
+
+        console.log((this.message as Message.message).media);
+
+        const isPhoto: boolean = !!((this.message as Message.message).media as MessageMedia.messageMediaPhoto)?.photo;
         let isGoodType = false
 
         if(isPhoto) {
