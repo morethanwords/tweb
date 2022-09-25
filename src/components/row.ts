@@ -209,6 +209,7 @@ export const RadioFormFromRows = (rows: Row[], onChange: (value: string) => void
 
 export const RadioFormFromValues = (values: {langPackKey: LangPackKey, value: number | string, checked?: boolean}[], onChange: Parameters<typeof RadioFormFromRows>[1]) => {
   const name = 'name-' + (Math.random() * 0x7FFFFF | 0);
+  let checkedRadioField: RadioField;
   const rows = values.map(({langPackKey, value, checked}) => {
     const row = new Row({
       radioField: new RadioField({
@@ -219,11 +220,15 @@ export const RadioFormFromValues = (values: {langPackKey: LangPackKey, value: nu
     });
 
     if(checked) {
-      row.radioField.checked = checked;
+      checkedRadioField = row.radioField;
     }
 
     return row;
   });
 
-  return RadioFormFromRows(rows, onChange);
+  const form = RadioFormFromRows(rows, onChange);
+  if(checkedRadioField) {
+    checkedRadioField.checked = true;
+  }
+  return form;
 };

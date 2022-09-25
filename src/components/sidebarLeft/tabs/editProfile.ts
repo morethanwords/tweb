@@ -37,7 +37,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
       const inputWrapper = document.createElement('div');
       inputWrapper.classList.add('input-wrapper');
 
-      const appConfig = await this.managers.apiManager.getAppConfig();
+      const bioMaxLength = await this.managers.apiManager.getLimit('bio');
       this.firstNameInputField = new InputField({
         label: 'EditProfile.FirstNameLabel',
         name: 'first-name',
@@ -51,7 +51,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
       this.bioInputField = new InputField({
         label: 'EditProfile.BioLabel',
         name: 'bio',
-        maxLength: rootScope.premium ? appConfig.about_length_limit_premium : appConfig.about_length_limit_default
+        maxLength: bioMaxLength
       });
 
       inputWrapper.append(this.firstNameInputField.container, this.lastNameInputField.container, this.bioInputField.container);

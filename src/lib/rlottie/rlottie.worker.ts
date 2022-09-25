@@ -34,10 +34,10 @@ export class RLottieItem {
   constructor(
     private reqId: number,
     private width: number,
-    private height: number/* ,
+    private height: number,
+    private raw?: boolean/* ,
     private canvas: OffscreenCanvas */
   ) {
-
   }
 
   public init(json: string, fps: number) {
@@ -67,7 +67,7 @@ export class RLottieItem {
 
       reply(['loaded', this.reqId, this.frameCount, this.fps]);
 
-      if(IS_IMAGE_BITMAP_SUPPORTED) {
+      if(!this.raw && IS_IMAGE_BITMAP_SUPPORTED) {
         this.imageData = new ImageData(this.width, this.height);
       }
     } catch(e) {
@@ -105,7 +105,7 @@ export class RLottieItem {
 
         // this.context.putImageData(new ImageData(clamped, this.width, this.height), 0, 0);
 
-        reply(['frame', this.reqId, frameNo, clamped], [clamped]);
+        reply(['frame', this.reqId, frameNo, clamped], [clamped.buffer]);
       }
     } catch(e) {
       console.error('Render error:', e);
@@ -158,8 +158,8 @@ _Module.onRuntimeInitialized = function() {
 
 const items: {[reqId: string]: RLottieItem} = {};
 const queryableFunctions = {
-  loadFromData: function(reqId: number, blob: Blob, width: number, height: number, toneIndex: number/* , canvas: OffscreenCanvas */) {
-    const item = items[reqId] = new RLottieItem(reqId, width, height/* , canvas */);
+  loadFromData: function(reqId: number, blob: Blob, width: number, height: number, toneIndex: number, raw: boolean/* , canvas: OffscreenCanvas */) {
+    const item = items[reqId] = new RLottieItem(reqId, width, height, raw/* , canvas */);
     readBlobAsText(blob).then((json) => {
       try {
         if(typeof(toneIndex) === 'number' && toneIndex >= 1 && toneIndex <= 5) {

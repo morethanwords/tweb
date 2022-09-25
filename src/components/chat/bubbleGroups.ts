@@ -282,7 +282,7 @@ export default class BubbleGroups {
   }
 
   removeItem(item: GroupItem) {
-    item.group.removeItem(item);
+    item.group?.removeItem(item);
     this.removeItemFromCache(item);
   }
 
@@ -298,10 +298,12 @@ export default class BubbleGroups {
 
     const group = item.group;
     this.removeItem(item);
-    group.unmountItem(item);
 
     const modifiedGroups: Set<BubbleGroup> = new Set();
-    modifiedGroups.add(group);
+    if(group) {
+      group.unmountItem(item);
+      modifiedGroups.add(group);
+    }
 
     const [previousSibling, nextSibling] = siblings;
     if(

@@ -545,13 +545,8 @@ export default class FiltersStorage extends AppManager {
       return true;
     }
 
-    const isPremium = this.rootScope.premium;
-    let isFolderAvailable = isPremium;
-    if(!isPremium) {
-      const config = await this.apiManager.getAppConfig();
-      const limit = config.dialog_filters_limit_default;
-      isFolderAvailable = this.filtersArr.filter((filter) => !REAL_FOLDERS.has(filter.id)).slice(0, limit).some((filter) => filter.id === filterId);
-    }
+    const limit = await this.apiManager.getLimit('folders');
+    const isFolderAvailable = this.filtersArr.filter((filter) => !REAL_FOLDERS.has(filter.id)).slice(0, limit).some((filter) => filter.id === filterId);
 
     return isFolderAvailable;
   }

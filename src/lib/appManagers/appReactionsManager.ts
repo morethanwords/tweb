@@ -231,8 +231,7 @@ export class AppReactionsManager extends AppManager {
       };
     }
 
-    const appConfig = await this.apiManager.getAppConfig();
-    const limit = this.rootScope.premium ? appConfig.reactions_user_max_premium : appConfig.reactions_user_max_default;
+    const limit = await this.apiManager.getLimit('reactions');
 
     const lastSendingTimeKey = message.peerId + '_' + message.mid;
     const lastSendingTime = this.lastSendingTimes.get(lastSendingTimeKey);

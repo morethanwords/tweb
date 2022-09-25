@@ -142,6 +142,7 @@ const lang = {
   'PaymentInfo.Done': 'PROCEED TO CHECKOUT',
   'PaymentCard.Error.Invalid': 'Invalid card number',
   'PaymentCard.Error.Incomplete': 'Incomplete card number',
+  'LimitReached.Ok': 'OK, GOT IT',
 
   // * android
   'AccDescrEditing': 'Editing',
@@ -783,6 +784,13 @@ const lang = {
   'AllReactions': 'All reactions',
   'SomeReactions': 'Some reactions',
   'NoReactions': 'No reactions',
+  'LimitReached': 'Limit Reached',
+  'LimitReachedPinDialogs': 'You can\'t pin more than %1$d chats to the top. Unpin some that are currently pinned – or subscribe to **Telegram Premium** to double the limit to **%2$d** chats.',
+  'LimitReachedPinDialogsPremium': 'Sorry, you can\'t pin more than %1$d chats to the top. Unpin some that are currently pinned.',
+  'LimitReachedPinDialogsLocked': 'Sorry, you can\'t pin more than %1$d chats to the top. Unpin some that are currently pinned. We are working to let you increase this limit in the future.',
+  'IncreaseLimit': 'Increase Limit',
+  'LimitFree': 'Free',
+  'LimitPremium': 'Premium',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

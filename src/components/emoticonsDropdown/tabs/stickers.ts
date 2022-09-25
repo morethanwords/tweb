@@ -298,8 +298,7 @@ class EmoticonsTabC {
 export default class StickersTab extends EmoticonsTabC implements EmoticonsTab {
   private superStickerRenderer: SuperStickerRenderer;
 
-  private setFavedLimit(appConfig: MTAppConfig) {
-    const limit = rootScope.premium ? appConfig.stickers_faved_limit_premium : appConfig.stickers_faved_limit_default;
+  private setFavedLimit(limit: number) {
     const category = this.categories['faved'];
     category.limit = limit;
   }
@@ -494,10 +493,10 @@ export default class StickersTab extends EmoticonsTabC implements EmoticonsTab {
 
     const promises = [
       Promise.all([
-        this.managers.apiManager.getAppConfig(),
+        this.managers.apiManager.getLimit('favedStickers'),
         this.managers.appStickersManager.getFavedStickersStickers()
-      ]).then(([appConfig, stickers]) => {
-        this.setFavedLimit(appConfig);
+      ]).then(([limit, stickers]) => {
+        this.setFavedLimit(limit);
         onCategoryStickers(favedCategory, stickers);
       }),
 
@@ -604,7 +603,9 @@ export default class StickersTab extends EmoticonsTabC implements EmoticonsTab {
     });
 
     rootScope.addEventListener('app_config', (appConfig) => {
-      this.setFavedLimit(appConfig);
+      this.managers.apiManager.getLimit('favedStickers').then((limit) => {
+        this.setFavedLimit(limit);
+      });
     });
 
     const resizeCategories = () => {

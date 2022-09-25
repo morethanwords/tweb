@@ -120,6 +120,8 @@ export default class RLottiePlayer extends EventListenerBase<{
   public overrideRender: (frame: ImageData | HTMLCanvasElement | ImageBitmap) => void;
   private renderedFirstFrame: boolean;
 
+  private raw: boolean;
+
   constructor({el, worker, options}: {
     el: RLottiePlayer['el'],
     worker: QueryableWorker,
@@ -148,6 +150,7 @@ export default class RLottiePlayer extends EventListenerBase<{
     this.name = options.name;
     this.skipFirstFrameRendering = options.skipFirstFrameRendering;
     this.toneIndex = options.toneIndex;
+    this.raw = this.color !== undefined;
 
     if(this.name) {
       this.cacheName = RLottiePlayer.CACHE.generateName(this.name, this.width, this.height, this.color, this.toneIndex);
@@ -203,7 +206,7 @@ export default class RLottiePlayer extends EventListenerBase<{
 
     this.contexts = this.canvas.map((canvas) => canvas.getContext('2d'));
 
-    if(!IS_IMAGE_BITMAP_SUPPORTED) {
+    if(!IS_IMAGE_BITMAP_SUPPORTED || this.raw) {
       this.imageData = new ImageData(this.width, this.height);
 
       if(CAN_USE_TRANSFERABLES) {
@@ -230,12 +233,12 @@ export default class RLottiePlayer extends EventListenerBase<{
     this.cache.clearCache();
   }
 
-  public sendQuery(args: any[]) {
-    this.worker.sendQuery([args.shift(), this.reqId, ...args]);
+  public sendQuery(args: any[], transfer?: Transferable[]) {
+    this.worker.sendQuery([args.shift(), this.reqId, ...args], transfer);
   }
 
   public loadFromData(data: RLottieOptions['animationData']) {
-    this.sendQuery(['loadFromData', data, this.width, this.height, this.toneIndex/* , this.canvas.transferControlToOffscreen() */]);
+    this.sendQuery(['loadFromData', data, this.width, this.height, this.toneIndex, this.color !== undefined/* , this.canvas.transferControlToOffscreen() */]);
   }
 
   public play() {
@@ -442,7 +445,7 @@ export default class RLottiePlayer extends EventListenerBase<{
         this.clamped = new Uint8ClampedArray(this.width * this.height * 4);
       }
 
-      this.sendQuery(['renderFrame', frameNo, this.clamped]);
+      this.sendQuery(['renderFrame', frameNo], this.clamped ? [this.clamped.buffer] : undefined);
     }
   }
 

@@ -3085,10 +3085,7 @@ export class AppMessagesManager extends AppManager {
     const pinned = dialog.pFlags?.pinned ? undefined : true;
 
     if(pinned) {
-      const appConfig = await this.apiManager.getAppConfig();
-      const max = filterId === 1 ?
-        (this.rootScope.premium ? appConfig.dialogs_folder_pinned_limit_premium : appConfig.dialogs_folder_pinned_limit_default) :
-        (this.rootScope.premium ? appConfig.dialogs_pinned_limit_premium : appConfig.dialogs_pinned_limit_default);
+      const max = await this.apiManager.getLimit(filterId === 1 ? 'folderPin' : 'pin');
       if(this.dialogsStorage.getPinnedOrders(filterId).length >= max) {
         return Promise.reject(makeError('PINNED_DIALOGS_TOO_MUCH'));
       }
@@ -4329,8 +4326,11 @@ export class AppMessagesManager extends AppManager {
         message
       });
 
-      if(isTopMessage || (message as Message.message).grouped_id) {
+      if(isTopMessage) {
         this.dialogsStorage.setDialogToState(dialog);
+      }
+
+      if((isTopMessage || (message as Message.message).grouped_id) && dialog) {
         this.rootScope.dispatchEvent('dialogs_multiupdate', new Map([[peerId, dialog]]));
       }
     }

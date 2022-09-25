@@ -22,10 +22,13 @@ import {ReferenceContext} from '../mtproto/referenceDatabase';
 
 export type UserTyping = Partial<{userId: UserId, action: SendMessageAction, timeout: number}>;
 
+const PEER_FULL_TTL = 3 * 60e3;
+
 export class AppProfileManager extends AppManager {
   // private botInfos: any = {};
   private usersFull: {[id: UserId]: UserFull.userFull} = {};
   private chatsFull: {[id: ChatId]: ChatFull} = {};
+  private fullExpiration: {[peerId: PeerId]: number} = {};
   private typingsInPeer: {[peerId: PeerId]: UserTyping[]};
 
   protected after() {
@@ -161,7 +164,7 @@ export class AppProfileManager extends AppManager {
   } */
 
   public getProfile(id: UserId, override?: true) {
-    if(this.usersFull[id] && !override) {
+    if(this.usersFull[id] && !override && Date.now() < this.fullExpiration[id.toPeerId()]) {
       return this.usersFull[id];
     }
 
@@ -193,6 +196,7 @@ export class AppProfileManager extends AppManager {
         });
 
         this.usersFull[id] = userFull;
+        this.fullExpiration[peerId] = Date.now() + PEER_FULL_TTL;
 
         /* if(userFull.bot_info) {
           userFull.bot_info = this.saveBotInfo(userFull.bot_info) as any;
@@ -263,9 +267,10 @@ export class AppProfileManager extends AppManager {
       return this.getChannelFull(id, override);
     }
 
+    const peerId = id.toPeerId(true);
     const fullChat = this.chatsFull[id] as ChatFull.chatFull;
-    if(fullChat && !override) {
-      const chat = this.appChatsManager.getChat(id);
+    if(fullChat && !override && Date.now() < this.fullExpiration[peerId]) {
+      const chat: Chat.chat = this.appChatsManager.getChat(id);
       if(chat.version === (fullChat.participants as ChatParticipants.chatParticipants).version ||
         chat.pFlags.left) {
         return fullChat as ChatFull;
@@ -281,7 +286,6 @@ export class AppProfileManager extends AppManager {
         this.appChatsManager.saveApiChats(result.chats, true);
         this.appUsersManager.saveApiUsers(result.users);
         const chatFull = result.full_chat as ChatFull.chatFull;
-        const peerId = id.toPeerId(true);
         if(chatFull && chatFull.chat_photo && chatFull.chat_photo.id) {
           chatFull.chat_photo = this.appPhotosManager.savePhoto(chatFull.chat_photo, {type: 'profilePhoto', peerId});
         }
@@ -297,6 +301,7 @@ export class AppProfileManager extends AppManager {
         });
 
         this.chatsFull[id] = chatFull;
+        this.fullExpiration[peerId] = Date.now() + PEER_FULL_TTL;
         this.rootScope.dispatchEvent('chat_full_update', id);
 
         return chatFull;
@@ -383,7 +388,8 @@ export class AppProfileManager extends AppManager {
   }
 
   public getChannelFull(id: ChatId, override?: true) {
-    if(this.chatsFull[id] !== undefined && !override) {
+    const peerId = id.toPeerId(true);
+    if(this.chatsFull[id] !== undefined && !override && Date.now() < this.fullExpiration[peerId]) {
       return this.chatsFull[id] as ChatFull.channelFull;
     }
 
@@ -393,7 +399,6 @@ export class AppProfileManager extends AppManager {
         channel: this.appChatsManager.getChannelInput(id)
       },
       processResult: (result) => {
-        const peerId = id.toPeerId(true);
         this.appChatsManager.saveApiChats(result.chats, true);
         this.appUsersManager.saveApiUsers(result.users);
         const fullChannel = result.full_chat as ChatFull.channelFull;
@@ -412,6 +417,7 @@ export class AppProfileManager extends AppManager {
         });
 
         this.chatsFull[id] = fullChannel;
+        this.fullExpiration[peerId] = Date.now() + PEER_FULL_TTL;
         this.rootScope.dispatchEvent('chat_full_update', id);
 
         return fullChannel;
@@ -533,7 +539,7 @@ export class AppProfileManager extends AppManager {
         this.rootScope.dispatchEvent('peer_bio_edit', peerId);
       }
 
-      return this.getProfile(this.appPeersManager.peerId, true);
+      return this.getProfile(user.id, true);
     });
   }
 

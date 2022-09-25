@@ -6,7 +6,10 @@
 
 @use "sass:math";
 
-$bubble-margin: .25rem;
+$bubble-margin: .125rem;
+$bubble-margin-big: .5rem;
+$bubble-overflow: math.div($bubble-margin-big, 8);
+$bubble-overflow-big: math.div($bubble-margin-big, 2);
 $bubble-beside-button-width: 38px;
 
 @keyframes bubbleSelected {
@@ -36,7 +39,7 @@ $bubble-beside-button-width: 38px;
     e.g. make the height bigger and adjust the top so observeHeaders()'s
     IntersectionObserver fires as soon as the bottom of the sentinel crosses the
     top of the intersection container. */
-    height: $bubble-margin;
+    height: $bubble-overflow-big;
     top: 0;
   }
 
@@ -136,8 +139,8 @@ $bubble-beside-button-width: 38px;
       left: -50%;
       /* top: 0;
       bottom: 0; */
-      top: -#{math.div($bubble-margin, 2)};
-      bottom: -#{math.div($bubble-margin, 2)};
+      top: -#{$bubble-overflow};
+      bottom: -#{$bubble-overflow};
       content: " ";
       z-index: -1;
     }
@@ -145,13 +148,13 @@ $bubble-beside-button-width: 38px;
 
   /* &.is-highlighted, &.is-selected {
     &:not(.is-group-last):after {
-      height: calc(100% + #{math.div($bubble-margin, 2)}) !important;
+      height: calc(100% + #{$bubble-overflow}) !important;
     }
 
     & + &:not(.is-group-last) {
       &:after {
         top: .125rem !important;
-        height: calc(100% - #{math.div($bubble-margin, 2)}) !important;
+        height: calc(100% - #{$bubble-overflow}) !important;
       }
     }
   } */
@@ -159,7 +162,7 @@ $bubble-beside-button-width: 38px;
   // ! if turn this on, there will be an empty space
   /* &.is-highlighted, &.is-selected {
     &.is-group-last:after {
-      bottom: #{math.div($bubble-margin, 2)} !important;
+      bottom: #{$bubble-overflow} !important;
     }
   } */
 
@@ -180,7 +183,7 @@ $bubble-beside-button-width: 38px;
     &:before {
       content: "Unread messages";
       height: 30px;
-      margin-bottom: $bubble-margin;
+      margin-bottom: $bubble-overflow-big;
       margin-left: -50%;
       margin-right: -50%;
       text-align: center;
@@ -193,9 +196,10 @@ $bubble-beside-button-width: 38px;
       position: relative;
     }
 
-    &.is-highlighted, &.is-selected {
+    &.is-highlighted,
+    &.is-selected {
       &:after {
-        top: calc(#{math.div($bubble-margin, 2)} + 30px);
+        top: calc(#{$bubble-overflow} + 30px);
       }
     }
   }
@@ -391,8 +395,8 @@ $bubble-beside-button-width: 38px;
 
   &.is-date {
     position: sticky;
-    top: $bubble-margin;
-    padding-bottom: $bubble-margin;
+    top: $bubble-overflow-big;
+    padding-bottom: #{$bubble-overflow-big + $bubble-margin};
     //z-index: 3;
     z-index: 2;
     transition: opacity .3s ease;
@@ -500,10 +504,10 @@ $bubble-beside-button-width: 38px;
   } */
 
   &.is-group-last {
-    margin-bottom: #{$bubble-margin * 2};
+    margin-bottom: #{$bubble-margin-big};
 
     &:after {
-      bottom: -#{$bubble-margin};
+      bottom: -#{$bubble-overflow-big};
     }
 
     /* > .bubble-select-checkbox {
@@ -519,7 +523,7 @@ $bubble-beside-button-width: 38px;
 
   &.is-group-first {
     &:after {
-      top: -#{$bubble-margin};
+      top: -#{$bubble-overflow-big};
     }
   }
 
@@ -1618,7 +1622,7 @@ $bubble-beside-button-width: 38px;
 
       &:first-of-type {
         .document-selection {
-          top: -#{math.div($bubble-margin, 2)}; // * padding inner + half padding outer
+          top: -#{$bubble-overflow}; // * padding inner + half padding outer
         }
 
         .document-wrapper {
@@ -1630,7 +1634,7 @@ $bubble-beside-button-width: 38px;
 
       &:last-of-type {
         .document-selection {
-          bottom: -#{math.div($bubble-margin, 2)};
+          bottom: -#{$bubble-overflow};
         }
 
         .document-wrapper {
@@ -1644,7 +1648,7 @@ $bubble-beside-button-width: 38px;
     &.is-group-first .document-container {
       &:first-of-type {
         .document-selection {
-          top: -$bubble-margin;
+          top: -$bubble-overflow-big;
         }
       }
     }
@@ -1652,7 +1656,7 @@ $bubble-beside-button-width: 38px;
     &.is-group-last .document-container {
       &:last-of-type {
         .document-selection {
-          bottom: -$bubble-margin;
+          bottom: -$bubble-overflow-big;
         }
       }
     }

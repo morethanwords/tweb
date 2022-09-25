@@ -260,13 +260,13 @@ export default class AppChatFoldersTab extends SliderSuperTab {
   }
 
   private async canCreateFolder() {
-    const [appConfig, filters] = await Promise.all([
-      this.managers.apiManager.getAppConfig(),
+    const [limit, filters] = await Promise.all([
+      this.managers.apiManager.getLimit('folders'),
       this.managers.filtersStorage.getDialogFilters()
     ]);
 
     const filtersLength = filters.filter((filter) => !REAL_FOLDERS.has(filter.id)).length;
-    return filtersLength < (rootScope.premium ? appConfig.dialog_filters_limit_premium : appConfig.dialog_filters_limit_default);
+    return filtersLength < limit;
   }
 
   private getSuggestedFilters() {

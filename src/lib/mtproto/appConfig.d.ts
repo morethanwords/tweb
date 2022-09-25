@@ -57,6 +57,7 @@ export interface MTAppConfig {
   message_animated_emoji_max?:               number;
   premium_promo_order?:                      string[];
   premium_bot_username?:                     string;
+  premium_purchase_blocked?:                 boolean;
 }
 
 export interface EmojiesSendDiceSuccess {

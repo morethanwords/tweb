@@ -5,6 +5,7 @@
  */
 
 import ctx from '../../environment/ctx';
+import callbackify from '../../helpers/callbackify';
 import {ignoreRestrictionReasons} from '../../helpers/restrictions';
 import {Config, MethodDeclMap, User} from '../../layer';
 import {InvokeApiOptions} from '../../types';
@@ -21,6 +22,8 @@ type HashResult = {
 type HashOptions = {
   [queryJSON: string]: HashResult
 };
+
+export type ApiLimitType = 'pin' | 'folderPin' | 'folders' | 'favedStickers' | 'reactions' | 'bio';
 
 export default abstract class ApiManagerMethods extends AppManager {
   private afterMessageIdTemp: number;
@@ -280,6 +283,24 @@ export default abstract class ApiManagerMethods extends AppManager {
         return config;
       },
       options: {overwrite}
+    });
+  }
+
+  public getLimit(type: ApiLimitType, isPremium?: boolean) {
+    return callbackify(this.getAppConfig(), (appConfig) => {
+      const map: {[type in ApiLimitType]: [keyof MTAppConfig, keyof MTAppConfig]} = {
+        pin: ['dialogs_pinned_limit_default', 'dialogs_pinned_limit_premium'],
+        folderPin: ['dialogs_folder_pinned_limit_default', 'dialogs_folder_pinned_limit_premium'],
+        folders: ['dialog_filters_limit_default', 'dialog_filters_limit_premium'],
+        favedStickers: ['stickers_faved_limit_default', 'stickers_faved_limit_premium'],
+        reactions: ['reactions_user_max_default', 'reactions_user_max_premium'],
+        bio: ['about_length_limit_default', 'about_length_limit_premium']
+      };
+
+      isPremium ??= this.rootScope.premium;
+
+      const key = map[type][isPremium ? 1 : 0];
+      return appConfig[key] as number;
     });
   }
 }

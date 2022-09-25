@@ -1214,7 +1214,7 @@ export default class ChatBubbles {
 
   private onBubblesMouseMove = async(e: MouseEvent) => {
     const content = findUpClassName(e.target, 'bubble-content');
-    if(content && !this.chat.selection.isSelecting) {
+    if(content && !this.chat.selection.isSelecting && !findUpClassName(e.target, 'service')) {
       const bubble = findUpClassName(content, 'bubble');
       if(!this.chat.selection.canSelectBubble(bubble)) {
         this.unhoverPrevious();
@@ -1241,7 +1241,12 @@ export default class ChatBubbles {
 
         content.append(hoverReaction);
 
-        let message = (await this.chat.getMessage(+bubble.dataset.mid)) as Message.message;
+        let message = await this.chat.getMessage(+bubble.dataset.mid);
+        if(message?._ !== 'message') {
+          this.unhoverPrevious();
+          return;
+        }
+
         message = await this.managers.appMessagesManager.getGroupsFirstMessage(message);
 
         const middleware = this.getMiddleware(() => this.hoverReaction === hoverReaction);
@@ -1281,7 +1286,7 @@ export default class ChatBubbles {
             attachClickEvent(hoverReaction, (e) => {
               cancelEvent(e); // cancel triggering selection
 
-              this.managers.appReactionsManager.sendReaction(message, availableReaction);
+              this.managers.appReactionsManager.sendReaction(message as Message.message, availableReaction);
               this.unhoverPrevious();
             }, {listenerSetter: this.listenerSetter});
           }, noop);
@@ -4407,6 +4412,7 @@ export default class ChatBubbles {
         bubble.classList.add('must-have-name');
       }
 
+      const isForward = fwdFromId || fwdFrom;
       if(isHidden) {
         // /////this.log('message to render hidden', message);
         title = document.createElement('span');
@@ -4415,7 +4421,7 @@ export default class ChatBubbles {
         // title = fwdFrom.from_name;
         bubble.classList.add('hidden-profile');
       } else {
-        title = new PeerTitle({peerId: fwdFromId || message.fromId, withPremiumIcon: true}).element;
+        title = new PeerTitle({peerId: fwdFromId || message.fromId, withPremiumIcon: !isForward}).element;
       }
 
       if(message.reply_to_mid && message.reply_to_mid !== this.chat.threadId && isMessage) {
@@ -4430,7 +4436,7 @@ export default class ChatBubbles {
       // this.log(title);
 
       let nameDiv: HTMLElement;
-      if((fwdFromId || fwdFrom)) {
+      if(isForward) {
         if(this.peerId !== rootScope.myId && !isForwardFromChannel) {
           bubble.classList.add('forwarded');
         }

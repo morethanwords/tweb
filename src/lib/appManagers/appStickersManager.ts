@@ -521,9 +521,8 @@ export class AppStickersManager extends AppManager {
     return this.getFavedStickers().then(() => this.favedStickers);
   }
 
-  public async getFavedStickersLimit() {
-    const appConfig = await this.apiManager.getAppConfig();
-    return this.rootScope.premium ? appConfig.stickers_faved_limit_premium : appConfig.stickers_faved_limit_default;
+  public getFavedStickersLimit() {
+    return this.apiManager.getLimit('favedStickers');
   }
 
   public async faveSticker(docId: DocId, unfave?: boolean) {

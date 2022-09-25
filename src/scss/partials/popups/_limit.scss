@@ -1,0 +1,70 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+.popup-limit {
+  .popup-container {
+    min-width: 22.5rem;
+  }
+
+  &-line {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: .75rem 0;
+  }
+
+  &-hint {
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: var(--font-weight-bold);
+
+    &-icon {
+      font-size: 1.25rem;
+      margin-right: .25rem;
+      display: flex;
+    }
+  }
+
+  .limit-line {
+    align-self: stretch;
+    margin: 1rem .5rem 0;
+  }
+
+  &:not(.is-locked) &-hint {
+    height: 2rem;
+    border-radius: 1rem;
+    padding: 0 .75rem;
+    position: relative;
+    background: linear-gradient(73.4deg, #6C93FF -7.21%, #976FFF 114.57%, #DF69D1 241.52%);
+    background-size: 200px 2rem;
+
+    &:after {
+      display: block;
+      content: " ";
+      width: 100%; // 26
+      height: 9px;
+      position: absolute;
+      bottom: -9px;
+      clip-path: path("M0 0H26H24.4853C22.894 0 21.3679 0.632141 20.2426 1.75736L14.4142 7.58579C13.6332 8.36684 12.3668 8.36683 11.5858 7.58579L5.75736 1.75736C4.63214 0.632139 3.10602 0 1.51472 0H0Z");
+      background: inherit;
+      background-size: inherit;
+      background-position-x: calc(-50% + -86px);
+      background-repeat: no-repeat;
+      left: 50%;
+      margin-left: -13px;
+    }
+  }
+
+  &.is-locked &-hint {
+    height: 2.75rem;
+    border-radius: 1.375rem;
+    padding: 0 1.25rem 0 1rem;
+    margin-right: -.25rem;
+    background-color: var(--primary-color);
+  }
+}

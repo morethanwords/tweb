@@ -390,6 +390,7 @@ $chat-input-inner-padding-handhelds: .25rem;
 @import "partials/popups/paymentShippingMethods";
 @import "partials/popups/paymentVerification";
 @import "partials/popups/paymentCardConfirmation";
+@import "partials/popups/limit";
 
 @import "partials/pages/pages";
 @import "partials/pages/authCode";
@@ -1714,6 +1715,43 @@ hr {
 
   &-inner {
     @include text-overflow();
+  }
+}
+
+.limit-line {
+  height: 2rem;
+  // border-radius: $border-radius-medium;
+  font-weight: var(--font-weight-bold);
+  display: flex;
+  // background: linear-gradient(84.4deg, #6C93FF -4.85%, #976FFF 51.72%, #DF69D1 110.7%), #F1F3F5;
+
+  &-free {
+    color: #000;
+  }
+
+  &-premium {
+    color: #fff;
+  }
+
+  &-free {
+    border-top-left-radius: $border-radius-medium;
+    border-bottom-left-radius: $border-radius-medium;
+    background-color: #F1F3F5;
+  }
+
+  &-premium {
+    border-top-right-radius: $border-radius-medium;
+    border-bottom-right-radius: $border-radius-medium;
+    background: linear-gradient(84.4deg, #6C93FF -4.85%, #976FFF 51.72%, #DF69D1 110.7%);
+  }
+
+  &-free,
+  &-premium {
+    flex: 1 1 0;
+    padding: 0 .75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
 }
 
