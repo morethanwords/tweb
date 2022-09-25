@@ -259,7 +259,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     const fromId = (message as Message.message).fwd_from && !message.fromId ? (message as Message.message).fwd_from.from_name : message.fromId;
     const media = getMediaFromMessage(message);
 
-    const cantForwardMessage = message._ === 'messageService' || !this.managers.appMessagesManager.canForward(message);
+    const cantForwardMessage = message._ === 'messageService' || ! await this.managers.appMessagesManager.canForward(message);
     [this.buttons.forward, this.btnMenuForward.element].forEach((button) => {
       button.classList.toggle('hide', cantForwardMessage);
     });
@@ -271,7 +271,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       button.classList.toggle('hide', cantDownloadMessage);
     });
 
-    const canDeleteMessage = this.managers.appMessagesManager.canDeleteMessage(message);
+    const canDeleteMessage = await this.managers.appMessagesManager.canDeleteMessage(message);
     [this.buttons.delete, this.btnMenuDelete.element].forEach((button) => {
       button.classList.toggle('hide', !canDeleteMessage);
     });
