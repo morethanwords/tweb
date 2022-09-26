@@ -124,11 +124,11 @@ export default class ReactionsElement extends HTMLElement {
         //   })
       ) : [];
 
-    if(this.message.peerId.isUser()) {
-      counts.sort((a, b) => (b.count - a.count) || ((b.chosen_order ?? 0) - (a.chosen_order ?? 0)));
-    } else {
-      counts.sort((a, b) => (b.count - a.count) || ((a.chosen_order ?? 0) - (b.chosen_order ?? 0)));
-    }
+    // if(this.message.peerId.isUser()) {
+    //   counts.sort((a, b) => (b.count - a.count) || ((b.chosen_order ?? 0) - (a.chosen_order ?? 0)));
+    // } else {
+    counts.sort((a, b) => (b.count - a.count) || ((a.chosen_order ?? 0) - (b.chosen_order ?? 0)));
+    // }
 
     forEachReverse(this.sorted, (reactionElement, idx, arr) => {
       const reaction = reactionElement.reactionCount.reaction;

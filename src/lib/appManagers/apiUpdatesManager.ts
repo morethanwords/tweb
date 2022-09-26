@@ -351,6 +351,7 @@ class ApiUpdatesManager {
       channelState.syncPending = null;
     }
 
+    const log = this.debug ? this.log.bindPrefix('getChannelDifference-' + channelId) : undefined;
     // this.log.trace('Get channel diff', appChatsManager.getChat(channelId), channelState.pts);
     const promise = this.apiManager.invokeApi('updates.getChannelDifference', {
       channel: this.appChatsManager.getChannelInput(channelId),
@@ -358,16 +359,16 @@ class ApiUpdatesManager {
       pts: channelState.pts,
       limit: 30
     }, {timeout: 0x7fffffff}).then((differenceResult) => {
-      this.debug && this.log.debug('Get channel diff result', differenceResult)
+      log?.debug('diff result', differenceResult)
       channelState.pts = 'pts' in differenceResult ? differenceResult.pts : undefined;
 
       if(differenceResult._ === 'updates.channelDifferenceEmpty') {
-        this.debug && this.log.debug('apply channel empty diff', differenceResult);
+        // log?.debug('apply channel empty diff', differenceResult);
         return;
       }
 
       if(differenceResult._ === 'updates.channelDifferenceTooLong') {
-        this.debug && this.log.debug('channel diff too long', differenceResult);
+        // log?.debug('channel diff too long', differenceResult);
         delete this.channelStates[channelId];
 
         this.saveUpdate({_: 'updateChannelReload', channel_id: channelId});
@@ -378,12 +379,12 @@ class ApiUpdatesManager {
       this.appChatsManager.saveApiChats(differenceResult.chats);
 
       // Should be first because of updateMessageID
-      this.debug && this.log.debug('applying', differenceResult.other_updates.length, 'channel other updates');
+      log?.debug('applying', differenceResult.other_updates.length, 'channel other updates');
       differenceResult.other_updates.forEach((update) => {
         this.saveUpdate(update);
       });
 
-      this.debug && this.log.debug('applying', differenceResult.new_messages.length, 'channel new messages');
+      log?.debug('applying', differenceResult.new_messages.length, 'channel new messages');
       differenceResult.new_messages.forEach((apiMessage) => {
         this.saveUpdate({
           _: 'updateNewChannelMessage',
@@ -393,13 +394,13 @@ class ApiUpdatesManager {
         });
       });
 
-      this.debug && this.log.debug('apply channel diff', channelState.pts);
+      log?.debug('apply channel diff', channelState.pts);
 
       if(differenceResult._ === 'updates.channelDifference' &&
-        !differenceResult.pFlags['final']) {
+        !differenceResult.pFlags.final) {
         return this.getChannelDifference(channelId);
       } else {
-        this.debug && this.log.debug('finished channel get diff');
+        log?.debug('finished channel get diff');
       }
     });
 
