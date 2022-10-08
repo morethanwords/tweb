@@ -447,7 +447,8 @@ export default class ChatContextMenu {
         } else {
           const doc: MyDocument = ((this.message as Message.message).media as MessageMedia.messageMediaDocument)?.document as any;
           if(!doc) return false;
-          isGoodType = doc.type && (['gif', 'video', 'audio'/* , 'sticker' */] as MyDocument['type'][]).includes(doc.type)
+          // isGoodType = doc.type && (['gif', 'video', 'audio', 'voice', 'sticker'] as MyDocument['type'][]).includes(doc.type)
+          isGoodType = true;
         }
 
         let hasTarget = !!IS_TOUCH_SUPPORTED;
