@@ -192,8 +192,10 @@ export default class SuperMessagePort<
         this.log.warn('created lock', id);
         const promise = new Promise<void>((resolve) => this.heldLocks.set(port, {resolve, id}))
         .then(() => this.heldLocks.delete(port));
-        navigator.locks.request(id, () => promise);
-        this.resendLockTask(port);
+        navigator.locks.request(id, () => {
+          this.resendLockTask(port);
+          return promise;
+        });
       } else {
         window.addEventListener('beforeunload', () => {
           const task = this.createTask('close', undefined);
