@@ -15,7 +15,7 @@ import appSidebarRight from '../sidebarRight';
 import StickyIntersector from '../stickyIntersector';
 import EmojiTab from './tabs/emoji';
 import GifsTab from './tabs/gifs';
-import StickersTab from './tabs/stickers';
+import StickersTab, {EmoticonsTabC, StickersTabCategory} from './tabs/stickers';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import AppGifsTab from '../sidebarRight/tabs/gifs';
 import AppStickersTab from '../sidebarRight/tabs/stickers';
@@ -29,21 +29,39 @@ import pause from '../../helpers/schedulers/pause';
 import {IS_APPLE_MOBILE} from '../../environment/userAgent';
 import {AppManagers} from '../../lib/appManagers/managers';
 import type LazyLoadQueueIntersector from '../lazyLoadQueueIntersector';
-import {simulateClickEvent} from '../../helpers/dom/clickEvent';
+import {attachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent';
 import overlayCounter from '../../helpers/overlayCounter';
+import noop from '../../helpers/noop';
+import {FocusDirection, ScrollOptions} from '../../helpers/fastSmoothScroll';
+import BezierEasing from '../../vendor/bezier-easing';
+import RichInputHandler from '../../helpers/dom/richInputHandler';
+import {getCaretPosF} from '../../helpers/dom/getCaretPosNew';
 
 export const EMOTICONSSTICKERGROUP: AnimationItemGroup = 'emoticons-dropdown';
 
 export interface EmoticonsTab {
-  init: () => void,
-  onCloseAfterTimeout?: () => void
+  content: HTMLElement;
+  scrollable: Scrollable;
+  menuScroll?: ScrollableX;
+  tabId: number;
+  init: () => void;
+  onOpen?: () => void;
+  onOpened?: () => void;
+  onClose?: () => void;
+  onClosed?: () => void;
 }
 
+const easing = BezierEasing(0.42, 0.0, 0.58, 1.0);
+const scrollOptions: Partial<ScrollOptions> = {
+  forceDuration: 200,
+  transitionFunction: easing
+};
+
 export class EmoticonsDropdown extends DropdownHover {
-  public static lazyLoadQueue = new LazyLoadQueue();
+  public static lazyLoadQueue = new LazyLoadQueue(1);
 
   private emojiTab: EmojiTab;
-  public stickersTab: StickersTab;
+  private stickersTab: StickersTab;
   private gifsTab: GifsTab;
 
   private container: HTMLElement;
@@ -62,7 +80,8 @@ export class EmoticonsDropdown extends DropdownHover {
 
   constructor() {
     super({
-      element: document.getElementById('emoji-dropdown') as HTMLDivElement
+      element: document.getElementById('emoji-dropdown') as HTMLDivElement,
+      ignoreOutClickClassName: 'input-message-input'
     });
 
     this.addEventListener('open', async() => {
@@ -82,14 +101,19 @@ export class EmoticonsDropdown extends DropdownHover {
       EmoticonsDropdown.lazyLoadQueue.lock();
       // EmoticonsDropdown.lazyLoadQueue.unlock();
       animationIntersector.lockIntersectionGroup(EMOTICONSSTICKERGROUP);
+
+      const tab = this.tab;
+      tab.onOpen?.();
     });
 
     this.addEventListener('opened', () => {
       animationIntersector.unlockIntersectionGroup(EMOTICONSSTICKERGROUP);
-      EmoticonsDropdown.lazyLoadQueue.unlock();
-      EmoticonsDropdown.lazyLoadQueue.refresh();
+      EmoticonsDropdown.lazyLoadQueue.unlockAndRefresh();
 
       // this.container.classList.remove('disable-hover');
+
+      const tab = this.tab;
+      tab.onOpened?.();
     });
 
     this.addEventListener('close', () => {
@@ -99,6 +123,9 @@ export class EmoticonsDropdown extends DropdownHover {
       // нужно залочить группу и выключить стикеры
       animationIntersector.lockIntersectionGroup(EMOTICONSSTICKERGROUP);
       animationIntersector.checkAnimations(true, EMOTICONSSTICKERGROUP);
+
+      const tab = this.tab;
+      tab.onClose?.();
     });
 
     this.addEventListener('closed', () => {
@@ -110,7 +137,14 @@ export class EmoticonsDropdown extends DropdownHover {
       // this.container.classList.remove('disable-hover');
 
       this.savedRange = undefined;
+
+      const tab = this.tab;
+      tab.onClosed?.();
     });
+  }
+
+  public get tab() {
+    return this.tabs[this.tabId];
   }
 
   protected init() {
@@ -119,27 +153,23 @@ export class EmoticonsDropdown extends DropdownHover {
     this.stickersTab = new StickersTab(this.managers);
     this.gifsTab = new GifsTab(this.managers);
 
-    this.tabs = {
-      0: this.emojiTab,
-      1: this.stickersTab,
-      2: this.gifsTab
-    };
+    this.tabs = {};
+    [this.emojiTab, this.stickersTab, this.gifsTab].forEach((tab, idx) => {
+      tab.tabId = idx;
+      this.tabs[idx] = tab;
+    });
 
     this.container = this.element.querySelector('.emoji-container .tabs-container') as HTMLDivElement;
     this.tabsEl = this.element.querySelector('.emoji-tabs') as HTMLUListElement;
     this.selectTab = horizontalMenu(this.tabsEl, this.container, this.onSelectTabClick, () => {
-      const tab = this.tabs[this.tabId];
-      if(tab.init) {
-        tab.init();
-      }
-
-      tab.onCloseAfterTimeout && tab.onCloseAfterTimeout();
+      const {tab} = this;
+      tab.init?.();
       animationIntersector.checkAnimations(false, EMOTICONSSTICKERGROUP);
     });
 
     this.searchButton = this.element.querySelector('.emoji-tabs-search');
     this.searchButton.addEventListener('click', () => {
-      if(this.tabId === 1) {
+      if(this.tabId === this.stickersTab.tabId) {
         if(!appSidebarRight.isTabExists(AppStickersTab)) {
           appSidebarRight.createTab(AppStickersTab).open();
         }
@@ -151,34 +181,92 @@ export class EmoticonsDropdown extends DropdownHover {
     });
 
     this.deleteBtn = this.element.querySelector('.emoji-tabs-delete');
-    this.deleteBtn.addEventListener('click', (e) => {
+    attachClickEvent(this.deleteBtn, (e) => {
+      cancelEvent(e);
       const input = appImManager.chat.input.messageInput;
-      if((input.lastChild as any)?.tagName) {
-        input.lastElementChild.remove();
-      } else if(input.lastChild) {
-        if(!input.lastChild.textContent.length) {
-          input.lastChild.remove();
+      // RichInputHandler.getInstance().makeFocused(appImManager.chat.input.messageInput);
+      let range = RichInputHandler.getInstance().getSavedRange(input);
+      if(!range) {
+        range = document.createRange();
+        range.setStartAfter(input.lastChild);
+      }
+
+      const newRange = range.cloneRange();
+      // if(range.endOffset === range.startOffset && range.endContainer === range.startContainer) {
+      if(range.collapsed) {
+        const {node, offset} = getCaretPosF(input, range.endContainer, range.endOffset);
+        let newStartNode: Node;
+        if(offset) {
+          newStartNode = node;
         } else {
-          input.lastChild.textContent = input.lastChild.textContent.slice(0, -1);
+          newStartNode = node.previousSibling;
+          if(!newStartNode) {
+            return;
+          }
+
+          while(newStartNode.nodeType === newStartNode.TEXT_NODE && !newStartNode.nodeValue && (newStartNode = newStartNode.previousSibling)) {
+
+          }
+
+          if(newStartNode.nodeType === newStartNode.ELEMENT_NODE && !(newStartNode as HTMLElement).isContentEditable) {
+            return;
+          }
+        }
+
+        if(newStartNode.nodeType === newStartNode.ELEMENT_NODE && (newStartNode as any).tagName === 'IMG') {
+          newRange.selectNode(newStartNode);
+        } else {
+          const text = [...newStartNode.textContent];
+          let t: string;
+          if(offset) {
+            let length = 0;
+            t = text.find((text) => (length += text.length, length >= offset));
+          } else {
+            t = text.pop() || '';
+          }
+
+          const newOffset = offset ? offset - t.length : newStartNode.textContent.length - t.length;
+          newRange.setStart(newStartNode, newOffset);
         }
       }
 
-      const event = new Event('input', {bubbles: true, cancelable: true});
-      appImManager.chat.input.messageInput.dispatchEvent(event);
-      // appSidebarRight.stickersTab.init();
+      newRange.deleteContents();
 
-      cancelEvent(e);
+      appImManager.chat.input.messageInputField.simulateInputEvent();
+      // const selection = document.getSelection();
+      // if(selection.isCollapsed) {
+      //   selection.modify('extend', 'backward', 'character');
+      // }
+
+      // selection.deleteFromDocument();
+      // (document.activeElement as HTMLElement).blur();
+
+      // document.execCommand('undo', false, null);
+      // const input = appImManager.chat.input.messageInput;
+      // if((input.lastChild as any)?.tagName) {
+      //   input.lastElementChild.remove();
+      // } else if(input.lastChild) {
+      //   if(!input.lastChild.textContent.length) {
+      //     input.lastChild.remove();
+      //   } else {
+      //     input.lastChild.textContent = input.lastChild.textContent.slice(0, -1);
+      //   }
+      // }
+
+      // const event = new Event('input', {bubbles: true, cancelable: true});
+      // appImManager.chat.input.messageInput.dispatchEvent(event);
+      // // appSidebarRight.stickersTab.init();
     });
 
-    const HIDE_EMOJI_TAB = IS_APPLE_MOBILE;
+    const HIDE_EMOJI_TAB = IS_APPLE_MOBILE && false;
 
-    const INIT_TAB_ID = HIDE_EMOJI_TAB ? 1 : 0;
+    const INIT_TAB_ID = HIDE_EMOJI_TAB ? this.stickersTab.tabId : this.emojiTab.tabId;
 
     if(HIDE_EMOJI_TAB) {
       (this.tabsEl.children[1] as HTMLElement).classList.add('hide');
     }
 
-    simulateClickEvent(this.tabsEl.children[INIT_TAB_ID + 1] as HTMLElement); // set emoji tab
+    simulateClickEvent(this.tabsEl.children[INIT_TAB_ID + 1] as HTMLElement);
     if(this.tabs[INIT_TAB_ID].init) {
       this.tabs[INIT_TAB_ID].init(); // onTransitionEnd не вызовется, т.к. это первая открытая вкладка
     }
@@ -203,6 +291,9 @@ export class EmoticonsDropdown extends DropdownHover {
       });
     }
 
+    appImManager.addEventListener('peer_changing', () => {
+      this.toggle(false);
+    });
     appImManager.addEventListener('peer_changed', this.checkRights);
     this.checkRights();
 
@@ -213,16 +304,27 @@ export class EmoticonsDropdown extends DropdownHover {
     return this.element;
   }
 
+  public scrollTo(tab: EmoticonsTab, element: HTMLElement) {
+    tab.scrollable.scrollIntoViewNew({
+      element: element as HTMLElement,
+      axis: 'y',
+      position: 'start',
+      ...scrollOptions
+    });
+  }
+
   private onSelectTabClick = (id: number) => {
     if(this.tabId === id) {
+      const {tab} = this;
+      this.scrollTo(tab, tab.scrollable.container.firstElementChild as HTMLElement);
       return;
     }
 
     animationIntersector.checkAnimations(true, EMOTICONSSTICKERGROUP);
 
     this.tabId = id;
-    this.searchButton.classList.toggle('hide', this.tabId === 0);
-    this.deleteBtn.classList.toggle('hide', this.tabId !== 0);
+    this.searchButton.classList.toggle('hide', this.tabId === this.emojiTab.tabId);
+    this.deleteBtn.classList.toggle('hide', this.tabId !== this.emojiTab.tabId);
   };
 
   private checkRights = async() => {
@@ -235,91 +337,174 @@ export class EmoticonsDropdown extends DropdownHover {
       this.managers.appMessagesManager.canSendToPeer(peerId, threadId, 'send_gifs')
     ]);
 
-    tabsElements[2].toggleAttribute('disabled', !canSendStickers);
-    tabsElements[3].toggleAttribute('disabled', !canSendGifs);
+    tabsElements[this.stickersTab.tabId + 1].toggleAttribute('disabled', !canSendStickers);
+    tabsElements[this.gifsTab.tabId + 1].toggleAttribute('disabled', !canSendGifs);
 
     const active = this.tabsEl.querySelector('.active');
-    if(active && whichChild(active) !== 1 && (!canSendStickers || !canSendGifs)) {
-      this.selectTab(0, false);
+    if(active && whichChild(active) !== (this.emojiTab.tabId + 1) && (!canSendStickers || !canSendGifs)) {
+      this.selectTab(this.emojiTab.tabId, false);
     }
   };
 
-  public static menuOnClick = (menu: HTMLElement, scroll: Scrollable, menuScroll?: ScrollableX, prevId = 0) => {
+  public static menuOnClick = (
+    emoticons: EmoticonsTabC<any>,
+    menu: HTMLElement,
+    scrollable: Scrollable,
+    menuScroll?: ScrollableX,
+    prevTab?: StickersTabCategory<any>
+  ) => {
     let jumpedTo = -1;
 
-    const setActive = (id: number) => {
-      if(id === prevId) {
+    const scrollToTab = (tab: typeof prevTab, f?: boolean) => {
+      const m = tab.menuScroll || menuScroll;
+      if(m) {
+        m.scrollIntoViewNew({
+          element: tab.elements.menuTab,
+          position: 'center',
+          axis: 'x',
+          getElementPosition: f ? ({elementPosition}) => {
+            return elementPosition - 106;
+          } : undefined,
+          ...scrollOptions
+        });
+      }
+    };
+
+    const setActive = (tab: typeof prevTab, scroll = true) => {
+      if(tab === prevTab) {
         return false;
       }
 
-      menu.children[prevId].classList.remove('active');
-      menu.children[id].classList.add('active');
-      prevId = id;
+      let f = false;
+      if(prevTab) {
+        prevTab.elements.menuTab.classList.remove('active');
+        if(prevTab.menuScroll && prevTab.menuScroll !== tab.menuScroll) {
+          f = true;
+          // scroll to first
+          prevTab.menuScroll.container.parentElement.classList.remove('active');
+          prevTab.menuScroll.scrollIntoViewNew({
+            element: prevTab.menuScroll.container.firstElementChild as HTMLElement,
+            forceDirection: scroll ? undefined : FocusDirection.Static,
+            position: 'center',
+            axis: 'x',
+            ...scrollOptions
+          });
+        }
+      }
+
+      tab.elements.menuTab.classList.add('active');
+
+      if(tab.menuScroll) {
+        tab.menuScroll.container.parentElement.classList.add('active');
+        scroll && menuScroll.scrollIntoViewNew({
+          element: tab.menuScroll.container.parentElement,
+          position: 'center',
+          axis: 'x',
+          ...scrollOptions
+        });
+      }
+
+      if(prevTab) {
+        scrollToTab(tab, f);
+      }
+
+      prevTab = tab;
 
       return true;
     };
 
-    const stickyIntersector = new StickyIntersector(scroll.container, (stuck, target) => {
-      // console.log('sticky scrollTOp', stuck, target, scroll.container.scrollTop);
+    const setActiveStatic = (tab: typeof prevTab) => {
+      if(prevTab?.local) {
+        return;
+      }
 
-      if(Math.abs(jumpedTo - scroll.container.scrollTop) <= 1) {
+      emoticons.scrollable.scrollTop = tab.elements.container.offsetTop + 1;
+      const s = emoticons.menuScroll.container;
+      const e = tab.elements.menuTab;
+      s.scrollLeft = e.offsetLeft - s.clientWidth / 2 + e.offsetWidth / 2;
+      setActive(tab, false);
+    };
+
+    let scrollingToContent = false;
+    const stickyIntersector = new StickyIntersector(scrollable.container, (stuck, target) => {
+      if(scrollingToContent) {
+        return;
+      }
+
+      // console.log('sticky scrollTop', stuck, target, scrollable.container.scrollTop, jumpedTo);
+
+      if(Math.abs(jumpedTo - scrollable.container.scrollTop) <= 1) {
         return;
       } else {
         jumpedTo = -1;
       }
 
+      const tab = emoticons.getCategoryByContainer(target);
       const which = whichChild(target);
-      if(!stuck && which) { // * due to stickyIntersector
+      if(!stuck && (which || tab.menuScroll)) {
         return;
       }
 
-      setActive(which);
-
-      if(menuScroll) {
-        menuScroll.scrollIntoViewNew({
-          element: menu.children[which] as HTMLElement,
-          position: 'center',
-          axis: 'x'
-        });
-      }
+      setActive(tab);
     });
 
     menu.addEventListener('click', (e) => {
-      let target = e.target as HTMLElement;
-      target = findUpClassName(target, 'menu-horizontal-div-item');
-
+      let target = findUpClassName(e.target as HTMLElement, 'menu-horizontal-div-item');
       if(!target) {
-        return;
+        target = findUpClassName(e.target as HTMLElement, 'menu-horizontal-inner');
+        if(!target || target.classList.contains('active')) {
+          return;
+        }
+
+        target = target.firstElementChild.firstElementChild as HTMLElement;
       }
 
       const which = whichChild(target);
+
+      const tab = emoticons.getCategoryByMenuTab(target);
 
       /* if(menuScroll) {
         menuScroll.scrollIntoView(target, false, 0);
       } */
 
-      if(!setActive(which)) {
-        return;
+      if(setActive(tab)) {
+        // scrollToTab(tab);
+        // return;
       }
 
-      let offsetTop = 0;
-      if(which > 0) {
-        const element = (scroll.splitUp || scroll.container).children[which] as HTMLElement;
-        offsetTop = element.offsetTop + 1; // * due to stickyIntersector
+      let offsetTop = 0, additionalOffset = 0;
+      if(which > 0 || tab.menuScroll) {
+        const element = tab.elements.container;
+        additionalOffset = 1;
+        offsetTop = element.offsetTop + additionalOffset; // * due to stickyIntersector
       }
 
-      scroll.container.scrollTop = jumpedTo = offsetTop;
+      jumpedTo = offsetTop;
 
-      // console.log('set scrollTop:', offsetTop);
+      scrollingToContent = true;
+      scrollable.scrollIntoViewNew({
+        element: offsetTop ? tab.elements.container : scrollable.container.firstElementChild,
+        position: 'start',
+        axis: 'y',
+        getElementPosition: offsetTop ? ({elementPosition}) => elementPosition + additionalOffset : undefined,
+        ...scrollOptions
+      }).finally(() => {
+        setActive(tab);
+        scrollingToContent = false;
+      });
     });
 
-    return {stickyIntersector, setActive};
+    const a = scrollable.onAdditionalScroll ? scrollable.onAdditionalScroll.bind(scrollable) : noop;
+    scrollable.onAdditionalScroll = () => {
+      emoticons.content.parentElement.classList.toggle('scrolled-top', !scrollable.scrollTop);
+      a();
+    };
+
+    return {stickyIntersector, setActive, setActiveStatic};
   };
 
   public static onMediaClick = async(e: {target: EventTarget | Element}, clearDraft = false, silent?: boolean) => {
-    let target = e.target as HTMLElement;
-    target = findUpTag(target, 'DIV');
-
+    const target = findUpTag(e.target as HTMLElement, 'DIV');
     if(!target) return false;
 
     const docId = target.dataset.docId;

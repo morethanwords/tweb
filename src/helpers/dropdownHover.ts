@@ -4,37 +4,53 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {attachClickEvent} from './dom/clickEvent';
+import {attachClickEvent, detachClickEvent} from './dom/clickEvent';
 import findUpAsChild from './dom/findUpAsChild';
 import EventListenerBase from './eventListenerBase';
 import ListenerSetter from './listenerSetter';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import safeAssign from './object/safeAssign';
+import appNavigationController, {NavigationItem} from '../components/appNavigationController';
+import findUpClassName from './dom/findUpClassName';
 
 const KEEP_OPEN = false;
 const TOGGLE_TIMEOUT = 200;
 const ANIMATION_DURATION = 200;
 
+export type IgnoreMouseOutType = 'click' | 'menu' | 'popup';
+
 export default class DropdownHover extends EventListenerBase<{
   open: () => Promise<any> | void,
+  openAfterLayout: () => void,
   opened: () => any,
   close: () => any,
   closed: () => any
 }> {
   protected element: HTMLElement;
   protected displayTimeout: number;
-  protected forceClose = false;
-  protected inited = false;
-  protected ignoreMouseOut = false;
+  protected forceClose: boolean;
+  protected inited: boolean;
+  protected ignoreMouseOut: Set<IgnoreMouseOutType>;
+  protected ignoreButtons: Set<HTMLElement>;
+  protected navigationItem: NavigationItem;
+  protected ignoreOutClickClassName: string;
 
   constructor(options: {
-    element: DropdownHover['element']
+    element: DropdownHover['element'],
+    ignoreOutClickClassName?: string
   }) {
     super(false);
     safeAssign(this, options);
+    this.forceClose = false;
+    this.inited = false;
+    this.ignoreMouseOut = new Set();
+    this.ignoreButtons = new Set();
   }
 
-  public attachButtonListener(button: HTMLElement, listenerSetter: ListenerSetter) {
+  public attachButtonListener(
+    button: HTMLElement,
+    listenerSetter: ListenerSetter
+  ) {
     let firstTime = true;
     if(IS_TOUCH_SUPPORTED) {
       attachClickEvent(button, () => {
@@ -61,14 +77,41 @@ export default class DropdownHover extends EventListenerBase<{
           this.toggle(true);
         }, TOGGLE_TIMEOUT);
       });
+
+      attachClickEvent(button, () => {
+        const type: IgnoreMouseOutType = 'click';
+        const ignore = !this.ignoreMouseOut.has(type);
+
+        if(ignore && !this.ignoreMouseOut.size) {
+          this.ignoreButtons.add(button);
+          setTimeout(() => {
+            attachClickEvent(window, this.onClickOut, {capture: true});
+          }, 0);
+        }
+
+        this.setIgnoreMouseOut(type, ignore);
+        this.toggle(ignore);
+      }, {listenerSetter});
     }
   }
+
+  protected onClickOut = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if(
+      !findUpAsChild(target, this.element) &&
+      !Array.from(this.ignoreButtons).some((button) => findUpAsChild(target, button) || target === button) &&
+      this.ignoreMouseOut.size <= 1 &&
+      (!this.ignoreOutClickClassName || !findUpClassName(target, this.ignoreOutClickClassName))
+    ) {
+      this.toggle(false);
+    }
+  };
 
   protected onMouseOut = (e: MouseEvent) => {
     if(KEEP_OPEN || !this.isActive()) return;
     clearTimeout(this.displayTimeout);
 
-    if(this.ignoreMouseOut) {
+    if(this.ignoreMouseOut.size) {
       return;
     }
 
@@ -120,6 +163,15 @@ export default class DropdownHover extends EventListenerBase<{
       void this.element.offsetLeft; // reflow
       this.element.classList.add('active');
 
+      this.dispatchEvent('openAfterLayout');
+
+      appNavigationController.pushItem(this.navigationItem = {
+        type: 'dropdown',
+        onPop: () => {
+          this.toggle(false);
+        }
+      });
+
       clearTimeout(this.displayTimeout);
       this.displayTimeout = window.setTimeout(() => {
         this.forceClose = false;
@@ -138,8 +190,13 @@ export default class DropdownHover extends EventListenerBase<{
       } */
     } else {
       this.dispatchEvent('close');
+      this.ignoreMouseOut.clear();
+      this.ignoreButtons.clear();
 
       this.element.classList.remove('active');
+
+      appNavigationController.removeItem(this.navigationItem);
+      detachClickEvent(window, this.onClickOut, {capture: true});
 
       clearTimeout(this.displayTimeout);
       this.displayTimeout = window.setTimeout(() => {
@@ -168,7 +225,7 @@ export default class DropdownHover extends EventListenerBase<{
     return this.element.classList.contains('active');
   }
 
-  public setIgnoreMouseOut(ignore: boolean) {
-    this.ignoreMouseOut = ignore;
+  public setIgnoreMouseOut(type: IgnoreMouseOutType, ignore: boolean) {
+    ignore ? this.ignoreMouseOut.add(type) : this.ignoreMouseOut.delete(type);
   }
 }

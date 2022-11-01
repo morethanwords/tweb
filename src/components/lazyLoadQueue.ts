@@ -8,33 +8,42 @@ import VisibilityIntersector, {OnVisibilityChangeItem} from './visibilityInterse
 import findAndSpliceAll from '../helpers/array/findAndSpliceAll';
 import findAndSplice from '../helpers/array/findAndSplice';
 import LazyLoadQueueIntersector, {LazyLoadElement} from './lazyLoadQueueIntersector';
+import useHeavyAnimationCheck from '../hooks/useHeavyAnimationCheck';
 
 export default class LazyLoadQueue extends LazyLoadQueueIntersector {
-  constructor(parallelLimit?: number) {
+  constructor(parallelLimit?: number, ignoreHeavyAnimation?: boolean) {
     super(parallelLimit);
 
     this.intersector = new VisibilityIntersector(this.onVisibilityChange);
+
+    !ignoreHeavyAnimation && useHeavyAnimationCheck(() => {
+      this.lock();
+    }, () => {
+      this.unlockAndRefresh();
+    });
   }
 
   private onVisibilityChange = ({target, visible}: OnVisibilityChangeItem) => {
-    if(visible) {
-      /* if(DEBUG) {
-        this.log('isIntersecting', target);
-      } */
+    // if(DEBUG) {
+    //   this.log('isIntersecting', target, visible);
+    // }
 
-      // need for set element first if scrolled
-      findAndSpliceAll(this.queue, (i) => i.div === target).forEach((item) => {
+    // if visible - will move to the end of visible arary
+    findAndSpliceAll(this.queue, (i) => i.div === target).forEach((item) => {
+      if(visible) {
         item.wasSeen = true;
-        this.queue.unshift(item);
-        // this.processQueue(item);
-      });
+      }
 
-      this.setProcessQueueTimeout();
-    }
+      item.visible = visible;
+      const index = this.queue.findIndex((item) => !item.visible);
+      this.queue.splice(Math.max(0, index), 0, item);
+    });
+
+    this.setProcessQueueTimeout();
   };
 
   protected getItem() {
-    return findAndSplice(this.queue, item => item.wasSeen);
+    return findAndSplice(this.queue, (item) => item.wasSeen);
   }
 
   public async processItem(item: LazyLoadElement) {
@@ -50,7 +59,7 @@ export default class LazyLoadQueue extends LazyLoadQueueIntersector {
     this.intersector.observe(el.div);
     /* if(el.wasSeen) {
       this.processQueue(el);
-    } else  */if(!el.hasOwnProperty('wasSeen')) {
+    } else  */if(el.wasSeen === undefined) {
       el.wasSeen = false;
     }
 

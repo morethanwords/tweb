@@ -21,7 +21,6 @@ import PopupPeer from '../../popups/peer';
 import RLottiePlayer from '../../../lib/rlottie/rlottiePlayer';
 import copy from '../../../helpers/object/copy';
 import deepEqual from '../../../helpers/object/deepEqual';
-import documentFragmentToHTML from '../../../helpers/dom/documentFragmentToHTML';
 import wrapDraftText from '../../../lib/richTextProcessor/wrapDraftText';
 import filterAsync from '../../../helpers/array/filterAsync';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
@@ -283,7 +282,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
     }
 
     const filter = this.filter;
-    this.nameInputField.value = documentFragmentToHTML(wrapDraftText(filter.title));
+    this.nameInputField.value = wrapDraftText(filter.title);
 
     for(const flag in this.flags) {
       this.flags[flag as keyof AppEditFolderTab['flags']].style.display = !!filter.pFlags[flag as keyof AppEditFolderTab['flags']] ? '' : 'none';

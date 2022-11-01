@@ -181,6 +181,10 @@ Utility Classes
   transform: scaleX(-1);
 }
 
+[dir="auto"] {
+  unicode-bidi: plaintext;
+}
+
 /* .flex-grow {
   flex-grow: 1;
 }

@@ -12,7 +12,9 @@ import {AppManagers} from '../../../lib/appManagers/managers';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 
 export default class GifsTab implements EmoticonsTab {
-  private content: HTMLElement;
+  public content: HTMLElement;
+  public scrollable: Scrollable;
+  public tabId: number;
 
   constructor(private managers: AppManagers) {
 
@@ -23,7 +25,7 @@ export default class GifsTab implements EmoticonsTab {
     const gifsContainer = this.content.firstElementChild as HTMLDivElement;
     attachClickEvent(gifsContainer, EmoticonsDropdown.onMediaClick);
 
-    const scroll = new Scrollable(this.content, 'GIFS');
+    const scroll = this.scrollable = new Scrollable(this.content, 'GIFS');
     const masonry = new GifsMasonry(gifsContainer, EMOTICONSSTICKERGROUP, scroll);
     const preloader = putPreloader(this.content, true);
 

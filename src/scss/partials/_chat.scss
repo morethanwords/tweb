@@ -15,6 +15,8 @@ $input-half-transition-time: math.div($input-transition-time, 2);
 $background-transition-time: 0.05s;
 $background-transition-total-time: #{$input-transition-time - $background-transition-time};
 
+$chat-input-border-radius: 1rem;
+
 /* #bubble-contextmenu > div {
 	padding: 0 5.25 0 1rem;
 
@@ -220,9 +222,9 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 			content: $tgico-smile;
 		}
 
-    html.is-ios &:before {
-      content: $tgico-stickers;
-    }
+    // html.is-ios &:before {
+    //   content: $tgico-stickers;
+    // }
 
 		&.flip-icon:before {
 			content: $tgico-keyboard !important;
@@ -809,7 +811,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 	max-width: calc(100% - (var(--chat-input-size) + #{$btn-send-margin}));
 	justify-content: center;
 	// background-color: var(--surface-color);
-	border-radius: $border-radius-big;
+	border-radius: $chat-input-border-radius;
 	//box-shadow: 0 1px 2px 0 rgba(16, 35, 47, .07);
 	// box-shadow: 0px 1px 8px 1px rgba(0, 0, 0, .18);
 	min-height: var(--chat-input-size);
@@ -1095,7 +1097,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 		position: relative;
 		// z-index: 2;
 		background-color: var(--surface-color);
-		border-radius: .75rem;
+		border-radius: $chat-input-border-radius;
 		padding: var(--padding);
 	}
 	
@@ -1407,7 +1409,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
   
         .input-message-container {
           --translateX: calc(var(--offset-translateX));
-          padding-right: var(--translateX);
+          margin-right: var(--translateX);
           transform: translate(var(--translateX));
         }
 

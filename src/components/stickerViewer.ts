@@ -19,6 +19,7 @@ import windowSize from '../helpers/windowSize';
 import {MyDocument} from '../lib/appManagers/appDocsManager';
 import getStickerEffectThumb from '../lib/appManagers/utils/stickers/getStickerEffectThumb';
 import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
+import {CustomEmojiElement} from '../lib/richTextProcessor/wrapRichText';
 import lottieLoader from '../lib/rlottie/lottieLoader';
 import RLottiePlayer from '../lib/rlottie/rlottiePlayer';
 import rootScope from '../lib/rootScope';
@@ -28,18 +29,24 @@ import wrapSticker from './wrappers/sticker';
 import {STICKER_EFFECT_MULTIPLIER} from './wrappers/sticker';
 
 let hasViewer = false;
-export default function attachStickerViewerListeners({listenTo, listenerSetter, selector}: {
+export default function attachStickerViewerListeners({listenTo, listenerSetter, selector, findTarget: originalFindTarget}: {
   listenerSetter: ListenerSetter,
   listenTo: HTMLElement,
-  selector?: string
+  selector?: string,
+  findTarget?: (e: MouseEvent) => HTMLElement
 }) {
   if(IS_TOUCH_SUPPORTED) {
     return;
   }
 
   const findTarget = (e: MouseEvent, checkForParent?: boolean) => {
-    const s = selector || `.media-sticker-wrapper`;
-    const el = (e.target as HTMLElement).closest(s) as HTMLElement;
+    let el: HTMLElement;
+    if(originalFindTarget) el = originalFindTarget(e);
+    else {
+      const s = selector || `.media-sticker-wrapper`;
+      el = (e.target as HTMLElement).closest(s) as HTMLElement;
+    }
+
     return el && (!checkForParent || findUpAsChild(el, listenTo)) ? el : undefined;
   };
 
@@ -166,24 +173,31 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
       }
 
       if(player instanceof RLottiePlayer) {
-        const prevPlayer = lottieLoader.getAnimation(mediaContainer);
-        player.curFrame = prevPlayer.curFrame;
-        player.play();
-        await new Promise<void>((resolve) => {
-          let i = 0;
-          const c = () => {
-            if(++i === 2) {
-              resolve();
-              player.removeEventListener('enterFrame', c);
-            }
-          };
+        const prevPlayer = mediaContainer instanceof CustomEmojiElement ?
+          mediaContainer.player as RLottiePlayer :
+          lottieLoader.getAnimation(mediaContainer);
+        if(prevPlayer) {
+          player.curFrame = prevPlayer.curFrame;
+          player.play();
+          await new Promise<void>((resolve) => {
+            let i = 0;
+            const c = () => {
+              if(++i === 2) {
+                resolve();
+                player.removeEventListener('enterFrame', c);
+              }
+            };
 
-          player.addEventListener('enterFrame', c);
-        });
-        if(!middleware()) return;
-        player.pause();
+            player.addEventListener('enterFrame', c);
+          });
+          if(!middleware()) return;
+          player.pause();
+        }
       } else if(player instanceof HTMLVideoElement) {
-        player.currentTime = (mediaContainer.querySelector('video') as HTMLVideoElement).currentTime;
+        const prevPlayer = mediaContainer.querySelector<HTMLVideoElement>('video');
+        if(prevPlayer) {
+          player.currentTime = prevPlayer.currentTime;
+        }
       }
 
       return {
@@ -264,6 +278,7 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
         });
         if(!r) return;
       } catch(err) {
+        console.error('sticker viewer error', err);
         return;
       }
 

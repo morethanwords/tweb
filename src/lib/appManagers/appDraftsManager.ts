@@ -13,11 +13,10 @@ import {MessageEntity, DraftMessage, MessagesSaveDraft} from '../../layer';
 import tsNow from '../../helpers/tsNow';
 import stateStorage from '../stateStorage';
 import assumeType from '../../helpers/assumeType';
-import isObject from '../../helpers/object/isObject';
-import deepEqual from '../../helpers/object/deepEqual';
 import {AppManager} from './manager';
 import generateMessageId from './utils/messageId/generateMessageId';
 import getServerMessageId from './utils/messageId/getServerMessageId';
+import draftsAreEqual from './utils/drafts/draftsAreEqual';
 
 export type MyDraftMessage = DraftMessage.draftMessage;
 
@@ -109,40 +108,6 @@ export class AppDraftsManager extends AppManager {
     return draft;
   }
 
-  private draftsAreEqual(draft1: DraftMessage, draft2: DraftMessage) {
-    if(typeof(draft1) !== typeof(draft2)) {
-      return false;
-    }
-
-    if(!isObject(draft1)) {
-      return true;
-    }
-
-    if(draft1._ !== draft2._) {
-      return false;
-    }
-
-    if(draft1._ === 'draftMessage' && draft2._ === draft1._) {
-      if(draft1.reply_to_msg_id !== draft2.reply_to_msg_id) {
-        return false;
-      }
-
-      if(!deepEqual(draft1.entities, draft2.entities)) {
-        return false;
-      }
-
-      if(draft1.message !== draft2.message) {
-        return false;
-      }
-
-      if(draft1.pFlags.no_webpage !== draft2.pFlags.no_webpage) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
   private isEmptyDraft(draft: DraftMessage) {
     if(!draft || draft._ === 'draftMessageEmpty') {
       return true;
@@ -174,7 +139,7 @@ export class AppDraftsManager extends AppManager {
   public async syncDraft(peerId: PeerId, threadId: number, localDraft?: DraftMessage, saveOnServer = true, force = false) {
     // console.warn(dT(), 'sync draft', peerID)
     const serverDraft = this.getDraft(peerId, threadId);
-    if(this.draftsAreEqual(serverDraft, localDraft)) {
+    if(draftsAreEqual(serverDraft, localDraft)) {
       // console.warn(dT(), 'equal drafts', localDraft, serverDraft)
       return true;
     }

@@ -91,6 +91,7 @@ import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import {CLICK_EVENT_NAME} from '../../helpers/dom/clickEvent';
 import PopupPayment from '../../components/popups/payment';
+import wrapPeerTitle from '../../components/wrappers/peerTitle';
 
 export const CHAT_ANIMATION_GROUP: AnimationItemGroup = 'chat';
 
@@ -470,11 +471,11 @@ export class AppImManager extends EventListenerBase<{
         popup.show();
       });
 
-      callsController.addEventListener('incompatible', (userId) => {
+      callsController.addEventListener('incompatible', async(userId) => {
         toastNew({
           langPackKey: 'VoipPeerIncompatible',
           langPackArguments: [
-            new PeerTitle({peerId: userId.toPeerId()}).element
+            await wrapPeerTitle({peerId: userId.toPeerId()})
           ]
         });
       });
@@ -793,6 +794,7 @@ export class AppImManager extends EventListenerBase<{
     const IGNORE_KEYS = new Set(['PageUp', 'PageDown', 'Meta', 'Control']);
     const onKeyDown = (e: KeyboardEvent) => {
       const key = e.key;
+      const isSelectionCollapsed = document.getSelection().isCollapsed;
       if(overlayCounter.isOverlayActive || IGNORE_KEYS.has(key)) return;
 
       const target = e.target as HTMLElement;
@@ -803,7 +805,9 @@ export class AppImManager extends EventListenerBase<{
 
       const chat = this.chat;
 
-      if(e.code === 'KeyC' && (e.ctrlKey || e.metaKey) && target.tagName !== 'INPUT') {
+      if((key.startsWith('Arrow') || (e.shiftKey && key === 'Shift')) && !isSelectionCollapsed) {
+        return;
+      } else if(e.code === 'KeyC' && (e.ctrlKey || e.metaKey) && target.tagName !== 'INPUT') {
         return;
       } else if(e.altKey && (key === 'ArrowUp' || key === 'ArrowDown')) {
         cancelEvent(e);
@@ -831,7 +835,7 @@ export class AppImManager extends EventListenerBase<{
         chat?.input?.messageInput &&
         e.target !== chat.input.messageInput &&
         target.tagName !== 'INPUT' &&
-        !target.hasAttribute('contenteditable') &&
+        !target.isContentEditable &&
         !IS_TOUCH_SUPPORTED &&
         (!mediaSizes.isMobile || this.tabId === 1) &&
         !chat.selection.isSelecting &&
@@ -1155,13 +1159,15 @@ export class AppImManager extends EventListenerBase<{
 
     const userFull = await this.managers.appProfileManager.getProfile(userId);
     if(userFull.pFlags.phone_calls_private) {
-      confirmationPopup({
-        descriptionLangKey: 'Call.PrivacyErrorMessage',
-        descriptionLangArgs: [new PeerTitle({peerId: userId.toPeerId()}).element],
-        button: {
-          langKey: 'OK',
-          isCancel: true
-        }
+      wrapPeerTitle({peerId: userId.toPeerId()}).then((element) => {
+        return confirmationPopup({
+          descriptionLangKey: 'Call.PrivacyErrorMessage',
+          descriptionLangArgs: [element],
+          button: {
+            langKey: 'OK',
+            isCancel: true
+          }
+        });
       });
 
       return;
@@ -1181,16 +1187,18 @@ export class AppImManager extends EventListenerBase<{
   private async discardCallConfirmation(toPeerId: PeerId) {
     const currentCall = callsController.currentCall;
     if(currentCall) {
-      await confirmationPopup({
-        titleLangKey: 'Call.Confirm.Discard.Call.Header',
-        descriptionLangKey: toPeerId.isUser() ? 'Call.Confirm.Discard.Call.ToCall.Text' : 'Call.Confirm.Discard.Call.ToVoice.Text',
-        descriptionLangArgs: [
-          new PeerTitle({peerId: currentCall.interlocutorUserId.toPeerId(false)}).element,
-          new PeerTitle({peerId: toPeerId}).element
-        ],
-        button: {
-          langKey: 'OK'
-        }
+      await Promise.all([
+        wrapPeerTitle({peerId: currentCall.interlocutorUserId.toPeerId(false)}),
+        wrapPeerTitle({peerId: toPeerId})
+      ]).then(([title1, title2]) => {
+        return confirmationPopup({
+          titleLangKey: 'Call.Confirm.Discard.Call.Header',
+          descriptionLangKey: toPeerId.isUser() ? 'Call.Confirm.Discard.Call.ToCall.Text' : 'Call.Confirm.Discard.Call.ToVoice.Text',
+          descriptionLangArgs: [title1, title2],
+          button: {
+            langKey: 'OK'
+          }
+        });
       });
 
       if(!currentCall.isClosing) {
@@ -1202,16 +1210,18 @@ export class AppImManager extends EventListenerBase<{
   private async discardGroupCallConfirmation(toPeerId: PeerId) {
     const currentGroupCall = groupCallsController.groupCall;
     if(currentGroupCall) {
-      await confirmationPopup({
-        titleLangKey: 'Call.Confirm.Discard.Voice.Header',
-        descriptionLangKey: toPeerId.isUser() ? 'Call.Confirm.Discard.Voice.ToCall.Text' : 'Call.Confirm.Discard.Voice.ToVoice.Text',
-        descriptionLangArgs: [
-          new PeerTitle({peerId: currentGroupCall.chatId.toPeerId(true)}).element,
-          new PeerTitle({peerId: toPeerId}).element
-        ],
-        button: {
-          langKey: 'OK'
-        }
+      await Promise.all([
+        wrapPeerTitle({peerId: currentGroupCall.chatId.toPeerId(true)}),
+        wrapPeerTitle({peerId: toPeerId})
+      ]).then(([title1, title2]) => {
+        return confirmationPopup({
+          titleLangKey: 'Call.Confirm.Discard.Voice.Header',
+          descriptionLangKey: toPeerId.isUser() ? 'Call.Confirm.Discard.Voice.ToCall.Text' : 'Call.Confirm.Discard.Voice.ToVoice.Text',
+          descriptionLangArgs: [title1, title2],
+          button: {
+            langKey: 'OK'
+          }
+        });
       });
 
       if(groupCallsController.groupCall === currentGroupCall) {

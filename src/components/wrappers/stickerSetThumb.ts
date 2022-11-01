@@ -6,7 +6,7 @@
 
 import createVideo from '../../helpers/dom/createVideo';
 import renderImageFromUrl from '../../helpers/dom/renderImageFromUrl';
-import {StickerSet} from '../../layer';
+import {Document, StickerSet} from '../../layer';
 import appDownloadManager from '../../lib/appManagers/appDownloadManager';
 import {AppManagers} from '../../lib/appManagers/managers';
 import lottieLoader from '../../lib/rlottie/lottieLoader';
@@ -76,11 +76,18 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
     return;
   }
 
-  const promise = managers.appStickersManager.getStickerSet(set);
-  const stickerSet = await promise;
-  if(stickerSet.documents[0]._ !== 'documentEmpty') { // as thumb will be used first sticker
+  let getDocPromise: Promise<Document>;
+
+  if(set.thumb_document_id) {
+    getDocPromise = managers.appEmojiManager.getCustomEmojiDocument(set.thumb_document_id);
+  } else {
+    getDocPromise = managers.appStickersManager.getStickerSet(set).then((stickerSet) => stickerSet.documents[0]);
+  }
+
+  const doc = await getDocPromise;
+  if(doc._ !== 'documentEmpty') { // as thumb will be used first sticker
     wrapSticker({
-      doc: stickerSet.documents[0],
+      doc,
       div: container,
       group: group,
       lazyLoadQueue,

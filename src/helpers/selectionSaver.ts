@@ -10,21 +10,20 @@ export default class SelectionSaver {
   private input: HTMLElement;
   private range: Range;
 
-  public save() {
-    const input = document.activeElement as HTMLElement;
+  public save(input = document.activeElement as HTMLElement) {
     if(input.isContentEditable || input.tagName === 'INPUT') {
       this.input = input;
     }
 
     const selection = document.getSelection();
-    if(!selection.rangeCount || selection.isCollapsed) {
+    if(!selection.rangeCount) {
       return;
     }
 
     this.range = selection.getRangeAt(0);
   }
 
-  public restore() {
+  public restore(focus?: boolean) {
     if(!this.range) {
       cancelSelection();
       return;
@@ -33,8 +32,6 @@ export default class SelectionSaver {
     const selection = window.getSelection();
     selection.removeAllRanges();
     selection.addRange(this.range);
-    if(this.input) {
-      this.input.focus();
-    }
+    focus && this.input?.focus();
   }
 }

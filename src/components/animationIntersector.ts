@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {CustomEmojiRendererElement} from '../lib/richTextProcessor/wrapRichText';
+import {CustomEmojiElement, CustomEmojiRendererElement} from '../lib/richTextProcessor/wrapRichText';
 import rootScope from '../lib/rootScope';
 import {IS_SAFARI} from '../environment/userAgent';
 import {MOUNT_CLASS_TO} from '../config/debug';
@@ -18,7 +18,8 @@ import {fastRaf} from '../helpers/schedulers';
 
 export type AnimationItemGroup = '' | 'none' | 'chat' | 'lock' |
   'STICKERS-POPUP' | 'emoticons-dropdown' | 'STICKERS-SEARCH' | 'GIFS-SEARCH' |
-  `CHAT-MENU-REACTIONS-${number}` | 'INLINE-HELPER' | 'GENERAL-SETTINGS' | 'STICKER-VIEWER' | 'EMOJI';
+  `CHAT-MENU-REACTIONS-${number}` | 'INLINE-HELPER' | 'GENERAL-SETTINGS' | 'STICKER-VIEWER' | 'EMOJI' |
+  'EMOJI-STATUS';
 export interface AnimationItem {
   el: HTMLElement,
   group: AnimationItemGroup,
@@ -36,15 +37,16 @@ export interface AnimationItemWrapper {
 
 export class AnimationIntersector {
   private observer: IntersectionObserver;
-  private visible: Set<AnimationItem> = new Set();
+  private visible: Set<AnimationItem>;
 
   private overrideIdleGroups: Set<string>;
-  private byGroups: {[group in AnimationItemGroup]?: AnimationItem[]} = {};
-  private lockedGroups: {[group in AnimationItemGroup]?: true} = {};
-  private onlyOnePlayableGroup: AnimationItemGroup = '';
+  private byGroups: {[group in AnimationItemGroup]?: AnimationItem[]};
+  private byPlayer: Map<AnimationItem['animation'], AnimationItem>;
+  private lockedGroups: {[group in AnimationItemGroup]?: true};
+  private onlyOnePlayableGroup: AnimationItemGroup;
 
-  private intersectionLockedGroups: {[group in AnimationItemGroup]?: true} = {};
-  private videosLocked = false;
+  private intersectionLockedGroups: {[group in AnimationItemGroup]?: true};
+  private videosLocked;
 
   constructor() {
     this.observer = new IntersectionObserver((entries) => {
@@ -91,7 +93,16 @@ export class AnimationIntersector {
       }
     });
 
+    this.visible = new Set();
+
     this.overrideIdleGroups = new Set();
+    this.byGroups = {};
+    this.byPlayer = new Map();
+    this.lockedGroups = {};
+    this.onlyOnePlayableGroup = '';
+
+    this.intersectionLockedGroups = {};
+    this.videosLocked = false;
 
     appMediaPlaybackController.addEventListener('play', ({doc}) => {
       if(doc.type === 'round') {
@@ -132,7 +143,9 @@ export class AnimationIntersector {
 
   public removeAnimation(player: AnimationItem) {
     const {el, animation} = player;
+    // if(!(animation instanceof CustomEmojiElement)) {
     animation.remove();
+    // }
 
     if(animation instanceof HTMLVideoElement && IS_SAFARI) {
       setTimeout(() => { // TODO: очистка по очереди, а не все вместе с этим таймаутом
@@ -151,10 +164,18 @@ export class AnimationIntersector {
 
     this.observer.unobserve(el);
     this.visible.delete(player);
+    this.byPlayer.delete(animation);
+  }
+
+  public removeAnimationByPlayer(player: AnimationItemWrapper) {
+    const item = this.byPlayer.get(player);
+    if(item) {
+      this.removeAnimation(item);
+    }
   }
 
   public addAnimation(_animation: AnimationItem['animation'], group: AnimationItemGroup = '') {
-    if(group === 'none') {
+    if(group === 'none' || this.byPlayer.has(_animation)) {
       return;
     }
 
@@ -163,6 +184,8 @@ export class AnimationIntersector {
       el = _animation.el[0];
     } else if(_animation instanceof CustomEmojiRendererElement) {
       el = _animation.canvas;
+    } else if(_animation instanceof CustomEmojiElement) {
+      el = _animation.placeholder ?? _animation;
     } else if(_animation instanceof HTMLElement) {
       el = _animation;
     }
@@ -181,6 +204,7 @@ export class AnimationIntersector {
 
     (this.byGroups[group as AnimationItemGroup] ??= []).push(animation);
     this.observer.observe(animation.el);
+    this.byPlayer.set(_animation, animation);
   }
 
   public checkAnimations(blurred?: boolean, group?: AnimationItemGroup, destroy = false) {

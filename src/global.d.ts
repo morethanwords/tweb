@@ -18,6 +18,11 @@ declare global {
     // middleware?: Middleware;
   }
 
+  // typescript is lack of types
+  interface Selection {
+    modify(alter: 'move' | 'extend', direction: 'forward' | 'backward' | 'left' | 'right', granularity: 'character' | 'word' | 'sentence' | 'line' | 'paragraph' | 'lineboundary' | 'sentenceboundary' | 'paragraphboundary' | 'documentboundary'): void;
+  }
+
   type UserId = User.user['id'];
   type ChatId = Chat.chat['id'];
   // type PeerId = `u${UserId}` | `c${ChatId}`;
@@ -28,6 +33,8 @@ declare global {
   type DocId = Document.document['id'];
   type Long = string | number;
   type MTLong = string;
+
+  type AppEmoji = {emoji: string, docId?: DocId};
 
   type MTMimeType = 'video/quicktime' | 'image/gif' | 'image/jpeg' | 'application/pdf' |
     'video/mp4' | 'image/webp' | 'audio/mpeg' | 'audio/ogg' | 'application/octet-stream' |

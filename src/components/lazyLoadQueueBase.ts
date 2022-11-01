@@ -5,13 +5,16 @@
  */
 
 import indexOfAndSplice from '../helpers/array/indexOfAndSplice';
+import {Middleware} from '../helpers/middleware';
 import throttle from '../helpers/schedulers/throttle';
 import {logger, LogTypes} from '../lib/logger';
 
 const PARALLEL_LIMIT = 8;
+const IGNORE_ERRORS: Set<ErrorType> = new Set(['NO_ENTRY_FOUND', 'STORAGE_OFFLINE', 'MIDDLEWARE']);
 
 export type LazyLoadElementBase = {
-  load: () => Promise<any>
+  load: () => Promise<any>,
+  middleware?: Middleware
 };
 
 export default class LazyLoadQueueBase {
@@ -26,7 +29,7 @@ export default class LazyLoadQueueBase {
   protected processQueue: () => void;
 
   constructor(protected parallelLimit = PARALLEL_LIMIT) {
-    this.processQueue = throttle(() => this._processQueue(), 20, false);
+    this.processQueue = throttle(() => this._processQueue(), 8, false);
   }
 
   public clear() {
@@ -80,8 +83,7 @@ export default class LazyLoadQueueBase {
       // await item.load(item.div);
       await this.loadItem(item);
     } catch(err) {
-      const ignoreErrors: Set<ErrorType> = new Set(['NO_ENTRY_FOUND', 'STORAGE_OFFLINE']);
-      if(!ignoreErrors.has((err as ApiError)?.type)) {
+      if(!IGNORE_ERRORS.has((err as ApiError)?.type)) {
         this.log.error('loadMediaQueue error:', err/* , item */);
       }
     }
@@ -112,7 +114,7 @@ export default class LazyLoadQueueBase {
     if(!this.queue.length || this.lockPromise || (this.parallelLimit > 0 && this.inProcess.size >= this.parallelLimit)) return;
 
     // console.log('_processQueue start');
-    let added = 0;
+    // let added = 0;
     do {
       if(item) {
         indexOfAndSplice(this.queue, item);
@@ -127,7 +129,7 @@ export default class LazyLoadQueueBase {
       }
 
       item = null;
-      ++added;
+      // ++added;
     } while(this.inProcess.size < this.parallelLimit && this.queue.length);
     // console.log('_processQueue end, added', added, this.queue.length);
   }

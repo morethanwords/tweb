@@ -176,19 +176,19 @@ export default class GifsMasonry {
   };
 
   public add(doc: MyDocument, appendTo = this.element) {
-    let gifWidth = doc.w;
-    let gifHeight = doc.h;
-    if(gifHeight < height) {
-      gifWidth = height / gifHeight * gifWidth;
-      gifHeight = height;
-    }
+    // let gifWidth = doc.w;
+    // let gifHeight = doc.h;
+    // if(gifHeight < height) {
+    //   gifWidth = height / gifHeight * gifWidth;
+    //   gifHeight = height;
+    // }
 
-    const willUseWidth = Math.min(maxSingleWidth, width, gifWidth);
-    const size = calcImageInBox(gifWidth, gifHeight, willUseWidth, height);
+    // const willUseWidth = Math.min(maxSingleWidth, width, gifWidth);
+    // const size = calcImageInBox(gifWidth, gifHeight, willUseWidth, height);
 
     const div = document.createElement('div');
-    div.classList.add('gif'/* , 'fade-in-transition' */);
-    div.style.width = size.width + 'px';
+    div.classList.add('gif', 'grid-item'/* , 'fade-in-transition' */);
+    // div.style.width = size.width + 'px';
     // div.style.opacity = '0';
     // div.style.height = h + 'px';
     div.dataset.docId = '' + doc.id;

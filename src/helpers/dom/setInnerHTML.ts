@@ -10,7 +10,6 @@ export default function setInnerHTML(elem: Element, html: string | DocumentFragm
     if(!html) elem.textContent = '';
     else elem.innerHTML = html;
   } else {
-    elem.textContent = '';
-    elem.append(html);
+    elem.replaceChildren(html);
   }
 }

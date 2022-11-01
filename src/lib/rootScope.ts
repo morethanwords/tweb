@@ -89,6 +89,7 @@ export type BroadcastEvents = {
   'stickers_installed': StickerSet.stickerSet,
   'stickers_deleted': StickerSet.stickerSet,
   'stickers_updated': {type: 'recent' | 'faved', stickers: MyDocument[]},
+  'stickers_top': Long,
   'sticker_updated': {type: 'recent' | 'faved', document: MyDocument, faved: boolean},
 
   'state_cleared': void,
@@ -122,7 +123,7 @@ export type BroadcastEvents = {
 
   'media_play': void,
 
-  'emoji_recent': string,
+  'emoji_recent': AppEmoji,
 
   'download_progress': Progress,
   'document_downloading': DocId,

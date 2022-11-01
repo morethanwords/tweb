@@ -994,6 +994,7 @@ const lang = {
   'Channel.DescriptionHolderDescrpiton': 'You can provide an optional description for your channel.',
   'Context.ViewStickerSet': 'View Sticker Set',
   'CreateGroup.NameHolder': 'Group Name',
+  'CustomEmoji.PremiumAlert': 'Subscribe to Telegram Premium to unlock this emoji. [Read More]()',
   'Date.Today': 'Today',
   'DeleteChat.DeleteGroupForAll': 'Delete for all members',
   'DeleteChannelForAll': 'Delete for all subscribers',

@@ -99,14 +99,17 @@ $chat-input-inner-padding-handhelds: .25rem;
   --font-size-16: 16px;
   --font-size-14: 14px;
   --font-size-12: 12px;
-  --esg-sticker-size: 80px;
-  --esg-custom-emoji-size: 32px;
+  --esg-sticker-size: 72px;
+  --esg-custom-emoji-size: 36px;
+  --popup-sticker-size: 80px;
   --disabled-opacity: .3;
   --round-video-size: 280px;
   --menu-box-shadow: 0px 0px 10px var(--menu-box-shadow-color);
   --menu-backdrop-filter: blur(50px);
   --font-monospace: 'Roboto Mono', monospace;
   --font-weight-bold: 500;
+  --selection-background-color: rgba(var(--primary-color-rgb), .4);
+  --selection-color: inherit;
 
   --topbar-floating-scaleX: 1;
   --topbar-call-height: 3rem;
@@ -138,6 +141,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   @include respond-to(handhelds) {
     --right-column-width: 100vw;
     --esg-sticker-size: 68px;
+    --popup-sticker-size: 68px;
     --round-video-size: 200px;
 
     --chat-input-size: #{$chat-input-handhelds-size};
@@ -163,7 +167,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   }
 }
 
-@mixin splitColor($property, $color, $light: true, $dark: true, $light-rgb: false, $dark-rgb: false) {
+@mixin splitColor($property, $color, $light: true, $dark: true, $light-rgb: false, $dark-rgb: false, $rgb: false) {
   --#{$property}: #{$color};
 
   $lightened: hover-color($color);
@@ -183,6 +187,10 @@ $chat-input-inner-padding-handhelds: .25rem;
   @if $dark-rgb != false {
     --dark-filled-#{$property}: #{rgba-to-rgb($darkened, $dark-rgb)};
   }
+
+  @if $rgb != false {
+    --#{$property}-rgb: #{red($color)}, #{green($color)}, #{blue($color)};
+  }
 }
 
 :root {
@@ -201,8 +209,8 @@ $chat-input-inner-padding-handhelds: .25rem;
   --input-search-background-color: #fff;
   --input-search-border-color: #dfe1e5;
 
-  @include splitColor(primary-color, #3390ec, true, true, #fff);
-  --primary-text-color: #000;
+  @include splitColor(primary-color, #3390ec, true, true, #fff, false, true);
+  @include splitColor(primary-text-color, #000, false, false, false, false, true);
 
   --secondary-color: #c4c9cc;
   @include splitColor(secondary-text-color, #707579, true, false);
@@ -221,7 +229,8 @@ $chat-input-inner-padding-handhelds: .25rem;
   --spoiler-background-color: #e3e5e8;
   --spoiler-draft-background-color: #d9d9d9;
   --monospace-text-color: var(--danger-color);
-  --menu-background-color: rgba(var(--surface-color-rgb), .75);
+  --backdrop-opacity: .85;
+  --menu-background-color: rgba(var(--surface-color-rgb), var(--backdrop-opacity));
 
   --message-background-color: var(--surface-color);
   --message-checkbox-color: #61c642;
@@ -237,6 +246,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   @include splitColor(message-out-primary-color, #4fae4e, false, false, $message-out-background-color);
   --message-out-status-color: var(--message-out-primary-color);
   --message-out-audio-play-button-color: #fff;
+  --message-out-selection-background-color: var(--selection-background-color);
 
   --gc-background-color: #212121;
   --gc-button-leave-color: rgba(255, 89, 90, .3);
@@ -276,8 +286,8 @@ $chat-input-inner-padding-handhelds: .25rem;
   --input-search-background-color: #181818;
   --input-search-border-color: #2f2f2f;
 
-  @include splitColor(primary-color, #8774E1, true, true, #212121);
-  --primary-text-color: #fff;
+  @include splitColor(primary-color, #8774E1, true, true, #212121, false, true);
+  @include splitColor(primary-text-color, #fff, false, false, false, false, true);
 
   --secondary-color: #707579;
   @include splitColor(secondary-text-color, #aaaaaa, true, false);
@@ -311,6 +321,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   @include splitColor(message-out-primary-color, #fff, false, false, $message-out-background-color);
   --message-out-status-color: rgba(255, 255, 255, .6);
   --message-out-audio-play-button-color: var(--message-out-background-color);
+  --message-out-selection-background-color: rgba(var(--surface-color-rgb), .4);
   // * Night theme end
 }
 
@@ -966,6 +977,49 @@ img.emoji {
   outline: none;
   cursor: text;
   white-space: pre-wrap;
+
+  .custom-emoji {
+    display: inline-block;
+    margin-bottom: -2px; // compensate difference in sizes
+    // color: transparent;
+
+    &:before {
+      content: none;
+      // display: inline;
+    }
+  }
+
+  [style*="markup"] {
+    font-family: inherit !important;
+  }
+
+  [style*="bold"] {
+    font-weight: bold;
+  }
+
+  [style*="italic"] {
+    font-style: italic;
+  }
+
+  [style*="underline"] {
+    text-decoration-line: underline;
+  }
+
+  [style*="strikethrough"] {
+    text-decoration-line: line-through;
+  }
+
+  [style*="underline"][style*="strikethrough"] {
+    text-decoration-line: underline line-through;
+  }
+
+  [style*="monospace"] {
+    font-family: var(--font-monospace) !important;
+  }
+
+  [style*="spoiler"] {
+    background-color: var(--spoiler-draft-background-color);
+  }
 }
 
 [contenteditable][data-placeholder] {
@@ -1081,6 +1135,28 @@ img.emoji {
 
 .content-empty {
   color: var(--secondary-text-color);
+}
+
+::selection,
+.selection:after {
+  background: var(--selection-background-color);
+}
+
+.selection:after {
+  content: " ";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+.input-something {
+  display: inline-block;
+}
+
+.input-selectable {
+  position: relative;
 }
 
 @keyframes grow-icon {
@@ -1553,14 +1629,34 @@ hr {
 }
 
 .super-emojis {
+  --esg-emoji-size: 2.125rem;
+  --esg-emoji-total-size: calc(var(--esg-emoji-size) + .5rem);
+  --custom-emoji-size: var(--esg-emoji-size);
   // ! No chrome 56 support
   display: grid;
-  grid-column-gap: 2.44px;
-  grid-template-columns: repeat(auto-fill, 2.625rem);
+  column-gap: 2.44px;
+  // row-gap: .25rem;
+  grid-template-columns: repeat(auto-fill, var(--esg-emoji-total-size));
   justify-content: space-between;
+  position: relative;
 
-  font-size: 2.125rem;
-  line-height: 2.125rem;
+  font-size: var(--esg-emoji-size);
+  line-height: var(--esg-emoji-size);
+
+  // * new
+  // --esg-emoji-size: 2.25rem;
+  // --esg-emoji-total-size: var(--esg-emoji-size);
+  // --custom-emoji-size: var(--esg-emoji-size);
+  // column-gap: .625rem;
+  
+  // --esg-emoji-size: 1.875rem;
+  // --esg-emoji-total-size: calc(var(--esg-emoji-size) + 0.375rem);
+  // --custom-emoji-size: 2.25rem;
+  
+  column-gap: .25rem;
+  --esg-emoji-size: 2.125rem;
+  --esg-emoji-total-size: 2.625rem;
+  --custom-emoji-size: 2.25rem;
 
   .super-emoji {
     display: inline-block;
@@ -1571,9 +1667,9 @@ hr {
     cursor: pointer;
     user-select: none;
     vertical-align: middle;
-    
-    width: 2.625rem;
-    height: 2.625rem;
+
+    width: var(--esg-emoji-total-size);
+    height: var(--esg-emoji-total-size);
 
     // html:not(.emoji-supported) & {
       position: relative;
@@ -1608,8 +1704,55 @@ hr {
       vertical-align: unset;
       margin: 0;
     }
-    
+
     @include hover-background-effect();
+  }
+
+  &.not-local {
+    .super-emoji {
+      padding: .1875rem;
+    }
+  }
+
+  .super-emoji {
+    margin: 0;
+    // border-radius: unset;
+
+    // @include hover-effect() {
+    //   &:before {
+    //     content: " ";
+    //     border-radius: $border-radius;
+    //     background-color: var(--light-secondary-text-color);
+    //     position: absolute;
+    //     top: -.1875rem;
+    //     right: -.1875rem;
+    //     bottom: -.1875rem;
+    //     left: -.1875rem;
+    //   }
+    // }
+  }
+
+  &:not(.not-local) {
+    .super-emoji {
+      overflow: hidden;
+
+      html.native-emoji & {
+        padding-top: .3125rem;
+        padding-bottom: .3125rem;
+      }
+    }
+  }
+
+  .custom-emoji {
+    display: block;
+
+    &-renderer {
+      z-index: 1;
+    }
+
+    &:before {
+      content: none;
+    }
   }
 }
 
@@ -1679,7 +1822,8 @@ hr {
 }
 
 .verified-icon,
-.premium-icon {
+.premium-icon,
+.emoji-status {
   flex: 0 0 auto;
   font-size: 1rem;
   display: flex;
@@ -1688,6 +1832,13 @@ hr {
   margin-left: .125rem;
   width: 1.25rem;
   height: 1.25rem;
+}
+
+.emoji-status {
+  position: relative;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin-left: .25rem;
 }
 
 .premium-icon {

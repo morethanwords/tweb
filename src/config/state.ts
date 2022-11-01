@@ -55,6 +55,7 @@ export type State = {
   maxSeenMsgId: number,
   stateCreatedTime: number,
   recentEmoji: string[],
+  recentCustomEmoji: DocId[],
   topPeersCache: {
     [type in TopPeerType]?: {
       peers: MyTopPeer[],
@@ -156,6 +157,7 @@ export const STATE_INIT: State = {
   maxSeenMsgId: 0,
   stateCreatedTime: Date.now(),
   recentEmoji: [],
+  recentCustomEmoji: [],
   topPeersCache: {},
   recentSearch: [],
   version: STATE_VERSION,

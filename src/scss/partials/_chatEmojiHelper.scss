@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 .emoji-helper {
   height: 50px;
   padding: .25rem 0 !important;
@@ -15,11 +21,12 @@
     align-items: center;
     justify-content: flex-start; */
     
-    &:before, &:after {
+    &:before,
+    &:after {
       display: inline-block;
       content: " ";
       //flex: 0 0 auto;
-      width: .1875rem;
+      width: .25rem;
     }
   }
 

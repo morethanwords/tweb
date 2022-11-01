@@ -20,7 +20,7 @@ export type RLottieOptions = {
   canvas?: HTMLCanvasElement,
   autoplay?: boolean,
   animationData: Blob,
-  loop?: boolean,
+  loop?: RLottiePlayer['loop'],
   width?: number,
   height?: number,
   group?: AnimationItemGroup,
@@ -45,7 +45,7 @@ export function getLottiePixelRatio(width: number, height: number, needUpscale?:
       if(!IS_APPLE && mediaSizes.isMobile) {
         pixelRatio = 1;
       }
-    } else if(width > 60 && height > 60) {
+    } else if((width > 60 && height > 60) || IS_ANDROID) {
       pixelRatio = Math.max(1.5, pixelRatio - 1.5);
     }
   }
@@ -87,8 +87,8 @@ export default class RLottiePlayer extends EventListenerBase<{
   private speed = 1;
   public autoplay = true;
   public _autoplay: boolean; // ! will be used to store original value for settings.stickers.loop
-  public loop = true;
-  private _loop: boolean; // ! will be used to store original value for settings.stickers.loop
+  public loop: number | boolean = true;
+  private _loop: RLottiePlayer['loop']; // ! will be used to store original value for settings.stickers.loop
   public group: AnimationItemGroup = '';
 
   private frInterval: number;
@@ -110,7 +110,7 @@ export default class RLottiePlayer extends EventListenerBase<{
   public minFrame: number;
   public maxFrame: number;
 
-  // private playedTimes = 0;
+  private playedTimes = 0;
 
   private currentMethod: RLottiePlayer['mainLoopForwards'] | RLottiePlayer['mainLoopBackwards'];
   private frameListener: (currentFrame: number) => void;
@@ -258,6 +258,7 @@ export default class RLottiePlayer extends EventListenerBase<{
     this.paused = true;
     if(clearPendingRAF) {
       clearTimeout(this.rafId);
+      this.rafId = undefined;
     }
     // window.cancelAnimationFrame(this.rafId);
   }
@@ -450,7 +451,9 @@ export default class RLottiePlayer extends EventListenerBase<{
   }
 
   private onLap() {
-    // this.playedTimes++;
+    if(++this.playedTimes === this.loop) {
+      this.loop = false;
+    }
 
     if(!this.loop) {
       this.pause(false);
@@ -489,6 +492,7 @@ export default class RLottiePlayer extends EventListenerBase<{
   public setMainLoop() {
     // window.cancelAnimationFrame(this.rafId);
     clearTimeout(this.rafId);
+    this.rafId = undefined;
 
     this.frInterval = 1000 / this.fps / this.speed * this.skipDelta;
     this.frThen = Date.now() - this.frInterval;

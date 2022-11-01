@@ -6,7 +6,6 @@
 
 import {animateSingle} from '../../helpers/animation';
 import {hexToRgb} from '../../helpers/color';
-import {easeOutCubicApply} from '../../helpers/easing/easeOutCubic';
 import {easeOutQuadApply} from '../../helpers/easing/easeOutQuad';
 
 const WIDTH = 50;

@@ -14,6 +14,7 @@ import blobConstruct from '../../helpers/blob/blobConstruct';
 import apiManagerProxy from '../mtproto/mtprotoworker';
 import IS_WEB_ASSEMBLY_SUPPORTED from '../../environment/webAssemblySupport';
 import makeError from '../../helpers/makeError';
+import App from '../../config/app';
 
 export type LottieAssetName = 'EmptyFolder' | 'Folders_1' | 'Folders_2' |
   'TwoFactorSetupMonkeyClose' | 'TwoFactorSetupMonkeyCloseAndPeek' |
@@ -25,7 +26,7 @@ export class LottieLoader {
   private loadPromise: Promise<void> = !IS_WEB_ASSEMBLY_SUPPORTED ? Promise.reject() : undefined;
   private loaded = false;
 
-  private workersLimit = 4;
+  private workersLimit = App.threads;
   private players: {[reqId: number]: RLottiePlayer} = {};
   private playersByCacheName: {[cacheName: string]: Set<RLottiePlayer>} = {};
 

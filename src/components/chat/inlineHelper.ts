@@ -262,7 +262,7 @@ export default class InlineHelper extends AutocompleteHelper {
         if(!this.onChangeScreen) {
           this.onChangeScreen = () => {
             if(this.list.classList.contains('is-gallery')) {
-              const width = (this.list.childElementCount * mediaSizes.active.esgSticker.width) + (this.list.childElementCount - 1 * 1);
+              const width = (this.list.childElementCount * mediaSizes.active.popupSticker.width) + (this.list.childElementCount - 1 * 1);
               this.list.style.width = width + 'px';
             } else {
               this.list.style.width = '';

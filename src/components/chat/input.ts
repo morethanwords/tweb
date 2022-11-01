@@ -39,11 +39,10 @@ import blurActiveElement from '../../helpers/dom/blurActiveElement';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import cancelSelection from '../../helpers/dom/cancelSelection';
 import {attachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent';
-import getRichValue from '../../helpers/dom/getRichValue';
 import isInputEmpty from '../../helpers/dom/isInputEmpty';
 import isSendShortcutPressed from '../../helpers/dom/isSendShortcutPressed';
 import placeCaretAtEnd from '../../helpers/dom/placeCaretAtEnd';
-import {MarkdownType, markdownTags} from '../../helpers/dom/getRichElementValue';
+import {MarkdownType} from '../../helpers/dom/getRichElementValue';
 import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 import EmojiHelper from './emojiHelper';
 import CommandsHelper from './commandsHelper';
@@ -96,6 +95,14 @@ import getStickerEffectThumb from '../../lib/appManagers/utils/stickers/getStick
 import PopupStickers from '../popups/stickers';
 import wrapPeerTitle from '../wrappers/peerTitle';
 import wrapReply from '../wrappers/reply';
+import {getEmojiFromElement} from '../emoticonsDropdown/tabs/emoji';
+import hasMarkupInSelection from '../../helpers/dom/hasMarkupInSelection';
+import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
+import RichInputHandler from '../../helpers/dom/richInputHandler';
+import {insertRichTextAsHTML} from '../inputField';
+import getCaretPosNew from '../../helpers/dom/getCaretPosNew';
+import draftsAreEqual from '../../lib/appManagers/utils/drafts/draftsAreEqual';
+import isSelectionEmpty from '../../helpers/dom/isSelectionEmpty';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -687,9 +694,7 @@ export default class ChatInput {
         } */
       }
 
-      if(this.messageInputField) {
-        this.messageInputField.onFakeInput();
-      }
+      this.messageInputField?.onFakeInput();
     });
 
     this.listenerSetter.add(rootScope)('draft_updated', ({peerId, threadId, draft, force}) => {
@@ -938,7 +943,7 @@ export default class ChatInput {
         // transform = `translateX(0px) scaleX(${scale})`;
 
         if(scale < 1) {
-          const br = 12;
+          const br = 16;
           borderRadius = '' + (br + br * (1 - scale)) + 'px';
         }
       }
@@ -1086,10 +1091,8 @@ export default class ChatInput {
     }
   }
 
-  public saveDraft() {
-    if(!this.chat.peerId || this.editMsgId || this.chat.type === 'scheduled') return;
-
-    const {value, entities} = getRichValue(this.messageInputField.input);
+  public getCurrentInputAsDraft() {
+    const {value, entities} = getRichValueWithCaret(this.messageInputField.input, true, false);
 
     let draft: DraftMessage.draftMessage;
     if(value.length || this.replyToMsgId) {
@@ -1105,6 +1108,12 @@ export default class ChatInput {
       };
     }
 
+    return draft;
+  }
+
+  public saveDraft() {
+    if(!this.chat.peerId || this.editMsgId || this.chat.type === 'scheduled') return;
+    const draft = this.getCurrentInputAsDraft();
     this.managers.appDraftsManager.syncDraft(this.chat.peerId, this.chat.threadId, draft);
   }
 
@@ -1165,9 +1174,10 @@ export default class ChatInput {
       }
     }
 
-    const wrappedDraft = wrapDraft(draft);
+    const wrappedDraft = wrapDraft(draft, this.chat.peerId);
+    const currentDraft = this.getCurrentInputAsDraft();
 
-    if(this.messageInputField.value === wrappedDraft && this.replyToMsgId === draft.reply_to_msg_id) return false;
+    if(draftsAreEqual(draft, currentDraft) &&/* this.messageInputField.value === wrappedDraft &&  */this.replyToMsgId === draft.reply_to_msg_id) return false;
 
     if(fromUpdate) {
       this.clearHelper();
@@ -1258,6 +1268,8 @@ export default class ChatInput {
       goDownBtn.classList.toggle('is-broadcast', isBroadcast);
       goDownBtn.classList.remove('hide');
 
+      this.messageInputField.onFakeInput();
+
       if(this.goDownUnreadBadge) {
         this.setUnreadCount();
       }
@@ -1319,6 +1331,7 @@ export default class ChatInput {
 
       if(this.messageInput) {
         this.updateMessageInput(canSend, placeholderKey, filteredAttachMenuButtons);
+        this.messageInput.dataset.peerId = '' + peerId;
       } else if(this.pinnedControlBtn) {
         this.pinnedControlBtn.append(i18n(canPinMessage ? 'Chat.Input.UnpinAll' : 'Chat.Pinned.DontShow'));
       }
@@ -1427,9 +1440,9 @@ export default class ChatInput {
     });
 
     if(!canSend) {
-      messageInput.removeAttribute('contenteditable');
+      messageInput.contentEditable = 'inherit';
     } else {
-      messageInput.setAttribute('contenteditable', 'true');
+      messageInput.contentEditable = 'true';
       this.setDraft(undefined, false);
 
       if(!messageInput.innerHTML) {
@@ -1472,8 +1485,9 @@ export default class ChatInput {
   }
 
   private attachMessageInputListeners() {
-    this.listenerSetter.add(this.messageInput)('keydown', (e: KeyboardEvent) => {
+    this.listenerSetter.add(this.messageInput)('keydown', (e) => {
       const key = e.key;
+
       if(isSendShortcutPressed(e)) {
         cancelEvent(e);
         this.sendMessage();
@@ -1498,7 +1512,7 @@ export default class ChatInput {
     });
 
     if(IS_TOUCH_SUPPORTED) {
-      attachClickEvent(this.messageInput, (e) => {
+      attachClickEvent(this.messageInput, () => {
         this.appImManager.selectTab(1); // * set chat tab for album orientation
         // this.saveScroll();
         emoticonsDropdown.toggle(false);
@@ -1578,17 +1592,39 @@ export default class ChatInput {
   };
 
   public applyMarkdown(type: MarkdownType, href?: string) {
-    const MONOSPACE_FONT = 'var(--font-monospace)';
-    const SPOILER_FONT = 'spoiler';
+    // const MONOSPACE_FONT = 'var(--font-monospace)';
+    // const SPOILER_FONT = 'spoiler';
     const commandsMap: Partial<{[key in typeof type]: string | (() => void)}> = {
-      bold: 'Bold',
-      italic: 'Italic',
-      underline: 'Underline',
-      strikethrough: 'Strikethrough',
-      monospace: () => document.execCommand('fontName', false, MONOSPACE_FONT),
-      link: href ? () => document.execCommand('createLink', false, href) : () => document.execCommand('unlink', false, null),
-      spoiler: () => document.execCommand('fontName', false, SPOILER_FONT)
+      // bold: 'Bold',
+      // italic: 'Italic',
+      // underline: 'Underline',
+      // strikethrough: 'Strikethrough',
+      // monospace: () => document.execCommand('fontName', false, MONOSPACE_FONT),
+      link: href ? () => document.execCommand('createLink', false, href) : () => document.execCommand('unlink', false, null)
+      // spoiler: () => document.execCommand('fontName', false, SPOILER_FONT)
     };
+
+    const c = (type: MarkdownType) => {
+      commandsMap[type] = () => {
+        const k = (canCombine.includes(type) ? canCombine : [type]).filter((type) => hasMarkup[type]);
+        if(!indexOfAndSplice(k, type)) {
+          k.push(type);
+        }
+
+        if(!k.length) {
+          return this.resetCurrentFontFormatting();
+        } else {
+          return document.execCommand('fontName', false, 'markup-' + k.join('-'));
+        }
+      };
+    };
+
+    const canCombine = ['bold', 'italic', 'underline', 'strikethrough', 'spoiler'] as (typeof type)[];
+    canCombine.forEach((type) => {
+      c(type);
+    });
+
+    c('monospace');
 
     if(!commandsMap[type]) {
       return false;
@@ -1598,7 +1634,7 @@ export default class ChatInput {
 
     // type = 'monospace';
 
-    const saveExecuted = this.prepareDocumentExecute();
+    // const saveExecuted = this.prepareDocumentExecute();
     const executed: any[] = [];
     /**
      * * clear previous formatting, due to Telegram's inability to handle several entities
@@ -1636,44 +1672,53 @@ export default class ChatInput {
       }
     }; */
 
+    // fix applying markdown when range starts from contenteditable="false"
+    let textNode: Text;
+    // do {
+    //   // const {node, offset, selection} = getCaretPosNew(this.messageInput, true);
+    //   const selection = document.getSelection();
+    //   const range = selection.getRangeAt(0);
+    //   const {node, offset} = getCaretPosF(this.messageInput, range.startContainer, range.startOffset);
+    //   // const node = range.startContainer as ChildNode;
+    //   if(node?.textContent === BOM || (node as HTMLElement)?.isContentEditable === false) {
+    //     // selection.modify('extend', 'backward', 'character');
+    //     textNode = document.createTextNode(BOM);
+    //     (node.nodeType === node.ELEMENT_NODE ? node : node.parentElement).before(textNode);
+    //     range.setStart(textNode, 0);
+    //   }/*  else {
+    //     break;
+    //   } */
+
+    //   break;
+    // } while(true);
+
+    const richInputHandler = RichInputHandler.getInstance();
+    const restore = richInputHandler.prepareApplyingMarkdown();
+
+    const listener = this.listenerSetter.add(this.messageInput)('input', cancelEvent, {capture: true, passive: false}) as any as Listener;
+
     executed.push(document.execCommand('styleWithCSS', false, 'true'));
 
-    const checkType = (type: MarkdownType) => {
-      let haveThisType = false;
-      // executed.push(document.execCommand('styleWithCSS', false, 'true'));
-
-      const selection = window.getSelection();
-      if(!selection.isCollapsed) {
-        const range = selection.getRangeAt(0);
-        const tag = markdownTags[type];
-
-        const node = range.commonAncestorContainer;
-        if((node.parentNode as HTMLElement).matches(tag.match) || (node instanceof HTMLElement && node.matches(tag.match))) {
-          haveThisType = true;
-        }
-      }
-
-      return haveThisType;
-    };
+    const hasMarkup = hasMarkupInSelection(Object.keys(commandsMap) as (typeof type)[]);
 
     // * monospace can't be combined with different types
-    if(type === 'monospace' || type === 'spoiler') {
+    /* if(type === 'monospace' || type === 'spoiler') {
       // executed.push(document.execCommand('styleWithCSS', false, 'true'));
 
-      const haveThisType = checkType(type);
+      const haveThisType = hasMarkup[type];
       // executed.push(document.execCommand('removeFormat', false, null));
 
       if(haveThisType) {
         executed.push(this.resetCurrentFontFormatting());
       } else {
-        if(type === 'monospace' || checkType('monospace')) {
-          executed.push(this.resetCurrentFormatting());
-        }
+        // if(type === 'monospace' || hasMarkup['monospace']) {
+        //   executed.push(this.resetCurrentFormatting());
+        // }
 
         executed.push(typeof(command) === 'function' ? command() : document.execCommand(command, false, null));
       }
-    } else {
-      if(checkType('monospace')) {
+    } else  */{
+      if(hasMarkup['monospace'] && type === 'link') {
         executed.push(this.resetCurrentFormatting());
       }
 
@@ -1682,11 +1727,21 @@ export default class ChatInput {
 
     executed.push(document.execCommand('styleWithCSS', false, 'false'));
 
+    restore();
+
     // checkForSingle();
-    saveExecuted();
+    // saveExecuted();
     if(this.appImManager.markupTooltip) {
       this.appImManager.markupTooltip.setActiveMarkupButton();
     }
+
+    if(textNode) {
+      (textNode.parentElement === this.messageInput ? textNode : textNode.parentElement).remove();
+      textNode.nodeValue = '';
+    }
+
+    this.listenerSetter.remove(listener);
+    this.messageInputField.simulateInputEvent();
 
     return true;
   }
@@ -1718,7 +1773,7 @@ export default class ChatInput {
     const applyMarkdown = formatKeys[code];
 
     const selection = document.getSelection();
-    if(selection.toString().trim().length && applyMarkdown) {
+    if(!isSelectionEmpty(selection) && applyMarkdown) {
       // * костыльчик
       if(code === 'KeyK') {
         this.appImManager.markupTooltip.showLinkEditor();
@@ -1855,7 +1910,7 @@ export default class ChatInput {
       }
     } else {
       const time = Date.now();
-      if(time - this.lastTimeType >= 6000) {
+      if((time - this.lastTimeType) >= 6000) {
         this.lastTimeType = time;
         this.managers.appMessagesManager.setTyping(this.chat.peerId, {_: 'sendMessageTypingAction'});
       }
@@ -1879,6 +1934,8 @@ export default class ChatInput {
   };
 
   public insertAtCaret(insertText: string, insertEntity?: MessageEntity, isHelper = true) {
+    RichInputHandler.getInstance().makeFocused(this.messageInput);
+
     const {value: fullValue, caretPos, entities} = getRichValueWithCaret(this.messageInput);
     const pos = caretPos >= 0 ? caretPos : fullValue.length;
     const prefix = fullValue.substr(0, pos);
@@ -1889,6 +1946,45 @@ export default class ChatInput {
     const matchIndex = matches ? matches.index + (matches[0].length - matches[2].length) : prefix.length;
     const newPrefix = prefix.slice(0, matchIndex);
     const newValue = newPrefix + insertText + suffix;
+
+    if(isHelper && caretPos !== -1) {
+      const match = matches[2];
+      // const {node, selection} = getCaretPosNew(this.messageInput);
+
+      const selection = document.getSelection();
+      // const range = document.createRange();
+      let counter = 0;
+      while(selection.toString() !== match) {
+        if(++counter >= 10000) {
+          throw new Error('lolwhat');
+        }
+
+        // for(let i = 0; i < match.length; ++i) {
+        selection.modify('extend', 'backward', 'character');
+      }
+    }
+
+    {
+      // const fragment = wrapDraftText(insertText, {entities: insertEntity ? [insertEntity] : undefined, wrappingForPeerId: this.chat.peerId});
+      insertRichTextAsHTML(this.messageInput, insertText, insertEntity ? [insertEntity] : undefined, this.chat.peerId);
+      // const {node, offset} = getCaretPos(this.messageInput);
+      // const fragmentLastChild = fragment.lastChild;
+      // if(node?.nodeType === node.TEXT_NODE) {
+      //   const prefix = node.nodeValue.slice(0, offset);
+      //   const suffix = node.nodeValue.slice(offset);
+
+      //   const suffixNode = document.createTextNode(suffix);
+
+      //   node.nodeValue = prefix;
+      //   node.parentNode.insertBefore(suffixNode, node.nextSibling);
+      //   node.parentNode.insertBefore(fragment, suffixNode);
+
+      //   setCaretAt(fragmentLastChild.nextSibling);
+
+      //   this.messageInputField.simulateInputEvent();
+      // }
+    }
+    return;
 
     // merge emojis
     const hadEntities = parseEntities(fullValue);
@@ -1949,15 +2045,16 @@ export default class ChatInput {
     // document.execCommand('insertHTML', true, wrapEmojiText(emoji));
   }
 
-  public onEmojiSelected = (emoji: string, autocomplete: boolean) => {
-    this.insertAtCaret(emoji, getEmojiEntityFromEmoji(emoji), autocomplete);
+  public onEmojiSelected = (emoji: ReturnType<typeof getEmojiFromElement>, autocomplete: boolean) => {
+    const entity: MessageEntity = emoji.docId ? {_: 'messageEntityCustomEmoji', document_id: emoji.docId, length: emoji.emoji.length, offset: 0} : getEmojiEntityFromEmoji(emoji.emoji);
+    this.insertAtCaret(emoji.emoji, entity, autocomplete);
   };
 
   private async checkAutocomplete(value?: string, caretPos?: number, entities?: MessageEntity[]) {
     // return;
 
     if(value === undefined) {
-      const r = getRichValueWithCaret(this.messageInputField.input, true);
+      const r = getRichValueWithCaret(this.messageInputField.input, true, true);
       value = r.value;
       caretPos = r.caretPos;
       entities = r.entities;
@@ -2241,9 +2338,14 @@ export default class ChatInput {
     }
 
     if(this.helperType === 'edit' && !force) {
-      const message = this.editMessage
-      const value = parseMarkdown(this.messageInputField.value, []);
-      if(message.message !== value) {
+      const message = this.editMessage;
+      const draft = this.getCurrentInputAsDraft();
+      if(draft) {
+        delete draft.pFlags.no_webpage;
+      }
+      // const value = parseMarkdown(this.messageInputField.value, []);
+      // if(message.message !== value) {
+      if(!draftsAreEqual(draft, {...message, _: 'draftMessage'} as any)) {
         new PopupPeer('discard-editing', {
           buttons: [{
             langKey: 'Alert.Confirm.Discard',
@@ -2361,6 +2463,14 @@ export default class ChatInput {
     }
   }
 
+  private getValueAndEntities(input: HTMLElement) {
+    const {entities: apiEntities, value} = getRichValueWithCaret(this.messageInput, true, false);
+    const myEntities = parseEntities(value);
+    const totalEntities = mergeEntities(apiEntities, myEntities);
+
+    return {value, totalEntities};
+  }
+
   public onMessageSent(clearInput = true, clearReply?: boolean) {
     if(this.chat.type !== 'scheduled') {
       this.managers.appMessagesManager.readAllHistory(this.chat.peerId, this.chat.threadId, true);
@@ -2369,11 +2479,18 @@ export default class ChatInput {
     this.scheduleDate = undefined;
     this.sendSilent = undefined;
 
-    const value = this.messageInputField.value;
-    const entities = parseEntities(value);
-    const emojiEntities: MessageEntity.messageEntityEmoji[] = entities.filter((entity) => entity._ === 'messageEntityEmoji') as any;
+    const {totalEntities} = this.getValueAndEntities(this.messageInput);
+    let nextOffset = 0;
+    const emojiEntities: (MessageEntity.messageEntityEmoji | MessageEntity.messageEntityCustomEmoji)[] = totalEntities.filter((entity) => {
+      if(entity._ === 'messageEntityEmoji' || entity._ === 'messageEntityCustomEmoji') {
+        const endOffset = entity.offset + entity.length;
+        return endOffset <= nextOffset ? false : (nextOffset = endOffset, true);
+      }
+
+      return false;
+    }) as any;
     emojiEntities.forEach((entity) => {
-      const emoji = emojiFromCodePoints(entity.unicode);
+      const emoji: AppEmoji = entity._ === 'messageEntityEmoji' ? {emoji: emojiFromCodePoints(entity.unicode)} : {docId: entity.document_id, emoji: ''};
       this.managers.appEmojiManager.pushRecentEmoji(emoji);
     });
 
@@ -2402,7 +2519,7 @@ export default class ChatInput {
     const {noWebPage} = this;
     const sendingParams = this.chat.getMessageSendingParams();
 
-    const {value, entities} = getRichValue(this.messageInputField.input);
+    const {value, entities} = getRichValueWithCaret(this.messageInputField.input, true, false);
 
     // return;
     if(editMsgId) {
@@ -2500,7 +2617,7 @@ export default class ChatInput {
     this.onMessageSent(clearDraft, true);
 
     if(document.type === 'sticker') {
-      emoticonsDropdown.stickersTab?.unshiftRecentSticker(document);
+      this.managers.appStickersManager.saveRecentSticker(document.id);
     }
 
     return true;
@@ -2533,7 +2650,7 @@ export default class ChatInput {
   public async initMessageEditing(mid: number) {
     const message = (await this.chat.getMessage(mid)) as Message.message;
 
-    let input = documentFragmentToHTML(wrapDraftText(message.message, {entities: message.totalEntities}));
+    let input = wrapDraftText(message.message, {entities: message.totalEntities, wrappingForPeerId: this.chat.peerId});
     const f = async() => {
       const replyFragment = await wrapMessageForReply(message, undefined, [message.mid]);
       this.setTopInfo('edit', f, i18n('AccDescrEditing'), replyFragment, input, message);
@@ -2727,10 +2844,10 @@ export default class ChatInput {
     });
   }
 
-  public setInputValue(value: string, clear = true, focus = true) {
+  public setInputValue(value: Parameters<InputFieldAnimated['setValueSilently']>[0], clear = true, focus = true) {
     if(!value) value = '';
 
-    if(clear) this.clearInput(false, false, value);
+    if(clear) this.clearInput(false, false, value as string);
     else this.messageInputField.setValueSilently(value);
 
     fastRaf(() => {
@@ -2745,7 +2862,7 @@ export default class ChatInput {
     callerFunc: () => void,
     title: Parameters<typeof wrapReply>[0] = '',
     subtitle: Parameters<typeof wrapReply>[1] = '',
-    input?: string,
+    input?: Parameters<InputFieldAnimated['setValueSilently']>[0],
     message?: any
   ) {
     if(this.willSendWebPage && type === 'reply') {

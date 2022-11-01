@@ -9,7 +9,6 @@ import App from '../../config/app';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import isObject from '../../helpers/object/isObject';
 import validateInitObject from '../../helpers/object/validateInitObject';
-import I18n from '../langPack';
 import fixEmoji from '../richTextProcessor/fixEmoji';
 import SearchIndex from '../searchIndex';
 import stateStorage from '../stateStorage';
@@ -31,7 +30,9 @@ const EMOJI_LANG_PACK: EmojiLangPack = {
   langCode: App.langPackCode
 };
 
-const RECENT_MAX_LENGTH = 36;
+const RECENT_MAX_LENGTH = 32;
+
+type EmojiType = 'native' | 'custom';
 
 export class AppEmojiManager extends AppManager {
   private static POPULAR_EMOJI = ['😂', '😘', '❤️', '😍', '😊', '😁', '👍', '☺️', '😔', '😄', '😭', '💋', '😒', '😳', '😜', '🙈', '😉', '😃', '😢', '😝', '😱', '😡', '😏', '😞', '😅', '😚', '🙊', '😌', '😀', '😋', '😆', '👌', '😐', '😕'];
@@ -44,8 +45,8 @@ export class AppEmojiManager extends AppManager {
 
   private getKeywordsPromises: {[langCode: string]: Promise<EmojiLangPack>} = {};
 
-  private recent: string[];
-  private getRecentEmojisPromise: Promise<AppEmojiManager['recent']>;
+  private recent: {native?: string[], custom?: DocId[]} = {};
+  private getRecentEmojisPromises: {native?: Promise<string[]>, custom?: Promise<DocId[]>} = {};
 
   private getCustomEmojiDocumentsPromise: Promise<any>;
   private getCustomEmojiDocumentPromises: Map<DocId, CancellablePromise<MyDocument>> = new Map();
@@ -157,12 +158,12 @@ export class AppEmojiManager extends AppManager {
       this.getEmojiKeywords()
     ];
 
-    if(I18n.lastRequestedLangCode !== App.langPackCode) {
-      promises.push(this.getEmojiKeywords(I18n.lastRequestedLangCode));
+    if(this.networkerFactory.language !== App.langPackCode) {
+      promises.push(this.getEmojiKeywords(this.networkerFactory.language));
     }
 
-    if(!this.recent) {
-      promises.push(this.getRecentEmojis());
+    if(!this.recent.native) {
+      promises.push(this.getRecentEmojis('native'));
     }
 
     return Promise.all(promises);
@@ -201,7 +202,7 @@ export class AppEmojiManager extends AppManager {
       const set = this.index.search(q);
       emojis = Array.from(set).reduce((acc, v) => acc.concat(v), []);
     } else {
-      emojis = this.recent.concat(AppEmojiManager.POPULAR_EMOJI).slice(0, RECENT_MAX_LENGTH);
+      emojis = this.recent.native.concat(AppEmojiManager.POPULAR_EMOJI).slice(0, RECENT_MAX_LENGTH);
     }
 
     emojis = Array.from(new Set(emojis));
@@ -216,28 +217,41 @@ export class AppEmojiManager extends AppManager {
     return emojis;
   }
 
-  public getRecentEmojis() {
-    if(this.getRecentEmojisPromise) return this.getRecentEmojisPromise;
-    return this.getRecentEmojisPromise = this.appStateManager.getState().then((state) => {
-      return this.recent = Array.isArray(state.recentEmoji) ? state.recentEmoji : [];
-    });
-  }
-
-  public pushRecentEmoji(emoji: string) {
-    emoji = fixEmoji(emoji);
-    this.getRecentEmojis().then((recent) => {
-      indexOfAndSplice(recent, emoji);
-      recent.unshift(emoji);
-      if(recent.length > RECENT_MAX_LENGTH) {
-        recent.length = RECENT_MAX_LENGTH;
+  public getRecentEmojis<T extends EmojiType>(type: 'custom'): Promise<DocId[]>;
+  public getRecentEmojis<T extends EmojiType>(type: 'native'): Promise<string[]>;
+  public getRecentEmojis<T extends EmojiType>(type: T): Promise<string[] | DocId[]> {
+    const promises = this.getRecentEmojisPromises;
+    return promises[type] ??= this.appStateManager.getState().then((state) => {
+      let recent: string[] | DocId[] = [];
+      if(type === 'native') {
+        const {recentEmoji} = state;
+        recent = Array.isArray(recentEmoji) && recentEmoji.length ? recentEmoji : AppEmojiManager.POPULAR_EMOJI;
+      } else {
+        const {recentCustomEmoji} = state;
+        recent = Array.isArray(recentCustomEmoji) && recentCustomEmoji.length ? recentCustomEmoji : [];
       }
 
-      this.appStateManager.pushToState('recentEmoji', recent);
+      return this.recent[type] = recent as any;
+    }) as any;
+  }
+
+  public pushRecentEmoji(emoji: AppEmoji) {
+    const type: EmojiType = emoji.docId ? 'custom' : 'native';
+    emoji.emoji = fixEmoji(emoji.emoji);
+    // @ts-ignore
+    this.getRecentEmojis(type).then((recent) => {
+      const i = emoji.docId || emoji.emoji;
+      indexOfAndSplice(recent, i);
+      recent.unshift(i);
+      recent.splice(RECENT_MAX_LENGTH, recent.length - RECENT_MAX_LENGTH);
+
+      this.appStateManager.pushToState(type === 'custom' ? 'recentCustomEmoji' : 'recentEmoji', recent);
       this.rootScope.dispatchEvent('emoji_recent', emoji);
     });
   }
 
   public getCustomEmojiDocuments(docIds: DocId[]) {
+    if(!docIds.length) return Promise.resolve([] as MyDocument[]);
     return this.apiManager.invokeApi('messages.getCustomEmojiDocuments', {document_id: docIds}).then((documents) => {
       return documents.map((doc) => {
         return this.appDocsManager.saveDoc(doc, {
@@ -259,19 +273,25 @@ export class AppEmojiManager extends AppManager {
 
     this.getCustomEmojiDocumentsPromise = pause(0).then(() => {
       const allIds = [...this.getCustomEmojiDocumentPromises.keys()];
+      const promises: Promise<any>[] = [];
       do {
         const ids = allIds.splice(0, 100);
-        this.getCustomEmojiDocuments(ids).then((docs) => {
+        const promise = this.getCustomEmojiDocuments(ids).then((docs) => {
           docs.forEach((doc, idx) => {
             const docId = ids[idx];
             const deferred = this.getCustomEmojiDocumentPromises.get(docId);
             this.getCustomEmojiDocumentPromises.delete(docId);
             deferred.resolve(doc);
           });
-        }).finally(() => {
-          this.setDebouncedGetCustomEmojiDocuments();
         });
+
+        promises.push(promise);
       } while(allIds.length);
+
+      return Promise.all(promises);
+    }).finally(() => {
+      this.getCustomEmojiDocumentsPromise = undefined;
+      this.setDebouncedGetCustomEmojiDocuments();
     });
   }
 
@@ -283,7 +303,7 @@ export class AppEmojiManager extends AppManager {
 
     const doc = this.appDocsManager.getDoc(id);
     if(doc) {
-      return Promise.resolve(doc);
+      return doc;
     }
 
     promise = deferredPromise();

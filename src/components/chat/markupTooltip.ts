@@ -12,14 +12,13 @@ import appNavigationController from '../appNavigationController';
 import {_i18n} from '../../lib/langPack';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import getSelectedNodes from '../../helpers/dom/getSelectedNodes';
 import isSelectionEmpty from '../../helpers/dom/isSelectionEmpty';
-import {MarkdownType, markdownTags} from '../../helpers/dom/getRichElementValue';
+import {MarkdownType} from '../../helpers/dom/getRichElementValue';
 import getVisibleRect from '../../helpers/dom/getVisibleRect';
 import clamp from '../../helpers/number/clamp';
 import matchUrl from '../../lib/richTextProcessor/matchUrl';
 import matchUrlProtocol from '../../lib/richTextProcessor/matchUrlProtocol';
-// import { logger } from "../../lib/logger";
+import hasMarkupInSelection from '../../helpers/dom/hasMarkupInSelection';
 
 export default class MarkupTooltip {
   public container: HTMLElement;
@@ -214,21 +213,29 @@ export default class MarkupTooltip {
   }
 
   public getActiveMarkupButton() {
-    const nodes = getSelectedNodes();
-    const parents = [...new Set(nodes.map((node) => node.parentNode))];
-    // if(parents.length > 1 && parents) return [];
-
     const currentMarkups: Set<HTMLElement> = new Set();
-    (parents as HTMLElement[]).forEach((node) => {
-      for(const type in markdownTags) {
-        const tag = markdownTags[type as MarkdownType];
-        const closest = node.closest(tag.match + ', [contenteditable]');
-        if(closest !== this.appImManager.chat.input.messageInput) {
-          currentMarkups.add(this.buttons[type as MarkdownType]);
-        }
+
+    // const nodes = getSelectedNodes();
+    // const parents = [...new Set(nodes.map((node) => node.parentNode))];
+    // // if(parents.length > 1 && parents) return [];
+
+    // (parents as HTMLElement[]).forEach((node) => {
+    //   for(const type in markdownTags) {
+    //     const tag = markdownTags[type as MarkdownType];
+    //     const closest = node.closest(tag.match + ', [contenteditable="true"]');
+    //     if(closest !== this.appImManager.chat.input.messageInput) {
+    //       currentMarkups.add(this.buttons[type as MarkdownType]);
+    //     }
+    //   }
+    // });
+
+    const types = Object.keys(this.buttons) as MarkdownType[];
+    const markup = hasMarkupInSelection(types);
+    types.forEach((type) => {
+      if(markup[type]) {
+        currentMarkups.add(this.buttons[type as MarkdownType]);
       }
     });
-
 
     return [...currentMarkups];
   }
@@ -423,6 +430,12 @@ export default class MarkupTooltip {
         this.setMouseUpEvent();
       } else {
         this.show();
+      }
+    });
+
+    document.addEventListener('beforeinput', (e) => {
+      if(e.inputType === 'historyRedo' || e.inputType === 'historyUndo') {
+        e.target.addEventListener('input', () => this.setActiveMarkupButton(), {once: true});
       }
     });
   }

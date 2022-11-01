@@ -9,20 +9,20 @@ import rootScope from '../lib/rootScope';
 
 const savingLottiePreview: {[docId: DocId]: {width: number, height: number}} = {};
 
-export function isSavingLottiePreview(doc: MyDocument, toneIndex: number) {
+export function isSavingLottiePreview(doc: MyDocument, toneIndex: number, width: number, height: number) {
   const key = doc.id + '-' + toneIndex;
-  return !!savingLottiePreview[key];
+  const saving = savingLottiePreview[key];
+  return saving && saving.width >= width && saving.height >= height;
 }
 
 export async function saveLottiePreview(doc: MyDocument, canvas: HTMLCanvasElement, toneIndex: number) {
   const key = doc.id + '-' + toneIndex;
   const {width, height} = canvas;
-  let saving = savingLottiePreview[key];
-  if(saving && saving.width >= width && saving.height >= height) {
+  if(isSavingLottiePreview(doc, toneIndex, width, height)) {
     return;
   }
 
-  saving = savingLottiePreview[key] = {
+  const saving = savingLottiePreview[key] = {
     width,
     height
   };
@@ -49,7 +49,7 @@ export async function saveLottiePreview(doc: MyDocument, canvas: HTMLCanvasEleme
 
   rootScope.managers.appDocsManager.saveLottiePreview(doc.id, blob, width, height, toneIndex);
 
-  delete savingLottiePreview[key];
+  // delete savingLottiePreview[key];
 
   /* const reader = new FileReader();
   reader.onloadend = (e) => {

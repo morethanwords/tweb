@@ -14,6 +14,7 @@ import {AppManagers} from '../lib/appManagers/managers';
 import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 import getPeerTitle from './wrappers/getPeerTitle';
 import generateTitleIcons from './generateTitleIcons';
+import {Middleware} from '../helpers/middleware';
 
 export type PeerTitleOptions = {
   peerId?: PeerId,
@@ -24,7 +25,8 @@ export type PeerTitleOptions = {
   limitSymbols?: number,
   managers?: AppManagers,
   withIcons?: boolean,
-  withPremiumIcon?: boolean
+  withPremiumIcon?: boolean,
+  middleware?: Middleware
 };
 
 const weakMap: WeakMap<HTMLElement, PeerTitle> = new WeakMap();
@@ -49,6 +51,7 @@ export default class PeerTitle {
   private hasInner: boolean;
   private withIcons: boolean;
   private withPremiumIcon: boolean;
+  private middleware: Middleware;
 
   constructor(options?: PeerTitleOptions) {
     this.element = document.createElement('span');
@@ -101,7 +104,7 @@ export default class PeerTitle {
       const managers = this.managers ?? rootScope.managers;
       const [title, icons] = await Promise.all([
         getPeerTitle(this.peerId, this.plainText, this.onlyFirstName, this.limitSymbols, managers),
-        (this.withIcons && generateTitleIcons(this.peerId)) || (this.withPremiumIcon && generateTitleIcons(this.peerId, true, true))
+        (this.withIcons && generateTitleIcons(this.peerId, this.middleware)) || (this.withPremiumIcon && generateTitleIcons(this.peerId, this.middleware, true, true))
       ]);
 
       if(icons?.length) {

@@ -24,7 +24,7 @@ const processChangelog = (fileName) => {
   splitted.forEach(text => {
     if(!text.trim()) return;
     text = separator + text;
-    text = text.replace(/^\*/gm, '•');
+    text = text.replace(/^\*(\s)/gm, '•$1');
     const splitted = text.split('\n');
   
     for(let i = splitted.length - 1; i >= 0; --i) {

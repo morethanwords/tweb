@@ -30,6 +30,19 @@ import singleInstance from './lib/mtproto/singleInstance';
 document.addEventListener('DOMContentLoaded', async() => {
   toggleAttributePolyfill();
 
+  // polyfill for replaceChildren
+  if((Node as any).prototype.replaceChildren === undefined) {
+    (Node as any).prototype.replaceChildren = function(...nodes: any[]) {
+      this.textContent = '';
+      // while(this.lastChild) {
+      //   this.removeChild(this.lastChild);
+      // }
+      if(nodes) {
+        this.append(...nodes);
+      }
+    }
+  }
+
   rootScope.managers = getProxiedManagers();
 
   const manifest = document.getElementById('manifest') as HTMLLinkElement;
@@ -125,6 +138,10 @@ document.addEventListener('DOMContentLoaded', async() => {
         return false;
       }
     });
+  }
+
+  if(IS_EMOJI_SUPPORTED) {
+    document.documentElement.classList.add('native-emoji');
   }
 
   // prevent firefox image dragging

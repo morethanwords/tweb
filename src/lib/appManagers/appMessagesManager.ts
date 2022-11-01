@@ -144,6 +144,8 @@ const processAfter = (cb: () => void) => {
   cb();
 };
 
+const UPDATE_STICKERSET_ORDER = true;
+
 export class AppMessagesManager extends AppManager {
   private messagesStorageByPeerId: {[peerId: string]: MessagesStorage};
   private groupedMessagesStorage: {[groupId: string]: MessagesStorage}; // will be used for albums
@@ -351,7 +353,9 @@ export class AppMessagesManager extends AppManager {
           const [peerId, mid] = key.split('_');
 
           const message = this.getMessageByPeer(peerId.toPeerId(), +mid);
-          this.setDialogToStateIfMessageIsTop(message);
+          if(message) {
+            this.setDialogToStateIfMessageIsTop(message);
+          }
         }
       }
     });
@@ -566,7 +570,8 @@ export class AppMessagesManager extends AppManager {
           clear_draft: options.clearDraft,
           schedule_date: options.scheduleDate || undefined,
           silent: options.silent,
-          send_as: sendAs
+          send_as: sendAs,
+          update_stickersets_order: UPDATE_STICKERSET_ORDER
         }, sentRequestOptions);
       }
 
@@ -1186,7 +1191,8 @@ export class AppMessagesManager extends AppManager {
             schedule_date: options.scheduleDate,
             silent: options.silent,
             clear_draft: options.clearDraft,
-            send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined
+            send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined,
+            update_stickersets_order: UPDATE_STICKERSET_ORDER
           }).then((updates) => {
             this.apiUpdatesManager.processUpdateMessage(updates);
             deferred.resolve();
@@ -1386,7 +1392,8 @@ export class AppMessagesManager extends AppManager {
           clear_draft: options.clearDraft,
           schedule_date: options.scheduleDate,
           silent: options.silent,
-          send_as: sendAs
+          send_as: sendAs,
+          update_stickersets_order: UPDATE_STICKERSET_ORDER
         }, sentRequestOptions);
       }
 

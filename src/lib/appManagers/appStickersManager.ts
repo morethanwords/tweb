@@ -88,7 +88,11 @@ export class AppStickersManager extends AppManager {
 
       updateRecentStickers: () => this.onStickersUpdated('recent', true),
 
-      updateFavedStickers: () => this.onStickersUpdated('faved', true)
+      updateFavedStickers: () => this.onStickersUpdated('faved', true),
+
+      updateMoveStickerSetToTop: (update) => {
+        this.rootScope.dispatchEvent('stickers_top', update.stickerset);
+      }
     });
   }
 
