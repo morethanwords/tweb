@@ -77,7 +77,7 @@ export default class EventListenerBase<Listeners extends EventListenerListeners>
     this._constructor(reuseResults);
   }
 
-  public _constructor(reuseResults = false): any {
+  public _constructor(reuseResults?: boolean): any {
     this.reuseResults = reuseResults;
     this.listeners = {};
     this.listenerResults = {};
