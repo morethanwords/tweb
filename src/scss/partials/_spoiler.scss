@@ -18,11 +18,6 @@
   } */
 }
 
-[style*="spoiler"] {
-  background-color: var(--spoiler-draft-background-color);
-  font-family: inherit !important;
-}
-
 .spoilers-container {
   .custom-emoji-canvas {
     z-index: -1;

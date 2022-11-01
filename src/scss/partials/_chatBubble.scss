@@ -57,7 +57,7 @@ $bubble-beside-button-width: 38px;
   &-avatar {
     position: sticky !important;
     top: 0;
-    bottom: $bubble-margin;
+    bottom: $bubble-overflow-big;
     cursor: pointer;
     pointer-events: all;
 
@@ -629,12 +629,17 @@ $bubble-beside-button-width: 38px;
         max-width: 64px;
         max-height: 64px;
       }
+
+      .custom-emoji,
+      .emoji {
+        display: inline-block;
+      }
     }
-    
+
     &:not(.sticker) {
       .attachment {
-        padding-top: .5rem;
-        padding-bottom: 1rem;
+        padding-top: .25rem;
+        padding-bottom: 1.25rem;
         //max-width: fit-content!important;
         max-height: fit-content!important;
 
@@ -1295,6 +1300,10 @@ $bubble-beside-button-width: 38px;
     white-space: pre-wrap; // * fix spaces on line begin
     position: relative;
 
+    .custom-emoji {
+      display: inline-flex; // fix RTL thumb absolute position
+    }
+
     &:last-child {
       padding-top: 6px;
     }
@@ -1851,6 +1860,11 @@ $bubble-beside-button-width: 38px;
     .tgico-pinnedchat {
       margin-right: .125rem;
     }
+
+    &.is-block {
+      float: none;
+      display: block;
+    }
   }
 
   &.webpage .time {
@@ -2178,7 +2192,7 @@ $bubble-beside-button-width: 38px;
 .bubbles-date-group:last-of-type {
   .bubbles-group:last-of-type {
     .bubble:last-of-type {
-      margin-bottom: $bubble-margin;
+      margin-bottom: $bubble-overflow-big;
       /* &:after, .document-container:last-of-type .document-selection {
         bottom: 0 !important;
       } */
@@ -2415,6 +2429,7 @@ $bubble-beside-button-width: 38px;
   --link-color: var(--message-out-link-color);
   --message-primary-color: var(--message-out-primary-color);
   --light-filled-message-primary-color: var(--light-filled-message-out-primary-color);
+  --selection-background-color: var(--message-out-selection-background-color);
 
   .bubble-content {
     margin-left: auto;

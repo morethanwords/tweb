@@ -21,7 +21,9 @@ type MediaTypeSizes = {
   documentName: MediaSize,
   invoice: MediaSize,
   customEmoji: MediaSize,
-  esgCustomEmoji: MediaSize
+  esgCustomEmoji: MediaSize,
+  emojiStatus: MediaSize,
+  popupSticker: MediaSize
 };
 
 export type MediaSizeType = keyof MediaTypeSizes;
@@ -35,6 +37,10 @@ export enum ScreenSize {
 const MOBILE_SIZE = 600;
 const MEDIUM_SIZE = 1275;
 const LARGE_SIZE = 1680;
+
+const CUSTOM_EMOJI_SIZE = makeMediaSize(18, 18);
+const ESG_CUSTOM_EMOJI_SIZE = makeMediaSize(36, 36);
+const EMOJI_STATUS_SIZE = makeMediaSize(18, 18);
 
 class MediaSizes extends EventListenerBase<{
   changeScreen: (from: ScreenSize, to: ScreenSize) => void,
@@ -59,14 +65,16 @@ class MediaSizes extends EventListenerBase<{
       round: makeMediaSize(200, 200),
       documentName: makeMediaSize(200, 0),
       invoice: makeMediaSize(240, 240),
-      customEmoji: makeMediaSize(18, 18),
-      esgCustomEmoji: makeMediaSize(32, 32)
+      customEmoji: CUSTOM_EMOJI_SIZE,
+      esgCustomEmoji: ESG_CUSTOM_EMOJI_SIZE,
+      emojiStatus: EMOJI_STATUS_SIZE,
+      popupSticker: makeMediaSize(68, 68)
     },
     desktop: {
       regular: makeMediaSize(420, 340),
       webpage: makeMediaSize(420, 340),
       album: makeMediaSize(420, 0),
-      esgSticker: makeMediaSize(80, 80),
+      esgSticker: makeMediaSize(72, 72),
       animatedSticker: makeMediaSize(200, 200),
       staticSticker: makeMediaSize(200, 200),
       emojiSticker: makeMediaSize(112, 112),
@@ -74,8 +82,10 @@ class MediaSizes extends EventListenerBase<{
       round: makeMediaSize(280, 280),
       documentName: makeMediaSize(240, 0),
       invoice: makeMediaSize(320, 260),
-      customEmoji: makeMediaSize(18, 18),
-      esgCustomEmoji: makeMediaSize(32, 32)
+      customEmoji: CUSTOM_EMOJI_SIZE,
+      esgCustomEmoji: ESG_CUSTOM_EMOJI_SIZE,
+      emojiStatus: EMOJI_STATUS_SIZE,
+      popupSticker: makeMediaSize(80, 80)
     }
   };
 

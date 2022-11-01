@@ -11,30 +11,23 @@
 
 import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
 
-export default function placeCaretAtEnd(el: HTMLElement, ignoreTouchCheck = false) {
+export default function placeCaretAtEnd(el: HTMLElement, ignoreTouchCheck = false, focus = true) {
   if(IS_TOUCH_SUPPORTED && (!ignoreTouchCheck || document.activeElement !== el)) {
     return;
   }
 
-  el.focus();
+  focus && el.focus();
   if(el instanceof HTMLInputElement) {
     const length = el.value.length;
     el.selectionStart = length;
     el.selectionEnd = length;
-  } else if(typeof window.getSelection !== 'undefined' && typeof document.createRange !== 'undefined') {
-    var range = document.createRange();
+  } else {
+    const range = document.createRange();
     range.selectNodeContents(el);
     range.collapse(false);
-    var sel = window.getSelection();
+    const sel = window.getSelection();
     sel.removeAllRanges();
     sel.addRange(range);
-    // @ts-ignore
-  } else if(typeof document.body.createTextRange !== 'undefined') {
-    // @ts-ignore
-    var textRange = document.body.createTextRange();
-    textRange.moveToElementText(el);
-    textRange.collapse(false);
-    textRange.select();
   }
 }
 

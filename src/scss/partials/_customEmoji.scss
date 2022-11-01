@@ -29,6 +29,8 @@
     height: inherit !important;
     max-width: inherit !important;
     max-height: inherit !important;
+    pointer-events: none;
+    text-indent: -9999px;
   }
 
   &-canvas {
@@ -49,5 +51,13 @@
     right: 0;
     bottom: 0;
     left: 0;
+  }
+
+  &-placeholder {
+    display: inline;
+    width: 18px;
+    height: 18px;
+    vertical-align: middle;
+    margin-top: -.125rem;
   }
 }

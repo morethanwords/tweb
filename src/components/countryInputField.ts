@@ -6,7 +6,6 @@
 
 import IS_EMOJI_SUPPORTED from '../environment/emojiSupport';
 import cancelEvent from '../helpers/dom/cancelEvent';
-import simulateEvent from '../helpers/dom/dispatchEvent';
 import findUpClassName from '../helpers/dom/findUpClassName';
 import findUpTag from '../helpers/dom/findUpTag';
 import replaceContent from '../helpers/dom/replaceContent';
@@ -267,7 +266,7 @@ export default class CountryInputField extends InputField {
     const countryCode = phoneCode && phoneCode.replace(/\D/g, '');
 
     replaceContent(this.input, i18n(defaultName as any));
-    simulateEvent(this.input, 'input');
+    this.simulateInputEvent();
     this.lastCountrySelected = countries.find((c) => c.default_name === defaultName);
     this.lastCountryCodeSelected = countryCode && this.lastCountrySelected.country_codes.find((_countryCode) => _countryCode.country_code === countryCode);
 

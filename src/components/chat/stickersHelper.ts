@@ -107,7 +107,7 @@ export default class StickersHelper extends AutocompleteHelper {
 
         if(!this.onChangeScreen) {
           this.onChangeScreen = () => {
-            const width = (this.list.childElementCount * mediaSizes.active.esgSticker.width) + (this.list.childElementCount - 1 * 1);
+            const width = (this.list.childElementCount * mediaSizes.active.popupSticker.width) + (this.list.childElementCount - 1 * 1);
             this.list.style.width = width + 'px';
           };
           mediaSizes.addEventListener('changeScreen', this.onChangeScreen);

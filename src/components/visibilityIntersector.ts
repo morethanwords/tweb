@@ -5,7 +5,7 @@
  */
 
 type TargetType = HTMLElement;
-export type OnVisibilityChangeItem = {target: TargetType, visible: boolean, entry: IntersectionObserverEntry};
+export type OnVisibilityChangeItem = {target: TargetType, visible: boolean, entry: IntersectionObserverEntry, index: number};
 export type OnVisibilityChange = (item: OnVisibilityChangeItem) => void;
 
 export default class VisibilityIntersector {
@@ -21,7 +21,7 @@ export default class VisibilityIntersector {
 
       const changed: OnVisibilityChangeItem[] = [];
 
-      entries.forEach((entry) => {
+      entries.forEach((entry, index) => {
         const target = entry.target as TargetType;
 
         if(this.items.get(target) === entry.isIntersecting) {
@@ -38,7 +38,7 @@ export default class VisibilityIntersector {
           return;
         } */
 
-        const change: typeof changed[0] = {target, visible: entry.isIntersecting, entry};
+        const change: typeof changed[0] = {target, visible: entry.isIntersecting, entry, index};
 
         // ! order will be incorrect so can't use it
         // changed[entry.isIntersecting ? 'unshift' : 'push'](change);

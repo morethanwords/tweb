@@ -26,17 +26,15 @@ export default function wrapCustomEmoji({
   size?: MediaSize,
   animationGroup?: AnimationItemGroup
 }) {
-  let text = '';
+  const text = ' '.repeat(docIds.length);
   const entities: MessageEntity[] = [];
-  docIds.forEach((docId) => {
+  docIds.forEach((docId, idx) => {
     entities.push({
       _: 'messageEntityCustomEmoji',
-      offset: text.length,
+      offset: idx,
       length: 1,
       document_id: docId
     });
-
-    text += ' ';
   });
 
   const wrapped = wrapRichText(text, {

@@ -31,7 +31,6 @@ import cancelEvent from '../helpers/dom/cancelEvent';
 import fillPropertyValue from '../helpers/fillPropertyValue';
 import generatePathData from '../helpers/generatePathData';
 import replaceContent from '../helpers/dom/replaceContent';
-import PeerTitle from './peerTitle';
 import {doubleRaf, fastRaf} from '../helpers/schedulers';
 import RangeSelector from './rangeSelector';
 import windowSize from '../helpers/windowSize';

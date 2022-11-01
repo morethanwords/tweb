@@ -32,6 +32,10 @@
     padding: 8px 0;
   }
 
+  .super-emojis {
+    padding: 0 .5rem;
+  }
+
   #{$parent} {
     &-container {
       max-width: 420px;
@@ -60,7 +64,7 @@
 
     &-stickers {
       --per-row: 5;
-      --item-size: var(--esg-sticker-size);
+      --item-size: var(--popup-sticker-size);
       padding: 0 5px;
       display: grid;
       grid-template-columns: repeat(var(--per-row), 1fr);
@@ -70,28 +74,22 @@
         --per-row: 4;
       }
 
-      &.is-emojis {
-        --per-row: 10 !important;
-        --item-size: var(--esg-custom-emoji-size);
-        --custom-emoji-size: var(--esg-custom-emoji-size);
-      }
-    }
-
-    .media-sticker-wrapper {
-      width: var(--item-size);
-      height: var(--item-size);
-      margin-bottom: 2px;
-      justify-self: center;
-      cursor: pointer;
-      position: relative;
-
-      @include respond-to(handhelds) {
-        margin-bottom: 8px;
-      }
-
-      &:hover {
-        border-radius: 12px;
-        background-color: var(--light-secondary-text-color);
+      .media-sticker-wrapper {
+        width: var(--item-size);
+        height: var(--item-size);
+        margin-bottom: 2px;
+        justify-self: center;
+        cursor: pointer;
+        position: relative;
+  
+        @include respond-to(handhelds) {
+          margin-bottom: 8px;
+        }
+  
+        &:hover {
+          border-radius: 12px;
+          background-color: var(--light-secondary-text-color);
+        }
       }
     }
   }

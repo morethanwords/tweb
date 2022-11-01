@@ -120,6 +120,7 @@ import wrapGroupedDocuments from '../wrappers/groupedDocuments';
 import wrapPhoto from '../wrappers/photo';
 import wrapPoll from '../wrappers/poll';
 import wrapVideo from '../wrappers/video';
+import isRTL from '../../helpers/string/isRTL';
 
 export const USER_REACTIONS_INLINE = false;
 const USE_MEDIA_TAILS = false;
@@ -298,7 +299,7 @@ export default class ChatBubbles {
     this.preloader = new ProgressivePreloader({
       cancelable: false
     });
-    this.lazyLoadQueue = new LazyLoadQueue();
+    this.lazyLoadQueue = new LazyLoadQueue(undefined, true);
     this.lazyLoadQueue.queueId = ++queueId;
 
     // this.reactions = new Map();
@@ -701,7 +702,15 @@ export default class ChatBubbles {
       });
     });
 
-    attachStickerViewerListeners({listenTo: this.scrollable.container, listenerSetter: this.listenerSetter, selector: '.attachment.media-sticker-wrapper'});
+    attachStickerViewerListeners({
+      listenTo: this.scrollable.container,
+      listenerSetter: this.listenerSetter,
+      findTarget: (e) => {
+        const target = e.target as HTMLElement;
+        const found = target.closest('.attachment.media-sticker-wrapper') || (findUpClassName(target, 'attachment') && target.closest('.custom-emoji'));
+        return found as HTMLElement;
+      }
+    });
     attachClickEvent(this.scrollable.container, this.onBubblesClick, {listenerSetter: this.listenerSetter});
     // this.listenerSetter.add(this.bubblesContainer)('click', this.onBubblesClick/* , {capture: true, passive: false} */);
 
@@ -762,9 +771,8 @@ export default class ChatBubbles {
     }, () => {
       this.isHeavyAnimationInProgress = false;
 
-      if(middleware && middleware()) {
-        this.lazyLoadQueue.unlock();
-        this.lazyLoadQueue.refresh();
+      if(middleware?.()) {
+        this.lazyLoadQueue.unlockAndRefresh();
 
         // if(this.sliceViewportDebounced) {
         //   this.sliceViewportDebounced();
@@ -3542,11 +3550,11 @@ export default class ChatBubbles {
         let promise: Promise<any>;
         if(action._ === 'messageActionChannelMigrateFrom') {
           const peerTitle = new PeerTitle();
-          promise = peerTitle.update({peerId: action.chat_id.toPeerId(true)});
+          promise = peerTitle.update({peerId: action.chat_id.toPeerId(true), middleware});
           s.append(i18n('ChatMigration.From', [peerTitle.element]));
         } else if(action._ === 'messageActionChatMigrateTo') {
           const peerTitle = new PeerTitle();
-          promise = peerTitle.update({peerId: action.channel_id.toPeerId(true)});
+          promise = peerTitle.update({peerId: action.channel_id.toPeerId(true), middleware});
           s.append(i18n('ChatMigration.To', [peerTitle.element]));
         } else {
           s.append(await wrapMessageActionTextNew(message));
@@ -3651,6 +3659,8 @@ export default class ChatBubbles {
       setInnerHTML(messageDiv, richText);
     }
 
+    const haveRTLChar = isRTL(messageMessage, true);
+
     const timeSpan = MessageRender.setTime({
       chatType: this.chat.type,
       message,
@@ -3659,6 +3669,10 @@ export default class ChatBubbles {
     messageDiv.append(timeSpan);
     bubbleContainer.prepend(messageDiv);
     // bubble.prepend(timeSpan, messageDiv); // that's bad
+
+    if(haveRTLChar) {
+      timeSpan.classList.add('is-block');
+    }
 
     if(isMessage && message.views) {
       bubble.classList.add('channel-post');
@@ -4112,7 +4126,7 @@ export default class ChatBubbles {
               noPremium: messageMedia?.pFlags?.nopremium
             });
 
-            if(getStickerEffectThumb(doc) && (isInUnread || isOutgoing)/*  || true */) {
+            if((getStickerEffectThumb(doc) || isEmoji) && (isInUnread || isOutgoing)/*  || true */) {
               this.observer.observe(bubble, this.stickerEffectObserverCallback);
             }
           } else if(doc.type === 'video' || doc.type === 'gif' || doc.type === 'round'/*  && doc.size <= 20e6 */) {
@@ -4402,7 +4416,7 @@ export default class ChatBubbles {
       let title: HTMLElement | DocumentFragment;
       let titleVia: typeof title;
 
-      const isForwardFromChannel = message.from_id && message.from_id._ === 'peerChannel' && message.fromId === fwdFromId;
+      const isForwardFromChannel = message.from_id?._ === 'peerChannel' && message.fromId === fwdFromId;
 
       const isHidden = fwdFrom && !fwdFrom.from_id;
       if(message.viaBotId) {
@@ -4421,7 +4435,7 @@ export default class ChatBubbles {
         // title = fwdFrom.from_name;
         bubble.classList.add('hidden-profile');
       } else {
-        title = new PeerTitle({peerId: fwdFromId || message.fromId, withPremiumIcon: !isForward}).element;
+        title = new PeerTitle({peerId: fwdFromId || message.fromId, withPremiumIcon: !isForward, middleware}).element;
       }
 
       if(message.reply_to_mid && message.reply_to_mid !== this.chat.threadId && isMessage) {

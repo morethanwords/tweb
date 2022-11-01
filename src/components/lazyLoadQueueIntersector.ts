@@ -12,6 +12,7 @@ export type LazyLoadElement = Omit<LazyLoadElementBase, 'load'> & {
   load: (target?: HTMLElement) => Promise<any>,
   div: HTMLElement
   wasSeen?: boolean,
+  visible?: boolean
 };
 
 export default class LazyLoadQueueIntersector extends LazyLoadQueueBase {

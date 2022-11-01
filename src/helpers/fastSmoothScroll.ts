@@ -7,7 +7,7 @@
 // * Jolly Cobra's fastSmoothScroll slightly patched
 
 import {dispatchHeavyAnimationEvent} from '../hooks/useHeavyAnimationCheck';
-import {fastRaf, fastRafPromise} from './schedulers';
+import {fastRafPromise} from './schedulers';
 import {animateSingle, cancelAnimationByKey} from './animation';
 import rootScope from '../lib/rootScope';
 import isInDOM from './dom/isInDOM';
@@ -24,6 +24,7 @@ export enum FocusDirection {
 };
 
 export type ScrollGetNormalSizeCallback = (options: {rect: DOMRect}) => number;
+export type ScrollGetElementPositionCallback = (options: {elementRect: DOMRect, containerRect: DOMRect, elementPosition: number}) => number;
 export type ScrollStartCallbackDimensions = {
   scrollSize: number,
   scrollPosition: number,
@@ -45,25 +46,19 @@ export type ScrollOptions = {
   forceDuration?: number,
   axis?: 'x' | 'y',
   getNormalSize?: ScrollGetNormalSizeCallback,
+  getElementPosition?: ScrollGetElementPositionCallback,
   fallbackToElementStartWhenCentering?: HTMLElement,
-  startCallback?: (dimensions: ScrollStartCallbackDimensions) => void
+  startCallback?: (dimensions: ScrollStartCallbackDimensions) => void,
+  transitionFunction?: (value: number) => number
 };
 
 export default function fastSmoothScroll(options: ScrollOptions) {
-  if(options.margin === undefined) {
-    options.margin = 0;
-  }
-
-  if(options.maxDistance === undefined) {
-    options.maxDistance = LONG_TRANSITION_MAX_DISTANCE;
-  }
-
-  if(options.axis === undefined) {
-    options.axis = 'y';
-  }
+  options.margin ??= 0;
+  options.maxDistance ??= LONG_TRANSITION_MAX_DISTANCE;
+  options.axis ??= 'y';
   // return;
 
-  if(!rootScope.settings.animationsEnabled) {
+  if(!rootScope.settings.animationsEnabled || options.forceDuration === 0) {
     options.forceDirection = FocusDirection.Static;
   }
 
@@ -84,7 +79,7 @@ export default function fastSmoothScroll(options: ScrollOptions) {
 }
 
 function scrollWithJs(options: ScrollOptions): Promise<void> {
-  const {element, container, getNormalSize, axis, margin, position, forceDirection, maxDistance, forceDuration} = options;
+  const {element, container, getNormalSize, getElementPosition, transitionFunction, axis, margin, position, forceDirection, maxDistance, forceDuration} = options;
   if(!isInDOM(element)) {
     cancelAnimationByKey(container);
     return Promise.resolve();
@@ -102,7 +97,8 @@ function scrollWithJs(options: ScrollOptions): Promise<void> {
 
   // const transformable = container.firstElementChild as HTMLElement;
 
-  const elementPosition = elementRect[rectStartKey] - containerRect[rectStartKey];
+  const possibleElementPosition = elementRect[rectStartKey] - containerRect[rectStartKey];
+  const elementPosition = getElementPosition ? getElementPosition({elementRect, containerRect, elementPosition: possibleElementPosition}) : possibleElementPosition;
   const elementSize = element[scrollSizeKey]; // margin is exclusive in DOMRect
 
   const containerSize = getNormalSize ? getNormalSize({rect: containerRect}) : containerRect[sizeKey];
@@ -243,7 +239,7 @@ function scrollWithJs(options: ScrollOptions): Promise<void> {
   //transformable.style.minHeight = `${transformableHeight}px`;
   */
 
-  const transition = absPath < SHORT_TRANSITION_MAX_DISTANCE ? shortTransition : longTransition;
+  const transition = transitionFunction ?? (absPath < SHORT_TRANSITION_MAX_DISTANCE ? shortTransition : longTransition);
   const getProgress = () => duration ? Math.min((Date.now() - startAt) / duration, 1) : 1;
   const tick = () => {
     const t = getProgress();

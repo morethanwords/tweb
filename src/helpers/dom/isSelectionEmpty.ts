@@ -5,12 +5,12 @@
  */
 
 export default function isSelectionEmpty(selection = window.getSelection()) {
-  if(!selection || !selection.rangeCount) {
+  if(!selection?.rangeCount) {
     return true;
   }
 
   const selectionRange = selection.getRangeAt(0);
-  if(!selectionRange.toString() || !selectionRange.START_TO_END) {
+  if(selectionRange.collapsed || !selectionRange.START_TO_END) {
     return true;
   }
 

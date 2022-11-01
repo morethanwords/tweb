@@ -10,24 +10,27 @@ export default function setCaretAt(node: Node) {
   const originalNode = node;
   node = node.previousSibling;
 
-  if(node.nodeType === 1) {
+  const needNewTextNode = node.nodeType === node.ELEMENT_NODE;
+  if(needNewTextNode) {
     const newNode = document.createTextNode('');
     node.parentNode.insertBefore(newNode, !originalNode.nextSibling || originalNode.nextSibling.nodeType === node.nodeType ? originalNode : originalNode.nextSibling);
     node = newNode;
   }
 
-  if(window.getSelection && document.createRange) {
-    const range = document.createRange();
-    if(node) {
-      range.setStartAfter(node);
-      range.insertNode(node);
-      range.setStart(node, node.nodeValue.length);
-    }
+  const range = document.createRange();
+  if(node) {
+    range.setStartAfter(node);
+    range.insertNode(node);
+    range.setStart(node, node.nodeValue.length);
+  }
 
-    range.collapse(true);
+  range.collapse(true);
 
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+
+  if(needNewTextNode) {
+    node.parentNode.removeChild(node);
   }
 }

@@ -14,11 +14,11 @@ import SendContextMenu from '../chat/sendContextMenu';
 import I18n, {_i18n} from '../../lib/langPack';
 import findUpTag from '../../helpers/dom/findUpTag';
 import cancelEvent from '../../helpers/dom/cancelEvent';
-import getRichValue from '../../helpers/dom/getRichValue';
 import isInputEmpty from '../../helpers/dom/isInputEmpty';
 import whichChild from '../../helpers/dom/whichChild';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import {Poll} from '../../layer';
+import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 
 const MAX_LENGTH_QUESTION = 255;
 const MAX_LENGTH_OPTION = 100;
@@ -186,7 +186,7 @@ export default class PopupCreatePoll extends PopupElement {
   private getFilledAnswers() {
     const answers = Array.from(this.questions.children).map((el, idx) => {
       const input = el.querySelector('.input-field-input') as HTMLElement;
-      return input instanceof HTMLInputElement ? input.value : getRichValue(input, false).value;
+      return input instanceof HTMLInputElement ? input.value : getRichValueWithCaret(input, false, false).value;
     }).filter((v) => !!v.trim());
 
     return answers;
@@ -220,7 +220,7 @@ export default class PopupCreatePoll extends PopupElement {
       return false;
     }
 
-    const {value: quizSolution} = getRichValue(this.quizSolutionField.input, false);
+    const {value: quizSolution} = getRichValueWithCaret(this.quizSolutionField.input, false, false);
     if(quizSolution.length > MAX_LENGTH_SOLUTION) {
       return false;
     }
@@ -238,7 +238,7 @@ export default class PopupCreatePoll extends PopupElement {
 
     const answers = this.getFilledAnswers();
 
-    const {value: quizSolution, entities: quizSolutionEntities} = getRichValue(this.quizSolutionField.input);
+    const {value: quizSolution, entities: quizSolutionEntities} = getRichValueWithCaret(this.quizSolutionField.input, true, false);
 
     if(this.chat.type === 'scheduled' && !force) {
       this.chat.input.scheduleSending(() => {

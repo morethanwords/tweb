@@ -9,18 +9,17 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
+import {MOUNT_CLASS_TO} from '../../config/debug';
 import {MessageEntity} from '../../layer';
 import combineSameEntities from '../../lib/richTextProcessor/combineSameEntities';
+import sortEntities from '../../lib/richTextProcessor/sortEntities';
 import getRichElementValue from './getRichElementValue';
 
-export default function getRichValueWithCaret(field: HTMLElement, withEntities = true) {
-  const lines: string[] = [];
-  const line: string[] = [];
-
+export function getCaretPos(field: HTMLElement) {
   const sel = window.getSelection();
   let selNode: Node;
   let selOffset: number;
-  if(sel && sel.rangeCount) {
+  if(sel?.rangeCount) {
     const range = sel.getRangeAt(0);
     const startOffset = range.startOffset;
     if(
@@ -50,8 +49,30 @@ export default function getRichValueWithCaret(field: HTMLElement, withEntities =
     }
   }
 
+  return {node: selNode, offset: selOffset};
+}
+
+export default function getRichValueWithCaret(
+  field: HTMLElement | DocumentFragment,
+  withEntities = true,
+  withCaret = true
+) {
+  const lines: string[] = [];
+  const line: string[] = [];
+
+  const {node: selNode, offset: selOffset} = !(field instanceof DocumentFragment) && withCaret && getCaretPos(field);
+
   const entities: MessageEntity[] = withEntities ? [] : undefined;
-  getRichElementValue(field, lines, line, selNode, selOffset, entities);
+  const offset = {offset: 0};
+  if(field instanceof DocumentFragment) {
+    let curChild = field.firstChild as HTMLElement;
+    while(curChild) {
+      getRichElementValue(curChild, lines, line, selNode, selOffset, entities, offset);
+      curChild = curChild.nextSibling as any;
+    }
+  } else {
+    getRichElementValue(field, lines, line, selNode, selOffset, entities, offset);
+  }
 
   if(line.length) {
     lines.push(line.join(''));
@@ -59,14 +80,25 @@ export default function getRichValueWithCaret(field: HTMLElement, withEntities =
 
   let value = lines.join('\n');
   const caretPos = value.indexOf('\x01');
-  if(caretPos != -1) {
+  if(caretPos !== -1) {
     value = value.substr(0, caretPos) + value.substr(caretPos + 1);
   }
   value = value.replace(/\u00A0/g, ' ');
 
-  if(entities) {
+  if(entities?.length) {
+    // ! cannot do that here because have the same check before the sending in RichTextProcessor.parseMarkdown
+    /* const entity = entities[entities.length - 1];
+    const length = value.length;
+    const trimmedLength = value.trimRight().length;
+    if(length !== trimmedLength) {
+      entity.length -= length - trimmedLength;
+    } */
+
     combineSameEntities(entities);
+    sortEntities(entities);
   }
 
   return {value, entities, caretPos};
 }
+
+MOUNT_CLASS_TO.getRichValueWithCaret = getRichValueWithCaret;

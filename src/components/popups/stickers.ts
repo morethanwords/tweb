@@ -27,6 +27,7 @@ import Row from '../row';
 import replaceContent from '../../helpers/dom/replaceContent';
 import rootScope from '../../lib/rootScope';
 import wrapCustomEmoji from '../wrappers/customEmoji';
+import emoticonsDropdown from '../emoticonsDropdown';
 
 const ANIMATION_GROUP: AnimationItemGroup = 'STICKERS-POPUP';
 
@@ -46,7 +47,9 @@ export default class PopupStickers extends PopupElement {
     this.title.append(i18n('Loading'));
     this.updateAdded = {};
 
+    emoticonsDropdown.setIgnoreMouseOut('popup', true);
     this.addEventListener('close', () => {
+      emoticonsDropdown.setIgnoreMouseOut('popup', false);
       animationIntersector.setOnlyOnePlayableGroup();
     });
 
@@ -175,22 +178,32 @@ export default class PopupStickers extends PopupElement {
 
       const docs = set.documents.filter((doc) => doc?._ === 'document') as Document.document[];
       if(isEmojis) {
-        divs = [wrapCustomEmoji({
+        const fragment = wrapCustomEmoji({
           docIds: docs.map((doc) => doc.id),
           loadPromises,
           animationGroup: ANIMATION_GROUP,
           size: mediaSizes.active.esgCustomEmoji,
           middleware
           // lazyLoadQueue
-        })];
+        });
 
-        itemsContainer.classList.add('is-emojis');
+        (Array.from(fragment.children) as HTMLElement[]).slice(1).forEach((element) => {
+          const span = document.createElement('span');
+          span.classList.add('super-emoji');
+          element.replaceWith(span);
+          span.append(element);
+        });
+
+        divs = [fragment];
+
+        itemsContainer.classList.replace('sticker-set-stickers', 'super-emojis');
+        itemsContainer.classList.add('is-emojis', 'not-local');
       } else {
         divs = await Promise.all(docs.map(async(doc) => {
           const div = document.createElement('div');
           div.classList.add('sticker-set-sticker');
 
-          const size = mediaSizes.active.esgSticker.width;
+          const size = mediaSizes.active.popupSticker.width;
 
           await wrapSticker({
             doc,

@@ -10,10 +10,10 @@ export default function getSelectedNodes() {
   for(let i = 0; i < selection.rangeCount; ++i) {
     const range = selection.getRangeAt(i);
     let {startContainer, endContainer} = range;
-    if(endContainer.nodeType !== 3) endContainer = endContainer.firstChild;
+    if(endContainer.nodeType !== endContainer.TEXT_NODE) endContainer = endContainer.firstChild;
 
     while(startContainer && startContainer !== endContainer) {
-      nodes.push(startContainer.nodeType === 3 ? startContainer : startContainer.firstChild);
+      nodes.push(startContainer.nodeType === endContainer.TEXT_NODE ? startContainer : startContainer.firstChild);
       startContainer = startContainer.nextSibling;
     }
 

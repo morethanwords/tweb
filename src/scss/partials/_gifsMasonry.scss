@@ -5,19 +5,24 @@
  */
 
 .gifs-masonry {
-  display: flex;
-  flex-wrap: wrap;
+  // display: flex;
+  // flex-wrap: wrap;
+  display: grid;
+  grid-auto-rows: 1fr;
+  grid-template-columns: repeat(3,1fr);
+  gap: .125rem;
 
-  > .gif {
-    flex: 1 0 auto;
-    max-width: 100%;
-    height: 100px;
-    margin: 2.5px;
-    cursor: pointer;
+  .gif {
+    // flex: 1 0 auto;
+    // max-width: 100%;
+    // height: 100px;
+    // margin: 2.5px;
+    // cursor: pointer;
     //background: #000;
-    position: relative;
+    // position: relative;
 
-    video, img {
+    video,
+    img {
       object-fit: cover;
       width: 100%;
       height: 100%;

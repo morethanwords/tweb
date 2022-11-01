@@ -642,7 +642,7 @@ class ApiUpdatesManager {
     this.attached = true;
 
     this.appStateManager.getState().then(({updates: state}) => {
-      const newVersion = this.appStateManager.newVersion/*  || '0.8.6' */;
+      const newVersion = this.appStateManager.newVersion/*  || '1.6.0' */;
 
       // rootScope.broadcast('state_synchronizing');
       if(!state || !state.pts || !state.date/*  || !state.seq */) { // seq can be undefined because of updates.differenceTooLong

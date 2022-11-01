@@ -422,6 +422,7 @@ input:focus, button:focus {
       line-height: 1;
       padding-top: 0;
       padding-bottom: 0;
+      font-family: Arial, Helvetica, sans-serif; // roboto is weird here, can't make them centered
   
       @media (-webkit-min-device-pixel-ratio: 2) { 
         font-size: 1.75rem;

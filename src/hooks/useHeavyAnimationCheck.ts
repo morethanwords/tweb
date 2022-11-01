@@ -61,6 +61,8 @@ export function dispatchHeavyAnimationEvent(promise: Promise<any>, timeout?: num
   return heavyAnimationPromise;
 }
 
+(window as any).dispatchHeavyAnimationEvent = dispatchHeavyAnimationEvent;
+
 function onHeavyAnimationEnd() {
   if(heavyAnimationPromise.isFulfilled) {
     return;

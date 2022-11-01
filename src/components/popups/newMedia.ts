@@ -211,7 +211,7 @@ export default class PopupNewMedia extends PopupElement {
   private onKeyDown = (e: KeyboardEvent) => {
     const target = e.target as HTMLElement;
     if(target !== this.input) {
-      if(target.tagName === 'INPUT' || target.hasAttribute('contenteditable')) {
+      if(target.tagName === 'INPUT' || target.isContentEditable) {
         return;
       }
 

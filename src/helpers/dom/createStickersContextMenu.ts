@@ -60,7 +60,7 @@ export default function createStickersContextMenu(options: {
     }, {
       icon: 'delete',
       text: 'DeleteFromRecent',
-      onClick: () => emoticonsDropdown.stickersTab.deleteRecentSticker(doc),
+      onClick: () => rootScope.managers.appStickersManager.saveRecentSticker(doc.id, true),
       verify: () => verifyRecent?.(target) ?? false
     }, {
       icon: 'mute',

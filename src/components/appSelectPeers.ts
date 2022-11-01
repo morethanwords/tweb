@@ -599,7 +599,7 @@ export default class AppSelectPeers {
 
     this.selectedContainer.insertBefore(div, this.input);
     // this.selectedScrollable.scrollTop = this.selectedScrollable.scrollHeight;
-    this.onChange && this.onChange(this.selected.size);
+    this.onChange?.(this.selected.size);
 
     if(scroll) {
       this.selectedScrollable.scrollIntoViewNew({

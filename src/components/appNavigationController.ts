@@ -16,7 +16,7 @@ export type NavigationItem = {
   type: 'left' | 'right' | 'im' | 'chat' | 'popup' | 'media' | 'menu' |
     'esg' | 'multiselect' | 'input-helper' | 'autocomplete-helper' | 'markup' |
     'global-search' | 'voice' | 'mobile-search' | 'filters' | 'global-search-focus' |
-    'toast',
+    'toast' | 'dropdown',
   onPop: (canAnimate: boolean) => boolean | void,
   onEscape?: () => boolean,
   noHistory?: boolean,
