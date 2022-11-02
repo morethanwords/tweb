@@ -438,7 +438,7 @@ export default class InputField {
         //   const parentElement = el.parentElement;
         //   (parentElement === input ? el : parentElement).remove();
         // });
-        Array.from(input.querySelectorAll('br:not(.br-not-br)')).forEach((el) => {
+        USING_BOMS && Array.from(input.querySelectorAll('br:not(.br-not-br)')).forEach((el) => {
           // const parentElement = el.parentElement;
           el.remove();
           // if(!parentElement.children.length && !parentElement.textContent) {
