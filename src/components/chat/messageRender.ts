@@ -205,7 +205,7 @@ export namespace MessageRender {
       }).element;
     }
 
-    const {container, fillPromise} = wrapReply(originalPeerTitle, undefined, originalMessage, chat.isAnyGroup ? titlePeerId : undefined);
+    const {container, fillPromise} = wrapReply(originalPeerTitle, undefined, chat.animationGroup, originalMessage, chat.isAnyGroup ? titlePeerId : undefined);
     await fillPromise;
     if(currentReplyDiv) {
       currentReplyDiv.replaceWith(container);

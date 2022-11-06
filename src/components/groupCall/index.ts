@@ -409,7 +409,7 @@ export default class PopupGroupCall extends PopupElement {
     this.btnClose.classList.toggle('hide', isFull);
 
     if(isFull !== wasFullScreen) {
-      animationIntersector.checkAnimations(isFull);
+      animationIntersector.checkAnimations2(isFull);
 
       themeController.setThemeColor(isFull ? '#000000' : undefined);
     }

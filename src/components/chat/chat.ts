@@ -35,6 +35,7 @@ import noop from '../../helpers/noop';
 import middlewarePromise from '../../helpers/middlewarePromise';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import {Message} from '../../layer';
+import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
 
 export type ChatType = 'chat' | 'pinned' | 'replies' | 'discussion' | 'scheduled';
 
@@ -86,6 +87,8 @@ export default class Chat extends EventListenerBase<{
   public isAnyGroup: boolean;
   public isMegagroup: boolean;
 
+  public animationGroup: AnimationItemGroup;
+
   constructor(
     public appImManager: AppImManager,
     public managers: AppManagers
@@ -93,6 +96,7 @@ export default class Chat extends EventListenerBase<{
     super();
 
     this.type = 'chat';
+    this.animationGroup = `chat-${Math.round(Math.random() * 65535)}`;
 
     this.container = document.createElement('div');
     this.container.classList.add('chat', 'tabs-tab');
@@ -350,6 +354,26 @@ export default class Chat extends EventListenerBase<{
     this.bubbles.listenerSetter.add(rootScope)('dialog_drop', (e) => {
       if(e.peerId === this.peerId) {
         this.appImManager.setPeer();
+      }
+    });
+
+    this.bubbles.listenerSetter.add(this.appImManager)('chat_changing', ({to}) => {
+      const freeze = to !== this;
+
+      const cb = () => {
+        this.bubbles.observer.toggleObservingNew(freeze);
+        animationIntersector.toggleIntersectionGroup(this.animationGroup, freeze);
+        if(freeze) {
+          animationIntersector.checkAnimations(freeze, this.animationGroup);
+        }
+      };
+
+      if(!freeze) {
+        setTimeout(() => {
+          cb();
+        }, 400);
+      } else {
+        cb();
       }
     });
   }

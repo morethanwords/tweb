@@ -116,7 +116,7 @@ export default class GifsMasonry {
               video.load();
               const animations = animationIntersector.getAnimations(video);
               animations.forEach((item) => {
-                animationIntersector.checkAnimation(item, true, true);
+                animationIntersector.removeAnimation(item);
               });
             }, 0);
           }
@@ -169,7 +169,7 @@ export default class GifsMasonry {
         video.load();
         const animations = animationIntersector.getAnimations(video);
         animations.forEach((item) => {
-          animationIntersector.checkAnimation(item, true, true);
+          animationIntersector.removeAnimation(item);
         });
       }
     });

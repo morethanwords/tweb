@@ -192,6 +192,7 @@ export class AppMessagesManager extends AppManager {
 
   private needSingleMessages: Map<PeerId, Map<number, CancellablePromise<Message.message | Message.messageService>>> = new Map();
   private fetchSingleMessagesPromise: Promise<void> = null;
+  private extendedMedia: Map<PeerId, Map<number, CancellablePromise<void>>> = new Map();
 
   private maxSeenId = 0;
 
@@ -280,7 +281,9 @@ export class AppMessagesManager extends AppManager {
 
       updateNewScheduledMessage: this.onUpdateNewScheduledMessage,
 
-      updateDeleteScheduledMessages: this.onUpdateDeleteScheduledMessages
+      updateDeleteScheduledMessages: this.onUpdateDeleteScheduledMessages,
+
+      updateMessageExtendedMedia: this.onUpdateMessageExtendedMedia
     });
 
     // ! Invalidate notify settings, can optimize though
@@ -2608,9 +2611,7 @@ export class AppMessagesManager extends AppManager {
       return;
     }
 
-    if(message.pFlags === undefined) {
-      message.pFlags = {};
-    }
+    message.pFlags ??= {};
 
     // * exclude from state
     // defineNotNumerableProperties(message, ['rReply', 'mid', 'savedFrom', 'fwdFromId', 'fromId', 'peerId', 'reply_to_mid', 'viaBotId']);
@@ -2729,21 +2730,22 @@ export class AppMessagesManager extends AppManager {
     } */
 
     let unsupported = false;
-    if(isMessage && message.media) {
-      switch(message.media._) {
+    const media = isMessage && message.media;
+    if(media) {
+      switch(media._) {
         case 'messageMediaEmpty': {
           delete message.media;
           break;
         }
 
         case 'messageMediaPhoto': {
-          if(message.media.ttl_seconds) {
+          if(media.ttl_seconds) {
             unsupported = true;
           } else {
-            message.media.photo = this.appPhotosManager.savePhoto(message.media.photo, mediaContext);
+            media.photo = this.appPhotosManager.savePhoto(media.photo, mediaContext);
           }
 
-          if(!(message.media as MessageMedia.messageMediaPhoto).photo) { // * found this bug on test DC
+          if(!(media as MessageMedia.messageMediaPhoto).photo) { // * found this bug on test DC
             delete message.media;
           }
 
@@ -2751,20 +2753,20 @@ export class AppMessagesManager extends AppManager {
         }
 
         case 'messageMediaPoll': {
-          const result = this.appPollsManager.savePoll(message.media.poll, message.media.results, message);
-          message.media.poll = result.poll;
-          message.media.results = result.results;
+          const result = this.appPollsManager.savePoll(media.poll, media.results, message);
+          media.poll = result.poll;
+          media.results = result.results;
           break;
         }
 
         case 'messageMediaDocument': {
-          if(message.media.ttl_seconds) {
+          if(media.ttl_seconds) {
             unsupported = true;
           } else {
-            const originalDoc = message.media.document;
-            message.media.document = this.appDocsManager.saveDoc(originalDoc, mediaContext); // 11.04.2020 warning
+            const originalDoc = media.document;
+            media.document = this.appDocsManager.saveDoc(originalDoc, mediaContext); // 11.04.2020 warning
 
-            if(!message.media.document && originalDoc._ !== 'documentEmpty') {
+            if(!media.document && originalDoc._ !== 'documentEmpty') {
               unsupported = true;
             }
           }
@@ -2774,7 +2776,7 @@ export class AppMessagesManager extends AppManager {
 
         case 'messageMediaWebPage': {
           const messageKey = this.appWebPagesManager.getMessageKeyForPendingWebPage(peerId, mid, options.isScheduled);
-          message.media.webpage = this.appWebPagesManager.saveWebPage(message.media.webpage, messageKey, mediaContext);
+          media.webpage = this.appWebPagesManager.saveWebPage(media.webpage, messageKey, mediaContext);
           break;
         }
 
@@ -2784,7 +2786,13 @@ export class AppMessagesManager extends AppManager {
           break; */
 
         case 'messageMediaInvoice': {
-          message.media.photo = this.appWebDocsManager.saveWebDocument(message.media.photo);
+          media.photo = this.appWebDocsManager.saveWebDocument(media.photo);
+          const extendedMedia = media.extended_media;
+          if(extendedMedia?._ === 'messageExtendedMedia') {
+            const extendedMediaMedia = extendedMedia.media;
+            (extendedMediaMedia as MessageMedia.messageMediaPhoto).photo = this.appPhotosManager.savePhoto((extendedMediaMedia as MessageMedia.messageMediaPhoto).photo, mediaContext);
+            (extendedMediaMedia as MessageMedia.messageMediaDocument).document = this.appDocsManager.saveDoc((extendedMediaMedia as MessageMedia.messageMediaDocument).document, mediaContext);
+          }
           break;
         }
 
@@ -3046,8 +3054,8 @@ export class AppMessagesManager extends AppManager {
         promise = this.appChatsManager.addChatUser(chatId, botId, 0);
       }
 
-      return promise.catch((error) => {
-        if(error && error.type == 'USER_ALREADY_PARTICIPANT') {
+      return promise.catch((error: ApiError) => {
+        if(error?.type == 'USER_ALREADY_PARTICIPANT') {
           error.handled = true;
           return;
         }
@@ -4312,6 +4320,7 @@ export class AppMessagesManager extends AppManager {
         this.rootScope.dispatchEvent('dialog_flush', {peerId, dialog});
       }
     } else {
+      let dispatchEditEvent = true;
       // no sense in dispatching message_edit since only reactions have changed
       if(oldMessage?._ === 'message' && !deepEqual(oldMessage.reactions, (newMessage as Message.message).reactions)) {
         const newReactions = (newMessage as Message.message).reactions;
@@ -4323,10 +4332,10 @@ export class AppMessagesManager extends AppManager {
           reactions: newReactions
         });
 
-        return;
+        dispatchEditEvent = false;
       }
 
-      this.rootScope.dispatchEvent('message_edit', {
+      dispatchEditEvent && this.rootScope.dispatchEvent('message_edit', {
         storageKey: storage.key,
         peerId,
         mid,
@@ -4693,7 +4702,7 @@ export class AppMessagesManager extends AppManager {
 
     const storage = this.getHistoryMessagesStorage(peerId);
     const missingMessages = messages.filter((mid) => !storage.has(mid));
-    const getMissingPromise = missingMessages.length ? Promise.all(missingMessages.map((mid) => this.wrapSingleMessage(peerId, mid))) : Promise.resolve();
+    const getMissingPromise = missingMessages.length ? Promise.all(missingMessages.map((mid) => this.reloadMessages(peerId, mid))) : Promise.resolve();
     getMissingPromise.finally(() => {
       const werePinned = update.pFlags?.pinned;
       if(werePinned) {
@@ -4782,6 +4791,30 @@ export class AppMessagesManager extends AppManager {
     }
   };
 
+  private onUpdateMessageExtendedMedia = (update: Update.updateMessageExtendedMedia) => {
+    const peerId = this.appPeersManager.getPeerId(update.peer);
+    const mid = generateMessageId(update.msg_id);
+    const storage = this.getHistoryMessagesStorage(peerId);
+    if(!storage.has(mid)) {
+      // this.fixDialogUnreadMentionsIfNoMessage(peerId);
+      return;
+    }
+
+    const message = this.getMessageFromStorage(storage, mid) as Message.message;
+    const messageMedia = message.media as MessageMedia.messageMediaInvoice;
+    if(messageMedia.extended_media?._ === 'messageExtendedMedia') {
+      return;
+    }
+
+    messageMedia.extended_media = update.extended_media;
+    this.onUpdateEditMessage({
+      _: 'updateEditMessage',
+      message,
+      pts: 0,
+      pts_count: 0
+    });
+  };
+
   public setDialogToStateIfMessageIsTop(message: MyMessage) {
     if(this.isMessageIsTopMessage(message)) {
       this.dialogsStorage.setDialogToState(this.getDialogOnly(message.peerId));
@@ -4820,7 +4853,7 @@ export class AppMessagesManager extends AppManager {
   }
 
   public updateMessage(peerId: PeerId, mid: number, broadcastEventName?: 'replies_updated'): Promise<Message.message> {
-    const promise: Promise<Message.message> = this.wrapSingleMessage(peerId, mid, true).then(() => {
+    const promise: Promise<Message.message> = this.reloadMessages(peerId, mid, true).then(() => {
       const message = this.getMessageByPeer(peerId, mid) as Message.message;
       if(!message) {
         return;
@@ -5621,7 +5654,15 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public wrapSingleMessage(peerId: PeerId, mid: number, overwrite = false) {
+  public reloadMessages(peerId: PeerId, mid: number, overwrite?: boolean): Promise<MyMessage>;
+  public reloadMessages(peerId: PeerId, mid: number[], overwrite?: boolean): Promise<MyMessage[]>;
+  public reloadMessages(peerId: PeerId, mid: number | number[], overwrite?: boolean): Promise<MyMessage | MyMessage[]> {
+    if(Array.isArray(mid)) {
+      return Promise.all(mid.map((mid) => {
+        return this.reloadMessages(peerId, mid, overwrite);
+      }));
+    }
+
     const message = this.getMessageByPeer(peerId, mid);
     if(message && !overwrite) {
       this.rootScope.dispatchEvent('messages_downloaded', {peerId, mids: [mid]});
@@ -5644,10 +5685,50 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
+  public getExtendedMedia(peerId: PeerId, mids: number[]) {
+    let map = this.extendedMedia.get(peerId);
+    if(!map) {
+      this.extendedMedia.set(peerId, map = new Map());
+    }
+
+    const deferred = deferredPromise<void>();
+    const toRequest: number[] = [];
+    const promises = mids.map((mid) => {
+      let promise = map.get(mid);
+      if(!promise) {
+        map.set(mid, promise = deferred);
+        toRequest.push(mid);
+
+        promise.then(() => {
+          map.delete(mid);
+          if(!map.size && this.extendedMedia.get(peerId) === map) {
+            this.extendedMedia.delete(peerId);
+          }
+        });
+      }
+
+      return promise;
+    });
+
+    if(!toRequest.length) {
+      deferred.resolve();
+    } else {
+      this.apiManager.invokeApi('messages.getExtendedMedia', {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        id: toRequest.map((mid) => getServerMessageId(mid))
+      }).then((updates) => {
+        this.apiUpdatesManager.processUpdateMessage(updates);
+        deferred.resolve();
+      });
+    }
+
+    return Promise.all(promises);
+  }
+
   public fetchMessageReplyTo(message: MyMessage) {
     if(!message.reply_to_mid) return Promise.resolve(this.generateEmptyMessage(0));
     const replyToPeerId = message.reply_to.reply_to_peer_id ? this.appPeersManager.getPeerId(message.reply_to.reply_to_peer_id) : message.peerId;
-    return this.wrapSingleMessage(replyToPeerId, message.reply_to_mid).then((originalMessage) => {
+    return this.reloadMessages(replyToPeerId, message.reply_to_mid).then((originalMessage) => {
       if(!originalMessage) { // ! break the infinite loop
         message = this.getMessageByPeer(message.peerId, message.mid); // message can come from other thread
         delete message.reply_to_mid; // ! WARNING!

@@ -45,6 +45,8 @@ import replaceContent from '../../helpers/dom/replaceContent';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import PopupStickers from '../popups/stickers';
+import getMediaFromMessage from '../../lib/appManagers/utils/messages/getMediaFromMessage';
+import canSaveMessageMedia from '../../lib/appManagers/utils/messages/canSaveMessageMedia';
 
 export default class ChatContextMenu {
   private buttons: (ButtonMenuItemOptions & {verify: () => boolean | Promise<boolean>, notDirect?: () => boolean, withSelection?: true, isSponsored?: true, localName?: 'views' | 'emojis'})[];
@@ -432,10 +434,10 @@ export default class ChatContextMenu {
       icon: 'download',
       text: 'MediaViewer.Context.Download',
       onClick: () => {
-        appDownloadManager.downloadToDisc({media: (this.message as any).media?.document || (this.message as any).media.photo});
+        appDownloadManager.downloadToDisc({media: getMediaFromMessage(this.message)});
       },
       verify: () => {
-        if(this.message.pFlags.is_outgoing || this.noForwards) {
+        if(!canSaveMessageMedia(this.message) || this.noForwards) {
           return false;
         }
 

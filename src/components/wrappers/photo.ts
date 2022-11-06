@@ -161,7 +161,7 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
   }
   // }
 
-  if(size?._ === 'photoSizeEmpty' && isDocument) {
+  if((size?._ === 'photoSizeEmpty' && isDocument) || (size as PhotoSize.photoStrippedSize)?.bytes) {
     return ret;
   }
 

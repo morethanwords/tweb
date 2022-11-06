@@ -18,6 +18,7 @@ import appDownloadManager from '../lib/appManagers/appDownloadManager';
 import appImManager from '../lib/appManagers/appImManager';
 import {MyMessage} from '../lib/appManagers/appMessagesManager';
 import {MyPhoto} from '../lib/appManagers/appPhotosManager';
+import canSaveMessageMedia from '../lib/appManagers/utils/messages/canSaveMessageMedia';
 import getMediaFromMessage from '../lib/appManagers/utils/messages/getMediaFromMessage';
 import wrapRichText from '../lib/richTextProcessor/wrapRichText';
 import {MediaSearchContext} from './appMediaPlaybackController';
@@ -260,13 +261,13 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     const media = getMediaFromMessage(message);
 
     const cantForwardMessage = message._ === 'messageService' || ! await this.managers.appMessagesManager.canForward(message);
+    const cantDownloadMessage = cantForwardMessage || !canSaveMessageMedia(message);
     [this.buttons.forward, this.btnMenuForward.element].forEach((button) => {
       button.classList.toggle('hide', cantForwardMessage);
     });
 
-    this.wholeDiv.classList.toggle('no-forwards', cantForwardMessage);
+    this.wholeDiv.classList.toggle('no-forwards', cantDownloadMessage);
 
-    const cantDownloadMessage = cantForwardMessage;
     [this.buttons.download, this.btnMenuDownload.element].forEach((button) => {
       button.classList.toggle('hide', cantDownloadMessage);
     });

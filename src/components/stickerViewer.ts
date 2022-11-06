@@ -169,7 +169,7 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
 
       if(lockGroups) {
         animationIntersector.setOnlyOnePlayableGroup(group);
-        animationIntersector.checkAnimations(true);
+        animationIntersector.checkAnimations2(true);
       }
 
       if(player instanceof RLottiePlayer) {
@@ -311,7 +311,7 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
         SetTransition(container, 'is-visible', false, openDuration, () => {
           container.remove();
           animationIntersector.setOnlyOnePlayableGroup(previousGroup);
-          animationIntersector.checkAnimations(false);
+          animationIntersector.checkAnimations2(false);
           hasViewer = false;
         });
 

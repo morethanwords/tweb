@@ -136,7 +136,7 @@ export class ReferenceDatabase extends AppManager {
     let promise: Promise<any>;
     switch(context?.type) {
       case 'message': {
-        promise = this.appMessagesManager.wrapSingleMessage(context.peerId, context.messageId, true);
+        promise = this.appMessagesManager.reloadMessages(context.peerId, context.messageId, true);
         break;
         // .then(() => {
         //   console.log('FILE_REFERENCE_EXPIRED: got message', context, appMessagesManager.getMessage((context as ReferenceContext.referenceContextMessage).messageId).media, reference);

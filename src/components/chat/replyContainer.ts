@@ -8,7 +8,7 @@ import replaceContent from '../../helpers/dom/replaceContent';
 import {Middleware} from '../../helpers/middleware';
 import limitSymbols from '../../helpers/string/limitSymbols';
 import {Document, MessageMedia, Photo, WebPage} from '../../layer';
-import appImManager, {CHAT_ANIMATION_GROUP} from '../../lib/appManagers/appImManager';
+import appImManager from '../../lib/appManagers/appImManager';
 import choosePhotoSize from '../../lib/appManagers/utils/photos/choosePhotoSize';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import DivAndCaption from '../divAndCaption';
@@ -16,6 +16,7 @@ import wrapMessageForReply from '../wrappers/messageForReply';
 import wrapPhoto from '../wrappers/photo';
 import wrapSticker from '../wrappers/sticker';
 import wrapVideo from '../wrappers/video';
+import {AnimationItemGroup} from '../animationIntersector';
 
 const MEDIA_SIZE = 32;
 
@@ -26,9 +27,10 @@ export async function wrapReplyDivAndCaption(options: {
   subtitleEl: HTMLElement,
   message: any,
   mediaEl: HTMLElement,
-  loadPromises?: Promise<any>[]
+  loadPromises?: Promise<any>[],
+  animationGroup: AnimationItemGroup
 }) {
-  let {title, titleEl, subtitle, subtitleEl, mediaEl, message, loadPromises} = options;
+  let {title, titleEl, subtitle, subtitleEl, mediaEl, message, loadPromises, animationGroup} = options;
   if(title !== undefined) {
     if(typeof(title) === 'string') {
       title = limitSymbols(title, 140);
@@ -62,7 +64,7 @@ export async function wrapReplyDivAndCaption(options: {
           doc: document,
           div: mediaEl,
           lazyLoadQueue,
-          group: CHAT_ANIMATION_GROUP,
+          group: animationGroup,
           // onlyThumb: document.sticker === 2,
           width: MEDIA_SIZE,
           height: MEDIA_SIZE,
@@ -84,7 +86,7 @@ export async function wrapReplyDivAndCaption(options: {
           loadPromises,
           withoutPreloader: true,
           videoSize: document.video_thumbs[0],
-          group: CHAT_ANIMATION_GROUP
+          group: animationGroup
         });
       } else {
         const m = photo || document;
@@ -138,7 +140,7 @@ export async function wrapReplyDivAndCaption(options: {
 export default class ReplyContainer extends DivAndCaption<(title: string | HTMLElement | DocumentFragment, subtitle: string | HTMLElement | DocumentFragment, message?: any) => Promise<void>> {
   private mediaEl: HTMLElement;
 
-  constructor(protected className: string) {
+  constructor(protected className: string, protected animationGroup: AnimationItemGroup) {
     super(className, async(title, subtitle = '', message?) => {
       if(!this.mediaEl) {
         this.mediaEl = document.createElement('div');
@@ -151,7 +153,8 @@ export default class ReplyContainer extends DivAndCaption<(title: string | HTMLE
         subtitle,
         subtitleEl: this.subtitle,
         mediaEl: this.mediaEl,
-        message
+        message,
+        animationGroup
       });
 
       this.container.classList.toggle('is-media', isMediaSet);

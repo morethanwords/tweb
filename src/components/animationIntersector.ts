@@ -19,11 +19,12 @@ import {fastRaf} from '../helpers/schedulers';
 export type AnimationItemGroup = '' | 'none' | 'chat' | 'lock' |
   'STICKERS-POPUP' | 'emoticons-dropdown' | 'STICKERS-SEARCH' | 'GIFS-SEARCH' |
   `CHAT-MENU-REACTIONS-${number}` | 'INLINE-HELPER' | 'GENERAL-SETTINGS' | 'STICKER-VIEWER' | 'EMOJI' |
-  'EMOJI-STATUS';
+  'EMOJI-STATUS' | `chat-${number}`;
 export interface AnimationItem {
   el: HTMLElement,
   group: AnimationItemGroup,
-  animation: AnimationItemWrapper
+  animation: AnimationItemWrapper,
+  controlled?: boolean
 };
 
 export interface AnimationItemWrapper {
@@ -46,7 +47,7 @@ export class AnimationIntersector {
   private onlyOnePlayableGroup: AnimationItemGroup;
 
   private intersectionLockedGroups: {[group in AnimationItemGroup]?: true};
-  private videosLocked;
+  private videosLocked: boolean;
 
   constructor() {
     this.observer = new IntersectionObserver((entries) => {
@@ -107,19 +108,19 @@ export class AnimationIntersector {
     appMediaPlaybackController.addEventListener('play', ({doc}) => {
       if(doc.type === 'round') {
         this.videosLocked = true;
-        this.checkAnimations();
+        this.checkAnimations2();
       }
     });
 
     appMediaPlaybackController.addEventListener('pause', () => {
       if(this.videosLocked) {
         this.videosLocked = false;
-        this.checkAnimations();
+        this.checkAnimations2();
       }
     });
 
     idleController.addEventListener('change', (idle) => {
-      this.checkAnimations(idle);
+      this.checkAnimations2(idle);
     });
   }
 
@@ -174,40 +175,52 @@ export class AnimationIntersector {
     }
   }
 
-  public addAnimation(_animation: AnimationItem['animation'], group: AnimationItemGroup = '') {
-    if(group === 'none' || this.byPlayer.has(_animation)) {
+  public addAnimation(
+    animation: AnimationItem['animation'],
+    group: AnimationItemGroup = '',
+    observeElement?: HTMLElement,
+    controlled?: boolean
+  ) {
+    if(group === 'none' || this.byPlayer.has(animation)) {
       return;
     }
 
-    let el: HTMLElement;
-    if(_animation instanceof RLottiePlayer) {
-      el = _animation.el[0];
-    } else if(_animation instanceof CustomEmojiRendererElement) {
-      el = _animation.canvas;
-    } else if(_animation instanceof CustomEmojiElement) {
-      el = _animation.placeholder ?? _animation;
-    } else if(_animation instanceof HTMLElement) {
-      el = _animation;
-    }
-
-    const animation: AnimationItem = {
-      el,
-      animation: _animation,
-      group
-    };
-
-    if(_animation instanceof RLottiePlayer) {
-      if(!rootScope.settings.stickers.loop && _animation.loop) {
-        _animation.loop = rootScope.settings.stickers.loop;
+    if(!observeElement) {
+      if(animation instanceof RLottiePlayer) {
+        observeElement = animation.el[0];
+      } else if(animation instanceof CustomEmojiRendererElement) {
+        observeElement = animation.canvas;
+      } else if(animation instanceof CustomEmojiElement) {
+        observeElement = animation.placeholder ?? animation;
+      } else if(animation instanceof HTMLElement) {
+        observeElement = animation;
       }
     }
 
-    (this.byGroups[group as AnimationItemGroup] ??= []).push(animation);
-    this.observer.observe(animation.el);
-    this.byPlayer.set(_animation, animation);
+    const item: AnimationItem = {
+      el: observeElement,
+      animation: animation,
+      group,
+      controlled
+    };
+
+    if(animation instanceof RLottiePlayer) {
+      if(!rootScope.settings.stickers.loop && animation.loop) {
+        animation.loop = rootScope.settings.stickers.loop;
+      }
+    }
+
+    (this.byGroups[group as AnimationItemGroup] ??= []).push(item);
+    this.observer.observe(item.el);
+    this.byPlayer.set(animation, item);
   }
 
-  public checkAnimations(blurred?: boolean, group?: AnimationItemGroup, destroy = false) {
+  public checkAnimations(
+    blurred?: boolean,
+    group?: AnimationItemGroup,
+    destroy?: boolean,
+    imitateIntersection?: boolean
+  ) {
     // if(rootScope.idle.isIDLE) return;
 
     if(group !== undefined && !this.byGroups[group]) {
@@ -218,6 +231,10 @@ export class AnimationIntersector {
     const groups = group !== undefined /* && false */ ? [group] : Object.keys(this.byGroups) as AnimationItemGroup[];
 
     for(const group of groups) {
+      if(imitateIntersection && this.intersectionLockedGroups[group]) {
+        continue;
+      }
+
       const animations = this.byGroups[group];
 
       forEachReverse(animations, (animation) => {
@@ -226,11 +243,18 @@ export class AnimationIntersector {
     }
   }
 
-  public checkAnimation(player: AnimationItem, blurred = false, destroy = false) {
+  public checkAnimations2(blurred?: boolean) {
+    this.checkAnimations(blurred, undefined, undefined, true);
+  }
+
+  public checkAnimation(player: AnimationItem, blurred?: boolean, destroy?: boolean) {
     const {el, animation, group} = player;
     // return;
     if(destroy || (!this.lockedGroups[group] && !isInDOM(el))) {
-      this.removeAnimation(player);
+      if(!player.controlled || destroy) {
+        this.removeAnimation(player);
+      }
+
       return;
     }
 
@@ -294,6 +318,11 @@ export class AnimationIntersector {
   public unlockIntersectionGroup(group: AnimationItemGroup) {
     delete this.intersectionLockedGroups[group];
     this.refreshGroup(group);
+  }
+
+  public toggleIntersectionGroup(group: AnimationItemGroup, lock: boolean) {
+    if(lock) this.lockIntersectionGroup(group);
+    else this.unlockIntersectionGroup(group);
   }
 }
 

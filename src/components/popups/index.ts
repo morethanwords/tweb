@@ -239,7 +239,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
 
     if(!this.withoutOverlay) {
       overlayCounter.isOverlayActive = true;
-      animationIntersector.checkAnimations(true);
+      animationIntersector.checkAnimations2(true);
     }
 
     // cannot add event instantly because keydown propagation will fire it
@@ -292,7 +292,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
       this.cleanup();
 
       if(!this.withoutOverlay) {
-        animationIntersector.checkAnimations(false);
+        animationIntersector.checkAnimations2(false);
       }
     }, 150);
   }

@@ -8,7 +8,6 @@ import type {AppImManager, ChatSavedPosition} from '../../lib/appManagers/appImM
 import type {HistoryResult, MyMessage} from '../../lib/appManagers/appMessagesManager';
 import type {MyDocument} from '../../lib/appManagers/appDocsManager';
 import type Chat from './chat';
-import {CHAT_ANIMATION_GROUP} from '../../lib/appManagers/appImManager';
 import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
 import {logger} from '../../lib/logger';
 import rootScope from '../../lib/rootScope';
@@ -121,6 +120,9 @@ import wrapPhoto from '../wrappers/photo';
 import wrapPoll from '../wrappers/poll';
 import wrapVideo from '../wrappers/video';
 import isRTL from '../../helpers/string/isRTL';
+import NBSP from '../../helpers/string/nbsp';
+import DotRenderer from '../dotRenderer';
+import toHHMMSS from '../../helpers/string/toHHMMSS';
 
 export const USER_REACTIONS_INLINE = false;
 const USE_MEDIA_TAILS = false;
@@ -264,7 +266,7 @@ export default class ChatBubbles {
   private sliceViewportDebounced: DebounceReturnType<ChatBubbles['sliceViewport']>;
   private resizeObserver: ResizeObserver;
   private willScrollOnLoad: boolean;
-  private observer: SuperIntersectionObserver;
+  public observer: SuperIntersectionObserver;
 
   private renderingMessages: Set<number> = new Set();
   private setPeerCached: boolean;
@@ -279,6 +281,9 @@ export default class ChatBubbles {
 
   private renderNewPromises: Set<Promise<any>> = new Set();
   private updateGradient: boolean;
+
+  private extendedMediaMessages: Set<number> = new Set();
+  private pollExtendedMediaMessagesPromise: Promise<void>;
 
   // private reactions: Map<number, ReactionsElement>;
 
@@ -1030,22 +1035,6 @@ export default class ChatBubbles {
 
     this.observer = new SuperIntersectionObserver({root: this.scrollable.container});
 
-    this.listenerSetter.add(this.chat.appImManager)('chat_changing', ({to}) => {
-      const freeze = to !== this.chat;
-
-      const cb = () => {
-        this.observer.toggleObservingNew(freeze);
-      };
-
-      if(!freeze) {
-        setTimeout(() => {
-          cb();
-        }, 400);
-      } else {
-        cb();
-      }
-    });
-
     this.sendViewCountersDebounced = debounce(() => {
       const mids = [...this.viewsMids];
       this.viewsMids.clear();
@@ -1275,7 +1264,7 @@ export default class ChatBubbles {
             height: 18,
             needUpscale: true,
             middleware,
-            group: CHAT_ANIMATION_GROUP,
+            group: this.chat.animationGroup,
             withThumb: false,
             needFadeIn: false
           }).then(({render}) => render).then((player) => {
@@ -1646,7 +1635,7 @@ export default class ChatBubbles {
             const message = await this.managers.appMessagesManager.getMessageByPeer(peerId.toPeerId(), +mid);
             if(message) {
               const inputInvoice = await this.managers.appPaymentsManager.getInputInvoiceByPeerId(this.peerId, +bubble.dataset.mid);
-              new PopupPayment(message as Message.message, inputInvoice);
+              new PopupPayment(message as Message.message, inputInvoice, undefined, true);
             }
           } else {
             this.chat.appImManager.setInnerPeer({
@@ -2206,13 +2195,28 @@ export default class ChatBubbles {
       this.chat.selection.deleteSelectedMids(this.peerId, mids);
     }
 
-    animationIntersector.checkAnimations(false, CHAT_ANIMATION_GROUP);
+    animationIntersector.checkAnimations(false, this.chat.animationGroup);
     this.deleteEmptyDateGroups();
 
     if(!ignoreOnScroll) {
       this.scrollable.onScroll();
       // this.onScroll();
     }
+  }
+
+  private pollExtendedMediaMessages() {
+    const mids = Array.from(this.extendedMediaMessages);
+    return this.managers.appMessagesManager.getExtendedMedia(this.peerId, mids);
+  }
+
+  private setExtendedMediaMessagesPollInterval() {
+    if(this.pollExtendedMediaMessagesPromise || !this.extendedMediaMessages.size) {
+      return;
+    }
+
+    this.pollExtendedMediaMessagesPromise = pause(30000)
+    .then(() => this.pollExtendedMediaMessages())
+    .then(() => this.setExtendedMediaMessagesPollInterval());
   }
 
   private setTopPadding(middleware = this.getMiddleware()) {
@@ -2875,7 +2879,7 @@ export default class ChatBubbles {
     /* this.ladderDeferred && this.ladderDeferred.resolve();
     this.ladderDeferred = deferredPromise<void>(); */
 
-    animationIntersector.lockGroup(CHAT_ANIMATION_GROUP);
+    animationIntersector.lockGroup(this.chat.animationGroup);
     const setPeerPromise = m(promise).then(async() => {
       log.warn('promise fulfilled');
 
@@ -2919,8 +2923,8 @@ export default class ChatBubbles {
 
       log.warn('mounted chat', this.chatInner === chatInner, this.chatInner.parentElement, performance.now() - perf);
 
-      animationIntersector.unlockGroup(CHAT_ANIMATION_GROUP);
-      animationIntersector.checkAnimations(false, CHAT_ANIMATION_GROUP/* , true */);
+      animationIntersector.unlockGroup(this.chat.animationGroup);
+      animationIntersector.checkAnimations(false, this.chat.animationGroup/* , true */);
 
       // fastRaf(() => {
       this.lazyLoadQueue.unlock();
@@ -3278,9 +3282,13 @@ export default class ChatBubbles {
         }
 
         const item = this.bubbleGroups.getItemByBubble(bubble);
-        item.mounted = false;
-        if(!groups.includes(item.group)) {
-          groups.push(item.group);
+        if(!item) {
+          this.log.error('NO ITEM BY BUBBLE', bubble);
+        } else {
+          item.mounted = false;
+          if(!groups.includes(item.group)) {
+            groups.push(item.group);
+          }
         }
 
         this.bubblesToReplace.delete(bubble);
@@ -3621,7 +3629,7 @@ export default class ChatBubbles {
       lazyLoadQueue: this.lazyLoadQueue,
       customEmojiSize,
       middleware,
-      animationGroup: CHAT_ANIMATION_GROUP
+      animationGroup: this.chat.animationGroup
     });
 
     let canHaveTail = true;
@@ -3690,14 +3698,16 @@ export default class ChatBubbles {
     }
 
     const replyMarkup = isMessage && message.reply_markup;
-    if(replyMarkup && replyMarkup._ === 'replyInlineMarkup' && replyMarkup.rows && replyMarkup.rows.length) {
-      const rows = replyMarkup.rows;
+    let replyMarkupRows = replyMarkup?._ === 'replyInlineMarkup' && replyMarkup.rows;
+    if(replyMarkupRows) {
+      replyMarkupRows = replyMarkupRows.filter((row) => row.buttons.length);
+    }
 
+    if(replyMarkupRows) {
       const containerDiv = document.createElement('div');
       containerDiv.classList.add('reply-markup');
-      rows.forEach((row) => {
+      replyMarkupRows.forEach((row) => {
         const buttons = row.buttons;
-        if(!buttons || !buttons.length) return;
 
         const rowDiv = document.createElement('div');
         rowDiv.classList.add('reply-markup-row');
@@ -3761,13 +3771,16 @@ export default class ChatBubbles {
             }
 
             case 'keyboardButtonBuy': {
+              const mediaInvoice = messageMedia._ === 'messageMediaInvoice' ? messageMedia : undefined;
+              if(mediaInvoice?.extended_media) {
+                break;
+              }
+
               buttonEl = document.createElement('button');
               buttonEl.classList.add('is-buy');
 
-              if(messageMedia?._ === 'messageMediaInvoice') {
-                if(messageMedia.receipt_msg_id) {
-                  text = i18n('Message.ReplyActionButtonShowReceipt');
-                }
+              if(mediaInvoice?.receipt_msg_id) {
+                text = i18n('Message.ReplyActionButtonShowReceipt');
               }
 
               break;
@@ -3777,6 +3790,10 @@ export default class ChatBubbles {
               buttonEl = document.createElement('button');
               break;
             }
+          }
+
+          if(!buttonEl) {
+            return;
           }
 
           buttonEl.classList.add('reply-markup-button', 'rp', 'tgico');
@@ -3791,10 +3808,16 @@ export default class ChatBubbles {
           rowDiv.append(buttonEl);
         });
 
+        if(!rowDiv.childElementCount) {
+          return;
+        }
+
         containerDiv.append(rowDiv);
       });
 
-      attachClickEvent(containerDiv, (e) => {
+      const haveButtons = !!containerDiv.childElementCount;
+
+      haveButtons && attachClickEvent(containerDiv, (e) => {
         let target = e.target as HTMLElement;
 
         if(!target.classList.contains('reply-markup-button')) target = findUpClassName(target, 'reply-markup-button');
@@ -3808,7 +3831,7 @@ export default class ChatBubbles {
         cancelEvent(e);
 
         const column = whichChild(target);
-        const row = rows[whichChild(target.parentElement)];
+        const row = replyMarkupRows[whichChild(target.parentElement)];
 
         if(!row.buttons || !row.buttons[column]) {
           this.log.warn('no such button', row, column, message);
@@ -3825,9 +3848,11 @@ export default class ChatBubbles {
         });
       });
 
-      canHaveTail = false;
-      bubble.classList.add('with-reply-markup');
-      contentWrapper.append(containerDiv);
+      if(haveButtons) {
+        canHaveTail = false;
+        bubble.classList.add('with-reply-markup');
+        contentWrapper.append(containerDiv);
+      }
     }
 
     const isOutgoing = message.pFlags.is_outgoing/*  && this.peerId !== rootScope.myId */;
@@ -3968,7 +3993,7 @@ export default class ChatBubbles {
                 lazyLoadQueue: this.lazyLoadQueue,
                 middleware: this.getMiddleware(),
                 isOut,
-                group: CHAT_ANIMATION_GROUP,
+                group: this.chat.animationGroup,
                 loadPromises,
                 autoDownload: this.chat.autoDownload,
                 noInfo: message.mid < 0
@@ -4115,7 +4140,7 @@ export default class ChatBubbles {
               div: attachmentDiv,
               middleware,
               lazyLoadQueue: this.lazyLoadQueue,
-              group: CHAT_ANIMATION_GROUP,
+              group: this.chat.animationGroup,
               // play: !!message.pending || !multipleRender,
               play: true,
               loop: true,
@@ -4172,7 +4197,7 @@ export default class ChatBubbles {
                 isOut,
                 lazyLoadQueue: this.lazyLoadQueue,
                 middleware,
-                group: CHAT_ANIMATION_GROUP,
+                group: this.chat.animationGroup,
                 loadPromises,
                 autoDownload: this.chat.autoDownload,
                 searchContext: isRound ? {
@@ -4329,55 +4354,135 @@ export default class ChatBubbles {
 
         case 'messageMediaInvoice': {
           const isTest = messageMedia.pFlags.test;
-          const photo = messageMedia.photo;
+          const extendedMedia = messageMedia.extended_media;
+          const isAlreadyPaid = extendedMedia?._ === 'messageExtendedMedia';
+          const isNotPaid = extendedMedia?._ === 'messageExtendedMediaPreview';
+          let innerMedia = isAlreadyPaid ?
+            (extendedMedia.media as MessageMedia.messageMediaPhoto).photo as Photo.photo ||
+              (extendedMedia.media as MessageMedia.messageMediaDocument).document as Document.document :
+            messageMedia.photo;
 
-          const priceEl = document.createElement(photo ? 'span' : 'div');
-          const f = document.createDocumentFragment();
-          const l = i18n(messageMedia.receipt_msg_id ? 'PaymentReceipt' : (isTest ? 'PaymentTestInvoice' : 'PaymentInvoice'));
-          l.classList.add('text-uppercase');
-          const joiner = ' ‎';
-          const p = document.createElement('span');
-          p.classList.add('text-bold');
-          p.textContent = paymentsWrapCurrencyAmount(messageMedia.total_amount, messageMedia.currency) + joiner;
-          f.append(p, l);
-          if(isTest && messageMedia.receipt_msg_id) {
-            const a = document.createElement('span');
-            a.classList.add('text-uppercase', 'pre-wrap');
-            a.append(joiner + '(Test)');
-            f.append(a);
+          const wrappedPrice = paymentsWrapCurrencyAmount(messageMedia.total_amount, messageMedia.currency);
+          let priceEl: HTMLElement;
+          if(!extendedMedia) {
+            priceEl = document.createElement(innerMedia ? 'span' : 'div');
+            const f = document.createDocumentFragment();
+            const l = i18n(messageMedia.receipt_msg_id ? 'PaymentReceipt' : (isTest ? 'PaymentTestInvoice' : 'PaymentInvoice'));
+            l.classList.add('text-uppercase');
+            const joiner = ' ' + NBSP;
+            const p = document.createElement('span');
+            p.classList.add('text-bold');
+            p.textContent = wrappedPrice + joiner;
+            f.append(p, l);
+            if(isTest && messageMedia.receipt_msg_id) {
+              const a = document.createElement('span');
+              a.classList.add('text-uppercase', 'pre-wrap');
+              a.append(joiner + '(Test)');
+              f.append(a);
+            }
+            setInnerHTML(priceEl, f);
+          } else if(isNotPaid) {
+            priceEl = document.createElement('span');
+            priceEl.classList.add('extended-media-buy', 'tgico-premium_lock');
+            attachmentDiv.classList.add('is-buy');
+            _i18n(priceEl, 'Checkout.PayPrice', [wrappedPrice]);
+
+            if(extendedMedia.video_duration !== undefined) {
+              const videoTime = document.createElement('span');
+              videoTime.classList.add('video-time');
+              videoTime.textContent = toHHMMSS(extendedMedia.video_duration, false);
+              attachmentDiv.append(videoTime);
+            }
           }
-          setInnerHTML(priceEl, f);
 
-          if(photo) {
-            const mediaSize = mediaSizes.active.invoice;
-            wrapPhoto({
-              photo,
-              container: attachmentDiv,
-              withTail: false,
-              isOut,
-              lazyLoadQueue: this.lazyLoadQueue,
-              middleware,
-              loadPromises,
-              boxWidth: mediaSize.width,
-              boxHeight: mediaSize.height
-            });
+          if(isNotPaid) {
+            (extendedMedia.thumb as PhotoSize.photoStrippedSize).w = extendedMedia.w;
+            (extendedMedia.thumb as PhotoSize.photoStrippedSize).h = extendedMedia.h;
+            innerMedia = {
+              _: 'photo',
+              access_hash: '',
+              pFlags: {},
+              date: 0,
+              dc_id: 0,
+              file_reference: [],
+              id: 0,
+              sizes: [extendedMedia.thumb]
+            };
+          }
 
-            bubble.classList.add('photo');
+          if(innerMedia) {
+            const mediaSize = extendedMedia ? mediaSizes.active.extendedInvoice : mediaSizes.active.invoice;
+            if(innerMedia._ === 'document') {
+              wrapVideo({
+                doc: innerMedia,
+                container: attachmentDiv,
+                withTail: false,
+                isOut,
+                lazyLoadQueue: this.lazyLoadQueue,
+                middleware,
+                loadPromises,
+                boxWidth: mediaSize.width,
+                boxHeight: mediaSize.height,
+                group: this.chat.animationGroup,
+                message: message as Message.message
+              });
+              bubble.classList.add('video');
+            } else {
+              wrapPhoto({
+                photo: innerMedia,
+                container: attachmentDiv,
+                withTail: false,
+                isOut,
+                lazyLoadQueue: this.lazyLoadQueue,
+                middleware,
+                loadPromises,
+                boxWidth: mediaSize.width,
+                boxHeight: mediaSize.height,
+                message: isAlreadyPaid ? message : undefined
+              });
+              bubble.classList.add('photo');
+            }
 
-            priceEl.classList.add('video-time');
-            attachmentDiv.append(priceEl);
+            if(priceEl) {
+              if(!extendedMedia) {
+                priceEl.classList.add('video-time');
+              }
+
+              attachmentDiv.append(priceEl);
+            }
           } else {
             attachmentDiv = undefined;
           }
 
-          const titleDiv = document.createElement('div');
-          titleDiv.classList.add('bubble-primary-color');
-          setInnerHTML(titleDiv, wrapEmojiText(messageMedia.title));
+          if(isNotPaid) {
+            const {mid} = message;
+            this.extendedMediaMessages.add(mid);
+            middleware.onClean(() => {
+              this.extendedMediaMessages.delete(mid);
+              animationIntersector.removeAnimationByPlayer(dotRenderer);
+            });
+            this.setExtendedMediaMessagesPollInterval();
 
-          const richText = wrapEmojiText(messageMedia.description);
-          messageDiv.prepend(...[titleDiv, !photo && priceEl, richText].filter(Boolean));
+            const {width, height} = attachmentDiv.style;
+            const dotRenderer = new DotRenderer(parseInt(width), parseInt(height));
+            dotRenderer.renderFirstFrame();
+            attachmentDiv.append(dotRenderer.canvas);
 
-          bubble.classList.remove('is-message-empty');
+            animationIntersector.addAnimation(dotRenderer, this.chat.animationGroup, dotRenderer.canvas, true);
+          }
+
+          let titleDiv: HTMLElement;
+          if(!extendedMedia) {
+            titleDiv = document.createElement('div');
+            titleDiv.classList.add('bubble-primary-color');
+            setInnerHTML(titleDiv, wrapEmojiText(messageMedia.title));
+          }
+
+          const richText = isAlreadyPaid ? undefined : wrapEmojiText(messageMedia.description);
+          messageDiv.prepend(...[titleDiv, !innerMedia && priceEl, richText].filter(Boolean));
+
+          if(!richText) canHaveTail = false;
+          else bubble.classList.remove('is-message-empty');
           bubble.classList.add('is-invoice');
 
           break;
@@ -5028,7 +5133,7 @@ export default class ChatBubbles {
           div: stickerDiv,
           middleware,
           lazyLoadQueue: this.lazyLoadQueue,
-          group: CHAT_ANIMATION_GROUP,
+          group: this.chat.animationGroup,
           // play: !!message.pending || !multipleRender,
           play: true,
           loop: true,

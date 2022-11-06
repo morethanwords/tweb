@@ -211,7 +211,7 @@ export class LottieLoader {
     // ! will need refactoring later, this is not the best way to remove the animation
     const animations = animationIntersector.getAnimations(player.el[0]);
     animations.forEach((animation) => {
-      animationIntersector.checkAnimation(animation, true, true);
+      animationIntersector.removeAnimation(animation);
     });
   };
 

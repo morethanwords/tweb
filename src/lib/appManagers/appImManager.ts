@@ -92,8 +92,7 @@ import findUpClassName from '../../helpers/dom/findUpClassName';
 import {CLICK_EVENT_NAME} from '../../helpers/dom/clickEvent';
 import PopupPayment from '../../components/popups/payment';
 import wrapPeerTitle from '../../components/wrappers/peerTitle';
-
-export const CHAT_ANIMATION_GROUP: AnimationItemGroup = 'chat';
+import NBSP from '../../helpers/string/nbsp';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -215,10 +214,10 @@ export class AppImManager extends EventListenerBase<{
 
     useHeavyAnimationCheck(() => {
       animationIntersector.setOnlyOnePlayableGroup('lock');
-      animationIntersector.checkAnimations(true);
+      animationIntersector.checkAnimations2(true);
     }, () => {
       animationIntersector.setOnlyOnePlayableGroup();
-      animationIntersector.checkAnimations(false);
+      animationIntersector.checkAnimations2(false);
     });
 
     if(IS_FIREFOX && apiManagerProxy.oldVersion && compareVersion(apiManagerProxy.oldVersion, '1.4.3') === -1) {
@@ -1125,7 +1124,7 @@ export class AppImManager extends EventListenerBase<{
    * Opens thread when peerId of discussion group is known
    */
   public openThread(peerId: PeerId, lastMsgId: number, threadId: number) {
-    return this.managers.appMessagesManager.wrapSingleMessage(peerId, threadId).then((message) => {
+    return this.managers.appMessagesManager.reloadMessages(peerId, threadId).then((message) => {
       // const message: Message = this.managers.appMessagesManager.getMessageByPeer(peerId, threadId);
       if(!message) {
         lastMsgId = undefined;
@@ -1382,7 +1381,7 @@ export class AppImManager extends EventListenerBase<{
     }, rootScope.settings.animationsEnabled ? 250 : 0, false, true);
 
     lottieLoader.setLoop(rootScope.settings.stickers.loop);
-    animationIntersector.checkAnimations(false);
+    animationIntersector.checkAnimations2(false);
 
     for(const chat of this.chats) {
       chat.setAutoDownloadMedia();
@@ -2177,7 +2176,7 @@ export class AppImManager extends EventListenerBase<{
       return () => replaceContent(element, subtitle || placeholder);
     };
 
-    const placeholder = useWhitespace ? '‎' : ''; // ! HERE U CAN FIND WHITESPACE
+    const placeholder = useWhitespace ? NBSP : ''; // ! HERE U CAN FIND WHITESPACE
     if(!result || result.cached) {
       return await set();
     } else if(needClear) {

@@ -266,7 +266,7 @@ export default class ChatPinnedMessage {
     this.debug = true;
     this.isStatic = false;
 
-    const dAC = new ReplyContainer('pinned-message');
+    const dAC = new ReplyContainer('pinned-message', chat.animationGroup);
     this.pinnedMessageContainer = new PinnedContainer({
       topbar,
       chat,
@@ -624,7 +624,8 @@ export default class ChatPinnedMessage {
         subtitleEl: writeTo,
         message,
         mediaEl: writeMediaTo,
-        loadPromises
+        loadPromises,
+        animationGroup: this.chat.animationGroup
       });
 
       await Promise.all(loadPromises);

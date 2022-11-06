@@ -101,7 +101,7 @@ export class SuperStickerRenderer {
     const players = animationIntersector.getAnimations(element);
     players.forEach((player) => {
       if(!visible) {
-        animationIntersector.checkAnimation(player, true, true);
+        animationIntersector.removeAnimation(player);
       } else {
         animationIntersector.checkAnimation(player, false);
       }

@@ -159,7 +159,12 @@ export default async function wrapMessageForReply(message: MyMessage | MyDraftMe
         }
 
         case 'messageMediaInvoice': {
-          addPart(undefined, plain ? media.title : wrapEmojiText(media.title));
+          if(media.extended_media?._ === 'messageExtendedMediaPreview') {
+            addPart(undefined, plain ? media.description : wrapEmojiText(media.description));
+          } else {
+            addPart(undefined, plain ? media.title : wrapEmojiText(media.title));
+          }
+
           break;
         }
 

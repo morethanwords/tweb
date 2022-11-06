@@ -116,7 +116,7 @@ export class AppReactionsManager extends AppManager {
   }
 
   private unshiftQuickReactionInner(availableReactions: AvailableReaction[], quickReaction: Reaction | AvailableReaction) {
-    if(quickReaction._ !== 'reactionEmoji' && quickReaction._ !== 'availableReaction') return availableReactions;
+    if(quickReaction && quickReaction._ !== 'reactionEmoji' && quickReaction._ !== 'availableReaction') return availableReactions;
     const emoticon = (quickReaction as Reaction.reactionEmoji).emoticon || (quickReaction as AvailableReaction).reaction;
     const availableReaction = findAndSplice(availableReactions, (availableReaction) => availableReaction.reaction === emoticon);
     if(availableReaction) {
@@ -155,7 +155,7 @@ export class AppReactionsManager extends AppManager {
       this.getAvailableReactions()
     ], ([config, availableReactions]) => {
       const reaction = config.reactions_default;
-      if(reaction._ === 'reactionEmoji') {
+      if(reaction?._ === 'reactionEmoji') {
         return availableReactions.find((availableReaction) => availableReaction.reaction === reaction.emoticon);
       }
 

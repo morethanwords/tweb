@@ -21,7 +21,7 @@ const App = {
   version: process.env.VERSION,
   versionFull: process.env.VERSION_FULL,
   build: +process.env.BUILD,
-  langPackVersion: '0.5.0',
+  langPackVersion: '0.5.1',
   langPack: 'macos',
   langPackCode: 'en',
   domains: [MAIN_DOMAIN] as string[],

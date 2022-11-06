@@ -620,7 +620,7 @@ export default class ChatInput {
 
     this.rowsWrapper.append(this.replyElements.container);
     this.autocompleteHelperController = new AutocompleteHelperController();
-    this.stickersHelper = new StickersHelper(this.rowsWrapper, this.autocompleteHelperController, this.managers);
+    this.stickersHelper = new StickersHelper(this.rowsWrapper, this.autocompleteHelperController, this.chat, this.managers);
     this.emojiHelper = new EmojiHelper(this.rowsWrapper, this.autocompleteHelperController, this, this.managers);
     this.commandsHelper = new CommandsHelper(this.rowsWrapper, this.autocompleteHelperController, this, this.managers);
     this.mentionsHelper = new MentionsHelper(this.rowsWrapper, this.autocompleteHelperController, this, this.managers);
@@ -2786,7 +2786,7 @@ export default class ChatInput {
       if(!message) { // load missing replying message
         peerTitleEl = i18n('Loading');
 
-        this.managers.appMessagesManager.wrapSingleMessage(this.chat.peerId, mid).then((_message) => {
+        this.managers.appMessagesManager.reloadMessages(this.chat.peerId, mid).then((_message) => {
           if(this.replyToMsgId !== mid) {
             return;
           }
@@ -2880,7 +2880,7 @@ export default class ChatInput {
     const haveReply = oldReply.classList.contains('reply');
 
     this.replyElements.iconBtn.replaceWith(this.replyElements.iconBtn = ButtonIcon((type === 'webpage' ? 'link' : type) + ' active reply-icon', {noRipple: true}));
-    const {container} = wrapReply(title, subtitle, message);
+    const {container} = wrapReply(title, subtitle, this.chat.animationGroup, message);
     if(haveReply) {
       oldReply.replaceWith(container);
     } else {

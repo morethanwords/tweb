@@ -949,6 +949,7 @@ const lang = {
   'Checkout.PasswordEntry.Title': 'Payment Confirmation',
   'Checkout.PasswordEntry.Pay': 'Pay',
   'Checkout.PasswordEntry.Text': 'Your card %@ is on file. To pay with this card, please enter your 2-Step-Verification password.',
+  'Checkout.PayPrice': 'Pay %@',
   'Checkout.WebConfirmation.Title': 'Complete Payment',
   'ChatList.Context.Mute': 'Mute',
   'ChatList.Context.Unmute': 'Unmute',

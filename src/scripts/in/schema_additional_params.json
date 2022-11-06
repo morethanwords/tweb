@@ -23,6 +23,12 @@
     {"name": "size", "type": "number"}
   ]
 }, {
+  "predicate": "photoStrippedSize",
+  "params": [
+    {"name": "w", "type": "number"},
+    {"name": "h", "type": "number"}
+  ]
+}, {
   "predicate": "dialog",
   "params": [
     {"name": "folder_id", "type": "0 | 1"},

@@ -468,7 +468,7 @@ export default class AppMediaViewerBase<
 
   protected toggleOverlay(active: boolean) {
     overlayCounter.isOverlayActive = active;
-    animationIntersector.checkAnimations(active);
+    animationIntersector.checkAnimations2(active);
   }
 
   protected toggleGlobalListeners(active: boolean) {
@@ -1369,6 +1369,10 @@ export default class AppMediaViewerBase<
       const video = /* useController ?
         appMediaPlaybackController.addMedia(message, false, true) as HTMLVideoElement :
          */createVideo({pip: useController});
+
+      if(this.wholeDiv.classList.contains('no-forwards')) {
+        video.addEventListener('contextmenu', cancelEvent);
+      }
 
       const set = () => this.setMoverToTarget(target, false, fromRight).then(({onAnimationEnd}) => {
       // return; // set and don't move

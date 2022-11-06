@@ -105,7 +105,8 @@ export default class PopupPayment extends PopupElement {
   constructor(
     private message: Message.message,
     private inputInvoice: InputInvoice,
-    private paymentForm?: PaymentsPaymentForm | PaymentsPaymentReceipt
+    private paymentForm?: PaymentsPaymentForm | PaymentsPaymentReceipt,
+    private isReceipt?: boolean
   ) {
     super('popup-payment', {
       closable: true,
@@ -116,7 +117,10 @@ export default class PopupPayment extends PopupElement {
     });
 
     this.tipButtonsMap = new Map();
-    this.d();
+    this.d().catch((err) => {
+      console.error('payment popup error', err);
+      this.hide();
+    });
   }
 
   private async d() {
@@ -148,7 +152,12 @@ export default class PopupPayment extends PopupElement {
     }
 
     const mediaInvoice = message?.media as MessageMedia.messageMediaInvoice;
-    const isReceipt = mediaInvoice ? !!mediaInvoice.receipt_msg_id : paymentForm._ === 'payments.paymentReceipt';
+    const isReceipt = this.isReceipt ??
+      (
+        mediaInvoice ?
+          !!mediaInvoice.receipt_msg_id || mediaInvoice.extended_media?._ === 'messageExtendedMedia' :
+          paymentForm._ === 'payments.paymentReceipt'
+      );
     const isTest = mediaInvoice ? mediaInvoice.pFlags.test : paymentForm.invoice.pFlags.test;
 
     const photo = mediaInvoice ? mediaInvoice.photo : paymentForm.photo;
@@ -215,7 +224,7 @@ export default class PopupPayment extends PopupElement {
 
     const inputInvoice = this.inputInvoice;
     if(!paymentForm) {
-      if(isReceipt) paymentForm = await this.managers.appPaymentsManager.getPaymentReceipt(message.peerId, mediaInvoice.receipt_msg_id);
+      if(isReceipt) paymentForm = await this.managers.appPaymentsManager.getPaymentReceipt(message.peerId, mediaInvoice.receipt_msg_id || (inputInvoice as InputInvoice.inputInvoiceMessage).msg_id);
       else paymentForm = await this.managers.appPaymentsManager.getPaymentForm(inputInvoice);
       this.paymentForm = paymentForm;
     }
@@ -228,7 +237,7 @@ export default class PopupPayment extends PopupElement {
       wrapPeerTitle({peerId: paymentForm.provider_id.toPeerId()})
     ]);
 
-    console.log(paymentForm, lastRequestedInfo);
+    // console.log(paymentForm, lastRequestedInfo);
 
     await peerTitle.update({peerId: paymentForm.bot_id.toPeerId()});
     preloaderContainer.remove();

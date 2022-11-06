@@ -1427,7 +1427,9 @@ export namespace PhotoSize {
   export type photoStrippedSize = {
     _: 'photoStrippedSize',
     type: string,
-    bytes: Uint8Array
+    bytes: Uint8Array,
+    w?: number,
+    h?: number
   };
 
   export type photoSizeProgressive = {
