@@ -11,7 +11,7 @@ export default function getFileNameForUpload(file: File | Blob) {
   let fileName: string;
   const mimeType = file?.type;
   if(mimeType) { // the same like apiFileName in appMessagesManager for upload!
-    const ext = `${tabId}_${uploadId++}.mimeType.split('/')[1]`;
+    const ext = `${tabId}_${uploadId++}.${mimeType.split('/')[1]}`;
 
     if(['image/jpeg', 'image/png', 'image/bmp'].indexOf(mimeType) >= 0) {
       fileName = 'photo' + ext;
