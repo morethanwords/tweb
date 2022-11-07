@@ -55,8 +55,8 @@
 
   &-placeholder {
     display: inline;
-    width: 18px;
-    height: 18px;
+    width: var(--messages-custom-emoji-size);
+    height: var(--messages-custom-emoji-size);
     vertical-align: middle;
     margin-top: -.125rem;
   }

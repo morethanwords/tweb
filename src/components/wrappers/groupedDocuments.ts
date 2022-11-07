@@ -14,7 +14,7 @@ import Chat from '../chat/chat';
 import LazyLoadQueue from '../lazyLoadQueue';
 import wrapDocument from './document';
 
-export default async function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, messageDiv, chat, loadPromises, autoDownloadSize, lazyLoadQueue, searchContext, useSearch, sizeType, managers}: {
+export default async function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, messageDiv, chat, loadPromises, autoDownloadSize, lazyLoadQueue, searchContext, useSearch, sizeType, managers, fontWeight, fontSize}: {
   albumMustBeRenderedFull: boolean,
   message: any,
   messageDiv: HTMLElement,
@@ -27,7 +27,9 @@ export default async function wrapGroupedDocuments({albumMustBeRenderedFull, mes
   searchContext?: MediaSearchContext,
   useSearch?: boolean,
   sizeType?: MediaSizeType,
-  managers?: AppManagers
+  managers?: AppManagers,
+  fontWeight?: number,
+  fontSize?: number
 }) {
   let nameContainer: HTMLElement;
   const mids = albumMustBeRenderedFull ? await chat.getMidsByMid(message.mid) : [message.mid];
@@ -44,7 +46,9 @@ export default async function wrapGroupedDocuments({albumMustBeRenderedFull, mes
       lazyLoadQueue,
       searchContext,
       sizeType,
-      managers
+      managers,
+      fontWeight,
+      fontSize
     });
 
     const container = document.createElement('div');

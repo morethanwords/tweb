@@ -1143,7 +1143,17 @@ $bubble-beside-button-width: 38px;
   }
   
   .reply {
-    font-size: var(--messages-secondary-text-size);
+    --font-size: var(--messages-secondary-text-size);
+  }
+
+  .document {
+    &-name {
+      font-size: var(--messages-text-size);
+    }
+
+    &-size {
+      font-size: var(--messages-secondary-text-size);
+    }
   }
 
   &.is-square-photo {
@@ -1291,6 +1301,7 @@ $bubble-beside-button-width: 38px;
   }
 
   .message {
+    --custom-emoji-size: var(--messages-custom-emoji-size);
     font-size: var(--messages-text-size);
     padding: 0 .5rem .375rem .625rem;
     max-width: 100%;
@@ -1743,7 +1754,7 @@ $bubble-beside-button-width: 38px;
       background-color: var(--message-time-background);
       padding: 0 .3125rem;
       z-index: 2;
-      
+
       .time {
         margin-left: 0;
         display: flex;
@@ -1751,7 +1762,7 @@ $bubble-beside-button-width: 38px;
         padding: 0;
         margin: 0;
         white-space: nowrap;
-        height: 18px;
+        height: calc(var(--messages-time-text-size) + .375rem);
 
         .inner {
           right: unset;
@@ -1811,7 +1822,8 @@ $bubble-beside-button-width: 38px;
   
   .time {
     visibility: hidden; // * can't use color transparent here, because in name can be emoji
-    font-size: 12px;
+    font-size: var(--messages-time-text-size);
+    height: var(--messages-time-text-size);
     user-select: none;
     line-height: 1;
     vertical-align: middle;
@@ -1820,7 +1832,6 @@ $bubble-beside-button-width: 38px;
     z-index: 1;
     /* display: inline-flex;
     align-items: center; */
-    height: 12px;
     direction: ltr;
     float: right; // * rtl fix
     cursor: pointer;
@@ -1853,7 +1864,7 @@ $bubble-beside-button-width: 38px;
       line-height: 1;
       padding: inherit;
       white-space: nowrap;
-      height: 12px; // * as font-size
+      height: var(--messages-time-text-size); // * as font-size
       visibility: visible;
     }
 
@@ -1884,12 +1895,12 @@ $bubble-beside-button-width: 38px;
     background-color: var(--message-time-background);
     padding: 0px 6px 0px 6px;
     z-index: 2;
-    font-size: 12px;
+    font-size: var(--messages-time-text-size);
     color: white;
     display: flex;
     align-items: center;
     user-select: none;
-    height: 1.125rem;
+    height: calc(var(--messages-time-text-size) + .375rem);
     line-height: 1;
 
     &.can-autoplay:after {
@@ -1971,8 +1982,8 @@ $bubble-beside-button-width: 38px;
     font-weight: var(--font-weight-bold) !important;
     /* padding-bottom: 4px; */
     color: var(--primary-color);
-    font-size: .875rem;
-    line-height: 1.25rem;
+    font-size: var(--messages-secondary-text-size);
+    line-height: calc(var(--messages-secondary-text-size) + .25rem);
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2284,10 +2295,10 @@ $bubble-beside-button-width: 38px;
     color: #fff;
     //background-color: rgba(0, 0, 0, .24);
     background-color: var(--message-highlightning-color);
-    font-size: .9375rem;
+    font-size: var(--messages-service-text-size);
     padding: .28125rem .625rem;
     // line-height: var(--line-height);
-    line-height: 1.25rem;
+    line-height: calc(var(--messages-service-text-size) + 5px);
     border-radius: inherit;
     user-select: none;
     display: flex;
@@ -2579,10 +2590,10 @@ $bubble-beside-button-width: 38px;
 
     &:after, 
     .inner:after {
-      font-size: 19px;
+      font-size: calc(var(--messages-text-size) + 3px);
       //vertical-align: middle;
       margin-left: 1px;
-      line-height: 16px; // of message
+      line-height: var(--messages-time-text-size); // of message
       color: var(--message-out-primary-color);
     }
   }

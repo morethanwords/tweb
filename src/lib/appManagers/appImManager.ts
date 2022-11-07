@@ -69,7 +69,7 @@ import uiNotificationsManager from './uiNotificationsManager';
 import appMediaPlaybackController from '../../components/appMediaPlaybackController';
 import {PHONE_NUMBER_REG_EXP} from '../richTextProcessor';
 import wrapEmojiText from '../richTextProcessor/wrapEmojiText';
-import wrapRichText from '../richTextProcessor/wrapRichText';
+import wrapRichText, {CustomEmojiRendererElement, renderEmojis} from '../richTextProcessor/wrapRichText';
 import wrapUrl from '../richTextProcessor/wrapUrl';
 import generateMessageId from './utils/messageId/generateMessageId';
 import getUserStatusString from '../../components/wrappers/getUserStatusString';
@@ -93,6 +93,8 @@ import {CLICK_EVENT_NAME} from '../../helpers/dom/clickEvent';
 import PopupPayment from '../../components/popups/payment';
 import wrapPeerTitle from '../../components/wrappers/peerTitle';
 import NBSP from '../../helpers/string/nbsp';
+import {makeMediaSize, MediaSize} from '../../helpers/mediaSize';
+import {MiddleEllipsisElement} from '../../components/middleEllipsis';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -144,6 +146,7 @@ export class AppImManager extends EventListenerBase<{
   public managers: AppManagers;
 
   public cacheStorage = new CacheStorageController('cachedFiles');
+  public customEmojiSize: MediaSize;
 
   get myId() {
     return rootScope.myId;
@@ -1365,7 +1368,26 @@ export class AppImManager extends EventListenerBase<{
   }
 
   private setSettings = () => {
-    document.documentElement.style.setProperty('--messages-text-size', rootScope.settings.messagesTextSize + 'px');
+    const {messagesTextSize} = rootScope.settings;
+
+    this.customEmojiSize = makeMediaSize(messagesTextSize + 4, messagesTextSize + 4);
+    document.documentElement.style.setProperty('--messages-text-size', messagesTextSize + 'px');
+
+    const firstTime = !this.customEmojiSize;
+    if(!firstTime) {
+      const ellipsisElements = document.querySelectorAll<MiddleEllipsisElement>('middle-ellipsis-element');
+      ellipsisElements.forEach((element) => {
+        element.disconnectedCallback();
+        element.dataset.fontSize = '' + messagesTextSize;
+        if(element.title) element.textContent = element.title;
+        element.connectedCallback();
+      });
+
+      const renderers = document.querySelectorAll<CustomEmojiRendererElement>('.chat custom-emoji-renderer-element');
+      renderers.forEach((renderer) => {
+        renderer.forceRenderAfterSize = true;
+      });
+    }
 
     document.body.classList.toggle('animation-level-0', !rootScope.settings.animationsEnabled);
     document.body.classList.toggle('animation-level-1', false);

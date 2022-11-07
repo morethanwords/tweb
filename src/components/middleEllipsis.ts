@@ -89,8 +89,10 @@ function testElement(element: HTMLElement) {
     from = /* parseFloat(element.getAttribute(attributeName)) ||  */50;
     multiplier = from > 0 && from / 100;
 
+    let fontSize = element.dataset.fontSize;
+    if(fontSize) fontSize += 'px';
     // const perf = performance.now();
-    font = `${element.dataset.fontWeight || FontWeight} ${FontSize} ${FontFamily}`;
+    font = `${element.dataset.fontWeight || FontWeight} ${fontSize || FontSize} ${FontFamily}`;
     /* const computedStyle = window.getComputedStyle(elm, null);
     font = `${computedStyle.getPropertyValue('font-weight')} ${computedStyle.getPropertyValue('font-size')} ${computedStyle.getPropertyValue('font-family')}`; */
     // console.log('testMiddleEllipsis get computed style:', performance.now() - perf, font);

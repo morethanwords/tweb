@@ -225,6 +225,8 @@ export class CustomEmojiRendererElement extends HTMLElement {
 
   public ignoreSettingDimensions: boolean;
 
+  public forceRenderAfterSize: boolean;
+
   constructor() {
     super();
 
@@ -278,7 +280,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
       undefined;
   }
 
-  public getOffsets(offsetsMap: Map<CustomEmojiElements, {top: number, left: number}[]> = new Map()) {
+  public getOffsets(offsetsMap: Map<CustomEmojiElements, {top: number, left: number, width: number}[]> = new Map()) {
     if(!this.playersSynced.size) {
       return offsetsMap;
     }
@@ -304,7 +306,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
       const offsets = visible.map(({rect: elementRect}) => {
         const top = elementRect.top - rect.top;
         const left = elementRect.left - rect.left;
-        return {top, left};
+        return {top, left, width: elementRect.width};
       });
 
       if(offsets.length) {
@@ -368,6 +370,17 @@ export class CustomEmojiRendererElement extends HTMLElement {
         frameHeight = frame.height;
       }
 
+      // ! check performance of scaling
+      const elementWidth = Math.round(offsets[0].width * dpr);
+      if(elementWidth !== frameWidth) {
+        // if(this.size.width === 36) {
+        //   console.warn('different width', elementWidth, frameWidth, this);
+        // }
+
+        frameWidth = elementWidth;
+        frameHeight = elementWidth;
+      }
+
       const maxTop = height - frameHeight;
       const maxLeft = width - frameWidth;
 
@@ -388,7 +401,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
 
       offsets.forEach(({top, left}) => {
         top = Math.round(top * dpr), left = Math.round(left * dpr);
-        if(/* top > maxTop ||  */left > maxLeft) {
+        if(left < 0 ||/* top > maxTop ||  */left > maxLeft) {
           return;
         }
 
@@ -456,7 +469,8 @@ export class CustomEmojiRendererElement extends HTMLElement {
     this.isDimensionsSet = true;
     this.isCanvasClean = true;
 
-    if(this.isSelectable && forceRenderAfter) {
+    if(this.forceRenderAfterSize || (this.isSelectable && forceRenderAfter)) {
+      this.forceRenderAfterSize = undefined;
       this.forceRender();
     }
   }

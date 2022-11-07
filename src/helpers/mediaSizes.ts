@@ -39,7 +39,7 @@ const MOBILE_SIZE = 600;
 const MEDIUM_SIZE = 1275;
 const LARGE_SIZE = 1680;
 
-const CUSTOM_EMOJI_SIZE = makeMediaSize(18, 18);
+const CUSTOM_EMOJI_SIZE = makeMediaSize(20, 20);
 const ESG_CUSTOM_EMOJI_SIZE = makeMediaSize(36, 36);
 const EMOJI_STATUS_SIZE = makeMediaSize(18, 18);
 

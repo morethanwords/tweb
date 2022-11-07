@@ -528,7 +528,7 @@ export default class ChatBubbles {
             if(!tempMessage.media?.document?.thumbs?.length && doc.thumbs?.length) {
               getHeavyAnimationPromise().then(async() => {
                 const timeSpan = div.querySelector('.time');
-                const newDiv = await wrapDocument({message});
+                const newDiv = await wrapDocument({message, fontSize: rootScope.settings.messagesTextSize});
                 div.replaceWith(newDiv);
 
                 if(timeSpan) {
@@ -3622,6 +3622,8 @@ export default class ChatBubbles {
       }
     }
 
+    customEmojiSize ??= this.chat.appImManager.customEmojiSize;
+
     const richText = wrapRichText(messageMessage, {
       entities: totalEntities,
       passEntities: this.passEntities,
@@ -4012,7 +4014,8 @@ export default class ChatBubbles {
                   inputFilter: {
                     _: 'inputMessagesFilterEmpty'
                   }
-                }
+                },
+                fontSize: rootScope.settings.messagesTextSize
               });
               preview.append(docDiv);
               preview.classList.add('preview-with-document');
@@ -4227,7 +4230,8 @@ export default class ChatBubbles {
                 useSearch: !(message as Message.message).pFlags.is_scheduled,
                 isScheduled: (message as Message.message).pFlags.is_scheduled
               } : undefined,
-              sizeType: 'documentName'
+              sizeType: 'documentName',
+              fontSize: rootScope.settings.messagesTextSize
             });
 
             if(newNameContainer) {

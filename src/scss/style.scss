@@ -88,6 +88,9 @@ $chat-input-inner-padding-handhelds: .25rem;
   --messages-text-size: 16px;
   --messages-secondary-text-size: calc(var(--messages-text-size) - 2px);
   --messages-secondary-line-height: calc(var(--messages-secondary-text-size) + 4px);
+  --messages-time-text-size: calc(var(--messages-text-size) - 4px);
+  --messages-service-text-size: calc(var(--messages-text-size) - 1px);
+  --messages-custom-emoji-size: calc(var(--messages-text-size) + 4px);
   --bubble-transition-in: transform var(--transition-standard-in), opacity var(--transition-standard-in);
   --bubble-transition-out: transform var(--transition-standard-out), opacity var(--transition-standard-out);
   --line-height: 1.3125;
@@ -118,7 +121,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   --call-button-size: 3.375rem;
   --call-button-margin: 2rem;
 
-  --custom-emoji-size: 1.125rem;
+  --custom-emoji-size: 1.25rem;
 
   // https://github.com/overtake/TelegramSwift/blob/5cc7d2475fe4738a6aa0486c23eaf80a89d33b97/submodules/TGUIKit/TGUIKit/PresentationTheme.swift#L2054
   --peer-avatar-red-top: #ff885e;

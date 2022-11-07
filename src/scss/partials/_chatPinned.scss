@@ -5,6 +5,8 @@
  */
 
 .pinned-message {
+  --custom-emoji-size: calc(var(--font-size) + 2px) !important;
+
   &-border {
     position: relative;
     height: 2rem;
@@ -123,6 +125,9 @@
 
 .pinned-message, 
 .reply {
+  --font-size: var(--font-size-14);
+  --custom-emoji-size: calc(var(--font-size) + 4px);
+  --line-height: calc(var(--font-size) + 4px);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -143,6 +148,9 @@
     pointer-events: none;
     position: relative;
     margin-left: .5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
 
   &-title {
@@ -151,8 +159,8 @@
   
   &-title, 
   &-subtitle {
-    font-size: var(--font-size-14);
-    line-height: var(--line-height-14);
+    font-size: var(--font-size);
+    line-height: var(--line-height);
     position: relative; // ! WARNING (for custom emoji)
 
     @include text-overflow();
@@ -214,7 +222,7 @@
   } */
 
   &-border {
-    height: 2rem;
+    height: calc(var(--font-size) * 2 + .25rem);
     border-radius: 1px;
     min-width: 2px;
     background: var(--primary-color);
@@ -480,7 +488,7 @@
   }
 
   &-title {
-    margin-top: -.125rem;
+    // margin-top: -.125rem;
     margin-bottom: .25rem;
   }
 

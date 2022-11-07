@@ -209,7 +209,7 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
           mousedown = false;
         }
         mousemove = false;
-      })
+      });
       progress.addEventListener('mousemove', (e) => {
         mousemove = true;
         if(mousedown) scrub(e);
@@ -301,6 +301,7 @@ async function wrapAudio(audioEl: AudioElement) {
 
   const middleEllipsisEl = new MiddleEllipsisElement();
   middleEllipsisEl.dataset.fontWeight = audioEl.dataset.fontWeight;
+  middleEllipsisEl.dataset.fontSize = audioEl.dataset.fontSize;
   middleEllipsisEl.dataset.sizeType = audioEl.dataset.sizeType;
   if(isVoice) {
     middleEllipsisEl.append(await wrapSenderToPeer(message));

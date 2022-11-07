@@ -178,6 +178,7 @@ $chat-input-border-radius: 1rem;
 	}
 	
 	.input-message-input {
+    --custom-emoji-size: var(--messages-custom-emoji-size);
 		background: none;
 		border: none;
 		width: 100%;

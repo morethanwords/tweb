@@ -17,6 +17,9 @@ export default function getTextWidth(text: string, font: string) {
   if(!context) {
     const canvas = document.createElement('canvas');
     context = canvas.getContext('2d', {alpha: false});
+  }
+
+  if(context.font !== font) {
     context.font = font;
   }
 
