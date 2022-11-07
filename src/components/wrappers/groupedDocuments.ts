@@ -8,13 +8,12 @@ import setInnerHTML from '../../helpers/dom/setInnerHTML';
 import {MediaSizeType} from '../../helpers/mediaSizes';
 import {Message} from '../../layer';
 import {AppManagers} from '../../lib/appManagers/managers';
-import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
 import {MediaSearchContext} from '../appMediaPlaybackController';
 import Chat from '../chat/chat';
 import LazyLoadQueue from '../lazyLoadQueue';
 import wrapDocument from './document';
 
-export default async function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, messageDiv, chat, loadPromises, autoDownloadSize, lazyLoadQueue, searchContext, useSearch, sizeType, managers, fontWeight, fontSize}: {
+export default async function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, messageDiv, chat, loadPromises, autoDownloadSize, lazyLoadQueue, searchContext, useSearch, sizeType, managers, fontWeight, fontSize, richTextFragment}: {
   albumMustBeRenderedFull: boolean,
   message: any,
   messageDiv: HTMLElement,
@@ -29,7 +28,8 @@ export default async function wrapGroupedDocuments({albumMustBeRenderedFull, mes
   sizeType?: MediaSizeType,
   managers?: AppManagers,
   fontWeight?: number,
-  fontSize?: number
+  fontSize?: number,
+  richTextFragment?: DocumentFragment
 }) {
   let nameContainer: HTMLElement;
   const mids = albumMustBeRenderedFull ? await chat.getMidsByMid(message.mid) : [message.mid];
@@ -63,11 +63,7 @@ export default async function wrapGroupedDocuments({albumMustBeRenderedFull, mes
       const messageDiv = document.createElement('div');
       messageDiv.classList.add('document-message');
 
-      const richText = wrapRichText(message.message, {
-        entities: message.totalEntities
-      });
-
-      setInnerHTML(messageDiv, richText);
+      setInnerHTML(messageDiv, richTextFragment);
       wrapper.append(messageDiv);
     }
 

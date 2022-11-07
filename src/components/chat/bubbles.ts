@@ -532,7 +532,7 @@ export default class ChatBubbles {
                 div.replaceWith(newDiv);
 
                 if(timeSpan) {
-                  newDiv.querySelector('.document').append(timeSpan);
+                  (newDiv.querySelector('.document') || newDiv).append(timeSpan);
                 }
               });
             }
@@ -3578,21 +3578,27 @@ export default class ChatBubbles {
     }
 
     let messageMedia: MessageMedia = isMessage && message.media;
-
+    let needToSetHTML = true;
     let messageMessage: string, totalEntities: MessageEntity[];
     if(isMessage) {
-      if((messageMedia as MessageMedia.messageMediaDocument)?.document &&
-        !['video', 'gif'].includes(((messageMedia as MessageMedia.messageMediaDocument).document as MyDocument).type)) {
-        // * just filter these cases for documents caption
-      } else if(groupedId && albumMustBeRenderedFull) {
+      if(groupedId && albumMustBeRenderedFull) {
         const t = getAlbumText(albumMessages);
         messageMessage = t.message;
         // totalEntities = t.entities;
         totalEntities = t.totalEntities;
-      } else if(((messageMedia as MessageMedia.messageMediaDocument)?.document as MyDocument)?.type !== 'sticker') {
+      } else {
         messageMessage = message.message;
         // totalEntities = message.entities;
         totalEntities = message.totalEntities;
+      }
+
+      const document = (messageMedia as MessageMedia.messageMediaDocument)?.document as MyDocument;
+      if(document) {
+        if(document?.type === 'sticker') {
+          messageMessage = totalEntities = undefined;
+        } else if(!['video', 'gif'].includes(document.type)) {
+          needToSetHTML = false;
+        }
       }
     } else {
       if(message.action._ === 'messageActionPhoneCall') {
@@ -3636,7 +3642,6 @@ export default class ChatBubbles {
 
     let canHaveTail = true;
     let isStandaloneMedia = false;
-    let needToSetHTML = true;
     if(bigEmojis) {
       if(rootScope.settings.emoji.big) {
         const sticker = bigEmojis === 1 &&
@@ -4231,7 +4236,8 @@ export default class ChatBubbles {
                 isScheduled: (message as Message.message).pFlags.is_scheduled
               } : undefined,
               sizeType: 'documentName',
-              fontSize: rootScope.settings.messagesTextSize
+              fontSize: rootScope.settings.messagesTextSize,
+              richTextFragment: richText
             });
 
             if(newNameContainer) {

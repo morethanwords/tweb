@@ -9,6 +9,7 @@ import {CancellablePromise} from '../../helpers/cancellablePromise';
 import {clearBadCharsAndTrim} from '../../helpers/cleanSearchText';
 import {formatFullSentTime} from '../../helpers/date';
 import {simulateClickEvent, attachClickEvent} from '../../helpers/dom/clickEvent';
+import findUpClassName from '../../helpers/dom/findUpClassName';
 import formatBytes from '../../helpers/formatBytes';
 import {MediaSizeType} from '../../helpers/mediaSizes';
 import noop from '../../helpers/noop';
@@ -334,6 +335,10 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
   }
 
   attachClickEvent(docDiv, (e) => {
+    if(findUpClassName(e.target, 'time')) { // prevent downloading by clicking on time
+      return;
+    }
+
     if(preloader) {
       preloader.onClick(e);
     } else {

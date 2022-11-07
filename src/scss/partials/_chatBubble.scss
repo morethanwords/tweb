@@ -1557,7 +1557,7 @@ $bubble-beside-button-width: 38px;
         position: absolute;
         top: 0;
         bottom: 0;
-        z-index: -1;
+        z-index: -2;
         width: 200vw;
         left: -75vw;
       }
@@ -1572,8 +1572,9 @@ $bubble-beside-button-width: 38px;
             right: 0;
             bottom: 0;
             left: 0;
-            background-color: rgba(0, 0, 0, .06);
+            background-color: var(--message-background-color);
             border-radius: inherit;
+            z-index: -1;
           }
         }
       }
@@ -1584,8 +1585,8 @@ $bubble-beside-button-width: 38px;
         }
 
         body:not(.animation-level-0) & {
-          .document-selection, 
-          .document-wrapper:before {
+          .document-selection/* , 
+          .document-wrapper:before */ {
             animation: bubbleSelected 2s linear;
           }
         }
@@ -1597,14 +1598,14 @@ $bubble-beside-button-width: 38px;
         }
 
         body:not(.animation-level-0) & {
-          .document-selection, 
-          .document-wrapper:before {
+          .document-selection/* , 
+          .document-wrapper:before */ {
             animation: fade-in-opacity .2s linear forwards;
           }
   
           &.backwards {
-            .document-selection, 
-            .document-wrapper:before {
+            .document-selection/* , 
+            .document-wrapper:before */ {
               animation: fade-in-backwards-opacity .2s linear forwards;
             }
           }
@@ -1690,8 +1691,18 @@ $bubble-beside-button-width: 38px;
     }
 
     .document-wrapper {
-      background-color: var(--message-background-color);
       padding: .25rem .5rem;
+
+      // &:before {
+      //   position: absolute;
+      //   top: 0;
+      //   right: 0;
+      //   bottom: 0;
+      //   left: 0;
+      //   border-radius: inherit;
+      //   background-color: var(--message-background-color);
+      //   content: " ";
+      // }
 
       > .name {
         // padding: .0625rem 0 .375rem;
@@ -2227,10 +2238,14 @@ $bubble-beside-button-width: 38px;
 .bubbles-date-group:last-of-type {
   .bubbles-group:last-of-type {
     .bubble:last-of-type {
-      margin-bottom: $bubble-overflow-big;
+      margin-bottom: $bubble-overflow;
       /* &:after, .document-container:last-of-type .document-selection {
         bottom: 0 !important;
       } */
+
+      &:after {
+        bottom: -#{$bubble-overflow};
+      }
     }
   }
 }
@@ -2837,10 +2852,6 @@ $bubble-beside-button-width: 38px;
       /* &:after {
         left: -50vw;
       } */
-    }
-
-    .document-wrapper {
-      background-color: var(--message-background-color);
     }
   }
 
