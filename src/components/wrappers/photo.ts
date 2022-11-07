@@ -161,6 +161,8 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
   }
   // }
 
+  ret.aspecter = aspecter;
+
   if((size?._ === 'photoSizeEmpty' && isDocument) || (size as PhotoSize.photoStrippedSize)?.bytes) {
     return ret;
   }
@@ -285,7 +287,6 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
   ret.loadPromises.thumb = loadThumbPromise;
   ret.loadPromises.full = loadPromise || Promise.resolve();
   ret.preloader = preloader;
-  ret.aspecter = aspecter;
 
   // const elapsedTime = performance.now() - perf;
   // if(elapsedTime > 4) {
