@@ -27,11 +27,12 @@ export function createVerificationIframe(url: string, callback: TelegramWebviewE
   iframe.classList.add('payment-verification');
   iframe.src = url;
 
-  iframe.addEventListener('load', () => {
-    weakMap.set(iframe.contentWindow, callback);
-  }, {once: true});
-
-  return iframe;
+  return {
+    iframe,
+    onMount: () => {
+      weakMap.set(iframe.contentWindow, callback);
+    }
+  };
 }
 
 export default class PopupPaymentVerification extends PopupElement<{
@@ -49,7 +50,7 @@ export default class PopupPaymentVerification extends PopupElement<{
   }
 
   private d() {
-    const iframe = createVerificationIframe(this.url, (event) => {
+    const {iframe, onMount} = createVerificationIframe(this.url, (event) => {
       if(event.eventType !== 'web_app_open_tg_link') {
         return;
       }
@@ -63,5 +64,6 @@ export default class PopupPaymentVerification extends PopupElement<{
 
     this.body.append(iframe);
     this.show();
+    onMount();
   }
 }

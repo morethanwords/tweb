@@ -226,7 +226,7 @@ export default class PopupPaymentCard extends PopupElement<{
     if(SUPPORTED_NATIVE_PROVIDERS.has(paymentForm.native_provider as PaymentsNativeProvider)) {
       this.d();
     } else {
-      const iframe = createVerificationIframe(paymentForm.url, (event) => {
+      const {iframe, onMount} = createVerificationIframe(paymentForm.url, (event) => {
         if(event.eventType !== 'payment_form_submit') {
           return;
         }
@@ -257,6 +257,7 @@ export default class PopupPaymentCard extends PopupElement<{
       // putPreloader(this.body, true);
       this.body.append(iframe);
       this.show();
+      onMount();
     }
   }
 
