@@ -37,7 +37,7 @@ export function createVerificationIframe(url: string, callback: TelegramWebviewE
 export default class PopupPaymentVerification extends PopupElement<{
   finish: () => void
 }> {
-  constructor(private url: string) {
+  constructor(private url: string, private openPathAfter?: boolean) {
     super('popup-payment popup-payment-verification', {
       closable: true,
       overlayClosable: true,
@@ -56,7 +56,9 @@ export default class PopupPaymentVerification extends PopupElement<{
 
       this.dispatchEvent('finish');
       this.hide();
-      appImManager.openUrl('https://t.me' + event.eventData.path_full);
+      if(this.openPathAfter) {
+        appImManager.openUrl('https://t.me' + event.eventData.path_full);
+      }
     });
 
     this.body.append(iframe);

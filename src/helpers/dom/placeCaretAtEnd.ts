@@ -12,7 +12,7 @@
 import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
 
 export default function placeCaretAtEnd(el: HTMLElement, ignoreTouchCheck = false, focus = true) {
-  if(IS_TOUCH_SUPPORTED && (!ignoreTouchCheck || document.activeElement !== el)) {
+  if(IS_TOUCH_SUPPORTED && (!ignoreTouchCheck || (document.activeElement.tagName !== 'INPUT' && !(document.activeElement as HTMLElement).isContentEditable))) {
     return;
   }
 

@@ -36,7 +36,7 @@ export default class DotRenderer implements AnimationItemWrapper {
     const dpr = this.dpr = window.devicePixelRatio;
     canvas.width = width * dpr;
     canvas.height = height * dpr;
-    canvas.style.cssText = `position: absolute; width: 100%; height: 100%; z-index: 1;`;
+    canvas.classList.add('canvas-thumbnail', 'canvas-dots');
 
     this.paused = true;
     this.autoplay = true;

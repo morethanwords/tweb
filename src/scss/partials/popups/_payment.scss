@@ -42,11 +42,15 @@
 
   .input-field {
     --height: 3rem;
-    margin: 1.25rem .5rem 0;
+    margin: .75rem .5rem 0;
 
     &-input {
       --padding: .75rem;
     }
+  }
+
+  .input-fields-row .input-field {
+    margin-top: 1.25rem;
   }
 
   .sidebar-left-section {

@@ -42,8 +42,8 @@ export default class PasswordMonkey {
         }
       });
 
-      this.passwordInputField.onVisibilityClickAdditional = () => {
-        if(this.passwordInputField.passwordVisible) {
+      this.passwordInputField.helpers.onVisibilityClickAdditional = () => {
+        if(this.passwordInputField.helpers.passwordVisible) {
           this.animation.setDirection(1);
           this.animation.curFrame = 0;
           this.needFrame = 16;

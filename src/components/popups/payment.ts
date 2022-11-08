@@ -782,7 +782,7 @@ export default class PopupPayment extends PopupElement {
           if(paymentResult._ === 'payments.paymentResult') {
             onConfirmed();
           } else {
-            popupPaymentVerification = new PopupPaymentVerification(paymentResult.url);
+            popupPaymentVerification = new PopupPaymentVerification(paymentResult.url, !mediaInvoice.extended_media);
             popupPaymentVerification.addEventListener('finish', () => {
               popupPaymentVerification = undefined;
 

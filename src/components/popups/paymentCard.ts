@@ -14,7 +14,6 @@ import {renderImageFromUrlPromise} from '../../helpers/dom/renderImageFromUrl';
 import noop from '../../helpers/noop';
 import {PaymentsPaymentForm} from '../../layer';
 import {LangPackKey, _i18n} from '../../lib/langPack';
-import {TelegramWebviewEvent} from '../../types';
 import CheckboxField from '../checkboxField';
 import confirmationPopup from '../confirmationPopup';
 import CountryInputField from '../countryInputField';
@@ -23,6 +22,7 @@ import Row from '../row';
 import {SettingSection} from '../sidebarLeft';
 import {getPaymentBrandIconPath, PaymentButton, PaymentsCredentialsToken} from './payment';
 import {createVerificationIframe} from './paymentVerification';
+import {PasswordInputHelpers} from '../passwordInputField';
 
 export type PaymentCardDetails = {
   cardNumber: string;
@@ -335,14 +335,33 @@ export default class PopupPaymentCard extends PopupElement<{
       validateMethod: validateCardExpiry
     });
 
+    // handle autocomplete: 01/2345 -> 01/45
+    expireInputField.input.addEventListener('input', () => {
+      let value = expireInputField.value;
+      if(value.length < 5) {
+        return;
+      }
+
+      const splitted = value.split('/');
+      if(splitted[1].length !== 4) {
+        return;
+      }
+
+      value = [splitted[0], splitted[1].slice(2)].join('/');
+      expireInputField.setValueSilently(value);
+    }, {capture: true});
+
     const cvcInputField = new InputFieldCorrected({
       labelText: 'CVC',
       plainText: true,
       inputMode: 'numeric',
       autocomplete: 'cc-csc',
+      name: 'cvc',
       formatMethod: () => cardFormattingPatterns.cardCvc(cardInputField.value)
       // validateMethod: (...args) => _5AH3.a.cardCvc(cardInputField.value)(...args)
     });
+
+    const passwordHelpers = new PasswordInputHelpers(cvcInputField.container, cvcInputField.input as HTMLInputElement);
 
     const switchFocusOrder: (InputFieldCorrected | InputField)[] = [
       cardInputField,
@@ -391,11 +410,14 @@ export default class PopupPaymentCard extends PopupElement<{
     inputFieldsRow.classList.add('input-fields-row');
     inputFieldsRow.append(expireInputField.container, cvcInputField.container);
 
-    cardSection.content.append(...[
+    const form = document.createElement('form');
+    form.append(...[
       cardInputField.container,
       inputFieldsRow,
       nameInputField?.container
-    ].filter(Boolean));
+    ].filter(Boolean))
+
+    cardSection.content.append(form);
 
     let billingSection: SettingSection;
     // let saveCheckboxField: CheckboxField;
