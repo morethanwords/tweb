@@ -331,6 +331,16 @@ $bubble-beside-button-width: 38px;
     html.is-touch body:not(.no-select) .chat:not(.no-forwards) .bubbles.is-selecting & { // * need no-select on body because chat-input transforms in channels
       user-select: text;
     }
+
+    &.hover-reaction-visible {
+      .bubble-beside-button {
+        transform: translateX(1.125rem);
+
+        .bubble.is-out & {
+          transform: translateX(-1.125rem);
+        }
+      }
+    }
   }
 
   &-hover-reaction {
@@ -338,7 +348,8 @@ $bubble-beside-button-width: 38px;
     --offset: calc(var(--size) * -.75);
     position: absolute;
     right: var(--offset);
-    bottom: -.125rem;
+    // bottom: -.0625rem;
+    bottom: 0;
     width: var(--size);
     height: 1.625rem;
     border-radius: var(--size);
@@ -471,13 +482,14 @@ $bubble-beside-button-width: 38px;
     //background: rgba(0, 0, 0, .16);
     background: var(--message-highlightning-color);
     cursor: pointer;
+    transform: translateX(0);
 
     html.no-touch & {
       opacity: 0;
     }
 
     html.no-touch body.animation-level-2 & {
-      transition: opacity .2s ease-in-out;
+      transition: opacity .2s ease-in-out, transform .2s ease-in-out;
     }
   }
 
@@ -2243,7 +2255,8 @@ $bubble-beside-button-width: 38px;
         bottom: 0 !important;
       } */
 
-      &:after {
+      &:after,
+      .document-container:last-of-type .document-selection {
         bottom: -#{$bubble-overflow};
       }
     }

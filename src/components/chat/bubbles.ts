@@ -1211,7 +1211,12 @@ export default class ChatBubbles {
 
   private onBubblesMouseMove = async(e: MouseEvent) => {
     const content = findUpClassName(e.target, 'bubble-content');
-    if(content && !this.chat.selection.isSelecting && !findUpClassName(e.target, 'service')) {
+    if(
+      content &&
+      !this.chat.selection.isSelecting &&
+      !findUpClassName(e.target, 'service') &&
+      !findUpClassName(e.target, 'bubble-beside-button')
+    ) {
       const bubble = findUpClassName(content, 'bubble');
       if(!this.chat.selection.canSelectBubble(bubble)) {
         this.unhoverPrevious();
@@ -1304,6 +1309,7 @@ export default class ChatBubbles {
   }
 
   private setHoverVisible(hoverReaction: HTMLElement, visible: boolean) {
+    hoverReaction.parentElement.classList.toggle('hover-reaction-visible', visible);
     SetTransition(hoverReaction, 'is-visible', visible, 200, visible ? undefined : () => {
       hoverReaction.remove();
     }, 2);
