@@ -349,10 +349,11 @@ export default class AppBackgroundTab extends SliderSuperTab {
       const onReady = (url?: string) => {
         // const perf = performance.now();
         let getPixelPromise: Promise<Uint8ClampedArray>;
-        if(url && !this.theme.background.color) {
+        const backgroundColor = this.getColorsFromWallPaper(wallPaper);
+        if(url && !backgroundColor) {
           getPixelPromise = averageColor(url);
         } else {
-          const {canvas} = ChatBackgroundGradientRenderer.create(this.getColorsFromWallPaper(wallPaper));
+          const {canvas} = ChatBackgroundGradientRenderer.create(backgroundColor);
           getPixelPromise = Promise.resolve(averageColorFromCanvas(canvas));
         }
 
@@ -369,7 +370,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
           const slug = (wallPaper as WallPaper.wallPaper).slug ?? '';
           background.id = wallPaper.id;
           background.intensity = wallPaper.settings?.intensity ?? 0;
-          background.color = this.getColorsFromWallPaper(wallPaper);
+          background.color = backgroundColor;
           background.slug = slug;
           background.highlightningColor = hsla;
           this.managers.appStateManager.pushToState('settings', rootScope.settings);
