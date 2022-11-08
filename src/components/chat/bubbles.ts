@@ -1309,7 +1309,10 @@ export default class ChatBubbles {
   }
 
   private setHoverVisible(hoverReaction: HTMLElement, visible: boolean) {
-    hoverReaction.parentElement.classList.toggle('hover-reaction-visible', visible);
+    if(hoverReaction.parentElement) {
+      hoverReaction.parentElement.classList.toggle('hover-reaction-visible', visible);
+    }
+
     SetTransition(hoverReaction, 'is-visible', visible, 200, visible ? undefined : () => {
       hoverReaction.remove();
     }, 2);
