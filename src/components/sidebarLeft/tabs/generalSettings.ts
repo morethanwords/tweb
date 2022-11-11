@@ -11,7 +11,7 @@ import CheckboxField from '../../checkboxField';
 import RadioField from '../../radioField';
 import rootScope from '../../../lib/rootScope';
 import {IS_APPLE} from '../../../environment/userAgent';
-import Row from '../../row';
+import Row, {CreateRowFromCheckboxField} from '../../row';
 import AppBackgroundTab from './background';
 import {LangPackKey, _i18n} from '../../../lib/langPack';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
@@ -112,11 +112,14 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
         text: 'EnableAnimations',
         name: 'animations',
         stateKey: 'settings.animationsEnabled',
-        withRipple: true,
         listenerSetter: this.listenerSetter
       });
 
-      container.append(range.container, chatBackgroundButton, animationsCheckboxField.label);
+      container.append(
+        range.container,
+        chatBackgroundButton,
+        CreateRowFromCheckboxField(animationsCheckboxField).container
+      );
     }
 
     {
@@ -233,18 +236,19 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
         text: 'GeneralSettings.EmojiPrediction',
         name: 'suggest-emoji',
         stateKey: 'settings.emoji.suggest',
-        withRipple: true,
         listenerSetter: this.listenerSetter
       });
       const bigCheckboxField = new CheckboxField({
         text: 'GeneralSettings.BigEmoji',
         name: 'emoji-big',
         stateKey: 'settings.emoji.big',
-        withRipple: true,
         listenerSetter: this.listenerSetter
       });
 
-      container.append(suggestCheckboxField.label, bigCheckboxField.label);
+      container.append(
+        CreateRowFromCheckboxField(suggestCheckboxField).container,
+        CreateRowFromCheckboxField(bigCheckboxField).container
+      );
     }
 
     {
@@ -283,14 +287,12 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
         text: 'Stickers.SuggestStickers',
         name: 'suggest',
         stateKey: 'settings.stickers.suggest',
-        withRipple: true,
         listenerSetter: this.listenerSetter
       });
       const loopCheckboxField = new CheckboxField({
         text: 'InstalledStickers.LoopAnimated',
         name: 'loop',
         stateKey: 'settings.stickers.loop',
-        withRipple: true,
         listenerSetter: this.listenerSetter
       });
 
@@ -321,8 +323,8 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
           container: div,
           group: 'GENERAL-SETTINGS',
           lazyLoadQueue,
-          width: 48,
-          height: 48,
+          width: 36,
+          height: 36,
           autoplay: true
         });
 
@@ -351,7 +353,11 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
         }
       });
 
-      section.content.append(reactionsRow.container, suggestCheckboxField.label, loopCheckboxField.label);
+      section.content.append(
+        reactionsRow.container,
+        CreateRowFromCheckboxField(suggestCheckboxField).container,
+        CreateRowFromCheckboxField(loopCheckboxField).container
+      );
       this.scrollable.append(section.container);
     }
   }

@@ -9,6 +9,7 @@ import {SettingSection} from '../..';
 import {LangPackKey} from '../../../../lib/langPack';
 import CheckboxField from '../../../checkboxField';
 import {SliderSuperTabEventable} from '../../../sliderTab';
+import Row, {CreateRowFromCheckboxField} from '../../../row';
 
 export function autoDownloadPeerTypeSection(type: 'photo' | 'video' | 'file', title: LangPackKey, listenerSetter: ListenerSetter) {
   const section = new SettingSection({name: title});
@@ -18,36 +19,32 @@ export function autoDownloadPeerTypeSection(type: 'photo' | 'video' | 'file', ti
     text: 'AutodownloadContacts',
     name: 'contacts',
     stateKey: key + 'contacts',
-    withRipple: true,
     listenerSetter
   });
   const privateCheckboxField = new CheckboxField({
     text: 'AutodownloadPrivateChats',
     name: 'private',
     stateKey: key + 'private',
-    withRipple: true,
     listenerSetter
   });
   const groupsCheckboxField = new CheckboxField({
     text: 'AutodownloadGroupChats',
     name: 'groups',
     stateKey: key + 'groups',
-    withRipple: true,
     listenerSetter
   });
   const channelsCheckboxField = new CheckboxField({
     text: 'AutodownloadChannels',
     name: 'channels',
     stateKey: key + 'channels',
-    withRipple: true,
     listenerSetter
   });
 
   section.content.append(
-    contactsCheckboxField.label,
-    privateCheckboxField.label,
-    groupsCheckboxField.label,
-    channelsCheckboxField.label
+    CreateRowFromCheckboxField(contactsCheckboxField).container,
+    CreateRowFromCheckboxField(privateCheckboxField).container,
+    CreateRowFromCheckboxField(groupsCheckboxField).container,
+    CreateRowFromCheckboxField(channelsCheckboxField).container
   );
 
   return section;

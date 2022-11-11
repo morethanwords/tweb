@@ -8,6 +8,8 @@ import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import deepEqual from '../../helpers/object/deepEqual';
 import {renderImageFromUrlPromise} from '../../helpers/dom/renderImageFromUrl';
 import mediaSizes, {ScreenSize} from '../../helpers/mediaSizes';
+import windowSize from '../../helpers/windowSize';
+import IS_IMAGE_BITMAP_SUPPORTED from '../../environment/imageBitmapSupport';
 
 type ChatBackgroundPatternRendererInitOptions = {
   url: string,
@@ -26,7 +28,8 @@ export default class ChatBackgroundPatternRenderer {
   // private createCanvasPatternPromise: Promise<CanvasPattern>;
   // private exportCanvasPatternToImagePromise: Promise<string>;
   private renderImageFromUrlPromise: Promise<HTMLImageElement>;
-  private img: HTMLImageElement;
+  private image: HTMLImageElement;
+  private imageBitmap: ImageBitmap;
 
   constructor() {
     this.canvases = new Set();
@@ -71,9 +74,21 @@ export default class ChatBackgroundPatternRenderer {
 
   private renderImageFromUrl(url: string) {
     if(this.renderImageFromUrlPromise) return this.renderImageFromUrlPromise;
-    const img = this.img = document.createElement('img');
+    const img = this.image = document.createElement('img');
     img.crossOrigin = 'anonymous';
-    return this.renderImageFromUrlPromise = renderImageFromUrlPromise(img, url, false).then(() => img);
+    return this.renderImageFromUrlPromise = renderImageFromUrlPromise(img, url, false).then(() => {
+      if(!IS_IMAGE_BITMAP_SUPPORTED) {
+        return img;
+      }
+
+      return createImageBitmap(img, {
+        resizeWidth: 1440,
+        resizeHeight: 2960
+      }).then((imageBitmap) => {
+        this.imageBitmap = imageBitmap;
+        return img;
+      });
+    });
   }
 
   /* private createCanvasPattern(canvas: HTMLCanvasElement) {
@@ -115,6 +130,7 @@ export default class ChatBackgroundPatternRenderer {
       indexOfAndSplice(ChatBackgroundPatternRenderer.INSTANCES, this);
 
       if(this.objectUrl) {
+        this.imageBitmap?.close();
         URL.revokeObjectURL(this.objectUrl);
       }
     }
@@ -128,19 +144,15 @@ export default class ChatBackgroundPatternRenderer {
     //   context.clearRect(0, 0, width, height);
     // }
 
-    const img = this.img;
+    const source = this.imageBitmap || this.image;
 
-    let imageWidth = img.width, imageHeight = img.height;
-    // if(imageHeight < height) {
-    let patternHeight = 1480 * canvas.dpr;
-    // * correct
-    // if(+canvas.dataset.originalHeight !== height) hhh *= 2 / 3;
-    // * but have to make it good
-    if(+canvas.dataset.originalHeight !== height) patternHeight *= .875;
+    let imageWidth = source.width, imageHeight = source.height;
+    // let patternHeight = 1480 * canvas.dpr;
+    // if(+canvas.dataset.originalHeight !== height) patternHeight *= .6875;
+    const patternHeight = (500 + (windowSize.height / 2.5)) * canvas.dpr;
     const ratio = patternHeight / imageHeight;
     imageWidth *= ratio;
     imageHeight = patternHeight;
-    // }
 
     if(this.options.mask) {
       context.fillStyle = '#000';
@@ -152,11 +164,11 @@ export default class ChatBackgroundPatternRenderer {
 
     const d = (y: number) => {
       for(let x = 0; x < width; x += imageWidth) {
-        context.drawImage(img, x, y, imageWidth, imageHeight);
+        context.drawImage(source, x, y, imageWidth, imageHeight);
       }
     };
 
-    const centerY = height / 2 - imageHeight / 2;
+    const centerY = (height - imageHeight) / 2;
     d(centerY);
 
     if(centerY > 0) {

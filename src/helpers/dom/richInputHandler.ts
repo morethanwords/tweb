@@ -287,7 +287,7 @@ export default class RichInputHandler {
 
   public makeFocused(input: HTMLElement) {
     if(document.activeElement !== input && !this.restoreSavedRange(input)) {
-      placeCaretAtEnd(input, true, false);
+      placeCaretAtEnd(input, false, false);
     }
   }
 

@@ -4,8 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+$menu-size: 3rem;
+
 .menu-horizontal-scrollable {
-  --scrollable-size: 3.5rem;
+  --scrollable-size: #{$menu-size};
   height: var(--scrollable-size);
   
   &:after {
@@ -25,7 +27,7 @@
 }
 
 .menu-horizontal-div {
-  --size: var(--scrollable-size, 3.5rem);
+  --size: var(--scrollable-size, #{$menu-size});
   --padding-horizontal: 0px;
   width: 100%;
   height: var(--size);
@@ -48,7 +50,7 @@
     }
 
     .menu-horizontal-div-item {
-      border-radius: $border-radius-medium;
+      border-radius: $border-radius-medium $border-radius-medium 0 0;
     }
   }
 
@@ -99,7 +101,7 @@
 
   i {
     position: absolute;
-    bottom: calc(-.6875rem - 6px);
+    bottom: -.8125rem;
     left: 0;
     opacity: 0;
     background-color: var(--primary-color);

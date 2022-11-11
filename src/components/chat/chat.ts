@@ -216,7 +216,7 @@ export default class Chat extends EventListenerBase<{
 
     if(patternRenderer) {
       const setOpacityTo = isDarkPattern ? gradientCanvas : patternCanvas;
-      setOpacityTo.style.setProperty('--opacity-max', '' + Math.abs(intensity));
+      setOpacityTo.style.setProperty('--opacity-max', '' + (Math.abs(intensity) * (isDarkPattern ? .5 : 1)));
     }
 
     const promise = new Promise<void>((resolve) => {
@@ -361,7 +361,7 @@ export default class Chat extends EventListenerBase<{
       const freeze = to !== this;
 
       const cb = () => {
-        this.bubbles.observer.toggleObservingNew(freeze);
+        this.bubbles.observer?.toggleObservingNew(freeze);
         animationIntersector.toggleIntersectionGroup(this.animationGroup, freeze);
         if(freeze) {
           animationIntersector.checkAnimations(freeze, this.animationGroup);

@@ -66,7 +66,7 @@ avatar-element {
   }
 
   &.tgico-saved:before {
-    font-size: calc(25px / var(--multiplier)) !important; // ! IMPORTANT IS TEMPORARY
+    font-size: calc(30px / var(--multiplier)) !important; // ! IMPORTANT IS TEMPORARY
   }
 
   &.tgico-reply_filled:before {
@@ -78,7 +78,7 @@ avatar-element {
   } */
 
   &.tgico-deletedaccount:before {
-    font-size: calc(54px / var(--multiplier));
+    font-size: calc(30px / var(--multiplier));
   }
 
   &:before {

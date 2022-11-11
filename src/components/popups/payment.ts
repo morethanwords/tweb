@@ -699,8 +699,7 @@ export default class PopupPayment extends PopupElement {
     });
 
     const acceptTermsRow = isRecurring && createRow({
-      checkboxField: acceptTermsCheckboxField,
-      noCheckboxSubtitle: true
+      checkboxField: acceptTermsCheckboxField
     });
 
     const recurringElements = isRecurring ? [document.createElement('hr'), acceptTermsRow.container] : [];

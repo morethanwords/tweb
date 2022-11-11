@@ -170,7 +170,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   }
 }
 
-@mixin splitColor($property, $color, $light: true, $dark: true, $light-rgb: false, $dark-rgb: false, $rgb: false) {
+@mixin splitColor($property, $color, $light: true, $dark: true, $light-rgb: false, $dark-rgb: false, $rgb: false, $alpha: $hover-alpha) {
   --#{$property}: #{$color};
 
   $lightened: hover-color($color);
@@ -182,7 +182,7 @@ $chat-input-inner-padding-handhelds: .25rem;
     --light-filled-#{$property}: #{rgba-to-rgb($lightened, $light-rgb)};
   }
 
-  $darkened: darken($color, $hover-alpha * 100);
+  $darkened: darken($color, $alpha * 100);
   @if $dark != false {
     --dark-#{$property}: #{$darkened};
   }
@@ -212,13 +212,13 @@ $chat-input-inner-padding-handhelds: .25rem;
   --input-search-background-color: #fff;
   --input-search-border-color: #dfe1e5;
 
-  @include splitColor(primary-color, #3390ec, true, true, #fff, false, true);
+  @include splitColor(primary-color, #3390ec, true, true, #fff, false, true, .04);
   @include splitColor(primary-text-color, #000, false, false, false, false, true);
 
   --secondary-color: #c4c9cc;
   @include splitColor(secondary-text-color, #707579, true, false);
 
-  @include splitColor(danger-color, #df3f40, true, false);
+  @include splitColor(danger-color, #df3f40, true, true);
 
   --avatar-online-color: #0ac630;
   --avatar-color-top: var(--peer-avatar-blue-top);
@@ -295,7 +295,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   --secondary-color: #707579;
   @include splitColor(secondary-text-color, #aaaaaa, true, false);
 
-  @include splitColor(danger-color, #ff595a, true, false);
+  @include splitColor(danger-color, #ff595a, true, true);
 
   --avatar-online-color: #0ac630;
   --avatar-color-top: var(--peer-avatar-violet-top);
@@ -1989,3 +1989,28 @@ hr {
     }
   }
 }
+
+
+
+// .contacts-container .chatlist-chat {
+//   /* align-items: center; */
+//   /* align-items: center; */
+// }
+// .contacts-container .dialog-title {
+//   /* height: 21px; */
+//   height: 20px;
+//   /* line-height: 21px; */
+//   line-height: 20px;
+// }
+// .contacts-container .dialog-subtitle {
+//   /* margin-top: 1px; */
+//   margin-top: 0;
+//   vertical-align: middle;
+// }
+// .contacts-container .user-caption {
+//   /* padding-left: 22px; */
+//   /* padding-left: 22px; */
+//   /* padding-top: 0; */
+//   /* padding-bottom: 0; */
+//   padding: 1px 0 1px 22px;
+// }

@@ -45,7 +45,12 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
         text: 'AutoDownloadMedia',
         name: 'auto',
         checked: !state.settings.autoDownloadNew.pFlags.disabled,
-        withRipple: true
+        listenerSetter: this.listenerSetter
+      });
+
+      const autoRow = new Row({
+        checkboxField: autoCheckboxField,
+        listenerSetter: this.listenerSetter
       });
 
       const onChange = () => {
@@ -141,7 +146,7 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
       setSubtitles();
 
       section.content.append(
-        autoCheckboxField.label,
+        autoRow.container,
         photoRow.container,
         videoRow.container,
         fileRow.container,
@@ -154,22 +159,23 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
     {
       const section = new SettingSection({name: 'AutoplayMedia'});
 
-      const gifsCheckboxField = new CheckboxField({
-        text: 'AutoplayGIF',
-        name: 'gifs',
-        stateKey: 'settings.autoPlay.gifs',
-        withRipple: true,
+      section.content.append(new Row({
+        checkboxField: new CheckboxField({
+          text: 'AutoplayGIF',
+          name: 'gifs',
+          stateKey: 'settings.autoPlay.gifs',
+          listenerSetter: this.listenerSetter
+        }),
         listenerSetter: this.listenerSetter
-      });
-      const videosCheckboxField = new CheckboxField({
-        text: 'AutoplayVideo',
-        name: 'videos',
-        stateKey: 'settings.autoPlay.videos',
-        withRipple: true,
+      }).container, new Row({
+        checkboxField: new CheckboxField({
+          text: 'AutoplayVideo',
+          name: 'videos',
+          stateKey: 'settings.autoPlay.videos',
+          listenerSetter: this.listenerSetter
+        }),
         listenerSetter: this.listenerSetter
-      });
-
-      section.content.append(gifsCheckboxField.label, videosCheckboxField.label);
+      }).container);
 
       this.scrollable.append(section.container);
     }

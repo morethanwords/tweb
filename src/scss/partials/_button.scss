@@ -36,7 +36,7 @@ $btn-menu-z-index: 4;
   padding: .5rem;
   position: relative;
   // overflow: hidden;
-  transition: color .15s ease-in-out, opacity .15s ease-in-out, background-color .15s ease-in-out;
+  transition: color .15s ease-in-out, opacity .15s ease-in-out/* , background-color .15s ease-in-out */;
   
   /* kostil */
   display: flex;
@@ -70,11 +70,16 @@ $btn-menu-z-index: 4;
   border: none;
   outline: none;
   cursor: pointer;
+  box-shadow: none !important;
   
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0 !important;
+
+  @include hover() {
+    background-color: var(--dark-primary-color);
+  }
   
   &.is-visible {
     --translateY: 0;
@@ -322,6 +327,10 @@ $btn-menu-z-index: 4;
         white-space: pre-wrap;
         width: fit-content;
       }
+    }
+
+    .checkbox-field-toggle {
+      padding: 0;
     }
   }
 
@@ -601,7 +610,7 @@ $btn-menu-z-index: 4;
   transition: .2s opacity;
  
   @include hover() {
-    transition: .2s background-color, .2s opacity;
+    transition: /* .2s background-color,  */.2s opacity;
     background: var(--dark-primary-color);
   }
 

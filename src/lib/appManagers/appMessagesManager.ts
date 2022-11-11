@@ -2816,9 +2816,8 @@ export class AppMessagesManager extends AppManager {
 
     if(!isMessage && message.action) {
       const action = message.action as MessageAction;
-      let migrateFrom: PeerId;
-      let migrateTo: PeerId;
       const suffix = message.fromId === this.appUsersManager.getSelf().id ? 'You' : '';
+      let migrateFrom: PeerId, migrateTo: PeerId;
 
       if((action as MessageAction.messageActionChatEditPhoto).photo) {
         (action as MessageAction.messageActionChatEditPhoto).photo = this.appPhotosManager.savePhoto((action as MessageAction.messageActionChatEditPhoto).photo, mediaContext);

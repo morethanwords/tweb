@@ -32,6 +32,7 @@ import {renderImageFromUrlPromise} from '../../../helpers/dom/renderImageFromUrl
 import scaleMediaElement from '../../../helpers/canvas/scaleMediaElement';
 import {MediaSize} from '../../../helpers/mediaSize';
 import wrapPhoto from '../../wrappers/photo';
+import {CreateRowFromCheckboxField} from '../../row';
 
 export default class AppBackgroundTab extends SliderSuperTab {
   private grid: HTMLElement;
@@ -69,8 +70,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
       const blurCheckboxField = this.blurCheckboxField = new CheckboxField({
         text: 'ChatBackground.Blur',
         name: 'blur',
-        checked: this.theme.background.blur,
-        withRipple: true
+        checked: this.theme.background.blur
       });
 
       this.listenerSetter.add(blurCheckboxField.input)('change', async() => {
@@ -91,7 +91,12 @@ export default class AppBackgroundTab extends SliderSuperTab {
         }, 100);
       });
 
-      container.append(uploadButton, colorButton, resetButton, blurCheckboxField.label);
+      container.append(
+        uploadButton,
+        colorButton,
+        resetButton,
+        CreateRowFromCheckboxField(blurCheckboxField).container
+      );
     }
 
     rootScope.addEventListener('background_change', this.setActive);

@@ -90,7 +90,7 @@ function testElement(element: HTMLElement) {
     multiplier = from > 0 && from / 100;
 
     let fontSize = element.dataset.fontSize;
-    if(fontSize) fontSize += 'px';
+    if(fontSize && +fontSize) fontSize += 'px';
     // const perf = performance.now();
     font = `${element.dataset.fontWeight || FontWeight} ${fontSize || FontSize} ${FontFamily}`;
     /* const computedStyle = window.getComputedStyle(elm, null);

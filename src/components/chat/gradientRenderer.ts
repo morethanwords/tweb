@@ -387,7 +387,7 @@ export default class ChatBackgroundGradientRenderer {
   // public toNextPositionThrottled = throttle(this.toNextPosition.bind(this), 100, true);
 
   public scrollAnimate(start?: boolean) {
-    // return;
+    return;
 
     if(this._colors.length < 2 && start) {
       return;

@@ -131,7 +131,7 @@ export class AppSidebarLeft extends SidebarSlider {
     });
 
     const menuButtons: (ButtonMenuItemOptions & {verify?: () => boolean | Promise<boolean>})[] = [{
-      icon: 'saved',
+      icon: 'savedmessages',
       text: 'SavedMessages',
       onClick: () => {
         setTimeout(() => { // menu doesn't close if no timeout (lol)

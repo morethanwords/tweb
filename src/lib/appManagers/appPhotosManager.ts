@@ -45,6 +45,11 @@ export class AppPhotosManager extends AppManager {
     }
 
     if(photo.sizes?.length) {
+      // * sometimes photoStrippedSize can be the last item
+      photo.sizes.sort((a, b) => {
+        return ((a as PhotoSize.photoSize).size || 0) - ((b as PhotoSize.photoSize).size || 0);
+      });
+
       const size = photo.sizes[photo.sizes.length - 1];
       if(size._ === 'photoSizeProgressive') {
         size.size = size.sizes[size.sizes.length - 1];

@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import CheckboxField from './checkboxField';
+import CheckboxField, {CheckboxFieldOptions} from './checkboxField';
 import RadioField from './radioField';
 import ripple from './ripple';
 import {SliderSuperTab} from './slider';
@@ -20,7 +20,6 @@ export default class Row {
   public container: HTMLElement;
   public title: HTMLDivElement;
   public titleRight: HTMLElement;
-  public subtitle: HTMLElement;
   public media: HTMLElement;
 
   public checkboxField: CheckboxField;
@@ -30,6 +29,8 @@ export default class Row {
 
   public buttonRight: HTMLElement;
 
+  private _subtitle: HTMLElement;
+
   constructor(options: Partial<{
     icon: string,
     subtitle: string | HTMLElement | DocumentFragment,
@@ -37,7 +38,8 @@ export default class Row {
     subtitleLangArgs: any[],
     radioField: Row['radioField'],
     checkboxField: Row['checkboxField'],
-    noCheckboxSubtitle: boolean,
+    checkboxFieldOptions: CheckboxFieldOptions,
+    withCheckboxSubtitle: boolean,
     title: string | HTMLElement | DocumentFragment,
     titleLangKey: LangPackKey,
     titleRight: string | HTMLElement,
@@ -51,12 +53,16 @@ export default class Row {
     buttonRight?: HTMLElement | boolean,
     buttonRightLangKey: LangPackKey
   }> = {}) {
-    this.container = document.createElement(options.radioField || options.checkboxField ? 'label' : 'div');
-    this.container.classList.add('row');
+    if(options.checkboxFieldOptions) {
+      options.checkboxField = new CheckboxField({
+        listenerSetter: options.listenerSetter,
+        ...options.checkboxFieldOptions
+      });
+    }
 
-    this.subtitle = document.createElement('div');
-    this.subtitle.classList.add('row-subtitle');
-    this.subtitle.setAttribute('dir', 'auto');
+    this.container = document.createElement(options.radioField || options.checkboxField ? 'label' : 'div');
+    this.container.classList.add('row', 'no-subtitle');
+
     if(options.subtitle) {
       if(typeof(options.subtitle) === 'string') {
         setInnerHTML(this.subtitle, options.subtitle);
@@ -66,7 +72,6 @@ export default class Row {
     } else if(options.subtitleLangKey) {
       this.subtitle.append(i18n(options.subtitleLangKey, options.subtitleLangArgs));
     }
-    this.container.append(this.subtitle);
 
     let havePadding = !!options.havePadding;
     if(options.radioField || options.checkboxField) {
@@ -88,7 +93,7 @@ export default class Row {
           this.container.append(this.checkboxField.label);
         }
 
-        if(!options.noCheckboxSubtitle && !isToggle) {
+        if(options.withCheckboxSubtitle && !isToggle) {
           const onChange = () => {
             replaceContent(this.subtitle, i18n(this.checkboxField.input.checked ? 'Checkbox.Enabled' : 'Checkbox.Disabled'));
           };
@@ -187,6 +192,20 @@ export default class Row {
     }
   }
 
+  public get subtitle() {
+    return this._subtitle ?? (this._subtitle = this.createSubtitle());
+  }
+
+  private createSubtitle() {
+    const subtitle = document.createElement('div');
+    subtitle.classList.add('row-subtitle');
+    subtitle.setAttribute('dir', 'auto');
+    if(this.title) this.title.after(subtitle);
+    else this.container.prepend(subtitle);
+    this.container.classList.remove('no-subtitle');
+    return subtitle;
+  }
+
   public createMedia(size?: 'small') {
     this.container.classList.add('row-with-padding');
 
@@ -202,6 +221,10 @@ export default class Row {
     return media;
   }
 }
+
+export const CreateRowFromCheckboxField = (checkboxField: CheckboxField) => {
+  return new Row({checkboxField, listenerSetter: checkboxField.listenerSetter});
+};
 
 export const RadioFormFromRows = (rows: Row[], onChange: (value: string) => void) => {
   return RadioForm(rows.map((r) => ({container: r.container, input: r.radioField.input})), onChange);

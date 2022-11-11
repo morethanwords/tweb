@@ -140,6 +140,14 @@
   .search-super {
     top: 100%;
     min-height: calc((var(--vh, 1vh) * 100) - 56px);
+
+    &-tabs {
+      --padding-horizontal: 0;
+
+      .menu-horizontal-div-item {
+        border-radius: 0 !important;
+      }
+    }
   }
 
   .sidebar-header .transition {
@@ -219,8 +227,10 @@
   &-tabs {
     width: auto;
     flex: 1 1 auto;
-    padding: .25rem 0;
-    --padding-horizontal: .25rem;
+
+    // floating design
+    // padding: .25rem 0;
+    // --padding-horizontal: .25rem;
     
     //margin-top: 36px;
     /* i {
@@ -391,7 +401,7 @@
     }
 
     &-field {
-      position: absolute;
+      position: absolute !important;
       z-index: 2;
       margin: 0;
     }
@@ -538,6 +548,7 @@
     .checkbox-field {
       padding: 0 !important;
       margin: 2rem 0 0 -1.75rem !important;
+      --offset-left: 0 !important;
     }
 
     @include respond-to(not-handhelds) {
@@ -861,7 +872,6 @@
 .edit-contact-container {
   .input-wrapper {
     margin-top: 1.8125rem;
-    padding-bottom: 1rem;
   }
 
   .avatar-placeholder {

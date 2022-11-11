@@ -36,6 +36,7 @@
     height: auto;
     pointer-events: all;
     // max-height: 20rem;
+    max-height: 207px !important;
 
     @include animation-level(2) {
       opacity: 0;

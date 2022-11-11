@@ -293,6 +293,10 @@ $menu-transition-duration: .2s;
       .menu-horizontal-inner-scroll {
         pointer-events: none;
       }
+
+      .menu-horizontal-div-item:first-child {
+        pointer-events: all;
+      }
     }
   }
 

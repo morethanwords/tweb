@@ -108,8 +108,7 @@ export default class PopupPaymentShipping extends PopupElement<{
     });
     const saveRow = new Row({
       checkboxField: saveCheckboxField,
-      subtitleLangKey: 'PaymentShippingSaveInfo',
-      noCheckboxSubtitle: true
+      subtitleLangKey: 'PaymentShippingSaveInfo'
     });
 
     (receiverSection || addressSection).content.append(saveRow.container);

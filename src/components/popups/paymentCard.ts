@@ -439,8 +439,7 @@ export default class PopupPaymentCard extends PopupElement<{
     });
     const saveRow = new Row({
       checkboxField: saveCheckboxField,
-      subtitleLangKey: canSave ? 'PaymentCardSavePaymentInformationInfoLine1' : 'Checkout.2FA.Text',
-      noCheckboxSubtitle: true
+      subtitleLangKey: canSave ? 'PaymentCardSavePaymentInformationInfoLine1' : 'Checkout.2FA.Text'
     });
 
     if(!canSave) {

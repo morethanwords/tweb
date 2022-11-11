@@ -8,7 +8,7 @@ import {SliderSuperTab} from '../../slider'
 import InputField from '../../inputField';
 import EditPeer from '../../editPeer';
 import {SettingSection} from '../../sidebarLeft';
-import Row from '../../row';
+import Row, {CreateRowFromCheckboxField} from '../../row';
 import Button from '../../button';
 import {ChatRights} from '../../../lib/appManagers/appChatsManager';
 import {Chat, ChatFull} from '../../../layer';
@@ -273,8 +273,7 @@ export default class AppEditChatTab extends SliderSuperTab {
       if(isBroadcast && await this.managers.appChatsManager.hasRights(this.chatId, 'change_info')) {
         const signMessagesCheckboxField = new CheckboxField({
           text: 'PeerInfo.SignMessages',
-          checked: !!(chat as Chat.channel).pFlags.signatures,
-          withRipple: true
+          checked: !!(chat as Chat.channel).pFlags.signatures
         });
 
         this.listenerSetter.add(signMessagesCheckboxField.input)('change', () => {
@@ -288,7 +287,7 @@ export default class AppEditChatTab extends SliderSuperTab {
           signMessagesCheckboxField.setValueSilently(!!(chat as Chat.channel).pFlags.signatures);
         });
 
-        section.content.append(signMessagesCheckboxField.label);
+        section.content.append(CreateRowFromCheckboxField(signMessagesCheckboxField).container);
       }
     }
 
@@ -309,8 +308,7 @@ export default class AppEditChatTab extends SliderSuperTab {
 
       if(!isBroadcast && canChangeType) {
         const showChatHistoryCheckboxField = new CheckboxField({
-          text: 'ChatHistory',
-          withRipple: true
+          text: 'ChatHistory'
         });
 
         this.listenerSetter.add(showChatHistoryCheckboxField.input)('change', () => {
@@ -328,7 +326,7 @@ export default class AppEditChatTab extends SliderSuperTab {
         onChatUpdate();
         addChatUpdateListener(onChatUpdate);
 
-        section.content.append(showChatHistoryCheckboxField.label);
+        section.content.append(CreateRowFromCheckboxField(showChatHistoryCheckboxField).container);
       }
 
       if(section.content.childElementCount) {

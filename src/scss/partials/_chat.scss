@@ -8,7 +8,7 @@
 
 $btn-send-margin: .5rem;
 $chat-helper-size: 45px;
-$chat-input-box-shadow: 0px 1px 8px 1px rgb(0 0 0 / 18%);
+$chat-input-box-shadow: 0px 1px 8px 1px rgb(0 0 0 / 12%);
 
 $input-transition-time: .2s;
 $input-half-transition-time: math.div($input-transition-time, 2);
@@ -240,7 +240,21 @@ $chat-input-border-radius: 1rem;
 		position: absolute;
 		right: 0;
 		top: 0;
-    background-color: var(--danger-color) !important;
+
+    @include hover() {
+      &:after {
+        background-color: var(--light-danger-color);
+      }
+    }
+
+    .c-ripple__circle {
+      background-color: var(--light-danger-color);
+    }
+
+    &:before {
+      color: var(--danger-color);
+    }
+    // background-color: var(--danger-color) !important;
     // background-color: var(--surface-color) !important;
 
 		// here percents can be used since there are no other transforms
@@ -319,17 +333,27 @@ $chat-input-border-radius: 1rem;
 	}
 
 	.btn-icon {
-		transition: .2s color, background-color .2s, .2s opacity;
+		transition: /* .2s color, background-color .2s, */ .2s opacity;
 
 		@include animation-level(0) {
 			transition: none;
 		}
 	}
+
+  .btn-send,
+  .btn-cancel-record {
+    box-shadow: $chat-input-box-shadow;
+  }
 	
 	.btn-send {
+    color: #fff !important;
     background-color: var(--primary-color) !important;
     // color: var(--secondary-text-color);
 		z-index: 3;
+
+    @include hover() {
+      background-color: var(--dark-primary-color) !important;
+    }
 
 		// .tgico-send {
 		// 	color: var(--primary-color) !important;
@@ -383,7 +407,6 @@ $chat-input-border-radius: 1rem;
   .btn-send {
 		font-size: 1.5rem;
 		line-height: 1.5rem;
-    color: #fff !important;
 	}
 
 	.record-time {
@@ -408,12 +431,13 @@ $chat-input-border-radius: 1rem;
 
 	.record-ripple {
 		border-radius: 50%;
-		background-color: rgba(0, 0, 0, .2);
+		background-color: var(--message-highlightning-color);
 		width: 300px;
 		height: 300px;
 		transform: scale(0);
 		position: absolute;
 		visibility: hidden;
+    opacity: .5;
 
     @include respond-to(handhelds) {
 			width: 240px;
@@ -734,7 +758,7 @@ $chat-input-border-radius: 1rem;
       }
 
       &:not(.is-dark) &-pattern-canvas {
-        mix-blend-mode: overlay;
+        mix-blend-mode: soft-light;
         // height: 100%;
       }
 
@@ -1741,15 +1765,44 @@ $chat-input-border-radius: 1rem;
 	transition: transform var(--layer-transition), opacity var(--layer-transition), visibility 0s .2s !important;
 }
 
-.bubbles-corner-button {
-	position: absolute;
-	background-color: var(--surface-color);
+.chat-secondary-button {
+  position: absolute;
+	background-color: var(--surface-color) !important;
 	border-radius: 50%;
 	color: var(--secondary-text-color);
 	font-size: 1.5rem;
 	display: flex;
 	align-items: center;
 	justify-content: center;
+
+  box-shadow: $chat-input-box-shadow !important;
+
+	@include animation-level(0) {
+		transition: none !important;
+	}
+
+  &:before {
+    position: relative;
+  }
+
+  &:after {
+    content: " ";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    border-radius: inherit;
+  }
+
+  @include hover() {
+    &:after {
+      background-color: var(--light-secondary-text-color);
+    }
+  }
+}
+
+.bubbles-corner-button {
 	right: var(--chat-input-padding);
 	//top: calc((var(--chat-input-size) * -1) - 6px);
 	bottom: calc(var(--chat-input-size) + var(--bottom) + 10px);
@@ -1758,10 +1811,6 @@ $chat-input-border-radius: 1rem;
 	overflow: visible;
 	//--translateY: calc(var(--chat-input-size) + 10px);
 	//--translateY: calc(100% + 10px);
-
-	@include animation-level(0) {
-		transition: none !important;
-	}
 
 	/* &.is-broadcast {
 		--translateY: 99px !important;

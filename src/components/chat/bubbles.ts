@@ -1495,6 +1495,10 @@ export default class ChatBubbles {
     }
 
     if(bubble.classList.contains('is-date') && findUpClassName(target, 'bubble-content')) {
+      if(bubble.classList.contains('is-fake')) {
+        bubble = bubble.previousElementSibling as HTMLElement;
+      }
+
       if(bubble.classList.contains('is-sticky') && !this.chatInner.classList.contains('is-scrolling')) {
         return;
       }
@@ -3813,13 +3817,16 @@ export default class ChatBubbles {
           }
 
           buttonEl.classList.add('reply-markup-button', 'rp', 'tgico');
+          const t = document.createElement('span');
+          t.classList.add('reply-markup-button-text');
           if(typeof(text) === 'string') {
-            buttonEl.insertAdjacentHTML('beforeend', text);
+            t.insertAdjacentHTML('beforeend', text);
           } else {
-            buttonEl.append(text);
+            t.append(text);
           }
 
           ripple(buttonEl);
+          buttonEl.append(t);
 
           rowDiv.append(buttonEl);
         });
@@ -3865,7 +3872,7 @@ export default class ChatBubbles {
       });
 
       if(haveButtons) {
-        canHaveTail = false;
+        // canHaveTail = false;
         bubble.classList.add('with-reply-markup');
         contentWrapper.append(containerDiv);
       }

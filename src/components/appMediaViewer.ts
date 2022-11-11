@@ -4,16 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type {MyDocument} from '../lib/appManagers/appDocsManager';
 import MEDIA_MIME_TYPES_SUPPORTED from '../environment/mediaMimeTypesSupport';
 import cancelEvent from '../helpers/dom/cancelEvent';
-import {attachClickEvent, detachClickEvent} from '../helpers/dom/clickEvent';
+import {attachClickEvent} from '../helpers/dom/clickEvent';
 import findUpClassName from '../helpers/dom/findUpClassName';
 import findUpTag from '../helpers/dom/findUpTag';
 import setInnerHTML from '../helpers/dom/setInnerHTML';
 import mediaSizes from '../helpers/mediaSizes';
 import SearchListLoader from '../helpers/searchListLoader';
 import {Message} from '../layer';
-import type {MyDocument} from '../lib/appManagers/appDocsManager';
 import appDownloadManager from '../lib/appManagers/appDownloadManager';
 import appImManager from '../lib/appManagers/appImManager';
 import {MyMessage} from '../lib/appManagers/appMessagesManager';
@@ -260,8 +260,10 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     const fromId = (message as Message.message).fwd_from && !message.fromId ? (message as Message.message).fwd_from.from_name : message.fromId;
     const media = getMediaFromMessage(message);
 
-    const cantForwardMessage = message._ === 'messageService' || ! await this.managers.appMessagesManager.canForward(message);
-    const cantDownloadMessage = cantForwardMessage || !canSaveMessageMedia(message);
+    const noForwards = await this.managers.appPeersManager.noForwards(message.peerId);
+    const isServiceMessage = message._ === 'messageService';
+    const cantForwardMessage = isServiceMessage || !(await this.managers.appMessagesManager.canForward(message));
+    const cantDownloadMessage = (isServiceMessage ? noForwards : cantForwardMessage) || !canSaveMessageMedia(message);
     [this.buttons.forward, this.btnMenuForward.element].forEach((button) => {
       button.classList.toggle('hide', cantForwardMessage);
     });

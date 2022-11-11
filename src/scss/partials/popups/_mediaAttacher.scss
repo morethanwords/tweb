@@ -33,12 +33,12 @@
   
       .btn-primary {
         width: auto;
-        height: 36px;
-        font-size: 14px;
-        font-weight: normal;
+        height: 2.25rem;
+        font-size: var(--font-size-14);
         padding: 0 1.375rem;
         border-radius: $border-radius-medium;
         text-transform: uppercase;
+        line-height: 2.25rem;
       }
     }
   

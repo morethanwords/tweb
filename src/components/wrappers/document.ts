@@ -60,6 +60,7 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
 }): Promise<HTMLElement> {
   fontWeight ??= 500;
   sizeType ??= '' as any;
+  fontSize ??= 0;
   const noAutoDownload = autoDownloadSize === 0;
 
   const doc = ((message.media as MessageMedia.messageMediaDocument).document || ((message.media as MessageMedia.messageMediaWebPage).webpage as WebPage.webPage).document) as MyDocument;

@@ -351,7 +351,7 @@
 .checkbox-field-toggle {
   --size: 20px;
   margin: 0 .3125rem;
-  padding: 0;
+  padding: 0 .25rem; // horizontal because of the bounce
   display: flex;
   align-items: center;
   pointer-events: none;
@@ -383,7 +383,7 @@
       position: absolute;
       
       @include animation-level(2) {
-        transition: border-color .1s, transform .1s;
+        transition: border-color .1s, transform .1s cubic-bezier(.22, .75, .7, 1.44);
       }
     }
   }

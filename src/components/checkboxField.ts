@@ -30,6 +30,7 @@ export default class CheckboxField {
   public input: HTMLInputElement;
   public label: HTMLLabelElement;
   public span: HTMLSpanElement;
+  public listenerSetter: ListenerSetter;
 
   constructor(options: CheckboxFieldOptions = {}) {
     const label = this.label = document.createElement('label');
@@ -46,6 +47,8 @@ export default class CheckboxField {
     if(options.disabled) {
       this.toggleDisability(true);
     }
+
+    this.listenerSetter = options.listenerSetter;
 
     const input = this.input = document.createElement('input');
     input.classList.add('checkbox-field-input');

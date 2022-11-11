@@ -748,7 +748,7 @@ export default class AppSearchSuper {
     }
 
     const previewDiv = document.createElement('div');
-    previewDiv.classList.add('preview', 'row-media');
+    previewDiv.classList.add('preview', 'row-media', 'row-media-big');
 
     // this.log('wrapping webpage', webpage);
 

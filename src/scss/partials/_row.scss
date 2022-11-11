@@ -16,6 +16,12 @@ $row-border-radius: $border-radius-medium;
   flex-direction: column;
   justify-content: center;
 
+  &.no-subtitle {
+    min-height: 3rem;
+    padding-top: .1875rem;
+    padding-bottom: .1875rem;
+  }
+
   @include animation-level(2) {
     transition: opacity var(--transition-standard-in);
   }
@@ -151,19 +157,26 @@ $row-border-radius: $border-radius-medium;
   }
 
   &-media {
-    width: 3rem !important;
-    height: 3rem !important;
+    width: 2.25rem !important;
+    height: 2.25rem !important;
     position: absolute !important;
     margin: 0 !important;
-    left: .5rem;
+    left: .625rem;
     display: flex;
     align-items: center;
     justify-content: center;
+    pointer-events: none;
 
     &-small {
       width: 2rem !important;
       height: 2rem !important;
       left: .75rem !important;
+    }
+
+    &-big {
+      width: 3rem !important;
+      height: 3rem !important;
+      left: .5rem !important;
     }
   }
 

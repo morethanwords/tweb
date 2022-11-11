@@ -78,22 +78,13 @@ export default class ConnectionStatusComponent {
 
     this.setFirstConnectionTimeout = window.setTimeout(this.setConnectionStatus, ConnectionStatusComponent.CHANGE_STATE_DELAY + 1e3);
 
-    /* let bool = true;
-    document.addEventListener('dblclick', () => {
-      const dcId = 2;
-      rootScope.dispatchEvent('connection_status_change', {
-        dcId: dcId,
-        isFileDownload: false,
-        isFileNetworker: false,
-        isFileUpload: false,
-        name: "NET-" + dcId,
-        status: bool ? (bool = false, ConnectionStatus.Closed) : (bool = true, ConnectionStatus.Connected),
-        _: "networkerStatus"
-      });
-    }); */
+    // let bool = true;
+    // document.addEventListener('dblclick', () => {
+    //   this.setConnectionStatus(bool ? (bool = false, ConnectionStatus.Closed) : (bool = true, ConnectionStatus.Connected));
+    // });
   }
 
-  private setConnectionStatus = () => {
+  private setConnectionStatus = (overrideStatus?: ConnectionStatus) => {
     Promise.all([
       sessionStorage.get('dc'),
       rootScope.managers.rootScope.getConnectionStatus()
@@ -108,7 +99,7 @@ export default class ConnectionStatusComponent {
       }
 
       const status = connectionStatus['NET-' + baseDcId];
-      const online = status && status.status === ConnectionStatus.Connected;
+      const online = status && (overrideStatus || status.status) === ConnectionStatus.Connected;
 
       if(this.connecting && online) {
         this.managers.apiUpdatesManager.forceGetDifference();
@@ -118,7 +109,7 @@ export default class ConnectionStatusComponent {
         this.hadConnect = true;
       }
 
-      this.timedOut = status && status.status === ConnectionStatus.TimedOut;
+      this.timedOut = status && (overrideStatus || status.status) === ConnectionStatus.TimedOut;
       this.connecting = !online;
       this.retryAt = status && status.retryAt;
       DEBUG && this.log('connecting', this.connecting);

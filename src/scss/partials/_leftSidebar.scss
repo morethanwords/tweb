@@ -73,13 +73,13 @@
     }
   }
 
-  .item-main {
-    --menu-size: 3.1875rem;
-  }
+  // .item-main {
+  //   --menu-size: 3.1875rem;
+  // }
 
   .menu-horizontal {
     &-scrollable {
-      --scrollable-size: var(--menu-size);
+      // --scrollable-size: var(--menu-size);
       z-index: 1;
       background-color: var(--surface-color);
       position: relative;
@@ -99,7 +99,7 @@
       }
   
       &:not(.hide) + #folders-container {
-        height: calc(100% - var(--menu-size));
+        height: calc(100% - var(--scrollable-size));
         position: relative;
   
         .scrollable {
@@ -120,7 +120,7 @@
       position: relative !important;
       justify-content: flex-start;
       z-index: 0;
-      padding: 0 0 5px; // 4px + 1px border
+      // padding: 0 0 5px; // 4px + 1px border // floating design
       --padding-horizontal: .6875rem;
 
       @include respond-to(handhelds) {
@@ -153,6 +153,9 @@
   } */
 
   .item-main {
+    --offset-top: 0;
+    background-color: var(--surface-color);
+
     .input-search {
       /* &-input {
         --paddingLeft: 0px;
@@ -161,7 +164,7 @@
 
       .selector-user {
         height: 30px;
-        position: absolute!important;
+        position: absolute !important;
         left: 6px;
         top: 6px;
         z-index: 1;
@@ -246,7 +249,6 @@
 
     &.has-filters {
       .connection-status-bottom {
-        --offset-top: -3px;
         height: calc(100% + var(--offset-top) * -1);
       }
     }
@@ -292,11 +294,10 @@
       right: 0;
       bottom: 0;
       left: 0;
-      transition: .2s opacity, .15s background-color;
       z-index: 2;
       margin: 0;
 
-      body.animation-level-0 &, body.animation-level-0 &:before {
+      body.animation-level-0 &:before {
         transition: none;
       }
 
@@ -318,7 +319,7 @@
     width: 100%;
     
     .btn-menu {
-      width: 300px;
+      width: 260px;
       max-height: calc(100 * var(--vh) - 3.75rem);
   
       .archived-count {
@@ -396,7 +397,7 @@
   }
 
   .item-main .sidebar-content {
-    overflow: visible;
+    // overflow: visible;
     justify-content: center;
 
     .btn-menu {
@@ -541,7 +542,7 @@
 
 #search-container {
   display: flex;
-  top: -3px !important;
+  top: var(--offset-top) !important;
 
   .scrollable-y {
     position: relative;

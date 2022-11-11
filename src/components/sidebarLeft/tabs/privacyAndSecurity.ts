@@ -271,8 +271,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
 
       const checkboxField = new CheckboxField({text: 'ArchiveAndMute'});
       const row = new Row({
-        checkboxField,
-        noCheckboxSubtitle: true
+        checkboxField
       });
 
       section.content.append(row.container);
@@ -318,8 +317,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
 
       const checkboxField = new CheckboxField({text: 'PrivacyAndSecurity.SensitiveText'});
       const row = new Row({
-        checkboxField,
-        noCheckboxSubtitle: true
+        checkboxField
       });
 
       section.content.append(row.container);
