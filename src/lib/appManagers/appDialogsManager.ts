@@ -627,10 +627,12 @@ export class AppDialogsManager {
 
       const containerToAppend = this.folders.menu as HTMLElement;
       const r = await Promise.all(order.map(async(filterId) => {
-        return {
-          indexKey: await this.managers.dialogsStorage.getDialogIndexKeyByFilterId(filterId),
-          filter: await this.managers.filtersStorage.getFilter(filterId)
-        };
+        const [indexKey, filter] = await Promise.all([
+          this.managers.dialogsStorage.getDialogIndexKeyByFilterId(filterId),
+          this.managers.filtersStorage.getFilter(filterId)
+        ]);
+
+        return {indexKey, filter};
       }));
 
       order.forEach((filterId, idx) => {

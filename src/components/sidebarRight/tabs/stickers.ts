@@ -26,7 +26,7 @@ export default class AppStickersTab extends SliderSuperTab {
   private setsDiv: HTMLDivElement;
   private lazyLoadQueue: LazyLoadQueue;
 
-  protected init() {
+  public init() {
     this.container.id = 'stickers-container';
     this.container.classList.add('chatlist-container');
 
@@ -83,6 +83,10 @@ export default class AppStickersTab extends SliderSuperTab {
         });
       }
     }, {listenerSetter: this.listenerSetter});
+
+    appSidebarRight.toggleSidebar(true).then(() => {
+      this.renderFeatured();
+    });
   }
 
   public onCloseAfterTimeout() {
@@ -192,15 +196,6 @@ export default class AppStickersTab extends SliderSuperTab {
     div.append(header, stickersDiv);
 
     this.setsDiv.append(div);
-  }
-
-  public open() {
-    const ret = super.open();
-    appSidebarRight.toggleSidebar(true).then(() => {
-      this.renderFeatured();
-    });
-
-    return ret;
   }
 
   public renderFeatured() {

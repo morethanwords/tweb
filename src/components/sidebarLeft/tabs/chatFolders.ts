@@ -34,6 +34,10 @@ export default class AppChatFoldersTab extends SliderSuperTab {
   private filtersRendered: {[filterId: number]: Row} = {};
   private loadAnimationPromise: ReturnType<LottieLoader['waitForFirstFrame']>;
 
+  public static getInitArgs() {
+    return lottieLoader.loadAnimationFromURLManually('Folders_1');
+  }
+
   private async renderFolder(
     dialogFilter: DialogFilterSuggested | MyDialogFilter,
     container?: HTMLElement,
@@ -129,7 +133,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     return row;
   }
 
-  protected async init() {
+  public init(p: ReturnType<typeof AppChatFoldersTab['getInitArgs']> = AppChatFoldersTab.getInitArgs()) {
     this.container.classList.add('chat-folders-container');
     this.setTitle('ChatList.Filter.List.Title');
 
@@ -227,19 +231,21 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       this.toggleAllChats();
     });
 
-    this.loadAnimationPromise = lottieLoader.loadAnimationAsAsset({
-      container: this.stickerContainer,
-      loop: false,
-      autoplay: false,
-      width: 86,
-      height: 86
-    }, 'Folders_1').then((player) => {
+    this.loadAnimationPromise = p.then(async(cb) => {
+      const player = await cb({
+        container: this.stickerContainer,
+        loop: false,
+        autoplay: false,
+        width: 86,
+        height: 86
+      });
+
       this.animation = player;
 
       return lottieLoader.waitForFirstFrame(player);
     });
 
-    this.getSuggestedFilters()
+    this.getSuggestedFilters();
 
     /* return Promise.all([
       this.loadAnimationPromise
@@ -252,6 +258,8 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       this.animation.autoplay = true;
       this.animation.play();
     });
+
+    return super.onOpenAfterTimeout();
   }
 
   private toggleAllChats() {

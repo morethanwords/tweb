@@ -108,6 +108,12 @@ export class ApiManager extends ApiManagerMethods {
       }
     });
 
+    this.rootScope.addEventListener('user_auth', () => {
+      if(this.config) { // refresh configs if had a config during authorization
+        this.apiUpdatesManager.processLocalUpdate({_: 'updateConfig'});
+      }
+    });
+
     this.rootScope.addEventListener('premium_toggle', (isPremium) => {
       this.iterateNetworkers(({networker, connectionType, dcId, transportType}) => {
         if(connectionType === 'client' || transportType !== 'websocket') {

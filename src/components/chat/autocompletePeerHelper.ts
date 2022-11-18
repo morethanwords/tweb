@@ -33,7 +33,7 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
     this.container.classList.add(AutocompletePeerHelper.BASE_CLASS, className);
   }
 
-  protected init() {
+  public init() {
     this.list = document.createElement('div');
     this.list.classList.add(AutocompletePeerHelper.BASE_CLASS + '-list', this.className + '-list');
 

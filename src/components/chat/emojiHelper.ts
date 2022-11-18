@@ -32,7 +32,7 @@ export default class EmojiHelper extends AutocompleteHelper {
     this.container.classList.add('emoji-helper');
   }
 
-  protected init() {
+  public init() {
     this.list = document.createElement('div');
     this.list.classList.add('emoji-helper-emojis', 'super-emojis');
 

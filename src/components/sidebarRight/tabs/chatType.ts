@@ -27,7 +27,7 @@ export default class AppChatTypeTab extends SliderSuperTabEventable {
   public chatId: ChatId;
   public chatFull: ChatFull;
 
-  protected async init() {
+  public async init() {
     this.container.classList.add('edit-peer-container', 'group-type-container');
 
     const isBroadcast = await this.managers.appChatsManager.isBroadcast(this.chatId);

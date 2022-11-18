@@ -46,7 +46,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
   private type: 'edit' | 'create';
   private loadAnimationPromise: ReturnType<LottieLoader['waitForFirstFrame']>;
 
-  protected init() {
+  public init() {
     this.container.classList.add('edit-folder-container');
     this.caption = document.createElement('div');
     this.caption.classList.add('caption');
@@ -390,6 +390,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
       this.type = 'edit';
     }
 
+    // @ts-ignore
     return super.open().then(() => {
       if(this.type === 'edit') {
         this.setFilter(this.originalFilter, true);

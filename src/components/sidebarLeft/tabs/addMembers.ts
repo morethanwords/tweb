@@ -17,7 +17,14 @@ export default class AppAddMembersTab extends SliderSuperTab {
   private takeOut: (peerIds: PeerId[]) => Promise<any> | false | void;
   private skippable: boolean;
 
-  protected init() {
+  public init(options: {
+    title: LangPackKey,
+    placeholder: LangPackKey,
+    type: AppAddMembersTab['peerType'],
+    takeOut?: AppAddMembersTab['takeOut'],
+    skippable: boolean,
+    selectedPeerIds?: PeerId[]
+  }) {
     this.container.classList.add('add-members-container');
     this.nextBtn = ButtonCorner({icon: 'arrow_next'});
     this.content.append(this.nextBtn);
@@ -39,28 +46,8 @@ export default class AppAddMembersTab extends SliderSuperTab {
         }
       }
     });
-  }
 
-  public attachToPromise(promise: Promise<any>) {
-    const removeLoader = setButtonLoader(this.nextBtn, 'arrow_next');
-
-    promise.then(() => {
-      this.close();
-    }, () => {
-      removeLoader();
-    });
-  }
-
-  public open(options: {
-    title: LangPackKey,
-    placeholder: LangPackKey,
-    type: AppAddMembersTab['peerType'],
-    takeOut?: AppAddMembersTab['takeOut'],
-    skippable: boolean,
-    selectedPeerIds?: PeerId[]
-  }) {
-    const ret = super.open();
-
+    //
     this.setTitle(options.title);
     this.peerType = options.type;
     this.takeOut = options.takeOut;
@@ -87,7 +74,15 @@ export default class AppAddMembersTab extends SliderSuperTab {
     this.nextBtn.innerHTML = '';
     this.nextBtn.disabled = false;
     this.nextBtn.classList.toggle('is-visible', this.skippable);
+  }
 
-    return ret;
+  public attachToPromise(promise: Promise<any>) {
+    const removeLoader = setButtonLoader(this.nextBtn, 'arrow_next');
+
+    promise.then(() => {
+      this.close();
+    }, () => {
+      removeLoader();
+    });
   }
 }

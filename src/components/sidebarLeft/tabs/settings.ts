@@ -47,7 +47,7 @@ export default class AppSettingsTab extends SliderSuperTab {
   private authorizations: Authorization.authorization[];
   private getAuthorizationsPromise: Promise<AccountAuthorizations.accountAuthorizations>;
 
-  protected async init() {
+  public async init() {
     this.container.classList.add('settings-container');
     this.setTitle('Settings');
 
@@ -146,26 +146,40 @@ export default class AppSettingsTab extends SliderSuperTab {
     const buttonsDiv = document.createElement('div');
     buttonsDiv.classList.add('profile-buttons');
 
-    const b: [string, LangPackKey, SliderSuperTabConstructable][] = [
-      ['unmute', 'AccountSettings.Notifications', AppNotificationsTab],
-      ['data', 'DataSettings', AppDataAndStorageTab],
-      ['lock', 'AccountSettings.PrivacyAndSecurity', AppPrivacyAndSecurityTab],
-      ['settings', 'Telegram.GeneralSettingsViewController', AppGeneralSettingsTab],
-      ['folder', 'AccountSettings.Filters', AppChatFoldersTab]
+    type ConstructorP<T> = T extends {
+      new (...args: any[]): infer U;
+    } ? U : never;
+
+    const m = <T extends SliderSuperTabConstructable>(
+      icon: string,
+      text: LangPackKey,
+      c: T,
+      args?: Parameters<ConstructorP<T>['init']>
+    ): [string, LangPackKey, T, any[]?] => {
+      return [icon, text, c, args] as any;
+    };
+
+    const b = [
+      m('unmute', 'AccountSettings.Notifications', AppNotificationsTab),
+      m('data', 'DataSettings', AppDataAndStorageTab),
+      m('lock', 'AccountSettings.PrivacyAndSecurity', AppPrivacyAndSecurityTab, [AppPrivacyAndSecurityTab.getInitArgs(this)]),
+      m('settings', 'Telegram.GeneralSettingsViewController', AppGeneralSettingsTab),
+      m('folder', 'AccountSettings.Filters', AppChatFoldersTab, [AppChatFoldersTab.getInitArgs()])
     ];
 
-    const rows = b.map(([icon, langPackKey, tabConstructor]) => {
+    const rows = b.map(([icon, langPackKey, tabConstructor, args]) => {
       return new Row({
         titleLangKey: langPackKey,
         icon,
         clickable: () => {
-          this.slider.createTab(tabConstructor).open();
+          this.slider.createTab(tabConstructor as any).open(...(args || []));
           // new tabConstructor(this.slider, true).open();
         },
         listenerSetter: this.listenerSetter
       });
     });
 
+    const languageArgs = AppLanguageTab.getInitArgs();
     rows.push(
       this.devicesRow = new Row({
         titleLangKey: 'Devices',
@@ -192,7 +206,7 @@ export default class AppSettingsTab extends SliderSuperTab {
         titleRightSecondary: i18n('LanguageName'),
         icon: 'language',
         clickable: () => {
-          this.slider.createTab(AppLanguageTab).open();
+          this.slider.createTab(AppLanguageTab).open(languageArgs);
         },
         listenerSetter: this.listenerSetter
       })
@@ -208,10 +222,25 @@ export default class AppSettingsTab extends SliderSuperTab {
 
     this.scrollable.append(this.profile.element/* profileSection.container */, buttonsSection.container);
 
+    const getEditProfileArgs = () => {
+      editProfileArgs = AppEditProfileTab.getInitArgs();
+    };
+    let editProfileArgs: ReturnType<typeof AppEditProfileTab['getInitArgs']>;
     attachClickEvent(this.buttons.edit, () => {
       const tab = this.slider.createTab(AppEditProfileTab);
-      tab.open();
+      tab.open(editProfileArgs);
     }, {listenerSetter: this.listenerSetter});
+    getEditProfileArgs();
+    // this.listenerSetter.add(rootScope)('user_full_update', (userId) => {
+    //   if(rootScope.myId.toUserId() === userId) {
+    //     getEditProfileArgs();
+    //   }
+    // });
+    this.listenerSetter.add(rootScope)('user_update', (userId) => {
+      if(rootScope.myId.toUserId() === userId) {
+        getEditProfileArgs();
+      }
+    });
 
     lottieLoader.loadLottieWorkers();
 

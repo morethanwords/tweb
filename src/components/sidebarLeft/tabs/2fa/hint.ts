@@ -22,7 +22,7 @@ export default class AppTwoStepVerificationHintTab extends SliderSuperTab {
   public plainPassword: string;
   public newPassword: string;
 
-  protected init() {
+  public init() {
     this.container.classList.add('two-step-verification', 'two-step-verification-hint');
     this.setTitle('TwoStepAuth.SetupHintTitle');
 

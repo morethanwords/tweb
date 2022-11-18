@@ -6850,6 +6850,7 @@ export namespace ChannelAdminLogEventsFilter {
       group_call?: true,
       invites?: true,
       send?: true,
+      forums?: true,
     }>
   };
 }
@@ -13950,6 +13951,12 @@ export type MessagesGetExtendedMedia = {
   id: Array<number>
 };
 
+export type AuthImportWebTokenAuthorization = {
+  api_id: number,
+  api_hash: string,
+  web_auth_token: string
+};
+
 export interface MethodDeclMap {
   'invokeAfterMsg': {req: InvokeAfterMsg, res: any},
   'invokeAfterMsgs': {req: InvokeAfterMsgs, res: any},
@@ -14407,5 +14414,6 @@ export interface MethodDeclMap {
   'messages.getRecentReactions': {req: MessagesGetRecentReactions, res: MessagesReactions},
   'messages.clearRecentReactions': {req: MessagesClearRecentReactions, res: boolean},
   'messages.getExtendedMedia': {req: MessagesGetExtendedMedia, res: Updates},
+  'auth.importWebTokenAuthorization': {req: AuthImportWebTokenAuthorization, res: AuthAuthorization},
 }
 

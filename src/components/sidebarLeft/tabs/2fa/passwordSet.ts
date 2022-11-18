@@ -12,7 +12,7 @@ import wrapStickerEmoji from '../../../wrappers/stickerEmoji';
 import AppSettingsTab from '../settings';
 
 export default class AppTwoStepVerificationSetTab extends SliderSuperTab {
-  protected init() {
+  public init() {
     this.container.classList.add('two-step-verification', 'two-step-verification-set');
     this.setTitle('TwoStepVerificationPasswordSet');
 

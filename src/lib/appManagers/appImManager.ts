@@ -95,6 +95,8 @@ import wrapPeerTitle from '../../components/wrappers/peerTitle';
 import NBSP from '../../helpers/string/nbsp';
 import {makeMediaSize, MediaSize} from '../../helpers/mediaSize';
 import {MiddleEllipsisElement} from '../../components/middleEllipsis';
+import addAnchorListener from '../../helpers/addAnchorListener';
+import parseUriParams from '../../helpers/string/parseUriParams';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -494,7 +496,7 @@ export class AppImManager extends EventListenerBase<{
     setInterval(setAuthorized, ONE_DAY);
     setAuthorized();
 
-    this.addAnchorListener<{}>({
+    addAnchorListener<{}>({
       name: 'showMaskedAlert',
       callback: (params, element) => {
         const href = element.href;
@@ -518,7 +520,7 @@ export class AppImManager extends EventListenerBase<{
       }
     });
 
-    this.addAnchorListener<{uriParams: {command: string, bot: string}}>({
+    addAnchorListener<{uriParams: {command: string, bot: string}}>({
       name: 'execBotCommand',
       callback: ({uriParams}) => {
         const {command, bot} = uriParams;
@@ -534,7 +536,7 @@ export class AppImManager extends EventListenerBase<{
       }
     });
 
-    this.addAnchorListener<{uriParams: {hashtag: string}}>({
+    addAnchorListener<{uriParams: {hashtag: string}}>({
       name: 'searchByHashtag',
       callback: ({uriParams}) => {
         const {hashtag} = uriParams;
@@ -553,7 +555,7 @@ export class AppImManager extends EventListenerBase<{
       'addstickers' | 'addemoji',
       INTERNAL_LINK_TYPE.STICKER_SET | INTERNAL_LINK_TYPE.EMOJI_SET
     ][]).forEach(([name, type]) => {
-      this.addAnchorListener<{pathnameParams: [typeof name, string]}>({
+      addAnchorListener<{pathnameParams: [typeof name, string]}>({
         name,
         callback: ({pathnameParams}) => {
           if(!pathnameParams[1]) {
@@ -569,7 +571,7 @@ export class AppImManager extends EventListenerBase<{
         }
       });
 
-      this.addAnchorListener<{
+      addAnchorListener<{
         uriParams: {
           set: string
         }
@@ -585,7 +587,7 @@ export class AppImManager extends EventListenerBase<{
 
     // * t.me/invoice/asdasdad
     // * t.me/$asdasdad
-    this.addAnchorListener<{pathnameParams: ['invoice', string] | string}>({
+    addAnchorListener<{pathnameParams: ['invoice', string] | string}>({
       name: 'invoice',
       callback: ({pathnameParams}) => {
         const link: InternalLink = {
@@ -598,7 +600,7 @@ export class AppImManager extends EventListenerBase<{
     });
 
     // Support old t.me/joinchat/asd and new t.me/+asd
-    this.addAnchorListener<{pathnameParams: ['joinchat', string]}>({
+    addAnchorListener<{pathnameParams: ['joinchat', string]}>({
       name: 'joinchat',
       callback: ({pathnameParams}) => {
         const link: InternalLink = {
@@ -611,7 +613,7 @@ export class AppImManager extends EventListenerBase<{
     });
 
     if(IS_GROUP_CALL_SUPPORTED) {
-      this.addAnchorListener<{
+      addAnchorListener<{
         uriParams: Omit<InternalLink.InternalLinkVoiceChat, '_'>
       }>({
         name: 'voicechat',
@@ -623,7 +625,7 @@ export class AppImManager extends EventListenerBase<{
       });
     }
 
-    this.addAnchorListener<{
+    addAnchorListener<{
     //   pathnameParams: ['c', string, string],
     //   uriParams: {thread?: number}
     // } | {
@@ -662,7 +664,7 @@ export class AppImManager extends EventListenerBase<{
       }
     });
 
-    this.addAnchorListener<{
+    addAnchorListener<{
       uriParams: {
         domain: string,
 
@@ -701,7 +703,7 @@ export class AppImManager extends EventListenerBase<{
       }
     });
 
-    this.addAnchorListener<{
+    addAnchorListener<{
       uriParams: {
         channel: string,
         post: string,
@@ -717,7 +719,7 @@ export class AppImManager extends EventListenerBase<{
       }
     });
 
-    this.addAnchorListener<{
+    addAnchorListener<{
       uriParams: {
         slug: string
       }
@@ -731,7 +733,7 @@ export class AppImManager extends EventListenerBase<{
     });
 
     ['joinchat' as const, 'join' as const].forEach((name) => {
-      this.addAnchorListener<{
+      addAnchorListener<{
         uriParams: {
           invite: string
         }
@@ -988,51 +990,13 @@ export class AppImManager extends EventListenerBase<{
 
   public openUrl(url: string) {
     const {url: wrappedUrl, onclick} = wrapUrl(url);
+    if(!onclick) {
+      return;
+    }
+
     const a = document.createElement('a');
     a.href = wrappedUrl;
-
     (window as any)[onclick](a);
-  }
-
-  private addAnchorListener<Params extends {pathnameParams?: any, uriParams?: any}>(options: {
-    name: 'showMaskedAlert' | 'execBotCommand' | 'searchByHashtag' | 'addstickers' | 'im' |
-          'resolve' | 'privatepost' | 'addstickers' | 'voicechat' | 'joinchat' | 'join' | 'invoice' |
-          'addemoji',
-    protocol?: 'tg',
-    callback: (params: Params, element?: HTMLAnchorElement) => boolean | any,
-    noPathnameParams?: boolean,
-    noUriParams?: boolean
-  }) {
-    (window as any)[(options.protocol ? options.protocol + '_' : '') + options.name] = (element?: HTMLAnchorElement/* , e: Event */) => {
-      cancelEvent(null);
-
-      let href = element.href;
-      let pathnameParams: any[];
-      let uriParams: any;
-
-      const u = new URL(href);
-      const match = u.host.match(/(.+?)\.t(?:elegram)?\.me/);
-      if(match) {
-        u.pathname = match[1] + (u.pathname === '/' ? '' : u.pathname);
-        href = u.toString();
-      }
-
-      if(!options.noPathnameParams) pathnameParams = new URL(href).pathname.split('/').slice(1);
-      if(!options.noUriParams) uriParams = this.parseUriParams(href);
-
-      const res = options.callback({pathnameParams, uriParams} as Params, element);
-      return res === undefined ? res : false;
-    };
-  }
-
-  private parseUriParams(uri: string, splitted = uri.split('?')) {
-    const params: any = {};
-    if(!splitted[1]) return params;
-    splitted[1].split('&').forEach((item) => {
-      params[item.split('=')[0]] = decodeURIComponent(item.split('=')[1]);
-    });
-
-    return params;
   }
 
   private onHashChange = (saveState?: boolean) => {
@@ -1042,19 +1006,14 @@ export class AppImManager extends EventListenerBase<{
     }
 
     const splitted = hash.split('?');
-    const params = this.parseUriParams(hash, splitted);
+    const params = parseUriParams(hash, splitted);
     this.log('hashchange', hash, splitted[0], params);
     if(!hash) {
       return;
     }
 
     if(params.tgaddr) {
-      const {onclick} = wrapUrl(params.tgaddr);
-      if(onclick) {
-        const a = document.createElement('a');
-        a.href = params.tgaddr;
-        (window as any)[onclick](a);
-      }
+      this.openUrl(params.tgaddr);
       return;
     }
 

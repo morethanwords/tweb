@@ -1512,10 +1512,17 @@ export default class ChatInput {
     });
 
     if(IS_TOUCH_SUPPORTED) {
-      attachClickEvent(this.messageInput, () => {
+      attachClickEvent(this.messageInput, (e) => {
+        if(emoticonsDropdown.isActive()) {
+          emoticonsDropdown.toggle(false);
+          blurActiveElement();
+          cancelEvent(e);
+          // this.messageInput.focus();
+          return;
+        }
+
         this.appImManager.selectTab(1); // * set chat tab for album orientation
         // this.saveScroll();
-        emoticonsDropdown.toggle(false);
       }, {listenerSetter: this.listenerSetter});
 
       /* this.listenerSetter.add(window)('resize', () => {

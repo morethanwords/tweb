@@ -27,7 +27,7 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
   public hint: string;
   public isFirst = false;
 
-  protected init() {
+  public init() {
     this.container.classList.add('two-step-verification', 'two-step-verification-email');
     this.setTitle('RecoveryEmailTitle');
 

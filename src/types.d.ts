@@ -88,7 +88,7 @@ export type Mutable<T> = {
   -readonly [K in keyof T]: T[K];
 };
 
-export type AuthState = AuthState.signIn | AuthState.signQr | AuthState.authCode | AuthState.password | AuthState.signUp | AuthState.signedIn;
+export type AuthState = AuthState.signIn | AuthState.signQr | AuthState.authCode | AuthState.password | AuthState.signUp | AuthState.signedIn | AuthState.signImport;
 export namespace AuthState {
   export type signIn = {
     _: 'authStateSignIn'
@@ -117,6 +117,17 @@ export namespace AuthState {
 
   export type signedIn = {
     _: 'authStateSignedIn'
+  };
+
+  export type signImport = {
+    _: 'authStateSignImport',
+    data: {
+      token: string,
+      userId: UserId,
+      dcId: DcId,
+      isTest: boolean,
+      tgAddr: string
+    }
   };
 }
 

@@ -51,7 +51,7 @@ export function autoDownloadPeerTypeSection(type: 'photo' | 'video' | 'file', ti
 }
 
 export default class AppAutoDownloadPhotoTab extends SliderSuperTabEventable {
-  protected init() {
+  public init() {
     this.header.classList.add('with-border');
     this.setTitle('AutoDownloadPhotos');
 

@@ -674,9 +674,9 @@ class ApiUpdatesManager {
         state.date = 1; */
         // state.pts -= 100;
 
-        /* state.date = 1628623682;
-        state.pts = 2007500;
-        state.seq = 503; */
+        // state.date = 1628623682;
+        // state.pts = 2007500;
+        // state.seq = 503;
 
         Object.assign(this.updatesState, state);
 

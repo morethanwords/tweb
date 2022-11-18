@@ -250,6 +250,11 @@ const Transition = (
     }
 
     if(to) {
+      const transitionTimeout = to.dataset.transitionTimeout;
+      if(transitionTimeout) {
+        clearTimeout(+transitionTimeout);
+      }
+
       onTransitionEndCallbacks.set(to, () => {
         to.classList.remove('to');
         onTransitionEndCallbacks.delete(to);
@@ -280,6 +285,8 @@ const Transition = (
           onTransitionEndCallbacks.delete(_from);
         });
       }
+
+      _from.dataset.transitionTimeout = '' + timeout;
 
       if(isHeavy) {
         if(!animationDeferred) {

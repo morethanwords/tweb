@@ -26,7 +26,7 @@ export default class AppContactsTab extends SliderSuperTab {
   private middleware: ReturnType<typeof getMiddleware>;
   private sortedUserList: SortedUserList;
 
-  protected init() {
+  public init() {
     this.container.id = 'contacts-container';
 
     // this.list = appDialogsManager.createChatList(/* {avatarSize: 48, handheldsSize: 66} */);
@@ -52,6 +52,8 @@ export default class AppContactsTab extends SliderSuperTab {
     this.title.replaceWith(this.inputSearch.container);
 
     this.middleware = getMiddleware();
+
+    this.openContacts();
 
     // preload contacts
     // appUsersManager.getContacts();
@@ -83,11 +85,6 @@ export default class AppContactsTab extends SliderSuperTab {
   }
 
   public openContacts(query?: string) {
-    if(this.init) {
-      this.init();
-      this.init = null;
-    }
-
     this.middleware.clean();
     const middleware = this.middleware.get();
     this.scrollable.onScrolledBottom = null;
@@ -125,10 +122,5 @@ export default class AppContactsTab extends SliderSuperTab {
 
       replaceContent(this.scrollable.container, sortedUserList.list);
     });
-  }
-
-  public open() {
-    this.openContacts();
-    return super.open();
   }
 }

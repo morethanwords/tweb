@@ -17,7 +17,7 @@ import wrapStickerToRow from '../../wrappers/stickerToRow';
 export default class AppChatReactionsTab extends SliderSuperTabEventable {
   public chatId: ChatId;
 
-  protected async init() {
+  public async init() {
     this.setTitle('Reactions');
 
     const availableReactions = await this.managers.appReactionsManager.getActiveAvailableReactions();

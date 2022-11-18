@@ -21,7 +21,7 @@ export default class AppTwoStepVerificationReEnterPasswordTab extends SliderSupe
   public plainPassword: string;
   public newPassword: string;
 
-  protected init() {
+  public init() {
     this.container.classList.add('two-step-verification', 'two-step-verification-enter-password', 'two-step-verification-re-enter-password');
     this.setTitle('PleaseReEnterPassword');
 

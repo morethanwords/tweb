@@ -12,7 +12,7 @@ import SliderSuperTab from '../../sliderTab';
 import wrapStickerToRow from '../../wrappers/stickerToRow';
 
 export default class AppQuickReactionTab extends SliderSuperTab {
-  protected init() {
+  public init() {
     this.header.classList.add('with-border');
     this.setTitle('DoubleTapSetting');
     this.container.classList.add('quick-reaction-container');

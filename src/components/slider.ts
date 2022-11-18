@@ -7,15 +7,13 @@
 import {horizontalMenu} from './horizontalMenu';
 import {TransitionSlider} from './transition';
 import appNavigationController, {NavigationItem} from './appNavigationController';
-import SliderSuperTab, {SliderSuperTabConstructable, SliderTab} from './sliderTab';
-import {attachClickEvent} from '../helpers/dom/clickEvent';
+import SliderSuperTab, {SliderSuperTabConstructable} from './sliderTab';
 import indexOfAndSplice from '../helpers/array/indexOfAndSplice';
 import safeAssign from '../helpers/object/safeAssign';
 import {AppManagers} from '../lib/appManagers/managers';
 
 const TRANSITION_TIME = 250;
 
-export type {SliderTab};
 export {SliderSuperTab};
 
 export default class SidebarSlider {
@@ -23,7 +21,7 @@ export default class SidebarSlider {
   public historyTabIds: (number | SliderSuperTab)[] = []; // * key is any, since right sidebar is ugly nowz
   public tabsContainer: HTMLElement;
   public sidebarEl: HTMLElement;
-  public tabs: Map<any, SliderTab>; // * key is any, since right sidebar is ugly now
+  public tabs: Map<any, SliderSuperTab>; // * key is any, since right sidebar is ugly now
   private canHideFirst = false;
   private navigationType: NavigationItem['type'];
   protected managers: AppManagers;
@@ -46,9 +44,9 @@ export default class SidebarSlider {
       this._selectTab(0);
     }
 
-    Array.from(this.sidebarEl.querySelectorAll('.sidebar-close-button') as any as HTMLElement[]).forEach((el) => {
-      attachClickEvent(el, this.onCloseBtnClick);
-    });
+    // Array.from(this.sidebarEl.querySelectorAll('.sidebar-close-button') as any as HTMLElement[]).forEach((el) => {
+    //   attachClickEvent(el, this.onCloseBtnClick);
+    // });
   }
 
   public onCloseBtnClick = () => {
@@ -84,14 +82,15 @@ export default class SidebarSlider {
       return false;
     }
 
-    const tab: SliderTab = id instanceof SliderSuperTab ? id : this.tabs.get(id);
+    const tab: SliderSuperTab = id instanceof SliderSuperTab ? id : this.tabs.get(id);
     if(tab) {
-      if(tab.onOpen) {
-        tab.onOpen();
-      }
+      // @ts-ignore
+      tab.onOpen?.();
 
+      // @ts-ignore
       if(tab.onOpenAfterTimeout) {
         setTimeout(() => {
+          // @ts-ignore
           tab.onOpenAfterTimeout();
         }, TRANSITION_TIME);
       }
@@ -143,14 +142,15 @@ export default class SidebarSlider {
       appNavigationController.removeByType(this.navigationType, true);
     }
 
-    const tab: SliderTab = id instanceof SliderSuperTab ? id : this.tabs.get(id);
+    const tab: SliderSuperTab = id instanceof SliderSuperTab ? id : this.tabs.get(id);
     if(tab) {
-      if(tab.onClose) {
-        tab.onClose();
-      }
+      // @ts-ignore
+      tab.onClose?.();
 
+      // @ts-ignore
       if(tab.onCloseAfterTimeout) {
         setTimeout(() => {
+          // @ts-ignore
           tab.onCloseAfterTimeout();
         }, TRANSITION_TIME + 30);
       }

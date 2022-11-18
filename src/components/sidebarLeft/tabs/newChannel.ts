@@ -23,7 +23,7 @@ export default class AppNewChannelTab extends SliderSuperTab {
   private nextBtn: HTMLButtonElement;
   private avatarEdit: AvatarEdit;
 
-  protected init() {
+  public init() {
     this.container.classList.add('new-channel-container');
     this.setTitle('NewChannel');
 

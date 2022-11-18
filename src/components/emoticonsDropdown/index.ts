@@ -147,7 +147,7 @@ export class EmoticonsDropdown extends DropdownHover {
     return this.tabs[this.tabId];
   }
 
-  protected init() {
+  public init() {
     this.managers = rootScope.managers;
     this.emojiTab = new EmojiTab(this.managers);
     this.stickersTab = new StickersTab(this.managers);

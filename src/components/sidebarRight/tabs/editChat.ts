@@ -366,7 +366,7 @@ export default class AppEditChatTab extends SliderSuperTab {
     }
   }
 
-  protected init() {
+  public init() {
     return this._init();
   }
 }

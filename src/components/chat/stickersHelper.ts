@@ -125,7 +125,7 @@ export default class StickersHelper extends AutocompleteHelper {
     });
   }
 
-  protected init() {
+  public init() {
     this.list = document.createElement('div');
     this.list.classList.add('stickers-helper-stickers', 'super-stickers');
 

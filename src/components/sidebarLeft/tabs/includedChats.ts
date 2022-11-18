@@ -36,7 +36,16 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
   private dialogsByFilters: Map<DialogFilter, Set<PeerId>>;
   private limit: number;
 
-  protected init() {
+  public init(
+    filter: DialogFilter,
+    type: 'included' | 'excluded',
+    editFolderTab: AppIncludedChatsTab['editFolderTab']
+  ) {
+    this.originalFilter = filter;
+    this.filter = copy(this.originalFilter);
+    this.type = type;
+    this.editFolderTab = editFolderTab;
+
     this.content.remove();
     this.container.classList.add('included-chatlist-container');
     this.confirmBtn = ButtonIcon('check btn-confirm blue', {noRipple: true});
@@ -178,11 +187,6 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
   };
 
   onOpen() {
-    if(this.init) {
-      this.init();
-      this.init = null;
-    }
-
     this.confirmBtn.style.display = this.type === 'excluded' ? '' : 'none';
     this.setTitle(this.type === 'included' ? 'FilterAlwaysShow' : 'FilterNeverShow');
 
@@ -286,17 +290,5 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
     }
 
     return super.onCloseAfterTimeout();
-  }
-
-  /**
-   * Do not ignore arguments!
-   */
-  public open(filter?: DialogFilter, type?: 'included' | 'excluded', editFolderTab?: AppIncludedChatsTab['editFolderTab']) {
-    this.originalFilter = filter;
-    this.filter = copy(this.originalFilter);
-    this.type = type;
-    this.editFolderTab = editFolderTab;
-
-    return super.open();
   }
 }

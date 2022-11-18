@@ -46,8 +46,8 @@ export default abstract class ApiManagerMethods extends AppManager {
     }
   } = {};
 
-  private config: Config;
-  private appConfig: MTAppConfig;
+  protected config: Config;
+  protected appConfig: MTAppConfig;
 
   constructor() {
     super();

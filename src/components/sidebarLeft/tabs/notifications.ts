@@ -19,7 +19,7 @@ import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 type InputNotifyKey = Exclude<InputNotifyPeer['_'], 'inputNotifyPeer'>;
 
 export default class AppNotificationsTab extends SliderSuperTabEventable {
-  protected init() {
+  public init() {
     this.header.classList.add('with-border');
     this.container.classList.add('notifications-container', 'with-border');
     this.setTitle('Telegram.NotificationSettingsViewController');

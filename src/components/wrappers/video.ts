@@ -14,6 +14,7 @@ import createVideo from '../../helpers/dom/createVideo';
 import isInDOM from '../../helpers/dom/isInDOM';
 import renderImageFromUrl from '../../helpers/dom/renderImageFromUrl';
 import getStrippedThumbIfNeeded from '../../helpers/getStrippedThumbIfNeeded';
+import makeError from '../../helpers/makeError';
 import mediaSizes, {ScreenSize} from '../../helpers/mediaSizes';
 import {Middleware} from '../../helpers/middleware';
 import noop from '../../helpers/noop';
@@ -502,7 +503,7 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
         }
       } else if(doc.supportsStreaming) {
         if(noAutoDownload) {
-          loadPromise = Promise.reject();
+          loadPromise = Promise.reject(makeError('NO_AUTO_DOWNLOAD'));
         } else if(!cacheContext.downloaded && preloader) { // * check for uploading video
           preloader.attach(container, false, null);
           video.addEventListener(IS_SAFARI ? 'timeupdate' : 'canplay', () => {
@@ -541,12 +542,15 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
         }
 
         renderDeferred.resolve();
+      }, (err) => {
+        console.error('video load error', err);
+        renderDeferred.reject(err);
       });
 
       renderImageFromUrl(video, cacheContext.url);
     }, noop);
 
-    return {download: loadPromise, render: renderDeferred};
+    return {download: loadPromise, render: Promise.all([loadPromise, renderDeferred])};
   };
 
   if(preloader && !uploadFileName) {

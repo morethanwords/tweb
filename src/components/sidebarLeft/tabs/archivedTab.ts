@@ -12,7 +12,7 @@ export default class AppArchivedTab extends SliderSuperTab {
   private static filterId: REAL_FOLDER_ID = FOLDER_ID_ARCHIVE;
   private wasFilterId: number;
 
-  protected init() {
+  public init() {
     this.wasFilterId = appDialogsManager.filterId;
 
     this.container.id = 'chats-archived-container';

@@ -61,7 +61,7 @@ export default class ReplyKeyboard extends DropdownHover {
     });
   }
 
-  protected init() {
+  public init() {
     this.appendTo.append(this.element);
 
     this.listenerSetter.add(this)('open', async() => {

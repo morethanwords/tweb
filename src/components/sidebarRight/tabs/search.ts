@@ -27,7 +27,12 @@ export default class AppPrivateSearchTab extends SliderSuperTab {
     this.appSearch.beginSearch(this.peerId, this.threadId, this.query);
   }
 
-  protected init() {
+  public init(
+    peerId: PeerId,
+    threadId?: number,
+    onDatePick?: AppPrivateSearchTab['onDatePick'],
+    query?: string
+  ) {
     this.container.id = 'search-private-container';
     this.container.classList.add('chatlist-container');
     this.inputSearch = new InputSearch('Search');
@@ -42,10 +47,6 @@ export default class AppPrivateSearchTab extends SliderSuperTab {
     this.appSearch = new AppSearch(c, this.inputSearch, {
       messages: new SearchGroup('Chat.Search.PrivateSearch', 'messages')
     });
-  }
-
-  open(peerId: PeerId, threadId?: number, onDatePick?: AppPrivateSearchTab['onDatePick'], query?: string) {
-    const ret = super.open();
 
     if(!this.peerId) {
       this.query = query;
@@ -66,7 +67,5 @@ export default class AppPrivateSearchTab extends SliderSuperTab {
     } else {
       this.appSearch.beginSearch(this.peerId, this.threadId, query);
     }
-
-    return ret;
   }
 }

@@ -16,17 +16,14 @@ import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
 export default class AppPollResultsTab extends SliderSuperTab {
   private resultsDiv: HTMLElement;
 
-  protected init() {
+  public async init(message: any) {
     this.container.id = 'poll-results-container';
     this.container.classList.add('chatlist-container');
 
     this.resultsDiv = document.createElement('div');
     this.resultsDiv.classList.add('poll-results');
     this.scrollable.append(this.resultsDiv);
-  }
 
-  public async open(message: any) {
-    const ret = super.open();
     const poll = await this.managers.appPollsManager.getPoll(message.media.poll.id);
 
     this.setTitle(poll.poll.pFlags.quiz ? 'PollResults.Title.Quiz' : 'PollResults.Title.Poll');
@@ -124,7 +121,5 @@ export default class AppPollResultsTab extends SliderSuperTab {
         console.log('gOt VotEs', votes);
       }); */
     });
-
-    return ret;
   }
 }

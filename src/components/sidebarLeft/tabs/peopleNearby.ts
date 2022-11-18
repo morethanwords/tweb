@@ -35,7 +35,7 @@ export default class AppPeopleNearbyTab extends SliderSuperTab {
 
   protected locatedPeers: Map<PeerId, PeerLocated.peerLocated>;
 
-  // protected async init() {
+  // public async init() {
   //   this.container.classList.add('people-nearby-container');
   //   this.setTitle('PeopleNearby');
 
@@ -180,53 +180,53 @@ export default class AppPeopleNearbyTab extends SliderSuperTab {
     }
   }
 
-  public open() {
-    const result = super.open();
-    result.then(() => {
-      this.retryBtn.classList.remove('is-visible');
-      navigator.geolocation.getCurrentPosition((location) => {
-        this.latestLocationSaved = {
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-          accuracy: location.coords.accuracy
-        };
+  // public open() {
+  //   const result = super.open();
+  //   result.then(() => {
+  //     this.retryBtn.classList.remove('is-visible');
+  //     navigator.geolocation.getCurrentPosition((location) => {
+  //       this.latestLocationSaved = {
+  //         latitude: location.coords.latitude,
+  //         longitude: location.coords.longitude,
+  //         accuracy: location.coords.accuracy
+  //       };
 
-        console.log(this.latestLocationSaved);
+  //       console.log(this.latestLocationSaved);
 
-        this.managers.appUsersManager.getLocated(
-          location.coords.latitude,
-          location.coords.longitude,
-          location.coords.accuracy
-        ).then((response) => {
-          const update = (response as Updates.updates).updates[0] as Update.updatePeerLocated;
-          const peers = update.peers as PeerLocated.peerLocated[];
-          const orderedPeers = peers.sort((a, b) => a.distance - b.distance);
-          const groupsCounter = peers.filter((e) => e.peer._ == 'peerChannel').length;
-          const usersCounter = peers.filter((e) => e.peer._ != 'peerChannel').length;
-          orderedPeers?.forEach((peer) => {
-            const peerId = getPeerId(peer.peer);
-            const section = peerId.isUser() ? this.peopleSection : this.chatsSection;
-            this.locatedPeers.set(peerId, peer);
-            section.sortedList.add(peerId);
-          });
+  //       this.managers.appUsersManager.getLocated(
+  //         location.coords.latitude,
+  //         location.coords.longitude,
+  //         location.coords.accuracy
+  //       ).then((response) => {
+  //         const update = (response as Updates.updates).updates[0] as Update.updatePeerLocated;
+  //         const peers = update.peers as PeerLocated.peerLocated[];
+  //         const orderedPeers = peers.sort((a, b) => a.distance - b.distance);
+  //         const groupsCounter = peers.filter((e) => e.peer._ == 'peerChannel').length;
+  //         const usersCounter = peers.filter((e) => e.peer._ != 'peerChannel').length;
+  //         orderedPeers?.forEach((peer) => {
+  //           const peerId = getPeerId(peer.peer);
+  //           const section = peerId.isUser() ? this.peopleSection : this.chatsSection;
+  //           this.locatedPeers.set(peerId, peer);
+  //           section.sortedList.add(peerId);
+  //         });
 
-          this.errorCategory.classList.toggle('hide', !!(usersCounter || groupsCounter));
-          this.errorCategory.innerHTML = 'No groups or channels found around you.';
-        });
-      }, (error) => {
-        this.errorCategory.classList.remove('hide');
-        this.retryBtn.classList.add('is-visible');
-        this.retryBtn.addEventListener('click', this.open);
-        if(error instanceof GeolocationPositionError) {
-          this.errorCategory.innerHTML = 'Location permission denied. Click below to retry.';
-        } else {
-          this.errorCategory.innerHTML = 'An error has occurred. Please retry later clicking the button below.';
-        }
-      });
-    });
+  //         this.errorCategory.classList.toggle('hide', !!(usersCounter || groupsCounter));
+  //         this.errorCategory.innerHTML = 'No groups or channels found around you.';
+  //       });
+  //     }, (error) => {
+  //       this.errorCategory.classList.remove('hide');
+  //       this.retryBtn.classList.add('is-visible');
+  //       this.retryBtn.addEventListener('click', this.open);
+  //       if(error instanceof GeolocationPositionError) {
+  //         this.errorCategory.innerHTML = 'Location permission denied. Click below to retry.';
+  //       } else {
+  //         this.errorCategory.innerHTML = 'An error has occurred. Please retry later clicking the button below.';
+  //       }
+  //     });
+  //   });
 
-    return result;
-  }
+  //   return result;
+  // }
 
   private startWatching() {
     if(!this.latestLocationSaved || this.isLocationWatched) return;

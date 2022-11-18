@@ -26,7 +26,7 @@ export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSu
   public length: number;
   public isFirst = false;
 
-  protected init() {
+  public init() {
     this.container.classList.add('two-step-verification', 'two-step-verification-email-confirmation');
     this.setTitle('TwoStepAuth.RecoveryTitle');
 

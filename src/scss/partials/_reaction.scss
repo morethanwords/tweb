@@ -148,14 +148,14 @@
       // visibility: hidden;
       border-radius: inherit;
       // transform: scale3d(.2, .2, .2);
-      transform: scale3d(0, 0, 0);
+      transform: scale(0, 0);
       opacity: 0;
     }
 
     &.is-chosen {
       &:not(.backwards) {
         &:before {
-          transform: scale3d(1, 1, 1);
+          transform: scale(1, 1);
           opacity: 1;
           // visibility: visible;
         }

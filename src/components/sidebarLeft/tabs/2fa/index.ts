@@ -20,7 +20,7 @@ export default class AppTwoStepVerificationTab extends SliderSuperTab {
   public state: AccountPassword;
   public plainPassword: string;
 
-  protected init() {
+  public init() {
     this.container.classList.add('two-step-verification', 'two-step-verification-main');
     this.setTitle('TwoStepVerificationTitle');
 

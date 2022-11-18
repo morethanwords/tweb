@@ -142,7 +142,7 @@ export class ChatPermissions {
 export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
   public chatId: ChatId;
 
-  protected async init() {
+  public async init() {
     this.container.classList.add('edit-peer-container', 'group-permissions-container');
     this.setTitle('ChannelPermissions');
 

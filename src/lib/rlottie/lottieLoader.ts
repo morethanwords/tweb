@@ -87,36 +87,54 @@ export class LottieLoader {
     });
   }
 
-  public loadAnimationAsAsset(params: Omit<RLottieOptions, 'animationData' | 'name'>, name: LottieAssetName) {
-    (params as RLottieOptions).name = name;
-    return this.loadAnimationFromURL(params, 'assets/tgs/' + name + '.json');
+  private makeAssetUrl(name: LottieAssetName) {
+    return 'assets/tgs/' + name + '.json';
   }
 
-  public loadAnimationFromURL(params: Omit<RLottieOptions, 'animationData'>, url: string): Promise<RLottiePlayer> {
+  public loadAnimationAsAsset(params: Omit<RLottieOptions, 'animationData' | 'name'>, name: LottieAssetName) {
+    // (params as RLottieOptions).name = name;
+    return this.loadAnimationFromURL(params, this.makeAssetUrl(name));
+  }
+
+  public loadAnimationDataFromURL(url: string): Promise<Blob> {
     if(!IS_WEB_ASSEMBLY_SUPPORTED) {
       return this.loadPromise as any;
     }
 
-    if(!this.loaded) {
-      this.loadLottieWorkers();
-    }
+    this.loadLottieWorkers();
 
     return fetch(url)
     .then((res) => {
       if(!res.headers || res.headers.get('content-type') === 'application/octet-stream') {
-        return res.arrayBuffer().then((data) => apiManagerProxy.invokeCrypto('gzipUncompress', data)).then((arr) => blobConstruct(arr as Uint8Array, ''))
+        return res.arrayBuffer()
+        .then((data) => apiManagerProxy.invokeCrypto('gzipUncompress', data))
+        .then((arr) => blobConstruct(arr as Uint8Array, ''));
       } else {
         return res.blob();
       }
-    })
+    });
     /* .then((str) => {
       return new Promise<string>((resolve) => setTimeout(() => resolve(str), 2e3));
     }) */
-    .then((blob) => {
-      const newParams = Object.assign(params, {animationData: blob, needUpscale: true});
-      if(!newParams.name) newParams.name = url;
-      return this.loadAnimationWorker(newParams);
+  }
+
+  public loadAnimationFromURLManually(name: LottieAssetName) {
+    const url = this.makeAssetUrl(name);
+    return this.loadAnimationDataFromURL(url).then((blob) => {
+      return (params: Omit<RLottieOptions, 'animationData'>) => this.loadAnimationFromURLNext(blob, params, url);
     });
+  }
+
+  public loadAnimationFromURL(params: Omit<RLottieOptions, 'animationData'>, url: string) {
+    return this.loadAnimationDataFromURL(url).then((blob) => {
+      return this.loadAnimationFromURLNext(blob, params, url);
+    });
+  }
+
+  public loadAnimationFromURLNext(blob: Blob, params: Omit<RLottieOptions, 'animationData'>, url: string) {
+    const newParams = Object.assign(params, {animationData: blob, needUpscale: true});
+    newParams.name ||= url;
+    return this.loadAnimationWorker(newParams);
   }
 
   public waitForFirstFrame(player: RLottiePlayer) {

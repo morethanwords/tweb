@@ -20,7 +20,7 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
   public chatId: ChatId;
   public userId: UserId;
 
-  protected async init() {
+  public async init() {
     this.container.classList.add('edit-peer-container', 'user-permissions-container');
     this.setTitle('UserRestrictions');
 

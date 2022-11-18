@@ -74,7 +74,7 @@ export class AppPrivacyManager extends AppManager {
   }
 
   public getGlobalPrivacySettings() {
-    return this.apiManager.invokeApi('account.getGlobalPrivacySettings')
+    return this.apiManager.invokeApi('account.getGlobalPrivacySettings');
   }
 
   public setGlobalPrivacySettings(settings: GlobalPrivacySettings) {

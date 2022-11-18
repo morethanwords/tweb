@@ -125,7 +125,7 @@ export default class DropdownHover extends EventListenerBase<{
     }, TOGGLE_TIMEOUT);
   };
 
-  protected init() {
+  public init() {
     if(!IS_TOUCH_SUPPORTED) {
       this.element.onmouseout = this.onMouseOut;
       this.element.onmouseover = (e) => {

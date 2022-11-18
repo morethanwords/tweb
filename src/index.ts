@@ -26,6 +26,10 @@ import getProxiedManagers from './lib/appManagers/getProxiedManagers';
 import themeController from './helpers/themeController';
 import overlayCounter from './helpers/overlayCounter';
 import singleInstance from './lib/mtproto/singleInstance';
+import parseUriParams from './helpers/string/parseUriParams';
+import Modes from './config/modes';
+import {AuthState} from './types';
+// import appNavigationController from './components/appNavigationController';
 
 document.addEventListener('DOMContentLoaded', async() => {
   toggleAttributePolyfill();
@@ -242,7 +246,37 @@ document.addEventListener('DOMContentLoaded', async() => {
 
   console.log('got state, time:', performance.now() - perf);
 
-  const authState = stateResult.state.authState;
+  let authState = stateResult.state.authState;
+
+  const hash = location.hash;
+  const splitted = hash.split('?');
+  const params = parseUriParams(hash, splitted);
+  if(params.tgWebAuthToken && authState._ !== 'authStateSignedIn') {
+    const data: AuthState.signImport['data'] = {
+      token: params.tgWebAuthToken,
+      dcId: +params.tgWebAuthDcId,
+      userId: params.tgWebAuthUserId.toUserId(),
+      isTest: params.tgWebAuthTest !== undefined && !!+params.tgWebAuthTest,
+      tgAddr: params.tgaddr
+    };
+
+    if(data.isTest !== Modes.test) {
+      const urlSearchParams = new URLSearchParams(location.search);
+      if(+params.tgWebAuthTest) {
+        urlSearchParams.set('test', '1');
+      } else {
+        urlSearchParams.delete('test');
+      }
+
+      location.search = urlSearchParams.toString();
+      return;
+    }
+
+    rootScope.managers.appStateManager.pushToState('authState', authState = {_: 'authStateSignImport', data});
+
+    // appNavigationController.overrideHash('?tgaddr=' + encodeURIComponent(params.tgaddr));
+  }
+
   if(authState._ !== 'authStateSignedIn'/*  || 1 === 1 */) {
     console.log('Will mount auth page:', authState._, Date.now() / 1000);
 
@@ -293,6 +327,9 @@ document.addEventListener('DOMContentLoaded', async() => {
         break;
       case 'authStateSignUp':
         pagePromise = (await import('./pages/pageSignUp')).default.mount(authState.authCode);
+        break;
+      case 'authStateSignImport':
+        pagePromise = (await import('./pages/pageSignImport')).default.mount(authState.data);
         break;
     }
     // });

@@ -26,18 +26,27 @@ export default class AppEditProfileTab extends SliderSuperTab {
 
   private editPeer: EditPeer;
 
-  protected async init() {
+  public static getInitArgs() {
+    return {
+      bioMaxLength: rootScope.managers.apiManager.getLimit('bio'),
+      user: rootScope.managers.appUsersManager.getSelf(),
+      userFull: rootScope.managers.appProfileManager.getProfile(rootScope.myId.toUserId())
+    };
+  }
+
+  public async init(p: ReturnType<typeof AppEditProfileTab['getInitArgs']>) {
     this.container.classList.add('edit-profile-container');
     this.setTitle('EditAccount.Title');
 
     const inputFields: InputField[] = [];
+
+    const [bioMaxLength, user, userFull] = await Promise.all([p.bioMaxLength, p.user, p.userFull]);
 
     {
       const section = generateSection(this.scrollable, undefined, 'Bio.Description');
       const inputWrapper = document.createElement('div');
       inputWrapper.classList.add('input-wrapper');
 
-      const bioMaxLength = await this.managers.apiManager.getLimit('bio');
       this.firstNameInputField = new InputField({
         label: 'EditProfile.FirstNameLabel',
         name: 'first-name',
@@ -124,7 +133,12 @@ export default class AppEditProfileTab extends SliderSuperTab {
 
       const promises: Promise<any>[] = [];
 
-      promises.push(this.managers.appProfileManager.updateProfile(this.firstNameInputField.value, this.lastNameInputField.value, this.bioInputField.value).then(() => {
+      const profilePromise = this.managers.appProfileManager.updateProfile(
+        this.firstNameInputField.value,
+        this.lastNameInputField.value,
+        this.bioInputField.value
+      );
+      promises.push(profilePromise.then(() => {
         this.close();
       }, (err) => {
         console.error('updateProfile error:', err);
@@ -144,10 +158,6 @@ export default class AppEditProfileTab extends SliderSuperTab {
         this.editPeer.nextBtn.removeAttribute('disabled');
       });
     }, {listenerSetter: this.listenerSetter});
-
-    const user = await this.managers.appUsersManager.getSelf();
-
-    const userFull = await this.managers.appProfileManager.getProfile(user.id, true);
 
     this.firstNameInputField.setOriginalValue(user.first_name, true);
     this.lastNameInputField.setOriginalValue(user.last_name, true);

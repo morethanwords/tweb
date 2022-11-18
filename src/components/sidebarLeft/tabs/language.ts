@@ -7,12 +7,24 @@
 import {SettingSection} from '..';
 import {randomLong} from '../../../helpers/random';
 import I18n from '../../../lib/langPack';
+import rootScope from '../../../lib/rootScope';
 import RadioField from '../../radioField';
 import Row, {RadioFormFromRows} from '../../row';
 import {SliderSuperTab} from '../../slider'
 
 export default class AppLanguageTab extends SliderSuperTab {
-  protected async init() {
+  public static getInitArgs() {
+    return {
+      languages1: rootScope.managers.apiManager.invokeApiCacheable('langpack.getLanguages', {
+        lang_pack: 'web'
+      }),
+      languages2: rootScope.managers.apiManager.invokeApiCacheable('langpack.getLanguages', {
+        lang_pack: 'macos'
+      })
+    };
+  }
+
+  public init(p: ReturnType<typeof AppLanguageTab['getInitArgs']>) {
     this.header.classList.add('with-border');
     this.container.classList.add('language-container');
     this.setTitle('Telegram.LanguageViewController');
@@ -22,12 +34,8 @@ export default class AppLanguageTab extends SliderSuperTab {
     const radioRows: Map<string, Row> = new Map();
 
     const promise = Promise.all([
-      this.managers.apiManager.invokeApiCacheable('langpack.getLanguages', {
-        lang_pack: 'web'
-      }),
-      this.managers.apiManager.invokeApiCacheable('langpack.getLanguages', {
-        lang_pack: 'macos'
-      }),
+      p.languages1,
+      p.languages2
     ]).then(([languages1, languages2]) => {
       const rendered: Set<string> = new Set();
       const webLangCodes = languages1.map((language) => language.lang_code);

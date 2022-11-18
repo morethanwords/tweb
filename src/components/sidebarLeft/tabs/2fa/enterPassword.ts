@@ -27,7 +27,7 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
   public plainPassword: string;
   public isFirst = true;
 
-  protected init() {
+  public init() {
     const isNew = !this.state.pFlags.has_password || this.plainPassword;
     this.container.classList.add('two-step-verification', 'two-step-verification-enter-password');
     this.setTitle(isNew ? 'PleaseEnterFirstPassword' : 'PleaseEnterCurrentPassword');

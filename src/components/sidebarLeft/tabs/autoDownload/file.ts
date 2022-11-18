@@ -13,7 +13,7 @@ import {RangeSettingSelector} from '../generalSettings';
 import {autoDownloadPeerTypeSection} from './photo';
 
 export default class AppAutoDownloadFileTab extends SliderSuperTabEventable {
-  protected init() {
+  public init() {
     this.header.classList.add('with-border');
     this.setTitle('AutoDownloadFiles');
 

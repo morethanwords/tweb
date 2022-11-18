@@ -40,7 +40,13 @@ export default class AppNewGroupTab extends SliderSuperTab {
   private userLocationCoords: {lat: number, long: number};
   private userLocationAddress: string;
 
-  protected init() {
+  public init(
+    peerIds: PeerId[],
+    isGeoChat: boolean = false
+  ) {
+    this.isGeoChat = isGeoChat;
+    this.peerIds = peerIds;
+
     this.container.classList.add('new-group-container');
     this.setTitle('NewGroup');
 
@@ -146,6 +152,26 @@ export default class AppNewGroupTab extends SliderSuperTab {
 
     this.content.append(this.nextBtn);
     this.scrollable.append(section.container, chatsSection.container);
+
+    if(isGeoChat) {
+      this.setTitle('NearbyCreateGroup');
+      this.groupLocationInputField.container.classList.remove('hide');
+      this.groupLocationInputField.setValueSilently(I18n.format('Loading', true));
+      this.startLocating();
+    } else {
+      this.groupLocationInputField.container.classList.add('hide');
+    }
+
+    return Promise.all(this.peerIds.map(async(userId) => {
+      const {dom} = appDialogsManager.addDialogNew({
+        peerId: userId,
+        container: this.list,
+        rippleEnabled: false,
+        avatarSize: 48
+      });
+
+      dom.lastMessageSpan.append(getUserStatusString(await this.managers.appUsersManager.getUser(userId)));
+    }));
   }
 
   public onCloseAfterTimeout() {
@@ -154,35 +180,6 @@ export default class AppNewGroupTab extends SliderSuperTab {
     this.groupNameInputField.value = '';
     this.groupLocationInputField.container.classList.add('hide');
     this.nextBtn.disabled = false;
-  }
-
-  public open(peerIds: PeerId[], isGeoChat: boolean = false) {
-    this.isGeoChat = isGeoChat;
-    this.peerIds = peerIds;
-    const result = super.open();
-    result.then(() => {
-      if(isGeoChat) {
-        this.setTitle('NearbyCreateGroup');
-        this.groupLocationInputField.container.classList.remove('hide');
-        this.groupLocationInputField.setValueSilently(I18n.format('Loading', true));
-        this.startLocating();
-      } else {
-        this.groupLocationInputField.container.classList.add('hide');
-      }
-
-      return Promise.all(this.peerIds.map(async(userId) => {
-        const {dom} = appDialogsManager.addDialogNew({
-          peerId: userId,
-          container: this.list,
-          rippleEnabled: false,
-          avatarSize: 48
-        });
-
-        dom.lastMessageSpan.append(getUserStatusString(await this.managers.appUsersManager.getUser(userId)));
-      }));
-    });
-
-    return result;
   }
 
   private startLocating() {

@@ -12,13 +12,6 @@ import ButtonIcon from './buttonIcon';
 import Scrollable from './scrollable';
 import SidebarSlider from './slider';
 
-export interface SliderTab {
-  onOpen?: () => void,
-  onOpenAfterTimeout?: () => void,
-  onClose?: () => void,
-  onCloseAfterTimeout?: () => void
-}
-
 export interface SliderSuperTabConstructable<T extends SliderSuperTab = any> {
   new(slider: SidebarSlider, destroyable: boolean): T;
 }
@@ -27,7 +20,9 @@ export interface SliderSuperTabEventableConstructable {
   new(slider: SidebarSlider, destroyable: boolean): SliderSuperTabEventable;
 }
 
-export default class SliderSuperTab implements SliderTab {
+export default class SliderSuperTab {
+  public static getInitArgs?(fromTab: SliderSuperTab): any;
+
   public container: HTMLElement;
 
   public header: HTMLElement;
@@ -82,10 +77,10 @@ export default class SliderSuperTab implements SliderTab {
     return this.slider.closeTab(this);
   }
 
-  public async open(...args: any[]) {
+  public async open(...args: Parameters<typeof this['init']>) {
     if(this.init) {
       try {
-        const result = this.init();
+        const result = this.init(...args);
         this.init = null;
 
         if(result instanceof Promise) {
@@ -99,11 +94,15 @@ export default class SliderSuperTab implements SliderTab {
     this.slider.selectTab(this);
   }
 
-  protected init(): Promise<any> | any {
+  public init(...args: any[]): Promise<any> | any {
 
   }
 
-  public onCloseAfterTimeout() {
+  protected onOpen() {}
+  protected onOpenAfterTimeout() {}
+  protected onClose() {}
+
+  protected onCloseAfterTimeout() {
     if(this.destroyable) { // ! WARNING, пока что это будет работать только с самой последней внутренней вкладкой !
       this.slider.tabs.delete(this);
       this.container.remove();
@@ -113,8 +112,7 @@ export default class SliderSuperTab implements SliderTab {
   }
 
   protected setTitle(key: LangPackKey) {
-    this.title.innerHTML = '';
-    this.title.append(i18n(key));
+    this.title.replaceChildren(i18n(key));
   }
 }
 

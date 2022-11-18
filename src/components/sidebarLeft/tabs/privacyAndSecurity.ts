@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {SliderSuperTabEventable} from '../../sliderTab';
+import SliderSuperTab, {SliderSuperTabEventable} from '../../sliderTab';
 import {SettingSection} from '..';
 import Row from '../../row';
 import {AccountPassword, Authorization, InputPrivacyKey, Updates} from '../../../layer';
@@ -38,7 +38,15 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;
   private authorizations: Authorization.authorization[];
 
-  protected init() {
+  public static getInitArgs(fromTab: SliderSuperTab) {
+    return {
+      appConfig: fromTab.managers.apiManager.getAppConfig(),
+      globalPrivacy: fromTab.managers.appPrivacyManager.getGlobalPrivacySettings(),
+      contentSettings: fromTab.managers.apiManager.invokeApi('account.getContentSettings')
+    };
+  }
+
+  public init(p: ReturnType<typeof AppPrivacyAndSecurityTab['getInitArgs']>) {
     this.header.classList.add('with-border');
     this.container.classList.add('dont-u-dare-block-me');
     this.setTitle('PrivacySettings');
@@ -287,8 +295,8 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       }, {once: true});
 
       const promise = Promise.all([
-        this.managers.apiManager.getAppConfig(),
-        this.managers.appPrivacyManager.getGlobalPrivacySettings()
+        p.appConfig,
+        p.globalPrivacy
       ]).then(([appConfig, settings]) => {
         if(destroyed) {
           return;
@@ -336,7 +344,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         });
       }, {once: true});
 
-      const promise = this.managers.apiManager.invokeApi('account.getContentSettings').then((settings) => {
+      const promise = p.contentSettings.then((settings) => {
         if(!settings.pFlags.sensitive_can_change) {
           return;
         }

@@ -26,7 +26,7 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
   public authorizations: Authorization.authorization[];
   private menuElement: HTMLElement;
 
-  protected init() {
+  public init() {
     this.header.classList.add('with-border');
     this.container.classList.add('active-sessions-container');
     this.setTitle('SessionsTitle');

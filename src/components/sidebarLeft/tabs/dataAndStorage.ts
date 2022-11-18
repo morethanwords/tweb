@@ -32,7 +32,7 @@ const AUTO_DOWNLOAD_FOR_KEYS: {[k in keyof AutoDownloadPeerTypeSettings]: LangPa
 };
 
 export default class AppDataAndStorageTab extends SliderSuperTabEventable {
-  protected async init() {
+  public async init() {
     this.header.classList.add('with-border');
     this.setTitle('DataSettings');
 

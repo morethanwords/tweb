@@ -281,7 +281,7 @@ export default class InlineHelper extends AutocompleteHelper {
     return {user: peer, renderPromise};
   };
 
-  protected init() {
+  public init() {
     this.list = document.createElement('div');
     this.list.classList.add('inline-helper-results');
 

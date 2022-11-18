@@ -1837,8 +1837,12 @@ $bubble-border-radius-big: 12px;
     .reaction-block {
       --chosen-background-color: var(--primary-color);
 
-      &:hover:after {
-        content: none;
+      &:not(.is-chosen) {
+        @include hover() {
+          &:after {
+            background-color: #fff;
+          }
+        }
       }
     }
   }
@@ -2759,12 +2763,12 @@ $bubble-border-radius-big: 12px;
       }
     }
 
-    &-time, 
+    &-time,
     &-subtitle {
       color: var(--message-out-status-color);
     }
 
-    &-toggle, 
+    &-toggle,
     &-download,
     &.corner-download .preloader-container {
       background-color: var(--message-out-primary-color);
@@ -3009,36 +3013,8 @@ $bubble-border-radius-big: 12px;
       text-decoration: none !important;
     }
 
-    &:after {
-      content: " ";
-      display: block;
-      position: absolute;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      left: 0;
-      border-radius: inherit;
-      opacity: 0;
-      z-index: -1;
-      background-color: #fff;
-    }
-
-    @include hover() {
-      &:after {
-        opacity: var(--hover-alpha);
-      }
-    }
-
     & + & {
       margin-left: $bubble-margin;
-    }
-
-    &:first-child {
-      border-bottom-left-radius: inherit;
-    }
-
-    &:last-child {
-      border-bottom-right-radius: inherit;
     }
 
     &.tgico:before, 
@@ -3060,6 +3036,30 @@ $bubble-border-radius-big: 12px;
 
     &.is-switch-inline:before {
       content: $tgico-forward_filled;
+    }
+  }
+}
+
+.reply-markup-button,
+.bubble.just-media .reply,
+.bubble-beside-button {
+  &:after {
+    content: " ";
+    display: block;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    border-radius: inherit;
+    opacity: 0;
+    z-index: -1;
+    background-color: #fff;
+  }
+
+  @include hover() {
+    &:after {
+      opacity: var(--hover-alpha);
     }
   }
 }

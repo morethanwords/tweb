@@ -1,12 +1,23 @@
 import {IS_APPLE_MOBILE} from '../environment/userAgent';
 
 export default function onMediaLoad(media: HTMLMediaElement, readyState = media.HAVE_METADATA, useCanplayOnIos?: boolean) {
-  return new Promise<void>((resolve) => {
+  return new Promise<void>((resolve, reject) => {
     if(media.readyState >= readyState) {
       resolve();
       return;
     }
 
-    media.addEventListener(IS_APPLE_MOBILE && !useCanplayOnIos ? 'loadeddata' : 'canplay', () => resolve(), {once: true});
+    const loadEventName = IS_APPLE_MOBILE && !useCanplayOnIos ? 'loadeddata' : 'canplay';
+    const errorEventName = 'error';
+    const onLoad = () => {
+      media.removeEventListener(errorEventName, onError);
+      resolve();
+    };
+    const onError = (e: ErrorEvent) => {
+      media.removeEventListener(loadEventName, onLoad);
+      reject(e);
+    };
+    media.addEventListener(loadEventName, onLoad, {once: true});
+    media.addEventListener(errorEventName, onError, {once: true});
   });
 }
