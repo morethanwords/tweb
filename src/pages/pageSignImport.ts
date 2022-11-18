@@ -6,17 +6,16 @@
 
 import {putPreloader} from '../components/putPreloader';
 import App from '../config/app';
+import {STATE_INIT} from '../config/state';
 import rootScope from '../lib/rootScope';
 import {AuthState} from '../types';
 import Page from './page';
 
 let data: AuthState.signImport['data'];
 
-const onFirstMount = async() => {
-  putPreloader(page.pageEl.firstElementChild, true);
-
+const importWebToken = async() => {
   const {dcId, token, tgAddr} = data;
-  let mountPageAfter: Promise<Page>;
+  let mountPageAfter: Promise<{default: Page}>;
   try {
     rootScope.managers.apiManager.setBaseDcId(dcId);
     const authorization = await rootScope.managers.apiManager.invokeApi('auth.importWebTokenAuthorization', {
@@ -27,28 +26,37 @@ const onFirstMount = async() => {
 
     if(authorization._ === 'auth.authorization') {
       rootScope.managers.apiManager.setUser(authorization.user);
-      mountPageAfter = import('./pageIm').then((m) => m.default);
+      mountPageAfter = import('./pageIm');
       // return;
     }
   } catch(err) {
     switch((err as ApiError).type) {
-      case 'SESSION_PASSWORD_NEEDED':
+      case 'SESSION_PASSWORD_NEEDED': {
         (err as ApiError).handled = true;
-        mountPageAfter = import('./pagePassword').then((m) => m.default);
+        mountPageAfter = import('./pagePassword');
         break;
-      default:
+      }
+
+      default: {
         console.error('authorization import error:', err);
+        const defaultState = STATE_INIT.authState._;
+        if(defaultState === 'authStateSignIn') mountPageAfter = import('./pageSignIn');
+        else if(defaultState === 'authStateSignQr') mountPageAfter = import('./pageSignQR');
         break;
+      }
     }
   }
 
   location.hash = tgAddr?.trim() ? '#?tgaddr=' + encodeURIComponent(tgAddr) : '';
   if(mountPageAfter) {
-    mountPageAfter.then((page) => page.mount());
+    mountPageAfter.then((m) => m.default.mount());
   }
 };
 
-const page = new Page('page-signImport', true, onFirstMount, (_data: typeof data) => {
+const page = new Page('page-signImport', true, () => {
+  putPreloader(page.pageEl.firstElementChild, true);
+  importWebToken();
+}, (_data: typeof data) => {
   data = _data;
   rootScope.managers.appStateManager.pushToState('authState', {_: 'authStateSignImport', data});
 });
