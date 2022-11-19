@@ -61,6 +61,7 @@ export default class SidebarSlider {
 
   public closeTab = (id?: number | SliderSuperTab, animate?: boolean, isNavigation?: boolean) => {
     if(id !== undefined && this.historyTabIds[this.historyTabIds.length - 1] !== id) {
+      this.removeTabFromHistory(id);
       return false;
     }
 
@@ -144,8 +145,12 @@ export default class SidebarSlider {
 
     const tab: SliderSuperTab = id instanceof SliderSuperTab ? id : this.tabs.get(id);
     if(tab) {
-      // @ts-ignore
-      tab.onClose?.();
+      try {
+        // @ts-ignore
+        tab.onClose?.();
+      } catch(err) {
+        console.error('tab onClose error', tab);
+      }
 
       // @ts-ignore
       if(tab.onCloseAfterTimeout) {

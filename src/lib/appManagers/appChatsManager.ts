@@ -131,9 +131,7 @@ export class AppChatsManager extends AppManager {
       return;
     } */
 
-    if((chat as Chat.chat).pFlags === undefined) {
-      (chat as Chat.chat).pFlags = {};
-    }
+    (chat as Chat.chat).pFlags ??= {};
 
     if((chat as Chat.channel).pFlags.min && oldChat !== undefined) {
       return;

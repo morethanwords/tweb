@@ -15,12 +15,13 @@ import MTTransport from './transports/transport';
 // #endif
 
 import type {UserAuth} from './mtproto_config';
+import type {DcAuthKey, DcId, DcServerSalt, InvokeApiOptions} from '../../types';
+import type {MethodDeclMap} from '../../layer';
+import type TcpObfuscated from './transports/tcpObfuscated';
 import sessionStorage from '../sessionStorage';
 import MTPNetworker, {MTMessage} from './networker';
 import {ConnectionType, constructTelegramWebSocketUrl, DcConfigurator, TransportType} from './dcConfigurator';
 import {logger} from '../logger';
-import type {DcAuthKey, DcId, DcServerSalt, InvokeApiOptions} from '../../types';
-import type {MethodDeclMap} from '../../layer';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import App from '../../config/app';
 import {MOUNT_CLASS_TO} from '../../config/debug';
@@ -36,7 +37,6 @@ import pause from '../../helpers/schedulers/pause';
 import ApiManagerMethods from './api_methods';
 import {getEnvironment} from '../../environment/utils';
 import toggleStorages from '../../helpers/toggleStorages';
-import type TcpObfuscated from './transports/tcpObfuscated';
 
 /* class RotatableArray<T> {
   public array: Array<T> = [];
@@ -617,7 +617,7 @@ export class ApiManager extends ApiManagerMethods {
         } else if(!options.rawError && error.code === 420) {
           const waitTime = +error.type.match(/^FLOOD_WAIT_(\d+)/)[1] || 1;
 
-          if(waitTime > (options.floodMaxTimeout !== undefined ? options.floodMaxTimeout : 60) && !options.prepareTempMessageId) {
+          if(waitTime > (options.floodMaxTimeout ?? 60) && !options.prepareTempMessageId) {
             throw error;
           }
 

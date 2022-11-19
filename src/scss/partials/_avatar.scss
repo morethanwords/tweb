@@ -77,8 +77,13 @@ avatar-element {
     font-size: calc(25px / var(--multiplier));
   } */
 
-  &.tgico-deletedaccount:before {
-    font-size: calc(30px / var(--multiplier));
+  &.tgico-deletedaccount {
+    --color-top: var(--peer-avatar-archive-top);
+    --color-bottom: var(--peer-avatar-archive-bottom);
+
+    &:before {
+      font-size: calc(30px / var(--multiplier));
+    }
   }
 
   &:before {

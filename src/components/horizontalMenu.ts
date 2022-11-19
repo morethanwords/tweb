@@ -19,7 +19,7 @@ export function horizontalMenu(
   content: HTMLElement,
   onClick?: (id: number, tabContent: HTMLDivElement, animate: boolean) => void | boolean | Promise<void | boolean>,
   onTransitionEnd?: () => void,
-  transitionTime = 250,
+  transitionTime = 200,
   scrollableX?: ScrollableX,
   listenerSetter?: ListenerSetter
 ) {

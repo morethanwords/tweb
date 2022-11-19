@@ -83,6 +83,7 @@ import filterAsync from '../../helpers/array/filterAsync';
 import forEachReverse from '../../helpers/array/forEachReverse';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import whichChild from '../../helpers/dom/whichChild';
+import {MiddlewareHelper} from '../../helpers/middleware';
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 
@@ -236,10 +237,13 @@ export class AppDialogsManager {
 
   private doNotRenderChatList: boolean;
 
+  private stateMiddlewareHelper: MiddlewareHelper;
+
   public start() {
     const managers = this.managers = getProxiedManagers();
 
     this.contextMenu = new DialogsContextMenu(managers);
+    this.stateMiddlewareHelper = new MiddlewareHelper();
 
     this.folders.menuScrollContainer = this.folders.menu.parentElement;
 
@@ -682,6 +686,8 @@ export class AppDialogsManager {
   }
 
   private async onStateLoaded(state: State) {
+    this.stateMiddlewareHelper.clean();
+    const middleware = this.stateMiddlewareHelper.get();
     const filtersArr = state.filtersArr;
     const haveFilters = filtersArr.length > REAL_FOLDERS.size;
     // const filter = filtersArr.find((filter) => filter.id !== FOLDER_ID_ARCHIVE);
@@ -701,14 +707,19 @@ export class AppDialogsManager {
 
     this.doNotRenderChatList = true;
     const loadDialogsPromise = this.onChatsScroll();
-    await loadDialogsPromise;
+    const m = middlewarePromise(middleware);
+    try {
+      await m(loadDialogsPromise);
+    } catch(err) {
+
+    }
 
     // show the placeholder before the filters, and then will reset to the default tab again
     if(!haveFilters) {
       this.selectTab(0, false);
     }
 
-    addFiltersPromise && await addFiltersPromise;
+    addFiltersPromise && await m(addFiltersPromise);
     // this.folders.menu.children[0].classList.add('active');
 
     this.doNotRenderChatList = undefined;
@@ -721,11 +732,11 @@ export class AppDialogsManager {
       this.initedListeners = true;
     }
 
-    haveFilters && this.showFiltersPromise && await this.showFiltersPromise;
+    haveFilters && this.showFiltersPromise && await m(this.showFiltersPromise);
 
     this.managers.appNotificationsManager.getNotifyPeerTypeSettings();
 
-    await (await loadDialogsPromise).renderPromise.catch(noop);
+    await (await m(loadDialogsPromise)).renderPromise.catch(noop);
     this.managers.appMessagesManager.fillConversations();
   }
 
@@ -1132,15 +1143,22 @@ export class AppDialogsManager {
     }).finally(() => {
       if(this.loadDialogsRenderPromise === renderPromise) {
         this.loadDialogsRenderPromise = undefined;
-        this.loadDialogsPromise = undefined;
       }
     });
 
     this.loadDialogsRenderPromise = renderPromise;
-    return this.loadDialogsPromise = cachedInfoPromise.then((cached) => ({
-      cached,
-      renderPromise
-    }));
+    const loadDialogsPromise = this.loadDialogsPromise = cachedInfoPromise.then((cached) => {
+      return {
+        cached,
+        renderPromise
+      };
+    }).finally(() => {
+      if(this.loadDialogsPromise === loadDialogsPromise) {
+        this.loadDialogsPromise = undefined;
+      }
+    });
+
+    return loadDialogsPromise;
   }
 
   private generateEmptyPlaceholder(options: {

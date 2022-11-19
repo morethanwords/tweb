@@ -543,7 +543,12 @@ export default class DialogsStorage extends AppManager {
     }
   }
 
-  public generateIndexForDialog(dialog: Dialog, justReturn?: boolean, message?: MyMessage, noPinnedOrderUpdate?: boolean) {
+  public generateIndexForDialog(
+    dialog: Dialog,
+    justReturn?: boolean,
+    message?: MyMessage,
+    noPinnedOrderUpdate?: boolean
+  ) {
     if(!justReturn) {
       return;
     }
@@ -673,21 +678,10 @@ export default class DialogsStorage extends AppManager {
 
   public pushDialog(dialog: Dialog, offsetDate?: number, ignoreOffsetDate?: boolean, saveGlobalOffset?: boolean) {
     const {folder_id, peerId} = dialog;
-    // const dialogs = this.getFolderDialogs(folder_id, false);
-    // const pos = dialogs.findIndex((d) => d.peerId === peerId);
-    // if(pos !== -1) {
-    //   dialogs.splice(pos, 1);
-    // }
 
-    // if(!this.dialogs[peerId]) {
     this.dialogs[peerId] = dialog;
 
-    this.setDialogToState(dialog);
-    // }
-
-    if(offsetDate === undefined) {
-      offsetDate = this.getDialogOffsetDate(dialog);
-    }
+    offsetDate ??= this.getDialogOffsetDate(dialog);
 
     this.processDialogForFilters(dialog);
 
@@ -703,13 +697,15 @@ export default class DialogsStorage extends AppManager {
       if(!savedOffsetDate || offsetDate < savedOffsetDate) {
         // if(pos !== -1) {
         if(!ignoreOffsetDate && !this.isDialogsLoaded(folder_id)) {
-          this.clearDialogFromState(dialog, true);
+          this.dropDialog(peerId, true);
           return;
         }
 
         this.dialogsOffsetDate[folder_id] = offsetDate;
       }
     }
+
+    this.setDialogToState(dialog);
 
     // if(pos === -1) {
     // this.prepareFolderUnreadCountModifyingByDialog(folder_id, dialog, true);
@@ -722,12 +718,10 @@ export default class DialogsStorage extends AppManager {
     } */
   }
 
-  public dropDialog(peerId: PeerId): ReturnType<DialogsStorage['getDialog']> {
+  public dropDialogFromFolders(peerId: PeerId) {
     const foundDialog = this.getDialog(peerId, undefined, false);
     const [dialog, index] = foundDialog;
     if(dialog) {
-      delete this.dialogs[peerId];
-
       const folder = this.getFolder(dialog.folder_id);
       folder.dialogs.splice(index, 1);
       const wasPinned = indexOfAndSplice(this.pinnedOrders[dialog.folder_id], peerId) !== undefined;
@@ -739,8 +733,20 @@ export default class DialogsStorage extends AppManager {
       if(wasPinned) {
         this.savePinnedOrders();
       }
+    }
 
-      this.clearDialogFromState(dialog, false);
+    return foundDialog;
+  }
+
+  public dropDialog(peerId: PeerId, keepLocal?: boolean): ReturnType<DialogsStorage['getDialog']> {
+    const dialog = this.getDialogOnly(peerId);
+    const foundDialog = this.dropDialogFromFolders(peerId);
+    if(dialog) {
+      if(!keepLocal) {
+        delete this.dialogs[peerId];
+      }
+
+      this.clearDialogFromState(dialog, keepLocal);
     }
 
     return foundDialog;
@@ -806,8 +812,9 @@ export default class DialogsStorage extends AppManager {
       } */
 
       if(topMessage || dialog.draft?._ === 'draftMessage') {
-        this.saveDialog(dialog);
-        updatedDialogs.set(peerId, dialog);
+        if(this.saveDialog(dialog)) {
+          updatedDialogs.set(peerId, dialog);
+        }
       } else {
         this.dropDialogWithEvent(peerId);
       }
@@ -835,22 +842,7 @@ export default class DialogsStorage extends AppManager {
     return message?.date || 0;
   }
 
-  /**
-   * Won't save migrated from peer, forbidden peers, left and kicked
-   */
-  public saveDialog(dialog: Dialog, folderId = dialog.folder_id ?? FOLDER_ID_ALL, ignoreOffsetDate?: boolean, saveGlobalOffset?: boolean) {
-    const peerId = this.appPeersManager.getPeerId(dialog.peer);
-    if(!peerId) {
-      console.error('saveConversation no peerId???', dialog, folderId);
-      return;
-    }
-
-    if(dialog._ !== 'dialog'/*  || peerId === 239602833 */) {
-      console.error('saveConversation not regular dialog', dialog, Object.assign({}, dialog));
-    }
-
-    const channelId = this.appPeersManager.isChannel(peerId) ? peerId.toChatId() : NULL_PEER_ID;
-
+  public canSaveDialogByPeerId(peerId: PeerId) {
     if(peerId.isAnyChat()) {
       const chat: Chat = this.appChatsManager.getChat(peerId.toChatId());
       // ! chatForbidden stays for chat where you're kicked
@@ -860,9 +852,32 @@ export default class DialogsStorage extends AppManager {
         (chat as Chat.chat).pFlags.left
         // || (chat as any).pFlags.kicked
       ) {
-        return;
+        return false;
       }
     }
+
+    return true;
+  }
+
+  /**
+   * Won't save migrated from peer, forbidden peers, left and kicked
+   */
+  public saveDialog(dialog: Dialog, folderId = dialog.folder_id ?? FOLDER_ID_ALL, ignoreOffsetDate?: boolean, saveGlobalOffset?: boolean) {
+    const peerId = this.appPeersManager.getPeerId(dialog.peer);
+    if(!peerId) {
+      console.error('saveConversation no peerId???', dialog, folderId);
+      return false;
+    }
+
+    if(dialog._ !== 'dialog'/*  || peerId === 239602833 */) {
+      console.error('saveConversation not regular dialog', dialog, Object.assign({}, dialog));
+    }
+
+    if(!this.canSaveDialogByPeerId(peerId)) {
+      return false;
+    }
+
+    const channelId = this.appPeersManager.isChannel(peerId) ? peerId.toChatId() : NULL_PEER_ID;
 
     const peerText = this.appPeersManager.getPeerSearchText(peerId);
     this.dialogsIndex.indexObject(peerId, peerText);
@@ -989,6 +1004,8 @@ export default class DialogsStorage extends AppManager {
     }
 
     this.pushDialog(dialog, message?.date, ignoreOffsetDate, saveGlobalOffset);
+
+    return true;
   }
 
   public getDialogs(query = '', offsetIndex?: number, limit = 20, folderId: number = 0, skipMigrated = false): {

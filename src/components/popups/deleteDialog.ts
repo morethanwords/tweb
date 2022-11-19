@@ -38,12 +38,12 @@ export default class PopupDeleteDialog {
       let promise = managers.appChatsManager.leave(peerId.toChatId());
 
       if(flush) {
-        promise = promise.finally(() => {
+        promise = promise.then(() => {
           return managers.appMessagesManager.flushHistory(peerId);
         }) as any;
       }
 
-      onSelect && onSelect(promise);
+      onSelect?.(promise);
     };
 
     const callbackDelete = (checked: PopupPeerButtonCallbackCheckboxes) => {
@@ -59,7 +59,7 @@ export default class PopupDeleteDialog {
         }
       }
 
-      onSelect && onSelect(promise);
+      onSelect?.(promise);
     };
 
     let title: LangPackKey, description: LangPackKey, descriptionArgs: any[], buttons: PopupPeerOptions['buttons'], checkboxes: PopupPeerOptions['checkboxes'];

@@ -64,7 +64,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   --pm-transition: .2s ease-in-out;
   --layer-transition: .2s cubic-bezier(.4, .0, .2, 1);
   --slide-header-transition: .4s ease-in-out;
-  --tabs-transition: .25s ease-in-out;
+  --tabs-transition: .2s ease-in-out;
   --btn-menu-transition: .2s cubic-bezier(.4, 0, .2, 1);
   --esg-transition: var(--btn-menu-transition);
   --input-transition: .2s ease-out;
@@ -124,20 +124,27 @@ $chat-input-inner-padding-handhelds: .25rem;
   --custom-emoji-size: 1.25rem;
 
   // https://github.com/overtake/TelegramSwift/blob/5cc7d2475fe4738a6aa0486c23eaf80a89d33b97/submodules/TGUIKit/TGUIKit/PresentationTheme.swift#L2054
-  --peer-avatar-red-top: #ff885e;
-  --peer-avatar-red-bottom: #ff516a;
-  --peer-avatar-orange-top: #ffcd6a;
-  --peer-avatar-orange-bottom: #ffa85c;
-  --peer-avatar-violet-top: #82b1ff;
-  --peer-avatar-violet-bottom: #665fff;
-  --peer-avatar-green-top: #a0de7e;
-  --peer-avatar-green-bottom: #54cb68;
+  --peer-avatar-red-top: #FF845E;
+  --peer-avatar-red-bottom: #D45246;
+  --peer-avatar-orange-top: #FEBB5B;
+  --peer-avatar-orange-bottom: #F68136;
+  --peer-avatar-violet-top: #B694F9;
+  --peer-avatar-violet-bottom: #6C61DF;
+  --peer-avatar-green-top: #9AD164;
+  --peer-avatar-green-bottom: #46BA43;
   --peer-avatar-cyan-top: #53edd6;
   --peer-avatar-cyan-bottom: #28c9b7;
-  --peer-avatar-blue-top: #72d5fd;
-  --peer-avatar-blue-bottom: #2a9ef1;
-  --peer-avatar-pink-top: #e0a2f3;
-  --peer-avatar-pink-bottom: #d669ed;
+  --peer-avatar-blue-top: #5BCBE3;
+  --peer-avatar-blue-bottom: #359AD4;
+  --peer-avatar-pink-top: #FF8AAC;
+  --peer-avatar-pink-bottom: #D95574;
+  --peer-avatar-saved-top: #69BFFA;
+  --peer-avatar-saved-bottom: #3D9DE0;
+  --peer-avatar-archive-top: #B8C2CC;
+  --peer-avatar-archive-bottom: #9EAAB5;
+
+  --avatar-color-top: var(--peer-avatar-saved-top);
+  --avatar-color-bottom: var(--peer-avatar-saved-bottom);
 
   --premium-gradient: linear-gradient(52.62deg, #6B93FF 12.22%, #976FFF 50.25%, #E46ACE 98.83%);
 
@@ -221,8 +228,8 @@ $chat-input-inner-padding-handhelds: .25rem;
   @include splitColor(danger-color, #df3f40, true, true);
 
   --avatar-online-color: #0ac630;
-  --avatar-color-top: var(--peer-avatar-blue-top);
-  --avatar-color-bottom: var(--peer-avatar-blue-bottom);
+  // --avatar-color-top: var(--peer-avatar-saved-top);
+  // --avatar-color-bottom: var(--peer-avatar-saved-bottom);
   --chatlist-status-color: var(--avatar-online-color);
   --chatlist-pinned-color: #a2abb2;
   --badge-text-color: #fff;
@@ -298,8 +305,8 @@ $chat-input-inner-padding-handhelds: .25rem;
   @include splitColor(danger-color, #ff595a, true, true);
 
   --avatar-online-color: #0ac630;
-  --avatar-color-top: var(--peer-avatar-violet-top);
-  --avatar-color-bottom: var(--peer-avatar-violet-bottom);
+  // --avatar-color-top: var(--peer-avatar-violet-top);
+  // --avatar-color-bottom: var(--peer-avatar-violet-bottom);
   --chatlist-status-color: var(--primary-color);
   --chatlist-pinned-color: var(--secondary-color);
   --badge-text-color: #fff;

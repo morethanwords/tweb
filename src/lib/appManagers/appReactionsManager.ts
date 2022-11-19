@@ -10,6 +10,7 @@ import assumeType from '../../helpers/assumeType';
 import callbackify from '../../helpers/callbackify';
 import callbackifyAll from '../../helpers/callbackifyAll';
 import copy from '../../helpers/object/copy';
+import pause from '../../helpers/schedulers/pause';
 import {AvailableReaction, Message, MessagePeerReaction, MessagesAvailableReactions, Reaction, ReactionCount, Update, Updates} from '../../layer';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
 import {AppManager} from './manager';
@@ -54,6 +55,8 @@ export class AppReactionsManager extends AppManager {
               availableReaction.appear_animation && this.apiFileManager.downloadMedia({media: availableReaction.appear_animation}),
               availableReaction.center_icon && this.apiFileManager.downloadMedia({media: availableReaction.center_icon})
             ]);
+
+            await pause(1000);
           }
         });
       }, 7.5e3);

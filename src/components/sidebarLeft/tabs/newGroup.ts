@@ -130,8 +130,7 @@ export default class AppNewGroupTab extends SliderSuperTab {
       }
 
       promise.then((chatId) => {
-        appSidebarLeft.removeTabFromHistory(this);
-        appSidebarLeft.selectTab(0);
+        this.close();
 
         appImManager.setInnerPeer({peerId: chatId.toPeerId(true)});
       });

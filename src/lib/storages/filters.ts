@@ -206,7 +206,7 @@ export default class FiltersStorage extends AppManager {
 
   public testDialogForFilter(dialog: Dialog, filter: MyDialogFilter) {
     if(REAL_FOLDERS.has(filter.id)) {
-      return dialog.folder_id === filter.id;
+      return dialog.folder_id === filter.id && this.dialogsStorage.canSaveDialogByPeerId(dialog.peerId);
     }
 
     const peerId = dialog.peerId;

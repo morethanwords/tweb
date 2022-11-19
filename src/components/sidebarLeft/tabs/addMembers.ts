@@ -32,18 +32,14 @@ export default class AppAddMembersTab extends SliderSuperTab {
 
     this.nextBtn.addEventListener('click', () => {
       const peerIds = this.selector.getSelected().map((sel) => sel.toPeerId());
+      const result = this.takeOut(peerIds);
 
       if(this.skippable) {
-        this.takeOut(peerIds);
         this.close();
-      } else {
-        const promise = this.takeOut(peerIds);
-
-        if(promise instanceof Promise) {
-          this.attachToPromise(promise);
-        } else if(promise === undefined) {
-          this.close();
-        }
+      } else if(result instanceof Promise) {
+        this.attachToPromise(result);
+      } else if(result === undefined) {
+        this.close();
       }
     });
 

@@ -3581,14 +3581,20 @@ export class AppMessagesManager extends AppManager {
     let newMaxSeenId = 0;
     const map = this.newDialogsToHandle;
     for(const [peerId, dialog] of map) {
+      let good = false;
       if(!dialog) {
         this.reloadConversation(peerId.toPeerId());
-        map.delete(peerId);
-      } else {
+      } else if(this.dialogsStorage.getDialogOnly(peerId)) { // * dialog can be already dropped
         this.dialogsStorage.pushDialog(dialog);
-        if(!this.appPeersManager.isChannel(peerId.toPeerId())) {
+        if(!this.appPeersManager.isChannel(peerId)) {
           newMaxSeenId = Math.max(newMaxSeenId, dialog.top_message || 0);
         }
+
+        good = true;
+      }
+
+      if(!good) {
+        map.delete(peerId);
       }
     }
 

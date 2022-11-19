@@ -114,7 +114,7 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
 
     const imgs: (HTMLImageElement | HTMLCanvasElement | HTMLVideoElement)[] = [];
     // ! WARNING, use thumbs for check when thumb will be generated for media
-    if(message.pFlags.is_outgoing && ['photo', 'video'].includes(doc.type)) {
+    if(message.pFlags.is_outgoing && ['photo', 'video'].includes(doc.type) && cacheContext.url) {
       icoDiv.innerHTML = `<img src="${cacheContext.url}">`;
       imgs.push(icoDiv.firstElementChild as HTMLImageElement);
     } else {
