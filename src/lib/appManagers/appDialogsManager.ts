@@ -84,6 +84,8 @@ import forEachReverse from '../../helpers/array/forEachReverse';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import whichChild from '../../helpers/dom/whichChild';
 import {MiddlewareHelper} from '../../helpers/middleware';
+import makeError from '../../helpers/makeError';
+import getUnsafeRandomInt from '../../helpers/number/getUnsafeRandomInt';
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 
@@ -107,15 +109,12 @@ export type DialogDom = {
 };
 
 interface SortedDialog extends SortedElementBase {
-  dom: DialogDom,
-  loadPromises?: Promise<any>[]
+  dom: DialogDom
 }
 
 function setPromiseMiddleware<T extends {[smth in K as K]?: CancellablePromise<void>}, K extends keyof T>(obj: T, key: K) {
   const oldPromise: CancellablePromise<void> = obj[key] as any;
-  if(oldPromise) {
-    oldPromise.reject();
-  }
+  oldPromise?.reject();
 
   // @ts-ignore
   const deferred = obj[key] = deferredPromise<void>();
@@ -132,6 +131,7 @@ function setPromiseMiddleware<T extends {[smth in K as K]?: CancellablePromise<v
 class SortedDialogList extends SortedList<SortedDialog> {
   constructor(
     public managers: AppManagers,
+    log: ReturnType<typeof logger>,
     public list: HTMLUListElement,
     public indexKey: ReturnType<typeof getDialogIndexKey>,
     public onListLengthChange?: () => void
@@ -140,37 +140,32 @@ class SortedDialogList extends SortedList<SortedDialog> {
       getIndex: (element) => managers.dialogsStorage.getDialogIndex(element.id, this.indexKey),
       onDelete: (element) => {
         element.dom.listEl.remove();
-        this.onListLengthChange && this.onListLengthChange();
+        this.onListLengthChange?.();
       },
       onSort: (element, idx) => {
         const willChangeLength = element.dom.listEl.parentElement !== this.list;
         positionElementByIndex(element.dom.listEl, this.list, idx);
 
         if(willChangeLength) {
-          this.onListLengthChange && this.onListLengthChange();
+          this.onListLengthChange?.();
         }
       },
-      onElementCreate: (base, batch) => {
-        const loadPromises: Promise<any>[] = batch ? [] : undefined;
+      onElementCreate: async(base) => {
+        const loadPromises: Promise<any>[] = [];
 
-        const {dom} = appDialogsManager.addListDialog({peerId: base.id, loadPromises, isBatch: batch});
+        const {dom} = appDialogsManager.addListDialog({peerId: base.id, loadPromises, isBatch: true});
         (base as SortedDialog).dom = dom;
 
-        if(loadPromises?.length) {
-          (base as SortedDialog).loadPromises = loadPromises;
-          Promise.all(loadPromises).finally(() => {
-            delete (base as SortedDialog).loadPromises;
-          });
-        }
-
+        await Promise.all(loadPromises);
         return base as SortedDialog;
       },
-      updateElementWith: fastRafConventional
+      updateElementWith: fastRafConventional,
+      log
     });
   }
 
   public clear() {
-    this.list.textContent = '';
+    this.list.replaceChildren();
     super.clear();
   }
 }
@@ -507,7 +502,7 @@ export class AppDialogsManager {
     });
 
     rootScope.addEventListener('contacts_update', (userId) => {
-      this.processContact && this.processContact(userId.toPeerId());
+      this.processContact?.(userId.toPeerId());
     });
 
     rootScope.addEventListener('dialog_flush', ({dialog}) => {
@@ -527,9 +522,7 @@ export class AppDialogsManager {
       for(const [peerId, dialog] of dialogs) {
         this.updateDialog(dialog);
 
-        if(this.processContact) {
-          this.processContact(peerId.toPeerId());
-        }
+        this.processContact?.(peerId.toPeerId());
 
         this.validateDialogForFilter(dialog);
       }
@@ -538,9 +531,7 @@ export class AppDialogsManager {
     rootScope.addEventListener('dialog_drop', ({peerId}) => {
       this.deleteDialog(peerId);
 
-      if(this.processContact) {
-        this.processContact(peerId);
-      }
+      this.processContact?.(peerId);
     });
 
     rootScope.addEventListener('dialog_unread', ({dialog}) => {
@@ -564,9 +555,7 @@ export class AppDialogsManager {
         this.updateDialog(dialog);
       }
 
-      if(this.processContact) {
-        this.processContact(peerId);
-      }
+      this.processContact?.(peerId);
     });
 
     appImManager.addEventListener('peer_changed', (peerId) => {
@@ -776,7 +765,7 @@ export class AppDialogsManager {
 
   private updateDialog(dialog: Dialog) {
     if(this.isDialogMustBeInViewport(dialog)) {
-      if(!this.sortedList.has(dialog.peerId)) {
+      if(!this.sortedList.has(dialog.peerId) && this.loadedDialogsAtLeastOnce) {
         this.sortedList.add(dialog.peerId);
         return;
       }
@@ -877,6 +866,7 @@ export class AppDialogsManager {
 
     const sortedDialogList = new SortedDialogList(
       this.managers,
+      this.log,
       list,
       getDialogIndexKey(filter.localId),
       this.onListLengthChange
@@ -997,7 +987,8 @@ export class AppDialogsManager {
       return;
     } */
 
-    this.log.warn('load', side);
+    const log = this.log.bindPrefix('load-' + getUnsafeRandomInt(1000, 9999));
+    log('try', side);
 
     if(this.loadDialogsPromise || this.loadDialogsRenderPromise/*  || 1 === 1 */) return this.loadDialogsPromise;
     else if(this.scroll.loadedAll[side]) {
@@ -1006,6 +997,9 @@ export class AppDialogsManager {
         renderPromise: Promise.resolve()
       });
     }
+
+    log.warn('start', side);
+    const middlewareError = makeError('MIDDLEWARE');
 
     const cachedInfoPromise = deferredPromise<boolean>();
     const renderPromise = new Promise<void>(async(resolve, reject) => {
@@ -1060,10 +1054,9 @@ export class AppDialogsManager {
 
         const a = await getConversationsResult;
         const result = await a.result;
+        // await pause(5000);
         if(this.loadDialogsRenderPromise !== renderPromise || doNotRenderChatList) {
-          reject();
-          cachedInfoPromise.reject();
-          return;
+          throw middlewareError;
         }
 
         cachedInfoPromise.resolve(a.cached);
@@ -1082,67 +1075,57 @@ export class AppDialogsManager {
           this.scroll.loadedAll[side] = true;
         }
 
-        this.loadedDialogsAtLeastOnce = true;
-
-        if(result.dialogs.length) {
+        const length = result.dialogs.length;
+        log(`will render ${length} dialogs`);
+        if(length) {
           const dialogs = side === 'top' ? result.dialogs.slice().reverse() : result.dialogs;
 
-          const loadPromises: Promise<any>[] = [];
-
-          const callbacks: (() => void)[] = [];
-          const cccc = (callback: () => void) => {
-            callbacks.push(callback);
-          };
-
-          dialogs.forEach((dialog) => {
-            // :(
-            // const isBuggedDialog = !this.managers.appMessagesManager.getDialogOnly(dialog.peerId);
-            // if(isBuggedDialog) {
-            //   return;
-            // }
-
-            const element = this.sortedList.add(dialog.peerId, true, /* undefined, false,  */cccc, false);
-            if(element.loadPromises) {
-              loadPromises.push(...element.loadPromises);
-            }
+          const loadPromises = dialogs.map((dialog) => {
+            return this.sortedList.add(dialog.peerId);
           });
 
-          loadPromises.push(fastRafPromise()); // it is needed here
-          await Promise.all(loadPromises).finally();
+          await Promise.all(loadPromises).catch();
           if(this.loadDialogsRenderPromise !== renderPromise) {
-            reject();
-            cachedInfoPromise.reject();
-            return;
+            throw middlewareError;
           }
-
-          callbacks.forEach((callback) => callback());
-        } else {
-          this.onListLengthChange();
         }
 
-        const offsetDialog = result.dialogs[side === 'top' ? 0 : result.dialogs.length - 1];
+        const offsetDialog = result.dialogs[side === 'top' ? 0 : length - 1];
         if(offsetDialog) {
           this.offsets[side] = getDialogIndex(offsetDialog, indexKey);
         }
 
-        this.log.debug('getDialogs ' + loadCount + ' dialogs by offset:', offsetIndex, result, chatList.childElementCount);
+        // don't set it before - no need to fire length change with every dialog
+        this.loadedDialogsAtLeastOnce = true;
+        this.onListLengthChange();
+
+        log('getDialogs ' + loadCount + ' dialogs by offset:', offsetIndex, result, chatList.childElementCount);
 
         setTimeout(() => {
           this.scroll.onScroll();
         }, 0);
-      } catch(err) {
-        this.log.error(err);
-      }
 
-      if(placeholder) {
-        // await pause(500);
-        placeholder.detach(chatList.childElementCount);
+        if(placeholder) {
+          // await pause(500);
+          placeholder.detach(chatList.childElementCount);
+        }
+      } catch(err) {
+        if((err as ApiError)?.type !== 'MIDDLEWARE') {
+          log.error(err);
+        }
+
+        reject(err);
+        cachedInfoPromise.reject(err);
+        return;
       }
 
       resolve();
     }).finally(() => {
       if(this.loadDialogsRenderPromise === renderPromise) {
+        log('end');
         this.loadDialogsRenderPromise = undefined;
+      } else {
+        log('has been cleared');
       }
     });
 
@@ -1273,8 +1256,7 @@ export class AppDialogsManager {
   }
 
   private updateContactsLength(updatePartClassName: boolean) {
-    if(this.updateContactsLengthPromise) return this.updateContactsLengthPromise;
-    return this.updateContactsLengthPromise = this.managers.appUsersManager.getContacts().then((users) => {
+    return this.updateContactsLengthPromise ??= this.managers.appUsersManager.getContacts().then((users) => {
       const subtitle = this.emptyDialogsPlaceholderSubtitle;
       if(subtitle) {
         let key: LangPackKey, args: FormatterArguments;
@@ -1310,7 +1292,7 @@ export class AppDialogsManager {
     const parts = chatList.parentElement.parentElement;
     const bottom = chatList.parentElement.nextElementSibling as HTMLElement;
     parts.classList.remove('with-contacts');
-    bottom.innerHTML = '';
+    bottom.replaceChildren();
     this.loadContacts = undefined;
     this.processContact = undefined;
   }
@@ -1410,7 +1392,12 @@ export class AppDialogsManager {
   };
 
   private verifyPeerIdForContacts = async(peerId: PeerId) => {
-    return await this.managers.appPeersManager.isContact(peerId) && !(await this.managers.appMessagesManager.getDialogOnly(peerId));
+    const [isContact, dialog] = await Promise.all([
+      this.managers.appPeersManager.isContact(peerId),
+      this.managers.appMessagesManager.getDialogOnly(peerId)
+    ]);
+
+    return isContact && !dialog;
   };
 
   public onChatsRegularScroll = () => {

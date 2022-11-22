@@ -22,7 +22,7 @@ export type MyDraftMessage = DraftMessage.draftMessage;
 
 export class AppDraftsManager extends AppManager {
   private drafts: {[peerIdAndThreadId: string]: MyDraftMessage} = {};
-  private getAllDraftPromise: Promise<void> = null;
+  private getAllDraftPromise: Promise<void>;
 
   protected after() {
     this.apiUpdatesManager.addMultipleEventsListeners({
@@ -66,16 +66,14 @@ export class AppDraftsManager extends AppManager {
     });
   }
 
-  public getAllDrafts() {
-    return this.getAllDraftPromise || (
-      this.getAllDraftPromise = this.apiManager.invokeApi('messages.getAllDrafts')
-      .then((updates) => {
-        const p = this.apiUpdatesManager.updatesState.syncLoading || Promise.resolve();
-        p.then(() => {
-          this.apiUpdatesManager.processUpdateMessage(updates);
-        });
-      })
-    );
+  private getAllDrafts() {
+    return this.getAllDraftPromise ??= this.apiManager.invokeApi('messages.getAllDrafts')
+    .then((updates) => {
+      const p = this.apiUpdatesManager.updatesState.syncLoading || Promise.resolve();
+      p.then(() => {
+        this.apiUpdatesManager.processUpdateMessage(updates);
+      });
+    });
   }
 
   public saveDraft(peerId: PeerId, threadId: number, apiDraft: DraftMessage, options: Partial<{

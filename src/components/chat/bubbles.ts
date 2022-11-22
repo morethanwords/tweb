@@ -123,6 +123,7 @@ import isRTL from '../../helpers/string/isRTL';
 import NBSP from '../../helpers/string/nbsp';
 import DotRenderer from '../dotRenderer';
 import toHHMMSS from '../../helpers/string/toHHMMSS';
+import {BatchProcessor} from '../../helpers/sortedList';
 
 export const USER_REACTIONS_INLINE = false;
 const USE_MEDIA_TAILS = false;
@@ -216,8 +217,6 @@ export default class ChatBubbles {
 
   private preloader: ProgressivePreloader = null;
 
-  public messagesQueuePromise: Promise<void> = null;
-  private messagesQueue: ReturnType<ChatBubbles['safeRenderMessage']>[] = [];
   // private messagesQueueOnRender: () => void = null;
   private messagesQueueOnRenderAdditional: () => void = null;
 
@@ -285,6 +284,8 @@ export default class ChatBubbles {
   private extendedMediaMessages: Set<number> = new Set();
   private pollExtendedMediaMessagesPromise: Promise<void>;
 
+  private batchProcessor: BatchProcessor<Awaited<ReturnType<ChatBubbles['safeRenderMessage']>>>;
+
   // private reactions: Map<number, ReactionsElement>;
 
   constructor(
@@ -300,6 +301,11 @@ export default class ChatBubbles {
 
     // * constructor end
 
+    this.batchProcessor = new BatchProcessor({
+      log: this.log,
+      process: this.processBatch,
+      possibleError: PEER_CHANGED_ERROR
+    });
     this.bubbleGroups = new BubbleGroups(this.chat);
     this.preloader = new ProgressivePreloader({
       cancelable: false
@@ -1045,6 +1051,10 @@ export default class ChatBubbles {
 
   private get peerId() {
     return this.chat.peerId;
+  }
+
+  public get messagesQueuePromise() {
+    return this.batchProcessor.queuePromise;
   }
 
   private createScrollSaver(reverse = true) {
@@ -2645,8 +2655,7 @@ export default class ChatBubbles {
     this.firstUnreadBubble = null;
     this.attachedUnreadBubble = false;
 
-    this.messagesQueue.length = 0;
-    this.messagesQueuePromise = null;
+    this.batchProcessor.clear();
 
     this.getHistoryTopPromise = this.getHistoryBottomPromise = undefined;
     this.fetchNewPromise = undefined;
@@ -3179,176 +3188,123 @@ export default class ChatBubbles {
     };
   }
 
-  public renderMessagesQueue(options: ChatBubbles['messagesQueue'][0]) {
-    this.messagesQueue.push(options);
-    return this.setMessagesQueuePromise();
-  }
+  private processBatch = async(...args: Parameters<ChatBubbles['batchProcessor']['process']>) => {
+    let [loadQueue, m, log] = args;
 
-  public setMessagesQueuePromise() {
-    if(!this.messagesQueue.length) return Promise.resolve();
-
-    if(this.messagesQueuePromise) {
-      return this.messagesQueuePromise;
-    }
-
-    const middleware = this.getMiddleware();
-    const log = this.log.bindPrefix('queue');
-    const possibleError = PEER_CHANGED_ERROR;
-    const m = middlewarePromise(middleware, possibleError);
-
-    const processQueue = async(): Promise<void> => {
-      log('start');
-
-      // if(!this.chat.setPeerPromise) {
-      //   await pause(10000000);
-      // }
-
-      const renderQueue = this.messagesQueue.slice();
-      this.messagesQueue.length = 0;
-
-      const renderQueuePromises = renderQueue.map((promise) => {
-        const perf = performance.now();
-        promise.then((details) => {
-          log('render message time', performance.now() - perf, details);
-        });
-
-        return promise;
+    const filterQueue = (queue: typeof loadQueue) => {
+      return queue.filter((details) => {
+        // message can be deleted during rendering
+        return details && this.bubbles[details.bubble.dataset.mid] === details.bubble;
       });
-
-      let loadQueue = await m(Promise.all(renderQueuePromises));
-      const filterQueue = (queue: typeof loadQueue) => {
-        return queue.filter((details) => {
-          // message can be deleted during rendering
-          return details && this.bubbles[details.bubble.dataset.mid] === details.bubble;
-        });
-      };
-
-      loadQueue = filterQueue(loadQueue);
-
-      log('messages rendered');
-
-      const reverse = loadQueue[0]?.reverse;
-
-      const {groups, avatarPromises} = this.groupBubbles(loadQueue.filter((details) => details.updatePosition));
-
-      // if(groups.length > 2 && loadQueue.length === 1) {
-      //   debugger;
-      // }
-
-      const promises = loadQueue.reduce((acc, details) => {
-        const perf = performance.now();
-
-        const promises = details.promises.slice();
-        const timePromises = promises.map(async(promise) => (await promise, performance.now() - perf));
-        Promise.all(timePromises).then((times) => {
-          log.groupCollapsed('media message time', performance.now() - perf, details, times);
-          times.forEach((time, idx) => {
-            log('media message time', time, idx, promises[idx]);
-          });
-          log.groupEnd();
-        });
-
-        // if(details.updatePosition) {
-        //   if(res) {
-        //     groups.add(res.group);
-        //     if(details.needAvatar) {
-        //       details.promises.push(res.group.createAvatar(details.message));
-        //     }
-        //   }
-        // }
-
-        acc.push(...details.promises);
-        return acc;
-      }, [] as Promise<any>[]);
-
-      promises.push(...avatarPromises);
-      // promises.push(pause(200));
-
-      // * это нужно для того, чтобы если захочет подгрузить reply или какое-либо сообщение, то скролл не прервался
-      // * если добавить этот промис - в таком случае нужно сделать, чтобы скроллило к последнему сообщению после рендера
-      // promises.push(getHeavyAnimationPromise());
-
-      log('media promises to call', promises, loadQueue, this.isHeavyAnimationInProgress);
-      await m(Promise.all([...promises, this.setUnreadDelimiter()])); // не нашёл места лучше
-      await m(fastRafPromise()); // have to be the last
-      log('media promises end');
-
-      loadQueue = filterQueue(loadQueue);
-
-      const {restoreScroll, scrollSaver} = this.prepareToSaveScroll(reverse);
-      // if(this.messagesQueueOnRender) {
-      // this.messagesQueueOnRender();
-      // }
-
-      if(this.messagesQueueOnRenderAdditional) {
-        this.messagesQueueOnRenderAdditional();
-      }
-
-      this.ejectBubbles();
-      for(const [bubble, oldBubble] of this.bubblesToReplace) {
-        if(scrollSaver) {
-          scrollSaver.replaceSaved(oldBubble, bubble);
-        }
-
-        if(!loadQueue.find((details) => details.bubble === bubble)) {
-          continue;
-        }
-
-        const item = this.bubbleGroups.getItemByBubble(bubble);
-        if(!item) {
-          this.log.error('NO ITEM BY BUBBLE', bubble);
-        } else {
-          item.mounted = false;
-          if(!groups.includes(item.group)) {
-            groups.push(item.group);
-          }
-        }
-
-        this.bubblesToReplace.delete(bubble);
-      }
-
-      if(this.chat.selection.isSelecting) {
-        loadQueue.forEach(({bubble}) => {
-          this.chat.selection.toggleElementCheckbox(bubble, true);
-        });
-      }
-
-      loadQueue.forEach(({message, bubble, updatePosition}) => {
-        if(message.pFlags.local && updatePosition) {
-          this.chatInner[(message as Message.message).pFlags.sponsored ? 'append' : 'prepend'](bubble);
-          return;
-        }
-      });
-
-      this.bubbleGroups.mountUnmountGroups(groups);
-      // this.bubbleGroups.findIncorrentPositions();
-
-      if(this.updatePlaceholderPosition) {
-        this.updatePlaceholderPosition();
-      }
-
-      if(restoreScroll) {
-        restoreScroll();
-      }
-
-      // this.setStickyDateManually();
-
-      if(this.messagesQueue.length) {
-        log('have new messages to render');
-        return processQueue();
-      } else {
-        log('end');
-      }
     };
 
-    log('setting pause');
-    const promise = this.messagesQueuePromise = m(pause(0)).then(processQueue).finally(() => {
-      if(this.messagesQueuePromise === promise) {
-        this.messagesQueuePromise = null;
+    loadQueue = filterQueue(loadQueue);
+
+    log('messages rendered');
+
+    const reverse = loadQueue[0]?.reverse;
+
+    const {groups, avatarPromises} = this.groupBubbles(loadQueue.filter((details) => details.updatePosition));
+
+    // if(groups.length > 2 && loadQueue.length === 1) {
+    //   debugger;
+    // }
+
+    const promises = loadQueue.reduce((acc, details) => {
+      const perf = performance.now();
+
+      const promises = details.promises.slice();
+      const timePromises = promises.map(async(promise) => (await promise, performance.now() - perf));
+      Promise.all(timePromises).then((times) => {
+        log.groupCollapsed('media message time', performance.now() - perf, details, times);
+        times.forEach((time, idx) => {
+          log('media message time', time, idx, promises[idx]);
+        });
+        log.groupEnd();
+      });
+
+      // if(details.updatePosition) {
+      //   if(res) {
+      //     groups.add(res.group);
+      //     if(details.needAvatar) {
+      //       details.promises.push(res.group.createAvatar(details.message));
+      //     }
+      //   }
+      // }
+
+      acc.push(...details.promises);
+      return acc;
+    }, [] as Promise<any>[]);
+
+    promises.push(...avatarPromises);
+    // promises.push(pause(200));
+
+    // * это нужно для того, чтобы если захочет подгрузить reply или какое-либо сообщение, то скролл не прервался
+    // * если добавить этот промис - в таком случае нужно сделать, чтобы скроллило к последнему сообщению после рендера
+    // promises.push(getHeavyAnimationPromise());
+
+    log('media promises to call', promises, loadQueue, this.isHeavyAnimationInProgress);
+    await m(Promise.all([...promises, this.setUnreadDelimiter()])); // не нашёл места лучше
+    await m(fastRafPromise()); // have to be the last
+    log('media promises end');
+
+    loadQueue = filterQueue(loadQueue);
+
+    const {restoreScroll, scrollSaver} = this.prepareToSaveScroll(reverse);
+    // if(this.messagesQueueOnRender) {
+    // this.messagesQueueOnRender();
+    // }
+
+    this.messagesQueueOnRenderAdditional?.();
+
+    this.ejectBubbles();
+    for(const [bubble, oldBubble] of this.bubblesToReplace) {
+      if(scrollSaver) {
+        scrollSaver.replaceSaved(oldBubble, bubble);
+      }
+
+      if(!loadQueue.find((details) => details.bubble === bubble)) {
+        continue;
+      }
+
+      const item = this.bubbleGroups.getItemByBubble(bubble);
+      if(!item) {
+        this.log.error('NO ITEM BY BUBBLE', bubble);
+      } else {
+        item.mounted = false;
+        if(!groups.includes(item.group)) {
+          groups.push(item.group);
+        }
+      }
+
+      this.bubblesToReplace.delete(bubble);
+    }
+
+    if(this.chat.selection.isSelecting) {
+      loadQueue.forEach(({bubble}) => {
+        this.chat.selection.toggleElementCheckbox(bubble, true);
+      });
+    }
+
+    loadQueue.forEach(({message, bubble, updatePosition}) => {
+      if(message.pFlags.local && updatePosition) {
+        this.chatInner[(message as Message.message).pFlags.sponsored ? 'append' : 'prepend'](bubble);
+        return;
       }
     });
 
-    return promise;
+    this.bubbleGroups.mountUnmountGroups(groups);
+    // this.bubbleGroups.findIncorrentPositions();
+
+    this.updatePlaceholderPosition?.();
+
+    restoreScroll?.();
+
+    // this.setStickyDateManually();
+  };
+
+  public renderMessagesQueue(options: ReturnType<ChatBubbles['safeRenderMessage']>) {
+    return this.batchProcessor.addToQueue(options);
   }
 
   private ejectBubbles() {

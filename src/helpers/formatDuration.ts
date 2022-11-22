@@ -27,9 +27,14 @@ export default function formatDuration(duration: number, showLast = 2) {
       return;
     }
 
-    const modulus = p[idx === (p.length - 1) ? idx : idx + 1].m;
+    let dd = duration / t;
+    if(idx !== (p.length - 1)) {
+      const modulus = p[idx === (p.length - 1) ? idx : idx + 1].m;
+      dd %= modulus;
+    }
+
     d.push({
-      duration: (duration / t % modulus | 0),
+      duration: dd | 0,
       type: o.t
     });
   });

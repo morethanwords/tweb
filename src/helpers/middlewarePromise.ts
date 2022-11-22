@@ -4,7 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-export default function middlewarePromise(middleware: () => boolean, throwWhat: any = '') {
+import makeError from './makeError';
+
+const error = makeError('MIDDLEWARE');
+export default function middlewarePromise(middleware: () => boolean, throwWhat: any = error) {
   return <T>(promise: T): T => {
     if(!(promise instanceof Promise)) {
       if(promise instanceof Error) {

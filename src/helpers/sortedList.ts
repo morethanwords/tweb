@@ -4,15 +4,124 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import {logger} from '../lib/logger';
 import insertInDescendSortedArray from './array/insertInDescendSortedArray';
-import {getMiddleware} from './middleware';
+import {getMiddleware, MiddlewareHelper} from './middleware';
+import middlewarePromise from './middlewarePromise';
 import safeAssign from './object/safeAssign';
+import pause from './schedulers/pause';
 
 export type SortedElementId = PeerId;
 export type SortedElementBase = {
   id: SortedElementId,
   index: number
 };
+
+let id = 0;
+
+export class BatchProcessor<Item extends any = any> {
+  protected queue: Promise<Item>[];
+  protected promise: Promise<void>;
+
+  protected middlewareHelper: MiddlewareHelper;
+  protected log: ReturnType<typeof logger>;
+
+  protected process: (batch: Item[], m: ReturnType<typeof middlewarePromise>, log: BatchProcessor['log']) => Promise<any>;
+  protected possibleError: any;
+
+  constructor(options: {
+    log?: BatchProcessor['log'],
+    // middleware: MiddlewareHelper,
+    process: BatchProcessor<Item>['process'],
+    possibleError?: BatchProcessor['possibleError']
+  }) {
+    safeAssign(this, options);
+
+    this.queue = [];
+    this.middlewareHelper ??= getMiddleware();
+
+    const prefix = 'BATCH-PROCESSOR-' + ++id;
+    if(this.log) {
+      this.log = this.log.bindPrefix(prefix);
+    } else {
+      this.log = logger(prefix);
+    }
+  }
+
+  public get queuePromise() {
+    return this.promise;
+  }
+
+  public clear() {
+    this.log('clear');
+    this.queue.length = 0;
+    this.promise = undefined;
+    this.middlewareHelper.clean();
+  }
+
+  public addToQueue(item: BatchProcessor<Item>['queue'][0]) {
+    this.queue.push(item);
+    return this.setQueue();
+  }
+
+  protected setQueue() {
+    if(!this.queue.length) {
+      return Promise.resolve();
+    }
+
+    if(this.promise) {
+      return this.promise;
+    }
+
+    const middleware = this.middlewareHelper.get();
+    const log = this.log.bindPrefix('queue');
+    const m = middlewarePromise(middleware, this.possibleError);
+
+    const processQueue = async(): Promise<void> => {
+      log('start');
+
+      const queue = this.queue.splice(0, this.queue.length);
+
+      const perf = performance.now();
+      const promises = queue.map((promise) => {
+        promise.then((details) => {
+          log('render item time', performance.now() - perf, details);
+        });
+
+        return promise;
+      });
+
+      const renderedQueue = await m(Promise.all(promises));
+      await m(this.process(renderedQueue, m, log));
+
+      log('queue rendered');
+
+      if(this.queue.length) {
+        log('have new items to render');
+        return processQueue();
+      } else {
+        log('end');
+      }
+    };
+
+    log('setting pause');
+    const promise = this.promise = m(pause(0))
+    .then(
+      processQueue,
+      (err) => {
+        log('pause has been cleared');
+        throw err;
+      }
+    )
+    .finally(() => {
+      if(this.promise === promise) {
+        this.promise = undefined;
+      }
+    });
+
+    return promise;
+  }
+}
 
 export default class SortedList<SortedElement extends SortedElementBase> {
   protected elements: Map<SortedElementId, SortedElement>;
@@ -22,12 +131,16 @@ export default class SortedList<SortedElement extends SortedElementBase> {
   protected onDelete: (element: SortedElement) => void;
   protected onUpdate: (element: SortedElement) => void;
   protected onSort: (element: SortedElement, idx: number) => void;
-  protected onElementCreate: (base: SortedElementBase, batch: boolean) => SortedElement;
+  protected onElementCreate: (base: SortedElementBase) => PromiseLike<SortedElement> | SortedElement;
 
   protected updateElementWith = (callback: () => void) => callback();
   protected updateListWith = (callback: (canUpdate: boolean | undefined) => void) => callback(true);
 
-  protected middleware = getMiddleware();
+  protected middleware: MiddlewareHelper;
+
+  protected batchProcessor: BatchProcessor<SortedElement>;
+
+  protected log: ReturnType<typeof logger>;
 
   constructor(options: {
     getIndex: SortedList<SortedElement>['getIndex'],
@@ -37,15 +150,29 @@ export default class SortedList<SortedElement extends SortedElementBase> {
     onElementCreate: SortedList<SortedElement>['onElementCreate'],
 
     updateElementWith?: SortedList<SortedElement>['updateElementWith'],
-    updateListWith?: SortedList<SortedElement>['updateListWith']
+    updateListWith?: SortedList<SortedElement>['updateListWith'],
+
+    log?: SortedList<SortedElement>['log']
   }) {
     safeAssign(this, options);
 
     this.elements = new Map();
     this.sorted = [];
+    this.middleware = getMiddleware();
+
+    this.batchProcessor = new BatchProcessor<SortedElement>({
+      log: this.log,
+      process: async(batch, m, log) => {
+        // const elements = await Promise.all(batch.map((element) => this.onElementCreate(element)));
+        const elements = batch;
+        const promises = elements.map((element) => this.update(element.id, element));
+        await m(Promise.all(promises));
+      }
+    });
   }
 
   public clear() {
+    this.batchProcessor.clear();
     this.middleware.clean();
     this.elements.clear();
     this.sorted.length = 0;
@@ -53,7 +180,7 @@ export default class SortedList<SortedElement extends SortedElementBase> {
 
   protected _updateList() {
     this.elements.forEach((element) => {
-      this.update(element.id, true);
+      this.update(element.id);
     });
 
     if(this.onSort) {
@@ -88,15 +215,11 @@ export default class SortedList<SortedElement extends SortedElementBase> {
     return this.elements;
   }
 
-  public add(
-    id: SortedElementId,
-    batch = false,
-    updateElementWith?: SortedList<SortedElement>['updateElementWith'],
-    updateBatch = batch
-  ) {
-    let element = this.get(id);
+  public async add(id: SortedElementId) {
+    const element = this.get(id);
     if(element) {
-      return element;
+      return;
+      // return element;
     }
 
     const base: SortedElementBase = {
@@ -104,11 +227,11 @@ export default class SortedList<SortedElement extends SortedElementBase> {
       index: 0
     };
 
-    element = this.onElementCreate(base, batch);
-    this.elements.set(id, element);
-    this.update(id, updateBatch, element, updateElementWith);
+    this.elements.set(id, base as SortedElement);
+    const createPromise = Promise.resolve(this.onElementCreate(base));
+    return this.batchProcessor.addToQueue(createPromise);
 
-    return element;
+    // return element;
   }
 
   public delete(id: SortedElementId, noScheduler?: boolean) {
@@ -142,33 +265,19 @@ export default class SortedList<SortedElement extends SortedElementBase> {
     return true;
   }
 
-  public async update(
-    id: SortedElementId,
-    batch = false,
-    element = this.get(id),
-    updateElementWith?: SortedList<SortedElement>['updateElementWith']
-  ) {
+  public async update(id: SortedElementId, element = this.get(id)) {
     if(!element) {
       return;
     }
 
     element.index = await this.getIndex(element);
-    this.onUpdate && this.onUpdate(element);
+    if(this.get(id) !== element) {
+      return;
+    }
+
+    this.onUpdate?.(element);
 
     const idx = insertInDescendSortedArray(this.sorted, element, 'index');
-    if(!batch && this.onSort) {
-      const middleware = this.middleware.get();
-      (updateElementWith || this.updateElementWith)(() => {
-        if(!middleware()) {
-          return;
-        }
-
-        // * в случае пересортировки этого же элемента во время ожидания вызовется вторая такая же. нужно соблюдать последовательность событий
-        this.onSort(element, idx);
-        /* if(this.get(id) === element) {
-          this.onSort(element, this.sorted.indexOf(element));
-        } */
-      });
-    }
+    this.onSort(element, idx);
   }
 }

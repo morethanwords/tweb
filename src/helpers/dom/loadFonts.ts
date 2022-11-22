@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import noop from '../noop';
 import pause from '../schedulers/pause';
 
 const texts = ['b', 'б'];
@@ -50,7 +51,7 @@ export default function loadFonts(types: {[type in FontType]?: string[] | 'all'}
   }
 
   return Promise.race([
-    Promise.all(promises),
+    Promise.all(promises).catch(noop),
     pause(1000)
   ]);
 }

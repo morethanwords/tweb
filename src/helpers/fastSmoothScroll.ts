@@ -89,6 +89,7 @@ function scrollWithJs(options: ScrollOptions): Promise<void> {
   const rectEndKey = axis === 'y' ? 'bottom' : 'right';
   const sizeKey = axis === 'y' ? 'height' : 'width';
   const scrollSizeKey = axis === 'y' ? 'scrollHeight' : 'scrollWidth';
+  const elementScrollSizeKey = axis === 'y' ? 'scrollHeight' : 'offsetWidth'; // can use offsetWidth for X, since it's almost same as scrollWidth
   const scrollPositionKey = axis === 'y' ? 'scrollTop' : 'scrollLeft';
 
   // const { offsetTop: elementTop, offsetHeight: elementHeight } = element;
@@ -99,7 +100,7 @@ function scrollWithJs(options: ScrollOptions): Promise<void> {
 
   const possibleElementPosition = elementRect[rectStartKey] - containerRect[rectStartKey];
   const elementPosition = getElementPosition ? getElementPosition({elementRect, containerRect, elementPosition: possibleElementPosition}) : possibleElementPosition;
-  const elementSize = element[scrollSizeKey]; // margin is exclusive in DOMRect
+  const elementSize = element[elementScrollSizeKey]; // margin is exclusive in DOMRect
 
   const containerSize = getNormalSize ? getNormalSize({rect: containerRect}) : containerRect[sizeKey];
 

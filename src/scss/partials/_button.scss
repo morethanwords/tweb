@@ -639,7 +639,8 @@ $btn-menu-z-index: 4;
     transition: none;
   }
   
-  > svg, use {
+  > svg,
+  use {
     height: calc(100% - 20px);
     right: 15px;
     left: auto;
@@ -653,11 +654,12 @@ $btn-menu-z-index: 4;
 
 .btn-control {
   width: auto;
-  height: 40px;
+  height: 2.5rem;
+  line-height: 2.5rem;
   align-items: center;
-  margin: 15px auto 1rem;
-  border-radius: 20px;
-  padding: 0 24px 0 12px;
+  margin: .9375rem auto 1rem;
+  border-radius: 1.25rem;
+  padding: 0 1.5rem 0 .75rem;
   display: flex;
 
   &.tgico:before {

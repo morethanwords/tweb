@@ -26,7 +26,7 @@ import {getFileNameByLocation} from '../../helpers/fileName';
 import DEBUG from '../../config/debug';
 import SlicedArray, {Slice, SliceEnd} from '../../helpers/slicedArray';
 import {FOLDER_ID_ALL, MUTE_UNTIL, NULL_PEER_ID, REAL_FOLDER_ID, REPLIES_HIDDEN_CHANNEL_ID, REPLIES_PEER_ID, SERVICE_PEER_ID, THUMB_TYPE_FULL} from '../mtproto/mtproto_config';
-import telegramMeWebManager from '../mtproto/telegramMeWebManager';
+// import telegramMeWebManager from '../mtproto/telegramMeWebManager';
 import {getMiddleware} from '../../helpers/middleware';
 import assumeType from '../../helpers/assumeType';
 import copy from '../../helpers/object/copy';
@@ -1873,17 +1873,13 @@ export class AppMessagesManager extends AppManager {
         this.log('messages.getDialogs result:', dialogsResult.dialogs, {...dialogsResult.dialogs[0]});
       }
 
-      /* if(!offsetDate) {
-        telegramMeWebService.setAuthorized(true);
-      } */
-
       // can reset pinned order here
       if(!offsetId && !offsetDate && !offsetPeerId && folderId !== GLOBAL_FOLDER_ID) {
         this.dialogsStorage.resetPinnedOrder(folderId);
       }
 
       if(!offsetDate) {
-        telegramMeWebManager.setAuthorized(true);
+        // telegramMeWebManager.setAuthorized(true);
         this.appDraftsManager.addMissedDialogs();
       }
 
