@@ -5,7 +5,7 @@
  */
 
 import findAndSpliceAll from '../helpers/array/findAndSpliceAll';
-import LazyLoadQueueIntersector from './lazyLoadQueueIntersector';
+import LazyLoadQueueIntersector, {LazyLoadElement} from './lazyLoadQueueIntersector';
 import VisibilityIntersector, {OnVisibilityChange} from './visibilityIntersector';
 
 export default class LazyLoadQueueRepeat2 extends LazyLoadQueueIntersector {
@@ -26,7 +26,7 @@ export default class LazyLoadQueueRepeat2 extends LazyLoadQueueIntersector {
     });
   }
 
-  public observe(el: HTMLElement) {
-    this.intersector.observe(el);
+  public observe(el: LazyLoadElement) {
+    super.observe(el);
   }
 }

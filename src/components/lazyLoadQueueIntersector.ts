@@ -71,12 +71,10 @@ export default class LazyLoadQueueIntersector extends LazyLoadQueueBase {
   }
 
   protected setProcessQueueTimeout() {
-    if(!this.intersectorTimeout) {
-      this.intersectorTimeout = window.setTimeout(() => {
-        this.intersectorTimeout = 0;
-        this.processQueue();
-      }, 0);
-    }
+    this.intersectorTimeout ??= window.setTimeout(() => {
+      this.intersectorTimeout = undefined;
+      this.processQueue();
+    }, 0);
   }
 
   public push(el: LazyLoadElement) {
@@ -87,9 +85,16 @@ export default class LazyLoadQueueIntersector extends LazyLoadQueueBase {
     super.unshift(el);
   }
 
-  public unobserve(el: HTMLElement) {
-    findAndSpliceAll(this.queue, (i) => i.div === el);
+  public delete(el: Omit<LazyLoadElement, 'load'>) {
+    findAndSpliceAll(this.queue, (i) => i.div === el.div);
+    this.unobserve(el);
+  }
 
-    this.intersector.unobserve(el);
+  public observe(el: LazyLoadElement) {
+    this.intersector.observe(el.div);
+  }
+
+  public unobserve(el: Omit<LazyLoadElement, 'load'>) {
+    this.intersector.unobserve(el.div);
   }
 }

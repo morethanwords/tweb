@@ -66,7 +66,7 @@ export class AppStickersManager extends AppManager {
     this.rootScope.addEventListener('user_auth', () => {
       setTimeout(() => {
         this.getAnimatedEmojiStickerSet();
-        this.getFavedStickersStickers();
+        // this.getFavedStickersStickers();
       }, 1000);
 
       if(!this.getGreetingStickersPromise && this.getGreetingStickersTimeout === undefined) {
@@ -269,7 +269,7 @@ export class AppStickersManager extends AppManager {
     return promise;
   }
 
-  public async getRecentStickers(): Promise<Modify<MessagesRecentStickers.messagesRecentStickers, {
+  public async getRecentStickers(overwrite?: boolean): Promise<Modify<MessagesRecentStickers.messagesRecentStickers, {
     stickers: Document[]
   }>> {
     const res = await this.apiManager.invokeApiHashable({
@@ -280,7 +280,8 @@ export class AppStickersManager extends AppManager {
         this.recentStickers = res.stickers as MyDocument[];
         this.saveStickers(res.stickers);
         return res;
-      }
+      },
+      overwrite
     });
 
     return res;
@@ -289,7 +290,7 @@ export class AppStickersManager extends AppManager {
   public getRecentStickersStickers(overwrite?: boolean) {
     if(overwrite) this.recentStickers = undefined;
     else if(this.recentStickers) return this.recentStickers;
-    return this.getRecentStickers().then(() => this.recentStickers);
+    return this.getRecentStickers(overwrite).then(() => this.recentStickers);
   }
 
   public saveRecentSticker(docId: DocId, unsave?: boolean, attached?: boolean) {
@@ -507,7 +508,7 @@ export class AppStickersManager extends AppManager {
     return this.getStickersByEmoticon('📂⭐️', false);
   }
 
-  public getFavedStickers() {
+  public getFavedStickers(overwrite?: boolean) {
     return this.apiManager.invokeApiHashable({
       method: 'messages.getFavedStickers',
       processResult: (favedStickers) => {
@@ -515,14 +516,15 @@ export class AppStickersManager extends AppManager {
         this.saveStickers(favedStickers.stickers);
         this.favedStickers = favedStickers.stickers as MyDocument[];
         return favedStickers;
-      }
+      },
+      overwrite
     });
   }
 
   public getFavedStickersStickers(overwrite?: boolean) {
     if(overwrite) this.favedStickers = undefined;
     else if(this.favedStickers) return this.favedStickers;
-    return this.getFavedStickers().then(() => this.favedStickers);
+    return this.getFavedStickers(overwrite).then(() => this.favedStickers);
   }
 
   public getFavedStickersLimit() {

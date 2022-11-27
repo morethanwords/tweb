@@ -79,21 +79,27 @@ export default abstract class ApiManagerMethods extends AppManager {
     processResult?: (response: MethodDeclMap[T]['res']) => R,
     processError?: (error: ApiError) => any,
     params?: Omit<MethodDeclMap[T]['req'], 'hash'>,
-    options?: InvokeApiOptions & {cacheKey?: string}
+    options?: InvokeApiOptions & {cacheKey?: string},
+    overwrite?: boolean
   }) {
     // @ts-ignore
     o.params ??= {};
     o.options ??= {};
     // console.log('will invokeApi:', method, params, options);
 
-    const {params, options, method} = o;
+    const {params, options, method, overwrite} = o;
 
     const queryJSON = JSON.stringify(params);
     let cached: HashResult;
     if(this.hashes[method]) {
       cached = this.hashes[method][queryJSON];
       if(cached) {
-        (params as any).hash = cached.hash;
+        if(overwrite) {
+          delete this.hashes[method][queryJSON];
+          cached = undefined;
+        } else {
+          (params as any).hash = cached.hash;
+        }
       }
     }
 

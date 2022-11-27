@@ -14,6 +14,7 @@ import {AppManagers} from '../lib/appManagers/managers';
 import rootScope from '../lib/rootScope';
 import LazyLoadQueueRepeat2 from './lazyLoadQueueRepeat2';
 import wrapVideo from './wrappers/video';
+import noop from '../helpers/noop';
 
 const width = 400;
 const maxSingleWidth = width - 100;
@@ -195,7 +196,7 @@ export default class GifsMasonry {
 
     appendTo.append(div);
 
-    this.lazyLoadQueue.observe(div);
+    this.lazyLoadQueue.observe({div, load: noop as any});
 
     // let preloader = new ProgressivePreloader(div);
 

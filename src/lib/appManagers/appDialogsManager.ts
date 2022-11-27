@@ -500,7 +500,7 @@ export class AppDialogsManager {
       const _id = id;
       id = +tabContent.dataset.filterId || FOLDER_ID_ALL;
 
-      const isFilterAvailable = REAL_FOLDERS.has(id) || await this.managers.filtersStorage.isFilterIdAvailable(id);
+      const isFilterAvailable = this.filterId === -1 || REAL_FOLDERS.has(id) || await this.managers.filtersStorage.isFilterIdAvailable(id);
       if(!isFilterAvailable) {
         return false;
       }

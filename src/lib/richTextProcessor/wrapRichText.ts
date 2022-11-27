@@ -141,7 +141,7 @@ export class CustomEmojiElement extends HTMLElement {
     }
 
     if(globalLazyLoadQueue) {
-      globalLazyLoadQueue.unobserve(this);
+      globalLazyLoadQueue.delete({div: this});
     }
 
     /* this.disconnectedCallback =  */this.elements =
@@ -784,7 +784,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
                   div: element,
                   load: () => {
                     elements.forEach((element) => {
-                      globalLazyLoadQueue.unobserve(element);
+                      globalLazyLoadQueue.delete({div: element});
                     });
 
                     return l();

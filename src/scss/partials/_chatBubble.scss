@@ -2409,15 +2409,12 @@ $bubble-border-radius-big: 12px;
     a, 
     .peer-title,
     [data-saved-from] {
+      cursor: pointer;
+      font-weight: var(--font-weight-bold);
+
       &:hover {
         text-decoration: underline;
-        cursor: pointer;
       }
-    }
-
-    .peer-title {
-      cursor: pointer;
-      //margin-right: 5px;
     }
 
     img.emoji {

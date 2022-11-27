@@ -93,7 +93,7 @@ export class SuperStickerRenderer {
 
   public unobserveAnimated(element: HTMLElement) {
     this.animated.delete(element);
-    this.lazyLoadQueue.unobserve(element);
+    this.lazyLoadQueue.delete({div: element});
   }
 
   private checkAnimationContainer = (element: HTMLElement, visible: boolean) => {
@@ -114,7 +114,7 @@ export class SuperStickerRenderer {
 
     const size = mediaSizes.active.esgSticker.width;
 
-    // console.log('processVisibleDiv:', div);
+    // console.log('processVisibleDiv:', element);
 
     const promise = wrapSticker({
       doc,
@@ -608,8 +608,8 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
       category.elements.container.classList.remove('hide');
     };
 
-    const favedCategory = this.createLocalCategory('faved', 'FavoriteStickers', 'saved');
-    favedCategory.elements.menuTab.classList.add('active');
+    const favedCategory = this.createLocalCategory('faved', 'FavoriteStickers', 'savedmessages');
+    // favedCategory.elements.menuTab.classList.add('active');
 
     const recentCategory = this.createLocalCategory('recent', 'Stickers.Recent', 'recent');
     recentCategory.limit = 20;
@@ -670,7 +670,10 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
     Promise.all(promises).finally(() => {
       this.mounted = true;
       this.setTyping();
-      this.menuOnClickResult.setActive(this.categories['recent']);
+
+      const favedCategory = this.categories['faved'];
+      const recentCategory = this.categories['recent'];
+      this.menuOnClickResult.setActive(favedCategory.items.length ? favedCategory : recentCategory);
 
       rootScope.addEventListener('stickers_installed', (set) => {
         if(!this.categories[set.id]) {

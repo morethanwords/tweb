@@ -4,34 +4,43 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import findAndSpliceAll from '../helpers/array/findAndSpliceAll';
+import indexOfAndSplice from '../helpers/array/indexOfAndSplice';
 import LazyLoadQueueIntersector, {LazyLoadElement} from './lazyLoadQueueIntersector';
 import VisibilityIntersector, {OnVisibilityChange} from './visibilityIntersector';
 
 export default class LazyLoadQueueRepeat extends LazyLoadQueueIntersector {
-  private _queue: Map<HTMLElement, LazyLoadElement> = new Map();
+  private elementsMap: Map<HTMLElement, LazyLoadElement> = new Map();
 
-  constructor(parallelLimit?: number, protected onVisibilityChange?: OnVisibilityChange, options?: IntersectionObserverInit) {
+  constructor(
+    parallelLimit?: number,
+    protected onVisibilityChange?: OnVisibilityChange,
+    options?: IntersectionObserverInit
+  ) {
     super(parallelLimit);
 
     this.intersector = new VisibilityIntersector((item) => {
       const {target, visible} = item;
-      const spliced = findAndSpliceAll(this.queue, (i) => i.div === target);
+
+      const queueItem = this.elementsMap.get(target);
+      queueItem.visible = visible;
+
       if(visible) {
-        const items = spliced.length ? spliced : [this._queue.get(target)];
-        items.forEach((item) => {
-          this.queue.unshift(item || this._queue.get(target));
-        });
+        queueItem.wasSeen = true;
+        if(!this.queue.includes(queueItem)) {
+          this.queue.push(queueItem);
+        }
+      } else {
+        indexOfAndSplice(this.queue, queueItem);
       }
 
-      this.onVisibilityChange && this.onVisibilityChange(item);
+      this.onVisibilityChange?.(item);
       this.setProcessQueueTimeout();
     }, options);
   }
 
   public clear() {
     super.clear();
-    this._queue.clear();
+    this.elementsMap.clear();
   }
 
   /* public async processItem(item: LazyLoadElement) {
@@ -44,7 +53,12 @@ export default class LazyLoadQueueRepeat extends LazyLoadQueueIntersector {
   } */
 
   public observe(el: LazyLoadElement) {
-    this._queue.set(el.div, el);
-    this.intersector.observe(el.div);
+    this.elementsMap.set(el.div, el);
+    super.observe(el);
+  }
+
+  public unobserve(el: LazyLoadElement) {
+    this.elementsMap.delete(el.div);
+    super.unobserve(el);
   }
 }

@@ -139,9 +139,7 @@ export default class AvatarElement extends HTMLElement {
       }
     }
 
-    if(this.lazyLoadQueue) {
-      this.lazyLoadQueue.unobserve(this);
-    }
+    this.lazyLoadQueue?.delete({div: this});
   }
 
   public attachClickEvent() {
@@ -235,7 +233,7 @@ export default class AvatarElement extends HTMLElement {
 
         return this.r(true);
       } else if(this.addedToQueue) {
-        this.lazyLoadQueue.unobserve(this);
+        this.lazyLoadQueue.delete({div: this});
       }
     }
 

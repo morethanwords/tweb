@@ -56,12 +56,11 @@ export default class LazyLoadQueue extends LazyLoadQueueIntersector {
 
     if(!inserted) return false;
 
-    this.intersector.observe(el.div);
+    this.observe(el);
     /* if(el.wasSeen) {
       this.processQueue(el);
-    } else  */if(el.wasSeen === undefined) {
-      el.wasSeen = false;
-    }
+    } else  */
+    el.wasSeen ??= false;
 
     return true;
   }
