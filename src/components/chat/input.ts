@@ -2611,7 +2611,7 @@ export default class ChatInput {
       return false;
     }
 
-    if(getStickerEffectThumb(document) && !rootScope.premium) {
+    if(document.sticker && getStickerEffectThumb(document) && !rootScope.premium) {
       return false;
     }
 
