@@ -23,7 +23,7 @@ import {SettingSection} from '..';
 import Row from '../../row';
 import AppActiveSessionsTab from './activeSessions';
 import {i18n, LangPackKey} from '../../../lib/langPack';
-import {SliderSuperTabConstructable} from '../../sliderTab';
+import {SliderSuperTabConstructable, SliderSuperTabEventable} from '../../sliderTab';
 import PopupAvatar from '../../popups/avatar';
 import {AccountAuthorizations, Authorization} from '../../../layer';
 import PopupElement from '../../popups';
@@ -154,26 +154,59 @@ export default class AppSettingsTab extends SliderSuperTab {
       icon: string,
       text: LangPackKey,
       c: T,
-      args?: Parameters<ConstructorP<T>['init']>
-    ): [string, LangPackKey, T, any[]?] => {
-      return [icon, text, c, args] as any;
+      getInitArgs?: () => Promise<Parameters<ConstructorP<T>['init']>>
+    ): {
+      icon: string,
+      text: LangPackKey,
+      tabConstructor: T,
+      getInitArgs?: typeof getInitArgs,
+      // args?: ReturnType<typeof getInitArgs>
+      args?: any
+    } => {
+      if(!getInitArgs) {
+        const g = (c as any as typeof SliderSuperTab).getInitArgs;
+        if(g) {
+          // @ts-ignore
+          getInitArgs = () => [g(this)];
+        }
+      }
+
+      return {
+        icon,
+        text,
+        tabConstructor: c,
+        getInitArgs,
+        args: getInitArgs?.()
+      };
     };
+
+    // const k = <T extends SliderSuperTabConstructable>(c: T): () => [ReturnType<ConstructorP<T>['getInitArgs']>] => {
+    //   return () => (c as any).getInitArgs(this);
+    // };
 
     const b = [
       m('unmute', 'AccountSettings.Notifications', AppNotificationsTab),
       m('data', 'DataSettings', AppDataAndStorageTab),
-      m('lock', 'AccountSettings.PrivacyAndSecurity', AppPrivacyAndSecurityTab, [AppPrivacyAndSecurityTab.getInitArgs(this)]),
+      m('lock', 'AccountSettings.PrivacyAndSecurity', AppPrivacyAndSecurityTab),
       m('settings', 'Telegram.GeneralSettingsViewController', AppGeneralSettingsTab),
-      m('folder', 'AccountSettings.Filters', AppChatFoldersTab, [AppChatFoldersTab.getInitArgs()])
+      m('folder', 'AccountSettings.Filters', AppChatFoldersTab)
     ];
 
-    const rows = b.map(([icon, langPackKey, tabConstructor, args]) => {
+    const rows = b.map((item) => {
+      const {icon, text: langPackKey, tabConstructor, getInitArgs} = item;
       return new Row({
         titleLangKey: langPackKey,
         icon,
-        clickable: () => {
-          this.slider.createTab(tabConstructor as any).open(...(args || []));
-          // new tabConstructor(this.slider, true).open();
+        clickable: async() => {
+          const args = item.args ? await item.args : [];
+          const tab = this.slider.createTab(tabConstructor as any);
+          tab.open(...args);
+
+          if(tab instanceof SliderSuperTabEventable && getInitArgs) {
+            tab.eventListener.addEventListener('destroyAfter', (promise) => {
+              item.args = promise.then(() => getInitArgs() as any);
+            });
+          }
         },
         listenerSetter: this.listenerSetter
       });

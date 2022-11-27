@@ -1794,6 +1794,7 @@ export default class MTPNetworker {
       }
 
       case 'msgs_ack': {
+        this.debug && this.log('got acks', message.msg_ids);
         for(const msgId of message.msg_ids) {
           this.processMessageAck(msgId);
         }
@@ -1849,9 +1850,9 @@ export default class MTPNetworker {
         const sentMessageId = message.req_msg_id;
         const sentMessage = this.sentMessages[sentMessageId];
 
-        // if(this.debug) {
-        //   this.log.debug('Rpc response', message.result, sentMessage);
-        // }
+        if(this.debug) {
+          this.log('Rpc response', message.result, sentMessage);
+        }
 
         this.processMessageAck(sentMessageId);
         if(sentMessage) {

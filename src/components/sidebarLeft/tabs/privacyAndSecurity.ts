@@ -287,8 +287,8 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       let enabled: boolean, destroyed: boolean;
       this.eventListener.addEventListener('destroy', () => {
         destroyed = true;
-        if(enabled === undefined) return;
-        this.managers.appPrivacyManager.setGlobalPrivacySettings({
+        if(enabled === undefined || enabled === checkboxField.checked) return;
+        return this.managers.appPrivacyManager.setGlobalPrivacySettings({
           _: 'globalPrivacySettings',
           archive_and_mute_new_noncontact_peers: checkboxField.checked
         });
@@ -309,7 +309,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         this.listenerSetter.add(rootScope)('premium_toggle', onPremiumToggle);
         onPremiumToggle(rootScope.premium);
 
-        enabled = settings.archive_and_mute_new_noncontact_peers;
+        enabled = !!settings.archive_and_mute_new_noncontact_peers;
 
         checkboxField.setValueSilently(enabled);
       });
@@ -339,7 +339,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
           return;
         }
 
-        this.managers.apiManager.invokeApi('account.setContentSettings', {
+        return this.managers.apiManager.invokeApi('account.setContentSettings', {
           sensitive_enabled: _enabled
         });
       }, {once: true});

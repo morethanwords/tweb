@@ -6,6 +6,7 @@
 
 import EventListenerBase from '../helpers/eventListenerBase';
 import ListenerSetter from '../helpers/listenerSetter';
+import noop from '../helpers/noop';
 import {AppManagers} from '../lib/appManagers/managers';
 import {i18n, LangPackKey} from '../lib/langPack';
 import ButtonIcon from './buttonIcon';
@@ -118,7 +119,9 @@ export default class SliderSuperTab {
 
 export class SliderSuperTabEventable extends SliderSuperTab {
   public eventListener: EventListenerBase<{
-    destroy: () => void
+    destroy: () => void | Promise<any>,
+    destroyAfter: (promise: Promise<void>) => void,
+    close: () => void
   }>;
 
   constructor(slider: SidebarSlider) {
@@ -126,8 +129,13 @@ export class SliderSuperTabEventable extends SliderSuperTab {
     this.eventListener = new EventListenerBase();
   }
 
+  onClose() {
+    this.eventListener.dispatchEvent('close');
+  }
+
   onCloseAfterTimeout() {
-    this.eventListener.dispatchEvent('destroy');
+    const results = this.eventListener.dispatchResultableEvent('destroy');
+    this.eventListener.dispatchEvent('destroyAfter', Promise.all(results).then(noop, noop));
     this.eventListener.cleanup();
     return super.onCloseAfterTimeout();
   }
