@@ -143,32 +143,6 @@
     } */
   }
 
-  .chatlist {
-    &-chat {
-      padding-top: .75rem;
-      padding-bottom: .75rem;
-
-      @include respond-to(handhelds) {
-        height: 66px;
-        padding-top: 9px;
-        padding-bottom: 9px;
-      }
-    }
-
-    .user-caption {
-      padding-left: .75rem;
-      padding-right: 0;
-    }
-
-    p {
-      height: 24px !important;
-    }
-    
-    span.user-last-message {
-      font-size: 14px;
-    }
-  }
-
   > hr {
     margin: 0;
     padding: 0;
@@ -180,8 +154,11 @@
   }
 
   .checkbox-field {
-    margin: 0;
-    padding: 0;
+    --offset-left: 0 !important;
+    pointer-events: none;
+    position: absolute !important;
+    margin: 0 !important;
+    padding: 0 !important;
     transform: translateY(-50%);
     top: 50%;
     z-index: 1;
@@ -193,8 +170,6 @@
   }
 
   .checkbox-field-round {
-    pointer-events: none;
-    position: absolute;
     right: 1.125rem;
     --size: 1.25rem;
 
@@ -204,6 +179,22 @@
 
     .checkbox-box-check {
       --offset: 6px;
+    }
+  }
+
+  &-square {
+    $add: 3rem;
+
+    .checkbox-field {
+      left: 1.25rem !important;
+    }
+
+    .chatlist-chat {
+      padding-left: #{4.5rem + $add} !important; // 4.5 + x
+    }
+
+    .dialog-avatar {
+      margin-left: #{$add} !important;
     }
   }
 }

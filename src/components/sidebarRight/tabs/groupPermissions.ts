@@ -264,7 +264,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
           peerId: getPeerId(participant.peer),
           container: list,
           rippleEnabled: true,
-          avatarSize: 48,
+          avatarSize: 'abitbigger',
           append
         });
 

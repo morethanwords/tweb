@@ -271,8 +271,11 @@ export class AppProfileManager extends AppManager {
     const fullChat = this.chatsFull[id] as ChatFull.chatFull;
     if(fullChat && !override && Date.now() < this.fullExpiration[peerId]) {
       const chat: Chat.chat = this.appChatsManager.getChat(id);
-      if(chat.version === (fullChat.participants as ChatParticipants.chatParticipants).version ||
-        chat.pFlags.left) {
+      if(
+        chat.pFlags.left ||
+        chat.pFlags.deactivated ||
+        chat.version === (fullChat.participants as ChatParticipants.chatParticipants).version
+      ) {
         return fullChat as ChatFull;
       }
     }

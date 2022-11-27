@@ -12,6 +12,7 @@ import {i18n, i18n_} from '../../../lib/langPack';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import rootScope from '../../../lib/rootScope';
 import {generateSection, SettingSection} from '..';
+import anchorCopy from '../../../helpers/dom/anchorCopy';
 
 // TODO: аватарка не поменяется в этой вкладке после изменения почему-то (если поставить в другом клиенте, и потом тут проверить, для этого ещё вышел в чатлист)
 
@@ -114,10 +115,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
       const profileUrlContainer = this.profileUrlContainer = document.createElement('div');
       profileUrlContainer.classList.add('profile-url-container');
 
-      const profileUrlAnchor = this.profileUrlAnchor = document.createElement('a');
-      profileUrlAnchor.classList.add('profile-url');
-      profileUrlAnchor.href = '#';
-      profileUrlAnchor.target = '_blank';
+      const profileUrlAnchor = this.profileUrlAnchor = anchorCopy();
 
       profileUrlContainer.append(i18n('UsernameHelpLink', [profileUrlAnchor]));
 
@@ -173,9 +171,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
       this.profileUrlContainer.style.display = 'none';
     } else {
       this.profileUrlContainer.style.display = '';
-      const url = 'https://t.me/' + this.usernameInputField.value;
-      this.profileUrlAnchor.innerText = url;
-      this.profileUrlAnchor.href = url;
+      this.profileUrlAnchor.replaceWith(this.profileUrlAnchor = anchorCopy({mePath: this.usernameInputField.value}));
     }
   }
 }

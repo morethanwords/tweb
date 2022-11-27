@@ -6,7 +6,7 @@
 
 import type {ChatRights} from '../lib/appManagers/appChatsManager';
 import type {Dialog} from '../lib/appManagers/appMessagesManager';
-import appDialogsManager from '../lib/appManagers/appDialogsManager';
+import appDialogsManager, {DialogElementSize as DialogElementSize} from '../lib/appManagers/appDialogsManager';
 import rootScope from '../lib/rootScope';
 import Scrollable from './scrollable';
 import {FocusDirection} from '../helpers/fastSmoothScroll';
@@ -77,7 +77,7 @@ export default class AppSelectPeers {
   private chatRightsAction: ChatRights;
   private multiSelect = true;
   private rippleEnabled = true;
-  private avatarSize = 48;
+  private avatarSize: DialogElementSize = 'abitbigger';
   private exceptSelf = false;
   private filterPeerTypeBy: IsPeerType[];
 
@@ -93,6 +93,8 @@ export default class AppSelectPeers {
   private sectionNameLangPackKey: LangPackKey;
 
   private managers: AppManagers;
+
+  private design: 'round' | 'square' = 'round';
 
   constructor(options: {
     appendTo: AppSelectPeers['appendTo'],
@@ -110,11 +112,12 @@ export default class AppSelectPeers {
     exceptSelf?: AppSelectPeers['exceptSelf'],
     filterPeerTypeBy?: AppSelectPeers['filterPeerTypeBy'],
     sectionNameLangPackKey?: AppSelectPeers['sectionNameLangPackKey'],
-    managers: AppSelectPeers['managers']
+    managers: AppSelectPeers['managers'],
+    design?: AppSelectPeers['design']
   }) {
     safeAssign(this, options);
 
-    this.container.classList.add('selector');
+    this.container.classList.add('selector', 'selector-' + this.design);
 
     const f = (this.renderResultsFunc || this.renderResults).bind(this);
     this.renderResultsFunc = async(peerIds) => {
@@ -313,7 +316,7 @@ export default class AppSelectPeers {
     }
 
     // в десктопе - сначала без группы, потом архивные, потом контакты без сообщений
-    const pageCount = windowSize.height / 72 * 1.25 | 0;
+    const pageCount = windowSize.height / 56 * 1.25 | 0;
 
     const tempId = this.getTempId('dialogs');
     const promise = this.managers.appMessagesManager.getConversations(this.query, this.offsetIndex, pageCount, this.folderId, true);
@@ -420,7 +423,7 @@ export default class AppSelectPeers {
     }
 
     // if(this.cachedContacts.length) {
-    const pageCount = windowSize.height / 72 * 1.25 | 0;
+    const pageCount = windowSize.height / 56 * 1.25 | 0;
     const arr = this.cachedContacts.splice(0, pageCount);
     this.renderResultsFunc(arr);
     // }

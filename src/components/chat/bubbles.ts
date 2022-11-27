@@ -2046,23 +2046,15 @@ export default class ChatBubbles {
     // return;
 
     if(this.isHeavyAnimationInProgress) {
-      if(this.sliceViewportDebounced) {
-        this.sliceViewportDebounced.clearTimeout();
-      }
+      this.sliceViewportDebounced?.clearTimeout();
 
       // * В таком случае, кнопка не будет моргать если чат в самом низу, и правильно отработает случай написания нового сообщения и проскролла вниз
       if(this.scrolledDown && !ignoreHeavyAnimation) {
         return;
       }
     } else {
-      if(this.chat.topbar.pinnedMessage) {
-        this.chat.topbar.pinnedMessage.setCorrectIndexThrottled(this.scrollable.lastScrollDirection);
-      }
-
-      if(this.sliceViewportDebounced) {
-        this.sliceViewportDebounced();
-      }
-
+      this.chat.topbar.pinnedMessage?.setCorrectIndexThrottled(this.scrollable.lastScrollDirection);
+      this.sliceViewportDebounced?.();
       this.setStickyDateManually();
     }
 
@@ -2172,41 +2164,46 @@ export default class ChatBubbles {
     }
   }
 
+  public destroyBubble(bubble: HTMLElement, mid = +bubble.dataset.mid) {
+    // this.log.warn('destroy bubble', bubble, mid);
+    bubble.middlewareHelper.destroy();
+
+    /* const mounted = this.getMountedBubble(mid);
+    if(!mounted) return; */
+
+    if(this.bubbles[mid] === bubble) { // have to check because can clear bubble with same id later
+      delete this.bubbles[mid];
+    }
+
+    this.skippedMids.delete(mid);
+
+    if(this.firstUnreadBubble === bubble) {
+      this.firstUnreadBubble = null;
+    }
+
+    this.bubbleGroups.removeAndUnmountBubble(bubble);
+    if(this.observer) {
+      this.observer.unobserve(bubble, this.unreadedObserverCallback);
+      this.unreaded.delete(bubble);
+
+      this.observer.unobserve(bubble, this.viewsObserverCallback);
+      this.viewsMids.delete(mid);
+
+      this.observer.unobserve(bubble, this.stickerEffectObserverCallback);
+    }
+
+    // this.reactions.delete(mid);
+  }
+
   public deleteMessagesByIds(mids: number[], permanent = true, ignoreOnScroll?: boolean) {
     let deleted = false;
     mids.forEach((mid) => {
       const bubble = this.bubbles[mid];
       if(!bubble) return;
 
-      bubble.middlewareHelper.destroy();
+      this.destroyBubble(bubble, mid);
 
       deleted = true;
-      /* const mounted = this.getMountedBubble(mid);
-      if(!mounted) return; */
-
-      delete this.bubbles[mid];
-      this.skippedMids.delete(mid);
-
-      if(this.firstUnreadBubble === bubble) {
-        this.firstUnreadBubble = null;
-      }
-
-      this.bubbleGroups.removeAndUnmountBubble(bubble);
-      if(this.observer) {
-        this.observer.unobserve(bubble, this.unreadedObserverCallback);
-        this.unreaded.delete(bubble);
-
-        this.observer.unobserve(bubble, this.viewsObserverCallback);
-        this.viewsMids.delete(mid);
-
-        this.observer.unobserve(bubble, this.stickerEffectObserverCallback);
-      }
-
-      if(this.emptyPlaceholderBubble === bubble) {
-        this.emptyPlaceholderBubble = undefined;
-      }
-
-      // this.reactions.delete(mid);
     });
 
     if(!deleted) {
@@ -2552,53 +2549,54 @@ export default class ChatBubbles {
 
   public getDateContainerByTimestamp(timestamp: number) {
     const {date, dateTimestamp} = this.getDateForDateContainer(timestamp);
-    if(!this.dateMessages[dateTimestamp]) {
-      const bubble = this.createDateBubble(timestamp, date);
-      // bubble.classList.add('is-sticky');
-      const fakeBubble = this.createDateBubble(timestamp, date);
-      fakeBubble.classList.add('is-fake');
+    let ret = this.dateMessages[dateTimestamp];
+    if(ret) {
+      return ret;
+    }
 
-      const container = document.createElement('section');
-      container.className = 'bubbles-date-group';
-      container.append(bubble, fakeBubble);
+    const bubble = this.createDateBubble(timestamp, date);
+    // bubble.classList.add('is-sticky');
+    const fakeBubble = this.createDateBubble(timestamp, date);
+    fakeBubble.classList.add('is-fake');
 
-      this.dateMessages[dateTimestamp] = {
-        div: bubble,
-        container,
-        firstTimestamp: date.getTime()
-      };
+    const container = document.createElement('section');
+    container.className = 'bubbles-date-group';
+    container.append(bubble, fakeBubble);
 
-      const haveTimestamps = getObjectKeysAndSort(this.dateMessages, 'asc');
-      const length = haveTimestamps.length;
-      let i = 0, insertBefore: HTMLElement; // there can be 'first bubble' (e.g. bot description) so can't insert by index
-      for(; i < haveTimestamps.length; ++i) {
-        const t = haveTimestamps[i];
-        insertBefore = this.dateMessages[t].container;
-        if(dateTimestamp < t) {
-          break;
-        }
-      }
+    ret = this.dateMessages[dateTimestamp] = {
+      div: bubble,
+      container,
+      firstTimestamp: date.getTime()
+    };
 
-      if(i === length && insertBefore) {
-        insertBefore = insertBefore.nextElementSibling as HTMLElement;
-      }
-
-      if(!insertBefore) {
-        this.chatInner.append(container);
-      } else {
-        this.chatInner.insertBefore(container, insertBefore);
-      }
-
-      if(this.stickyIntersector) {
-        this.stickyIntersector.observeStickyHeaderChanges(container);
-      }
-
-      if(this.chatInner.parentElement) {
-        this.container.classList.add('has-groups');
+    const haveTimestamps = getObjectKeysAndSort(this.dateMessages, 'asc');
+    const length = haveTimestamps.length;
+    let i = 0, insertBefore: HTMLElement; // there can be 'first bubble' (e.g. bot description) so can't insert by index
+    for(; i < haveTimestamps.length; ++i) {
+      const t = haveTimestamps[i];
+      insertBefore = this.dateMessages[t].container;
+      if(dateTimestamp < t) {
+        break;
       }
     }
 
-    return this.dateMessages[dateTimestamp];
+    if(i === length && insertBefore) {
+      insertBefore = insertBefore.nextElementSibling as HTMLElement;
+    }
+
+    if(!insertBefore) {
+      this.chatInner.append(container);
+    } else {
+      this.chatInner.insertBefore(container, insertBefore);
+    }
+
+    this.stickyIntersector?.observeStickyHeaderChanges(container);
+
+    if(this.chatInner.parentElement) {
+      this.container.classList.add('has-groups');
+    }
+
+    return ret;
   }
 
   private destroyScrollable() {
@@ -2622,6 +2620,8 @@ export default class ChatBubbles {
   }
 
   public cleanup(bubblesToo = false) {
+    this.log('cleanup');
+
     this.bubbles = {}; // clean it before so sponsored message won't be deleted faster on peer changing
     // //console.time('appImManager cleanup');
     this.setLoaded('top', false, false);
@@ -2707,11 +2707,7 @@ export default class ChatBubbles {
 
   private cleanupPlaceholders(bubble = this.emptyPlaceholderBubble) {
     if(bubble) {
-      bubble.remove();
-
-      if(this.emptyPlaceholderBubble === bubble) {
-        this.emptyPlaceholderBubble = undefined;
-      }
+      this.destroyBubble(bubble);
     }
   }
 
@@ -4748,9 +4744,12 @@ export default class ChatBubbles {
     };
   }
 
-  public async performHistoryResult(historyResult: HistoryResult | {history: (Message.message | Message.messageService | number)[]}, reverse: boolean) {
+  public async performHistoryResult(
+    historyResult: HistoryResult | {history: (Message.message | Message.messageService | number)[]},
+    reverse: boolean
+  ) {
     const log = false ? this.log.bindPrefix('perform-' + (Math.random() * 1000 | 0)) : undefined;
-    log && log('start', this.chatInner.parentElement);
+    log?.('start', this.chatInner.parentElement);
 
     let history = historyResult.history;
     history = history.slice(); // need
@@ -4817,13 +4816,10 @@ export default class ChatBubbles {
 
     if(this.scrollable.loadedAll.top && this.messagesQueueOnRenderAdditional) {
       this.messagesQueueOnRenderAdditional();
-
-      if(this.messagesQueueOnRenderAdditional) {
-        this.messagesQueueOnRenderAdditional();
-      }
+      this.messagesQueueOnRenderAdditional?.(); // * can set it second time
     }
 
-    log && log('performHistoryResult end');
+    log?.('performHistoryResult end');
   }
 
   private onRenderScrollSet(state?: {scrollHeight: number, clientHeight: number}) {
@@ -5174,15 +5170,21 @@ export default class ChatBubbles {
     elements.forEach((element: any) => element.classList.add(BASE_CLASS + '-line'));
   }
 
-  private async processLocalMessageRender(message: Message.message | Message.messageService, animate?: boolean) {
+  private async processLocalMessageRender(
+    message: Message.message | Message.messageService,
+    animate?: boolean,
+    middleware = this.getMiddleware()
+  ) {
     const isSponsored = !!(message as Message.message).pFlags.sponsored;
-    const middleware = this.getMiddleware();
     const m = middlewarePromise(middleware);
-    return this.safeRenderMessage(message, isSponsored ? false : true, undefined, isSponsored, async(result) => {
+
+    const p: Parameters<ChatBubbles['safeRenderMessage']>[4] = async(result) => {
       const {bubble} = await m(result);
       if(!bubble) {
         return result;
       }
+
+      (bubble as any).message = message;
 
       bubble.classList.add('is-group-last', 'is-group-first');
 
@@ -5208,6 +5210,7 @@ export default class ChatBubbles {
         let text: LangPackKey, mid: number, startParam: string, callback: () => void;
 
         bubble.classList.add('avoid-selection');
+        bubble.style.order = '999999';
 
         const sponsoredMessage = this.sponsoredMessage = (message as Message.message).sponsoredMessage;
         const peerId = getPeerId(sponsoredMessage.from_id);
@@ -5257,14 +5260,18 @@ export default class ChatBubbles {
 
         bubble.querySelector('.bubble-content').prepend(button);
 
-        return result;
+        appendTo = this.chatInner;
+        method = 'append';
+        animate = false;
+
+        // return result;
       } else if(isBot && message._ === 'message') {
         const b = document.createElement('b');
         b.append(i18n('BotInfoTitle'));
         elements.push(b, '\n\n');
         appendTo = this.chatInner;
         method = 'prepend';
-      } else if(await m(this.managers.appPeersManager.isAnyGroup(this.peerId)) && (await m(this.managers.appPeersManager.getPeer(this.peerId))).pFlags.creator) {
+      } else if(this.chat.isAnyGroup && (await m(this.managers.appPeersManager.getPeer(this.peerId))).pFlags.creator) {
         renderPromise = this.renderEmptyPlaceholder('group', bubble, message, elements);
       } else if(this.chat.type === 'scheduled') {
         renderPromise = this.renderEmptyPlaceholder('noScheduledMessages', bubble, message, elements);
@@ -5332,12 +5339,24 @@ export default class ChatBubbles {
         this.animateAsLadder(message.mid, additionMsgIds, false, 0, 0);
       }
 
-      // if(!isSponsored) {
+      bubble.middlewareHelper.onDestroy(() => {
+        if(this.emptyPlaceholderBubble === bubble) {
+          this.emptyPlaceholderBubble = undefined;
+        }
+      });
+
       this.emptyPlaceholderBubble = bubble;
-      // }
 
       return result;
-    });
+    };
+
+    return this.safeRenderMessage(
+      message,
+      !isSponsored,
+      undefined,
+      false,
+      p
+    );
   }
 
   private generateLocalMessageId(addOffset = 0) {
@@ -5471,19 +5490,23 @@ export default class ChatBubbles {
   }
 
   private async toggleSponsoredMessage(value: boolean) {
-    const _log = this.log.bindPrefix('sponsored');
-    _log('checking');
+    const log = this.log.bindPrefix('sponsored');
+    log('checking');
     const {mid} = this.generateLocalMessageId(SPONSORED_MESSAGE_ID_OFFSET);
     if(value) {
       const middleware = this.getMiddleware(() => {
-        return this.scrollable.loadedAll.bottom && !this.bubbles[mid] && this.getSponsoredMessagePromise === promise;
+        return this.scrollable.loadedAll.bottom && this.getSponsoredMessagePromise === promise;
       });
 
       const promise = this.getSponsoredMessagePromise = this.managers.appChatsManager.getSponsoredMessage(this.peerId.toChatId())
       .then(async(sponsoredMessages) => {
+        if(!middleware()) {
+          return;
+        }
+
         const sponsoredMessage = sponsoredMessages.messages[0];
         if(!sponsoredMessage) {
-          _log('no message');
+          log('no message');
           return;
         }
 
@@ -5502,16 +5525,18 @@ export default class ChatBubbles {
         ]).then(([message]) => {
           if(!middleware()) return;
           // this.processLocalMessageRender(message);
-          _log('rendering', message);
-          const promise = this.performHistoryResult({history: [message]}, false);
+          log('rendering', message);
+          return this.performHistoryResult({history: [message]}, false);
         });
       }).finally(() => {
-        this.getSponsoredMessagePromise = undefined;
+        if(this.getSponsoredMessagePromise === promise) {
+          this.getSponsoredMessagePromise = undefined;
+        }
       });
     } else {
-      _log('clearing rendered', mid);
-      this.deleteMessagesByIds([mid]);
+      log('clearing rendered', mid);
       this.getSponsoredMessagePromise = undefined;
+      this.deleteMessagesByIds([mid]);
     }
   }
 
@@ -5565,7 +5590,7 @@ export default class ChatBubbles {
         this.chat.isRestricted ||
         !(await this.chat.getHistoryStorage()).count ||
         (
-          !Object.keys(this.bubbles).length ||
+          // !Object.keys(this.bubbles).length ||
           // ! WARNING ! ! ! ! ! ! REPLACE LINE ABOVE WITH THESE
           Object.keys(this.bubbles).length &&
           !this.getRenderedLength()

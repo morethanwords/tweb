@@ -166,7 +166,7 @@ export default class AppNewGroupTab extends SliderSuperTab {
         peerId: userId,
         container: this.list,
         rippleEnabled: false,
-        avatarSize: 48
+        avatarSize: 'abitbigger'
       });
 
       dom.lastMessageSpan.append(getUserStatusString(await this.managers.appUsersManager.getUser(userId)));

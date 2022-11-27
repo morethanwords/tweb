@@ -180,6 +180,7 @@ body.is-right-column-shown {
 		max-width: calc(100% - 1.5rem);
 		display: flex;
 		align-items: center;
+    font-weight: var(--font-weight-bold);
 	
 		span.emoji {
 			vertical-align: inherit;

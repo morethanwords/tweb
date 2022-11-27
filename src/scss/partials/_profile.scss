@@ -125,10 +125,6 @@
         }
       }
 
-      .profile-name {
-        margin-bottom: -1px;
-      }
-
       .profile-subtitle,
       .verified-icon,
       .premium-icon {
@@ -299,8 +295,8 @@
 
   &-name {
     text-align: center;
-    font-size: 1.25rem;
-    line-height: var(--line-height);
+    font-size: var(--font-size-20);
+    line-height: var(--line-height-20);
     font-weight: var(--font-weight-bold);
 	  overflow: hidden;
     max-width: 21.25rem;

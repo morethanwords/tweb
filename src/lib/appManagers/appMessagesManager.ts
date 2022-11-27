@@ -1492,6 +1492,8 @@ export class AppMessagesManager extends AppManager {
       sequential: options.sequential
     };
 
+    this.pendingTopMsgs[peerId] = messageId;
+
     if(!options.isGroupedItem && message.send) {
       callbacks.push(() => {
         if(options.clearDraft) {

@@ -95,6 +95,7 @@
   }
   
   &-input {
+    // --padding: calc((var(--height) - var(--border-width) * 2 - var(--line-height)) / 2);
     --padding: 1rem;
     --padding-horizontal: 1rem;
     --border-width: 1px;

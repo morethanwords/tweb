@@ -442,9 +442,7 @@ export default class PeerProfile {
   public setPeer(peerId: PeerId, threadId = 0) {
     if(this.peerId === peerId && this.threadId === threadId) return;
 
-    if(this.init) {
-      this.init();
-    }
+    this.init?.();
 
     this.peerId = peerId;
     this.threadId = threadId;
@@ -460,6 +458,7 @@ export default class PeerProfile {
   }
 
   public destroy() {
+    this.peerId = this.threadId = undefined;
     this.clearSetMoreDetailsTimeout();
     clearInterval(this.setPeerStatusInterval);
     this.avatars?.cleanup();

@@ -289,7 +289,11 @@ export default class BubbleGroups {
   removeAndUnmountBubble(bubble: HTMLElement) {
     const item = this.getItemByBubble(bubble);
     if(!item) {
-      return;
+      if(bubble.parentElement) {
+        bubble.remove(); // * can be a placeholder
+      }
+
+      return false;
     }
 
     const items = this.itemsArr;
@@ -320,6 +324,8 @@ export default class BubbleGroups {
     }
 
     this.mountUnmountGroups(Array.from(modifiedGroups));
+
+    return true;
   }
 
   mountUnmountGroups(groups: BubbleGroup[]) {

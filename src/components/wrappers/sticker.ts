@@ -704,14 +704,48 @@ export async function onEmojiStickerClick({event, container, managers, peerId, m
   peerId: PeerId,
   middleware: Middleware
 }) {
-  if(!peerId.isUser()) {
-    return;
-  }
-
   cancelEvent(event);
 
   const bubble = findUpClassName(container, 'bubble');
   const emoji = container.dataset.stickerEmoji;
+
+  const animation = !container.classList.contains('custom-emoji') ? lottieLoader.getAnimation(container) : undefined;
+  if(animation?.paused) {
+    const doc = await managers.appStickersManager.getAnimatedEmojiSoundDocument(emoji);
+    if(doc) {
+      const audio = document.createElement('audio');
+      audio.style.display = 'none';
+      container.parentElement.append(audio);
+
+      try {
+        const url = await appDownloadManager.downloadMediaURL({media: doc});
+
+        audio.src = url;
+        audio.play();
+        await onMediaLoad(audio, undefined, true);
+
+        audio.addEventListener('ended', () => {
+          audio.src = '';
+          audio.remove();
+        }, {once: true});
+      } catch(err) {
+
+      }
+    }
+
+    animation.autoplay = true;
+    animation.restart();
+  }
+
+  if(!peerId.isUser()) {
+    return;
+  }
+
+  const doc = await managers.appStickersManager.getAnimatedEmojiSticker(emoji, true);
+  if(!doc) {
+    return;
+  }
+
   const data: SendMessageEmojiInteractionData = (container as any).emojiData ??= {
     a: [],
     v: 1
@@ -742,39 +776,6 @@ export async function onEmojiStickerClick({event, container, managers, peerId, m
 
     data.a.length = 0;
   }, 1000, false);
-
-  const animation = !container.classList.contains('custom-emoji') ? lottieLoader.getAnimation(container) : undefined;
-  if(animation?.paused) {
-    const doc = await managers.appStickersManager.getAnimatedEmojiSoundDocument(emoji);
-    if(doc) {
-      const audio = document.createElement('audio');
-      audio.style.display = 'none';
-      container.parentElement.append(audio);
-
-      try {
-        const url = await appDownloadManager.downloadMediaURL({media: doc});
-
-        audio.src = url;
-        audio.play();
-        await onMediaLoad(audio, undefined, true);
-
-        audio.addEventListener('ended', () => {
-          audio.src = '';
-          audio.remove();
-        }, {once: true});
-      } catch(err) {
-
-      }
-    }
-
-    animation.autoplay = true;
-    animation.restart();
-  }
-
-  const doc = await managers.appStickersManager.getAnimatedEmojiSticker(emoji, true);
-  if(!doc) {
-    return;
-  }
 
   const isOut = bubble ? bubble.classList.contains('is-out') : undefined;
   const {animationDiv} = wrapStickerAnimation({

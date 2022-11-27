@@ -42,7 +42,7 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
         peerId: this.userId.toPeerId(false),
         container: list,
         rippleEnabled: true,
-        avatarSize: 48
+        avatarSize: 'abitbigger'
       });
 
       dom.lastMessageSpan.append(getUserStatusString(await this.managers.appUsersManager.getUser(this.userId)));

@@ -345,40 +345,52 @@
     .chatlist {
       display: flex;
       flex-direction: row;
-      padding-left: 4px;
       margin-top: -1px;
-      padding-bottom: 1px;
-    }
+      padding: 0 0 1px;
 
-    .chatlist-chat {
-      height: 98px;
-      border-radius: 10px;
-      max-width: 78px;
-      width: 78px;
-      align-items: center;
-      display: flex;
-      flex-direction: column;
-      padding: 12px 0 0 !important;
-      margin: 0 5px 0 0;
-      flex: 0 0 auto;
+      &:before,
+      &:after {
+        content: " ";
+        display: inline-block;
+        width: .3125rem;
+        flex: 0 0 auto;
+      }
 
-      @include respond-to(handhelds) {
-        width: 77px;
-        max-width: 77px;
+      &-chat {
+        width: 4.875rem;
+        max-width: 4.875rem;
+        height: 6.125rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        align-items: center;
+        flex: 0 0 auto;
+        padding: 0 !important;
       }
     }
 
-    .dialog-title-details, .dialog-subtitle {
-      display: none;
-    }
+    .dialog {
+      &-title-details,
+      &-subtitle {
+        display: none;
+      }
+  
+      &-title {
+        max-width: 65px;
+        padding-bottom: .75rem;
 
-    .user-caption {
-      max-width: 65px;
-      padding: 2px 0px 9px;
-      font-size: 12px;
+        .user-title {
+          font-size: .75rem !important;
+        }
 
-      @include respond-to(handhelds) {
-        max-width: 56px;
+        .peer-title {
+          font-weight: var(--font-weight-normal) !important;
+        }
+      }
+
+      &-avatar {
+        left: auto !important;
+        top: .75rem !important;
       }
     }
 
@@ -535,7 +547,6 @@
 
     @include respond-to(handhelds) {
       width: 100%;
-      padding: 0 .25rem;
     }
   }
 }
@@ -550,7 +561,9 @@
   }
 }
 
-.new-channel-container, .new-group-container, .edit-profile-container {
+.new-channel-container,
+.new-group-container,
+.edit-profile-container {
   .sidebar-content {
     flex-direction: column;
   }
@@ -560,7 +573,7 @@
   }
 
   .caption {
-    font-size: 0.875rem;
+    font-size: .875rem;
     margin-top: 14px;
     margin-left: 23px;
     color: var(--secondary-text-color);
@@ -642,8 +655,8 @@
   .caption {
     text-align: center;
     color: var(--secondary-text-color);
-    font-size: 14px;
-    line-height: var(--line-height);
+    font-size: var(--font-size-14);
+    line-height: var(--line-height-14);
     max-width: 20rem;
     margin: 0 auto;
   }
@@ -697,50 +710,10 @@
   }
 }
 
-.folder-list {
-  .chatlist-chat {
-    padding: 9px 12px;
-    height: 50px;
-  }
-
-  .user-caption {
-    padding: 3px 28px 6px 27px;
-  }  
-
-  p span {
-    font-weight: normal;
-  }
-}
-
 .folder-categories {
   .checkbox-field {
     position: absolute;
     right: 1.125rem !important;
-  }
-}
-
-.folder-category-button {
-  height: 50px;
-}
-
-.popup-forward, .included-chatlist-container {
-  .selector {
-    .chatlist {
-      &-chat {
-        padding: 7px .75rem !important;
-        height: 3.75rem;
-      }
-  
-      .user-caption {
-        padding: 0px 0px 0 14px;
-        margin-top: -2px;
-      }
-  
-      .user-last-message {
-        font-size: 15px;
-        margin-top: 2px;
-      }
-    }
   }
 }
 
@@ -785,27 +758,6 @@
     //@include respond-to(handhelds) {
       font-size: 22px;
     //}
-  }
-
-  @include respond-to(handhelds) {
-    .chatlist-chat {
-      height: 62px;
-      padding-top: 7px;
-      padding-bottom: 7px;
-    }
-
-    .user-caption {
-      margin-top: -2px;
-    }
-
-    .user-title {
-      font-weight: var(--font-weight-bold) !important;
-    }
-
-    .dialog-avatar {
-      --size: 46px;
-      --multiplier: 1.173913;
-    }
   }
 }
 
@@ -913,7 +865,8 @@
       }
     }
 
-    .checkbox-field, .radio-field {
+    .checkbox-field,
+    .radio-field {
       margin: 0;
     }
 
@@ -1081,9 +1034,9 @@
 
 .active-sessions-container {
   .row {
-    margin-top: 0;
-    padding-top: 1rem;
-    padding-bottom: .9375rem;
+    // margin-top: 0;
+    // padding-top: 1rem;
+    // padding-bottom: .9375rem;
 
     &-title:first-child {
       font-weight: var(--font-weight-bold);
@@ -1113,21 +1066,6 @@
 }
 
 .blocked-users-container {
-  .chatlist-chat {
-    height: 66px;
-    padding-top: 9px;
-    padding-bottom: 9px;
-  }
-
-  .user-caption {
-    padding-left: .75rem;
-  }
-
-  .dialog-subtitle {
-    margin-top: -.375rem;
-    font-size: .875rem;
-  }
-
   ul {
     @include respond-to(not-handhelds) {
       padding: 0 .6875rem;

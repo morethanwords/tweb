@@ -52,7 +52,7 @@ export class AppSidebarRight extends SidebarSlider {
       const idx = this.historyTabIds.indexOf(previousTab);
 
       if(this._selectTab.getFrom() === previousTab.container) {
-        this._selectTab.setFrom(tab.container);
+        this._selectTab.setFrom(tab?.container);
       }
 
       if(tab) {

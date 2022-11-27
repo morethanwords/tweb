@@ -163,7 +163,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
         peerId: peerId,
         container: this.selector.scrollable,
         rippleEnabled: true,
-        avatarSize: 46
+        avatarSize: 'abitbigger'
       });
 
       const selected = this.selector.selected.has(peerId);

@@ -86,6 +86,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   --message-highlightning-color: hsla(85.5319, 36.9171%, 40.402%, .4);//rgba(77, 142, 80, .4);
   --messages-container-width: #{$messages-container-width};
   --messages-text-size: 16px;
+  --messages-line-height: 1.3125;
   --messages-secondary-text-size: calc(var(--messages-text-size) - 2px);
   --messages-secondary-line-height: calc(var(--messages-secondary-text-size) + 4px);
   --messages-time-text-size: calc(var(--messages-text-size) - 4px);
@@ -93,15 +94,16 @@ $chat-input-inner-padding-handhelds: .25rem;
   --messages-custom-emoji-size: calc(var(--messages-text-size) + 4px);
   --bubble-transition-in: transform var(--transition-standard-in), opacity var(--transition-standard-in);
   --bubble-transition-out: transform var(--transition-standard-out), opacity var(--transition-standard-out);
-  --line-height: 1.3125;
-  --line-height-20: 23px;
+  --line-height-20: 26px;
   --line-height-16: 21px;
   --line-height-14: 18px;
   --line-height-12: 16px;
+  --line-height: 1.3125;
   --font-size-20: 20px;
   --font-size-16: 16px;
   --font-size-14: 14px;
   --font-size-12: 12px;
+  --font-size: var(--font-size-16);
   --esg-sticker-size: 72px;
   --esg-custom-emoji-size: 36px;
   --popup-sticker-size: 80px;
@@ -111,6 +113,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   --menu-backdrop-filter: blur(50px);
   --font-monospace: 'Roboto Mono', monospace;
   --font-weight-bold: 500;
+  --font-weight-normal: 400;
   --selection-background-color: rgba(var(--primary-color-rgb), .4);
   --selection-color: inherit;
 
@@ -418,14 +421,15 @@ $chat-input-inner-padding-handhelds: .25rem;
 @import "partials/pages/chats";
 @import "partials/pages/password";
 
-html, body {
+html,
+body {
   height: 100%;
   width: 100%;
   margin: 0;
   padding: 0;
+  overflow: hidden; // + disable overscroll behavior on macOS
   
   @include respond-to(handhelds) {
-    overflow: hidden;
     height: calc(var(--vh, 1vh) * 100);
   }
 
@@ -619,12 +623,17 @@ input:-webkit-autofill:active {
   }
 }
 
-.blue, .primary {
+.blue,
+.primary {
   color: var(--primary-color) !important;
 
   .c-ripple__circle {
     background-color: var(--light-primary-color);
   }
+}
+
+.primary-text {
+  color: var(--primary-text-color) !important;
 }
 
 .color-premium {
@@ -633,7 +642,9 @@ input:-webkit-autofill:active {
   -webkit-text-fill-color: transparent;
 }
 
-.blue:before, .primary:before, .danger:before {
+.blue:before,
+.primary:before,
+.danger:before {
   color: inherit !important;
 }
 
@@ -771,16 +782,9 @@ hr {
   padding-bottom: .5rem;
 }
 
-.user-title, b/* , .user-last-message b */ {
+b {
   color: var(--primary-text-color);
-  // font-weight: bolder;
   font-weight: var(--font-weight-bold);
-  //font-weight: normal;
-}
-
-.user-last-message b {
-  font-weight: 400;
-  //margin-right: .25rem;
 }
 
 .avatar-edit {
@@ -1576,12 +1580,17 @@ middle-ellipsis-element {
 
     &-caption {
       margin: -0.1875rem 0 1rem;
-      font-size: .875rem;
+      font-size: var(--font-size-14);
+      line-height: var(--line-height-14);
       padding: 0 1.5rem;
 
       &:first-child {
         margin-top: .8125rem;
         margin-bottom: .8125rem;
+      }
+
+      @include respond-to(handhelds) {
+        padding: 0 1rem;
       }
     }
 
@@ -1993,6 +2002,67 @@ hr {
     &-side-nw {
       top: 0;
       left: 0;
+    }
+  }
+}
+
+.chatlist-chat {
+  padding-left: 4.5rem !important;
+
+  span {
+    @include text-overflow(true);
+  }
+
+  .row {
+    &-title {
+      font-size: var(--font-size-16) !important;
+      line-height: 1.375rem;
+
+      &-right-secondary {
+        margin-top: -.4375rem;
+        font-size: var(--font-size-12) !important;
+        line-height: var(--line-height-12) !important;
+      }
+
+      // .peer-title {
+      //   font-weight: var(--font-weight-bold);
+      // }
+    }
+
+    &-row {
+      height: 1.375rem;
+    }
+  }
+
+  &.chatlist-chat-small {
+    
+  }
+
+  &.chatlist-chat-abitbigger {
+    .row {
+      &-subtitle {
+        margin-top: 0;
+      }
+    }
+  }
+
+  &.chatlist-chat-bigger {
+    .row {
+      &-subtitle {
+        margin-top: 0;
+        font-size: var(--font-size-16) !important;
+        line-height: 1.375rem;
+
+        &-row {
+          margin-top: .125rem;
+        }
+      }
+
+      &-title {
+        .peer-title {
+          font-weight: var(--font-weight-bold);
+        }
+      }
     }
   }
 }

@@ -564,7 +564,8 @@
     }
   }
 
-  &-content-music, &-content-voice {
+  &-content-music,
+  &-content-voice {
     .search-super-month-items {
       padding: 20px 15px 0px 20px;
 
@@ -596,19 +597,6 @@
     .chatlist {
       padding-top: .5rem;
       padding-bottom: .5rem;
-
-      .chatlist-chat {
-        padding: .75rem;
-      }
-
-      .user-caption {
-        padding-left: .75rem;
-      }
-
-      .dialog-subtitle {
-        font-size: .875rem;
-        margin-top: -.375rem;
-      }
     }
   }
 
@@ -692,9 +680,9 @@
       }
     }
   }
-  
+
   .search-group.is-short {
-    li:nth-child(n + 4) {
+    .chatlist-chat:nth-child(n + 4) {
       display: none;
     }
   }
@@ -794,22 +782,12 @@
     }
 
     &-more {
-      padding-top: 13px;
-      padding-bottom: 13px;
-      cursor: pointer;
-      user-select: none;
-      position: relative;
+      margin: 0 .5rem;
+      width: auto;
 
-      @include respond-to(not-handhelds) {
-        padding-left: 8px;
-      }
-
-      .tgico-down {
-        float: left;
-        padding-right: 32px;
-        padding-left: 16.5px;
-        font-size: 24px;
-        color: var(--secondary-text-color);
+      @include respond-to(handhelds) {
+        margin: 0;
+        border-radius: 0;
       }
     }
 
@@ -827,30 +805,8 @@
     hr {
       margin-bottom: 15px;
       margin-top: 7px;
+      display: block !important;
     }
-  
-    .user-caption {
-      padding: 3px 28px 6px;
-    }
-
-    .user-title {
-      font-weight: normal;
-    }
-  
-    .chatlist-chat {
-      height: 50px;
-      padding: 9px;
-
-      @include respond-to(not-handhelds) {
-        padding: 9px 12px;
-      }
-    }
-  }
-}
-
-#search-gifs-container {
-  .gifs-masonry {
-    margin-top: -2.5px;
   }
 }
 

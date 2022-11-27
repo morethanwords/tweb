@@ -159,12 +159,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
 
     if(options.scrollable) {
       const scrollable = this.scrollable = new Scrollable(this.body);
-      scrollable.onAdditionalScroll = () => {
-        scrollable.container.classList.toggle('scrolled-top', !scrollable.scrollTop);
-        scrollable.container.classList.toggle('scrolled-bottom', scrollable.isScrolledDown);
-      };
-
-      scrollable.container.classList.add('scrolled-top', 'scrolled-bottom', 'scrollable-y-bordered');
+      this.attachScrollableListeners(scrollable);
 
       if(!this.body) {
         this.container.insertBefore(scrollable.container, this.header.nextSibling);
@@ -213,6 +208,17 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     this.element.append(this.container);
 
     PopupElement.POPUPS.push(this);
+  }
+
+  protected attachScrollableListeners(scrollable: Scrollable) {
+    const cb = scrollable.onAdditionalScroll;
+    scrollable.onAdditionalScroll = () => {
+      cb?.();
+      scrollable.container.classList.toggle('scrolled-top', !scrollable.scrollTop);
+      scrollable.container.classList.toggle('scrolled-bottom', scrollable.isScrolledDown);
+    };
+
+    scrollable.container.classList.add('scrolled-top', 'scrolled-bottom', 'scrollable-y-bordered');
   }
 
   protected onContentUpdate() {
@@ -290,6 +296,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
       this.element.remove();
       this.dispatchEvent<PopupListeners>('closeAfterTimeout');
       this.cleanup();
+      this.scrollable?.destroy();
 
       if(!this.withoutOverlay) {
         animationIntersector.checkAnimations2(false);

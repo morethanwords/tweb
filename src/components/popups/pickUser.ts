@@ -54,7 +54,7 @@ export default class PopupPickUser extends PopupElement {
       chatRightsAction: options.chatRightsAction,
       multiSelect: false,
       rippleEnabled: false,
-      avatarSize: 46,
+      avatarSize: 'abitbigger',
       peerId: options.peerId,
       placeholder: options.placeholder,
       selfPresence: options.selfPresence,

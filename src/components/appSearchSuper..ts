@@ -73,6 +73,7 @@ import SwipeHandler from './swipeHandler';
 import wrapDocument from './wrappers/document';
 import wrapPhoto from './wrappers/photo';
 import wrapVideo from './wrappers/video';
+import noop from '../helpers/noop';
 
 // const testScroll = false;
 
@@ -610,7 +611,7 @@ export default class AppSearchSuper {
     const {dom} = appDialogsManager.addDialogNew({
       peerId: message.peerId,
       container: searchGroup.list,
-      avatarSize: 54,
+      avatarSize: 'bigger',
       loadPromises
     });
 
@@ -625,7 +626,7 @@ export default class AppSearchSuper {
     });
 
     loadPromises.push(setLastMessagePromise);
-    return Promise.all(loadPromises);
+    return Promise.all(loadPromises).then(noop);
   }
 
   private async processPhotoVideoFilter({message, promises, middleware}: ProcessSearchSuperResult) {
@@ -705,10 +706,8 @@ export default class AppSearchSuper {
       let url: string, display_url: string, sliced: string;
 
       if(!entity) {
-        // this.log.error('NO ENTITY:', message);
         const match = matchUrl(message.message);
         if(!match) {
-          // this.log.error('NO ENTITY AND NO MATCH:', message);
           return;
         }
 
@@ -748,7 +747,7 @@ export default class AppSearchSuper {
     }
 
     const previewDiv = document.createElement('div');
-    previewDiv.classList.add('preview', 'row-media', 'row-media-big');
+    previewDiv.classList.add('preview');
 
     // this.log('wrapping webpage', webpage);
 
@@ -808,19 +807,7 @@ export default class AppSearchSuper {
       noRipple: true
     });
 
-    /* const mediaDiv = document.createElement('div');
-    mediaDiv.classList.add('row-media'); */
-
-    row.container.append(previewDiv);
-
-    /* ripple(div);
-    div.append(previewDiv);
-    div.insertAdjacentHTML('beforeend', `
-    <div class="title">${title}${titleAdditionHTML}</div>
-    <div class="subtitle">${subtitle}</div>
-    <div class="url">${url}</div>
-    ${sender}
-    `); */
+    row.applyMediaElement(previewDiv, 'big');
 
     if(row.container.innerText.trim().length) {
       return {message, element: row.container};
@@ -923,6 +910,10 @@ export default class AppSearchSuper {
       const method = append ? 'append' : 'prepend';
       elemsToAppend.forEach((details) => {
         const {element, message} = details;
+        if(!message) {
+          debugger;
+        }
+
         const monthContainer = this.getMonthContainerByTimestamp(this.groupByMonth ? message.date : 0, inputFilter);
         element.classList.add('search-super-item');
         element.dataset.mid = '' + message.mid;
@@ -982,12 +973,12 @@ export default class AppSearchSuper {
           const {dom} = appDialogsManager.addDialogNew({
             peerId: peerId,
             container: group.list,
-            avatarSize: 48,
+            avatarSize: 'abitbigger',
             autonomous: group.autonomous
           });
 
           return {dom, peerId};
-        }).forEach(async({dom, peerId}) => {
+        }).filter(Boolean).forEach(async({dom, peerId}) => {
           const peer = await this.managers.appPeersManager.getPeer(peerId);
           if(showMembersCount && (peer.participants_count || peer.participants)) {
             const regExp = new RegExp(`(${escapeRegExp(query)}|${escapeRegExp(cleanSearchText(query))})`, 'gi');
@@ -1006,7 +997,7 @@ export default class AppSearchSuper {
               username = '@' + username;
             }
 
-            dom.lastMessageSpan.innerHTML = '<i>' + username + '</i>';
+            dom.lastMessageSpan.textContent = username;
           }
         });
 
@@ -1024,7 +1015,7 @@ export default class AppSearchSuper {
       };
 
       return Promise.all([
-        this.managers.appUsersManager.getContactsPeerIds(query, true)
+        this.managers.appUsersManager.getContactsPeerIds(query, true, undefined, 10)
         .then(onLoad)
         .then((contacts) => {
           if(contacts) {
@@ -1084,7 +1075,7 @@ export default class AppSearchSuper {
               peerId: peerId,
               container: this.searchGroups.recent.list,
               meAsSaved: true,
-              avatarSize: 48,
+              avatarSize: 'abitbigger',
               autonomous: true
             });
 
@@ -1113,14 +1104,16 @@ export default class AppSearchSuper {
           // console.log('got top categories:', categories);
           if(peers.length) {
             peers.forEach((peer) => {
-              appDialogsManager.addDialogNew({
+              const {dom} = appDialogsManager.addDialogNew({
                 peerId: peer.id,
                 container: this.searchGroups.people.list,
                 onlyFirstName: true,
-                avatarSize: 54,
+                avatarSize: 'bigger',
                 autonomous: false,
                 noIcons: this.searchGroups.people.noIcons
               });
+
+              dom.subtitleEl.remove();
             });
           }
 

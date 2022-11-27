@@ -504,6 +504,14 @@ const lang = {
     'one_value': '%1$d week',
     'other_value': '%1$d weeks'
   },
+  'Months': {
+    'one_value': '%1$d month',
+    'other_value': '%1$d months'
+  },
+  'Years': {
+    'one_value': '%1$d year',
+    'other_value': '%1$d years'
+  },
   'TodayAtFormattedWithToday': 'today at %1$s',
   'formatDateAtTime': '%1$s at %2$s',
   'JoinByPeekChannelTitle': 'Join Channel',
@@ -791,6 +799,12 @@ const lang = {
   'IncreaseLimit': 'Increase Limit',
   'LimitFree': 'Free',
   'LimitPremium': 'Premium',
+  'ActionTTLChanged': 'un1 set messages to auto-delete in %1$s',
+  'ActionTTLYouChanged': 'You set messages to auto-delete in %1$s',
+  'ActionTTLChannelChanged': 'Messages in this channel will be automatically deleted after %1$s',
+  'ActionTTLChannelDisabled': 'Messages in this channel will no longer be automatically deleted',
+  'ActionTTLDisabled': 'un1 disabled the auto-delete timer',
+  'ActionTTLYouDisabled': 'You disabled the auto-delete timer',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

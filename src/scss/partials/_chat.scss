@@ -1680,6 +1680,11 @@ $chat-input-border-radius: 1rem;
     padding: 0 $chat-padding-handhelds;
 	}
 
+  &:after {
+    content: " ";
+    height: .125rem;
+  }
+
 	&.is-chat {
 		.is-in {
 			//margin-left: 45px;

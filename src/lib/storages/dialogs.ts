@@ -795,14 +795,15 @@ export default class DialogsStorage extends AppManager {
     const updatedDialogs: Map<PeerId, Dialog> = new Map();
     (dialogsResult.dialogs as Dialog[]).forEach((dialog) => {
       const peerId = this.appPeersManager.getPeerId(dialog.peer);
-      let topMessage = dialog.top_message;
+      let topMid = dialog.top_message;
 
-      const topPendingMessage = this.appMessagesManager.pendingTopMsgs[peerId];
-      if(topPendingMessage) {
-        if(!topMessage ||
-          (this.appMessagesManager.getMessageByPeer(peerId, topPendingMessage) as MyMessage)?.date > (this.appMessagesManager.getMessageByPeer(peerId, topMessage) as MyMessage)?.date) {
-          dialog.top_message = topMessage = topPendingMessage;
-          this.appMessagesManager.getHistoryStorage(peerId).maxId = topPendingMessage;
+      const topPendingMid = this.appMessagesManager.pendingTopMsgs[peerId];
+      if(topPendingMid) {
+        const topPendingMessage = this.appMessagesManager.getMessageByPeer(peerId, topPendingMid) as MyMessage;
+        const topMessage = this.appMessagesManager.getMessageByPeer(peerId, topMid) as MyMessage;
+        if(!topMid || (topPendingMessage && (!topMessage || topPendingMessage?.date > topMessage?.date))) {
+          dialog.top_message = topMid = topPendingMid;
+          this.appMessagesManager.getHistoryStorage(peerId).maxId = topPendingMid;
         }
       }
 
@@ -811,7 +812,7 @@ export default class DialogsStorage extends AppManager {
         this.log.error('applyConversation lun', dialog, d);
       } */
 
-      if(topMessage || dialog.draft?._ === 'draftMessage') {
+      if(topMid || dialog.draft?._ === 'draftMessage') {
         if(this.saveDialog(dialog)) {
           updatedDialogs.set(peerId, dialog);
         }

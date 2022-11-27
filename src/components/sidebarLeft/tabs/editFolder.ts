@@ -317,7 +317,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
             container: ul,
             rippleEnabled: false,
             meAsSaved: true,
-            avatarSize: 32
+            avatarSize: 'small'
           });
           dom.lastMessageSpan.parentElement.remove();
         }

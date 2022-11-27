@@ -396,10 +396,16 @@ export class AppUsersManager extends AppManager {
   public getContactsPeerIds(
     query?: Parameters<AppUsersManager['getContacts']>[0],
     includeSaved?: Parameters<AppUsersManager['getContacts']>[1],
-    sortBy?: Parameters<AppUsersManager['getContacts']>[2]
+    sortBy?: Parameters<AppUsersManager['getContacts']>[2],
+    limit?: number
   ) {
     return this.getContacts(query, includeSaved, sortBy).then((userIds) => {
-      return userIds.map((userId) => userId.toPeerId(false));
+      const peerIds = userIds.map((userId) => userId.toPeerId(false));
+      if(limit) {
+        return peerIds.slice(0, limit);
+      }
+
+      return peerIds;
     });
   }
 

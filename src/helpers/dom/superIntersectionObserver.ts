@@ -24,7 +24,9 @@ export default class SuperIntersectionObserver {
         const entry = entries[i];
         const callbacks = observing.get(entry.target);
         if(!callbacks) {
+          console.error('intersection process no callbacks:', entry);
           debugger;
+          continue;
         }
 
         for(const callback of callbacks) {

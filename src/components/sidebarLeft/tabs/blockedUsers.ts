@@ -59,7 +59,7 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
         peerId: peerId,
         container: list,
         rippleEnabled: true,
-        avatarSize: 48,
+        avatarSize: 'abitbigger',
         append
       });
 

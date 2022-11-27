@@ -12,7 +12,9 @@ const CALL_DURATION_LANG_KEYS: {[type in DurationType]: LangPackKey} = {
   m: 'Minutes',
   h: 'Hours',
   d: 'Days',
-  w: 'Weeks'
+  w: 'Weeks',
+  mm: 'Months',
+  y: 'Years'
 };
 export default function formatCallDuration(duration: number, plain?: boolean) {
   const a = formatDuration(duration, 2);

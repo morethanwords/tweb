@@ -19,21 +19,23 @@
 
     &-header {
       flex: 0 0 auto;
-      margin-bottom: 3px;
+      margin-bottom: 7px;
       padding: 0 1rem;
 
       @include respond-to(handhelds) {
-        padding-left: .9375rem;
+        padding-left: .8125rem;
       }
     }
 
     &-title {
       flex-grow: 1;
       padding: 0;
+      height: 100%;
     }
   }
 
-  .selector, .chatlist-container {
+  .selector,
+  .chatlist-container {
     height: auto;
     overflow: hidden;
     display: flex;
@@ -44,24 +46,19 @@
 
   .selector {
     &-search-input {
-      font-size: 1.25rem;
+      font-size: var(--font-size-20);
+      line-height: 1;
       padding: .5rem 1.5rem;
       width: 100%;
-      line-height: var(--line-height);
+      height: 100%;
 
       @include respond-to(handhelds) {
-        padding-left: 1.0625rem;
+        padding-left: 1.1875rem;
       }
     }
 
     .chatlist {
       margin-top: 0 !important;
-  
-      &-chat {
-        height: 3.875rem !important;
-        padding-top: .5rem !important;
-        padding-bottom: .5rem !important;
-      }
     }
   }
 

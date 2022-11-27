@@ -1000,6 +1000,14 @@ export class AppImManager extends EventListenerBase<{
   }
 
   private onHashChange = (saveState?: boolean) => {
+    try {
+      this.onHashChangeUnsafe(saveState);
+    } catch(err) {
+      this.log.error('hash change error', err);
+    }
+  };
+
+  private onHashChangeUnsafe = (saveState?: boolean) => {
     const hash = location.hash;
     if(!saveState) {
       appNavigationController.replaceState();
@@ -1023,6 +1031,10 @@ export class AppImManager extends EventListenerBase<{
       }
 
       case '#/im': {
+        if(!Object.keys(params).length) {
+          break;
+        }
+
         const p: string = params.p;
         const postId = params.post !== undefined ? generateMessageId(+params.post) : undefined;
 
@@ -1289,7 +1301,7 @@ export class AppImManager extends EventListenerBase<{
       const top = chatBubbles.scrollable.scrollTop;
 
       const position = {
-        mids: getObjectKeysAndSort(chatBubbles.bubbles, 'desc').filter((mid) => !chatBubbles.skippedMids.has(mid)),
+        mids: getObjectKeysAndSort(chatBubbles.bubbles, 'desc').filter((mid) => mid > 0 && !chatBubbles.skippedMids.has(mid)),
         top
       };
 
@@ -1704,9 +1716,7 @@ export class AppImManager extends EventListenerBase<{
       this.dispatchEvent('peer_changed', chatTo.peerId);
 
       const searchTab = appSidebarRight.getTab(AppPrivateSearchTab);
-      if(searchTab) {
-        searchTab.close();
-      }
+      searchTab?.close();
 
       appSidebarRight.replaceSharedMediaTab(chatTo.sharedMediaTab);
     }

@@ -59,7 +59,8 @@ export default class AppAddMembersTab extends SliderSuperTab {
       placeholder: options.placeholder,
       exceptSelf: isPrivacy,
       filterPeerTypeBy: isPrivacy ? ['isAnyGroup', 'isUser'] : undefined,
-      managers: this.managers
+      managers: this.managers,
+      design: 'square'
     });
 
     if(options.selectedPeerIds) {

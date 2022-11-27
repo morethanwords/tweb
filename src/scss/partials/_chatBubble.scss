@@ -85,6 +85,7 @@ $bubble-border-radius-big: 12px;
 }
 
 .bubble {
+  --line-height: var(--messages-line-height);
   position: relative;
   z-index: 1;
   margin: 0 auto $bubble-margin;

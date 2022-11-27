@@ -154,7 +154,6 @@
   }
 
   &-participant {
-    align-items: center;
     // border-radius: 0;
     padding-right: .5rem;
 
@@ -175,8 +174,14 @@
       }
     }
 
+    .dialog-title,
+    .dialog-subtitle {
+      padding-right: 2.5rem;
+    }
+
     &-muted-icon-container {
-      flex: 0 0 auto;
+      position: absolute !important;
+      right: .5rem;
     }
 
     &-video {
@@ -380,10 +385,6 @@
   
     .user-last-message {
       color: var(--gc-secondary-text-color);
-    }
-  
-    .dialog-subtitle {
-      margin-top: -.25rem;
     }
   
     // .user-caption {

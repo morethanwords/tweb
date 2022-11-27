@@ -8,8 +8,7 @@ import positionElementByIndex from '../../helpers/dom/positionElementByIndex';
 import replaceContent from '../../helpers/dom/replaceContent';
 import {fastRaf} from '../../helpers/schedulers';
 import SortedList, {SortedElementBase} from '../../helpers/sortedList';
-import {GroupCallParticipant} from '../../layer';
-import appDialogsManager, {DialogDom, AppDialogsManager} from '../../lib/appManagers/appDialogsManager';
+import appDialogsManager, {DialogDom, AppDialogsManager, DialogElementSize} from '../../lib/appManagers/appDialogsManager';
 import {getGroupCallParticipantMutedState} from '.';
 import GroupCallParticipantMutedIcon from './participantMutedIcon';
 import GroupCallParticipantStatusElement from './participantStatus';
@@ -26,7 +25,7 @@ export default class GroupCallParticipantsList extends SortedList<SortedParticip
   public list: HTMLUListElement;
 
   protected lazyLoadQueue: LazyLoadQueue;
-  protected avatarSize = 54;
+  protected avatarSize: DialogElementSize = 'abitbigger';
   protected rippleEnabled = true;
   protected autonomous = true;
   protected createChatListOptions: Parameters<AppDialogsManager['createChatList']>[0] = {/* new: true,  */dialogSize: 72};

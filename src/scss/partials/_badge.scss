@@ -5,11 +5,18 @@
  */
 
 .badge {
+  --size: 1.375rem;
+  --padding: .4375rem;
   border-radius: .75rem;
   font-weight: var(--font-weight-bold);
   color: var(--badge-text-color);
   font-size: .875rem;
   text-align: center;
+
+  height: var(--size);
+  min-width: var(--size);
+  line-height: var(--size) !important;
+  padding: 0 var(--padding);
   
   @include animation-level(2) {
     transition: background-color .2s ease-in-out;
@@ -20,24 +27,18 @@
   }
 
   &-20 {
-    height: 1.25rem;
-    min-width: 1.25rem;
-    line-height: 1.25rem !important;
-    padding: 0 .375rem;
+    --size: 1.25rem;
+    --padding: .375rem;
   }
 
   &-24 {
-    height: 1.5rem;
-    min-width: 1.5rem;
-    line-height: 1.5rem !important;
-    padding: 0 .5rem;
+    --size: 1.5rem;
+    --padding: .5rem;
+  }
 
-    &.tgico {
-      // width: 1.5rem;
-
-      &:before {
-        font-size: 1.5rem;
-      }
+  &.tgico {
+    &:before {
+      font-size: var(--size);
     }
   }
 

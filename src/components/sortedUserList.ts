@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appDialogsManager, {AppDialogsManager, DialogDom} from '../lib/appManagers/appDialogsManager';
+import appDialogsManager, {AppDialogsManager, DialogDom, DialogElementSize} from '../lib/appManagers/appDialogsManager';
 import {getHeavyAnimationPromise} from '../hooks/useHeavyAnimationCheck';
 import isInDOM from '../helpers/dom/isInDOM';
 import positionElementByIndex from '../helpers/dom/positionElementByIndex';
@@ -25,7 +25,7 @@ export default class SortedUserList extends SortedList<SortedUser> {
   public list: HTMLUListElement;
 
   protected lazyLoadQueue: LazyLoadQueue;
-  protected avatarSize = 48;
+  protected avatarSize: DialogElementSize = 'abitbigger';
   protected rippleEnabled = true;
   protected autonomous = true;
   protected createChatListOptions: Parameters<AppDialogsManager['createChatList']>[0];

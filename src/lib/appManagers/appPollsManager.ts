@@ -11,10 +11,12 @@ import parseMarkdown from '../richTextProcessor/parseMarkdown';
 import {AppManager} from './manager';
 import getServerMessageId from './utils/messageId/getServerMessageId';
 
+type PollId = Poll['id'];
+
 export class AppPollsManager extends AppManager {
-  public polls: {[id: string]: Poll} = {};
-  public results: {[id: string]: PollResults} = {};
-  public pollToMessages: {[id: string]: Set<string>} = {};
+  public polls: {[id: PollId]: Poll} = {};
+  public results: {[id: PollId]: PollResults} = {};
+  public pollToMessages: {[id: PollId]: Set<string>} = {};
 
   private log = logger('POLLS', LogTypes.Error);
 
@@ -78,7 +80,7 @@ export class AppPollsManager extends AppManager {
     return results;
   }
 
-  public getPoll(pollId: string): {poll: Poll, results: PollResults} {
+  public getPoll(pollId: PollId): {poll: Poll, results: PollResults} {
     return {
       poll: this.polls[pollId],
       results: this.results[pollId]
@@ -128,8 +130,8 @@ export class AppPollsManager extends AppManager {
     }
   }
 
-  public sendVote(message: any, optionIds: number[]): Promise<void> {
-    const poll: Poll = message.media.poll;
+  public sendVote(message: Message.message, optionIds: number[]): Promise<void> {
+    const poll: Poll = (message.media as MessageMedia.messageMediaPoll).poll;
 
     const options: Uint8Array[] = optionIds.map((index) => {
       return poll.answers[index].option;
@@ -142,7 +144,7 @@ export class AppPollsManager extends AppManager {
     if(message.pFlags.is_outgoing) {
       return this.appMessagesManager.invokeAfterMessageIsSent(messageId, 'sendVote', (message) => {
         this.log('invoke sendVote callback');
-        return this.sendVote(message, optionIds);
+        return this.sendVote(message as Message.message, optionIds);
       });
     }
 
@@ -156,7 +158,7 @@ export class AppPollsManager extends AppManager {
     });
   }
 
-  public getResults(message: any) {
+  public getResults(message: Message.message) {
     const inputPeer = this.appPeersManager.getInputPeerById(message.peerId);
 
     return this.apiManager.invokeApi('messages.getPollResults', {
@@ -168,7 +170,7 @@ export class AppPollsManager extends AppManager {
     });
   }
 
-  public getVotes(message: any, option?: Uint8Array, offset?: string, limit = 20) {
+  public getVotes(message: Message.message, option?: Uint8Array, offset?: string, limit = 20) {
     return this.apiManager.invokeApi('messages.getPollVotes', {
       peer: this.appPeersManager.getInputPeerById(message.peerId),
       id: getServerMessageId(message.mid),
@@ -184,8 +186,8 @@ export class AppPollsManager extends AppManager {
     });
   }
 
-  public stopPoll(message: any) {
-    const poll: Poll = message.media.poll;
+  public stopPoll(message: Message.message) {
+    const poll: Poll = (message.media as MessageMedia.messageMediaPoll).poll;
 
     if(poll.pFlags.closed) return Promise.resolve();
 

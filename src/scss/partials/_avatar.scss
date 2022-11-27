@@ -78,6 +78,7 @@ avatar-element {
   } */
 
   &.tgico-deletedaccount {
+    overflow: hidden;
     --color-top: var(--peer-avatar-archive-top);
     --color-bottom: var(--peer-avatar-archive-bottom);
 

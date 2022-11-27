@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-export type DurationType = 's' | 'm' | 'h' | 'd' | 'w';
+export type DurationType = 's' | 'm' | 'h' | 'd' | 'w' | 'mm' | 'y';
 export default function formatDuration(duration: number, showLast = 2) {
   if(!duration) {
     duration = 1;
@@ -21,7 +21,7 @@ export default function formatDuration(duration: number, showLast = 2) {
   const s = 1;
   let t = s;
   p.forEach((o, idx) => {
-    t *= o.m;
+    t = Math.round(t * o.m);
 
     if(duration < t) {
       return;

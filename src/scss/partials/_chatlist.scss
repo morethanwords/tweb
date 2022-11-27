@@ -129,7 +129,7 @@
   .search-super {
     .search-group {
       margin-bottom: 0px;
-      padding: 4px 0 0;
+      padding: 0 0 .5rem;
 
       &__name {
         padding-top: 1rem;
@@ -138,7 +138,6 @@
       }
     }
   }
-
 }
 
 ul.chatlist {
@@ -151,8 +150,6 @@ ul.chatlist {
 }
 
 .chatlist {
-  //--avatarSize: 54px;
-  //--height: 72px;
   margin: 0;
   display: flex;
   flex-direction: column;
@@ -164,39 +161,10 @@ ul.chatlist {
   -webkit-user-select: none; /* disable selection/Copy of UIWebView */
   -webkit-touch-callout: none; /* disable the IOS popup when long-press on a link */
 
-  /* &.chatlist-avatar-48 {
-    --avatarSize: 48px;
-  }
-
-  @include respond-to(handhelds) {
-    &.chatlist-handhelds-66 {
-      --height: 66px;
-    }
-  } */
-
   &-chat {
     --background: unset;
-    //height: var(--height);
-    height: 72px;
-    //max-height: var(--height);
-    border-radius: $border-radius-medium;
-    display: flex;
-    align-items: flex-start; // TODO: проверить разницу в производительности с align-items: center;
-    flex-direction: row;
-    position: relative;
-    cursor: pointer;
-    padding: .5625rem;
-    /* padding-top: calc((var(--height) - var(--avatarSize)) / 2);
-    padding-bottom: calc((var(--height) - var(--avatarSize)) / 2);
-    padding-right: 8.5px;
-    padding-left: 8.5px; */
-    overflow: hidden;
-    background: var(--background);
+    background: var(--background) !important;
     -webkit-user-drag: none;
-
-    @include respond-to(handhelds) {
-      border-radius: 0;
-    }
 
     //@include hover-background-effect();
     @include hover(gray, --background, false);
@@ -227,30 +195,13 @@ ul.chatlist {
       }
     }
 
-    p {
-      margin: 0;
-      display: flex;
-      flex-direction: row;
-      align-items: flex-start;
-      height: 27px;
-    }
-
-    a {
-      color: inherit;
+    i {
+      font-style: normal;
     }
 
     .text-highlight {
       color: var(--primary-text-color);
     }
-
-    /* img.emoji {
-      margin-right: .25rem;
-      margin-left: .25rem;
-
-      &:first-child {
-        margin-left: 0;
-      }
-    } */
 
     &.menu-open {
       --background: var(--light-secondary-text-color);
@@ -261,7 +212,8 @@ ul.chatlist {
         --background: var(--primary-color) !important;
         //background: var(--light-secondary-text-color);
 
-        .user-caption,
+        .row-subtitle,
+        .row-title,
         .tgico-chatspinned:before,
         //.user-title:after,
         .user-title,
@@ -270,7 +222,7 @@ ul.chatlist {
         .premium-icon,
         .verified-icon,
         .sending-status-icon {
-          color: #fff;
+          color: #fff !important;
         }
 
         .badge-fake {
@@ -278,7 +230,8 @@ ul.chatlist {
           border-color: #fff;
         }
 
-        b {
+        .primary-text,
+        .danger {
           color: #fff !important;
         }
 
@@ -316,17 +269,6 @@ ul.chatlist {
     }
   }
 
-  /* .user-title,
-  .dialog-title-details,
-  .user-last-message */&-chat span {
-    //display: inline-block;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    //margin: .1rem 0;
-    line-height: 27px;
-  }
-
   .peer-typing-container {
     --color: var(--secondary-text-color);
 
@@ -347,12 +289,8 @@ ul.chatlist {
     }
     
     &-subtitle {
-      margin-top: -3px;
-
       &-badge {
         display: block !important;
-        margin-top: 4px;
-        margin-right: -3px;
         margin-left: .5rem;
         flex: 0 0 auto;
 
@@ -368,13 +306,21 @@ ul.chatlist {
       &-media {
         width: 1.25rem;
         height: 1.25rem;
+        line-height: 1.25rem;
         position: relative;
         flex: 0 0 auto;
         border-radius: .25rem;
-        margin-top: -0.125rem;
         margin-right: 0.375rem;
         display: inline-block;
-        vertical-align: middle;
+
+        &:before {
+          content: " ";
+          display: inline-block;
+          width: inherit;
+          height: inherit;
+          min-width: inherit;
+          min-height: inherit;
+        }
 
         &.is-round {
           border-radius: 50%;
@@ -400,6 +346,8 @@ ul.chatlist {
           height: inherit;
           object-fit: cover;
           border-radius: inherit;
+          top: auto;
+          bottom: auto;
         }
       }
     }
@@ -431,15 +379,8 @@ ul.chatlist {
     flex: 0 0 auto;
   }
 
-  .user-caption {
-    overflow: hidden;
-    color: var(--secondary-text-color);
-    flex: 1 1 auto;
-    padding: .0625rem .4375rem .0625rem .5625rem;
-  }
-
-  .dialog-avatar, 
-  .user-caption {
+  .dialog-avatar,
+  .row-row {
     pointer-events: none;
     position: relative; // for z-index
   }
@@ -454,12 +395,6 @@ ul.chatlist {
       width: 18px;
       height: 18px;
     }
-
-    /* span.emoji {
-      &:first-of-type:not(:first-child) {
-        margin-left: .125rem;
-      }
-    } */
   }
 
   .user-last-message {
@@ -481,11 +416,6 @@ ul.chatlist {
   .user-last-message {
     flex-grow: 1;
     position: relative; // * for custom emoji
-
-    i {
-      font-style: normal;
-      //color: var(--primary-color);
-    }
   }
 
   .message-status {
@@ -504,10 +434,6 @@ ul.chatlist {
       vertical-align: middle;
     }
   }
-
-  /* .message-time {
-    vertical-align: middle;
-  } */
 
   .tgico-chatspinned {
     background: transparent;
@@ -530,8 +456,7 @@ ul.chatlist {
     }
   }
 
-  .tgico-chatspinned/* , 
-  .tgico-mention */ {
+  .tgico-chatspinned {
     position: relative;
 
     &:before {
@@ -546,12 +471,12 @@ ul.chatlist {
     background-color: var(--chatlist-status-color) !important;
 
     html.is-mac & {
-      line-height: 22px !important;
+      line-height: 1.25rem !important;
     }
   }
 
   .mention-badge {
-    margin-right: -2px;
+    margin-right: -.125rem;
   }
 
   /* .tgico-mention {
@@ -618,88 +543,5 @@ ul.chatlist {
       padding: 0;
       // margin-top: -.5rem;
     }
-  }
-
-  // * supernew correct layout
-  &-new {
-    .chatlist-chat {
-      height: 4.5rem;
-      padding: 0 .75rem;
-      align-items: center;
-    }
-
-    .user-caption {
-      padding-left: .75rem;
-    }
-
-    p {
-      height: auto !important;
-    }
-
-    span {
-      line-height: var(--line-height) !important;
-    }
-
-    .dialog-subtitle {
-      margin-top: .125rem;
-    }
-
-    .user-last-message {
-      font-size: .875rem;
-    }
-  }
-}
-
-// use together like class="chatlist-container contacts-container"
-.contacts-container, 
-.search-group-contacts {
-  .chatlist-chat {
-    padding: .75rem;
-
-    @include respond-to(handhelds) {
-      height: 66px;
-      padding-top: 9px;
-      padding-bottom: 9px;
-    }
-  }
-
-  .user-caption {
-    padding: 1px 3.5px 1px 13px;
-
-    @include respond-to(handhelds) {
-      padding: 0 4px 0 14px;
-    }
-  }
-
-  .user-title, 
-  b, 
-  .user-last-message b {
-    font-weight: normal;
-  }
-
-  p {
-    height: 24px;
-
-    @include respond-to(handhelds) {
-      height: 26px;
-    }
-  }
-
-  span.user-last-message {
-    font-size: 14px;
-  }
-}
-
-.chatlist-new.chatlist-48 {
-  .chatlist-chat {
-    height: 3.5rem;
-  }
-
-  .user-caption {
-    padding-left: 1.125rem;
-  }
-
-  .dialog-subtitle {
-    margin-top: .0625rem;
   }
 }

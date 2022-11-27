@@ -40,7 +40,7 @@ export default async function wrapMessageForReply(message: MyMessage | MyDraftMe
     if(plain) {
       parts.push(part);
     } else {
-      const el = document.createElement('i');
+      const el = document.createElement('span');
       if(typeof(part) === 'string') el.innerHTML = part;
       else el.append(part);
       parts.push(el);

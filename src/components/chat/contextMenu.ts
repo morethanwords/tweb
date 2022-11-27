@@ -184,7 +184,7 @@ export default class ChatContextMenu {
       }
 
       this.isSelected = this.chat.selection.isMidSelected(this.peerId, this.mid);
-      this.message = await this.chat.getMessage(this.mid);
+      this.message = (bubble as any).message || await this.chat.getMessage(this.mid);
       this.noForwards = !isSponsored && !(await this.managers.appMessagesManager.canForward(this.message));
       this.viewerPeerId = undefined;
       this.canOpenReactedList = undefined;
@@ -703,7 +703,13 @@ export default class ChatContextMenu {
     let menuPadding: MenuPositionPadding;
     let reactionsMenu: ChatReactionsMenu;
     let reactionsMenuPosition: 'horizontal' | 'vertical';
-    if(this.message._ === 'message' && !this.chat.selection.isSelecting && !this.message.pFlags.is_outgoing && !this.message.pFlags.is_scheduled) {
+    if(
+      this.message._ === 'message' &&
+      !this.chat.selection.isSelecting &&
+      !this.message.pFlags.is_outgoing &&
+      !this.message.pFlags.is_scheduled &&
+      !this.message.pFlags.local
+    ) {
       reactionsMenuPosition = (IS_APPLE || IS_TOUCH_SUPPORTED)/*  && false */ ? 'horizontal' : 'vertical';
       reactionsMenu = this.reactionsMenu = new ChatReactionsMenu(this.managers, reactionsMenuPosition, this.middleware);
       reactionsMenu.init(await this.managers.appMessagesManager.getGroupsFirstMessage(this.message));
@@ -876,11 +882,11 @@ export default class ChatContextMenu {
   };
 
   private onRetractVote = () => {
-    this.managers.appPollsManager.sendVote(this.message, []);
+    this.managers.appPollsManager.sendVote(this.message as Message.message, []);
   };
 
   private onStopPoll = () => {
-    this.managers.appPollsManager.stopPoll(this.message);
+    this.managers.appPollsManager.stopPoll(this.message as Message.message);
   };
 
   private onForwardClick = async() => {

@@ -204,7 +204,7 @@ export default class AppSearch {
           appDialogsManager.addDialogAndSetLastMessage({
             peerId,
             container: this.scrollable/* searchGroup.list */,
-            avatarSize: 54,
+            avatarSize: 'bigger',
             meAsSaved: false,
             message,
             query,

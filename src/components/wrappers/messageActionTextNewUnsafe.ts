@@ -5,7 +5,7 @@
  */
 
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import {formatTime} from '../../helpers/date';
+import {formatTime, ONE_DAY} from '../../helpers/date';
 import htmlToSpan from '../../helpers/dom/htmlToSpan';
 import setInnerHTML from '../../helpers/dom/setInnerHTML';
 import formatCallDuration from '../../helpers/formatCallDuration';
@@ -18,16 +18,21 @@ import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import wrapPlainText from '../../lib/richTextProcessor/wrapPlainText';
 import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
 import rootScope from '../../lib/rootScope';
-import PeerTitle from '../peerTitle';
 import getPeerTitle from './getPeerTitle';
 import wrapJoinVoiceChatAnchor from './joinVoiceChatAnchor';
 import wrapMessageForReply from './messageForReply';
+import wrapPeerTitle from './peerTitle';
 
 async function wrapLinkToMessage(message: Message.message | Message.messageService, plain?: boolean) {
+  const wrapped = await wrapMessageForReply(message, undefined, undefined, plain as any);
+  if(plain) {
+    return wrapped;
+  }
+
   const a = document.createElement('i');
   a.dataset.savedFrom = message.peerId + '_' + message.mid;
   a.dir = 'auto';
-  a.append(await wrapMessageForReply(message, undefined, undefined, plain as any));
+  a.append(wrapped);
   return a;
 }
 
@@ -53,8 +58,8 @@ export default async function wrapMessageActionTextNewUnsafe(message: MyMessage,
 
     const managers = rootScope.managers;
 
-    const getNameDivHTML = async(peerId: PeerId, plain: boolean) => {
-      return plain ? getPeerTitle(peerId, plain) : (new PeerTitle({peerId})).element;
+    const getNameDivHTML = (peerId: PeerId, plain: boolean) => {
+      return plain ? getPeerTitle(peerId, plain) : wrapPeerTitle({peerId});
     };
 
     switch(action._) {
@@ -268,12 +273,61 @@ export default async function wrapMessageActionTextNewUnsafe(message: MyMessage,
           } else {
             langPackKey = isRecurringUsed ? 'Chat.Service.PaymentSentRecurringUsed' : (isRecurringInit ? 'Chat.Service.PaymentSentRecurringInit' : 'Chat.Service.PaymentSent1');
             args.push(wrapLinkToMessage(invoiceMessage, plain).then((el) => {
-              el.classList.add('is-receipt-link');
+              if(el instanceof HTMLElement) {
+                el.classList.add('is-receipt-link');
+              }
+
               return el;
             }));
           }
         }
 
+        break;
+      }
+
+      case 'messageActionSetMessagesTTL': {
+        args = [];
+
+        const isBroadcast = await managers.appPeersManager.isBroadcast(message.peerId);
+        if(action.period) {
+          if(isBroadcast) {
+            langPackKey = 'ActionTTLChannelChanged';
+          } else if(message.fromId === rootScope.myId) {
+            langPackKey = 'ActionTTLYouChanged';
+          } else {
+            langPackKey = 'ActionTTLChanged';
+            args.push(getNameDivHTML(message.fromId, plain));
+          }
+
+          let duration: ReturnType<typeof formatCallDuration>;
+          if(action.period > 1814400) {
+            let key: LangPackKey;
+            const args: FormatterArguments = [];
+            const year = 31536000;
+            if(action.period >= year) {
+              key = 'Years';
+              args.push(action.period / year | 0);
+            } else {
+              key = 'Months';
+              args.push(action.period / (ONE_DAY * 30) | 0);
+            }
+
+            duration = plain ? I18n.format(key, true, args) : i18n(key, args);
+          } else {
+            duration = formatCallDuration(action.period, plain);
+          }
+
+          args.push(duration);
+        } else {
+          if(isBroadcast) {
+            langPackKey = 'ActionTTLChannelDisabled';
+          } else if(message.fromId === rootScope.myId) {
+            langPackKey = 'ActionTTLYouDisabled';
+          } else {
+            langPackKey = 'ActionTTLDisabled';
+            args.push(getNameDivHTML(message.fromId, plain));
+          }
+        }
         break;
       }
 

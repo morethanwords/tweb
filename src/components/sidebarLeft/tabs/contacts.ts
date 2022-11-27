@@ -75,7 +75,7 @@ export default class AppContactsTab extends SliderSuperTab {
   protected onClose() {
     this.middleware.clean();
     /* // need to clear, and left 1 page for smooth slide
-    let pageCount = appPhotosManager.windowH / 72 * 1.25 | 0;
+    let pageCount = appPhotosManager.windowH / 56 * 1.25 | 0;
     (Array.from(this.list.children) as HTMLElement[]).slice(pageCount).forEach((el) => el.remove()); */
   }
 
@@ -98,7 +98,7 @@ export default class AppContactsTab extends SliderSuperTab {
       const sortedUserList = this.sortedUserList = this.createList();
 
       let renderPage = () => {
-        const pageCount = windowSize.height / 72 * 1.25 | 0;
+        const pageCount = windowSize.height / 56 * 1.25 | 0;
         const arr = contacts.splice(0, pageCount); // надо splice!
 
         arr.forEach((peerId) => {

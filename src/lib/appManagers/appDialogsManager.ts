@@ -86,12 +86,13 @@ import whichChild from '../../helpers/dom/whichChild';
 import {MiddlewareHelper} from '../../helpers/middleware';
 import makeError from '../../helpers/makeError';
 import getUnsafeRandomInt from '../../helpers/number/getUnsafeRandomInt';
+import Row, {RowMediaSizeType} from '../../components/row'
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 
 export type DialogDom = {
   avatarEl: AvatarElement,
-  captionDiv: HTMLDivElement,
+  captionDiv: HTMLElement,
   titleSpan: HTMLSpanElement,
   titleSpanContainer: HTMLSpanElement,
   statusSpan: HTMLSpanElement,
@@ -127,6 +128,8 @@ function setPromiseMiddleware<T extends {[smth in K as K]?: CancellablePromise<v
   const middleware = middlewarePromise(() => (obj[key] as any) === deferred);
   return {deferred, middleware};
 }
+
+const BADGE_SIZE = 22;
 
 class SortedDialogList extends SortedList<SortedDialog> {
   constructor(
@@ -167,6 +170,151 @@ class SortedDialogList extends SortedList<SortedDialog> {
   public clear() {
     this.list.replaceChildren();
     super.clear();
+  }
+}
+
+export type DialogElementSize = RowMediaSizeType;
+class DialogElement extends Row {
+  public dom: DialogDom;
+
+  constructor({
+    peerId,
+    rippleEnabled = true,
+    onlyFirstName = false,
+    meAsSaved = true,
+    avatarSize = 'bigger',
+    autonomous,
+    lazyLoadQueue,
+    loadPromises,
+    fromName,
+    noIcons
+  }: {
+    peerId: PeerId,
+    rippleEnabled?: boolean,
+    onlyFirstName?: boolean,
+    meAsSaved?: boolean,
+    avatarSize?: RowMediaSizeType,
+    autonomous?: boolean,
+    lazyLoadQueue?: LazyLoadQueue,
+    loadPromises?: Promise<any>[],
+    fromName?: string,
+    noIcons?: boolean
+  }) {
+    super({
+      clickable: true,
+      noRipple: !rippleEnabled,
+      havePadding: true,
+      title: true,
+      titleRightSecondary: true,
+      subtitle: true,
+      subtitleRight: true,
+      noWrap: true,
+      asLink: true
+    });
+
+    const avatarEl = new AvatarElement();
+    const avatarSizeMap: {[k in DialogElementSize]?: number} = {
+      bigger: 54,
+      abitbigger: 42,
+      small: 32
+    };
+    const s = avatarSizeMap[avatarSize];
+    avatarEl.classList.add('dialog-avatar', 'avatar-' + s);
+    avatarEl.updateWithOptions({
+      loadPromises,
+      lazyLoadQueue,
+      isDialog: !!meAsSaved,
+      peerId,
+      peerTitle: fromName
+    });
+
+    const captionDiv = this.container;
+
+    const titleSpanContainer = this.title;
+    titleSpanContainer.classList.add('user-title');
+
+    this.titleRow.classList.add('dialog-title');
+
+    const peerTitle = new PeerTitle();
+    const peerTitlePromise = peerTitle.update({
+      peerId,
+      fromName,
+      dialog: meAsSaved,
+      onlyFirstName,
+      plainText: false,
+      withIcons: !noIcons
+    });
+
+    loadPromises?.push(peerTitlePromise);
+    titleSpanContainer.append(peerTitle.element);
+
+    // for muted icon
+    titleSpanContainer.classList.add('tgico'); // * эта строка будет актуальна только для !container, но ладно
+
+    // const titleIconsPromise = generateTitleIcons(peerId).then((elements) => {
+    //   titleSpanContainer.append(...elements);
+    // });
+
+    // if(loadPromises) {
+    //   loadPromises.push(titleIconsPromise);
+    // }
+    // }
+
+    const span = this.subtitle;
+    // span.classList.add('user-last-message');
+
+    const li = this.container;
+    li.classList.add('chatlist-chat', 'chatlist-chat-' + avatarSize);
+    if(!autonomous) (li as HTMLAnchorElement).href = '#' + peerId;
+    // if(rippleEnabled) {
+    //   ripple(li);
+    // }
+
+    if(avatarSize === 'bigger') {
+      this.container.classList.add('row-big');
+    } else if(avatarSize === 'small') {
+      this.container.classList.add('row-small');
+    }
+
+    this.applyMediaElement(avatarEl, avatarSize);
+    li.dataset.peerId = '' + peerId;
+
+    const statusSpan = document.createElement('span');
+    statusSpan.classList.add('message-status', 'sending-status'/* , 'transition', 'reveal' */);
+
+    const lastTimeSpan = document.createElement('span');
+    lastTimeSpan.classList.add('message-time');
+
+    const unreadBadge = document.createElement('div');
+    unreadBadge.className = 'dialog-subtitle-badge badge badge-' + BADGE_SIZE;
+
+    const rightSpan = this.titleRight;
+    rightSpan.classList.add('dialog-title-details');
+    rightSpan.append(statusSpan, lastTimeSpan);
+
+    this.subtitleRow.classList.add('dialog-subtitle');
+
+    const dom: DialogDom = this.dom = {
+      avatarEl,
+      captionDiv,
+      titleSpan: peerTitle.element,
+      titleSpanContainer,
+      statusSpan,
+      lastTimeSpan,
+      unreadBadge,
+      lastMessageSpan: span,
+      containerEl: li,
+      listEl: li,
+      subtitleEl: this.subtitleRow
+    };
+
+    if(!autonomous) {
+      (li as any).dialogDom = dom;
+
+      if(appImManager.chat?.peerId === peerId) {
+        appDialogsManager.setDialogActive(li, true);
+      }
+    }
   }
 }
 
@@ -316,6 +464,7 @@ export class AppDialogsManager {
       // setTimeout(() =>
       apiManagerProxy.getState().then(async(state) => {
         this.loadedDialogsAtLeastOnce = false;
+        this.showFiltersPromise = undefined;
 
         /* const clearPromises: Promise<any>[] = [];
         for(const name in this.managers.appStateManager.storagesResults) {
@@ -659,9 +808,8 @@ export class AppDialogsManager {
     });
   }
 
-  private setDialogActive(listEl: HTMLElement, active: boolean) {
-    // @ts-ignore
-    const dom = listEl.dialogDom as DialogDom;
+  public setDialogActive(listEl: HTMLElement, active: boolean) {
+    const dom = (listEl as any).dialogDom as DialogDom;
     listEl.classList.toggle('active', active);
     if(active) {
       this.lastActiveElements.add(listEl);
@@ -955,31 +1103,29 @@ export class AppDialogsManager {
   }
 
   private onFiltersLengthChange() {
-    if(!this.showFiltersPromise) {
-      this.showFiltersPromise = new Promise<void>((resolve) => {
-        window.setTimeout(() => {
-          const length = Object.keys(this.filtersRendered).length;
-          const show = length > 1;
-          const wasShowing = !this.folders.menuScrollContainer.classList.contains('hide');
+    let promise = this.showFiltersPromise;
+    return promise ??= this.showFiltersPromise = pause(0).then(() => {
+      if(this.showFiltersPromise !== promise) {
+        return;
+      }
 
-          if(show !== wasShowing) {
-            this.folders.menuScrollContainer.classList.toggle('hide', !show);
-            if(show && !wasShowing) {
-              this.setFiltersUnreadCount();
-            }
+      const length = Object.keys(this.filtersRendered).length;
+      const show = length > 1;
+      const wasShowing = !this.folders.menuScrollContainer.classList.contains('hide');
 
-            this.chatsContainer.classList.toggle('has-filters', show);
-          }
+      if(show !== wasShowing) {
+        this.folders.menuScrollContainer.classList.toggle('hide', !show);
+        if(show && !wasShowing) {
+          this.setFiltersUnreadCount();
+        }
 
-          this.changeFiltersAllChatsKey();
+        this.chatsContainer.classList.toggle('has-filters', show);
+      }
 
-          this.showFiltersPromise = undefined;
-          resolve();
-        }, 0);
-      });
-    }
+      this.changeFiltersAllChatsKey();
 
-    return this.showFiltersPromise;
+      this.showFiltersPromise = undefined;
+    });
   }
 
   private loadDialogs(side: SliceSides) {
@@ -1341,7 +1487,7 @@ export class AppDialogsManager {
       };
 
       const sortedUserList = new SortedUserList({
-        avatarSize: 42,
+        avatarSize: 'abitbigger',
         createChatListOptions: {
           dialogSize: 48,
           new: true
@@ -1737,30 +1883,31 @@ export class AppDialogsManager {
 
       /* if(lastMessage.from_id === auth.id) { // You:  */
       if(draftMessage) {
-        const bold = document.createElement('b');
-        bold.classList.add('danger');
-        bold.append(i18n('Draft'), ': ');
-        willPrepend.unshift(bold);
+        const span = document.createElement('span');
+        span.classList.add('danger');
+        span.append(i18n('Draft'), ': ');
+        willPrepend.unshift(span);
       } else if(peerId.isAnyChat() && peerId !== lastMessage.fromId && !(lastMessage as Message.messageService).action) {
-        const senderBold = document.createElement('b');
+        const span = document.createElement('span');
+        span.classList.add('primary-text');
 
         if(lastMessage.fromId === rootScope.myId) {
-          senderBold.append(i18n('FromYou'));
-          willPrepend.unshift(senderBold);
+          span.append(i18n('FromYou'));
+          willPrepend.unshift(span);
         } else {
           // str = sender.first_name || sender.last_name || sender.username;
           const p = middleware(wrapPeerTitle({
             peerId: lastMessage.fromId,
             onlyFirstName: true
           })).then((element) => {
-            senderBold.prepend(element);
-            return senderBold;
+            span.prepend(element);
+            return span;
           }, noop);
 
           willPrepend.unshift(p);
         }
 
-        senderBold.append(': ');
+        span.append(': ');
         // console.log(sender, senderBold.innerText);
       }
 
@@ -1870,7 +2017,7 @@ export class AppDialogsManager {
     if(hasMentionsBadge) {
       if(!dom.mentionsBadge) {
         dom.mentionsBadge = document.createElement('div');
-        dom.mentionsBadge.className = 'dialog-subtitle-badge badge badge-24 mention mention-badge';
+        dom.mentionsBadge.className = `dialog-subtitle-badge badge badge-${BADGE_SIZE} mention mention-badge`;
         dom.mentionsBadge.innerText = '@';
         dom.subtitleEl.insertBefore(dom.mentionsBadge, dom.lastMessageSpan.nextSibling);
       }
@@ -2041,14 +2188,27 @@ export class AppDialogsManager {
     onlyFirstName?: boolean,
     meAsSaved?: boolean,
     append?: boolean,
-    avatarSize?: number,
+    avatarSize?: RowMediaSizeType,
     autonomous?: boolean,
     lazyLoadQueue?: LazyLoadQueue,
     loadPromises?: Promise<any>[],
     fromName?: string,
     noIcons?: boolean
   }) {
-    return this.addDialog(options.peerId, options.container, options.rippleEnabled, options.onlyFirstName, options.meAsSaved, options.append, options.avatarSize, options.autonomous, options.lazyLoadQueue, options.loadPromises, options.fromName, options.noIcons);
+    const d = new DialogElement({
+      autonomous: !!options.container,
+      avatarSize: 'bigger',
+      ...options
+      // avatarSize: !options.avatarSize || options.avatarSize >= 54 ? 'bigger' : 'abitbigger',
+    });
+
+    if(options.container) {
+      const method = !options.append ? 'append' : 'prepend';
+      options.container[method](d.container);
+    }
+
+    return d;
+    // return this.addDialog(options.peerId, options.container, options.rippleEnabled, options.onlyFirstName, options.meAsSaved, options.append, options.avatarSize, options.autonomous, options.lazyLoadQueue, options.loadPromises, options.fromName, options.noIcons);
   }
 
   public addDialog(
@@ -2138,7 +2298,7 @@ export class AppDialogsManager {
     lastTimeSpan.classList.add('message-time');
 
     const unreadBadge = document.createElement('div');
-    unreadBadge.className = 'dialog-subtitle-badge badge badge-24';
+    unreadBadge.className = 'dialog-subtitle-badge badge badge-' + BADGE_SIZE;
 
     const titleP = document.createElement('p');
     titleP.classList.add('dialog-title');

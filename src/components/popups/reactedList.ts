@@ -144,7 +144,7 @@ export default class PopupReactedList extends PopupElement {
               peerId: peerId,
               autonomous: true,
               container: chatlist,
-              avatarSize: 54,
+              avatarSize: 'abitbigger',
               rippleEnabled: false,
               meAsSaved: false
             });

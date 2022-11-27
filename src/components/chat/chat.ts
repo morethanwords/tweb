@@ -398,6 +398,7 @@ export default class Chat extends EventListenerBase<{
   public destroy() {
     // const perf = performance.now();
 
+    this.destroySharedMediaTab();
     this.topbar.destroy();
     this.bubbles.destroy();
     this.input.destroy();
@@ -523,6 +524,10 @@ export default class Chat extends EventListenerBase<{
   }
 
   public destroySharedMediaTab(tab = this.sharedMediaTab) {
+    if(!tab) {
+      return;
+    }
+
     indexOfAndSplice(this.sharedMediaTabs, tab);
     tab.destroy();
   }
