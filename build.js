@@ -1,10 +1,11 @@
 // @ts-check
 
-const { spawn } = require('child_process');
+const {spawn} = require('child_process');
 
+const npmCmd = /^win/.test(process.platform) ? 'npm.cmd' : 'npm';
 const version = process.argv[2] || 'same';
 const changelog = process.argv[3] || '';
-const child = spawn(`npm`, ['run', 'change-version', version, changelog].filter(Boolean));
+const child = spawn(npmCmd, ['run', 'change-version', version, changelog].filter(Boolean));
 child.stdout.on('data', (chunk) => {
   console.log(chunk.toString());
 });
@@ -14,7 +15,7 @@ child.on('close', (code) => {
     console.log(`child process exited with code ${code}`);
   }
 
-  const child = spawn(`npm`, ['run', 'build']);
+  const child = spawn(npmCmd, ['run', 'build']);
   child.stdout.on('data', (chunk) => {
     console.log(chunk.toString());
   });
