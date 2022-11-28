@@ -1259,9 +1259,8 @@ $bubble-border-radius-big: 12px;
   }
 
   &.just-media {
-    .reply, 
-    .name {
-      padding: 10px;
+    .floating-part {
+      padding: .3125rem .625rem;
       border-radius: 12px;
       position: absolute;
       top: 0;
@@ -2289,6 +2288,25 @@ $bubble-border-radius-big: 12px;
       border-bottom-right-radius: $bubble-border-radius-medium !important;
     }
   }
+
+  .name-with-reply {
+    .name {
+      padding: 0 !important;
+
+      &:not(:last-child) {
+        .hide-ol {
+          display: none;
+        }
+      }
+    }
+
+    .reply {
+      margin: .25rem 0 0;
+      padding: 0;
+      height: auto;
+      max-height: none;
+    }
+  }
 }
 
 // @keyframes arrow-shake {
@@ -2464,8 +2482,7 @@ $bubble-border-radius-big: 12px;
   }
 
   &.just-media {
-    .reply, 
-    .name {
+    .floating-part {
       left: calc(100% + 10px);
 
       @include respond-to(handhelds) {
@@ -2646,8 +2663,7 @@ $bubble-border-radius-big: 12px;
   }
 
   &.just-media {
-    .reply, 
-    .name {
+    .floating-part {
       right: calc(100% + 10px);
     }
 

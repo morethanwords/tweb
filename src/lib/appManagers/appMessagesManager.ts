@@ -1991,7 +1991,12 @@ export class AppMessagesManager extends AppManager {
     dropAuthor: boolean,
     dropCaptions: boolean,
     sendAsPeerId: PeerId,
+    replyToMsgId?: number,  // will be ignored
+    threadId?: number       // will be ignored
   }> = {}) {
+    delete options.replyToMsgId;
+    delete options.threadId;
+
     peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
     mids = mids.slice().sort((a, b) => a - b);
 

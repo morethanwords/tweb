@@ -203,6 +203,10 @@ ul.chatlist {
       color: var(--primary-text-color);
     }
 
+    .premium-icon {
+      margin-top: -.125rem;
+    }
+
     &.menu-open {
       --background: var(--light-secondary-text-color);
     }
@@ -391,7 +395,7 @@ ul.chatlist {
 
     img.emoji {
       vertical-align: top;
-      margin-top: 4px;
+      margin-top: 1px;
       width: 18px;
       height: 18px;
     }

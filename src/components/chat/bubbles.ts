@@ -4521,8 +4521,9 @@ export default class ChatBubbles {
         title = new PeerTitle({peerId: fwdFromId || message.fromId, withPremiumIcon: !isForward, middleware}).element;
       }
 
+      let replyContainer: HTMLElement;
       if(message.reply_to_mid && message.reply_to_mid !== this.chat.threadId && isMessage) {
-        await MessageRender.setReply({
+        replyContainer = await MessageRender.setReply({
           chat: this.chat,
           bubble,
           bubbleContainer,
@@ -4555,7 +4556,9 @@ export default class ChatBubbles {
           nameDiv.innerHTML = fromTitle + 'Forwarded from ' + title; */
           const args: FormatterArguments = [title];
           if(isStandaloneMedia) {
-            args.unshift(document.createElement('br'));
+            const br = document.createElement('br');
+            br.classList.add('hide-ol');
+            args.unshift(br);
           }
           nameDiv.append(i18n('ForwardedFrom', [args]));
         }
@@ -4597,7 +4600,21 @@ export default class ChatBubbles {
 
       if(nameDiv) {
         nameDiv.classList.add('name');
+
+        if(isStandaloneMedia) {
+          nameContainer.append(nameContainer = document.createElement('div'));
+          nameContainer.classList.add('name-with-reply', 'floating-part');
+        } else {
+          nameDiv.classList.add('floating-part');
+        }
+
         nameContainer.append(nameDiv);
+
+        if(isStandaloneMedia && replyContainer) {
+          nameContainer.append(replyContainer);
+        }
+      } else if(isStandaloneMedia && replyContainer) {
+        replyContainer.classList.add('floating-part');
       }
     } else {
       bubble.classList.add('hide-name');

@@ -170,9 +170,7 @@ export namespace MessageRender {
 
     const currentReplyDiv = isReplacing ? bubbleContainer.querySelector('.reply') : null;
     if(!message.reply_to_mid) {
-      if(currentReplyDiv) {
-        currentReplyDiv.remove();
-      }
+      currentReplyDiv?.remove();
 
       bubble.classList.remove('is-reply');
       return;
@@ -208,11 +206,16 @@ export namespace MessageRender {
     const {container, fillPromise} = wrapReply(originalPeerTitle, undefined, chat.animationGroup, originalMessage, chat.isAnyGroup ? titlePeerId : undefined);
     await fillPromise;
     if(currentReplyDiv) {
+      if(currentReplyDiv.classList.contains('floating-part')) {
+        container.classList.add('floating-part');
+      }
       currentReplyDiv.replaceWith(container);
     } else {
       bubbleContainer.append(container);
     }
     // bubbleContainer.insertBefore(, nameContainer);
     bubble.classList.add('is-reply');
+
+    return container;
   };
 }
