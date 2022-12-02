@@ -1087,7 +1087,7 @@ export default function wrapRichText(text: string, options: Partial<{
           // const styleName = IS_SAFARI ? 'text-decoration' : 'text-decoration-line';
           // element.style.cssText = `${styleName}: line-through;`;
           element.style.fontFamily = 'markup-strikethrough';
-        } else if(!options.noTextFormat) {
+        } else/*  if(!options.noTextFormat) */ {
           element = document.createElement('del');
         }
 
