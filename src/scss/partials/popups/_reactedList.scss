@@ -75,11 +75,16 @@
   }
 
   .reacted-list-reaction-icon {
+    display: flex;
     width: var(--size);
     height: var(--size);
+    position: absolute;
     top: 50%;
+    right: 1rem;
     transform: translateY(-50%);
-    position: relative;
-    display: flex;
+  }
+
+  .chatlist-chat {
+    padding-right: 3.25rem !important;
   }
 }
