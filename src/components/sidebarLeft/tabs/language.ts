@@ -6,6 +6,7 @@
 
 import {SettingSection} from '..';
 import {randomLong} from '../../../helpers/random';
+import {LangPackLanguage} from '../../../layer';
 import I18n from '../../../lib/langPack';
 import rootScope from '../../../lib/rootScope';
 import RadioField from '../../radioField';
@@ -18,9 +19,10 @@ export default class AppLanguageTab extends SliderSuperTab {
       languages1: rootScope.managers.apiManager.invokeApiCacheable('langpack.getLanguages', {
         lang_pack: 'web'
       }),
-      languages2: rootScope.managers.apiManager.invokeApiCacheable('langpack.getLanguages', {
-        lang_pack: 'macos'
-      })
+      // languages2: rootScope.managers.apiManager.invokeApiCacheable('langpack.getLanguages', {
+      //   lang_pack: 'macos'
+      // })
+      languages2: Promise.resolve([] as LangPackLanguage[])
     };
   }
 

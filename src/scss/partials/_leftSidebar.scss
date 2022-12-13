@@ -319,7 +319,7 @@
     width: 100%;
     
     .btn-menu {
-      width: 260px;
+      min-width: 260px;
       max-height: calc(100 * var(--vh) - 3.75rem);
   
       .archived-count {
