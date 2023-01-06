@@ -167,7 +167,13 @@ ul.chatlist {
     -webkit-user-drag: none;
 
     //@include hover-background-effect();
-    @include hover(gray, --background, false);
+    @include hover(filled-gray, --background, false);
+
+    &.menu-open,
+    &.is-forum-open {
+      // --background: var(--light-secondary-text-color);
+      --background: var(--light-filled-secondary-text-color);
+    }
 
     &.is-muted {
       .user-title {
@@ -205,6 +211,48 @@ ul.chatlist {
 
     .premium-icon {
       margin-top: -.125rem;
+    }
+
+    .topic-icon {
+      flex: 0 0 auto;
+      // margin-right: .375rem;
+      // display: inline-block;
+    }
+
+    .row-title .topic-icon {
+      --size: 1.375rem;
+      margin-right: .25rem;
+    }
+
+    // ! IT IS IMPORTANT, OVERFLOW DOESN'T WORK WITH display: inline-flex;
+    .topic-name {
+      .topic-icon {
+        display: inline;
+        line-height: 1 !important;
+
+        // &:before {
+        //   content: " ";
+          // display: inline-block;
+          // width: inherit;
+          // height: inherit;
+          // min-width: inherit;
+          // min-height: inherit;
+        // }
+  
+        &-svg {
+          position: relative;
+          // top: 0;
+          // left: 0;
+        }
+
+        &-content {
+          left: 0;
+          margin-top: -6px;
+          position: absolute;
+          right: 0;
+          top: 0;
+        }
+      }
     }
 
     &.menu-open {
@@ -266,6 +314,10 @@ ul.chatlist {
           color: var(--primary-color);
         }
 
+        // .badge.avatar-badge {
+        //   border-color: var(--background);
+        // }
+
         .peer-typing-container {
           --color: #fff;
         }
@@ -280,6 +332,12 @@ ul.chatlist {
       display: inline-flex;
       transform: translateY(-2px);
     }
+  }
+
+  .sending-status-icon.tgico-premium_lock {
+    font-size: .8125rem;
+    margin: .1875rem 0 0 .5rem;
+    color: var(--secondary-color);
   }
 
   .dialog {
@@ -305,6 +363,19 @@ ul.chatlist {
         /* &.unread {
           transition: none;
         } */
+
+        &.avatar-badge {
+          // --padding: .375rem;
+          --size: 1.625rem;
+          margin: 0;
+          position: absolute;
+          right: calc(100% - 4.0625rem);
+          top: 2.4375rem;
+          // border: 2px solid var(--surface-color);
+          border: 2px solid var(--background, var(--surface-color));
+          pointer-events: none;
+          line-height: 23px !important;
+        }
       }
 
       &-media {
@@ -497,6 +568,12 @@ ul.chatlist {
 
   .is-muted .unread {
     background-color: var(--secondary-color);
+  }
+
+  .not-visited {
+    --size: .5rem;
+    --padding: 0;
+    background-color: var(--secondary-color) !important;
   }
 
   &-parts {

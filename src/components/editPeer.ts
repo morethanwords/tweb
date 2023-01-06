@@ -35,7 +35,8 @@ export default class EditPeer {
     doNotEditAvatar?: boolean,
     withoutAvatar?: boolean,
     nextBtn?: HTMLButtonElement,
-    avatarSize?: number
+    avatarSize?: number,
+    popupOptions?: ConstructorParameters<typeof AvatarEdit>[1]
   }) {
     safeAssign(this, options);
 
@@ -50,7 +51,7 @@ export default class EditPeer {
     }
 
     if(!options.withoutAvatar) {
-      this.avatarElem = document.createElement('avatar-element') as AvatarElement;
+      this.avatarElem = new AvatarElement();
       this.avatarElem.classList.add('avatar-placeholder', 'avatar-' + this.avatarSize);
       this.avatarElem.updateWithOptions({peerId: this.peerId});
 
@@ -59,7 +60,7 @@ export default class EditPeer {
           this.uploadAvatar = _upload;
           this.handleChange();
           this.avatarElem.remove();
-        });
+        }, options.popupOptions);
 
         this.avatarEdit.container.append(this.avatarElem);
       }

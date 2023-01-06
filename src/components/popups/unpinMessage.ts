@@ -8,7 +8,7 @@ import PopupElement, {addCancelButton} from '.';
 import PopupPeer, {PopupPeerButtonCallbackCheckboxes, PopupPeerOptions} from './peer';
 import rootScope from '../../lib/rootScope';
 import {FormatterArguments, LangPackKey} from '../../lib/langPack';
-import PeerTitle from '../peerTitle';
+import wrapPeerTitle from '../wrappers/peerTitle';
 
 export default class PopupPinMessage {
   constructor(private peerId: PeerId, private mid: number, private unpin?: true, private onConfirm?: () => void) {
@@ -101,7 +101,7 @@ export default class PopupPinMessage {
 
           checkboxes.push({
             text: 'PinAlsoFor',
-            textArgs: [new PeerTitle({peerId}).element],
+            textArgs: [await wrapPeerTitle({peerId})],
             checked: true
           });
         }

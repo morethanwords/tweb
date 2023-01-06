@@ -5,11 +5,11 @@
  */
 
 import type ListenerSetter from '../../../../helpers/listenerSetter';
-import {SettingSection} from '../..';
 import {LangPackKey} from '../../../../lib/langPack';
 import CheckboxField from '../../../checkboxField';
 import {SliderSuperTabEventable} from '../../../sliderTab';
 import Row, {CreateRowFromCheckboxField} from '../../../row';
+import SettingSection from '../../../settingSection';
 
 export function autoDownloadPeerTypeSection(type: 'photo' | 'video' | 'file', title: LangPackKey, listenerSetter: ListenerSetter) {
   const section = new SettingSection({name: title});
@@ -52,7 +52,6 @@ export function autoDownloadPeerTypeSection(type: 'photo' | 'video' | 'file', ti
 
 export default class AppAutoDownloadPhotoTab extends SliderSuperTabEventable {
   public init() {
-    this.header.classList.add('with-border');
     this.setTitle('AutoDownloadPhotos');
 
     const section = autoDownloadPeerTypeSection('photo', 'AutoDownloadPhotosTitle', this.listenerSetter);

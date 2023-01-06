@@ -242,9 +242,15 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
 
       previousTransformer = transformer;
 
-      SetTransition(container, 'is-visible', true, openDuration, () => {
-        if(!middleware()) return;
-        ready();
+      SetTransition({
+        element: container,
+        className: 'is-visible',
+        forwards: true,
+        duration: openDuration,
+        onTransitionEnd: () => {
+          if(!middleware()) return;
+          ready();
+        }
       });
 
       document.addEventListener('mousemove', onMouseMove);
@@ -285,15 +291,27 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
       const {ready, transformer} = r;
 
       const _previousTransformer = previousTransformer;
-      SetTransition(_previousTransformer, 'is-switching', true, switchDuration, () => {
-        _previousTransformer.remove();
+      SetTransition({
+        element: _previousTransformer,
+        className: 'is-switching',
+        forwards: true,
+        duration: switchDuration,
+        onTransitionEnd: () => {
+          _previousTransformer.remove();
+        }
       });
 
       previousTransformer = transformer;
 
-      SetTransition(transformer, 'is-switching', false, switchDuration, () => {
-        if(!middleware()) return;
-        ready();
+      SetTransition({
+        element: transformer,
+        className: 'is-switching',
+        forwards: false,
+        duration: switchDuration,
+        onTransitionEnd: () => {
+          if(!middleware()) return;
+          ready();
+        }
       });
     };
 
@@ -308,11 +326,17 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
       _middleware.clean();
 
       if(container) {
-        SetTransition(container, 'is-visible', false, openDuration, () => {
-          container.remove();
-          animationIntersector.setOnlyOnePlayableGroup(previousGroup);
-          animationIntersector.checkAnimations2(false);
-          hasViewer = false;
+        SetTransition({
+          element: container,
+          className: 'is-visible',
+          forwards: false,
+          duration: openDuration,
+          onTransitionEnd: () => {
+            container.remove();
+            animationIntersector.setOnlyOnePlayableGroup(previousGroup);
+            animationIntersector.checkAnimations2(false);
+            hasViewer = false;
+          }
         });
 
         attachClickEvent(document.body, cancelEvent, {capture: true, once: true});

@@ -11,9 +11,8 @@ import middlewarePromise from './middlewarePromise';
 import safeAssign from './object/safeAssign';
 import pause from './schedulers/pause';
 
-export type SortedElementId = PeerId;
-export type SortedElementBase = {
-  id: SortedElementId,
+export type SortedElementBase<T = any> = {
+  id: T,
   index: number
 };
 
@@ -78,7 +77,7 @@ export class BatchProcessor<Item extends any = any> {
     const m = middlewarePromise(middleware, this.possibleError);
 
     const processQueue = async(): Promise<void> => {
-      log('start');
+      log('start', this.queue.length);
 
       const queue = this.queue.splice(0, this.queue.length);
 
@@ -107,7 +106,13 @@ export class BatchProcessor<Item extends any = any> {
     log('setting pause');
     const promise = this.promise = m(pause(0))
     .then(
-      processQueue,
+      () => processQueue().catch((err: ApiError) => {
+        if(err !== this.possibleError) {
+          log.error('process queue error', err);
+        }
+
+        throw err;
+      }),
       (err) => {
         log('pause has been cleared');
         throw err;
@@ -123,7 +128,7 @@ export class BatchProcessor<Item extends any = any> {
   }
 }
 
-export default class SortedList<SortedElement extends SortedElementBase> {
+export default class SortedList<SortedElement extends SortedElementBase, SortedElementId = SortedElement['id']> {
   protected elements: Map<SortedElementId, SortedElement>;
   protected sorted: Array<SortedElement>;
 
@@ -190,16 +195,17 @@ export default class SortedList<SortedElement extends SortedElementBase> {
     }
   }
 
-  public updateList(callback: (updated: boolean) => void) {
+  public updateList(callback?: (updated: boolean) => void) {
     const middleware = this.middleware.get();
     this.updateListWith((canUpdate) => {
       if(!middleware() || (canUpdate !== undefined && !canUpdate)) {
-        return callback(false);
+        callback?.(false);
+        return;
       }
 
       this._updateList();
 
-      callback(true);
+      callback?.(true);
     });
   }
 

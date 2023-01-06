@@ -19,10 +19,11 @@ import confirmationPopup from '../confirmationPopup';
 import CountryInputField from '../countryInputField';
 import InputField, {InputFieldOptions, InputState} from '../inputField';
 import Row from '../row';
-import {SettingSection} from '../sidebarLeft';
 import {getPaymentBrandIconPath, PaymentButton, PaymentsCredentialsToken} from './payment';
 import {createVerificationIframe} from './paymentVerification';
 import {PasswordInputHelpers} from '../passwordInputField';
+import SettingSection from '../settingSection';
+import TelegramWebView from '../telegramWebView';
 
 export type PaymentCardDetails = {
   cardNumber: string;
@@ -214,6 +215,8 @@ const SUPPORTED_NATIVE_PROVIDERS: Set<PaymentsNativeProvider> = new Set(['stripe
 export default class PopupPaymentCard extends PopupElement<{
   finish: (obj: {token: any, card: PaymentCardDetailsResult}) => void
 }> {
+  protected telegramWebView: TelegramWebView;
+
   constructor(private paymentForm: PaymentsPaymentForm, private savedCard?: PaymentCardDetails) {
     super('popup-payment popup-payment-card', {
       closable: true,
@@ -226,13 +229,11 @@ export default class PopupPaymentCard extends PopupElement<{
     if(SUPPORTED_NATIVE_PROVIDERS.has(paymentForm.native_provider as PaymentsNativeProvider)) {
       this.d();
     } else {
-      const {iframe, onMount} = createVerificationIframe(paymentForm.url, (event) => {
-        if(event.eventType !== 'payment_form_submit') {
-          return;
-        }
+      const telegramWebView = this.telegramWebView = createVerificationIframe({
+        url: paymentForm.url
+      });
 
-        const data = event.eventData;
-
+      telegramWebView.addEventListener('payment_form_submit', (data) => {
         const cardOut = {title: data.title, save: false} as any as PaymentCardDetails;
         this.dispatchEvent('finish', {
           token: data.credentials,
@@ -255,10 +256,15 @@ export default class PopupPaymentCard extends PopupElement<{
       });
 
       // putPreloader(this.body, true);
-      this.body.append(iframe);
+      this.body.append(telegramWebView.iframe);
       this.show();
-      onMount();
+      telegramWebView.onMount();
     }
+  }
+
+  protected destroy() {
+    this.telegramWebView.destroy();
+    return super.destroy();
   }
 
   private d() {

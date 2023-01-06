@@ -10,7 +10,7 @@ import deepEqual from '../../../helpers/object/deepEqual';
 import {ChannelParticipant} from '../../../layer';
 import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
 import Button from '../../button';
-import {SettingSection} from '../../sidebarLeft';
+import SettingSection from '../../settingSection';
 import {SliderSuperTabEventable} from '../../sliderTab';
 import getUserStatusString from '../../wrappers/getUserStatusString';
 import {ChatPermissions} from './groupPermissions';

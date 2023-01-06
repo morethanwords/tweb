@@ -112,10 +112,25 @@ export class GroupCallsController extends EventListenerBase<{
       streamManager = await createMainStreamManager(muted, joinVideo);
     }
 
-    return this.joinGroupCallInternal(chatId, groupCallId, streamManager, muted, rejoin, joinVideo);
+    return this.joinGroupCallInternal(chatId, groupCallId, streamManager, muted, rejoin, joinVideo)
+    .then(() => {
+      // have to refresh participants because of the new connection
+      const {currentGroupCall} = this;
+      currentGroupCall.participants.then((participants) => {
+        if(this.currentGroupCall !== currentGroupCall || currentGroupCall.state === GROUP_CALL_STATE.CLOSED) {
+          return;
+        }
+
+        participants.forEach((participant) => {
+          if(!participant.pFlags.self) {
+            currentGroupCall.onParticipantUpdate(participant);
+          }
+        });
+      });
+    });
   }
 
-  public async joinGroupCallInternal(chatId: ChatId, groupCallId: GroupCallId, streamManager: StreamManager, muted: boolean, rejoin = false, joinVideo?: boolean) {
+  private async joinGroupCallInternal(chatId: ChatId, groupCallId: GroupCallId, streamManager: StreamManager, muted: boolean, rejoin = false, joinVideo?: boolean) {
     const log = this.log.bindPrefix('joinGroupCallInternal');
     log('start', groupCallId);
 

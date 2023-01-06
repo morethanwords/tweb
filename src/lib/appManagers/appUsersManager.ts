@@ -26,6 +26,8 @@ import {AppManager} from './manager';
 import getPeerId from './utils/peers/getPeerId';
 import canSendToUser from './utils/users/canSendToUser';
 import {AppStoragesManager} from './appStoragesManager';
+import deepEqual from '../../helpers/object/deepEqual';
+import getPeerActiveUsernames from './utils/peers/getPeerActiveUsernames';
 
 export type User = MTUser.user;
 export type TopPeerType = 'correspondents' | 'bots_inline';
@@ -35,7 +37,7 @@ export class AppUsersManager extends AppManager {
   private storage: AppStoragesManager['storages']['users'];
 
   private users: {[userId: UserId]: User};
-  private usernames: {[username: string]: UserId};
+  private usernames: {[username: string]: PeerId};
   private contactsIndex: SearchIndex<UserId>;
   private contactsFillPromise: CancellablePromise<AppUsersManager['contactsList']>;
   private contactsList: Set<UserId>;
@@ -72,28 +74,28 @@ export class AppUsersManager extends AppManager {
         } // ////else console.warn('No user by id:', userId);
       },
 
-      updateUserPhoto: (update) => {
-        const userId = update.user_id;
-        const user = this.users[userId];
-        if(user) {
-          if((user.photo as UserProfilePhoto.userProfilePhoto)?.photo_id === (update.photo as UserProfilePhoto.userProfilePhoto)?.photo_id) {
-            return;
-          }
+      // updateUserPhoto: (update) => {
+      //   const userId = update.user_id;
+      //   const user = this.users[userId];
+      //   if(user) {
+      //     if((user.photo as UserProfilePhoto.userProfilePhoto)?.photo_id === (update.photo as UserProfilePhoto.userProfilePhoto)?.photo_id) {
+      //       return;
+      //     }
 
-          this.forceUserOnline(userId, update.date);
+      //     this.forceUserOnline(userId, update.date);
 
-          if(update.photo._ === 'userProfilePhotoEmpty') {
-            delete user.photo;
-          } else {
-            user.photo = safeReplaceObject(user.photo, update.photo);
-          }
+      //     if(update.photo._ === 'userProfilePhotoEmpty') {
+      //       delete user.photo;
+      //     } else {
+      //       user.photo = safeReplaceObject(user.photo, update.photo);
+      //     }
 
-          this.setUserToStateIfNeeded(user);
+      //     this.setUserToStateIfNeeded(user);
 
-          this.rootScope.dispatchEvent('user_update', userId);
-          this.rootScope.dispatchEvent('avatar_update', userId.toPeerId());
-        } else console.warn('No user by id:', userId);
-      },
+      //     this.rootScope.dispatchEvent('user_update', userId);
+      //     this.rootScope.dispatchEvent('avatar_update', userId.toPeerId());
+      //   } else console.warn('No user by id:', userId);
+      // },
 
       updateUserName: (update) => {
         const userId = update.user_id;
@@ -105,7 +107,8 @@ export class AppUsersManager extends AppManager {
             ...user,
             first_name: update.first_name,
             last_name: update.last_name,
-            username: update.username
+            username: undefined,
+            usernames: update.usernames
           }, true);
         }
       }
@@ -126,23 +129,19 @@ export class AppUsersManager extends AppManager {
     ]).then(([state, {results: users, storage}]) => {
       this.storage = storage;
 
-      if(users.length) {
-        for(let i = 0, length = users.length; i < length; ++i) {
-          const user = users[i];
-          if(user) {
-            this.users[user.id] = user;
-            this.setUserNameToCache(user);
+      this.saveApiUsers(users);
+      for(let i = 0, length = users.length; i < length; ++i) {
+        const user = users[i];
+        if(!user) {
+          continue;
+        }
 
-            this.checkPremium(user);
+        if(state.contactsListCachedTime && (user.pFlags.contact || user.pFlags.mutual_contact)) {
+          this.pushContact(user.id);
 
-            if(state.contactsListCachedTime && (user.pFlags.contact || user.pFlags.mutual_contact)) {
-              this.pushContact(user.id);
-
-              if(!this.contactsFillPromise) {
-                this.contactsFillPromise = deferredPromise();
-                this.contactsFillPromise.resolve(this.contactsList);
-              }
-            }
+          if(!this.contactsFillPromise) {
+            this.contactsFillPromise = deferredPromise();
+            this.contactsFillPromise.resolve(this.contactsList);
           }
         }
       }
@@ -198,9 +197,7 @@ export class AppUsersManager extends AppManager {
         const peerId = userId.toPeerId();
         if(!this.peersStorage.isPeerNeeded(peerId)) {
           const user = this.users[userId];
-          if(user.username) {
-            delete this.usernames[cleanUsername(user.username)];
-          }
+          this.modifyUsernamesCache(user, false);
 
           this.storage.delete(userId);
           delete this.users[userId];
@@ -294,7 +291,7 @@ export class AppUsersManager extends AppManager {
 
     return {
       cached: this.contactsFillPromise?.isFulfilled,
-      promise: this.contactsFillPromise || (this.contactsFillPromise = promise)
+      promise: this.contactsFillPromise ||= promise
     };
   }
 
@@ -304,13 +301,15 @@ export class AppUsersManager extends AppManager {
     }
 
     username = username.toLowerCase();
-    const userId = this.usernames[username];
-    if(userId) {
-      return this.users[userId];
+    const peerId = this.usernames[username];
+    if(peerId) {
+      return this.appPeersManager.getPeer(peerId);
     }
 
-    return this.apiManager.invokeApi('contacts.resolveUsername', {username}).then((resolvedPeer) => {
-      return this.processResolvedPeer(resolvedPeer);
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'contacts.resolveUsername',
+      params: {username},
+      processResult: (resolvedPeer) => this.processResolvedPeer(resolvedPeer)
     });
   }
 
@@ -349,7 +348,7 @@ export class AppUsersManager extends AppManager {
       user.first_name,
       user.last_name,
       user.phone,
-      user.username,
+      ...getPeerActiveUsernames(user),
       // user.pFlags.self ? I18n.format('SavedMessages', true) : '',
       user.pFlags.self ? 'Saved Messages' : ''
     ];
@@ -447,22 +446,41 @@ export class AppUsersManager extends AppManager {
     apiUsers.forEach((user) => this.saveApiUser(user, override));
   }
 
-  private setUserNameToCache(user: MTUser.user, oldUser?: MTUser.user) {
-    if(!oldUser || oldUser.username !== user.username) {
-      if(oldUser?.username) {
-        const oldSearchUsername = cleanUsername(oldUser.username);
-        delete this.usernames[oldSearchUsername];
-      }
+  public modifyUsernamesCache(peer: Parameters<typeof getPeerActiveUsernames>[0], save: boolean) {
+    const usernames = getPeerActiveUsernames(peer);
+    if(!usernames.length) {
+      return;
+    }
 
-      if(user.username) {
-        const searchUsername = cleanUsername(user.username);
-        this.usernames[searchUsername] = user.id;
-      }
+    const cleanedUsernames = usernames.map((username) => cleanUsername(username));
+    if(save) {
+      cleanedUsernames.forEach((searchUsername) => {
+        this.usernames[searchUsername] = peer.id.toPeerId(peer._ !== 'user');
+      });
+    } else {
+      cleanedUsernames.forEach((searchUsername) => {
+        delete this.usernames[searchUsername];
+      });
     }
   }
 
+  public setUsernameToCache(peer: Parameters<typeof getPeerActiveUsernames>[0], oldPeer?: typeof peer) {
+    if(
+      !oldPeer ||
+      (oldPeer as MTUser.user).username !== (peer as MTUser.user).username ||
+      !deepEqual((oldPeer as MTUser.user).usernames, (peer as MTUser.user).usernames)
+    ) {
+      this.modifyUsernamesCache(oldPeer, false);
+      this.modifyUsernamesCache(peer, true);
+
+      return true;
+    }
+
+    return false;
+  }
+
   public saveApiUser(user: MTUser, override?: boolean) {
-    if(user._ === 'userEmpty') return;
+    if(!user || user._ === 'userEmpty') return;
 
     const userId = user.id;
     const oldUser = this.users[userId];
@@ -473,9 +491,7 @@ export class AppUsersManager extends AppManager {
     //   return;
     // }
 
-    if(user.pFlags === undefined) {
-      user.pFlags = {};
-    }
+    user.pFlags ??= {};
 
     if(user.pFlags.min && oldUser !== undefined) {
       return;
@@ -484,7 +500,7 @@ export class AppUsersManager extends AppManager {
     // * exclude from state
     // defineNotNumerableProperties(user, ['initials', 'num', 'rFirstName', 'rFullName', 'rPhone', 'sortName', 'sortStatus']);
 
-    this.setUserNameToCache(user, oldUser);
+    const changedUsername = this.setUsernameToCache(user, oldUser);
 
     if(!oldUser ||
       oldUser.sortName === undefined ||
@@ -507,14 +523,22 @@ export class AppUsersManager extends AppManager {
       }
     }
 
+    if((user as User).photo?._ === 'userProfilePhotoEmpty') {
+      delete (user as User).photo;
+    }
+
     // user.sortStatus = user.pFlags.bot ? -1 : this.getUserStatusForSort(user.status);
+
+    // if(!user.username && user.usernames) {
+    //   user.username = user.usernames.find((username) => username.pFlags.active).username;
+    // }
 
     if(oldUser === undefined) {
       this.users[userId] = user;
     } else {
       const changedTitle = user.first_name !== oldUser.first_name ||
         user.last_name !== oldUser.last_name ||
-        user.username !== oldUser.username;
+        changedUsername;
 
       const oldPhotoId = (oldUser.photo as UserProfilePhoto.userProfilePhoto)?.photo_id;
       const newPhotoId = (user.photo as UserProfilePhoto.userProfilePhoto)?.photo_id;
@@ -540,23 +564,23 @@ export class AppUsersManager extends AppManager {
       }
 
       if(changedPhoto) {
-        this.rootScope.dispatchEvent('avatar_update', user.id.toPeerId());
+        this.rootScope.dispatchEvent('avatar_update', {peerId: user.id.toPeerId()});
       }
 
       if(changedTitle || changedAnyBadge) {
-        this.rootScope.dispatchEvent('peer_title_edit', user.id.toPeerId());
+        this.rootScope.dispatchEvent('peer_title_edit', {peerId: user.id.toPeerId()});
       }
     }
 
-    this.checkPremium(user);
+    this.checkPremium(user, oldUser);
     this.setUserToStateIfNeeded(user);
   }
 
-  private checkPremium(user: User) {
+  private checkPremium(user: User, oldUser: User) {
     if(user.pFlags.self) {
       const isPremium = !!user.pFlags.premium;
       if(this.rootScope.premium !== isPremium) {
-        this.rootScope.dispatchEvent('premium_toggle', isPremium);
+        this.rootScope.dispatchEvent('premium_toggle_private', {isNew: !oldUser, isPremium});
       }
     }
   }
@@ -575,7 +599,8 @@ export class AppUsersManager extends AppManager {
 
   public getUserStatusForSort(status: User['status'] | UserId) {
     if(typeof(status) !== 'object') {
-      status = this.getUser(status).status;
+      const user = this.getUser(status);
+      status = user?.status;
     }
 
     if(status) {
@@ -611,7 +636,24 @@ export class AppUsersManager extends AppManager {
       return id;
     }
 
-    return this.users[id] || {_: 'userEmpty', id, pFlags: {deleted: true}, access_hash: ''} as any as User;
+    return this.users[id];
+  }
+
+  public getUserStatus(id: UserId) {
+    return this.isRegularUser(id) && !this.users[id].pFlags.self && this.users[id].status;
+  }
+
+  public async getUserPhone(id: UserId) {
+    const user = this.getUser(id);
+    if(!user?.phone) {
+      return;
+    }
+
+    const appConfig = await this.apiManager.getAppConfig();
+    return {
+      phone: user.phone,
+      isAnonymous: appConfig.fragment_prefixes.some((prefix) => user.phone.startsWith(prefix))
+    };
   }
 
   public getSelf() {
@@ -620,6 +662,10 @@ export class AppUsersManager extends AppManager {
 
   public isBot(id: UserId) {
     return this.users[id] && !!this.users[id].pFlags.bot;
+  }
+
+  public isAttachMenuBot(id: UserId) {
+    return this.isBot(id) && !!this.users[id].pFlags.bot_attach_menu;
   }
 
   public isContact(id: UserId) {
@@ -638,14 +684,6 @@ export class AppUsersManager extends AppManager {
   public hasUser(id: UserId, allowMin?: boolean) {
     const user = this.users[id];
     return isObject(user) && (allowMin || !user.pFlags.min);
-  }
-
-  public getUserPhoto(id: UserId) {
-    const user = this.getUser(id);
-
-    return user && user.photo || {
-      _: 'userProfilePhotoEmpty'
-    };
   }
 
   public getUserString(id: UserId) {
@@ -969,7 +1007,7 @@ export class AppUsersManager extends AppManager {
     return this.apiManager.invokeApiSingle('account.updateStatus', {offline});
   }
 
-  public addContact(userId: UserId, first_name: string, last_name: string, phone: string, showPhone?: true) {
+  public addContact(userId: UserId, first_name: string, last_name: string, phone: string, addPhonePrivacyException?: boolean) {
     /* if(!userId) {
       return this.importContacts([{
         first_name,
@@ -983,7 +1021,7 @@ export class AppUsersManager extends AppManager {
       first_name,
       last_name,
       phone,
-      add_phone_privacy_exception: showPhone
+      add_phone_privacy_exception: addPhonePrivacyException
     }).then((updates) => {
       this.apiUpdatesManager.processUpdateMessage(updates, {override: true});
 
@@ -1003,15 +1041,16 @@ export class AppUsersManager extends AppManager {
     });
   }
 
-  public isRestricted(userId: UserId) {
-    const user: MTUser.user = this.getUser(userId);
-    const restrictionReasons = user.restriction_reason;
-
-    return !!(user.pFlags.restricted && restrictionReasons && isRestricted(restrictionReasons));
-  }
-
   public checkUsername(username: string) {
     return this.apiManager.invokeApi('account.checkUsername', {username});
+  }
+
+  public toggleUsername(username: string, active: boolean) {
+    return this.apiManager.invokeApi('account.toggleUsername', {username, active});
+  }
+
+  public reorderUsernames(usernames: string[]) {
+    return this.apiManager.invokeApi('account.reorderUsernames', {order: usernames});
   }
 
   public canSendToUser(userId: UserId) {

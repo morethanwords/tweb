@@ -99,7 +99,7 @@ export default class ReactionElement extends HTMLElement {
         this.stickerContainer.classList.add('is-custom');
         const wrapped = wrapCustomEmoji({
           docIds: [reaction.document_id],
-          size: makeMediaSize(REACTION_BLOCK_SIZE, REACTION_BLOCK_SIZE)
+          customEmojiSize: makeMediaSize(REACTION_BLOCK_SIZE, REACTION_BLOCK_SIZE)
         });
 
         this.stickerContainer.append(wrapped);
@@ -176,7 +176,12 @@ export default class ReactionElement extends HTMLElement {
     if(this.type === 'inline') return;
     const wasChosen = this.classList.contains('is-chosen') && !this.classList.contains('backwards');
     if(wasChosen !== isChosen) {
-      SetTransition(this, 'is-chosen', isChosen, this.isConnected ? 300 : 0);
+      SetTransition({
+        element: this,
+        className: 'is-chosen',
+        forwards: isChosen,
+        duration: this.isConnected ? 300 : 0
+      });
     }
   }
 

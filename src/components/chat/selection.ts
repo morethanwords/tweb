@@ -332,7 +332,12 @@ class AppSelection extends EventListenerBase<{
       this.appendCheckbox(element, checkboxField);
     } else if(hasCheckbox) {
       this.getCheckboxInputFromElement(element).parentElement.remove();
-      SetTransition(element, 'is-selected', false, 200);
+      SetTransition({
+        element,
+        className: 'is-selected',
+        forwards: false,
+        duration: 200
+      });
     }
 
     return true;
@@ -447,7 +452,12 @@ class AppSelection extends EventListenerBase<{
 
     this.toggleSelection();
     this.updateContainer();
-    SetTransition(element, 'is-selected', isSelected, 200);
+    SetTransition({
+      element,
+      className: 'is-selected',
+      forwards: isSelected,
+      duration: 200
+    });
   }
 
   public isMidSelected(peerId: PeerId, mid: number) {
@@ -593,18 +603,29 @@ export class SearchSelection extends AppSelection {
   };
 
   protected onToggleSelection = (forwards: boolean, animate: boolean) => {
-    SetTransition(this.searchSuper.navScrollableContainer, 'is-selecting', forwards, animate ? 200 : 0, () => {
-      if(!this.isSelecting) {
-        this.selectionContainer.remove();
-        this.selectionContainer =
-          this.selectionForwardBtn =
-          this.selectionDeleteBtn =
-          null;
-        this.selectedText = undefined;
+    SetTransition({
+      element: this.searchSuper.navScrollableContainer,
+      className: 'is-selecting',
+      forwards,
+      duration: animate ? 200 : 0,
+      onTransitionEnd: () => {
+        if(!this.isSelecting) {
+          this.selectionContainer.remove();
+          this.selectionContainer =
+            this.selectionForwardBtn =
+            this.selectionDeleteBtn =
+            null;
+          this.selectedText = undefined;
+        }
       }
     });
 
-    SetTransition(this.searchSuper.container, 'is-selecting', forwards, 200);
+    SetTransition({
+      element: this.searchSuper.container,
+      className: 'is-selecting',
+      forwards,
+      duration: 200
+    });
 
     if(this.isSelecting) {
       if(!this.selectionContainer) {
@@ -859,23 +880,29 @@ export default class ChatSelection extends AppSelection {
   protected onToggleSelection = async(forwards: boolean, animate: boolean) => {
     const {needTranslateX, widthFrom, widthTo} = await this.chat.input.center(animate);
 
-    SetTransition(this.listenElement, 'is-selecting', forwards, animate ? 200 : 0, () => {
-      if(!this.isSelecting) {
-        this.selectionInputWrapper.remove();
-        this.selectionInputWrapper =
-          this.selectionContainer =
-          this.selectionSendNowBtn =
-          this.selectionForwardBtn =
-          this.selectionDeleteBtn =
-          this.selectionLeft =
-          this.selectionRight =
-          null;
-        this.selectedText = undefined;
-      }
+    SetTransition({
+      element: this.listenElement,
+      className: 'is-selecting',
+      forwards,
+      duration: animate ? 200 : 0,
+      onTransitionEnd: () => {
+        if(!this.isSelecting) {
+          this.selectionInputWrapper.remove();
+          this.selectionInputWrapper =
+            this.selectionContainer =
+            this.selectionSendNowBtn =
+            this.selectionForwardBtn =
+            this.selectionDeleteBtn =
+            this.selectionLeft =
+            this.selectionRight =
+            null;
+          this.selectedText = undefined;
+        }
 
-      /* fastRaf(() => {
-        this.bubbles.onScroll();
-      }); */
+        /* fastRaf(() => {
+          this.bubbles.onScroll();
+        }); */
+      }
     });
 
     // const chatInput = this.appImManager.chatInput;

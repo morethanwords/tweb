@@ -23,12 +23,25 @@ import getStickerEffectThumb from './utils/stickers/getStickerEffectThumb';
 
 const CACHE_TIME = 3600e3;
 
-const EMOJI_SET_LOCAL_ID = 'emoji';
-const EMOJI_ANIMATIONS_SET_LOCAL_ID = 'emojiAnimations';
-const LOCAL_IDS_SET = new Set([
-  EMOJI_SET_LOCAL_ID,
-  EMOJI_ANIMATIONS_SET_LOCAL_ID
-]);
+type LOCAL_STICKER_SET_ID = Extract<
+  InputStickerSet['_'],
+  'inputStickerSetAnimatedEmoji' | 'inputStickerSetAnimatedEmojiAnimations' |
+  'inputStickerSetPremiumGifts' | 'inputStickerSetEmojiGenericAnimations' |
+  'inputStickerSetEmojiDefaultStatuses' | 'inputStickerSetEmojiDefaultTopicIcons'
+>;
+
+type LOCAL_ID = 'EMOJI' | 'EMOJI_ANIMATIONS' | 'PREMIUM_GIFTS' | 'GENERIC_ANIMATIONS' | 'DEFAULT_STATUSES' | 'DEFAULT_TOPIC_ICONS';
+
+const LOCAL_IDS: {[key in LOCAL_ID]: LOCAL_STICKER_SET_ID} = {
+  EMOJI: 'inputStickerSetAnimatedEmoji',
+  EMOJI_ANIMATIONS: 'inputStickerSetAnimatedEmojiAnimations',
+  PREMIUM_GIFTS: 'inputStickerSetPremiumGifts',
+  GENERIC_ANIMATIONS: 'inputStickerSetEmojiGenericAnimations',
+  DEFAULT_STATUSES: 'inputStickerSetEmojiDefaultStatuses',
+  DEFAULT_TOPIC_ICONS: 'inputStickerSetEmojiDefaultTopicIcons'
+}
+
+const LOCAL_IDS_SET: Set<LOCAL_STICKER_SET_ID> = new Set(Object.values(LOCAL_IDS) as any);
 
 // let TEST_FILE_REFERENCE_REFRESH = true;
 
@@ -203,10 +216,14 @@ export class AppStickersManager extends AppManager {
     return promise;
   }
 
+  public getLocalStickerSet(id: LOCAL_STICKER_SET_ID) {
+    return this.getStickerSet({id}, {saveById: true});
+  }
+
   public getAnimatedEmojiStickerSet() {
     return Promise.all([
-      this.getStickerSet({id: EMOJI_SET_LOCAL_ID}, {saveById: true}),
-      this.getStickerSet({id: EMOJI_ANIMATIONS_SET_LOCAL_ID}, {saveById: true}),
+      this.getLocalStickerSet(LOCAL_IDS.EMOJI),
+      this.getLocalStickerSet(LOCAL_IDS.EMOJI_ANIMATIONS),
       this.getAnimatedEmojiSounds()
     ]).then(([emoji, animations]) => {
       return {emoji, animations};
@@ -332,7 +349,7 @@ export class AppStickersManager extends AppManager {
   }
 
   public getAnimatedEmojiSticker(emoji: string, isAnimation?: boolean) {
-    const id = isAnimation ? EMOJI_ANIMATIONS_SET_LOCAL_ID : EMOJI_SET_LOCAL_ID;
+    const id = isAnimation ? LOCAL_IDS.EMOJI_ANIMATIONS : LOCAL_IDS.EMOJI;
     const stickerSet = this.storage.getFromCache(id);
     // const stickerSet = await this.getStickerSet({id});
     if(!stickerSet?.documents) return;
@@ -455,13 +472,9 @@ export class AppStickersManager extends AppManager {
   } */
 
   public getStickerSetInput(set: MyStickerSetInput): InputStickerSet {
-    if(set.id === EMOJI_SET_LOCAL_ID) {
+    if(LOCAL_IDS_SET.has(set.id as any)) {
       return {
-        _: 'inputStickerSetAnimatedEmoji'
-      };
-    } else if(set.id === EMOJI_ANIMATIONS_SET_LOCAL_ID) {
-      return {
-        _: 'inputStickerSetAnimatedEmojiAnimations'
+        _: set.id as any
       };
     } else if(!set.access_hash) {
       return {

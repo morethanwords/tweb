@@ -16,7 +16,7 @@ import {i18n} from '../../lib/langPack';
 import {AckedResult} from '../../lib/mtproto/superMessagePort';
 import rootScope from '../../lib/rootScope';
 import AvatarElement from '../avatar';
-import ButtonMenu, {ButtonMenuItemOptions} from '../buttonMenu';
+import {ButtonMenuItemOptions, ButtonMenuSync} from '../buttonMenu';
 import ButtonMenuToggle from '../buttonMenuToggle';
 import PeerTitle from '../peerTitle';
 import SetTransition from '../singleTransition';
@@ -36,6 +36,7 @@ export default class ChatSendAs {
   private listenerSetter: ListenerSetter;
   private peerId: PeerId;
   private addedListener: boolean;
+  private buttons: ButtonMenuItemOptions[];
 
   constructor(
     private managers: AppManagers,
@@ -59,6 +60,8 @@ export default class ChatSendAs {
       onClick: undefined
     }];
 
+    this.buttons = [];
+
     let previousAvatar: HTMLElement;
     const onSendAsMenuToggle = (visible: boolean) => {
       if(visible) {
@@ -68,25 +71,47 @@ export default class ChatSendAs {
       const isChanged = this.avatar !== previousAvatar;
       const useRafs = !visible && isChanged ? 2 : 0;
 
-      SetTransition(this.closeBtn, 'is-visible', visible, SEND_AS_ANIMATION_DURATION, undefined, useRafs);
+      SetTransition({
+        element: this.closeBtn,
+        className: 'is-visible',
+        forwards: visible,
+        duration: SEND_AS_ANIMATION_DURATION,
+        useRafs
+      });
       if(!isChanged) {
-        SetTransition(previousAvatar, 'is-visible', !visible, SEND_AS_ANIMATION_DURATION, undefined, useRafs);
+        SetTransition({
+          element: previousAvatar,
+          className: 'is-visible',
+          forwards: !visible,
+          duration: SEND_AS_ANIMATION_DURATION,
+          useRafs
+        });
       }
     };
 
     ButtonMenuToggle({
-      noRipple: true,
+      buttonOptions: {noRipple: true},
       listenerSetter: this.listenerSetter,
-      container: this.container
-    }, 'top-right', sendAsButtons, () => {
-      onSendAsMenuToggle(true);
-    }, () => {
-      onSendAsMenuToggle(false);
+      container: this.container,
+      direction: 'top-right',
+      buttons: sendAsButtons,
+      onOpenBefore: () => {
+        onSendAsMenuToggle(true);
+      },
+      onOpen: (e, btnMenu) => {
+        sendAsButtons[0].element.classList.add('btn-menu-item-header');
+        this.btnMenu = btnMenu as any;
+        this.btnMenu.classList.add('scrollable', 'scrollable-y');
+        this.btnMenu.append(...this.buttons.map((button) => button.element));
+      },
+      onClose: () => {
+        onSendAsMenuToggle(false);
+      },
+      onCloseAfter: () => {
+        this.btnMenu = undefined;
+      }
     });
 
-    sendAsButtons[0].element.classList.add('btn-menu-item-header');
-    this.btnMenu = this.container.firstElementChild as any;
-    this.btnMenu.classList.add('scrollable', 'scrollable-y');
     this.container.append(this.closeBtn);
   }
 
@@ -137,7 +162,7 @@ export default class ChatSendAs {
     });
 
     const buttons = await Promise.all(promises);
-    const btnMenu = ButtonMenu(buttons/* , this.listenerSetter */);
+    const btnMenu = ButtonMenuSync({buttons}/* , this.listenerSetter */);
     buttons.forEach((button, idx) => {
       const peerId = peerIds[idx];
       const avatar = new AvatarElement();
@@ -151,8 +176,10 @@ export default class ChatSendAs {
       button.element.prepend(avatar);
     });
 
-    Array.from(this.btnMenu.children).slice(1).forEach((node) => node.remove());
-    this.btnMenu.append(...Array.from(btnMenu.children));
+    this.buttons = buttons;
+
+    // if already opened
+    this.btnMenu?.append(...this.buttons.map((button) => button.element));
   }
 
   private async updateAvatar(sendAsPeerId: PeerId, skipAnimation?: boolean) {
@@ -176,11 +203,24 @@ export default class ChatSendAs {
       peerId: sendAsPeerId
     });
 
-    SetTransition(avatar, 'is-visible', true, duration, undefined, useRafs);
+    SetTransition({
+      element: avatar,
+      className: 'is-visible',
+      forwards: true,
+      duration,
+      useRafs
+    });
     if(previousAvatar) {
-      SetTransition(previousAvatar, 'is-visible', false, duration, () => {
-        previousAvatar.remove();
-      }, useRafs);
+      SetTransition({
+        element: previousAvatar,
+        className: 'is-visible',
+        forwards: false,
+        duration,
+        onTransitionEnd: () => {
+          previousAvatar.remove();
+        },
+        useRafs
+      });
     }
 
     this.container.append(avatar);
@@ -278,7 +318,7 @@ export default class ChatSendAs {
   }
 
   public update(skipAnimation?: boolean) {
-    return this.updateManual(skipAnimation).then((callback) => callback && callback());
+    return this.updateManual(skipAnimation).then((callback) => callback?.());
   }
 
   public setPeerId(peerId?: PeerId) {

@@ -5,7 +5,7 @@
  */
 
 import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config, Reaction} from '../layer';
-import type {AppMessagesManager, Dialog, MessagesStorageKey, MyMessage} from './appManagers/appMessagesManager';
+import type {Dialog, ForumTopic, MessagesStorageKey, MyMessage} from './appManagers/appMessagesManager';
 import type {MyDialogFilter} from './storages/filters';
 import type {Folder} from './storages/dialogs';
 import type {UserTyping} from './appManagers/appProfileManager';
@@ -17,12 +17,12 @@ import type {State} from '../config/state';
 import type {Progress} from './appManagers/appDownloadManager';
 import type {CallId} from './appManagers/appCallsManager';
 import type {MyDocument} from './appManagers/appDocsManager';
+import type {MTAppConfig} from './mtproto/appConfig';
 import {NULL_PEER_ID, UserAuth} from './mtproto/mtproto_config';
 import EventListenerBase from '../helpers/eventListenerBase';
 import {MOUNT_CLASS_TO} from '../config/debug';
 import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
 import {IS_WORKER} from '../helpers/context';
-import {MTAppConfig} from './mtproto/appConfig';
 
 export type BroadcastEvents = {
   'chat_full_update': ChatId,
@@ -36,9 +36,9 @@ export type BroadcastEvents = {
 
   'peer_pinned_messages': {peerId: PeerId, mids?: number[], pinned?: boolean, unpinAll?: true},
   'peer_pinned_hidden': {peerId: PeerId, maxId: number},
-  'peer_typings': {peerId: PeerId, typings: UserTyping[]},
+  'peer_typings': {peerId: PeerId, threadId?: number, typings: UserTyping[]},
   'peer_block': {peerId: PeerId, blocked: boolean},
-  'peer_title_edit': PeerId,
+  'peer_title_edit': {peerId: PeerId, threadId?: number},
   'peer_bio_edit': PeerId,
   'peer_deleted': PeerId, // left chat, deleted user dialog, left channel
   'peer_full_update': PeerId,
@@ -50,15 +50,15 @@ export type BroadcastEvents = {
 
   'folder_unread': Omit<Folder, 'dialogs' | 'dispatchUnreadTimeout'>,
 
-  'dialog_draft': {peerId: PeerId, dialog: Dialog, drop: boolean, draft: MyDraftMessage | undefined},
-  'dialog_unread': {peerId: PeerId, dialog: Dialog},
+  'dialog_draft': {peerId: PeerId, dialog: Dialog | ForumTopic, drop: boolean, draft: MyDraftMessage | undefined},
+  'dialog_unread': {peerId: PeerId, dialog: Dialog | ForumTopic},
   'dialog_flush': {peerId: PeerId, dialog: Dialog},
-  'dialog_drop': {peerId: PeerId, dialog?: Dialog},
+  'dialog_drop': Dialog | ForumTopic,
   'dialog_migrate': {migrateFrom: PeerId, migrateTo: PeerId},
   // 'dialog_top': Dialog,
-  'dialog_notify_settings': Dialog,
+  'dialog_notify_settings': Dialog | ForumTopic,
   // 'dialog_order': {dialog: Dialog, pos: number},
-  'dialogs_multiupdate': Map<PeerId, Dialog>,
+  'dialogs_multiupdate': Map<PeerId, {dialog?: Dialog, topics?: Map<number, ForumTopic>}>,
 
   'history_append': {storageKey: MessagesStorageKey, message: Message.message},
   'history_update': {storageKey: MessagesStorageKey, message: MyMessage, sequential?: boolean},
@@ -97,7 +97,7 @@ export type BroadcastEvents = {
   'state_synchronizing': ChatId | void,
 
   'contacts_update': UserId,
-  'avatar_update': PeerId,
+  'avatar_update': {peerId: PeerId, threadId?: number},
   'poll_update': {poll: Poll, results: PollResults},
   'invalidate_participants': ChatId,
   // 'channel_settings': {channelId: number},
@@ -147,6 +147,7 @@ export type BroadcastEvents = {
   'payment_sent': {peerId: PeerId, mid: number, receiptMessage: Message.messageService}
 
   'premium_toggle': boolean,
+  'premium_toggle_private': {isNew: boolean, isPremium: boolean},
 
   'config': Config,
   'app_config': MTAppConfig
@@ -174,8 +175,12 @@ export class RootScope extends EventListenerBase<BroadcastEventsListeners> {
       this.myId = id.toPeerId();
     });
 
-    this.addEventListener('premium_toggle', (isPremium) => {
+    this.addEventListener('premium_toggle_private', ({isNew, isPremium}) => {
       this.premium = isPremium;
+
+      if(!isNew) {
+        this.dispatchEventSingle('premium_toggle', isPremium);
+      }
     });
 
     this.addEventListener('connection_status_change', (status) => {

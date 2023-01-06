@@ -8,19 +8,46 @@ import InputField from '../../inputField';
 import {SliderSuperTab} from '../../slider';
 import EditPeer from '../../editPeer';
 import {UsernameInputField} from '../../usernameInputField';
-import {i18n, i18n_} from '../../../lib/langPack';
+import {i18n, i18n_, LangPackKey} from '../../../lib/langPack';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import rootScope from '../../../lib/rootScope';
-import {generateSection, SettingSection} from '..';
-import anchorCopy from '../../../helpers/dom/anchorCopy';
+import setBlankToAnchor from '../../../lib/richTextProcessor/setBlankToAnchor';
+import getPeerEditableUsername from '../../../lib/appManagers/utils/peers/getPeerEditableUsername';
+import SettingSection, {generateSection} from '../../settingSection';
+import UsernamesSection from '../../usernamesSection';
 
 // TODO: аватарка не поменяется в этой вкладке после изменения почему-то (если поставить в другом клиенте, и потом тут проверить, для этого ещё вышел в чатлист)
+
+export function purchaseUsernameCaption() {
+  const p = document.createElement('div');
+  const FRAGMENT_USERNAME_URL = 'https://fragment.com/username/';
+  const a = setBlankToAnchor(document.createElement('a'));
+  const purchaseText = i18n('Username.Purchase', [a]);
+  purchaseText.classList.add('username-purchase-help');
+  p.append(
+    purchaseText,
+    document.createElement('br'),
+    document.createElement('br')
+  );
+  p.classList.add('hide');
+
+  return {
+    element: p,
+    setUsername: (username: string) => {
+      if(username) {
+        a.href = FRAGMENT_USERNAME_URL + username;
+      }
+
+      p.classList.toggle('hide', !username);
+    }
+  };
+}
 
 export default class AppEditProfileTab extends SliderSuperTab {
   private firstNameInputField: InputField;
   private lastNameInputField: InputField;
   private bioInputField: InputField;
-  private usernameInputField: InputField;
+  private usernameInputField: UsernameInputField;
 
   private profileUrlContainer: HTMLDivElement;
   private profileUrlAnchor: HTMLAnchorElement;
@@ -99,7 +126,11 @@ export default class AppEditProfileTab extends SliderSuperTab {
         listenerSetter: this.listenerSetter,
         onChange: () => {
           this.editPeer.handleChange();
-          this.setProfileUrl();
+          // this.setProfileUrl();
+
+          const {error} = this.usernameInputField;
+          const isPurchase = error?.type === 'USERNAME_PURCHASE_AVAILABLE';
+          setUsername(isPurchase ? this.usernameInputField.value : undefined);
         },
         availableText: 'EditProfile.Username.Available',
         takenText: 'EditProfile.Username.Taken',
@@ -109,20 +140,36 @@ export default class AppEditProfileTab extends SliderSuperTab {
       inputWrapper.append(this.usernameInputField.container);
 
       const caption = section.caption;
-      caption.append(i18n('UsernameSettings.ChangeDescription'));
-      caption.append(document.createElement('br'), document.createElement('br'));
 
-      const profileUrlContainer = this.profileUrlContainer = document.createElement('div');
-      profileUrlContainer.classList.add('profile-url-container');
+      const {setUsername, element: p} = purchaseUsernameCaption();
 
-      const profileUrlAnchor = this.profileUrlAnchor = anchorCopy();
+      caption.append(
+        p,
+        i18n('UsernameHelp')
+        // document.createElement('br'),
+        // document.createElement('br')
+      );
 
-      profileUrlContainer.append(i18n('UsernameHelpLink', [profileUrlAnchor]));
-
-      caption.append(profileUrlContainer);
+      // const profileUrlContainer = this.profileUrlContainer = document.createElement('div');
+      // profileUrlContainer.classList.add('profile-url-container');
+      // const profileUrlAnchor = this.profileUrlAnchor = anchorCopy();
+      // profileUrlContainer.append(i18n('UsernameHelpLink', [profileUrlAnchor]));
+      // caption.append(profileUrlContainer);
 
       inputFields.push(this.usernameInputField);
       section.content.append(inputWrapper);
+      this.scrollable.append(section.container);
+    }
+
+    {
+      const section = new UsernamesSection({
+        peerId: rootScope.myId,
+        peer: user,
+        listenerSetter: this.listenerSetter,
+        usernameInputField: this.usernameInputField,
+        middleware: this.middlewareHelper.get()
+      });
+
       this.scrollable.append(section.container);
     }
 
@@ -160,18 +207,18 @@ export default class AppEditProfileTab extends SliderSuperTab {
     this.firstNameInputField.setOriginalValue(user.first_name, true);
     this.lastNameInputField.setOriginalValue(user.last_name, true);
     this.bioInputField.setOriginalValue(userFull.about, true);
-    this.usernameInputField.setOriginalValue(user.username, true);
+    this.usernameInputField.setOriginalValue(getPeerEditableUsername(user), true);
 
-    this.setProfileUrl();
+    // this.setProfileUrl();
     this.editPeer.handleChange();
   }
 
-  private setProfileUrl() {
-    if(this.usernameInputField.input.classList.contains('error') || !this.usernameInputField.value.length) {
-      this.profileUrlContainer.style.display = 'none';
-    } else {
-      this.profileUrlContainer.style.display = '';
-      this.profileUrlAnchor.replaceWith(this.profileUrlAnchor = anchorCopy({mePath: this.usernameInputField.value}));
-    }
-  }
+  // private setProfileUrl() {
+  //   if(this.usernameInputField.input.classList.contains('error') || !this.usernameInputField.value.length) {
+  //     this.profileUrlContainer.style.display = 'none';
+  //   } else {
+  //     this.profileUrlContainer.style.display = '';
+  //     this.profileUrlAnchor.replaceWith(this.profileUrlAnchor = anchorCopy({mePath: this.usernameInputField.value}));
+  //   }
+  // }
 }

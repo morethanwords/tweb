@@ -40,6 +40,7 @@ $row-border-radius: $border-radius-medium;
   a {
     position: relative;
     z-index: 1;
+    pointer-events: all;
   }
 
   &-title-row,
@@ -95,7 +96,15 @@ $row-border-radius: $border-radius-medium;
     margin-left: 1rem;
   }
 
+  &-title,
+  &-subtitle,
   &-midtitle {
+    position: relative;
+    pointer-events: none;
+  }
+
+  &-midtitle {
+    margin-top: .125rem;
     font-size: var(--font-size-14);
     order: 1;
   }
@@ -107,16 +116,21 @@ $row-border-radius: $border-radius-medium;
       padding-left: 4rem;
     }
 
-    .row-title.tgico:before {
+    /* .row-title */&.tgico:before {
       position: absolute;
       left: 1rem;
       font-size: 1.5rem;
       color: var(--secondary-text-color);
       pointer-events: none;
+      z-index: 1;
 
       // margin-top: -.125rem;
       top: 50%;
       transform: translateY(-50%);
+    }
+
+    &:not(.row-with-icon):before {
+      display: none;
     }
 
     // .row-subtitle:not(:empty):not(.hide) + .row-title.tgico:before {
@@ -130,6 +144,57 @@ $row-border-radius: $border-radius-medium;
     
     @include respond-to(not-handhelds) {
       border-radius: $row-border-radius;
+    }
+  }
+
+  &-sortable {
+    .row-title,
+    .row-subtitle {
+      padding-right: 2.5rem;
+    }
+
+    &-icon {
+      font-size: 1.5rem;
+      height: 1.5rem;
+      line-height: 1;
+      color: var(--secondary-text-color);
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      right: .75rem;
+      pointer-events: none;
+    }
+
+    &.cant-sort {
+      .row-sortable-icon {
+        display: none;
+      }
+    }
+
+    &.is-dragging {
+      background-color: var(--surface-color) !important;
+      z-index: 1;
+      // box-shadow: 0 0 3px 2px rgba(0, 0, 0, $hover-alpha);
+      // &:after {
+      //   content: " ";
+      //   position: absolute;
+      //   top: 0;
+      //   right: 0;
+      //   bottom: 0;
+      //   left: 0;
+      //   background-color: var(--surface-color);
+      //   z-index: -1;
+      // }
+
+      @include hover() {
+        background-color: var(--light-filled-secondary-text-color) !important;
+      }
+    }
+
+    .is-reordering & {
+      @include animation-level(2) {
+        transition: transform var(--transition-standard-in);
+      }
     }
   }
 
@@ -163,6 +228,8 @@ $row-border-radius: $border-radius-medium;
 
     .checkbox-caption {
       padding-left: 0;
+
+      @include text-overflow(true);
     }
 
     &-toggle {
@@ -187,7 +254,7 @@ $row-border-radius: $border-radius-medium;
     height: 2.25rem !important;
     position: absolute !important;
     margin: 0 !important;
-    left: .625rem;
+    left: .75rem;
     display: flex;
     align-items: center;
     justify-content: center;

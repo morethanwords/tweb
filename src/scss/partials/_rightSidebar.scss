@@ -105,6 +105,8 @@
   .input-wrapper {
     width: 100%;
     max-width: 100%;
+    margin: .75rem 0;
+    padding: 0 .75rem;
   }
 }
 
@@ -812,8 +814,7 @@
 
 .edit-peer-container {
   .input-wrapper {
-    padding: 0 .75rem;
-    margin-bottom: .5625rem;
+    margin-bottom: .5625rem !important;
   }
 
   .sidebar-left-section {
@@ -827,7 +828,7 @@
 
 .edit-contact-container {
   .input-wrapper {
-    margin-top: 1.8125rem;
+    margin-top: 1.8125rem !important;
   }
 
   .avatar-placeholder {
@@ -851,6 +852,6 @@
   }
 
   .input-wrapper {
-    margin-top: .875rem;
+    margin-top: .875rem !important;
   }
 }

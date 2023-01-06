@@ -21,6 +21,7 @@ import {AppManagers} from '../../lib/appManagers/managers';
 import overlayCounter from '../../helpers/overlayCounter';
 import Scrollable from '../scrollable';
 import {getMiddleware, MiddlewareHelper} from '../../helpers/middleware';
+import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 
 export type PopupButton = {
   text?: string,
@@ -41,7 +42,8 @@ export type PopupOptions = Partial<{
   withoutOverlay: boolean,
   scrollable: boolean,
   buttons: Array<PopupButton>,
-  title: boolean | LangPackKey
+  title: boolean | LangPackKey,
+  titleRaw: string
 }>;
 
 export interface PopupElementConstructable<T extends PopupElement = any> {
@@ -103,10 +105,12 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
 
     this.header.classList.add('popup-header');
 
-    if(options.title) {
+    if(options.title || options.titleRaw) {
       this.title.classList.add('popup-title');
       if(typeof(options.title) === 'string') {
         _i18n(this.title, options.title);
+      } else if(options.titleRaw) {
+        this.title.append(wrapEmojiText(options.titleRaw));
       }
 
       this.header.append(this.title);
@@ -159,7 +163,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
 
     if(options.scrollable) {
       const scrollable = this.scrollable = new Scrollable(this.body);
-      this.attachScrollableListeners(scrollable);
+      this.attachScrollableListeners();
 
       if(!this.body) {
         this.container.insertBefore(scrollable.container, this.header.nextSibling);
@@ -210,15 +214,8 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     PopupElement.POPUPS.push(this);
   }
 
-  protected attachScrollableListeners(scrollable: Scrollable) {
-    const cb = scrollable.onAdditionalScroll;
-    scrollable.onAdditionalScroll = () => {
-      cb?.();
-      scrollable.container.classList.toggle('scrolled-top', !scrollable.scrollTop);
-      scrollable.container.classList.toggle('scrolled-bottom', scrollable.isScrolledDown);
-    };
-
-    scrollable.container.classList.add('scrolled-top', 'scrolled-bottom', 'scrollable-y-bordered');
+  protected attachScrollableListeners(setClassOn?: HTMLElement) {
+    return this.scrollable.attachBorderListeners(setClassOn);
   }
 
   protected onContentUpdate() {

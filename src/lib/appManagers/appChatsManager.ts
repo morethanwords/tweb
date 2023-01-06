@@ -18,6 +18,9 @@ import {AppManager} from './manager';
 import hasRights from './utils/chats/hasRights';
 import getParticipantPeerId from './utils/chats/getParticipantPeerId';
 import {AppStoragesManager} from './appStoragesManager';
+import getServerMessageId from './utils/messageId/getServerMessageId';
+import {randomLong} from '../../helpers/random';
+import generateMessageId from './utils/messageId/generateMessageId';
 
 export type Channel = Chat.channel;
 export type ChatRights = keyof ChatBannedRights['pFlags'] | keyof ChatAdminRights['pFlags'] | 'change_type' | 'change_permissions' | 'delete_chat' | 'view_participants';
@@ -25,7 +28,7 @@ export type ChatRights = keyof ChatBannedRights['pFlags'] | keyof ChatAdminRight
 export class AppChatsManager extends AppManager {
   private storage: AppStoragesManager['storages']['chats'];
 
-  private chats: {[id: ChatId]: Chat.channel | Chat.chat | any};
+  private chats: {[id: ChatId]: Exclude<Chat, Chat.chatEmpty>};
   // private usernames: any;
   // private channelAccess: any;
   // private megagroups: {[id: number]: true};
@@ -48,7 +51,7 @@ export class AppChatsManager extends AppManager {
 
       updateChatDefaultBannedRights: (update) => {
         const chatId = this.appPeersManager.getPeerId(update.peer).toChatId();
-        const chat: Chat.chat = this.chats[chatId];
+        const chat = this.chats[chatId] as Chat.chat;
         if(chat) {
           chat.default_banned_rights = update.default_banned_rights;
           this.rootScope.dispatchEvent('chat_update', chatId);
@@ -62,14 +65,7 @@ export class AppChatsManager extends AppManager {
     ]).then(([state, {results: chats, storage}]) => {
       this.storage = storage;
 
-      if(chats.length) {
-        for(let i = 0, length = chats.length; i < length; ++i) {
-          const chat = chats[i];
-          if(chat) {
-            this.chats[chat.id] = chat;
-          }
-        }
-      }
+      this.saveApiChats(chats);
 
       this.peersStorage.addEventListener('peerNeeded', (peerId) => {
         if(peerId.isUser() || this.storage.getFromCache(peerId.toChatId())) {
@@ -96,10 +92,8 @@ export class AppChatsManager extends AppManager {
       for(const chatId in this.chats) {
         if(!chatId) continue;
         if(!this.peersStorage.isPeerNeeded(chatId.toPeerId(true))) {
-          /* const chat = this.chats[chatId];
-          if(chat.username) {
-            delete this.usernames[cleanUsername(chat.username)];
-          } */
+          const chat = this.chats[chatId];
+          this.appUsersManager.modifyUsernamesCache(chat, false);
 
           this.storage.delete(chatId);
           delete this.chats[chatId];
@@ -117,7 +111,7 @@ export class AppChatsManager extends AppManager {
   }
 
   public saveApiChat(chat: Chat, override?: boolean) {
-    if(chat._ === 'chatEmpty') return;
+    if(!chat || chat._ === 'chatEmpty') return;
     /* if(chat._ !== 'chat' && chat._ !== 'channel') {
       return;
     } */
@@ -125,7 +119,7 @@ export class AppChatsManager extends AppManager {
     // * exclude from state
     // defineNotNumerableProperties(chat, ['rTitle', 'initials']);
 
-    const oldChat: Exclude<Chat, Chat.chatEmpty> = this.chats[chat.id];
+    const oldChat = this.chats[chat.id];
 
     /* if(oldChat && !override) {
       return;
@@ -144,6 +138,12 @@ export class AppChatsManager extends AppManager {
       chat.participants_count = (oldChat as Chat.channel).participants_count;
     }
 
+    if((chat as Chat.channel).photo?._ === 'chatPhotoEmpty') {
+      delete (chat as Chat.channel).photo;
+    }
+
+    const changedUsername = this.appUsersManager.setUsernameToCache(chat, oldChat);
+
     /* if(chat.username) {
       let searchUsername = searchIndexManager.cleanUsername(chat.username);
       this.usernames[searchUsername] = chat.id;
@@ -155,9 +155,10 @@ export class AppChatsManager extends AppManager {
     } else {
       const oldPhotoId = ((oldChat as Chat.chat).photo as ChatPhoto.chatPhoto)?.photo_id;
       const newPhotoId = ((chat as Chat.chat).photo as ChatPhoto.chatPhoto)?.photo_id;
-      const changedPhoto = oldPhotoId !== newPhotoId;
+      const changedPhoto = oldPhotoId !== newPhotoId ||
+        (oldChat as Chat.channel).pFlags.forum !== (chat as Chat.channel).pFlags.forum;
 
-      const changedTitle = oldChat.title !== chat.title;
+      const changedTitle = oldChat.title !== chat.title || changedUsername;
 
       const changedAnyBadge = (oldChat as Chat.channel).pFlags.verified !== (chat as Chat.channel).pFlags.verified ||
         (oldChat as Chat.channel).pFlags.scam !== (chat as Chat.channel).pFlags.scam ||
@@ -167,11 +168,11 @@ export class AppChatsManager extends AppManager {
       this.rootScope.dispatchEvent('chat_update', chat.id);
 
       if(changedPhoto) {
-        this.rootScope.dispatchEvent('avatar_update', peerId);
+        this.rootScope.dispatchEvent('avatar_update', {peerId});
       }
 
       if(changedTitle || changedAnyBadge) {
-        this.rootScope.dispatchEvent('peer_title_edit', peerId);
+        this.rootScope.dispatchEvent('peer_title_edit', {peerId});
       }
     }
 
@@ -183,11 +184,7 @@ export class AppChatsManager extends AppManager {
   }
 
   public getChat(id: ChatId) {
-    return this.chats[id] || {_: 'chatEmpty', id, deleted: true, access_hash: '', pFlags: {}/* this.channelAccess[id] */};
-  }
-
-  public getChatTyped(id: ChatId): Chat {
-    return this.getChat(id);
+    return this.chats[id];
   }
 
   /**
@@ -203,7 +200,7 @@ export class AppChatsManager extends AppManager {
   }
 
   public editChatDefaultBannedRights(id: ChatId, banned_rights: ChatBannedRights) {
-    const chat: Chat.chat = this.getChat(id);
+    const chat = this.getChat(id) as Chat.chat;
     if(chat.default_banned_rights) {
       if(chat.default_banned_rights.until_date === banned_rights.until_date && deepEqual(chat.default_banned_rights.pFlags, banned_rights.pFlags)) {
         return Promise.resolve();
@@ -242,6 +239,11 @@ export class AppChatsManager extends AppManager {
     return !!(chat as Chat.channel)?.pFlags?.megagroup;
   }
 
+  public isForum(id: ChatId) {
+    const chat = this.chats[id];
+    return !!(chat as Chat.channel)?.pFlags?.forum;
+  }
+
   public isBroadcast(id: ChatId) {
     return this.isChannel(id) && !this.isMegagroup(id);
   }
@@ -249,9 +251,10 @@ export class AppChatsManager extends AppManager {
   public isInChat(id: ChatId) {
     let good = true;
     const chat: Chat = this.getChat(id);
-    if(chat._ === 'channelForbidden' ||
+    if(!chat ||
+      chat._ === 'channelForbidden' ||
       chat._ === 'chatForbidden' ||
-      chat._ === 'chatEmpty' ||
+      (chat as any as Chat.chatEmpty)._ === 'chatEmpty' ||
       (chat as Chat.chat).pFlags.left ||
       // || (chat as any).pFlags.kicked
       (chat as Chat.chat).pFlags.deactivated) {
@@ -263,7 +266,7 @@ export class AppChatsManager extends AppManager {
 
   public getChannelInput(id: ChatId): InputChannel {
     const chat: Chat = this.getChat(id);
-    if(chat._ === 'chatEmpty' || !(chat as Chat.channel).access_hash) {
+    if(!chat || !(chat as Chat.channel).access_hash) {
       return {
         _: 'inputChannelEmpty'
       };
@@ -291,27 +294,19 @@ export class AppChatsManager extends AppManager {
     return {
       _: 'inputPeerChannel',
       channel_id: id,
-      access_hash: this.getChat(id).access_hash/*  || this.channelAccess[id] */ || 0
+      access_hash: (this.getChat(id) as Chat.channel).access_hash/*  || this.channelAccess[id] */ || 0
     };
   }
 
   public hasChat(id: ChatId, allowMin?: true) {
     const chat = this.chats[id];
-    return isObject(chat) && (allowMin || !chat.pFlags.min);
-  }
-
-  public getChatPhoto(id: ChatId) {
-    const chat: Chat.chat = this.getChat(id);
-
-    return chat && chat.photo || {
-      _: 'chatPhotoEmpty'
-    };
+    return isObject(chat) && (allowMin || !(chat as Chat.channel).pFlags.min);
   }
 
   public getChatString(id: ChatId) {
     const chat = this.getChat(id);
     if(this.isChannel(id)) {
-      return (this.isMegagroup(id) ? 's' : 'c') + id + '_' + chat.access_hash;
+      return (this.isMegagroup(id) ? 's' : 'c') + id + '_' + (chat as Chat.channel).access_hash;
     }
     return 'g' + id;
   }
@@ -399,11 +394,11 @@ export class AppChatsManager extends AppManager {
     });
   }
 
-  private onChatUpdated = (chatId: ChatId, updates?: any) => {
+  private onChatUpdated = (chatId: ChatId, updates?: Updates) => {
     // console.log('onChatUpdated', chatId, updates);
 
     this.apiUpdatesManager.processUpdateMessage(updates);
-    if(updates?.updates?.length && this.isChannel(chatId)) {
+    if((updates as Updates.updates)?.updates?.length && this.isChannel(chatId)) {
       this.rootScope.dispatchEvent('invalidate_participants', chatId);
     }
   };
@@ -473,18 +468,13 @@ export class AppChatsManager extends AppManager {
     });
   }
 
-  public updateUsername(id: ChatId, username: string) {
-    return this.apiManager.invokeApi('channels.updateUsername', {
+  public updateUsername(id: ChatId, username: string, doNotRefresh?: boolean) {
+    const promise = this.apiManager.invokeApi('channels.updateUsername', {
       channel: this.getChannelInput(id),
       username
-    }).then((bool) => {
-      if(bool) {
-        const chat: Chat.channel = this.getChat(id);
-        chat.username = username;
-      }
-
-      return bool;
     });
+
+    return this.refreshChatAfterRequest(id, promise, doNotRefresh);
   }
 
   public editPhoto(id: ChatId, inputFile: InputFile) {
@@ -617,9 +607,7 @@ export class AppChatsManager extends AppManager {
       return this.apiManager.invokeApi('channels.togglePreHistoryHidden', {
         channel: this.getChannelInput(channelId),
         enabled
-      });
-    }).then((updates) => {
-      this.apiUpdatesManager.processUpdateMessage(updates);
+      }).then(this.onChatUpdated.bind(this, channelId));
     });
   }
 
@@ -645,6 +633,7 @@ export class AppChatsManager extends AppManager {
     const chatFull = this.appProfileManager.getCachedFullChat(id);
     if(chatFull) {
       chatFull.available_reactions = reactions;
+      this.rootScope.dispatchEvent('chat_full_update', id);
     }
 
     return this.apiManager.invokeApi('messages.setChatAvailableReactions', {
@@ -653,13 +642,6 @@ export class AppChatsManager extends AppManager {
     }).then((updates) => {
       this.apiUpdatesManager.processUpdateMessage(updates);
     });
-  }
-
-  public isRestricted(chatId: ChatId) {
-    const chat: Chat.channel = this.getChat(chatId);
-    const restrictionReasons = chat.restriction_reason;
-
-    return !!(chat.pFlags.restricted && restrictionReasons && isRestricted(restrictionReasons));
   }
 
   public getSendAs(channelId: ChatId) {
@@ -781,11 +763,13 @@ export class AppChatsManager extends AppManager {
     }, {cacheSeconds: 300});
 
     return promise.then((sponsoredMessages) => {
-      this.appUsersManager.saveApiUsers(sponsoredMessages.users);
-      this.appChatsManager.saveApiChats(sponsoredMessages.chats);
+      if(sponsoredMessages._ === 'messages.sponsoredMessages') {
+        this.appUsersManager.saveApiUsers(sponsoredMessages.users);
+        this.appChatsManager.saveApiChats(sponsoredMessages.chats);
 
-      const sponsoredMessage = sponsoredMessages.messages.shift();
-      sponsoredMessages.messages.push(sponsoredMessage);
+        const sponsoredMessage = sponsoredMessages.messages.shift();
+        sponsoredMessages.messages.push(sponsoredMessage);
+      }
 
       return sponsoredMessages;
     });
@@ -808,5 +792,122 @@ export class AppChatsManager extends AppManager {
 
       return chatInvite;
     });
+  }
+
+  public toggleUsername(chatId: ChatId, username: string, active: boolean) {
+    const promise = this.apiManager.invokeApi('channels.toggleUsername', {
+      channel: this.getChannelInput(chatId),
+      username,
+      active
+    });
+
+    return this.refreshChatAfterRequest(chatId, promise);
+  }
+
+  public reorderUsernames(chatId: ChatId, order: string[]) {
+    const promise = this.apiManager.invokeApi('channels.reorderUsernames', {
+      channel: this.getChannelInput(chatId),
+      order
+    });
+
+    return this.refreshChatAfterRequest(chatId, promise);
+  }
+
+  public deactivateAllUsernames(chatId: ChatId, doNotRefresh?: boolean) {
+    const promise = this.apiManager.invokeApi('channels.deactivateAllUsernames', {
+      channel: this.getChannelInput(chatId)
+    });
+
+    return this.refreshChatAfterRequest(chatId, promise, doNotRefresh);
+  }
+
+  public makeChannelPrivate(chatId: ChatId) {
+    const promises: Promise<boolean>[] = [
+      this.updateUsername(chatId, '', true),
+      this.deactivateAllUsernames(chatId, true)
+    ];
+
+    const promise = Promise.all(promises).then(() => true);
+    return this.refreshChatAfterRequest(chatId, promise);
+  }
+
+  public refreshChatAfterRequest<T extends Promise<any>>(chatId: ChatId, promise: T, doNotRefresh?: boolean): T {
+    if(doNotRefresh) {
+      return promise;
+    }
+
+    return promise.then((value) => {
+      return this.getChannels([chatId]).then(() => value);
+    }) as T;
+  }
+
+  public getChannels(chatIds: ChatId[]) {
+    return this.apiManager.invokeApi('channels.getChannels', {
+      id: chatIds.map((chatId) => this.getChannelInput(chatId))
+    }).then((messagesChats) => {
+      this.saveApiChats(messagesChats.chats);
+    });
+  }
+
+  public toggleForum(chatId: ChatId, enabled: boolean) {
+    return this.migrateChat(chatId).then((channelId) => {
+      return this.apiManager.invokeApi('channels.toggleForum', {
+        channel: this.getChannelInput(channelId),
+        enabled
+      }).then(this.onChatUpdated.bind(this, channelId));
+    });
+  }
+
+  public editForumTopic(options: {
+    chatId: ChatId,
+    topicId: number,
+    title?: string,
+    iconEmojiId?: DocId,
+    closed?: boolean,
+    hidden?: boolean
+  }) {
+    const {chatId, topicId, title, iconEmojiId, closed, hidden} = options;
+    return this.apiManager.invokeApi('channels.editForumTopic', {
+      channel: this.getChannelInput(chatId),
+      topic_id: getServerMessageId(topicId),
+      title,
+      icon_emoji_id: iconEmojiId,
+      closed,
+      hidden
+    }).then(this.onChatUpdated.bind(this, chatId));
+  }
+
+  public async createForumTopic(options: {
+    chatId: ChatId,
+    title: string,
+    iconColor: number,
+    iconEmojiId: DocId
+  }) {
+    const {chatId, title, iconColor, iconEmojiId} = options;
+
+    const channelFull = await this.appProfileManager.getChannelFull(chatId);
+    const sendAsInputPeer = channelFull.default_send_as && this.appPeersManager.getInputPeerById(this.appPeersManager.getPeerId(channelFull.default_send_as));
+
+    return this.apiManager.invokeApi('channels.createForumTopic', {
+      channel: this.getChannelInput(chatId),
+      title,
+      icon_color: iconColor,
+      icon_emoji_id: iconEmojiId,
+      random_id: randomLong(),
+      send_as: sendAsInputPeer
+    }).then((updates) => {
+      this.onChatUpdated(chatId, updates);
+
+      const update = (updates as Updates.updates).updates.find((update) => update._ === 'updateNewChannelMessage') as Update.updateNewChannelMessage;
+      return generateMessageId(update.message.id);
+    });
+  }
+
+  public updatePinnedForumTopic(chatId: ChatId, topicId: number, pinned: boolean) {
+    return this.apiManager.invokeApi('channels.updatePinnedForumTopic', {
+      channel: this.getChannelInput(chatId),
+      topic_id: getServerMessageId(topicId),
+      pinned
+    }).then(this.onChatUpdated.bind(this, chatId));
   }
 }

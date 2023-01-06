@@ -5,8 +5,8 @@
  */
 
 import type {ChatRights} from '../../lib/appManagers/appChatsManager';
-import type {AppImManager} from '../../lib/appManagers/appImManager';
-import type {MessagesStorageKey} from '../../lib/appManagers/appMessagesManager';
+import type {AppImManager, ChatSetPeerOptions} from '../../lib/appManagers/appImManager';
+import type {MessageSendingParams, MessagesStorageKey} from '../../lib/appManagers/appMessagesManager';
 import EventListenerBase from '../../helpers/eventListenerBase';
 import {logger, LogTypes} from '../../lib/logger';
 import rootScope from '../../lib/rootScope';
@@ -37,7 +37,7 @@ import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import {Message} from '../../layer';
 import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
 
-export type ChatType = 'chat' | 'pinned' | 'replies' | 'discussion' | 'scheduled';
+export type ChatType = 'chat' | 'pinned' | 'discussion' | 'scheduled';
 
 export default class Chat extends EventListenerBase<{
   setPeer: (mid: number, isTopMessage: boolean) => void
@@ -86,6 +86,8 @@ export default class Chat extends EventListenerBase<{
   public isBroadcast: boolean;
   public isAnyGroup: boolean;
   public isMegagroup: boolean;
+  public isForum: boolean;
+  public isAllMessagesForum: boolean;
 
   public animationGroup: AnimationItemGroup;
 
@@ -107,7 +109,7 @@ export default class Chat extends EventListenerBase<{
     // * constructor end
 
     this.log = logger('CHAT', LogTypes.Log | LogTypes.Warn | LogTypes.Debug | LogTypes.Error);
-    // this.log.error('Chat construction');
+    this.log.warn('constructor');
 
     this.peerId = NULL_PEER_ID;
 
@@ -251,17 +253,19 @@ export default class Chat extends EventListenerBase<{
 
         this.backgroundEl.append(item);
 
-        SetTransition(item, 'is-visible', true, !skipAnimation ? 200 : 0, prev ? () => {
-          if(previousPatternRenderer) {
-            previousPatternRenderer.cleanup(previousPatternCanvas);
-          }
+        SetTransition({
+          element: item,
+          className: 'is-visible',
+          forwards: true,
+          duration: !skipAnimation ? 200 : 0,
+          onTransitionEnd: prev ? () => {
+            previousPatternRenderer?.cleanup(previousPatternCanvas);
+            previousGradientRenderer?.cleanup();
 
-          if(previousGradientRenderer) {
-            previousGradientRenderer.cleanup();
-          }
-
-          prev.remove();
-        } : null, 2);
+            prev.remove();
+          } : null,
+          useRafs: 2
+        });
 
         resolve();
       };
@@ -309,50 +313,31 @@ export default class Chat extends EventListenerBase<{
     this.contextMenu = new ChatContextMenu(this, this.managers);
     this.selection = new ChatSelection(this, this.bubbles, this.input, this.managers);
 
-    if(this.type === 'chat') {
-      this.topbar.constructUtils();
-      this.topbar.constructPeerHelpers();
-    } else if(this.type === 'pinned') {
-      this.topbar.constructPinnedHelpers();
-    } else if(this.type === 'discussion') {
-      this.topbar.constructUtils();
-      this.topbar.constructDiscussionHelpers();
-    }
+    this.topbar.constructUtils();
+    this.topbar.constructPeerHelpers();
 
     this.topbar.construct();
     this.input.construct();
 
-    if(this.type === 'chat') { // * гений в деле, разный порядок из-за разной последовательности действий
-      this.bubbles.constructPeerHelpers();
-      this.input.constructPeerHelpers();
-    } else if(this.type === 'pinned') {
-      this.bubbles.constructPinnedHelpers();
-      this.input.constructPinnedHelpers();
-    } else if(this.type === 'scheduled') {
-      this.bubbles.constructScheduledHelpers();
-      this.input.constructPeerHelpers();
-    } else if(this.type === 'discussion') {
-      this.bubbles.constructPeerHelpers();
-      this.input.constructPeerHelpers();
-    }
+    this.bubbles.constructPeerHelpers();
+    this.input.constructPeerHelpers();
 
-    if(this.type !== 'scheduled' && !IS_TOUCH_SUPPORTED) {
+    if(!IS_TOUCH_SUPPORTED) {
       this.bubbles.setReactionsHoverListeners();
     }
 
     this.bubbles.attachContainerListeners();
 
-    this.container.classList.add('type-' + this.type);
     this.container.append(this.topbar.container, this.bubbles.container, this.input.chatInput);
 
     this.bubbles.listenerSetter.add(rootScope)('dialog_migrate', ({migrateFrom, migrateTo}) => {
       if(this.peerId === migrateFrom) {
-        this.setPeer(migrateTo);
+        this.setPeer({peerId: migrateTo});
       }
     });
 
-    this.bubbles.listenerSetter.add(rootScope)('dialog_drop', (e) => {
-      if(e.peerId === this.peerId) {
+    this.bubbles.listenerSetter.add(rootScope)('dialog_drop', (dialog) => {
+      if(dialog.peerId === this.peerId && (dialog._ === 'dialog' || this.threadId === dialog.id)) {
         this.appImManager.setPeer();
       }
     });
@@ -424,13 +409,15 @@ export default class Chat extends EventListenerBase<{
     this.selection.cleanup();
   }
 
-  public async onChangePeer(m: ReturnType<typeof middlewarePromise>) {
-    const {peerId} = this;
+  public get isForumTopic() {
+    return !!(this.isForum && this.threadId);
+  }
+
+  public async onChangePeer(options: ChatSetPeerOptions, m: ReturnType<typeof middlewarePromise>) {
+    const {peerId, threadId} = this;
 
     const searchTab = appSidebarRight.getTab(AppPrivateSearchTab);
-    if(searchTab) {
-      searchTab.close();
-    }
+    searchTab?.close();
 
     const [
       noForwards,
@@ -440,17 +427,24 @@ export default class Chat extends EventListenerBase<{
       isMegagroup,
       isBroadcast,
       isChannel,
-      isBot
+      isBot,
+      isForum
     ] = await m(Promise.all([
       this.managers.appPeersManager.noForwards(peerId),
-      this.managers.appPeersManager.isRestricted(peerId),
+      this.managers.appPeersManager.isPeerRestricted(peerId),
       this._isAnyGroup(peerId),
       this.setAutoDownloadMedia(),
       this.managers.appPeersManager.isMegagroup(peerId),
       this.managers.appPeersManager.isBroadcast(peerId),
       this.managers.appPeersManager.isChannel(peerId),
-      this.managers.appPeersManager.isBot(peerId)
+      this.managers.appPeersManager.isBot(peerId),
+      this.managers.appPeersManager.isForum(peerId)
     ]));
+
+    // ! WARNING: TEMPORARY, HAVE TO GET TOPIC
+    if(isForum && threadId) {
+      await m(this.managers.dialogsStorage.getForumTopicOrReload(peerId, threadId));
+    }
 
     this.noForwards = noForwards;
     this.isRestricted = isRestricted;
@@ -459,18 +453,30 @@ export default class Chat extends EventListenerBase<{
     this.isBroadcast = isBroadcast;
     this.isChannel = isChannel;
     this.isBot = isBot;
+    this.isForum = isForum;
+    this.isAllMessagesForum = isForum && !threadId;
+
+    if(threadId && !this.isForum) {
+      options.type = 'discussion';
+    }
+
+    const type = options.type ?? 'chat';
+    this.setType(type);
+
+    this.messagesStorageKey = `${this.peerId}_${this.type === 'scheduled' ? 'scheduled' : 'history'}`;
 
     this.container.classList.toggle('no-forwards', this.noForwards);
 
     this.sharedMediaTab = appSidebarRight.createSharedMediaTab();
     this.sharedMediaTabs.push(this.sharedMediaTab);
 
-    this.sharedMediaTab.setPeer(peerId, this.threadId);
+    this.sharedMediaTab.setPeer(peerId, threadId);
     this.input.clearHelper(); // костыль
     this.selection.cleanup(); // TODO: REFACTOR !!!!!!
   }
 
-  public setPeer(peerId: PeerId, lastMsgId?: number, startParam?: string) {
+  public setPeer(options: ChatSetPeerOptions) {
+    const {peerId, threadId} = options;
     if(!peerId) {
       this.inited = undefined;
     } else if(!this.inited) {
@@ -487,11 +493,11 @@ export default class Chat extends EventListenerBase<{
     //   appMediaViewer.close();
     // }
 
-    const samePeer = this.peerId === peerId;
+    const samePeer = this.appImManager.isSamePeer(this, options);
     if(!samePeer) {
       this.appImManager.dispatchEvent('peer_changing', this);
       this.peerId = peerId || NULL_PEER_ID;
-      this.messagesStorageKey = `${this.peerId}_${this.type === 'scheduled' ? 'scheduled' : 'history'}`;
+      this.threadId = threadId;
     } else if(this.setPeerPromise) {
       return;
     }
@@ -499,8 +505,9 @@ export default class Chat extends EventListenerBase<{
     if(!peerId) {
       appSidebarRight.toggleSidebar(false);
       this.cleanup(true);
-      this.bubbles.setPeer(false, peerId);
-      this.appImManager.dispatchEvent('peer_changed', peerId);
+      this.bubbles.setPeer({samePeer: false, peerId});
+      this.peerId = 0;
+      this.appImManager.dispatchEvent('peer_changed', this);
 
       appSidebarRight.replaceSharedMediaTab();
       this.destroySharedMediaTab();
@@ -511,7 +518,7 @@ export default class Chat extends EventListenerBase<{
 
     this.peerChanged = samePeer;
 
-    const bubblesSetPeerPromise = this.bubbles.setPeer(samePeer, peerId, lastMsgId, startParam);
+    const bubblesSetPeerPromise = this.bubbles.setPeer({...options, samePeer});
     const setPeerPromise = this.setPeerPromise = bubblesSetPeerPromise.then((result) => {
       return result.promise;
     }).catch(noop).finally(() => {
@@ -537,7 +544,11 @@ export default class Chat extends EventListenerBase<{
   }
 
   public setMessageId(messageId?: number) {
-    return this.setPeer(this.peerId, messageId);
+    return this.setPeer({
+      peerId: this.peerId,
+      threadId: this.threadId,
+      lastMsgId: messageId
+    });
   }
 
   public async finishPeerChange(isTarget: boolean, isJump: boolean, lastMsgId: number, startParam?: string) {
@@ -552,34 +563,33 @@ export default class Chat extends EventListenerBase<{
     this.cleanup(false);
 
     const sharedMediaTab = this.sharedMediaTab;
-    sharedMediaTab.loadSidebarMedia(true);
 
     const callbacksPromise = Promise.all([
       this.topbar.finishPeerChange(isTarget),
       this.bubbles.finishPeerChange(),
-      this.input.finishPeerChange(startParam)
-    ]);
-
-    const [callbacks] = await Promise.all([
-      callbacksPromise,
+      this.input.finishPeerChange(startParam),
       sharedMediaTab.fillProfileElements()
     ]);
+
+    const callbacks = await callbacksPromise;
+    sharedMediaTab.loadSidebarMedia(true);
 
     if(!middleware()) {
       return;
     }
 
     callbacks.forEach((callback) => {
-      callback();
+      callback?.();
     });
 
     appSidebarRight.replaceSharedMediaTab(sharedMediaTab);
 
     this.sharedMediaTabs.filter((tab) => tab !== sharedMediaTab).forEach((tab) => this.destroySharedMediaTab(tab));
 
+    this.container.dataset.type = this.type;
     this.log.setPrefix('CHAT-' + peerId + '-' + this.type);
 
-    this.appImManager.dispatchEvent('peer_changed', peerId);
+    this.appImManager.dispatchEvent('peer_changed', this);
   }
 
   public getMessage(mid: number) {
@@ -598,6 +608,10 @@ export default class Chat extends EventListenerBase<{
         history: SlicedArray.fromJSON<number>(historyStorageTransferable.historySerialized)
       }
     });
+  }
+
+  public getDialogOrTopic() {
+    return this.isForum && this.threadId ? this.managers.dialogsStorage.getForumTopic(this.peerId, this.threadId) : this.managers.dialogsStorage.getDialogOnly(this.peerId);
   }
 
   public getHistoryMaxId() {
@@ -641,12 +655,12 @@ export default class Chat extends EventListenerBase<{
     });
   }
 
-  public getMessageSendingParams() {
+  public getMessageSendingParams(): MessageSendingParams {
     return {
       threadId: this.threadId,
       replyToMsgId: this.input.replyToMsgId,
       scheduleDate: this.input.scheduleDate,
-      sendSilent: this.input.sendSilent,
+      silent: this.input.sendSilent,
       sendAsPeerId: this.input.sendAsPeerId
     };
   }
@@ -663,5 +677,9 @@ export default class Chat extends EventListenerBase<{
 
   public isAvatarNeeded(message: Message.message | Message.messageService) {
     return this.isAnyGroup && !this.isOutMessage(message);
+  }
+
+  public isPinnedMessagesNeeded() {
+    return this.type === 'chat' || this.isForum;
   }
 }

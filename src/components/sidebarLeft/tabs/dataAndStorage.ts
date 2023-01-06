@@ -5,7 +5,6 @@
  */
 
 import {AutoDownloadPeerTypeSettings, STATE_INIT} from '../../../config/state';
-import {SettingSection} from '..';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import replaceContent from '../../../helpers/dom/replaceContent';
 import toggleDisability from '../../../helpers/dom/toggleDisability';
@@ -23,6 +22,7 @@ import AppAutoDownloadFileTab from './autoDownload/file';
 import AppAutoDownloadPhotoTab from './autoDownload/photo';
 import AppAutoDownloadVideoTab from './autoDownload/video';
 import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
+import SettingSection from '../../settingSection';
 
 const AUTO_DOWNLOAD_FOR_KEYS: {[k in keyof AutoDownloadPeerTypeSettings]: LangPackKey} = {
   contacts: 'AutoDownloadContacts',
@@ -33,7 +33,6 @@ const AUTO_DOWNLOAD_FOR_KEYS: {[k in keyof AutoDownloadPeerTypeSettings]: LangPa
 
 export default class AppDataAndStorageTab extends SliderSuperTabEventable {
   public async init() {
-    this.header.classList.add('with-border');
     this.setTitle('DataSettings');
 
     {

@@ -78,7 +78,7 @@ export class ScrollableBase {
   protected removeHeavyAnimationListener: () => void;
   protected addedScrollListener: boolean;
 
-  constructor(public el: HTMLElement, logPrefix = '', public container: HTMLElement = document.createElement('div')) {
+  constructor(public el?: HTMLElement, logPrefix = '', public container: HTMLElement = document.createElement('div')) {
     this.container.classList.add('scrollable');
 
     this.log = logger('SCROLL' + (logPrefix ? '-' + logPrefix : ''), LogTypes.Error);
@@ -222,7 +222,7 @@ export default class Scrollable extends ScrollableBase {
 
   public loadedAll: SliceSidesContainer = {top: true, bottom: false};
 
-  constructor(el: HTMLElement, logPrefix = '', public onScrollOffset = 300, withPaddingContainer?: boolean) {
+  constructor(el?: HTMLElement, logPrefix = '', public onScrollOffset = 300, withPaddingContainer?: boolean) {
     super(el, logPrefix);
 
     /* if(withPaddingContainer) {
@@ -235,6 +235,17 @@ export default class Scrollable extends ScrollableBase {
     this.container.classList.add('scrollable-y');
     this.setListeners();
     this.scrollProperty = 'scrollTop';
+  }
+
+  public attachBorderListeners(setClassOn = this.container) {
+    const cb = this.onAdditionalScroll;
+    this.onAdditionalScroll = () => {
+      cb?.();
+      setClassOn.classList.toggle('scrolled-top', !this.scrollTop);
+      setClassOn.classList.toggle('scrolled-bottom', this.isScrolledDown);
+    };
+
+    setClassOn.classList.add('scrolled-top', 'scrolled-bottom', 'scrollable-y-bordered');
   }
 
   public setVirtualContainer(el?: HTMLElement) {

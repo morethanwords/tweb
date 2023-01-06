@@ -15,8 +15,8 @@ import {ChatRights} from '../../appChatsManager';
  * @param isThread
  * @returns
  */
-export default function hasRights(chat: Chat, action: ChatRights, rights?: ChatAdminRights | ChatBannedRights, isThread?: boolean) {
-  if(chat._ === 'chatEmpty') return false;
+export default function hasRights(chat: Exclude<Chat, Chat.chatEmpty>, action: ChatRights, rights?: ChatAdminRights | ChatBannedRights, isThread?: boolean) {
+  if(!chat) return false;
 
   if((chat as Chat.chat).pFlags.deactivated && action !== 'view_messages') {
     return false;
@@ -95,7 +95,7 @@ export default function hasRights(chat: Chat, action: ChatRights, rights?: ChatA
 
     case 'change_info':
     case 'invite_users': {
-      return rights._ === 'chatAdminRights' ? myFlags[action] : !myFlags[action];
+      return rights._ === 'chatAdminRights' ? !!myFlags[action] : !myFlags[action];
     }
 
     // * only creator can do that
@@ -104,6 +104,7 @@ export default function hasRights(chat: Chat, action: ChatRights, rights?: ChatA
       return false;
     }
 
+    case 'manage_topics':
     case 'ban_users':
     case 'change_permissions': {
       return rights._ === 'chatAdminRights' && !!myFlags['ban_users'];

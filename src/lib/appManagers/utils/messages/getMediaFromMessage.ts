@@ -14,8 +14,8 @@ export default function getMediaFromMessage(message: Message) {
       messageMedia = ((messageMedia as MessageMedia.messageMediaInvoice).extended_media as MessageExtendedMedia.messageExtendedMedia).media;
     }
 
-    media = (messageMedia as MessageMedia.messageMediaPhoto).photo ||
-      (messageMedia as MessageMedia.messageMediaDocument).document;
+    media = (messageMedia as MessageMedia.messageMediaDocument).document ||
+      (messageMedia as MessageMedia.messageMediaPhoto).photo;
   }
 
   return media as Photo.photo | Document.document;

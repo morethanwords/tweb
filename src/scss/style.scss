@@ -34,7 +34,16 @@ $chat-input-inner-padding-handhelds: .25rem;
 }
 
 @function rgba-to-rgb($rgba, $background: #fff) {
+  @if $background == true {
+    $background: #fff;
+  }
+
   @return mix(rgb(red($rgba), green($rgba), blue($rgba)), $background, alpha($rgba) * 100%);
+}
+
+@mixin avatar-color($color, $top, $bottom) {
+  --peer-avatar-#{$color}-top: #{$top};
+  --peer-avatar-#{$color}-bottom: #{$bottom};
 }
 
 /* @mixin safari-overflow() {
@@ -77,8 +86,8 @@ $chat-input-inner-padding-handhelds: .25rem;
   //--layer-transition: .3s cubic-bezier(.33, 1, .68, 1);
   //--layer-transition: none;
   --btn-corner-transition: .2s cubic-bezier(.34, 1.56, .64, 1);
-  --chatlist-badge-transition-in: .2s cubic-bezier(.35,.35,.47,1); // 1.34
-  --chatlist-badge-transition-out: .2s cubic-bezier(.35,.35,.7,1);
+  --chatlist-badge-transition-in: .25s cubic-bezier(.35,.35,.47,1.34); // 1.34
+  --chatlist-badge-transition-out: .25s cubic-bezier(.35,.35,.7,1);
   --message-handhelds-margin: 5.5625rem;
   --message-beside-button-size: 2.375rem;
   --message-beside-button-margin: calc((var(--message-beside-button-size) + .5rem) * -1);
@@ -127,27 +136,19 @@ $chat-input-inner-padding-handhelds: .25rem;
   --custom-emoji-size: 1.25rem;
 
   // https://github.com/overtake/TelegramSwift/blob/5cc7d2475fe4738a6aa0486c23eaf80a89d33b97/submodules/TGUIKit/TGUIKit/PresentationTheme.swift#L2054
-  --peer-avatar-red-top: #FF845E;
-  --peer-avatar-red-bottom: #D45246;
-  --peer-avatar-orange-top: #FEBB5B;
-  --peer-avatar-orange-bottom: #F68136;
-  --peer-avatar-violet-top: #B694F9;
-  --peer-avatar-violet-bottom: #6C61DF;
-  --peer-avatar-green-top: #9AD164;
-  --peer-avatar-green-bottom: #46BA43;
-  --peer-avatar-cyan-top: #53edd6;
-  --peer-avatar-cyan-bottom: #28c9b7;
-  --peer-avatar-blue-top: #5BCBE3;
-  --peer-avatar-blue-bottom: #359AD4;
-  --peer-avatar-pink-top: #FF8AAC;
-  --peer-avatar-pink-bottom: #D95574;
-  --peer-avatar-saved-top: #69BFFA;
-  --peer-avatar-saved-bottom: #3D9DE0;
-  --peer-avatar-archive-top: #B8C2CC;
-  --peer-avatar-archive-bottom: #9EAAB5;
+  @include avatar-color("red", #FF845E, #D45246);
+  @include avatar-color("orange", #FEBB5B, #F68136);
+  @include avatar-color("violet", #B694F9, #6C61DF);
+  @include avatar-color("green", #9AD164, #46BA43);
+  @include avatar-color("cyan", #53edd6, #28c9b7);
+  @include avatar-color("blue", #5BCBE3, #359AD4);
+  @include avatar-color("pink", #FF8AAC, #D95574);
+  @include avatar-color("saved", #69BFFA, #3D9DE0);
+  @include avatar-color("archive", #B8C2CC, #9EAAB5);
 
   --avatar-color-top: var(--peer-avatar-saved-top);
   --avatar-color-bottom: var(--peer-avatar-saved-bottom);
+  --avatar-border-radius-forum: 37%;
 
   --premium-gradient: linear-gradient(52.62deg, #6B93FF 12.22%, #976FFF 50.25%, #E46ACE 98.83%);
 
@@ -226,7 +227,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   @include splitColor(primary-text-color, #000, false, false, false, false, true);
 
   --secondary-color: #c4c9cc;
-  @include splitColor(secondary-text-color, #707579, true, false);
+  @include splitColor(secondary-text-color, #707579, true, false, #fff);
 
   @include splitColor(danger-color, #df3f40, true, true);
 
@@ -303,7 +304,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   @include splitColor(primary-text-color, #fff, false, false, false, false, true);
 
   --secondary-color: #707579;
-  @include splitColor(secondary-text-color, #aaaaaa, true, false);
+  @include splitColor(secondary-text-color, #aaaaaa, true, false, #212121);
 
   @include splitColor(danger-color, #ff595a, true, true);
 
@@ -392,6 +393,8 @@ $chat-input-inner-padding-handhelds: .25rem;
 @import "partials/stackedAvatars";
 @import "partials/stickerViewer";
 @import "partials/customEmoji";
+@import "partials/usernames";
+@import "partials/topics";
 
 @import "partials/popups/popup";
 @import "partials/popups/editAvatar";
@@ -783,7 +786,7 @@ hr {
 }
 
 b {
-  color: var(--primary-text-color);
+  // color: var(--primary-text-color);
   font-weight: var(--font-weight-bold);
 }
 
@@ -792,6 +795,10 @@ b {
   border-radius: 50%;
   cursor: pointer;
   overflow: hidden;
+
+  &.is-forum {
+    border-radius: var(--avatar-border-radius-forum);
+  }
 
   &-canvas {
     max-width: 100%;
@@ -816,8 +823,10 @@ b {
 
   .tgico-cameraadd {
     position: absolute;
-    font-size: 48px;
-	  line-height: 48px;
+    font-size: 3rem;
+	  line-height: 1;
+    width: 3rem;
+    height: 3rem;
     top: 50%;
     left: 50%;
     transform: translateY(-50%) translateX(-50%);
@@ -925,18 +934,14 @@ b {
 } */
 
 .phone-edit {
-  display: inline-block;
-  width: 24px;
-  height: 24px;
+  width: 1.5rem;
+  height: 1.5rem;
   margin-left: .4rem;
   opacity: .5;
   transition: .2s opacity;
   cursor: pointer;
   font-size: 1.5rem;
-  
-  @include respond-to(handhelds) {
-    margin-top: -14px;
-  }
+  line-height: 1;
   
   @include hover() {
     opacity: 1;
@@ -1543,23 +1548,6 @@ middle-ellipsis-element {
   }
 }
 
-.sidebar-header.with-border {
-  min-height: 3.5625rem;
-  border-bottom: 1px solid var(--border-color);
-
-  /* position: relative;
-
-  &:after {
-    content: " ";
-    position: absolute;
-    right: 0;
-    bottom: 0px;
-    left: 0;
-    height: 1px;
-    background-color: var(--border-color);
-  } */
-}
-
 .sidebar-left {
   &-section {
     background-color: var(--surface-color);
@@ -1596,6 +1584,10 @@ middle-ellipsis-element {
 
     &-container {
       user-select: none;
+
+      a {
+        cursor: pointer;
+      }
     }
   }
 }
@@ -1722,6 +1714,10 @@ hr {
       height: 100%;
       vertical-align: unset;
       margin: 0;
+    }
+
+    &.active {
+      background-color: var(--light-secondary-text-color);
     }
 
     @include hover-background-effect();
@@ -1881,6 +1877,7 @@ hr {
   &.with-icons {
     display: flex;
     align-items: center;
+    overflow: hidden;
   }
 
   &-inner {
@@ -2007,7 +2004,9 @@ hr {
 }
 
 .chatlist-chat {
-  padding-left: 4.5rem !important;
+  &.row-with-padding {
+    padding-left: 4.5rem !important;
+  }
 
   span {
     @include text-overflow(true);
@@ -2027,6 +2026,10 @@ hr {
       // .peer-title {
       //   font-weight: var(--font-weight-bold);
       // }
+    }
+
+    &-subtitle {
+      display: block !important; // can drop to none if it's empty
     }
 
     &-row {
@@ -2067,30 +2070,9 @@ hr {
   }
 }
 
-// .contacts-container {
-//   .chatlist-chat {
-//     /* align-items: center; */
-//     /* align-items: center; */
-//   }
-
-//   .dialog-title {
-//     /* height: 21px; */
-//     height: 20px;
-//     /* line-height: 21px; */
-//     line-height: 20px;
-//   }
-
-//   .dialog-subtitle {
-//     /* margin-top: 1px; */
-//     margin-top: 0;
-//     vertical-align: middle;
-//   }
-
-//   .user-caption {
-//     /* padding-left: 22px; */
-//     /* padding-left: 22px; */
-//     /* padding-top: 0; */
-//     /* padding-bottom: 0; */
-//     padding: 1px 0 1px 22px;
-//   }
-// }
+.username-purchase-help {
+  b {
+    font-weight: var(--font-weight-normal) !important;
+    color: var(--danger-color) !important;
+  }
+}

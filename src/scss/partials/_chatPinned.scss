@@ -587,7 +587,7 @@
     order: 2;
   }
 
-  .chat.type-discussion & {
+  .chat[data-type="discussion"] & {
     .pinned-container-close {
       display: none !important;
     }

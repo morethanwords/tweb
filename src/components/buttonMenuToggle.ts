@@ -9,50 +9,35 @@ import cancelEvent from '../helpers/dom/cancelEvent';
 import {AttachClickOptions, CLICK_EVENT_NAME} from '../helpers/dom/clickEvent';
 import ListenerSetter from '../helpers/listenerSetter';
 import ButtonIcon from './buttonIcon';
-import ButtonMenu, {ButtonMenuItemOptions} from './buttonMenu';
-
-const ButtonMenuToggle = (
-  options: Partial<{
-    noRipple: true,
-    onlyMobile: true,
-    listenerSetter: ListenerSetter,
-    asDiv: boolean,
-    container: HTMLElement
-  }> = {},
-  direction: 'bottom-left' | 'bottom-right' | 'top-left' | 'top-right',
-  buttons: ButtonMenuItemOptions[],
-  onOpen?: (e: Event) => void,
-  onClose?: () => void
-) => {
-  options.asDiv = true;
-  const button = options.container ?? ButtonIcon('more', options);
-  button.classList.add('btn-menu-toggle');
-
-  const btnMenu = ButtonMenu(buttons, options.listenerSetter);
-  btnMenu.classList.add(direction);
-  ButtonMenuToggleHandler(button, onOpen, options, onClose);
-  button.append(btnMenu);
-  return button;
-};
+import ButtonMenu, {ButtonMenuItemOptionsVerifiable} from './buttonMenu';
+import filterAsync from '../helpers/array/filterAsync';
+import {doubleRaf} from '../helpers/schedulers';
 
 // TODO: refactor for attachClickEvent, because if move finger after touchstart, it will start anyway
-const ButtonMenuToggleHandler = (el: HTMLElement, onOpen?: (e: Event) => void | Promise<any>, options?: AttachClickOptions, onClose?: () => void) => {
+export function ButtonMenuToggleHandler({
+  el,
+  onOpen,
+  options,
+  onClose
+}: {
+  el: HTMLElement,
+  onOpen?: (e: Event) => any,
+  options?: AttachClickOptions,
+  onClose?: () => void
+}) {
   const add = options?.listenerSetter ? options.listenerSetter.add(el) : el.addEventListener.bind(el);
 
-  // console.trace('ButtonMenuToggleHandler attach', el, onOpen, options);
   add(CLICK_EVENT_NAME, (e: Event) => {
-    // console.log('ButtonMenuToggleHandler click', e);
     if(!el.classList.contains('btn-menu-toggle')) return false;
 
-    // window.removeEventListener('mousemove', onMouseMove);
-    const openedMenu = el.querySelector('.btn-menu') as HTMLDivElement;
     cancelEvent(e);
 
     if(el.classList.contains('menu-open')) {
       contextMenuController.close();
     } else {
-      const result = onOpen && onOpen(e);
+      const result = onOpen?.(e);
       const open = () => {
+        const openedMenu = el.querySelector('.btn-menu') as HTMLDivElement;
         contextMenuController.openBtnMenu(openedMenu, onClose);
       };
 
@@ -63,7 +48,82 @@ const ButtonMenuToggleHandler = (el: HTMLElement, onOpen?: (e: Event) => void | 
       }
     }
   });
-};
+}
 
-export {ButtonMenuToggleHandler};
-export default ButtonMenuToggle;
+export default function ButtonMenuToggle({
+  buttonOptions,
+  listenerSetter: attachListenerSetter,
+  container,
+  direction,
+  buttons,
+  onOpenBefore,
+  onOpen,
+  onClose,
+  onCloseAfter
+}: {
+  buttonOptions?: Parameters<typeof ButtonIcon>[1],
+  listenerSetter?: ListenerSetter,
+  container?: HTMLElement
+  direction: 'bottom-left' | 'bottom-right' | 'top-left' | 'top-right',
+  buttons: ButtonMenuItemOptionsVerifiable[],
+  onOpenBefore?: (e: Event) => any,
+  onOpen?: (e: Event, element: HTMLElement) => any,
+  onClose?: () => void,
+  onCloseAfter?: () => void
+}) {
+  if(buttonOptions) {
+    buttonOptions.asDiv = true;
+  }
+
+  const button = container ?? ButtonIcon('more', buttonOptions);
+  button.classList.add('btn-menu-toggle');
+
+  const listenerSetter = new ListenerSetter();
+
+  let element: HTMLElement, closeTimeout: number;
+  ButtonMenuToggleHandler({
+    el: button,
+    onOpen: async(e) => {
+      await onOpenBefore?.(e);
+      if(closeTimeout) {
+        clearTimeout(closeTimeout);
+        closeTimeout = undefined;
+        return;
+      }
+
+      const f = (b: (typeof buttons[0])[]) => filterAsync(b, (button) => button?.verify?.() ?? true);
+
+      const filteredButtons = await f(buttons);
+      if(!filteredButtons.length) {
+        return;
+      }
+
+      const _element = element = await ButtonMenu({
+        buttons: filteredButtons,
+        listenerSetter
+      });
+      _element.classList.add(direction);
+
+      await onOpen?.(e, _element);
+
+      button.append(_element);
+      await doubleRaf();
+    },
+    options: {
+      listenerSetter: attachListenerSetter
+    },
+    onClose: () => {
+      onClose?.();
+
+      closeTimeout = window.setTimeout(() => {
+        onCloseAfter?.();
+        closeTimeout = undefined;
+        listenerSetter.removeAll();
+        buttons.forEach((button) => button.element = undefined);
+        element.remove();
+      }, 300);
+    }
+  });
+
+  return button;
+}

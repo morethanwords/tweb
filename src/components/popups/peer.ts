@@ -17,6 +17,7 @@ export type PopupPeerCheckboxOptions = CheckboxFieldOptions & {checkboxField?: C
 
 export type PopupPeerOptions = Omit<PopupOptions, 'buttons' | 'title'> & Partial<{
   peerId: PeerId,
+  threadId: number,
   title: string | HTMLElement,
   titleLangKey: LangPackKey,
   titleLangArgs: any[],
@@ -43,7 +44,11 @@ export default class PopupPeer extends PopupElement {
       avatarEl.classList.add('avatar-32');
       avatarEl.updateWithOptions({
         isDialog: true,
-        peerId: options.peerId
+        peerId: options.peerId,
+        threadId: options.threadId,
+        wrapOptions: {
+          middleware: this.middlewareHelper.get()
+        }
       });
       this.header.prepend(avatarEl);
     }

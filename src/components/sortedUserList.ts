@@ -16,7 +16,7 @@ import {AppManagers} from '../lib/appManagers/managers';
 import getUserStatusString from './wrappers/getUserStatusString';
 import type LazyLoadQueue from './lazyLoadQueue';
 
-interface SortedUser extends SortedElementBase {
+interface SortedUser extends SortedElementBase<PeerId> {
   dom: DialogDom
 }
 
@@ -72,7 +72,9 @@ export default class SortedUserList extends SortedList<SortedUser> {
           autonomous: this.autonomous,
           meAsSaved: false,
           rippleEnabled: this.rippleEnabled,
-          lazyLoadQueue: this.lazyLoadQueue
+          wrapOptions: {
+            lazyLoadQueue: this.lazyLoadQueue
+          }
         });
 
         (base as SortedUser).dom = dom;

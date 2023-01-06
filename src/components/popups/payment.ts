@@ -482,6 +482,8 @@ export default class PopupPayment extends PopupElement {
       } else {
         replaceContent(container, img);
       }
+
+      row.container.classList.remove('row-with-icon');
     };
 
     const createRow = (options: ConstructorParameters<typeof Row>[0]) => {

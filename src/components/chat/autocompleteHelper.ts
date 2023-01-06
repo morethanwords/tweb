@@ -154,15 +154,15 @@ export default class AutocompleteHelper extends EventListenerBase<{
       this.dispatchEvent('hiding');
     }
 
-    SetTransition(
-      this.container,
-      'is-visible',
-      !hide,
-      rootScope.settings.animationsEnabled && !skipAnimation ? 300 : 0,
-      () => {
+    SetTransition({
+      element: this.container,
+      className: 'is-visible',
+      forwards: !hide,
+      duration: rootScope.settings.animationsEnabled && !skipAnimation ? 300 : 0,
+      onTransitionEnd: () => {
         this.hidden && this.dispatchEvent('hidden');
       },
       useRafs
-    );
+    });
   }
 }

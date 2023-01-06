@@ -63,7 +63,7 @@ mediaSizes.addEventListener('changeScreen', (from, to) => {
   }
 });
 
-export default async function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, noPreview, withoutPreloader, loadPromises, noPlayButton, photoSize, videoSize, searchContext, autoDownload, managers = rootScope.managers}: {
+export default async function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, noPreview, withoutPreloader, loadPromises, noPlayButton, photoSize, videoSize, searchContext, autoDownload, managers = rootScope.managers, noAutoplayAttribute}: {
   doc: MyDocument,
   container?: HTMLElement,
   message?: Message.message,
@@ -84,7 +84,8 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
   photoSize?: PhotoSize,
   videoSize?: VideoSize,
   searchContext?: MediaSearchContext,
-  managers?: AppManagers
+  managers?: AppManagers,
+  noAutoplayAttribute?: boolean
 }) {
   const autoDownloadSize = autoDownload?.video;
   let noAutoDownload = autoDownloadSize === 0;
@@ -341,7 +342,7 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
     } else {
       onLoad();
     }
-  } else {
+  } else if(!noAutoplayAttribute) {
     video.autoplay = true; // для safari
   }
 
@@ -478,7 +479,9 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
   video.muted = true;
   video.loop = true;
   // video.play();
-  video.autoplay = true;
+  if(!noAutoplayAttribute) {
+    video.autoplay = true;
+  }
 
   let loadPhotoThumbFunc = noAutoDownload && photoRes?.preloader?.loadFunc;
   const load = async() => {

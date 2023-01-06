@@ -25,7 +25,7 @@ import {AppManagers} from '../../lib/appManagers/managers';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import GroupCallInstance from '../../lib/calls/groupCallInstance';
 import rootScope from '../../lib/rootScope';
-import ButtonMenu, {ButtonMenuItemOptions} from '../buttonMenu';
+import {ButtonMenuItemOptions, ButtonMenuSync} from '../buttonMenu';
 import confirmationPopup from '../confirmationPopup';
 import PeerTitle from '../peerTitle';
 import PopupElement from '../popups';
@@ -35,7 +35,7 @@ import GroupCallParticipantsVideoElement from './participantVideos';
 
 export class GroupCallParticipantContextMenu {
   private buttons: (ButtonMenuItemOptions & {verify: (peerId: PeerId) => boolean | Promise<boolean>})[];
-  private element: HTMLDivElement;
+  private element: HTMLElement;
   private chatId: ChatId;
   private targetPeerId: PeerId;
   private participant: GroupCallParticipant;
@@ -99,10 +99,10 @@ export class GroupCallParticipantContextMenu {
     this.instance = options.instance;
     this.chatId = this.instance.chatId;
 
-    this.element = ButtonMenu(this.buttons, listenerSetter);
+    this.element = ButtonMenuSync({buttons: this.buttons, listenerSetter});
     this.element.classList.add('group-call-participant-menu', 'night');
 
-    attachContextMenuListener(options.onContextElement, async(e: any) => {
+    attachContextMenuListener(options.onContextElement, async(e) => {
       const li = findUpClassName(e.target, 'group-call-participant');
       if(!li) {
         return;

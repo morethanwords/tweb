@@ -1,0 +1,259 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+.topics {
+  &-slider {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  &-container {
+    --offset: 0;
+    --width: 100%;
+    background-color: var(--surface-color) !important;
+    width: var(--width) !important;
+    // max-width: unquote("min(100%, 20rem)") !important;
+    // display: flex !important;
+
+    &.is-floating {
+      --offset: 5.0625rem;
+      --width: calc(var(--left-column-width) - var(--offset));
+      transform: translateX(var(--width));
+      overflow: unset !important;
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      right: 0;
+      z-index: 3;
+      pointer-events: all;
+      border-left: 1px solid var(--border-color);
+    }
+  
+    &.is-visible {
+      &:not(.backwards) {
+        transform: translateX(0);
+      }
+
+      &.animating {
+        transition: transform var(--transition-standard-in);
+  
+        &.backwards {
+          transition: transform var(--transition-standard-out);
+        }
+      }
+    }
+
+    // &:before {
+    //   position: absolute;
+    //   content: " ";
+    //   width: 1px;
+    //   left: -1px;
+    //   top: 0;
+    //   bottom: 0;
+    //   background-color: var(--border-color);
+    // }
+
+    .sidebar-header {
+      padding: 0 .75rem;
+
+      // .btn-icon {
+      //   padding: .375rem;
+      // }
+
+      &__rows {
+        overflow: hidden;
+        flex: 1 1 auto;
+        padding-left: .5rem;
+  
+        .sidebar-header__title {
+          padding-left: 0 !important;
+          font-size: var(--font-size-16);
+          line-height: var(--line-height-16);
+          margin-bottom: .125rem;
+        }
+      }
+
+      &__title,
+      &__subtitle {
+        @include text-overflow(true);
+      }
+
+      &__subtitle {
+        color: var(--secondary-text-color);
+        font-size: var(--font-size-14);
+        line-height: var(--line-height-14);
+      }
+    }
+
+    .chatlist-chat {
+      min-height: 4rem;
+      padding-left: .75rem;
+    }
+  }
+}
+
+.topic {
+  &-name {
+    .topic-icon {
+      margin-right: .25rem;
+    }
+
+    &-button {
+      --color: var(--primary-color);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 1.5rem;
+      padding: 0 .5rem;
+      color: var(--color);
+      font-weight: var(--font-weight-bold);
+      position: relative;
+      text-decoration: none !important;
+      max-width: 100%;
+
+      &-container {
+        display: flex !important;
+        align-items: flex-start;
+        justify-content: flex-start;
+      }
+
+      .peer-title,
+      .topic-name {
+        position: relative;
+      }
+
+      &:before {
+        content: " ";
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        background-color: var(--color);
+        opacity: #{$hover-alpha};
+        border-radius: 1.5rem;
+      }
+
+      @include hover() {
+        &:before {
+          opacity: #{$hover-alpha * 2};
+        }
+      }
+    }
+  }
+
+  &-icon {
+    --size: 1.25rem;
+    --custom-emoji-size: var(--size);
+    font-size: calc(var(--size) / 2);
+    line-height: 1.875 !important;
+    display: inline-flex;
+    // width: var(--size);
+    // height: var(--size);
+    position: relative;
+    justify-content: center;
+    // align-items: center;
+    vertical-align: middle;
+
+    &-general {
+      fill: var(--secondary-color);
+      width: var(--size);
+      height: var(--size);
+    }
+
+    &-svg {
+      position: absolute;
+      // left: 0;
+      width: inherit;
+      height: inherit;
+      // fill: url(#topic-icon-gradient);
+      // stroke: #000;
+    }
+  
+    // &-gradient {
+    //   &-stop-1 {
+    //     stop-color: var(--color-top);
+    //   }
+  
+    //   &-stop-2 {
+    //     stop-color: var(--color-bottom);
+    //   }
+    // }
+  
+    &-content {
+      // position: absolute;
+      // top: 50%;
+      // left: 50%;
+      // transform: translate(-50%, -50%);
+  
+      position: relative;
+      // display: inline-block;
+      // width: inherit;
+      // height: inherit;
+      // min-width: inherit;
+      // min-height: inherit;
+    }
+  }
+}
+
+.edit-topic {
+  &-container {
+    .scrollable-y {
+      display: flex;
+      flex-direction: column;
+    }
+  }
+
+  &-icon {
+    position: absolute;
+
+    .topic-icon {
+      --size: 4rem;
+    }
+
+    &-container {
+      width: 100px;
+      height: 100px;
+      margin: 0 auto;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+  }
+
+  &-emoticons-container {
+    flex: 1 1 auto;
+
+    .sidebar-left-section {
+      padding: 0 !important;
+      height: 100%;
+    }
+
+    .emoji-padding {
+      // height: 25rem;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .super-emoji-topic-icon {
+      // position: relative;
+
+      .topic-icon {
+        --size: var(--esg-emoji-size);
+        --custom-emoji-size: inherit;
+        margin-left: calc((var(--custom-emoji-size) - var(--esg-emoji-size)) / 2);
+      }
+    }
+  }
+}

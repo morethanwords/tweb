@@ -32,6 +32,7 @@ const lang = {
   'Login.QR.Help3': 'Point your phone at this screen to confirm login',
   'Login.QR.Cancel': 'Log in by phone Number',
   'Login.QR.Login': 'Log in by QR Code',
+  'PhoneNumber.Code.Fragment.Info': 'Get the code in the Anonymous Numbers section on [Fragment](%1$@)',
   'PHONE_CODE_INVALID': 'Invalid code',
   'PHONE_CODE_EXPIRED': 'Code expired',
   'PASSWORD_HASH_INVALID': 'Incorrect password'

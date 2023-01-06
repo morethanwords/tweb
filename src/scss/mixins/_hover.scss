@@ -6,7 +6,9 @@
 
 @mixin hover($color: null, $property: null, $use-transition: false) {
   @if $color {
-    @if $color == gray {
+    @if $color == filled-gray {
+      $color: var(--light-filled-secondary-text-color);
+    } @else if $color == gray {
       $color: var(--light-secondary-text-color);
     } @else if $color == blue or $color == primary {
       $color: var(--light-primary-color);

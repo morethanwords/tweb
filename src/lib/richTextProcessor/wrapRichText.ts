@@ -37,6 +37,7 @@ import {getMiddleware, Middleware, MiddlewareHelper} from '../../helpers/middlew
 import replaceContent from '../../helpers/dom/replaceContent';
 import BOM from '../../helpers/string/bom';
 import framesCache from '../../helpers/framesCache';
+import wrapTelegramUrlToAnchor from './wrapTelegramUrlToAnchor';
 
 const resizeObserver = new ResizeObserver((entries) => {
   for(const entry of entries) {
@@ -86,17 +87,21 @@ export class CustomEmojiElement extends HTMLElement {
     // }
 
     if(this.player) {
-      animationIntersector.addAnimation(this, this.renderer.animationGroup);
+      animationIntersector.addAnimation(this, this.renderer.animationGroup, undefined, true);
     }
 
     // this.connectedCallback = undefined;
   }
 
   public disconnectedCallback() {
-    if(this.isConnected) { // prepend on sibling can invoke disconnectedCallback
+    if(this.isConnected || !this.renderer?.isSelectable) { // prepend on sibling can invoke disconnectedCallback
       return;
     }
 
+    this.clear();
+  }
+
+  public destroy() {
     this.clear();
   }
 
@@ -227,6 +232,10 @@ export class CustomEmojiRendererElement extends HTMLElement {
 
   public forceRenderAfterSize: boolean;
 
+  public middlewareHelper: MiddlewareHelper;
+
+  public auto: boolean;
+
   constructor() {
     super();
 
@@ -258,9 +267,19 @@ export class CustomEmojiRendererElement extends HTMLElement {
   }
 
   public disconnectedCallback() {
-    if(this.isConnected) {
+    if(this.isConnected || !this.auto) {
       return;
     }
+
+    this.destroy();
+
+    this.disconnectedCallback = undefined;
+  }
+
+  public destroy() {
+    // if(this.isConnected) {
+    //   return;
+    // }
 
     resizeObserver.unobserve(this.canvas);
 
@@ -275,7 +294,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
     this.middlewareHelper?.clean();
     this.customEmojis.clear();
 
-    this.disconnectedCallback =
+    this.destroy =
       this.lastPausedVideo =
       undefined;
   }
@@ -629,7 +648,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
             }
 
             if(element.isConnected) {
-              animationIntersector.addAnimation(element, element.renderer.animationGroup);
+              animationIntersector.addAnimation(element, element.renderer.animationGroup, undefined, true);
             }
           });
 
@@ -839,9 +858,11 @@ export class CustomEmojiRendererElement extends HTMLElement {
       renderer.middlewareHelper = middleware.create();
       middleware = renderer.middlewareHelper.get();
       middleware.onDestroy(() => {
-        renderer.disconnectedCallback?.();
+        renderer.destroy?.();
       });
     } else {
+      // console.error('no middleware', this, options);
+      renderer.auto = true;
       renderer.middlewareHelper = getMiddleware();
     }
 
@@ -919,15 +940,11 @@ customElements.define('custom-emoji-renderer-element', CustomEmojiRendererElemen
 
 type CustomEmojiRendererElementOptions = Partial<{
   loadPromises: Promise<any>[],
-  middleware: Middleware,
-  lazyLoadQueue: LazyLoadQueue,
-  customEmojiSize: MediaSize,
-  animationGroup: AnimationItemGroup
   customEmojiRenderer: CustomEmojiRendererElement,
 
   isSelectable: boolean,
   wrappingDraft: boolean
-}>;
+}> & WrapSomethingOptions;
 
 /**
  * * Expecting correctly sorted nested entities (RichTextProcessor.sortEntities)
@@ -1390,14 +1407,8 @@ export default function wrapRichText(text: string, options: Partial<{
         if(!options.noLinks) {
           const username = fullEntityText.slice(1);
 
-          const {url, onclick} = wrapUrl('t.me/' + username);
-
-          element = document.createElement('a');
+          element = wrapTelegramUrlToAnchor('t.me/' + username);
           element.className = 'mention';
-          (element as HTMLAnchorElement).href = url;
-          if(onclick) {
-            element.setAttribute('onclick', `${onclick}(this)`);
-          }
 
           // insertPart(entity, `<a class="mention" href="${contextUrl.replace('{1}', encodeURIComponent(username))}"${contextExternal ? ' target="_blank" rel="noopener noreferrer"' : ''}>`, '</a>');
         }

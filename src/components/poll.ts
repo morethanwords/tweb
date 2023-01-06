@@ -580,7 +580,12 @@ export default class PollElement extends HTMLElement {
 
       this.classList.toggle('no-transition', !animate);
       if(animate) {
-        SetTransition(this, '', !this.isRetracted, 340);
+        SetTransition({
+          element: this,
+          className: '',
+          forwards: !this.isRetracted,
+          duration: 340
+        });
       }
 
       fastRaf(() => {

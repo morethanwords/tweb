@@ -14,11 +14,12 @@ export type ButtonOptions = Partial<{
   rippleSquare: true,
   text: LangPackKey,
   disabled: boolean,
-  asDiv: boolean
+  asDiv: boolean,
+  asLink: boolean
 }>;
 
-const Button = (className: string, options: ButtonOptions = {}) => {
-  const button: HTMLButtonElement = document.createElement(options.asDiv ? 'div' : 'button') as any;
+export default function Button<T extends ButtonOptions>(className: string, options: T = {} as T): T['asLink'] extends true ? HTMLAnchorElement : HTMLButtonElement {
+  const button = document.createElement(options.asLink ? 'a' : (options.asDiv ? 'div' : 'button'));
   button.className = className + (options.icon ? ' tgico-' + options.icon : '');
 
   if(!options.noRipple) {
@@ -41,7 +42,5 @@ const Button = (className: string, options: ButtonOptions = {}) => {
     button.append(i18n(options.text));
   }
 
-  return button;
-};
-
-export default Button;
+  return button as any;
+}

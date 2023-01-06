@@ -29,7 +29,9 @@ export default class PopupAvatar extends PopupElement {
 
   private onCrop: (upload: () => ReturnType<AppDownloadManager['upload']>) => void;
 
-  constructor() {
+  constructor(options: Partial<{
+    isForum: boolean
+  }> = {}) {
     super('popup-avatar', {closable: true, withConfirm: true});
 
     this.h6 = document.createElement('h6');
@@ -42,6 +44,10 @@ export default class PopupAvatar extends PopupElement {
     this.cropContainer = document.createElement('div');
     this.cropContainer.classList.add('crop');
     this.cropContainer.append(this.image);
+
+    if(options.isForum) {
+      this.cropContainer.classList.add('is-forum');
+    }
 
     this.input = document.createElement('input');
     this.input.type = 'file';

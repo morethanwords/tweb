@@ -14,7 +14,7 @@ import {i18n, join, LangPackKey, _i18n} from '../lib/langPack';
 import RadioField from './radioField';
 import Row, {RadioFormFromRows} from './row';
 import Scrollable from './scrollable';
-import {SettingSection, generateSection} from './sidebarLeft';
+import SettingSection, {generateSection} from './settingSection';
 import AppAddMembersTab from './sidebarLeft/tabs/addMembers';
 import {SliderSuperTabEventable} from './sliderTab';
 

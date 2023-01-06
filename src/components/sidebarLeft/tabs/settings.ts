@@ -19,7 +19,6 @@ import AppDataAndStorageTab from './dataAndStorage';
 import ButtonIcon from '../../buttonIcon';
 import PeerProfile from '../../peerProfile';
 import rootScope from '../../../lib/rootScope';
-import {SettingSection} from '..';
 import Row from '../../row';
 import AppActiveSessionsTab from './activeSessions';
 import {i18n, LangPackKey} from '../../../lib/langPack';
@@ -28,6 +27,7 @@ import PopupAvatar from '../../popups/avatar';
 import {AccountAuthorizations, Authorization} from '../../../layer';
 import PopupElement from '../../popups';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
+import SettingSection from '../../settingSection';
 // import AppMediaViewer from "../../appMediaViewerNew";
 
 export default class AppSettingsTab extends SliderSuperTab {
@@ -51,23 +51,27 @@ export default class AppSettingsTab extends SliderSuperTab {
     this.container.classList.add('settings-container');
     this.setTitle('Settings');
 
-    const btnMenu = ButtonMenuToggle({listenerSetter: this.listenerSetter}, 'bottom-left', [{
-      icon: 'logout',
-      text: 'EditAccount.Logout',
-      onClick: () => {
-        new PopupPeer('logout', {
-          titleLangKey: 'LogOut',
-          descriptionLangKey: 'LogOut.Description',
-          buttons: [{
-            langKey: 'LogOut',
-            callback: () => {
-              this.managers.apiManager.logOut();
-            },
-            isDanger: true
-          }]
-        }).show();
-      }
-    }]);
+    const btnMenu = ButtonMenuToggle({
+      listenerSetter: this.listenerSetter,
+      direction: 'bottom-left',
+      buttons: [{
+        icon: 'logout',
+        text: 'EditAccount.Logout',
+        onClick: () => {
+          new PopupPeer('logout', {
+            titleLangKey: 'LogOut',
+            descriptionLangKey: 'LogOut.Description',
+            buttons: [{
+              langKey: 'LogOut',
+              callback: () => {
+                this.managers.apiManager.logOut();
+              },
+              isDanger: true
+            }]
+          }).show();
+        }
+      }]
+    });
 
     this.buttons.edit = ButtonIcon('edit');
 
@@ -95,7 +99,7 @@ export default class AppSettingsTab extends SliderSuperTab {
     };
 
     updateChangeAvatarBtn();
-    this.listenerSetter.add(rootScope)('avatar_update', (peerId) => {
+    this.listenerSetter.add(rootScope)('avatar_update', ({peerId}) => {
       if(rootScope.myId === peerId) {
         updateChangeAvatarBtn();
       }
@@ -279,7 +283,7 @@ export default class AppSettingsTab extends SliderSuperTab {
 
     this.updateActiveSessions();
 
-    await fillPromise;
+    (await fillPromise)();
   }
 
   private getAuthorizations(overwrite?: boolean) {

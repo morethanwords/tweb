@@ -9,7 +9,6 @@ import {autoDownloadPeerTypeSection} from './photo';
 
 export default class AppAutoDownloadVideoTab extends SliderSuperTabEventable {
   public init() {
-    this.header.classList.add('with-border');
     this.setTitle('AutoDownloadVideos');
 
     const section = autoDownloadPeerTypeSection('video', 'AutoDownloadVideosTitle', this.listenerSetter);

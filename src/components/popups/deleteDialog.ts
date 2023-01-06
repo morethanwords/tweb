@@ -6,8 +6,8 @@
 
 import PopupElement from '.';
 import type {PeerType} from '../../lib/appManagers/appPeersManager';
-import {LangPackKey} from '../../lib/langPack';
-import PeerTitle from '../peerTitle';
+import {FormatterArguments, LangPackKey} from '../../lib/langPack';
+import wrapPeerTitle from '../wrappers/peerTitle';
 import PopupPeer, {PopupPeerButtonCallbackCheckboxes, PopupPeerOptions} from './peer';
 
 export default class PopupDeleteDialog {
@@ -15,14 +15,15 @@ export default class PopupDeleteDialog {
     private peerId: PeerId,
     // actionType: 'leave' | 'delete',
     private peerType?: PeerType,
-    private onSelect?: (promise: Promise<any>) => void
+    private onSelect?: (promise: Promise<any>) => void,
+    private threadId?: number
   ) {
     this.construct();
   }
 
   private async construct() {
-    let {peerId, peerType, onSelect} = this;
-    const peerTitleElement = new PeerTitle({peerId}).element;
+    let {peerId, peerType, onSelect, threadId} = this;
+    const peerTitleElement = await wrapPeerTitle({peerId, threadId: threadId});
 
     const managers = PopupElement.MANAGERS;
     if(peerType === undefined) {
@@ -49,7 +50,9 @@ export default class PopupDeleteDialog {
     const callbackDelete = (checked: PopupPeerButtonCallbackCheckboxes) => {
       let promise: Promise<any>;
 
-      if(peerId.isUser()) {
+      if(threadId) {
+        promise = managers.appMessagesManager.flushHistory(peerId, false, true, threadId);
+      } else if(peerId.isUser()) {
         promise = managers.appMessagesManager.flushHistory(peerId, false, checkboxes ? !!checked.size : undefined);
       } else {
         if(checked.size) {
@@ -62,7 +65,12 @@ export default class PopupDeleteDialog {
       onSelect?.(promise);
     };
 
-    let title: LangPackKey, description: LangPackKey, descriptionArgs: any[], buttons: PopupPeerOptions['buttons'], checkboxes: PopupPeerOptions['checkboxes'];
+    let title: LangPackKey,
+      titleArgs: FormatterArguments,
+      description: LangPackKey,
+      descriptionArgs: FormatterArguments,
+      buttons: PopupPeerOptions['buttons'],
+      checkboxes: PopupPeerOptions['checkboxes'];
     switch(peerType) {
       case 'channel': {
         if(/* actionType === 'delete' &&  */await managers.appChatsManager.hasRights(peerId.toChatId(), 'delete_chat')) {
@@ -117,7 +125,7 @@ export default class PopupDeleteDialog {
         checkboxes = [{
           text: 'DeleteMessagesOptionAlso',
           textArgs: [
-            new PeerTitle({peerId}).element
+            await wrapPeerTitle({peerId})
           ]
         }];
 
@@ -138,7 +146,17 @@ export default class PopupDeleteDialog {
 
       case 'megagroup':
       case 'group': {
-        if(/* actionType === 'delete' &&  */await managers.appChatsManager.hasRights(peerId.toChatId(), 'delete_chat')) {
+        if(threadId) {
+          title = 'DeleteTopics';
+          titleArgs = [1];
+          description = 'DeleteSelectedTopic';
+          descriptionArgs = [peerTitleElement];
+          buttons = [{
+            langKey: 'Delete',
+            isDanger: true,
+            callback: callbackDelete
+          }];
+        } else if(/* actionType === 'delete' &&  */await managers.appChatsManager.hasRights(peerId.toChatId(), 'delete_chat')) {
           title = 'DeleteMegaMenu';
           description = 'AreYouSureDeleteAndExit';
           buttons = [{
@@ -167,7 +185,9 @@ export default class PopupDeleteDialog {
 
     new PopupPeer('popup-delete-chat', {
       peerId,
+      threadId,
       titleLangKey: title,
+      titleLangArgs: titleArgs,
       descriptionLangKey: description,
       descriptionLangArgs: descriptionArgs,
       buttons,

@@ -6,6 +6,7 @@
 
 import EventListenerBase from '../helpers/eventListenerBase';
 import ListenerSetter from '../helpers/listenerSetter';
+import {getMiddleware, MiddlewareHelper} from '../helpers/middleware';
 import noop from '../helpers/noop';
 import {AppManagers} from '../lib/appManagers/managers';
 import {i18n, LangPackKey} from '../lib/langPack';
@@ -38,6 +39,7 @@ export default class SliderSuperTab {
   public listenerSetter: ListenerSetter;
 
   public managers: AppManagers;
+  public middlewareHelper: MiddlewareHelper;
 
   constructor(slider: SidebarSlider, destroyable?: boolean) {
     this._constructor(slider, destroyable);
@@ -45,6 +47,7 @@ export default class SliderSuperTab {
 
   public _constructor(slider: SidebarSlider, destroyable = true): any {
     this.slider = slider;
+    this.middlewareHelper = slider ? slider.getMiddleware().create() : getMiddleware();
     this.destroyable = destroyable;
 
     this.container = document.createElement('div');
@@ -64,12 +67,11 @@ export default class SliderSuperTab {
     this.content.classList.add('sidebar-content');
 
     this.scrollable = new Scrollable(this.content, undefined, undefined, true);
+    this.scrollable.attachBorderListeners(this.container);
 
     this.container.append(this.header, this.content);
 
-    if(this.slider) {
-      this.slider.addTab(this);
-    }
+    this.slider?.addTab(this);
 
     this.listenerSetter = new ListenerSetter();
   }
@@ -105,10 +107,11 @@ export default class SliderSuperTab {
 
   protected onCloseAfterTimeout() {
     if(this.destroyable) { // ! WARNING, пока что это будет работать только с самой последней внутренней вкладкой !
-      this.slider.tabs.delete(this);
+      this.slider?.deleteTab(this);
       this.container.remove();
       this.scrollable.destroy();
       this.listenerSetter?.removeAll();
+      this.middlewareHelper?.destroy();
     }
   }
 

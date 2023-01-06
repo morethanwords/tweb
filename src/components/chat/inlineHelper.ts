@@ -93,7 +93,7 @@ export default class InlineHelper extends AutocompleteHelper {
       throw 'PEER_CHANGED';
     }
 
-    if(peer._ !== 'user') {
+    if(peer._ !== 'user' || !peer.pFlags.bot) {
       throw 'NOT_A_BOT';
     }
 

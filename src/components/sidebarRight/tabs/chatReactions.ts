@@ -10,7 +10,7 @@ import {ChatReactions, Reaction} from '../../../layer';
 import {i18n, LangPackKey} from '../../../lib/langPack';
 import CheckboxField from '../../checkboxField';
 import Row, {RadioFormFromValues} from '../../row';
-import {SettingSection} from '../../sidebarLeft';
+import SettingSection from '../../settingSection';
 import {SliderSuperTabEventable} from '../../sliderTab';
 import wrapStickerToRow from '../../wrappers/stickerToRow';
 

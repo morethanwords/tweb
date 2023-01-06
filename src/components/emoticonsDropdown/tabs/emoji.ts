@@ -37,6 +37,8 @@ import findAndSplice from '../../../helpers/array/findAndSplice';
 import positionElementByIndex from '../../../helpers/dom/positionElementByIndex';
 import PopupStickers from '../../popups/stickers';
 import {hideToast, toastNew} from '../../toast';
+import safeAssign from '../../../helpers/object/safeAssign';
+import type {AppStickersManager} from '../../../lib/appManagers/appStickersManager';
 
 const loadedURLs: Set<string> = new Set();
 export function appendEmoji(emoji: string, container?: HTMLElement, prepend = false, unify = false) {
@@ -144,12 +146,18 @@ const EMOJI_CATEGORIES: [LangPackKey | '', string][] = [
   ['Skin Tones' as any, '']
 ];
 
+let sorted: Map<(typeof EMOJI_CATEGORIES)[0], string[]>;
 function prepare() {
-  let sorted: Map<(typeof EMOJI_CATEGORIES)[0], string[]> = new Map([
+  if(sorted) {
+    return sorted;
+  }
+
+  const a: Array<[(typeof EMOJI_CATEGORIES)[0], string[]]> = [
     [CUSTOM_EMOJI_RECENT_CATEGORY, []],
     [EMOJI_RECENT_CATEGORY, []]
-  ]);
+  ];
 
+  sorted = new Map(a);
   for(const emoji in Emoji) {
     const details = Emoji[emoji];
     const i = '' + details;
@@ -181,16 +189,34 @@ type EmojiTabItem = {element: HTMLElement} & ReturnType<typeof getEmojiFromEleme
 type EmojiTabCategory = StickersTabCategory<EmojiTabItem, {renderer: CustomEmojiRendererElement}>;
 export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
   private closeScrollTop: number;
+  private menuInnerScroll: ScrollableX;
+  private isStandalone?: boolean;
+  private noRegularEmoji?: boolean;
+  private stickerSetId?: Parameters<AppStickersManager['getLocalStickerSet']>[0];
+  private onClick: (emoji: EmojiTabItem) => void;
+  private activeEmoji: ReturnType<typeof getEmojiFromElement>;
+  private activeElements: EmojiTabItem[];
 
-  constructor(managers: AppManagers) {
+  constructor(options: {
+    managers: AppManagers,
+    isStandalone?: boolean,
+    noRegularEmoji?: boolean,
+    stickerSetId?: EmojiTab['stickerSetId'],
+    onClick?: EmojiTab['onClick']
+  }) {
     super(
-      managers,
+      options.managers,
       'super-emojis',
       () => EMOJI_ELEMENT_SIZE,
       16,
       4,
       0
     );
+
+    safeAssign(this, options);
+    this.container.classList.add('emoji-padding');
+    this.content.id = 'content-emoji';
+    this.activeElements = [];
   }
 
   private onCategoryVisibility = ({target, visible}: Pick<OnVisibilityChangeItem, 'target' | 'visible'>) => {
@@ -205,6 +231,10 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
       const customEmojis: Parameters<CustomEmojiRendererElement['add']>[0] = new Map();
       if(visible) {
         newChildren.push(...category.items.map(({docId, element}) => {
+          if(!docId) {
+            return element;
+          }
+
           // return element;
 
           // if(element.firstElementChild) {
@@ -233,7 +263,11 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
 
     if(renderer && !visible) {
       const customEmojis: Parameters<CustomEmojiRendererElement['add']>[0] = new Map();
-      category.items.forEach(({element}) => {
+      category.items.forEach(({docId, element}) => {
+        if(!docId) {
+          return;
+        }
+
         const customEmojiElement = element.firstElementChild as CustomEmojiElement;
         customEmojiElement.clear();
         customEmojis.set(customEmojiElement.docId, new Set([customEmojiElement]));
@@ -272,35 +306,51 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
     // }
   };
 
+  public destroy() {
+    super.destroy();
+    this.menuInnerScroll?.destroy();
+  }
+
   public init() {
     super.init();
+    this.init = undefined;
 
-    this.content = document.getElementById('content-emoji') as HTMLDivElement;
+    const intersectionOptions: IntersectionObserverInit = {
+      root: this.isStandalone ? this.content : emoticonsDropdown.getElement()
+    };
 
-    const menuWrapper = this.content.previousElementSibling as HTMLElement;
-    const menu = this.menu = menuWrapper.firstElementChild as HTMLElement;
-    const menuScroll = this.menuScroll = new ScrollableX(menuWrapper);
-
-    const emojiScroll = this.scrollable = new Scrollable(this.content, 'EMOJI');
-
-    const intersectionOptions: IntersectionObserverInit = {root: emoticonsDropdown.getElement()};
     this.categoriesIntersector = new VisibilityIntersector(this.onCategoryVisibility, intersectionOptions);
 
-    const m = this.menuOnClickResult = EmoticonsDropdown.menuOnClick(this, menu, emojiScroll, menuScroll, undefined);
+    this.menuOnClickResult = EmoticonsDropdown.menuOnClick(this, this.menu, this.scrollable, this.menuScroll, undefined, this.listenerSetter);
 
     const preloader = putPreloader(this.content, true);
 
-    const x = new ScrollableX(undefined);
-    x.container.classList.add('menu-horizontal-inner-scroll');
+    let innerScrollWrapper: HTMLElement;
 
-    const innerScrollWrapper = document.createElement('div');
-    innerScrollWrapper.classList.add('menu-horizontal-inner');
-    innerScrollWrapper.append(x.container);
+    if(!this.isStandalone) {
+      const x = this.menuInnerScroll = new ScrollableX(undefined);
+      x.container.classList.add('menu-horizontal-inner-scroll');
 
-    prepare().forEach((emojis, [titleLangPackKey, icon]) => {
+      innerScrollWrapper = document.createElement('div');
+      innerScrollWrapper.classList.add('menu-horizontal-inner');
+      innerScrollWrapper.append(x.container);
+    }
+
+    let preparedMap: ReturnType<typeof prepare>;
+    prepare();
+    if(!this.noRegularEmoji) {
+      preparedMap = prepare();
+    } else {
+      preparedMap = new Map([
+        [[CUSTOM_EMOJI_RECENT_CATEGORY[0], 'recent'], []]
+        // [EMOJI_RECENT_CATEGORY, []]
+      ]);
+    }
+
+    preparedMap.forEach((emojis, [titleLangPackKey, icon]) => {
       const category = this.createLocalCategory(titleLangPackKey, titleLangPackKey, icon, !icon);
       category.elements.container.classList.remove('hide');
-      category.elements.items.classList.add(icon ? 'is-local' : 'not-local');
+      category.elements.items.classList.add(icon && !this.isStandalone ? 'is-local' : 'not-local');
 
       emojis.forEach((unified) => {
         /* if(emojiUnicode(emoji) === '1f481-200d-2642') {
@@ -324,7 +374,11 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
         // debugger;
         // }
 
-        this.addEmojiToCategory(category, {emoji}, true);
+        this.addEmojiToCategory({
+          category,
+          emoji: {emoji},
+          batch: true
+        });
 
         /* if(category === 'Smileys & Emotion') {
           console.log('appended emoji', emoji, itemsDiv.children[itemsDiv.childElementCount - 1].innerHTML, emojiUnicode(emoji));
@@ -332,63 +386,91 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
       });
     });
 
-    Promise.all([
-      pause(200),
-      this.managers.appEmojiManager.getRecentEmojis('native'),
-      this.managers.appEmojiManager.getRecentEmojis('custom'),
+    const promise = Promise.all([
+      this.isStandalone ? undefined : pause(200),
+      !this.noRegularEmoji && this.managers.appEmojiManager.getRecentEmojis('native'),
+      !this.isStandalone && this.managers.appEmojiManager.getRecentEmojis('custom'),
+      this.stickerSetId && this.managers.appStickersManager.getLocalStickerSet(this.stickerSetId),
       this.managers.appEmojiManager.getCustomEmojis()
-    ]).then(([_, recent, recentCustom, sets]) => {
+    ]).then(([_, recent, recentCustom, mainSet, sets]) => {
       preloader.remove();
+
+      if(mainSet) {
+        recentCustom = mainSet.documents.map((doc) => doc.id);
+      }
 
       const recentCategory = this.categories[EMOJI_RECENT_ID];
       const recentCustomCategory = this.categories[CUSTOM_EMOJI_RECENT_ID];
 
-      [[recentCategory, recent] as const, [recentCustomCategory, recentCustom] as const].forEach(([category, recent]) => {
-        category.limit = RECENT_MAX_LENGTH;
-        recent.splice(RECENT_MAX_LENGTH, recent.length - RECENT_MAX_LENGTH);
-      });
+      if(!this.isStandalone) {
+        const a = [
+          recentCategory && [recentCategory, recent] as const,
+          recentCustomCategory && [recentCustomCategory, recentCustom] as const
+        ];
 
-      for(const emoji of recent) {
-        this.addEmojiToCategory(recentCategory, {emoji}, true);
+        a.filter(Boolean).forEach(([category, recent]) => {
+          category.limit = RECENT_MAX_LENGTH;
+          recent.splice(RECENT_MAX_LENGTH, recent.length - RECENT_MAX_LENGTH);
+        });
       }
 
-      this.createRendererForCategory(recentCustomCategory);
-      for(const docId of recentCustom) {
-        this.addEmojiToCategory(recentCustomCategory, {emoji: '', docId}, true);
+      if(recentCategory && recent) for(const emoji of recent) {
+        this.addEmojiToCategory({
+          category: recentCategory,
+          emoji: {emoji},
+          batch: true
+        });
       }
-      recentCustomCategory.elements.container.style.paddingTop = '.5rem';
+
+      if(recentCustomCategory) {
+        this.createRendererForCategory(recentCustomCategory);
+        if(recentCustom) for(const docId of recentCustom) {
+          this.addEmojiToCategory({
+            category: recentCustomCategory,
+            emoji: {emoji: '', docId},
+            batch: true
+          });
+        }
+        recentCustomCategory.elements.container.style.paddingTop = '.5rem';
+      }
 
       EMOJI_CATEGORIES.forEach(([id]) => {
         const category = this.categories[id];
+        if(!category) {
+          return;
+        }
+
         this.toggleLocalCategory(category, true);
 
         if(id !== EMOJI_RECENT_ID && id !== CUSTOM_EMOJI_RECENT_ID) {
-          category.menuScroll = x;
-          x.container.append(category.elements.menuTab);
+          category.menuScroll = this.menuInnerScroll;
+          this.menuInnerScroll.container.append(category.elements.menuTab);
         }
       });
 
       this.resizeCategories();
 
-      recentCategory.elements.menuTab.after(innerScrollWrapper);
+      recentCategory && innerScrollWrapper && recentCategory.elements.menuTab.after(innerScrollWrapper);
 
       sets.sets.forEach((set) => {
         this.renderStickerSet(set);
       });
 
-      rootScope.addEventListener('premium_toggle', () => {
+      this.listenerSetter.add(rootScope)('premium_toggle', () => {
         this.toggleCustomCategory();
       });
 
-      rootScope.addEventListener('stickers_top', this.postponedEvent((id) => {
+      this.listenerSetter.add(rootScope)('stickers_top', this.postponedEvent((id) => {
         const category = this.categories[id];
-        if(category) {
-          this.positionCategory(category, true);
-
-          emoticonsDropdown.addEventListener('openAfterLayout', () => {
-            this.menuOnClickResult.setActiveStatic(category);
-          }, {once: true});
+        if(!category) {
+          return;
         }
+
+        this.positionCategory(category, true);
+
+        this.listenerSetter.add(emoticonsDropdown)('openAfterLayout', () => {
+          this.menuOnClickResult.setActiveStatic(category);
+        }, {once: true});
       }));
 
       const toggleRenderers = (ignore: boolean) => {
@@ -404,21 +486,21 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
         }
       };
 
-      emoticonsDropdown.addEventListener('opened', () => {
+      !this.isStandalone && this.listenerSetter.add(emoticonsDropdown)('opened', () => {
         toggleRenderers(false);
       });
 
-      emoticonsDropdown.addEventListener('close', () => {
+      !this.isStandalone && this.listenerSetter.add(emoticonsDropdown)('close', () => {
         toggleRenderers(true);
       });
 
-      rootScope.addEventListener('stickers_installed', (set) => {
+      this.listenerSetter.add(rootScope)('stickers_installed', (set) => {
         if(!this.categories[set.id] && set.pFlags.emojis) {
           this.renderStickerSet(set, true);
         }
       });
 
-      rootScope.addEventListener('stickers_deleted', (set) => {
+      this.listenerSetter.add(rootScope)('stickers_deleted', (set) => {
         const category = this.categories[set.id];
         if(this.deleteCategory(category)) {
           const {renderer} = category.elements;
@@ -428,10 +510,15 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
         }
       });
 
-      rootScope.addEventListener('emoji_recent', this.postponedEvent((emoji) => {
+      !this.isStandalone && this.listenerSetter.add(rootScope)('emoji_recent', this.postponedEvent((emoji) => {
         const category = this.categories[emoji.docId ? CUSTOM_EMOJI_RECENT_ID : EMOJI_RECENT_ID];
+        if(!category) {
+          return;
+        }
 
-        const verify: (item: EmojiTabItem) => boolean = emoji.docId ? (item) => item.docId === emoji.docId : (item) => item.emoji === emoji.emoji;
+        const verify: (item: EmojiTabItem) => boolean = emoji.docId ?
+          (item) => item.docId === emoji.docId :
+          (item) => item.emoji === emoji.emoji;
         const found = findAndSplice(category.items, verify);
         if(found) {
           category.items.unshift(found);
@@ -441,7 +528,12 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
             renderer?.forceRender();
           }
         } else {
-          this.addEmojiToCategory(category, emoji, false, true);
+          this.addEmojiToCategory({
+            category,
+            emoji,
+            batch: false,
+            prepend: true
+          });
         }
 
         if(this.closeScrollTop === 0) {
@@ -449,18 +541,19 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
         }
       }));
 
-      appImManager.addEventListener('peer_changed', () => {
+      !this.isStandalone && this.listenerSetter.add(appImManager)('peer_changed', () => {
         this.toggleCustomCategory();
       });
 
       this.toggleCustomCategory();
 
-      this.menuOnClickResult.setActive(recentCategory);
+      this.menuOnClickResult.setActive(recentCategory ?? recentCustomCategory);
     });
 
-    attachClickEvent(this.content, this.onContentClick);
-    attachStickerViewerListeners({listenTo: this.content, listenerSetter: new ListenerSetter()});
-    this.init = null;
+    attachClickEvent(this.content, this.onContentClick, {listenerSetter: this.listenerSetter});
+    attachStickerViewerListeners({listenTo: this.content, listenerSetter: this.listenerSetter});
+
+    return promise;
   }
 
   private renderStickerSet(set: StickerSet.stickerSet, prepend?: boolean) {
@@ -476,7 +569,11 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
     const promise = this.managers.appStickersManager.getStickerSet(set);
     promise.then(({documents}) => {
       documents.forEach((document) => {
-        this.addEmojiToCategory(category, {docId: document.id, emoji: (document as Document.document).stickerEmojiRaw}, true);
+        this.addEmojiToCategory({
+          category,
+          emoji: {docId: document.id, emoji: (document as Document.document).stickerEmojiRaw},
+          batch: true
+        });
       });
 
       // if(this.isCategoryVisible(category)) {
@@ -504,10 +601,15 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
     return appImManager.chat.peerId;
   }
 
+  public getCustomCategory() {
+    return this.categories[CUSTOM_EMOJI_RECENT_ID];
+  }
+
   private toggleCustomCategory() {
     const category = this.categories[CUSTOM_EMOJI_RECENT_ID];
     const hasPremium = rootScope.premium || this.peerId === rootScope.myId;
-    super.toggleLocalCategory(category, !!category.items.length && hasPremium);
+    const canSeeCustomCategory = hasPremium || this.isStandalone;
+    super.toggleLocalCategory(category, !!category.items.length && canSeeCustomCategory);
     this.content.classList.toggle('has-premium', hasPremium);
   }
 
@@ -530,9 +632,22 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
     category.elements.items.append(renderer);
   }
 
-  private addEmojiToCategory(category: EmojiTabCategory, emoji: ReturnType<typeof getEmojiFromElement>, batch?: boolean, prepend?: boolean) {
-    let element: HTMLElement;
-    if(emoji.docId) {
+  public addEmojiToCategory(options: {
+    category: EmojiTabCategory,
+    emoji?: ReturnType<typeof getEmojiFromElement>,
+    element?: HTMLElement,
+    batch?: boolean,
+    prepend?: boolean,
+    active?: boolean
+  }) {
+    const {category, emoji, batch, prepend} = options;
+    let element = options.element;
+    if(element) {
+      const spanEmoji = document.createElement('span');
+      spanEmoji.classList.add('super-emoji');
+      spanEmoji.append(element);
+      element = spanEmoji;
+    } else if(emoji.docId) {
       const customEmojiElement = CustomEmojiElement.create(emoji.docId);
       const span = document.createElement('span');
       span.classList.add(/* 'emoji',  */'super-emoji');
@@ -543,9 +658,23 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
     }
 
     const item: typeof category['items'][0] = {
-      ...emoji,
+      ...(emoji || {emoji: undefined}),
       element
     };
+
+    if(
+      options.active || (
+        this.activeEmoji && (
+          item.docId ?
+            this.activeEmoji.docId === item.docId :
+            this.activeEmoji.emoji === item.emoji
+        )
+      )
+    ) {
+      this.activeEmoji === emoji;
+      this.activeElements.push(item);
+      element.classList.add('active');
+    }
 
     category.items[prepend ? 'unshift' : 'push'](item);
     if(!batch && !this.spliceExceed(category)) {
@@ -566,9 +695,9 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
 
     const {target} = e;
 
+    const container = findUpClassName(target, 'emoji-category');
+    const category = this.categoriesMap.get(container);
     if(findUpClassName(target, 'category-title')) {
-      const container = findUpClassName(target, 'emoji-category');
-      const category = this.categoriesMap.get(container);
       if(category.local) {
         return;
       }
@@ -582,7 +711,12 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
       return;
     }
 
-    if(emoji.docId && !rootScope.premium && this.peerId !== rootScope.myId) {
+    if(
+      emoji.docId &&
+      !rootScope.premium && (
+        this.isStandalone ? category.id !== CUSTOM_EMOJI_RECENT_ID : this.peerId !== rootScope.myId
+      )
+    ) {
       const a = document.createElement('a');
       a.onclick = () => {
         appImManager.openUsername({userName: 'premiumbot'});
@@ -595,11 +729,45 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
       return;
     }
 
-    appImManager.chat.input.onEmojiSelected(emoji, false);
+    if(this.onClick) {
+      this.onClick({
+        ...emoji,
+        element: findUpClassName(target, 'super-emoji').firstElementChild as HTMLElement
+      });
+    } else {
+      appImManager.chat.input.onEmojiSelected(emoji, false);
+    }
+
     if(IS_TOUCH_SUPPORTED) {
       blurActiveElement();
     }
   };
+
+  public setActive(emoji: ReturnType<typeof getEmojiFromElement>) {
+    if(
+      emoji === this.activeEmoji ||
+      emoji?.docId ? emoji.docId === this.activeEmoji?.docId : emoji?.emoji === this.activeEmoji?.emoji
+    ) {
+      return;
+    }
+
+    this.activeEmoji = emoji;
+
+    this.activeElements.forEach((item) => {
+      item.element.classList.remove('active');
+    });
+
+    this.activeElements.length = 0;
+
+    this.categoriesMap.forEach((category) => {
+      category.items.forEach((item) => {
+        if(emoji.docId ? item.docId === emoji.docId : item.emoji === emoji.emoji) {
+          item.element.classList.add('active');
+          this.activeElements.push(item);
+        }
+      });
+    });
+  }
 
   public onClose() {
     this.closeScrollTop = this.scrollable.scrollTop;

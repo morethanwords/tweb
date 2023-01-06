@@ -34,6 +34,8 @@ let init = () => {
   });
 };
 
+const VIRTUAL_COUNTRIES = new Set(['FT']);
+
 export default class CountryInputField extends InputField {
   private lastCountrySelected: HelpCountry;
   private lastCountryCodeSelected: HelpCountryCode;
@@ -78,6 +80,10 @@ export default class CountryInputField extends InputField {
       initSelect = null;
 
       countries.forEach((c) => {
+        if(options.noPhoneCodes && VIRTUAL_COUNTRIES.has(c.iso2)) {
+          return;
+        }
+
         const emoji = getCountryEmoji(c.iso2);
 
         const liArr: Array<HTMLLIElement> = [];
@@ -132,7 +138,9 @@ export default class CountryInputField extends InputField {
         initSelect();
       } else {
         countries.forEach((c) => {
-          this.liMap.get(c.iso2).forEach((li) => li.style.display = '');
+          const arr = this.liMap.get(c.iso2);
+          if(!arr) return;
+          arr.forEach((li) => li.style.display = '');
         });
       }
 
@@ -189,6 +197,11 @@ export default class CountryInputField extends InputField {
       const _value = this.value.toLowerCase();
       const matches: HelpCountry[] = [];
       countries.forEach((c) => {
+        const arr = this.liMap.get(c.iso2);
+        if(!arr) {
+          return;
+        }
+
         const names = [
           c.name,
           c.default_name,
@@ -204,7 +217,7 @@ export default class CountryInputField extends InputField {
 
         const good = !!names.filter(Boolean).find((str) => str.toLowerCase().indexOf(_value) !== -1)/*  === 0 */;// i.test(c.name);
 
-        this.liMap.get(c.iso2).forEach((li) => li.style.display = good ? '' : 'none');
+        arr.forEach((li) => li.style.display = good ? '' : 'none');
         if(good) matches.push(c);
       });
 
@@ -219,7 +232,12 @@ export default class CountryInputField extends InputField {
         return false;
       } else  */if(matches.length === 0) {
         countries.forEach((c) => {
-          this.liMap.get(c.iso2).forEach((li) => li.style.display = '');
+          const arr = this.liMap.get(c.iso2);
+          if(!arr) {
+            return;
+          }
+
+          arr.forEach((li) => li.style.display = '');
         });
       } else if(matches.length === 1 && key === 'Enter') {
         cancelEvent(e);

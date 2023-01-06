@@ -25,7 +25,7 @@ import noop from '../../helpers/noop';
 import {THUMB_TYPE_FULL} from '../../lib/mtproto/mtproto_config';
 import {Middleware} from '../../helpers/middleware';
 
-export default async function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size, withoutPreloader, loadPromises, autoDownloadSize, noBlur, noThumb, noFadeIn, blurAfter, managers = rootScope.managers}: {
+export default async function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size, withoutPreloader, loadPromises, autoDownloadSize, noBlur, noThumb, noFadeIn, blurAfter, managers = rootScope.managers, processUrl}: {
   photo: MyPhoto | MyDocument | WebDocument,
   message?: Message.message | Message.messageService,
   container: HTMLElement,
@@ -44,6 +44,7 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
   noFadeIn?: boolean,
   blurAfter?: boolean,
   managers?: AppManagers,
+  processUrl?: (url: string) => Promise<string>
 }) {
   const ret = {
     loadPromises: {
@@ -59,8 +60,9 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
   };
 
   const isDocument = photo._ === 'document';
+  const isImageFromDocument = isDocument && photo.mime_type.startsWith('image/') && !size;
   const isWebDoc = isWebDocument(photo);
-  if(!((photo as MyPhoto).sizes || (photo as MyDocument).thumbs) && !isWebDoc) {
+  if(!((photo as MyPhoto).sizes || (photo as MyDocument).thumbs) && !isWebDoc && !isImageFromDocument) {
     if(boxWidth && boxHeight && !size && isDocument) {
       setAttachmentSize(photo, container, boxWidth, boxHeight, undefined, message);
     }
@@ -83,13 +85,12 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
   let thumbImage: HTMLImageElement | HTMLCanvasElement;
   // let image: HTMLImageElement;
   let cacheContext: ThumbCache;
-  const isGif = isDocument && photo.mime_type === 'image/gif' && !size;
   // if(withTail) {
   //   image = wrapMediaWithTail(photo, message, container, boxWidth, boxHeight, isOut);
   // } else {
 
   if(boxWidth && boxHeight && !size) { // !album
-    const set = setAttachmentSize(photo, container, boxWidth, boxHeight, undefined, message, undefined, isGif ? {
+    const set = setAttachmentSize(photo, container, boxWidth, boxHeight, undefined, message, undefined, isImageFromDocument ? {
       _: 'photoSize',
       w: photo.w,
       h: photo.h,
@@ -205,7 +206,7 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
     // const promise = isGif && !size ?
     //   managers.appDocsManager.downloadDoc(photo, /* undefined,  */lazyLoadQueue?.queueId) :
     //   managers.appPhotosManager.preloadPhoto(photo, size, lazyLoadQueue?.queueId, noAutoDownload);
-    const haveToDownload = isGif && !size;
+    const haveToDownload = isImageFromDocument && !size;
     const promise = appDownloadManager.downloadMediaURL({
       media: photo,
       thumb: size,
@@ -222,6 +223,10 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
 
   const onLoad = async(url: string) => {
     if(middleware && !middleware()) return;
+
+    if(processUrl) {
+      url = await processUrl(url);
+    }
 
     if(blurAfter) {
       const result = blur(url, 12);

@@ -33,14 +33,14 @@ const times: {value: number | string, langPackKey: LangPackKey, checked?: boolea
 }];
 
 export default class PopupMute extends PopupPeer {
-  constructor(peerId: PeerId) {
+  constructor(peerId: PeerId, threadId?: number) {
     super('popup-mute', {
       peerId,
       titleLangKey: 'Notifications',
       buttons: [{
         langKey: 'ChatList.Context.Mute',
         callback: () => {
-          this.managers.appMessagesManager.mutePeer(peerId, time === -1 ? MUTE_UNTIL : tsNow(true) + time);
+          this.managers.appMessagesManager.mutePeer({peerId, muteUntil: time === -1 ? MUTE_UNTIL : tsNow(true) + time, threadId});
         }
       }],
       body: true

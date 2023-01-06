@@ -9,6 +9,7 @@ import sequentialDom from '../helpers/sequentialDom';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import rootScope from '../lib/rootScope';
 import findUpAsChild from '../helpers/dom/findUpAsChild';
+import {fastRaf} from '../helpers/schedulers';
 
 let rippleClickId = 0;
 export default function ripple(
@@ -36,16 +37,18 @@ export default function ripple(
   // let animationEndPromise: Promise<number>;
   const drawRipple = (clientX: number, clientY: number) => {
     const startTime = Date.now();
-    const elem = document.createElement('div');
+    const circle = document.createElement('div');
 
     const clickId = rippleClickId++;
 
     // console.log('ripple drawRipple');
 
-    const duration = +window.getComputedStyle(r).getPropertyValue('--ripple-duration').replace('s', '') * 1000;
+    // const auto = elem.classList.contains('row-sortable') && !elem.classList.contains('cant-sort');
+    const auto = false;
+    const duration = (auto ? .3 : +window.getComputedStyle(r).getPropertyValue('--ripple-duration').replace('s', '')) * 1000;
     // console.log('ripple duration', duration);
 
-    handler = () => {
+    const _handler = handler = () => {
     // handler = () => animationEndPromise.then((duration) => {
       // console.log('ripple animation was:', duration);
 
@@ -55,23 +58,24 @@ export default function ripple(
       const cb = () => {
         // console.log('ripple elapsedTime total pre-remove:', Date.now() - startTime);
         sequentialDom.mutate(() => {
-          elem.remove();
+          circle.remove();
         });
 
-        if(onEnd) onEnd(clickId);
+        onEnd?.(clickId);
       };
       if(elapsedTime < duration) {
         const delay = Math.max(duration - elapsedTime, duration / 2);
-        setTimeout(() => elem.classList.add('hiding'), Math.max(delay - duration / 2, 0));
+        setTimeout(() => circle.classList.add('hiding'), Math.max(delay - duration / 2, 0));
 
         setTimeout(cb, delay);
       } else {
-        elem.classList.add('hiding');
+        circle.classList.add('hiding');
         setTimeout(cb, duration / 2);
       }
 
       if(!IS_TOUCH_SUPPORTED) {
         window.removeEventListener('contextmenu', handler);
+        window.removeEventListener('mousemove', handler);
       }
 
       handler = null;
@@ -79,7 +83,7 @@ export default function ripple(
     };
     // });
 
-    callback && callback(clickId);
+    callback?.(clickId);
 
     /* callback().then((bad) => {
       if(bad) {
@@ -94,9 +98,13 @@ export default function ripple(
         return;
       } */
 
-    window.requestAnimationFrame(() => {
+    fastRaf(() => {
+      if(_handler !== handler) {
+        return;
+      }
+
       const rect = r.getBoundingClientRect();
-      elem.classList.add('c-ripple__circle');
+      circle.classList.add('c-ripple__circle');
 
       const clickX = clientX - rect.left;
       const clickY = clientY - rect.top;
@@ -110,9 +118,9 @@ export default function ripple(
 
       // console.log('ripple click', offsetFromCenter, size, clickX, clickY);
 
-      elem.style.width = elem.style.height = size + 'px';
-      elem.style.left = x + 'px';
-      elem.style.top = y + 'px';
+      circle.style.width = circle.style.height = size + 'px';
+      circle.style.left = x + 'px';
+      circle.style.top = y + 'px';
 
       // нижний код выполняется с задержкой
       /* animationEndPromise = new Promise((resolve) => {
@@ -128,7 +136,12 @@ export default function ripple(
         duration = +window.getComputedStyle(span).getPropertyValue('animation-duration').replace('s', '') * 1000;
         span.style.display = ''; */
 
-      r.append(elem);
+      r.append(circle);
+
+      if(auto) {
+        // window.addEventListener('mousemove', handler, {once: true, passive: true});
+        handler();
+      }
 
       // r.classList.add('active');
       // handler();
@@ -148,7 +161,7 @@ export default function ripple(
   let touchStartFired = false;
   if(IS_TOUCH_SUPPORTED) {
     const touchEnd = () => {
-      handler && handler();
+      handler?.();
     };
 
     attachListenerTo.addEventListener('touchstart', (e) => {

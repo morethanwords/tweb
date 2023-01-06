@@ -106,29 +106,46 @@ export default class EventListenerBase<Listeners extends EventListenerListeners>
     }
   }
 
-  public removeEventListener<T extends keyof Listeners>(name: T, callback: Listeners[T], options?: boolean | AddEventListenerOptions) {
+  public removeEventListener<T extends keyof Listeners>(
+    name: T,
+    callback: Listeners[T],
+    options?: boolean | AddEventListenerOptions
+  ) {
     if(this.listeners[name]) {
       findAndSplice(this.listeners[name], (l) => l.callback === callback);
     }
     // e.remove(this, name, callback);
   }
 
-  protected invokeListenerCallback<T extends keyof Listeners, L extends ListenerObject<any>>(name: T, listener: L, ...args: ArgumentTypes<L['callback']>) {
-    let result: any;
+  protected invokeListenerCallback<T extends keyof Listeners, L extends ListenerObject<any>>(
+    name: T,
+    listener: L,
+    ...args: ArgumentTypes<L['callback']>
+  ) {
+    let result: any, error: any;
     try {
       result = listener.callback(...args);
     } catch(err) {
-      console.error(err);
+      error = err;
+      // console.error('listener callback error', err);
     }
 
     if((listener.options as AddEventListenerOptions)?.once) {
       this.removeEventListener(name, listener.callback);
     }
 
+    if(error) {
+      throw error;
+    }
+
     return result;
   }
 
-  private _dispatchEvent<T extends keyof Listeners>(name: T, collectResults: boolean, ...args: ArgumentTypes<Listeners[T]>) {
+  private _dispatchEvent<T extends keyof Listeners>(
+    name: T,
+    collectResults: boolean,
+    ...args: ArgumentTypes<Listeners[T]>
+  ) {
     if(this.reuseResults) {
       this.listenerResults[name] = args;
     }
@@ -160,7 +177,10 @@ export default class EventListenerBase<Listeners extends EventListenerListeners>
   }
 
   // * must be protected, but who cares
-  public dispatchEvent<L extends EventListenerListeners = Listeners, T extends keyof L = keyof L>(name: T, ...args: ArgumentTypes<L[T]>) {
+  public dispatchEvent<L extends EventListenerListeners = Listeners, T extends keyof L = keyof L>(
+    name: T,
+    ...args: ArgumentTypes<L[T]>
+  ) {
     // @ts-ignore
     this._dispatchEvent(name, false, ...args);
   }

@@ -4,41 +4,62 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import limitSymbols from '../../helpers/string/limitSymbols';
+import _limitSymbols from '../../helpers/string/limitSymbols';
 import {Chat} from '../../layer';
-import {AppManagers} from '../../lib/appManagers/managers';
+import getPeerActiveUsernames from '../../lib/appManagers/utils/peers/getPeerActiveUsernames';
 import I18n from '../../lib/langPack';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import rootScope from '../../lib/rootScope';
 
-export default async function getPeerTitle(peerId: PeerId, plainText: true, onlyFirstName?: boolean, _limitSymbols?: number, managers?: AppManagers): Promise<string>;
-export default async function getPeerTitle(peerId: PeerId, plainText?: false, onlyFirstName?: boolean, _limitSymbols?: number, managers?: AppManagers): Promise<DocumentFragment>;
-export default async function getPeerTitle(peerId: PeerId, plainText: boolean, onlyFirstName?: boolean, _limitSymbols?: number, managers?: AppManagers): Promise<DocumentFragment | string>;
-export default async function getPeerTitle(peerId: PeerId, plainText = false, onlyFirstName = false, _limitSymbols?: number, managers: AppManagers = rootScope.managers): Promise<DocumentFragment | string> {
-  if(!peerId) {
-    peerId = rootScope.myId;
-  }
+type GetPeerTitleOptions = {
+  peerId: PeerId,
+  plainText?: boolean,
+  onlyFirstName?: boolean,
+  limitSymbols?: number,
+  threadId?: number
+} & Pick<WrapSomethingOptions, 'managers'>;
+
+export default async function getPeerTitle<T extends GetPeerTitleOptions>(
+  options: T
+): Promise<T['plainText'] extends true ? string : DocumentFragment> {
+  const {
+    peerId = rootScope.myId,
+    plainText,
+    onlyFirstName,
+    limitSymbols,
+    managers = rootScope.managers,
+    threadId
+  } = options;
 
   let title = '';
   if(peerId.isUser()) {
     const user = await managers.appUsersManager.getUser(peerId.toUserId());
-    if(user.first_name) title += user.first_name;
-    if(user.last_name && (!onlyFirstName || !title)) title += ' ' + user.last_name;
+    if(user) {
+      if(user.first_name) title += user.first_name;
+      if(user.last_name && (!onlyFirstName || !title)) title += ' ' + user.last_name;
+    }
 
-    if(!title) title = user.pFlags.deleted ? I18n.format(onlyFirstName ? 'Deleted' : 'HiddenName', true) : user.username;
+    if(!title) title = !user || user.pFlags.deleted ? I18n.format(onlyFirstName ? 'Deleted' : 'HiddenName', true) : getPeerActiveUsernames(user)[0] || '';
     else title = title.trim();
   } else {
-    const chat: Chat.chat = await managers.appChatsManager.getChat(peerId.toChatId());
-    title = chat.title;
+    if(threadId) {
+      const topic = await managers.dialogsStorage.getForumTopic(peerId, threadId);
+      title = topic?.title || '';
+    }
+
+    if(!title) {
+      const chat = await managers.appChatsManager.getChat(peerId.toChatId()) as Chat.chat;
+      title = chat?.title || '';
+    }
 
     if(onlyFirstName) {
       title = title.split(' ')[0];
     }
   }
 
-  if(_limitSymbols !== undefined) {
-    title = limitSymbols(title, _limitSymbols, _limitSymbols);
+  if(limitSymbols !== undefined) {
+    title = _limitSymbols(title, limitSymbols, limitSymbols);
   }
 
-  return plainText ? title : wrapEmojiText(title);
+  return plainText ? title : wrapEmojiText(title) as any;
 }

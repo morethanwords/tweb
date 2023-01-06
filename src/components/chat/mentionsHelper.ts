@@ -9,6 +9,8 @@ import type {MessageEntity} from '../../layer';
 import AutocompleteHelperController from './autocompleteHelperController';
 import AutocompletePeerHelper from './autocompletePeerHelper';
 import {AppManagers} from '../../lib/appManagers/managers';
+import getPeerActiveUsernames from '../../lib/appManagers/utils/peers/getPeerActiveUsernames';
+import rootScope from '../../lib/rootScope';
 
 export default class MentionsHelper extends AutocompletePeerHelper {
   constructor(
@@ -25,8 +27,9 @@ export default class MentionsHelper extends AutocompletePeerHelper {
         const userId = (target as HTMLElement).dataset.peerId.toUserId();
         const user = Promise.resolve(managers.appUsersManager.getUser(userId)).then((user) => {
           let str = '', entity: MessageEntity;
-          if(user.username) {
-            str = '@' + user.username;
+          const usernames = getPeerActiveUsernames(user);
+          if(usernames[0]) {
+            str = '@' + usernames[0];
           } else {
             str = user.first_name || user.last_name;
             entity = {
@@ -52,17 +55,20 @@ export default class MentionsHelper extends AutocompletePeerHelper {
     this.managers.appProfileManager.getMentions(peerId && peerId.toChatId(), trimmed, topMsgId).then(async(peerIds) => {
       if(!middleware()) return;
 
-      const username = trimmed.slice(1).toLowerCase();
+      peerIds = peerIds.filter((peerId) => peerId !== rootScope.myId);
+
+      // const username = trimmed.slice(1).toLowerCase();
 
       const p = peerIds.map(async(peerId) => {
         const user = await this.managers.appUsersManager.getUser(peerId);
-        if(user.username && user.username.toLowerCase() === username) { // hide full matched suggestion
-          return;
-        }
+        const usernames = getPeerActiveUsernames(user);
+        // if(usernames.length && usernames.some((_username) => _username.toLowerCase() === username)) { // hide full matched suggestion
+        //   return;
+        // }
 
         return {
           peerId,
-          description: user.username ? '@' + user.username : undefined
+          description: usernames[0] ? '@' + usernames[0] : undefined
         };
       });
 

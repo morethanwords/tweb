@@ -74,7 +74,7 @@ const tabulationMatch = '[style*="table-cell"], th, td';
   return depth;
 } */
 
-const BLOCK_TAG_NAMES = new Set([
+const BLOCK_TAGS = new Set([
   'DIV',
   'P',
   'BR',
@@ -86,7 +86,14 @@ const BLOCK_TAG_NAMES = new Set([
   'H3',
   'H2',
   'H1',
-  'TR'
+  'TR',
+  'OL',
+  'UL'
+]);
+
+const INSERT_NEW_LINE_TAGS = new Set([
+  'OL',
+  'UL'
 ]);
 
 const BOM_REG_EXP = new RegExp(BOM, 'g');
@@ -184,8 +191,8 @@ export default function getRichElementValue(
   }
 
   const isSelected = selNode === node;
-  const isBlock = BLOCK_TAG_NAMES.has(node.tagName);
-  if(isBlock && (line.length || node.tagName === 'BR')) {
+  const isBlock = BLOCK_TAGS.has(node.tagName);
+  if(isBlock && (line.length || node.tagName === 'BR'/*  || (BLOCK_TAGS.has(node.tagName) && lines.length) */)) {
     lines.push(line.join(''));
     line.length = 0;
     ++offset.offset;
@@ -229,7 +236,7 @@ export default function getRichElementValue(
     line.push('\x01');
   }
 
-  if(isTableCell && node.nextSibling) {
+  if(isTableCell && node.nextSibling && line.length) {
     line.push(' ');
     ++offset.offset;
 

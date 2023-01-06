@@ -4,12 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {SettingSection} from '..';
 import Button from '../../button';
 import Row from '../../row';
 import {Authorization} from '../../../layer';
 import {formatDateAccordingToTodayNew} from '../../../helpers/date';
-import ButtonMenu from '../../buttonMenu';
+import {ButtonMenuSync} from '../../buttonMenu';
 import {toast} from '../../toast';
 import I18n from '../../../lib/langPack';
 import PopupPeer from '../../popups/peer';
@@ -21,13 +20,13 @@ import findAndSplice from '../../../helpers/array/findAndSplice';
 import {attachContextMenuListener} from '../../../helpers/dom/attachContextMenuListener';
 import positionMenu from '../../../helpers/positionMenu';
 import contextMenuController from '../../../helpers/contextMenuController';
+import SettingSection from '../../settingSection';
 
 export default class AppActiveSessionsTab extends SliderSuperTabEventable {
   public authorizations: Authorization.authorization[];
   private menuElement: HTMLElement;
 
   public init() {
-    this.header.classList.add('with-border');
     this.container.classList.add('active-sessions-container');
     this.setTitle('SessionsTitle');
 
@@ -41,11 +40,7 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
 
       row.container.dataset.hash = '' + auth.hash;
 
-      const midtitle = document.createElement('div');
-      midtitle.classList.add('row-midtitle');
-      midtitle.innerHTML = [auth.device_model, auth.system_version || auth.platform].filter(Boolean).join(', ');
-
-      row.subtitle.parentElement.insertBefore(midtitle, row.subtitle);
+      row.midtitle.textContent = [auth.device_model, auth.system_version || auth.platform].filter(Boolean).join(', ');
 
       return row;
     };
@@ -135,11 +130,13 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
       }).show();
     };
 
-    const element = this.menuElement = ButtonMenu([{
-      icon: 'stop',
-      text: 'Terminate',
-      onClick: onTerminateClick
-    }]);
+    const element = this.menuElement = ButtonMenuSync({
+      buttons: [{
+        icon: 'stop',
+        text: 'Terminate',
+        onClick: onTerminateClick
+      }]
+    });
     element.id = 'active-sessions-contextmenu';
     element.classList.add('contextmenu');
 

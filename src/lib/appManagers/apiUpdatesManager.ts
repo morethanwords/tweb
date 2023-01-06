@@ -26,7 +26,7 @@ type UpdatesState = {
   pendingSeqUpdates?: {[seq: number]: {seq: number, date: number, updates: any[]}},
   syncPending: {
     seqAwaiting?: number,
-    ptsAwaiting?: true,
+    ptsAwaiting?: boolean,
     timeout: number
   },
   syncLoading: Promise<void>,
@@ -34,7 +34,8 @@ type UpdatesState = {
   seq?: number,
   pts?: number,
   date?: number,
-  lastPtsUpdateTime?: number
+  lastPtsUpdateTime?: number,
+  lastDifferenceTime?: number
 };
 
 const SYNC_DELAY = 6;
@@ -52,6 +53,8 @@ class ApiUpdatesManager {
 
   private log = logger('UPDATES', LogTypes.Error | LogTypes.Warn | LogTypes.Log/*  | LogTypes.Debug */);
   private debug = DEBUG;
+
+  private subscriptions: {[channelId: ChatId]: {count: number, interval?: number}} = {};
 
   constructor() {
     this._constructor(false);
@@ -98,12 +101,10 @@ class ApiUpdatesManager {
     delete state.pendingSeqUpdates[nextSeq];
 
     if(!this.popPendingSeqUpdate() &&
-      state.syncPending &&
-      state.syncPending.seqAwaiting &&
+      state.syncPending?.seqAwaiting &&
       state.seq >= state.syncPending.seqAwaiting) {
       if(!state.syncPending.ptsAwaiting) {
-        clearTimeout(state.syncPending.timeout);
-        state.syncPending = null;
+        this.clearStatePendingSync(state);
       } else {
         delete state.syncPending.seqAwaiting;
       }
@@ -152,8 +153,7 @@ class ApiUpdatesManager {
 
     if(!curState.pendingPtsUpdates.length && curState.syncPending) {
       if(!curState.syncPending.seqAwaiting) {
-        clearTimeout(curState.syncPending.timeout);
-        curState.syncPending = null;
+        this.clearStatePendingSync(curState);
       } else {
         delete curState.syncPending.ptsAwaiting;
       }
@@ -252,10 +252,7 @@ class ApiUpdatesManager {
       updatesState.pendingPtsUpdates = [];
     }
 
-    if(updatesState.syncPending) {
-      clearTimeout(updatesState.syncPending.timeout);
-      updatesState.syncPending = null;
-    }
+    this.clearStatePendingSync(updatesState);
 
     const promise = this.apiManager.invokeApi('updates.getDifference', {
       pts: updatesState.pts,
@@ -339,6 +336,13 @@ class ApiUpdatesManager {
     return promise;
   }
 
+  private clearStatePendingSync(state: UpdatesState) {
+    if(state.syncPending) {
+      clearTimeout(state.syncPending.timeout);
+      state.syncPending = null;
+    }
+  }
+
   private getChannelDifference(channelId: ChatId): Promise<void> {
     const channelState = this.getChannelState(channelId);
     const wasSyncing = channelState.syncLoading;
@@ -346,10 +350,7 @@ class ApiUpdatesManager {
       channelState.pendingPtsUpdates = [];
     }
 
-    if(channelState.syncPending) {
-      clearTimeout(channelState.syncPending.timeout);
-      channelState.syncPending = null;
-    }
+    this.clearStatePendingSync(channelState);
 
     const log = this.debug ? this.log.bindPrefix('getChannelDifference-' + channelId) : undefined;
     // this.log.trace('Get channel diff', appChatsManager.getChat(channelId), channelState.pts);
@@ -357,10 +358,11 @@ class ApiUpdatesManager {
       channel: this.appChatsManager.getChannelInput(channelId),
       filter: {_: 'channelMessagesFilterEmpty'},
       pts: channelState.pts,
-      limit: 30
+      limit: 1000
     }, {timeout: 0x7fffffff}).then((differenceResult) => {
       log?.debug('diff result', differenceResult)
       channelState.pts = 'pts' in differenceResult ? differenceResult.pts : undefined;
+      channelState.lastDifferenceTime = Date.now();
 
       if(differenceResult._ === 'updates.channelDifferenceEmpty') {
         // log?.debug('apply channel empty diff', differenceResult);
@@ -436,18 +438,12 @@ class ApiUpdatesManager {
       throw new Error('Add channel state without pts ' + channelId);
     }
 
-    if(!(channelId in this.channelStates)) {
-      this.channelStates[channelId] = {
-        pts,
-        pendingPtsUpdates: [],
-        syncPending: null,
-        syncLoading: null
-      };
-
-      return true;
-    }
-
-    return false;
+    return this.channelStates[channelId] ??= {
+      pts,
+      pendingPtsUpdates: [],
+      syncPending: null,
+      syncLoading: null
+    };
   }
 
   public getChannelState(channelId: ChatId, pts?: number) {
@@ -579,11 +575,9 @@ class ApiUpdatesManager {
 
       if(seqStart !== curState.seq + 1) {
         if(seqStart > curState.seq) {
-          this.debug && this.log.warn('Seq hole', curState, curState.syncPending && curState.syncPending.seqAwaiting);
+          this.debug && this.log.warn('Seq hole', curState, curState.syncPending?.seqAwaiting);
 
-          if(curState.pendingSeqUpdates[seqStart] === undefined) {
-            curState.pendingSeqUpdates[seqStart] = {seq, date: options.date, updates: []};
-          }
+          curState.pendingSeqUpdates[seqStart] ??= {seq, date: options.date, updates: []};
           curState.pendingSeqUpdates[seqStart].updates.push(update);
 
           if(!curState.syncPending) {
@@ -630,6 +624,32 @@ class ApiUpdatesManager {
   public saveUpdate(update: Update) {
     // this.debug && this.log('saveUpdate', update);
     this.dispatchEvent(update._, update as any);
+  }
+
+  public subscribeToChannelUpdates(channelId: ChatId) {
+    const subscription = this.subscriptions[channelId] ??= {count: 0};
+    ++subscription.count;
+
+    const cb = () => {
+      const state = this.getChannelState(channelId);
+      if(!state.syncLoading && (!state.lastDifferenceTime || (Date.now() - state.lastDifferenceTime) > 2500)) {
+        this.getChannelDifference(channelId);
+      }
+    };
+
+    subscription.interval ??= ctx.setInterval(cb, 3000);
+    cb();
+  }
+
+  public unsubscribeFromChannelUpdates(channelId: ChatId, force?: boolean) {
+    const subscription = this.subscriptions[channelId];
+    if(!subscription?.interval || (--subscription.count && !force)) {
+      return;
+    }
+
+    clearInterval(subscription.interval);
+    subscription.interval = undefined;
+    delete this.subscriptions[channelId];
   }
 
   public attach(langCode?: string) {

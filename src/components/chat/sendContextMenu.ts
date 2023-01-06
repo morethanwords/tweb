@@ -9,10 +9,10 @@ import {attachContextMenuListener} from '../../helpers/dom/attachContextMenuList
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import ListenerSetter from '../../helpers/listenerSetter';
 import rootScope from '../../lib/rootScope';
-import ButtonMenu, {ButtonMenuItemOptions} from '../buttonMenu';
+import {ButtonMenuItemOptions, ButtonMenuSync} from '../buttonMenu';
 
 export default class SendMenu {
-  public sendMenu: HTMLDivElement;
+  public sendMenu: HTMLElement;
   private sendMenuButtons: (ButtonMenuItemOptions & {verify: () => boolean})[];
   private type: 'schedule' | 'reminder';
 
@@ -41,10 +41,10 @@ export default class SendMenu {
       verify: () => this.type === 'reminder'
     }];
 
-    this.sendMenu = ButtonMenu(this.sendMenuButtons, options.listenerSetter);
+    this.sendMenu = ButtonMenuSync({buttons: this.sendMenuButtons, listenerSetter: options.listenerSetter});
     this.sendMenu.classList.add('menu-send', options.openSide);
 
-    attachContextMenuListener(options.onContextElement, (e: any) => {
+    attachContextMenuListener(options.onContextElement, (e) => {
       if(options.onOpen && !options.onOpen()) {
         return;
       }

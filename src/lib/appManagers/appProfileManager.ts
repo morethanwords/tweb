@@ -19,6 +19,7 @@ import getPhotoInput from './utils/photos/getPhotoInput';
 import getParticipantPeerId from './utils/chats/getParticipantPeerId';
 import ctx from '../../environment/ctx';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
+import generateMessageId from './utils/messageId/generateMessageId';
 
 export type UserTyping = Partial<{userId: UserId, action: SendMessageAction, timeout: number}>;
 
@@ -29,7 +30,7 @@ export class AppProfileManager extends AppManager {
   private usersFull: {[id: UserId]: UserFull.userFull} = {};
   private chatsFull: {[id: ChatId]: ChatFull} = {};
   private fullExpiration: {[peerId: PeerId]: number} = {};
-  private typingsInPeer: {[peerId: PeerId]: UserTyping[]};
+  private typingsInPeer: {[key: string]: UserTyping[]};
 
   protected after() {
     this.apiUpdatesManager.addMultipleEventsListeners({
@@ -270,7 +271,7 @@ export class AppProfileManager extends AppManager {
     const peerId = id.toPeerId(true);
     const fullChat = this.chatsFull[id] as ChatFull.chatFull;
     if(fullChat && !override && Date.now() < this.fullExpiration[peerId]) {
-      const chat: Chat.chat = this.appChatsManager.getChat(id);
+      const chat = this.appChatsManager.getChat(id) as Chat.chat;
       if(
         chat.pFlags.left ||
         chat.pFlags.deactivated ||
@@ -334,10 +335,11 @@ export class AppProfileManager extends AppManager {
   public getChannelParticipants(id: ChatId, filter: ChannelParticipantsFilter = {_: 'channelParticipantsRecent'}, limit = 200, offset = 0) {
     if(filter._ === 'channelParticipantsRecent') {
       const chat = this.appChatsManager.getChat(id);
-      if(chat &&
-          chat.pFlags && (
+      if(chat?.pFlags && (
       // chat.pFlags.kicked ||
-        chat.pFlags.broadcast && !chat.pFlags.creator && !chat.admin_rights
+        (chat as Chat.channel).pFlags.broadcast &&
+          !(chat as Chat.channel).pFlags.creator &&
+          !(chat as Chat.channel).admin_rights
       )) {
         return Promise.reject();
       }
@@ -428,14 +430,14 @@ export class AppProfileManager extends AppManager {
       processError: (error) => {
         switch(error.type) {
           case 'CHANNEL_PRIVATE':
-            const channel: Chat.channel | Chat.channelForbidden = this.appChatsManager.getChat(id);
+            const channel = this.appChatsManager.getChat(id) as Chat.channel | Chat.channelForbidden;
             this.apiUpdatesManager.processUpdateMessage({
               _: 'updates',
               updates: [{
                 _: 'updateChannel',
                 channel_id: id
               }],
-              chats: [{
+              chats: [channel._ === 'channelForbidden' ? channel : {
                 _: 'channelForbidden',
                 id,
                 access_hash: channel.access_hash,
@@ -576,12 +578,16 @@ export class AppProfileManager extends AppManager {
       });
 
       const userId = myId.toUserId();
+      // this.apiUpdatesManager.processLocalUpdate({
+      //   _: 'updateUserPhoto',
+      //   user_id: userId,
+      //   date: tsNow(true),
+      //   photo: this.appUsersManager.getUser(userId).photo,
+      //   previous: true
+      // });
       this.apiUpdatesManager.processLocalUpdate({
-        _: 'updateUserPhoto',
-        user_id: userId,
-        date: tsNow(true),
-        photo: this.appUsersManager.getUser(userId).photo,
-        previous: true
+        _: 'updateUser',
+        user_id: userId
       });
     });
   }
@@ -637,6 +643,10 @@ export class AppProfileManager extends AppManager {
     }
   }
 
+  private getTypingsKey(peerId: PeerId, threadId?: number) {
+    return peerId + (threadId ? `_${threadId}` : '');
+  }
+
   private onUpdateUserTyping = (update: Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChannelUserTyping) => {
     const fromId = (update as Update.updateUserTyping).user_id ?
       (update as Update.updateUserTyping).user_id.toPeerId() :
@@ -645,8 +655,11 @@ export class AppProfileManager extends AppManager {
       return;
     }
 
+    const topMsgId = (update as Update.updateChannelUserTyping).top_msg_id;
+    const threadId = topMsgId ? generateMessageId(topMsgId) : undefined;
     const peerId = this.appPeersManager.getPeerId(update);
-    const typings = this.typingsInPeer[peerId] ?? (this.typingsInPeer[peerId] = []);
+    const key = this.getTypingsKey(peerId, threadId);
+    const typings = this.typingsInPeer[key] ??= [];
     let typing = typings.find((t) => t.userId === fromId);
 
     const cancelAction = () => {
@@ -657,14 +670,14 @@ export class AppProfileManager extends AppManager {
         typings.splice(idx, 1);
       }
 
-      this.rootScope.dispatchEvent('peer_typings', {peerId, typings});
+      this.rootScope.dispatchEvent('peer_typings', {peerId, threadId, typings});
 
       if(!typings.length) {
-        delete this.typingsInPeer[peerId];
+        delete this.typingsInPeer[key];
       }
     };
 
-    if(typing && typing.timeout !== undefined) {
+    if(typing?.timeout !== undefined) {
       clearTimeout(typing.timeout);
     }
 
@@ -696,7 +709,7 @@ export class AppProfileManager extends AppManager {
         if(update.chat_id && this.appChatsManager.hasChat(update.chat_id) && !this.appChatsManager.isChannel(update.chat_id)) {
           Promise.resolve(this.getChatFull(update.chat_id)).then(() => {
             if(typing.timeout !== undefined && this.appUsersManager.hasUser(fromId)) {
-              this.rootScope.dispatchEvent('peer_typings', {peerId, typings});
+              this.rootScope.dispatchEvent('peer_typings', {peerId, threadId, typings});
             }
           });
         }
@@ -709,7 +722,7 @@ export class AppProfileManager extends AppManager {
 
     typing.timeout = ctx.setTimeout(cancelAction, 6000);
     if(hasUser) {
-      this.rootScope.dispatchEvent('peer_typings', {peerId, typings});
+      this.rootScope.dispatchEvent('peer_typings', {peerId, threadId, typings});
     }
   };
 
@@ -729,7 +742,7 @@ export class AppProfileManager extends AppManager {
     this.rootScope.dispatchEvent('peer_block', {peerId, blocked: update.blocked});
   };
 
-  public getPeerTypings(peerId: PeerId) {
-    return this.typingsInPeer[peerId];
+  public getPeerTypings(peerId: PeerId, threadId?: number) {
+    return this.typingsInPeer[this.getTypingsKey(peerId, threadId)];
   }
 }

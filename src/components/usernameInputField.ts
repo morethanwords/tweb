@@ -23,6 +23,7 @@ export class UsernameInputField extends InputField {
     availableText: LangPackKey,
     head?: string
   };
+  public error: ApiError;
 
   constructor(
     options: UsernameInputField['options'],
@@ -35,10 +36,10 @@ export class UsernameInputField extends InputField {
     options.listenerSetter.add(this.input)('input', () => {
       const value = this.getValue();
 
-      // console.log('userNameInput:', value);
+      this.error = undefined;
       if(value === this.originalValue || !value.length) {
         this.setState(InputState.Neutral);
-        this.options.onChange && this.options.onChange();
+        this.options.onChange?.();
         return;
       } else if(!isUsernameValid(value)) { // does not check the last underscore
         this.setError(this.options.invalidText);
@@ -47,7 +48,7 @@ export class UsernameInputField extends InputField {
       }
 
       if(this.input.classList.contains('error')) {
-        this.options.onChange && this.options.onChange();
+        this.options.onChange?.();
         return;
       }
 
@@ -68,13 +69,15 @@ export class UsernameInputField extends InputField {
   private checkUsername(username: string) {
     if(this.checkUsernamePromise) return;
 
+    this.error = undefined;
+    let checkPromise: Promise<any>
     if(this.options.peerId) {
-      this.checkUsernamePromise = this.managers.appChatsManager.checkUsername(this.options.peerId.toChatId(), username);
+      checkPromise = this.managers.appChatsManager.checkUsername(this.options.peerId.toChatId(), username);
     } else {
-      this.checkUsernamePromise = this.managers.appUsersManager.checkUsername(username);
+      checkPromise = this.managers.appUsersManager.checkUsername(username);
     }
 
-    this.checkUsernamePromise.then((available) => {
+    const promise = this.checkUsernamePromise = checkPromise.then((available) => {
       if(this.getValue() !== username) return;
 
       if(available) {
@@ -85,15 +88,25 @@ export class UsernameInputField extends InputField {
     }, (err) => {
       if(this.getValue() !== username) return;
 
-      switch(err.type) {
-        case 'USERNAME_INVALID': {
+      this.error = err;
+      switch((err as ApiError).type) {
+        case 'USERNAME_PURCHASE_AVAILABLE': {
+          this.setError(this.options.takenText);
+          break;
+        }
+
+        case 'USERNAME_INVALID':
+        default: {
           this.setError(this.options.invalidText);
           break;
         }
       }
     }).then(() => {
-      this.checkUsernamePromise = undefined;
-      this.options.onChange && this.options.onChange();
+      if(this.checkUsernamePromise === promise) {
+        this.checkUsernamePromise = undefined;
+      }
+
+      this.options.onChange?.();
 
       const value = this.getValue();
       if(value !== username && this.isValidToChange() && isUsernameValid(value)) {

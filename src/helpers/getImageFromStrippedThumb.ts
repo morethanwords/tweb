@@ -11,7 +11,11 @@ import {renderImageFromUrlPromise} from './dom/renderImageFromUrl';
 import getPreviewURLFromThumb from './getPreviewURLFromThumb';
 import blur from './blur';
 
-export default function getImageFromStrippedThumb(photo: MyPhoto | MyDocument, thumb: PhotoSize.photoCachedSize | PhotoSize.photoStrippedSize, useBlur: boolean) {
+export default function getImageFromStrippedThumb(
+  photo: MyPhoto | MyDocument,
+  thumb: PhotoSize.photoCachedSize | PhotoSize.photoStrippedSize,
+  useBlur: boolean
+) {
   const url = getPreviewURLFromThumb(photo, thumb, false);
 
   let element: HTMLImageElement | HTMLCanvasElement, loadPromise: Promise<void>;

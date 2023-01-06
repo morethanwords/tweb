@@ -13,7 +13,6 @@ import CheckboxField from '../../checkboxField';
 import Button from '../../button';
 import AppEditFolderTab from './editFolder';
 import I18n, {i18n, LangPackKey, _i18n, join} from '../../../lib/langPack';
-import {SettingSection} from '..';
 import {toast} from '../../toast';
 import copy from '../../../helpers/object/copy';
 import forEachReverse from '../../../helpers/array/forEachReverse';
@@ -23,6 +22,7 @@ import {REAL_FOLDERS} from '../../../lib/mtproto/mtproto_config';
 import rootScope from '../../../lib/rootScope';
 import {MTAppConfig} from '../../../lib/mtproto/appConfig';
 import {attachClickEvent, simulateClickEvent} from '../../../helpers/dom/clickEvent';
+import SettingSection from '../../settingSection';
 
 export default class AppIncludedChatsTab extends SliderSuperTab {
   private editFolderTab: AppEditFolderTab;

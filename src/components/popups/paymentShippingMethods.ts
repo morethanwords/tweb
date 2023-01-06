@@ -6,13 +6,11 @@
 
 import PopupElement from '.';
 import accumulate from '../../helpers/array/accumulate';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
 import {PaymentsPaymentForm, PaymentsValidatedRequestedInfo, ShippingOption} from '../../layer';
-import Button from '../button';
 import RadioField from '../radioField';
 import Row, {RadioFormFromRows} from '../row';
-import {SettingSection} from '../sidebarLeft';
+import SettingSection from '../settingSection';
 import {PaymentButton} from './payment';
 
 export default class PopupPaymentShippingMethods extends PopupElement<{

@@ -20,7 +20,7 @@ export default async function generateTitleIcons(
   noFakeIcon?: boolean,
   noPremiumIcon?: boolean
 ) {
-  const elements: Element[] = [];
+  const elements: HTMLElement[] = [];
   const peer: Chat | User = await rootScope.managers.appPeersManager.getPeer(peerId);
   if((peer as Chat.channel).pFlags.verified && !noVerifiedIcon) {
     elements.push(generateVerifiedIcon());

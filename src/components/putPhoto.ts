@@ -4,19 +4,23 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type {PeerPhotoSize} from '../lib/appManagers/appAvatarsManager';
 import getPreviewURLFromBytes from '../helpers/bytes/getPreviewURLFromBytes';
 import {renderImageFromUrlPromise} from '../helpers/dom/renderImageFromUrl';
 import replaceContent from '../helpers/dom/replaceContent';
 import setInnerHTML from '../helpers/dom/setInnerHTML';
 import {recordPromise} from '../helpers/recordPromise';
 import sequentialDom from '../helpers/sequentialDom';
-import {UserProfilePhoto, ChatPhoto} from '../layer';
-import type {PeerPhotoSize} from '../lib/appManagers/appAvatarsManager';
+import {UserProfilePhoto, ChatPhoto, User, Chat} from '../layer';
 import getPeerColorById from '../lib/appManagers/utils/peers/getPeerColorById';
+import getPeerPhoto from '../lib/appManagers/utils/peers/getPeerPhoto';
 import {NULL_PEER_ID, REPLIES_PEER_ID} from '../lib/mtproto/mtproto_config';
-import getAbbreviation from '../lib/richTextProcessor/getAbbreviation';
+import wrapAbbreviation from '../lib/richTextProcessor/wrapAbbreviation';
 import rootScope from '../lib/rootScope';
 import getPeerInitials from './wrappers/getPeerInitials';
+import {wrapTopicIcon} from './wrappers/messageActionTextNewUnsafe';
+import makeError from '../helpers/makeError';
+import noop from '../helpers/noop';
 
 export async function putAvatar(
   div: HTMLElement,
@@ -50,7 +54,7 @@ export async function putAvatar(
     let isFullLoaded = false;
     if(size === 'photo_big') { // let's load small photo first
       const res = await putAvatar(div, peerId, photo, 'photo_small');
-      renderThumbPromise = res.loadPromise;
+      renderThumbPromise = res.loadThumbPromise || res.loadPromise;
       thumbImage = res.thumbImage;
     } else if(photo.stripped_thumb) {
       thumbImage = new Image();
@@ -84,9 +88,7 @@ export async function putAvatar(
               img.classList.remove('fade-in');
             }
 
-            if(thumbImage) {
-              thumbImage.remove();
-            }
+            thumbImage?.remove();
           });
         }
       }, animate ? 200 : 0);
@@ -97,11 +99,12 @@ export async function putAvatar(
   .then((url) => renderImageFromUrlPromise(img, url/* , !cached */))
   .then(callback);
 
-  await (renderThumbPromise || renderPromise);
+  renderThumbPromise && await renderThumbPromise.catch(noop);
 
   return {
     cached,
-    loadPromise: renderThumbPromise || renderPromise,
+    loadPromise: renderPromise,
+    loadThumbPromise: cached ? renderPromise : renderThumbPromise || Promise.resolve(),
     thumbImage
   };
 }
@@ -110,23 +113,38 @@ function set(
   div: HTMLElement,
   innerHTML: Parameters<typeof setInnerHTML>[1],
   color: string,
-  icon: string
+  icon?: string,
+  isForum?: boolean,
+  isTopic?: boolean
 ) {
   setInnerHTML(div, innerHTML);
   div.dataset.color = color;
-  div.classList.remove('tgico-saved', 'tgico-deletedaccount', 'tgico-reply_filled');
+  div.classList.remove('tgico-saved', 'tgico-deletedaccount', 'tgico-reply_filled', 'is-forum', 'is-topic');
   icon && div.classList.add(icon);
+  isForum && div.classList.add('is-forum');
+  isTopic && div.classList.add('is-topic');
 }
 
 // peerId === peerId || title
-export default async function putPhoto(
-  div: HTMLElement,
-  peerId: PeerId,
+export default async function putPhoto({
+  div,
+  peerId,
   isDialog = false,
   title = '',
   onlyThumb = false,
-  isBig?: boolean
-) {
+  isBig,
+  threadId,
+  wrapOptions = {}
+}: {
+  div: HTMLElement,
+  peerId: PeerId,
+  isDialog?: boolean,
+  title?: string,
+  onlyThumb?: boolean,
+  isBig?: boolean,
+  threadId?: number,
+  wrapOptions?: WrapSomethingOptions
+}) {
   const myId = rootScope.myId;
 
   if(peerId === myId && isDialog) {
@@ -136,16 +154,32 @@ export default async function putPhoto(
 
   const managers = rootScope.managers;
 
-  if(peerId !== NULL_PEER_ID && peerId.isUser()) {
-    const user = await managers.appUsersManager.getUser(peerId);
-    if(user && user.pFlags && user.pFlags.deleted) {
-      set(div, '', getPeerColorById(peerId), 'tgico-deletedaccount');
-      return;
+  if(threadId) {
+    const topic = await managers.dialogsStorage.getForumTopic(peerId, threadId);
+    set(div, '', '', undefined, undefined, true);
+
+    if(wrapOptions.customEmojiSize) {
+      div.style.setProperty('--size', wrapOptions.customEmojiSize.width + 'px');
     }
+
+    return wrapTopicIcon({
+      ...wrapOptions,
+      topic,
+      lazyLoadQueue: false
+    }).then((icon) => {
+      div.replaceChildren(icon);
+    });
   }
 
+  const peer = await managers.appPeersManager.getPeer(peerId);
+  if(peerId !== NULL_PEER_ID && peerId.isUser() && (peer as User.user)?.pFlags?.deleted) {
+    set(div, '', getPeerColorById(peerId), 'tgico-deletedaccount');
+    return;
+  }
+
+  const isForum = !!(peer as Chat.channel)?.pFlags?.forum;
   const size: PeerPhotoSize = isBig ? 'photo_big' : 'photo_small';
-  const photo = await managers.appPeersManager.getPeerPhoto(peerId);
+  const photo = getPeerPhoto(peer);
   const avatarAvailable = !!photo;
   const avatarRendered = !!div.firstElementChild && !(div.firstElementChild as HTMLElement).classList.contains('emoji');
   if(!avatarAvailable || !avatarRendered || !(await managers.appAvatarsManager.isAvatarCached(peerId, size))) {
@@ -159,8 +193,8 @@ export default async function putPhoto(
       return;
     }
 
-    const abbr = await (title ? getAbbreviation(title) : getPeerInitials(peerId, managers));
-    set(div, abbr, color, '');
+    const abbr = title ? wrapAbbreviation(title) : getPeerInitials(peer);
+    set(div, abbr, color, '', isForum);
     // return Promise.resolve(true);
   }
 

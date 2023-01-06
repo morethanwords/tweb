@@ -107,7 +107,8 @@
       margin-right: 8px;
       overflow: hidden;
       position: relative;
-      
+      border-radius: 50% !important;
+
       html.is-safari & {
         -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%); // fix safari overflow
       }

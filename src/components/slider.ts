@@ -5,12 +5,14 @@
  */
 
 import {horizontalMenu} from './horizontalMenu';
-import {TransitionSlider} from './transition';
+import TransitionSlider from './transition';
 import appNavigationController, {NavigationItem} from './appNavigationController';
 import SliderSuperTab, {SliderSuperTabConstructable} from './sliderTab';
 import indexOfAndSplice from '../helpers/array/indexOfAndSplice';
 import safeAssign from '../helpers/object/safeAssign';
 import {AppManagers} from '../lib/appManagers/managers';
+import {getMiddleware, MiddlewareHelper} from '../helpers/middleware';
+import {MaybePromise} from '../types';
 
 const TRANSITION_TIME = 250;
 
@@ -18,13 +20,15 @@ export {SliderSuperTab};
 
 export default class SidebarSlider {
   protected _selectTab: ReturnType<typeof horizontalMenu>;
-  public historyTabIds: (number | SliderSuperTab)[] = []; // * key is any, since right sidebar is ugly nowz
-  public tabsContainer: HTMLElement;
+  protected historyTabIds: (number | SliderSuperTab)[] = []; // * key is any, since right sidebar is ugly nowz
+  protected tabsContainer: HTMLElement;
   public sidebarEl: HTMLElement;
-  public tabs: Map<any, SliderSuperTab>; // * key is any, since right sidebar is ugly now
+  protected tabs: Map<any, SliderSuperTab>; // * key is any, since right sidebar is ugly now
   private canHideFirst = false;
   private navigationType: NavigationItem['type'];
   protected managers: AppManagers;
+  protected middlewareHelper: MiddlewareHelper;
+  public onOpenTab: () => MaybePromise<void>;
 
   constructor(options: {
     sidebarEl: SidebarSlider['sidebarEl'],
@@ -34,19 +38,27 @@ export default class SidebarSlider {
   }) {
     safeAssign(this, options);
 
-    if(!this.tabs) {
-      this.tabs = new Map();
-    }
+    this.tabs ??= new Map();
 
     this.tabsContainer = this.sidebarEl.querySelector('.sidebar-slider');
-    this._selectTab = TransitionSlider(this.tabsContainer, 'navigation', TRANSITION_TIME);
+    this._selectTab = TransitionSlider({
+      content: this.tabsContainer,
+      type: 'navigation',
+      transitionTime: TRANSITION_TIME
+    });
     if(!this.canHideFirst) {
       this._selectTab(0);
     }
 
+    this.middlewareHelper = getMiddleware();
+
     // Array.from(this.sidebarEl.querySelectorAll('.sidebar-close-button') as any as HTMLElement[]).forEach((el) => {
     //   attachClickEvent(el, this.onCloseBtnClick);
     // });
+  }
+
+  public getMiddleware() {
+    return this.middlewareHelper.get();
   }
 
   public onCloseBtnClick = () => {
@@ -74,7 +86,7 @@ export default class SidebarSlider {
     return true;
   };
 
-  public selectTab(id: number | SliderSuperTab): boolean {
+  public async selectTab(id: number | SliderSuperTab) {
     /* if(id instanceof SliderSuperTab) {
       id = id.id;
     } */
@@ -84,6 +96,8 @@ export default class SidebarSlider {
     }
 
     const tab: SliderSuperTab = id instanceof SliderSuperTab ? id : this.tabs.get(id);
+    this.onOpenTab && await this.onOpenTab();
+
     if(tab) {
       // @ts-ignore
       tab.onOpen?.();
@@ -134,6 +148,10 @@ export default class SidebarSlider {
     return this.historyTabIds.find((t) => t instanceof tabConstructor) as T;
   }
 
+  public getHistory() {
+    return this.historyTabIds;
+  }
+
   public isTabExists(tabConstructor: SliderSuperTabConstructable) {
     return !!this.getTab(tabConstructor);
   }
@@ -172,8 +190,16 @@ export default class SidebarSlider {
     }
   }
 
-  public createTab<T extends SliderSuperTab>(ctor: SliderSuperTabConstructable<T>, doNotAppend?: boolean) {
-    const tab = new ctor(doNotAppend ? undefined : this, true);
+  public deleteTab(tab: SliderSuperTab) {
+    this.tabs.delete(tab);
+  }
+
+  public createTab<T extends SliderSuperTab>(
+    ctor: SliderSuperTabConstructable<T>,
+    destroyable = true,
+    doNotAppend?: boolean
+  ) {
+    const tab = new ctor(doNotAppend ? undefined : this, destroyable);
     tab.managers = this.managers;
     return tab;
   }

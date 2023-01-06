@@ -12,7 +12,7 @@ import CheckboxField from '../checkboxField';
 import CountryInputField from '../countryInputField';
 import InputField from '../inputField';
 import Row from '../row';
-import {SettingSection} from '../sidebarLeft';
+import SettingSection from '../settingSection';
 import TelInputField from '../telInputField';
 import {PaymentButton} from './payment';
 import {createCountryZipFields, handleInputFieldsOnChange, InputFieldCorrected} from './paymentCard';

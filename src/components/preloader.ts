@@ -237,7 +237,13 @@ export default class ProgressivePreloader {
       }
     }
 
-    SetTransition(this.preloader, 'is-visible', true, TRANSITION_TIME, undefined, useRafs);
+    SetTransition({
+      element: this.preloader,
+      className: 'is-visible',
+      forwards: true,
+      duration: TRANSITION_TIME,
+      useRafs
+    });
 
     if(this.cancelable && reset) {
       this.setProgress(0);
@@ -266,9 +272,16 @@ export default class ProgressivePreloader {
       //   return;
       // }
 
-      SetTransition(this.preloader, 'is-visible', false, TRANSITION_TIME, () => {
-        this.preloader.remove();
-      }, 1);
+      SetTransition({
+        element: this.preloader,
+        className: 'is-visible',
+        forwards: false,
+        duration: TRANSITION_TIME,
+        onTransitionEnd: () => {
+          this.preloader.remove();
+        },
+        useRafs: 1
+      });
       // });
       // })/* , 5e3) */;
     }

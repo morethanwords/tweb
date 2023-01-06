@@ -62,7 +62,7 @@ export class MiddlewareHelper {
 
     middleware.create = () => {
       if(!middleware()) throw MIDDLEWARE_ERROR;
-      const helper = new MiddlewareHelper();
+      const helper = getMiddleware();
       helper.parent = this;
       details.inner.push(helper);
       return helper;

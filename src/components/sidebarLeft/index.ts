@@ -11,7 +11,7 @@ import '../avatar';
 import Scrollable, {ScrollableX} from '../scrollable';
 import InputSearch from '../inputSearch';
 import SidebarSlider from '../slider';
-import {TransitionSlider} from '../transition';
+import TransitionSlider from '../transition';
 import AppNewGroupTab from './tabs/newGroup';
 import AppSearchSuper from '../appSearchSuper.';
 import {DateData, fillTipDates} from '../../helpers/date';
@@ -50,6 +50,10 @@ import themeController from '../../helpers/themeController';
 import contextMenuController from '../../helpers/contextMenuController';
 import {DIALOG_LIST_ELEMENT_TAG} from '../../lib/appManagers/appDialogsManager';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
+import SettingSection, {SettingSectionOptions} from '../settingSection';
+import {FOLDER_ID_ARCHIVE} from '../../lib/mtproto/mtproto_config';
+import mediaSizes from '../../helpers/mediaSizes';
+import {fastRaf} from '../../helpers/schedulers';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -60,6 +64,7 @@ export class AppSidebarLeft extends SidebarSlider {
   private inputSearch: InputSearch;
 
   public archivedCount: HTMLSpanElement;
+  public rect: DOMRect;
 
   private newBtnMenu: HTMLElement;
 
@@ -110,8 +115,8 @@ export class AppSidebarLeft extends SidebarSlider {
         this.createTab(AppArchivedTab).open();
       },
       verify: async() => {
-        const folder = await this.managers.dialogsStorage.getFolderDialogs(1, false);
-        return !!folder.length || !(await this.managers.dialogsStorage.isDialogsLoaded(1));
+        const folder = await this.managers.dialogsStorage.getFolderDialogs(FOLDER_ID_ARCHIVE, false);
+        return !!folder.length || !(await this.managers.dialogsStorage.isDialogsLoaded(FOLDER_ID_ARCHIVE));
       }
     };
 
@@ -217,51 +222,52 @@ export class AppSidebarLeft extends SidebarSlider {
 
     const filteredButtons = menuButtons.filter(Boolean);
 
-    this.toolsBtn = ButtonMenuToggle({}, 'bottom-right', filteredButtons, async(e) => {
-      await Promise.all(filteredButtons.map(async(button) => {
-        if(button.verify) {
-          button.element.classList.toggle('hide', !(await button.verify()));
-        }
-      }));
+    this.toolsBtn = ButtonMenuToggle({
+      direction: 'bottom-right',
+      buttons: filteredButtons,
+      onOpen: (e, btnMenu) => {
+        const btnMenuFooter = document.createElement('a');
+        btnMenuFooter.href = 'https://github.com/morethanwords/tweb/blob/master/CHANGELOG.md';
+        btnMenuFooter.target = '_blank';
+        btnMenuFooter.rel = 'noopener noreferrer';
+        btnMenuFooter.classList.add('btn-menu-footer');
+        btnMenuFooter.addEventListener(CLICK_EVENT_NAME, (e) => {
+          e.stopPropagation();
+          contextMenuController.close();
+        });
+        const t = document.createElement('span');
+        t.classList.add('btn-menu-footer-text');
+        t.innerHTML = 'Telegram Web' + App.suffix + ' '/* ' alpha ' */ + App.versionFull;
+        btnMenuFooter.append(t);
+        btnMenu.classList.add('has-footer');
+        btnMenu.append(btnMenuFooter);
+
+        btnArchive.element?.append(this.archivedCount);
+      }
     });
     this.toolsBtn.classList.remove('tgico-more');
     this.toolsBtn.classList.add('sidebar-tools-button', 'is-visible');
 
     this.backBtn.parentElement.insertBefore(this.toolsBtn, this.backBtn);
 
-    const btnMenu = this.toolsBtn.querySelector('.btn-menu') as HTMLElement;
-
-    const btnMenuFooter = document.createElement('a');
-    btnMenuFooter.href = 'https://github.com/morethanwords/tweb/blob/master/CHANGELOG.md';
-    btnMenuFooter.target = '_blank';
-    btnMenuFooter.rel = 'noopener noreferrer';
-    btnMenuFooter.classList.add('btn-menu-footer');
-    btnMenuFooter.addEventListener(CLICK_EVENT_NAME, (e) => {
-      e.stopPropagation();
-      contextMenuController.close();
+    this.newBtnMenu = ButtonMenuToggle({
+      direction: 'top-left',
+      buttons: [{
+        icon: 'newchannel',
+        text: 'NewChannel',
+        onClick: () => {
+          this.createTab(AppNewChannelTab).open();
+        }
+      }, {
+        icon: 'newgroup',
+        text: 'NewGroup',
+        onClick: onNewGroupClick
+      }, {
+        icon: 'newprivate',
+        text: 'NewPrivateChat',
+        onClick: onContactsClick
+      }]
     });
-    const t = document.createElement('span');
-    t.classList.add('btn-menu-footer-text');
-    t.innerHTML = 'Telegram Web' + App.suffix + ' '/* ' alpha ' */ + App.versionFull;
-    btnMenuFooter.append(t);
-    btnMenu.classList.add('has-footer');
-    btnMenu.append(btnMenuFooter);
-
-    this.newBtnMenu = ButtonMenuToggle({}, 'top-left', [{
-      icon: 'newchannel',
-      text: 'NewChannel',
-      onClick: () => {
-        this.createTab(AppNewChannelTab).open();
-      }
-    }, {
-      icon: 'newgroup',
-      text: 'NewGroup',
-      onClick: onNewGroupClick
-    }, {
-      icon: 'newprivate',
-      text: 'NewPrivateChat',
-      onClick: onContactsClick
-    }]);
     this.newBtnMenu.className = 'btn-circle rp btn-corner z-depth-1 btn-menu-toggle animated-button-icon';
     this.newBtnMenu.insertAdjacentHTML('afterbegin', `
     <span class="tgico tgico-newchat_filled"></span>
@@ -271,13 +277,9 @@ export class AppSidebarLeft extends SidebarSlider {
     sidebarHeader.nextElementSibling.append(this.newBtnMenu);
 
     this.updateBtn = document.createElement('div');
-    // this.updateBtn.classList.add('btn-update');
     this.updateBtn.className = 'btn-circle rp btn-corner z-depth-1 btn-update is-hidden';
     ripple(this.updateBtn);
     this.updateBtn.append(i18n('Update'));
-    // const weave = new TopbarWeave();
-    // const weaveContainer = weave.render('btn-update-weave');
-    // this.updateBtn.prepend(weaveContainer);
 
     attachClickEvent(this.updateBtn, () => {
       if(this.updateBtn.classList.contains('is-hidden')) {
@@ -289,27 +291,16 @@ export class AppSidebarLeft extends SidebarSlider {
 
     sidebarHeader.nextElementSibling.append(this.updateBtn);
 
-    // setTimeout(() => {
-    //   weave.componentDidMount();
-    //   weave.setCurrentState(GROUP_CALL_STATE.MUTED, true);
-    //   weave.setAmplitude(0);
-    //   weave.handleBlur();
-    // }, 1e3);
-
     this.inputSearch.input.addEventListener('focus', () => this.initSearch(), {once: true});
-
-    // parseMenuButtonsTo(this.newButtons, this.newBtnMenu.firstElementChild.children);
 
     this.archivedCount = document.createElement('span');
     this.archivedCount.className = 'archived-count badge badge-24 badge-gray';
 
-    btnArchive.element.append(this.archivedCount);
-
     rootScope.addEventListener('folder_unread', (folder) => {
-      if(folder.id === 1) {
+      if(folder.id === FOLDER_ID_ARCHIVE) {
         // const count = folder.unreadMessagesCount;
         const count = folder.unreadPeerIds.size;
-        this.archivedCount.innerText = '' + formatNumber(count, 1);
+        this.archivedCount.textContent = '' + formatNumber(count, 1);
         this.archivedCount.classList.toggle('hide', !count);
       }
     });
@@ -330,7 +321,7 @@ export class AppSidebarLeft extends SidebarSlider {
     };
     appNavigationController.pushItem(navigationItem);
 
-    apiManagerProxy.getState().then((state) => {
+    apiManagerProxy.getState().then(() => {
       const CHECK_UPDATE_INTERVAL = 1800e3;
       const checkUpdateInterval = setInterval(() => {
         fetch('version', {cache: 'no-cache'})
@@ -348,6 +339,14 @@ export class AppSidebarLeft extends SidebarSlider {
         .catch(noop);
       }, CHECK_UPDATE_INTERVAL);
     });
+
+    const onResize = () => {
+      const rect = this.rect = this.tabsContainer.getBoundingClientRect();
+      document.documentElement.style.setProperty('--left-column-width', rect.width + 'px');
+    };
+
+    fastRaf(onResize);
+    mediaSizes.addEventListener('resize', onResize);
   }
 
   private initSearch() {
@@ -467,7 +466,7 @@ export class AppSidebarLeft extends SidebarSlider {
       div.classList.add('selector-user'/* , 'scale-in' */);
 
       const avatarEl = new AvatarElement();
-      avatarEl.classList.add('selector-user-avatar', 'tgico', 'avatar-30');
+      avatarEl.classList.add('selector-user-avatar', 'tgico', 'avatar-32');
       avatarEl.isDialog = true;
 
       div.dataset.key = '' + key;
@@ -538,7 +537,7 @@ export class AppSidebarLeft extends SidebarSlider {
         const middleware = searchSuper.middleware.get();
         Promise.all([
           // appMessagesManager.getConversationsAll(value).then((dialogs) => dialogs.map((d) => d.peerId)),
-          this.managers.appMessagesManager.getConversations(value).then(({dialogs}) => dialogs.map((d) => d.peerId)),
+          this.managers.dialogsStorage.getDialogs({query: value}).then(({dialogs}) => dialogs.map((d) => d.peerId)),
           this.managers.appUsersManager.getContactsPeerIds(value, true)
         ]).then((results) => {
           if(!middleware()) return;
@@ -588,20 +587,25 @@ export class AppSidebarLeft extends SidebarSlider {
     let first = true;
     let hideNewBtnMenuTimeout: number;
     // const transition = Transition.bind(null, searchContainer.parentElement, 150);
-    const transition = TransitionSlider(searchContainer.parentElement, 'zoom-fade', 150, (id) => {
-      if(hideNewBtnMenuTimeout) clearTimeout(hideNewBtnMenuTimeout);
+    const transition = TransitionSlider({
+      content: searchContainer.parentElement,
+      type: 'zoom-fade',
+      transitionTime: 150,
+      onTransitionEnd: (id) => {
+        if(hideNewBtnMenuTimeout) clearTimeout(hideNewBtnMenuTimeout);
 
-      if(id === 0 && !first) {
-        searchSuper.selectTab(0, false);
-        this.inputSearch.onClearClick();
-        hideNewBtnMenuTimeout = window.setTimeout(() => {
-          hideNewBtnMenuTimeout = 0;
-          this.newBtnMenu.classList.remove('is-hidden');
-          this.hasUpdate && this.updateBtn.classList.remove('is-hidden');
-        }, 150);
+        if(id === 0 && !first) {
+          searchSuper.selectTab(0, false);
+          this.inputSearch.onClearClick();
+          hideNewBtnMenuTimeout = window.setTimeout(() => {
+            hideNewBtnMenuTimeout = 0;
+            this.newBtnMenu.classList.remove('is-hidden');
+            this.hasUpdate && this.updateBtn.classList.remove('is-hidden');
+          }, 150);
+        }
+
+        first = false;
       }
-
-      first = false;
     });
 
     transition(0);
@@ -657,109 +661,6 @@ export class AppSidebarLeft extends SidebarSlider {
     });
   }
 }
-
-export type SettingSectionOptions = {
-  name?: LangPackKey,
-  nameArgs?: FormatterArguments,
-  caption?: LangPackKey | true,
-  captionArgs?: FormatterArguments,
-  captionOld?: SettingSectionOptions['caption'],
-  noDelimiter?: boolean,
-  fakeGradientDelimiter?: boolean,
-  noShadow?: boolean,
-  // fullWidth?: boolean,
-  // noPaddingTop?: boolean
-};
-
-const className = 'sidebar-left-section';
-export class SettingSection {
-  public container: HTMLElement;
-  public innerContainer: HTMLElement;
-  public content: HTMLElement;
-  public title: HTMLElement;
-  public caption: HTMLElement;
-
-  private fullWidth: boolean;
-
-  constructor(options: SettingSectionOptions = {}) {
-    const container = this.container = document.createElement('div');
-    container.classList.add(className + '-container');
-
-    const innerContainer = this.innerContainer = document.createElement('div');
-    innerContainer.classList.add(className);
-
-    if(options.noShadow) {
-      innerContainer.classList.add('no-shadow');
-    }
-
-    if(options.fakeGradientDelimiter) {
-      innerContainer.append(generateDelimiter());
-      innerContainer.classList.add('with-fake-delimiter');
-    } else if(!options.noDelimiter) {
-      const hr = document.createElement('hr');
-      innerContainer.append(hr);
-    } else {
-      innerContainer.classList.add('no-delimiter');
-    }
-
-    // if(options.fullWidth) {
-    //   this.fullWidth = true;
-    // }
-
-    // if(options.noPaddingTop) {
-    //   innerContainer.classList.add('no-padding-top');
-    // }
-
-    const content = this.content = this.generateContentElement();
-
-    if(options.name) {
-      const title = this.title = document.createElement('div');
-      title.classList.add('sidebar-left-h2', className + '-name');
-      i18n_({element: title, key: options.name, args: options.nameArgs});
-      content.append(title);
-    }
-
-    container.append(innerContainer);
-
-    const caption = options.caption ?? options.captionOld;
-    if(caption) {
-      const el = this.caption = this.generateContentElement();
-      el.classList.add(className + '-caption');
-
-      if(!options.captionOld) {
-        container.append(el);
-      }
-
-      if(caption !== true) {
-        i18n_({element: el, key: caption, args: options.captionArgs});
-      }
-    }
-  }
-
-  public generateContentElement() {
-    const content = document.createElement('div');
-    content.classList.add(className + '-content');
-
-    // if(this.fullWidth) {
-    //   content.classList.add('full-width');
-    // }
-
-    this.innerContainer.append(content);
-    return content;
-  }
-}
-
-export const generateSection = (appendTo: Scrollable, name?: LangPackKey, caption?: LangPackKey) => {
-  const section = new SettingSection({name, caption});
-  appendTo.append(section.container);
-  return section.content;
-};
-
-export const generateDelimiter = () => {
-  const delimiter = document.createElement('div');
-  delimiter.classList.add('gradient-delimiter');
-  return delimiter;
-};
 
 export class SettingChatListSection extends SettingSection {
   public sortedList: SortedUserList;

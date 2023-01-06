@@ -8,6 +8,9 @@ import cancelEvent from '../helpers/dom/cancelEvent';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import safeAssign from '../helpers/object/safeAssign';
 import contextMenuController from '../helpers/contextMenuController';
+import {Middleware} from '../helpers/middleware';
+import ListenerSetter, {ListenerOptions} from '../helpers/listenerSetter';
+import {attachContextMenuListener} from '../helpers/dom/attachContextMenuListener';
 
 const getEvent = (e: TouchEvent | MouseEvent) => {
   return (e as TouchEvent).touches ? (e as TouchEvent).touches[0] : e as MouseEvent;
@@ -28,14 +31,20 @@ export type SwipeHandlerOptions = {
   onReset?: SwipeHandler['onReset'],
   cursor?: SwipeHandler['cursor'],
   cancelEvent?: SwipeHandler['cancelEvent'],
-  listenerOptions?: SwipeHandler['listenerOptions']
+  listenerOptions?: SwipeHandler['listenerOptions'],
+  setCursorTo?: HTMLElement,
+  middleware?: Middleware,
+  withDelay?: boolean
 };
+
+const TOUCH_MOVE_OPTIONS: ListenerOptions = {passive: false, capture: true};
+const MOUSE_MOVE_OPTIONS: ListenerOptions = false as any;
 
 export default class SwipeHandler {
   private element: HTMLElement;
   private onSwipe: (xDiff: number, yDiff: number, e: TouchEvent | MouseEvent) => boolean | void;
   private verifyTouchTarget: (evt: TouchEvent | MouseEvent) => boolean | Promise<boolean>;
-  private onFirstSwipe: () => void;
+  private onFirstSwipe: (e: TouchEvent | MouseEvent) => void;
   private onReset: () => void;
   private cursor: 'grabbing' | 'move' | 'row-resize' | 'col-resize' | 'nesw-resize' | 'nwse-resize' | 'ne-resize' | 'se-resize' | 'sw-resize' | 'nw-resize' | 'n-resize' | 'e-resize' | 's-resize' | 'w-resize' | '' = 'grabbing';
   private cancelEvent = true;
@@ -46,35 +55,42 @@ export default class SwipeHandler {
   private xDown: number = null;
   private yDown: number = null;
 
+  private withDelay: boolean;
+  private listenerSetter: ListenerSetter;
+
   constructor(options: SwipeHandlerOptions) {
     safeAssign(this, options);
 
-    this.setCursorTo = this.element;
-
+    this.setCursorTo ??= this.element;
+    this.listenerSetter = new ListenerSetter();
     this.setListeners();
+
+    options.middleware?.onDestroy(() => {
+      this.reset();
+      this.removeListeners();
+    });
   }
 
   public setListeners() {
     if(!IS_TOUCH_SUPPORTED) {
-      this.element.addEventListener('mousedown', this.handleStart, this.listenerOptions);
-      attachGlobalListenerTo.addEventListener('mouseup', this.reset);
+      this.listenerSetter.add(this.element)('mousedown', this.handleStart, this.listenerOptions);
+      this.listenerSetter.add(attachGlobalListenerTo)('mouseup', this.reset);
     } else {
-      this.element.addEventListener('touchstart', this.handleStart, this.listenerOptions);
-      attachGlobalListenerTo.addEventListener('touchend', this.reset);
+      if(this.withDelay) {
+        attachContextMenuListener(this.element, this.handleStart, this.listenerSetter);
+      } else {
+        this.listenerSetter.add(this.element)('touchstart', this.handleStart, this.listenerOptions);
+      }
+
+      this.listenerSetter.add(attachGlobalListenerTo)('touchend', this.reset);
     }
   }
 
   public removeListeners() {
-    if(!IS_TOUCH_SUPPORTED) {
-      this.element.removeEventListener('mousedown', this.handleStart, this.listenerOptions);
-      attachGlobalListenerTo.removeEventListener('mouseup', this.reset);
-    } else {
-      this.element.removeEventListener('touchstart', this.handleStart, this.listenerOptions);
-      attachGlobalListenerTo.removeEventListener('touchend', this.reset);
-    }
+    this.listenerSetter.removeAll();
   }
 
-  public setCursor(cursor: SwipeHandler['cursor']) {
+  public setCursor(cursor: SwipeHandler['cursor'] = '') {
     this.cursor = cursor;
 
     if(!IS_TOUCH_SUPPORTED && this.hadMove) {
@@ -88,14 +104,14 @@ export default class SwipeHandler {
     } */
 
     if(IS_TOUCH_SUPPORTED) {
-      attachGlobalListenerTo.removeEventListener('touchmove', this.handleMove, {capture: true});
+      this.listenerSetter.removeManual(attachGlobalListenerTo, 'touchmove', this.handleMove, TOUCH_MOVE_OPTIONS);
     } else {
-      attachGlobalListenerTo.removeEventListener('mousemove', this.handleMove);
+      this.listenerSetter.removeManual(attachGlobalListenerTo, 'mousemove', this.handleMove, MOUSE_MOVE_OPTIONS);
       this.setCursorTo.style.cursor = '';
     }
 
-    if(this.onReset && this.hadMove) {
-      this.onReset();
+    if(this.hadMove) {
+      this.onReset?.();
     }
 
     this.xDown = this.yDown = null;
@@ -112,9 +128,9 @@ export default class SwipeHandler {
     this.yDown = e.clientY;
 
     if(IS_TOUCH_SUPPORTED) {
-      attachGlobalListenerTo.addEventListener('touchmove', this.handleMove, {passive: false, capture: true});
+      this.listenerSetter.add(attachGlobalListenerTo)('touchmove', this.handleMove, TOUCH_MOVE_OPTIONS);
     } else {
-      attachGlobalListenerTo.addEventListener('mousemove', this.handleMove, false);
+      this.listenerSetter.add(attachGlobalListenerTo)('mousemove', this.handleMove, MOUSE_MOVE_OPTIONS);
     }
   };
 
@@ -146,9 +162,7 @@ export default class SwipeHandler {
         this.setCursorTo.style.setProperty('cursor', this.cursor, 'important');
       }
 
-      if(this.onFirstSwipe) {
-        this.onFirstSwipe();
-      }
+      this.onFirstSwipe?.(_e);
     }
 
     // if(Math.abs(xDiff) > Math.abs(yDiff)) { /*most significant*/

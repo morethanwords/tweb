@@ -14,7 +14,6 @@ import Button from '../../button';
 import rootScope from '../../../lib/rootScope';
 import AppEditFolderTab from './editFolder';
 import Row from '../../row';
-import {SettingSection} from '..';
 import {i18n, i18n_, LangPackKey, join} from '../../../lib/langPack';
 import cancelEvent from '../../../helpers/dom/cancelEvent';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
@@ -23,6 +22,7 @@ import RLottiePlayer from '../../../lib/rlottie/rlottiePlayer';
 import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
 import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '../../../lib/mtproto/mtproto_config';
 import replaceContent from '../../../helpers/dom/replaceContent';
+import SettingSection from '../../settingSection';
 
 export default class AppChatFoldersTab extends SliderSuperTab {
   private createFolderBtn: HTMLElement;

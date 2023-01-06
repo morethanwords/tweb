@@ -421,7 +421,7 @@ export default class AppMediaViewerBase<
   }
 
   protected setBtnMenuToggle(buttons: ButtonMenuItemOptions[]) {
-    const btnMenuToggle = ButtonMenuToggle({onlyMobile: true}, 'bottom-left', buttons);
+    const btnMenuToggle = ButtonMenuToggle({buttonOptions: {onlyMobile: true}, direction: 'bottom-left', buttons});
     this.topbar.append(btnMenuToggle);
   }
 

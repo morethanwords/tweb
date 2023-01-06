@@ -15,7 +15,7 @@
     flex: 0 0 auto;
     user-select: none;
     cursor: default;
-    
+
     .btn-menu {
       overflow-y: overlay;
     }
@@ -44,10 +44,44 @@
     &-right {
       flex: 0 0 auto;
     }
+
+    .scrollable-y-bordered & {
+      position: relative;
+      // min-height: 3.5625rem;
+      // border-bottom: 1px solid transparent;
+
+      // @include animation-level(2) {
+      //   transition: border-top-color var(--transition-standard-in), border-bottom-color var(--transition-standard-in);
+      // }
+
+      &:after {
+        content: " ";
+        position: absolute;
+        bottom: -1px;
+        left: 0;
+        right: 0;
+        height: 1px;
+        opacity: 0;
+        z-index: 1;
+        background-color: var(--border-color);
+
+        @include animation-level(2) {
+          transition: opacity var(--transition-standard-in);
+        }
+      }
+    }
+
+    .scrollable-y-bordered:not(.scrolled-top) & {
+      // border-bottom-color: var(--border-color);
+      &:after {
+        opacity: 1;
+      }
+    }
   }
 
   &-close-button {
     overflow: inherit !important;
+    flex: 0 0 auto;
     width: 2.5rem;
     height: 2.5rem;
   }

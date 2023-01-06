@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {SettingSection} from '..';
 import {randomLong} from '../../../helpers/random';
 import {LangPackLanguage} from '../../../layer';
 import I18n from '../../../lib/langPack';
 import rootScope from '../../../lib/rootScope';
 import RadioField from '../../radioField';
 import Row, {RadioFormFromRows} from '../../row';
+import SettingSection from '../../settingSection';
 import {SliderSuperTab} from '../../slider'
 
 export default class AppLanguageTab extends SliderSuperTab {

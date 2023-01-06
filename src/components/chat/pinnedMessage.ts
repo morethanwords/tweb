@@ -341,7 +341,7 @@ export default class ChatPinnedMessage {
     this.setPinnedMessage = debounce(() => this._setPinnedMessage(), 100, true, true);
     this.setCorrectIndexThrottled = throttle(this.setCorrectIndex.bind(this), 100, false);
 
-    this.isStatic = this.chat.type === 'discussion';
+    this.isStatic = !this.chat.isPinnedMessagesNeeded();
   }
 
   public destroy() {
@@ -445,7 +445,8 @@ export default class ChatPinnedMessage {
           inputFilter: {_: 'inputMessagesFilterPinned'},
           maxId: mid,
           limit: ChatPinnedMessage.LOAD_COUNT,
-          backLimit: ChatPinnedMessage.LOAD_COUNT
+          backLimit: ChatPinnedMessage.LOAD_COUNT,
+          threadId: this.chat.threadId
         })
         .then((r) => {
           gotRest = true;
@@ -454,7 +455,7 @@ export default class ChatPinnedMessage {
       ];
 
       if(!this.pinnedMaxMid) {
-        const promise = this.managers.appMessagesManager.getPinnedMessage(this.chat.peerId).then((p) => {
+        const promise = this.managers.appMessagesManager.getPinnedMessage(this.chat.peerId, this.chat.threadId).then((p) => {
           if(!p.maxId) return;
           this.pinnedMaxMid = p.maxId;
 

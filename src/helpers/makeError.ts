@@ -1,7 +1,6 @@
+const CACHED_ERRORS: {[key in Error['type']]?: ApiError} = {};
 export default function makeError(type: Error['type']) {
-  const error: ApiError = {
+  return CACHED_ERRORS[type] ??= {
     type
   };
-
-  return error;
 }

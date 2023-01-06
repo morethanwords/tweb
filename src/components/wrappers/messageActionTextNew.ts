@@ -4,17 +4,21 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {MyMessage} from '../../lib/appManagers/appMessagesManager';
+import type {MyMessage} from '../../lib/appManagers/appMessagesManager';
 import wrapMessageActionTextNewUnsafe from './messageActionTextNewUnsafe';
 
-export default async function wrapMessageActionTextNew(message: MyMessage, plain: true): Promise<string>;
-export default async function wrapMessageActionTextNew(message: MyMessage, plain?: false): Promise<HTMLElement>;
-export default async function wrapMessageActionTextNew(message: MyMessage, plain: boolean): Promise<HTMLElement | string>;
-export default async function wrapMessageActionTextNew(message: MyMessage, plain?: boolean): Promise<HTMLElement | string> {
+export type WrapMessageActionTextOptions = {
+  message: MyMessage,
+  plain?: boolean
+} & WrapSomethingOptions;
+
+export default async function wrapMessageActionTextNew<T extends WrapMessageActionTextOptions>(
+  options: T
+): Promise<T['plain'] extends true ? string : HTMLElement> {
   try {
-    return await wrapMessageActionTextNewUnsafe(message, plain);
+    return await wrapMessageActionTextNewUnsafe(options) as any;
   } catch(err) {
     console.error('wrapMessageActionTextNewUnsafe error:', err);
-    return plain ? '' : document.createElement('span');
+    return options.plain ? '' : document.createElement('span') as any;
   }
 }

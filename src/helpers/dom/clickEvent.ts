@@ -12,7 +12,7 @@ export const CLICK_EVENT_NAME: 'mousedown' /* | 'touchend' */ | 'click' = (IS_TO
 export type AttachClickOptions = AddEventListenerOptions & Partial<{listenerSetter: ListenerSetter, touchMouseDown: true}>;
 export function attachClickEvent(elem: HTMLElement | Window, callback: (e: /* TouchEvent |  */MouseEvent) => void, options: AttachClickOptions = {}) {
   const add = options.listenerSetter ? options.listenerSetter.add(elem) : elem.addEventListener.bind(elem);
-  // const remove = options.listenerSetter ? options.listenerSetter.removeManual.bind(options.listenerSetter, elem) : elem.removeEventListener.bind(elem);
+  const remove = options.listenerSetter ? options.listenerSetter.removeManual.bind(options.listenerSetter, elem) : elem.removeEventListener.bind(elem);
 
   options.touchMouseDown = true;
   /* if(options.touchMouseDown && CLICK_EVENT_NAME === 'touchend') {
@@ -43,6 +43,9 @@ export function attachClickEvent(elem: HTMLElement | Window, callback: (e: /* To
     add(CLICK_EVENT_NAME, callback, options);
   } */
   add(CLICK_EVENT_NAME, callback, options);
+
+  // @ts-ignore
+  return () => remove(CLICK_EVENT_NAME, callback, options);
 }
 
 export function detachClickEvent(elem: HTMLElement | Window, callback: (e: /* TouchEvent |  */MouseEvent) => void, options?: AddEventListenerOptions) {

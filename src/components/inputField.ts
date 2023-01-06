@@ -59,9 +59,9 @@ export async function insertRichTextAsHTML(input: HTMLElement, text: string, ent
   });
 
   const html = documentFragmentToHTML(fragment);
-  renderer?.disconnectedCallback();
+  renderer?.destroy();
 
-  console.log(html);
+  // console.log(html);
 
   const pre = getCaretPosNew(input);
   // console.log('pre', pre);
@@ -179,6 +179,8 @@ let init = () => {
 
     const peerId = (input.dataset.peerId || NULL_PEER_ID).toPeerId();
     if(html.trim()) {
+      // console.log(html.replace(/ (style|class|id)=".+?"/g, ''));
+
       html = html.replace(/<style([\s\S]*)<\/style>/, '');
       html = html.replace(/<!--([\s\S]*)-->/, '');
       html = html.replace('<br class="Apple-interchange-newline">', '');
@@ -218,7 +220,27 @@ let init = () => {
         richValue.entities = richValue.entities.filter((entity) => entity._ !== 'messageEntityCustomEmoji');
       }
 
-      if(richValue.value.replace(/\s/g, '').length === plainText.replace(/\s/g, '').length || richValue.entities.find((entity) => entity._ === 'messageEntityCustomEmoji')) {
+      { // * fix extra new lines appearing from <p> (can have them from some sources, like macOS Terminal)
+        const lines = richValue.value.split('\n');
+        let textLength = 0;
+        for(let i = 0; i < lines.length; ++i) {
+          const line = lines[i];
+          textLength += line.length;
+          const index = textLength;
+          if(plainText[index] !== '\n' && i !== (lines.length - 1)) {
+            lines[i] = line + lines.splice(i + 1, 1)[0];
+          }
+          textLength += 1;
+        }
+
+        const correctedText = lines.join('\n');
+        richValue.value = correctedText;
+      }
+
+      const richTextLength = richValue.value.replace(/\s/g, '').length;
+      const plainTextLength = plainText.replace(/\s/g, '').length;
+      if(richTextLength === plainTextLength ||
+        richValue.entities.find((entity) => entity._ === 'messageEntityCustomEmoji')) {
         text = richValue.value;
         entities = richValue.entities;
         usePlainText = false;
@@ -321,7 +343,7 @@ function processCustomEmojisInInput(input: HTMLElement) {
     if(hasSet) {
       for(const customEmojiElement of hasSet) {
         if(!customEmojiElements.has(customEmojiElement)) {
-          customEmojiElement.disconnectedCallback();
+          customEmojiElement.destroy();
         }
       }
     } else {

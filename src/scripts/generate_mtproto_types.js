@@ -13,6 +13,7 @@ const mtproto = schema.API;
 
 const TABULATION = '  ';
 const NEW_LINE = '\n';
+const FLAGS_KEYS = new Set(['flags', 'flags2']);
 
 for(const constructor of additional) {
   const additionalParams = constructor.params || (constructor.params = []);
@@ -59,7 +60,7 @@ for(const constructor of additional) {
     }
   } while(true);
 
-  //delete types[key];
+  // delete types[key];
 });
 
 /** @type {(string: string) => string} */
@@ -117,7 +118,7 @@ const processParamType = (type, parseBooleanFlags, overrideTypes) => {
     case 'double':
       return 'number';
 
-    case 'long': 
+    case 'long':
       return 'string | number';
 
     case 'bytes':
@@ -131,8 +132,8 @@ const processParamType = (type, parseBooleanFlags, overrideTypes) => {
       return 'any';
 
     default:
-      //console.log('no such type', type);
-      //throw new Error('no such type: ' + type);
+      // console.log('no such type', type);
+      // throw new Error('no such type: ' + type);
       return isAdditional || type[0] === type[0].toUpperCase() ? type : camelizeName(type, true);
   }
 };
@@ -142,7 +143,7 @@ const processParams = (params, object = {}, parseBooleanFlags = true, overrideTy
   for(const param of params) {
     let {name, type} = param;
 
-    if((type.includes('?') || name == 'flags') && !name.includes('`')) {
+    if((type.includes('?') || FLAGS_KEYS.has(name)) && !name.includes('`')) {
       name += '?';
     }
 
@@ -235,7 +236,7 @@ for(const type in types) {
 
     return str + params.join(`,${NEW_LINE}`).replace(/\{,/g, '{') + `${NEW_LINE}${TABULATION}};`;
   });
-  
+
 
   out += `/**
  * @link https://core.telegram.org/type/${type}
@@ -247,10 +248,9 @@ export namespace ${camelizedType} {
 }
 
 `;
-
 }
 
-  //console.log(types['InputUser']);
+// console.log(types['InputUser']);
 
 out += `export interface ConstructorDeclMap {${NEW_LINE}`;
 for(const predicate in constructorsTypes) {
@@ -269,7 +269,7 @@ mtproto.methods.forEach((_method) => {
   const camelizedMethod = camelizeName(method, true, true);
 
   methodsMap[method] = {
-    req: camelizedMethod, 
+    req: camelizedMethod,
     res: processParamType(type, false, {'JSONValue': 'any'}/* , overrideMethodTypes */)
   };
 

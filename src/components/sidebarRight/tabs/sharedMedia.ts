@@ -7,13 +7,13 @@
 import rootScope from '../../../lib/rootScope';
 import AppSearchSuper, {SearchSuperType} from '../../appSearchSuper.';
 import SidebarSlider, {SliderSuperTab} from '../../slider';
-import {TransitionSlider} from '../../transition';
+import TransitionSlider from '../../transition';
 import AppEditChatTab from './editChat';
 import PeerTitle from '../../peerTitle';
 import AppEditContactTab from './editContact';
 import Button from '../../button';
 import ButtonIcon from '../../buttonIcon';
-import {i18n, LangPackKey} from '../../../lib/langPack';
+import I18n, {i18n, LangPackKey} from '../../../lib/langPack';
 import {toastNew} from '../../toast';
 import AppAddMembersTab from '../../sidebarLeft/tabs/addMembers';
 import PopupPickUser from '../../popups/pickUser';
@@ -22,11 +22,17 @@ import ButtonCorner from '../../buttonCorner';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import PeerProfile from '../../peerProfile';
 import {Message} from '../../../layer';
+import getMessageThreadId from '../../../lib/appManagers/utils/messages/getMessageThreadId';
+import AppEditTopicTab from './editTopic';
+
+type SharedMediaHistoryStorage = Partial<{
+  [type in SearchSuperType]: {mid: number, peerId: PeerId}[]
+}>;
 
 const historiesStorage: {
-  [peerId: PeerId]: Partial<{
-    [type in SearchSuperType]: {mid: number, peerId: PeerId}[]
-  }>
+  [peerId: PeerId]: {
+    [threadId: number]: SharedMediaHistoryStorage
+  }
 } = {};
 
 // TODO: отредактированное сообщение не изменится
@@ -34,16 +40,16 @@ export default class AppSharedMediaTab extends SliderSuperTab {
   private editBtn: HTMLElement;
 
   private peerId: PeerId;
-  private threadId = 0;
+  private threadId: number;
 
   private searchSuper: AppSearchSuper;
 
   private profile: PeerProfile;
   private peerChanged: boolean;
 
-  constructor(slider: SidebarSlider) {
-    super(slider, false);
-  }
+  private titleI18n: I18n.IntlElement;
+
+  public isFirst: boolean;
 
   public init() {
     // const perf = performance.now();
@@ -59,13 +65,18 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     animatedCloseIcon.classList.add('animated-close-icon');
     newCloseBtn.append(animatedCloseIcon);
 
+    if(this.isFirst) {
+      animatedCloseIcon.classList.add('state-back');
+    }
+
     const transitionContainer = document.createElement('div');
     transitionContainer.className = 'transition slide-fade';
 
     const transitionFirstItem = document.createElement('div');
     transitionFirstItem.classList.add('transition-item');
 
-    this.title.append(i18n('Profile'));
+    this.titleI18n = new I18n.IntlElement();
+    this.title.append(this.titleI18n.element);
     this.editBtn = ButtonIcon('edit');
     // const moreBtn = ButtonIcon('more');
 
@@ -100,7 +111,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     };
 
     const setIsSharedMedia = (isSharedMedia: boolean) => {
-      animatedCloseIcon.classList.toggle('state-back', isSharedMedia);
+      animatedCloseIcon.classList.toggle('state-back', this.isFirst || isSharedMedia);
       this.searchSuper.container.classList.toggle('is-full-viewport', isSharedMedia);
       transition(+isSharedMedia);
 
@@ -109,39 +120,54 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       }
     };
 
-    const transition = TransitionSlider(transitionContainer, 'slide-fade', 400, null, false);
+    const transition = TransitionSlider({
+      content: transitionContainer,
+      type: 'slide-fade',
+      transitionTime: 400,
+      isHeavy: false
+    });
 
     transition(0);
 
     attachClickEvent(this.closeBtn, (e) => {
-      if(this.closeBtn.firstElementChild.classList.contains('state-back')) {
+      if(transition.prevId()) {
         this.scrollable.scrollIntoViewNew({
           element: this.scrollable.container.firstElementChild as HTMLElement,
           position: 'start'
         });
         transition(0);
-        animatedCloseIcon.classList.remove('state-back');
+
+        if(!this.isFirst) {
+          animatedCloseIcon.classList.remove('state-back');
+        }
       } else if(!this.scrollable.isHeavyAnimationInProgress) {
         this.slider.onCloseBtnClick();
       }
     }, {listenerSetter: this.listenerSetter});
 
-    attachClickEvent(this.editBtn, (e) => {
-      let tab: AppEditChatTab | AppEditContactTab;
-      if(this.peerId.isAnyChat()) {
+    attachClickEvent(this.editBtn, async() => {
+      let tab: AppEditChatTab | AppEditContactTab | AppEditTopicTab;
+      const {peerId, threadId} = this;
+      if(threadId && await this.managers.appPeersManager.isForum(peerId)) {
+        tab = this.slider.createTab(AppEditTopicTab)
+      } else if(peerId.isAnyChat()) {
         tab = this.slider.createTab(AppEditChatTab);
       } else {
         tab = this.slider.createTab(AppEditContactTab);
       }
 
       if(tab) {
-        if(tab instanceof AppEditChatTab) {
-          tab.chatId = this.peerId.toChatId();
+        if(tab instanceof AppEditTopicTab) {
+          tab.open(peerId, this.threadId);
         } else {
-          tab.peerId = this.peerId;
-        }
+          if(tab instanceof AppEditChatTab) {
+            tab.chatId = peerId.toChatId();
+          } else {
+            tab.peerId = peerId;
+          }
 
-        tab.open();
+          tab.open();
+        }
       }
     }, {listenerSetter: this.listenerSetter});
 
@@ -158,7 +184,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     });
 
     this.listenerSetter.add(rootScope)('history_multiappend', (message) => {
-      this.renderNewMessages(message);
+      this.renderNewMessage(message);
     });
 
     this.listenerSetter.add(rootScope)('history_delete', ({peerId, msgs}) => {
@@ -167,7 +193,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     // Calls when message successfully sent and we have an id
     this.listenerSetter.add(rootScope)('message_sent', ({message}) => {
-      this.renderNewMessages(message);
+      this.renderNewMessage(message);
     });
 
     // this.container.prepend(this.closeBtn.parentElement);
@@ -320,24 +346,23 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     // console.log('construct shared media time:', performance.now() - perf);
   }
 
-  public async renderNewMessages(message: Message.message | Message.messageService) {
-    if(this.init) return; // * not inited yet
-
-    const {peerId} = message;
-    if(!historiesStorage[peerId]) return;
+  private _renderNewMessage(message: Message.message | Message.messageService, threadId?: number) {
+    const historyStorage = historiesStorage[message.peerId]?.[threadId];
+    if(!historyStorage) return;
 
     for(const mediaTab of this.searchSuper.mediaTabs) {
       const inputFilter = mediaTab.inputFilter;
-      const history = historiesStorage[peerId][inputFilter];
+      const history = historyStorage[inputFilter];
       if(!history) {
         continue;
       }
 
-      const filtered = this.searchSuper.filterMessagesByType([message], inputFilter).filter((message) => !history.find((m) => m.mid === message.mid && m.peerId === message.peerId));
+      const filtered = this.searchSuper.filterMessagesByType([message], inputFilter)
+      .filter((message) => !history.find((m) => m.mid === message.mid && m.peerId === message.peerId));
       if(filtered.length) {
         history.unshift(...filtered.map((message) => ({mid: message.mid, peerId: message.peerId})));
 
-        if(this.peerId === peerId && this.searchSuper.usedFromHistory[inputFilter] !== -1) {
+        if(this.peerId === message.peerId && this.searchSuper.usedFromHistory[inputFilter] !== -1) {
           this.searchSuper.usedFromHistory[inputFilter] += filtered.length;
           this.searchSuper.performSearchResult(filtered, mediaTab, false);
         }
@@ -345,16 +370,25 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     }
   }
 
-  public deleteDeletedMessages(peerId: PeerId, mids: number[]) {
+  private async renderNewMessage(message: Message.message | Message.messageService) {
     if(this.init) return; // * not inited yet
 
-    if(!historiesStorage[peerId]) return;
+    const {peerId} = message;
+    const isForum = await this.managers.appPeersManager.isForum(peerId);
+    const threadId = getMessageThreadId(message, isForum);
 
+    this._renderNewMessage(message);
+    if(threadId) {
+      this._renderNewMessage(message, threadId);
+    }
+  }
+
+  public _deleteDeletedMessages(historyStorage: SharedMediaHistoryStorage, peerId: PeerId, mids: number[]) {
     for(const mid of mids) {
       for(const type of this.searchSuper.mediaTabs) {
         const inputFilter = type.inputFilter;
 
-        const history = historiesStorage[peerId][inputFilter];
+        const history = historyStorage[inputFilter];
         if(!history) continue;
 
         const idx = history.findIndex((m) => m.mid === mid);
@@ -384,16 +418,35 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         // break;
       }
     }
+  }
+
+  public deleteDeletedMessages(peerId: PeerId, mids: number[]) {
+    if(this.init) return; // * not inited yet
+
+    const h = historiesStorage[peerId];
+    if(!h) return;
+
+    for(const threadId in h) {
+      this._deleteDeletedMessages(h[threadId], peerId, mids);
+    }
 
     this.scrollable.onScroll();
   }
 
-  public async cleanupHTML() {
+  private async cleanupHTML() {
     // const perf = performance.now();
-    this.profile.cleanupHTML();
-    this.editBtn.classList.add('hide');
-    this.searchSuper.cleanupHTML(true);
-    this.container.classList.toggle('can-add-members', await this.searchSuper.canViewMembers() && await this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'invite_users'));
+    const isAnyChat = this.peerId.isAnyChat();
+    const [canViewMembers, hasRights] = await Promise.all([
+      isAnyChat ? this.searchSuper.canViewMembers() : false,
+      isAnyChat ? this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'invite_users') : false
+    ]);
+
+    return () => {
+      this.profile.cleanupHTML();
+      this.editBtn.classList.add('hide');
+      this.searchSuper.cleanupHTML(true);
+      this.container.classList.toggle('can-add-members', canViewMembers && hasRights);
+    };
     // console.log('cleanupHTML shared media time:', performance.now() - perf);
   }
 
@@ -401,7 +454,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     this.searchSuper.loadMutex = promise;
   }
 
-  public setPeer(peerId: PeerId, threadId = 0) {
+  public setPeer(peerId: PeerId, threadId?: number) {
     if(this.peerId === peerId && this.threadId === threadId) return false;
 
     this.peerId = peerId;
@@ -415,13 +468,21 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     this.searchSuper.setQuery({
       peerId,
-      // threadId,
-      historyStorage: historiesStorage[peerId] ??= {}
+      threadId,
+      historyStorage: (historiesStorage[peerId] ??= {})[threadId] ??= {}
     });
 
     this.profile.setPeer(peerId, threadId);
 
     return true;
+  }
+
+  private async changeTitleKey() {
+    const isForum = this.managers.appPeersManager.isForum(this.peerId);
+
+    return () => {
+      this.titleI18n.compareAndUpdate({key: this.threadId && isForum ? 'AccDescrTopic' : 'Profile'});
+    };
   }
 
   public async fillProfileElements() {
@@ -430,12 +491,21 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     }
 
     this.peerChanged = false;
-    await this.cleanupHTML();
-    await this.toggleEditBtn();
-    await this.profile.fillProfileElements();
+    const callbacks = await Promise.all([
+      this.cleanupHTML(),
+      this.toggleEditBtn(true),
+      this.profile.fillProfileElements(),
+      this.changeTitleKey()
+    ]);
+
+    return () => {
+      callbacks.forEach((callback) => {
+        callback?.();
+      });
+    };
   }
 
-  private async toggleEditBtn() {
+  private async toggleEditBtn<T extends boolean>(manual?: T): Promise<T extends true ? () => void : void> {
     let show: boolean;
     if(this.peerId.isUser()) {
       show = this.peerId !== rootScope.myId && await this.managers.appUsersManager.isContact(this.peerId.toUserId());
@@ -443,7 +513,11 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       show = await this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'change_info');
     }
 
-    this.editBtn.classList.toggle('hide', !show);
+    const callback = () => {
+      this.editBtn.classList.toggle('hide', !show);
+    };
+
+    return manual ? callback : callback() as any;
   }
 
   public loadSidebarMedia(single: boolean, justLoad?: boolean) {
@@ -451,13 +525,22 @@ export default class AppSharedMediaTab extends SliderSuperTab {
   }
 
   onOpenAfterTimeout() {
+    super.onOpenAfterTimeout();
+
     this.scrollable.onScroll();
+  }
+
+  onCloseAfterTimeout() {
+    super.onCloseAfterTimeout();
+
+    if(this.destroyable) {
+      this.profile.destroy();
+      this.searchSuper.destroy();
+    }
   }
 
   public destroy() {
     this.destroyable = true;
     this.onCloseAfterTimeout();
-    this.profile.destroy();
-    this.searchSuper.destroy();
   }
 }

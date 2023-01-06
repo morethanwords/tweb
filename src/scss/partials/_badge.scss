@@ -7,7 +7,7 @@
 .badge {
   --size: 1.375rem;
   --padding: .4375rem;
-  border-radius: .75rem;
+  border-radius: calc(var(--size) / 2);
   font-weight: var(--font-weight-bold);
   color: var(--badge-text-color);
   font-size: .875rem;

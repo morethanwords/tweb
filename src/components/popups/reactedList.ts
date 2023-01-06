@@ -6,7 +6,6 @@
 
 import PopupElement from '.';
 import {Message, Reaction} from '../../layer';
-import {SettingSection} from '../sidebarLeft';
 import ReactionsElement from '../chat/reactions';
 import {horizontalMenu} from '../horizontalMenu';
 import Scrollable from '../scrollable';
@@ -18,6 +17,7 @@ import ReactionElement from '../chat/reaction';
 import getUserStatusString from '../wrappers/getUserStatusString';
 import {makeMediaSize} from '../../helpers/mediaSize';
 import wrapCustomEmoji from '../wrappers/customEmoji';
+import SettingSection from '../settingSection';
 
 export default class PopupReactedList extends PopupElement {
   constructor(
@@ -166,7 +166,7 @@ export default class PopupReactedList extends PopupElement {
               } else if(reaction._ === 'reactionCustomEmoji') {
                 stickerContainer.append(wrapCustomEmoji({
                   docIds: [reaction.document_id],
-                  size: mediaSize,
+                  customEmojiSize: mediaSize,
                   middleware
                 }));
               }

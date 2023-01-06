@@ -4,33 +4,47 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import flatten from '../helpers/array/flatten';
 import contextMenuController from '../helpers/contextMenuController';
 import cancelEvent from '../helpers/dom/cancelEvent';
 import {AttachClickOptions, attachClickEvent} from '../helpers/dom/clickEvent';
 import findUpClassName from '../helpers/dom/findUpClassName';
+import setInnerHTML from '../helpers/dom/setInnerHTML';
 import ListenerSetter from '../helpers/listenerSetter';
 import {FormatterArguments, i18n, LangPackKey} from '../lib/langPack';
 import CheckboxField from './checkboxField';
+import {Document} from '../layer';
+import wrapPhoto from './wrappers/photo';
+import textToSvgURL from '../helpers/textToSvgURL';
+import customProperties from '../helpers/dom/customProperties';
 
 export type ButtonMenuItemOptions = {
   icon?: string,
+  iconDoc?: Document.document,
   text?: LangPackKey,
   textArgs?: FormatterArguments,
-  regularText?: string,
+  regularText?: Parameters<typeof setInnerHTML>[1],
   onClick: (e: MouseEvent | TouchEvent) => void | boolean | any,
   element?: HTMLElement,
   textElement?: HTMLElement,
   options?: AttachClickOptions,
   checkboxField?: CheckboxField,
   noCheckboxClickListener?: boolean,
-  keepOpen?: boolean
+  keepOpen?: boolean,
+  separator?: boolean | HTMLElement,
+  multiline?: boolean,
+  loadPromise?: Promise<any>
   /* , cancelEvent?: true */
 };
 
-const ButtonMenuItem = (options: ButtonMenuItemOptions) => {
-  if(options.element) return options.element;
+export type ButtonMenuItemOptionsVerifiable = ButtonMenuItemOptions & {
+  verify?: () => boolean | Promise<boolean>
+};
 
-  const {icon, text, onClick, checkboxField, noCheckboxClickListener} = options;
+function ButtonMenuItem(options: ButtonMenuItemOptions) {
+  if(options.element) return [options.separator as HTMLElement, options.element].filter(Boolean);
+
+  const {icon, iconDoc, text, onClick, checkboxField, noCheckboxClickListener} = options;
   const el = document.createElement('div');
   el.className = 'btn-menu-item rp-overflow' + (icon ? ' tgico-' + icon : '');
   // ripple(el);
@@ -38,7 +52,40 @@ const ButtonMenuItem = (options: ButtonMenuItemOptions) => {
   let textElement = options.textElement;
   if(!textElement) {
     textElement = options.textElement = text ? i18n(text, options.textArgs) : document.createElement('span');
-    if(options.regularText) textElement.innerHTML = options.regularText;
+    if(options.regularText) {
+      setInnerHTML(textElement, options.regularText);
+    }
+  }
+
+  if(iconDoc) {
+    const iconElement = document.createElement('span');
+    iconElement.classList.add('btn-menu-item-icon');
+    el.append(iconElement);
+
+    options.loadPromise = wrapPhoto({
+      container: iconElement,
+      photo: iconDoc,
+      boxWidth: 24,
+      boxHeight: 24,
+      withoutPreloader: true,
+      noFadeIn: true,
+      noBlur: true,
+      processUrl: (url) => {
+        return fetch(url)
+        .then((response) => response.text())
+        .then((text) => {
+          const color = customProperties.getProperty('primary-text-color');
+          const doc = new DOMParser().parseFromString(text, 'image/svg+xml');
+          const svg = doc.firstElementChild as HTMLElement;
+          svg.querySelectorAll('path').forEach((path) => {
+            path.setAttributeNS(null, 'fill', color);
+            path.style.stroke = color;
+            path.style.strokeWidth = '.25px';
+          });
+          return textToSvgURL(svg.outerHTML);
+        });
+      }
+    }).then((ret) => ret.loadPromises.thumb);
   }
 
   textElement.classList.add('btn-menu-item-text');
@@ -74,11 +121,22 @@ const ButtonMenuItem = (options: ButtonMenuItemOptions) => {
     el.append(checkboxField.label);
   }
 
-  return options.element = el;
-};
+  if(options.separator === true) {
+    options.separator = document.createElement('hr');
+  }
 
-const ButtonMenu = (buttons: ButtonMenuItemOptions[], listenerSetter?: ListenerSetter) => {
-  const el = document.createElement('div');
+  if(options.multiline) {
+    el.classList.add('is-multiline');
+  }
+
+  return [options.separator as HTMLElement, options.element = el].filter(Boolean);
+}
+
+export function ButtonMenuSync({listenerSetter, buttons}: {
+  buttons: ButtonMenuItemOptions[],
+  listenerSetter?: ListenerSetter
+}) {
+  const el: HTMLElement = document.createElement('div');
   el.classList.add('btn-menu');
 
   if(listenerSetter) {
@@ -92,10 +150,13 @@ const ButtonMenu = (buttons: ButtonMenuItemOptions[], listenerSetter?: ListenerS
   }
 
   const items = buttons.map(ButtonMenuItem);
-
-  el.append(...items);
+  el.append(...flatten(items));
 
   return el;
-};
+}
 
-export default ButtonMenu;
+export default async function ButtonMenu(options: Parameters<typeof ButtonMenuSync>[0]) {
+  const el = ButtonMenuSync(options);
+  await Promise.all(options.buttons.map(({loadPromise}) => loadPromise));
+  return el;
+}

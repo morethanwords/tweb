@@ -88,6 +88,8 @@ export type Mutable<T> = {
   -readonly [K in keyof T]: T[K];
 };
 
+export type MaybePromise<T> = T | Promise<T>;
+
 export type AuthState = AuthState.signIn | AuthState.signQr | AuthState.authCode | AuthState.password | AuthState.signUp | AuthState.signedIn | AuthState.signImport;
 export namespace AuthState {
   export type signIn = {
@@ -139,24 +141,84 @@ export type SendMessageEmojiInteractionData = {
 /**
  * @link https://core.telegram.org/api/web-events#postmessage-api
  */
-export type TelegramWebviewEventMap = {
+export type TelegramWebViewEventMap = {
   payment_form_submit: {
     credentials: any,
     title: string
   },
   web_app_open_tg_link: {
     path_full: string // '/username'
+  },
+  web_app_close: void,
+  web_app_open_popup: {
+    title: string,
+    message: string,
+    buttons: {
+      type: 'ok' | 'close' | 'cancel' | 'default' | 'destructive',
+      text: string,
+      id: string
+    }[]
+  },
+  web_app_setup_closing_behavior: {
+    need_confirmation: boolean
+  },
+  web_app_set_background_color: {
+    color: string
+  },
+  web_app_set_header_color: {
+    bg_color: string,
+    secondary_bg_color: string
+  },
+  web_app_data_send: {
+    data: string
+  },
+  web_app_trigger_haptic_feedback: {
+    type: 'impact',
+    impact_style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft'
+  } | {
+    type: 'notification',
+    notification_type: 'error' | 'success' | 'warning'
+  } | {
+    type: 'selection_change'
+  },
+  web_app_open_link: {
+    url: string
+  },
+  web_app_open_invoice: {
+    slug: string
+  },
+  web_app_expand: void,
+  web_app_request_viewport: void,
+  web_app_request_theme: void,
+  web_app_ready: void,
+  web_app_setup_main_button: {
+    is_visible: boolean,
+    is_active: boolean,
+    text: string,
+    color: string,
+    text_color: string,
+    is_progress_visible: boolean
+  },
+  web_app_setup_back_button: {
+    is_visible: boolean
+  },
+  share_score: void,
+  share_game: void,
+  game_over: void,
+  game_loaded: void,
+  resize_frame: {
+    height: number
   }
 };
 
-export type TelegramWebviewSerializedEvent<T extends keyof TelegramWebviewEventMap> = {
+export type TelegramWebViewSerializedEvent<T extends keyof TelegramWebViewEventMap> = {
   eventType: T,
-  eventData: TelegramWebviewEventMap[T]
+  eventData: TelegramWebViewEventMap[T]
 };
 
-export type TelegramWebviewSerializedEvents = {
-  [type in keyof TelegramWebviewEventMap]: TelegramWebviewSerializedEvent<type>
+export type TelegramWebViewSerializedEvents = {
+  [type in keyof TelegramWebViewEventMap]: TelegramWebViewSerializedEvent<type>
 };
 
-export type TelegramWebviewEvent = TelegramWebviewSerializedEvents[keyof TelegramWebviewEventMap];
-export type TelegramWebviewEventCallback = (event: TelegramWebviewEvent) => void;
+export type TelegramWebViewEvent = TelegramWebViewSerializedEvents[keyof TelegramWebViewEventMap];
+export type TelegramWebViewEventCallback = (event: TelegramWebViewEvent) => void;

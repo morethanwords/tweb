@@ -35,7 +35,9 @@ export default class InputFieldAnimated extends InputField {
     // this.wasInputFakeClientHeight = 0;
     // this.showScrollDebounced = debounce(() => this.input.classList.remove('no-scrollbar'), 150, false, true);
     this.inputFake = document.createElement('div');
+    // this.inputFake.contentEditable = 'true';
     this.inputFake.contentEditable = 'true';
+    this.inputFake.tabIndex = -1;
     this.inputFake.className = this.input.className + ' input-field-input-fake';
   }
 
@@ -64,8 +66,14 @@ export default class InputFieldAnimated extends InputField {
     }
 
     const className = 'is-changing-height';
-    SetTransition(this.input, className, true, transitionDuration, () => {
-      this.input.classList.remove(className);
+    SetTransition({
+      element: this.input,
+      className,
+      forwards: true,
+      duration: transitionDuration,
+      onTransitionEnd: () => {
+        this.input.classList.remove(className);
+      }
     });
   }
 

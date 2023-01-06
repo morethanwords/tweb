@@ -5,26 +5,37 @@
  */
 
 import {toastNew} from '../../components/toast';
+import {LangPackKey} from '../../lib/langPack';
 import {copyTextToClipboard} from '../clipboard';
 import cancelEvent from './cancelEvent';
 import {attachClickEvent} from './clickEvent';
 
+const T_ME = 'https://t.me/';
 export default function anchorCopy(options: Partial<{
   // href: string,
-  mePath: string
+  mePath: string,
+  username: string
 }> = {}) {
   const anchor = document.createElement('a');
   anchor.classList.add('anchor-copy');
 
+  let copyWhat: string, copyText: LangPackKey = 'LinkCopied';
   if(options.mePath) {
-    const href = 'https://t.me/' + options.mePath;
-    anchor.href = anchor.innerText = href;
+    const href = T_ME + options.mePath;
+    copyWhat = anchor.href = anchor.innerText = href;
+  }
+
+  if(options.username) {
+    const href = T_ME + options.username;
+    anchor.href = href;
+    copyWhat = anchor.innerText = '@' + options.username;
+    copyText = 'UsernameCopied';
   }
 
   attachClickEvent(anchor, (e) => {
     cancelEvent(e);
-    copyTextToClipboard(anchor.href);
-    toastNew({langPackKey: 'LinkCopied'});
+    copyTextToClipboard(copyWhat ?? anchor.href);
+    toastNew({langPackKey: copyText});
   });
 
   return anchor;
