@@ -15,7 +15,7 @@ import GroupCallParticipantStatusElement from './participantStatus';
 import type GroupCallInstance from '../../lib/calls/groupCallInstance';
 import type LazyLoadQueue from '../lazyLoadQueue';
 
-interface SortedParticipant extends SortedElementBase {
+interface SortedParticipant extends SortedElementBase<PeerId> {
   dom: DialogDom,
   mutedIcon: GroupCallParticipantMutedIcon,
   status: GroupCallParticipantStatusElement
@@ -55,7 +55,9 @@ export default class GroupCallParticipantsList extends SortedList<SortedParticip
           autonomous: this.autonomous,
           meAsSaved: false,
           rippleEnabled: this.rippleEnabled,
-          lazyLoadQueue: this.lazyLoadQueue
+          wrapOptions: {
+            lazyLoadQueue: this.lazyLoadQueue
+          }
         });
 
         const className = 'group-call-participant';

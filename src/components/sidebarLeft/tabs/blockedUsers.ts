@@ -5,8 +5,7 @@
  */
 
 import {SliderSuperTab} from '../../slider';
-import {SettingSection} from '..';
-import ButtonMenu from '../../buttonMenu';
+import {ButtonMenuSync} from '../../buttonMenu';
 import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '../../../lib/appManagers/appDialogsManager';
 import PopupPickUser from '../../popups/pickUser';
 import rootScope from '../../../lib/rootScope';
@@ -18,13 +17,14 @@ import getUserStatusString from '../../wrappers/getUserStatusString';
 import {attachContextMenuListener} from '../../../helpers/dom/attachContextMenuListener';
 import positionMenu from '../../../helpers/positionMenu';
 import contextMenuController from '../../../helpers/contextMenuController';
+import getPeerActiveUsernames from '../../../lib/appManagers/utils/peers/getPeerActiveUsernames';
+import SettingSection from '../../settingSection';
 
 export default class AppBlockedUsersTab extends SliderSuperTab {
   public peerIds: PeerId[];
   private menuElement: HTMLElement;
 
   public init() {
-    this.header.classList.add('with-border');
     this.container.classList.add('blocked-users-container');
     this.setTitle('BlockedUsers');
 
@@ -63,12 +63,18 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
         append
       });
 
-      const user = await this.managers.appUsersManager.getUser(peerId);
+      const user = await this.managers.appUsersManager.getUser(peerId.toUserId());
+      if(!user) {
+        return;
+      }
+
+      const usernames = getPeerActiveUsernames(user);
+      const username = usernames[0];
       if(user.pFlags.bot) {
-        dom.lastMessageSpan.append('@' + user.username);
+        dom.lastMessageSpan.append('@' + username);
       } else {
         if(user.phone) dom.lastMessageSpan.innerHTML = formatUserPhone(user.phone);
-        else dom.lastMessageSpan.append(user.username ? '@' + user.username : getUserStatusString(user));
+        else dom.lastMessageSpan.append(username ? '@' + username : getUserStatusString(user));
       }
 
       // dom.titleSpan.innerHTML = 'Raaid El Syed';
@@ -85,12 +91,14 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
       this.managers.appUsersManager.toggleBlock(peerId, false);
     };
 
-    const element = this.menuElement = ButtonMenu([{
-      icon: 'lockoff',
-      text: 'Unblock',
-      onClick: onUnblock,
-      options: {listenerSetter: this.listenerSetter}
-    }]);
+    const element = this.menuElement = ButtonMenuSync({
+      buttons: [{
+        icon: 'lockoff',
+        text: 'Unblock',
+        onClick: onUnblock,
+        options: {listenerSetter: this.listenerSetter}
+      }]
+    });
     element.id = 'blocked-users-contextmenu';
     element.classList.add('contextmenu');
 

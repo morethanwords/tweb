@@ -5,12 +5,16 @@
  */
 
 import {Chat, User} from '../../layer';
-import getAbbreviation from '../../lib/richTextProcessor/getAbbreviation';
-import rootScope from '../../lib/rootScope';
+import wrapAbbreviation from '../../lib/richTextProcessor/wrapAbbreviation';
 
-export default async function getPeerInitials(peerId: PeerId, managers = rootScope.managers) {
-  const peer: Chat | User = await managers.appPeersManager.getPeer(peerId);
-  return getAbbreviation(
-    (peer as Chat.chat).title ?? [(peer as User.user).first_name, (peer as User.user).last_name].filter(Boolean).join(' ')
-  );
+export default function getPeerInitials(peer: Chat | User) {
+  let str = '';
+  if(peer) {
+    str = (peer as Chat.chat).title ?? [
+      (peer as User.user).first_name,
+      (peer as User.user).last_name
+    ].filter(Boolean).join(' ');
+  }
+
+  return wrapAbbreviation(str);
 }

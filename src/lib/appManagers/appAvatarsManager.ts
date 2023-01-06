@@ -18,7 +18,11 @@ export class AppAvatarsManager extends AppManager {
   } = {};
 
   protected after() {
-    this.rootScope.addEventListener('avatar_update', (peerId) => {
+    this.rootScope.addEventListener('avatar_update', ({peerId, threadId}) => {
+      if(threadId) {
+        return;
+      }
+
       this.removeFromAvatarsCache(peerId);
     });
   }
@@ -39,12 +43,8 @@ export class AppAvatarsManager extends AppManager {
   }
 
   public loadAvatar(peerId: PeerId, photo: UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto, size: PeerPhotoSize) {
-    let saved = this.savedAvatarURLs[peerId];
-    if(!saved || !saved[size]) {
-      if(!saved) {
-        saved = this.savedAvatarURLs[peerId] = {};
-      }
-
+    const saved = this.savedAvatarURLs[peerId] ??= {};
+    if(!saved[size]) {
       // console.warn('will invoke downloadSmallFile:', peerId);
       const peerPhotoFileLocation: InputFileLocation.inputPeerPhotoFileLocation = {
         _: 'inputPeerPhotoFileLocation',

@@ -1,23 +1,19 @@
 import assumeType from '../../../../helpers/assumeType';
-import {Message, MessageEntity} from '../../../../layer';
+import {Message} from '../../../../layer';
 
 export default function getAlbumText(messages: Message.message[]) {
-  let foundMessages = 0, message: string, totalEntities: MessageEntity[], entities: MessageEntity[];
+  let foundMessages = 0, message: Message.message;
   for(const m of messages) {
     assumeType<Message.message>(m);
     if(m.message) {
       if(++foundMessages > 1) break;
-      message = m.message;
-      totalEntities = m.totalEntities;
-      entities = m.entities;
+      message = m;
     }
   }
 
   if(foundMessages > 1) {
     message = undefined;
-    totalEntities = undefined;
-    entities = undefined;
   }
 
-  return {message, entities, totalEntities};
+  return message;
 }

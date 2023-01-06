@@ -14,7 +14,6 @@ import {autoDownloadPeerTypeSection} from './photo';
 
 export default class AppAutoDownloadFileTab extends SliderSuperTabEventable {
   public init() {
-    this.header.classList.add('with-border');
     this.setTitle('AutoDownloadFiles');
 
     const debouncedSave = debounce((sizeMax: number) => {

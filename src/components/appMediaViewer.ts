@@ -23,7 +23,7 @@ import getMediaFromMessage from '../lib/appManagers/utils/messages/getMediaFromM
 import wrapRichText from '../lib/richTextProcessor/wrapRichText';
 import {MediaSearchContext} from './appMediaPlaybackController';
 import AppMediaViewerBase, {MEDIA_VIEWER_CLASSNAME} from './appMediaViewerBase';
-import {ButtonMenuItemOptions} from './buttonMenu';
+import {ButtonMenuItemOptionsVerifiable} from './buttonMenu';
 import PopupDeleteMessages from './popups/deleteMessages';
 import PopupForward from './popups/forward';
 import Scrollable from './scrollable';
@@ -37,9 +37,9 @@ type AppMediaViewerTargetType = {
 };
 export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delete' | 'forward', AppMediaViewerTargetType> {
   protected listLoader: SearchListLoader<AppMediaViewerTargetType>;
-  protected btnMenuForward: ButtonMenuItemOptions;
-  protected btnMenuDownload: ButtonMenuItemOptions;
-  protected btnMenuDelete: ButtonMenuItemOptions;
+  protected btnMenuForward: ButtonMenuItemOptionsVerifiable;
+  protected btnMenuDownload: ButtonMenuItemOptionsVerifiable;
+  protected btnMenuDelete: ButtonMenuItemOptionsVerifiable;
 
   get searchContext() {
     return this.listLoader.searchContext;
@@ -105,7 +105,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
     attachClickEvent(this.buttons.delete, this.onDeleteClick);
 
-    const buttons: ButtonMenuItemOptions[] = [this.btnMenuForward = {
+    const buttons: ButtonMenuItemOptionsVerifiable[] = [this.btnMenuForward = {
       icon: 'forward',
       text: 'Forward',
       onClick: this.onForwardClick
@@ -264,20 +264,23 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     const isServiceMessage = message._ === 'messageService';
     const cantForwardMessage = isServiceMessage || !(await this.managers.appMessagesManager.canForward(message));
     const cantDownloadMessage = (isServiceMessage ? noForwards : cantForwardMessage) || !canSaveMessageMedia(message);
-    [this.buttons.forward, this.btnMenuForward.element].forEach((button) => {
-      button.classList.toggle('hide', cantForwardMessage);
+    const a: [(HTMLElement | ButtonMenuItemOptionsVerifiable)[], boolean][] = [
+      [[this.buttons.forward, this.btnMenuForward], cantForwardMessage],
+      [[this.buttons.download, this.btnMenuDownload], cantDownloadMessage],
+      [[this.buttons.delete, this.btnMenuDelete], !(await this.managers.appMessagesManager.canDeleteMessage(message))]
+    ];
+
+    a.forEach(([buttons, hide]) => {
+      buttons.forEach((button) => {
+        if(button instanceof HTMLElement) {
+          button.classList.toggle('hide', hide);
+        } else {
+          button.verify = () => !hide;
+        }
+      });
     });
 
     this.wholeDiv.classList.toggle('no-forwards', cantDownloadMessage);
-
-    [this.buttons.download, this.btnMenuDownload.element].forEach((button) => {
-      button.classList.toggle('hide', cantDownloadMessage);
-    });
-
-    const canDeleteMessage = await this.managers.appMessagesManager.canDeleteMessage(message);
-    [this.buttons.delete, this.btnMenuDelete.element].forEach((button) => {
-      button.classList.toggle('hide', !canDeleteMessage);
-    });
 
     this.setCaption(message);
     const promise = super._openMedia(media, message.date, fromId, fromRight, target, reverse, prevTargets, nextTargets, message/* , needLoadMore */);

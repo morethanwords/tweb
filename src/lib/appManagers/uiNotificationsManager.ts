@@ -26,6 +26,7 @@ import appImManager from './appImManager';
 import appRuntimeManager from './appRuntimeManager';
 import {AppManagers} from './managers';
 import generateMessageId from './utils/messageId/generateMessageId';
+import getMessageThreadId from './utils/messages/getMessageThreadId';
 import getPeerId from './utils/peers/getPeerId';
 
 type MyNotification = Notification & {
@@ -63,7 +64,7 @@ export class UiNotificationsManager {
   private nextSoundAt: number;
   private prevSoundVolume: number;
 
-  private faviconEl: HTMLLinkElement = document.head.querySelector('link[rel="icon"]');
+  private faviconElements = Array.from(document.head.querySelectorAll<HTMLLinkElement>('link[rel="icon"], link[rel="alternate icon"]'));
 
   private titleBackup = document.title;
   private titleChanged = false;
@@ -214,7 +215,12 @@ export class UiNotificationsManager {
     });
   }
 
-  public async buildNotification({message, fwdCount, peerReaction, peerTypeNotifySettings}: {
+  public async buildNotification({
+    message,
+    fwdCount,
+    peerReaction,
+    peerTypeNotifySettings
+  }: {
     message: Message.message | Message.messageService,
     fwdCount?: number,
     peerReaction?: MessagePeerReaction,
@@ -223,14 +229,18 @@ export class UiNotificationsManager {
     const peerId = message.peerId;
     const isAnyChat = peerId.isAnyChat();
     const notification: NotifyOptions = {};
-    const peerString = await this.managers.appPeersManager.getPeerString(peerId);
+    const [peerString, isForum = false] = await Promise.all([
+      this.managers.appPeersManager.getPeerString(peerId),
+      isAnyChat && this.managers.appPeersManager.isForum(peerId)
+    ]);
     let notificationMessage: string;
+    let wrappedMessage = false;
 
     if(peerTypeNotifySettings.show_previews) {
       if(message._ === 'message' && message.fwd_from && fwdCount > 1) {
         notificationMessage = I18n.format('Notifications.Forwarded', true, [fwdCount]);
       } else {
-        notificationMessage = await wrapMessageForReply(message, undefined, undefined, true);
+        notificationMessage = await wrapMessageForReply({message, plain: true});
 
         const reaction = peerReaction?.reaction;
         if(reaction?._ === 'reactionEmoji') {
@@ -245,6 +255,8 @@ export class UiNotificationsManager {
           } */
 
           notificationMessage = I18n.format(langPackKey, true, args);
+        } else {
+          wrappedMessage = true;
         }
       }
     } else {
@@ -256,10 +268,19 @@ export class UiNotificationsManager {
       notification.silent = true;
     }
 
+    const threadId = isForum ? getMessageThreadId(message, isForum) : undefined;
     const notificationFromPeerId = peerReaction ? getPeerId(peerReaction.peer_id) : message.fromId;
-    notification.title = await getPeerTitle(peerId, true, undefined, undefined, this.managers);
-    if(isAnyChat && notificationFromPeerId !== message.peerId) {
-      notification.title = await getPeerTitle(notificationFromPeerId, true, undefined, undefined, this.managers) +
+    notification.title = await getPeerTitle({peerId, plainText: true, managers: this.managers, threadId: threadId});
+    if(isForum) {
+      const peerTitle = await getPeerTitle({peerId, plainText: true, managers: this.managers});
+      notification.title += ` (${peerTitle})`;
+
+      if(wrappedMessage && notificationFromPeerId !== message.peerId) {
+        notificationMessage = await getPeerTitle({peerId: notificationFromPeerId, plainText: true, managers: this.managers}) +
+          ': ' + notificationMessage;
+      }
+    } else if(isAnyChat && notificationFromPeerId !== message.peerId) {
+      notification.title = await getPeerTitle({peerId: notificationFromPeerId, plainText: true, managers: this.managers}) +
         ' @ ' +
         notification.title;
     }
@@ -267,7 +288,7 @@ export class UiNotificationsManager {
     notification.title = wrapPlainText(notification.title);
 
     notification.onclick = () => {
-      appImManager.setInnerPeer({peerId, lastMsgId: message.mid});
+      appImManager.setInnerPeer({peerId, lastMsgId: message.mid, threadId});
     };
 
     notification.message = notificationMessage;
@@ -360,17 +381,23 @@ export class UiNotificationsManager {
     }
   }
 
-  private setFavicon(href: string = 'assets/img/favicon.ico') {
+  private setFavicon(href?: string) {
     if(this.prevFavicon === href) {
       return;
     }
 
-    const link = this.faviconEl.cloneNode() as HTMLLinkElement;
-    link.href = href;
-    this.faviconEl.parentNode.replaceChild(link, this.faviconEl);
-    this.faviconEl = link;
-
     this.prevFavicon = href;
+    this.faviconElements.forEach((element, idx, arr) => {
+      const link = element.cloneNode() as HTMLLinkElement;
+
+      if(!link.dataset.href) {
+        link.dataset.href = link.href;
+      }
+
+      href ??= link.dataset.href;
+      link.href = href;
+      element.replaceWith(arr[idx] = link);
+    });
   }
 
   public notify(data: NotifyOptions) {

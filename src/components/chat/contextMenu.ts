@@ -47,6 +47,7 @@ import deferredPromise, {CancellablePromise} from '../../helpers/cancellableProm
 import PopupStickers from '../popups/stickers';
 import getMediaFromMessage from '../../lib/appManagers/utils/messages/getMediaFromMessage';
 import canSaveMessageMedia from '../../lib/appManagers/utils/messages/canSaveMessageMedia';
+import getAlbumText from '../../lib/appManagers/utils/messages/getAlbumText';
 
 export default class ChatContextMenu {
   private buttons: (ButtonMenuItemOptions & {verify: () => boolean | Promise<boolean>, notDirect?: () => boolean, withSelection?: true, isSponsored?: true, localName?: 'views' | 'emojis'})[];
@@ -75,6 +76,9 @@ export default class ChatContextMenu {
   private canOpenReactedList: boolean;
 
   private emojiInputsPromise: CancellablePromise<InputStickerSet.inputStickerSetID[]>;
+  private albumMessages: Message.message[];
+  private linkToMessage: Awaited<ReturnType<ChatContextMenu['getUrlToMessage']>>;
+  private selectedMessagesText: string;
 
   constructor(
     private chat: Chat,
@@ -156,13 +160,13 @@ export default class ChatContextMenu {
       );
       this.isUsernameTarget = this.target.tagName === 'A' && this.target.classList.contains('mention');
 
+      const mids = await this.chat.getMidsByMid(mid);
       // * если открыть контекстное меню для альбома не по бабблу, и последний элемент не выбран, чтобы показать остальные пункты
       if(this.chat.selection.isSelecting && !contentWrapper) {
         if(isSponsored) {
           return;
         }
 
-        const mids = await this.chat.getMidsByMid(mid);
         if(mids.length > 1) {
           const selectedMid = this.chat.selection.isMidSelected(this.peerId, mid) ?
             mid :
@@ -185,9 +189,12 @@ export default class ChatContextMenu {
 
       this.isSelected = this.chat.selection.isMidSelected(this.peerId, this.mid);
       this.message = (bubble as any).message || await this.chat.getMessage(this.mid);
+      this.albumMessages = (this.message as Message.message).grouped_id ? await this.managers.appMessagesManager.getMessagesByAlbum((this.message as Message.message).grouped_id) : undefined;
       this.noForwards = !isSponsored && !(await this.managers.appMessagesManager.canForward(this.message));
       this.viewerPeerId = undefined;
       this.canOpenReactedList = undefined;
+      this.linkToMessage = await this.getUrlToMessage();
+      this.selectedMessagesText = await this.getSelectedMessagesText();
 
       const initResult = await this.init();
       if(!initResult) {
@@ -557,14 +564,16 @@ export default class ChatContextMenu {
           new PopupStickers(inputs, true).show();
         });
       },
-      verify: () => !!this.getUniqueCustomEmojisFromMessage(this.message).length,
+      verify: () => !!this.getUniqueCustomEmojisFromMessage().length,
       notDirect: () => true,
       localName: 'emojis'
     }];
   }
 
-  private getUniqueCustomEmojisFromMessage(message: Message) {
+  private getUniqueCustomEmojisFromMessage() {
     const docIds: DocId[] = [];
+
+    const message = this.albumMessages ? getAlbumText(this.albumMessages) || this.message : this.message;
 
     const entities = (message as Message.message).entities;
     if(entities) {
@@ -590,7 +599,10 @@ export default class ChatContextMenu {
       return;
     }
 
-    const element = this.element = ButtonMenu(filteredButtons, this.listenerSetter);
+    const element = this.element = await ButtonMenu({
+      buttons: filteredButtons,
+      listenerSetter: this.listenerSetter
+    });
     element.id = 'bubble-contextmenu';
     element.classList.add('contextmenu');
 
@@ -744,7 +756,7 @@ export default class ChatContextMenu {
         menuPadding.bottom = 24;
       };
 
-      const docIds = this.getUniqueCustomEmojisFromMessage(this.message);
+      const docIds = this.getUniqueCustomEmojisFromMessage();
       const inputsPromise = this.emojiInputsPromise = deferredPromise();
 
       await this.managers.appEmojiManager.getCachedCustomEmojiDocuments(docIds).then(async(docs) => {
@@ -801,6 +813,53 @@ export default class ChatContextMenu {
     };
   }
 
+  private async getUrlToMessage() {
+    if(this.peerId.isUser()) {
+      return;
+    }
+
+    let threadMessage: Message.message;
+    const {peerId, mid} = this;
+    const threadId = this.chat.threadId;
+    if(this.chat.type === 'discussion') {
+      threadMessage = (await this.managers.appMessagesManager.getMessageByPeer(peerId, threadId)) as Message.message;
+    }
+
+    const username = await this.managers.appPeersManager.getPeerUsername(threadMessage ? threadMessage.fromId : peerId);
+    const msgId = getServerMessageId(mid);
+    let url = 'https://t.me/';
+    if(username) {
+      url += username;
+      if(threadMessage) url += `/${getServerMessageId(threadMessage.fwd_from.channel_post)}?comment=${msgId}`;
+      else if(threadId) url += `/${getServerMessageId(threadId)}/${msgId}`;
+      else url += '/' + msgId;
+    } else {
+      url += 'c/' + peerId.toChatId();
+      if(threadMessage) url += `/${msgId}?thread=${getServerMessageId(threadMessage.mid)}`;
+      else if(threadId) url += `/${getServerMessageId(threadId)}/${msgId}`;
+      else url += '/' + msgId;
+    }
+
+    return {url, isPrivate: !username};
+  }
+
+  private async getSelectedMessagesText() {
+    if(!isSelectionEmpty()) {
+      return '';
+    }
+
+    const mids = this.chat.selection.isSelecting ?
+      [...this.chat.selection.selectedMids.get(this.peerId)].sort((a, b) => a - b) :
+      [this.mid];
+
+    const parts: string[] = await Promise.all(mids.map(async(mid) => {
+      const message = (await this.chat.getMessage(mid)) as Message.message;
+      return message?.message ? message.message + '\n' : '';
+    }));
+
+    return parts.join('');
+  }
+
   private onSendScheduledClick = async() => {
     if(this.chat.selection.isSelecting) {
       simulateClickEvent(this.chat.selection.selectionSendNowBtn);
@@ -824,18 +883,7 @@ export default class ChatContextMenu {
 
   private onCopyClick = async() => {
     if(isSelectionEmpty()) {
-      const mids = this.chat.selection.isSelecting ?
-        [...this.chat.selection.selectedMids.get(this.peerId)].sort((a, b) => a - b) :
-        [this.mid];
-
-      const parts: string[] = await Promise.all(mids.map(async(mid) => {
-        const message = (await this.chat.getMessage(mid)) as Message.message;
-        return message?.message ? message.message + '\n' : '';
-      }));
-
-      const str = parts.join('');
-
-      copyTextToClipboard(str);
+      copyTextToClipboard(this.selectedMessagesText);
     } else {
       document.execCommand('copy');
       // cancelSelection();
@@ -846,30 +894,10 @@ export default class ChatContextMenu {
     copyTextToClipboard((this.target as HTMLAnchorElement).href);
   };
 
-  private onCopyLinkClick = async() => {
-    let threadMessage: Message.message;
-    const {peerId, mid} = this;
-    const threadId = this.chat.threadId;
-    if(this.chat.type === 'discussion') {
-      threadMessage = (await this.managers.appMessagesManager.getMessageByPeer(peerId, threadId)) as Message.message;
-    }
-
-    const username = await this.managers.appPeersManager.getPeerUsername(threadMessage ? threadMessage.fromId : peerId);
-    const msgId = getServerMessageId(mid);
-    let url = 'https://t.me/';
-    let key: LangPackKey;
-    if(username) {
-      url += username + '/' + (threadMessage ? getServerMessageId(threadMessage.fwd_from.channel_post) : msgId);
-      if(threadMessage) url += '?comment=' + msgId;
-      key = 'LinkCopied';
-    } else {
-      url += 'c/' + peerId.toChatId() + '/' + msgId;
-      if(threadMessage) url += '?thread=' + getServerMessageId(threadMessage.mid);
-      key = 'LinkCopiedPrivateInfo';
-    }
-
+  private onCopyLinkClick = () => {
+    const {url, isPrivate} = this.linkToMessage;
+    const key: LangPackKey = isPrivate ? 'LinkCopiedPrivateInfo' : 'LinkCopied';
     toast(I18n.format(key, true));
-
     copyTextToClipboard(url);
   };
 

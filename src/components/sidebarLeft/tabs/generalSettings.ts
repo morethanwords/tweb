@@ -4,7 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {generateSection, SettingSection} from '..';
 import RangeSelector from '../../rangeSelector';
 import Button from '../../button';
 import CheckboxField from '../../checkboxField';
@@ -27,6 +26,7 @@ import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
 import {State} from '../../../config/state';
 import wrapStickerSetThumb from '../../wrappers/stickerSetThumb';
 import wrapStickerToRow from '../../wrappers/stickerToRow';
+import SettingSection, {generateSection} from '../../settingSection';
 
 export class RangeSettingSelector {
   public container: HTMLDivElement;
@@ -88,7 +88,6 @@ export class RangeSettingSelector {
 
 export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
   init() {
-    this.header.classList.add('with-border');
     this.container.classList.add('general-settings-container');
     this.setTitle('General');
 

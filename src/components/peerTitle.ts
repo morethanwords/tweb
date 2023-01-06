@@ -10,11 +10,11 @@ import replaceContent from '../helpers/dom/replaceContent';
 import {NULL_PEER_ID} from '../lib/mtproto/mtproto_config';
 import limitSymbols from '../helpers/string/limitSymbols';
 import setInnerHTML from '../helpers/dom/setInnerHTML';
-import {AppManagers} from '../lib/appManagers/managers';
+import safeAssign from '../helpers/object/safeAssign';
 import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 import getPeerTitle from './wrappers/getPeerTitle';
 import generateTitleIcons from './generateTitleIcons';
-import {Middleware} from '../helpers/middleware';
+import {wrapTopicIcon} from './wrappers/messageActionTextNewUnsafe';
 
 export type PeerTitleOptions = {
   peerId?: PeerId,
@@ -23,16 +23,21 @@ export type PeerTitleOptions = {
   onlyFirstName?: boolean,
   dialog?: boolean,
   limitSymbols?: number,
-  managers?: AppManagers,
   withIcons?: boolean,
   withPremiumIcon?: boolean,
-  middleware?: Middleware
+  threadId?: number,
+  wrapOptions?: WrapSomethingOptions
 };
 
 const weakMap: WeakMap<HTMLElement, PeerTitle> = new WeakMap();
 
-rootScope.addEventListener('peer_title_edit', (peerId) => {
-  const elements = Array.from(document.querySelectorAll(`.peer-title[data-peer-id="${peerId}"]`)) as HTMLElement[];
+rootScope.addEventListener('peer_title_edit', ({peerId, threadId}) => {
+  let query = `.peer-title[data-peer-id="${peerId}"]`;
+  if(threadId) {
+    query += `[data-thread-id="${threadId}"]`;
+  }
+
+  const elements = Array.from(document.querySelectorAll(query)) as HTMLElement[];
   elements.forEach((element) => {
     const peerTitle = weakMap.get(element);
     peerTitle?.update();
@@ -41,22 +46,15 @@ rootScope.addEventListener('peer_title_edit', (peerId) => {
 
 export default class PeerTitle {
   public element: HTMLElement;
-  public peerId: PeerId;
-  private fromName: string;
-  private plainText = false;
-  private onlyFirstName = false;
-  private dialog = false;
-  private limitSymbols: number;
-  private managers: AppManagers;
+  public options: PeerTitleOptions;
   private hasInner: boolean;
-  private withIcons: boolean;
-  private withPremiumIcon: boolean;
-  private middleware: Middleware;
 
   constructor(options?: PeerTitleOptions) {
     this.element = document.createElement('span');
     this.element.classList.add('peer-title');
     this.element.setAttribute('dir', 'auto');
+
+    this.options = {};
 
     if(options) {
       this.update(options);
@@ -70,62 +68,97 @@ export default class PeerTitle {
       return;
     }
 
+    safeAssign(this.options, options);
     for(const i in options) {
       // @ts-ignore
       const value = options[i];
 
-      if(typeof(value) !== 'object') {
+      if(typeof(value) !== 'object' && typeof(value) !== 'function') {
         // @ts-ignore
         this.element.dataset[i] = value ? '' + (typeof(value) === 'boolean' ? +value : value) : '0';
       }
+    }
+  }
 
-      // @ts-ignore
-      this[i] = value;
+  private setHasInner(hasInner: boolean) {
+    if(this.hasInner !== hasInner) {
+      this.hasInner = hasInner;
+      this.element.classList.toggle('with-icons', hasInner);
     }
   }
 
   public async update(options?: PeerTitleOptions) {
     this.setOptions(options);
 
-    let fromName = this.fromName;
+    let fromName = this.options.fromName;
     if(fromName !== undefined) {
-      if(this.limitSymbols !== undefined) {
-        fromName = limitSymbols(fromName, this.limitSymbols, this.limitSymbols);
+      if(this.options.limitSymbols !== undefined) {
+        fromName = limitSymbols(fromName, this.options.limitSymbols, this.options.limitSymbols);
       }
 
       setInnerHTML(this.element, wrapEmojiText(fromName));
       return;
     }
 
-    this.peerId ??= NULL_PEER_ID;
+    this.options.peerId ??= NULL_PEER_ID;
 
     let hasInner: boolean;
-    if(this.peerId !== rootScope.myId || !this.dialog) {
-      const managers = this.managers ?? rootScope.managers;
-      const [title, icons] = await Promise.all([
-        getPeerTitle(this.peerId, this.plainText, this.onlyFirstName, this.limitSymbols, managers),
-        (this.withIcons && generateTitleIcons(this.peerId, this.middleware)) || (this.withPremiumIcon && generateTitleIcons(this.peerId, this.middleware, true, true))
+    const {peerId, threadId} = this.options;
+    if(peerId !== rootScope.myId || !this.options.dialog) {
+      if(threadId) {
+        const [topic, isForum] = await Promise.all([
+          rootScope.managers.dialogsStorage.getForumTopic(peerId, threadId),
+          rootScope.managers.appPeersManager.isForum(peerId)
+        ]);
+
+        if(!topic && isForum) {
+          rootScope.managers.dialogsStorage.getForumTopicById(peerId, threadId).then((forumTopic) => {
+            if(!forumTopic && this.options.threadId === threadId) {
+              this.options.threadId = undefined;
+              this.update({threadId: undefined});
+              return;
+            }
+
+            this.update();
+          }, () => {
+            if(this.options.threadId === threadId) {
+              this.options.threadId = undefined;
+              this.update({threadId: undefined});
+            }
+          });
+
+          setInnerHTML(this.element, i18n('Loading'));
+          this.setHasInner(false);
+          return;
+        }
+      }
+
+      const getTopicIconPromise = threadId && this.options.withIcons ?
+        rootScope.managers.dialogsStorage.getForumTopic(peerId, threadId).then((topic) => wrapTopicIcon({...(this.options.wrapOptions ?? {}), topic})) :
+        undefined;
+
+      const [title, icons, topicIcon] = await Promise.all([
+        getPeerTitle(this.options as Required<PeerTitleOptions>),
+        (this.options.withIcons && generateTitleIcons(peerId, this.options.wrapOptions?.middleware)) || (this.options.withPremiumIcon && generateTitleIcons(peerId, this.options.wrapOptions?.middleware, true, true)),
+        getTopicIconPromise
       ]);
 
-      if(icons?.length) {
+      if(icons?.length || topicIcon) {
         const inner = document.createElement('span');
         inner.classList.add('peer-title-inner');
         hasInner = true;
         setInnerHTML(inner, title);
 
         const fragment = document.createDocumentFragment();
-        fragment.append(inner, ...icons);
+        fragment.append(...[topicIcon, inner, ...(icons ?? [])].filter(Boolean));
         setInnerHTML(this.element, fragment);
       } else {
         setInnerHTML(this.element, title);
       }
     } else {
-      replaceContent(this.element, i18n(this.onlyFirstName ? 'Saved' : 'SavedMessages'));
+      replaceContent(this.element, i18n(this.options.onlyFirstName ? 'Saved' : 'SavedMessages'));
     }
 
-    if(this.hasInner !== hasInner) {
-      this.hasInner = hasInner;
-      this.element.classList.toggle('with-icons', hasInner);
-    }
+    this.setHasInner(hasInner);
   }
 }

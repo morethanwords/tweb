@@ -15,18 +15,24 @@ import isObject from '../helpers/object/isObject';
 import {ArgumentTypes} from '../types';
 import putPhoto from './putPhoto';
 import {recordPromise} from '../helpers/recordPromise';
+import {getMiddleware, MiddlewareHelper} from '../helpers/middleware';
 
-const onAvatarUpdate = (peerId: PeerId) => {
-  (Array.from(document.querySelectorAll('avatar-element[data-peer-id="' + peerId + '"]')) as AvatarElement[]).forEach((elem) => {
+const onAvatarUpdate = ({peerId, threadId}: {peerId: PeerId, threadId?: number}) => {
+  let query = 'avatar-element[data-peer-id="' + peerId + '"]';
+  if(threadId) {
+    query += '[data-thread-id="' + threadId + '"]';
+  }
+
+  (Array.from(document.querySelectorAll(query)) as AvatarElement[]).forEach((elem) => {
     // console.log('updating avatar:', elem);
     elem.update();
   });
 };
 
 rootScope.addEventListener('avatar_update', onAvatarUpdate);
-rootScope.addEventListener('peer_title_edit', async(peerId) => {
-  if(!(await rootScope.managers.appAvatarsManager.isAvatarCached(peerId))) {
-    onAvatarUpdate(peerId);
+rootScope.addEventListener('peer_title_edit', async(data) => {
+  if(!(await rootScope.managers.appAvatarsManager.isAvatarCached(data.peerId))) {
+    onAvatarUpdate(data);
   }
 });
 
@@ -116,8 +122,12 @@ export async function openAvatarViewer(
   }
 }
 
-const believeMe: Map<PeerId, Set<AvatarElement>> = new Map();
+const believeMe: Map<string, Set<AvatarElement>> = new Map();
 const seen: Set<PeerId> = new Set();
+
+function getAvatarQueueKey(peerId: PeerId, threadId?: number) {
+  return peerId + (threadId ? '_' + threadId : '');
+}
 
 export default class AvatarElement extends HTMLElement {
   public peerId: PeerId;
@@ -126,16 +136,27 @@ export default class AvatarElement extends HTMLElement {
   public loadPromises: Promise<any>[];
   public lazyLoadQueue: LazyLoadQueue;
   public isBig: boolean;
+  public threadId: number;
   private addedToQueue = false;
+  public wrapOptions: WrapSomethingOptions;
+
+  public middlewareHelper: MiddlewareHelper;
+
+  constructor() {
+    super();
+    this.classList.add('avatar-like');
+    this.middlewareHelper = getMiddleware();
+  }
 
   disconnectedCallback() {
     // браузер вызывает этот метод при удалении элемента из документа
     // (может вызываться много раз, если элемент многократно добавляется/удаляется)
-    const set = believeMe.get(this.peerId);
-    if(set && set.has(this)) {
+    const key = getAvatarQueueKey(this.peerId, this.threadId);
+    const set = believeMe.get(key);
+    if(set?.has(this)) {
       set.delete(this);
       if(!set.size) {
-        believeMe.delete(this.peerId);
+        believeMe.delete(key);
       }
     }
 
@@ -147,7 +168,6 @@ export default class AvatarElement extends HTMLElement {
     attachClickEvent(this, async(e) => {
       cancelEvent(e);
       if(loading) return;
-      // console.log('avatar clicked');
       const peerId = this.peerId;
       loading = true;
       await openAvatarViewer(this, this.peerId, () => this.peerId === peerId);
@@ -164,38 +184,73 @@ export default class AvatarElement extends HTMLElement {
 
   public updateWithOptions(options: {
     peerId: PeerId,
+    threadId?: number,
     isDialog?: boolean,
     isBig?: boolean,
     peerTitle?: string,
-    lazyLoadQueue?: LazyLoadQueue,
-    loadPromises?: Promise<any>[]
+    lazyLoadQueue?: LazyLoadQueue | false,
+    loadPromises?: Promise<any>[],
+    wrapOptions?: WrapSomethingOptions
   }) {
     const wasPeerId = this.peerId;
+    const wasThreadId = this.threadId;
     this.updateOptions(options);
     const newPeerId = this.peerId;
+    const threadId = this.threadId;
 
-    if(wasPeerId === newPeerId) {
+    if(wasPeerId === newPeerId && wasThreadId === threadId) {
       return;
     }
 
-    this.peerId = /* rootScope.managers.appPeersManager.getPeerMigratedTo(newPeerId) ||  */newPeerId;
     this.dataset.peerId = '' + newPeerId;
 
+    if(threadId) {
+      this.dataset.threadId = '' + threadId;
+    } else if(wasThreadId) {
+      delete this.dataset.threadId;
+    }
+
     if(wasPeerId) {
-      const set = believeMe.get(wasPeerId);
+      const key = getAvatarQueueKey(wasPeerId, wasThreadId);
+      const set = believeMe.get(key);
       if(set) {
         set.delete(this);
         if(!set.size) {
-          believeMe.delete(wasPeerId);
+          believeMe.delete(key);
         }
       }
+    }
+
+    const middleware = options.wrapOptions?.middleware;
+    this.middlewareHelper.destroy();
+    if(middleware) {
+      this.middlewareHelper = middleware.create();
+    } else {
+      this.middlewareHelper.destroy();
     }
 
     return this.update();
   }
 
+  public remove() {
+    this.middlewareHelper.destroy();
+    super.remove();
+  }
+
   private r(onlyThumb = false) {
-    const promise = putPhoto(this, this.peerId, this.isDialog, this.peerTitle, onlyThumb, this.isBig);
+    const promise = putPhoto({
+      div: this,
+      peerId: this.peerId,
+      isDialog: this.isDialog,
+      title: this.peerTitle,
+      onlyThumb,
+      isBig: this.isBig,
+      threadId: this.threadId,
+      wrapOptions: {
+        middleware: this.middlewareHelper.get(),
+        ...(this.wrapOptions || {})
+      }
+    });
     // recordPromise(promise, 'avatar putPhoto-' + this.peerId);
 
     if(this.loadPromises) {
@@ -215,10 +270,10 @@ export default class AvatarElement extends HTMLElement {
         if(this.addedToQueue) return;
         this.addedToQueue = true;
 
-        let set = believeMe.get(this.peerId);
+        const key = getAvatarQueueKey(this.peerId, this.threadId);
+        let set = believeMe.get(key);
         if(!set) {
-          set = new Set();
-          believeMe.set(this.peerId, set);
+          believeMe.set(key, set = new Set());
         }
 
         set.add(this);
@@ -247,12 +302,12 @@ export default class AvatarElement extends HTMLElement {
       });
     }
 
-    const set = believeMe.get(this.peerId);
+    const key = getAvatarQueueKey(this.peerId, this.threadId);
+    const set = believeMe.get(key);
     if(set) {
       set.delete(this);
       const arr = Array.from(set);
-      believeMe.delete(this.peerId);
-
+      believeMe.delete(key);
 
       for(let i = 0, length = arr.length; i < length; ++i) {
         arr[i].update();

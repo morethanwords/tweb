@@ -14,8 +14,10 @@
 	transform: scale(0);
 	opacity: 0;
 	transform-origin: bottom right;
-  padding: .625rem !important;
-  display: block !important;
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: column;
+  overflow: hidden;
 
   @include respond-to(esg-bottom-new) {
 		bottom: calc(100% + .5rem);
@@ -61,5 +63,16 @@
     & + & {
       margin-left: .3125rem;
     }
+  }
+
+  .scrollable-y {
+    position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    height: auto;
+    max-height: 100%;
+    padding: .625rem !important;
   }
 }

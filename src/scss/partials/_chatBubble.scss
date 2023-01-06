@@ -341,6 +341,10 @@ $bubble-border-radius-big: 12px;
 
         .bubble.is-out & {
           transform: translateX(-1.125rem);
+
+          &.goto-original {
+            transform: translateX(-1.125rem) rotate(180deg);
+          }
         }
       }
     }
@@ -444,8 +448,8 @@ $bubble-border-radius-big: 12px;
       } */
     }
 
-    .chat.type-chat & .bubble-content,
-    .chat.type-discussion & .bubble-content {
+    .chat[data-type="chat"] & .bubble-content,
+    .chat[data-type="discussion"] & .bubble-content {
       cursor: pointer;
       pointer-events: all;
     }
@@ -499,10 +503,32 @@ $bubble-border-radius-big: 12px;
 
   &-view-button {
     border-radius: 6px;
-    border: 1px solid var(--primary-color);
+    border: 1px solid var(--message-primary-color);
+    color: var(--message-primary-color);
     height: 2rem;
     margin: 0 0.5625rem .5rem;
     width: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none !important;
+
+    @include hover() {
+      background-color: var(--light-filled-message-primary-color);
+    }
+
+    .c-ripple__circle {
+      background-color: var(--message-primary-color);
+      opacity: $hover-alpha;
+    }
+
+    .message & {
+      margin: .375rem 0 -.375rem;
+      width: 100%;
+      max-width: 100%;
+
+      @include text-overflow(true);
+    }
   }
 
   @include hover() {
@@ -1260,11 +1286,12 @@ $bubble-border-radius-big: 12px;
 
   &.just-media {
     .floating-part {
-      padding: .3125rem .625rem;
+      padding: .375rem .625rem;
       border-radius: 12px;
       position: absolute;
       top: 0;
-      margin-bottom: 0;
+      // margin-bottom: 0;
+      margin: 0;
       background-color: var(--message-highlightning-color);
       white-space: nowrap;
       max-width: 15rem;
@@ -1276,7 +1303,7 @@ $bubble-border-radius-big: 12px;
 
     .name {
       color: #fff !important;
-      padding: .3125rem .625rem;
+      padding: .375rem .625rem;
       line-height: var(--line-height);
 
       .peer-title {
@@ -1328,8 +1355,12 @@ $bubble-border-radius-big: 12px;
     border-top-right-radius: 0;
   }
 
-  .message {
+  .message,
+  .service-msg {
     --custom-emoji-size: var(--messages-custom-emoji-size);
+  }
+
+  .message {
     font-size: var(--messages-text-size);
     padding: 0 .5rem .375rem .625rem;
     max-width: 100%;
@@ -2026,7 +2057,7 @@ $bubble-border-radius-big: 12px;
   .name {
   // &-content > .name, 
   // .document-wrapper > .name {
-    padding: .3125rem .625rem 0 .625rem;
+    padding: .375rem .625rem 0 .625rem;
     font-weight: var(--font-weight-bold) !important;
     /* padding-bottom: 4px; */
     color: var(--primary-color);
@@ -2297,6 +2328,10 @@ $bubble-border-radius-big: 12px;
         .hide-ol {
           display: none;
         }
+
+        .peer-title {
+          font-weight: var(--font-weight-bold) !important;
+        }
       }
     }
 
@@ -2305,6 +2340,73 @@ $bubble-border-radius-big: 12px;
       padding: 0;
       height: auto;
       max-height: none;
+    }
+  }
+
+  .topic-name-button {
+    --color: var(--message-primary-color);
+  }
+
+  // .name .peer-title + .topic-name-button-container {
+  //   margin-top: .25rem;
+  // }
+
+  .name .topic-name-button-container {
+    margin: .25rem -.125rem;
+
+    &:first-child {
+      margin-top: 0;
+    }
+  }
+
+  &.is-message-empty:not(.is-reply) .name .topic-name-button-container {
+    margin-bottom: 0;
+  }
+
+  &:not(.is-group-first) .topic-name-button-container {
+    display: none !important;
+  }
+
+  .topic-name-button-container.floating-part {
+    padding-top: 0;
+    padding-bottom: 0;
+    font-size: var(--messages-secondary-text-size);
+
+    .topic-name-button {
+      --color: #fff;
+      padding: 0;
+
+      &:before {
+        content: none;
+      }
+    }
+
+    & + .floating-part {
+      margin-top: 1.75rem;
+    }
+  }
+
+  .media-spoiler {
+    &-container {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 1;
+      border-radius: inherit;
+
+      &.is-revealing {
+        opacity: 1;
+
+        &:not(.backwards) {
+          opacity: 0;
+        }
+
+        &.animating {
+          transition: opacity var(--transition-standard-out);
+        }
+      }
     }
   }
 }
@@ -2698,7 +2800,7 @@ $bubble-border-radius-big: 12px;
   .quote .webpage-name {
     color: var(--message-out-primary-color);
   }
-  
+
   .time {
     padding-right: 5px;
     margin-left: -4px;

@@ -84,7 +84,9 @@ export function formatPhoneNumber(originalStr: string): {
     const _pattern = pattern.replace(/ /g, '');
     let patternMatches = 0;
     for(let k = 0, length = Math.min(searchForPattern.length, _pattern.length); k < length; ++k) {
-      if(searchForPattern[k] === _pattern[k] || _pattern[k] === 'X') {
+      if(searchForPattern[k] === _pattern[k]) {
+        patternMatches += 1.01;
+      } else if(_pattern[k] === 'X') {
         ++patternMatches;
       } else {
         patternMatches = 0;

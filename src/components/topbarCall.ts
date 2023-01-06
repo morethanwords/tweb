@@ -156,11 +156,17 @@ export default class TopbarCall {
         weave.setAmplitude(0);
       }
 
-      SetTransition(document.body, 'is-calling', !isClosed, 250, isClosed ? () => {
-        weave.componentWillUnmount();
+      SetTransition({
+        element: document.body,
+        className: 'is-calling',
+        forwards: !isClosed,
+        duration: 250,
+        onTransitionEnd: isClosed ? () => {
+          weave.componentWillUnmount();
 
-        this.clearCurrentInstance();
-      }: undefined);
+          this.clearCurrentInstance();
+        } : undefined
+      });
     }
 
     if(isClosed) {

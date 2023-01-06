@@ -4,23 +4,26 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-avatar-element {
+.avatar-like {
   --size: 54px;
   --multiplier: 1;
-  --color-top: var(--avatar-color-top);
-  --color-bottom: var(--avatar-color-bottom);
   color: #fff;
   width: var(--size);
   height: var(--size);
   line-height: var(--size) !important;
-  border-radius: 50%;
-  background: linear-gradient(var(--color-top), var(--color-bottom));
   text-align: center;
   font-size: calc(1.25rem / var(--multiplier));
-  /* overflow: hidden; */
   user-select: none;
   text-transform: uppercase;
   font-weight: var(--font-weight-bold);
+}
+
+avatar-element {
+  --color-top: var(--avatar-color-top);
+  --color-bottom: var(--avatar-color-bottom);
+  border-radius: 50%;
+  background: linear-gradient(var(--color-top), var(--color-bottom));
+  /* overflow: hidden; */
 
   &[data-color="red"] {
     --color-top: var(--peer-avatar-red-top);
@@ -126,11 +129,26 @@ avatar-element {
       vertical-align: middle !important;
     }
   }
-  
-  path {
-    fill: white;
+
+  // path {
+  //   fill: white;
+  // }
+
+  &.is-forum {
+    border-radius: var(--avatar-border-radius-forum);
   }
-  
+
+  &.is-topic {
+    position: relative;
+    background: none;
+    border-radius: 0;
+
+    .topic-icon {
+      --size: inherit;
+      // --custom-emoji-size: var(--size);
+    }
+  }
+
   &.is-online {
     position: relative;
 

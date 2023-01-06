@@ -15,6 +15,7 @@ import setInnerHTML from '../helpers/dom/setInnerHTML';
 import {attachClickEvent} from '../helpers/dom/clickEvent';
 import ListenerSetter from '../helpers/listenerSetter';
 import Button from './button';
+import createContextMenu from '../helpers/dom/createContextMenu';
 
 type K = string | HTMLElement | DocumentFragment | true;
 
@@ -48,6 +49,7 @@ export default class Row {
   public buttonRight: HTMLElement;
 
   private _subtitle: HTMLElement;
+  private _midtitle: HTMLElement;
 
   constructor(options: Partial<{
     icon: string,
@@ -71,7 +73,8 @@ export default class Row {
     listenerSetter: ListenerSetter,
     buttonRight?: HTMLElement | boolean,
     buttonRightLangKey: LangPackKey,
-    asLink: boolean
+    asLink: boolean,
+    contextMenu: Omit<Parameters<typeof createContextMenu>[0], 'findElement' | 'listenTo' | 'listenerSetter'>
   }> = {}) {
     if(options.checkboxFieldOptions) {
       options.checkboxField = new CheckboxField({
@@ -176,7 +179,8 @@ export default class Row {
 
     if(options.icon) {
       havePadding = true;
-      this.title.classList.add('tgico', 'tgico-' + options.icon);
+      // this.title.classList.add('tgico', 'tgico-' + options.icon);
+      this.container.classList.add('tgico', 'tgico-' + options.icon);
       this.container.classList.add('row-with-icon');
     }
 
@@ -213,10 +217,22 @@ export default class Row {
         Button('btn-primary btn-color-primary', {text: options.buttonRightLangKey});
       this.container.append(this.buttonRight);
     }
+
+    if(options.contextMenu) {
+      createContextMenu({
+        ...options.contextMenu,
+        listenTo: this.container,
+        listenerSetter: options.listenerSetter
+      });
+    }
   }
 
   public get subtitle() {
-    return this._subtitle ?? (this._subtitle = this.createSubtitle());
+    return this._subtitle ??= this.createSubtitle();
+  }
+
+  public get midtitle() {
+    return this._midtitle ??= this.createMidtitle();
   }
 
   private createRow() {
@@ -242,6 +258,13 @@ export default class Row {
     return subtitle;
   }
 
+  private createMidtitle() {
+    const midtitle = document.createElement('div');
+    midtitle.classList.add('row-midtitle');
+    this.subtitle.parentElement.insertBefore(midtitle, this.subtitle);
+    return midtitle;
+  }
+
   public createMedia(size?: RowMediaSizeType) {
     const media = document.createElement('div');
     return this.applyMediaElement(media, size);
@@ -260,6 +283,13 @@ export default class Row {
     this.container.append(media);
 
     return media;
+  }
+
+  public disableWithPromise(promise: Promise<any>) {
+    this.container.classList.add('is-disabled');
+    promise.finally(() => {
+      this.container.classList.remove('is-disabled');
+    });
   }
 }
 

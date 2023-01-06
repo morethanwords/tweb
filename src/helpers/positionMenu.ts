@@ -17,19 +17,26 @@ const PADDING_TOP = 8;
 const PADDING_BOTTOM = PADDING_TOP;
 const PADDING_LEFT = 8;
 const PADDING_RIGHT = PADDING_LEFT;
-export default function positionMenu({pageX, pageY}: MouseEvent | Touch, elem: HTMLElement, side?: 'left' | 'right' | 'center', additionalPadding?: MenuPositionPadding) {
+export default function positionMenu(e: MouseEvent | Touch | TouchEvent, elem: HTMLElement, side?: 'left' | 'right' | 'center', additionalPadding?: MenuPositionPadding) {
+  if((e as TouchEvent).touches) {
+    e = (e as TouchEvent).touches[0];
+  }
+
+  const {pageX, pageY} = e as Touch;
   // let {clientX, clientY} = e;
 
   // * side mean the OPEN side
 
   const getScrollWidthFromElement = (Array.from(elem.children) as HTMLElement[]).find((element) => element.classList.contains('btn-menu-item') && !element.classList.contains('hide')) || elem;
 
-  const {scrollWidth: menuWidth} = getScrollWidthFromElement;
+  let {scrollWidth: menuWidth} = getScrollWidthFromElement;
   const {scrollHeight: menuHeight} = elem;
   // let {innerWidth: windowWidth, innerHeight: windowHeight} = window;
   const rect = document.body.getBoundingClientRect();
   const windowWidth = rect.width;
   const windowHeight = rect.height;
+
+  menuWidth += getScrollWidthFromElement.offsetLeft * 2;
 
   let paddingTop = PADDING_TOP, paddingRight = PADDING_RIGHT, paddingBottom = PADDING_BOTTOM, paddingLeft = PADDING_LEFT;
   if(additionalPadding) {

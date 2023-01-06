@@ -4,7 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appSidebarLeft, {SettingSection} from '..';
 import {InputFile} from '../../../layer';
 import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
 import InputField from '../../inputField';
@@ -15,6 +14,7 @@ import ButtonCorner from '../../buttonCorner';
 import getUserStatusString from '../../wrappers/getUserStatusString';
 import appImManager from '../../../lib/appManagers/appImManager';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
+import SettingSection from '../../settingSection';
 
 interface OpenStreetMapInterface {
   place_id?: number;

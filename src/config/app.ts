@@ -11,7 +11,7 @@
 
 import type {DcId} from '../types';
 
-export const MAIN_DOMAIN = 'web.telegram.org';
+export const MAIN_DOMAINS = ['web.telegram.org', 'webk.telegram.org'];
 
 const threads = Math.min(4, navigator.hardwareConcurrency ?? 4);
 
@@ -21,12 +21,12 @@ const App = {
   version: process.env.VERSION,
   versionFull: process.env.VERSION_FULL,
   build: +process.env.BUILD,
-  langPackVersion: '0.5.1',
+  langPackVersion: '0.6.8',
   langPack: 'macos',
   langPackCode: 'en',
-  domains: [MAIN_DOMAIN] as string[],
+  domains: MAIN_DOMAINS,
   baseDcId: 2 as DcId,
-  isMainDomain: location.hostname === MAIN_DOMAIN,
+  isMainDomain: MAIN_DOMAINS.includes(location.hostname),
   suffix: 'K',
   threads,
   cryptoWorkers: threads

@@ -5,7 +5,6 @@
  */
 
 import SliderSuperTab, {SliderSuperTabEventable} from '../../sliderTab';
-import {SettingSection} from '..';
 import Row from '../../row';
 import {AccountPassword, Authorization, InputPrivacyKey, Updates} from '../../../layer';
 import AppPrivacyPhoneNumberTab from './privacy/phoneNumber';
@@ -33,6 +32,7 @@ import confirmationPopup, {PopupConfirmationOptions} from '../../confirmationPop
 import noop from '../../../helpers/noop';
 import {toastNew} from '../../toast';
 import AppPrivacyVoicesTab from './privacy/voices';
+import SettingSection from '../../settingSection';
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;
@@ -47,7 +47,6 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   }
 
   public init(p: ReturnType<typeof AppPrivacyAndSecurityTab['getInitArgs']>) {
-    this.header.classList.add('with-border');
     this.container.classList.add('dont-u-dare-block-me');
     this.setTitle('PrivacySettings');
 

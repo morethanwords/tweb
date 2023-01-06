@@ -4,7 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {SettingSection} from '..';
 import {Theme} from '../../../config/state';
 import {hexaToRgba} from '../../../helpers/color';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
@@ -15,6 +14,7 @@ import themeController from '../../../helpers/themeController';
 import appImManager from '../../../lib/appManagers/appImManager';
 import rootScope from '../../../lib/rootScope';
 import ColorPicker, {ColorPickerColor} from '../../colorPicker';
+import SettingSection from '../../settingSection';
 import {SliderSuperTab} from '../../slider';
 
 export default class AppBackgroundColorTab extends SliderSuperTab {
@@ -24,7 +24,6 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
   private theme: Theme;
 
   init() {
-    this.header.classList.add('with-border');
     this.container.classList.add('background-container', 'background-color-container');
     this.setTitle('SetColor');
 

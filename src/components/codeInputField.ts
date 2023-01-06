@@ -7,14 +7,13 @@
 import InputField, {InputFieldOptions} from './inputField';
 
 export default class CodeInputField extends InputField {
-  constructor(options: InputFieldOptions & {
+  constructor(public options: InputFieldOptions & {
     length: number,
     onFill: (code: string) => void
   }) {
-    super({
-      plainText: true,
-      ...options
-    });
+    super(Object.assign(options, {
+      plainText: true
+    }));
 
     const input = this.input as HTMLInputElement;
     input.type = 'tel';

@@ -9,7 +9,7 @@ import {IS_APPLE_MOBILE, IS_MOBILE} from '../environment/userAgent';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import cancelEvent from '../helpers/dom/cancelEvent';
 import ListenerSetter, {Listener} from '../helpers/listenerSetter';
-import ButtonMenu from '../components/buttonMenu';
+import {ButtonMenuSync} from '../components/buttonMenu';
 import {ButtonMenuToggleHandler} from '../components/buttonMenuToggle';
 import ControlsHover from '../helpers/dom/controlsHover';
 import {addFullScreenListener, cancelFullScreen, isFullScreen, requestFullScreen} from '../helpers/dom/fullScreen';
@@ -292,7 +292,7 @@ export default class VideoPlayer extends ControlsHover {
   }
 
   protected setBtnMenuToggle() {
-    const buttons: Parameters<typeof ButtonMenu>[0] = VideoPlayer.PLAYBACK_RATES.map((rate, idx) => {
+    const buttons: Parameters<typeof ButtonMenuSync>[0]['buttons'] = VideoPlayer.PLAYBACK_RATES.map((rate, idx) => {
       return {
         // icon: VideoPlayer.PLAYBACK_RATES_ICONS[idx],
         regularText: rate + 'x',
@@ -301,18 +301,17 @@ export default class VideoPlayer extends ControlsHover {
         }
       };
     });
-    const btnMenu = ButtonMenu(buttons);
+    const btnMenu = ButtonMenuSync({buttons});
     btnMenu.classList.add('top-left');
-    ButtonMenuToggleHandler(
-      this.playbackRateButton,
-      this.onPlaybackRackMenuToggle ? () => {
+    ButtonMenuToggleHandler({
+      el: this.playbackRateButton,
+      onOpen: this.onPlaybackRackMenuToggle ? () => {
         this.onPlaybackRackMenuToggle(true);
       } : undefined,
-      undefined,
-      this.onPlaybackRackMenuToggle ? () => {
+      onClose: this.onPlaybackRackMenuToggle ? () => {
         this.onPlaybackRackMenuToggle(false);
       } : undefined
-    );
+    });
     this.playbackRateButton.append(btnMenu);
 
     this.setPlaybackRateIcon();

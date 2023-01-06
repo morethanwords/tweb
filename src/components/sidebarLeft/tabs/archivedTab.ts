@@ -18,20 +18,21 @@ export default class AppArchivedTab extends SliderSuperTab {
     this.container.id = 'chats-archived-container';
     this.setTitle('ArchivedChats');
 
-    if(!appDialogsManager.sortedLists[AppArchivedTab.filterId]) {
-      const chatList = appDialogsManager.createChatList();
-      const scrollable = appDialogsManager.generateScrollable(chatList, {
+    this.header.classList.add('can-have-forum');
+    this.content.classList.add('can-have-forum');
+
+    if(!appDialogsManager.xds[AppArchivedTab.filterId]) {
+      const {ul, scrollable} = appDialogsManager.l({
         title: undefined,
         id: AppArchivedTab.filterId,
         localId: FOLDER_ID_ARCHIVE
       });
-      scrollable.container.append(chatList);
-      appDialogsManager.setListClickListener(chatList, null, true);
-      // appDialogsManager.setListClickListener(archivedChatList, null, true); // * to test peer changing
+      scrollable.container.append(ul);
     }
 
-    const scrollable = appDialogsManager.scrollables[AppArchivedTab.filterId];
+    const scrollable = appDialogsManager.xds[AppArchivedTab.filterId].scrollable;
     this.scrollable.container.replaceWith(scrollable.container);
+    scrollable.attachBorderListeners(this.container);
     // ! DO NOT UNCOMMENT NEXT LINE - chats will stop loading on scroll after closing the tab
     // this.scrollable = scrollable;
     return appDialogsManager.setFilterIdAndChangeTab(AppArchivedTab.filterId).then(({cached, renderPromise}) => {
@@ -43,15 +44,16 @@ export default class AppArchivedTab extends SliderSuperTab {
 
   // вообще, так делать нельзя, но нет времени чтобы переделать главный чатлист на слайд...
   onOpenAfterTimeout() {
-    appDialogsManager.sortedLists[this.wasFilterId].clear();
+    appDialogsManager.xds[this.wasFilterId].clear();
   }
 
   onClose() {
+    this.scrollable.onAdditionalScroll = undefined;
     appDialogsManager.setFilterIdAndChangeTab(this.wasFilterId);
   }
 
   onCloseAfterTimeout() {
-    appDialogsManager.sortedLists[AppArchivedTab.filterId].clear();
+    appDialogsManager.xds[AppArchivedTab.filterId].clear();
     return super.onCloseAfterTimeout();
   }
 }

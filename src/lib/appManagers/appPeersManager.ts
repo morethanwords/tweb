@@ -18,6 +18,10 @@ import getPeerId from './utils/peers/getPeerId';
 import isUser from './utils/peers/isUser';
 import isAnyChat from './utils/peers/isAnyChat';
 import {NULL_PEER_ID} from '../mtproto/mtproto_config';
+import getPeerActiveUsernames from './utils/peers/getPeerActiveUsernames';
+import isPeerRestricted from './utils/peers/isPeerRestricted';
+import getPeerPhoto from './utils/peers/getPeerPhoto';
+import getServerMessageId from './utils/messageId/getServerMessageId';
 
 export type PeerType = 'channel' | 'chat' | 'megagroup' | 'group' | 'saved';
 export class AppPeersManager extends AppManager {
@@ -33,16 +37,9 @@ export class AppPeersManager extends AppManager {
     return peerId.isUser() || this.appChatsManager.hasRights(peerId.toChatId(), 'pin_messages');
   }
 
-  public getPeerPhoto(peerId: PeerId): UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto {
-    if(this.isRestricted(peerId)) {
-      return;
-    }
-
-    const photo = peerId.isUser() ?
-      this.appUsersManager.getUserPhoto(peerId.toUserId()) :
-      this.appChatsManager.getChatPhoto(peerId.toChatId());
-
-    return photo._ !== 'chatPhotoEmpty' && photo._ !== 'userProfilePhotoEmpty' ? photo : undefined;
+  public getPeerPhoto(peerId: PeerId) {
+    const peer = this.getPeer(peerId) as User.user | Chat.channel;
+    return getPeerPhoto(peer);
   }
 
   public getPeerMigratedTo(peerId: PeerId) {
@@ -50,9 +47,10 @@ export class AppPeersManager extends AppManager {
       return false;
     }
 
-    const chat: Chat.chat = this.appChatsManager.getChat(peerId.toChatId());
-    if(chat && chat.migrated_to && chat.pFlags.deactivated) {
-      return getPeerId(chat.migrated_to as InputChannel.inputChannel);
+    const chat = this.appChatsManager.getChat(peerId.toChatId()) as Chat.chat;
+    const migratedTo = chat?.migrated_to;
+    if(migratedTo && chat.pFlags.deactivated) {
+      return getPeerId(migratedTo);
     }
 
     return false;
@@ -78,8 +76,13 @@ export class AppPeersManager extends AppManager {
     return this.appChatsManager.getChatString(peerId.toChatId());
   }
 
-  public getPeerUsername(peerId: PeerId): string {
-    return this.getPeer(peerId).username || '';
+  public getPeerUsername(peerId: PeerId) {
+    return this.getPeerActiveUsernames(peerId)[0] || '';
+  }
+
+  public getPeerActiveUsernames(peerId: PeerId) {
+    const peer = this.getPeer(peerId);
+    return getPeerActiveUsernames(peer);
   }
 
   public getPeer(peerId: PeerId) {
@@ -107,6 +110,10 @@ export class AppPeersManager extends AppManager {
     return !peerId.isUser() && this.appChatsManager.isMegagroup(peerId.toChatId());
   }
 
+  public isForum(peerId: PeerId) {
+    return !peerId.isUser() && this.appChatsManager.isForum(peerId.toChatId());
+  }
+
   public isAnyGroup(peerId: PeerId): boolean {
     return !peerId.isUser() && !this.appChatsManager.isBroadcast(peerId.toChatId());
   }
@@ -131,12 +138,12 @@ export class AppPeersManager extends AppManager {
     return isAnyChat(peerId);
   }
 
-  public isRestricted(peerId: PeerId) {
-    return peerId.isUser() ? this.appUsersManager.isRestricted(peerId.toUserId()) : this.appChatsManager.isRestricted(peerId.toChatId());
+  public isPeerRestricted(peerId: PeerId) {
+    return isPeerRestricted(this.getPeer(peerId));
   }
 
   public getRestrictionReasonText(peerId: PeerId) {
-    const peer: Chat.channel | User.user = this.getPeer(peerId);
+    const peer = this.getPeer(peerId) as Chat.channel | User.user;
     const reason = peer.restriction_reason ? getRestrictionReason(peer.restriction_reason) : undefined;
     if(reason) {
       return reason.text;
@@ -177,24 +184,35 @@ export class AppPeersManager extends AppManager {
     }
   } */
 
-  public getInputNotifyPeerById(peerId: PeerId, ignorePeerId: true): Exclude<InputNotifyPeer, InputNotifyPeer.inputNotifyPeer>;
-  public getInputNotifyPeerById(peerId: PeerId, ignorePeerId?: false): InputNotifyPeer.inputNotifyPeer;
-  public getInputNotifyPeerById(peerId: PeerId, ignorePeerId?: boolean): InputNotifyPeer {
+  // public getInputNotifyPeerById(peerId: PeerId, ignorePeerId: true): Exclude<InputNotifyPeer, InputNotifyPeer.inputNotifyPeer>;
+  // public getInputNotifyPeerById(peerId: PeerId, ignorePeerId?: false): InputNotifyPeer.inputNotifyPeer;
+  // public getInputNotifyPeerById(peerId: PeerId, ignorePeerId?: boolean): InputNotifyPeer {
+  public getInputNotifyPeerById<T extends {
+    peerId: PeerId,
+    ignorePeerId?: boolean,
+    threadId?: number
+  }>({peerId, ignorePeerId, threadId}: T): T['ignorePeerId'] extends true ? Exclude<InputNotifyPeer, InputNotifyPeer.inputNotifyPeer | InputNotifyPeer.inputNotifyForumTopic> : (T['threadId'] extends number ? InputNotifyPeer.inputNotifyForumTopic : InputNotifyPeer.inputNotifyPeer) {
     if(ignorePeerId) {
       if(peerId.isUser()) {
-        return {_: 'inputNotifyUsers'};
+        return {_: 'inputNotifyUsers'} as any;
       } else {
         if(this.isBroadcast(peerId)) {
-          return {_: 'inputNotifyBroadcasts'};
+          return {_: 'inputNotifyBroadcasts'} as any;
         } else {
-          return {_: 'inputNotifyChats'};
+          return {_: 'inputNotifyChats'} as any;
         }
       }
+    } else if(threadId) {
+      return {
+        _: 'inputNotifyForumTopic',
+        peer: this.getInputPeerById(peerId),
+        top_msg_id: getServerMessageId(threadId)
+      } as any;
     } else {
       return {
         _: 'inputNotifyPeer',
         peer: this.getInputPeerById(peerId)
-      };
+      } as any;
     }
   }
 
@@ -267,7 +285,7 @@ export class AppPeersManager extends AppManager {
   public noForwards(peerId: PeerId) {
     if(peerId.isUser()) return false;
     else {
-      const chat = this.appChatsManager.getChatTyped(peerId.toChatId());
+      const chat = this.appChatsManager.getChat(peerId.toChatId());
       return !!(chat as Chat.chat).pFlags?.noforwards;
     }
   }

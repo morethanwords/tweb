@@ -6,11 +6,11 @@
 
 .custom-emoji {
   display: inline;
+  position: relative;
   width: var(--custom-emoji-size) !important;
   height: var(--custom-emoji-size) !important;
   min-width: var(--custom-emoji-size) !important;
   min-height: var(--custom-emoji-size) !important;
-  position: relative;
   // pointer-events: none;
 
   &:before {

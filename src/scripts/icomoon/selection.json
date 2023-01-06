@@ -1,0 +1,62 @@
+{
+  "selection": [],
+  "metadata": {
+    "name": "Untitled Set",
+    "iconsHash": 0
+  },
+  "height": 1024,
+  "prevSize": 32,
+  "icons": [],
+  "colorThemes": [],
+  "preferences": {
+    "showGlyphs": true,
+    "showQuickUse": false,
+    "showQuickUse2": true,
+    "showSVGs": true,
+    "fontPref": {
+      "prefix": "tgico-",
+      "metadata": {
+        "fontFamily": "tgico",
+        "majorVersion": 1,
+        "minorVersion": 0
+      },
+      "metrics": {
+        "emSize": 1024,
+        "baseline": 0,
+        "whitespace": 0
+      },
+      "embed": false,
+      "showSelector": true,
+      "showMetrics": true,
+      "selector": "",
+      "classSelector": ".icon",
+      "noie8": true,
+      "ie7": false,
+      "cssVars": true,
+      "cssVarsFormat": "scss",
+      "showMetadata": true,
+      "showVersion": true,
+      "autoHost": false,
+      "resetPoint": 59648
+    },
+    "imagePref": {
+      "prefix": "icon-",
+      "png": true,
+      "useClassSelector": true,
+      "color": 0,
+      "bgColor": 16777215,
+      "classSelector": ".icon",
+      "name": "icomoon",
+      "height": 32,
+      "columns": 16,
+      "margin": 16
+    },
+    "historySize": 50,
+    "showCodes": true,
+    "gridSize": 16,
+    "quickUsageToken": {
+      "UntitledProject": "YzhkZTYzMDc4YzQxMjVjMzc0MThkMTYyMzcxYzczMDkjMSMxNjQ5NTA4MDgwIyMjMGZlZTUzZDE1ZGRl"
+    }
+  },
+  "IcoMoonType": "icon-set"
+}

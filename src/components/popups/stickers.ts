@@ -182,7 +182,7 @@ export default class PopupStickers extends PopupElement {
           docIds: docs.map((doc) => doc.id),
           loadPromises,
           animationGroup: ANIMATION_GROUP,
-          size: mediaSizes.active.esgCustomEmoji,
+          customEmojiSize: mediaSizes.active.esgCustomEmoji,
           middleware
           // lazyLoadQueue
         });

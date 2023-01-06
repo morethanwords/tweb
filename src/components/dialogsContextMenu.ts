@@ -4,10 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '../lib/appManagers/appDialogsManager';
 import type {Dialog} from '../lib/appManagers/appMessagesManager';
+import type {ApiLimitType} from '../lib/mtproto/api_methods';
+import type {ForumTopic} from '../layer';
+import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '../lib/appManagers/appDialogsManager';
 import rootScope from '../lib/rootScope';
-import ButtonMenu, {ButtonMenuItemOptions} from './buttonMenu';
+import {ButtonMenuItemOptionsVerifiable, ButtonMenuSync} from './buttonMenu';
 import PopupDeleteDialog from './popups/deleteDialog';
 import {i18n, LangPackKey, _i18n} from '../lib/langPack';
 import findUpTag from '../helpers/dom/findUpTag';
@@ -19,15 +21,17 @@ import PopupMute from './popups/mute';
 import {AppManagers} from '../lib/appManagers/managers';
 import positionMenu from '../helpers/positionMenu';
 import contextMenuController from '../helpers/contextMenuController';
-import type {ApiLimitType} from '../lib/mtproto/api_methods';
+import {GENERAL_TOPIC_ID} from '../lib/mtproto/mtproto_config';
 
 export default class DialogsContextMenu {
   private element: HTMLElement;
-  private buttons: (ButtonMenuItemOptions & {verify: () => boolean | Promise<boolean>})[];
+  private buttons: ButtonMenuItemOptionsVerifiable[];
 
-  private selectedId: PeerId;
+  private peerId: PeerId;
   private filterId: number;
-  private dialog: Dialog;
+  private threadId: number;
+  private dialog: Dialog | ForumTopic.forumTopic;
+  private canManageTopics: boolean;
 
   constructor(private managers: AppManagers) {
 
@@ -38,7 +42,7 @@ export default class DialogsContextMenu {
       icon: 'unread',
       text: 'MarkAsUnread',
       onClick: this.onUnreadClick,
-      verify: async() => !(await this.managers.appMessagesManager.isDialogUnread(this.dialog))
+      verify: async() => !this.threadId && !(await this.managers.appMessagesManager.isDialogUnread(this.dialog))
     }, {
       icon: 'readchats',
       text: 'MarkAsRead',
@@ -49,7 +53,11 @@ export default class DialogsContextMenu {
       text: 'ChatList.Context.Pin',
       onClick: this.onPinClick,
       verify: async() => {
-        const isPinned = this.filterId > 1 ?
+        if(this.threadId && !this.canManageTopics) {
+          return false;
+        }
+
+        const isPinned = this.filterId !== undefined && this.filterId > 1 ?
           (await this.managers.appMessagesManager.getFilter(this.filterId)).pinnedPeerIds.includes(this.dialog.peerId) :
           !!this.dialog.pFlags?.pinned;
         return !isPinned;
@@ -59,7 +67,11 @@ export default class DialogsContextMenu {
       text: 'ChatList.Context.Unpin',
       onClick: this.onPinClick,
       verify: async() => {
-        const isPinned = this.filterId > 1 ?
+        if(this.threadId && !this.canManageTopics) {
+          return false;
+        }
+
+        const isPinned = this.filterId !== undefined && this.filterId > 1 ?
           (await this.managers.appMessagesManager.getFilter(this.filterId)).pinnedPeerIds.includes(this.dialog.peerId) :
           !!this.dialog.pFlags?.pinned;
         return isPinned;
@@ -69,49 +81,105 @@ export default class DialogsContextMenu {
       text: 'ChatList.Context.Mute',
       onClick: this.onMuteClick,
       verify: async() => {
-        return this.selectedId !== rootScope.myId && !(await this.managers.appNotificationsManager.isPeerLocalMuted(this.dialog.peerId));
+        return this.peerId !== rootScope.myId && !(await this.managers.appNotificationsManager.isPeerLocalMuted({peerId: this.dialog.peerId, threadId: this.threadId}));
       }
     }, {
       icon: 'unmute',
       text: 'ChatList.Context.Unmute',
       onClick: this.onUnmuteClick,
       verify: async() => {
-        return this.selectedId !== rootScope.myId && (await this.managers.appNotificationsManager.isPeerLocalMuted(this.dialog.peerId));
+        return this.peerId !== rootScope.myId && (await this.managers.appNotificationsManager.isPeerLocalMuted({peerId: this.dialog.peerId, threadId: this.threadId}));
       }
     }, {
       icon: 'archive',
       text: 'Archive',
       onClick: this.onArchiveClick,
-      verify: () => this.filterId === 0 && this.selectedId !== rootScope.myId
+      verify: () => this.filterId === 0 && this.peerId !== rootScope.myId
     }, {
       icon: 'unarchive',
       text: 'Unarchive',
       onClick: this.onArchiveClick,
-      verify: () => this.filterId === 1 && this.selectedId !== rootScope.myId
+      verify: () => this.filterId === 1 && this.peerId !== rootScope.myId
+    }, {
+      icon: 'eye2',
+      text: 'Hide',
+      onClick: this.hideTopic,
+      verify: async() => {
+        return this.canManageTopics && (this.dialog as ForumTopic.forumTopic).id === GENERAL_TOPIC_ID;
+      }
+    }, {
+      icon: 'lock',
+      text: 'CloseTopic',
+      onClick: this.toggleTopic,
+      verify: () => {
+        return this.canManageTopics && !(this.dialog as ForumTopic.forumTopic).pFlags.closed;
+      }
+    }, {
+      icon: 'lockoff',
+      text: 'RestartTopic',
+      onClick: this.toggleTopic,
+      verify: () => {
+        return this.canManageTopics && !!(this.dialog as ForumTopic.forumTopic).pFlags.closed;
+      }
     }, {
       icon: 'delete danger',
       text: 'Delete',
       onClick: this.onDeleteClick,
-      verify: () => true
+      verify: async() => {
+        if(this.threadId) {
+          if(!this.canManageTopics) {
+            return false;
+          }
+
+          return (this.dialog as ForumTopic.forumTopic).id !== GENERAL_TOPIC_ID;
+        }
+
+        return true;
+      }
     }];
 
-    this.element = ButtonMenu(this.buttons);
+    this.element = ButtonMenuSync({buttons: this.buttons});
     this.element.id = 'dialogs-contextmenu';
     this.element.classList.add('contextmenu');
     document.getElementById('page-chats').append(this.element);
   }
 
   private onArchiveClick = async() => {
-    const dialog = await this.managers.appMessagesManager.getDialogOnly(this.selectedId);
+    const dialog = await this.managers.appMessagesManager.getDialogOnly(this.peerId);
     if(dialog) {
       this.managers.appMessagesManager.editPeerFolders([dialog.peerId], +!dialog.folder_id);
     }
   };
 
+  private hideTopic = () => {
+    this.managers.appChatsManager.editForumTopic({
+      chatId: this.peerId.toChatId(),
+      topicId: this.threadId,
+      hidden: true
+    });
+  };
+
+  private toggleTopic = () => {
+    this.managers.appChatsManager.editForumTopic({
+      chatId: this.peerId.toChatId(),
+      topicId: this.threadId,
+      closed: !(this.dialog as ForumTopic.forumTopic).pFlags.closed
+    });
+  };
+
   private onPinClick = () => {
-    this.managers.appMessagesManager.toggleDialogPin(this.selectedId, this.filterId).catch(async(err: ApiError) => {
-      if(err.type === 'PINNED_DIALOGS_TOO_MUCH') {
-        if(this.filterId >= 1) {
+    const {peerId, filterId, threadId} = this;
+    this.managers.appMessagesManager.toggleDialogPin({
+      peerId,
+      filterId,
+      topicId: threadId
+    }).catch(async(err: ApiError) => {
+      if(err.type === 'PINNED_DIALOGS_TOO_MUCH' || err.type === 'PINNED_TOO_MUCH') {
+        if(threadId) {
+          this.managers.apiManager.getLimit('topicPin').then((limit) => {
+            toastNew({langPackKey: 'LimitReachedPinnedTopics', langPackArguments: [limit]});
+          });
+        } else if(filterId >= 1) {
           toastNew({langPackKey: 'PinFolderLimitReached'});
         } else {
           // const a: {[type in ApiLimitType]?: {
@@ -235,31 +303,31 @@ export default class DialogsContextMenu {
   };
 
   private onUnmuteClick = () => {
-    this.managers.appMessagesManager.togglePeerMute(this.selectedId, false);
+    this.managers.appMessagesManager.togglePeerMute({peerId: this.peerId, mute: false, threadId: this.threadId});
   };
 
   private onMuteClick = () => {
-    new PopupMute(this.selectedId);
+    new PopupMute(this.peerId, this.threadId);
   };
 
   private onUnreadClick = async() => {
-    const selectedId = this.selectedId;
-    const dialog = await this.managers.appMessagesManager.getDialogOnly(selectedId);
-    if(!dialog) return;
-
+    const {peerId, dialog} = this;
     if(dialog.unread_count) {
-      this.managers.appMessagesManager.readHistory(selectedId, dialog.top_message);
-      this.managers.appMessagesManager.markDialogUnread(selectedId, true);
-    } else {
-      this.managers.appMessagesManager.markDialogUnread(selectedId);
+      this.managers.appMessagesManager.readHistory(peerId, dialog.top_message, this.threadId);
+
+      if(!this.threadId) {
+        this.managers.appMessagesManager.markDialogUnread(peerId, true);
+      }
+    } else if(!this.threadId) {
+      this.managers.appMessagesManager.markDialogUnread(peerId);
     }
   };
 
   private onDeleteClick = () => {
-    new PopupDeleteDialog(this.selectedId/* , 'delete' */);
+    new PopupDeleteDialog(this.peerId, undefined, undefined, this.threadId);
   };
 
-  onContextMenu = (e: MouseEvent | Touch) => {
+  onContextMenu = (e: MouseEvent | Touch | TouchEvent) => {
     if(this.init) {
       this.init();
       this.init = null;
@@ -280,9 +348,11 @@ export default class DialogsContextMenu {
     if(e instanceof MouseEvent) e.cancelBubble = true;
 
     const r = async() => {
-      this.filterId = appDialogsManager.filterId;
-      this.selectedId = li.dataset.peerId.toPeerId();
-      this.dialog = await this.managers.appMessagesManager.getDialogOnly(this.selectedId);
+      this.peerId = li.dataset.peerId.toPeerId();
+      this.threadId = +li.dataset.threadId || undefined;
+      this.dialog = await this.managers.dialogsStorage.getDialogOrTopic(this.peerId, this.threadId);
+      this.filterId = this.threadId ? undefined : appDialogsManager.filterId;
+      this.canManageTopics = this.threadId ? await this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'manage_topics') : undefined;
 
       await Promise.all(this.buttons.map(async(button) => {
         const good = await button.verify();
@@ -290,14 +360,15 @@ export default class DialogsContextMenu {
         button.element.classList.toggle('hide', !good);
       }));
 
+      const langPackKey: LangPackKey = this.threadId ? 'Delete' : await this.managers.appPeersManager.getDeleteButtonText(this.peerId);
       // delete button
-      this.buttons[this.buttons.length - 1].element.lastChild.replaceWith(i18n(await this.managers.appPeersManager.getDeleteButtonText(this.selectedId)));
+      this.buttons[this.buttons.length - 1].element.lastChild.replaceWith(i18n(langPackKey));
 
       li.classList.add('menu-open');
       positionMenu(e, this.element);
       contextMenuController.openBtnMenu(this.element, () => {
         li.classList.remove('menu-open');
-        this.selectedId = this.dialog = this.filterId = undefined;
+        this.peerId = this.dialog = this.filterId = this.threadId = this.canManageTopics = undefined;
       });
     };
 

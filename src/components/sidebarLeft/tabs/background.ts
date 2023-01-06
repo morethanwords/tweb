@@ -4,7 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {generateSection} from '..';
 import {averageColor, averageColorFromCanvas} from '../../../helpers/averageColor';
 import blur from '../../../helpers/blur';
 import deferredPromise, {CancellablePromise} from '../../../helpers/cancellablePromise';
@@ -33,6 +32,7 @@ import scaleMediaElement from '../../../helpers/canvas/scaleMediaElement';
 import {MediaSize} from '../../../helpers/mediaSize';
 import wrapPhoto from '../../wrappers/photo';
 import {CreateRowFromCheckboxField} from '../../row';
+import {generateSection} from '../../settingSection';
 
 export default class AppBackgroundTab extends SliderSuperTab {
   private grid: HTMLElement;
@@ -48,7 +48,6 @@ export default class AppBackgroundTab extends SliderSuperTab {
   }
 
   init() {
-    this.header.classList.add('with-border');
     this.container.classList.add('background-container', 'background-image-container');
     this.setTitle('ChatBackground');
 

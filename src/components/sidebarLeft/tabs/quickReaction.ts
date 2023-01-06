@@ -4,16 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {SettingSection} from '..';
 import {AvailableReaction} from '../../../layer';
 import RadioField from '../../radioField';
 import Row, {RadioFormFromRows} from '../../row';
+import SettingSection from '../../settingSection';
 import SliderSuperTab from '../../sliderTab';
 import wrapStickerToRow from '../../wrappers/stickerToRow';
 
 export default class AppQuickReactionTab extends SliderSuperTab {
   public init() {
-    this.header.classList.add('with-border');
     this.setTitle('DoubleTapSetting');
     this.container.classList.add('quick-reaction-container');
 

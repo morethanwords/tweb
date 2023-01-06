@@ -10,33 +10,100 @@ import htmlToSpan from '../../helpers/dom/htmlToSpan';
 import setInnerHTML from '../../helpers/dom/setInnerHTML';
 import formatCallDuration from '../../helpers/formatCallDuration';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
-import {Message, MessageAction} from '../../layer';
-import {MyMessage} from '../../lib/appManagers/appMessagesManager';
+import {ForumTopic, Message, MessageAction} from '../../layer';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import I18n, {FormatterArgument, FormatterArguments, i18n, join, langPack, LangPackKey, _i18n} from '../../lib/langPack';
+import {GENERAL_TOPIC_ID} from '../../lib/mtproto/mtproto_config';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import wrapPlainText from '../../lib/richTextProcessor/wrapPlainText';
 import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
 import rootScope from '../../lib/rootScope';
+import topicAvatar from '../topicAvatar';
+import {wrapCustomEmojiAwaited} from './customEmoji';
 import getPeerTitle from './getPeerTitle';
 import wrapJoinVoiceChatAnchor from './joinVoiceChatAnchor';
-import wrapMessageForReply from './messageForReply';
+import {WrapMessageActionTextOptions} from './messageActionTextNew';
+import wrapMessageForReply, {WrapMessageForReplyOptions} from './messageForReply';
 import wrapPeerTitle from './peerTitle';
 
-async function wrapLinkToMessage(message: Message.message | Message.messageService, plain?: boolean) {
-  const wrapped = await wrapMessageForReply(message, undefined, undefined, plain as any);
-  if(plain) {
+async function wrapLinkToMessage(options: WrapMessageForReplyOptions) {
+  const wrapped = await wrapMessageForReply(options);
+
+  if(options.plain) {
     return wrapped;
   }
 
   const a = document.createElement('i');
-  a.dataset.savedFrom = message.peerId + '_' + message.mid;
+  a.dataset.savedFrom = (options.message as Message.message).peerId + '_' + (options.message as Message.message).mid;
   a.dir = 'auto';
   a.append(wrapped);
   return a;
 }
 
-export default async function wrapMessageActionTextNewUnsafe(message: MyMessage, plain?: boolean) {
+function wrapSomeText(text: string, plain?: boolean) {
+  return plain ? text : htmlToSpan(wrapEmojiText(text));
+}
+
+type WrapTopicIconOptions = {
+  topic: Pick<ForumTopic.forumTopic, 'icon_color' | 'icon_emoji_id' | 'title' | 'id'>,
+  plain?: boolean
+} & WrapSomethingOptions;
+export async function wrapTopicIcon<T extends WrapTopicIconOptions>(options: T): Promise<T['plain'] extends true ? string : HTMLElement | DocumentFragment> {
+  const topic = options.topic;
+
+  let iconEmojiId = topic?.icon_emoji_id;
+  if(topic?.id === GENERAL_TOPIC_ID) {
+    iconEmojiId = '5390854796011906616';
+  }
+
+  if(!iconEmojiId) {
+    if(options.plain) return '' as any;
+
+    // if(topic?.id === GENERAL_TOPIC_ID) {
+    //   const span = document.createElement('span');
+    //   span.innerHTML = `
+    //   <svg class="topic-icon-general" width="22" height="22" viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg">
+    //     <path fill-rule="evenodd" clip-rule="evenodd" d="M11.2788 4.3654C11.4806 3.65912 11.0717 2.92299 10.3654 2.72119C9.65911 2.5194 8.92297 2.92836 8.72118 3.63464L7.85393 6.67H6C5.26546 6.67 4.67 7.26546 4.67 8C4.67 8.73454 5.26546 9.33 6 9.33H7.09393L6.13965 12.67H4C3.26546 12.67 2.67 13.2655 2.67 14C2.67 14.7345 3.26546 15.33 4 15.33H5.37965L4.72118 17.6346C4.51938 18.3409 4.92835 19.0771 5.63463 19.2788C6.3409 19.4806 7.07704 19.0717 7.27883 18.3654L8.14609 15.33H11.3796L10.7212 17.6346C10.5194 18.3409 10.9283 19.0771 11.6346 19.2788C12.3409 19.4806 13.077 19.0717 13.2788 18.3654L14.1461 15.33H16C16.7345 15.33 17.33 14.7345 17.33 14C17.33 13.2655 16.7345 12.67 16 12.67H14.9061L15.8604 9.33H18C18.7345 9.33 19.33 8.73454 19.33 8C19.33 7.26546 18.7345 6.67 18 6.67H16.6204L17.2788 4.3654C17.4806 3.65912 17.0717 2.92299 16.3654 2.72119C15.6591 2.5194 14.923 2.92836 14.7212 3.63464L13.8539 6.67H10.6204L11.2788 4.3654ZM9.86037 9.33L8.90609 12.67H12.1396L13.0939 9.33H9.86037Z"/>
+    //   </svg>
+    //   `;
+
+    //   span.classList.add('topic-icon');
+
+    //   return span as any;
+    // }
+
+    return topicAvatar(topic?.icon_color, topic?.title) as any;
+  }
+
+  return options.plain ?
+    rootScope.managers.appEmojiManager.getCustomEmojiDocument(iconEmojiId).then((doc) => doc.stickerEmojiRaw) :
+    wrapCustomEmojiAwaited({
+      ...options,
+      docIds: [iconEmojiId]
+    }).then((fragment) => {
+      fragment.lastElementChild.classList.add('topic-icon');
+      return fragment;
+    }) as any;
+}
+
+function wrapMessageActionTopicIcon(options: WrapMessageActionTextOptions) {
+  const action = ((options.message as Message.messageService).action as MessageAction.messageActionTopicCreate);
+  return wrapTopicIcon({
+    ...options,
+    topic: action as any as ForumTopic.forumTopic
+  });
+}
+
+async function wrapMessageActionTopicIconAndName(options: WrapMessageActionTextOptions) {
+  const action = ((options.message as Message.messageService).action as MessageAction.messageActionTopicCreate);
+  const span = document.createElement('span');
+  span.classList.add('topic-name');
+  span.append(await wrapMessageActionTopicIcon(options), wrapSomeText(action.title, options.plain));
+  return span;
+}
+
+export default async function wrapMessageActionTextNewUnsafe(options: WrapMessageActionTextOptions) {
+  const {plain, message, middleware, lazyLoadQueue, customEmojiSize, animationGroup} = options;
   const element: HTMLElement = plain ? undefined : document.createElement('span');
   const action = 'action' in message && message.action;
 
@@ -59,7 +126,7 @@ export default async function wrapMessageActionTextNewUnsafe(message: MyMessage,
     const managers = rootScope.managers;
 
     const getNameDivHTML = (peerId: PeerId, plain: boolean) => {
-      return plain ? getPeerTitle(peerId, plain) : wrapPeerTitle({peerId});
+      return plain ? getPeerTitle({peerId, plainText: plain}) : wrapPeerTitle({peerId});
     };
 
     switch(action._) {
@@ -169,7 +236,10 @@ export default async function wrapMessageActionTextNewUnsafe(message: MyMessage,
             managers.appMessagesManager.fetchMessageReplyTo(message);
           }
         } else {
-          args.push(wrapLinkToMessage(pinnedMessage, plain));
+          args.push(wrapLinkToMessage({
+            ...options,
+            message: pinnedMessage
+          }));
         }
 
         break;
@@ -207,7 +277,7 @@ export default async function wrapMessageActionTextNewUnsafe(message: MyMessage,
           args.push(getNameDivHTML(message.fromId, plain));
         }
 
-        args.push(plain ? action.title : htmlToSpan(wrapEmojiText(action.title)));
+        args.push(wrapSomeText(action.title));
         break;
       }
 
@@ -272,7 +342,10 @@ export default async function wrapMessageActionTextNewUnsafe(message: MyMessage,
             managers.appMessagesManager.fetchMessageReplyTo(message);
           } else {
             langPackKey = isRecurringUsed ? 'Chat.Service.PaymentSentRecurringUsed' : (isRecurringInit ? 'Chat.Service.PaymentSentRecurringInit' : 'Chat.Service.PaymentSent1');
-            args.push(wrapLinkToMessage(invoiceMessage, plain).then((el) => {
+            args.push(wrapLinkToMessage({
+              ...options,
+              message: invoiceMessage
+            }).then((el) => {
               if(el instanceof HTMLElement) {
                 el.classList.add('is-receipt-link');
               }
@@ -328,6 +401,63 @@ export default async function wrapMessageActionTextNewUnsafe(message: MyMessage,
             args.push(getNameDivHTML(message.fromId, plain));
           }
         }
+        break;
+      }
+
+      case 'messageActionTopicEdit': {
+        let iconElement: (typeof args)[0];
+        let titleElement: typeof iconElement;
+        let authorElement: ReturnType<typeof getNameDivHTML>;
+        const isMe = !!message.pFlags.out;
+        const isIconChanged = action.icon_emoji_id !== undefined;
+        const isIconRemoved = isIconChanged && !+action.icon_emoji_id;
+        const isTitleChanged = action.title !== undefined;
+        const isHiddenChanged = action.hidden !== undefined;
+
+        if(!isMe) {
+          authorElement = getNameDivHTML(message.fromId, plain);
+        }
+
+        if(isTitleChanged) {
+          titleElement = wrapSomeText(action.title);
+        }
+
+        if(isIconChanged && !isIconRemoved) {
+          iconElement = wrapMessageActionTopicIcon(options);
+        }
+
+        args = authorElement ? [authorElement] : [];
+
+        if(action.closed) {
+          langPackKey = isMe ? 'Chat.Service.Group.TopicEdited.You.Paused' : 'Chat.Service.Group.TopicEdited.Paused';
+        } else if(action.closed === false) {
+          langPackKey = isMe ? 'Chat.Service.Group.TopicEdited.You.Resumed' : 'Chat.Service.Group.TopicEdited.Resumed';
+        } else if(isIconRemoved && isTitleChanged) {
+          langPackKey = isMe ? 'Chat.Service.TopicEdited.You.Mixed.IconRemoved' : 'Chat.Service.TopicEdited.Mixed.IconRemoved';
+          args.push(titleElement);
+        } else if(isIconChanged && isTitleChanged) {
+          langPackKey = isMe ? 'Chat.Service.TopicEdited.You.Mixed' : 'Chat.Service.TopicEdited.Mixed';
+          args.push(wrapMessageActionTopicIconAndName(options));
+        } else if(isIconRemoved) {
+          langPackKey = isMe ? 'Chat.Service.Group.TopicEdited.You.Icon.Removed' : 'Chat.Service.Group.TopicEdited.Icon.Removed';
+        } else if(isTitleChanged) {
+          langPackKey = isMe ? 'Chat.Service.Group.TopicEdited.You.Title' : 'Chat.Service.Group.TopicEdited.Title';
+          args.push(titleElement);
+        } else if(isIconChanged) {
+          langPackKey = isMe ? 'Chat.Service.Group.TopicEdited.You.Icon' : 'Chat.Service.Group.TopicEdited.Icon';
+          args.push(iconElement);
+        } else if(isHiddenChanged) {
+          langPackKey = isMe ?
+            (action.hidden ? 'Chat.Service.Group.TopicEdited.You.Hided' : 'Chat.Service.Group.TopicEdited.You.Unhided') :
+            (action.hidden ? 'Chat.Service.Group.TopicEdited.Hided' : 'Chat.Service.Group.TopicEdited.Unhided');
+        }
+
+        break;
+      }
+
+      case 'messageActionTopicCreate': {
+        args = [wrapMessageActionTopicIconAndName(options)];
+        langPackKey = 'TopicWasCreatedAction';
         break;
       }
 

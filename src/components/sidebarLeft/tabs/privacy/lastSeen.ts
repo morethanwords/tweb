@@ -10,7 +10,6 @@ import {LangPackKey} from '../../../../lib/langPack';
 
 export default class AppPrivacyLastSeenTab extends SliderSuperTabEventable {
   public init() {
-    this.header.classList.add('with-border');
     this.container.classList.add('privacy-tab', 'privacy-last-seen');
     this.setTitle('PrivacyLastSeen');
 

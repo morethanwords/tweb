@@ -24,8 +24,8 @@ export default class GroupCallTitleElement {
     if(groupCall.title) {
       setInnerHTML(appendTo, wrapEmojiText(groupCall.title));
     } else {
-      if(peerTitle.peerId !== peerId) {
-        peerTitle.peerId = peerId;
+      if(peerTitle.options.peerId !== peerId) {
+        peerTitle.options.peerId = peerId;
         peerTitle.update();
       }
 

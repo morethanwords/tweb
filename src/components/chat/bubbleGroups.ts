@@ -17,6 +17,8 @@ import {NULL_PEER_ID, REPLIES_PEER_ID} from '../../lib/mtproto/mtproto_config';
 import {SERVICE_AS_REGULAR, STICKY_OFFSET} from './bubbles';
 import forEachReverse from '../../helpers/array/forEachReverse';
 import partition from '../../helpers/array/partition';
+import noop from '../../helpers/noop';
+import getMessageThreadId from '../../lib/appManagers/utils/messages/getMessageThreadId';
 
 type GroupItem = {
   bubble: HTMLElement,
@@ -400,7 +402,8 @@ export default class BubbleGroups {
       Math.abs(item2.timestamp - item1.timestamp) <= this.newGroupDiff &&
       item1.dateTimestamp === item2.dateTimestamp &&
       !item1.single &&
-      !item2.single;
+      !item2.single &&
+      (!this.chat.isAllMessagesForum || getMessageThreadId(item1.message, true) === getMessageThreadId(item2.message, true));
   }
 
   getSiblingsAtIndex(itemIndex: number, items: GroupItem[]) {

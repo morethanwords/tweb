@@ -16,7 +16,6 @@ import {ButtonMenuItemOptions} from '../../buttonMenu';
 import Button from '../../button';
 import AppIncludedChatsTab from './includedChats';
 import {i18n, LangPackKey} from '../../../lib/langPack';
-import {SettingSection} from '..';
 import PopupPeer from '../../popups/peer';
 import RLottiePlayer from '../../../lib/rlottie/rlottiePlayer';
 import copy from '../../../helpers/object/copy';
@@ -24,6 +23,7 @@ import deepEqual from '../../../helpers/object/deepEqual';
 import wrapDraftText from '../../../lib/richTextProcessor/wrapDraftText';
 import filterAsync from '../../../helpers/array/filterAsync';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
+import SettingSection from '../../settingSection';
 
 const MAX_FOLDER_NAME_LENGTH = 12;
 
@@ -79,7 +79,11 @@ export default class AppEditFolderTab extends SliderSuperTab {
         }).show();
       }
     };
-    this.menuBtn = ButtonMenuToggle({listenerSetter: this.listenerSetter}, 'bottom-left', [deleteFolderButton]);
+    this.menuBtn = ButtonMenuToggle({
+      listenerSetter: this.listenerSetter,
+      direction: 'bottom-left',
+      buttons: [deleteFolderButton]
+    });
     this.menuBtn.classList.add('hide');
 
     this.header.append(this.confirmBtn, this.menuBtn);

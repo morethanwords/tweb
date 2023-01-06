@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {SettingSection} from '../..';
 import {attachClickEvent} from '../../../../helpers/dom/clickEvent';
 import Button from '../../../button';
+import SettingSection from '../../../settingSection';
 import {SliderSuperTab} from '../../../slider';
 import wrapStickerEmoji from '../../../wrappers/stickerEmoji';
 import AppSettingsTab from '../settings';

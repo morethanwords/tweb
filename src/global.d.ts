@@ -1,6 +1,10 @@
 import type ListenerSetter from './helpers/listenerSetter';
 import type {Middleware, MiddlewareHelper} from './helpers/middleware';
 import type {Chat, Document, User} from './layer';
+import type {MediaSize} from './helpers/mediaSize';
+import type {AnimationItemGroup} from './components/animationIntersector';
+import type LazyLoadQueue from './components/lazyLoadQueue';
+import type {AppManagers} from './lib/appManagers/managers';
 
 declare global {
   interface AddEventListenerOptions extends EventListenerOptions {
@@ -58,7 +62,9 @@ declare global {
     'SESSION_PASSWORD_NEEDED' | 'CONNECTION_NOT_INITED' | 'ERROR_EMPTY' | 'MTPROTO_CLUSTER_INVALID' |
     'BOT_PRECHECKOUT_TIMEOUT' | 'TMP_PASSWORD_INVALID' | 'PASSWORD_HASH_INVALID' | 'CHANNEL_PRIVATE' |
     'VOICE_MESSAGES_FORBIDDEN' | 'PHOTO_INVALID_DIMENSIONS' | 'PHOTO_SAVE_FILE_INVALID' |
-    'USER_ALREADY_PARTICIPANT';
+    'USER_ALREADY_PARTICIPANT' | 'USERNAME_INVALID' | 'USERNAME_PURCHASE_AVAILABLE' | 'USERNAMES_ACTIVE_TOO_MUCH' |
+    'BOT_INVALID' | 'USERNAME_NOT_OCCUPIED' | 'PINNED_TOO_MUCH' | 'LOCATION_INVALID' |
+    'FILE_ID_INVALID' | 'CHANNEL_FORUM_MISSING';
 
   type ErrorType = LocalErrorType | ServerErrorType;
 
@@ -82,4 +88,13 @@ declare global {
   } | undefined;
 
   type DOMRectMinified = {top: number, right: number, bottom: number, left: number};
+  type DOMRectEditable = DOMRectMinified & {width: number, height: number};
+
+  type WrapSomethingOptions = {
+    lazyLoadQueue?: LazyLoadQueue | false,
+    middleware?: Middleware,
+    customEmojiSize?: MediaSize,
+    animationGroup?: AnimationItemGroup,
+    managers?: AppManagers
+  };
 }

@@ -799,7 +799,7 @@ $chat-input-border-radius: 1rem;
     --wrapper-padding: 15px;
   }
 
-  &.type-chat .bubbles.is-chat-input-hidden .bubbles-date-group:last-of-type .bubbles-group:last-of-type .bubble:last-of-type {
+  &[data-type="chat"] .bubbles.is-chat-input-hidden .bubbles-date-group:last-of-type .bubbles-group:last-of-type .bubble:last-of-type {
     margin-bottom: 1.25rem;
   }
 
@@ -1360,7 +1360,7 @@ $chat-input-border-radius: 1rem;
                 bottom: var(--offset);
                 left: var(--offset);
                 border: .0625rem solid var(--primary-color);
-                border-radius: 50%;
+                border-radius: inherit;
               }
             }
 
@@ -1540,7 +1540,7 @@ $chat-input-border-radius: 1rem;
 	// 	}
 	// }
 
-	.chat.type-chat &.is-chat-input-hidden.is-selecting:not(.backwards) {
+	.chat[data-type="chat"] &.is-chat-input-hidden.is-selecting:not(.backwards) {
 		transition: transform var(--transition-standard-in);
 		--translateY: -78px;
 
@@ -1717,7 +1717,8 @@ $chat-input-border-radius: 1rem;
 
 	&:not(.is-channel),
   &.is-chat {
-		.message {
+		.message,
+		.name {
 			max-width: 480px;
 		}
 	}

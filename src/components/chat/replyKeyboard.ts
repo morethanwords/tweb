@@ -20,6 +20,7 @@ import setInnerHTML from '../../helpers/dom/setInnerHTML';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import {AppManagers} from '../../lib/appManagers/managers';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import Scrollable from '../scrollable';
 
 export default class ReplyKeyboard extends DropdownHover {
   private static BASE_CLASS = 'reply-keyboard';
@@ -30,6 +31,7 @@ export default class ReplyKeyboard extends DropdownHover {
   private peerId: PeerId;
   private touchListener: Listener;
   private chatInput: ChatInput;
+  private scrollable: Scrollable;
 
   constructor(options: {
     listenerSetter: ListenerSetter,
@@ -46,6 +48,9 @@ export default class ReplyKeyboard extends DropdownHover {
 
     this.element.classList.add(ReplyKeyboard.BASE_CLASS);
     this.element.style.display = 'none';
+
+    this.scrollable = new Scrollable();
+    this.element.append(this.scrollable.container);
 
     this.attachButtonListener(this.btnHover, this.listenerSetter);
     this.listenerSetter.add(rootScope)('history_reply_markup', async({peerId}) => {
@@ -138,7 +143,7 @@ export default class ReplyKeyboard extends DropdownHover {
       replyMarkup = await this.getReplyMarkup() as any;
     }
 
-    this.element.textContent = '';
+    this.scrollable.container.replaceChildren();
 
     for(const row of replyMarkup.rows) {
       const div = document.createElement('div');
@@ -153,7 +158,7 @@ export default class ReplyKeyboard extends DropdownHover {
         div.append(btn);
       }
 
-      this.element.append(div);
+      this.scrollable.container.append(div);
     }
   }
 

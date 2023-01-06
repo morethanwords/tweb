@@ -7,8 +7,7 @@
 import {SliderSuperTab} from '../../slider'
 import InputField from '../../inputField';
 import EditPeer from '../../editPeer';
-import {SettingSection} from '../../sidebarLeft';
-import Row from '../../row';
+import Row, {CreateRowFromCheckboxField} from '../../row';
 import CheckboxField from '../../checkboxField';
 import Button from '../../button';
 import PeerTitle from '../../peerTitle';
@@ -20,16 +19,25 @@ import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import toggleDisability from '../../../helpers/dom/toggleDisability';
 import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';
 import formatUserPhone from '../../wrappers/formatUserPhone';
+import SettingSection from '../../settingSection';
+import wrapPeerTitle from '../../wrappers/peerTitle';
 
 export default class AppEditContactTab extends SliderSuperTab {
   private nameInputField: InputField;
   private lastNameInputField: InputField;
   private editPeer: EditPeer;
+  private sharePhoneCheckboxField: CheckboxField;
   public peerId: PeerId;
 
   public async init() {
+    const {peerId} = this;
+    const userId = peerId.toUserId();
     this.container.classList.add('edit-peer-container', 'edit-contact-container');
-    const isNew = !(await this.managers.appUsersManager.isContact(this.peerId.toUserId()));
+    const [isContact, privacy] = await Promise.all([
+      this.managers.appUsersManager.isContact(userId),
+      this.managers.appPrivacyManager.getPrivacy('inputPrivacyKeyPhoneNumber')
+    ]);
+    const isNew = !isContact;
     this.setTitle(isNew ? 'AddContactTitle' : 'Edit');
 
     {
@@ -51,8 +59,8 @@ export default class AppEditContactTab extends SliderSuperTab {
         maxLength: 70
       });
 
-      if(this.peerId) {
-        const user = await this.managers.appUsersManager.getUser(this.peerId);
+      if(userId) {
+        const user = await this.managers.appUsersManager.getUser(userId);
 
         if(isNew) {
           this.nameInputField.setDraftValue(user.first_name);
@@ -67,14 +75,14 @@ export default class AppEditContactTab extends SliderSuperTab {
       inputFields.push(this.nameInputField, this.lastNameInputField);
 
       this.editPeer = new EditPeer({
-        peerId: this.peerId,
+        peerId: peerId,
         inputFields,
         listenerSetter: this.listenerSetter,
         doNotEditAvatar: true
       });
       this.content.append(this.editPeer.nextBtn);
 
-      if(this.peerId) {
+      if(peerId) {
         const div = document.createElement('div');
         div.classList.add('avatar-edit');
         div.append(this.editPeer.avatarElem);
@@ -88,13 +96,13 @@ export default class AppEditContactTab extends SliderSuperTab {
             return;
           }
 
-          this.managers.appMessagesManager.togglePeerMute(this.peerId);
+          this.managers.appMessagesManager.togglePeerMute({peerId});
         });
 
         this.listenerSetter.add(rootScope)('notify_settings', async(update) => {
           if(update.peer._ !== 'notifyPeer') return;
           const peerId = getPeerId(update.peer.peer);
-          if(this.peerId === peerId) {
+          if(peerId === peerId) {
             const enabled = !(await this.managers.appNotificationsManager.isMuted(update.notify_settings));
             if(enabled !== notificationsCheckboxField.checked) {
               notificationsCheckboxField.checked = enabled;
@@ -105,7 +113,7 @@ export default class AppEditContactTab extends SliderSuperTab {
         const profileNameDiv = document.createElement('div');
         profileNameDiv.classList.add('profile-name');
         profileNameDiv.append(new PeerTitle({
-          peerId: this.peerId
+          peerId: peerId
         }).element);
         // profileNameDiv.innerHTML = 'Karen Stanford';
 
@@ -122,19 +130,19 @@ export default class AppEditContactTab extends SliderSuperTab {
             listenerSetter: this.listenerSetter
           });
 
-          const enabled = !(await this.managers.appNotificationsManager.isPeerLocalMuted(this.peerId, false));
+          const enabled = !(await this.managers.appNotificationsManager.isPeerLocalMuted({peerId, respectType: false}));
           notificationsCheckboxField.checked = enabled;
 
           section.content.append(notificationsRow.container);
         } else {
-          const user = await this.managers.appUsersManager.getUser(this.peerId);
+          const user = await this.managers.appUsersManager.getUser(userId);
 
           const phoneRow = new Row({
             icon: 'phone',
             titleLangKey: user.phone ? undefined : 'MobileHidden',
             title: user.phone ? formatUserPhone(user.phone)  : undefined,
             subtitleLangKey: user.phone ? 'Phone' : 'MobileHiddenExceptionInfo',
-            subtitleLangArgs: user.phone ? undefined : [new PeerTitle({peerId: this.peerId}).element]
+            subtitleLangArgs: user.phone ? undefined : [new PeerTitle({peerId: peerId}).element]
           });
 
           section.content.append(phoneRow.container);
@@ -144,32 +152,16 @@ export default class AppEditContactTab extends SliderSuperTab {
       }
 
       this.scrollable.append(section.container);
-
-      attachClickEvent(this.editPeer.nextBtn, async() => {
-        this.editPeer.nextBtn.disabled = true;
-
-        this.managers.appUsersManager.addContact(
-          this.peerId,
-          this.nameInputField.value,
-          this.lastNameInputField.value,
-          (await this.managers.appUsersManager.getUser(this.peerId)).phone
-        ).finally(() => {
-          this.editPeer.nextBtn.removeAttribute('disabled');
-          this.close();
-        });
-      }, {listenerSetter: this.listenerSetter});
     }
 
     if(!isNew) {
-      const section = new SettingSection({
-
-      });
+      const section = new SettingSection();
 
       const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'PeerInfo.DeleteContact'});
 
       attachClickEvent(btnDelete, () => {
         new PopupPeer('popup-delete-contact', {
-          peerId: this.peerId,
+          peerId: peerId,
           titleLangKey: 'DeleteContact',
           descriptionLangKey: 'AreYouSureDeleteContact',
           buttons: addCancelButton([{
@@ -177,7 +169,7 @@ export default class AppEditContactTab extends SliderSuperTab {
             callback: () => {
               const toggle = toggleDisability([btnDelete], true);
 
-              this.managers.appUsersManager.deleteContacts([this.peerId]).then(() => {
+              this.managers.appUsersManager.deleteContacts([userId]).then(() => {
                 this.close();
               }, () => {
                 toggle();
@@ -191,6 +183,38 @@ export default class AppEditContactTab extends SliderSuperTab {
       section.content.append(btnDelete);
 
       this.scrollable.append(section.container);
+    } else if(
+      privacy.some((privacyRule) => privacyRule._ === 'privacyValueDisallowAll') &&
+      !privacy.some((privacyRule) => privacyRule._ === 'privacyValueAllowUsers' && privacyRule.users.includes(userId))
+    ) {
+      const section = new SettingSection({
+        caption: 'NewContact.Exception.ShareMyPhoneNumber.Desc',
+        captionArgs: [await wrapPeerTitle({peerId: this.peerId})]
+      });
+      const checkboxField = this.sharePhoneCheckboxField = new CheckboxField({
+        text: 'NewContact.Exception.ShareMyPhoneNumber',
+        checked: true
+      });
+      const row = CreateRowFromCheckboxField(checkboxField);
+
+      section.content.append(row.container);
+
+      this.scrollable.append(section.container);
     }
+
+    attachClickEvent(this.editPeer.nextBtn, async() => {
+      this.editPeer.nextBtn.disabled = true;
+
+      this.managers.appUsersManager.addContact(
+        userId,
+        this.nameInputField.value,
+        this.lastNameInputField.value,
+        (await this.managers.appUsersManager.getUser(userId)).phone,
+        this.sharePhoneCheckboxField?.checked
+      ).finally(() => {
+        this.editPeer.nextBtn.removeAttribute('disabled');
+        this.close();
+      });
+    }, {listenerSetter: this.listenerSetter});
   }
 }

@@ -36,6 +36,7 @@ import {FocusDirection, ScrollOptions} from '../../helpers/fastSmoothScroll';
 import BezierEasing from '../../vendor/bezier-easing';
 import RichInputHandler from '../../helpers/dom/richInputHandler';
 import {getCaretPosF} from '../../helpers/dom/getCaretPosNew';
+import ListenerSetter from '../../helpers/listenerSetter';
 
 export const EMOTICONSSTICKERGROUP: AnimationItemGroup = 'emoticons-dropdown';
 
@@ -149,7 +150,7 @@ export class EmoticonsDropdown extends DropdownHover {
 
   public init() {
     this.managers = rootScope.managers;
-    this.emojiTab = new EmojiTab(this.managers);
+    this.emojiTab = new EmojiTab({managers: this.managers});
     this.stickersTab = new StickersTab(this.managers);
     this.gifsTab = new GifsTab(this.managers);
 
@@ -160,6 +161,7 @@ export class EmoticonsDropdown extends DropdownHover {
     });
 
     this.container = this.element.querySelector('.emoji-container .tabs-container') as HTMLDivElement;
+    this.container.prepend(this.emojiTab.container, this.stickersTab.container);
     this.tabsEl = this.element.querySelector('.emoji-tabs') as HTMLUListElement;
     this.selectTab = horizontalMenu(this.tabsEl, this.container, this.onSelectTabClick, () => {
       const {tab} = this;
@@ -351,7 +353,8 @@ export class EmoticonsDropdown extends DropdownHover {
     menu: HTMLElement,
     scrollable: Scrollable,
     menuScroll?: ScrollableX,
-    prevTab?: StickersTabCategory<any>
+    prevTab?: StickersTabCategory<any>,
+    listenerSetter?: ListenerSetter
   ) => {
     let jumpedTo = -1;
 
@@ -448,7 +451,7 @@ export class EmoticonsDropdown extends DropdownHover {
       setActive(tab);
     });
 
-    menu.addEventListener('click', (e) => {
+    attachClickEvent(menu, (e) => {
       let target = findUpClassName(e.target as HTMLElement, 'menu-horizontal-div-item');
       if(!target) {
         target = findUpClassName(e.target as HTMLElement, 'menu-horizontal-inner');
@@ -492,7 +495,7 @@ export class EmoticonsDropdown extends DropdownHover {
         setActive(tab);
         scrollingToContent = false;
       });
-    });
+    }, {listenerSetter});
 
     const a = scrollable.onAdditionalScroll ? scrollable.onAdditionalScroll.bind(scrollable) : noop;
     scrollable.onAdditionalScroll = () => {

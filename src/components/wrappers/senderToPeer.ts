@@ -8,7 +8,7 @@ import {MyMessage} from '../../lib/appManagers/appMessagesManager';
 import getMessageSenderPeerIdOrName from '../../lib/appManagers/utils/messages/getMessageSenderPeerIdOrName';
 import {i18n} from '../../lib/langPack';
 import rootScope from '../../lib/rootScope';
-import PeerTitle from '../peerTitle';
+import wrapPeerTitle from './peerTitle';
 
 export default async function wrapSenderToPeer(message: MyMessage) {
   const senderTitle: HTMLElement = document.createElement('span');
@@ -18,14 +18,14 @@ export default async function wrapSenderToPeer(message: MyMessage) {
   senderTitle.append(
     fromMe ?
       i18n('FromYou') :
-      new PeerTitle({
+      await wrapPeerTitle({
         ...getMessageSenderPeerIdOrName(message),
         dialog: message.peerId === rootScope.myId
-      }).element
+      })
   );
 
   if(await rootScope.managers.appPeersManager.isAnyGroup(message.peerId) || fromMe) {
-    const peerTitle = new PeerTitle({peerId: message.peerId}).element;
+    const peerTitle = await wrapPeerTitle({peerId: message.peerId});
     senderTitle.append(' ➝ ', peerTitle);
   }
 

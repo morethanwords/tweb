@@ -315,7 +315,7 @@ body.is-right-column-shown {
     }
   }
 
-	.chat:not(.type-chat) & {
+	.chat:not([data-type="chat"]) & {
 		.content {
 			padding-left: 16px;
 		}

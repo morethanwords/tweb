@@ -87,7 +87,7 @@ class TLSerialization {
     }
 
     const bytes: number[] = new Array(this.offset);
-    for(let i = 0; i < this.offset; i++) {
+    for(let i = 0; i < this.offset; ++i) {
       bytes[i] = this.byteView[i];
     }
     return bytes;
@@ -191,7 +191,7 @@ class TLSerialization {
       this.byteView[this.offset++] = (len & 0xFF00) >> 8;
       this.byteView[this.offset++] = (len & 0xFF0000) >> 16;
     }
-    for(let i = 0; i < len; i++) {
+    for(let i = 0; i < len; ++i) {
       this.byteView[this.offset++] = sUTF8.charCodeAt(i);
     }
 
@@ -349,7 +349,7 @@ class TLSerialization {
 
       const itemType = type.substr(7, type.length - 8); // for "Vector<itemType>"
       this.writeInt(obj.length, field + '[count]');
-      for(let i = 0; i < obj.length; i++) {
+      for(let i = 0; i < obj.length; ++i) {
         this.storeObject(obj[i], itemType, field + '[' + i + ']');
       }
 
@@ -538,13 +538,13 @@ class TLDeserialization<FetchLongAs extends Long> {
     }
 
     let sUTF8 = '';
-    for(let i = 0; i < len; i++) {
+    for(let i = 0; i < len; ++i) {
       sUTF8 += String.fromCharCode(this.byteView[this.offset++]);
     }
 
     // Padding
     while(this.offset % 4) {
-      this.offset++;
+      ++this.offset;
     }
 
     let s: string;
@@ -573,7 +573,7 @@ class TLDeserialization<FetchLongAs extends Long> {
 
     // Padding
     while(this.offset % 4) {
-      this.offset++;
+      ++this.offset;
     }
 
     this.debug && console.log('<<<', bytesToHex(bytes), (field || '') + ':bytes');
@@ -596,7 +596,7 @@ class TLDeserialization<FetchLongAs extends Long> {
     }
 
     const bytes: number[] = new Array(len);
-    for(let i = 0; i < len; i++) {
+    for(let i = 0; i < len; ++i) {
       bytes[i] = this.byteView[this.offset++];
     }
 
@@ -623,7 +623,7 @@ class TLDeserialization<FetchLongAs extends Long> {
     }
 
     const bytes: number[] = new Array(len);
-    for(let i = 0; i < len; i++) {
+    for(let i = 0; i < len; ++i) {
       bytes[i] = this.byteView[this.offset++];
     }
 
@@ -709,7 +709,7 @@ class TLDeserialization<FetchLongAs extends Long> {
       let index = schema.constructorsIndex;
       if(!index) {
         schema.constructorsIndex = index = {};
-        for(let i = 0, len = schema.constructors.length; i < len; i++) {
+        for(let i = 0, len = schema.constructors.length; i < len; ++i) {
           index[schema.constructors[i].id] = i;
         }
       }
@@ -721,7 +721,7 @@ class TLDeserialization<FetchLongAs extends Long> {
 
       if(!constructorData && this.mtproto) {
         const schemaFallback = Schema.API;
-        for(let i = 0, len = schemaFallback.constructors.length; i < len; i++) {
+        for(let i = 0, len = schemaFallback.constructors.length; i < len; ++i) {
           if(+schemaFallback.constructors[i].id === constructorCmp) {
             constructorData = schemaFallback.constructors[i];
 
@@ -754,7 +754,7 @@ class TLDeserialization<FetchLongAs extends Long> {
     if(this.override[overrideKey]) {
       this.override[overrideKey](result, field + '[' + predicate + ']');
     } else {
-      for(let i = 0, len = constructorData.params.length; i < len; i++) {
+      for(let i = 0, len = constructorData.params.length; i < len; ++i) {
         const param = constructorData.params[i];
         let type = param.type;
 
@@ -762,17 +762,14 @@ class TLDeserialization<FetchLongAs extends Long> {
           result.pFlags = {};
         }
 
-        const isCond = (type.indexOf('?') !== -1);
+        const isCond = type.indexOf('?') !== -1;
         if(isCond) {
           const condType = type.split('?');
           const fieldBit = condType[0].split('.');
 
           if(!(result[fieldBit[0]] & (1 << +fieldBit[1]))) {
-            // console.log('fetchObject bad', constructorData, result[fieldBit[0]], fieldBit);
             continue;
           }
-
-          // console.log('fetchObject good', constructorData, result[fieldBit[0]], fieldBit);
 
           type = condType[1];
         }
@@ -782,10 +779,6 @@ class TLDeserialization<FetchLongAs extends Long> {
         if(isCond && type === 'true') {
           result.pFlags[param.name] = value;
         } else {
-          /* if(param.name === 'read_outbox_max_id') {
-            console.log(result, param.name, value, field + '[' + predicate + '][' + param.name + ']');
-          } */
-
           result[param.name] = value;
         }
       }

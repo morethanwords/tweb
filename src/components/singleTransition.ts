@@ -6,7 +6,7 @@
 
 import rootScope from '../lib/rootScope';
 
-const SetTransition = (
+type SetTransitionOptions = {
   element: HTMLElement,
   className: string,
   forwards: boolean,
@@ -14,7 +14,9 @@ const SetTransition = (
   onTransitionEnd?: () => void,
   useRafs?: number,
   onTransitionStart?: () => void
-) => {
+};
+const SetTransition = (options: SetTransitionOptions) => {
+  const {element, className, forwards, duration, onTransitionEnd, onTransitionStart, useRafs} = options;
   const {timeout, raf} = element.dataset;
   if(timeout !== undefined) {
     clearTimeout(+timeout);
@@ -37,7 +39,10 @@ const SetTransition = (
   if(useRafs && rootScope.settings.animationsEnabled && duration) {
     element.dataset.raf = '' + window.requestAnimationFrame(() => {
       delete element.dataset.raf;
-      SetTransition(element, className, forwards, duration, onTransitionEnd, useRafs - 1, onTransitionStart);
+      SetTransition({
+        ...options,
+        useRafs: useRafs - 1
+      });
     });
 
     return;

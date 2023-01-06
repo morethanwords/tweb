@@ -12,13 +12,13 @@ import Recorder from '../../../public/recorder.min';
 import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
 // import Recorder from '../opus-recorder/dist/recorder.min';
 import opusDecodeController from '../../lib/opusDecodeController';
-import ButtonMenu, {ButtonMenuItemOptions} from '../buttonMenu';
+import {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable, ButtonMenuSync} from '../buttonMenu';
 import emoticonsDropdown from '../emoticonsDropdown';
 import PopupCreatePoll from '../popups/createPoll';
 import PopupForward from '../popups/forward';
 import PopupNewMedia from '../popups/newMedia';
 import {toast, toastNew} from '../toast';
-import {MessageEntity, DraftMessage, WebPage, Message, UserFull} from '../../layer';
+import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType} from '../../layer';
 import StickersHelper from './stickersHelper';
 import ButtonIcon from '../buttonIcon';
 import ButtonMenuToggle from '../buttonMenuToggle';
@@ -103,6 +103,9 @@ import {insertRichTextAsHTML} from '../inputField';
 import getCaretPosNew from '../../helpers/dom/getCaretPosNew';
 import draftsAreEqual from '../../lib/appManagers/utils/drafts/draftsAreEqual';
 import isSelectionEmpty from '../../helpers/dom/isSelectionEmpty';
+import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
+import getAttachMenuBotIcon from '../../lib/appManagers/utils/attachMenuBots/getAttachMenuBotIcon';
+import TelegramWebView from '../telegramWebView';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -132,7 +135,7 @@ export default class ChatInput {
   private replyKeyboard: ReplyKeyboard;
 
   private attachMenu: HTMLElement;
-  private attachMenuButtons: (ButtonMenuItemOptions & {verify: (peerId: PeerId, threadId: number) => boolean | Promise<boolean>})[];
+  private attachMenuButtons: ButtonMenuItemOptionsVerifiable[];
 
   private sendMenu: SendMenu;
 
@@ -400,7 +403,10 @@ export default class ChatInput {
         icon: 'replace'
       }
     ];
-    const forwardBtnMenu = forwardElements.container = ButtonMenu(forwardButtons, this.listenerSetter);
+    const forwardBtnMenu = forwardElements.container = ButtonMenuSync({
+      buttons: forwardButtons,
+      listenerSetter: this.listenerSetter
+    });
     // forwardBtnMenu.classList.add('top-center');
 
     const children = Array.from(forwardBtnMenu.children) as HTMLElement[];
@@ -479,98 +485,96 @@ export default class ChatInput {
     this.inputMessageContainer = document.createElement('div');
     this.inputMessageContainer.classList.add('input-message-container');
 
-    if(this.chat.type === 'chat') {
-      this.goDownUnreadBadge = document.createElement('span');
-      this.goDownUnreadBadge.classList.add('badge', 'badge-24', 'badge-primary');
-      this.goDownBtn.append(this.goDownUnreadBadge);
+    this.goDownUnreadBadge = document.createElement('span');
+    this.goDownUnreadBadge.classList.add('badge', 'badge-24', 'badge-primary');
+    this.goDownBtn.append(this.goDownUnreadBadge);
 
-      this.goMentionBtn = ButtonCorner({icon: 'mention', className: 'bubbles-corner-button chat-secondary-button bubbles-go-mention'});
-      this.goMentionUnreadBadge = document.createElement('span');
-      this.goMentionUnreadBadge.classList.add('badge', 'badge-24', 'badge-primary');
-      this.goMentionBtn.append(this.goMentionUnreadBadge);
-      this.inputContainer.append(this.goMentionBtn);
+    this.goMentionBtn = ButtonCorner({icon: 'mention', className: 'bubbles-corner-button chat-secondary-button bubbles-go-mention'});
+    this.goMentionUnreadBadge = document.createElement('span');
+    this.goMentionUnreadBadge.classList.add('badge', 'badge-24', 'badge-primary');
+    this.goMentionBtn.append(this.goMentionUnreadBadge);
+    this.inputContainer.append(this.goMentionBtn);
 
-      attachClickEvent(this.goMentionBtn, (e) => {
-        cancelEvent(e);
-        const middleware = this.chat.bubbles.getMiddleware();
-        this.managers.appMessagesManager.goToNextMention(this.chat.peerId).then((mid) => {
-          if(!middleware()) {
-            return;
-          }
-
-          if(mid) {
-            this.chat.setMessageId(mid);
-          }
-        });
-      }, {listenerSetter: this.listenerSetter});
-
-      this.btnScheduled = ButtonIcon('scheduled btn-scheduled float hide', {noRipple: true});
-
-      attachClickEvent(this.btnScheduled, (e) => {
-        this.appImManager.openScheduled(this.chat.peerId);
-      }, {listenerSetter: this.listenerSetter});
-
-      this.listenerSetter.add(rootScope)('scheduled_new', ({peerId}) => {
-        if(this.chat.peerId !== peerId) {
+    attachClickEvent(this.goMentionBtn, (e) => {
+      cancelEvent(e);
+      const middleware = this.chat.bubbles.getMiddleware();
+      this.managers.appMessagesManager.goToNextMention(this.chat.peerId, this.chat.threadId).then((mid) => {
+        if(!middleware()) {
           return;
         }
 
-        this.btnScheduled.classList.remove('hide');
-      });
-
-      this.listenerSetter.add(rootScope)('scheduled_delete', ({peerId}) => {
-        if(this.chat.peerId !== peerId) {
-          return;
+        if(mid) {
+          this.chat.setMessageId(mid);
         }
-
-        this.managers.appMessagesManager.getScheduledMessages(this.chat.peerId).then((value) => {
-          this.btnScheduled.classList.toggle('hide', !value.length);
-        });
       });
+    }, {listenerSetter: this.listenerSetter});
 
-      this.btnToggleReplyMarkup = ButtonIcon('botcom toggle-reply-markup float hide', {noRipple: true});
-      this.replyKeyboard = new ReplyKeyboard({
-        appendTo: this.rowsWrapper,
-        listenerSetter: this.listenerSetter,
-        managers: this.managers,
-        btnHover: this.btnToggleReplyMarkup,
-        chatInput: this
+    this.btnScheduled = ButtonIcon('scheduled btn-scheduled float hide', {noRipple: true});
+
+    attachClickEvent(this.btnScheduled, (e) => {
+      this.appImManager.openScheduled(this.chat.peerId);
+    }, {listenerSetter: this.listenerSetter});
+
+    this.listenerSetter.add(rootScope)('scheduled_new', ({peerId}) => {
+      if(this.chat.peerId !== peerId) {
+        return;
+      }
+
+      this.btnScheduled.classList.remove('hide');
+    });
+
+    this.listenerSetter.add(rootScope)('scheduled_delete', ({peerId}) => {
+      if(this.chat.peerId !== peerId) {
+        return;
+      }
+
+      this.managers.appMessagesManager.getScheduledMessages(this.chat.peerId).then((value) => {
+        this.btnScheduled.classList.toggle('hide', !value.length);
       });
-      this.listenerSetter.add(this.replyKeyboard)('open', () => this.btnToggleReplyMarkup.classList.add('active'));
-      this.listenerSetter.add(this.replyKeyboard)('close', () => this.btnToggleReplyMarkup.classList.remove('active'));
+    });
 
-      this.botCommands = new ChatBotCommands(this.rowsWrapper, this, this.managers);
-      this.botCommandsToggle = document.createElement('div');
-      this.botCommandsToggle.classList.add('new-message-bot-commands');
+    this.btnToggleReplyMarkup = ButtonIcon('botcom toggle-reply-markup float hide', {noRipple: true});
+    this.replyKeyboard = new ReplyKeyboard({
+      appendTo: this.rowsWrapper,
+      listenerSetter: this.listenerSetter,
+      managers: this.managers,
+      btnHover: this.btnToggleReplyMarkup,
+      chatInput: this
+    });
+    this.listenerSetter.add(this.replyKeyboard)('open', () => this.btnToggleReplyMarkup.classList.add('active'));
+    this.listenerSetter.add(this.replyKeyboard)('close', () => this.btnToggleReplyMarkup.classList.remove('active'));
 
-      const scaler = document.createElement('div');
-      scaler.classList.add('new-message-bot-commands-icon-scale');
+    this.botCommands = new ChatBotCommands(this.rowsWrapper, this, this.managers);
+    this.botCommandsToggle = document.createElement('div');
+    this.botCommandsToggle.classList.add('new-message-bot-commands');
 
-      const icon = this.botCommandsIcon = document.createElement('div');
-      icon.classList.add('animated-menu-icon', 'animated-menu-close-icon');
-      scaler.append(icon);
-      this.botCommandsToggle.append(scaler);
+    const scaler = document.createElement('div');
+    scaler.classList.add('new-message-bot-commands-icon-scale');
 
-      attachClickEvent(this.botCommandsToggle, (e) => {
-        cancelEvent(e);
-        const isShown = icon.classList.contains('state-back');
-        if(isShown) {
-          this.botCommands.toggle(true);
-          icon.classList.remove('state-back');
-        } else {
-          this.botCommands.setUserId(this.chat.peerId.toUserId(), this.chat.bubbles.getMiddleware());
-          icon.classList.add('state-back');
-        }
-      }, {listenerSetter: this.listenerSetter});
+    const icon = this.botCommandsIcon = document.createElement('div');
+    icon.classList.add('animated-menu-icon', 'animated-menu-close-icon');
+    scaler.append(icon);
+    this.botCommandsToggle.append(scaler);
 
-      this.botCommands.addEventListener('visible', () => {
-        icon.classList.add('state-back');
-      });
-
-      this.botCommands.addEventListener('hiding', () => {
+    attachClickEvent(this.botCommandsToggle, (e) => {
+      cancelEvent(e);
+      const isShown = icon.classList.contains('state-back');
+      if(isShown) {
+        this.botCommands.toggle(true);
         icon.classList.remove('state-back');
-      });
-    }
+      } else {
+        this.botCommands.setUserId(this.chat.peerId.toUserId(), this.chat.bubbles.getMiddleware());
+        icon.classList.add('state-back');
+      }
+    }, {listenerSetter: this.listenerSetter});
+
+    this.botCommands.addEventListener('visible', () => {
+      icon.classList.add('state-back');
+    });
+
+    this.botCommands.addEventListener('hiding', () => {
+      icon.classList.remove('state-back');
+    });
 
     this.attachMenuButtons = [{
       icon: 'image',
@@ -599,10 +603,110 @@ export default class ChatInput {
       onClick: () => {
         PopupElement.createPopup(PopupCreatePoll, this.chat).show();
       },
-      verify: (peerId) => peerId.isAnyChat() && this.chat.canSend('send_polls')
+      verify: () => (this.chat.peerId.isAnyChat() || this.chat.isBot) && this.chat.canSend('send_polls')
     }];
 
-    this.attachMenu = ButtonMenuToggle({noRipple: true, listenerSetter: this.listenerSetter}, 'top-left', this.attachMenuButtons);
+    const attachMenuButtons = this.attachMenuButtons.slice();
+    this.attachMenu = ButtonMenuToggle({
+      buttonOptions: {noRipple: true},
+      listenerSetter: this.listenerSetter,
+      direction: 'top-left',
+      buttons: this.attachMenuButtons,
+      onOpenBefore: async() => {
+        const attachMenuBots = await this.managers.appAttachMenuBotsManager.getAttachMenuBots();
+        const buttons = attachMenuButtons.slice();
+        const attachMenuBotsButtons = attachMenuBots.filter((attachMenuBot) => {
+          return !attachMenuBot.pFlags.inactive;
+        }).map((attachMenuBot) => {
+          const icon = getAttachMenuBotIcon(attachMenuBot);
+          const button: typeof buttons[0] = {
+            regularText: wrapEmojiText(attachMenuBot.short_name),
+            onClick: () => {
+              this.managers.appAttachMenuBotsManager.requestWebView({
+                botId: attachMenuBot.bot_id,
+                peerId: this.chat.peerId,
+                ...this.chat.getMessageSendingParams()
+              }).then((webViewResultUrl) => {
+                const SANDBOX_ATTRIBUTES = [
+                  'allow-scripts',
+                  'allow-same-origin',
+                  'allow-popups',
+                  'allow-forms',
+                  'allow-modals',
+                  'allow-storage-access-by-user-activation'
+                ].join(' ');
+
+                class P extends PopupElement<{
+                  finish: () => void
+                }> {
+                  private telegramWebView: TelegramWebView;
+
+                  constructor(private url: string) {
+                    super('popup-payment popup-payment-verification', {
+                      closable: true,
+                      overlayClosable: true,
+                      body: true,
+                      titleRaw: attachMenuBot.short_name
+                    });
+
+                    this.d();
+                  }
+
+                  protected destroy() {
+                    this.telegramWebView.destroy();
+                    return super.destroy();
+                  }
+
+                  private d() {
+                    const telegramWebView = this.telegramWebView = new TelegramWebView({
+                      url: this.url,
+                      sandbox: SANDBOX_ATTRIBUTES
+                    });
+
+                    telegramWebView.iframe.classList.add('payment-verification');
+
+                    this.body.append(telegramWebView.iframe);
+                    this.show();
+                    telegramWebView.onMount();
+                  }
+                }
+
+                new P(webViewResultUrl.url);
+              });
+            },
+            iconDoc: icon?.icon as MyDocument,
+            verify: async() => {
+              let found = false;
+
+              const verifyMap: {
+                [type in AttachMenuPeerType['_']]: () => boolean | Promise<boolean>
+              } = {
+                attachMenuPeerTypeSameBotPM: () => this.chat.peerId.toUserId() === attachMenuBot.bot_id,
+                attachMenuPeerTypeBotPM: () => this.chat.isBot,
+                attachMenuPeerTypePM: () => this.chat.peerId.isUser(),
+                attachMenuPeerTypeChat: () => this.chat.isAnyGroup,
+                attachMenuPeerTypeBroadcast: () => this.chat.isBroadcast
+              };
+
+              for(const peerType of attachMenuBot.peer_types) {
+                const verify = verifyMap[peerType._];
+                found = await verify();
+                if(found) {
+                  break;
+                }
+              }
+
+              return found;
+            }
+          };
+
+          return button;
+        });
+
+        buttons.splice(buttons.length, 0, ...attachMenuBotsButtons);
+        this.attachMenuButtons.splice(0, this.attachMenuButtons.length, ...buttons);
+      }
+    });
     this.attachMenu.classList.add('attach-file', 'tgico-attach');
     this.attachMenu.classList.remove('tgico-more');
 
@@ -645,25 +749,23 @@ export default class ChatInput {
 
     this.btnSendContainer.append(this.recordRippleEl, this.btnSend);
 
-    if(this.chat.type !== 'scheduled') {
-      this.sendMenu = new SendMenu({
-        onSilentClick: () => {
-          this.sendSilent = true;
-          this.sendMessage();
-        },
-        onScheduleClick: () => {
-          this.scheduleSending(undefined);
-        },
-        listenerSetter: this.listenerSetter,
-        openSide: 'top-left',
-        onContextElement: this.btnSend,
-        onOpen: () => {
-          return !this.isInputEmpty() || !!Object.keys(this.forwarding).length;
-        }
-      });
+    this.sendMenu = new SendMenu({
+      onSilentClick: () => {
+        this.sendSilent = true;
+        this.sendMessage();
+      },
+      onScheduleClick: () => {
+        this.scheduleSending(undefined);
+      },
+      listenerSetter: this.listenerSetter,
+      openSide: 'top-left',
+      onContextElement: this.btnSend,
+      onOpen: () => {
+        return this.chat.type !== 'scheduled' && (!this.isInputEmpty() || !!Object.keys(this.forwarding).length);
+      }
+    });
 
-      this.btnSendContainer.append(this.sendMenu.sendMenu);
-    }
+    this.btnSendContainer.append(this.sendMenu.sendMenu);
 
     this.inputContainer.append(this.btnCancelRecord, this.btnSendContainer);
 
@@ -698,12 +800,12 @@ export default class ChatInput {
     });
 
     this.listenerSetter.add(rootScope)('draft_updated', ({peerId, threadId, draft, force}) => {
-      if(this.chat.threadId !== threadId || this.chat.peerId !== peerId) return;
+      if(this.chat.threadId !== threadId || this.chat.peerId !== peerId || this.chat.type === 'scheduled') return;
       this.setDraft(draft, true, force);
     });
 
     this.listenerSetter.add(this.appImManager)('peer_changing', (chat) => {
-      if(this.chat === chat) {
+      if(this.chat === chat && (this.chat.type === 'chat' || this.chat.type === 'discussion')) {
         this.saveDraft();
       }
     });
@@ -716,39 +818,37 @@ export default class ChatInput {
       }
     });
 
-    if(this.chat.type === 'scheduled') {
-      this.listenerSetter.add(rootScope)('scheduled_delete', ({peerId, mids}) => {
-        if(this.chat.peerId === peerId && mids.includes(this.editMsgId)) {
+    this.listenerSetter.add(rootScope)('scheduled_delete', ({peerId, mids}) => {
+      if(this.chat.type === 'scheduled' && this.chat.peerId === peerId && mids.includes(this.editMsgId)) {
+        this.onMessageSent();
+      }
+    });
+
+    this.listenerSetter.add(rootScope)('history_delete', ({peerId, msgs}) => {
+      if(this.chat.peerId === peerId && this.chat.type !== 'scheduled') {
+        if(msgs.has(this.editMsgId)) {
           this.onMessageSent();
         }
-      });
-    } else {
-      this.listenerSetter.add(rootScope)('history_delete', ({peerId, msgs}) => {
-        if(this.chat.peerId === peerId) {
-          if(msgs.has(this.editMsgId)) {
-            this.onMessageSent();
-          }
 
-          if(this.replyToMsgId && msgs.has(this.replyToMsgId)) {
-            this.clearHelper('reply');
-          }
-
-          /* if(this.chat.isStartButtonNeeded()) {
-            this.setStartParam(BOT_START_PARAM);
-          } */
+        if(this.replyToMsgId && msgs.has(this.replyToMsgId)) {
+          this.clearHelper('reply');
         }
-      });
 
-      this.listenerSetter.add(rootScope)('dialogs_multiupdate', (dialogs) => {
-        if(dialogs.has(this.chat.peerId)) {
-          if(this.startParam === BOT_START_PARAM) {
-            this.setStartParam();
-          } else { // updateNewMessage comes earlier than dialog appers
-            this.center(true);
-          }
+        /* if(this.chat.isStartButtonNeeded()) {
+          this.setStartParam(BOT_START_PARAM);
+        } */
+      }
+    });
+
+    this.listenerSetter.add(rootScope)('dialogs_multiupdate', (dialogs) => {
+      if(dialogs.has(this.chat.peerId) && (this.chat.type === 'chat' || this.chat.type === 'discussion')) {
+        if(this.startParam === BOT_START_PARAM) {
+          this.setStartParam();
+        } else { // updateNewMessage comes earlier than dialog appers
+          this.center(true);
         }
-      });
-    }
+      }
+    });
 
     try {
       this.recorder = new Recorder({
@@ -884,9 +984,8 @@ export default class ChatInput {
     }, {listenerSetter: this.listenerSetter});
 
     this.controlContainer.append(this.botStartBtn);
-  }
 
-  public constructPinnedHelpers() {
+    // * pinned part start
     this.pinnedControlBtn = Button('btn-primary btn-transparent text-bold chat-input-control-button', {icon: 'unpin'});
     this.controlContainer.append(this.pinnedControlBtn);
 
@@ -903,8 +1002,7 @@ export default class ChatInput {
         }
       });
     });
-
-    this.chatInput.classList.add('type-pinned');
+    // * pinned part end
   }
 
   public _center(neededFakeContainer: HTMLElement, animate?: boolean) {
@@ -954,8 +1052,18 @@ export default class ChatInput {
     this.fakeWrapperTo = neededFakeContainer;
 
     const duration = animate ? 200 : 0;
-    SetTransition(this.inputContainer, 'is-centering', forwards, duration);
-    SetTransition(this.rowsWrapperWrapper, 'is-centering-to-control', !!(forwards && neededFakeContainer && neededFakeContainer.classList.contains('chat-input-control')), duration);
+    SetTransition({
+      element: this.inputContainer,
+      className: 'is-centering',
+      forwards,
+      duration
+    });
+    SetTransition({
+      element: this.rowsWrapperWrapper,
+      className: 'is-centering-to-control',
+      forwards: !!(forwards && neededFakeContainer && neededFakeContainer.classList.contains('chat-input-control')),
+      duration
+    });
     this.rowsWrapper.style.transform = transform;
     this.rowsWrapper.style.borderRadius = borderRadius;
 
@@ -1079,10 +1187,10 @@ export default class ChatInput {
       return;
     }
 
-    const dialog = await this.managers.appMessagesManager.getDialogOnly(this.chat.peerId);
+    const dialog = await this.managers.dialogsStorage.getDialogOrTopic(this.chat.peerId, this.chat.type === 'discussion' ? undefined : this.chat.threadId);
     const count = dialog?.unread_count;
     this.goDownUnreadBadge.innerText = '' + (count || '');
-    this.goDownUnreadBadge.classList.toggle('badge-gray', await this.managers.appNotificationsManager.isPeerLocalMuted(this.chat.peerId, true));
+    this.goDownUnreadBadge.classList.toggle('badge-gray', await this.managers.appNotificationsManager.isPeerLocalMuted({peerId: this.chat.peerId, respectType: true, threadId: this.chat.threadId}));
 
     if(this.goMentionUnreadBadge && this.chat.type === 'chat') {
       const hasMentions = !!(dialog?.unread_mentions_count && dialog.unread_count);
@@ -1332,9 +1440,14 @@ export default class ChatInput {
       if(this.messageInput) {
         this.updateMessageInput(canSend, placeholderKey, filteredAttachMenuButtons);
         this.messageInput.dataset.peerId = '' + peerId;
-      } else if(this.pinnedControlBtn) {
-        this.pinnedControlBtn.append(i18n(canPinMessage ? 'Chat.Input.UnpinAll' : 'Chat.Pinned.DontShow'));
       }
+
+      if(this.pinnedControlBtn) {
+        this.pinnedControlBtn.classList.toggle('hide', this.chat.type !== 'pinned');
+        this.pinnedControlBtn.replaceChildren(i18n(canPinMessage ? 'Chat.Input.UnpinAll' : 'Chat.Pinned.DontShow'));
+      }
+
+      this.botStartBtn.classList.toggle('hide', this.chat.type === 'pinned');
 
       // * testing
       // this.startParam = this.appPeersManager.isBot(peerId) ? '123' : undefined;
@@ -1354,7 +1467,13 @@ export default class ChatInput {
       delete this.newMessageWrapper.dataset.offset;
     }
 
-    SetTransition(this.newMessageWrapper, 'has-offset', forwards, skipAnimation ? 0 : 300, undefined, useRafs);
+    SetTransition({
+      element: this.newMessageWrapper,
+      className: 'has-offset',
+      forwards,
+      duration: skipAnimation ? 0 : 300,
+      useRafs
+    });
   }
 
   private updateBotCommands(userFull: UserFull.userFull, skipAnimation?: boolean) {
@@ -1385,9 +1504,9 @@ export default class ChatInput {
   }
 
   private async getPlaceholderKey() {
-    const {peerId, threadId} = this.chat;
+    const {peerId, threadId, isForum} = this.chat;
     let key: LangPackKey;
-    if(threadId) {
+    if(threadId && !isForum) {
       key = 'Comment';
     } else if(await this.managers.appPeersManager.isBroadcast(peerId)) {
       key = 'ChannelBroadcast';
@@ -1415,9 +1534,8 @@ export default class ChatInput {
 
   private filterAttachMenuButtons() {
     if(!this.attachMenuButtons) return;
-    const {peerId, threadId} = this.chat;
     return filterAsync(this.attachMenuButtons, (button) => {
-      return button.verify(peerId, threadId);
+      return button.verify();
     });
   }
 
@@ -1434,10 +1552,6 @@ export default class ChatInput {
     }
 
     this.updateMessageInputPlaceholder(placeholderKey);
-
-    this.attachMenuButtons && this.attachMenuButtons.forEach((button) => {
-      button.element.classList.toggle('hide', !visible.includes(button));
-    });
 
     if(!canSend) {
       messageInput.contentEditable = 'inherit';
@@ -1897,7 +2011,7 @@ export default class ChatInput {
     const isEmpty = !richValue.trim();
     if(isEmpty) {
       if(this.lastTimeType) {
-        this.managers.appMessagesManager.setTyping(this.chat.peerId, {_: 'sendMessageCancelAction'});
+        this.managers.appMessagesManager.setTyping(this.chat.peerId, {_: 'sendMessageCancelAction'}, undefined, this.chat.threadId);
       }
 
       if(this.appImManager.markupTooltip) {
@@ -1919,7 +2033,7 @@ export default class ChatInput {
       const time = Date.now();
       if((time - this.lastTimeType) >= 6000) {
         this.lastTimeType = time;
-        this.managers.appMessagesManager.setTyping(this.chat.peerId, {_: 'sendMessageTypingAction'});
+        this.managers.appMessagesManager.setTyping(this.chat.peerId, {_: 'sendMessageTypingAction'}, undefined, this.chat.threadId);
       }
 
       if(this.botCommands) {
@@ -2124,6 +2238,19 @@ export default class ChatInput {
   private checkInlineAutocomplete(value: string, foundHelper?: AutocompleteHelper): AutocompleteHelper {
     let needPlaceholder = false;
 
+    const setPreloaderShow = (show: boolean) => {
+      if(!this.btnPreloader) {
+        return;
+      }
+
+      SetTransition({
+        element: this.btnPreloader,
+        className: 'show',
+        forwards: show,
+        duration: 400
+      });
+    };
+
     if(!foundHelper) {
       const inlineMatch = value.match(/^@([a-zA-Z\\d_]{3,32})\s/);
       if(inlineMatch) {
@@ -2138,7 +2265,7 @@ export default class ChatInput {
           putPreloader(this.btnPreloader, true);
           this.inputMessageContainer.parentElement.insertBefore(this.btnPreloader, this.inputMessageContainer.nextSibling);
         } else {
-          SetTransition(this.btnPreloader, 'show', true, 400);
+          setPreloaderShow(true);
         }
 
         this.inlineHelper.checkQuery(this.chat.peerId, username, query).then(({user, renderPromise}) => {
@@ -2147,9 +2274,11 @@ export default class ChatInput {
           }
 
           renderPromise.then(() => {
-            SetTransition(this.btnPreloader, 'show', false, 400);
+            setPreloaderShow(false);
           });
-        }).catch(noop);
+        }).catch((err: ApiError) => {
+          setPreloaderShow(false);
+        });
       }
     }
 
@@ -2158,9 +2287,7 @@ export default class ChatInput {
     }
 
     if(foundHelper !== this.inlineHelper) {
-      if(this.btnPreloader) {
-        SetTransition(this.btnPreloader, 'show', false, 400);
-      }
+      setPreloaderShow(false);
     }
 
     return foundHelper;
@@ -2171,7 +2298,12 @@ export default class ChatInput {
       return;
     }
 
-    SetTransition(this.chatInput, 'is-recording', value, 200);
+    SetTransition({
+      element: this.chatInput,
+      className: 'is-recording',
+      forwards: value,
+      duration: 200
+    });
     this.recording = value;
     this.updateSendBtn();
   }
@@ -2462,11 +2594,11 @@ export default class ChatInput {
     });
 
     if(this.btnScheduled) {
-      this.btnScheduled.classList.toggle('show', isInputEmpty);
+      this.btnScheduled.classList.toggle('show', isInputEmpty && this.chat.type !== 'scheduled');
     }
 
     if(this.btnToggleReplyMarkup) {
-      this.btnToggleReplyMarkup.classList.toggle('show', isInputEmpty);
+      this.btnToggleReplyMarkup.classList.toggle('show', isInputEmpty && this.chat.type !== 'scheduled');
     }
   }
 
@@ -2659,7 +2791,7 @@ export default class ChatInput {
 
     let input = wrapDraftText(message.message, {entities: message.totalEntities, wrappingForPeerId: this.chat.peerId});
     const f = async() => {
-      const replyFragment = await wrapMessageForReply(message, undefined, [message.mid]);
+      const replyFragment = await wrapMessageForReply({message, usingMids: [message.mid]});
       this.setTopInfo('edit', f, i18n('AccDescrEditing'), replyFragment, input, message);
 
       this.editMsgId = mid;
@@ -2749,7 +2881,7 @@ export default class ChatInput {
       const delimiter = ': ';
       if(usingFullAlbum || length === 1) {
         const mids = fromPeerIdsMids[fromPeerIds[0]];
-        const replyFragment = await wrapMessageForReply(firstMessage, undefined, mids);
+        const replyFragment = await wrapMessageForReply({message: firstMessage, usingMids: mids});
         subtitleFragment.append(
           senderTitles,
           delimiter,
@@ -2846,8 +2978,14 @@ export default class ChatInput {
 
   private t() {
     const className = 'is-toggling-helper';
-    SetTransition(this.chat.container, className, true, 150, () => {
-      this.chat.container.classList.remove(className);
+    SetTransition({
+      element: this.chat.container,
+      className,
+      forwards: true,
+      duration: 150,
+      onTransitionEnd: () => {
+        this.chat.container.classList.remove(className);
+      }
     });
   }
 

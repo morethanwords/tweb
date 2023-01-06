@@ -11,17 +11,18 @@ import ListenerSetter from '../../../helpers/listenerSetter';
 import ScrollableLoader from '../../../helpers/scrollableLoader';
 import {ChannelParticipant, Chat, ChatBannedRights, Update} from '../../../layer';
 import {ChatRights} from '../../../lib/appManagers/appChatsManager';
-import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '../../../lib/appManagers/appDialogsManager';
+import appDialogsManager, {DialogDom, DIALOG_LIST_ELEMENT_TAG} from '../../../lib/appManagers/appDialogsManager';
 import {AppManagers} from '../../../lib/appManagers/managers';
 import combineParticipantBannedRights from '../../../lib/appManagers/utils/chats/combineParticipantBannedRights';
 import hasRights from '../../../lib/appManagers/utils/chats/hasRights';
+import getPeerActiveUsernames from '../../../lib/appManagers/utils/peers/getPeerActiveUsernames';
 import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';
 import I18n, {i18n, join, LangPackKey} from '../../../lib/langPack';
 import rootScope from '../../../lib/rootScope';
 import CheckboxField from '../../checkboxField';
 import PopupPickUser from '../../popups/pickUser';
-import Row from '../../row';
-import {SettingSection} from '../../sidebarLeft';
+import Row, {CreateRowFromCheckboxField} from '../../row';
+import SettingSection from '../../settingSection';
 import {SliderSuperTabEventable} from '../../sliderTab';
 import {toast} from '../../toast';
 import AppUserPermissionsTab from './userPermissions';
@@ -61,25 +62,27 @@ export class ChatPermissions {
     };
 
     const options = this.options;
-    const chat: Chat.chat | Chat.channel = await this.managers.appChatsManager.getChat(options.chatId);
+    const chat = await this.managers.appChatsManager.getChat(options.chatId) as Chat.chat | Chat.channel;
     const defaultBannedRights = chat.default_banned_rights;
     const rights = options.participant ? combineParticipantBannedRights(chat as Chat.channel, options.participant.banned_rights) : defaultBannedRights;
 
     const restrictionText: LangPackKey = options.participant ? 'UserRestrictionsDisabled' : 'EditCantEditPermissionsPublic';
     for(const info of this.v) {
       const mainFlag = info.flags[0];
-      info.checkboxField = new CheckboxField({
-        text: info.text,
-        checked: hasRights(chat, mainFlag, rights),
-        restriction: true,
-        withRipple: true
-      });
+      const row = CreateRowFromCheckboxField(
+        info.checkboxField = new CheckboxField({
+          text: info.text,
+          checked: hasRights(chat, mainFlag, rights),
+          restriction: true,
+          listenerSetter: options.listenerSetter
+        })
+      );
 
       if((
         options.participant &&
           defaultBannedRights.pFlags[mainFlag as keyof typeof defaultBannedRights['pFlags']]
       ) || (
-        (chat as Chat.channel).username &&
+        getPeerActiveUsernames(chat as Chat.channel)[0] &&
           (
             info.flags.includes('pin_messages') ||
             info.flags.includes('change_info')
@@ -114,7 +117,7 @@ export class ChatPermissions {
         });
       }
 
-      options.appendTo.append(info.checkboxField.label);
+      options.appendTo.append(row.container);
     }
   }
 
@@ -230,7 +233,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
         openPermissions(peerId);
       }, {listenerSetter: this.listenerSetter});
 
-      const setSubtitle = async(li: Element, participant: ChannelParticipant.channelParticipantBanned) => {
+      const setSubtitle = async(dom: DialogDom, participant: ChannelParticipant.channelParticipantBanned) => {
         const bannedRights = participant.banned_rights;// appChatsManager.combineParticipantBannedRights(this.chatId, participant.banned_rights);
         const defaultBannedRights = ((await this.managers.appChatsManager.getChat(this.chatId)) as Chat.channel).default_banned_rights;
         // const combinedRights = appChatsManager.combineParticipantBannedRights(this.chatId, bannedRights);
@@ -247,11 +250,10 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
           } */
         });
 
-        const el = li.querySelector('.user-last-message') as HTMLElement;
+        const el = dom.lastMessageSpan as HTMLElement;
 
         if(cantWhat.length) {
-          el.innerHTML = '';
-          el.append(...join(cantWhat.map((t) => i18n(t)), false));
+          el.replaceChildren(...join(cantWhat.map((t) => i18n(t)), false));
         }/*  else if(canWhat.length) {
           str = 'Can ' + canWhat.join(canWhat.length === 2 ? ' and ' : ', ');
         } */
@@ -268,7 +270,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
           append
         });
 
-        setSubtitle(dom.listEl, participant);
+        setSubtitle(dom, participant);
 
         // dom.titleSpan.innerHTML = 'Chinaza Akachi';
         // dom.lastMessageSpan.innerHTML = 'Can Add Users and Pin Messages';

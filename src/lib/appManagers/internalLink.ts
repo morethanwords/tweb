@@ -23,7 +23,9 @@ export namespace InternalLink {
     domain: string,
     post?: string,
     comment?: string,
-    start?: string
+    thread?: string,
+    start?: string,
+    stack?: number // local
   }
 
   export interface InternalLinkPrivatePost {
@@ -31,7 +33,8 @@ export namespace InternalLink {
     channel: string,
     post: string,
     thread?: string,
-    comment?: string
+    comment?: string,
+    stack?: number // local
   }
 
   export interface InternalLinkStickerSet {

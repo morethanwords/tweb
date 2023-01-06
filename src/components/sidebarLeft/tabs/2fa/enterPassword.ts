@@ -5,7 +5,6 @@
  */
 
 import AppTwoStepVerificationTab from '.';
-import {SettingSection} from '../..';
 import cancelEvent from '../../../../helpers/dom/cancelEvent';
 import {canFocus} from '../../../../helpers/dom/canFocus';
 import {attachClickEvent} from '../../../../helpers/dom/clickEvent';
@@ -20,6 +19,7 @@ import PasswordMonkey from '../../../monkeys/password';
 import PasswordInputField from '../../../passwordInputField';
 import {SliderSuperTab} from '../../../slider';
 import AppTwoStepVerificationReEnterPasswordTab from './reEnterPassword';
+import SettingSection from '../../../settingSection';
 
 export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperTab {
   public state: AccountPassword;

@@ -11,7 +11,6 @@ import PrivacyType from '../../../../lib/appManagers/utils/privacy/privacyType';
 
 export default class AppPrivacyAddToGroupsTab extends SliderSuperTabEventable {
   public init() {
-    this.header.classList.add('with-border');
     this.container.classList.add('privacy-tab', 'privacy-add-to-groups');
     this.setTitle('PrivacySettings.Groups');
 

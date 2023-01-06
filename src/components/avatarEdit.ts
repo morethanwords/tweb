@@ -15,7 +15,7 @@ export default class AvatarEdit {
   private canvas: HTMLCanvasElement;
   private icon: HTMLSpanElement;
 
-  constructor(onChange: (uploadAvatar: () => CancellablePromise<InputFile>) => void) {
+  constructor(onChange: (uploadAvatar: () => CancellablePromise<InputFile>) => void, options?: ConstructorParameters<typeof PopupAvatar>[0]) {
     this.container = document.createElement('div');
     this.container.classList.add('avatar-edit');
 
@@ -28,7 +28,7 @@ export default class AvatarEdit {
     this.container.append(this.canvas, this.icon);
 
     attachClickEvent(this.container, () => {
-      PopupElement.createPopup(PopupAvatar).open(this.canvas, onChange);
+      PopupElement.createPopup(PopupAvatar, options).open(this.canvas, onChange);
     });
   }
 

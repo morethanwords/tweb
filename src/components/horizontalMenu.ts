@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {TransitionSlider} from './transition';
+import TransitionSlider from './transition';
 import {ScrollableX} from './scrollable';
 import rootScope from '../lib/rootScope';
 import {fastRaf} from '../helpers/schedulers';
@@ -23,7 +23,13 @@ export function horizontalMenu(
   scrollableX?: ScrollableX,
   listenerSetter?: ListenerSetter
 ) {
-  const selectTab = TransitionSlider(content, tabs || content.dataset.animation === 'tabs' ? 'tabs' : 'navigation', transitionTime, onTransitionEnd, undefined, listenerSetter);
+  const selectTab = TransitionSlider({
+    content,
+    type: tabs || content.dataset.animation === 'tabs' ? 'tabs' : 'navigation',
+    transitionTime,
+    onTransitionEnd,
+    listenerSetter
+  });
 
   if(!tabs) {
     return selectTab;

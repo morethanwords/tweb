@@ -16,7 +16,7 @@ export type NavigationItem = {
   type: 'left' | 'right' | 'im' | 'chat' | 'popup' | 'media' | 'menu' |
     'esg' | 'multiselect' | 'input-helper' | 'autocomplete-helper' | 'markup' |
     'global-search' | 'voice' | 'mobile-search' | 'filters' | 'global-search-focus' |
-    'toast' | 'dropdown',
+    'toast' | 'dropdown' | 'forum',
   onPop: (canAnimate: boolean) => boolean | void,
   onEscape?: () => boolean,
   noHistory?: boolean,
@@ -156,6 +156,10 @@ export class AppNavigationController {
   public overrideHash(hash: string = '') {
     if(hash && hash[0] !== '#') hash = '#' + hash;
     else if(hash === '#') hash = '';
+
+    if(this.currentHash === hash) {
+      return;
+    }
 
     this.overriddenHash = this.currentHash = hash;
     this.replaceState();

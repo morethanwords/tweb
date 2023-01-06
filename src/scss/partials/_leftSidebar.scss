@@ -77,18 +77,18 @@
   //   --menu-size: 3.1875rem;
   // }
 
-  .menu-horizontal {
+  .item-main .menu-horizontal {
     &-scrollable {
       // --scrollable-size: var(--menu-size);
       z-index: 1;
       background-color: var(--surface-color);
       position: relative;
       top: unset;
-      
+
       @include respond-to(handhelds) {
         box-shadow: 0px 1px 5px -1px rgba(0, 0, 0, .16);
       }
-  
+
       .scrollable {
         position: relative;
       }
@@ -97,7 +97,7 @@
         margin-left: 5px;
         //line-height: inherit !important;
       }
-  
+
       &:not(.hide) + #folders-container {
         height: calc(100% - var(--scrollable-size));
         position: relative;
@@ -294,7 +294,8 @@
       right: 0;
       bottom: 0;
       left: 0;
-      z-index: 2;
+      // z-index: 2;
+      z-index: 4; // over forum
       margin: 0;
 
       body.animation-level-0 &:before {
@@ -1229,6 +1230,67 @@
 
     &.visible {
       opacity: 1;
+    }
+  }
+}
+
+.is-forum-visible {
+  // .item-main,
+  .can-have-forum {
+    .row-row,
+    .input-search,
+    .sidebar-header__title {
+      opacity: 0;
+    }
+  }
+
+  .folders-tabs-scrollable {
+    opacity: var(--disabled-opacity);
+    pointer-events: none;
+  }
+
+  &.backwards {
+    // .item-main,
+    .can-have-forum {
+      .row-row,
+      .input-search,
+      .sidebar-header__title {
+        opacity: 1;
+      }
+    }
+
+    .folders-tabs-scrollable {
+      opacity: 1;
+    }
+  }
+
+  &.animating {
+    // .item-main,
+    .can-have-forum {
+      .row-row,
+      .input-search,
+      .sidebar-header__title {
+        transition: opacity var(--transition-standard-in);
+      }
+    }
+
+    .folders-tabs-scrollable {
+      transition: opacity var(--transition-standard-in);
+    }
+
+    &.backwards {
+      // .item-main,
+      .can-have-forum {
+        .row-row,
+        .input-search,
+        .sidebar-header__title {
+          transition: opacity var(--transition-standard-out);
+        }
+      }
+
+      .folders-tabs-scrollable {
+        transition: opacity var(--transition-standard-out);
+      }
     }
   }
 }

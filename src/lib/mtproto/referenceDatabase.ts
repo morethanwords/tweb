@@ -11,7 +11,7 @@ import deepEqual from '../../helpers/object/deepEqual';
 import {AppManager} from '../appManagers/manager';
 import makeError from '../../helpers/makeError';
 
-export type ReferenceContext = ReferenceContext.referenceContextProfilePhoto | ReferenceContext.referenceContextMessage | ReferenceContext.referenceContextEmojiesSounds | ReferenceContext.referenceContextReactions | ReferenceContext.referenceContextUserFull | ReferenceContext.referenceContextCustomEmoji;
+export type ReferenceContext = ReferenceContext.referenceContextProfilePhoto | ReferenceContext.referenceContextMessage | ReferenceContext.referenceContextEmojiesSounds | ReferenceContext.referenceContextReactions | ReferenceContext.referenceContextUserFull | ReferenceContext.referenceContextCustomEmoji | ReferenceContext.referenceContextAttachMenuBotIcon;
 export namespace ReferenceContext {
   export type referenceContextProfilePhoto = {
     type: 'profilePhoto',
@@ -40,6 +40,11 @@ export namespace ReferenceContext {
   export type referenceContextCustomEmoji = {
     type: 'customEmoji',
     docId: DocId
+  };
+
+  export type referenceContextAttachMenuBotIcon = {
+    type: 'attachMenuBotIcon',
+    botId: BotId
   };
 }
 
@@ -157,6 +162,12 @@ export class ReferenceDatabase extends AppManager {
 
       case 'customEmoji': {
         promise = this.appEmojiManager.getCustomEmojiDocuments([context.docId]);
+        break;
+      }
+
+      case 'attachMenuBotIcon': {
+        promise = this.appAttachMenuBotsManager.getAttachMenuBot(context.botId, true) as any;
+        break;
       }
 
       default: {

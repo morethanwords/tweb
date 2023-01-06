@@ -7,18 +7,20 @@
 import {ChatAutoDownloadSettings} from '../../helpers/autoDownload';
 import mediaSizes from '../../helpers/mediaSizes';
 import {Middleware} from '../../helpers/middleware';
-import {Message, PhotoSize} from '../../layer';
+import {Document, Message, MessageMedia, Photo, PhotoSize} from '../../layer';
 import {AppManagers} from '../../lib/appManagers/managers';
 import getMediaFromMessage from '../../lib/appManagers/utils/messages/getMediaFromMessage';
 import choosePhotoSize from '../../lib/appManagers/utils/photos/choosePhotoSize';
 import rootScope from '../../lib/rootScope';
+import {AnimationItemGroup} from '../animationIntersector';
 import Chat from '../chat/chat';
 import LazyLoadQueue from '../lazyLoadQueue';
 import prepareAlbum from '../prepareAlbum';
+import wrapMediaSpoiler from './mediaSpoiler';
 import wrapPhoto from './photo';
 import wrapVideo from './video';
 
-export default function wrapAlbum({messages, attachmentDiv, middleware, uploading, lazyLoadQueue, isOut, chat, loadPromises, autoDownload, managers = rootScope.managers}: {
+export default function wrapAlbum({messages, attachmentDiv, middleware, uploading, lazyLoadQueue, isOut, chat, loadPromises, autoDownload, managers = rootScope.managers, animationGroup}: {
   messages: Message.message[],
   attachmentDiv: HTMLElement,
   middleware?: Middleware,
@@ -28,13 +30,14 @@ export default function wrapAlbum({messages, attachmentDiv, middleware, uploadin
   chat: Chat,
   loadPromises?: Promise<any>[],
   autoDownload?: ChatAutoDownloadSettings,
-  managers?: AppManagers
+  managers?: AppManagers,
+  animationGroup?: AnimationItemGroup
 }) {
-  const items: {size: PhotoSize.photoSize, media: any, message: any}[] = [];
+  const items: {size: PhotoSize.photoSize, media: Photo.photo | Document.document, message: Message.message}[] = [];
 
   // !lowest msgID will be the FIRST in album
   for(const message of messages) {
-    const media = getMediaFromMessage(message);
+    const media: Photo.photo | Document.document = getMediaFromMessage(message);
 
     const size: any = media._ === 'photo' ? choosePhotoSize(media, 480, 480) : {w: media.w, h: media.h};
     items.push({size, media, message});
@@ -54,8 +57,15 @@ export default function wrapAlbum({messages, attachmentDiv, middleware, uploadin
     forMedia: true
   });
 
+  const {width, height} = attachmentDiv.style;
+  const containerWidth = parseInt(width);
+  const containerHeight = parseInt(height);
+
   items.forEach((item, idx) => {
     const {size, media, message} = item;
+
+    const messageMedia = message.media;
+    const hasSpoiler = !!(messageMedia as MessageMedia.messageMediaPhoto | MessageMedia.messageMediaDocument).pFlags?.spoiler;
 
     const div = attachmentDiv.children[idx] as HTMLElement;
     div.dataset.mid = '' + message.mid;
@@ -80,7 +90,7 @@ export default function wrapAlbum({messages, attachmentDiv, middleware, uploadin
       });
     } else {
       thumbPromise = wrapVideo({
-        doc: message.media.document,
+        doc: media,
         container: mediaDiv,
         message,
         boxWidth: 0,
@@ -91,12 +101,40 @@ export default function wrapAlbum({messages, attachmentDiv, middleware, uploadin
         middleware,
         loadPromises,
         autoDownload,
-        managers
+        managers,
+        noAutoplayAttribute: hasSpoiler
       });
     }
 
-    if(thumbPromise && loadPromises) {
-      loadPromises.push(thumbPromise);
+    if(thumbPromise) {
+      loadPromises?.push(thumbPromise);
+    }
+
+    if(hasSpoiler) {
+      const promise = (thumbPromise || Promise.resolve()).then(async() => {
+        if(!middleware()) {
+          return;
+        }
+
+        const {width, height} = div.style;
+        const itemWidth = +width.slice(0, -1) / 100 * containerWidth;
+        const itemHeight = +height.slice(0, -1) / 100 * containerHeight;
+        const container = await wrapMediaSpoiler({
+          media,
+          animationGroup,
+          middleware,
+          width: itemWidth,
+          height: itemHeight
+        });
+
+        if(!middleware()) {
+          return;
+        }
+
+        mediaDiv.append(container);
+      });
+
+      loadPromises?.push(promise);
     }
   });
 }

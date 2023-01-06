@@ -390,7 +390,12 @@ export default class PopupCall extends PopupElement {
 
     const outputState = instance.getMediaState('output');
 
-    SetTransition(this.partyMutedState, 'is-visible', !!outputState?.muted, 300);
+    SetTransition({
+      element: this.partyMutedState,
+      className: 'is-visible',
+      forwards: !!outputState?.muted,
+      duration: 300
+    });
 
     const containers = this.videoContainers;
     const oldContainers = {...containers};

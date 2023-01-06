@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {DialogFilter, Update} from '../../layer';
+import type {DialogFilter, ForumTopic, Update} from '../../layer';
 import type {Dialog} from '../appManagers/appMessagesManager';
 import forEachReverse from '../../helpers/array/forEachReverse';
 import copy from '../../helpers/object/copy';
@@ -204,9 +204,13 @@ export default class FiltersStorage extends AppManager {
     this.appStateManager.pushToState('filtersArr', this.filtersArr);
   }
 
-  public testDialogForFilter(dialog: Dialog, filter: MyDialogFilter) {
+  public testDialogForFilter(dialog: Dialog | ForumTopic.forumTopic, filter?: MyDialogFilter) {
+    if(!filter) {
+      return true;
+    }
+
     if(REAL_FOLDERS.has(filter.id)) {
-      return dialog.folder_id === filter.id && this.dialogsStorage.canSaveDialogByPeerId(dialog.peerId);
+      return (dialog as Dialog).folder_id === filter.id && this.dialogsStorage.canSaveDialogByPeerId(dialog.peerId);
     }
 
     const peerId = dialog.peerId;
@@ -229,7 +233,7 @@ export default class FiltersStorage extends AppManager {
     const pFlags = filter.pFlags;
 
     // exclude_archived
-    if(pFlags.exclude_archived && dialog.folder_id === FOLDER_ID_ARCHIVE) {
+    if(pFlags.exclude_archived && (dialog as Dialog).folder_id === FOLDER_ID_ARCHIVE) {
       return false;
     }
 
@@ -239,7 +243,7 @@ export default class FiltersStorage extends AppManager {
     }
 
     // exclude_muted
-    if(pFlags.exclude_muted && this.appNotificationsManager.isPeerLocalMuted(peerId) && !(dialog.unread_mentions_count && dialog.unread_count)) {
+    if(pFlags.exclude_muted && this.appNotificationsManager.isPeerLocalMuted({peerId}) && !(dialog.unread_mentions_count && dialog.unread_count)) {
       return false;
     }
 
@@ -420,9 +424,12 @@ export default class FiltersStorage extends AppManager {
   //   }
   // }
 
-  public reloadMissingPeerIds(filterId: number, type: 'pinned_peers' | 'include_peers' | 'exclude_peers' = 'pinned_peers') {
+  public reloadMissingPeerIds(
+    filterId: number,
+    type: 'pinned_peers' | 'include_peers' | 'exclude_peers' = 'pinned_peers'
+  ) {
     const filter = this.getFilter(filterId);
-    const peers = filter && filter[type];
+    const peers = filter?.[type];
     if(!peers?.length) {
       return;
     }

@@ -9,19 +9,25 @@ import PopupElement, {addCancelButton} from '.';
 import PopupPeer, {PopupPeerButtonCallbackCheckboxes, PopupPeerOptions} from './peer';
 import {ChatType} from '../chat/chat';
 import {i18n, LangPackKey} from '../../lib/langPack';
-import PeerTitle from '../peerTitle';
 import hasRights from '../../lib/appManagers/utils/chats/hasRights';
 import filterAsync from '../../helpers/array/filterAsync';
+import wrapPeerTitle from '../wrappers/peerTitle';
 
 export default class PopupDeleteMessages {
-  constructor(private peerId: PeerId, private mids: number[], private type: ChatType, private onConfirm?: () => void) {
+  constructor(
+    private peerId: PeerId,
+    private mids: number[],
+    private type: ChatType,
+    private onConfirm?: () => void,
+    private threadId?: number
+  ) {
     this.construct();
   }
 
   private async construct() {
-    let {peerId, mids, type, onConfirm} = this;
+    let {peerId, mids, type, onConfirm, threadId} = this;
 
-    const peerTitleElement = new PeerTitle({peerId}).element;
+    const peerTitleElement = await wrapPeerTitle({peerId, threadId});
 
     const managers = PopupElement.MANAGERS;
 
@@ -98,6 +104,7 @@ export default class PopupDeleteMessages {
 
     const popup = new PopupPeer('popup-delete-chat', {
       peerId,
+      threadId,
       titleLangKey: title,
       titleLangArgs: titleArgs,
       descriptionLangKey: description,

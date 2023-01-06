@@ -12,6 +12,7 @@
 import type {MyDocument} from './appDocsManager';
 import type {MyPhoto} from './appPhotosManager';
 import type {MyTopPeer} from './appUsersManager';
+import type {AppMessagesManager, MessageSendingParams} from './appMessagesManager';
 import {BotInlineResult, GeoPoint, InputGeoPoint, InputMedia, MessageEntity, MessageMedia, MessagesBotResults, ReplyMarkup} from '../../layer';
 import insertInDescendSortedArray from '../../helpers/array/insertInDescendSortedArray';
 import {AppManager} from './manager';
@@ -19,7 +20,6 @@ import getPhotoMediaInput from './utils/photos/getPhotoMediaInput';
 import getServerMessageId from './utils/messageId/getServerMessageId';
 import generateQId from './utils/inlineBots/generateQId';
 import getDocumentMediaInput from './utils/docs/getDocumentMediaInput';
-import {AppMessagesManager} from './appMessagesManager';
 
 export class AppInlineBotsManager extends AppManager {
   private inlineResults: {[queryAndResultIds: string]: BotInlineResult} = {};
@@ -224,7 +224,7 @@ export class AppInlineBotsManager extends AppManager {
   }
 
   public switchInlineQuery(peerId: PeerId, threadId: number, botId: BotId, query: string) {
-    this.appDraftsManager.setDraft(peerId, threadId, '@' + this.appUsersManager.getUser(botId).username + ' ' + query);
+    this.appDraftsManager.setDraft(peerId, threadId, '@' + this.appPeersManager.getPeerUsername(botId.toPeerId()) + ' ' + query);
   }
 
   public callbackButtonClick(peerId: PeerId, mid: number, button: any) {
@@ -253,17 +253,13 @@ export class AppInlineBotsManager extends AppManager {
     })
   } */
 
-  public sendInlineResult(peerId: PeerId, botId: BotId, queryAndResultIds: string, options: Partial<{
+  public sendInlineResult(peerId: PeerId, botId: BotId, queryAndResultIds: string, options: MessageSendingParams & Partial<{
     viaBotId: BotId,
     queryId: string,
     resultId: string,
     replyMarkup: ReplyMarkup,
     entities: MessageEntity[],
-    replyToMsgId: number,
     clearDraft: true,
-    scheduleDate: number,
-    silent: true,
-    sendAsPeerId: PeerId,
     geoPoint: GeoPoint
   }> = {}) {
     const inlineResult = this.inlineResults[queryAndResultIds];

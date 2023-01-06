@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import ButtonMenu, {ButtonMenuItemOptions} from '../../components/buttonMenu';
+import ButtonMenu, {ButtonMenuItemOptionsVerifiable} from '../../components/buttonMenu';
 import filterAsync from '../array/filterAsync';
 import contextMenuController from '../contextMenuController';
 import ListenerSetter from '../listenerSetter';
@@ -12,32 +12,36 @@ import {getMiddleware} from '../middleware';
 import positionMenu from '../positionMenu';
 import {attachContextMenuListener} from './attachContextMenuListener';
 
-export default function createContextMenu<T extends ButtonMenuItemOptions & {verify?: () => boolean | Promise<boolean>}>({
+export default function createContextMenu<T extends ButtonMenuItemOptionsVerifiable>({
   buttons,
   findElement,
   listenTo,
   appendTo,
   filterButtons,
   onOpen,
-  onClose
+  onClose,
+  onBeforeOpen,
+  listenerSetter: attachListenerSetter
 }: {
   buttons: T[],
-  findElement: (e: MouseEvent) => HTMLElement,
+  findElement?: (e: MouseEvent | TouchEvent) => HTMLElement,
   listenTo: HTMLElement,
   appendTo?: HTMLElement,
   filterButtons?: (buttons: T[]) => Promise<T[]>,
   onOpen?: (target: HTMLElement) => any,
-  onClose?: () => any
+  onClose?: () => any,
+  onBeforeOpen?: () => any,
+  listenerSetter?: ListenerSetter
 }) {
   appendTo ??= document.body;
 
-  const attachListenerSetter = new ListenerSetter();
+  attachListenerSetter ??= new ListenerSetter();
   const listenerSetter = new ListenerSetter();
   const middleware = getMiddleware();
   let element: HTMLElement;
 
   attachContextMenuListener(listenTo, (e) => {
-    const target = findElement(e as any);
+    const target = findElement ? findElement(e as any) : listenTo;
     if(!target) {
       return;
     }
@@ -95,8 +99,13 @@ export default function createContextMenu<T extends ButtonMenuItemOptions & {ver
       return;
     }
 
-    const _element = element = ButtonMenu(filteredButtons, listenerSetter);
+    const _element = element = await ButtonMenu({
+      buttons: filteredButtons,
+      listenerSetter
+    });
     _element.classList.add('contextmenu');
+
+    await onBeforeOpen?.();
 
     appendTo.append(_element);
 

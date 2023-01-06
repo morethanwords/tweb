@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {SettingSection} from '..';
 import {randomLong} from '../../../helpers/random';
 import I18n from '../../../lib/langPack';
 import rootScope from '../../../lib/rootScope';
 import RadioField from '../../radioField';
 import Row, {RadioFormFromRows} from '../../row';
+import SettingSection from '../../settingSection';
 import {SliderSuperTab} from '../../slider'
 
 export default class AppLanguageTab extends SliderSuperTab {
@@ -25,7 +25,6 @@ export default class AppLanguageTab extends SliderSuperTab {
   }
 
   public init(p: ReturnType<typeof AppLanguageTab['getInitArgs']>) {
-    this.header.classList.add('with-border');
     this.container.classList.add('language-container');
     this.setTitle('Telegram.LanguageViewController');
 

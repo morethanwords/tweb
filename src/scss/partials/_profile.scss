@@ -333,6 +333,9 @@
     font-size: .875rem;
     margin-bottom: .875rem;
     margin-top: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
     @include respond-to(handhelds) {
       margin-top: 3px;

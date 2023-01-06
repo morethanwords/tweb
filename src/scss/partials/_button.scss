@@ -114,6 +114,7 @@ $btn-menu-z-index: 4;
   font-size: 1rem;
   backdrop-filter: var(--menu-backdrop-filter);
   min-width: 11.25rem;
+  max-width: 16.25rem;
 
   &-old {
     padding: .5rem 0;
@@ -254,6 +255,8 @@ $btn-menu-z-index: 4;
     &:before {
       color: var(--primary-text-color);
       font-size: var(--icon-size);
+      align-self: flex-start;
+      margin-top: .125rem;
     }
 
     &-icon,
@@ -263,7 +266,18 @@ $btn-menu-z-index: 4;
     }
 
     &-icon {
+      --add: .25rem;
+      --total: calc(var(--icon-size) + var(--add));
       flex: 0 0 auto;
+      width: var(--total);
+      height: var(--total);
+      margin-right: calc(var(--icon-margin) - var(--add) / 2);
+      margin-left: calc(var(--add) / -2);
+
+      .media-photo {
+        width: inherit;
+        height: inherit;
+      }
     }
 
     @include respond-to(handhelds) {

@@ -4,7 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {SettingSection} from '..';
 import Row from '../../row';
 import CheckboxField from '../../checkboxField';
 import {InputNotifyPeer, Update} from '../../../layer';
@@ -15,13 +14,13 @@ import copy from '../../../helpers/object/copy';
 import convertKeyToInputKey from '../../../helpers/string/convertKeyToInputKey';
 import {MUTE_UNTIL} from '../../../lib/mtproto/mtproto_config';
 import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
+import SettingSection from '../../settingSection';
 
-type InputNotifyKey = Exclude<InputNotifyPeer['_'], 'inputNotifyPeer'>;
+type InputNotifyKey = Exclude<InputNotifyPeer['_'], 'inputNotifyPeer' | 'inputNotifyForumTopic'>;
 
 export default class AppNotificationsTab extends SliderSuperTabEventable {
   public init() {
-    this.header.classList.add('with-border');
-    this.container.classList.add('notifications-container', 'with-border');
+    this.container.classList.add('notifications-container');
     this.setTitle('Telegram.NotificationSettingsViewController');
 
     const NotifySection = (options: {

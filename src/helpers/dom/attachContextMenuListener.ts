@@ -24,7 +24,11 @@ export function cancelContextMenuOpening() {
   _cancelContextMenuOpening = true;
 }
 
-export function attachContextMenuListener(element: HTMLElement, callback: (e: Touch | MouseEvent) => void, listenerSetter?: ListenerSetter) {
+export function attachContextMenuListener(
+  element: HTMLElement,
+  callback: (e: TouchEvent | MouseEvent) => void,
+  listenerSetter?: ListenerSetter
+) {
   const add = listenerSetter ? listenerSetter.add(element) : element.addEventListener.bind(element);
   const remove = listenerSetter ? listenerSetter.removeManual.bind(listenerSetter, element) : element.removeEventListener.bind(element);
 
@@ -59,11 +63,11 @@ export function attachContextMenuListener(element: HTMLElement, callback: (e: To
           return;
         }
 
-        callback(e.touches[0]);
+        callback(e);
         onCancel();
 
         if(contextMenuController.isOpened()) {
-          element.addEventListener('touchend', cancelEvent, {once: true}); // * fix instant closing
+          add('touchend', cancelEvent, {once: true}); // * fix instant closing
         }
       }, .4e3);
     });
@@ -78,7 +82,7 @@ export function attachContextMenuListener(element: HTMLElement, callback: (e: To
       callback(e);
 
       if(contextMenuController.isOpened()) {
-        element.addEventListener('touchend', cancelEvent, {once: true}); // * fix instant closing
+        add('touchend', cancelEvent, {once: true}); // * fix instant closing
       }
     } : callback);
   }

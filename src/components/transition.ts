@@ -11,113 +11,147 @@ import whichChild from '../helpers/dom/whichChild';
 import cancelEvent from '../helpers/dom/cancelEvent';
 import ListenerSetter from '../helpers/listenerSetter';
 
-function slideNavigation(tabContent: HTMLElement, prevTabContent: HTMLElement, toRight: boolean) {
-  const width = prevTabContent.getBoundingClientRect().width;
-  const elements = [tabContent, prevTabContent];
-  if(toRight) elements.reverse();
-  elements[0].style.filter = `brightness(80%)`;
-  elements[0].style.transform = `translate3d(${-width * .25}px, 0, 0)`;
-  elements[1].style.transform = `translate3d(${width}px, 0, 0)`;
-
-  tabContent.classList.add('active');
-  void tabContent.offsetWidth; // reflow
-
-  tabContent.style.transform = '';
-  tabContent.style.filter = '';
-
-  return () => {
-    prevTabContent.style.transform = prevTabContent.style.filter = '';
-  };
+function makeTransitionFunction(options: TransitionFunction) {
+  return options;
 }
 
-function slideTabs(tabContent: HTMLElement, prevTabContent: HTMLElement, toRight: boolean) {
-  // Jolly Cobra's // Workaround for scrollable content flickering during animation.
-  // const scrollableContainer = findUpClassName(tabContent, 'scrollable-y');
-  // if(scrollableContainer && scrollableContainer.style.overflowY !== 'hidden') {
-  //   // const scrollBarWidth = scrollableContainer.offsetWidth - scrollableContainer.clientWidth;
-  //   scrollableContainer.style.overflowY = 'hidden';
-  //   // scrollableContainer.style.paddingRight = `${scrollBarWidth}px`;
-  //   // this.container.classList.add('sliding');
-  // }
+const slideNavigation = makeTransitionFunction({
+  callback: (tabContent, prevTabContent, toRight) => {
+    const width = prevTabContent.getBoundingClientRect().width;
+    const elements = [tabContent, prevTabContent];
+    if(toRight) elements.reverse();
+    elements[0].style.filter = `brightness(80%)`;
+    elements[0].style.transform = `translate3d(${-width * .25}px, 0, 0)`;
+    elements[1].style.transform = `translate3d(${width}px, 0, 0)`;
 
-  // window.requestAnimationFrame(() => {
-  const width = prevTabContent.getBoundingClientRect().width;
-  /* tabContent.style.setProperty('--width', width + 'px');
-    prevTabContent.style.setProperty('--width', width + 'px');
+    tabContent.classList.add('active');
+    void tabContent.offsetWidth; // reflow
 
-    tabContent.classList.add('active'); */
-  // void tabContent.offsetWidth; // reflow
-  const elements = [tabContent, prevTabContent];
-  if(toRight) elements.reverse();
-  elements[0].style.transform = `translate3d(${-width}px, 0, 0)`;
-  elements[1].style.transform = `translate3d(${width}px, 0, 0)`;
+    tabContent.style.transform = '';
+    tabContent.style.filter = '';
 
-  tabContent.classList.add('active');
-  void tabContent.offsetWidth; // reflow
+    return () => {
+      prevTabContent.style.transform = prevTabContent.style.filter = '';
+    };
+  },
+  animateFirst: false
+});
 
-  tabContent.style.transform = '';
-  // });
-
-  return () => {
-    prevTabContent.style.transform = '';
-
-    // if(scrollableContainer) {
-    //   // Jolly Cobra's // Workaround for scrollable content flickering during animation.
-    //   if(isSafari) { // ! safari doesn't respect sticky header, so it flicks when overflow is changing
-    //     scrollableContainer.style.display = 'none';
-    //   }
-
-    //   scrollableContainer.style.overflowY = '';
-
-    //   if(isSafari) {
-    //     void scrollableContainer.offsetLeft; // reflow
-    //     scrollableContainer.style.display = '';
-    //   }
-
-    //   // scrollableContainer.style.paddingRight = '0';
-    //   // this.container.classList.remove('sliding');
+const slideTabs = makeTransitionFunction({
+  callback: (tabContent, prevTabContent, toRight) => {
+    // Jolly Cobra's // Workaround for scrollable content flickering during animation.
+    // const scrollableContainer = findUpClassName(tabContent, 'scrollable-y');
+    // if(scrollableContainer && scrollableContainer.style.overflowY !== 'hidden') {
+    //   // const scrollBarWidth = scrollableContainer.offsetWidth - scrollableContainer.clientWidth;
+    //   scrollableContainer.style.overflowY = 'hidden';
+    //   // scrollableContainer.style.paddingRight = `${scrollBarWidth}px`;
+    //   // this.container.classList.add('sliding');
     // }
-  };
-}
 
-export const TransitionSlider = (
-  content: HTMLElement,
-  type: 'tabs' | 'navigation' | 'zoom-fade' | 'slide-fade' | 'none'/*  | 'counter' */,
-  transitionTime: number,
-  onTransitionEnd?: (id: number) => void,
-  isHeavy = true,
-  listenerSetter?: ListenerSetter
-) => {
-  let animationFunction: TransitionFunction = null;
+    // window.requestAnimationFrame(() => {
+    const width = prevTabContent.getBoundingClientRect().width;
+    /* tabContent.style.setProperty('--width', width + 'px');
+      prevTabContent.style.setProperty('--width', width + 'px');
 
-  switch(type) {
-    case 'tabs':
-      animationFunction = slideTabs;
-      break;
-    case 'navigation':
-      animationFunction = slideNavigation;
-      break;
-    /* default:
-      break; */
-  }
+      tabContent.classList.add('active'); */
+    // void tabContent.offsetWidth; // reflow
+    const elements = [tabContent, prevTabContent];
+    if(toRight) elements.reverse();
+    elements[0].style.transform = `translate3d(${-width}px, 0, 0)`;
+    elements[1].style.transform = `translate3d(${width}px, 0, 0)`;
 
-  content.dataset.animation = type;
+    tabContent.classList.add('active');
+    void tabContent.offsetWidth; // reflow
 
-  return Transition(content, animationFunction, transitionTime, onTransitionEnd, isHeavy, undefined, undefined, listenerSetter);
+    tabContent.style.transform = '';
+    // });
+
+    return () => {
+      prevTabContent.style.transform = '';
+
+      // if(scrollableContainer) {
+      //   // Jolly Cobra's // Workaround for scrollable content flickering during animation.
+      //   if(isSafari) { // ! safari doesn't respect sticky header, so it flicks when overflow is changing
+      //     scrollableContainer.style.display = 'none';
+      //   }
+
+      //   scrollableContainer.style.overflowY = '';
+
+      //   if(isSafari) {
+      //     void scrollableContainer.offsetLeft; // reflow
+      //     scrollableContainer.style.display = '';
+      //   }
+
+      //   // scrollableContainer.style.paddingRight = '0';
+      //   // this.container.classList.remove('sliding');
+      // }
+    };
+  },
+  animateFirst: false
+});
+
+const slideTopics = makeTransitionFunction({
+  callback: (tabContent, prevTabContent) => {
+    const rect = tabContent.getBoundingClientRect();
+    const offsetX = rect.width - 80;
+
+    tabContent.style.transform = `transformX(${offsetX}px)`;
+
+    tabContent.classList.add('active');
+    void tabContent.offsetWidth; // reflow
+
+    tabContent.style.transform = '';
+
+    return () => {};
+  },
+  animateFirst: true
+});
+
+const transitions: {[type in TransitionSliderType]?: TransitionFunction} = {
+  navigation: slideNavigation,
+  tabs: slideTabs
+  // topics: slideTopics
 };
 
-type TransitionFunction = (tabContent: HTMLElement, prevTabContent: HTMLElement, toRight: boolean) => void | (() => void);
+type TransitionSliderType = 'tabs' | 'navigation' | 'zoom-fade' | 'slide-fade' | 'topics' | 'none'/*  | 'counter' */;
 
-const Transition = (
+type TransitionSliderOptions = {
   content: HTMLElement,
-  animationFunction: TransitionFunction,
+  type: TransitionSliderType,
   transitionTime: number,
   onTransitionEnd?: (id: number) => void,
-  isHeavy = true,
-  once = false,
-  withAnimationListener = true,
-  listenerSetter?: ListenerSetter
-) => {
+  isHeavy?: boolean,
+  once?: boolean,
+  withAnimationListener?: boolean,
+  listenerSetter?: ListenerSetter,
+  animateFirst?: boolean
+};
+
+type TransitionFunction = {
+  callback: (tabContent: HTMLElement, prevTabContent: HTMLElement, toRight: boolean) => () => void,
+  animateFirst: boolean
+};
+
+const TransitionSlider = (options: TransitionSliderOptions) => {
+  let {
+    content,
+    type,
+    transitionTime,
+    onTransitionEnd,
+    isHeavy = true,
+    once = false,
+    withAnimationListener = true,
+    listenerSetter,
+    animateFirst = false
+  } = options;
+
+  const {callback: animationFunction, animateFirst: _animateFirst} = transitions[type] || {};
+  content.dataset.animation = type;
+
+  if(_animateFirst !== undefined) {
+    animateFirst = _animateFirst;
+  }
+
   const onTransitionEndCallbacks: Map<HTMLElement, Function> = new Map();
   let animationDeferred: CancellablePromise<void>;
   // let animationStarted = 0;
@@ -149,9 +183,7 @@ const Transition = (
         animationDeferred = undefined;
       }
 
-      if(onTransitionEnd) {
-        onTransitionEnd(selectTab.prevId());
-      }
+      onTransitionEnd?.(selectTab.prevId());
 
       content.classList.remove('animating', 'backwards', 'disable-hover');
 
@@ -184,7 +216,7 @@ const Transition = (
 
     const to = content.children[id] as HTMLElement;
 
-    if(!rootScope.settings.animationsEnabled || prevId === -1) {
+    if(!rootScope.settings.animationsEnabled || (prevId === -1 && !animateFirst)) {
       animate = false;
     }
 
@@ -213,7 +245,7 @@ const Transition = (
 
       from = to;
 
-      if(onTransitionEnd) onTransitionEnd(id);
+      onTransitionEnd?.(id);
       return;
     }
 
@@ -235,7 +267,7 @@ const Transition = (
     const toRight = prevId < id;
     content.classList.toggle('backwards', !toRight);
 
-    let onTransitionEndCallback: ReturnType<TransitionFunction>;
+    let onTransitionEndCallback: ReturnType<TransitionFunction['callback']>;
     if(!to) {
       // prevTabContent.classList.remove('active');
     } else {
@@ -268,9 +300,7 @@ const Transition = (
         clearTimeout(timeout);
         _from.classList.remove('active', 'from');
 
-        if(onTransitionEndCallback) {
-          onTransitionEndCallback?.();
-        }
+        onTransitionEndCallback?.();
 
         onTransitionEndCallbacks.delete(_from);
       };
@@ -309,4 +339,4 @@ const Transition = (
   return selectTab;
 };
 
-export default Transition;
+export default TransitionSlider;

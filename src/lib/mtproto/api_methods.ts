@@ -23,7 +23,8 @@ type HashOptions = {
   [queryJSON: string]: HashResult
 };
 
-export type ApiLimitType = 'pin' | 'folderPin' | 'folders' | 'favedStickers' | 'reactions' | 'bio';
+export type ApiLimitType = 'pin' | 'folderPin' | 'folders' |
+  'favedStickers' | 'reactions' | 'bio' | 'topicPin';
 
 export default abstract class ApiManagerMethods extends AppManager {
   private afterMessageIdTemp: number;
@@ -115,14 +116,15 @@ export default abstract class ApiManagerMethods extends AppManager {
           const hash = result.hash/*  || this.computeHash(result.messages) */;
 
           if(!this.hashes[method]) this.hashes[method] = {};
-          this.hashes[method][queryJSON] = {
+          cached = this.hashes[method][queryJSON] = {
             hash,
             result
           };
         }
 
         if(o.processResult) {
-          return o.processResult(result);
+          const newResult = o.processResult(result);
+          return cached ? cached.result = newResult : newResult;
         }
 
         return result;
@@ -294,18 +296,20 @@ export default abstract class ApiManagerMethods extends AppManager {
 
   public getLimit(type: ApiLimitType, isPremium?: boolean) {
     return callbackify(this.getAppConfig(), (appConfig) => {
-      const map: {[type in ApiLimitType]: [keyof MTAppConfig, keyof MTAppConfig]} = {
+      const map: {[type in ApiLimitType]: [keyof MTAppConfig, keyof MTAppConfig] | keyof MTAppConfig} = {
         pin: ['dialogs_pinned_limit_default', 'dialogs_pinned_limit_premium'],
         folderPin: ['dialogs_folder_pinned_limit_default', 'dialogs_folder_pinned_limit_premium'],
         folders: ['dialog_filters_limit_default', 'dialog_filters_limit_premium'],
         favedStickers: ['stickers_faved_limit_default', 'stickers_faved_limit_premium'],
         reactions: ['reactions_user_max_default', 'reactions_user_max_premium'],
-        bio: ['about_length_limit_default', 'about_length_limit_premium']
+        bio: ['about_length_limit_default', 'about_length_limit_premium'],
+        topicPin: 'topics_pinned_limit'
       };
 
       isPremium ??= this.rootScope.premium;
 
-      const key = map[type][isPremium ? 1 : 0];
+      const a = map[type];
+      const key = Array.isArray(a) ? a[isPremium ? 1 : 0] : a;
       return appConfig[key] as number;
     });
   }

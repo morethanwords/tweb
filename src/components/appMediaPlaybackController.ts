@@ -483,7 +483,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
         // }
       }
 
-      title = await getPeerTitle(peerId, true, false);
+      title = await getPeerTitle({peerId, plainText: true, onlyFirstName: false});
       artist = I18n.format(doc.type === 'voice' ? 'AttachAudio' : 'AttachRound', true);
     }
 

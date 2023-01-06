@@ -40,7 +40,7 @@ export class AppSidebarRight extends SidebarSlider {
   }
 
   public createSharedMediaTab() {
-    const tab = this.createTab(AppSharedMediaTab, true);
+    const tab = this.createTab(AppSharedMediaTab, false, true);
     tab.slider = this;
     // this.tabsContainer.prepend(tab.container);
     return tab;

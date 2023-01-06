@@ -35,7 +35,7 @@ export class AppWebPagesManager extends AppManager {
   }
 
   public saveWebPage(apiWebPage: WebPage, messageKey?: WebPageMessageKey, mediaContext?: ReferenceContext) {
-    if(apiWebPage._ === 'webPageNotModified') return;
+    if(apiWebPage._ === 'webPageNotModified' || apiWebPage._ === 'webPageEmpty') return;
     const {id} = apiWebPage;
 
     const oldWebPage = this.webpages[id];

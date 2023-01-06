@@ -28,7 +28,12 @@ export class AppDraftsManager extends AppManager {
     this.apiUpdatesManager.addMultipleEventsListeners({
       updateDraftMessage: (update) => {
         const peerId = this.appPeersManager.getPeerId(update.peer);
-        this.saveDraft(peerId, update.threadId, update.draft, {notify: true});
+        this.saveDraft({
+          peerId,
+          threadId: update.threadId,
+          draft: update.draft,
+          notify: true
+        });
       }
     });
 
@@ -76,10 +81,13 @@ export class AppDraftsManager extends AppManager {
     });
   }
 
-  public saveDraft(peerId: PeerId, threadId: number, apiDraft: DraftMessage, options: Partial<{
-    notify: boolean,
-    force: boolean
-  }> = {}) {
+  public saveDraft({peerId, threadId, draft: apiDraft, notify, force}: {
+    peerId: PeerId,
+    threadId?: number,
+    draft: DraftMessage,
+    notify?: boolean,
+    force?: boolean
+  }) {
     const draft = this.processApiDraft(apiDraft);
 
     const key = this.getKey(peerId, threadId);
@@ -93,13 +101,13 @@ export class AppDraftsManager extends AppManager {
       drafts: this.drafts
     });
 
-    if(options.notify) {
+    if(notify) {
       // console.warn(dT(), 'save draft', peerId, apiDraft, options)
       this.rootScope.dispatchEvent('draft_updated', {
         peerId,
         threadId,
         draft,
-        force: options.force
+        force
       });
     }
 
@@ -107,11 +115,11 @@ export class AppDraftsManager extends AppManager {
   }
 
   private isEmptyDraft(draft: DraftMessage) {
-    if(!draft || draft._ === 'draftMessageEmpty') {
+    if(draft?._ !== 'draftMessage') {
       return true;
     }
 
-    if(draft.reply_to_msg_id > 0) {
+    if(draft.reply_to_msg_id !== undefined && draft.reply_to_msg_id > 0) {
       return false;
     }
 
@@ -134,7 +142,7 @@ export class AppDraftsManager extends AppManager {
     return draft;
   }
 
-  public async syncDraft(peerId: PeerId, threadId: number, localDraft?: DraftMessage, saveOnServer = true, force = false) {
+  public syncDraft(peerId: PeerId, threadId: number, localDraft?: DraftMessage, saveOnServer = true, force = false) {
     // console.warn(dT(), 'sync draft', peerID)
     const serverDraft = this.getDraft(peerId, threadId);
     if(draftsAreEqual(serverDraft, localDraft)) {
@@ -171,12 +179,22 @@ export class AppDraftsManager extends AppManager {
       params.message = message;
     }
 
+    if(threadId) {
+      params.top_msg_id = getServerMessageId(threadId);
+    }
+
     const saveLocalDraft = draftObj || localDraft;
     saveLocalDraft.date = tsNow(true) + this.timeManager.getServerTimeOffset();
 
-    this.saveDraft(peerId, threadId, saveLocalDraft, {notify: true, force});
+    this.saveDraft({
+      peerId,
+      threadId,
+      draft: saveLocalDraft,
+      notify: true,
+      force
+    });
 
-    if(saveOnServer && !threadId) {
+    if(saveOnServer) {
       return this.apiManager.invokeApi('messages.saveDraft', params);
     }
 
@@ -208,7 +226,13 @@ export class AppDraftsManager extends AppManager {
     if(threadId) {
       this.syncDraft(peerId, threadId, emptyDraft as any, false, true);
     } else {
-      this.saveDraft(peerId, threadId, emptyDraft, {notify: true, force: true});
+      this.saveDraft({
+        peerId,
+        threadId,
+        draft: emptyDraft,
+        notify: true,
+        force: true
+      });
     }
   }
 
@@ -224,7 +248,13 @@ export class AppDraftsManager extends AppManager {
     if(threadId) {
       this.syncDraft(peerId, threadId, draft, false, true);
     } else {
-      this.saveDraft(peerId, threadId, draft, {notify: true, force: true});
+      this.saveDraft({
+        peerId,
+        threadId,
+        draft,
+        notify: true,
+        force: true
+      });
     }
   }
 }

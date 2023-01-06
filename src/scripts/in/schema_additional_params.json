@@ -92,7 +92,6 @@
     {"name": "unread", "type": "true"},
     {"name": "is_outgoing", "type": "true"},
     {"name": "is_scheduled", "type": "true"},
-    {"name": "rReply", "type": "string"},
     {"name": "viaBotId", "type": "PeerId"},
     {"name": "clear_history", "type": "boolean"},
     {"name": "pending", "type": "boolean"},
@@ -117,7 +116,6 @@
     {"name": "fromId", "type": "PeerId"},
     {"name": "unread", "type": "true"},
     {"name": "is_outgoing", "type": "true"},
-    {"name": "rReply", "type": "string"},
     {"name": "viaBotId", "type": "PeerId"},
     {"name": "is_single", "type": "true"},
     {"name": "pending", "type": "boolean"},
@@ -281,6 +279,11 @@
   ],
   "type": "Update"
 }, {
+  "predicate": "updateChannelMessageViews",
+  "params": [
+    {"name": "peerId", "type": "PeerId"}
+  ]
+}, {
   "predicate": "messages.stickerSet",
   "params": [
     {"name": "refreshTime", "type": "number"}
@@ -367,5 +370,17 @@
     {"name": "h", "type": "number"},
     {"name": "w", "type": "number"},
     {"name": "mime_type", "type": "MTMimeType"}
+  ]
+}, {
+  "predicate": "chatForbidden",
+  "params": [
+    {"name": "pFlags", "type": "{}"}
+  ]
+}, {
+  "predicate": "forumTopic",
+  "params": [
+    {"name": "peerId", "type": "PeerId"},
+    {"name": "index_0", "type": "number"},
+    {"name": "peer", "type": "Peer"}
   ]
 }]

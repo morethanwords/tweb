@@ -9,7 +9,7 @@ import placeCaretAtEnd from '../../helpers/dom/placeCaretAtEnd';
 import {AccountPassword, AccountTmpPassword} from '../../layer';
 import {InputState} from '../inputField';
 import PasswordInputField from '../passwordInputField';
-import {SettingSection} from '../sidebarLeft';
+import SettingSection from '../settingSection';
 import {PaymentButton} from './payment';
 
 export default class PopupPaymentCardConfirmation extends PopupElement<{

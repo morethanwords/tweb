@@ -20,11 +20,27 @@ import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import wrapPlainText from '../../lib/richTextProcessor/wrapPlainText';
 import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
 import rootScope from '../../lib/rootScope';
-import wrapMessageActionTextNew from './messageActionTextNew';
+import {Modify} from '../../types';
+import wrapMessageActionTextNew, {WrapMessageActionTextOptions} from './messageActionTextNew';
 
-export default async function wrapMessageForReply(message: MyMessage | MyDraftMessage, text: string, usingMids: number[], plain: true, highlightWord?: string, withoutMediaType?: boolean): Promise<string>;
-export default async function wrapMessageForReply(message: MyMessage | MyDraftMessage, text?: string, usingMids?: number[], plain?: false, highlightWord?: string, withoutMediaType?: boolean): Promise<DocumentFragment>;
-export default async function wrapMessageForReply(message: MyMessage | MyDraftMessage, text: string = (message as Message.message).message, usingMids?: number[], plain?: boolean, highlightWord?: string, withoutMediaType?: boolean): Promise<DocumentFragment | string> {
+export type WrapMessageForReplyOptions = Modify<WrapMessageActionTextOptions, {
+  message: MyMessage | MyDraftMessage
+}> & {
+  text?: string,
+  usingMids?: number[],
+  highlightWord?: string,
+  withoutMediaType?: boolean
+};
+
+// export default async function wrapMessageForReply(message: MyMessage | MyDraftMessage, text: string, usingMids: number[], plain: true, highlightWord?: string, withoutMediaType?: boolean): Promise<string>;
+// export default async function wrapMessageForReply(message: MyMessage | MyDraftMessage, text?: string, usingMids?: number[], plain?: false, highlightWord?: string, withoutMediaType?: boolean): Promise<DocumentFragment>;
+// export default async function wrapMessageForReply(message: MyMessage | MyDraftMessage, text: string = (message as Message.message).message, usingMids?: number[], plain?: boolean, highlightWord?: string, withoutMediaType?: boolean): Promise<DocumentFragment | string> {
+export default async function wrapMessageForReply<T extends WrapMessageForReplyOptions>(
+  options: T
+): Promise<T['plain'] extends true ? string : DocumentFragment> {
+  let {message, text, usingMids, plain, highlightWord, withoutMediaType} = options;
+  text ??= (message as Message.message).message;
+
   const parts: (Node | string)[] = [];
 
   let hasAlbumKey = false;
@@ -73,8 +89,8 @@ export default async function wrapMessageForReply(message: MyMessage | MyDraftMe
 
       if(usingFullAlbum) {
         const albumText = await appMessagesManager.getAlbumText(message.grouped_id);
-        text = albumText.message;
-        entities = albumText.totalEntities;
+        text = albumText?.message || '';
+        entities = albumText?.totalEntities || [];
 
         if(!withoutMediaType) {
           addPart('AttachAlbum');
@@ -139,7 +155,7 @@ export default async function wrapMessageForReply(message: MyMessage | MyDraftMe
 
             // will combine two parts into one
             const p = parts.splice(i, 2);
-            if(plain) parts.push((p[0] as string) + (p[1] as string));
+            if(plain) parts.push((p[0] as string) + (p[1] ? p[1] as string : ''));
             else {
               const span = window.document.createElement('span');
               span.append(...p);
@@ -191,7 +207,7 @@ export default async function wrapMessageForReply(message: MyMessage | MyDraftMe
   }
 
   if((message as Message.messageService).action) {
-    const actionWrapped = await wrapMessageActionTextNew((message as Message.messageService), plain);
+    const actionWrapped = await wrapMessageActionTextNew({message: (message as Message.messageService), plain});
     if(actionWrapped) {
       addPart(undefined, actionWrapped);
     }
@@ -242,10 +258,10 @@ export default async function wrapMessageForReply(message: MyMessage | MyDraftMe
   }
 
   if(plain) {
-    return parts.join('');
+    return parts.join('') as any;
   } else {
     const fragment = document.createDocumentFragment();
     fragment.append(...parts);
-    return fragment;
+    return fragment as any;
   }
 }

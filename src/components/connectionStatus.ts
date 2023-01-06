@@ -177,7 +177,12 @@ export default class ConnectionStatusComponent {
       if(this.setStateTimeout) clearTimeout(this.setStateTimeout);
 
       const cb = () => {
-        SetTransition(this.statusContainer, 'is-shown', this.connecting || this.updating, 200);
+        SetTransition({
+          element: this.statusContainer,
+          className: 'is-shown',
+          forwards: this.connecting || this.updating,
+          duration: 200
+        });
         this.setStateTimeout = 0;
         DEBUG && this.log('setState: isShown:', this.connecting || this.updating);
       };

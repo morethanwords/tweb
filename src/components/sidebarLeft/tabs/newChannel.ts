@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appSidebarLeft, {SettingSection} from '..';
+import appSidebarLeft from '..';
 import {InputFile} from '../../../layer';
 import InputField from '../../inputField';
 import {SliderSuperTab} from '../../slider';
@@ -14,6 +14,7 @@ import {_i18n} from '../../../lib/langPack';
 import ButtonCorner from '../../buttonCorner';
 import appImManager from '../../../lib/appManagers/appImManager';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
+import SettingSection from '../../settingSection';
 
 export default class AppNewChannelTab extends SliderSuperTab {
   private uploadAvatar: () => Promise<InputFile> = null;

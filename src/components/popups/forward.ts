@@ -30,8 +30,5 @@ export default class PopupForward extends PopupPickUser {
       chatRightsAction: 'send_messages',
       selfPresence: 'ChatYourSelf'
     });
-
-    this.scrollable = this.selector.scrollable;
-    this.attachScrollableListeners(this.scrollable);
   }
 }

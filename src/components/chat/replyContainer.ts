@@ -7,7 +7,7 @@
 import replaceContent from '../../helpers/dom/replaceContent';
 import {Middleware} from '../../helpers/middleware';
 import limitSymbols from '../../helpers/string/limitSymbols';
-import {Document, MessageMedia, Photo, WebPage} from '../../layer';
+import {Document, Message, MessageMedia, Photo, WebPage} from '../../layer';
 import appImManager from '../../lib/appManagers/appImManager';
 import choosePhotoSize from '../../lib/appManagers/utils/photos/choosePhotoSize';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
@@ -25,7 +25,7 @@ export async function wrapReplyDivAndCaption(options: {
   titleEl: HTMLElement,
   subtitle: string | HTMLElement | DocumentFragment,
   subtitleEl: HTMLElement,
-  message: any,
+  message: Message.message | Message.messageService,
   mediaEl: HTMLElement,
   loadPromises?: Promise<any>[],
   animationGroup: AnimationItemGroup
@@ -44,13 +44,13 @@ export async function wrapReplyDivAndCaption(options: {
     loadPromises = [];
   }
 
-  let messageMedia: MessageMedia | WebPage.webPage = message?.media;
+  let messageMedia: MessageMedia | WebPage.webPage = (message as Message.message)?.media;
   let setMedia = false, isRound = false;
   const mediaChildren = mediaEl ? Array.from(mediaEl.children).slice() : [];
   let middleware: Middleware;
   if(messageMedia && mediaEl) {
     subtitleEl.textContent = '';
-    subtitleEl.append(await wrapMessageForReply(message, undefined, undefined, undefined, undefined, true));
+    subtitleEl.append(await wrapMessageForReply({message, animationGroup, withoutMediaType: true}));
 
     messageMedia = (messageMedia as MessageMedia.messageMediaWebPage).webpage as WebPage.webPage || messageMedia;
     const photo = (messageMedia as MessageMedia.messageMediaPhoto).photo as Photo.photo;
@@ -114,7 +114,7 @@ export async function wrapReplyDivAndCaption(options: {
   } else {
     if(message) {
       subtitleEl.textContent = '';
-      subtitleEl.append(await wrapMessageForReply(message));
+      subtitleEl.append(await wrapMessageForReply({message}));
     } else {
       if(typeof(subtitle) === 'string') {
         subtitle = limitSymbols(subtitle, 140);

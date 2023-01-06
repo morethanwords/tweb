@@ -43,6 +43,7 @@ import type {AppStoragesManager} from './appStoragesManager';
 import type {AppUsersManager} from './appUsersManager';
 import type AppWebDocsManager from './appWebDocsManager';
 import type {AppWebPagesManager} from './appWebPagesManager';
+import type AppAttachMenuBotsManager from './appAttachMenuBotsManager';
 import type {AppManagers} from './managers';
 
 export class AppManager {
@@ -86,6 +87,7 @@ export class AppManager {
   protected appStateManager: AppStateManager;
   protected appWebDocsManager: AppWebDocsManager;
   protected appPaymentsManager: AppPaymentsManager;
+  protected appAttachMenuBotsManager: AppAttachMenuBotsManager;
 
   public clear: (init?: boolean) => void;
 

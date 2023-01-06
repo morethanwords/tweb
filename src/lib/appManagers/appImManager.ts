@@ -4,6 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type {GroupCallId, MyGroupCall} from './appGroupCallsManager';
+import type GroupCallInstance from '../calls/groupCallInstance';
+import type CallInstance from '../calls/callInstance';
 import animationIntersector, {AnimationItemGroup} from '../../components/animationIntersector';
 import appSidebarLeft, {LEFT_COLUMN_ACTIVE_CLASSNAME} from '../../components/sidebarLeft';
 import appSidebarRight, {RIGHT_COLUMN_ACTIVE_CLASSNAME} from '../../components/sidebarRight';
@@ -24,7 +27,7 @@ import {MOUNT_CLASS_TO} from '../../config/debug';
 import appNavigationController from '../../components/appNavigationController';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import I18n, {i18n, join, LangPackKey} from '../langPack';
-import {ChatFull, ChatInvite, ChatParticipant, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction} from '../../layer';
+import {ChatFull, ChatInvite, ChatParticipant, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat} from '../../layer';
 import PeerTitle from '../../components/peerTitle';
 import PopupPeer from '../../components/popups/peer';
 import blurActiveElement from '../../helpers/dom/blurActiveElement';
@@ -45,21 +48,18 @@ import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport'
 import {NULL_PEER_ID} from '../mtproto/mtproto_config';
 import telegramMeWebManager from '../mtproto/telegramMeWebManager';
 import {ONE_DAY} from '../../helpers/date';
-import type {GroupCallId, MyGroupCall} from './appGroupCallsManager';
 import TopbarCall from '../../components/topbarCall';
 import confirmationPopup from '../../components/confirmationPopup';
 import IS_GROUP_CALL_SUPPORTED from '../../environment/groupCallSupport';
 import IS_CALL_SUPPORTED from '../../environment/callSupport';
 import {CallType} from '../calls/types';
-import {Awaited, Modify, SendMessageEmojiInteractionData} from '../../types';
+import {Modify, SendMessageEmojiInteractionData} from '../../types';
 import htmlToSpan from '../../helpers/dom/htmlToSpan';
 import getVisibleRect from '../../helpers/dom/getVisibleRect';
-import {attachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent';
+import {simulateClickEvent} from '../../helpers/dom/clickEvent';
 import PopupCall from '../../components/call';
 import copy from '../../helpers/object/copy';
 import getObjectKeysAndSort from '../../helpers/object/getObjectKeysAndSort';
-import type GroupCallInstance from '../calls/groupCallInstance';
-import type CallInstance from '../calls/callInstance';
 import numberThousandSplitter from '../../helpers/number/numberThousandSplitter';
 import ChatBackgroundPatternRenderer from '../../components/chat/patternRenderer';
 import {IS_FIREFOX} from '../../environment/userAgent';
@@ -97,6 +97,7 @@ import {makeMediaSize, MediaSize} from '../../helpers/mediaSize';
 import {MiddleEllipsisElement} from '../../components/middleEllipsis';
 import addAnchorListener from '../../helpers/addAnchorListener';
 import parseUriParams from '../../helpers/string/parseUriParams';
+import getMessageThreadId from './utils/messages/getMessageThreadId';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -104,21 +105,23 @@ export type ChatSavedPosition = {
 };
 
 export type ChatSetPeerOptions = {
-  peerId?: PeerId,
+  peerId: PeerId,
   lastMsgId?: number,
   threadId?: number,
-  startParam?: string
-};
-
-export type ChatSetInnerPeerOptions = Modify<ChatSetPeerOptions, {
-  peerId: PeerId
-}> & {
+  startParam?: string,
+  stack?: number,
+  commentId?: number,
   type?: ChatType
 };
 
+export type ChatSetInnerPeerOptions = Modify<ChatSetPeerOptions, {
+  peerId: PeerId,
+  type?: ChatType
+}>;
+
 export class AppImManager extends EventListenerBase<{
   chat_changing: (details: {from: Chat, to: Chat}) => void,
-  peer_changed: (peerId: PeerId) => void,
+  peer_changed: (chat: Chat) => void,
   peer_changing: (chat: Chat) => void,
 }> {
   public columnEl = document.getElementById('column-center') as HTMLDivElement;
@@ -216,6 +219,7 @@ export class AppImManager extends EventListenerBase<{
     };
     rootScope.addEventListener('premium_toggle', onPremiumToggle);
     onPremiumToggle(rootScope.premium);
+    this.managers.rootScope.getPremium().then(onPremiumToggle);
 
     useHeavyAnimationCheck(() => {
       animationIntersector.setOnlyOnePlayableGroup('lock');
@@ -268,6 +272,12 @@ export class AppImManager extends EventListenerBase<{
 
     rootScope.addEventListener('choosing_sticker', (choosing) => {
       this.setChoosingStickerTyping(!choosing);
+    });
+
+    rootScope.addEventListener('peer_title_edit', ({peerId, threadId}) => {
+      if(this.chat?.peerId === peerId && !threadId && this.tabId !== -1) {
+        this.overrideHash(peerId);
+      }
     });
 
     rootScope.addEventListener('peer_typings', ({peerId, typings}) => {
@@ -400,14 +410,27 @@ export class AppImManager extends EventListenerBase<{
         delete parentElement.dataset.spoilerTimeout;
       }
 
-      SetTransition(parentElement, className, true, duration, () => {
-        parentElement.dataset.spoilerTimeout = '' + window.setTimeout(() => {
-          SetTransition(parentElement, className, false, duration, () => {
-            parentElement.classList.remove('will-change');
-            delete parentElement.dataset.spoilerTimeout;
-          });
-        }, showDuration);
-      }, useRafs);
+      SetTransition({
+        element: parentElement,
+        className,
+        forwards: true,
+        duration,
+        onTransitionEnd: () => {
+          parentElement.dataset.spoilerTimeout = '' + window.setTimeout(() => {
+            SetTransition({
+              element: parentElement,
+              className,
+              forwards: false,
+              duration,
+              onTransitionEnd: () => {
+                parentElement.classList.remove('will-change');
+                delete parentElement.dataset.spoilerTimeout;
+              }
+            });
+          }, showDuration);
+        },
+        useRafs
+      });
     };
 
     rootScope.addEventListener('sticker_updated', ({type, faved}) => {
@@ -422,15 +445,17 @@ export class AppImManager extends EventListenerBase<{
       }
     });
 
-    apiManagerProxy.addEventListener('notificationBuild', (options) => {
-      if(this.chat.peerId === options.message.peerId && !idleController.isIdle) {
+    apiManagerProxy.addEventListener('notificationBuild', async(options) => {
+      const isForum = await this.managers.appPeersManager.isForum(options.message.peerId);
+      const threadId = getMessageThreadId(options.message, isForum);
+      if(this.chat.peerId === options.message.peerId && this.chat.threadId === threadId && !idleController.isIdle) {
         return;
       }
 
       uiNotificationsManager.buildNotification(options);
     });
 
-    this.addEventListener('peer_changed', async(peerId) => {
+    this.addEventListener('peer_changed', async({peerId}) => {
       document.body.classList.toggle('has-chat', !!peerId);
 
       this.emojiAnimationContainer.textContent = '';
@@ -635,7 +660,7 @@ export class AppImManager extends EventListenerBase<{
       uriParams: {thread?: string, comment?: string} | {comment?: string, start?: string}
     }>({
       name: 'im',
-      callback: async({pathnameParams, uriParams}) => {
+      callback: async({pathnameParams, uriParams}, element) => {
         let link: InternalLink;
         if(PHONE_NUMBER_REG_EXP.test(pathnameParams[0])) {
           link = {
@@ -643,20 +668,26 @@ export class AppImManager extends EventListenerBase<{
             phone: pathnameParams[0].slice(1)
           };
         } else if(pathnameParams[0] === 'c') {
+          pathnameParams.shift();
+          const thread = 'thread' in uriParams ? uriParams.thread : pathnameParams[2] && pathnameParams[1];
           link = {
             _: INTERNAL_LINK_TYPE.PRIVATE_POST,
-            channel: pathnameParams[1],
-            post: pathnameParams[2],
-            thread: 'thread' in uriParams && uriParams.thread,
-            comment: uriParams.comment
+            channel: pathnameParams[0],
+            post: pathnameParams[2] || pathnameParams[1],
+            thread,
+            comment: uriParams.comment,
+            stack: this.getStackFromElement(element)
           };
         } else {
+          const thread = 'thread' in uriParams ? uriParams.thread : pathnameParams[2] && pathnameParams[1];
           link = {
             _: INTERNAL_LINK_TYPE.MESSAGE,
             domain: pathnameParams[0],
-            post: pathnameParams[1],
+            post: pathnameParams[2] || pathnameParams[1],
+            thread,
             comment: uriParams.comment,
-            start: 'start' in uriParams ? uriParams.start : undefined
+            start: 'start' in uriParams ? uriParams.start : undefined,
+            stack: this.getStackFromElement(element)
           };
         }
 
@@ -689,14 +720,17 @@ export class AppImManager extends EventListenerBase<{
     }>({
       name: 'resolve',
       protocol: 'tg',
-      callback: ({uriParams}) => {
+      callback: ({uriParams}, element) => {
         let link: InternalLink;
         if(uriParams.phone) {
           link = this.makeLink(INTERNAL_LINK_TYPE.USER_PHONE_NUMBER, uriParams as Required<typeof uriParams>);
         } else if(uriParams.domain === 'telegrampassport') {
 
         } else {
-          link = this.makeLink(INTERNAL_LINK_TYPE.MESSAGE, uriParams);
+          link = this.makeLink(INTERNAL_LINK_TYPE.MESSAGE, {
+            ...uriParams,
+            stack: this.getStackFromElement(element)
+          });
         }
 
         this.processInternalLink(link);
@@ -749,6 +783,11 @@ export class AppImManager extends EventListenerBase<{
 
     this.onHashChange(true);
     this.attachKeydownListener();
+  }
+
+  private getStackFromElement(element: HTMLElement) {
+    const possibleBubble = findUpClassName(element, 'bubble');
+    return possibleBubble ? +possibleBubble.dataset.mid : undefined;
   }
 
   private deleteFilesIterative(callback: (response: Response) => boolean) {
@@ -869,12 +908,15 @@ export class AppImManager extends EventListenerBase<{
       case INTERNAL_LINK_TYPE.MESSAGE: {
         const postId = link.post ? generateMessageId(+link.post) : undefined;
         const commentId = link.comment ? generateMessageId(+link.comment) : undefined;
+        const threadId = link.thread ? generateMessageId(+link.thread) : undefined;
 
         this.openUsername({
           userName: link.domain,
           lastMsgId: postId,
           commentId,
-          startParam: link.start
+          startParam: link.start,
+          stack: link.stack,
+          threadId
         });
         break;
       }
@@ -884,7 +926,7 @@ export class AppImManager extends EventListenerBase<{
         const peerId = chatId.toPeerId(true);
 
         const chat = await this.managers.appChatsManager.getChat(chatId);
-        if(chat.deleted) {
+        if(!chat) {
           try {
             await this.managers.appChatsManager.resolveChannel(chatId);
           } catch(err) {
@@ -896,11 +938,11 @@ export class AppImManager extends EventListenerBase<{
         const postId = generateMessageId(+link.post);
         const threadId = link.thread ? generateMessageId(+link.thread) : undefined;
 
-        if(threadId) this.openThread(peerId, postId, threadId);
-        else this.setInnerPeer({
-          peerId,
+        this.op({
+          peer: chat,
           lastMsgId: postId,
-          threadId
+          threadId,
+          stack: link.stack
         });
         break;
       }
@@ -1062,30 +1104,60 @@ export class AppImManager extends EventListenerBase<{
     // location.hash = '';
   };
 
-  public openUsername(options: {
-    userName: string,
-    lastMsgId?: number,
-    threadId?: number,
-    commentId?: number,
-    startParam?: string
-  }) {
-    const {userName, lastMsgId, threadId, commentId, startParam} = options;
-    return this.managers.appUsersManager.resolveUsername(userName).then((peer) => {
-      const isUser = peer._ === 'user';
-      const peerId = peer.id.toPeerId(!isUser);
+  private async op(options: {
+    peer: User.user | MTChat
+  } & Omit<ChatSetPeerOptions, 'peerId'>) {
+    let {peer, commentId, threadId, lastMsgId} = options;
+    const isUser = peer._ === 'user';
+    const peerId = peer.id.toPeerId(!isUser);
 
-      if(threadId) {
-        return this.openThread(peerId, lastMsgId, threadId);
-      } else if(commentId) {
-        return this.openComment(peerId, lastMsgId, commentId);
+    const isForum = peer._ === 'channel' && peer.pFlags.forum;
+    // open forum tab
+    if(!commentId && !threadId && !lastMsgId && isForum) {
+      appDialogsManager.toggleForumTabByPeerId(peerId, true);
+      return;
+    }
+
+    // handle t.me/username/thread or t.me/username/messageId
+    if(isForum && lastMsgId && !threadId) {
+      const message = await this.managers.appMessagesManager.reloadMessages(peerId, lastMsgId);
+      if(message) {
+        threadId = options.threadId = getMessageThreadId(message, isForum);
+      } else {
+        threadId = options.threadId = lastMsgId;
+        lastMsgId = options.lastMsgId = undefined;
       }
+    }
 
-      return this.setInnerPeer({
-        peerId,
-        lastMsgId,
-        startParam: startParam
+    if(threadId) {
+      return this.openThread({
+        ...(options as any as Parameters<AppImManager['openThread']>[0]),
+        peerId
       });
-    }, (err) => {
+    } else if(commentId) {
+      return this.openComment({
+        peerId,
+        msgId: lastMsgId,
+        commentId
+      });
+    }
+
+    return this.setInnerPeer({
+      ...options,
+      peerId
+    });
+  }
+
+  public openUsername(options: {
+    userName: string
+  } & Omit<ChatSetPeerOptions, 'peerId'>) {
+    const {userName} = options;
+    return this.managers.appUsersManager.resolveUsername(userName).then((peer) => {
+      return this.op({
+        peer,
+        ...options
+      });
+    }, (err: ApiError) => {
       if(err.type === 'USERNAME_NOT_OCCUPIED') {
         toastNew({langPackKey: 'NoUsernameFound'});
       } else if(err.type === 'USERNAME_INVALID') {
@@ -1097,19 +1169,26 @@ export class AppImManager extends EventListenerBase<{
   /**
    * Opens thread when peerId of discussion group is known
    */
-  public openThread(peerId: PeerId, lastMsgId: number, threadId: number) {
-    return this.managers.appMessagesManager.reloadMessages(peerId, threadId).then((message) => {
-      // const message: Message = this.managers.appMessagesManager.getMessageByPeer(peerId, threadId);
+  public async openThread(options: {
+    peerId: PeerId,
+    lastMsgId: number,
+    threadId: number,
+    stack?: number
+  }) {
+    if(await this.managers.appChatsManager.isForum(options.peerId.toChatId())) {
+      await this.managers.dialogsStorage.getForumTopicOrReload(options.peerId, options.threadId);
+      return this.setInnerPeer(options);
+    }
+
+    return this.managers.appMessagesManager.reloadMessages(options.peerId, options.threadId).then((message) => {
       if(!message) {
-        lastMsgId = undefined;
+        options.lastMsgId = undefined;
       } else {
         this.managers.appMessagesManager.generateThreadServiceStartMessage(message);
       }
 
       return this.setInnerPeer({
-        peerId,
-        lastMsgId,
-        threadId,
+        ...options,
         type: 'discussion'
       });
     });
@@ -1118,9 +1197,17 @@ export class AppImManager extends EventListenerBase<{
   /**
    * Opens comment directly from original channel
    */
-  public openComment(peerId: PeerId, msgId: number, commentId: number) {
-    return this.managers.appMessagesManager.getDiscussionMessage(peerId, msgId).then((message) => {
-      return this.openThread(message.peerId, commentId, message.mid);
+  public openComment(options: {
+    peerId: PeerId,
+    msgId: number,
+    commentId: number
+  }) {
+    return this.managers.appMessagesManager.getDiscussionMessage(options.peerId, options.msgId).then((message) => {
+      return this.openThread({
+        peerId: message.peerId,
+        lastMsgId: options.commentId,
+        threadId: message.mid
+      });
     });
   }
 
@@ -1366,9 +1453,7 @@ export class AppImManager extends EventListenerBase<{
 
     this.chatsSelectTabDebounced = debounce(() => {
       const topbar = this.chat.topbar;
-      if(topbar.pinnedMessage) { // * буду молиться богам, чтобы это ничего не сломало, но это исправляет получение пиннеда после анимации
-        topbar.pinnedMessage.setCorrectIndex(0);
-      }
+      topbar.pinnedMessage?.setCorrectIndex(0); // * буду молиться богам, чтобы это ничего не сломало, но это исправляет получение пиннеда после анимации
 
       this.managers.apiFileManager.setQueueId(this.chat.bubbles.lazyLoadQueue.queueId);
     }, rootScope.settings.animationsEnabled ? 250 : 0, false, true);
@@ -1512,13 +1597,19 @@ export class AppImManager extends EventListenerBase<{
 
       // if(!mount) return;
 
-      SetTransition(_dropsContainer, 'is-visible', mount, 200, () => {
-        if(!mount) {
-          _drops.forEach((drop) => {
-            drop.destroy();
-          });
+      SetTransition({
+        element: _dropsContainer,
+        className: 'is-visible',
+        forwards: mount,
+        duration: 200,
+        onTransitionEnd: () => {
+          if(!mount) {
+            _drops.forEach((drop) => {
+              drop.destroy();
+            });
 
-          _drops.length = 0;
+            _drops.length = 0;
+          }
         }
       });
 
@@ -1625,7 +1716,13 @@ export class AppImManager extends EventListenerBase<{
     this.log('selectTab', id, prevTabId);
 
     let animationPromise: Promise<any> = rootScope.settings.animationsEnabled ? doubleRaf() : Promise.resolve();
-    if(prevTabId !== -1 && prevTabId !== id && rootScope.settings.animationsEnabled && animate !== false && mediaSizes.activeScreen !== ScreenSize.large) {
+    if(
+      prevTabId !== -1 &&
+      prevTabId !== id &&
+      rootScope.settings.animationsEnabled &&
+      animate !== false/*  &&
+      mediaSizes.activeScreen !== ScreenSize.large */
+    ) {
       const transitionTime = (mediaSizes.isMobile ? 250 : 200) + 100; // * cause transition time could be > 250ms
       animationPromise = pause(transitionTime);
       dispatchHeavyAnimationEvent(animationPromise, transitionTime);
@@ -1713,7 +1810,7 @@ export class AppImManager extends EventListenerBase<{
     this.chatsSelectTab(chatTo.container, animate);
 
     if(justReturn) {
-      this.dispatchEvent('peer_changed', chatTo.peerId);
+      this.dispatchEvent('peer_changed', chatTo);
 
       const searchTab = appSidebarRight.getTab(AppPrivateSearchTab);
       searchTab?.close();
@@ -1733,7 +1830,7 @@ export class AppImManager extends EventListenerBase<{
     }, 250 + 100);
   }
 
-  public async setPeer(options: ChatSetPeerOptions = {}, animate?: boolean): Promise<boolean> {
+  public async setPeer(options: Partial<ChatSetInnerPeerOptions> = {}, animate?: boolean): Promise<boolean> {
     if(this.init) {
       this.init();
       this.init = null;
@@ -1741,7 +1838,7 @@ export class AppImManager extends EventListenerBase<{
 
     options.peerId ??= NULL_PEER_ID;
 
-    const {peerId, lastMsgId} = options;
+    const {peerId, lastMsgId, threadId} = options;
 
     const chat = this.chat;
     const chatIndex = this.chats.indexOf(chat);
@@ -1754,7 +1851,7 @@ export class AppImManager extends EventListenerBase<{
         this.selectTab(+!this.tabId, animate);
         return;
       }
-    } else if(chatIndex > 0 && chat.peerId && chat.peerId !== peerId) {
+    } else if(chatIndex > 0 && chat.peerId && !this.isSamePeer(chat, options as any)) {
       // const firstChat = this.chats[0];
       // if(firstChat.peerId !== chat.peerId) {
       /* // * slice idx > 0, set background and slice first, so new one will be the first
@@ -1784,7 +1881,7 @@ export class AppImManager extends EventListenerBase<{
     }
 
     if(peerId || mediaSizes.activeScreen !== ScreenSize.mobile) {
-      const result = await chat.setPeer(peerId, lastMsgId, options.startParam);
+      const result = await chat.setPeer(options as any as Parameters<Chat['setPeer']>[0]);
 
       // * wait for cached render
       const promise = result?.cached ? result.promise : Promise.resolve();
@@ -1810,20 +1907,22 @@ export class AppImManager extends EventListenerBase<{
     }
   }
 
-  public setInnerPeer(options: ChatSetInnerPeerOptions) {
+  public async setInnerPeer(options: ChatSetInnerPeerOptions) {
     const {peerId} = options;
     if(peerId === NULL_PEER_ID || !peerId) {
       return;
     }
 
-    if(options.threadId) {
-      options.type = 'discussion';
+    if(!options.type) {
+      if(options.threadId && !(await this.managers.appPeersManager.isForum(options.peerId))) {
+        options.type = 'discussion';
+      }
+
+      options.type ??= 'chat';
     }
 
-    const type = options.type ??= 'chat';
-
     // * prevent opening already opened peer
-    const existingIndex = this.chats.findIndex((chat) => chat.peerId === peerId && chat.type === type);
+    const existingIndex = this.chats.findIndex((chat) => this.isSamePeer(chat, options));
     if(existingIndex !== -1) {
       this.spliceChats(existingIndex + 1);
       return this.setPeer(options);
@@ -1833,14 +1932,6 @@ export class AppImManager extends EventListenerBase<{
     let chat = oldChat;
     if(oldChat.inited) { // * use first not inited chat
       chat = this.createNewChat();
-    }
-
-    if(type) {
-      chat.setType(type);
-
-      if(options.threadId) {
-        chat.threadId = options.threadId;
-      }
     }
 
     this.dispatchEvent('chat_changing', {from: oldChat, to: chat});
@@ -1910,7 +2001,7 @@ export class AppImManager extends EventListenerBase<{
     return el;
   }
 
-  public async getPeerTyping(peerId: PeerId, container?: HTMLElement) {
+  public async getPeerTyping(peerId: PeerId, container?: HTMLElement, threadId?: number) {
     // const log = this.log.bindPrefix('getPeerTyping-' + peerId);
     // log('getting peer typing');
 
@@ -1920,7 +2011,7 @@ export class AppImManager extends EventListenerBase<{
       return;
     }
 
-    const typings = await this.managers.appProfileManager.getPeerTypings(peerId);
+    const typings = await this.managers.appProfileManager.getPeerTypings(peerId, threadId);
     if(!typings?.length) {
       // log('have no typing');
       return;
@@ -2049,8 +2140,8 @@ export class AppImManager extends EventListenerBase<{
     return container;
   }
 
-  private async getChatStatus(chatId: ChatId): Promise<AckedResult<HTMLElement>> {
-    const typingEl = await this.getPeerTyping(chatId.toPeerId(true));
+  private async getChatStatus(chatId: ChatId, noTyping?: boolean): Promise<AckedResult<HTMLElement>> {
+    const typingEl = noTyping ? undefined : await this.getPeerTyping(chatId.toPeerId(true));
     if(typingEl) {
       return {cached: true, result: Promise.resolve(typingEl)};
     }
@@ -2101,7 +2192,7 @@ export class AppImManager extends EventListenerBase<{
 
     const subtitle = getUserStatusString(user);
 
-    if(!user.pFlags.bot) {
+    if(!user.pFlags.bot && !user.pFlags.support) {
       let typingEl = await this.getPeerTyping(userId.toPeerId());
       if(!typingEl && user.status?._ === 'userStatusOnline') {
         typingEl = document.createElement('span');
@@ -2119,11 +2210,11 @@ export class AppImManager extends EventListenerBase<{
     return result;
   }
 
-  private async getPeerStatus(peerId: PeerId, ignoreSelf?: boolean) {
+  private async getPeerStatus(peerId: PeerId, ignoreSelf?: boolean, noTyping?: boolean) {
     if(!peerId) return;
     let promise: Promise<AckedResult<HTMLElement>>;
     if(peerId.isAnyChat()) {
-      promise = this.getChatStatus(peerId.toChatId());
+      promise = this.getChatStatus(peerId.toChatId(), noTyping);
     } else {
       promise = this.getUserStatus(peerId.toUserId(), ignoreSelf);
     }
@@ -2131,16 +2222,19 @@ export class AppImManager extends EventListenerBase<{
     return promise;
   }
 
-  public async setPeerStatus(
+  public async setPeerStatus(options: {
     peerId: PeerId,
     element: HTMLElement,
     needClear: boolean,
     useWhitespace: boolean,
     middleware: () => boolean,
-    ignoreSelf?: boolean
-  ) {
+    ignoreSelf?: boolean,
+    noTyping?: boolean
+  }) {
     // const log = this.log.bindPrefix('status-' + peerId);
     // log('setting status', element);
+
+    const {peerId, element, needClear, useWhitespace, middleware, ignoreSelf, noTyping} = options;
 
     if(!needClear) {
       // * good good good
@@ -2151,7 +2245,7 @@ export class AppImManager extends EventListenerBase<{
       }
     }
 
-    const result = await this.getPeerStatus(peerId, ignoreSelf);
+    const result = await this.getPeerStatus(peerId, ignoreSelf, noTyping);
     // log('getPeerStatus result', result);
     if(!middleware()) {
       // log.warn('middleware');
@@ -2168,18 +2262,24 @@ export class AppImManager extends EventListenerBase<{
     };
 
     const placeholder = useWhitespace ? NBSP : ''; // ! HERE U CAN FIND WHITESPACE
-    if(!result || result.cached) {
+    if(!result || result.cached || needClear === undefined) {
       return await set();
     } else if(needClear) {
       return () => {
         element.textContent = placeholder;
-        return set().then((callback) => callback && callback());
+        return set().then((callback) => callback?.());
       };
     }
   }
 
   public setChoosingStickerTyping(cancel: boolean) {
-    this.managers.appMessagesManager.setTyping(this.chat.peerId, {_: cancel ? 'sendMessageCancelAction' : 'sendMessageChooseStickerAction'});
+    this.managers.appMessagesManager.setTyping(this.chat.peerId, {_: cancel ? 'sendMessageCancelAction' : 'sendMessageChooseStickerAction'}, undefined, this.chat.threadId);
+  }
+
+  public isSamePeer(options1: {peerId: PeerId, threadId?: number, type?: ChatType}, options2: typeof options1) {
+    return options1.peerId === options2.peerId &&
+      options1.threadId === options2.threadId &&
+      (typeof(options1.type) !== typeof(options2.type) || options1.type === options2.type);
   }
 }
 

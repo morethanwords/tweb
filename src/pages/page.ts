@@ -10,7 +10,13 @@ export default class Page {
   public pageEl: HTMLDivElement;
   private installed = false;
 
-  constructor(className: string, public isAuthPage: boolean, private onFirstMount?: (...args: any[]) => Promise<any> | void, private onMount?: (...args: any[]) => void, public onShown?: () => void) {
+  constructor(
+    className: string,
+    public isAuthPage: boolean,
+    private onFirstMount?: (...args: any[]) => Promise<any> | void,
+    private onMount?: (...args: any[]) => Promise<any> | void,
+    public onShown?: () => void
+  ) {
     this.pageEl = document.body.querySelector('.' + className) as HTMLDivElement;
   }
 
@@ -18,7 +24,10 @@ export default class Page {
     // this.pageEl.style.display = '';
 
     if(this.onMount) {
-      this.onMount(...args);
+      const res = this.onMount(...args);
+      if(res instanceof Promise) {
+        await res;
+      }
     }
 
     if(!this.installed) {

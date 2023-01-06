@@ -4,7 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {SettingSection} from '../..';
 import {AccountPassword} from '../../../../layer';
 import Button from '../../../button';
 import {SliderSuperTab} from '../../../slider';
@@ -18,6 +17,7 @@ import {canFocus} from '../../../../helpers/dom/canFocus';
 import {attachClickEvent} from '../../../../helpers/dom/clickEvent';
 import matchEmail from '../../../../lib/richTextProcessor/matchEmail';
 import wrapStickerEmoji from '../../../wrappers/stickerEmoji';
+import SettingSection from '../../../settingSection';
 
 export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
   public inputField: InputField;

@@ -19,7 +19,6 @@ import LazyLoadQueueRepeat from '../../lazyLoadQueueRepeat';
 import {putPreloader} from '../../putPreloader';
 import PopupStickers from '../../popups/stickers';
 import Scrollable, {ScrollableX} from '../../scrollable';
-import StickyIntersector from '../../stickyIntersector';
 import findAndSplice from '../../../helpers/array/findAndSplice';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import positionElementByIndex from '../../../helpers/dom/positionElementByIndex';
@@ -169,7 +168,7 @@ export class StickersTabCategory<Item extends StickersTabCategoryItem, Additiona
   public id: string;
   public limit: number;
 
-  private getContainerSize: () => {width: number, height: number};
+  public getContainerSize: () => {width: number, height: number};
   private getElementMediaSize: () => MediaSize;
 
   private gapX: number;
@@ -237,7 +236,7 @@ export class StickersTabCategory<Item extends StickersTabCategoryItem, Additiona
     const elementSize = this.getElementMediaSize().width;
 
     let itemsPerRow = containerWidth / elementSize;
-    if(this.gapX && (itemsPerRow - 1) * this.gapX > containerWidth) --itemsPerRow;
+    if(this.gapX) itemsPerRow -= (itemsPerRow - 1) * this.gapX / elementSize;
     itemsPerRow = Math.floor(itemsPerRow);
 
     const rows = Math.ceil(this.items.length / itemsPerRow);
@@ -251,6 +250,9 @@ export class StickersTabCategory<Item extends StickersTabCategoryItem, Additiona
 export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> implements EmoticonsTab {
   public content: HTMLElement;
   public menuScroll: ScrollableX;
+  public container: HTMLElement;
+  public menuWrapper: HTMLElement;
+  public menu: HTMLElement;
 
   protected categories: {[id: string]: Category};
   protected categoriesMap: Map<HTMLElement, Category>;
@@ -258,14 +260,17 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
   protected categoriesIntersector: VisibilityIntersector;
   protected localCategories: Category[];
 
+  protected listenerSetter: ListenerSetter;
+
   public scrollable: Scrollable;
-  protected menu: HTMLElement;
   protected mounted = false;
   protected menuOnClickResult: ReturnType<typeof EmoticonsDropdown['menuOnClick']>;
 
   public tabId: number;
 
   protected postponedEvents: {cb: AnyFunction, args: any[]}[];
+
+  public getContainerSize: Category['getContainerSize'];
 
   constructor(
     protected managers: AppManagers,
@@ -280,6 +285,27 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
     this.categoriesByMenuTabMap = new Map();
     this.localCategories = [];
     this.postponedEvents = [];
+
+    this.listenerSetter = new ListenerSetter();
+
+    this.container = document.createElement('div');
+    this.container.classList.add('tabs-tab', 'emoticons-container');
+
+    this.menuWrapper = document.createElement('div');
+    this.menuWrapper.classList.add('menu-wrapper', 'emoticons-menu-wrapper');
+
+    this.menu = document.createElement('nav');
+    this.menu.className = 'menu-horizontal-div no-stripe justify-start emoticons-menu';
+
+    this.menuWrapper.append(this.menu);
+    this.menuScroll = new ScrollableX(this.menuWrapper);
+
+    this.content = document.createElement('div');
+    this.content.classList.add('emoticons-content');
+
+    this.container.append(this.menuWrapper, this.content);
+
+    this.scrollable = new Scrollable(this.content, 'STICKERS');
   }
 
   public getCategoryByContainer(container: HTMLElement) {
@@ -296,7 +322,7 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
       title,
       overflowElement: this.content,
       getContainerSize: () => {
-        const {width, height} = this.content.getBoundingClientRect();
+        const {width, height} = this.getContainerSize?.() ?? this.content.getBoundingClientRect();
         return {width: width - this.padding, height};
       },
       getElementMediaSize: this.getElementMediaSize,
@@ -434,13 +460,23 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
   }
 
   public init() {
-    emoticonsDropdown.addEventListener('closed', () => {
+    this.listenerSetter.add(emoticonsDropdown)('closed', () => {
       this.postponedEvents.forEach(({cb, args}) => {
         cb(...args);
       });
 
       this.postponedEvents.length = 0;
     });
+  }
+
+  public destroy() {
+    this.getContainerSize = undefined;
+    this.postponedEvents.length = 0;
+    this.categoriesIntersector?.disconnect();
+    this.listenerSetter.removeAll();
+    this.scrollable.destroy();
+    this.menuScroll?.destroy();
+    this.menuOnClickResult?.stickyIntersector?.disconnect();
   }
 
   protected postponedEvent = <K>(cb: (...args: K[]) => void) => {
@@ -467,6 +503,9 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
       4,
       4
     );
+
+    this.container.classList.add('stickers-padding');
+    this.content.id = 'content-stickers';
   }
 
   private setFavedLimit(limit: number) {
@@ -528,12 +567,6 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
   public init() {
     super.init();
 
-    this.content = document.getElementById('content-stickers');
-    const menuWrapper = this.content.previousElementSibling as HTMLElement;
-    const menu = this.menu = menuWrapper.firstElementChild as HTMLElement;
-    const menuScroll = this.menuScroll = new ScrollableX(menuWrapper);
-
-    this.scrollable = new Scrollable(this.content, 'STICKERS');
     this.scrollable.onAdditionalScroll = () => {
       this.setTyping();
     };
@@ -580,7 +613,7 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
       EmoticonsDropdown.onMediaClick(e);
     });
 
-    this.menuOnClickResult = EmoticonsDropdown.menuOnClick(this, menu, this.scrollable, menuScroll);
+    this.menuOnClickResult = EmoticonsDropdown.menuOnClick(this, this.menu, this.scrollable, this.menuScroll);
 
     const preloader = putPreloader(this.content, true);
 

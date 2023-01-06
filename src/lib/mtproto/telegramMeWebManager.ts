@@ -17,7 +17,7 @@ import tsNow from '../../helpers/tsNow';
 import sessionStorage from '../sessionStorage';
 
 export class TelegramMeWebManager {
-  private disabled = /* false &&  */(Modes.test || App.domains.indexOf(location.hostname) === -1);
+  private disabled = /* false &&  */(Modes.test || !App.domains.includes(location.hostname));
 
   public setAuthorized(canRedirect: boolean) {
     if(this.disabled) {

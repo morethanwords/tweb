@@ -79,7 +79,12 @@ export default class PopupJoinChatInvite extends PopupElement {
       });
       avatarElem.style.width = avatarElem.style.height = '';
     } else {
-      putPhoto(avatarElem, NULL_PEER_ID, false, chatInvite.title);
+      putPhoto({
+        div: avatarElem,
+        peerId: NULL_PEER_ID,
+        isDialog: false,
+        title: chatInvite.title
+      });
     }
 
     const title = document.createElement('div');

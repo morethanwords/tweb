@@ -58,6 +58,11 @@ export interface MTAppConfig {
   premium_promo_order?:                      string[];
   premium_bot_username?:                     string;
   premium_purchase_blocked?:                 boolean;
+  forum_upgrade_participants_min?:           number;
+  fragment_prefixes?:                        string[];
+  telegram_antispam_group_size_min?:         number;
+  telegram_antispam_user_id?:                UserId;
+  topics_pinned_limit?:                      number;
 }
 
 export interface EmojiesSendDiceSuccess {

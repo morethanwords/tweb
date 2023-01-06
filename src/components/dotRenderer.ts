@@ -7,8 +7,9 @@
 import {IS_MOBILE} from '../environment/userAgent';
 import {animate} from '../helpers/animation';
 import drawCircle, {drawCircleFromStart} from '../helpers/canvas/drawCircle';
+import {Middleware} from '../helpers/middleware';
 import clamp from '../helpers/number/clamp';
-import {AnimationItemWrapper} from './animationIntersector';
+import animationIntersector, {AnimationItemGroup, AnimationItemWrapper} from './animationIntersector';
 
 type DotRendererDot = {
   x: number,
@@ -144,5 +145,28 @@ export default class DotRenderer implements AnimationItemWrapper {
       this.draw();
       return true;
     });
+  }
+
+  public static create({
+    width,
+    height,
+    middleware,
+    animationGroup
+  }: {
+    width: number,
+    height: number,
+    middleware: Middleware,
+    animationGroup: AnimationItemGroup
+  }) {
+    middleware.onClean(() => {
+      animationIntersector.removeAnimationByPlayer(dotRenderer);
+    });
+
+    const dotRenderer = new DotRenderer(width, height);
+    dotRenderer.renderFirstFrame();
+
+    animationIntersector.addAnimation(dotRenderer, animationGroup, dotRenderer.canvas, true);
+
+    return dotRenderer;
   }
 }

@@ -772,7 +772,7 @@ export async function onEmojiStickerClick({event, container, managers, peerId, m
         _: 'dataJSON',
         data: JSON.stringify(data)
       }
-    }, true);
+    }, true, appImManager.chat.threadId);
 
     data.a.length = 0;
   }, 1000, false);

@@ -25,13 +25,16 @@ export function getSendingStatus(message: Message.message | Message.messageServi
     );
 }
 
+type C = 'check' | 'checks' | 'sending' | 'sendingerror' | 'premium_lock';
 export function setSendingStatus(
   container: HTMLElement,
-  message?: Message.message | Message.messageService,
+  message?: C | Message.message | Message.messageService,
   disableAnimationIfRippleFound?: boolean
 ) {
-  let className: 'check' | 'checks' | 'sending' | 'sendingerror';
-  if(message?.pFlags.out) {
+  let className: C;
+  if(typeof(message) === 'string') {
+    className = message;
+  } else if(message?.pFlags.out) {
     if(message.error) {
       className = 'sendingerror';
     } else if(message.pFlags.is_outgoing) {

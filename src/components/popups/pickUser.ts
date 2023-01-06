@@ -61,6 +61,9 @@ export default class PopupPickUser extends PopupElement {
       managers: this.managers
     });
 
+    this.scrollable = this.selector.scrollable;
+    this.attachScrollableListeners();
+
     // this.scrollable = new Scrollable(this.body);
 
     this.title.append(this.selector.input);

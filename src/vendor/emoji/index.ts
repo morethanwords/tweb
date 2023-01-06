@@ -40,8 +40,13 @@ export function getEmojiToneIndex(input: string) {
   return match ? 5 - (57343 - match[0].charCodeAt(0)) : 0;
 }
 
+const VIRTUAL_COUNTRIES_EMOJIS: Map<string, string> = new Map([
+  ['FT', '🏴‍☠']
+]);
+
 export function getCountryEmoji(iso2: string) {
-  return String.fromCharCode(55356, 56741 + iso2.charCodeAt(0), 55356, 56741 + iso2.charCodeAt(1));
+  return VIRTUAL_COUNTRIES_EMOJIS.get(iso2) ??
+    String.fromCharCode(55356, 56741 + iso2.charCodeAt(0), 55356, 56741 + iso2.charCodeAt(1));
 }
 
 export function emojiFromCodePoints(codePoints: string) {
