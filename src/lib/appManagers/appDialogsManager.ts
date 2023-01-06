@@ -516,7 +516,7 @@ class ForumTab extends SliderSuperTabEventable {
         icon: 'adduser',
         text: 'ForumTopic.Context.AddMember',
         onClick: () => {},
-        verify: () => this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'invite_users')
+        verify: () => false && this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'invite_users')
       }, {
         icon: 'add',
         text: 'ForumTopic.Context.New',
