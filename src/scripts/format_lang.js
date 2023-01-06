@@ -18,7 +18,14 @@ let out = '';
 ['lang', 'langSign'].forEach(part => {
   const path = `../${part}.ts`;
 
-  let str = fs.readFileSync(path).toString().replace(/\s.+\/\/.+/g, '');
+  let str = fs.readFileSync(path).toString()
+  .replace(/\s.+\/\/.+/g, '')
+  // .replace(/\\'/g, '')
+  .replace(/"/g, `\\"`)
+  // .replace(/'/g, '"')
+  .replace(/([^\\])'/g, '$1"')
+  .replace(/\\'/g, '\'')
+  // .replace(/"(.+?)(?:")(.*?)"/g, '"$1\"$2"');
   {
     const pattern = '= {';
     str = str.slice(str.indexOf(pattern) + pattern.length - 1);

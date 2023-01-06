@@ -1695,13 +1695,12 @@ export default class ChatInput {
       this.checkAutocomplete();
     });
 
-    if(this.chat.type === 'chat' || this.chat.type === 'discussion') {
-      this.listenerSetter.add(this.messageInput)('focusin', () => {
-        if(this.chat.bubbles.scrollable.loadedAll.bottom) {
-          this.managers.appMessagesManager.readAllHistory(this.chat.peerId, this.chat.threadId);
-        }
-      });
-    }
+    this.listenerSetter.add(this.messageInput)('focusin', () => {
+      if((this.chat.type === 'chat' || this.chat.type === 'discussion') &&
+        this.chat.bubbles.scrollable.loadedAll.bottom) {
+        this.managers.appMessagesManager.readAllHistory(this.chat.peerId, this.chat.threadId);
+      }
+    });
   }
 
   private prepareDocumentExecute = () => {
