@@ -4155,7 +4155,8 @@ export default class ChatBubbles {
           if(wrapped?.onclick === 'im') {
             const map: {[type: string]: LangPackKey} = {
               telegram_channel: 'Chat.Message.ViewChannel',
-              telegram_megagroup: 'OpenGroup'
+              telegram_megagroup: 'OpenGroup',
+              telegram_bot: 'Chat.Message.ViewBot'
             };
 
             const langPackKey = map[webPage.type] || 'OpenMessage';

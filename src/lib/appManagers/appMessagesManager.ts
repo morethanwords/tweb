@@ -1567,13 +1567,21 @@ export class AppMessagesManager extends AppManager {
   }
 
   private generateReplyHeader(peerId: PeerId, replyToMsgId: number, replyToTopId?: number) {
+    const isForum = this.appPeersManager.isForum(peerId);
+    if(isForum && !replyToTopId) {
+      const originalMessage = this.getMessageByPeer(peerId, replyToMsgId);
+      if(originalMessage) {
+        replyToTopId = getMessageThreadId(originalMessage, true);
+      }
+    }
+
     const header: MessageReplyHeader = {
       _: 'messageReplyHeader',
       reply_to_msg_id: replyToMsgId || replyToTopId,
       pFlags: {}
     };
 
-    if(replyToTopId && this.appPeersManager.isForum(peerId) && GENERAL_TOPIC_ID !== replyToTopId) {
+    if(replyToTopId && isForum && GENERAL_TOPIC_ID !== replyToTopId) {
       header.pFlags.forum_topic = true;
     }
 

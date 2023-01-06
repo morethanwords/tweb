@@ -237,6 +237,8 @@ export default class ChatInput {
   private sendAs: ChatSendAs;
   public sendAsPeerId: PeerId;
 
+  private replyInTopicOverlay: HTMLDivElement;
+
   constructor(
     private chat: Chat,
     private appImManager: AppImManager,
@@ -479,6 +481,10 @@ export default class ChatInput {
 
     this.newMessageWrapper = document.createElement('div');
     this.newMessageWrapper.classList.add('new-message-wrapper');
+
+    this.replyInTopicOverlay = document.createElement('div');
+    this.replyInTopicOverlay.classList.add('reply-in-topic-overlay', 'hide');
+    this.replyInTopicOverlay.append(i18n('Chat.Input.ReplyToAnswer'));
 
     this.btnToggleEmoticons = ButtonIcon('none toggle-emoticons', {noRipple: true});
 
@@ -983,7 +989,7 @@ export default class ChatInput {
       });
     }, {listenerSetter: this.listenerSetter});
 
-    this.controlContainer.append(this.botStartBtn);
+    this.controlContainer.append(this.botStartBtn, this.replyInTopicOverlay);
 
     // * pinned part start
     this.pinnedControlBtn = Button('btn-primary btn-transparent text-bold chat-input-control-button', {icon: 'unpin'});
@@ -1095,6 +1101,13 @@ export default class ChatInput {
     this.center(true);
   }
 
+  public isReplyInTopicOverlayNeeded() {
+    return this.chat.isForum &&
+      !this.chat.isForumTopic &&
+      !this.replyToMsgId &&
+      this.chat.type === 'chat';
+  }
+
   public async getNeededFakeContainer(startParam = this.startParam) {
     if(this.chat.selection.isSelecting) {
       return this.fakeSelectionWrapper;
@@ -1102,7 +1115,8 @@ export default class ChatInput {
       startParam !== undefined ||
       !(await this.chat.canSend()) ||
       this.chat.type === 'pinned' ||
-      await this.chat.isStartButtonNeeded()
+      await this.chat.isStartButtonNeeded() ||
+      this.isReplyInTopicOverlayNeeded()
     ) {
       return this.controlContainer;
     }
@@ -1442,12 +1456,21 @@ export default class ChatInput {
         this.messageInput.dataset.peerId = '' + peerId;
       }
 
+      let haveSomethingInControl = false;
       if(this.pinnedControlBtn) {
-        this.pinnedControlBtn.classList.toggle('hide', this.chat.type !== 'pinned');
+        const good = this.chat.type === 'pinned';
+        haveSomethingInControl ||= good;
+        this.pinnedControlBtn.classList.toggle('hide', !good);
         this.pinnedControlBtn.replaceChildren(i18n(canPinMessage ? 'Chat.Input.UnpinAll' : 'Chat.Pinned.DontShow'));
       }
 
-      this.botStartBtn.classList.toggle('hide', this.chat.type === 'pinned');
+      {
+        const good = this.chat.isForum && !this.chat.isForumTopic && this.chat.type === 'chat';
+        haveSomethingInControl ||= good;
+        this.replyInTopicOverlay.classList.toggle('hide', !good);
+      }
+
+      this.botStartBtn.classList.toggle('hide', haveSomethingInControl);
 
       // * testing
       // this.startParam = this.appPeersManager.isBot(peerId) ? '123' : undefined;
@@ -2945,9 +2968,14 @@ export default class ChatInput {
       }
 
       this.setTopInfo('reply', f, peerTitleEl, message && (message as Message.message).message, undefined, message);
-      this.replyToMsgId = mid;
+      this.setReplyToMsgId(mid)
     };
     f();
+  }
+
+  public setReplyToMsgId(mid: number) {
+    this.replyToMsgId = mid;
+    this.center(true);
   }
 
   public clearHelper(type?: ChatInputHelperType) {
@@ -2962,7 +2990,7 @@ export default class ChatInput {
     }
 
     if(type !== 'reply') {
-      this.replyToMsgId = undefined;
+      this.setReplyToMsgId(undefined);
       this.forwarding = undefined;
     }
 

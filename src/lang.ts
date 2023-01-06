@@ -929,6 +929,7 @@ const lang = {
   'Chat.DropQuickDesc': 'in a quick way',
   'Chat.DropAsFilesDesc': 'without compression',
   'Chat.Edit.Cancel.Text': 'Are you sure you want to discard all changes?',
+  'Chat.Input.ReplyToAnswer': 'Reply to message in topics',
   'Chat.SendVoice.PrivacyError': '%@ doesn\'t accept voice and video messages',
   'Chat.Service.Call.Cancelled': 'Cancelled',
   'Chat.Service.Call.Missed': 'Missed',
