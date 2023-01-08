@@ -416,7 +416,11 @@ export default class DialogsStorage extends AppManager {
   }
 
   private isDialogUnmuted(dialog: Dialog | ForumTopic) {
-    return !this.appNotificationsManager.isPeerLocalMuted({peerId: dialog.peerId, respectType: true, threadId: this.isTopic(dialog) ? (dialog as ForumTopic).id : undefined});
+    return !this.appNotificationsManager.isPeerLocalMuted({
+      peerId: dialog.peerId,
+      respectType: true,
+      threadId: this.isTopic(dialog) ? (dialog as ForumTopic).id : undefined
+    });
   }
 
   public getFolderUnreadCount(filterId: number) {
@@ -1557,7 +1561,10 @@ export default class DialogsStorage extends AppManager {
       });
 
     return callbackify(f, (dialogs) => {
-      return dialogs.reduce((acc, v) => acc + +!!v.unread_count, 0);
+      return {
+        count: dialogs.reduce((acc, v) => acc + +!!v.unread_count, 0),
+        hasUnmuted: dialogs.some((dialog) => dialog.unread_count && this.isDialogUnmuted(dialog))
+      };
     });
   }
 

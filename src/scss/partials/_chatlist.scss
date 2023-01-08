@@ -562,7 +562,8 @@ ul.chatlist {
     background-color: var(--chatlist-status-color);
   }
 
-  .is-muted .unread {
+  .is-muted .unread,
+  .no-unmuted-topic .unread {
     background-color: var(--secondary-color);
   }
 

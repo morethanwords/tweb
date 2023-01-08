@@ -152,7 +152,7 @@ export default class ConnectionStatusComponent {
           const retryAt = this.retryAt;
           const setTime = () => {
             const now = Date.now();
-            timerSpan.innerText = '' + Math.round((retryAt - now) / 1000);
+            timerSpan.innerText = '' + Math.max(0, Math.round((retryAt - now) / 1000));
             if(now > retryAt) {
               clearInterval(interval);
             }

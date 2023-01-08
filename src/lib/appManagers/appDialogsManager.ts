@@ -2857,13 +2857,15 @@ export class AppDialogsManager {
             this.setUnreadMessagesN({dialog, dialogElement});
           });
 
-          return 0;
+          return {count: 0, hasUnmuted: false};
         }
-      }).catch(() => undefined as number) : undefined
+      }).catch(() => undefined as {count: number, hasUnmuted: boolean}) : undefined
     ]);
 
-    let [isMuted, lastMessage, isPinned, isDialogUnread, unreadTopicsCount] = await middleware(promises);
+    let [isMuted, lastMessage, isPinned, isDialogUnread, forumUnreadCount] = await middleware(promises);
     const wasMuted = dom.listEl.classList.contains('is-muted');
+
+    const {count: unreadTopicsCount, hasUnmuted: hasUnmutedTopic} = forumUnreadCount || {};
 
     let setStatusMessage: MyMessage;
     if(lastMessage && lastMessage.pFlags.out && lastMessage.peerId !== rootScope.myId) {
@@ -2889,11 +2891,13 @@ export class AppDialogsManager {
       try {
         await middleware(setLastMessagePromise);
       } catch(err) {
-        // return;
+        return;
       }
     }
 
     const transitionDuration = isBatch ? 0 : BADGE_TRANSITION_TIME;
+
+    dom.listEl.classList.toggle('no-unmuted-topic', !isMuted && hasUnmutedTopic !== undefined && !hasUnmutedTopic);
 
     if(isMuted !== wasMuted) {
       SetTransition({
