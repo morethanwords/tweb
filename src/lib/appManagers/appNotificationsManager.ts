@@ -300,10 +300,20 @@ export class AppNotificationsManager extends AppManager {
     return options;
   }
 
-  public isPeerLocalMuted(options: Parameters<AppNotificationsManager['getPeerLocalSettings']>[0]) {
+  public isPeerLocalMuted(options: Parameters<AppNotificationsManager['getPeerLocalSettings']>[0]): boolean {
     if(!(options = this.validatePeerSettings(options))) return false;
 
+    if(options.threadId) {
+      const notifySettings = this.getPeerLocalSettings({...options, respectType: false});
+      if(notifySettings.silent !== undefined || notifySettings.mute_until !== undefined) {
+        return this.isMuted(notifySettings);
+      } else {
+        return this.isPeerLocalMuted({...options, threadId: undefined});
+      }
+    }
+
     const notifySettings = this.getPeerLocalSettings(options);
-    return this.isMuted(notifySettings);
+    const isMuted = this.isMuted(notifySettings);
+    return isMuted;
   }
 }

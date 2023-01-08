@@ -255,10 +255,6 @@ ul.chatlist {
       }
     }
 
-    &.menu-open {
-      --background: var(--light-secondary-text-color);
-    }
-
     @include respond-to(not-handhelds) {
       &.active {
         --background: var(--primary-color) !important;

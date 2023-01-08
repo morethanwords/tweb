@@ -5,7 +5,7 @@
  */
 
 import {addCancelButton} from './popups';
-import PopupPeer, {PopupPeerOptions} from './popups/peer';
+import PopupPeer, {PopupPeerCheckboxOptions, PopupPeerOptions} from './popups/peer';
 
 // type PopupConfirmationOptions = Pick<PopupPeerOptions, 'titleLangKey'>;
 export type PopupConfirmationOptions = PopupPeerOptions & {
@@ -13,11 +13,17 @@ export type PopupConfirmationOptions = PopupPeerOptions & {
   checkbox?: PopupPeerOptions['checkboxes'][0]
 };
 
-export default function confirmationPopup(options: PopupConfirmationOptions) {
-  return new Promise<boolean | void>((resolve, reject) => {
+export default function confirmationPopup<T extends PopupConfirmationOptions>(
+  options: T
+): Promise<T['checkboxes'] extends PopupPeerCheckboxOptions[] ? Array<boolean> : (T['checkbox'] extends PopupPeerCheckboxOptions ? boolean : void)> {
+  return new Promise<any>((resolve, reject) => {
     const {button, checkbox} = options;
     button.callback = (set) => {
-      resolve(set ? !!set.size : undefined);
+      if(checkbox || !set) {
+        resolve(set ? !!set.size : undefined);
+      } else {
+        resolve(options.checkboxes.map((checkbox) => set.has(checkbox.text)));
+      }
     };
 
     const buttons = addCancelButton(options.buttons || [button]);

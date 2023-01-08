@@ -190,7 +190,7 @@
       left: 1.25rem !important;
     }
 
-    .chatlist-chat {
+    .chatlist-chat.row-with-padding {
       padding-left: #{4.5rem + $add} !important; // 4.5 + x
     }
 

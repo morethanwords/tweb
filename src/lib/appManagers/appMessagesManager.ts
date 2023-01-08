@@ -13,7 +13,7 @@ import LazyLoadQueueBase from '../../components/lazyLoadQueueBase';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import tsNow from '../../helpers/tsNow';
 import {randomLong} from '../../helpers/random';
-import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory} from '../../layer';
+import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult} from '../../layer';
 import {ArgumentTypes, InvokeApiOptions} from '../../types';
 import {logger, LogTypes} from '../logger';
 import type {ApiFileManager} from '../mtproto/apiFileManager';
@@ -6397,6 +6397,33 @@ export class AppMessagesManager extends AppManager {
     return this.apiManager.invokeApi('messages.saveDefaultSendAs', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       send_as: this.appPeersManager.getInputPeerById(sendAsPeerId)
+    });
+  }
+
+  public requestUrlAuth(peerId: PeerId, mid: number, url: string, buttonId: number) {
+    return this.apiManager.invokeApi('messages.requestUrlAuth', {
+      button_id: buttonId,
+      msg_id: getServerMessageId(mid),
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      url
+    }).then((urlAuthResult) => {
+      if(urlAuthResult._ === 'urlAuthResultRequest') {
+        this.appUsersManager.saveApiUser(urlAuthResult.bot);
+      }
+
+      return urlAuthResult;
+    });
+  }
+
+  public acceptUrlAuth(peerId: PeerId, mid: number, url: string, buttonId: number, writeAllowed?: boolean) {
+    return this.apiManager.invokeApi('messages.acceptUrlAuth', {
+      button_id: buttonId,
+      msg_id: getServerMessageId(mid),
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      url,
+      write_allowed: writeAllowed
+    }).then((urlAuthResult) => {
+      return urlAuthResult as Exclude<UrlAuthResult, UrlAuthResult.urlAuthResultRequest>;
     });
   }
 }

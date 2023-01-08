@@ -853,6 +853,8 @@ const lang = {
   'CreateGeneralTopicTitle': 'Choose topic name',
   'EditTopicHide': 'Show in Topics',
   'EditTopicHideInfo': 'If the \'General\' topic is hidden, group members can pull down in the topic list to view it.',
+  'OpenUrlOption1': 'Log in to %1$s as **%2$s**',
+  'OpenUrlOption2': 'Allow **%1$s** to send me messages',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

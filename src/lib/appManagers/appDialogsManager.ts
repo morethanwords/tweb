@@ -1114,8 +1114,20 @@ class Some3 extends Some<ForumTopic> {
       appDialogsManager.setUnreadMessagesN({dialog, dialogElement: this.getDialogElement(this.getDialogKey(dialog))});
     });
 
-    this.listenerSetter.add(rootScope)('dialog_notify_settings', (dialog) => {
-      if(dialog._ !== 'forumTopic' || dialog.peerId !== this.peerId) {
+    this.listenerSetter.add(rootScope)('dialog_notify_settings', async(dialog) => {
+      if(dialog.peerId !== this.peerId) {
+        return;
+      }
+
+      if(dialog._ === 'dialog') {
+        const all = this.sortedList.getAll();
+        const entries = [...all.entries()];
+        const promises = entries.map(([id]) => this.managers.dialogsStorage.getForumTopic(this.peerId, id));
+        const topics = await Promise.all(promises);
+        entries.forEach(([id, element], idx) => {
+          appDialogsManager.setUnreadMessagesN({dialog: topics[idx], dialogElement: element.dialogElement}); // возможно это не нужно, но нужно менять is-muted
+        });
+
         return;
       }
 

@@ -191,7 +191,11 @@ export class AppPeersManager extends AppManager {
     peerId: PeerId,
     ignorePeerId?: boolean,
     threadId?: number
-  }>({peerId, ignorePeerId, threadId}: T): T['ignorePeerId'] extends true ? Exclude<InputNotifyPeer, InputNotifyPeer.inputNotifyPeer | InputNotifyPeer.inputNotifyForumTopic> : (T['threadId'] extends number ? InputNotifyPeer.inputNotifyForumTopic : InputNotifyPeer.inputNotifyPeer) {
+  }>({
+    peerId,
+    ignorePeerId,
+    threadId
+  }: T): T['ignorePeerId'] extends true ? Exclude<InputNotifyPeer, InputNotifyPeer.inputNotifyPeer | InputNotifyPeer.inputNotifyForumTopic> : (T['threadId'] extends number ? InputNotifyPeer.inputNotifyForumTopic : InputNotifyPeer.inputNotifyPeer) {
     if(ignorePeerId) {
       if(peerId.isUser()) {
         return {_: 'inputNotifyUsers'} as any;

@@ -29,7 +29,7 @@ import LazyLoadQueue from '../lazyLoadQueue';
 import ListenerSetter from '../../helpers/listenerSetter';
 import PollElement from '../poll';
 import AudioElement from '../audio';
-import {Chat as MTChat, ChatInvite, Document, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, ReplyMarkup, SponsoredMessage, Update, User, WebPage} from '../../layer';
+import {Chat as MTChat, ChatInvite, Document, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, ReplyMarkup, SponsoredMessage, Update, UrlAuthResult, User, WebPage} from '../../layer';
 import {BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID} from '../../lib/mtproto/mtproto_config';
 import {FocusDirection, ScrollStartCallbackDimensions} from '../../helpers/fastSmoothScroll';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation} from '../../hooks/useHeavyAnimationCheck';
@@ -128,6 +128,10 @@ import wrapUrl from '../../lib/richTextProcessor/wrapUrl';
 import getMessageThreadId from '../../lib/appManagers/utils/messages/getMessageThreadId';
 import wrapTopicNameButton from '../wrappers/topicNameButton';
 import wrapMediaSpoiler from '../wrappers/mediaSpoiler';
+import confirmationPopup from '../confirmationPopup';
+import wrapPeerTitle from '../wrappers/peerTitle';
+import {PopupPeerCheckboxOptions} from '../popups/peer';
+import toggleDisability from '../../helpers/dom/toggleDisability';
 
 export const USER_REACTIONS_INLINE = false;
 const USE_MEDIA_TAILS = false;
@@ -3970,6 +3974,105 @@ export default class ChatBubbles {
               break;
             }
 
+            case 'keyboardButtonUrlAuth': {
+              buttonEl = document.createElement('button');
+              buttonEl.classList.add('is-url-auth');
+
+              const {peerId} = this;
+              const {mid} = message;
+              const {url, button_id} = button;
+
+              const openWindow = (url: string) => {
+                window.open(url, '_blank');
+              };
+
+              const onUrlAuthResultAccepted = (urlAuthResult: UrlAuthResult.urlAuthResultAccepted) => {
+                openWindow(urlAuthResult.url);
+              };
+
+              const onUrlAuthResult = async(urlAuthResult: UrlAuthResult): Promise<void> => {
+                if(urlAuthResult._ === 'urlAuthResultRequest') {
+                  const b = document.createElement('b');
+                  b.append(urlAuthResult.domain);
+                  const peerTitle = await wrapPeerTitle({peerId: rootScope.myId});
+                  const botPeerTitle = await wrapPeerTitle({peerId: urlAuthResult.bot.id.toPeerId()});
+
+                  const logInCheckbox: PopupPeerCheckboxOptions = {
+                    text: 'OpenUrlOption1',
+                    textArgs: [b.cloneNode(true), peerTitle],
+                    checked: true
+                  };
+
+                  const allowMessagesCheckbox: PopupPeerCheckboxOptions = urlAuthResult.pFlags.request_write_access ? {
+                    text: 'OpenUrlOption2',
+                    textArgs: [botPeerTitle],
+                    checked: true
+                  } : undefined;
+
+                  const checkboxes: PopupPeerCheckboxOptions[] = [
+                    logInCheckbox,
+                    allowMessagesCheckbox
+                  ];
+
+                  const confirmationPromise = confirmationPopup({
+                    titleLangKey: 'OpenUrlTitle',
+                    button: {
+                      langKey: 'Open'
+                    },
+                    descriptionLangKey: 'OpenUrlAlert2',
+                    descriptionLangArgs: [b],
+                    checkboxes: checkboxes.filter(Boolean)
+                  });
+
+                  if(allowMessagesCheckbox) {
+                    logInCheckbox.checkboxField.input.addEventListener('change', () => {
+                      const disabled = !logInCheckbox.checkboxField.checked;
+                      allowMessagesCheckbox.checkboxField.toggleDisability(disabled);
+
+                      if(disabled) {
+                        allowMessagesCheckbox.checkboxField.checked = false;
+                      }
+                    });
+                  }
+
+                  const [logInChecked, allowMessagesChecked] = await confirmationPromise;
+
+                  if(!logInChecked) {
+                    openWindow(url);
+                    return;
+                  }
+
+                  const result = await this.managers.appMessagesManager.acceptUrlAuth(
+                    peerId,
+                    mid,
+                    url,
+                    button_id,
+                    allowMessagesChecked
+                  );
+
+                  return onUrlAuthResult(result);
+                } else if(urlAuthResult._ === 'urlAuthResultAccepted') {
+                  onUrlAuthResultAccepted(urlAuthResult);
+                } else {
+                  openWindow(url);
+                }
+              };
+
+              attachClickEvent(buttonEl, () => {
+                const toggle = toggleDisability([buttonEl], true);
+                this.managers.appMessagesManager.requestUrlAuth(
+                  peerId,
+                  mid,
+                  url,
+                  button_id
+                ).then((urlAuthResult) => {
+                  toggle();
+                  onUrlAuthResult(urlAuthResult);
+                });
+              });
+              break;
+            }
+
             default: {
               buttonEl = document.createElement('button');
               break;
@@ -4012,7 +4115,8 @@ export default class ChatBubbles {
           !target ||
           target.classList.contains('is-link') ||
           target.classList.contains('is-switch-inline') ||
-          target.classList.contains('is-buy')
+          target.classList.contains('is-buy') ||
+          target.classList.contains('is-url-auth')
         ) return;
 
         cancelEvent(e);
