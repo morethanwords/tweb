@@ -98,6 +98,13 @@ export class ApiManager extends ApiManagerMethods {
       this.changeTransportType(transportType);
     });
     // #endif
+
+    // * Make sure that the used autologin_token is no more than 10000 seconds old
+    // * https://core.telegram.org/api/url-authorization
+    const REFRESH_APP_CONFIG_INTERVAL = (10000 - 30) * 1000;
+    setInterval(() => {
+      this.getAppConfig(true);
+    }, REFRESH_APP_CONFIG_INTERVAL);
   }
 
   protected after() {

@@ -27,9 +27,9 @@ import {MOUNT_CLASS_TO} from '../../config/debug';
 import appNavigationController from '../../components/appNavigationController';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import I18n, {i18n, join, LangPackKey} from '../langPack';
-import {ChatFull, ChatInvite, ChatParticipant, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat} from '../../layer';
+import {ChatFull, ChatInvite, ChatParticipant, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult} from '../../layer';
 import PeerTitle from '../../components/peerTitle';
-import PopupPeer from '../../components/popups/peer';
+import PopupPeer, {PopupPeerCheckboxOptions} from '../../components/popups/peer';
 import blurActiveElement from '../../helpers/dom/blurActiveElement';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import disableTransition from '../../helpers/dom/disableTransition';
@@ -98,6 +98,8 @@ import {MiddleEllipsisElement} from '../../components/middleEllipsis';
 import addAnchorListener from '../../helpers/addAnchorListener';
 import parseUriParams from '../../helpers/string/parseUriParams';
 import getMessageThreadId from './utils/messages/getMessageThreadId';
+import findUpTag from '../../helpers/dom/findUpTag';
+import {MTAppConfig} from '../mtproto/appConfig';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -783,6 +785,149 @@ export class AppImManager extends EventListenerBase<{
 
     this.onHashChange(true);
     this.attachKeydownListener();
+    this.handleAutologinDomains();
+  }
+
+  public handleUrlAuth(options: {
+    peerId?: PeerId,
+    mid?: number,
+    buttonId?: number,
+    url: string
+  }) {
+    const {peerId, mid, buttonId, url} = options;
+
+    const openWindow = (url: string) => {
+      window.open(url, '_blank');
+    };
+
+    const onUrlAuthResultAccepted = (urlAuthResult: UrlAuthResult.urlAuthResultAccepted) => {
+      openWindow(urlAuthResult.url);
+    };
+
+    const onUrlAuthResult = async(urlAuthResult: UrlAuthResult): Promise<void> => {
+      if(urlAuthResult._ === 'urlAuthResultRequest') {
+        const b = document.createElement('b');
+        b.append(urlAuthResult.domain);
+        const peerTitle = await wrapPeerTitle({peerId: rootScope.myId});
+        const botPeerTitle = await wrapPeerTitle({peerId: urlAuthResult.bot.id.toPeerId()});
+
+        const logInCheckbox: PopupPeerCheckboxOptions = {
+          text: 'OpenUrlOption1',
+          textArgs: [b.cloneNode(true), peerTitle],
+          checked: true
+        };
+
+        const allowMessagesCheckbox: PopupPeerCheckboxOptions = urlAuthResult.pFlags.request_write_access ? {
+          text: 'OpenUrlOption2',
+          textArgs: [botPeerTitle],
+          checked: true
+        } : undefined;
+
+        const checkboxes: PopupPeerCheckboxOptions[] = [
+          logInCheckbox,
+          allowMessagesCheckbox
+        ];
+
+        const confirmationPromise = confirmationPopup({
+          titleLangKey: 'OpenUrlTitle',
+          button: {
+            langKey: 'Open'
+          },
+          descriptionLangKey: 'OpenUrlAlert2',
+          descriptionLangArgs: [b],
+          checkboxes: checkboxes.filter(Boolean)
+        });
+
+        if(allowMessagesCheckbox) {
+          logInCheckbox.checkboxField.input.addEventListener('change', () => {
+            const disabled = !logInCheckbox.checkboxField.checked;
+            allowMessagesCheckbox.checkboxField.toggleDisability(disabled);
+
+            if(disabled) {
+              allowMessagesCheckbox.checkboxField.checked = false;
+            }
+          });
+        }
+
+        const [logInChecked, allowMessagesChecked] = await confirmationPromise;
+
+        if(!logInChecked) {
+          openWindow(url);
+          return;
+        }
+
+        const result = await this.managers.appSeamlessLoginManager.acceptUrlAuth(
+          url,
+          peerId,
+          mid,
+          buttonId,
+          allowMessagesChecked
+        );
+
+        return onUrlAuthResult(result);
+      } else if(urlAuthResult._ === 'urlAuthResultAccepted') {
+        onUrlAuthResultAccepted(urlAuthResult);
+      } else {
+        openWindow(url);
+      }
+    };
+
+    return this.managers.appSeamlessLoginManager.requestUrlAuth(
+      url,
+      peerId,
+      mid,
+      buttonId
+    ).then((urlAuthResult) => {
+      onUrlAuthResult(urlAuthResult);
+    });
+  }
+
+  private handleAutologinDomains() {
+    let appConfig: MTAppConfig;
+    rootScope.addEventListener('app_config', (_appConfig) => {
+      appConfig = _appConfig;
+    });
+
+    const onAnchorClick = (element: HTMLAnchorElement) => {
+      const url = new URL(element.href);
+      if(appConfig.url_auth_domains.includes(url.hostname)) {
+        this.handleUrlAuth({url: element.href});
+        cancelEvent();
+        return;
+      }
+
+      if(!appConfig.autologin_token || !appConfig.autologin_domains) {
+        return;
+      }
+
+      const originalUrl = element.dataset.originalUrl ??= element.href;
+      if(appConfig.autologin_domains.includes(url.hostname)) {
+        url.searchParams.set('autologin_token', appConfig.autologin_token);
+        element.href = url.toString();
+
+        setTimeout(() => {
+          element.href = originalUrl;
+          delete element.dataset.originalUrl;
+        }, 0);
+      }
+    };
+
+    document.addEventListener('click', (e) => {
+      const anchor = findUpTag(e.target as HTMLElement, 'A') as HTMLAnchorElement;
+      if(anchor?.href) {
+        onAnchorClick(anchor);
+      }
+    });
+
+    // addAnchorListener({
+    //   name: 'handleUrlClick',
+    //   callback: (_, element) => {
+    //     onAnchorClick(element);
+    //   },
+    //   noCancelEvent: true,
+    //   noPathnameParams: true,
+    //   noUriParams: true
+    // });
   }
 
   private getStackFromElement(element: HTMLElement) {

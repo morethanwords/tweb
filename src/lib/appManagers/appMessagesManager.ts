@@ -6399,31 +6399,4 @@ export class AppMessagesManager extends AppManager {
       send_as: this.appPeersManager.getInputPeerById(sendAsPeerId)
     });
   }
-
-  public requestUrlAuth(peerId: PeerId, mid: number, url: string, buttonId: number) {
-    return this.apiManager.invokeApi('messages.requestUrlAuth', {
-      button_id: buttonId,
-      msg_id: getServerMessageId(mid),
-      peer: this.appPeersManager.getInputPeerById(peerId),
-      url
-    }).then((urlAuthResult) => {
-      if(urlAuthResult._ === 'urlAuthResultRequest') {
-        this.appUsersManager.saveApiUser(urlAuthResult.bot);
-      }
-
-      return urlAuthResult;
-    });
-  }
-
-  public acceptUrlAuth(peerId: PeerId, mid: number, url: string, buttonId: number, writeAllowed?: boolean) {
-    return this.apiManager.invokeApi('messages.acceptUrlAuth', {
-      button_id: buttonId,
-      msg_id: getServerMessageId(mid),
-      peer: this.appPeersManager.getInputPeerById(peerId),
-      url,
-      write_allowed: writeAllowed
-    }).then((urlAuthResult) => {
-      return urlAuthResult as Exclude<UrlAuthResult, UrlAuthResult.urlAuthResultRequest>;
-    });
-  }
 }

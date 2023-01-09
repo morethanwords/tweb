@@ -98,6 +98,10 @@ const lang = {
     'one_value': '%1$d device',
     'other_value': '%1$d devices'
   },
+  'Privacy.Websites': {
+    'one_value': '%1$d website',
+    'other_value': '%1$d websites'
+  },
   'Privacy.SensitiveContent': 'Sensitive Content',
   'PrivacyModal.Search.Placeholder': 'Add Users or Groups...',
   'Permissions.NoExceptions': 'No exceptions',
@@ -855,6 +859,14 @@ const lang = {
   'EditTopicHideInfo': 'If the \'General\' topic is hidden, group members can pull down in the topic list to view it.',
   'OpenUrlOption1': 'Log in to %1$s as **%2$s**',
   'OpenUrlOption2': 'Allow **%1$s** to send me messages',
+  'OtherWebSessions': 'Connected websites',
+  'WebSessionsTitle': 'Logged In with Telegram',
+  'TerminateWebSessionText': 'Are you sure you want to disconnect %1$s?',
+  'Disconnect': 'Disconnect',
+  'TerminateAllWebSessions': 'Disconnect All Websites',
+  'AreYouSureWebSessions': 'Are you sure you want to disconnect all websites where you logged in with Telegram?',
+  'ClearOtherWebSessionsHelp': 'You can log in on websites that support signing in with Telegram.',
+  'TerminateWebSessionInfo': 'Tap to disconnect from your Telegram account.',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

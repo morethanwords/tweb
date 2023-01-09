@@ -167,10 +167,7 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
   }
 
   onCloseAfterTimeout() {
-    if(this.menuElement) {
-      this.menuElement.remove();
-    }
-
+    this.menuElement?.remove();
     return super.onCloseAfterTimeout();
   }
 }

@@ -14,10 +14,11 @@ export default function addAnchorListener<Params extends {pathnameParams?: any, 
   protocol?: 'tg',
   callback: (params: Params, element?: HTMLAnchorElement) => boolean | any,
   noPathnameParams?: boolean,
-  noUriParams?: boolean
+  noUriParams?: boolean,
+  noCancelEvent?: boolean
 }) {
   (window as any)[(options.protocol ? options.protocol + '_' : '') + options.name] = (element?: HTMLAnchorElement/* , e: Event */) => {
-    cancelEvent(null);
+    !options.noCancelEvent && cancelEvent(null);
 
     let href = element.href;
     let pathnameParams: any[];

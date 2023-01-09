@@ -6,7 +6,7 @@
 
 import SliderSuperTab, {SliderSuperTabEventable} from '../../sliderTab';
 import Row from '../../row';
-import {AccountPassword, Authorization, InputPrivacyKey, Updates} from '../../../layer';
+import {AccountPassword, Authorization, InputPrivacyKey, Updates, WebAuthorization} from '../../../layer';
 import AppPrivacyPhoneNumberTab from './privacy/phoneNumber';
 import AppTwoStepVerificationTab from './2fa';
 import AppTwoStepVerificationEnterPasswordTab from './2fa/enterPassword';
@@ -33,16 +33,21 @@ import noop from '../../../helpers/noop';
 import {toastNew} from '../../toast';
 import AppPrivacyVoicesTab from './privacy/voices';
 import SettingSection from '../../settingSection';
+import AppActiveWebSessionsTab from './activeWebSessions';
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;
   private authorizations: Authorization.authorization[];
 
+  private websitesRow: Row;
+  private websites: WebAuthorization[];
+
   public static getInitArgs(fromTab: SliderSuperTab) {
     return {
       appConfig: fromTab.managers.apiManager.getAppConfig(),
       globalPrivacy: fromTab.managers.appPrivacyManager.getGlobalPrivacySettings(),
-      contentSettings: fromTab.managers.apiManager.invokeApi('account.getContentSettings')
+      contentSettings: fromTab.managers.apiManager.invokeApi('account.getContentSettings'),
+      webAuthorizations: fromTab.managers.appSeamlessLoginManager.getWebAuthorizations()
     };
   }
 
@@ -51,6 +56,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
     this.setTitle('PrivacySettings');
 
     const SUBTITLE: LangPackKey = 'Loading';
+    const promises: Promise<any>[] = [];
 
     {
       const section = new SettingSection({noDelimiter: true, caption: 'SessionsInfo'});
@@ -113,7 +119,22 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       });
       activeSessionsRow.freezed = true;
 
-      section.content.append(blockedUsersRow.container, twoFactorRow.container, activeSessionsRow.container);
+      const websitesRow = this.websitesRow = new Row({
+        icon: 'mention',
+        titleLangKey: 'OtherWebSessions',
+        subtitleLangKey: SUBTITLE,
+        clickable: () => {
+          const tab = this.slider.createTab(AppActiveWebSessionsTab);
+          tab.eventListener.addEventListener('destroy', () => {
+            this.updateActiveWebsites();
+          });
+          tab.open(this.websites);
+        },
+        listenerSetter: this.listenerSetter
+      });
+      websitesRow.freezed = true;
+
+      section.content.append(blockedUsersRow.container, twoFactorRow.container, activeSessionsRow.container, websitesRow.container);
       this.scrollable.append(section.container);
 
       const setBlockedCount = (count: number) => {
@@ -152,6 +173,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       });
 
       this.updateActiveSessions();
+      promises.push(this.updateActiveWebsites(p.webAuthorizations));
     }
 
     {
@@ -270,8 +292,6 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         updatePrivacyRow(convertKeyToInputKey(update.key._) as any);
       });
     }
-
-    const promises: Promise<any>[] = [];
 
     {
       const section = new SettingSection({name: 'NewChatsFromNonContacts', caption: 'ArchiveAndMuteInfo'});
@@ -441,15 +461,35 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       this.scrollable.append(section.container);
     }
 
+    // {
+    //   const section = new SettingSection({
+    //     name: 'OtherWebSessions'
+    //   });
+
+    //   const row = new Row({
+
+    //   });
+
+    //   this.scrollable.append(section.container);
+    // }
+
     return Promise.all(promises);
   }
 
   public updateActiveSessions() {
-    this.managers.apiManager.invokeApi('account.getAuthorizations').then((auths) => {
+    return this.managers.apiManager.invokeApi('account.getAuthorizations').then((auths) => {
       this.activeSessionsRow.freezed = false;
       this.authorizations = auths.authorizations;
       _i18n(this.activeSessionsRow.subtitle, 'Privacy.Devices', [this.authorizations.length]);
-      // console.log('auths', auths);
+    });
+  }
+
+  public updateActiveWebsites(promise = this.managers.appSeamlessLoginManager.getWebAuthorizations()) {
+    return promise.then((authorizations) => {
+      this.websitesRow.freezed = false;
+      this.websites = authorizations;
+      _i18n(this.websitesRow.subtitle, 'Privacy.Websites', [this.websites.length]);
+      this.websitesRow.container.classList.toggle('hide', !this.websites.length);
     });
   }
 }

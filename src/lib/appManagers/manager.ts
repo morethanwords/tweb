@@ -44,6 +44,7 @@ import type {AppUsersManager} from './appUsersManager';
 import type AppWebDocsManager from './appWebDocsManager';
 import type {AppWebPagesManager} from './appWebPagesManager';
 import type AppAttachMenuBotsManager from './appAttachMenuBotsManager';
+import type AppSeamlessLoginManager from './appSeamlessLoginManager';
 import type {AppManagers} from './managers';
 
 export class AppManager {
@@ -88,6 +89,7 @@ export class AppManager {
   protected appWebDocsManager: AppWebDocsManager;
   protected appPaymentsManager: AppPaymentsManager;
   protected appAttachMenuBotsManager: AppAttachMenuBotsManager;
+  protected appSeamlessLoginManager: AppSeamlessLoginManager;
 
   public clear: (init?: boolean) => void;
 

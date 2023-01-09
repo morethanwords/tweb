@@ -46,6 +46,7 @@ import filterUnique from '../../helpers/array/filterUnique';
 import AppWebDocsManager from './appWebDocsManager';
 import AppPaymentsManager from './appPaymentsManager';
 import AppAttachMenuBotsManager from './appAttachMenuBotsManager';
+import AppSeamlessLoginManager from './appSeamlessLoginManager';
 
 export default function createManagers(appStoragesManager: AppStoragesManager, userId: UserId) {
   const managers = {
@@ -88,7 +89,8 @@ export default function createManagers(appStoragesManager: AppStoragesManager, u
     appStateManager: appStateManager,
     appWebDocsManager: new AppWebDocsManager,
     appPaymentsManager: new AppPaymentsManager,
-    appAttachMenuBotsManager: new AppAttachMenuBotsManager
+    appAttachMenuBotsManager: new AppAttachMenuBotsManager,
+    appSeamlessLoginManager: new AppSeamlessLoginManager
   };
 
   type T = typeof managers;

@@ -3982,92 +3982,15 @@ export default class ChatBubbles {
               const {mid} = message;
               const {url, button_id} = button;
 
-              const openWindow = (url: string) => {
-                window.open(url, '_blank');
-              };
-
-              const onUrlAuthResultAccepted = (urlAuthResult: UrlAuthResult.urlAuthResultAccepted) => {
-                openWindow(urlAuthResult.url);
-              };
-
-              const onUrlAuthResult = async(urlAuthResult: UrlAuthResult): Promise<void> => {
-                if(urlAuthResult._ === 'urlAuthResultRequest') {
-                  const b = document.createElement('b');
-                  b.append(urlAuthResult.domain);
-                  const peerTitle = await wrapPeerTitle({peerId: rootScope.myId});
-                  const botPeerTitle = await wrapPeerTitle({peerId: urlAuthResult.bot.id.toPeerId()});
-
-                  const logInCheckbox: PopupPeerCheckboxOptions = {
-                    text: 'OpenUrlOption1',
-                    textArgs: [b.cloneNode(true), peerTitle],
-                    checked: true
-                  };
-
-                  const allowMessagesCheckbox: PopupPeerCheckboxOptions = urlAuthResult.pFlags.request_write_access ? {
-                    text: 'OpenUrlOption2',
-                    textArgs: [botPeerTitle],
-                    checked: true
-                  } : undefined;
-
-                  const checkboxes: PopupPeerCheckboxOptions[] = [
-                    logInCheckbox,
-                    allowMessagesCheckbox
-                  ];
-
-                  const confirmationPromise = confirmationPopup({
-                    titleLangKey: 'OpenUrlTitle',
-                    button: {
-                      langKey: 'Open'
-                    },
-                    descriptionLangKey: 'OpenUrlAlert2',
-                    descriptionLangArgs: [b],
-                    checkboxes: checkboxes.filter(Boolean)
-                  });
-
-                  if(allowMessagesCheckbox) {
-                    logInCheckbox.checkboxField.input.addEventListener('change', () => {
-                      const disabled = !logInCheckbox.checkboxField.checked;
-                      allowMessagesCheckbox.checkboxField.toggleDisability(disabled);
-
-                      if(disabled) {
-                        allowMessagesCheckbox.checkboxField.checked = false;
-                      }
-                    });
-                  }
-
-                  const [logInChecked, allowMessagesChecked] = await confirmationPromise;
-
-                  if(!logInChecked) {
-                    openWindow(url);
-                    return;
-                  }
-
-                  const result = await this.managers.appMessagesManager.acceptUrlAuth(
-                    peerId,
-                    mid,
-                    url,
-                    button_id,
-                    allowMessagesChecked
-                  );
-
-                  return onUrlAuthResult(result);
-                } else if(urlAuthResult._ === 'urlAuthResultAccepted') {
-                  onUrlAuthResultAccepted(urlAuthResult);
-                } else {
-                  openWindow(url);
-                }
-              };
-
               attachClickEvent(buttonEl, () => {
                 const toggle = toggleDisability([buttonEl], true);
-                this.managers.appMessagesManager.requestUrlAuth(
+                this.chat.appImManager.handleUrlAuth({
                   peerId,
                   mid,
                   url,
-                  button_id
-                ).then((urlAuthResult) => {
+                  buttonId: button_id
+                }).then(() => {
                   toggle();
-                  onUrlAuthResult(urlAuthResult);
                 });
               });
               break;

@@ -9,8 +9,8 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-export default function cancelEvent(event: Event) {
-  event = event || window.event;
+export default function cancelEvent(event?: Event) {
+  event ||= window.event;
   if(event) {
     // @ts-ignore
     event = event.originalEvent || event;
