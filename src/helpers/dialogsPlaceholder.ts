@@ -102,16 +102,14 @@ export default class DialogsPlaceholder {
     if(this.canvas.parentElement) {
       this.canvas.remove();
 
-      if(this.onRemove) {
-        this.onRemove();
-        this.onRemove = undefined;
-      }
-
       if(this.blockScrollable) {
         this.blockScrollable.container.style.overflowY = '';
         this.blockScrollable = undefined;
       }
     }
+
+    this.onRemove?.();
+    this.onRemove = undefined;
   }
 
   private updateCanvasSize(rect = this.getRectFrom()) {

@@ -819,7 +819,9 @@ class Some<T extends Dialog | ForumTopic = Dialog | ForumTopic> {
       container: this.sortedList.list.parentElement,
       getRectFrom,
       onRemove: () => {
-        this.placeholder = undefined;
+        if(this.placeholder === placeholder) {
+          this.placeholder = undefined;
+        }
       },
       blockScrollable: this.scrollable
     });
@@ -853,20 +855,25 @@ class Some<T extends Dialog | ForumTopic = Dialog | ForumTopic> {
       let placeholder = this.placeholder;
       try {
         const getConversationsResult = this.loadDialogsInner(side);
+        const a = await getConversationsResult;
+
         if(
           !chatList.childElementCount &&
           !placeholder &&
           (
             (!this.loadedDialogsAtLeastOnce && this.needPlaceholderAtFirstTime) ||
-            !(await getConversationsResult).cached
+            !a.cached
           )
         ) {
+          if(this.loadDialogsRenderPromise !== renderPromise) {
+            throw middlewareError;
+          }
+
           placeholder = this.createPlaceholder();
 
           cachedInfoPromise.resolve(false);
         }
 
-        const a = await getConversationsResult;
         const result = await a.result;
         // await pause(5000);
         if(this.loadDialogsRenderPromise !== renderPromise) {
@@ -1063,6 +1070,7 @@ class Some<T extends Dialog | ForumTopic = Dialog | ForumTopic> {
   }
 
   public destroy() {
+    this.clear();
     this.scrollable.destroy();
     this.listenerSetter.removeAll();
   }
@@ -1908,6 +1916,7 @@ export class AppDialogsManager {
       elements.menu.remove();
 
       this.xds[filter.id].destroy();
+      delete this.xds[filter.id];
       delete this.filtersRendered[filter.id];
 
       this.onFiltersLengthChange();

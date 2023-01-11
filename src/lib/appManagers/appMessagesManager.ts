@@ -2012,6 +2012,12 @@ export class AppMessagesManager extends AppManager {
           noIdsDialogs.set(dialog.peerId, {dialog: dialog as Dialog});
 
           this.log.error('noIdsDialogs', dialog, params);
+        } else if(dialog.top_message) { // * fix sending status
+          const topMessage = this.getMessageByPeer(dialog.peerId, dialog.top_message);
+          if(topMessage) {
+            this.setMessageUnreadByDialog(topMessage, dialog);
+            this.dialogsStorage.setDialogToState(dialog);
+          }
         }
       });
 
@@ -2736,6 +2742,16 @@ export class AppMessagesManager extends AppManager {
     return this.appMessagesIdsManager.generateTempMessageId(dialog?.top_message || 0);
   }
 
+  public setMessageUnreadByDialog(message: MyMessage, dialog: Dialog | ForumTopic = this.getDialogOnly(message.peerId)) {
+    if(dialog && message.mid) {
+      if(message.mid > dialog[message.pFlags.out ?
+        'read_outbox_max_id' :
+        'read_inbox_max_id']) {
+        message.pFlags.unread = true;
+      }
+    }
+  }
+
   public saveMessage(message: Message, options: Partial<{
     storage: MessagesStorage,
     isScheduled: true,
@@ -2780,14 +2796,7 @@ export class AppMessagesManager extends AppManager {
       }
     }
 
-    const dialog = this.getDialogOnly(peerId);
-    if(dialog && mid) {
-      if(mid > dialog[message.pFlags.out ?
-        'read_outbox_max_id' :
-        'read_inbox_max_id']) {
-        message.pFlags.unread = true;
-      }
-    }
+    this.setMessageUnreadByDialog(message);
     // this.log(dT(), 'msg unread', mid, apiMessage.pFlags.out, dialog && dialog[apiMessage.pFlags.out ? 'read_outbox_max_id' : 'read_inbox_max_id'])
 
     const replyTo = message.reply_to;
