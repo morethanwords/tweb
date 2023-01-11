@@ -867,6 +867,8 @@ const lang = {
   'AreYouSureWebSessions': 'Are you sure you want to disconnect all websites where you logged in with Telegram?',
   'ClearOtherWebSessionsHelp': 'You can log in on websites that support signing in with Telegram.',
   'TerminateWebSessionInfo': 'Tap to disconnect from your Telegram account.',
+  'EnablePhotoSpoiler': 'Hide with spoiler',
+  'DisablePhotoSpoiler': 'Remove spoiler',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

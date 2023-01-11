@@ -127,7 +127,7 @@ import {BatchProcessor} from '../../helpers/sortedList';
 import wrapUrl from '../../lib/richTextProcessor/wrapUrl';
 import getMessageThreadId from '../../lib/appManagers/utils/messages/getMessageThreadId';
 import wrapTopicNameButton from '../wrappers/topicNameButton';
-import wrapMediaSpoiler from '../wrappers/mediaSpoiler';
+import wrapMediaSpoiler, {toggleMediaSpoiler} from '../wrappers/mediaSpoiler';
 import confirmationPopup from '../confirmationPopup';
 import wrapPeerTitle from '../wrappers/peerTitle';
 import {PopupPeerCheckboxOptions} from '../popups/peer';
@@ -1654,16 +1654,12 @@ export default class ChatBubbles {
         video.play().catch(noop);
       }
 
-      SetTransition({
-        element: mediaSpoiler,
-        forwards: true,
-        className: 'is-revealing',
-        duration: 250,
-        onTransitionEnd: () => {
-          mediaSpoiler.remove();
-          mediaSpoiler.middlewareHelper.destroy();
-        }
+      toggleMediaSpoiler({
+        mediaSpoiler,
+        reveal: true,
+        destroyAfter: true
       });
+
       return;
     }
 

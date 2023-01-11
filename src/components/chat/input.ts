@@ -944,7 +944,8 @@ export default class ChatInput {
           opusDecodeController.setKeepAlive(false);
 
           // тут objectURL ставится уже с audio/wav
-          this.managers.appMessagesManager.sendFile(peerId, dataBlob, {
+          this.managers.appMessagesManager.sendFile(peerId, {
+            file: dataBlob,
             isVoiceMessage: true,
             isMedia: true,
             duration,
@@ -2769,10 +2770,11 @@ export default class ChatInput {
       return false;
     }
 
-    this.managers.appMessagesManager.sendFile(this.chat.peerId, document, {
+    this.managers.appMessagesManager.sendFile(this.chat.peerId, {
       ...this.chat.getMessageSendingParams(),
+      file: document,
       isMedia: true,
-      clearDraft: clearDraft || undefined,
+      clearDraft,
       silent
     });
     this.onMessageSent(clearDraft, true);

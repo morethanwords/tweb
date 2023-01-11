@@ -24,7 +24,7 @@ type HashOptions = {
 };
 
 export type ApiLimitType = 'pin' | 'folderPin' | 'folders' |
-  'favedStickers' | 'reactions' | 'bio' | 'topicPin';
+  'favedStickers' | 'reactions' | 'bio' | 'topicPin' | 'caption';
 
 export default abstract class ApiManagerMethods extends AppManager {
   private afterMessageIdTemp: number;
@@ -303,7 +303,8 @@ export default abstract class ApiManagerMethods extends AppManager {
         favedStickers: ['stickers_faved_limit_default', 'stickers_faved_limit_premium'],
         reactions: ['reactions_user_max_default', 'reactions_user_max_premium'],
         bio: ['about_length_limit_default', 'about_length_limit_premium'],
-        topicPin: 'topics_pinned_limit'
+        topicPin: 'topics_pinned_limit',
+        caption: ['caption_length_limit_default', 'caption_length_limit_premium']
       };
 
       isPremium ??= this.rootScope.premium;

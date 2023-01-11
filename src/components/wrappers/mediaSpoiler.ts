@@ -9,29 +9,41 @@ import {Middleware} from '../../helpers/middleware';
 import {Document, Photo, PhotoSize} from '../../layer';
 import {AnimationItemGroup} from '../animationIntersector';
 import DotRenderer from '../dotRenderer';
+import SetTransition from '../singleTransition';
 
-export default async function wrapMediaSpoiler({
-  media,
+export function toggleMediaSpoiler(options: {
+  mediaSpoiler: HTMLElement,
+  reveal: boolean,
+  destroyAfter?: boolean
+}) {
+  const {mediaSpoiler, reveal, destroyAfter} = options;
+  SetTransition({
+    element: mediaSpoiler,
+    forwards: reveal,
+    className: 'is-revealing',
+    duration: 250,
+    onTransitionEnd: () => {
+      if(reveal && destroyAfter) {
+        mediaSpoiler.remove();
+        mediaSpoiler.middlewareHelper.destroy();
+      }
+    }
+  });
+}
+
+export function wrapMediaSpoilerWithImage({
   middleware,
   width,
   height,
-  animationGroup
+  animationGroup,
+  image
 }: {
-  media: Document.document | Photo.photo,
   middleware: Middleware,
   width: number,
   height: number,
-  animationGroup: AnimationItemGroup
+  animationGroup: AnimationItemGroup,
+  image: Awaited<ReturnType<typeof getImageFromStrippedThumb>>['image']
 }) {
-  const sizes = (media as Photo.photo).sizes || (media as Document.document).thumbs;
-  const thumb = sizes.find((size) => size._ === 'photoStrippedSize') as PhotoSize.photoStrippedSize;
-  if(!thumb) {
-    return;
-  }
-
-  const {image, loadPromise} = getImageFromStrippedThumb(media, thumb, true);
-  await loadPromise;
-
   if(!middleware()) {
     return;
   }
@@ -52,4 +64,25 @@ export default async function wrapMediaSpoiler({
   container.append(image, dotRenderer.canvas);
 
   return container;
+}
+
+export default async function wrapMediaSpoiler(
+  options: Omit<Parameters<typeof wrapMediaSpoilerWithImage>[0], 'image'> & {
+    media: Document.document | Photo.photo
+  }
+) {
+  const {media} = options;
+  const sizes = (media as Photo.photo).sizes || (media as Document.document).thumbs;
+  const thumb = sizes.find((size) => size._ === 'photoStrippedSize') as PhotoSize.photoStrippedSize;
+  if(!thumb) {
+    return;
+  }
+
+  const {image, loadPromise} = getImageFromStrippedThumb(media, thumb, true);
+  await loadPromise;
+
+  return wrapMediaSpoilerWithImage({
+    ...options,
+    image
+  });
 }

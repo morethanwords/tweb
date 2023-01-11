@@ -74,6 +74,22 @@ import getMessageThreadId from './utils/messages/getMessageThreadId';
 const APITIMEOUT = 0;
 const DO_NOT_READ_HISTORY = false;
 
+export type SendFileDetails = {
+  file: File | Blob | MyDocument,
+} & Partial<{
+  duration: number,
+  width: number,
+  height: number,
+  objectURL: string,
+  thumb: {
+    blob: Blob,
+    url: string,
+    size: MediaSize
+  },
+  strippedBytes: PhotoSize.photoStrippedSize['bytes'],
+  spoiler: boolean
+}>;
+
 export type HistoryStorage = {
   count: number | null,
   history: SlicedArray<number>,
@@ -676,24 +692,15 @@ export class AppMessagesManager extends AppManager {
     return Promise.all(promises).then(noop);
   }
 
-  public sendFile(peerId: PeerId, file: File | Blob | MyDocument, options: MessageSendingParams & Partial<{
-    isRoundMessage: true,
-    isVoiceMessage: true,
-    isGroupedItem: true,
-    isMedia: true,
+  public sendFile(peerId: PeerId, options: MessageSendingParams & SendFileDetails & Partial<{
+    isRoundMessage: boolean,
+    isVoiceMessage: boolean,
+    isGroupedItem: boolean,
+    isMedia: boolean,
 
     groupId: string,
     caption: string,
     entities: MessageEntity[],
-    width: number,
-    height: number,
-    objectURL: string,
-    thumb: {
-      blob: Blob,
-      url: string,
-      size: MediaSize
-    },
-    duration: number,
     background: boolean,
     clearDraft: boolean,
     noSound: boolean,
@@ -702,7 +709,8 @@ export class AppMessagesManager extends AppManager {
 
     // ! only for internal use
     processAfter?: typeof processAfter
-  }> = {}) {
+  }>) {
+    const file = options.file;
     peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
 
     // this.checkSendOptions(options);
@@ -728,6 +736,12 @@ export class AppMessagesManager extends AppManager {
 
     const isPhoto = getEnvironment().IMAGE_MIME_TYPES_SUPPORTED.has(fileType);
 
+    const strippedPhotoSize: PhotoSize.photoStrippedSize = options.strippedBytes && {
+      _: 'photoStrippedSize',
+      bytes: options.strippedBytes,
+      type: 'i'
+    };
+
     let photo: MyPhoto, document: MyDocument;
 
     let actionName: Extract<SendMessageAction['_'], 'sendMessageUploadAudioAction' | 'sendMessageUploadDocumentAction' | 'sendMessageUploadPhotoAction' | 'sendMessageUploadVideoAction'>;
@@ -747,7 +761,7 @@ export class AppMessagesManager extends AppManager {
       const attribute: DocumentAttribute.documentAttributeAudio = {
         _: 'documentAttributeAudio',
         pFlags: {
-          voice: options.isVoiceMessage
+          voice: options.isVoiceMessage || undefined
         },
         waveform: options.waveform,
         duration: options.duration || 0
@@ -780,6 +794,10 @@ export class AppMessagesManager extends AppManager {
         h: options.height
       } as any;
 
+      if(strippedPhotoSize) {
+        photo.sizes.unshift(strippedPhotoSize);
+      }
+
       const cacheContext = this.thumbsStorage.getCacheContext(photo, photoSize.type);
       cacheContext.downloaded = file.size;
       cacheContext.url = options.objectURL || '';
@@ -793,7 +811,7 @@ export class AppMessagesManager extends AppManager {
       const videoAttribute: DocumentAttribute.documentAttributeVideo = {
         _: 'documentAttributeVideo',
         pFlags: {
-          round_message: options.isRoundMessage,
+          round_message: options.isRoundMessage || undefined,
           supports_streaming: true
         },
         duration: options.duration,
@@ -874,6 +892,10 @@ export class AppMessagesManager extends AppManager {
         thumbs.push(thumb);
       }
 
+      if(strippedPhotoSize) {
+        thumbs.unshift(strippedPhotoSize);
+      }
+
       /* if(thumbs.length) {
         const thumb = thumbs[0] as PhotoSize.photoSize;
         const docThumb = appPhotosManager.getDocumentCachedThumb(document.id);
@@ -908,6 +930,10 @@ export class AppMessagesManager extends AppManager {
     if(media) {
       defineNotNumerableProperties(media as any, ['promise']);
       (media as any).promise = sentDeferred;
+
+      if(options.spoiler) {
+        (media as MessageMedia.messageMediaPhoto).pFlags.spoiler = true;
+      }
     }
 
     message.entities = entities;
@@ -989,7 +1015,10 @@ export class AppMessagesManager extends AppManager {
               case 'photo':
                 inputMedia = {
                   _: 'inputMediaUploadedPhoto',
-                  file: inputFile
+                  file: inputFile,
+                  pFlags: {
+                    spoiler: options.spoiler || undefined
+                  }
                 };
                 break;
 
@@ -999,7 +1028,8 @@ export class AppMessagesManager extends AppManager {
                   file: inputFile,
                   mime_type: fileType,
                   pFlags: {
-                    force_file: actionName === 'sendMessageUploadDocumentAction' ? true : undefined
+                    force_file: actionName === 'sendMessageUploadDocumentAction' || undefined,
+                    spoiler: options.spoiler || undefined
                     // nosound_video: options.noSound ? true : undefined
                   },
                   attributes
@@ -1094,28 +1124,21 @@ export class AppMessagesManager extends AppManager {
     return ret;
   }
 
-  public async sendAlbum(peerId: PeerId, files: File[], options: MessageSendingParams & Partial<{
-    isMedia: true,
-    entities: MessageEntity[],
-    caption: string,
-    sendFileDetails: Partial<{
-      duration: number,
-      width: number,
-      height: number,
-      objectURL: string,
-      thumbBlob: Blob,
-      thumbURL: string
-    }>[],
-    clearDraft: true
-  }> = {}) {
+  public async sendAlbum(peerId: PeerId, options: MessageSendingParams & {
+    isMedia?: boolean,
+    entities?: MessageEntity[],
+    caption?: string,
+    sendFileDetails: SendFileDetails[],
+    clearDraft?: boolean
+  }) {
     // this.checkSendOptions(options);
 
     if(options.threadId && !options.replyToMsgId) {
       options.replyToMsgId = options.threadId;
     }
 
-    if(files.length === 1) {
-      return this.sendFile(peerId, files[0], {...options, ...options.sendFileDetails[0]});
+    if(options.sendFileDetails.length === 1) {
+      return this.sendFile(peerId, {...options, ...options.sendFileDetails[0]});
     }
 
     peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
@@ -1127,7 +1150,7 @@ export class AppMessagesManager extends AppManager {
       caption = parseMarkdown(caption, entities);
     }
 
-    this.log('sendAlbum', files, options);
+    this.log('sendAlbum', options);
 
     const groupId = '' + ++this.groupedTempId;
 
@@ -1136,9 +1159,8 @@ export class AppMessagesManager extends AppManager {
       callbacks.push(cb);
     };
 
-    const messages = files.map((file, idx) => {
-      const details = options.sendFileDetails[idx];
-      const o: Parameters<AppMessagesManager['sendFile']>[2] = {
+    const messages = options.sendFileDetails.map((details, idx) => {
+      const o: Parameters<AppMessagesManager['sendFile']>[1] = {
         isGroupedItem: true,
         isMedia: options.isMedia,
         scheduleDate: options.scheduleDate,
@@ -1157,7 +1179,7 @@ export class AppMessagesManager extends AppManager {
         // o.replyToMsgId = replyToMsgId;
       }
 
-      return this.sendFile(peerId, file, o).message;
+      return this.sendFile(peerId, o).message;
     });
 
     if(options.clearDraft) {
@@ -1209,12 +1231,15 @@ export class AppMessagesManager extends AppManager {
 
     const promises: Promise<InputSingleMedia>[] = messages.map((message) => {
       return (message.send() as Promise<InputMedia>).then((inputMedia) => {
-        return this.apiManager.invokeApi('messages.uploadMedia', {
-          peer: inputPeer,
-          media: inputMedia
-        });
+        return Promise.all([
+          inputMedia,
+          this.apiManager.invokeApi('messages.uploadMedia', {
+            peer: inputPeer,
+            media: inputMedia
+          })
+        ]);
       })
-      .then((messageMedia) => {
+      .then(([originalInputMedia, messageMedia]) => {
         let inputMedia: InputMedia;
         if(messageMedia._ === 'messageMediaPhoto') {
           const photo = this.appPhotosManager.savePhoto(messageMedia.photo);
@@ -1223,6 +1248,17 @@ export class AppMessagesManager extends AppManager {
           const doc = this.appDocsManager.saveDoc(messageMedia.document);
           inputMedia = getDocumentMediaInput(doc);
         }
+
+        // copy original flags
+        const copyProperties: (keyof InputMedia.inputMediaPhoto)[] = [
+          'pFlags',
+          'ttl_seconds'
+        ];
+
+        copyProperties.forEach((property) => {
+          // @ts-ignore
+          inputMedia[property] = originalInputMedia[property] ?? inputMedia[property];
+        });
 
         const inputSingleMedia: InputSingleMedia = {
           _: 'inputSingleMedia',

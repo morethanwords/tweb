@@ -27,7 +27,7 @@ export function createPosterFromMedia(media: HTMLVideoElement | HTMLImageElement
   });
 }
 
-export function createPosterFromVideo(video: HTMLVideoElement): ReturnType<typeof scaleMediaElement> {
+export function createPosterFromVideo(video: HTMLVideoElement): ReturnType<typeof createPosterFromMedia> {
   return new Promise((resolve, reject) => {
     video.onseeked = () => {
       video.onseeked = () => {

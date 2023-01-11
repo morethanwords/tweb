@@ -2385,30 +2385,6 @@ $bubble-border-radius-big: 12px;
       margin-top: 1.75rem;
     }
   }
-
-  .media-spoiler {
-    &-container {
-      position: absolute;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      left: 0;
-      z-index: 1;
-      border-radius: inherit;
-
-      &.is-revealing {
-        opacity: 1;
-
-        &:not(.backwards) {
-          opacity: 0;
-        }
-
-        &.animating {
-          transition: opacity var(--transition-standard-out);
-        }
-      }
-    }
-  }
 }
 
 // @keyframes arrow-shake {
