@@ -16,6 +16,7 @@ export const RIGHT_COLUMN_ACTIVE_CLASSNAME = 'is-right-column-shown';
 export class AppSidebarRight extends SidebarSlider {
   private isColumnProportionSet = false;
   private sharedMediaTab: AppSharedMediaTab;
+  // public rect: DOMRect;
 
   constructor() {
     super({
@@ -91,6 +92,7 @@ export class AppSidebarRight extends SidebarSlider {
   private setColumnProportion() {
     const proportion = this.sidebarEl.scrollWidth / this.sidebarEl.previousElementSibling.scrollWidth;
     document.documentElement.style.setProperty('--right-column-proportion', '' + proportion);
+    // this.rect = this.sidebarEl.getBoundingClientRect();
   }
 
   public toggleSidebar(enable?: boolean, animate?: boolean) {

@@ -127,7 +127,7 @@ import {BatchProcessor} from '../../helpers/sortedList';
 import wrapUrl from '../../lib/richTextProcessor/wrapUrl';
 import getMessageThreadId from '../../lib/appManagers/utils/messages/getMessageThreadId';
 import wrapTopicNameButton from '../wrappers/topicNameButton';
-import wrapMediaSpoiler, {toggleMediaSpoiler} from '../wrappers/mediaSpoiler';
+import wrapMediaSpoiler, {onMediaSpoilerClick, toggleMediaSpoiler} from '../wrappers/mediaSpoiler';
 import confirmationPopup from '../confirmationPopup';
 import wrapPeerTitle from '../wrappers/peerTitle';
 import {PopupPeerCheckboxOptions} from '../popups/peer';
@@ -1642,24 +1642,10 @@ export default class ChatBubbles {
 
     const mediaSpoiler: HTMLElement = findUpClassName(target, 'media-spoiler-container');
     if(mediaSpoiler) {
-      cancelEvent(e);
-
-      if(mediaSpoiler.classList.contains('is-revealing')) {
-        return;
-      }
-
-      const video = mediaSpoiler.parentElement.querySelector('video');
-      if(video && !mediaSpoiler.parentElement.querySelector('.video-play')) {
-        video.autoplay = true;
-        video.play().catch(noop);
-      }
-
-      toggleMediaSpoiler({
-        mediaSpoiler,
-        reveal: true,
-        destroyAfter: true
+      onMediaSpoilerClick({
+        event: e,
+        mediaSpoiler
       });
-
       return;
     }
 

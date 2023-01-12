@@ -74,6 +74,7 @@ import wrapDocument from './wrappers/document';
 import wrapPhoto from './wrappers/photo';
 import wrapVideo from './wrappers/video';
 import noop from '../helpers/noop';
+import wrapMediaSpoiler, {onMediaSpoilerClick} from './wrappers/mediaSpoiler';
 
 // const testScroll = false;
 
@@ -549,6 +550,15 @@ export default class AppSearchSuper {
         return;
       }
 
+      const mediaSpoiler: HTMLElement = target.querySelector('.media-spoiler-container');
+      if(mediaSpoiler) {
+        onMediaSpoilerClick({
+          event: e,
+          mediaSpoiler
+        })
+        return;
+      }
+
       const peerId = target.dataset.peerId.toPeerId();
 
       const targets = (Array.from(this.tabs[inputFilter].querySelectorAll('.' + targetClassName)) as HTMLElement[]).map((el) => {
@@ -666,7 +676,23 @@ export default class AppSearchSuper {
       });
     }
 
-    [wrapped.images.thumb, wrapped.images.full].filter(Boolean).forEach((image) => {
+    if((message.media as MessageMedia.messageMediaPhoto).pFlags.spoiler) {
+      const mediaSpoiler = await wrapMediaSpoiler({
+        animationGroup: 'chat',
+        media,
+        middleware,
+        width: 140,
+        height: 140,
+        multiply: 0.3
+      });
+
+      div.append(mediaSpoiler);
+    }
+
+    [
+      wrapped.images.thumb,
+      wrapped.images.full
+    ].filter(Boolean).forEach((image) => {
       image.classList.add('grid-item-media');
     });
 
@@ -1645,6 +1671,7 @@ export default class AppSearchSuper {
   }
 
   public destroy() {
+    this.cleanup();
     this.listenerSetter.removeAll();
     this.scrollable.destroy();
     this.swipeHandler?.removeListeners();

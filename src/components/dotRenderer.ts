@@ -6,7 +6,6 @@
 
 import {IS_MOBILE} from '../environment/userAgent';
 import {animate} from '../helpers/animation';
-import drawCircle, {drawCircleFromStart} from '../helpers/canvas/drawCircle';
 import {Middleware} from '../helpers/middleware';
 import clamp from '../helpers/number/clamp';
 import animationIntersector, {AnimationItemGroup, AnimationItemWrapper} from './animationIntersector';
@@ -32,7 +31,11 @@ export default class DotRenderer implements AnimationItemWrapper {
 
   private dpr: number;
 
-  constructor(private width: number, private height: number) {
+  constructor(
+    private width: number,
+    private height: number,
+    private multiply?: number
+  ) {
     const canvas = this.canvas = document.createElement('canvas');
     const dpr = this.dpr = window.devicePixelRatio;
     canvas.width = width * dpr;
@@ -47,7 +50,9 @@ export default class DotRenderer implements AnimationItemWrapper {
 
   private prepare() {
     let count = Math.round(this.width * this.height / (35 * (IS_MOBILE ? 2 : 1)));
+    count *= this.multiply || 1;
     count = Math.min(IS_MOBILE ? 1000 : 2200, count);
+    count = Math.round(count);
     const dots: DotRendererDot[] = this.dots = new Array(count);
 
     for(let i = 0; i < count; ++i) {
@@ -151,18 +156,20 @@ export default class DotRenderer implements AnimationItemWrapper {
     width,
     height,
     middleware,
-    animationGroup
+    animationGroup,
+    multiply
   }: {
     width: number,
     height: number,
     middleware: Middleware,
-    animationGroup: AnimationItemGroup
+    animationGroup: AnimationItemGroup,
+    multiply?: number
   }) {
     middleware.onClean(() => {
       animationIntersector.removeAnimationByPlayer(dotRenderer);
     });
 
-    const dotRenderer = new DotRenderer(width, height);
+    const dotRenderer = new DotRenderer(width, height, multiply);
     dotRenderer.renderFirstFrame();
 
     animationIntersector.addAnimation(dotRenderer, animationGroup, dotRenderer.canvas, true);

@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import cancelEvent from '../../helpers/dom/cancelEvent';
 import getImageFromStrippedThumb from '../../helpers/getImageFromStrippedThumb';
-import {Middleware} from '../../helpers/middleware';
+import noop from '../../helpers/noop';
 import {Document, Photo, PhotoSize} from '../../layer';
-import {AnimationItemGroup} from '../animationIntersector';
 import DotRenderer from '../dotRenderer';
 import SetTransition from '../singleTransition';
 
@@ -31,19 +31,34 @@ export function toggleMediaSpoiler(options: {
   });
 }
 
-export function wrapMediaSpoilerWithImage({
-  middleware,
-  width,
-  height,
-  animationGroup,
-  image
-}: {
-  middleware: Middleware,
-  width: number,
-  height: number,
-  animationGroup: AnimationItemGroup,
-  image: Awaited<ReturnType<typeof getImageFromStrippedThumb>>['image']
+export function onMediaSpoilerClick(options: {
+  mediaSpoiler: HTMLElement,
+  event: Event
 }) {
+  const {mediaSpoiler, event} = options;
+  cancelEvent(event);
+
+  if(mediaSpoiler.classList.contains('is-revealing')) {
+    return;
+  }
+
+  const video = mediaSpoiler.parentElement.querySelector('video');
+  if(video && !mediaSpoiler.parentElement.querySelector('.video-play')) {
+    video.autoplay = true;
+    video.play().catch(noop);
+  }
+
+  toggleMediaSpoiler({
+    mediaSpoiler,
+    reveal: true,
+    destroyAfter: true
+  });
+}
+
+export function wrapMediaSpoilerWithImage(options: {
+  image: Awaited<ReturnType<typeof getImageFromStrippedThumb>>['image']
+} & Parameters<typeof DotRenderer['create']>[0]) {
+  const {middleware, image} = options;
   if(!middleware()) {
     return;
   }
@@ -55,10 +70,8 @@ export function wrapMediaSpoilerWithImage({
   container.middlewareHelper = middleware.create();
 
   const dotRenderer = DotRenderer.create({
-    width,
-    height,
-    middleware: container.middlewareHelper.get(),
-    animationGroup
+    ...options,
+    middleware: container.middlewareHelper.get()
   });
 
   container.append(image, dotRenderer.canvas);
