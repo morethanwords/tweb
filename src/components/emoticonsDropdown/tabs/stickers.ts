@@ -232,11 +232,15 @@ export class StickersTabCategory<Item extends StickersTabCategoryItem, Additiona
   }
 
   public setCategoryItemsHeight() {
+    if(this.id === 'Emoji.Recent') {
+      debugger;
+    }
+
     const {width: containerWidth} = this.getContainerSize();
     const elementSize = this.getElementMediaSize().width;
 
     let itemsPerRow = containerWidth / elementSize;
-    if(this.gapX) itemsPerRow -= (itemsPerRow - 1) * this.gapX / elementSize;
+    if(this.gapX) itemsPerRow -= Math.floor(itemsPerRow - 1) * this.gapX / elementSize;
     itemsPerRow = Math.floor(itemsPerRow);
 
     const rows = Math.ceil(this.items.length / itemsPerRow);

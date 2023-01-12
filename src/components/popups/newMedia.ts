@@ -159,14 +159,14 @@ export default class PopupNewMedia extends PopupElement {
     let target: HTMLElement, isMedia: boolean, item: SendFileParams;
     createContextMenu({
       buttons: [{
-        icon: 'spoiler',
+        icon: 'mediaspoiler',
         text: 'EnablePhotoSpoiler',
         onClick: () => {
           this.applyMediaSpoiler(item);
         },
         verify: () => isMedia && !item.mediaSpoiler
       }, {
-        icon: 'spoiler',
+        icon: 'mediaspoileroff',
         text: 'DisablePhotoSpoiler',
         onClick: () => {
           toggleMediaSpoiler({

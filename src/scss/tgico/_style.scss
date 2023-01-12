@@ -3,9 +3,9 @@
 @font-face {
   font-family: '#{$tgico-font-family}';
   src:
-    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?vqhlcw') format('truetype'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?vqhlcw') format('woff'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?vqhlcw##{$tgico-font-family}') format('svg');
+    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?ivbp49') format('truetype'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?ivbp49') format('woff'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?ivbp49##{$tgico-font-family}') format('svg');
   font-weight: normal;
   font-style: normal;
   font-display: block;
@@ -437,9 +437,24 @@
     content: $tgico-group; 
   }
 }
+.tgico-groupmedia {
+  &:before {
+    content: $tgico-groupmedia; 
+  }
+}
+.tgico-groupmediaoff {
+  &:before {
+    content: $tgico-groupmediaoff; 
+  }
+}
 .tgico-help {
   &:before {
     content: $tgico-help; 
+  }
+}
+.tgico-hide {
+  &:before {
+    content: $tgico-hide; 
   }
 }
 .tgico-image {
@@ -565,6 +580,16 @@
 .tgico-logout {
   &:before {
     content: $tgico-logout; 
+  }
+}
+.tgico-mediaspoiler {
+  &:before {
+    content: $tgico-mediaspoiler; 
+  }
+}
+.tgico-mediaspoileroff {
+  &:before {
+    content: $tgico-mediaspoileroff; 
   }
 }
 .tgico-mention {

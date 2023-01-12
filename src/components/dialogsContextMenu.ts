@@ -101,7 +101,7 @@ export default class DialogsContextMenu {
       onClick: this.onArchiveClick,
       verify: () => this.filterId === 1 && this.peerId !== rootScope.myId
     }, {
-      icon: 'eye2',
+      icon: 'hide',
       text: 'Hide',
       onClick: this.hideTopic,
       verify: async() => {
