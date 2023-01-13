@@ -12,8 +12,19 @@ import {Middleware} from '../helpers/middleware';
 import ListenerSetter, {ListenerOptions} from '../helpers/listenerSetter';
 import {attachContextMenuListener} from '../helpers/dom/attachContextMenuListener';
 
-const getEvent = (e: TouchEvent | MouseEvent) => {
-  return (e as TouchEvent).touches ? (e as TouchEvent).touches[0] : e as MouseEvent;
+type E = {
+  clientX: number,
+  clientY: number,
+  target: EventTarget,
+  button?: number
+};
+
+type EE = E | (Exclude<E, 'clientX' | 'clientY'> & {
+  touches: E[]
+});
+
+const getEvent = (e: EE) => {
+  return 'touches' in e ? e.touches[0] : e;
 };
 
 const attachGlobalListenerTo = window;
@@ -29,6 +40,7 @@ export type SwipeHandlerOptions = {
   verifyTouchTarget?: SwipeHandler['verifyTouchTarget'],
   onFirstSwipe?: SwipeHandler['onFirstSwipe'],
   onReset?: SwipeHandler['onReset'],
+  onStart?: SwipeHandler['onStart'],
   cursor?: SwipeHandler['cursor'],
   cancelEvent?: SwipeHandler['cancelEvent'],
   listenerOptions?: SwipeHandler['listenerOptions'],
@@ -42,18 +54,22 @@ const MOUSE_MOVE_OPTIONS: ListenerOptions = false as any;
 
 export default class SwipeHandler {
   private element: HTMLElement;
-  private onSwipe: (xDiff: number, yDiff: number, e: TouchEvent | MouseEvent) => boolean | void;
-  private verifyTouchTarget: (evt: TouchEvent | MouseEvent) => boolean | Promise<boolean>;
-  private onFirstSwipe: (e: TouchEvent | MouseEvent) => void;
+  private onSwipe: (xDiff: number, yDiff: number, e: EE) => boolean | void;
+  private verifyTouchTarget: (evt: EE) => boolean | Promise<boolean>;
+  private onFirstSwipe: (e: EE) => void;
   private onReset: () => void;
+  private onStart: () => void;
   private cursor: 'grabbing' | 'move' | 'row-resize' | 'col-resize' | 'nesw-resize' | 'nwse-resize' | 'ne-resize' | 'se-resize' | 'sw-resize' | 'nw-resize' | 'n-resize' | 'e-resize' | 's-resize' | 'w-resize' | '' = 'grabbing';
   private cancelEvent = true;
   private listenerOptions: boolean | AddEventListenerOptions = false;
   private setCursorTo: HTMLElement;
 
-  private hadMove = false;
-  private xDown: number = null;
-  private yDown: number = null;
+  private hadMove: boolean;
+  private eventUp: E;
+  private xDown: number;
+  private yDown: number;
+  private xAdded: number;
+  private yAdded: number;
 
   private withDelay: boolean;
   private listenerSetter: ListenerSetter;
@@ -65,6 +81,8 @@ export default class SwipeHandler {
     this.listenerSetter = new ListenerSetter();
     this.setListeners();
 
+    this.resetValues();
+
     options.middleware?.onDestroy(() => {
       this.reset();
       this.removeListeners();
@@ -73,12 +91,15 @@ export default class SwipeHandler {
 
   public setListeners() {
     if(!IS_TOUCH_SUPPORTED) {
+      // @ts-ignore
       this.listenerSetter.add(this.element)('mousedown', this.handleStart, this.listenerOptions);
       this.listenerSetter.add(attachGlobalListenerTo)('mouseup', this.reset);
     } else {
       if(this.withDelay) {
+        // @ts-ignore
         attachContextMenuListener(this.element, this.handleStart, this.listenerSetter);
       } else {
+        // @ts-ignore
         this.listenerSetter.add(this.element)('touchstart', this.handleStart, this.listenerOptions);
       }
 
@@ -98,7 +119,26 @@ export default class SwipeHandler {
     }
   }
 
-  reset = (e?: Event) => {
+  public add(x: number, y: number) {
+    this.xAdded = x;
+    this.yAdded = y;
+    this.handleMove({
+      clientX: this.eventUp.clientX,
+      clientY: this.eventUp.clientY,
+      target: this.eventUp.target
+    });
+  }
+
+  protected resetValues() {
+    this.hadMove = false;
+    this.xAdded = this.yAdded = 0;
+    this.xDown =
+      this.yDown =
+      this.eventUp =
+      undefined;
+  }
+
+  protected reset = (e?: Event) => {
     /* if(e) {
       cancelEvent(e);
     } */
@@ -114,42 +154,50 @@ export default class SwipeHandler {
       this.onReset?.();
     }
 
-    this.xDown = this.yDown = null;
-    this.hadMove = false;
+    this.resetValues();
   };
 
-  handleStart = async(_e: TouchEvent | MouseEvent) => {
+  protected handleStart = async(_e: EE) => {
     const e = getEvent(_e);
+    if(e.button !== 0) {
+      return;
+    }
+
     if(this.verifyTouchTarget && !(await this.verifyTouchTarget(_e))) {
       return this.reset();
     }
 
     this.xDown = e.clientX;
     this.yDown = e.clientY;
+    this.eventUp = e;
 
     if(IS_TOUCH_SUPPORTED) {
+      // @ts-ignore
       this.listenerSetter.add(attachGlobalListenerTo)('touchmove', this.handleMove, TOUCH_MOVE_OPTIONS);
     } else {
+      // @ts-ignore
       this.listenerSetter.add(attachGlobalListenerTo)('mousemove', this.handleMove, MOUSE_MOVE_OPTIONS);
     }
+
+    this.onStart?.();
   };
 
-  handleMove = (_e: TouchEvent | MouseEvent) => {
-    if(this.xDown === null || this.yDown === null || RESET_GLOBAL) {
+  protected handleMove = (_e: EE) => {
+    if(this.xDown === undefined || this.yDown === undefined || RESET_GLOBAL) {
       this.reset();
       return;
     }
 
     if(this.cancelEvent) {
-      cancelEvent(_e);
+      cancelEvent(_e as any);
     }
 
-    const e = getEvent(_e);
+    const e = this.eventUp = getEvent(_e);
     const xUp = e.clientX;
     const yUp = e.clientY;
 
-    const xDiff = this.xDown - xUp;
-    const yDiff = this.yDown - yUp;
+    const xDiff = xUp - this.xDown + this.xAdded;
+    const yDiff = yUp - this.yDown + this.yAdded;
 
     if(!this.hadMove) {
       if(!xDiff && !yDiff) {
@@ -164,20 +212,6 @@ export default class SwipeHandler {
 
       this.onFirstSwipe?.(_e);
     }
-
-    // if(Math.abs(xDiff) > Math.abs(yDiff)) { /*most significant*/
-    //   if(xDiff > 0) { /* left swipe */
-
-    //   } else { /* right swipe */
-
-    //   }
-    // } else {
-    //   if(yDiff > 0) { /* up swipe */
-
-    //   } else { /* down swipe */
-
-    //   }
-    // }
 
     /* reset values */
     const onSwipeResult = this.onSwipe(xDiff, yDiff, _e);

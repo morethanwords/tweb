@@ -170,6 +170,9 @@ export default class PeerProfileAvatars {
     const swipeHandler = this.swipeHandler = new SwipeHandler({
       element: this.avatars,
       onSwipe: (xDiff, yDiff) => {
+        xDiff *= -1;
+        yDiff *= -1;
+
         lastDiffX = xDiff;
         let lastX = x + xDiff * -PeerProfileAvatars.SCALE;
         if(lastX > 0) lastX = 0;
@@ -182,7 +185,7 @@ export default class PeerProfileAvatars {
       verifyTouchTarget: (e) => {
         if(!checkScrollTop()) {
           cancelNextClick();
-          cancelEvent(e);
+          cancelEvent(e as any as Event);
           return false;
         } else if(this.container.classList.contains('is-single') || freeze) {
           return false;

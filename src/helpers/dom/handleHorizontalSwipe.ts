@@ -19,16 +19,19 @@ export default function handleHorizontalSwipe(options: SwipeHandlerHorizontalOpt
     ...options,
     verifyTouchTarget: (e) => {
       return !findUpClassName(e.target, 'progress-line') &&
-        !isSwipingBackSafari(e) &&
+        !isSwipingBackSafari(e as any as TouchEvent) &&
         (options.verifyTouchTarget ? options.verifyTouchTarget(e) : true);
     },
     onSwipe: (xDiff, yDiff, e) => {
+      xDiff *= -1;
+      yDiff *= -1;
+
       if(!cancelY && Math.abs(yDiff) > 20) {
         return true;
       }
 
       if(Math.abs(xDiff) > Math.abs(yDiff)) {
-        cancelEvent(e);
+        cancelEvent(e as any as Event);
         cancelY = true;
       } else if(!cancelY && Math.abs(yDiff) > Math.abs(xDiff)/*  || Math.abs(yDiff) > 20 */) {
         return true;

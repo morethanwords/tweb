@@ -23,6 +23,9 @@ import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
 import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS} from '../../../lib/mtproto/mtproto_config';
 import replaceContent from '../../../helpers/dom/replaceContent';
 import SettingSection from '../../settingSection';
+import Sortable from '../../../helpers/dom/sortable';
+import whichChild from '../../../helpers/dom/whichChild';
+import indexOfAndSplice from '../../../helpers/array/indexOfAndSplice';
 
 export default class AppChatFoldersTab extends SliderSuperTab {
   private createFolderBtn: HTMLElement;
@@ -30,6 +33,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
   private suggestedSection: SettingSection;
   private stickerContainer: HTMLElement;
   private animation: RLottiePlayer;
+  private list: HTMLElement;
 
   private filtersRendered: {[filterId: number]: Row} = {};
   private loadAnimationPromise: ReturnType<LottieLoader['waitForFirstFrame']>;
@@ -91,7 +95,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       row = new Row({
         title: filter.id === FOLDER_ID_ALL ? i18n('FilterAllChats') : wrapEmojiText(filter.title),
         subtitle: description,
-        clickable: filter.id !== FOLDER_ID_ALL,
+        clickable: true,
         buttonRightLangKey: dialogFilter._ === 'dialogFilterSuggested' ? 'Add' : undefined
       });
 
@@ -108,6 +112,8 @@ export default class AppChatFoldersTab extends SliderSuperTab {
         }
 
         this.filtersRendered[filter.id] = row;
+
+        row.makeSortable();
       }
     } else {
       if(filter.id !== FOLDER_ID_ALL) {
@@ -156,6 +162,9 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     });
     this.foldersSection.container.style.display = 'none';
 
+    this.list = document.createElement('div');
+    this.foldersSection.content.append(this.list);
+
     this.suggestedSection = new SettingSection({
       name: 'FilterRecommended'
     });
@@ -181,7 +190,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
           continue;
         }
 
-        await this.renderFolder(filter, this.foldersSection.content, undefined, true);
+        await this.renderFolder(filter, this.list, undefined, true);
       }
 
       this.toggleAllChats();
@@ -194,7 +203,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       if(filterRendered) {
         await this.renderFolder(filter, null, filterRendered);
       } else if(filter.id !== FOLDER_ID_ARCHIVE) {
-        await this.renderFolder(filter, this.foldersSection.content, undefined, true);
+        await this.renderFolder(filter, this.list, undefined, true);
       }
 
       onFiltersContainerUpdate();
@@ -243,6 +252,28 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       this.animation = player;
 
       return lottieLoader.waitForFirstFrame(player);
+    });
+
+    new Sortable({
+      list: this.list,
+      middleware: this.middlewareHelper.get(),
+      onSort: (prevIdx, newIdx) => {
+        let order: number[] = [];
+        for(const filterId in this.filtersRendered) {
+          const row = this.filtersRendered[filterId];
+          const idx = whichChild(row.container);
+          order[idx] = +filterId;
+        }
+
+        order = order.filter((filterId) => filterId !== undefined);
+        if(!rootScope.premium) {
+          indexOfAndSplice(order, FOLDER_ID_ALL);
+          // order.unshift(FOLDER_ID_ALL);
+        }
+
+        this.managers.filtersStorage.updateDialogFiltersOrder(order);
+      },
+      scrollable: this.scrollable
     });
 
     this.getSuggestedFilters();

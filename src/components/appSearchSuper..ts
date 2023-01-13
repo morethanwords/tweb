@@ -382,6 +382,8 @@ export default class AppSearchSuper {
       this.swipeHandler = handleTabSwipe({
         element: this.tabsContainer,
         onSwipe: (xDiff, yDiff, e) => {
+          xDiff *= -1;
+          yDiff *= -1;
           const prevId = this.selectTab.prevId();
           const children = Array.from(this.tabsMenu.children) as HTMLElement[];
           let idx: number;

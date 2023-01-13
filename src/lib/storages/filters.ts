@@ -380,6 +380,17 @@ export default class FiltersStorage extends AppManager {
     });
   }
 
+  public updateDialogFiltersOrder(order: number[]) {
+    return this.apiManager.invokeApi('messages.updateDialogFiltersOrder', {
+      order
+    }).then(() => {
+      this.onUpdateDialogFilterOrder({
+        _: 'updateDialogFilterOrder',
+        order
+      });
+    });
+  }
+
   public getOutputDialogFilter(filter: MyDialogFilter) {
     const c = copy(filter);
     /* convertment.forEach(([from, to]) => {

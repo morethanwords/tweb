@@ -909,7 +909,9 @@ export default class ChatBubbles {
 
           return !!target;
         },
-        onSwipe: (xDiff, yDiff) => {
+        onSwipe: (xDiff) => {
+          xDiff *= -1;
+
           shouldReply = xDiff >= replyAfter;
 
           if(shouldReply && !icon.classList.contains('is-visible')) {

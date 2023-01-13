@@ -366,7 +366,7 @@ export default class AppMediaViewerBase<
     if(enable) {
       if(!this.zoomSwipeHandler) {
         let lastDiffX: number, lastDiffY: number;
-        const multiplier = -1;
+        const multiplier = 1;
         this.zoomSwipeHandler = new SwipeHandler({
           element: this.moversContainer,
           onFirstSwipe: () => {

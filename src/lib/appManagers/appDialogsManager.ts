@@ -1672,7 +1672,7 @@ export class AppDialogsManager {
         element: this.folders.container,
         onSwipe: (xDiff) => {
           const prevId = selectTab.prevId();
-          selectTab(xDiff > 0 ? prevId + 1 : prevId - 1);
+          selectTab(xDiff < 0 ? prevId + 1 : prevId - 1);
         }
       });
     }

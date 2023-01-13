@@ -291,6 +291,17 @@ export default class Row {
       this.container.classList.remove('is-disabled');
     });
   }
+
+  public makeSortable() {
+    const sortIcon = document.createElement('span');
+    this.container.classList.add('row-sortable', 'tgico');
+    sortIcon.classList.add('row-sortable-icon', 'tgico-menu');
+    this.container.append(sortIcon);
+  }
+
+  public toggleSorting(enabled?: boolean) {
+    this.container.classList.toggle('cant-sort', !enabled);
+  }
 }
 
 export const CreateRowFromCheckboxField = (checkboxField: CheckboxField) => {

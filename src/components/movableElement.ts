@@ -36,7 +36,7 @@ export default class MovableElement extends EventListenerBase<{
   private minWidth: number;
   private minHeight: number;
   private element: HTMLElement;
-  private verifyTouchTarget: (e: TouchEvent | MouseEvent) => boolean;
+  private verifyTouchTarget: SwipeHandler['verifyTouchTarget'];
 
   private top: number;
   private left: number;
@@ -96,8 +96,6 @@ export default class MovableElement extends EventListenerBase<{
     const swipeHandler = this.swipeHandler = new SwipeHandler({
       element: this.element,
       onSwipe: (xDiff, yDiff, e) => {
-        xDiff *= -1; // to right will be positive
-        yDiff *= -1; // to bottom will be positive
         // console.log(xDiff, yDiff, e);
 
         if(resizingSide) {

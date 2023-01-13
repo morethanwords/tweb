@@ -4,18 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
-import cancelEvent from '../helpers/dom/cancelEvent';
 import {attachClickEvent} from '../helpers/dom/clickEvent';
 import findUpAsChild from '../helpers/dom/findUpAsChild';
 import placeCaretAtEnd from '../helpers/dom/placeCaretAtEnd';
 import positionElementByIndex from '../helpers/dom/positionElementByIndex';
-import whichChild from '../helpers/dom/whichChild';
+import Sortable from '../helpers/dom/sortable';
 import ListenerSetter from '../helpers/listenerSetter';
 import {Middleware} from '../helpers/middleware';
 import noop from '../helpers/noop';
-import clamp from '../helpers/number/clamp';
-import pause from '../helpers/schedulers/pause';
 import SortedList, {SortedElementBase} from '../helpers/sortedList';
 import {Chat, User, Username} from '../layer';
 import {i18n, LangPackKey} from '../lib/langPack';
@@ -23,7 +19,6 @@ import rootScope from '../lib/rootScope';
 import confirmationPopup from './confirmationPopup';
 import Row from './row';
 import SettingSection from './settingSection';
-import SwipeHandler from './swipeHandler';
 import {UsernameInputField} from './usernameInputField';
 
 export default class UsernamesSection extends SettingSection {
@@ -83,10 +78,7 @@ export default class UsernamesSection extends SettingSection {
         const media = row.createMedia('medium');
         media.classList.add(CLASS_NAME + '-username-icon', 'tgico');
 
-        const sortIcon = document.createElement('span');
-        row.container.classList.add('row-sortable', 'tgico');
-        sortIcon.classList.add('row-sortable-icon', 'tgico-menu');
-        row.container.append(sortIcon);
+        row.makeSortable();
 
         changeActive(row, active);
 
@@ -99,7 +91,7 @@ export default class UsernamesSection extends SettingSection {
     const changeActive = (row: Row, active: boolean) => {
       row.subtitle.replaceChildren(i18n(row.container.dataset.editable ? 'UsernameLinkEditable' : (active ? 'UsernameLinkActive' : 'UsernameLinkInactive')));
       row.container.classList.toggle('active', active);
-      row.container.classList.toggle('cant-sort', !active);
+      row.toggleSorting(active);
     };
 
     const applyUsernames = (usernames: Username[] = []) => {
@@ -197,112 +189,10 @@ export default class UsernamesSection extends SettingSection {
       });
     });
 
-    const getSortableTarget = (target: HTMLElement) => {
-      if(!target) {
-        return;
-      }
-
-      let child = findUpAsChild(target as HTMLElement, list);
-      if(child && child.classList.contains('cant-sort')) {
-        child = undefined;
-      }
-
-      return child;
-    };
-
-    let element: HTMLElement,
-      elementRect: DOMRect,
-      containerRect: DOMRect,
-      minY: number,
-      maxY: number,
-      siblings: HTMLElement[];
-    const swipeHandler = new SwipeHandler({
-      element: list,
-      onSwipe: (xDiff, yDiff) => {
-        yDiff = clamp(-yDiff, minY, maxY);
-        element.style.transform = `translateY(${yDiff}px)`;
-        const count = Math.round(Math.abs(yDiff) / elementRect.height);
-        const lastSiblings = siblings;
-        siblings = [];
-        const property = yDiff < 0 ? 'previousElementSibling' : 'nextElementSibling';
-        let sibling = element[property] as HTMLElement;
-        for(let i = 0; i < count; ++i) {
-          if(getSortableTarget(sibling)) {
-            siblings.push(sibling);
-            sibling = sibling[property] as HTMLElement;
-          } else {
-            break;
-          }
-        }
-
-        (lastSiblings || []).forEach((sibling) => {
-          if(!siblings.includes(sibling)) {
-            sibling.style.transform = '';
-          }
-        });
-
-        siblings.forEach((sibling) => {
-          const y = elementRect.height * (yDiff < 0 ? 1 : -1);
-          sibling.style.transform = `translateY(${y}px)`;
-        });
-      },
-      verifyTouchTarget: (e) => {
-        if(list.classList.contains('is-reordering')) {
-          return false;
-        }
-
-        element = getSortableTarget(e.target as HTMLElement);
-        return !!element/*  && pause(150).then(() => true) */;
-      },
-      onFirstSwipe: () => {
-        list.classList.add('is-reordering');
-        element.classList.add('is-dragging', 'no-transition');
-        swipeHandler.setCursor('grabbing');
-        elementRect = element.getBoundingClientRect();
-        containerRect = list.getBoundingClientRect();
-
-        minY = containerRect.top - elementRect.top;
-        maxY = containerRect.bottom - elementRect.bottom;
-      },
-      onReset: async() => {
-        const length = siblings.length;
-        const move = length && length * (siblings[0].previousElementSibling === element ? 1 : -1);
-        const idx = whichChild(element);
-        const newIdx = idx + move;
-
-        element.classList.remove('no-transition');
-        element.style.transform = move ? `translateY(${move * elementRect.height}px)` : '';
-        swipeHandler.setCursor('');
-
-        if(!IS_TOUCH_SUPPORTED) {
-          attachClickEvent(document.body, cancelEvent, {capture: true, once: true});
-        }
-
-        if(rootScope.settings.animationsEnabled) {
-          await pause(250);
-        }
-
-        list.classList.remove('is-reordering');
-        element.classList.remove('is-dragging');
-        positionElementByIndex(element, list, newIdx, idx);
-        [element, ...siblings].forEach((element) => {
-          element.style.transform = '';
-        });
-
-        element =
-          siblings =
-          elementRect =
-          containerRect =
-          minY =
-          maxY =
-          undefined;
-
-        // cancelClick = true;
-
-        if(!move) {
-          return;
-        }
-
+    new Sortable({
+      list,
+      middleware,
+      onSort: (idx, newIdx) => {
         const username = _usernames.splice(idx, 1)[0];
         _usernames.splice(newIdx, 0, username);
         sortedList.updateList();
@@ -315,10 +205,7 @@ export default class UsernamesSection extends SettingSection {
         } else {
           managers.appUsersManager.reorderUsernames(usernames);
         }
-      },
-      setCursorTo: document.body,
-      middleware: middleware,
-      withDelay: true
+      }
     });
 
     section.content.append(list);
