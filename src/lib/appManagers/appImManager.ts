@@ -1293,6 +1293,12 @@ export class AppImManager extends EventListenerBase<{
     });
   }
 
+  public openPremiumBot() {
+    return this.managers.apiManager.getAppConfig().then((appConfig) => {
+      return this.openUsername({userName: appConfig.premium_bot_username});
+    });
+  }
+
   public openUsername(options: {
     userName: string
   } & Omit<ChatSetPeerOptions, 'peerId'>) {

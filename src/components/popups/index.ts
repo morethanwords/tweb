@@ -28,9 +28,10 @@ export type PopupButton = {
   callback?: () => void,
   langKey?: LangPackKey,
   langArgs?: any[],
-  isDanger?: true,
-  isCancel?: true,
-  element?: HTMLButtonElement
+  isDanger?: boolean,
+  isCancel?: boolean,
+  element?: HTMLButtonElement,
+  noRipple?: boolean
 };
 
 export type PopupOptions = Partial<{
@@ -180,16 +181,18 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
         const button = document.createElement('button');
         button.className = 'btn' + (b.isDanger ? ' danger' : ' primary');
 
-        ripple(button);
+        if(!b.noRipple) {
+          ripple(button);
+        }
 
         if(b.text) {
-          button.innerHTML =  b.text;
+          button.textContent =  b.text;
         } else {
           button.append(i18n(b.langKey, b.langArgs));
         }
 
         attachClickEvent(button, () => {
-          b.callback && b.callback();
+          b.callback?.();
           this.destroy();
         }, {listenerSetter: this.listenerSetter, once: true});
 

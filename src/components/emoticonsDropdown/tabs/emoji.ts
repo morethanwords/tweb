@@ -719,7 +719,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
     ) {
       const a = document.createElement('a');
       a.onclick = () => {
-        appImManager.openUsername({userName: 'premiumbot'});
+        appImManager.openPremiumBot();
         hideToast();
       };
       toastNew({

@@ -869,6 +869,9 @@ const lang = {
   'TerminateWebSessionInfo': 'Tap to disconnect from your Telegram account.',
   'EnablePhotoSpoiler': 'Hide with spoiler',
   'DisablePhotoSpoiler': 'Remove spoiler',
+  'LimitReachedFolders': 'You have reached the limit of **%1$d** folders. You can double the limit to **%2$d** folders by subscribing to **Telegram Premium**.',
+  'LimitReachedFoldersPremium': 'You have reached the limit of **%1$d** folders for this account.',
+  'LimitReachedFoldersLocked': 'You have reached the limit of **%1$d** folders for this account. We are working to let you increase this limit in the future.',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

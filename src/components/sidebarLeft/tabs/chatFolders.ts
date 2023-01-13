@@ -9,7 +9,6 @@ import type {DialogFilterSuggested} from '../../../layer';
 import type _rootScope from '../../../lib/rootScope';
 import {SliderSuperTab} from '../../slider';
 import lottieLoader, {LottieLoader} from '../../../lib/rlottie/lottieLoader';
-import {toast} from '../../toast';
 import Button from '../../button';
 import rootScope from '../../../lib/rootScope';
 import AppEditFolderTab from './editFolder';
@@ -26,6 +25,7 @@ import SettingSection from '../../settingSection';
 import Sortable from '../../../helpers/dom/sortable';
 import whichChild from '../../../helpers/dom/whichChild';
 import indexOfAndSplice from '../../../helpers/array/indexOfAndSplice';
+import showLimitPopup from '../../popups/limit';
 
 export default class AppChatFoldersTab extends SliderSuperTab {
   private createFolderBtn: HTMLElement;
@@ -160,7 +160,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     this.foldersSection = new SettingSection({
       name: 'Filters'
     });
-    this.foldersSection.container.style.display = 'none';
+    this.foldersSection.container.classList.add('hide');
 
     this.list = document.createElement('div');
     this.foldersSection.content.append(this.list);
@@ -168,20 +168,26 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     this.suggestedSection = new SettingSection({
       name: 'FilterRecommended'
     });
-    this.suggestedSection.container.style.display = 'none';
+    this.suggestedSection.container.classList.add('hide');
 
-    this.scrollable.append(this.stickerContainer, caption, this.createFolderBtn, this.foldersSection.container, this.suggestedSection.container);
+    this.scrollable.append(
+      this.stickerContainer,
+      caption,
+      this.createFolderBtn,
+      this.foldersSection.container,
+      this.suggestedSection.container
+    );
 
     attachClickEvent(this.createFolderBtn, async() => {
       if(!(await this.canCreateFolder())) {
-        toast('Sorry, you can\'t create more folders.');
+        showLimitPopup('folders');
       } else {
         this.slider.createTab(AppEditFolderTab).open();
       }
     }, {listenerSetter: this.listenerSetter});
 
     const onFiltersContainerUpdate = () => {
-      this.foldersSection.container.style.display = Object.keys(this.filtersRendered).length ? '' : 'none';
+      this.foldersSection.container.classList.toggle('hide', !Object.keys(this.filtersRendered).length);
     };
 
     this.managers.filtersStorage.getDialogFilters().then(async(filters) => {
@@ -310,7 +316,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
 
   private getSuggestedFilters() {
     return this.managers.filtersStorage.getSuggestedDialogsFilters().then(async(suggestedFilters) => {
-      this.suggestedSection.container.style.display = suggestedFilters.length ? '' : 'none';
+      this.suggestedSection.container.classList.toggle('hide', !suggestedFilters.length);
       Array.from(this.suggestedSection.content.children).slice(1).forEach((el) => el.remove());
 
       for(const filter of suggestedFilters) {
@@ -322,7 +328,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
           cancelEvent(e);
 
           if(!(await this.canCreateFolder())) {
-            toast('Sorry, you can\'t create more folders.');
+            showLimitPopup('folders');
             return;
           }
 
@@ -333,10 +339,9 @@ export default class AppChatFoldersTab extends SliderSuperTab {
           f.excludePeerIds = [];
           f.pinnedPeerIds = [];
 
-          this.managers.filtersStorage.createDialogFilter(f, true).then((bool) => {
-            if(bool) {
-              row.container.remove();
-            }
+          this.managers.filtersStorage.createDialogFilter(f, true).then(() => {
+            row.container.remove();
+            this.suggestedSection.container.classList.toggle('hide', this.suggestedSection.content.childElementCount === 1);
           }).finally(() => {
             button.removeAttribute('disabled');
           });

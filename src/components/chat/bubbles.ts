@@ -5875,8 +5875,8 @@ export default class ChatBubbles {
       const message = await this.generateLocalFirstMessage(false, (message) => {
         const botInfo = userFull.bot_info;
         message.message = botInfo.description;
-        if(botInfo.description_document) message.media = {_: 'messageMediaDocument', document: botInfo.description_document};
-        if(botInfo.description_photo) message.media = {_: 'messageMediaPhoto', photo: botInfo.description_photo};
+        if(botInfo.description_document) message.media = {_: 'messageMediaDocument', document: botInfo.description_document, pFlags: {}};
+        if(botInfo.description_photo) message.media = {_: 'messageMediaPhoto', photo: botInfo.description_photo, pFlags: {}};
       });
 
       if(!middleware()) {

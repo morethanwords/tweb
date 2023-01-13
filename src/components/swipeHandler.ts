@@ -179,7 +179,13 @@ export default class SwipeHandler {
       this.listenerSetter.add(attachGlobalListenerTo)('mousemove', this.handleMove, MOUSE_MOVE_OPTIONS);
     }
 
-    this.onStart?.();
+    if(this.onStart) {
+      this.onStart();
+
+      // have to initiate move instantly
+      this.hadMove = true;
+      this.handleMove(e);
+    }
   };
 
   protected handleMove = (_e: EE) => {
@@ -213,7 +219,6 @@ export default class SwipeHandler {
       this.onFirstSwipe?.(_e);
     }
 
-    /* reset values */
     const onSwipeResult = this.onSwipe(xDiff, yDiff, _e);
     if(onSwipeResult !== undefined && onSwipeResult) {
       this.reset();
