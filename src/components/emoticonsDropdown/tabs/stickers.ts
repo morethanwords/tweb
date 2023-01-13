@@ -232,10 +232,6 @@ export class StickersTabCategory<Item extends StickersTabCategoryItem, Additiona
   }
 
   public setCategoryItemsHeight() {
-    if(this.id === 'Emoji.Recent') {
-      debugger;
-    }
-
     const {width: containerWidth} = this.getContainerSize();
     const elementSize = this.getElementMediaSize().width;
 

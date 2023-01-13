@@ -27,7 +27,7 @@ export default function getStreamCached() {
 
   return async(options: {
     isScreen: true,
-    constraints: DisplayMediaStreamConstraints,
+    constraints: DisplayMediaStreamOptions,
   } | {
     isScreen?: false,
     constraints: MediaStreamConstraints,
