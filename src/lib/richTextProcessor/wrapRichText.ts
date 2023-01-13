@@ -271,7 +271,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
       return;
     }
 
-    this.destroy();
+    this.destroy?.();
 
     this.disconnectedCallback = undefined;
   }

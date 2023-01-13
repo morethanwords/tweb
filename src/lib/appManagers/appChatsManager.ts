@@ -155,8 +155,8 @@ export class AppChatsManager extends AppManager {
     } else {
       const oldPhotoId = ((oldChat as Chat.chat).photo as ChatPhoto.chatPhoto)?.photo_id;
       const newPhotoId = ((chat as Chat.chat).photo as ChatPhoto.chatPhoto)?.photo_id;
-      const changedPhoto = oldPhotoId !== newPhotoId ||
-        (oldChat as Chat.channel).pFlags.forum !== (chat as Chat.channel).pFlags.forum;
+      const toggledForum = (oldChat as Chat.channel).pFlags.forum !== (chat as Chat.channel).pFlags.forum;
+      const changedPhoto = oldPhotoId !== newPhotoId || toggledForum;
 
       const changedTitle = oldChat.title !== chat.title || changedUsername;
 
@@ -173,6 +173,10 @@ export class AppChatsManager extends AppManager {
 
       if(changedTitle || changedAnyBadge) {
         this.rootScope.dispatchEvent('peer_title_edit', {peerId});
+      }
+
+      if(toggledForum) {
+        this.rootScope.dispatchEvent('chat_toggle_forum', {chatId: chat.id, enabled: !!(chat as Chat.channel).pFlags.forum});
       }
     }
 

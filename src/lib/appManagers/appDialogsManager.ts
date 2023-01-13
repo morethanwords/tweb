@@ -2057,6 +2057,7 @@ export class AppDialogsManager {
     }
 
     const {unreadUnmutedCount, unreadCount} = await this.managers.dialogsStorage.getFolderUnreadCount(filterId);
+
     unreadSpan.classList.toggle('badge-gray', !unreadUnmutedCount);
     const count = filterId === FOLDER_ID_ALL ? unreadUnmutedCount : unreadCount;
     unreadSpan.innerText = count ? '' + count : '';

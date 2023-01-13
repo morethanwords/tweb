@@ -142,8 +142,7 @@ export default class DialogsStorage extends AppManager {
     });
 
     this.rootScope.addEventListener('dialog_notify_settings', (dialog) => {
-      this.processDialogForFilters(dialog);
-      this.prepareDialogUnreadCountModifying(dialog)();
+      this.processChangedUnreadOrUnmuted(dialog.peerId);
     });
 
     this.rootScope.addEventListener('chat_update', (chatId) => {
@@ -153,6 +152,15 @@ export default class DialogsStorage extends AppManager {
       if((chat as Chat.chat).pFlags.left && this.getDialogOnly(peerId)) {
         this.dropDialogOnDeletion(peerId);
       }
+    });
+
+    this.rootScope.addEventListener('chat_toggle_forum', ({chatId, enabled}) => {
+      const peerId = chatId.toPeerId(true);
+      if(!enabled) {
+        this.flushForumTopicsCache(peerId);
+      }
+
+      this.processChangedUnreadOrUnmuted(peerId);
     });
 
     this.apiUpdatesManager.addMultipleEventsListeners({
@@ -592,7 +600,7 @@ export default class DialogsStorage extends AppManager {
       return false;
     }
 
-    if((!wasDialogIndex && newDialogIndex) || (wasIndex && !newDialogIndex)) {
+    if(!!wasDialogIndex !== !!newDialogIndex) {
       this.prepareFolderUnreadCountModifyingByDialog(folderId, dialog, !!newDialogIndex);
     }
 
@@ -607,24 +615,24 @@ export default class DialogsStorage extends AppManager {
     return true;
   }
 
-  public prepareDialogUnreadCountModifying(dialog: Dialog | ForumTopic) {
+  public prepareDialogUnreadCountModifying(dialog: Dialog | ForumTopic, toggle?: boolean) {
     const isTopic = this.isTopic(dialog);
     const callbacks: NoneToVoidFunction[] = [];
 
     const folderId = isTopic ? this.getFilterIdForForum(dialog) : dialog.folder_id;
-    callbacks.push(this.prepareFolderUnreadCountModifyingByDialog(folderId, dialog));
+    callbacks.push(this.prepareFolderUnreadCountModifyingByDialog(folderId, dialog, toggle));
 
     if(!isTopic) {
       const filters = this.filtersStorage.getFilters();
       for(const id in filters) {
         const filter = filters[id];
         if(this.filtersStorage.testDialogForFilter(dialog, filter)) {
-          callbacks.push(this.prepareFolderUnreadCountModifyingByDialog(filter.id, dialog));
+          callbacks.push(this.prepareFolderUnreadCountModifyingByDialog(filter.id, dialog, toggle));
         }
       }
     }
 
-    return () => callbacks.forEach((callback) => callback());
+    return () => !toggle && callbacks.forEach((callback) => callback());
   }
 
   public prepareFolderUnreadCountModifyingByDialog(folderId: number, dialog: Dialog | ForumTopic, toggle?: boolean) {
@@ -653,6 +661,35 @@ export default class DialogsStorage extends AppManager {
     toggleUnmuted: boolean,
     dialog: Dialog | ForumTopic
   ) {
+    const {peerId} = dialog;
+    const isForum = this.appPeersManager.isForum(peerId);
+    const isTopic = this.isTopic(dialog);
+    if(isForum && !isTopic) {
+      const forumUnreadCount = this.getForumUnreadCount(peerId);
+      if(forumUnreadCount instanceof Promise) {
+        forumUnreadCount.then(({count, hasUnmuted}) => {
+          dialog = this.getDialogOnly(peerId);
+          const folder = this.getFolder(folderId);
+          if(
+            !dialog ||
+            !this.appPeersManager.isForum(peerId) ||
+            !folder ||
+            !folder.dialogs.some((dialog) => dialog.peerId === peerId)
+          ) {
+            return;
+          }
+
+          this.modifyFolderUnreadCount(folderId, 0, false, false, dialog);
+        });
+
+        return;
+      } else {
+        addMessagesCount = 0;
+        toggleDialog = forumUnreadCount.count > 0;
+        toggleUnmuted = forumUnreadCount.hasUnmuted;
+      }
+    }
+
     const folder = this.getFolder(folderId);
     if(addMessagesCount) {
       folder.unreadMessagesCount = Math.max(0, folder.unreadMessagesCount + addMessagesCount);
@@ -671,16 +708,28 @@ export default class DialogsStorage extends AppManager {
       folder.unreadUnmutedPeerIds.delete(key);
     }
 
-    // if(this.isTopic(dialog)) {
-    //   return;
-    // }
-
     folder.dispatchUnreadTimeout ??= ctx.setTimeout(() => {
       folder.dispatchUnreadTimeout = undefined;
       const _folder = {...folder};
       delete _folder.dialogs;
       this.rootScope.dispatchEvent('folder_unread', _folder);
+
+      if(isTopic) { // * refresh forum dialog unread count
+        this.processChangedUnreadOrUnmuted(peerId);
+      }
     }, 0);
+  }
+
+  public processChangedUnreadOrUnmuted(peerId: PeerId) {
+    const dialog = this.getDialogOnly(peerId);
+    if(dialog) {
+      this.processDialogForFilters(dialog);
+      this.prepareDialogUnreadCountModifying(dialog)();
+      this.rootScope.dispatchEvent('dialog_unread', {
+        peerId,
+        dialog
+      });
+    }
   }
 
   public generateIndexForDialog(
@@ -1168,10 +1217,6 @@ export default class DialogsStorage extends AppManager {
     dialog.draft = this.appDraftsManager.saveDraft({peerId, threadId: topicId, draft: dialog.draft});
     dialog.peerId = peerId;
     // dialog.indexes ??= {} as any;
-
-    // if(dialog.peerId === -) {
-    //   debugger;
-    // }
 
     // Because we saved message without dialog present
     if(message && message.pFlags.is_outgoing) {

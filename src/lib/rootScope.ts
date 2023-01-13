@@ -27,6 +27,7 @@ import {IS_WORKER} from '../helpers/context';
 export type BroadcastEvents = {
   'chat_full_update': ChatId,
   'chat_update': ChatId,
+  'chat_toggle_forum': {chatId: ChatId, enabled: boolean},
 
   'channel_update': ChatId,
 

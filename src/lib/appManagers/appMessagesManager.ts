@@ -395,6 +395,20 @@ export class AppMessagesManager extends AppManager {
       }
     });
 
+    // * clear forum cache
+    this.rootScope.addEventListener('chat_toggle_forum', ({chatId, enabled}) => {
+      const peerId = chatId.toPeerId(true);
+      if(!enabled) {
+        delete this.threadsStorage[peerId];
+
+        for(const key in this.pinnedMessages) {
+          if(+key === peerId && key.startsWith(peerId + '_')) {
+            delete this.pinnedMessages[key];
+          }
+        }
+      }
+    });
+
     this.batchUpdatesDebounced = debounce(() => {
       for(const event in this.batchUpdates) {
         const details = this.batchUpdates[event as keyof BatchUpdates];
@@ -6345,7 +6359,17 @@ export class AppMessagesManager extends AppManager {
   }
 
   public getDialogUnreadCount(dialog: Dialog | ForumTopic) {
-    return dialog.unread_count || +!!(dialog as Dialog).pFlags.unread_mark;
+    let unreadCount = dialog.unread_count;
+    if(!this.dialogsStorage.isTopic(dialog) && this.appPeersManager.isForum(dialog.peerId)) {
+      const forumUnreadCount = this.dialogsStorage.getForumUnreadCount(dialog.peerId);
+      if(forumUnreadCount instanceof Promise) {
+        unreadCount = 0;
+      } else {
+        unreadCount = forumUnreadCount.count;
+      }
+    }
+
+    return unreadCount || +!!(dialog as Dialog).pFlags.unread_mark;
   }
 
   public isDialogUnread(dialog: Dialog | ForumTopic) {
