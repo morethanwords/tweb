@@ -107,6 +107,7 @@ export class AppDocsManager extends AppManager {
     // 'audioPerformer', 'sticker', 'stickerEmoji', 'stickerEmojiRaw',
     // 'stickerSetInput', 'stickerThumbConverted', 'animated', 'supportsStreaming']);
 
+    let type: MyDocument['type'];
     for(let i = 0, length = doc.attributes.length; i < length; ++i) {
       const attribute = doc.attributes[i];
       switch(attribute._) {
@@ -116,10 +117,7 @@ export class AppDocsManager extends AppManager {
 
         case 'documentAttributeAudio':
           doc.duration = attribute.duration;
-          doc.type = attribute.pFlags.voice && doc.mime_type === 'audio/ogg' ? 'voice' : 'audio';
-          /* if(apiDoc.type === 'audio') {
-            apiDoc.supportsStreaming = true;
-          } */
+          type ??= attribute.pFlags.voice && doc.mime_type === 'audio/ogg' ? 'voice' : 'audio';
           break;
 
         case 'documentAttributeVideo':
@@ -128,9 +126,9 @@ export class AppDocsManager extends AppManager {
           doc.h = attribute.h;
           // apiDoc.supportsStreaming = attribute.pFlags?.supports_streaming/*  && apiDoc.size > 524288 */;
           if(/* apiDoc.thumbs &&  */attribute.pFlags.round_message) {
-            doc.type = 'round';
+            type ??= 'round';
           } else /* if(apiDoc.thumbs) */ {
-            doc.type = 'video';
+            type ??= 'video';
           }
           break;
 
@@ -150,34 +148,36 @@ export class AppDocsManager extends AppManager {
 
           // * there can be no thumbs, then it is a document
           if(/* apiDoc.thumbs &&  */doc.mime_type === 'image/webp' && (doc.thumbs || getEnvironment().IS_WEBP_SUPPORTED)) {
-            doc.type = 'sticker';
+            type ??= 'sticker';
             doc.sticker = 1;
           } else if(doc.mime_type === 'video/webm') {
             if(!getEnvironment().IS_WEBM_SUPPORTED) {
               break;
             }
 
-            doc.type = 'sticker';
+            type ??= 'sticker';
             doc.sticker = 3;
             doc.animated = true;
           }
           break;
 
         case 'documentAttributeImageSize':
-          doc.type = 'photo';
+          type ??= 'photo';
           doc.w = attribute.w;
           doc.h = attribute.h;
           break;
 
         case 'documentAttributeAnimated':
           if((doc.mime_type === 'image/gif' || doc.mime_type === 'video/mp4')/*  && apiDoc.thumbs */) {
-            doc.type = 'gif';
+            type ??= 'gif';
           }
 
           doc.animated = true;
           break;
       }
     }
+
+    doc.type = type;
 
     if(!doc.mime_type) {
       const ext = (doc.file_name || '').split('.').pop();
@@ -210,6 +210,10 @@ export class AppDocsManager extends AppManager {
       doc.type = 'pdf';
     } else if(doc.mime_type === EXTENSION_MIME_TYPE_MAP.gif) {
       doc.type = 'gif';
+    } else if(doc.mime_type === 'application/x-tgsticker' && doc.file_name === 'AnimatedSticker.tgs') {
+      doc.type = 'sticker';
+      doc.animated = true;
+      doc.sticker = 2;
     }
 
     if(doc.type === 'voice' || doc.type === 'round') {
@@ -220,9 +224,10 @@ export class AppDocsManager extends AppManager {
       doc.file_name = `${doc.type}_${date}${ext ? '.' + ext : ''}`;
     }
 
+    let supportsStreaming: boolean;
     if(isServiceWorkerOnline()) {
       if((doc.type === 'gif' && doc.size > 8e6) || doc.type === 'audio' || doc.type === 'video'/*  || doc.mime_type.indexOf('video/') === 0 */) {
-        doc.supportsStreaming = true;
+        supportsStreaming = true;
 
         const cacheContext = this.thumbsStorage.getCacheContext(doc);
         if(!cacheContext.url) {
@@ -231,19 +236,13 @@ export class AppDocsManager extends AppManager {
       }
     }
 
+    doc.supportsStreaming = supportsStreaming;
+
     // for testing purposes
     // doc.supportsStreaming = false;
     // doc.url = ''; // * this will break upload urls
 
-    if(!doc.file_name) {
-      doc.file_name = '';
-    }
-
-    if(doc.mime_type === 'application/x-tgsticker' && doc.file_name === 'AnimatedSticker.tgs') {
-      doc.type = 'sticker';
-      doc.animated = true;
-      doc.sticker = 2;
-    }
+    doc.file_name ||= '';
 
     /* if(!doc.url) {
       doc.url = this.getFileURL(doc);
