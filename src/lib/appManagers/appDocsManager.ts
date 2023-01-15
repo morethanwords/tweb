@@ -224,19 +224,16 @@ export class AppDocsManager extends AppManager {
       doc.file_name = `${doc.type}_${date}${ext ? '.' + ext : ''}`;
     }
 
-    let supportsStreaming: boolean;
-    if(isServiceWorkerOnline()) {
-      if((doc.type === 'gif' && doc.size > 8e6) || doc.type === 'audio' || doc.type === 'video'/*  || doc.mime_type.indexOf('video/') === 0 */) {
-        supportsStreaming = true;
+    if(isServiceWorkerOnline() && (doc.type === 'gif' && doc.size > 8e6) || doc.type === 'audio' || doc.type === 'video'/*  || doc.mime_type.indexOf('video/') === 0 */) {
+      doc.supportsStreaming = true;
 
-        const cacheContext = this.thumbsStorage.getCacheContext(doc);
-        if(!cacheContext.url) {
-          this.thumbsStorage.setCacheContextURL(doc, undefined, getDocumentURL(doc), 0);
-        }
+      const cacheContext = this.thumbsStorage.getCacheContext(doc);
+      if(!cacheContext.url) {
+        this.thumbsStorage.setCacheContextURL(doc, undefined, getDocumentURL(doc), 0);
       }
+    } else {
+      doc.supportsStreaming = false;
     }
-
-    doc.supportsStreaming = supportsStreaming;
 
     // for testing purposes
     // doc.supportsStreaming = false;
