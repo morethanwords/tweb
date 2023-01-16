@@ -6,7 +6,7 @@
 
 .popup-limit {
   .popup-container {
-    min-width: 22.5rem;
+    min-width: unquote('min(100%, 22.5rem)');
   }
 
   &-line {

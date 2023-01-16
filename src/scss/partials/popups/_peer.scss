@@ -18,7 +18,7 @@
     
     &-container {
       padding: .75rem .5rem;
-      min-width: 17.5rem;
+      min-width: unquote('min(100%, 17.5rem)');
       max-width: unquote('min(400px, 100%)');
     }
 
@@ -35,7 +35,7 @@
     &-description {
       margin-top: 0;
       margin-bottom: 0;
-      min-width: 15rem;
+      min-width: unquote('min(100%, 15rem)');
       max-width: fit-content;
       text-overflow: ellipsis;
       overflow: hidden;

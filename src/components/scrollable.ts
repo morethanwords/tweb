@@ -53,7 +53,7 @@ const scrollsIntersector = new IntersectionObserver((entries) => {
   }
 }); */
 
-const SCROLL_THROTTLE = IS_ANDROID ? 200 : 24;
+const SCROLL_THROTTLE = /* IS_ANDROID ? 200 :  */24;
 
 export class ScrollableBase {
   protected log: ReturnType<typeof logger>;

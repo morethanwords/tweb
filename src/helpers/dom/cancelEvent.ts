@@ -12,6 +12,10 @@
 export default function cancelEvent(event?: Event) {
   event ||= window.event;
   if(event) {
+    if(!event.cancelable) {
+      return false;
+    }
+
     // @ts-ignore
     event = event.originalEvent || event;
 

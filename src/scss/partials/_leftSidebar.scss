@@ -8,7 +8,7 @@
   //display: flex;
   flex-direction: column;
   flex: 1 1 auto;
-  min-width: 18rem;
+  min-width: unquote('min(100%, 18rem)');
   max-width: calc(#{$large-screen} / 4);
 
   @include respond-to(handhelds) {

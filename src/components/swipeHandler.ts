@@ -102,8 +102,11 @@ export default class SwipeHandler {
       this.listenerSetter.add(attachGlobalListenerTo)('mouseup', this.reset);
     } else {
       if(this.withDelay) {
-        // @ts-ignore
-        attachContextMenuListener(this.element, this.handleStart, this.listenerSetter);
+        attachContextMenuListener(this.element, (e) => {
+          cancelEvent(e);
+          // @ts-ignore
+          this.handleStart(e);
+        }, this.listenerSetter);
       } else {
         // @ts-ignore
         this.listenerSetter.add(this.element)('touchstart', this.handleStart, this.listenerOptions);
@@ -171,7 +174,7 @@ export default class SwipeHandler {
     }
 
     const e = getEvent(_e);
-    if((e.button ?? 0) !== 0) {
+    if(Math.max(0, e.button ?? 0) !== 0) {
       return;
     }
 
