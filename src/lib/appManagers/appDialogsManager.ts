@@ -547,6 +547,16 @@ class ForumTab extends SliderSuperTabEventable {
       }
     });
 
+    if(IS_TOUCH_SUPPORTED) {
+      handleTabSwipe({
+        element: this.container,
+        onSwipe: () => {
+          appDialogsManager.toggleForumTab(undefined, this);
+        },
+        middleware: this.middlewareHelper.get()
+      });
+    }
+
     this.header.append(btnMenu);
 
     if(!isFloating) {
@@ -1673,6 +1683,9 @@ export class AppDialogsManager {
         onSwipe: (xDiff) => {
           const prevId = selectTab.prevId();
           selectTab(xDiff < 0 ? prevId + 1 : prevId - 1);
+        },
+        verifyTouchTarget: () => {
+          return !this.forumTab;
         }
       });
     }

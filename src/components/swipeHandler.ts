@@ -9,8 +9,10 @@ import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import safeAssign from '../helpers/object/safeAssign';
 import contextMenuController from '../helpers/contextMenuController';
 import {Middleware} from '../helpers/middleware';
-import ListenerSetter, {ListenerOptions} from '../helpers/listenerSetter';
+import ListenerSetter, {Listener, ListenerOptions} from '../helpers/listenerSetter';
 import {attachContextMenuListener} from '../helpers/dom/attachContextMenuListener';
+import pause from '../helpers/schedulers/pause';
+import deferredPromise from '../helpers/cancellablePromise';
 
 type E = {
   clientX: number,
@@ -64,6 +66,9 @@ export default class SwipeHandler {
   private listenerOptions: boolean | AddEventListenerOptions = false;
   private setCursorTo: HTMLElement;
 
+  private isMouseDown: boolean;
+  private tempId: number;
+
   private hadMove: boolean;
   private eventUp: E;
   private xDown: number;
@@ -82,6 +87,7 @@ export default class SwipeHandler {
     this.setListeners();
 
     this.resetValues();
+    this.tempId = 0;
 
     options.middleware?.onDestroy(() => {
       this.reset();
@@ -130,11 +136,13 @@ export default class SwipeHandler {
   }
 
   protected resetValues() {
+    ++this.tempId;
     this.hadMove = false;
     this.xAdded = this.yAdded = 0;
     this.xDown =
       this.yDown =
       this.eventUp =
+      this.isMouseDown =
       undefined;
   }
 
@@ -158,13 +166,39 @@ export default class SwipeHandler {
   };
 
   protected handleStart = async(_e: EE) => {
+    if(this.isMouseDown) {
+      return;
+    }
+
     const e = getEvent(_e);
-    if(e.button !== 0) {
+    if((e.button ?? 0) !== 0) {
       return;
     }
 
     if(this.verifyTouchTarget && !(await this.verifyTouchTarget(_e))) {
       return this.reset();
+    }
+
+    const tempId = ++this.tempId;
+    this.isMouseDown = true;
+
+    if(this.withDelay && !IS_TOUCH_SUPPORTED) {
+      const options = {...MOUSE_MOVE_OPTIONS, once: true};
+      const deferred = deferredPromise<void>();
+      const cb = () => deferred.resolve();
+      const listener = this.listenerSetter.add(attachGlobalListenerTo)('mousemove', cb, options) as any as Listener;
+
+      await Promise.race([
+        pause(300),
+        deferred
+      ]);
+
+      deferred.resolve();
+      this.listenerSetter.remove(listener);
+
+      if(this.tempId !== tempId) {
+        return;
+      }
     }
 
     this.xDown = e.clientX;

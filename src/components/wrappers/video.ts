@@ -547,6 +547,9 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
         renderDeferred.resolve();
       }, (err) => {
         console.error('video load error', err);
+        if(spanTime) {
+          spanTime.classList.add('is-error');
+        }
         renderDeferred.reject(err);
       });
 

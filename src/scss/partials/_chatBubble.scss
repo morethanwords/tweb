@@ -1987,8 +1987,15 @@ $bubble-border-radius-big: 12px;
 
       // * same as .iconVolume
       padding: 0 1px 0 3px;
-      font-size: 1.25rem;
+      font-size: calc(var(--messages-time-text-size) + 8px);
       color: #fff;
+    }
+
+    &.is-error:after {
+      content: $tgico-sendingerror;
+      font-size: calc(var(--messages-time-text-size) + 4px);
+      padding: 0;
+      margin-inline-start: 1px;
     }
   }
 

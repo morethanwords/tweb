@@ -7,7 +7,7 @@
 import deferredPromise from '../helpers/cancellablePromise';
 import mediaSizes from '../helpers/mediaSizes';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
-import {IS_MOBILE_SAFARI, IS_SAFARI} from '../environment/userAgent';
+import {IS_MOBILE, IS_MOBILE_SAFARI, IS_SAFARI} from '../environment/userAgent';
 import type {MyDocument} from '../lib/appManagers/appDocsManager';
 import type {MyPhoto} from '../lib/appManagers/appPhotosManager';
 import {logger} from '../lib/logger';
@@ -51,6 +51,7 @@ import overlayCounter from '../helpers/overlayCounter';
 import {ThumbCache} from '../lib/storages/thumbs';
 import appDownloadManager from '../lib/appManagers/appDownloadManager';
 import wrapPeerTitle from './wrappers/peerTitle';
+import {toastNew} from './toast';
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
@@ -306,13 +307,12 @@ export default class AppMediaViewerBase<
           if(isFullScreen()) {
             return;
           }
-          // console.log(xDiff, yDiff);
 
           const percents = Math.abs(xDiff) / windowSize.width;
           if(percents > .2 || xDiff > 125) {
             // console.log('will swipe', xDiff);
 
-            if(xDiff < 0) {
+            if(xDiff > 0) {
               this.buttons.prev.click();
             } else {
               this.buttons.next.click();
@@ -330,6 +330,7 @@ export default class AppMediaViewerBase<
           return false;
         },
         verifyTouchTarget: (evt) => {
+          console.log('verify');
           // * Fix for seek input
           if((evt.target as HTMLElement).tagName === 'INPUT' || findUpClassName(evt.target, 'media-viewer-caption')) {
             return false;
@@ -1573,13 +1574,15 @@ export default class AppMediaViewerBase<
             const url = (await getCacheContext()).url;
 
             video.addEventListener('error', () => {
+              toastNew({
+                langPackKey: IS_MOBILE ? 'Video.Unsupported.Mobile' : 'Video.Unsupported.Desktop'
+              });
+
               if(video.error.code !== 4) {
                 this.log.error('Error ' + video.error.code + '; details: ' + video.error.message);
               }
 
-              if(preloader) {
-                preloader.detach();
-              }
+              preloader?.detach();
             }, {once: true});
 
             if(target instanceof SVGSVGElement/*  && (video.parentElement || !isSafari) */) { // if video exists

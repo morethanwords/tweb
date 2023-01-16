@@ -9,6 +9,7 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
+import type {ThumbCache} from '../storages/thumbs';
 import {AccountWallPapers, Document, DocumentAttribute, MessagesSavedGifs, PhotoSize, WallPaper} from '../../layer';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
 import {getFullDate} from '../../helpers/date';
@@ -22,7 +23,6 @@ import {isServiceWorkerOnline} from '../mtproto/mtproto.worker';
 import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
 import getDocumentInputFileLocation from './utils/docs/getDocumentInputFileLocation';
 import getDocumentURL from './utils/docs/getDocumentURL';
-import type {ThumbCache} from '../storages/thumbs';
 import makeError from '../../helpers/makeError';
 import {EXTENSION_MIME_TYPE_MAP} from '../../environment/mimeTypeMap';
 import {THUMB_TYPE_FULL} from '../mtproto/mtproto_config';
@@ -107,33 +107,39 @@ export class AppDocsManager extends AppManager {
     // 'audioPerformer', 'sticker', 'stickerEmoji', 'stickerEmojiRaw',
     // 'stickerSetInput', 'stickerThumbConverted', 'animated', 'supportsStreaming']);
 
-    let type: MyDocument['type'];
     for(let i = 0, length = doc.attributes.length; i < length; ++i) {
       const attribute = doc.attributes[i];
       switch(attribute._) {
-        case 'documentAttributeFilename':
+        case 'documentAttributeFilename': {
           doc.file_name = wrapPlainText(attribute.file_name);
           break;
+        }
 
-        case 'documentAttributeAudio':
+        case 'documentAttributeAudio': {
+          if(doc.type === 'round') {
+            break;
+          }
+
           doc.duration = attribute.duration;
-          type ??= attribute.pFlags.voice && doc.mime_type === 'audio/ogg' ? 'voice' : 'audio';
+          doc.type = attribute.pFlags.voice && doc.mime_type === 'audio/ogg' ? 'voice' : 'audio';
           break;
+        }
 
-        case 'documentAttributeVideo':
+        case 'documentAttributeVideo': {
           doc.duration = attribute.duration;
           doc.w = attribute.w;
           doc.h = attribute.h;
           // apiDoc.supportsStreaming = attribute.pFlags?.supports_streaming/*  && apiDoc.size > 524288 */;
           if(/* apiDoc.thumbs &&  */attribute.pFlags.round_message) {
-            type ??= 'round';
+            doc.type = 'round';
           } else /* if(apiDoc.thumbs) */ {
-            type ??= 'video';
+            doc.type = 'video';
           }
           break;
+        }
 
         case 'documentAttributeCustomEmoji':
-        case 'documentAttributeSticker':
+        case 'documentAttributeSticker': {
           if(attribute.alt !== undefined) {
             doc.stickerEmojiRaw = attribute.alt;
           }
@@ -148,36 +154,37 @@ export class AppDocsManager extends AppManager {
 
           // * there can be no thumbs, then it is a document
           if(/* apiDoc.thumbs &&  */doc.mime_type === 'image/webp' && (doc.thumbs || getEnvironment().IS_WEBP_SUPPORTED)) {
-            type ??= 'sticker';
+            doc.type = 'sticker';
             doc.sticker = 1;
           } else if(doc.mime_type === 'video/webm') {
             if(!getEnvironment().IS_WEBM_SUPPORTED) {
               break;
             }
 
-            type ??= 'sticker';
+            doc.type = 'sticker';
             doc.sticker = 3;
             doc.animated = true;
           }
           break;
+        }
 
-        case 'documentAttributeImageSize':
-          type ??= 'photo';
+        case 'documentAttributeImageSize': {
+          doc.type = 'photo';
           doc.w = attribute.w;
           doc.h = attribute.h;
           break;
+        }
 
-        case 'documentAttributeAnimated':
+        case 'documentAttributeAnimated': {
           if((doc.mime_type === 'image/gif' || doc.mime_type === 'video/mp4')/*  && apiDoc.thumbs */) {
-            type ??= 'gif';
+            doc.type = 'gif';
           }
 
           doc.animated = true;
           break;
+        }
       }
     }
-
-    doc.type = type;
 
     if(!doc.mime_type) {
       const ext = (doc.file_name || '').split('.').pop();

@@ -152,6 +152,8 @@ const lang = {
   'PaymentCard.Error.Incomplete': 'Incomplete card number',
   'LimitReached.Ok': 'OK, GOT IT',
   'Username.Purchase': '**This username is already taken.** However, it is currently available for purchase. [Learn more…]()',
+  'Video.Unsupported.Desktop': '__Unfortunately, this video can\'t be played on Telegram Web. Try opening it with our [desktop app](https://getdesktop.telegram.org/) instead.__',
+  'Video.Unsupported.Mobile': '__Unfortunately, this video can\'t be played on Telegram Web. Try opening it with our [mobile app](https://telegram.org/dl/) instead.__',
 
   // * android
   'AccDescrEditing': 'Editing',

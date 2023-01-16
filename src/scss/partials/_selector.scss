@@ -42,7 +42,7 @@
 
   &-search {
     // padding: 0 1.5rem;
-    padding: 0 1rem;
+    padding-inline: 1rem;
     display: flex;
     flex-flow: wrap;
     position: relative;
@@ -63,9 +63,8 @@
     color: var(--primary-text-color);
     background-color: var(--light-secondary-text-color);
     font-size: 1rem;
-    padding: 0 17px 0px 0px;
-    margin-left: -.25rem;
-    margin-right: .75rem;
+    padding-inline-end: 17px;
+    margin-inline: -.25rem .75rem;
     height: 2rem;
     line-height: 2rem;
     margin-bottom: 7px;
@@ -104,7 +103,7 @@
 
     &-avatar {
       float: left;
-      margin-right: 8px;
+      margin-inline-end: 8px;
       overflow: hidden;
       position: relative;
       border-radius: 50% !important;
@@ -116,7 +115,7 @@
       &:after {
         position: absolute;
         content: $tgico-close;
-        left: 0;
+        inset-inline-start: 0;
         top: 0;
         background-color: var(--danger-color);
         height: 100%;
@@ -151,7 +150,7 @@
 
   .checkbox {
     margin-top: 11px;
-    padding-left: 11px;
+    padding-inline-start: 11px;
   }
 
   .checkbox-field {
@@ -165,13 +164,12 @@
     z-index: 1;
 
     &:first-child {
-      margin-right: 1.6875rem;
-      margin-left: .6875rem;
+      margin-inline: .6875rem 1.6875rem;
     }
   }
 
   .checkbox-field-round {
-    right: 1.125rem;
+    inset-inline-end: 1.125rem;
     --size: 1.25rem;
 
     .checkbox-box-border {
@@ -187,15 +185,15 @@
     $add: 3rem;
 
     .checkbox-field {
-      left: 1.25rem !important;
+      inset-inline-start: 1.25rem !important;
     }
 
     .chatlist-chat.row-with-padding {
-      padding-left: #{4.5rem + $add} !important; // 4.5 + x
+      padding-inline-start: #{4.5rem + $add} !important; // 4.5 + x
     }
 
     .dialog-avatar {
-      margin-left: #{$add} !important;
+      margin-inline-start: #{$add} !important;
     }
   }
 }
