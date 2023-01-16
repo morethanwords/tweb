@@ -2810,7 +2810,6 @@ export class AppMessagesManager extends AppManager {
       }
     }
 
-    this.setMessageUnreadByDialog(message);
     // this.log(dT(), 'msg unread', mid, apiMessage.pFlags.out, dialog && dialog[apiMessage.pFlags.out ? 'read_outbox_max_id' : 'read_inbox_max_id'])
 
     const replyTo = message.reply_to;
@@ -2847,6 +2846,8 @@ export class AppMessagesManager extends AppManager {
       // message.fromId = message.pFlags.post || (!message.pFlags.out && !message.from_id) ? peerId : appPeersManager.getPeerId(message.from_id);
       message.fromId = message.pFlags.post || !message.from_id ? peerId : this.appPeersManager.getPeerId(message.from_id);
     }
+
+    this.setMessageUnreadByDialog(message);
 
     if(fwdHeader) {
       // if(peerId === myID) {

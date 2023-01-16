@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import {T_ME_PREFIXES} from '../lib/mtproto/mtproto_config';
 import cancelEvent from './dom/cancelEvent';
 import parseUriParams from './string/parseUriParams';
 
@@ -26,7 +27,7 @@ export default function addAnchorListener<Params extends {pathnameParams?: any, 
 
     const u = new URL(href);
     const match = u.host.match(/(.+?)\.t(?:elegram)?\.me/);
-    if(match) {
+    if(match && !T_ME_PREFIXES.has(match[1])) {
       u.pathname = match[1] + (u.pathname === '/' ? '' : u.pathname);
       href = u.toString();
     }

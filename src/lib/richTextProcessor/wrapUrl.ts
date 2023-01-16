@@ -8,6 +8,7 @@ import type addAnchorListener from '../../helpers/addAnchorListener';
 import {PHONE_NUMBER_REG_EXP} from '.';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import matchUrlProtocol from './matchUrlProtocol';
+import {T_ME_PREFIXES} from '../mtproto/mtproto_config';
 
 export default function wrapUrl(url: string, unsafe?: number | boolean) {
   if(!matchUrlProtocol(url)) {
@@ -19,10 +20,15 @@ export default function wrapUrl(url: string, unsafe?: number | boolean) {
   let onclick: typeof out['onclick'];
   /* if(unsafe === 2) {
     url = 'tg://unsafe_url?url=' + encodeURIComponent(url);
-  } else  */if((tgMeMatch = url.match(/^(?:https?:\/\/)?(?:(.+?)\.)?t(?:elegram)?\.me(?:\/(.+))?/))) {
+  } else  */if((tgMeMatch = url.match(/^(?:https?:\/\/)?(?:(.+?)\.)?(?:(?:web|k|z)\.)?t(?:elegram)?\.me(?:\/(.+))?/))) {
     const u = new URL(url);
-    if(tgMeMatch[1]) {
-      u.pathname = tgMeMatch[1] + (u.pathname === '/' ? '' : u.pathname);
+    let prefix = tgMeMatch[1];
+    if(prefix && T_ME_PREFIXES.has(tgMeMatch[1])) {
+      prefix = undefined;
+    }
+
+    if(prefix) {
+      u.pathname = prefix + (u.pathname === '/' ? '' : u.pathname);
     }
 
     const fullPath = u.pathname.slice(1);
@@ -38,7 +44,7 @@ export default function wrapUrl(url: string, unsafe?: number | boolean) {
       case 'addemoji':
       case 'voicechat':
       case 'invoice':
-        if(path.length !== 1 && !tgMeMatch[1]) {
+        if(path.length !== 1 && !prefix) {
           onclick = path[0];
           break;
         }
