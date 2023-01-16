@@ -16,6 +16,7 @@ $row-border-radius: $border-radius-medium;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  // align-items: flex-start;
 
   &.no-subtitle,
   &.row-small {

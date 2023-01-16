@@ -890,7 +890,7 @@ b {
     cursor: pointer;
     /* font-weight: 500; */
     
-    text-align: left;
+    text-align: start;
     display: grid;
     grid-template-columns: calc(26px + 2rem) 1fr 80px;
     
@@ -912,7 +912,7 @@ b {
 
 .phone-code {
   color: $placeholder-color;
-  text-align: right;
+  text-align: end;
 }
 
 // this dimensions will be used for monkey business

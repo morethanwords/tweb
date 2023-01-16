@@ -60,6 +60,10 @@
     user-select: none;
     white-space: nowrap;
 
+    .is-rtl & {
+      transform-origin: right center;
+    }
+
     @include animation-level(2) {
       transition: .2s transform, .2s padding, .1s opacity, font-weight 0s .1s;
     }
@@ -203,13 +207,13 @@
     /* &.error, &.valid {
       transition: .2s border-width;
     } */
-    
+
     &:focus ~ .arrow-down {
       margin-top: -4px;
       transform: rotate(225deg);
       border-color: var(--primary-color);
     }
-    
+
     &:focus ~ label {
       color: var(--primary-color);
       font-weight: var(--font-weight-bold);
@@ -224,10 +228,10 @@
     &:not(:empty):focus ~ label {
       transition-delay: 0s, 0s, 0s, 0s;
     } */
-    
-    &:focus ~ label, 
-    &:valid ~ label, 
-    &:not(:empty) ~ label, 
+
+    &:focus ~ label,
+    &:valid ~ label,
+    &:not(:empty) ~ label,
     &:disabled ~ label {
       transform: translate(-.1875rem, calc(var(--height) / -2 + .0625rem)) scale(.75);
       padding: 0 .3125rem;

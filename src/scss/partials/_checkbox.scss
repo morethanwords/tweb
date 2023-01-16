@@ -9,12 +9,12 @@
   --offset-left: 0px;
   margin: 1.5rem 1.1875rem;
   display: block;
-  text-align: left;
+  text-align: start;
   position: relative;
   cursor: pointer;
   min-width: var(--size);
   min-height: var(--size);
-  
+
   @include animation-level(2) {
     transition: .2s opacity;
   }
@@ -30,7 +30,7 @@
 
   .checkbox-box {
     position: absolute;
-    left: var(--offset-left);
+    inset-inline-start: var(--offset-left);
     top: 50%;
     transform: translateY(-50%);
     width: var(--size);
@@ -42,8 +42,8 @@
       -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%); // fix safari overflow
     }
 
-    &-check, 
-    &-background, 
+    &-check,
+    &-background,
     &-border {
       position: absolute;
       top: 0;
@@ -51,7 +51,7 @@
     }
 
     &-border {
-      right: 0;
+      inset-inline: 0;
       bottom: 0;
       border-radius: inherit;
       border: 2px solid #8d969c;
@@ -64,12 +64,12 @@
       right: -15%;
       bottom: -15%;
       left: -15%;
-      
+
       background-color: var(--primary-color);
       transform: scale(1);
       border-radius: 50%;
       transition: transform .2s 0s ease-in-out;
-      
+
       @include animation-level(0) {
         transition: none !important;
       }
@@ -82,7 +82,7 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-  
+
       use {
         stroke: #fff;
         stroke-width: 3.75;
@@ -91,7 +91,7 @@
         stroke-dashoffset: 0;
         transition: stroke-dasharray .1s .15s ease-in-out, visibility 0s .15s;
         visibility: visible; // fix blinking on parent's transform
-        
+
         @include animation-level(0) {
           transition: none !important;
         }
@@ -101,7 +101,7 @@
 
   .checkbox-caption {
     position: relative;
-    padding-left: 3.375rem;
+    padding-inline-start: 3.375rem;
     transition: .2s opacity;
     color: inherit;
     pointer-events: none;
@@ -121,7 +121,7 @@
     margin-right: 0;
 
     .checkbox-box {
-      left: auto;
+      inset-inline-start: auto;
     }
   }
 
@@ -134,7 +134,8 @@
   overflow: hidden;
   border-radius: $border-radius-medium;
 
-  .checkbox-box, .checkbox-caption {
+  .checkbox-box,
+  .checkbox-caption {
     pointer-events: none;
   }
 }
@@ -172,16 +173,17 @@
   --size: 1.375rem;
   --offset-left: 0px;
 	position: relative;
-	text-align: left;
+	text-align: start;
 	margin: 1.25rem 0;
 	line-height: var(--line-height); // omg it centers the text
   cursor: pointer;
-  
+
   &.hidden-widget {
     cursor: default;
 
     .radio-field-main {
-      &::before, &::after {
+      &::before,
+      &::after {
         visibility: hidden;
       }
     }
@@ -193,7 +195,7 @@
         &::before {
           border-color: var(--primary-color);
         }
-    
+
         &::after {
           transform: translateY(-50%) scale(1);
         }
@@ -203,7 +205,7 @@
 
   // ! can't use &-main here, check popup create poll
   .radio-field-main {
-    padding-left: 3.5rem;
+    padding-inline-start: 3.5rem;
     position: relative;
     // color: var(--primary-text-color);
     color: inherit;
@@ -213,7 +215,7 @@
       content: '';
       display: block;
       position: absolute;
-      left: var(--offset-left);
+      inset-inline-start: var(--offset-left);
       top: 50%;
       width: var(--size);
       height: var(--size);
@@ -231,7 +233,7 @@
     }
 
     &::after {
-      left: calc(var(--offset-left) + .3125rem);
+      inset-inline-start: calc(var(--offset-left) + .3125rem);
       width: .75rem;
       height: .75rem;
       border-radius: 50%;
@@ -253,13 +255,11 @@
   &.radio-field-right {
     .radio-field-main {
       &:before {
-        left: auto;
-        right: 0;
+        inset-inline: auto 0;
       }
 
       &:after {
-        left: auto;
-        right: .3125rem;
+        inset-inline: auto .3125rem;
       }
     }
   }
@@ -275,7 +275,8 @@
   } */
 }
 
-[type="checkbox"], [type="radio"] {
+[type="checkbox"],
+[type="radio"] {
   box-sizing: border-box;
   padding: 0;
   opacity: 0;
@@ -298,12 +299,13 @@
       transform: scale(0);
     }
   }
-  
+
   /* &:checked + .checkbox-box {
     
   } */
 
-  &:disabled + .checkbox-box, &:disabled ~ .checkbox-caption {
+  &:disabled + .checkbox-box,
+  &:disabled ~ .checkbox-caption {
     cursor: default;
     opacity: var(--disabled-opacity);
   }
@@ -367,7 +369,7 @@
     display: flex;
     align-items: center;
     margin: 0 var(--offset);
-    
+
     @include animation-level(2) {
       transition: background-color .1s;
     }
@@ -381,7 +383,7 @@
       transform: translateX(calc(var(--offset) * -1));
       border-radius: 50%;
       position: absolute;
-      
+
       @include animation-level(2) {
         transition: border-color .1s, transform .1s cubic-bezier(.22, .75, .7, 1.44);
       }
@@ -390,7 +392,7 @@
 
   [type="checkbox"]:checked + .checkbox-toggle {
     background-color: var(--primary-color);
-    
+
     &:before {
       border-color: var(--primary-color);
       transform: translateX(calc(var(--toggle-width) - 1.25rem + var(--offset)));

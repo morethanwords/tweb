@@ -31,7 +31,7 @@
       height: 100vh;
       width: 1px;
       background-color: var(--border-color);
-      right: -1px;
+      inset-inline-end: -1px;
       top: 0;
       z-index: 2;
     }
@@ -165,7 +165,7 @@
       .selector-user {
         height: 30px;
         position: absolute !important;
-        left: 6px;
+        inset-inline-start: 6px;
         top: 6px;
         z-index: 1;
         margin-inline-start: 0;
@@ -188,7 +188,7 @@
         }
 
         .selector-user:last-of-type {
-          left: 38px;
+          inset-inline-start: 38px;
         }
       }
     }
@@ -390,7 +390,7 @@
       }
 
       &-avatar {
-        left: auto !important;
+        inset-inline-start: auto !important;
         top: .75rem !important;
       }
     }
@@ -494,7 +494,7 @@
       align-self: center;
       cursor: default;
       padding-inline-start: 4.5rem;
-      text-align: left;
+      text-align: start;
       height: 3.5rem;
 
       .force-reconnect {
@@ -507,7 +507,7 @@
 
       .preloader-container {
         right: auto;
-        left: 1rem;
+        inset-inline-start: 1rem;
         width: 1.5rem;
         height: 1.5rem;
 
@@ -820,7 +820,7 @@
 
       > .checkbox-field {
         .checkbox-box {
-          left: auto;
+          inset-inline-start: auto;
         }
       }
 
@@ -997,8 +997,9 @@
       height: 160px;
       margin: 1rem auto 1.3125rem;
 
-      .rlottie, .rlottie-vector {
-        left: .625rem;
+      .rlottie,
+      .rlottie-vector {
+        inset-inline-start: .625rem;
       }
     }
   }

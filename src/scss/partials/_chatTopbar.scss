@@ -142,7 +142,7 @@ body.is-right-column-shown {
 			}
 
 			.chat-info {
-				padding-left: .1875rem;
+				padding-inline-start: .1875rem;
 			}
 		}
 	}
@@ -216,11 +216,11 @@ body.is-right-column-shown {
 	.chat-info {
 		flex: 1 1 auto;
 		overflow: hidden;
-		padding-left: 49px;
+		padding-inline-start: 49px;
 		//--utils-width: NaN;
 
 		@include respond-to(handhelds) {
-			padding-left: 52px;
+			padding-inline-start: 52px;
     }
 		
 		//&.have-utils-width {
@@ -267,7 +267,7 @@ body.is-right-column-shown {
 		height: 2.25rem;
 		font-weight: 400;
 		font-size: 0.875rem;
-		margin-right: .5rem;
+		margin-inline-end: .5rem;
 		padding: 0 1.375rem; // same as in new media popup
 
 		&:not(.hide) + .chat-mute-button {
@@ -277,7 +277,7 @@ body.is-right-column-shown {
 	
 	.content {
 		flex: 1 1 auto;
-		padding-left: 1.125rem;
+		padding-inline-start: 1.125rem;
 		max-width: 100%;
 		overflow: hidden;
 	}
@@ -317,7 +317,7 @@ body.is-right-column-shown {
 
 	.chat:not([data-type="chat"]) & {
 		.content {
-			padding-left: 16px;
+			padding-inline-start: 16px;
 		}
 
 		/* .user-title {
@@ -335,8 +335,7 @@ body.is-right-column-shown {
       min-height: auto !important;
       position: absolute;
       top: calc(var(--topbar-call-height) * -1);
-      right: 0;
-      left: 1px; // because I have border-right on left sidebar that "pushes" the chat
+      inset-inline: 1px 0; // because I have border-right on left sidebar that "pushes" the chat
       color: #fff;
       z-index: 2;
       cursor: pointer !important;
@@ -346,7 +345,7 @@ body.is-right-column-shown {
       }
 
       @include respond-to(until-floating-left-sidebar) {
-        left: 0;
+        inset-inline-start: 0;
       }
 
       .btn-icon {
@@ -400,7 +399,7 @@ body.is-right-column-shown {
       align-items: center;
 
       .btn-icon {
-        margin-right: .375rem;
+        margin-inline-end: .375rem;
       }
 
       .call-description {
@@ -440,6 +439,10 @@ body.is-right-column-shown {
       transform: scale(var(--topbar-floating-scaleX), -1);
       transform-origin: left center;
       pointer-events: none;
+
+      .is-rtl & {
+        transform-origin: right center;
+      }
 
       @include sidebar-transform(false, false);
 

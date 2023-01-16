@@ -233,12 +233,13 @@ $chat-input-border-radius: 1rem;
 	}
 
 	.btn-record-cancel {
+    --multiplier: -1;
 		visibility: hidden;
 		opacity: 0;
 		padding: 0;
 		z-index: 3;
 		position: absolute;
-		right: 0;
+		inset-inline-end: 0;
 		top: 0;
 
     @include hover() {
@@ -258,7 +259,11 @@ $chat-input-border-radius: 1rem;
     // background-color: var(--surface-color) !important;
 
 		// here percents can be used since there are no other transforms
-		transform: translateX(calc(-100% + var(--padding-horizontal) * -1 + #{-$btn-send-margin}));
+		transform: translateX(calc((100% + var(--padding-horizontal) + #{$btn-send-margin}) * var(--multiplier)));
+
+    .is-rtl & {
+      --multiplier: 1;
+    }
 
 		/* @include respond-to(handhelds) {
 			transform: translateX(calc(-100% + #{-.5rem + -$btn-send-margin}));
@@ -273,7 +278,7 @@ $chat-input-border-radius: 1rem;
 			content: "";
 			position: absolute;
 			top: 5px;
-			right: 5px;
+			inset-inline-end: 5px;
 			width: .5rem;
 			height: .5rem;
 			border-radius: 50%;
@@ -301,14 +306,15 @@ $chat-input-border-radius: 1rem;
 	.float {
 		align-self: center;
 		display: none !important;
-		margin: 0 .75rem 0 0 !important;
+		margin: 0 !important;
+    margin-inline-end: .75rem !important;
 		
 		@include animation-level(2) {
 			animation: grow-icon .4s forwards ease-in-out !important;
 		}
 
 		@include respond-to(esg-bottom-new) {
-			margin-right: .125rem !important;
+			margin-inline-end: .125rem !important;
 		}
 	}
 
@@ -320,7 +326,7 @@ $chat-input-border-radius: 1rem;
 
 	.btn-send-container {
 		position: absolute;
-		right: var(--padding-horizontal);
+		inset-inline-end: var(--padding-horizontal);
 		bottom: 0;
 		padding-bottom: inherit;
     display: flex;
@@ -420,7 +426,7 @@ $chat-input-border-radius: 1rem;
 			height: 10px;
 			background-color: var(--danger-color);
 			border-radius: 50%;
-			margin: 0 9px;
+			margin-inline: 9px;
 			display: inline-block;
 			
 			@include animation-level(2) {
@@ -512,7 +518,7 @@ $chat-input-border-radius: 1rem;
 
 	&:not(.is-recording) {
 		.btn-record-cancel {
-			margin-right: 0;
+			margin-inline-end: 0;
 			width: 0px;
 		}
 	}
@@ -802,7 +808,7 @@ $chat-input-border-radius: 1rem;
   
       body.is-right-column-shown & {
         //left: calc(var(--right-column-width) / -2);
-        right: calc(var(--right-column-width));
+        inset-inline-end: calc(var(--right-column-width));
       }
     }
   
@@ -906,7 +912,7 @@ $chat-input-border-radius: 1rem;
   }
 
   &::before {
-    margin-right: 10px;
+    margin-inline-end: 10px;
   }
 }
 
@@ -973,7 +979,7 @@ $chat-input-border-radius: 1rem;
 		}
 
 		.btn-icon {
-			margin: 0 5px 0 6px;
+			margin-inline: 6px 5px;
 			//color: #3f454a;
 			height: 42px;
 			width: 42px;
@@ -1003,16 +1009,15 @@ $chat-input-border-radius: 1rem;
 
 		&-forward {
 			&:before {
-				margin-right: 14px;
+				margin-inline-end: 14px;
 			}
 		}
 
 		&-delete {
-			margin-right: .625rem;
-			margin-left: .375rem;
+			margin-inline: .375rem .625rem;
 
 			&:before {
-				margin-right: 10px;
+				margin-inline-end: 10px;
 			}
 		}
 	}
@@ -1025,7 +1030,7 @@ $chat-input-border-radius: 1rem;
 }
 
 .fake-rows-wrapper {
-	left: var(--padding-horizontal);
+	inset-inline-start: var(--padding-horizontal);
 	top: 0;
 	width: calc(100% - var(--chat-input-size) - (var(--padding-horizontal) * 2) - .5rem);
 }
@@ -1082,7 +1087,7 @@ $chat-input-border-radius: 1rem;
 
 .rows-wrapper {
   transform: translateX(0) scaleX(1);
-  border-bottom-right-radius: 0;
+  border-end-end-radius: 0;
 	// transform: translateX(calc((var(--chat-input-size) + 0.5rem) / -2)) scaleX(1);
 	// transition: transform $input-transition-time, width $input-transition-time, max-height $input-transition-time, border-radius $input-half-transition-time/* , opacity 0s 0s */;
   // background-color: transparent;
@@ -1110,7 +1115,7 @@ $chat-input-border-radius: 1rem;
 		position: absolute;
 		//bottom: -.1875rem;
 		bottom: -1px;
-		right: -8.4px;
+		inset-inline-end: -8.4px;
 		width: 11px;
 		height: 20px;
 		//background-repeat: no-repeat no-repeat;
@@ -1118,6 +1123,10 @@ $chat-input-border-radius: 1rem;
 		//background-image: url('assets/img/msg-tail-left-blur.svg');
 		fill: var(--surface-color);
 		transform: scaleX(-1);
+
+    .is-rtl & {
+      transform: scaleX(1);
+    }
 	}
 
 	.attach-file {
@@ -1197,7 +1206,7 @@ $chat-input-border-radius: 1rem;
 		.reply {
 			order: 1;
 			flex: 1 1 auto;
-			margin: 0 .625rem;
+			margin-inline: .625rem;
 			// min-height: 35px;
 
 			/* &-content {
@@ -1229,11 +1238,11 @@ $chat-input-border-radius: 1rem;
     .btn-menu {
       top: auto;
       bottom: calc(100% + .5rem);
-      left: 3.125rem;
+      inset-inline-start: 3.125rem;
       transform: scale(1) !important;
 
       &-item {
-        padding-right: 1.5rem;
+        padding-inline-end: 1.5rem;
 
         &-text {
           order: 1;
@@ -1243,7 +1252,8 @@ $chat-input-border-radius: 1rem;
           &-field {
             --size: 1.25rem;
             order: 0;
-            margin: 0 var(--icon-margin) 0 0;
+            margin: 0;
+            margin-inline-end: var(--icon-margin);
           }
 
           &-box {
@@ -1260,7 +1270,7 @@ $chat-input-border-radius: 1rem;
       }
 
       @include respond-to(handhelds) {
-        left: calc(var(--padding-horizontal) * -1);
+        inset-inline-start: calc(var(--padding-horizontal) * -1);
       }
     }
 
@@ -1321,7 +1331,7 @@ $chat-input-border-radius: 1rem;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-left: var(--commands-margin-left);
+      margin-inline-start: var(--commands-margin-left);
       cursor: pointer;
 
       .animated-menu-close-icon {
@@ -1345,15 +1355,15 @@ $chat-input-border-radius: 1rem;
         width: var(--send-as-size);
         height: var(--send-as-size);
         // margin: 0 0.375rem .4375rem var(--send-as-margin-left);
-        margin-left: var(--send-as-margin-left);
+        margin-inline-start: var(--send-as-margin-left);
         background: none !important;
 
         .btn-menu {
           max-height: 20rem;
           max-width: 20rem;
           top: auto;
-          right: auto;
-          left: calc(var(--padding-horizontal) * -1 - .25rem) !important;
+          inset-inline-end: auto;
+          inset-inline-start: calc(var(--padding-horizontal) * -1 - .25rem) !important;
           width: auto;
           height: auto;
           transform: scale3d(1, 1, 1);
@@ -1366,7 +1376,7 @@ $chat-input-border-radius: 1rem;
             }
 
             &-icon {
-              margin-right: calc(var(--icon-margin) - .5rem);
+              margin-inline-end: calc(var(--icon-margin) - .5rem);
 
               &.active:before {
                 --offset: -.125rem;
@@ -1451,7 +1461,7 @@ $chat-input-border-radius: 1rem;
   
         .input-message-container {
           --translateX: calc(var(--offset-translateX));
-          margin-right: var(--translateX);
+          margin-inline-end: var(--translateX);
           transform: translate(var(--translateX));
         }
 
@@ -1514,7 +1524,8 @@ $chat-input-border-radius: 1rem;
 		color: var(--secondary-text-color);
 
 		// ! EXPERIMENTAL
-		margin: 0 var(--button-horizontal-margin) 5px;
+		margin-block: 0 5px;
+    margin-inline: var(--button-horizontal-margin);
 		padding: 0;
 		width: var(--button-size);
 		height: var(--button-size);
@@ -1707,7 +1718,7 @@ $chat-input-border-radius: 1rem;
 			//margin-left: 45px;
 
 			.bubble-content-wrapper {
-				margin-left: 45px; //margin-left: 3rem; #DO JS3
+				margin-inline-start: 45px; //margin-left: 3rem; #DO JS3
 
 				@include respond-to(handhelds) {
 					max-width: calc(100% - var(--message-handhelds-margin));
@@ -1826,7 +1837,7 @@ $chat-input-border-radius: 1rem;
 }
 
 .bubbles-corner-button {
-	right: var(--chat-input-padding);
+	inset-inline-end: var(--chat-input-padding);
 	//top: calc((var(--chat-input-size) * -1) - 6px);
 	bottom: calc(var(--chat-input-size) + var(--bottom) + 10px);
 	z-index: 2;
@@ -1842,7 +1853,7 @@ $chat-input-border-radius: 1rem;
 	.badge {
 		position: absolute;
     top: -.25rem;
-		right: -.25rem;
+		inset-inline-end: -.25rem;
 
 		&.badge-primary:not(.badge-gray) {
 			background-color: var(--chatlist-status-color);
@@ -1850,7 +1861,7 @@ $chat-input-border-radius: 1rem;
 		
 		@include respond-to(handhelds) {
 			top: -.75rem;
-			right: .1875rem;
+			inset-inline-end: .1875rem;
 		}
 	}
 }
