@@ -11,7 +11,7 @@ import {SliderSuperTab} from './slider';
 import RadioForm from './radioForm';
 import {i18n, LangPackKey} from '../lib/langPack';
 import replaceContent from '../helpers/dom/replaceContent';
-import setInnerHTML from '../helpers/dom/setInnerHTML';
+import setInnerHTML, {setDirection} from '../helpers/dom/setInnerHTML';
 import {attachClickEvent} from '../helpers/dom/clickEvent';
 import ListenerSetter from '../helpers/listenerSetter';
 import Button from './button';
@@ -244,14 +244,14 @@ export default class Row {
   private createTitle() {
     const title = document.createElement('div');
     title.classList.add('row-title');
-    title.setAttribute('dir', 'auto');
+    setDirection(title);
     return title;
   }
 
   private createSubtitle() {
     const subtitle = document.createElement('div');
     subtitle.classList.add('row-subtitle');
-    subtitle.setAttribute('dir', 'auto');
+    setDirection(subtitle);
     if(this.title) this.title.after(subtitle);
     else this.container.prepend(subtitle);
     this.container.classList.remove('no-subtitle');

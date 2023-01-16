@@ -29,6 +29,7 @@ import singleInstance from './lib/mtproto/singleInstance';
 import parseUriParams from './helpers/string/parseUriParams';
 import Modes from './config/modes';
 import {AuthState} from './types';
+import {IS_BETA} from './config/debug';
 // import appNavigationController from './components/appNavigationController';
 
 document.addEventListener('DOMContentLoaded', async() => {
@@ -245,6 +246,15 @@ document.addEventListener('DOMContentLoaded', async() => {
   }
 
   console.log('got state, time:', performance.now() - perf);
+
+  if(langPack.lang_code === 'ar' && IS_BETA && false) {
+    document.body.classList.add('is-rtl');
+    document.documentElement.dir = 'rtl';
+    document.documentElement.lang = langPack.lang_code;
+    I18n.setRTL(true);
+  } else {
+    document.documentElement.dir = 'ltr';
+  }
 
   let authState = stateResult.state.authState;
 

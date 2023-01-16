@@ -57,7 +57,7 @@ $btn-menu-z-index: 4;
   --translateY: calc(54px + var(--offset));
   position: absolute !important;
   bottom: var(--offset);
-  right: var(--offset);
+  inset-inline-end: var(--offset);
   //transition: .2s ease;
   transition: transform var(--btn-corner-transition) !important;
   transform: translate3d(0, var(--translateY), 0);
@@ -165,14 +165,18 @@ $btn-menu-z-index: 4;
     }
   } */
 
-  &.bottom-left {
+  &.bottom-left,
+  .is-rtl &.bottom-right {
     right: 0;
+    left: auto;
     top: 100%;
     transform-origin: top right;
   }
 
-  &.bottom-right {
+  &.bottom-right,
+  .is-rtl &.bottom-left {
     left: 0;
+    right: auto;
     top: 100%;
     transform-origin: top left;
   }
@@ -184,13 +188,16 @@ $btn-menu-z-index: 4;
   &.top-left {
     top: initial;
     right: 0;
+    left: auto;
     bottom: 100%;
     transform-origin: bottom right;
   }
 
-  &.top-right {
+  &.top-right,
+  .is-rtl &.top-left {
     top: initial;
     left: 0;
+    right: auto;
     bottom: 100%;
     transform-origin: bottom left;
   }
@@ -225,11 +232,11 @@ $btn-menu-z-index: 4;
     // overflow: hidden;
     // text-overflow: ellipsis;
     align-items: center;
-    text-align: left;
+    text-align: start;
     font-size: var(--font-size-14);
     line-height: var(--line-height-14);
     border-radius: .3125rem;
-    margin: 0 .3125rem;
+    margin-inline: .3125rem;
     font-weight: 500;
     transform: scale(1);
     
@@ -261,7 +268,7 @@ $btn-menu-z-index: 4;
 
     &-icon,
     &:before {
-      margin-right: var(--icon-margin);
+      margin-inline-end: var(--icon-margin);
       position: relative;
     }
 
@@ -271,8 +278,8 @@ $btn-menu-z-index: 4;
       flex: 0 0 auto;
       width: var(--total);
       height: var(--total);
-      margin-right: calc(var(--icon-margin) - var(--add) / 2);
-      margin-left: calc(var(--add) / -2);
+      margin-inline-end: calc(var(--icon-margin) - var(--add) / 2);
+      margin-inline-start: calc(var(--add) / -2);
 
       .media-photo {
         width: inherit;
@@ -297,7 +304,7 @@ $btn-menu-z-index: 4;
       &-fake {
         --margin-left: calc(var(--icon-size) + var(--icon-margin));
         position: absolute;
-        margin-left: var(--margin-left);
+        margin-inline-start: var(--margin-left);
         max-width: calc(100% - var(--margin-left) - var(--padding-left) - var(--padding-right));
 
         @include text-overflow();
@@ -319,7 +326,7 @@ $btn-menu-z-index: 4;
     .stacked-avatars {
       --margin-right: -.6875rem;
       flex: 0 0 auto;
-      right: .5rem;
+      inset-inline-end: .5rem;
       // margin-right: -1.5rem;
       // margin-left: 1rem;
       position: absolute;
@@ -440,7 +447,7 @@ $btn-menu-z-index: 4;
       margin-top: var(--menu-offset);
       width: var(--width);
       max-width: var(--width);
-      margin-left: var(--other-side-offset);
+      margin-inline-start: var(--other-side-offset);
       // left: var(--bubble-side-offset);
       display: flex;
       // justify-content: flex-end;
@@ -471,7 +478,7 @@ $btn-menu-z-index: 4;
         max-height: var(--width);
         flex-direction: column;
         margin-top: 0;
-        margin-left: var(--menu-offset);
+        margin-inline-start: var(--menu-offset);
         
         .btn-menu-reactions {
           --inner-shadow-degree: 180deg;
@@ -656,7 +663,7 @@ $btn-menu-z-index: 4;
   > svg,
   use {
     height: calc(100% - 20px);
-    right: 15px;
+    inset-inline-end: 15px;
     left: auto;
   }
 
@@ -671,14 +678,14 @@ $btn-menu-z-index: 4;
   height: 2.5rem;
   line-height: 2.5rem;
   align-items: center;
+  padding-inline: .75rem 1.5rem;
   margin: .9375rem auto 1rem;
   border-radius: 1.25rem;
-  padding: 0 1.5rem 0 .75rem;
   display: flex;
 
   &.tgico:before {
     font-size: 1.5rem;
-    margin-right: .375rem;
+    margin-inline-end: .375rem;
   }
 }
 
@@ -713,15 +720,15 @@ $btn-menu-z-index: 4;
   &:before {
     color: var(--secondary-text-color);
     font-size: 1.5rem;
-    margin-right: 2rem;
+    margin-inline-end: 2rem;
 
     @include respond-to(handhelds) {
-      margin-right: 1.5rem;
+      margin-inline-end: 1.5rem;
     }
   }
 
   &.btn-short:before {
-    margin-right: 1rem;
+    margin-inline-end: 1rem;
   }
 }
 
@@ -843,7 +850,7 @@ $btn-menu-z-index: 4;
 
   & + &,
   &-container + &-container {
-    margin-left: var(--call-button-margin);
+    margin-inline-start: var(--call-button-margin);
   }
 }
 
@@ -881,5 +888,5 @@ $btn-menu-z-index: 4;
   font-weight: var(--font-weight-bold);
   /* margin-right: calc(var(--size) + 0.5rem); */
   /* left: var(--offset); */
-  right: auto;
+  inset-inline-end: auto;
 }

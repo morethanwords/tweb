@@ -185,6 +185,10 @@ Utility Classes
   unicode-bidi: plaintext;
 }
 
+.is-rtl [dir="auto"] {
+  direction: inherit;
+}
+
 /* .flex-grow {
   flex-grow: 1;
 }

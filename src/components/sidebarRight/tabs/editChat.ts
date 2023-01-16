@@ -211,7 +211,7 @@ export default class AppEditChatTab extends SliderSuperTab {
         section.content.append(permissionsRow.container);
       }
 
-      if(canManageTopics && (chat.participants_count >= appConfig.forum_upgrade_participants_min || (chat as Chat.channel).pFlags.forum)) {
+      if(canManageTopics && (chat.participants_count >= appConfig.forum_upgrade_participants_min || (chat as Chat.channel).pFlags.forum) && !isBroadcast) {
         const topicsRow = new Row({
           checkboxField: new CheckboxField({toggle: true}),
           titleLangKey: 'Topics',

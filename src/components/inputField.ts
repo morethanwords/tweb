@@ -8,7 +8,6 @@ import cancelEvent from '../helpers/dom/cancelEvent';
 import simulateEvent from '../helpers/dom/dispatchEvent';
 import documentFragmentToHTML from '../helpers/dom/documentFragmentToHTML';
 import findUpAttribute from '../helpers/dom/findUpAttribute';
-import findUpClassName from '../helpers/dom/findUpClassName';
 import findUpTag from '../helpers/dom/findUpTag';
 import getCaretPosNew from '../helpers/dom/getCaretPosNew';
 import getRichValueWithCaret from '../helpers/dom/getRichValueWithCaret';
@@ -16,8 +15,7 @@ import isInputEmpty from '../helpers/dom/isInputEmpty';
 import replaceContent from '../helpers/dom/replaceContent';
 import RichInputHandler, {USING_BOMS} from '../helpers/dom/richInputHandler';
 import selectElementContents from '../helpers/dom/selectElementContents';
-import setInnerHTML from '../helpers/dom/setInnerHTML';
-import BOM from '../helpers/string/bom';
+import setInnerHTML, {setDirection} from '../helpers/dom/setInnerHTML';
 import {MessageEntity} from '../layer';
 import {i18n, LangPackKey, _i18n} from '../lib/langPack';
 import {NULL_PEER_ID} from '../lib/mtproto/mtproto_config';
@@ -486,7 +484,7 @@ export default class InputField {
       // input.addEventListener('input', () => checkAndSetRTL(input));
     }
 
-    input.setAttribute('dir', 'auto');
+    setDirection(input);
 
     if(options.inputMode) {
       input.inputMode = options.inputMode;

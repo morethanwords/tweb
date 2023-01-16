@@ -9,7 +9,7 @@ import {i18n} from '../lib/langPack';
 import replaceContent from '../helpers/dom/replaceContent';
 import {NULL_PEER_ID} from '../lib/mtproto/mtproto_config';
 import limitSymbols from '../helpers/string/limitSymbols';
-import setInnerHTML from '../helpers/dom/setInnerHTML';
+import setInnerHTML, {setDirection} from '../helpers/dom/setInnerHTML';
 import safeAssign from '../helpers/object/safeAssign';
 import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 import getPeerTitle from './wrappers/getPeerTitle';
@@ -52,7 +52,7 @@ export default class PeerTitle {
   constructor(options?: PeerTitleOptions) {
     this.element = document.createElement('span');
     this.element.classList.add('peer-title');
-    this.element.setAttribute('dir', 'auto');
+    setDirection(this.element);
 
     this.options = {};
 

@@ -53,6 +53,8 @@ export default function hasRights(chat: Exclude<Chat, Chat.chatEmpty>, action: C
   // const adminFlags = adminRights?.pFlags || {};
   // const bannedFlags = bannedRights?.pFlags || {};
 
+  const isAdmin = rights._ === 'chatAdminRights';
+
   switch(action) {
     case 'embed_links':
     case 'send_games':
@@ -86,7 +88,7 @@ export default function hasRights(chat: Exclude<Chat, Chat.chatEmpty>, action: C
     }
 
     case 'pin_messages': {
-      return rights._ === 'chatAdminRights' ? myFlags[action] || !!myFlags.post_messages : !myFlags[action];
+      return isAdmin ? myFlags[action] || !!myFlags.post_messages : !myFlags[action];
     }
 
     // case 'change_info': {
@@ -95,7 +97,7 @@ export default function hasRights(chat: Exclude<Chat, Chat.chatEmpty>, action: C
 
     case 'change_info':
     case 'invite_users': {
-      return rights._ === 'chatAdminRights' ? !!myFlags[action] : !myFlags[action];
+      return isAdmin ? !!myFlags[action] : !myFlags[action];
     }
 
     // * only creator can do that
@@ -104,10 +106,14 @@ export default function hasRights(chat: Exclude<Chat, Chat.chatEmpty>, action: C
       return false;
     }
 
-    case 'manage_topics':
+    case 'edit_messages':
+    case 'manage_topics': {
+      return isAdmin && !!myFlags[action];
+    }
+
     case 'ban_users':
     case 'change_permissions': {
-      return rights._ === 'chatAdminRights' && !!myFlags['ban_users'];
+      return isAdmin && !!myFlags['ban_users'];
     }
 
     case 'view_participants': {

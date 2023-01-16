@@ -936,7 +936,7 @@ b {
 .phone-edit {
   width: 1.5rem;
   height: 1.5rem;
-  margin-left: .4rem;
+  margin-inline-start: .4rem;
   opacity: .5;
   transition: .2s opacity;
   cursor: pointer;
@@ -969,11 +969,11 @@ not screen and (                min-resolution: 192dpi),
 not screen and (                min-resolution: 2dppx) {
   html:not(.is-safari) {
     span.emoji {
-      margin-right: 5px !important;
+      margin-inline-end: 5px !important;
     }
 
     avatar-element span.emoji {
-      margin-right: 0 !important;
+      margin-inline-end: 0 !important;
     }
   }
 }
@@ -1087,7 +1087,7 @@ img.emoji {
   }
   
   /* &:nth-child(5n+5) {
-    margin-right: 0;
+    margin-inline-end: 0;
   } */
   
   /* > img, > .rlottie {
@@ -1132,13 +1132,12 @@ img.emoji {
   position: relative;
 
   @include respond-to(not-handhelds) {
-    padding-left: 8px;
+    padding-inline-start: 8px;
   }
 
   .tgico-down {
     float: left;
-    padding-right: 32px;
-    padding-left: 16px;
+    padding-inline: 1rem 2rem;
     font-size: 24px;
     color: var(--secondary-text-color);
   }
@@ -1504,8 +1503,9 @@ middle-ellipsis-element {
     padding: 0 .375rem;
     background-color: var(--message-highlightning-color) !important;
 
-    &:before, &:after {
-      margin-left: .25rem;
+    &:before,
+    &:after {
+      margin-inline-start: .25rem;
     }
   }
 
@@ -1671,7 +1671,7 @@ hr {
 
   .super-emoji {
     display: inline-block;
-    margin: 0 .0625rem;
+    margin-inline: .0625rem;
     padding: .25rem;
     line-height: inherit;
     border-radius: $border-radius;
@@ -1844,7 +1844,7 @@ hr {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-left: .125rem;
+  margin-inline-start: .125rem;
   width: 1.25rem;
   height: 1.25rem;
 }
@@ -1853,7 +1853,7 @@ hr {
   position: relative;
   width: 1.125rem;
   height: 1.125rem;
-  margin-left: .25rem;
+  margin-inline-start: .25rem;
 }
 
 .premium-icon {
@@ -1870,7 +1870,7 @@ hr {
   font-size: .625rem;
   font-weight: var(--font-weight-bold);
   line-height: 1 !important;
-  margin: 0 .25rem;
+  margin-inline: .25rem .25rem;
 }
 
 .peer-title {
@@ -2005,7 +2005,7 @@ hr {
 
 .chatlist-chat {
   &.row-with-padding {
-    padding-left: 4.5rem !important;
+    padding-inline-start: 4.5rem !important;
   }
 
   span {

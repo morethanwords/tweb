@@ -48,7 +48,7 @@
     position: absolute;
     color: $placeholder-color;
     top: 0;
-    left: 1rem;
+    inset-inline-start: 1rem;
     right: auto;
     z-index: 2;
     height: 1.5rem;
@@ -322,14 +322,12 @@ input:focus, button:focus {
 .input-search {
   position: relative;
   width: 100%;
-  //Vozmojno nado budet vernut margin-left: 22px;, tak kak eto vrode v levom bare tak po verstke, a v pravom bare dlya mobili nado 16, gde stiker seti 
-  margin-left: .4375rem;
-  margin-right: .4375rem;
+  margin-inline: .4375rem;
   overflow: hidden;
   --border-radius: 22px;
 
   @include respond-to(handhelds) {
-    margin-left: 1rem;
+    margin-inline-start: 1rem;
   }
 
   &-input {
@@ -382,39 +380,39 @@ input:focus, button:focus {
     top: 50%;
     transform: translate(0, -50%);
     text-align: center;
-    font-size: 24px;
+    font-size: 1.5rem;
     color: var(--secondary-text-color);
     opacity: .6;
     line-height: 1;
     z-index: 1;
-    
+
     @include animation-level(2) {
       transition: opacity .2s ease-out, color .2s ease-out;
     }
   }
 
   > .tgico-search {
-    width: 24px;
-    height: 24px;
-    left: .8125rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    inset-inline-start: .8125rem;
     pointer-events: none;
   }
 
   > .tgico-close {
-    right: 0px;
+    inset-inline-end: 0px;
     z-index: 1;
     width: 42px;
     height: 42px;
 
     &:before { // ! я сгорел, почему-то здесь иконка сдвигается на пиксель влево, и это происходит из-за position: absolute на .tgico ...
-      margin-right: -1px;
+      margin-inline-end: -1px;
     }
   }
 }
 
 .input-field-password {
   .input-field-input {
-    padding-right: 2.5rem;
+    padding-inline-end: 2.5rem;
     max-height: var(--height);
 
     &[type="password"] {

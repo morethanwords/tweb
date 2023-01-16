@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import {setDirection} from '../helpers/dom/setInnerHTML';
+
 export default class DivAndCaption<T> {
   public container: HTMLElement;
   public border: HTMLElement;
@@ -23,11 +25,11 @@ export default class DivAndCaption<T> {
 
     this.title = document.createElement('div');
     this.title.classList.add(className + '-title');
-    this.title.setAttribute('dir', 'auto');
+    setDirection(this.title);
 
     this.subtitle = document.createElement('div');
     this.subtitle.classList.add(className + '-subtitle');
-    this.subtitle.setAttribute('dir', 'auto');
+    setDirection(this.subtitle);
 
     this.content.append(this.title, this.subtitle);
     this.container.append(this.border, this.content);

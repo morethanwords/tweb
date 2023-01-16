@@ -510,7 +510,9 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     if(this.peerId.isUser()) {
       show = this.peerId !== rootScope.myId && await this.managers.appUsersManager.isContact(this.peerId.toUserId());
     } else {
-      show = await this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'change_info');
+      const chatId = this.peerId.toChatId();
+      const isTopic = this.threadId && await this.managers.appChatsManager.isForum(chatId);
+      show = await this.managers.appChatsManager.hasRights(chatId, isTopic ? 'manage_topics' : 'change_info');
     }
 
     const callback = () => {

@@ -4,12 +4,20 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+// import I18n from '../../lib/langPack';
+
 export default function setInnerHTML(elem: Element, html: string | DocumentFragment | Element) {
-  elem.setAttribute('dir', 'auto');
+  setDirection(elem);
   if(typeof(html) === 'string') {
     if(!html) elem.replaceChildren();
     else elem.innerHTML = html;
   } else {
     elem.replaceChildren(html);
   }
+}
+
+export function setDirection(elem: Element) {
+  // if(!I18n.isRTL) {
+  elem.setAttribute('dir', 'auto');
+  // }
 }

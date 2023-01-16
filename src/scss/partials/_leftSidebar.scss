@@ -94,7 +94,7 @@
       }
 
       .badge {
-        margin-left: 5px;
+        margin-inline-start: 5px;
         //line-height: inherit !important;
       }
 
@@ -144,10 +144,10 @@
 
   /* .folders-tabs-scrollable {
     .menu-horizontal-div-item:first-child {
-      margin-left: .6875rem;
+      margin-inline-start: .6875rem;
   
       @include respond-to(handhelds) {
-        margin-left: .1875rem;
+        margin-inline-start: .1875rem;
       }
     }
   } */
@@ -159,7 +159,7 @@
     .input-search {
       /* &-input {
         --paddingLeft: 0px;
-        padding-left: calc(42px - var(--border-width) + var(--paddingLeft));
+        padding-inline-start: calc(42px - var(--border-width) + var(--paddingLeft));
       } */
 
       .selector-user {
@@ -168,13 +168,13 @@
         left: 6px;
         top: 6px;
         z-index: 1;
-        margin-left: 0;
+        margin-inline-start: 0;
         line-height: 1.875rem;
       }
 
       &.is-picked {
         .input-search-input {
-          padding-left: calc(var(--paddingLeft) + 12px - var(--border-width));
+          padding-inline-start: calc(var(--paddingLeft) + 12px - var(--border-width));
         }
 
         .tgico-close {
@@ -195,10 +195,10 @@
   
     .search-helper {
       display: flex;
-      margin-left: 28px;
+      margin-inline-start: 28px;
 
       @include respond-to(handhelds) {
-       margin-left: 20px;
+       margin-inline-start: 20px;
       }
 
       .selector-user {
@@ -325,7 +325,7 @@
   
       .archived-count {
         justify-self: flex-end;
-        margin-left: .625rem;
+        margin-inline-start: .625rem;
   
         @include respond-to(handhelds) {
           font-weight: 600;
@@ -333,7 +333,7 @@
       }
   
       .btn-menu-item {
-        padding-right: .375rem;
+        padding-inline-end: .375rem;
       }
   
       .archived-count:empty {
@@ -399,7 +399,7 @@
       position: relative;
       
       @include respond-to(handhelds) {
-        margin-left: -7px;
+        margin-inline-start: -7px;
         margin-top: 4px;
       }
       
@@ -493,7 +493,7 @@
       color: #2e3939;
       align-self: center;
       cursor: default;
-      padding-left: 4.5rem;
+      padding-inline-start: 4.5rem;
       text-align: left;
       height: 3.5rem;
 
@@ -576,9 +576,9 @@
   .caption {
     font-size: .875rem;
     margin-top: 14px;
-    margin-left: 23px;
+    margin-inline-start: 23px;
     color: var(--secondary-text-color);
-    padding-right: 24px;
+    padding-inline-end: 24px;
   }
 }
 
@@ -742,7 +742,7 @@
       }
 
       [type="checkbox"] + span {
-        padding-left: 26px;
+        padding-inline-start: 26px;
       }
     }
   }
@@ -1213,7 +1213,7 @@
     padding: 0 1.0625rem 0 .8125rem;
 
     &:before {
-      margin-right: .625rem;
+      margin-inline-end: .625rem;
     }
   }
 

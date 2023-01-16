@@ -10,7 +10,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 1rem;
+    padding-inline: 1rem;
     min-height: 3.5rem;
     flex: 0 0 auto;
     user-select: none;
@@ -21,7 +21,7 @@
     }
 
     @include respond-to(handhelds) {
-      padding: 0 .5rem;
+      padding-inline: .5rem;
     }
 
     /* //position: sticky !important;
@@ -32,13 +32,13 @@
     &__title {
       flex: 1;
       font-weight: var(--font-weight-bold);
-      padding-left: 1.5rem;
+      padding-inline-start: 1.5rem;
       font-size: 1.25rem;
       color: var(--primary-text-color);
     }
 
     .btn-icon + .btn-icon {
-      margin-left: .5rem;
+      margin-inline-start: .5rem;
     }
 
     &-right {

@@ -85,6 +85,11 @@ namespace I18n {
   export let lastAppliedLangCode: string;
   export let requestedServerLanguage = false;
   export let timeFormat: State['settings']['timeFormat'];
+  export let isRTL = false;
+
+  export function setRTL(rtl: boolean) {
+    isRTL = rtl;
+  }
 
   function setLangCode(langCode: string) {
     lastRequestedLangCode = langCode;

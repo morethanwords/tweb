@@ -11,7 +11,8 @@ $row-border-radius: $border-radius-medium;
 .row {
   min-height: 3.5rem;
   position: relative;
-  padding: .4375rem 1rem;
+  padding-block: .4375rem;
+  padding-inline: 1rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -50,7 +51,8 @@ $row-border-radius: $border-radius-medium;
 
   &-big {
     min-height: 4.5rem;
-    padding: .5625rem .75rem .5625rem 1rem;
+    padding-block: .5625rem;
+    padding-inline: 1rem .75rem;
   }
 
   &-row {
@@ -93,7 +95,7 @@ $row-border-radius: $border-radius-medium;
   &-title-right,
   &-subtitle-right {
     flex: 0 0 auto !important;
-    margin-left: 1rem;
+    margin-inline-start: 1rem;
   }
 
   &-title,
@@ -110,15 +112,15 @@ $row-border-radius: $border-radius-medium;
   }
 
   &-with-padding {
-    padding-left: 4.5rem;
+    padding-inline-start: 4.5rem;
 
     @include respond-to(handhelds) {
-      padding-left: 4rem;
+      padding-inline-start: 4rem;
     }
 
     /* .row-title */&.tgico:before {
       position: absolute;
-      left: 1rem;
+      inset-inline-start: 1rem;
       font-size: 1.5rem;
       color: var(--secondary-text-color);
       pointer-events: none;
@@ -150,7 +152,7 @@ $row-border-radius: $border-radius-medium;
   &-sortable {
     .row-title,
     .row-subtitle {
-      padding-right: 2.5rem;
+      padding-inline-end: 2.5rem;
     }
 
     &-icon {
@@ -161,7 +163,7 @@ $row-border-radius: $border-radius-medium;
       position: absolute;
       top: 50%;
       transform: translateY(-50%);
-      right: .75rem;
+      inset-inline-end: .75rem;
       pointer-events: none;
     }
 
@@ -200,8 +202,8 @@ $row-border-radius: $border-radius-medium;
 
   .radio-field-main, 
   .checkbox-field {
-    padding-left: 3.375rem;
-    margin-left: -3.375rem;
+    padding-inline-start: 3.375rem;
+    margin-inline-start: -3.375rem;
   }
 
   .radio-field,
@@ -222,18 +224,18 @@ $row-border-radius: $border-radius-medium;
 
   .checkbox-field {
     margin-top: 0;
-    margin-right: 0;
+    margin-inline-end: 0;
     margin-bottom: 0;
     height: auto;
 
     .checkbox-caption {
-      padding-left: 0;
+      padding-inline-start: 0;
 
       @include text-overflow(true);
     }
 
     &-toggle {
-      margin: 0 .125rem;
+      margin-inline: .125rem .125rem;
       padding: 0;
     }
   }
@@ -254,7 +256,7 @@ $row-border-radius: $border-radius-medium;
     height: 2.25rem !important;
     position: absolute !important;
     margin: 0 !important;
-    left: .75rem;
+    inset-inline-start: .75rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -263,25 +265,25 @@ $row-border-radius: $border-radius-medium;
     &-small {
       width: 2rem !important;
       height: 2rem !important;
-      left: .75rem !important;
+      inset-inline-start: .75rem !important;
     }
 
     &-abitbigger {
       width: 2.625rem !important;
       height: 2.625rem !important;
-      left: .75rem !important;
+      inset-inline-start: .75rem !important;
     }
 
     &-big {
       width: 3rem !important;
       height: 3rem !important;
-      left: .5rem !important;
+      inset-inline-start: .5rem !important;
     }
 
     &-bigger {
       width: 3.375rem !important;
       height: 3.375rem !important;
-      left: .5625rem !important; // it's wrong but old chatlist has it
+      inset-inline-start: .5625rem !important; // it's wrong but old chatlist has it
     }
   }
 
@@ -291,12 +293,12 @@ $row-border-radius: $border-radius-medium;
 
   > .btn-primary {
     height: 1.875rem;
-    padding: 0 .75rem;
+    padding-inline: .75rem;
     font-size: .9375rem;
     width: auto;
     margin: 0;
     position: absolute;
-    right: 1rem;
+    inset-inline-end: 1rem;
     top: 50%;
     transform: translateY(-50%);
     border-radius: .9375rem;
