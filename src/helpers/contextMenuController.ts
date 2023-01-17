@@ -60,7 +60,7 @@ class ContextMenuController extends OverlayClickHandler {
   public openBtnMenu(element: HTMLElement, onClose?: () => void) {
     super.open(element);
 
-    this.element.classList.add('active');
+    this.element.classList.add('active', 'was-open');
     this.element.parentElement.classList.add('menu-open');
 
     if(onClose) {

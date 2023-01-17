@@ -70,7 +70,19 @@ export default class AppChatTypeTab extends SliderSuperTabEventable {
       onChange();
     });
 
-    const chat: Chat = await this.managers.appChatsManager.getChat(this.chatId);
+    let chat: Chat = await this.managers.appChatsManager.getChat(this.chatId);
+
+    const chatUpdateListeners: {[type in 'basic']: (() => void)[]} = {basic: []};
+    const addChatUpdateListener = (callback: () => void, type: 'basic' = 'basic') => {
+      chatUpdateListeners[type].push(callback);
+    };
+
+    this.listenerSetter.add(rootScope)('chat_update', async(chatId) => {
+      if(this.chatId === chatId) {
+        chat = await this.managers.appChatsManager.getChat(this.chatId) as typeof chat;
+        chatUpdateListeners['basic'].forEach((callback) => callback());
+      }
+    });
 
     section.content.append(form);
 
@@ -226,11 +238,7 @@ export default class AppChatTypeTab extends SliderSuperTabEventable {
         checkboxField.setValueSilently(!!(chat as Chat.channel).pFlags.noforwards);
       };
 
-      this.listenerSetter.add(rootScope)('chat_update', (chatId) => {
-        if(this.chatId === chatId) {
-          onChatUpdate();
-        }
-      });
+      addChatUpdateListener(onChatUpdate);
 
       onChatUpdate();
 

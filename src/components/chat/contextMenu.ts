@@ -123,7 +123,11 @@ export default class ChatContextMenu {
           this.onContextMenu(e);
         }
       }, {listenerSetter: this.attachListenerSetter});
-    } else attachContextMenuListener(element, this.onContextMenu, this.attachListenerSetter);
+    } else attachContextMenuListener({
+      element,
+      callback: this.onContextMenu,
+      listenerSetter: this.attachListenerSetter
+    });
   }
 
   private onContextMenu = (e: MouseEvent | Touch | TouchEvent) => {

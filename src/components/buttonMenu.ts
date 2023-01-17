@@ -17,6 +17,8 @@ import {Document} from '../layer';
 import wrapPhoto from './wrappers/photo';
 import textToSvgURL from '../helpers/textToSvgURL';
 import customProperties from '../helpers/dom/customProperties';
+import {IS_MOBILE} from '../environment/userAgent';
+import ripple from './ripple';
 
 export type ButtonMenuItemOptions = {
   icon?: string,
@@ -24,7 +26,8 @@ export type ButtonMenuItemOptions = {
   text?: LangPackKey,
   textArgs?: FormatterArguments,
   regularText?: Parameters<typeof setInnerHTML>[1],
-  onClick: (e: MouseEvent | TouchEvent) => void | boolean | any,
+  onClick: (e: MouseEvent | TouchEvent) => any,
+  checkForClose?: () => boolean,
   element?: HTMLElement,
   textElement?: HTMLElement,
   options?: AttachClickOptions,
@@ -33,7 +36,8 @@ export type ButtonMenuItemOptions = {
   keepOpen?: boolean,
   separator?: boolean | HTMLElement,
   multiline?: boolean,
-  loadPromise?: Promise<any>
+  loadPromise?: Promise<any>,
+  waitForAnimation?: boolean
   /* , cancelEvent?: true */
 };
 
@@ -47,7 +51,10 @@ function ButtonMenuItem(options: ButtonMenuItemOptions) {
   const {icon, iconDoc, text, onClick, checkboxField, noCheckboxClickListener} = options;
   const el = document.createElement('div');
   el.className = 'btn-menu-item rp-overflow' + (icon ? ' tgico-' + icon : '');
-  // ripple(el);
+
+  if(IS_MOBILE) {
+    ripple(el);
+  }
 
   let textElement = options.textElement;
   if(!textElement) {
@@ -94,7 +101,7 @@ function ButtonMenuItem(options: ButtonMenuItemOptions) {
   const keepOpen = !!checkboxField || !!options.keepOpen;
 
   // * cancel mobile keyboard close
-  onClick && attachClickEvent(el, /* CLICK_EVENT_NAME !== 'click' || keepOpen ? */ (e) => {
+  onClick && attachClickEvent(el, /* CLICK_EVENT_NAME !== 'click' || keepOpen ? */ /* async */(e) => {
     cancelEvent(e);
 
     const menu = findUpClassName(e.target, 'btn-menu');
@@ -102,13 +109,23 @@ function ButtonMenuItem(options: ButtonMenuItemOptions) {
       return;
     }
 
-    const result = onClick(e);
+    // let closed = false;
+    // if(!keepOpen && !options.checkForClose) {
+    //   closed = true;
+    //   contextMenuController.close();
+    // }
 
-    if(result === false) {
+    // wait for closing animation
+    // if(options.waitForAnimation && rootScope.settings.animationsEnabled && !options.checkForClose) {
+    //   await pause(125);
+    // }
+
+    onClick(e);
+    if(options.checkForClose?.() === false) {
       return;
     }
 
-    if(!keepOpen) {
+    if(!keepOpen/*  && !closed */) {
       contextMenuController.close();
     }
 

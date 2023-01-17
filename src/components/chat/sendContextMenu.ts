@@ -44,18 +44,22 @@ export default class SendMenu {
     this.sendMenu = ButtonMenuSync({buttons: this.sendMenuButtons, listenerSetter: options.listenerSetter});
     this.sendMenu.classList.add('menu-send', options.openSide);
 
-    attachContextMenuListener(options.onContextElement, (e) => {
-      if(options.onOpen && !options.onOpen()) {
-        return;
-      }
+    attachContextMenuListener({
+      element: options.onContextElement,
+      callback: (e) => {
+        if(options.onOpen && !options.onOpen()) {
+          return;
+        }
 
-      this.sendMenuButtons.forEach((button) => {
-        button.element.classList.toggle('hide', !button.verify());
-      });
+        this.sendMenuButtons.forEach((button) => {
+          button.element.classList.toggle('hide', !button.verify());
+        });
 
-      cancelEvent(e);
-      contextMenuController.openBtnMenu(this.sendMenu);
-    }, options.listenerSetter);
+        cancelEvent(e);
+        contextMenuController.openBtnMenu(this.sendMenu);
+      },
+      listenerSetter: options.listenerSetter
+    });
   }
 
   public setPeerId(peerId: PeerId) {

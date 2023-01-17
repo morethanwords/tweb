@@ -79,7 +79,7 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
             titleLangKey: 'AreYouSureSessionsTitle',
             descriptionLangKey: 'AreYouSureSessions'
           }).show();
-        });
+        }, {listenerSetter: this.listenerSetter});
 
         section.content.append(btnTerminate);
       }
@@ -142,18 +142,22 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
 
     document.getElementById('page-chats').append(element);
 
-    attachContextMenuListener(this.scrollable.container, (e) => {
-      target = findUpClassName(e.target, 'row');
-      if(!target || target.dataset.hash === '0') {
-        return;
-      }
+    attachContextMenuListener({
+      element: this.scrollable.container,
+      callback: (e) => {
+        target = findUpClassName(e.target, 'row');
+        if(!target || target.dataset.hash === '0') {
+          return;
+        }
 
-      if(e instanceof MouseEvent) e.preventDefault();
-      // smth
-      if(e instanceof MouseEvent) e.cancelBubble = true;
+        if(e instanceof MouseEvent) e.preventDefault();
+        // smth
+        if(e instanceof MouseEvent) e.cancelBubble = true;
 
-      positionMenu(e, element);
-      contextMenuController.openBtnMenu(element);
+        positionMenu(e, element);
+        contextMenuController.openBtnMenu(element);
+      },
+      listenerSetter: this.listenerSetter
     });
 
     attachClickEvent(this.scrollable.container, (e) => {
@@ -163,7 +167,7 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
       }
 
       onTerminateClick();
-    });
+    }, {listenerSetter: this.listenerSetter});
   }
 
   onCloseAfterTimeout() {

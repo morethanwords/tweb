@@ -1860,10 +1860,10 @@ export class AppMessagesManager extends AppManager {
     return outDialogs;
   } */
 
-  public async fillConversations(): Promise<void> {
+  public async fillConversations(folderId = GLOBAL_FOLDER_ID): Promise<void> {
     const middleware = this.middleware.get();
-    while(!this.dialogsStorage.isDialogsLoaded(GLOBAL_FOLDER_ID)) {
-      const result = await this.getTopMessages({limit: 100, folderId: GLOBAL_FOLDER_ID});
+    while(!this.dialogsStorage.isDialogsLoaded(folderId)) {
+      const result = await this.getTopMessages({limit: 100, folderId});
       if(!middleware() || result.isEnd) {
         break;
       }
@@ -1924,38 +1924,7 @@ export class AppMessagesManager extends AppManager {
     const middleware = this.middleware.get();
     const peerId = this.dialogsStorage.isFilterIdForForum(folderId) ? folderId : undefined;
 
-    let promise: Promise<MessagesDialogs | MessagesForumTopics>, params: any;
-    if(peerId) {
-      const _promise = this.apiManager.invokeApi('channels.getForumTopics', params = {
-        channel: this.appChatsManager.getChannelInput(peerId.toChatId()),
-        limit: useLimit,
-        offset_date: offsetDate,
-        offset_id: offsetId,
-        offset_topic: 0
-      }, {
-        // timeout: APITIMEOUT,
-        noErrorBox: true
-      });
-
-      promise = this.dialogsStorage.processTopicsPromise(peerId, _promise);
-    } else {
-      // ! ВНИМАНИЕ: ОЧЕНЬ СЛОЖНАЯ ЛОГИКА:
-      // ! если делать запрос сначала по папке 0, потом по папке 1, по индексу 0 в массиве будет один и тот же диалог, с dialog.pFlags.pinned, ЛОЛ???
-      // ! т.е., с запросом folder_id: 1, и exclude_pinned: 0, в результате будут ещё и закреплённые с папки 0
-      promise = this.apiManager.invokeApiSingle('messages.getDialogs', params = {
-        folder_id: folderId,
-        offset_date: offsetDate,
-        offset_id: offsetId,
-        offset_peer: this.appPeersManager.getInputPeerById(offsetPeerId),
-        limit: useLimit,
-        hash: '0'
-      }, {
-        // timeout: APITIMEOUT,
-        noErrorBox: true
-      });
-    }
-
-    return promise.then((result) => {
+    const processResult = (result: MessagesDialogs | MessagesForumTopics) => {
       if(!middleware() || result._ === 'messages.dialogsNotModified') return null;
 
       if(DEBUG) {
@@ -2002,6 +1971,8 @@ export class AppMessagesManager extends AppManager {
         });
 
         if(dialog.peerId === undefined) {
+          this.log.error('bugged dialog?', dialog);
+          debugger;
           return;
         }
 
@@ -2059,8 +2030,11 @@ export class AppMessagesManager extends AppManager {
       const folderDialogs = this.dialogsStorage.getFolderDialogs(folderId, false);
       let dialogsLength = 0;
       for(let i = 0, length = folderDialogs.length; i < length; ++i) {
-        if(getServerMessageId(folderDialogs[i].top_message)) {
+        const dialog = folderDialogs[i];
+        if(getServerMessageId(dialog.top_message)) {
           ++dialogsLength;
+        } else {
+          this.log.error('something strange with dialog', dialog);
         }
       }
 
@@ -2085,7 +2059,51 @@ export class AppMessagesManager extends AppManager {
         count,
         dialogs: slicedDialogs
       };
-    });
+    };
+
+    let promise: Promise<ReturnType<typeof processResult>>, params: any;
+    if(peerId) {
+      promise = this.apiManager.invokeApiSingleProcess({
+        method: 'channels.getForumTopics',
+        params: params = {
+          channel: this.appChatsManager.getChannelInput(peerId.toChatId()),
+          limit: useLimit,
+          offset_date: offsetDate,
+          offset_id: offsetId,
+          offset_topic: 0
+        },
+        options: {
+          // timeout: APITIMEOUT,
+          noErrorBox: true
+        },
+        processResult: (result) => {
+          result = this.dialogsStorage.processTopics(peerId, result);
+          return processResult(result);
+        }
+      });
+    } else {
+      // ! ВНИМАНИЕ: ОЧЕНЬ СЛОЖНАЯ ЛОГИКА:
+      // ! если делать запрос сначала по папке 0, потом по папке 1, по индексу 0 в массиве будет один и тот же диалог, с dialog.pFlags.pinned, ЛОЛ???
+      // ! т.е., с запросом folder_id: 1, и exclude_pinned: 0, в результате будут ещё и закреплённые с папки 0
+      promise = this.apiManager.invokeApiSingleProcess({
+        method: 'messages.getDialogs',
+        params: params = {
+          folder_id: folderId,
+          offset_date: offsetDate,
+          offset_id: offsetId,
+          offset_peer: this.appPeersManager.getInputPeerById(offsetPeerId),
+          limit: useLimit,
+          hash: '0'
+        },
+        options: {
+          // timeout: APITIMEOUT,
+          noErrorBox: true
+        },
+        processResult
+      });
+    }
+
+    return promise;
   }
 
   public async forwardMessages(peerId: PeerId, fromPeerId: PeerId, mids: number[], options: MessageSendingParams & Partial<{

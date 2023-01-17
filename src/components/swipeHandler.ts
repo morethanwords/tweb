@@ -29,7 +29,7 @@ const getEvent = (e: EE) => {
   return 'touches' in e ? e.touches[0] : e;
 };
 
-const attachGlobalListenerTo = window;
+const attachGlobalListenerTo = document;
 
 let RESET_GLOBAL = false;
 contextMenuController.addEventListener('toggle', (visible) => {
@@ -51,7 +51,7 @@ export type SwipeHandlerOptions = {
   withDelay?: boolean
 };
 
-const TOUCH_MOVE_OPTIONS: ListenerOptions = {passive: false, capture: true};
+const TOUCH_MOVE_OPTIONS: ListenerOptions = {passive: false};
 const MOUSE_MOVE_OPTIONS: ListenerOptions = false as any;
 
 export default class SwipeHandler {
@@ -61,9 +61,9 @@ export default class SwipeHandler {
   private onFirstSwipe: (e: EE) => void;
   private onReset: () => void;
   private onStart: () => void;
-  private cursor: 'grabbing' | 'move' | 'row-resize' | 'col-resize' | 'nesw-resize' | 'nwse-resize' | 'ne-resize' | 'se-resize' | 'sw-resize' | 'nw-resize' | 'n-resize' | 'e-resize' | 's-resize' | 'w-resize' | '' = 'grabbing';
-  private cancelEvent = true;
-  private listenerOptions: boolean | AddEventListenerOptions = false;
+  private cursor: 'grabbing' | 'move' | 'row-resize' | 'col-resize' | 'nesw-resize' | 'nwse-resize' | 'ne-resize' | 'se-resize' | 'sw-resize' | 'nw-resize' | 'n-resize' | 'e-resize' | 's-resize' | 'w-resize' | '';
+  private cancelEvent: boolean;
+  private listenerOptions: ListenerOptions;
   private setCursorTo: HTMLElement;
 
   private isMouseDown: boolean;
@@ -81,6 +81,11 @@ export default class SwipeHandler {
 
   constructor(options: SwipeHandlerOptions) {
     safeAssign(this, options);
+
+    this.cursor ??= 'grabbing';
+    this.cancelEvent ??= true;
+    // this.listenerOptions ??= false as any;
+    this.listenerOptions ??= TOUCH_MOVE_OPTIONS;
 
     this.setCursorTo ??= this.element;
     this.listenerSetter = new ListenerSetter();
@@ -102,11 +107,16 @@ export default class SwipeHandler {
       this.listenerSetter.add(attachGlobalListenerTo)('mouseup', this.reset);
     } else {
       if(this.withDelay) {
-        attachContextMenuListener(this.element, (e) => {
-          cancelEvent(e);
-          // @ts-ignore
-          this.handleStart(e);
-        }, this.listenerSetter);
+        attachContextMenuListener({
+          element: this.element,
+          callback: (e) => {
+            cancelEvent(e);
+            // @ts-ignore
+            this.handleStart(e);
+          },
+          listenerSetter: this.listenerSetter,
+          listenerOptions: this.listenerOptions
+        });
       } else {
         // @ts-ignore
         this.listenerSetter.add(this.element)('touchstart', this.handleStart, this.listenerOptions);

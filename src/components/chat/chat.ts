@@ -5,7 +5,7 @@
  */
 
 import type {ChatRights} from '../../lib/appManagers/appChatsManager';
-import type {AppImManager, ChatSetPeerOptions} from '../../lib/appManagers/appImManager';
+import {AppImManager, APP_TABS, ChatSetPeerOptions} from '../../lib/appManagers/appImManager';
 import type {MessageSendingParams, MessagesStorageKey} from '../../lib/appManagers/appMessagesManager';
 import EventListenerBase from '../../helpers/eventListenerBase';
 import {logger, LogTypes} from '../../lib/logger';
@@ -342,9 +342,7 @@ export default class Chat extends EventListenerBase<{
       }
     });
 
-    this.bubbles.listenerSetter.add(this.appImManager)('chat_changing', ({to}) => {
-      const freeze = to !== this;
-
+    const freezeObservers = (freeze: boolean) => {
       const cb = () => {
         this.bubbles.observer?.toggleObservingNew(freeze);
         animationIntersector.toggleIntersectionGroup(this.animationGroup, freeze);
@@ -360,6 +358,14 @@ export default class Chat extends EventListenerBase<{
       } else {
         cb();
       }
+    };
+
+    this.bubbles.listenerSetter.add(this.appImManager)('chat_changing', ({to}) => {
+      freezeObservers(to !== this);
+    });
+
+    this.bubbles.listenerSetter.add(this.appImManager)('tab_changing', (tabId) => {
+      freezeObservers(this.appImManager.chat !== this || tabId !== APP_TABS.CHAT);
     });
   }
 

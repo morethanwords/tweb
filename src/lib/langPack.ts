@@ -18,6 +18,7 @@ import safeAssign from '../helpers/object/safeAssign';
 import capitalizeFirstLetter from '../helpers/string/capitalizeFirstLetter';
 import matchUrlProtocol from './richTextProcessor/matchUrlProtocol';
 import wrapUrl from './richTextProcessor/wrapUrl';
+import {setDirection} from '../helpers/dom/setInnerHTML';
 
 export const langPack: {[actionType: string]: LangPackKey} = {
   'messageActionChatCreate': 'ActionCreateGroup',
@@ -543,6 +544,7 @@ namespace I18n {
 
     constructor(options: IntlDateElementOptions) {
       super({...options, property: options.property ?? 'textContent'});
+      setDirection(this.element);
     }
 
     public update(options?: IntlDateElementOptions) {

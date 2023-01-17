@@ -500,9 +500,7 @@ export class AppChatsManager extends AppManager {
       });
     }
 
-    return promise.then((updates: any) => {
-      this.apiUpdatesManager.processUpdateMessage(updates);
-    });
+    return promise.then(this.onChatUpdated.bind(this, id));
   }
 
   public editTitle(id: ChatId, title: string) {
@@ -520,9 +518,7 @@ export class AppChatsManager extends AppManager {
       });
     }
 
-    return promise.then((updates: any) => {
-      this.apiUpdatesManager.processUpdateMessage(updates);
-    });
+    return promise.then(this.onChatUpdated.bind(this, id));
   }
 
   public editAbout(id: ChatId, about: string) {
@@ -619,18 +615,14 @@ export class AppChatsManager extends AppManager {
     return this.apiManager.invokeApi('channels.toggleSignatures', {
       channel: this.getChannelInput(id),
       enabled
-    }).then((updates) => {
-      this.apiUpdatesManager.processUpdateMessage(updates);
-    });
+    }).then(this.onChatUpdated.bind(this, id));
   }
 
   public toggleNoForwards(id: ChatId, enabled: boolean) {
     return this.apiManager.invokeApi('messages.toggleNoForwards', {
       peer: this.getInputPeer(id),
       enabled
-    }).then((updates) => {
-      this.apiUpdatesManager.processUpdateMessage(updates);
-    });
+    }).then(this.onChatUpdated.bind(this, id));
   }
 
   public setChatAvailableReactions(id: ChatId, reactions: ChatReactions) {
@@ -643,9 +635,7 @@ export class AppChatsManager extends AppManager {
     return this.apiManager.invokeApi('messages.setChatAvailableReactions', {
       peer: this.getInputPeer(id),
       available_reactions: reactions
-    }).then((updates) => {
-      this.apiUpdatesManager.processUpdateMessage(updates);
-    });
+    }).then(this.onChatUpdated.bind(this, id));
   }
 
   public getSendAs(channelId: ChatId) {

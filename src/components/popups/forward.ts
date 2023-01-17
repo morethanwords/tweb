@@ -5,6 +5,8 @@
  */
 
 import appImManager from '../../lib/appManagers/appImManager';
+import rootScope from '../../lib/rootScope';
+import {toastNew} from '../toast';
 import PopupPickUser from './pickUser';
 
 export default class PopupForward extends PopupPickUser {
@@ -21,6 +23,21 @@ export default class PopupForward extends PopupPickUser {
           if(res instanceof Promise) {
             await res;
           }
+        }
+
+        if(peerId === rootScope.myId) {
+          let count = 0;
+          for(const fromPeerId in peerIdMids) {
+            const mids = peerIdMids[fromPeerId];
+            count += mids.length;
+            this.managers.appMessagesManager.forwardMessages(peerId, fromPeerId.toPeerId(), mids);
+          }
+
+          toastNew({
+            langPackKey: count > 0 ? 'FwdMessagesToSavedMessages' : 'FwdMessageToSavedMessages'
+          });
+
+          return;
         }
 
         appImManager.setInnerPeer({peerId});

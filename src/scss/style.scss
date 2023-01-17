@@ -1553,9 +1553,6 @@ middle-ellipsis-element {
     background-color: var(--surface-color);
     padding: .5rem 0 !important;
     margin-bottom: .75rem;
-
-    -webkit-box-shadow: 0px 1px 3px 0px var(--section-box-shadow-color);
-    -moz-box-shadow: 0px 1px 3px 0px var(--section-box-shadow-color);
     box-shadow: 0px 1px 3px 0px var(--section-box-shadow-color);
 
     &.no-shadow {

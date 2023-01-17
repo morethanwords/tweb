@@ -43,11 +43,17 @@ export default class AppBackgroundTab extends SliderSuperTab {
   private wallPapersByElement: Map<HTMLElement, WallPaper> = new Map();
   private elementsByKey: Map<string, HTMLElement> = new Map();
 
+  public static getInitArgs() {
+    return {
+      backgrounds: rootScope.managers.appDocsManager.getWallPapers()
+    };
+  }
+
   private get theme() {
     return themeController.getTheme();
   }
 
-  init() {
+  public init(p: ReturnType<typeof AppBackgroundTab['getInitArgs']> = AppBackgroundTab.getInitArgs()) {
     this.container.classList.add('background-container', 'background-image-container');
     this.setTitle('ChatBackground');
 
@@ -100,10 +106,12 @@ export default class AppBackgroundTab extends SliderSuperTab {
 
     rootScope.addEventListener('background_change', this.setActive);
 
-    this.managers.appDocsManager.getWallPapers().then((wallPapers) => {
-      wallPapers.forEach((wallPaper) => {
-        this.addWallPaper(wallPaper);
+    const promise = p.backgrounds.then((wallPapers) => {
+      const promises = wallPapers.map((wallPaper) => {
+        return this.addWallPaper(wallPaper);
       });
+
+      return Promise.all(promises);
     });
 
     const gridContainer = generateSection(this.scrollable);
@@ -111,6 +119,8 @@ export default class AppBackgroundTab extends SliderSuperTab {
     grid.classList.add('grid');
     attachClickEvent(grid, this.onGridClick, {listenerSetter: this.listenerSetter});
     gridContainer.append(grid);
+
+    return promise;
   }
 
   private onUploadClick = () => {
@@ -153,7 +163,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
         tryAgainOnFail: false
       });
 
-      const container = this.addWallPaper(wallPaper, false);
+      const container = await this.addWallPaper(wallPaper, false);
       this.clicked.add(key);
 
       preloader.attach(container, false, deferred);
@@ -212,6 +222,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
     const media = document.createElement('div');
     media.classList.add('grid-item-media');
 
+    const loadPromises: Promise<any>[] = [];
     let wrapped: ReturnType<typeof wrapPhoto>, size: ReturnType<typeof choosePhotoSize>;
     if(hasFile) {
       size = choosePhotoSize(doc, 200, 200);
@@ -228,7 +239,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
         media.classList.add('is-pattern');
       }
 
-      wrapped.then(async({loadPromises, images}) => {
+      const promise = wrapped.then(async({loadPromises, images}) => {
         await loadPromises.thumb || loadPromises.full;
         return images;
       }).then((images) => {
@@ -243,10 +254,12 @@ export default class AppBackgroundTab extends SliderSuperTab {
           }
         }
 
-        sequentialDom.mutate(() => {
+        return sequentialDom.mutate(() => {
           container.append(media);
         });
       });
+
+      loadPromises.push(promise);
     } else {
       container.append(media);
     }
@@ -256,14 +269,16 @@ export default class AppBackgroundTab extends SliderSuperTab {
       canvas.classList.add('background-colors-canvas');
 
       if(isDark && hasFile) {
-        wrapped.then(({loadPromises}) => {
-          loadPromises.full.then(async() => {
+        const promise = wrapped.then(({loadPromises}) => {
+          return loadPromises.full.then(async() => {
             const cacheContext = await this.managers.thumbsStorage.getCacheContext(doc, size.type);
             canvas.style.webkitMaskImage = `url(${cacheContext.url})`;
             canvas.style.opacity = '' + (wallPaper.pFlags.dark ? 100 + wallPaper.settings.intensity : wallPaper.settings.intensity) / 100;
             media.append(canvas);
           });
         });
+
+        loadPromises.push(promise);
       } else {
         media.append(canvas);
       }
@@ -275,7 +290,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
 
     this.grid[append ? 'append' : 'prepend'](container);
 
-    return container;
+    return Promise.all(loadPromises).then(() => container);
   }
 
   private onGridClick = (e: MouseEvent | TouchEvent) => {

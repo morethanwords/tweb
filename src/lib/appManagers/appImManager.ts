@@ -121,10 +121,17 @@ export type ChatSetInnerPeerOptions = Modify<ChatSetPeerOptions, {
   type?: ChatType
 }>;
 
+export enum APP_TABS {
+  CHATLIST,
+  CHAT,
+  PROFILE
+}
+
 export class AppImManager extends EventListenerBase<{
   chat_changing: (details: {from: Chat, to: Chat}) => void,
   peer_changed: (chat: Chat) => void,
   peer_changing: (chat: Chat) => void,
+  tab_changing: (tabId: number) => void
 }> {
   public columnEl = document.getElementById('column-center') as HTMLDivElement;
   public chatsContainer: HTMLElement;
@@ -136,7 +143,7 @@ export class AppImManager extends EventListenerBase<{
 
   public setPeerPromise: Promise<void> = null;
 
-  public tabId = -1;
+  private tabId: APP_TABS;
 
   public chats: Chat[] = [];
   private prevTab: HTMLElement;
@@ -185,7 +192,7 @@ export class AppImManager extends EventListenerBase<{
       }
     });
 
-    this.selectTab(0);
+    this.selectTab(APP_TABS.CHATLIST);
 
     idleController.addEventListener('change', (idle) => {
       this.offline = idle;
@@ -277,7 +284,7 @@ export class AppImManager extends EventListenerBase<{
     });
 
     rootScope.addEventListener('peer_title_edit', ({peerId, threadId}) => {
-      if(this.chat?.peerId === peerId && !threadId && this.tabId !== -1) {
+      if(this.chat?.peerId === peerId && !threadId && this.tabId !== undefined) {
         this.overrideHash(peerId);
       }
     });
@@ -289,7 +296,7 @@ export class AppImManager extends EventListenerBase<{
         chat.peerId !== peerId ||
         overlayCounter.isOverlayActive || (
           mediaSizes.activeScreen === ScreenSize.mobile &&
-          this.tabId !== 1
+          this.tabId !== APP_TABS.CHAT
         )
       ) {
         return;
@@ -1025,7 +1032,7 @@ export class AppImManager extends EventListenerBase<{
         target.tagName !== 'INPUT' &&
         !target.isContentEditable &&
         !IS_TOUCH_SUPPORTED &&
-        (!mediaSizes.isMobile || this.tabId === 1) &&
+        (!mediaSizes.isMobile || this.tabId === APP_TABS.CHAT) &&
         !chat.selection.isSelecting &&
         !chat.input.recording
       ) {
@@ -1852,23 +1859,24 @@ export class AppImManager extends EventListenerBase<{
     appNavigationController.overrideHash(str);
   }
 
-  public selectTab(id: number, animate?: boolean) {
+  public selectTab(id: APP_TABS, animate?: boolean) {
     if(animate === false) { // * will be used for Safari iOS history swipe
       disableTransition([appSidebarLeft.sidebarEl, this.columnEl, appSidebarRight.sidebarEl]);
     }
 
-    document.body.classList.toggle(LEFT_COLUMN_ACTIVE_CLASSNAME, id === 0);
+    document.body.classList.toggle(LEFT_COLUMN_ACTIVE_CLASSNAME, id === APP_TABS.CHATLIST);
 
     const prevTabId = this.tabId;
-    if(prevTabId !== -1) {
-      this.overrideHash(id > 0 ? this.chat?.peerId : undefined);
+    if(prevTabId !== undefined) {
+      this.overrideHash(id > APP_TABS.CHATLIST ? this.chat?.peerId : undefined);
+      this.dispatchEvent('tab_changing', id);
     }
 
     this.log('selectTab', id, prevTabId);
 
     let animationPromise: Promise<any> = rootScope.settings.animationsEnabled ? doubleRaf() : Promise.resolve();
     if(
-      prevTabId !== -1 &&
+      prevTabId !== undefined &&
       prevTabId !== id &&
       rootScope.settings.animationsEnabled &&
       animate !== false/*  &&
@@ -1887,12 +1895,12 @@ export class AppImManager extends EventListenerBase<{
 
     this.tabId = id;
     blurActiveElement();
-    if(mediaSizes.isMobile && prevTabId === 2 && id < 2) {
+    if(mediaSizes.isMobile && prevTabId === APP_TABS.PROFILE && id < APP_TABS.PROFILE) {
       document.body.classList.remove(RIGHT_COLUMN_ACTIVE_CLASSNAME);
     }
 
-    if(prevTabId !== -1 && id > prevTabId) {
-      if(id < 2 || !appNavigationController.findItemByType('im')) {
+    if(prevTabId !== undefined && id > prevTabId) {
+      if(id < APP_TABS.PROFILE || !appNavigationController.findItemByType('im')) {
         appNavigationController.pushItem({
           type: 'im',
           onPop: (canAnimate) => {
@@ -1993,7 +2001,7 @@ export class AppImManager extends EventListenerBase<{
 
     const chat = this.chat;
     const chatIndex = this.chats.indexOf(chat);
-
+    const isSamePeer = this.isSamePeer(chat, options as any);
     if(!peerId) {
       if(chatIndex > 0) {
         this.spliceChats(chatIndex, undefined, animate);
@@ -2002,7 +2010,7 @@ export class AppImManager extends EventListenerBase<{
         this.selectTab(+!this.tabId, animate);
         return;
       }
-    } else if(chatIndex > 0 && chat.peerId && !this.isSamePeer(chat, options as any)) {
+    } else if(chatIndex > 0 && chat.peerId && !isSamePeer) {
       // const firstChat = this.chats[0];
       // if(firstChat.peerId !== chat.peerId) {
       /* // * slice idx > 0, set background and slice first, so new one will be the first
@@ -2026,8 +2034,8 @@ export class AppImManager extends EventListenerBase<{
     }
 
     // * don't reset peer if returning
-    if(peerId === chat.peerId && mediaSizes.activeScreen <= ScreenSize.medium && document.body.classList.contains(LEFT_COLUMN_ACTIVE_CLASSNAME)) {
-      this.selectTab(1, animate);
+    if(isSamePeer && mediaSizes.activeScreen <= ScreenSize.medium && document.body.classList.contains(LEFT_COLUMN_ACTIVE_CLASSNAME)) {
+      this.selectTab(APP_TABS.CHAT, animate);
       return false;
     }
 
@@ -2046,14 +2054,14 @@ export class AppImManager extends EventListenerBase<{
             setTimeout(() => {
               this.chatsSelectTab(this.chat.container);
             }, 0);
-            this.selectTab(1, animate);
+            this.selectTab(APP_TABS.CHAT, animate);
           }, 0);
         });
       }
     }
 
     if(!peerId) {
-      this.selectTab(0, animate);
+      this.selectTab(APP_TABS.CHATLIST, animate);
       return false;
     }
   }
@@ -2072,8 +2080,8 @@ export class AppImManager extends EventListenerBase<{
       options.type ??= 'chat';
     }
 
-    // * prevent opening already opened peer
-    const existingIndex = this.chats.findIndex((chat) => this.isSamePeer(chat, options));
+    // * reuse current chat
+    const existingIndex = this.chats.findIndex((chat) => this.isSamePeer(chat, options) || (mediaSizes.activeScreen === ScreenSize.mobile && this.tabId === 0));
     if(existingIndex !== -1) {
       this.spliceChats(existingIndex + 1);
       return this.setPeer(options);

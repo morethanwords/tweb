@@ -19,7 +19,7 @@ import {formatDateAccordingToTodayNew} from '../../helpers/date';
 import {IS_MOBILE_SAFARI, IS_SAFARI} from '../../environment/userAgent';
 import {logger, LogTypes} from '../logger';
 import rootScope from '../rootScope';
-import appImManager, {AppImManager} from './appImManager';
+import appImManager, {AppImManager, APP_TABS} from './appImManager';
 import Button from '../../components/button';
 import SetTransition from '../../components/singleTransition';
 import {MyDraftMessage} from './appDraftsManager';
@@ -2286,7 +2286,9 @@ export class AppDialogsManager {
       });
 
       attachClickEvent(button, async() => {
-        appSidebarLeft.createTab(AppEditFolderTab).open(await this.managers.filtersStorage.getFilter(this.filterId));
+        const tab = appSidebarLeft.createTab(AppEditFolderTab);
+        tab.setInitFilter(await this.managers.filtersStorage.getFilter(this.filterId));
+        tab.open();
       });
 
       placeholderContainer.append(button);
@@ -2469,6 +2471,8 @@ export class AppDialogsManager {
       if(dialogElement) {
         dialogElement.dom.listEl.classList.add('is-forum-open');
       }
+
+      appImManager.selectTab(APP_TABS.CHATLIST);
     }
 
     if(promise) {
@@ -2631,7 +2635,10 @@ export class AppDialogsManager {
     }, {capture: true});
 
     if(withContext) {
-      attachContextMenuListener(list, this.contextMenu.onContextMenu);
+      attachContextMenuListener({
+        element: list,
+        callback: this.contextMenu.onContextMenu
+      });
     }
   }
 

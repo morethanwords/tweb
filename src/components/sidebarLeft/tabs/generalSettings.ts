@@ -103,8 +103,9 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
 
       const chatBackgroundButton = Button('btn-primary btn-transparent', {icon: 'image', text: 'ChatBackground'});
 
+      const initArgs = AppBackgroundTab.getInitArgs();
       attachClickEvent(chatBackgroundButton, () => {
-        this.slider.createTab(AppBackgroundTab).open();
+        this.slider.createTab(AppBackgroundTab).open(initArgs);
       });
 
       const animationsCheckboxField = new CheckboxField({

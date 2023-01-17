@@ -529,6 +529,10 @@ $bubble-border-radius-big: 12px;
 
       @include text-overflow(true);
     }
+
+    & + .reactions-block {
+      margin-top: .375rem;
+    }
   }
 
   @include hover() {
@@ -1812,8 +1816,12 @@ $bubble-border-radius-big: 12px;
       overflow: hidden;
     }
   }
-  
+
   &.is-message-empty {
+    .bubble-content-wrapper {
+      width: min-content;
+    }
+
     .message {
       position: absolute;
       /* position: relative;
@@ -2099,6 +2107,10 @@ $bubble-border-radius-big: 12px;
       &:not(.is-message-empty) .message {
         //padding-top: .2675rem;
         padding-top: 6px;
+      }
+
+      .topic-name-button-container {
+        margin-bottom: 0;
       }
     }
   }

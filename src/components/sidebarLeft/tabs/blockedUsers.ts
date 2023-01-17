@@ -104,19 +104,23 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
 
     document.getElementById('page-chats').append(element);
 
-    attachContextMenuListener(this.scrollable.container, (e) => {
-      target = findUpTag(e.target, DIALOG_LIST_ELEMENT_TAG);
-      if(!target) {
-        return;
-      }
+    attachContextMenuListener({
+      element: this.scrollable.container,
+      callback: (e) => {
+        target = findUpTag(e.target, DIALOG_LIST_ELEMENT_TAG);
+        if(!target) {
+          return;
+        }
 
-      if(e instanceof MouseEvent) e.preventDefault();
-      // smth
-      if(e instanceof MouseEvent) e.cancelBubble = true;
+        if(e instanceof MouseEvent) e.preventDefault();
+        // smth
+        if(e instanceof MouseEvent) e.cancelBubble = true;
 
-      positionMenu(e, element);
-      contextMenuController.openBtnMenu(element);
-    }, this.listenerSetter);
+        positionMenu(e, element);
+        contextMenuController.openBtnMenu(element);
+      },
+      listenerSetter: this.listenerSetter
+    });
 
     this.listenerSetter.add(rootScope)('peer_block', (update) => {
       const {peerId, blocked} = update;

@@ -46,7 +46,13 @@ export default class AppEditFolderTab extends SliderSuperTab {
   private type: 'edit' | 'create';
   private loadAnimationPromise: ReturnType<LottieLoader['waitForFirstFrame']>;
 
-  public init() {
+  public static getInitArgs() {
+    return {
+      animationData: lottieLoader.loadAnimationFromURLManually('Folders_2')
+    };
+  }
+
+  public init(p: ReturnType<typeof AppEditFolderTab['getInitArgs']> = AppEditFolderTab.getInitArgs()) {
     this.container.classList.add('edit-folder-container');
     this.caption = document.createElement('div');
     this.caption.classList.add('caption');
@@ -240,20 +246,29 @@ export default class AppEditFolderTab extends SliderSuperTab {
     ] : [];
 
     return Promise.all([
-      this.loadAnimationPromise = lottieLoader.loadAnimationAsAsset({
-        container: this.stickerContainer,
-        loop: false,
-        autoplay: false,
-        width: 86,
-        height: 86
-      }, 'Folders_2').then((player) => {
+      this.loadAnimationPromise = p.animationData.then(async(cb) => {
+        const player = await cb({
+          container: this.stickerContainer,
+          loop: false,
+          autoplay: false,
+          width: 86,
+          height: 86
+        });
+
         this.animation = player;
 
         return lottieLoader.waitForFirstFrame(player);
       }),
 
       ...reloadMissingPromises
-    ]);
+    ]).then(() => {
+      if(this.type === 'edit') {
+        this.setFilter(this.originalFilter, true);
+        this.onEditOpen();
+      } else {
+        this.onCreateOpen();
+      }
+    });
   }
 
   onOpenAfterTimeout() {
@@ -374,7 +389,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
     }
   }
 
-  public open(filter?: DialogFilter) {
+  public setInitFilter(filter?: DialogFilter) {
     if(filter === undefined) {
       this.setFilter({
         _: 'dialogFilter',
@@ -393,15 +408,5 @@ export default class AppEditFolderTab extends SliderSuperTab {
       this.setFilter(filter, true);
       this.type = 'edit';
     }
-
-    // @ts-ignore
-    return super.open().then(() => {
-      if(this.type === 'edit') {
-        this.setFilter(this.originalFilter, true);
-        this.onEditOpen();
-      } else {
-        this.onCreateOpen();
-      }
-    });
   }
 }

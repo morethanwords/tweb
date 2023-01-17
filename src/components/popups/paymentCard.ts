@@ -263,7 +263,7 @@ export default class PopupPaymentCard extends PopupElement<{
   }
 
   protected destroy() {
-    this.telegramWebView.destroy();
+    this.telegramWebView?.destroy();
     return super.destroy();
   }
 

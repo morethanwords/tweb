@@ -111,25 +111,29 @@ class AppSelection extends EventListenerBase<{
         this.selectedText = getSelectedText();
       });
 
-      attachContextMenuListener(listenElement, (e) => {
-        if(this.isSelecting || (this.verifyTouchLongPress && !this.verifyTouchLongPress())) return;
+      attachContextMenuListener({
+        element: listenElement,
+        callback: (e) => {
+          if(this.isSelecting || (this.verifyTouchLongPress && !this.verifyTouchLongPress())) return;
 
-        // * these two lines will fix instant text selection on iOS Safari
-        document.body.classList.add('no-select'); // * need no-select on body because chat-input transforms in channels
-        listenElement.addEventListener('touchend', (e) => {
-          cancelEvent(e); // ! this one will fix propagation to document loader button, etc
-          document.body.classList.remove('no-select');
+          // * these two lines will fix instant text selection on iOS Safari
+          document.body.classList.add('no-select'); // * need no-select on body because chat-input transforms in channels
+          listenElement.addEventListener('touchend', (e) => {
+            cancelEvent(e); // ! this one will fix propagation to document loader button, etc
+            document.body.classList.remove('no-select');
 
-          // this.chat.bubbles.onBubblesClick(e);
-        }, {once: true, capture: true});
+            // this.chat.bubbles.onBubblesClick(e);
+          }, {once: true, capture: true});
 
-        cancelSelection();
-        // cancelEvent(e as any);
-        const element = this.getElementFromTarget(e.target as HTMLElement);
-        if(element) {
-          this.toggleByElement(element);
-        }
-      }, listenerSetter);
+          cancelSelection();
+          // cancelEvent(e as any);
+          const element = this.getElementFromTarget(e.target as HTMLElement);
+          if(element) {
+            this.toggleByElement(element);
+          }
+        },
+        listenerSetter
+      });
 
       return;
     }

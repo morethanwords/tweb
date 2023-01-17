@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appImManager from '../../lib/appManagers/appImManager';
+import appImManager, {APP_TABS} from '../../lib/appManagers/appImManager';
 import SidebarSlider from '../slider';
 import mediaSizes, {ScreenSize} from '../../helpers/mediaSizes';
 import AppSharedMediaTab from './tabs/sharedMedia';
@@ -121,7 +121,7 @@ export class AppSidebarRight extends SidebarSlider {
       this.isColumnProportionSet = true;
     }
 
-    const animationPromise = appImManager.selectTab(active ? 1 : 2, animate);
+    const animationPromise = appImManager.selectTab(active ? APP_TABS.CHAT : APP_TABS.PROFILE, animate);
     document.body.classList.toggle(RIGHT_COLUMN_ACTIVE_CLASSNAME, enable);
     return animationPromise;
 

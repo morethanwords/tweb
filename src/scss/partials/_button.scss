@@ -116,7 +116,8 @@ $btn-menu-z-index: 4;
   min-width: 11.25rem;
   // max-width: 16.25rem;
 
-  &-old {
+  &-old,
+  .is-mobile & {
     padding: .5rem 0;
     background-color: var(--surface-color);
     backdrop-filter: none;
@@ -137,7 +138,13 @@ $btn-menu-z-index: 4;
 
       &:before {
         color: var(--secondary-text-color);
+        align-self: unset;
+        margin-top: 0;
       }
+    }
+
+    .btn-menu-footer {
+      background-color: var(--background-color);
     }
   }
 
@@ -156,6 +163,10 @@ $btn-menu-z-index: 4;
   &.active {
     visibility: visible;
     opacity: 1;
+    transform: scale3d(1, 1, 1) !important; // * scale3d (NOT scale) will fix jumping text
+  }
+
+  .is-mobile &.was-open {
     transform: scale3d(1, 1, 1) !important; // * scale3d (NOT scale) will fix jumping text
   }
 
@@ -418,7 +429,7 @@ $btn-menu-z-index: 4;
     opacity: .6;
   }
 
-  .badge {
+  html:not(.is-mobile) & .badge {
     background-color: transparent;
     color: var(--secondary-text-color);
   }
@@ -888,5 +899,5 @@ $btn-menu-z-index: 4;
   font-weight: var(--font-weight-bold);
   /* margin-right: calc(var(--size) + 0.5rem); */
   /* left: var(--offset); */
-  inset-inline-end: auto;
+  inset-inline-end: auto !important;
 }

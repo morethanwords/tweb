@@ -5,7 +5,7 @@
  */
 
 import type {MyDocument} from '../../lib/appManagers/appDocsManager';
-import type {AppImManager} from '../../lib/appManagers/appImManager';
+import {AppImManager, APP_TABS} from '../../lib/appManagers/appImManager';
 import type {MyDraftMessage} from '../../lib/appManagers/appDraftsManager';
 import type Chat from './chat';
 import Recorder from '../../../public/recorder.min';
@@ -367,7 +367,6 @@ export default class ChatInput {
 
     const onHideAuthorClick = () => {
       isChangingAuthor = true;
-      return this.canToggleHideAuthor();
     };
 
     const onHideCaptionClick = () => {
@@ -380,11 +379,13 @@ export default class ChatInput {
       forwardElements.showSender = {
         text: 'Chat.Alert.Forward.Action.Show1',
         onClick: onHideAuthorClick,
+        checkForClose: () => this.canToggleHideAuthor(),
         checkboxField: new CheckboxField({checked: true})
       },
       forwardElements.hideSender = {
         text: 'Chat.Alert.Forward.Action.Hide1',
         onClick: onHideAuthorClick,
+        checkForClose: () => this.canToggleHideAuthor(),
         checkboxField: new CheckboxField({checked: false})
       },
       forwardElements.showCaption = {
@@ -1659,7 +1660,7 @@ export default class ChatInput {
           return;
         }
 
-        this.appImManager.selectTab(1); // * set chat tab for album orientation
+        this.appImManager.selectTab(APP_TABS.CHAT); // * set chat tab for album orientation
         // this.saveScroll();
       }, {listenerSetter: this.listenerSetter});
 

@@ -285,7 +285,7 @@ export default class ChatBubbles {
   private bubblesToEject: Set<HTMLElement> = new Set();
   private bubblesToReplace: Map<HTMLElement, HTMLElement> = new Map(); // TO -> FROM
   private updatePlaceholderPosition: () => void;
-  private setPeerOptions: {lastMsgId: number; topMessage: number;};
+  private setPeerOptions: {lastMsgId: number; topMessage: number; savedPosition: ChatSavedPosition};
 
   private setPeerTempId: number = 0;
 
@@ -878,6 +878,7 @@ export default class ChatBubbles {
       let shouldReply = false;
       let target: HTMLElement;
       let icon: HTMLElement;
+      let swipeAvatar: HTMLElement;
       handleHorizontalSwipe({
         element: container,
         verifyTouchTarget: async(e) => {
@@ -888,6 +889,16 @@ export default class ChatBubbles {
           // cancelEvent(e);
           target = findUpClassName(e.target, 'bubble');
           if(target) {
+            try {
+              const avatar = target.parentElement.querySelector('.bubbles-group-avatar') as HTMLElement
+              if(avatar) {
+                const visibleRect = getVisibleRect(avatar, target);
+                if(visibleRect) {
+                  swipeAvatar = avatar;
+                }
+              }
+            } catch(err) {}
+
             SetTransition({
               element: target,
               className,
@@ -918,11 +929,17 @@ export default class ChatBubbles {
           icon.style.opacity = '' + Math.min(1, xDiff / replyAfter);
 
           const x = -Math.max(0, Math.min(MAX, xDiff));
-          target.style.transform = `translateX(${x}px)`;
+          const transform = `translateX(${x}px)`;
+          target.style.transform = transform;
+          if(swipeAvatar) {
+            swipeAvatar.style.transform = transform;
+          }
           cancelContextMenuOpening();
         },
         onReset: () => {
           const _target = target;
+          const _swipeAvatar = swipeAvatar;
+          target = swipeAvatar = undefined;
           SetTransition({
             element: _target,
             className,
@@ -937,7 +954,10 @@ export default class ChatBubbles {
           });
 
           fastRaf(() => {
-            _target.style.transform = ``;
+            _target.style.transform = '';
+            if(_swipeAvatar) {
+              _swipeAvatar.style.transform = '';
+            }
 
             if(shouldReply) {
               const {mid} = _target.dataset;
@@ -2972,7 +2992,8 @@ export default class ChatBubbles {
 
     this.setPeerOptions = {
       lastMsgId,
-      topMessage
+      topMessage,
+      savedPosition
     };
 
     let result: Awaited<ReturnType<ChatBubbles['getHistory']>>;
@@ -5103,9 +5124,9 @@ export default class ChatBubbles {
       }
 
       if(!isEnd.bottom && this.setPeerOptions) {
-        const {lastMsgId, topMessage} = this.setPeerOptions;
+        const {lastMsgId, topMessage, savedPosition} = this.setPeerOptions;
         this.setPeerOptions = undefined;
-        if(!lastMsgId || this.bubbles[topMessage] || lastMsgId === topMessage) {
+        if((!lastMsgId && !savedPosition) || this.bubbles[topMessage] || lastMsgId === topMessage) {
           isEnd.bottom = true;
         }
       }

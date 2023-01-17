@@ -318,27 +318,31 @@
 
   .sidebar-tools-button {
     width: 100%;
-    
+
     .btn-menu {
       min-width: 260px;
       max-height: calc(100 * var(--vh) - 3.75rem);
-  
-      .archived-count {
-        justify-self: flex-end;
-        margin-inline-start: .625rem;
-  
-        @include respond-to(handhelds) {
-          font-weight: 600;
-        }
-      }
-  
-      .btn-menu-item {
+
+      &-item {
         padding-inline-end: .375rem;
       }
-  
-      .archived-count:empty {
-        display: none;
-      }
+    }
+  }
+
+  .archived-count {
+    justify-self: flex-end;
+    margin-inline-start: .625rem;
+
+    html.is-mobile & {
+      margin-inline-end: .375rem;
+    }
+
+    @include respond-to(handhelds) {
+      font-weight: var(--font-weight-bold);
+    }
+
+    &:empty {
+      display: none;
     }
   }
 

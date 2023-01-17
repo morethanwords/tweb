@@ -40,43 +40,47 @@ export default function createContextMenu<T extends ButtonMenuItemOptionsVerifia
   const middleware = getMiddleware();
   let element: HTMLElement;
 
-  attachContextMenuListener(listenTo, (e) => {
-    const target = findElement ? findElement(e as any) : listenTo;
-    if(!target) {
-      return;
-    }
-
-    let _element = element;
-    if(e instanceof MouseEvent || e.hasOwnProperty('preventDefault')) (e as any).preventDefault();
-    if(_element && _element.classList.contains('active')) {
-      return false;
-    }
-    if(e instanceof MouseEvent || e.hasOwnProperty('cancelBubble')) (e as any).cancelBubble = true;
-
-    const r = async() => {
-      await onOpen?.(target);
-
-      const initResult = await init();
-      if(!initResult) {
+  attachContextMenuListener({
+    element: listenTo,
+    callback: (e) => {
+      const target = findElement ? findElement(e as any) : listenTo;
+      if(!target) {
         return;
       }
 
-      _element = initResult.element;
-      const {cleanup, destroy} = initResult;
+      let _element = element;
+      if(e instanceof MouseEvent || e.hasOwnProperty('preventDefault')) (e as any).preventDefault();
+      if(_element && _element.classList.contains('active')) {
+        return false;
+      }
+      if(e instanceof MouseEvent || e.hasOwnProperty('cancelBubble')) (e as any).cancelBubble = true;
 
-      positionMenu(e, _element);
-      contextMenuController.openBtnMenu(_element, () => {
-        onClose?.();
-        cleanup();
+      const r = async() => {
+        await onOpen?.(target);
 
-        setTimeout(() => {
-          destroy();
-        }, 300);
-      });
-    };
+        const initResult = await init();
+        if(!initResult) {
+          return;
+        }
 
-    r();
-  }, attachListenerSetter);
+        _element = initResult.element;
+        const {cleanup, destroy} = initResult;
+
+        positionMenu(e, _element);
+        contextMenuController.openBtnMenu(_element, () => {
+          onClose?.();
+          cleanup();
+
+          setTimeout(() => {
+            destroy();
+          }, 300);
+        });
+      };
+
+      r();
+    },
+    listenerSetter: attachListenerSetter
+  });
 
   const cleanup = () => {
     listenerSetter.removeAll();

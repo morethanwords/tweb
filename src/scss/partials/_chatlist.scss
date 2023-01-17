@@ -542,9 +542,9 @@ ul.chatlist {
     padding: 0;
     background-color: var(--chatlist-status-color) !important;
 
-    html.is-mac & {
-      line-height: 1.25rem !important;
-    }
+    // html.is-mac & {
+    line-height: 1.25rem !important;
+    // }
   }
 
   .mention-badge {

@@ -118,7 +118,7 @@ class SearchContextMenu {
   ) {
     this.managers = searchSuper.managers;
 
-    const onContextMenu: Parameters<typeof attachContextMenuListener>[1] = (e) => {
+    const onContextMenu: Parameters<typeof attachContextMenuListener>[0]['callback'] = (e) => {
       if(this.init) {
         this.init();
         this.init = null;
@@ -169,7 +169,11 @@ class SearchContextMenu {
     if(IS_TOUCH_SUPPORTED) {
 
     } else {
-      attachContextMenuListener(attachTo, onContextMenu as any, listenerSetter);
+      attachContextMenuListener({
+        element: attachTo,
+        callback: onContextMenu as any,
+        listenerSetter
+      });
     }
   }
 

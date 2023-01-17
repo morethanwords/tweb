@@ -39,7 +39,10 @@ export default class AppChatFoldersTab extends SliderSuperTab {
   private loadAnimationPromise: ReturnType<LottieLoader['waitForFirstFrame']>;
 
   public static getInitArgs() {
-    return lottieLoader.loadAnimationFromURLManually('Folders_1');
+    return {
+      animationData: lottieLoader.loadAnimationFromURLManually('Folders_1'),
+      filters: rootScope.managers.filtersStorage.getDialogFilters()
+    };
   }
 
   private async renderFolder(
@@ -106,8 +109,12 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       if(dialogFilter._ === 'dialogFilter') {
         const filterId = filter.id;
         if(!this.filtersRendered[filter.id] && filter.id !== FOLDER_ID_ALL) {
+          const initArgs = AppEditFolderTab.getInitArgs();
           attachClickEvent(row.container, async() => {
-            this.slider.createTab(AppEditFolderTab).open(await this.managers.filtersStorage.getFilter(filterId));
+            const filter = await this.managers.filtersStorage.getFilter(filterId);
+            const tab = this.slider.createTab(AppEditFolderTab);
+            tab.setInitFilter(filter);
+            tab.open(initArgs);
           }, {listenerSetter: this.listenerSetter});
         }
 
@@ -190,7 +197,8 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       this.foldersSection.container.classList.toggle('hide', !Object.keys(this.filtersRendered).length);
     };
 
-    this.managers.filtersStorage.getDialogFilters().then(async(filters) => {
+    const loadPromises: Promise<any>[] = [];
+    const renderFiltersPromise = p.filters.then(async(filters) => {
       for(const filter of filters) {
         if(filter.id === FOLDER_ID_ARCHIVE) {
           continue;
@@ -203,6 +211,8 @@ export default class AppChatFoldersTab extends SliderSuperTab {
 
       onFiltersContainerUpdate();
     });
+
+    loadPromises.push(renderFiltersPromise);
 
     this.listenerSetter.add(rootScope)('filter_update', async(filter) => {
       const filterRendered = this.filtersRendered[filter.id];
@@ -246,7 +256,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       this.toggleAllChats();
     });
 
-    this.loadAnimationPromise = p.then(async(cb) => {
+    this.loadAnimationPromise = p.animationData.then(async(cb) => {
       const player = await cb({
         container: this.stickerContainer,
         loop: false,
@@ -259,6 +269,8 @@ export default class AppChatFoldersTab extends SliderSuperTab {
 
       return lottieLoader.waitForFirstFrame(player);
     });
+
+    loadPromises.push(this.loadAnimationPromise);
 
     new Sortable({
       list: this.list,
@@ -287,7 +299,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     /* return Promise.all([
       this.loadAnimationPromise
     ]); */
-    return this.loadAnimationPromise;
+    return Promise.all(loadPromises);
   }
 
   onOpenAfterTimeout() {
