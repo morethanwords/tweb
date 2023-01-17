@@ -403,6 +403,7 @@ export default class BubbleGroups {
       item1.dateTimestamp === item2.dateTimestamp &&
       !item1.single &&
       !item2.single &&
+      item1.message.pFlags.out === item2.message.pFlags.out &&
       (!this.chat.isAllMessagesForum || getMessageThreadId(item1.message, true) === getMessageThreadId(item2.message, true));
   }
 

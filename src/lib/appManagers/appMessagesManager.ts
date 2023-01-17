@@ -3375,14 +3375,16 @@ export class AppMessagesManager extends AppManager {
       return true;
     }
 
-    const isAnyChat = message.peerId.isAnyChat();
-    const canEditMessageInPeer = isAnyChat ? this.appChatsManager.hasRights(message.peerId.toChatId(), 'edit_messages') : message.pFlags.out;
+    const canEditMessageInPeer = this.appPeersManager.isBroadcast(message.peerId) ?
+      this.appChatsManager.hasRights(message.peerId.toChatId(), 'edit_messages') :
+      message.pFlags.out;
 
-    if(!canEditMessageInPeer || (
-      message.peer_id._ !== 'peerChannel' &&
+    if(
+      !canEditMessageInPeer || (
+        message.peer_id._ !== 'peerChannel' &&
         message.date < (tsNow(true) - (await this.apiManager.getConfig()).edit_time_limit) &&
         (message as Message.message).media?._ !== 'messageMediaPoll'
-    )
+      )
     ) {
       return false;
     }
