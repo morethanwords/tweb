@@ -30,6 +30,8 @@ import parseUriParams from './helpers/string/parseUriParams';
 import Modes from './config/modes';
 import {AuthState} from './types';
 import {IS_BETA} from './config/debug';
+import IS_INSTALL_PROMPT_SUPPORTED from './environment/installPrompt';
+import cacheInstallPrompt from './helpers/dom/installPrompt';
 // import appNavigationController from './components/appNavigationController';
 
 document.addEventListener('DOMContentLoaded', async() => {
@@ -207,6 +209,10 @@ document.addEventListener('DOMContentLoaded', async() => {
         event.preventDefault();
       }
     }, {capture: true, passive: false}); */
+  }
+
+  if(IS_INSTALL_PROMPT_SUPPORTED) {
+    cacheInstallPrompt();
   }
 
   const perf = performance.now();

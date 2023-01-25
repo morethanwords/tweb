@@ -1,0 +1,98 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+.themes {
+  &-container {
+    display: flex;
+    height: 6.5rem;
+    position: relative;
+    margin: 0 -.5rem;
+    width: calc(100% + 1rem);
+    align-items: center;
+
+    &:before,
+    &:after {
+      content: " ";
+      display: block;
+      width: .5rem;
+      flex: 0 0 auto;
+    }
+  }
+}
+
+.theme {
+  &-container {
+    height: calc(100% - .5rem);
+    margin: 0 .25rem;
+    border-radius: $border-radius-medium;
+    width: 4.5rem;
+    flex: 0 0 auto;
+    position: relative;
+    transform: scale(1);
+
+    @include animation-level(2) {
+      transition: transform var(--transition-standard-in);
+    }
+
+    &:active {
+      transform: scale(.9);
+    }
+
+    &:before {
+      position: absolute;
+      content: " ";
+      top: -4px;
+      right: -4px;
+      bottom: -4px;
+      left: -4px;
+      border-radius: #{$border-radius-medium + 4px};
+      border: 2px solid var(--primary-color);
+      transform: scale(.86);
+
+      @include animation-level(2) {
+        transition: transform var(--transition-standard-in);
+      }
+    }
+
+    &.active {
+      pointer-events: none;
+
+      &:before {
+        transform: scale(1);
+      }
+    }
+  }
+
+  &-emoticon {
+    position: absolute;
+    bottom: .5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 1.75rem;
+    height: 1.75rem;
+    pointer-events: none;
+  }
+
+  &-bubble {
+    width: 2.5rem;
+    height: 1.25rem;
+    border-radius: 1.75rem;
+    background-color: #fff;
+    position: absolute;
+
+    &.is-out {
+      top: .5rem;
+      right: .375rem;
+      background-color: var(--light-filled-message-out-primary-color);
+    }
+
+    &.is-in {
+      background-color: var(--message-background-color);
+      top: calc(1.25rem + .5rem + .25rem);
+      left: .375rem;
+    }
+  }
+}

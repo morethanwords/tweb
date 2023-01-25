@@ -40,6 +40,9 @@ import defineNotNumerableProperties from '../../helpers/object/defineNotNumerabl
 import {Photo, PhotoSize} from '../../layer';
 import {getPreviewBytesFromURL} from '../../helpers/bytes/getPreviewURLFromBytes';
 import {renderImageFromUrlPromise} from '../../helpers/dom/renderImageFromUrl';
+import ButtonMenuToggle from '../buttonMenuToggle';
+import partition from '../../helpers/array/partition';
+import InputFieldAnimated from '../inputFieldAnimated';
 
 type SendFileParams = SendFileDetails & {
   file?: File,
@@ -53,15 +56,14 @@ type SendFileParams = SendFileDetails & {
 
 let currentPopup: PopupNewMedia;
 
+const MAX_WIDTH = 400 - 16;
+
 export function getCurrentNewMediaPopup() {
   return currentPopup;
 }
 
 export default class PopupNewMedia extends PopupElement {
-  private input: HTMLElement;
   private mediaContainer: HTMLElement;
-  private groupCheckboxField: CheckboxField;
-  private mediaCheckboxField: CheckboxField;
   private wasInputValue: string;
 
   private willAttach: Partial<{
@@ -70,22 +72,26 @@ export default class PopupNewMedia extends PopupElement {
     group: boolean,
     sendFileDetails: SendFileParams[]
   }>;
-  private inputField: InputField;
+  private messageInputField: InputFieldAnimated;
   private captionLengthMax: number;
 
   private animationGroup: AnimationItemGroup;
+  private _scrollable: Scrollable;
+  private inputContainer: HTMLDivElement;
 
   constructor(
     private chat: Chat,
     private files: File[],
-    willAttachType: PopupNewMedia['willAttach']['type']
+    willAttachType: PopupNewMedia['willAttach']['type'],
+    private ignoreInputValue?: boolean
   ) {
     super('popup-send-photo popup-new-media', {
       closable: true,
       withConfirm: 'Modal.Send',
       confirmShortcutIsSendShortcut: true,
       body: true,
-      title: true
+      title: true,
+      scrollable: true
     });
 
     this.animationGroup = '';
@@ -96,7 +102,7 @@ export default class PopupNewMedia extends PopupElement {
     this.willAttach = {
       type: willAttachType,
       sendFileDetails: [],
-      group: false
+      group: true
     };
 
     const captionMaxLength = await this.managers.apiManager.getLimit('caption');
@@ -125,25 +131,93 @@ export default class PopupNewMedia extends PopupElement {
       this.header.append(sendMenu.sendMenu);
     }
 
+    const btnMenu = await ButtonMenuToggle({
+      listenerSetter: this.listenerSetter,
+      direction: 'bottom-left',
+      buttons: [{
+        icon: 'image',
+        text: 'Popup.Attach.AsMedia',
+        onClick: () => this.changeType('media'),
+        verify: () => this.hasAnyMedia() && this.willAttach.type === 'document'
+      }, {
+        icon: 'document',
+        text: 'SendAsFile',
+        onClick: () => this.changeType('document'),
+        verify: () => this.files.length === 1 && this.willAttach.type !== 'document'
+      }, {
+        icon: 'document',
+        text: 'SendAsFiles',
+        onClick: () => this.changeType('document'),
+        verify: () => this.files.length > 1 && this.willAttach.type !== 'document'
+      }, {
+        icon: 'groupmedia',
+        text: 'Popup.Attach.GroupMedia',
+        onClick: () => this.changeGroup(true),
+        verify: () => !this.willAttach.group && this.canGroupSomething()
+      }, {
+        icon: 'groupmediaoff',
+        text: 'Popup.Attach.UngroupMedia',
+        onClick: () => this.changeGroup(false),
+        verify: () => this.willAttach.group && this.canGroupSomething()
+      }, {
+        icon: 'mediaspoiler',
+        text: 'EnablePhotoSpoiler',
+        onClick: () => this.changeSpoilers(true),
+        verify: () => this.canToggleSpoilers(true, true)
+      }, {
+        icon: 'mediaspoiler',
+        text: 'Popup.Attach.EnableSpoilers',
+        onClick: () => this.changeSpoilers(true),
+        verify: () => this.canToggleSpoilers(true, false)
+      }, {
+        icon: 'mediaspoileroff',
+        text: 'DisablePhotoSpoiler',
+        onClick: () => this.changeSpoilers(false),
+        verify: () => this.canToggleSpoilers(false, true)
+      }, {
+        icon: 'mediaspoileroff',
+        text: 'Popup.Attach.RemoveSpoilers',
+        onClick: () => this.changeSpoilers(false),
+        verify: () => this.canToggleSpoilers(false, false)
+      }]
+    });
+
+    this.header.append(btnMenu);
+
+    this.btnConfirm.remove();
+
     this.mediaContainer = document.createElement('div');
     this.mediaContainer.classList.add('popup-photo');
-    const scrollable = new Scrollable(null);
-    scrollable.container.append(this.mediaContainer);
+    this.scrollable.container.append(this.mediaContainer);
 
-    this.inputField = new InputField({
+    const inputContainer = this.inputContainer = document.createElement('div');
+    inputContainer.classList.add('popup-input-container');
+
+    const c = document.createElement('div');
+    c.classList.add('popup-input-inputs', 'input-message-container');
+
+    this.messageInputField = new InputFieldAnimated({
       placeholder: 'PreviewSender.CaptionPlaceholder',
-      label: 'Caption',
-      name: 'photo-caption',
-      maxLength: this.captionLengthMax,
-      withLinebreaks: true
+      name: 'message',
+      withLinebreaks: true,
+      maxLength: this.captionLengthMax
     });
-    this.input = this.inputField.input;
 
-    this.inputField.value = this.wasInputValue = this.chat.input.messageInputField.input.innerHTML;
-    this.chat.input.messageInputField.value = '';
+    this.listenerSetter.add(this.scrollable.container)('scroll', this.onScroll);
+    this.listenerSetter.add(this.messageInputField.input)('scroll', this.onScroll);
 
-    this.body.append(scrollable.container);
-    this.container.append(this.inputField.container);
+    this.messageInputField.input.classList.replace('input-field-input', 'input-message-input');
+    this.messageInputField.inputFake.classList.replace('input-field-input', 'input-message-input');
+
+    c.append(this.messageInputField.input, this.messageInputField.inputFake);
+    inputContainer.append(c, this.btnConfirm);
+
+    if(!this.ignoreInputValue) {
+      this.messageInputField.value = this.wasInputValue = this.chat.input.messageInputField.input.innerHTML;
+      this.chat.input.messageInputField.value = '';
+    }
+
+    this.container.append(inputContainer);
 
     this.attachFiles();
 
@@ -169,13 +243,7 @@ export default class PopupNewMedia extends PopupElement {
         icon: 'mediaspoileroff',
         text: 'DisablePhotoSpoiler',
         onClick: () => {
-          toggleMediaSpoiler({
-            mediaSpoiler: item.mediaSpoiler,
-            reveal: true,
-            destroyAfter: true
-          });
-
-          item.mediaSpoiler = undefined;
+          this.removeMediaSpoiler(item);
         },
         verify: () => !!(isMedia && item.mediaSpoiler)
       }],
@@ -191,6 +259,14 @@ export default class PopupNewMedia extends PopupElement {
 
     currentPopup = this;
   }
+
+  private onScroll = () => {
+    const {input} = this.messageInputField;
+    this.scrollable.onAdditionalScroll();
+    if(input.scrollTop > 0 && input.scrollHeight > 130) {
+      this.scrollable.container.classList.remove('scrolled-bottom');
+    }
+  };
 
   private async applyMediaSpoiler(item: SendFileParams, noAnimation?: boolean) {
     const middleware = item.middlewareHelper.get();
@@ -268,6 +344,16 @@ export default class PopupNewMedia extends PopupElement {
     });
   }
 
+  private removeMediaSpoiler(item: SendFileParams) {
+    toggleMediaSpoiler({
+      mediaSpoiler: item.mediaSpoiler,
+      reveal: true,
+      destroyAfter: true
+    });
+
+    item.mediaSpoiler = undefined;
+  }
+
   public appendDrops(element: HTMLElement) {
     this.body.append(element);
   }
@@ -280,59 +366,66 @@ export default class PopupNewMedia extends PopupElement {
     this.willAttach.type = type;
   }
 
-  private appendGroupCheckboxField() {
-    const good = this.files.length > 1;
-    if(good && !this.groupCheckboxField) {
-      this.groupCheckboxField = new CheckboxField({
-        text: 'PreviewSender.GroupItems',
-        name: 'group-items'
-      });
-      this.container.append(...[
-        this.groupCheckboxField.label,
-        this.mediaCheckboxField?.label,
-        this.inputField.container
-      ].filter(Boolean));
-
-      this.willAttach.group = true;
-      this.groupCheckboxField.setValueSilently(this.willAttach.group);
-
-      this.listenerSetter.add(this.groupCheckboxField.input)('change', () => {
-        const checked = this.groupCheckboxField.checked;
-
-        this.willAttach.group = checked;
-
-        this.attachFiles();
-      });
-    } else if(this.groupCheckboxField) {
-      this.groupCheckboxField.label.classList.toggle('hide', !good);
-    }
+  private partition() {
+    const [media, files] = partition(this.willAttach.sendFileDetails, (d) => MEDIA_MIME_TYPES_SUPPORTED.has(d.file.type));
+    return {
+      media,
+      files
+    };
   }
 
-  private appendMediaCheckboxField() {
-    const good = !!this.files.find((file) => MEDIA_MIME_TYPES_SUPPORTED.has(file.type));
-    if(good && !this.mediaCheckboxField) {
-      this.mediaCheckboxField = new CheckboxField({
-        text: 'PreviewSender.CompressFile',
-        name: 'compress-items'
-      });
-      this.container.append(...[
-        this.groupCheckboxField?.label,
-        this.mediaCheckboxField.label,
-        this.inputField.container
-      ].filter(Boolean));
+  private mediaCount() {
+    return this.partition().media.length;
+  }
 
-      this.mediaCheckboxField.setValueSilently(this.willAttach.type === 'media');
+  private hasAnyMedia() {
+    return this.mediaCount() > 0;
+  }
 
-      this.listenerSetter.add(this.mediaCheckboxField.input)('change', () => {
-        const checked = this.mediaCheckboxField.checked;
+  private canGroupSomething() {
+    const {media, files} = this.partition();
+    return media.length > 1 || files.length > 1;
+  }
 
-        this.willAttach.type = checked ? 'media' : 'document';
-
-        this.attachFiles();
-      });
-    } else if(this.mediaCheckboxField) {
-      this.mediaCheckboxField.label.classList.toggle('hide', !good);
+  private canToggleSpoilers(toggle: boolean, single: boolean) {
+    let good = this.willAttach.type === 'media' && this.hasAnyMedia();
+    if(single && good) {
+      good = this.files.length === 1;
     }
+
+    if(good) {
+      const media = this.willAttach.sendFileDetails
+      .filter((d) => MEDIA_MIME_TYPES_SUPPORTED.has(d.file.type))
+      const mediaWithSpoilers = media.filter((d) => d.mediaSpoiler);
+
+      good = single ? true : media.length > 1;
+
+      if(good) {
+        good = toggle ? media.length !== mediaWithSpoilers.length : media.length === mediaWithSpoilers.length;
+      }
+    }
+
+    return good;
+  }
+
+  private changeType(type: PopupNewMedia['willAttach']['type']) {
+    this.willAttach.type = type;
+    this.attachFiles();
+  }
+
+  public changeGroup(group: boolean) {
+    this.willAttach.group = group;
+    this.attachFiles();
+  }
+
+  public changeSpoilers(toggle: boolean) {
+    this.partition().media.forEach((item) => {
+      if(toggle && !item.mediaSpoiler) {
+        this.applyMediaSpoiler(item);
+      } else if(!toggle && item.mediaSpoiler) {
+        this.removeMediaSpoiler(item);
+      }
+    });
   }
 
   public addFiles(files: File[]) {
@@ -352,13 +445,14 @@ export default class PopupNewMedia extends PopupElement {
 
   private onKeyDown = (e: KeyboardEvent) => {
     const target = e.target as HTMLElement;
-    if(target !== this.input) {
+    const {input} = this.messageInputField;
+    if(target !== input) {
       if(target.tagName === 'INPUT' || target.isContentEditable) {
         return;
       }
 
-      this.input.focus();
-      placeCaretAtEnd(this.input);
+      input.focus();
+      placeCaretAtEnd(input);
     }
   };
 
@@ -371,7 +465,7 @@ export default class PopupNewMedia extends PopupElement {
       return;
     }
 
-    let caption = this.inputField.value;
+    let caption = this.messageInputField.value;
     if(caption.length > this.captionLengthMax) {
       toast(I18n.format('Error.PreviewSender.CaptionTooLong', true));
       return;
@@ -420,20 +514,27 @@ export default class PopupNewMedia extends PopupElement {
 
     input.replyToMsgId = this.chat.threadId;
     input.onMessageSent();
+    this.wasInputValue = undefined;
 
     this.hide();
   }
 
-  private async scaleImageForTelegram(image: HTMLImageElement, params: SendFileParams) {
+  private modifyMimeTypeForTelegram(mimeType: string) {
+    return mimeType === 'image/webp' ? 'image/jpeg' : mimeType;
+  }
+
+  private async scaleImageForTelegram(image: HTMLImageElement, mimeType: string, convertWebp?: boolean) {
     const PHOTO_SIDE_LIMIT = 2560;
-    const mimeType = params.file.type;
     let url = image.src, scaledBlob: Blob;
-    if(mimeType !== 'image/gif' && Math.max(image.naturalWidth, image.naturalHeight) > PHOTO_SIDE_LIMIT) {
+    if(
+      mimeType !== 'image/gif' &&
+      (Math.max(image.naturalWidth, image.naturalHeight) > PHOTO_SIDE_LIMIT || (convertWebp && mimeType === 'image/webp'))
+    ) {
       const {blob} = await scaleMediaElement({
         media: image,
         boxSize: makeMediaSize(PHOTO_SIDE_LIMIT, PHOTO_SIDE_LIMIT),
         mediaSize: makeMediaSize(image.naturalWidth, image.naturalHeight),
-        mimeType: mimeType as any
+        mimeType: this.modifyMimeTypeForTelegram(mimeType) as any
       });
 
       scaledBlob = blob;
@@ -442,8 +543,7 @@ export default class PopupNewMedia extends PopupElement {
       await renderImageFromUrlPromise(image, url);
     }
 
-    params.objectURL = url;
-    params.scaledBlob = scaledBlob;
+    return scaledBlob && {url, blob: scaledBlob};
   }
 
   private async attachMedia(params: SendFileParams) {
@@ -453,11 +553,9 @@ export default class PopupNewMedia extends PopupElement {
     const file = params.file;
     const isVideo = file.type.startsWith('video/');
 
-    let promise: Promise<void>;
     if(isVideo) {
       const video = createVideo();
-      const source = document.createElement('source');
-      source.src = params.objectURL = await apiManagerProxy.invoke('createObjectURL', file);
+      video.src = params.objectURL = await apiManagerProxy.invoke('createObjectURL', file);
       video.autoplay = true;
       video.controls = false;
       video.muted = true;
@@ -466,35 +564,48 @@ export default class PopupNewMedia extends PopupElement {
         video.pause();
       }, {once: true});
 
-      promise = onMediaLoad(video).then(async() => {
-        params.width = video.videoWidth;
-        params.height = video.videoHeight;
-        params.duration = Math.floor(video.duration);
+      itemDiv.append(video);
 
-        const audioDecodedByteCount = (video as any).webkitAudioDecodedByteCount;
-        if(audioDecodedByteCount !== undefined) {
-          params.noSound = !audioDecodedByteCount;
-        }
+      let error: Error;
+      try {
+        await onMediaLoad(video);
+      } catch(err) {
+        error = err as any;
+      }
 
-        itemDiv.append(video);
-        const thumb = await createPosterFromVideo(video);
-        params.thumb = {
-          url: await apiManagerProxy.invoke('createObjectURL', thumb.blob),
-          ...thumb
-        };
-      });
+      params.width = video.videoWidth;
+      params.height = video.videoHeight;
+      params.duration = Math.floor(video.duration);
 
-      video.append(source);
+      if(error) {
+        throw error;
+      }
+
+      const audioDecodedByteCount = (video as any).webkitAudioDecodedByteCount;
+      if(audioDecodedByteCount !== undefined) {
+        params.noSound = !audioDecodedByteCount;
+      }
+
+      const thumb = await createPosterFromVideo(video);
+      params.thumb = {
+        url: await apiManagerProxy.invoke('createObjectURL', thumb.blob),
+        ...thumb
+      };
     } else {
       const img = new Image();
+      itemDiv.append(img);
       const url = await apiManagerProxy.invoke('createObjectURL', file);
-      await renderImageFromUrlPromise(img, url);
 
-      await this.scaleImageForTelegram(img, params);
+      await renderImageFromUrlPromise(img, url);
+      const mimeType = params.file.type;
+      const scaled = await this.scaleImageForTelegram(img, mimeType, true);
+      if(scaled) {
+        params.objectURL = scaled.url;
+        params.scaledBlob = scaled.blob;
+      }
+
       params.width = img.naturalWidth;
       params.height = img.naturalHeight;
-
-      itemDiv.append(img);
 
       if(file.type === 'image/gif') {
         params.noSound = true;
@@ -510,11 +621,9 @@ export default class PopupNewMedia extends PopupElement {
               ...thumb
             };
           })
-        ]);
+        ]).then(() => {});
       }
     }
-
-    return promise;
   }
 
   private async attachDocument(params: SendFileParams): ReturnType<PopupNewMedia['attachMedia']> {
@@ -532,8 +641,10 @@ export default class PopupNewMedia extends PopupElement {
     if(isPhoto) {
       img = new Image();
       await renderImageFromUrlPromise(img, params.objectURL);
-      await this.scaleImageForTelegram(img, params);
-      params.scaledBlob = undefined;
+      const scaled = await this.scaleImageForTelegram(img, params.file.type);
+      if(scaled) {
+        params.objectURL = scaled.url;
+      }
     }
 
     const doc = {
@@ -596,7 +707,10 @@ export default class PopupNewMedia extends PopupElement {
 
     const promise = shouldCompress ? this.attachMedia(params) : this.attachDocument(params);
     willAttach.sendFileDetails.push(params);
-    return promise;
+    return promise.catch((err) => {
+      itemDiv.style.backgroundColor = '#000';
+      console.error('error rendering file', err);
+    });
   };
 
   private shouldCompress(mimeType: string) {
@@ -607,7 +721,7 @@ export default class PopupNewMedia extends PopupElement {
     // show now
     if(!this.element.classList.contains('active')) {
       this.listenerSetter.add(document.body)('keydown', this.onKeyDown);
-      this.addEventListener('close', () => {
+      !this.ignoreInputValue && this.addEventListener('close', () => {
         if(this.wasInputValue) {
           this.chat.input.messageInputField.value = this.wasInputValue;
         }
@@ -655,7 +769,7 @@ export default class PopupNewMedia extends PopupElement {
 
   private appendMediaToContainer(params: SendFileParams) {
     if(this.shouldCompress(params.file.type)) {
-      const size = calcImageInBox(params.width, params.height, 380, 320);
+      const size = calcImageInBox(params.width, params.height, MAX_WIDTH, 320);
       params.itemDiv.style.width = size.width + 'px';
       params.itemDiv.style.height = size.height + 'px';
     }
@@ -693,9 +807,6 @@ export default class PopupNewMedia extends PopupElement {
       params.middlewareHelper.destroy();
     });
 
-    this.appendGroupCheckboxField();
-    this.appendMediaCheckboxField();
-
     const promises = files.map((file) => this.attachFile(file));
 
     Promise.all(promises).then(() => {
@@ -717,7 +828,7 @@ export default class PopupNewMedia extends PopupElement {
           prepareAlbum({
             container: albumContainer,
             items: sendFileDetails.map((o) => ({w: o.width, h: o.height})),
-            maxWidth: 380,
+            maxWidth: MAX_WIDTH,
             minWidth: 100,
             spacing: 4
           });
@@ -746,6 +857,7 @@ export default class PopupNewMedia extends PopupElement {
       });
     }).then(() => {
       this.onRender();
+      this.onScroll();
     });
   }
 }

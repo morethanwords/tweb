@@ -20,7 +20,7 @@ import {NULL_PEER_ID, REPLIES_PEER_ID} from '../../lib/mtproto/mtproto_config';
 import SetTransition from '../singleTransition';
 import AppPrivateSearchTab from '../sidebarRight/tabs/search';
 import renderImageFromUrl from '../../helpers/dom/renderImageFromUrl';
-import mediaSizes from '../../helpers/mediaSizes';
+import mediaSizes, {ScreenSize} from '../../helpers/mediaSizes';
 import ChatSearch from './search';
 import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
 import getAutoDownloadSettingsByPeerId, {ChatAutoDownloadSettings} from '../../helpers/autoDownload';
@@ -34,8 +34,9 @@ import AppSharedMediaTab from '../sidebarRight/tabs/sharedMedia';
 import noop from '../../helpers/noop';
 import middlewarePromise from '../../helpers/middlewarePromise';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import {Message} from '../../layer';
+import {Message, WallPaper} from '../../layer';
 import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
+import {getColorsFromWallPaper} from '../sidebarLeft/tabs/background';
 
 export type ChatType = 'chat' | 'pinned' | 'discussion' | 'scheduled';
 
@@ -122,16 +123,19 @@ export default class Chat extends EventListenerBase<{
 
   public setBackground(url: string, skipAnimation?: boolean): Promise<void> {
     const theme = themeController.getTheme();
+    const themeSettings = theme.settings;
+    const wallPaper = themeSettings.wallpaper;
+    const colors = getColorsFromWallPaper(wallPaper);
 
     let item: HTMLElement;
-    const isColorBackground = !!theme.background.color && !theme.background.slug && !theme.background.intensity;
+    const isColorBackground = !!colors && !(wallPaper as WallPaper.wallPaper).slug && !wallPaper.settings.intensity;
     if(
       isColorBackground &&
       document.documentElement.style.cursor === 'grabbing' &&
       this.gradientRenderer &&
       !this.patternRenderer
     ) {
-      this.gradientCanvas.dataset.colors = theme.background.color;
+      this.gradientCanvas.dataset.colors = colors;
       this.gradientRenderer.init(this.gradientCanvas);
       return Promise.resolve();
     }
@@ -150,7 +154,7 @@ export default class Chat extends EventListenerBase<{
       // this.renderDarkPattern =
       undefined;
 
-    const intensity = theme.background.intensity && theme.background.intensity / 100;
+    const intensity = wallPaper.settings?.intensity && wallPaper.settings.intensity / 100;
     const isDarkPattern = !!intensity && intensity < 0;
 
     let patternRenderer: ChatBackgroundPatternRenderer;
@@ -190,19 +194,18 @@ export default class Chat extends EventListenerBase<{
           //     });
           //   };
           // }
-        } else if(theme.background.slug) {
+        } else {
           item.classList.add('is-image');
         }
-      } else if(theme.background.color) {
+      } else {
         item.classList.add('is-color');
       }
     }
 
     let gradientRenderer: ChatBackgroundGradientRenderer;
-    const color = theme.background.color;
-    if(color) {
+    if(colors) {
       // if(color.includes(',')) {
-      const {canvas, gradientRenderer: _gradientRenderer} = ChatBackgroundGradientRenderer.create(color);
+      const {canvas, gradientRenderer: _gradientRenderer} = ChatBackgroundGradientRenderer.create(colors);
       gradientRenderer = this.gradientRenderer = _gradientRenderer;
       gradientCanvas = this.gradientCanvas = canvas;
       gradientCanvas.classList.add('chat-background-item-canvas', 'chat-background-item-color-canvas');
@@ -365,7 +368,7 @@ export default class Chat extends EventListenerBase<{
     });
 
     this.bubbles.listenerSetter.add(this.appImManager)('tab_changing', (tabId) => {
-      freezeObservers(this.appImManager.chat !== this || tabId !== APP_TABS.CHAT);
+      freezeObservers(this.appImManager.chat !== this || (tabId !== APP_TABS.CHAT && mediaSizes.activeScreen === ScreenSize.mobile));
     });
   }
 

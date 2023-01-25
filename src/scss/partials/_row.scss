@@ -166,6 +166,7 @@ $row-border-radius: $border-radius-medium;
       transform: translateY(-50%);
       inset-inline-end: .75rem;
       pointer-events: none;
+      opacity: 0;
     }
 
     &.cant-sort {
@@ -191,6 +192,12 @@ $row-border-radius: $border-radius-medium;
 
       @include hover() {
         background-color: var(--light-filled-secondary-text-color) !important;
+      }
+    }
+
+    @include hover() {
+      .row-sortable-icon {
+        opacity: 1;
       }
     }
 

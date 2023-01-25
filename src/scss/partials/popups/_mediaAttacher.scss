@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+@use "sass:math";
+
 .popup-new-media {
   $parent: ".popup";
 
@@ -43,12 +45,11 @@
     }
   
     &-close {
-      font-size: 1.5rem;
       margin: -1px 0 0 -4px;
     }
   
     &-photo {
-      max-width: 380px;
+      max-width: 100%;
       overflow: hidden;
       // width: fit-content;
       width: 100%;
@@ -93,12 +94,95 @@
 }
 
 .popup-new-media.popup-send-photo {
-  .popup-header {
+  .popup-container {
+    width: 25rem;
+    max-width: 25rem;
     padding: 0;
+
+    &.border-top-offset {
+      .popup-input-container {
+        overflow: unset;
+
+        &:before {
+          top: -8px;
+        }
+      }
+    }
+  }
+
+  .popup-header {
+    padding: 0 1rem;
+    height: 3.5rem;
+    margin: 0;
+  }
+
+  .popup-title {
+    padding-inline-start: 1.5rem;
+  }
+
+  .popup-close {
+    margin: 0;
   }
 
   .popup-body {
     position: relative;
+
+    .scrollable {
+      padding: 0 .5rem;
+    }
+  }
+
+  .input-message-container {
+    min-height: inherit;
+    max-height: inherit;
+    // margin-top: -.5rem;
+  }
+
+  .input-message-input {
+    max-height: inherit !important;
+  }
+
+  .btn-primary {
+    flex: 0 0 auto;
+    width: auto;
+    padding: 0 1rem;
+    height: 2.5rem;
+    line-height: 2.5rem;
+    text-transform: uppercase;
+    margin-bottom: .5rem;
+  }
+
+  .popup-input-container {
+    --height: 3.5rem;
+    --max-height: 8.375rem;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 0 .5rem;
+    min-height: var(--height);
+    max-height: var(--max-height);
+    position: relative;
+    flex: 0 0 auto;
+    overflow: hidden;
+
+    &:before {
+      content: " ";
+      position: absolute;
+      height: 1px;
+      top: 0;
+      left: 0;
+      right: 0;
+      background-color: var(--border-color);
+      opacity: 0;
+
+      @include animation-level(2) {
+        transition: opacity var(--transition-standard-in);
+      }
+    }
+
+    &.has-border-top:before {
+      opacity: 1;
+    }
   }
 
   .checkbox-field {
@@ -146,28 +230,34 @@
   }
 
   .document {
+    --padding: .25rem;
+    --icon-size: 4.5rem;
+    --icon-margin: .5rem;
     max-width: 100%;
     overflow: hidden;
     cursor: default;
-    height: 4.5rem;
+    height: 5rem;
+    margin: 0 .25rem;
+    border-radius: $border-radius-medium;
 
     &-name {
-      font-weight: normal;
       width: 100%;
       max-width: 100%;
       overflow: hidden;
       text-overflow: ellipsis;
       line-height: 1.5;
+      margin-bottom: .125rem;
     }
 
     &-ico {
-      height: 48px;
-      width: 48px;
       font-size: 16px;
       font-weight: normal;
       line-height: 11px;
       letter-spacing: 0;
+      border-radius: #{math.div($border-radius-medium, 2)};
     }
+
+    @include hover-background-effect();
 
     /* &.photo {
       .document-ico {

@@ -15,6 +15,7 @@ import forEachReverse from '../helpers/array/forEachReverse';
 import idleController from '../helpers/idleController';
 import appMediaPlaybackController from './appMediaPlaybackController';
 import {fastRaf} from '../helpers/schedulers';
+import {Middleware} from '../helpers/middleware';
 
 export type AnimationItemGroup = '' | 'none' | 'chat' | 'lock' |
   'STICKERS-POPUP' | 'emoticons-dropdown' | 'STICKERS-SEARCH' | 'GIFS-SEARCH' |
@@ -24,7 +25,7 @@ export interface AnimationItem {
   el: HTMLElement,
   group: AnimationItemGroup,
   animation: AnimationItemWrapper,
-  controlled?: boolean
+  controlled?: boolean | Middleware
 };
 
 export interface AnimationItemWrapper {
@@ -179,7 +180,7 @@ export class AnimationIntersector {
     animation: AnimationItem['animation'],
     group: AnimationItemGroup = '',
     observeElement?: HTMLElement,
-    controlled?: boolean
+    controlled?: AnimationItem['controlled']
   ) {
     if(group === 'none' || this.byPlayer.has(animation)) {
       return;
@@ -203,6 +204,12 @@ export class AnimationIntersector {
       group,
       controlled
     };
+
+    if(controlled && typeof(controlled) !== 'boolean') {
+      controlled.onClean(() => {
+        this.removeAnimationByPlayer(animation);
+      });
+    }
 
     if(animation instanceof RLottiePlayer) {
       if(!rootScope.settings.stickers.loop && animation.loop) {

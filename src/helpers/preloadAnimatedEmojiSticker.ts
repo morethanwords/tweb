@@ -29,8 +29,9 @@ export default function preloadAnimatedEmojiSticker(emoji: string, width?: numbe
         name: 'doc' + doc.id,
         autoplay: false,
         loop: false,
-        toneIndex
-      }, 'none');
+        toneIndex,
+        group: 'none'
+      });
 
       animation.addEventListener('firstFrame', () => {
         saveLottiePreview(doc, animation.canvas[0], toneIndex);

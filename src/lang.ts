@@ -109,6 +109,7 @@ const lang = {
     'one_value': '%d exception',
     'other_value': '%d exceptions'
   },
+  'PWA.Install': 'Install App',
   'Link.Available': 'Link is available',
   'Link.Taken': 'Link is already taken',
   'Link.Invalid': 'Link is invalid',
@@ -119,6 +120,11 @@ const lang = {
   'Popup.Unpin.HideTitle': 'Hide pinned messages',
   'Popup.Unpin.HideDescription': 'Do you want to hide the pinned message bar? It wil stay hidden until a new message is pinned.',
   'Popup.Unpin.Hide': 'Hide',
+  'Popup.Attach.GroupMedia': 'Group all media',
+  'Popup.Attach.UngroupMedia': 'Ungroup all media',
+  'Popup.Attach.AsMedia': 'Send as media',
+  'Popup.Attach.EnableSpoilers': 'Hide all with spoilers',
+  'Popup.Attach.RemoveSpoilers': 'Remove all spoilers',
   'TwoStepAuth.EmailCodeChangeEmail': 'Change Email',
   'MarkupTooltip.LinkPlaceholder': 'Enter URL...',
   'MediaViewer.Context.Download': 'Download',
@@ -876,6 +882,9 @@ const lang = {
   'LimitReachedFoldersLocked': 'You have reached the limit of **%1$d** folders for this account. We are working to let you increase this limit in the future.',
   'FwdMessageToSavedMessages': 'Message forwarded to **Saved Messages**.',
   'FwdMessagesToSavedMessages': 'Messages forwarded to **Saved Messages**.',
+  'ColorTheme': 'Color theme',
+  'SendAsFile': 'Send as file',
+  'SendAsFiles': 'Send as files',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

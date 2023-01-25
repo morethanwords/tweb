@@ -27,7 +27,7 @@ import {MOUNT_CLASS_TO} from '../../config/debug';
 import appNavigationController from '../../components/appNavigationController';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import I18n, {i18n, join, LangPackKey} from '../langPack';
-import {ChatFull, ChatInvite, ChatParticipant, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult} from '../../layer';
+import {ChatFull, ChatInvite, ChatParticipant, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult, WallPaper} from '../../layer';
 import PeerTitle from '../../components/peerTitle';
 import PopupPeer, {PopupPeerCheckboxOptions} from '../../components/popups/peer';
 import blurActiveElement from '../../helpers/dom/blurActiveElement';
@@ -100,6 +100,7 @@ import parseUriParams from '../../helpers/string/parseUriParams';
 import getMessageThreadId from './utils/messages/getMessageThreadId';
 import findUpTag from '../../helpers/dom/findUpTag';
 import {MTAppConfig} from '../mtproto/appConfig';
+import PopupForward from '../../components/popups/forward';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -186,10 +187,19 @@ export class AppImManager extends EventListenerBase<{
 
     this.backgroundPromises = {};
     STATE_INIT.settings.themes.forEach((theme) => {
-      if(theme.background.slug) {
-        const url = 'assets/img/' + theme.background.slug + '.svg' + (IS_FIREFOX ? '?1' : '');
-        this.backgroundPromises[theme.background.slug] = Promise.resolve(url);
+      const themeSettings = theme.settings;
+      if(!themeSettings) {
+        return;
       }
+
+      const {wallpaper} = themeSettings;
+      const slug = (wallpaper as WallPaper.wallPaper).slug;
+      if(!slug) {
+        return;
+      }
+
+      const url = 'assets/img/' + slug + '.svg' + (IS_FIREFOX ? '?1' : '');
+      this.backgroundPromises[slug] = Promise.resolve(url);
     });
 
     this.selectTab(APP_TABS.CHATLIST);
@@ -793,6 +803,23 @@ export class AppImManager extends EventListenerBase<{
     this.onHashChange(true);
     this.attachKeydownListener();
     this.handleAutologinDomains();
+    this.checkForShare();
+  }
+
+  private checkForShare() {
+    const share = apiManagerProxy.share;
+    if(share) {
+      apiManagerProxy.share = undefined;
+      new PopupForward(undefined, async(peerId) => {
+        await this.setPeer({peerId});
+        if(share.files?.length) {
+          const foundMedia = share.files.some((file) => MEDIA_MIME_TYPES_SUPPORTED.has(file.type));
+          new PopupNewMedia(this.chat, share.files, foundMedia ? 'media' : 'document');
+        } else {
+          this.managers.appMessagesManager.sendText(peerId, share.text);
+        }
+      });
+    }
   }
 
   public handleUrlAuth(options: {
@@ -1495,16 +1522,17 @@ export class AppImManager extends EventListenerBase<{
   public setCurrentBackground(broadcastEvent = false): ReturnType<AppImManager['setBackground']> {
     const theme = themeController.getTheme();
 
-    if(theme.background.slug) {
+    const slug = (theme.settings?.wallpaper as WallPaper.wallPaper)?.slug;
+    if(slug) {
       const defaultTheme = STATE_INIT.settings.themes.find((t) => t.name === theme.name);
       // const isDefaultBackground = theme.background.blur === defaultTheme.background.blur &&
-      // theme.background.slug === defaultTheme.background.slug;
+      // slug === defaultslug;
 
       // if(!isDefaultBackground) {
-      return this.getBackground(theme.background.slug).then((url) => {
+      return this.getBackground(slug).then((url) => {
         return this.setBackground(url, broadcastEvent);
       }, () => { // * if NO_ENTRY_FOUND
-        theme.background = copy(defaultTheme.background); // * reset background
+        theme.settings = copy(defaultTheme.settings); // * reset background
         return this.setCurrentBackground(true);
       });
       // }

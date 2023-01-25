@@ -62,6 +62,8 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
   private tabState: TabState;
 
+  public share: ShareData;
+
   public serviceMessagePort: ServiceMessagePort<true>;
   private lastServiceWorker: ServiceWorker;
 
@@ -308,6 +310,11 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
       hello: (payload, source) => {
         this.serviceMessagePort.resendLockTask(source);
+      },
+
+      share: (payload) => {
+        this.log('will try to share something');
+        this.share = payload;
       }
     });
     // #endif

@@ -14,6 +14,7 @@ const USELESS_REG_EXP = new RegExp(`(<span>${BOM}</span>)|(<br\/?>)`, 'g');
 
 export default class InputFieldAnimated extends InputField {
   public inputFake: HTMLElement;
+  public onChangeHeight: (height: number) => void;
 
   // public onLengthChange: (length: number, isOverflow: boolean) => void;
   // protected wasInputFakeClientHeight: number;
@@ -31,7 +32,7 @@ export default class InputFieldAnimated extends InputField {
       _i18n(this.inputFake, options.placeholder, undefined, 'placeholder');
     }
 
-    this.input.classList.add('scrollable', 'scrollable-y');
+    this.input.classList.add('scrollable', 'scrollable-y', 'no-scrollbar');
     // this.wasInputFakeClientHeight = 0;
     // this.showScrollDebounced = debounce(() => this.input.classList.remove('no-scrollbar'), 150, false, true);
     this.inputFake = document.createElement('div');
@@ -62,6 +63,7 @@ export default class InputFieldAnimated extends InputField {
     this.input.style.transitionDuration = `${transitionDuration}ms`;
 
     if(setHeight) {
+      this.onChangeHeight?.(newHeight);
       this.input.style.height = newHeight ? newHeight + 'px' : '';
     }
 

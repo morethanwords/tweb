@@ -14,8 +14,9 @@ import rootScope from '../../lib/rootScope';
 import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
 import LazyLoadQueue from '../lazyLoadQueue';
 import wrapSticker from './sticker';
+import {Middleware} from '../../helpers/middleware';
 
-export default async function wrapStickerSetThumb({set, lazyLoadQueue, container, group, autoplay, width, height, managers = rootScope.managers}: {
+export default async function wrapStickerSetThumb({set, lazyLoadQueue, container, group, autoplay, width, height, managers = rootScope.managers, middleware}: {
   set: StickerSet.stickerSet,
   lazyLoadQueue: LazyLoadQueue,
   container: HTMLElement,
@@ -24,6 +25,7 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
   width: number,
   height: number,
   managers?: AppManagers
+  middleware?: Middleware
 }) {
   if(set.thumbs?.length) {
     container.classList.add('media-sticker-wrapper');
@@ -44,8 +46,10 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
               width,
               height,
               needUpscale: true,
-              name: 'setThumb' + set.id
-            }, group);
+              name: 'setThumb' + set.id,
+              group,
+              middleware
+            });
           });
         } else {
           let media: HTMLElement;
@@ -93,7 +97,8 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
       lazyLoadQueue,
       managers,
       width,
-      height
+      height,
+      middleware
     }); // kostil
   }
 }

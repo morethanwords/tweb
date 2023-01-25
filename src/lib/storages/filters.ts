@@ -342,41 +342,37 @@ export default class FiltersStorage extends AppManager {
       flags,
       id: filter.id,
       filter: remove ? undefined : this.getOutputDialogFilter(filter)
-    }).then((bool: boolean) => { // возможно нужна проверка и откат, если результат не ТРУ
+    }).then((bool) => { // возможно нужна проверка и откат, если результат не ТРУ
       // console.log('updateDialogFilter bool:', bool);
 
-      if(bool) {
-        /* if(!this.filters[filter.id]) {
-          this.saveDialogFilter(filter);
-        }
-
-        rootScope.$broadcast('filter_update', filter); */
-
-        this.onUpdateDialogFilter({
-          _: 'updateDialogFilter',
-          id: filter.id,
-          filter: remove ? undefined : filter as any
-        });
-
-        if(prepend) {
-          const f: MyDialogFilter[] = [];
-          for(const filterId in this.filters) {
-            const filter = this.filters[filterId];
-            ++filter.localId;
-            f.push(filter);
-          }
-
-          filter.localId = START_LOCAL_ID;
-
-          const order = f.sort((a, b) => a.localId - b.localId).map((filter) => filter.id);
-          this.onUpdateDialogFilterOrder({
-            _: 'updateDialogFilterOrder',
-            order
-          });
-        }
+      /* if(!this.filters[filter.id]) {
+        this.saveDialogFilter(filter);
       }
 
-      return bool;
+      rootScope.$broadcast('filter_update', filter); */
+
+      this.onUpdateDialogFilter({
+        _: 'updateDialogFilter',
+        id: filter.id,
+        filter: remove ? undefined : filter as any
+      });
+
+      if(prepend) {
+        const f: MyDialogFilter[] = [];
+        for(const filterId in this.filters) {
+          const filter = this.filters[filterId];
+          ++filter.localId;
+          f.push(filter);
+        }
+
+        filter.localId = START_LOCAL_ID;
+
+        const order = f.sort((a, b) => a.localId - b.localId).map((filter) => filter.id);
+        this.onUpdateDialogFilterOrder({
+          _: 'updateDialogFilterOrder',
+          order
+        });
+      }
     });
   }
 

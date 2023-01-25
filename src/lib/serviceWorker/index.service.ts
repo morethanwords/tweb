@@ -19,6 +19,7 @@ import listenMessagePort from '../../helpers/listenMessagePort';
 import {getWindowClients} from '../../helpers/context';
 import {MessageSendPort} from '../mtproto/superMessagePort';
 import handleDownload from './download';
+import onShareFetch, {checkWindowClientForDeferredShare} from './share';
 
 export const log = logger('SW', LogTypes.Error | LogTypes.Debug | LogTypes.Log | LogTypes.Warn, true);
 const ctx = self as any as ServiceWorkerGlobalScope;
@@ -52,6 +53,8 @@ const onWindowConnected = (source: WindowClient) => {
   serviceMessagePort.invokeVoid('hello', undefined, source);
   sendMessagePortIfNeeded(source);
   connectedWindows.set(source.id, source);
+
+  checkWindowClientForDeferredShare(source);
 };
 
 export const serviceMessagePort = new ServiceMessagePort<false>();
@@ -134,6 +137,11 @@ const onFetch = (event: FetchEvent): void => {
 
       case 'download': {
         onDownloadFetch(event, params);
+        break;
+      }
+
+      case 'share': {
+        onShareFetch(event, params);
         break;
       }
 

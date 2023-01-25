@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {Theme} from '../config/state';
+import type {AppTheme} from '../config/state';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import rootScope from '../lib/rootScope';
 import {hslaStringToHex} from './color';
@@ -12,7 +12,7 @@ import {hslaStringToHex} from './color';
 export class ThemeController {
   private themeColor: string;
   private _themeColorElem: Element;
-  private systemTheme: Theme['name'];
+  private systemTheme: AppTheme['name'];
 
   constructor() {
     rootScope.addEventListener('theme_change', () => {
@@ -71,8 +71,8 @@ export class ThemeController {
   public applyHighlightningColor() {
     let hsla: string;
     const theme = themeController.getTheme();
-    if(theme.background.highlightningColor) {
-      hsla = theme.background.highlightningColor;
+    if(theme.settings?.highlightningColor) {
+      hsla = theme.settings.highlightningColor;
       document.documentElement.style.setProperty('--message-highlightning-color', hsla);
     } else {
       document.documentElement.style.removeProperty('--message-highlightning-color');
@@ -100,7 +100,7 @@ export class ThemeController {
     return this.getTheme().name === 'night';
   }
 
-  public getTheme(name: Theme['name'] = rootScope.settings.theme === 'system' ? this.systemTheme : rootScope.settings.theme) {
+  public getTheme(name: AppTheme['name'] = rootScope.settings.theme === 'system' ? this.systemTheme : rootScope.settings.theme) {
     return rootScope.settings.themes.find((t) => t.name === name);
   }
 }

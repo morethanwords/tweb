@@ -381,8 +381,10 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
           needUpscale,
           skipRatio,
           toneIndex,
-          sync: isCustomEmoji
-        }, group, loadStickerMiddleware ?? middleware);
+          sync: isCustomEmoji,
+          middleware: loadStickerMiddleware ?? middleware,
+          group
+        });
 
         // const deferred = deferredPromise<void>();
 
@@ -557,7 +559,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
               }
 
               if(isAnimated) {
-                animationIntersector.addAnimation(media as HTMLVideoElement, group);
+                animationIntersector.addAnimation(media as HTMLVideoElement, group, undefined, middleware);
               }
 
               if(loaded.push(media) === mediaLength) {

@@ -1952,6 +1952,11 @@ $bubble-border-radius-big: 12px;
       white-space: nowrap;
       height: var(--messages-time-text-size); // * as font-size
       visibility: visible;
+      color: var(--message-time-color);
+
+      &:after {
+        color: var(--message-status-color);
+      }
     }
 
     .tgico-pinnedchat {
@@ -2599,7 +2604,6 @@ $bubble-border-radius-big: 12px;
     padding-right: 8px;
 
     .inner {
-      color: var(--secondary-text-color);
       margin-bottom: 4px;
     }
   }
@@ -2670,13 +2674,15 @@ $bubble-border-radius-big: 12px;
 
 .bubble.is-out {
   flex-direction: row-reverse;
-  --message-background-color: var(--message-out-background-color);
-  --light-message-background-color: var(--light-message-out-background-color);
-  --dark-message-background-color: var(--dark-message-out-background-color);
+  --message-background-color: var(--light-filled-message-out-primary-color);
+  --light-message-background-color: var(--light-message-out-primary-color);
+  --dark-message-background-color: var(--dark-message-out-primary-color);
   --link-color: var(--message-out-link-color);
   --message-primary-color: var(--message-out-primary-color);
   --light-filled-message-primary-color: var(--light-filled-message-out-primary-color);
   --selection-background-color: var(--message-out-selection-background-color);
+  --message-time-color: var(--message-out-time-color);
+  --message-status-color: var(--message-out-status-color);
 
   .bubble-content {
     margin-left: auto;
@@ -2801,17 +2807,15 @@ $bubble-border-radius-big: 12px;
     margin-left: -4px;
 
     .inner {
-      color: var(--message-out-status-color);
       bottom: 4px;
     }
 
-    &:after, 
+    &:after,
     .inner:after {
       font-size: calc(var(--messages-text-size) + 3px);
       //vertical-align: middle;
       margin-left: 1px;
       line-height: var(--messages-time-text-size); // of message
-      color: var(--message-out-primary-color);
     }
   }
 
@@ -2973,7 +2977,7 @@ $bubble-border-radius-big: 12px;
 
       &-answer-selected {
         background-color: var(--message-out-primary-color);
-        color: var(--message-out-background-color);
+        color: var(--light-filled-message-out-primary-color);
       }
 
       html.no-touch &-answer:hover {

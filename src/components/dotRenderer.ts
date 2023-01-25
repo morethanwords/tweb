@@ -165,14 +165,10 @@ export default class DotRenderer implements AnimationItemWrapper {
     animationGroup: AnimationItemGroup,
     multiply?: number
   }) {
-    middleware.onClean(() => {
-      animationIntersector.removeAnimationByPlayer(dotRenderer);
-    });
-
     const dotRenderer = new DotRenderer(width, height, multiply);
     dotRenderer.renderFirstFrame();
 
-    animationIntersector.addAnimation(dotRenderer, animationGroup, dotRenderer.canvas, true);
+    animationIntersector.addAnimation(dotRenderer, animationGroup, dotRenderer.canvas, middleware);
 
     return dotRenderer;
   }

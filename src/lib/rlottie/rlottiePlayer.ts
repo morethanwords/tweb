@@ -5,6 +5,7 @@
  */
 
 import type {AnimationItemGroup, AnimationItemWrapper} from '../../components/animationIntersector';
+import type {Middleware} from '../../helpers/middleware';
 import CAN_USE_TRANSFERABLES from '../../environment/canUseTransferables';
 import IS_APPLE_MX from '../../environment/appleMx';
 import {IS_ANDROID, IS_APPLE_MOBILE, IS_APPLE, IS_SAFARI} from '../../environment/userAgent';
@@ -17,6 +18,7 @@ import framesCache, {FramesCache, FramesCacheItem} from '../../helpers/framesCac
 
 export type RLottieOptions = {
   container: HTMLElement | HTMLElement[],
+  middleware?: Middleware,
   canvas?: HTMLCanvasElement,
   autoplay?: boolean,
   animationData: Blob,

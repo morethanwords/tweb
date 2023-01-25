@@ -15,7 +15,7 @@ export default function onMediaLoad(media: HTMLMediaElement, readyState = media.
     };
     const onError = (e: ErrorEvent) => {
       media.removeEventListener(loadEventName, onLoad);
-      reject(e);
+      reject(media.error);
     };
     media.addEventListener(loadEventName, onLoad, {once: true});
     media.addEventListener(errorEventName, onError, {once: true});

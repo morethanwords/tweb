@@ -61,6 +61,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
     this.stickerContainer.classList.add('sticker-container');
 
     this.confirmBtn = ButtonIcon('check btn-confirm hide blue');
+    let deleting = false;
     const deleteFolderButton: ButtonMenuItemOptions = {
       icon: 'delete danger',
       text: 'FilterMenuDelete',
@@ -71,13 +72,16 @@ export default class AppEditFolderTab extends SliderSuperTab {
           buttons: [{
             langKey: 'Delete',
             callback: () => {
-              deleteFolderButton.element.setAttribute('disabled', 'true');
+              if(deleting) {
+                return;
+              }
+
+              deleting = true;
+
               this.managers.filtersStorage.updateDialogFilter(this.filter, true).then((bool) => {
-                if(bool) {
-                  this.close();
-                }
+                this.close();
               }).finally(() => {
-                deleteFolderButton.element.removeAttribute('disabled');
+                deleting = false;
               });
             },
             isDanger: true
@@ -212,7 +216,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
 
       this.confirmBtn.setAttribute('disabled', 'true');
 
-      let promise: Promise<boolean>;
+      let promise: Promise<void>;
       if(!this.filter.id) {
         promise = this.managers.filtersStorage.createDialogFilter(this.filter);
       } else {
@@ -220,9 +224,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
       }
 
       promise.then((bool) => {
-        if(bool) {
-          this.close();
-        }
+        this.close();
       }).catch((err) => {
         if(err.type === 'DIALOG_FILTERS_TOO_MUCH') {
           toast('Sorry, you can\'t create more folders.');
@@ -266,6 +268,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
         this.setFilter(this.originalFilter, true);
         this.onEditOpen();
       } else {
+        this.setInitFilter();
         this.onCreateOpen();
       }
     });
@@ -283,7 +286,6 @@ export default class AppEditFolderTab extends SliderSuperTab {
     this.setTitle('FilterNew');
     this.menuBtn.classList.add('hide');
     this.confirmBtn.classList.remove('hide');
-    this.nameInputField.value = '';
 
     for(const flag in this.flags) {
       // @ts-ignore

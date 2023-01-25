@@ -1608,7 +1608,6 @@ export default class ChatInput {
     this.messageInputField.input.classList.replace('input-field-input', 'input-message-input');
     this.messageInputField.inputFake.classList.replace('input-field-input', 'input-message-input');
     this.messageInput = this.messageInputField.input;
-    this.messageInput.classList.add('no-scrollbar');
     this.attachMessageInputListeners();
 
     if(IS_STICKY_INPUT_BUGGED) {

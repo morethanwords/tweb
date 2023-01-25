@@ -47,7 +47,7 @@ export default class PopupReportMessagesConfirm extends PopupPeer {
       this.show();
     });
 
-    this.header.append(div);
+    this.header.replaceWith(div);
 
     const inputField = new InputField({
       label: 'ReportHint',

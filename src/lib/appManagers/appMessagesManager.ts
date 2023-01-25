@@ -9,6 +9,10 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
+import type {ApiFileManager} from '../mtproto/apiFileManager';
+import type {MediaSize} from '../../helpers/mediaSize';
+import type {Progress} from './appDownloadManager';
+import type {VIDEO_MIME_TYPE} from '../../environment/videoMimeTypesSupport';
 import LazyLoadQueueBase from '../../components/lazyLoadQueueBase';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import tsNow from '../../helpers/tsNow';
@@ -16,7 +20,6 @@ import {randomLong} from '../../helpers/random';
 import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult} from '../../layer';
 import {ArgumentTypes, InvokeApiOptions} from '../../types';
 import {logger, LogTypes} from '../logger';
-import type {ApiFileManager} from '../mtproto/apiFileManager';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
 import DialogsStorage, {GLOBAL_FOLDER_ID} from '../storages/dialogs';
 import {ChatRights} from './appChatsManager';
@@ -36,7 +39,6 @@ import deepEqual from '../../helpers/object/deepEqual';
 import splitStringByLength from '../../helpers/string/splitStringByLength';
 import debounce from '../../helpers/schedulers/debounce';
 import {AppManager} from './manager';
-import type {MediaSize} from '../../helpers/mediaSize';
 import getPhotoMediaInput from './utils/photos/getPhotoMediaInput';
 import getPhotoDownloadOptions from './utils/photos/getPhotoDownloadOptions';
 import fixEmoji from '../richTextProcessor/fixEmoji';
@@ -53,7 +55,6 @@ import defineNotNumerableProperties from '../../helpers/object/defineNotNumerabl
 import getDocumentMediaInput from './utils/docs/getDocumentMediaInput';
 import getDocumentInputFileName from './utils/docs/getDocumentInputFileName';
 import getFileNameForUpload from '../../helpers/getFileNameForUpload';
-import type {Progress} from './appDownloadManager';
 import noop from '../../helpers/noop';
 import appTabsManager from './appTabsManager';
 import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
@@ -817,7 +818,7 @@ export class AppMessagesManager extends AppManager {
       cacheContext.url = options.objectURL || '';
 
       photo = this.appPhotosManager.savePhoto(photo);
-    } else if(getEnvironment().VIDEO_MIME_TYPES_SUPPORTED.has(fileType)) {
+    } else if(getEnvironment().VIDEO_MIME_TYPES_SUPPORTED.has(fileType as VIDEO_MIME_TYPE)) {
       attachType = 'video';
       apiFileName = 'video.mp4';
       actionName = 'sendMessageUploadVideoAction';
@@ -5624,7 +5625,7 @@ export class AppMessagesManager extends AppManager {
       return chatPeerIds[chatPeerIds.length - 1] === peerId;
     });
 
-    if(!tab) {
+    if(!tab && tabs.length) {
       tabs.sort((a, b) => a.state.idleStartTime - b.state.idleStartTime);
       tab = !tabs[0].state.idleStartTime ? tabs[0] : tabs[tabs.length - 1];
     }
@@ -5633,7 +5634,7 @@ export class AppMessagesManager extends AppManager {
     port.invokeVoid('notificationBuild', {
       message,
       ...options
-    }, tab.source);
+    }, tab?.source);
   }
 
   public getScheduledMessagesStorage(peerId: PeerId) {
@@ -6393,7 +6394,7 @@ export class AppMessagesManager extends AppManager {
       }
     }
 
-    return unreadCount || +!!(dialog as Dialog).pFlags.unread_mark;
+    return unreadCount || +!!(dialog as Dialog).pFlags?.unread_mark;
   }
 
   public isDialogUnread(dialog: Dialog | ForumTopic) {

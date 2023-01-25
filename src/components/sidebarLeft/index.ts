@@ -54,6 +54,7 @@ import SettingSection, {SettingSectionOptions} from '../settingSection';
 import {FOLDER_ID_ARCHIVE} from '../../lib/mtproto/mtproto_config';
 import mediaSizes from '../../helpers/mediaSizes';
 import {fastRaf} from '../../helpers/schedulers';
+import {getInstallPrompt} from '../../helpers/dom/installPrompt';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -218,6 +219,14 @@ export class AppSidebarLeft extends SidebarSlider {
         });
       },
       verify: () => App.isMainDomain
+    }, {
+      icon: 'download',
+      text: 'PWA.Install',
+      onClick: () => {
+        const installPrompt = getInstallPrompt();
+        installPrompt?.();
+      },
+      verify: () => !!getInstallPrompt()
     }];
 
     const filteredButtons = menuButtons.filter(Boolean);

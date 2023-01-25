@@ -6,7 +6,7 @@
 
 import App from '../../../../config/app';
 import DEBUG from '../../../../config/debug';
-import {AutoDownloadPeerTypeSettings, State, STATE_INIT} from '../../../../config/state';
+import {AutoDownloadPeerTypeSettings, State, STATE_INIT, Background, AppTheme} from '../../../../config/state';
 import compareVersion from '../../../../helpers/compareVersion';
 import copy from '../../../../helpers/object/copy';
 import validateInitObject from '../../../../helpers/object/validateInitObject';
@@ -18,6 +18,7 @@ import {recordPromiseBound} from '../../../../helpers/recordPromise';
 // import RESET_STORAGES_PROMISE from "../storages/resetStoragesPromise";
 import {StoragesResults} from '../storages/loadStorages';
 import {logger} from '../../../logger';
+import {WallPaper} from '../../../../layer';
 
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
 // const REFRESH_EVERY = 1e3;
@@ -245,22 +246,6 @@ async function loadStateInner() {
 
   // state = this.state = new Proxy(state, getHandler());
 
-  // * support old version
-  if(!state.settings.hasOwnProperty('theme') && state.settings.hasOwnProperty('nightTheme')) {
-    state.settings.theme = state.settings.nightTheme ? 'night' : 'day';
-    pushToState('settings', state.settings);
-  }
-
-  // * support old version
-  if(!state.settings.hasOwnProperty('themes') && state.settings.background) {
-    state.settings.themes = copy(STATE_INIT.settings.themes);
-    const theme = state.settings.themes.find((t) => t.name === state.settings.theme);
-    if(theme) {
-      theme.background = state.settings.background;
-      pushToState('settings', state.settings);
-    }
-  }
-
   // * migrate auto download settings
   const autoDownloadSettings = state.settings.autoDownload;
   if(autoDownloadSettings?.private !== undefined) {
@@ -291,9 +276,12 @@ async function loadStateInner() {
     pushToState('settings', state.settings);
   }
 
+  const SKIP_VALIDATING_PATHS: Set<string> = new Set([
+    'settings.themes'
+  ]);
   validateInitObject(STATE_INIT, state, (missingKey) => {
     pushToState(missingKey as keyof State, state[missingKey as keyof State]);
-  });
+  }, undefined, SKIP_VALIDATING_PATHS);
 
   let newVersion: string, oldVersion: string;
   if(state.version !== STATE_VERSION || state.build !== BUILD/*  || true */) {
@@ -306,26 +294,83 @@ async function loadStateInner() {
       resetStorages.add('dialogs');
     }
 
-    // * migrate backgrounds (March 13, 2022; to version 1.3.0)
-    if(compareVersion(state.version, '1.3.0') === -1) {
+    if(compareVersion(state.version, '1.7.1') === -1) {
       let migrated = false;
-      state.settings.themes.forEach((theme, idx, arr) => {
-        if((
-          theme.name === 'day' &&
-          theme.background.slug === 'ByxGo2lrMFAIAAAAmkJxZabh8eM' &&
-          theme.background.type === 'image'
-        ) || (
-          theme.name === 'night' &&
-          theme.background.color === '#0f0f0f' &&
-          theme.background.type === 'color'
-        )) {
-          const newTheme = STATE_INIT.settings.themes.find((newTheme) => newTheme.name === theme.name);
-          if(newTheme) {
-            arr[idx] = copy(newTheme);
-            migrated = true;
-          }
+      // * migrate backgrounds (March 13, 2022; to version 1.3.0)
+      if(compareVersion(state.version, '1.3.0') === -1) {
+        migrated = true;
+        state.settings.theme = copy(STATE_INIT.settings.theme);
+        state.settings.themes = copy(STATE_INIT.settings.themes);
+      } else if(compareVersion(state.version, '1.7.1') === -1) { // * migrate backgrounds (January 25th, 2023; to version 1.7.1)
+        migrated = true;
+        const oldThemes = state.settings.themes as any as Array<{
+          name: AppTheme['name'],
+          background: Background
+        }>;
+
+        state.settings.themes = copy(STATE_INIT.settings.themes);
+
+        try {
+          oldThemes.forEach((oldTheme) => {
+            const oldBackground = oldTheme.background;
+            if(!oldBackground) {
+              return;
+            }
+
+            const newTheme = state.settings.themes.find((t) => t.name === oldTheme.name);
+            newTheme.settings.highlightningColor = oldBackground.highlightningColor;
+
+            const getColorFromHex = (hex: string) => hex && parseInt(hex.slice(1), 16);
+
+            const colors = (oldBackground.color || '').split(',').map(getColorFromHex);
+
+            if(oldBackground.color && !oldBackground.slug) {
+              newTheme.settings.wallpaper = {
+                _: 'wallPaperNoFile',
+                id: 0,
+                pFlags: {},
+                settings: {
+                  _: 'wallPaperSettings',
+                  pFlags: {}
+                }
+              };
+            } else {
+              const wallPaper: WallPaper.wallPaper = {
+                _: 'wallPaper',
+                id: 0,
+                access_hash: 0,
+                slug: oldBackground.slug,
+                document: {} as any,
+                pFlags: {},
+                settings: {
+                  _: 'wallPaperSettings',
+                  pFlags: {}
+                }
+              };
+
+              const wallPaperSettings = wallPaper.settings;
+              newTheme.settings.wallpaper = wallPaper;
+              if(oldBackground.slug && !oldBackground.color) {
+                wallPaperSettings.pFlags.blur = oldBackground.blur || undefined;
+              } else if(oldBackground.intensity) {
+                wallPaperSettings.intensity = oldBackground.intensity;
+                wallPaper.pFlags.pattern = true;
+                wallPaper.pFlags.dark = oldBackground.intensity < 0 || undefined;
+              }
+            }
+
+            if(colors.length) {
+              const wallPaperSettings = newTheme.settings.wallpaper.settings;
+              wallPaperSettings.background_color = colors[0];
+              wallPaperSettings.second_background_color = colors[1];
+              wallPaperSettings.third_background_color = colors[2];
+              wallPaperSettings.fourth_background_color = colors[3];
+            }
+          });
+        } catch(err) {
+          console.error('migrating themes error', err);
         }
-      });
+      }
 
       if(migrated) {
         pushToState('settings', state.settings);

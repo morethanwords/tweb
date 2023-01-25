@@ -250,6 +250,10 @@ $btn-menu-z-index: 4;
     margin-inline: .3125rem;
     font-weight: 500;
     transform: scale(1);
+
+    .tgico-char {
+      width: var(--icon-size);
+    }
     
     @include animation-level(2) {
       transition: transform var(--btn-menu-transition);

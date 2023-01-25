@@ -153,8 +153,8 @@ export class ScrollableBase {
     this.onScrolledBottom = undefined;
   }
 
-  public append(element: HTMLElement) {
-    this.container.append(element);
+  public append(...args: Parameters<HTMLElement['append']>) {
+    this.container.append(...args);
   }
 
   public scrollIntoViewNew(options: Omit<ScrollOptions, 'container'>) {

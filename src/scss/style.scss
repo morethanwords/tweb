@@ -181,7 +181,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   }
 }
 
-@mixin splitColor($property, $color, $light: true, $dark: true, $light-rgb: false, $dark-rgb: false, $rgb: false, $alpha: $hover-alpha) {
+@mixin splitColor($property, $color, $light: true, $dark: true, $light-filled: false, $dark-filled: false, $rgb: false, $alpha: $hover-alpha) {
   --#{$property}: #{$color};
 
   $lightened: hover-color($color);
@@ -189,8 +189,8 @@ $chat-input-inner-padding-handhelds: .25rem;
     --light-#{$property}: #{$lightened};
   }
 
-  @if $light-rgb != false {
-    --light-filled-#{$property}: #{rgba-to-rgb($lightened, $light-rgb)};
+  @if $light-filled != false {
+    --light-filled-#{$property}: #{rgba-to-rgb($lightened, $light-filled)};
   }
 
   $darkened: darken($color, $alpha * 100);
@@ -198,8 +198,8 @@ $chat-input-inner-padding-handhelds: .25rem;
     --dark-#{$property}: #{$darkened};
   }
 
-  @if $dark-rgb != false {
-    --dark-filled-#{$property}: #{rgba-to-rgb($darkened, $dark-rgb)};
+  @if $dark-filled != false {
+    --dark-filled-#{$property}: #{rgba-to-rgb($darkened, $dark-filled)};
   }
 
   @if $rgb != false {
@@ -223,7 +223,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   --input-search-background-color: #fff;
   --input-search-border-color: #dfe1e5;
 
-  @include splitColor(primary-color, #3390ec, true, true, #fff, false, true, .04);
+  @include splitColor(primary-color, #3390ec, true, true, #fff, false, true);
   @include splitColor(primary-text-color, #000, false, false, false, false, true);
 
   --secondary-color: #c4c9cc;
@@ -247,6 +247,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   --menu-background-color: rgba(var(--surface-color-rgb), var(--backdrop-opacity));
 
   --message-background-color: var(--surface-color);
+  --message-time-color: var(--secondary-text-color);
   --message-checkbox-color: #61c642;
   --message-checkbox-border-color: #fff;
   --message-primary-color: var(--primary-color);
@@ -259,6 +260,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   --message-out-link-color: var(--link-color);
   @include splitColor(message-out-primary-color, #4fae4e, false, false, $message-out-background-color);
   --message-out-status-color: var(--message-out-primary-color);
+  --message-out-time-color: var(--message-out-status-color);
   --message-out-audio-play-button-color: #fff;
   --message-out-selection-background-color: var(--selection-background-color);
 
@@ -323,6 +325,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   --menu-background-color: rgba(var(--surface-color-rgb), .75);
 
   --message-background-color: var(--surface-color);
+  --message-time-color: var(--secondary-text-color);
   --message-checkbox-color: var(--primary-color);
   --message-checkbox-border-color: #fff;
   --message-secondary-color: var(--secondary-color);
@@ -333,7 +336,8 @@ $chat-input-inner-padding-handhelds: .25rem;
   @include splitColor(message-out-background-color, $message-out-background-color, true, true);
   --message-out-link-color: #fff;
   @include splitColor(message-out-primary-color, #fff, false, false, $message-out-background-color);
-  --message-out-status-color: rgba(255, 255, 255, .6);
+  --message-out-status-color: #fff;
+  --message-out-time-color: rgba(255, 255, 255, .6);
   --message-out-audio-play-button-color: var(--message-out-background-color);
   --message-out-selection-background-color: rgba(var(--surface-color-rgb), .4);
   // * Night theme end
@@ -395,6 +399,7 @@ $chat-input-inner-padding-handhelds: .25rem;
 @import "partials/customEmoji";
 @import "partials/usernames";
 @import "partials/topics";
+@import "partials/themes";
 
 @import "partials/popups/popup";
 @import "partials/popups/editAvatar";

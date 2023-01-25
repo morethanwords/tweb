@@ -30,6 +30,8 @@ export type PushSubscriptionNotify = {
   tokenValue: string
 };
 
+const PING_PUSH_INTERVAL = 10000;
+
 export class WebPushApiManager extends EventListenerBase<{
   push_notification_click: (n: PushNotificationObject) => void,
   push_init: (n: PushSubscriptionNotify) => void,
@@ -187,7 +189,7 @@ export class WebPushApiManager extends EventListenerBase<{
       settings: this.settings
     });
 
-    this.isAliveTO = setTimeout(this.isAliveNotify, 10000);
+    this.isAliveTO = setTimeout(this.isAliveNotify, PING_PUSH_INTERVAL);
   }
 
   public setSettings(newSettings: WebPushApiManager['settings']) {

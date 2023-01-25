@@ -8,16 +8,17 @@ import {AppMediaPlaybackController} from '../components/appMediaPlaybackControll
 import {IS_MOBILE} from '../environment/userAgent';
 import getTimeFormat from '../helpers/getTimeFormat';
 import {nextRandomUint} from '../helpers/random';
-import {AutoDownloadSettings, NotifyPeer, PeerNotifySettings} from '../layer';
+import {AutoDownloadSettings, BaseTheme, NotifyPeer, PeerNotifySettings, Theme, ThemeSettings, WallPaper} from '../layer';
 import {TopPeerType, MyTopPeer} from '../lib/appManagers/appUsersManager';
 import DialogsStorage from '../lib/storages/dialogs';
 import FiltersStorage from '../lib/storages/filters';
-import {AuthState} from '../types';
+import {AuthState, Modify} from '../types';
 import App from './app';
 
 const STATE_VERSION = App.version;
 const BUILD = App.build;
 
+// ! DEPRECATED
 export type Background = {
   type?: 'color' | 'image' | 'default', // ! DEPRECATED
   blur: boolean,
@@ -28,10 +29,12 @@ export type Background = {
   id: string | number,  // wallpaper id
 };
 
-export type Theme = {
+export type AppTheme = Modify<Theme, {
   name: 'day' | 'night' | 'system',
-  background: Background
-};
+  settings?: Modify<ThemeSettings, {
+    highlightningColor: string
+  }>
+}>;
 
 export type AutoDownloadPeerTypeSettings = {
   contacts: boolean,
@@ -95,8 +98,8 @@ export type State = {
       big: boolean
     },
     background?: Background, // ! DEPRECATED
-    themes: Theme[],
-    theme: Theme['name'],
+    themes: AppTheme[],
+    theme: AppTheme['name'],
     notifications: {
       sound: boolean
     },
@@ -110,41 +113,101 @@ export type State = {
   notifySettings: {[k in Exclude<NotifyPeer['_'], 'notifyPeer'>]?: PeerNotifySettings.peerNotifySettings}
 };
 
-const BACKGROUND_DAY_DESKTOP: Background = {
-  blur: false,
-  slug: 'pattern',
-  color: '#dbddbb,#6ba587,#d5d88d,#88b884',
-  highlightningColor: 'hsla(86.4, 43.846153%, 45.117647%, .4)',
-  intensity: 50,
-  id: '1'
-};
+// const BACKGROUND_DAY_MOBILE: Background = {
+//   blur: false,
+//   slug: '',
+//   color: '#dbddbb,#6ba587,#d5d88d,#88b884',
+//   highlightningColor: 'hsla(86.4, 43.846153%, 45.117647%, .4)',
+//   intensity: 0,
+//   id: '1'
+// };
 
-const BACKGROUND_DAY_MOBILE: Background = {
-  blur: false,
+// const BACKGROUND_NIGHT_MOBILE: Background = {
+//   blur: false,
+//   slug: '',
+//   color: '#0f0f0f',
+//   highlightningColor: 'hsla(0, 0%, 3.82353%, 0.4)',
+//   intensity: 0,
+//   id: '-1'
+// };
+
+export const DEFAULT_THEME: Theme = {
+  _: 'theme',
+  access_hash: '',
+  id: '',
+  settings: [{
+    _: 'themeSettings',
+    pFlags: {},
+    base_theme: {_: 'baseThemeClassic'},
+    accent_color: 0x3390ec,
+    message_colors: [0x4fae4e],
+    wallpaper: {
+      _: 'wallPaper',
+      pFlags: {
+        default: true,
+        pattern: true
+      },
+      access_hash: '',
+      document: undefined,
+      id: '',
+      slug: 'pattern',
+      settings: {
+        _: 'wallPaperSettings',
+        pFlags: {},
+        intensity: 50,
+        background_color: 0xdbddbb,
+        second_background_color: 0x6ba587,
+        third_background_color: 0xd5d88d,
+        fourth_background_color: 0x88b884
+      }
+    }
+  }, {
+    _: 'themeSettings',
+    pFlags: {},
+    base_theme: {_: 'baseThemeNight'},
+    accent_color: 0x8774E1,
+    message_colors: [0x8774E1],
+    wallpaper: {
+      _: 'wallPaper',
+      pFlags: {
+        default: true,
+        pattern: true,
+        dark: true
+      },
+      access_hash: '',
+      document: undefined,
+      id: '',
+      slug: 'pattern',
+      settings: {
+        _: 'wallPaperSettings',
+        pFlags: {},
+        intensity: -50,
+        background_color: 0xfec496,
+        second_background_color: 0xdd6cb9,
+        third_background_color: 0x962fbf,
+        fourth_background_color: 0x4f5bd5
+      }
+    }
+  }],
   slug: '',
-  color: '#dbddbb,#6ba587,#d5d88d,#88b884',
-  highlightningColor: 'hsla(86.4, 43.846153%, 45.117647%, .4)',
-  intensity: 0,
-  id: '1'
+  title: '',
+  emoticon: '🏠',
+  pFlags: {default: true}
 };
 
-const BACKGROUND_NIGHT_DESKTOP: Background = {
-  blur: false,
-  slug: 'pattern',
-  // color: '#dbddbb,#6ba587,#d5d88d,#88b884',
-  color: '#fec496,#dd6cb9,#962fbf,#4f5bd5',
-  highlightningColor: 'hsla(299.142857, 44.166666%, 37.470588%, .4)',
-  intensity: -50,
-  id: '-1'
-};
-
-const BACKGROUND_NIGHT_MOBILE: Background = {
-  blur: false,
-  slug: '',
-  color: '#0f0f0f',
-  highlightningColor: 'hsla(0, 0%, 3.82353%, 0.4)',
-  intensity: 0,
-  id: '-1'
+const makeDefaultAppTheme = (
+  name: AppTheme['name'],
+  baseTheme: BaseTheme['_'],
+  highlightningColor: string
+): AppTheme => {
+  return {
+    ...DEFAULT_THEME,
+    name,
+    settings: {
+      ...DEFAULT_THEME.settings.find((s) => s.base_theme._ === baseTheme),
+      highlightningColor
+    }
+  };
 };
 
 export const STATE_INIT: State = {
@@ -214,13 +277,10 @@ export const STATE_INIT: State = {
       suggest: true,
       big: true
     },
-    themes: [{
-      name: 'day',
-      background: IS_MOBILE ? BACKGROUND_DAY_MOBILE : BACKGROUND_DAY_DESKTOP
-    }, {
-      name: 'night',
-      background: IS_MOBILE ? BACKGROUND_NIGHT_MOBILE : BACKGROUND_NIGHT_DESKTOP
-    }],
+    themes: [
+      makeDefaultAppTheme('day', 'baseThemeClassic', 'hsla(86.4, 43.846153%, 45.117647%, .4)'),
+      makeDefaultAppTheme('night', 'baseThemeNight', 'hsla(299.142857, 44.166666%, 37.470588%, .4)')
+    ],
     theme: 'system',
     notifications: {
       sound: false

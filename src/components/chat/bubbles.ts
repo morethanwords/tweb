@@ -132,6 +132,7 @@ import confirmationPopup from '../confirmationPopup';
 import wrapPeerTitle from '../wrappers/peerTitle';
 import {PopupPeerCheckboxOptions} from '../popups/peer';
 import toggleDisability from '../../helpers/dom/toggleDisability';
+import {copyTextToClipboard} from '../../helpers/clipboard';
 
 export const USER_REACTIONS_INLINE = false;
 const USE_MEDIA_TAILS = false;
@@ -1671,9 +1672,18 @@ export default class ChatBubbles {
 
     const contactDiv: HTMLElement = findUpClassName(target, 'contact');
     if(contactDiv) {
-      this.chat.appImManager.setInnerPeer({
-        peerId: contactDiv.dataset.peerId.toPeerId()
-      });
+      const peerId = contactDiv.dataset.peerId.toPeerId();
+      if(peerId) {
+        this.chat.appImManager.setInnerPeer({
+          peerId
+        });
+      } else {
+        const phone = contactDiv.querySelector<HTMLElement>('.contact-number');
+        copyTextToClipboard(phone.innerText.replace(/\s/g, ''));
+        toastNew({langPackKey: 'PhoneCopied'});
+        cancelEvent(e);
+      }
+
       return;
     }
 
@@ -3940,11 +3950,9 @@ export default class ChatBubbles {
                   }
 
                   return new Promise<PeerId>((resolve, reject) => {
-                    const popup = new PopupForward({
-                      [this.peerId]: []
-                    }, (peerId) => {
+                    const popup = new PopupForward(undefined, (peerId) => {
                       resolve(peerId);
-                    }, true);
+                    });
 
                     popup.addEventListener('close', () => {
                       reject();
@@ -4568,11 +4576,12 @@ export default class ChatBubbles {
           contactDetails.className = 'contact-details';
           const contactNameDiv = document.createElement('div');
           contactNameDiv.className = 'contact-name';
+          const fullName = [
+            contact.first_name,
+            contact.last_name
+          ].filter(Boolean).join(' ');
           contactNameDiv.append(
-            wrapEmojiText([
-              contact.first_name,
-              contact.last_name
-            ].filter(Boolean).join(' '))
+            fullName.trim() ? wrapEmojiText(fullName) : i18n('AttachContact')
           );
 
           const contactNumberDiv = document.createElement('div');
@@ -4585,7 +4594,8 @@ export default class ChatBubbles {
           const avatarElem = new AvatarElement();
           avatarElem.updateWithOptions({
             lazyLoadQueue: this.lazyLoadQueue,
-            peerId: contact.user_id.toPeerId()
+            peerId: contact.user_id.toPeerId(),
+            peerTitle: fullName.trim() ? undefined : I18n.format('AttachContact', true)[0]
           });
           avatarElem.classList.add('contact-avatar', 'avatar-54');
 

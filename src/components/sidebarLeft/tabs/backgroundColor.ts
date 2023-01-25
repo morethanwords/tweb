@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {Theme} from '../../../config/state';
+import {AppTheme} from '../../../config/state';
 import {hexaToRgba} from '../../../helpers/color';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import findUpClassName from '../../../helpers/dom/findUpClassName';
@@ -16,12 +16,13 @@ import rootScope from '../../../lib/rootScope';
 import ColorPicker, {ColorPickerColor} from '../../colorPicker';
 import SettingSection from '../../settingSection';
 import {SliderSuperTab} from '../../slider';
+import {WallPaper} from '../../../layer';
 
 export default class AppBackgroundColorTab extends SliderSuperTab {
   private colorPicker: ColorPicker;
   private grid: HTMLElement;
   private applyColor: (hex: string, updateColorPicker?: boolean) => void;
-  private theme: Theme;
+  private theme: AppTheme;
 
   init() {
     this.container.classList.add('background-container', 'background-color-container');
@@ -92,8 +93,10 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
 
   private setActive() {
     const active = this.grid.querySelector('.active');
-    const background = this.theme.background;
-    const target = background.color ? this.grid.querySelector(`.grid-item[data-color="${background.color}"]`) : null;
+    const background = this.theme.settings;
+    const wallPaper = background.wallpaper;
+    const color = wallPaper.settings.background_color;
+    const target = color ? this.grid.querySelector(`.grid-item[data-color="${color}"]`) : null;
     if(active === target) {
       return;
     }
@@ -112,14 +115,22 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
       this.colorPicker.setColor(hex);
     } else {
       const rgba = hexaToRgba(hex);
-      const background = this.theme.background;
+      const settings = this.theme.settings;
       const hsla = highlightningColor(rgba);
 
-      background.id = '2';
-      background.intensity = 0;
-      background.slug = '';
-      background.color = hex.toLowerCase();
-      background.highlightningColor = hsla;
+      const wallPaper: WallPaper.wallPaperNoFile = {
+        _: 'wallPaperNoFile',
+        id: 0,
+        pFlags: {},
+        settings: {
+          _: 'wallPaperSettings',
+          background_color: parseInt(hex.slice(1), 16)
+        }
+      };
+
+      settings.wallpaper = wallPaper;
+      settings.highlightningColor = hsla;
+
       this.managers.appStateManager.pushToState('settings', rootScope.settings);
 
       appImManager.applyCurrentTheme(undefined, undefined, true);
@@ -133,17 +144,17 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
 
   onOpen() {
     setTimeout(() => {
-      const background = this.theme.background;
+      const settings = this.theme.settings;
+      const color = settings?.wallpaper?.settings?.background_color;
 
-      const color = (background.color || '').split(',')[0];
-      const isColored = !!color && !background.slug;
+      const isColored = !!color && settings.wallpaper._ === 'wallPaperNoFile';
 
       // * set active if type is color
       if(isColored) {
         this.colorPicker.onChange = this.onColorChange;
       }
 
-      this.colorPicker.setColor(color || '#cccccc');
+      this.colorPicker.setColor((color && '#' + color.toString(16)) || '#cccccc');
 
       if(!isColored) {
         this.colorPicker.onChange = this.onColorChange;

@@ -186,9 +186,9 @@ module.exports = {
     // },
     compress: true,
     http2: useLocalNotLocal ? true : (useLocal ? undefined : true),
-    https: useLocal ? undefined : {
-      key: fs.readFileSync(__dirname + '/certs/server-key.pem', 'utf8'),
-      cert: fs.readFileSync(__dirname + '/certs/server-cert.pem', 'utf8')
+    https: useLocal ? undefined : { // generated keys using mkcert
+      key: fs.readFileSync(__dirname + '/certs/localhost-key.pem', 'utf8'),
+      cert: fs.readFileSync(__dirname + '/certs/localhost.pem', 'utf8')
     },
     allowedHosts: useLocal ? undefined : [
       domain

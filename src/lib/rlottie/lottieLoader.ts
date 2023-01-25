@@ -151,11 +151,7 @@ export class LottieLoader {
     ]).then(() => player);
   }
 
-  public async loadAnimationWorker(
-    params: RLottieOptions,
-    group: AnimationItemGroup = params.group || '',
-    middleware?: () => boolean
-  ): Promise<RLottiePlayer> {
+  public async loadAnimationWorker(params: RLottieOptions): Promise<RLottiePlayer> {
     if(!IS_WEB_ASSEMBLY_SUPPORTED) {
       return this.loadPromise as any;
     }
@@ -164,6 +160,7 @@ export class LottieLoader {
       await this.loadLottieWorkers();
     }
 
+    const {middleware, group = ''} = params;
     if(middleware && !middleware()) {
       throw makeError('MIDDLEWARE');
     }
@@ -190,7 +187,7 @@ export class LottieLoader {
 
     const player = this.initPlayer(containers, params);
 
-    animationIntersector.addAnimation(player, group);
+    animationIntersector.addAnimation(player, group, undefined, middleware);
 
     return player;
   }

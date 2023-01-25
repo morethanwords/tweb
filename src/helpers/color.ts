@@ -15,6 +15,31 @@ export type ColorRgba = [number, number, number, number];
 export type ColorRgb = [number, number, number];
 
 /**
+ * https://stackoverflow.com/a/54070620/6758968
+ * r, g, b in [0, 255]
+ * @returns h in [0,360) and s, v in [0,1]
+ */
+export function rgbToHsv(r: number, g: number, b: number): [number, number, number] {
+  r /= 255, g /= 255, b /= 255;
+  const v = Math.max(r, g, b),
+    c = v - Math.min(r, g, b);
+  const h = c && ((v === r) ? (g - b ) / c : ((v == g) ? 2 + (b - r) / c : 4 + (r - g) / c));
+  return [60 * (h < 0 ? h + 6 : h), v && c / v, v];
+}
+
+/**
+ * https://stackoverflow.com/a/54024653/6758968
+ * @param h [0, 360]
+ * @param s [0, 1]
+ * @param v [0, 1]
+ * @returns r, g, b in [0, 255]
+ */
+export function hsvToRgb(h: number, s: number, v: number): ColorRgb {
+  const f = (n: number, k: number = (n + h / 60) % 6) => Math.round((v - v * s * Math.max(Math.min(k, 4 - k, 1), 0)) * 255);
+  return [f(5), f(3), f(1)];
+}
+
+/**
  * @returns h [0, 360], s [0, 100], l [0, 100], a [0, 1]
  */
 export function rgbaToHsla(r: number, g: number, b: number, a: number = 1): ColorHsla {
@@ -55,13 +80,11 @@ export function rgbaToHsla(r: number, g: number, b: number, a: number = 1): Colo
 /**
  * Converts an HSL color value to RGB. Conversion formula
  * adapted from http://en.wikipedia.org/wiki/HSL_color_space.
- * Assumes h in [0, 360], s, and l are contained in the set [0, 1], a in [0, 1] and
- * returns r, g, and b in the set [0, 255].
  *
- * @param   {number}  h       The hue
- * @param   {number}  s       The saturation
- * @param   {number}  l       The lightness
- * @return  {Array}           The RGB representation
+ * @param   {number}  h       The hue [0, 360]
+ * @param   {number}  s       The saturation [0, 1]
+ * @param   {number}  l       The lightness [0, 1]
+ * @return  {Array}           The RGB representation [0, 255]
  */
 export function hslaToRgba(h: number, s: number, l: number, a: number): ColorRgba {
   h /= 360, s /= 100, l /= 100;
@@ -86,7 +109,7 @@ export function hslaToRgba(h: number, s: number, l: number, a: number): ColorRgb
     b = hue2rgb(p, q, h - 1/3);
   }
 
-  return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255), Math.round(a * 255)];
+  return [r, g, b, a].map((v) => Math.round(v * 255)) as ColorRgba;
 }
 
 export function hslaStringToRgba(hsla: string) {
