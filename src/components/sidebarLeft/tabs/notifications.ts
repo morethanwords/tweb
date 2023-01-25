@@ -6,7 +6,7 @@
 
 import Row from '../../row';
 import CheckboxField from '../../checkboxField';
-import {InputNotifyPeer, Update} from '../../../layer';
+import {InputNotifyPeer, InputPeerNotifySettings, Update} from '../../../layer';
 import {SliderSuperTabEventable} from '../../sliderTab';
 import rootScope from '../../../lib/rootScope';
 import {LangPackKey} from '../../../lib/langPack';
@@ -71,10 +71,11 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
             return;
           }
 
-          const inputSettings: any = copy(notifySettings);
+          const inputSettings: InputPeerNotifySettings = copy(notifySettings) as any;
           inputSettings._ = 'inputPeerNotifySettings';
           inputSettings.mute_until = mute ? MUTE_UNTIL : 0;
           inputSettings.show_previews = showPreviews;
+          delete inputSettings.flags;
 
           this.managers.appNotificationsManager.updateNotifySettings(inputNotifyPeer, inputSettings);
         }, {once: true});

@@ -594,7 +594,7 @@ export default class PopupNewMedia extends PopupElement {
     } else {
       const img = new Image();
       itemDiv.append(img);
-      const url = await apiManagerProxy.invoke('createObjectURL', file);
+      const url = params.objectURL = await apiManagerProxy.invoke('createObjectURL', file);
 
       await renderImageFromUrlPromise(img, url);
       const mimeType = params.file.type;

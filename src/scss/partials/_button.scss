@@ -251,7 +251,7 @@ $btn-menu-z-index: 4;
     font-weight: 500;
     transform: scale(1);
 
-    .tgico-char {
+    &.tgico-char:before {
       width: var(--icon-size);
     }
     
