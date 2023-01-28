@@ -126,8 +126,7 @@ export class AppSidebarLeft extends SidebarSlider {
       checked: themeController.getTheme().name === 'night'
     });
     themeCheckboxField.input.addEventListener('change', async() => {
-      await this.managers.appStateManager.setByKey('settings.theme', themeCheckboxField.input.checked ? 'night' : 'day');
-      rootScope.dispatchEvent('theme_change');
+      themeController.switchTheme(themeCheckboxField.input.checked ? 'night' : 'day');
     });
 
     rootScope.addEventListener('theme_change', () => {

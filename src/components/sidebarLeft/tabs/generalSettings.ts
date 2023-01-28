@@ -11,11 +11,11 @@ import RadioField from '../../radioField';
 import rootScope from '../../../lib/rootScope';
 import {IS_APPLE} from '../../../environment/userAgent';
 import Row, {CreateRowFromCheckboxField} from '../../row';
-import AppBackgroundTab, {getHexColorFromTelegramColor, getRgbColorFromTelegramColor} from './background';
+import AppBackgroundTab from './background';
 import {LangPackKey, _i18n} from '../../../lib/langPack';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import assumeType from '../../../helpers/assumeType';
-import {AvailableReaction, BaseTheme, MessagesAllStickers, StickerSet} from '../../../layer';
+import {BaseTheme, MessagesAllStickers, StickerSet} from '../../../layer';
 import LazyLoadQueue from '../../lazyLoadQueue';
 import PopupStickers from '../../popups/stickers';
 import eachMinute from '../../../helpers/eachMinute';
@@ -23,7 +23,7 @@ import {SliderSuperTabEventable} from '../../sliderTab';
 import IS_GEOLOCATION_SUPPORTED from '../../../environment/geolocationSupport';
 import AppQuickReactionTab from './quickReaction';
 import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
-import {State} from '../../../config/state';
+import {DEFAULT_THEME, State} from '../../../config/state';
 import wrapStickerSetThumb from '../../wrappers/stickerSetThumb';
 import wrapStickerToRow from '../../wrappers/stickerToRow';
 import SettingSection, {generateSection} from '../../settingSection';
@@ -32,8 +32,6 @@ import wrapStickerEmoji from '../../wrappers/stickerEmoji';
 import {Theme} from '../../../layer';
 import findUpClassName from '../../../helpers/dom/findUpClassName';
 import RLottiePlayer from '../../../lib/rlottie/rlottiePlayer';
-import {hexToRgb, ColorRgb, rgbaToHexa, rgbaToHsla, rgbToHsv, hsvToRgb} from '../../../helpers/color';
-import clamp from '../../../helpers/number/clamp';
 import themeController from '../../../helpers/themeController';
 
 export class RangeSettingSelector {
@@ -97,7 +95,7 @@ export class RangeSettingSelector {
 export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
   public static getInitArgs() {
     return {
-      accountThemes: rootScope.managers.apiManager.invokeApi('account.getThemes', {format: 'android', hash: 0}),
+      themes: rootScope.managers.appThemesManager.getThemes(),
       allStickers: rootScope.managers.appStickersManager.getAllStickers(),
       quickReaction: rootScope.managers.appReactionsManager.getQuickReaction()
     };
@@ -139,7 +137,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
       );
     }
 
-    if(false) {
+    {
       const container = section('ColorTheme');
 
       const scrollable = new ScrollableX(null);
@@ -149,210 +147,9 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
       type K = {theme: Theme, player?: RLottiePlayer};
       const themesMap = new Map<HTMLElement, K>();
 
-      type AppColorName = 'primary-color' | 'message-out-primary-color';
-      type AppColor = {
-        rgb?: boolean,
-        light?: boolean,
-        lightFilled?: boolean,
-        dark?: boolean,
-        darkRgb?: boolean,
-        darkFilled?: boolean
-      };
+      let lastOnFrameNo: (frameNo: number) => void;
 
-      const appColorMap: {[name in AppColorName]: AppColor} = {
-        'primary-color': {
-          rgb: true,
-          light: true,
-          lightFilled: true,
-          dark: true,
-          darkRgb: true
-        },
-        'message-out-primary-color': {
-          rgb: true,
-          light: true,
-          lightFilled: true,
-          dark: true
-        }
-      };
-
-      var mix = function(color1: ColorRgb, color2: ColorRgb, weight: number) {
-        const out = new Array<number>(3) as ColorRgb;
-        for(let i = 0; i < 3; ++i) {
-          const v1 = color1[i], v2 = color2[i];
-          out[i] = Math.floor(v2 + (v1 - v2) * (weight / 100.0));
-        }
-
-        return out;
-      };
-
-      function computePerceivedBrightness(color: ColorRgb) {
-        return (color[0] * 0.2126 + color[1] * 0.7152 + color[2] * 0.0722) / 255;
-      }
-
-      function getAverageColor(color1: ColorRgb, color2: ColorRgb): ColorRgb {
-        return color1.map((v, i) => Math.round((v + color2[i]) / 2)) as ColorRgb;
-      }
-
-      const getAccentColor = (baseHsv: number[], baseColor: ColorRgb, elementColor: ColorRgb): ColorRgb => {
-        const hsvTemp3 = rgbToHsv(...baseColor);
-        const hsvTemp4 = rgbToHsv(...elementColor);
-
-        const dist = Math.min(1.5 * hsvTemp3[1] / baseHsv[1], 1);
-
-        hsvTemp3[0] = Math.min(360, hsvTemp4[0] - hsvTemp3[0] + baseHsv[0]);
-        hsvTemp3[1] = Math.min(1, hsvTemp4[1] * baseHsv[1] / hsvTemp3[1]);
-        hsvTemp3[2] = Math.min(1, (hsvTemp4[2] / hsvTemp3[2] + dist - 1) * baseHsv[2] / dist);
-        if(hsvTemp3[2] < 0.3) {
-          return elementColor;
-        }
-        return hsvToRgb(...hsvTemp3);
-      };
-
-      const changeColorAccent = (baseHsv: number[], accentHsv: number[], color: ColorRgb, isDarkTheme = themeController.isNight()) => {
-        const colorHsv = rgbToHsv(...color);
-
-        const diffH = Math.min(Math.abs(colorHsv[0] - baseHsv[0]), Math.abs(colorHsv[0] - baseHsv[0] - 360));
-        if(diffH > 30) {
-          return color;
-        }
-
-        const dist = Math.min(1.5 * colorHsv[1] / baseHsv[1], 1);
-
-        colorHsv[0] = Math.min(360, colorHsv[0] + accentHsv[0] - baseHsv[0]);
-        colorHsv[1] = Math.min(1, colorHsv[1] * accentHsv[1] / baseHsv[1]);
-        colorHsv[2] = Math.min(1, colorHsv[2] * (1 - dist + dist * accentHsv[2] / baseHsv[2]));
-
-        let newColor = hsvToRgb(...colorHsv);
-
-        const origBrightness = computePerceivedBrightness(color);
-        const newBrightness = computePerceivedBrightness(newColor);
-
-        // We need to keep colors lighter in dark themes and darker in light themes
-        const needRevertBrightness = isDarkTheme ? origBrightness > newBrightness : origBrightness < newBrightness;
-
-        if(needRevertBrightness) {
-          const amountOfNew = 0.6;
-          const fallbackAmount = (1 - amountOfNew) * origBrightness / newBrightness + amountOfNew;
-          newColor = changeBrightness(newColor, fallbackAmount);
-        }
-
-        return newColor;
-      };
-
-      const changeBrightness = (color: ColorRgb, amount: number) => {
-        return color.map((v) => clamp(Math.round(v * amount), 0, 255)) as ColorRgb;
-      };
-
-      const applyAppColor = ({
-        name,
-        hex,
-        element = document.documentElement,
-        lightenAlpha = 0.08,
-        darkenAlpha = lightenAlpha
-      }: {
-        name: AppColorName,
-        hex: string,
-        element?: HTMLElement,
-        lightenAlpha?: number
-        darkenAlpha?: number
-      }) => {
-        const appColor = appColorMap[name];
-        const rgb = hexToRgb(hex);
-        const hsla = rgbaToHsla(...rgb);
-
-        const mixColor2 = hexToRgb(themeController.isNight() ? '#212121' : '#ffffff');
-        const lightenedRgb = mix(rgb, mixColor2, lightenAlpha * 100);
-
-        const darkenedHsla: typeof hsla = {
-          ...hsla,
-          l: hsla.l - darkenAlpha * 100
-        };
-
-        element.style.setProperty('--' + name, hex);
-        appColor.rgb && element.style.setProperty('--' + name + '-rgb', rgb.join(','));
-        appColor.light && element.style.setProperty('--light-' + name, `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${lightenAlpha})`);
-        appColor.lightFilled && element.style.setProperty('--light-filled-' + name, `rgb(${lightenedRgb[0]}, ${lightenedRgb[1]}, ${lightenedRgb[2]})`);
-        appColor.dark && element.style.setProperty('--dark-' + name, `hsl(${darkenedHsla.h}, ${darkenedHsla.s}%, ${darkenedHsla.l}%)`);
-        // appColor.darkFilled && element.style.setProperty('--dark-' + name, `hsl(${darkenedHsla.h}, ${darkenedHsla.s}%, ${darkenedHsla.l}%)`);
-      };
-
-      const applyTheme = (theme: Theme, element = document.documentElement) => {
-        const isNight = themeController.isNight();
-        const themeSettings = theme.settings.find((settings) => settings.base_theme._ === (isNight ? 'baseThemeNight' : 'baseThemeClassic'));
-
-        console.log('applyTheme', theme, themeSettings);
-
-        // android `accentBaseColor` and `key_chat_outBubble`
-        const PRIMARY_COLOR = isNight ? '#3e88f6' : '#328ace';
-        const LIGHT_PRIMARY_COLOR = isNight ? '#366cae' : '#e6f2fb';
-
-        const hsvTemp1 = rgbToHsv(...hexToRgb(PRIMARY_COLOR)); // primary base
-        let hsvTemp2 = rgbToHsv(...getRgbColorFromTelegramColor(themeSettings.accent_color)); // new primary
-
-        const newAccentRgb = changeColorAccent(
-          hsvTemp1,
-          hsvTemp2,
-          hexToRgb(PRIMARY_COLOR)
-          // hexToRgb('#eeffde')
-        );
-        const newAccentHex = rgbaToHexa(newAccentRgb);
-
-        let h = getHexColorFromTelegramColor(themeSettings.accent_color);
-        console.log(h, newAccentHex);
-        h = newAccentHex;
-
-        applyAppColor({
-          name: 'primary-color',
-          hex: h,
-          // hex: newAccentHex,
-          element,
-          darkenAlpha: 0.04
-        });
-
-        if(element === document.documentElement) {
-          AppBackgroundTab.setBackgroundDocument(themeSettings.wallpaper);
-        }
-
-        if(!themeSettings.message_colors?.length) {
-          return;
-        }
-
-        const messageOutRgbColor = hexToRgb(LIGHT_PRIMARY_COLOR); // light primary
-
-        const firstColor = getRgbColorFromTelegramColor(themeSettings.message_colors[0]);
-
-        let messageColor = firstColor;
-        if(themeSettings.message_colors.length > 1) {
-          themeSettings.message_colors.slice(1).forEach((nextColor) => {
-            messageColor = getAverageColor(messageColor, getRgbColorFromTelegramColor(nextColor));
-          });
-
-          messageColor = getAccentColor(hsvTemp1, messageOutRgbColor, firstColor);
-        }
-
-        const o = messageColor;
-        // const hsvTemp1 = rgbToHsv(...hexToRgb('#4fae4e'));
-        // const hsvTemp1 = rgbToHsv(...hexToRgb('#328ace'));
-        hsvTemp2 = rgbToHsv(...o);
-
-        const c = changeColorAccent(
-          hsvTemp1,
-          hsvTemp2,
-          messageOutRgbColor
-          // hexToRgb('#eeffde')
-        );
-
-        console.log(o, c);
-
-        applyAppColor({
-          name: 'message-out-primary-color',
-          hex: rgbaToHexa(messageColor),
-          element,
-          lightenAlpha: isNight ? 0.76 : 0.12
-        });
-      };
-
-      attachClickEvent(themesContainer, (e) => {
+      attachClickEvent(themesContainer, async(e) => {
         const container = findUpClassName(e.target, 'theme-container');
         if(!container) {
           return;
@@ -366,25 +163,49 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
         const item = themesMap.get(container);
         container.classList.add('active');
 
-        if(item.player) {
-          if(item.player.paused) {
-            item.player.restart();
-          }
-        }
+        await themeController.applyNewTheme(item.theme);
 
-        applyTheme(item.theme);
+        lastOnFrameNo?.(-1);
+
+        if(item.player && rootScope.settings.animationsEnabled) {
+          if(item.player.paused) {
+            item.player.stop(true);
+          }
+
+          const pre = 'translateX(-50%) ';
+          item.player.el[0].style.transform = pre + 'scale(2)';
+
+          const onFrameNo = lastOnFrameNo = (frameNo) => {
+            if(item.player.maxFrame === frameNo || frameNo === -1) {
+              item.player.el[0].style.transform = '';
+              item.player.removeEventListener('enterFrame', onFrameNo);
+
+              if(lastOnFrameNo === onFrameNo) {
+                lastOnFrameNo = undefined;
+              }
+            }
+          };
+
+          setTimeout(() => {
+            if(lastOnFrameNo !== onFrameNo) {
+              return;
+            }
+
+            item.player.play();
+            item.player.addEventListener('enterFrame', onFrameNo);
+          }, 250);
+        }
       }, {listenerSetter: this.listenerSetter});
 
-      const promise = p.accountThemes.then(async(accountThemes) => {
-        if(accountThemes._ === 'account.themesNotModified') {
-          return;
-        }
+      const promise = p.themes.then(async(themes) => {
+        const currentTheme = themeController.getTheme();
+        const isNight = themeController.isNight();
 
-        console.log(accountThemes);
+        const defaultThemes = themes.filter((theme) => theme.pFlags.default/*  && theme.settings[0].message_colors.length === 1 */);
+        defaultThemes.unshift(DEFAULT_THEME);
 
-        const defaultThemes = accountThemes.themes.filter((theme) => theme.pFlags.default);
-        const promises = defaultThemes.map(async(theme, idx) => {
-          const baseTheme: BaseTheme['_'] = themeController.isNight() ? 'baseThemeNight' : 'baseThemeClassic';
+        const promises = defaultThemes.map(async(theme) => {
+          const baseTheme: BaseTheme['_'] = isNight ? 'baseThemeNight' : 'baseThemeClassic';
           const wallpaper = theme.settings.find((settings) => settings.base_theme._ === baseTheme).wallpaper;
           const result = AppBackgroundTab.addWallPaper(wallpaper);
 
@@ -392,9 +213,9 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
           const k: K = {theme};
           themesMap.set(container, k);
 
-          applyTheme(theme, container);
+          themeController.applyTheme(theme, container);
 
-          if(idx === 0) {
+          if(theme.id === currentTheme.id) {
             container.classList.add('active');
           }
 
@@ -404,7 +225,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
           if(emoticon) {
             emoticonContainer = document.createElement('div');
             emoticonContainer.classList.add('theme-emoticon');
-            const size = 28;
+            const size = 28 * 1.75;
             wrapStickerEmoji({
               div: emoticonContainer,
               width: size,
@@ -412,7 +233,8 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
               emoji: theme.emoticon,
               managers: this.managers,
               loadPromises,
-              middleware: this.middlewareHelper.get()
+              middleware: this.middlewareHelper.get(),
+              play: rootScope.settings.animationsEnabled
             }).then(({render}) => render).then((player) => {
               k.player = player as RLottiePlayer;
             });

@@ -311,17 +311,6 @@ export class AppDocsManager extends AppManager {
     thumb.bytes = bytes;
   }
 
-  public getWallPapers() {
-    return this.apiManager.invokeApiHashable({method: 'account.getWallPapers'}).then((accountWallpapers) => {
-      const wallPapers = (accountWallpapers as AccountWallPapers.accountWallPapers).wallpapers as WallPaper.wallPaper[];
-      wallPapers.forEach((wallPaper) => {
-        wallPaper.document = this.saveDoc(wallPaper.document);
-      });
-
-      return wallPapers;
-    });
-  }
-
   public prepareWallPaperUpload(file: File) {
     const id = 'wallpaper-upload-' + ++uploadWallPaperTempId;
 

@@ -461,6 +461,24 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         break;
       }
 
+      case 'messageActionSetChatTheme': {
+        const isMe = !!message.pFlags.out;
+        let authorElement: ReturnType<typeof getNameDivHTML>;
+        if(!isMe) {
+          authorElement = getNameDivHTML(message.fromId, plain);
+        }
+
+        args = authorElement ? [authorElement] : [];
+
+        if(action.emoticon) {
+          args.push(wrapEmojiText(action.emoticon));
+          langPackKey = isMe ? 'ChatThemeChangedYou' : 'ChatThemeChangedTo';
+        } else {
+          langPackKey = isMe ? 'ChatThemeDisabledYou' : 'ChatThemeDisabled';
+        }
+        break;
+      }
+
       default:
         langPackKey = (langPack[_] || `[${action._}]`) as any;
         break;

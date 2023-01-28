@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {Photo} from '../../layer';
+import type {Photo, WallPaper} from '../../layer';
 import {logger} from '../logger';
 import bytesToHex from '../../helpers/bytes/bytesToHex';
 import deepEqual from '../../helpers/object/deepEqual';
 import {AppManager} from '../appManagers/manager';
 import makeError from '../../helpers/makeError';
 
-export type ReferenceContext = ReferenceContext.referenceContextProfilePhoto | ReferenceContext.referenceContextMessage | ReferenceContext.referenceContextEmojiesSounds | ReferenceContext.referenceContextReactions | ReferenceContext.referenceContextUserFull | ReferenceContext.referenceContextCustomEmoji | ReferenceContext.referenceContextAttachMenuBotIcon;
+export type ReferenceContext = ReferenceContext.referenceContextProfilePhoto | ReferenceContext.referenceContextMessage | ReferenceContext.referenceContextEmojiesSounds | ReferenceContext.referenceContextReactions | ReferenceContext.referenceContextUserFull | ReferenceContext.referenceContextCustomEmoji | ReferenceContext.referenceContextAttachMenuBotIcon | ReferenceContext.referenceContextWallPaper;
 export namespace ReferenceContext {
   export type referenceContextProfilePhoto = {
     type: 'profilePhoto',
@@ -45,6 +45,11 @@ export namespace ReferenceContext {
   export type referenceContextAttachMenuBotIcon = {
     type: 'attachMenuBotIcon',
     botId: BotId
+  };
+
+  export type referenceContextWallPaper = {
+    type: 'wallPaper',
+    wallPaperId: WallPaper['id']
   };
 }
 
@@ -167,6 +172,11 @@ export class ReferenceDatabase extends AppManager {
 
       case 'attachMenuBotIcon': {
         promise = this.appAttachMenuBotsManager.getAttachMenuBot(context.botId, true) as any;
+        break;
+      }
+
+      case 'wallPaper': {
+        promise = this.appThemesManager.getWallPaperById(context.wallPaperId);
         break;
       }
 

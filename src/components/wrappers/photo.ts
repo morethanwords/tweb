@@ -90,13 +90,22 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
   // } else {
 
   if(boxWidth && boxHeight && !size) { // !album
-    const set = setAttachmentSize(photo, container, boxWidth, boxHeight, undefined, message, undefined, isImageFromDocument ? {
-      _: 'photoSize',
-      w: photo.w,
-      h: photo.h,
-      size: photo.size,
-      type: THUMB_TYPE_FULL
-    } : undefined);
+    const set = setAttachmentSize(
+      photo,
+      container,
+      boxWidth,
+      boxHeight,
+      undefined,
+      message,
+      undefined,
+      isImageFromDocument ? {
+        _: 'photoSize',
+        w: photo.w,
+        h: photo.h,
+        size: photo.size,
+        type: THUMB_TYPE_FULL
+      } : undefined
+    );
     size = set.photoSize;
     isFit = set.isFit;
     cacheContext = await managers.thumbsStorage.getCacheContext(photo, size.type);

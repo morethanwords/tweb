@@ -4,6 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type {WallPaper} from '../layer';
+import clamp from './number/clamp';
+
 export type ColorHsla = {
   h: number,
   s: number,
@@ -171,4 +174,93 @@ export function hslaStringToHexa(hsla: string) {
 
 export function hslaStringToHex(hsla: string) {
   return hslaStringToHexa(hsla).slice(0, -2);
+}
+
+/**
+ * @param weight [0, 1]
+ */
+export function mixColors(color1: ColorRgb, color2: ColorRgb, weight: number) {
+  const out = new Array<number>(3) as ColorRgb;
+  for(let i = 0; i < 3; ++i) {
+    const v1 = color1[i], v2 = color2[i];
+    out[i] = Math.floor(v2 + (v1 - v2) * weight);
+  }
+
+  return out;
+}
+
+export function computePerceivedBrightness(color: ColorRgb) {
+  return (color[0] * 0.2126 + color[1] * 0.7152 + color[2] * 0.0722) / 255;
+}
+
+export function getAverageColor(color1: ColorRgb, color2: ColorRgb): ColorRgb {
+  return color1.map((v, i) => Math.round((v + color2[i]) / 2)) as ColorRgb;
+}
+
+export function getAccentColor(baseHsv: number[], baseColor: ColorRgb, elementColor: ColorRgb): ColorRgb {
+  const hsvTemp3 = rgbToHsv(...baseColor);
+  const hsvTemp4 = rgbToHsv(...elementColor);
+
+  const dist = Math.min(1.5 * hsvTemp3[1] / baseHsv[1], 1);
+
+  hsvTemp3[0] = Math.min(360, hsvTemp4[0] - hsvTemp3[0] + baseHsv[0]);
+  hsvTemp3[1] = Math.min(1, hsvTemp4[1] * baseHsv[1] / hsvTemp3[1]);
+  hsvTemp3[2] = Math.min(1, (hsvTemp4[2] / hsvTemp3[2] + dist - 1) * baseHsv[2] / dist);
+  if(hsvTemp3[2] < 0.3) {
+    return elementColor;
+  }
+  return hsvToRgb(...hsvTemp3);
+}
+
+export function changeColorAccent(baseHsv: number[], accentHsv: number[], color: ColorRgb, isDarkTheme: boolean) {
+  const colorHsv = rgbToHsv(...color);
+
+  const diffH = Math.min(Math.abs(colorHsv[0] - baseHsv[0]), Math.abs(colorHsv[0] - baseHsv[0] - 360));
+  if(diffH > 30) {
+    return color;
+  }
+
+  const dist = Math.min(1.5 * colorHsv[1] / baseHsv[1], 1);
+
+  colorHsv[0] = Math.min(360, colorHsv[0] + accentHsv[0] - baseHsv[0]);
+  colorHsv[1] = Math.min(1, colorHsv[1] * accentHsv[1] / baseHsv[1]);
+  colorHsv[2] = Math.min(1, colorHsv[2] * (1 - dist + dist * accentHsv[2] / baseHsv[2]));
+
+  let newColor = hsvToRgb(...colorHsv);
+
+  const origBrightness = computePerceivedBrightness(color);
+  const newBrightness = computePerceivedBrightness(newColor);
+
+  // We need to keep colors lighter in dark themes and darker in light themes
+  const needRevertBrightness = isDarkTheme ? origBrightness > newBrightness : origBrightness < newBrightness;
+
+  if(needRevertBrightness) {
+    const amountOfNew = 0.6;
+    const fallbackAmount = (1 - amountOfNew) * origBrightness / newBrightness + amountOfNew;
+    newColor = changeBrightness(newColor, fallbackAmount);
+  }
+
+  return newColor;
+}
+
+export function changeBrightness(color: ColorRgb, amount: number) {
+  return color.map((v) => clamp(Math.round(v * amount), 0, 255)) as ColorRgb;
+}
+
+export function getHexColorFromTelegramColor(color: number) {
+  const hex = (color < 0 ? 0xFFFFFF + color : color).toString(16);
+  return '#' + (hex.length >= 6 ? hex : '0'.repeat(6 - hex.length) + hex);
+}
+
+export function getRgbColorFromTelegramColor(color: number) {
+  return hexToRgb(getHexColorFromTelegramColor(color));
+}
+
+export function getColorsFromWallPaper(wallPaper: WallPaper) {
+  return wallPaper.settings ? [
+    wallPaper.settings.background_color,
+    wallPaper.settings.second_background_color,
+    wallPaper.settings.third_background_color,
+    wallPaper.settings.fourth_background_color
+  ].filter(Boolean).map(getHexColorFromTelegramColor).join(',') : '';
 }

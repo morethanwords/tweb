@@ -214,8 +214,6 @@ $chat-input-inner-padding-handhelds: .25rem;
   // --background-color: #fff;
   --background-color: var(--background-color-true);
   --border-color: #dfe1e5;
-  --surface-color-rgb: 255, 255, 255;
-  --surface-color: #fff;
   --scrollbar-color: rgba(0, 0, 0, .2);
   --section-box-shadow-color: rgba(0, 0, 0, .06);
   --menu-box-shadow-color: rgba(0, 0, 0, .15);
@@ -223,13 +221,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   --input-search-background-color: #fff;
   --input-search-border-color: #dfe1e5;
 
-  @include splitColor(primary-color, #3390ec, true, true, #fff, false, true);
-  @include splitColor(primary-text-color, #000, false, false, false, false, true);
-
   --secondary-color: #c4c9cc;
-  @include splitColor(secondary-text-color, #707579, true, false, #fff);
-
-  @include splitColor(danger-color, #df3f40, true, true);
 
   --avatar-online-color: #0ac630;
   // --avatar-color-top: var(--peer-avatar-saved-top);
@@ -255,10 +247,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   --message-secondary-color: var(--secondary-color);
   --message-error-color: var(--danger-color);
 
-  $message-out-background-color: #eeffde;
-  @include splitColor(message-out-background-color, $message-out-background-color, true, true);
   --message-out-link-color: var(--link-color);
-  @include splitColor(message-out-primary-color, #4fae4e, false, false, $message-out-background-color);
   --message-out-status-color: var(--message-out-primary-color);
   --message-out-time-color: var(--message-out-status-color);
   --message-out-audio-play-button-color: #fff;
@@ -294,21 +283,13 @@ $chat-input-inner-padding-handhelds: .25rem;
   // --background-color: #212121;
   --background-color: var(--background-color-true);
   --border-color: #0f0f0f;
-  --surface-color-rgb: 33, 33, 33;
-  --surface-color: #212121;
   --scrollbar-color: rgba(255, 255, 255, .2);
   --section-box-shadow-color: rgba(0, 0, 0, .12);
 
   --input-search-background-color: #181818;
   --input-search-border-color: #2f2f2f;
 
-  @include splitColor(primary-color, #8774E1, true, true, #212121, false, true);
-  @include splitColor(primary-text-color, #fff, false, false, false, false, true);
-
   --secondary-color: #707579;
-  @include splitColor(secondary-text-color, #aaaaaa, true, false, #212121);
-
-  @include splitColor(danger-color, #ff595a, true, true);
 
   --avatar-online-color: #0ac630;
   // --avatar-color-top: var(--peer-avatar-violet-top);
@@ -331,11 +312,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   --message-secondary-color: var(--secondary-color);
   --message-error-color: #fff;
 
-  $message-out-background-color: #8774E1;
-  //@include splitColor(message-out-background-color, #ae582d, true, true);
-  @include splitColor(message-out-background-color, $message-out-background-color, true, true);
   --message-out-link-color: #fff;
-  @include splitColor(message-out-primary-color, #fff, false, false, $message-out-background-color);
   --message-out-status-color: #fff;
   --message-out-time-color: rgba(255, 255, 255, .6);
   --message-out-audio-play-button-color: var(--message-out-background-color);

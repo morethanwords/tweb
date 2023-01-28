@@ -42,7 +42,7 @@ export function getFileNameByLocation(location: InputFileLocation | InputWebFile
     }
 
     case 'inputFileLocation': {
-      str = location.volume_id + '_' + location.local_id;
+      str = [location.volume_id, location.local_id].join(FILENAME_JOINER);
       break;
     }
 

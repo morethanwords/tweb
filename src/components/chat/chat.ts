@@ -36,7 +36,7 @@ import middlewarePromise from '../../helpers/middlewarePromise';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import {Message, WallPaper} from '../../layer';
 import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
-import {getColorsFromWallPaper} from '../sidebarLeft/tabs/background';
+import {getColorsFromWallPaper} from '../../helpers/color';
 
 export type ChatType = 'chat' | 'pinned' | 'discussion' | 'scheduled';
 

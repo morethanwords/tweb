@@ -101,6 +101,7 @@ import getMessageThreadId from './utils/messages/getMessageThreadId';
 import findUpTag from '../../helpers/dom/findUpTag';
 import {MTAppConfig} from '../mtproto/appConfig';
 import PopupForward from '../../components/popups/forward';
+import AppBackgroundTab from '../../components/sidebarLeft/tabs/background';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -247,6 +248,8 @@ export class AppImManager extends EventListenerBase<{
       animationIntersector.setOnlyOnePlayableGroup();
       animationIntersector.checkAnimations2(false);
     });
+
+    themeController.AppBackgroundTab = AppBackgroundTab;
 
     if(IS_FIREFOX && apiManagerProxy.oldVersion && compareVersion(apiManagerProxy.oldVersion, '1.4.3') === -1) {
       this.deleteFilesIterative((response) => {
@@ -1644,8 +1647,9 @@ export class AppImManager extends EventListenerBase<{
       this.managers.apiFileManager.setQueueId(this.chat.bubbles.lazyLoadQueue.queueId);
     }, rootScope.settings.animationsEnabled ? 250 : 0, false, true);
 
-    lottieLoader.setLoop(rootScope.settings.stickers.loop);
-    animationIntersector.checkAnimations2(false);
+    if(lottieLoader.setLoop(rootScope.settings.stickers.loop)) {
+      animationIntersector.checkAnimations2(false);
+    }
 
     for(const chat of this.chats) {
       chat.setAutoDownloadMedia();

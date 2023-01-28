@@ -40,7 +40,7 @@ import readBlobAsUint8Array from '../../helpers/blob/readBlobAsUint8Array';
 import DownloadStorage from '../files/downloadStorage';
 import copy from '../../helpers/object/copy';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import {MIME_TYPE_EXTENSION_MAP} from '../../environment/mimeTypeMap';
+import {EXTENSION_MIME_TYPE_MAP, MIME_TYPE_EXTENSION_MAP} from '../../environment/mimeTypeMap';
 import {getServiceMessagePort} from './mtproto.worker';
 
 type Delayed = {
@@ -250,9 +250,37 @@ export class ApiFileManager extends AppManager {
     return canceled;
   }
 
-  public requestWebFilePart(dcId: DcId, location: InputWebFileLocation, offset: number, limit: number, id = 0, queueId = 0, checkCancel?: () => void) {
+  public requestWebFilePart(
+    dcId: DcId,
+    location: InputWebFileLocation,
+    offset: number,
+    limit: number,
+    id = 0,
+    queueId = 0,
+    checkCancel?: () => void
+  ) {
     return this.downloadRequest(dcId, id, async() => { // do not remove async, because checkCancel will throw an error
       checkCancel?.();
+
+      if('url' in location) {
+        const url = location.url;
+        if(this.isLocalWebFile(url)) {
+          return fetch(url)
+          .then((response) => response.arrayBuffer())
+          .then((arrayBuffer) => {
+            const extension = url.split('.').pop() as MTFileExtension;
+            const mimeType = EXTENSION_MIME_TYPE_MAP[extension] || 'application/octet-stream';
+            return {
+              _: 'upload.webFile',
+              size: arrayBuffer.byteLength,
+              mime_type: mimeType,
+              file_type: {_: 'storage.fileUnknown'},
+              mtime: 0,
+              bytes: new Uint8Array(arrayBuffer)
+            };
+          });
+        }
+      }
 
       return this.apiManager.invokeApi('upload.getWebFile', {
         location,
@@ -464,6 +492,10 @@ export class ApiFileManager extends AppManager {
     return delayed;
   }
 
+  private isLocalWebFile(url: string) {
+    return url.startsWith('assets/');
+  }
+
   public download(options: DownloadOptions): DownloadPromise {
     const size = options.size ?? 0;
     const {dcId, location} = options;
@@ -525,8 +557,12 @@ export class ApiFileManager extends AppManager {
       }
     };
 
+    const isWebFile = location._ === 'inputWebFileLocation';
+    const isLocalWebFile = isWebFile && this.isLocalWebFile(location.url);
     const id = this.tempId++;
-    const limitPart = options.limitPart || this.getLimitPart(size, false);
+    const limitPart = isLocalWebFile ?
+      size :
+      options.limitPart || this.getLimitPart(size, false);
 
     let getFile: FileStorage['getFile'] = cacheStorage.getFile.bind(cacheStorage);
 
@@ -638,10 +674,9 @@ export class ApiFileManager extends AppManager {
 
       const maxRequests = Infinity;
 
-      const isWebFile = location._ === 'inputWebFileLocation';
       const requestPart = (isWebFile ? this.requestWebFilePart : this.requestFilePart).bind(this);
 
-      if(isWebFile && this.webFileDcId === undefined) {
+      if(isWebFile && this.webFileDcId === undefined && !isLocalWebFile) {
         await this.apiManager.getConfig();
         checkCancel();
       }

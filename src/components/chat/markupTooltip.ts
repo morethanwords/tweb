@@ -425,6 +425,7 @@ export default class MarkupTooltip {
           }, {once: true, passive: false}); */
         }
       } else if(this.container && this.container.classList.contains('is-visible')) {
+        this.setActiveMarkupButton();
         this.setTooltipPosition();
       } else if(messageInput.matches(':active')) {
         this.setMouseUpEvent();

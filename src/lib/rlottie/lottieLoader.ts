@@ -46,11 +46,20 @@ export class LottieLoader {
   }
 
   public setLoop(loop: boolean) {
+    let changed = false;
     for(const i in this.players) {
       const player = this.players[i];
-      player.loop = loop;
-      player.autoplay = player._autoplay;
+      if(player._loop && player.loop !== loop) {
+        changed = true;
+        player.loop = loop;
+
+        // if(player._autoplay && player.autoplay !== player._autoplay) {
+        player.autoplay = player._autoplay;
+        // }
+      }
     }
+
+    return changed;
   }
 
   public loadLottieWorkers() {

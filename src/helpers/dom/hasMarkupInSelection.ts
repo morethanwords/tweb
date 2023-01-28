@@ -6,33 +6,41 @@
 
 import {markdownTags, MarkdownType} from './getRichElementValue';
 
-export default function hasMarkupInSelection<T extends MarkdownType>(types: T[]) {
-  const result: Record<T, boolean> = {} as any;
-  types.forEach((tag) => result[tag] = false);
+export default function hasMarkupInSelection<T extends MarkdownType>(types: T[], onlyFull?: boolean) {
+  const result: Record<T, number> = {} as any;
+  types.forEach((tag) => result[tag] = 0);
   const selection = window.getSelection();
+  let nodes = -1;
   if(!selection.isCollapsed) {
     const range = selection.getRangeAt(0);
     const commonAncestor = range.commonAncestorContainer;
+    const root = commonAncestor.nodeType === commonAncestor.ELEMENT_NODE ?
+      commonAncestor as HTMLElement :
+      (commonAncestor as ChildNode).parentElement;
     const treeWalker = document.createTreeWalker(
-      (commonAncestor.nodeType === commonAncestor.ELEMENT_NODE ? commonAncestor as HTMLElement : (commonAncestor as ChildNode).parentElement).closest('[contenteditable="true"]'),
-      NodeFilter.SHOW_ELEMENT,
+      root.closest('[contenteditable="true"]'),
+      NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
       {acceptNode: (node) => range.intersectsNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT}
     );
 
-    let element: HTMLElement;
-    while(element = treeWalker.nextNode() as HTMLElement) {
+    nodes = 0;
+    let node: Node;
+    while(node = treeWalker.nextNode()) {
+      ++nodes;
       for(const type of types) {
-        if(result[type]) {
-          continue;
-        }
-
         const tag = markdownTags[type];
-        if(element.matches(tag.match)) {
-          result[type] = true;
+        const matches = (node.nodeType === node.ELEMENT_NODE ? node as HTMLElement : node.parentElement).closest(tag.match);
+        if(matches) {
+          ++result[type];
         }
       }
     }
   }
 
-  return result;
+  const resultBoolean: Record<T, boolean> = {} as any;
+  for(const type of types) {
+    resultBoolean[type] = result[type] >= (onlyFull ? nodes : 1);
+  }
+
+  return resultBoolean;
 }

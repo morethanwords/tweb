@@ -885,6 +885,10 @@ const lang = {
   'ColorTheme': 'Color theme',
   'SendAsFile': 'Send as file',
   'SendAsFiles': 'Send as files',
+  'ChatThemeChangedYou': 'You changed the chat theme to %1$s',
+  'ChatThemeChangedTo': '%1$s changed the chat theme to %2$s',
+  'ChatThemeDisabled': '%1$s disabled the chat theme',
+  'ChatThemeDisabledYou': 'You disabled the chat theme',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

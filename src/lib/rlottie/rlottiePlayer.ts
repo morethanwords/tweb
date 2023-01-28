@@ -90,7 +90,7 @@ export default class RLottiePlayer extends EventListenerBase<{
   public autoplay = true;
   public _autoplay: boolean; // ! will be used to store original value for settings.stickers.loop
   public loop: number | boolean = true;
-  private _loop: RLottiePlayer['loop']; // ! will be used to store original value for settings.stickers.loop
+  public _loop: RLottiePlayer['loop']; // ! will be used to store original value for settings.stickers.loop
   public group: AnimationItemGroup = '';
 
   private frInterval: number;

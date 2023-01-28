@@ -2674,9 +2674,9 @@ $bubble-border-radius-big: 12px;
 
 .bubble.is-out {
   flex-direction: row-reverse;
-  --message-background-color: var(--light-filled-message-out-primary-color);
-  --light-message-background-color: var(--light-message-out-primary-color);
-  --dark-message-background-color: var(--dark-message-out-primary-color);
+  --message-background-color: var(--message-out-background-color);
+  --light-message-background-color: var(--light-message-out-background-color);
+  --dark-message-background-color: var(--dark-message-out-background-color);
   --link-color: var(--message-out-link-color);
   --message-primary-color: var(--message-out-primary-color);
   --light-filled-message-primary-color: var(--light-filled-message-out-primary-color);
@@ -2723,6 +2723,10 @@ $bubble-border-radius-big: 12px;
         //}
       }
     }
+  }
+
+  .anchor-url {
+    color: var(--message-primary-color);
   }
 
   /* .bubble-content-wrapper {

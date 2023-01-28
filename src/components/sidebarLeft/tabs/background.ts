@@ -13,7 +13,7 @@ import highlightningColor from '../../../helpers/highlightningColor';
 import copy from '../../../helpers/object/copy';
 import sequentialDom from '../../../helpers/sequentialDom';
 import ChatBackgroundGradientRenderer from '../../chat/gradientRenderer';
-import {Document, PhotoSize, WallPaper} from '../../../layer';
+import {Document, PhotoSize, WallPaper, WebDocument} from '../../../layer';
 import {MyDocument} from '../../../lib/appManagers/appDocsManager';
 import appDownloadManager, {AppDownloadManager, DownloadBlob} from '../../../lib/appManagers/appDownloadManager';
 import appImManager from '../../../lib/appManagers/appImManager';
@@ -33,25 +33,7 @@ import {MediaSize} from '../../../helpers/mediaSize';
 import wrapPhoto from '../../wrappers/photo';
 import {CreateRowFromCheckboxField} from '../../row';
 import {generateSection} from '../../settingSection';
-import {hexToRgb} from '../../../helpers/color';
-
-export function getHexColorFromTelegramColor(color: number) {
-  const hex = (color < 0 ? 0xFFFFFF + color : color).toString(16);
-  return '#' + (hex.length >= 6 ? hex : '0'.repeat(6 - hex.length) + hex);
-}
-
-export function getRgbColorFromTelegramColor(color: number) {
-  return hexToRgb(getHexColorFromTelegramColor(color));
-}
-
-export function getColorsFromWallPaper(wallPaper: WallPaper) {
-  return wallPaper.settings ? [
-    wallPaper.settings.background_color,
-    wallPaper.settings.second_background_color,
-    wallPaper.settings.third_background_color,
-    wallPaper.settings.fourth_background_color
-  ].filter(Boolean).map(getHexColorFromTelegramColor).join(',') : '';
-}
+import {getColorsFromWallPaper} from '../../../helpers/color';
 
 export default class AppBackgroundTab extends SliderSuperTab {
   public static tempId = 0;
@@ -64,7 +46,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
 
   public static getInitArgs() {
     return {
-      backgrounds: rootScope.managers.appDocsManager.getWallPapers()
+      backgrounds: rootScope.managers.appThemesManager.getWallPapers()
     };
   }
 
@@ -222,7 +204,18 @@ export default class AppBackgroundTab extends SliderSuperTab {
 
     const isDark = !!wallPaper.pFlags.dark;
 
-    const doc = hasFile ? wallPaper.document as Document.document : undefined;
+    let doc: WebDocument.webDocumentNoProxy | Document.document = hasFile ? wallPaper.document as Document.document : undefined;
+    if(hasFile && !doc) {
+      doc = {
+        _: 'webDocumentNoProxy',
+        attributes: [],
+        size: 100000,
+        url: 'assets/img/pattern.svg',
+        w: 1440,
+        h: 2960,
+        mime_type: 'image/svg+xml'
+      };
+    }
 
     container.classList.add('background-item');
     container.dataset.id = '' + wallPaper.id;
@@ -239,7 +232,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
         message: null,
         container: media,
         withoutPreloader: true,
-        size: size,
+        size,
         noFadeIn: wallPaper.pFlags.pattern
       });
 
@@ -272,7 +265,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
       container.append(media);
     }
 
-    if(wallPaper.settings && wallPaper.settings.background_color !== undefined) {
+    if(wallPaper.settings?.background_color) {
       const {canvas} = ChatBackgroundGradientRenderer.create(colors);
       canvas.classList.add('background-colors-canvas');
 
@@ -364,7 +357,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
     // console.log(doc);
   };
 
-  public static setBackgroundDocument = (wallPaper: WallPaper) => {
+  public static setBackgroundDocument = (wallPaper: WallPaper, themeSettings?: AppTheme['settings']) => {
     const _tempId = ++this.tempId;
     const middleware = () => _tempId === this.tempId;
 
@@ -394,7 +387,8 @@ export default class AppBackgroundTab extends SliderSuperTab {
         return;
       }
 
-      const themeSettings = themeController.getTheme().settings;
+      const hadSettings = !!themeSettings;
+      themeSettings ??= themeController.getTheme().settings;
       const onReady = (url?: string) => {
         let getPixelPromise: Promise<Uint8ClampedArray>;
         const backgroundColor = getColorsFromWallPaper(wallPaper);
@@ -405,7 +399,11 @@ export default class AppBackgroundTab extends SliderSuperTab {
           getPixelPromise = Promise.resolve(averageColorFromCanvas(canvas));
         }
 
-        getPixelPromise.then((pixel) => {
+        const slug = (wallPaper as WallPaper.wallPaper).slug ?? '';
+        Promise.all([
+          getPixelPromise,
+          slug && saveToCache(slug, url)
+        ]).then(([pixel]) => {
           if(!middleware()) {
             deferred.resolve();
             return;
@@ -413,13 +411,11 @@ export default class AppBackgroundTab extends SliderSuperTab {
 
           const hsla = highlightningColor(Array.from(pixel) as any);
 
-          const slug = (wallPaper as WallPaper.wallPaper).slug ?? '';
           themeSettings.wallpaper = wallPaper;
           themeSettings.highlightningColor = hsla;
-          rootScope.managers.appStateManager.pushToState('settings', rootScope.settings);
 
-          if(slug) {
-            saveToCache(slug, url);
+          if(!hadSettings) {
+            rootScope.managers.appStateManager.pushToState('settings', rootScope.settings);
           }
 
           appImManager.applyCurrentTheme(slug, url, true).then(deferred.resolve);
@@ -444,7 +440,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
             onReady(canvas.toDataURL());
           });
         }, 200);
-      } else {
+      } else if(middleware()) {
         onReady(cacheContext.url);
       }
     });

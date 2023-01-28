@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {AppManagers} from '../../lib/appManagers/managers';
 import rootScope from '../../lib/rootScope';
 import wrapSticker from './sticker'
 import {Modify} from '../../types';
 
 export default async function wrapStickerEmoji(options: Modify<Parameters<typeof wrapSticker>[0], {
   div: HTMLElement,
-  doc?: never
+  doc?: never,
+  loop?: never
 }>) {
   const {
     emoji,
