@@ -9,7 +9,7 @@ import Button from '../../button';
 import CheckboxField from '../../checkboxField';
 import RadioField from '../../radioField';
 import rootScope from '../../../lib/rootScope';
-import {IS_APPLE} from '../../../environment/userAgent';
+import {IS_APPLE, IS_SAFARI} from '../../../environment/userAgent';
 import Row, {CreateRowFromCheckboxField} from '../../row';
 import AppBackgroundTab from './background';
 import {LangPackKey, _i18n} from '../../../lib/langPack';
@@ -144,8 +144,27 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
       const themesContainer = scrollable.container;
       themesContainer.classList.add('themes-container');
 
-      type K = {theme: Theme, player?: RLottiePlayer};
+      type K = {
+        container: HTMLElement,
+        theme: Theme,
+        player?: RLottiePlayer,
+        wallPaperContainers?: {[key in BaseTheme['_']]?: HTMLElement}
+      };
       const themesMap = new Map<HTMLElement, K>();
+      let currentTheme = themeController.getTheme();
+      let isNight = themeController.isNight();
+
+      const applyThemeOnItem = (item: K) => {
+        themeController.applyTheme(item.theme, item.container);
+
+        const previous = item.container.querySelector('.background-item');
+        previous?.remove();
+
+        const wallPaperContainer = item.wallPaperContainers[isNight ? 'baseThemeNight' : 'baseThemeClassic']
+        if(wallPaperContainer) {
+          item.container.prepend(wallPaperContainer);
+        }
+      };
 
       let lastOnFrameNo: (frameNo: number) => void;
 
@@ -168,52 +187,66 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
         lastOnFrameNo?.(-1);
 
         if(item.player && rootScope.settings.animationsEnabled) {
-          if(item.player.paused) {
-            item.player.stop(true);
-          }
+          if(IS_SAFARI) {
+            if(item.player.paused) {
+              item.player.restart();
+            }
+          } else {
+            if(item.player.paused) {
+              item.player.stop(true);
+            }
 
-          const pre = 'translateX(-50%) ';
-          item.player.el[0].style.transform = pre + 'scale(2)';
+            item.player.el[0].style.transform = 'scale(2)';
 
-          const onFrameNo = lastOnFrameNo = (frameNo) => {
-            if(item.player.maxFrame === frameNo || frameNo === -1) {
-              item.player.el[0].style.transform = '';
-              item.player.removeEventListener('enterFrame', onFrameNo);
+            const onFrameNo = lastOnFrameNo = (frameNo) => {
+              if(item.player.maxFrame === frameNo || frameNo === -1) {
+                item.player.el[0].style.transform = '';
+                item.player.removeEventListener('enterFrame', onFrameNo);
 
-              if(lastOnFrameNo === onFrameNo) {
-                lastOnFrameNo = undefined;
+                if(lastOnFrameNo === onFrameNo) {
+                  lastOnFrameNo = undefined;
+                }
               }
-            }
-          };
+            };
 
-          setTimeout(() => {
-            if(lastOnFrameNo !== onFrameNo) {
-              return;
-            }
+            setTimeout(() => {
+              if(lastOnFrameNo !== onFrameNo) {
+                return;
+              }
 
-            item.player.play();
-            item.player.addEventListener('enterFrame', onFrameNo);
-          }, 250);
+              item.player.play();
+              item.player.addEventListener('enterFrame', onFrameNo);
+            }, 250);
+          }
         }
       }, {listenerSetter: this.listenerSetter});
 
-      const promise = p.themes.then(async(themes) => {
-        const currentTheme = themeController.getTheme();
-        const isNight = themeController.isNight();
+      const availableBaseThemes: Set<BaseTheme['_']> = new Set(['baseThemeClassic', 'baseThemeNight']);
 
+      const promise = p.themes.then(async(themes) => {
         const defaultThemes = themes.filter((theme) => theme.pFlags.default/*  && theme.settings[0].message_colors.length === 1 */);
         defaultThemes.unshift(DEFAULT_THEME);
 
         const promises = defaultThemes.map(async(theme) => {
-          const baseTheme: BaseTheme['_'] = isNight ? 'baseThemeNight' : 'baseThemeClassic';
-          const wallpaper = theme.settings.find((settings) => settings.base_theme._ === baseTheme).wallpaper;
-          const result = AppBackgroundTab.addWallPaper(wallpaper);
+          const container = document.createElement('div');
+          const k: K = {
+            container,
+            theme,
+            wallPaperContainers: {}
+          };
 
-          const container = result.container;
-          const k: K = {theme};
+          const results = theme.settings
+          .filter((themeSettings) => availableBaseThemes.has(themeSettings.base_theme._))
+          .map((themeSettings) => {
+            const wallPaper = themeSettings.wallpaper;
+            const result = AppBackgroundTab.addWallPaper(wallPaper);
+            k.wallPaperContainers[themeSettings.base_theme._] = result.container;
+            return result;
+          });
+
           themesMap.set(container, k);
 
-          themeController.applyTheme(theme, container);
+          applyThemeOnItem(k);
 
           if(theme.id === currentTheme.id) {
             container.classList.add('active');
@@ -248,7 +281,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
           bubbleIn.classList.add('is-in');
           bubble.classList.add('is-out');
 
-          loadPromises.push(result.loadPromise);
+          loadPromises.push(...results.map((result) => result.loadPromise));
 
           container.classList.add('theme-container');
 
@@ -270,8 +303,73 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
 
       promises.push(promise);
 
+      const form = document.createElement('form');
+      form.style.marginTop = '.5rem';
+
+      const name = 'theme';
+      const stateKey = 'settings.theme';
+
+      const dayRow = new Row({
+        radioField: new RadioField({
+          langKey: 'ThemeDay',
+          name,
+          value: 'day',
+          stateKey
+        })
+      });
+
+      const nightRow = new Row({
+        radioField: new RadioField({
+          langKey: 'ThemeNight',
+          name,
+          value: 'night',
+          stateKey
+        })
+      });
+
+      const systemRow = new Row({
+        radioField: new RadioField({
+          langKey: 'AutoNightSystemDefault',
+          name,
+          value: 'system',
+          stateKey
+        })
+      });
+
+      this.listenerSetter.add(rootScope)('settings_updated', ({key, value, settings}) => {
+        if(key === stateKey) {
+          rootScope.dispatchEvent('theme_change');
+        }
+      });
+
+      this.listenerSetter.add(rootScope)('theme_change', () => {
+        currentTheme = themeController.getTheme();
+        const newIsNight = themeController.isNight();
+        if(isNight === newIsNight) {
+          return;
+        }
+
+        isNight = newIsNight;
+
+        const lastActive = themesContainer.querySelector('.active');
+        if(lastActive) {
+          lastActive.classList.remove('active');
+        }
+
+        themesMap.forEach((item) => {
+          applyThemeOnItem(item);
+
+          if(item.theme.id === currentTheme.id) {
+            item.container.classList.add('active');
+          }
+        });
+      });
+
+      form.append(dayRow.container, nightRow.container, systemRow.container);
+
       container.append(
-        themesContainer
+        themesContainer,
+        form
       );
     }
 

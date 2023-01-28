@@ -889,6 +889,9 @@ const lang = {
   'ChatThemeChangedTo': '%1$s changed the chat theme to %2$s',
   'ChatThemeDisabled': '%1$s disabled the chat theme',
   'ChatThemeDisabledYou': 'You disabled the chat theme',
+  'ThemeDay': 'Day',
+  'ThemeNight': 'Night',
+  'AutoNightSystemDefault': 'System Default',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

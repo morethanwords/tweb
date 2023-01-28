@@ -9,7 +9,7 @@ import type {Theme} from '../layer';
 import type AppBackgroundTab from '../components/sidebarLeft/tabs/background';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import rootScope from '../lib/rootScope';
-import {ColorRgb, getAccentColor, getAverageColor, getHexColorFromTelegramColor, getRgbColorFromTelegramColor, hexToRgb, hslaStringToHex, hsvToRgb, mixColors, rgbaToHexa, rgbaToHsla, rgbToHsv} from './color';
+import {changeColorAccent, ColorRgb, getAccentColor, getAverageColor, getHexColorFromTelegramColor, getRgbColorFromTelegramColor, hexToRgb, hslaStringToHex, hsvToRgb, mixColors, rgbaToHexa, rgbaToHsla, rgbToHsv} from './color';
 
 type AppColorName = 'primary-color' | 'message-out-primary-color' |
   'surface-color' | 'danger-color' | 'primary-text-color' |
@@ -268,32 +268,19 @@ export class ThemeController {
     let hsvTemp1 = rgbToHsv(...hexToRgb(baseColors['primary-color'])); // primary base
     let hsvTemp2 = rgbToHsv(...getRgbColorFromTelegramColor(themeSettings.accent_color)); // new primary
 
-    // const newAccentRgb = changeColorAccent(
-    //   hsvTemp1,
-    //   hsvTemp2,
-    //   hexToRgb(baseColors['primary-color']),
-    //   isNight
-    //   // hexToRgb('#eeffde')
-    // );
-    // const newAccentHex = rgbaToHexa(newAccentRgb);
-
-    let h = getHexColorFromTelegramColor(themeSettings.accent_color);
-    if(isNight) {
-      const color = hexToRgb(h);
-      const mixed = mixColors(color, hexToRgb(baseColors['surface-color']), 0.84);
-      h = rgbaToHexa(mixed);
-    }
-    // console.log(h, newAccentHex);
-    // if(isNight) {
-    //   h = newAccentHex;
-    // }
+    const newAccentRgb = changeColorAccent(
+      hsvTemp1,
+      hsvTemp2,
+      hexToRgb(baseColors['primary-color']),
+      !isNight
+    );
+    const newAccentHex = rgbaToHexa(newAccentRgb);
 
     const {applyAppColor, finalize} = this.bindColorApplier({element});
 
     applyAppColor({
       name: 'primary-color',
-      hex: h,
-      // hex: newAccentHex,
+      hex: newAccentHex,
       darkenAlpha: 0.04
     });
 

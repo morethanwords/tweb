@@ -32,6 +32,8 @@
     width: 4.5rem;
     flex: 0 0 auto;
     position: relative;
+    display: flex;
+    justify-content: center;
     // transform: scale(1);
 
     // @include animation-level(2) {
@@ -71,18 +73,29 @@
         opacity: 1;
       }
     }
+
+    .background-item {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border-radius: inherit;
+    }
   }
 
   &-emoticon {
     position: absolute;
     bottom: .5rem;
-    left: 50%;
-    transform: translateX(-50%) scale(1);
     width: 1.75rem;
     height: 1.75rem;
     pointer-events: none;
-    transform-origin: center bottom;
     z-index: 1;
+
+    html:not(.is-safari) & {
+      transform-origin: center bottom;
+      transform: scale(1);
+    }
 
     @include animation-level(2) {
       transition: transform var(--transition-standard-in);

@@ -223,7 +223,8 @@ $chat-input-inner-padding-handhelds: .25rem;
 
   --secondary-color: #c4c9cc;
 
-  --avatar-online-color: #0ac630;
+  // --avatar-online-color: #0ac630;
+  --avatar-online-color: var(--primary-color);
   // --avatar-color-top: var(--peer-avatar-saved-top);
   // --avatar-color-bottom: var(--peer-avatar-saved-bottom);
   --chatlist-status-color: var(--avatar-online-color);
@@ -291,7 +292,8 @@ $chat-input-inner-padding-handhelds: .25rem;
 
   --secondary-color: #707579;
 
-  --avatar-online-color: #0ac630;
+  // --avatar-online-color: #0ac630;
+  --avatar-online-color: var(--primary-color);
   // --avatar-color-top: var(--peer-avatar-violet-top);
   // --avatar-color-bottom: var(--peer-avatar-violet-bottom);
   --chatlist-status-color: var(--primary-color);
