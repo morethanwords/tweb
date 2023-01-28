@@ -34,6 +34,7 @@
     position: relative;
     display: flex;
     justify-content: center;
+    cursor: pointer;
     // transform: scale(1);
 
     // @include animation-level(2) {
@@ -81,6 +82,7 @@
       width: 100%;
       height: 100%;
       border-radius: inherit;
+      pointer-events: none;
     }
   }
 
@@ -108,6 +110,7 @@
     border-radius: 1.75rem;
     background-color: #fff;
     position: absolute;
+    pointer-events: none;
 
     &.is-out {
       top: .5rem;

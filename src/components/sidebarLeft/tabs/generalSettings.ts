@@ -356,13 +356,23 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
           lastActive.classList.remove('active');
         }
 
+        let active: HTMLElement;
         themesMap.forEach((item) => {
           applyThemeOnItem(item);
 
           if(item.theme.id === currentTheme.id) {
             item.container.classList.add('active');
+            active = item.container;
           }
         });
+
+        if(active) {
+          scrollable.scrollIntoViewNew({
+            element: active,
+            position: 'center',
+            axis: 'x'
+          });
+        }
       });
 
       form.append(dayRow.container, nightRow.container, systemRow.container);

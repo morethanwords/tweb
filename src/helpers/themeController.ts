@@ -13,7 +13,8 @@ import {changeColorAccent, ColorRgb, getAccentColor, getAverageColor, getHexColo
 
 type AppColorName = 'primary-color' | 'message-out-primary-color' |
   'surface-color' | 'danger-color' | 'primary-text-color' |
-  'secondary-text-color' | 'message-out-background-color';
+  'secondary-text-color' | 'message-out-background-color' |
+  'saved-color';
 type AppColor = {
   rgb?: boolean,
   light?: boolean,
@@ -53,6 +54,9 @@ const appColorMap: {[name in AppColorName]: AppColor} = {
     lightFilled: true,
     dark: true,
     darkFilled: true
+  },
+  'saved-color': {
+    lightFilled: true
   }
 };
 
@@ -67,7 +71,8 @@ const colorMap: {
     'surface-color': '#ffffff',
     'danger-color': '#df3f40',
     'primary-text-color': '#000000',
-    'secondary-text-color': '#707579'
+    'secondary-text-color': '#707579',
+    'saved-color': '#359AD4'
   },
   night: {
     'primary-color': '#8774E1',
@@ -75,7 +80,8 @@ const colorMap: {
     'surface-color': '#212121',
     'danger-color': '#ff595a',
     'primary-text-color': '#ffffff',
-    'secondary-text-color': '#aaaaaa'
+    'secondary-text-color': '#aaaaaa',
+    'saved-color': '#8774E1'
   }
 };
 
@@ -283,6 +289,13 @@ export class ThemeController {
       hex: newAccentHex,
       darkenAlpha: 0.04
     });
+
+    applyAppColor({
+      name: 'saved-color',
+      hex: newAccentHex,
+      lightenAlpha: 0.64,
+      mixColor: [255, 255, 255]
+    })
 
     if(!themeSettings.message_colors?.length) {
       return;

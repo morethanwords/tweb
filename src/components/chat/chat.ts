@@ -221,7 +221,11 @@ export default class Chat extends EventListenerBase<{
 
     if(patternRenderer) {
       const setOpacityTo = isDarkPattern ? gradientCanvas : patternCanvas;
-      setOpacityTo.style.setProperty('--opacity-max', '' + (Math.abs(intensity) * (isDarkPattern ? .5 : 1)));
+      let opacityMax = Math.abs(intensity) * (isDarkPattern ? .5 : 1);
+      if(isDarkPattern) {
+        opacityMax = Math.max(0.3, opacityMax);
+      }
+      setOpacityTo.style.setProperty('--opacity-max', '' + opacityMax);
     }
 
     const promise = new Promise<void>((resolve) => {
