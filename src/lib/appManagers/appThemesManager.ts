@@ -18,6 +18,9 @@ export default class AppThemesManager extends AppManager {
   }
 
   private saveWallPaper(wallPaper: WallPaper) {
+    if(!wallPaper) {
+      return wallPaper;
+    }
     // const oldWallPaper = this.wallPapers[wallPaper.id];
 
     // ! IT'S BROKEN NOW. SERVER RETURNS SAME ID FOR DIFFERENT WALLPAPERS
