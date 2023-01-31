@@ -17,7 +17,6 @@ import ButtonIcon from '../buttonIcon';
 import ButtonMenuToggle from '../buttonMenuToggle';
 import ChatAudio from './audio';
 import ChatPinnedMessage from './pinnedMessage';
-import {ButtonMenuItemOptions} from '../buttonMenu';
 import ListenerSetter from '../../helpers/listenerSetter';
 import PopupDeleteDialog from '../popups/deleteDialog';
 import appNavigationController from '../appNavigationController';
@@ -46,12 +45,15 @@ import wrapPeerTitle from '../wrappers/peerTitle';
 import groupCallsController from '../../lib/calls/groupCallsController';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import {makeMediaSize} from '../../helpers/mediaSize';
+import {FOLDER_ID_ALL} from '../../lib/mtproto/mtproto_config';
+import formatNumber from '../../helpers/number/formatNumber';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
 export default class ChatTopbar {
   public container: HTMLDivElement;
   private btnBack: HTMLButtonElement;
+  private btnBackBadge: HTMLElement;
   private chatInfo: HTMLDivElement;
   private avatarElement: AvatarElement;
   private title: HTMLDivElement;
@@ -97,6 +99,9 @@ export default class ChatTopbar {
     this.container.dataset.floating = '0';
 
     this.btnBack = ButtonIcon('left sidebar-close-button', {noRipple: true});
+    this.btnBackBadge = document.createElement('span');
+    this.btnBackBadge.classList.add('badge', 'badge-20', 'badge-primary', 'back-unread-badge');
+    this.btnBack.append(this.btnBackBadge);
 
     // * chat info section
     this.chatInfoContainer = document.createElement('div');
@@ -587,6 +592,17 @@ export default class ChatTopbar {
 
         this.btnJoin.removeAttribute('disabled');
       });
+    });
+
+    this.listenerSetter.add(rootScope)('folder_unread', (folder) => {
+      if(folder.id !== FOLDER_ID_ALL) {
+        return;
+      }
+
+      const size = folder.unreadUnmutedPeerIds.size;
+      this.btnBackBadge.textContent = size ? '' + formatNumber(size, 1) : '';
+      // this.btnBack.classList.remove('tgico-left', 'tgico-previous');
+      // this.btnBack.classList.add(size ? 'tgico-previous' : 'tgico-left');
     });
 
     this.listenerSetter.add(rootScope)('chat_update', async(chatId) => {

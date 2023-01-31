@@ -580,7 +580,9 @@ $chat-input-border-radius: 1rem;
 			transform: translate3d(26.5625rem, 0, 0); // + 1px to show left border
 
 			.sidebar-close-button {
-				transform: rotate(180deg);
+        &:before {
+          transform: rotate(180deg);
+        }
 			}
 		}
 	}

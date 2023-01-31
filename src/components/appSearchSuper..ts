@@ -411,6 +411,9 @@ export default class AppSearchSuper {
             unlockScroll = lockTouchScroll(this.tabsContainer);
             this.selectTab(idx);
           }
+        },
+        verifyTouchTarget: (e) => {
+          return !findUpClassName(e.target, 'scrollable-x');
         }
       });
     }

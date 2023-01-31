@@ -900,13 +900,15 @@ export default class ChatBubbles {
               }
             } catch(err) {}
 
-            SetTransition({
-              element: target,
-              className,
-              forwards: true,
-              duration: 250
+            [target, swipeAvatar].filter(Boolean).forEach((element) => {
+              SetTransition({
+                element,
+                className,
+                forwards: true,
+                duration: 250
+              });
+              void element.offsetLeft; // reflow
             });
-            void target.offsetLeft; // reflow
 
             if(!icon) {
               icon = document.createElement('span');
@@ -941,17 +943,22 @@ export default class ChatBubbles {
           const _target = target;
           const _swipeAvatar = swipeAvatar;
           target = swipeAvatar = undefined;
-          SetTransition({
-            element: _target,
-            className,
-            forwards: false,
-            duration: 250,
-            onTransitionEnd: () => {
-              if(icon.parentElement === _target) {
-                icon.classList.remove('is-visible');
-                icon.remove();
-              }
+
+          const onTransitionEnd = () => {
+            if(icon.parentElement === _target) {
+              icon.classList.remove('is-visible');
+              icon.remove();
             }
+          };
+
+          [_target, _swipeAvatar].filter(Boolean).forEach((element, idx) => {
+            SetTransition({
+              element,
+              className,
+              forwards: false,
+              duration: 250,
+              onTransitionEnd: idx === 0 ? onTransitionEnd : undefined
+            });
           });
 
           fastRaf(() => {
@@ -4595,7 +4602,7 @@ export default class ChatBubbles {
           avatarElem.updateWithOptions({
             lazyLoadQueue: this.lazyLoadQueue,
             peerId: contact.user_id.toPeerId(),
-            peerTitle: fullName.trim() ? undefined : I18n.format('AttachContact', true)[0]
+            peerTitle: contact.user_id ? undefined : (fullName.trim() ? fullName : I18n.format('AttachContact', true)[0])
           });
           avatarElem.classList.add('contact-avatar', 'avatar-54');
 

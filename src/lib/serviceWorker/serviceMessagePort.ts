@@ -42,6 +42,7 @@ export default class ServiceMessagePort<Master extends boolean = false> extends 
   toggleStorages: (payload: {enabled: boolean, clearWrite: boolean}) => void,
   pushPing: (payload: ServicePushPingTaskPayload, source: MessageEventSource, event: MessageEvent) => void,
   hello: (payload: void, source: MessageEventSource, event: MessageEvent) => void,
+  shownNotification: (payload: string) => void,
 
   // from mtproto worker
   download: (payload: ServiceDownloadTaskPayload) => void,

@@ -9,9 +9,19 @@
     display: flex;
     height: 6.5rem;
     position: relative;
-    margin: 0 -.5rem;
-    width: calc(100% + 1rem);
     align-items: center;
+
+    @include respond-to(not-handhelds) {
+      width: calc(100% + 1rem);
+      margin: 0 -.5rem;
+      padding: 0;
+    }
+
+    // @include respond-to(handhelds) {
+    //   &:after {
+    //     width: .25rem !important;
+    //   }
+    // }
 
     &:before,
     &:after {

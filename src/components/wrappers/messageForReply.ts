@@ -15,6 +15,7 @@ import {MyDraftMessage} from '../../lib/appManagers/appDraftsManager';
 import {MyMessage} from '../../lib/appManagers/appMessagesManager';
 import isMessageRestricted from '../../lib/appManagers/utils/messages/isMessageRestricted';
 import I18n, {LangPackKey, i18n, UNSUPPORTED_LANG_PACK_KEY} from '../../lib/langPack';
+import parseEntities from '../../lib/richTextProcessor/parseEntities';
 import sortEntities from '../../lib/richTextProcessor/sortEntities';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import wrapPlainText from '../../lib/richTextProcessor/wrapPlainText';
@@ -221,9 +222,7 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
   if(text) {
     text = limitSymbols(text, 100);
 
-    if(!entities) {
-      entities = [];
-    }
+    entities ??= parseEntities(text);
 
     if(plain) {
       parts.push(wrapPlainText(text, entities));

@@ -253,13 +253,15 @@ export default class IDBStorage<T extends Database<any>, StoreName extends strin
 
   public delete(entryName: string | string[], storeName?: StoreName): Promise<void> {
     // return Promise.resolve();
-    if(!Array.isArray(entryName)) {
+    const isArray = Array.isArray(entryName);
+    if(!isArray) {
       entryName = [].concat(entryName);
     }
 
     return this.getObjectStore('readwrite', (objectStore) => {
-      return (entryName as string[]).map((entryName) => objectStore.delete(entryName));
-    }, DEBUG ? 'delete: ' + entryName.join(', ') : '', storeName);
+      const promises = (entryName as string[]).map((entryName) => objectStore.delete(entryName));
+      return isArray ? promises : promises[0];
+    }, DEBUG ? 'delete: ' + (entryName as string[]).join(', ') : '', storeName);
   }
 
   public clear(storeName?: StoreName): Promise<void> {
@@ -278,14 +280,16 @@ export default class IDBStorage<T extends Database<any>, StoreName extends strin
     //   }
     // };
 
-    if(!Array.isArray(entryName)) {
+    const isArray = Array.isArray(entryName);
+    if(!isArray) {
       entryName = [].concat(entryName);
       value = [].concat(value);
     }
 
     return this.getObjectStore('readwrite', (objectStore) => {
-      return (entryName as string[]).map((entryName, idx) => objectStore.put(value[idx], entryName));
-    }, DEBUG ? 'save: ' + entryName.join(', ') : '', storeName);
+      const promises = (entryName as string[]).map((entryName, idx) => objectStore.put(value[idx], entryName));
+      return isArray ? promises : promises[0];
+    }, DEBUG ? 'save: ' + (entryName as string[]).join(', ') : '', storeName);
   }
 
   // public saveFile(fileName: string, blob: Blob | Uint8Array) {
@@ -366,17 +370,21 @@ export default class IDBStorage<T extends Database<any>, StoreName extends strin
   public get<T>(entryName: string | string[], storeName?: StoreName): Promise<T> | Promise<T[]> {
     // return Promise.reject();
 
-    if(!Array.isArray(entryName)) {
-      entryName = [].concat(entryName);
-    }
+    const isArray = Array.isArray(entryName);
+    if(!isArray) {
+      if(!entryName) {
+        return undefined;
+      }
 
-    if(!entryName.length) {
+      entryName = [].concat(entryName);
+    } else if(!entryName.length) {
       return Promise.resolve([]) as any;
     }
 
     return this.getObjectStore<T>('readonly', (objectStore) => {
-      return (entryName as string[]).map((entryName) => objectStore.get(entryName));
-    }, DEBUG ? 'get: ' + entryName.join(', ') : '', storeName);
+      const promises = (entryName as string[]).map((entryName) => objectStore.get(entryName));
+      return isArray ? promises : promises[0];
+    }, DEBUG ? 'get: ' + (entryName as string[]).join(', ') : '', storeName);
   }
 
   private getObjectStore<T>(

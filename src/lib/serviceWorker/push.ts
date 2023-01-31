@@ -11,6 +11,7 @@
 
 import {Database} from '../../config/databases';
 import DATABASE_STATE from '../../config/databases/state';
+import {NOTIFICATION_BADGE_PATH, NOTIFICATION_ICON_PATH} from '../../config/notifications';
 import {IS_FIREFOX, IS_MOBILE} from '../../environment/userAgent';
 import deepEqual from '../../helpers/object/deepEqual';
 import IDBStorage from '../files/idb';
@@ -23,7 +24,7 @@ const defaultBaseUrl = location.protocol + '//' + location.hostname + location.p
 // as in webPushApiManager.ts
 const PING_PUSH_TIMEOUT = 10000 + 1500;
 let lastPingTime = 0;
-let localNotificationsAvailable = !IS_MOBILE;
+let localNotificationsAvailable = true;
 
 export type PushNotificationObject = {
   loc_key: string,
@@ -44,7 +45,7 @@ export type PushNotificationObject = {
   mute: string, // should be number
   title: string,
   message?: string,
-
+} & {
   action?: 'mute1d' | 'push_settings', // will be set before postMessage to main thread
 };
 
@@ -137,10 +138,6 @@ ctx.addEventListener('push', (event) => {
   log('push', {...obj});
 
   try {
-    if(!obj.badge) {
-      throw 'no badge';
-    }
-
     const [muteUntil, settings, lang] = [
       getter.getCached('push_mute_until'),
       getter.getCached('push_settings'),
@@ -153,24 +150,33 @@ ctx.addEventListener('push', (event) => {
       muteUntil &&
       nowTime < muteUntil
     ) {
-      throw `Supress notification because mute for ${Math.ceil((muteUntil - nowTime) / 60000)} min`;
+      throw `supress notification because mute for ${Math.ceil((muteUntil - nowTime) / 60000)} min`;
     }
 
     const hasActiveWindows = (Date.now() - lastPingTime) <= PING_PUSH_TIMEOUT && localNotificationsAvailable;
     if(hasActiveWindows) {
-      throw 'Supress notification because some instance is alive';
+      throw 'supress notification because some instance is alive';
     }
 
     const notificationPromise = fireNotification(obj, settings, lang);
     event.waitUntil(notificationPromise);
   } catch(err) {
     log(err);
+
+    const tag = 'fix';
+    const notificationPromise = ctx.registration.showNotification('Telegram', {tag});
+
+    notificationPromise.then(() => {
+      closeAllNotifications(tag);
+    });
+
+    event.waitUntil(notificationPromise);
   }
 });
 
 ctx.addEventListener('notificationclick', (event) => {
   const notification = event.notification;
-  log('On notification click: ', notification.tag);
+  log('on notification click', notification);
   notification.close();
 
   const action = event.action as PushNotificationObject['action'];
@@ -190,7 +196,7 @@ ctx.addEventListener('notificationclick', (event) => {
   }).then((clientList) => {
     data.action = action;
     pendingNotification = data;
-    for(let i = 0; i < clientList.length; i++) {
+    for(let i = 0; i < clientList.length; ++i) {
       const client = clientList[i];
       if('focus' in client) {
         client.focus();
@@ -235,7 +241,12 @@ function removeFromNotifications(notification: Notification) {
 export function closeAllNotifications(tag?: string) {
   for(const notification of notifications) {
     try {
+      if(tag && notification.tag !== tag) {
+        continue;
+      }
+
       notification.close();
+      notifications.delete(notification);
     } catch(e) {}
   }
 
@@ -254,8 +265,6 @@ export function closeAllNotifications(tag?: string) {
     promise = Promise.resolve();
   }
 
-  notifications.clear();
-
   return promise;
 }
 
@@ -264,8 +273,6 @@ function userInvisibleIsSupported() {
 }
 
 function fireNotification(obj: PushNotificationObject, settings: PushStorage['push_settings'], lang: PushStorage['push_lang']) {
-  const icon = 'assets/img/logo_filled_rounded.png';
-  const badge = 'assets/img/masked.svg';
   let title = obj.title || 'Telegram';
   let body = obj.description || '';
   let peerId: string;
@@ -283,13 +290,19 @@ function fireNotification(obj: PushNotificationObject, settings: PushStorage['pu
   obj.custom.peerId = '' + peerId;
   let tag = 'peer' + peerId;
 
+  const messageKey = peerId + '_' + obj.custom.msg_id;
+  if(ignoreMessages) {
+    const error = 'ignoring push';
+    log.warn(error, obj);
+    ignoreMessages.delete(messageKey);
+    throw error;
+  }
+
   if(settings?.nopreview) {
     title = 'Telegram';
     body = lang.push_message_nopreview;
     tag = 'unknown_peer';
   }
-
-  log('show notify', title, body, icon, obj);
 
   const actions: (Omit<NotificationAction, 'action'> & {action: PushNotificationObject['action']})[] = [{
     action: 'mute1d',
@@ -299,15 +312,19 @@ function fireNotification(obj: PushNotificationObject, settings: PushStorage['pu
     title: lang.push_action_settings || 'Settings'
   } */];
 
-  const notificationPromise = ctx.registration.showNotification(title, {
+  const notificationOptions: NotificationOptions = {
     body,
-    icon,
+    icon: NOTIFICATION_ICON_PATH,
     tag,
     data: obj,
     actions,
-    badge,
+    badge: NOTIFICATION_BADGE_PATH,
     silent: obj.custom.silent === '1'
-  });
+  };
+
+  log('show notify', title, body, obj, notificationOptions);
+
+  const notificationPromise = ctx.registration.showNotification(title, notificationOptions);
 
   return notificationPromise.catch((error) => {
     log.error('Show notification promise', error);
@@ -330,4 +347,9 @@ export function onPing(payload: ServicePushPingTaskPayload, source?: MessageEven
   if(payload.settings) {
     getter.set('push_settings', payload.settings);
   }
+}
+
+const ignoreMessages: Set<string> = new Set();
+export function onShownNotification(payload: string) {
+  ignoreMessages.add(payload);
 }

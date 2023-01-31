@@ -11,7 +11,7 @@ import '../mtproto/mtproto.worker';
 import {logger, LogTypes} from '../logger';
 import {CACHE_ASSETS_NAME, requestCache} from './cache';
 import onStreamFetch from './stream';
-import {closeAllNotifications, onPing} from './push';
+import {closeAllNotifications, onPing, onShownNotification} from './push';
 import CacheStorageController from '../files/cacheStorage';
 import {IS_SAFARI} from '../../environment/userAgent';
 import ServiceMessagePort from './serviceMessagePort';
@@ -71,7 +71,9 @@ serviceMessagePort.addMultipleEventsListeners({
 
   hello: (payload, source) => {
     onWindowConnected(source as any as WindowClient);
-  }
+  },
+
+  shownNotification: onShownNotification
 });
 
 const {

@@ -21,6 +21,7 @@ import appRuntimeManager from '../appManagers/appRuntimeManager';
 import copy from '../../helpers/object/copy';
 import singleInstance from './singleInstance';
 import EventListenerBase from '../../helpers/eventListenerBase';
+import getServerMessageId from '../appManagers/utils/messageId/getServerMessageId';
 
 export type PushSubscriptionNotifyType = 'init' | 'subscribe' | 'unsubscribe';
 export type PushSubscriptionNotifyEvent = `push_${PushSubscriptionNotifyType}`;
@@ -247,6 +248,14 @@ export class WebPushApiManager extends EventListenerBase<{
       this.log.warn('Push', event, false);
       this.dispatchEvent(('push_' + event) as PushSubscriptionNotifyEvent, false as any);
     }
+  }
+
+  public ignorePushByMid(peerId: PeerId, mid: number) {
+    if(!this.isAvailable) {
+      return;
+    }
+
+    apiManagerProxy.serviceMessagePort.invokeVoid('shownNotification', peerId + '_' + getServerMessageId(mid));
   }
 }
 

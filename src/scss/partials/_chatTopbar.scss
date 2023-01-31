@@ -452,4 +452,14 @@ body.is-right-column-shown {
       }
     }
   }
+
+  .back-unread-badge {
+    position: absolute;
+    top: -.25rem;
+    right: -.5rem;
+
+    @include respond-to(medium-screens) {
+      display: none;
+    }
+  }
 }

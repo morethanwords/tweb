@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import {MOUNT_CLASS_TO} from '../../config/debug';
 import rootScope from '../../lib/rootScope';
 
 export type CustomProperty = string;
@@ -42,4 +43,5 @@ export class CustomProperties {
 }
 
 const customProperties = new CustomProperties();
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.customProperties = customProperties);
 export default customProperties;

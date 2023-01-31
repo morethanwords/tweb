@@ -68,6 +68,14 @@ $bubble-border-radius-big: 12px;
       transform-origin: bottom;
     }
 
+    &.is-gesturing-reply {
+      transform: translateX(0);
+
+      &.animating.backwards {
+        transition: transform var(--transition-standard-out);
+      }
+    }
+
     &-container {
       position: absolute;
       top: 0;
