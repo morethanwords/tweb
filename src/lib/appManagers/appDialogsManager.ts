@@ -2635,10 +2635,7 @@ export class AppDialogsManager {
     }, {capture: true});
 
     if(withContext) {
-      attachContextMenuListener({
-        element: list,
-        callback: this.contextMenu.onContextMenu
-      });
+      this.contextMenu.attach(list);
     }
   }
 

@@ -96,7 +96,7 @@ export default function createContextMenu<T extends ButtonMenuItemOptionsVerifia
     cleanup();
 
     buttons.forEach((button) => button.element = undefined);
-    const f = filterButtons || ((buttons: T[]) => filterAsync(buttons, (button) => button?.verify?.() ?? true));
+    const f = filterButtons || ((buttons: T[]) => filterAsync(buttons, (button) => button?.verify ? button.verify() : true));
 
     const filteredButtons = await f(buttons);
     if(!filteredButtons.length) {

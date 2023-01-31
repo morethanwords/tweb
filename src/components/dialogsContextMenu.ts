@@ -5,7 +5,6 @@
  */
 
 import type {Dialog} from '../lib/appManagers/appMessagesManager';
-import type {ApiLimitType} from '../lib/mtproto/api_methods';
 import type {ForumTopic} from '../layer';
 import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '../lib/appManagers/appDialogsManager';
 import rootScope from '../lib/rootScope';
@@ -16,13 +15,11 @@ import findUpTag from '../helpers/dom/findUpTag';
 import {toastNew} from './toast';
 import PopupMute from './popups/mute';
 import {AppManagers} from '../lib/appManagers/managers';
-import positionMenu from '../helpers/positionMenu';
-import contextMenuController from '../helpers/contextMenuController';
 import {GENERAL_TOPIC_ID} from '../lib/mtproto/mtproto_config';
 import showLimitPopup from './popups/limit';
+import createContextMenu from '../helpers/dom/createContextMenu';
 
 export default class DialogsContextMenu {
-  private element: HTMLElement;
   private buttons: ButtonMenuItemOptionsVerifiable[];
 
   private peerId: PeerId;
@@ -30,13 +27,43 @@ export default class DialogsContextMenu {
   private threadId: number;
   private dialog: Dialog | ForumTopic.forumTopic;
   private canManageTopics: boolean;
+  private li: HTMLElement;
 
   constructor(private managers: AppManagers) {
 
   }
 
-  private init() {
-    this.buttons = [{
+  public attach(element: HTMLElement) {
+    createContextMenu({
+      listenTo: element,
+      buttons: this.getButtons(),
+      appendTo: document.getElementById('page-chats'),
+      onOpen: async(li) => {
+        this.li = li;
+        li.classList.add('menu-open');
+        this.peerId = li.dataset.peerId.toPeerId();
+        this.threadId = +li.dataset.threadId || undefined;
+        this.dialog = await this.managers.dialogsStorage.getDialogOrTopic(this.peerId, this.threadId);
+        this.filterId = this.threadId ? undefined : appDialogsManager.filterId;
+        this.canManageTopics = this.threadId ? await this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'manage_topics') : undefined;
+      },
+      onBeforeOpen: async() => {
+        const langPackKey: LangPackKey = this.threadId ? 'Delete' : await this.managers.appPeersManager.getDeleteButtonText(this.peerId);
+        // delete button
+        this.buttons[this.buttons.length - 1].element.lastChild.replaceWith(i18n(langPackKey));
+      },
+      onClose: () => {
+        this.li.classList.remove('menu-open');
+        this.li = this.peerId = this.dialog = this.filterId = this.threadId = this.canManageTopics = undefined;
+      },
+      findElement: (e) => {
+        return findUpTag(e.target, DIALOG_LIST_ELEMENT_TAG);
+      }
+    });
+  }
+
+  private getButtons() {
+    return this.buttons ??= [{
       icon: 'unread',
       text: 'MarkAsUnread',
       onClick: this.onUnreadClick,
@@ -101,21 +128,21 @@ export default class DialogsContextMenu {
     }, {
       icon: 'hide',
       text: 'Hide',
-      onClick: this.hideTopic,
-      verify: async() => {
+      onClick: this.onHideTopicClick,
+      verify: () => {
         return this.canManageTopics && (this.dialog as ForumTopic.forumTopic).id === GENERAL_TOPIC_ID;
       }
     }, {
       icon: 'lock',
       text: 'CloseTopic',
-      onClick: this.toggleTopic,
+      onClick: this.onToggleTopicClick,
       verify: () => {
         return this.canManageTopics && !(this.dialog as ForumTopic.forumTopic).pFlags.closed;
       }
     }, {
       icon: 'lockoff',
       text: 'RestartTopic',
-      onClick: this.toggleTopic,
+      onClick: this.onToggleTopicClick,
       verify: () => {
         return this.canManageTopics && !!(this.dialog as ForumTopic.forumTopic).pFlags.closed;
       }
@@ -123,7 +150,7 @@ export default class DialogsContextMenu {
       icon: 'delete danger',
       text: 'Delete',
       onClick: this.onDeleteClick,
-      verify: async() => {
+      verify: () => {
         if(this.threadId) {
           if(!this.canManageTopics) {
             return false;
@@ -135,11 +162,6 @@ export default class DialogsContextMenu {
         return true;
       }
     }];
-
-    this.element = ButtonMenuSync({buttons: this.buttons});
-    this.element.id = 'dialogs-contextmenu';
-    this.element.classList.add('contextmenu');
-    document.getElementById('page-chats').append(this.element);
   }
 
   private onArchiveClick = async() => {
@@ -149,7 +171,7 @@ export default class DialogsContextMenu {
     }
   };
 
-  private hideTopic = () => {
+  private onHideTopicClick = () => {
     this.managers.appChatsManager.editForumTopic({
       chatId: this.peerId.toChatId(),
       topicId: this.threadId,
@@ -157,7 +179,7 @@ export default class DialogsContextMenu {
     });
   };
 
-  private toggleTopic = () => {
+  private onToggleTopicClick = () => {
     this.managers.appChatsManager.editForumTopic({
       chatId: this.peerId.toChatId(),
       topicId: this.threadId,
@@ -209,53 +231,5 @@ export default class DialogsContextMenu {
 
   private onDeleteClick = () => {
     new PopupDeleteDialog(this.peerId, undefined, undefined, this.threadId);
-  };
-
-  onContextMenu = (e: MouseEvent | Touch | TouchEvent) => {
-    if(this.init) {
-      this.init();
-      this.init = null;
-    }
-
-    let li: HTMLElement = null;
-
-    try {
-      li = findUpTag(e.target, DIALOG_LIST_ELEMENT_TAG);
-    } catch(e) {}
-
-    if(!li) return;
-
-    if(e instanceof MouseEvent) e.preventDefault();
-    if(this.element.classList.contains('active')) {
-      return false;
-    }
-    if(e instanceof MouseEvent) e.cancelBubble = true;
-
-    const r = async() => {
-      this.peerId = li.dataset.peerId.toPeerId();
-      this.threadId = +li.dataset.threadId || undefined;
-      this.dialog = await this.managers.dialogsStorage.getDialogOrTopic(this.peerId, this.threadId);
-      this.filterId = this.threadId ? undefined : appDialogsManager.filterId;
-      this.canManageTopics = this.threadId ? await this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'manage_topics') : undefined;
-
-      await Promise.all(this.buttons.map(async(button) => {
-        const good = await button.verify();
-
-        button.element.classList.toggle('hide', !good);
-      }));
-
-      const langPackKey: LangPackKey = this.threadId ? 'Delete' : await this.managers.appPeersManager.getDeleteButtonText(this.peerId);
-      // delete button
-      this.buttons[this.buttons.length - 1].element.lastChild.replaceWith(i18n(langPackKey));
-
-      li.classList.add('menu-open');
-      positionMenu(e, this.element);
-      contextMenuController.openBtnMenu(this.element, () => {
-        li.classList.remove('menu-open');
-        this.peerId = this.dialog = this.filterId = this.threadId = this.canManageTopics = undefined;
-      });
-    };
-
-    r();
   };
 }
