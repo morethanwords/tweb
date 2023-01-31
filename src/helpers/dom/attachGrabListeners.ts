@@ -18,7 +18,7 @@ export default function attachGrabListeners(element: HTMLElement,
   const onMouseUp = (event: MouseEvent) => {
     document.removeEventListener('mousemove', onMouseMove);
     element.addEventListener('mousedown', onMouseDown, {once: true});
-    onEnd && onEnd({x: event.pageX, y: event.pageY, event});
+    onEnd?.({x: event.pageX, y: event.pageY, event});
   };
 
   const onMouseDown = (event: MouseEvent) => {
@@ -45,7 +45,8 @@ export default function attachGrabListeners(element: HTMLElement,
   const onTouchEnd = (event: TouchEvent) => {
     document.removeEventListener('touchmove', onTouchMove);
     element.addEventListener('touchstart', onTouchStart, {passive: false, once: true});
-    onEnd && onEnd({x: event.touches[0].clientX, y: event.touches[0].clientY, isTouch: true, event});
+    const touch = event.touches[0] || event.changedTouches[0];
+    onEnd?.({x: touch.clientX, y: touch.clientY, isTouch: true, event});
   };
 
   const onTouchStart = (event: TouchEvent) => {

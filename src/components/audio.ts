@@ -321,7 +321,10 @@ async function wrapAudio(audioEl: AudioElement) {
   const onLoad = () => {
     let launched = false;
 
-    let progressLine = new MediaProgressLine(audioEl.audio, doc.supportsStreaming);
+    let progressLine = new MediaProgressLine({
+      media: audioEl.audio,
+      streamable: doc.supportsStreaming
+    });
 
     audioEl.addAudioListener('ended', () => {
       audioEl.classList.remove('audio-show-progress');

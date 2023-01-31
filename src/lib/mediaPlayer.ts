@@ -82,7 +82,16 @@ export default class VideoPlayer extends ControlsHover {
 
     if(this.skin === 'default') {
       const controls = this.wrapper.querySelector('.default__controls.ckin__controls') as HTMLDivElement;
-      this.progress = new MediaProgressLine(video, streamable);
+      this.progress = new MediaProgressLine({
+        media: video,
+        streamable,
+        onSeekStart: () => {
+          this.wrapper.classList.add('is-seeking');
+        },
+        onSeekEnd: () => {
+          this.wrapper.classList.remove('is-seeking');
+        }
+      });
       controls.prepend(this.progress.container);
     }
 

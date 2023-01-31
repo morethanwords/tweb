@@ -200,7 +200,9 @@
     }
   }
 
-  &.is-playing, &:not(.played) {
+  &.is-playing,
+  &:not(.played),
+  &.is-seeking {
     .default__button--big {
       opacity: 0;
     }
@@ -210,6 +212,10 @@
         content: $tgico-pause;
       }
     }
+  }
+
+  .is-seeking + .default__button--big {
+    opacity: 0;
   }
 
   .player-volume {

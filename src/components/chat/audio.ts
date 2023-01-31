@@ -110,7 +110,12 @@ export default class ChatAudio extends PinnedContainer {
     const progressWrapper = document.createElement('div');
     progressWrapper.classList.add('pinned-audio-progress-wrapper');
 
-    this.progressLine = new MediaProgressLine(undefined, undefined, true, true);
+    this.progressLine = new MediaProgressLine({
+      media: undefined,
+      streamable: undefined,
+      withTransition: true,
+      useTransform: true
+    });
     this.progressLine.container.classList.add('pinned-audio-progress');
     progressWrapper.append(this.progressLine.container);
     this.wrapper.insertBefore(progressWrapper, this.wrapperUtils);

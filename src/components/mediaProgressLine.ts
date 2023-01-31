@@ -16,17 +16,24 @@ export default class MediaProgressLine extends RangeSelector {
   protected media: HTMLMediaElement;
   protected streamable: boolean;
 
-  constructor(media?: HTMLAudioElement | HTMLVideoElement, streamable?: boolean, withTransition?: boolean, useTransform?: boolean) {
+  constructor(protected options: {
+    media?: HTMLAudioElement | HTMLVideoElement,
+    streamable?: boolean,
+    withTransition?: boolean,
+    useTransform?: boolean,
+    onSeekStart?: () => void,
+    onSeekEnd?: () => void
+  }) {
     super({
       step: 1000 / 60 / 1000,
       min: 0,
       max: 1,
-      withTransition,
-      useTransform
+      withTransition: options.withTransition,
+      useTransform: options.useTransform
     }, 0);
 
-    if(media) {
-      this.setMedia(media, streamable);
+    if(options.media) {
+      this.setMedia(options.media, options.streamable);
     }
   }
 
@@ -57,11 +64,13 @@ export default class MediaProgressLine extends RangeSelector {
       onMouseDown: () => {
         wasPlaying = !this.media.paused;
         wasPlaying && this.media.pause();
+        this.options?.onSeekStart();
       },
 
       onMouseUp: (e) => {
         // cancelEvent(e.event);
         wasPlaying && this.media.play();
+        this.options?.onSeekEnd();
       }
     });
   }
