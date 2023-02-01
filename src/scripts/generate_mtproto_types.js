@@ -174,7 +174,7 @@ function serializeObject(object, outArray, space) {
     const value = object[key];
 
     if(isObject(value)) { // only pFlags
-      outArray.push(`${space}${key}?: Partial<{`);
+      outArray.push(`${space}${key}: Partial<{`);
       serializeObject(value, outArray, space + TABULATION);
       outArray.push(`${space}}>`);
     } else {

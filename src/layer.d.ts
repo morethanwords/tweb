@@ -135,7 +135,7 @@ export namespace InputMedia {
   export type inputMediaUploadedPhoto = {
     _: 'inputMediaUploadedPhoto',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       spoiler?: true,
     }>,
     file: InputFile,
@@ -146,7 +146,7 @@ export namespace InputMedia {
   export type inputMediaPhoto = {
     _: 'inputMediaPhoto',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       spoiler?: true,
     }>,
     id: InputPhoto,
@@ -170,7 +170,7 @@ export namespace InputMedia {
   export type inputMediaUploadedDocument = {
     _: 'inputMediaUploadedDocument',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       nosound_video?: true,
       force_file?: true,
       spoiler?: true,
@@ -186,7 +186,7 @@ export namespace InputMedia {
   export type inputMediaDocument = {
     _: 'inputMediaDocument',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       spoiler?: true,
     }>,
     id: InputDocument,
@@ -207,7 +207,7 @@ export namespace InputMedia {
   export type inputMediaPhotoExternal = {
     _: 'inputMediaPhotoExternal',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       spoiler?: true,
     }>,
     url: string,
@@ -217,7 +217,7 @@ export namespace InputMedia {
   export type inputMediaDocumentExternal = {
     _: 'inputMediaDocumentExternal',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       spoiler?: true,
     }>,
     url: string,
@@ -246,7 +246,7 @@ export namespace InputMedia {
   export type inputMediaGeoLive = {
     _: 'inputMediaGeoLive',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       stopped?: true,
     }>,
     geo_point: InputGeoPoint,
@@ -391,7 +391,7 @@ export namespace InputFileLocation {
   export type inputPeerPhotoFileLocation = {
     _: 'inputPeerPhotoFileLocation',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       big?: true,
     }>,
     peer: InputPeer,
@@ -498,7 +498,7 @@ export namespace User {
   export type user = {
     _: 'user',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       self?: true,
       contact?: true,
       mutual_contact?: true,
@@ -550,7 +550,7 @@ export namespace UserProfilePhoto {
   export type userProfilePhoto = {
     _: 'userProfilePhoto',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       has_video?: true,
       personal?: true,
     }>,
@@ -607,7 +607,7 @@ export namespace Chat {
   export type chat = {
     _: 'chat',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       creator?: true,
       left?: true,
       deactivated?: true,
@@ -636,7 +636,7 @@ export namespace Chat {
   export type channel = {
     _: 'channel',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       creator?: true,
       left?: true,
       broadcast?: true,
@@ -676,7 +676,7 @@ export namespace Chat {
   export type channelForbidden = {
     _: 'channelForbidden',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       broadcast?: true,
       megagroup?: true,
     }>,
@@ -696,7 +696,7 @@ export namespace ChatFull {
   export type chatFull = {
     _: 'chatFull',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       can_set_username?: true,
       has_scheduled?: true,
     }>,
@@ -721,7 +721,7 @@ export namespace ChatFull {
   export type channelFull = {
     _: 'channelFull',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       can_view_participants?: true,
       can_set_username?: true,
       can_set_stickers?: true,
@@ -833,7 +833,7 @@ export namespace ChatPhoto {
   export type chatPhoto = {
     _: 'chatPhoto',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       has_video?: true,
     }>,
     photo_id: string | number,
@@ -861,7 +861,7 @@ export namespace Message {
   export type message = {
     _: 'message',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       out?: true,
       mentioned?: true,
       media_unread?: true,
@@ -921,7 +921,7 @@ export namespace Message {
   export type messageService = {
     _: 'messageService',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       out?: true,
       mentioned?: true,
       media_unread?: true,
@@ -968,7 +968,7 @@ export namespace MessageMedia {
   export type messageMediaPhoto = {
     _: 'messageMediaPhoto',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       spoiler?: true,
     }>,
     photo?: Photo,
@@ -996,7 +996,7 @@ export namespace MessageMedia {
   export type messageMediaDocument = {
     _: 'messageMediaDocument',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       nopremium?: true,
       spoiler?: true,
     }>,
@@ -1027,7 +1027,7 @@ export namespace MessageMedia {
   export type messageMediaInvoice = {
     _: 'messageMediaInvoice',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       shipping_address_requested?: true,
       test?: true,
     }>,
@@ -1146,7 +1146,7 @@ export namespace MessageAction {
   export type messageActionPaymentSentMe = {
     _: 'messageActionPaymentSentMe',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       recurring_init?: true,
       recurring_used?: true,
     }>,
@@ -1161,7 +1161,7 @@ export namespace MessageAction {
   export type messageActionPaymentSent = {
     _: 'messageActionPaymentSent',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       recurring_init?: true,
       recurring_used?: true,
     }>,
@@ -1173,7 +1173,7 @@ export namespace MessageAction {
   export type messageActionPhoneCall = {
     _: 'messageActionPhoneCall',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       video?: true,
     }>,
     call_id: string | number,
@@ -1364,7 +1364,7 @@ export namespace Dialog {
   export type dialog = {
     _: 'dialog',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       pinned?: true,
       unread_mark?: true,
     }>,
@@ -1410,7 +1410,7 @@ export namespace Dialog {
   export type dialogFolder = {
     _: 'dialogFolder',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       pinned?: true,
     }>,
     folder: Folder,
@@ -1440,7 +1440,7 @@ export namespace Photo {
   export type photo = {
     _: 'photo',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       has_stickers?: true,
     }>,
     id: string | number,
@@ -1550,7 +1550,7 @@ export namespace AuthAuthorization {
   export type authAuthorization = {
     _: 'auth.authorization',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       setup_password_required?: true,
     }>,
     otherwise_relogin_days?: number,
@@ -1651,7 +1651,7 @@ export namespace PeerSettings {
   export type peerSettings = {
     _: 'peerSettings',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       report_spam?: true,
       add_contact?: true,
       block_contact?: true,
@@ -1678,7 +1678,7 @@ export namespace WallPaper {
     _: 'wallPaper',
     id: string | number,
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       creator?: true,
       default?: true,
       pattern?: true,
@@ -1694,7 +1694,7 @@ export namespace WallPaper {
     _: 'wallPaperNoFile',
     id: string | number,
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       default?: true,
       dark?: true,
     }>,
@@ -1758,7 +1758,7 @@ export namespace UserFull {
   export type userFull = {
     _: 'userFull',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       blocked?: true,
       phone_calls_available?: true,
       phone_calls_private?: true,
@@ -1926,7 +1926,7 @@ export namespace MessagesMessages {
   export type messagesMessagesSlice = {
     _: 'messages.messagesSlice',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       inexact?: true,
     }>,
     count: number,
@@ -1940,7 +1940,7 @@ export namespace MessagesMessages {
   export type messagesChannelMessages = {
     _: 'messages.channelMessages',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       inexact?: true,
     }>,
     pts: number,
@@ -2053,7 +2053,7 @@ export namespace MessagesFilter {
   export type inputMessagesFilterPhoneCalls = {
     _: 'inputMessagesFilterPhoneCalls',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       missed?: true,
     }>
   };
@@ -2195,7 +2195,7 @@ export namespace Update {
   export type updateServiceNotification = {
     _: 'updateServiceNotification',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       popup?: true,
     }>,
     inbox_date?: number,
@@ -2311,7 +2311,7 @@ export namespace Update {
   export type updateStickerSetsOrder = {
     _: 'updateStickerSetsOrder',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       masks?: true,
       emojis?: true,
     }>,
@@ -2321,7 +2321,7 @@ export namespace Update {
   export type updateStickerSets = {
     _: 'updateStickerSets',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       masks?: true,
       emojis?: true,
     }>
@@ -2432,7 +2432,7 @@ export namespace Update {
   export type updateDialogPinned = {
     _: 'updateDialogPinned',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       pinned?: true,
     }>,
     folder_id?: number,
@@ -2518,7 +2518,7 @@ export namespace Update {
   export type updateDialogUnreadMark = {
     _: 'updateDialogUnreadMark',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       unread?: true,
     }>,
     peer: DialogPeer
@@ -2655,7 +2655,7 @@ export namespace Update {
   export type updatePinnedMessages = {
     _: 'updatePinnedMessages',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       pinned?: true,
     }>,
     peer: Peer,
@@ -2667,7 +2667,7 @@ export namespace Update {
   export type updatePinnedChannelMessages = {
     _: 'updatePinnedChannelMessages',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       pinned?: true,
     }>,
     channel_id: string | number,
@@ -2738,7 +2738,7 @@ export namespace Update {
   export type updateGroupCallConnection = {
     _: 'updateGroupCallConnection',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       presentation?: true,
     }>,
     params: DataJSON
@@ -2802,7 +2802,7 @@ export namespace Update {
   export type updateTranscribedAudio = {
     _: 'updateTranscribedAudio',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       pending?: true,
     }>,
     peer: Peer,
@@ -2832,7 +2832,7 @@ export namespace Update {
   export type updateMoveStickerSetToTop = {
     _: 'updateMoveStickerSetToTop',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       masks?: true,
       emojis?: true,
     }>,
@@ -2849,7 +2849,7 @@ export namespace Update {
   export type updateChannelPinnedTopic = {
     _: 'updateChannelPinnedTopic',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       pinned?: true,
     }>,
     channel_id: string | number,
@@ -2952,7 +2952,7 @@ export namespace Updates {
   export type updateShortMessage = {
     _: 'updateShortMessage',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       out?: true,
       mentioned?: true,
       media_unread?: true,
@@ -2974,7 +2974,7 @@ export namespace Updates {
   export type updateShortChatMessage = {
     _: 'updateShortChatMessage',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       out?: true,
       mentioned?: true,
       media_unread?: true,
@@ -3022,7 +3022,7 @@ export namespace Updates {
   export type updateShortSentMessage = {
     _: 'updateShortSentMessage',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       out?: true,
     }>,
     id: number,
@@ -3100,7 +3100,7 @@ export namespace DcOption {
   export type dcOption = {
     _: 'dcOption',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       ipv6?: true,
       media_only?: true,
       tcpo_only?: true,
@@ -3124,7 +3124,7 @@ export namespace Config {
   export type config = {
     _: 'config',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       phonecalls_enabled?: true,
       default_p2p_contacts?: true,
       preload_featured_stickers?: true,
@@ -3205,7 +3205,7 @@ export namespace HelpAppUpdate {
   export type helpAppUpdate = {
     _: 'help.appUpdate',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       can_not_skip?: true,
     }>,
     id: number,
@@ -3280,7 +3280,7 @@ export namespace EncryptedChat {
   export type encryptedChatDiscarded = {
     _: 'encryptedChatDiscarded',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       history_deleted?: true,
     }>,
     id: number
@@ -3463,7 +3463,7 @@ export namespace Document {
     sticker?: 1 | 2 | 3,
     stickerEmojiRaw?: string,
     stickerSetInput?: InputStickerSet.inputStickerSetID,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       stickerThumbConverted?: true,
     }>,
     animated?: boolean,
@@ -3837,7 +3837,7 @@ export namespace DocumentAttribute {
   export type documentAttributeSticker = {
     _: 'documentAttributeSticker',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       mask?: true,
     }>,
     alt: string,
@@ -3848,7 +3848,7 @@ export namespace DocumentAttribute {
   export type documentAttributeVideo = {
     _: 'documentAttributeVideo',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       round_message?: true,
       supports_streaming?: true,
     }>,
@@ -3860,7 +3860,7 @@ export namespace DocumentAttribute {
   export type documentAttributeAudio = {
     _: 'documentAttributeAudio',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       voice?: true,
     }>,
     duration: number,
@@ -3881,7 +3881,7 @@ export namespace DocumentAttribute {
   export type documentAttributeCustomEmoji = {
     _: 'documentAttributeCustomEmoji',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       free?: true,
       text_color?: true,
     }>,
@@ -4006,7 +4006,7 @@ export namespace Authorization {
   export type authorization = {
     _: 'authorization',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       current?: true,
       official_app?: true,
       password_pending?: true,
@@ -4050,7 +4050,7 @@ export namespace AccountPassword {
   export type accountPassword = {
     _: 'account.password',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       has_recovery?: true,
       has_secure_values?: true,
       has_password?: true,
@@ -4133,7 +4133,7 @@ export namespace ExportedChatInvite {
   export type chatInviteExported = {
     _: 'chatInviteExported',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       revoked?: true,
       permanent?: true,
       request_needed?: true,
@@ -4168,7 +4168,7 @@ export namespace ChatInvite {
   export type chatInvite = {
     _: 'chatInvite',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       channel?: true,
       broadcast?: true,
       public?: true,
@@ -4249,7 +4249,7 @@ export namespace StickerSet {
   export type stickerSet = {
     _: 'stickerSet',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       archived?: true,
       official?: true,
       masks?: true,
@@ -4342,7 +4342,7 @@ export namespace KeyboardButton {
   export type keyboardButtonCallback = {
     _: 'keyboardButtonCallback',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       requires_password?: true,
     }>,
     text: string,
@@ -4362,7 +4362,7 @@ export namespace KeyboardButton {
   export type keyboardButtonSwitchInline = {
     _: 'keyboardButtonSwitchInline',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       same_peer?: true,
     }>,
     text: string,
@@ -4391,7 +4391,7 @@ export namespace KeyboardButton {
   export type inputKeyboardButtonUrlAuth = {
     _: 'inputKeyboardButtonUrlAuth',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       request_write_access?: true,
     }>,
     text: string,
@@ -4453,7 +4453,7 @@ export namespace ReplyMarkup {
   export type replyKeyboardHide = {
     _: 'replyKeyboardHide',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       selective?: true,
     }>,
     mid?: number
@@ -4462,7 +4462,7 @@ export namespace ReplyMarkup {
   export type replyKeyboardForceReply = {
     _: 'replyKeyboardForceReply',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       single_use?: true,
       selective?: true,
       hidden?: true,
@@ -4476,7 +4476,7 @@ export namespace ReplyMarkup {
   export type replyKeyboardMarkup = {
     _: 'replyKeyboardMarkup',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       resize?: true,
       single_use?: true,
       selective?: true,
@@ -4719,7 +4719,7 @@ export namespace UpdatesChannelDifference {
   export type updatesChannelDifferenceEmpty = {
     _: 'updates.channelDifferenceEmpty',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       final?: true,
     }>,
     pts: number,
@@ -4729,7 +4729,7 @@ export namespace UpdatesChannelDifference {
   export type updatesChannelDifferenceTooLong = {
     _: 'updates.channelDifferenceTooLong',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       final?: true,
     }>,
     timeout?: number,
@@ -4742,7 +4742,7 @@ export namespace UpdatesChannelDifference {
   export type updatesChannelDifference = {
     _: 'updates.channelDifference',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       final?: true,
     }>,
     pts: number,
@@ -4767,7 +4767,7 @@ export namespace ChannelMessagesFilter {
   export type channelMessagesFilter = {
     _: 'channelMessagesFilter',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       exclude_new_messages?: true,
     }>,
     ranges: Array<MessageRange>
@@ -4789,7 +4789,7 @@ export namespace ChannelParticipant {
   export type channelParticipantSelf = {
     _: 'channelParticipantSelf',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       via_request?: true,
     }>,
     user_id: string | number,
@@ -4808,7 +4808,7 @@ export namespace ChannelParticipant {
   export type channelParticipantAdmin = {
     _: 'channelParticipantAdmin',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       can_edit?: true,
       self?: true,
     }>,
@@ -4823,7 +4823,7 @@ export namespace ChannelParticipant {
   export type channelParticipantBanned = {
     _: 'channelParticipantBanned',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       left?: true,
     }>,
     peer: Peer,
@@ -4926,7 +4926,7 @@ export namespace HelpTermsOfService {
   export type helpTermsOfService = {
     _: 'help.termsOfService',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       popup?: true,
     }>,
     id: DataJSON,
@@ -4970,7 +4970,7 @@ export namespace InputBotInlineMessage {
   export type inputBotInlineMessageText = {
     _: 'inputBotInlineMessageText',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       no_webpage?: true,
     }>,
     message: string,
@@ -5093,7 +5093,7 @@ export namespace BotInlineMessage {
   export type botInlineMessageText = {
     _: 'botInlineMessageText',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       no_webpage?: true,
     }>,
     message: string,
@@ -5136,7 +5136,7 @@ export namespace BotInlineMessage {
   export type botInlineMessageMediaInvoice = {
     _: 'botInlineMessageMediaInvoice',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       shipping_address_requested?: true,
       test?: true,
     }>,
@@ -5190,7 +5190,7 @@ export namespace MessagesBotResults {
   export type messagesBotResults = {
     _: 'messages.botResults',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       gallery?: true,
     }>,
     query_id: string | number,
@@ -5224,7 +5224,7 @@ export namespace MessageFwdHeader {
   export type messageFwdHeader = {
     _: 'messageFwdHeader',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       imported?: true,
     }>,
     from_id?: Peer,
@@ -5300,7 +5300,7 @@ export namespace AuthSentCodeType {
   export type authSentCodeTypeEmailCode = {
     _: 'auth.sentCodeTypeEmailCode',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       apple_signin_allowed?: true,
       google_signin_allowed?: true,
     }>,
@@ -5312,7 +5312,7 @@ export namespace AuthSentCodeType {
   export type authSentCodeTypeSetUpEmailRequired = {
     _: 'auth.sentCodeTypeSetUpEmailRequired',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       apple_signin_allowed?: true,
       google_signin_allowed?: true,
     }>
@@ -5334,7 +5334,7 @@ export namespace MessagesBotCallbackAnswer {
   export type messagesBotCallbackAnswer = {
     _: 'messages.botCallbackAnswer',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       alert?: true,
       has_url?: true,
       native_ui?: true,
@@ -5354,7 +5354,7 @@ export namespace MessagesMessageEditData {
   export type messagesMessageEditData = {
     _: 'messages.messageEditData',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       caption?: true,
     }>
   };
@@ -5514,7 +5514,7 @@ export namespace DraftMessage {
   export type draftMessage = {
     _: 'draftMessage',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       no_webpage?: true,
     }>,
     reply_to_msg_id?: number,
@@ -5538,7 +5538,7 @@ export namespace MessagesFeaturedStickers {
   export type messagesFeaturedStickers = {
     _: 'messages.featuredStickers',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       premium?: true,
     }>,
     hash: string | number,
@@ -5908,7 +5908,7 @@ export namespace PageBlock {
   export type pageBlockVideo = {
     _: 'pageBlockVideo',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       autoplay?: true,
       loop?: true,
     }>,
@@ -5924,7 +5924,7 @@ export namespace PageBlock {
   export type pageBlockEmbed = {
     _: 'pageBlockEmbed',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       full_width?: true,
       allow_scrolling?: true,
     }>,
@@ -5978,7 +5978,7 @@ export namespace PageBlock {
   export type pageBlockTable = {
     _: 'pageBlockTable',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       bordered?: true,
       striped?: true,
     }>,
@@ -5994,7 +5994,7 @@ export namespace PageBlock {
   export type pageBlockDetails = {
     _: 'pageBlockDetails',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       open?: true,
     }>,
     blocks: Array<PageBlock>,
@@ -6074,7 +6074,7 @@ export namespace Invoice {
   export type invoice = {
     _: 'invoice',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       test?: true,
       name_requested?: true,
       phone_requested?: true,
@@ -6220,7 +6220,7 @@ export namespace InputWebFileLocation {
   export type inputWebFileAudioAlbumThumbLocation = {
     _: 'inputWebFileAudioAlbumThumbLocation',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       small?: true,
     }>,
     document?: InputDocument,
@@ -6254,7 +6254,7 @@ export namespace PaymentsPaymentForm {
   export type paymentsPaymentForm = {
     _: 'payments.paymentForm',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       can_save_credentials?: true,
       password_missing?: true,
     }>,
@@ -6341,7 +6341,7 @@ export namespace PaymentsSavedInfo {
   export type paymentsSavedInfo = {
     _: 'payments.savedInfo',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       has_saved_credentials?: true,
     }>,
     saved_info?: PaymentRequestedInfo
@@ -6363,7 +6363,7 @@ export namespace InputPaymentCredentials {
   export type inputPaymentCredentials = {
     _: 'inputPaymentCredentials',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       save?: true,
     }>,
     data: DataJSON
@@ -6449,7 +6449,7 @@ export namespace PhoneCall {
   export type phoneCallWaiting = {
     _: 'phoneCallWaiting',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       video?: true,
     }>,
     id: string | number,
@@ -6464,7 +6464,7 @@ export namespace PhoneCall {
   export type phoneCallRequested = {
     _: 'phoneCallRequested',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       video?: true,
     }>,
     id: string | number,
@@ -6479,7 +6479,7 @@ export namespace PhoneCall {
   export type phoneCallAccepted = {
     _: 'phoneCallAccepted',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       video?: true,
     }>,
     id: string | number,
@@ -6494,7 +6494,7 @@ export namespace PhoneCall {
   export type phoneCall = {
     _: 'phoneCall',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       p2p_allowed?: true,
       video?: true,
     }>,
@@ -6513,7 +6513,7 @@ export namespace PhoneCall {
   export type phoneCallDiscarded = {
     _: 'phoneCallDiscarded',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       need_rating?: true,
       need_debug?: true,
       video?: true,
@@ -6533,7 +6533,7 @@ export namespace PhoneConnection {
   export type phoneConnection = {
     _: 'phoneConnection',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       tcp?: true,
     }>,
     id: string | number,
@@ -6546,7 +6546,7 @@ export namespace PhoneConnection {
   export type phoneConnectionWebrtc = {
     _: 'phoneConnectionWebrtc',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       turn?: true,
       stun?: true,
     }>,
@@ -6568,7 +6568,7 @@ export namespace PhoneCallProtocol {
   export type phoneCallProtocol = {
     _: 'phoneCallProtocol',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       udp_p2p?: true,
       udp_reflector?: true,
     }>,
@@ -6690,7 +6690,7 @@ export namespace LangPackLanguage {
   export type langPackLanguage = {
     _: 'langPackLanguage',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       official?: true,
       rtl?: true,
       beta?: true,
@@ -6984,7 +6984,7 @@ export namespace ChannelAdminLogEventsFilter {
   export type channelAdminLogEventsFilter = {
     _: 'channelAdminLogEventsFilter',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       join?: true,
       leave?: true,
       invite?: true,
@@ -7576,7 +7576,7 @@ export namespace HelpDeepLinkInfo {
   export type helpDeepLinkInfo = {
     _: 'help.deepLinkInfo',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       update_app?: true,
     }>,
     message: string,
@@ -7692,7 +7692,7 @@ export namespace SecureRequiredType {
   export type secureRequiredType = {
     _: 'secureRequiredType',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       native_names?: true,
       selfie_required?: true,
       translation_required?: true,
@@ -7796,7 +7796,7 @@ export namespace PageTableCell {
   export type pageTableCell = {
     _: 'pageTableCell',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       header?: true,
       align_center?: true,
       align_right?: true,
@@ -7898,7 +7898,7 @@ export namespace Page {
   export type page = {
     _: 'page',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       part?: true,
       rtl?: true,
       v2?: true,
@@ -7965,7 +7965,7 @@ export namespace Poll {
     _: 'poll',
     id: string | number,
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       closed?: true,
       public_voters?: true,
       multiple_choice?: true,
@@ -7988,7 +7988,7 @@ export namespace PollAnswerVoters {
   export type pollAnswerVoters = {
     _: 'pollAnswerVoters',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       chosen?: true,
       correct?: true,
     }>,
@@ -8006,7 +8006,7 @@ export namespace PollResults {
   export type pollResults = {
     _: 'pollResults',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       min?: true,
     }>,
     results?: Array<PollAnswerVoters>,
@@ -8050,7 +8050,7 @@ export namespace ChatAdminRights {
   export type chatAdminRights = {
     _: 'chatAdminRights',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       change_info?: true,
       post_messages?: true,
       edit_messages?: true,
@@ -8076,7 +8076,7 @@ export namespace ChatBannedRights {
   export type chatBannedRights = {
     _: 'chatBannedRights',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       view_messages?: true,
       send_messages?: true,
       send_media?: true,
@@ -8144,7 +8144,7 @@ export namespace CodeSettings {
   export type codeSettings = {
     _: 'codeSettings',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       allow_flashcall?: true,
       current_number?: true,
       allow_app_hash?: true,
@@ -8163,7 +8163,7 @@ export namespace WallPaperSettings {
   export type wallPaperSettings = {
     _: 'wallPaperSettings',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       blur?: true,
       motion?: true,
     }>,
@@ -8185,7 +8185,7 @@ export namespace AutoDownloadSettings {
   export type autoDownloadSettings = {
     _: 'autoDownloadSettings',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       disabled?: true,
       video_preload_large?: true,
       audio_preload_next?: true,
@@ -8279,7 +8279,7 @@ export namespace Folder {
   export type folder = {
     _: 'folder',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       autofill_new_broadcasts?: true,
       autofill_public_groups?: true,
       autofill_new_correspondents?: true,
@@ -8325,7 +8325,7 @@ export namespace MessagesSearchCounter {
   export type messagesSearchCounter = {
     _: 'messages.searchCounter',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       inexact?: true,
     }>,
     filter: MessagesFilter,
@@ -8342,7 +8342,7 @@ export namespace UrlAuthResult {
   export type urlAuthResultRequest = {
     _: 'urlAuthResultRequest',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       request_write_access?: true,
     }>,
     bot: User,
@@ -8436,7 +8436,7 @@ export namespace Theme {
   export type theme = {
     _: 'theme',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       creator?: true,
       default?: true,
       for_chat?: true,
@@ -8502,7 +8502,7 @@ export namespace AccountContentSettings {
   export type accountContentSettings = {
     _: 'account.contentSettings',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       sensitive_enabled?: true,
       sensitive_can_change?: true,
     }>
@@ -8559,7 +8559,7 @@ export namespace InputThemeSettings {
   export type inputThemeSettings = {
     _: 'inputThemeSettings',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       message_colors_animated?: true,
     }>,
     base_theme: BaseTheme,
@@ -8580,7 +8580,7 @@ export namespace ThemeSettings {
   export type themeSettings = {
     _: 'themeSettings',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       message_colors_animated?: true,
     }>,
     base_theme: BaseTheme,
@@ -8683,7 +8683,7 @@ export namespace DialogFilter {
   export type dialogFilter = {
     _: 'dialogFilter',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       contacts?: true,
       non_contacts?: true,
       groups?: true,
@@ -8842,7 +8842,7 @@ export namespace HelpPromoData {
   export type helpPromoData = {
     _: 'help.promoData',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       proxy?: true,
     }>,
     expires: number,
@@ -8978,7 +8978,7 @@ export namespace HelpCountry {
   export type helpCountry = {
     _: 'help.country',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       hidden?: true,
     }>,
     iso2: string,
@@ -9062,7 +9062,7 @@ export namespace MessageReplyHeader {
   export type messageReplyHeader = {
     _: 'messageReplyHeader',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       reply_to_scheduled?: true,
       forum_topic?: true,
     }>,
@@ -9081,7 +9081,7 @@ export namespace MessageReplies {
   export type messageReplies = {
     _: 'messageReplies',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       comments?: true,
     }>,
     replies: number,
@@ -9134,7 +9134,7 @@ export namespace GroupCall {
   export type groupCall = {
     _: 'groupCall',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       join_muted?: true,
       can_change_join_muted?: true,
       join_date_asc?: true,
@@ -9179,7 +9179,7 @@ export namespace GroupCallParticipant {
   export type groupCallParticipant = {
     _: 'groupCallParticipant',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       muted?: true,
       left?: true,
       can_self_unmute?: true,
@@ -9284,7 +9284,7 @@ export namespace MessagesHistoryImportParsed {
   export type messagesHistoryImportParsed = {
     _: 'messages.historyImportParsed',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       pm?: true,
       group?: true,
     }>,
@@ -9316,7 +9316,7 @@ export namespace ChatInviteImporter {
   export type chatInviteImporter = {
     _: 'chatInviteImporter',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       requested?: true,
     }>,
     user_id: string | number,
@@ -9461,7 +9461,7 @@ export namespace GroupCallParticipantVideo {
   export type groupCallParticipantVideo = {
     _: 'groupCallParticipantVideo',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       paused?: true,
     }>,
     endpoint: string,
@@ -9551,7 +9551,7 @@ export namespace SponsoredMessage {
   export type sponsoredMessage = {
     _: 'sponsoredMessage',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       recommended?: true,
       show_peer_photo?: true,
     }>,
@@ -9610,7 +9610,7 @@ export namespace MessagesSearchResultsCalendar {
   export type messagesSearchResultsCalendar = {
     _: 'messages.searchResultsCalendar',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       inexact?: true,
     }>,
     count: number,
@@ -9730,7 +9730,7 @@ export namespace MessageReactions {
   export type messageReactions = {
     _: 'messageReactions',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       min?: true,
       can_see_list?: true,
     }>,
@@ -9765,7 +9765,7 @@ export namespace AvailableReaction {
   export type availableReaction = {
     _: 'availableReaction',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       inactive?: true,
       premium?: true,
     }>,
@@ -9823,7 +9823,7 @@ export namespace MessagePeerReaction {
   export type messagePeerReaction = {
     _: 'messagePeerReaction',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       big?: true,
       unread?: true,
     }>,
@@ -9908,7 +9908,7 @@ export namespace AttachMenuBot {
   export type attachMenuBot = {
     _: 'attachMenuBot',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       inactive?: true,
       has_settings?: true,
       request_write_access?: true,
@@ -10135,7 +10135,7 @@ export namespace MessagesTranscribedAudio {
   export type messagesTranscribedAudio = {
     _: 'messages.transcribedAudio',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       pending?: true,
     }>,
     transcription_id: string | number,
@@ -10169,7 +10169,7 @@ export namespace InputStorePaymentPurpose {
   export type inputStorePaymentPremiumSubscription = {
     _: 'inputStorePaymentPremiumSubscription',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       restore?: true,
     }>
   };
@@ -10285,7 +10285,7 @@ export namespace ChatReactions {
   export type chatReactionsAll = {
     _: 'chatReactionsAll',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       allow_custom?: true,
     }>
   };
@@ -10383,7 +10383,7 @@ export namespace PremiumSubscriptionOption {
   export type premiumSubscriptionOption = {
     _: 'premiumSubscriptionOption',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       current?: true,
       can_purchase_upgrade?: true,
     }>,
@@ -10404,7 +10404,7 @@ export namespace SendAsPeer {
   export type sendAsPeer = {
     _: 'sendAsPeer',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       premium_required?: true,
     }>,
     peer: Peer
@@ -10454,7 +10454,7 @@ export namespace Username {
   export type username = {
     _: 'username',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       editable?: true,
       active?: true,
     }>,
@@ -10476,7 +10476,7 @@ export namespace ForumTopic {
   export type forumTopic = {
     _: 'forumTopic',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       my?: true,
       closed?: true,
       pinned?: true,
@@ -10512,7 +10512,7 @@ export namespace MessagesForumTopics {
   export type messagesForumTopics = {
     _: 'messages.forumTopics',
     flags?: number,
-    pFlags?: Partial<{
+    pFlags: Partial<{
       order_by_create_date?: true,
     }>,
     count: number,

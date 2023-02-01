@@ -978,7 +978,8 @@ export class AppMessagesManager extends AppManager {
       if(isDocument) {
         const inputMedia: InputMedia = {
           _: 'inputMediaDocument',
-          id: getDocumentInput(file)
+          id: getDocumentInput(file),
+          pFlags: {}
         };
 
         sentDeferred.resolve(inputMedia);
@@ -1350,7 +1351,8 @@ export class AppMessagesManager extends AppManager {
       case 'inputMediaPhoto': {
         media = {
           _: 'messageMediaPhoto',
-          photo: this.appPhotosManager.getPhoto((inputMedia.id as InputPhoto.inputPhoto).id)
+          photo: this.appPhotosManager.getPhoto((inputMedia.id as InputPhoto.inputPhoto).id),
+          pFlags: {}
         };
         break;
       }
@@ -1362,7 +1364,8 @@ export class AppMessagesManager extends AppManager {
         } */
         media = {
           _: 'messageMediaDocument',
-          document: doc
+          document: doc,
+          pFlags: {}
         };
         break;
       }
@@ -1703,7 +1706,8 @@ export class AppMessagesManager extends AppManager {
     const fwdHeader: MessageFwdHeader.messageFwdHeader = {
       _: 'messageFwdHeader',
       flags: 0,
-      date: originalMessage.date
+      date: originalMessage.date,
+      pFlags: {}
     };
 
     let isUserHidden = false;
@@ -2182,7 +2186,8 @@ export class AppMessagesManager extends AppManager {
         const newReplyToMid = newMids[replyToMessageIdx];
         message.reply_to = {
           _: 'messageReplyHeader',
-          reply_to_msg_id: newReplyToMid
+          reply_to_msg_id: newReplyToMid,
+          pFlags: {}
         };
 
         /* this.invokeAfterMessageIsSent(newReplyToMid, 'reply', async(originalMessage) => {
