@@ -89,6 +89,7 @@ export default class Chat extends EventListenerBase<{
   public isMegagroup: boolean;
   public isForum: boolean;
   public isAllMessagesForum: boolean;
+  public isAnonymousSending: boolean;
 
   public animationGroup: AnimationItemGroup;
 
@@ -349,6 +350,16 @@ export default class Chat extends EventListenerBase<{
       }
     });
 
+    this.bubbles.listenerSetter.add(rootScope)('chat_update', async(chatId) => {
+      const {peerId} = this;
+      if(peerId.isAnyChat() && peerId.toChatId() === chatId) {
+        const isAnonymousSending = await this.managers.appMessagesManager.isAnonymousSending(peerId);
+        if(peerId === this.peerId) {
+          this.isAnonymousSending = isAnonymousSending;
+        }
+      }
+    });
+
     const freezeObservers = (freeze: boolean) => {
       const cb = () => {
         this.bubbles.observer?.toggleObservingNew(freeze);
@@ -441,7 +452,8 @@ export default class Chat extends EventListenerBase<{
       isBroadcast,
       isChannel,
       isBot,
-      isForum
+      isForum,
+      isAnonymousSending
     ] = await m(Promise.all([
       this.managers.appPeersManager.noForwards(peerId),
       this.managers.appPeersManager.isPeerRestricted(peerId),
@@ -451,7 +463,8 @@ export default class Chat extends EventListenerBase<{
       this.managers.appPeersManager.isBroadcast(peerId),
       this.managers.appPeersManager.isChannel(peerId),
       this.managers.appPeersManager.isBot(peerId),
-      this.managers.appPeersManager.isForum(peerId)
+      this.managers.appPeersManager.isForum(peerId),
+      this.managers.appMessagesManager.isAnonymousSending(peerId)
     ]));
 
     // ! WARNING: TEMPORARY, HAVE TO GET TOPIC
@@ -468,6 +481,7 @@ export default class Chat extends EventListenerBase<{
     this.isBot = isBot;
     this.isForum = isForum;
     this.isAllMessagesForum = isForum && !threadId;
+    this.isAnonymousSending = isAnonymousSending;
 
     if(threadId && !this.isForum) {
       options.type = 'discussion';

@@ -404,7 +404,8 @@ export default class BubbleGroups {
       !item1.single &&
       !item2.single &&
       item1.message.pFlags.out === item2.message.pFlags.out &&
-      (!this.chat.isAllMessagesForum || getMessageThreadId(item1.message, true) === getMessageThreadId(item2.message, true));
+      (!this.chat.isAllMessagesForum || getMessageThreadId(item1.message, true) === getMessageThreadId(item2.message, true)) &&
+      (!item1.message.pFlags.out || item1.message.fromId === rootScope.myId);
   }
 
   getSiblingsAtIndex(itemIndex: number, items: GroupItem[]) {
@@ -467,7 +468,7 @@ export default class BubbleGroups {
   }
 
   getMessageFromId(message: MyMessage) {
-    let fromId = message.viaBotId || message.fromId;
+    let fromId = /* (this.chat.peerId.isAnyChat() && message.viaBotId) ||  */message.fromId;
 
     // fix for saved messages forward to self
     if(fromId === rootScope.myId && message.peerId === rootScope.myId && (message as Message.message).fwdFromId === fromId) {
