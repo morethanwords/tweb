@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type {MyDocument} from '../lib/appManagers/appDocsManager';
+import type {MyPhoto} from '../lib/appManagers/appPhotosManager';
 import deferredPromise from '../helpers/cancellablePromise';
 import mediaSizes from '../helpers/mediaSizes';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import {IS_MOBILE, IS_MOBILE_SAFARI, IS_SAFARI} from '../environment/userAgent';
-import type {MyDocument} from '../lib/appManagers/appDocsManager';
-import type {MyPhoto} from '../lib/appManagers/appPhotosManager';
 import {logger} from '../lib/logger';
 import VideoPlayer from '../lib/mediaPlayer';
 import rootScope from '../lib/rootScope';
@@ -48,7 +48,6 @@ import setAttachmentSize from '../helpers/setAttachmentSize';
 import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 import LazyLoadQueueBase from './lazyLoadQueueBase';
 import overlayCounter from '../helpers/overlayCounter';
-import {ThumbCache} from '../lib/storages/thumbs';
 import appDownloadManager from '../lib/appManagers/appDownloadManager';
 import wrapPeerTitle from './wrappers/peerTitle';
 import {toastNew} from './toast';
@@ -329,10 +328,11 @@ export default class AppMediaViewerBase<
 
           return false;
         },
-        verifyTouchTarget: (evt) => {
-          console.log('verify');
+        verifyTouchTarget: (e) => {
           // * Fix for seek input
-          if((evt.target as HTMLElement).tagName === 'INPUT' || findUpClassName(evt.target, 'media-viewer-caption')) {
+          if(findUpClassName(e.target, 'ckin__controls') ||
+            findUpClassName(e.target, 'media-viewer-caption') ||
+            findUpClassName(e.target, 'media-viewer-topbar')) {
             return false;
           }
 

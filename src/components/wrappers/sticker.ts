@@ -54,6 +54,16 @@ const locksUrls: {[docId: string]: string} = {};
 
 export const videosCache: {[key: string]: Promise<any>} = {};
 
+const onAnimationEnd = (element: HTMLElement, onAnimationEnd: () => void, timeout: number) => {
+  const onEnd = () => {
+    element.removeEventListener('animationend', onEnd);
+    onAnimationEnd();
+    clearTimeout(_timeout);
+  };
+  element.addEventListener('animationend', onEnd);
+  const _timeout = setTimeout(onEnd, timeout);
+};
+
 export default async function wrapSticker({doc, div, middleware, loadStickerMiddleware, lazyLoadQueue, exportLoad, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn, needUpscale, skipRatio, static: asStatic, managers = rootScope.managers, fullThumb, isOut, noPremium, withLock, relativeEffect, loopEffect, isCustomEmoji, syncedVideo}: {
   doc: MyDocument,
   div: HTMLElement | HTMLElement[],
@@ -200,10 +210,12 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
 
     const afterRender = (div: HTMLElement, thumbImage: HTMLElement) => {
       if(!div.childElementCount) {
-        thumbImage.classList.add('media-sticker', 'thumbnail');
-
         sequentialDom.mutateElement(div, () => {
-          div.append(thumbImage);
+          if(!div.childElementCount) {
+            thumbImage.classList.add('media-sticker', 'thumbnail');
+            div.append(thumbImage);
+          }
+
           loadThumbPromise.resolve();
         });
       } else {
@@ -364,94 +376,92 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
     }
 
     if(stickerType === 2 && !asStatic) {
-      return appDownloadManager.downloadMedia({media: doc, queueId: lazyLoadQueue?.queueId, thumb: fullThumb})
-      .then(async(blob) => {
-        if(middleware && !middleware()) {
-          throw middlewareError;
+      const blob = await appDownloadManager.downloadMedia({media: doc, queueId: lazyLoadQueue?.queueId, thumb: fullThumb});
+      if(middleware && !middleware()) {
+        throw middlewareError;
+      }
+
+      const animation = await lottieLoader.loadAnimationWorker({
+        container: (div as HTMLElement[])[0],
+        loop: !!(!emoji || isCustomEmoji) && loop,
+        autoplay: play,
+        animationData: blob,
+        width,
+        height,
+        name: 'doc' + doc.id,
+        needUpscale,
+        skipRatio,
+        toneIndex,
+        sync: isCustomEmoji,
+        middleware: loadStickerMiddleware ?? middleware,
+        group
+      });
+
+      // const deferred = deferredPromise<void>();
+
+      const setLockColor = willHaveLock ? () => {
+        const lockUrl = locksUrls[doc.id] ??= computeLockColor(animation.canvas[0]);
+        (div as HTMLElement[]).forEach((div) => div.style.setProperty('--lock-url', `url(${lockUrl})`));
+      } : undefined;
+
+      const onFirstFrame = (container: HTMLElement, canvas: HTMLCanvasElement) => {
+        const element = container.firstElementChild !== canvas && container.firstElementChild as HTMLElement;
+        if(needFadeIn !== false) {
+          needFadeIn = (needFadeIn || !element || element.tagName === 'svg') && rootScope.settings.animationsEnabled;
         }
 
-        const animation = await lottieLoader.loadAnimationWorker({
-          container: (div as HTMLElement[])[0],
-          loop: !!(!emoji || isCustomEmoji) && loop,
-          autoplay: play,
-          animationData: blob,
-          width,
-          height,
-          name: 'doc' + doc.id,
-          needUpscale,
-          skipRatio,
-          toneIndex,
-          sync: isCustomEmoji,
-          middleware: loadStickerMiddleware ?? middleware,
-          group
-        });
-
-        // const deferred = deferredPromise<void>();
-
-        const setLockColor = willHaveLock ? () => {
-          const lockUrl = locksUrls[doc.id] ??= computeLockColor(animation.canvas[0]);
-          (div as HTMLElement[]).forEach((div) => div.style.setProperty('--lock-url', `url(${lockUrl})`));
-        } : undefined;
-
-        const onFirstFrame = (container: HTMLElement, canvas: HTMLCanvasElement) => {
-          const element = container.firstElementChild;
-          if(needFadeIn !== false) {
-            needFadeIn = (needFadeIn || !element || element.tagName === 'svg') && rootScope.settings.animationsEnabled;
-          }
-
-          const cb = () => {
-            if(element && element !== canvas && element.tagName !== 'DIV') {
-              element.remove();
-            }
-          };
-
-          if(!needFadeIn) {
-            if(element) {
-              sequentialDom.mutate(cb);
-            }
-          } else {
-            sequentialDom.mutate(() => {
-              canvas && canvas.classList.add('fade-in');
-              if(element) {
-                element.classList.add('fade-out');
-              }
-
-              (canvas || element).addEventListener('animationend', () => {
-                sequentialDom.mutate(() => {
-                  canvas && canvas.classList.remove('fade-in');
-                  cb();
-                });
-              }, {once: true});
-            });
+        const cb = () => {
+          if(element && element !== canvas && element.tagName !== 'DIV') {
+            element.remove();
           }
         };
 
-        animation.addEventListener('firstFrame', () => {
-          const canvas = animation.canvas[0];
-          if(withThumb !== false || isCustomEmoji) {
-            saveLottiePreview(doc, canvas, toneIndex);
+        if(!needFadeIn) {
+          if(element) {
+            sequentialDom.mutate(cb);
           }
+        } else {
+          sequentialDom.mutate(() => {
+            canvas && canvas.classList.add('fade-in');
+            if(element) {
+              element.classList.add('fade-out');
+            }
 
-          if(willHaveLock) {
-            setLockColor();
-          }
+            onAnimationEnd(canvas || element, () => {
+              sequentialDom.mutate(() => {
+                canvas && canvas.classList.remove('fade-in');
+                cb();
+              });
+            }, 400);
+          });
+        }
+      };
 
-          if(!isCustomEmoji) {
-            (div as HTMLElement[]).forEach((container, idx) => {
-              onFirstFrame(container, animation.canvas[idx]);
-            });
-          }
-        }, {once: true});
-
-        if(emoji) {
-          managers.appStickersManager.preloadAnimatedEmojiStickerAnimation(emoji);
+      animation.addEventListener('firstFrame', () => {
+        const canvas = animation.canvas[0];
+        if(withThumb !== false || isCustomEmoji) {
+          saveLottiePreview(doc, canvas, toneIndex);
         }
 
-        return animation;
+        if(willHaveLock) {
+          setLockColor();
+        }
 
-        // return deferred;
-        // await new Promise((resolve) => setTimeout(resolve, 5e3));
-      });
+        if(!isCustomEmoji) {
+          (div as HTMLElement[]).forEach((container, idx) => {
+            onFirstFrame(container, animation.canvas[idx]);
+          });
+        }
+      }, {once: true});
+
+      if(emoji) {
+        managers.appStickersManager.preloadAnimatedEmojiStickerAnimation(emoji);
+      }
+
+      return animation;
+
+      // return deferred;
+      // await new Promise((resolve) => setTimeout(resolve, 5e3));
     } else if(asStatic || stickerType === 3) {
       const isSingleVideo = isAnimated && syncedVideo;
       const cacheName = isSingleVideo ? framesCache.generateName('' + doc.id, 0, 0, undefined, undefined) : undefined;
@@ -550,10 +560,10 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
 
               if(needFadeIn) {
                 thumbImage && thumbImage.classList.add('fade-out');
-                media.addEventListener('animationend', () => {
+                onAnimationEnd(media, () => {
                   media.classList.remove('fade-in');
                   thumbImage?.remove();
-                }, {once: true});
+                }, 400);
               } else {
                 thumbImage?.remove();
               }

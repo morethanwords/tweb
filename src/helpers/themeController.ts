@@ -10,6 +10,7 @@ import type AppBackgroundTab from '../components/sidebarLeft/tabs/background';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import rootScope from '../lib/rootScope';
 import {changeColorAccent, ColorRgb, getAccentColor, getAverageColor, getHexColorFromTelegramColor, getRgbColorFromTelegramColor, hexToRgb, hslaStringToHex, hsvToRgb, mixColors, rgbaToHexa, rgbaToHsla, rgbToHsv} from './color';
+import {MOUNT_CLASS_TO} from '../config/debug';
 
 type AppColorName = 'primary-color' | 'message-out-primary-color' |
   'surface-color' | 'danger-color' | 'primary-text-color' |
@@ -89,6 +90,7 @@ export class ThemeController {
   private themeColor: string;
   private _themeColorElem: Element;
   private systemTheme: AppTheme['name'];
+  private styleElement: HTMLStyleElement;
   public AppBackgroundTab: typeof AppBackgroundTab;
 
   constructor() {
@@ -147,7 +149,7 @@ export class ThemeController {
 
   public applyHighlightningColor() {
     let hsla: string;
-    const theme = themeController.getTheme();
+    const theme = this.getTheme();
     if(theme.settings?.highlightningColor) {
       hsla = theme.settings.highlightningColor;
       document.documentElement.style.setProperty('--message-highlightning-color', hsla);
@@ -156,7 +158,7 @@ export class ThemeController {
     }
 
     if(!IS_TOUCH_SUPPORTED && hsla) {
-      themeController.themeColor = hslaStringToHex(hsla);
+      this.themeColor = hslaStringToHex(hsla);
     }
   }
 
@@ -169,7 +171,19 @@ export class ThemeController {
 
     document.documentElement.classList.toggle('night', isNight);
     this.setThemeColor();
-    this.applyTheme(this.getTheme());
+    const theme = this.getTheme();
+    this.applyTheme(theme);
+
+    let style = this.styleElement;
+    if(!style) {
+      style = this.styleElement = document.createElement('style');
+      document.head.append(style);
+    }
+
+    const e = document.createElement('div');
+    this.applyTheme(rootScope.settings.themes.find((theme) => theme.name === 'night'), e);
+    console.log(e.style.cssText);
+    style.textContent = `.night {${e.style.cssText}}`;
 
     this.applyHighlightningColor();
   }
@@ -188,7 +202,7 @@ export class ThemeController {
   }
 
   // theme applier
-  private bindColorApplier(options: Pick<Parameters<ThemeController['applyAppColor']>[0], 'element'>) {
+  private bindColorApplier(options: Pick<Parameters<ThemeController['applyAppColor']>[0], 'element' | 'isNight'>) {
     const appliedColors: Set<AppColorName> = new Set();
     return {
       applyAppColor: (_options: Omit<Parameters<ThemeController['applyAppColor']>[0], keyof typeof options>) => {
@@ -196,12 +210,13 @@ export class ThemeController {
         return this.applyAppColor({..._options, ...options});
       },
       finalize: () => {
-        const isNight = this.isNight();
+        const isNight = options.isNight;
         for(const name in appColorMap) {
           if(!appliedColors.has(name as AppColorName)) {
             this.applyAppColor({
               name: name as AppColorName,
-              hex: colorMap[isNight ? 'night' : 'day'][name as AppColorName]
+              hex: colorMap[isNight ? 'night' : 'day'][name as AppColorName],
+              ...options
             });
           }
         }
@@ -212,23 +227,25 @@ export class ThemeController {
   private applyAppColor({
     name,
     hex,
-    element = document.documentElement,
+    element,
     lightenAlpha = 0.08,
     darkenAlpha = lightenAlpha,
-    mixColor
+    mixColor,
+    isNight
   }: {
     name: AppColorName,
     hex: string,
-    element?: HTMLElement,
+    element: HTMLElement,
     lightenAlpha?: number
     darkenAlpha?: number,
-    mixColor?: ColorRgb
+    mixColor?: ColorRgb,
+    isNight?: boolean
   }) {
     const appColor = appColorMap[name];
     const rgb = hexToRgb(hex);
     const hsla = rgbaToHsla(...rgb);
 
-    mixColor ??= hexToRgb(colorMap[themeController.isNight() ? 'night' : 'day']['surface-color']);
+    mixColor ??= hexToRgb(colorMap[isNight ? 'night' : 'day']['surface-color']);
     const lightenedRgb = mixColors(rgb, mixColor, lightenAlpha);
 
     const darkenedHsla: typeof hsla = {
@@ -236,16 +253,22 @@ export class ThemeController {
       l: hsla.l - darkenAlpha * 100
     };
 
-    element.style.setProperty('--' + name, hex);
-    appColor.rgb && element.style.setProperty('--' + name + '-rgb', rgb.join(','));
-    appColor.light && element.style.setProperty('--light-' + name, `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${lightenAlpha})`);
-    appColor.lightFilled && element.style.setProperty('--light-filled-' + name, rgbaToHexa(lightenedRgb));
-    appColor.dark && element.style.setProperty('--dark-' + name, `hsl(${darkenedHsla.h}, ${darkenedHsla.s}%, ${darkenedHsla.l}%)`);
-    // appColor.darkFilled && element.style.setProperty('--dark-' + name, `hsl(${darkenedHsla.h}, ${darkenedHsla.s}%, ${darkenedHsla.l}%)`);
+    const properties: [string, string][] = [
+      [name, hex],
+      appColor.rgb && [name + '-rgb', rgb.join(',')],
+      appColor.light && ['light-' + name, `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${lightenAlpha})`],
+      appColor.lightFilled && ['light-filled-' + name, rgbaToHexa(lightenedRgb)],
+      appColor.dark && ['dark-' + name, `hsl(${darkenedHsla.h}, ${darkenedHsla.s}%, ${darkenedHsla.l}%)`]
+      // appColor.darkFilled && ['dark-' + name, `hsl(${darkenedHsla.h}, ${darkenedHsla.s}%, ${darkenedHsla.l}%)`]
+    ];
+
+    properties.filter(Boolean).forEach(([name, value]) => {
+      element.style.setProperty('--' + name, value);
+    });
   }
 
   public async applyNewTheme(theme: Theme) {
-    const isNight = this.isNight();
+    const isNight = this.isNightTheme(theme);
     const currentTheme = this.getTheme();
     const themes = rootScope.settings.themes;
     const themeSettings = theme.settings.find((themeSettings) => themeSettings.base_theme._ === (isNight ? 'baseThemeNight' : 'baseThemeClassic'));
@@ -264,8 +287,12 @@ export class ThemeController {
     rootScope.dispatchEvent('theme_change');
   }
 
-  public async applyTheme(theme: Theme | AppTheme, element = document.documentElement) {
-    const isNight = themeController.isNight();
+  private isNightTheme(theme: Theme | AppTheme) {
+    return (theme as AppTheme).name === 'night' || this.isNight();
+  }
+
+  public applyTheme(theme: Theme | AppTheme, element = document.documentElement) {
+    const isNight = this.isNightTheme(theme);
     const themeSettings = Array.isArray(theme.settings) ?
       theme.settings.find((settings) => settings.base_theme._ === (isNight ? 'baseThemeNight' : 'baseThemeClassic')) :
       theme.settings;
@@ -282,7 +309,7 @@ export class ThemeController {
     );
     const newAccentHex = rgbaToHexa(newAccentRgb);
 
-    const {applyAppColor, finalize} = this.bindColorApplier({element});
+    const {applyAppColor, finalize} = this.bindColorApplier({element, isNight});
 
     applyAppColor({
       name: 'primary-color',
@@ -295,7 +322,7 @@ export class ThemeController {
       hex: newAccentHex,
       lightenAlpha: 0.64,
       mixColor: [255, 255, 255]
-    })
+    });
 
     if(!themeSettings.message_colors?.length) {
       return;
@@ -357,4 +384,5 @@ export class ThemeController {
 }
 
 const themeController = new ThemeController();
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.themeController = themeController);
 export default themeController;

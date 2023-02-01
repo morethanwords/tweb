@@ -327,16 +327,15 @@ export class UiNotificationsManager {
 
       notification.image = url;
     } else {
-      const WIDTH = 54, HEIGHT = WIDTH;
       let {avatarCanvas, avatarContext} = this;
       if(!this.avatarCanvas) {
         avatarCanvas = this.avatarCanvas = document.createElement('canvas');
         avatarContext = this.avatarContext = avatarCanvas.getContext('2d');
 
-        const dpr = window.devicePixelRatio;
+        const SIZE = 54;
+        const dpr = 1;
         avatarCanvas.dpr = dpr;
-        avatarCanvas.width = 54 * dpr;
-        avatarCanvas.height = 54 * dpr;
+        avatarCanvas.width = avatarCanvas.height = SIZE * dpr;
 
         this.avatarGradients = {};
       } else {
@@ -346,7 +345,7 @@ export class UiNotificationsManager {
       const color = getPeerColorById(peerId, true);
       let gradient = this.avatarGradients[color];
       if(!gradient) {
-        gradient = this.avatarGradients[color] = avatarContext.createLinearGradient(WIDTH / 2, 0, WIDTH / 2, HEIGHT);
+        gradient = this.avatarGradients[color] = avatarContext.createLinearGradient(avatarCanvas.width / 2, 0, avatarCanvas.width / 2, avatarCanvas.height);
 
         const colorTop = customProperties.getProperty(`peer-avatar-${color}-top`);
         const colorBottom = customProperties.getProperty(`peer-avatar-${color}-bottom`);
@@ -356,10 +355,10 @@ export class UiNotificationsManager {
 
       avatarContext.fillStyle = gradient;
 
-      drawCircle(avatarContext, WIDTH / 2, HEIGHT / 2, WIDTH / 2);
+      drawCircle(avatarContext, avatarCanvas.width / 2, avatarCanvas.height / 2, avatarCanvas.width / 2);
       avatarContext.fill();
 
-      const fontSize = 20 * window.devicePixelRatio;
+      const fontSize = 20 * avatarCanvas.dpr;
       const abbreviation = getAbbreviation(peerTitle);
 
       avatarContext.font = `700 ${fontSize}px ${FontFamily}`;

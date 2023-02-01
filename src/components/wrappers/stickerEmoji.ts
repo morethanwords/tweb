@@ -25,9 +25,9 @@ export default async function wrapStickerEmoji(options: Modify<Parameters<typeof
   }
 
   return wrapSticker({
-    ...options,
     doc,
+    play: true,
     loop: false,
-    play: true
+    ...options
   });
 }

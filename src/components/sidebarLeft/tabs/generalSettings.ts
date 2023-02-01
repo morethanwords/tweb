@@ -267,7 +267,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
               managers: this.managers,
               loadPromises,
               middleware: this.middlewareHelper.get(),
-              play: rootScope.settings.animationsEnabled
+              play: false
             }).then(({render}) => render).then((player) => {
               k.player = player as RLottiePlayer;
             });
