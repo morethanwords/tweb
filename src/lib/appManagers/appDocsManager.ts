@@ -368,8 +368,8 @@ export class AppDocsManager extends AppManager {
         file: inputFile,
         mime_type: file.type,
         settings: {
-          _: 'wallPaperSettings'
-
+          _: 'wallPaperSettings',
+          pFlags: {}
         }
       }).then((wallPaper) => {
         assumeType<WallPaper.wallPaper>(wallPaper);

@@ -344,7 +344,8 @@ export class AppReactionsManager extends AppManager {
         const peerReaction: MessagePeerReaction = {
           _: 'messagePeerReaction',
           reaction,
-          peer_id: this.appPeersManager.getOutputPeer(myPeerId)
+          peer_id: this.appPeersManager.getOutputPeer(myPeerId),
+          pFlags: {}
         };
 
         if(!this.appPeersManager.isMegagroup(peerId) && false) {

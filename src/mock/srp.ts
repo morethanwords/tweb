@@ -44,6 +44,7 @@ export const accountPassword: AccountPassword.accountPassword = {
   srp_id,
   srp_B,
   secure_random,
+  pFlags: {},
 
   new_algo: null,
   new_secure_algo: null

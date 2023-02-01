@@ -132,9 +132,10 @@ export default class ReplyKeyboard extends DropdownHover {
     }
   }
 
-  private async getReplyMarkup() {
+  private async getReplyMarkup(): Promise<ReplyMarkup> {
     return (await this.managers.appMessagesManager.getHistoryStorageTransferable(this.peerId)).replyMarkup ?? {
-      _: 'replyKeyboardHide'
+      _: 'replyKeyboardHide',
+      pFlags: {}
     };
   }
 

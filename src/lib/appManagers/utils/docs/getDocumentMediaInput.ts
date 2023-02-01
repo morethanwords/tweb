@@ -15,6 +15,7 @@ export default function getMediaInput(doc: Document.document): InputMedia.inputM
       access_hash: doc.access_hash,
       file_reference: doc.file_reference
     },
-    ttl_seconds: 0
+    ttl_seconds: 0,
+    pFlags: {}
   };
 }

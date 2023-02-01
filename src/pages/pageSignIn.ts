@@ -156,7 +156,8 @@ const onFirstMount = () => {
       api_id: App.id,
       api_hash: App.hash,
       settings: {
-        _: 'codeSettings' // that's how we sending Type
+        _: 'codeSettings', // that's how we sending Type
+        pFlags: {}
       }
       // lang_code: navigator.language || 'en'
     }).then((code) => {

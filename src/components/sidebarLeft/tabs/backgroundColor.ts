@@ -124,7 +124,8 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
         pFlags: {},
         settings: {
           _: 'wallPaperSettings',
-          background_color: parseInt(hex.slice(1), 16)
+          background_color: parseInt(hex.slice(1), 16),
+          pFlags: {}
         }
       };
 

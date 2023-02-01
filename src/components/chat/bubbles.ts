@@ -3812,7 +3812,8 @@ export default class ChatBubbles {
         if(bigEmojis === 1 && !messageMedia && sticker) {
           messageMedia = {
             _: 'messageMediaDocument',
-            document: sticker
+            document: sticker,
+            pFlags: {}
           };
         } else {
           attachmentDiv = document.createElement('div');

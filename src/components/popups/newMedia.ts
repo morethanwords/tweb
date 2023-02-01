@@ -311,7 +311,8 @@ export default class PopupNewMedia extends PopupElement {
       access_hash: 0,
       date: 0,
       dc_id: 0,
-      file_reference: []
+      file_reference: [],
+      pFlags: {}
     };
 
     const mediaSpoiler = await wrapMediaSpoiler({

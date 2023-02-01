@@ -12,6 +12,7 @@ export default function getPhotoMediaInput(photo: MyPhoto): InputMedia.inputMedi
   return {
     _: 'inputMediaPhoto',
     id: getPhotoInput(photo),
-    ttl_seconds: 0
+    ttl_seconds: 0,
+    pFlags: {}
   };
 }
