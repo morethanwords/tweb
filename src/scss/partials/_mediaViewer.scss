@@ -205,7 +205,7 @@ $inactive-opacity: .4;
     width: 7rem;
     height: calc(100% - 7.5rem);
     cursor: pointer;
-    z-index: 5;
+    // z-index: 5;
 
     html.no-touch & {
       height: calc(100% - 3.75rem);

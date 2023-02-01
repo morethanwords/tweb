@@ -255,7 +255,9 @@ export default class AppMediaViewerBase<
     this.moversContainer = document.createElement('div');
     this.moversContainer.classList.add(MEDIA_VIEWER_CLASSNAME + '-movers');
 
-    this.wholeDiv.append(this.overlaysDiv, this.buttons.prev, this.buttons.next, this.topbar, this.moversContainer);
+    this.moversContainer.append(this.buttons.prev, this.buttons.next);
+
+    this.wholeDiv.append(this.overlaysDiv, /* this.buttons.prev, this.buttons.next, */ this.topbar, this.moversContainer);
 
     // * constructing html end
 

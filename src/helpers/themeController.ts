@@ -182,7 +182,6 @@ export class ThemeController {
 
     const e = document.createElement('div');
     this.applyTheme(rootScope.settings.themes.find((theme) => theme.name === 'night'), e);
-    console.log(e.style.cssText);
     style.textContent = `.night {${e.style.cssText}}`;
 
     this.applyHighlightningColor();

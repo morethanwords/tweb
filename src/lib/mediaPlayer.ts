@@ -271,7 +271,8 @@ export default class VideoPlayer extends ControlsHover {
   }
 
   protected togglePlay() {
-    this.video[this.video.paused ? 'play' : 'pause']();
+    const isPaused = this.video.paused;
+    this.video[isPaused ? 'play' : 'pause']();
   }
 
   private buildControls() {

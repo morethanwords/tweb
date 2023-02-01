@@ -11,10 +11,13 @@ import RangeSelector from './rangeSelector';
 export default class MediaProgressLine extends RangeSelector {
   protected filledLoad: HTMLDivElement;
 
-  protected progressRAF = 0;
+  protected progressRAF: number;
 
   protected media: HTMLMediaElement;
   protected streamable: boolean;
+
+  protected lastOnPlayTime: number;
+  protected lastOnPlayCurrentTime: number;
 
   constructor(protected options: {
     media?: HTMLAudioElement | HTMLVideoElement,
@@ -88,18 +91,22 @@ export default class MediaProgressLine extends RangeSelector {
     const r = () => {
       this.setProgress();
 
-      this.progressRAF = this.media.paused ? 0 : window.requestAnimationFrame(r);
+      this.progressRAF = this.media.paused ? undefined : window.requestAnimationFrame(r);
     };
 
     if(this.progressRAF) {
       window.cancelAnimationFrame(this.progressRAF);
+      this.progressRAF = undefined;
     }
 
     if(this.streamable) {
       this.setLoadProgress();
     }
 
-    this.progressRAF = window.requestAnimationFrame(r);
+    this.lastOnPlayTime = Date.now();
+    this.lastOnPlayCurrentTime = this.media.currentTime;
+    r();
+    // this.progressRAF = window.requestAnimationFrame(r);
   };
 
   protected onTimeUpdate = () => {
@@ -157,7 +164,15 @@ export default class MediaProgressLine extends RangeSelector {
 
   public setProgress() {
     if(appMediaPlaybackController.isSafariBuffering(this.media)) return;
-    const currentTime = this.media.currentTime;
+
+    // fix jumping progress on play
+    let currentTime: number;
+    const diff = (Date.now() - this.lastOnPlayTime) / 1000;
+    if(!this.media.paused && this.lastOnPlayTime && diff <= 2) {
+      currentTime = this.lastOnPlayCurrentTime + diff;
+    } else {
+      currentTime = this.media.currentTime;
+    }
 
     super.setProgress(currentTime);
   }
@@ -166,6 +181,7 @@ export default class MediaProgressLine extends RangeSelector {
     super.setListeners();
     this.media.addEventListener('ended', this.onEnded);
     this.media.addEventListener('play', this.onPlay);
+    this.media.addEventListener('pause', this.onTimeUpdate);
     this.media.addEventListener('timeupdate', this.onTimeUpdate);
     this.streamable && this.media.addEventListener('progress', this.onProgress);
   }
@@ -177,13 +193,14 @@ export default class MediaProgressLine extends RangeSelector {
       this.media.removeEventListener('loadeddata', this.onLoadedData);
       this.media.removeEventListener('ended', this.onEnded);
       this.media.removeEventListener('play', this.onPlay);
+      this.media.removeEventListener('pause', this.onTimeUpdate);
       this.media.removeEventListener('timeupdate', this.onTimeUpdate);
       this.streamable && this.media.removeEventListener('progress', this.onProgress);
     }
 
     if(this.progressRAF) {
       window.cancelAnimationFrame(this.progressRAF);
-      this.progressRAF = 0;
+      this.progressRAF = undefined;
     }
   }
 }
