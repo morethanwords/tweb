@@ -16,8 +16,8 @@ export default class MediaProgressLine extends RangeSelector {
   protected media: HTMLMediaElement;
   protected streamable: boolean;
 
-  protected lastOnPlayTime: number;
-  protected lastOnPlayCurrentTime: number;
+  // protected lastOnPlayTime: number;
+  // protected lastOnPlayCurrentTime: number;
 
   constructor(protected options: {
     media?: HTMLAudioElement | HTMLVideoElement,
@@ -67,13 +67,13 @@ export default class MediaProgressLine extends RangeSelector {
       onMouseDown: () => {
         wasPlaying = !this.media.paused;
         wasPlaying && this.media.pause();
-        this.options?.onSeekStart();
+        this.options?.onSeekStart?.();
       },
 
       onMouseUp: (e) => {
         // cancelEvent(e.event);
         wasPlaying && this.media.play();
-        this.options?.onSeekEnd();
+        this.options?.onSeekEnd?.();
       }
     });
   }
@@ -103,8 +103,8 @@ export default class MediaProgressLine extends RangeSelector {
       this.setLoadProgress();
     }
 
-    this.lastOnPlayTime = Date.now();
-    this.lastOnPlayCurrentTime = this.media.currentTime;
+    // this.lastOnPlayTime = Date.now();
+    // this.lastOnPlayCurrentTime = this.media.currentTime;
     r();
     // this.progressRAF = window.requestAnimationFrame(r);
   };
@@ -166,14 +166,15 @@ export default class MediaProgressLine extends RangeSelector {
     if(appMediaPlaybackController.isSafariBuffering(this.media)) return;
 
     // fix jumping progress on play
-    let currentTime: number;
-    const diff = (Date.now() - this.lastOnPlayTime) / 1000;
-    if(!this.media.paused && this.lastOnPlayTime && diff <= 2) {
-      currentTime = this.lastOnPlayCurrentTime + diff;
-    } else {
-      currentTime = this.media.currentTime;
-    }
+    // let currentTime: number;
+    // const diff = (Date.now() - this.lastOnPlayTime) / 1000;
+    // if(!this.media.paused && this.lastOnPlayTime && diff <= 1) {
+    //   currentTime = this.lastOnPlayCurrentTime + diff;
+    // } else {
+    //   currentTime = this.media.currentTime;
+    // }
 
+    const currentTime = this.media.currentTime;
     super.setProgress(currentTime);
   }
 
