@@ -574,10 +574,14 @@ export default class ChatContextMenu {
     }];
   }
 
+  private getMessageWithText() {
+    return (this.albumMessages && getAlbumText(this.albumMessages)) || this.message;
+  }
+
   private getUniqueCustomEmojisFromMessage() {
     const docIds: DocId[] = [];
 
-    const message = this.albumMessages ? getAlbumText(this.albumMessages) || this.message : this.message;
+    const message = this.getMessageWithText();
 
     const entities = (message as Message.message).entities;
     if(entities) {
@@ -882,7 +886,8 @@ export default class ChatContextMenu {
   };
 
   private onEditClick = () => {
-    this.chat.input.initMessageEditing(this.mid);
+    const message = this.getMessageWithText();
+    this.chat.input.initMessageEditing(this.isTargetAGroupedItem ? this.mid : message.mid);
   };
 
   private onCopyClick = async() => {

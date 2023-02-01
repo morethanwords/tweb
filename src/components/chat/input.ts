@@ -106,6 +106,8 @@ import isSelectionEmpty from '../../helpers/dom/isSelectionEmpty';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import getAttachMenuBotIcon from '../../lib/appManagers/utils/attachMenuBots/getAttachMenuBotIcon';
 import TelegramWebView from '../telegramWebView';
+import forEachReverse from '../../helpers/array/forEachReverse';
+import {MARKDOWN_ENTITIES} from '../../lib/richTextProcessor';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -1215,11 +1217,11 @@ export default class ChatInput {
     }
   }
 
-  public getCurrentInputAsDraft() {
+  public getCurrentInputAsDraft(ignoreEmptyValue?: boolean) {
     const {value, entities} = getRichValueWithCaret(this.messageInputField.input, true, false);
 
     let draft: DraftMessage.draftMessage;
-    if(value.length || this.replyToMsgId) {
+    if((value.length || ignoreEmptyValue) || this.replyToMsgId) {
       draft = {
         _: 'draftMessage',
         date: tsNow(true),
@@ -2501,13 +2503,28 @@ export default class ChatInput {
 
     if(this.helperType === 'edit' && !force) {
       const message = this.editMessage;
-      const draft = this.getCurrentInputAsDraft();
+      const draft = this.getCurrentInputAsDraft(true);
       if(draft) {
         delete draft.pFlags.no_webpage;
       }
       // const value = parseMarkdown(this.messageInputField.value, []);
       // if(message.message !== value) {
-      if(!draftsAreEqual(draft, {...message, _: 'draftMessage'} as any)) {
+      const originalDraft = {...message, _: 'draftMessage'} as DraftMessage.draftMessage;
+      if(originalDraft.entities?.length) {
+        const canPassEntitiesTypes = new Set(Object.values(MARKDOWN_ENTITIES));
+        originalDraft.entities = originalDraft.entities.slice();
+        forEachReverse(originalDraft.entities, (entity, idx, arr) => {
+          if(!canPassEntitiesTypes.has(entity._)) {
+            arr.splice(idx, 1);
+          }
+        });
+
+        if(!originalDraft.entities.length) {
+          delete originalDraft.entities;
+        }
+      }
+
+      if(!draftsAreEqual(draft, originalDraft)) {
         new PopupPeer('discard-editing', {
           buttons: [{
             langKey: 'Alert.Confirm.Discard',
