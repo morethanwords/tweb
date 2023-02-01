@@ -42,7 +42,6 @@ import PeerTitle from '../peerTitle';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import findUpTag from '../../helpers/dom/findUpTag';
 import {toast, toastNew} from '../toast';
-import {getElementByPoint} from '../../helpers/dom/getElementByPoint';
 import {getMiddleware, Middleware} from '../../helpers/middleware';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import {attachClickEvent, detachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent';
@@ -2058,25 +2057,9 @@ export default class ChatBubbles {
   }
 
   public getBubbleByPoint(verticalSide: 'top' | 'bottom') {
-    let element = getElementByPoint(this.scrollable.container, verticalSide, 'center');
-    /* if(element) {
-      if(element.classList.contains('bubbles-date-group')) {
-        const children = Array.from(element.children) as HTMLElement[];
-        if(verticalSide === 'top') {
-          element = children[this.stickyIntersector ? 2 : 1];
-        } else {
-          element = children[children.length - 1];
-        }
-      } else {
-        element = findUpClassName(element, 'bubble');
-        if(element && element.classList.contains('is-date')) {
-          element = element.nextElementSibling as HTMLElement;
-        }
-      }
-    } */
-    if(element) element = findUpClassName(element, 'bubble');
-
-    return element;
+    const slice = this.getViewportSlice();
+    const item = slice.visible[verticalSide === 'top' ? 0 : slice.visible.length - 1];
+    return item?.element;
   }
 
   public async getGroupedBubble(groupId: string) {
