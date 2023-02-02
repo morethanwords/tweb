@@ -48,9 +48,12 @@ export default class DialogsContextMenu {
         this.canManageTopics = this.threadId ? await this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'manage_topics') : undefined;
       },
       onBeforeOpen: async() => {
-        const langPackKey: LangPackKey = this.threadId ? 'Delete' : await this.managers.appPeersManager.getDeleteButtonText(this.peerId);
         // delete button
-        this.buttons[this.buttons.length - 1].element.lastChild.replaceWith(i18n(langPackKey));
+        const langPackKey: LangPackKey = this.threadId ? 'Delete' : await this.managers.appPeersManager.getDeleteButtonText(this.peerId);
+        const lastButton = this.buttons[this.buttons.length - 1];
+        if(lastButton?.element) {
+          lastButton.element.lastChild.replaceWith(i18n(langPackKey));
+        }
       },
       onClose: () => {
         this.li.classList.remove('menu-open');

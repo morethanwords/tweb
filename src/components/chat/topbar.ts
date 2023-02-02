@@ -196,7 +196,7 @@ export default class ChatTopbar {
       if(container) {
         cancelEvent(e);
 
-        if(findUpClassName(e.target, 'progress-line')) {
+        if(findUpClassName(e.target, 'progress-line') || findUpClassName(e.target, 'pinned-container-wrapper-utils')) {
           return;
         }
 
