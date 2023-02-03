@@ -6,11 +6,9 @@
 
 import type Chat from '../chat/chat';
 import type {SendFileDetails} from '../../lib/appManagers/appMessagesManager';
-import InputField from '../inputField';
 import PopupElement from '.';
 import Scrollable from '../scrollable';
 import {toast} from '../toast';
-import CheckboxField from '../checkboxField';
 import SendContextMenu from '../chat/sendContextMenu';
 import {createPosterFromMedia, createPosterFromVideo} from '../../helpers/createPoster';
 import {MyDocument} from '../../lib/appManagers/appDocsManager';
@@ -109,27 +107,6 @@ export default class PopupNewMedia extends PopupElement {
     this.captionLengthMax = captionMaxLength;
 
     attachClickEvent(this.btnConfirm, () => this.send(), {listenerSetter: this.listenerSetter});
-
-    if(this.chat.type !== 'scheduled') {
-      const sendMenu = new SendContextMenu({
-        onSilentClick: () => {
-          this.chat.input.sendSilent = true;
-          this.send();
-        },
-        onScheduleClick: () => {
-          this.chat.input.scheduleSending(() => {
-            this.send();
-          });
-        },
-        openSide: 'bottom-left',
-        onContextElement: this.btnConfirm,
-        listenerSetter: this.listenerSetter
-      });
-
-      sendMenu.setPeerId(this.chat.peerId);
-
-      this.header.append(sendMenu.sendMenu);
-    }
 
     const btnMenu = await ButtonMenuToggle({
       listenerSetter: this.listenerSetter,
@@ -256,6 +233,27 @@ export default class PopupNewMedia extends PopupElement {
         return target;
       }
     });
+
+    if(this.chat.type !== 'scheduled') {
+      const sendMenu = new SendContextMenu({
+        onSilentClick: () => {
+          this.chat.input.sendSilent = true;
+          this.send();
+        },
+        onScheduleClick: () => {
+          this.chat.input.scheduleSending(() => {
+            this.send();
+          });
+        },
+        openSide: 'top-left',
+        onContextElement: this.btnConfirm,
+        listenerSetter: this.listenerSetter
+      });
+
+      sendMenu.setPeerId(this.chat.peerId);
+
+      this.container.append(sendMenu.sendMenu);
+    }
 
     currentPopup = this;
   }

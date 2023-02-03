@@ -803,9 +803,10 @@ class Some<T extends Dialog | ForumTopic = Dialog | ForumTopic> {
 
         // alert('left length:' + children.length);
 
-        this.scrollable.scrollTop = firstElement.offsetTop - elementOverflow;
+        const scrollTop = firstElement.offsetTop - elementOverflow;
+        this.scrollable.scrollTop = this.scrollable.lastScrollPosition = scrollTop;
 
-        this.log('slice time', performance.now() - perf);
+        this.log('slice time', performance.now() - perf, this.indexKey, scrollTop);
         /* const firstElementRect = firstElement.getBoundingClientRect();
       const scrollTop =  */
 

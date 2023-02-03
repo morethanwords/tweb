@@ -145,9 +145,9 @@ export class AnimationIntersector {
 
   public removeAnimation(player: AnimationItem) {
     const {el, animation} = player;
-    // if(!(animation instanceof CustomEmojiElement)) {
-    animation.remove();
-    // }
+    if(!(animation instanceof HTMLVideoElement)) {
+      animation.remove();
+    }
 
     if(animation instanceof HTMLVideoElement && IS_SAFARI) {
       setTimeout(() => { // TODO: очистка по очереди, а не все вместе с этим таймаутом

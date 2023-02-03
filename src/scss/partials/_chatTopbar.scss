@@ -458,7 +458,7 @@ body.is-right-column-shown {
     top: -.25rem;
     right: -.5rem;
 
-    @include respond-to(medium-screens) {
+    @include respond-to(not-handhelds) {
       display: none;
     }
   }

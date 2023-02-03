@@ -89,7 +89,7 @@ export async function insertRichTextAsHTML(input: HTMLElement, text: string, ent
   // const s = document.createElement('span');
   // (node as ChildNode).replaceWith(s);
   // s.append(node);
-  input.addEventListener('input', cancelEvent, {capture: true, once: true});
+  input.addEventListener('input', cancelEvent, {capture: true, once: true, passive: false});
   richInputHandler?.onBeforeInput({inputType: 'insertContent'});
   window.document.execCommand('insertHTML', false, html);
   Array.from(input.querySelectorAll<HTMLImageElement>('[data-ces]')).forEach((el, idx) => {

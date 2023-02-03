@@ -36,6 +36,8 @@ import wrapStickerSetThumb from '../../wrappers/stickerSetThumb';
 import {MediaSize} from '../../../helpers/mediaSize';
 import {AnyFunction} from '../../../types';
 import {IgnoreMouseOutType} from '../../../helpers/dropdownHover';
+import customProperties from '../../../helpers/dom/customProperties';
+import windowSize from '../../../helpers/windowSize';
 
 export class SuperStickerRenderer {
   public lazyLoadQueue: LazyLoadQueueRepeat;
@@ -322,7 +324,16 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
       title,
       overflowElement: this.content,
       getContainerSize: () => {
-        const {width, height} = this.getContainerSize?.() ?? this.content.getBoundingClientRect();
+        let width: number, height: number;
+        if(this.getContainerSize) {
+          const size = this.getContainerSize();
+          width = size.width;
+          height = size.height;
+        } else {
+          const esgWidth = customProperties.getPropertyAsSize('esg-width');
+          width = esgWidth === undefined ? windowSize.width : esgWidth;
+        }
+
         return {width: width - this.padding, height};
       },
       getElementMediaSize: this.getElementMediaSize,

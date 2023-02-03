@@ -1175,13 +1175,14 @@ export default class AppSearchSuper {
         }
       }
 
-      if(!this.membersList) {
-        this.membersList = new SortedUserList({
+      let membersList = this.membersList;
+      if(!membersList) {
+        membersList = new SortedUserList({
           lazyLoadQueue: this.lazyLoadQueue,
           rippleEnabled: false,
           managers: this.managers
         });
-        attachClickEvent(this.membersList.list, (e) => {
+        attachClickEvent(membersList.list, (e) => {
           const li = findUpTag(e.target, DIALOG_LIST_ELEMENT_TAG);
           if(!li) {
             return;
@@ -1197,7 +1198,7 @@ export default class AppSearchSuper {
             appImManager.setInnerPeer({peerId});
           });
         });
-        mediaTab.contentTab.append(this.membersList.list);
+        mediaTab.contentTab.append(membersList.list);
         this.afterPerforming(1, mediaTab.contentTab);
       }
 
@@ -1208,11 +1209,15 @@ export default class AppSearchSuper {
         }
 
         const user = await this.managers.appUsersManager.getUser(peerId);
+        if(!middleware()) {
+          return;
+        }
+
         if(user.pFlags.deleted) {
           continue;
         }
 
-        this.membersList.add(peerId);
+        membersList.add(peerId);
       }
     };
 

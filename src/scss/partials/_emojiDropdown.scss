@@ -13,7 +13,7 @@ $menu-height: 3.0625rem;
 .emoji-dropdown {
 	display: flex/*  !important */;
 	flex-direction: column;
-	width: 100%;
+	width: var(--esg-width);
 	//height: 282px;
 	height: unquote('min(282px, calc(var(--vh) * 100 - 135px))');
 	background: var(--surface-color);
@@ -26,7 +26,6 @@ $menu-height: 3.0625rem;
 		position: absolute !important;
 		left: $chat-padding;
 		bottom: 5.125rem;
-		width: 23.875rem !important;
 		height: 26.25rem;
 		max-height: 26.25rem;
 		box-shadow: 0px 5px 10px 5px rgba(16, 35, 47, .14);

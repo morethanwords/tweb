@@ -135,6 +135,8 @@ $chat-input-inner-padding-handhelds: .25rem;
 
   --custom-emoji-size: 1.25rem;
 
+  --esg-width: 100%;
+
   // https://github.com/overtake/TelegramSwift/blob/5cc7d2475fe4738a6aa0486c23eaf80a89d33b97/submodules/TGUIKit/TGUIKit/PresentationTheme.swift#L2054
   @include avatar-color("red", #FF845E, #D45246);
   @include avatar-color("orange", #FEBB5B, #F68136);
@@ -177,6 +179,10 @@ $chat-input-inner-padding-handhelds: .25rem;
   @include respond-to(esg-bottom) {
     --chat-input-size: #{$chat-input-handhelds-size};
     --chat-input-inner-padding: #{$chat-input-inner-padding-handhelds};
+  }
+
+  @include respond-to(esg-top) {
+    --esg-width: 23.875rem;
   }
 
   @include respond-to(only-medium-screens) {

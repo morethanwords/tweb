@@ -129,13 +129,9 @@ export default class ProgressivePreloader {
     }
 
     if(this.preloader.classList.contains('manual')) {
-      if(this.loadFunc) {
-        this.loadFunc(e);
-      }
+      this.loadFunc?.(e);
     } else {
-      if(this.promise && this.promise.cancel) {
-        this.promise.cancel();
-      }
+      this.promise?.cancel?.();
     }
   };
 
@@ -215,9 +211,7 @@ export default class ProgressivePreloader {
   }
 
   public attach(elem: Element, reset = false, promise?: CancellablePromise<any>) {
-    if(this.construct) {
-      this.construct();
-    }
+    this.construct?.();
 
     if(this.preloader.parentElement) {
       this.preloader.classList.remove('manual');
@@ -298,9 +292,7 @@ export default class ProgressivePreloader {
     }
 
     try {
-      if(!this.totalLength) {
-        this.totalLength = this.circle.getTotalLength();
-      }
+      this.totalLength ||= this.circle.getTotalLength();
 
       // console.log('setProgress', (percents / 100 * totalLength));
       this.circle.style.strokeDasharray = '' + Math.max(5, percents / 100 * this.totalLength) + ', ' + this.totalLength;
