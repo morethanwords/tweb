@@ -43,7 +43,7 @@ rootScope.addEventListener('document_downloading', (docId) => {
   });
 });
 
-export default async function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showSender, searchContext, loadPromises, autoDownloadSize, lazyLoadQueue, sizeType, managers = rootScope.managers, cacheContext, fontSize}: {
+export default async function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showSender, searchContext, loadPromises, autoDownloadSize, lazyLoadQueue, sizeType, managers = rootScope.managers, cacheContext, fontSize, getSize}: {
   message: Message.message,
   withTime?: boolean,
   fontWeight?: number,
@@ -56,11 +56,12 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
   sizeType?: MediaSizeType,
   managers?: AppManagers,
   cacheContext?: ThumbCache,
-  fontSize?: number
+  fontSize?: number,
+  getSize?: () => number
 }): Promise<HTMLElement> {
   fontWeight ??= 500;
   sizeType ??= '' as any;
-  fontSize ??= 0;
+  fontSize ??= 16;
   const noAutoDownload = autoDownloadSize === 0;
 
   const doc = ((message.media as MessageMedia.messageMediaDocument).document || ((message.media as MessageMedia.messageMediaWebPage).webpage as WebPage.webPage).document) as MyDocument;
@@ -72,6 +73,7 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
     audioElement.noAutoDownload = noAutoDownload;
     audioElement.lazyLoadQueue = lazyLoadQueue;
     audioElement.loadPromises = loadPromises;
+    (audioElement as any).getSize = getSize;
 
     if(voiceAsMusic) audioElement.voiceAsMusic = voiceAsMusic;
     if(searchContext) audioElement.searchContext = searchContext;
@@ -182,6 +184,7 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
   middleEllipsisEl.dataset.fontWeight = '' + fontWeight;
   middleEllipsisEl.dataset.fontSize = '' + fontSize;
   middleEllipsisEl.dataset.sizeType = sizeType;
+  (middleEllipsisEl as any).getSize = getSize;
   middleEllipsisEl.textContent = fileName;
   // setInnerHTML(middleEllipsisEl, fileName);
 

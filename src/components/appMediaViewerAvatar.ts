@@ -11,7 +11,7 @@ import appImManager from '../lib/appManagers/appImManager';
 import rootScope from '../lib/rootScope';
 import AppMediaViewerBase from './appMediaViewerBase';
 
-type AppMediaViewerAvatarTargetType = {element: HTMLElement, photoId: Photo.photo['id']};
+type AppMediaViewerAvatarTargetType = {element: HTMLElement, photoId: Photo.photo['id'], photo?: Photo.photo};
 export default class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete', AppMediaViewerAvatarTargetType> {
   public peerId: PeerId;
 
@@ -43,9 +43,9 @@ export default class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete
     this.openMedia(target.photoId, target.element, 1);
   };
 
-  onDownloadClick = async() => {
+  onDownloadClick = () => {
     appDownloadManager.downloadToDisc({
-      media: await this.managers.appPhotosManager.getPhoto(this.target.photoId),
+      media: this.target.photo,
       queueId: appImManager.chat.bubbles.lazyLoadQueue.queueId
     });
   };
@@ -56,6 +56,7 @@ export default class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete
     const photo = await this.managers.appPhotosManager.getPhoto(photoId);
     const ret = super._openMedia(photo, photo.date, this.peerId, fromRight, target, false, prevTargets, nextTargets);
     this.target.photoId = photo.id;
+    this.target.photo = photo;
 
     return ret;
   }

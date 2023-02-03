@@ -33,7 +33,8 @@ import AppSharedMediaTab from './sidebarRight/tabs/sharedMedia';
 type AppMediaViewerTargetType = {
   element: HTMLElement,
   mid: number,
-  peerId: PeerId
+  peerId: PeerId,
+  message?: MyMessage
 };
 export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delete' | 'forward', AppMediaViewerTargetType> {
   protected listLoader: SearchListLoader<AppMediaViewerTargetType>;
@@ -223,9 +224,8 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     }
   };
 
-  onDownloadClick = async() => {
-    const {peerId, mid} = this.target;
-    const message = await this.getMessageByPeer(peerId, mid);
+  onDownloadClick = () => {
+    const {message} = this.target;
     const media = getMediaFromMessage(message);
     if(!media) return;
     appDownloadManager.downloadToDisc({media, queueId: appImManager.chat.bubbles.lazyLoadQueue.queueId});
@@ -286,6 +286,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     const promise = super._openMedia(media, message.date, fromId, fromRight, target, reverse, prevTargets, nextTargets, message/* , needLoadMore */);
     this.target.mid = mid;
     this.target.peerId = message.peerId;
+    this.target.message = message;
 
     return promise;
   }

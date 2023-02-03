@@ -303,6 +303,7 @@ async function wrapAudio(audioEl: AudioElement) {
   middleEllipsisEl.dataset.fontWeight = audioEl.dataset.fontWeight;
   middleEllipsisEl.dataset.fontSize = audioEl.dataset.fontSize;
   middleEllipsisEl.dataset.sizeType = audioEl.dataset.sizeType;
+  (middleEllipsisEl as any).getSize = (audioEl as any).getSize;
   if(isVoice) {
     middleEllipsisEl.append(await wrapSenderToPeer(message));
   } else {

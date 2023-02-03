@@ -2727,10 +2727,11 @@ export class AppDialogsManager {
       }
     }
 
-    // * do not uncomment next line - unsetTyping right after this call will interrupt setting unread badges
-    // if(setUnread) {
-    this.setUnreadMessagesN({dialog, dialogElement, isBatch, setLastMessagePromise: promise});
-    // }
+    const isSearch = setUnread !== null && !setUnread;
+    // * do not uncomment `setUnread` - unsetTyping right after this call will interrupt setting unread badges
+    if(/* setUnread */!isSearch) {
+      this.setUnreadMessagesN({dialog, dialogElement, isBatch, setLastMessagePromise: promise});
+    }
 
     if(!lastMessage/*  || (lastMessage._ === 'messageService' && !lastMessage.rReply) */) {
       dom.lastMessageSpan.replaceChildren();
@@ -2834,7 +2835,7 @@ export class AppDialogsManager {
       replaceContent(dom.lastTimeSpan, formatDateAccordingToTodayNew(new Date(date * 1000)));
     } else dom.lastTimeSpan.textContent = '';
 
-    if(setUnread !== null && !setUnread) { // means search
+    if(isSearch) {
       dom.listEl.dataset.mid = '' + lastMessage.mid;
 
       const replyTo = lastMessage.reply_to;

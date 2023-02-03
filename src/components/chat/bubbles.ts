@@ -4494,7 +4494,13 @@ export default class ChatBubbles {
             lastContainer && lastContainer.append(timeSpan);
 
             bubble.classList.remove('is-message-empty');
-            messageDiv.classList.add((!(['photo', 'pdf'] as MyDocument['type'][]).includes(doc.type) ? doc.type || 'document' : 'document') + '-message');
+            const addClassName = (!(['photo', 'pdf'] as MyDocument['type'][]).includes(doc.type) ? doc.type || 'document' : 'document') + '-message';
+            messageDiv.classList.add(addClassName);
+
+            if(doc.type === 'audio' || doc.type === 'voice') {
+              bubble.classList.add('min-content');
+            }
+
             processingWebPage = true;
           }
 

@@ -1429,14 +1429,28 @@ $bubble-border-radius-big: 12px;
     }
   }
 
-  // all for audio (not voice)
   .message.audio-message {
     width: 335px;
-    max-width: unquote("min(100%, 335px)") !important;
 
     @include respond-to(handhelds) {
       width: 280px;
+    }
+  }
+
+  .message.audio-message,
+  .message.voice-message {
+    // width: 335px;
+    max-width: unquote("min(100%, 335px)") !important;
+
+    @include respond-to(handhelds) {
+      // width: 280px;
       max-width: unquote("min(100%, 300px)") !important;
+    }
+  }
+
+  &.min-content {
+    .bubble-content {
+      width: min-content;
     }
   }
 

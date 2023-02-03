@@ -63,6 +63,11 @@ window.addEventListener('resize', () => {
 }, {capture: true, passive: true});
 
 function getElementWidth(element: HTMLElement) {
+  const getSize = (element as any).getSize;
+  if(getSize) {
+    return getSize();
+  }
+
   const type = element.dataset.sizeType;
   if(type) {
     const mediaSize = mediaSizes.active;
@@ -147,7 +152,7 @@ export class MiddleEllipsisElement extends HTMLElement {
     // console.log('[MEE]: connectedCallback before', map.has(this), testQueue.has(this), map.size, this.textContent, map);
 
     map.set(this, null);
-    if(this.dataset.sizeType) {
+    if(this.dataset.sizeType || (this as any).getSize) {
       testElement(this);
     } else {
       testQueue.add(this);

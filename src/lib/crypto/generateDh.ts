@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type CallInstance from '../calls/callInstance';
+import type {MessagesDhConfig} from '../../layer';
 import bigInt from 'big-integer';
 import randomize from '../../helpers/array/randomize';
 import {bigIntFromBytes} from '../../helpers/bigInt/bigIntConversion';
 import addPadding from '../../helpers/bytes/addPadding';
 import bytesFromHex from '../../helpers/bytes/bytesFromHex';
-import {MessagesDhConfig} from '../../layer';
-import CallInstance from '../calls/callInstance';
 import cryptoWorker from './cryptoMessagePort';
 
 export default async function generateDh(dhConfig: MessagesDhConfig.messagesDhConfig) {
