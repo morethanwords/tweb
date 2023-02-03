@@ -100,7 +100,16 @@ module.exports = {
               // Webpack 5
               postcssOptions: {
                 plugins: [
-                  postcssPresetEnv()
+                  'postcss-import',
+                  [
+                    'postcss-preset-env',
+                    {
+                      features: {
+                        'custom-properties': false
+                      }
+                    }
+                  ],
+                  'cssnano'
                 ]
               }
             }

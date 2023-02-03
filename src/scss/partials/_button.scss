@@ -863,9 +863,9 @@ $btn-menu-z-index: 4;
     transition: background-color var(--transition-standard-in), opacity var(--transition-standard-in);
   }
 
-  &,
-  &-container {
-    margin: 0 var(--call-button-margin);
+  & + &,
+  &-container + &-container {
+    margin-inline-start: var(--call-button-margin);
   }
 }
 
