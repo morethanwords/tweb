@@ -177,7 +177,7 @@ let init = () => {
 
     const peerId = (input.dataset.peerId || NULL_PEER_ID).toPeerId();
     if(html.trim()) {
-      // console.log(html.replace(/ (style|class|id)=".+?"/g, ''));
+      console.log(html.replace(/ (style|class|id)=".+?"/g, ''));
 
       html = html.replace(/<style([\s\S]*)<\/style>/, '');
       html = html.replace(/<!--([\s\S]*)-->/, '');
@@ -218,16 +218,28 @@ let init = () => {
         richValue.entities = richValue.entities.filter((entity) => entity._ !== 'messageEntityCustomEmoji');
       }
 
-      { // * fix extra new lines appearing from <p> (can have them from some sources, like macOS Terminal)
+      /* if(false) */ { // * fix extra new lines appearing from <p> (can have them from some sources, like macOS Terminal)
         const lines = richValue.value.split('\n');
         let textLength = 0;
-        for(let i = 0; i < lines.length; ++i) {
-          const line = lines[i];
+        for(let lineIndex = 0; lineIndex < lines.length; ++lineIndex) {
+          const line = lines[lineIndex];
           textLength += line.length;
+
           const index = textLength;
-          if(plainText[index] !== '\n' && i !== (lines.length - 1)) {
-            lines[i] = line + lines.splice(i + 1, 1)[0];
+          if(plainText[index] !== '\n' && lineIndex !== (lines.length - 1)) {
+            const nextLine = lines.splice(lineIndex + 1, 1)[0];
+            lines[lineIndex] = line + nextLine;
+
+            // fix entities
+            richValue.entities.forEach((entity) => {
+              if(entity.offset >= index) {
+                entity.offset -= 1;
+              }
+            });
+
+            textLength += nextLine.length;
           }
+
           textLength += 1;
         }
 
@@ -247,6 +259,8 @@ let init = () => {
         entities2 = entities2.filter(filterEntity);
         mergeEntities(entities, entities2);
       }
+
+      console.log('usePlainText', usePlainText);
     }
 
     if(usePlainText) {

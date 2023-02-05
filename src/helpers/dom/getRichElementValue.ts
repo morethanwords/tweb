@@ -91,12 +91,13 @@ const BLOCK_TAGS = new Set([
   'UL'
 ]);
 
-const INSERT_NEW_LINE_TAGS = new Set([
-  'OL',
-  'UL'
-]);
+// const INSERT_NEW_LINE_TAGS = new Set([
+//   'OL',
+//   'UL'
+// ]);
 
 const BOM_REG_EXP = new RegExp(BOM, 'g');
+export const SELECTION_SEPARATOR = '\x01';
 
 function checkNodeForEntity(node: Node, value: string, entities: MessageEntity[], offset: {offset: number}) {
   const parentElement = node.parentElement;
@@ -146,6 +147,19 @@ function checkNodeForEntity(node: Node, value: string, entities: MessageEntity[]
   }
 }
 
+function isLineEmpty(line: string[]) {
+  const {length} = line;
+  if(!length) {
+    return true;
+  }
+
+  if(line[length - 1] === SELECTION_SEPARATOR && length === SELECTION_SEPARATOR.length) {
+    return true;
+  }
+
+  return false;
+}
+
 export default function getRichElementValue(
   node: HTMLElement,
   lines: string[],
@@ -170,12 +184,12 @@ export default function getRichElementValue(
 
     if(nodeValue) {
       if(selNode === node) {
-        line.push(nodeValue.substr(0, selOffset) + '\x01' + nodeValue.substr(selOffset));
+        line.push(nodeValue.substr(0, selOffset) + SELECTION_SEPARATOR + nodeValue.substr(selOffset));
       } else {
         line.push(nodeValue);
       }
     } else if(selNode === node) {
-      line.push('\x01');
+      line.push(SELECTION_SEPARATOR);
     }
 
     if(entities && nodeValue.length && node.parentNode) {
@@ -220,23 +234,33 @@ export default function getRichElementValue(
   }
 
   if(isSelected && !selOffset) {
-    line.push('\x01');
+    line.push(SELECTION_SEPARATOR);
   }
 
   const isTableCell = node.matches(tabulationMatch);
   const wasEntitiesLength = entities?.length;
+  const wasLinesLength = lines.length;
+  let wasNodeEmpty = true;
 
   let curChild = node.firstChild as HTMLElement;
   while(curChild) {
     getRichElementValue(curChild, lines, line, selNode, selOffset, entities, offset);
     curChild = curChild.nextSibling as any;
+
+    if(!isLineEmpty(line)) {
+      wasNodeEmpty = false;
+    }
+  }
+
+  if(wasNodeEmpty && lines.length !== wasLinesLength) {
+    wasNodeEmpty = false;
   }
 
   if(isSelected && selOffset) {
-    line.push('\x01');
+    line.push(SELECTION_SEPARATOR);
   }
 
-  if(isTableCell && node.nextSibling && line.length) {
+  if(isTableCell && node.nextSibling && !isLineEmpty(line)) {
     line.push(' ');
     ++offset.offset;
 
@@ -248,14 +272,13 @@ export default function getRichElementValue(
     }
   }
 
-  const wasLength = line.length;
-  if(isBlock && wasLength) {
+  if(isBlock && !wasNodeEmpty) {
     lines.push(line.join(''));
-    line.splice(0, wasLength);
+    line.length = 0;
     ++offset.offset;
   }
 
-  if(wasLength && node.tagName === 'P' && node.nextSibling) {
+  if(!wasNodeEmpty && node.tagName === 'P' && node.nextSibling) {
     lines.push('');
     ++offset.offset;
   }

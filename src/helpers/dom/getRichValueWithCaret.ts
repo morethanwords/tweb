@@ -13,7 +13,7 @@ import {MOUNT_CLASS_TO} from '../../config/debug';
 import {MessageEntity} from '../../layer';
 import combineSameEntities from '../../lib/richTextProcessor/combineSameEntities';
 import sortEntities from '../../lib/richTextProcessor/sortEntities';
-import getRichElementValue from './getRichElementValue';
+import getRichElementValue, {SELECTION_SEPARATOR} from './getRichElementValue';
 
 export function getCaretPos(field: HTMLElement) {
   const sel = window.getSelection();
@@ -79,7 +79,7 @@ export default function getRichValueWithCaret(
   }
 
   let value = lines.join('\n');
-  const caretPos = value.indexOf('\x01');
+  const caretPos = value.indexOf(SELECTION_SEPARATOR);
   if(caretPos !== -1) {
     value = value.substr(0, caretPos) + value.substr(caretPos + 1);
   }
