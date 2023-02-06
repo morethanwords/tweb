@@ -189,14 +189,31 @@ document.addEventListener('DOMContentLoaded', async() => {
   } else if(IS_ANDROID) {
     document.documentElement.classList.add('is-android');
 
-    /* document.addEventListener('focusin', (e) => {
-      hasFocus = true;
-      focusTime = Date.now();
-    }, {passive: true});
+    // force losing focus on input blur
+    // focusin and focusout are not working on mobile
 
-    document.addEventListener('focusout', () => {
+    const onInResize = () => {
+      hasFocus = true;
+      window.addEventListener('resize', onOutResize, {once: true});
+    };
+
+    const onOutResize = () => {
       hasFocus = false;
-    }, {passive: true}); */
+      blurActiveElement();
+    };
+
+    let hasFocus = false;
+    document.addEventListener('touchend', (e) => {
+      const input = (e.target as HTMLElement).closest('[contenteditable="true"], input');
+      if(!input) {
+        return;
+      }
+
+      if(document.activeElement !== input && !hasFocus) {
+        console.log('input click', e, document.activeElement, input, input.matches(':focus'));
+        window.addEventListener('resize', onInResize, {once: true});
+      }
+    });
   }
 
   if(!IS_TOUCH_SUPPORTED) {
