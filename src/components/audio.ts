@@ -163,6 +163,9 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
 
   const {svg, container: svgContainer, availW} = createWaveformBars(waveform, doc.duration);
 
+  const audioControlsDiv = document.createElement('div');
+  audioControlsDiv.classList.add('audio-controls');
+
   const fakeSvgContainer = svgContainer.cloneNode(true) as HTMLElement;
   fakeSvgContainer.classList.add('audio-waveform-fake');
   svgContainer.classList.add('audio-waveform-background');
@@ -173,7 +176,27 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
 
   const timeDiv = document.createElement('div');
   timeDiv.classList.add('audio-time');
-  audioEl.append(waveformContainer, timeDiv);
+  audioControlsDiv.append(waveformContainer, timeDiv);
+
+  audioEl.append(audioControlsDiv);
+
+  const isPremium: boolean = rootScope.premium;
+  if (isPremium) {
+    const speechRecognitionDiv = document.createElement('div');
+    speechRecognitionDiv.innerHTML = '→A';
+    speechRecognitionDiv.classList.add('audio-to-text-button');
+
+    const speechTextDiv = document.createElement('div');
+    speechTextDiv.innerHTML = '';
+    speechTextDiv.classList.add('audio-to-text');
+
+    speechRecognitionDiv.onclick = async (e) => {
+      const transcription = await audioEl.managers.appMessagesManager.transcribeAudio(message);
+      speechTextDiv.innerHTML = transcription.text;
+    };
+
+    audioEl.append(speechRecognitionDiv, speechTextDiv);
+  }
 
   let progress = svg as any as HTMLElement;
 
