@@ -428,7 +428,7 @@
   // &.audio-48 {
     --icon-size: 3rem;
     --icon-margin: .5625rem;
-    height: var(--icon-size);
+    min-height: var(--icon-size);
 
     .audio-details {
       margin-top: 3px;
@@ -437,6 +437,28 @@
 
     .audio-title {
       margin-bottom: -2px;
+    }
+
+    .audio-controls {
+      display: flex;
+      align-items: flex-start;
+      gap: .25em;
+      
+      .audio-to-text-button {
+        background: var(--ripple-color);
+        width: max-content;
+        margin-top: 0.3rem;
+        padding: 0.2rem;
+        padding-right: 0.3rem;
+        font-size: .8em;
+        border-radius: 0.3rem;
+      }
+
+    }
+
+    .audio-to-text {
+      margin-left: calc(var(--icon-size)*-1 - var(--icon-margin) - var(--padding));
+      margin-top: 1em;
     }
 
     .part {

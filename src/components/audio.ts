@@ -166,6 +166,10 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
   const audioControlsDiv = document.createElement('div');
   audioControlsDiv.classList.add('audio-controls');
 
+  const audioTimelineDiv = document.createElement('div');
+  audioTimelineDiv.classList.add('audio-timeline');
+  audioControlsDiv.append(audioTimelineDiv);
+
   const fakeSvgContainer = svgContainer.cloneNode(true) as HTMLElement;
   fakeSvgContainer.classList.add('audio-waveform-fake');
   svgContainer.classList.add('audio-waveform-background');
@@ -176,7 +180,7 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
 
   const timeDiv = document.createElement('div');
   timeDiv.classList.add('audio-time');
-  audioControlsDiv.append(waveformContainer, timeDiv);
+  audioTimelineDiv.append(waveformContainer, timeDiv);
 
   audioEl.append(audioControlsDiv);
 
@@ -195,7 +199,9 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
       speechTextDiv.innerHTML = transcription.text;
     };
 
-    audioEl.append(speechRecognitionDiv, speechTextDiv);
+    audioControlsDiv.append(speechRecognitionDiv);
+    audioEl.append(speechTextDiv);
+
   }
 
   let progress = svg as any as HTMLElement;
