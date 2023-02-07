@@ -194,9 +194,23 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
     speechTextDiv.innerHTML = '';
     speechTextDiv.classList.add('audio-to-text');
 
+    let isTranscribing: boolean = false;
+    let transcribed: boolean = false;
     speechRecognitionDiv.onclick = async (e) => {
-      const transcription = await audioEl.managers.appMessagesManager.transcribeAudio(message);
-      speechTextDiv.innerHTML = transcription.text;
+      if (!transcribed) {
+        if (isTranscribing) return;
+        isTranscribing = true;
+        //Process started
+        const transcription = await audioEl.managers.appMessagesManager.transcribeAudio(message);
+        speechTextDiv.innerHTML = transcription.text;
+        isTranscribing = false;
+        transcribed = true;
+        //Process finished
+      } else {
+        //Hide transcription
+        speechTextDiv.innerHTML = '';
+        transcribed = false;
+      }
     };
 
     audioControlsDiv.append(speechRecognitionDiv);
