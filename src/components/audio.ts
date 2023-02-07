@@ -187,8 +187,13 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
   const isPremium: boolean = rootScope.premium;
   if (isPremium) {
     const speechRecognitionDiv = document.createElement('div');
-    speechRecognitionDiv.innerHTML = '→A';
     speechRecognitionDiv.classList.add('audio-to-text-button');
+    const speechRecognitionIcon = document.createElement('span');
+    speechRecognitionIcon.innerHTML = '→A';
+    const speechRecognitionLoader = document.createElement('div');
+    speechRecognitionLoader.classList.add('loader');
+    speechRecognitionLoader.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 24"><style></style><rect fill="transparent" stroke-width="3" stroke-linejoin="round" rx="6" ry="6" stroke="var(--message-out-primary-color)" stroke-dashoffset="1" stroke-dasharray="32,68" width="32" height="24"></rect></svg>'
+    speechRecognitionDiv.append(speechRecognitionIcon, speechRecognitionLoader);
 
     const speechTextDiv = document.createElement('div');
     speechTextDiv.innerHTML = '';
@@ -200,12 +205,12 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
       if (!transcribed) {
         if (isTranscribing) return;
         isTranscribing = true;
-        //Process started
+        speechRecognitionLoader.classList.add('active');
         const transcription = await audioEl.managers.appMessagesManager.transcribeAudio(message);
         speechTextDiv.innerHTML = transcription.text;
         isTranscribing = false;
         transcribed = true;
-        //Process finished
+        speechRecognitionLoader.classList.remove('active');
       } else {
         //Hide transcription
         speechTextDiv.innerHTML = '';
