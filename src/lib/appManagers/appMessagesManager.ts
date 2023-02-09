@@ -313,7 +313,9 @@ export class AppMessagesManager extends AppManager {
 
       updateDeleteScheduledMessages: this.onUpdateDeleteScheduledMessages,
 
-      updateMessageExtendedMedia: this.onUpdateMessageExtendedMedia
+      updateMessageExtendedMedia: this.onUpdateMessageExtendedMedia,
+
+      updateTranscribedAudio: this.onUpdateTranscribedAudio
     });
 
     // ! Invalidate notify settings, can optimize though
@@ -5267,6 +5269,16 @@ export class AppMessagesManager extends AppManager {
       pts: 0,
       pts_count: 0
     });
+  };
+
+  private onUpdateTranscribedAudio = (update: Update.updateTranscribedAudio) => {
+    if (update.pFlags.pending === true) return;
+
+    const peerId = this.appPeersManager.getPeerId(update.peer);
+    const text = update.text;
+    const mid = generateMessageId(update.msg_id);
+
+    this.rootScope.dispatchEvent('message_transcribed', {peerId, mid, text});
   };
 
   public setDialogToStateIfMessageIsTop(message: MyMessage) {

@@ -198,29 +198,48 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
     const speechTextDiv = document.createElement('div');
     speechTextDiv.innerHTML = '';
     speechTextDiv.classList.add('audio-to-text');
+    speechTextDiv.style.display = 'none';
 
-    let isTranscribing: boolean = false;
-    let transcribed: boolean = false;
-    speechRecognitionDiv.onclick = async (e) => {
-      if (!transcribed) {
-        if (isTranscribing) return;
-        isTranscribing = true;
-        speechRecognitionLoader.classList.add('active');
-        const transcription = await audioEl.managers.appMessagesManager.transcribeAudio(message);
-        speechTextDiv.innerHTML = transcription.text;
-        isTranscribing = false;
-        transcribed = true;
-        speechRecognitionLoader.classList.remove('active');
-      } else {
+    speechRecognitionDiv.onclick = async () => {
+      if (audioEl.transcriptionState == 0) {
+        if (speechTextDiv.innerHTML !== '') {
+          speechTextDiv.style.display = 'block';
+          speechRecognitionIcon.innerHTML = '^';
+          //TODO: State to enum
+          audioEl.transcriptionState = 2;
+        } else {
+          audioEl.transcriptionState = 1;
+          speechRecognitionLoader.classList.add('active');
+          let transcription;
+          
+          try {
+            transcription = await audioEl.managers.appMessagesManager.transcribeAudio(message);
+          } catch(err) {
+            speechRecognitionLoader.classList.remove('active');
+            audioEl.transcriptionState = 0;
+            return;
+          }
+          
+          if (transcription.pFlags.pending === true) {
+            return;
+          }
+  
+          speechTextDiv.innerHTML = transcription.text;
+          speechTextDiv.style.display = 'block';
+          speechRecognitionIcon.innerHTML = '^';
+          speechRecognitionLoader.classList.remove('active');
+          audioEl.transcriptionState = 2;
+        }
+      } else if (audioEl.transcriptionState == 2) {
         //Hide transcription
-        speechTextDiv.innerHTML = '';
-        transcribed = false;
+        speechRecognitionIcon.innerHTML = '→A';
+        speechTextDiv.style.display = 'none';
+        audioEl.transcriptionState = 0;
       }
     };
 
     audioControlsDiv.append(speechRecognitionDiv);
     audioEl.append(speechTextDiv);
-
   }
 
   let progress = svg as any as HTMLElement;
@@ -474,6 +493,7 @@ export default class AudioElement extends HTMLElement {
   public lazyLoadQueue: LazyLoadQueue;
   public loadPromises: Promise<any>[];
   public managers: AppManagers;
+  public transcriptionState: number = 0;
 
   private listenerSetter = new ListenerSetter();
   private onTypeDisconnect: () => void;

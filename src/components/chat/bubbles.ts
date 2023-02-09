@@ -620,6 +620,29 @@ export default class ChatBubbles {
       bubble.classList.add('is-error');
     });
 
+    this.listenerSetter.add(rootScope)('message_transcribed', async({peerId, mid, text}) => {
+      console.log(peerId, mid, text);
+      if(peerId !== this.peerId) return;
+
+      const bubble = this.bubbles[mid];
+      if(!bubble) return;
+
+      //TODO: Move it to AudioElement method `finishVoiceTranscription`
+      const audioElement = bubble.querySelector('audio-element') as AudioElement;
+      if (audioElement) {
+        const speechTextDiv = audioElement.querySelector('.audio-to-text') as HTMLElement;
+        const speechRecognitionIcon = audioElement.querySelector('.audio-to-text-button span');
+        const speechRecognitionLoader = audioElement.querySelector('.loader');
+        if (speechTextDiv && speechRecognitionIcon) {
+          speechTextDiv.innerHTML = text;
+          speechTextDiv.style.display = 'block';
+          speechRecognitionIcon.innerHTML = '^';
+          speechRecognitionLoader.classList.remove('active');
+          audioElement.transcriptionState = 2;
+        }
+      }
+    });
+
     this.listenerSetter.add(rootScope)('album_edit', ({peerId, messages, deletedMids}) => {
       if(peerId !== this.peerId) return;
 
