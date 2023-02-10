@@ -18,6 +18,20 @@
     }
   }
 
+  @include respond-to(floating-left-sidebar) {
+    body.is-right-column-shown:not(.is-left-column-shown) & {
+      transition: transform var(--transition-standard-in);
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @include respond-to(no-floating-left-sidebar) {
+    body.is-right-column-shown & {
+      transition: transform var(--transition-standard-in);
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
   @include respond-to(not-handhelds) {
     width: calc(var(--right-column-width));
     transition: transform var(--transition-standard-out);
@@ -35,11 +49,6 @@
       border-left-width: 0;
     } */
   
-    body.is-right-column-shown:not(.is-left-column-shown) & {
-      transition: transform var(--transition-standard-in);
-      transform: translate3d(0, 0, 0);
-    }
-
     body.animation-level-0 & {
 			transition: none;
 		}
