@@ -129,10 +129,10 @@ namespace I18n {
         const date = new Date();
         date.setHours(0);
         const amText = dateTimeFormat.format(date);
-        amPmCache.am = amText.split(' ')[1];
+        amPmCache.am = amText.split(/\s/)[1];
         date.setHours(12);
         const pmText = dateTimeFormat.format(date);
-        amPmCache.pm = pmText.split(' ')[1];
+        amPmCache.pm = pmText.split(/\s/)[1];
       } catch(err) {
         console.error('cannot get am/pm', err);
         amPmCache = {am: 'AM', pm: 'PM'};
