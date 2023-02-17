@@ -204,12 +204,16 @@ export default function getRichElementValue(
     return;
   }
 
-  const isSelected = selNode === node;
-  const isBlock = BLOCK_TAGS.has(node.tagName);
-  if(isBlock && (line.length || node.tagName === 'BR'/*  || (BLOCK_TAGS.has(node.tagName) && lines.length) */)) {
+  const pushLine = () => {
     lines.push(line.join(''));
     line.length = 0;
     ++offset.offset;
+  };
+
+  const isSelected = selNode === node;
+  const isBlock = BLOCK_TAGS.has(node.tagName);
+  if(isBlock && (line.length || node.tagName === 'BR'/*  || (BLOCK_TAGS.has(node.tagName) && lines.length) */)) {
+    pushLine();
   } else {
     const alt = node.dataset.stickerEmoji || (node as HTMLImageElement).alt;
     const stickerEmoji = node.dataset.stickerEmoji;
@@ -252,7 +256,8 @@ export default function getRichElementValue(
     }
   }
 
-  if(wasNodeEmpty && lines.length !== wasLinesLength) {
+  // can test on text with list (https://www.who.int/initiatives/sports-and-health)
+  if(wasNodeEmpty && node.textContent?.replace(/[\r\n]/g, '')) {
     wasNodeEmpty = false;
   }
 
@@ -273,9 +278,7 @@ export default function getRichElementValue(
   }
 
   if(isBlock && !wasNodeEmpty) {
-    lines.push(line.join(''));
-    line.length = 0;
-    ++offset.offset;
+    pushLine();
   }
 
   if(!wasNodeEmpty && node.tagName === 'P' && node.nextSibling) {
