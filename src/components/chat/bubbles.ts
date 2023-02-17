@@ -2099,7 +2099,7 @@ export default class ChatBubbles {
     }
 
     const bubble = this.bubbles[mid];
-    if(!bubble) return;
+    if(!bubble || this.skippedMids.has(mid)) return;
 
     return {bubble, mid};
   }
