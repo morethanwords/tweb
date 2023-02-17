@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import {MOUNT_CLASS_TO} from '../config/debug';
 import {IS_WORKER} from './context';
 
 export class WindowSize {
@@ -15,11 +16,10 @@ export class WindowSize {
       return;
     }
 
-    // @ts-ignore
-    const w: any = 'visualViewport' in window ? window.visualViewport : window;
+    const w = 'visualViewport' in window ? window.visualViewport : window;
     const set = () => {
-      this.width = w.width || w.innerWidth;
-      this.height = w.height || w.innerHeight;
+      this.width = w.width || (w as any as Window).innerWidth;
+      this.height = w.height || (w as any as Window).innerHeight;
     };
     w.addEventListener('resize', set);
     set();
@@ -27,4 +27,5 @@ export class WindowSize {
 }
 
 const windowSize = new WindowSize();
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.windowSize = windowSize);
 export default windowSize;

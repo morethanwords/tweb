@@ -4,6 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+// * zoom part from WebZ
+// * https://github.com/Ajaxy/telegram-tt/blob/069f4f5b2f2c7c22529ccced876842e7f9cb81f4/src/components/mediaViewer/MediaViewerSlides.tsx
+
 import type {MyDocument} from '../lib/appManagers/appDocsManager';
 import type {MyPhoto} from '../lib/appManagers/appPhotosManager';
 import deferredPromise from '../helpers/cancellablePromise';
@@ -20,10 +23,10 @@ import ButtonIcon from './buttonIcon';
 import {ButtonMenuItemOptions} from './buttonMenu';
 import ButtonMenuToggle from './buttonMenuToggle';
 import ProgressivePreloader from './preloader';
-import SwipeHandler from './swipeHandler';
+import SwipeHandler, {ZoomDetails} from './swipeHandler';
 import {formatFullSentTime} from '../helpers/date';
 import appNavigationController, {NavigationItem} from './appNavigationController';
-import {Message} from '../layer';
+import {Message, PhotoSize} from '../layer';
 import findUpClassName from '../helpers/dom/findUpClassName';
 import renderImageFromUrl, {renderImageFromUrlPromise} from '../helpers/dom/renderImageFromUrl';
 import getVisibleRect from '../helpers/dom/getVisibleRect';
@@ -51,17 +54,22 @@ import overlayCounter from '../helpers/overlayCounter';
 import appDownloadManager from '../lib/appManagers/appDownloadManager';
 import wrapPeerTitle from './wrappers/peerTitle';
 import {toastNew} from './toast';
+import clamp from '../helpers/number/clamp';
+import debounce from '../helpers/schedulers/debounce';
+import isBetween from '../helpers/number/isBetween';
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
 const ZOOM_MIN_VALUE = 0.5;
 const ZOOM_MAX_VALUE = 4;
 
-// TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
-// TODO: картинки "обрезаются" если возвращаются или появляются с места, где есть их перекрытие (топбар, поле ввода)
-// TODO: видео в мобильной вёрстке, если показываются элементы управления: если свайпнуть в сторону, то элементы вернутся на место, т.е. прыгнут - это не ок, надо бы замаскировать
-
 export const MEDIA_VIEWER_CLASSNAME = 'media-viewer';
+
+type Transform = {
+  x: number;
+  y: number;
+  scale: number;
+};
 
 export default class AppMediaViewerBase<
   ContentAdditionType extends string,
@@ -83,14 +91,9 @@ export default class AppMediaViewerBase<
   protected preloader: ProgressivePreloader = null;
   protected preloaderStreamable: ProgressivePreloader = null;
 
-  // protected targetContainer: HTMLElement = null;
-  // protected loadMore: () => void = null;
-
   protected log: ReturnType<typeof logger>;
 
   protected isFirstOpen = true;
-
-  // protected needLoadMore = true;
 
   protected pageEl = document.getElementById('page-chats') as HTMLDivElement;
 
@@ -113,18 +116,27 @@ export default class AppMediaViewerBase<
     btnIn: HTMLElement,
     rangeSelector: RangeSelector
   } = {} as any;
-  // protected zoomValue = ZOOM_INITIAL_VALUE;
-  protected zoomSwipeHandler: SwipeHandler;
-  protected zoomSwipeStartX = 0;
-  protected zoomSwipeStartY = 0;
-  protected zoomSwipeX = 0;
-  protected zoomSwipeY = 0;
+  protected transform: Transform = {x: 0, y: 0, scale: ZOOM_INITIAL_VALUE};
+  protected isZooming: boolean;
+  protected isGesturingNow: boolean;
+  protected isZoomingNow: boolean;
+  protected draggingType: 'wheel' | 'touchmove' | 'mousemove';
+  protected initialContentRect: DOMRect;
 
   protected ctrlKeyDown: boolean;
   protected releaseSingleMedia: ReturnType<AppMediaPlaybackController['setSingleMedia']>;
   protected navigationItem: NavigationItem;
 
   protected managers: AppManagers;
+  protected swipeHandler: SwipeHandler;
+  protected closing: boolean;
+
+  protected lastTransform: Transform = this.transform;
+  protected lastZoomCenter: {x: number, y: number} = this.transform;
+  protected lastDragOffset: {x: number, y: number} = this.transform;
+  protected lastDragDelta: {x: number, y: number} = this.transform;
+  protected lastGestureTime: number;
+  protected clampZoomDebounced: ReturnType<typeof debounce<() => void>>;
 
   get target() {
     return this.listLoader.current;
@@ -204,12 +216,12 @@ export default class AppMediaViewerBase<
     this.zoomElements.container.classList.add('zoom-container');
 
     this.zoomElements.btnOut = ButtonIcon('zoomout', {noRipple: true});
-    attachClickEvent(this.zoomElements.btnOut, () => this.changeZoom(false));
+    attachClickEvent(this.zoomElements.btnOut, () => this.addZoomStep(false));
     this.zoomElements.btnIn = ButtonIcon('zoomin', {noRipple: true});
-    attachClickEvent(this.zoomElements.btnIn, () => this.changeZoom(true));
+    attachClickEvent(this.zoomElements.btnIn, () => this.addZoomStep(true));
 
     this.zoomElements.rangeSelector = new RangeSelector({
-      step: ZOOM_STEP,
+      step: 0.01,
       min: ZOOM_MIN_VALUE,
       max: ZOOM_MAX_VALUE,
       withTransition: true
@@ -222,7 +234,9 @@ export default class AppMediaViewerBase<
 
     this.zoomElements.container.append(this.zoomElements.btnOut, this.zoomElements.rangeSelector.container, this.zoomElements.btnIn);
 
-    this.wholeDiv.append(this.zoomElements.container);
+    if(!IS_TOUCH_SUPPORTED && false) {
+      this.wholeDiv.append(this.zoomElements.container);
+    }
 
     // * content
     this.content.main = document.createElement('div');
@@ -286,9 +300,9 @@ export default class AppMediaViewerBase<
     });
 
     attachClickEvent(this.buttons.zoom, () => {
-      if(this.isZooming()) this.toggleZoom(false);
+      if(this.isZooming) this.resetZoom();
       else {
-        this.changeZoom(true);
+        this.addZoomStep(true);
       }
     });
 
@@ -301,127 +315,356 @@ export default class AppMediaViewerBase<
       else this.onPrevClick(item);
     };
 
-    if(IS_TOUCH_SUPPORTED) {
-      const swipeHandler = new SwipeHandler({
-        element: this.wholeDiv,
-        onSwipe: (xDiff, yDiff) => {
-          if(isFullScreen()) {
-            return;
-          }
+    const adjustPosition = (xDiff: number, yDiff: number) => {
+      const [x, y] = [xDiff - this.lastDragOffset.x, yDiff - this.lastDragOffset.y];
+      const [transform, inBoundsX, inBoundsY] = this.calculateOffsetBoundaries({
+        x: this.transform.x + x,
+        y: this.transform.y + y,
+        scale: this.transform.scale
+      });
 
-          const percents = Math.abs(xDiff) / windowSize.width;
-          if(percents > .2 || xDiff > 125) {
-            // console.log('will swipe', xDiff);
+      this.lastDragDelta = {
+        x,
+        y
+      };
 
-            if(xDiff > 0) {
-              this.buttons.prev.click();
-            } else {
-              this.buttons.next.click();
-            }
+      this.lastDragOffset = {
+        x: xDiff,
+        y: yDiff
+      };
 
-            return true;
-          }
+      this.setTransform(transform);
 
-          const percentsY = Math.abs(yDiff) / windowSize.height;
-          if(percentsY > .2 || yDiff > 125) {
-            this.close();
-            return true;
-          }
+      return {inBoundsX, inBoundsY};
+    };
 
-          return false;
-        },
-        verifyTouchTarget: (e) => {
-          // * Fix for seek input
-          if(findUpClassName(e.target, 'ckin__controls') ||
-            findUpClassName(e.target, 'media-viewer-caption') ||
-            findUpClassName(e.target, 'media-viewer-topbar')) {
-            return false;
+    const setLastGestureTime = debounce(() => {
+      this.lastGestureTime = Date.now();
+    }, 500, false, true);
+
+    this.clampZoomDebounced = debounce(() => {
+      this.onSwipeReset();
+    }, 300, false, true);
+
+    this.swipeHandler = new SwipeHandler({
+      element: this.wholeDiv,
+      onReset: this.onSwipeReset,
+      onFirstSwipe: this.onSwipeFirst,
+      onSwipe: (xDiff, yDiff, e, cancelDrag) => {
+        if(isFullScreen()) {
+          return;
+        }
+
+        if(this.isZooming && !this.isZoomingNow) {
+          setLastGestureTime();
+
+          this.draggingType = e.type as any;
+          const {inBoundsX, inBoundsY} = adjustPosition(xDiff, yDiff);
+          cancelDrag?.(!inBoundsX, !inBoundsY);
+
+          return;
+        }
+
+        if(this.isZoomingNow || !IS_TOUCH_SUPPORTED) {
+          return;
+        }
+
+        const percents = Math.abs(xDiff) / windowSize.width;
+        if(percents > .2 || Math.abs(xDiff) > 125) {
+          if(xDiff > 0) {
+            this.buttons.prev.click();
+          } else {
+            this.buttons.next.click();
           }
 
           return true;
         }
-      });
+
+        const percentsY = Math.abs(yDiff) / windowSize.height;
+        if(percentsY > .2 || Math.abs(yDiff) > 125) {
+          this.close();
+          return true;
+        }
+
+        return false;
+      },
+      onZoom: this.onZoom,
+      onDoubleClick: ({centerX, centerY}) => {
+        if(this.isZooming) {
+          this.resetZoom();
+        } else {
+          const scale = ZOOM_INITIAL_VALUE + 2;
+          this.changeZoomByPosition(centerX, centerY, scale);
+        }
+      },
+      verifyTouchTarget: (e) => {
+        // * Fix for seek input
+        if(findUpClassName(e.target, 'ckin__controls') ||
+          findUpClassName(e.target, 'media-viewer-caption') ||
+          (findUpClassName(e.target, 'media-viewer-topbar') && e.type !== 'wheel')) {
+          return false;
+        }
+
+        return true;
+      },
+      cursor: ''
+      // cursor: 'move'
+    });
+  }
+
+  protected onSwipeFirst = () => {
+    this.lastDragOffset = this.lastDragDelta = {x: 0, y: 0};
+    this.lastTransform = {...this.transform};
+    this.moversContainer.classList.add('no-transition');
+    this.isGesturingNow = true;
+    this.lastGestureTime = Date.now();
+    this.clampZoomDebounced.clearTimeout();
+
+    if(!this.lastTransform.x && !this.lastTransform.y && !this.isZooming) {
+      this.initialContentRect = this.content.media.getBoundingClientRect();
     }
+  };
+
+  protected onSwipeReset = () => {
+    // move
+    this.moversContainer.classList.remove('no-transition');
+    this.clampZoomDebounced.clearTimeout();
+
+    const {draggingType} = this;
+    this.isZoomingNow = false;
+    this.isGesturingNow = false;
+    this.draggingType = undefined;
+
+    if(this.closing) {
+      return;
+    }
+
+    if(this.transform.scale > ZOOM_INITIAL_VALUE) {
+      // Get current content boundaries
+      const s1 = Math.min(this.transform.scale, ZOOM_MAX_VALUE);
+      const scaleFactor = s1 / this.transform.scale;
+
+      // Calculate new position based on the last zoom center to keep the zoom center
+      // at the same position when bouncing back from max zoom
+      let x1 = this.transform.x * scaleFactor + (this.lastZoomCenter.x - scaleFactor * this.lastZoomCenter.x);
+      let y1 = this.transform.y * scaleFactor + (this.lastZoomCenter.y - scaleFactor * this.lastZoomCenter.y);
+
+      // If scale didn't change, we need to add inertia to pan gesture
+      if(draggingType && draggingType !== 'wheel' && this.lastTransform.scale === this.transform.scale) {
+        // Arbitrary pan velocity coefficient
+        const k = 0.1;
+
+        // Calculate user gesture velocity
+        const elapsedTime = Math.max(1, Date.now() - this.lastGestureTime);
+        const Vx = Math.abs(this.lastDragOffset.x) / elapsedTime;
+        const Vy = Math.abs(this.lastDragOffset.y) / elapsedTime;
+
+        // Add extra distance based on gesture velocity and last pan delta
+        x1 -= Math.abs(this.lastDragOffset.x) * Vx * k * -this.lastDragDelta.x;
+        y1 -= Math.abs(this.lastDragOffset.y) * Vy * k * -this.lastDragDelta.y;
+      }
+
+      const [transform] = this.calculateOffsetBoundaries({x: x1, y: y1, scale: s1});
+      this.lastTransform = transform;
+      this.setTransform(transform);
+    } else if(this.transform.scale < ZOOM_INITIAL_VALUE) {
+      this.resetZoom();
+    }
+  };
+
+  protected onZoom = ({
+    initialCenterX,
+    initialCenterY,
+    zoom,
+    zoomAdd,
+    currentCenterX,
+    currentCenterY,
+    dragOffsetX,
+    dragOffsetY,
+    zoomFactor
+  }: ZoomDetails) => {
+    initialCenterX ||= windowSize.width / 2;
+    initialCenterY ||= windowSize.height / 2;
+    currentCenterX ||= windowSize.width / 2;
+    currentCenterY ||= windowSize.height / 2;
+
+    this.isZoomingNow = true;
+
+    const zoomMaxBounceValue = ZOOM_MAX_VALUE * 3;
+    const scale = zoomAdd ? clamp(this.lastTransform.scale + zoomAdd, ZOOM_MIN_VALUE, zoomMaxBounceValue) : (zoom ?? clamp(this.lastTransform.scale * zoomFactor, ZOOM_MIN_VALUE, zoomMaxBounceValue));
+    const scaleFactor = scale / this.lastTransform.scale;
+    const offsetX = Math.abs(Math.min(this.lastTransform.x, 0));
+    const offsetY = Math.abs(Math.min(this.lastTransform.y, 0));
+
+    // Save last zoom center for bounce back effect
+    this.lastZoomCenter = {
+      x: currentCenterX,
+      y: currentCenterY
+    };
+
+    // Calculate new center relative to the shifted image
+    const scaledCenterX = offsetX + initialCenterX;
+    const scaledCenterY = offsetY + initialCenterY;
+
+    const {scaleOffsetX, scaleOffsetY} = this.calculateScaleOffset({x: scaledCenterX, y: scaledCenterY, scale: scaleFactor});
+
+    const [transform] = this.calculateOffsetBoundaries({
+      x: this.lastTransform.x + scaleOffsetX + dragOffsetX,
+      y: this.lastTransform.y + scaleOffsetY + dragOffsetY,
+      scale
+    });
+
+    this.setTransform(transform);
+  };
+
+  protected changeZoomByPosition(x: number, y: number, scale: number) {
+    const {scaleOffsetX, scaleOffsetY} = this.calculateScaleOffset({x, y, scale});
+    const transform = this.calculateOffsetBoundaries({
+      x: scaleOffsetX,
+      y: scaleOffsetY,
+      scale
+    })[0];
+
+    this.setTransform(transform);
+  }
+
+  protected setTransform(transform: Transform) {
+    this.transform = transform;
+    this.changeZoom(transform.scale);
+  }
+
+  // Calculate how much we need to shift the image to keep the zoom center at the same position
+  protected calculateScaleOffset({x, y, scale}: {
+    x: number,
+    y: number,
+    scale: number
+  }) {
+    return {
+      scaleOffsetX: x - scale * x,
+      scaleOffsetY: y - scale * y
+    };
   }
 
   protected toggleZoom(enable?: boolean) {
-    const isVisible = this.isZooming();
+    const isVisible = this.isZooming;
+    const auto = enable === undefined;
     if(this.zoomElements.rangeSelector.mousedown || this.ctrlKeyDown) {
       enable = true;
     }
 
-    if(isVisible === enable) return;
+    enable ??= !isVisible;
 
-    if(enable === undefined) {
-      enable = !isVisible;
+    if(isVisible === enable) {
+      return;
     }
 
     this.buttons.zoom.classList.toggle('zoom-in', !enable);
-    this.zoomElements.container.classList.toggle('is-visible', enable);
-    const zoomValue = enable ? this.zoomElements.rangeSelector.value : 1;
-    this.setZoomValue(zoomValue);
-    this.zoomElements.rangeSelector.setProgress(zoomValue);
+    this.zoomElements.container.classList.toggle('is-visible', this.isZooming = enable);
+    this.wholeDiv.classList.toggle('is-zooming', enable);
+
+    if(auto || !enable) {
+      const zoomValue = enable ? this.transform.scale : ZOOM_INITIAL_VALUE;
+      this.setZoomValue(zoomValue);
+      this.zoomElements.rangeSelector.setProgress(zoomValue);
+    }
 
     if(this.videoPlayer) {
       this.videoPlayer.lockControls(enable ? false : undefined);
     }
+  }
 
-    if(enable) {
-      if(!this.zoomSwipeHandler) {
-        let lastDiffX: number, lastDiffY: number;
-        const multiplier = 1;
-        this.zoomSwipeHandler = new SwipeHandler({
-          element: this.moversContainer,
-          onFirstSwipe: () => {
-            lastDiffX = lastDiffY = 0;
-            this.moversContainer.classList.add('no-transition');
-          },
-          onSwipe: (xDiff, yDiff) => {
-            [xDiff, yDiff] = [xDiff * multiplier, yDiff * multiplier];
-            this.zoomSwipeX += xDiff - lastDiffX;
-            this.zoomSwipeY += yDiff - lastDiffY;
-            [lastDiffX, lastDiffY] = [xDiff, yDiff];
+  protected addZoomStep(add: boolean) {
+    this.addZoom(ZOOM_STEP * (add ? 1 : -1));
+  }
 
-            this.setZoomValue();
-          },
-          onReset: () => {
-            this.moversContainer.classList.remove('no-transition');
-          },
-          cursor: 'move'
-        });
-      } else {
-        this.zoomSwipeHandler.setListeners();
-      }
+  protected resetZoom() {
+    this.setTransform({
+      x: 0,
+      y: 0,
+      scale: ZOOM_INITIAL_VALUE
+    });
+  }
 
-      this.zoomElements.rangeSelector.setProgress(zoomValue);
-    } else if(!enable) {
-      this.zoomSwipeHandler.removeListeners();
+  protected changeZoom(value = this.transform.scale) {
+    this.transform.scale = value;
+    this.zoomElements.rangeSelector.setProgress(value);
+    this.setZoomValue(value);
+  }
+
+  protected addZoom(value: number) {
+    this.lastTransform = this.transform;
+    this.onZoom({
+      zoomAdd: value,
+      currentCenterX: 0,
+      currentCenterY: 0,
+      initialCenterX: 0,
+      initialCenterY: 0,
+      dragOffsetX: 0,
+      dragOffsetY: 0
+    });
+    this.lastTransform = this.transform;
+    this.clampZoomDebounced();
+  }
+
+  protected getZoomBounce() {
+    return this.isGesturingNow && IS_TOUCH_SUPPORTED ? 50 : 0;
+  }
+
+  protected calculateOffsetBoundaries = (
+    {x, y, scale}: Transform,
+    offsetTop = 0
+  ): [Transform, boolean, boolean] => {
+    if(!this.initialContentRect) return [{x, y, scale}, true, true];
+    // Get current content boundaries
+    let inBoundsX = true;
+    let inBoundsY = true;
+
+    const {minX, maxX, minY, maxY} = this.getZoomBoundaries(scale, offsetTop);
+
+    inBoundsX = isBetween(x, maxX, minX);
+    x = clamp(x, maxX, minX);
+
+    inBoundsY = isBetween(y, maxY, minY);
+    y = clamp(y, maxY, minY);
+
+    return [{x, y, scale}, inBoundsX, inBoundsY];
+  };
+
+  protected getZoomBoundaries(scale = this.transform.scale, offsetTop = 0) {
+    if(!this.initialContentRect) {
+      return {minX: 0, maxX: 0, minY: 0, maxY: 0};
     }
+
+    const centerX = (windowSize.width - windowSize.width * scale) / 2;
+    const centerY = (windowSize.height - windowSize.height * scale) / 2;
+
+    // If content is outside window we calculate offset boundaries
+    // based on initial content rect and current scale
+    const minX = Math.max(-this.initialContentRect.left * scale, centerX);
+    const maxX = windowSize.width - this.initialContentRect.right * scale;
+
+    const minY = Math.max(-this.initialContentRect.top * scale + offsetTop, centerY);
+    const maxY = windowSize.height - this.initialContentRect.bottom * scale;
+
+    return {minX, maxX, minY, maxY};
   }
 
-  protected changeZoom(add: boolean) {
-    this.zoomElements.rangeSelector.addProgress(ZOOM_STEP * (add ? 1 : -1));
-    this.setZoomValue();
-  }
+  protected setZoomValue = (value = this.transform.scale) => {
+    this.initialContentRect ??= this.content.media.getBoundingClientRect();
 
-  protected setZoomValue = (value = this.zoomElements.rangeSelector.value) => {
     // this.zoomValue = value;
     if(value === ZOOM_INITIAL_VALUE) {
-      this.zoomSwipeX = 0;
-      this.zoomSwipeY = 0;
+      this.transform.x = 0;
+      this.transform.y = 0;
     }
 
-    this.moversContainer.style.transform = `matrix(${value}, 0, 0, ${value}, ${this.zoomSwipeX}, ${this.zoomSwipeY})`;
+    this.moversContainer.style.transform = `translate3d(${this.transform.x.toFixed(3)}px, ${this.transform.y.toFixed(3)}px, 0px) scale(${value.toFixed(3)})`;
 
     this.zoomElements.btnOut.classList.toggle('inactive', value === ZOOM_MIN_VALUE);
     this.zoomElements.btnIn.classList.toggle('inactive', value === ZOOM_MAX_VALUE);
 
     this.toggleZoom(value !== ZOOM_INITIAL_VALUE);
   };
-
-  protected isZooming() {
-    return this.zoomElements.container.classList.contains('is-visible');
-  }
 
   protected setBtnMenuToggle(buttons: ButtonMenuItemOptions[]) {
     const btnMenuToggle = ButtonMenuToggle({buttonOptions: {onlyMobile: true}, direction: 'bottom-left', buttons});
@@ -434,6 +677,9 @@ export default class AppMediaViewerBase<
     }
 
     if(this.setMoverAnimationPromise) return Promise.reject();
+
+    this.closing = true;
+    this.swipeHandler?.removeListeners();
 
     if(this.navigationItem) {
       appNavigationController.removeItem(this.navigationItem);
@@ -459,8 +705,6 @@ export default class AppMediaViewerBase<
 
     this.removeGlobalListeners();
 
-    this.zoomSwipeHandler = undefined;
-
     promise.finally(() => {
       this.wholeDiv.remove();
       this.toggleOverlay(false);
@@ -480,23 +724,13 @@ export default class AppMediaViewerBase<
   }
 
   protected removeGlobalListeners() {
-    if(this.zoomSwipeHandler) {
-      this.zoomSwipeHandler.removeListeners();
-    }
-
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
-    window.removeEventListener('wheel', this.onWheel, {capture: true});
   }
 
   protected setGlobalListeners() {
-    if(this.isZooming()) {
-      this.zoomSwipeHandler.setListeners();
-    }
-
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
-    if(!IS_TOUCH_SUPPORTED) window.addEventListener('wheel', this.onWheel, {passive: false, capture: true});
   }
 
   onClick = (e: MouseEvent) => {
@@ -521,7 +755,7 @@ export default class AppMediaViewerBase<
       return;
     }
 
-    const isZooming = this.isZooming();
+    const isZooming = this.isZooming;
     let mover: HTMLElement = null;
     const classNames = ['ckin__player', 'media-viewer-buttons', 'media-viewer-author', 'media-viewer-caption', 'zoom-container'];
     if(isZooming) {
@@ -550,12 +784,12 @@ export default class AppMediaViewerBase<
 
     let good = true;
     if(key === 'ArrowRight') {
-      this.buttons.next.click();
+      !this.isZooming && this.buttons.next.click();
     } else if(key === 'ArrowLeft') {
-      this.buttons.prev.click();
+      !this.isZooming && this.buttons.prev.click();
     } else if(key === '-' || key === '=') {
       if(this.ctrlKeyDown) {
-        this.changeZoom(key === '=');
+        this.addZoomStep(key === '=');
       }
     } else {
       good = false;
@@ -578,23 +812,9 @@ export default class AppMediaViewerBase<
     if(!(e.ctrlKey || e.metaKey)) {
       this.ctrlKeyDown = false;
 
-      if(this.isZooming()) {
+      if(this.isZooming) {
         this.setZoomValue();
       }
-    }
-  };
-
-  private onWheel = (e: WheelEvent) => {
-    if(overlayCounter.overlaysActive > 1 || (findUpClassName(e.target, 'media-viewer-caption') && !this.ctrlKeyDown)) {
-      return;
-    }
-
-    cancelEvent(e);
-
-    if(this.ctrlKeyDown) {
-      const scrollingUp = e.deltaY < 0;
-      // if(!scrollingUp && !this.isZooming()) return;
-      this.changeZoom(!!scrollingUp);
     }
   };
 
@@ -608,7 +828,7 @@ export default class AppMediaViewerBase<
       // mover.append(this.buttons.prev, this.buttons.next);
     }
 
-    const zoomValue = this.isZooming() && closing /* && false */ ? this.zoomElements.rangeSelector.value : ZOOM_INITIAL_VALUE;
+    const zoomValue = this.isZooming && closing /* && false */ ? this.transform.scale : ZOOM_INITIAL_VALUE;
     /* if(!(zoomValue > 1 && closing)) */ this.removeCenterFromMover(mover);
 
     const wasActive = fromRight !== 0;
@@ -749,12 +969,8 @@ export default class AppMediaViewerBase<
     // let borderRadius = '0px 0px 0px 0px';
 
     if(closing && zoomValue !== 1) {
-      // const width = this.moversContainer.scrollWidth * scaleX;
-      // const height = this.moversContainer.scrollHeight * scaleY;
-      const willBeLeft = windowSize.width / 2 - rect.width / 2;
-      const willBeTop = windowSize.height / 2 - rect.height / 2;
-      const left = rect.left - willBeLeft/*  + (width - rect.width) / 2 */;
-      const top = rect.top - willBeTop/*  + (height - rect.height) / 2 */;
+      const left = rect.left - (windowSize.width * scaleX - rect.width) / 2;
+      const top = rect.top - (windowSize.height * scaleY - rect.height) / 2;
       this.moversContainer.style.transform = `matrix(${scaleX}, 0, 0, ${scaleY}, ${left}, ${top})`;
     } else {
       mover.style.transform = transform;
@@ -1288,6 +1504,23 @@ export default class AppMediaViewerBase<
       this.moveTheMover(this.content.mover, fromRight === 1);
       this.setNewMover();
     } else {
+      this.navigationItem = {
+        type: 'media',
+        onPop: (canAnimate) => {
+          if(this.setMoverAnimationPromise) {
+            return false;
+          }
+
+          if(!canAnimate && IS_MOBILE_SAFARI) {
+            this.wholeDiv.remove();
+          }
+
+          this.close();
+        }
+      };
+
+      appNavigationController.pushItem(this.navigationItem);
+
       this.toggleOverlay(true);
       this.setGlobalListeners();
       await setAuthorPromise;
@@ -1298,21 +1531,6 @@ export default class AppMediaViewerBase<
       }
 
       this.toggleWholeActive(true);
-
-      if(!IS_MOBILE_SAFARI) {
-        this.navigationItem = {
-          type: 'media',
-          onPop: (canAnimate) => {
-            if(this.setMoverAnimationPromise) {
-              return false;
-            }
-
-            this.close();
-          }
-        };
-
-        appNavigationController.pushItem(this.navigationItem);
-      }
     }
 
     // //////this.log('wasActive:', wasActive);
@@ -1358,8 +1576,8 @@ export default class AppMediaViewerBase<
     const supportsStreaming: boolean = !!(isDocument && media.supportsStreaming);
     const preloader = supportsStreaming ? this.preloaderStreamable : this.preloader;
 
-    const getCacheContext = () => {
-      return this.managers.thumbsStorage.getCacheContext(media, size?.type);
+    const getCacheContext = (type = size?.type) => {
+      return this.managers.thumbsStorage.getCacheContext(media, type);
     };
 
     let setMoverPromise: Promise<void>;
@@ -1496,7 +1714,7 @@ export default class AppMediaViewerBase<
                 this.videoPlayer = undefined;
               }, {once: true});
 
-              if(this.isZooming()) {
+              if(this.isZooming) {
                 this.videoPlayer.lockControls(false);
               }
               /* div.append(video);
@@ -1630,6 +1848,10 @@ export default class AppMediaViewerBase<
         const load = async() => {
           const cancellablePromise = isDocument ? appDownloadManager.downloadMediaURL({media}) : appDownloadManager.downloadMediaURL({media, thumb: size});
 
+          const photoSizes = !isDocument && media.sizes.slice().filter((size) => (size as PhotoSize.photoSize).w) as PhotoSize.photoSize[];
+          photoSizes?.sort((a, b) => b.size - a.size);
+          const cancellableFullPromise = !isDocument && appDownloadManager.downloadMediaURL({media, thumb: photoSizes?.[0]});
+
           onAnimationEnd.then(async() => {
             if(!(await getCacheContext()).url) {
               this.preloader.attachPromise(cancellablePromise);
@@ -1652,31 +1874,41 @@ export default class AppMediaViewerBase<
 
               if(mediaSizes.isMobile) {
                 const imgs = mover.querySelectorAll('img');
-                if(imgs && imgs.length) {
-                  imgs.forEach((img) => {
-                    img.classList.remove('thumbnail'); // может здесь это вообще не нужно
-                  });
-                }
+                imgs.forEach((img) => {
+                  img.classList.remove('thumbnail'); // может здесь это вообще не нужно
+                });
               }
             } else {
               const div = mover.firstElementChild && mover.firstElementChild.classList.contains('media-viewer-aspecter') ? mover.firstElementChild : mover;
-              const haveImage = div.firstElementChild?.tagName === 'IMG' ? div.firstElementChild as HTMLImageElement : null;
-              if(!haveImage || haveImage.src !== url)  {
+              const haveImage = ['CANVAS', 'IMG'].includes(div.firstElementChild?.tagName) ? div.firstElementChild as HTMLElement : null;
+              if((haveImage as HTMLImageElement)?.src !== url)  {
                 const image = new Image();
                 image.classList.add('thumbnail');
 
                 // this.log('will renderImageFromUrl:', image, div, target);
 
                 renderImageFromUrl(image, url, () => {
-                  this.updateMediaSource(target, url, 'img');
+                  fastRaf(() => {
+                    this.updateMediaSource(target, url, 'img');
 
-                  if(haveImage) {
+                    if(haveImage) {
+                      fastRaf(() => {
+                        haveImage.remove();
+                      });
+                    }
+
+                    div.append(image);
+                  });
+                }, false);
+
+                cancellableFullPromise?.then((url) => {
+                  const fullImage = new Image();
+                  fullImage.classList.add('thumbnail');
+                  renderImageFromUrl(fullImage, url, () => {
                     fastRaf(() => {
-                      haveImage.remove();
+                      image.replaceWith(fullImage);
                     });
-                  }
-
-                  div.append(image);
+                  }, false);
                 });
               }
             }

@@ -1117,7 +1117,7 @@ export default class ChatInput {
       return this.fakeSelectionWrapper;
     } else if(
       startParam !== undefined ||
-      !(await this.chat.canSend()) ||
+      // !(await this.chat.canSend()) || // ! WARNING, TEMPORARILY COMMENTED
       this.chat.type === 'pinned' ||
       await this.chat.isStartButtonNeeded() ||
       this.isReplyInTopicOverlayNeeded()

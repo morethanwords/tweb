@@ -559,6 +559,14 @@ $inactive-opacity: .4;
       }
     }
 
+    &.is-zooming {
+      .media-viewer-caption,
+      .media-viewer-switcher .tgico-down {
+        opacity: 0 !important;
+        pointer-events: none;
+      }
+    }
+
     &.highlight-switchers {
       .media-viewer-switcher > span {
         opacity: 1;
@@ -584,11 +592,28 @@ $inactive-opacity: .4;
     bottom: 0;
     left: 0;
     z-index: 4;
+    // transform: matrix(1, 0, 0, 1, 0, 0);
+    transform: translate3d(1, 1, 0) scale(1);
+    will-change: transform;
+    transform-origin: 0 0;
 
     @include animation-level(2) {
       transition: transform var(--open-duration);
     }
   }
+
+  // &-whole {
+  //   &:after {
+  //     content: " ";
+  //     position: absolute;
+  //     top: 0;
+  //     bottom: 0;
+  //     left: 50%;
+  //     background-color: green;
+  //     z-index: 500;
+  //     width: 1px;
+  //   }
+  // }
 
   /* &-switchers {
     position: relative;
