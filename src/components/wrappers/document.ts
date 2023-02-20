@@ -43,7 +43,7 @@ rootScope.addEventListener('document_downloading', (docId) => {
   });
 });
 
-export default async function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showSender, searchContext, loadPromises, autoDownloadSize, lazyLoadQueue, sizeType, managers = rootScope.managers, cacheContext, fontSize, getSize}: {
+export default async function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showSender, searchContext, loadPromises, autoDownloadSize, lazyLoadQueue, sizeType, managers = rootScope.managers, cacheContext, fontSize, getSize, canTranscribeVoice}: {
   message: Message.message,
   withTime?: boolean,
   fontWeight?: number,
@@ -57,7 +57,8 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
   managers?: AppManagers,
   cacheContext?: ThumbCache,
   fontSize?: number,
-  getSize?: () => number
+  getSize?: () => number,
+  canTranscribeVoice?: boolean
 }): Promise<HTMLElement> {
   fontWeight ??= 500;
   sizeType ??= '' as any;
@@ -73,6 +74,7 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
     audioElement.noAutoDownload = noAutoDownload;
     audioElement.lazyLoadQueue = lazyLoadQueue;
     audioElement.loadPromises = loadPromises;
+    if(canTranscribeVoice && doc.type === 'voice') audioElement.transcriptionState = 0;
     (audioElement as any).getSize = getSize;
 
     if(voiceAsMusic) audioElement.voiceAsMusic = voiceAsMusic;

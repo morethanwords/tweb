@@ -1060,6 +1060,7 @@ const lang = {
   'Chat.Message.ViewGroup': 'VIEW GROUP',
   'Chat.Message.Sponsored.What': 'What are sponsored messages?',
   'Chat.Message.Sponsored.Link': 'https://promote.telegram.org',
+  'Chat.Voice.Transribe.Error': 'No speech detected',
   'Checkout.2FA.Text': 'Saving payment details is only available with 2-Step Verification.',
   'Checkout.NewCard.CardholderNamePlaceholder': 'Cardholder Name',
   'Checkout.PasswordEntry.Title': 'Payment Confirmation',

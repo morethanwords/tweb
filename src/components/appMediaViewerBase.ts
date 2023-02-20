@@ -399,7 +399,8 @@ export default class AppMediaViewerBase<
       },
       verifyTouchTarget: (e) => {
         // * Fix for seek input
-        if(findUpClassName(e.target, 'ckin__controls') ||
+        if(isFullScreen() ||
+          findUpClassName(e.target, 'ckin__controls') ||
           findUpClassName(e.target, 'media-viewer-caption') ||
           (findUpClassName(e.target, 'media-viewer-topbar') && e.type !== 'wheel')) {
           return false;

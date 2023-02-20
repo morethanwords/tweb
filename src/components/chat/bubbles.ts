@@ -620,27 +620,64 @@ export default class ChatBubbles {
       bubble.classList.add('is-error');
     });
 
-    this.listenerSetter.add(rootScope)('message_transcribed', async({peerId, mid, text}) => {
-      console.log(peerId, mid, text);
+    this.listenerSetter.add(rootScope)('message_transcribed', ({peerId, mid, text, pending}) => {
       if(peerId !== this.peerId) return;
 
       const bubble = this.bubbles[mid];
       if(!bubble) return;
 
-      //TODO: Move it to AudioElement method `finishVoiceTranscription`
+      // TODO: Move it to AudioElement method `finishVoiceTranscription`
       const audioElement = bubble.querySelector('audio-element') as AudioElement;
-      if (audioElement) {
-        const speechTextDiv = audioElement.querySelector('.audio-to-text') as HTMLElement;
-        const speechRecognitionIcon = audioElement.querySelector('.audio-to-text-button span');
-        const speechRecognitionLoader = audioElement.querySelector('.loader');
-        if (speechTextDiv && speechRecognitionIcon) {
-          speechTextDiv.innerHTML = text;
-          speechTextDiv.style.display = 'block';
-          speechRecognitionIcon.innerHTML = '^';
-          speechRecognitionLoader.classList.remove('active');
-          audioElement.transcriptionState = 2;
-        }
+      if(!audioElement) {
+        return;
       }
+
+      // const scrollSaver = this.createScrollSaver(false);
+      // scrollSaver.save();
+
+      const speechTextDiv = bubble.querySelector('.document-wrapper') as HTMLElement;
+      const speechRecognitionIcon = audioElement.querySelector('.audio-to-text-button span');
+      const speechRecognitionLoader = audioElement.querySelector('.loader');
+      if(speechTextDiv && speechRecognitionIcon) {
+        let transcribedText = speechTextDiv.querySelector('.audio-transcribed-text');
+        if(!transcribedText) {
+          transcribedText = document.createElement('div');
+          transcribedText.classList.add('audio-transcribed-text');
+          transcribedText.append(document.createTextNode(''));
+          audioElement.before(transcribedText);
+
+          if(pending) {
+            const dots = document.createElement('span');
+            dots.classList.add('audio-transcribing-dots');
+            transcribedText.append(dots);
+          }
+        } else if(!pending) {
+          const dots = transcribedText.querySelector('.audio-transcribing-dots');
+          dots?.remove();
+        }
+
+        if(!text && !pending && !transcribedText.classList.contains('has-some-text')) {
+          transcribedText.append(i18n('Chat.Voice.Transribe.Error'));
+          transcribedText.classList.add('is-error');
+        } else {
+          transcribedText.classList.add('has-some-text');
+          transcribedText.firstChild.textContent = text;
+        }
+
+        speechRecognitionIcon.classList.remove('tgico-transcribe');
+        speechRecognitionIcon.classList.add('tgico-up');
+
+        if(!pending && speechRecognitionLoader) {
+          speechRecognitionLoader.classList.remove('active');
+          setTimeout(() => {
+            speechRecognitionLoader.remove();
+          }, 300);
+        }
+
+        audioElement.transcriptionState = 2;
+      }
+
+      // scrollSaver.restore();
     });
 
     this.listenerSetter.add(rootScope)('album_edit', ({peerId, messages, deletedMids}) => {
@@ -4278,7 +4315,8 @@ export default class ChatBubbles {
                     _: 'inputMessagesFilterEmpty'
                   }
                 },
-                fontSize: rootScope.settings.messagesTextSize
+                fontSize: rootScope.settings.messagesTextSize,
+                canTranscribeVoice: true
               });
               preview.append(docDiv);
               preview.classList.add('preview-with-document');
@@ -4505,7 +4543,8 @@ export default class ChatBubbles {
               } : undefined,
               sizeType: 'documentName',
               fontSize: rootScope.settings.messagesTextSize,
-              richTextFragment: richText
+              richTextFragment: richText,
+              canTranscribeVoice: true
             });
 
             if(newNameContainer) {

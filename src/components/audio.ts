@@ -36,6 +36,7 @@ import wrapSentTime from './wrappers/sentTime';
 import getMediaFromMessage from '../lib/appManagers/utils/messages/getMediaFromMessage';
 import appDownloadManager from '../lib/appManagers/appDownloadManager';
 import wrapPhoto from './wrappers/photo';
+import {doubleRaf} from '../helpers/schedulers';
 
 rootScope.addEventListener('messages_media_read', ({mids, peerId}) => {
   mids.forEach((mid) => {
@@ -163,13 +164,6 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
 
   const {svg, container: svgContainer, availW} = createWaveformBars(waveform, doc.duration);
 
-  const audioControlsDiv = document.createElement('div');
-  audioControlsDiv.classList.add('audio-controls');
-
-  const audioTimelineDiv = document.createElement('div');
-  audioTimelineDiv.classList.add('audio-timeline');
-  audioControlsDiv.append(audioTimelineDiv);
-
   const fakeSvgContainer = svgContainer.cloneNode(true) as HTMLElement;
   fakeSvgContainer.classList.add('audio-waveform-fake');
   svgContainer.classList.add('audio-waveform-background');
@@ -180,66 +174,49 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
 
   const timeDiv = document.createElement('div');
   timeDiv.classList.add('audio-time');
-  audioTimelineDiv.append(waveformContainer, timeDiv);
+  audioEl.append(waveformContainer, timeDiv);
 
-  audioEl.append(audioControlsDiv);
-
-  const isPremium: boolean = rootScope.premium;
-  if (isPremium) {
+  if(audioEl.transcriptionState !== undefined) {
+    audioEl.classList.add('can-transcribe');
     const speechRecognitionDiv = document.createElement('div');
     speechRecognitionDiv.classList.add('audio-to-text-button');
     const speechRecognitionIcon = document.createElement('span');
-    speechRecognitionIcon.innerHTML = '→A';
+    speechRecognitionIcon.classList.add('tgico-transcribe');
     const speechRecognitionLoader = document.createElement('div');
     speechRecognitionLoader.classList.add('loader');
-    speechRecognitionLoader.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 24"><style></style><rect fill="transparent" stroke-width="3" stroke-linejoin="round" rx="6" ry="6" stroke="var(--message-out-primary-color)" stroke-dashoffset="1" stroke-dasharray="32,68" width="32" height="24"></rect></svg>'
-    speechRecognitionDiv.append(speechRecognitionIcon, speechRecognitionLoader);
+    speechRecognitionLoader.innerHTML = '<svg class="audio-transcribe-outline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 24"><rect class="audio-transcribe-outline-rect" fill="transparent" stroke-width="3" stroke-linejoin="round" rx="6" ry="6" stroke="var(--message-primary-color)" stroke-dashoffset="1" stroke-dasharray="32,68" width="32" height="24"></rect></svg>'
+    speechRecognitionDiv.append(speechRecognitionIcon);
 
-    const speechTextDiv = document.createElement('div');
-    speechTextDiv.innerHTML = '';
-    speechTextDiv.classList.add('audio-to-text');
-    speechTextDiv.style.display = 'none';
-
-    speechRecognitionDiv.onclick = async () => {
-      if (audioEl.transcriptionState == 0) {
-        if (speechTextDiv.innerHTML !== '') {
-          speechTextDiv.style.display = 'block';
-          speechRecognitionIcon.innerHTML = '^';
-          //TODO: State to enum
+    speechRecognitionDiv.onclick = () => {
+      const speechTextDiv = audioEl.parentElement.querySelector<HTMLElement>('.audio-transcribed-text');
+      if(audioEl.transcriptionState === 0) {
+        if(speechTextDiv) {
+          speechTextDiv.classList.remove('hide');
+          speechRecognitionIcon.classList.remove('tgico-transcribe');
+          speechRecognitionIcon.classList.add('tgico-up');
+          // TODO: State to enum
           audioEl.transcriptionState = 2;
         } else {
           audioEl.transcriptionState = 1;
-          speechRecognitionLoader.classList.add('active');
-          let transcription;
-          
-          try {
-            transcription = await audioEl.managers.appMessagesManager.transcribeAudio(message);
-          } catch(err) {
-            speechRecognitionLoader.classList.remove('active');
-            audioEl.transcriptionState = 0;
-            return;
-          }
-          
-          if (transcription.pFlags.pending === true) {
-            return;
-          }
-  
-          speechTextDiv.innerHTML = transcription.text;
-          speechTextDiv.style.display = 'block';
-          speechRecognitionIcon.innerHTML = '^';
-          speechRecognitionLoader.classList.remove('active');
-          audioEl.transcriptionState = 2;
+          !speechRecognitionLoader.parentElement && speechRecognitionDiv.append(speechRecognitionLoader);
+          doubleRaf().then(() => {
+            if(audioEl.transcriptionState === 1) {
+              speechRecognitionLoader.classList.add('active');
+            }
+          });
+
+          audioEl.managers.appMessagesManager.transcribeAudio(message).catch(noop);
         }
-      } else if (audioEl.transcriptionState == 2) {
-        //Hide transcription
-        speechRecognitionIcon.innerHTML = '→A';
-        speechTextDiv.style.display = 'none';
+      } else if(audioEl.transcriptionState === 2) {
+        // Hide transcription
+        speechTextDiv.classList.add('hide');
+        speechRecognitionIcon.classList.remove('tgico-up');
+        speechRecognitionIcon.classList.add('tgico-transcribe');
         audioEl.transcriptionState = 0;
       }
     };
 
-    audioControlsDiv.append(speechRecognitionDiv);
-    audioEl.append(speechTextDiv);
+    audioEl.append(speechRecognitionDiv);
   }
 
   let progress = svg as any as HTMLElement;
@@ -493,7 +470,7 @@ export default class AudioElement extends HTMLElement {
   public lazyLoadQueue: LazyLoadQueue;
   public loadPromises: Promise<any>[];
   public managers: AppManagers;
-  public transcriptionState: number = 0;
+  public transcriptionState: number;
 
   private listenerSetter = new ListenerSetter();
   private onTypeDisconnect: () => void;

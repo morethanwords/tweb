@@ -1409,14 +1409,18 @@ $bubble-border-radius-big: 12px;
         font-size: 0;
       }
     }
-    
+
     @include respond-to(handhelds) {
-      min-height: 2.375rem;
+      height: 2.375rem;
       --icon-margin: .6875rem;
 
       .audio-details {
         margin-top: 2px;
         margin-bottom: 0;
+      }
+
+      .audio-to-text-button {
+        margin-top: -.875rem;
       }
 
       .audio-subtitle {
@@ -2431,6 +2435,56 @@ $bubble-border-radius-big: 12px;
       margin-top: 1.75rem;
     }
   }
+
+  .audio-transcribed-text {
+    margin-top: .25rem;
+
+    &.is-error {
+      color: var(--message-primary-color);
+    }
+
+    .audio-transcribing-dots {
+      position: relative;
+
+      &:before,
+      &:after {
+        content: "...";
+      }
+
+      &:before {
+        opacity: 0;
+      }
+
+      &:after {
+        position: absolute;
+        right: 0;
+        left: 0;
+        animation: 1.5s linear audio-dots infinite;
+      }
+    }
+  }
+
+  .document-message + .audio-transcribed-text {
+    margin-bottom: .75rem;
+  }
+}
+
+@keyframes audio-dots {
+  0% {
+    content: "";
+  }
+
+  33% {
+    content: ".";
+  }
+
+  66% {
+    content: "..";
+  }
+
+  100% {
+    content: "...";
+  }
 }
 
 // @keyframes arrow-shake {
@@ -2716,10 +2770,6 @@ $bubble-border-radius-big: 12px;
 
     .name {
       color: var(--message-out-primary-color);
-    }
-
-    .audio-to-text-button {
-      background: var(--message-transcribe-button-out);
     }
 
     /* html:not(.is-firefox) */ &-wrapper {

@@ -524,25 +524,43 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public async transcribeAudio(message: any): Promise<MessagesTranscribedAudio> {
-    console.log('Method called');
+  public transcribeAudio(message: Message.message): Promise<MessagesTranscribedAudio> {
     const {id, peerId} = message;
 
-    let promise: Promise<MessagesTranscribedAudio>, params: any;
-    if(peerId) {
-      promise = this.apiManager.invokeApiSingleProcess({
-        method: 'messages.transcribeAudio',
-        params: params = {
-          peer: this.appPeersManager.getInputPeerById(peerId),
-          msg_id: id
-        },
-        processResult: (result) => {
-          console.log(result);
-          return result;
-        }
+    const process = (result: MessagesTranscribedAudio) => {
+      this.apiUpdatesManager.processLocalUpdate({
+        _: 'updateTranscribedAudio',
+        msg_id: message.id,
+        peer: this.appPeersManager.getOutputPeer(peerId),
+        pFlags: result.pFlags,
+        text: result.text,
+        transcription_id: result.transcription_id
       });
-    }
-    return promise;
+    };
+
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'messages.transcribeAudio',
+      params: {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        msg_id: id
+      },
+      processResult: (result) => {
+        process(result);
+        return result;
+      },
+      processError: (error) => {
+        if(error.type === 'TRANSCRIPTION_FAILED') {
+          process({
+            _: 'messages.transcribedAudio',
+            transcription_id: 0,
+            text: '',
+            pFlags: {}
+          });
+        }
+
+        throw error;
+      }
+    });
   }
 
   public async sendText(peerId: PeerId, text: string, options: MessageSendingParams & Partial<{
@@ -5272,13 +5290,11 @@ export class AppMessagesManager extends AppManager {
   };
 
   private onUpdateTranscribedAudio = (update: Update.updateTranscribedAudio) => {
-    if (update.pFlags.pending === true) return;
-
     const peerId = this.appPeersManager.getPeerId(update.peer);
     const text = update.text;
     const mid = generateMessageId(update.msg_id);
 
-    this.rootScope.dispatchEvent('message_transcribed', {peerId, mid, text});
+    this.rootScope.dispatchEvent('message_transcribed', {peerId, mid, text, pending: update.pFlags.pending});
   };
 
   public setDialogToStateIfMessageIsTop(message: MyMessage) {
