@@ -8,7 +8,7 @@ import appNavigationController, {NavigationItem} from '../components/appNavigati
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import {IS_MOBILE_SAFARI} from '../environment/userAgent';
 import cancelEvent from './dom/cancelEvent';
-import {CLICK_EVENT_NAME} from './dom/clickEvent';
+import {CLICK_EVENT_NAME, hasMouseMovedSinceDown} from './dom/clickEvent';
 import findUpAsChild from './dom/findUpAsChild';
 import EventListenerBase from './eventListenerBase';
 
@@ -28,6 +28,10 @@ export default class OverlayClickHandler extends EventListenerBase<{
   }
 
   protected onClick = (e: MouseEvent | TouchEvent) => {
+    if(hasMouseMovedSinceDown(e)) {
+      return;
+    }
+
     if(this.element && findUpAsChild(e.target as HTMLElement, this.element)) {
       return;
     }

@@ -6,7 +6,7 @@
 
 import type {MyDocument} from './appDocsManager';
 import type {DownloadOptions} from '../mtproto/apiFileManager';
-import {Document, InputFileLocation, InputStickerSet, MessagesAllStickers, MessagesFavedStickers, MessagesFeaturedStickers, MessagesFoundStickerSets, MessagesRecentStickers, MessagesStickers, MessagesStickerSet, PhotoSize, StickerPack, StickerSet, StickerSetCovered, Update} from '../../layer';
+import {Document, InputFileLocation, InputStickerSet, MessagesAllStickers, MessagesFavedStickers, MessagesFeaturedStickers, MessagesFoundStickerSets, MessagesRecentStickers, MessagesStickers, MessagesStickerSet, PhotoSize, StickerPack, StickerSet, StickerSetCovered, Update, VideoSize} from '../../layer';
 import {Modify} from '../../types';
 import AppStorage from '../storage';
 import DATABASE_STATE from '../../config/databases/state';
@@ -20,6 +20,7 @@ import ctx from '../../environment/ctx';
 import {getEnvironment} from '../../environment/utils';
 import getDocumentInput from './utils/docs/getDocumentInput';
 import getStickerEffectThumb from './utils/stickers/getStickerEffectThumb';
+import tsNow from '../../helpers/tsNow';
 
 const CACHE_TIME = 3600e3;
 
@@ -406,7 +407,7 @@ export class AppStickersManager extends AppManager {
 
   public preloadSticker(docId: DocId, isPremiumEffect?: boolean) {
     const doc = this.appDocsManager.getDoc(docId);
-    return this.apiFileManager.downloadMedia({media: doc, thumb: isPremiumEffect ? doc.video_thumbs?.[0] : undefined});
+    return this.apiFileManager.downloadMedia({media: doc, thumb: isPremiumEffect ? doc.video_thumbs?.[0] as Extract<VideoSize, VideoSize.videoSize> : undefined});
   }
 
   private saveStickerSet(res: Omit<MessagesStickerSet.messagesStickerSet, '_'>, id: DocId) {
@@ -592,7 +593,7 @@ export class AppStickersManager extends AppManager {
       });
 
       if(res) {
-        set.installed_date = Date.now() / 1000 | 0;
+        set.installed_date = tsNow(true);
         this.rootScope.dispatchEvent('stickers_installed', set);
         return true;
       }

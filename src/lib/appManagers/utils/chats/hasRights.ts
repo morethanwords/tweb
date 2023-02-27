@@ -63,7 +63,14 @@ export default function hasRights(chat: Exclude<Chat, Chat.chatEmpty>, action: C
     case 'send_media':
     case 'send_messages':
     case 'send_polls':
-    case 'send_stickers': {
+    case 'send_stickers':
+    case 'send_photos':
+    case 'send_videos':
+    case 'send_roundvideos':
+    case 'send_audios':
+    case 'send_voices':
+    case 'send_docs':
+    case 'send_plain': {
       if(!isThread && chat.pFlags.left) {
         return false;
       }

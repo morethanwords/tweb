@@ -6,7 +6,7 @@
 
 import contextMenuController from '../helpers/contextMenuController';
 import cancelEvent from '../helpers/dom/cancelEvent';
-import {AttachClickOptions, CLICK_EVENT_NAME} from '../helpers/dom/clickEvent';
+import {AttachClickOptions, CLICK_EVENT_NAME, hasMouseMovedSinceDown} from '../helpers/dom/clickEvent';
 import ListenerSetter from '../helpers/listenerSetter';
 import ButtonIcon from './buttonIcon';
 import ButtonMenu, {ButtonMenuItemOptionsVerifiable} from './buttonMenu';
@@ -28,7 +28,7 @@ export function ButtonMenuToggleHandler({
   const add = options?.listenerSetter ? options.listenerSetter.add(el) : el.addEventListener.bind(el);
 
   add(CLICK_EVENT_NAME, (e: Event) => {
-    if(!el.classList.contains('btn-menu-toggle')) return false;
+    if(!el.classList.contains('btn-menu-toggle') || hasMouseMovedSinceDown(e)) return false;
 
     cancelEvent(e);
 

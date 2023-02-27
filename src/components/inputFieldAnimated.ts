@@ -42,12 +42,14 @@ export default class InputFieldAnimated extends InputField {
     this.inputFake.className = this.input.className + ' input-field-input-fake';
   }
 
-  public onFakeInput(setHeight = true) {
+  public onFakeInput(setHeight = true, noAnimation?: boolean) {
     const {scrollHeight: newHeight/* , clientHeight */} = this.inputFake;
     /* if(this.wasInputFakeClientHeight && this.wasInputFakeClientHeight !== clientHeight) {
       this.input.classList.add('no-scrollbar'); // ! в сафари может вообще не появиться скролл после анимации, так как ему нужен полный reflow блока с overflow.
       this.showScrollDebounced();
     } */
+
+    noAnimation ??= !this.input.isContentEditable;
 
     const currentHeight = +this.input.style.height.replace('px', '');
     if(currentHeight === newHeight) {
@@ -55,7 +57,7 @@ export default class InputFieldAnimated extends InputField {
     }
 
     const TRANSITION_DURATION_FACTOR = 50;
-    const transitionDuration = Math.round(
+    const transitionDuration = noAnimation ? 0 : Math.round(
       TRANSITION_DURATION_FACTOR * Math.log(Math.abs(newHeight - currentHeight))
     );
 

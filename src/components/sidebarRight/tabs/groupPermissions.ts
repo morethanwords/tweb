@@ -4,13 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type {ChatRights} from '../../../lib/appManagers/appChatsManager';
+import flatten from '../../../helpers/array/flatten';
+import cancelEvent from '../../../helpers/dom/cancelEvent';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import findUpTag from '../../../helpers/dom/findUpTag';
 import replaceContent from '../../../helpers/dom/replaceContent';
 import ListenerSetter from '../../../helpers/listenerSetter';
 import ScrollableLoader from '../../../helpers/scrollableLoader';
-import {ChannelParticipant, Chat, ChatBannedRights, Update} from '../../../layer';
-import {ChatRights} from '../../../lib/appManagers/appChatsManager';
+import {ChannelParticipant, Chat, ChatBannedRights} from '../../../layer';
 import appDialogsManager, {DialogDom, DIALOG_LIST_ELEMENT_TAG} from '../../../lib/appManagers/appDialogsManager';
 import {AppManagers} from '../../../lib/appManagers/managers';
 import combineParticipantBannedRights from '../../../lib/appManagers/utils/chats/combineParticipantBannedRights';
@@ -21,20 +23,32 @@ import I18n, {i18n, join, LangPackKey} from '../../../lib/langPack';
 import rootScope from '../../../lib/rootScope';
 import CheckboxField from '../../checkboxField';
 import PopupPickUser from '../../popups/pickUser';
-import Row, {CreateRowFromCheckboxField} from '../../row';
+import Row from '../../row';
 import SettingSection from '../../settingSection';
 import {SliderSuperTabEventable} from '../../sliderTab';
 import {toast} from '../../toast';
 import AppUserPermissionsTab from './userPermissions';
+import findUpAsChild from '../../../helpers/dom/findUpAsChild';
+
+type T = {
+  flags: ChatRights[],
+  text: LangPackKey,
+  exceptionText: LangPackKey,
+  checkboxField?: CheckboxField,
+  nested?: T[],
+  nestedTo?: T,
+  nestedCounter?: HTMLElement,
+  setNestedCounter?: (count: number) => void,
+  toggleWith?: {checked?: ChatRights[], unchecked?: ChatRights[]}
+};
 
 export class ChatPermissions {
-  public v: Array<{
-    flags: ChatRights[],
-    text: LangPackKey,
-    exceptionText: LangPackKey,
-    checkboxField?: CheckboxField,
-  }>;
-  private toggleWith: Partial<{[chatRight in ChatRights]: ChatRights[]}>;
+  public v: Array<T>;
+
+  protected chat: Chat.chat | Chat.channel;
+  protected rights: ChatBannedRights.chatBannedRights;
+  protected defaultBannedRights: ChatBannedRights.chatBannedRights;
+  protected restrictionText: LangPackKey;
 
   constructor(private options: {
     chatId: ChatId,
@@ -46,79 +60,158 @@ export class ChatPermissions {
   }
 
   public async construct() {
-    this.v = [
-      {flags: ['send_messages'], text: 'UserRestrictionsSend', exceptionText: 'UserRestrictionsNoSend'},
-      {flags: ['send_media'], text: 'UserRestrictionsSendMedia', exceptionText: 'UserRestrictionsNoSendMedia'},
+    const mediaNested: T[] = [
+      {flags: ['send_photos'], text: 'UserRestrictionsSendPhotos', exceptionText: 'UserRestrictionsNoSendPhotos'},
+      {flags: ['send_videos'], text: 'UserRestrictionsSendVideos', exceptionText: 'UserRestrictionsNoSendVideos'},
       {flags: ['send_stickers', 'send_gifs'], text: 'UserRestrictionsSendStickers', exceptionText: 'UserRestrictionsNoSendStickers'},
-      {flags: ['send_polls'], text: 'UserRestrictionsSendPolls', exceptionText: 'UserRestrictionsNoSendPolls'},
-      {flags: ['embed_links'], text: 'UserRestrictionsEmbedLinks', exceptionText: 'UserRestrictionsNoEmbedLinks'},
+      {flags: ['send_audios'], text: 'UserRestrictionsSendMusic', exceptionText: 'UserRestrictionsNoSendMusic'},
+      {flags: ['send_docs'], text: 'UserRestrictionsSendFiles', exceptionText: 'UserRestrictionsNoSendDocs'},
+      {flags: ['send_voices'], text: 'UserRestrictionsSendVoices', exceptionText: 'UserRestrictionsNoSendVoice'},
+      {flags: ['send_roundvideos'], text: 'UserRestrictionsSendRound', exceptionText: 'UserRestrictionsNoSendRound'},
+      {flags: ['embed_links'], text: 'UserRestrictionsEmbedLinks', exceptionText: 'UserRestrictionsNoEmbedLinks', toggleWith: {checked: ['send_plain']}},
+      {flags: ['send_polls'], text: 'UserRestrictionsSendPolls', exceptionText: 'UserRestrictionsNoSendPolls'}
+    ];
+
+    const mediaToggleWith = flatten(mediaNested.map(({flags}) => flags));
+    const media: T = {flags: ['send_media'], text: 'UserRestrictionsSendMedia', exceptionText: 'UserRestrictionsNoSendMedia', nested: mediaNested, toggleWith: {unchecked: mediaToggleWith, checked: mediaToggleWith}};
+
+    this.v = [
+      {flags: ['send_plain'], text: 'UserRestrictionsSend', exceptionText: 'UserRestrictionsNoSend', toggleWith: {unchecked: ['embed_links']}},
+      media,
       {flags: ['invite_users'], text: 'UserRestrictionsInviteUsers', exceptionText: 'UserRestrictionsNoInviteUsers'},
       {flags: ['pin_messages'], text: 'UserRestrictionsPinMessages', exceptionText: 'UserRestrictionsNoPinMessages'},
       {flags: ['change_info'], text: 'UserRestrictionsChangeInfo', exceptionText: 'UserRestrictionsNoChangeInfo'}
     ];
 
-    this.toggleWith = {
-      'send_messages': ['send_media', 'send_stickers', 'send_polls', 'embed_links']
-    };
+    mediaNested.forEach((info) => info.nestedTo = media);
 
     const options = this.options;
-    const chat = await this.managers.appChatsManager.getChat(options.chatId) as Chat.chat | Chat.channel;
-    const defaultBannedRights = chat.default_banned_rights;
-    const rights = options.participant ? combineParticipantBannedRights(chat as Chat.channel, options.participant.banned_rights) : defaultBannedRights;
+    const chat = this.chat = await this.managers.appChatsManager.getChat(options.chatId) as Chat.chat | Chat.channel;
+    const defaultBannedRights = this.defaultBannedRights = chat.default_banned_rights;
+    const rights = this.rights = options.participant ? combineParticipantBannedRights(chat as Chat.channel, options.participant.banned_rights) : defaultBannedRights;
 
-    const restrictionText: LangPackKey = options.participant ? 'UserRestrictionsDisabled' : 'EditCantEditPermissionsPublic';
     for(const info of this.v) {
-      const mainFlag = info.flags[0];
-      const row = CreateRowFromCheckboxField(
-        info.checkboxField = new CheckboxField({
-          text: info.text,
-          checked: hasRights(chat, mainFlag, rights),
-          restriction: true,
-          listenerSetter: options.listenerSetter
-        })
-      );
+      const {nodes} = this.createRow(info);
+      options.appendTo.append(...nodes);
+    }
 
-      if((
-        options.participant &&
-          defaultBannedRights.pFlags[mainFlag as keyof typeof defaultBannedRights['pFlags']]
-      ) || (
-        getPeerActiveUsernames(chat as Chat.channel)[0] &&
-          (
-            info.flags.includes('pin_messages') ||
-            info.flags.includes('change_info')
-          )
-      )
-      ) {
-        info.checkboxField.input.disabled = true;
+    this.v.push(...mediaNested);
+  }
 
-        /* options.listenerSetter.add(info.checkboxField.input)('change', (e) => {
-          if(!e.isTrusted) {
-            return;
+  protected createRow(info: T, isNested?: boolean) {
+    const {defaultBannedRights, chat, rights, restrictionText} = this;
+
+    const mainFlag = info.flags[0];
+    const row = new Row({
+      titleLangKey: isNested ? undefined : info.text,
+      checkboxField: info.checkboxField = new CheckboxField({
+        text: isNested ? info.text : undefined,
+        checked: info.nested ? false : hasRights(chat, mainFlag, rights),
+        toggle: !isNested,
+        listenerSetter: this.options.listenerSetter,
+        restriction: !isNested
+      }),
+      listenerSetter: this.options.listenerSetter,
+      clickable: info.nested ? (e) => {
+        if(findUpAsChild(e.target as HTMLElement, row.checkboxField.label)) {
+          return;
+        }
+
+        cancelEvent(e);
+        row.container.classList.toggle('accordion-toggler-expanded');
+        accordion.classList.toggle('is-expanded');
+      } : undefined
+    });
+
+    if((
+      this.options.participant &&
+        defaultBannedRights.pFlags[mainFlag as keyof typeof defaultBannedRights['pFlags']]
+    ) || (
+      getPeerActiveUsernames(chat as Chat.channel)[0] &&
+        (
+          info.flags.includes('pin_messages') ||
+          info.flags.includes('change_info')
+        )
+    )
+    ) {
+      info.checkboxField.input.disabled = true;
+
+      attachClickEvent(info.checkboxField.label, (e) => {
+        toast(I18n.format(restrictionText, true));
+      }, {listenerSetter: this.options.listenerSetter});
+    }
+
+    if(info.toggleWith || info.nestedTo) {
+      const processToggleWith = info.toggleWith ? (info: T) => {
+        const {toggleWith, nested} = info;
+        const value = info.checkboxField.checked;
+        const arr = value ? toggleWith.checked : toggleWith.unchecked;
+        if(!arr) {
+          return;
+        }
+
+        const other = this.v.filter((i) => arr.includes(i.flags[0]));
+        other.forEach((info) => {
+          info.checkboxField.setValueSilently(value);
+          if(info.nestedTo && !nested) {
+            this.setNestedCounter(info.nestedTo);
           }
 
-          cancelEvent(e);
-          toast('This option is disabled for all members in Group Permissions.');
-          info.checkboxField.checked = false;
-        }); */
-
-        attachClickEvent(info.checkboxField.label, (e) => {
-          toast(I18n.format(restrictionText, true));
-        }, {listenerSetter: options.listenerSetter});
-      }
-
-      if(this.toggleWith[mainFlag]) {
-        options.listenerSetter.add(info.checkboxField.input)('change', () => {
-          if(!info.checkboxField.checked) {
-            const other = this.v.filter((i) => this.toggleWith[mainFlag].includes(i.flags[0]));
-            other.forEach((info) => {
-              info.checkboxField.checked = false;
-            });
+          if(info.toggleWith) {
+            processToggleWith(info);
           }
         });
-      }
 
-      options.appendTo.append(row.container);
+        if(info.nested) {
+          this.setNestedCounter(info);
+        }
+      } : undefined;
+
+      const processNestedTo = info.nestedTo ? () => {
+        const length = this.getNestedCheckedLength(info.nestedTo);
+        info.nestedTo.checkboxField.setValueSilently(length === info.nestedTo.nested.length);
+        this.setNestedCounter(info.nestedTo, length);
+      } : undefined;
+
+      this.options.listenerSetter.add(info.checkboxField.input)('change', () => {
+        processToggleWith?.(info);
+        processNestedTo?.();
+      });
     }
+
+    const nodes: HTMLElement[] = [row.container];
+    let accordion: HTMLElement, nestedCounter: HTMLElement;
+    if(info.nested) {
+      const container = accordion = document.createElement('div');
+      container.classList.add('accordion');
+      container.style.setProperty('--max-height', info.nested.length * 48 + 'px');
+      info.nested.forEach((info) => {
+        container.append(...this.createRow(info, true).nodes);
+      });
+      nodes.push(container);
+
+      const span = document.createElement('span');
+      span.classList.add('tgico-down', 'accordion-icon');
+
+      nestedCounter = info.nestedCounter = document.createElement('b');
+      this.setNestedCounter(info);
+      row.title.append(' ', nestedCounter, ' ', span);
+
+      row.container.classList.add('accordion-toggler');
+      row.titleRow.classList.add('with-delimiter');
+
+      row.checkboxField.setValueSilently(this.getNestedCheckedLength(info) === info.nested.length);
+    }
+
+    return {row, nodes};
+  }
+
+  protected getNestedCheckedLength(info: T) {
+    return info.nested.reduce((acc, v) => acc + +v.checkboxField.checked, 0);
+  }
+
+  protected setNestedCounter(info: T, count = this.getNestedCheckedLength(info)) {
+    info.nestedCounter.textContent = `${count}/${info.nested.length}`;
   }
 
   public takeOut() {
@@ -128,14 +221,23 @@ export class ChatPermissions {
       pFlags: {}
     };
 
+    const IGNORE_FLAGS: Set<ChatRights> = new Set([
+      'send_media'
+    ]);
     for(const info of this.v) {
       const banned = !info.checkboxField.checked;
-      if(banned) {
-        info.flags.forEach((flag) => {
-          // @ts-ignore
-          rights.pFlags[flag] = true;
-        });
+      if(!banned) {
+        continue;
       }
+
+      info.flags.forEach((flag) => {
+        if(IGNORE_FLAGS.has(flag)) {
+          return;
+        }
+
+        // @ts-ignore
+        rights.pFlags[flag] = true;
+      });
     }
 
     return rights;
@@ -195,7 +297,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
       const openPermissions = async(peerId: PeerId) => {
         let participant: AppUserPermissionsTab['participant'];
         try {
-          participant = await this.managers.appProfileManager.getChannelParticipant(this.chatId, peerId) as any;
+          participant = await this.managers.appProfileManager.getParticipant(this.chatId, peerId);
         } catch(err) {
           toast('User is no longer participant');
           return;
@@ -270,37 +372,35 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
           append
         });
 
-        setSubtitle(dom, participant);
+        (dom.listEl as any).dialogDom = dom;
 
-        // dom.titleSpan.innerHTML = 'Chinaza Akachi';
-        // dom.lastMessageSpan.innerHTML = 'Can Add Users and Pin Messages';
+        setSubtitle(dom, participant);
       };
 
-      // this.listenerSetter.add(rootScope)('updateChannelParticipant', (update: Update.updateChannelParticipant) => {
-      //   const needAdd = update.new_participant?._ === 'channelParticipantBanned' && !update.new_participant.banned_rights.pFlags.view_messages;
-      //   const li = list.querySelector(`[data-peer-id="${update.user_id}"]`);
-      //   if(needAdd) {
-      //     if(!li) {
-      //       add(update.new_participant as ChannelParticipant.channelParticipantBanned, false);
-      //     } else {
-      //       setSubtitle(li, update.new_participant as ChannelParticipant.channelParticipantBanned);
-      //     }
+      this.listenerSetter.add(rootScope)('chat_participant', (update) => {
+        const needAdd = update.new_participant?._ === 'channelParticipantBanned' &&
+          !update.new_participant.banned_rights.pFlags.view_messages;
+        const li = list.querySelector(`[data-peer-id="${update.user_id}"]`);
+        if(needAdd) {
+          if(!li) {
+            add(update.new_participant as ChannelParticipant.channelParticipantBanned, false);
+          } else {
+            setSubtitle((li as any).dialogDom, update.new_participant as ChannelParticipant.channelParticipantBanned);
+          }
 
-      //     if(update.prev_participant?._ !== 'channelParticipantBanned') {
-      //       ++exceptionsCount;
-      //     }
-      //   } else {
-      //     if(li) {
-      //       li.remove();
-      //     }
+          if(update.prev_participant?._ !== 'channelParticipantBanned') {
+            ++exceptionsCount;
+          }
+        } else {
+          li?.remove();
 
-      //     if(update.prev_participant?._ === 'channelParticipantBanned') {
-      //       --exceptionsCount;
-      //     }
-      //   }
+          if(update.prev_participant?._ === 'channelParticipantBanned') {
+            --exceptionsCount;
+          }
+        }
 
-      //   setLength();
-      // });
+        setLength();
+      });
 
       const setLength = () => {
         replaceContent(addExceptionRow.subtitle, i18n(exceptionsCount ? 'Permissions.ExceptionsCount' : 'Permissions.NoExceptions', [exceptionsCount]));

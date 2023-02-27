@@ -51,7 +51,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       processItem: (item) => {
         const isForDocument = this.searchContext.inputFilter._ === 'inputMessagesFilterDocument';
         const {mid, peerId} = item;
-        const media: MyPhoto | MyDocument = getMediaFromMessage(item);
+        const media = getMediaFromMessage(item, true);
 
         if(!media) return;
 
@@ -226,7 +226,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
   onDownloadClick = () => {
     const {message} = this.target;
-    const media = getMediaFromMessage(message);
+    const media = getMediaFromMessage(message, true);
     if(!media) return;
     appDownloadManager.downloadToDisc({media, queueId: appImManager.chat.bubbles.lazyLoadQueue.queueId});
   };
@@ -258,7 +258,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
     const mid = message.mid;
     const fromId = (message as Message.message).fwd_from && !message.fromId ? (message as Message.message).fwd_from.from_name : message.fromId;
-    const media = getMediaFromMessage(message);
+    const media = getMediaFromMessage(message, true);
 
     const noForwards = await this.managers.appPeersManager.noForwards(message.peerId);
     const isServiceMessage = message._ === 'messageService';
@@ -283,7 +283,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     this.wholeDiv.classList.toggle('no-forwards', cantDownloadMessage);
 
     this.setCaption(message);
-    const promise = super._openMedia(media, message.date, fromId, fromRight, target, reverse, prevTargets, nextTargets, message/* , needLoadMore */);
+    const promise = super._openMedia(media as MyPhoto | MyDocument, message.date, fromId, fromRight, target, reverse, prevTargets, nextTargets, message/* , needLoadMore */);
     this.target.mid = mid;
     this.target.peerId = message.peerId;
     this.target.message = message;

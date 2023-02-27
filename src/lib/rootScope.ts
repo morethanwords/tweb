@@ -28,6 +28,7 @@ export type BroadcastEvents = {
   'chat_full_update': ChatId,
   'chat_update': ChatId,
   'chat_toggle_forum': {chatId: ChatId, enabled: boolean},
+  'chat_participant': Update.updateChannelParticipant,
 
   'channel_update': ChatId,
 
@@ -179,10 +180,7 @@ export class RootScope extends EventListenerBase<BroadcastEventsListeners> {
 
     this.addEventListener('premium_toggle_private', ({isNew, isPremium}) => {
       this.premium = isPremium;
-
-      if(!isNew) {
-        this.dispatchEventSingle('premium_toggle', isPremium);
-      }
+      this.dispatchEventSingle('premium_toggle', isPremium);
     });
 
     this.addEventListener('connection_status_change', (status) => {

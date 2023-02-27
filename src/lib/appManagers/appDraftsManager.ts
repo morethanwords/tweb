@@ -239,7 +239,7 @@ export class AppDraftsManager extends AppManager {
   public setDraft(peerId: PeerId, threadId: number, message: string, entities?: MessageEntity[]) {
     const draft: DraftMessage.draftMessage = {
       _: 'draftMessage',
-      date: Date.now() / 1000 | 0,
+      date: tsNow(true),
       message,
       pFlags: {},
       entities

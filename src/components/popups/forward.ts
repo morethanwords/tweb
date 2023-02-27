@@ -4,15 +4,19 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type {ChatRights} from '../../lib/appManagers/appChatsManager';
+import flatten from '../../helpers/array/flatten';
 import appImManager from '../../lib/appManagers/appImManager';
 import rootScope from '../../lib/rootScope';
 import {toastNew} from '../toast';
 import PopupPickUser from './pickUser';
+import getMediaFromMessage from '../../lib/appManagers/utils/messages/getMediaFromMessage';
 
 export default class PopupForward extends PopupPickUser {
   constructor(
     peerIdMids?: {[fromPeerId: PeerId]: number[]},
-    onSelect?: (peerId: PeerId) => Promise<void> | void
+    onSelect?: (peerId: PeerId) => Promise<void> | void,
+    chatRightsAction: ChatRights[] = ['send_plain']
   ) {
     super({
       peerTypes: ['dialogs', 'contacts'],
@@ -43,8 +47,71 @@ export default class PopupForward extends PopupPickUser {
         appImManager.chat.input.initMessagesForward(peerIdMids);
       },
       placeholder: 'ShareModal.Search.ForwardPlaceholder',
-      chatRightsAction: 'send_messages',
+      chatRightsActions: chatRightsAction,
       selfPresence: 'ChatYourSelf'
     });
+  }
+
+  public static async create(...args: ConstructorParameters<typeof PopupForward>) {
+    const [peerIdMids] = args;
+    const messagesPromises = Object.keys(peerIdMids).map((peerId) => {
+      const mids = peerIdMids[peerId as any as number];
+      return mids.map((mid) => {
+        return rootScope.managers.appMessagesManager.getMessageByPeer(peerId.toPeerId(), mid);
+      });
+    });
+
+    const messages = await Promise.all(flatten(messagesPromises));
+    const actions: Set<ChatRights> = new Set();
+    messages.forEach((message) => {
+      if(!message) {
+        return;
+      }
+
+      const media = getMediaFromMessage(message);
+      let action: ChatRights;
+      if(!media) {
+        if(message.viaBotId) {
+          action = 'send_inline';
+        } else {
+          action = 'send_plain';
+        }
+      } else {
+        if(media._ === 'webPage') {
+          action = 'embed_links';
+        } else if(media._ === 'photo') {
+          action = 'send_photos';
+        } else if(media._ === 'game') {
+          action = 'send_games';
+        } else {
+          switch(media.type) {
+            case 'audio':
+              action = 'send_audios';
+              break;
+            case 'gif':
+              action = 'send_gifs';
+              break;
+            case 'round':
+              action = 'send_roundvideos';
+              break;
+            case 'sticker':
+              action = 'send_stickers';
+              break;
+            case 'voice':
+              action = 'send_voices';
+              break;
+            default:
+              action = 'send_docs';
+              break;
+          }
+        }
+      }
+
+      if(action) {
+        actions.add(action);
+      }
+    });
+
+    new PopupForward(args[0], args[1], Array.from(actions));
   }
 }

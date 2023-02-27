@@ -40,7 +40,7 @@ export default function wrapStickerAnimation({
   skipRatio?: number,
   play: boolean,
   managers?: AppManagers,
-  fullThumb?: PhotoSize | VideoSize,
+  fullThumb?: PhotoSize | Extract<VideoSize, VideoSize.videoSize>,
   withRandomOffset?: boolean,
   relativeEffect?: boolean,
   loopEffect?: boolean

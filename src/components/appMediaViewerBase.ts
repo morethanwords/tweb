@@ -42,7 +42,7 @@ import EventListenerBase from '../helpers/eventListenerBase';
 import {MyMessage} from '../lib/appManagers/appMessagesManager';
 import {NULL_PEER_ID} from '../lib/mtproto/mtproto_config';
 import {isFullScreen} from '../helpers/dom/fullScreen';
-import {attachClickEvent} from '../helpers/dom/clickEvent';
+import {attachClickEvent, hasMouseMovedSinceDown} from '../helpers/dom/clickEvent';
 import SearchListLoader from '../helpers/searchListLoader';
 import createVideo from '../helpers/dom/createVideo';
 import {AppManagers} from '../lib/appManagers/managers';
@@ -57,6 +57,7 @@ import {toastNew} from './toast';
 import clamp from '../helpers/number/clamp';
 import debounce from '../helpers/schedulers/debounce';
 import isBetween from '../helpers/number/isBetween';
+import findUpAsChild from '../helpers/dom/findUpAsChild';
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
@@ -137,6 +138,7 @@ export default class AppMediaViewerBase<
   protected lastDragDelta: {x: number, y: number} = this.transform;
   protected lastGestureTime: number;
   protected clampZoomDebounced: ReturnType<typeof debounce<() => void>>;
+  ignoreNextClick: boolean;
 
   get target() {
     return this.listLoader.current;
@@ -228,13 +230,25 @@ export default class AppMediaViewerBase<
     }, ZOOM_INITIAL_VALUE);
     this.zoomElements.rangeSelector.setListeners();
     this.zoomElements.rangeSelector.setHandlers({
-      onScrub: this.setZoomValue,
-      onMouseUp: () => this.setZoomValue()
+      onScrub: (value) => {
+        const add = value - this.transform.scale;
+        this.addZoom(add);
+        this.clampZoomDebounced?.clearTimeout();
+      },
+      onMouseDown: () => {
+        this.moversContainer.classList.add('no-transition');
+        this.zoomElements.rangeSelector.container.classList.remove('with-transition');
+      },
+      onMouseUp: () => {
+        this.moversContainer.classList.remove('no-transition');
+        this.zoomElements.rangeSelector.container.classList.add('with-transition');
+        this.setZoomValue();
+      }
     });
 
     this.zoomElements.container.append(this.zoomElements.btnOut, this.zoomElements.rangeSelector.container, this.zoomElements.btnIn);
 
-    if(!IS_TOUCH_SUPPORTED && false) {
+    if(!IS_TOUCH_SUPPORTED) {
       this.wholeDiv.append(this.zoomElements.container);
     }
 
@@ -349,7 +363,7 @@ export default class AppMediaViewerBase<
     this.swipeHandler = new SwipeHandler({
       element: this.wholeDiv,
       onReset: this.onSwipeReset,
-      onFirstSwipe: this.onSwipeFirst,
+      onFirstSwipe: this.onSwipeFirst as any,
       onSwipe: (xDiff, yDiff, e, cancelDrag) => {
         if(isFullScreen()) {
           return;
@@ -400,6 +414,7 @@ export default class AppMediaViewerBase<
       verifyTouchTarget: (e) => {
         // * Fix for seek input
         if(isFullScreen() ||
+          findUpAsChild(e.target as HTMLElement, this.zoomElements.container) ||
           findUpClassName(e.target, 'ckin__controls') ||
           findUpClassName(e.target, 'media-viewer-caption') ||
           (findUpClassName(e.target, 'media-viewer-topbar') && e.type !== 'wheel')) {
@@ -413,10 +428,13 @@ export default class AppMediaViewerBase<
     });
   }
 
-  protected onSwipeFirst = () => {
+  protected onSwipeFirst = (e: MouseEvent | TouchEvent | WheelEvent) => {
     this.lastDragOffset = this.lastDragDelta = {x: 0, y: 0};
     this.lastTransform = {...this.transform};
-    this.moversContainer.classList.add('no-transition');
+    if(e.type !== 'wheel' || !this.ctrlKeyDown) { // keep transition for real mouse wheel
+      this.moversContainer.classList.add('no-transition');
+      this.zoomElements.rangeSelector.container.classList.remove('with-transition');
+    }
     this.isGesturingNow = true;
     this.lastGestureTime = Date.now();
     this.clampZoomDebounced.clearTimeout();
@@ -426,10 +444,15 @@ export default class AppMediaViewerBase<
     }
   };
 
-  protected onSwipeReset = () => {
+  protected onSwipeReset = (e?: Event) => {
     // move
     this.moversContainer.classList.remove('no-transition');
+    this.zoomElements.rangeSelector.container.classList.add('with-transition');
     this.clampZoomDebounced.clearTimeout();
+
+    if(e?.type === 'mouseup' && this.draggingType === 'mousemove') {
+      this.ignoreNextClick = true;
+    }
 
     const {draggingType} = this;
     this.isZoomingNow = false;
@@ -492,7 +515,7 @@ export default class AppMediaViewerBase<
     this.isZoomingNow = true;
 
     const zoomMaxBounceValue = ZOOM_MAX_VALUE * 3;
-    const scale = zoomAdd ? clamp(this.lastTransform.scale + zoomAdd, ZOOM_MIN_VALUE, zoomMaxBounceValue) : (zoom ?? clamp(this.lastTransform.scale * zoomFactor, ZOOM_MIN_VALUE, zoomMaxBounceValue));
+    const scale = zoomAdd !== undefined ? clamp(this.lastTransform.scale + zoomAdd, ZOOM_MIN_VALUE, zoomMaxBounceValue) : (zoom ?? clamp(this.lastTransform.scale * zoomFactor, ZOOM_MIN_VALUE, zoomMaxBounceValue));
     const scaleFactor = scale / this.lastTransform.scale;
     const offsetX = Math.abs(Math.min(this.lastTransform.x, 0));
     const offsetY = Math.abs(Math.min(this.lastTransform.y, 0));
@@ -661,8 +684,8 @@ export default class AppMediaViewerBase<
 
     this.moversContainer.style.transform = `translate3d(${this.transform.x.toFixed(3)}px, ${this.transform.y.toFixed(3)}px, 0px) scale(${value.toFixed(3)})`;
 
-    this.zoomElements.btnOut.classList.toggle('inactive', value === ZOOM_MIN_VALUE);
-    this.zoomElements.btnIn.classList.toggle('inactive', value === ZOOM_MAX_VALUE);
+    this.zoomElements.btnOut.classList.toggle('inactive', value <= ZOOM_MIN_VALUE);
+    this.zoomElements.btnIn.classList.toggle('inactive', value >= ZOOM_MAX_VALUE);
 
     this.toggleZoom(value !== ZOOM_INITIAL_VALUE);
   };
@@ -735,6 +758,11 @@ export default class AppMediaViewerBase<
   }
 
   onClick = (e: MouseEvent) => {
+    if(this.ignoreNextClick) {
+      this.ignoreNextClick = undefined;
+      return;
+    }
+
     if(this.setMoverAnimationPromise) return;
 
     const target = e.target as HTMLElement;
@@ -756,7 +784,11 @@ export default class AppMediaViewerBase<
       return;
     }
 
-    const isZooming = this.isZooming;
+    if(hasMouseMovedSinceDown(e)) {
+      return;
+    }
+
+    const isZooming = this.isZooming && false;
     let mover: HTMLElement = null;
     const classNames = ['ckin__player', 'media-viewer-buttons', 'media-viewer-author', 'media-viewer-caption', 'zoom-container'];
     if(isZooming) {
@@ -1850,8 +1882,9 @@ export default class AppMediaViewerBase<
           const cancellablePromise = isDocument ? appDownloadManager.downloadMediaURL({media}) : appDownloadManager.downloadMediaURL({media, thumb: size});
 
           const photoSizes = !isDocument && media.sizes.slice().filter((size) => (size as PhotoSize.photoSize).w) as PhotoSize.photoSize[];
-          photoSizes?.sort((a, b) => b.size - a.size);
-          const cancellableFullPromise = !isDocument && appDownloadManager.downloadMediaURL({media, thumb: photoSizes?.[0]});
+          photoSizes && photoSizes.sort((a, b) => b.size - a.size);
+          const fullPhotoSize = photoSizes?.[0];
+          const cancellableFullPromise = !isDocument && fullPhotoSize !== size && appDownloadManager.downloadMediaURL({media, thumb: fullPhotoSize});
 
           onAnimationEnd.then(async() => {
             if(!(await getCacheContext()).url) {
@@ -1865,8 +1898,6 @@ export default class AppMediaViewerBase<
               this.log.warn('media viewer changed photo');
               return;
             }
-
-            // /////this.log('indochina', blob);
 
             const url = (await getCacheContext()).url;
             if(target instanceof SVGSVGElement) {
@@ -1886,8 +1917,6 @@ export default class AppMediaViewerBase<
                 const image = new Image();
                 image.classList.add('thumbnail');
 
-                // this.log('will renderImageFromUrl:', image, div, target);
-
                 renderImageFromUrl(image, url, () => {
                   fastRaf(() => {
                     this.updateMediaSource(target, url, 'img');
@@ -1902,7 +1931,7 @@ export default class AppMediaViewerBase<
                   });
                 }, false);
 
-                cancellableFullPromise?.then((url) => {
+                cancellableFullPromise && cancellableFullPromise.then((url) => {
                   const fullImage = new Image();
                   fullImage.classList.add('thumbnail');
                   renderImageFromUrl(fullImage, url, () => {

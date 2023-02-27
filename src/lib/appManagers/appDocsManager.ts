@@ -26,6 +26,7 @@ import getDocumentURL from './utils/docs/getDocumentURL';
 import makeError from '../../helpers/makeError';
 import {EXTENSION_MIME_TYPE_MAP} from '../../environment/mimeTypeMap';
 import {THUMB_TYPE_FULL} from '../mtproto/mtproto_config';
+import tsNow from '../../helpers/tsNow';
 
 export type MyDocument = Document.document;
 
@@ -331,7 +332,7 @@ export class AppDocsManager extends AppManager {
       id,
       mime_type: file.type as MTMimeType,
       size: file.size,
-      date: Date.now() / 1000,
+      date: tsNow(true),
       pFlags: {},
       thumbs: [thumb],
       file_name: file.name

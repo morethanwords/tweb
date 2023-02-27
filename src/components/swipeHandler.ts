@@ -98,7 +98,7 @@ export default class SwipeHandler {
   private onSwipe: (xDiff: number, yDiff: number, e: EE, cancelDrag?: (x: boolean, y: boolean) => void) => boolean | void;
   private verifyTouchTarget: (evt: EE) => boolean | Promise<boolean>;
   private onFirstSwipe: (e: EE) => void;
-  private onReset: () => void;
+  private onReset: (e?: Event) => void;
   private onStart: () => void;
   private onZoom: (details: ZoomDetails) => void;
   private onDrag: (e: EE, captureEvent: E, details: {dragOffsetX: number, dragOffsetY: number}, cancelDrag: (x: boolean, y: boolean) => void) => void;
@@ -252,7 +252,7 @@ export default class SwipeHandler {
     }
 
     if(this.hadMove) {
-      this.onReset?.();
+      this.onReset?.(e);
     }
 
     this.releaseWheelDrag?.clearTimeout();
@@ -291,8 +291,12 @@ export default class SwipeHandler {
     }
 
     const e = getEvent(_e);
-    if(Math.max(0, e.button ?? 0) !== 0) {
+    if(![0, 1].includes(Math.max(0, e.button ?? 0))) {
       return;
+    }
+
+    if(e.button === 1) {
+      cancelEvent(_e as any);
     }
 
     if(isSwipingBackSafari(_e as any)) {

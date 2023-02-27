@@ -365,7 +365,7 @@ export class UiNotificationsManager {
       avatarContext.textBaseline = 'middle';
       avatarContext.textAlign = 'center';
       avatarContext.fillStyle = 'white';
-      avatarContext.fillText(abbreviation.text, avatarCanvas.width / 2, avatarCanvas.height * (window.devicePixelRatio > 1 ? .5625 : 5));
+      avatarContext.fillText(abbreviation.text, avatarCanvas.width / 2, avatarCanvas.height * (window.devicePixelRatio > 1 || true ? .5625 : .5));
 
       notification.image = avatarCanvas.toDataURL();
     }

@@ -36,7 +36,7 @@ export default class CheckboxField {
     const label = this.label = document.createElement('label');
     label.classList.add('checkbox-field');
 
-    if(options.restriction) {
+    if(options.restriction && !options.toggle) {
       label.classList.add('checkbox-field-restriction');
     }
 
@@ -108,6 +108,10 @@ export default class CheckboxField {
 
     if(options.toggle) {
       label.classList.add('checkbox-field-toggle');
+
+      if(options.restriction) {
+        label.classList.add('checkbox-field-toggle-restriction');
+      }
 
       const toggle = document.createElement('div');
       toggle.classList.add('checkbox-toggle');

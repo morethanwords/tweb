@@ -6,9 +6,10 @@
 
 import type Chat from '../chat/chat';
 import type {SendFileDetails} from '../../lib/appManagers/appMessagesManager';
+import type {ChatRights} from '../../lib/appManagers/appChatsManager';
 import PopupElement from '.';
 import Scrollable from '../scrollable';
-import {toast} from '../toast';
+import {toast, toastNew} from '../toast';
 import SendContextMenu from '../chat/sendContextMenu';
 import {createPosterFromMedia, createPosterFromVideo} from '../../helpers/createPoster';
 import {MyDocument} from '../../lib/appManagers/appDocsManager';
@@ -41,6 +42,11 @@ import {renderImageFromUrlPromise} from '../../helpers/dom/renderImageFromUrl';
 import ButtonMenuToggle from '../buttonMenuToggle';
 import partition from '../../helpers/array/partition';
 import InputFieldAnimated from '../inputFieldAnimated';
+import IMAGE_MIME_TYPES_SUPPORTED from '../../environment/imageMimeTypesSupport';
+import VIDEO_MIME_TYPES_SUPPORTED from '../../environment/videoMimeTypesSupport';
+import rootScope from '../../lib/rootScope';
+import shake from '../../helpers/dom/shake';
+import AUDIO_MIME_TYPES_SUPPORTED from '../../environment/audioMimeTypeSupport';
 
 type SendFileParams = SendFileDetails & {
   file?: File,
@@ -96,6 +102,29 @@ export default class PopupNewMedia extends PopupElement {
     this.construct(willAttachType);
   }
 
+  public static async canSend(peerId: PeerId, onlyVisible?: boolean) {
+    const actions: ChatRights[] = [
+      'send_photos',
+      'send_videos',
+      'send_docs',
+      'send_audios',
+      'send_gifs'
+    ];
+
+    const actionsPromises = actions.map((action) => {
+      return peerId.isAnyChat() && !onlyVisible ? rootScope.managers.appChatsManager.hasRights(peerId.toChatId(), action) : true;
+    });
+
+    const out: {[action in ChatRights]?: boolean} = {};
+
+    const results = await Promise.all(actionsPromises);
+    actions.forEach((action, idx) => {
+      out[action] = results[idx];
+    })
+
+    return out;
+  }
+
   private async construct(willAttachType: PopupNewMedia['willAttach']['type']) {
     this.willAttach = {
       type: willAttachType,
@@ -106,6 +135,12 @@ export default class PopupNewMedia extends PopupElement {
     const captionMaxLength = await this.managers.apiManager.getLimit('caption');
     this.captionLengthMax = captionMaxLength;
 
+    const canSend = await PopupNewMedia.canSend(this.chat.peerId, true);
+
+    const canSendPhotos = canSend.send_photos;
+    const canSendVideos = canSend.send_videos;
+    const canSendDocs = canSend.send_docs;
+
     attachClickEvent(this.btnConfirm, () => this.send(), {listenerSetter: this.listenerSetter});
 
     const btnMenu = await ButtonMenuToggle({
@@ -115,17 +150,35 @@ export default class PopupNewMedia extends PopupElement {
         icon: 'image',
         text: 'Popup.Attach.AsMedia',
         onClick: () => this.changeType('media'),
-        verify: () => this.hasAnyMedia() && this.willAttach.type === 'document'
+        verify: () => {
+          if(!this.hasAnyMedia() || this.willAttach.type !== 'document') {
+            return false;
+          }
+
+          if(!canSendPhotos && !canSendVideos) {
+            return false;
+          }
+
+          if(!canSendPhotos || !canSendVideos) {
+            const mimeTypes = canSendPhotos ? IMAGE_MIME_TYPES_SUPPORTED : VIDEO_MIME_TYPES_SUPPORTED;
+            const {media, files} = this.partition(mimeTypes);
+            if(files.length) {
+              return false;
+            }
+          }
+
+          return true;
+        }
       }, {
         icon: 'document',
         text: 'SendAsFile',
         onClick: () => this.changeType('document'),
-        verify: () => this.files.length === 1 && this.willAttach.type !== 'document'
+        verify: () => this.files.length === 1 && this.willAttach.type !== 'document' && canSendDocs
       }, {
         icon: 'document',
         text: 'SendAsFiles',
         onClick: () => this.changeType('document'),
-        verify: () => this.files.length > 1 && this.willAttach.type !== 'document'
+        verify: () => this.files.length > 1 && this.willAttach.type !== 'document' && canSendDocs
       }, {
         icon: 'groupmedia',
         text: 'Popup.Attach.GroupMedia',
@@ -365,8 +418,8 @@ export default class PopupNewMedia extends PopupElement {
     this.willAttach.type = type;
   }
 
-  private partition() {
-    const [media, files] = partition(this.willAttach.sendFileDetails, (d) => MEDIA_MIME_TYPES_SUPPORTED.has(d.file.type));
+  private partition(mimeTypes = MEDIA_MIME_TYPES_SUPPORTED) {
+    const [media, files] = partition(this.willAttach.sendFileDetails, (d) => mimeTypes.has(d.file.type));
     return {
       media,
       files
@@ -455,7 +508,69 @@ export default class PopupNewMedia extends PopupElement {
     }
   };
 
-  private send(force = false) {
+  private async send(force = false) {
+    let caption = this.messageInputField.value;
+    if(caption.length > this.captionLengthMax) {
+      toast(I18n.format('Error.PreviewSender.CaptionTooLong', true));
+      return;
+    }
+
+    const {peerId, input} = this.chat;
+
+    const canSend = await PopupNewMedia.canSend(peerId);
+    const willAttach = this.willAttach;
+    willAttach.isMedia = willAttach.type === 'media' || undefined;
+    const {sendFileDetails, isMedia} = willAttach;
+
+    let foundBad = false;
+    this.iterate((sendFileParams) => {
+      if(foundBad) {
+        return;
+      }
+
+      const isBad: (LangPackKey | boolean)[] = sendFileParams.map((params) => {
+        const a: [Set<string> | (() => boolean), LangPackKey, ChatRights][] = [
+          [AUDIO_MIME_TYPES_SUPPORTED, 'GlobalAttachAudioRestricted', 'send_audios'],
+          [() => !MEDIA_MIME_TYPES_SUPPORTED.has(params.file.type), 'GlobalAttachDocumentsRestricted', 'send_docs']
+        ];
+
+        if(isMedia) {
+          a.unshift(
+            [IMAGE_MIME_TYPES_SUPPORTED, 'GlobalAttachPhotoRestricted', 'send_photos'],
+            [() => VIDEO_MIME_TYPES_SUPPORTED.has(params.file.type as any) && params.noSound, 'GlobalAttachGifRestricted', 'send_gifs'],
+            [VIDEO_MIME_TYPES_SUPPORTED, 'GlobalAttachVideoRestricted', 'send_videos']
+          );
+        }
+
+        const found = a.find(([verify]) => {
+          return typeof(verify) === 'function' ? verify() : verify.has(params.file.type);
+        });
+
+        if(found) {
+          return canSend[found[2]] ? undefined : found[1];
+        }
+
+        return (!isMedia && !canSend.send_docs && 'GlobalAttachDocumentsRestricted') || undefined;
+      });
+
+      const key = isBad.find((i) => typeof(i) === 'string') as LangPackKey;
+      if(key) {
+        toastNew({
+          langPackKey: key
+        });
+
+        if(rootScope.settings.animationsEnabled) {
+          shake(this.body);
+        }
+      }
+
+      foundBad ||= !!key;
+    });
+
+    if(foundBad) {
+      return;
+    }
+
     if(this.chat.type === 'scheduled' && !force) {
       this.chat.input.scheduleSending(() => {
         this.send(true);
@@ -463,18 +578,6 @@ export default class PopupNewMedia extends PopupElement {
 
       return;
     }
-
-    let caption = this.messageInputField.value;
-    if(caption.length > this.captionLengthMax) {
-      toast(I18n.format('Error.PreviewSender.CaptionTooLong', true));
-      return;
-    }
-
-    const willAttach = this.willAttach;
-    willAttach.isMedia = willAttach.type === 'media' || undefined;
-    const {sendFileDetails, isMedia} = willAttach;
-
-    const {peerId, input} = this.chat;
 
     const {length} = sendFileDetails;
     const sendingParams = this.chat.getMessageSendingParams();
@@ -631,7 +734,7 @@ export default class PopupNewMedia extends PopupElement {
     const file = params.file;
 
     const isPhoto = file.type.startsWith('image/');
-    const isAudio = file.type.startsWith('audio/');
+    const isAudio = AUDIO_MIME_TYPES_SUPPORTED.has(file.type as any);
     if(isPhoto || isAudio || file.size < 20e6) {
       params.objectURL ||= await apiManagerProxy.invoke('createObjectURL', file);
     }
@@ -860,3 +963,5 @@ export default class PopupNewMedia extends PopupElement {
     });
   }
 }
+
+(window as any).PopupNewMedia = PopupNewMedia;

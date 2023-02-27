@@ -1,6 +1,8 @@
-import {Document, Message, MessageAction, MessageExtendedMedia, MessageMedia, Photo, WebPage} from '../../../../layer';
+import {Document, Game, Message, MessageAction, MessageExtendedMedia, MessageMedia, Photo, WebPage} from '../../../../layer';
 
-export default function getMediaFromMessage(message: Message) {
+export default function getMediaFromMessage(message: Message, onlyInner: true): Photo.photo | Document.document;
+export default function getMediaFromMessage(message: Message, onlyInner?: false): Photo.photo | Document.document | Game.game | WebPage.webPage;
+export default function getMediaFromMessage(message: Message, onlyInner = false): Photo.photo | Document.document | Game.game | WebPage.webPage {
   if(!message) return;
 
   let media: any;
@@ -15,8 +17,9 @@ export default function getMediaFromMessage(message: Message) {
     }
 
     media = (messageMedia as MessageMedia.messageMediaDocument).document ||
-      (messageMedia as MessageMedia.messageMediaPhoto).photo;
+      (messageMedia as MessageMedia.messageMediaPhoto).photo ||
+      (onlyInner ? undefined : (messageMedia as MessageMedia.messageMediaGame).game || messageMedia);
   }
 
-  return media as Photo.photo | Document.document;
+  return media as any;
 }

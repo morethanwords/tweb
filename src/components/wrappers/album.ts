@@ -37,7 +37,7 @@ export default function wrapAlbum({messages, attachmentDiv, middleware, uploadin
 
   // !lowest msgID will be the FIRST in album
   for(const message of messages) {
-    const media: Photo.photo | Document.document = getMediaFromMessage(message);
+    const media = getMediaFromMessage(message, true);
 
     const size: any = media._ === 'photo' ? choosePhotoSize(media, 480, 480) : {w: media.w, h: media.h};
     items.push({size, media, message});

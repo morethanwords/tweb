@@ -648,7 +648,7 @@ export default class AppSearchSuper {
   }
 
   private async processPhotoVideoFilter({message, promises, middleware}: ProcessSearchSuperResult) {
-    const media = getMediaFromMessage(message);
+    const media = getMediaFromMessage(message, true);
 
     const div = document.createElement('div');
     div.classList.add('grid-item');
@@ -711,7 +711,7 @@ export default class AppSearchSuper {
   }
 
   private async processDocumentFilter({message, inputFilter}: ProcessSearchSuperResult) {
-    const document = getMediaFromMessage(message) as Document.document;
+    const document = getMediaFromMessage(message, true) as Document.document;
     const showSender = this.showSender || (['voice', 'round'] as MyDocument['type'][]).includes(document.type);
 
     const div = await wrapDocument({

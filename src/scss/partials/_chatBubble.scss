@@ -2437,6 +2437,7 @@ $bubble-border-radius-big: 12px;
   }
 
   .audio-transcribed-text {
+    margin-bottom: .75rem;
     margin-top: .25rem;
 
     &.is-error {
@@ -2464,9 +2465,9 @@ $bubble-border-radius-big: 12px;
     }
   }
 
-  .document-message + .audio-transcribed-text {
-    margin-bottom: .75rem;
-  }
+  // .document-message + .audio-transcribed-text {
+  //   margin-bottom: .75rem;
+  // }
 }
 
 @keyframes audio-dots {
@@ -2949,7 +2950,7 @@ $bubble-border-radius-big: 12px;
 
   .audio {
     &-waveform {
-      rect {
+      &-bar {
         fill: var(--message-out-primary-color);
 
         &.active {
@@ -2974,7 +2975,7 @@ $bubble-border-radius-big: 12px;
     }
 
     &.is-unread {
-      rect {
+      .audio-waveform-bar {
         fill: var(--message-out-primary-color);
       }
       

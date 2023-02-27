@@ -245,7 +245,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
       return media;
     }
 
-    const doc = getMediaFromMessage(message) as Document.document;
+    const doc = getMediaFromMessage(message, true) as Document.document;
     storage.set(mid, media = document.createElement(doc.type === 'round' || doc.type === 'video' ? 'video' : 'audio'));
     // const source = document.createElement('source');
     // source.type = doc.type === 'voice' && !opusDecodeController.isPlaySupported() ? 'audio/wav' : doc.mime_type;
@@ -431,7 +431,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
 
     await onMediaLoad(playingMedia, undefined, false); // have to wait for load, otherwise on macOS won't set
 
-    const doc = getMediaFromMessage(message) as MyDocument;
+    const doc = getMediaFromMessage(message, true) as MyDocument;
 
     const artwork: MediaImage[] = [];
 
@@ -554,7 +554,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
 
     const message = this.getMessageByMedia(playingMedia);
     return {
-      doc: getMediaFromMessage(message) as MyDocument,
+      doc: getMediaFromMessage(message, true) as MyDocument,
       message,
       media: playingMedia,
       playbackParams: this.getPlaybackParams()
@@ -858,7 +858,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
   }
 
   private getPlaybackMediaTypeFromMessage(message: Message.message) {
-    const doc = getMediaFromMessage(message) as MyDocument;
+    const doc = getMediaFromMessage(message, true) as MyDocument;
     let mediaType: PlaybackMediaType = 'audio';
     if(doc?.type) {
       if(doc.type === 'voice' || doc.type === 'round') {

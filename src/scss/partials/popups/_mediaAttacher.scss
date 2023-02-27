@@ -274,6 +274,18 @@
 }
 
 .popup-create-contact {
+  .popup-container {
+    padding: 0 1rem 1rem !important;
+  }
+
+  .popup-header {
+    padding: 0 !important;
+  }
+
+  .btn-primary {
+    margin-bottom: 0 !important;
+  }
+
   .name-fields {
     display: flex;
     flex-direction: column;

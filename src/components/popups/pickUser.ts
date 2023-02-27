@@ -16,7 +16,7 @@ export default class PopupPickUser extends PopupElement {
     peerTypes: AppSelectPeers['peerType'],
     onSelect?: (peerId: PeerId) => Promise<void> | void,
     placeholder: LangPackKey,
-    chatRightsAction?: AppSelectPeers['chatRightsAction'],
+    chatRightsActions?: AppSelectPeers['chatRightsActions'],
     peerId?: number,
     selfPresence?: LangPackKey
   }) {
@@ -51,7 +51,7 @@ export default class PopupPickUser extends PopupElement {
           this.selector.input.focus();
         }
       },
-      chatRightsAction: options.chatRightsAction,
+      chatRightsActions: options.chatRightsActions,
       multiSelect: false,
       rippleEnabled: false,
       avatarSize: 'abitbigger',

@@ -656,11 +656,11 @@ export default class ChatBubbles {
           dots?.remove();
         }
 
-        if(!text && !pending && !transcribedText.classList.contains('has-some-text')) {
-          transcribedText.append(i18n('Chat.Voice.Transribe.Error'));
+        if(!text && !pending/*  && !transcribedText.classList.contains('has-some-text') */) {
+          transcribedText.replaceChildren(i18n('Chat.Voice.Transribe.Error'));
           transcribedText.classList.add('is-error');
-        } else {
-          transcribedText.classList.add('has-some-text');
+        } else if(text) {
+          // transcribedText.classList.add('has-some-text');
           transcribedText.firstChild.textContent = text;
         }
 
@@ -1101,15 +1101,26 @@ export default class ChatBubbles {
 
       const chat = await this.managers.appChatsManager.getChat(chatId);
       const hadRights = this.chatInner.classList.contains('has-rights');
-      const hasRights = await this.chat.canSend();
+      const hadPlainRights = this.chat.input.canSendPlain();
+      const [hasRights, hasPlainRights, canEmbedLinks] = await Promise.all([
+        this.chat.canSend('send_messages'),
+        this.chat.canSend('send_plain'),
+        this.chat.canSend('embed_links')
+      ]);
 
-      if(hadRights !== hasRights) {
+      if(hadRights !== hasRights || hadPlainRights !== hasPlainRights) {
         const callbacks = await Promise.all([
           this.finishPeerChange(),
           this.chat.input.finishPeerChange()
         ]);
 
         callbacks.forEach((callback) => callback());
+      }
+
+      // reset webpage
+      if((canEmbedLinks && !this.chat.input.willSendWebPage) || (!canEmbedLinks && this.chat.input.willSendWebPage)) {
+        this.chat.input.lastUrl = '';
+        this.chat.input.onMessageInput();
       }
 
       if(!!(chat as MTChat.channel).pFlags.forum !== this.chat.isForum && this.chat.type === 'chat') {

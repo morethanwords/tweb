@@ -448,7 +448,7 @@ export default class ChatTopbar {
             });
           },
           placeholder: 'ShareModal.Search.Placeholder',
-          chatRightsAction: 'send_messages',
+          chatRightsActions: ['send_plain'],
           selfPresence: 'ChatYourSelf'
         });
       },

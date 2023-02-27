@@ -163,6 +163,17 @@ const onFirstMount = () => {
     }).then((code) => {
       // console.log('got code', code);
 
+      if(code._ === 'auth.sentCodeSuccess') {
+        const {authorization} = code;
+        if(authorization._ === 'auth.authorization') {
+          rootScope.managers.apiManager.setUser(authorization.user);
+
+          import('./pageIm').then((m) => {
+            m.default.mount();
+          });
+        }
+      }
+
       import('./pageAuthCode').then((m) => m.default.mount(Object.assign(code, {phone_number: phone_number})));
     }).catch((err) => {
       toggle();

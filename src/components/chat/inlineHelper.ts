@@ -29,6 +29,8 @@ import generateQId from '../../lib/appManagers/utils/inlineBots/generateQId';
 import appDownloadManager from '../../lib/appManagers/appDownloadManager';
 import {AnimationItemGroup} from '../animationIntersector';
 import wrapPhoto from '../wrappers/photo';
+import {i18n} from '../../lib/langPack';
+import {POSTING_NOT_ALLOWED_MAP} from './input';
 
 const ANIMATION_GROUP: AnimationItemGroup = 'INLINE-HELPER';
 // const GRID_ITEMS = 5;
@@ -39,7 +41,7 @@ export default class InlineHelper extends AutocompleteHelper {
   private gifsMasonry: GifsMasonry;
   private superStickerRenderer: SuperStickerRenderer;
   private onChangeScreen: () => void;
-  public checkQuery: (peerId: PeerId, username: string, query: string) => ReturnType<InlineHelper['_checkQuery']>;
+  public checkQuery: ReturnType<typeof debounce<InlineHelper['_checkQuery']>>;
 
   constructor(
     appendTo: HTMLElement,
@@ -85,7 +87,7 @@ export default class InlineHelper extends AutocompleteHelper {
     });
   }
 
-  public _checkQuery = async(peerId: PeerId, username: string, query: string) => {
+  public _checkQuery = async(peerId: PeerId, username: string, query: string, canSendInline: boolean) => {
     const middleware = this.controller.getMiddleware();
 
     const peer = await this.managers.appUsersManager.resolveUsername(username);
@@ -95,6 +97,21 @@ export default class InlineHelper extends AutocompleteHelper {
 
     if(peer._ !== 'user' || !peer.pFlags.bot) {
       throw 'NOT_A_BOT';
+    }
+
+    if(!canSendInline) {
+      if(!middleware()) {
+        throw 'PEER_CHANGED';
+      }
+
+      if(this.init) {
+        this.init();
+        this.init = null;
+      }
+
+      this.container.classList.add('cant-send');
+      this.toggle(false);
+      throw 'NO_INLINES';
     }
 
     const renderPromise = this.managers.appInlineBotsManager.getInlineResults(peerId, peer.id, query).then((botResults) => {
@@ -252,10 +269,9 @@ export default class InlineHelper extends AutocompleteHelper {
           parent.append(btnSwitchToPM);
         }
         parent.append(this.list = list);
+        this.container.classList.remove('cant-send');
 
-        if(this.gifsMasonry) {
-          this.gifsMasonry.detach();
-        }
+        this.gifsMasonry?.detach();
         this.gifsMasonry = gifsMasonry;
         gifsMasonry.attach();
 
@@ -290,5 +306,9 @@ export default class InlineHelper extends AutocompleteHelper {
     this.scrollable = new Scrollable(this.container);
     this.lazyLoadQueue = new LazyLoadQueue();
     this.superStickerRenderer = new SuperStickerRenderer(this.lazyLoadQueue, ANIMATION_GROUP, this.managers);
+
+    const span = i18n(POSTING_NOT_ALLOWED_MAP['send_inline']);
+    span.classList.add('inline-helper-cant-send');
+    this.container.append(span);
   }
 }

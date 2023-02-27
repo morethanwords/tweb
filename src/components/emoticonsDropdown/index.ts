@@ -37,6 +37,9 @@ import BezierEasing from '../../vendor/bezier-easing';
 import RichInputHandler from '../../helpers/dom/richInputHandler';
 import {getCaretPosF} from '../../helpers/dom/getCaretPosNew';
 import ListenerSetter from '../../helpers/listenerSetter';
+import {ChatRights} from '../../lib/appManagers/appChatsManager';
+import {toastNew} from '../toast';
+import {POSTING_NOT_ALLOWED_MAP} from '../chat/input';
 
 export const EMOTICONSSTICKERGROUP: AnimationItemGroup = 'emoticons-dropdown';
 
@@ -79,11 +82,18 @@ export class EmoticonsDropdown extends DropdownHover {
   private savedRange: Range;
   private managers: AppManagers;
 
+  private rights: {[action in ChatRights]?: boolean};
+
   constructor() {
     super({
       element: document.getElementById('emoji-dropdown') as HTMLDivElement,
       ignoreOutClickClassName: 'input-message-input'
     });
+
+    this.rights = {
+      send_gifs: undefined,
+      send_stickers: undefined
+    };
 
     this.addEventListener('open', async() => {
       if(IS_TOUCH_SUPPORTED) {
@@ -322,6 +332,17 @@ export class EmoticonsDropdown extends DropdownHover {
       return;
     }
 
+    const rights: {[tabId: number]: ChatRights} = {
+      [this.stickersTab.tabId]: 'send_stickers',
+      [this.gifsTab.tabId]: 'send_gifs'
+    };
+
+    const action = rights[id];
+    if(action && !this.rights[action]) {
+      toastNew({langPackKey: POSTING_NOT_ALLOWED_MAP[action]});
+      return false;
+    }
+
     animationIntersector.checkAnimations(true, EMOTICONSSTICKERGROUP);
 
     this.tabId = id;
@@ -331,19 +352,19 @@ export class EmoticonsDropdown extends DropdownHover {
 
   private checkRights = async() => {
     const {peerId, threadId} = appImManager.chat;
-    const children = this.tabsEl.children;
-    const tabsElements = Array.from(children) as HTMLElement[];
 
-    const [canSendStickers, canSendGifs] = await Promise.all([
-      this.managers.appMessagesManager.canSendToPeer(peerId, threadId, 'send_stickers'),
-      this.managers.appMessagesManager.canSendToPeer(peerId, threadId, 'send_gifs')
-    ]);
+    const actions = Object.keys(this.rights) as ChatRights[];
 
-    tabsElements[this.stickersTab.tabId + 1].toggleAttribute('disabled', !canSendStickers);
-    tabsElements[this.gifsTab.tabId + 1].toggleAttribute('disabled', !canSendGifs);
+    const rights = await Promise.all(actions.map((action) => {
+      return this.managers.appMessagesManager.canSendToPeer(peerId, threadId, action);
+    }));
+
+    actions.forEach((action, idx) => {
+      this.rights[action] = rights[idx];
+    });
 
     const active = this.tabsEl.querySelector('.active');
-    if(active && whichChild(active) !== (this.emojiTab.tabId + 1) && (!canSendStickers || !canSendGifs)) {
+    if(active && whichChild(active) !== (this.emojiTab.tabId + 1) && (!this.rights['send_stickers'] || !this.rights['send_gifs'])) {
       this.selectTab(this.emojiTab.tabId, false);
     }
   };

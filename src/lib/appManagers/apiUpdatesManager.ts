@@ -20,6 +20,7 @@ import parseMarkdown from '../richTextProcessor/parseMarkdown';
 import ctx from '../../environment/ctx';
 import EventListenerBase from '../../helpers/eventListenerBase';
 import applyMixins from '../../helpers/applyMixins';
+import tsNow from '../../helpers/tsNow';
 
 type UpdatesState = {
   pendingPtsUpdates: (Update & {pts: number, pts_count: number})[],
@@ -311,7 +312,7 @@ class ApiUpdatesManager {
         updatesState.date = nextState.date;
       } else {
         updatesState.pts = differenceResult.pts;
-        updatesState.date = (Date.now() / 1000 | 0) + this.timeManager.getServerTimeOffset();
+        updatesState.date = tsNow(true) + this.timeManager.getServerTimeOffset();
         delete updatesState.seq;
 
         this.channelStates = {};
@@ -740,7 +741,7 @@ class ApiUpdatesManager {
                 message,
                 type: 'local',
                 pFlags: {},
-                inbox_date: Date.now() / 1000 | 0,
+                inbox_date: tsNow(true),
                 media: undefined
               };
 

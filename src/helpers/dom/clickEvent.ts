@@ -8,6 +8,17 @@ import type ListenerSetter from '../listenerSetter';
 import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
 import simulateEvent from './dispatchEvent';
 
+let lastMouseDownElement: HTMLElement;
+document.addEventListener('mousedown', (e) => {
+  lastMouseDownElement = e.target as HTMLElement;
+});
+
+export function hasMouseMovedSinceDown(e: Event) {
+  if(e.isTrusted && e.type === 'click' && e.target !== lastMouseDownElement) {
+    return true;
+  }
+}
+
 export const CLICK_EVENT_NAME: 'mousedown' /* | 'touchend' */ | 'click' = (IS_TOUCH_SUPPORTED ? 'mousedown' : 'click') as any;
 export type AttachClickOptions = AddEventListenerOptions & Partial<{listenerSetter: ListenerSetter, touchMouseDown: true}>;
 export function attachClickEvent(elem: HTMLElement | Window, callback: (e: /* TouchEvent |  */MouseEvent) => void, options: AttachClickOptions = {}) {
@@ -42,6 +53,18 @@ export function attachClickEvent(elem: HTMLElement | Window, callback: (e: /* To
   } else {
     add(CLICK_EVENT_NAME, callback, options);
   } */
+
+  if(CLICK_EVENT_NAME === 'click') {
+    const cb = callback;
+    callback = (e) => {
+      if(hasMouseMovedSinceDown(e)) {
+        return;
+      }
+
+      cb(e);
+    };
+  }
+
   add(CLICK_EVENT_NAME, callback, options);
 
   // @ts-ignore

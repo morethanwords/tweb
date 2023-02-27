@@ -37,6 +37,7 @@ import {AppManagers} from '../../lib/appManagers/managers';
 import {attachContextMenuListener} from '../../helpers/dom/attachContextMenuListener';
 import filterUnique from '../../helpers/array/filterUnique';
 import appImManager from '../../lib/appManagers/appImManager';
+import {Message} from '../../layer';
 
 const accumulateMapSet = (map: Map<any, Set<number>>) => {
   return [...map.values()].reduce((acc, v) => acc + v.size, 0);
@@ -360,7 +361,7 @@ class AppSelection extends EventListenerBase<{
       cantDelete = !size;
     const cantSend = !size;
     for(const [peerId, mids] of this.selectedMids) {
-      const storageKey: MessagesStorageKey = `${peerId}_${this.isScheduled ? 'scheduled' : 'history'}`;
+      const storageKey = this.getStorageKey(peerId);
       const r = await this.managers.appMessagesManager.cantForwardDeleteMids(storageKey, Array.from(mids));
       cantForward = r.cantForward;
       cantDelete = r.cantDelete;
@@ -369,6 +370,20 @@ class AppSelection extends EventListenerBase<{
     }
 
     this.onUpdateContainer?.(cantForward, cantDelete, cantSend);
+  }
+
+  private getStorageKey(peerId: PeerId): MessagesStorageKey {
+    return `${peerId}_${this.isScheduled ? 'scheduled' : 'history'}`;
+  }
+
+  public getSelectedMessages() {
+    const selectedMessagesPromises: Promise<Message.message | Message.messageService>[] = [];
+    this.selectedMids.forEach((mids, peerId) => {
+      const storageKey = this.getStorageKey(peerId);
+      const p = Array.from(mids).map((mid) => this.managers.appMessagesManager.getMessageFromStorage(storageKey, mid));
+      selectedMessagesPromises.push(...p);
+    });
+    return Promise.all(selectedMessagesPromises);
   }
 
   public toggleSelection(toggleCheckboxes = true, forceSelection = false) {
@@ -988,9 +1003,10 @@ export default class ChatSelection extends AppSelection {
         void this.selectionInputWrapper.offsetLeft; // reflow
         // background.style.opacity = '';
         this.selectionInputWrapper.style.opacity = '';
-        left.style.transform = '';
-        right.style.transform = '';
       }
+
+      this.selectionLeft.style.transform = '';
+      this.selectionRight.style.transform = '';
     } else if(this.selectionLeft && translateButtonsX !== undefined) {
       this.selectionLeft.style.transform = `translateX(-${translateButtonsX}px)`;
       this.selectionRight.style.transform = `translateX(${translateButtonsX}px)`;

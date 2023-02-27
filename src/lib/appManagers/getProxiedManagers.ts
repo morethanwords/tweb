@@ -35,8 +35,8 @@ import DEBUG from '../../config/debug';
 
 //   const key2 = [('00000' + sentCount).slice(-5), key].join('-');
 
-//   let byManager = stats[manager] ??= {};
-//   let byMethod = byManager[method] ??= {times: [], byArgs: {}};
+//   const byManager = stats[manager] ??= {};
+//   const byMethod = byManager[method] ??= {times: [], byArgs: {}};
 
 //   const perf = performance.now();
 //   promise.catch(noop).finally(() => {
@@ -53,8 +53,9 @@ import DEBUG from '../../config/debug';
 // }
 
 // setInterval(() => {
-//   // console.log(dT(), '[PROXY] stats', stats, sentCount, sentMethods, sentMethods2);
+//   console.log(dT(), '[PROXY] stats', stats, sentCount, sentMethods, sentMethods2);
 //   sentCount = 0;
+//   stats = {};
 //   sentMethods = {};
 //   sentMethods2 = {};
 // }, 2000);

@@ -177,7 +177,7 @@ let init = () => {
 
     const peerId = (input.dataset.peerId || NULL_PEER_ID).toPeerId();
     if(html.trim()) {
-      console.log(html.replace(/ (style|class|id)=".+?"/g, ''));
+      // console.log(html.replace(/ (style|class|id)=".+?"/g, ''));
 
       html = html.replace(/<style([\s\S]*)<\/style>/, '');
       html = html.replace(/<!--([\s\S]*)-->/, '');
@@ -260,7 +260,7 @@ let init = () => {
         mergeEntities(entities, entities2);
       }
 
-      console.log('usePlainText', usePlainText);
+      // console.log('usePlainText', usePlainText);
     }
 
     if(usePlainText) {

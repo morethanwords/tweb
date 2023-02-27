@@ -2102,3 +2102,34 @@ hr {
     height: 100%;
   }
 }
+
+.accordion {
+  overflow: hidden;
+  height: 0;
+
+  &.is-expanded {
+    height: var(--max-height);
+  }
+
+  @include animation-level(2) {
+    transition: height var(--transition-standard-in);
+  }
+
+  &-icon {
+    transform: rotate(0deg) translateY(4px);
+    color: var(--secondary-text-color);
+    font-size: 1.25rem;
+    display: inline-block;
+    line-height: 0;
+
+    @include animation-level(2) {
+      transition: transform var(--transition-standard-in);
+    }
+  }
+
+  &-toggler-expanded {
+    .accordion-icon {
+      transform: translateY(4px) rotate(180deg);
+    }
+  }
+}

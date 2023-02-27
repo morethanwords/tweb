@@ -7,16 +7,18 @@
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import toggleDisability from '../../../helpers/dom/toggleDisability';
 import deepEqual from '../../../helpers/object/deepEqual';
-import {ChannelParticipant} from '../../../layer';
+import {ChannelParticipant, ChatParticipant} from '../../../layer';
 import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
 import Button from '../../button';
+import confirmationPopup from '../../confirmationPopup';
 import SettingSection from '../../settingSection';
 import {SliderSuperTabEventable} from '../../sliderTab';
 import getUserStatusString from '../../wrappers/getUserStatusString';
+import wrapPeerTitle from '../../wrappers/peerTitle';
 import {ChatPermissions} from './groupPermissions';
 
 export default class AppUserPermissionsTab extends SliderSuperTabEventable {
-  public participant: ChannelParticipant;
+  public participant: ChannelParticipant | ChatParticipant;
   public chatId: ChatId;
   public userId: UserId;
 
@@ -25,6 +27,8 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
     this.setTitle('UserRestrictions');
 
     let destroyListener: () => void;
+
+    const isChannel = await this.managers.appChatsManager.isChannel(this.chatId);
 
     {
       const section = new SettingSection({
@@ -55,7 +59,6 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
       }, this.managers);
 
       destroyListener = () => {
-        // appChatsManager.editChatDefaultBannedRights(this.chatId, p.takeOut());
         const rights = p.takeOut();
         if(this.participant._ === 'channelParticipantBanned' && deepEqual(this.participant.banned_rights.pFlags, rights.pFlags)) {
           return;
@@ -77,7 +80,10 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
 
         attachClickEvent(btnDeleteException, () => {
           const toggle = toggleDisability([btnDeleteException], true);
-          this.managers.appChatsManager.clearChannelParticipantBannedRights(this.chatId, this.participant).then(() => {
+          this.managers.appChatsManager.clearChannelParticipantBannedRights(
+            this.chatId,
+            this.participant as ChannelParticipant.channelParticipantBanned
+          ).then(() => {
             this.eventListener.removeEventListener('destroy', destroyListener);
             this.close();
           }, () => {
@@ -90,31 +96,34 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
 
       const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'deleteuser', text: 'UserRestrictionsBlock'});
 
-      attachClickEvent(btnDelete, () => {
+      attachClickEvent(btnDelete, async() => {
         const toggle = toggleDisability([btnDelete], true);
-        this.managers.appChatsManager.kickFromChannel(this.chatId, this.participant).then(() => {
-          this.eventListener.removeEventListener('destroy', destroyListener);
-          this.close();
-        });
-        /* new PopupPeer('popup-group-kick-user', {
-          peerId: -this.chatId,
-          title: 'Ban User?',
-          description: `Are you sure you want to ban <b>${appPeersManager.getPeerTitle(this.userId)}</b>`,
-          buttons: addCancelButton([{
-            text: 'BAN',
-            callback: () => {
-              const toggle = toggleDisability([btnDelete], true);
 
-              appChatsManager.kickFromChannel(this.chatId, this.participant).then(() => {
-                this.eventListener.removeEventListener('destroy', destroyListener);
-                this.close();
-              }, () => {
-                toggle();
-              });
-            },
-            isDanger: true
-          }])
-        }).show(); */
+        try {
+          const peerId = this.userId.toPeerId();
+          await confirmationPopup({
+            peerId: this.chatId.toPeerId(true),
+            descriptionLangKey: 'Permissions.RemoveFromGroup',
+            descriptionLangArgs: [await wrapPeerTitle({peerId: peerId})],
+            titleLangKey: 'ChannelBlockUser',
+            button: {
+              langKey: 'Remove',
+              isDanger: true
+            }
+          });
+
+          if(!isChannel) {
+            await this.managers.appChatsManager.kickFromChat(this.chatId, this.participant);
+          } else {
+            await this.managers.appChatsManager.kickFromChannel(this.chatId, this.participant as ChannelParticipant);
+          }
+        } catch(err) {
+          toggle();
+          return;
+        }
+
+        this.eventListener.removeEventListener('destroy', destroyListener);
+        this.close();
       }, {listenerSetter: this.listenerSetter});
 
       section.content.append(btnDelete);

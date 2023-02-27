@@ -19,7 +19,7 @@ import findUpClassName from '../../helpers/dom/findUpClassName';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import {attachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent';
 import isSelectionEmpty from '../../helpers/dom/isSelectionEmpty';
-import {Message, Poll, Chat as MTChat, MessageMedia, AvailableReaction, MessageEntity, InputStickerSet, StickerSet, Document, Reaction} from '../../layer';
+import {Message, Poll, Chat as MTChat, MessageMedia, AvailableReaction, MessageEntity, InputStickerSet, StickerSet, Document, Reaction, Photo} from '../../layer';
 import PopupReportMessages from '../popups/reportMessages';
 import assumeType from '../../helpers/assumeType';
 import PopupSponsored from '../popups/sponsored';
@@ -39,7 +39,7 @@ import {attachContextMenuListener} from '../../helpers/dom/attachContextMenuList
 import filterAsync from '../../helpers/array/filterAsync';
 import appDownloadManager from '../../lib/appManagers/appDownloadManager';
 import {SERVICE_PEER_ID} from '../../lib/mtproto/mtproto_config';
-import {MessagesStorageKey} from '../../lib/appManagers/appMessagesManager';
+import {MessagesStorageKey, MyMessage} from '../../lib/appManagers/appMessagesManager';
 import filterUnique from '../../helpers/array/filterUnique';
 import replaceContent from '../../helpers/dom/replaceContent';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
@@ -79,6 +79,7 @@ export default class ChatContextMenu {
   private albumMessages: Message.message[];
   private linkToMessage: Awaited<ReturnType<ChatContextMenu['getUrlToMessage']>>;
   private selectedMessagesText: string;
+  private selectedMessages: MyMessage[];
 
   constructor(
     private chat: Chat,
@@ -199,6 +200,7 @@ export default class ChatContextMenu {
       this.canOpenReactedList = undefined;
       this.linkToMessage = await this.getUrlToMessage();
       this.selectedMessagesText = await this.getSelectedMessagesText();
+      this.selectedMessages = this.chat.selection.isSelecting ? await this.chat.selection.getSelectedMessages() : undefined;
 
       const initResult = await this.init();
       if(!initResult) {
@@ -445,31 +447,9 @@ export default class ChatContextMenu {
       icon: 'download',
       text: 'MediaViewer.Context.Download',
       onClick: () => {
-        appDownloadManager.downloadToDisc({media: getMediaFromMessage(this.message)});
+        appDownloadManager.downloadToDisc({media: getMediaFromMessage(this.message, true)});
       },
-      verify: () => {
-        if(!canSaveMessageMedia(this.message) || this.noForwards) {
-          return false;
-        }
-
-        const isPhoto: boolean = !!((this.message as Message.message).media as MessageMedia.messageMediaPhoto)?.photo;
-        let isGoodType = false
-
-        if(isPhoto) {
-          isGoodType = true;
-        } else {
-          const doc: MyDocument = ((this.message as Message.message).media as MessageMedia.messageMediaDocument)?.document as any;
-          if(!doc) return false;
-          // isGoodType = doc.type && (['gif', 'video', 'audio', 'voice', 'sticker'] as MyDocument['type'][]).includes(doc.type)
-          isGoodType = true;
-        }
-
-        let hasTarget = !!IS_TOUCH_SUPPORTED;
-
-        if(isGoodType) hasTarget ||= !!findUpClassName(this.target, 'document') || !!findUpClassName(this.target, 'audio') || !!findUpClassName(this.target, 'media-sticker-wrapper') || !!findUpClassName(this.target, 'media-photo') || !!findUpClassName(this.target, 'media-video');
-
-        return isGoodType && hasTarget;
-      }
+      verify: () => this.canDownload(this.message, true)
     }, {
       icon: 'checkretract',
       text: 'Chat.Poll.Unvote',
@@ -501,6 +481,16 @@ export default class ChatContextMenu {
         this.isSelected &&
         !this.chat.selection.selectionForwardBtn.hasAttribute('disabled'),
       notDirect: () => true,
+      withSelection: true
+    }, {
+      icon: 'download',
+      text: 'Message.Context.Selection.Download',
+      onClick: () => {
+        this.selectedMessages.forEach((message) => {
+          appDownloadManager.downloadToDisc({media: getMediaFromMessage(message, true)});
+        });
+      },
+      verify: () => this.selectedMessages ? this.selectedMessages.some((message) => this.canDownload(message, false)) : false,
       withSelection: true
     }, {
       icon: 'flag',
@@ -572,6 +562,30 @@ export default class ChatContextMenu {
       notDirect: () => true,
       localName: 'emojis'
     }];
+  }
+
+  private canDownload(message: MyMessage, withTarget?: boolean) {
+    if(!canSaveMessageMedia(message) || this.noForwards) {
+      return false;
+    }
+
+    const isPhoto: boolean = !!((message as Message.message).media as MessageMedia.messageMediaPhoto)?.photo;
+    let isGoodType = false
+
+    if(isPhoto) {
+      isGoodType = true;
+    } else {
+      const doc: MyDocument = ((message as Message.message).media as MessageMedia.messageMediaDocument)?.document as any;
+      if(!doc) return false;
+      // isGoodType = doc.type && (['gif', 'video', 'audio', 'voice', 'sticker'] as MyDocument['type'][]).includes(doc.type)
+      isGoodType = true;
+    }
+
+    let hasTarget = !withTarget || !!IS_TOUCH_SUPPORTED;
+
+    if(isGoodType) hasTarget ||= !!findUpClassName(this.target, 'document') || !!findUpClassName(this.target, 'audio') || !!findUpClassName(this.target, 'media-sticker-wrapper') || !!findUpClassName(this.target, 'media-photo') || !!findUpClassName(this.target, 'media-video');
+
+    return isGoodType && hasTarget;
   }
 
   private getMessageWithText() {
@@ -932,7 +946,7 @@ export default class ChatContextMenu {
     } else {
       const peerId = this.peerId;
       const mids = this.isTargetAGroupedItem ? [this.mid] : await this.chat.getMidsByMid(this.mid);
-      new PopupForward({
+      PopupForward.create({
         [peerId]: mids
       });
     }

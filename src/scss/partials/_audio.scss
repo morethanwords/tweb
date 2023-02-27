@@ -382,7 +382,7 @@
     height: 100%;
 
     &-background {
-      rect {
+      .audio-waveform-bar {
         opacity: .3;
   
         @include hover() {
@@ -408,7 +408,7 @@
       margin-top: 1px;
     }
 
-    rect {
+    &-bar {
       fill: var(--primary-color);
       //overflow: visible!important;
     }
@@ -599,7 +599,7 @@
         }
       }
 
-      &:not(.is-out) .audio-toggle:not(.playing) + .audio-waveform-container .audio-waveform-background rect {
+      &:not(.is-out) .audio-toggle:not(.playing) + .audio-waveform-container .audio-waveform-background .audio-waveform-bar {
         opacity: 1;
       }
     }

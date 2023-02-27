@@ -31,7 +31,7 @@ import filterAsync from '../helpers/array/filterAsync';
 import getParticipantPeerId from '../lib/appManagers/utils/chats/getParticipantPeerId';
 import getChatMembersString from './wrappers/getChatMembersString';
 import getUserStatusString from './wrappers/getUserStatusString';
-import {Chat, User} from '../layer';
+import {ChannelsChannelParticipants, Chat, User} from '../layer';
 import canSendToUser from '../lib/appManagers/utils/users/canSendToUser';
 import hasRights from '../lib/appManagers/utils/chats/hasRights';
 import getDialogIndex from '../lib/appManagers/utils/dialogs/getDialogIndex';
@@ -75,7 +75,7 @@ export default class AppSelectPeers {
   private onChange: (length: number) => void;
   private peerType: SelectSearchPeerType[] = ['dialogs'];
   private renderResultsFunc: (peerIds: PeerId[]) => void | Promise<void>;
-  private chatRightsAction: ChatRights;
+  private chatRightsActions: ChatRights[];
   private multiSelect = true;
   private rippleEnabled = true;
   private avatarSize: DialogElementSize = 'abitbigger';
@@ -104,7 +104,7 @@ export default class AppSelectPeers {
     peerId?: AppSelectPeers['peerId'],
     onFirstRender?: () => void,
     renderResultsFunc?: AppSelectPeers['renderResultsFunc'],
-    chatRightsAction?: AppSelectPeers['chatRightsAction'],
+    chatRightsActions?: AppSelectPeers['chatRightsActions'],
     multiSelect?: AppSelectPeers['multiSelect'],
     rippleEnabled?: AppSelectPeers['rippleEnabled'],
     avatarSize?: AppSelectPeers['avatarSize'],
@@ -347,7 +347,7 @@ export default class AppSelectPeers {
       dialogs = dialogs.slice();
       findAndSplice(dialogs, d => d.peerId === rootScope.myId); // no my account
 
-      if(this.chatRightsAction) {
+      if(this.chatRightsActions) {
         dialogs = await filterAsync(dialogs, (d) => this.filterByRights(d.peerId));
         if(!middleware()) {
           return;
@@ -389,8 +389,8 @@ export default class AppSelectPeers {
   private async filterByRights(peerId: PeerId) {
     const peer: User | Chat = await this.managers.appPeersManager.getPeer(peerId);
     if(peerId.isUser()) {
-      return this.chatRightsAction !== 'send_messages' || canSendToUser(peer as User.user);
-    } else if(hasRights(peer as Chat.chat, this.chatRightsAction)) {
+      return this.chatRightsActions[0] !== 'send_plain' || canSendToUser(peer as User.user);
+    } else if(this.chatRightsActions.every((action) => hasRights(peer as Chat.chat, action))) {
       return true;
     }
   }
@@ -433,7 +433,7 @@ export default class AppSelectPeers {
         // do not add global result if only dialogs needed
         let resultPeerIds = isGlobalSearch ? searchResult.my_results.concat(searchResult.results) : searchResult.my_results;
 
-        if(this.chatRightsAction) {
+        if(this.chatRightsActions) {
           resultPeerIds = await filterAsync(resultPeerIds, (peerId) => this.filterByRights(peerId));
           if(!middleware()) {
             return;
@@ -474,7 +474,7 @@ export default class AppSelectPeers {
     const pageCount = 50; // same as in group permissions to use cache
 
     const {middleware} = this.getTempId('channelParticipants');
-    const promise = this.managers.appProfileManager.getChannelParticipants(
+    const promise = this.managers.appProfileManager.getParticipants(
       this.peerId.toChatId(),
       {
         _: 'channelParticipantsSearch',
@@ -492,18 +492,20 @@ export default class AppSelectPeers {
       this.loadedWhat.channelParticipants = true;
     });
 
-    const participants = await promise;
+    const chatParticipants = await promise;
     if(!middleware()) {
       return;
     }
 
-    const peerIds = participants.participants.map((participant) => {
-      return getParticipantPeerId(participant);
-    });
+    const {participants} = chatParticipants;
+
+    const peerIds = participants.map((participant) => getParticipantPeerId(participant));
     indexOfAndSplice(peerIds, rootScope.myId);
     this.renderResultsFunc(peerIds);
 
-    if(this.list.childElementCount >= participants.count || participants.participants.length < pageCount) {
+    const count = (chatParticipants as ChannelsChannelParticipants.channelsChannelParticipants).count ?? participants.length;
+
+    if(this.list.childElementCount >= count || participants.length < pageCount) {
       this.loadedWhat.channelParticipants = true;
     }
   }

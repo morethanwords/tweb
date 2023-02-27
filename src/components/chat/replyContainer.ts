@@ -7,7 +7,7 @@
 import replaceContent from '../../helpers/dom/replaceContent';
 import {Middleware} from '../../helpers/middleware';
 import limitSymbols from '../../helpers/string/limitSymbols';
-import {Document, Message, MessageMedia, Photo, WebPage} from '../../layer';
+import {Document, Message, MessageMedia, Photo, WebPage, VideoSize} from '../../layer';
 import appImManager from '../../lib/appManagers/appImManager';
 import choosePhotoSize from '../../lib/appManagers/utils/photos/choosePhotoSize';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
@@ -85,7 +85,7 @@ export async function wrapReplyDivAndCaption(options: {
           middleware,
           loadPromises,
           withoutPreloader: true,
-          videoSize: document.video_thumbs[0],
+          videoSize: document.video_thumbs[0] as Extract<VideoSize, VideoSize.videoSize>,
           group: animationGroup
         });
       } else {

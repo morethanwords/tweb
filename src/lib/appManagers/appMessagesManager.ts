@@ -524,7 +524,7 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public transcribeAudio(message: Message.message): Promise<MessagesTranscribedAudio> {
+  public async transcribeAudio(message: Message.message): Promise<MessagesTranscribedAudio> {
     const {id, peerId} = message;
 
     const process = (result: MessagesTranscribedAudio) => {
@@ -3916,16 +3916,12 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public async deleteMessages(peerId: PeerId, mids: number[], revoke?: boolean) {
+  public async deleteMessages(peerId: PeerId, mids: number[], revoke?: boolean, isRecursion?: boolean) {
     let promise: Promise<any>;
 
-    const config = await this.apiManager.getConfig();
-    const overflowMids = mids.splice(config.forwarded_count_max, mids.length - config.forwarded_count_max);
-
-    const localMessageIds = mids.map((mid) => getServerMessageId(mid));
-
-    if(peerId.isAnyChat() && this.appPeersManager.isChannel(peerId)) {
-      const channelId = peerId.toChatId();
+    const isChannel = this.appPeersManager.isChannel(peerId);
+    const channelId = isChannel && peerId.toChatId();
+    if(isChannel && !isRecursion) {
       const channel = this.appChatsManager.getChat(channelId) as Chat.channel;
       if(!channel.pFlags.creator && !channel.admin_rights?.pFlags?.delete_messages) {
         mids = mids.filter((mid) => {
@@ -3937,10 +3933,21 @@ export class AppMessagesManager extends AppManager {
           return;
         }
       }
+    }
 
+    const config = await this.apiManager.getConfig();
+    const overflowMids = mids.splice(config.forwarded_count_max, mids.length - config.forwarded_count_max);
+
+    const serverMessageIds = mids.map((mid) => {
+      const messageId = getServerMessageId(mid);
+      // filter outgoing messages
+      return generateMessageId(messageId) === mid && messageId;
+    }).filter(Boolean);
+
+    if(isChannel) {
       promise = this.apiManager.invokeApi('channels.deleteMessages', {
         channel: this.appChatsManager.getChannelInput(channelId),
-        id: localMessageIds
+        id: serverMessageIds
       }).then((affectedMessages) => {
         this.apiUpdatesManager.processLocalUpdate({
           _: 'updateDeleteChannelMessages',
@@ -3953,7 +3960,7 @@ export class AppMessagesManager extends AppManager {
     } else {
       promise = this.apiManager.invokeApi('messages.deleteMessages', {
         revoke,
-        id: localMessageIds
+        id: serverMessageIds
       }).then((affectedMessages) => {
         this.apiUpdatesManager.processLocalUpdate({
           _: 'updateDeleteMessages',
@@ -3966,7 +3973,7 @@ export class AppMessagesManager extends AppManager {
 
     const promises: (typeof promise)[] = [promise];
     if(overflowMids.length) {
-      promises.push(this.deleteMessages(peerId, overflowMids, revoke));
+      promises.push(this.deleteMessages(peerId, overflowMids, revoke, true));
     }
 
     return Promise.all(promises).then(noop);

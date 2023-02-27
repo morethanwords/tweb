@@ -108,9 +108,21 @@ import getAttachMenuBotIcon from '../../lib/appManagers/utils/attachMenuBots/get
 import TelegramWebView from '../telegramWebView';
 import forEachReverse from '../../helpers/array/forEachReverse';
 import {MARKDOWN_ENTITIES} from '../../lib/richTextProcessor';
+import IMAGE_MIME_TYPES_SUPPORTED from '../../environment/imageMimeTypesSupport';
+import VIDEO_MIME_TYPES_SUPPORTED from '../../environment/videoMimeTypesSupport';
+import {ChatRights} from '../../lib/appManagers/appChatsManager';
 
 const RECORD_MIN_TIME = 500;
-const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
+
+export const POSTING_NOT_ALLOWED_MAP: {[action in ChatRights]?: LangPackKey} = {
+  send_voices: 'GlobalAttachVoiceRestricted',
+  send_stickers: 'GlobalAttachStickersRestricted',
+  send_gifs: 'GlobalAttachGifRestricted',
+  send_media: 'GlobalAttachMediaRestricted',
+  send_plain: 'GlobalSendMessageRestricted',
+  send_polls: 'ErrorSendRestrictedPollsAll',
+  send_inline: 'GlobalAttachInlineRestricted'
+};
 
 type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply';
 
@@ -123,7 +135,7 @@ export default class ChatInput {
   private inputMessageContainer: HTMLDivElement;
   private btnSend: HTMLButtonElement;
   private btnCancelRecord: HTMLButtonElement;
-  private lastUrl = '';
+  public lastUrl = '';
   private lastTimeType = 0;
 
   public chatInput: HTMLElement;
@@ -160,7 +172,7 @@ export default class ChatInput {
   private forwardWasDroppingAuthor: boolean;
 
   private getWebPagePromise: Promise<void>;
-  private willSendWebPage: WebPage = null;
+  public willSendWebPage: WebPage = null;
   private forwarding: {[fromPeerId: PeerId]: number[]};
   public replyToMsgId: number;
   public editMsgId: number;
@@ -585,18 +597,37 @@ export default class ChatInput {
       icon.classList.remove('state-back');
     });
 
+    // const getSendMediaRights = () => Promise.all([this.chat.canSend('send_photos'), this.chat.canSend('send_videos')]).then(([photos, videos]) => ({photos, videos}));
+
+    const onAttachMediaClick = (photos: boolean, videos: boolean) => {
+      this.fileInput.value = '';
+
+      const accept = [
+        ...(photos ? IMAGE_MIME_TYPES_SUPPORTED : []),
+        ...(videos ? VIDEO_MIME_TYPES_SUPPORTED : [])
+      ].join(', ');
+
+      this.fileInput.setAttribute('accept', accept);
+      this.willAttachType = 'media';
+      this.fileInput.click();
+    };
+
     this.attachMenuButtons = [{
       icon: 'image',
       text: 'Chat.Input.Attach.PhotoOrVideo',
-      onClick: () => {
-        this.fileInput.value = '';
-        const accept = [...MEDIA_MIME_TYPES_SUPPORTED].join(', ');
-        this.fileInput.setAttribute('accept', accept);
-        this.willAttachType = 'media';
-        this.fileInput.click();
-      },
-      verify: () => this.chat.canSend('send_media')
+      onClick: () => onAttachMediaClick(true, true)
+      // verify: () => getSendMediaRights().then(({photos, videos}) => photos && videos)
+    }, /* {
+      icon: 'image',
+      text: 'AttachPhoto',
+      onClick: () => onAttachMediaClick(true, false),
+      verify: () => getSendMediaRights().then(({photos, videos}) => photos && !videos)
     }, {
+      icon: 'image',
+      text: 'AttachVideo',
+      onClick: () => onAttachMediaClick(false, true),
+      verify: () => getSendMediaRights().then(({photos, videos}) => !photos && videos)
+    }, */ {
       icon: 'document',
       text: 'Chat.Input.Attach.Document',
       onClick: () => {
@@ -604,16 +635,25 @@ export default class ChatInput {
         this.fileInput.removeAttribute('accept');
         this.willAttachType = 'document';
         this.fileInput.click();
-      },
-      verify: () => this.chat.canSend('send_media')
+      }
+      // verify: () => this.chat.canSend('send_docs')
     }, {
       icon: 'poll',
       text: 'Poll',
-      onClick: () => {
+      onClick: async() => {
+        const action: ChatRights = 'send_polls';
+        if(!(await this.chat.canSend(action))) {
+          toastNew({langPackKey: POSTING_NOT_ALLOWED_MAP[action]});
+          return;
+        }
+
         PopupElement.createPopup(PopupCreatePoll, this.chat).show();
       },
-      verify: () => (this.chat.peerId.isAnyChat() || this.chat.isBot) && this.chat.canSend('send_polls')
+      verify: () => this.chat.peerId.isAnyChat() || this.chat.isBot
     }];
+
+    // preload the bots
+    this.managers.appAttachMenuBotsManager.getAttachMenuBots();
 
     const attachMenuButtons = this.attachMenuButtons.slice();
     this.attachMenu = ButtonMenuToggle({
@@ -1368,6 +1408,7 @@ export default class ChatInput {
       canPinMessage,
       isBot,
       canSend,
+      canSendPlain,
       neededFakeContainer,
       ackedPeerFull,
       ackedScheduledMids,
@@ -1377,7 +1418,8 @@ export default class ChatInput {
       this.managers.appPeersManager.isBroadcast(peerId),
       this.managers.appPeersManager.canPinMessage(peerId),
       this.managers.appPeersManager.isBot(peerId),
-      this.chat.canSend(),
+      this.chat.canSend('send_messages'),
+      this.chat.canSend('send_plain'),
       this.getNeededFakeContainer(startParam),
       modifyAckedPromise(this.managers.acknowledged.appProfileManager.getProfileByPeerId(peerId)),
       btnScheduled ? modifyAckedPromise(this.managers.acknowledged.appMessagesManager.getScheduledMessages(peerId)) : undefined,
@@ -1385,7 +1427,7 @@ export default class ChatInput {
       this.filterAttachMenuButtons()
     ]);
 
-    const placeholderKey = this.messageInput ? await this.getPlaceholderKey() : undefined;
+    const placeholderKey = this.messageInput ? await this.getPlaceholderKey(canSendPlain) : undefined;
 
     return () => {
       // console.warn('[input] finishpeerchange start');
@@ -1394,7 +1436,6 @@ export default class ChatInput {
       goDownBtn.classList.toggle('is-broadcast', isBroadcast);
       goDownBtn.classList.remove('hide');
 
-      this.messageInputField?.onFakeInput();
 
       if(this.goDownUnreadBadge) {
         this.setUnreadCount();
@@ -1439,26 +1480,17 @@ export default class ChatInput {
         }
       }
 
-      if(previousSendAs) {
-        previousSendAs.destroy();
-      }
-
-      if(setSendAsCallback) {
-        setSendAsCallback();
-      }
-
-      if(replyKeyboard) {
-        replyKeyboard.setPeer(peerId);
-      }
-
-      if(sendMenu) {
-        sendMenu.setPeerId(peerId);
-      }
+      previousSendAs?.destroy();
+      setSendAsCallback?.();
+      replyKeyboard?.setPeer(peerId);
+      sendMenu?.setPeerId(peerId);
 
       if(this.messageInput) {
-        this.updateMessageInput(canSend, placeholderKey, filteredAttachMenuButtons);
+        this.updateMessageInput(canSend, canSendPlain, placeholderKey, filteredAttachMenuButtons);
         this.messageInput.dataset.peerId = '' + peerId;
       }
+
+      this.messageInputField?.onFakeInput(undefined, true);
 
       let haveSomethingInControl = false;
       if(this.pinnedControlBtn) {
@@ -1530,10 +1562,13 @@ export default class ChatInput {
     this.updateOffset('commands', forwards, skipAnimation, useRafs);
   }
 
-  private async getPlaceholderKey() {
+  private async getPlaceholderKey(canSend?: boolean) {
+    canSend ??= await this.chat.canSend('send_plain');
     const {peerId, threadId, isForum} = this.chat;
     let key: LangPackKey;
-    if(threadId && !isForum) {
+    if(!canSend) {
+      key = 'Channel.Persmission.MessageBlock';
+    } else if(threadId && !isForum) {
       key = 'Comment';
     } else if(await this.managers.appPeersManager.isBroadcast(peerId)) {
       key = 'ChannelBroadcast';
@@ -1562,13 +1597,17 @@ export default class ChatInput {
   private filterAttachMenuButtons() {
     if(!this.attachMenuButtons) return;
     return filterAsync(this.attachMenuButtons, (button) => {
-      return button.verify();
+      return button.verify ? button.verify() : true;
     });
   }
 
-  public updateMessageInput(canSend: boolean, placeholderKey: LangPackKey, visible: ChatInput['attachMenuButtons']) {
+  public updateMessageInput(
+    canSend: boolean,
+    canSendPlain: boolean,
+    placeholderKey: LangPackKey,
+    visible: ChatInput['attachMenuButtons']
+  ) {
     const {chatInput, attachMenu, messageInput} = this;
-    const {peerId, threadId} = this.chat;
     const isHidden = chatInput.classList.contains('is-hidden');
     const willBeHidden = !canSend;
     if(isHidden !== willBeHidden) {
@@ -1580,14 +1619,18 @@ export default class ChatInput {
 
     this.updateMessageInputPlaceholder(placeholderKey);
 
-    if(!canSend) {
-      messageInput.contentEditable = 'inherit';
+    if(!canSend || !canSendPlain) {
+      messageInput.contentEditable = 'false';
+
+      if(!canSendPlain) {
+        this.messageInputField.onFakeInput(undefined, true);
+      }
     } else {
       messageInput.contentEditable = 'true';
       this.setDraft(undefined, false);
 
       if(!messageInput.innerHTML) {
-        this.messageInputField.onFakeInput();
+        this.messageInputField.onFakeInput(undefined, true);
       }
     }
 
@@ -1651,6 +1694,14 @@ export default class ChatInput {
       }
     });
 
+    attachClickEvent(this.messageInput, (e) => {
+      if(!this.canSendPlain()) {
+        toastNew({
+          langPackKey: POSTING_NOT_ALLOWED_MAP['send_plain']
+        });
+      }
+    }, {listenerSetter: this.listenerSetter});
+
     if(IS_TOUCH_SUPPORTED) {
       attachClickEvent(this.messageInput, (e) => {
         if(emoticonsDropdown.isActive()) {
@@ -1704,6 +1755,10 @@ export default class ChatInput {
         this.managers.appMessagesManager.readAllHistory(this.chat.peerId, this.chat.threadId);
       }
     });
+  }
+
+  public canSendPlain() {
+    return !(!this.messageInput.isContentEditable && !this.chatInput.classList.contains('is-hidden'));
   }
 
   private prepareDocumentExecute = () => {
@@ -1877,9 +1932,7 @@ export default class ChatInput {
 
     // checkForSingle();
     // saveExecuted();
-    if(this.appImManager.markupTooltip) {
-      this.appImManager.markupTooltip.setActiveMarkupButton();
-    }
+    this.appImManager.markupTooltip?.setActiveMarkupButton();
 
     if(textNode) {
       (textNode.parentElement === this.messageInput ? textNode : textNode.parentElement).remove();
@@ -1957,7 +2010,7 @@ export default class ChatInput {
     }
   };
 
-  private onMessageInput = (e?: Event) => {
+  public onMessageInput = (e?: Event) => {
     // * validate due to manual formatting through browser's context menu
     /* const inputType = (e as InputEvent).inputType;
     console.log('message input event', e);
@@ -1999,17 +2052,15 @@ export default class ChatInput {
           }
         }
 
-        // console.log('messageInput url:', url);
-
         if(this.lastUrl !== url) {
           this.lastUrl = url;
-          // this.willSendWebPage = null;
-          const promise = this.getWebPagePromise = this.managers.appWebPagesManager.getWebPage(url).then((webpage) => {
+          const promise = this.getWebPagePromise = Promise.all([
+            this.managers.appWebPagesManager.getWebPage(url),
+            this.chat.canSend('embed_links')
+          ]).then(([webpage, canEmbedLinks]) => {
             if(this.getWebPagePromise === promise) this.getWebPagePromise = undefined;
             if(this.lastUrl !== url) return;
-            if(webpage._  === 'webPage') {
-              // console.log('got webpage: ', webpage);
-
+            if(webpage._  === 'webPage' && canEmbedLinks) {
               this.setTopInfo('webpage', () => {}, webpage.site_name || webpage.title || 'Webpage', webpage.description || webpage.url || '');
               delete this.noWebPage;
               this.willSendWebPage = webpage;
@@ -2039,31 +2090,27 @@ export default class ChatInput {
         this.managers.appMessagesManager.setTyping(this.chat.peerId, {_: 'sendMessageCancelAction'}, undefined, this.chat.threadId);
       }
 
-      if(this.appImManager.markupTooltip) {
-        this.appImManager.markupTooltip.hide();
-      }
+      this.appImManager.markupTooltip?.hide();
 
       // * Chrome has a bug - it will preserve the formatting if the input with monospace text is cleared
       // * so have to reset formatting
-      if(document.activeElement === this.messageInput) {
-        // document.execCommand('styleWithCSS', false, 'true');
+      if(document.activeElement === this.messageInput && !IS_MOBILE) {
         setTimeout(() => {
           if(document.activeElement === this.messageInput) {
-            this.resetCurrentFontFormatting();
+            this.messageInput.textContent = '1';
+            placeCaretAtEnd(this.messageInput);
+            this.messageInput.textContent = '';
           }
         }, 0);
-        // document.execCommand('styleWithCSS', false, 'false');
       }
     } else {
       const time = Date.now();
-      if((time - this.lastTimeType) >= 6000) {
+      if((time - this.lastTimeType) >= 6000 && e?.isTrusted) {
         this.lastTimeType = time;
         this.managers.appMessagesManager.setTyping(this.chat.peerId, {_: 'sendMessageTypingAction'}, undefined, this.chat.threadId);
       }
 
-      if(this.botCommands) {
-        this.botCommands.toggle(true);
-      }
+      this.botCommands?.toggle(true);
     }
 
     if(this.botCommands) {
@@ -2080,6 +2127,13 @@ export default class ChatInput {
   };
 
   public insertAtCaret(insertText: string, insertEntity?: MessageEntity, isHelper = true) {
+    if(!this.canSendPlain()) {
+      toastNew({
+        langPackKey: POSTING_NOT_ALLOWED_MAP['send_plain']
+      });
+      return;
+    }
+
     RichInputHandler.getInstance().makeFocused(this.messageInput);
 
     const {value: fullValue, caretPos, entities} = getRichValueWithCaret(this.messageInput);
@@ -2192,7 +2246,12 @@ export default class ChatInput {
   }
 
   public onEmojiSelected = (emoji: ReturnType<typeof getEmojiFromElement>, autocomplete: boolean) => {
-    const entity: MessageEntity = emoji.docId ? {_: 'messageEntityCustomEmoji', document_id: emoji.docId, length: emoji.emoji.length, offset: 0} : getEmojiEntityFromEmoji(emoji.emoji);
+    const entity: MessageEntity = emoji.docId ? {
+      _: 'messageEntityCustomEmoji',
+      document_id: emoji.docId,
+      length: emoji.emoji.length,
+      offset: 0
+    } : getEmojiEntityFromEmoji(emoji.emoji);
     this.insertAtCaret(emoji.emoji, entity, autocomplete);
   };
 
@@ -2255,17 +2314,26 @@ export default class ChatInput {
       }
     }
 
-    foundHelper = this.checkInlineAutocomplete(value, foundHelper);
+    let canSendInline: boolean;
+    if(!foundHelper) {
+      canSendInline = await this.chat.canSend('send_inline');
+    }
+
+    foundHelper = this.checkInlineAutocomplete(value, canSendInline, foundHelper);
 
     this.autocompleteHelperController.hideOtherHelpers(foundHelper);
   }
 
-  private checkInlineAutocomplete(value: string, foundHelper?: AutocompleteHelper): AutocompleteHelper {
+  private checkInlineAutocomplete(value: string, canSendInline: boolean, foundHelper?: AutocompleteHelper): AutocompleteHelper {
     let needPlaceholder = false;
 
     const setPreloaderShow = (show: boolean) => {
       if(!this.btnPreloader) {
         return;
+      }
+
+      if(show && !canSendInline) {
+        show = false;
       }
 
       SetTransition({
@@ -2293,7 +2361,7 @@ export default class ChatInput {
           setPreloaderShow(true);
         }
 
-        this.inlineHelper.checkQuery(this.chat.peerId, username, query).then(({user, renderPromise}) => {
+        this.inlineHelper.checkQuery(this.chat.peerId, username, query, canSendInline).then(({user, renderPromise}) => {
           if(needPlaceholder && user.bot_inline_placeholder) {
             this.messageInput.dataset.inlinePlaceholder = user.bot_inline_placeholder;
           }
@@ -2348,8 +2416,9 @@ export default class ChatInput {
       }
     } else {
       const isAnyChat = this.chat.peerId.isAnyChat();
-      if(isAnyChat && !(await this.chat.canSend('send_media'))) {
-        toast(POSTING_MEDIA_NOT_ALLOWED);
+      const flag: ChatRights = 'send_voices';
+      if(isAnyChat && !(await this.chat.canSend(flag))) {
+        toastNew({langPackKey: POSTING_NOT_ALLOWED_MAP[flag]});
         return;
       }
 
@@ -2477,7 +2546,7 @@ export default class ChatInput {
     }
   };
 
-  private onHelperCancel = async(e?: Event, force?: boolean) => {
+  public onHelperCancel = async(e?: Event, force?: boolean) => {
     if(e) {
       cancelEvent(e);
     }
@@ -2770,7 +2839,7 @@ export default class ChatInput {
 
     const flag = document.type === 'sticker' ? 'send_stickers' : (document.type === 'gif' ? 'send_gifs' : 'send_media');
     if(this.chat.peerId.isAnyChat() && !(await this.chat.canSend(flag))) {
-      toast(POSTING_MEDIA_NOT_ALLOWED);
+      toastNew({langPackKey: POSTING_NOT_ALLOWED_MAP[flag]});
       return false;
     }
 
@@ -3111,31 +3180,4 @@ export default class ChatInput {
 
     return container;
   }
-
-  // public saveScroll() {
-  //   this.scrollTop = this.chat.bubbles.scrollable.container.scrollTop;
-  //   this.scrollOffsetTop = this.chatInput.offsetTop;
-  // }
-
-  // public restoreScroll() {
-  //   if(this.chatInput.style.display) return;
-  //   //console.log('input resize', offsetTop, this.chatInput.offsetTop);
-  //   let newOffsetTop = this.chatInput.offsetTop;
-  //   let container = this.chat.bubbles.scrollable.container;
-  //   let scrollTop = container.scrollTop;
-  //   let clientHeight = container.clientHeight;
-  //   let maxScrollTop = container.scrollHeight;
-
-  //   if(newOffsetTop < this.scrollOffsetTop) {
-  //     this.scrollDiff = this.scrollOffsetTop - newOffsetTop;
-  //     container.scrollTop += this.scrollDiff;
-  //   } else if(scrollTop !== this.scrollTop) {
-  //     let endDiff = maxScrollTop - (scrollTop + clientHeight);
-  //     if(endDiff < this.scrollDiff/*  && false */) {
-  //       //container.scrollTop -= endDiff;
-  //     } else {
-  //       container.scrollTop -= this.scrollDiff;
-  //     }
-  //   }
-  // }
 }

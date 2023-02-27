@@ -221,7 +221,7 @@ type DialogElementOptions = {
   wrapOptions?: WrapSomethingOptions,
   isMainList?: boolean
 };
-class DialogElement extends Row {
+export class DialogElement extends Row {
   public dom: DialogDom;
 
   constructor({
@@ -2748,7 +2748,7 @@ export class AppDialogsManager {
       let mediaContainer: HTMLElement;
       const willPrepend: (Promise<any> | HTMLElement)[] = [];
       if(lastMessage && !draftMessage && !isRestricted) {
-        const media: MyDocument | MyPhoto = getMediaFromMessage(lastMessage);
+        const media = getMediaFromMessage(lastMessage, true);
         const videoTypes: Set<MyDocument['type']> = new Set(['video', 'gif', 'round']);
         if(media && (media._ === 'photo' || videoTypes.has(media.type))) {
           const size = choosePhotoSize(media, 20, 20);

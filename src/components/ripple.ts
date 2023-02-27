@@ -149,13 +149,15 @@ export default function ripple(
     // });
   };
 
-  const isRippleUnneeded = (e: Event) => e.target !== elem && (
-    ['BUTTON', 'A'].includes((e.target as HTMLElement).tagName) ||
-      findUpClassName(e.target as HTMLElement, 'c-ripple') !== r
-  ) && (
-    attachListenerTo === elem ||
-      !findUpAsChild(e.target as HTMLElement, attachListenerTo)
-  );
+  const isRippleUnneeded = (e: Event) => {
+    return e.target !== elem && (
+      ['BUTTON', 'A'].includes((e.target as HTMLElement).tagName) ||
+        findUpClassName(e.target as HTMLElement, 'c-ripple') !== r
+    ) && (
+      attachListenerTo === elem ||
+        !findUpAsChild(e.target as HTMLElement, attachListenerTo)
+    ) && !findUpClassName(e.target, 'checkbox-field');
+  };
 
   // TODO: rename this variable
   let touchStartFired = false;

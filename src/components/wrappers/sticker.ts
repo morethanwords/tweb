@@ -85,7 +85,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
   skipRatio?: number,
   static?: boolean,
   managers?: AppManagers,
-  fullThumb?: PhotoSize | VideoSize,
+  fullThumb?: PhotoSize | Extract<VideoSize, VideoSize.videoSize>,
   isOut?: boolean,
   noPremium?: boolean,
   withLock?: boolean,

@@ -82,7 +82,7 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
   loadPromises?: Promise<any>[],
   autoDownload?: ChatAutoDownloadSettings,
   photoSize?: PhotoSize,
-  videoSize?: VideoSize,
+  videoSize?: Extract<VideoSize, VideoSize.videoSize>,
   searchContext?: MediaSearchContext,
   managers?: AppManagers,
   noAutoplayAttribute?: boolean

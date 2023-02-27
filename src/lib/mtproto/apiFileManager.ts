@@ -64,7 +64,7 @@ export type DownloadOptions = {
 
 export type DownloadMediaOptions = {
   media: Photo.photo | Document.document | WebDocument,
-  thumb?: PhotoSize | VideoSize,
+  thumb?: PhotoSize | Extract<VideoSize, VideoSize.videoSize>,
   queueId?: number,
   onlyCache?: boolean,
   downloadId?: string

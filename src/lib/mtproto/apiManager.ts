@@ -37,6 +37,7 @@ import pause from '../../helpers/schedulers/pause';
 import ApiManagerMethods from './api_methods';
 import {getEnvironment} from '../../environment/utils';
 import toggleStorages from '../../helpers/toggleStorages';
+import tsNow from '../../helpers/tsNow';
 
 /* class RotatableArray<T> {
   public array: Array<T> = [];
@@ -250,7 +251,7 @@ export class ApiManager extends ApiManagerMethods {
 
   public async setUserAuth(userAuth: UserAuth | UserId) {
     if(typeof(userAuth) === 'string' || typeof(userAuth) === 'number') {
-      userAuth = {dcID: 0, date: Date.now() / 1000 | 0, id: userAuth.toPeerId(false)};
+      userAuth = {dcID: 0, date: tsNow(true), id: userAuth.toPeerId(false)};
     }
 
     this.rootScope.dispatchEvent('user_auth', userAuth);

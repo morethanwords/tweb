@@ -45,6 +45,7 @@ import debounce from '../../helpers/schedulers/debounce';
 import pause from '../../helpers/schedulers/pause';
 import {InternalLink, InternalLinkTypeMap, INTERNAL_LINK_TYPE} from './internalLink';
 import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport';
+import IMAGE_MIME_TYPES_SUPPORTED from '../../environment/imageMimeTypesSupport';
 import {NULL_PEER_ID} from '../mtproto/mtproto_config';
 import telegramMeWebManager from '../mtproto/telegramMeWebManager';
 import {ONE_DAY} from '../../helpers/date';
@@ -102,6 +103,8 @@ import findUpTag from '../../helpers/dom/findUpTag';
 import {MTAppConfig} from '../mtproto/appConfig';
 import PopupForward from '../../components/popups/forward';
 import AppBackgroundTab from '../../components/sidebarLeft/tabs/background';
+import partition from '../../helpers/array/partition';
+import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -1728,24 +1731,43 @@ export class AppImManager extends EventListenerBase<{
         return;
       }
 
+      const rights = await PopupNewMedia.canSend(this.chat.peerId, true);
+
       const _dropsContainer = newMediaPopup ? mediaDropsContainer : dropsContainer;
       const _drops = newMediaPopup ? mediaDrops : drops;
 
       if(mount && !_drops.length) {
         const force = isFiles && !types.length; // * can't get file items not from 'drop' on Safari
 
-        const foundMedia = types.filter((t) => MEDIA_MIME_TYPES_SUPPORTED.has(t)).length;
-        // const foundDocuments = types.length - foundMedia;
+        const [foundMedia, foundDocuments] = partition(types, (t) => MEDIA_MIME_TYPES_SUPPORTED.has(t));
+        const [foundPhotos, foundVideos] = partition(foundMedia, (t) => IMAGE_MIME_TYPES_SUPPORTED.has(t));
 
-        this.log('drag files', types);
+        if(!rights.send_docs) {
+          foundDocuments.length = 0;
+        } else {
+          foundDocuments.push(...foundMedia);
+        }
+
+        if(!rights.send_photos) {
+          foundPhotos.forEach((mimeType) => indexOfAndSplice(foundMedia, mimeType));
+          foundPhotos.length = 0;
+        }
+
+        if(!rights.send_videos) {
+          foundVideos.forEach((mimeType) => indexOfAndSplice(foundMedia, mimeType));
+          foundVideos.length = 0;
+        }
+
+        this.log('drag files', types, foundMedia, foundDocuments, foundPhotos, foundVideos);
 
         if(newMediaPopup) {
           newMediaPopup.appendDrops(_dropsContainer);
 
-          if(types.length || force) {
+          const length = (rights.send_docs ? [foundDocuments] : [foundPhotos, foundVideos]).reduce((acc, v) => acc + v.length, 0);
+          if(length || force) {
             _drops.push(new ChatDragAndDrop(_dropsContainer, {
               header: 'Preview.Dragging.AddItems',
-              headerArgs: [types.length],
+              headerArgs: [length],
               onDrop: (e: DragEvent) => {
                 toggle(e, false);
                 this.log('drop', e);
@@ -1754,7 +1776,7 @@ export class AppImManager extends EventListenerBase<{
             }));
           }
         } else {
-          if(types.length || force) {
+          if(foundDocuments.length || force) {
             _drops.push(new ChatDragAndDrop(_dropsContainer, {
               icon: 'dragfiles',
               header: 'Chat.DropTitle',
@@ -1767,8 +1789,7 @@ export class AppImManager extends EventListenerBase<{
             }));
           }
 
-          // if((foundMedia && !foundDocuments) || force) {
-          if(foundMedia || force) {
+          if(foundMedia.length || force) {
             _drops.push(new ChatDragAndDrop(_dropsContainer, {
               icon: 'dragmedia',
               header: 'Chat.DropTitle',

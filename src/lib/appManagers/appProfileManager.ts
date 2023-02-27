@@ -20,6 +20,8 @@ import getParticipantPeerId from './utils/chats/getParticipantPeerId';
 import ctx from '../../environment/ctx';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
 import generateMessageId from './utils/messageId/generateMessageId';
+import assumeType from '../../helpers/assumeType';
+import makeError from '../../helpers/makeError';
 
 export type UserTyping = Partial<{userId: UserId, action: SendMessageAction, timeout: number}>;
 
@@ -34,56 +36,11 @@ export class AppProfileManager extends AppManager {
 
   protected after() {
     this.apiUpdatesManager.addMultipleEventsListeners({
-      updateChatParticipants: (update) => {
-        const participants = update.participants;
-        if(participants._ === 'chatParticipants') {
-          const chatId = participants.chat_id;
-          const chatFull = this.chatsFull[chatId] as ChatFull.chatFull;
-          if(chatFull !== undefined) {
-            chatFull.participants = participants;
-            this.rootScope.dispatchEvent('chat_full_update', chatId);
-          }
-        }
-      },
+      updateChatParticipants: this.onUpdateChatParticipants,
 
-      updateChatParticipantAdd: (update) => {
-        const chatFull = this.chatsFull[update.chat_id] as ChatFull.chatFull;
-        if(chatFull !== undefined) {
-          const _participants = chatFull.participants as ChatParticipants.chatParticipants;
-          const participants = _participants.participants || [];
-          for(let i = 0, length = participants.length; i < length; i++) {
-            if(participants[i].user_id === update.user_id) {
-              return;
-            }
-          }
+      updateChatParticipantAdd: this.onUpdateChatParticipantAdd,
 
-          participants.push({
-            _: 'chatParticipant',
-            user_id: update.user_id,
-            inviter_id: update.inviter_id,
-            date: tsNow(true)
-          });
-
-          _participants.version = update.version;
-          this.rootScope.dispatchEvent('chat_full_update', update.chat_id);
-        }
-      },
-
-      updateChatParticipantDelete: (update) => {
-        const chatFull = this.chatsFull[update.chat_id] as ChatFull.chatFull;
-        if(chatFull !== undefined) {
-          const _participants = chatFull.participants as ChatParticipants.chatParticipants;
-          const participants = _participants.participants || [];
-          for(let i = 0, length = participants.length; i < length; i++) {
-            if(participants[i].user_id === update.user_id) {
-              participants.splice(i, 1);
-              _participants.version = update.version;
-              this.rootScope.dispatchEvent('chat_full_update', update.chat_id);
-              return;
-            }
-          }
-        }
-      },
+      updateChatParticipantDelete: this.onUpdateChatParticipantDelete,
 
       updateUserTyping: this.onUpdateUserTyping,
       updateChatUserTyping: this.onUpdateUserTyping,
@@ -332,7 +289,68 @@ export class AppProfileManager extends AppManager {
     });
   }
 
-  public getChannelParticipants(id: ChatId, filter: ChannelParticipantsFilter = {_: 'channelParticipantsRecent'}, limit = 200, offset = 0) {
+  public getParticipants(
+    id: ChatId,
+    filter: ChannelParticipantsFilter = {_: 'channelParticipantsRecent'},
+    limit = 200,
+    offset = 0
+  ) {
+    if(this.appChatsManager.isChannel(id)) {
+      return this.getChannelParticipants(id, filter, limit, offset);
+    }
+
+    return Promise.resolve(this.getChatFull(id)).then((chatFull) => {
+      const chatParticipants = (chatFull as ChatFull.chatFull).participants;
+      if(chatParticipants._ !== 'chatParticipants') {
+        throw makeError('CHAT_PRIVATE');
+      }
+
+      if(filter._ === 'channelParticipantsSearch' && filter.q.trim()) {
+        const index = this.appUsersManager.createSearchIndex();
+        chatParticipants.participants.forEach((chatParticipant) => {
+          const userId = chatParticipant.user_id;
+          index.indexObject(userId, this.appUsersManager.getUserSearchText(userId));
+        });
+
+        const found = index.search(filter.q);
+        const filteredParticipants = chatParticipants.participants.filter((chatParticipant) => {
+          return found.has(chatParticipant.user_id);
+        });
+
+        return {...chatParticipants, participants: filteredParticipants};
+      }
+
+      return chatParticipants;
+    });
+  }
+
+  public getParticipant(id: ChatId, peerId: PeerId) {
+    if(this.appChatsManager.isChannel(id)) {
+      return this.getChannelParticipant(id, peerId);
+    }
+
+    return this.getParticipants(id).then((chatParticipants) => {
+      assumeType<ChatParticipants.chatParticipants>(chatParticipants);
+      const found = chatParticipants.participants.find((chatParticipant) => {
+        if(getParticipantPeerId(chatParticipant) === peerId) {
+          return chatParticipant;
+        }
+      });
+
+      if(!found) {
+        throw makeError('USER_NOT_PARTICIPANT');
+      }
+
+      return found;
+    });
+  }
+
+  public getChannelParticipants(
+    id: ChatId,
+    filter: ChannelParticipantsFilter = {_: 'channelParticipantsRecent'},
+    limit = 200,
+    offset = 0
+  ) {
     if(filter._ === 'channelParticipantsRecent') {
       const chat = this.appChatsManager.getChat(id);
       if(chat?.pFlags && (
@@ -647,6 +665,67 @@ export class AppProfileManager extends AppManager {
     return peerId + (threadId ? `_${threadId}` : '');
   }
 
+  public getPeerTypings(peerId: PeerId, threadId?: number) {
+    return this.typingsInPeer[this.getTypingsKey(peerId, threadId)];
+  }
+
+  private onUpdateChatParticipants = (update: Update.updateChatParticipants) => {
+    const participants = update.participants;
+    if(participants._ !== 'chatParticipants') {
+      return;
+    }
+
+    const chatId = participants.chat_id;
+    const chatFull = this.chatsFull[chatId] as ChatFull.chatFull;
+    if(chatFull !== undefined) {
+      chatFull.participants = participants;
+      this.rootScope.dispatchEvent('chat_full_update', chatId);
+    }
+  };
+
+  private onUpdateChatParticipantAdd = (update: Update.updateChatParticipantAdd) => {
+    const chatFull = this.chatsFull[update.chat_id] as ChatFull.chatFull;
+    if(chatFull === undefined) {
+      return;
+    }
+
+    const _participants = chatFull.participants as ChatParticipants.chatParticipants;
+    const participants = _participants.participants || [];
+    for(let i = 0, length = participants.length; i < length; i++) {
+      if(participants[i].user_id === update.user_id) {
+        return;
+      }
+    }
+
+    participants.push({
+      _: 'chatParticipant',
+      user_id: update.user_id,
+      inviter_id: update.inviter_id,
+      date: tsNow(true)
+    });
+
+    _participants.version = update.version;
+    this.rootScope.dispatchEvent('chat_full_update', update.chat_id);
+  };
+
+  private onUpdateChatParticipantDelete = (update: Update.updateChatParticipantDelete) => {
+    const chatFull = this.chatsFull[update.chat_id] as ChatFull.chatFull;
+    if(chatFull === undefined) {
+      return;
+    }
+
+    const _participants = chatFull.participants as ChatParticipants.chatParticipants;
+    const participants = _participants.participants || [];
+    for(let i = 0, length = participants.length; i < length; i++) {
+      if(participants[i].user_id === update.user_id) {
+        participants.splice(i, 1);
+        _participants.version = update.version;
+        this.rootScope.dispatchEvent('chat_full_update', update.chat_id);
+        return;
+      }
+    }
+  };
+
   private onUpdateUserTyping = (update: Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChannelUserTyping) => {
     const fromId = (update as Update.updateUserTyping).user_id ?
       (update as Update.updateUserTyping).user_id.toPeerId() :
@@ -741,8 +820,4 @@ export class AppProfileManager extends AppManager {
 
     this.rootScope.dispatchEvent('peer_block', {peerId, blocked: update.blocked});
   };
-
-  public getPeerTypings(peerId: PeerId, threadId?: number) {
-    return this.typingsInPeer[this.getTypingsKey(peerId, threadId)];
-  }
 }

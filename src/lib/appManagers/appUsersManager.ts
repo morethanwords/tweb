@@ -431,7 +431,7 @@ export class AppUsersManager extends AppManager {
     return index.search(query).has(user.id);
   }
 
-  private createSearchIndex() {
+  public createSearchIndex() {
     return new SearchIndex<UserId>({
       clearBadChars: true,
       ignoreCase: true,

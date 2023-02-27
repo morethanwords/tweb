@@ -91,6 +91,14 @@ $row-border-radius: $border-radius-medium;
         color: var(--secondary-text-color);
       }
     }
+
+    &-row {
+      &.with-delimiter {
+        .row-title:first-child {
+          border-right: 1px solid var(--border-color);
+        }
+      }
+    }
   }
 
   &-title-right,
@@ -319,6 +327,12 @@ $row-border-radius: $border-radius-medium;
     &.active {
       background-color: var(--light-primary-color) !important;
       color: var(--primary-color);
+    }
+  }
+
+  &.accordion-toggler {
+    .checkbox-field-toggle {
+      pointer-events: all !important;
     }
   }
 }

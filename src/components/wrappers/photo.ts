@@ -35,7 +35,7 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
   isOut?: boolean,
   lazyLoadQueue?: LazyLoadQueue,
   middleware?: Middleware,
-  size?: PhotoSize | VideoSize,
+  size?: PhotoSize | Extract<VideoSize, VideoSize.videoSize>,
   withoutPreloader?: boolean,
   loadPromises?: Promise<any>[],
   autoDownloadSize?: number,

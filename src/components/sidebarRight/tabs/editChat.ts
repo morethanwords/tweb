@@ -181,10 +181,15 @@ export default class AppEditChatTab extends SliderSuperTab {
 
       if(canChangePermissions && !isBroadcast) {
         const flags = [
-          'send_messages',
-          'send_media',
           'send_stickers',
           'send_polls',
+          'send_photos',
+          'send_videos',
+          'send_roundvideos',
+          'send_audios',
+          'send_voices',
+          'send_docs',
+          'send_plain',
           'embed_links',
           'invite_users',
           'pin_messages',
