@@ -635,7 +635,7 @@ export default class ChatBubbles {
       // const scrollSaver = this.createScrollSaver(false);
       // scrollSaver.save();
 
-      const speechTextDiv = bubble.querySelector('.document-wrapper') as HTMLElement;
+      const speechTextDiv = bubble.querySelector('.document-wrapper, .quote-text.has-document') as HTMLElement;
       const speechRecognitionIcon = audioElement.querySelector('.audio-to-text-button span');
       const speechRecognitionLoader = audioElement.querySelector('.loader');
       if(speechTextDiv && speechRecognitionIcon) {
@@ -644,7 +644,12 @@ export default class ChatBubbles {
           transcribedText = document.createElement('div');
           transcribedText.classList.add('audio-transcribed-text');
           transcribedText.append(document.createTextNode(''));
-          audioElement.before(transcribedText);
+
+          if(speechTextDiv.classList.contains('document-wrapper')) {
+            audioElement.before(transcribedText);
+          } else {
+            speechTextDiv.append(transcribedText);
+          }
 
           if(pending) {
             const dots = document.createElement('span');

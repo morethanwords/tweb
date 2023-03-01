@@ -2436,6 +2436,11 @@ $bubble-border-radius-big: 12px;
     }
   }
 
+  .web .audio-transcribed-text {
+    margin-bottom: 0;
+    order: 4;
+  }
+
   .audio-transcribed-text {
     margin-bottom: .75rem;
     margin-top: .25rem;

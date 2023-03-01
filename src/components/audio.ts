@@ -188,7 +188,7 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
     speechRecognitionDiv.append(speechRecognitionIcon);
 
     speechRecognitionDiv.onclick = () => {
-      const speechTextDiv = audioEl.parentElement.querySelector<HTMLElement>('.audio-transcribed-text');
+      const speechTextDiv = (findUpClassName(audioEl, 'document-wrapper') || findUpClassName(audioEl, 'quote-text')).querySelector<HTMLElement>('.audio-transcribed-text');
       if(audioEl.transcriptionState === 0) {
         if(speechTextDiv) {
           speechTextDiv.classList.remove('hide');
