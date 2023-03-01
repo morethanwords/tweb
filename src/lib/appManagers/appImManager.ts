@@ -1061,13 +1061,14 @@ export class AppImManager extends EventListenerBase<{
 
       if(
         chat?.input?.messageInput &&
-        e.target !== chat.input.messageInput &&
+        target !== chat.input.messageInput &&
         target.tagName !== 'INPUT' &&
         !target.isContentEditable &&
         !IS_TOUCH_SUPPORTED &&
         (!mediaSizes.isMobile || this.tabId === APP_TABS.CHAT) &&
         !chat.selection.isSelecting &&
-        !chat.input.recording
+        !chat.input.recording &&
+        chat.input.messageInput.isContentEditable
       ) {
         chat.input.messageInput.focus();
         placeCaretAtEnd(chat.input.messageInput);

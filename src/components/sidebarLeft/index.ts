@@ -209,7 +209,7 @@ export class AppSidebarLeft extends SidebarSlider {
         });
       },
       verify: () => App.isMainDomain
-    }, {
+    }, /* {
       icon: 'char w',
       text: 'ChatList.Menu.SwitchTo.Webogram',
       onClick: () => {
@@ -218,7 +218,7 @@ export class AppSidebarLeft extends SidebarSlider {
         });
       },
       verify: () => App.isMainDomain
-    }, {
+    }, */ {
       icon: 'download',
       text: 'PWA.Install',
       onClick: () => {

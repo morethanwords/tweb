@@ -3440,9 +3440,15 @@ export class AppMessagesManager extends AppManager {
       return true;
     }
 
-    const canEditMessageInPeer = this.appPeersManager.isBroadcast(message.peerId) ?
-      this.appChatsManager.hasRights(message.peerId.toChatId(), 'edit_messages') :
-      message.pFlags.out;
+    const {peerId} = message;
+
+    const canEditMessageInPeer = this.appPeersManager.isBroadcast(peerId) ?
+      this.appChatsManager.hasRights(peerId.toChatId(), 'edit_messages') :
+      (
+        peerId.isAnyChat() && kind === 'text' ?
+          this.appChatsManager.hasRights(peerId.toChatId(), 'send_plain') || this.appChatsManager.hasRights(peerId.toChatId(), 'send_media') :
+          true
+      ) && message.pFlags.out;
 
     if(
       !canEditMessageInPeer || (

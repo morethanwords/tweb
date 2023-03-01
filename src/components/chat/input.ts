@@ -252,6 +252,7 @@ export default class ChatInput {
   public sendAsPeerId: PeerId;
 
   private replyInTopicOverlay: HTMLDivElement;
+  private restoreInputLock: () => void;
 
   constructor(
     private chat: Chat,
@@ -368,12 +369,18 @@ export default class ChatInput {
     this.inputContainer.append(c);
   }
 
+  private createButtonIcon(...args: Parameters<typeof ButtonIcon>) {
+    const button = ButtonIcon(...args);
+    button.tabIndex = -1;
+    return button;
+  }
+
   public constructPeerHelpers() {
     this.replyElements.container = document.createElement('div');
     this.replyElements.container.classList.add('reply-wrapper');
 
-    this.replyElements.iconBtn = ButtonIcon('');
-    this.replyElements.cancelBtn = ButtonIcon('close reply-cancel', {noRipple: true});
+    this.replyElements.iconBtn = this.createButtonIcon('');
+    this.replyElements.cancelBtn = this.createButtonIcon('close reply-cancel', {noRipple: true});
 
     this.replyElements.container.append(this.replyElements.iconBtn, this.replyElements.cancelBtn);
 
@@ -501,7 +508,7 @@ export default class ChatInput {
     this.replyInTopicOverlay.classList.add('reply-in-topic-overlay', 'hide');
     this.replyInTopicOverlay.append(i18n('Chat.Input.ReplyToAnswer'));
 
-    this.btnToggleEmoticons = ButtonIcon('none toggle-emoticons', {noRipple: true});
+    this.btnToggleEmoticons = this.createButtonIcon('none toggle-emoticons', {noRipple: true});
 
     this.inputMessageContainer = document.createElement('div');
     this.inputMessageContainer.classList.add('input-message-container');
@@ -530,7 +537,7 @@ export default class ChatInput {
       });
     }, {listenerSetter: this.listenerSetter});
 
-    this.btnScheduled = ButtonIcon('scheduled btn-scheduled float hide', {noRipple: true});
+    this.btnScheduled = this.createButtonIcon('scheduled btn-scheduled float hide', {noRipple: true});
 
     attachClickEvent(this.btnScheduled, (e) => {
       this.appImManager.openScheduled(this.chat.peerId);
@@ -554,7 +561,7 @@ export default class ChatInput {
       });
     });
 
-    this.btnToggleReplyMarkup = ButtonIcon('botcom toggle-reply-markup float hide', {noRipple: true});
+    this.btnToggleReplyMarkup = this.createButtonIcon('botcom toggle-reply-markup float hide', {noRipple: true});
     this.replyKeyboard = new ReplyKeyboard({
       appendTo: this.rowsWrapper,
       listenerSetter: this.listenerSetter,
@@ -780,7 +787,7 @@ export default class ChatInput {
     this.inlineHelper = new InlineHelper(this.rowsWrapper, this.autocompleteHelperController, this.chat, this.managers);
     this.rowsWrapper.append(this.newMessageWrapper);
 
-    this.btnCancelRecord = ButtonIcon('binfilled btn-circle btn-record-cancel chat-secondary-button');
+    this.btnCancelRecord = this.createButtonIcon('binfilled btn-circle btn-record-cancel chat-secondary-button');
 
     this.btnSendContainer = document.createElement('div');
     this.btnSendContainer.classList.add('btn-send-container');
@@ -788,7 +795,7 @@ export default class ChatInput {
     this.recordRippleEl = document.createElement('div');
     this.recordRippleEl.classList.add('record-ripple');
 
-    this.btnSend = ButtonIcon('none btn-circle btn-send animated-button-icon');
+    this.btnSend = this.createButtonIcon('none btn-circle btn-send animated-button-icon');
     this.btnSend.insertAdjacentHTML('afterbegin', `
     <span class="tgico tgico-send"></span>
     <span class="tgico tgico-schedule"></span>
@@ -1591,7 +1598,10 @@ export default class ChatInput {
       return;
     }
 
+    const oldKey = i.key;
     i.compareAndUpdate({key});
+
+    return {oldKey, newKey: key};
   }
 
   private filterAttachMenuButtons() {
@@ -1617,15 +1627,23 @@ export default class ChatInput {
       chatInput.classList.remove('no-transition');
     }
 
-    this.updateMessageInputPlaceholder(placeholderKey);
+    const isEditingAndLocked = canSend && !canSendPlain && this.restoreInputLock;
 
-    if(!canSend || !canSendPlain) {
+    !isEditingAndLocked && this.updateMessageInputPlaceholder(placeholderKey);
+
+    if(isEditingAndLocked) {
+      this.restoreInputLock = () => {
+        this.updateMessageInputPlaceholder(placeholderKey);
+        this.messageInput.contentEditable = 'false';
+      };
+    } else if(!canSend || !canSendPlain) {
       messageInput.contentEditable = 'false';
 
       if(!canSendPlain) {
         this.messageInputField.onFakeInput(undefined, true);
       }
     } else {
+      this.restoreInputLock = undefined;
       messageInput.contentEditable = 'true';
       this.setDraft(undefined, false);
 
@@ -1650,6 +1668,7 @@ export default class ChatInput {
       withLinebreaks: true
     });
 
+    this.messageInputField.input.tabIndex = -1;
     this.messageInputField.input.classList.replace('input-field-input', 'input-message-input');
     this.messageInputField.inputFake.classList.replace('input-field-input', 'input-message-input');
     this.messageInput = this.messageInputField.input;
@@ -2354,7 +2373,7 @@ export default class ChatInput {
         foundHelper = this.inlineHelper;
 
         if(!this.btnPreloader) {
-          this.btnPreloader = ButtonIcon('none btn-preloader float show disable-hover', {noRipple: true});
+          this.btnPreloader = this.createButtonIcon('none btn-preloader float show disable-hover', {noRipple: true});
           putPreloader(this.btnPreloader, true);
           this.inputMessageContainer.parentElement.insertBefore(this.btnPreloader, this.inputMessageContainer.nextSibling);
         } else {
@@ -2901,12 +2920,27 @@ export default class ChatInput {
 
     let input = wrapDraftText(message.message, {entities: message.totalEntities, wrappingForPeerId: this.chat.peerId});
     const f = async() => {
+      let restoreInputLock: () => void;
+      if(!this.messageInput.isContentEditable) {
+        const placeholderKey = await this.getPlaceholderKey(true);
+        const {contentEditable} = this.messageInput;
+        this.messageInput.contentEditable = 'true';
+        const {oldKey} = this.updateMessageInputPlaceholder(placeholderKey);
+
+        restoreInputLock = () => {
+          this.messageInput.contentEditable = contentEditable;
+          this.updateMessageInputPlaceholder(oldKey);
+        };
+      }
+
       const replyFragment = await wrapMessageForReply({message, usingMids: [message.mid]});
       this.setTopInfo('edit', f, i18n('AccDescrEditing'), replyFragment, input, message);
 
       this.editMsgId = mid;
       this.editMessage = message;
       input = undefined;
+
+      this.restoreInputLock = restoreInputLock;
     };
     f();
   }
@@ -3084,6 +3118,11 @@ export default class ChatInput {
     this.editMsgId = this.editMessage = undefined;
     this.helperType = this.helperFunc = undefined;
 
+    if(this.restoreInputLock) {
+      this.restoreInputLock?.();
+      this.restoreInputLock = undefined;
+    }
+
     if(this.chat.container.classList.contains('is-helper-active')) {
       appNavigationController.removeByType('input-helper');
       this.chat.container.classList.remove('is-helper-active');
@@ -3139,7 +3178,7 @@ export default class ChatInput {
     const oldReply = replyParent.lastElementChild.previousElementSibling;
     const haveReply = oldReply.classList.contains('reply');
 
-    this.replyElements.iconBtn.replaceWith(this.replyElements.iconBtn = ButtonIcon((type === 'webpage' ? 'link' : type) + ' active reply-icon', {noRipple: true}));
+    this.replyElements.iconBtn.replaceWith(this.replyElements.iconBtn = this.createButtonIcon((type === 'webpage' ? 'link' : type) + ' active reply-icon', {noRipple: true}));
     const {container} = wrapReply(title, subtitle, this.chat.animationGroup, message);
     if(haveReply) {
       oldReply.replaceWith(container);

@@ -45,6 +45,7 @@ import PopupStickers from '../popups/stickers';
 import {hideToast, toastNew} from '../toast';
 import wrapStickerAnimation from './stickerAnimation';
 import framesCache from '../../helpers/framesCache';
+import {IS_MOBILE} from '../../environment/userAgent';
 
 // https://github.com/telegramdesktop/tdesktop/blob/master/Telegram/SourceFiles/history/view/media/history_view_sticker.cpp#L40
 export const STICKER_EFFECT_MULTIPLIER = 1 + 0.245 * 2;
@@ -753,6 +754,11 @@ export async function onEmojiStickerClick({event, container, managers, peerId, m
     return;
   }
 
+  const activeAnimations: Set<{}> = (container as any).activeAnimations ??= new Set();
+  if(activeAnimations.size >= (IS_MOBILE ? 3 : 5)) {
+    return;
+  }
+
   const doc = await managers.appStickersManager.getAnimatedEmojiSticker(emoji, true);
   if(!doc) {
     return;
@@ -763,7 +769,7 @@ export async function onEmojiStickerClick({event, container, managers, peerId, m
     v: 1
   };
 
-  const sendInteractionThrottled: () => void = (container as any).sendInteractionThrottled = throttle(() => {
+  const sendInteractionThrottled: () => void = (container as any).sendInteractionThrottled ??= throttle(() => {
     const length = data.a.length;
     if(!length) {
       return;
@@ -789,6 +795,9 @@ export async function onEmojiStickerClick({event, container, managers, peerId, m
     data.a.length = 0;
   }, 1000, false);
 
+  const o = {};
+  activeAnimations.add(o);
+
   const isOut = bubble ? bubble.classList.contains('is-out') : undefined;
   const {animationDiv} = wrapStickerAnimation({
     doc,
@@ -797,7 +806,10 @@ export async function onEmojiStickerClick({event, container, managers, peerId, m
     size: 360,
     target: container,
     play: true,
-    withRandomOffset: true
+    withRandomOffset: true,
+    onUnmount: () => {
+      activeAnimations.delete(o);
+    }
   });
 
   if(isOut !== undefined && !isOut) {

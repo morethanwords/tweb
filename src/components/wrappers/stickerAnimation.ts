@@ -30,7 +30,8 @@ export default function wrapStickerAnimation({
   fullThumb,
   withRandomOffset,
   relativeEffect,
-  loopEffect
+  loopEffect,
+  onUnmount
 }: {
   size: number,
   doc: MyDocument,
@@ -43,7 +44,8 @@ export default function wrapStickerAnimation({
   fullThumb?: PhotoSize | Extract<VideoSize, VideoSize.videoSize>,
   withRandomOffset?: boolean,
   relativeEffect?: boolean,
-  loopEffect?: boolean
+  loopEffect?: boolean,
+  onUnmount?: () => void
 }) {
   const animationDiv = document.createElement('div');
   animationDiv.classList.add('emoji-animation');
@@ -58,6 +60,7 @@ export default function wrapStickerAnimation({
     animation?.remove();
     animationDiv.remove();
     appImManager.chat.bubbles.scrollable.container.removeEventListener('scroll', onScroll);
+    onUnmount?.();
   };
 
   const middlewareHelper = middleware?.create() ?? getMiddleware();
