@@ -26,7 +26,7 @@ import getProxiedManagers from './lib/appManagers/getProxiedManagers';
 import themeController from './helpers/themeController';
 import overlayCounter from './helpers/overlayCounter';
 import singleInstance from './lib/mtproto/singleInstance';
-import parseUriParams from './helpers/string/parseUriParams';
+import {parseUriParamsLine} from './helpers/string/parseUriParams';
 import Modes from './config/modes';
 import {AuthState} from './types';
 import {IS_BETA} from './config/debug';
@@ -283,7 +283,7 @@ document.addEventListener('DOMContentLoaded', async() => {
 
   const hash = location.hash;
   const splitted = hash.split('?');
-  const params = parseUriParams(hash, splitted);
+  const params = parseUriParamsLine(splitted[1] ?? splitted[0]);
   if(params.tgWebAuthToken && authState._ !== 'authStateSignedIn') {
     const data: AuthState.signImport['data'] = {
       token: params.tgWebAuthToken,
