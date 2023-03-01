@@ -47,6 +47,7 @@ import VIDEO_MIME_TYPES_SUPPORTED from '../../environment/videoMimeTypesSupport'
 import rootScope from '../../lib/rootScope';
 import shake from '../../helpers/dom/shake';
 import AUDIO_MIME_TYPES_SUPPORTED from '../../environment/audioMimeTypeSupport';
+import liteMode from '../../helpers/liteMode';
 
 type SendFileParams = SendFileDetails & {
   file?: File,
@@ -559,7 +560,7 @@ export default class PopupNewMedia extends PopupElement {
           langPackKey: key
         });
 
-        if(rootScope.settings.animationsEnabled) {
+        if(liteMode.isAvailable('animations')) {
           shake(this.body);
         }
       }

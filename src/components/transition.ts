@@ -10,6 +10,7 @@ import {dispatchHeavyAnimationEvent} from '../hooks/useHeavyAnimationCheck';
 import whichChild from '../helpers/dom/whichChild';
 import cancelEvent from '../helpers/dom/cancelEvent';
 import ListenerSetter from '../helpers/listenerSetter';
+import liteMode from '../helpers/liteMode';
 
 function makeTransitionFunction(options: TransitionFunction) {
   return options;
@@ -216,7 +217,7 @@ const TransitionSlider = (options: TransitionSliderOptions) => {
 
     const to = content.children[id] as HTMLElement;
 
-    if(!rootScope.settings.animationsEnabled || (prevId === -1 && !animateFirst)) {
+    if(!liteMode.isAvailable('animations') || (prevId === -1 && !animateFirst)) {
       animate = false;
     }
 

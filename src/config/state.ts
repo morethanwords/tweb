@@ -4,15 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {AppMediaPlaybackController} from '../components/appMediaPlaybackController';
+import type {LiteModeKey} from '../helpers/liteMode';
+import type {AppMediaPlaybackController} from '../components/appMediaPlaybackController';
+import type {TopPeerType, MyTopPeer} from '../lib/appManagers/appUsersManager';
+import type {AutoDownloadSettings, BaseTheme, NotifyPeer, PeerNotifySettings, Theme, ThemeSettings, WallPaper} from '../layer';
+import type DialogsStorage from '../lib/storages/dialogs';
+import type FiltersStorage from '../lib/storages/filters';
+import type {AuthState, Modify} from '../types';
 import {IS_MOBILE} from '../environment/userAgent';
 import getTimeFormat from '../helpers/getTimeFormat';
 import {nextRandomUint} from '../helpers/random';
-import {AutoDownloadSettings, BaseTheme, NotifyPeer, PeerNotifySettings, Theme, ThemeSettings, WallPaper} from '../layer';
-import {TopPeerType, MyTopPeer} from '../lib/appManagers/appUsersManager';
-import DialogsStorage from '../lib/storages/dialogs';
-import FiltersStorage from '../lib/storages/filters';
-import {AuthState, Modify} from '../types';
 import App from './app';
 
 const STATE_VERSION = App.version;
@@ -74,7 +75,7 @@ export type State = {
     messagesTextSize: number,
     distanceUnit: 'kilometers' | 'miles',
     sendShortcut: 'enter' | 'ctrlEnter',
-    animationsEnabled: boolean,
+    animationsEnabled?: boolean, // ! DEPRECATED
     autoDownload: {
       contacts?: boolean, // ! DEPRECATED
       private?: boolean, // ! DEPRECATED
@@ -85,7 +86,7 @@ export type State = {
       file: AutoDownloadPeerTypeSettings
     },
     autoDownloadNew: AutoDownloadSettings,
-    autoPlay: {
+    autoPlay?: { // ! DEPRECATED
       gifs: boolean,
       videos: boolean
     },
@@ -104,7 +105,8 @@ export type State = {
       sound: boolean
     },
     nightTheme?: boolean, // ! DEPRECATED
-    timeFormat: 'h12' | 'h23'
+    timeFormat: 'h12' | 'h23',
+    liteMode: {[key in LiteModeKey]: boolean}
   },
   playbackParams: ReturnType<AppMediaPlaybackController['getPlaybackParams']>,
   keepSigned: boolean,
@@ -233,7 +235,6 @@ export const STATE_INIT: State = {
     messagesTextSize: 16,
     distanceUnit: 'kilometers',
     sendShortcut: 'enter',
-    animationsEnabled: true,
     autoDownload: {
       photo: {
         contacts: true,
@@ -265,10 +266,6 @@ export const STATE_INIT: State = {
       video_size_max: 15728640,
       video_upload_maxbitrate: 100
     },
-    autoPlay: {
-      gifs: true,
-      videos: true
-    },
     stickers: {
       suggest: true,
       loop: true
@@ -285,7 +282,26 @@ export const STATE_INIT: State = {
     notifications: {
       sound: false
     },
-    timeFormat: getTimeFormat()
+    timeFormat: getTimeFormat(),
+    liteMode: {
+      all: false,
+      animations: false,
+      chat: false,
+      chat_background: false,
+      chat_spoilers: false,
+      effects: false,
+      effects_premiumstickers: false,
+      effects_reactions: false,
+      effects_emoji: false,
+      emoji: false,
+      emoji_messages: false,
+      emoji_panel: false,
+      gif: false,
+      stickers: false,
+      stickers_chat: false,
+      stickers_panel: false,
+      video: false
+    }
   },
   playbackParams: {
     volume: 1,

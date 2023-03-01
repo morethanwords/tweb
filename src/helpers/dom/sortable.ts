@@ -8,6 +8,7 @@ import {ScrollableBase} from '../../components/scrollable';
 import SwipeHandler from '../../components/swipeHandler';
 import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
 import rootScope from '../../lib/rootScope';
+import liteMode from '../liteMode';
 import {Middleware} from '../middleware';
 import clamp from '../number/clamp';
 import safeAssign from '../object/safeAssign';
@@ -156,7 +157,7 @@ export default class Sortable {
       attachClickEvent(document.body, cancelEvent, {capture: true, once: true});
     }
 
-    if(rootScope.settings.animationsEnabled) {
+    if(liteMode.isAvailable('animations')) {
       await pause(250);
     }
 

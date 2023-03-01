@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import liteMode from '../helpers/liteMode';
 import rootScope from '../lib/rootScope';
 
 type SetTransitionOptions = {
@@ -36,7 +37,7 @@ const SetTransition = (options: SetTransitionOptions) => {
   //   return;
   // }
 
-  if(useRafs && rootScope.settings.animationsEnabled && duration) {
+  if(useRafs && liteMode.isAvailable('animations') && duration) {
     element.dataset.raf = '' + window.requestAnimationFrame(() => {
       delete element.dataset.raf;
       SetTransition({
@@ -64,7 +65,7 @@ const SetTransition = (options: SetTransitionOptions) => {
   };
 
   onTransitionStart?.();
-  if(!rootScope.settings.animationsEnabled || !duration) {
+  if(!liteMode.isAvailable('animations') || !duration) {
     element.classList.remove('animating', 'backwards');
     afterTimeout();
     return;

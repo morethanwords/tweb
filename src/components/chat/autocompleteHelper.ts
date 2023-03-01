@@ -12,6 +12,7 @@ import appNavigationController, {NavigationItem} from '../appNavigationControlle
 import SetTransition from '../singleTransition';
 import AutocompleteHelperController from './autocompleteHelperController';
 import safeAssign from '../../helpers/object/safeAssign';
+import liteMode from '../../helpers/liteMode';
 
 export default class AutocompleteHelper extends EventListenerBase<{
   hidden: () => void,
@@ -158,7 +159,7 @@ export default class AutocompleteHelper extends EventListenerBase<{
       element: this.container,
       className: 'is-visible',
       forwards: !hide,
-      duration: rootScope.settings.animationsEnabled && !skipAnimation ? 300 : 0,
+      duration: liteMode.isAvailable('animations') && !skipAnimation ? 300 : 0,
       onTransitionEnd: () => {
         this.hidden && this.dispatchEvent('hidden');
       },

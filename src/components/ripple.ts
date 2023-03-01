@@ -10,6 +10,7 @@ import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import rootScope from '../lib/rootScope';
 import findUpAsChild from '../helpers/dom/findUpAsChild';
 import {fastRaf} from '../helpers/schedulers';
+import liteMode from '../helpers/liteMode';
 
 let rippleClickId = 0;
 export default function ripple(
@@ -167,7 +168,7 @@ export default function ripple(
     };
 
     attachListenerTo.addEventListener('touchstart', (e) => {
-      if(!rootScope.settings.animationsEnabled) {
+      if(!liteMode.isAvailable('animations')) {
         return;
       }
 
@@ -196,7 +197,7 @@ export default function ripple(
         return;
       }
 
-      if(!rootScope.settings.animationsEnabled) {
+      if(!liteMode.isAvailable('animations')) {
         return;
       }
       // console.log('ripple mousedown', e, e.target, findUpClassName(e.target as HTMLElement, 'c-ripple') === r);

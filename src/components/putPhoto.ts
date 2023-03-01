@@ -21,6 +21,7 @@ import getPeerInitials from './wrappers/getPeerInitials';
 import {wrapTopicIcon} from './wrappers/messageActionTextNewUnsafe';
 import makeError from '../helpers/makeError';
 import noop from '../helpers/noop';
+import liteMode from '../helpers/liteMode';
 
 export async function putAvatar(
   div: HTMLElement,
@@ -46,7 +47,7 @@ export async function putAvatar(
       div.dataset.color = '';
     };
   } else {
-    const animate = rootScope.settings.animationsEnabled;
+    const animate = liteMode.isAvailable('animations');
     if(animate) {
       img.classList.add('fade-in');
     }

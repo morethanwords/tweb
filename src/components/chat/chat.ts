@@ -37,6 +37,7 @@ import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import {Message, WallPaper} from '../../layer';
 import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
 import {getColorsFromWallPaper} from '../../helpers/color';
+import liteMode from '../../helpers/liteMode';
 
 export type ChatType = 'chat' | 'pinned' | 'discussion' | 'scheduled';
 
@@ -211,7 +212,7 @@ export default class Chat extends EventListenerBase<{
       gradientCanvas = this.gradientCanvas = canvas;
       gradientCanvas.classList.add('chat-background-item-canvas', 'chat-background-item-color-canvas');
 
-      if(rootScope.settings.animationsEnabled) {
+      if(liteMode.isAvailable('animations')) {
         gradientRenderer.scrollAnimate(true);
       }
       // } else {

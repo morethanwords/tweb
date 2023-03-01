@@ -5,8 +5,6 @@
  */
 
 import type {ChatRights} from '../../../lib/appManagers/appChatsManager';
-import flatten from '../../../helpers/array/flatten';
-import cancelEvent from '../../../helpers/dom/cancelEvent';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import findUpTag from '../../../helpers/dom/findUpTag';
 import replaceContent from '../../../helpers/dom/replaceContent';
@@ -19,32 +17,22 @@ import combineParticipantBannedRights from '../../../lib/appManagers/utils/chats
 import hasRights from '../../../lib/appManagers/utils/chats/hasRights';
 import getPeerActiveUsernames from '../../../lib/appManagers/utils/peers/getPeerActiveUsernames';
 import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';
-import I18n, {i18n, join, LangPackKey} from '../../../lib/langPack';
+import {i18n, join, LangPackKey} from '../../../lib/langPack';
 import rootScope from '../../../lib/rootScope';
-import CheckboxField from '../../checkboxField';
 import PopupPickUser from '../../popups/pickUser';
 import Row from '../../row';
 import SettingSection from '../../settingSection';
 import {SliderSuperTabEventable} from '../../sliderTab';
 import {toast} from '../../toast';
 import AppUserPermissionsTab from './userPermissions';
-import findUpAsChild from '../../../helpers/dom/findUpAsChild';
+import CheckboxFields, {CheckboxFieldsField} from '../../checkboxFields';
 
-type T = {
+type PermissionsCheckboxFieldsField = CheckboxFieldsField & {
   flags: ChatRights[],
-  text: LangPackKey,
-  exceptionText: LangPackKey,
-  checkboxField?: CheckboxField,
-  nested?: T[],
-  nestedTo?: T,
-  nestedCounter?: HTMLElement,
-  setNestedCounter?: (count: number) => void,
-  toggleWith?: {checked?: ChatRights[], unchecked?: ChatRights[]}
+  exceptionText: LangPackKey
 };
 
-export class ChatPermissions {
-  public v: Array<T>;
-
+export class ChatPermissions extends CheckboxFields<PermissionsCheckboxFieldsField> {
   protected chat: Chat.chat | Chat.channel;
   protected rights: ChatBannedRights.chatBannedRights;
   protected defaultBannedRights: ChatBannedRights.chatBannedRights;
@@ -56,11 +44,22 @@ export class ChatPermissions {
     appendTo: HTMLElement,
     participant?: ChannelParticipant.channelParticipantBanned
   }, private managers: AppManagers) {
+    super({
+      listenerSetter: options.listenerSetter,
+      fields: [],
+      asRestrictions: true
+    });
+
     this.construct();
   }
 
   public async construct() {
-    const mediaNested: T[] = [
+    const options = this.options;
+    const chat = this.chat = await this.managers.appChatsManager.getChat(options.chatId) as Chat.chat | Chat.channel;
+    const defaultBannedRights = this.defaultBannedRights = chat.default_banned_rights;
+    const rights = this.rights = options.participant ? combineParticipantBannedRights(chat as Chat.channel, options.participant.banned_rights) : defaultBannedRights;
+
+    const mediaNested: PermissionsCheckboxFieldsField[] = [
       {flags: ['send_photos'], text: 'UserRestrictionsSendPhotos', exceptionText: 'UserRestrictionsNoSendPhotos'},
       {flags: ['send_videos'], text: 'UserRestrictionsSendVideos', exceptionText: 'UserRestrictionsNoSendVideos'},
       {flags: ['send_stickers', 'send_gifs'], text: 'UserRestrictionsSendStickers', exceptionText: 'UserRestrictionsNoSendStickers'},
@@ -68,150 +67,57 @@ export class ChatPermissions {
       {flags: ['send_docs'], text: 'UserRestrictionsSendFiles', exceptionText: 'UserRestrictionsNoSendDocs'},
       {flags: ['send_voices'], text: 'UserRestrictionsSendVoices', exceptionText: 'UserRestrictionsNoSendVoice'},
       {flags: ['send_roundvideos'], text: 'UserRestrictionsSendRound', exceptionText: 'UserRestrictionsNoSendRound'},
-      {flags: ['embed_links'], text: 'UserRestrictionsEmbedLinks', exceptionText: 'UserRestrictionsNoEmbedLinks', toggleWith: {checked: ['send_plain']}},
+      {flags: ['embed_links'], text: 'UserRestrictionsEmbedLinks', exceptionText: 'UserRestrictionsNoEmbedLinks'},
       {flags: ['send_polls'], text: 'UserRestrictionsSendPolls', exceptionText: 'UserRestrictionsNoSendPolls'}
     ];
 
-    const mediaToggleWith = flatten(mediaNested.map(({flags}) => flags));
-    const media: T = {flags: ['send_media'], text: 'UserRestrictionsSendMedia', exceptionText: 'UserRestrictionsNoSendMedia', nested: mediaNested, toggleWith: {unchecked: mediaToggleWith, checked: mediaToggleWith}};
-
-    this.v = [
-      {flags: ['send_plain'], text: 'UserRestrictionsSend', exceptionText: 'UserRestrictionsNoSend', toggleWith: {unchecked: ['embed_links']}},
-      media,
+    const mediaToggleWith = mediaNested;
+    const v: PermissionsCheckboxFieldsField[] = [
+      {flags: ['send_plain'], text: 'UserRestrictionsSend', exceptionText: 'UserRestrictionsNoSend'},
+      {flags: ['send_media'], text: 'UserRestrictionsSendMedia', exceptionText: 'UserRestrictionsNoSendMedia', nested: mediaNested},
       {flags: ['invite_users'], text: 'UserRestrictionsInviteUsers', exceptionText: 'UserRestrictionsNoInviteUsers'},
       {flags: ['pin_messages'], text: 'UserRestrictionsPinMessages', exceptionText: 'UserRestrictionsNoPinMessages'},
       {flags: ['change_info'], text: 'UserRestrictionsChangeInfo', exceptionText: 'UserRestrictionsNoChangeInfo'}
     ];
 
-    mediaNested.forEach((info) => info.nestedTo = media);
 
-    const options = this.options;
-    const chat = this.chat = await this.managers.appChatsManager.getChat(options.chatId) as Chat.chat | Chat.channel;
-    const defaultBannedRights = this.defaultBannedRights = chat.default_banned_rights;
-    const rights = this.rights = options.participant ? combineParticipantBannedRights(chat as Chat.channel, options.participant.banned_rights) : defaultBannedRights;
-
-    for(const info of this.v) {
-      const {nodes} = this.createRow(info);
-      options.appendTo.append(...nodes);
-    }
-
-    this.v.push(...mediaNested);
-  }
-
-  protected createRow(info: T, isNested?: boolean) {
-    const {defaultBannedRights, chat, rights, restrictionText} = this;
-
-    const mainFlag = info.flags[0];
-    const row = new Row({
-      titleLangKey: isNested ? undefined : info.text,
-      checkboxField: info.checkboxField = new CheckboxField({
-        text: isNested ? info.text : undefined,
-        checked: info.nested ? false : hasRights(chat, mainFlag, rights),
-        toggle: !isNested,
-        listenerSetter: this.options.listenerSetter,
-        restriction: !isNested
-      }),
-      listenerSetter: this.options.listenerSetter,
-      clickable: info.nested ? (e) => {
-        if(findUpAsChild(e.target as HTMLElement, row.checkboxField.label)) {
-          return;
-        }
-
-        cancelEvent(e);
-        row.container.classList.toggle('accordion-toggler-expanded');
-        accordion.classList.toggle('is-expanded');
-      } : undefined
+    const map: {[action in ChatRights]?: PermissionsCheckboxFieldsField} = {};
+    v.push(...mediaNested);
+    v.forEach((info) => {
+      const mainFlag = info.flags[0];
+      map[mainFlag] = info;
+      info.checked = hasRights(chat, mainFlag, rights)
     });
 
-    if((
-      this.options.participant &&
-        defaultBannedRights.pFlags[mainFlag as keyof typeof defaultBannedRights['pFlags']]
-    ) || (
-      getPeerActiveUsernames(chat as Chat.channel)[0] &&
-        (
-          info.flags.includes('pin_messages') ||
-          info.flags.includes('change_info')
-        )
-    )
-    ) {
-      info.checkboxField.input.disabled = true;
+    mediaNested.forEach((info) => info.nestedTo = map.send_media);
+    map.send_media.toggleWith = {unchecked: mediaToggleWith, checked: mediaToggleWith};
+    map.embed_links.toggleWith = {checked: [map.send_plain]};
+    map.send_plain.toggleWith = {unchecked: [map.embed_links]};
 
-      attachClickEvent(info.checkboxField.label, (e) => {
-        toast(I18n.format(restrictionText, true));
-      }, {listenerSetter: this.options.listenerSetter});
+    this.fields = v;
+
+    for(const info of this.fields) {
+      if((
+        this.options.participant &&
+          defaultBannedRights.pFlags[info.flags[0] as keyof typeof defaultBannedRights['pFlags']]
+      ) || (
+        getPeerActiveUsernames(chat as Chat.channel)[0] &&
+          (
+            info.flags.includes('pin_messages') ||
+            info.flags.includes('change_info')
+          )
+      )
+      ) {
+        info.restrictionText = this.restrictionText;
+      }
+
+      if(info.nestedTo) {
+        continue;
+      }
+
+      const {nodes} = this.createField(info);
+      options.appendTo.append(...nodes);
     }
-
-    if(info.toggleWith || info.nestedTo) {
-      const processToggleWith = info.toggleWith ? (info: T) => {
-        const {toggleWith, nested} = info;
-        const value = info.checkboxField.checked;
-        const arr = value ? toggleWith.checked : toggleWith.unchecked;
-        if(!arr) {
-          return;
-        }
-
-        const other = this.v.filter((i) => arr.includes(i.flags[0]));
-        other.forEach((info) => {
-          info.checkboxField.setValueSilently(value);
-          if(info.nestedTo && !nested) {
-            this.setNestedCounter(info.nestedTo);
-          }
-
-          if(info.toggleWith) {
-            processToggleWith(info);
-          }
-        });
-
-        if(info.nested) {
-          this.setNestedCounter(info);
-        }
-      } : undefined;
-
-      const processNestedTo = info.nestedTo ? () => {
-        const length = this.getNestedCheckedLength(info.nestedTo);
-        info.nestedTo.checkboxField.setValueSilently(length === info.nestedTo.nested.length);
-        this.setNestedCounter(info.nestedTo, length);
-      } : undefined;
-
-      this.options.listenerSetter.add(info.checkboxField.input)('change', () => {
-        processToggleWith?.(info);
-        processNestedTo?.();
-      });
-    }
-
-    const nodes: HTMLElement[] = [row.container];
-    let accordion: HTMLElement, nestedCounter: HTMLElement;
-    if(info.nested) {
-      const container = accordion = document.createElement('div');
-      container.classList.add('accordion');
-      container.style.setProperty('--max-height', info.nested.length * 48 + 'px');
-      info.nested.forEach((info) => {
-        container.append(...this.createRow(info, true).nodes);
-      });
-      nodes.push(container);
-
-      const span = document.createElement('span');
-      span.classList.add('tgico-down', 'accordion-icon');
-
-      nestedCounter = info.nestedCounter = document.createElement('b');
-      this.setNestedCounter(info);
-      row.title.append(' ', nestedCounter, ' ', span);
-
-      row.container.classList.add('accordion-toggler');
-      row.titleRow.classList.add('with-delimiter');
-
-      row.checkboxField.setValueSilently(this.getNestedCheckedLength(info) === info.nested.length);
-    }
-
-    return {row, nodes};
-  }
-
-  protected getNestedCheckedLength(info: T) {
-    return info.nested.reduce((acc, v) => acc + +v.checkboxField.checked, 0);
-  }
-
-  protected setNestedCounter(info: T, count = this.getNestedCheckedLength(info)) {
-    info.nestedCounter.textContent = `${count}/${info.nested.length}`;
   }
 
   public takeOut() {
@@ -224,7 +130,7 @@ export class ChatPermissions {
     const IGNORE_FLAGS: Set<ChatRights> = new Set([
       'send_media'
     ]);
-    for(const info of this.v) {
+    for(const info of this.fields) {
       const banned = !info.checkboxField.checked;
       if(!banned) {
         continue;
@@ -341,7 +247,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
         // const combinedRights = appChatsManager.combineParticipantBannedRights(this.chatId, bannedRights);
 
         const cantWhat: LangPackKey[] = []/* , canWhat: LangPackKey[] = [] */;
-        chatPermissions.v.forEach((info) => {
+        chatPermissions.fields.forEach((info) => {
           const mainFlag = info.flags[0];
           // @ts-ignore
           if(bannedRights.pFlags[mainFlag] && !defaultBannedRights.pFlags[mainFlag]) {

@@ -11,6 +11,7 @@ import callbackify from '../../helpers/callbackify';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import getVisibleRect from '../../helpers/dom/getVisibleRect';
+import liteMode from '../../helpers/liteMode';
 import {getMiddleware} from '../../helpers/middleware';
 import noop from '../../helpers/noop';
 import {fastRaf} from '../../helpers/schedulers';
@@ -136,7 +137,7 @@ export class ChatReactionsMenu {
   };
 
   private canUseAnimations() {
-    return rootScope.settings.animationsEnabled && !IS_MOBILE;
+    return liteMode.isAvailable('animations') && liteMode.isAvailable('stickers_chat') && !IS_MOBILE;
   }
 
   private renderReaction(reaction: AvailableReaction) {
@@ -184,6 +185,7 @@ export class ChatReactionsMenu {
       wrapSticker({
         doc: reaction.static_icon,
         div: appearWrapper,
+        liteModeKey: false,
         ...options
       });
     } else {
@@ -192,6 +194,7 @@ export class ChatReactionsMenu {
         doc: reaction.appear_animation,
         div: appearWrapper,
         play: true,
+        liteModeKey: false,
         ...options
       }).then(({render}) => render).then((player) => {
         assumeType<RLottiePlayer>(player);
@@ -217,6 +220,7 @@ export class ChatReactionsMenu {
       const selectLoadPromise = wrapSticker({
         doc: reaction.select_animation,
         div: selectWrapper,
+        liteModeKey: false,
         ...options
       }).then(({render}) => render).then((player) => {
         assumeType<RLottiePlayer>(player);

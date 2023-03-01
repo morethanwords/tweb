@@ -13,6 +13,7 @@ import safeAssign from './object/safeAssign';
 import appNavigationController, {NavigationItem} from '../components/appNavigationController';
 import findUpClassName from './dom/findUpClassName';
 import rootScope from '../lib/rootScope';
+import liteMode from './liteMode';
 
 const KEEP_OPEN = false;
 const TOGGLE_TIMEOUT = 200;
@@ -171,7 +172,7 @@ export default class DropdownHover extends EventListenerBase<{
       return;
     }
 
-    const delay = IS_TOUCH_SUPPORTED || !rootScope.settings.animationsEnabled ? 0 : ANIMATION_DURATION;
+    const delay = IS_TOUCH_SUPPORTED || !liteMode.isAvailable('animations') ? 0 : ANIMATION_DURATION;
     if((this.element.style.display && enable === undefined) || enable) {
       const res = this.dispatchResultableEvent('open');
       await Promise.all(res);

@@ -69,7 +69,10 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
               container.append(media);
 
               if(set.pFlags.videos) {
-                animationIntersector.addAnimation(media as HTMLVideoElement, group);
+                animationIntersector.addAnimation({
+                  animation: media as HTMLVideoElement,
+                  group
+                });
               }
             });
           });

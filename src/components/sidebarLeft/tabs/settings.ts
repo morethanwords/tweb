@@ -28,7 +28,6 @@ import {AccountAuthorizations, Authorization} from '../../../layer';
 import PopupElement from '../../popups';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import SettingSection from '../../settingSection';
-// import AppMediaViewer from "../../appMediaViewerNew";
 
 export default class AppSettingsTab extends SliderSuperTab {
   private buttons: {

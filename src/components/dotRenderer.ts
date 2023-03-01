@@ -6,6 +6,7 @@
 
 import {IS_MOBILE} from '../environment/userAgent';
 import {animate} from '../helpers/animation';
+import liteMode from '../helpers/liteMode';
 import {Middleware} from '../helpers/middleware';
 import clamp from '../helpers/number/clamp';
 import animationIntersector, {AnimationItemGroup, AnimationItemWrapper} from './animationIntersector';
@@ -31,6 +32,8 @@ export default class DotRenderer implements AnimationItemWrapper {
 
   private dpr: number;
 
+  public loop: boolean = true;
+
   constructor(
     private width: number,
     private height: number,
@@ -51,7 +54,7 @@ export default class DotRenderer implements AnimationItemWrapper {
   private prepare() {
     let count = Math.round(this.width * this.height / (35 * (IS_MOBILE ? 2 : 1)));
     count *= this.multiply || 1;
-    count = Math.min(IS_MOBILE ? 1000 : 2200, count);
+    count = Math.min(!liteMode.isAvailable('chat_spoilers') ? 400 : IS_MOBILE ? 1000 : 2200, count);
     count = Math.round(count);
     const dots: DotRendererDot[] = this.dots = new Array(count);
 
@@ -168,7 +171,12 @@ export default class DotRenderer implements AnimationItemWrapper {
     const dotRenderer = new DotRenderer(width, height, multiply);
     dotRenderer.renderFirstFrame();
 
-    animationIntersector.addAnimation(dotRenderer, animationGroup, dotRenderer.canvas, middleware);
+    animationIntersector.addAnimation({
+      animation: dotRenderer,
+      group: animationGroup,
+      observeElement: dotRenderer.canvas,
+      controlled: middleware
+    });
 
     return dotRenderer;
   }

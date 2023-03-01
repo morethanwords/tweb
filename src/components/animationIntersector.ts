@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type {LiteModeKey} from '../helpers/liteMode';
 import {CustomEmojiElement, CustomEmojiRendererElement} from '../lib/richTextProcessor/wrapRichText';
 import rootScope from '../lib/rootScope';
 import {IS_SAFARI} from '../environment/userAgent';
@@ -25,6 +26,7 @@ export interface AnimationItem {
   el: HTMLElement,
   group: AnimationItemGroup,
   animation: AnimationItemWrapper,
+  liteModeKey?: LiteModeKey,
   controlled?: boolean | Middleware
 };
 
@@ -34,6 +36,7 @@ export interface AnimationItemWrapper {
   pause: () => any;
   play: () => any;
   autoplay: boolean;
+  loop: boolean | number;
   // onVisibilityChange?: (visible: boolean) => boolean;
 };
 
@@ -176,12 +179,14 @@ export class AnimationIntersector {
     }
   }
 
-  public addAnimation(
+  public addAnimation(options: {
     animation: AnimationItem['animation'],
-    group: AnimationItemGroup = '',
+    group?: AnimationItemGroup,
     observeElement?: HTMLElement,
-    controlled?: AnimationItem['controlled']
-  ) {
+    controlled?: AnimationItem['controlled'],
+    liteModeKey?: LiteModeKey
+  }) {
+    let {animation, group = '', observeElement, controlled, liteModeKey} = options;
     if(group === 'none' || this.byPlayer.has(animation)) {
       return;
     }
@@ -202,7 +207,8 @@ export class AnimationIntersector {
       el: observeElement,
       animation: animation,
       group,
-      controlled
+      controlled,
+      liteModeKey
     };
 
     if(controlled && typeof(controlled) !== 'boolean') {

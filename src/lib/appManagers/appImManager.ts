@@ -105,6 +105,8 @@ import PopupForward from '../../components/popups/forward';
 import AppBackgroundTab from '../../components/sidebarLeft/tabs/background';
 import partition from '../../helpers/array/partition';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
+import liteMode, {LiteModeKey} from '../../helpers/liteMode';
+import RLottiePlayer from '../rlottie/rlottiePlayer';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -457,6 +459,29 @@ export class AppImManager extends EventListenerBase<{
         useRafs
       });
     };
+
+    document.addEventListener('mousemove', (e) => {
+      const mediaStickerWrapper = findUpClassName(e.target, 'media-sticker-wrapper');
+      if(!mediaStickerWrapper ||
+        mediaStickerWrapper.classList.contains('custom-emoji') ||
+        findUpClassName(e.target, 'emoji-big')) {
+        return;
+      }
+
+      const animations = animationIntersector.getAnimations(mediaStickerWrapper);
+      animations?.forEach((animationItem) => {
+        const {liteModeKey, animation} = animationItem;
+        if(!liteModeKey || !animation?.paused || liteMode.isAvailable(liteModeKey)) {
+          return;
+        }
+
+        if(animation instanceof RLottiePlayer) {
+          animation.playOrRestart();
+        } else {
+          animation.play();
+        }
+      });
+    });
 
     rootScope.addEventListener('sticker_updated', ({type, faved}) => {
       if(type === 'faved') {
@@ -1006,7 +1031,7 @@ export class AppImManager extends EventListenerBase<{
   private toggleChatGradientAnimation(activatingChat: Chat) {
     this.chats.forEach((chat) => {
       if(chat.gradientRenderer) {
-        chat.gradientRenderer.scrollAnimate(rootScope.settings.animationsEnabled && chat === activatingChat);
+        chat.gradientRenderer.scrollAnimate(liteMode.isAvailable('animations') && chat === activatingChat);
       }
     });
   }
@@ -1639,18 +1664,21 @@ export class AppImManager extends EventListenerBase<{
       });
     }
 
-    document.body.classList.toggle('animation-level-0', !rootScope.settings.animationsEnabled);
+    document.body.classList.toggle('animation-level-0', !liteMode.isAvailable('animations'));
     document.body.classList.toggle('animation-level-1', false);
-    document.body.classList.toggle('animation-level-2', rootScope.settings.animationsEnabled);
+    document.body.classList.toggle('animation-level-2', liteMode.isAvailable('animations'));
 
     this.chatsSelectTabDebounced = debounce(() => {
       const topbar = this.chat.topbar;
       topbar.pinnedMessage?.setCorrectIndex(0); // * буду молиться богам, чтобы это ничего не сломало, но это исправляет получение пиннеда после анимации
 
       this.managers.apiFileManager.setQueueId(this.chat.bubbles.lazyLoadQueue.queueId);
-    }, rootScope.settings.animationsEnabled ? 250 : 0, false, true);
+    }, liteMode.isAvailable('animations') ? 250 : 0, false, true);
 
-    if(lottieLoader.setLoop(rootScope.settings.stickers.loop)) {
+    const c: LiteModeKey[] = ['stickers_chat', 'stickers_panel'];
+    const changedLoop = lottieLoader.setLoop(rootScope.settings.stickers.loop);
+    const changedAutoplay = !!c.filter((key) => lottieLoader.setAutoplay(liteMode.isAvailable(key), key)).length;
+    if(changedLoop || changedAutoplay) {
       animationIntersector.checkAnimations2(false);
     }
 
@@ -1679,7 +1707,7 @@ export class AppImManager extends EventListenerBase<{
       this.chatsSelectTabDebounced();
 
       // ! нужно переделать на animation, так как при лаге анимация будет длиться не 250мс
-      if(rootScope.settings.animationsEnabled && animate !== false) {
+      if(liteMode.isAvailable('animations') && animate !== false) {
         dispatchHeavyAnimationEvent(pause(250 + 150), 250 + 150);
       }
 
@@ -1927,11 +1955,11 @@ export class AppImManager extends EventListenerBase<{
 
     this.log('selectTab', id, prevTabId);
 
-    let animationPromise: Promise<any> = rootScope.settings.animationsEnabled ? doubleRaf() : Promise.resolve();
+    let animationPromise: Promise<any> = liteMode.isAvailable('animations') ? doubleRaf() : Promise.resolve();
     if(
       prevTabId !== undefined &&
       prevTabId !== id &&
-      rootScope.settings.animationsEnabled &&
+      liteMode.isAvailable('animations') &&
       animate !== false/*  &&
       mediaSizes.activeScreen !== ScreenSize.large */
     ) {

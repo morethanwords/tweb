@@ -132,6 +132,7 @@ import wrapPeerTitle from '../wrappers/peerTitle';
 import {PopupPeerCheckboxOptions} from '../popups/peer';
 import toggleDisability from '../../helpers/dom/toggleDisability';
 import {copyTextToClipboard} from '../../helpers/clipboard';
+import liteMode from '../../helpers/liteMode';
 
 export const USER_REACTIONS_INLINE = false;
 const USE_MEDIA_TAILS = false;
@@ -1043,7 +1044,7 @@ export default class ChatBubbles {
     this.listenerSetter.add(rootScope)('history_append', async({storageKey, message}) => {
       if(storageKey !== this.chat.messagesStorageKey || this.chat.type === 'scheduled') return;
 
-      if(rootScope.settings.animationsEnabled) {
+      if(liteMode.isAvailable('chat_background')) {
         this.updateGradient = true;
       }
 
@@ -4458,6 +4459,7 @@ export default class ChatBubbles {
               group: this.chat.animationGroup,
               // play: !!message.pending || !multipleRender,
               play: true,
+              liteModeKey: 'stickers_chat',
               loop: true,
               emoji: isEmoji ? messageMessage : undefined,
               withThumb: true,
@@ -5529,7 +5531,8 @@ export default class ChatBubbles {
           play: true,
           loop: true,
           withThumb: true,
-          loadPromises
+          loadPromises,
+          liteModeKey: 'stickers_chat'
         });
 
         attachClickEvent(stickerDiv, (e) => {
@@ -6227,7 +6230,7 @@ export default class ChatBubbles {
 
     const waitPromise = isAdditionRender ? processPromise(resultPromise) : promise;
 
-    if(isFirstMessageRender && rootScope.settings.animationsEnabled/*  && false */) {
+    if(isFirstMessageRender && liteMode.isAvailable('animations')/*  && false */) {
       let times = isAdditionRender ? 2 : 1;
       this.messagesQueueOnRenderAdditional = () => {
         this.log('messagesQueueOnRenderAdditional');

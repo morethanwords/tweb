@@ -26,6 +26,7 @@ import setInnerHTML from '../helpers/dom/setInnerHTML';
 import {AppManagers} from '../lib/appManagers/managers';
 import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 import wrapRichText from '../lib/richTextProcessor/wrapRichText';
+import liteMode from '../helpers/liteMode';
 
 let lineTotalLength = 0;
 const tailLength = 9;
@@ -528,7 +529,7 @@ export default class PollElement extends HTMLElement {
   }
 
   performResults(results: PollResults, chosenIndexes: number[], animate = true) {
-    if(!rootScope.settings.animationsEnabled) {
+    if(!liteMode.isAvailable('animations')) {
       animate = false;
     }
 

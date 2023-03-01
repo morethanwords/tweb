@@ -7,6 +7,7 @@
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import callbackify from '../../helpers/callbackify';
 import ListenerSetter from '../../helpers/listenerSetter';
+import liteMode from '../../helpers/liteMode';
 import {getMiddleware} from '../../helpers/middleware';
 import {modifyAckedPromise} from '../../helpers/modifyAckedResult';
 import {ChatFull} from '../../layer';
@@ -148,7 +149,7 @@ export default class ChatSendAs {
             this.updateButtons(peerIds);
           };
 
-          if(rootScope.settings.animationsEnabled) {
+          if(liteMode.isAvailable('animations')) {
             setTimeout(executeButtonsUpdate, 250);
           } else {
             executeButtonsUpdate();

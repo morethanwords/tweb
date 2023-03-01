@@ -154,30 +154,6 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
 
       this.scrollable.append(section.container);
     }
-
-    {
-      const section = new SettingSection({name: 'AutoplayMedia'});
-
-      section.content.append(new Row({
-        checkboxField: new CheckboxField({
-          text: 'AutoplayGIF',
-          name: 'gifs',
-          stateKey: 'settings.autoPlay.gifs',
-          listenerSetter: this.listenerSetter
-        }),
-        listenerSetter: this.listenerSetter
-      }).container, new Row({
-        checkboxField: new CheckboxField({
-          text: 'AutoplayVideo',
-          name: 'videos',
-          stateKey: 'settings.autoPlay.videos',
-          listenerSetter: this.listenerSetter
-        }),
-        listenerSetter: this.listenerSetter
-      }).container);
-
-      this.scrollable.append(section.container);
-    }
   }
 
   private setAutoDownloadSubtitle(row: Row, settings: AutoDownloadPeerTypeSettings, sizeMax?: number) {

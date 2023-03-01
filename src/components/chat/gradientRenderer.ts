@@ -307,7 +307,7 @@ export default class ChatBackgroundGradientRenderer {
     this.update();
   }
 
-  public update() {
+  private update() {
     if(this._colors.length < 2) {
       const color = this._colors[0];
       this._ctx.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;

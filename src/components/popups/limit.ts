@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import liteMode from '../../helpers/liteMode';
 import {doubleRaf} from '../../helpers/schedulers';
 import appImManager from '../../lib/appManagers/appImManager';
 import {LangPackKey, _i18n, i18n} from '../../lib/langPack';
@@ -114,7 +115,7 @@ class P extends PopupPeer {
       hint.classList.add('active');
     };
 
-    if(rootScope.settings.animationsEnabled) {
+    if(liteMode.isAvailable('animations')) {
       doubleRaf().then(setHintActive);
     } else {
       setHintActive();

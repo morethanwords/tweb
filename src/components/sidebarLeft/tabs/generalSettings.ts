@@ -12,7 +12,7 @@ import rootScope from '../../../lib/rootScope';
 import {IS_APPLE, IS_SAFARI} from '../../../environment/userAgent';
 import Row, {CreateRowFromCheckboxField} from '../../row';
 import AppBackgroundTab from './background';
-import {LangPackKey, _i18n} from '../../../lib/langPack';
+import I18n, {i18n, LangPackKey, _i18n} from '../../../lib/langPack';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import assumeType from '../../../helpers/assumeType';
 import {BaseTheme, MessagesAllStickers, StickerSet} from '../../../layer';
@@ -33,6 +33,8 @@ import {Theme} from '../../../layer';
 import findUpClassName from '../../../helpers/dom/findUpClassName';
 import RLottiePlayer from '../../../lib/rlottie/rlottiePlayer';
 import themeController from '../../../helpers/themeController';
+import liteMode from '../../../helpers/liteMode';
+import AppPowerSavingTab from './powerSaving';
 
 export class RangeSettingSelector {
   public container: HTMLDivElement;
@@ -123,17 +125,30 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
         this.slider.createTab(AppBackgroundTab).open(initArgs);
       });
 
-      const animationsCheckboxField = new CheckboxField({
-        text: 'EnableAnimations',
-        name: 'animations',
-        stateKey: 'settings.animationsEnabled',
+      const getLiteModeStatus = (): LangPackKey => rootScope.settings.liteMode.all ? 'Checkbox.Enabled' : 'Checkbox.Disabled';
+      const i = new I18n.IntlElement();
+
+      const onUpdate = () => {
+        i.compareAndUpdate({key: getLiteModeStatus()});
+      };
+      onUpdate();
+
+      const liteModeRow = new Row({
+        icon: 'animations',
+        titleLangKey: 'LiteMode.EnableText',
+        titleRightSecondary: i.element,
+        clickable: () => {
+          this.slider.createTab(AppPowerSavingTab).open();
+        },
         listenerSetter: this.listenerSetter
       });
+
+      this.listenerSetter.add(rootScope)('settings_updated', onUpdate);
 
       container.append(
         range.container,
         chatBackgroundButton,
-        CreateRowFromCheckboxField(animationsCheckboxField).container
+        liteModeRow.container
       );
     }
 
@@ -186,7 +201,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
 
         lastOnFrameNo?.(-1);
 
-        if(item.player && rootScope.settings.animationsEnabled) {
+        if(item.player && liteMode.isAvailable('animations')) {
           if(IS_SAFARI) {
             if(item.player.paused) {
               item.player.restart();

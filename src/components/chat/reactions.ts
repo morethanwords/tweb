@@ -145,7 +145,7 @@ export default class ReactionsElement extends HTMLElement {
     const totalReactions = counts.reduce((acc, c) => acc + c.count, 0);
     const canRenderAvatars = reactions && (!!reactions.pFlags.can_see_list || this.message.peerId.isUser()) && totalReactions < REACTION_DISPLAY_BLOCK_COUNTER_AT;
     this.sorted = counts.map((reactionCount, idx) => {
-      let reactionElement = this.sorted.find((reactionElement) => reactionsEqual(reactionElement.reactionCount.reaction, reactionCount.reaction));
+      let reactionElement: ReactionElement = this.sorted.find((reactionElement) => reactionsEqual(reactionElement.reactionCount.reaction, reactionCount.reaction));
       if(!reactionElement) {
         const middlewareHelper = this.middleware.create();
         reactionElement = new ReactionElement();

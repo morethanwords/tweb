@@ -21,6 +21,7 @@ import RLottiePlayer from '../../lib/rlottie/rlottiePlayer';
 import {fastRaf} from '../../helpers/schedulers';
 import noop from '../../helpers/noop';
 import {Middleware} from '../../helpers/middleware';
+import liteMode from '../../helpers/liteMode';
 
 const CLASS_NAME = 'reaction';
 const TAG_NAME = CLASS_NAME + '-element';
@@ -186,6 +187,10 @@ export default class ReactionElement extends HTMLElement {
   }
 
   public fireAroundAnimation() {
+    if(!liteMode.isAvailable('effects_reactions')) {
+      return;
+    }
+
     const reaction = this.reactionCount.reaction;
     if(reaction._ !== 'reactionEmoji') return;
     callbackify(this.managers.appReactionsManager.getReaction(reaction.emoticon), (availableReaction) => {
