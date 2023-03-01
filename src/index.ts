@@ -283,7 +283,7 @@ document.addEventListener('DOMContentLoaded', async() => {
 
   const hash = location.hash;
   const splitted = hash.split('?');
-  const params = parseUriParamsLine(splitted[1] ?? splitted[0]);
+  const params = parseUriParamsLine(splitted[1] ?? splitted[0].slice(1));
   if(params.tgWebAuthToken && authState._ !== 'authStateSignedIn') {
     const data: AuthState.signImport['data'] = {
       token: params.tgWebAuthToken,
