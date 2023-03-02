@@ -71,13 +71,13 @@ export function attachClickEvent(elem: HTMLElement | Window, callback: (e: /* To
   return () => remove(CLICK_EVENT_NAME, callback, options);
 }
 
-export function detachClickEvent(elem: HTMLElement | Window, callback: (e: /* TouchEvent |  */MouseEvent) => void, options?: AddEventListenerOptions) {
-  // if(CLICK_EVENT_NAME === 'touchend') {
-  //   elem.removeEventListener('touchstart', callback, options);
-  // } else {
-  elem.removeEventListener(CLICK_EVENT_NAME, callback as any, options);
-  // }
-}
+// export function detachClickEvent(elem: HTMLElement | Window, callback: (e: /* TouchEvent |  */MouseEvent) => void, options?: AddEventListenerOptions) {
+//   // if(CLICK_EVENT_NAME === 'touchend') {
+//   //   elem.removeEventListener('touchstart', callback, options);
+//   // } else {
+//   elem.removeEventListener(CLICK_EVENT_NAME, callback as any, options);
+//   // }
+// }
 
 export function simulateClickEvent(elem: HTMLElement) {
   simulateEvent(elem, CLICK_EVENT_NAME);

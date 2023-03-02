@@ -44,7 +44,7 @@ import findUpTag from '../../helpers/dom/findUpTag';
 import {toast, toastNew} from '../toast';
 import {getMiddleware, Middleware} from '../../helpers/middleware';
 import cancelEvent from '../../helpers/dom/cancelEvent';
-import {attachClickEvent, detachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent';
+import {attachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent';
 import htmlToDocumentFragment from '../../helpers/dom/htmlToDocumentFragment';
 import reflowScrollableElement from '../../helpers/dom/reflowScrollableElement';
 import replaceContent from '../../helpers/dom/replaceContent';

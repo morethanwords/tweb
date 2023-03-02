@@ -52,21 +52,19 @@ export default class AutocompleteHelper extends EventListenerBase<{
 
     this.attachNavigation();
 
-    this.controller && this.controller.addHelper(this);
+    this.controller?.addHelper(this);
   }
 
   public toggleListNavigation(enabled: boolean) {
     if(enabled) {
-      this.attach && this.attach();
+      this.attach?.();
     } else {
-      this.detach && this.detach();
+      this.detach?.();
     }
   }
 
   protected onVisible = () => {
-    if(this.detach) { // it can be so because 'visible' calls before animation's end
-      this.detach();
-    }
+    this.detach?.(); // it can be so because 'visible' calls before animation's end
 
     const list = this.list;
     const {attach, detach, resetTarget} = attachListNavigation({
@@ -144,9 +142,7 @@ export default class AutocompleteHelper extends EventListenerBase<{
         this.controller.hideOtherHelpers();
       }
 
-      if(this.detach) { // force detach here
-        this.detach();
-      }
+      this.detach?.(); // force detach here
     }
 
     const useRafs = this.controller || hide ? 0 : 2;
