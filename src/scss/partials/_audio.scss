@@ -406,6 +406,8 @@
       position: relative;
       height: 23px;
       margin-top: 1px;
+      display: flex;
+      align-items: center;
     }
 
     &-bar {
@@ -575,6 +577,21 @@
       margin-top: 7px;
       align-items: center;
     }
+
+    .progress-line {
+      margin-top: 4px;
+      margin-inline-start: 0;
+
+      &__filled:after {
+        opacity: 0;
+      }
+    }
+
+    // .audio-toggle:not(.playing) + .audio-waveform-container {
+    //   .progress-line__filled:after {
+    //     opacity: 0;
+    //   }
+    // }
 
     @include respond-to(handhelds) {
       .audio-time {

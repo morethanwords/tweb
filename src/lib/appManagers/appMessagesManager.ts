@@ -549,7 +549,7 @@ export class AppMessagesManager extends AppManager {
         return result;
       },
       processError: (error) => {
-        if(error.type === 'TRANSCRIPTION_FAILED') {
+        if(error.type === 'TRANSCRIPTION_FAILED' || error.type === 'MSG_VOICE_MISSING') {
           process({
             _: 'messages.transcribedAudio',
             transcription_id: 0,

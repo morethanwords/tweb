@@ -73,39 +73,21 @@ export function decodeWaveform(waveform: Uint8Array | number[]) {
     result = new Uint8Array([]);
   }
 
-  /* var byteIndex = (valueCount - 1) / 8 | 0;
-  var bitShift = (valueCount - 1) % 8;
-  if(byteIndex === waveform.length - 1) {
-    var value = waveform[byteIndex];
-  } else {
-    var value = dataView.getUint16(byteIndex, true);
-  }
-  console.log('decoded waveform, setting last value:', value, byteIndex, bitShift);
-  result[valueCount - 1] = (value >> bitShift) & 0b00011111; */
   return result;
 }
 
 function createWaveformBars(waveform: Uint8Array, duration: number) {
   const barWidth = 2;
-  const barMargin = 2;      // mediaSizes.isMobile ? 2 : 1;
-  const barHeightMin = 4;   // mediaSizes.isMobile ? 3 : 2;
+  const barMargin = 2;
+  const barHeightMin = 4;
   const barHeightMax = mediaSizes.isMobile ? 16 : 23;
-  // const availW = 150;       //mediaSizes.isMobile ? 152 : 190;
 
   const minW = mediaSizes.isMobile ? 152 : 190;
   const maxW = mediaSizes.isMobile ? 190 : 256;
-  const availW = clamp(duration / 60 * maxW, minW, maxW); // mediaSizes.isMobile ? 152 : 224;
-
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.classList.add('audio-waveform-bars');
-  svg.setAttributeNS(null, 'width', '' + availW);
-  svg.setAttributeNS(null, 'height', '' + barHeightMax);
-  svg.setAttributeNS(null, 'viewBox', `0 0 ${availW} ${barHeightMax}`);
-
-  // console.log('decoded waveform:', waveform);
+  const availW = clamp(duration / 60 * maxW, minW, maxW);
 
   const normValue = Math.max(...waveform);
-  const wfSize = waveform.length ? waveform.length : 100;
+  const wfSize = waveform.length;
   const barCount = Math.min((availW / (barWidth + barMargin)) | 0, wfSize);
 
   let maxValue = 0;
@@ -122,9 +104,7 @@ function createWaveformBars(waveform: Uint8Array, duration: number) {
 
       const bar_value = Math.max(((maxValue * maxDelta) + ((normValue + 1) / 2)) / (normValue + 1), barHeightMin);
 
-      const h = `
-      <rect class="audio-waveform-bar" x="${barX}" y="${barHeightMax - bar_value}" width="${barWidth}" height="${bar_value}" rx="1" ry="1"></rect>
-      `;
+      const h = `<rect class="audio-waveform-bar" x="${barX}" y="${barHeightMax - bar_value}" width="${barWidth}" height="${bar_value}" rx="1" ry="1"></rect>`;
       html += h;
 
       barX += barWidth + barMargin;
@@ -141,11 +121,24 @@ function createWaveformBars(waveform: Uint8Array, duration: number) {
     }
   }
 
-  const container = document.createElement('div');
-  container.classList.add('audio-waveform');
-  container.append(svg);
+  let container: HTMLElement, svg: SVGSVGElement;
 
-  svg.insertAdjacentHTML('beforeend', html);
+  if(!html) {
+
+  } else {
+    container = document.createElement('div');
+    container.classList.add('audio-waveform');
+
+    svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.classList.add('audio-waveform-bars');
+    svg.setAttributeNS(null, 'width', '' + availW);
+    svg.setAttributeNS(null, 'height', '' + barHeightMax);
+    svg.setAttributeNS(null, 'viewBox', `0 0 ${availW} ${barHeightMax}`);
+    svg.insertAdjacentHTML('beforeend', html);
+
+    container.append(svg);
+  }
+
   return {svg, container, availW};
 }
 
@@ -164,13 +157,19 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
 
   const {svg, container: svgContainer, availW} = createWaveformBars(waveform, doc.duration);
 
-  const fakeSvgContainer = svgContainer.cloneNode(true) as HTMLElement;
-  fakeSvgContainer.classList.add('audio-waveform-fake');
-  svgContainer.classList.add('audio-waveform-background');
+  let fakeSvgContainer: HTMLElement;
+  if(svgContainer) {
+    fakeSvgContainer = svgContainer.cloneNode(true) as HTMLElement;
+    fakeSvgContainer.classList.add('audio-waveform-fake');
+    svgContainer.classList.add('audio-waveform-background');
+  }
 
   const waveformContainer = document.createElement('div');
   waveformContainer.classList.add('audio-waveform-container');
-  waveformContainer.append(svgContainer, fakeSvgContainer);
+
+  if(svgContainer) {
+    waveformContainer.append(svgContainer, fakeSvgContainer);
+  }
 
   const timeDiv = document.createElement('div');
   timeDiv.classList.add('audio-time');
@@ -224,7 +223,14 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
     audioEl.append(speechRecognitionDiv);
   }
 
-  let progress = svg as any as HTMLElement;
+  let progress = svg as any as HTMLElement, progressLine: MediaProgressLine;
+  if(!progress) {
+    progressLine = new MediaProgressLine({
+      streamable: doc.supportsStreaming
+    });
+
+    waveformContainer.append(progressLine.container);
+  }
 
   const onLoad = () => {
     let audio = audioEl.audio;
@@ -238,7 +244,9 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
     };
 
     const onTimeUpdate = () => {
-      fakeSvgContainer.style.width = (audio.currentTime / audio.duration * 100) + '%';
+      if(fakeSvgContainer) {
+        fakeSvgContainer.style.width = (audio.currentTime / audio.duration * 100) + '%';
+      }
     };
 
     if(!audio.paused || (audio.currentTime > 0 && audio.currentTime !== audio.duration)) {
@@ -250,7 +258,7 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
     audioEl.addAudioListener('ended', throttledTimeUpdate);
     audioEl.addAudioListener('play', setAnimation);
 
-    audioEl.readyPromise.then(() => {
+    progress && audioEl.readyPromise.then(() => {
       let mousedown = false, mousemove = false;
       progress.addEventListener('mouseleave', (e) => {
         if(mousedown) {
@@ -298,8 +306,10 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
       }
     }, noop);
 
+    !progress && progressLine.setMedia(audio);
+
     return () => {
-      progress.remove();
+      progress?.remove();
       progress = null;
       audio = null;
     };
@@ -495,7 +505,10 @@ export default class AudioElement extends HTMLElement {
     const isOutgoing = this.message.pFlags.is_outgoing;
     const uploadingFileName = this.message?.uploadingFileName;
 
-    const durationStr = toHHMMSS(doc.duration | 0);
+    const getDurationStr = () => {
+      const duration = this.audio && this.audio.readyState >= this.audio.HAVE_CURRENT_DATA ? this.audio.duration : doc.duration;
+      return toHHMMSS(duration | 0);
+    };
 
     this.innerHTML = `
     <div class="audio-toggle audio-ico">
@@ -523,7 +536,7 @@ export default class AudioElement extends HTMLElement {
     const onTypeLoad = await (isVoice ? wrapVoiceMessage(this) : wrapAudio(this));
 
     const audioTimeDiv = this.querySelector('.audio-time') as HTMLDivElement;
-    audioTimeDiv.innerHTML = durationStr;
+    audioTimeDiv.textContent = getDurationStr();
 
     const onLoad = this.onLoad = (autoload: boolean) => {
       this.onLoad = undefined;
@@ -538,7 +551,7 @@ export default class AudioElement extends HTMLElement {
 
       this.onTypeDisconnect = onTypeLoad();
 
-      const getTimeStr = () => toHHMMSS(audio.currentTime | 0) + (isVoice ? (' / ' + durationStr) : '');
+      const getTimeStr = () => toHHMMSS(audio.currentTime | 0) + (isVoice ? (' / ' + getDurationStr()) : '');
 
       const onPlay = () => {
         audioTimeDiv.innerText = getTimeStr();
@@ -573,7 +586,7 @@ export default class AudioElement extends HTMLElement {
 
       this.addAudioListener('ended', () => {
         toggle.classList.remove('playing');
-        audioTimeDiv.innerText = durationStr;
+        audioTimeDiv.innerText = getDurationStr();
       });
 
       this.addAudioListener('timeupdate', () => {
