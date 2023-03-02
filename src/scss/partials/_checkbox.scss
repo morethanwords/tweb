@@ -66,9 +66,9 @@
       left: -15%;
 
       background-color: var(--primary-color);
-      transform: scale(1);
+      transform: scale(0);
       border-radius: 50%;
-      transition: transform .2s 0s ease-in-out;
+      transition: transform .2s .05s ease-in-out;
 
       @include animation-level(0) {
         transition: none !important;
@@ -87,10 +87,10 @@
         stroke: #fff;
         stroke-width: 3.75;
         stroke-linecap: round;
-        stroke-dasharray: 24.19, 24.19;
+        stroke-dasharray: 0, 24.19;
         stroke-dashoffset: 0;
-        transition: stroke-dasharray .1s .15s ease-in-out, visibility 0s .15s;
-        visibility: visible; // fix blinking on parent's transform
+        transition: stroke-dasharray .1s ease-in-out, visibility 0s .1s;
+        visibility: hidden; // fix blinking on parent's transform
 
         @include animation-level(0) {
           transition: none !important;
@@ -287,18 +287,18 @@
 }
 
 .checkbox-field .checkbox-field-input {
-  &:not(:checked) + .checkbox-box {
+  &:checked:not(.is-fake-disabled) + .checkbox-box {
     .checkbox-box-check {
       use {
-        stroke-dasharray: 0, 24.19;
-        visibility: hidden;
-        transition: stroke-dasharray .1s ease-in-out, visibility 0s .1s;
+        stroke-dasharray: 24.19, 24.19;
+        visibility: visible;
+        transition: stroke-dasharray .1s .15s ease-in-out, visibility 0s .15s;
       }
     }
 
     .checkbox-box-background {
-      transition: transform .2s .05s ease-in-out;
-      transform: scale(0);
+      transition: transform .2s 0s ease-in-out;
+      transform: scale(1);
     }
   }
 
@@ -402,7 +402,7 @@
     }
   }
 
-  [type="checkbox"]:checked + .checkbox-toggle {
+  [type="checkbox"]:checked:not(.is-fake-disabled) + .checkbox-toggle {
     background-color: var(--primary-color);
 
     &:before {

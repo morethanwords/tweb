@@ -285,10 +285,15 @@ export default class Row {
     return media;
   }
 
+  public toggleDisability(disable = !this.container.classList.contains('is-disabled')) {
+    this.container.classList.toggle('is-disabled', disable);
+    return () => this.toggleDisability(!disable);
+  }
+
   public disableWithPromise(promise: Promise<any>) {
-    this.container.classList.add('is-disabled');
+    const toggle = this.toggleDisability(true);
     promise.finally(() => {
-      this.container.classList.remove('is-disabled');
+      toggle();
     });
   }
 

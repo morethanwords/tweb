@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import liteMode from '../../helpers/liteMode';
 import noop from '../../helpers/noop';
 import safeAssign from '../../helpers/object/safeAssign';
 import rootScope from '../rootScope';
@@ -181,7 +182,7 @@ export default class RLottieIcon {
 
     const part = item.getPart(index);
     item.player.playPart({
-      from: rootScope.settings.animationsEnabled && !this.skipAnimation ? part.startFrame : part.endFrame,
+      from: liteMode.isAvailable('animations') && !this.skipAnimation ? part.startFrame : part.endFrame,
       to: part.endFrame,
       callback
     });

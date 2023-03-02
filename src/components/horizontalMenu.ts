@@ -13,6 +13,7 @@ import findUpAsChild from '../helpers/dom/findUpAsChild';
 import whichChild from '../helpers/dom/whichChild';
 import ListenerSetter from '../helpers/listenerSetter';
 import {attachClickEvent} from '../helpers/dom/clickEvent';
+import liteMode from '../helpers/liteMode';
 
 export function horizontalMenu(
   tabs: HTMLElement,
@@ -66,7 +67,7 @@ export function horizontalMenu(
       });
     }
 
-    if(!rootScope.settings.animationsEnabled) {
+    if(!liteMode.isAvailable('animations')) {
       animate = false;
     }
 

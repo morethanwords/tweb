@@ -14,6 +14,7 @@ import createVideo from '../../helpers/dom/createVideo';
 import isInDOM from '../../helpers/dom/isInDOM';
 import renderImageFromUrl from '../../helpers/dom/renderImageFromUrl';
 import getStrippedThumbIfNeeded from '../../helpers/getStrippedThumbIfNeeded';
+import liteMode from '../../helpers/liteMode';
 import makeError from '../../helpers/makeError';
 import mediaSizes, {ScreenSize} from '../../helpers/mediaSizes';
 import {Middleware} from '../../helpers/middleware';
@@ -96,7 +97,7 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
         doc.size <= MAX_VIDEO_AUTOPLAY_SIZE &&
         !isAlbumItem
       )
-    ) && (doc.type === 'gif' ? rootScope.settings.autoPlay.gifs : rootScope.settings.autoPlay.videos)
+    ) && (doc.type === 'gif' ? liteMode.isAvailable('gif') : liteMode.isAvailable('video'))
   );
   let spanTime: HTMLElement, spanPlay: HTMLElement;
 
@@ -537,7 +538,10 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
 
       onMediaLoad(video).then(() => {
         if(group) {
-          animationIntersector.addAnimation(video, group);
+          animationIntersector.addAnimation({
+            animation: video,
+            group
+          });
         }
 
         if(preloader && !uploadFileName) {

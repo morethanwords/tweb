@@ -6,6 +6,7 @@
 
 import type {AnimationItemGroup, AnimationItemWrapper} from '../../components/animationIntersector';
 import type {Middleware} from '../../helpers/middleware';
+import type {LiteModeKey} from '../../helpers/liteMode';
 import CAN_USE_TRANSFERABLES from '../../environment/canUseTransferables';
 import IS_APPLE_MX from '../../environment/appleMx';
 import {IS_ANDROID, IS_APPLE_MOBILE, IS_APPLE, IS_SAFARI} from '../../environment/userAgent';
@@ -35,7 +36,8 @@ export type RLottieOptions = {
   name?: string,
   skipFirstFrameRendering?: boolean,
   toneIndex?: number,
-  sync?: boolean
+  sync?: boolean,
+  liteModeKey?: LiteModeKey
 };
 
 export type RLottieColor = [number, number, number];
@@ -92,6 +94,7 @@ export default class RLottiePlayer extends EventListenerBase<{
   public loop: number | boolean = true;
   public _loop: RLottiePlayer['loop']; // ! will be used to store original value for settings.stickers.loop
   public group: AnimationItemGroup = '';
+  public liteModeKey: LiteModeKey;
 
   private frInterval: number;
   private frThen: number;
@@ -153,6 +156,7 @@ export default class RLottiePlayer extends EventListenerBase<{
     this.skipFirstFrameRendering = options.skipFirstFrameRendering;
     this.toneIndex = options.toneIndex;
     this.raw = this.color !== undefined;
+    this.liteModeKey = options.liteModeKey;
 
     if(this.name) {
       this.cacheName = RLottiePlayer.CACHE.generateName(this.name, this.width, this.height, this.color, this.toneIndex);
@@ -282,6 +286,18 @@ export default class RLottiePlayer extends EventListenerBase<{
   public restart() {
     this.stop(false);
     this.play();
+  }
+
+  public playOrRestart() {
+    if(!this.paused) {
+      return;
+    }
+
+    if(this.curFrame === this.maxFrame) {
+      this.restart();
+    } else {
+      this.play();
+    }
   }
 
   public setSpeed(speed: number) {

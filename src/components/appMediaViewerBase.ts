@@ -58,6 +58,7 @@ import clamp from '../helpers/number/clamp';
 import debounce from '../helpers/schedulers/debounce';
 import isBetween from '../helpers/number/isBetween';
 import findUpAsChild from '../helpers/dom/findUpAsChild';
+import liteMode from '../helpers/liteMode';
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
@@ -866,7 +867,7 @@ export default class AppMediaViewerBase<
 
     const wasActive = fromRight !== 0;
 
-    const delay = rootScope.settings.animationsEnabled ? (wasActive ? 350 : 200) : 0;
+    const delay = liteMode.isAvailable('animations') ? (wasActive ? 350 : 200) : 0;
     // let delay = wasActive ? 350 : 10000;
 
     /* if(wasActive) {

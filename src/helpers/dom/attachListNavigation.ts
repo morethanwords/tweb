@@ -6,7 +6,7 @@
 
 import fastSmoothScroll from '../fastSmoothScroll';
 import cancelEvent from './cancelEvent';
-import {attachClickEvent, detachClickEvent} from './clickEvent';
+import {attachClickEvent} from './clickEvent';
 import findUpAsChild from './findUpAsChild';
 import findUpClassName from './findUpClassName';
 
@@ -147,7 +147,7 @@ export default function attachListNavigation({list, type, onSelect, once, waitFo
     }
   };
 
-  let attached = false;
+  let attached = false, detachClickEvent: () => void;
   const attach = () => {
     if(attached) return;
     attached = true;
@@ -155,7 +155,7 @@ export default function attachListNavigation({list, type, onSelect, once, waitFo
     // input.addEventListener(HANDLE_EVENT, onKeyDown, {capture: true, passive: false});
     document.addEventListener(HANDLE_EVENT, onKeyDown, {capture: true, passive: false});
     list.addEventListener('mousemove', onMouseMove, {passive: true});
-    attachClickEvent(list, onClick);
+    detachClickEvent = attachClickEvent(list, onClick);
   };
 
   const detach = () => {
@@ -164,7 +164,8 @@ export default function attachListNavigation({list, type, onSelect, once, waitFo
     // input.removeEventListener(HANDLE_EVENT, onKeyDown, {capture: true});
     document.removeEventListener(HANDLE_EVENT, onKeyDown, {capture: true});
     list.removeEventListener('mousemove', onMouseMove);
-    detachClickEvent(list, onClick);
+    detachClickEvent();
+    detachClickEvent = undefined;
   };
 
   const resetTarget = () => {

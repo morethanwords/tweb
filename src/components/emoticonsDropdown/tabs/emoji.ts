@@ -39,6 +39,7 @@ import PopupStickers from '../../popups/stickers';
 import {hideToast, toastNew} from '../../toast';
 import safeAssign from '../../../helpers/object/safeAssign';
 import type {AppStickersManager} from '../../../lib/appManagers/appStickersManager';
+import liteMode from '../../../helpers/liteMode';
 
 const loadedURLs: Set<string> = new Set();
 export function appendEmoji(emoji: string, container?: HTMLElement, prepend = false, unify = false) {
@@ -81,14 +82,14 @@ export function appendEmoji(emoji: string, container?: HTMLElement, prepend = fa
       const placeholder = document.createElement('span');
       placeholder.classList.add('emoji-placeholder');
 
-      if(rootScope.settings.animationsEnabled) {
+      if(liteMode.isAvailable('animations')) {
         image.style.opacity = '0';
         placeholder.style.opacity = '1';
       }
 
       image.addEventListener('load', () => {
         fastRaf(() => {
-          if(rootScope.settings.animationsEnabled) {
+          if(liteMode.isAvailable('animations')) {
             image.style.opacity = '';
             placeholder.style.opacity = '';
           }

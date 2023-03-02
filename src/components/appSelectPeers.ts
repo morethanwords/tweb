@@ -37,6 +37,7 @@ import hasRights from '../lib/appManagers/utils/chats/hasRights';
 import getDialogIndex from '../lib/appManagers/utils/dialogs/getDialogIndex';
 import {generateDelimiter} from './generateDelimiter';
 import SettingSection from './settingSection';
+import liteMode from '../helpers/liteMode';
 
 type SelectSearchPeerType = 'contacts' | 'dialogs' | 'channelParticipants';
 
@@ -678,7 +679,7 @@ export default class AppSelectPeers {
       this.onChange && this.onChange(this.selected.size);
     };
 
-    if(rootScope.settings.animationsEnabled) {
+    if(liteMode.isAvailable('animations')) {
       div.addEventListener('animationend', onAnimationEnd, {once: true});
     } else {
       onAnimationEnd();

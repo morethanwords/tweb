@@ -79,7 +79,8 @@ export default function wrapStickerAnimation({
     group: 'none',
     skipRatio,
     managers,
-    fullThumb
+    fullThumb,
+    isEffect: true
   }).then(({render}) => render).then((_animation) => {
     assumeType<RLottiePlayer>(_animation);
     if(!middleware()) {

@@ -87,7 +87,11 @@ export class CustomEmojiElement extends HTMLElement {
     // }
 
     if(this.player) {
-      animationIntersector.addAnimation(this, this.renderer.animationGroup, undefined, true);
+      animationIntersector.addAnimation({
+        animation: this,
+        group: this.renderer.animationGroup,
+        controlled: true
+      });
     }
 
     // this.connectedCallback = undefined;
@@ -185,7 +189,7 @@ export class CustomEmojiElement extends HTMLElement {
     this.paused = false;
 
     if(this.player instanceof HTMLVideoElement) {
-      this.player.currentTime = this.renderer.lastPausedVideo?.currentTime || this.player.currentTime;
+      this.player.currentTime = this.renderer.lastPausedVideo?.currentTime ?? this.player.currentTime;
       this.player.play().catch(noop);
     }
 
@@ -204,6 +208,10 @@ export class CustomEmojiElement extends HTMLElement {
   }
 
   public get autoplay() {
+    return true;
+  }
+
+  public get loop() {
     return true;
   }
 }
@@ -648,7 +656,11 @@ export class CustomEmojiRendererElement extends HTMLElement {
             }
 
             if(element.isConnected) {
-              animationIntersector.addAnimation(element, element.renderer.animationGroup, undefined, true);
+              animationIntersector.addAnimation({
+                animation: element,
+                group: element.renderer.animationGroup,
+                controlled: true
+              });
             }
           });
 

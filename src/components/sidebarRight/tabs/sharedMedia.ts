@@ -24,6 +24,7 @@ import PeerProfile from '../../peerProfile';
 import {Message} from '../../../layer';
 import getMessageThreadId from '../../../lib/appManagers/utils/messages/getMessageThreadId';
 import AppEditTopicTab from './editTopic';
+import liteMode from '../../../helpers/liteMode';
 
 type SharedMediaHistoryStorage = Partial<{
   [type in SearchSuperType]: {mid: number, peerId: PeerId}[]
@@ -226,7 +227,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       }],
       scrollable: this.scrollable,
       onChangeTab: (mediaTab) => {
-        const timeout = mediaTab.type === 'members' && rootScope.settings.animationsEnabled ? 250 : 0;
+        const timeout = mediaTab.type === 'members' && liteMode.isAvailable('animations') ? 250 : 0;
         setTimeout(() => {
           btnAddMembers.classList.toggle('is-hidden', mediaTab.type !== 'members');
         }, timeout);

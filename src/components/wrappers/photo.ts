@@ -24,6 +24,7 @@ import createVideo from '../../helpers/dom/createVideo';
 import noop from '../../helpers/noop';
 import {THUMB_TYPE_FULL} from '../../lib/mtproto/mtproto_config';
 import {Middleware} from '../../helpers/middleware';
+import liteMode from '../../helpers/liteMode';
 
 export default async function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size, withoutPreloader, loadPromises, autoDownloadSize, noBlur, noThumb, noFadeIn, blurAfter, managers = rootScope.managers, processUrl}: {
   photo: MyPhoto | MyDocument | WebDocument,
@@ -191,7 +192,7 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
 
   // console.log('wrapPhoto downloaded:', photo, photo.downloaded, container);
 
-  const needFadeIn = (thumbImage || !cacheContext.downloaded) && rootScope.settings.animationsEnabled && !noFadeIn;
+  const needFadeIn = (thumbImage || !cacheContext.downloaded) && liteMode.isAvailable('animations') && !noFadeIn;
 
   let preloader: ProgressivePreloader;
   const uploadingFileName = (message as Message.message)?.uploadingFileName;

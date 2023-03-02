@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {attachClickEvent, detachClickEvent} from './dom/clickEvent';
+import {attachClickEvent} from './dom/clickEvent';
 import findUpAsChild from './dom/findUpAsChild';
 import EventListenerBase from './eventListenerBase';
 import ListenerSetter from './listenerSetter';
@@ -13,6 +13,7 @@ import safeAssign from './object/safeAssign';
 import appNavigationController, {NavigationItem} from '../components/appNavigationController';
 import findUpClassName from './dom/findUpClassName';
 import rootScope from '../lib/rootScope';
+import liteMode from './liteMode';
 
 const KEEP_OPEN = false;
 const TOGGLE_TIMEOUT = 200;
@@ -36,6 +37,7 @@ export default class DropdownHover extends EventListenerBase<{
   protected navigationItem: NavigationItem;
   protected ignoreOutClickClassName: string;
   protected timeouts: {[type in DropdownHoverTimeoutType]?: number};
+  protected detachClickEvent: () => void;
 
   constructor(options: {
     element: DropdownHover['element'],
@@ -86,7 +88,7 @@ export default class DropdownHover extends EventListenerBase<{
         if(ignore && !this.ignoreMouseOut.size) {
           this.ignoreButtons.add(button);
           setTimeout(() => {
-            attachClickEvent(window, this.onClickOut, {capture: true});
+            this.detachClickEvent = attachClickEvent(window, this.onClickOut, {capture: true});
           }, 0);
         }
 
@@ -171,7 +173,7 @@ export default class DropdownHover extends EventListenerBase<{
       return;
     }
 
-    const delay = IS_TOUCH_SUPPORTED || !rootScope.settings.animationsEnabled ? 0 : ANIMATION_DURATION;
+    const delay = IS_TOUCH_SUPPORTED || !liteMode.isAvailable('animations') ? 0 : ANIMATION_DURATION;
     if((this.element.style.display && enable === undefined) || enable) {
       const res = this.dispatchResultableEvent('open');
       await Promise.all(res);
@@ -213,7 +215,8 @@ export default class DropdownHover extends EventListenerBase<{
       this.element.classList.remove('active');
 
       appNavigationController.removeItem(this.navigationItem);
-      detachClickEvent(window, this.onClickOut, {capture: true});
+      this.detachClickEvent?.();
+      this.detachClickEvent = undefined;
 
       this.clearTimeout('toggle');
       this.setTimeout('done', () => {

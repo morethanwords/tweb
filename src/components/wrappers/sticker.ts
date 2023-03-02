@@ -46,6 +46,7 @@ import {hideToast, toastNew} from '../toast';
 import wrapStickerAnimation from './stickerAnimation';
 import framesCache from '../../helpers/framesCache';
 import {IS_MOBILE} from '../../environment/userAgent';
+import liteMode, {LiteModeKey} from '../../helpers/liteMode';
 
 // https://github.com/telegramdesktop/tdesktop/blob/master/Telegram/SourceFiles/history/view/media/history_view_sticker.cpp#L40
 export const STICKER_EFFECT_MULTIPLIER = 1 + 0.245 * 2;
@@ -65,7 +66,7 @@ const onAnimationEnd = (element: HTMLElement, onAnimationEnd: () => void, timeou
   const _timeout = setTimeout(onEnd, timeout);
 };
 
-export default async function wrapSticker({doc, div, middleware, loadStickerMiddleware, lazyLoadQueue, exportLoad, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn, needUpscale, skipRatio, static: asStatic, managers = rootScope.managers, fullThumb, isOut, noPremium, withLock, relativeEffect, loopEffect, isCustomEmoji, syncedVideo}: {
+export default async function wrapSticker({doc, div, middleware, loadStickerMiddleware, lazyLoadQueue, exportLoad, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn, needUpscale, skipRatio, static: asStatic, managers = rootScope.managers, fullThumb, isOut, noPremium, withLock, relativeEffect, loopEffect, isCustomEmoji, syncedVideo, liteModeKey, isEffect}: {
   doc: MyDocument,
   div: HTMLElement | HTMLElement[],
   middleware?: Middleware,
@@ -93,9 +94,13 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
   relativeEffect?: boolean,
   loopEffect?: boolean,
   isCustomEmoji?: boolean,
-  syncedVideo?: boolean
+  syncedVideo?: boolean,
+  liteModeKey?: LiteModeKey | false,
+  isEffect?: boolean
 }) {
   div = Array.isArray(div) ? div : [div];
+
+  liteModeKey ??= 'stickers_panel';
 
   if(isCustomEmoji) {
     emoji = doc.stickerEmojiRaw;
@@ -119,14 +124,24 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
     lottieLoader.loadLottieWorkers();
   }
 
+  loop = !!(!emoji || isCustomEmoji) && loop;
+
   div.forEach((div) => {
     div.dataset.docId = '' + doc.id;
     if(emoji) {
       div.dataset.stickerEmoji = emoji;
     }
 
+    div.dataset.stickerPlay = '' + +play;
+    div.dataset.stickerLoop = '' + +loop;
+
     div.classList.add('media-sticker-wrapper');
   });
+
+  if(play && !liteMode.isAvailable(liteModeKey) && !isCustomEmoji && !isEffect) {
+    play = false;
+    loop = false;
+  }
 
   /* if(stickerType === 3) {
     const videoRes = wrapVideo({
@@ -278,7 +293,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
 
         const path = document.createElementNS(ns, 'path');
         path.setAttributeNS(null, 'd', d);
-        if(rootScope.settings.animationsEnabled && !isCustomEmoji) path.setAttributeNS(null, 'fill', 'url(#g)');
+        if(liteMode.isAvailable('animations') && !isCustomEmoji) path.setAttributeNS(null, 'fill', 'url(#g)');
         svg.append(path);
         div.forEach((div, idx) => div.append(idx > 0 ? svg.cloneNode(true) : svg));
         haveThumbCached = true;
@@ -384,7 +399,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
 
       const animation = await lottieLoader.loadAnimationWorker({
         container: (div as HTMLElement[])[0],
-        loop: !!(!emoji || isCustomEmoji) && loop,
+        loop,
         autoplay: play,
         animationData: blob,
         width,
@@ -395,7 +410,8 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
         toneIndex,
         sync: isCustomEmoji,
         middleware: loadStickerMiddleware ?? middleware,
-        group
+        group,
+        liteModeKey: liteModeKey || undefined
       });
 
       // const deferred = deferredPromise<void>();
@@ -408,7 +424,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
       const onFirstFrame = (container: HTMLElement, canvas: HTMLCanvasElement) => {
         const element = container.firstElementChild !== canvas && container.firstElementChild as HTMLElement;
         if(needFadeIn !== false) {
-          needFadeIn = (needFadeIn || !element || element.tagName === 'svg') && rootScope.settings.animationsEnabled;
+          needFadeIn = (needFadeIn || !element || element.tagName === 'svg') && liteMode.isAvailable('animations');
         }
 
         const cb = () => {
@@ -506,7 +522,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
 
       const thumbImage = (div as HTMLElement[]).map((div, idx) => (div.firstElementChild as HTMLElement) !== media[idx] && div.firstElementChild) as HTMLElement[];
       if(needFadeIn !== false) {
-        needFadeIn = (needFadeIn || !downloaded || (asStatic ? thumbImage[0] : (!thumbImage[0] || thumbImage[0].tagName === 'svg'))) && rootScope.settings.animationsEnabled;
+        needFadeIn = (needFadeIn || !downloaded || (asStatic ? thumbImage[0] : (!thumbImage[0] || thumbImage[0].tagName === 'svg'))) && liteMode.isAvailable('animations');
       }
 
       if(needFadeIn) {
@@ -570,7 +586,13 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
               }
 
               if(isAnimated) {
-                animationIntersector.addAnimation(media as HTMLVideoElement, group, undefined, middleware);
+                animationIntersector.addAnimation({
+                  animation: media as HTMLVideoElement,
+                  observeElement: div,
+                  group,
+                  controlled: middleware,
+                  liteModeKey: liteModeKey || undefined
+                });
               }
 
               if(loaded.push(media) === mediaLength) {
@@ -667,8 +689,13 @@ function attachStickerEffectHandler({container, doc, managers, middleware, isOut
 
   let playing = false;
   attachClickEvent(container, async(e) => {
+    const isAvailable = liteMode.isAvailable('effects_premiumstickers') || relativeEffect;
     cancelEvent(e);
-    if(playing) {
+    if(!e.isTrusted && !isAvailable) {
+      return;
+    }
+
+    if(playing || !isAvailable) {
       const a = document.createElement('a');
       a.onclick = () => {
         hideToast();
@@ -750,7 +777,7 @@ export async function onEmojiStickerClick({event, container, managers, peerId, m
     animation.restart();
   }
 
-  if(!peerId.isUser()) {
+  if(!peerId.isUser() || !liteMode.isAvailable('effects_emoji')) {
     return;
   }
 

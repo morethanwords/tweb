@@ -11,6 +11,7 @@ import {formatFullSentTime} from '../../helpers/date';
 import {simulateClickEvent, attachClickEvent} from '../../helpers/dom/clickEvent';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import formatBytes from '../../helpers/formatBytes';
+import liteMode from '../../helpers/liteMode';
 import {MediaSizeType} from '../../helpers/mediaSizes';
 import noop from '../../helpers/noop';
 import {Message, MessageMedia, WebPage} from '../../layer';
@@ -289,7 +290,7 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
           setTimeout(async() => { // wait for preloader animation end
             const url = (await getCacheContext()).url;
             window.open(url);
-          }, rootScope.settings.animationsEnabled ? 250 : 0);
+          }, liteMode.isAvailable('animations') ? 250 : 0);
         });
       }
     } else if(MEDIA_MIME_TYPES_SUPPORTED.has(doc.mime_type) && doc.thumbs?.length) {

@@ -11,6 +11,7 @@ import {fastRafPromise} from './schedulers';
 import {animateSingle, cancelAnimationByKey} from './animation';
 import rootScope from '../lib/rootScope';
 import isInDOM from './dom/isInDOM';
+import liteMode from './liteMode';
 
 const MIN_JS_DURATION = 250;
 const MAX_JS_DURATION = 600;
@@ -58,7 +59,7 @@ export default function fastSmoothScroll(options: ScrollOptions) {
   options.axis ??= 'y';
   // return;
 
-  if(!rootScope.settings.animationsEnabled || options.forceDuration === 0) {
+  if(!liteMode.isAvailable('animations') || options.forceDuration === 0) {
     options.forceDirection = FocusDirection.Static;
   }
 

@@ -16,7 +16,7 @@ import {fastRaf} from '../helpers/schedulers';
 import SetTransition from './singleTransition';
 import findUpClassName from '../helpers/dom/findUpClassName';
 import cancelEvent from '../helpers/dom/cancelEvent';
-import {attachClickEvent, detachClickEvent, simulateClickEvent} from '../helpers/dom/clickEvent';
+import {attachClickEvent, simulateClickEvent} from '../helpers/dom/clickEvent';
 import replaceContent from '../helpers/dom/replaceContent';
 import windowSize from '../helpers/windowSize';
 import {Message, MessageMedia, Poll, PollResults} from '../layer';
@@ -26,6 +26,7 @@ import setInnerHTML from '../helpers/dom/setInnerHTML';
 import {AppManagers} from '../lib/appManagers/managers';
 import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 import wrapRichText from '../lib/richTextProcessor/wrapRichText';
+import liteMode from '../helpers/liteMode';
 
 let lineTotalLength = 0;
 const tailLength = 9;
@@ -205,6 +206,8 @@ export default class PollElement extends HTMLElement {
 
   private sendVotePromise: Promise<void>;
   private sentVote = false;
+
+  private detachClickEvent: () => void;
 
   public static setMaxLength() {
     const width = windowSize.width <= 360 ? windowSize.width - 120 : mediaSizes.active.poll.width;
@@ -445,7 +448,7 @@ export default class PollElement extends HTMLElement {
 
     if(canVote) {
       this.setVotersCount(results);
-      attachClickEvent(this, this.clickHandler);
+      this.detachClickEvent = attachClickEvent(this, this.clickHandler);
     }
   }
 
@@ -528,7 +531,7 @@ export default class PollElement extends HTMLElement {
   }
 
   performResults(results: PollResults, chosenIndexes: number[], animate = true) {
-    if(!rootScope.settings.animationsEnabled) {
+    if(!liteMode.isAvailable('animations')) {
       animate = false;
     }
 
@@ -568,9 +571,10 @@ export default class PollElement extends HTMLElement {
       this.chosenIndexes = chosenIndexes.slice();
 
       if(this.isRetracted) {
-        attachClickEvent(this, this.clickHandler);
+        this.detachClickEvent = attachClickEvent(this, this.clickHandler);
       } else {
-        detachClickEvent(this, this.clickHandler);
+        this.detachClickEvent?.();
+        this.detachClickEvent = undefined;
       }
     }
 

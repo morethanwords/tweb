@@ -12,6 +12,7 @@ import roundRect from './canvas/roundRect';
 import Shimmer from './canvas/shimmer';
 import customProperties from './dom/customProperties';
 import easeInOutSine from './easing/easeInOutSine';
+import liteMode from './liteMode';
 import mediaSizes from './mediaSizes';
 
 export default class DialogsPlaceholder {
@@ -91,7 +92,7 @@ export default class DialogsPlaceholder {
     this.availableLength = availableLength;
     this.detachTime = Date.now();
 
-    if(!rootScope.settings.animationsEnabled) {
+    if(!liteMode.isAvailable('animations')) {
       this.remove();
     }
   }
@@ -132,7 +133,7 @@ export default class DialogsPlaceholder {
 
     if(!detachTime) {
       return;
-    } else if(!rootScope.settings.animationsEnabled) {
+    } else if(!liteMode.isAvailable('animations')) {
       this.remove();
       return;
     }
@@ -219,7 +220,7 @@ export default class DialogsPlaceholder {
       }
 
       // ! should've removed the loop if animations are disabled
-      if(rootScope.settings.animationsEnabled) {
+      if(liteMode.isAvailable('animations')) {
         this.renderFrame();
       }
 

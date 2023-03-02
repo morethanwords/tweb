@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type {LiteModeKey} from '../../helpers/liteMode';
 import animationIntersector, {AnimationItemGroup} from '../../components/animationIntersector';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import pause from '../../helpers/schedulers/pause';
@@ -43,6 +44,20 @@ export class LottieLoader {
     }
 
     return null;
+  }
+
+  public setAutoplay(play: boolean, liteModeKey: LiteModeKey) {
+    let changed = false;
+    for(const i in this.players) {
+      const player = this.players[i];
+      if(player.liteModeKey === liteModeKey) {
+        changed = true;
+        player.autoplay = play ? !!+player.el[0].dataset.stickerPlay : false;
+        player.loop = play ? !!+player.el[0].dataset.stickerLoop : false;
+      }
+    }
+
+    return changed;
   }
 
   public setLoop(loop: boolean) {
@@ -196,7 +211,12 @@ export class LottieLoader {
 
     const player = this.initPlayer(containers, params);
 
-    animationIntersector.addAnimation(player, group, undefined, middleware);
+    animationIntersector.addAnimation({
+      animation: player,
+      group,
+      controlled: middleware,
+      liteModeKey: params.liteModeKey
+    });
 
     return player;
   }
