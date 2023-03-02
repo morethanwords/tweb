@@ -10,6 +10,7 @@ import {LangPackKey, _i18n} from '../lib/langPack';
 import getDeepProperty from '../helpers/object/getDeepProperty';
 import rootScope from '../lib/rootScope';
 import apiManagerProxy from '../lib/mtproto/mtprotoworker';
+import simulateEvent from '../helpers/dom/dispatchEvent';
 
 export type CheckboxFieldOptions = {
   text?: LangPackKey,
@@ -19,6 +20,7 @@ export type CheckboxFieldOptions = {
   toggle?: boolean,
   stateKey?: string,
   stateValues?: any[],
+  stateValueReverse?: boolean,
   disabled?: boolean,
   checked?: boolean,
   restriction?: boolean,
@@ -73,12 +75,16 @@ export default class CheckboxField {
           value = options.stateValues[input.checked ? 1 : 0];
         } else {
           value = input.checked;
+
+          if(options.stateValueReverse) {
+            value = !value;
+          }
         }
 
         rootScope.managers.appStateManager.setByKey(options.stateKey, value);
       };
 
-      apiManagerProxy.getState().then((state) => {
+      options.checked === undefined && apiManagerProxy.getState().then((state) => {
         loaded = true;
         const stateValue = getDeepProperty(state, options.stateKey);
         let checked: boolean;
@@ -86,6 +92,10 @@ export default class CheckboxField {
           checked = options.stateValues.indexOf(stateValue) === 1;
         } else {
           checked = stateValue;
+
+          if(options.stateValueReverse) {
+            checked = !checked;
+          }
         }
 
         this.setValueSilently(checked);
@@ -162,17 +172,20 @@ export default class CheckboxField {
     } */
 
     this.setValueSilently(checked);
-
-    const event = new Event('change', {bubbles: true, cancelable: true});
-    this.input.dispatchEvent(event);
+    simulateEvent(this.input, 'change');
   }
 
   public setValueSilently(checked: boolean) {
     this.input.checked = checked;
   }
 
+  public isDisabled() {
+    return this.label.classList.contains('checkbox-disabled');
+  }
+
   public toggleDisability(disable: boolean) {
     this.label.classList.toggle('checkbox-disabled', disable);
+    this.input.disabled = disable;
     return () => this.toggleDisability(!disable);
   }
 }

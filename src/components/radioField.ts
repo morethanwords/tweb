@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import simulateEvent from '../helpers/dom/dispatchEvent';
 import getDeepProperty from '../helpers/object/getDeepProperty';
 import {LangPackKey, _i18n} from '../lib/langPack';
 import apiManagerProxy from '../lib/mtproto/mtprotoworker';
@@ -75,9 +76,7 @@ export default class RadioField {
 
   set checked(checked: boolean) {
     this.setValueSilently(checked);
-
-    const event = new Event('change', {bubbles: true, cancelable: true});
-    this.input.dispatchEvent(event);
+    simulateEvent(this.input, 'change');
   }
 
   public setValueSilently(checked: boolean) {

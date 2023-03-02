@@ -39,8 +39,8 @@ export default class AppPowerSavingTab extends SliderSuperTab {
       'all',
       'video',
       'gif',
-      ['stickers', ['stickers_panel', 'stickers_chat']],
-      ['emoji', ['emoji_panel', 'emoji_messages']],
+      // ['stickers', ['stickers_panel', 'stickers_chat']],
+      // ['emoji', ['emoji_panel', 'emoji_messages']],
       ['effects', ['effects_reactions', 'effects_premiumstickers', 'effects_emoji']],
       ['chat', ['chat_background', 'chat_spoilers']],
       'animations'

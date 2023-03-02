@@ -14,6 +14,10 @@ export type LiteModeKey = 'all' | 'gif' | 'video' |
   'chat' | 'chat_background' | 'chat_spoilers' | 'animations';
 
 export class LiteMode {
+  public isEnabled() {
+    return rootScope.settings.liteMode.all;
+  }
+
   public isAvailable(key: LiteModeKey) {
     return !rootScope.settings.liteMode.all && !rootScope.settings.liteMode[key];
   }

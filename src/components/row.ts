@@ -285,6 +285,10 @@ export default class Row {
     return media;
   }
 
+  public isDisabled() {
+    return this.container.classList.contains('is-disabled');
+  }
+
   public toggleDisability(disable = !this.container.classList.contains('is-disabled')) {
     this.container.classList.toggle('is-disabled', disable);
     return () => this.toggleDisability(!disable);

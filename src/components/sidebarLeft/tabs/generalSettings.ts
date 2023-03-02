@@ -35,6 +35,7 @@ import RLottiePlayer from '../../../lib/rlottie/rlottiePlayer';
 import themeController from '../../../helpers/themeController';
 import liteMode from '../../../helpers/liteMode';
 import AppPowerSavingTab from './powerSaving';
+import {toastNew} from '../../toast';
 
 export class RangeSettingSelector {
   public container: HTMLDivElement;
@@ -130,8 +131,28 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
 
       const onUpdate = () => {
         i.compareAndUpdate({key: getLiteModeStatus()});
+        animationsCheckboxField.setValueSilently(liteMode.isAvailable('animations'));
+        animationsCheckboxField.toggleDisability(liteMode.isEnabled());
       };
-      onUpdate();
+
+      const animationsCheckboxField = new CheckboxField({
+        text: 'EnableAnimations',
+        name: 'animations',
+        stateKey: 'settings.liteMode.animations',
+        stateValueReverse: true,
+        checked: false,
+        listenerSetter: this.listenerSetter
+      });
+
+      const animationsRow = new Row({
+        checkboxField: animationsCheckboxField,
+        clickable: () => {
+          if(animationsCheckboxField.isDisabled()) {
+            toastNew({langPackKey: 'LiteMode.DisableAlert'});
+          }
+        },
+        listenerSetter: this.listenerSetter
+      });
 
       const liteModeRow = new Row({
         icon: 'animations',
@@ -143,11 +164,14 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
         listenerSetter: this.listenerSetter
       });
 
+      onUpdate();
+
       this.listenerSetter.add(rootScope)('settings_updated', onUpdate);
 
       container.append(
         range.container,
         chatBackgroundButton,
+        animationsRow.container,
         liteModeRow.container
       );
     }

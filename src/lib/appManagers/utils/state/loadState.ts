@@ -377,6 +377,12 @@ async function loadStateInner() {
       }
     }
 
+    if(state.build < 309) {
+      state.settings.liteMode.animations = !state.settings.animationsEnabled;
+      state.settings.liteMode.video = !state.settings.autoPlay.videos;
+      state.settings.liteMode.gif = !state.settings.autoPlay.gifs;
+    }
+
     if(compareVersion(state.version, STATE_VERSION) !== 0) {
       newVersion = STATE_VERSION;
       oldVersion = state.version;

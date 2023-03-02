@@ -55,6 +55,8 @@ import {FOLDER_ID_ARCHIVE} from '../../lib/mtproto/mtproto_config';
 import mediaSizes from '../../helpers/mediaSizes';
 import {fastRaf} from '../../helpers/schedulers';
 import {getInstallPrompt} from '../../helpers/dom/installPrompt';
+import liteMode from '../../helpers/liteMode';
+import AppPowerSavingTab from './tabs/powerSaving';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -175,8 +177,17 @@ export class AppSidebarLeft extends SidebarSlider {
       checkboxField: new CheckboxField({
         toggle: true,
         checked: true,
-        stateKey: 'settings.animationsEnabled'
-      })
+        stateKey: 'settings.liteMode.animations',
+        stateValueReverse: true
+      }),
+      verify: () => !liteMode.isEnabled()
+    }, {
+      icon: 'animations',
+      text: 'LiteMode.Title',
+      onClick: () => {
+        this.createTab(AppPowerSavingTab).open();
+      },
+      verify: () => liteMode.isEnabled()
     }, {
       icon: 'help',
       text: 'TelegramFeatures',
