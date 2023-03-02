@@ -581,6 +581,7 @@
     .progress-line {
       margin-top: 4px;
       margin-inline-start: 0;
+      min-width: 11.25rem;
 
       &__filled:after {
         opacity: 0;

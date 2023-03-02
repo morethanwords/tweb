@@ -46,37 +46,6 @@ export class LottieLoader {
     return null;
   }
 
-  public setAutoplay(play: boolean, liteModeKey: LiteModeKey) {
-    let changed = false;
-    for(const i in this.players) {
-      const player = this.players[i];
-      if(player.liteModeKey === liteModeKey) {
-        changed = true;
-        player.autoplay = play ? !!+player.el[0].dataset.stickerPlay : false;
-        player.loop = play ? !!+player.el[0].dataset.stickerLoop : false;
-      }
-    }
-
-    return changed;
-  }
-
-  public setLoop(loop: boolean) {
-    let changed = false;
-    for(const i in this.players) {
-      const player = this.players[i];
-      if(player._loop && player.loop !== loop) {
-        changed = true;
-        player.loop = loop;
-
-        // if(player._autoplay && player.autoplay !== player._autoplay) {
-        player.autoplay = player._autoplay;
-        // }
-      }
-    }
-
-    return changed;
-  }
-
   public loadLottieWorkers() {
     if(this.loadPromise) {
       return this.loadPromise;

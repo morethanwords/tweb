@@ -337,6 +337,35 @@ export class AnimationIntersector {
     if(lock) this.lockIntersectionGroup(group);
     else this.unlockIntersectionGroup(group);
   }
+
+  public setAutoplay(play: boolean, liteModeKey: LiteModeKey) {
+    let changed = false;
+    this.byPlayer.forEach((animationItem, animation) => {
+      if(animationItem.liteModeKey === liteModeKey) {
+        changed = true;
+        animation.autoplay = play ? !!+animationItem.el.dataset.stickerPlay : false;
+        animation.loop = play ? !!+animationItem.el.dataset.stickerLoop : false;
+      }
+    });
+
+    return changed;
+  }
+
+  public setLoop(loop: boolean) {
+    let changed = false;
+    this.byPlayer.forEach((animationItem, animation) => {
+      if(!!+animationItem.el.dataset.stickerLoop && animation.loop !== loop) {
+        changed = true;
+        animation.loop = loop;
+
+        // if(animation._autoplay && animation.autoplay !== animation._autoplay) {
+        animation.autoplay = !!+animationItem.el.dataset.stickerPlay;
+        // }
+      }
+    });
+
+    return changed;
+  }
 }
 
 const animationIntersector = new AnimationIntersector();

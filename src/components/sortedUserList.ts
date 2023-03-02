@@ -15,6 +15,7 @@ import safeAssign from '../helpers/object/safeAssign';
 import {AppManagers} from '../lib/appManagers/managers';
 import getUserStatusString from './wrappers/getUserStatusString';
 import type LazyLoadQueue from './lazyLoadQueue';
+import getChatMembersString from './wrappers/getChatMembersString';
 
 interface SortedUser extends SortedElementBase<PeerId> {
   dom: DialogDom
@@ -47,14 +48,19 @@ export default class SortedUserList extends SortedList<SortedUser> {
     managers: SortedUserList['managers']
   }) {
     super({
-      getIndex: options.getIndex || ((element) => this.managers.appUsersManager.getUserStatusForSort(element.id)),
+      getIndex: options.getIndex || ((element) => element.id.isAnyChat() ? 0 : this.managers.appUsersManager.getUserStatusForSort(element.id)),
       onDelete: (element) => {
         element.dom.listEl.remove();
         this.onListLengthChange && this.onListLengthChange();
       },
       onUpdate: options.onUpdate || (async(element) => {
-        const status = getUserStatusString(await this.managers.appUsersManager.getUser(element.id));
-        replaceContent(element.dom.lastMessageSpan, status);
+        if(element.id.isAnyChat()) {
+          const status = await getChatMembersString(element.id.toChatId(), this.managers);
+          replaceContent(element.dom.lastMessageSpan, status);
+        } else {
+          const status = getUserStatusString(await this.managers.appUsersManager.getUser(element.id));
+          replaceContent(element.dom.lastMessageSpan, status);
+        }
       }),
       onSort: (element, idx) => {
         const willChangeLength = element.dom.listEl.parentElement !== this.list;
@@ -82,6 +88,10 @@ export default class SortedUserList extends SortedList<SortedUser> {
       },
       updateElementWith: fastRaf,
       updateListWith: async(callback) => {
+        if(!Array.from(this.elements.values()).some((element) => element.id.isUser())) {
+          return callback(false);
+        }
+
         if(!isInDOM(this.list)) {
           return callback(false);
         }

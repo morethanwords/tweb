@@ -1056,4 +1056,19 @@ export class AppUsersManager extends AppManager {
   public canSendToUser(userId: UserId) {
     return canSendToUser(this.getUser(userId));
   }
+
+  public getCommonChats(userId: UserId, limit = 100, maxId?: ChatId) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'messages.getCommonChats',
+      params: {
+        user_id: this.getUserInput(userId),
+        limit,
+        max_id: maxId ?? 0
+      },
+      processResult: (messagesChats) => {
+        this.appChatsManager.saveApiChats(messagesChats.chats);
+        return messagesChats;
+      }
+    });
+  }
 }

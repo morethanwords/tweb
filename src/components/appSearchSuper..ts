@@ -18,7 +18,7 @@ import useHeavyAnimationCheck, {getHeavyAnimationPromise} from '../hooks/useHeav
 import I18n, {LangPackKey, i18n} from '../lib/langPack';
 import findUpClassName from '../helpers/dom/findUpClassName';
 import {getMiddleware, Middleware} from '../helpers/middleware';
-import {ChannelParticipant, Chat, ChatFull, ChatParticipant, ChatParticipants, Document, Message, MessageMedia, Photo, WebPage} from '../layer';
+import {ChannelParticipant, Chat, ChatFull, ChatParticipant, ChatParticipants, Document, Message, MessageMedia, Photo, User, WebPage} from '../layer';
 import SortedUserList from './sortedUserList';
 import findUpTag from '../helpers/dom/findUpTag';
 import appSidebarRight from './sidebarRight';
@@ -75,6 +75,7 @@ import wrapPhoto from './wrappers/photo';
 import wrapVideo from './wrappers/video';
 import noop from '../helpers/noop';
 import wrapMediaSpoiler, {onMediaSpoilerClick} from './wrappers/mediaSpoiler';
+import filterAsync from '../helpers/array/filterAsync';
 
 // const testScroll = false;
 
@@ -92,7 +93,7 @@ export type SearchSuperContext = {
   maxDate?: number
 };
 
-export type SearchSuperMediaType = 'members' | 'media' | 'files' | 'links' | 'music' | 'chats' | 'voice';
+export type SearchSuperMediaType = 'members' | 'media' | 'files' | 'links' | 'music' | 'chats' | 'voice' | 'groups';
 export type SearchSuperMediaTab = {
   inputFilter: SearchSuperType,
   name: LangPackKey,
@@ -1163,11 +1164,12 @@ export default class AppSearchSuper {
   }
 
   private async loadMembers(mediaTab: SearchSuperMediaTab) {
-    const id = this.searchContext.peerId.toChatId();
+    const chatId = mediaTab.type === 'members' ? this.searchContext.peerId.toChatId() : undefined;
+    const userId = mediaTab.type === 'groups' ? this.searchContext.peerId.toUserId() : undefined;
     const middleware = this.middleware.get();
     let promise: Promise<void>;
 
-    const renderParticipants = async(participants: (ChatParticipant | ChannelParticipant)[]) => {
+    const renderParticipants = async(participants: (ChatParticipant | ChannelParticipant | Chat)[]) => {
       if(this.loadMutex) {
         await this.loadMutex;
 
@@ -1178,7 +1180,7 @@ export default class AppSearchSuper {
 
       let membersList = this.membersList;
       if(!membersList) {
-        membersList = new SortedUserList({
+        membersList = this.membersList = new SortedUserList({
           lazyLoadQueue: this.lazyLoadQueue,
           rippleEnabled: false,
           managers: this.managers
@@ -1203,28 +1205,53 @@ export default class AppSearchSuper {
         this.afterPerforming(1, mediaTab.contentTab);
       }
 
-      for(const participant of participants) {
-        const peerId = getParticipantPeerId(participant);
-        if(peerId.isAnyChat()) {
-          continue;
-        }
-
-        const user = await this.managers.appUsersManager.getUser(peerId);
-        if(!middleware()) {
+      const peerIds = participants.map((participant) => {
+        const peerId = userId ? (participant as Chat.chat).id.toPeerId(true) : getParticipantPeerId(participant as ChannelParticipant);
+        if(chatId ? peerId.isAnyChat() : peerId.isUser()) {
           return;
         }
 
-        if(user.pFlags.deleted) {
-          continue;
+        return peerId;
+      }).filter(Boolean);
+
+      const filtered = await filterAsync(peerIds, async(peerId) => {
+        const peer: User | Chat = await this.managers.appPeersManager.getPeer(peerId);
+        if(!middleware()) {
+          return false;
         }
 
+        if(!peer || (peer as User.user).pFlags.deleted) {
+          return false;
+        }
+
+        return true;
+      });
+
+      for(const peerId of filtered) {
         membersList.add(peerId);
       }
     };
 
-    if(await this.managers.appChatsManager.isChannel(id)) {
+    if(userId) {
       const LOAD_COUNT = !this.membersList ? 50 : 200;
-      promise = this.managers.appProfileManager.getChannelParticipants(id, undefined, LOAD_COUNT, this.nextRates[mediaTab.inputFilter]).then((participants) => {
+      promise = this.managers.appUsersManager.getCommonChats(userId, LOAD_COUNT, this.nextRates[mediaTab.inputFilter]).then((messagesChats) => {
+        if(!middleware()) {
+          return;
+        }
+
+        // const list = mediaTab.contentTab.firstElementChild as HTMLUListElement;
+        const lastChat = messagesChats.chats[messagesChats.chats.length - 1];
+        this.nextRates[mediaTab.inputFilter] = lastChat?.id as number;
+
+        if(messagesChats.chats.length < LOAD_COUNT) {
+          this.loaded[mediaTab.inputFilter] = true;
+        }
+
+        return renderParticipants(messagesChats.chats);
+      });
+    } else if(await this.managers.appChatsManager.isChannel(chatId)) {
+      const LOAD_COUNT = !this.membersList ? 50 : 200;
+      promise = this.managers.appProfileManager.getChannelParticipants(chatId, undefined, LOAD_COUNT, this.nextRates[mediaTab.inputFilter]).then((participants) => {
         if(!middleware()) {
           return;
         }
@@ -1239,7 +1266,7 @@ export default class AppSearchSuper {
         return renderParticipants(participants.participants);
       });
     } else {
-      promise = this.managers.appProfileManager.getChatFull(id).then((chatFull) => {
+      promise = this.managers.appProfileManager.getChatFull(chatId).then((chatFull) => {
         if(!middleware()) {
           return;
         }
@@ -1271,7 +1298,7 @@ export default class AppSearchSuper {
       return this.loadPromises[type];
     }
 
-    if(mediaTab.type === 'members') {
+    if(mediaTab.type === 'members' || mediaTab.type === 'groups') {
       return this.loadMembers(mediaTab);
     }
 
@@ -1403,9 +1430,10 @@ export default class AppSearchSuper {
     const mediaTabs = this.mediaTabs.filter((mediaTab) => mediaTab.inputFilter !== 'inputMessagesFilterEmpty');
     const filters = mediaTabs.map((mediaTab) => ({_: mediaTab.inputFilter}));
 
-    const [counters, canViewMembers] = await Promise.all([
+    const [counters, canViewMembers, canViewGroups] = await Promise.all([
       this.managers.appMessagesManager.getSearchCounters(peerId, filters, undefined, threadId),
-      this.canViewMembers()
+      this.canViewMembers(),
+      this.canViewGroups()
     ]);
 
     if(!middleware()) {
@@ -1439,11 +1467,26 @@ export default class AppSearchSuper {
     });
 
     const membersTab = this.mediaTabsMap.get('members');
-    membersTab.menuTab.classList.toggle('hide', !canViewMembers);
+
+    const a: [SearchSuperMediaTab, boolean][] = [
+      [membersTab, canViewMembers],
+      [this.mediaTabsMap.get('groups'), canViewGroups]
+    ];
+
+    a.forEach(([tab, value]) => {
+      if(!tab) {
+        return;
+      }
+
+      tab.menuTab.classList.toggle('hide', !value);
+
+      if(value) {
+        ++count;
+      }
+    });
 
     if(canViewMembers) {
       firstMediaTab = membersTab;
-      ++count;
     }
 
     this.container.classList.toggle('hide', !firstMediaTab);
@@ -1479,6 +1522,8 @@ export default class AppSearchSuper {
 
     if(peerId.isUser()) {
       findAndSplice(toLoad, (mediaTab) => mediaTab.type === 'members');
+    } else {
+      findAndSplice(toLoad, (mediaTab) => mediaTab.type === 'groups');
     }
 
     if(!toLoad.length) {
@@ -1549,7 +1594,7 @@ export default class AppSearchSuper {
   public canViewMembers() {
     const {peerId} = this.searchContext;
     const isAnyChat = peerId.isAnyChat();
-    if(!isAnyChat) return Promise.resolve(false);
+    if(!isAnyChat || !this.mediaTabsMap.has('members')) return Promise.resolve(false);
     const chatId = peerId.toChatId();
     return Promise.all([
       this.managers.appChatsManager.isBroadcast(chatId),
@@ -1558,6 +1603,13 @@ export default class AppSearchSuper {
     ]).then(([isBroadcast, hasRights, isForum]) => {
       return !isBroadcast && hasRights && (!this.searchContext.threadId || !isForum);
     });
+  }
+
+  public async canViewGroups() {
+    const {peerId} = this.searchContext;
+    if(!peerId.isUser() || !this.mediaTabsMap.has('groups')) return false;
+    const userFull = await this.managers.appProfileManager.getProfile(peerId.toUserId());
+    return !!userFull.common_chats_count;
   }
 
   public cleanup() {

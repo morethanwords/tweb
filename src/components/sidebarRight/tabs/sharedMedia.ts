@@ -224,6 +224,10 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         inputFilter: 'inputMessagesFilterRoundVoice',
         name: 'SharedVoiceTab2',
         type: 'voice'
+      }, {
+        inputFilter: 'inputMessagesFilterEmpty',
+        name: 'ChatList.Filter.Groups',
+        type: 'groups'
       }],
       scrollable: this.scrollable,
       onChangeTab: (mediaTab) => {

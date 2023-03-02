@@ -1677,8 +1677,8 @@ export class AppImManager extends EventListenerBase<{
     }, liteMode.isAvailable('animations') ? 250 : 0, false, true);
 
     const c: LiteModeKey[] = ['stickers_chat', 'stickers_panel'];
-    const changedLoop = lottieLoader.setLoop(rootScope.settings.stickers.loop);
-    const changedAutoplay = !!c.filter((key) => lottieLoader.setAutoplay(liteMode.isAvailable(key), key)).length;
+    const changedLoop = animationIntersector.setLoop(rootScope.settings.stickers.loop);
+    const changedAutoplay = !!c.filter((key) => animationIntersector.setAutoplay(liteMode.isAvailable(key), key)).length;
     if(changedLoop || changedAutoplay) {
       animationIntersector.checkAnimations2(false);
     }

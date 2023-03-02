@@ -64,4 +64,12 @@ export default class LazyLoadQueue extends LazyLoadQueueIntersector {
 
     return true;
   }
+
+  public setAllSeen() {
+    this.queue.forEach((item) => {
+      item.wasSeen = true;
+    });
+
+    this.setProcessQueueTimeout();
+  }
 }

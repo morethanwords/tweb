@@ -604,7 +604,8 @@
     }
   }
 
-  &-content-members {
+  &-content-members,
+  &-content-groups {
     .chatlist {
       padding-top: .5rem;
       padding-bottom: .5rem;
