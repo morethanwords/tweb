@@ -120,7 +120,8 @@ export type ChatSetPeerOptions = {
   startParam?: string,
   stack?: number,
   commentId?: number,
-  type?: ChatType
+  type?: ChatType,
+  mediaTimestamp?: number
 };
 
 export type ChatSetInnerPeerOptions = Modify<ChatSetPeerOptions, {
@@ -623,6 +624,23 @@ export class AppImManager extends EventListenerBase<{
       }
     });
 
+    addAnchorListener<{}>({
+      name: 'setMediaTimestamp',
+      callback: (_, element) => {
+        const timestamp = +element.dataset.timestamp;
+        const bubble = findUpClassName(element, 'bubble');
+        if(bubble) {
+          this.chat.bubbles.playMediaWithTimestamp(bubble, timestamp);
+          return;
+        }
+
+        if(findUpClassName(element, 'media-viewer-caption')) {
+          const appMediaViewer = (window as any).appMediaViewer;
+          appMediaViewer.setMediaTimestamp(timestamp);
+        }
+      }
+    });
+
     ([
       ['addstickers', INTERNAL_LINK_TYPE.STICKER_SET],
       ['addemoji', INTERNAL_LINK_TYPE.EMOJI_SET]
@@ -707,7 +725,7 @@ export class AppImManager extends EventListenerBase<{
     //   pathnameParams: [string, string?],
     //   uriParams: {comment?: number}
       pathnameParams: ['c', string, string] | [string, string?],
-      uriParams: {thread?: string, comment?: string} | {comment?: string, start?: string}
+      uriParams: {thread?: string, comment?: string, t?: string} | {comment?: string, start?: string, t?: string}
     }>({
       name: 'im',
       callback: async({pathnameParams, uriParams}, element) => {
@@ -726,7 +744,8 @@ export class AppImManager extends EventListenerBase<{
             post: pathnameParams[2] || pathnameParams[1],
             thread,
             comment: uriParams.comment,
-            stack: this.getStackFromElement(element)
+            stack: this.getStackFromElement(element),
+            t: uriParams.t
           };
         } else {
           const thread = 'thread' in uriParams ? uriParams.thread : pathnameParams[2] && pathnameParams[1];
@@ -737,7 +756,8 @@ export class AppImManager extends EventListenerBase<{
             thread,
             comment: uriParams.comment,
             start: 'start' in uriParams ? uriParams.start : undefined,
-            stack: this.getStackFromElement(element)
+            stack: this.getStackFromElement(element),
+            t: uriParams.t
           };
         }
 
@@ -765,7 +785,8 @@ export class AppImManager extends EventListenerBase<{
         post?: string,
         thread?: string,
         comment?: string,
-        phone?: string
+        phone?: string,
+        t?: string
       }
     }>({
       name: 'resolve',
@@ -1127,7 +1148,8 @@ export class AppImManager extends EventListenerBase<{
           commentId,
           startParam: link.start,
           stack: link.stack,
-          threadId
+          threadId,
+          mediaTimestamp: link.t && +link.t
         });
         break;
       }
@@ -1153,7 +1175,8 @@ export class AppImManager extends EventListenerBase<{
           peer: chat,
           lastMsgId: postId,
           threadId,
-          stack: link.stack
+          stack: link.stack,
+          mediaTimestamp: link.t && +link.t
         });
         break;
       }

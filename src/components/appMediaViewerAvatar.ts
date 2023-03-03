@@ -36,11 +36,19 @@ export default class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete
   }
 
   onPrevClick = (target: AppMediaViewerAvatarTargetType) => {
-    this.openMedia(target.photoId, target.element, -1);
+    this.openMedia({
+      photoId: target.photoId,
+      target: target.element,
+      fromRight: -1
+    });
   };
 
   onNextClick = (target: AppMediaViewerAvatarTargetType) => {
-    this.openMedia(target.photoId, target.element, 1);
+    this.openMedia({
+      photoId: target.photoId,
+      target: target.element,
+      fromRight: 1
+    });
   };
 
   onDownloadClick = () => {
@@ -50,11 +58,32 @@ export default class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete
     });
   };
 
-  public async openMedia(photoId: Photo.photo['id'], target?: HTMLElement, fromRight = 0, prevTargets?: AppMediaViewerAvatarTargetType[], nextTargets?: AppMediaViewerAvatarTargetType[]) {
+  public async openMedia({
+    photoId,
+    target,
+    fromRight = 0,
+    prevTargets,
+    nextTargets
+  }: {
+    photoId: Photo.photo['id'],
+    target?: HTMLElement,
+    fromRight?: number,
+    prevTargets?: AppMediaViewerAvatarTargetType[],
+    nextTargets?: AppMediaViewerAvatarTargetType[]
+  }) {
     if(this.setMoverPromise) return this.setMoverPromise;
 
     const photo = await this.managers.appPhotosManager.getPhoto(photoId);
-    const ret = super._openMedia(photo, photo.date, this.peerId, fromRight, target, false, prevTargets, nextTargets);
+    const ret = super._openMedia({
+      media: photo,
+      timestamp: photo.date,
+      fromId: this.peerId,
+      fromRight,
+      target,
+      reverse: false,
+      prevTargets,
+      nextTargets
+    });
     this.target.photoId = photo.id;
     this.target.photo = photo;
 

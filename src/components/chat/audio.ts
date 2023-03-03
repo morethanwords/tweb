@@ -45,7 +45,7 @@ export default class ChatAudio extends PinnedContainer {
         }
       ),
       onClose: () => {
-        appMediaPlaybackController.stop();
+        appMediaPlaybackController.stop(undefined, true);
       },
       floating: true
     });

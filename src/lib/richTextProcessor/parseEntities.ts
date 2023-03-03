@@ -16,14 +16,14 @@ import checkBrackets from './checkBrackets';
 import getEmojiUnified from './getEmojiUnified';
 
 export default function parseEntities(text: string) {
-  let match: any;
+  let match: RegExpMatchArray;
   let raw = text;
   const entities: MessageEntity[] = [];
   let matchIndex;
   let rawOffset = 0;
   // var start = tsNow()
   FULL_REG_EXP.lastIndex = 0;
-  while((match = raw.match(FULL_REG_EXP))) {
+  while(match = raw.match(FULL_REG_EXP)) {
     matchIndex = rawOffset + match.index;
 
     // console.log('parseEntities match:', match);
@@ -100,6 +100,20 @@ export default function parseEntities(text: string) {
         offset: matchIndex + (match[11] ? match[11].length : 0) + (match[12] ? match[12].length : 0),
         length: 1 + match[13].length + (match[14] ? 1 + match[14].length : 0),
         unsafe: true
+      });
+    } else if(match[16]) { // Media timestamp
+      const timestamp = match[16];
+      const splitted: string[] = timestamp.split(':');
+      const splittedLength = splitted.length;
+      const hours = splittedLength === 3 ? +splitted[0] : 0;
+      const minutes = +splitted[splittedLength === 3 ? 1 : 0];
+      const seconds = +splitted[splittedLength - 1];
+      entities.push({
+        _: 'messageEntityTimestamp',
+        offset: matchIndex + (/\D/.test(match[0][0]) ? 1 : 0),
+        length: timestamp.length,
+        raw: timestamp,
+        time: hours * 3600 + minutes * 60 + seconds
       });
     }
 

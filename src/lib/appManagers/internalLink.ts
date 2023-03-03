@@ -25,6 +25,7 @@ export namespace InternalLink {
     comment?: string,
     thread?: string,
     start?: string,
+    t?: string, // media timestamp
     stack?: number // local
   }
 
@@ -34,6 +35,7 @@ export namespace InternalLink {
     post: string,
     thread?: string,
     comment?: string,
+    t?: string // media timestamp
     stack?: number // local
   }
 

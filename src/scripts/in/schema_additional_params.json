@@ -169,6 +169,15 @@
     {"name": "unsafe", "type": "boolean"}
   ]
 }, {
+  "predicate": "messageEntityTimestamp",
+  "params": [
+    {"name": "offset", "type": "number"},
+    {"name": "length", "type": "number"},
+    {"name": "time", "type": "number"},
+    {"name": "raw", "type": "string"}
+  ],
+  "type": "MessageEntity"
+}, {
   "predicate": "user",
   "params": [
     {"name": "sortName", "type": "string"}

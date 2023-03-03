@@ -975,6 +975,7 @@ export default function wrapRichText(text: string, options: Partial<{
   passEntities: Partial<{
     [_ in MessageEntity['_']]: boolean
   }>,
+  maxMediaTimestamp: number,
   noEncoding: boolean,
   isSelectable: boolean,
 
@@ -1459,6 +1460,20 @@ export default function wrapRichText(text: string, options: Partial<{
 
           container[`on${CLICK_EVENT_NAME}`] = (window as any).onSpoilerClick;
         }
+
+        break;
+      }
+
+      case 'messageEntityTimestamp': {
+        if(!options.maxMediaTimestamp || entity.time > options.maxMediaTimestamp) {
+          break;
+        }
+
+        element = document.createElement('a');
+        element.classList.add('timestamp');
+        element.dataset.timestamp = '' + entity.time;
+        (element as HTMLAnchorElement).href = '#';
+        element.setAttribute('onclick', 'setMediaTimestamp(this)');
 
         break;
       }

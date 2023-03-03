@@ -565,8 +565,8 @@ export default class ChatBubbles {
             if(element instanceof AudioElement || element.classList.contains('media-round')) {
               element.dataset.mid = '' + message.mid;
               delete element.dataset.isOutgoing;
-              (element as any).message = message;
-              (element as any).onLoad(true);
+              (element as AudioElement).message = message;
+              (element as AudioElement).onLoad(true);
             } else {
               element.dataset.docId = '' + doc.id;
               (element as any).doc = doc;
@@ -1920,6 +1920,68 @@ export default class ChatBubbles {
       return;
     }
 
+    if(await this.checkTargetForMediaViewer(target, e)) {
+      return;
+    }
+
+    if(['IMG', 'DIV', 'SPAN'/* , 'A' */].indexOf(target.tagName) === -1) target = findUpTag(target, 'DIV');
+
+    if(['DIV', 'SPAN'].indexOf(target.tagName) !== -1/*  || target.tagName === 'A' */) {
+      if(target.classList.contains('goto-original')) {
+        const savedFrom = bubble.dataset.savedFrom;
+        const [peerId, mid] = savedFrom.split('_');
+        // //this.log('savedFrom', peerId, msgID);
+        this.chat.appImManager.setInnerPeer({
+          peerId: peerId.toPeerId(),
+          lastMsgId: +mid
+        });
+        return;
+      } else if(target.classList.contains('forward')) {
+        const mid = +bubble.dataset.mid;
+        const message = await this.managers.appMessagesManager.getMessageByPeer(this.peerId, mid);
+        new PopupForward({
+          [this.peerId]: await this.managers.appMessagesManager.getMidsByMessage(message)
+        });
+        // appSidebarRight.forwardTab.open([mid]);
+        return;
+      }
+
+      let isReplyClick = false;
+
+      try {
+        isReplyClick = !!findUpClassName(e.target, 'reply');
+      } catch(err) {}
+
+      if(isReplyClick && bubble.classList.contains('is-reply')/*  || bubble.classList.contains('forwarded') */) {
+        const bubbleMid = +bubble.dataset.mid;
+        this.followStack.push(bubbleMid);
+
+        const message = (await this.chat.getMessage(bubbleMid)) as Message.message;
+
+        const replyToPeerId = message.reply_to.reply_to_peer_id ? getPeerId(message.reply_to.reply_to_peer_id) : this.peerId;
+        const replyToMid = message.reply_to.reply_to_msg_id;
+
+        this.chat.appImManager.setInnerPeer({
+          peerId: replyToPeerId,
+          lastMsgId: replyToMid,
+          type: this.chat.type,
+          threadId: this.chat.threadId
+        });
+
+        /* if(this.chat.type === 'discussion') {
+          this.chat.appImManager.setMessageId(, originalMessageId);
+        } else {
+          this.chat.appImManager.setInnerPeer(this.peerId, originalMessageId);
+        } */
+        // this.chat.setMessageId(, originalMessageId);
+      }
+    }
+
+    // console.log('chatInner click', e);
+  };
+
+  public async checkTargetForMediaViewer(target: HTMLElement, e?: Event, mediaTimestamp?: number) {
+    const bubble = findUpClassName(target, 'bubble');
     const documentDiv = findUpClassName(target, 'document-with-thumb');
     if((target.tagName === 'IMG' && !target.classList.contains('emoji') && !target.classList.contains('document-thumb')) ||
       target.classList.contains('album-item') ||
@@ -1929,7 +1991,7 @@ export default class ChatBubbles {
       target.classList.contains('canvas-thumbnail')) {
       const groupedItem = findUpClassName(target, 'album-item') || findUpClassName(target, 'document-container');
       const preloader = (groupedItem || bubble).querySelector<HTMLElement>('.preloader-container');
-      if(preloader) {
+      if(preloader && e) {
         simulateClickEvent(preloader);
         cancelEvent(e);
         return;
@@ -2027,67 +2089,18 @@ export default class ChatBubbles {
         useSearch: this.chat.type !== 'scheduled' && !isSingleMedia,
         isScheduled: this.chat.type === 'scheduled'
       })
-      .openMedia(message, targets[idx].element, 0, true, targets.slice(0, idx), targets.slice(idx + 1));
-
-      // appMediaViewer.openMedia(message, target as HTMLImageElement);
-      return;
+      .openMedia({
+        message: message,
+        target: targets[idx].element,
+        fromRight: 0,
+        reverse: true,
+        prevTargets: targets.slice(0, idx),
+        nextTargets: targets.slice(idx + 1),
+        mediaTimestamp
+      });
+      return true;
     }
-
-    if(['IMG', 'DIV', 'SPAN'/* , 'A' */].indexOf(target.tagName) === -1) target = findUpTag(target, 'DIV');
-
-    if(['DIV', 'SPAN'].indexOf(target.tagName) !== -1/*  || target.tagName === 'A' */) {
-      if(target.classList.contains('goto-original')) {
-        const savedFrom = bubble.dataset.savedFrom;
-        const [peerId, mid] = savedFrom.split('_');
-        // //this.log('savedFrom', peerId, msgID);
-        this.chat.appImManager.setInnerPeer({
-          peerId: peerId.toPeerId(),
-          lastMsgId: +mid
-        });
-        return;
-      } else if(target.classList.contains('forward')) {
-        const mid = +bubble.dataset.mid;
-        const message = await this.managers.appMessagesManager.getMessageByPeer(this.peerId, mid);
-        new PopupForward({
-          [this.peerId]: await this.managers.appMessagesManager.getMidsByMessage(message)
-        });
-        // appSidebarRight.forwardTab.open([mid]);
-        return;
-      }
-
-      let isReplyClick = false;
-
-      try {
-        isReplyClick = !!findUpClassName(e.target, 'reply');
-      } catch(err) {}
-
-      if(isReplyClick && bubble.classList.contains('is-reply')/*  || bubble.classList.contains('forwarded') */) {
-        const bubbleMid = +bubble.dataset.mid;
-        this.followStack.push(bubbleMid);
-
-        const message = (await this.chat.getMessage(bubbleMid)) as Message.message;
-
-        const replyToPeerId = message.reply_to.reply_to_peer_id ? getPeerId(message.reply_to.reply_to_peer_id) : this.peerId;
-        const replyToMid = message.reply_to.reply_to_msg_id;
-
-        this.chat.appImManager.setInnerPeer({
-          peerId: replyToPeerId,
-          lastMsgId: replyToMid,
-          type: this.chat.type,
-          threadId: this.chat.threadId
-        });
-
-        /* if(this.chat.type === 'discussion') {
-          this.chat.appImManager.setMessageId(, originalMessageId);
-        } else {
-          this.chat.appImManager.setInnerPeer(this.peerId, originalMessageId);
-        } */
-        // this.chat.setMessageId(, originalMessageId);
-      }
-    }
-
-    // console.log('chatInner click', e);
-  };
+  }
 
   public async onGoDownClick() {
     if(!this.followStack.length) {
@@ -3219,9 +3232,32 @@ export default class ChatBubbles {
 
       this.onScroll();
 
-      const afterSetPromise = Promise.all([setPeerPromise, getHeavyAnimationPromise()]);
+      const afterSetPromise = Promise.all([
+        setPeerPromise,
+        getHeavyAnimationPromise()
+      ]);
       afterSetPromise.then(() => { // check whether list isn't full
+        if(!middleware()) {
+          return;
+        }
+
         scrollable.checkForTriggers();
+
+        if(options.mediaTimestamp !== undefined) {
+          // ! :(
+          const p = cached && !samePeer && liteMode.isAvailable('animations') && this.chat.appImManager.chats.length > 1 ?
+            pause(400) :
+            Promise.resolve();
+          p.then(() => {
+            return this.getMountedBubble(lastMsgId);
+          }).then((mounted) => {
+            if(!middleware() || !mounted) {
+              return;
+            }
+
+            this.playMediaWithTimestamp(mounted.bubble, options.mediaTimestamp);
+          });
+        }
 
         // if(cached) {
         // this.onRenderScrollSet();
@@ -3265,6 +3301,21 @@ export default class ChatBubbles {
     });
 
     return {cached, promise: setPeerPromise};
+  }
+
+  public playMediaWithTimestamp(bubble: HTMLElement, timestamp: number) {
+    const attachment = bubble.querySelector<HTMLElement>('.attachment');
+    if(attachment) {
+      const media = attachment.querySelector<HTMLElement>('img, video, canvas');
+      this.checkTargetForMediaViewer(media, undefined, timestamp);
+      return;
+    }
+
+    const audio = bubble.querySelector<AudioElement>('.audio');
+    if(audio) {
+      audio.playWithTimestamp(timestamp);
+      return;
+    }
   }
 
   private async setFetchReactionsInterval(afterSetPromise: Promise<any>) {
@@ -3874,6 +3925,8 @@ export default class ChatBubbles {
 
     customEmojiSize ??= this.chat.appImManager.customEmojiSize;
 
+    const doc = (messageMedia as MessageMedia.messageMediaDocument)?.document as MyDocument;
+
     const richText = wrapRichText(messageMessage, {
       entities: totalEntities,
       passEntities: this.passEntities,
@@ -3881,7 +3934,8 @@ export default class ChatBubbles {
       lazyLoadQueue: this.lazyLoadQueue,
       customEmojiSize,
       middleware,
-      animationGroup: this.chat.animationGroup
+      animationGroup: this.chat.animationGroup,
+      maxMediaTimestamp: ((['voice', 'audio', 'video'] as MyDocument['type'][]).includes(doc?.type) && doc.duration) || undefined
     });
 
     let canHaveTail = true;

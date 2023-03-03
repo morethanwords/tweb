@@ -100,6 +100,9 @@ export default class PopupForward extends PopupPickUser {
             case 'voice':
               action = 'send_voices';
               break;
+            case 'video':
+              action = 'send_videos';
+              break;
             default:
               action = 'send_docs';
               break;

@@ -270,8 +270,7 @@ export default class VideoPlayer extends ControlsHover {
     }
   }
 
-  protected togglePlay() {
-    const isPaused = this.video.paused;
+  protected togglePlay(isPaused = this.video.paused) {
     this.video[isPaused ? 'play' : 'pause']();
   }
 
@@ -392,6 +391,11 @@ export default class VideoPlayer extends ControlsHover {
       fullScreenButton.classList.add('tgico-smallscreen');
       fullScreenButton.setAttribute('title', 'Exit Full Screen');
     }
+  }
+
+  public setTimestamp(timestamp: number) {
+    this.video.currentTime = timestamp;
+    this.togglePlay(true);
   }
 
   public cleanup() {

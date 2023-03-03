@@ -11,7 +11,7 @@ import parseUriParams from './string/parseUriParams';
 export default function addAnchorListener<Params extends {pathnameParams?: any, uriParams?: any}>(options: {
   name: 'showMaskedAlert' | 'execBotCommand' | 'searchByHashtag' | 'addstickers' | 'im' |
         'resolve' | 'privatepost' | 'addstickers' | 'voicechat' | 'joinchat' | 'join' | 'invoice' |
-        'addemoji',
+        'addemoji' | 'setMediaTimestamp',
   protocol?: 'tg',
   callback: (params: Params, element?: HTMLAnchorElement) => boolean | any,
   noPathnameParams?: boolean,

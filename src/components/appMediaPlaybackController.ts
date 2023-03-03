@@ -640,7 +640,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
   };
 
   private onEnded = (e?: Event) => {
-    if(!e.isTrusted) {
+    if(e && !e.isTrusted) {
       return;
     }
 
@@ -697,7 +697,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     return this.toggle(false);
   };
 
-  public stop = (media = this.playingMedia) => {
+  public stop = (media = this.playingMedia, force?: boolean) => {
     if(!media) {
       return false;
     }
@@ -707,7 +707,6 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     }
 
     media.currentTime = 0;
-    simulateEvent(media, 'ended');
 
     if(media === this.playingMedia) {
       const details = this.mediaDetails.get(media);
@@ -731,6 +730,10 @@ export class AppMediaPlaybackController extends EventListenerBase<{
 
       this.playingMedia = undefined;
       this.playingMediaType = undefined;
+    }
+
+    if(force) {
+      this.dispatchEvent('stop');
     }
 
     return true;

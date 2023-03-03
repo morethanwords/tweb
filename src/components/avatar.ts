@@ -96,7 +96,12 @@ export async function openAvatarViewer(
         peerId,
         inputFilter: {_: inputFilter}
       })
-      .openMedia(message, getTarget(), undefined, undefined, prevTargets ? f(prevTargets) : undefined, nextTargets ? f(nextTargets) : undefined);
+      .openMedia({
+        message,
+        target: getTarget(),
+        prevTargets: prevTargets ? f(prevTargets) : undefined,
+        nextTargets: nextTargets ? f(nextTargets) : undefined
+      });
 
       return;
     }
@@ -112,13 +117,12 @@ export async function openAvatarViewer(
       photoId: el.item as string
     }));
 
-    new AppMediaViewerAvatar(peerId).openMedia(
-      photo.id,
-      getTarget(),
-      undefined,
-      prevTargets ? f(prevTargets) : undefined,
-      nextTargets ? f(nextTargets) : undefined
-    );
+    new AppMediaViewerAvatar(peerId).openMedia({
+      photoId: photo.id,
+      target: getTarget(),
+      prevTargets: prevTargets ? f(prevTargets) : undefined,
+      nextTargets: nextTargets ? f(nextTargets) : undefined
+    });
   }
 }
 

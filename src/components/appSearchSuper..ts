@@ -586,7 +586,14 @@ export default class AppSearchSuper {
       const message = await this.managers.appMessagesManager.getMessageByPeer(peerId, mid);
       new AppMediaViewer()
       .setSearchContext(this.copySearchContext(inputFilter))
-      .openMedia(message, targets[idx].element, 0, false, targets.slice(0, idx), targets.slice(idx + 1));
+      .openMedia({
+        message,
+        target: targets[idx].element,
+        fromRight: 0,
+        reverse: false,
+        prevTargets: targets.slice(0, idx),
+        nextTargets: targets.slice(idx + 1)
+      });
     };
 
     attachClickEvent(this.tabs.inputMessagesFilterPhotoVideo, onMediaClick.bind(null, 'grid-item', 'grid-item', 'inputMessagesFilterPhotoVideo'), {listenerSetter: this.listenerSetter});

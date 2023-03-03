@@ -34,7 +34,7 @@ import rootScope from '../../lib/rootScope';
 import {ThumbCache} from '../../lib/storages/thumbs';
 import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
 import appMediaPlaybackController, {MediaSearchContext} from '../appMediaPlaybackController';
-import {findMediaTargets} from '../audio';
+import AudioElement, {findMediaTargets} from '../audio';
 import LazyLoadQueue from '../lazyLoadQueue';
 import ProgressivePreloader from '../preloader';
 import wrapPhoto from './photo';
@@ -338,7 +338,8 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
     };
 
     if(message.pFlags.is_outgoing) {
-      (divRound as any).onLoad = onLoad;
+      // ! WARNING ! just to type-check
+      (divRound as any as AudioElement).onLoad = onLoad;
       divRound.dataset.isOutgoing = '1';
     } else {
       onLoad();
@@ -566,6 +567,8 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
   if(preloader && !uploadFileName) {
     preloader.setDownloadFunction(load);
   }
+
+  (container as any).preloader = preloader;
 
   /* if(doc.size >= 20e6 && !doc.downloaded) {
     let downloadDiv = document.createElement('div');

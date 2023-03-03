@@ -2765,6 +2765,7 @@ $bubble-border-radius-big: 12px;
   --selection-background-color: var(--message-out-selection-background-color);
   --message-time-color: var(--message-out-time-color);
   --message-status-color: var(--message-out-status-color);
+  --link-color: var(--message-primary-color);
 
   .bubble-content {
     margin-left: auto;
@@ -2805,10 +2806,6 @@ $bubble-border-radius-big: 12px;
         //}
       }
     }
-  }
-
-  .anchor-url {
-    color: var(--message-primary-color);
   }
 
   /* .bubble-content-wrapper {

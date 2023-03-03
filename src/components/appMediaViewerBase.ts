@@ -139,7 +139,7 @@ export default class AppMediaViewerBase<
   protected lastDragDelta: {x: number, y: number} = this.transform;
   protected lastGestureTime: number;
   protected clampZoomDebounced: ReturnType<typeof debounce<() => void>>;
-  ignoreNextClick: boolean;
+  protected ignoreNextClick: boolean;
 
   get target() {
     return this.listLoader.current;
@@ -756,6 +756,10 @@ export default class AppMediaViewerBase<
   protected setGlobalListeners() {
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
+  }
+
+  public setMediaTimestamp(timestamp: number) {
+    this.videoPlayer?.setTimestamp(timestamp);
   }
 
   onClick = (e: MouseEvent) => {
@@ -1471,18 +1475,30 @@ export default class AppMediaViewerBase<
     });
   }
 
-  protected async _openMedia(
+  protected async _openMedia({
+    media,
+    timestamp,
+    fromId,
+    fromRight,
+    target,
+    reverse = false,
+    prevTargets = [],
+    nextTargets = [],
+    message,
+    mediaTimestamp
+  }: {
     media: MyDocument | MyPhoto,
     timestamp: number,
     fromId: PeerId | string,
     fromRight: number,
     target?: HTMLElement,
-    reverse = false,
-    prevTargets: TargetType[] = [],
-    nextTargets: TargetType[] = [],
-    message?: MyMessage
+    reverse?: boolean,
+    prevTargets?: TargetType[],
+    nextTargets?: TargetType[],
+    message?: MyMessage,
+    mediaTimestamp?: number
     /* , needLoadMore = true */
-  ) {
+  }) {
     if(this.setMoverPromise) return this.setMoverPromise;
 
     /* if(DEBUG) {
@@ -1528,7 +1544,7 @@ export default class AppMediaViewerBase<
     const tempId = ++this.tempId;
 
     if(container.firstElementChild) {
-      container.innerHTML = '';
+      container.replaceChildren();
     }
 
     // ok set
@@ -1670,6 +1686,10 @@ export default class AppMediaViewerBase<
           video.loop = true;
         } else if(media.duration < 60) {
           video.loop = true;
+        }
+
+        if(mediaTimestamp !== undefined) {
+          video.currentTime = mediaTimestamp;
         }
 
         // if(!video.parentElement) {

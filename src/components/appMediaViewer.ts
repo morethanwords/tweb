@@ -134,6 +134,10 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
     const onCaptionClick = (e: MouseEvent) => {
       const a = findUpTag(e.target, 'A');
+      if(a.classList.contains('timestamp')) {
+        return;
+      }
+
       const spoiler = findUpClassName(e.target, 'spoiler');
       if(a instanceof HTMLAnchorElement && (!spoiler || this.content.caption.classList.contains('is-spoiler-visible'))) { // close viewer if it's t.me/ redirect
         const onclick = a.getAttribute('onclick');
@@ -172,11 +176,19 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
   }
 
   onPrevClick = async(target: AppMediaViewerTargetType) => {
-    this.openMedia(await this.getMessageByPeer(target.peerId, target.mid), target.element, -1);
+    this.openMedia({
+      message: await this.getMessageByPeer(target.peerId, target.mid),
+      target: target.element,
+      fromRight: -1
+    });
   };
 
   onNextClick = async(target: AppMediaViewerTargetType) => {
-    this.openMedia(await this.getMessageByPeer(target.peerId, target.mid), target.element, 1);
+    this.openMedia({
+      message: await this.getMessageByPeer(target.peerId, target.mid),
+      target: target.element,
+      fromRight: 1
+    });
   };
 
   onDeleteClick = () => {
@@ -235,8 +247,11 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     const caption = (message as Message.message).message;
     let html: Parameters<typeof setInnerHTML>[1] = '';
     if(caption) {
+      const media = getMediaFromMessage(message, true);
+
       html = wrapRichText(caption, {
-        entities: (message as Message.message).totalEntities
+        entities: (message as Message.message).totalEntities,
+        maxMediaTimestamp: ((media as MyDocument)?.type === 'video' && (media as MyDocument).duration) || undefined
       });
     }
 
@@ -252,8 +267,24 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     return this;
   }
 
-  public async openMedia(message: MyMessage, target?: HTMLElement, fromRight = 0, reverse = false,
-    prevTargets: AppMediaViewerTargetType[] = [], nextTargets: AppMediaViewerTargetType[] = []/* , needLoadMore = true */) {
+  public async openMedia({
+    message,
+    target,
+    fromRight = 0,
+    reverse = false,
+    prevTargets = [],
+    nextTargets = [],
+    mediaTimestamp
+  }: {
+    message: MyMessage,
+    target?: HTMLElement,
+    fromRight?: number,
+    reverse?: boolean,
+    prevTargets?: AppMediaViewerTargetType[],
+    nextTargets?: AppMediaViewerTargetType[],
+    mediaTimestamp?: number
+    /* , needLoadMore = true */
+  }) {
     if(this.setMoverPromise) return this.setMoverPromise;
 
     const mid = message.mid;
@@ -283,7 +314,19 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     this.wholeDiv.classList.toggle('no-forwards', cantDownloadMessage);
 
     this.setCaption(message);
-    const promise = super._openMedia(media as MyPhoto | MyDocument, message.date, fromId, fromRight, target, reverse, prevTargets, nextTargets, message/* , needLoadMore */);
+    const promise = super._openMedia({
+      media: media as MyPhoto | MyDocument,
+      timestamp: message.date,
+      fromId,
+      fromRight,
+      target,
+      reverse,
+      prevTargets,
+      nextTargets,
+      message,
+      mediaTimestamp
+      /* , needLoadMore */
+    });
     this.target.mid = mid;
     this.target.peerId = message.peerId;
     this.target.message = message;

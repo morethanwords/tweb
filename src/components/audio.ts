@@ -262,7 +262,7 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
       let mousedown = false, mousemove = false;
       progress.addEventListener('mouseleave', (e) => {
         if(mousedown) {
-          audio.play();
+          audioEl.togglePlay(undefined, true);
           mousedown = false;
         }
         mousemove = false;
@@ -275,7 +275,7 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
         e.preventDefault();
         if(e.button !== 0) return;
         if(!audio.paused) {
-          audio.pause();
+          audioEl.togglePlay(undefined, false);
         }
 
         scrub(e);
@@ -283,7 +283,7 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
       });
       progress.addEventListener('mouseup', (e) => {
         if(mousemove && mousedown) {
-          audio.play();
+          audioEl.togglePlay(undefined, true);
           mousedown = false;
         }
       });
@@ -491,6 +491,7 @@ export default class AudioElement extends HTMLElement {
   private onTypeDisconnect: () => void;
   public onLoad: (autoload?: boolean) => void;
   public readyPromise: CancellablePromise<void>;
+  public load: (shouldPlay: boolean, controlledAutoplay?: boolean) => void;
 
   public async render() {
     this.classList.add('audio');
@@ -562,27 +563,7 @@ export default class AudioElement extends HTMLElement {
         onPlay();
       }
 
-      const togglePlay = (e?: Event, paused = audio.paused) => {
-        e && cancelEvent(e);
-
-        if(paused) {
-          const hadSearchContext = !!this.searchContext;
-          if(appMediaPlaybackController.setSearchContext(this.searchContext || {
-            peerId: NULL_PEER_ID,
-            inputFilter: {_: 'inputMessagesFilterEmpty'},
-            useSearch: false
-          })) {
-            const [prev, next] = !hadSearchContext ? [] : findMediaTargets(this, this.message.mid/* , this.searchContext.useSearch */);
-            appMediaPlaybackController.setTargets({peerId: this.message.peerId, mid: this.message.mid}, prev, next);
-          }
-
-          audio.play().catch(() => {});
-        } else {
-          audio.pause();
-        }
-      };
-
-      attachClickEvent(toggle, (e) => togglePlay(e), {listenerSetter: this.listenerSetter});
+      attachClickEvent(toggle, (e) => this.togglePlay(e), {listenerSetter: this.listenerSetter});
 
       this.addAudioListener('ended', () => {
         toggle.classList.remove('playing');
@@ -599,8 +580,6 @@ export default class AudioElement extends HTMLElement {
       });
 
       this.addAudioListener('play', onPlay);
-
-      return togglePlay;
     };
 
     if(doc.thumbs?.length) {
@@ -629,24 +608,16 @@ export default class AudioElement extends HTMLElement {
       const autoDownload = doc.type !== 'audio'/*  || !this.noAutoDownload */;
       onLoad(autoDownload);
 
-      const r = (shouldPlay: boolean) => {
+      const r = this.load = (shouldPlay: boolean, controlledAutoplay?: boolean) => {
+        this.load = undefined;
+
         if(this.audio.src) {
           return;
         }
 
         appMediaPlaybackController.resolveWaitingForLoadMedia(this.message.peerId, this.message.mid, this.message.pFlags.is_scheduled);
 
-        const onDownloadInit = () => {
-          if(shouldPlay) {
-            appMediaPlaybackController.willBePlayed(this.audio); // prepare for loading audio
-
-            if(IS_SAFARI && !this.audio.autoplay) {
-              this.audio.autoplay = true;
-            }
-          }
-        };
-
-        onDownloadInit();
+        this.onDownloadInit(shouldPlay);
 
         if(!preloader) {
           if(doc.supportsStreaming) {
@@ -673,7 +644,7 @@ export default class AudioElement extends HTMLElement {
                 deferred.cancel();
               }, {once: true}) as any;
 
-              onDownloadInit();
+              this.onDownloadInit(shouldPlay);
             };
 
             /* if(!this.audio.paused) {
@@ -683,7 +654,7 @@ export default class AudioElement extends HTMLElement {
             const playListener: any = this.addAudioListener('play', onPlay);
             this.readyPromise.then(() => {
               this.listenerSetter.remove(playListener);
-              this.listenerSetter.remove(pauseListener);
+              pauseListener && this.listenerSetter.remove(pauseListener);
             });
           } else {
             preloader = constructDownloadPreloader();
@@ -693,7 +664,7 @@ export default class AudioElement extends HTMLElement {
             }
 
             const load = () => {
-              onDownloadInit();
+              this.onDownloadInit(shouldPlay);
 
               const download = appDownloadManager.downloadMediaURL({media: doc});
 
@@ -729,7 +700,7 @@ export default class AudioElement extends HTMLElement {
 
           // setTimeout(() => {
           // release loaded audio
-          if(appMediaPlaybackController.willBePlayedMedia === this.audio) {
+          if(!controlledAutoplay && appMediaPlaybackController.willBePlayedMedia === this.audio) {
             this.audio.play();
             appMediaPlaybackController.willBePlayed(undefined);
           }
@@ -753,6 +724,54 @@ export default class AudioElement extends HTMLElement {
       this.preloader.attach(downloadDiv, false);
       // onLoad();
     }
+  }
+
+  private onDownloadInit(shouldPlay: boolean) {
+    if(shouldPlay) {
+      appMediaPlaybackController.willBePlayed(this.audio); // prepare for loading audio
+
+      if(IS_SAFARI && !this.audio.autoplay) {
+        this.audio.autoplay = true;
+      }
+    }
+  }
+
+  public togglePlay(e?: Event, paused = this.audio.paused) {
+    e && cancelEvent(e);
+
+    if(paused) {
+      this.setTargetsIfNeeded();
+      this.audio.play().catch(() => {});
+    } else {
+      this.audio.pause();
+    }
+  }
+
+  public setTargetsIfNeeded() {
+    const hadSearchContext = !!this.searchContext;
+    if(appMediaPlaybackController.setSearchContext(this.searchContext || {
+      peerId: NULL_PEER_ID,
+      inputFilter: {_: 'inputMessagesFilterEmpty'},
+      useSearch: false
+    })) {
+      const [prev, next] = !hadSearchContext ? [] : findMediaTargets(this, this.message.mid/* , this.searchContext.useSearch */);
+      appMediaPlaybackController.setTargets({peerId: this.message.peerId, mid: this.message.mid}, prev, next);
+    }
+  }
+
+  public playWithTimestamp(timestamp: number) {
+    this.load?.(true, true);
+    appMediaPlaybackController.willBePlayed(this.audio); // prepare for loading audio
+    this.readyPromise.then(() => {
+      if(appMediaPlaybackController.willBePlayedMedia !== this.audio && this.audio.paused) {
+        return;
+      }
+
+      appMediaPlaybackController.willBePlayed(undefined);
+
+      this.audio.currentTime = timestamp;
+      this.togglePlay(undefined, true);
+    });
   }
 
   get addAudioListener() {
