@@ -1073,6 +1073,8 @@ export class AppImManager extends EventListenerBase<{
 
       const target = e.target as HTMLElement;
 
+      const isTargetAnInput = (target.tagName === 'INPUT' && !['checkbox', 'radio'].includes((target as HTMLInputElement).type)) || target.isContentEditable;
+
       // if(target.tagName === 'INPUT') return;
 
       // this.log('onkeydown', e, document.activeElement);
@@ -1081,7 +1083,7 @@ export class AppImManager extends EventListenerBase<{
 
       if((key.startsWith('Arrow') || (e.shiftKey && key === 'Shift')) && !isSelectionCollapsed) {
         return;
-      } else if(e.code === 'KeyC' && (e.ctrlKey || e.metaKey) && target.tagName !== 'INPUT') {
+      } else if(e.code === 'KeyC' && (e.ctrlKey || e.metaKey) && !isTargetAnInput) {
         return;
       } else if(e.altKey && (key === 'ArrowUp' || key === 'ArrowDown')) {
         cancelEvent(e);
@@ -1108,8 +1110,7 @@ export class AppImManager extends EventListenerBase<{
       if(
         chat?.input?.messageInput &&
         target !== chat.input.messageInput &&
-        target.tagName !== 'INPUT' &&
-        !target.isContentEditable &&
+        !isTargetAnInput &&
         !IS_TOUCH_SUPPORTED &&
         (!mediaSizes.isMobile || this.tabId === APP_TABS.CHAT) &&
         !chat.selection.isSelecting &&
