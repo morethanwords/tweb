@@ -37,7 +37,7 @@ import positionMenu, {MenuPositionPadding} from '../../helpers/positionMenu';
 import contextMenuController from '../../helpers/contextMenuController';
 import {attachContextMenuListener} from '../../helpers/dom/attachContextMenuListener';
 import filterAsync from '../../helpers/array/filterAsync';
-import appDownloadManager from '../../lib/appManagers/appDownloadManager';
+import appDownloadManager, {DownloadBlob} from '../../lib/appManagers/appDownloadManager';
 import {SERVICE_PEER_ID} from '../../lib/mtproto/mtproto_config';
 import {MessagesStorageKey, MyMessage} from '../../lib/appManagers/appMessagesManager';
 import filterUnique from '../../helpers/array/filterUnique';
@@ -446,10 +446,8 @@ export default class ChatContextMenu {
     }, {
       icon: 'download',
       text: 'MediaViewer.Context.Download',
-      onClick: () => {
-        appDownloadManager.downloadToDisc({media: getMediaFromMessage(this.message, true)});
-      },
-      verify: () => this.canDownload(this.message, true)
+      onClick: () => ChatContextMenu.onDownloadClick(this.message, this.noForwards),
+      verify: () => ChatContextMenu.canDownload(this.message, this.target, this.noForwards)
     }, {
       icon: 'checkretract',
       text: 'Chat.Poll.Unvote',
@@ -485,12 +483,8 @@ export default class ChatContextMenu {
     }, {
       icon: 'download',
       text: 'Message.Context.Selection.Download',
-      onClick: () => {
-        this.selectedMessages.forEach((message) => {
-          appDownloadManager.downloadToDisc({media: getMediaFromMessage(message, true)});
-        });
-      },
-      verify: () => this.selectedMessages ? this.selectedMessages.some((message) => this.canDownload(message, false)) : false,
+      onClick: () => ChatContextMenu.onDownloadClick(this.selectedMessages, this.noForwards),
+      verify: () => this.selectedMessages && ChatContextMenu.canDownload(this.selectedMessages, undefined, this.noForwards),
       withSelection: true
     }, {
       icon: 'flag',
@@ -564,8 +558,12 @@ export default class ChatContextMenu {
     }];
   }
 
-  private canDownload(message: MyMessage, withTarget?: boolean) {
-    if(!canSaveMessageMedia(message) || this.noForwards) {
+  public static canDownload(message: MyMessage | MyMessage[], withTarget?: HTMLElement, noForwards?: boolean): boolean {
+    if(Array.isArray(message)) {
+      return message.some((message) => ChatContextMenu.canDownload(message, withTarget, noForwards));
+    }
+
+    if(!canSaveMessageMedia(message) || noForwards) {
       return false;
     }
 
@@ -583,7 +581,13 @@ export default class ChatContextMenu {
 
     let hasTarget = !withTarget || !!IS_TOUCH_SUPPORTED;
 
-    if(isGoodType) hasTarget ||= !!findUpClassName(this.target, 'document') || !!findUpClassName(this.target, 'audio') || !!findUpClassName(this.target, 'media-sticker-wrapper') || !!findUpClassName(this.target, 'media-photo') || !!findUpClassName(this.target, 'media-video');
+    if(isGoodType && withTarget) {
+      hasTarget ||= !!(findUpClassName(withTarget, 'document') ||
+        findUpClassName(withTarget, 'audio') ||
+        findUpClassName(withTarget, 'media-sticker-wrapper') ||
+        findUpClassName(withTarget, 'media-photo') ||
+        findUpClassName(withTarget, 'media-video'));
+    }
 
     return isGoodType && hasTarget;
   }
@@ -966,5 +970,19 @@ export default class ChatContextMenu {
     } else {
       new PopupDeleteMessages(this.peerId, this.isTargetAGroupedItem ? [this.mid] : await this.chat.getMidsByMid(this.mid), this.chat.type);
     }
+  };
+
+  public static onDownloadClick(messages: MyMessage | MyMessage[], noForwards?: boolean): DownloadBlob | DownloadBlob[] {
+    if(Array.isArray(messages)) {
+      return messages.map((message) => {
+        return this.onDownloadClick(message) as any;
+      });
+    }
+
+    if(!this.canDownload(messages, undefined, noForwards)) {
+      return;
+    }
+
+    return appDownloadManager.downloadToDisc({media: getMediaFromMessage(messages, true)});
   };
 }

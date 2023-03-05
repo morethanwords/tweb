@@ -76,6 +76,7 @@ import wrapVideo from './wrappers/video';
 import noop from '../helpers/noop';
 import wrapMediaSpoiler, {onMediaSpoilerClick} from './wrappers/mediaSpoiler';
 import filterAsync from '../helpers/array/filterAsync';
+import ChatContextMenu from './chat/contextMenu';
 
 // const testScroll = false;
 
@@ -111,6 +112,9 @@ class SearchContextMenu {
   private mid: number;
   private isSelected: boolean;
   private managers: AppManagers;
+  private noForwards: boolean;
+  private message: MyMessage;
+  private selectedMessages: MyMessage[];
 
   constructor(
     private attachTo: HTMLElement,
@@ -143,14 +147,19 @@ class SearchContextMenu {
         this.peerId = item.dataset.peerId.toPeerId();
         this.mid = +item.dataset.mid;
         this.isSelected = searchSuper.selection.isMidSelected(this.peerId, this.mid);
+        this.message = await this.managers.appMessagesManager.getMessageByPeer(this.peerId, this.mid);
+        this.noForwards = searchSuper.selection.isSelecting ?
+          this.searchSuper.selection.selectionForwardBtn.classList.contains('hide') :
+          !(await this.managers.appMessagesManager.canForward(this.message));
+        this.selectedMessages = searchSuper.selection.isSelecting ? await searchSuper.selection.getSelectedMessages() : undefined;
 
         await Promise.all(this.buttons.map(async(button) => {
           let good: boolean;
 
-          if(this.isSelected && !button.withSelection) {
+          if(this.searchSuper.selection.isSelecting && !button.withSelection) {
             good = false;
           } else {
-            good = button.verify ? await button.verify() : true;
+            good = button.verify ? !!(await button.verify()) : true;
           }
 
           button.element.classList.toggle('hide', !good);
@@ -183,13 +192,23 @@ class SearchContextMenu {
       icon: 'forward',
       text: 'Forward',
       onClick: this.onForwardClick,
-      verify: async() => this.managers.appMessagesManager.canForward(await this.managers.appMessagesManager.getMessageByPeer(this.peerId, this.mid))
+      verify: () => !this.noForwards
     }, {
       icon: 'forward',
       text: 'Message.Context.Selection.Forward',
       onClick: this.onForwardClick,
-      verify: () => this.isSelected &&
-        !this.searchSuper.selection.selectionForwardBtn.classList.contains('hide'),
+      verify: () => this.searchSuper.selection.isSelecting && !this.noForwards,
+      withSelection: true
+    }, {
+      icon: 'download',
+      text: 'MediaViewer.Context.Download',
+      onClick: () => ChatContextMenu.onDownloadClick(this.message, this.noForwards),
+      verify: () => !this.searchSuper.selection.isSelecting && ChatContextMenu.canDownload(this.message, undefined, this.noForwards)
+    }, {
+      icon: 'download',
+      text: 'Message.Context.Selection.Download',
+      onClick: () => ChatContextMenu.onDownloadClick(this.selectedMessages, this.noForwards),
+      verify: () => this.searchSuper.selection.isSelecting && ChatContextMenu.canDownload(this.selectedMessages, undefined, this.noForwards),
       withSelection: true
     }, {
       icon: 'message',
@@ -199,7 +218,9 @@ class SearchContextMenu {
     }, {
       icon: 'select',
       text: 'Message.Context.Select',
-      onClick: this.onSelectClick
+      onClick: this.onSelectClick,
+      verify: () => !this.isSelected,
+      withSelection: true
     }, {
       icon: 'select',
       text: 'Message.Context.Selection.Clear',
@@ -210,12 +231,12 @@ class SearchContextMenu {
       icon: 'delete danger',
       text: 'Delete',
       onClick: this.onDeleteClick,
-      verify: async() => this.managers.appMessagesManager.canDeleteMessage(await this.managers.appMessagesManager.getMessageByPeer(this.peerId, this.mid))
+      verify: () => !this.searchSuper.selection.isSelecting && this.managers.appMessagesManager.canDeleteMessage(this.message)
     }, {
       icon: 'delete danger',
       text: 'Message.Context.Selection.Delete',
       onClick: this.onDeleteClick,
-      verify: () => this.isSelected && !this.searchSuper.selection.selectionDeleteBtn.classList.contains('hide'),
+      verify: () => this.searchSuper.selection.isSelecting && !this.searchSuper.selection.selectionDeleteBtn.classList.contains('hide'),
       withSelection: true
     }];
 

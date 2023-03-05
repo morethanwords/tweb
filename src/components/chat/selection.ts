@@ -481,7 +481,7 @@ class AppSelection extends EventListenerBase<{
 
   public isMidSelected(peerId: PeerId, mid: number) {
     const set = this.selectedMids.get(peerId);
-    return set?.has(mid);
+    return !!set?.has(mid);
   }
 
   public length() {
