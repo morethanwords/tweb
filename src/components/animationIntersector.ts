@@ -344,7 +344,7 @@ export class AnimationIntersector {
       if(animationItem.liteModeKey === liteModeKey) {
         changed = true;
         animation.autoplay = play ? !!+animationItem.el.dataset.stickerPlay : false;
-        animation.loop = play ? !!+animationItem.el.dataset.stickerLoop : false;
+        animation.loop = play ? !!+animationItem.el.dataset.stickerLoop && rootScope.settings.stickers.loop : false;
       }
     });
 
@@ -354,7 +354,9 @@ export class AnimationIntersector {
   public setLoop(loop: boolean) {
     let changed = false;
     this.byPlayer.forEach((animationItem, animation) => {
-      if(!!+animationItem.el.dataset.stickerLoop && animation.loop !== loop) {
+      if(!!+animationItem.el.dataset.stickerLoop &&
+        animation.loop !== loop &&
+        (animation instanceof RLottiePlayer || animation instanceof HTMLVideoElement)) {
         changed = true;
         animation.loop = loop;
 
