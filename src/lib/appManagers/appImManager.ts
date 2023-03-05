@@ -630,7 +630,7 @@ export class AppImManager extends EventListenerBase<{
         const timestamp = +element.dataset.timestamp;
         const bubble = findUpClassName(element, 'bubble');
         if(bubble) {
-          this.chat.bubbles.playMediaWithTimestamp(bubble, timestamp);
+          this.chat.bubbles.playMediaWithTimestamp(element, timestamp);
           return;
         }
 

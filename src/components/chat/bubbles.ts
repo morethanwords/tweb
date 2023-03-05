@@ -133,6 +133,7 @@ import {PopupPeerCheckboxOptions} from '../popups/peer';
 import toggleDisability from '../../helpers/dom/toggleDisability';
 import {copyTextToClipboard} from '../../helpers/clipboard';
 import liteMode from '../../helpers/liteMode';
+import getMediaDurationFromMessage from '../../lib/appManagers/utils/messages/getMediaDurationFromMessage';
 
 export const USER_REACTIONS_INLINE = false;
 const USE_MEDIA_TAILS = false;
@@ -735,7 +736,8 @@ export default class ChatBubbles {
             return;
           }
 
-          return {bubble: result.bubble, message, changedResults};
+          // can be .document-container
+          return {bubble: findUpClassName(result.bubble, 'bubble'), message, changedResults};
         });
 
         let top: number;
@@ -3303,15 +3305,22 @@ export default class ChatBubbles {
     return {cached, promise: setPeerPromise};
   }
 
-  public playMediaWithTimestamp(bubble: HTMLElement, timestamp: number) {
-    const attachment = bubble.querySelector<HTMLElement>('.attachment');
+  public playMediaWithTimestamp(element: HTMLElement, timestamp: number) {
+    const bubble = findUpClassName(element, 'bubble');
+    const groupedItem = findUpClassName(element, 'grouped-item');
+    const albumItemMid = groupedItem ? +groupedItem.dataset.mid : +bubble.dataset.textMid;
+    let attachment = bubble.querySelector<HTMLElement>('.attachment');
     if(attachment) {
+      if(albumItemMid) {
+        attachment = attachment.querySelector(`[data-mid="${albumItemMid}"]`);
+      }
+
       const media = attachment.querySelector<HTMLElement>('img, video, canvas');
       this.checkTargetForMediaViewer(media, undefined, timestamp);
       return;
     }
 
-    const audio = bubble.querySelector<AudioElement>('.audio');
+    const audio = (groupedItem || bubble).querySelector<AudioElement>('.audio');
     if(audio) {
       audio.playWithTimestamp(timestamp);
       return;
@@ -3874,10 +3883,10 @@ export default class ChatBubbles {
 
     let messageMedia: MessageMedia = isMessage && message.media;
     let needToSetHTML = true;
-    let messageMessage: string, totalEntities: MessageEntity[];
+    let messageMessage: string, totalEntities: MessageEntity[], albumTextMessage: Message.message;
     if(isMessage) {
       if(groupedId && albumMustBeRenderedFull) {
-        const t = getAlbumText(albumMessages);
+        const t = albumTextMessage = getAlbumText(albumMessages);
         messageMessage = t?.message || '';
         // totalEntities = t.entities;
         totalEntities = t?.totalEntities || [];
@@ -3925,9 +3934,12 @@ export default class ChatBubbles {
 
     customEmojiSize ??= this.chat.appImManager.customEmojiSize;
 
-    const doc = (messageMedia as MessageMedia.messageMediaDocument)?.document as MyDocument;
+    const maxMediaTimestamp = needToSetHTML && getMediaDurationFromMessage(albumTextMessage || message as Message.message);
+    if(albumTextMessage && needToSetHTML) {
+      bubble.dataset.textMid = '' + albumTextMessage.mid;
+    }
 
-    const richText = wrapRichText(messageMessage, {
+    const richTextOptions: Parameters<typeof wrapRichText>[1] = {
       entities: totalEntities,
       passEntities: this.passEntities,
       loadPromises,
@@ -3935,8 +3947,10 @@ export default class ChatBubbles {
       customEmojiSize,
       middleware,
       animationGroup: this.chat.animationGroup,
-      maxMediaTimestamp: ((['voice', 'audio', 'video'] as MyDocument['type'][]).includes(doc?.type) && doc.duration) || undefined
-    });
+      maxMediaTimestamp
+    };
+
+    const richText = messageMessage ? wrapRichText(messageMessage, richTextOptions) : '';
 
     let canHaveTail = true;
     let isStandaloneMedia = false;
@@ -4621,7 +4635,8 @@ export default class ChatBubbles {
               } : undefined,
               sizeType: 'documentName',
               fontSize: rootScope.settings.messagesTextSize,
-              richTextFragment: richText,
+              richTextFragment: typeof(richText) === 'string' ? undefined : richText,
+              richTextOptions,
               canTranscribeVoice: true
             });
 

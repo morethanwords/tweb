@@ -8,12 +8,32 @@ import setInnerHTML from '../../helpers/dom/setInnerHTML';
 import {MediaSizeType} from '../../helpers/mediaSizes';
 import {Message} from '../../layer';
 import {AppManagers} from '../../lib/appManagers/managers';
+import getMediaDurationFromMessage from '../../lib/appManagers/utils/messages/getMediaDurationFromMessage';
+import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
 import {MediaSearchContext} from '../appMediaPlaybackController';
 import Chat from '../chat/chat';
 import LazyLoadQueue from '../lazyLoadQueue';
 import wrapDocument from './document';
 
-export default async function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, messageDiv, chat, loadPromises, autoDownloadSize, lazyLoadQueue, searchContext, useSearch, sizeType, managers, fontWeight, fontSize, richTextFragment, canTranscribeVoice}: {
+export default async function wrapGroupedDocuments({
+  albumMustBeRenderedFull,
+  message,
+  bubble,
+  messageDiv,
+  chat,
+  loadPromises,
+  autoDownloadSize,
+  lazyLoadQueue,
+  searchContext,
+  useSearch,
+  sizeType,
+  managers,
+  fontWeight,
+  fontSize,
+  richTextFragment,
+  richTextOptions,
+  canTranscribeVoice
+}: {
   albumMustBeRenderedFull: boolean,
   message: any,
   messageDiv: HTMLElement,
@@ -30,6 +50,7 @@ export default async function wrapGroupedDocuments({albumMustBeRenderedFull, mes
   fontWeight?: number,
   fontSize?: number,
   richTextFragment?: DocumentFragment,
+  richTextOptions?: Parameters<typeof wrapRichText>[1]
   canTranscribeVoice?: boolean
 }) {
   let nameContainer: HTMLElement;
@@ -65,7 +86,17 @@ export default async function wrapGroupedDocuments({albumMustBeRenderedFull, mes
       const messageDiv = document.createElement('div');
       messageDiv.classList.add('document-message');
 
-      setInnerHTML(messageDiv, richTextFragment);
+      let fragment = richTextFragment;
+      if(!fragment) {
+        fragment = wrapRichText(message.message, {
+          ...richTextOptions,
+          entities: message.totalEntities,
+          maxMediaTimestamp: getMediaDurationFromMessage(message)
+        });
+      }
+
+      setInnerHTML(messageDiv, fragment);
+
       wrapper.append(messageDiv);
     }
 
