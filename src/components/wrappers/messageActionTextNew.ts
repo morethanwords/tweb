@@ -9,7 +9,8 @@ import wrapMessageActionTextNewUnsafe from './messageActionTextNewUnsafe';
 
 export type WrapMessageActionTextOptions = {
   message: MyMessage,
-  plain?: boolean
+  plain?: boolean,
+  noLinks?: boolean
 } & WrapSomethingOptions;
 
 export default async function wrapMessageActionTextNew<T extends WrapMessageActionTextOptions>(

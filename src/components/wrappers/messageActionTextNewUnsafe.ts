@@ -103,7 +103,7 @@ async function wrapMessageActionTopicIconAndName(options: WrapMessageActionTextO
 }
 
 export default async function wrapMessageActionTextNewUnsafe(options: WrapMessageActionTextOptions) {
-  const {plain, message, middleware, lazyLoadQueue, customEmojiSize, animationGroup} = options;
+  const {plain, message, noLinks} = options;
   const element: HTMLElement = plain ? undefined : document.createElement('span');
   const action = 'action' in message && message.action;
 
@@ -147,6 +147,8 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
 
         if(action.duration !== undefined) {
           args.push(formatCallDuration(action.duration, plain));
+        } else if(noLinks) {
+          args.push('');
         } else {
           args.push(wrapJoinVoiceChatAnchor(message as any));
         }
@@ -164,7 +166,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
 
         langPackKey = a as LangPackKey;
         args = peerIds.map((peerId) => getNameDivHTML(peerId, plain));
-        args.push(wrapJoinVoiceChatAnchor(message as any));
+        args.push(noLinks ? '' : wrapJoinVoiceChatAnchor(message as any));
         break;
       }
 
@@ -316,7 +318,8 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
             _: 'messageEntityUrl',
             length: action.domain.length,
             offset: 0
-          }]
+          }],
+          noLinks
         });
 
         const node = htmlToSpan(anchorHTML);
@@ -496,6 +499,10 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
     if(plain) {
       return I18n.format(langPackKey, true, waited);
     } else {
+      // if(waited && noLinks) {
+      //   waited = waited.map((arg) => arg instanceof HTMLAnchorElement ? arg.textContent : arg);
+      // }
+
       return _i18n(element, langPackKey, waited);
     }
 

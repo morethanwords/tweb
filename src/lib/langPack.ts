@@ -391,12 +391,18 @@ namespace I18n {
             a = a.firstChild as any;
           }
 
-          a.textContent = ''; // reset content
+          if(typeof(a) !== 'string') {
+            a.textContent = ''; // reset content
+          }
         }
 
-        a.append(...superFormatter(text, args, indexHolder) as any);
-
-        out.push(a);
+        const formatted = superFormatter(text, args, indexHolder) as any;
+        if(typeof(a) === 'string') {
+          out.push(...formatted);
+        } else {
+          a.append(...formatted);
+          out.push(a);
+        }
       } else if(args) {
         pushNextArgument(out, args, indexHolder);
       }
