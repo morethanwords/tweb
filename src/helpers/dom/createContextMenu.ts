@@ -6,11 +6,13 @@
 
 import ButtonMenu, {ButtonMenuItemOptionsVerifiable} from '../../components/buttonMenu';
 import filterAsync from '../array/filterAsync';
+import callbackify from '../callbackify';
 import contextMenuController from '../contextMenuController';
 import ListenerSetter from '../listenerSetter';
-import {getMiddleware} from '../middleware';
+import {getMiddleware, Middleware} from '../middleware';
 import positionMenu from '../positionMenu';
 import {attachContextMenuListener} from './attachContextMenuListener';
+import {attachClickEvent} from './clickEvent';
 
 export default function createContextMenu<T extends ButtonMenuItemOptionsVerifiable>({
   buttons,
@@ -21,7 +23,9 @@ export default function createContextMenu<T extends ButtonMenuItemOptionsVerifia
   onOpen,
   onClose,
   onBeforeOpen,
-  listenerSetter: attachListenerSetter
+  listenerSetter: attachListenerSetter,
+  middleware,
+  listenForClick
 }: {
   buttons: T[],
   findElement?: (e: MouseEvent | TouchEvent) => HTMLElement,
@@ -31,60 +35,64 @@ export default function createContextMenu<T extends ButtonMenuItemOptionsVerifia
   onOpen?: (target: HTMLElement) => any,
   onClose?: () => any,
   onBeforeOpen?: () => any,
-  listenerSetter?: ListenerSetter
+  listenerSetter?: ListenerSetter,
+  middleware?: Middleware,
+  listenForClick?: boolean
 }) {
   appendTo ??= document.body;
 
   attachListenerSetter ??= new ListenerSetter();
   const listenerSetter = new ListenerSetter();
-  const middleware = getMiddleware();
+  const middlewareHelper = middleware ? middleware.create() : getMiddleware();
   let element: HTMLElement;
 
-  attachContextMenuListener({
-    element: listenTo,
-    callback: (e) => {
-      const target = findElement ? findElement(e as any) : listenTo;
-      if(!target) {
+  const open = (e: MouseEvent | TouchEvent) => {
+    const target = findElement ? findElement(e as any) : listenTo;
+    if(!target) {
+      return;
+    }
+
+    let _element = element;
+    if(e instanceof MouseEvent || e.hasOwnProperty('preventDefault')) (e as any).preventDefault();
+    if(_element && _element.classList.contains('active')) {
+      return false;
+    }
+    if(e instanceof MouseEvent || e.hasOwnProperty('cancelBubble')) (e as any).cancelBubble = true;
+
+    const r = async() => {
+      await onOpen?.(target);
+
+      const initResult = await init();
+      if(!initResult) {
         return;
       }
 
-      let _element = element;
-      if(e instanceof MouseEvent || e.hasOwnProperty('preventDefault')) (e as any).preventDefault();
-      if(_element && _element.classList.contains('active')) {
-        return false;
-      }
-      if(e instanceof MouseEvent || e.hasOwnProperty('cancelBubble')) (e as any).cancelBubble = true;
+      _element = initResult.element;
+      const {cleanup, destroy} = initResult;
 
-      const r = async() => {
-        await onOpen?.(target);
+      positionMenu(e, _element);
+      contextMenuController.openBtnMenu(_element, () => {
+        onClose?.();
+        cleanup();
 
-        const initResult = await init();
-        if(!initResult) {
-          return;
-        }
+        setTimeout(() => {
+          destroy();
+        }, 300);
+      });
+    };
 
-        _element = initResult.element;
-        const {cleanup, destroy} = initResult;
+    r();
+  };
 
-        positionMenu(e, _element);
-        contextMenuController.openBtnMenu(_element, () => {
-          onClose?.();
-          cleanup();
-
-          setTimeout(() => {
-            destroy();
-          }, 300);
-        });
-      };
-
-      r();
-    },
+  attachContextMenuListener({
+    element: listenTo,
+    callback: open,
     listenerSetter: attachListenerSetter
   });
 
   const cleanup = () => {
     listenerSetter.removeAll();
-    middleware.clean();
+    middlewareHelper.clean();
   };
 
   const destroy = () => {
@@ -96,7 +104,9 @@ export default function createContextMenu<T extends ButtonMenuItemOptionsVerifia
     cleanup();
 
     buttons.forEach((button) => button.element = undefined);
-    const f = filterButtons || ((buttons: T[]) => filterAsync(buttons, (button) => button?.verify ? button.verify() : true));
+    const f = filterButtons || ((buttons: T[]) => filterAsync(buttons, (button) => {
+      return button?.verify ? callbackify(button.verify(), (result) => result ?? false) : true;
+    }));
 
     const filteredButtons = await f(buttons);
     if(!filteredButtons.length) {
@@ -122,5 +132,15 @@ export default function createContextMenu<T extends ButtonMenuItemOptionsVerifia
     };
   };
 
-  return {element, destroy};
+  if(middleware) {
+    middleware.onDestroy(() => {
+      destroy();
+    });
+  }
+
+  if(listenForClick) {
+    attachClickEvent(listenTo, open, {listenerSetter: attachListenerSetter});
+  }
+
+  return {element, destroy, open};
 }

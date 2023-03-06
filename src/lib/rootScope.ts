@@ -93,6 +93,7 @@ export type BroadcastEvents = {
   'stickers_deleted': StickerSet.stickerSet,
   'stickers_updated': {type: 'recent' | 'faved', stickers: MyDocument[]},
   'stickers_top': Long,
+  'stickers_order': {type: 'masks' | 'emojis' | 'stickers', order: Long[]},
   'sticker_updated': {type: 'recent' | 'faved', document: MyDocument, faved: boolean},
 
   'state_cleared': void,

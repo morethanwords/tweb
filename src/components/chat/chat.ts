@@ -689,7 +689,8 @@ export default class Chat extends EventListenerBase<{
       replyToMsgId: this.input.replyToMsgId,
       scheduleDate: this.input.scheduleDate,
       silent: this.input.sendSilent,
-      sendAsPeerId: this.input.sendAsPeerId
+      sendAsPeerId: this.input.sendAsPeerId,
+      updateStickersetOrder: rootScope.settings.stickers.dynamicPackOrder
     };
   }
 

@@ -9,7 +9,7 @@ import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
 import InputField from '../../inputField';
 import {SliderSuperTab} from '../../slider';
 import AvatarEdit from '../../avatarEdit';
-import I18n from '../../../lib/langPack';
+import I18n, {joinElementsWith} from '../../../lib/langPack';
 import ButtonCorner from '../../buttonCorner';
 import getUserStatusString from '../../wrappers/getUserStatusString';
 import appImManager from '../../../lib/appManagers/appImManager';
@@ -141,6 +141,10 @@ export default class AppNewGroupTab extends SliderSuperTab {
       nameArgs: [this.peerIds.length]
     });
 
+    if(!this.peerIds.length) {
+      chatsSection.container.classList.add('hide');
+    }
+
     const list = this.list = appDialogsManager.createChatList({
       new: true
     });
@@ -161,16 +165,34 @@ export default class AppNewGroupTab extends SliderSuperTab {
       this.groupLocationInputField.container.classList.add('hide');
     }
 
-    return Promise.all(this.peerIds.map(async(userId) => {
-      const {dom} = appDialogsManager.addDialogNew({
-        peerId: userId,
-        container: this.list,
-        rippleEnabled: false,
-        avatarSize: 'abitbigger'
-      });
+    const usersPromise = Promise.all(this.peerIds.map((peerId) => this.managers.appUsersManager.getUser(peerId.toUserId())));
+    const myUserPromise = this.managers.appUsersManager.getSelf();
 
-      dom.lastMessageSpan.append(getUserStatusString(await this.managers.appUsersManager.getUser(userId)));
-    }));
+    const a = usersPromise.then((users) => {
+      return users.map((user) => {
+        const {dom} = appDialogsManager.addDialogNew({
+          peerId: user.id.toPeerId(false),
+          container: this.list,
+          rippleEnabled: false,
+          avatarSize: 'abitbigger'
+        });
+
+        dom.lastMessageSpan.append(getUserStatusString(user));
+      })
+    });
+
+    const setTitlePromise = this.peerIds.length > 0 && this.peerIds.length < 5 ? Promise.all([usersPromise, myUserPromise]).then(([users, myUser]) => {
+      const names = users.map((user) => [user.first_name, user.last_name].filter(Boolean).join(' '));
+      names.unshift(myUser.first_name);
+
+      const joined = joinElementsWith(names, (isLast) => isLast ? ', ' : ' & ').join('');
+      this.groupNameInputField.setDraftValue(joined);
+    }) : Promise.resolve();
+
+    return Promise.all([
+      a,
+      setTitlePromise
+    ]);
   }
 
   public onCloseAfterTimeout() {

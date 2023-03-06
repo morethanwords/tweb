@@ -383,6 +383,10 @@ async function loadStateInner() {
       state.settings.liteMode.gif = !state.settings.autoPlay.gifs;
     }
 
+    if(state.build < 312 && typeof(state.settings.stickers.suggest) === 'boolean') {
+      state.settings.stickers.suggest = state.settings.stickers.suggest ? 'all' : 'none';
+    }
+
     if(compareVersion(state.version, STATE_VERSION) !== 0) {
       newVersion = STATE_VERSION;
       oldVersion = state.version;

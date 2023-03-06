@@ -933,6 +933,13 @@ const lang = {
   'ErrorSendRestrictedPollsAll': 'Sorry, sending polls is not allowed in this group.',
   'Remove': 'Remove',
   'ChannelBlockUser': 'Remove User',
+  'StickersName': 'Stickers and Emoji',
+  'LoopAnimatedStickersInfo': 'Animated stickers will play continuously in chats.',
+  'SuggestStickersAll': 'All Sets',
+  'SuggestStickersInstalled': 'My Sets',
+  'SuggestStickersNone': 'None',
+  'DynamicPackOrder': 'Dynamic Pack Order',
+  'DynamicPackOrderInfo': 'Automatically place recently used sticker packs at the front of the panel.',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

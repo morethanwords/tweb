@@ -132,8 +132,8 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
       div.dataset.stickerEmoji = emoji;
     }
 
-    div.dataset.stickerPlay = '' + +play;
-    div.dataset.stickerLoop = '' + +loop;
+    div.dataset.stickerPlay = '' + +(play || false);
+    div.dataset.stickerLoop = '' + +(loop || false);
 
     div.classList.add('media-sticker-wrapper');
   });

@@ -91,7 +91,8 @@ export type State = {
       videos: boolean
     },
     stickers: {
-      suggest: boolean,
+      suggest: 'all' | 'installed' | 'none',
+      dynamicPackOrder: boolean,
       loop: boolean
     },
     emoji: {
@@ -267,7 +268,8 @@ export const STATE_INIT: State = {
       video_upload_maxbitrate: 100
     },
     stickers: {
-      suggest: true,
+      suggest: 'all',
+      dynamicPackOrder: true,
       loop: true
     },
     emoji: {

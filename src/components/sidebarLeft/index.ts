@@ -97,7 +97,7 @@ export class AppSidebarLeft extends SidebarSlider {
     const onNewGroupClick = () => {
       this.createTab(AppAddMembersTab).open({
         type: 'chat',
-        skippable: false,
+        skippable: true,
         takeOut: (peerIds) => this.createTab(AppNewGroupTab).open(peerIds),
         title: 'GroupAddMembers',
         placeholder: 'SendMessageTo'

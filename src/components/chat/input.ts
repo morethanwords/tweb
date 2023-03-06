@@ -2277,7 +2277,8 @@ export default class ChatInput {
   private async checkAutocomplete(value?: string, caretPos?: number, entities?: MessageEntity[]) {
     // return;
 
-    if(value === undefined) {
+    const hadValue = value !== undefined;
+    if(!hadValue) {
       const r = getRichValueWithCaret(this.messageInputField.input, true, true);
       value = r.value;
       caretPos = r.caretPos;
@@ -2288,7 +2289,7 @@ export default class ChatInput {
       caretPos = value.length;
     }
 
-    if(entities === undefined) {
+    if(entities === undefined || !hadValue) {
       const _value = parseMarkdown(value, entities, true);
       entities = mergeEntities(entities, parseEntities(_value));
     }
@@ -2310,7 +2311,7 @@ export default class ChatInput {
       const firstChar = query[0];
 
       if(this.stickersHelper &&
-        rootScope.settings.stickers.suggest &&
+        rootScope.settings.stickers.suggest !== 'none' &&
         await this.chat.canSend('send_stickers') &&
         entity?._ === 'messageEntityEmoji' && entity.length === value.length && !entity.offset) {
         foundHelper = this.stickersHelper;
@@ -2731,7 +2732,7 @@ export default class ChatInput {
   }
 
   private getValueAndEntities(input: HTMLElement) {
-    const {entities: apiEntities, value} = getRichValueWithCaret(this.messageInput, true, false);
+    const {entities: apiEntities, value} = getRichValueWithCaret(input, true, false);
     const myEntities = parseEntities(value);
     const totalEntities = mergeEntities(apiEntities, myEntities);
 

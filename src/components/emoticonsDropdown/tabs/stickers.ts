@@ -789,6 +789,19 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
       }
     }));
 
+    rootScope.addEventListener('stickers_order', ({type, order}) => {
+      if(type !== 'stickers') {
+        return;
+      }
+
+      order.forEach((id) => {
+        const category = this.categories[id];
+        if(category) {
+          this.positionCategory(category, false);
+        }
+      });
+    });
+
     rootScope.addEventListener('stickers_updated', ({type, stickers}) => {
       const category = this.categories[type === 'faved' ? 'faved' : 'recent'];
       if(category) {

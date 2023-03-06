@@ -479,7 +479,7 @@ export default class PollElement extends HTMLElement {
     }
   }
 
-  clickHandler(e: Event) {
+  clickHandler = (e: Event) => {
     const target = findUpClassName(e.target, 'poll-answer') as HTMLElement;
     if(!target) {
       return;
@@ -505,7 +505,7 @@ export default class PollElement extends HTMLElement {
       this.setResults([100, 0], answerIndex);
       target.classList.remove('is-voting');
     }, 1000); */
-  }
+  };
 
   sendVotes(indexes: number[]) {
     if(this.sendVotePromise) return this.sendVotePromise;

@@ -28,6 +28,7 @@ import {AccountAuthorizations, Authorization} from '../../../layer';
 import PopupElement from '../../popups';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import SettingSection from '../../settingSection';
+import AppStickersAndEmojiTab from './stickersAndEmoji';
 
 export default class AppSettingsTab extends SliderSuperTab {
   private buttons: {
@@ -192,7 +193,8 @@ export default class AppSettingsTab extends SliderSuperTab {
       m('data', 'DataSettings', AppDataAndStorageTab),
       m('lock', 'AccountSettings.PrivacyAndSecurity', AppPrivacyAndSecurityTab),
       m('settings', 'Telegram.GeneralSettingsViewController', AppGeneralSettingsTab),
-      m('folder', 'AccountSettings.Filters', AppChatFoldersTab)
+      m('folder', 'AccountSettings.Filters', AppChatFoldersTab),
+      m('stickers_face', 'StickersName', AppStickersAndEmojiTab)
     ];
 
     const rows = b.map((item) => {

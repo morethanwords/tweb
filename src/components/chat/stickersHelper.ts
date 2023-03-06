@@ -68,12 +68,10 @@ export default class StickersHelper extends AutocompleteHelper {
   public checkEmoticon(emoticon: string) {
     const middleware = this.controller.getMiddleware();
 
-    if(this.lazyLoadQueue) {
-      this.lazyLoadQueue.clear();
-    }
+    this.lazyLoadQueue?.clear();
 
     preloadAnimatedEmojiSticker(emoticon);
-    this.managers.appStickersManager.getStickersByEmoticon(emoticon)
+    this.managers.appStickersManager.getStickersByEmoticon(emoticon, true, rootScope.settings.stickers.suggest === 'all')
     .then((stickers) => {
       if(!middleware()) {
         return;

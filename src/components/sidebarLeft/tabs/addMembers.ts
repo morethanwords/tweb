@@ -34,7 +34,7 @@ export default class AppAddMembersTab extends SliderSuperTab {
       const peerIds = this.selector.getSelected().map((sel) => sel.toPeerId());
       const result = this.takeOut(peerIds);
 
-      if(this.skippable) {
+      if(this.skippable && !(result instanceof Promise)) {
         this.close();
       } else if(result instanceof Promise) {
         this.attachToPromise(result);

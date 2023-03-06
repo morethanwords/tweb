@@ -166,14 +166,13 @@ const processAfter = (cb: () => void) => {
   cb();
 };
 
-const UPDATE_STICKERSET_ORDER = true;
-
 export type MessageSendingParams = Partial<{
   threadId: number,
   replyToMsgId: number,
   scheduleDate: number,
   silent: boolean,
   sendAsPeerId: number,
+  updateStickersetOrder: boolean
 }>;
 
 export class AppMessagesManager extends AppManager {
@@ -657,7 +656,7 @@ export class AppMessagesManager extends AppManager {
           schedule_date: options.scheduleDate || undefined,
           silent: options.silent,
           send_as: sendAs,
-          update_stickersets_order: UPDATE_STICKERSET_ORDER
+          update_stickersets_order: options.updateStickersetOrder
         }, sentRequestOptions);
       }
 
@@ -1146,7 +1145,8 @@ export class AppMessagesManager extends AppManager {
           silent: options.silent,
           entities,
           clear_draft: options.clearDraft,
-          send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined
+          send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined,
+          update_stickersets_order: options.updateStickersetOrder
         }).then((updates) => {
           this.apiUpdatesManager.processUpdateMessage(updates);
         }, (error: ApiError) => {
@@ -1272,7 +1272,7 @@ export class AppMessagesManager extends AppManager {
             silent: options.silent,
             clear_draft: options.clearDraft,
             send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined,
-            update_stickersets_order: UPDATE_STICKERSET_ORDER
+            update_stickersets_order: options.updateStickersetOrder
           }).then((updates) => {
             this.apiUpdatesManager.processUpdateMessage(updates);
             deferred.resolve();
@@ -1488,7 +1488,7 @@ export class AppMessagesManager extends AppManager {
           schedule_date: options.scheduleDate,
           silent: options.silent,
           send_as: sendAs,
-          update_stickersets_order: UPDATE_STICKERSET_ORDER
+          update_stickersets_order: options.updateStickersetOrder
         }, sentRequestOptions);
       }
 
