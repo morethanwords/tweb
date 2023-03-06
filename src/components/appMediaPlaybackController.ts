@@ -707,6 +707,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     }
 
     media.currentTime = 0;
+    simulateEvent(media, 'ended'); // ! important, will be used to hide controls for audio element
 
     if(media === this.playingMedia) {
       const details = this.mediaDetails.get(media);

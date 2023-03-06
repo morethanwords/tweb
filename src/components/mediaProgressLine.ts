@@ -20,13 +20,11 @@ export default class MediaProgressLine extends RangeSelector {
   // protected lastOnPlayCurrentTime: number;
 
   constructor(protected options: {
-    media?: HTMLAudioElement | HTMLVideoElement,
-    streamable?: boolean,
     withTransition?: boolean,
     useTransform?: boolean,
     onSeekStart?: () => void,
     onSeekEnd?: () => void
-  }) {
+  } = {}) {
     super({
       step: 1000 / 60 / 1000,
       min: 0,
@@ -34,13 +32,17 @@ export default class MediaProgressLine extends RangeSelector {
       withTransition: options.withTransition,
       useTransform: options.useTransform
     }, 0);
-
-    if(options.media) {
-      this.setMedia(options.media, options.streamable);
-    }
   }
 
-  public setMedia(media: HTMLMediaElement, streamable = false) {
+  public setMedia({
+    media,
+    streamable,
+    duration
+  }: {
+    media: HTMLMediaElement,
+    streamable?: boolean,
+    duration?: number
+  }) {
     if(this.media) {
       this.removeListeners();
     }
@@ -61,7 +63,7 @@ export default class MediaProgressLine extends RangeSelector {
     }
 
     let wasPlaying = false;
-    this.setSeekMax();
+    this.setSeekMax(duration);
     this.setListeners();
     this.setHandlers({
       onMouseDown: () => {
@@ -79,8 +81,7 @@ export default class MediaProgressLine extends RangeSelector {
   }
 
   protected onLoadedData = () => {
-    this.max = this.media.duration;
-    this.seek.setAttribute('max', '' + this.max);
+    this.setSeekMax();
   };
 
   protected onEnded = () => {
@@ -148,15 +149,16 @@ export default class MediaProgressLine extends RangeSelector {
 
     // console.log('onProgress correct range:', nearestStart, end, this.media);
 
-    const percents = this.media.duration ? end / this.media.duration : 0;
+    const percents = this.max ? end / this.max : 0;
     this.filledLoad.style.width = (percents * 100) + '%';
     // this.filledLoad.style.transform = 'scaleX(' + percents + ')';
   }
 
-  protected setSeekMax() {
-    this.max = this.media.duration || 0;
-    if(this.max > 0) {
-      this.onLoadedData();
+  protected setSeekMax(duration?: number) {
+    const realDuration = this.media.duration || 0;
+    if(duration === undefined || realDuration) duration = realDuration;
+    if(this.max = duration) {
+      this.seek.setAttribute('max', '' + this.max);
     } else {
       this.media.addEventListener('loadeddata', this.onLoadedData);
     }

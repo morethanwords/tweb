@@ -237,13 +237,10 @@ export default class AppMediaViewerBase<
         this.clampZoomDebounced?.clearTimeout();
       },
       onMouseDown: () => {
-        this.moversContainer.classList.add('no-transition');
-        this.zoomElements.rangeSelector.container.classList.remove('with-transition');
+        this.onSwipeFirst();
       },
       onMouseUp: () => {
-        this.moversContainer.classList.remove('no-transition');
-        this.zoomElements.rangeSelector.container.classList.add('with-transition');
-        this.setZoomValue();
+        this.onSwipeReset();
       }
     });
 
@@ -429,10 +426,10 @@ export default class AppMediaViewerBase<
     });
   }
 
-  protected onSwipeFirst = (e: MouseEvent | TouchEvent | WheelEvent) => {
+  protected onSwipeFirst = (e?: MouseEvent | TouchEvent | WheelEvent) => {
     this.lastDragOffset = this.lastDragDelta = {x: 0, y: 0};
     this.lastTransform = {...this.transform};
-    if(e.type !== 'wheel' || !this.ctrlKeyDown) { // keep transition for real mouse wheel
+    if(e?.type !== 'wheel' || !this.ctrlKeyDown) { // keep transition for real mouse wheel
       this.moversContainer.classList.add('no-transition');
       this.zoomElements.rangeSelector.container.classList.remove('with-transition');
     }

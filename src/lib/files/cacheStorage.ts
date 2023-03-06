@@ -57,9 +57,9 @@ export default class CacheStorageController implements FileStorage {
   }
 
   public getFile(fileName: string, method: 'blob' | 'json' | 'text' = 'blob'): Promise<any> {
-    /* if(method === 'blob') {
-      return Promise.reject();
-    } */
+    // if(method === 'blob') {
+    //   return Promise.reject(makeError('NO_ENTRY_FOUND'));
+    // }
 
     // const str = `get fileName: ${fileName}`;
     // console.time(str);

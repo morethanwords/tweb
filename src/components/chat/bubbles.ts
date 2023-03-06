@@ -3370,9 +3370,12 @@ export default class ChatBubbles {
     savedPosition: ChatSavedPosition,
     samePeer: boolean
   }) {
-    const middleware = this.getMiddleware();
     const peerId = this.peerId;
+    if(peerId.isUser()) {
+      return;
+    }
 
+    const middleware = this.getMiddleware();
     const needFetchInterval = await this.managers.appMessagesManager.isFetchIntervalNeeded(peerId);
     const needFetchNew = savedPosition || needFetchInterval;
     if(!needFetchNew) {
@@ -3934,7 +3937,7 @@ export default class ChatBubbles {
 
     customEmojiSize ??= this.chat.appImManager.customEmojiSize;
 
-    const maxMediaTimestamp = needToSetHTML && getMediaDurationFromMessage(albumTextMessage || message as Message.message);
+    const maxMediaTimestamp = getMediaDurationFromMessage(albumTextMessage || message as Message.message);
     if(albumTextMessage && needToSetHTML) {
       bubble.dataset.textMid = '' + albumTextMessage.mid;
     }

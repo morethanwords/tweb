@@ -41,7 +41,15 @@ export default class VideoPlayer extends ControlsHover {
   protected onPip?: (pip: boolean) => void;
   protected onPipClose?: () => void;
 
-  constructor({video, play = false, streamable = false, duration, onPlaybackRackMenuToggle, onPip, onPipClose}: {
+  constructor({
+    video,
+    play = false,
+    streamable = false,
+    duration,
+    onPlaybackRackMenuToggle,
+    onPip,
+    onPipClose
+  }: {
     video: HTMLVideoElement,
     play?: boolean,
     streamable?: boolean,
@@ -83,14 +91,17 @@ export default class VideoPlayer extends ControlsHover {
     if(this.skin === 'default') {
       const controls = this.wrapper.querySelector('.default__controls.ckin__controls') as HTMLDivElement;
       this.progress = new MediaProgressLine({
-        media: video,
-        streamable,
         onSeekStart: () => {
           this.wrapper.classList.add('is-seeking');
         },
         onSeekEnd: () => {
           this.wrapper.classList.remove('is-seeking');
         }
+      });
+      this.progress.setMedia({
+        media: video,
+        streamable,
+        duration
       });
       controls.prepend(this.progress.container);
     }

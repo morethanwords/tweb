@@ -225,9 +225,7 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
 
   let progress = svg as any as HTMLElement, progressLine: MediaProgressLine;
   if(!progress) {
-    progressLine = new MediaProgressLine({
-      streamable: doc.supportsStreaming
-    });
+    progressLine = new MediaProgressLine();
 
     waveformContainer.append(progressLine.container);
   }
@@ -306,7 +304,11 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
       }
     }, noop);
 
-    !progress && progressLine.setMedia(audio);
+    !progress && progressLine.setMedia({
+      media: audio,
+      streamable: doc.supportsStreaming,
+      duration: doc.duration
+    });
 
     return () => {
       progress?.remove();
@@ -381,9 +383,11 @@ async function wrapAudio(audioEl: AudioElement) {
   const onLoad = () => {
     let launched = false;
 
-    let progressLine = new MediaProgressLine({
+    let progressLine = new MediaProgressLine();
+    progressLine.setMedia({
       media: audioEl.audio,
-      streamable: doc.supportsStreaming
+      streamable: doc.supportsStreaming,
+      duration: doc.duration
     });
 
     audioEl.addAudioListener('ended', () => {
@@ -760,18 +764,20 @@ export default class AudioElement extends HTMLElement {
   }
 
   public playWithTimestamp(timestamp: number) {
-    this.load?.(true, true);
-    appMediaPlaybackController.willBePlayed(this.audio); // prepare for loading audio
-    this.readyPromise.then(() => {
-      if(appMediaPlaybackController.willBePlayedMedia !== this.audio && this.audio.paused) {
-        return;
-      }
+    this.load?.(true);
+    this.audio.currentTime = timestamp;
+    this.togglePlay(undefined, true);
+    // appMediaPlaybackController.willBePlayed(this.audio); // prepare for loading audio
+    // this.readyPromise.then(() => {
+    //   if(appMediaPlaybackController.willBePlayedMedia !== this.audio && this.audio.paused) {
+    //     return;
+    //   }
 
-      appMediaPlaybackController.willBePlayed(undefined);
+    //   appMediaPlaybackController.willBePlayed(undefined);
 
-      this.audio.currentTime = timestamp;
-      this.togglePlay(undefined, true);
-    });
+    //   this.audio.currentTime = timestamp;
+    //   this.togglePlay(undefined, true);
+    // });
   }
 
   get addAudioListener() {

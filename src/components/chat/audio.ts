@@ -111,8 +111,6 @@ export default class ChatAudio extends PinnedContainer {
     progressWrapper.classList.add('pinned-audio-progress-wrapper');
 
     this.progressLine = new MediaProgressLine({
-      media: undefined,
-      streamable: undefined,
       withTransition: true,
       useTransform: true
     });
@@ -174,7 +172,10 @@ export default class ChatAudio extends PinnedContainer {
     this.onPlaybackParams(playbackParams);
     this.volumeSelector.setVolume();
 
-    this.progressLine.setMedia(media);
+    this.progressLine.setMedia({
+      media,
+      duration: doc.duration
+    });
 
     this.fill(title, subtitle, message);
     // this.toggleEl.classList.add('flip-icon');

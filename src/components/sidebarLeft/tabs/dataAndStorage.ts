@@ -21,7 +21,6 @@ import {SliderSuperTabEventable, SliderSuperTabEventableConstructable} from '../
 import AppAutoDownloadFileTab from './autoDownload/file';
 import AppAutoDownloadPhotoTab from './autoDownload/photo';
 import AppAutoDownloadVideoTab from './autoDownload/video';
-import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 import SettingSection from '../../settingSection';
 
 const AUTO_DOWNLOAD_FOR_KEYS: {[k in keyof AutoDownloadPeerTypeSettings]: LangPackKey} = {
@@ -32,18 +31,16 @@ const AUTO_DOWNLOAD_FOR_KEYS: {[k in keyof AutoDownloadPeerTypeSettings]: LangPa
 };
 
 export default class AppDataAndStorageTab extends SliderSuperTabEventable {
-  public async init() {
+  public init() {
     this.setTitle('DataSettings');
 
     {
       const section = new SettingSection({name: 'AutomaticMediaDownload', caption: 'AutoDownloadAudioInfo'});
 
-      const state = await apiManagerProxy.getState();
-
       const autoCheckboxField = new CheckboxField({
         text: 'AutoDownloadMedia',
         name: 'auto',
-        checked: !state.settings.autoDownloadNew.pFlags.disabled,
+        checked: !rootScope.settings.autoDownloadNew.pFlags.disabled,
         listenerSetter: this.listenerSetter
       });
 
@@ -54,14 +51,14 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
 
       const onChange = () => {
         toggleDisability([resetButton],
-          deepEqual(state.settings.autoDownload, STATE_INIT.settings.autoDownload) &&
-          deepEqual(state.settings.autoDownloadNew, STATE_INIT.settings.autoDownloadNew));
+          deepEqual(rootScope.settings.autoDownload, STATE_INIT.settings.autoDownload) &&
+          deepEqual(rootScope.settings.autoDownloadNew, STATE_INIT.settings.autoDownloadNew));
       };
 
       const setSubtitles = () => {
-        this.setAutoDownloadSubtitle(photoRow, state.settings.autoDownload.photo /* state.settings.autoDownloadNew.photo_size_max */);
-        this.setAutoDownloadSubtitle(videoRow, state.settings.autoDownload.video/* , state.settings.autoDownloadNew.video_size_max */);
-        this.setAutoDownloadSubtitle(fileRow, state.settings.autoDownload.file, state.settings.autoDownloadNew.file_size_max);
+        this.setAutoDownloadSubtitle(photoRow, rootScope.settings.autoDownload.photo /* state.settings.autoDownloadNew.photo_size_max */);
+        this.setAutoDownloadSubtitle(videoRow, rootScope.settings.autoDownload.video/* , state.settings.autoDownloadNew.video_size_max */);
+        this.setAutoDownloadSubtitle(fileRow, rootScope.settings.autoDownload.file, rootScope.settings.autoDownloadNew.file_size_max);
       };
 
       const openTab = (tabConstructor: SliderSuperTabEventableConstructable) => {
@@ -113,29 +110,29 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
           const settings = rootScope.settings;
           settings.autoDownloadNew = copy(STATE_INIT.settings.autoDownloadNew);
           settings.autoDownload = copy(STATE_INIT.settings.autoDownload);
-          state.settings = settings;
+          rootScope.settings = settings;
           this.managers.appStateManager.setByKey('settings', settings);
 
           setSubtitles();
-          autoCheckboxField.checked = !state.settings.autoDownloadNew.pFlags.disabled;
+          autoCheckboxField.checked = !rootScope.settings.autoDownloadNew.pFlags.disabled;
         });
       });
 
       const onDisabledChange = () => {
         const disabled = !autoCheckboxField.checked;
 
-        const settings = rootScope.settings;
+        const autoDownloadNew = rootScope.settings.autoDownloadNew;
         if(disabled) {
-          settings.autoDownloadNew.pFlags.disabled = true;
+          autoDownloadNew.pFlags.disabled = true;
         } else {
-          delete settings.autoDownloadNew.pFlags.disabled;
+          delete autoDownloadNew.pFlags.disabled;
         }
 
         [photoRow, videoRow, fileRow].forEach((row) => {
           row.container.classList.toggle('is-disabled', disabled);
         });
 
-        this.managers.appStateManager.setByKey('settings', settings);
+        this.managers.appStateManager.setByKey('settings.autoDownloadNew', autoDownloadNew);
 
         onChange();
       };
