@@ -819,7 +819,7 @@ export class AppMessagesManager extends AppManager {
           voice: options.isVoiceMessage || undefined
         },
         waveform: options.waveform,
-        duration: options.duration || 0
+        duration: options.duration || undefined
       };
 
       attributes.push(attribute);
@@ -5908,7 +5908,7 @@ export class AppMessagesManager extends AppManager {
     const {offset_id_offset, messages} = historyResult as MessagesMessages.messagesMessagesSlice;
 
     const count = (historyResult as MessagesMessages.messagesMessagesSlice).count || messages.length;
-    const offsetIdOffset = offset_id_offset || 0;
+    const offsetIdOffset = offset_id_offset ?? count - 1;
 
     const topWasMeantToLoad = add_offset < 0 ? limit + add_offset : limit;
 

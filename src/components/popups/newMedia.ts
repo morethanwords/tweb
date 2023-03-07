@@ -36,7 +36,7 @@ import {AnimationItemGroup} from '../animationIntersector';
 import scaleMediaElement from '../../helpers/canvas/scaleMediaElement';
 import {doubleRaf} from '../../helpers/schedulers';
 import defineNotNumerableProperties from '../../helpers/object/defineNotNumerableProperties';
-import {Photo, PhotoSize} from '../../layer';
+import {DocumentAttribute, Photo, PhotoSize} from '../../layer';
 import {getPreviewBytesFromURL} from '../../helpers/bytes/getPreviewURLFromBytes';
 import {renderImageFromUrlPromise} from '../../helpers/dom/renderImageFromUrl';
 import ButtonMenuToggle from '../buttonMenuToggle';
@@ -740,8 +740,10 @@ export default class PopupNewMedia extends PopupElement {
       params.objectURL ||= await apiManagerProxy.invoke('createObjectURL', file);
     }
 
+    const attributes: DocumentAttribute[] = [];
+
     let img: HTMLImageElement;
-    if(isPhoto) {
+    if(isPhoto && params.objectURL) {
       img = new Image();
       await renderImageFromUrlPromise(img, params.objectURL);
       const scaled = await this.scaleImageForTelegram(img, params.file.type);
@@ -750,13 +752,40 @@ export default class PopupNewMedia extends PopupElement {
       }
     }
 
-    const doc = {
+    if(isAudio && params.objectURL) {
+      try {
+        // * get audio duration
+        const audio = new Audio();
+        audio.src = params.objectURL;
+        audio.muted = true;
+        audio.autoplay = true;
+        await onMediaLoad(audio);
+        params.duration = audio.duration;
+        attributes.push({
+          _: 'documentAttributeAudio',
+          duration: params.duration,
+          pFlags: {}
+        });
+      } catch(err) {
+        console.error('audio loading error', err);
+      }
+    }
+
+    const doc: MyDocument = {
       _: 'document',
-      file: file,
+      file,
       file_name: file.name || '',
       size: file.size,
-      type: isPhoto ? 'photo' : 'doc'
-    } as MyDocument;
+      type: isAudio ? 'audio' : (isPhoto ? 'photo' : undefined),
+      access_hash: 0,
+      attributes,
+      date: 0,
+      dc_id: 0,
+      file_reference: [],
+      id: 0,
+      pFlags: {},
+      duration: params.duration
+    };
 
     let cacheContext: ThumbCache;
     if(params.objectURL) {

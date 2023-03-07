@@ -235,16 +235,29 @@
     border-radius: 0;
   }
 
-  .document {
-    --padding: .25rem;
-    --icon-size: 4.5rem;
+  .document,
+  .audio {
     --icon-margin: .5rem;
-    max-width: 100%;
-    overflow: hidden;
-    cursor: default;
-    height: 5rem;
+    --icon-size: 3rem;
+    --padding: .25rem;
     margin: 0 .25rem;
     border-radius: $border-radius-medium;
+    cursor: default;
+    height: 3.5rem;
+
+    @include hover-background-effect() {
+      --message-background-color: var(--light-filled-secondary-text-color);
+    }
+  }
+
+  .document {
+    max-width: 100%;
+    overflow: hidden;
+
+    &.document-with-thumb {
+      --icon-size: 4.5rem;
+      height: 5rem;
+    }
 
     &-name {
       width: 100%;
@@ -262,8 +275,6 @@
       letter-spacing: 0;
       border-radius: #{math.div($border-radius-medium, 2)};
     }
-
-    @include hover-background-effect();
 
     /* &.photo {
       .document-ico {

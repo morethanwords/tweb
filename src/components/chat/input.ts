@@ -2079,7 +2079,7 @@ export default class ChatInput {
           ]).then(([webpage, canEmbedLinks]) => {
             if(this.getWebPagePromise === promise) this.getWebPagePromise = undefined;
             if(this.lastUrl !== url) return;
-            if(webpage._  === 'webPage' && canEmbedLinks) {
+            if(webpage?._  === 'webPage' && canEmbedLinks) {
               this.setTopInfo('webpage', () => {}, webpage.site_name || webpage.title || 'Webpage', webpage.description || webpage.url || '');
               delete this.noWebPage;
               this.willSendWebPage = webpage;
