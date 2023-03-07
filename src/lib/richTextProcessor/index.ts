@@ -99,6 +99,8 @@ export const MARKDOWN_ENTITIES: {[markdown: string]: MessageEntity['_']} = {
   '||': 'messageEntitySpoiler'
 };
 
+export const MARKDOWN_ENTITIES_TYPES = new Set(Object.values(MARKDOWN_ENTITIES));
+
 export const PASS_CONFLICTING_ENTITIES: Set<MessageEntity['_']> = new Set([
   'messageEntityEmoji',
   'messageEntityLinebreak',
