@@ -1475,6 +1475,10 @@ export default function wrapRichText(text: string, options: Partial<{
         (element as HTMLAnchorElement).href = '#';
         element.setAttribute('onclick', 'setMediaTimestamp(this)');
 
+        if(options.maxMediaTimestamp === Infinity) {
+          element.classList.add('is-disabled');
+        }
+
         break;
       }
     }

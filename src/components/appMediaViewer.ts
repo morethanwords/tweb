@@ -29,6 +29,7 @@ import PopupForward from './popups/forward';
 import Scrollable from './scrollable';
 import appSidebarRight from './sidebarRight';
 import AppSharedMediaTab from './sidebarRight/tabs/sharedMedia';
+import PopupElement from './popups';
 
 type AppMediaViewerTargetType = {
   element: HTMLElement,
@@ -193,7 +194,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
   onDeleteClick = () => {
     const target = this.target;
-    new PopupDeleteMessages(target.peerId, [target.mid], 'chat', () => {
+    PopupElement.createPopup(PopupDeleteMessages, target.peerId, [target.mid], 'chat', () => {
       this.target = {element: this.content.media} as any;
       this.close();
     });
@@ -203,7 +204,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     const target = this.target;
     if(target.mid) {
       // appSidebarRight.forwardTab.open([target.mid]);
-      new PopupForward({
+      PopupElement.createPopup(PopupForward, {
         [target.peerId]: [target.mid]
       }, () => {
         return this.close();

@@ -18,6 +18,7 @@ import {AppManagers} from '../lib/appManagers/managers';
 import {GENERAL_TOPIC_ID} from '../lib/mtproto/mtproto_config';
 import showLimitPopup from './popups/limit';
 import createContextMenu from '../helpers/dom/createContextMenu';
+import PopupElement from './popups';
 
 export default class DialogsContextMenu {
   private buttons: ButtonMenuItemOptionsVerifiable[];
@@ -216,7 +217,7 @@ export default class DialogsContextMenu {
   };
 
   private onMuteClick = () => {
-    new PopupMute(this.peerId, this.threadId);
+    PopupElement.createPopup(PopupMute, this.peerId, this.threadId);
   };
 
   private onUnreadClick = async() => {
@@ -233,6 +234,6 @@ export default class DialogsContextMenu {
   };
 
   private onDeleteClick = () => {
-    new PopupDeleteDialog(this.peerId, undefined, undefined, this.threadId);
+    PopupElement.createPopup(PopupDeleteDialog, this.peerId, undefined, undefined, this.threadId);
   };
 }

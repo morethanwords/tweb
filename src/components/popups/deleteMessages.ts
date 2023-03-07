@@ -102,7 +102,7 @@ export default class PopupDeleteMessages {
 
     addCancelButton(buttons);
 
-    const popup = new PopupPeer('popup-delete-chat', {
+    const popup = PopupElement.createPopup(PopupPeer, 'popup-delete-chat', {
       peerId,
       threadId,
       titleLangKey: title,

@@ -119,6 +119,12 @@
     .scrollable {
       position: relative;
     }
+
+    .scrollable-y-bordered {
+      &:last-child {
+        border-bottom: none;
+      }
+    }
   }
 
   &-buttons {

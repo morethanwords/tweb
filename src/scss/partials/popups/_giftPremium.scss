@@ -1,0 +1,103 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+ 
+.popup-gift-premium {
+  $parent: ".popup";
+
+  #{$parent} {
+    &-container {
+      padding: 0;
+      width: 26.25rem;
+      max-width: 26.25rem;
+
+      max-height: unquote('min(100%, 43.5rem)');
+      border-radius: $border-radius-huge;
+    }
+
+    &-header {
+      height: 3.5rem;
+      margin: 0;
+      padding: 0 1rem;
+      margin-bottom: -2rem;
+    }
+  }
+
+  .scrollable-y {
+    flex: 1 1 auto;
+    padding: 0 1rem 1rem;
+  }
+
+  &-avatar {
+    display: block;
+    margin: 0 auto;
+  }
+
+  &-title,
+  &-subtitle {
+    text-align: center;
+    display: block;
+  }
+
+  &-title {
+    font-size: var(--font-size-20);
+    font-weight: var(--font-weight-bold);
+    margin: .75rem 0;
+  }
+
+  &-options {
+    display: flex;
+    flex-direction: column;
+    margin: .5rem 0 1rem;
+  }
+
+  &-option {
+    margin-top: .5rem;
+
+    &:nth-child(1) {
+      --primary-color: #C564F3;
+    }
+
+    &:nth-child(2) {
+      --primary-color: #AC64F3;
+    }
+
+    &:nth-child(3) {
+      --primary-color: #9377FF;
+    }
+  }
+
+  &-discount {
+    background-color: var(--primary-color);
+    border-radius: 6px;
+    color: #fff;
+    margin-right: .375rem;
+    padding: 0 0.3125rem;
+    height: 20px;
+    display: inline-block;
+    line-height: 20px;
+  }
+
+  &-confirm {
+    --ripple-color: rgba(255, 255, 255, #{$hover-alpha});
+    background: linear-gradient(88.39deg, #6C93FF -2.56%, #976FFF 51.27%, #DF69D1 107.39%) !important;
+    font-weight: var(--font-weight-bold);
+    color: #fff;
+    text-transform: uppercase;
+
+    @include hover() {
+      &:after {
+        content: " ";
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        background-color: #fff;
+        opacity: $hover-alpha;
+      }
+    }
+  }
+}

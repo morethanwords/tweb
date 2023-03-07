@@ -13,7 +13,7 @@ import Button from '../../button';
 import PeerTitle from '../../peerTitle';
 import rootScope from '../../../lib/rootScope';
 import PopupPeer from '../../popups/peer';
-import {addCancelButton} from '../../popups';
+import PopupElement, {addCancelButton} from '../../popups';
 import {i18n} from '../../../lib/langPack';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import toggleDisability from '../../../helpers/dom/toggleDisability';
@@ -160,7 +160,7 @@ export default class AppEditContactTab extends SliderSuperTab {
       const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'PeerInfo.DeleteContact'});
 
       attachClickEvent(btnDelete, () => {
-        new PopupPeer('popup-delete-contact', {
+        PopupElement.createPopup(PopupPeer, 'popup-delete-contact', {
           peerId: peerId,
           titleLangKey: 'DeleteContact',
           descriptionLangKey: 'AreYouSureDeleteContact',

@@ -47,6 +47,7 @@ import wrapStickerAnimation from './stickerAnimation';
 import framesCache from '../../helpers/framesCache';
 import {IS_MOBILE} from '../../environment/userAgent';
 import liteMode, {LiteModeKey} from '../../helpers/liteMode';
+import PopupElement from '../popups';
 
 // https://github.com/telegramdesktop/tdesktop/blob/master/Telegram/SourceFiles/history/view/media/history_view_sticker.cpp#L40
 export const STICKER_EFFECT_MULTIPLIER = 1 + 0.245 * 2;
@@ -699,7 +700,7 @@ function attachStickerEffectHandler({container, doc, managers, middleware, isOut
       const a = document.createElement('a');
       a.onclick = () => {
         hideToast();
-        new PopupStickers(doc.stickerSetInput).show();
+        PopupElement.createPopup(PopupStickers, doc.stickerSetInput).show();
       };
 
       toastNew({
@@ -782,7 +783,7 @@ export async function onEmojiStickerClick({event, container, managers, peerId, m
   }
 
   const activeAnimations: Set<{}> = (container as any).activeAnimations ??= new Set();
-  if(activeAnimations.size >= (IS_MOBILE ? 3 : 5)) {
+  if(activeAnimations.size >= 3) {
     return;
   }
 

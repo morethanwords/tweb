@@ -318,7 +318,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     return this.POPUPS.filter((element) => element instanceof popupConstructor) as T[];
   }
 
-  public static createPopup<T extends PopupElement, A extends Array<any>>(ctor: {new(...args: A): T}, ...args: A) {
+  public static createPopup<T extends /* PopupElement */any, A extends Array<any>>(ctor: {new(...args: A): T}, ...args: A) {
     const popup = new ctor(...args);
     return popup;
   }

@@ -38,6 +38,7 @@ import {AnyFunction} from '../../../types';
 import {IgnoreMouseOutType} from '../../../helpers/dropdownHover';
 import customProperties from '../../../helpers/dom/customProperties';
 import windowSize from '../../../helpers/windowSize';
+import PopupElement from '../../popups';
 
 export class SuperStickerRenderer {
   public lazyLoadQueue: LazyLoadQueueRepeat;
@@ -617,7 +618,7 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
           return;
         }
 
-        new PopupStickers({id: category.set.id, access_hash: category.set.access_hash}).show();
+        PopupElement.createPopup(PopupStickers, {id: category.set.id, access_hash: category.set.access_hash}).show();
         return;
       }
 

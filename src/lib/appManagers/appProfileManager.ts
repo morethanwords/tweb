@@ -22,6 +22,7 @@ import {ReferenceContext} from '../mtproto/referenceDatabase';
 import generateMessageId from './utils/messageId/generateMessageId';
 import assumeType from '../../helpers/assumeType';
 import makeError from '../../helpers/makeError';
+import callbackify from '../../helpers/callbackify';
 
 export type UserTyping = Partial<{userId: UserId, action: SendMessageAction, timeout: number}>;
 
@@ -667,6 +668,18 @@ export class AppProfileManager extends AppManager {
 
   public getPeerTypings(peerId: PeerId, threadId?: number) {
     return this.typingsInPeer[this.getTypingsKey(peerId, threadId)];
+  }
+
+  public canGiftPremium(userId: UserId) {
+    const user = this.appUsersManager.getUser(userId);
+    if(user?.pFlags?.premium || true) {
+      return false;
+    }
+
+    return callbackify(this.getProfile(userId), (userFull) => {
+      const user = this.appUsersManager.getUser(userId);
+      return !!userFull.premium_gifts && !user?.pFlags?.premium;
+    });
   }
 
   private onUpdateChatParticipants = (update: Update.updateChatParticipants) => {

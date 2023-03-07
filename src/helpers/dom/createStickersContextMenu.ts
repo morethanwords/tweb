@@ -10,7 +10,8 @@ import appImManager from '../../lib/appManagers/appImManager';
 import rootScope from '../../lib/rootScope';
 import createContextMenu from './createContextMenu';
 import findUpClassName from './findUpClassName';
-import emoticonsDropdown, {EmoticonsDropdown} from '../../components/emoticonsDropdown';
+import {EmoticonsDropdown} from '../../components/emoticonsDropdown';
+import PopupElement from '../../components/popups';
 
 export default function createStickersContextMenu(options: {
   listenTo: HTMLElement,
@@ -45,7 +46,7 @@ export default function createStickersContextMenu(options: {
     buttons: [{
       icon: 'stickers',
       text: 'Context.ViewStickerSet',
-      onClick: () => new PopupStickers(doc.stickerSetInput).show(),
+      onClick: () => PopupElement.createPopup(PopupStickers, doc.stickerSetInput).show(),
       verify: () => !isStickerPack
     }, {
       icon: 'favourites',

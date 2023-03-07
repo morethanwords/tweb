@@ -785,13 +785,30 @@ export default class ChatBubbles {
           const bubble = this.bubbles[mid];
           if(!bubble) return;
 
-          const message = (await this.chat.getMessage(mid)) as Message.message;
+          const [message, originalMessage] = await Promise.all([
+            (await this.chat.getMessage(mid)) as Message.message,
+            (await this.managers.appMessagesManager.getMessageByPeer(replyToPeerId, replyMid)) as Message.message
+          ]);
+          if(!middleware()) return;
 
           MessageRender.setReply({
             chat: this.chat,
             bubble,
             message
           });
+
+          let maxMediaTimestamp: number;
+          const timestamps = bubble.querySelectorAll<HTMLAnchorElement>('.timestamp');
+          if(originalMessage && (maxMediaTimestamp = getMediaDurationFromMessage(originalMessage))) {
+            timestamps.forEach((timestamp) => {
+              const value = +timestamp.dataset.timestamp;
+              if(value < maxMediaTimestamp) {
+                timestamp.classList.remove('is-disabled');
+              } else {
+                timestamp.removeAttribute('href');
+              }
+            });
+          }
         });
       });
     });
@@ -1787,7 +1804,8 @@ export default class ChatBubbles {
         return;
       }
 
-      new PopupPayment(
+      PopupElement.createPopup(
+        PopupPayment,
         message as Message.message,
         await this.managers.appPaymentsManager.getInputInvoiceByPeerId(message.peerId, message.mid)
       );
@@ -1878,7 +1896,7 @@ export default class ChatBubbles {
             const message = await this.managers.appMessagesManager.getMessageByPeer(peerId.toPeerId(), +mid);
             if(message) {
               const inputInvoice = await this.managers.appPaymentsManager.getInputInvoiceByPeerId(this.peerId, +bubble.dataset.mid);
-              new PopupPayment(message as Message.message, inputInvoice, undefined, true);
+              PopupElement.createPopup(PopupPayment, message as Message.message, inputInvoice, undefined, true);
             }
           } else {
             this.chat.appImManager.setInnerPeer({
@@ -1916,7 +1934,7 @@ export default class ChatBubbles {
       const doc = ((message as Message.message).media as MessageMedia.messageMediaDocument)?.document as Document.document;
 
       if(doc?.stickerSetInput) {
-        new PopupStickers(doc.stickerSetInput).show();
+        PopupElement.createPopup(PopupStickers, doc.stickerSetInput).show();
       }
 
       return;
@@ -1941,7 +1959,7 @@ export default class ChatBubbles {
       } else if(target.classList.contains('forward')) {
         const mid = +bubble.dataset.mid;
         const message = await this.managers.appMessagesManager.getMessageByPeer(this.peerId, mid);
-        new PopupForward({
+        PopupElement.createPopup(PopupForward, {
           [this.peerId]: await this.managers.appMessagesManager.getMidsByMessage(message)
         });
         // appSidebarRight.forwardTab.open([mid]);
@@ -3024,6 +3042,16 @@ export default class ChatBubbles {
           this.chat.input.setStartParam(startParam);
         }
 
+        if(options.mediaTimestamp) {
+          getHeavyAnimationPromise().then(() => {
+            this.playMediaWithTimestampAndMid({
+              lastMsgId,
+              middleware,
+              mediaTimestamp: options.mediaTimestamp
+            });
+          });
+        }
+
         return null;
       }
     } else {
@@ -3251,13 +3279,11 @@ export default class ChatBubbles {
             pause(400) :
             Promise.resolve();
           p.then(() => {
-            return this.getMountedBubble(lastMsgId);
-          }).then((mounted) => {
-            if(!middleware() || !mounted) {
-              return;
-            }
-
-            this.playMediaWithTimestamp(mounted.bubble, options.mediaTimestamp);
+            return this.playMediaWithTimestampAndMid({
+              lastMsgId,
+              middleware,
+              mediaTimestamp: options.mediaTimestamp
+            });
           });
         }
 
@@ -3305,6 +3331,24 @@ export default class ChatBubbles {
     return {cached, promise: setPeerPromise};
   }
 
+  public playMediaWithTimestampAndMid({
+    middleware,
+    lastMsgId,
+    mediaTimestamp
+  }: {
+    middleware: () => boolean,
+    lastMsgId: number,
+    mediaTimestamp: number
+  }) {
+    this.getMountedBubble(lastMsgId).then((mounted) => {
+      if(!middleware() || !mounted) {
+        return;
+      }
+
+      this.playMediaWithTimestamp(mounted.bubble, mediaTimestamp);
+    });
+  }
+
   public playMediaWithTimestamp(element: HTMLElement, timestamp: number) {
     const bubble = findUpClassName(element, 'bubble');
     const groupedItem = findUpClassName(element, 'grouped-item');
@@ -3324,6 +3368,19 @@ export default class ChatBubbles {
     if(audio) {
       audio.playWithTimestamp(timestamp);
       return;
+    }
+
+    const replyToPeerId = bubble.dataset.replyToPeerId.toPeerId();
+    const replyToMid = +bubble.dataset.replyToMid;
+    if(replyToPeerId && replyToMid) {
+      if(replyToPeerId === this.peerId) {
+        this.chat.setMessageId(replyToMid, timestamp);
+      } else {
+        this.chat.appImManager.setInnerPeer({
+          peerId: replyToPeerId,
+          mediaTimestamp: timestamp
+        });
+      }
     }
   }
 
@@ -3937,9 +3994,26 @@ export default class ChatBubbles {
 
     customEmojiSize ??= this.chat.appImManager.customEmojiSize;
 
-    const maxMediaTimestamp = getMediaDurationFromMessage(albumTextMessage || message as Message.message);
+    let maxMediaTimestamp = getMediaDurationFromMessage(albumTextMessage || message as Message.message);
     if(albumTextMessage && needToSetHTML) {
       bubble.dataset.textMid = '' + albumTextMessage.mid;
+    }
+
+    if(message.reply_to) {
+      const replyToPeerId = message.reply_to.reply_to_peer_id ? getPeerId(message.reply_to.reply_to_peer_id) : this.peerId;
+      bubble.dataset.replyToPeerId = '' + replyToPeerId;
+      bubble.dataset.replyToMid = '' + message.reply_to_mid;
+
+      if(maxMediaTimestamp === undefined) {
+        const originalMessage = await rootScope.managers.appMessagesManager.getMessageByPeer(replyToPeerId, message.reply_to_mid);
+        if(originalMessage) {
+          maxMediaTimestamp = getMediaDurationFromMessage(originalMessage as Message.message);
+        } else {
+          // this.managers.appMessagesManager.fetchMessageReplyTo(message);
+          // this.needUpdate.push({replyToPeerId, replyMid: message.reply_to_mid, mid: message.mid});
+          maxMediaTimestamp = Infinity;
+        }
+      }
     }
 
     const richTextOptions: Parameters<typeof wrapRichText>[1] = {
@@ -4095,7 +4169,7 @@ export default class ChatBubbles {
                   }
 
                   return new Promise<PeerId>((resolve, reject) => {
-                    const popup = new PopupForward(undefined, (peerId) => {
+                    const popup = PopupElement.createPopup(PopupForward, undefined, (peerId) => {
                       resolve(peerId);
                     });
 
@@ -5726,7 +5800,7 @@ export default class ChatBubbles {
 
         if(sponsoredMessage.chat_invite) {
           callback = () => {
-            new PopupJoinChatInvite(sponsoredMessage.chat_invite_hash, sponsoredMessage.chat_invite as ChatInvite.chatInvite);
+            PopupElement.createPopup(PopupJoinChatInvite, sponsoredMessage.chat_invite_hash, sponsoredMessage.chat_invite as ChatInvite.chatInvite);
           };
         } else if(sponsoredMessage.chat_invite_hash) {
           callback = () => {
@@ -6146,6 +6220,11 @@ export default class ChatBubbles {
 
     return result;
   }
+
+  // private async getDiscussionMessages() {
+  //   const mids = await this.chat.getMidsByMid(this.chat.threadId);
+  //   return Promise.all(mids.map((mid) => this.chat.getMessage(mid)));
+  // }
 
   /**
    * Load and render history

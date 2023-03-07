@@ -26,7 +26,8 @@ export type CheckboxFieldOptions = {
   restriction?: boolean,
   withRipple?: boolean,
   withHover?: boolean,
-  listenerSetter?: ListenerSetter
+  listenerSetter?: ListenerSetter,
+  asRadio?: boolean
 };
 export default class CheckboxField {
   public input: HTMLInputElement;
@@ -54,9 +55,9 @@ export default class CheckboxField {
 
     const input = this.input = document.createElement('input');
     input.classList.add('checkbox-field-input');
-    input.type = 'checkbox';
+    input.type = options.asRadio ? 'radio' : 'checkbox';
     if(options.name) {
-      input.id = 'input-' + options.name;
+      input[options.asRadio ? 'name' : 'id'] = 'input-' + options.name;
     }
 
     if(options.checked) {

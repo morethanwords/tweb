@@ -77,6 +77,7 @@ import noop from '../helpers/noop';
 import wrapMediaSpoiler, {onMediaSpoilerClick} from './wrappers/mediaSpoiler';
 import filterAsync from '../helpers/array/filterAsync';
 import ChatContextMenu from './chat/contextMenu';
+import PopupElement from './popups';
 
 // const testScroll = false;
 
@@ -257,7 +258,7 @@ class SearchContextMenu {
     if(this.searchSuper.selection.isSelecting) {
       simulateClickEvent(this.searchSuper.selection.selectionForwardBtn);
     } else {
-      new PopupForward({
+      PopupElement.createPopup(PopupForward, {
         [this.peerId]: [this.mid]
       });
     }
@@ -275,7 +276,7 @@ class SearchContextMenu {
     if(this.searchSuper.selection.isSelecting) {
       simulateClickEvent(this.searchSuper.selection.selectionDeleteBtn);
     } else {
-      new PopupDeleteMessages(this.peerId, [this.mid], 'chat');
+      PopupElement.createPopup(PopupDeleteMessages, this.peerId, [this.mid], 'chat');
     }
   };
 }

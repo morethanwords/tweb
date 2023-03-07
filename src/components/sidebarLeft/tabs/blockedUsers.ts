@@ -19,6 +19,7 @@ import positionMenu from '../../../helpers/positionMenu';
 import contextMenuController from '../../../helpers/contextMenuController';
 import getPeerActiveUsernames from '../../../lib/appManagers/utils/peers/getPeerActiveUsernames';
 import SettingSection from '../../settingSection';
+import PopupElement from '../../popups';
 
 export default class AppBlockedUsersTab extends SliderSuperTab {
   public peerIds: PeerId[];
@@ -40,7 +41,7 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
     this.content.append(btnAdd);
 
     attachClickEvent(btnAdd, (e) => {
-      new PopupPickUser({
+      PopupElement.createPopup(PopupPickUser, {
         peerTypes: ['contacts'],
         placeholder: 'BlockModal.Search.Placeholder',
         onSelect: (peerId) => {

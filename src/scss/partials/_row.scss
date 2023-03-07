@@ -254,6 +254,19 @@ $row-border-radius: $border-radius-medium;
       margin-inline: .125rem .125rem;
       padding: 0;
     }
+
+    &-absolute {
+      position: absolute;
+      margin: 0 !important;
+      padding: 0 !important;
+      left: 0;
+    }
+
+    &-round {
+      .checkbox-box-border {
+        z-index: unset;
+      }
+    }
   }
 
   &-subtitle {

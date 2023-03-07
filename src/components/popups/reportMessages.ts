@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import PopupElement from '.';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import whichChild from '../../helpers/dom/whichChild';
@@ -45,7 +46,7 @@ export default class PopupReportMessages extends PopupPeer {
       preloadStickerPromise.then(() => {
         this.hide();
 
-        new PopupReportMessagesConfirm(peerId, mids, reason, onConfirm);
+        PopupElement.createPopup(PopupReportMessagesConfirm, peerId, mids, reason, onConfirm);
       });
     }, {listenerSetter: this.listenerSetter});
 

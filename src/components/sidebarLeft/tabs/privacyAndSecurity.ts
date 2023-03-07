@@ -34,6 +34,7 @@ import {toastNew} from '../../toast';
 import AppPrivacyVoicesTab from './privacy/voices';
 import SettingSection from '../../settingSection';
 import AppActiveWebSessionsTab from './activeWebSessions';
+import PopupElement from '../../popups';
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;
@@ -424,7 +425,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       const section = new SettingSection({name: 'FilterChats'});
 
       const onDeleteClick = () => {
-        const popup = new PopupPeer('popup-delete-drafts', {
+        const popup = PopupElement.createPopup(PopupPeer, 'popup-delete-drafts', {
           buttons: [{
             langKey: 'Delete',
             callback: () => {

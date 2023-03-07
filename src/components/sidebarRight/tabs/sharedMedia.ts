@@ -25,6 +25,7 @@ import {Message} from '../../../layer';
 import getMessageThreadId from '../../../lib/appManagers/utils/messages/getMessageThreadId';
 import AppEditTopicTab from './editTopic';
 import liteMode from '../../../helpers/liteMode';
+import PopupElement from '../../popups';
 
 type SharedMediaHistoryStorage = Partial<{
   [type in SearchSuperType]: {mid: number, peerId: PeerId}[]
@@ -296,7 +297,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
           peerId
         }).element);
 
-        new PopupPeer('popup-add-members', {
+        PopupElement.createPopup(PopupPeer, 'popup-add-members', {
           peerId,
           titleLangKey,
           descriptionLangKey,
@@ -333,7 +334,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
           placeholder: 'SendMessageTo'
         });
       } else {
-        new PopupPickUser({
+        PopupElement.createPopup(PopupPickUser, {
           peerTypes: ['contacts'],
           placeholder: 'Search',
           onSelect: (peerId) => {

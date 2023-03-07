@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {i18n, LangPackKey} from '../lib/langPack';
+import {FormatterArguments, i18n, LangPackKey} from '../lib/langPack';
 import ripple from './ripple';
 
 export type ButtonOptions = Partial<{
@@ -13,6 +13,7 @@ export type ButtonOptions = Partial<{
   icon: string,
   rippleSquare: true,
   text: LangPackKey,
+  textArgs?: FormatterArguments,
   disabled: boolean,
   asDiv: boolean,
   asLink: boolean
@@ -39,7 +40,7 @@ export default function Button<T extends ButtonOptions>(className: string, optio
   }
 
   if(options.text) {
-    button.append(i18n(options.text));
+    button.append(i18n(options.text, options.textArgs));
   }
 
   return button as any;

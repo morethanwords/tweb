@@ -27,6 +27,7 @@ import getPeerEditableUsername from '../../../lib/appManagers/utils/peers/getPee
 import getPeerActiveUsernames from '../../../lib/appManagers/utils/peers/getPeerActiveUsernames';
 import {purchaseUsernameCaption} from '../../sidebarLeft/tabs/editProfile';
 import confirmationPopup from '../../confirmationPopup';
+import PopupElement from '../../popups';
 
 export default class AppChatTypeTab extends SliderSuperTabEventable {
   public chatId: ChatId;
@@ -102,7 +103,7 @@ export default class AppChatTypeTab extends SliderSuperTabEventable {
     const btnRevoke = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'RevokeLink'});
 
     attachClickEvent(btnRevoke, () => {
-      new PopupPeer('revoke-link', {
+      PopupElement.createPopup(PopupPeer, 'revoke-link', {
         buttons: [{
           langKey: 'RevokeButton',
           callback: () => {

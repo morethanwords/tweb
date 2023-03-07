@@ -25,7 +25,12 @@ function number_format(number: any, decimals: any, dec_point: any, thousands_sep
   return s.join(dec);
 }
 
-export default function paymentsWrapCurrencyAmount(amount: number | string, currency: string, skipSymbol?: boolean) {
+export default function paymentsWrapCurrencyAmount(
+  amount: number | string,
+  currency: string,
+  skipSymbol?: boolean,
+  useNative?: boolean
+) {
   amount = +amount;
 
   const isNegative = amount < 0;
@@ -47,7 +52,7 @@ export default function paymentsWrapCurrencyAmount(amount: number | string, curr
     return formatted;
   }
 
-  let symbol = currencyData.symbol;
+  let symbol = useNative ? currencyData.native || currencyData.symbol : currencyData.symbol;
   if(isNegative && !currencyData.space_between && currencyData.symbol_left) {
     symbol = '-' + symbol;
     formatted = formatted.replace('-', '');

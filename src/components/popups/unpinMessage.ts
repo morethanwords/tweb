@@ -110,7 +110,7 @@ export default class PopupPinMessage {
 
     addCancelButton(buttons);
 
-    const popup = new PopupPeer('popup-delete-chat', {
+    const popup = PopupElement.createPopup(PopupPeer, 'popup-delete-chat', {
       peerId,
       titleLangKey: title,
       descriptionLangKey: description,

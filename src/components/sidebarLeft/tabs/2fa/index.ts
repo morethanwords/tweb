@@ -8,6 +8,7 @@ import {attachClickEvent} from '../../../../helpers/dom/clickEvent';
 import {AccountPassword} from '../../../../layer';
 import {_i18n} from '../../../../lib/langPack';
 import Button from '../../../button';
+import PopupElement from '../../../popups';
 import PopupPeer from '../../../popups/peer';
 import SettingSection from '../../../settingSection';
 import {SliderSuperTab} from '../../../slider';
@@ -57,7 +58,7 @@ export default class AppTwoStepVerificationTab extends SliderSuperTab {
       });
 
       attachClickEvent(btnDisablePassword, () => {
-        const popup = new PopupPeer('popup-disable-password', {
+        const popup = PopupElement.createPopup(PopupPeer, 'popup-disable-password', {
           buttons: [{
             langKey: 'Disable',
             callback: () => {

@@ -5904,18 +5904,54 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public isHistoryResultEnd(historyResult: Exclude<MessagesMessages, MessagesMessages.messagesMessagesNotModified>, limit: number, add_offset: number) {
+  public isHistoryResultEnd(
+    historyResult: Exclude<MessagesMessages, MessagesMessages.messagesMessagesNotModified>,
+    limit: number,
+    add_offset: number,
+    offset_id: number
+  ) {
     const {offset_id_offset, messages} = historyResult as MessagesMessages.messagesMessagesSlice;
 
+    const mids = messages.map((message) => {
+      return (message as MyMessage).mid;
+    });
+
     const count = (historyResult as MessagesMessages.messagesMessagesSlice).count || messages.length;
-    const offsetIdOffset = offset_id_offset ?? count - 1;
 
     const topWasMeantToLoad = add_offset < 0 ? limit + add_offset : limit;
+    const bottomWasMeantToLoad = Math.abs(add_offset);
 
-    const isTopEnd = offsetIdOffset >= (count - topWasMeantToLoad) || count < topWasMeantToLoad;
-    const isBottomEnd = !offsetIdOffset || (add_offset < 0 && (offsetIdOffset + add_offset) <= 0);
+    let offsetIdOffset = offset_id_offset;
+    let isTopEnd = false, isBottomEnd = false;
 
-    return {count, offsetIdOffset, isTopEnd, isBottomEnd};
+    // if(offsetIdOffset === undefined && !bottomWasMeantToLoad) {
+    //   offsetIdOffset = 0;
+    // }
+
+    if(offsetIdOffset !== undefined) {
+      isTopEnd = offsetIdOffset >= (count - topWasMeantToLoad) || count < topWasMeantToLoad;
+      isBottomEnd = !offsetIdOffset || (add_offset < 0 && (offsetIdOffset + add_offset) <= 0);
+    } else if(offset_id && getServerMessageId(offset_id)) {
+      let i = 0;
+      for(const length = mids.length; i < length; ++i) {
+        if(offset_id > mids[i]) {
+          break;
+        }
+      }
+
+      const topLoaded = messages.length - i;
+      const bottomLoaded = mids.includes(offset_id) ? i - 1 : i;
+      if(topWasMeantToLoad) isTopEnd = topLoaded < topWasMeantToLoad;
+      if(bottomWasMeantToLoad) isBottomEnd = bottomLoaded < bottomWasMeantToLoad;
+
+      if(isTopEnd || isBottomEnd) {
+        offsetIdOffset = isTopEnd ? count - topLoaded : bottomLoaded;
+      }
+    }
+
+    offsetIdOffset ??= 0;
+
+    return {count, offsetIdOffset, isTopEnd, isBottomEnd, mids};
   }
 
   public mergeHistoryResult(
@@ -5926,11 +5962,8 @@ export class AppMessagesManager extends AppManager {
     add_offset: number
   ) {
     const {messages} = historyResult as MessagesMessages.messagesMessagesSlice;
-    const isEnd = this.isHistoryResultEnd(historyResult, limit, add_offset);
-    const {count, offsetIdOffset, isTopEnd, isBottomEnd} = isEnd;
-    const mids = messages.map((message) => {
-      return (message as MyMessage).mid;
-    });
+    const isEnd = this.isHistoryResultEnd(historyResult, limit, add_offset, offset_id);
+    const {count, offsetIdOffset, isTopEnd, isBottomEnd, mids} = isEnd;
 
     // * add bound manually.
     // * offset_id will be inclusive only if there is 'add_offset' <= -1 (-1 - will only include the 'offset_id')

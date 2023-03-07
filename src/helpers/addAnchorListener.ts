@@ -22,6 +22,10 @@ export default function addAnchorListener<Params extends {pathnameParams?: any, 
     !options.noCancelEvent && cancelEvent(null);
 
     let href = element.href;
+    if(!href) {
+      return;
+    }
+
     let pathnameParams: any[];
     let uriParams: any;
 

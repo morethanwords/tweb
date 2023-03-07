@@ -940,6 +940,11 @@ const lang = {
   'SuggestStickersNone': 'None',
   'DynamicPackOrder': 'Dynamic Pack Order',
   'DynamicPackOrderInfo': 'Automatically place recently used sticker packs at the front of the panel.',
+  'GiftPremium': 'Gift Premium',
+  'GiftTelegramPremiumTitle': 'Gift Telegram Premium',
+  'GiftTelegramPremiumDescription': 'Give **%1$s** access to exclusive features with **Telegram Premium**.',
+  'PricePerMonth': '%1$s / month',
+  'GiftSubscriptionFor': 'Gift Subscription for %1$s',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

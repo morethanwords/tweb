@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {addCancelButton} from './popups';
+import PopupElement, {addCancelButton} from './popups';
 import PopupPeer, {PopupPeerCheckboxOptions, PopupPeerOptions} from './popups/peer';
 
 // type PopupConfirmationOptions = Pick<PopupPeerOptions, 'titleLangKey'>;
@@ -35,6 +35,6 @@ export default function confirmationPopup<T extends PopupConfirmationOptions>(
     options.buttons = buttons;
     options.checkboxes ??= checkbox && [checkbox];
 
-    new PopupPeer('popup-confirmation', options).show();
+    PopupElement.createPopup(PopupPeer, 'popup-confirmation', options).show();
   });
 }

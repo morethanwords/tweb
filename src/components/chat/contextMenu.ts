@@ -48,6 +48,7 @@ import PopupStickers from '../popups/stickers';
 import getMediaFromMessage from '../../lib/appManagers/utils/messages/getMediaFromMessage';
 import canSaveMessageMedia from '../../lib/appManagers/utils/messages/canSaveMessageMedia';
 import getAlbumText from '../../lib/appManagers/utils/messages/getAlbumText';
+import PopupElement from '../popups';
 
 export default class ChatContextMenu {
   private buttons: (ButtonMenuItemOptions & {verify: () => boolean | Promise<boolean>, notDirect?: () => boolean, withSelection?: true, isSponsored?: true, localName?: 'views' | 'emojis'})[];
@@ -490,7 +491,7 @@ export default class ChatContextMenu {
       icon: 'flag',
       text: 'ReportChat',
       onClick: () => {
-        new PopupReportMessages(this.peerId, [this.mid]);
+        PopupElement.createPopup(PopupReportMessages, this.peerId, [this.mid]);
       },
       verify: async() => !this.message.pFlags.out && this.message._ === 'message' && !this.message.pFlags.is_outgoing && await this.managers.appPeersManager.isChannel(this.peerId),
       notDirect: () => true,
@@ -516,7 +517,7 @@ export default class ChatContextMenu {
             peerId: this.viewerPeerId
           });
         } else if(this.canOpenReactedList) {
-          new PopupReactedList(this.message as Message.message);
+          PopupElement.createPopup(PopupReactedList, this.message as Message.message);
         } else {
           return false;
         }
@@ -540,7 +541,7 @@ export default class ChatContextMenu {
       icon: 'info',
       text: 'Chat.Message.Sponsored.What',
       onClick: () => {
-        new PopupSponsored();
+        PopupElement.createPopup(PopupSponsored);
       },
       verify: () => false,
       isSponsored: true
@@ -549,7 +550,7 @@ export default class ChatContextMenu {
       text: 'Loading',
       onClick: () => {
         this.emojiInputsPromise.then((inputs) => {
-          new PopupStickers(inputs, true).show();
+          PopupElement.createPopup(PopupStickers, inputs, true).show();
         });
       },
       verify: () => !!this.getUniqueCustomEmojisFromMessage().length,
@@ -890,7 +891,7 @@ export default class ChatContextMenu {
     if(this.chat.selection.isSelecting) {
       simulateClickEvent(this.chat.selection.selectionSendNowBtn);
     } else {
-      new PopupSendNow(this.peerId, await this.chat.getMidsByMid(this.mid));
+      PopupElement.createPopup(PopupSendNow, this.peerId, await this.chat.getMidsByMid(this.mid));
     }
   };
 
@@ -929,11 +930,11 @@ export default class ChatContextMenu {
   };
 
   private onPinClick = () => {
-    new PopupPinMessage(this.peerId, this.mid);
+    PopupElement.createPopup(PopupPinMessage, this.peerId, this.mid);
   };
 
   private onUnpinClick = () => {
-    new PopupPinMessage(this.peerId, this.mid, true);
+    PopupElement.createPopup(PopupPinMessage, this.peerId, this.mid, true);
   };
 
   private onRetractVote = () => {
@@ -968,7 +969,7 @@ export default class ChatContextMenu {
     if(this.chat.selection.isSelecting) {
       simulateClickEvent(this.chat.selection.selectionDeleteBtn);
     } else {
-      new PopupDeleteMessages(this.peerId, this.isTargetAGroupedItem ? [this.mid] : await this.chat.getMidsByMid(this.mid), this.chat.type);
+      PopupElement.createPopup(PopupDeleteMessages, this.peerId, this.isTargetAGroupedItem ? [this.mid] : await this.chat.getMidsByMid(this.mid), this.chat.type);
     }
   };
 

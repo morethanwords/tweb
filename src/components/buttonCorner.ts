@@ -8,6 +8,7 @@ import Button from './button';
 
 const ButtonCorner = (options: Partial<{className: string, icon: string, noRipple: true, onlyMobile: true, asDiv: boolean}> = {}) => {
   const button = Button('btn-circle btn-corner z-depth-1' + (options.className ? ' ' + options.className : ''), options);
+  button.tabIndex = -1;
   return button;
 };
 

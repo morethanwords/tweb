@@ -29,6 +29,7 @@ import PopupElement from '../../popups';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import SettingSection from '../../settingSection';
 import AppStickersAndEmojiTab from './stickersAndEmoji';
+import ButtonCorner from '../../buttonCorner';
 
 export default class AppSettingsTab extends SliderSuperTab {
   private buttons: {
@@ -58,7 +59,7 @@ export default class AppSettingsTab extends SliderSuperTab {
         icon: 'logout',
         text: 'EditAccount.Logout',
         onClick: () => {
-          new PopupPeer('logout', {
+          PopupElement.createPopup(PopupPeer, 'logout', {
             titleLangKey: 'LogOut',
             descriptionLangKey: 'LogOut.Description',
             buttons: [{
@@ -82,7 +83,7 @@ export default class AppSettingsTab extends SliderSuperTab {
     this.profile.setPeer(rootScope.myId);
     const fillPromise = this.profile.fillProfileElements();
 
-    const changeAvatarBtn = Button('btn-circle btn-corner z-depth-1 profile-change-avatar', {icon: 'cameraadd'});
+    const changeAvatarBtn = ButtonCorner({icon: 'cameraadd', className: 'profile-change-avatar'});
     attachClickEvent(changeAvatarBtn, () => {
       const canvas = document.createElement('canvas');
       PopupElement.createPopup(PopupAvatar).open(canvas, (upload) => {

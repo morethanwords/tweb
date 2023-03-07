@@ -531,7 +531,7 @@ export default class PopupPayment extends PopupElement {
     };
 
     const onMethodClick = () => {
-      new PopupPaymentCard(paymentForm as PaymentsPaymentForm, previousCardDetails as PaymentCardDetails).addEventListener('finish', ({token, card}) => {
+      PopupElement.createPopup(PopupPaymentCard, paymentForm as PaymentsPaymentForm, previousCardDetails as PaymentCardDetails).addEventListener('finish', ({token, card}) => {
         previousToken = token, previousCardDetails = card;
 
         setCardSubtitle(card);
@@ -587,7 +587,7 @@ export default class PopupPayment extends PopupElement {
 
     if(!isReceipt) {
       onShippingAddressClick = (focus) => {
-        new PopupPaymentShipping(paymentForm as PaymentsPaymentForm, inputInvoice, focus).addEventListener('finish', ({shippingAddress, requestedInfo}) => {
+        PopupElement.createPopup(PopupPaymentShipping, paymentForm as PaymentsPaymentForm, inputInvoice, focus).addEventListener('finish', ({shippingAddress, requestedInfo}) => {
           lastRequestedInfo = requestedInfo;
           savedInfo = (paymentForm as PaymentsPaymentForm).saved_info = shippingAddress;
           setShippingInfo(shippingAddress);
@@ -643,7 +643,7 @@ export default class PopupPayment extends PopupElement {
         icon: 'shipping',
         titleLangKey: 'PaymentCheckoutShippingMethod',
         clickable: !isReceipt && (onShippingMethodClick = () => {
-          new PopupPaymentShippingMethods(paymentForm as PaymentsPaymentForm, lastRequestedInfo, lastShippingOption).addEventListener('finish', (shippingOption) => {
+          PopupElement.createPopup(PopupPaymentShippingMethods, paymentForm as PaymentsPaymentForm, lastRequestedInfo, lastShippingOption).addEventListener('finish', (shippingOption) => {
             setShippingOption(shippingOption);
           });
         })
@@ -736,7 +736,7 @@ export default class PopupPayment extends PopupElement {
         }
 
         Promise.resolve(passwordState ?? this.managers.passwordManager.getState()).then((_passwordState) => {
-          new PopupPaymentCardConfirmation(savedCredentials.title, _passwordState).addEventListener('finish', (tmpPassword) => {
+          PopupElement.createPopup(PopupPaymentCardConfirmation, savedCredentials.title, _passwordState).addEventListener('finish', (tmpPassword) => {
             passwordState = undefined;
             lastTmpPasword = tmpPassword;
             simulateClickEvent(payButton);
@@ -783,7 +783,7 @@ export default class PopupPayment extends PopupElement {
           if(paymentResult._ === 'payments.paymentResult') {
             onConfirmed();
           } else {
-            popupPaymentVerification = new PopupPaymentVerification(paymentResult.url, !mediaInvoice.extended_media);
+            popupPaymentVerification = PopupElement.createPopup(PopupPaymentVerification, paymentResult.url, !mediaInvoice.extended_media);
             popupPaymentVerification.addEventListener('finish', () => {
               popupPaymentVerification = undefined;
 

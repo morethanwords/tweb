@@ -571,11 +571,12 @@ export default class Chat extends EventListenerBase<{
     this.autoDownload = await getAutoDownloadSettingsByPeerId(this.peerId);
   }
 
-  public setMessageId(messageId?: number) {
+  public setMessageId(messageId?: number, mediaTimestamp?: number) {
     return this.setPeer({
       peerId: this.peerId,
       threadId: this.threadId,
-      lastMsgId: messageId
+      lastMsgId: messageId,
+      mediaTimestamp
     });
   }
 
@@ -710,5 +711,10 @@ export default class Chat extends EventListenerBase<{
 
   public isPinnedMessagesNeeded() {
     return this.type === 'chat' || this.isForum;
+  }
+
+  public canGiftPremium() {
+    const peerId = this.peerId;
+    return peerId.isUser() && this.managers.appProfileManager.canGiftPremium(this.peerId.toUserId());
   }
 }

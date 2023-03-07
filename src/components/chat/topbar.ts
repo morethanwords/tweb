@@ -47,6 +47,7 @@ import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import {makeMediaSize} from '../../helpers/mediaSize';
 import {FOLDER_ID_ALL} from '../../lib/mtproto/mtproto_config';
 import formatNumber from '../../helpers/number/formatNumber';
+import PopupElement from '../popups';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -419,11 +420,11 @@ export default class ChatTopbar {
       text: 'ShareContact',
       onClick: () => {
         const contactPeerId = this.peerId;
-        new PopupPickUser({
+        PopupElement.createPopup(PopupPickUser, {
           peerTypes: ['dialogs', 'contacts'],
           onSelect: (peerId) => {
             return new Promise((resolve, reject) => {
-              new PopupPeer('', {
+              PopupElement.createPopup(PopupPeer, '', {
                 titleLangKey: 'SendMessageTitle',
                 descriptionLangKey: 'SendContactToGroupText',
                 descriptionLangArgs: [new PeerTitle({peerId, dialog: true}).element],
@@ -454,6 +455,11 @@ export default class ChatTopbar {
       },
       verify: async() => rootScope.myId !== this.peerId && this.peerId.isUser() && (await this.managers.appPeersManager.isContact(this.peerId)) && !!(await this.managers.appUsersManager.getUser(this.peerId.toUserId())).phone
     }, {
+      icon: 'gift',
+      text: 'GiftPremium',
+      onClick: () => this.chat.appImManager.giftPremium(this.peerId),
+      verify: () => this.chat.canGiftPremium()
+    }, {
       icon: 'bots',
       text: 'Settings',
       onClick: () => {
@@ -471,7 +477,7 @@ export default class ChatTopbar {
       icon: 'lock',
       text: 'BlockUser',
       onClick: () => {
-        new PopupPeer('', {
+        PopupElement.createPopup(PopupPeer, '', {
           peerId: this.peerId,
           titleLangKey: 'BlockUser',
           descriptionLangKey: 'AreYouSureBlockContact2',
@@ -512,7 +518,7 @@ export default class ChatTopbar {
       icon: 'delete danger',
       text: 'Delete',
       onClick: () => {
-        new PopupDeleteDialog(this.peerId/* , 'leave' */);
+        PopupElement.createPopup(PopupDeleteDialog, this.peerId/* , 'leave' */);
       },
       verify: async() => this.chat.type === 'chat' && !!(await this.managers.appMessagesManager.getDialogOnly(this.peerId))
     }];
@@ -680,7 +686,7 @@ export default class ChatTopbar {
   }
 
   private onMuteClick = () => {
-    new PopupMute(this.peerId);
+    PopupElement.createPopup(PopupMute, this.peerId);
   };
 
   private onResize = () => {

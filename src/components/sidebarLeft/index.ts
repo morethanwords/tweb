@@ -288,6 +288,7 @@ export class AppSidebarLeft extends SidebarSlider {
       }]
     });
     this.newBtnMenu.className = 'btn-circle rp btn-corner z-depth-1 btn-menu-toggle animated-button-icon';
+    this.newBtnMenu.tabIndex = -1;
     this.newBtnMenu.insertAdjacentHTML('afterbegin', `
     <span class="tgico tgico-newchat_filled"></span>
     <span class="tgico tgico-close"></span>
@@ -297,6 +298,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     this.updateBtn = document.createElement('div');
     this.updateBtn.className = 'btn-circle rp btn-corner z-depth-1 btn-update is-hidden';
+    this.updateBtn.tabIndex = -1;
     ripple(this.updateBtn);
     this.updateBtn.append(i18n('Update'));
 

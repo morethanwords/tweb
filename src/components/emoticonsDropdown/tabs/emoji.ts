@@ -40,6 +40,7 @@ import {hideToast, toastNew} from '../../toast';
 import safeAssign from '../../../helpers/object/safeAssign';
 import type {AppStickersManager} from '../../../lib/appManagers/appStickersManager';
 import liteMode from '../../../helpers/liteMode';
+import PopupElement from '../../popups';
 
 const loadedURLs: Set<string> = new Set();
 export function appendEmoji(emoji: string, container?: HTMLElement, prepend = false, unify = false) {
@@ -703,7 +704,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
         return;
       }
 
-      new PopupStickers({id: category.set.id, access_hash: category.set.access_hash}, true).show();
+      PopupElement.createPopup(PopupStickers, {id: category.set.id, access_hash: category.set.access_hash}, true).show();
       return;
     }
 

@@ -26,6 +26,7 @@ import {SliderSuperTabEventable} from '../../sliderTab';
 import {toast} from '../../toast';
 import AppUserPermissionsTab from './userPermissions';
 import CheckboxFields, {CheckboxFieldsField} from '../../checkboxFields';
+import PopupElement from '../../popups';
 
 type PermissionsCheckboxFieldsField = CheckboxFieldsField & {
   flags: ChatRights[],
@@ -186,7 +187,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
         subtitleLangKey: 'Loading',
         icon: 'adduser',
         clickable: () => {
-          new PopupPickUser({
+          PopupElement.createPopup(PopupPickUser, {
             peerTypes: ['channelParticipants'],
             onSelect: (peerId) => {
               setTimeout(() => {

@@ -3,9 +3,9 @@
 @font-face {
   font-family: '#{$tgico-font-family}';
   src:
-    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?2fcrrv') format('truetype'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?2fcrrv') format('woff'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?2fcrrv##{$tgico-font-family}') format('svg');
+    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?bv435t') format('truetype'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?bv435t') format('woff'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?bv435t##{$tgico-font-family}') format('svg');
   font-weight: normal;
   font-style: normal;
   font-display: block;
@@ -430,6 +430,11 @@
 .tgico-gifs {
   &:before {
     content: $tgico-gifs; 
+  }
+}
+.tgico-gift {
+  &:before {
+    content: $tgico-gift; 
   }
 }
 .tgico-group {

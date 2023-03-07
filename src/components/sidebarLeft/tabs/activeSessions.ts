@@ -21,6 +21,7 @@ import {attachContextMenuListener} from '../../../helpers/dom/attachContextMenuL
 import positionMenu from '../../../helpers/positionMenu';
 import contextMenuController from '../../../helpers/contextMenuController';
 import SettingSection from '../../settingSection';
+import PopupElement from '../../popups';
 
 export default class AppActiveSessionsTab extends SliderSuperTabEventable {
   public authorizations: Authorization.authorization[];
@@ -61,7 +62,7 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
       if(authorizations.length) {
         const btnTerminate = Button('btn-primary btn-transparent danger', {icon: 'stop', text: 'TerminateAllSessions'});
         attachClickEvent(btnTerminate, (e) => {
-          new PopupPeer('revoke-session', {
+          PopupElement.createPopup(PopupPeer, 'revoke-session', {
             buttons: [{
               langKey: 'Terminate',
               isDanger: true,
@@ -112,7 +113,7 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
     const onTerminateClick = () => {
       const hash = target.dataset.hash;
 
-      new PopupPeer('revoke-session', {
+      PopupElement.createPopup(PopupPeer, 'revoke-session', {
         buttons: [{
           langKey: 'Terminate',
           isDanger: true,

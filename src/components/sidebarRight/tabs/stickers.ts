@@ -20,6 +20,7 @@ import setInnerHTML from '../../../helpers/dom/setInnerHTML';
 import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
 import attachStickerViewerListeners from '../../stickerViewer';
 import wrapSticker from '../../wrappers/sticker';
+import PopupElement from '../../popups';
 
 export default class AppStickersTab extends SliderSuperTab {
   private inputSearch: InputSearch;
@@ -79,7 +80,7 @@ export default class AppStickersTab extends SliderSuperTab {
         });
       } else {
         this.managers.appStickersManager.getStickerSet({id, access_hash}).then((full) => {
-          new PopupStickers(full.set).show();
+          PopupElement.createPopup(PopupStickers, full.set).show();
         });
       }
     }, {listenerSetter: this.listenerSetter});

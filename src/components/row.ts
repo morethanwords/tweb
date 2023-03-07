@@ -33,7 +33,6 @@ export type RowMediaSizeType = 'small' | 'medium' | 'big' | 'abitbigger' | 'bigg
 
 export default class Row {
   public container: HTMLElement;
-  public title: HTMLElement;
   public titleRow: HTMLElement;
   public titleRight: HTMLElement;
   public media: HTMLElement;
@@ -48,6 +47,7 @@ export default class Row {
 
   public buttonRight: HTMLElement;
 
+  private _title: HTMLElement;
   private _subtitle: HTMLElement;
   private _midtitle: HTMLElement;
 
@@ -127,6 +127,9 @@ export default class Row {
           options.titleRight = this.checkboxField.label;
         } else {
           havePadding = true;
+          if(!this.checkboxField.span) {
+            this.checkboxField.label.classList.add('checkbox-field-absolute');
+          }
           this.container.append(this.checkboxField.label);
         }
 
@@ -144,7 +147,7 @@ export default class Row {
       i.label.classList.add('disable-hover');
     }
 
-    if(options.title || options.titleLangKey) {
+    if(options.title || options.titleLangKey || options.titleRight || options.titleRightSecondary) {
       let c: HTMLElement;
       const titleRightContent = options.titleRight || options.titleRightSecondary;
       if(titleRightContent) {
@@ -154,7 +157,7 @@ export default class Row {
         c = this.container;
       }
 
-      this.title = this.createTitle();
+      this._title = this.createTitle();
       if(options.noWrap) this.title.classList.add('no-wrap');
       if(options.title) {
         setContent(this.title, options.title);
@@ -225,6 +228,10 @@ export default class Row {
         listenerSetter: options.listenerSetter
       });
     }
+  }
+
+  public get title() {
+    return this._title;
   }
 
   public get subtitle() {

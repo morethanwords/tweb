@@ -23,6 +23,7 @@ import throttle from '../../helpers/schedulers/throttle';
 import {AppManagers} from '../../lib/appManagers/managers';
 import {Message} from '../../layer';
 import {logger} from '../../lib/logger';
+import PopupElement from '../popups';
 
 class AnimatedSuper {
   static DURATION = 200;
@@ -275,9 +276,9 @@ export default class ChatPinnedMessage {
       divAndCaption: dAC,
       onClose: async() => {
         if(await managers.appPeersManager.canPinMessage(this.chat.peerId)) {
-          new PopupPinMessage(this.chat.peerId, this.pinnedMid, true);
+          PopupElement.createPopup(PopupPinMessage, this.chat.peerId, this.pinnedMid, true);
         } else {
-          new PopupPinMessage(this.chat.peerId, 0, true);
+          PopupElement.createPopup(PopupPinMessage, this.chat.peerId, 0, true);
         }
 
         return false;

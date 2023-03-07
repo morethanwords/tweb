@@ -183,7 +183,7 @@ export default class PopupDeleteDialog {
       }
     }
 
-    new PopupPeer('popup-delete-chat', {
+    PopupElement.createPopup(PopupPeer, 'popup-delete-chat', {
       peerId,
       threadId,
       titleLangKey: title,

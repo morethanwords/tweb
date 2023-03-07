@@ -24,6 +24,7 @@ import wrapDraftText from '../../../lib/richTextProcessor/wrapDraftText';
 import filterAsync from '../../../helpers/array/filterAsync';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import SettingSection from '../../settingSection';
+import PopupElement from '../../popups';
 
 const MAX_FOLDER_NAME_LENGTH = 12;
 
@@ -66,7 +67,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
       icon: 'delete danger',
       text: 'FilterMenuDelete',
       onClick: () => {
-        new PopupPeer('filter-delete', {
+        PopupElement.createPopup(PopupPeer, 'filter-delete', {
           titleLangKey: 'ChatList.Filter.Confirm.Remove.Header',
           descriptionLangKey: 'ChatList.Filter.Confirm.Remove.Text',
           buttons: [{

@@ -111,6 +111,7 @@ import {MARKDOWN_ENTITIES} from '../../lib/richTextProcessor';
 import IMAGE_MIME_TYPES_SUPPORTED from '../../environment/imageMimeTypesSupport';
 import VIDEO_MIME_TYPES_SUPPORTED from '../../environment/videoMimeTypesSupport';
 import {ChatRights} from '../../lib/appManagers/appChatsManager';
+import PopupGiftPremium from '../popups/giftPremium';
 
 const RECORD_MIN_TIME = 500;
 
@@ -645,6 +646,11 @@ export default class ChatInput {
       }
       // verify: () => this.chat.canSend('send_docs')
     }, {
+      icon: 'gift',
+      text: 'GiftPremium',
+      onClick: () => this.chat.appImManager.giftPremium(this.chat.peerId),
+      verify: () => this.chat.canGiftPremium()
+    }, {
       icon: 'poll',
       text: 'Poll',
       onClick: async() => {
@@ -1049,7 +1055,7 @@ export default class ChatInput {
     this.listenerSetter.add(this.pinnedControlBtn)('click', () => {
       const peerId = this.chat.peerId;
 
-      new PopupPinMessage(peerId, 0, true, () => {
+      PopupElement.createPopup(PopupPinMessage, peerId, 0, true, () => {
         this.chat.appImManager.setPeer(); // * close tab
 
         // ! костыль, это скроет закреплённые сообщения сразу, вместо того, чтобы ждать пока анимация перехода закончится
@@ -1219,7 +1225,7 @@ export default class ChatInput {
     const middleware = this.chat.bubbles.getMiddleware();
     const canSendWhenOnline = rootScope.myId !== peerId && peerId.isUser() && await this.managers.appUsersManager.isUserOnlineVisible(peerId);
 
-    new PopupSchedule(initDate, (timestamp) => {
+    PopupElement.createPopup(PopupSchedule, initDate, (timestamp) => {
       if(!middleware()) {
         return;
       }
@@ -2470,7 +2476,7 @@ export default class ChatInput {
         opusDecodeController.setKeepAlive(true);
 
         const showDiscardPopup = () => {
-          new PopupPeer('popup-cancel-record', {
+          PopupElement.createPopup(PopupPeer, 'popup-cancel-record', {
             titleLangKey: 'DiscardVoiceMessageTitle',
             descriptionLangKey: 'DiscardVoiceMessageDescription',
             buttons: [{
@@ -2614,7 +2620,7 @@ export default class ChatInput {
       }
 
       if(!draftsAreEqual(draft, originalDraft)) {
-        new PopupPeer('discard-editing', {
+        PopupElement.createPopup(PopupPeer, 'discard-editing', {
           buttons: [{
             langKey: 'Alert.Confirm.Discard',
             callback: () => {
@@ -2657,7 +2663,7 @@ export default class ChatInput {
     this.clearHelper();
     this.updateSendBtn();
     let selected = false;
-    const popup = new PopupForward(forwarding, () => {
+    const popup = PopupElement.createPopup(PopupForward, forwarding, () => {
       selected = true;
     });
 
@@ -2800,7 +2806,7 @@ export default class ChatInput {
 
         this.onMessageSent();
       } else {
-        new PopupDeleteMessages(peerId, [editMsgId], chat.type);
+        PopupElement.createPopup(PopupDeleteMessages, peerId, [editMsgId], chat.type);
 
         return;
       }

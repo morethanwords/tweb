@@ -11,6 +11,7 @@ import rootScope from '../../lib/rootScope';
 import {toastNew} from '../toast';
 import PopupPickUser from './pickUser';
 import getMediaFromMessage from '../../lib/appManagers/utils/messages/getMediaFromMessage';
+import PopupElement from '.';
 
 export default class PopupForward extends PopupPickUser {
   constructor(
@@ -115,6 +116,6 @@ export default class PopupForward extends PopupPickUser {
       }
     });
 
-    new PopupForward(args[0], args[1], Array.from(actions));
+    PopupElement.createPopup(PopupForward, args[0], args[1], Array.from(actions));
   }
 }

@@ -38,6 +38,7 @@ import {attachContextMenuListener} from '../../helpers/dom/attachContextMenuList
 import filterUnique from '../../helpers/array/filterUnique';
 import appImManager from '../../lib/appManagers/appImManager';
 import {Message} from '../../layer';
+import PopupElement from '../popups';
 
 const accumulateMapSet = (map: Map<any, Set<number>>) => {
   return [...map.values()].reduce((acc, v) => acc + v.size, 0);
@@ -676,7 +677,7 @@ export class SearchSelection extends AppSelection {
             obj[fromPeerId] = Array.from(mids).sort((a, b) => a - b);
           }
 
-          new PopupForward(obj, () => {
+          PopupElement.createPopup(PopupForward, obj, () => {
             this.cancelSelection();
           });
         }, attachClickOptions);
@@ -685,7 +686,7 @@ export class SearchSelection extends AppSelection {
           this.selectionDeleteBtn = ButtonIcon(`delete danger ${BASE_CLASS}-delete`);
           attachClickEvent(this.selectionDeleteBtn, () => {
             const peerId = [...this.selectedMids.keys()][0];
-            new PopupDeleteMessages(peerId, [...this.selectedMids.get(peerId)], 'chat', () => {
+            PopupElement.createPopup(PopupDeleteMessages, peerId, [...this.selectedMids.get(peerId)], 'chat', () => {
               this.cancelSelection();
             });
           }, attachClickOptions);
@@ -949,7 +950,7 @@ export default class ChatSelection extends AppSelection {
           this.selectionSendNowBtn = Button('btn-primary btn-transparent btn-short text-bold selection-container-send', {icon: 'send2'});
           this.selectionSendNowBtn.append(i18n('MessageScheduleSend'));
           attachClickEvent(this.selectionSendNowBtn, () => {
-            new PopupSendNow(this.chat.peerId, [...this.selectedMids.get(this.chat.peerId)], () => {
+            PopupElement.createPopup(PopupSendNow, this.chat.peerId, [...this.selectedMids.get(this.chat.peerId)], () => {
               this.cancelSelection();
             });
           }, attachClickOptions);
@@ -962,7 +963,7 @@ export default class ChatSelection extends AppSelection {
               obj[fromPeerId] = Array.from(mids).sort((a, b) => a - b);
             }
 
-            new PopupForward(obj, () => {
+            PopupElement.createPopup(PopupForward, obj, () => {
               this.cancelSelection();
             });
           }, attachClickOptions);
@@ -971,7 +972,7 @@ export default class ChatSelection extends AppSelection {
         this.selectionDeleteBtn = Button('btn-primary btn-transparent danger text-bold selection-container-delete', {icon: 'delete'});
         this.selectionDeleteBtn.append(i18n('Delete'));
         attachClickEvent(this.selectionDeleteBtn, () => {
-          new PopupDeleteMessages(this.chat.peerId, [...this.selectedMids.get(this.chat.peerId)], this.chat.type, () => {
+          PopupElement.createPopup(PopupDeleteMessages, this.chat.peerId, [...this.selectedMids.get(this.chat.peerId)], this.chat.type, () => {
             this.cancelSelection();
           });
         }, attachClickOptions);

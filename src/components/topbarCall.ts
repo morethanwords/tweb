@@ -263,14 +263,14 @@ export default class TopbarCall {
           return;
         }
 
-        new PopupGroupCall().show();
+        PopupElement.createPopup(PopupGroupCall).show();
       } else if(this.instance instanceof CallInstance) {
         const popups = PopupElement.getPopups(PopupCall);
         if(popups.find((popup) => popup.getCallInstance() === this.instance)) {
           return;
         }
 
-        new PopupCall(this.instance).show();
+        PopupElement.createPopup(PopupCall, this.instance).show();
       }
     }, {listenerSetter});
 

@@ -107,6 +107,7 @@ import partition from '../../helpers/array/partition';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import liteMode, {LiteModeKey} from '../../helpers/liteMode';
 import RLottiePlayer from '../rlottie/rlottiePlayer';
+import PopupGiftPremium from '../../components/popups/giftPremium';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -345,7 +346,7 @@ export class AppImManager extends EventListenerBase<{
 
     const onInstanceDeactivated = (reason: InstanceDeactivateReason) => {
       const isUpdated = reason === 'version';
-      const popup = new PopupElement('popup-instance-deactivated', {overlayClosable: true});
+      const popup = PopupElement.createPopup(PopupElement, 'popup-instance-deactivated', {overlayClosable: true});
       const c = document.createElement('div');
       c.classList.add('instance-deactivated-container');
       (popup as any).container.replaceWith(c);
@@ -530,7 +531,7 @@ export class AppImManager extends EventListenerBase<{
         // return;
         // }
 
-        const popup = new PopupCall(instance);
+        const popup = PopupElement.createPopup(PopupCall, instance);
 
         instance.addEventListener('acceptCallOverride', () => {
           return this.discardCurrentCall(instance.interlocutorUserId.toPeerId(), undefined, instance)
@@ -582,7 +583,7 @@ export class AppImManager extends EventListenerBase<{
         a.innerText = href;
         a.removeAttribute('onclick');
 
-        new PopupPeer('popup-masked-url', {
+        PopupElement.createPopup(PopupPeer, 'popup-masked-url', {
           titleLangKey: 'OpenUrlTitle',
           descriptionLangKey: 'OpenUrlAlert2',
           descriptionLangArgs: [a],
@@ -862,11 +863,11 @@ export class AppImManager extends EventListenerBase<{
     const share = apiManagerProxy.share;
     if(share) {
       apiManagerProxy.share = undefined;
-      new PopupForward(undefined, async(peerId) => {
+      PopupElement.createPopup(PopupForward, undefined, async(peerId) => {
         await this.setPeer({peerId});
         if(share.files?.length) {
           const foundMedia = share.files.some((file) => MEDIA_MIME_TYPES_SUPPORTED.has(file.type));
-          new PopupNewMedia(this.chat, share.files, foundMedia ? 'media' : 'document');
+          PopupElement.createPopup(PopupNewMedia, this.chat, share.files, foundMedia ? 'media' : 'document');
         } else {
           this.managers.appMessagesManager.sendText(peerId, share.text);
         }
@@ -1184,7 +1185,7 @@ export class AppImManager extends EventListenerBase<{
 
       case INTERNAL_LINK_TYPE.EMOJI_SET:
       case INTERNAL_LINK_TYPE.STICKER_SET: {
-        new PopupStickers({id: link.set}, link._ === INTERNAL_LINK_TYPE.EMOJI_SET).show();
+        PopupElement.createPopup(PopupStickers, {id: link.set}, link._ === INTERNAL_LINK_TYPE.EMOJI_SET).show();
         break;
       }
 
@@ -1204,7 +1205,7 @@ export class AppImManager extends EventListenerBase<{
             return;
           }
 
-          new PopupJoinChatInvite(link.invite, chatInvite);
+          PopupElement.createPopup(PopupJoinChatInvite, link.invite, chatInvite);
         }, (err) => {
           if(err.type === 'INVITE_HASH_EXPIRED') {
             toast(i18n('InviteExpired'));
@@ -1252,7 +1253,7 @@ export class AppImManager extends EventListenerBase<{
 
             //   }
             // };
-            new PopupPayment(undefined, inputInvoice, paymentForm);
+            PopupElement.createPopup(PopupPayment, undefined, inputInvoice, paymentForm);
           });
         });
         break;
@@ -2545,6 +2546,12 @@ export class AppImManager extends EventListenerBase<{
     return options1.peerId === options2.peerId &&
       options1.threadId === options2.threadId &&
       (typeof(options1.type) !== typeof(options2.type) || options1.type === options2.type);
+  }
+
+  public giftPremium(peerId: PeerId) {
+    this.managers.appProfileManager.getProfile(peerId.toUserId()).then((profile) => {
+      PopupElement.createPopup(PopupGiftPremium, peerId, profile.premium_gifts);
+    });
   }
 }
 

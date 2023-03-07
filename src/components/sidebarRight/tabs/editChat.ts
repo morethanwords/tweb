@@ -24,6 +24,7 @@ import hasRights from '../../../lib/appManagers/utils/chats/hasRights';
 import replaceContent from '../../../helpers/dom/replaceContent';
 import SettingSection from '../../settingSection';
 import getPeerActiveUsernames from '../../../lib/appManagers/utils/peers/getPeerActiveUsernames';
+import PopupElement from '../../popups';
 
 export default class AppEditChatTab extends SliderSuperTab {
   private chatNameInputField: InputField;
@@ -377,7 +378,7 @@ export default class AppEditChatTab extends SliderSuperTab {
       const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'delete', text: isBroadcast ? 'PeerInfo.DeleteChannel' : 'DeleteAndExitButton'});
 
       attachClickEvent(btnDelete, () => {
-        new PopupDeleteDialog(peerId/* , 'delete' */, undefined, (promise) => {
+        PopupElement.createPopup(PopupDeleteDialog, peerId/* , 'delete' */, undefined, (promise) => {
           const toggle = toggleDisability([btnDelete], true);
           promise.then(() => {
             this.close();

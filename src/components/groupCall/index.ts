@@ -373,7 +373,7 @@ export default class PopupGroupCall extends PopupElement {
     };
 
     if(await this.managers.appChatsManager.hasRights(this.instance.chatId, 'manage_call')) {
-      new PopupPeer('popup-end-video-chat', {
+      PopupElement.createPopup(PopupPeer, 'popup-end-video-chat', {
         titleLangKey: 'VoiceChat.End.Title',
         descriptionLangKey: 'VoiceChat.End.Text',
         checkboxes: [{
