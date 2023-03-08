@@ -106,6 +106,7 @@ export const PASS_CONFLICTING_ENTITIES: Set<MessageEntity['_']> = new Set([
   'messageEntityLinebreak',
   'messageEntityCaret'
 ]);
+export const PASS_SINGLE_CONFLICTING_ENTITIES = new Set(PASS_CONFLICTING_ENTITIES);
 for(const i in MARKDOWN_ENTITIES) {
   PASS_CONFLICTING_ENTITIES.add(MARKDOWN_ENTITIES[i]);
 }

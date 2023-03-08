@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {MARKDOWN_ENTITIES_TYPES, PASS_CONFLICTING_ENTITIES} from '.';
+import {PASS_CONFLICTING_ENTITIES, PASS_SINGLE_CONFLICTING_ENTITIES} from '.';
 import {MessageEntity} from '../../layer';
 
 const SINGLE_ENTITIES: Set<MessageEntity['_']> = new Set(['messageEntityPre', 'messageEntityCode']);
@@ -16,7 +16,7 @@ export default function findConflictingEntity(currentEntities: MessageEntity[], 
       singleEnd = currentEntity.offset + currentEntity.length;
     }
 
-    if(newEntity.offset < singleEnd && MARKDOWN_ENTITIES_TYPES.has(newEntity._)) {
+    if(newEntity.offset < singleEnd && !PASS_SINGLE_CONFLICTING_ENTITIES.has(newEntity._)) {
       return true;
     }
 
