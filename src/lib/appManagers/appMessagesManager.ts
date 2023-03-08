@@ -5924,6 +5924,8 @@ export class AppMessagesManager extends AppManager {
     let offsetIdOffset = offset_id_offset;
     let isTopEnd = false, isBottomEnd = false;
 
+    // offsetIdOffset = undefined;
+
     // if(offsetIdOffset === undefined && !bottomWasMeantToLoad) {
     //   offsetIdOffset = 0;
     // }
@@ -5939,10 +5941,11 @@ export class AppMessagesManager extends AppManager {
         }
       }
 
+      const isOffsetIncluded = mids.includes(offset_id);
       const topLoaded = messages.length - i;
-      const bottomLoaded = mids.includes(offset_id) ? i - 1 : i;
+      const bottomLoaded = isOffsetIncluded ? i - 1 : i;
       if(topWasMeantToLoad) isTopEnd = topLoaded < topWasMeantToLoad;
-      if(bottomWasMeantToLoad) isBottomEnd = bottomLoaded < bottomWasMeantToLoad;
+      if(bottomWasMeantToLoad) isBottomEnd = bottomLoaded < (isOffsetIncluded ? bottomWasMeantToLoad - 1 : bottomWasMeantToLoad);
 
       if(isTopEnd || isBottomEnd) {
         offsetIdOffset = isTopEnd ? count - topLoaded : bottomLoaded;
