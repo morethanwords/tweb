@@ -482,6 +482,22 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         break;
       }
 
+      case 'messageActionGiftPremium': {
+        const isMe = !!message.pFlags.out;
+        let authorElement: ReturnType<typeof getNameDivHTML>;
+        if(!isMe) {
+          authorElement = getNameDivHTML(message.fromId, plain);
+        }
+
+        args = authorElement ? [authorElement] : [];
+
+        args.push(paymentsWrapCurrencyAmount(action.amount, action.currency, false, true));
+
+        langPackKey = isMe ? 'ActionGiftOutbound' : 'ActionGiftInbound';
+
+        break;
+      }
+
       default:
         langPackKey = (langPack[_] || `[${action._}]`) as any;
         break;

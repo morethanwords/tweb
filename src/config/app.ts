@@ -21,7 +21,7 @@ const App = {
   version: process.env.VERSION,
   versionFull: process.env.VERSION_FULL,
   build: +process.env.BUILD,
-  langPackVersion: '1.0.3',
+  langPackVersion: '1.0.4',
   langPack: 'webk',
   langPackCode: 'en',
   domains: MAIN_DOMAINS,

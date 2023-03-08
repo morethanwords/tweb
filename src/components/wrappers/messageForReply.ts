@@ -211,7 +211,8 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
     const actionWrapped = await wrapMessageActionTextNew({
       message: (message as Message.messageService),
       plain,
-      noLinks: true
+      noLinks: true,
+      noTextFormat: true
     });
 
     if(actionWrapped) {

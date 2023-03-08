@@ -4,8 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {LiteModeKey} from '../../helpers/liteMode';
-import animationIntersector, {AnimationItemGroup} from '../../components/animationIntersector';
+import animationIntersector from '../../components/animationIntersector';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import pause from '../../helpers/schedulers/pause';
 import {logger, LogTypes} from '../logger';
@@ -21,7 +20,8 @@ export type LottieAssetName = 'EmptyFolder' | 'Folders_1' | 'Folders_2' |
   'TwoFactorSetupMonkeyClose' | 'TwoFactorSetupMonkeyCloseAndPeek' |
   'TwoFactorSetupMonkeyCloseAndPeekToIdle' | 'TwoFactorSetupMonkeyIdle' |
   'TwoFactorSetupMonkeyPeek' | 'TwoFactorSetupMonkeyTracking' |
-  'voice_outlined2' | 'voip_filled' | 'voice_mini' | 'jolly_roger';
+  'voice_outlined2' | 'voip_filled' | 'voice_mini' | 'jolly_roger' |
+  'Gift3' | 'Gift6' | 'Gift12';
 
 export class LottieLoader {
   private loadPromise: Promise<void> = !IS_WEB_ASSEMBLY_SUPPORTED ? Promise.reject() : undefined;

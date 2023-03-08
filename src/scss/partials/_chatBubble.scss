@@ -2470,6 +2470,23 @@ $bubble-border-radius-big: 12px;
     }
   }
 
+  &-premium-gift {
+    &-container {
+      margin-top: .5rem !important;
+    }
+
+    &-wrapper {
+      flex-direction: column;
+      width: 12.5rem;
+      height: 12.875rem;
+    }
+
+    &-sticker {
+      margin-bottom: 10px;
+      margin-top: -20px;
+    }
+  }
+
   // .document-message + .audio-transcribed-text {
   //   margin-bottom: .75rem;
   // }

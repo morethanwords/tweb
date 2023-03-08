@@ -134,6 +134,9 @@ import toggleDisability from '../../helpers/dom/toggleDisability';
 import {copyTextToClipboard} from '../../helpers/clipboard';
 import liteMode from '../../helpers/liteMode';
 import getMediaDurationFromMessage from '../../lib/appManagers/utils/messages/getMediaDurationFromMessage';
+import wrapLocalSticker from '../wrappers/localSticker';
+import {LottieAssetName} from '../../lib/rlottie/lottieLoader';
+import clamp from '../../helpers/number/clamp';
 
 export const USER_REACTIONS_INLINE = false;
 const USE_MEDIA_TAILS = false;
@@ -3926,11 +3929,63 @@ export default class ChatBubbles {
           promise = peerTitle.update({peerId: action.channel_id.toPeerId(true), wrapOptions});
           s.append(i18n('ChatMigration.To', [peerTitle.element]));
         } else {
-          s.append(await wrapMessageActionTextNew({
+          promise = wrapMessageActionTextNew({
             message,
             ...wrapOptions
-          }));
+          }).then((el) => s.append(el));
         }
+
+        if(action._ === 'messageActionGiftPremium') {
+          const content = bubbleContainer.cloneNode(false) as HTMLElement;
+          content.classList.add('bubble-premium-gift-container');
+          content.style.height = '12.875rem';
+          content.style.width = '12.5rem';
+
+          const service = s.cloneNode(false) as HTMLElement;
+          service.classList.add('bubble-premium-gift-wrapper');
+
+          const size = 160;
+
+          const months = action.months;
+
+          const durationAssetMap: {[key: number]: LottieAssetName} = {
+            3: 'Gift3',
+            6: 'Gift6',
+            12: 'Gift12'
+          };
+
+          const assetName = durationAssetMap[clamp(months, 3, 12)];
+
+          const promise = wrapLocalSticker({
+            width: size,
+            height: size,
+            assetName,
+            middleware,
+            loop: false,
+            autoplay: liteMode.isAvailable('stickers_chat')
+          }).then(({container, promise}) => {
+            container.classList.add('bubble-premium-gift-sticker');
+            container.style.position = 'relative';
+            container.style.width = container.style.height = size + 'px';
+            service.prepend(container);
+            return promise;
+          });
+
+          const isYears = months >= 12 && !(months % 12);
+          const duration = i18n(isYears ? 'Years' : 'Months', [isYears ? months / 12 : months]);
+
+          const title = i18n('ActionGiftPremiumTitle');
+          const subtitle = i18n('ActionGiftPremiumSubtitle', [duration]);
+          title.classList.add('text-bold');
+
+          service.append(title, subtitle);
+          loadPromises.push(promise);
+
+          content.append(service);
+          bubbleContainer.after(content);
+        }
+
+        loadPromises.push(promise);
       }
       bubbleContainer.append(s);
 

@@ -945,6 +945,10 @@ const lang = {
   'GiftTelegramPremiumDescription': 'Give **%1$s** access to exclusive features with **Telegram Premium**.',
   'PricePerMonth': '%1$s / month',
   'GiftSubscriptionFor': 'Gift Subscription for %1$s',
+  'ActionGiftInbound': 'un1 sent you a gift for **un2**',
+  'ActionGiftOutbound': 'You have sent a gift for **un2**',
+  'ActionGiftPremiumTitle': 'Telegram Premium',
+  'ActionGiftPremiumSubtitle': 'for %1$s',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
