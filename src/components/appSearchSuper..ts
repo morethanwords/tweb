@@ -78,6 +78,7 @@ import wrapMediaSpoiler, {onMediaSpoilerClick} from './wrappers/mediaSpoiler';
 import filterAsync from '../helpers/array/filterAsync';
 import ChatContextMenu from './chat/contextMenu';
 import PopupElement from './popups';
+import getParticipantRank from '../lib/appManagers/utils/chats/getParticipantRank';
 
 // const testScroll = false;
 
@@ -1240,10 +1241,13 @@ export default class AppSearchSuper {
           return;
         }
 
-        return peerId;
+        return {
+          peerId,
+          rank: getParticipantRank(participant as ChannelParticipant)
+        };
       }).filter(Boolean);
 
-      const filtered = await filterAsync(peerIds, async(peerId) => {
+      const filtered = await filterAsync(peerIds, async({peerId}) => {
         const peer: User | Chat = await this.managers.appPeersManager.getPeer(peerId);
         if(!middleware()) {
           return false;
@@ -1256,7 +1260,11 @@ export default class AppSearchSuper {
         return true;
       });
 
-      for(const peerId of filtered) {
+      for(const {peerId, rank} of filtered) {
+        if(rank) {
+          membersList.ranks.set(peerId, rank);
+        }
+
         membersList.add(peerId);
       }
     };

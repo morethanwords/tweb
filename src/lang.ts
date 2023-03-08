@@ -949,6 +949,7 @@ const lang = {
   'ActionGiftOutbound': 'You have sent a gift for **un2**',
   'ActionGiftPremiumTitle': 'Telegram Premium',
   'ActionGiftPremiumSubtitle': 'for %1$s',
+  'ChatAdmin': 'admin',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
@@ -1019,6 +1020,7 @@ const lang = {
   'Chat.Context.ReactedFast': {
     'other_value': '%d Reacted'
   },
+  'Chat.ChannelBadge': 'channel',
   'Chat.Date.ScheduledFor': 'Scheduled for %@',
   'Chat.Date.ScheduledForToday': 'Scheduled for today',
   'Chat.DropTitle': 'Drop files here to send them',
@@ -1026,6 +1028,7 @@ const lang = {
   'Chat.DropAsFilesDesc': 'without compression',
   'Chat.Edit.Cancel.Text': 'Are you sure you want to discard all changes?',
   'Chat.Input.ReplyToAnswer': 'Reply to message in topics',
+  'Chat.OwnerBadge': 'owner',
   'Chat.SendVoice.PrivacyError': '%@ doesn\'t accept voice and video messages',
   'Chat.Service.Call.Cancelled': 'Cancelled',
   'Chat.Service.Call.Missed': 'Missed',
@@ -1101,6 +1104,7 @@ const lang = {
     'one_value': '%d Comment',
     'other_value': '%d Comments'
   },
+  'Chat.TopicBadge': 'topic creator',
   'ChatTitle.ReportMessages': 'Report Messages',
   'Chat.Send.WithoutSound': 'Send Without Sound',
   'Chat.Send.SetReminder': 'Set a Reminder',

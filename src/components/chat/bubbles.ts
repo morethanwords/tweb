@@ -3633,11 +3633,11 @@ export default class ChatBubbles {
 
     restoreScroll?.();
 
-    pause(!this.chat.setPeerPromise ? 0 : 1000)
-    .then(() => getHeavyAnimationPromise())
+    m(pause(!this.chat.setPeerPromise ? 0 : 1000))
+    .then(() => m(getHeavyAnimationPromise()))
     .then(() => {
       this.lazyLoadQueue.setAllSeen();
-    });
+    }).catch(noop);
 
     // this.setStickyDateManually();
   };

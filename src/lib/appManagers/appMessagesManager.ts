@@ -5950,6 +5950,9 @@ export class AppMessagesManager extends AppManager {
       if(isTopEnd || isBottomEnd) {
         offsetIdOffset = isTopEnd ? count - topLoaded : bottomLoaded;
       }
+    } else if(messages.length >= count) {
+      isTopEnd = true;
+      isBottomEnd = true;
     }
 
     offsetIdOffset ??= 0;

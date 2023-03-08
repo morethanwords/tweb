@@ -16,6 +16,7 @@ import {AppManagers} from '../lib/appManagers/managers';
 import getUserStatusString from './wrappers/getUserStatusString';
 import type LazyLoadQueue from './lazyLoadQueue';
 import getChatMembersString from './wrappers/getChatMembersString';
+import {i18n} from '../lib/langPack';
 
 interface SortedUser extends SortedElementBase<PeerId> {
   dom: DialogDom
@@ -24,6 +25,7 @@ interface SortedUser extends SortedElementBase<PeerId> {
 export default class SortedUserList extends SortedList<SortedUser> {
   protected static SORT_INTERVAL = 30e3;
   public list: HTMLUListElement;
+  public ranks: Map<PeerId, string | number> = new Map();
 
   protected lazyLoadQueue: LazyLoadQueue;
   protected avatarSize: DialogElementSize = 'abitbigger';
@@ -71,7 +73,7 @@ export default class SortedUserList extends SortedList<SortedUser> {
         }
       },
       onElementCreate: (base) => {
-        const {dom} = appDialogsManager.addDialogNew({
+        const dialogElement = appDialogsManager.addDialogNew({
           peerId: base.id,
           container: false,
           avatarSize: this.avatarSize,
@@ -83,7 +85,14 @@ export default class SortedUserList extends SortedList<SortedUser> {
           }
         });
 
-        (base as SortedUser).dom = dom;
+        const rank = this.ranks.get(base.id);
+        if(rank) {
+          dialogElement.titleRight.replaceChildren(typeof(rank) === 'number' ?
+            i18n(rank === 1 ? 'Chat.OwnerBadge' : 'ChatAdmin') :
+            rank);
+        }
+
+        (base as SortedUser).dom = dialogElement.dom;
         return base as SortedUser;
       },
       updateElementWith: fastRaf,

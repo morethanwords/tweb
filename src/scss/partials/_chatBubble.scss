@@ -2492,10 +2492,14 @@ $bubble-border-radius-big: 12px;
   // }
 }
 
-.timestamp.is-disabled {
-  color: inherit;
-  text-decoration: none !important;
-  cursor: inherit;
+.timestamp {
+  text-decoration: underline;
+
+  &.is-disabled {
+    color: inherit;
+    text-decoration: none !important;
+    cursor: inherit;
+  }
 }
 
 @keyframes audio-dots {
