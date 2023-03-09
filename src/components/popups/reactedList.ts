@@ -18,6 +18,7 @@ import getUserStatusString from '../wrappers/getUserStatusString';
 import {makeMediaSize} from '../../helpers/mediaSize';
 import wrapCustomEmoji from '../wrappers/customEmoji';
 import SettingSection from '../settingSection';
+import {formatFullSentTime} from '../../helpers/date';
 
 export default class PopupReactedList extends PopupElement {
   constructor(
@@ -139,7 +140,7 @@ export default class PopupReactedList extends PopupElement {
           const result = await this.managers.appMessagesManager.getMessageReactionsListAndReadParticipants(message, undefined, reactionCount.reaction, nextOffset, skipReadParticipants, skipReactionsList);
           nextOffset = result.nextOffset;
 
-          await Promise.all(result.combined.map(async({peerId, reaction}) => {
+          await Promise.all(result.combined.map(async({peerId, reaction, date}) => {
             const {dom} = appDialogsManager.addDialogNew({
               peerId: peerId,
               autonomous: true,
@@ -174,7 +175,19 @@ export default class PopupReactedList extends PopupElement {
               dom.listEl.append(stickerContainer);
             }
 
-            replaceContent(dom.lastMessageSpan, getUserStatusString(await this.managers.appUsersManager.getUser(peerId.toUserId())));
+            if(date && message.pFlags.out) {
+              const c = document.createElement('span');
+              dom.lastMessageSpan.style.cssText = `display: flex !important; align-items: center;`;
+              const span = document.createElement('span');
+              span.classList.add(reaction ? 'tgico-reactions' : 'tgico-checks', 'reacted-list-checks');
+              const fragment = document.createDocumentFragment();
+              c.append(formatFullSentTime(date, false));
+              fragment.append(span, c);
+              replaceContent(dom.lastMessageSpan, fragment);
+            } else {
+              const user = await this.managers.appUsersManager.getUser(peerId.toUserId());
+              replaceContent(dom.lastMessageSpan, getUserStatusString(user));
+            }
           }));
 
           return !nextOffset;

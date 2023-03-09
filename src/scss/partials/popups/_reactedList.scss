@@ -26,7 +26,7 @@
 
     &-close {
       margin-top: .375rem;
-      margin-right: .5rem;
+      margin-inline-end: .5rem;
       height: 40px;
       order: -1;
     }
@@ -74,17 +74,24 @@
     background-color: var(--surface-color);
   }
 
-  .reacted-list-reaction-icon {
-    display: flex;
-    width: var(--size);
-    height: var(--size);
-    position: absolute;
-    top: 50%;
-    right: 1rem;
-    transform: translateY(-50%);
+  .reacted-list {
+    &-reaction-icon {
+      display: flex;
+      width: var(--size);
+      height: var(--size);
+      position: absolute;
+      top: 50%;
+      inset-inline-end: 1rem;
+      transform: translateY(-50%);
+    }
+
+    &-checks {
+      margin-inline-end: .25rem;
+      font-size: 1.125rem;
+    }
   }
 
   .chatlist-chat {
-    padding-right: 3.25rem !important;
+    padding-inline-end: 3.25rem !important;
   }
 }

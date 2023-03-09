@@ -317,7 +317,7 @@ export default class FiltersStorage extends AppManager {
     }
 
     if(!wasPinned) {
-      if(filter.pinned_peers.length >= (await this.apiManager.getConfig()).pinned_infolder_count_max) {
+      if(filter.pinned_peers.length >= (await this.apiManager.getLimit('folderPin'))) {
         return Promise.reject(makeError('PINNED_DIALOGS_TOO_MUCH'));
       }
 

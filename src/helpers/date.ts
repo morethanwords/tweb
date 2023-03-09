@@ -87,9 +87,9 @@ export function formatFullSentTimeRaw(timestamp: number, options: {
   return {dateEl, timeEl};
 }
 
-export function formatFullSentTime(timestamp: number) {
+export function formatFullSentTime(timestamp: number, capitalize = true) {
   const {dateEl, timeEl} = formatFullSentTimeRaw(timestamp, {
-    capitalize: true
+    capitalize
   });
 
   const fragment = document.createDocumentFragment();

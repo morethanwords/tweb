@@ -19,7 +19,7 @@ import findUpClassName from '../../helpers/dom/findUpClassName';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import {attachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent';
 import isSelectionEmpty from '../../helpers/dom/isSelectionEmpty';
-import {Message, Poll, Chat as MTChat, MessageMedia, AvailableReaction, MessageEntity, InputStickerSet, StickerSet, Document, Reaction, Photo} from '../../layer';
+import {Message, Poll, Chat as MTChat, MessageMedia, AvailableReaction, MessageEntity, InputStickerSet, StickerSet, Document, Reaction, Photo, SponsoredMessage} from '../../layer';
 import PopupReportMessages from '../popups/reportMessages';
 import assumeType from '../../helpers/assumeType';
 import PopupSponsored from '../popups/sponsored';
@@ -50,8 +50,16 @@ import canSaveMessageMedia from '../../lib/appManagers/utils/messages/canSaveMes
 import getAlbumText from '../../lib/appManagers/utils/messages/getAlbumText';
 import PopupElement from '../popups';
 
+type ChatContextMenuButton = ButtonMenuItemOptions & {
+  verify: () => boolean | Promise<boolean>,
+  notDirect?: () => boolean,
+  withSelection?: true,
+  isSponsored?: true,
+  localName?: 'views' | 'emojis' | 'sponsorInfo' | 'sponsorAdditionalInfo'
+};
+
 export default class ChatContextMenu {
-  private buttons: (ButtonMenuItemOptions & {verify: () => boolean | Promise<boolean>, notDirect?: () => boolean, withSelection?: true, isSponsored?: true, localName?: 'views' | 'emojis'})[];
+  private buttons: ChatContextMenuButton[];
   private element: HTMLElement;
 
   private isSelectable: boolean;
@@ -66,6 +74,7 @@ export default class ChatContextMenu {
   private peerId: PeerId;
   private mid: number;
   private message: Message.message | Message.messageService;
+  private sponsoredMessage: SponsoredMessage;
   private noForwards: boolean;
 
   private reactionsMenu: ChatReactionsMenu;
@@ -165,6 +174,8 @@ export default class ChatContextMenu {
         this.target.classList.contains('anchor-url')
       );
       this.isUsernameTarget = this.target.tagName === 'A' && this.target.classList.contains('mention');
+
+      this.sponsoredMessage = isSponsored ? (bubble as any).message.sponsoredMessage : undefined;
 
       const mids = await this.chat.getMidsByMid(mid);
       // * если открыть контекстное меню для альбома не по бабблу, и последний элемент не выбран, чтобы показать остальные пункты
@@ -281,26 +292,24 @@ export default class ChatContextMenu {
   }
 
   private async filterButtons(buttons: ChatContextMenu['buttons']) {
-    if(this.isSponsored) {
-      return buttons.filter((button) => {
-        return button.isSponsored;
-      });
-    } else {
-      return filterAsync(buttons, async(button) => {
-        let good: boolean;
+    return filterAsync(buttons, async(button) => {
+      let good: boolean;
 
-        // if((appImManager.chatSelection.isSelecting && !button.withSelection) || (button.withSelection && !appImManager.chatSelection.isSelecting)) {
-        if(this.chat.selection.isSelecting && !button.withSelection) {
-          good = false;
-        } else {
-          good = this.isOverBubble || IS_TOUCH_SUPPORTED || true ?
-            await button.verify() :
-            button.notDirect && await button.verify() && button.notDirect();
-        }
+      if((this.isSponsored && !button.isSponsored) || (!this.isSponsored && button.isSponsored)) {
+        return false;
+      }
 
-        return !!good;
-      });
-    }
+      // if((appImManager.chatSelection.isSelecting && !button.withSelection) || (button.withSelection && !appImManager.chatSelection.isSelecting)) {
+      if(this.chat.selection.isSelecting && !button.withSelection) {
+        good = false;
+      } else {
+        good = this.isOverBubble || IS_TOUCH_SUPPORTED || true ?
+          await button.verify() :
+          button.notDirect && await button.verify() && button.notDirect();
+      }
+
+      return !!good;
+    });
   }
 
   private setButtons() {
@@ -512,7 +521,7 @@ export default class ChatContextMenu {
       withSelection: true
     }, {
       onClick: () => {
-        if(this.viewerPeerId) {
+        if(this.viewerPeerId && false) {
           this.chat.appImManager.setInnerPeer({
             peerId: this.viewerPeerId
           });
@@ -543,7 +552,13 @@ export default class ChatContextMenu {
       onClick: () => {
         PopupElement.createPopup(PopupSponsored);
       },
-      verify: () => false,
+      verify: () => this.isSponsored,
+      isSponsored: true
+    }, {
+      icon: 'copy',
+      text: 'Copy',
+      onClick: () => copyTextToClipboard(this.sponsoredMessage.message),
+      verify: () => this.isSponsored,
       isSponsored: true
     }, {
       // icon: 'smile',
@@ -556,6 +571,20 @@ export default class ChatContextMenu {
       verify: () => !!this.getUniqueCustomEmojisFromMessage().length,
       notDirect: () => true,
       localName: 'emojis'
+    }, {
+      regularText: this.sponsoredMessage?.sponsor_info,
+      separator: true,
+      multiline: true,
+      onClick: () => copyTextToClipboard(this.sponsoredMessage.sponsor_info),
+      verify: () => !!this.sponsoredMessage.sponsor_info,
+      isSponsored: true
+    }, {
+      regularText: this.sponsoredMessage?.additional_info,
+      separator: true,
+      multiline: true,
+      onClick: () => copyTextToClipboard(this.sponsoredMessage.additional_info),
+      verify: () => !!this.sponsoredMessage.additional_info,
+      isSponsored: true
     }];
   }
 
@@ -682,9 +711,7 @@ export default class ChatContextMenu {
           return;
         }
 
-        if(fakeText) {
-          fakeText.remove();
-        }
+        fakeText?.remove();
 
         const reactions = result.combined;
         const reactedLength = participantsCount === undefined ?
@@ -703,7 +730,7 @@ export default class ChatContextMenu {
             dialog: false
           }).element;
 
-          if(!isViewingReactions || result.readParticipants.length <= 1) {
+          if(!isViewingReactions || result.readParticipantDates.length <= 1) {
             this.viewerPeerId = reactions[0].peerId;
           }
         } else if(isViewingReactions) {

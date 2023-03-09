@@ -111,7 +111,6 @@ import {MARKDOWN_ENTITIES} from '../../lib/richTextProcessor';
 import IMAGE_MIME_TYPES_SUPPORTED from '../../environment/imageMimeTypesSupport';
 import VIDEO_MIME_TYPES_SUPPORTED from '../../environment/videoMimeTypesSupport';
 import {ChatRights} from '../../lib/appManagers/appChatsManager';
-import PopupGiftPremium from '../popups/giftPremium';
 
 const RECORD_MIN_TIME = 500;
 
@@ -649,7 +648,7 @@ export default class ChatInput {
       icon: 'gift',
       text: 'GiftPremium',
       onClick: () => this.chat.appImManager.giftPremium(this.chat.peerId),
-      verify: () => this.chat.canGiftPremium()
+      verify: async() => await this.chat.canGiftPremium() && (await this.managers.apiManager.getAppConfig()).premium_gift_attach_menu_icon
     }, {
       icon: 'poll',
       text: 'Poll',
