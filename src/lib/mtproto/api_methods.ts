@@ -5,9 +5,10 @@
  */
 
 import ctx from '../../environment/ctx';
+import assumeType from '../../helpers/assumeType';
 import callbackify from '../../helpers/callbackify';
 import {ignoreRestrictionReasons} from '../../helpers/restrictions';
-import {Config, MethodDeclMap, User} from '../../layer';
+import {Config, HelpAppConfig, MethodDeclMap, User} from '../../layer';
 import {InvokeApiOptions} from '../../types';
 import {AppManager} from '../appManagers/manager';
 import {MTAppConfig} from './appConfig';
@@ -283,8 +284,12 @@ export default abstract class ApiManagerMethods extends AppManager {
 
     return this.invokeApiSingleProcess({
       method: 'help.getAppConfig',
-      params: {},
-      processResult: (config: MTAppConfig) => {
+      params: {
+        hash: 0
+      },
+      processResult: (helpAppConfig) => {
+        assumeType<HelpAppConfig.helpAppConfig>(helpAppConfig);
+        const config = helpAppConfig.config as MTAppConfig;
         this.appConfig = config;
         ignoreRestrictionReasons(config.ignore_restriction_reasons ?? []);
         this.rootScope.dispatchEvent('app_config', config);

@@ -27,7 +27,7 @@ import {MOUNT_CLASS_TO} from '../../config/debug';
 import appNavigationController from '../../components/appNavigationController';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import I18n, {i18n, join, LangPackKey} from '../langPack';
-import {ChatFull, ChatInvite, ChatParticipant, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult, WallPaper} from '../../layer';
+import {ChatFull, ChatInvite, ChatParticipant, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult, WallPaper, Config} from '../../layer';
 import PeerTitle from '../../components/peerTitle';
 import PopupPeer, {PopupPeerCheckboxOptions} from '../../components/popups/peer';
 import blurActiveElement from '../../helpers/dom/blurActiveElement';
@@ -970,9 +970,13 @@ export class AppImManager extends EventListenerBase<{
   }
 
   private handleAutologinDomains() {
-    let appConfig: MTAppConfig;
+    let appConfig: MTAppConfig, config: Config.config;
     rootScope.addEventListener('app_config', (_appConfig) => {
       appConfig = _appConfig;
+    });
+
+    rootScope.addEventListener('config', (_config) => {
+      config = _config;
     });
 
     const onAnchorClick = (element: HTMLAnchorElement) => {
@@ -983,13 +987,15 @@ export class AppImManager extends EventListenerBase<{
         return;
       }
 
-      if(!appConfig.autologin_token || !appConfig.autologin_domains) {
+      const autologinToken = config.autologin_token;
+
+      if(!autologinToken || !appConfig.autologin_domains) {
         return;
       }
 
       const originalUrl = element.dataset.originalUrl ??= element.href;
       if(appConfig.autologin_domains.includes(url.hostname)) {
-        url.searchParams.set('autologin_token', appConfig.autologin_token);
+        url.searchParams.set('autologin_token', autologinToken);
         element.href = url.toString();
 
         setTimeout(() => {

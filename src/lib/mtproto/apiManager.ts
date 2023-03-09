@@ -104,7 +104,7 @@ export class ApiManager extends ApiManagerMethods {
     // * https://core.telegram.org/api/url-authorization
     const REFRESH_APP_CONFIG_INTERVAL = (10000 - 30) * 1000;
     setInterval(() => {
-      this.getAppConfig(true);
+      this.getConfig(true);
     }, REFRESH_APP_CONFIG_INTERVAL);
   }
 

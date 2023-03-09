@@ -11,6 +11,7 @@ import callbackify from '../../helpers/callbackify';
 import callbackifyAll from '../../helpers/callbackifyAll';
 import copy from '../../helpers/object/copy';
 import pause from '../../helpers/schedulers/pause';
+import tsNow from '../../helpers/tsNow';
 import {AvailableReaction, Message, MessagePeerReaction, MessagesAvailableReactions, Reaction, ReactionCount, Update, Updates} from '../../layer';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
 import {AppManager} from './manager';
@@ -345,7 +346,8 @@ export class AppReactionsManager extends AppManager {
           _: 'messagePeerReaction',
           reaction,
           peer_id: this.appPeersManager.getOutputPeer(myPeerId),
-          pFlags: {}
+          pFlags: {},
+          date: tsNow(true)
         };
 
         if(!this.appPeersManager.isMegagroup(peerId) && false) {

@@ -17,7 +17,7 @@ import LazyLoadQueueBase from '../../components/lazyLoadQueueBase';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import tsNow from '../../helpers/tsNow';
 import {randomLong} from '../../helpers/random';
-import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio} from '../../layer';
+import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate} from '../../layer';
 import {ArgumentTypes, InvokeApiOptions} from '../../types';
 import {logger, LogTypes} from '../logger';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
@@ -5587,45 +5587,51 @@ export class AppMessagesManager extends AppManager {
     };
 
     const canViewMessageReadParticipants = await this.canViewMessageReadParticipants(message);
-    if(canViewMessageReadParticipants && limit === undefined) {
-      limit = 100;
-    } else if(limit === undefined) {
-      limit = 50;
-    }
+    limit ??= canViewMessageReadParticipants ? 100 : 50;
 
     return Promise.all([
-      canViewMessageReadParticipants && !reaction && !skipReadParticipants ? this.getMessageReadParticipants(message.peerId, message.mid).catch(() => [] as UserId[]) : [] as UserId[],
+      canViewMessageReadParticipants && !reaction && !skipReadParticipants ? this.getMessageReadParticipants(message.peerId, message.mid).catch(() => [] as ReadParticipantDate[]) : [] as ReadParticipantDate[],
 
       message.reactions?.recent_reactions?.length && !skipReactionsList ? this.appReactionsManager.getMessageReactionsList(message.peerId, message.mid, limit, reaction, offset).catch((err) => emptyMessageReactionsList) : emptyMessageReactionsList
-    ]).then(([userIds, messageReactionsList]) => {
-      const readParticipantsPeerIds = userIds.map((userId) => userId.toPeerId());
-
-      const filteredReadParticipants = readParticipantsPeerIds.slice();
-      forEachReverse(filteredReadParticipants, (peerId, idx, arr) => {
-        if(messageReactionsList.reactions.some((reaction) => this.appPeersManager.getPeerId(reaction.peer_id) === peerId)) {
+    ]).then(([readParticipantDates, messageReactionsList]) => {
+      const filteredReadParticipants = readParticipantDates.slice();
+      forEachReverse(filteredReadParticipants, ({user_id}, idx, arr) => {
+        if(messageReactionsList.reactions.some((reaction) => this.appPeersManager.getPeerId(reaction.peer_id) === user_id.toPeerId())) {
           arr.splice(idx, 1);
         }
       });
 
-      let combined: {peerId: PeerId, reaction?: Reaction}[] = messageReactionsList.reactions.map((reaction) => ({peerId: this.appPeersManager.getPeerId(reaction.peer_id), reaction: reaction.reaction}));
-      combined = combined.concat(filteredReadParticipants.map((readPeerId) => ({peerId: readPeerId})));
+      let combined: {
+        peerId: PeerId,
+        date?: number,
+        reaction?: Reaction
+      }[] = messageReactionsList.reactions.map((reaction) => {
+        return {
+          peerId: this.appPeersManager.getPeerId(reaction.peer_id),
+          reaction: reaction.reaction,
+          date: reaction.date
+        };
+      });
+
+      combined = combined.concat(filteredReadParticipants.map(({user_id, date}) => ({date, peerId: user_id.toPeerId()})));
 
       return {
         reactions: messageReactionsList.reactions,
         reactionsCount: messageReactionsList.count,
-        readParticipants: readParticipantsPeerIds,
+        readParticipantDates: readParticipantDates,
         combined: combined,
         nextOffset: messageReactionsList.next_offset
       };
     });
   }
 
-  public getMessageReadParticipants(peerId: PeerId, mid: number): Promise<UserId[]> {
+  public getMessageReadParticipants(peerId: PeerId, mid: number) {
     return this.apiManager.invokeApiSingle('messages.getMessageReadParticipants', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       msg_id: getServerMessageId(mid)
-    }).then((userIds) => { // ! convert long to number
-      return userIds.map((userId) => userId.toUserId());
+    }).then((readParticipantDates) => { // ! convert long to number
+      readParticipantDates.forEach((readParticipantDate) => readParticipantDate.user_id = readParticipantDate.user_id.toUserId());
+      return readParticipantDates;
     });
   }
 

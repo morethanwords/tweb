@@ -1,9 +1,7 @@
 export interface MTAppConfig {
   test?:                                     number;
   emojies_animated_zoom?:                    number;
-  emojies_send_dice?:                        string[];
-  emojies_send_dice_success?:                EmojiesSendDiceSuccess;
-  emojies_sounds?:                           EmojiesSoundsClass;
+  emojies_send_dice?:                        any[];
   gif_search_branding?:                      string;
   gif_search_emojies?:                       string[];
   stickers_emoji_suggest_only_api?:          boolean;
@@ -12,15 +10,10 @@ export interface MTAppConfig {
   youtube_pip?:                              string;
   qr_login_camera?:                          boolean;
   qr_login_code?:                            string;
-  reactions_in_chat_max?:                    number;
-  reactions_user_max_default?:               number;
-  reactions_user_max_premium?:               number;
   dialog_filters_enabled?:                   boolean;
   dialog_filters_tooltip?:                   boolean;
-  ignore_restriction_reasons?:               string[];
   autoarchive_setting_available?:            boolean;
-  pending_suggestions?:                      any[];
-  autologin_token?:                          string;
+  pending_suggestions?:                      string[];
   autologin_domains?:                        string[];
   url_auth_domains?:                         string[];
   round_video_encoding?:                     RoundVideoEncoding;
@@ -30,6 +23,7 @@ export interface MTAppConfig {
   ringtone_duration_max?:                    number;
   ringtone_size_max?:                        number;
   ringtone_saved_count_max?:                 number;
+  premium_purchase_blocked?:                 boolean;
   channels_limit_default?:                   number;
   channels_limit_premium?:                   number;
   saved_gifs_limit_default?:                 number;
@@ -55,14 +49,32 @@ export interface MTAppConfig {
   stickers_premium_by_emoji_num?:            number;
   stickers_normal_by_emoji_per_premium_num?: number;
   message_animated_emoji_max?:               number;
+  reactions_user_max_default?:               number;
+  reactions_user_max_premium?:               number;
+  reactions_in_chat_max?:                    number;
+  default_emoji_statuses_stickerset_id?:     string;
   premium_promo_order?:                      string[];
   premium_bot_username?:                     string;
-  premium_purchase_blocked?:                 boolean;
+  premium_playmarket_direct_currency_list?:  string[];
   forum_upgrade_participants_min?:           number;
-  fragment_prefixes?:                        string[];
-  telegram_antispam_group_size_min?:         number;
-  telegram_antispam_user_id?:                UserId;
+  whitelisted_domains?:                      string[];
+  restriction_add_platforms?:                string[];
   topics_pinned_limit?:                      number;
+  telegram_antispam_user_id?:                string;
+  telegram_antispam_group_size_min?:         number;
+  fragment_prefixes?:                        string[];
+  hidden_members_group_size_min?:            number;
+  ios_disable_parallel_channel_reset?:       number;
+  getfile_experimental_params?:              boolean;
+  lite_battery_min_pct?:                     number;
+  lite_device_class?:                        number;
+  lite_app_options?:                         LiteAppOptions;
+  premium_gift_attach_menu_icon?:            boolean;
+  premium_gift_text_field_icon?:             boolean;
+  ignore_restriction_reasons?:               string[];
+  emojies_send_dice?:                        string[];
+  emojies_send_dice_success?:                EmojiesSendDiceSuccess;
+  emojies_sounds?:                           EmojiesSoundsClass;
 }
 
 export interface EmojiesSendDiceSuccess {
@@ -80,6 +92,11 @@ export interface EmojiSound {
   id?:                    string;
   access_hash?:           string;
   file_reference_base64?: string;
+}
+
+export interface LiteAppOptions {
+  chat_open_animation_enabled?: boolean[];
+  video_autoplay_enabled?:      boolean[];
 }
 
 export interface RoundVideoEncoding {
