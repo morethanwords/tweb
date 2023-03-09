@@ -29,7 +29,7 @@ import LazyLoadQueue from '../lazyLoadQueue';
 import ListenerSetter from '../../helpers/listenerSetter';
 import PollElement from '../poll';
 import AudioElement from '../audio';
-import {Chat as MTChat, ChatInvite, Document, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, ReplyMarkup, SponsoredMessage, Update, UrlAuthResult, User, WebPage} from '../../layer';
+import {ChannelParticipant, Chat as MTChat, ChatInvite, ChatParticipant, Document, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, ReplyMarkup, SponsoredMessage, Update, UrlAuthResult, User, WebPage} from '../../layer';
 import {BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID} from '../../lib/mtproto/mtproto_config';
 import {FocusDirection, ScrollStartCallbackDimensions} from '../../helpers/fastSmoothScroll';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation} from '../../hooks/useHeavyAnimationCheck';
@@ -127,9 +127,6 @@ import wrapUrl from '../../lib/richTextProcessor/wrapUrl';
 import getMessageThreadId from '../../lib/appManagers/utils/messages/getMessageThreadId';
 import wrapTopicNameButton from '../wrappers/topicNameButton';
 import wrapMediaSpoiler, {onMediaSpoilerClick, toggleMediaSpoiler} from '../wrappers/mediaSpoiler';
-import confirmationPopup from '../confirmationPopup';
-import wrapPeerTitle from '../wrappers/peerTitle';
-import {PopupPeerCheckboxOptions} from '../popups/peer';
 import toggleDisability from '../../helpers/dom/toggleDisability';
 import {copyTextToClipboard} from '../../helpers/clipboard';
 import liteMode from '../../helpers/liteMode';
@@ -137,6 +134,7 @@ import getMediaDurationFromMessage from '../../lib/appManagers/utils/messages/ge
 import wrapLocalSticker from '../wrappers/localSticker';
 import {LottieAssetName} from '../../lib/rlottie/lottieLoader';
 import clamp from '../../helpers/number/clamp';
+import getParticipantRank from '../../lib/appManagers/utils/chats/getParticipantRank';
 
 export const USER_REACTIONS_INLINE = false;
 const USE_MEDIA_TAILS = false;
@@ -302,6 +300,9 @@ export default class ChatBubbles {
 
   private batchProcessor: BatchProcessor<Awaited<ReturnType<ChatBubbles['safeRenderMessage']>>>;
 
+  private ranks: Map<PeerId, ReturnType<typeof getParticipantRank>>;
+  private processRanks: Set<() => void>;
+  private canShowRanks: boolean;
   // private reactions: Map<number, ReactionsElement>;
 
   constructor(
@@ -3146,6 +3147,45 @@ export default class ChatBubbles {
       this.preloader.attach(this.container);
     }
 
+    if(!samePeer) {
+      this.ranks = undefined;
+      this.processRanks = undefined;
+      this.canShowRanks = false;
+
+      if(this.chat.isChannel) {
+        this.canShowRanks = true;
+        const promise = this.managers.acknowledged.appProfileManager.getParticipants(this.peerId.toChatId(), {_: 'channelParticipantsAdmins'}, 100);
+        const ackedResult = await m(promise);
+        const setRanksPromise = ackedResult.result.then((channelParticipants) => {
+          const participants = channelParticipants.participants as (ChatParticipant.chatParticipantAdmin | ChannelParticipant.channelParticipantAdmin)[];
+          this.ranks = new Map();
+          participants.forEach((participant) => {
+            const rank = getParticipantRank(participant);
+            this.ranks.set(participant.user_id.toPeerId(), rank);
+          });
+        });
+
+        if(ackedResult.cached) {
+          try {
+            await setRanksPromise;
+          } catch(err) {
+            this.ranks = new Map();
+            this.log.error('ranks error', err);
+          }
+        } else {
+          const processRanks = this.processRanks = new Set();
+          setRanksPromise.then(() => {
+            if(this.processRanks !== processRanks) {
+              return;
+            }
+
+            processRanks.forEach((callback) => callback());
+            this.processRanks = undefined;
+          });
+        }
+      }
+    }
+
     /* this.ladderDeferred && this.ladderDeferred.resolve();
     this.ladderDeferred = deferredPromise<void>(); */
 
@@ -5093,14 +5133,16 @@ export default class ChatBubbles {
 
       const isForward = fwdFromId || fwdFrom;
       if(isHidden) {
-        // /////this.log('message to render hidden', message);
         title = document.createElement('span');
         setInnerHTML(title, wrapEmojiText(fwdFrom.from_name));
         title.classList.add('peer-title');
-        // title = fwdFrom.from_name;
         bubble.classList.add('hidden-profile');
       } else {
-        title = new PeerTitle({peerId: fwdFromId || message.fromId, withPremiumIcon: !isForward, wrapOptions}).element;
+        title = new PeerTitle({
+          peerId: fwdFromId || message.fromId,
+          withPremiumIcon: !isForward,
+          wrapOptions
+        }).element;
       }
 
       let replyContainer: HTMLElement;
@@ -5216,6 +5258,30 @@ export default class ChatBubbles {
         }
       } else if(isStandaloneMedia && replyContainer) {
         replyContainer.classList.add('floating-part');
+      }
+
+      if(title && !isHidden && !fwdFromId && this.canShowRanks) {
+        const processRank = () => {
+          const rank = this.ranks.get(message.fromId);
+          if(!rank) {
+            return;
+          }
+
+          (title as HTMLElement).after(this.createBubbleNameRank(rank));
+        };
+
+        if(this.ranks) {
+          processRank();
+        } else {
+          const processRanks = this.processRanks;
+          processRanks.add(processRank);
+
+          middleware.onDestroy(() => {
+            processRanks.delete(processRank);
+          });
+        }
+      } else if(isForwardFromChannel) {
+        (title as HTMLElement).after(this.createBubbleNameRank(0));
       }
 
       if(topicNameButtonContainer && isStandaloneMedia) {
@@ -5338,6 +5404,15 @@ export default class ChatBubbles {
         messageDiv.append(reactionsElement);
       }
     }
+  }
+
+  private createBubbleNameRank(rank: ReturnType<typeof getParticipantRank> | 0) {
+    const span = document.createElement('span');
+    span.classList.add('bubble-name-rank');
+    span.append(typeof(rank) === 'number' ?
+      i18n(!rank ? 'Chat.ChannelBadge' : (rank === 1 ? 'Chat.OwnerBadge' : 'ChatAdmin')) :
+      rank);
+    return span;
   }
 
   private prepareToSaveScroll(reverse?: boolean) {

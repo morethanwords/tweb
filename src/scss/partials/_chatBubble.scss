@@ -2115,12 +2115,23 @@ $bubble-border-radius-big: 12px;
     // order: 1;
     //width: max-content;
     //white-space: nowrap;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 
     .badge-fake {
       display: inline-block;
       vertical-align: middle;
       margin-top: -2px;
     }
+  }
+
+  &-name-rank {
+    color: var(--message-time-color);
+    font-weight: var(--font-weight-normal);
+    font-size: var(--messages-time-text-size);
+    margin-inline-start: .125rem;
+    @include text-overflow();
   }
 
   /* &:not(.is-group-first) .bubble-content > .name .name {

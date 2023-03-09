@@ -1104,7 +1104,7 @@ const lang = {
     'one_value': '%d Comment',
     'other_value': '%d Comments'
   },
-  'Chat.TopicBadge': 'topic creator',
+  // 'Chat.TopicBadge': 'topic creator',
   'ChatTitle.ReportMessages': 'Report Messages',
   'Chat.Send.WithoutSound': 'Send Without Sound',
   'Chat.Send.SetReminder': 'Set a Reminder',

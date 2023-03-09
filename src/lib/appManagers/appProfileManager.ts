@@ -300,7 +300,7 @@ export class AppProfileManager extends AppManager {
       return this.getChannelParticipants(id, filter, limit, offset);
     }
 
-    return Promise.resolve(this.getChatFull(id)).then((chatFull) => {
+    return callbackify(this.getChatFull(id), (chatFull) => {
       const chatParticipants = (chatFull as ChatFull.chatFull).participants;
       if(chatParticipants._ !== 'chatParticipants') {
         throw makeError('CHAT_PRIVATE');
@@ -330,7 +330,7 @@ export class AppProfileManager extends AppManager {
       return this.getChannelParticipant(id, peerId);
     }
 
-    return this.getParticipants(id).then((chatParticipants) => {
+    return Promise.resolve(this.getParticipants(id)).then((chatParticipants) => {
       assumeType<ChatParticipants.chatParticipants>(chatParticipants);
       const found = chatParticipants.participants.find((chatParticipant) => {
         if(getParticipantPeerId(chatParticipant) === peerId) {
@@ -360,17 +360,19 @@ export class AppProfileManager extends AppManager {
           !(chat as Chat.channel).pFlags.creator &&
           !(chat as Chat.channel).admin_rights
       )) {
-        return Promise.reject();
+        throw makeError('PEER_ID_INVALID');
       }
     }
 
-    return this.apiManager.invokeApiCacheable('channels.getParticipants', {
+    const result = this.apiManager.invokeApiCacheable('channels.getParticipants', {
       channel: this.appChatsManager.getChannelInput(id),
       filter,
       offset,
       limit,
       hash: '0'
-    }, {cacheSeconds: 60}).then((result) => {
+    }, {cacheSeconds: 60, syncIfHasResult: true});
+
+    return callbackify(result, (result) => {
       this.appUsersManager.saveApiUsers((result as ChannelsChannelParticipants.channelsChannelParticipants).users);
       return result as ChannelsChannelParticipants.channelsChannelParticipants;
     });
@@ -498,11 +500,11 @@ export class AppProfileManager extends AppManager {
 
     let promise: Promise<PeerId[]>;
     if(this.appChatsManager.isChannel(chatId)) {
-      promise = this.getChannelParticipants(chatId, {
+      promise = Promise.resolve(this.getChannelParticipants(chatId, {
         _: 'channelParticipantsMentions',
         q: query,
         top_msg_id: getServerMessageId(threadId)
-      }, 50, 0).then((cP) => {
+      }, 50, 0)).then((cP) => {
         return cP.participants.map((p) => getParticipantPeerId(p));
       });
     } else if(chatId) {

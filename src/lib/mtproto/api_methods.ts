@@ -41,6 +41,7 @@ export default abstract class ApiManagerMethods extends AppManager {
         timestamp: number,
         promise: Promise<any>,
         fulfilled: boolean,
+        result?: any,
         timeout?: number,
         params: any
       }
@@ -159,7 +160,7 @@ export default abstract class ApiManagerMethods extends AppManager {
     const {method, processResult, processError, params, options} = o;
     const cache = this.apiPromisesSingleProcess;
     const cacheKey = options.cacheKey || JSON.stringify(params);
-    const map = cache[method] ?? (cache[method] = new Map());
+    const map = cache[method] ??= new Map();
     const oldPromise = map.get(cacheKey);
     if(oldPromise) {
       return oldPromise;
@@ -201,16 +202,23 @@ export default abstract class ApiManagerMethods extends AppManager {
     return p;
   }
 
-  public invokeApiCacheable<T extends keyof MethodDeclMap>(method: T, params: MethodDeclMap[T]['req'] = {} as any, options: InvokeApiOptions & Partial<{cacheSeconds: number, override: boolean}> = {}): Promise<MethodDeclMap[T]['res']> {
-    const cache = this.apiPromisesCacheable[method] ?? (this.apiPromisesCacheable[method] = {});
+  public invokeApiCacheable<
+    T extends keyof MethodDeclMap,
+    O extends InvokeApiOptions & Partial<{cacheSeconds: number, override: boolean, syncIfHasResult: boolean}>
+  >(
+    method: T,
+    params: MethodDeclMap[T]['req'] = {} as any,
+    options: O = {} as any
+  ): O['syncIfHasResult'] extends true ? MethodDeclMap[T]['res'] | Promise<MethodDeclMap[T]['res']> : Promise<MethodDeclMap[T]['res']> {
+    const cache = this.apiPromisesCacheable[method] ??= {};
     const queryJSON = JSON.stringify(params);
-    const item = cache[queryJSON];
+    let item = cache[queryJSON];
     if(item && (!options.override || !item.fulfilled)) {
-      return item.promise;
+      return options.syncIfHasResult && item.hasOwnProperty('result') ? item.result : item.promise;
     }
 
     if(options.override) {
-      if(item && item.timeout) {
+      if(item?.timeout) {
         clearTimeout(item.timeout);
         delete item.timeout;
       }
@@ -221,14 +229,22 @@ export default abstract class ApiManagerMethods extends AppManager {
     let timeout: number;
     if(options.cacheSeconds) {
       timeout = ctx.setTimeout(() => {
-        delete cache[queryJSON];
+        if(cache[queryJSON] === item) {
+          delete cache[queryJSON];
+        }
       }, options.cacheSeconds * 1000);
       delete options.cacheSeconds;
     }
 
     const promise = this.invokeApi(method, params, options);
 
-    cache[queryJSON] = {
+    const onResult = (result: any) => {
+      item.result = result;
+    };
+
+    promise.then(onResult, onResult);
+
+    item = cache[queryJSON] = {
       timestamp: Date.now(),
       fulfilled: false,
       timeout,
