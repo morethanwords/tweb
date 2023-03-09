@@ -352,16 +352,8 @@ export class AppProfileManager extends AppManager {
     limit = 200,
     offset = 0
   ) {
-    if(filter._ === 'channelParticipantsRecent') {
-      const chat = this.appChatsManager.getChat(id);
-      if(chat?.pFlags && (
-      // chat.pFlags.kicked ||
-        (chat as Chat.channel).pFlags.broadcast &&
-          !(chat as Chat.channel).pFlags.creator &&
-          !(chat as Chat.channel).admin_rights
-      )) {
-        throw makeError('PEER_ID_INVALID');
-      }
+    if(!this.appChatsManager.hasRights(id, 'view_participants')) {
+      throw makeError('CHAT_ADMIN_REQUIRED');
     }
 
     const result = this.apiManager.invokeApiCacheable('channels.getParticipants', {
@@ -376,31 +368,6 @@ export class AppProfileManager extends AppManager {
       this.appUsersManager.saveApiUsers((result as ChannelsChannelParticipants.channelsChannelParticipants).users);
       return result as ChannelsChannelParticipants.channelsChannelParticipants;
     });
-    /* let maybeAddSelf = (participants: any[]) => {
-      let chat = appChatsManager.getChat(id);
-      let selfMustBeFirst = filter._ === 'channelParticipantsRecent' &&
-                            !offset &&
-                            !chat.pFlags.kicked &&
-                            !chat.pFlags.left;
-
-      if(selfMustBeFirst) {
-        participants = copy(participants);
-        let myID = appUsersManager.getSelf().id;
-        let myIndex = participants.findIndex((p) => p.user_id === myID);
-        let myParticipant;
-
-        if(myIndex !== -1) {
-          myParticipant = participants[myIndex];
-          participants.splice(myIndex, 1);
-        } else {
-          myParticipant = {_: 'channelParticipantSelf', user_id: myID};
-        }
-
-        participants.unshift(myParticipant);
-      }
-
-      return participants;
-    } */
   }
 
   public getChannelParticipant(id: ChatId, peerId: PeerId) {

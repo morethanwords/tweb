@@ -43,6 +43,7 @@ export default abstract class ApiManagerMethods extends AppManager {
         promise: Promise<any>,
         fulfilled: boolean,
         result?: any,
+        error?: any,
         timeout?: number,
         params: any
       }
@@ -215,7 +216,15 @@ export default abstract class ApiManagerMethods extends AppManager {
     const queryJSON = JSON.stringify(params);
     let item = cache[queryJSON];
     if(item && (!options.override || !item.fulfilled)) {
-      return options.syncIfHasResult && item.hasOwnProperty('result') ? item.result : item.promise;
+      if(options.syncIfHasResult) {
+        if(item.hasOwnProperty('result')) {
+          return item.result;
+        } else if(item.hasOwnProperty('error')) {
+          throw item.error;
+        }
+      }
+
+      return item.promise;
     }
 
     if(options.override) {
@@ -243,7 +252,11 @@ export default abstract class ApiManagerMethods extends AppManager {
       item.result = result;
     };
 
-    promise.then(onResult, onResult);
+    promise.then((result) => {
+      item.result = result;
+    }, (error) => {
+      item.error = error;
+    });
 
     item = cache[queryJSON] = {
       timestamp: Date.now(),

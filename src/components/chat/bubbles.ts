@@ -3120,6 +3120,51 @@ export default class ChatBubbles {
       savedPosition
     };
 
+    if(!samePeer) {
+      this.ranks = undefined;
+      this.processRanks = undefined;
+      this.canShowRanks = false;
+
+      if(this.chat.isChannel) {
+        this.canShowRanks = true;
+        const processRanks = this.processRanks = new Set();
+
+        const promise = this.managers.acknowledged.appProfileManager.getParticipants(this.peerId.toChatId(), {_: 'channelParticipantsAdmins'}, 100);
+        const ackedResult = await m(promise);
+        const setRanksPromise = ackedResult.result.then((channelParticipants) => {
+          if(this.processRanks !== processRanks) {
+            return;
+          }
+
+          const participants = channelParticipants.participants as (ChatParticipant.chatParticipantAdmin | ChannelParticipant.channelParticipantAdmin)[];
+          this.ranks = new Map();
+          participants.forEach((participant) => {
+            const rank = getParticipantRank(participant);
+            this.ranks.set(participant.user_id.toPeerId(), rank);
+          });
+
+          getHeavyAnimationPromise().then(() => {
+            if(this.processRanks !== processRanks) {
+              return;
+            }
+
+            processRanks.forEach((callback) => callback());
+            this.processRanks = undefined;
+          });
+        }, (err) => {
+          if((err as ApiError).type !== 'CHAT_ADMIN_REQUIRED') {
+            this.log.error('ranks error', err);
+          }
+
+          this.ranks = new Map();
+        });
+
+        if(ackedResult.cached) {
+          await m(setRanksPromise);
+        }
+      }
+    }
+
     let result: Awaited<ReturnType<ChatBubbles['getHistory']>>;
     if(!savedPosition) {
       result = await m(this.getHistory1(lastMsgId, true, isJump, additionMsgId));
@@ -3145,45 +3190,6 @@ export default class ChatBubbles {
       // oldContainer.textContent = '';
       // oldChatInner.remove();
       this.preloader.attach(this.container);
-    }
-
-    if(!samePeer) {
-      this.ranks = undefined;
-      this.processRanks = undefined;
-      this.canShowRanks = false;
-
-      if(this.chat.isChannel) {
-        this.canShowRanks = true;
-        const promise = this.managers.acknowledged.appProfileManager.getParticipants(this.peerId.toChatId(), {_: 'channelParticipantsAdmins'}, 100);
-        const ackedResult = await m(promise);
-        const setRanksPromise = ackedResult.result.then((channelParticipants) => {
-          const participants = channelParticipants.participants as (ChatParticipant.chatParticipantAdmin | ChannelParticipant.channelParticipantAdmin)[];
-          this.ranks = new Map();
-          participants.forEach((participant) => {
-            const rank = getParticipantRank(participant);
-            this.ranks.set(participant.user_id.toPeerId(), rank);
-          });
-        });
-
-        if(ackedResult.cached) {
-          try {
-            await setRanksPromise;
-          } catch(err) {
-            this.ranks = new Map();
-            this.log.error('ranks error', err);
-          }
-        } else {
-          const processRanks = this.processRanks = new Set();
-          setRanksPromise.then(() => {
-            if(this.processRanks !== processRanks) {
-              return;
-            }
-
-            processRanks.forEach((callback) => callback());
-            this.processRanks = undefined;
-          });
-        }
-      }
     }
 
     /* this.ladderDeferred && this.ladderDeferred.resolve();
