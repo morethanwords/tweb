@@ -144,7 +144,8 @@ export default class PinnedMessageBorder {
       if(this.count !== count) {
         this.wrapper.className = BASE_CLASS + '-wrapper-1';
         this.border.classList.remove(BASE_CLASS + '-mask');
-        this.wrapper.innerHTML = this.wrapper.style.cssText = '';
+        this.wrapper.replaceChildren();
+        this.wrapper.style.cssText = '';
       }
 
       return this.border;

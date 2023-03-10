@@ -96,7 +96,7 @@ export default class AutocompleteHelper extends EventListenerBase<{
       this.attach = undefined;
       this.detach = undefined;
 
-      list.innerHTML = '';
+      list.replaceChildren();
       detach();
 
       if(this.navigationItem) {

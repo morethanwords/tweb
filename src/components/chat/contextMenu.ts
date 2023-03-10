@@ -422,7 +422,7 @@ export default class ChatContextMenu {
       icon: 'copy',
       text: 'Text.Context.Copy.Username',
       onClick: () => {
-        copyTextToClipboard(this.target.innerHTML);
+        copyTextToClipboard(this.target.textContent);
       },
       verify: () => this.isUsernameTarget,
       withSelection: true
@@ -430,7 +430,7 @@ export default class ChatContextMenu {
       icon: 'copy',
       text: 'Text.Context.Copy.Hashtag',
       onClick: () => {
-        copyTextToClipboard(this.target.innerHTML);
+        copyTextToClipboard(this.target.textContent);
       },
       verify: () => this.target.classList.contains('anchor-hashtag'),
       withSelection: true
@@ -572,14 +572,14 @@ export default class ChatContextMenu {
       notDirect: () => true,
       localName: 'emojis'
     }, {
-      regularText: this.sponsoredMessage?.sponsor_info,
+      regularText: this.sponsoredMessage?.sponsor_info ? wrapEmojiText(this.sponsoredMessage.sponsor_info) : undefined,
       separator: true,
       multiline: true,
       onClick: () => copyTextToClipboard(this.sponsoredMessage.sponsor_info),
       verify: () => !!this.sponsoredMessage.sponsor_info,
       isSponsored: true
     }, {
-      regularText: this.sponsoredMessage?.additional_info,
+      regularText: this.sponsoredMessage?.additional_info ? wrapEmojiText(this.sponsoredMessage.additional_info) : undefined,
       separator: true,
       multiline: true,
       onClick: () => copyTextToClipboard(this.sponsoredMessage.additional_info),

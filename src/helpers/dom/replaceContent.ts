@@ -6,7 +6,7 @@
 
 export default function replaceContent(elem: HTMLElement, node: string | Node) {
   if(typeof(node) === 'string') {
-    elem.innerHTML = node;
+    elem.textContent = node;
     return;
   }
 

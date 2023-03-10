@@ -49,10 +49,6 @@ export default class RepliesElement extends HTMLElement {
   public render() {
     const replies = this.message.replies;
 
-    /* if(this.firstChild) {
-      this.innerHTML = '';
-    } */
-
     if(this.type === 'footer') {
       let leftPart: HTMLElement;
       if(this.firstElementChild) {
@@ -61,7 +57,7 @@ export default class RepliesElement extends HTMLElement {
 
       if(replies?.recent_repliers) {
         if(leftPart && !leftPart.classList.contains('replies-footer-avatars')) {
-          this.innerHTML = '';
+          this.replaceChildren();
           leftPart = null;
         }
 

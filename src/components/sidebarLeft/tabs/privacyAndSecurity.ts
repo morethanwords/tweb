@@ -265,9 +265,8 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
           const disallowLength = details.disallowPeers.users.length + details.disallowPeers.chats.length;
           const allowLength = details.allowPeers.users.length + details.allowPeers.chats.length;
 
-          row.subtitle.innerHTML = '';
           const s = i18n(langKey);
-          row.subtitle.append(s);
+          row.subtitle.replaceChildren(s);
           if(disallowLength || allowLength) {
             row.subtitle.append(` (${[-disallowLength, allowLength ? '+' + allowLength : 0].filter(Boolean).join(', ')})`);
           }

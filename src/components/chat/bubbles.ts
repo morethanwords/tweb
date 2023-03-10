@@ -3962,7 +3962,7 @@ export default class ChatBubbles {
 
       bubble.className = 'bubble service';
 
-      bubbleContainer.innerHTML = '';
+      bubbleContainer.replaceChildren();
       const s = document.createElement('div');
       s.classList.add('service-msg');
       if(action) {
@@ -4129,7 +4129,7 @@ export default class ChatBubbles {
       maxMediaTimestamp
     };
 
-    const richText = messageMessage ? wrapRichText(messageMessage, richTextOptions) : '';
+    const richText = messageMessage ? wrapRichText(messageMessage, richTextOptions) : undefined;
 
     let canHaveTail = true;
     let isStandaloneMedia = false;

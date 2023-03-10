@@ -111,7 +111,7 @@ export default class AppChatTypeTab extends SliderSuperTabEventable {
 
             this.managers.appProfileManager.getChatInviteLink(this.chatId, true).then((link) => {
               toggle();
-              linkRow.title.innerHTML = link;
+              linkRow.title.textContent = link;
               // revoked = true;
               // onChange();
             });

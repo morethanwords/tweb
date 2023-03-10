@@ -113,9 +113,8 @@ export default class AppEditContactTab extends SliderSuperTab {
         const profileNameDiv = document.createElement('div');
         profileNameDiv.classList.add('profile-name');
         profileNameDiv.append(new PeerTitle({
-          peerId: peerId
+          peerId
         }).element);
-        // profileNameDiv.innerHTML = 'Karen Stanford';
 
         const profileSubtitleDiv = document.createElement('div');
         profileSubtitleDiv.classList.add('profile-subtitle');

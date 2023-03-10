@@ -22,7 +22,7 @@ export type PopupPeerOptions = Omit<PopupOptions, 'buttons' | 'title'> & Partial
   titleLangKey: LangPackKey,
   titleLangArgs: any[],
   noTitle: boolean,
-  description: string | DocumentFragment,
+  description: Parameters<typeof setInnerHTML>[1],
   descriptionLangKey: LangPackKey,
   descriptionLangArgs: any[],
   buttons: Array<PopupPeerButton>,

@@ -74,12 +74,9 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
       if(user.pFlags.bot) {
         dom.lastMessageSpan.append('@' + username);
       } else {
-        if(user.phone) dom.lastMessageSpan.innerHTML = formatUserPhone(user.phone);
+        if(user.phone) dom.lastMessageSpan.textContent = formatUserPhone(user.phone);
         else dom.lastMessageSpan.append(username ? '@' + username : getUserStatusString(user));
       }
-
-      // dom.titleSpan.innerHTML = 'Raaid El Syed';
-      // dom.lastMessageSpan.innerHTML = '+1 234 567891';
     };
 
     for(const peerId of this.peerIds) {

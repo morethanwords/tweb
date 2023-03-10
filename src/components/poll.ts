@@ -354,7 +354,7 @@ export default class PollElement extends HTMLElement {
           const time = Date.now();
           const percents = (closeTime - time) / period;
           const timeLeft = (closeTime - time) / 1000 + 1 | 0;
-          timeLeftDiv.innerHTML = toHHMMSS(timeLeft);
+          timeLeftDiv.textContent = toHHMMSS(timeLeft);
 
           if(timeLeft <= 5) {
             timeLeftDiv.style.color = '#ee545c';
@@ -368,7 +368,7 @@ export default class PollElement extends HTMLElement {
 
           if(time >= closeTime) {
             clearInterval(this.quizInterval);
-            timeLeftDiv.innerHTML = '';
+            timeLeftDiv.replaceChildren();
             // @ts-ignore
             circle.style.strokeDashoffset = circumference;
             this.quizInterval = 0;

@@ -79,7 +79,7 @@ export default class AppGifsTab extends SliderSuperTab {
 
   public onCloseAfterTimeout() {
     this.reset();
-    this.gifsDiv.innerHTML = '';
+    this.gifsDiv.replaceChildren();
     animationIntersector.checkAnimations(undefined, ANIMATIONGROUP);
     this.inputSearch.remove();
     return super.onCloseAfterTimeout();
@@ -110,7 +110,7 @@ export default class AppGifsTab extends SliderSuperTab {
       this.searchPromise = null;
       this.nextOffset = next_offset;
       if(newSearch) {
-        this.gifsDiv.innerHTML = '';
+        this.gifsDiv.replaceChildren();
       }
 
       if(results.length) {

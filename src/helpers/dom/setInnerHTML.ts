@@ -10,7 +10,7 @@ export default function setInnerHTML(elem: Element, html: string | DocumentFragm
   setDirection(elem);
   if(typeof(html) === 'string') {
     if(!html) elem.replaceChildren();
-    else elem.innerHTML = html;
+    else elem.textContent = html;
   } else {
     elem.replaceChildren(html);
   }

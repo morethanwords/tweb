@@ -52,7 +52,7 @@ export class SearchGroup {
     this.container.style.display = 'none';
 
     if(this.clearable) {
-      this.list.innerHTML = '';
+      this.list.replaceChildren();
     }
   }
 

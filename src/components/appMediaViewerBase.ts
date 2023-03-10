@@ -859,7 +859,7 @@ export default class AppMediaViewerBase<
     const mover = this.content.mover;
 
     if(!closing) {
-      mover.innerHTML = '';
+      mover.replaceChildren();
       // mover.append(this.buttons.prev, this.buttons.next);
     }
 
@@ -1205,7 +1205,7 @@ export default class AppMediaViewerBase<
       }, delay / 2);
 
       setTimeout(() => {
-        mover.innerHTML = '';
+        mover.replaceChildren();
         mover.classList.remove('moving', 'active', 'hiding');
         mover.style.cssText = 'display: none;';
 

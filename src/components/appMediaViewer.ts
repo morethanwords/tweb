@@ -246,7 +246,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
   private setCaption(message: MyMessage) {
     const caption = (message as Message.message).message;
-    let html: Parameters<typeof setInnerHTML>[1] = '';
+    let html: Parameters<typeof setInnerHTML>[1];
     if(caption) {
       const media = getMediaFromMessage(message, true);
 

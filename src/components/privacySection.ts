@@ -132,8 +132,7 @@ export default class PrivacySection {
               takeOut: (newPeerIds) => {
                 _peerIds.length = 0;
                 _peerIds.push(...newPeerIds);
-                exception.row.subtitle.innerHTML = '';
-                exception.row.subtitle.append(...this.generateStr(this.splitPeersByType(newPeerIds)));
+                exception.row.subtitle.replaceChildren(...this.generateStr(this.splitPeersByType(newPeerIds)));
               },
               selectedPeerIds: _peerIds
             });
@@ -161,7 +160,7 @@ export default class PrivacySection {
           arr.push(...from.chats.map((id) => id.toPeerId(true)));
           this.peerIds[k] = arr;
           const s = this.exceptions.get(k).row.subtitle;
-          s.innerHTML = '';
+          s.replaceChildren();
           s.append(...this.generateStr(from));
         });
       }
@@ -224,7 +223,7 @@ export default class PrivacySection {
     const caption = this.options.captions[this.type];
     const captionElement = this.radioSection.caption;
     if(!caption) {
-      captionElement.innerHTML = '';
+      captionElement.replaceChildren();
     } else if(caption instanceof HTMLElement) {
       replaceContent(captionElement, caption);
     } else {

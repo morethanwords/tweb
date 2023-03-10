@@ -256,7 +256,7 @@ export class AppSidebarLeft extends SidebarSlider {
         });
         const t = document.createElement('span');
         t.classList.add('btn-menu-footer-text');
-        t.innerHTML = 'Telegram Web' + App.suffix + ' '/* ' alpha ' */ + App.versionFull;
+        t.textContent = 'Telegram Web' + App.suffix + ' '/* ' alpha ' */ + App.versionFull;
         btnMenuFooter.append(t);
         btnMenu.classList.add('has-footer');
         btnMenu.append(btnMenuFooter);
@@ -549,7 +549,7 @@ export class AppSidebarLeft extends SidebarSlider {
       });
       searchSuper.load(true);
 
-      helper.innerHTML = '';
+      helper.replaceChildren();
       searchSuper.nav.classList.remove('hide');
       if(!value) {
       }

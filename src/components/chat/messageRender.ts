@@ -59,7 +59,7 @@ export namespace MessageRender {
 
         const postViewsSpan = document.createElement('span');
         postViewsSpan.classList.add('post-views');
-        postViewsSpan.innerHTML = formatNumber(message.views, 1);
+        postViewsSpan.textContent = formatNumber(message.views, 1);
 
         const channelViews = document.createElement('i');
         channelViews.classList.add('tgico-channelviews', 'time-icon');

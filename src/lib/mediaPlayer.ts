@@ -312,14 +312,16 @@ export default class VideoPlayer extends ControlsHover {
   }
 
   protected setBtnMenuToggle() {
-    const buttons: Parameters<typeof ButtonMenuSync>[0]['buttons'] = VideoPlayer.PLAYBACK_RATES.map((rate, idx) => {
-      return {
+    const buttons = VideoPlayer.PLAYBACK_RATES.map((rate, idx) => {
+      const buttonOptions: Parameters<typeof ButtonMenuSync>[0]['buttons'][0] = {
         // icon: VideoPlayer.PLAYBACK_RATES_ICONS[idx],
         regularText: rate + 'x',
         onClick: () => {
           appMediaPlaybackController.playbackRate = rate;
         }
       };
+
+      return buttonOptions;
     });
     const btnMenu = ButtonMenuSync({buttons});
     btnMenu.classList.add('top-left');

@@ -60,7 +60,7 @@ export default class EmojiHelper extends AutocompleteHelper {
     emojis = emojis.slice(0, 80);
 
     if(emojis.length) {
-      this.list.innerHTML = '';
+      this.list.replaceChildren();
       emojis.forEach((emoji) => {
         appendEmoji(emoji, this.list, false, true);
       });

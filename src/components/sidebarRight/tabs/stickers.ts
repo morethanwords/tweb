@@ -91,7 +91,7 @@ export default class AppStickersTab extends SliderSuperTab {
   }
 
   public onCloseAfterTimeout() {
-    this.setsDiv.innerHTML = '';
+    this.setsDiv.replaceChildren();
     animationIntersector.checkAnimations(undefined, 'STICKERS-SEARCH');
     return super.onCloseAfterTimeout();
   }

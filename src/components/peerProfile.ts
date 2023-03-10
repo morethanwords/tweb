@@ -37,10 +37,8 @@ import wrapPeerTitle from './wrappers/peerTitle';
 import wrapTopicNameButton from './wrappers/topicNameButton';
 
 const setText = (text: Parameters<typeof setInnerHTML>[1], row: Row) => {
-  // fastRaf(() => {
-  setInnerHTML(row.title, text || '');
+  setInnerHTML(row.title, text || undefined);
   row.container.style.display = text ? '' : 'none';
-  // });
 };
 
 export default class PeerProfile {

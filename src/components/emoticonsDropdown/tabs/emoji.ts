@@ -70,8 +70,7 @@ export function appendEmoji(emoji: string, container?: HTMLElement, prepend = fa
 
   if(spanEmoji.children.length > 1) {
     const first = spanEmoji.firstElementChild;
-    spanEmoji.innerHTML = '';
-    spanEmoji.append(first);
+    spanEmoji.replaceChildren(first);
   }
 
   if(spanEmoji.firstElementChild?.tagName === 'IMG') {

@@ -36,7 +36,7 @@ export function setButtonLoader(elem: HTMLButtonElement, icon = 'check') {
   putPreloader(elem);
 
   return () => {
-    elem.innerHTML = '';
+    elem.replaceChildren();
     elem.classList.add('tgico-' + icon);
     elem.removeAttribute('disabled');
   };
