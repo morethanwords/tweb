@@ -28,6 +28,8 @@ import replaceContent from '../../helpers/dom/replaceContent';
 import rootScope from '../../lib/rootScope';
 import wrapCustomEmoji from '../wrappers/customEmoji';
 import emoticonsDropdown from '../emoticonsDropdown';
+import ButtonMenuToggle from '../buttonMenuToggle';
+import {copyTextToClipboard} from '../../helpers/clipboard';
 
 const ANIMATION_GROUP: AnimationItemGroup = 'STICKERS-POPUP';
 
@@ -250,6 +252,21 @@ export default class PopupStickers extends PopupElement {
     } else {
       setInnerHTML(this.title, i18n('Emoji'));
     }
+
+    const btnMenu = ButtonMenuToggle({
+      listenerSetter: this.listenerSetter,
+      buttons: [{
+        icon: 'copy',
+        text: 'CopyLink',
+        onClick: () => {
+          const prefix = `https://t.me/${this.isEmojis ? 'addemoji' : 'addstickers'}/`;
+          const text = sets.map((set) => prefix + set.set.short_name).join('\n');
+          copyTextToClipboard(text);
+        }
+      }],
+      direction: 'bottom-left'
+    });
+    this.title.after(btnMenu);
 
     this.stickersFooter.textContent = '';
     this.stickersFooter.append(button);

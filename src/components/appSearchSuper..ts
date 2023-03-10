@@ -1235,7 +1235,7 @@ export default class AppSearchSuper {
         this.afterPerforming(1, mediaTab.contentTab);
       }
 
-      const peerIds = participants.map((participant) => {
+      const peerIds: {peerId: PeerId, rank: ReturnType<typeof getParticipantRank>}[] = participants.map((participant) => {
         const peerId = userId ? (participant as Chat.chat).id.toPeerId(true) : getParticipantPeerId(participant as ChannelParticipant);
         if(chatId ? peerId.isAnyChat() : peerId.isUser()) {
           return;
@@ -1243,7 +1243,7 @@ export default class AppSearchSuper {
 
         return {
           peerId,
-          rank: getParticipantRank(participant as ChannelParticipant)
+          rank: getParticipantRank(participant as ChannelParticipant) as any
         };
       }).filter(Boolean);
 

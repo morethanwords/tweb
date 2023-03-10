@@ -135,6 +135,7 @@ import wrapLocalSticker from '../wrappers/localSticker';
 import {LottieAssetName} from '../../lib/rlottie/lottieLoader';
 import clamp from '../../helpers/number/clamp';
 import getParticipantRank from '../../lib/appManagers/utils/chats/getParticipantRank';
+import wrapParticipantRank from '../wrappers/participantRank';
 
 export const USER_REACTIONS_INLINE = false;
 const USE_MEDIA_TAILS = false;
@@ -5415,9 +5416,7 @@ export default class ChatBubbles {
   private createBubbleNameRank(rank: ReturnType<typeof getParticipantRank> | 0) {
     const span = document.createElement('span');
     span.classList.add('bubble-name-rank');
-    span.append(typeof(rank) === 'number' ?
-      i18n(!rank ? 'Chat.ChannelBadge' : (rank === 1 ? 'Chat.OwnerBadge' : 'ChatAdmin')) :
-      rank);
+    span.append(wrapParticipantRank(rank));
     return span;
   }
 

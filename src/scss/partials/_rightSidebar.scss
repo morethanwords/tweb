@@ -404,6 +404,7 @@
 
       &-border {
         border-color: var(--message-checkbox-border-color);
+        z-index: 1 !important;
       }
 
       &-background {

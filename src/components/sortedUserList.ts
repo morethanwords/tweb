@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type LazyLoadQueue from './lazyLoadQueue';
 import appDialogsManager, {AppDialogsManager, DialogDom, DialogElementSize} from '../lib/appManagers/appDialogsManager';
 import {getHeavyAnimationPromise} from '../hooks/useHeavyAnimationCheck';
 import isInDOM from '../helpers/dom/isInDOM';
@@ -14,9 +15,9 @@ import SortedList, {SortedElementBase} from '../helpers/sortedList';
 import safeAssign from '../helpers/object/safeAssign';
 import {AppManagers} from '../lib/appManagers/managers';
 import getUserStatusString from './wrappers/getUserStatusString';
-import type LazyLoadQueue from './lazyLoadQueue';
 import getChatMembersString from './wrappers/getChatMembersString';
-import {i18n} from '../lib/langPack';
+import wrapParticipantRank from './wrappers/participantRank';
+import getParticipantRank from '../lib/appManagers/utils/chats/getParticipantRank';
 
 interface SortedUser extends SortedElementBase<PeerId> {
   dom: DialogDom
@@ -25,7 +26,7 @@ interface SortedUser extends SortedElementBase<PeerId> {
 export default class SortedUserList extends SortedList<SortedUser> {
   protected static SORT_INTERVAL = 30e3;
   public list: HTMLUListElement;
-  public ranks: Map<PeerId, string | number> = new Map();
+  public ranks: Map<PeerId, ReturnType<typeof getParticipantRank>> = new Map();
 
   protected lazyLoadQueue: LazyLoadQueue;
   protected avatarSize: DialogElementSize = 'abitbigger';
@@ -87,9 +88,7 @@ export default class SortedUserList extends SortedList<SortedUser> {
 
         const rank = this.ranks.get(base.id);
         if(rank) {
-          dialogElement.titleRight.replaceChildren(typeof(rank) === 'number' ?
-            i18n(rank === 1 ? 'Chat.OwnerBadge' : 'ChatAdmin') :
-            rank);
+          dialogElement.titleRight.replaceChildren(wrapParticipantRank(rank));
         }
 
         (base as SortedUser).dom = dialogElement.dom;
