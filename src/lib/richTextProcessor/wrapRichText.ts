@@ -1315,6 +1315,7 @@ export default function wrapRichText(text: string, options: Partial<{
       case 'messageEntityLinebreak': {
         if(options.wrappingDraft && IS_FIREFOX) {
           element = document.createElement('br');
+          usedText = true;
         }
         // if(options.noLinebreaks) {
         //   insertPart(entity, ' ');
