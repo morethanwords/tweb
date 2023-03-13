@@ -111,6 +111,7 @@ import {MARKDOWN_ENTITIES} from '../../lib/richTextProcessor';
 import IMAGE_MIME_TYPES_SUPPORTED from '../../environment/imageMimeTypesSupport';
 import VIDEO_MIME_TYPES_SUPPORTED from '../../environment/videoMimeTypesSupport';
 import {ChatRights} from '../../lib/appManagers/appChatsManager';
+import getPeerActiveUsernames from '../../lib/appManagers/utils/peers/getPeerActiveUsernames';
 
 const RECORD_MIN_TIME = 500;
 
@@ -1296,6 +1297,27 @@ export default class ChatInput {
     this.managers.appDraftsManager.syncDraft(this.chat.peerId, this.chat.threadId, draft);
   }
 
+  public mentionUser(userId: UserId, isHelper?: boolean) {
+    Promise.resolve(this.managers.appUsersManager.getUser(userId)).then((user) => {
+      let str = '', entity: MessageEntity;
+      const usernames = getPeerActiveUsernames(user);
+      if(usernames[0]) {
+        str = '@' + usernames[0];
+      } else {
+        str = user.first_name || user.last_name;
+        entity = {
+          _: 'messageEntityMentionName',
+          length: str.length,
+          offset: 0,
+          user_id: user.id
+        };
+      }
+
+      str += ' ';
+      this.insertAtCaret(str, entity, isHelper);
+    });
+  }
+
   public destroy() {
     // this.chat.log.error('Input destroying');
 
@@ -2185,7 +2207,7 @@ export default class ChatInput {
     const newValue = newPrefix + insertText + suffix;
 
     if(isHelper && caretPos !== -1) {
-      const match = matches[2];
+      const match = matches ? matches[2] : fullValue;
       // const {node, selection} = getCaretPosNew(this.messageInput);
 
       const selection = document.getSelection();

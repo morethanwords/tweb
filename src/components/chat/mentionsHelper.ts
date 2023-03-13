@@ -5,7 +5,6 @@
  */
 
 import type ChatInput from './input';
-import type {MessageEntity} from '../../layer';
 import AutocompleteHelperController from './autocompleteHelperController';
 import AutocompletePeerHelper from './autocompletePeerHelper';
 import {AppManagers} from '../../lib/appManagers/managers';
@@ -25,24 +24,7 @@ export default class MentionsHelper extends AutocompletePeerHelper {
       'mentions-helper',
       (target) => {
         const userId = (target as HTMLElement).dataset.peerId.toUserId();
-        const user = Promise.resolve(managers.appUsersManager.getUser(userId)).then((user) => {
-          let str = '', entity: MessageEntity;
-          const usernames = getPeerActiveUsernames(user);
-          if(usernames[0]) {
-            str = '@' + usernames[0];
-          } else {
-            str = user.first_name || user.last_name;
-            entity = {
-              _: 'messageEntityMentionName',
-              length: str.length,
-              offset: 0,
-              user_id: user.id
-            };
-          }
-
-          str += ' ';
-          chatInput.insertAtCaret(str, entity);
-        });
+        chatInput.mentionUser(userId, true);
       }
     );
   }

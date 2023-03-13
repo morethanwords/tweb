@@ -49,6 +49,7 @@ import getMediaFromMessage from '../../lib/appManagers/utils/messages/getMediaFr
 import canSaveMessageMedia from '../../lib/appManagers/utils/messages/canSaveMessageMedia';
 import getAlbumText from '../../lib/appManagers/utils/messages/getAlbumText';
 import PopupElement from '../popups';
+import AvatarElement from '../avatar';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -90,6 +91,7 @@ export default class ChatContextMenu {
   private linkToMessage: Awaited<ReturnType<ChatContextMenu['getUrlToMessage']>>;
   private selectedMessagesText: string;
   private selectedMessages: MyMessage[];
+  private avatarPeerId: number;
 
   constructor(
     private chat: Chat,
@@ -117,7 +119,7 @@ export default class ChatContextMenu {
           '.reply',
           '.document',
           'audio-element',
-          'avatar-element',
+          // 'avatar-element',
           'a',
           '.bubble-beside-button',
           'replies-element',
@@ -142,15 +144,16 @@ export default class ChatContextMenu {
   }
 
   private onContextMenu = (e: MouseEvent | Touch | TouchEvent) => {
-    let bubble: HTMLElement, contentWrapper: HTMLElement;
+    let bubble: HTMLElement, contentWrapper: HTMLElement, avatar: AvatarElement;
 
     try {
       contentWrapper = findUpClassName(e.target, 'bubble-content-wrapper');
       bubble = contentWrapper ? contentWrapper.parentElement : findUpClassName(e.target, 'bubble');
+      avatar = findUpClassName(e.target, 'bubbles-group-avatar') as AvatarElement;
     } catch(e) {}
 
     // ! context menu click by date bubble (there is no pointer-events)
-    if(!bubble || bubble.classList.contains('bubble-first')) return;
+    if((!bubble || bubble.classList.contains('bubble-first')) && !avatar) return;
 
     let element = this.element;
     if(e instanceof MouseEvent || e.hasOwnProperty('preventDefault')) (e as any).preventDefault();
@@ -159,8 +162,10 @@ export default class ChatContextMenu {
     }
     if(e instanceof MouseEvent || e.hasOwnProperty('cancelBubble')) (e as any).cancelBubble = true;
 
-    let mid = +bubble.dataset.mid;
-    if(!mid) return;
+    let mid = avatar ? 0 : +bubble.dataset.mid;
+    if(!mid && mid !== 0) {
+      return;
+    }
 
     const r = async() => {
       const isSponsored = this.isSponsored = mid < 0;
@@ -177,9 +182,9 @@ export default class ChatContextMenu {
 
       this.sponsoredMessage = isSponsored ? (bubble as any).message.sponsoredMessage : undefined;
 
-      const mids = await this.chat.getMidsByMid(mid);
+      const mids = avatar ? [] : await this.chat.getMidsByMid(mid);
       // * если открыть контекстное меню для альбома не по бабблу, и последний элемент не выбран, чтобы показать остальные пункты
-      if(this.chat.selection.isSelecting && !contentWrapper) {
+      if(this.chat.selection.isSelecting && !contentWrapper && mid) {
         if(isSponsored) {
           return;
         }
@@ -196,6 +201,8 @@ export default class ChatContextMenu {
 
       this.isOverBubble = !!contentWrapper;
 
+      this.avatarPeerId = (avatar as AvatarElement)?.peerId;
+
       const groupedItem = findUpClassName(this.target, 'grouped-item');
       this.isTargetAGroupedItem = !!groupedItem;
       if(groupedItem) {
@@ -205,14 +212,14 @@ export default class ChatContextMenu {
       }
 
       this.isSelected = this.chat.selection.isMidSelected(this.peerId, this.mid);
-      this.message = (bubble as any).message || await this.chat.getMessage(this.mid);
-      this.albumMessages = (this.message as Message.message).grouped_id ? await this.managers.appMessagesManager.getMessagesByAlbum((this.message as Message.message).grouped_id) : undefined;
-      this.noForwards = !isSponsored && !(await this.managers.appMessagesManager.canForward(this.message));
+      this.message = avatar ? undefined : (bubble as any).message || await this.chat.getMessage(this.mid);
+      this.albumMessages = (this.message as Message.message)?.grouped_id ? await this.managers.appMessagesManager.getMessagesByAlbum((this.message as Message.message).grouped_id) : undefined;
+      this.noForwards = this.message && !isSponsored && !(await this.managers.appMessagesManager.canForward(this.message));
       this.viewerPeerId = undefined;
       this.canOpenReactedList = undefined;
       this.linkToMessage = await this.getUrlToMessage();
       this.selectedMessagesText = await this.getSelectedMessagesText();
-      this.selectedMessages = this.chat.selection.isSelecting ? await this.chat.selection.getSelectedMessages() : undefined;
+      this.selectedMessages = this.chat.selection.isSelecting && !avatar ? await this.chat.selection.getSelectedMessages() : undefined;
 
       const initResult = await this.init();
       if(!initResult) {
@@ -242,7 +249,7 @@ export default class ChatContextMenu {
         }
       }
 
-      const side: 'left' | 'right' = bubble.classList.contains('is-in') ? 'left' : 'right';
+      const side: 'left' | 'right' = !bubble || bubble.classList.contains('is-in') ? 'left' : 'right';
       // bubble.parentElement.append(element);
       // appImManager.log('contextmenu', e, bubble, side);
       positionMenu((e as TouchEvent).touches ? (e as TouchEvent).touches[0] : e as MouseEvent, element, side, menuPadding);
@@ -313,6 +320,36 @@ export default class ChatContextMenu {
   }
 
   private setButtons() {
+    if(this.avatarPeerId !== undefined) {
+      const openPeer = () => {
+        this.chat.appImManager.setInnerPeer({peerId: this.avatarPeerId});
+      };
+      this.buttons = [{
+        icon: 'message',
+        text: 'SendMessage',
+        onClick: openPeer,
+        verify: () => this.chat.peerId !== this.avatarPeerId && this.avatarPeerId.isUser()
+      }, {
+        icon: 'newgroup',
+        text: 'OpenGroup2',
+        onClick: openPeer,
+        verify: () => this.chat.peerId !== this.avatarPeerId && this.managers.appPeersManager.isAnyGroup(this.avatarPeerId)
+      }, {
+        icon: 'newchannel',
+        text: 'OpenChannel2',
+        onClick: openPeer,
+        verify: () => this.chat.peerId !== this.avatarPeerId && this.managers.appPeersManager.isBroadcast(this.avatarPeerId)
+      }, {
+        icon: 'mention',
+        text: 'Mention',
+        onClick: () => {
+          this.chat.input.mentionUser(this.avatarPeerId.toUserId(), false);
+        },
+        verify: () => /* this.avatarPeerId.isUser() &&  */this.chat.canSend('send_plain')
+      }];
+      return;
+    }
+
     const verifyFavoriteSticker = async(toAdd: boolean) => {
       const doc = ((this.message as Message.message).media as MessageMedia.messageMediaDocument)?.document;
       if(!(doc as MyDocument)?.sticker) {
@@ -770,7 +807,7 @@ export default class ChatContextMenu {
     let reactionsMenu: ChatReactionsMenu;
     let reactionsMenuPosition: 'horizontal' | 'vertical';
     if(
-      this.message._ === 'message' &&
+      this.message?._ === 'message' &&
       !this.chat.selection.isSelecting &&
       !this.message.pFlags.is_outgoing &&
       !this.message.pFlags.is_scheduled &&
@@ -868,7 +905,7 @@ export default class ChatContextMenu {
   }
 
   private async getUrlToMessage() {
-    if(this.peerId.isUser()) {
+    if(!this.message || this.peerId.isUser()) {
       return;
     }
 
@@ -898,7 +935,7 @@ export default class ChatContextMenu {
   }
 
   private async getSelectedMessagesText() {
-    if(!isSelectionEmpty()) {
+    if(this.avatarPeerId || !isSelectionEmpty()) {
       return '';
     }
 

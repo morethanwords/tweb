@@ -890,7 +890,8 @@ export default class ChatSelection extends AppSelection {
   }
 
   public canSelectBubble(bubble: HTMLElement) {
-    return !bubble.classList.contains('service') &&
+    return bubble &&
+      !bubble.classList.contains('service') &&
       !bubble.classList.contains('is-outgoing') &&
       !bubble.classList.contains('is-error') &&
       !bubble.classList.contains('bubble-first') &&

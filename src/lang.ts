@@ -955,6 +955,10 @@ const lang = {
   'BotAlreadyAddedToAttachMenu': 'This bot is already added to your attachment menu.',
   'AddBot': 'Add Bot',
   'ActionAttachMenuBotAllowed': 'You allowed this bot to message you when you added it to your attachment menu.',
+  'SendMessage': 'Send Message',
+  'Mention': 'Mention',
+  'OpenChannel2': 'Open Channel',
+  'OpenGroup2': 'Open Group',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
