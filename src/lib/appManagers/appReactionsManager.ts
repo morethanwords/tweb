@@ -49,13 +49,18 @@ export class AppReactionsManager extends AppManager {
     this.rootScope.addEventListener('user_auth', () => {
       setTimeout(() => {
         Promise.resolve(this.getAvailableReactions()).then(async(availableReactions) => {
-          for(const availableReaction of availableReactions) {
+          for(let i = 0, length = availableReactions.length; i < length; ++i) {
+            const availableReaction = availableReactions[i];
             await Promise.all([
               availableReaction.around_animation && this.apiFileManager.downloadMedia({media: availableReaction.around_animation}),
               availableReaction.static_icon && this.apiFileManager.downloadMedia({media: availableReaction.static_icon}),
               availableReaction.appear_animation && this.apiFileManager.downloadMedia({media: availableReaction.appear_animation}),
               availableReaction.center_icon && this.apiFileManager.downloadMedia({media: availableReaction.center_icon})
             ]);
+
+            if(i > 15) {
+              break;
+            }
 
             await pause(1000);
           }

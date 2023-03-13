@@ -640,7 +640,7 @@ export default class PeerProfile {
         return;
       }
 
-      return await m(this._setMoreDetails(peerId, peerFull));
+      return m(this._setMoreDetails(peerId, peerFull));
     });
 
     if(result.cached && manual) {

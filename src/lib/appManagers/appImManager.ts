@@ -108,6 +108,8 @@ import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import liteMode, {LiteModeKey} from '../../helpers/liteMode';
 import RLottiePlayer from '../rlottie/rlottiePlayer';
 import PopupGiftPremium from '../../components/popups/giftPremium';
+import assumeType from '../../helpers/assumeType';
+import noop from '../../helpers/noop';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -719,6 +721,10 @@ export class AppImManager extends EventListenerBase<{
       });
     }
 
+    type K1 = {thread?: string, comment?: string, t?: string};
+    type K2 = {thread?: string, comment?: string, start?: string, t?: string};
+    type K3 = {startattach?: string, attach?: string, choose?: string};
+
     addAnchorListener<{
     //   pathnameParams: ['c', string, string],
     //   uriParams: {thread?: number}
@@ -726,7 +732,7 @@ export class AppImManager extends EventListenerBase<{
     //   pathnameParams: [string, string?],
     //   uriParams: {comment?: number}
       pathnameParams: ['c', string, string] | [string, string?],
-      uriParams: {thread?: string, comment?: string, t?: string} | {comment?: string, start?: string, t?: string}
+      uriParams: K1 | K2 | K3
     }>({
       name: 'im',
       callback: async({pathnameParams, uriParams}, element) => {
@@ -737,6 +743,7 @@ export class AppImManager extends EventListenerBase<{
             phone: pathnameParams[0].slice(1)
           };
         } else if(pathnameParams[0] === 'c') {
+          assumeType<K1>(uriParams);
           pathnameParams.shift();
           const thread = 'thread' in uriParams ? uriParams.thread : pathnameParams[2] && pathnameParams[1];
           link = {
@@ -749,6 +756,7 @@ export class AppImManager extends EventListenerBase<{
             t: uriParams.t
           };
         } else {
+          assumeType<K2>(uriParams);
           const thread = 'thread' in uriParams ? uriParams.thread : pathnameParams[2] && pathnameParams[1];
           link = {
             _: INTERNAL_LINK_TYPE.MESSAGE,
@@ -759,6 +767,15 @@ export class AppImManager extends EventListenerBase<{
             start: 'start' in uriParams ? uriParams.start : undefined,
             stack: this.getStackFromElement(element),
             t: uriParams.t
+          };
+        }
+
+        if('startattach' in uriParams || 'attach' in uriParams) {
+          assumeType<K3>(uriParams);
+          link = {
+            _: INTERNAL_LINK_TYPE.ATTACH_MENU_BOT,
+            nestedLink: link,
+            ...uriParams
           };
         }
 
@@ -787,7 +804,10 @@ export class AppImManager extends EventListenerBase<{
         thread?: string,
         comment?: string,
         phone?: string,
-        t?: string
+        t?: string,
+        attach?: string,
+        startattach?: string,
+        choose?: string
       }
     }>({
       name: 'resolve',
@@ -803,6 +823,12 @@ export class AppImManager extends EventListenerBase<{
             ...uriParams,
             stack: this.getStackFromElement(element)
           });
+        }
+
+        if(uriParams.attach !== undefined || uriParams.startattach !== undefined) {
+          const nestedLink = link;
+          link = this.makeLink(INTERNAL_LINK_TYPE.ATTACH_MENU_BOT, uriParams as Required<typeof uriParams>);
+          link.nestedLink = nestedLink;
         }
 
         this.processInternalLink(link);
@@ -1262,6 +1288,56 @@ export class AppImManager extends EventListenerBase<{
             PopupElement.createPopup(PopupPayment, undefined, inputInvoice, paymentForm);
           });
         });
+        break;
+      }
+
+      case INTERNAL_LINK_TYPE.ATTACH_MENU_BOT: {
+        console.log(link);
+        const botUsername = link.attach || link.domain;
+        const user = await this.managers.appUsersManager.resolveUserByUsername(botUsername).catch(() => undefined as User.user);
+
+        if(link.attach !== undefined) {
+          this.processInternalLink(link.nestedLink);
+        }
+
+        let errorLangPackKey: LangPackKey;
+        if(!user) {
+          errorLangPackKey = 'Alert.UserDoesntExists';
+        } else if(!user.pFlags.bot_attach_menu) {
+          errorLangPackKey = 'BotCantAddToAttachMenu';
+        }/*  else if(user.pFlags.attach_menu_enabled) {
+          errorLangPackKey = 'BotAlreadyAddedToAttachMenu';
+        } */
+
+        if(errorLangPackKey) {
+          toastNew({langPackKey: errorLangPackKey});
+          break;
+        }
+
+        const peerId = user.id.toPeerId(false);
+        const attachMenuBot = await this.managers.appAttachMenuBotsManager.getAttachMenuBot(user.id);
+
+        console.log(attachMenuBot);
+
+        if(attachMenuBot.pFlags.inactive) {
+          const haveWriteAccess = await confirmationPopup({
+            button: {
+              text: 'Add'
+            },
+            descriptionLangKey: 'BotRequestAttachPermission',
+            descriptionLangArgs: [await wrapPeerTitle({peerId})],
+            checkbox: attachMenuBot.pFlags.request_write_access ? {
+              text: 'OpenUrlOption2',
+              textArgs: [await wrapPeerTitle({peerId})],
+              checked: true
+            } : undefined,
+            peerId,
+            titleLangKey: 'AddBot'
+          });
+
+          await this.managers.appAttachMenuBotsManager.toggleBotInAttachMenu(user.id, true, haveWriteAccess);
+        }
+
         break;
       }
 

@@ -166,7 +166,7 @@ let init = () => {
     let usePlainText = true;
 
     // @ts-ignore
-    let html: string = (e.originalEvent || e).clipboardData.getData('text/html');
+    let html: string = (e.originalEvent || e).clipboardData.getData('text/html') || plainText;
 
     const filterEntity = (e: MessageEntity) => e._ === 'messageEntityEmoji' || (e._ === 'messageEntityLinebreak' && !noLinebreaks);
     if(noLinebreaks) {

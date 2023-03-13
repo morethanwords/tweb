@@ -38,6 +38,7 @@ import replaceContent from '../../helpers/dom/replaceContent';
 import BOM from '../../helpers/string/bom';
 import framesCache from '../../helpers/framesCache';
 import wrapTelegramUrlToAnchor from './wrapTelegramUrlToAnchor';
+import {IS_FIREFOX} from '../../environment/userAgent';
 
 const resizeObserver = new ResizeObserver((entries) => {
   for(const entry of entries) {
@@ -1311,15 +1312,18 @@ export default function wrapRichText(text: string, options: Partial<{
         break;
       }
 
-      // case 'messageEntityLinebreak': {
-      //   if(options.noLinebreaks) {
-      //     insertPart(entity, ' ');
-      //   } else {
-      //     insertPart(entity, '<br/>');
-      //   }
+      case 'messageEntityLinebreak': {
+        if(options.wrappingDraft && IS_FIREFOX) {
+          element = document.createElement('br');
+        }
+        // if(options.noLinebreaks) {
+        //   insertPart(entity, ' ');
+        // } else {
+        //   insertPart(entity, '<br/>');
+        // }
 
-      //   break;
-      // }
+        break;
+      }
 
       case 'messageEntityUrl':
       case 'messageEntityTextUrl': {

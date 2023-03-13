@@ -15,7 +15,8 @@ export function parseUriParamsLine(line: string) {
   }
 
   line.split('&').forEach((item) => {
-    params[item.split('=')[0]] = decodeURIComponent(item.split('=')[1]);
+    const [key, value = ''] = item.split('=');
+    params[key] = decodeURIComponent(value);
   });
 
   return params;

@@ -580,23 +580,29 @@ export default class Chat extends EventListenerBase<{
     });
   }
 
-  public async finishPeerChange(isTarget: boolean, isJump: boolean, lastMsgId: number, startParam?: string) {
+  public async finishPeerChange(options: {
+    isTarget?: boolean,
+    isJump?: boolean,
+    lastMsgId?: number,
+    startParam?: string,
+    middleware: () => boolean
+  }) {
     if(this.peerChanged) return;
 
     const peerId = this.peerId;
     this.peerChanged = true;
     this.wasAlreadyUsed = true;
 
-    const middleware = this.bubbles.getMiddleware();
+    const {middleware} = options;
 
     this.cleanup(false);
 
     const sharedMediaTab = this.sharedMediaTab;
 
     const callbacksPromise = Promise.all([
-      this.topbar.finishPeerChange(isTarget),
+      this.topbar.finishPeerChange(options),
       this.bubbles.finishPeerChange(),
-      this.input.finishPeerChange(startParam),
+      this.input.finishPeerChange(options),
       sharedMediaTab.fillProfileElements()
     ]);
 

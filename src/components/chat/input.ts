@@ -648,7 +648,7 @@ export default class ChatInput {
       icon: 'gift',
       text: 'GiftPremium',
       onClick: () => this.chat.appImManager.giftPremium(this.chat.peerId),
-      verify: async() => await this.chat.canGiftPremium() && (await this.managers.apiManager.getAppConfig()).premium_gift_attach_menu_icon
+      verify: () => Promise.all([this.chat.canGiftPremium(), this.managers.apiManager.getAppConfig()]).then(([canGift, {premium_gift_attach_menu_icon}]) => canGift && premium_gift_attach_menu_icon)
     }, {
       icon: 'poll',
       text: 'Poll',
@@ -676,6 +676,7 @@ export default class ChatInput {
       onOpenBefore: async() => {
         const attachMenuBots = await this.managers.appAttachMenuBotsManager.getAttachMenuBots();
         const buttons = attachMenuButtons.slice();
+        console.log(attachMenuBots);
         const attachMenuBotsButtons = attachMenuBots.filter((attachMenuBot) => {
           return !attachMenuBot.pFlags.inactive;
         }).map((attachMenuBot) => {
@@ -693,8 +694,8 @@ export default class ChatInput {
                   'allow-same-origin',
                   'allow-popups',
                   'allow-forms',
-                  'allow-modals',
-                  'allow-storage-access-by-user-activation'
+                  'allow-modals'
+                  // 'allow-storage-access-by-user-activation'
                 ].join(' ');
 
                 class P extends PopupElement<{
@@ -1407,13 +1408,24 @@ export default class ChatInput {
     return this.sendAs;
   }
 
-  public async finishPeerChange(startParam?: string) {
+  public async finishPeerChange(options: Parameters<Chat['finishPeerChange']>[0]) {
     const peerId = this.chat.peerId;
+    const {startParam, middleware} = options;
 
-    const {forwardElements, btnScheduled, replyKeyboard, sendMenu, goDownBtn, chatInput, botCommandsToggle} = this;
+    const {
+      forwardElements,
+      btnScheduled,
+      replyKeyboard,
+      sendMenu,
+      goDownBtn,
+      chatInput,
+      botCommandsToggle,
+      attachMenu
+    } = this;
 
     const previousSendAs = this.sendAs;
     const sendAs = this.createSendAs();
+    const filteredAttachMenuButtons = this.filterAttachMenuButtons();
 
     const [
       isBroadcast,
@@ -1424,8 +1436,7 @@ export default class ChatInput {
       neededFakeContainer,
       ackedPeerFull,
       ackedScheduledMids,
-      setSendAsCallback,
-      filteredAttachMenuButtons
+      setSendAsCallback
     ] = await Promise.all([
       this.managers.appPeersManager.isBroadcast(peerId),
       this.managers.appPeersManager.canPinMessage(peerId),
@@ -1435,8 +1446,7 @@ export default class ChatInput {
       this.getNeededFakeContainer(startParam),
       modifyAckedPromise(this.managers.acknowledged.appProfileManager.getProfileByPeerId(peerId)),
       btnScheduled ? modifyAckedPromise(this.managers.acknowledged.appMessagesManager.getScheduledMessages(peerId)) : undefined,
-      sendAs ? (sendAs.setPeerId(this.chat.peerId), sendAs.updateManual(true)) : undefined,
-      this.filterAttachMenuButtons()
+      sendAs ? (sendAs.setPeerId(this.chat.peerId), sendAs.updateManual(true)) : undefined
     ]);
 
     const placeholderKey = this.messageInput ? await this.getPlaceholderKey(canSendPlain) : undefined;
@@ -1466,7 +1476,6 @@ export default class ChatInput {
 
       if(btnScheduled && ackedScheduledMids) {
         btnScheduled.classList.add('hide');
-        const middleware = this.chat.bubbles.getMiddleware();
         callbackify(ackedScheduledMids.result, (mids) => {
           if(!middleware() || !mids) return;
           btnScheduled.classList.toggle('hide', !mids.length);
@@ -1483,7 +1492,6 @@ export default class ChatInput {
         this.updateBotCommandsToggle(true);
         botCommandsToggle.remove();
         if(isBot) {
-          const middleware = this.chat.bubbles.getMiddleware();
           const result = ackedPeerFull.result;
           callbackify(result, (userFull) => {
             if(!middleware()) return;
@@ -1498,8 +1506,19 @@ export default class ChatInput {
       sendMenu?.setPeerId(peerId);
 
       if(this.messageInput) {
-        this.updateMessageInput(canSend, canSendPlain, placeholderKey, filteredAttachMenuButtons);
+        this.updateMessageInput(canSend, canSendPlain, placeholderKey);
         this.messageInput.dataset.peerId = '' + peerId;
+
+        if(filteredAttachMenuButtons && attachMenu) {
+          filteredAttachMenuButtons.then((visible) => {
+            if(!middleware()) {
+              return;
+            }
+
+            attachMenu.toggleAttribute('disabled', !visible.length);
+            attachMenu.classList.toggle('btn-disabled', !visible.length);
+          });
+        }
       }
 
       this.messageInputField?.onFakeInput(undefined, true);
@@ -1619,10 +1638,9 @@ export default class ChatInput {
   public updateMessageInput(
     canSend: boolean,
     canSendPlain: boolean,
-    placeholderKey: LangPackKey,
-    visible: ChatInput['attachMenuButtons']
+    placeholderKey: LangPackKey
   ) {
-    const {chatInput, attachMenu, messageInput} = this;
+    const {chatInput, messageInput} = this;
     const isHidden = chatInput.classList.contains('is-hidden');
     const willBeHidden = !canSend;
     if(isHidden !== willBeHidden) {
@@ -1655,11 +1673,6 @@ export default class ChatInput {
       if(!messageInput.innerHTML) {
         this.messageInputField.onFakeInput(undefined, true);
       }
-    }
-
-    if(attachMenu) {
-      attachMenu.toggleAttribute('disabled', !visible.length);
-      attachMenu.classList.toggle('btn-disabled', !visible.length);
     }
 
     this.updateSendBtn();

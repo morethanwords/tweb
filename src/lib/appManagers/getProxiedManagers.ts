@@ -60,7 +60,9 @@ import DEBUG from '../../config/debug';
 //   sentMethods2 = {};
 // }, 2000);
 
-const DEBUG_MANAGER_REQUESTS: {[managerName: string]: Set<string>} = {};
+const DEBUG_MANAGER_REQUESTS: {[managerName: string]: Set<string>} = {
+  // appProfileManager: new Set(['getProfile', 'getProfileByPeerId'])
+};
 if(DEBUG) {
   (window as any).DEBUG_MANAGER_REQUESTS = DEBUG_MANAGER_REQUESTS;
 }
@@ -84,7 +86,7 @@ function createProxy(/* source: T,  */name: string, ack?: boolean) {
 
         if(DEBUG) {
           if(DEBUG_MANAGER_REQUESTS[name]?.has(p as any)) {
-            console.warn('manager request', name, p, args);
+            console.warn('manager request', name, p, args, ack);
           }
         }
 

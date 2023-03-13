@@ -1141,7 +1141,7 @@ export default class ChatBubbles {
       if(hadRights !== hasRights || hadPlainRights !== hasPlainRights) {
         const callbacks = await Promise.all([
           this.finishPeerChange(),
-          this.chat.input.finishPeerChange()
+          this.chat.input.finishPeerChange({middleware: this.getMiddleware()})
         ]);
 
         callbacks.forEach((callback) => callback());
@@ -3184,10 +3184,17 @@ export default class ChatBubbles {
     log.warn('got history');// warning
 
     const {promise, cached} = result;
+    const finishPeerChangeOptions: Parameters<Chat['finishPeerChange']>[0] = {
+      isTarget,
+      isJump,
+      lastMsgId,
+      startParam,
+      middleware
+    };
 
     if(!cached && !samePeer) {
-      await m(this.chat.finishPeerChange(isTarget, isJump, lastMsgId, startParam));
-      this.scrollable.container.textContent = '';
+      await m(this.chat.finishPeerChange(finishPeerChangeOptions));
+      this.scrollable.container.replaceChildren();
       // oldContainer.textContent = '';
       // oldChatInner.remove();
       this.preloader.attach(this.container);
@@ -3203,7 +3210,7 @@ export default class ChatBubbles {
       const mountedByLastMsgId = haveToScrollToBubble ? await m(lastMsgId ? this.getMountedBubble(lastMsgId) : {bubble: this.getLastBubble()}) : undefined;
       if(cached && !samePeer) {
         log.warn('finishing peer change');
-        await m(this.chat.finishPeerChange(isTarget, isJump, lastMsgId, startParam)); // * костыль
+        await m(this.chat.finishPeerChange(finishPeerChangeOptions)); // * костыль
         log.warn('finished peer change');
       }
 

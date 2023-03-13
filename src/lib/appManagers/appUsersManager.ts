@@ -28,6 +28,7 @@ import canSendToUser from './utils/users/canSendToUser';
 import {AppStoragesManager} from './appStoragesManager';
 import deepEqual from '../../helpers/object/deepEqual';
 import getPeerActiveUsernames from './utils/peers/getPeerActiveUsernames';
+import callbackify from '../../helpers/callbackify';
 
 export type User = MTUser.user;
 export type TopPeerType = 'correspondents' | 'bots_inline';
@@ -310,6 +311,12 @@ export class AppUsersManager extends AppManager {
       method: 'contacts.resolveUsername',
       params: {username},
       processResult: (resolvedPeer) => this.processResolvedPeer(resolvedPeer)
+    });
+  }
+
+  public resolveUserByUsername(username: string) {
+    return callbackify(this.resolveUsername(username), (peer) => {
+      return peer?._ === 'user' ? peer : undefined;
     });
   }
 

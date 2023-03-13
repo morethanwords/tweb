@@ -12,6 +12,8 @@ import makeError from '../../helpers/makeError';
 import getAttachMenuBotIcon from './utils/attachMenuBots/getAttachMenuBotIcon';
 import getServerMessageId from './utils/messageId/getServerMessageId';
 
+const BOTS_SUPPORTED = false;
+
 export default class AppAttachMenuBotsManager extends AppManager {
   private attachMenuBots: Map<BotId, AttachMenuBot>;
   private attachMenuBotsArr: AttachMenuBot[];
@@ -58,8 +60,7 @@ export default class AppAttachMenuBotsManager extends AppManager {
         assumeType<AttachMenuBots.attachMenuBots>(attachMenuBots);
         this.appUsersManager.saveApiUsers(attachMenuBots.users);
         this.saveAttachMenuBots(attachMenuBots.bots);
-        // ! temporary
-        return this.attachMenuBotsArr = attachMenuBots.bots.slice(0, 0);
+        return this.attachMenuBotsArr = attachMenuBots.bots.slice(0, BOTS_SUPPORTED ? undefined : 0);
       }
     });
   }
@@ -69,7 +70,7 @@ export default class AppAttachMenuBotsManager extends AppManager {
   }
 
   public getAttachMenuBot(botId: BotId, overwrite?: boolean) {
-    if(!this.appUsersManager.isAttachMenuBot(botId) || true) {
+    if(!this.appUsersManager.isAttachMenuBot(botId) || !BOTS_SUPPORTED) {
       throw makeError('BOT_INVALID');
     }
 
@@ -151,6 +152,20 @@ export default class AppAttachMenuBotsManager extends AppManager {
       },
       processResult: (result) => {
         console.log(result);
+      }
+    });
+  }
+
+  public toggleBotInAttachMenu(botId: BotId, enabled: boolean, writeAllowed?: boolean) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'messages.toggleBotInAttachMenu',
+      params: {
+        bot: this.appUsersManager.getUserInput(botId),
+        enabled,
+        write_allowed: writeAllowed
+      },
+      processResult: () => {
+        this.apiUpdatesManager.processLocalUpdate({_: 'updateAttachMenuBots'});
       }
     });
   }

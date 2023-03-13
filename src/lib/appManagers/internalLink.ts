@@ -12,10 +12,11 @@ export enum INTERNAL_LINK_TYPE {
   VOICE_CHAT,
   USER_PHONE_NUMBER,
   INVOICE,
-  EMOJI_SET
+  EMOJI_SET,
+  ATTACH_MENU_BOT
 };
 
-export type InternalLink = InternalLink.InternalLinkMessage | InternalLink.InternalLinkPrivatePost | InternalLink.InternalLinkStickerSet | InternalLink.InternalLinkJoinChat | InternalLink.InternalLinkVoiceChat | InternalLink.InternalLinkUserPhoneNumber | InternalLink.InternalLinkInvoice | InternalLink.InternalLinkEmojiSet;
+export type InternalLink = InternalLink.InternalLinkMessage | InternalLink.InternalLinkPrivatePost | InternalLink.InternalLinkStickerSet | InternalLink.InternalLinkJoinChat | InternalLink.InternalLinkVoiceChat | InternalLink.InternalLinkUserPhoneNumber | InternalLink.InternalLinkInvoice | InternalLink.InternalLinkEmojiSet | InternalLink.InternalLinkAttachMenuBot;
 
 export namespace InternalLink {
   export interface InternalLinkMessage {
@@ -73,6 +74,15 @@ export namespace InternalLink {
     _: INTERNAL_LINK_TYPE.EMOJI_SET,
     set: string
   }
+
+  export interface InternalLinkAttachMenuBot {
+    _: INTERNAL_LINK_TYPE.ATTACH_MENU_BOT,
+    startattach?: string,
+    choose?: string,
+    attach?: string,
+    domain?: string,
+    nestedLink?: InternalLink
+  }
 }
 
 export type InternalLinkTypeMap = {
@@ -83,5 +93,6 @@ export type InternalLinkTypeMap = {
   [INTERNAL_LINK_TYPE.VOICE_CHAT]: InternalLink.InternalLinkVoiceChat,
   [INTERNAL_LINK_TYPE.USER_PHONE_NUMBER]: InternalLink.InternalLinkUserPhoneNumber,
   [INTERNAL_LINK_TYPE.INVOICE]: InternalLink.InternalLinkInvoice,
-  [INTERNAL_LINK_TYPE.EMOJI_SET]: InternalLink.InternalLinkEmojiSet
+  [INTERNAL_LINK_TYPE.EMOJI_SET]: InternalLink.InternalLinkEmojiSet,
+  [INTERNAL_LINK_TYPE.ATTACH_MENU_BOT]: InternalLink.InternalLinkAttachMenuBot
 };

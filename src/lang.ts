@@ -950,6 +950,11 @@ const lang = {
   'ActionGiftPremiumTitle': 'Telegram Premium',
   'ActionGiftPremiumSubtitle': 'for %1$s',
   'ChatAdmin': 'admin',
+  'BotRequestAttachPermission': '**%1$s** requests to be added as an option to your attachment menu so you can access it from any chat.',
+  'BotCantAddToAttachMenu': 'This bot can\'t be added to the attachment menu.',
+  'BotAlreadyAddedToAttachMenu': 'This bot is already added to your attachment menu.',
+  'AddBot': 'Add Bot',
+  'ActionAttachMenuBotAllowed': 'You allowed this bot to message you when you added it to your attachment menu.',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

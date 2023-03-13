@@ -8,7 +8,9 @@
 
 export default function setInnerHTML(elem: Element, html: string | DocumentFragment | Element) {
   setDirection(elem);
-  if(typeof(html) === 'string') {
+  if(html === undefined) {
+    elem.replaceChildren();
+  } else if(typeof(html) === 'string') {
     if(!html) elem.replaceChildren();
     else elem.textContent = html;
   } else {

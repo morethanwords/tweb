@@ -313,6 +313,13 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
       }
 
       case 'messageActionBotAllowed': {
+        if(action.pFlags?.attach_menu) {
+          langPackKey = 'ActionAttachMenuBotAllowed';
+          break;
+        } else if(!action.domain) {
+          break;
+        }
+
         const anchorHTML = wrapRichText(action.domain, {
           entities: [{
             _: 'messageEntityUrl',

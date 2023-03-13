@@ -212,7 +212,7 @@ export default function getRichElementValue(
 
   const isSelected = selNode === node;
   const isBlock = BLOCK_TAGS.has(node.tagName);
-  if(isBlock && (line.length || node.tagName === 'BR'/*  || (BLOCK_TAGS.has(node.tagName) && lines.length) */)) {
+  if(isBlock && ((line.length && line[line.length - 1].slice(-1) !== '\n') || node.tagName === 'BR'/*  || (BLOCK_TAGS.has(node.tagName) && lines.length) */)) {
     pushLine();
   } else {
     const alt = node.dataset.stickerEmoji || (node as HTMLImageElement).alt;

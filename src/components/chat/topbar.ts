@@ -719,7 +719,7 @@ export default class ChatTopbar {
     }
   }
 
-  public async finishPeerChange(isTarget: boolean) {
+  public async finishPeerChange(options: Parameters<Chat['finishPeerChange']>[0]) {
     const {peerId, threadId} = this.chat;
 
     let newAvatar: AvatarElement;
@@ -731,7 +731,15 @@ export default class ChatTopbar {
       }
     }
 
-    const [isBroadcast, isAnyChat, chat, _, setTitleCallback, setStatusCallback, state] = await Promise.all([
+    const [
+      isBroadcast,
+      isAnyChat,
+      chat,
+      _,
+      setTitleCallback,
+      setStatusCallback,
+      state
+    ] = await Promise.all([
       this.managers.appPeersManager.isBroadcast(peerId),
       this.managers.appPeersManager.isAnyChat(peerId),
       peerId.isAnyChat() ? this.managers.appChatsManager.getChat(peerId.toChatId()) : undefined,
