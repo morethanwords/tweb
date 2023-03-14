@@ -58,7 +58,7 @@ export default class AppPrivateSearchTab extends SliderSuperTab {
       if(this.onDatePick) {
         attachClickEvent(this.btnPickDate, () => {
           PopupElement.createPopup(PopupDatePicker, new Date(), this.onDatePick).show();
-        });
+        }, {listenerSetter: this.listenerSetter});
       }
 
       query && this.appSearch.searchInput.inputField.setValueSilently(query);

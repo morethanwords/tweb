@@ -4,7 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-// import { getRichValue } from "../helpers/dom";
 import {LangPackKey} from '../lib/langPack';
 import InputField from './inputField';
 
@@ -64,8 +63,8 @@ export default class InputSearch {
 
   onClearClick = () => {
     this.value = '';
-    this.onChange && this.onChange('');
-    this.onClear && this.onClear();
+    this.onChange?.('');
+    this.onClear?.();
   };
 
   get value() {

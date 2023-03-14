@@ -32,6 +32,7 @@ import {AuthState} from './types';
 import {IS_BETA} from './config/debug';
 import IS_INSTALL_PROMPT_SUPPORTED from './environment/installPrompt';
 import cacheInstallPrompt from './helpers/dom/installPrompt';
+import {fillLocalizedDates} from './helpers/date';
 // import appNavigationController from './components/appNavigationController';
 
 document.addEventListener('DOMContentLoaded', async() => {
@@ -253,7 +254,13 @@ document.addEventListener('DOMContentLoaded', async() => {
 
   if(langPack.appVersion !== App.langPackVersion) {
     I18n.getLangPack(langPack.lang_code);
+  } else {
+    fillLocalizedDates();
   }
+
+  rootScope.addEventListener('language_change', () => {
+    fillLocalizedDates();
+  });
 
   /**
    * won't fire if font is loaded too fast

@@ -318,10 +318,10 @@ namespace I18n {
     }
 
     if(lastAppliedLangCode !== currentLangCode) {
-      rootScope.dispatchEvent('language_change', currentLangCode);
       lastAppliedLangCode = currentLangCode;
       cachedDateTimeFormats.clear();
       updateAmPm();
+      rootScope.dispatchEvent('language_change', currentLangCode);
     }
 
     const elements = Array.from(document.querySelectorAll(`.i18n`)) as HTMLElement[];
@@ -528,7 +528,7 @@ namespace I18n {
   }
 
   const cachedDateTimeFormats: Map<string, Intl.DateTimeFormat> = new Map();
-  function getDateTimeFormat(options: Intl.DateTimeFormatOptions = {}) {
+  export function getDateTimeFormat(options: Intl.DateTimeFormatOptions = {}) {
     const json = JSON.stringify(options);
     let dateTimeFormat = cachedDateTimeFormats.get(json);
     if(!dateTimeFormat) {

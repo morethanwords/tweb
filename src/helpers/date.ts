@@ -6,11 +6,41 @@
 
 import {MOUNT_CLASS_TO} from '../config/debug';
 import I18n, {i18n} from '../lib/langPack';
+import capitalizeFirstLetter from './string/capitalizeFirstLetter';
 
 export const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 export const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+export const monthsLocalized = months.slice();
+export const daysLocalized = days.slice();
 
 export const ONE_DAY = 86400;
+
+export function getWeekDays() {
+  const dateTimeFormat = I18n.getDateTimeFormat({weekday: 'long'});
+  const date = new Date(Date.UTC(2017, 0, 2));
+  const out: string[] = [];
+  for(let i = 0; i < 7; ++i) {
+    out.push(capitalizeFirstLetter(dateTimeFormat.format(date)));
+    date.setDate(date.getDate() + 1);
+  }
+  return out;
+}
+
+export function getMonths() {
+  const dateTimeFormat = I18n.getDateTimeFormat({month: 'long'});
+  const date = new Date(Date.UTC(2017, 0, 1));
+  const out: string[] = [];
+  for(let i = 0; i < 12; ++i) {
+    out.push(capitalizeFirstLetter(dateTimeFormat.format(date)));
+    date.setMonth(date.getMonth() + 1);
+  }
+  return out;
+}
+
+export function fillLocalizedDates() {
+  monthsLocalized.splice(0, monthsLocalized.length, ...getMonths());
+  daysLocalized.splice(0, daysLocalized.length, ...getWeekDays());
+}
 
 // https://stackoverflow.com/a/6117889
 export const getWeekNumber = (date: Date) => {
@@ -144,7 +174,7 @@ export function fillTipDates(query: string, dates: DateData[]) {
     return;
   }
 
-  if('today'.indexOf(q) === 0) {
+  if(['today', I18n.format('Peer.Status.Today', true)].some((haystack) => haystack.indexOf(q) === 0)) {
     const date = new Date();
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -158,14 +188,14 @@ export function fillTipDates(query: string, dates: DateData[]) {
 
     const maxDate = date.getTime() - 1;
     dates.push({
-      title: 'Today',
+      title: I18n.format('Date.Today', true),
       minDate,
       maxDate
     });
     return;
   }
 
-  if('yesterday'.indexOf(q) === 0) {
+  if(['yesterday', I18n.format('Peer.Status.Yesterday', true)].some((haystack) => haystack.indexOf(q) === 0)) {
     const date = new Date();
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -179,7 +209,7 @@ export function fillTipDates(query: string, dates: DateData[]) {
 
     const maxDate = date.getTime() - 86400001;
     dates.push({
-      title: 'Yesterday',
+      title: capitalizeFirstLetter(I18n.format('Yesterday', true)),
       minDate,
       maxDate
     });
@@ -418,12 +448,12 @@ function createForDayMonth(dates: DateData[], day: number, month: number) {
 
 function formatterMonthYear(timestamp: number) {
   const date = new Date(timestamp);
-  return months[date.getMonth()].slice(0, 3) + ' ' + date.getFullYear();
+  return monthsLocalized[date.getMonth()].slice(0, 3) + ' ' + date.getFullYear();
 }
 
 function formatterDayMonth(timestamp: number) {
   const date = new Date(timestamp);
-  return months[date.getMonth()].slice(0, 3) + ' ' + date.getDate();
+  return monthsLocalized[date.getMonth()].slice(0, 3) + ' ' + date.getDate();
 }
 
 function formatterYearMax(timestamp: number) {
@@ -433,7 +463,7 @@ function formatterYearMax(timestamp: number) {
 
 function formatWeekLong(timestamp: number) {
   const date = new Date(timestamp);
-  return days[date.getDay()];
+  return daysLocalized[date.getDay()];
 }
 
 function validDateForMonth(day: number, month: number) {
@@ -450,33 +480,9 @@ function isLeapYear(year: number) {
 }
 
 function getMonth(q: string) {
-  /* String[] months = new String[]{
-          LocaleController.getString("January", R.string.January).toLowerCase(),
-          LocaleController.getString("February", R.string.February).toLowerCase(),
-          LocaleController.getString("March", R.string.March).toLowerCase(),
-          LocaleController.getString("April", R.string.April).toLowerCase(),
-          LocaleController.getString("May", R.string.May).toLowerCase(),
-          LocaleController.getString("June", R.string.June).toLowerCase(),
-          LocaleController.getString("July", R.string.July).toLowerCase(),
-          LocaleController.getString("August", R.string.August).toLowerCase(),
-          LocaleController.getString("September", R.string.September).toLowerCase(),
-          LocaleController.getString("October", R.string.October).toLowerCase(),
-          LocaleController.getString("November", R.string.November).toLowerCase(),
-          LocaleController.getString("December", R.string.December).toLowerCase()
-  }; */
-
-  /* String[] monthsEng = new String[12];
-  Calendar c = Calendar.getInstance();
-  for (int i = 1; i <= 12; i++) {
-      c.set(0, 0, 0, 0, 0, 0);
-      c.set(Calendar.MONTH, i);
-      monthsEng[i - 1] = c.getDisplayName(Calendar.MONTH, Calendar.LONG, Locale.ENGLISH).toLowerCase();
-  } */
-
   q = q.toLowerCase();
   for(let i = 0; i < 12; i++) {
-    const month = months[i].toLowerCase();
-    if(month.indexOf(q) === 0) {
+    if([months[i], monthsLocalized[i]].some((month) => month.toLowerCase().indexOf(q) === 0)) {
       return i;
     }
   }

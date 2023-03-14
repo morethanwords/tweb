@@ -125,8 +125,8 @@
         height: 100%;
         width: 100%;
         z-index: 2;
-        font-size: 23px;
-        line-height: 32px !important;
+        font-size: 1.375rem;
+        line-height: var(--size) !important;
         opacity: 0;
         transition: .2s opacity, .2s transform;
         transform: scaleX(-1) rotate(0deg);

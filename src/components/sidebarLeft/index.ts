@@ -342,7 +342,11 @@ export class AppSidebarLeft extends SidebarSlider {
     };
     appNavigationController.pushItem(navigationItem);
 
-    apiManagerProxy.getState().then(() => {
+    apiManagerProxy.getState().then((state) => {
+      if(!state.keepSigned) {
+        return;
+      }
+
       const CHECK_UPDATE_INTERVAL = 1800e3;
       const checkUpdateInterval = setInterval(() => {
         fetch('version', {cache: 'no-cache'})
@@ -487,7 +491,7 @@ export class AppSidebarLeft extends SidebarSlider {
       div.classList.add('selector-user'/* , 'scale-in' */);
 
       const avatarEl = new AvatarElement();
-      avatarEl.classList.add('selector-user-avatar', 'tgico', 'avatar-32');
+      avatarEl.classList.add('selector-user-avatar', 'tgico', 'avatar-30');
       avatarEl.isDialog = true;
 
       div.dataset.key = '' + key;
@@ -551,13 +555,10 @@ export class AppSidebarLeft extends SidebarSlider {
 
       helper.replaceChildren();
       searchSuper.nav.classList.remove('hide');
-      if(!value) {
-      }
 
       if(!selectedPeerId && value.trim()) {
         const middleware = searchSuper.middleware.get();
         Promise.all([
-          // appMessagesManager.getConversationsAll(value).then((dialogs) => dialogs.map((d) => d.peerId)),
           this.managers.dialogsStorage.getDialogs({query: value}).then(({dialogs}) => dialogs.map((d) => d.peerId)),
           this.managers.appUsersManager.getContactsPeerIds(value, true)
         ]).then((results) => {
@@ -569,7 +570,6 @@ export class AppSidebarLeft extends SidebarSlider {
           });
 
           searchSuper.nav.classList.toggle('hide', !!helper.innerHTML);
-          // console.log('got peerIds by value:', value, [...peerIds]);
         });
       }
 

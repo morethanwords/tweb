@@ -711,10 +711,17 @@ export class UiNotificationsManager {
 
   public start() {
     this.log('start');
+    this.stopped = false;
 
     this.updateLocalSettings();
     rootScope.addEventListener('settings_updated', this.updateLocalSettings);
-    webPushApiManager.start();
+    apiManagerProxy.getState().then((state) => {
+      if(this.stopped || !state.keepSigned) {
+        return;
+      }
+
+      webPushApiManager.start();
+    });
 
     if(!this.notificationsUiSupport) {
       return false;
