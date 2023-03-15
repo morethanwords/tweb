@@ -2116,13 +2116,12 @@ $bubble-border-radius-big: 12px;
     //width: max-content;
     //white-space: nowrap;
     display: flex;
-    justify-content: space-between;
     align-items: center;
 
     .badge-fake {
-      display: inline-block;
-      vertical-align: middle;
-      margin-top: -2px;
+      // display: inline-block;
+      // vertical-align: middle;
+      margin-top: -.125rem;
     }
   }
 
@@ -2130,7 +2129,9 @@ $bubble-border-radius-big: 12px;
     color: var(--message-time-color);
     font-weight: var(--font-weight-normal);
     font-size: var(--messages-time-text-size);
-    margin-inline-start: .125rem;
+    padding-inline-start: .25rem;
+    margin-left: auto;
+    order: 999;
     @include text-overflow();
   }
 
@@ -2383,6 +2384,7 @@ $bubble-border-radius-big: 12px;
 
   .name-with-reply {
     .name {
+      display: block;
       padding: 0 !important;
 
       &:not(:last-child) {
@@ -2394,6 +2396,11 @@ $bubble-border-radius-big: 12px;
           font-weight: var(--font-weight-bold) !important;
         }
       }
+    }
+
+    .is-via {
+      display: block;
+      @include text-overflow();
     }
 
     .reply {
