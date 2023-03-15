@@ -19,10 +19,11 @@ import replaceContent from '../../helpers/dom/replaceContent';
 import setInnerHTML from '../../helpers/dom/setInnerHTML';
 import toggleDisability from '../../helpers/dom/toggleDisability';
 import {formatPhoneNumber} from '../../helpers/formatPhoneNumber';
+import {makeMediaSize} from '../../helpers/mediaSize';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
 import ScrollSaver from '../../helpers/scrollSaver';
 import tsNow from '../../helpers/tsNow';
-import {AccountTmpPassword, InputInvoice, InputPaymentCredentials, LabeledPrice, Message, MessageMedia, PaymentRequestedInfo, PaymentSavedCredentials, PaymentsPaymentForm, PaymentsPaymentReceipt, PaymentsValidatedRequestedInfo, PostAddress, ShippingOption} from '../../layer';
+import {AccountTmpPassword, DocumentAttribute, InputInvoice, InputPaymentCredentials, LabeledPrice, Message, MessageMedia, PaymentRequestedInfo, PaymentSavedCredentials, PaymentsPaymentForm, PaymentsPaymentReceipt, PaymentsValidatedRequestedInfo, PostAddress, ShippingOption} from '../../layer';
 import I18n, {i18n, LangPackKey, _i18n} from '../../lib/langPack';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
@@ -125,7 +126,6 @@ export default class PopupPayment extends PopupElement {
 
   private async d() {
     this.element.classList.add('is-loading');
-    this.show();
 
     let confirmed = false;
     const onConfirmed = () => {
@@ -182,11 +182,20 @@ export default class PopupPayment extends PopupElement {
     if(photo) {
       photoEl = document.createElement('div');
       photoEl.classList.add(detailsClassName + '-photo', 'media-container-contain');
+      const sizeAttribute = photo.attributes.find((attribute) => attribute._ === 'documentAttributeImageSize') as DocumentAttribute.documentAttributeImageSize;
+      const boxSize = makeMediaSize(100, 100);
+      if(sizeAttribute) {
+        const photoSize = makeMediaSize(sizeAttribute.w, sizeAttribute.h);
+        const fittedSize = photoSize.aspectFitted(boxSize);
+        photoEl.style.width = fittedSize.width + 'px';
+        photoEl.style.height = fittedSize.height + 'px';
+      }
+
       wrapPhoto({
         photo: photo,
         container: photoEl,
-        boxWidth: 100,
-        boxHeight: 100,
+        boxWidth: boxSize.width,
+        boxHeight: boxSize.height,
         size: {_: 'photoSizeEmpty', type: ''}
       });
       details.append(photoEl);
@@ -222,6 +231,8 @@ export default class PopupPayment extends PopupElement {
     const preloader = putPreloader(preloaderContainer, true);
     this.scrollable.container.append(preloaderContainer);
 
+    this.show();
+
     const inputInvoice = this.inputInvoice;
     if(!paymentForm) {
       if(isReceipt) paymentForm = await this.managers.appPaymentsManager.getPaymentReceipt(message.peerId, mediaInvoice.receipt_msg_id || (inputInvoice as InputInvoice.inputInvoiceMessage).msg_id);
@@ -231,8 +242,16 @@ export default class PopupPayment extends PopupElement {
 
     let savedInfo = (paymentForm as PaymentsPaymentForm).saved_info || (paymentForm as PaymentsPaymentReceipt).info;
     const savedCredentials = (paymentForm as PaymentsPaymentForm).saved_credentials?.[0];
-    let [lastRequestedInfo, passwordState, providerPeerTitle] = await Promise.all([
-      !isReceipt && savedInfo && this.managers.appPaymentsManager.validateRequestedInfo(inputInvoice, savedInfo),
+    let [
+      lastRequestedInfo,
+      passwordState,
+      providerPeerTitle
+    ] = await Promise.all([
+      !isReceipt && savedInfo && this.managers.appPaymentsManager.validateRequestedInfo(inputInvoice, savedInfo).catch((err: ApiError) => {
+        console.error('validateRequestedInfo', err, savedInfo);
+        // savedInfo = undefined;
+        return undefined as PaymentsValidatedRequestedInfo;
+      }),
       savedCredentials && this.managers.passwordManager.getState(),
       wrapPeerTitle({peerId: paymentForm.provider_id.toPeerId()})
     ]);
@@ -573,13 +592,17 @@ export default class PopupPayment extends PopupElement {
       }
 
       const postAddress = shippingAddress.shipping_address;
-      setRowTitle(shippingAddressRow, [postAddress.city, postAddress.street_line1, postAddress.street_line2].filter(Boolean).join(', '));
+      setRowTitle(shippingAddressRow, [
+        postAddress.city,
+        postAddress.street_line1,
+        postAddress.street_line2
+      ].filter(Boolean).join(', '));
 
-      shippingMethodRow.container.classList.toggle('hide', !lastRequestedInfo && !isReceipt);
+      shippingMethodRow.container.classList.toggle('hide', !lastRequestedInfo?.shipping_options && !isReceipt);
     } : undefined;
 
     const setShippingInfo = (info: PaymentRequestedInfo) => {
-      setShippingTitle && setShippingTitle(info);
+      setShippingTitle && setShippingTitle?.(info);
       shippingNameRow && setRowTitle(shippingNameRow, info.name);
       shippingEmailRow && setRowTitle(shippingEmailRow, info.email);
       shippingPhoneRow && setRowTitle(shippingPhoneRow, info.phone && ('+' + formatPhoneNumber(info.phone).formatted));
@@ -587,7 +610,12 @@ export default class PopupPayment extends PopupElement {
 
     if(!isReceipt) {
       onShippingAddressClick = (focus) => {
-        PopupElement.createPopup(PopupPaymentShipping, paymentForm as PaymentsPaymentForm, inputInvoice, focus).addEventListener('finish', ({shippingAddress, requestedInfo}) => {
+        PopupElement.createPopup(
+          PopupPaymentShipping,
+          paymentForm as PaymentsPaymentForm,
+          inputInvoice,
+          focus
+        ).addEventListener('finish', ({shippingAddress, requestedInfo}) => {
           lastRequestedInfo = requestedInfo;
           savedInfo = (paymentForm as PaymentsPaymentForm).saved_info = shippingAddress;
           setShippingInfo(shippingAddress);
@@ -643,7 +671,12 @@ export default class PopupPayment extends PopupElement {
         icon: 'shipping',
         titleLangKey: 'PaymentCheckoutShippingMethod',
         clickable: !isReceipt && (onShippingMethodClick = () => {
-          PopupElement.createPopup(PopupPaymentShippingMethods, paymentForm as PaymentsPaymentForm, lastRequestedInfo, lastShippingOption).addEventListener('finish', (shippingOption) => {
+          PopupElement.createPopup(
+            PopupPaymentShippingMethods,
+            paymentForm as PaymentsPaymentForm,
+            lastRequestedInfo,
+            lastShippingOption
+          ).addEventListener('finish', (shippingOption) => {
             setShippingOption(shippingOption);
           });
         })
@@ -720,7 +753,7 @@ export default class PopupPayment extends PopupElement {
         if(!lastRequestedInfo) {
           onShippingAddressClick();
           return;
-        } else if(!lastShippingOption) {
+        } else if(!lastShippingOption && lastRequestedInfo.shipping_options) {
           onShippingMethodClick();
           return;
         }
@@ -736,7 +769,11 @@ export default class PopupPayment extends PopupElement {
         }
 
         Promise.resolve(passwordState ?? this.managers.passwordManager.getState()).then((_passwordState) => {
-          PopupElement.createPopup(PopupPaymentCardConfirmation, savedCredentials.title, _passwordState).addEventListener('finish', (tmpPassword) => {
+          PopupElement.createPopup(
+            PopupPaymentCardConfirmation,
+            savedCredentials.title,
+            _passwordState
+          ).addEventListener('finish', (tmpPassword) => {
             passwordState = undefined;
             lastTmpPasword = tmpPassword;
             simulateClickEvent(payButton);
@@ -783,7 +820,11 @@ export default class PopupPayment extends PopupElement {
           if(paymentResult._ === 'payments.paymentResult') {
             onConfirmed();
           } else {
-            popupPaymentVerification = PopupElement.createPopup(PopupPaymentVerification, paymentResult.url, !mediaInvoice.extended_media);
+            popupPaymentVerification = PopupElement.createPopup(
+              PopupPaymentVerification,
+              paymentResult.url,
+              !mediaInvoice.extended_media
+            );
             popupPaymentVerification.addEventListener('finish', () => {
               popupPaymentVerification = undefined;
 
