@@ -16,13 +16,12 @@ import {MyDocument} from '../../lib/appManagers/appDocsManager';
 import I18n, {FormatterArguments, i18n, LangPackKey} from '../../lib/langPack';
 import calcImageInBox from '../../helpers/calcImageInBox';
 import placeCaretAtEnd from '../../helpers/dom/placeCaretAtEnd';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport';
 import getGifDuration from '../../helpers/getGifDuration';
 import replaceContent from '../../helpers/dom/replaceContent';
 import createVideo from '../../helpers/dom/createVideo';
 import prepareAlbum from '../prepareAlbum';
-import {makeMediaSize, MediaSize} from '../../helpers/mediaSize';
+import {makeMediaSize} from '../../helpers/mediaSize';
 import {ThumbCache} from '../../lib/storages/thumbs';
 import onMediaLoad from '../../helpers/onMediaLoad';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
@@ -48,6 +47,7 @@ import rootScope from '../../lib/rootScope';
 import shake from '../../helpers/dom/shake';
 import AUDIO_MIME_TYPES_SUPPORTED from '../../environment/audioMimeTypeSupport';
 import liteMode from '../../helpers/liteMode';
+import {CommentSection} from "./popupCommentSection";
 
 type SendFileParams = SendFileDetails & {
   file?: File,
@@ -83,6 +83,7 @@ export default class PopupNewMedia extends PopupElement {
   private animationGroup: AnimationItemGroup;
   private _scrollable: Scrollable;
   private inputContainer: HTMLDivElement;
+  private commentSection: CommentSection;
 
   constructor(
     private chat: Chat,
@@ -116,7 +117,7 @@ export default class PopupNewMedia extends PopupElement {
       return peerId.isAnyChat() && !onlyVisible ? rootScope.managers.appChatsManager.hasRights(peerId.toChatId(), action) : true;
     });
 
-    const out: {[action in ChatRights]?: boolean} = {};
+    const out: { [action in ChatRights]?: boolean } = {};
 
     const results = await Promise.all(actionsPromises);
     actions.forEach((action, idx) => {
@@ -142,7 +143,7 @@ export default class PopupNewMedia extends PopupElement {
     const canSendVideos = canSend.send_videos;
     const canSendDocs = canSend.send_docs;
 
-    attachClickEvent(this.btnConfirm, () => this.send(), {listenerSetter: this.listenerSetter});
+    // attachClickEvent(this.btnConfirm, () => this.send(), {listenerSetter: this.listenerSetter});
 
     const btnMenu = await ButtonMenuToggle({
       listenerSetter: this.listenerSetter,
@@ -221,37 +222,6 @@ export default class PopupNewMedia extends PopupElement {
     this.mediaContainer.classList.add('popup-photo');
     this.scrollable.container.append(this.mediaContainer);
 
-    const inputContainer = this.inputContainer = document.createElement('div');
-    inputContainer.classList.add('popup-input-container');
-
-    const c = document.createElement('div');
-    c.classList.add('popup-input-inputs', 'input-message-container');
-
-    this.messageInputField = new InputFieldAnimated({
-      placeholder: 'PreviewSender.CaptionPlaceholder',
-      name: 'message',
-      withLinebreaks: true,
-      maxLength: this.captionLengthMax
-    });
-
-    this.listenerSetter.add(this.scrollable.container)('scroll', this.onScroll);
-    this.listenerSetter.add(this.messageInputField.input)('scroll', this.onScroll);
-
-    this.messageInputField.input.classList.replace('input-field-input', 'input-message-input');
-    this.messageInputField.inputFake.classList.replace('input-field-input', 'input-message-input');
-
-    c.append(this.messageInputField.input, this.messageInputField.inputFake);
-    inputContainer.append(c, this.btnConfirm);
-
-    if(!this.ignoreInputValue) {
-      this.messageInputField.value = this.wasInputValue = this.chat.input.messageInputField.input.innerHTML;
-      this.chat.input.messageInputField.value = '';
-    }
-
-    this.container.append(inputContainer);
-
-    this.attachFiles();
-
     this.addEventListener('close', () => {
       this.files.length = 0;
       this.willAttach.sendFileDetails.length = 0;
@@ -292,11 +262,11 @@ export default class PopupNewMedia extends PopupElement {
       const sendMenu = new SendContextMenu({
         onSilentClick: () => {
           this.chat.input.sendSilent = true;
-          this.send();
+          this.send(false, this.wasInputValue);
         },
         onScheduleClick: () => {
           this.chat.input.scheduleSending(() => {
-            this.send();
+            this.send(false, this.wasInputValue);
           });
         },
         openSide: 'top-left',
@@ -308,7 +278,21 @@ export default class PopupNewMedia extends PopupElement {
 
       this.container.append(sendMenu.sendMenu);
     }
+    this.commentSection = new CommentSection({
+      container: this.container,
+      onSubmit: (message) => this.send(false, message),
+      managers: this.managers,
+      scrollable: this.scrollable
+    });
+    await this.commentSection.construct();
+    this.messageInputField = this.commentSection.messageInputField
 
+    if(!this.ignoreInputValue) {
+      this.wasInputValue = this.chat.input.messageInputField.input.innerHTML;
+      this.chat.input.messageInputField.value = '';
+    }
+
+    this.attachFiles();
     currentPopup = this;
   }
 
@@ -448,7 +432,7 @@ export default class PopupNewMedia extends PopupElement {
 
     if(good) {
       const media = this.willAttach.sendFileDetails
-      .filter((d) => MEDIA_MIME_TYPES_SUPPORTED.has(d.file.type))
+        .filter((d) => MEDIA_MIME_TYPES_SUPPORTED.has(d.file.type))
       const mediaWithSpoilers = media.filter((d) => d.mediaSpoiler);
 
       good = single ? true : media.length > 1;
@@ -509,8 +493,8 @@ export default class PopupNewMedia extends PopupElement {
     }
   };
 
-  private async send(force = false) {
-    let caption = this.messageInputField.value;
+  private async send(force = false, message: string) {
+    let caption = message;
     if(caption.length > this.captionLengthMax) {
       toast(I18n.format('Error.PreviewSender.CaptionTooLong', true));
       return;
@@ -544,7 +528,7 @@ export default class PopupNewMedia extends PopupElement {
         }
 
         const found = a.find(([verify]) => {
-          return typeof(verify) === 'function' ? verify() : verify.has(params.file.type);
+          return typeof (verify) === 'function' ? verify() : verify.has(params.file.type);
         });
 
         if(found) {
@@ -554,7 +538,7 @@ export default class PopupNewMedia extends PopupElement {
         return (!isMedia && !canSend.send_docs && 'GlobalAttachDocumentsRestricted') || undefined;
       });
 
-      const key = isBad.find((i) => typeof(i) === 'string') as LangPackKey;
+      const key = isBad.find((i) => typeof (i) === 'string') as LangPackKey;
       if(key) {
         toastNew({
           langPackKey: key
@@ -574,7 +558,7 @@ export default class PopupNewMedia extends PopupElement {
 
     if(this.chat.type === 'scheduled' && !force) {
       this.chat.input.scheduleSending(() => {
-        this.send(true);
+        this.send(true, this.wasInputValue);
       });
 
       return;
@@ -724,7 +708,8 @@ export default class PopupNewMedia extends PopupElement {
               ...thumb
             };
           })
-        ]).then(() => {});
+        ]).then(() => {
+        });
       }
     }
   }
@@ -882,12 +867,12 @@ export default class PopupNewMedia extends PopupElement {
         args.push(files.length);
       } else
 
-      /* const sum = foundPhotos + foundVideos;
-      if(sum > 1 && willAttach.group) {
-        key = 'PreviewSender.SendAlbum';
-        const albumsLength = Math.ceil(sum / 10);
-        args.push(albumsLength);
-      } else  */if(foundPhotos) {
+        /* const sum = foundPhotos + foundVideos;
+        if(sum > 1 && willAttach.group) {
+          key = 'PreviewSender.SendAlbum';
+          const albumsLength = Math.ceil(sum / 10);
+          args.push(albumsLength);
+        } else  */if(foundPhotos) {
         key = 'PreviewSender.SendPhoto';
         args.push(foundPhotos);
       } else if(foundVideos) {

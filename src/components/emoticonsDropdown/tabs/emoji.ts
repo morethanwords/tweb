@@ -14,7 +14,7 @@ import {LangPackKey} from '../../../lib/langPack';
 import rootScope from '../../../lib/rootScope';
 import {emojiFromCodePoints} from '../../../vendor/emoji';
 import {putPreloader} from '../../putPreloader';
-import Scrollable, {ScrollableX} from '../../scrollable';
+import {ScrollableX} from '../../scrollable';
 import IS_EMOJI_SUPPORTED from '../../../environment/emojiSupport';
 import IS_TOUCH_SUPPORTED from '../../../environment/touchSupport';
 import blurActiveElement from '../../../helpers/dom/blurActiveElement';
@@ -30,7 +30,6 @@ import VisibilityIntersector, {OnVisibilityChangeItem} from '../../visibilityInt
 import mediaSizes from '../../../helpers/mediaSizes';
 import wrapStickerSetThumb from '../../wrappers/stickerSetThumb';
 import attachStickerViewerListeners from '../../stickerViewer';
-import ListenerSetter from '../../../helpers/listenerSetter';
 import {Document, StickerSet} from '../../../layer';
 import {CustomEmojiElement, CustomEmojiRendererElement} from '../../../lib/richTextProcessor/wrapRichText';
 import findAndSplice from '../../../helpers/array/findAndSplice';
@@ -43,6 +42,7 @@ import liteMode from '../../../helpers/liteMode';
 import PopupElement from '../../popups';
 
 const loadedURLs: Set<string> = new Set();
+
 export function appendEmoji(emoji: string, container?: HTMLElement, prepend = false, unify = false) {
   // const emoji = details.unified;
   // const emoji = (details.unified as string).split('-')
@@ -114,7 +114,7 @@ export function appendEmoji(emoji: string, container?: HTMLElement, prepend = fa
   return spanEmoji;
 }
 
-export function getEmojiFromElement(element: HTMLElement): {docId?: DocId, emoji: string} {
+export function getEmojiFromElement(element: HTMLElement): { docId?: DocId, emoji: string } {
   const superEmoji = findUpClassName(element, 'super-emoji');
   if(!superEmoji) return;
 
@@ -148,6 +148,7 @@ const EMOJI_CATEGORIES: [LangPackKey | '', string][] = [
 ];
 
 let sorted: Map<(typeof EMOJI_CATEGORIES)[0], string[]>;
+
 function prepare() {
   if(sorted) {
     return sorted;
@@ -186,12 +187,13 @@ function prepare() {
 const EMOJI_ELEMENT_SIZE = makeMediaSize(42, 42);
 const RECENT_MAX_LENGTH = 32;
 
-type EmojiTabItem = {element: HTMLElement} & ReturnType<typeof getEmojiFromElement>;
-type EmojiTabCategory = StickersTabCategory<EmojiTabItem, {renderer: CustomEmojiRendererElement}>;
+type EmojiTabItem = { element: HTMLElement } & ReturnType<typeof getEmojiFromElement>;
+type EmojiTabCategory = StickersTabCategory<EmojiTabItem, { renderer: CustomEmojiRendererElement }>;
 export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
   private closeScrollTop: number;
   private menuInnerScroll: ScrollableX;
   private isStandalone?: boolean;
+  private showInnerMenuAnyway?: boolean;
   private noRegularEmoji?: boolean;
   private stickerSetId?: Parameters<AppStickersManager['getLocalStickerSet']>[0];
   private onClick: (emoji: EmojiTabItem) => void;
@@ -203,7 +205,8 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
     isStandalone?: boolean,
     noRegularEmoji?: boolean,
     stickerSetId?: EmojiTab['stickerSetId'],
-    onClick?: EmojiTab['onClick']
+    onClick?: EmojiTab['onClick'],
+    showInnerMenuAnyway?: boolean
   }) {
     super(
       options.managers,
@@ -274,7 +277,8 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
         customEmojis.set(customEmojiElement.docId, new Set([customEmojiElement]));
       });
 
-      /* const promise =  */renderer.add(customEmojis/* , EmoticonsDropdown.lazyLoadQueue */, undefined, true);
+      /* const promise =  */
+      renderer.add(customEmojis/* , EmoticonsDropdown.lazyLoadQueue */, undefined, true);
       // promise.then(() => {
       //   customEmojis.forEach((elements) => {
       //     elements.forEach((element) => {
@@ -328,7 +332,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
 
     let innerScrollWrapper: HTMLElement;
 
-    if(!this.isStandalone) {
+    if((this.showInnerMenuAnyway && this.isStandalone) || !this.isStandalone) {
       const x = this.menuInnerScroll = new ScrollableX(undefined);
       x.container.classList.add('menu-horizontal-inner-scroll');
 
@@ -486,6 +490,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
           }
         }
       };
+
 
       !this.isStandalone && this.listenerSetter.add(emoticonsDropdown)('opened', () => {
         toggleRenderers(false);

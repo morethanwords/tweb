@@ -11,7 +11,7 @@ import rootScope from '../lib/rootScope';
 import Scrollable from './scrollable';
 import {FocusDirection} from '../helpers/fastSmoothScroll';
 import CheckboxField from './checkboxField';
-import {i18n, LangPackKey, _i18n} from '../lib/langPack';
+import {_i18n, i18n, LangPackKey} from '../lib/langPack';
 import findUpAttribute from '../helpers/dom/findUpAttribute';
 import findUpClassName from '../helpers/dom/findUpClassName';
 import PeerTitle from './peerTitle';
@@ -38,12 +38,112 @@ import getDialogIndex from '../lib/appManagers/utils/dialogs/getDialogIndex';
 import {generateDelimiter} from './generateDelimiter';
 import SettingSection from './settingSection';
 import liteMode from '../helpers/liteMode';
+import {ButtonMenuItemOptions, ButtonMenuSync} from "./buttonMenu";
+import ListenerSetter from "../helpers/listenerSetter";
+import {attachContextMenuListener} from "../helpers/dom/attachContextMenuListener";
+import positionMenu from "../helpers/positionMenu";
+import contextMenuController from "../helpers/contextMenuController";
+import {addFullScreenListener, isFullScreen} from "../helpers/dom/fullScreen";
 
 type SelectSearchPeerType = 'contacts' | 'dialogs' | 'channelParticipants';
 
 // TODO: правильная сортировка для addMembers, т.е. для peerType: 'contacts', потому что там идут сначала контакты - потом неконтакты, а должно всё сортироваться по имени
+export class AppSelectPeersContextMenu {
+  private buttons: (ButtonMenuItemOptions & { verify: (peerId: PeerId) => boolean | Promise<boolean> })[];
+  private element: HTMLElement;
+  private targetPeerId: PeerId;
+  private managers: AppManagers;
+
+
+  constructor(options: {
+    listenerSetter: ListenerSetter,
+    onContextElement: HTMLElement,
+    toggleMultiSelectState: () => void,
+    selectContact: (key: PeerId | string) => void
+  }) {
+    const {listenerSetter} = options;
+    this.buttons = [{
+      icon: 'select',
+      text: 'Message.Context.Select',
+      verify: () => true,
+      onClick: (e) => {
+        cancelEvent(e);
+        options.toggleMultiSelectState();
+        options.selectContact(this.targetPeerId);
+        console.log(this.targetPeerId)
+      }
+    }];
+    this.element = ButtonMenuSync({buttons: this.buttons, listenerSetter});
+    this.element.classList.add('select-peers-menu', 'night');
+
+    attachContextMenuListener({
+      element: options.onContextElement,
+      callback: async(e) => {
+
+        const li = findUpClassName(e.target, 'chatlist-chat');
+        if(!li) {
+          return;
+        }
+
+        if(this.element.parentElement !== appendTo) {
+          appendTo.append(this.element);
+        }
+
+        cancelEvent(e);
+
+        const peerId = this.targetPeerId = li.dataset.peerId.toPeerId();
+
+        await filterAsync(this.buttons, async(button) => {
+          const good = await button.verify(peerId);
+          button.element.classList.toggle('hide', !good);
+          return good;
+        });
+
+        positionMenu((e as TouchEvent).touches ? (e as TouchEvent).touches[0] : e as MouseEvent, this.element, 'right');
+        contextMenuController.openBtnMenu(this.element);
+      },
+      listenerSetter
+    });
+
+    let appendTo: HTMLElement = document.body;
+    addFullScreenListener(document.body, () => {
+      const isFull = isFullScreen();
+      appendTo = document.body;
+
+      if(!isFull) {
+        contextMenuController.close();
+      }
+    }, listenerSetter);
+  }
+
+}
+
+export interface ISelectPeers {
+  appendTo: AppSelectPeers['appendTo'],
+  onChange?: AppSelectPeers['onChange'],
+  peerType?: AppSelectPeers['peerType'],
+  peerId?: AppSelectPeers['peerId'],
+  onFirstRender?: () => void,
+  renderResultsFunc?: AppSelectPeers['renderResultsFunc'],
+  chatRightsActions?: AppSelectPeers['chatRightsActions'],
+  multiSelect?: AppSelectPeers['multiSelect'],
+  rippleEnabled?: AppSelectPeers['rippleEnabled'],
+  avatarSize?: AppSelectPeers['avatarSize'],
+  placeholder?: AppSelectPeers['placeholder'],
+  selfPresence?: AppSelectPeers['selfPresence'],
+  exceptSelf?: AppSelectPeers['exceptSelf'],
+  filterPeerTypeBy?: AppSelectPeers['filterPeerTypeBy'],
+  sectionNameLangPackKey?: AppSelectPeers['sectionNameLangPackKey'],
+  managers: AppSelectPeers['managers'],
+  design?: AppSelectPeers['design'],
+  listenerSetter?: ListenerSetter,
+  toggleableMultiSelect?: boolean,
+}
+
 
 export default class AppSelectPeers {
+  private contextMenu: AppSelectPeersContextMenu;
+  private listenerSetter: ListenerSetter;
   public container = document.createElement('div');
   public list = appDialogsManager.createChatList(/* {
     handheldsSize: 66,
@@ -52,8 +152,7 @@ export default class AppSelectPeers {
   private chatsContainer = document.createElement('div');
   public scrollable: Scrollable;
   private selectedScrollable: Scrollable;
-
-  private selectedContainer: HTMLElement;
+  public selectedContainer: HTMLElement;
   public input: HTMLInputElement;
 
   // public selected: {[peerId: PeerId]: HTMLElement} = {};
@@ -68,7 +167,7 @@ export default class AppSelectPeers {
   private query = '';
   private cachedContacts: PeerId[];
 
-  private loadedWhat: Partial<{[k in 'dialogs' | 'archived' | 'contacts' | 'channelParticipants']: true}> = {};
+  private loadedWhat: Partial<{ [k in 'dialogs' | 'archived' | 'contacts' | 'channelParticipants']: true }> = {};
 
   private renderedPeerIds: Set<PeerId> = new Set();
 
@@ -83,7 +182,7 @@ export default class AppSelectPeers {
   private exceptSelf = false;
   private filterPeerTypeBy: IsPeerType[];
 
-  private tempIds: {[k in keyof AppSelectPeers['loadedWhat']]: number} = {};
+  private tempIds: { [k in keyof AppSelectPeers['loadedWhat']]: number } = {};
   private peerId: PeerId;
 
   private placeholder: LangPackKey;
@@ -98,25 +197,11 @@ export default class AppSelectPeers {
 
   private design: 'round' | 'square' = 'round';
 
-  constructor(options: {
-    appendTo: AppSelectPeers['appendTo'],
-    onChange?: AppSelectPeers['onChange'],
-    peerType?: AppSelectPeers['peerType'],
-    peerId?: AppSelectPeers['peerId'],
-    onFirstRender?: () => void,
-    renderResultsFunc?: AppSelectPeers['renderResultsFunc'],
-    chatRightsActions?: AppSelectPeers['chatRightsActions'],
-    multiSelect?: AppSelectPeers['multiSelect'],
-    rippleEnabled?: AppSelectPeers['rippleEnabled'],
-    avatarSize?: AppSelectPeers['avatarSize'],
-    placeholder?: AppSelectPeers['placeholder'],
-    selfPresence?: AppSelectPeers['selfPresence'],
-    exceptSelf?: AppSelectPeers['exceptSelf'],
-    filterPeerTypeBy?: AppSelectPeers['filterPeerTypeBy'],
-    sectionNameLangPackKey?: AppSelectPeers['sectionNameLangPackKey'],
-    managers: AppSelectPeers['managers'],
-    design?: AppSelectPeers['design']
-  }) {
+  public toggleableMultiSelect: boolean = false;
+  public toggleableMultiSelectState: boolean = false;
+
+
+  constructor(options: ISelectPeers) {
     safeAssign(this, options);
 
     this.container.classList.add('selector', 'selector-' + this.design);
@@ -195,7 +280,6 @@ export default class AppSelectPeers {
           simulateClickEvent(li);
         }
       });
-
       section.content.append(topContainer);
       this.container.append(section.container/* , delimiter */);
     }
@@ -221,7 +305,7 @@ export default class AppSelectPeers {
       let key: PeerId | string = target.dataset.peerId;
       key = key.isPeerId() ? key.toPeerId() : key;
 
-      if(!this.multiSelect) {
+      if(!this.multiSelect || (this.multiSelect && this.toggleableMultiSelect && !this.toggleableMultiSelectState)) {
         this.add(key);
         return;
       }
@@ -260,6 +344,10 @@ export default class AppSelectPeers {
     }, 0);
   }
 
+  private toggleMultiSelectState = () => {
+    this.toggleableMultiSelectState = true;
+    this.container.querySelectorAll('.checkbox-field').forEach(node => node.classList.remove('hide'));
+  }
   private onInput = () => {
     const value = this.input.value;
     if(this.query !== value) {
@@ -553,7 +641,7 @@ export default class AppSelectPeers {
   }
 
   private getMoreSomething(peerType: SelectSearchPeerType) {
-    const map: {[type in SelectSearchPeerType]: () => Promise<any>} = {
+    const map: { [type in SelectSearchPeerType]: () => Promise<any> } = {
       dialogs: this.getMoreDialogs,
       contacts: this.getMoreContacts,
       channelParticipants: this.getMoreChannelParticipants
@@ -565,7 +653,22 @@ export default class AppSelectPeers {
 
   private async renderResults(peerIds: PeerId[]) {
     // console.log('will renderResults:', peerIds);
-
+    if(this.toggleableMultiSelect) {
+      const {listenerSetter} = this;
+      this.contextMenu = new AppSelectPeersContextMenu({
+        onContextElement: this.list,
+        listenerSetter,
+        toggleMultiSelectState: () => {
+          this.toggleMultiSelectState();
+        },
+        selectContact: (peerId) => {
+          window.requestAnimationFrame(() => {
+            const li = this.chatsContainer.querySelector('[data-peer-id="' + peerId + '"]') as HTMLElement;
+            simulateClickEvent(li);
+          })
+        }
+      });
+    }
     // оставим только неконтакты с диалогов
     if(!this.peerType.includes('dialogs') && this.loadedWhat.contacts) {
       peerIds = await filterAsync(peerIds, (peerId) => {
@@ -582,8 +685,12 @@ export default class AppSelectPeers {
       });
 
       if(this.multiSelect) {
+
         const selected = this.selected.has(peerId);
-        const checkboxField = new CheckboxField();
+        const checkboxField = new CheckboxField({round: true});
+        if(!this.toggleableMultiSelectState) {
+          checkboxField.hide();
+        }
 
         if(selected) {
           // dom.listEl.classList.add('active');
@@ -610,7 +717,7 @@ export default class AppSelectPeers {
     // console.trace('add');
     this.selected.add(key);
 
-    if(!this.multiSelect) {
+    if(!this.multiSelect || (this.multiSelect && this.toggleableMultiSelect && !this.toggleableMultiSelectState)) {
       this.onChange(this.selected.size);
       return;
     }
@@ -641,7 +748,7 @@ export default class AppSelectPeers {
     }
 
     if(title) {
-      if(typeof(title) === 'string') {
+      if(typeof (title) === 'string') {
         div.innerHTML = title;
       } else {
         replaceContent(div, title);
@@ -650,8 +757,12 @@ export default class AppSelectPeers {
     }
 
     div.insertAdjacentElement('afterbegin', avatarEl);
+    try {
+      this.selectedContainer.insertBefore(div, this.input);
+    } catch(e) {
+      this.selectedContainer.append(div);
+    }
 
-    this.selectedContainer.insertBefore(div, this.input);
     // this.selectedScrollable.scrollTop = this.selectedScrollable.scrollHeight;
     this.onChange?.(this.selected.size);
 

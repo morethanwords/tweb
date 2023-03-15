@@ -113,7 +113,13 @@ $btn-menu-z-index: 4;
   transition: opacity var(--btn-menu-transition), transform var(--btn-menu-transition), visibility var(--btn-menu-transition);
   font-size: 1rem;
   backdrop-filter: var(--menu-backdrop-filter);
-  min-width: 11.25rem;
+  // На мобильной вьюхе кропка огромная, не уверен для чего минимальная ширина была такая большая, но предлагаю сделать так, можно откатить, если так и было задумано
+  min-width: min-content;
+  max-width: max-content;
+  @include respond-to(medium-screens) {
+    min-width: 11.25rem;
+    max-width: unset;
+  }
   // max-width: 16.25rem;
 
   &-old,

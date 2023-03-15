@@ -15,9 +15,10 @@ import PopupElement from '.';
 
 export default class PopupForward extends PopupPickUser {
   constructor(
-    peerIdMids?: {[fromPeerId: PeerId]: number[]},
+    peerIdMids?: { [fromPeerId: PeerId]: number[] },
     onSelect?: (peerId: PeerId) => Promise<void> | void,
-    chatRightsAction: ChatRights[] = ['send_plain']
+    chatRightsAction: ChatRights[] = ['send_plain'],
+    onSelectMultiple?: (peerId: PeerId[], message: string) => Promise<void> | void,
   ) {
     super({
       peerTypes: ['dialogs', 'contacts'],
@@ -28,7 +29,6 @@ export default class PopupForward extends PopupPickUser {
             await res;
           }
         }
-
         if(peerId === rootScope.myId) {
           let count = 0;
           for(const fromPeerId in peerIdMids) {
@@ -36,17 +36,31 @@ export default class PopupForward extends PopupPickUser {
             count += mids.length;
             this.managers.appMessagesManager.forwardMessages(peerId, fromPeerId.toPeerId(), mids);
           }
-
           toastNew({
             langPackKey: count > 0 ? 'FwdMessagesToSavedMessages' : 'FwdMessageToSavedMessages'
           });
-
           return;
         }
 
         appImManager.setInnerPeer({peerId});
         appImManager.chat.input.initMessagesForward(peerIdMids);
       },
+      onSelectMultiple: !peerIdMids && onSelectMultiple ? onSelectMultiple : (peerIds, message: string) => {
+        peerIds.forEach(async(peerId: PeerId) => {
+          let count = 0;
+          for(const fromPeerId in peerIdMids) {
+            const mids = peerIdMids[fromPeerId];
+            count += mids.length;
+            if(message) {
+              this.managers.appMessagesManager.sendText(peerId, message);
+            }
+            this.managers.appMessagesManager.forwardMessages(peerId, fromPeerId.toPeerId(), mids);
+          }
+          return;
+        });
+        appImManager.chat.selection.cancelSelection(false);
+      },
+
       placeholder: 'ShareModal.Search.ForwardPlaceholder',
       chatRightsActions: chatRightsAction,
       selfPresence: 'ChatYourSelf'

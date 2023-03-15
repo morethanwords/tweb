@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import emoticonsDropdown, {EmoticonsDropdown, EMOTICONSSTICKERGROUP, EmoticonsTab} from '..';
+import emoticonsDropdown, { EmoticonsDropdown, EMOTICONSSTICKERGROUP, EmoticonsTab} from '..';
 import findUpClassName from '../../../helpers/dom/findUpClassName';
 import mediaSizes from '../../../helpers/mediaSizes';
 import {Document, MessagesAllStickers, StickerSet} from '../../../layer';
@@ -180,6 +180,7 @@ export class StickersTabCategory<Item extends StickersTabCategoryItem, Additiona
   public set?: StickerSet;
   public local?: boolean;
   public menuScroll?: ScrollableX;
+
 
   constructor(options: {
     id: string,
@@ -505,7 +506,6 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
 type StickersTabItem = {element: HTMLElement, document: Document.document};
 export default class StickersTab extends EmoticonsTabC<StickersTabCategory<StickersTabItem>> {
   private superStickerRenderer: SuperStickerRenderer;
-
   constructor(managers: AppManagers) {
     super(
       managers,
