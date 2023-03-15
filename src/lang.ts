@@ -907,6 +907,7 @@ const lang = {
   'LimitReachedFoldersLocked': 'You have reached the limit of **%1$d** folders for this account. We are working to let you increase this limit in the future.',
   'FwdMessageToSavedMessages': 'Message forwarded to **Saved Messages**.',
   'FwdMessagesToSavedMessages': 'Messages forwarded to **Saved Messages**.',
+  'SelectRecipient': 'Select recepient',
   'ColorTheme': 'Color theme',
   'SendAsFile': 'Send as file',
   'SendAsFiles': 'Send as files',

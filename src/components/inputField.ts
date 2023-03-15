@@ -17,12 +17,14 @@ import RichInputHandler, {USING_BOMS} from '../helpers/dom/richInputHandler';
 import selectElementContents from '../helpers/dom/selectElementContents';
 import setInnerHTML, {setDirection} from '../helpers/dom/setInnerHTML';
 import {MessageEntity} from '../layer';
-import {i18n, LangPackKey, _i18n} from '../lib/langPack';
+import {_i18n, i18n, LangPackKey} from '../lib/langPack';
 import {NULL_PEER_ID} from '../lib/mtproto/mtproto_config';
 import mergeEntities from '../lib/richTextProcessor/mergeEntities';
 import parseEntities from '../lib/richTextProcessor/parseEntities';
 import wrapDraftText from '../lib/richTextProcessor/wrapDraftText';
-import {createCustomFiller, CustomEmojiElement, CustomEmojiRendererElement, insertCustomFillers, renderEmojis} from '../lib/richTextProcessor/wrapRichText';
+import {createCustomFiller, CustomEmojiElement, CustomEmojiRendererElement, insertCustomFillers} from '../lib/richTextProcessor/wrapRichText';
+import {getEmojiFromElement} from "./emoticonsDropdown/tabs/emoji";
+import getEmojiEntityFromEmoji from "../lib/richTextProcessor/getEmojiEntityFromEmoji";
 
 export async function insertRichTextAsHTML(input: HTMLElement, text: string, entities: MessageEntity[], wrappingForPeerId: PeerId) {
   const loadPromises: Promise<any>[] = [];
@@ -218,7 +220,8 @@ let init = () => {
         richValue.entities = richValue.entities.filter((entity) => entity._ !== 'messageEntityCustomEmoji');
       }
 
-      /* if(false) */ { // * fix extra new lines appearing from <p> (can have them from some sources, like macOS Terminal)
+      /* if(false) */
+      { // * fix extra new lines appearing from <p> (can have them from some sources, like macOS Terminal)
         const lines = richValue.value.split('\n');
         let textLength = 0;
         for(let lineIndex = 0; lineIndex < lines.length; ++lineIndex) {
@@ -494,7 +497,7 @@ export default class InputField {
       <input type="text" ${name ? `name="${name}"` : ''} autocomplete="${autocomplete ?? 'off'}" ${label ? 'required=""' : ''} class="input-field-input">
       `;
 
-      input = this.container.firstElementChild as HTMLElement;
+      input = this.container.firstElementChild as HTMLInputElement;
       // input.addEventListener('input', () => checkAndSetRTL(input));
     }
 
@@ -657,4 +660,5 @@ export default class InputField {
   public setError(label?: LangPackKey) {
     this.setState(InputState.Error, label);
   }
+
 }

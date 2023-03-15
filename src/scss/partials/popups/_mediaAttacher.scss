@@ -18,7 +18,7 @@
       //max-height: unquote('min(640px, 100%)');
       max-height: 100%;
 
-      img, 
+      img,
       video {
         border-radius: inherit;
       }
@@ -32,7 +32,7 @@
       margin-bottom: 9px;
       padding: 12px 20px 15px;
       position: relative;
-  
+
       .btn-primary {
         width: auto;
         height: 2.25rem;
@@ -43,11 +43,11 @@
         line-height: 2.25rem;
       }
     }
-  
+
     &-close {
       margin: -1px 0 0 -4px;
     }
-  
+
     &-photo {
       max-width: 100%;
       overflow: hidden;
@@ -59,9 +59,6 @@
     }
   }
 
-  .scrollable {
-    position: relative;
-  }
 
   .input-field {
     width: 100%;
@@ -134,6 +131,7 @@
     position: relative;
 
     .scrollable {
+      position: relative;
       padding: 0 .5rem;
     }
   }
@@ -155,40 +153,6 @@
     height: 2.5rem;
     line-height: 2.5rem;
     text-transform: uppercase;
-    margin-bottom: .5rem;
-  }
-
-  .popup-input-container {
-    --height: 3.5rem;
-    --max-height: 8.375rem;
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    padding: 0 .5rem;
-    min-height: var(--height);
-    max-height: var(--max-height);
-    position: relative;
-    flex: 0 0 auto;
-    overflow: hidden;
-
-    &:before {
-      content: " ";
-      position: absolute;
-      height: 1px;
-      top: 0;
-      left: 0;
-      right: 0;
-      background-color: var(--border-color);
-      opacity: 0;
-
-      @include animation-level(2) {
-        transition: opacity var(--transition-standard-in);
-      }
-    }
-
-    &.has-border-top:before {
-      opacity: 1;
-    }
   }
 
   .checkbox-field {
@@ -203,7 +167,7 @@
       position: absolute;
     }
 
-    img, 
+    img,
     video {
       object-fit: cover;
       width: 100%;

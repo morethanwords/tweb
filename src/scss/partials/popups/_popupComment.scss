@@ -1,0 +1,78 @@
+.popup-comment-container {
+  padding-bottom: 0 !important;
+  display: flex;
+  align-items: flex-end;
+
+  .popup-comment {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    animation: appear .15s ease forwards;
+
+    .popup-input-container {
+      width: 100%;
+      --height: 3.5rem;
+      --max-height: 8.375rem;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      min-height: var(--height);
+      max-height: var(--max-height);
+      position: relative;
+      flex: 0 0 auto;
+      overflow: hidden;
+
+      &:before {
+        content: " ";
+        position: absolute;
+        height: 1px;
+        top: 0;
+        left: 0;
+        right: 0;
+        background-color: var(--border-color);
+        opacity: 0;
+
+        @include animation-level(2) {
+          transition: opacity var(--transition-standard-in);
+        }
+      }
+
+      &.has-border-top:before {
+        opacity: 1;
+      }
+    }
+
+    .emoticons-content {
+      overflow-y: auto;
+    }
+
+    .toggle-emoticons {
+      width: 40px;
+      min-width: 40px;
+      padding: 0 !important;
+      height: 40px;
+
+      &:before {
+        content: $tgico-smile;
+      }
+
+      &.flip-icon:before {
+        content: $tgico-keyboard !important;
+      }
+    }
+  }
+  .btn-primary {
+    flex: 0 0 auto;
+    height: 2.5rem;
+    line-height: 2.5rem;
+    padding: 0 1rem;
+    text-transform: uppercase;
+    width: auto;
+    margin-left: .5rem;
+    margin-right: 1.5rem;
+    margin-bottom: 0.5rem;
+    &:hover {
+      background-color: var(--dark-primary-color) !important;
+    }
+  }
+}

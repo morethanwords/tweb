@@ -15,7 +15,6 @@ export default class GifsTab implements EmoticonsTab {
   public content: HTMLElement;
   public scrollable: Scrollable;
   public tabId: number;
-
   constructor(private managers: AppManagers) {
 
   }

@@ -13,7 +13,7 @@ import LazyLoadQueue from '../lazyLoadQueue';
 import Scrollable, {ScrollableX} from '../scrollable';
 import appSidebarRight from '../sidebarRight';
 import StickyIntersector from '../stickyIntersector';
-import EmojiTab from './tabs/emoji';
+import EmojiTab, {getEmojiFromElement} from './tabs/emoji';
 import GifsTab from './tabs/gifs';
 import StickersTab, {EmoticonsTabC, StickersTabCategory} from './tabs/stickers';
 import {MOUNT_CLASS_TO} from '../../config/debug';
@@ -40,8 +40,10 @@ import ListenerSetter from '../../helpers/listenerSetter';
 import {ChatRights} from '../../lib/appManagers/appChatsManager';
 import {toastNew} from '../toast';
 import {POSTING_NOT_ALLOWED_MAP} from '../chat/input';
+import safeAssign from "../../helpers/object/safeAssign";
 
 export const EMOTICONSSTICKERGROUP: AnimationItemGroup = 'emoticons-dropdown';
+
 
 export interface EmoticonsTab {
   content: HTMLElement;
@@ -55,24 +57,45 @@ export interface EmoticonsTab {
   onClosed?: () => void;
 }
 
+
 const easing = BezierEasing(0.42, 0.0, 0.58, 1.0);
 const scrollOptions: Partial<ScrollOptions> = {
   forceDuration: 200,
   transitionFunction: easing
 };
+const renderEmojiDropdownElement = (): HTMLDivElement => {
+  const div = document.createElement('div');
+  div.innerHTML =
+    `<div class="emoji-dropdown" id="emoji-dropdown" style="display: none;">
+        <div class="emoji-container">
+            <div class="tabs-container">
+                <div class="tabs-tab gifs-padding">
+                    <div class="emoticons-content" id="content-gifs">
+                        <div class="gifs-masonry"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="emoji-tabs menu-horizontal-div emoticons-menu no-stripe">
+            <button class="menu-horizontal-div-item emoji-tabs-search justify-self-start btn-icon tgico-search" data-tab="-1"></button>
+            <button class="menu-horizontal-div-item emoji-tabs-emoji btn-icon tgico-smile" data-tab="0"></button>
+            <button class="menu-horizontal-div-item emoji-tabs-stickers btn-icon tgico-stickers_face" data-tab="1"></button>
+            <button class="menu-horizontal-div-item emoji-tabs-gifs btn-icon tgico-gifs" data-tab="2"></button>
+            <button class="menu-horizontal-div-item emoji-tabs-delete justify-self-end btn-icon tgico-deleteleft" data-tab="-1"></button>
+        </div>
+    </div>`.trim();
+  return div.firstElementChild as HTMLDivElement;
+}
 
 export class EmoticonsDropdown extends DropdownHover {
   public static lazyLoadQueue = new LazyLoadQueue(1);
 
-  private emojiTab: EmojiTab;
-  private stickersTab: StickersTab;
-  private gifsTab: GifsTab;
 
   private container: HTMLElement;
   private tabsEl: HTMLElement;
   private tabId = -1;
 
-  private tabs: {[id: number]: EmoticonsTab};
+  private tabs: { [id: number]: EmoticonsTab };
 
   private searchButton: HTMLElement;
   private deleteBtn: HTMLElement;
@@ -80,15 +103,21 @@ export class EmoticonsDropdown extends DropdownHover {
   private selectTab: ReturnType<typeof horizontalMenu>;
 
   private savedRange: Range;
+  private tabsToRender: (EmojiTab | StickersTab | GifsTab)[] = [];
   private managers: AppManagers;
+  private rights: { [action in ChatRights]?: boolean };
 
-  private rights: {[action in ChatRights]?: boolean};
-
-  constructor() {
+  constructor(options?: {
+    customParentElement?: HTMLElement,
+    customAnchorElement?: HTMLElement,
+    tabsToRender?: (EmojiTab | StickersTab | GifsTab)[],
+    customOnSelect?: (emoji: { element: HTMLElement } & ReturnType<typeof getEmojiFromElement>) => void,
+  }) {
     super({
-      element: document.getElementById('emoji-dropdown') as HTMLDivElement,
-      ignoreOutClickClassName: 'input-message-input'
+      element: renderEmojiDropdownElement(),
+      ignoreOutClickClassName: 'input-message-input',
     });
+    safeAssign(this, options);
 
     this.rights = {
       send_gifs: undefined,
@@ -103,7 +132,16 @@ export class EmoticonsDropdown extends DropdownHover {
         }
       }
 
-      if(this.element.parentElement !== appImManager.chat.input.chatInput) {
+      if(options?.customAnchorElement) {
+        const anchorRect = options.customAnchorElement.getBoundingClientRect();
+        const offset = 64;
+        this.element.style.left = anchorRect.left + 'px' as string;
+        this.element.style.bottom = anchorRect.top + offset + 'px' as string;
+      }
+
+      if(options?.customParentElement) {
+        options.customParentElement.append(this.element);
+      } else if(this.element.parentElement !== appImManager.chat.input.chatInput) {
         appImManager.chat.input.chatInput.append(this.element);
       }
 
@@ -158,21 +196,27 @@ export class EmoticonsDropdown extends DropdownHover {
     return this.tabs[this.tabId];
   }
 
+  public getTabsFromRenderer(instance: typeof EmojiTab | typeof StickersTab | typeof GifsTab): EmojiTab | StickersTab | GifsTab {
+    return this.tabsToRender.find(tab => (tab instanceof instance))
+  }
+
   public init() {
     this.managers = rootScope.managers;
-    this.emojiTab = new EmojiTab({managers: this.managers});
-    this.stickersTab = new StickersTab(this.managers);
-    this.gifsTab = new GifsTab(this.managers);
-
+    if(!this.tabsToRender.length) {
+      this.tabsToRender = [
+        new EmojiTab({managers: this.managers}),
+        new StickersTab(this.managers),
+        new GifsTab(this.managers)]
+    }
     this.tabs = {};
-    [this.emojiTab, this.stickersTab, this.gifsTab].forEach((tab, idx) => {
+    this.tabsToRender.forEach((tab, idx) => {
       tab.tabId = idx;
       this.tabs[idx] = tab;
     });
-
     this.container = this.element.querySelector('.emoji-container .tabs-container') as HTMLDivElement;
-    this.container.prepend(this.emojiTab.container, this.stickersTab.container);
+    this.container.prepend(...this.tabsToRender.map(tab => !(tab instanceof GifsTab) && tab.container));
     this.tabsEl = this.element.querySelector('.emoji-tabs') as HTMLUListElement;
+
     this.selectTab = horizontalMenu(this.tabsEl, this.container, this.onSelectTabClick, () => {
       const {tab} = this;
       tab.init?.();
@@ -181,7 +225,7 @@ export class EmoticonsDropdown extends DropdownHover {
 
     this.searchButton = this.element.querySelector('.emoji-tabs-search');
     this.searchButton.addEventListener('click', () => {
-      if(this.tabId === this.stickersTab.tabId) {
+      if(this.tabId === this.getTabsFromRenderer(StickersTab)?.tabId) {
         if(!appSidebarRight.isTabExists(AppStickersTab)) {
           appSidebarRight.createTab(AppStickersTab).open();
         }
@@ -272,13 +316,16 @@ export class EmoticonsDropdown extends DropdownHover {
 
     const HIDE_EMOJI_TAB = IS_APPLE_MOBILE && false;
 
-    const INIT_TAB_ID = HIDE_EMOJI_TAB ? this.stickersTab.tabId : this.emojiTab.tabId;
+    const INIT_TAB_ID = HIDE_EMOJI_TAB ? this.getTabsFromRenderer(StickersTab).tabId : this.getTabsFromRenderer(EmojiTab).tabId;
 
     if(HIDE_EMOJI_TAB) {
       (this.tabsEl.children[1] as HTMLElement).classList.add('hide');
     }
 
     simulateClickEvent(this.tabsEl.children[INIT_TAB_ID + 1] as HTMLElement);
+    if(this.tabsToRender.length <= 1) {
+      this.tabsEl.classList.add('hide');
+    }
     if(this.tabs[INIT_TAB_ID].init) {
       this.tabs[INIT_TAB_ID].init(); // onTransitionEnd не вызовется, т.к. это первая открытая вкладка
     }
@@ -332,9 +379,9 @@ export class EmoticonsDropdown extends DropdownHover {
       return;
     }
 
-    const rights: {[tabId: number]: ChatRights} = {
-      [this.stickersTab.tabId]: 'send_stickers',
-      [this.gifsTab.tabId]: 'send_gifs'
+    const rights: { [tabId: number]: ChatRights } = {
+      ...(this.getTabsFromRenderer(StickersTab) && {[this.getTabsFromRenderer(StickersTab).tabId]: 'send_stickers'}),
+      ...(this.getTabsFromRenderer(GifsTab) && {[this.getTabsFromRenderer(GifsTab).tabId]: 'send_gifs'})
     };
 
     const action = rights[id];
@@ -346,8 +393,8 @@ export class EmoticonsDropdown extends DropdownHover {
     animationIntersector.checkAnimations(true, EMOTICONSSTICKERGROUP);
 
     this.tabId = id;
-    this.searchButton.classList.toggle('hide', this.tabId === this.emojiTab.tabId);
-    this.deleteBtn.classList.toggle('hide', this.tabId !== this.emojiTab.tabId);
+    this.searchButton.classList.toggle('hide', this.tabId === this.getTabsFromRenderer(EmojiTab)?.tabId);
+    this.deleteBtn.classList.toggle('hide', this.tabId !== this.getTabsFromRenderer(EmojiTab)?.tabId);
   };
 
   private checkRights = async() => {
@@ -364,8 +411,8 @@ export class EmoticonsDropdown extends DropdownHover {
     });
 
     const active = this.tabsEl.querySelector('.active');
-    if(active && whichChild(active) !== (this.emojiTab.tabId + 1) && (!this.rights['send_stickers'] || !this.rights['send_gifs'])) {
-      this.selectTab(this.emojiTab.tabId, false);
+    if(active && whichChild(active) !== (this.getTabsFromRenderer(EmojiTab)?.tabId + 1) && (!this.rights['send_stickers'] || !this.rights['send_gifs'])) {
+      this.selectTab(this.getTabsFromRenderer(EmojiTab).tabId, false);
     }
   };
 
@@ -473,6 +520,7 @@ export class EmoticonsDropdown extends DropdownHover {
     });
 
     attachClickEvent(menu, (e) => {
+      cancelEvent(e);
       let target = findUpClassName(e.target as HTMLElement, 'menu-horizontal-div-item');
       if(!target) {
         target = findUpClassName(e.target as HTMLElement, 'menu-horizontal-inner');
@@ -527,7 +575,7 @@ export class EmoticonsDropdown extends DropdownHover {
     return {stickyIntersector, setActive, setActiveStatic};
   };
 
-  public static onMediaClick = async(e: {target: EventTarget | Element}, clearDraft = false, silent?: boolean) => {
+  public static onMediaClick = async(e: { target: EventTarget | Element }, clearDraft = false, silent?: boolean) => {
     const target = findUpTag(e.target as HTMLElement, 'DIV');
     if(!target) return false;
 

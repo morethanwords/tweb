@@ -6,7 +6,7 @@
 
 import type ListenerSetter from '../helpers/listenerSetter';
 import ripple from './ripple';
-import {LangPackKey, _i18n} from '../lib/langPack';
+import {_i18n, LangPackKey} from '../lib/langPack';
 import getDeepProperty from '../helpers/object/getDeepProperty';
 import rootScope from '../lib/rootScope';
 import apiManagerProxy from '../lib/mtproto/mtprotoworker';
@@ -45,6 +45,7 @@ export default class CheckboxField {
     if(options.round) {
       label.classList.add('checkbox-field-round');
     }
+
 
     if(options.disabled) {
       this.toggleDisability(true);
@@ -177,6 +178,14 @@ export default class CheckboxField {
 
   public setValueSilently(checked: boolean) {
     this.input.checked = checked;
+  }
+
+  public show() {
+    this.label.classList.remove('hide');
+  }
+
+  public hide() {
+    this.label.classList.add('hide');
   }
 
   public isDisabled() {
