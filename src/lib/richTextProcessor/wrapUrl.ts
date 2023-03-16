@@ -36,7 +36,7 @@ export default function wrapUrl(url: string, unsafe?: number | boolean) {
 
     if(path[0] && path[0][0] === '$' && path[0].length > 1) {
       onclick = 'invoice';
-    } else if(/^\W/.test(fullPath) && !PHONE_NUMBER_REG_EXP.test(fullPath)) { // second regexp is for phone numbers (t.me/+38050...)
+    } else if(/^\+/.test(fullPath) && !PHONE_NUMBER_REG_EXP.test(fullPath)) { // second regexp is for phone numbers (t.me/+38050...)
       onclick = 'joinchat';
     } else switch(path[0]) {
       case 'joinchat':
