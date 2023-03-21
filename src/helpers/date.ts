@@ -157,8 +157,10 @@ export const getFullDate = (date: Date, options: Partial<{
 // https://github.com/DrKLO/Telegram/blob/d52b2c921abd3c1e8d6368858313ad0cb0468c07/TMessagesProj/src/main/java/org/telegram/ui/Adapters/FiltersView.java
 const minYear = 2013;
 const yearPattern = new RegExp('20[0-9]{1,2}');
-const monthYearOrDayPattern = new RegExp('(\\w{3,}) ([0-9]{0,4})', 'i');
-const yearOrDayAndMonthPattern = new RegExp('([0-9]{0,4}) (\\w{2,})', 'i');
+const anyLetterRegExp = `\\p{L}`;
+const monthPattern = new RegExp(`(${anyLetterRegExp}{3,})`, 'iu');
+const monthYearOrDayPattern = new RegExp(`(${anyLetterRegExp}{3,}) ([0-9]{0,4})`, 'iu');
+const yearOrDayAndMonthPattern = new RegExp(`([0-9]{0,4}) (${anyLetterRegExp}{2,})`, 'iu');
 const shortDate = new RegExp('^([0-9]{1,4})(\\.| |/|\\-)([0-9]{1,4})$', 'i');
 const longDate = new RegExp('^([0-9]{1,2})(\\.| |/|\\-)([0-9]{1,2})(\\.| |/|\\-)([0-9]{1,4})$', 'i');
 const numberOfDaysEachMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
@@ -308,8 +310,54 @@ export function fillTipDates(query: string, dates: DateData[]) {
     return;
   }
 
+  if((matches = monthYearOrDayPattern.exec(q)) !== null) {
+    const g1 = matches[1];
+    const g2 = matches[2];
+    const month = getMonth(g1);
+    if(month >= 0) {
+      const k = +g2 || new Date().getUTCFullYear();
+      if(k > 0 && k <= 31) {
+        const day = k - 1;
+        createForDayMonth(dates, day, month);
+        return;
+      } else if(k >= minYear) {
+        const selectedYear = k;
+        createForMonthYear(dates, month, selectedYear);
+        return;
+      }
+    }
+  }
+
+  if((matches = yearOrDayAndMonthPattern.exec(q)) !== null) {
+    const g1 = matches[1];
+    const g2 = matches[2];
+    const month = getMonth(g2);
+    if(month >= 0) {
+      const k = +g1;
+      if(k > 0 && k <= 31) {
+        const day = k - 1;
+        createForDayMonth(dates, day, month);
+        return;
+      } else if(k >= minYear) {
+        const selectedYear = k;
+        createForMonthYear(dates, month, selectedYear);
+      }
+    }
+  }
+
+  if((matches = monthPattern.exec(q)) !== null) {
+    const g1 = matches[1];
+    const month = getMonth(g1);
+    if(month >= 0) {
+      const currentYear = new Date().getFullYear();
+      for(let i = currentYear; i >= minYear; --i) {
+        createForMonthYear(dates, month, i);
+      }
+    }
+  }
+
   if((matches = yearPattern.exec(q)) !== null) {
-    let selectedYear = +q;
+    let selectedYear = +matches[0];
     const currentYear = new Date().getFullYear();
     if(selectedYear < minYear) {
       selectedYear = minYear;
@@ -347,41 +395,6 @@ export function fillTipDates(query: string, dates: DateData[]) {
     }
 
     return;
-  }
-
-  if((matches = monthYearOrDayPattern.exec(q)) !== null) {
-    const g1 = matches[1];
-    const g2 = matches[2];
-    const month = getMonth(g1);
-    if(month >= 0) {
-      const k = +g2;
-      if(k > 0 && k <= 31) {
-        const day = k - 1;
-        createForDayMonth(dates, day, month);
-        return;
-      } else if(k >= minYear) {
-        const selectedYear = k;
-        createForMonthYear(dates, month, selectedYear);
-        return;
-      }
-    }
-  }
-
-  if((matches = yearOrDayAndMonthPattern.exec(q)) !== null) {
-    const g1 = matches[1];
-    const g2 = matches[2];
-    const month = getMonth(g2);
-    if(month >= 0) {
-      const k = +g1;
-      if(k > 0 && k <= 31) {
-        const day = k - 1;
-        createForDayMonth(dates, day, month);
-        return;
-      } else if(k >= minYear) {
-        const selectedYear = k;
-        createForMonthYear(dates, month, selectedYear);
-      }
-    }
   }
 }
 
@@ -448,12 +461,12 @@ function createForDayMonth(dates: DateData[], day: number, month: number) {
 
 function formatterMonthYear(timestamp: number) {
   const date = new Date(timestamp);
-  return monthsLocalized[date.getMonth()].slice(0, 3) + ' ' + date.getFullYear();
+  return monthsLocalized[date.getMonth()]/* .slice(0, 3) */ + ' ' + date.getFullYear();
 }
 
 function formatterDayMonth(timestamp: number) {
   const date = new Date(timestamp);
-  return monthsLocalized[date.getMonth()].slice(0, 3) + ' ' + date.getDate();
+  return monthsLocalized[date.getMonth()]/* .slice(0, 3) */ + ' ' + date.getDate();
 }
 
 function formatterYearMax(timestamp: number) {
