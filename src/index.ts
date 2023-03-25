@@ -105,6 +105,26 @@ document.addEventListener('DOMContentLoaded', async() => {
 
   window.addEventListener('resize', setVH);
   setVH();
+  const preparePrint = () => {
+    const chatHeader = document.querySelector('.topbar');
+    const bubbles = document.querySelector('.bubbles');
+    const bubblesInner = bubbles.querySelector('.bubbles-inner');
+    const chatHeaderClone = chatHeader.cloneNode(true);
+    const bubblesClone = bubbles.cloneNode(true);
+    const bubblesInnerClone = bubblesInner.cloneNode(true);
+    bubblesClone.appendChild(bubblesInnerClone);
+    const printable = document.createElement('div');
+    printable.setAttribute('id', 'printable');
+    printable.append(chatHeaderClone);
+    printable.append(bubblesClone);
+    document.body.append(printable);
+  }
+  const removePrint = () => {
+    const printContent = document.getElementById('printable');
+    printContent.remove();
+  }
+  window.addEventListener('beforeprint', preparePrint);
+  window.addEventListener('afterprint', removePrint);
 
   if(IS_STICKY_INPUT_BUGGED) {
     const toggleResizeMode = () => {
