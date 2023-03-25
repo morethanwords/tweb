@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {InputFileLocation, InputStickerSet, InputWebFileLocation} from '../layer';
+import type {InputFileLocation, InputGeoPoint, InputStickerSet, InputWebFileLocation} from '../layer';
 import type {DownloadOptions} from '../lib/mtproto/apiFileManager';
 
 const FILENAME_JOINER = '_';
@@ -48,6 +48,12 @@ export function getFileNameByLocation(location: InputFileLocation | InputWebFile
 
     case 'inputWebFileLocation': {
       str = ['webFile', location.url].join(FILENAME_JOINER);
+      break;
+    }
+
+    case 'inputWebFileGeoPointLocation': {
+      const geoPoint = location.geo_point as InputGeoPoint.inputGeoPoint;
+      str = ['geoPoint', geoPoint.lat, geoPoint.long, location.w, location.h, location.zoom, location.scale].join(FILENAME_JOINER);
       break;
     }
 

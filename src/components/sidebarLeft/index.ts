@@ -176,7 +176,7 @@ export class AppSidebarLeft extends SidebarSlider {
       },
       checkboxField: new CheckboxField({
         toggle: true,
-        checked: true,
+        checked: liteMode.isAvailable('animations'),
         stateKey: 'settings.liteMode.animations',
         stateValueReverse: true
       }),
@@ -230,7 +230,7 @@ export class AppSidebarLeft extends SidebarSlider {
       },
       verify: () => App.isMainDomain
     }, */ {
-      icon: 'download',
+      icon: 'plusround',
       text: 'PWA.Install',
       onClick: () => {
         const installPrompt = getInstallPrompt();

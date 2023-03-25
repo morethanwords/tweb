@@ -42,6 +42,7 @@ import copy from '../../helpers/object/copy';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import {EXTENSION_MIME_TYPE_MAP, MIME_TYPE_EXTENSION_MAP} from '../../environment/mimeTypeMap';
 import {getServiceMessagePort} from './mtproto.worker';
+import isWebFileLocation from '../appManagers/utils/webFiles/isWebFileLocation';
 
 type Delayed = {
   offset: number,
@@ -63,7 +64,7 @@ export type DownloadOptions = {
 };
 
 export type DownloadMediaOptions = {
-  media: Photo.photo | Document.document | WebDocument,
+  media: Photo.photo | Document.document | WebDocument | InputWebFileLocation,
   thumb?: PhotoSize | Extract<VideoSize, VideoSize.videoSize>,
   queueId?: number,
   onlyCache?: boolean,
@@ -259,7 +260,7 @@ export class ApiFileManager extends AppManager {
     queueId = 0,
     checkCancel?: () => void
   ) {
-    return this.downloadRequest(dcId, id, async() => { // do not remove async, because checkCancel will throw an error
+    return this.downloadRequest(this.webFileDcId, id, async() => { // do not remove async, because checkCancel will throw an error
       checkCancel?.();
 
       if('url' in location) {
@@ -287,7 +288,7 @@ export class ApiFileManager extends AppManager {
         offset,
         limit
       }, {
-        dcId,
+        dcId: this.webFileDcId,
         fileDownload: true
       });
     }, this.getDelta(limit), queueId);
@@ -493,7 +494,7 @@ export class ApiFileManager extends AppManager {
   }
 
   private isLocalWebFile(url: string) {
-    return url.startsWith('assets/');
+    return url?.startsWith('assets/');
   }
 
   public download(options: DownloadOptions): DownloadPromise {
@@ -557,8 +558,8 @@ export class ApiFileManager extends AppManager {
       }
     };
 
-    const isWebFile = location._ === 'inputWebFileLocation';
-    const isLocalWebFile = isWebFile && this.isLocalWebFile(location.url);
+    const isWebFile = isWebFileLocation(location);
+    const isLocalWebFile = isWebFile && this.isLocalWebFile((location as InputWebFileLocation.inputWebFileLocation).url);
     const id = this.tempId++;
     const limitPart = isLocalWebFile ?
       size :
@@ -797,6 +798,7 @@ export class ApiFileManager extends AppManager {
     // const isWebDocument = media._ === 'webDocument';
     if(isDocument) media = this.appDocsManager.getDoc((media as Document.document).id);
     else if(isPhoto) media = this.appPhotosManager.getPhoto((media as Photo.photo).id);
+    options.media = media || options.media;
 
     const {fileName, downloadOptions} = getDownloadMediaDetails(options);
 

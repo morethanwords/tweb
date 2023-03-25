@@ -4,9 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {WebDocument} from '../../layer';
+import type {InputWebFileLocation, WebDocument} from '../../layer';
 import type {MyDocument} from '../appManagers/appDocsManager';
 import type {MyPhoto} from '../appManagers/appPhotosManager';
+import {getFileNameByLocation} from '../../helpers/fileName';
+import isWebFileLocation from '../appManagers/utils/webFiles/isWebFileLocation';
 import {THUMB_TYPE_FULL} from '../mtproto/mtproto_config';
 
 export type ThumbCache = {
@@ -23,12 +25,16 @@ export type ThumbsCache = {
 
 const thumbFullSize = THUMB_TYPE_FULL;
 
-export type ThumbStorageMedia = MyPhoto | MyDocument | WebDocument;
+export type ThumbStorageMedia = MyPhoto | MyDocument | WebDocument | InputWebFileLocation;
 
 export default class ThumbsStorage {
   private thumbsCache: ThumbsCache = {};
 
   private getKey(media: ThumbStorageMedia) {
+    if(isWebFileLocation(media)) {
+      return getFileNameByLocation(media);
+    }
+
     return media._ + ((media as MyPhoto).id ?? (media as WebDocument).url);
   }
 

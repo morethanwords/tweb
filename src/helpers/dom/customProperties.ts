@@ -17,7 +17,7 @@ export class CustomProperties {
   constructor() {
     this.cache = {};
 
-    rootScope.addEventListener('theme_change', this.resetCache);
+    rootScope.addEventListener('theme_changed', this.resetCache);
     mediaSizes.addEventListener('resize', this.resetCache);
   }
 
@@ -33,16 +33,14 @@ export class CustomProperties {
 
   public getProperty(name: CustomProperty) {
     let value = this.cache[name];
-    if(value) {
+    if(value !== undefined) {
       return value;
     }
 
-    if(!this.computedStyle) {
-      this.computedStyle = window.getComputedStyle(document.documentElement);
-    }
+    this.computedStyle ??= window.getComputedStyle(document.documentElement);
 
     value = this.computedStyle.getPropertyValue('--' + name).trim();
-    return this.cache[name] = value;
+    return this.setPropertyCache(name, value);
   }
 
   public getPropertyAsSize(name: CustomProperty) {
@@ -58,6 +56,10 @@ export class CustomProperties {
     }
 
     return size;
+  }
+
+  public setPropertyCache(name: CustomProperty, value: string) {
+    return this.cache[name] = value;
   }
 }
 

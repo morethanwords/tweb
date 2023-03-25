@@ -87,7 +87,7 @@ export class ChatPermissions extends CheckboxFields<PermissionsCheckboxFieldsFie
     v.forEach((info) => {
       const mainFlag = info.flags[0];
       map[mainFlag] = info;
-      info.checked = hasRights(chat, mainFlag, rights)
+      info.checked = hasRights(chat, mainFlag, rights);
     });
 
     mediaNested.forEach((info) => info.nestedTo = map.send_media);
@@ -188,7 +188,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
         icon: 'adduser',
         clickable: () => {
           PopupElement.createPopup(PopupPickUser, {
-            peerTypes: ['channelParticipants'],
+            peerType: ['channelParticipants'],
             onSelect: (peerId) => {
               setTimeout(() => {
                 openPermissions(peerId);

@@ -6,13 +6,31 @@
 
 import type {MessageSendingParams} from './appMessagesManager';
 import {AppManager} from './manager';
-import {AttachMenuBots, AttachMenuBot, Update, DataJSON} from '../../layer';
+import {AttachMenuBots, AttachMenuBot, Update, DataJSON, InputBotApp, BotApp} from '../../layer';
 import assumeType from '../../helpers/assumeType';
 import makeError from '../../helpers/makeError';
 import getAttachMenuBotIcon from './utils/attachMenuBots/getAttachMenuBotIcon';
 import getServerMessageId from './utils/messageId/getServerMessageId';
+import {randomLong} from '../../helpers/random';
 
-const BOTS_SUPPORTED = false;
+const BOTS_SUPPORTED = true;
+
+export type RequestWebViewOptions = MessageSendingParams & {
+  botId: BotId,
+  peerId: PeerId,
+  // platform: string,
+  startParam?: string,
+  fromBotMenu?: boolean,
+  fromAttachMenu?: boolean,
+  fromSwitchWebView?: boolean,
+  attachMenuBot?: AttachMenuBot,
+  url?: string,
+  themeParams?: DataJSON,
+  isSimpleWebView?: boolean,
+  buttonText?: string,
+  writeAllowed?: boolean,
+  app?: BotApp.botApp
+};
 
 export default class AppAttachMenuBotsManager extends AppManager {
   private attachMenuBots: Map<BotId, AttachMenuBot>;
@@ -22,7 +40,9 @@ export default class AppAttachMenuBotsManager extends AppManager {
     this.clear(true);
 
     this.apiUpdatesManager.addMultipleEventsListeners({
-      updateAttachMenuBots: this.onUpdateAttachMenuBots
+      updateAttachMenuBots: this.onUpdateAttachMenuBots,
+
+      updateWebViewResultSent: this.onUpdateWebViewResultSent
     });
   }
 
@@ -40,10 +60,15 @@ export default class AppAttachMenuBotsManager extends AppManager {
     this.getAttachMenuBots();
   };
 
+  private onUpdateWebViewResultSent = (update: Update.updateWebViewResultSent) => {
+    this.rootScope.dispatchEvent('web_view_result_sent', update.query_id);
+  };
+
   public saveAttachMenuBot(attachMenuBot: AttachMenuBot) {
     this.attachMenuBots.set(attachMenuBot.bot_id, attachMenuBot);
     const icon = getAttachMenuBotIcon(attachMenuBot);
     icon.icon = this.appDocsManager.saveDoc(icon.icon, {type: 'attachMenuBotIcon', botId: attachMenuBot.bot_id});
+    this.rootScope.dispatchEvent('attach_menu_bot', attachMenuBot);
     return attachMenuBot;
   }
 
@@ -87,30 +112,63 @@ export default class AppAttachMenuBotsManager extends AppManager {
     });
   }
 
-  public requestWebView(options: MessageSendingParams & {
-    botId: BotId,
-    peerId: PeerId,
-    // platform: string,
-    startParam?: string,
-    fromBotMenu?: boolean,
-    url?: string,
-    themeParams?: DataJSON
-  }) {
+  public requestWebView(options: RequestWebViewOptions) {
     const {
       botId,
       peerId,
       url,
       fromBotMenu,
+      fromSwitchWebView,
       themeParams,
       // platform,
       replyToMsgId,
       silent,
       sendAsPeerId,
       startParam,
-      threadId
+      threadId,
+      isSimpleWebView,
+      app,
+      writeAllowed
     } = options;
 
     const platform = 'web';
+
+    if(app) {
+      return this.apiManager.invokeApiSingleProcess({
+        method: 'messages.requestAppWebView',
+        params: {
+          peer: this.appPeersManager.getInputPeerById(peerId),
+          start_param: startParam,
+          theme_params: themeParams,
+          platform,
+          write_allowed: writeAllowed,
+          app: {
+            _: 'inputBotAppID',
+            access_hash: app.access_hash,
+            id: app.id
+          }
+        },
+        processResult: (result) => {
+          return result;
+        }
+      });
+    }
+
+    if(isSimpleWebView) {
+      return this.apiManager.invokeApiSingleProcess({
+        method: 'messages.requestSimpleWebView',
+        params: {
+          bot: this.appUsersManager.getUserInput(botId),
+          url,
+          platform,
+          from_switch_webview: fromSwitchWebView,
+          theme_params: themeParams
+        },
+        processResult: (result) => {
+          return result;
+        }
+      });
+    }
 
     return this.apiManager.invokeApiSingleProcess({
       method: 'messages.requestWebView',
@@ -128,7 +186,6 @@ export default class AppAttachMenuBotsManager extends AppManager {
         top_msg_id: threadId ? getServerMessageId(threadId) : undefined
       },
       processResult: (result) => {
-        console.log(result);
         return result;
       }
     });
@@ -151,7 +208,7 @@ export default class AppAttachMenuBotsManager extends AppManager {
         top_msg_id: options.threadId ? getServerMessageId(options.threadId) : undefined
       },
       processResult: (result) => {
-        console.log(result);
+        return result;
       }
     });
   }
@@ -164,8 +221,37 @@ export default class AppAttachMenuBotsManager extends AppManager {
         enabled,
         write_allowed: writeAllowed
       },
-      processResult: () => {
-        this.apiUpdatesManager.processLocalUpdate({_: 'updateAttachMenuBots'});
+      processResult: (result) => {
+        return result;
+        // this.apiUpdatesManager.processLocalUpdate({_: 'updateAttachMenuBots'});
+      }
+    });
+  }
+
+  public sendWebViewData(botId: BotId, buttonText: string, data: string) {
+    return this.apiManager.invokeApi('messages.sendWebViewData', {
+      bot: this.appUsersManager.getUserInput(botId),
+      button_text: buttonText,
+      data,
+      random_id: randomLong()
+    }).then((updates) => {
+      this.apiUpdatesManager.processUpdateMessage(updates);
+    });
+  }
+
+  public getBotApp(botId: BotId, shortName: string) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'messages.getBotApp',
+      params: {
+        app: {
+          _: 'inputBotAppShortName',
+          bot_id: this.appUsersManager.getUserInput(botId),
+          short_name: shortName
+        },
+        hash: 0
+      },
+      processResult: (result) => {
+        return result;
       }
     });
   }

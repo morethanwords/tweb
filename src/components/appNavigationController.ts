@@ -200,6 +200,10 @@ export class AppNavigationController {
   }
 
   public backByItem(item: NavigationItem, index = this.navigations.indexOf(item)) {
+    if(index === -1) {
+      return;
+    }
+
     this.manual = true;
     // ! commented because 'popstate' event will be fired with delay
     // if(index !== (this.navigations.length - 1)) {

@@ -279,7 +279,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
           args.push(getNameDivHTML(message.fromId, plain));
         }
 
-        args.push(wrapSomeText(action.title));
+        args.push(wrapSomeText(action.title, plain));
         break;
       }
 
@@ -429,7 +429,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         }
 
         if(isTitleChanged) {
-          titleElement = wrapSomeText(action.title);
+          titleElement = wrapSomeText(action.title, plain);
         }
 
         if(isIconChanged && !isIconRemoved) {
@@ -481,7 +481,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         args = authorElement ? [authorElement] : [];
 
         if(action.emoticon) {
-          args.push(wrapEmojiText(action.emoticon));
+          args.push(wrapSomeText(action.emoticon, plain));
           langPackKey = isMe ? 'ChatThemeChangedYou' : 'ChatThemeChangedTo';
         } else {
           langPackKey = isMe ? 'ChatThemeDisabledYou' : 'ChatThemeDisabled';
@@ -502,6 +502,18 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
 
         langPackKey = isMe ? 'ActionGiftOutbound' : 'ActionGiftInbound';
 
+        break;
+      }
+
+      case 'messageActionWebViewDataSent': {
+        langPackKey = 'ActionBotWebViewData';
+        args = [wrapSomeText(action.text, plain)];
+        break;
+      }
+
+      case 'messageActionRequestedPeer': {
+        langPackKey = 'Chat.Service.PeerRequested';
+        args = [getNameDivHTML(getPeerId(action.peer), plain), getNameDivHTML(message.peerId, plain)];
         break;
       }
 

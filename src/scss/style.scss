@@ -248,7 +248,6 @@ $chat-input-inner-padding-handhelds: .25rem;
   --backdrop-opacity: .85;
   --menu-background-color: rgba(var(--surface-color-rgb), var(--backdrop-opacity));
 
-  --message-background-color: var(--surface-color);
   --message-time-color: var(--secondary-text-color);
   --message-checkbox-color: #61c642;
   --message-checkbox-border-color: #fff;
@@ -316,7 +315,6 @@ $chat-input-inner-padding-handhelds: .25rem;
   --monospace-text-color: var(--primary-text-color);
   --menu-background-color: rgba(var(--surface-color-rgb), .75);
 
-  --message-background-color: var(--surface-color);
   --message-time-color: var(--secondary-text-color);
   --message-checkbox-color: var(--primary-color);
   --message-checkbox-border-color: #fff;
@@ -412,6 +410,7 @@ $chat-input-inner-padding-handhelds: .25rem;
 @import "partials/popups/paymentCardConfirmation";
 @import "partials/popups/limit";
 @import "partials/popups/giftPremium";
+@import "partials/popups/webApp";
 
 @import "partials/pages/pages";
 @import "partials/pages/authCode";
@@ -1412,21 +1411,23 @@ middle-ellipsis-element {
   }
 }
 
+.fade-in {
+  @include animation-level(2) {
+    animation: fade-in-opacity .2s ease-in-out forwards;
+  }
+}
+
+.fade-out {
+  @include animation-level(2) {
+    animation: fade-out-opacity .2s ease-in-out forwards;
+  }
+}
+
 .media-photo, 
 .media-video, 
 .media-sticker, 
 .media-round, 
 .media-poster {
-  @include animation-level(2) {
-    &.fade-in {
-      animation: fade-in-opacity .2s ease-in-out forwards;
-    }
-  
-    &.fade-out {
-      animation: fade-out-opacity .2s ease-in-out forwards;
-    }
-  }
-
   // & ~ & {
     position: absolute;
     top: 0;
@@ -2132,5 +2133,42 @@ hr {
     .accordion-icon {
       transform: translateY(4px) rotate(180deg);
     }
+  }
+}
+
+.shimmer {
+  --opacity: .2;
+
+  @include animation-level(0) {
+    &:before {
+      content: unset;
+    }
+  }
+
+  &:before {
+    content: "";
+    position: absolute;
+    top: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to right, transparent 0%, rgba(var(--surface-color-rgb), var(--opacity)) 50%, transparent 100%);
+    animation: wave 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+
+    @keyframes wave {
+      0% {
+        transform: translateX(-100%);
+      }
+      50% {
+        transform: translateX(100%);
+      }
+      100% {
+        transform: translateX(100%);
+      }
+    }
+  }
+
+  &-bright {
+    --opacity: .4;
   }
 }

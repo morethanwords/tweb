@@ -86,7 +86,7 @@ export function PaymentButton(options: {
     try {
       await result;
     } catch(err) {
-      if(!(err as any).handled) {
+      if(!(err as ApiError).handled) {
         console.error('payment button error', err);
       }
 
@@ -100,8 +100,13 @@ export function PaymentButton(options: {
 
 export type PaymentsCredentialsToken = {type: 'card', token?: string, id?: string};
 
-export default class PopupPayment extends PopupElement {
+export type PopupPaymentResult = 'paid' | 'cancelled' | 'pending' | 'failed';
+
+export default class PopupPayment extends PopupElement<{
+  finish: (result: PopupPaymentResult) => void
+}> {
   private tipButtonsMap: Map<number, HTMLElement>;
+  private result: PopupPaymentResult;
 
   constructor(
     private message: Message.message,
@@ -117,6 +122,8 @@ export default class PopupPayment extends PopupElement {
       title: true
     });
 
+    this.result = 'cancelled';
+
     this.tipButtonsMap = new Map();
     this.d().catch((err) => {
       console.error('payment popup error', err);
@@ -124,8 +131,14 @@ export default class PopupPayment extends PopupElement {
     });
   }
 
+  public hide() {
+    this.dispatchEvent('finish', this.result);
+    return super.hide();
+  }
+
   private async d() {
     this.element.classList.add('is-loading');
+    this.show();
 
     let confirmed = false;
     const onConfirmed = () => {
@@ -133,6 +146,7 @@ export default class PopupPayment extends PopupElement {
         return;
       }
 
+      this.result = 'paid';
       confirmed = true;
       if(popupPaymentVerification) {
         popupPaymentVerification.hide();
@@ -231,8 +245,6 @@ export default class PopupPayment extends PopupElement {
     const preloader = putPreloader(preloaderContainer, true);
     this.scrollable.container.append(preloaderContainer);
 
-    this.show();
-
     const inputInvoice = this.inputInvoice;
     if(!paymentForm) {
       if(isReceipt) paymentForm = await this.managers.appPaymentsManager.getPaymentReceipt(message.peerId, mediaInvoice.receipt_msg_id || (inputInvoice as InputInvoice.inputInvoiceMessage).msg_id);
@@ -294,7 +306,7 @@ export default class PopupPayment extends PopupElement {
         const {amount, label} = price;
 
         const _label = makeLabel();
-        _label.left.textContent = label;
+        _label.left.append(wrapEmojiText(label));
 
         const wrappedAmount = wrapAmount(amount);
         _label.right.textContent = wrappedAmount;
@@ -808,6 +820,7 @@ export default class PopupPayment extends PopupElement {
         };
 
         try {
+          this.result = 'pending';
           const paymentResult = await this.managers.appPaymentsManager.sendPaymentForm(
             inputInvoice,
             (paymentForm as PaymentsPaymentForm).form_id,
@@ -823,7 +836,7 @@ export default class PopupPayment extends PopupElement {
             popupPaymentVerification = PopupElement.createPopup(
               PopupPaymentVerification,
               paymentResult.url,
-              !mediaInvoice.extended_media
+              !mediaInvoice?.extended_media
             );
             popupPaymentVerification.addEventListener('finish', () => {
               popupPaymentVerification = undefined;
@@ -839,6 +852,7 @@ export default class PopupPayment extends PopupElement {
                   const err = new Error('payment not finished');
                   (err as ApiError).handled = true;
                   reject(err);
+                  this.result = 'failed';
                 }
               });
             });
@@ -851,6 +865,8 @@ export default class PopupPayment extends PopupElement {
             passwordState = lastTmpPasword = undefined;
             simulateClickEvent(payButton);
             (err as ApiError).handled = true;
+          } else {
+            this.result = 'failed';
           }
 
           throw err;

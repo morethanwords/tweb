@@ -3,9 +3,9 @@
 @font-face {
   font-family: '#{$tgico-font-family}';
   src:
-    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?bv435t') format('truetype'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?bv435t') format('woff'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?bv435t##{$tgico-font-family}') format('svg');
+    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?fanb4g') format('truetype'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?fanb4g') format('woff'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?fanb4g##{$tgico-font-family}') format('svg');
   font-weight: normal;
   font-style: normal;
   font-display: block;
@@ -265,6 +265,11 @@
 .tgico-copy {
   &:before {
     content: $tgico-copy; 
+  }
+}
+.tgico-crossround {
+  &:before {
+    content: $tgico-crossround; 
   }
 }
 .tgico-darkmode {
@@ -772,6 +777,11 @@
     content: $tgico-plus; 
   }
 }
+.tgico-plusround {
+  &:before {
+    content: $tgico-plusround; 
+  }
+}
 .tgico-poll {
   &:before {
     content: $tgico-poll; 
@@ -1080,6 +1090,12 @@
 .tgico-volume_up {
   &:before {
     content: $tgico-volume_up; 
+  }
+}
+.tgico-webview {
+  &:before {
+    content: $tgico-webview;     
+    color: #fff;
   }
 }
 .tgico-zoomin {

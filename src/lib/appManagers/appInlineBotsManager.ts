@@ -224,7 +224,8 @@ export class AppInlineBotsManager extends AppManager {
   }
 
   public switchInlineQuery(peerId: PeerId, threadId: number, botId: BotId, query: string) {
-    this.appDraftsManager.setDraft(peerId, threadId, '@' + this.appPeersManager.getPeerUsername(botId.toPeerId()) + ' ' + query);
+    const message = '@' + this.appPeersManager.getPeerUsername(botId.toPeerId()) + ' ' + query;
+    this.appDraftsManager.setDraft(peerId, threadId, message);
   }
 
   public callbackButtonClick(peerId: PeerId, mid: number, button: any) {

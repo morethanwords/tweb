@@ -6,6 +6,7 @@
 
 import type {ChatRights} from '../lib/appManagers/appChatsManager';
 import type {Dialog} from '../lib/appManagers/appMessagesManager';
+import type {AppPeersManager, IsPeerType} from '../lib/appManagers/appPeersManager';
 import appDialogsManager, {DialogElementSize as DialogElementSize} from '../lib/appManagers/appDialogsManager';
 import rootScope from '../lib/rootScope';
 import Scrollable from './scrollable';
@@ -19,7 +20,6 @@ import cancelEvent from '../helpers/dom/cancelEvent';
 import replaceContent from '../helpers/dom/replaceContent';
 import debounce from '../helpers/schedulers/debounce';
 import windowSize from '../helpers/windowSize';
-import type {IsPeerType} from '../lib/appManagers/appPeersManager';
 import {attachClickEvent, simulateClickEvent} from '../helpers/dom/clickEvent';
 import filterUnique from '../helpers/array/filterUnique';
 import indexOfAndSplice from '../helpers/array/indexOfAndSplice';
@@ -39,7 +39,8 @@ import {generateDelimiter} from './generateDelimiter';
 import SettingSection from './settingSection';
 import liteMode from '../helpers/liteMode';
 
-type SelectSearchPeerType = 'contacts' | 'dialogs' | 'channelParticipants';
+export type SelectSearchPeerType = 'contacts' | 'dialogs' | 'channelParticipants';
+export type FilterPeerTypeByFunc = (peer: ReturnType<AppPeersManager['getPeer']>) => boolean;
 
 // TODO: правильная сортировка для addMembers, т.е. для peerType: 'contacts', потому что там идут сначала контакты - потом неконтакты, а должно всё сортироваться по имени
 
@@ -81,7 +82,7 @@ export default class AppSelectPeers {
   private rippleEnabled = true;
   private avatarSize: DialogElementSize = 'abitbigger';
   private exceptSelf = false;
-  private filterPeerTypeBy: IsPeerType[];
+  private filterPeerTypeBy: IsPeerType[] | FilterPeerTypeByFunc;
 
   private tempIds: {[k in keyof AppSelectPeers['loadedWhat']]: number} = {};
   private peerId: PeerId;
@@ -100,6 +101,7 @@ export default class AppSelectPeers {
 
   constructor(options: {
     appendTo: AppSelectPeers['appendTo'],
+    managers: AppSelectPeers['managers'],
     onChange?: AppSelectPeers['onChange'],
     peerType?: AppSelectPeers['peerType'],
     peerId?: AppSelectPeers['peerId'],
@@ -114,7 +116,6 @@ export default class AppSelectPeers {
     exceptSelf?: AppSelectPeers['exceptSelf'],
     filterPeerTypeBy?: AppSelectPeers['filterPeerTypeBy'],
     sectionNameLangPackKey?: AppSelectPeers['sectionNameLangPackKey'],
-    managers: AppSelectPeers['managers'],
     design?: AppSelectPeers['design']
   }) {
     safeAssign(this, options);
@@ -136,16 +137,21 @@ export default class AppSelectPeers {
       });
 
       if(this.filterPeerTypeBy) {
+        const isFunction = typeof(this.filterPeerTypeBy) === 'function';
         peerIds = await filterAsync(peerIds, async(peerId) => {
           if(peerId.isPeerId()) {
-            const peer = await this.managers.appPeersManager.getPeer(peerId);
-            if(peer) {
-              for(const method of this.filterPeerTypeBy) {
+            if(isFunction) {
+              const peer = await this.managers.appPeersManager.getPeer(peerId);
+              return (this.filterPeerTypeBy as FilterPeerTypeByFunc)(peer);
+            } else {
+              for(const method of this.filterPeerTypeBy as IsPeerType[]) {
                 if(await this.managers.appPeersManager[method](peerId)) {
                   return true;
                 }
               }
             }
+
+            return false;
           }
 
           return true;
@@ -258,6 +264,20 @@ export default class AppSelectPeers {
         });
       }
     }, 0);
+  }
+
+  public static convertPeerTypes(types: TelegramChoosePeerType[]) {
+    const isPeerTypeMap: {
+      [type in typeof types[0]]: IsPeerType
+    } = {
+      bots: 'isBot',
+      users: 'isRegularUser',
+      groups: 'isAnyGroup',
+      channels: 'isBroadcast'
+    };
+
+    const filterPeerTypeBy: IsPeerType[] = types.map((type) => isPeerTypeMap[type]);
+    return filterPeerTypeBy;
   }
 
   private onInput = () => {

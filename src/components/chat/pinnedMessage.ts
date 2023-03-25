@@ -215,6 +215,8 @@ class AnimatedCounter {
   }
 }
 
+const ALWAYS_FLOATING = false;
+
 export default class ChatPinnedMessage {
   private static LOAD_COUNT = 50;
   private static LOAD_OFFSET = 5;
@@ -244,11 +246,11 @@ export default class ChatPinnedMessage {
   private animatedCounter: AnimatedCounter;
 
   private listenerSetter: ListenerSetter;
-  private scrollDownListenerSetter: ListenerSetter = null;
+  private scrollDownListenerSetter: ListenerSetter;
 
   public hidden = false;
 
-  private getCurrentIndexPromise: Promise<any> = null;
+  private getCurrentIndexPromise: Promise<any>;
   private btnOpen: HTMLButtonElement;
 
   private setPinnedMessage: () => void;
@@ -282,7 +284,8 @@ export default class ChatPinnedMessage {
         }
 
         return false;
-      }
+      },
+      floating: ALWAYS_FLOATING
     });
 
     this.pinnedMessageBorder = new PinnedMessageBorder();
@@ -356,6 +359,8 @@ export default class ChatPinnedMessage {
     if(this.isStatic) return;
     // return;
 
+    this.debug && this.log('setCorrectIndex', lastScrollDirection);
+
     if(this.locked || this.hidden/*  || this.chat.setPeerPromise || this.chat.bubbles.messagesQueuePromise */) {
       return;
     }
@@ -372,7 +377,7 @@ export default class ChatPinnedMessage {
     // return;
 
     const mid = el.dataset.mid;
-    if(el && mid !== undefined) {
+    if(mid !== undefined) {
       // this.log('setCorrectIndex will test mid:', mid);
       this.testMid(+mid, lastScrollDirection);
     }
@@ -393,11 +398,7 @@ export default class ChatPinnedMessage {
       // currentIndex = 0;
       currentIndex = this.mids.length - 1 + this.offsetIndex;
     } else {
-      if(!this.getCurrentIndexPromise) {
-        this.getCurrentIndexPromise = this.getCurrentIndex(mid, lastScrollDirection !== undefined);
-      }
-
-      return;
+      return this.getCurrentIndexPromise ??= this.getCurrentIndex(mid, lastScrollDirection !== undefined);
     }
 
     // const idx = Math.max(0, this.mids.indexOf(mid));
@@ -418,7 +419,7 @@ export default class ChatPinnedMessage {
 
       this.pinnedIndex = currentIndex;
       this.pinnedMid = this.mids.find((_mid) => _mid <= mid) || this.mids[this.mids.length - 1];
-      this.setPinnedMessage();
+      return this.setPinnedMessage();
     }
   }
 
@@ -448,15 +449,17 @@ export default class ChatPinnedMessage {
           limit: ChatPinnedMessage.LOAD_COUNT,
           backLimit: ChatPinnedMessage.LOAD_COUNT,
           threadId: this.chat.threadId
-        })
-        .then((r) => {
+        }).then((r) => {
           gotRest = true;
           return r;
         })
       ];
 
       if(!this.pinnedMaxMid) {
-        const promise = this.managers.appMessagesManager.getPinnedMessage(this.chat.peerId, this.chat.threadId).then((p) => {
+        const promise = this.managers.appMessagesManager.getPinnedMessage(
+          this.chat.peerId,
+          this.chat.threadId
+        ).then((p) => {
           if(!p.maxId) return;
           this.pinnedMaxMid = p.maxId;
 
@@ -506,11 +509,11 @@ export default class ChatPinnedMessage {
       this.setCorrectIndex(0);
     }
 
-    this.getCurrentIndexPromise = null;
+    this.getCurrentIndexPromise = undefined;
     // return result.offset_id_offset || 0;
   }
 
-  public setScrollDownListener() {
+  private setScrollDownListener() {
     this.waitForScrollBottom = true;
 
     if(!this.scrollDownListenerSetter) {
@@ -526,7 +529,7 @@ export default class ChatPinnedMessage {
 
     if(this.scrollDownListenerSetter) {
       this.scrollDownListenerSetter.removeAll();
-      this.scrollDownListenerSetter = null;
+      this.scrollDownListenerSetter = undefined;
     }
 
     if(refreshPosition) {
@@ -549,9 +552,7 @@ export default class ChatPinnedMessage {
       // await this.chat.bubbles.scrollable.scrollLockedPromise;
       await getHeavyAnimationPromise();
 
-      if(this.getCurrentIndexPromise) {
-        await this.getCurrentIndexPromise;
-      }
+      this.getCurrentIndexPromise && await this.getCurrentIndexPromise;
 
       this.debug && this.log('handleFollowingPinnedMessage: unlock');
       this.locked = false;

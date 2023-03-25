@@ -7,7 +7,7 @@
 import type {GroupCallId, MyGroupCall} from './appGroupCallsManager';
 import type GroupCallInstance from '../calls/groupCallInstance';
 import type CallInstance from '../calls/callInstance';
-import animationIntersector, {AnimationItemGroup} from '../../components/animationIntersector';
+import animationIntersector from '../../components/animationIntersector';
 import appSidebarLeft, {LEFT_COLUMN_ACTIVE_CLASSNAME} from '../../components/sidebarLeft';
 import appSidebarRight, {RIGHT_COLUMN_ACTIVE_CLASSNAME} from '../../components/sidebarRight';
 import mediaSizes, {ScreenSize} from '../../helpers/mediaSizes';
@@ -20,16 +20,15 @@ import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
 import SetTransition from '../../components/singleTransition';
 import ChatDragAndDrop from '../../components/chat/dragAndDrop';
 import {doubleRaf} from '../../helpers/schedulers';
-import lottieLoader from '../rlottie/lottieLoader';
 import useHeavyAnimationCheck, {dispatchHeavyAnimationEvent} from '../../hooks/useHeavyAnimationCheck';
 import stateStorage from '../stateStorage';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import appNavigationController from '../../components/appNavigationController';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import I18n, {i18n, join, LangPackKey} from '../langPack';
-import {ChatFull, ChatInvite, ChatParticipant, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult, WallPaper, Config} from '../../layer';
+import {ChatFull, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult, WallPaper, Config, AttachMenuBot} from '../../layer';
 import PeerTitle from '../../components/peerTitle';
-import PopupPeer, {PopupPeerCheckboxOptions} from '../../components/popups/peer';
+import {PopupPeerCheckboxOptions} from '../../components/popups/peer';
 import blurActiveElement from '../../helpers/dom/blurActiveElement';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import disableTransition from '../../helpers/dom/disableTransition';
@@ -38,12 +37,9 @@ import replaceContent from '../../helpers/dom/replaceContent';
 import whichChild from '../../helpers/dom/whichChild';
 import PopupElement from '../../components/popups';
 import singleInstance, {InstanceDeactivateReason, SingleInstance} from '../mtproto/singleInstance';
-import PopupStickers from '../../components/popups/stickers';
-import PopupJoinChatInvite from '../../components/popups/joinChatInvite';
-import {toast, toastNew} from '../../components/toast';
+import {toastNew} from '../../components/toast';
 import debounce from '../../helpers/schedulers/debounce';
 import pause from '../../helpers/schedulers/pause';
-import {InternalLink, InternalLinkTypeMap, INTERNAL_LINK_TYPE} from './internalLink';
 import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport';
 import IMAGE_MIME_TYPES_SUPPORTED from '../../environment/imageMimeTypesSupport';
 import {NULL_PEER_ID} from '../mtproto/mtproto_config';
@@ -68,7 +64,6 @@ import compareVersion from '../../helpers/compareVersion';
 import {AppManagers} from './managers';
 import uiNotificationsManager from './uiNotificationsManager';
 import appMediaPlaybackController from '../../components/appMediaPlaybackController';
-import {PHONE_NUMBER_REG_EXP} from '../richTextProcessor';
 import wrapEmojiText from '../richTextProcessor/wrapEmojiText';
 import wrapRichText, {CustomEmojiRendererElement, renderEmojis} from '../richTextProcessor/wrapRichText';
 import wrapUrl from '../richTextProcessor/wrapUrl';
@@ -91,12 +86,10 @@ import appRuntimeManager from './appRuntimeManager';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import {CLICK_EVENT_NAME} from '../../helpers/dom/clickEvent';
-import PopupPayment from '../../components/popups/payment';
 import wrapPeerTitle from '../../components/wrappers/peerTitle';
 import NBSP from '../../helpers/string/nbsp';
 import {makeMediaSize, MediaSize} from '../../helpers/mediaSize';
 import {MiddleEllipsisElement} from '../../components/middleEllipsis';
-import addAnchorListener from '../../helpers/addAnchorListener';
 import parseUriParams from '../../helpers/string/parseUriParams';
 import getMessageThreadId from './utils/messages/getMessageThreadId';
 import findUpTag from '../../helpers/dom/findUpTag';
@@ -108,8 +101,8 @@ import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import liteMode, {LiteModeKey} from '../../helpers/liteMode';
 import RLottiePlayer from '../rlottie/rlottiePlayer';
 import PopupGiftPremium from '../../components/popups/giftPremium';
-import assumeType from '../../helpers/assumeType';
-import noop from '../../helpers/noop';
+import internalLinkProcessor from './internalLinkProcessor';
+import {IsPeerType} from './appPeersManager';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -183,6 +176,7 @@ export class AppImManager extends EventListenerBase<{
 
   public construct(managers: AppManagers) {
     this.managers = managers;
+    internalLinkProcessor.construct(managers);
 
     const {
       apiUpdatesManager
@@ -575,310 +569,6 @@ export class AppImManager extends EventListenerBase<{
     setInterval(setAuthorized, ONE_DAY);
     setAuthorized();
 
-    addAnchorListener<{}>({
-      name: 'showMaskedAlert',
-      callback: (params, element) => {
-        const href = element.href;
-
-        const a = element.cloneNode(true) as HTMLAnchorElement;
-        a.className = 'anchor-url';
-        a.innerText = href;
-        a.removeAttribute('onclick');
-
-        PopupElement.createPopup(PopupPeer, 'popup-masked-url', {
-          titleLangKey: 'OpenUrlTitle',
-          descriptionLangKey: 'OpenUrlAlert2',
-          descriptionLangArgs: [a],
-          buttons: [{
-            langKey: 'Open',
-            callback: () => {
-              a.click();
-            }
-          }]
-        }).show();
-      }
-    });
-
-    addAnchorListener<{uriParams: {command: string, bot: string}}>({
-      name: 'execBotCommand',
-      callback: ({uriParams}) => {
-        const {command, bot} = uriParams;
-
-        /* const promise = bot ? this.openUsername(bot).then(() => this.chat.peerId) : Promise.resolve(this.chat.peerId);
-        promise.then((peerId) => {
-          this.managers.appMessagesManager.sendText(peerId, '/' + command);
-        }); */
-
-        this.managers.appMessagesManager.sendText(this.chat.peerId, '/' + command + (bot ? '@' + bot : ''));
-
-        // console.log(command, bot);
-      }
-    });
-
-    addAnchorListener<{uriParams: {hashtag: string}}>({
-      name: 'searchByHashtag',
-      callback: ({uriParams}) => {
-        const {hashtag} = uriParams;
-        if(!hashtag) {
-          return;
-        }
-
-        this.chat.initSearch('#' + hashtag + ' ');
-      }
-    });
-
-    addAnchorListener<{}>({
-      name: 'setMediaTimestamp',
-      callback: (_, element) => {
-        const timestamp = +element.dataset.timestamp;
-        const bubble = findUpClassName(element, 'bubble');
-        if(bubble) {
-          this.chat.bubbles.playMediaWithTimestamp(element, timestamp);
-          return;
-        }
-
-        if(findUpClassName(element, 'media-viewer-caption')) {
-          const appMediaViewer = (window as any).appMediaViewer;
-          appMediaViewer.setMediaTimestamp(timestamp);
-        }
-      }
-    });
-
-    ([
-      ['addstickers', INTERNAL_LINK_TYPE.STICKER_SET],
-      ['addemoji', INTERNAL_LINK_TYPE.EMOJI_SET]
-    ] as [
-      'addstickers' | 'addemoji',
-      INTERNAL_LINK_TYPE.STICKER_SET | INTERNAL_LINK_TYPE.EMOJI_SET
-    ][]).forEach(([name, type]) => {
-      addAnchorListener<{pathnameParams: [typeof name, string]}>({
-        name,
-        callback: ({pathnameParams}) => {
-          if(!pathnameParams[1]) {
-            return;
-          }
-
-          const link: InternalLink = {
-            _: type,
-            set: pathnameParams[1]
-          };
-
-          this.processInternalLink(link);
-        }
-      });
-
-      addAnchorListener<{
-        uriParams: {
-          set: string
-        }
-      }>({
-        name,
-        protocol: 'tg',
-        callback: ({uriParams}) => {
-          const link = this.makeLink(type, uriParams);
-          this.processInternalLink(link);
-        }
-      });
-    });
-
-    // * t.me/invoice/asdasdad
-    // * t.me/$asdasdad
-    addAnchorListener<{pathnameParams: ['invoice', string] | string}>({
-      name: 'invoice',
-      callback: ({pathnameParams}) => {
-        const link: InternalLink = {
-          _: INTERNAL_LINK_TYPE.INVOICE,
-          slug: pathnameParams.length > 1 ? pathnameParams[1] : pathnameParams[0].slice(1)
-        };
-
-        this.processInternalLink(link);
-      }
-    });
-
-    // Support old t.me/joinchat/asd and new t.me/+asd
-    addAnchorListener<{pathnameParams: ['joinchat', string]}>({
-      name: 'joinchat',
-      callback: ({pathnameParams}) => {
-        const link: InternalLink = {
-          _: INTERNAL_LINK_TYPE.JOIN_CHAT,
-          invite: pathnameParams[1] || decodeURIComponent(pathnameParams[0]).slice(1)
-        };
-
-        this.processInternalLink(link);
-      }
-    });
-
-    if(IS_GROUP_CALL_SUPPORTED) {
-      addAnchorListener<{
-        uriParams: Omit<InternalLink.InternalLinkVoiceChat, '_'>
-      }>({
-        name: 'voicechat',
-        protocol: 'tg',
-        callback: ({uriParams}) => {
-          const link = this.makeLink(INTERNAL_LINK_TYPE.VOICE_CHAT, uriParams);
-          this.processInternalLink(link);
-        }
-      });
-    }
-
-    type K1 = {thread?: string, comment?: string, t?: string};
-    type K2 = {thread?: string, comment?: string, start?: string, t?: string};
-    type K3 = {startattach?: string, attach?: string, choose?: string};
-
-    addAnchorListener<{
-    //   pathnameParams: ['c', string, string],
-    //   uriParams: {thread?: number}
-    // } | {
-    //   pathnameParams: [string, string?],
-    //   uriParams: {comment?: number}
-      pathnameParams: ['c', string, string] | [string, string?],
-      uriParams: K1 | K2 | K3
-    }>({
-      name: 'im',
-      callback: async({pathnameParams, uriParams}, element) => {
-        let link: InternalLink;
-        if(PHONE_NUMBER_REG_EXP.test(pathnameParams[0])) {
-          link = {
-            _: INTERNAL_LINK_TYPE.USER_PHONE_NUMBER,
-            phone: pathnameParams[0].slice(1)
-          };
-        } else if(pathnameParams[0] === 'c') {
-          assumeType<K1>(uriParams);
-          pathnameParams.shift();
-          const thread = 'thread' in uriParams ? uriParams.thread : pathnameParams[2] && pathnameParams[1];
-          link = {
-            _: INTERNAL_LINK_TYPE.PRIVATE_POST,
-            channel: pathnameParams[0],
-            post: pathnameParams[2] || pathnameParams[1],
-            thread,
-            comment: uriParams.comment,
-            stack: this.getStackFromElement(element),
-            t: uriParams.t
-          };
-        } else {
-          assumeType<K2>(uriParams);
-          const thread = 'thread' in uriParams ? uriParams.thread : pathnameParams[2] && pathnameParams[1];
-          link = {
-            _: INTERNAL_LINK_TYPE.MESSAGE,
-            domain: pathnameParams[0],
-            post: pathnameParams[2] || pathnameParams[1],
-            thread,
-            comment: uriParams.comment,
-            start: 'start' in uriParams ? uriParams.start : undefined,
-            stack: this.getStackFromElement(element),
-            t: uriParams.t
-          };
-        }
-
-        if('startattach' in uriParams || 'attach' in uriParams) {
-          assumeType<K3>(uriParams);
-          link = {
-            _: INTERNAL_LINK_TYPE.ATTACH_MENU_BOT,
-            nestedLink: link,
-            ...uriParams
-          };
-        }
-
-        this.processInternalLink(link);
-      }
-    });
-
-    addAnchorListener<{
-      uriParams: {
-        domain: string,
-
-        // telegrampassport
-        scope?: string,
-        nonce?: string,
-        payload?: string,
-        bot_id?: string,
-        public_key?: string,
-        callback_url?: string,
-
-        // regular
-        start?: string,
-        startgroup?: string,
-        game?: string,
-        voicechat?: string,
-        post?: string,
-        thread?: string,
-        comment?: string,
-        phone?: string,
-        t?: string,
-        attach?: string,
-        startattach?: string,
-        choose?: string
-      }
-    }>({
-      name: 'resolve',
-      protocol: 'tg',
-      callback: ({uriParams}, element) => {
-        let link: InternalLink;
-        if(uriParams.phone) {
-          link = this.makeLink(INTERNAL_LINK_TYPE.USER_PHONE_NUMBER, uriParams as Required<typeof uriParams>);
-        } else if(uriParams.domain === 'telegrampassport') {
-
-        } else {
-          link = this.makeLink(INTERNAL_LINK_TYPE.MESSAGE, {
-            ...uriParams,
-            stack: this.getStackFromElement(element)
-          });
-        }
-
-        if(uriParams.attach !== undefined || uriParams.startattach !== undefined) {
-          const nestedLink = link;
-          link = this.makeLink(INTERNAL_LINK_TYPE.ATTACH_MENU_BOT, uriParams as Required<typeof uriParams>);
-          link.nestedLink = nestedLink;
-        }
-
-        this.processInternalLink(link);
-      }
-    });
-
-    addAnchorListener<{
-      uriParams: {
-        channel: string,
-        post: string,
-        thread?: string,
-        comment?: string
-      }
-    }>({
-      name: 'privatepost',
-      protocol: 'tg',
-      callback: ({uriParams}) => {
-        const link = this.makeLink(INTERNAL_LINK_TYPE.PRIVATE_POST, uriParams);
-        this.processInternalLink(link);
-      }
-    });
-
-    addAnchorListener<{
-      uriParams: {
-        slug: string
-      }
-    }>({
-      name: 'invoice',
-      protocol: 'tg',
-      callback: ({uriParams}) => {
-        const link = this.makeLink(INTERNAL_LINK_TYPE.INVOICE, uriParams);
-        this.processInternalLink(link);
-      }
-    });
-
-    ['joinchat' as const, 'join' as const].forEach((name) => {
-      addAnchorListener<{
-        uriParams: {
-          invite: string
-        }
-      }>({
-        name,
-        protocol: 'tg',
-        callback: ({uriParams}) => {
-          const link = this.makeLink(INTERNAL_LINK_TYPE.JOIN_CHAT, uriParams);
-          this.processInternalLink(link);
-        }
-      });
-    });
-
     this.onHashChange(true);
     this.attachKeydownListener();
     this.handleAutologinDomains();
@@ -899,6 +589,78 @@ export class AppImManager extends EventListenerBase<{
         }
       });
     }
+  }
+
+  public async confirmBotWebViewInner(botId: BotId, requestWriteAccess?: boolean) {
+    const peerId = botId.toPeerId();
+    return confirmationPopup({
+      titleLangKey: 'BotOpenPageTitle',
+      descriptionLangKey: 'BotOpenPageMessage',
+      descriptionLangArgs: [await wrapPeerTitle({peerId})],
+      checkbox: requestWriteAccess ? {
+        text: 'OpenUrlOption2',
+        textArgs: [await wrapPeerTitle({peerId})],
+        checked: true
+      } : undefined,
+      button: {
+        langKey: 'OK'
+      }
+    });
+  }
+
+  public async confirmBotWebView(botId: BotId, requestWriteAccess?: boolean, ignoreConfirmedState?: boolean) {
+    const state = await apiManagerProxy.getState();
+    if(ignoreConfirmedState || !state.confirmedWebViews.includes(botId)) {
+      const haveWriteAccess = await this.confirmBotWebViewInner(botId, requestWriteAccess);
+
+      state.confirmedWebViews.push(botId);
+      await this.managers.appStateManager.pushToState('confirmedWebViews', state.confirmedWebViews);
+
+      return haveWriteAccess;
+    }
+  }
+
+  public async requestBotAttachPermission(botId: BotId, requestWriteAccess?: boolean) {
+    const peerId = botId.toPeerId();
+    return confirmationPopup({
+      button: {
+        langKey: 'Add'
+      },
+      descriptionLangKey: 'BotRequestAttachPermission',
+      descriptionLangArgs: [await wrapPeerTitle({peerId})],
+      checkbox: requestWriteAccess ? {
+        text: 'OpenUrlOption2',
+        textArgs: [await wrapPeerTitle({peerId})],
+        checked: true
+      } : undefined,
+      peerId,
+      titleLangKey: 'AddBot'
+    });
+  }
+
+  public async toggleBotInAttachMenu(
+    botId: BotId,
+    enable: boolean,
+    attachMenuBot?: AttachMenuBot
+  ) {
+    attachMenuBot ??= await this.managers.appAttachMenuBotsManager.getAttachMenuBot(botId);
+
+    if(!!attachMenuBot.pFlags.inactive === !enable) {
+      return attachMenuBot;
+    }
+
+    if(attachMenuBot.pFlags.inactive) {
+      const haveWriteAccess = await this.requestBotAttachPermission(botId, attachMenuBot.pFlags.request_write_access);
+
+      await this.managers.appAttachMenuBotsManager.toggleBotInAttachMenu(botId, true, haveWriteAccess);
+      // installed
+      delete attachMenuBot.pFlags.inactive;
+    } else {
+      await this.managers.appAttachMenuBotsManager.toggleBotInAttachMenu(botId, false);
+      attachMenuBot.pFlags.inactive = true;
+    }
+
+    return attachMenuBot;
   }
 
   public handleUrlAuth(options: {
@@ -1049,7 +811,7 @@ export class AppImManager extends EventListenerBase<{
     // });
   }
 
-  private getStackFromElement(element: HTMLElement) {
+  public getStackFromElement(element: HTMLElement) {
     const possibleBubble = findUpClassName(element, 'bubble');
     return possibleBubble ? +possibleBubble.dataset.mid : undefined;
   }
@@ -1162,192 +924,6 @@ export class AppImManager extends EventListenerBase<{
     document.body.addEventListener('keydown', onKeyDown);
   }
 
-  private makeLink<T extends INTERNAL_LINK_TYPE>(type: T, uriParams: Omit<InternalLinkTypeMap[T], '_'>) {
-    return {
-      _: type,
-      ...uriParams
-    } as any as InternalLinkTypeMap[T];
-  }
-
-  public async processInternalLink(link: InternalLink) {
-    switch(link?._) {
-      case INTERNAL_LINK_TYPE.MESSAGE: {
-        const postId = link.post ? generateMessageId(+link.post) : undefined;
-        const commentId = link.comment ? generateMessageId(+link.comment) : undefined;
-        const threadId = link.thread ? generateMessageId(+link.thread) : undefined;
-
-        this.openUsername({
-          userName: link.domain,
-          lastMsgId: postId,
-          commentId,
-          startParam: link.start,
-          stack: link.stack,
-          threadId,
-          mediaTimestamp: link.t && +link.t
-        });
-        break;
-      }
-
-      case INTERNAL_LINK_TYPE.PRIVATE_POST: {
-        const chatId = link.channel.toChatId();
-        const peerId = chatId.toPeerId(true);
-
-        const chat = await this.managers.appChatsManager.getChat(chatId);
-        if(!chat) {
-          try {
-            await this.managers.appChatsManager.resolveChannel(chatId);
-          } catch(err) {
-            toastNew({langPackKey: 'LinkNotFound'});
-            throw err;
-          }
-        }
-
-        const postId = generateMessageId(+link.post);
-        const threadId = link.thread ? generateMessageId(+link.thread) : undefined;
-
-        this.op({
-          peer: chat,
-          lastMsgId: postId,
-          threadId,
-          stack: link.stack,
-          mediaTimestamp: link.t && +link.t
-        });
-        break;
-      }
-
-      case INTERNAL_LINK_TYPE.EMOJI_SET:
-      case INTERNAL_LINK_TYPE.STICKER_SET: {
-        PopupElement.createPopup(PopupStickers, {id: link.set}, link._ === INTERNAL_LINK_TYPE.EMOJI_SET).show();
-        break;
-      }
-
-      case INTERNAL_LINK_TYPE.JOIN_CHAT: {
-        this.managers.appChatsManager.checkChatInvite(link.invite).then((chatInvite) => {
-          if((chatInvite as ChatInvite.chatInvitePeek).chat) {
-            this.managers.appChatsManager.saveApiChat((chatInvite as ChatInvite.chatInvitePeek).chat, true);
-          }
-
-          // console.log(chatInvite);
-
-          if(chatInvite._ === 'chatInviteAlready' ||
-            chatInvite._ === 'chatInvitePeek'/*  && chatInvite.expires > tsNow(true) */) {
-            this.setInnerPeer({
-              peerId: chatInvite.chat.id.toPeerId(true)
-            });
-            return;
-          }
-
-          PopupElement.createPopup(PopupJoinChatInvite, link.invite, chatInvite);
-        }, (err) => {
-          if(err.type === 'INVITE_HASH_EXPIRED') {
-            toast(i18n('InviteExpired'));
-          }
-        });
-        break;
-      }
-
-      case INTERNAL_LINK_TYPE.VOICE_CHAT: {
-        if(IS_GROUP_CALL_SUPPORTED) {
-          this.joinGroupCall(link.chat_id.toPeerId(true), link.id);
-        }
-
-        break;
-      }
-
-      case INTERNAL_LINK_TYPE.USER_PHONE_NUMBER: {
-        this.managers.appUsersManager.resolvePhone(link.phone).then((user) => {
-          this.setInnerPeer({
-            peerId: user.id.toPeerId(false)
-          });
-        }).catch((err) => {
-          if(err.type === 'PHONE_NOT_OCCUPIED') {
-            toastNew({langPackKey: 'Alert.UserDoesntExists'});
-          }
-        });
-
-        break;
-      }
-
-      case INTERNAL_LINK_TYPE.INVOICE: {
-        this.managers.appPaymentsManager.getInputInvoiceBySlug(link.slug).then((inputInvoice) => {
-          this.managers.appPaymentsManager.getPaymentForm(inputInvoice).then((paymentForm) => {
-            // const message: Message.message = {
-            //   _: 'message',
-            //   date: 0,
-            //   id: 0,
-            //   peerId: 0,
-            //   peer_id: undefined,
-            //   message: '',
-            //   media: {
-            //     _: 'messageMediaInvoice',
-            //     currency: paymentForm.invoice.currency,
-            //     description: paymentForm.description,
-
-            //   }
-            // };
-            PopupElement.createPopup(PopupPayment, undefined, inputInvoice, paymentForm);
-          });
-        });
-        break;
-      }
-
-      case INTERNAL_LINK_TYPE.ATTACH_MENU_BOT: {
-        console.log(link);
-        const botUsername = link.attach || link.domain;
-        const user = await this.managers.appUsersManager.resolveUserByUsername(botUsername).catch(() => undefined as User.user);
-
-        if(link.attach !== undefined) {
-          this.processInternalLink(link.nestedLink);
-        }
-
-        let errorLangPackKey: LangPackKey;
-        if(!user) {
-          errorLangPackKey = 'Alert.UserDoesntExists';
-        } else if(!user.pFlags.bot_attach_menu) {
-          errorLangPackKey = 'BotCantAddToAttachMenu';
-        }/*  else if(user.pFlags.attach_menu_enabled) {
-          errorLangPackKey = 'BotAlreadyAddedToAttachMenu';
-        } */
-
-        if(errorLangPackKey) {
-          toastNew({langPackKey: errorLangPackKey});
-          break;
-        }
-
-        const peerId = user.id.toPeerId(false);
-        const attachMenuBot = await this.managers.appAttachMenuBotsManager.getAttachMenuBot(user.id);
-
-        console.log(attachMenuBot);
-
-        if(attachMenuBot.pFlags.inactive) {
-          const haveWriteAccess = await confirmationPopup({
-            button: {
-              text: 'Add'
-            },
-            descriptionLangKey: 'BotRequestAttachPermission',
-            descriptionLangArgs: [await wrapPeerTitle({peerId})],
-            checkbox: attachMenuBot.pFlags.request_write_access ? {
-              text: 'OpenUrlOption2',
-              textArgs: [await wrapPeerTitle({peerId})],
-              checked: true
-            } : undefined,
-            peerId,
-            titleLangKey: 'AddBot'
-          });
-
-          await this.managers.appAttachMenuBotsManager.toggleBotInAttachMenu(user.id, true, haveWriteAccess);
-        }
-
-        break;
-      }
-
-      default: {
-        this.log.warn('Not supported internal link:', link);
-        break;
-      }
-    }
-  }
-
   public openUrl(url: string) {
     const {url: wrappedUrl, onclick} = wrapUrl(url);
     if(!onclick) {
@@ -1356,7 +932,7 @@ export class AppImManager extends EventListenerBase<{
 
     const a = document.createElement('a');
     a.href = wrappedUrl;
-    (window as any)[onclick](a);
+    return (window as any)[onclick](a);
   }
 
   private onHashChange = (saveState?: boolean) => {
@@ -1422,7 +998,7 @@ export class AppImManager extends EventListenerBase<{
     // location.hash = '';
   };
 
-  private async op(options: {
+  public async op(options: {
     peer: User.user | MTChat
   } & Omit<ChatSetPeerOptions, 'peerId'>) {
     let {peer, commentId, threadId, lastMsgId} = options;

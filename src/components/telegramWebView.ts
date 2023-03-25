@@ -5,7 +5,7 @@
  */
 
 import EventListenerBase from '../helpers/eventListenerBase';
-import {TelegramWebViewEvent, TelegramWebViewEventCallback, TelegramWebViewEventMap} from '../types';
+import {TelegramWebViewEvent, TelegramWebViewEventCallback, TelegramWebViewEventMap, TelegramWebViewSendEventMap} from '../types';
 
 const weakMap: WeakMap<Window, TelegramWebViewEventCallback> = new WeakMap();
 window.addEventListener('message', (e) => {
@@ -22,15 +22,17 @@ export default class TelegramWebView extends EventListenerBase<{
 }> {
   public iframe: HTMLIFrameElement;
 
-  constructor({url, sandbox}: {
+  constructor({url, sandbox, allow}: {
     url: string,
-    sandbox?: string
+    sandbox?: string,
+    allow?: string
   }) {
     super(false);
 
     const iframe = this.iframe = document.createElement('iframe');
     iframe.src = url;
     if(sandbox) iframe.setAttribute('sandbox', sandbox);
+    if(allow) iframe.allow = allow;
   }
 
   public onMount() {
@@ -50,4 +52,14 @@ export default class TelegramWebView extends EventListenerBase<{
     console.log('onTelegramWebViewEvent', eventType, eventData);
     this.dispatchEvent(eventType, eventData as any);
   };
+
+  public dispatchWebViewEvent<T extends keyof TelegramWebViewSendEventMap>(
+    eventType: T,
+    eventData: TelegramWebViewSendEventMap[T]
+  ) {
+    this.iframe.contentWindow.postMessage(JSON.stringify({
+      eventType,
+      eventData
+    }), '*');
+  }
 }

@@ -47,7 +47,7 @@ export class WebPushApiManager extends EventListenerBase<{
   private isAliveTO: any;
   private isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
   private userVisibleOnly = this.isFirefox ? false : true;
-  private log = logger('PM');
+  private log = logger('PUSH-API');
 
   constructor() {
     super(false);

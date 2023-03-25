@@ -5,24 +5,27 @@
  */
 
 import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
-import AppSelectPeers from '../appSelectPeers';
+import AppSelectPeers, {SelectSearchPeerType} from '../appSelectPeers';
 import PopupElement from '.';
-import {LangPackKey, _i18n} from '../../lib/langPack';
+import {_i18n} from '../../lib/langPack';
+import {Modify} from '../../types';
+import {IsPeerType} from '../../lib/appManagers/appPeersManager';
+
+type PopupPickUserOptions = Modify<ConstructorParameters<typeof AppSelectPeers>[0], {
+  multiSelect?: never,
+  appendTo?: never,
+  managers?: never,
+  onSelect?: (peerId: PeerId) => Promise<void> | void
+}>;
 
 export default class PopupPickUser extends PopupElement {
   protected selector: AppSelectPeers;
 
-  constructor(options: {
-    peerTypes: AppSelectPeers['peerType'],
-    onSelect?: (peerId: PeerId) => Promise<void> | void,
-    placeholder: LangPackKey,
-    chatRightsActions?: AppSelectPeers['chatRightsActions'],
-    peerId?: number,
-    selfPresence?: LangPackKey
-  }) {
+  constructor(options: PopupPickUserOptions) {
     super('popup-forward', {closable: true, overlayClosable: true, body: true, title: true});
 
     this.selector = new AppSelectPeers({
+      ...options,
       appendTo: this.body,
       onChange: async() => {
         const selected = this.selector.getSelected();
@@ -42,7 +45,6 @@ export default class PopupPickUser extends PopupElement {
         this.selector = null;
         this.hide();
       },
-      peerType: options.peerTypes,
       onFirstRender: () => {
         this.show();
         this.selector.checkForTriggers(); // ! due to zero height before mounting
@@ -51,13 +53,9 @@ export default class PopupPickUser extends PopupElement {
           this.selector.input.focus();
         }
       },
-      chatRightsActions: options.chatRightsActions,
       multiSelect: false,
       rippleEnabled: false,
       avatarSize: 'abitbigger',
-      peerId: options.peerId,
-      placeholder: options.placeholder,
-      selfPresence: options.selfPresence,
       managers: this.managers
     });
 
@@ -67,5 +65,54 @@ export default class PopupPickUser extends PopupElement {
     // this.scrollable = new Scrollable(this.body);
 
     this.title.append(this.selector.input);
+  }
+
+  public static async createPicker2({
+    peerType,
+    filterPeerTypeBy,
+    chatRightsActions
+  }: {
+    peerType?: SelectSearchPeerType[],
+    filterPeerTypeBy: AppSelectPeers['filterPeerTypeBy'],
+    chatRightsActions?: PopupPickUserOptions['chatRightsActions']
+  }) {
+    return new Promise<PeerId>((resolve, reject) => {
+      let resolved = false;
+      const popup = PopupElement.createPopup(PopupPickUser, {
+        peerType,
+        placeholder: 'SelectChat',
+        onSelect: (peerId) => {
+          resolve(peerId);
+          resolved = true;
+        },
+        filterPeerTypeBy,
+        chatRightsActions
+      });
+
+      popup.addEventListener('close', () => {
+        if(!resolved) {
+          reject();
+        }
+      }, {once: true});
+    });
+  }
+
+  public static async createPicker(
+    types: Parameters<typeof AppSelectPeers['convertPeerTypes']>[0] = ['users', 'bots', 'groups', 'channels'],
+    chatRightsActions?: PopupPickUserOptions['chatRightsActions']
+  ) {
+    if(!Array.isArray(types)) {
+      types = [];
+    }
+
+    const filterPeerTypeBy: IsPeerType[] = AppSelectPeers.convertPeerTypes(types);
+    const peerType: SelectSearchPeerType[] = ['dialogs'];
+    if(types.includes('users')) peerType.push('contacts');
+
+    if(!filterPeerTypeBy.length) {
+      throw undefined;
+    }
+
+    return this.createPicker2({peerType, filterPeerTypeBy, chatRightsActions});
   }
 }

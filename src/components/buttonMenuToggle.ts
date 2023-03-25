@@ -91,7 +91,7 @@ export default function ButtonMenuToggle({
         return;
       }
 
-      const f = (b: (typeof buttons[0])[]) => filterAsync(b, (button) => button?.verify?.() ?? true);
+      const f = (b: (typeof buttons[0])[]) => filterAsync(b, (button) => button?.verify ? button.verify() ?? false : true);
 
       const filteredButtons = await f(buttons);
       if(!filteredButtons.length) {

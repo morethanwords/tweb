@@ -113,7 +113,8 @@ export type State = {
   keepSigned: boolean,
   chatContextMenuHintWasShown: boolean,
   stateId: number,
-  notifySettings: {[k in Exclude<NotifyPeer['_'], 'notifyPeer'>]?: PeerNotifySettings.peerNotifySettings}
+  notifySettings: {[k in Exclude<NotifyPeer['_'], 'notifyPeer'>]?: PeerNotifySettings.peerNotifySettings},
+  confirmedWebViews: BotId[]
 };
 
 // const BACKGROUND_DAY_MOBILE: Background = {
@@ -320,5 +321,6 @@ export const STATE_INIT: State = {
   keepSigned: true,
   chatContextMenuHintWasShown: false,
   stateId: nextRandomUint(32),
-  notifySettings: {}
+  notifySettings: {},
+  confirmedWebViews: []
 };

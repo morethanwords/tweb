@@ -335,7 +335,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         });
       } else {
         PopupElement.createPopup(PopupPickUser, {
-          peerTypes: ['contacts'],
+          peerType: ['contacts'],
           placeholder: 'Search',
           onSelect: (peerId) => {
             setTimeout(() => {

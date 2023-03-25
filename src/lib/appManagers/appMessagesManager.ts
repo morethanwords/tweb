@@ -188,12 +188,9 @@ export class AppMessagesManager extends AppManager {
     }
   };
   private searchesStorage: {
-    [peerId: PeerId]: Partial<{
-      [inputFilter in MyInputMessagesFilter]: {
-        count?: number,
-        history: number[]
-      }
-    }>
+    [peerId: PeerId]: {
+      [inputFilter in MyInputMessagesFilter]?: HistoryStorage
+    }
   };
   private pinnedMessages: {[key: string]: PinnedStorage};
 
@@ -3515,7 +3512,7 @@ export class AppMessagesManager extends AppManager {
       }, messageReplyMarkup); */
 
       if(messageReplyMarkup._ !== 'replyKeyboardHide') {
-        messageReplyMarkup.fromId = this.appPeersManager.getPeerId(message.from_id);
+        messageReplyMarkup.fromId = this.appPeersManager.getPeerId(message.from_id || message.peer_id);
       }
 
       historyStorage.replyMarkup = messageReplyMarkup;
@@ -3560,9 +3557,7 @@ export class AppMessagesManager extends AppManager {
   }
 
   public getSearchStorage(peerId: PeerId, inputFilter: MyInputMessagesFilter) {
-    if(!this.searchesStorage[peerId]) this.searchesStorage[peerId] = {};
-    if(!this.searchesStorage[peerId][inputFilter]) this.searchesStorage[peerId][inputFilter] = {history: []};
-    return this.searchesStorage[peerId][inputFilter];
+    return (this.searchesStorage[peerId] ??= {})[inputFilter] ??= this.createHistoryStorage();
   }
 
   public getSearchCounters(
@@ -3624,23 +3619,22 @@ export class AppMessagesManager extends AppManager {
       });
     }
 
-    if(!query) query = '';
-    if(!inputFilter) inputFilter = {_: 'inputMessagesFilterEmpty'};
-    if(limit === undefined) limit = 20;
-    if(!nextRate) nextRate = 0;
-    if(!backLimit) backLimit = 0;
+    query ||= '';
+    inputFilter ||= {_: 'inputMessagesFilterEmpty'};
+    limit ??= 20;
+    nextRate ||= 0;
+    backLimit ||= 0;
 
     minDate = minDate ? minDate / 1000 | 0 : 0;
     maxDate = maxDate ? maxDate / 1000 | 0 : 0;
 
     let foundMsgs: MyMessage[] = [];
 
-    // this.log('search', maxId);
-
     if(backLimit) {
       limit += backLimit;
     }
 
+    const isPinnedSearch = inputFilter._ === 'inputMessagesFilterPinned';
     // const beta = inputFilter._ === 'inputMessagesFilterPinned' && !backLimit;
     const beta = false;
 
@@ -3654,7 +3648,13 @@ export class AppMessagesManager extends AppManager {
       storage = beta ?
         this.getSearchStorage(peerId, inputFilter._) as any :
         this.getHistoryStorage(peerId);
-      foundMsgs = this.filterMessagesByInputFilterFromStorage(inputFilter._, storage.history.slice, this.getHistoryMessagesStorage(peerId), limit);
+
+      foundMsgs = this.filterMessagesByInputFilterFromStorage(
+        inputFilter._,
+        storage.history.slice,
+        this.getHistoryMessagesStorage(peerId),
+        limit
+      );
     }
 
     if(foundMsgs.length) {
@@ -3678,10 +3678,13 @@ export class AppMessagesManager extends AppManager {
       });
     }
 
-    const canCache = false && (['inputMessagesFilterChatPhotos', 'inputMessagesFilterPinned'] as MyInputMessagesFilter[]).includes(inputFilter._);
-    const method = (canCache ? this.apiManager.invokeApiCacheable : this.apiManager.invokeApi).bind(this.apiManager);
+    const canCacheRequest = false && ([
+      'inputMessagesFilterChatPhotos',
+      'inputMessagesFilterPinned'
+    ] as MyInputMessagesFilter[]).includes(inputFilter._);
+    const method = (canCacheRequest ? this.apiManager.invokeApiCacheable : this.apiManager.invokeApi).bind(this.apiManager);
 
-    let apiPromise: Promise<any>;
+    let apiPromise: Promise<MessagesMessages>;
     if(peerId && !nextRate && folderId === undefined/*  || !query */) {
       apiPromise = method('messages.search', {
         peer: this.appPeersManager.getInputPeerById(peerId),
@@ -3706,7 +3709,7 @@ export class AppMessagesManager extends AppManager {
       let offsetId = 0;
       const offsetMessage = maxId && this.getMessageByPeer(peerId, maxId);
 
-      if(offsetMessage && offsetMessage.date) {
+      if(offsetMessage?.date) {
         // offsetDate = offsetMessage.date + timeManager.getServerTimeOffset();
         offsetId = offsetMessage.id;
         offsetPeerId = this.getMessagePeer(offsetMessage);
@@ -3728,7 +3731,8 @@ export class AppMessagesManager extends AppManager {
       });
     }
 
-    return apiPromise.then((searchResult: any) => {
+    return apiPromise.then((searchResult) => {
+      assumeType<Exclude<MessagesMessages, MessagesMessages.messagesMessagesNotModified>>(searchResult);
       this.appUsersManager.saveApiUsers(searchResult.users);
       this.appChatsManager.saveApiChats(searchResult.chats);
       this.saveMessages(searchResult.messages);
@@ -3745,9 +3749,10 @@ export class AppMessagesManager extends AppManager {
         this.log('getSearch result:', inputFilter, searchResult);
       }
 
-      const foundCount: number = searchResult.count || (foundMsgs.length + searchResult.messages.length);
+      const foundCount: number = (searchResult as MessagesMessages.messagesMessagesSlice).count ||
+        (foundMsgs.length + searchResult.messages.length);
 
-      searchResult.messages.forEach((message: MyMessage) => {
+      (searchResult.messages as MyMessage[]).forEach((message) => {
         const peerId = this.getMessagePeer(message);
         if(peerId.isAnyChat()) {
           const chat = this.appChatsManager.getChat(peerId.toChatId()) as Chat.chat;
@@ -3761,8 +3766,8 @@ export class AppMessagesManager extends AppManager {
 
       return {
         count: foundCount,
-        offset_id_offset: searchResult.offset_id_offset || 0,
-        next_rate: searchResult.next_rate,
+        offset_id_offset: (searchResult as MessagesMessages.messagesMessagesSlice).offset_id_offset || 0,
+        next_rate: (searchResult as MessagesMessages.messagesMessagesSlice).next_rate,
         history: foundMsgs
       };
     });
@@ -4269,13 +4274,17 @@ export class AppMessagesManager extends AppManager {
     return promise;
   }
 
+  public createHistoryStorage(): HistoryStorage {
+    return {count: null, history: new SlicedArray()};
+  }
+
   public getHistoryStorage(peerId: PeerId, threadId?: number) {
     if(threadId) {
       // threadId = this.getLocalMessageId(threadId);
-      return (this.threadsStorage[peerId] ??= {})[threadId] ??= {count: null, history: new SlicedArray()};
+      return (this.threadsStorage[peerId] ??= {})[threadId] ??= this.createHistoryStorage();
     }
 
-    return this.historiesStorage[peerId] ??= {count: null, history: new SlicedArray()};
+    return this.historiesStorage[peerId] ??= this.createHistoryStorage();
   }
 
   public getHistoryStorageTransferable(peerId: PeerId, threadId?: number) {
@@ -5810,9 +5819,13 @@ export class AppMessagesManager extends AppManager {
   /**
    * * https://core.telegram.org/api/offsets, offset_id is inclusive
    */
-  // public getHistory(peerId: PeerId, maxId?: number, limit?: number, backLimit?: number, threadId?: number, onlyCache?: false): Promise<HistoryResult> | HistoryResult;
-  // public getHistory(peerId: PeerId, maxId?: number, limit?: number, backLimit?: number, threadId?: number, onlyCache?: true): HistoryResult;
-  public getHistory(peerId: PeerId, maxId: number = 0, limit?: number, backLimit?: number, threadId?: number/* , onlyCache?: boolean */): Promise<HistoryResult> | HistoryResult {
+  public getHistory(
+    peerId: PeerId,
+    maxId: number = 0,
+    limit?: number,
+    backLimit?: number,
+    threadId?: number
+  ): Promise<HistoryResult> | HistoryResult {
     const historyStorage = this.getHistoryStorage(peerId, threadId);
 
     if(this.appPeersManager.isPeerRestricted(peerId)) {
@@ -5894,11 +5907,14 @@ export class AppMessagesManager extends AppManager {
       };
     }
 
-    // if(onlyCache) {
-    //   return;
-    // }
-
-    return this.fillHistoryStorage(peerId, maxId, limit, offset, historyStorage, threadId).then(() => {
+    return this.fillHistoryStorage(
+      peerId,
+      maxId,
+      limit,
+      offset,
+      historyStorage,
+      threadId
+    ).then(() => {
       const slice = historyStorage.history.sliceMe(maxId, offset, limit);
       const f = slice?.slice || historyStorage.history.constructSlice();
       return {
@@ -6005,8 +6021,26 @@ export class AppMessagesManager extends AppManager {
 
   public fillHistoryStorage(peerId: PeerId, offset_id: number, limit: number, add_offset: number, historyStorage: HistoryStorage, threadId?: number): Promise<void> {
     const wasMaxId = historyStorage.maxId;
-    return this.requestHistory(peerId, offset_id, limit, add_offset, undefined, threadId).then((historyResult) => {
-      const {count, isBottomEnd, slice, messages} = this.mergeHistoryResult(historyStorage.history, historyResult, offset_id, limit, add_offset);
+    return this.requestHistory(
+      peerId,
+      offset_id,
+      limit,
+      add_offset,
+      undefined,
+      threadId
+    ).then((historyResult) => {
+      const {
+        count,
+        isBottomEnd,
+        slice,
+        messages
+      } = this.mergeHistoryResult(
+        historyStorage.history,
+        historyResult,
+        offset_id,
+        limit,
+        add_offset
+      );
 
       historyStorage.count = count;
 
@@ -6078,10 +6112,6 @@ export class AppMessagesManager extends AppManager {
   }
 
   public requestHistory(peerId: PeerId, maxId: number, limit = 0, offset = 0, offsetDate = 0, threadId = 0): Promise<Exclude<MessagesMessages, MessagesMessages.messagesMessagesNotModified>> {
-    // console.trace('requestHistory', peerId, maxId, limit, offset);
-
-    // rootScope.broadcast('history_request');
-
     const options: MessagesGetReplies | MessagesGetHistory = {
       peer: this.appPeersManager.getInputPeerById(peerId),
       offset_id: getServerMessageId(maxId) || 0,
@@ -6136,14 +6166,14 @@ export class AppMessagesManager extends AppManager {
       }
 
       return historyResult;
-    }, (error) => {
+    }, (error: ApiError) => {
       switch(error.type) {
         case 'CHANNEL_PRIVATE':
           let channel = this.appChatsManager.getChat(peerId.toChatId());
           if(channel._ === 'channel') {
             channel = {
               _: 'channelForbidden',
-              id: peerId.toChatId(),
+              id: channel.id,
               access_hash: channel.access_hash,
               title: channel.title,
               pFlags: channel.pFlags
@@ -6154,7 +6184,7 @@ export class AppMessagesManager extends AppManager {
             _: 'updates',
             updates: [{
               _: 'updateChannel',
-              channel_id: peerId.toChatId()
+              channel_id: channel.id
             }],
             chats: [channel],
             users: []
@@ -6603,6 +6633,17 @@ export class AppMessagesManager extends AppManager {
     return this.apiManager.invokeApi('messages.saveDefaultSendAs', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       send_as: this.appPeersManager.getInputPeerById(sendAsPeerId)
+    });
+  }
+
+  public sendBotRequestedPeer(peerId: PeerId, mid: number, buttonId: number, requestedPeerId: PeerId) {
+    return this.apiManager.invokeApi('messages.sendBotRequestedPeer', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      msg_id: getServerMessageId(mid),
+      button_id: buttonId,
+      requested_peer: this.appPeersManager.getInputPeerById(requestedPeerId)
+    }).then((updates) => {
+      this.apiUpdatesManager.processUpdateMessage(updates);
     });
   }
 }

@@ -51,6 +51,8 @@ import PopupElement from '../popups';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
+const PINNED_ALWAYS_FLOATING = false;
+
 export default class ChatTopbar {
   public container: HTMLDivElement;
   private btnBack: HTMLButtonElement;
@@ -163,7 +165,7 @@ export default class ChatTopbar {
 
     this.chatUtils.append(...[
       // this.chatAudio ? this.chatAudio.divAndCaption.container : null,
-      this.pinnedMessage ? this.pinnedMessage.pinnedMessageContainer.divAndCaption.container : null,
+      // this.pinnedMessage ? this.pinnedMessage.pinnedMessageContainer.divAndCaption.container : null,
       this.btnJoin,
       this.btnPinned,
       this.btnCall,
@@ -178,6 +180,10 @@ export default class ChatTopbar {
 
     this.chatInfoContainer.append(this.btnBack, this.chatInfo, this.chatUtils);
     this.container.append(this.chatInfoContainer);
+
+    if(this.pinnedMessage) {
+      this.appendPinnedMessage(this.pinnedMessage);
+    }
 
     if(this.chatAudio) {
       // this.container.append(this.chatAudio.divAndCaption.container, this.chatUtils);
@@ -421,7 +427,7 @@ export default class ChatTopbar {
       onClick: () => {
         const contactPeerId = this.peerId;
         PopupElement.createPopup(PopupPickUser, {
-          peerTypes: ['dialogs', 'contacts'],
+          peerType: ['dialogs', 'contacts'],
           onSelect: (peerId) => {
             return new Promise((resolve, reject) => {
               PopupElement.createPopup(PopupPeer, '', {
@@ -695,9 +701,10 @@ export default class ChatTopbar {
   };
 
   private onChangeScreen = (from: ScreenSize, to: ScreenSize) => {
-    this.container.classList.toggle('is-pinned-floating', mediaSizes.isMobile);
+    const isFloating = to === ScreenSize.mobile || PINNED_ALWAYS_FLOATING;
+    this.container.classList.toggle('is-pinned-floating', mediaSizes.isMobile || isFloating);
     // this.chatAudio && this.chatAudio.divAndCaption.container.classList.toggle('is-floating', to === ScreenSize.mobile);
-    this.pinnedMessage && this.pinnedMessage.pinnedMessageContainer.divAndCaption.container.classList.toggle('is-floating', to === ScreenSize.mobile);
+    this.pinnedMessage && this.pinnedMessage.pinnedMessageContainer.divAndCaption.container.classList.toggle('is-floating', isFloating);
     this.onResize();
   };
 
@@ -716,6 +723,19 @@ export default class ChatTopbar {
   public cleanup() {
     if(!this.chat.peerId) {
       this.container.classList.add('hide');
+    }
+  }
+
+  private appendPinnedMessage(pinnedMessage: ChatPinnedMessage) {
+    const container = pinnedMessage.pinnedMessageContainer.divAndCaption.container;
+    if(this.pinnedMessage && this.pinnedMessage !== pinnedMessage) {
+      this.pinnedMessage.pinnedMessageContainer.divAndCaption.container.replaceWith(container);
+    } else {
+      if(PINNED_ALWAYS_FLOATING) {
+        this.container.append(container);
+      } else {
+        this.chatUtils.prepend(container);
+      }
     }
   }
 
@@ -794,14 +814,8 @@ export default class ChatTopbar {
       if(isPinnedMessagesNeeded || this.chat.type === 'discussion') {
         if(this.chat.wasAlreadyUsed || !this.pinnedMessage) { // * change
           const newPinnedMessage = new ChatPinnedMessage(this, this.chat, this.managers);
-          if(this.pinnedMessage) {
-            this.pinnedMessage.pinnedMessageContainer.divAndCaption.container.replaceWith(newPinnedMessage.pinnedMessageContainer.divAndCaption.container);
-            this.pinnedMessage.destroy();
-            // this.pinnedMessage.pinnedMessageContainer.toggle(true);
-          } else {
-            this.chatUtils.prepend(this.pinnedMessage.pinnedMessageContainer.divAndCaption.container);
-          }
-
+          this.appendPinnedMessage(newPinnedMessage);
+          this.pinnedMessage?.destroy();
           this.pinnedMessage = newPinnedMessage;
         }
 

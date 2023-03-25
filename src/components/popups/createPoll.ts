@@ -19,6 +19,7 @@ import whichChild from '../../helpers/dom/whichChild';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import {Poll} from '../../layer';
 import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
+import confirmationPopup from '../confirmationPopup';
 
 const MAX_LENGTH_QUESTION = 255;
 const MAX_LENGTH_OPTION = 100;
@@ -39,7 +40,28 @@ export default class PopupCreatePoll extends PopupElement {
   private optionInputFields: InputField[];
 
   constructor(private chat: Chat) {
-    super('popup-create-poll popup-new-media', {closable: true, withConfirm: 'Create', body: true, title: 'NewPoll'});
+    super('popup-create-poll popup-new-media', {
+      closable: true,
+      overlayClosable: true,
+      withConfirm: 'Create',
+      body: true,
+      title: 'NewPoll',
+      isConfirmationNeededOnClose: () => {
+        if(!this.getFilledAnswers().length) {
+          return;
+        }
+
+        return confirmationPopup({
+          titleLangKey: 'CancelPollAlertTitle',
+          descriptionLangKey: 'CancelPollAlertText',
+          button: {
+            langKey: 'Discard',
+            isDanger: true
+          }
+        });
+      }
+    });
+
     this.construct();
   }
 
@@ -175,10 +197,6 @@ export default class PopupCreatePoll extends PopupElement {
 
     this.scrollable = new Scrollable(this.body);
     this.appendMoreField();
-
-    this.onEscape = () => {
-      return !this.getFilledAnswers().length;
-    };
 
     this.handleChange();
   }

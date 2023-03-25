@@ -15,7 +15,12 @@ import {ChatRights} from '../../appChatsManager';
  * @param isThread
  * @returns
  */
-export default function hasRights(chat: Exclude<Chat, Chat.chatEmpty>, action: ChatRights, rights?: ChatAdminRights | ChatBannedRights, isThread?: boolean) {
+export default function hasRights(
+  chat: Exclude<Chat, Chat.chatEmpty>,
+  action: ChatRights,
+  rights?: ChatAdminRights | ChatBannedRights,
+  isThread?: boolean
+) {
   if(!chat) return false;
 
   if((chat as Chat.chat).pFlags.deactivated && action !== 'view_messages') {
@@ -23,7 +28,7 @@ export default function hasRights(chat: Exclude<Chat, Chat.chatEmpty>, action: C
   }
 
   const isCheckingRightsForSelf = rights === undefined;
-  if((chat as Chat.chat).pFlags.creator && isCheckingRightsForSelf) {
+  if((chat as Chat.chat).pFlags.creator && isCheckingRightsForSelf && action !== 'anonymous') {
     return true;
   }
 
@@ -113,6 +118,7 @@ export default function hasRights(chat: Exclude<Chat, Chat.chatEmpty>, action: C
       return false;
     }
 
+    case 'anonymous':
     case 'edit_messages':
     case 'manage_topics': {
       return isAdmin && !!myFlags[action];

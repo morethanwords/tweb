@@ -134,6 +134,10 @@ export class AppPeersManager extends AppManager {
     return isUser(peerId);
   }
 
+  public isRegularUser(peerId: PeerId) {
+    return this.isUser(peerId) && this.appUsersManager.isRegularUser(peerId);
+  }
+
   public isAnyChat(peerId: PeerId) {
     return isAnyChat(peerId);
   }
@@ -295,4 +299,4 @@ export class AppPeersManager extends AppManager {
   }
 }
 
-export type IsPeerType = 'isChannel' | 'isMegagroup' | 'isAnyGroup' | 'isBroadcast' | 'isBot' | 'isContact' | 'isUser' | 'isAnyChat';
+export type IsPeerType = 'isChannel' | 'isMegagroup' | 'isAnyGroup' | 'isBroadcast' | 'isBot' | 'isContact' | 'isUser' | 'isAnyChat' | 'isRegularUser';

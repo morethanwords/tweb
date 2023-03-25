@@ -5,8 +5,9 @@
  */
 
 import type {ChatRights} from '../../lib/appManagers/appChatsManager';
-import {AppImManager, APP_TABS, ChatSetPeerOptions} from '../../lib/appManagers/appImManager';
+import type {RequestWebViewOptions} from '../../lib/appManagers/appAttachMenuBotsManager';
 import type {MessageSendingParams, MessagesStorageKey} from '../../lib/appManagers/appMessagesManager';
+import {AppImManager, APP_TABS, ChatSetPeerOptions} from '../../lib/appManagers/appImManager';
 import EventListenerBase from '../../helpers/eventListenerBase';
 import {logger, LogTypes} from '../../lib/logger';
 import rootScope from '../../lib/rootScope';
@@ -38,6 +39,8 @@ import {Message, WallPaper} from '../../layer';
 import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
 import {getColorsFromWallPaper} from '../../helpers/color';
 import liteMode from '../../helpers/liteMode';
+import PopupElement from '../popups';
+import PopupWebApp from '../popups/webApp';
 
 export type ChatType = 'chat' | 'pinned' | 'discussion' | 'scheduled';
 
@@ -722,5 +725,28 @@ export default class Chat extends EventListenerBase<{
   public canGiftPremium() {
     const peerId = this.peerId;
     return peerId.isUser() && this.managers.appProfileManager.canGiftPremium(this.peerId.toUserId());
+  }
+
+  public async openWebApp(options: Partial<RequestWebViewOptions>) {
+    Object.assign(options, this.getMessageSendingParams());
+    options.botId ??= options.attachMenuBot.bot_id;
+    options.themeParams ??= {
+      _: 'dataJSON',
+      data: JSON.stringify(themeController.getThemeParamsForWebView())
+    };
+    options.peerId ??= this.peerId;
+
+    if(!options.attachMenuBot && !options.isSimpleWebView && !options.app) {
+      try {
+        options.attachMenuBot = await this.managers.appAttachMenuBotsManager.getAttachMenuBot(options.botId);
+      } catch(err) {}
+    }
+
+    const webViewResultUrl = await this.managers.appAttachMenuBotsManager.requestWebView(options as RequestWebViewOptions);
+    PopupElement.createPopup(PopupWebApp, {
+      webViewResultUrl,
+      webViewOptions: options as RequestWebViewOptions,
+      attachMenuBot: options.attachMenuBot
+    });
   }
 }

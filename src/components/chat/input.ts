@@ -5,12 +5,11 @@
  */
 
 import type {MyDocument} from '../../lib/appManagers/appDocsManager';
-import {AppImManager, APP_TABS} from '../../lib/appManagers/appImManager';
 import type {MyDraftMessage} from '../../lib/appManagers/appDraftsManager';
 import type Chat from './chat';
+import {AppImManager, APP_TABS} from '../../lib/appManagers/appImManager';
 import Recorder from '../../../public/recorder.min';
 import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
-// import Recorder from '../opus-recorder/dist/recorder.min';
 import opusDecodeController from '../../lib/opusDecodeController';
 import {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable, ButtonMenuSync} from '../buttonMenu';
 import emoticonsDropdown from '../emoticonsDropdown';
@@ -18,7 +17,7 @@ import PopupCreatePoll from '../popups/createPoll';
 import PopupForward from '../popups/forward';
 import PopupNewMedia from '../popups/newMedia';
 import {toast, toastNew} from '../toast';
-import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType} from '../../layer';
+import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton} from '../../layer';
 import StickersHelper from './stickersHelper';
 import ButtonIcon from '../buttonIcon';
 import ButtonMenuToggle from '../buttonMenuToggle';
@@ -53,7 +52,6 @@ import fixSafariStickyInput from '../../helpers/dom/fixSafariStickyInput';
 import ReplyKeyboard from './replyKeyboard';
 import InlineHelper from './inlineHelper';
 import debounce from '../../helpers/schedulers/debounce';
-import noop from '../../helpers/noop';
 import {putPreloader} from '../putPreloader';
 import SetTransition from '../singleTransition';
 import PeerTitle from '../peerTitle';
@@ -61,7 +59,6 @@ import {fastRaf} from '../../helpers/schedulers';
 import PopupDeleteMessages from '../popups/deleteMessages';
 import fixSafariStickyInputFocusing, {IS_STICKY_INPUT_BUGGED} from '../../helpers/dom/fixSafariStickyInputFocusing';
 import PopupPeer from '../popups/peer';
-import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport';
 import appMediaPlaybackController from '../appMediaPlaybackController';
 import {BOT_START_PARAM, NULL_PEER_ID} from '../../lib/mtproto/mtproto_config';
 import setCaretAt from '../../helpers/dom/setCaretAt';
@@ -100,18 +97,19 @@ import hasMarkupInSelection from '../../helpers/dom/hasMarkupInSelection';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import RichInputHandler from '../../helpers/dom/richInputHandler';
 import {insertRichTextAsHTML} from '../inputField';
-import getCaretPosNew from '../../helpers/dom/getCaretPosNew';
 import draftsAreEqual from '../../lib/appManagers/utils/drafts/draftsAreEqual';
 import isSelectionEmpty from '../../helpers/dom/isSelectionEmpty';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import getAttachMenuBotIcon from '../../lib/appManagers/utils/attachMenuBots/getAttachMenuBotIcon';
-import TelegramWebView from '../telegramWebView';
 import forEachReverse from '../../helpers/array/forEachReverse';
 import {MARKDOWN_ENTITIES} from '../../lib/richTextProcessor';
 import IMAGE_MIME_TYPES_SUPPORTED from '../../environment/imageMimeTypesSupport';
 import VIDEO_MIME_TYPES_SUPPORTED from '../../environment/videoMimeTypesSupport';
 import {ChatRights} from '../../lib/appManagers/appChatsManager';
 import getPeerActiveUsernames from '../../lib/appManagers/utils/peers/getPeerActiveUsernames';
+import replaceContent from '../../helpers/dom/replaceContent';
+import getTextWidth from '../../helpers/canvas/getTextWidth';
+import {FontFull} from '../../config/font';
 
 const RECORD_MIN_TIME = 500;
 
@@ -244,7 +242,9 @@ export default class ChatInput {
 
   private botCommandsToggle: HTMLElement;
   private botCommands: ChatBotCommands;
-  private botCommandsIcon: HTMLDivElement;
+  private botCommandsIcon: HTMLElement;
+  private botCommandsView: HTMLElement;
+  private botMenuButton: BotMenuButton.botMenuButton;
   private hasBotCommands: boolean;
 
   // private activeContainer: HTMLElement;
@@ -256,7 +256,7 @@ export default class ChatInput {
   private restoreInputLock: () => void;
 
   constructor(
-    private chat: Chat,
+    public chat: Chat,
     private appImManager: AppImManager,
     private managers: AppManagers
   ) {
@@ -575,7 +575,7 @@ export default class ChatInput {
 
     this.botCommands = new ChatBotCommands(this.rowsWrapper, this, this.managers);
     this.botCommandsToggle = document.createElement('div');
-    this.botCommandsToggle.classList.add('new-message-bot-commands');
+    this.botCommandsToggle.classList.add('new-message-bot-commands', 'tgico-webview');
 
     const scaler = document.createElement('div');
     scaler.classList.add('new-message-bot-commands-icon-scale');
@@ -583,16 +583,50 @@ export default class ChatInput {
     const icon = this.botCommandsIcon = document.createElement('div');
     icon.classList.add('animated-menu-icon', 'animated-menu-close-icon');
     scaler.append(icon);
-    this.botCommandsToggle.append(scaler);
 
+    this.botCommandsView = document.createElement('div');
+    this.botCommandsView.classList.add('new-message-bot-commands-view');
+    this.botCommandsToggle.append(scaler, this.botCommandsView);
+
+    let webViewTempId = 0, waitingForWebView = false;
     attachClickEvent(this.botCommandsToggle, (e) => {
       cancelEvent(e);
+      const botId = this.chat.peerId.toUserId();
+      const {botMenuButton} = this;
+      if(botMenuButton) {
+        if(waitingForWebView) {
+          return;
+        }
+
+        const tempId = ++webViewTempId;
+        waitingForWebView = true;
+
+        this.chat.appImManager.confirmBotWebView(botId).then(() => {
+          if(webViewTempId !== tempId) {
+            return;
+          }
+
+          return this.chat.openWebApp({
+            botId,
+            url: botMenuButton.url,
+            buttonText: botMenuButton.text,
+            fromBotMenu: true
+          });
+        }).finally(() => {
+          if(webViewTempId === tempId) {
+            waitingForWebView = false;
+          }
+        });
+        return;
+      }
+
+      const middleware = this.chat.bubbles.getMiddleware();
       const isShown = icon.classList.contains('state-back');
       if(isShown) {
         this.botCommands.toggle(true);
         icon.classList.remove('state-back');
       } else {
-        this.botCommands.setUserId(this.chat.peerId.toUserId(), this.chat.bubbles.getMiddleware());
+        this.botCommands.setUserId(botId, middleware);
         icon.classList.add('state-back');
       }
     }, {listenerSetter: this.listenerSetter});
@@ -685,57 +719,7 @@ export default class ChatInput {
           const button: typeof buttons[0] = {
             regularText: wrapEmojiText(attachMenuBot.short_name),
             onClick: () => {
-              this.managers.appAttachMenuBotsManager.requestWebView({
-                botId: attachMenuBot.bot_id,
-                peerId: this.chat.peerId,
-                ...this.chat.getMessageSendingParams()
-              }).then((webViewResultUrl) => {
-                const SANDBOX_ATTRIBUTES = [
-                  'allow-scripts',
-                  'allow-same-origin',
-                  'allow-popups',
-                  'allow-forms',
-                  'allow-modals'
-                  // 'allow-storage-access-by-user-activation'
-                ].join(' ');
-
-                class P extends PopupElement<{
-                  finish: () => void
-                }> {
-                  private telegramWebView: TelegramWebView;
-
-                  constructor(private url: string) {
-                    super('popup-payment popup-payment-verification', {
-                      closable: true,
-                      overlayClosable: true,
-                      body: true,
-                      titleRaw: attachMenuBot.short_name
-                    });
-
-                    this.d();
-                  }
-
-                  protected destroy() {
-                    this.telegramWebView.destroy();
-                    return super.destroy();
-                  }
-
-                  private d() {
-                    const telegramWebView = this.telegramWebView = new TelegramWebView({
-                      url: this.url,
-                      sandbox: SANDBOX_ATTRIBUTES
-                    });
-
-                    telegramWebView.iframe.classList.add('payment-verification');
-
-                    this.body.append(telegramWebView.iframe);
-                    this.show();
-                    telegramWebView.onMount();
-                  }
-                }
-
-                new P(webViewResultUrl.url);
-              });
+              this.chat.openWebApp({attachMenuBot, fromAttachMenu: true});
             },
             iconDoc: icon?.icon as MyDocument,
             verify: async() => {
@@ -783,7 +767,16 @@ export default class ChatInput {
     this.fileInput.multiple = true;
     this.fileInput.style.display = 'none';
 
-    this.newMessageWrapper.append(...[this.botCommandsToggle, this.btnToggleEmoticons, this.inputMessageContainer, this.btnScheduled, this.btnToggleReplyMarkup, this.attachMenu, this.recordTimeEl, this.fileInput].filter(Boolean));
+    this.newMessageWrapper.append(...[
+      this.botCommandsToggle,
+      this.btnToggleEmoticons,
+      this.inputMessageContainer,
+      this.btnScheduled,
+      this.btnToggleReplyMarkup,
+      this.attachMenu,
+      this.recordTimeEl,
+      this.fileInput
+    ].filter(Boolean));
 
     this.rowsWrapper.append(this.replyElements.container);
     this.autocompleteHelperController = new AutocompleteHelperController();
@@ -1510,6 +1503,7 @@ export default class ChatInput {
 
       if(botCommandsToggle) {
         this.hasBotCommands = undefined;
+        this.botMenuButton = undefined;
         this.botCommands.toggle(true, undefined, true);
         this.updateBotCommandsToggle(true);
         botCommandsToggle.remove();
@@ -1589,15 +1583,25 @@ export default class ChatInput {
   }
 
   private updateBotCommands(userFull: UserFull.userFull, skipAnimation?: boolean) {
-    this.hasBotCommands = !!userFull.bot_info?.commands?.length;
+    const botInfo = userFull.bot_info;
+    const menuButton = botInfo?.menu_button;
+    this.hasBotCommands = !!botInfo?.commands?.length;
+    this.botMenuButton = menuButton?._ === 'botMenuButton' ? menuButton : undefined;
+    replaceContent(this.botCommandsView, this.botMenuButton ? wrapEmojiText(this.botMenuButton.text) : '');
+    this.botCommandsIcon.classList.toggle('hide', !!this.botMenuButton);
+    this.botCommandsView.classList.toggle('hide', !this.botMenuButton);
+    this.botCommandsToggle.classList.toggle('is-view', !!this.botMenuButton);
     this.updateBotCommandsToggle(skipAnimation);
   }
 
   private updateBotCommandsToggle(skipAnimation?: boolean) {
-    const {botCommandsToggle, hasBotCommands} = this;
+    const {botCommandsToggle, hasBotCommands, botMenuButton} = this;
 
-    const show = !!hasBotCommands && this.isInputEmpty();
-    if(!hasBotCommands) {
+    const isNeeded = !!(hasBotCommands || botMenuButton);
+
+    const isInputEmpty = this.isInputEmpty();
+    const show = isNeeded && (isInputEmpty || !!botMenuButton);
+    if(!isNeeded) {
       if(!botCommandsToggle.parentElement) {
         return;
       }
@@ -1607,6 +1611,15 @@ export default class ChatInput {
 
     const forwards = show;
     const useRafs = botCommandsToggle.parentElement ? 0 : 2;
+
+    if(botMenuButton && isInputEmpty) {
+      // extra + padding + icon size + icon margin
+      const width = getTextWidth(botMenuButton.text, FontFull) + 2 + 22 + 18 + 6;
+      this.newMessageWrapper.style.setProperty('--commands-size', `${Math.ceil(width)}px`);
+    } else {
+      // this.newMessageWrapper.style.setProperty('--commands-size', `38px`);
+      this.newMessageWrapper.style.removeProperty('--commands-size');
+    }
 
     if(!botCommandsToggle.parentElement) {
       this.newMessageWrapper.prepend(botCommandsToggle);
@@ -1817,7 +1830,7 @@ export default class ChatInput {
   }
 
   public canSendPlain() {
-    return !(!this.messageInput.isContentEditable && !this.chatInput.classList.contains('is-hidden'));
+    return this.messageInput.isContentEditable && !this.chatInput.classList.contains('is-hidden');
   }
 
   private prepareDocumentExecute = () => {

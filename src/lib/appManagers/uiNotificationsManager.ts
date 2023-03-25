@@ -695,7 +695,7 @@ export class UiNotificationsManager {
     } catch(e) {}
   }
 
-  public clear() {
+  public clear = () => {
     this.log.warn('clear');
 
     for(const i in this.notificationsShown) {
@@ -707,7 +707,7 @@ export class UiNotificationsManager {
     this.notificationsCount = 0;
 
     webPushApiManager.hidePushNotifications();
-  }
+  };
 
   public start() {
     this.log('start');

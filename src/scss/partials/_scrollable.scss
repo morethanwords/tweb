@@ -11,23 +11,23 @@ html:not(.is-safari):not(.is-ios) {
     opacity: 0; // for safari
     width: .375rem;
   }
-  
+
   .scrollable::-webkit-scrollbar-thumb {
     width: 0;
     height: 0;
   }
-  
+
   ::-webkit-scrollbar-thumb {
     opacity: 0;
     transition: .2s ease-in-out;
   }
-  
+
   ::-webkit-scrollbar-button {
     width: 0;
     height: 0;
     display: none;
   }
-  
+
   ::-webkit-scrollbar-corner {
     background-color: transparent;
   }
@@ -35,11 +35,11 @@ html:not(.is-safari):not(.is-ios) {
   .scrollable:hover {
     scrollbar-color: var(--scrollbar-color) rgba(0, 0, 0, 0);
   }
-  
+
   .scrollable:hover::-webkit-scrollbar {
     opacity: 1; // for safari
   }
-  
+
   .scrollable:hover::-webkit-scrollbar-thumb {
     min-height: 5rem;
     max-height: 12.5rem;

@@ -173,6 +173,11 @@ const lang = {
   'Username.Purchase': '**This username is already taken.** However, it is currently available for purchase. [Learn more…]()',
   'Video.Unsupported.Desktop': '__Unfortunately, this video can\'t be played on Telegram Web. Try opening it with our [desktop app](https://getdesktop.telegram.org/) instead.__',
   'Video.Unsupported.Mobile': '__Unfortunately, this video can\'t be played on Telegram Web. Try opening it with our [mobile app](https://telegram.org/dl/) instead.__',
+  'Error.RequestPeer.NoRights.Channel': 'Sorry, you can\'t add bots to this channel.',
+  'Error.RequestPeer.NoRights.Group': 'Sorry, you can\'t add bots to this group.',
+  'JustArgument': '%@',
+  'Chat.Message.ViewApp': 'OPEN APP',
+  'Alert.BotAppDoesntExist': 'Sorry, this application doesn\'t exist.',
 
   // * android
   'AccDescrEditing': 'Editing',
@@ -959,6 +964,24 @@ const lang = {
   'Mention': 'Mention',
   'OpenChannel2': 'Open Channel',
   'OpenGroup2': 'Open Group',
+  'BotWebViewOpenBot': 'Open Bot',
+  'BotWebViewReloadPage': 'Reload Page',
+  'BotWebViewDeleteBot': 'Remove from Menu',
+  'SelectChat': 'Select Chat',
+  'BotOpenPageTitle': 'Open page',
+  'BotOpenPageMessage': '**%1$s** would like to open its web app to proceed.\n\nIt will be able to access your **IP address** and basic device info.',
+  'BotWebViewChangesMayNotBeSaved': 'Changes that you made may not be saved.',
+  'BotWebViewCloseAnyway': 'Close anyway',
+  'CancelPollAlertTitle': 'Discard poll?',
+  'CancelPollAlertText': 'Are you sure you want to discard this poll?',
+  'Discard': 'Discard',
+  'Close': 'Close',
+  'ActionBotWebViewData': 'Data from the "%1$s" button was transferred to the bot.',
+  'LocationUpdatedJustNow': 'updated just now',
+  'UpdatedMinutes': {
+    'one_value': 'updated %1$d minute ago',
+    'other_value': 'updated %1$d minutes ago'
+  },
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
@@ -1068,6 +1091,7 @@ const lang = {
   'Chat.Service.PaymentSentRecurringInitNoTitle': 'You successfully transferred **%1$@** to **%2$@** and allowed future recurring payments',
   'Chat.Service.PaymentSentRecurringUsed': 'You have just successfully transferred **%1$@** to **%2$@** for **%3$@** via recurrent payments',
   'Chat.Service.PaymentSentRecurringUsedNoTitle': 'You have just successfully transferred **%1$@** to **%2$@** via recurrent payments',
+  'Chat.Service.PeerRequested': 'You shared %1$@ with %2$@.',
   'Chat.Service.VoiceChatStarted': '%1$@ started a [video chat](open)',
   'Chat.Service.VoiceChatStartedYou': 'You started a [video chat](open)',
   'Chat.Service.VoiceChatStarted.Channel': '[Live Stream](open) started',
@@ -1077,6 +1101,9 @@ const lang = {
   'Chat.Service.VoiceChatInvitation': '%1$@ invited %2$@ to the [video chat](open)',
   'Chat.Service.VoiceChatInvitationByYou': 'You invited %1$@ to the [video chat](open)',
   'Chat.Service.VoiceChatInvitationForYou': '%1$@ invited you to the [video chat](open)',
+  'Chat.Service.PeerRequest.Confirm.Plain': 'Are you sure you want to send %1$@ to %2$@?',
+  'Chat.Service.PeerRequest.Confirm.Permission': 'Are you sure you want to send %1$@ to %2$@? This will also add %3$@ to %4$@ with the following rights: %5$@',
+  'Chat.Service.PeerRequest.Confirm.Ok': 'Send',
   'ChatService.UserJoinedGroupByRequest': '%@ was accepted to the group',
   'ChatService.UserJoinedChannelByRequest': '%@ joined the channel by request',
   'ChatList.Service.VoiceChatScheduled': '%1$@ scheduled a video chat for %2$@',
@@ -1128,6 +1155,7 @@ const lang = {
   'Chat.Message.ViewChannel': 'VIEW CHANNEL',
   'Chat.Message.ViewBot': 'VIEW BOT',
   'Chat.Message.ViewGroup': 'VIEW GROUP',
+  'Chat.Message.SendMessage': 'SEND MESSAGE',
   'Chat.Message.Sponsored.What': 'What are sponsored messages?',
   'Chat.Message.Sponsored.Link': 'https://promote.telegram.org',
   'Chat.Voice.Transribe.Error': 'No speech detected',
@@ -1237,6 +1265,8 @@ const lang = {
   'Message.Context.Unpin': 'Unpin',
   'Message.Context.Goto': 'Show Message',
   'Message.ReplyActionButtonShowReceipt': 'Show Receipt',
+  'MessageTimer.ShortMinutes': '%@m',
+  'MessageTimer.ShortHours': '%@h',
   'MessageContext.CopyMessageLink1': 'Copy Message Link',
   'Modal.Send': 'Send',
   'NewContact.Exception.ShareMyPhoneNumber': 'Share My Phone Number',
@@ -1434,7 +1464,10 @@ const lang = {
   'VoiceChat.UnmuteForMe': 'Unmute For Me',
   'VoiceChat.RemovePeer.Confirm.Channel': 'Do you want to remove %1$@ from the channel?',
   'VoiceChat.RemovePeer.Confirm': 'Are you sure you want to remove %1$@ from the group?',
-  'VoiceChat.RemovePeer.Confirm.OK': 'Remove'
+  'VoiceChat.RemovePeer.Confirm.OK': 'Remove',
+  'WebApp.Attach.Success': '"%@" added to your attachment menu.',
+  'WebApp.AttachRemove.Success': '"%@" removed from your attachment menu.',
+  'WebApp.InstallBot': 'Install Bot'
 };
 
 export default lang;

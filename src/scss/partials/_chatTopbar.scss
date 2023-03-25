@@ -241,6 +241,7 @@ body.is-right-column-shown {
       max-height: 3.5rem;
       flex: 1 1 auto;
       max-width: 100%;
+      z-index: 1; // fix menu overlap
     }
 	}
 
