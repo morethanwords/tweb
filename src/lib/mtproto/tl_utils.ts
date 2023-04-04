@@ -9,7 +9,7 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import Schema, {MTProtoConstructor} from './schema';
+import Schema, {MTProtoConstructor, MTProtoMethod} from './schema';
 import {JSONValue} from '../../layer';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import bytesToHex from '../../helpers/bytes/bytesToHex';
@@ -274,50 +274,15 @@ class TLSerialization {
 
     this.storeInt(methodData.id, methodName + '[id]');
 
-    const pFlags = params.pFlags || params; // * support pFlags, though am not expecting it to be there
-    const flagsOffsets: {[paramName: string]: number} = {};
-    // console.log('storeMethod', len, methodData);
-    for(const param of methodData.params) {
-      let type = param.type;
-
-      if(type.indexOf('?') !== -1) {
-        const condType = type.split('?');
-        const fieldBit = condType[0].split('.');
-
-        if(!(params[fieldBit[0]] & (1 << +fieldBit[1]))) {
-          if(condType[1] === 'true' ? pFlags[param.name] : params[param.name] !== undefined) {
-            // console.log('storeMethod autocompleting', methodName, param.name, params[param.name], type);
-            params[fieldBit[0]] |= 1 << +fieldBit[1];
-          } else {
-            continue;
-          }
-        }
-
-        // console.log('storeMethod', methodName, fieldBit, params[fieldBit[0]], params, param, condType, !!(params[fieldBit[0]] & (1 << +fieldBit[1])));
-        type = condType[1];
-      }
-
-      // console.log('storeMethod', methodName, param.name, params[param.name], type);
-      const result = this.storeObject(params[param.name], type, methodName + '[' + param.name + ']');
-
-      if(type === '#') {
-        params[param.name] = params[param.name] || 0;
-        flagsOffsets[param.name] = result as number;
-      }
-    }
-
-    for(const paramName in flagsOffsets) {
-      this.intView[flagsOffsets[paramName]] = params[paramName];
-    }
+    this.storeBody(params, methodData, methodName);
 
     return methodData.type;
   }
 
   public storeObject(obj: any, type: string, field?: string) {
-    // console.log('storeObject', obj, type, field, this.offset, this.getBytes(true).hex);
     switch(type) {
       case '#':
-        obj = obj || 0;
+        obj ||= 0;
       case 'int':
         return this.storeInt(obj, field);
       case 'long':
@@ -337,7 +302,7 @@ class TLSerialization {
       case 'Bool':
         return this.storeBool(obj, field);
       case 'true':
-        return
+        return;
     }
 
     if(Array.isArray(obj)) {
@@ -383,45 +348,53 @@ class TLSerialization {
       this.writeInt(constructorData.id, field + '[' + predicate + '][id]');
     }
 
-    const pFlags = obj.pFlags;
-    const flagsOffsets: {[paramName: string]: number} = {};
-    // console.log('storeObject', len, constructorData);
+    this.storeBody(obj, constructorData, field + '[' + predicate + ']');
+
+    return constructorData.type;
+  }
+
+  private storeBody(obj: any, constructorData: MTProtoConstructor | MTProtoMethod, field: string) {
+    const pFlags = obj.pFlags || obj; // * support pFlags, though am not expecting it to be there
+    let flagsHandler: {[paramName: string]: {flags: number, offset?: number}};
     for(const param of constructorData.params) {
       let type = param.type;
 
-      // console.log('storeObject', param, type);
       if(type.indexOf('?') !== -1) {
         const condType = type.split('?');
         const fieldBit = condType[0].split('.');
 
-        // console.log('storeObject fieldBit', fieldBit, obj[fieldBit[0]]);
-
-        if(!(obj[fieldBit[0]] & (1 << +fieldBit[1]))) {
-          if(condType[1] === 'true' ? pFlags && pFlags[param.name] : obj[param.name] !== undefined) {
-            // console.log('storeObject autocompleting', param.name, obj[param.name], type);
-            obj[fieldBit[0]] |= 1 << +fieldBit[1];
-          } else {
-            continue;
-          }
+        // * commented to avoid using 'flags' property
+        // if(!(obj[fieldBit[0]] & (1 << +fieldBit[1]))) {
+        if(condType[1] === 'true' ? pFlags?.[param.name] : obj[param.name] !== undefined) {
+          flagsHandler[fieldBit[0]].flags |= 1 << +fieldBit[1];
+        } else {
+          continue;
         }
+        // }
 
         type = condType[1];
       }
-      // console.log('storeObject', param, type);
 
-      const result = this.storeObject(obj[param.name], type, field + '[' + predicate + '][' + param.name + ']');
+      const isFlagHandler = type === '#';
+      if(isFlagHandler) {
+        (flagsHandler ??= {})[param.name] = {flags: 0};
+      }
 
-      if(type === '#') {
-        obj[param.name] = obj[param.name] || 0;
-        flagsOffsets[param.name] = result as number;
+      const result = this.storeObject(
+        isFlagHandler ? flagsHandler[param.name].flags : obj[param.name],
+        type,
+        field + '[' + param.name + ']'
+      );
+
+      if(isFlagHandler) {
+        flagsHandler[param.name].offset = result as number;
       }
     }
 
-    for(const paramName in flagsOffsets) {
-      this.intView[flagsOffsets[paramName]] = obj[paramName];
+    for(const paramName in flagsHandler) {
+      const {flags, offset} = flagsHandler[paramName];
+      this.intView[offset] = flags;
     }
-
-    return constructorData.type;
   }
 }
 
@@ -448,8 +421,6 @@ class TLDeserialization<FetchLongAs extends Long> {
       this.intView = new Int32Array(buffer.buffer);
       this.byteView = buffer;
     }
-
-    // console.log(this.intView);
 
     this.override = options.override || {};
     this.mtproto = !!options.mtproto;
@@ -754,12 +725,16 @@ class TLDeserialization<FetchLongAs extends Long> {
     if(this.override[overrideKey]) {
       this.override[overrideKey](result, field + '[' + predicate + ']');
     } else {
+      // * will use local flags storage to avoid passing 'flags' property anywhere
+      let flagsHandler: {[name: string]: number} = {};
       for(let i = 0, len = constructorData.params.length; i < len; ++i) {
         const param = constructorData.params[i];
         let type = param.type;
 
-        if(type === '#' && result.pFlags === undefined) {
-          result.pFlags = {};
+        const isFlagHandler = type === '#';
+        if(isFlagHandler) {
+          result.pFlags ??= {};
+          (flagsHandler ??= {})[param.name] = 0;
         }
 
         const isCond = type.indexOf('?') !== -1;
@@ -767,7 +742,7 @@ class TLDeserialization<FetchLongAs extends Long> {
           const condType = type.split('?');
           const fieldBit = condType[0].split('.');
 
-          if(!(result[fieldBit[0]] & (1 << +fieldBit[1]))) {
+          if(!(flagsHandler[fieldBit[0]] & (1 << +fieldBit[1]))) {
             continue;
           }
 
@@ -779,7 +754,7 @@ class TLDeserialization<FetchLongAs extends Long> {
         if(isCond && type === 'true') {
           result.pFlags[param.name] = value;
         } else {
-          result[param.name] = value;
+          (isFlagHandler ? flagsHandler : result)[param.name] = value;
         }
       }
     }
