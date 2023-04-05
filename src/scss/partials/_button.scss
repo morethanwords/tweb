@@ -439,7 +439,6 @@ $btn-menu-z-index: 4;
   }
 
   &-reactions {
-    --inner-shadow-degree: 90deg;
     max-width: 100%;
     max-height: 100%;
     height: inherit;
@@ -496,12 +495,15 @@ $btn-menu-z-index: 4;
         margin-inline-start: var(--menu-offset);
         
         .btn-menu-reactions {
-          --inner-shadow-degree: 180deg;
           width: inherit;
           height: auto;
           display: flex;
           flex-direction: column;
           transform-origin: top right;
+
+          .inner-shadow {
+            --inner-shadow-degree: 180deg;
+          }
         }
 
         .btn-menu-reactions-reaction {
@@ -547,18 +549,6 @@ $btn-menu-z-index: 4;
         // left: var(--offset);
         bottom: calc(var(--size) / -2);
       }
-    }
-
-    &:after {
-      position: absolute;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      left: 0;
-      content: " ";
-      pointer-events: none;
-      border-radius: inherit;
-      background: linear-gradient(var(--inner-shadow-degree), var(--surface-color) 0%, rgba(var(--surface-color-rgb), 0) 1rem, rgba(var(--surface-color-rgb), 0) calc(100% - 1rem), var(--surface-color) 100%);
     }
 
     .scrollable {

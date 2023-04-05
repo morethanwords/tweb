@@ -75,7 +75,6 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
           inputSettings._ = 'inputPeerNotifySettings';
           inputSettings.mute_until = mute ? MUTE_UNTIL : 0;
           inputSettings.show_previews = showPreviews;
-          delete inputSettings.flags;
 
           this.managers.appNotificationsManager.updateNotifySettings(inputNotifyPeer, inputSettings);
         }, {once: true});

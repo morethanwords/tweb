@@ -598,6 +598,33 @@ ul.chatlist {
     }
   }
 
+  &-top-notification {
+    margin: 0 .5rem .5rem;
+    // border: 1px solid var(--border-color);
+    background-color: var(--light-filled-secondary-text-color);
+
+    &-container {
+      height: 0;
+      overflow: hidden;
+
+      @include animation-level(2) {
+        transition: height var(--transition-standard-in);
+      }
+
+      &.is-visible:not(.backwards) {
+        height: 4rem;
+      }
+    }
+
+    &:before {
+      content: $tgico-next;
+      position: absolute;
+      right: .5rem;
+      font-size: 1.5rem;
+      color: var(--secondary-text-color);
+    }
+  }
+
   // do not set position: relative here. will break chatlist slicing.
   &-top {
     // flex: 0 0 auto;

@@ -551,7 +551,8 @@ export class AppChatsManager extends AppManager {
             kicked_by: this.appUsersManager.getSelf().id,
             peer: this.appPeersManager.getOutputPeer(peerId),
             pFlags: {}
-          } : undefined
+          } : undefined,
+          pFlags: {}
         });
       }
     });
@@ -776,25 +777,6 @@ export class AppChatsManager extends AppManager {
 
       return chatInvite;
     });
-  }
-
-  public toggleUsername(chatId: ChatId, username: string, active: boolean) {
-    const promise = this.apiManager.invokeApi('channels.toggleUsername', {
-      channel: this.getChannelInput(chatId),
-      username,
-      active
-    });
-
-    return this.refreshChatAfterRequest(chatId, promise);
-  }
-
-  public reorderUsernames(chatId: ChatId, order: string[]) {
-    const promise = this.apiManager.invokeApi('channels.reorderUsernames', {
-      channel: this.getChannelInput(chatId),
-      order
-    });
-
-    return this.refreshChatAfterRequest(chatId, promise);
   }
 
   public deactivateAllUsernames(chatId: ChatId, doNotRefresh?: boolean) {

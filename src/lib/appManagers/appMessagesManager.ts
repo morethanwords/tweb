@@ -1370,7 +1370,6 @@ export class AppMessagesManager extends AppManager {
         inputMedia.poll.id = pollId;
         this.appPollsManager.savePoll(inputMedia.poll, {
           _: 'pollResults',
-          flags: 4,
           total_voters: 0,
           pFlags: {},
           recent_voters: []
@@ -1691,7 +1690,6 @@ export class AppMessagesManager extends AppManager {
       if(channelFull?.linked_chat_id) {
         replies = {
           _: 'messageReplies',
-          flags: 1,
           pFlags: {
             comments: true
           },
@@ -1743,7 +1741,6 @@ export class AppMessagesManager extends AppManager {
 
     const fwdHeader: MessageFwdHeader.messageFwdHeader = {
       _: 'messageFwdHeader',
-      flags: 0,
       date: originalMessage.date,
       pFlags: {}
     };
@@ -3363,18 +3360,24 @@ export class AppMessagesManager extends AppManager {
     if(!dialog) return Promise.reject();
 
     const unread = read || dialog.pFlags?.unread_mark ? undefined : true;
+
+    if(!unread && dialog.unread_count) {
+      const promise = this.readHistory(peerId, dialog.top_message);
+      if(!dialog.pFlags.unread_mark) {
+        return promise;
+      }
+    }
+
     return this.apiManager.invokeApi('messages.markDialogUnread', {
       peer: this.appPeersManager.getInputDialogPeerById(peerId),
       unread
-    }).then((bool) => {
-      if(bool) {
-        const pFlags: Update.updateDialogUnreadMark['pFlags'] = unread ? {unread} : {};
-        this.onUpdateDialogUnreadMark({
-          _: 'updateDialogUnreadMark',
-          peer: this.appPeersManager.getDialogPeer(peerId),
-          pFlags
-        });
-      }
+    }).then(() => {
+      const pFlags: Update.updateDialogUnreadMark['pFlags'] = unread ? {unread} : {};
+      this.onUpdateDialogUnreadMark({
+        _: 'updateDialogUnreadMark',
+        peer: this.appPeersManager.getDialogPeer(peerId),
+        pFlags
+      });
     });
   }
 

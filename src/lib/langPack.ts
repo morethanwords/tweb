@@ -382,7 +382,7 @@ namespace I18n {
           a = document.createElement('a');
           const wrappedUrl = wrapUrl(url);
           a.href = wrappedUrl.url;
-          if(wrappedUrl.onclick) a.setAttribute('onclick', wrappedUrl.onclick);
+          if(wrappedUrl.onclick) a.setAttribute('onclick', wrappedUrl.onclick + '(this)');
           a.target = '_blank';
         } else {
           a = args[indexHolder.i++] as HTMLAnchorElement;

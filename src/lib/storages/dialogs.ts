@@ -1431,6 +1431,14 @@ export default class DialogsStorage extends AppManager {
     });
   }
 
+  public async markFolderAsRead(folderId: number) {
+    const folder = this.getFolder(folderId);
+    const peerIds = [...folder.unreadPeerIds];
+    for(const peerId of peerIds) {
+      await this.appMessagesManager.markDialogUnread(peerId, true);
+    }
+  }
+
   // * FORUMS SECTION
 
   public flushForumTopicsCache(peerId: PeerId) {

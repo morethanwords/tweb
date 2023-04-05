@@ -4,6 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+$popup-footer-button-size: 44px;
+$popup-footer-padding: .5rem;
+
 .popup {
   position: fixed!important;
   top: 0;
@@ -127,12 +130,25 @@
       position: relative;
     }
 
-    .scrollable-y-bordered {
-      &:last-child {
-        margin-bottom: -1px;
-        // border will blink if child is added
-        // border-bottom: none;
-      }
+    // .scrollable-y-bordered {
+    //   &:last-child {
+    //     margin-bottom: -1px;
+    //     // border will blink if child is added
+    //     // border-bottom: none;
+    //   }
+    // }
+  }
+
+  &-footer {
+    flex: 0 0 auto;
+    padding: #{$popup-footer-padding};
+    text-align: center;
+
+    .btn-primary {
+      text-transform: uppercase;
+      padding: 0 1.0625rem;
+      height: #{$popup-footer-button-size};
+      line-height: #{$popup-footer-button-size};
     }
   }
 

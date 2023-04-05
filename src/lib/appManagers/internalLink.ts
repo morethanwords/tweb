@@ -14,10 +14,11 @@ export enum INTERNAL_LINK_TYPE {
   INVOICE,
   EMOJI_SET,
   ATTACH_MENU_BOT,
-  WEB_APP
+  WEB_APP,
+  ADD_LIST
 };
 
-export type InternalLink = InternalLink.InternalLinkMessage | InternalLink.InternalLinkPrivatePost | InternalLink.InternalLinkStickerSet | InternalLink.InternalLinkJoinChat | InternalLink.InternalLinkVoiceChat | InternalLink.InternalLinkUserPhoneNumber | InternalLink.InternalLinkInvoice | InternalLink.InternalLinkEmojiSet | InternalLink.InternalLinkAttachMenuBot | InternalLink.InternalLinkWebApp;
+export type InternalLink = InternalLink.InternalLinkMessage | InternalLink.InternalLinkPrivatePost | InternalLink.InternalLinkStickerSet | InternalLink.InternalLinkJoinChat | InternalLink.InternalLinkVoiceChat | InternalLink.InternalLinkUserPhoneNumber | InternalLink.InternalLinkInvoice | InternalLink.InternalLinkEmojiSet | InternalLink.InternalLinkAttachMenuBot | InternalLink.InternalLinkWebApp | InternalLink.InternalLinkAddList;
 
 export namespace InternalLink {
   export interface InternalLinkMessage {
@@ -92,6 +93,11 @@ export namespace InternalLink {
     startapp?: string,
     masked?: boolean
   }
+
+  export interface InternalLinkAddList {
+    _: INTERNAL_LINK_TYPE.ADD_LIST,
+    slug: string
+  }
 }
 
 export type InternalLinkTypeMap = {
@@ -105,4 +111,5 @@ export type InternalLinkTypeMap = {
   [INTERNAL_LINK_TYPE.EMOJI_SET]: InternalLink.InternalLinkEmojiSet,
   [INTERNAL_LINK_TYPE.ATTACH_MENU_BOT]: InternalLink.InternalLinkAttachMenuBot,
   [INTERNAL_LINK_TYPE.WEB_APP]: InternalLink.InternalLinkWebApp,
+  [INTERNAL_LINK_TYPE.ADD_LIST]: InternalLink.InternalLinkAddList,
 };

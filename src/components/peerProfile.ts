@@ -279,7 +279,7 @@ export default class PeerProfile {
         return false;
       }
 
-      const isForum = await this.managers.appPeersManager.isForum(this.peerId);
+      const isForum = this.peerId.isAnyChat() ? await this.managers.appPeersManager.isForum(this.peerId) : false;
       if(isForum && this.threadId ? this.threadId === threadId : true) {
         return true;
       }
@@ -288,8 +288,13 @@ export default class PeerProfile {
     };
 
     listenerSetter.add(rootScope)('peer_title_edit', async(data) => {
+      const middleware = this.middlewareHelper.get();
       if(await n(data)) {
-        this.fillUsername();
+        if(!middleware()) return;
+        this.fillUsername().then((callback) => {
+          if(!middleware()) return;
+          callback();
+        });
         this.setMoreDetails(true);
       }
     });

@@ -48,6 +48,7 @@ import AppPaymentsManager from './appPaymentsManager';
 import AppAttachMenuBotsManager from './appAttachMenuBotsManager';
 import AppSeamlessLoginManager from './appSeamlessLoginManager';
 import AppThemesManager from './appThemesManager';
+import AppUsernamesManager from './appUsernamesManager';
 
 export default function createManagers(appStoragesManager: AppStoragesManager, userId: UserId) {
   const managers = {
@@ -92,7 +93,8 @@ export default function createManagers(appStoragesManager: AppStoragesManager, u
     appPaymentsManager: new AppPaymentsManager,
     appAttachMenuBotsManager: new AppAttachMenuBotsManager,
     appSeamlessLoginManager: new AppSeamlessLoginManager,
-    appThemesManager: new AppThemesManager
+    appThemesManager: new AppThemesManager,
+    appUsernamesManager: new AppUsernamesManager
   };
 
   type T = typeof managers;
@@ -114,7 +116,13 @@ export default function createManagers(appStoragesManager: AppStoragesManager, u
 
   const promises: Array<Promise<(() => void) | void> | void>[] = [];
   let names = Object.keys(managers) as (keyof T)[];
-  names.unshift('appUsersManager', 'appChatsManager', 'appNotificationsManager', 'appMessagesManager', 'dialogsStorage');
+  names.unshift(
+    'appUsersManager',
+    'appChatsManager',
+    'appNotificationsManager',
+    'appMessagesManager',
+    'dialogsStorage'
+  );
   names = filterUnique(names);
   for(const name of names) {
     const manager = managers[name];

@@ -209,14 +209,14 @@ export class AppSidebarLeft extends SidebarSlider {
         }, 0);
       }
     }, {
-      icon: 'char z',
-      text: 'ChatList.Menu.SwitchTo.Z',
+      icon: 'char a',
+      text: 'ChatList.Menu.SwitchTo.A',
       onClick: () => {
         Promise.all([
           sessionStorage.set({kz_version: 'Z'}),
           sessionStorage.delete('tgme_sync')
         ]).then(() => {
-          location.href = 'https://web.telegram.org/z/';
+          location.href = 'https://web.telegram.org/a/';
         });
       },
       verify: () => App.isMainDomain

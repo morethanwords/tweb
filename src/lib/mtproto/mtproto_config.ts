@@ -23,7 +23,7 @@ export const THUMB_TYPE_FULL = '';
 export const TOPIC_COLORS = [0x6FB9F0, 0xFFD67E, 0xCB86DB, 0x8EEE98, 0xFF93B2, 0xFB6F5F];
 export const ATTACH_MENU_BOT_ICON_NAME = 'default_static';
 export const GENERAL_TOPIC_ID = 4295032831;
-export const T_ME_PREFIXES = new Set(['web', 'k', 'z']);
+export const T_ME_PREFIXES = new Set(['web', 'k', 'z', 'a']);
 
 export const FOLDER_ID_ALL: REAL_FOLDER_ID = 0;
 export const FOLDER_ID_ARCHIVE: REAL_FOLDER_ID = 1;

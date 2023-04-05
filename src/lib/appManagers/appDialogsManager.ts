@@ -47,7 +47,7 @@ import SortedList, {SortedElementBase} from '../../helpers/sortedList';
 import debounce from '../../helpers/schedulers/debounce';
 import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, NULL_PEER_ID, REAL_FOLDERS, REAL_FOLDER_ID} from '../mtproto/mtproto_config';
 import groupCallActiveIcon from '../../components/groupCallActiveIcon';
-import {Chat, Message, NotifyPeer} from '../../layer';
+import {Chat, ChatlistsChatlistUpdates, Message, NotifyPeer} from '../../layer';
 import IS_GROUP_CALL_SUPPORTED from '../../environment/groupCallSupport';
 import mediaSizes from '../../helpers/mediaSizes';
 import appNavigationController, {NavigationItem} from '../../components/appNavigationController';
@@ -100,6 +100,10 @@ import AppArchivedTab from '../../components/sidebarLeft/tabs/archivedTab';
 import shake from '../../helpers/dom/shake';
 import AppEditTopicTab from '../../components/sidebarRight/tabs/editTopic';
 import getServerMessageId from './utils/messageId/getServerMessageId';
+import createContextMenu from '../../helpers/dom/createContextMenu';
+import AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolders';
+import eachTimeout from '../../helpers/eachTimeout';
+import PopupSharedFolderInvite from '../../components/popups/sharedFolderInvite';
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 
@@ -1356,6 +1360,10 @@ class Some2 extends Some<Dialog> {
           const dialog = dialogs[i];
           this.updateDialog(dialog);
         }
+
+        if(appDialogsManager.filterId === this.filterId) {
+          appDialogsManager.fetchChatlistUpdates?.();
+        }
       }
     });
   }
@@ -1579,6 +1587,21 @@ class Some2 extends Some<Dialog> {
 // const testScroll = false;
 // let testTopSlice = 1;
 
+type FilterRendered = {
+  id: number,
+  menu: HTMLElement,
+  container: HTMLElement,
+  unread: HTMLElement,
+  title: HTMLElement,
+  scrollable: Scrollable,
+  topNotification?: Row,
+  topNotificationContainer?: HTMLElement,
+  topNotificationData?: {
+    _: 'chatlistUpdates',
+    chatlistUpdates: ChatlistsChatlistUpdates
+  }
+};
+
 export class AppDialogsManager {
   public chatsContainer = document.getElementById('chatlist-container') as HTMLDivElement;
 
@@ -1593,12 +1616,7 @@ export class AppDialogsManager {
     container: document.getElementById('folders-container')
   };
   private filtersRendered: {
-    [filterId: string]: {
-      menu: HTMLElement,
-      container: HTMLElement,
-      unread: HTMLElement,
-      title: HTMLElement
-    }
+    [filterId: string]: FilterRendered
   } = {};
   private showFiltersPromise: Promise<void>;
 
@@ -1631,6 +1649,9 @@ export class AppDialogsManager {
 
   public xd: Some2;
   public xds: {[filterId: number]: Some2} = {};
+
+  public cancelChatlistUpdatesFetching: () => void;
+  public fetchChatlistUpdates: () => void;
 
   public start() {
     const managers = this.managers = getProxiedManagers();
@@ -1730,7 +1751,7 @@ export class AppDialogsManager {
       })// , 5000);
     });
 
-    this.setFilterId(FOLDER_ID_ALL, FOLDER_ID_ALL);
+    this.setFilterId(FOLDER_ID_ALL);
     this.addFilter({
       id: FOLDER_ID_ALL,
       title: '',
@@ -1792,6 +1813,48 @@ export class AppDialogsManager {
       }
     }, undefined, foldersScrollable);
 
+    let clickFilterId: number;
+    createContextMenu({
+      buttons: [{
+        icon: 'edit',
+        text: 'FilterEdit',
+        onClick: () => {
+          this.managers.filtersStorage.getFilter(clickFilterId).then((filter) => {
+            const tab = appSidebarLeft.createTab(AppEditFolderTab);
+            tab.setInitFilter(filter);
+            tab.open();
+          });
+        },
+        verify: () => clickFilterId !== FOLDER_ID_ALL
+      }, {
+        icon: 'edit',
+        text: 'FilterEditAll',
+        onClick: () => {
+          appSidebarLeft.createTab(AppChatFoldersTab).open();
+        },
+        verify: () => clickFilterId === FOLDER_ID_ALL
+      }, {
+        icon: 'readchats',
+        text: 'MarkAllAsRead',
+        onClick: () => {
+          this.managers.dialogsStorage.markFolderAsRead(clickFilterId);
+        },
+        verify: async() => !!(await this.managers.dialogsStorage.getFolderUnreadCount(clickFilterId)).unreadCount
+      }, {
+        icon: 'delete danger',
+        text: 'Delete',
+        onClick: () => {
+          AppEditFolderTab.deleteFolder(clickFilterId);
+        },
+        verify: () => clickFilterId !== FOLDER_ID_ALL
+      }],
+      listenTo: this.folders.menu,
+      findElement: (e) => findUpClassName(e.target, 'menu-horizontal-div-item'),
+      onOpen: (target) => {
+        clickFilterId = +target.dataset.filterId;
+      }
+    });
+
     apiManagerProxy.getState().then((state) => {
       // * it should've had a better place :(
       appMediaPlaybackController.setPlaybackParams(state.playbackParams);
@@ -1847,12 +1910,12 @@ export class AppDialogsManager {
     return this.xd.sortedList.list;
   }
 
-  public setFilterId(filterId: number, localId: MyDialogFilter['localId']) {
+  public setFilterId(filterId: number) {
     this.filterId = filterId;
   }
 
   public async setFilterIdAndChangeTab(filterId: number) {
-    this.filterId = filterId;
+    this.setFilterId(filterId);
     return this.onTabChange();
   }
 
@@ -2055,9 +2118,76 @@ export class AppDialogsManager {
   } */
 
   public onTabChange = () => {
-    this.xd = this.xds[this.filterId];
+    const {filterId} = this;
+    this.xd = this.xds[filterId];
     this.xd.reset();
-    return this.xd.onChatsScroll();
+
+    this.cancelChatlistUpdatesFetching?.();
+    this.cancelChatlistUpdatesFetching = undefined;
+    this.fetchChatlistUpdates = undefined;
+
+    const promise = this.xd.onChatsScroll();
+
+    if(!REAL_FOLDERS.has(filterId)) {
+      Promise.all([
+        this.managers.filtersStorage.getFilter(filterId),
+        this.managers.apiManager.getAppConfig(),
+        promise.then(({renderPromise}) => renderPromise).catch(() => {})
+      ]).then(([filter, appConfig]) => {
+        if(filter._ !== 'dialogFilterChatlist' || this.filterId !== filterId) {
+          return;
+        }
+
+        const updatePeriod = (appConfig.chatlist_update_period ?? 3600) * 1000;
+        const filterRendered = this.filtersRendered[filterId];
+        let updatedTime = filterRendered.topNotification ? filter.updatedTime || 0 : 0, fetching = false;
+
+        this.fetchChatlistUpdates = () => {
+          updatedTime = Date.now();
+
+          if(fetching) {
+            return;
+          }
+
+          fetching = true;
+          this.managers.filtersStorage.getChatlistUpdates(filterId)
+          .catch(() => undefined as ChatlistsChatlistUpdates)
+          .then((chatlistUpdates) => {
+            if(this.filterId !== filterId || this.filtersRendered[filterId] !== filterRendered) {
+              return;
+            }
+
+            const length = chatlistUpdates ? chatlistUpdates.missing_peers.length : 0;
+            if(length) {
+              this.createTopNotification(filterRendered);
+              filterRendered.topNotificationData = {
+                _: 'chatlistUpdates',
+                chatlistUpdates
+              };
+
+              const topNotification = filterRendered.topNotification;
+
+              const tt = i18n('ChatsNew', [length]);
+              tt.classList.add('primary');
+              const t = i18n('ChatList.SharedFolder.Title', [tt]);
+              topNotification.title.replaceChildren(t);
+              topNotification.subtitle.replaceChildren(i18n('ChatList.SharedFolder.Subtitle'));
+            }
+
+            this.toggleTopNotification(filterRendered, !!length);
+          }).finally(() => {
+            fetching = false;
+          });
+        };
+
+        this.cancelChatlistUpdatesFetching = eachTimeout(this.fetchChatlistUpdates, () => {
+          const elapsedTime = Date.now() - updatedTime;
+          return updatePeriod - elapsedTime;
+        }, false);
+      });
+    }
+
+    return promise;
   };
 
   private async setFilterUnreadCount(filterId: number) {
@@ -2092,13 +2222,84 @@ export class AppDialogsManager {
     return {ul, xd, scrollable};
   }
 
+  private createTopNotification(filterRendered: FilterRendered) {
+    if(filterRendered.topNotification) return;
+
+    const topNotificationContainer = filterRendered.topNotificationContainer = document.createElement('div');
+    topNotificationContainer.classList.add('chatlist-top-notification-container');
+    const topNotification: FilterRendered['topNotification'] = filterRendered.topNotification = new Row({
+      title: true,
+      subtitle: true,
+      clickable: async() => {
+        const data = filterRendered.topNotificationData;
+        if(data._ === 'chatlistUpdates') {
+          PopupElement.createPopup(PopupSharedFolderInvite, {
+            chatlistInvite: {
+              ...data.chatlistUpdates,
+              already_peers: [],
+              _: 'chatlists.chatlistInviteAlready',
+              filter_id: filterRendered.id
+            },
+            updating: true
+          });
+        }
+      },
+      contextMenu: {
+        buttons: [{
+          icon: 'hide',
+          text: 'HideAboveTheList',
+          onClick: () => {
+            this.managers.filtersStorage.hideChatlistUpdates(filterRendered.id).then(() => {
+              if(this.filterId === filterRendered.id) {
+                this.fetchChatlistUpdates?.();
+              }
+            });
+          },
+          verify: () => filterRendered.topNotificationData?._ === 'chatlistUpdates'
+        }]
+      }
+    });
+    topNotification.container.classList.add('chatlist-top-notification', 'tgico');
+
+    topNotificationContainer.append(topNotification.container);
+  }
+
+  private toggleTopNotification(filterRendered: FilterRendered, forwards: boolean) {
+    if(!forwards && !filterRendered.topNotification) {
+      return;
+    }
+
+    let isMounted = true;
+    if(forwards) {
+      isMounted = !!filterRendered.topNotificationContainer.parentElement;
+      if(!isMounted) {
+        filterRendered.scrollable.container.prepend(filterRendered.topNotificationContainer);
+      }
+    }
+
+    SetTransition({
+      element: filterRendered.topNotificationContainer,
+      className: 'is-visible',
+      duration: 250,
+      forwards,
+      useRafs: isMounted ? 0 : 2,
+      onTransitionEnd: forwards ? undefined : () => {
+        filterRendered.topNotificationContainer.remove();
+        filterRendered.topNotification =
+          filterRendered.topNotificationContainer =
+          filterRendered.topNotificationData = undefined;
+      }
+    });
+  }
+
   private addFilter(filter: Pick<DialogFilter, 'title' | 'id' | 'localId'>) {
-    if(filter.id === FOLDER_ID_ARCHIVE) {
+    const {id} = filter;
+    if(id === FOLDER_ID_ARCHIVE) {
       return;
     }
 
     const containerToAppend = this.folders.menu as HTMLElement;
-    const renderedFilter = this.filtersRendered[filter.id];
+    const renderedFilter = this.filtersRendered[id];
     if(renderedFilter) {
       positionElementByIndex(renderedFilter.menu, containerToAppend, filter.localId);
       positionElementByIndex(renderedFilter.container, this.folders.container, filter.localId);
@@ -2110,7 +2311,7 @@ export class AppDialogsManager {
     const span = document.createElement('span');
     const titleSpan = document.createElement('span');
     titleSpan.classList.add('text-super');
-    if(filter.id === FOLDER_ID_ALL) titleSpan.append(this.allChatsIntlElement.element);
+    if(id === FOLDER_ID_ALL) titleSpan.append(this.allChatsIntlElement.element);
     else setInnerHTML(titleSpan, wrapEmojiText(filter.title));
     const unreadSpan = document.createElement('div');
     unreadSpan.classList.add('badge', 'badge-20', 'badge-primary');
@@ -2119,7 +2320,7 @@ export class AppDialogsManager {
     ripple(menuTab);
     menuTab.append(span);
 
-    menuTab.dataset.filterId = '' + filter.id;
+    menuTab.dataset.filterId = '' + id;
 
     positionElementByIndex(menuTab, containerToAppend, filter.localId);
     // containerToAppend.append(li);
@@ -2145,11 +2346,13 @@ export class AppDialogsManager {
     // this.folders.container.append(div);
     positionElementByIndex(scrollable.container, this.folders.container, filter.localId);
 
-    this.filtersRendered[filter.id] = {
+    this.filtersRendered[id] = {
+      id,
       menu: menuTab,
       container: div,
       unread: unreadSpan,
-      title: titleSpan
+      title: titleSpan,
+      scrollable
     };
 
     this.onFiltersLengthChange();

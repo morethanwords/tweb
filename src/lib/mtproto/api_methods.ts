@@ -25,7 +25,8 @@ type HashOptions = {
 };
 
 export type ApiLimitType = 'pin' | 'folderPin' | 'folders' |
-  'favedStickers' | 'reactions' | 'bio' | 'topicPin' | 'caption';
+  'favedStickers' | 'reactions' | 'bio' | 'topicPin' | 'caption' |
+  'chatlistsJoined' | 'chatlistInvites';
 
 export default abstract class ApiManagerMethods extends AppManager {
   private afterMessageIdTemp: number;
@@ -151,7 +152,7 @@ export default abstract class ApiManagerMethods extends AppManager {
 
   public invokeApiSingleProcess<T extends keyof MethodDeclMap, R>(o: {
     method: T,
-    processResult?: (response: MethodDeclMap[T]['res']) => R,
+    processResult: (response: MethodDeclMap[T]['res']) => R,
     processError?: (error: ApiError) => any,
     params?: MethodDeclMap[T]['req'],
     options?: InvokeApiOptions & {cacheKey?: string, overwrite?: boolean}
@@ -318,7 +319,7 @@ export default abstract class ApiManagerMethods extends AppManager {
       },
       processResult: (helpAppConfig) => {
         assumeType<HelpAppConfig.helpAppConfig>(helpAppConfig);
-        const config = helpAppConfig.config as MTAppConfig;
+        const config = helpAppConfig.config as any as MTAppConfig;
         this.appConfig = config;
         ignoreRestrictionReasons(config.ignore_restriction_reasons ?? []);
         this.rootScope.dispatchEvent('app_config', config);
@@ -338,7 +339,9 @@ export default abstract class ApiManagerMethods extends AppManager {
         reactions: ['reactions_user_max_default', 'reactions_user_max_premium'],
         bio: ['about_length_limit_default', 'about_length_limit_premium'],
         topicPin: 'topics_pinned_limit',
-        caption: ['caption_length_limit_default', 'caption_length_limit_premium']
+        caption: ['caption_length_limit_default', 'caption_length_limit_premium'],
+        chatlistInvites: ['chatlist_invites_limit_default', 'chatlist_invites_limit_premium'],
+        chatlistsJoined: ['chatlists_joined_limit_default', 'chatlists_joined_limit_premium']
       };
 
       isPremium ??= this.rootScope.premium;

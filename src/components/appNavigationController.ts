@@ -91,7 +91,7 @@ export class AppNavigationController {
     }
 
     this.manual = !this.isPossibleSwipe;
-    this.handleItem(item);
+    this.handleItem(item, this.navigations.length);
     // this.pushState(); // * prevent adding forward arrow
   };
 
@@ -166,11 +166,11 @@ export class AppNavigationController {
     this.pushState();
   }
 
-  private handleItem(item: NavigationItem) {
+  private handleItem(item: NavigationItem, wasIndex = this.navigations.indexOf(item)) {
     const good = item.onPop(!this.manual ? false : undefined);
     this.debug && this.log('popstate, navigation:', item, this.navigations);
-    if(good === false) {
-      this.pushItem(item);
+    if(good === false) { // insert item on the same place, because .push can have different index if new item has appeared
+      this.spliceItems(Math.min(this.navigations.length, wasIndex), 0, item);
     } else if(!item.noBlurOnPop) {
       blurActiveElement(); // no better place for it
     }
@@ -208,7 +208,7 @@ export class AppNavigationController {
     // ! commented because 'popstate' event will be fired with delay
     // if(index !== (this.navigations.length - 1)) {
     this.navigations.splice(index, 1);
-    this.handleItem(item);
+    this.handleItem(item, index);
     // }
   }
 

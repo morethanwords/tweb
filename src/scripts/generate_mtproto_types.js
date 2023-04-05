@@ -32,6 +32,10 @@ for(const constructor of additional) {
   const realConstructor = constructor.type ? constructor : mtproto.constructors.find(c => c.predicate == constructor.predicate);
 
   if(!constructor.type) {
+    if(!realConstructor) {
+      console.log(realConstructor, constructor);
+    }
+
     for(let i = realConstructor.params.length - 1; i >= 0; --i) {
       const param = realConstructor.params[i];
       if(additionalParams.find(newParam => newParam.name === param.name)) {

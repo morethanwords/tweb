@@ -41,6 +41,7 @@ export type PopupOptions = Partial<{
   overlayClosable: boolean,
   withConfirm: LangPackKey | boolean,
   body: boolean,
+  footer: boolean,
   confirmShortcutIsSendShortcut: boolean,
   withoutOverlay: boolean,
   scrollable: boolean,
@@ -76,6 +77,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
   protected container = document.createElement('div');
   protected header = document.createElement('div');
   protected title = document.createElement('div');
+  protected footer: HTMLElement;
   protected btnClose: HTMLElement;
   protected btnCloseAnimatedIcon: HTMLElement;
   protected btnConfirm: HTMLButtonElement;
@@ -142,12 +144,11 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
         this.btnClose.classList.add('tgico-close');
       }
 
-      attachClickEvent(this.btnClose, async() => {
+      attachClickEvent(this.btnClose, () => {
         if(options.onBackClick && this.btnCloseAnimatedIcon.classList.contains('state-back')) {
           this.btnClose.classList.remove('state-back');
           options.onBackClick();
         } else {
-          await this.confirmClosing();
           this.hide();
         }
       }, {listenerSetter: this.listenerSetter});
@@ -159,12 +160,11 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     }
 
     if(options.overlayClosable) {
-      attachClickEvent(this.element, async(e: MouseEvent) => {
+      attachClickEvent(this.element, (e: MouseEvent) => {
         if(findUpClassName(e.target, 'popup-container')) {
           return;
         }
 
-        await this.confirmClosing();
         this.hide();
       }, {listenerSetter: this.listenerSetter});
     }
@@ -176,7 +176,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
         this.btnConfirm.append(i18n(options.withConfirm));
       }
       this.header.append(this.btnConfirm);
-      ripple(this.btnConfirm);
+      // ripple(this.btnConfirm);
     }
 
     this.container.append(this.header);
@@ -191,8 +191,14 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
       this.attachScrollableListeners();
 
       if(!this.body) {
-        this.container.insertBefore(scrollable.container, this.header.nextSibling);
+        this.header.after(scrollable.container);
       }
+    }
+
+    if(options.footer) {
+      this.footer = document.createElement('div');
+      this.footer.classList.add('popup-footer');
+      (this.body || this.container).append(this.footer);
     }
 
     let btnConfirmOnEnter = this.btnConfirm;
@@ -258,19 +264,20 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
   public show() {
     this.navigationItem = {
       type: 'popup',
-      onPop: () => this.destroy(),
-      onEscape: this.isConfirmationNeededOnClose ? () => {
-        const result = this.isConfirmationNeededOnClose();
-        if(!result) {
-          return true;
+      onPop: () => {
+        if(this.isConfirmationNeededOnClose) {
+          const result = this.isConfirmationNeededOnClose();
+          if(result) {
+            Promise.resolve(result).then(() => {
+              this.destroy();
+            });
+
+            return false;
+          }
         }
 
-        Promise.resolve(result).then(() => {
-          this.hide();
-        });
-
-        return false;
-      } : undefined
+        return this.destroy();
+      }
     };
 
     appNavigationController.pushItem(this.navigationItem);
@@ -295,7 +302,9 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
       }
 
       this.listenerSetter.add(document.body)('keydown', (e) => {
-        if(PopupElement.POPUPS[PopupElement.POPUPS.length - 1] !== this) {
+        if(!this.btnConfirmOnEnter ||
+          (this.btnConfirmOnEnter as HTMLButtonElement).disabled ||
+          PopupElement.POPUPS[PopupElement.POPUPS.length - 1] !== this) {
           return;
         }
 
@@ -308,14 +317,6 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     // }
   }
 
-  protected async confirmClosing() {
-    if(!this.isConfirmationNeededOnClose) {
-      return;
-    }
-
-    return await this.isConfirmationNeededOnClose();
-  }
-
   public hide() {
     if(this.destroyed || !this.navigationItem) {
       return;
@@ -324,7 +325,15 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     appNavigationController.backByItem(this.navigationItem);
   }
 
+  public forceHide() {
+    return this.destroy();
+  }
+
   protected destroy() {
+    if(this.destroyed) {
+      return;
+    }
+
     this.destroyed = true;
     this.dispatchEvent<PopupListeners>('close');
     this.element.classList.add('hiding');

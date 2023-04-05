@@ -13,7 +13,7 @@ import PopupForward from '../popups/forward';
 import PopupPinMessage from '../popups/unpinMessage';
 import {copyTextToClipboard} from '../../helpers/clipboard';
 import PopupSendNow from '../popups/sendNow';
-import {toast} from '../toast';
+import {toast, toastNew} from '../toast';
 import I18n, {i18n, LangPackKey} from '../../lib/langPack';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import cancelEvent from '../../helpers/dom/cancelEvent';
@@ -164,6 +164,11 @@ export default class ChatContextMenu {
 
     let mid = avatar ? 0 : +bubble.dataset.mid;
     if(!mid && mid !== 0) {
+      return;
+    }
+
+    if(avatar && !avatar.peerId) {
+      toastNew({langPackKey: 'HidAccount'});
       return;
     }
 

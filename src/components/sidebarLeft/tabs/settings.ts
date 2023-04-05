@@ -209,7 +209,7 @@ export default class AppSettingsTab extends SliderSuperTab {
           tab.open(...args);
 
           if(tab instanceof SliderSuperTabEventable && getInitArgs) {
-            tab.eventListener.addEventListener('destroyAfter', (promise) => {
+            (tab as SliderSuperTabEventable).eventListener.addEventListener('destroyAfter', (promise) => {
               item.args = promise.then(() => getInitArgs() as any);
             });
           }

@@ -223,10 +223,10 @@ export default class DialogsContextMenu {
   private onUnreadClick = async() => {
     const {peerId, dialog} = this;
     if(dialog.unread_count) {
-      this.managers.appMessagesManager.readHistory(peerId, dialog.top_message, this.threadId);
-
       if(!this.threadId) {
         this.managers.appMessagesManager.markDialogUnread(peerId, true);
+      } else {
+        this.managers.appMessagesManager.readHistory(peerId, dialog.top_message, this.threadId);
       }
     } else if(!this.threadId) {
       this.managers.appMessagesManager.markDialogUnread(peerId);

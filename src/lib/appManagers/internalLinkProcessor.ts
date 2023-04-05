@@ -6,6 +6,7 @@
 
 import type AppMediaViewerBase from '../../components/appMediaViewerBase';
 import PopupElement from '../../components/popups';
+import PopupSharedFolderInvite from '../../components/popups/sharedFolderInvite';
 import PopupJoinChatInvite from '../../components/popups/joinChatInvite';
 import PopupPayment from '../../components/popups/payment';
 import PopupPeer from '../../components/popups/peer';
@@ -17,8 +18,8 @@ import IS_GROUP_CALL_SUPPORTED from '../../environment/groupCallSupport';
 import addAnchorListener from '../../helpers/addAnchorListener';
 import assumeType from '../../helpers/assumeType';
 import findUpClassName from '../../helpers/dom/findUpClassName';
-import {ChatInvite, User, AttachMenuPeerType, MessagesBotApp, BotApp} from '../../layer';
-import {i18n, LangPackKey} from '../langPack';
+import {ChatInvite, User, AttachMenuPeerType, MessagesBotApp, BotApp, ChatlistsChatlistInvite} from '../../layer';
+import I18n, {i18n, LangPackKey, _i18n} from '../langPack';
 import {PHONE_NUMBER_REG_EXP} from '../richTextProcessor';
 import isUsernameValid from '../richTextProcessor/isUsernameValid';
 import appImManager from './appImManager';
@@ -147,6 +148,19 @@ export class InternalLinkProcessor {
         const link: InternalLink = {
           _: INTERNAL_LINK_TYPE.INVOICE,
           slug: pathnameParams.length > 1 ? pathnameParams[1] : pathnameParams[0].slice(1)
+        };
+
+        return this.processInternalLink(link);
+      }
+    });
+
+    // t.me/addlist/adasdasd
+    addAnchorListener<{pathnameParams: ['folder', string]}>({
+      name: 'addlist',
+      callback: ({pathnameParams}) => {
+        const link: InternalLink = {
+          _: INTERNAL_LINK_TYPE.ADD_LIST,
+          slug: pathnameParams[1]
         };
 
         return this.processInternalLink(link);
@@ -326,6 +340,7 @@ export class InternalLinkProcessor {
       }
     });
 
+    // tg://invoice?slug=asdasd
     addAnchorListener<{
       uriParams: {
         slug: string
@@ -335,6 +350,20 @@ export class InternalLinkProcessor {
       protocol: 'tg',
       callback: ({uriParams}) => {
         const link = this.makeLink(INTERNAL_LINK_TYPE.INVOICE, uriParams);
+        return this.processInternalLink(link);
+      }
+    });
+
+    // tg://addlist?slug=asd
+    addAnchorListener<{
+      uriParams: {
+        slug: string
+      }
+    }>({
+      name: 'addlist',
+      protocol: 'tg',
+      callback: ({uriParams}) => {
+        const link = this.makeLink(INTERNAL_LINK_TYPE.ADD_LIST, uriParams);
         return this.processInternalLink(link);
       }
     });
@@ -558,6 +587,25 @@ export class InternalLinkProcessor {
     });
   };
 
+  public processListLink = async(link: InternalLink.InternalLinkAddList) => {
+    let chatlistInvite: ChatlistsChatlistInvite;
+    try {
+      chatlistInvite = await this.managers.filtersStorage.checkChatlistInvite(link.slug);
+    } catch(err) {
+      if((err as ApiError).type === 'INVITE_SLUG_EXPIRED') {
+        toastNew({langPackKey: 'SharedFolder.Link.Expired'});
+        return;
+      }
+
+      throw err;
+    }
+
+    PopupElement.createPopup(PopupSharedFolderInvite, {
+      chatlistInvite,
+      slug: link.slug
+    });
+  };
+
   public processInternalLink(link: InternalLink) {
     const map: {
       [key in InternalLink['_']]?: (link: any) => any
@@ -571,7 +619,8 @@ export class InternalLinkProcessor {
       [INTERNAL_LINK_TYPE.USER_PHONE_NUMBER]: this.processUserPhoneNumberLink,
       [INTERNAL_LINK_TYPE.INVOICE]: this.processInvoiceLink,
       [INTERNAL_LINK_TYPE.ATTACH_MENU_BOT]: this.processAttachMenuBotLink,
-      [INTERNAL_LINK_TYPE.WEB_APP]: this.processWebAppLink
+      [INTERNAL_LINK_TYPE.WEB_APP]: this.processWebAppLink,
+      [INTERNAL_LINK_TYPE.ADD_LIST]: this.processListLink
     };
 
     const processor = map[link._];

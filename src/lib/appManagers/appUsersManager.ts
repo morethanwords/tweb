@@ -693,6 +693,10 @@ export class AppUsersManager extends AppManager {
     return isObject(user) && (allowMin || !user.pFlags.min);
   }
 
+  public canEdit(id: UserId) {
+    return this.userId === id || this.isContact(id) || !!this.users[id]?.pFlags?.bot_can_edit;
+  }
+
   public getUserString(id: UserId) {
     const user = this.getUser(id);
     return 'u' + id + (user.access_hash ? '_' + user.access_hash : '');
@@ -1050,14 +1054,6 @@ export class AppUsersManager extends AppManager {
 
   public checkUsername(username: string) {
     return this.apiManager.invokeApi('account.checkUsername', {username});
-  }
-
-  public toggleUsername(username: string, active: boolean) {
-    return this.apiManager.invokeApi('account.toggleUsername', {username, active});
-  }
-
-  public reorderUsernames(usernames: string[]) {
-    return this.apiManager.invokeApi('account.reorderUsernames', {order: usernames});
   }
 
   public canSendToUser(userId: UserId) {

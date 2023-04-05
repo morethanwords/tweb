@@ -7,7 +7,7 @@
 import type {ChatRights} from '../lib/appManagers/appChatsManager';
 import type {Dialog} from '../lib/appManagers/appMessagesManager';
 import type {AppPeersManager, IsPeerType} from '../lib/appManagers/appPeersManager';
-import appDialogsManager, {DialogElementSize as DialogElementSize} from '../lib/appManagers/appDialogsManager';
+import appDialogsManager, {DialogElement, DialogElementSize as DialogElementSize} from '../lib/appManagers/appDialogsManager';
 import rootScope from '../lib/rootScope';
 import Scrollable from './scrollable';
 import {FocusDirection} from '../helpers/fastSmoothScroll';
@@ -76,9 +76,10 @@ export default class AppSelectPeers {
   private appendTo: HTMLElement;
   private onChange: (length: number) => void;
   private peerType: SelectSearchPeerType[] = ['dialogs'];
-  private renderResultsFunc: (peerIds: PeerId[]) => void | Promise<void>;
+  public renderResultsFunc: (peerIds: PeerId[]) => void | Promise<void>;
   private chatRightsActions: ChatRights[];
   private multiSelect = true;
+  private noSearch: boolean;
   private rippleEnabled = true;
   private avatarSize: DialogElementSize = 'abitbigger';
   private exceptSelf = false;
@@ -93,11 +94,16 @@ export default class AppSelectPeers {
 
   private needSwitchList = false;
 
-  private sectionNameLangPackKey: LangPackKey;
+  private sectionNameLangPackKey: ConstructorParameters<typeof SettingSection>[0]['name'];
+  private sectionCaption: ConstructorParameters<typeof SettingSection>[0]['caption'];
+
+  private getSubtitleForElement: (peerId: PeerId) => HTMLElement | Promise<HTMLElement>;
+  private processElementAfter: (peerId: PeerId, dialogElement: DialogElement) => void | Promise<void>;
 
   private managers: AppManagers;
 
   private design: 'round' | 'square' = 'round';
+  public section: SettingSection;
 
   constructor(options: {
     appendTo: AppSelectPeers['appendTo'],
@@ -109,6 +115,7 @@ export default class AppSelectPeers {
     renderResultsFunc?: AppSelectPeers['renderResultsFunc'],
     chatRightsActions?: AppSelectPeers['chatRightsActions'],
     multiSelect?: AppSelectPeers['multiSelect'],
+    noSearch?: AppSelectPeers['noSearch'],
     rippleEnabled?: AppSelectPeers['rippleEnabled'],
     avatarSize?: AppSelectPeers['avatarSize'],
     placeholder?: AppSelectPeers['placeholder'],
@@ -116,9 +123,14 @@ export default class AppSelectPeers {
     exceptSelf?: AppSelectPeers['exceptSelf'],
     filterPeerTypeBy?: AppSelectPeers['filterPeerTypeBy'],
     sectionNameLangPackKey?: AppSelectPeers['sectionNameLangPackKey'],
-    design?: AppSelectPeers['design']
+    sectionCaption?: AppSelectPeers['sectionCaption'],
+    design?: AppSelectPeers['design'],
+    getSubtitleForElement?: AppSelectPeers['getSubtitleForElement'],
+    processElementAfter?: AppSelectPeers['processElementAfter']
   }) {
     safeAssign(this, options);
+
+    // this.noSearch ??= !this.multiSelect;
 
     this.container.classList.add('selector', 'selector-' + this.design);
 
@@ -161,17 +173,17 @@ export default class AppSelectPeers {
       return f(peerIds);
     };
 
-    this.input = document.createElement('input');
-    this.input.classList.add('selector-search-input');
-    if(this.placeholder) {
-      _i18n(this.input, this.placeholder, undefined, 'placeholder');
-    } else {
-      _i18n(this.input, 'SendMessageTo', undefined, 'placeholder');
+    if(!this.noSearch) {
+      this.input = document.createElement('input');
+      this.input.classList.add('selector-search-input');
+      this.input.type = 'text';
+      _i18n(this.input, this.placeholder || 'SendMessageTo', undefined, 'placeholder');
+
+      const debouncedInput = debounce(this.onInput, 200, false, true);
+      this.input.addEventListener('input', debouncedInput);
     }
 
-    this.input.type = 'text';
-
-    if(this.multiSelect) {
+    if(this.multiSelect && this.input) {
       const section = new SettingSection({});
       section.innerContainer.classList.add('selector-search-section');
       const topContainer = document.createElement('div');
@@ -208,9 +220,10 @@ export default class AppSelectPeers {
 
     this.chatsContainer.classList.add('chatlist-container');
     // this.chatsContainer.append(this.list);
-    const section = new SettingSection({
+    const section = this.section = new SettingSection({
       name: this.sectionNameLangPackKey,
-      noShadow: true
+      caption: this.sectionCaption,
+      noShadow: !!this.input || !this.sectionCaption
     });
     section.content.append(this.list);
     this.chatsContainer.append(section.container);
@@ -233,24 +246,21 @@ export default class AppSelectPeers {
       }
 
       // target.classList.toggle('active');
-      if(this.selected.has(key)) {
-        this.remove(key);
-      } else {
-        this.add(key);
+      if(!(this.selected.has(key) ? this.remove(key) : this.add(key))) {
+        return;
       }
 
       const checkbox = target.querySelector('input') as HTMLInputElement;
       checkbox.checked = !checkbox.checked;
     });
 
-    const debouncedInput = debounce(this.onInput, 200, false, true);
-    this.input.addEventListener('input', debouncedInput);
-
     this.scrollable.onScrolledBottom = () => {
       this.getMoreResults();
     };
 
-    this.scrollable.container.prepend(generateDelimiter());
+    if(this.input) {
+      this.scrollable.container.prepend(generateDelimiter());
+    }
 
     this.container.append(this.chatsContainer);
     this.appendTo.append(this.container);
@@ -594,45 +604,73 @@ export default class AppSelectPeers {
     }
 
     peerIds.forEach(async(peerId) => {
-      const {dom} = appDialogsManager.addDialogNew({
+      const dialogElement = appDialogsManager.addDialogNew({
         peerId: peerId,
         container: this.scrollable,
         rippleEnabled: this.rippleEnabled,
         avatarSize: this.avatarSize
       });
 
+      const {dom} = dialogElement;
+
       if(this.multiSelect) {
         const selected = this.selected.has(peerId);
-        const checkboxField = new CheckboxField();
-
-        if(selected) {
-          // dom.listEl.classList.add('active');
-          checkboxField.input.checked = true;
-        }
-
-        dom.containerEl.prepend(checkboxField.label);
+        dom.containerEl.prepend(this.checkbox(selected));
       }
 
       let subtitleEl: HTMLElement;
-      if(peerId.isAnyChat()) {
-        subtitleEl = await getChatMembersString(peerId.toChatId());
-      } else if(peerId === rootScope.myId) {
-        subtitleEl = i18n(this.selfPresence);
-      } else {
-        subtitleEl = getUserStatusString(await this.managers.appUsersManager.getUser(peerId.toUserId()));
+      if(this.getSubtitleForElement) {
+        subtitleEl = await this.getSubtitleForElement(peerId);
+      }
+
+      if(!subtitleEl) {
+        subtitleEl = await this.wrapSubtitle(peerId);
       }
 
       dom.lastMessageSpan.append(subtitleEl);
+
+      if(this.processElementAfter) {
+        await this.processElementAfter(peerId, dialogElement);
+      }
     });
   }
 
-  public add(key: PeerId | string, title?: string | HTMLElement, scroll = true) {
+  public async wrapSubtitle(peerId: PeerId) {
+    let subtitleEl: HTMLElement;
+    if(peerId.isAnyChat()) {
+      subtitleEl = await getChatMembersString(peerId.toChatId());
+    } else if(peerId === rootScope.myId) {
+      subtitleEl = i18n(this.selfPresence);
+    } else {
+      subtitleEl = getUserStatusString(await this.managers.appUsersManager.getUser(peerId.toUserId()));
+    }
+
+    return subtitleEl;
+  }
+
+  public checkbox(selected?: boolean) {
+    const checkboxField = new CheckboxField({
+      round: this.design === 'round'
+    });
+    if(selected) {
+      checkboxField.input.checked = selected;
+    }
+
+    return checkboxField.label;
+  }
+
+  public add(
+    key: PeerId | string,
+    title?: string | HTMLElement,
+    scroll = true,
+    fireOnChange = true
+  ) {
     // console.trace('add');
     this.selected.add(key);
 
-    if(!this.multiSelect) {
-      this.onChange(this.selected.size);
-      return;
+    if(!this.multiSelect || !this.input) {
+      fireOnChange && this.onChange?.(this.selected.size);
+      return true;
     }
 
     if(this.query.trim()) {
@@ -673,7 +711,7 @@ export default class AppSelectPeers {
 
     this.selectedContainer.insertBefore(div, this.input);
     // this.selectedScrollable.scrollTop = this.selectedScrollable.scrollHeight;
-    this.onChange?.(this.selected.size);
+    fireOnChange && this.onChange?.(this.selected.size);
 
     if(scroll) {
       this.selectedScrollable.scrollIntoViewNew({
@@ -685,8 +723,17 @@ export default class AppSelectPeers {
     return div;
   }
 
-  public remove(key: PeerId | string) {
-    if(!this.multiSelect) return;
+  public remove(key: PeerId | string, fireOnChange = true) {
+    if(!this.multiSelect) {
+      return false;
+    }
+
+    if(!this.input) {
+      this.selected.delete(key);
+      fireOnChange && this.onChange?.(this.selected.size);
+      return true;
+    }
+
     // const div = this.selected[peerId];
     const div = this.selectedContainer.querySelector(`[data-key="${key}"]`) as HTMLElement;
     div.classList.remove('scale-in');
@@ -696,7 +743,7 @@ export default class AppSelectPeers {
     const onAnimationEnd = () => {
       this.selected.delete(key);
       div.remove();
-      this.onChange && this.onChange(this.selected.size);
+      fireOnChange && this.onChange?.(this.selected.size);
     };
 
     if(liteMode.isAvailable('animations')) {
@@ -704,18 +751,58 @@ export default class AppSelectPeers {
     } else {
       onAnimationEnd();
     }
+
+    return true;
   }
 
   public getSelected() {
     return [...this.selected];
   }
 
-  public addInitial(values: any[]) {
+  public getElementByPeerId(peerId: PeerId) {
+    return this.chatsContainer.querySelector<HTMLElement>(`[data-peer-id="${peerId}"]`);
+  }
+
+  public toggleElementCheckboxByPeerId(peerId: PeerId, checked?: boolean) {
+    const element = this.getElementByPeerId(peerId);
+    if(!element) {
+      return;
+    }
+
+    const checkbox = element.querySelector('input') as HTMLInputElement;
+    checkbox.checked = checked === undefined ? !checkbox.checked : checked;
+  }
+
+  public addBatch(values: any[]) {
+    if(!values.length) {
+      return;
+    }
+
     values.forEach((value) => {
-      this.add(value, undefined, false);
+      this.add(value, undefined, false, false);
+      this.toggleElementCheckboxByPeerId(value, true);
     });
 
-    window.requestAnimationFrame(() => { // ! not the best place for this raf though it works
+    this.onChange?.(this.selected.size);
+  }
+
+  public removeBatch(values: any[]) {
+    if(!values.length) {
+      return;
+    }
+
+    values.forEach((value) => {
+      this.remove(value, false);
+      this.toggleElementCheckboxByPeerId(value, false);
+    });
+
+    this.onChange?.(this.selected.size);
+  }
+
+  public addInitial(values: any[]) {
+    this.addBatch(values);
+
+    this.input && window.requestAnimationFrame(() => { // ! not the best place for this raf though it works
       this.selectedScrollable.scrollIntoViewNew({
         element: this.input,
         position: 'center',

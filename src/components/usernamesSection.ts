@@ -33,12 +33,17 @@ export default class UsernamesSection extends SettingSection {
   }) {
     /* const section = this.section = new SettingSection */super({
       name: 'UsernamesProfileHeader',
-      caption: !options.peerId.isUser() ? 'UsernamesChannelHelp' : 'UsernamesProfileHelp'
+      caption: (options.peer as User.user).pFlags.bot ? 'UsernamesBotHelp' : (!options.peerId.isUser() ? 'UsernamesChannelHelp' : 'UsernamesProfileHelp')
     });
 
     const {peerId, peer, usernameInputField, listenerSetter, middleware} = options;
     const managers = rootScope.managers;
     const channelId = peerId.isUser() ? undefined : peerId.toChatId();
+    const botId = (options.peer as User.user).pFlags.bot ? peerId.toUserId() : undefined;
+
+    if(botId) {
+      usernameInputField.container.classList.add('disable-hover');
+    }
 
     const section = this;
 
@@ -89,7 +94,7 @@ export default class UsernamesSection extends SettingSection {
     });
 
     const changeActive = (row: Row, active: boolean) => {
-      row.subtitle.replaceChildren(i18n(row.container.dataset.editable ? 'UsernameLinkEditable' : (active ? 'UsernameLinkActive' : 'UsernameLinkInactive')));
+      row.subtitle.replaceChildren(i18n(row.container.dataset.editable ? (botId ? 'UsernameLinkBotUsername' : 'UsernameLinkEditable') : (active ? 'UsernameLinkActive' : 'UsernameLinkInactive')));
       row.container.classList.toggle('active', active);
       row.toggleSorting(active);
     };
@@ -140,7 +145,10 @@ export default class UsernamesSection extends SettingSection {
       }
 
       if(container.dataset.editable) {
-        placeCaretAtEnd(usernameInputField.input, true, true);
+        if(!botId) {
+          placeCaretAtEnd(usernameInputField.input, true, true);
+        }
+
         return;
       }
 
@@ -150,10 +158,10 @@ export default class UsernamesSection extends SettingSection {
       let titleLangKey: LangPackKey, descriptionLangKey: LangPackKey;
       if(active) {
         titleLangKey = 'UsernameDeactivateLink';
-        descriptionLangKey = channelId ? 'UsernameDeactivateLinkChannelMessage' : 'UsernameDeactivateLinkProfileMessage';
+        descriptionLangKey = botId ? 'UsernameDeactivateLinkBotMessage' : (channelId ? 'UsernameDeactivateLinkChannelMessage' : 'UsernameDeactivateLinkProfileMessage');
       } else {
         titleLangKey = 'UsernameActivateLink';
-        descriptionLangKey = channelId ? 'UsernameActivateLinkChannelMessage' : 'UsernameActivateLinkProfileMessage';
+        descriptionLangKey = botId ? 'UsernameActivateLinkBotMessage' : (channelId ? 'UsernameActivateLinkChannelMessage' : 'UsernameActivateLinkProfileMessage');
       }
 
       try {
@@ -169,12 +177,11 @@ export default class UsernamesSection extends SettingSection {
       }
 
       const newActive = !active;
-      let promise: Promise<boolean>;
-      if(channelId) {
-        promise = managers.appChatsManager.toggleUsername(channelId, username, newActive);
-      } else {
-        promise = managers.appUsersManager.toggleUsername(username, newActive);
-      }
+      const promise = managers.appUsernamesManager.toggleUsername({
+        peerId,
+        username,
+        active: newActive
+      });
 
       promise.catch((err: ApiError) => {
         if(err.type === 'USERNAMES_ACTIVE_TOO_MUCH') {
@@ -200,11 +207,7 @@ export default class UsernamesSection extends SettingSection {
         // sortedList.update(username.username);
 
         const usernames = _usernames.filter((username) => username.pFlags.active).map((username) => username.username);
-        if(channelId) {
-          managers.appChatsManager.reorderUsernames(channelId, usernames);
-        } else {
-          managers.appUsersManager.reorderUsernames(usernames);
-        }
+        managers.appUsernamesManager.reorderUsernames({peerId, order: usernames});
       }
     });
 

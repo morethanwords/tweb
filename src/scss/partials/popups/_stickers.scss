@@ -8,28 +8,11 @@
   $parent: ".popup";
   user-select: none;
 
-  .sticker-set-footer {
-    text-align: center;
-    color: var(--primary-color);
-
-    .btn-primary {
-      text-transform: uppercase;
-      width: auto;
-      padding: 0 1.0625rem;
-      height: 44px;
-      line-height: 44px;
-    }
-  }
-
   .scrollable {
     &.is-loading {
       min-height: 9rem;
       position: relative;
     }
-  }
-
-  .sticker-set-footer {
-    padding: 8px 0;
   }
 
   .super-emojis {
@@ -51,6 +34,14 @@
     &-header {
       margin: .625rem 1rem;
       flex: 0 0 auto;
+    }
+
+    &-footer {
+      color: var(--primary-color);
+  
+      .btn-primary {
+        width: auto;
+      }
     }
   }
 

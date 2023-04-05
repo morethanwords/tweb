@@ -536,16 +536,52 @@ export class AppProfileManager extends AppManager {
     });
   }
 
-  public uploadProfilePhoto(inputFile: InputFile) {
+  public setBotInfo(botId: BotId, name?: string, about?: string) {
+    return this.apiManager.invokeApi('bots.setBotInfo', {
+      lang_code: '',
+      bot: this.appUsersManager.getUserInput(botId),
+      name,
+      about
+    }).then(() => {
+      const user = this.appUsersManager.getUser(botId);
+      if(name !== undefined) {
+        this.appUsersManager.saveApiUser({
+          ...user,
+          first_name: name
+        });
+      }
+
+      const userFull = this.getCachedFullUser(botId);
+      if(about !== undefined) {
+        if(userFull) {
+          userFull.about = about;
+        }
+
+        this.rootScope.dispatchEvent('peer_bio_edit', botId.toPeerId());
+      }
+
+      return this.getProfile(botId, true);
+    });
+  }
+
+  public getBotInfo(botId: BotId) {
+    return this.apiManager.invokeApiSingle('bots.getBotInfo', {
+      bot: this.appUsersManager.getUserInput(botId),
+      lang_code: ''
+    });
+  }
+
+  public uploadProfilePhoto(inputFile: InputFile, botId?: BotId) {
     return this.apiManager.invokeApi('photos.uploadProfilePhoto', {
-      file: inputFile
+      file: inputFile,
+      bot: botId ? this.appUsersManager.getUserInput(botId) : undefined
     }).then((updateResult) => {
       // ! sometimes can have no user in users
       const photo = updateResult.photo as Photo.photo;
       if(!updateResult.users.length) {
         const strippedThumb = photo.sizes.find((size) => size._ === 'photoStrippedSize') as PhotoSize.photoStrippedSize;
         updateResult.users.push({
-          ...this.appUsersManager.getSelf(),
+          ...(botId ? this.appUsersManager.getUser(botId) : this.appUsersManager.getSelf()),
           photo: {
             _: 'userProfilePhoto',
             dc_id: photo.dc_id,
@@ -559,13 +595,13 @@ export class AppProfileManager extends AppManager {
       }
       this.appUsersManager.saveApiUsers(updateResult.users);
 
-      const myId = this.appPeersManager.peerId;
+      const peerId = botId ? botId.toPeerId() : this.appPeersManager.peerId;
       this.appPhotosManager.savePhoto(updateResult.photo, {
         type: 'profilePhoto',
-        peerId: myId
+        peerId
       });
 
-      const userId = myId.toUserId();
+      const userId = peerId.toUserId();
       // this.apiUpdatesManager.processLocalUpdate({
       //   _: 'updateUserPhoto',
       //   user_id: userId,

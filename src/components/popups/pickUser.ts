@@ -115,4 +115,14 @@ export default class PopupPickUser extends PopupElement {
 
     return this.createPicker2({peerType, filterPeerTypeBy, chatRightsActions});
   }
+
+  public static createSharingPicker(onSelect: ConstructorParameters<typeof PopupPickUser>[0]['onSelect']) {
+    PopupElement.createPopup(PopupPickUser, {
+      peerType: ['dialogs', 'contacts'],
+      onSelect,
+      placeholder: 'ShareModal.Search.Placeholder',
+      chatRightsActions: ['send_plain'],
+      selfPresence: 'ChatYourSelf'
+    });
+  }
 }

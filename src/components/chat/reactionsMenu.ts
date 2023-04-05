@@ -61,8 +61,11 @@ export class ChatReactionsMenu {
     const reactionsContainer = this.container = document.createElement('div');
     reactionsContainer.classList.add(REACTIONS_CLASS_NAME);
 
+    const shadow = document.createElement('div');
+    shadow.classList.add('inner-shadow');
+
     const reactionsScrollable = this.scrollable = type === 'vertical' ? new Scrollable(undefined) : new ScrollableX(undefined);
-    reactionsContainer.append(reactionsScrollable.container);
+    reactionsContainer.append(reactionsScrollable.container, shadow);
     reactionsScrollable.onAdditionalScroll = this.onScroll;
     reactionsScrollable.setListeners();
 

@@ -285,7 +285,6 @@ export class AppStickersManager extends AppManager {
         const doc = this.appDocsManager.saveDoc({
           _: 'document',
           pFlags: {},
-          flags: 0,
           id: sound.id,
           access_hash: sound.access_hash,
           attributes: [{

@@ -9,7 +9,7 @@ import {generateDelimiter} from './generateDelimiter';
 import Scrollable from './scrollable';
 
 export type SettingSectionOptions = {
-  name?: LangPackKey,
+  name?: LangPackKey | HTMLElement,
   nameArgs?: FormatterArguments,
   caption?: LangPackKey | true,
   captionArgs?: FormatterArguments,
@@ -65,7 +65,11 @@ export default class SettingSection {
     if(options.name) {
       const title = this.title = document.createElement('div');
       title.classList.add('sidebar-left-h2', className + '-name');
-      i18n_({element: title, key: options.name, args: options.nameArgs});
+      if(typeof(options.name) === 'string') {
+        i18n_({element: title, key: options.name, args: options.nameArgs});
+      } else {
+        title.append(options.name);
+      }
       content.append(title);
     }
 

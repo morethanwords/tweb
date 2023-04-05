@@ -12,5 +12,5 @@ module.exports = merge(common, {
     // new webpack.optimize.LimitChunkCountPlugin({
     //   maxChunks: 1
     // })
-  ],
+  ]
 });

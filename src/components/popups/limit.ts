@@ -32,6 +32,13 @@ const a: {[type in ApiLimitType]?: {
     descriptionPremium: 'LimitReachedFoldersPremium',
     descriptionLocked: 'LimitReachedFoldersLocked',
     icon: 'limit_folders'
+  },
+  chatlistInvites: {
+    title: 'LimitReached',
+    description: 'LimitReachedSharedFolderInvites',
+    descriptionPremium: 'LimitReachedSharedFolderInvitesPremium',
+    descriptionLocked: 'LimitReachedSharedFolderInvitesLocked',
+    icon: 'limit_link'
   }
 };
 
@@ -70,7 +77,7 @@ class P extends PopupPeer {
       this.element.classList.add('is-premium');
     } else {
       const button = this.buttons.find((b) => !b.isCancel);
-      button.element.classList.add('popup-limit-button');
+      button.element.classList.add('popup-limit-button', 'shimmer');
       const i = document.createElement('i');
       i.classList.add('popup-limit-button-icon', 'tgico-premium_double');
       button.element.append(i);

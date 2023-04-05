@@ -411,6 +411,7 @@ $chat-input-inner-padding-handhelds: .25rem;
 @import "partials/popups/limit";
 @import "partials/popups/giftPremium";
 @import "partials/popups/webApp";
+@import "partials/popups/chatlistInvite";
 
 @import "partials/pages/pages";
 @import "partials/pages/authCode";
@@ -608,7 +609,7 @@ input:-webkit-autofill:active {
 .subtitle {
   /* font-weight: 500; */
   color: var(--secondary-text-color);
-  line-height: 1.35;
+  line-height: var(--line-height);
 }
 
 .danger {
@@ -1771,13 +1772,13 @@ hr {
     text-align: center;
   }
 
-  &.z:before {
-    content: "Z";
+  &.a:before {
+    content: "A";
   }
 
-  &.w:before {
-    content: "W";
-  }
+  // &.w:before {
+  //   content: "W";
+  // }
 }
 
 .sending-status {
@@ -2170,5 +2171,67 @@ hr {
 
   &-bright {
     --opacity: .4;
+  }
+}
+
+.invite-link {
+  border-radius: $border-radius-medium;
+  background-color: var(--background-color);
+  position: relative;
+  color: var(--primary-text-color);
+  padding-inline: 1rem .25rem;
+  height: 3rem;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+
+  &-text {
+    @include text-overflow();
+    flex: 1 1 auto;
+  }
+
+  &-container {
+    padding: 0 .5rem;
+  }
+
+  &-menu {
+    flex: 0 0 auto;
+  }
+
+  &-button {
+    margin-top: .5rem;
+    height: 3rem;
+    text-transform: uppercase;
+  }
+}
+
+.cant-select {
+  .checkbox {
+    &-box {
+      &-border {
+        border-style: dotted;
+      }
+    }
+  }
+}
+
+.inner-shadow {
+  --inner-shadow-degree: 90deg;
+  --inner-shadow-size: 1rem;
+
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  content: " ";
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(var(--inner-shadow-degree), var(--surface-color) 0%, rgba(var(--surface-color-rgb), 0) var(--inner-shadow-size), rgba(var(--surface-color-rgb), 0) calc(100% - var(--inner-shadow-size)), var(--surface-color) 100%);
+
+  &-inset {
+    background: linear-gradient(var(--inner-shadow-degree), var(--surface-color) 0%, var(--surface-color) calc(var(--inner-shadow-size) / 2), transparent var(--inner-shadow-size), transparent calc(100% - var(--inner-shadow-size)), var(--surface-color) calc(100% - var(--inner-shadow-size) / 2), var(--surface-color) 100%);
   }
 }

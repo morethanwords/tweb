@@ -5,7 +5,7 @@
  */
 
 import type {MyDialogFilter} from '../../../lib/storages/filters';
-import type {DialogFilterSuggested} from '../../../layer';
+import type {DialogFilter, DialogFilterSuggested} from '../../../layer';
 import type _rootScope from '../../../lib/rootScope';
 import {SliderSuperTab} from '../../slider';
 import lottieLoader, {LottieLoader} from '../../../lib/rlottie/lottieLoader';
@@ -60,13 +60,13 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     } else {
       filter = dialogFilter;
 
-      const enabledFilters = Object.keys(filter.pFlags).length;
+      const pFlags = (filter as DialogFilter.dialogFilter).pFlags || {};
+      const enabledFilters = Object.keys(pFlags).length;
       /* (['include_peers', 'exclude_peers'] as ['include_peers', 'exclude_peers']).forEach((key) => {
         enabledFilters += +!!filter[key].length;
       }); */
 
       if(enabledFilters === 1) {
-        const pFlags = filter.pFlags;
         let k: LangPackKey;
         if(pFlags.contacts) k = 'FilterAllContacts';
         else if(pFlags.non_contacts) k = 'FilterAllNonContacts';
@@ -83,9 +83,9 @@ export default class AppChatFoldersTab extends SliderSuperTab {
         const folder = await this.managers.dialogsStorage.getFolderDialogs(filter.id);
         let chats = 0, channels = 0, groups = 0;
         await Promise.all(folder.map(async(dialog) => {
-          if(await this.managers.appPeersManager.isAnyGroup(dialog.peerId)) groups++;
-          else if(await this.managers.appPeersManager.isBroadcast(dialog.peerId)) channels++;
-          else chats++;
+          if(await this.managers.appPeersManager.isAnyGroup(dialog.peerId)) ++groups;
+          else if(await this.managers.appPeersManager.isBroadcast(dialog.peerId)) ++channels;
+          else ++chats;
         }));
 
         if(chats) d.push(i18n('Chats', [chats]));
@@ -95,18 +95,19 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     }
 
     if(!row) {
+      const isSuggested = dialogFilter._ === 'dialogFilterSuggested';
       row = new Row({
         title: filter.id === FOLDER_ID_ALL ? i18n('FilterAllChats') : wrapEmojiText(filter.title),
         subtitle: description,
         clickable: true,
-        buttonRightLangKey: dialogFilter._ === 'dialogFilterSuggested' ? 'Add' : undefined
+        buttonRightLangKey: isSuggested ? 'Add' : undefined
       });
 
       if(d.length) {
         row.subtitle.append(...join(d));
       }
 
-      if(dialogFilter._ === 'dialogFilter') {
+      if(!isSuggested) {
         const filterId = filter.id;
         if(!this.filtersRendered[filter.id] && filter.id !== FOLDER_ID_ALL) {
           const initArgs = AppEditFolderTab.getInitArgs();
@@ -346,7 +347,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
 
           button.setAttribute('disabled', 'true');
 
-          const f = filter.filter as MyDialogFilter;
+          const f = filter.filter as DialogFilter.dialogFilter;
           f.includePeerIds = [];
           f.excludePeerIds = [];
           f.pinnedPeerIds = [];

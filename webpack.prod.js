@@ -5,10 +5,10 @@ const {merge} = require('webpack-merge');
 const common = require('./webpack.common.js');
 const keepAsset = require('./keepAsset.js');
 
-//const CompressionPlugin = require("compression-webpack-plugin");
+// const CompressionPlugin = require("compression-webpack-plugin");
 const WebpackOnBuildPlugin = require('on-build-webpack');
-//const TerserJSPlugin = require('terser-webpack-plugin');
-//const OptimizeCSSAssetsPlugin = require('optimize-css-assets-webpack-plugin');
+// const TerserJSPlugin = require('terser-webpack-plugin');
+// const OptimizeCSSAssetsPlugin = require('optimize-css-assets-webpack-plugin');
 const fs = require('fs');
 
 const buildDir = __dirname + '/public/';
@@ -19,12 +19,12 @@ module.exports = merge(common, {
   devtool: 'source-map',
 
   optimization: {
-    //minimizer: [new TerserJSPlugin({}), new OptimizeCSSAssetsPlugin({})],
-    //runtimeChunk: 'single',
+    // minimizer: [new TerserJSPlugin({}), new OptimizeCSSAssetsPlugin({})],
+    // runtimeChunk: 'single',
     splitChunks: {
       chunks: 'all',
       maxInitialRequests: Infinity,
-      //minSize: 0,
+      // minSize: 0,
       cacheGroups: {
         vendor: {
           test: /[\\/]node_modules[\\/]/,
@@ -35,9 +35,9 @@ module.exports = merge(common, {
 
             // npm package names are URL-safe, but some servers don't like @ symbols
             return `npm.${packageName.replace('@', '')}`;
-          },
-        },
-      },
+          }
+        }
+      }
     }
   },
 
@@ -75,7 +75,7 @@ module.exports = merge(common, {
     //       if(!newlyCreatedAssets[file] && ['.gz', '.js', '.ts', '.map', '.css', '.txt'].find(ext => file.endsWith(ext)) !== undefined) {
 
     //         //console.log('to unlink 2:', file);
-            
+
     //         fs.unlinkSync(p);
     //         unlinked.push(file);
     //       }

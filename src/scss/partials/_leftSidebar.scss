@@ -654,7 +654,7 @@
   .sticker-container {
     width: 86px;
     height: 86px;
-    margin: 1px auto 29px;
+    margin: .5rem auto 1rem;
     flex: 0 0 auto;
     position: relative;
   }
@@ -666,6 +666,12 @@
     line-height: var(--line-height-14);
     max-width: 20rem;
     margin: 0 auto;
+  }
+}
+
+.shared-folder-container {
+  .sticker-container {
+    margin-bottom: .375rem;
   }
 }
 
@@ -934,7 +940,7 @@
 
 .chat-folders-container {
   .btn-control {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
   }
 }
 

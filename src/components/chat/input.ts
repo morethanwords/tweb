@@ -1019,26 +1019,7 @@ export default class ChatInput {
     this.botStartBtn = Button('btn-primary btn-transparent text-bold chat-input-control-button');
     this.botStartBtn.append(i18n('BotStart'));
 
-    attachClickEvent(this.botStartBtn, () => {
-      const {startParam} = this;
-      if(startParam === undefined) {
-        return;
-      }
-
-      const toggle = this.toggleBotStartBtnDisability = toggleDisability([this.botStartBtn], true);
-      const peerId = this.chat.peerId;
-      const middleware = this.chat.bubbles.getMiddleware(() => {
-        return this.chat.peerId === peerId && this.startParam === startParam && this.toggleBotStartBtnDisability === toggle;
-      });
-
-      this.managers.appMessagesManager.startBot(peerId.toUserId(), undefined, startParam).then(() => {
-        if(middleware()) {
-          toggle();
-          this.toggleBotStartBtnDisability = undefined;
-          this.setStartParam();
-        }
-      });
-    }, {listenerSetter: this.listenerSetter});
+    attachClickEvent(this.botStartBtn, this.startBot, {listenerSetter: this.listenerSetter});
 
     this.controlContainer.append(this.botStartBtn, this.replyInTopicOverlay);
 
@@ -1152,6 +1133,27 @@ export default class ChatInput {
     this.center(true);
   }
 
+  public startBot = () => {
+    const {startParam} = this;
+    if(startParam === undefined) {
+      return;
+    }
+
+    const toggle = this.toggleBotStartBtnDisability = toggleDisability([this.botStartBtn], true);
+    const peerId = this.chat.peerId;
+    const middleware = this.chat.bubbles.getMiddleware(() => {
+      return this.chat.peerId === peerId && this.startParam === startParam && this.toggleBotStartBtnDisability === toggle;
+    });
+
+    this.managers.appMessagesManager.startBot(peerId.toUserId(), undefined, startParam).then(() => {
+      if(middleware()) {
+        toggle();
+        this.toggleBotStartBtnDisability = undefined;
+        this.setStartParam();
+      }
+    });
+  };
+
   public isReplyInTopicOverlayNeeded() {
     return this.chat.isForum &&
       !this.chat.isForumTopic &&
@@ -1163,7 +1165,7 @@ export default class ChatInput {
     if(this.chat.selection.isSelecting) {
       return this.fakeSelectionWrapper;
     } else if(
-      startParam !== undefined ||
+      // startParam !== undefined || // * startParam isn't always should force control container, so it's commented
       // !(await this.chat.canSend()) || // ! WARNING, TEMPORARILY COMMENTED
       this.chat.type === 'pinned' ||
       await this.chat.isStartButtonNeeded() ||

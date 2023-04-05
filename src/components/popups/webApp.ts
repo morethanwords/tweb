@@ -57,6 +57,7 @@ export default class PopupWebApp extends PopupElement<{
       overlayClosable: true,
       body: true,
       title: true,
+      footer: true,
       titleRaw: options.attachMenuBot?.short_name,
       onBackClick: () => {
         this.telegramWebView.dispatchWebViewEvent('back_button_pressed', undefined);
@@ -93,7 +94,7 @@ export default class PopupWebApp extends PopupElement<{
         icon: 'bots',
         text: 'BotWebViewOpenBot',
         onClick: () => {
-          this.hide();
+          this.forceHide();
           appImManager.setInnerPeer({peerId: botPeerId});
         },
         verify: () => this.webViewOptions.peerId !== botPeerId
@@ -121,7 +122,7 @@ export default class PopupWebApp extends PopupElement<{
         text: 'BotWebViewDeleteBot',
         onClick: () => {
           appImManager.toggleBotInAttachMenu(botId, false).then(async() => {
-            // this.hide();
+            // this.forceHide();
             toastNew({
               langPackKey: 'WebApp.AttachRemove.Success',
               langPackArguments: [await wrapPeerTitle({peerId: botPeerId})]
@@ -138,7 +139,9 @@ export default class PopupWebApp extends PopupElement<{
     this.mainButton = Button('btn-primary btn-color-primary', {noRipple: true});
     // this.mainButtonText = document.createElement('span');
     // this.mainButton.append(this.mainButtonText);
-    this.body.append(this.mainButton);
+    // this.body.append(this.mainButton);
+    this.footer.append(this.mainButton);
+    this.body.after(this.footer);
 
     attachClickEvent(this.mainButton, () => {
       this.telegramWebView.dispatchWebViewEvent('main_button_pressed', undefined);
@@ -155,7 +158,7 @@ export default class PopupWebApp extends PopupElement<{
       const queryId = this.webViewResultUrl.query_id;
       this.listenerSetter.add(rootScope)('web_view_result_sent', (_queryId) => {
         if(queryId === _queryId) {
-          this.hide();
+          this.forceHide();
         }
       });
     }
@@ -188,7 +191,7 @@ export default class PopupWebApp extends PopupElement<{
       return;
     }
 
-    this.hide();
+    this.forceHide();
 
     const chat = appImManager.chat;
     let peerId = chat.peerId, threadId = chat.threadId;
@@ -226,7 +229,8 @@ export default class PopupWebApp extends PopupElement<{
       darkenAlpha: 0.04
     });
     if(text_color) this.mainButton.style.color = text_color;
-    this.mainButton.classList.toggle('is-visible', is_visible);
+    // this.mainButton.classList.toggle('is-visible', is_visible);
+    this.footer.classList.toggle('is-visible', is_visible);
   };
 
   protected setupBackButton = ({
@@ -306,11 +310,11 @@ export default class PopupWebApp extends PopupElement<{
           return;
         }
 
-        this.hide();
+        this.forceHide();
         this.managers.appAttachMenuBotsManager.sendWebViewData(this.webViewOptions.botId, this.webViewOptions.buttonText, data);
       },
       web_app_close: () => {
-        this.hide();
+        this.forceHide();
       },
       web_app_open_link: ({url}) => {
         window.open(url, '_blank');
@@ -412,7 +416,7 @@ export default class PopupWebApp extends PopupElement<{
       }
 
       if(err.type === 'QUERY_ID_INVALID') {
-        this.hide();
+        this.forceHide();
       } else {
         console.error('web app prolong error', err);
       }

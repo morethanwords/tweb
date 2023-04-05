@@ -22,7 +22,7 @@ export default function eachTimeout(callback: () => any, getNextTimeout: () => n
   let timeout: number;
   (function run() {
     callback();
-    timeout = ctx.setTimeout(run, getNextTimeout());
+    timeout = ctx.setTimeout(run, Math.max(0, getNextTimeout()));
   })();
 
   callback = _callback;

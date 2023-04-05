@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type {MyDialogFilter} from '../../../lib/storages/filters';
 import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
-import {MyDialogFilter as DialogFilter} from '../../../lib/storages/filters';
 import lottieLoader, {LottieLoader} from '../../../lib/rlottie/lottieLoader';
 import {SliderSuperTab} from '../../slider';
-import {toast} from '../../toast';
+import {toast, toastNew} from '../../toast';
 import InputField from '../../inputField';
 import ButtonIcon from '../../buttonIcon';
 import ButtonMenuToggle from '../../buttonMenuToggle';
@@ -16,7 +16,6 @@ import {ButtonMenuItemOptions} from '../../buttonMenu';
 import Button from '../../button';
 import AppIncludedChatsTab from './includedChats';
 import {i18n, LangPackKey} from '../../../lib/langPack';
-import PopupPeer from '../../popups/peer';
 import RLottiePlayer from '../../../lib/rlottie/rlottiePlayer';
 import copy from '../../../helpers/object/copy';
 import deepEqual from '../../../helpers/object/deepEqual';
@@ -24,9 +23,28 @@ import wrapDraftText from '../../../lib/richTextProcessor/wrapDraftText';
 import filterAsync from '../../../helpers/array/filterAsync';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import SettingSection from '../../settingSection';
+import {DialogFilter, ExportedChatlistInvite} from '../../../layer';
+import rootScope from '../../../lib/rootScope';
+import confirmationPopup from '../../confirmationPopup';
+import Row from '../../row';
+import createContextMenu from '../../../helpers/dom/createContextMenu';
+import findUpClassName from '../../../helpers/dom/findUpClassName';
+import {copyTextToClipboard} from '../../../helpers/clipboard';
+import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
+import AppSharedFolderTab from './sharedFolder';
+import showLimitPopup from '../../popups/limit';
+import toggleDisability from '../../../helpers/dom/toggleDisability';
+import PopupSharedFolderInvite from '../../popups/sharedFolderInvite';
 import PopupElement from '../../popups';
 
 const MAX_FOLDER_NAME_LENGTH = 12;
+
+type EditFolderButton = {
+  icon: string,
+  name?: keyof DialogFilter.dialogFilter['pFlags'],
+  withRipple?: true,
+  text: LangPackKey
+};
 
 export default class AppEditFolderTab extends SliderSuperTab {
   private caption: HTMLElement;
@@ -38,19 +56,54 @@ export default class AppEditFolderTab extends SliderSuperTab {
 
   private includePeerIds: SettingSection;
   private excludePeerIds: SettingSection;
+  private inviteLinks: SettingSection;
   private flags: {[k in 'contacts' | 'non_contacts' | 'groups' | 'broadcasts' | 'bots' | 'exclude_muted' | 'exclude_archived' | 'exclude_read']: HTMLElement} = {} as any;
 
+  private includePeerIdsButtons: EditFolderButton[];
+  private excludePeerIdsButtons: EditFolderButton[];
+  private inviteLinksCreate: HTMLElement;
   private animation: RLottiePlayer;
-  private filter: DialogFilter;
-  private originalFilter: DialogFilter;
+  private filter: MyDialogFilter;
+  private originalFilter: MyDialogFilter;
 
   private type: 'edit' | 'create';
   private loadAnimationPromise: ReturnType<LottieLoader['waitForFirstFrame']>;
+
+  private tempId: number;
 
   public static getInitArgs() {
     return {
       animationData: lottieLoader.loadAnimationFromURLManually('Folders_2')
     };
+  }
+
+  public static async deleteFolder(filterId: number) {
+    const filter = await rootScope.managers.filtersStorage.getFilter(filterId);
+    if(filter?._ === 'dialogFilterChatlist' && !filter.pFlags.has_my_invites) {
+      PopupElement.createPopup(PopupSharedFolderInvite, {
+        filter,
+        deleting: true
+      });
+
+      return;
+    }
+
+    await confirmationPopup({
+      titleLangKey: 'ChatList.Filter.Confirm.Remove.Header',
+      descriptionLangKey: (filter as DialogFilter.dialogFilterChatlist).pFlags.has_my_invites ? 'RemoveSharedFolder' : 'ChatList.Filter.Confirm.Remove.Text',
+      button: {
+        langKey: 'Delete',
+        isDanger: true
+      }
+    });
+
+    return rootScope.managers.filtersStorage.updateDialogFilter(
+      {
+        _: 'dialogFilter',
+        id: filterId
+      } as DialogFilter.dialogFilter,
+      true
+    );
   }
 
   public init(p: ReturnType<typeof AppEditFolderTab['getInitArgs']> = AppEditFolderTab.getInitArgs()) {
@@ -61,33 +114,23 @@ export default class AppEditFolderTab extends SliderSuperTab {
     this.stickerContainer = document.createElement('div');
     this.stickerContainer.classList.add('sticker-container');
 
+    this.tempId = 0;
+
     this.confirmBtn = ButtonIcon('check btn-confirm hide blue');
     let deleting = false;
     const deleteFolderButton: ButtonMenuItemOptions = {
       icon: 'delete danger',
       text: 'FilterMenuDelete',
       onClick: () => {
-        PopupElement.createPopup(PopupPeer, 'filter-delete', {
-          titleLangKey: 'ChatList.Filter.Confirm.Remove.Header',
-          descriptionLangKey: 'ChatList.Filter.Confirm.Remove.Text',
-          buttons: [{
-            langKey: 'Delete',
-            callback: () => {
-              if(deleting) {
-                return;
-              }
+        if(deleting) {
+          return;
+        }
 
-              deleting = true;
-
-              this.managers.filtersStorage.updateDialogFilter(this.filter, true).then((bool) => {
-                this.close();
-              }).finally(() => {
-                deleting = false;
-              });
-            },
-            isDanger: true
-          }]
-        }).show();
+        AppEditFolderTab.deleteFolder(this.filter.id).then(() => {
+          this.close();
+        }).finally(() => {
+          deleting = false;
+        });
       }
     };
     this.menuBtn = ButtonMenuToggle({
@@ -112,9 +155,16 @@ export default class AppEditFolderTab extends SliderSuperTab {
     inputWrapper.append(this.nameInputField.container);
     inputSection.content.append(inputWrapper);
 
-    const generateList = (className: string, h2Text: LangPackKey, buttons: {icon: string, name?: string, withRipple?: true, text: LangPackKey}[], to: any) => {
+    const generateList = (
+      className: string,
+      h2Text: LangPackKey,
+      buttons: EditFolderButton[],
+      to: any,
+      caption?: LangPackKey
+    ) => {
       const section = new SettingSection({
         name: h2Text,
+        caption,
         noDelimiter: true
       });
 
@@ -140,7 +190,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
       return section;
     };
 
-    this.includePeerIds = generateList('folder-list-included', 'FilterInclude', [{
+    this.includePeerIds = generateList('folder-list-included', 'FilterInclude', this.includePeerIdsButtons = [{
       icon: 'add primary',
       text: 'ChatList.Filter.Include.AddChat',
       withRipple: true
@@ -164,11 +214,11 @@ export default class AppEditFolderTab extends SliderSuperTab {
       text: 'ChatList.Filter.Bots',
       icon: 'bots',
       name: 'bots'
-    }], this.flags);
+    }], this.flags, 'FilterIncludeInfo');
 
-    this.excludePeerIds = generateList('folder-list-excluded', 'FilterExclude', [{
+    this.excludePeerIds = generateList('folder-list-excluded', 'FilterExclude', this.excludePeerIdsButtons = [{
       icon: 'minus primary',
-      text: 'ChatList.Filter.Exclude.AddChat',
+      text: 'FilterRemoveChats',
       withRipple: true
     }, {
       text: 'ChatList.Filter.MutedChats',
@@ -182,12 +232,31 @@ export default class AppEditFolderTab extends SliderSuperTab {
       text: 'ChatList.Filter.ReadChats',
       icon: 'readchats',
       name: 'exclude_read'
-    }], this.flags);
+    }], this.flags, 'FilterExcludeInfo');
 
-    this.scrollable.append(this.stickerContainer, this.caption, inputSection.container, this.includePeerIds.container, this.excludePeerIds.container);
+    this.inviteLinks = generateList('folder-list-links', 'InviteLinks', [{
+      icon: 'add primary',
+      text: 'SharedFolder.CreateLink',
+      withRipple: true
+    }], {}, 'SharedFolder.Description');
 
+    this.scrollable.append(
+      this.stickerContainer,
+      this.caption,
+      inputSection.container,
+      this.includePeerIds.container,
+      this.excludePeerIds.container,
+      this.inviteLinks.container
+    );
+
+    const toggleExcludedPeers = () => {
+      this.excludePeerIds.container.classList.toggle('hide', this.filter?._ === 'dialogFilterChatlist');
+    };
+
+    toggleExcludedPeers();
     const includedFlagsContainer = this.includePeerIds.container.querySelector('.folder-categories');
     const excludedFlagsContainer = this.excludePeerIds.container.querySelector('.folder-categories');
+    this.inviteLinksCreate = this.inviteLinks.container.querySelector('.btn') as HTMLElement;
 
     attachClickEvent(includedFlagsContainer.querySelector('.btn') as HTMLElement, () => {
       this.slider.createTab(AppIncludedChatsTab).open(this.filter, 'included', this);
@@ -197,7 +266,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
       this.slider.createTab(AppIncludedChatsTab).open(this.filter, 'excluded', this);
     }, {listenerSetter: this.listenerSetter});
 
-    attachClickEvent(this.confirmBtn, () => {
+    const confirmEditing = (closeAfter?: boolean) => {
       if(this.nameInputField.input.classList.contains('error')) {
         return;
       }
@@ -217,25 +286,46 @@ export default class AppEditFolderTab extends SliderSuperTab {
 
       this.confirmBtn.setAttribute('disabled', 'true');
 
-      let promise: Promise<void>;
+      let promise: Promise<DialogFilter>;
       if(!this.filter.id) {
         promise = this.managers.filtersStorage.createDialogFilter(this.filter);
       } else {
         promise = this.managers.filtersStorage.updateDialogFilter(this.filter);
       }
 
-      promise.then((bool) => {
-        this.close();
+      return promise.then((dialogFilter) => {
+        if(closeAfter) {
+          this.close();
+        }
+
+        return dialogFilter;
       }).catch((err) => {
         if(err.type === 'DIALOG_FILTERS_TOO_MUCH') {
           toast('Sorry, you can\'t create more folders.');
         } else {
           console.error('updateDialogFilter error:', err);
         }
+
+        throw err;
       }).finally(() => {
         this.confirmBtn.removeAttribute('disabled');
       });
+    };
+
+    attachClickEvent(this.confirmBtn, () => {
+      confirmEditing(true);
     }, {listenerSetter: this.listenerSetter});
+
+    const updateFilter = (filter: DialogFilter.dialogFilterChatlist | DialogFilter.dialogFilter) => {
+      this.setFilter(filter, false);
+      toggleExcludedPeers();
+    };
+
+    this.listenerSetter.add(rootScope)('filter_update', (filter) => {
+      if(this.filter.id === filter.id) {
+        updateFilter(filter);
+      }
+    });
 
     this.listenerSetter.add(this.nameInputField.input)('input', () => {
       this.filter.title = this.nameInputField.value;
@@ -249,6 +339,9 @@ export default class AppEditFolderTab extends SliderSuperTab {
     ] : [];
 
     return Promise.all([
+      this.managers.apiManager.getLimit('chatlistInvites'),
+      this.managers.apiManager.getLimit('chatlistInvites', true),
+
       this.loadAnimationPromise = p.animationData.then(async(cb) => {
         const player = await cb({
           container: this.stickerContainer,
@@ -264,7 +357,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
       }),
 
       ...reloadMissingPromises
-    ]).then(() => {
+    ]).then(([chatlistInvitesLimit, chatlistInvitesPremiumLimit]) => {
       if(this.type === 'edit') {
         this.setFilter(this.originalFilter, true);
         this.onEditOpen();
@@ -272,6 +365,180 @@ export default class AppEditFolderTab extends SliderSuperTab {
         this.setInitFilter();
         this.onCreateOpen();
       }
+
+      this.managers.filtersStorage.getExportedInvites(this.filter.id).catch((err: ApiError) => {
+        if(err.type === 'FILTER_NOT_SUPPORTED') {
+          return [] as ExportedChatlistInvite[];
+        }
+
+        throw err;
+      }).then((chatlistInvites) => {
+        console.log(chatlistInvites);
+
+        const CLASS_NAME = 'usernames';
+
+        const content = this.inviteLinks.generateContentElement();
+        const map: Map<HTMLElement, ExportedChatlistInvite> = new Map();
+        const invitesMap: Map<string, Row> = new Map();
+
+        const onLinksLengthChange = () => {
+          this.inviteLinksCreate.classList.toggle('hide', map.size >= chatlistInvitesPremiumLimit);
+        };
+
+        const onLinkDeletion = (link: ExportedChatlistInvite) => {
+          const row = invitesMap.get(link.url);
+          if(row) {
+            row.container.remove();
+            invitesMap.delete(link.url);
+            map.delete(row.container);
+            onLinksLengthChange();
+          }
+        };
+
+        const updateLink = (row: Row, chatlistInvite: ExportedChatlistInvite) => {
+          const title = chatlistInvite.title && chatlistInvite.title !== this.filter.title ?
+            wrapEmojiText(chatlistInvite.title) :
+            chatlistInvite.url.replace(/(.+?):\/\//, '');
+          const subtitle = i18n('SharedFolder.Includes', [i18n('Chats', [chatlistInvite.peers.length])]);
+          row.title.replaceChildren(title);
+          row.subtitle.replaceChildren(subtitle);
+        };
+
+        const wrapLink = (chatlistInvite: ExportedChatlistInvite) => {
+          const row = new Row({
+            title: true,
+            subtitle: true,
+            clickable: true
+          });
+
+          updateLink(row, chatlistInvite);
+
+          row.container.classList.add(CLASS_NAME + '-username', 'active');
+          const media = row.createMedia('medium');
+          media.classList.add(CLASS_NAME + '-username-icon', 'tgico');
+
+          content.append(row.container);
+          map.set(row.container, chatlistInvite);
+          invitesMap.set(chatlistInvite.url, row);
+          onLinksLengthChange();
+        };
+
+        let target: HTMLElement;
+        createContextMenu({
+          buttons: [{
+            icon: 'copy',
+            text: 'CopyLink',
+            onClick: () => copyTextToClipboard(map.get(target).url)
+          }, {
+            icon: 'delete danger',
+            text: 'Delete',
+            onClick: () => {
+              const chatlistInvite = map.get(target);
+              this.managers.filtersStorage.deleteExportedInvite(
+                this.filter.id,
+                chatlistInvite.url
+              ).then(() => {
+                onLinkDeletion(chatlistInvite);
+              });
+            }
+          }],
+          listenTo: content,
+          listenerSetter: this.listenerSetter,
+          findElement: (e) => findUpClassName(e.target, 'row'),
+          onOpen: (_target) => target = _target
+        });
+
+        attachClickEvent(this.inviteLinksCreate, async() => {
+          if(map.size >= chatlistInvitesLimit) {
+            showLimitPopup('chatlistInvites');
+            return;
+          }
+
+          if(!this.filter.title) {
+            toastNew({langPackKey: 'SharedFolder.Toast.NeedName'});
+            return;
+          }
+
+          const pFlags = (this.filter as DialogFilter.dialogFilter).pFlags;
+          if(pFlags) {
+            const found = [this.includePeerIdsButtons, this.excludePeerIdsButtons].some((buttons) => {
+              return buttons.some((button) => !!pFlags[button.name]);
+            });
+
+            if(found) {
+              toastNew({langPackKey: 'SharedFolder.Toast.NoTypes'});
+              return;
+            }
+          }
+
+          if((this.filter as DialogFilter.dialogFilter).excludePeerIds?.length) {
+            toastNew({langPackKey: 'SharedFolder.Toast.NoExcluded'});
+            return;
+          }
+
+          const toggle = toggleDisability([this.inviteLinksCreate], true);
+          try {
+            const filter = await confirmEditing(false) as DialogFilter.dialogFilter;
+            updateFilter(filter);
+            this.type = 'edit';
+            this.originalFilter = filter;
+            this.editCheckForChange();
+          } catch(err) {
+            toggle();
+            return;
+          }
+
+          this.managers.filtersStorage.exportChatlistInvite({
+            ...this.filter,
+            _: 'dialogFilterChatlist',
+            ...({pFlags: this.filter._ === 'dialogFilter' ? {has_my_invites: true} : this.filter.pFlags})
+          }).then((exportedChatlistInvite) => {
+            toggle();
+            openChatlistInvite(exportedChatlistInvite.invite).finally(() => {
+              wrapLink(exportedChatlistInvite.invite);
+            });
+          }, (err: ApiError) => {
+            toggle();
+            if(err.type === 'INVITES_TOO_MUCH' || err.type === 'FILTERS_TOO_MUCH' || err.type === 'CHATLISTS_TOO_MUCH') {
+              showLimitPopup('chatlistInvites');
+              return;
+            } else if(err.type === 'PEERS_LIST_EMPTY') {
+              openChatlistInvite();
+              return;
+            }
+
+            throw err;
+          });
+        }, {listenerSetter: this.listenerSetter});
+
+        const openChatlistInvite = (chatlistInvite?: ExportedChatlistInvite) => {
+          const row = invitesMap.get(chatlistInvite?.url);
+          const tab = this.slider.createTab(AppSharedFolderTab);
+          tab.filter = this.filter as DialogFilter.dialogFilterChatlist;
+          tab.chatlistInvite = chatlistInvite;
+          tab.eventListener.addEventListener('delete', () => {
+            onLinkDeletion(chatlistInvite);
+          });
+          tab.eventListener.addEventListener('edit', (chatlistInvite) => {
+            map.set(row.container, chatlistInvite);
+            updateLink(row, chatlistInvite);
+          });
+
+          return tab.open();
+        };
+
+        attachClickEvent(content, (e) => {
+          const target = findUpClassName(e.target, 'row');
+          const chatlistInvite = map.get(target as HTMLElement);
+          if(!chatlistInvite) {
+            return;
+          }
+
+          openChatlistInvite(chatlistInvite);
+        }, {listenerSetter: this.listenerSetter});
+
+        chatlistInvites.forEach(wrapLink);
+      });
     });
   }
 
@@ -295,6 +562,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
   }
 
   private onEditOpen() {
+    const tempId = ++this.tempId;
     // this.caption.style.display = 'none';
     this.setTitle(this.type === 'create' ? 'FilterNew' : 'FilterHeaderEdit');
 
@@ -306,15 +574,23 @@ export default class AppEditFolderTab extends SliderSuperTab {
     const filter = this.filter;
     this.nameInputField.value = wrapDraftText(filter.title);
 
+    const pFlags = (filter as DialogFilter.dialogFilter).pFlags;
     for(const flag in this.flags) {
-      this.flags[flag as keyof AppEditFolderTab['flags']].style.display = !!filter.pFlags[flag as keyof AppEditFolderTab['flags']] ? '' : 'none';
+      const good = !!pFlags?.[flag as keyof AppEditFolderTab['flags']];
+      this.flags[flag as keyof AppEditFolderTab['flags']].style.display = good ? '' : 'none';
     }
 
-    (['includePeerIds' as const, 'excludePeerIds' as const]).forEach(async(key) => {
+    [
+      'includePeerIds' as const,
+      'excludePeerIds' as const
+    ].forEach(async(key) => {
+      let peers = (filter as DialogFilter.dialogFilter)[key];
+      if(!peers) {
+        return;
+      }
+
       const section = this[key];
       const ul = appDialogsManager.createChatList({ignoreClick: true});
-
-      let peers = filter[key];
 
       // filter peers where we're kicked
       const hasPeer = async(peerId: PeerId) => {
@@ -328,60 +604,76 @@ export default class AppEditFolderTab extends SliderSuperTab {
       peers = peers.slice();
 
       const renderMore = async(_length: number) => {
-        for(let i = 0, length = Math.min(peers.length, _length); i < length; ++i) {
-          const peerId = peers.shift();
-          if(peerId.isUser() ? false : !(await this.managers.appMessagesManager.getDialogOnly(peerId))) {
-            continue;
-          }
+        const peerIds = peers.splice(0, _length);
+        const filtered = await filterAsync(peerIds, async(peerId) => {
+          return peerId.isUser() ? true : !!await this.managers.appMessagesManager.getDialogOnly(peerId);
+        });
 
+        if(tempId !== this.tempId) return;
+
+        const loadPromises: Promise<any>[] = [];
+        const containers = filtered.map((peerId) => {
           const {dom} = appDialogsManager.addDialogNew({
-            peerId: peerId,
-            container: ul,
+            peerId,
             rippleEnabled: false,
             meAsSaved: true,
-            avatarSize: 'small'
+            avatarSize: 'small',
+            loadPromises
           });
           dom.lastMessageSpan.parentElement.remove();
-        }
+          return dom.containerEl;
+        });
+
+        await Promise.all(loadPromises);
+        if(tempId !== this.tempId) return;
+        ul.append(...containers);
 
         if(peers.length) {
           showMore.lastElementChild.replaceWith(i18n('FilterShowMoreChats', [peers.length]));
+          showMore.classList.remove('hide');
         } else if(showMore) {
           showMore.remove();
         }
       };
 
-      section.generateContentElement().append(ul);
-
       let showMore: HTMLElement;
       if(peers.length) {
-        const content = section.generateContentElement();
-        showMore = Button('folder-category-button btn btn-primary btn-transparent', {icon: 'down'});
+        showMore = Button('folder-category-button btn btn-primary btn-transparent hide', {icon: 'down'});
         showMore.classList.add('load-more', 'rp-overflow');
         attachClickEvent(showMore, () => renderMore(20), {listenerSetter: this.listenerSetter});
         showMore.append(i18n('FilterShowMoreChats', [peers.length]));
-
-        content.append(showMore);
       }
 
-      renderMore(4);
+      renderMore(4).then(() => {
+        if(tempId !== this.tempId) return;
+
+        if(this.container) {
+          // cleanup
+          Array.from(this.container.querySelectorAll('.chatlist, .load-more')).forEach((el) => el.parentElement.remove());
+        }
+
+        section.generateContentElement().append(ul);
+
+        if(peers.length) {
+          const content = section.generateContentElement();
+          content.append(showMore);
+        }
+      });
     });
   }
 
   editCheckForChange() {
     if(this.type === 'edit') {
-      const changed = !deepEqual(this.originalFilter, this.filter);
+      const changed = !deepEqual(
+        {...this.originalFilter, updatedTime: 0, localId: 0},
+        {...this.filter, updatedTime: 0, localId: 0}
+      );
       this.confirmBtn.classList.toggle('hide', !changed);
       this.menuBtn.classList.toggle('hide', changed);
     }
   };
 
-  setFilter(filter: DialogFilter, firstTime: boolean) {
-    if(this.container) {
-      // cleanup
-      Array.from(this.container.querySelectorAll('ul, .load-more')).forEach((el) => el.remove());
-    }
-
+  setFilter(filter: MyDialogFilter, firstTime: boolean) {
     if(firstTime) {
       this.originalFilter = filter;
       this.filter = copy(filter);
@@ -392,7 +684,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
     }
   }
 
-  public setInitFilter(filter?: DialogFilter) {
+  public setInitFilter(filter?: MyDialogFilter) {
     if(filter === undefined) {
       this.setFilter({
         _: 'dialogFilter',

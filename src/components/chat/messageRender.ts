@@ -199,7 +199,8 @@ export namespace MessageRender {
         peerId: titlePeerId,
         dialog: false,
         onlyFirstName: false,
-        plainText: false
+        plainText: false,
+        fromName: !titlePeerId ? (originalMessage as Message.message).fwd_from?.from_name : undefined
       }).element;
     }
 

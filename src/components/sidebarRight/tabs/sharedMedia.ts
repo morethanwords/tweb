@@ -26,6 +26,7 @@ import getMessageThreadId from '../../../lib/appManagers/utils/messages/getMessa
 import AppEditTopicTab from './editTopic';
 import liteMode from '../../../helpers/liteMode';
 import PopupElement from '../../popups';
+import AppEditBotTab from './editBot';
 
 type SharedMediaHistoryStorage = Partial<{
   [type in SearchSuperType]: {mid: number, peerId: PeerId}[]
@@ -148,28 +149,34 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     }, {listenerSetter: this.listenerSetter});
 
     attachClickEvent(this.editBtn, async() => {
-      let tab: AppEditChatTab | AppEditContactTab | AppEditTopicTab;
+      let tab: AppEditChatTab | AppEditContactTab | AppEditTopicTab | AppEditBotTab;
       const {peerId, threadId} = this;
       if(threadId && await this.managers.appPeersManager.isForum(peerId)) {
         tab = this.slider.createTab(AppEditTopicTab)
       } else if(peerId.isAnyChat()) {
         tab = this.slider.createTab(AppEditChatTab);
+      } else if(await this.managers.appUsersManager.isBot(peerId)) {
+        tab = this.slider.createTab(AppEditBotTab);
       } else {
         tab = this.slider.createTab(AppEditContactTab);
       }
 
-      if(tab) {
-        if(tab instanceof AppEditTopicTab) {
-          tab.open(peerId, this.threadId);
-        } else {
-          if(tab instanceof AppEditChatTab) {
-            tab.chatId = peerId.toChatId();
-          } else {
-            tab.peerId = peerId;
-          }
+      if(!tab) {
+        return;
+      }
 
-          tab.open();
+      if(tab instanceof AppEditTopicTab) {
+        tab.open(peerId, this.threadId);
+      } else if(tab instanceof AppEditBotTab) {
+        tab.open(peerId);
+      } else {
+        if(tab instanceof AppEditChatTab) {
+          tab.chatId = peerId.toChatId();
+        } else {
+          tab.peerId = peerId;
         }
+
+        tab.open();
       }
     }, {listenerSetter: this.listenerSetter});
 
@@ -514,7 +521,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
   private async toggleEditBtn<T extends boolean>(manual?: T): Promise<T extends true ? () => void : void> {
     let show: boolean;
     if(this.peerId.isUser()) {
-      show = this.peerId !== rootScope.myId && await this.managers.appUsersManager.isContact(this.peerId.toUserId());
+      show = this.peerId !== rootScope.myId && await this.managers.appUsersManager.canEdit(this.peerId.toUserId());
     } else {
       const chatId = this.peerId.toChatId();
       const isTopic = this.threadId && await this.managers.appChatsManager.isForum(chatId);

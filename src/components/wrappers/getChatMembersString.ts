@@ -9,8 +9,12 @@ import {Chat, ChatParticipants} from '../../layer';
 import {i18n, LangPackKey} from '../../lib/langPack';
 import rootScope from '../../lib/rootScope';
 
-export default async function getChatMembersString(chatId: ChatId, managers = rootScope.managers) {
-  const chat: Chat = await managers.appChatsManager.getChat(chatId);
+export default async function getChatMembersString(
+  chatId: ChatId,
+  managers = rootScope.managers,
+  chat?: Chat
+) {
+  chat ??= await managers.appChatsManager.getChat(chatId);
   if(chat._ === 'chatForbidden') {
     return i18n('YouWereKicked');
   }

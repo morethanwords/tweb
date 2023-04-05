@@ -2974,6 +2974,22 @@ export default class ChatBubbles {
     }
   }
 
+  private tryToForceStartParam(middleware: () => boolean) {
+    // start bot instantly if have messages
+    const startParam = this.chat.input.startParam;
+    if(startParam === undefined) {
+      return;
+    }
+
+    this.chat.isStartButtonNeeded().then((isNeeded) => {
+      if(!middleware() || isNeeded || this.chat.input.startParam !== startParam) {
+        return;
+      }
+
+      this.chat.input.startBot();
+    });
+  }
+
   public async setPeer(options: ChatSetPeerOptions & {samePeer: boolean}): Promise<{cached?: boolean, promise: Chat['setPeerPromise']}> {
     const {samePeer, peerId, stack} = options;
     let {lastMsgId, startParam} = options;
@@ -3071,6 +3087,7 @@ export default class ChatBubbles {
 
         if(startParam !== undefined) {
           this.chat.input.setStartParam(startParam);
+          this.tryToForceStartParam(middleware);
         }
 
         if(options.mediaTimestamp) {
@@ -3369,6 +3386,8 @@ export default class ChatBubbles {
             });
           });
         }
+
+        this.tryToForceStartParam(middleware);
 
         // if(cached) {
         // this.onRenderScrollSet();
@@ -4734,13 +4753,15 @@ export default class ChatBubbles {
           }
 
           const wrapped = wrapUrl(webPage.url);
-          if(wrapped?.onclick === 'im') {
+          const SAFE_TYPES: Set<typeof wrapped['onclick']> = new Set(['im', 'addlist']);
+          if(SAFE_TYPES.has(wrapped?.onclick)) {
             const map: {[type: string]: LangPackKey} = {
               telegram_channel: 'Chat.Message.ViewChannel',
               telegram_megagroup: 'OpenGroup',
               telegram_bot: 'Chat.Message.ViewBot',
               telegram_botapp: 'Chat.Message.ViewApp',
-              telegram_user: 'Chat.Message.SendMessage'
+              telegram_user: 'Chat.Message.SendMessage',
+              telegram_chatlist: 'OpenChatlist'
             };
 
             const langPackKey = map[webPage.type] || 'OpenMessage';

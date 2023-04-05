@@ -111,14 +111,28 @@ export default class SidebarSlider {
       }
     }
 
-    // if(!this.canHideFirst || this.historyTabIds.length) {
-    appNavigationController.pushItem({
+    const navigationItem: NavigationItem = {
       type: this.navigationType,
       onPop: (canAnimate) => {
+        if(tab.isConfirmationNeededOnClose) {
+          const result = tab.isConfirmationNeededOnClose();
+          if(result) {
+            Promise.resolve(result).then(() => {
+              appNavigationController.removeItem(navigationItem);
+              this.closeTab(undefined, undefined, true);
+            });
+
+            return false;
+          }
+        }
+
         this.closeTab(undefined, canAnimate, true);
         return true;
       }
-    });
+    };
+
+    // if(!this.canHideFirst || this.historyTabIds.length) {
+    appNavigationController.pushItem(navigationItem);
     // }
 
     this.historyTabIds.push(id);
