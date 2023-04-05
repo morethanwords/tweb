@@ -30,7 +30,7 @@ import LazyLoadQueue from '../lazyLoadQueue';
 import ListenerSetter from '../../helpers/listenerSetter';
 import PollElement from '../poll';
 import AudioElement from '../audio';
-import {ChannelParticipant, Chat as MTChat, ChatInvite, ChatParticipant, Document, GeoPoint, InputWebFileLocation, KeyboardButton, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, ReplyMarkup, RequestPeerType, SponsoredMessage, Update, UrlAuthResult, User, WebPage} from '../../layer';
+import {ChannelParticipant, Chat as MTChat, ChatInvite, ChatParticipant, Document, GeoPoint, InputWebFileLocation, KeyboardButton, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, ReplyMarkup, RequestPeerType, SponsoredMessage, Update, UrlAuthResult, User, WebPage, InlineQueryPeerType} from '../../layer';
 import {BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID} from '../../lib/mtproto/mtproto_config';
 import {FocusDirection, ScrollStartCallbackDimensions} from '../../helpers/fastSmoothScroll';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation} from '../../hooks/useHeavyAnimationCheck';
@@ -93,7 +93,6 @@ import getMediaFromMessage from '../../lib/appManagers/utils/messages/getMediaFr
 import getPeerColorById from '../../lib/appManagers/utils/peers/getPeerColorById';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import getServerMessageId from '../../lib/appManagers/utils/messageId/getServerMessageId';
-import generateMessageId from '../../lib/appManagers/utils/messageId/generateMessageId';
 import {AppManagers} from '../../lib/appManagers/managers';
 import {Awaited, SendMessageEmojiInteractionData} from '../../types';
 import idleController from '../../helpers/idleController';
@@ -3960,12 +3959,25 @@ export default class ChatBubbles {
               return peerId;
             }
 
-            return PopupPickUser.createPicker(undefined, ['send_inline']);
+            let types: TelegramChoosePeerType[];
+            if(button.peer_types) {
+              const map: {[type in InlineQueryPeerType['_']]?: TelegramChoosePeerType} = {
+                inlineQueryPeerTypePM: 'users',
+                inlineQueryPeerTypeBotPM: 'bots',
+                inlineQueryPeerTypeBroadcast: 'channels',
+                inlineQueryPeerTypeChat: 'groups',
+                inlineQueryPeerTypeMegagroup: 'groups'
+              };
+
+              types = button.peer_types.map((type) => map[type._]);
+            }
+
+            return PopupPickUser.createPicker(types, ['send_inline']);
           });
 
           promise.then((chosenPeerId) => {
             const threadId = peerId === chosenPeerId ? this.chat.threadId : undefined;
-            this.chat.appImManager.setInnerPeer({peerId: chosenPeerId});
+            this.chat.appImManager.setInnerPeer({peerId: chosenPeerId, threadId});
             this.managers.appInlineBotsManager.switchInlineQuery(chosenPeerId, threadId, botId, button.query);
           });
         };
@@ -6458,7 +6470,7 @@ export default class ChatBubbles {
         // const peer = this.appPeersManager.getPeer(peerId);
         if(sponsoredMessage.channel_post) {
           text = 'OpenChannelPost';
-          mid = generateMessageId(sponsoredMessage.channel_post);
+          mid = sponsoredMessage.channel_post;
         } else if(sponsoredMessage.start_param || isBot) {
           text = 'Chat.Message.ViewBot';
           startParam = sponsoredMessage.start_param;
@@ -6608,7 +6620,8 @@ export default class ChatBubbles {
     // offset = generateMessageId(offset);
     // id: -Math.abs(+this.peerId * INCREMENT + offset),
     const id = -Math.abs(offset);
-    const mid = -Math.abs(generateMessageId(id));
+    // const mid = -Math.abs(generateMessageId(id));
+    const mid = id;
     return {id, mid};
   }
 

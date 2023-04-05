@@ -2322,8 +2322,7 @@ export namespace Update {
     _: 'updateChannelMessageViews',
     channel_id: string | number,
     id: number,
-    views: number,
-    peerId?: PeerId
+    views: number
   };
 
   export type updateChatParticipantAdmin = {
@@ -4403,7 +4402,8 @@ export namespace KeyboardButton {
       same_peer?: true,
     }>,
     text: string,
-    query: string
+    query: string,
+    peer_types?: Array<InlineQueryPeerType>
   };
 
   export type keyboardButtonGame = {
@@ -9347,7 +9347,7 @@ export namespace PhoneGroupParticipants {
 /**
  * @link https://core.telegram.org/type/InlineQueryPeerType
  */
-export type InlineQueryPeerType = InlineQueryPeerType.inlineQueryPeerTypeSameBotPM | InlineQueryPeerType.inlineQueryPeerTypePM | InlineQueryPeerType.inlineQueryPeerTypeChat | InlineQueryPeerType.inlineQueryPeerTypeMegagroup | InlineQueryPeerType.inlineQueryPeerTypeBroadcast;
+export type InlineQueryPeerType = InlineQueryPeerType.inlineQueryPeerTypeSameBotPM | InlineQueryPeerType.inlineQueryPeerTypePM | InlineQueryPeerType.inlineQueryPeerTypeChat | InlineQueryPeerType.inlineQueryPeerTypeMegagroup | InlineQueryPeerType.inlineQueryPeerTypeBroadcast | InlineQueryPeerType.inlineQueryPeerTypeBotPM;
 
 export namespace InlineQueryPeerType {
   export type inlineQueryPeerTypeSameBotPM = {
@@ -9368,6 +9368,10 @@ export namespace InlineQueryPeerType {
 
   export type inlineQueryPeerTypeBroadcast = {
     _: 'inlineQueryPeerTypeBroadcast'
+  };
+
+  export type inlineQueryPeerTypeBotPM = {
+    _: 'inlineQueryPeerTypeBotPM'
   };
 }
 
@@ -12137,6 +12141,7 @@ export interface ConstructorDeclMap {
   'messageActionSetChatWallPaper': MessageAction.messageActionSetChatWallPaper,
   'messageActionSetSameChatWallPaper': MessageAction.messageActionSetSameChatWallPaper,
   'bots.botInfo': BotsBotInfo.botsBotInfo,
+  'inlineQueryPeerTypeBotPM': InlineQueryPeerType.inlineQueryPeerTypeBotPM,
   'messageEntityEmoji': MessageEntity.messageEntityEmoji,
   'messageEntityHighlight': MessageEntity.messageEntityHighlight,
   'messageEntityLinebreak': MessageEntity.messageEntityLinebreak,

@@ -296,11 +296,6 @@
   ],
   "type": "Update"
 }, {
-  "predicate": "updateChannelMessageViews",
-  "params": [
-    {"name": "peerId", "type": "PeerId"}
-  ]
-}, {
   "predicate": "messages.stickerSet",
   "params": [
     {"name": "refreshTime", "type": "number"}
