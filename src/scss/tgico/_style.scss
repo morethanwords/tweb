@@ -3,9 +3,9 @@
 @font-face {
   font-family: '#{$tgico-font-family}';
   src:
-    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?fanb4g') format('truetype'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?fanb4g') format('woff'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?fanb4g##{$tgico-font-family}') format('svg');
+    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?ltf7xm') format('truetype'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?ltf7xm') format('woff'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?ltf7xm##{$tgico-font-family}') format('svg');
   font-weight: normal;
   font-style: normal;
   font-display: block;
@@ -687,6 +687,12 @@
     content: $tgico-newprivate; 
   }
 }
+.tgico-newtab {
+  &:before {
+    content: $tgico-newtab;     
+    color: #fff;
+  }
+}
 .tgico-next {
   &:before {
     content: $tgico-next; 
@@ -700,6 +706,12 @@
 .tgico-nosound {
   &:before {
     content: $tgico-nosound; 
+  }
+}
+.tgico-online {
+  &:before {
+    content: $tgico-online;     
+    color: #fff;
   }
 }
 .tgico-passwordoff {
