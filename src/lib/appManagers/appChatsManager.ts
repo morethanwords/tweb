@@ -12,7 +12,7 @@
 import deepEqual from '../../helpers/object/deepEqual';
 import isObject from '../../helpers/object/isObject';
 import safeReplaceObject from '../../helpers/object/safeReplaceObject';
-import {ChannelParticipant, ChannelsCreateChannel, Chat, ChatAdminRights, ChatBannedRights, ChatInvite, ChatParticipant, ChatPhoto, ChatReactions, InputChannel, InputChatPhoto, InputFile, InputPeer, MessagesSponsoredMessages, SponsoredMessage, Update, Updates} from '../../layer';
+import {ChannelParticipant, ChannelsCreateChannel, Chat, ChatAdminRights, ChatBannedRights, ChatInvite, ChatParticipant, ChatPhoto, ChatReactions, InputChannel, InputChatPhoto, InputFile, InputPeer, MessagesSponsoredMessages, Peer, SponsoredMessage, Update, Updates} from '../../layer';
 import {isRestricted} from '../../helpers/restrictions';
 import {AppManager} from './manager';
 import hasRights from './utils/chats/hasRights';
@@ -20,11 +20,10 @@ import getParticipantPeerId from './utils/chats/getParticipantPeerId';
 import {AppStoragesManager} from './appStoragesManager';
 import getServerMessageId from './utils/messageId/getServerMessageId';
 import {randomLong} from '../../helpers/random';
-import generateMessageId from './utils/messageId/generateMessageId';
 import tsNow from '../../helpers/tsNow';
 
 export type Channel = Chat.channel;
-export type ChatRights = keyof ChatBannedRights['pFlags'] | keyof ChatAdminRights['pFlags'] | 'change_type' | 'change_permissions' | 'delete_chat' | 'view_participants';
+export type ChatRights = keyof ChatBannedRights['pFlags'] | keyof ChatAdminRights['pFlags'] | 'change_type' | 'change_permissions' | 'delete_chat' | 'view_participants' | 'invite_links';
 
 export class AppChatsManager extends AppManager {
   private storage: AppStoragesManager['storages']['chats'];
@@ -754,6 +753,12 @@ export class AppChatsManager extends AppManager {
 
         const sponsoredMessage = sponsoredMessages.messages.shift();
         sponsoredMessages.messages.push(sponsoredMessage);
+
+        sponsoredMessages.messages.forEach((sponsoredMessage) => {
+          if(sponsoredMessage.channel_post) {
+            sponsoredMessage.channel_post = this.appMessagesIdsManager.generateMessageId(sponsoredMessage.channel_post, (sponsoredMessage.from_id as Peer.peerChannel).channel_id);
+          }
+        });
       }
 
       return sponsoredMessages;
@@ -865,7 +870,7 @@ export class AppChatsManager extends AppManager {
       this.onChatUpdated(chatId, updates);
 
       const update = (updates as Updates.updates).updates.find((update) => update._ === 'updateNewChannelMessage') as Update.updateNewChannelMessage;
-      return generateMessageId(update.message.id);
+      return this.appMessagesIdsManager.generateMessageId(update.message.id, chatId);
     });
   }
 

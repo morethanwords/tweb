@@ -63,7 +63,7 @@ class MediaSizes extends EventListenerBase<{
       staticSticker: makeMediaSize(180, 180),
       emojiSticker: makeMediaSize(112, 112),
       poll: makeMediaSize(240, 0),
-      round: makeMediaSize(200, 200),
+      round: makeMediaSize(240, 240),
       documentName: makeMediaSize(200, 0),
       invoice: makeMediaSize(270, 270),
       extendedInvoice: makeMediaSize(270, 270),

@@ -44,7 +44,7 @@ export class AppPeersManager extends AppManager {
 
   public getPeerMigratedTo(peerId: PeerId) {
     if(peerId.isUser()) {
-      return false;
+      return;
     }
 
     const chat = this.appChatsManager.getChat(peerId.toChatId()) as Chat.chat;
@@ -52,8 +52,6 @@ export class AppPeersManager extends AppManager {
     if(migratedTo && chat.pFlags.deactivated) {
       return getPeerId(migratedTo);
     }
-
-    return false;
   }
 
   public getOutputPeer(peerId: PeerId): Peer {

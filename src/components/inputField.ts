@@ -318,7 +318,8 @@ export type InputFieldOptions = {
 function createCustomEmojiRendererForInput() {
   const renderer = CustomEmojiRendererElement.create({
     wrappingDraft: true,
-    isSelectable: true
+    isSelectable: true,
+    textColor: 'primary-text-color'
   });
   return renderer;
 }

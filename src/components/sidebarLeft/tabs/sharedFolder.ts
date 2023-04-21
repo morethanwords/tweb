@@ -15,7 +15,7 @@ import appImManager from '../../../lib/appManagers/appImManager';
 import hasRights from '../../../lib/appManagers/utils/chats/hasRights';
 import getPeerActiveUsernames from '../../../lib/appManagers/utils/peers/getPeerActiveUsernames';
 import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';
-import I18n, {i18n} from '../../../lib/langPack';
+import I18n, {LangPackKey, i18n} from '../../../lib/langPack';
 import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
 import wrapPlainText from '../../../lib/richTextProcessor/wrapPlainText';
 import lottieLoader, {LottieLoader} from '../../../lib/rlottie/lottieLoader';
@@ -183,24 +183,40 @@ export default class AppSharedFolderTab extends SliderSuperTabEventable<{
       const combinedPeerIds = filterUnique(selectedPeers.concat(this.filter.includePeerIds));
 
       const peers = await Promise.all(combinedPeerIds.map((peerId) => this.managers.appPeersManager.getPeer(peerId)));
-      peers.sort((a, b) => {
-        if(!this.canSelectPeer(a)) {
-          return 1;
+      const ratings: Map<typeof peers[0], number> = new Map();
+      const peerIds: Map<typeof peers[0], PeerId> = new Map();
+      const peersMap: Map<PeerId, typeof peers[0]> = new Map();
+      peers.forEach((peer) => {
+        const peerId = peer.id.toPeerId(peer._ !== 'user');
+        peerIds.set(peer, peerId);
+        peersMap.set(peerId, peer);
+
+        let rating = 0;
+        if(!this.canSelectPeer(peer)) {
+          rating = -1;
+        } else if(this.selector.selected.has(peerId)) {
+          rating = 1;
         }
 
-        if(this.selector.selected.has(a.id.toPeerId(a._ !== 'user'))) {
-          return -1;
-        }
-
-        return 0;
+        ratings.set(peer, rating);
       });
-      this.selector.renderResultsFunc(peers.map((peer) => peer.id.toPeerId(peer._ !== 'user')));
+      peers.sort((a, b) => ratings.get(b) - ratings.get(a));
+      this.selector.renderResultsFunc(peers.map((peer) => peerIds.get(peer)));
 
       const _add = this.selector.add.bind(this.selector);
       this.selector.add = (...args) => {
         const peerId = args[0].toPeerId();
         const container = this.elementMap.get(peerId as PeerId);
         if(container.classList.contains('cant-select')) {
+          let langPackKey: LangPackKey;
+          if(peerId.isUser()) {
+            langPackKey = 'SharedFolder.Toast.NoPrivate';
+          } else {
+            const peer = peersMap.get(peerId) as Chat.channel | Chat.chat;
+            langPackKey = (peer as Chat.channel).pFlags.broadcast ? 'SharedFolder.Toast.NoAdminChannel' : 'SharedFolder.Toast.NoAdminGroup';
+          }
+
+          toastNew({langPackKey});
           shake(container);
           return;
         }
@@ -266,11 +282,11 @@ export default class AppSharedFolderTab extends SliderSuperTabEventable<{
       return false;
     }
 
-    if(peer._ === 'user' || peer._ === 'chat') {
+    if(peer._ === 'user'/*  || peer._ === 'chat' */) {
       return false;
     }
 
-    return !!getPeerActiveUsernames(peer).length || hasRights(peer as Chat.channel | Chat.chat, 'invite_users');
+    return !!getPeerActiveUsernames(peer).length || hasRights(peer as Chat.channel | Chat.chat, 'invite_links');
   };
 
   onSelectChange = (length: number) => {

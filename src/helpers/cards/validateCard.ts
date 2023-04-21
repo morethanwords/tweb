@@ -31,8 +31,8 @@ function validateCompleteCardNumber(card: string) {
   return !(a % 10);
 }
 
-function validateExpiry(year: number, month: number, options?: PatternValidationOptions) {
-  const date = new Date(Date.now());
+function validateExpiry(year: number, month: number, options?: PatternValidationOptions & {date?: Date}) {
+  const date = options.date || new Date();
   const _year = year < 100 ? date.getFullYear() % 100 : date.getFullYear();
   const nextMonth = date.getMonth() + 1;
 
@@ -74,7 +74,7 @@ export function validateCardNumber(str: string, options: PatternValidationOption
   return makeCardNumberError(sanitized, minLength, options.ignoreIncomplete);
 }
 
-export function validateCardExpiry(str: string, options: PatternValidationOptions = {}) {
+export function validateCardExpiry(str: string, options: Parameters<typeof validateExpiry>[2] = {}) {
   const sanitized = str.replace(nbspRegExp, '').split(/ ?\/ ?/);
   const [monthStr, yearStr = ''] = sanitized;
   const [month, year] = [monthStr, yearStr].map((str) => +str);

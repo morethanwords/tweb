@@ -317,7 +317,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         }).show();
       };
 
-      const onError = (err: any) => {
+      const onError = (err: ApiError) => {
         if(err.type === 'USER_PRIVACY_RESTRICTED') {
           toastNew({langPackKey: 'InviteToGroupError'});
         }

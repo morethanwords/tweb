@@ -10,14 +10,13 @@
  */
 
 import tsNow from '../../helpers/tsNow';
-import {InputNotifyPeer, InputPeerNotifySettings, NotifyPeer, PeerNotifySettings, Update} from '../../layer';
+import {InputNotifyPeer, InputPeerNotifySettings, NotifyPeer, Peer, PeerNotifySettings, Update} from '../../layer';
 import {MUTE_UNTIL} from '../mtproto/mtproto_config';
 import throttle from '../../helpers/schedulers/throttle';
 import convertInputKeyToKey from '../../helpers/string/convertInputKeyToKey';
 import {AppManager} from './manager';
 import ctx from '../../environment/ctx';
 import assumeType from '../../helpers/assumeType';
-import generateMessageId from './utils/messageId/generateMessageId';
 
 type ImSadAboutIt = Promise<PeerNotifySettings> | PeerNotifySettings;
 type MyNotifyPeer = Exclude<NotifyPeer['_'], 'notifyPeer' | 'notifyForumTopic'>;
@@ -52,7 +51,7 @@ export class AppNotificationsManager extends AppManager {
         this.savePeerSettings({
           key,
           peerId,
-          threadId: isTopic ? generateMessageId(peer.top_msg_id) : undefined,
+          threadId: isTopic ? this.appMessagesIdsManager.generateMessageId(peer.top_msg_id, (peer.peer as Peer.peerChannel).channel_id) : undefined,
           settings: update.notify_settings
         });
         this.rootScope.dispatchEvent('notify_settings', update);

@@ -19,6 +19,12 @@ const classNames: string[] = ['is-pinned-message-shown', 'is-pinned-audio-shown'
 const CLASSNAME_BASE = 'pinned-container';
 const HEIGHT = 52;
 
+export type WrapPinnedContainerOptions = {
+  title: string | HTMLElement | DocumentFragment,
+  subtitle?: WrapPinnedContainerOptions['title'],
+  message?: Message.message | Message.messageService,
+};
+
 export default class PinnedContainer {
   public wrapperUtils: HTMLElement;
   public btnClose: HTMLElement;
@@ -28,7 +34,7 @@ export default class PinnedContainer {
   protected chat: Chat;
   protected listenerSetter: ListenerSetter;
   public className: string;
-  public divAndCaption: DivAndCaption<(title: string | HTMLElement | DocumentFragment, subtitle: string | HTMLElement | DocumentFragment, message?: any) => void>;
+  public divAndCaption: DivAndCaption<(options: WrapPinnedContainerOptions) => void>;
 
   protected floating = false;
 
@@ -120,10 +126,11 @@ export default class PinnedContainer {
     return this.divAndCaption.container.classList.contains('is-floating');
   }
 
-  public fill(title: string | HTMLElement | DocumentFragment, subtitle: string | HTMLElement | DocumentFragment, message: Message.message) {
+  public fill(options: WrapPinnedContainerOptions) {
+    const {message} = options;
     this.divAndCaption.container.dataset.peerId = '' + message.peerId;
     this.divAndCaption.container.dataset.mid = '' + message.mid;
-    this.divAndCaption.fill(title, subtitle, message);
+    this.divAndCaption.fill(options);
     this.topbar.setUtilsWidth();
   }
 }

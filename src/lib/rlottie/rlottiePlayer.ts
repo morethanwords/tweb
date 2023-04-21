@@ -16,6 +16,7 @@ import clamp from '../../helpers/number/clamp';
 import QueryableWorker from './queryableWorker';
 import IS_IMAGE_BITMAP_SUPPORTED from '../../environment/imageBitmapSupport';
 import framesCache, {FramesCache, FramesCacheItem} from '../../helpers/framesCache';
+import customProperties, {CustomProperty} from '../../helpers/dom/customProperties';
 
 export type RLottieOptions = {
   container: HTMLElement | HTMLElement[],
@@ -32,7 +33,7 @@ export type RLottieOptions = {
   skipRatio?: number,
   initFrame?: number, // index
   color?: RLottieColor,
-  inverseColor?: RLottieColor,
+  textColor?: CustomProperty,
   name?: string,
   skipFirstFrameRendering?: boolean,
   toneIndex?: number,
@@ -55,6 +56,20 @@ export function getLottiePixelRatio(width: number, height: number, needUpscale?:
   }
 
   return pixelRatio;
+}
+
+export function applyColorOnContext(
+  context: CanvasRenderingContext2D,
+  color: RLottieColor | string,
+  x: number,
+  y: number,
+  width: number,
+  height: number
+) {
+  context.globalCompositeOperation = 'source-atop';
+  context.fillStyle = typeof(color) === 'string' ? color : `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+  context.fillRect(x, y, width, height);
+  context.globalCompositeOperation = 'source-over';
 }
 
 export default class RLottiePlayer extends EventListenerBase<{
@@ -110,7 +125,7 @@ export default class RLottiePlayer extends EventListenerBase<{
 
   private initFrame: number;
   private color: RLottieColor;
-  private inverseColor: RLottieColor;
+  private textColor: CustomProperty;
 
   public minFrame: number;
   public maxFrame: number;
@@ -151,15 +166,21 @@ export default class RLottiePlayer extends EventListenerBase<{
     // ! :(
     this.initFrame = options.initFrame;
     this.color = options.color;
-    this.inverseColor = options.inverseColor;
+    this.textColor = options.textColor;
     this.name = options.name;
     this.skipFirstFrameRendering = options.skipFirstFrameRendering;
     this.toneIndex = options.toneIndex;
-    this.raw = this.color !== undefined;
+    this.raw = false;
     this.liteModeKey = options.liteModeKey;
 
     if(this.name) {
-      this.cacheName = RLottiePlayer.CACHE.generateName(this.name, this.width, this.height, this.color, this.toneIndex);
+      this.cacheName = RLottiePlayer.CACHE.generateName(
+        this.name,
+        this.width,
+        this.height,
+        this.color,
+        this.toneIndex
+      );
     }
 
     // * Skip ratio (30fps)
@@ -244,7 +265,15 @@ export default class RLottiePlayer extends EventListenerBase<{
   }
 
   public loadFromData(data: RLottieOptions['animationData']) {
-    this.sendQuery(['loadFromData', data, this.width, this.height, this.toneIndex, this.color !== undefined/* , this.canvas.transferControlToOffscreen() */]);
+    this.sendQuery([
+      'loadFromData',
+      data,
+      this.width,
+      this.height,
+      this.toneIndex,
+      this.raw
+      /* , this.canvas.transferControlToOffscreen() */
+    ]);
   }
 
   public play() {
@@ -332,45 +361,12 @@ export default class RLottiePlayer extends EventListenerBase<{
     this.cleanup();
   }
 
-  private applyColor(frame: Uint8ClampedArray) {
-    const [r, g, b] = this.color;
-    for(let i = 0, length = frame.length; i < length; i += 4) {
-      if(frame[i + 3] !== 0) {
-        frame[i] = r;
-        frame[i + 1] = g;
-        frame[i + 2] = b;
-      }
-    }
-  }
-
-  private applyInversing(frame: Uint8ClampedArray) {
-    const [r, g, b] = this.inverseColor;
-    for(let i = 0, length = frame.length; i < length; i += 4) {
-      if(frame[i + 3] === 0) {
-        frame[i] = r;
-        frame[i + 1] = g;
-        frame[i + 2] = b;
-        frame[i + 3] = 255;
-      } else {
-        frame[i + 3] = 0;
-      }
-    }
-  }
-
   public renderFrame2(frame: Uint8ClampedArray | HTMLCanvasElement | ImageBitmap, frameNo: number) {
     /* this.setListenerResult('enterFrame', frameNo);
     return; */
 
     try {
       if(frame instanceof Uint8ClampedArray) {
-        if(this.color) {
-          this.applyColor(frame);
-        }
-
-        if(this.inverseColor) {
-          this.applyInversing(frame);
-        }
-
         this.imageData.data.set(frame);
       }
 
@@ -384,7 +380,6 @@ export default class RLottiePlayer extends EventListenerBase<{
         }
 
         if(!cachedSource) {
-          // console.log('drawing from data');
           const c = document.createElement('canvas');
           c.width = context.canvas.width;
           c.height = context.canvas.height;
@@ -396,11 +391,21 @@ export default class RLottiePlayer extends EventListenerBase<{
         if(this.overrideRender && this.renderedFirstFrame) {
           this.overrideRender(cachedSource || this.imageData);
         } else if(cachedSource) {
-          // console.log('drawing from canvas');
           context.clearRect(0, 0, cachedSource.width, cachedSource.height);
           context.drawImage(cachedSource, 0, 0);
         } else {
           context.putImageData(this.imageData, 0, 0);
+        }
+
+        if(this.color || this.textColor) {
+          applyColorOnContext(
+            context,
+            this.color || customProperties.getProperty(this.textColor),
+            0,
+            0,
+            this.width,
+            this.height
+          );
         }
 
         if(!this.renderedFirstFrame) {
@@ -596,10 +601,6 @@ export default class RLottiePlayer extends EventListenerBase<{
     if(renderIfPaused && this.paused) {
       this.renderFrame2(this.imageData.data, this.curFrame);
     }
-  }
-
-  public setInverseColor(color: RLottieColor) {
-    this.inverseColor = color;
   }
 
   private setMinMax(minFrame = 0, maxFrame = this.frameCount - 1) {

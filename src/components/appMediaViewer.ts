@@ -194,10 +194,16 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
   onDeleteClick = () => {
     const target = this.target;
-    PopupElement.createPopup(PopupDeleteMessages, target.peerId, [target.mid], 'chat', () => {
-      this.target = {element: this.content.media} as any;
-      this.close();
-    });
+    PopupElement.createPopup(
+      PopupDeleteMessages,
+      target.peerId,
+      [target.mid],
+      'chat',
+      () => {
+        this.target = {element: this.content.media} as any;
+        this.close();
+      }
+    );
   };
 
   onForwardClick = () => {

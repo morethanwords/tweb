@@ -5,6 +5,7 @@ import type {MediaSize} from './helpers/mediaSize';
 import type {AnimationItemGroup} from './components/animationIntersector';
 import type LazyLoadQueue from './components/lazyLoadQueue';
 import type {AppManagers} from './lib/appManagers/managers';
+import type {CustomProperty} from './helpers/dom/customProperties';
 
 declare global {
   interface AddEventListenerOptions extends EventListenerOptions {
@@ -68,7 +69,8 @@ declare global {
     'PEER_ID_INVALID' | 'MSG_VOICE_MISSING' | 'CHAT_ADMIN_REQUIRED' | 'QUERY_ID_INVALID' |
     'CHAT_ADMIN_INVITE_REQUIRED' | 'BOT_APP_INVALID' | 'FILTER_NOT_SUPPORTED' | 'INVITES_TOO_MUCH' |
     'FILTERS_TOO_MUCH' | 'PEERS_LIST_EMPTY' | 'INVITE_SLUG_EXPIRED' | 'DIALOG_FILTERS_TOO_MUCH' |
-    'CHATLISTS_TOO_MUCH';
+    'CHATLISTS_TOO_MUCH' | 'FRESH_RESET_AUTHORISATION_FORBIDDEN' | 'NO_USER' | 'USER_PRIVACY_RESTRICTED' |
+    'REACTION_INVALID' | 'INVITE_HASH_EXPIRED' | 'PHONE_NOT_OCCUPIED';
 
   type ErrorType = LocalErrorType | ServerErrorType;
 
@@ -100,6 +102,7 @@ declare global {
     lazyLoadQueue?: LazyLoadQueue | false,
     middleware?: Middleware,
     customEmojiSize?: MediaSize,
+    textColor?: CustomProperty,
     animationGroup?: AnimationItemGroup,
     managers?: AppManagers
   };

@@ -106,14 +106,19 @@ export default class PopupWebApp extends PopupElement<{
           const telegramWebView = this.createWebView();
           oldWebView.iframe.replaceWith(telegramWebView.iframe);
           oldWebView.destroy();
+          telegramWebView.onMount();
         },
         verify: () => true
       }, {
         icon: 'plusround',
         text: 'WebApp.InstallBot',
         onClick: () => {
-          appImManager.toggleBotInAttachMenu(botId, true).then(() => {
-            toastNew({langPackKey: 'WebApp.Attach.Success'});
+          appImManager.toggleBotInAttachMenu(botId, true).then(async(attachMenuBot) => {
+            this.attachMenuBot = attachMenuBot;
+            toastNew({
+              langPackKey: 'WebApp.Attach.Success',
+              langPackArguments: [await wrapPeerTitle({peerId: botPeerId})]
+            });
           });
         },
         verify: () => this.attachMenuBot && this.attachMenuBot.pFlags.inactive
@@ -121,7 +126,8 @@ export default class PopupWebApp extends PopupElement<{
         icon: 'delete danger',
         text: 'BotWebViewDeleteBot',
         onClick: () => {
-          appImManager.toggleBotInAttachMenu(botId, false).then(async() => {
+          appImManager.toggleBotInAttachMenu(botId, false).then(async(attachMenuBot) => {
+            this.attachMenuBot = attachMenuBot;
             // this.forceHide();
             toastNew({
               langPackKey: 'WebApp.AttachRemove.Success',
@@ -171,7 +177,9 @@ export default class PopupWebApp extends PopupElement<{
   }
 
   protected sendTheme = () => {
-    this.telegramWebView.dispatchWebViewEvent('theme_changed', this.getThemeParams());
+    this.telegramWebView.dispatchWebViewEvent('theme_changed', {
+      theme_params: this.getThemeParams()
+    });
   };
 
   protected setHeaderColor = (colorKey: TelegramWebViewEventMap['web_app_set_header_color']['color_key']) => {
@@ -200,7 +208,7 @@ export default class PopupWebApp extends PopupElement<{
       if(peerId !== chosenPeerId) {
         peerId = chosenPeerId;
         threadId = undefined;
-        appImManager.setInnerPeer({peerId});
+        await appImManager.setInnerPeer({peerId});
       }
     }
 

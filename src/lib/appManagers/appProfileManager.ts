@@ -19,7 +19,6 @@ import getPhotoInput from './utils/photos/getPhotoInput';
 import getParticipantPeerId from './utils/chats/getParticipantPeerId';
 import ctx from '../../environment/ctx';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
-import generateMessageId from './utils/messageId/generateMessageId';
 import assumeType from '../../helpers/assumeType';
 import makeError from '../../helpers/makeError';
 import callbackify from '../../helpers/callbackify';
@@ -753,11 +752,16 @@ export class AppProfileManager extends AppManager {
     }
 
     const topMsgId = (update as Update.updateChannelUserTyping).top_msg_id;
-    const threadId = topMsgId ? generateMessageId(topMsgId) : undefined;
+    const threadId = topMsgId ? this.appMessagesIdsManager.generateMessageId(topMsgId, (update as Update.updateChannelUserTyping).channel_id) : undefined;
     const peerId = this.appPeersManager.getPeerId(update);
     const key = this.getTypingsKey(peerId, threadId);
     const typings = this.typingsInPeer[key] ??= [];
+    const action = update.action;
     let typing = typings.find((t) => t.userId === fromId);
+
+    if((action as SendMessageAction.sendMessageEmojiInteraction).msg_id) {
+      (action as SendMessageAction.sendMessageEmojiInteraction).msg_id = this.appMessagesIdsManager.generateMessageId((action as SendMessageAction.sendMessageEmojiInteraction).msg_id, (update as Update.updateChannelUserTyping).channel_id);
+    }
 
     const cancelAction = () => {
       delete typing.timeout;
@@ -778,7 +782,7 @@ export class AppProfileManager extends AppManager {
       clearTimeout(typing.timeout);
     }
 
-    if(update.action._ === 'sendMessageCancelAction') {
+    if(action._ === 'sendMessageCancelAction') {
       if(!typing) {
         return;
       }
@@ -797,7 +801,7 @@ export class AppProfileManager extends AppManager {
 
     // console.log('updateChatUserTyping', update, typings);
 
-    typing.action = update.action;
+    typing.action = action;
 
     const hasUser = this.appUsersManager.hasUser(fromId);
     if(!hasUser) {

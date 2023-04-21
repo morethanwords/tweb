@@ -626,7 +626,8 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
   private createRendererForCategory(category: EmojiTabCategory) {
     const renderer = CustomEmojiRendererElement.create({
       animationGroup: EMOTICONSSTICKERGROUP,
-      customEmojiSize: mediaSizes.active.esgCustomEmoji
+      customEmojiSize: mediaSizes.active.esgCustomEmoji,
+      textColor: 'primary-text-color'
     });
 
     category.elements.renderer = renderer;

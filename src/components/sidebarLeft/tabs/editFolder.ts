@@ -71,6 +71,8 @@ export default class AppEditFolderTab extends SliderSuperTab {
 
   private tempId: number;
 
+  private showMoreClicked: {[key in 'includePeerIds' | 'excludePeerIds']?: boolean}
+
   public static getInitArgs() {
     return {
       animationData: lottieLoader.loadAnimationFromURLManually('Folders_2')
@@ -115,6 +117,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
     this.stickerContainer.classList.add('sticker-container');
 
     this.tempId = 0;
+    this.showMoreClicked = {};
 
     this.confirmBtn = ButtonIcon('check btn-confirm hide blue');
     let deleting = false;
@@ -249,11 +252,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
       this.inviteLinks.container
     );
 
-    const toggleExcludedPeers = () => {
-      this.excludePeerIds.container.classList.toggle('hide', this.filter?._ === 'dialogFilterChatlist');
-    };
-
-    toggleExcludedPeers();
+    this.toggleExcludedPeers();
     const includedFlagsContainer = this.includePeerIds.container.querySelector('.folder-categories');
     const excludedFlagsContainer = this.excludePeerIds.container.querySelector('.folder-categories');
     this.inviteLinksCreate = this.inviteLinks.container.querySelector('.btn') as HTMLElement;
@@ -280,7 +279,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
       include += this.filter.include_peers.length;
 
       if(!include) {
-        toast('Please choose at least one chat for this folder.');
+        toastNew({langPackKey: 'EditFolder.Toast.ChooseChat'});
         return;
       }
 
@@ -290,6 +289,10 @@ export default class AppEditFolderTab extends SliderSuperTab {
       if(!this.filter.id) {
         promise = this.managers.filtersStorage.createDialogFilter(this.filter);
       } else {
+        if(closeAfter) {
+          postponeFilterUpdate = true;
+        }
+
         promise = this.managers.filtersStorage.updateDialogFilter(this.filter);
       }
 
@@ -299,9 +302,15 @@ export default class AppEditFolderTab extends SliderSuperTab {
         }
 
         return dialogFilter;
-      }).catch((err) => {
+      }).catch((err: ApiError) => {
+        postponeFilterUpdate = false;
+        if(postponedFilterUpdate) {
+          this.updateFilter(postponedFilterUpdate);
+          postponedFilterUpdate = undefined;
+        }
+
         if(err.type === 'DIALOG_FILTERS_TOO_MUCH') {
-          toast('Sorry, you can\'t create more folders.');
+          showLimitPopup('folders');
         } else {
           console.error('updateDialogFilter error:', err);
         }
@@ -316,14 +325,16 @@ export default class AppEditFolderTab extends SliderSuperTab {
       confirmEditing(true);
     }, {listenerSetter: this.listenerSetter});
 
-    const updateFilter = (filter: DialogFilter.dialogFilterChatlist | DialogFilter.dialogFilter) => {
-      this.setFilter(filter, false);
-      toggleExcludedPeers();
-    };
+    let postponedFilterUpdate: DialogFilter.dialogFilterChatlist | DialogFilter.dialogFilter;
+    let postponeFilterUpdate = false;
 
     this.listenerSetter.add(rootScope)('filter_update', (filter) => {
       if(this.filter.id === filter.id) {
-        updateFilter(filter);
+        if(postponeFilterUpdate) {
+          postponedFilterUpdate = filter;
+        } else {
+          this.updateFilter(filter);
+        }
       }
     });
 
@@ -478,8 +489,13 @@ export default class AppEditFolderTab extends SliderSuperTab {
 
           const toggle = toggleDisability([this.inviteLinksCreate], true);
           try {
-            const filter = await confirmEditing(false) as DialogFilter.dialogFilter;
-            updateFilter(filter);
+            const result = confirmEditing(false);
+            if(!(result instanceof Promise)) {
+              throw '';
+            }
+
+            const filter = await result as DialogFilter.dialogFilter;
+            this.updateFilter(filter);
             this.type = 'edit';
             this.originalFilter = filter;
             this.editCheckForChange();
@@ -502,7 +518,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
             if(err.type === 'INVITES_TOO_MUCH' || err.type === 'FILTERS_TOO_MUCH' || err.type === 'CHATLISTS_TOO_MUCH') {
               showLimitPopup('chatlistInvites');
               return;
-            } else if(err.type === 'PEERS_LIST_EMPTY') {
+            } else if(err.type === 'PEERS_LIST_EMPTY' || err.type === 'CHAT_ADMIN_REQUIRED') {
               openChatlistInvite();
               return;
             }
@@ -563,7 +579,6 @@ export default class AppEditFolderTab extends SliderSuperTab {
 
   private onEditOpen() {
     const tempId = ++this.tempId;
-    // this.caption.style.display = 'none';
     this.setTitle(this.type === 'create' ? 'FilterNew' : 'FilterHeaderEdit');
 
     if(this.type === 'edit') {
@@ -580,10 +595,10 @@ export default class AppEditFolderTab extends SliderSuperTab {
       this.flags[flag as keyof AppEditFolderTab['flags']].style.display = good ? '' : 'none';
     }
 
-    [
+    const promises = [
       'includePeerIds' as const,
       'excludePeerIds' as const
-    ].forEach(async(key) => {
+    ].map(async(key) => {
       let peers = (filter as DialogFilter.dialogFilter)[key];
       if(!peers) {
         return;
@@ -618,7 +633,8 @@ export default class AppEditFolderTab extends SliderSuperTab {
             rippleEnabled: false,
             meAsSaved: true,
             avatarSize: 'small',
-            loadPromises
+            loadPromises,
+            autonomous: true
           });
           dom.lastMessageSpan.parentElement.remove();
           return dom.containerEl;
@@ -628,37 +644,52 @@ export default class AppEditFolderTab extends SliderSuperTab {
         if(tempId !== this.tempId) return;
         ul.append(...containers);
 
-        if(peers.length) {
-          showMore.lastElementChild.replaceWith(i18n('FilterShowMoreChats', [peers.length]));
-          showMore.classList.remove('hide');
-        } else if(showMore) {
-          showMore.remove();
+        if(showMore) {
+          if(peers.length) {
+            showMore.lastElementChild.replaceWith(i18n('FilterShowMoreChats', [peers.length]));
+            showMore.classList.remove('hide');
+          } else {
+            showMore.remove();
+          }
         }
       };
 
       let showMore: HTMLElement;
-      if(peers.length) {
+      if(peers.length && !this.showMoreClicked[key]) {
         showMore = Button('folder-category-button btn btn-primary btn-transparent hide', {icon: 'down'});
         showMore.classList.add('load-more', 'rp-overflow');
-        attachClickEvent(showMore, () => renderMore(20), {listenerSetter: this.listenerSetter});
+        attachClickEvent(showMore, () => {
+          this.showMoreClicked[key] = true;
+          renderMore(Infinity);
+        }, {listenerSetter: this.listenerSetter});
         showMore.append(i18n('FilterShowMoreChats', [peers.length]));
       }
 
-      renderMore(4).then(() => {
+      return renderMore(this.showMoreClicked[key] ? Infinity : 4).then(() => {
         if(tempId !== this.tempId) return;
 
-        if(this.container) {
-          // cleanup
-          Array.from(this.container.querySelectorAll('.chatlist, .load-more')).forEach((el) => el.parentElement.remove());
-        }
+        return () => {
+          section.generateContentElement().append(ul);
 
-        section.generateContentElement().append(ul);
-
-        if(peers.length) {
-          const content = section.generateContentElement();
-          content.append(showMore);
-        }
+          if(showMore && peers.length) {
+            const content = section.generateContentElement();
+            content.append(showMore);
+          }
+        };
       });
+    });
+
+    return Promise.all(promises).then((callbacks) => {
+      if(tempId !== this.tempId) return;
+
+      this.toggleExcludedPeers();
+
+      if(this.container) {
+        // cleanup
+        Array.from(this.container.querySelectorAll('.chatlist, .load-more')).forEach((el) => el.parentElement.remove());
+      }
+
+      callbacks.forEach((callback) => callback());
     });
   }
 
@@ -703,5 +734,13 @@ export default class AppEditFolderTab extends SliderSuperTab {
       this.setFilter(filter, true);
       this.type = 'edit';
     }
+  }
+
+  private toggleExcludedPeers() {
+    this.excludePeerIds.container.classList.toggle('hide', this.filter?._ === 'dialogFilterChatlist');
+  }
+
+  private updateFilter(filter: DialogFilter.dialogFilterChatlist | DialogFilter.dialogFilter) {
+    this.setFilter(filter, false);
   }
 }

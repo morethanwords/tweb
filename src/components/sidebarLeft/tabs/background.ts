@@ -34,6 +34,7 @@ import wrapPhoto from '../../wrappers/photo';
 import {CreateRowFromCheckboxField} from '../../row';
 import {generateSection} from '../../settingSection';
 import {getColorsFromWallPaper} from '../../../helpers/color';
+import {DEFAULT_BACKGROUND_SLUG} from '../../../config/app';
 
 export default class AppBackgroundTab extends SliderSuperTab {
   public static tempId = 0;
@@ -376,6 +377,10 @@ export default class AppBackgroundTab extends SliderSuperTab {
     }
 
     const saveToCache = (slug: string, url: string) => {
+      if(!slug || slug === DEFAULT_BACKGROUND_SLUG) {
+        return;
+      }
+
       fetch(url).then((response) => {
         appImManager.cacheStorage.save('backgrounds/' + slug, response);
       });
@@ -399,10 +404,10 @@ export default class AppBackgroundTab extends SliderSuperTab {
           getPixelPromise = Promise.resolve(averageColorFromCanvas(canvas));
         }
 
-        const slug = (wallPaper as WallPaper.wallPaper).slug ?? '';
+        const slug = (wallPaper as WallPaper.wallPaper).slug;
         Promise.all([
           getPixelPromise,
-          slug && saveToCache(slug, url)
+          saveToCache(slug, url)
         ]).then(([pixel]) => {
           if(!middleware()) {
             deferred.resolve();

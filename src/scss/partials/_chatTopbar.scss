@@ -76,7 +76,7 @@ body.is-right-column-shown {
 	--pinned-message-height: 52px;
 
 	width: 100%;
-	z-index: 1;
+	z-index: 2;
 	min-height: var(--topbar-height) !important;
 	max-height: var(--topbar-height) !important;
 	margin-bottom: var(--pinned-floating-height);

@@ -38,11 +38,6 @@ export class AppReactionsManager extends AppManager {
   private lastSendingTimes: Map<string, number>;
 
   protected after() {
-    this.rootScope.addEventListener('language_change', () => {
-      this.availableReactions = undefined;
-      this.getAvailableReactions();
-    });
-
     this.sendReactionPromises = new Map();
     this.lastSendingTimes = new Map();
 
@@ -67,6 +62,11 @@ export class AppReactionsManager extends AppManager {
         });
       }, 7.5e3);
     });
+  }
+
+  public resetAvailableReactions() {
+    this.availableReactions = undefined;
+    this.getAvailableReactions();
   }
 
   public getAvailableReactions() {
@@ -254,7 +254,8 @@ export class AppReactionsManager extends AppManager {
     }
 
     const {peerId, mid} = message;
-    const myPeerId = this.appPeersManager.peerId;
+    const myPeer = this.appMessagesManager.generateFromId(peerId) ?? this.appPeersManager.getOutputPeer(peerId);
+    const myPeerId = this.appPeersManager.getPeerId(myPeer);
 
     const unsetReactionCount = (reactionCount: ReactionCount) => {
       --reactionCount.count;
@@ -350,7 +351,7 @@ export class AppReactionsManager extends AppManager {
         const peerReaction: MessagePeerReaction = {
           _: 'messagePeerReaction',
           reaction,
-          peer_id: this.appPeersManager.getOutputPeer(myPeerId),
+          peer_id: myPeer,
           pFlags: {},
           date: tsNow(true)
         };
@@ -400,7 +401,7 @@ export class AppReactionsManager extends AppManager {
     const promise = this.apiManager.invokeApi('messages.sendReaction', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       msg_id: msgId,
-      reaction: chosenReactions.map((reactionCount) => reactionCount.reaction)
+      reaction: chosenReactions.map((reactionCount) => reactionCount.reaction).reverse()
     }).then((updates) => {
       assumeType<Updates.updates>(updates);
 
@@ -418,7 +419,7 @@ export class AppReactionsManager extends AppManager {
       }
 
       this.apiUpdatesManager.processUpdateMessage(updates);
-    }).catch((err) => {
+    }).catch((err: ApiError) => {
       if(err.type === 'REACTION_INVALID' && this.sendReactionPromises.get(promiseKey) === promise) {
         this.sendReaction(message, chosenReactions[0]?.reaction, true);
       }

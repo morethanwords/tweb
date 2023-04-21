@@ -125,6 +125,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   --font-weight-normal: 400;
   --selection-background-color: rgba(var(--primary-color-rgb), .4);
   --selection-color: inherit;
+  --white: #ffffff;
 
   --topbar-floating-scaleX: 1;
   --topbar-call-height: 3rem;
@@ -161,7 +162,7 @@ $chat-input-inner-padding-handhelds: .25rem;
     --right-column-width: 100vw;
     --esg-sticker-size: 68px;
     --popup-sticker-size: 68px;
-    --round-video-size: 200px;
+    --round-video-size: 240px;
 
     --chat-input-size: #{$chat-input-handhelds-size};
     --chat-input-padding: #{$chat-padding-handhelds};

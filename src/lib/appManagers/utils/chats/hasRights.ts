@@ -107,6 +107,14 @@ export default function hasRights(
     // return adminRights || isCheckingRightsForSelf ? adminFlags[action] : !myFlags[action];
     // }
 
+    case 'invite_links': {
+      if(chat._ === 'chat') {
+        return false;
+      }
+
+      return isAdmin && !!myFlags['invite_users'];
+    }
+
     case 'change_info':
     case 'invite_users': {
       return isAdmin ? !!myFlags[action] : !myFlags[action];

@@ -26,7 +26,7 @@ import {makeMediaSize, MediaSize} from '../../helpers/mediaSize';
 import {ThumbCache} from '../../lib/storages/thumbs';
 import onMediaLoad from '../../helpers/onMediaLoad';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
-import {THUMB_TYPE_FULL} from '../../lib/mtproto/mtproto_config';
+import {SEND_WHEN_ONLINE_TIMESTAMP, THUMB_TYPE_FULL} from '../../lib/mtproto/mtproto_config';
 import wrapDocument from '../wrappers/document';
 import createContextMenu from '../../helpers/dom/createContextMenu';
 import findUpClassName from '../../helpers/dom/findUpClassName';
@@ -299,9 +299,15 @@ export default class PopupNewMedia extends PopupElement {
             this.send();
           });
         },
+        onSendWhenOnlineClick: () => {
+          this.chat.input.setScheduleTimestamp(SEND_WHEN_ONLINE_TIMESTAMP, () => {
+            this.send();
+          });
+        },
         openSide: 'top-left',
         onContextElement: this.btnConfirm,
-        listenerSetter: this.listenerSetter
+        listenerSetter: this.listenerSetter,
+        canSendWhenOnline: this.chat.input.canSendWhenOnline
       });
 
       sendMenu.setPeerId(this.chat.peerId);

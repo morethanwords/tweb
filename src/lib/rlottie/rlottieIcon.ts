@@ -31,8 +31,7 @@ export type RLottieIconItemOptions = {
   initFrame?: number,
   player?: RLottiePlayer,
   autoplay?: boolean,
-  color?: RLottieColor,
-  inverseColor?: RLottieColor,
+  color?: RLottieColor
 };
 
 export class RLottieIconItemPart implements RLottieIconItemPartOptions {
@@ -58,7 +57,6 @@ export class RLottieIconItem implements RLottieIconItemOptions {
   public initFrame: number;
   public autoplay: boolean;
   public color: RLottieColor;
-  public inverseColor: RLottieColor;
   public loadPromise: Promise<void>;
   public onLoadForPart: () => void;
   public onLoadForColor: () => void;
@@ -88,8 +86,7 @@ export class RLottieIconItem implements RLottieIconItemOptions {
       autoplay: this.autoplay ?? false,
       initFrame: this.initFrame,
       skipFirstFrameRendering: this.initFrame === undefined,
-      color: this.color,
-      inverseColor: this.inverseColor
+      color: this.color
     }, this.name).then((player) => {
       return lottieLoader.waitForFirstFrame(player);
     }).then((player) => {

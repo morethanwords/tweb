@@ -145,7 +145,7 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
           isOut,
           loadPromises,
           middleware,
-          withoutPreloader,
+          withoutPreloader: true,
           withTail,
           autoDownloadSize,
           noBlur,

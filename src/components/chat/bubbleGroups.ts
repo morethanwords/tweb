@@ -361,7 +361,11 @@ export default class BubbleGroups {
     return this.itemsMap.get(bubble);
   }
 
-  getLastGroup() {
+  get firstGroup() {
+    return this.groups[this.groups.length - 1];
+  }
+
+  get lastGroup() {
     return this.groups[0];
   }
 

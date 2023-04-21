@@ -51,6 +51,7 @@ export type BroadcastEvents = {
   'filter_update': MyDialogFilter,
   'filter_new': MyDialogFilter,
   'filter_order': number[],
+  'filter_joined': MyDialogFilter,
 
   'folder_unread': Omit<Folder, 'dialogs' | 'dispatchUnreadTimeout'>,
 

@@ -289,7 +289,7 @@ export default class PopupDatePicker extends PopupElement {
         options: timeOptions
       }).element);
 
-      this.btnConfirm.firstChild.replaceWith(i18n(key, args));
+      this.btnConfirm.replaceChildren(i18n(key, args));
     }
   }
 

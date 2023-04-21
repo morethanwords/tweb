@@ -19,13 +19,12 @@ import addAnchorListener from '../../helpers/addAnchorListener';
 import assumeType from '../../helpers/assumeType';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import {ChatInvite, User, AttachMenuPeerType, MessagesBotApp, BotApp, ChatlistsChatlistInvite} from '../../layer';
-import I18n, {i18n, LangPackKey, _i18n} from '../langPack';
+import {i18n, LangPackKey, _i18n} from '../langPack';
 import {PHONE_NUMBER_REG_EXP} from '../richTextProcessor';
-import isUsernameValid from '../richTextProcessor/isUsernameValid';
+import {isWebAppNameValid} from '../richTextProcessor/validators';
 import appImManager from './appImManager';
 import {INTERNAL_LINK_TYPE, InternalLinkTypeMap, InternalLink} from './internalLink';
 import {AppManagers} from './managers';
-import generateMessageId from './utils/messageId/generateMessageId';
 
 export class InternalLinkProcessor {
   protected managers: AppManagers;
@@ -210,16 +209,7 @@ export class InternalLinkProcessor {
       name: 'im',
       callback: async({pathnameParams, uriParams}, element, masked) => {
         let link: InternalLink;
-        if(pathnameParams[1] && isUsernameValid(pathnameParams[1])) {
-          assumeType<K4>(uriParams);
-          link = {
-            _: INTERNAL_LINK_TYPE.WEB_APP,
-            domain: pathnameParams[0],
-            appname: pathnameParams[1],
-            startapp: uriParams.startapp,
-            masked
-          };
-        } else if(PHONE_NUMBER_REG_EXP.test(pathnameParams[0])) {
+        if(PHONE_NUMBER_REG_EXP.test(pathnameParams[0])) {
           link = {
             _: INTERNAL_LINK_TYPE.USER_PHONE_NUMBER,
             phone: pathnameParams[0].slice(1)
@@ -236,6 +226,15 @@ export class InternalLinkProcessor {
             comment: uriParams.comment,
             stack: appImManager.getStackFromElement(element),
             t: uriParams.t
+          };
+        } else if(pathnameParams[1] && isWebAppNameValid(pathnameParams[1])) {
+          assumeType<K4>(uriParams);
+          link = {
+            _: INTERNAL_LINK_TYPE.WEB_APP,
+            domain: pathnameParams[0],
+            appname: pathnameParams[1],
+            startapp: uriParams.startapp,
+            masked
           };
         } else {
           assumeType<K2>(uriParams);
@@ -392,9 +391,9 @@ export class InternalLinkProcessor {
   }
 
   public processMessageLink = (link: InternalLink.InternalLinkMessage) => {
-    const postId = link.post ? generateMessageId(+link.post) : undefined;
-    const commentId = link.comment ? generateMessageId(+link.comment) : undefined;
-    const threadId = link.thread ? generateMessageId(+link.thread) : undefined;
+    const postId = link.post ? +link.post : undefined;
+    const commentId = link.comment ? +link.comment : undefined;
+    const threadId = link.thread ? +link.thread : undefined;
 
     return appImManager.openUsername({
       userName: link.domain,
@@ -409,7 +408,6 @@ export class InternalLinkProcessor {
 
   public processPrivatePostLink = async(link: InternalLink.InternalLinkPrivatePost) => {
     const chatId = link.channel.toChatId();
-    const peerId = chatId.toPeerId(true);
 
     const chat = await this.managers.appChatsManager.getChat(chatId);
     if(!chat) {
@@ -421,8 +419,8 @@ export class InternalLinkProcessor {
       }
     }
 
-    const postId = generateMessageId(+link.post);
-    const threadId = link.thread ? generateMessageId(+link.thread) : undefined;
+    const postId = +link.post;
+    const threadId = link.thread ? +link.thread : undefined;
 
     return appImManager.op({
       peer: chat,
@@ -456,7 +454,7 @@ export class InternalLinkProcessor {
       }
 
       return PopupElement.createPopup(PopupJoinChatInvite, link.invite, chatInvite);
-    }, (err) => {
+    }, (err: ApiError) => {
       if(err.type === 'INVITE_HASH_EXPIRED') {
         toast(i18n('InviteExpired'));
       }
@@ -474,7 +472,7 @@ export class InternalLinkProcessor {
       return appImManager.setInnerPeer({
         peerId: user.id.toPeerId(false)
       });
-    }).catch((err) => {
+    }).catch((err: ApiError) => {
       if(err.type === 'PHONE_NOT_OCCUPIED') {
         toastNew({langPackKey: 'Alert.UserDoesntExists'});
       }

@@ -12,6 +12,7 @@
 import type {DcId} from '../types';
 
 export const MAIN_DOMAINS = ['web.telegram.org', 'webk.telegram.org'];
+export const DEFAULT_BACKGROUND_SLUG = 'pattern';
 
 const threads = Math.min(4, navigator.hardwareConcurrency ?? 4);
 
@@ -21,7 +22,7 @@ const App = {
   version: process.env.VERSION,
   versionFull: process.env.VERSION_FULL,
   build: +process.env.BUILD,
-  langPackVersion: '1.6.4',
+  langPackVersion: '1.6.6',
   langPack: 'webk',
   langPackCode: 'en',
   domains: MAIN_DOMAINS,

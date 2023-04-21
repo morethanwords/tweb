@@ -962,7 +962,7 @@ export namespace Message {
 /**
  * @link https://core.telegram.org/type/MessageMedia
  */
-export type MessageMedia = MessageMedia.messageMediaEmpty | MessageMedia.messageMediaPhoto | MessageMedia.messageMediaGeo | MessageMedia.messageMediaContact | MessageMedia.messageMediaUnsupported | MessageMedia.messageMediaDocument | MessageMedia.messageMediaWebPage | MessageMedia.messageMediaVenue | MessageMedia.messageMediaGame | MessageMedia.messageMediaInvoice | MessageMedia.messageMediaGeoLive | MessageMedia.messageMediaPoll | MessageMedia.messageMediaDice | MessageMedia.messageMediaCall;
+export type MessageMedia = MessageMedia.messageMediaEmpty | MessageMedia.messageMediaPhoto | MessageMedia.messageMediaGeo | MessageMedia.messageMediaContact | MessageMedia.messageMediaUnsupported | MessageMedia.messageMediaDocument | MessageMedia.messageMediaWebPage | MessageMedia.messageMediaVenue | MessageMedia.messageMediaGame | MessageMedia.messageMediaInvoice | MessageMedia.messageMediaGeoLive | MessageMedia.messageMediaPoll | MessageMedia.messageMediaDice | MessageMedia.messageMediaCall | MessageMedia.messageMediaPhotoExternal | MessageMedia.messageMediaDocumentExternal;
 
 export namespace MessageMedia {
   export type messageMediaEmpty = {
@@ -1069,6 +1069,16 @@ export namespace MessageMedia {
   export type messageMediaCall = {
     _: 'messageMediaCall',
     action?: MessageAction.messageActionPhoneCall
+  };
+
+  export type messageMediaPhotoExternal = {
+    _: 'messageMediaPhotoExternal',
+    photo?: WebDocument
+  };
+
+  export type messageMediaDocumentExternal = {
+    _: 'messageMediaDocumentExternal',
+    document?: WebDocument
   };
 }
 
@@ -12163,6 +12173,8 @@ export interface ConstructorDeclMap {
   'updateDeleteDiscussionMessages': Update.updateDeleteDiscussionMessages,
   'updateChannelReload': Update.updateChannelReload,
   'messageMediaCall': MessageMedia.messageMediaCall,
+  'messageMediaPhotoExternal': MessageMedia.messageMediaPhotoExternal,
+  'messageMediaDocumentExternal': MessageMedia.messageMediaDocumentExternal,
 }
 
 export type InvokeAfterMsg = {

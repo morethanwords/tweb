@@ -19,6 +19,7 @@ import {GENERAL_TOPIC_ID} from '../lib/mtproto/mtproto_config';
 import showLimitPopup from './popups/limit';
 import createContextMenu from '../helpers/dom/createContextMenu';
 import PopupElement from './popups';
+import cancelEvent from '../helpers/dom/cancelEvent';
 
 export default class DialogsContextMenu {
   private buttons: ButtonMenuItemOptionsVerifiable[];
@@ -68,6 +69,13 @@ export default class DialogsContextMenu {
 
   private getButtons() {
     return this.buttons ??= [{
+      icon: 'newtab',
+      text: 'OpenInNewTab',
+      onClick: (e) => {
+        appDialogsManager.openDialogInNewTab(this.li);
+        cancelEvent(e);
+      }
+    }, {
       icon: 'unread',
       text: 'MarkAsUnread',
       onClick: this.onUnreadClick,

@@ -286,10 +286,10 @@ async function loadStateInner() {
   let newVersion: string, oldVersion: string;
   if(state.version !== STATE_VERSION || state.build !== BUILD/*  || true */) {
     // reset filters and dialogs if version is older
-    if(/* compareVersion(state.version, '0.8.7') === -1 || state.build < 179 ||  */state.build < 217) {
-      state.allDialogsLoaded = copy(STATE_INIT.allDialogsLoaded);
-      state.pinnedOrders = copy(STATE_INIT.pinnedOrders);
-      state.filtersArr = copy(STATE_INIT.filtersArr);
+    if(state.build < 322) {
+      pushToState('allDialogsLoaded', copy(STATE_INIT.allDialogsLoaded));
+      pushToState('pinnedOrders', copy(STATE_INIT.pinnedOrders));
+      pushToState('filtersArr', copy(STATE_INIT.filtersArr));
 
       resetStorages.add('dialogs');
     }

@@ -86,6 +86,8 @@ export type MyUploadFile = UploadFile.uploadFile | UploadWebFile.uploadWebFile;
 //   originalPayload: ReferenceBytes
 // };
 
+const DO_NOT_UPLOAD_FILES = false;
+
 const MAX_DOWNLOAD_FILE_PART_SIZE = 1 * 1024 * 1024;
 const MAX_UPLOAD_FILE_PART_SIZE = 512 * 1024;
 const MIN_PART_SIZE = 128 * 1024;
@@ -851,7 +853,7 @@ export class ApiFileManager extends AppManager {
     const isBigFile = fileSize >= 10485760;
     const partSize = this.getLimitPart(fileSize, true);
     const activeDelta = this.getDelta(partSize);
-    const totalParts = Math.ceil(fileSize / partSize);
+    const totalParts = DO_NOT_UPLOAD_FILES ? 0 : Math.ceil(fileSize / partSize);
     const fileId = randomLong();
     const resultInputFile: InputFile = {
       _: isBigFile ? 'inputFileBig' : 'inputFile',

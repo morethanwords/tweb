@@ -59,11 +59,14 @@ port.addMultipleEventsListeners({
     appStateManager.newVersion = newVersion;
     appStateManager.oldVersion = oldVersion;
 
-    (Object.keys(state) as any as (keyof State)[]).forEach((key) => {
-      appStateManager.pushToState(key, state[key], true, !pushedKeys.includes(key));
+    RESET_STORAGES_PROMISE.resolve({
+      storages: resetStorages,
+      callback: () => {
+        (Object.keys(state) as any as (keyof State)[]).forEach((key) => {
+          appStateManager.pushToState(key, state[key], true, !pushedKeys.includes(key));
+        });
+      }
     });
-
-    RESET_STORAGES_PROMISE.resolve(resetStorages);
     // haveState = true;
   },
 

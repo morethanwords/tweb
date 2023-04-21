@@ -60,7 +60,7 @@ import PopupDeleteMessages from '../popups/deleteMessages';
 import fixSafariStickyInputFocusing, {IS_STICKY_INPUT_BUGGED} from '../../helpers/dom/fixSafariStickyInputFocusing';
 import PopupPeer from '../popups/peer';
 import appMediaPlaybackController from '../appMediaPlaybackController';
-import {BOT_START_PARAM, NULL_PEER_ID} from '../../lib/mtproto/mtproto_config';
+import {BOT_START_PARAM, NULL_PEER_ID, SEND_WHEN_ONLINE_TIMESTAMP} from '../../lib/mtproto/mtproto_config';
 import setCaretAt from '../../helpers/dom/setCaretAt';
 import CheckboxField from '../checkboxField';
 import DropdownHover from '../../helpers/dropdownHover';
@@ -813,12 +813,16 @@ export default class ChatInput {
       onScheduleClick: () => {
         this.scheduleSending(undefined);
       },
+      onSendWhenOnlineClick: () => {
+        this.setScheduleTimestamp(SEND_WHEN_ONLINE_TIMESTAMP, this.sendMessage.bind(this, true));
+      },
       listenerSetter: this.listenerSetter,
       openSide: 'top-left',
       onContextElement: this.btnSend,
       onOpen: () => {
         return this.chat.type !== 'scheduled' && (!this.isInputEmpty() || !!Object.keys(this.forwarding).length);
-      }
+      },
+      canSendWhenOnline: this.canSendWhenOnline
     });
 
     this.btnSendContainer.append(this.sendMenu.sendMenu);
@@ -1216,36 +1220,57 @@ export default class ChatInput {
     return this.chat.type === 'scheduled' ? (this.scheduleSending(callback), true) : (callback(), false);
   }
 
-  public scheduleSending = async(callback: () => void = this.sendMessage.bind(this, true), initDate = new Date()) => {
-    const {peerId} = this.chat;
+  public canSendWhenOnline = async() => {
+    const peerId = this.chat.peerId;
+    if(rootScope.myId === peerId || !peerId.isUser()) {
+      return false;
+    }
+
+    if(!(await this.managers.appUsersManager.isUserOnlineVisible(peerId))) {
+      return false;
+    }
+
+    const user = await this.managers.appUsersManager.getUser(peerId);
+    return user.status?._ !== 'userStatusOnline';
+  };
+
+  public setScheduleTimestamp(timestamp: number, callback: () => void) {
     const middleware = this.chat.bubbles.getMiddleware();
-    const canSendWhenOnline = rootScope.myId !== peerId && peerId.isUser() && await this.managers.appUsersManager.isUserOnlineVisible(peerId);
+    const minTimestamp = (Date.now() / 1000 | 0) + 10;
+    if(timestamp <= minTimestamp) {
+      timestamp = undefined;
+    }
+
+    this.scheduleDate = timestamp;
+    callback();
+
+    if(this.chat.type !== 'scheduled' && timestamp) {
+      setTimeout(() => { // ! need timeout here because .forwardMessages will be called after timeout
+        if(!middleware()) {
+          return;
+        }
+
+        const popups = PopupElement.getPopups(PopupStickers);
+        popups.forEach((popup) => popup.hide());
+
+        this.appImManager.openScheduled(this.chat.peerId);
+      }, 0);
+    }
+  }
+
+  public scheduleSending = async(callback: () => void = this.sendMessage.bind(this, true), initDate = new Date()) => {
+    const middleware = this.chat.bubbles.getMiddleware();
+    const canSendWhenOnline = await this.canSendWhenOnline();
+    if(!middleware()) {
+      return;
+    }
 
     PopupElement.createPopup(PopupSchedule, initDate, (timestamp) => {
       if(!middleware()) {
         return;
       }
 
-      const minTimestamp = (Date.now() / 1000 | 0) + 10;
-      if(timestamp <= minTimestamp) {
-        timestamp = undefined;
-      }
-
-      this.scheduleDate = timestamp;
-      callback();
-
-      if(this.chat.type !== 'scheduled' && timestamp) {
-        setTimeout(() => { // ! need timeout here because .forwardMessages will be called after timeout
-          if(!middleware()) {
-            return;
-          }
-
-          const popups = PopupElement.getPopups(PopupStickers);
-          popups.forEach((popup) => popup.hide());
-
-          this.appImManager.openScheduled(peerId);
-        }, 0);
-      }
+      this.setScheduleTimestamp(timestamp, callback);
     }, canSendWhenOnline).show();
   };
 
@@ -1615,8 +1640,8 @@ export default class ChatInput {
     const useRafs = botCommandsToggle.parentElement ? 0 : 2;
 
     if(botMenuButton && isInputEmpty) {
-      // extra + padding + icon size + icon margin
-      const width = getTextWidth(botMenuButton.text, FontFull) + 2 + 22 + 18 + 6;
+      // padding + icon size + icon margin
+      const width = getTextWidth(botMenuButton.text, FontFull) + 22 + 20 + 6;
       this.newMessageWrapper.style.setProperty('--commands-size', `${Math.ceil(width)}px`);
     } else {
       // this.newMessageWrapper.style.setProperty('--commands-size', `38px`);
@@ -2651,21 +2676,31 @@ export default class ChatInput {
       if(draft) {
         delete draft.pFlags.no_webpage;
       }
-      // const value = parseMarkdown(this.messageInputField.value, []);
-      // if(message.message !== value) {
+
       const originalDraft = {...message, _: 'draftMessage'} as DraftMessage.draftMessage;
-      if(originalDraft.entities?.length) {
+      if(originalDraft.entities?.length || draft?.entities?.length) {
         const canPassEntitiesTypes = new Set(Object.values(MARKDOWN_ENTITIES));
-        originalDraft.entities = originalDraft.entities.slice();
-        forEachReverse(originalDraft.entities, (entity, idx, arr) => {
-          if(!canPassEntitiesTypes.has(entity._)) {
-            arr.splice(idx, 1);
+        canPassEntitiesTypes.add('messageEntityCustomEmoji');
+
+        if(originalDraft?.entities) {
+          originalDraft.entities = originalDraft.entities.slice();
+        }
+
+        [originalDraft, draft].forEach((draft) => {
+          if(!draft) {
+            return;
+          }
+
+          forEachReverse(draft.entities, (entity, idx, arr) => {
+            if(!canPassEntitiesTypes.has(entity._)) {
+              arr.splice(idx, 1);
+            }
+          });
+
+          if(!draft.entities.length) {
+            delete draft.entities;
           }
         });
-
-        if(!originalDraft.entities.length) {
-          delete originalDraft.entities;
-        }
       }
 
       if(!draftsAreEqual(draft, originalDraft)) {
@@ -3215,8 +3250,8 @@ export default class ChatInput {
   public setTopInfo(
     type: ChatInputHelperType,
     callerFunc: () => void,
-    title: Parameters<typeof wrapReply>[0] = '',
-    subtitle: Parameters<typeof wrapReply>[1] = '',
+    title: Parameters<typeof wrapReply>[0]['title'] = '',
+    subtitle: Parameters<typeof wrapReply>[0]['subtitle'] = '',
     input?: Parameters<InputFieldAnimated['setValueSilently']>[0],
     message?: any
   ) {
@@ -3235,7 +3270,13 @@ export default class ChatInput {
     const haveReply = oldReply.classList.contains('reply');
 
     this.replyElements.iconBtn.replaceWith(this.replyElements.iconBtn = this.createButtonIcon((type === 'webpage' ? 'link' : type) + ' active reply-icon', {noRipple: true}));
-    const {container} = wrapReply(title, subtitle, this.chat.animationGroup, message);
+    const {container} = wrapReply({
+      title,
+      subtitle,
+      animationGroup: this.chat.animationGroup,
+      message,
+      textColor: 'secondary-text-color'
+    });
     if(haveReply) {
       oldReply.replaceWith(container);
     } else {

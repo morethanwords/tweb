@@ -256,7 +256,9 @@ export type TelegramWebViewSendEventMap = {
     is_state_stable: boolean,
     is_expanded: boolean
   },
-  theme_changed: TelegramWebViewTheme,
+  theme_changed: {
+    theme_params: TelegramWebViewTheme
+  },
   popup_closed: {
     button_id?: string
   },

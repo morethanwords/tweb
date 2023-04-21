@@ -24,7 +24,7 @@ import onMediaLoad from '../../helpers/onMediaLoad';
 import {isSavingLottiePreview, saveLottiePreview} from '../../helpers/saveLottiePreview';
 import throttle from '../../helpers/schedulers/throttle';
 import sequentialDom from '../../helpers/sequentialDom';
-import {PhotoSize, VideoSize} from '../../layer';
+import {DocumentAttribute, PhotoSize, VideoSize} from '../../layer';
 import {MyDocument} from '../../lib/appManagers/appDocsManager';
 import appDownloadManager from '../../lib/appManagers/appDownloadManager';
 import appImManager from '../../lib/appManagers/appImManager';
@@ -67,7 +67,7 @@ const onAnimationEnd = (element: HTMLElement, onAnimationEnd: () => void, timeou
   const _timeout = setTimeout(onEnd, timeout);
 };
 
-export default async function wrapSticker({doc, div, middleware, loadStickerMiddleware, lazyLoadQueue, exportLoad, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn, needUpscale, skipRatio, static: asStatic, managers = rootScope.managers, fullThumb, isOut, noPremium, withLock, relativeEffect, loopEffect, isCustomEmoji, syncedVideo, liteModeKey, isEffect}: {
+export default async function wrapSticker({doc, div, middleware, loadStickerMiddleware, lazyLoadQueue, exportLoad, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn, needUpscale, skipRatio, static: asStatic, managers = rootScope.managers, fullThumb, isOut, noPremium, withLock, relativeEffect, loopEffect, isCustomEmoji, syncedVideo, liteModeKey, isEffect, textColor}: {
   doc: MyDocument,
   div: HTMLElement | HTMLElement[],
   middleware?: Middleware,
@@ -97,7 +97,8 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
   isCustomEmoji?: boolean,
   syncedVideo?: boolean,
   liteModeKey?: LiteModeKey | false,
-  isEffect?: boolean
+  isEffect?: boolean,
+  textColor?: WrapSomethingOptions['textColor']
 }) {
   div = Array.isArray(div) ? div : [div];
 
@@ -139,7 +140,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
     div.classList.add('media-sticker-wrapper');
   });
 
-  if(play && !liteMode.isAvailable(liteModeKey) && !isCustomEmoji && !isEffect) {
+  if(play && liteModeKey && !liteMode.isAvailable(liteModeKey) && !isCustomEmoji && !isEffect) {
     play = false;
     loop = false;
   }
@@ -202,11 +203,19 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
     await getCacheContext(fullThumb?.type);
   }
 
+  const customEmojiAttribute = doc.attributes.find((attribute) => attribute._ === 'documentAttributeCustomEmoji') as DocumentAttribute.documentAttributeCustomEmoji;
+  if(!customEmojiAttribute || !customEmojiAttribute.pFlags.text_color) {
+    textColor = undefined;
+  } else if(!textColor) {
+    textColor = 'primary-text-color';
+  }
+
   const toneIndex = emoji && !isCustomEmoji ? getEmojiToneIndex(emoji) : -1;
+  const lottieCachedThumbToneIndex = toneIndex === -1 ? textColor ?? toneIndex : toneIndex;
   const downloaded = cacheContext.downloaded && !needFadeIn;
 
   const isThumbNeededForType = isAnimated;
-  const lottieCachedThumb = stickerType === 2 || stickerType === 3 ? await managers.appDocsManager.getLottieCachedThumb(doc.id, toneIndex) : undefined;
+  const lottieCachedThumb = stickerType === 2 || stickerType === 3 ? await managers.appDocsManager.getLottieCachedThumb(doc.id, lottieCachedThumbToneIndex) : undefined;
 
   const ret = {render: undefined as typeof loadPromise, load: undefined as typeof load};
   let loadThumbPromise = deferredPromise<void>();
@@ -412,7 +421,8 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
         sync: isCustomEmoji,
         middleware: loadStickerMiddleware ?? middleware,
         group,
-        liteModeKey: liteModeKey || undefined
+        liteModeKey: liteModeKey || undefined,
+        textColor: !isCustomEmoji ? textColor : undefined
       });
 
       // const deferred = deferredPromise<void>();
@@ -458,7 +468,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
       animation.addEventListener('firstFrame', () => {
         const canvas = animation.canvas[0];
         if(withThumb !== false || isCustomEmoji) {
-          saveLottiePreview(doc, canvas, toneIndex);
+          saveLottiePreview(doc, canvas, lottieCachedThumbToneIndex);
         }
 
         if(willHaveLock) {
@@ -554,16 +564,26 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
                 return;
               }
 
-              if(media as HTMLVideoElement) {
-                const w = width * window.devicePixelRatio;
-                const h = height * window.devicePixelRatio;
+              if(media instanceof HTMLVideoElement) {
+                // * video sticker can have arbitrary dimensions
+                const {videoWidth, videoHeight} = media;
+                const ratio = videoWidth / videoHeight;
+
+                let w = width * window.devicePixelRatio;
+                let h = height * window.devicePixelRatio;
+                if(ratio < 1) {
+                  w = h * ratio;
+                } else {
+                  h = w / ratio;
+                }
+
                 if(!isSavingLottiePreview(doc, toneIndex, w, h)) {
                   // const perf = performance.now();
                   const canvas = document.createElement('canvas');
                   canvas.width = w;
                   canvas.height = h;
                   const ctx = canvas.getContext('2d');
-                  ctx.drawImage(media as HTMLVideoElement, 0, 0, canvas.width, canvas.height);
+                  ctx.drawImage(media, 0, 0, canvas.width, canvas.height);
                   saveLottiePreview(doc, canvas, toneIndex);
                   // console.log('perf', performance.now() - perf);
                 }

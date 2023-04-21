@@ -338,7 +338,7 @@ $bubble-border-radius-big: 12px;
     html.is-touch .bubbles.is-selecting:not(.no-select) & {
       user-select: text;
     } */
-    html.no-touch .chat:not(.no-forwards) .bubbles:not(.is-selecting) &,
+    html.no-touch body:not(.no-select) .chat:not(.no-forwards) .bubbles:not(.is-selecting) &,
     html.is-touch body:not(.no-select) .chat:not(.no-forwards) .bubbles.is-selecting & { // * need no-select on body because chat-input transforms in channels
       user-select: text;
     }
@@ -1324,6 +1324,10 @@ $bubble-border-radius-big: 12px;
       }
     }
 
+    .bubble-name-rank {
+      display: none;
+    }
+
     .reply {
       height: 54px;
       max-height: 54px;
@@ -1867,17 +1871,24 @@ $bubble-border-radius-big: 12px;
         margin: 0;
         white-space: nowrap;
         height: calc(var(--messages-time-text-size) + .375rem);
+        max-width: inherit;
+        position: relative;
 
         .inner {
           right: unset;
           bottom: unset;
           color: #fff;
           margin: inherit;
+          max-width: inherit;
 
           &:after {
             color: #fff !important;
           }
         }
+      }
+
+      .post-author {
+        @include text-overflow();
       }
     }
 
@@ -2098,6 +2109,8 @@ $bubble-border-radius-big: 12px;
   
   .peer-title {
     cursor: pointer;
+    flex: 0 0 auto;
+    max-width: 100%;
   }
   
   .name {
@@ -2115,14 +2128,19 @@ $bubble-border-radius-big: 12px;
     // order: 1;
     //width: max-content;
     //white-space: nowrap;
-    display: flex;
-    align-items: center;
 
     .badge-fake {
       // display: inline-block;
       // vertical-align: middle;
       margin-top: -.125rem;
     }
+  }
+
+  .title-flex {
+    display: flex;
+    align-items: center;
+    max-width: inherit;
+    overflow: inherit;
   }
 
   &-name-rank {
@@ -2755,7 +2773,8 @@ $bubble-border-radius-big: 12px;
 .bubbles-date-group:last-of-type {
   .bubbles-group:last-of-type {
     .bubble:last-of-type {
-      margin-bottom: $bubble-overflow;
+      // margin-bottom: $bubble-overflow;
+      margin-bottom: 0;
       /* &:after, .document-container:last-of-type .document-selection {
         bottom: 0 !important;
       } */

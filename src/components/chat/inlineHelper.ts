@@ -179,6 +179,7 @@ export default class InlineHelper extends AutocompleteHelper {
         }
 
         if(item._ === 'botInlineResult') {
+          // (preview || container).style.backgroundColor = '#ff00ff';
           if(item.thumb && item.thumb.mime_type.indexOf('image/') === 0) {
             let mediaContainer: HTMLElement;
             if(preview) {
@@ -267,7 +268,7 @@ export default class InlineHelper extends AutocompleteHelper {
           setInnerHTML(btnSwitchTo, wrapEmojiText(switchTo.text));
           attachClickEvent(btnSwitchTo, async(e) => {
             if(switchTo._ === 'inlineBotSwitchPM') {
-              this.chat.appImManager.setInnerPeer({peerId});
+              await this.chat.appImManager.setInnerPeer({peerId});
               this.managers.appInlineBotsManager.switchToPM(peerId, botId, switchTo.start_param);
             } else {
               await this.chat.appImManager.confirmBotWebView(botId);

@@ -20,7 +20,7 @@ export default function wrapUrl(url: string, unsafe?: number | boolean) {
   let onclick: typeof out['onclick'];
   /* if(unsafe === 2) {
     url = 'tg://unsafe_url?url=' + encodeURIComponent(url);
-  } else  */if((tgMeMatch = url.match(/^(?:https?:\/\/)?(?:(.+?)\.)?(?:(?:web|k|z)\.)?t(?:elegram)?\.me(?:\/(.+))?/))) {
+  } else  */if((tgMeMatch = url.match(/^(?:https?:\/\/)?(?:(.+?)\.)?(?:(?:web|k|z|a)\.)?t(?:elegram)?\.me(?:\/(.+))?/))) {
     const u = new URL(url);
     let prefix = tgMeMatch[1];
     if(prefix && T_ME_PREFIXES.has(tgMeMatch[1])) {
@@ -38,7 +38,7 @@ export default function wrapUrl(url: string, unsafe?: number | boolean) {
       onclick = 'invoice';
     } else if(/^\+/.test(fullPath) && !PHONE_NUMBER_REG_EXP.test(fullPath)) { // second regexp is for phone numbers (t.me/+38050...)
       onclick = 'joinchat';
-    } else switch(path[0]) {
+    } else if(path[0]) switch(path[0]) {
       case 'addlist':
       case 'joinchat':
       case 'addstickers':

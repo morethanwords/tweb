@@ -346,6 +346,18 @@
   ],
   "type": "MessageMedia"
 }, {
+  "predicate": "messageMediaPhotoExternal",
+  "params": [
+    {"name": "photo", "type": "WebDocument"}
+  ],
+  "type": "MessageMedia"
+}, {
+  "predicate": "messageMediaDocumentExternal",
+  "params": [
+    {"name": "document", "type": "WebDocument"}
+  ],
+  "type": "MessageMedia"
+}, {
   "predicate": "availableReaction",
   "properties": [
     {"name": "static_icon", "type": "Document.document"},

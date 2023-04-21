@@ -7,5 +7,8 @@
 import deferredPromise, {CancellablePromise} from '../../../../helpers/cancellablePromise';
 import type {StoragesResults} from './loadStorages';
 
-const RESET_STORAGES_PROMISE: CancellablePromise<Set<keyof StoragesResults>> = deferredPromise();
+const RESET_STORAGES_PROMISE: CancellablePromise<{
+  storages: Set<keyof StoragesResults>,
+  callback: () => void
+}> = deferredPromise();
 export default RESET_STORAGES_PROMISE;

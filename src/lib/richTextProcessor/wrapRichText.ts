@@ -11,7 +11,7 @@ import IS_EMOJI_SUPPORTED from '../../environment/emojiSupport';
 import buildURLHash from '../../helpers/buildURLHash';
 import copy from '../../helpers/object/copy';
 import encodeEntities from '../../helpers/string/encodeEntities';
-import {MessageEntity} from '../../layer';
+import {DocumentAttribute, MessageEntity} from '../../layer';
 import encodeSpoiler from './encodeSpoiler';
 import parseEntities from './parseEntities';
 import setBlankToAnchor from './setBlankToAnchor';
@@ -22,7 +22,7 @@ import IS_CUSTOM_EMOJI_SUPPORTED from '../../environment/customEmojiSupport';
 import rootScope from '../rootScope';
 import mediaSizes from '../../helpers/mediaSizes';
 import wrapSticker, {videosCache} from '../../components/wrappers/sticker';
-import RLottiePlayer, {getLottiePixelRatio} from '../rlottie/rlottiePlayer';
+import RLottiePlayer, {RLottieColor, applyColorOnContext, getLottiePixelRatio} from '../rlottie/rlottiePlayer';
 import animationIntersector, {AnimationItemGroup} from '../../components/animationIntersector';
 import type {MyDocument} from '../appManagers/appDocsManager';
 import LazyLoadQueue from '../../components/lazyLoadQueue';
@@ -39,6 +39,7 @@ import BOM from '../../helpers/string/bom';
 import framesCache from '../../helpers/framesCache';
 import wrapTelegramUrlToAnchor from './wrapTelegramUrlToAnchor';
 import {IS_FIREFOX} from '../../environment/userAgent';
+import customProperties, {CustomProperty} from '../../helpers/dom/customProperties';
 
 const resizeObserver = new ResizeObserver((entries) => {
   for(const entry of entries) {
@@ -133,6 +134,7 @@ export class CustomEmojiElement extends HTMLElement {
       const elements = this.renderer.customEmojis.get(this.docId);
       if(elements?.delete(this) && !elements.size) {
         this.renderer.customEmojis.delete(this.docId);
+        this.renderer.textColored.delete(elements);
         this.renderer.playersSynced.delete(elements);
       }
 
@@ -224,6 +226,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
   public context: CanvasRenderingContext2D;
 
   public playersSynced: Map<CustomEmojiElements, RLottiePlayer | HTMLVideoElement>;
+  public textColored: Set<CustomEmojiElements>;
   public clearedElements: WeakSet<CustomEmojiElements>;
   public customEmojis: Parameters<typeof wrapRichText>[1]['customEmojis'];
   public lastPausedVideo: HTMLVideoElement;
@@ -244,6 +247,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
   public middlewareHelper: MiddlewareHelper;
 
   public auto: boolean;
+  public textColor: CustomProperty;
 
   constructor() {
     super();
@@ -255,6 +259,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
     this.append(this.canvas);
 
     this.playersSynced = new Map();
+    this.textColored = new Set();
     this.clearedElements = new WeakSet();
     this.customEmojis = new Map();
 
@@ -302,6 +307,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
     this.playersSynced.clear();
     this.middlewareHelper?.clean();
     this.customEmojis.clear();
+    this.textColored.clear();
 
     this.destroy =
       this.lastPausedVideo =
@@ -411,6 +417,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
 
       const maxTop = height - frameHeight;
       const maxLeft = width - frameWidth;
+      const color = this.textColored.has(elements) ? customProperties.getProperty(this.textColor) : undefined;
 
       if(!this.clearedElements.has(elements) && !this.isSelectable) {
         if(this.isSelectable/*  && false */) {
@@ -438,6 +445,10 @@ export class CustomEmojiRendererElement extends HTMLElement {
         } else {
           // context.clearRect(left, top, width, height);
           context.drawImage(frame, left, top, frameWidth, frameHeight);
+        }
+
+        if(color) {
+          applyColorOnContext(context, color, left, top, frameWidth, frameHeight);
         }
       });
     }
@@ -571,6 +582,13 @@ export class CustomEmojiRendererElement extends HTMLElement {
         const isStatic = doc.mime_type === 'video/webm' && !IS_WEBM_SUPPORTED;
         const willHaveSyncedPlayer = (isLottie || (doc.sticker === 3 && this.isSelectable)) && !onlyThumb && !isStatic;
 
+        const attribute = doc.attributes.find((attribute) => attribute._ === 'documentAttributeCustomEmoji') as DocumentAttribute.documentAttributeCustomEmoji;
+        if(attribute) {
+          if(attribute.pFlags.text_color) {
+            renderer.textColored.add(customEmojis);
+          }
+        }
+
         const loadPromises: Promise<any>[] = [];
         const newElementsArray = Array.from(newElements);
         const promise = wrapSticker({
@@ -606,7 +624,8 @@ export class CustomEmojiRendererElement extends HTMLElement {
           static: isStatic,
           onlyThumb,
           withThumb: withThumb ?? (renderer.clearedElements.has(customEmojis) ? false : undefined),
-          syncedVideo: this.isSelectable
+          syncedVideo: this.isSelectable,
+          textColor: renderer.textColor
         });
 
         if(_loadPromises) {
@@ -751,6 +770,8 @@ export class CustomEmojiRendererElement extends HTMLElement {
             const middleware = element.middlewareHelper.get();
             syncedPlayer.middlewares.add(middleware);
             middleware.onClean(() => {
+              element.clear(); // * it is correct
+
               syncedPlayer.middlewares.delete(middleware);
 
               if(!syncedPlayer.middlewares.size) {
@@ -861,6 +882,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
     renderer.animationGroup = options.animationGroup;
     renderer.size = options.customEmojiSize || mediaSizes.active.customEmoji;
     renderer.isSelectable = options.isSelectable;
+    renderer.textColor = options.textColor;
     if(options.wrappingDraft) {
       renderer.contentEditable = 'false';
       renderer.style.height = 'inherit';
@@ -956,13 +978,12 @@ type CustomEmojiRendererElementOptions = Partial<{
   customEmojiRenderer: CustomEmojiRendererElement,
 
   isSelectable: boolean,
-  wrappingDraft: boolean
+  wrappingDraft: boolean,
+
+  textColor?: CustomProperty
 }> & WrapSomethingOptions;
 
-/**
- * * Expecting correctly sorted nested entities (RichTextProcessor.sortEntities)
- */
-export default function wrapRichText(text: string, options: Partial<{
+export type WrapRichTextOptions = Partial<{
   entities: MessageEntity[],
   contextSite: string,
   highlightUsername: string,
@@ -979,6 +1000,7 @@ export default function wrapRichText(text: string, options: Partial<{
   maxMediaTimestamp: number,
   noEncoding: boolean,
   isSelectable: boolean,
+  whitelistedDomains?: string[],
 
   contextHashtag?: string,
 
@@ -992,7 +1014,12 @@ export default function wrapRichText(text: string, options: Partial<{
   voodoo?: boolean,
   customEmojis?: Map<DocId, CustomEmojiElements>,
   customWraps?: Set<HTMLElement>,
-}> & CustomEmojiRendererElementOptions = {}) {
+}> & CustomEmojiRendererElementOptions;
+
+/**
+ * * Expecting correctly sorted nested entities (RichTextProcessor.sortEntities)
+ */
+export default function wrapRichText(text: string, options: WrapRichTextOptions = {}) {
   const fragment = document.createDocumentFragment();
   if(!text) {
     return fragment;
@@ -1337,6 +1364,17 @@ export default function wrapRichText(text: string, options: Partial<{
           const wrapped = wrapUrl(url, true);
           url = wrapped.url;
           onclick = wrapped.onclick;
+
+          if(options.whitelistedDomains) {
+            try {
+              const hostname = new URL(url).hostname;
+              if(!options.whitelistedDomains.includes(hostname)) {
+                break;
+              }
+            } catch(err) {
+              break;
+            }
+          }
 
           if(entity._ === 'messageEntityTextUrl') {
             if(nextEntity?._ === 'messageEntityUrl' &&

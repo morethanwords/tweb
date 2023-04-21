@@ -318,6 +318,12 @@ namespace I18n {
     }
 
     if(lastAppliedLangCode !== currentLangCode) {
+      if(lastAppliedLangCode && rootScope.myId) {
+        rootScope.managers.appReactionsManager.resetAvailableReactions();
+        rootScope.managers.appUsersManager.indexMyself();
+        rootScope.managers.dialogsStorage.indexMyDialog();
+      }
+
       lastAppliedLangCode = currentLangCode;
       cachedDateTimeFormats.clear();
       updateAmPm();

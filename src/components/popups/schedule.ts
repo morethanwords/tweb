@@ -5,7 +5,7 @@
  */
 
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import {SEND_WHEN_ONLINE_TIMESTAMP} from '../../lib/mtproto/constants';
+import {SEND_WHEN_ONLINE_TIMESTAMP} from '../../lib/mtproto/mtproto_config';
 import Button from '../button';
 import PopupDatePicker from './datePicker';
 

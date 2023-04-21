@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {DialogFilter, ForumTopic, InputChatlist, InputPeer, Update} from '../../layer';
+import type {DialogFilter, ForumTopic, InputChatlist, InputPeer, Update, Updates} from '../../layer';
 import type {Dialog} from '../appManagers/appMessagesManager';
 import forEachReverse from '../../helpers/array/forEachReverse';
 import copy from '../../helpers/object/copy';
@@ -641,7 +641,10 @@ export default class FiltersStorage extends AppManager {
       },
       processResult: (updates) => {
         this.apiUpdatesManager.processUpdateMessage(updates);
-        return updates;
+        const update = (updates as Updates.updates).updates.find((update) => update._ === 'updateDialogFilter') as Update.updateDialogFilter;
+        const filterId = update.id;
+        this.rootScope.dispatchEvent('filter_joined', this.getFilter(filterId));
+        return filterId;
       }
     });
   }

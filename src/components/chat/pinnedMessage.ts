@@ -269,7 +269,7 @@ export default class ChatPinnedMessage {
     this.debug = true;
     this.isStatic = false;
 
-    const dAC = new ReplyContainer('pinned-message', chat.animationGroup);
+    const dAC = new ReplyContainer('pinned-message');
     this.pinnedMessageContainer = new PinnedContainer({
       topbar,
       chat,
@@ -442,10 +442,10 @@ export default class ChatPinnedMessage {
 
       let gotRest = false;
       const promises = [
-        this.managers.appMessagesManager.getSearch({
+        this.managers.appMessagesManager.getHistory({
           peerId: this.chat.peerId,
           inputFilter: {_: 'inputMessagesFilterPinned'},
-          maxId: mid,
+          offsetId: mid,
           limit: ChatPinnedMessage.LOAD_COUNT,
           backLimit: ChatPinnedMessage.LOAD_COUNT,
           threadId: this.chat.threadId
@@ -478,15 +478,17 @@ export default class ChatPinnedMessage {
 
       const result = (await Promise.all(promises))[0];
 
-      let backLimited = result.history.findIndex((message) => message.mid <= mid);
+      const messages = result.messages;
+
+      let backLimited = messages.findIndex((message) => message.mid <= mid);
       if(backLimited === -1) {
-        backLimited = result.history.length;
+        backLimited = messages.length;
       }/*  else {
         backLimited -= 1;
       } */
 
-      this.offsetIndex = result.offset_id_offset ? result.offset_id_offset - backLimited : 0;
-      this.mids = result.history.map((message) => message.mid).slice();
+      this.offsetIndex = result.offsetIdOffset ? result.offsetIdOffset - backLimited : 0;
+      this.mids = messages.map((message) => message.mid).slice();
       this.count = result.count;
 
       if(!this.count) {
@@ -628,7 +630,8 @@ export default class ChatPinnedMessage {
         message,
         mediaEl: writeMediaTo,
         loadPromises,
-        animationGroup: this.chat.animationGroup
+        animationGroup: this.chat.animationGroup,
+        textColor: 'primary-text-color'
       });
 
       await Promise.all(loadPromises);

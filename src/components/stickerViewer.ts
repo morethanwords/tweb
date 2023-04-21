@@ -16,6 +16,7 @@ import {getMiddleware, Middleware} from '../helpers/middleware';
 import {doubleRaf} from '../helpers/schedulers';
 import pause from '../helpers/schedulers/pause';
 import windowSize from '../helpers/windowSize';
+import {DocumentAttribute} from '../layer';
 import {MyDocument} from '../lib/appManagers/appDocsManager';
 import getStickerEffectThumb from '../lib/appManagers/utils/stickers/getStickerEffectThumb';
 import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
@@ -136,6 +137,8 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
       transformer.append(stickerContainer, stickerEmoji);
       container.append(transformer);
 
+      const attribute = doc.attributes.find((attribute) => attribute._ === 'documentAttributeCustomEmoji') as DocumentAttribute.documentAttributeCustomEmoji;
+
       const o = await wrapSticker({
         doc,
         div: stickerContainer,
@@ -150,7 +153,8 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
         isOut,
         withThumb: false,
         relativeEffect: true,
-        loopEffect: true
+        loopEffect: true,
+        textColor: attribute && attribute.pFlags.text_color ? 'primary-text-color' : undefined
       }).then(({render}) => render);
       if(!middleware()) return;
 

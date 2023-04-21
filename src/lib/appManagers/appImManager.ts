@@ -26,7 +26,7 @@ import {MOUNT_CLASS_TO} from '../../config/debug';
 import appNavigationController from '../../components/appNavigationController';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import I18n, {i18n, join, LangPackKey} from '../langPack';
-import {ChatFull, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult, WallPaper, Config, AttachMenuBot} from '../../layer';
+import {ChatFull, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult, WallPaper, Config, AttachMenuBot, Peer, InputChannel} from '../../layer';
 import PeerTitle from '../../components/peerTitle';
 import {PopupPeerCheckboxOptions} from '../../components/popups/peer';
 import blurActiveElement from '../../helpers/dom/blurActiveElement';
@@ -67,7 +67,6 @@ import appMediaPlaybackController from '../../components/appMediaPlaybackControl
 import wrapEmojiText from '../richTextProcessor/wrapEmojiText';
 import wrapRichText, {CustomEmojiRendererElement, renderEmojis} from '../richTextProcessor/wrapRichText';
 import wrapUrl from '../richTextProcessor/wrapUrl';
-import generateMessageId from './utils/messageId/generateMessageId';
 import getUserStatusString from '../../components/wrappers/getUserStatusString';
 import getChatMembersString from '../../components/wrappers/getChatMembersString';
 import {STATE_INIT} from '../../config/state';
@@ -321,7 +320,7 @@ export class AppImManager extends EventListenerBase<{
       const typing = typings.find((typing) => typing.action._ === 'sendMessageEmojiInteraction');
       if(typing?.action?._ === 'sendMessageEmojiInteraction') {
         const action = typing.action;
-        const bubble = chat.bubbles.bubbles[generateMessageId(typing.action.msg_id)];
+        const bubble = chat.bubbles.bubbles[typing.action.msg_id];
         if(bubble && bubble.classList.contains('emoji-big') && getVisibleRect(bubble, chat.bubbles.scrollable.container)) {
           const stickerWrapper: HTMLElement = bubble.querySelector('.media-sticker-wrapper:not(.bubble-hover-reaction-sticker):not(.reaction-sticker)');
 
@@ -972,21 +971,28 @@ export class AppImManager extends EventListenerBase<{
         }
 
         const p: string = params.p;
-        const postId = params.post !== undefined ? generateMessageId(+params.post) : undefined;
+        const postId = params.post !== undefined ? +params.post : undefined;
+        const messageId = postId || (params.message !== undefined ? +params.message : undefined);
+        const threadId = params.thread !== undefined ? +params.thread : undefined;
 
         switch(p[0]) {
           case '@': {
             this.openUsername({
               userName: p,
-              lastMsgId: postId
+              lastMsgId: messageId,
+              threadId
             });
             break;
           }
 
           default: { // peerId
-            this.setInnerPeer({
-              peerId: postId ? p.toPeerId(true) : p.toPeerId(),
-              lastMsgId: postId
+            const peerId = postId ? p.toPeerId(true) : p.toPeerId();
+            this.managers.appPeersManager.getPeer(peerId).then((peer) => {
+              this.op({
+                peer,
+                lastMsgId: messageId,
+                threadId
+              });
             });
             break;
           }
@@ -998,14 +1004,42 @@ export class AppImManager extends EventListenerBase<{
     // location.hash = '';
   };
 
+  public async open(options: Omit<Parameters<AppImManager['op']>[0], 'peer'> & {peerId: PeerId}) {
+    return this.op({
+      ...options,
+      peer: await this.managers.appPeersManager.getPeer(options.peerId)
+    });
+  }
+
   public async op(options: {
     peer: User.user | MTChat
   } & Omit<ChatSetPeerOptions, 'peerId'>) {
-    let {peer, commentId, threadId, lastMsgId} = options;
-    const isUser = peer._ === 'user';
-    const peerId = peer.id.toPeerId(!isUser);
+    const isUser = options.peer._ === 'user';
+    const isChannel = options.peer._ === 'channel';
+    let peerId = options.peer.id.toPeerId(!isUser);
 
-    const isForum = peer._ === 'channel' && peer.pFlags.forum;
+    const keys: Extract<keyof typeof options, 'commentId' | 'lastMsgId' | 'threadId'>[] = [
+      'commentId',
+      'lastMsgId',
+      'threadId'
+    ];
+
+    const channelId = isChannel ? (options.peer as MTChat.channel).id : undefined;
+    const isForum = !!(options.peer as MTChat.channel).pFlags.forum;
+
+    await Promise.all(keys.map(async(key) => {
+      options[key] &&= await this.managers.appMessagesIdsManager.generateMessageId(options[key], channelId);
+    }));
+
+    const migratedTo = (options.peer as MTChat.chat).migrated_to;
+    if(migratedTo) {
+      const channelId = (migratedTo as InputChannel.inputChannel).channel_id;
+      options.peer = await this.managers.appChatsManager.getChat(channelId);
+      peerId = channelId.toPeerId(true);
+    }
+
+    let {commentId, threadId, lastMsgId} = options;
+
     // open forum tab
     if(!commentId && !threadId && !lastMsgId && isForum) {
       appDialogsManager.toggleForumTabByPeerId(peerId, true);
@@ -1257,8 +1291,7 @@ export class AppImManager extends EventListenerBase<{
   }
 
   private getBackground(slug: string) {
-    if(this.backgroundPromises[slug]) return this.backgroundPromises[slug];
-    return this.backgroundPromises[slug] = this.cacheStorage.getFile('backgrounds/' + slug).then((blob) => {
+    return this.backgroundPromises[slug] ||= this.cacheStorage.getFile('backgrounds/' + slug).then((blob) => {
       return URL.createObjectURL(blob);
     });
   }
@@ -1644,8 +1677,8 @@ export class AppImManager extends EventListenerBase<{
       prevTabId !== undefined &&
       prevTabId !== id &&
       liteMode.isAvailable('animations') &&
-      animate !== false/*  &&
-      mediaSizes.activeScreen !== ScreenSize.large */
+      animate !== false &&
+      mediaSizes.activeScreen !== ScreenSize.large
     ) {
       const transitionTime = (mediaSizes.isMobile ? 250 : 200) + 100; // * cause transition time could be > 250ms
       animationPromise = pause(transitionTime);
@@ -1677,7 +1710,7 @@ export class AppImManager extends EventListenerBase<{
     }
 
     const onImTabChange = (window as any).onImTabChange;
-    onImTabChange && onImTabChange(id);
+    onImTabChange?.(id);
 
     // this._selectTab(id, mediaSizes.isMobile);
     // document.body.classList.toggle(RIGHT_COLUMN_ACTIVE_CLASSNAME, id === 2);
@@ -1761,6 +1794,7 @@ export class AppImManager extends EventListenerBase<{
     }
 
     options.peerId ??= NULL_PEER_ID;
+    options.peerId = await this.managers.appPeersManager.getPeerMigratedTo(options.peerId) || options.peerId;
 
     const {peerId, lastMsgId, threadId} = options;
 
@@ -1832,10 +1866,12 @@ export class AppImManager extends EventListenerBase<{
   }
 
   public async setInnerPeer(options: ChatSetInnerPeerOptions) {
-    const {peerId} = options;
+    let {peerId} = options;
     if(peerId === NULL_PEER_ID || !peerId) {
       return;
     }
+
+    peerId = options.peerId = await this.managers.appPeersManager.getPeerMigratedTo(peerId) || peerId;
 
     if(!options.type) {
       if(options.threadId && !(await this.managers.appPeersManager.isForum(options.peerId))) {

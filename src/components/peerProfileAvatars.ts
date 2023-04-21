@@ -135,7 +135,14 @@ export default class PeerProfileAvatars {
 
         const target = this.avatars.children[this.listLoader.previous.length] as HTMLElement;
         freeze = true;
-        openAvatarViewer(target, peerId, () => peerId === this.peerId, this.listLoader.current, prevTargets, nextTargets);
+        openAvatarViewer(
+          target,
+          peerId,
+          () => peerId === this.peerId,
+          this.listLoader.current as Message.messageService,
+          prevTargets,
+          nextTargets
+        );
         freeze = false;
       } else {
         const centerX = rect.right - (rect.width / 2);
@@ -269,14 +276,14 @@ export default class PeerProfileAvatars {
             };
           });
         } else {
-          const promises: [Promise<ChatFull> | ChatFull, ReturnType<AppMessagesManager['getSearch']>] = [] as any;
+          const promises: [Promise<ChatFull> | ChatFull, ReturnType<AppMessagesManager['getHistory']>] = [] as any;
           if(!listLoader.current) {
             promises.push(this.managers.appProfileManager.getChatFull(peerId.toChatId()));
           }
 
-          promises.push(this.managers.appMessagesManager.getSearch({
+          promises.push(this.managers.appMessagesManager.getHistory({
             peerId,
-            maxId: Number.MAX_SAFE_INTEGER,
+            offsetId: Number.MAX_SAFE_INTEGER,
             inputFilter: {
               _: 'inputMessagesFilterChatPhotos'
             },
@@ -291,7 +298,7 @@ export default class PeerProfileAvatars {
 
             if(!listLoader.current) {
               const chatFull = result[0];
-              const message = findAndSplice(value.history, (message) => {
+              const message = findAndSplice(value.messages, (message) => {
                 return ((message as Message.messageService).action as MessageAction.messageActionChannelEditPhoto).photo.id === chatFull.chat_photo.id;
               }) as Message.messageService;
 

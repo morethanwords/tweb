@@ -25,7 +25,7 @@ export default class PopupCreateContact extends PopupElement {
 
       promise.then(() => {
         this.hide();
-      }, (err) => {
+      }, (err: ApiError) => {
         if(err.type === 'NO_USER') {
           toastNew({langPackKey: 'Contacts.PhoneNumber.NotRegistred'});
           editPeer.disabled = false;

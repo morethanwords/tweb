@@ -21,6 +21,7 @@ const lang = {
   'EditProfile.Username.Available': 'Username is available',
   'EditProfile.Username.Taken': 'Username is already taken',
   'EditProfile.Username.Invalid': 'Username is invalid',
+  'EditFolder.Toast.ChooseChat': 'Please choose at least one chat for this folder.',
   'EditBot.Title': 'Edit Bot',
   'EditBot.Username.Caption': 'This username cannot be edited.',
   'EditBot.Buttons.Caption': 'Use [@BotFather](https://t.me/botfather) to manage this bot.',
@@ -37,6 +38,9 @@ const lang = {
   'SharedFolder.Toast.NeedName': 'Shared folders must have a name.',
   'SharedFolder.Toast.NoTypes': 'Chat types are not supported in shared folders.',
   'SharedFolder.Toast.NoExcluded': 'Excluded chats are not supported in shared folders.',
+  'SharedFolder.Toast.NoAdminChannel': 'You don\'t have the admin rights to share invite links to this channel.',
+  'SharedFolder.Toast.NoAdminGroup': 'You don\'t have the admin rights to share invite links to this group chat.',
+  'SharedFolder.Toast.NoPrivate': 'You can\'t share private chats.',
   'SharedFolder.Cant.ShareUsers': 'you can\'t share chats with users',
   'SharedFolder.Cant.ShareBots': 'you can\'t share chats with bots',
   'SharedFolder.Cant.Share': 'you can\'t invite others here',
@@ -233,6 +237,7 @@ const lang = {
   'UsernameLinkBotUsername': 'bot username',
   'OpenChatlist': 'VIEW CHAT LIST',
   'RemoveSharedFolder': 'Are you sure you want to delete this folder? This will also deactivate all the invite links used to share this folder.',
+  'OpenInNewTab': 'Open in new tab',
 
   // * android
   'AccDescrEditing': 'Editing',

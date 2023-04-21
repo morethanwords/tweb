@@ -172,13 +172,13 @@ export default class AppSearch {
       return Promise.resolve();
     }
 
-    const maxId = this.minMsgId || 0;
+    const offsetId = this.minMsgId || 0;
 
-    return this.searchPromise = rootScope.managers.appMessagesManager.getSearch({
+    return this.searchPromise = rootScope.managers.appMessagesManager.getHistory({
       peerId: this.peerId,
       query,
       inputFilter: {_: 'inputMessagesFilterEmpty'},
-      maxId,
+      offsetId,
       limit: 20,
       threadId: this.threadId
     }).then((res) => {
@@ -190,15 +190,15 @@ export default class AppSearch {
 
       // console.log('input search result:', this.peerId, query, null, maxId, 20, res);
 
-      const {count, history} = res;
+      const {count, messages} = res;
 
-      if(history.length && history[0].mid === this.minMsgId) {
-        history.shift();
+      if(messages.length && messages[0].mid === this.minMsgId) {
+        messages.shift();
       }
 
       const searchGroup = this.searchGroups.messages;
 
-      history.forEach((message) => {
+      messages.forEach((message) => {
         try {
           const peerId = this.peerId ? message.fromId : message.peerId;
           appDialogsManager.addDialogAndSetLastMessage({
@@ -217,12 +217,12 @@ export default class AppSearch {
 
       searchGroup.toggle();
 
-      this.minMsgId = history.length && history[history.length - 1].mid;
+      this.minMsgId = messages.length && messages[messages.length - 1].mid;
 
       if(this.loadedCount === -1) {
         this.loadedCount = 0;
       }
-      this.loadedCount += history.length;
+      this.loadedCount += messages.length;
 
       if(this.foundCount === -1) {
         this.foundCount = count;

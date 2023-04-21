@@ -58,7 +58,7 @@ import appSidebarRight from '../../components/sidebarRight';
 import PopupElement from '../../components/popups';
 import choosePhotoSize from './utils/photos/choosePhotoSize';
 import wrapEmojiText from '../richTextProcessor/wrapEmojiText';
-import wrapMessageForReply from '../../components/wrappers/messageForReply';
+import wrapMessageForReply, {WrapMessageForReplyOptions} from '../../components/wrappers/messageForReply';
 import isMessageRestricted from './utils/messages/isMessageRestricted';
 import getMediaFromMessage from './utils/messages/getMediaFromMessage';
 import getMessageSenderPeerIdOrName from './utils/messages/getMessageSenderPeerIdOrName';
@@ -104,6 +104,7 @@ import createContextMenu from '../../helpers/dom/createContextMenu';
 import AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolders';
 import eachTimeout from '../../helpers/eachTimeout';
 import PopupSharedFolderInvite from '../../components/popups/sharedFolderInvite';
+import {CustomEmojiRendererElement} from '../richTextProcessor/wrapRichText';
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 
@@ -356,6 +357,7 @@ export class DialogElement extends Row {
       subtitleEl: this.subtitleRow
     };
 
+    // this will never happen for migrated legacy chat
     if(!autonomous) {
       (li as any).dialogDom = dom;
 
@@ -2032,11 +2034,29 @@ export class AppDialogsManager {
         selectTab.prevId = tabIndex;
       } */
     });
+
+    rootScope.addEventListener('filter_joined', (filter) => {
+      const filterRendered = this.filtersRendered[filter.id];
+      this.selectTab(filterRendered.menu);
+    });
+  }
+
+  public getTextColor(active: boolean) {
+    return active ? 'white' : 'secondary-text-color';
+  }
+
+  public setDialogActiveStatus(listEl: HTMLElement, active: boolean) {
+    listEl.classList.toggle('active', active);
+
+    const customEmojiRenderers = listEl.querySelectorAll<CustomEmojiRendererElement>('.custom-emoji-renderer');
+    customEmojiRenderers.forEach((customEmojiRenderer) => {
+      customEmojiRenderer.textColor = this.getTextColor(active);
+    });
   }
 
   public setDialogActive(listEl: HTMLElement, active: boolean) {
     const dom = (listEl as any).dialogDom as DialogDom;
-    listEl.classList.toggle('active', active);
+    this.setDialogActiveStatus(listEl, active);
     listEl.classList.toggle('is-forum-open', this.forumTab?.peerId === listEl.dataset.peerId.toPeerId() && !listEl.dataset.threadId);
     if(active) {
       this.lastActiveElements.add(listEl);
@@ -2761,6 +2781,19 @@ export class AppDialogsManager {
     return this.toggleForumTab(forumTab);
   }
 
+  public openDialogInNewTab(element: HTMLElement) {
+    const peerId = element.dataset.peerId.toPeerId();
+    const lastMsgId = +element.dataset.mid || undefined;
+    const threadId = +element.dataset.threadId || undefined;
+
+    const params = new URLSearchParams();
+    params.set('p', '' + peerId);
+    if(lastMsgId) params.set('message', '' + lastMsgId);
+    if(threadId) params.set('thread', '' + threadId);
+    const url = `#/im?${params.toString()}`;
+    window.open(url, '_blank');
+  }
+
   public setListClickListener(
     list: HTMLUListElement,
     onFound?: () => void,
@@ -2797,7 +2830,7 @@ export class AppDialogsManager {
       }
 
       if(e.ctrlKey || e.metaKey) {
-        window.open((elem as HTMLAnchorElement).href || ('#' + peerId), '_blank');
+        this.openDialogInNewTab(elem);
         cancelEvent(e);
         return;
       }
@@ -2805,11 +2838,11 @@ export class AppDialogsManager {
       if(autonomous) {
         const sameElement = lastActiveListElement === elem;
         if(lastActiveListElement && !sameElement) {
-          lastActiveListElement.classList.remove('active');
+          this.setDialogActiveStatus(lastActiveListElement, false);
         }
 
         if(elem) {
-          elem.classList.add('active');
+          this.setDialogActiveStatus(elem, true);
           lastActiveListElement = elem;
           this.lastActiveElements.add(elem);
         }
@@ -3013,16 +3046,34 @@ export class AppDialogsManager {
       }
 
       const withoutMediaType = !!mediaContainer && !!(lastMessage as Message.message)?.message;
+      const wrapMessageForReplyOptions: Partial<WrapMessageForReplyOptions> = {
+        textColor: this.getTextColor(dom.listEl.classList.contains('active'))
+      };
 
-      let fragment: DocumentFragment;
+      let fragment: DocumentFragment, wrapResult: ReturnType<typeof wrapMessageForReply>;
       if(highlightWord && (lastMessage as Message.message).message) {
-        fragment = await middleware(wrapMessageForReply({message: lastMessage, highlightWord, withoutMediaType}));
+        wrapResult = wrapMessageForReply({
+          ...wrapMessageForReplyOptions,
+          message: lastMessage,
+          highlightWord,
+          withoutMediaType
+        });
       } else if(draftMessage) {
-        fragment = await middleware(wrapMessageForReply({message: draftMessage}));
+        wrapResult = wrapMessageForReply({
+          ...wrapMessageForReplyOptions,
+          message: draftMessage
+        });
       } else if(lastMessage) {
-        fragment = await middleware(wrapMessageForReply({message: lastMessage, withoutMediaType}));
+        wrapResult = wrapMessageForReply({
+          ...wrapMessageForReplyOptions,
+          message: lastMessage, withoutMediaType
+        });
       } else { // rare case
         fragment = document.createDocumentFragment();
+      }
+
+      if(wrapResult) {
+        fragment = await middleware(wrapResult);
       }
 
       if(willPrepend.length) {

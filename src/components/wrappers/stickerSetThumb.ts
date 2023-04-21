@@ -6,7 +6,7 @@
 
 import createVideo from '../../helpers/dom/createVideo';
 import renderImageFromUrl from '../../helpers/dom/renderImageFromUrl';
-import {Document, StickerSet} from '../../layer';
+import {Document, DocumentAttribute, StickerSet} from '../../layer';
 import appDownloadManager from '../../lib/appManagers/appDownloadManager';
 import {AppManagers} from '../../lib/appManagers/managers';
 import lottieLoader from '../../lib/rlottie/lottieLoader';
@@ -83,25 +83,30 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
     return;
   }
 
-  let getDocPromise: Promise<Document>;
+  let getDocPromise: Promise<Document.document>;
 
   if(set.thumb_document_id) {
     getDocPromise = managers.appEmojiManager.getCustomEmojiDocument(set.thumb_document_id);
   } else {
-    getDocPromise = managers.appStickersManager.getStickerSet(set).then((stickerSet) => stickerSet.documents[0]);
+    getDocPromise = managers.appStickersManager.getStickerSet(set).then((stickerSet) => stickerSet.documents[0] as Document.document);
   }
 
   const doc = await getDocPromise;
-  if(doc._ !== 'documentEmpty') { // as thumb will be used first sticker
-    wrapSticker({
-      doc,
-      div: container,
-      group: group,
-      lazyLoadQueue,
-      managers,
-      width,
-      height,
-      middleware
-    }); // kostil
+  if(!doc) {
+    return;
   }
+
+  const attribute = doc.attributes.find(a => a._ === 'documentAttributeCustomEmoji') as DocumentAttribute.documentAttributeCustomEmoji
+  // as thumb will be used first sticker
+  wrapSticker({
+    doc,
+    div: container,
+    group: group,
+    lazyLoadQueue,
+    managers,
+    width,
+    height,
+    middleware,
+    textColor: attribute?.pFlags?.text_color ? 'primary-text-color' : undefined
+  }); // kostil
 }

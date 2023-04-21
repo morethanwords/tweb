@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type {AppColorName} from '../themeController';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import rootScope from '../../lib/rootScope';
 import mediaSizes from '../mediaSizes';
@@ -27,7 +28,7 @@ export class CustomProperties {
     this.cache = {};
 
     for(const i in cache) {
-      this.getProperty(i);
+      this.getProperty(i as CustomProperty);
     }
   };
 

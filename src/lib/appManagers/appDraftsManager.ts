@@ -14,7 +14,6 @@ import tsNow from '../../helpers/tsNow';
 import stateStorage from '../stateStorage';
 import assumeType from '../../helpers/assumeType';
 import {AppManager} from './manager';
-import generateMessageId from './utils/messageId/generateMessageId';
 import getServerMessageId from './utils/messageId/getServerMessageId';
 import draftsAreEqual from './utils/drafts/draftsAreEqual';
 
@@ -81,14 +80,20 @@ export class AppDraftsManager extends AppManager {
     });
   }
 
-  public saveDraft({peerId, threadId, draft: apiDraft, notify, force}: {
+  public saveDraft({
+    peerId,
+    threadId,
+    draft: apiDraft,
+    notify,
+    force
+  }: {
     peerId: PeerId,
     threadId?: number,
     draft: DraftMessage,
     notify?: boolean,
     force?: boolean
   }) {
-    const draft = this.processApiDraft(apiDraft);
+    const draft = this.processApiDraft(apiDraft, peerId);
 
     const key = this.getKey(peerId, threadId);
     if(draft) {
@@ -130,13 +135,14 @@ export class AppDraftsManager extends AppManager {
     return false;
   }
 
-  private processApiDraft(draft: DraftMessage): MyDraftMessage {
-    if(!draft || draft._ !== 'draftMessage') {
+  private processApiDraft(draft: DraftMessage, peerId: PeerId): MyDraftMessage {
+    if(draft?._ !== 'draftMessage') {
       return undefined;
     }
 
     if(draft.reply_to_msg_id) {
-      draft.reply_to_msg_id = generateMessageId(draft.reply_to_msg_id);
+      const channelId = this.appPeersManager.isChannel(peerId) ? peerId.toChatId() : undefined;
+      draft.reply_to_msg_id = this.appMessagesIdsManager.generateMessageId(draft.reply_to_msg_id, channelId);
     }
 
     return draft;

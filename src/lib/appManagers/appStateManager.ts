@@ -31,7 +31,7 @@ export class AppStateManager {
       rootScope.dispatchEvent('settings_updated', {key, value, settings: this.state.settings});
     }
 
-    this.pushToState(first, this.state[first]);
+    return this.pushToState(first, this.state[first]);
   }
 
   public pushToState<T extends keyof State>(key: T, value: State[T], direct = true, onlyLocal?: boolean) {
@@ -39,13 +39,13 @@ export class AppStateManager {
       this.state[key] = value;
     }
 
-    this.setKeyValueToStorage(key, value, onlyLocal);
+    return this.setKeyValueToStorage(key, value, onlyLocal);
   }
 
   public setKeyValueToStorage<T extends keyof State>(key: T, value: State[T] = this.state[key], onlyLocal?: boolean) {
     MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {name: 'state', key, value});
 
-    this.storage.set({
+    return this.storage.set({
       [key]: value
     }, onlyLocal);
   }

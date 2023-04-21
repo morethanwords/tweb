@@ -79,6 +79,7 @@ import filterAsync from '../helpers/array/filterAsync';
 import ChatContextMenu from './chat/contextMenu';
 import PopupElement from './popups';
 import getParticipantRank from '../lib/appManagers/utils/chats/getParticipantRank';
+import {NULL_PEER_ID} from '../lib/mtproto/mtproto_config';
 
 // const testScroll = false;
 
@@ -238,7 +239,7 @@ class SearchContextMenu {
       icon: 'delete danger',
       text: 'Message.Context.Selection.Delete',
       onClick: this.onDeleteClick,
-      verify: () => this.searchSuper.selection.isSelecting && !this.searchSuper.selection.selectionDeleteBtn.classList.contains('hide'),
+      verify: () => this.searchSuper.selection.isSelecting && this.searchSuper.selection.selectionDeleteBtn && !this.searchSuper.selection.selectionDeleteBtn.classList.contains('hide'),
       withSelection: true
     }];
 
@@ -277,7 +278,12 @@ class SearchContextMenu {
     if(this.searchSuper.selection.isSelecting) {
       simulateClickEvent(this.searchSuper.selection.selectionDeleteBtn);
     } else {
-      PopupElement.createPopup(PopupDeleteMessages, this.peerId, [this.mid], 'chat');
+      PopupElement.createPopup(
+        PopupDeleteMessages,
+        this.peerId,
+        [this.mid],
+        'chat'
+      );
     }
   };
 }
@@ -651,14 +657,17 @@ export default class AppSearchSuper {
     this.container.classList.remove('sliding');
   };
 
-  public filterMessagesByType(messages: any[], type: SearchSuperType): MyMessage[] {
+  public filterMessagesByType(messages: MyMessage[], type: SearchSuperType): MyMessage[] {
     return filterMessagesByInputFilter(type, messages, messages.length);
   }
 
-  private processEmptyFilter({message, searchGroup}: ProcessSearchSuperResult) {
+  private async processEmptyFilter({message, searchGroup}: ProcessSearchSuperResult) {
+    let peerId = message.peerId;
+    peerId = await this.managers.appPeersManager.getPeerMigratedTo(peerId) || peerId;
+
     const loadPromises: Promise<any>[] = [];
     const dialogElement = appDialogsManager.addDialogNew({
-      peerId: message.peerId,
+      peerId,
       container: searchGroup.list,
       avatarSize: 'bigger',
       loadPromises
@@ -667,7 +676,7 @@ export default class AppSearchSuper {
     const setLastMessagePromise = appDialogsManager.setLastMessageN({
       dialog: {
         _: 'dialog',
-        peerId: message.peerId
+        peerId
       } as any,
       lastMessage: message,
       dialogElement,
@@ -1387,17 +1396,22 @@ export default class AppSearchSuper {
         // }
       }
 
-      const maxId = history.length ? history[history.length - 1].mid : 0;
+      const lastItem = history[history.length - 1];
+      const offsetId = lastItem?.mid || 0;
+      const offsetPeerId = lastItem?.peerId || NULL_PEER_ID;
 
-      const value = await this.managers.appMessagesManager.getSearch({
+      const value = await this.managers.appMessagesManager.getHistory({
         ...this.searchContext,
         inputFilter: {_: type},
-        maxId,
+        offsetId,
+        offsetPeerId,
         limit: loadCount,
         nextRate: this.nextRates[type] ??= 0
       });
 
-      history.push(...value.history.map((m) => ({mid: m.mid, peerId: m.peerId})));
+      // const messages = await Promise.all(value.history.map((mid) => this.managers.appMessagesManager.getMessageByPeer(this.searchContext.peerId, mid)));
+      const messages = value.messages;
+      history.push(...messages.map((m) => ({mid: m.mid, peerId: m.peerId})));
 
       if(!middleware()) {
         // this.log.warn('peer changed');
@@ -1405,13 +1419,18 @@ export default class AppSearchSuper {
       }
 
       // ! Фикс случая, когда не загружаются документы при открытой панели разработчиков (происходит из-за того, что не совпадают критерии отбора документов в getSearch)
-      if(value.history.length < loadCount || (this.searchContext.folderId !== undefined && !value.next_rate) || value.history.length === value.count) {
+      if(
+        value.history.length < loadCount ||
+        (this.searchContext.folderId !== undefined && !value.nextRate) ||
+        // value.history.length === value.count
+        value.isEnd.top
+      ) {
       // if((value.count || history.length === value.count) && history.length >= value.count) {
         // this.log(logStr + 'loaded all media', value, loadCount);
         this.loaded[type] = true;
       }
 
-      this.nextRates[type] = value.next_rate;
+      this.nextRates[type] = value.nextRate;
 
       if(justLoad) {
         return;
@@ -1441,7 +1460,7 @@ export default class AppSearchSuper {
       }
 
       // if(value.history.length) {
-      return this.performSearchResult(this.filterMessagesByType(value.history, type), mediaTab);
+      return this.performSearchResult(this.filterMessagesByType(messages, type), mediaTab);
       // }
     }).catch((err) => {
       this.log.error('load error:', err);

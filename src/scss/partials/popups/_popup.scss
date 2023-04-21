@@ -60,9 +60,9 @@ $popup-footer-padding: .5rem;
     flex: 1;
     padding-inline: 1.5rem 1rem;
     margin: 0;
-    font-size: 1.25rem;
+    font-size: var(--font-size-20);
+    line-height: var(--line-height-20);
     font-weight: var(--font-weight-bold);
-    line-height: 1;
     @include text-overflow();
 
     &:first-child {

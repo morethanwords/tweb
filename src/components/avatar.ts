@@ -5,7 +5,7 @@
  */
 
 import rootScope from '../lib/rootScope';
-import {Message, Photo} from '../layer';
+import {Message, MessageAction, Photo} from '../layer';
 import type LazyLoadQueue from './lazyLoadQueue';
 import {attachClickEvent} from '../helpers/dom/clickEvent';
 import cancelEvent from '../helpers/dom/cancelEvent';
@@ -40,7 +40,7 @@ export async function openAvatarViewer(
   target: HTMLElement,
   peerId: PeerId,
   middleware: () => boolean,
-  message?: any,
+  message?: Message.messageService,
   prevTargets?: {element: HTMLElement, item: Photo.photo['id'] | Message.messageService}[],
   nextTargets?: typeof prevTargets
 ) {
@@ -58,15 +58,13 @@ export async function openAvatarViewer(
     const hadMessage = !!message;
     const inputFilter = 'inputMessagesFilterChatPhotos';
     if(!message) {
-      message = await rootScope.managers.appMessagesManager.getSearch({
+      message = await rootScope.managers.appMessagesManager.getHistory({
         peerId,
         inputFilter: {_: inputFilter},
-        maxId: 0,
+        offsetId: 0,
         limit: 1
       }).then((value) => {
-        // console.log(lol);
-        // ! by descend
-        return value.history[0];
+        return value.messages[0] as Message.messageService;
       });
 
       if(!middleware()) {
@@ -76,10 +74,10 @@ export async function openAvatarViewer(
 
     if(message) {
       // ! гений в деле, костылируем (но это гениально)
-      const messagePhoto = message.action.photo;
+      const messagePhoto = (message.action as MessageAction.messageActionChannelEditPhoto).photo;
       if(messagePhoto.id !== photo.id) {
         if(!hadMessage) {
-          message = rootScope.managers.appMessagesManager.generateFakeAvatarMessage(peerId, photo);
+          message = await rootScope.managers.appMessagesManager.generateFakeAvatarMessage(peerId, photo);
         } else {
 
         }

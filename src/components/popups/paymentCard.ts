@@ -12,7 +12,7 @@ import {validateAnyIncomplete, validateCardExpiry, validateCardNumber} from '../
 import placeCaretAtEnd from '../../helpers/dom/placeCaretAtEnd';
 import {renderImageFromUrlPromise} from '../../helpers/dom/renderImageFromUrl';
 import noop from '../../helpers/noop';
-import {PaymentsPaymentForm} from '../../layer';
+import {PaymentsPaymentForm, User} from '../../layer';
 import {LangPackKey, _i18n} from '../../lib/langPack';
 import CheckboxField from '../checkboxField';
 import confirmationPopup from '../confirmationPopup';
@@ -24,6 +24,7 @@ import {createVerificationIframe} from './paymentVerification';
 import {PasswordInputHelpers} from '../passwordInputField';
 import SettingSection from '../settingSection';
 import TelegramWebView from '../telegramWebView';
+import {formatPhoneNumber} from '../../helpers/formatPhoneNumber';
 
 export type PaymentCardDetails = {
   cardNumber: string;
@@ -217,7 +218,11 @@ export default class PopupPaymentCard extends PopupElement<{
 }> {
   protected telegramWebView: TelegramWebView;
 
-  constructor(private paymentForm: PaymentsPaymentForm, private savedCard?: PaymentCardDetails) {
+  constructor(
+    private paymentForm: PaymentsPaymentForm,
+    private user: User.user,
+    private savedCard?: PaymentCardDetails
+  ) {
     super('popup-payment popup-payment-card', {
       closable: true,
       overlayClosable: true,
@@ -333,13 +338,19 @@ export default class PopupPaymentCard extends PopupElement<{
       autocomplete: 'cc-name'
     });
 
+    const formatted = formatPhoneNumber(this.user.phone);
     const expireInputField = new InputFieldCorrected({
       label: 'SecureId.Identity.Placeholder.ExpiryDate',
       plainText: true,
       inputMode: 'numeric',
       autocomplete: 'cc-exp',
       formatMethod: cardFormattingPatterns.cardExpiry,
-      validateMethod: validateCardExpiry
+      validateMethod: formatted.country.iso2 === 'RU' ? (str, options) => {
+        return validateCardExpiry(str, {
+          ...(options || {}),
+          date: new Date(2022, 0, 1)
+        });
+      } : validateCardExpiry
     });
 
     // handle autocomplete: 01/2345 -> 01/45

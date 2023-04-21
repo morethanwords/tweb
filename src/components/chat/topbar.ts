@@ -310,7 +310,7 @@ export default class ChatTopbar {
   };
 
   private verifyCallButton = async(type?: CallType) => {
-    if(!IS_CALL_SUPPORTED || !this.peerId.isUser()) return false;
+    if(!IS_CALL_SUPPORTED || !this.peerId.isUser() || this.chat.type !== 'chat') return false;
     const userId = this.peerId.toUserId();
     const userFull = await this.managers.appProfileManager.getCachedFullUser(userId);
 
@@ -844,7 +844,11 @@ export default class ChatTopbar {
       else titleEl = i18n('PinnedMessagesCount', [count]);
 
       if(count === undefined) {
-        this.managers.appMessagesManager.getSearchCounters(peerId, [{_: 'inputMessagesFilterPinned'}], false).then((result) => {
+        this.managers.appMessagesManager.getSearchCounters(
+          peerId,
+          [{_: 'inputMessagesFilterPinned'}],
+          false
+        ).then((result) => {
           if(!middleware()) return;
           const count = result[0].count;
           this.setTitle(count);
@@ -865,7 +869,13 @@ export default class ChatTopbar {
       titleEl = i18n(peerId === rootScope.myId ? 'Reminders' : 'ScheduledMessages');
     } else if(this.chat.type === 'discussion') {
       if(count === undefined) {
-        const result = await this.managers.acknowledged.appMessagesManager.getHistory(peerId, 0, 1, 0, threadId);
+        const result = await this.managers.acknowledged.appMessagesManager.getHistory({
+          peerId,
+          offsetId: 0,
+          limit: 1,
+          backLimit: 0,
+          threadId
+        });
         if(!middleware()) return;
         if(result.cached) {
           const historyResult = await result.result;

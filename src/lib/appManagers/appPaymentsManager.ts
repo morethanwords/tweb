@@ -29,6 +29,7 @@ export default class AppPaymentsManager extends AppManager {
       invoice
     }).then((paymentForm) => {
       this.appUsersManager.saveApiUsers(paymentForm.users);
+      paymentForm.photo = this.appWebDocsManager.saveWebDocument(paymentForm.photo);
 
       return paymentForm;
     });
@@ -40,6 +41,7 @@ export default class AppPaymentsManager extends AppManager {
       msg_id: getServerMessageId(mid)
     }).then((paymentForm) => {
       this.appUsersManager.saveApiUsers(paymentForm.users);
+      paymentForm.photo = this.appWebDocsManager.saveWebDocument(paymentForm.photo);
 
       return paymentForm;
     });

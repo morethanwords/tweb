@@ -39,6 +39,7 @@ $chat-input-border-radius: 1rem;
 	position: relative;
 	transition: transform var(--transition-standard-out);
 	transform: translate3d(0, var(--translateY), 0);
+  z-index: 2; // fix safari topbar bug
 
 	/* body.is-keyboard-opened & {
 		--bottom: var(--padding-bottom);
@@ -562,6 +563,20 @@ $chat-input-border-radius: 1rem;
       filter: brightness(80%);
 		}
 	}
+
+  // @include respond-to(not-handhelds) {
+  //   &:before {
+  //     position: absolute;
+  //     content: " ";
+  //     display: block;
+  //     height: 100vh;
+  //     width: 1px;
+  //     background-color: var(--border-color);
+  //     inset-inline-start: -1px;
+  //     top: 0;
+  //     z-index: 3;
+  //   }
+  // }
 
 	@include respond-to(floating-left-sidebar) {
 		position: fixed !important;
@@ -1328,6 +1343,7 @@ $chat-input-border-radius: 1rem;
       &:before {
         font-size: 1.25rem;
         margin-right: .375rem;
+        margin-left: -.125rem;
       }
 
       &:not(.is-view) {
@@ -1574,6 +1590,7 @@ $chat-input-border-radius: 1rem;
 	width: 100%;
 	flex: 1 1 auto;
 	position: relative;
+  z-index: 1; // fix safari topbar bug
 
 	transform: translate3d(0, var(--translateY), 0);
 	transition: transform var(--transition-standard-out);

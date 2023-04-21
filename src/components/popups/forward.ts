@@ -44,7 +44,7 @@ export default class PopupForward extends PopupPickUser {
           return;
         }
 
-        appImManager.setInnerPeer({peerId});
+        await appImManager.setInnerPeer({peerId});
         appImManager.chat.input.initMessagesForward(peerIdMids);
       },
       placeholder: 'ShareModal.Search.ForwardPlaceholder',

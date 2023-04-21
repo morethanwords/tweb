@@ -38,7 +38,7 @@ export class AppManagersManager {
       return callbackify(this.getManagers(), (managers) => {
         // @ts-ignore
         const manager = managers[name];
-        return manager[method].apply(manager, args);
+        return manager[method](...args);
       });
     });
 
@@ -72,7 +72,7 @@ export class AppManagersManager {
     });
   }
 
-  public async createManagers() {
+  private async createManagers() {
     const appStoragesManager = new AppStoragesManager();
 
     await Promise.all([
@@ -82,7 +82,7 @@ export class AppManagersManager {
     ]);
 
     const managers = await createManagers(appStoragesManager, appStateManager.userId);
-    return this.managers = managers;
+    return this.managers = managers; // have to overwrite cached promise
   }
 
   public getManagers() {

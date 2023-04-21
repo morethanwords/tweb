@@ -8,10 +8,18 @@ import getVisibleRect from './getVisibleRect';
 
 export type ViewportSlicePart = {element: HTMLElement, rect: DOMRect, visibleRect: ReturnType<typeof getVisibleRect>}[];
 
-export default function getViewportSlice({overflowElement, overflowRect, selector, extraSize, elements}: {
+export default function getViewportSlice({
+  overflowElement,
+  overflowRect,
+  selector,
+  extraSize,
+  extraMinLength,
+  elements
+}: {
   overflowElement: HTMLElement,
   overflowRect?: DOMRectMinified,
   extraSize?: number,
+  extraMinLength?: number,
   selector?: string,
   elements?: HTMLElement[]
 }) {
@@ -52,6 +60,11 @@ export default function getViewportSlice({overflowElement, overflowRect, selecto
       rect,
       visibleRect
     });
+  }
+
+  if(extraMinLength) {
+    visible.unshift(...invisibleTop.splice(invisibleTop.length - extraMinLength, extraMinLength));
+    visible.push(...invisibleBottom.splice(0, extraMinLength));
   }
 
   // if(extraSize && visible.length) {

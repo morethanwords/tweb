@@ -43,6 +43,7 @@ import PopupPaymentShipping, {PaymentShippingAddress} from './paymentShipping';
 import PopupPaymentShippingMethods from './paymentShippingMethods';
 import PopupPaymentVerification from './paymentVerification';
 
+const USE_NATIVE_SYMBOL = true;
 const iconPath = 'assets/img/';
 const icons = [
   'amex',
@@ -275,7 +276,7 @@ export default class PopupPayment extends PopupElement<{
     this.element.classList.remove('is-loading');
 
     const wrapAmount = (amount: string | number, skipSymbol?: boolean) => {
-      return paymentsWrapCurrencyAmount(amount, currency, skipSymbol);
+      return paymentsWrapCurrencyAmount(amount, currency, skipSymbol, USE_NATIVE_SYMBOL);
     };
 
     const {invoice} = paymentForm;
@@ -431,7 +432,10 @@ export default class PopupPayment extends PopupElement<{
         setInputValue(getTipsAmount());
       });
 
-      const s = [currencyData.symbol, currencyData.space_between ? ' ' : ''];
+      const s = [
+        USE_NATIVE_SYMBOL ? currencyData.native || currencyData.symbol : currencyData.symbol,
+        currencyData.space_between ? ' ' : ''
+      ];
       if(!currencyData.symbol_left) s.reverse();
       tipsLabel.right[currencyData.symbol_left ? 'prepend' : 'append'](s.join(''));
 
@@ -561,8 +565,13 @@ export default class PopupPayment extends PopupElement<{
       setRowTitle(methodRow, str);
     };
 
-    const onMethodClick = () => {
-      PopupElement.createPopup(PopupPaymentCard, paymentForm as PaymentsPaymentForm, previousCardDetails as PaymentCardDetails).addEventListener('finish', ({token, card}) => {
+    const onMethodClick = async() => {
+      PopupElement.createPopup(
+        PopupPaymentCard,
+        paymentForm as PaymentsPaymentForm,
+        await this.managers.appUsersManager.getSelf(),
+        previousCardDetails as PaymentCardDetails
+      ).addEventListener('finish', ({token, card}) => {
         previousToken = token, previousCardDetails = card;
 
         setCardSubtitle(card);

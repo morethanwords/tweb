@@ -119,11 +119,6 @@ export class AppUsersManager extends AppManager {
     this.onContactUpdated(update.user_id, update.my_link._ === 'contactLinkContact');
     break; */
 
-    this.rootScope.addEventListener('language_change', (e) => {
-      const userId = this.getSelf().id;
-      this.contactsIndex.indexObject(userId, this.getUserSearchText(userId));
-    });
-
     return Promise.all([
       this.appStateManager.getState(),
       this.appStoragesManager.loadStorage('users')
@@ -215,6 +210,11 @@ export class AppUsersManager extends AppManager {
     this.contactsList = new Set();
     this.updatedContactsList = false;
   };
+
+  public indexMyself() {
+    const userId = this.getSelf().id;
+    this.contactsIndex.indexObject(userId, this.getUserSearchText(userId));
+  }
 
   public get userId() {
     return this.rootScope.myId.toUserId();
@@ -551,7 +551,8 @@ export class AppUsersManager extends AppManager {
       const newPhotoId = (user.photo as UserProfilePhoto.userProfilePhoto)?.photo_id;
       const changedPhoto = oldPhotoId !== newPhotoId;
 
-      const changedAnyBadge = oldUser.pFlags.premium !== user.pFlags.premium ||
+      const changedPremium = oldUser.pFlags.premium !== user.pFlags.premium;
+      const changedAnyBadge = changedPremium ||
         oldUser.pFlags.verified !== user.pFlags.verified ||
         oldUser.pFlags.scam !== user.pFlags.scam ||
         oldUser.pFlags.fake !== user.pFlags.fake;
@@ -576,6 +577,11 @@ export class AppUsersManager extends AppManager {
 
       if(changedTitle || changedAnyBadge) {
         this.rootScope.dispatchEvent('peer_title_edit', {peerId: user.id.toPeerId()});
+      }
+
+      // whitelisted domains
+      if(changedPremium) {
+        this.rootScope.dispatchEvent('peer_bio_edit', user.id.toPeerId());
       }
     }
 
@@ -686,6 +692,11 @@ export class AppUsersManager extends AppManager {
 
   public isNonContactUser(id: UserId) {
     return this.isRegularUser(id) && !this.isContact(id) && id !== this.userId;
+  }
+
+  public isPremium(id: UserId) {
+    const user = this.users[id];
+    return !!user?.pFlags?.premium;
   }
 
   public hasUser(id: UserId, allowMin?: boolean) {

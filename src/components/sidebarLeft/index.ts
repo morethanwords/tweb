@@ -563,7 +563,7 @@ export class AppSidebarLeft extends SidebarSlider {
           this.managers.appUsersManager.getContactsPeerIds(value, true)
         ]).then((results) => {
           if(!middleware()) return;
-          const peerIds = new Set(results[0].concat(results[1]));
+          const peerIds = new Set(results[0].concat(results[1]).slice(0, 20));
 
           peerIds.forEach((peerId) => {
             helper.append(renderEntity(peerId));

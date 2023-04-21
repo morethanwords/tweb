@@ -9,7 +9,11 @@ import matchUrl from '../../../richTextProcessor/matchUrl';
 import type {MyDocument} from '../../appDocsManager';
 import type {MyInputMessagesFilter, MyMessage} from '../../appMessagesManager';
 
-export default function filterMessagesByInputFilter(inputFilter: MyInputMessagesFilter, history: Array<Message.message | Message.messageService>, limit: number) {
+export default function filterMessagesByInputFilter(
+  inputFilter: MyInputMessagesFilter,
+  history: Array<Message.message | Message.messageService>,
+  limit: number
+) {
   if(inputFilter === 'inputMessagesFilterEmpty') {
     return history;
   }

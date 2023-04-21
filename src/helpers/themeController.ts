@@ -14,7 +14,7 @@ import {MOUNT_CLASS_TO} from '../config/debug';
 import customProperties from './dom/customProperties';
 import {TelegramWebViewTheme} from '../types';
 
-type AppColorName = 'primary-color' | 'message-out-primary-color' |
+export type AppColorName = 'primary-color' | 'message-out-primary-color' |
   'surface-color' | 'danger-color' | 'primary-text-color' |
   'secondary-text-color' | 'message-out-background-color' |
   'saved-color' | 'message-background-color';
@@ -275,7 +275,7 @@ export class ThemeController {
       element.style.setProperty('--' + name, value);
 
       if(isDocumentElement) {
-        customProperties.setPropertyCache(name, value);
+        customProperties.setPropertyCache(name as AppColorName, value);
       }
     });
   }
@@ -408,7 +408,7 @@ export class ThemeController {
     const themeParams: TelegramWebViewTheme = {} as any;
     for(const key in themePropertiesMap) {
       const value = themePropertiesMap[key as keyof TelegramWebViewTheme];
-      themeParams[key as keyof TelegramWebViewTheme] = value[0] === '#' ? value : customProperties.getProperty(value);
+      themeParams[key as keyof TelegramWebViewTheme] = value[0] === '#' ? value : customProperties.getProperty(value as AppColorName);
     }
 
     return themeParams;

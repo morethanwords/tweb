@@ -17,6 +17,9 @@ import wrapPhoto from '../wrappers/photo';
 import wrapSticker from '../wrappers/sticker';
 import wrapVideo from '../wrappers/video';
 import {AnimationItemGroup} from '../animationIntersector';
+import {WrapRichTextOptions} from '../../lib/richTextProcessor/wrapRichText';
+import {WrapReplyOptions} from '../wrappers/reply';
+import {Modify} from '../../types';
 
 const MEDIA_SIZE = 32;
 
@@ -27,21 +30,19 @@ export async function wrapReplyDivAndCaption(options: {
   subtitleEl: HTMLElement,
   message: Message.message | Message.messageService,
   mediaEl: HTMLElement,
-  loadPromises?: Promise<any>[],
-  animationGroup: AnimationItemGroup
-}) {
-  let {title, titleEl, subtitle, subtitleEl, mediaEl, message, loadPromises, animationGroup} = options;
-  if(title !== undefined) {
-    if(typeof(title) === 'string') {
-      title = limitSymbols(title, 140);
-      title = wrapEmojiText(title);
+} & WrapRichTextOptions) {
+  options.loadPromises ||= [];
+
+  const {titleEl, subtitleEl, mediaEl, message, loadPromises, animationGroup} = options;
+
+  let wrappedTitle = options.title;
+  if(wrappedTitle !== undefined) {
+    if(typeof(wrappedTitle) === 'string') {
+      wrappedTitle = limitSymbols(wrappedTitle, 140);
+      wrappedTitle = wrapEmojiText(wrappedTitle);
     }
 
-    replaceContent(titleEl, title);
-  }
-
-  if(!loadPromises) {
-    loadPromises = [];
+    replaceContent(titleEl, wrappedTitle);
   }
 
   let messageMedia: MessageMedia | WebPage.webPage = (message as Message.message)?.media;
@@ -49,8 +50,7 @@ export async function wrapReplyDivAndCaption(options: {
   const mediaChildren = mediaEl ? Array.from(mediaEl.children).slice() : [];
   let middleware: Middleware;
   if(messageMedia && mediaEl) {
-    subtitleEl.textContent = '';
-    subtitleEl.append(await wrapMessageForReply({message, animationGroup, withoutMediaType: true}));
+    subtitleEl.replaceChildren(await wrapMessageForReply(options));
 
     messageMedia = (messageMedia as MessageMedia.messageMediaWebPage).webpage as WebPage.webPage || messageMedia;
     const photo = (messageMedia as MessageMedia.messageMediaPhoto).photo as Photo.photo;
@@ -114,14 +114,15 @@ export async function wrapReplyDivAndCaption(options: {
   } else {
     if(message) {
       subtitleEl.textContent = '';
-      subtitleEl.append(await wrapMessageForReply({message}));
+      subtitleEl.append(await wrapMessageForReply(options));
     } else {
-      if(typeof(subtitle) === 'string') {
-        subtitle = limitSymbols(subtitle, 140);
-        subtitle = wrapEmojiText(subtitle);
+      let wrappedSubtitle = options.subtitle;
+      if(typeof(wrappedSubtitle) === 'string') {
+        wrappedSubtitle = limitSymbols(wrappedSubtitle, 140);
+        wrappedSubtitle = wrapEmojiText(wrappedSubtitle);
       }
 
-      replaceContent(subtitleEl, subtitle || '');
+      replaceContent(subtitleEl, wrappedSubtitle || '');
     }
   }
 
@@ -137,24 +138,24 @@ export async function wrapReplyDivAndCaption(options: {
   return setMedia;
 }
 
-export default class ReplyContainer extends DivAndCaption<(title: string | HTMLElement | DocumentFragment, subtitle: string | HTMLElement | DocumentFragment, message?: any) => Promise<void>> {
+export default class ReplyContainer extends DivAndCaption<(options: WrapReplyOptions) => Promise<void>> {
   private mediaEl: HTMLElement;
 
-  constructor(protected className: string, protected animationGroup: AnimationItemGroup) {
-    super(className, async(title, subtitle = '', message?) => {
+  constructor(protected className: string) {
+    super(className, async(options) => {
       if(!this.mediaEl) {
         this.mediaEl = document.createElement('div');
         this.mediaEl.classList.add(this.className + '-media');
       }
 
       const isMediaSet = await wrapReplyDivAndCaption({
-        title,
+        // optional section
+        subtitle: '',
+
+        ...(options as Modify<typeof options, {message: Message.message | Message.messageService}>),
         titleEl: this.title,
-        subtitle,
         subtitleEl: this.subtitle,
-        mediaEl: this.mediaEl,
-        message,
-        animationGroup
+        mediaEl: this.mediaEl
       });
 
       this.container.classList.toggle('is-media', isMediaSet);
