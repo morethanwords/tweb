@@ -1,3 +1,6 @@
+### 1.8.0 (322)
+You can see the full list of new features and improvements here: https://t.me/WebK_en/11
+
 ### 1.7.0 (273)
 🎄 Happy New Year to everyone! [WebK](http://web.telegram.org/k) launched its first update of 2023, adding a pack of feaures you can now enjoy on Web!
 
