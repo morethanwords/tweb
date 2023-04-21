@@ -38,7 +38,7 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
 
         return this.managers.appMessagesManager.getHistory({
           ...this.searchContext,
-          peerId: peerId,
+          peerId,
           offsetId,
           offsetPeerId: !peerId ? anchor?.peerId : undefined,
           limit: backLimit ? 0 : loadCount,
@@ -56,7 +56,7 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
             this.searchContext.nextRate = value.nextRate;
           }
 
-          return {count: value.count, items: value.history};
+          return {count: value.count, items: value.messages};
         });
       },
       processItem: async(message) => {

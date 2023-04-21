@@ -238,7 +238,7 @@ export default class SwipeHandler {
     }
   }
 
-  protected reset = (e?: Event) => {
+  public reset = (e?: Event) => {
     this.log('reset');
     /* if(e) {
       cancelEvent(e);

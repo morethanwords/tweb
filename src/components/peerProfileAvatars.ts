@@ -308,7 +308,7 @@ export default class PeerProfileAvatars {
             // console.log('avatars loaded:', value);
             return {
               count: value.count,
-              items: value.history
+              items: value.messages
             };
           });
         }

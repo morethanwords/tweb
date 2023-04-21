@@ -18,7 +18,7 @@ import SetTransition from '../singleTransition';
 import ListenerSetter from '../../helpers/listenerSetter';
 import PopupSendNow from '../popups/sendNow';
 import appNavigationController, {NavigationItem} from '../appNavigationController';
-import {IS_MOBILE_SAFARI} from '../../environment/userAgent';
+import {IS_MOBILE_SAFARI, IS_SAFARI} from '../../environment/userAgent';
 import I18n, {i18n, _i18n} from '../../lib/langPack';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import blurActiveElement from '../../helpers/dom/blurActiveElement';
@@ -40,6 +40,7 @@ import appImManager from '../../lib/appManagers/appImManager';
 import {Message} from '../../layer';
 import PopupElement from '../popups';
 import flatten from '../../helpers/array/flatten';
+import IS_STANDALONE from '../../environment/standalone';
 
 const accumulateMapSet = (map: Map<any, Set<number>>) => {
   return [...map.values()].reduce((acc, v) => acc + v.size, 0);
@@ -78,6 +79,8 @@ class AppSelection extends EventListenerBase<{
   protected doNotAnimate: boolean;
   protected managers: AppManagers;
 
+  protected onTouchLongPress: (e: Event) => void;
+
   constructor(options: {
     managers: AppManagers,
     getElementFromTarget: AppSelection['getElementFromTarget'],
@@ -87,7 +90,8 @@ class AppSelection extends EventListenerBase<{
     targetLookupClassName: string,
     lookupBetweenParentClassName: string,
     lookupBetweenElementsQuery: string,
-    isScheduled?: AppSelection['isScheduled']
+    isScheduled?: AppSelection['isScheduled'],
+    onTouchLongPress?: AppSelection['onTouchLongPress']
   }) {
     super(false);
 
@@ -119,6 +123,8 @@ class AppSelection extends EventListenerBase<{
         callback: (e) => {
           if(this.isSelecting || (this.verifyTouchLongPress && !this.verifyTouchLongPress())) return;
 
+          this.onTouchLongPress?.(e);
+
           // * these two lines will fix instant text selection on iOS Safari
           document.body.classList.add('no-select'); // * need no-select on body because chat-input transforms in channels
           listenElement.addEventListener('touchend', (e) => {
@@ -128,8 +134,12 @@ class AppSelection extends EventListenerBase<{
             // this.chat.bubbles.onBubblesClick(e);
           }, {once: true, capture: true});
 
+          if(IS_MOBILE_SAFARI && IS_STANDALONE) {
+            listenElement.addEventListener('mousedown', cancelEvent, {once: true, capture: true});
+          }
+
           cancelSelection();
-          // cancelEvent(e as any);
+          cancelEvent(e as any);
           const element = this.getElementFromTarget(e.target as HTMLElement);
           if(element) {
             this.toggleByElement(element);
@@ -767,7 +777,11 @@ export default class ChatSelection extends AppSelection {
       targetLookupClassName: 'bubble',
       lookupBetweenParentClassName: 'bubbles-inner',
       lookupBetweenElementsQuery: '.bubble:not(.is-multiple-documents), .grouped-item',
-      isScheduled: chat.type === 'scheduled'
+      isScheduled: chat.type === 'scheduled',
+      onTouchLongPress: () => {
+        const {replySwipeHandler} = this.chat.bubbles;
+        replySwipeHandler?.reset();
+      }
     });
   }
 

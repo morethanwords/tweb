@@ -45,6 +45,7 @@ export default class PopupWebApp extends PopupElement<{
   private mainButton: HTMLElement;
   private isCloseConfirmationNeeded: boolean;
   private innerPopup: PopupPeer;
+  private lastHeaderColor: TelegramWebViewEventMap['web_app_set_header_color']['color_key'];
   // private mainButtonText: HTMLElement;
 
   constructor(options: {
@@ -153,7 +154,10 @@ export default class PopupWebApp extends PopupElement<{
       this.telegramWebView.dispatchWebViewEvent('main_button_pressed', undefined);
     }, {listenerSetter: this.listenerSetter});
 
-    this.listenerSetter.add(rootScope)('theme_changed', this.sendTheme);
+    this.listenerSetter.add(rootScope)('theme_changed', () => {
+      this.setHeaderColor();
+      this.sendTheme();
+    });
     this.listenerSetter.add(rootScope)('attach_menu_bot', (attachMenuBot) => {
       if(this.webViewOptions.botId === attachMenuBot.bot_id) {
         this.attachMenuBot = attachMenuBot;
@@ -182,7 +186,8 @@ export default class PopupWebApp extends PopupElement<{
     });
   };
 
-  protected setHeaderColor = (colorKey: TelegramWebViewEventMap['web_app_set_header_color']['color_key']) => {
+  protected setHeaderColor = (colorKey: PopupWebApp['lastHeaderColor'] = this.lastHeaderColor) => {
+    this.lastHeaderColor = colorKey;
     this.header.style.backgroundColor = this.getThemeParams()[colorKey];
   };
 

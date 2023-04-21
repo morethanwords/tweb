@@ -2540,8 +2540,8 @@ $bubble-border-radius-big: 12px;
 
 .geo {
   &-container {
-    width: 23.25rem;
-    height: 16.375rem;
+    width: 23.25rem; // 372
+    height: 16.375rem; // 262
 
     &.is-expired {
       .geo-live-pin {
@@ -2554,6 +2554,11 @@ $bubble-border-radius-big: 12px;
           display: none;
         }
       }
+    }
+
+    @include respond-to(handhelds) {
+      width: 277px;
+      height: 195px;
     }
   }
 

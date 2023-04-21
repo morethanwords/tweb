@@ -20,6 +20,7 @@ import showLimitPopup from './popups/limit';
 import createContextMenu from '../helpers/dom/createContextMenu';
 import PopupElement from './popups';
 import cancelEvent from '../helpers/dom/cancelEvent';
+import IS_SHARED_WORKER_SUPPORTED from '../environment/sharedWorkerSupport';
 
 export default class DialogsContextMenu {
   private buttons: ButtonMenuItemOptionsVerifiable[];
@@ -74,7 +75,8 @@ export default class DialogsContextMenu {
       onClick: (e) => {
         appDialogsManager.openDialogInNewTab(this.li);
         cancelEvent(e);
-      }
+      },
+      verify: () => IS_SHARED_WORKER_SUPPORTED
     }, {
       icon: 'unread',
       text: 'MarkAsUnread',

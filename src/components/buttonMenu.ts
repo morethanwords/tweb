@@ -81,7 +81,7 @@ function ButtonMenuItem(options: ButtonMenuItemOptions) {
         return fetch(url)
         .then((response) => response.text())
         .then((text) => {
-          const color = customProperties.getProperty('primary-text-color');
+          const color = customProperties.getProperty(document.documentElement.classList.contains('is-mobile') ? 'secondary-text-color' : 'primary-text-color');
           const doc = new DOMParser().parseFromString(text, 'image/svg+xml');
           const svg = doc.firstElementChild as HTMLElement;
           svg.querySelectorAll('path').forEach((path) => {
