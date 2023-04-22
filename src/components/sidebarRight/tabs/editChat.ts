@@ -82,7 +82,7 @@ export default class AppEditChatTab extends SliderSuperTab {
     const peerId = this.chatId.toPeerId(true);
 
     {
-      const section = new SettingSection({noDelimiter: true, caption: true});
+      const section = new SettingSection({noDelimiter: true, caption: 'PeerInfo.SetAboutDescription'});
       const inputFields: InputField[] = [];
 
       const inputWrapper = document.createElement('div');
@@ -116,6 +116,11 @@ export default class AppEditChatTab extends SliderSuperTab {
       this.content.append(this.editPeer.nextBtn);
 
       section.content.append(this.editPeer.avatarEdit.container, inputWrapper);
+      this.scrollable.append(section.container);
+    }
+
+    {
+      const section = new SettingSection({caption: true});
 
       if(canChangeType) {
         const chatTypeRow = new Row({

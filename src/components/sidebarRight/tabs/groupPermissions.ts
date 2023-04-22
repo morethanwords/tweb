@@ -153,10 +153,13 @@ export class ChatPermissions extends CheckboxFields<PermissionsCheckboxFieldsFie
 
 export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
   public chatId: ChatId;
+  private participants: Map<PeerId, ChannelParticipant.channelParticipantBanned>;
 
   public async init() {
     this.container.classList.add('edit-peer-container', 'group-permissions-container');
     this.setTitle('ChannelPermissions');
+
+    this.participants = new Map();
 
     let chatPermissions: ChatPermissions;
     {
@@ -202,12 +205,14 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
       });
 
       const openPermissions = async(peerId: PeerId) => {
-        let participant: AppUserPermissionsTab['participant'];
-        try {
-          participant = await this.managers.appProfileManager.getParticipant(this.chatId, peerId);
-        } catch(err) {
-          toast('User is no longer participant');
-          return;
+        let participant = this.participants.get(peerId);
+        if(!participant) {
+          try {
+            participant = await this.managers.appProfileManager.getParticipant(this.chatId, peerId) as typeof participant;
+          } catch(err) {
+            toast('User is no longer participant');
+            return;
+          }
         }
 
         const tab = this.slider.createTab(AppUserPermissionsTab);
@@ -271,13 +276,16 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
       };
 
       const add = (participant: ChannelParticipant.channelParticipantBanned, append: boolean) => {
+        const peerId = getPeerId(participant.peer);
         const {dom} = appDialogsManager.addDialogNew({
-          peerId: getPeerId(participant.peer),
+          peerId,
           container: list,
           rippleEnabled: true,
           avatarSize: 'abitbigger',
           append
         });
+
+        this.participants.set(peerId, participant);
 
         (dom.listEl as any).dialogDom = dom;
 
@@ -285,23 +293,33 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
       };
 
       this.listenerSetter.add(rootScope)('chat_participant', (update) => {
-        const needAdd = update.new_participant?._ === 'channelParticipantBanned' &&
-          !update.new_participant.banned_rights.pFlags.view_messages;
-        const li = list.querySelector(`[data-peer-id="${update.user_id}"]`);
+        const newParticipant = update.new_participant as ChannelParticipant.channelParticipantBanned;
+        const prevParticipant = update.prev_participant;
+        const peerId = update.user_id.toPeerId(false);
+        const needAdd = newParticipant?._ === 'channelParticipantBanned' &&
+          !newParticipant.banned_rights.pFlags.view_messages;
+
+        if(newParticipant) {
+          this.participants.set(peerId, newParticipant);
+        } else {
+          this.participants.delete(peerId);
+        }
+
+        const li = list.querySelector(`[data-peer-id="${peerId}"]`);
         if(needAdd) {
           if(!li) {
-            add(update.new_participant as ChannelParticipant.channelParticipantBanned, false);
+            add(newParticipant, false);
           } else {
-            setSubtitle((li as any).dialogDom, update.new_participant as ChannelParticipant.channelParticipantBanned);
+            setSubtitle((li as any).dialogDom, newParticipant);
           }
 
-          if(update.prev_participant?._ !== 'channelParticipantBanned') {
+          if(prevParticipant?._ !== 'channelParticipantBanned') {
             ++exceptionsCount;
           }
         } else {
           li?.remove();
 
-          if(update.prev_participant?._ === 'channelParticipantBanned') {
+          if(prevParticipant?._ === 'channelParticipantBanned') {
             --exceptionsCount;
           }
         }
@@ -310,7 +328,8 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
       });
 
       const setLength = () => {
-        replaceContent(addExceptionRow.subtitle, i18n(exceptionsCount ? 'Permissions.ExceptionsCount' : 'Permissions.NoExceptions', [exceptionsCount]));
+        const el = i18n(exceptionsCount ? 'Permissions.ExceptionsCount' : 'Permissions.NoExceptions', [exceptionsCount]);
+        replaceContent(addExceptionRow.subtitle, el);
       };
 
       let exceptionsCount = 0;
@@ -320,7 +339,12 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
         loader = new ScrollableLoader({
           scrollable: this.scrollable,
           getPromise: () => {
-            return this.managers.appProfileManager.getChannelParticipants(this.chatId, {_: 'channelParticipantsBanned', q: ''}, LOAD_COUNT, list.childElementCount).then((res) => {
+            return this.managers.appProfileManager.getChannelParticipants(
+              this.chatId,
+              {_: 'channelParticipantsBanned', q: ''},
+              LOAD_COUNT,
+              list.childElementCount
+            ).then((res) => {
               for(const participant of res.participants) {
                 add(participant as ChannelParticipant.channelParticipantBanned, true);
               }
