@@ -640,7 +640,8 @@ export default class DialogsStorage extends AppManager {
 
     if(toggle !== undefined) {
       const addMessagesCount = toggle ? wasUnreadCount : -wasUnreadCount;
-      this.modifyFolderUnreadCount(folderId, addMessagesCount, !!wasUnreadCount, wasUnreadCount && wasUnmuted, dialog);
+      // this.modifyFolderUnreadCount(folderId, addMessagesCount, !!wasUnreadCount, wasUnreadCount && wasUnmuted, dialog);
+      this.modifyFolderUnreadCount(folderId, addMessagesCount, toggle && !!wasUnreadCount, toggle && !!wasUnreadCount && wasUnmuted, dialog);
       return;
     }
 
@@ -721,14 +722,16 @@ export default class DialogsStorage extends AppManager {
 
   public processChangedUnreadOrUnmuted(peerId: PeerId) {
     const dialog = this.getDialogOnly(peerId);
-    if(dialog) {
-      this.processDialogForFilters(dialog);
-      this.prepareDialogUnreadCountModifying(dialog)();
-      this.rootScope.dispatchEvent('dialog_unread', {
-        peerId,
-        dialog
-      });
+    if(!dialog) {
+      return;
     }
+
+    this.processDialogForFilters(dialog);
+    this.prepareDialogUnreadCountModifying(dialog)(); // * because counter won't be changed if only changed muted status
+    this.rootScope.dispatchEvent('dialog_unread', {
+      peerId,
+      dialog
+    });
   }
 
   public generateIndexForDialog(

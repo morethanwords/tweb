@@ -704,14 +704,16 @@ class Some<T extends Dialog | ForumTopic = Dialog | ForumTopic> {
     }
 
     const dialogElement = this.getDialogElement(key);
-    if(dialogElement) {
-      appDialogsManager.setLastMessageN({
-        dialog,
-        dialogElement,
-        setUnread: true
-      });
-      this.sortedList.update(key);
+    if(!dialogElement) {
+      return;
     }
+
+    appDialogsManager.setLastMessageN({
+      dialog,
+      dialogElement,
+      setUnread: true
+    });
+    this.sortedList.update(key);
   }
 
   public onChatsRegularScroll = () => {
@@ -1288,11 +1290,7 @@ class Some2 extends Some<Dialog> {
         return;
       }
 
-      appDialogsManager.setLastMessageN({
-        dialog,
-        setUnread: true
-      });
-      this.validateDialogForFilter(dialog);
+      this.updateDialog(dialog);
     });
 
     this.listenerSetter.add(rootScope)('dialogs_multiupdate', (dialogs) => {
@@ -1306,10 +1304,7 @@ class Some2 extends Some<Dialog> {
         }
 
         this.updateDialog(dialog);
-
         appDialogsManager.processContact?.(peerId.toPeerId());
-
-        this.validateDialogForFilter(dialog);
       }
     });
 
@@ -1327,17 +1322,15 @@ class Some2 extends Some<Dialog> {
         return;
       }
 
-      appDialogsManager.setUnreadMessagesN({dialog, dialogElement: this.getDialogElement(this.getDialogKey(dialog))});
-      this.validateDialogForFilter(dialog);
+      this.updateDialog(dialog);
     });
 
     this.listenerSetter.add(rootScope)('dialog_notify_settings', (dialog) => {
-      if(!this.isActive || dialog._ === 'forumTopic') {
+      if(!this.isActive || dialog._ !== 'dialog') {
         return;
       }
 
-      this.validateDialogForFilter(dialog);
-      appDialogsManager.setUnreadMessagesN({dialog, dialogElement: this.getDialogElement(this.getDialogKey(dialog))}); // возможно это не нужно, но нужно менять is-muted
+      this.updateDialog(dialog);
     });
 
     this.listenerSetter.add(rootScope)('dialog_draft', ({dialog, drop, peerId}) => {
@@ -1479,17 +1472,16 @@ class Some2 extends Some<Dialog> {
     });
   }
 
-  /**
-   * Удалит неподходящий чат из списка, но не добавит его(!)
-   */
-  public validateDialogForFilter(dialog: Dialog) {
-    if(!this.getDialogElement(dialog.peerId)) {
+  public updateDialog(dialog: Dialog) {
+    if(!this.testDialogForFilter(dialog)) {
+      if(this.getDialogElement(dialog.peerId)) {
+        this.deleteDialog(dialog);
+      }
+
       return;
     }
 
-    if(!this.testDialogForFilter(dialog)) {
-      this.deleteDialog(dialog);
-    }
+    return super.updateDialog(dialog);
   }
 
   public setCallStatus(dom: DialogDom, visible: boolean) {

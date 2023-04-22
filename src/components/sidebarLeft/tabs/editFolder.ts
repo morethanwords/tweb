@@ -689,7 +689,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
         Array.from(this.container.querySelectorAll('.chatlist, .load-more')).forEach((el) => el.parentElement.remove());
       }
 
-      callbacks.forEach((callback) => callback());
+      callbacks.forEach((callback) => callback?.());
     });
   }
 
