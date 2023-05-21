@@ -9,6 +9,7 @@ import {copyTextToClipboard} from '../../../helpers/clipboard';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import shake from '../../../helpers/dom/shake';
 import toggleDisability from '../../../helpers/dom/toggleDisability';
+import ListenerSetter from '../../../helpers/listenerSetter';
 import {Chat, DialogFilter, ExportedChatlistInvite, User} from '../../../layer';
 import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
 import appImManager from '../../../lib/appManagers/appImManager';
@@ -25,14 +26,104 @@ import AppSelectPeers from '../../appSelectPeers';
 import Button from '../../button';
 import ButtonIcon from '../../buttonIcon';
 import ButtonMenuToggle from '../../buttonMenuToggle';
-import CheckboxField from '../../checkboxField';
 import confirmationPopup from '../../confirmationPopup';
 import PopupPickUser from '../../popups/pickUser';
 import ripple from '../../ripple';
 import SettingSection from '../../settingSection';
-import SliderSuperTab, {SliderSuperTabEventable} from '../../sliderTab';
+import {SliderSuperTabEventable} from '../../sliderTab';
 import {toastNew} from '../../toast';
 import getChatMembersString from '../../wrappers/getChatMembersString';
+
+export class InviteLink {
+  public container: HTMLDivElement;
+  public textElement: HTMLDivElement;
+  public button: HTMLButtonElement;
+  public buttonText: HTMLSpanElement
+  public onButtonClick: () => void;
+
+  public url: string;
+
+  constructor({
+    buttons,
+    button,
+    onButtonClick,
+    listenerSetter,
+    url
+  }: {
+    buttons: Parameters<typeof ButtonMenuToggle>[0]['buttons'],
+    button?: HTMLButtonElement,
+    onButtonClick?: () => void,
+    listenerSetter: ListenerSetter,
+    url?: string
+  }) {
+    if(url) {
+      this.url = url;
+    }
+
+    this.onButtonClick = onButtonClick;
+
+    const linkContainer = this.container = document.createElement('div');
+    linkContainer.classList.add('invite-link-container');
+
+    const link = document.createElement('div');
+    link.classList.add('invite-link', 'rp-overflow');
+
+    const text = this.textElement = document.createElement('div');
+    text.classList.add('invite-link-text');
+
+    const buttonMenu = ButtonMenuToggle({
+      buttons,
+      direction: 'bottom-left',
+      buttonOptions: {noRipple: true},
+      listenerSetter
+    });
+
+    buttonMenu.classList.add('invite-link-menu');
+
+    if(!button) {
+      button = Button('', {text: 'ShareLink'});
+      this.buttonText = button.lastElementChild as HTMLSpanElement;
+      attachClickEvent(button, () => {
+        if(onButtonClick) onButtonClick();
+        else this.shareLink();
+      }, {listenerSetter});
+    }
+
+    this.button = button;
+    button.className = 'btn-primary btn-color-primary invite-link-button';
+
+    if(url) this.setUrl(url);
+    ripple(link);
+    link.append(
+      text,
+      buttonMenu
+    );
+
+    linkContainer.append(link, button);
+
+    attachClickEvent(link, () => this.copyLink(), {listenerSetter});
+  }
+
+  public setUrl(url: string) {
+    let s = url;
+    if(s.includes('//')) {
+      s = url.split('//').slice(1).join('//');
+    }
+    this.textElement.replaceChildren(wrapPlainText(s));
+  }
+
+  public copyLink = (url: string = this.url) => {
+    copyTextToClipboard(url);
+    toastNew({langPackKey: 'LinkCopied'});
+  };
+
+  public shareLink = (url: string = this.url) => {
+    PopupPickUser.createSharingPicker((peerId) => {
+      rootScope.managers.appMessagesManager.sendText(peerId, url);
+      appImManager.setInnerPeer({peerId});
+    });
+  };
+}
 
 export default class AppSharedFolderTab extends SliderSuperTabEventable<{
   delete: () => void,
@@ -98,25 +189,11 @@ export default class AppSharedFolderTab extends SliderSuperTabEventable<{
     if(this.chatlistInvite) {
       const section = linkSection = new SettingSection({name: 'InviteLink'});
 
-      const linkContainer = document.createElement('div');
-      linkContainer.classList.add('invite-link-container');
-
-      const link = document.createElement('div');
-      link.classList.add('invite-link', 'rp-overflow');
-
-      const text = document.createElement('div');
-      text.classList.add('invite-link-text');
-
-      const copyLink = () => {
-        copyTextToClipboard(this.chatlistInvite.url);
-        toastNew({langPackKey: 'LinkCopied'});
-      };
-
-      const button = ButtonMenuToggle({
+      const inviteLink: InviteLink = new InviteLink({
         buttons: [{
           icon: 'copy',
           text: 'CopyLink',
-          onClick: copyLink
+          onClick: () => inviteLink.copyLink()
         }, {
           icon: 'delete danger',
           text: 'DeleteLink',
@@ -130,39 +207,18 @@ export default class AppSharedFolderTab extends SliderSuperTabEventable<{
             });
           }
         }],
-        direction: 'bottom-left',
-        buttonOptions: {noRipple: true},
-        listenerSetter: this.listenerSetter
+        listenerSetter: this.listenerSetter,
+        url: this.chatlistInvite.url
       });
 
-      button.classList.add('invite-link-menu');
-
-      const primary = Button('btn-primary btn-color-primary invite-link-button', {text: 'ShareLink'});
-
-      text.append(wrapPlainText(this.chatlistInvite.url.split('//').slice(1).join('//')));
-      ripple(link);
-      link.append(
-        text,
-        button
-      );
-
-      linkContainer.append(link, primary);
-
-      attachClickEvent(link, copyLink, {listenerSetter: this.listenerSetter});
-      attachClickEvent(primary, () => {
-        PopupPickUser.createSharingPicker((peerId) => {
-          this.managers.appMessagesManager.sendText(peerId, this.chatlistInvite.url);
-          appImManager.setInnerPeer({peerId});
-        });
-      }, {listenerSetter: this.listenerSetter});
-
-      section.content.append(linkContainer);
+      section.content.append(inviteLink.container);
     }
 
     {
       const titleI18n = this.chatsTitleI18n = new I18n.IntlElement();
 
       this.selector = new AppSelectPeers({
+        middleware: this.middlewareHelper.get(),
         appendTo: this.container,
         onChange: this.onSelectChange,
         peerType: [],

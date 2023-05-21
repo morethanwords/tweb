@@ -678,6 +678,7 @@ $chat-input-border-radius: 1rem;
 	&-background {
 		overflow: hidden;
 		background-color: #e6ebee;
+    user-select: none;
 
 		html.night & {
 			background-color: var(--border-color);

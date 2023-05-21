@@ -33,7 +33,7 @@ import {attachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent
 import overlayCounter from '../../helpers/overlayCounter';
 import noop from '../../helpers/noop';
 import {FocusDirection, ScrollOptions} from '../../helpers/fastSmoothScroll';
-import BezierEasing from '../../vendor/bezier-easing';
+import BezierEasing from '../../vendor/bezierEasing';
 import RichInputHandler from '../../helpers/dom/richInputHandler';
 import {getCaretPosF} from '../../helpers/dom/getCaretPosNew';
 import ListenerSetter from '../../helpers/listenerSetter';

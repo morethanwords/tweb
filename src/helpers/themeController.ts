@@ -17,7 +17,7 @@ import {TelegramWebViewTheme} from '../types';
 export type AppColorName = 'primary-color' | 'message-out-primary-color' |
   'surface-color' | 'danger-color' | 'primary-text-color' |
   'secondary-text-color' | 'message-out-background-color' |
-  'saved-color' | 'message-background-color';
+  'saved-color' | 'message-background-color' | 'green-color';
 type AppColor = {
   rgb?: boolean,
   light?: boolean,
@@ -66,7 +66,8 @@ const appColorMap: {[name in AppColorName]: AppColor} = {
   },
   'saved-color': {
     lightFilled: true
-  }
+  },
+  'green-color': {}
 };
 
 const colorMap: {
@@ -82,7 +83,8 @@ const colorMap: {
     'danger-color': '#df3f40',
     'primary-text-color': '#000000',
     'secondary-text-color': '#707579',
-    'saved-color': '#359AD4'
+    'saved-color': '#359AD4',
+    'green-color': '#70b768'
   },
   night: {
     'primary-color': '#8774E1',
@@ -92,7 +94,8 @@ const colorMap: {
     'danger-color': '#ff595a',
     'primary-text-color': '#ffffff',
     'secondary-text-color': '#aaaaaa',
-    'saved-color': '#8774E1'
+    'saved-color': '#8774E1',
+    'green-color': '#5CC85E'
   }
 };
 

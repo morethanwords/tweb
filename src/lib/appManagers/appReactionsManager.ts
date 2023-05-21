@@ -149,7 +149,12 @@ export class AppReactionsManager extends AppManager {
 
   public getAvailableReactionsByMessage(message: Message.message) {
     if(!message) return [];
-    const peerId = (message.fwd_from?.channel_post && this.appPeersManager.isMegagroup(message.peerId) && message.fwdFromId) || message.peerId;
+    const peerId = (
+      message.fwd_from?.channel_post &&
+      this.appPeersManager.isMegagroup(message.peerId) &&
+      message.fromId === message.fwdFromId &&
+      message.fromId
+    ) || message.peerId;
     return this.getAvailableReactionsForPeer(peerId);
   }
 

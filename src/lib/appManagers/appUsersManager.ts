@@ -448,7 +448,7 @@ export class AppUsersManager extends AppManager {
   }
 
   public saveApiUsers(apiUsers: MTUser[], override?: boolean) {
-    if((apiUsers as any).saved) return;
+    if(!apiUsers || (apiUsers as any).saved) return;
     (apiUsers as any).saved = true;
     apiUsers.forEach((user) => this.saveApiUser(user, override));
   }
@@ -715,7 +715,7 @@ export class AppUsersManager extends AppManager {
 
   public getUserInput(id: UserId): InputUser {
     const user = this.getUser(id);
-    if(user.pFlags && user.pFlags.self) {
+    if(!id || (user.pFlags && user.pFlags.self)) {
       return {_: 'inputUserSelf'};
     }
 

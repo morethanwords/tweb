@@ -57,7 +57,7 @@ class AppSelection extends EventListenerBase<{
   public selectedText: string;
 
   protected listenerSetter: ListenerSetter;
-  protected isScheduled: boolean;
+  public isScheduled: boolean;
   protected listenElement: HTMLElement;
 
   protected onToggleSelection: (forwards: boolean, animate: boolean) => void | Promise<void>;
@@ -90,7 +90,6 @@ class AppSelection extends EventListenerBase<{
     targetLookupClassName: string,
     lookupBetweenParentClassName: string,
     lookupBetweenElementsQuery: string,
-    isScheduled?: AppSelection['isScheduled'],
     onTouchLongPress?: AppSelection['onTouchLongPress']
   }) {
     super(false);
@@ -777,7 +776,6 @@ export default class ChatSelection extends AppSelection {
       targetLookupClassName: 'bubble',
       lookupBetweenParentClassName: 'bubbles-inner',
       lookupBetweenElementsQuery: '.bubble:not(.is-multiple-documents), .grouped-item',
-      isScheduled: chat.type === 'scheduled',
       onTouchLongPress: () => {
         const {replySwipeHandler} = this.chat.bubbles;
         replySwipeHandler?.reset();

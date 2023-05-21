@@ -40,10 +40,21 @@ export default class AppNewGroupTab extends SliderSuperTab {
   private userLocationCoords: {lat: number, long: number};
   private userLocationAddress: string;
 
-  public init(
+  public init({
+    peerIds,
+    isGeoChat = false,
+    onCreate,
+    openAfter = true,
+    title,
+    asChannel = false
+  }: {
     peerIds: PeerId[],
-    isGeoChat: boolean = false
-  ) {
+    isGeoChat?: boolean,
+    onCreate?: (chatId: ChatId) => void,
+    openAfter?: boolean,
+    title?: string,
+    asChannel?: boolean
+  }) {
     this.isGeoChat = isGeoChat;
     this.peerIds = peerIds;
 
@@ -86,6 +97,7 @@ export default class AppNewGroupTab extends SliderSuperTab {
 
     attachClickEvent(this.nextBtn, () => {
       const title = this.groupNameInputField.value;
+      const userIds = this.peerIds.map((peerId) => peerId.toUserId());
 
       let promise: Promise<ChatId>;
       if(this.isGeoChat) {
@@ -114,7 +126,28 @@ export default class AppNewGroupTab extends SliderSuperTab {
         });
       } else {
         this.nextBtn.disabled = true;
-        promise = this.managers.appChatsManager.createChat(title, this.peerIds.map((peerId) => peerId.toUserId())).then((chatId) => {
+
+        if(asChannel) {
+          promise = this.managers.appChatsManager.createChannel({
+            megagroup: true,
+            title,
+            about: ''
+          });
+
+          if(peerIds.length) {
+            promise = promise.then((chatId) => {
+              return this.managers.appChatsManager.inviteToChannel(chatId, userIds)
+              .then(() => chatId);
+            });
+          }
+        } else {
+          promise = this.managers.appChatsManager.createChat(
+            title,
+            userIds
+          );
+        }
+
+        promise = promise.then((chatId) => {
           if(this.uploadAvatar) {
             this.uploadAvatar().then((inputFile) => {
               this.managers.appChatsManager.editPhoto(chatId, inputFile);
@@ -130,9 +163,9 @@ export default class AppNewGroupTab extends SliderSuperTab {
       }
 
       promise.then((chatId) => {
+        onCreate?.(chatId);
         this.close();
-
-        appImManager.setInnerPeer({peerId: chatId.toPeerId(true)});
+        if(openAfter) appImManager.setInnerPeer({peerId: chatId.toPeerId(true)});
       });
     }, {listenerSetter: this.listenerSetter});
 
@@ -181,13 +214,18 @@ export default class AppNewGroupTab extends SliderSuperTab {
       })
     });
 
-    const setTitlePromise = this.peerIds.length > 0 && this.peerIds.length < 5 ? Promise.all([usersPromise, myUserPromise]).then(([users, myUser]) => {
+    let setTitlePromise: Promise<void>;
+
+    if(!title) setTitlePromise = this.peerIds.length > 0 && this.peerIds.length < 5 ? Promise.all([usersPromise, myUserPromise]).then(([users, myUser]) => {
       const names = users.map((user) => [user.first_name, user.last_name].filter(Boolean).join(' '));
       names.unshift(myUser.first_name);
 
       const joined = joinElementsWith(names, (isLast) => isLast ? ', ' : ' & ').join('');
       this.groupNameInputField.setDraftValue(joined);
     }) : Promise.resolve();
+    else {
+      this.groupNameInputField.setDraftValue(title);
+    }
 
     return Promise.all([
       a,

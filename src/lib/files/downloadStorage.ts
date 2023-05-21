@@ -7,7 +7,7 @@
 import deferredPromise from '../../helpers/cancellablePromise';
 import makeError from '../../helpers/makeError';
 import fileNameRFC from '../../helpers/string/fileNameRFC';
-import {getServiceMessagePort} from '../mtproto/mtproto.worker';
+import appManagersManager from '../appManagers/appManagersManager';
 import DownloadWriter from './downloadWriter';
 import FileStorage from './fileStorage';
 
@@ -27,7 +27,7 @@ export default class DownloadStorage implements FileStorage {
       ...(size ? {'Content-Length': size} : {})
     };
 
-    const serviceMessagePort = getServiceMessagePort();
+    const serviceMessagePort = appManagersManager.getServiceMessagePort();
     const promise = serviceMessagePort.invoke('download', {
       headers,
       id: downloadId
@@ -39,7 +39,7 @@ export default class DownloadStorage implements FileStorage {
     };
 
     deferred.catch(() => {
-      getServiceMessagePort().invoke('downloadCancel', downloadId);
+      appManagersManager.getServiceMessagePort().invoke('downloadCancel', downloadId);
     });
 
     promise.then(deferred.resolve, deferred.reject);

@@ -48,6 +48,9 @@ import {makeMediaSize} from '../../helpers/mediaSize';
 import {FOLDER_ID_ALL} from '../../lib/mtproto/mtproto_config';
 import formatNumber from '../../helpers/number/formatNumber';
 import PopupElement from '../popups';
+import ChatRequests from './requests';
+import modifyAckedResult, {modifyAckedPromise} from '../../helpers/modifyAckedResult';
+import callbackify from '../../helpers/callbackify';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -70,6 +73,7 @@ export default class ChatTopbar {
   private btnSearch: HTMLButtonElement;
   private btnMore: HTMLElement;
 
+  private chatRequests: ChatRequests;
   private chatAudio: ChatAudio;
   public pinnedMessage: ChatPinnedMessage;
 
@@ -147,6 +151,7 @@ export default class ChatTopbar {
     this.chatUtils.classList.add('chat-utils');
 
     this.chatAudio = new ChatAudio(this, this.chat, this.managers);
+    this.chatRequests = new ChatRequests(this, this.chat, this.managers);
 
     if(this.menuButtons.length) {
       this.btnMore = ButtonMenuToggle({
@@ -188,6 +193,10 @@ export default class ChatTopbar {
     if(this.chatAudio) {
       // this.container.append(this.chatAudio.divAndCaption.container, this.chatUtils);
       this.container.append(this.chatAudio.divAndCaption.container);
+    }
+
+    if(this.chatRequests) {
+      this.container.append(this.chatRequests.divAndCaption.container);
     }
 
     // * construction end
@@ -645,6 +654,25 @@ export default class ChatTopbar {
       }
     });
 
+    this.listenerSetter.add(rootScope)('chat_requests', ({chatId, recentRequesters, requestsPending}) => {
+      if(this.peerId !== chatId.toPeerId(true)) {
+        return;
+      }
+
+      const middleware = this.chat.bubbles.getMiddleware();
+      this.chatRequests.set(
+        this.peerId,
+        recentRequesters.map((userId) => userId.toPeerId(false)),
+        requestsPending
+      ).then((callback) => {
+        if(!middleware()) {
+          return;
+        }
+
+        callback();
+      });
+    });
+
     this.chat.addEventListener('setPeer', (mid, isTopMessage) => {
       const middleware = this.chat.bubbles.getMiddleware();
       apiManagerProxy.getState().then((state) => {
@@ -709,9 +737,11 @@ export default class ChatTopbar {
 
     this.pinnedMessage?.destroy(); // * возможно это можно не делать
     this.chatAudio?.destroy();
+    this.chatRequests?.destroy();
 
-    delete this.chatAudio;
     delete this.pinnedMessage;
+    delete this.chatAudio;
+    delete this.chatRequests;
   }
 
   public cleanup() {
@@ -735,6 +765,7 @@ export default class ChatTopbar {
 
   public async finishPeerChange(options: Parameters<Chat['finishPeerChange']>[0]) {
     const {peerId, threadId} = this.chat;
+    const {middleware} = options;
 
     let newAvatar: AvatarElement;
     if(this.chat.type === 'chat') {
@@ -752,7 +783,8 @@ export default class ChatTopbar {
       _,
       setTitleCallback,
       setStatusCallback,
-      state
+      state,
+      setRequestsCallback
     ] = await Promise.all([
       this.managers.appPeersManager.isBroadcast(peerId),
       this.managers.appPeersManager.isAnyChat(peerId),
@@ -760,7 +792,8 @@ export default class ChatTopbar {
       newAvatar ? newAvatar.updateWithOptions({peerId, threadId, wrapOptions: {customEmojiSize: makeMediaSize(32, 32)}}) : undefined,
       this.setTitleManual(),
       this.setPeerStatusManual(true),
-      apiManagerProxy.getState()
+      apiManagerProxy.getState(),
+      modifyAckedPromise(this.chatRequests.setPeerId(peerId))
     ]);
 
     return () => {
@@ -832,6 +865,18 @@ export default class ChatTopbar {
       this.setMutedState();
 
       this.container.classList.remove('hide');
+
+      if(setRequestsCallback.result instanceof Promise) {
+        this.chatRequests.unset(peerId);
+      }
+
+      callbackify(setRequestsCallback.result, (callback) => {
+        if(!middleware()) {
+          return;
+        }
+
+        callback();
+      });
     };
   }
 
@@ -964,7 +1009,11 @@ export default class ChatTopbar {
   };
 
   public setFloating = () => {
-    const containers = [this.chatAudio, this.pinnedMessage?.pinnedMessageContainer].filter(Boolean);
+    const containers = [
+      this.chatAudio,
+      this.chatRequests,
+      this.pinnedMessage?.pinnedMessageContainer
+    ].filter(Boolean);
     const count = containers.reduce((acc, container) => {
       const isFloating = container.isFloating();
       this.container.classList.toggle(`is-pinned-${container.className}-floating`, isFloating);

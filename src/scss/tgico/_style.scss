@@ -3,9 +3,9 @@
 @font-face {
   font-family: '#{$tgico-font-family}';
   src:
-    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?ltf7xm') format('truetype'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?ltf7xm') format('woff'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?ltf7xm##{$tgico-font-family}') format('svg');
+    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?mxudl0') format('truetype'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?mxudl0') format('woff'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?mxudl0##{$tgico-font-family}') format('svg');
   font-weight: normal;
   font-style: normal;
   font-display: block;
@@ -824,6 +824,12 @@
     content: $tgico-previous; 
   }
 }
+.tgico-promote {
+  &:before {
+    content: $tgico-promote;     
+    color: #fff;
+  }
+}
 .tgico-radiooff {
   &:before {
     content: $tgico-radiooff; 
@@ -862,6 +868,12 @@
 .tgico-reply_filled {
   &:before {
     content: $tgico-reply_filled; 
+  }
+}
+.tgico-restrict {
+  &:before {
+    content: $tgico-restrict;     
+    color: #fff;
   }
 }
 .tgico-rightpanel {

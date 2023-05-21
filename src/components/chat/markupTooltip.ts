@@ -394,7 +394,12 @@ export default class MarkupTooltip {
         return;
       }
 
-      const messageInput = this.appImManager.chat.input.messageInput;
+      const {chat} = this.appImManager;
+      if(!chat?.input) {
+        return;
+      }
+
+      const messageInput = chat.input.messageInput;
       if(document.activeElement !== messageInput) {
         this.hide();
         return;

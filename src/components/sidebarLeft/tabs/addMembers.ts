@@ -51,6 +51,7 @@ export default class AppAddMembersTab extends SliderSuperTab {
 
     const isPrivacy = this.peerType === 'privacy';
     this.selector = new AppSelectPeers({
+      middleware: this.middlewareHelper.get(),
       appendTo: this.content,
       onChange: this.skippable ? null : (length) => {
         this.nextBtn.classList.toggle('is-visible', !!length);

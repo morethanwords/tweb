@@ -2664,7 +2664,13 @@ export class AppMessagesManager extends AppManager {
     return promise || this.reloadConversationsPromise;
   }
 
-  private doFlushHistory(peerId: PeerId, just_clear?: boolean, revoke?: boolean, threadId?: number): Promise<true> {
+  public doFlushHistory(
+    peerId: PeerId,
+    just_clear?: boolean,
+    revoke?: boolean,
+    threadId?: number,
+    participantPeerId?: PeerId
+  ): Promise<true> {
     let promise: Promise<true>;
     const processResult = (affectedHistory: MessagesAffectedHistory) => {
       this.apiUpdatesManager.processUpdateMessage({
@@ -2677,13 +2683,40 @@ export class AppMessagesManager extends AppManager {
       });
 
       if(!affectedHistory.offset) {
+        if(participantPeerId) {
+          const historyStorage = this.getHistoryMessagesStorage(peerId);
+          const deletedMids: number[] = [];
+          for(const [mid, message] of historyStorage) {
+            if(message.fromId === participantPeerId) {
+              deletedMids.push(mid);
+            }
+          }
+
+          this.apiUpdatesManager.processLocalUpdate({
+            _: 'updateDeleteChannelMessages',
+            channel_id: peerId.toChatId(),
+            messages: deletedMids,
+            pts: undefined,
+            pts_count: undefined
+          });
+        }
+
         return true;
       }
 
       return this.doFlushHistory(peerId, just_clear, revoke, threadId);
     };
 
-    if(!threadId) {
+    if(participantPeerId) {
+      promise = this.apiManager.invokeApiSingleProcess({
+        method: 'channels.deleteParticipantHistory',
+        params: {
+          channel: this.appChatsManager.getChannelInput(peerId.toChatId()),
+          participant: this.appPeersManager.getInputPeerById(participantPeerId)
+        },
+        processResult
+      });
+    } else if(!threadId) {
       promise = this.apiManager.invokeApiSingleProcess({
         method: 'messages.deleteHistory',
         params: {
@@ -2708,7 +2741,12 @@ export class AppMessagesManager extends AppManager {
     return promise;
   }
 
-  public async flushHistory(peerId: PeerId, justClear?: boolean, revoke?: boolean, threadId?: number) {
+  public async flushHistory(
+    peerId: PeerId,
+    justClear?: boolean,
+    revoke?: boolean,
+    threadId?: number
+  ) {
     if(this.appPeersManager.isChannel(peerId) && !threadId) {
       const promise = this.getHistory({
         peerId,

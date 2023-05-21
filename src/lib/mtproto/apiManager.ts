@@ -9,11 +9,6 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-// #if MTPROTO_AUTO
-import transportController from './transports/controller';
-import MTTransport from './transports/transport';
-// #endif
-
 import type {UserAuth} from './mtproto_config';
 import type {DcAuthKey, DcId, DcServerSalt, InvokeApiOptions} from '../../types';
 import type {MethodDeclMap} from '../../layer';
@@ -38,6 +33,8 @@ import ApiManagerMethods from './api_methods';
 import {getEnvironment} from '../../environment/utils';
 import toggleStorages from '../../helpers/toggleStorages';
 import tsNow from '../../helpers/tsNow';
+import transportController from './transports/controller';
+import MTTransport from './transports/transport';
 
 /* class RotatableArray<T> {
   public array: Array<T> = [];
@@ -94,11 +91,11 @@ export class ApiManager extends ApiManagerMethods {
 
     this.transportType = Modes.transport;
 
-    // #if MTPROTO_AUTO
-    transportController.addEventListener('transport', (transportType) => {
-      this.changeTransportType(transportType);
-    });
-    // #endif
+    if(import.meta.env.VITE_MTPROTO_AUTO) {
+      transportController.addEventListener('transport', (transportType) => {
+        this.changeTransportType(transportType);
+      });
+    }
 
     // * Make sure that the used autologin_token is no more than 10000 seconds old
     // * https://core.telegram.org/api/url-authorization
@@ -162,14 +159,13 @@ export class ApiManager extends ApiManagerMethods {
   } */
 
   private getTransportType(connectionType: ConnectionType) {
-    // #if MTPROTO_HTTP_UPLOAD
-    // @ts-ignore
-    const transportType: TransportType = connectionType === 'upload' && getEnvironment().IS_SAFARI ? 'https' : 'websocket';
-    // const transportType: TransportType = connectionType !== 'client' ? 'https' : 'websocket';
-    // #else
-    // @ts-ignore
-    const transportType: TransportType = this.transportType;
-    // #endif
+    let transportType: TransportType;
+    if(import.meta.env.VITE_MTPROTO_HTTP_UPLOAD) {
+      transportType = connectionType === 'upload' && getEnvironment().IS_SAFARI ? 'https' : 'websocket';
+      // const transportType: TransportType = connectionType !== 'client' ? 'https' : 'websocket';
+    } else {
+      transportType = this.transportType;
+    }
 
     return transportType;
   }

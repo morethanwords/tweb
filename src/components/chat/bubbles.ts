@@ -61,7 +61,7 @@ import SetTransition from '../singleTransition';
 import handleHorizontalSwipe from '../../helpers/dom/handleHorizontalSwipe';
 import findUpAttribute from '../../helpers/dom/findUpAttribute';
 import findUpAsChild from '../../helpers/dom/findUpAsChild';
-import formatCallDuration from '../../helpers/formatCallDuration';
+import {wrapCallDuration} from '../wrappers/wrapDuration';
 import IS_CALL_SUPPORTED from '../../environment/callSupport';
 import Button from '../button';
 import {CallType} from '../../lib/calls/types';
@@ -146,6 +146,8 @@ import tsNow from '../../helpers/tsNow';
 import eachMinute from '../../helpers/eachMinute';
 import deepEqual from '../../helpers/object/deepEqual';
 import SwipeHandler from '../swipeHandler';
+import getSelectedText from '../../helpers/dom/getSelectedText';
+import cancelSelection from '../../helpers/dom/cancelSelection';
 
 export const USER_REACTIONS_INLINE = false;
 const USE_MEDIA_TAILS = false;
@@ -562,25 +564,22 @@ export default class ChatBubbles {
         const poll = (media as MessageMedia.messageMediaPoll).poll;
         const webPage = (media as MessageMedia.messageMediaWebPage).webpage as WebPage.webPage;
         if(doc) {
-          const div = bubble.querySelector(`.document-container[data-mid="${tempId}"] .document`);
-          if(div) {
-            const container = findUpClassName(div, 'document-container');
+          const documentContainer = bubble.querySelector<HTMLElement>(`.document-container[data-mid="${tempId}"]`);
+          const div = documentContainer.querySelector(`.document`);
+          if(div && !tempMessage.media?.document?.thumbs?.length && doc.thumbs?.length) {
+            getHeavyAnimationPromise().then(async() => {
+              const timeSpan = div.querySelector('.time');
+              const newDiv = await wrapDocument({message, fontSize: rootScope.settings.messagesTextSize});
+              div.replaceWith(newDiv);
 
-            if(!tempMessage.media?.document?.thumbs?.length && doc.thumbs?.length) {
-              getHeavyAnimationPromise().then(async() => {
-                const timeSpan = div.querySelector('.time');
-                const newDiv = await wrapDocument({message, fontSize: rootScope.settings.messagesTextSize});
-                div.replaceWith(newDiv);
+              if(timeSpan) {
+                (newDiv.querySelector('.document') || newDiv).append(timeSpan);
+              }
+            });
+          }
 
-                if(timeSpan) {
-                  (newDiv.querySelector('.document') || newDiv).append(timeSpan);
-                }
-              });
-            }
-
-            if(container) {
-              container.dataset.mid = '' + mid;
-            }
+          if(documentContainer) {
+            documentContainer.dataset.mid = '' + mid;
           }
 
           const element = bubble.querySelector(`audio-element[data-mid="${tempId}"], .document[data-doc-id="${tempId}"], .media-round[data-mid="${tempId}"]`) as HTMLElement;
@@ -971,14 +970,29 @@ export default class ChatBubbles {
       this.listenerSetter.add(container)('dblclick', async(e) => {
         if(this.chat.type === 'pinned' ||
           this.chat.selection.isSelecting ||
-          !(await this.chat.canSend())) {
+          !this.chat.input.canSendPlain()) {
+          return;
+        }
+
+        if(findUpClassName(e.target, 'attachment') ||
+          findUpClassName(e.target, 'audio') ||
+          findUpClassName(e.target, 'document') ||
+          findUpClassName(e.target, 'contact')) {
           return;
         }
 
         const target = e.target as HTMLElement;
-        const bubble = target.classList.contains('bubble') ?
+        let bubble = target.classList.contains('bubble') ?
           target :
           (target.classList.contains('document-selection') ? target.parentElement : null);
+
+        const selectedText = getSelectedText();
+        if(!bubble && (!selectedText.trim() || /^\s/.test(selectedText))) {
+          bubble = findUpClassName(target, 'bubble');
+          // cancelEvent(e);
+          // cancelSelection();
+        }
+
         if(bubble && !bubble.classList.contains('bubble-first')) {
           const mid = +bubble.dataset.mid;
           const message = await this.chat.getMessage(mid);
@@ -5163,7 +5177,7 @@ export default class ChatBubbles {
           subtitle.classList.add('bubble-call-subtitle');
 
           if(action.duration !== undefined) {
-            subtitle.append(formatCallDuration(action.duration));
+            subtitle.append(wrapCallDuration(action.duration));
           } else {
             let langPackKey: LangPackKey;
             switch(action.reason._) {
@@ -6198,7 +6212,7 @@ export default class ChatBubbles {
     });
   };
 
-  public requestHistory(offsetId: number, limit: number, backLimit: number) {
+  public requestHistory(offsetId: number, limit: number, backLimit: number): Promise<AckedResult<HistoryResult>>  {
     // const middleware = this.getMiddleware();
     if(this.chat.type === 'chat' || this.chat.type === 'discussion') {
       return this.managers.acknowledged.appMessagesManager.getHistory({
@@ -6218,11 +6232,19 @@ export default class ChatBubbles {
       });
     } else if(this.chat.type === 'scheduled') {
       return this.managers.acknowledged.appMessagesManager.getScheduledMessages(this.peerId).then((ackedResult) => {
-        // this.setLoaded('top', true);
-        // this.setLoaded('bottom', true);
         return {
           cached: ackedResult.cached,
-          result: Promise.resolve(ackedResult.result).then((mids) => ({history: mids.slice().reverse()}))
+          result: Promise.resolve(ackedResult.result).then((mids) => {
+            return {
+              history: mids.slice().reverse(),
+              count: mids.length,
+              isEnd: {
+                both: true,
+                bottom: true,
+                top: true
+              }
+            };
+          })
         };
       });
     }

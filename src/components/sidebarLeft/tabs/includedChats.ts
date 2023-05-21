@@ -210,6 +210,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
     }
 
     this.selector = new AppSelectPeers({
+      middleware: this.middlewareHelper.get(),
       appendTo: this.container,
       onChange: this.onSelectChange,
       peerType: ['dialogs'],

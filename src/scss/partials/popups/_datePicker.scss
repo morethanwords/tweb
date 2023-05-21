@@ -56,6 +56,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex: 0 0 auto;
 
       .date-picker-month-title {
         font-size: 14px;
@@ -71,7 +72,8 @@
       transform: rotate(-90deg);
     }
 
-    &-prev, &-next {
+    &-prev,
+    &-next {
       &:disabled {
         visibility: hidden;
       }
@@ -123,17 +125,12 @@
 
 .popup-schedule {
   .popup-header {
-    justify-content: space-between;
     margin-top: 5px;
     margin-bottom: 17px;
     margin-left: 0;
 
     @include respond-to(handhelds) {
       margin-left: 3px;
-    }
-
-    .btn-icon {
-      font-size: 22px;
     }
   }
 
@@ -171,11 +168,8 @@
       &-title {
         font-weight: var(--font-weight-bold);
         font-size: 20px;
-        margin-left: -5rem;
-
-        @include respond-to(handhelds) {
-          margin-left: -2rem;
-        }
+        margin-left: 1.5rem;
+        flex: 1 1 auto;
       }
 
       .btn-icon {
@@ -225,6 +219,7 @@
 
       &-delimiter {
         padding: 14px 20px;
+        font-weight: var(--font-weight-bold);
       }
     }
 
@@ -239,11 +234,9 @@
   }
 
   .btn-primary {
-    font-weight: normal;
-
     @include respond-to(handhelds) {
       height: 50px;
-      widtH: 280px;
+      width: 280px;
       margin-left: 2px;
     }
   }

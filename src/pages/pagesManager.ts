@@ -5,7 +5,7 @@
  */
 
 import Page from './page';
-import lottieLoader from '../lib/rlottie/lottieLoader';
+// import lottieLoader from '../lib/rlottie/lottieLoader';
 import {horizontalMenu} from '../components/horizontalMenu';
 import {MOUNT_CLASS_TO} from '../config/debug';
 import fastSmoothScroll from '../helpers/fastSmoothScroll';
@@ -38,9 +38,9 @@ class PagesManager {
 
       this.selectTab(id);
 
-      if(this.pageId !== -1 && id > 1) {
-        lottieLoader.loadLottieWorkers();
-      }
+      // if(this.pageId !== -1 && id > 1) {
+      //   lottieLoader.loadLottieWorkers();
+      // }
 
 
       this.pageId = id;

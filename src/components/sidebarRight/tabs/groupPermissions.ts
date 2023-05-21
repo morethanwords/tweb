@@ -10,7 +10,7 @@ import findUpTag from '../../../helpers/dom/findUpTag';
 import replaceContent from '../../../helpers/dom/replaceContent';
 import ListenerSetter from '../../../helpers/listenerSetter';
 import ScrollableLoader from '../../../helpers/scrollableLoader';
-import {ChannelParticipant, Chat, ChatBannedRights} from '../../../layer';
+import {ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights} from '../../../layer';
 import appDialogsManager, {DialogDom, DIALOG_LIST_ELEMENT_TAG} from '../../../lib/appManagers/appDialogsManager';
 import {AppManagers} from '../../../lib/appManagers/managers';
 import combineParticipantBannedRights from '../../../lib/appManagers/utils/chats/combineParticipantBannedRights';
@@ -27,23 +27,28 @@ import {toast} from '../../toast';
 import AppUserPermissionsTab from './userPermissions';
 import CheckboxFields, {CheckboxFieldsField} from '../../checkboxFields';
 import PopupElement from '../../popups';
+import wrapPeerTitle from '../../wrappers/peerTitle';
 
 type PermissionsCheckboxFieldsField = CheckboxFieldsField & {
   flags: ChatRights[],
   exceptionText: LangPackKey
 };
 
+type AdministratorRightsCheckboxFieldsField = CheckboxFieldsField & {
+  flags: ChatRights[]
+};
+
 export class ChatPermissions extends CheckboxFields<PermissionsCheckboxFieldsField> {
   protected chat: Chat.chat | Chat.channel;
   protected rights: ChatBannedRights.chatBannedRights;
   protected defaultBannedRights: ChatBannedRights.chatBannedRights;
-  protected restrictionText: LangPackKey;
 
   constructor(private options: {
     chatId: ChatId,
     listenerSetter: ListenerSetter,
     appendTo: HTMLElement,
-    participant?: ChannelParticipant.channelParticipantBanned
+    participant?: ChannelParticipant.channelParticipantBanned,
+    forChat?: boolean
   }, private managers: AppManagers) {
     super({
       listenerSetter: options.listenerSetter,
@@ -98,20 +103,14 @@ export class ChatPermissions extends CheckboxFields<PermissionsCheckboxFieldsFie
     this.fields = v;
 
     for(const info of this.fields) {
-      if((
-        this.options.participant &&
-          defaultBannedRights.pFlags[info.flags[0] as keyof typeof defaultBannedRights['pFlags']]
-      ) || (
-        getPeerActiveUsernames(chat as Chat.channel)[0] &&
-          (
-            info.flags.includes('pin_messages') ||
-            info.flags.includes('change_info')
-          )
-      )
-      ) {
-        info.restrictionText = this.restrictionText;
+      if(!options.forChat && defaultBannedRights.pFlags[info.flags[0] as keyof typeof defaultBannedRights['pFlags']]) {
+        info.restrictionText = 'UserRestrictionsDisabled';
+      } else if(getPeerActiveUsernames(chat as Chat.channel)[0] && (info.flags.includes('pin_messages') || info.flags.includes('change_info'))) {
+        info.restrictionText = options.participant ? 'UserRestrictionsDisabled' : 'EditCantEditPermissionsPublic';
       }
+    }
 
+    for(const info of this.fields) {
       if(info.nestedTo) {
         continue;
       }
@@ -151,6 +150,102 @@ export class ChatPermissions extends CheckboxFields<PermissionsCheckboxFieldsFie
   }
 }
 
+export class ChatAdministratorRights extends CheckboxFields<AdministratorRightsCheckboxFieldsField> {
+  protected rights: ChatAdminRights;
+  protected defaultBannedRights: ChatAdminRights;
+  protected restrictionText: LangPackKey;
+
+  constructor(private options: {
+    chatId: ChatId,
+    listenerSetter: ListenerSetter,
+    appendTo: HTMLElement,
+    participant?: ChannelParticipant.channelParticipantAdmin | ChannelParticipant.channelParticipantCreator,
+    chat: Chat,
+    canEdit?: boolean
+  }) {
+    super({
+      listenerSetter: options.listenerSetter,
+      fields: [],
+      asRestrictions: true
+    });
+
+    this.construct();
+  }
+
+  public construct() {
+    const options = this.options;
+    const chat = options.chat as Chat.chat | Chat.channel;
+    const isBroadcast = !!(chat as Chat.channel).pFlags.broadcast;
+    const isForum = !!(chat as Chat.channel).pFlags.forum;
+    const rights = this.rights = options.participant ? options.participant.admin_rights : undefined;
+
+    let v: AdministratorRightsCheckboxFieldsField[] = [
+      {flags: ['change_info'], text: isBroadcast ? 'EditAdminChangeChannelInfo' : 'EditAdminChangeGroupInfo'},
+      isBroadcast && {flags: ['post_messages'], text: 'EditAdminPostMessages'},
+      isBroadcast && {flags: ['edit_messages'], text: 'EditAdminEditMessages'},
+      {flags: ['delete_messages'], text: isBroadcast ? 'EditAdminDeleteMessages' : 'EditAdminGroupDeleteMessages'},
+      !isBroadcast && {flags: ['ban_users'], text: 'EditAdminBanUsers'},
+      !isBroadcast && {flags: ['invite_users'], text: 'EditAdminAddUsersViaLink'},
+      !isBroadcast && {flags: ['pin_messages'], text: 'EditAdminPinMessages'},
+      isForum && {flags: ['manage_topics'], text: 'Channel.EditAdmin.ManageTopics'},
+      {flags: ['manage_call'], text: isBroadcast ? 'StartVoipChatPermission' : 'Channel.EditAdmin.ManageCalls'},
+      isBroadcast && {flags: ['invite_users'], text: 'Channel.EditAdmin.PermissionInviteSubscribers'},
+      !isBroadcast && {flags: ['anonymous'], text: 'EditAdminSendAnonymously', checked: rights ? undefined : false},
+      {flags: ['add_admins'], text: 'EditAdminAddAdmins', checked: rights ? undefined : false}
+    ];
+
+    v = v.filter(Boolean);
+
+    v.forEach((info) => {
+      const mainFlag = info.flags[0];
+      info.checked ??= hasRights(chat, mainFlag, rights);
+    });
+
+    this.fields = v;
+
+    const CREATOR_EXCEPTIONS: Set<ChatRights> = new Set([
+      'anonymous'
+    ]);
+
+    const isCreator = options.participant?._ === 'channelParticipantCreator';
+    for(const info of this.fields) {
+      const mainFlag = info.flags[0];
+      if(!options.canEdit) {
+        info.restrictionText = 'EditAdminCantEdit';
+      } else if((isCreator && !CREATOR_EXCEPTIONS.has(mainFlag as ChatRights)) || !hasRights(chat, mainFlag)) {
+        info.restrictionText = 'EditCantEditPermissions';
+      }
+
+      // if(info.nestedTo) {
+      //   continue;
+      // }
+
+      const {nodes} = this.createField(info);
+      options.appendTo.append(...nodes);
+    }
+  }
+
+  public takeOut() {
+    const rights: ChatAdminRights = {
+      _: 'chatAdminRights',
+      pFlags: {}
+    };
+
+    for(const info of this.fields) {
+      if(!info.checkboxField.checked) {
+        continue;
+      }
+
+      info.flags.forEach((flag) => {
+        // @ts-ignore
+        rights.pFlags[flag] = true;
+      });
+    }
+
+    return rights;
+  }
+}
+
 export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
   public chatId: ChatId;
   private participants: Map<PeerId, ChannelParticipant.channelParticipantBanned>;
@@ -170,7 +265,8 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
       chatPermissions = new ChatPermissions({
         chatId: this.chatId,
         listenerSetter: this.listenerSetter,
-        appendTo: section.content
+        appendTo: section.content,
+        forChat: true
       }, this.managers);
 
       this.eventListener.addEventListener('destroy', () => {
@@ -198,7 +294,8 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
               }, 0);
             },
             placeholder: 'ExceptionModal.Search.Placeholder',
-            peerId: -this.chatId
+            peerId: -this.chatId,
+            exceptSelf: true
           });
         },
         listenerSetter: this.listenerSetter
@@ -223,15 +320,6 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
       };
 
       section.content.append(addExceptionRow.container);
-
-      /* const removedUsersRow = new Row({
-        titleLangKey: 'ChannelBlockedUsers',
-        subtitleLangKey: 'NoBlockedUsers',
-        icon: 'deleteuser',
-        clickable: true
-      });
-
-      section.content.append(removedUsersRow.container); */
 
       const c = section.generateContentElement();
       c.classList.add('chatlist-container');
@@ -268,11 +356,13 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
 
         if(cantWhat.length) {
           el.replaceChildren(...join(cantWhat.map((t) => i18n(t)), false));
+          el.classList.toggle('hide', !cantWhat.length);
+        } else {
+          el.replaceChildren(i18n('UserRestrictionsBy', [await wrapPeerTitle({peerId: participant.kicked_by.toPeerId(false)})]));
+          el.classList.remove('hide');
         }/*  else if(canWhat.length) {
           str = 'Can ' + canWhat.join(canWhat.length === 2 ? ' and ' : ', ');
         } */
-
-        el.classList.toggle('hide', !cantWhat.length);
       };
 
       const add = (participant: ChannelParticipant.channelParticipantBanned, append: boolean) => {

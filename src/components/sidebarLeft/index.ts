@@ -98,7 +98,7 @@ export class AppSidebarLeft extends SidebarSlider {
       this.createTab(AppAddMembersTab).open({
         type: 'chat',
         skippable: true,
-        takeOut: (peerIds) => this.createTab(AppNewGroupTab).open(peerIds),
+        takeOut: (peerIds) => this.createTab(AppNewGroupTab).open({peerIds}),
         title: 'GroupAddMembers',
         placeholder: 'SendMessageTo'
       });

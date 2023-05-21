@@ -13,13 +13,10 @@ import MTTransport, {MTConnection, MTConnectionConstructable} from './transport'
 import abridgedPacketCodec from './abridged';
 // import paddedIntermediatePacketCodec from './padded';
 import {ConnectionStatus} from '../connectionStatus';
-
-// #if MTPROTO_AUTO
 import transportController from './controller';
 import bytesToHex from '../../../helpers/bytes/bytesToHex';
 // import networkStats from '../networkStats';
 import ctx from '../../../environment/ctx';
-// #endif
 
 export default class TcpObfuscated implements MTTransport {
   private codec = abridgedPacketCodec;
@@ -64,9 +61,9 @@ export default class TcpObfuscated implements MTTransport {
   private onOpen = async() => {
     this.connected = true;
 
-    // #if MTPROTO_AUTO
-    transportController.setTransportOpened('websocket');
-    // #endif
+    if(import.meta.env.VITE_MTPROTO_AUTO) {
+      transportController.setTransportOpened('websocket');
+    }
 
     const initPayload = await this.obfuscation.init(this.codec);
     if(!this.connected) {
@@ -156,11 +153,11 @@ export default class TcpObfuscated implements MTTransport {
   };
 
   public clear() {
-    // #if MTPROTO_AUTO
-    if(this.connected) {
-      transportController.setTransportClosed('websocket');
+    if(import.meta.env.VITE_MTPROTO_AUTO) {
+      if(this.connected) {
+        transportController.setTransportClosed('websocket');
+      }
     }
-    // #endif
 
     this.connected = false;
 

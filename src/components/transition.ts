@@ -12,6 +12,12 @@ import cancelEvent from '../helpers/dom/cancelEvent';
 import ListenerSetter from '../helpers/listenerSetter';
 import liteMode from '../helpers/liteMode';
 
+const USE_3D = true;
+
+function makeTranslate(x: number, y: number) {
+  return USE_3D ? `translate3d(${x}px, ${y}px, 0)` : `translate(${x}px, ${y}px)`;
+}
+
 function makeTransitionFunction(options: TransitionFunction) {
   return options;
 }
@@ -22,8 +28,8 @@ const slideNavigation = makeTransitionFunction({
     const elements = [tabContent, prevTabContent];
     if(toRight) elements.reverse();
     elements[0].style.filter = `brightness(80%)`;
-    elements[0].style.transform = `translate3d(${-width * .25}px, 0, 0)`;
-    elements[1].style.transform = `translate3d(${width}px, 0, 0)`;
+    elements[0].style.transform = makeTranslate(-width * .25, 0);
+    elements[1].style.transform = makeTranslate(width, 0);
 
     tabContent.classList.add('active');
     void tabContent.offsetWidth; // reflow
@@ -58,8 +64,8 @@ const slideTabs = makeTransitionFunction({
     // void tabContent.offsetWidth; // reflow
     const elements = [tabContent, prevTabContent];
     if(toRight) elements.reverse();
-    elements[0].style.transform = `translate3d(${-width}px, 0, 0)`;
-    elements[1].style.transform = `translate3d(${width}px, 0, 0)`;
+    elements[0].style.transform = makeTranslate(-width, 0);
+    elements[1].style.transform = makeTranslate(width, 0);
 
     tabContent.classList.add('active');
     void tabContent.offsetWidth; // reflow

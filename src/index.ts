@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+/* @refresh reload */
+
 import App from './config/app';
 import blurActiveElement from './helpers/dom/blurActiveElement';
 import cancelEvent from './helpers/dom/cancelEvent';
@@ -54,7 +56,7 @@ document.addEventListener('DOMContentLoaded', async() => {
   rootScope.managers = getProxiedManagers();
 
   const manifest = document.getElementById('manifest') as HTMLLinkElement;
-  manifest.href = `site${IS_APPLE && !IS_APPLE_MOBILE ? '_apple' : ''}.webmanifest?v=jw3mK7G9Aq`;
+  if(manifest) manifest.href = `site${IS_APPLE && !IS_APPLE_MOBILE ? '_apple' : ''}.webmanifest?v=jw3mK7G9Aq`;
 
   singleInstance.start();
 
@@ -63,7 +65,8 @@ document.addEventListener('DOMContentLoaded', async() => {
   let setViewportVH = false/* , hasFocus = false */;
   let lastVH: number;
   const setVH = () => {
-    const vh = (setViewportVH && !overlayCounter.isOverlayActive ? (w as VisualViewport).height || (w as Window).innerHeight : window.innerHeight) * 0.01;
+    let vh = (setViewportVH && !overlayCounter.isOverlayActive ? (w as VisualViewport).height || (w as Window).innerHeight : window.innerHeight) * 0.01;
+    vh = +vh.toFixed(2);
     if(lastVH === vh) {
       return;
     } else if(IS_TOUCH_SUPPORTED && lastVH < vh && (vh - lastVH) > 1) {

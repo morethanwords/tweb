@@ -133,6 +133,7 @@ $inactive-opacity: .4;
     line-height: var(--line-height);
     white-space: pre-wrap;
     background-color: transparent;
+    user-select: text;
     
     @include animation-level(2) {
       transition: transform var(--layer-transition), opacity var(--open-duration) ease-in-out, background-color var(--open-duration) ease-in-out;

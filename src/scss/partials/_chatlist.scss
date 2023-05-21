@@ -346,6 +346,15 @@ ul.chatlist {
         margin-inline-start: .5rem;
       }
     }
+
+    &-forward-ico {
+      display: inline-block;
+      vertical-align: middle;
+      width: 20px;
+      height: 20px;
+      line-height: 18px;
+      color: var(--chatlist-pinned-color);
+    }
     
     &-subtitle {
       &-badge {

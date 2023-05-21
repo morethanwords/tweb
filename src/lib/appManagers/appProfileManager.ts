@@ -11,7 +11,7 @@
 
 import type {MyTopPeer} from './appUsersManager';
 import tsNow from '../../helpers/tsNow';
-import {ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticipant, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, SendMessageAction, Update, UserFull, Photo, PhotoSize, Updates} from '../../layer';
+import {ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticipant, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, SendMessageAction, Update, UserFull, Photo, PhotoSize, Updates, ChatParticipant} from '../../layer';
 import SearchIndex from '../searchIndex';
 import {AppManager} from './manager';
 import getServerMessageId from './utils/messageId/getServerMessageId';
@@ -289,6 +289,22 @@ export class AppProfileManager extends AppManager {
     });
   }
 
+  private filterParticipantsByQuery(participants: (ChannelParticipant | ChatParticipant)[], q: string) {
+    const index = this.appUsersManager.createSearchIndex();
+    participants.forEach((chatParticipant) => {
+      const peerId = getParticipantPeerId(chatParticipant);
+      index.indexObject(peerId, this.appUsersManager.getUserSearchText(peerId));
+    });
+
+    const found = index.search(q);
+    const filteredParticipants = participants.filter((chatParticipant) => {
+      const peerId = getParticipantPeerId(chatParticipant);
+      return found.has(peerId);
+    });
+
+    return filteredParticipants;
+  }
+
   public getParticipants(
     id: ChatId,
     filter: ChannelParticipantsFilter = {_: 'channelParticipantsRecent'},
@@ -306,18 +322,10 @@ export class AppProfileManager extends AppManager {
       }
 
       if(filter._ === 'channelParticipantsSearch' && filter.q.trim()) {
-        const index = this.appUsersManager.createSearchIndex();
-        chatParticipants.participants.forEach((chatParticipant) => {
-          const userId = chatParticipant.user_id;
-          index.indexObject(userId, this.appUsersManager.getUserSearchText(userId));
-        });
-
-        const found = index.search(filter.q);
-        const filteredParticipants = chatParticipants.participants.filter((chatParticipant) => {
-          return found.has(chatParticipant.user_id);
-        });
-
-        return {...chatParticipants, participants: filteredParticipants};
+        return {
+          ...chatParticipants,
+          participants: this.filterParticipantsByQuery(chatParticipants.participants, filter.q)
+        };
       }
 
       return chatParticipants;
@@ -355,6 +363,10 @@ export class AppProfileManager extends AppManager {
       throw makeError('CHAT_ADMIN_REQUIRED');
     }
 
+    const MANUALLY_FILTER: Set<ChannelParticipantsFilter['_']> = new Set([
+      'channelParticipantsAdmins'
+    ]);
+
     const result = this.apiManager.invokeApiCacheable('channels.getParticipants', {
       channel: this.appChatsManager.getChannelInput(id),
       filter,
@@ -365,6 +377,16 @@ export class AppProfileManager extends AppManager {
 
     return callbackify(result, (result) => {
       this.appUsersManager.saveApiUsers((result as ChannelsChannelParticipants.channelsChannelParticipants).users);
+      this.appChatsManager.saveApiChats((result as ChannelsChannelParticipants.channelsChannelParticipants).chats);
+
+      const q = (filter as ChannelParticipantsFilter.channelParticipantsAdmins).q;
+      if(MANUALLY_FILTER.has(filter._) && q?.trim()) {
+        return {
+          ...result,
+          participants: this.filterParticipantsByQuery((result as ChannelsChannelParticipants.channelsChannelParticipants).participants, q)
+        } as ChannelsChannelParticipants.channelsChannelParticipants;
+      }
+
       return result as ChannelsChannelParticipants.channelsChannelParticipants;
     });
   }
@@ -492,8 +514,13 @@ export class AppProfileManager extends AppManager {
     });
   }
 
-  private invalidateChannelParticipants(id: ChatId) {
+  public invalidateChannelParticipants(id: ChatId) {
     this.apiManager.clearCache('channels.getParticipants', (params) => (params.channel as InputChannel.inputChannel).channel_id === id);
+
+    if(!this.getCachedFullChat(id)) {
+      return;
+    }
+
     this.refreshFullPeer(id.toPeerId(true));
   }
 

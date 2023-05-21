@@ -179,6 +179,7 @@ export default class AppStickersAndEmojiTab extends SliderSuperTab {
 
       const dynamicPackOrderRow = new Row({
         titleLangKey: 'DynamicPackOrder',
+        icon: 'replace',
         checkboxField: new CheckboxField({
           name: 'dynamic-pack-order',
           stateKey: 'settings.stickers.dynamicPackOrder',

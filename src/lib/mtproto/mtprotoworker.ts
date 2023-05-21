@@ -8,7 +8,7 @@ import type {Awaited} from '../../types';
 import type {CacheStorageDbName} from '../files/cacheStorage';
 import type {State} from '../../config/state';
 import type {Message, MessagePeerReaction, PeerNotifySettings} from '../../layer';
-import {CryptoMethods} from '../crypto/crypto_methods';
+import type {CryptoMethods} from '../crypto/crypto_methods';
 import rootScope from '../rootScope';
 import webpWorkerController from '../webp/webpWorkerController';
 import {MOUNT_CLASS_TO} from '../../config/debug';
@@ -27,8 +27,9 @@ import IS_SHARED_WORKER_SUPPORTED from '../../environment/sharedWorkerSupport';
 import toggleStorages from '../../helpers/toggleStorages';
 import idleController from '../../helpers/idleController';
 import ServiceMessagePort from '../serviceWorker/serviceMessagePort';
-import App from '../../config/app';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
+import {makeWorkerURL} from '../../helpers/setWorkerProxy';
+import ServiceWorkerURL from '../../../sw?worker&url';
 
 export type Mirrors = {
   state: State
@@ -64,7 +65,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
   public share: ShareData;
 
-  public serviceMessagePort: ServiceMessagePort<true>;
+  private serviceMessagePort: ServiceMessagePort<true>;
   private lastServiceWorker: ServiceWorker;
 
   private pingServiceWorkerPromise: CancellablePromise<void>;
@@ -80,9 +81,9 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
     this.log('constructor');
 
-    // #if !MTPROTO_SW
-    this.registerWorker();
-    // #endif
+    if(!import.meta.env.VITE_MTPROTO_SW) {
+      this.registerWorker();
+    }
 
     this.registerServiceWorker();
     this.registerCryptoWorker();
@@ -225,7 +226,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
     };
     iframe.addEventListener('load', onLoad);
     iframe.addEventListener('error', onLoad);
-    iframe.src = 'ping/' + (Math.random() * 0xFFFFFFFF | 0);
+    iframe.src = 'ping/' + (Math.random() * 0xFFFFFFFF | 0) + '.nocache';
     document.body.append(iframe);
 
     const timeout = window.setTimeout(onLoad, 1e3);
@@ -240,17 +241,31 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
   private _registerServiceWorker() {
     navigator.serviceWorker.register(
-      /* webpackChunkName: "sw" */
-      new URL('../serviceWorker/index.service', import.meta.url),
-      {scope: './'}
+      // * doesn't work
+      // new URL('../../index.service', import.meta.url),
+      ServiceWorkerURL,
+      {type: 'module', scope: './'}
     ).then((registration) => {
       this.log('SW registered', registration);
 
-      // ! doubtful fix for hard refresh
+      const url = new URL(window.location.href);
+      const FIX_KEY = 'swfix';
+      const swfix = +url.searchParams.get(FIX_KEY) || 0;
       if(registration.active && !navigator.serviceWorker.controller) {
+        if(swfix >= 3) {
+          throw new Error('no controller');
+        }
+
+        // ! doubtful fix for hard refresh
         return registration.unregister().then(() => {
-          window.location.reload();
+          url.searchParams.set(FIX_KEY, '' + (swfix + 1));
+          window.location.href = url.toString();
         });
+      }
+
+      if(swfix) {
+        url.searchParams.delete(FIX_KEY);
+        history.pushState(undefined, '', url);
       }
 
       const sw = registration.installing || registration.waiting || registration.active;
@@ -261,10 +276,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
       const controller = navigator.serviceWorker.controller || registration.installing || registration.waiting || registration.active;
       this.attachServiceWorker(controller);
 
-      // #if MTPROTO_SW
-      this.onWorkerFirstMessage(controller);
-      // #endif
-    }, (err) => {
+      if(import.meta.env.VITE_MTPROTO_SW) {
+        this.onWorkerFirstMessage(controller);
+      }
+    }).catch((err) => {
       this.log.error('SW registration failed!', err);
 
       this.invokeVoid('serviceWorkerOnline', false);
@@ -274,7 +289,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
   private registerServiceWorker() {
     if(!('serviceWorker' in navigator)) return;
 
-    this.serviceMessagePort = new ServiceMessagePort<true>();
+    this.serviceMessagePort = webPushApiManager.serviceMessagePort = new ServiceMessagePort<true>();
 
     // this.addMultipleEventsListeners({
     //   hello: () => {
@@ -299,25 +314,25 @@ class ApiManagerProxy extends MTProtoMessagePort {
       });
     });
 
-    // #if MTPROTO_SW
-    this.attachListenPort(worker);
-    // #else
-    this.serviceMessagePort.attachListenPort(worker);
-    this.serviceMessagePort.addMultipleEventsListeners({
-      port: (payload, source, event) => {
-        this.invokeVoid('serviceWorkerPort', undefined, undefined, [event.ports[0]]);
-      },
+    if(import.meta.env.VITE_MTPROTO_SW) {
+      this.attachListenPort(worker);
+    } else {
+      this.serviceMessagePort.attachListenPort(worker);
+      this.serviceMessagePort.addMultipleEventsListeners({
+        port: (payload, source, event) => {
+          this.invokeVoid('serviceWorkerPort', undefined, undefined, [event.ports[0]]);
+        },
 
-      hello: (payload, source) => {
-        this.serviceMessagePort.resendLockTask(source);
-      },
+        hello: (payload, source) => {
+          this.serviceMessagePort.resendLockTask(source);
+        },
 
-      share: (payload) => {
-        this.log('will try to share something');
-        this.share = payload;
-      }
-    });
-    // #endif
+        share: (payload) => {
+          this.log('will try to share something');
+          this.share = payload;
+        }
+      });
+    }
 
     worker.addEventListener('messageerror', (e) => {
       this.log.error('SW messageerror:', e);
@@ -330,14 +345,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
         const pathnameSplitted = location.pathname.split('/');
         pathnameSplitted[pathnameSplitted.length - 1] = '';
         const pre = location.origin + pathnameSplitted.join('/');
-        text = `
-        var originalImportScripts = importScripts; 
-        importScripts = (url) => {
-          console.log('importScripts', url);
-          var newUrl = '${pre}' + url.split('/').pop();
-          return originalImportScripts(newUrl);
-        };
-        ${text}`;
+        text = text.replace(/(import (?:.+? from )?['"])\//g, '$1' + pre);
         const blob = new Blob([text], {type: 'application/javascript'});
         return blob;
       });
@@ -345,8 +353,9 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
     const workerHandler = {
       construct(target: any, args: any): any {
-        const url = args[0] + location.search;
-        return {url};
+        return {
+          url: makeWorkerURL(args[0]).toString()
+        };
       }
     };
 
@@ -357,7 +366,6 @@ class ApiManagerProxy extends MTProtoMessagePort {
     originals.forEach((w) => window[w.name as any] = new Proxy(w, workerHandler));
 
     const worker: SharedWorker | Worker = new Worker(
-      /* webpackChunkName: "crypto.worker" */
       new URL('../crypto/crypto.worker.ts', import.meta.url),
       {type: 'module'}
     );
@@ -395,20 +403,19 @@ class ApiManagerProxy extends MTProtoMessagePort {
     workers.forEach(attachWorkerToPort);
   }
 
-  // #if !MTPROTO_SW
   private registerWorker() {
-    // return;
+    if(import.meta.env.VITE_MTPROTO_SW) {
+      return;
+    }
 
     let worker: SharedWorker | Worker;
     if(IS_SHARED_WORKER_SUPPORTED) {
       worker = new SharedWorker(
-        /* webpackChunkName: "mtproto.worker" */
         new URL('./mtproto.worker.ts', import.meta.url),
         {type: 'module'}
       );
     } else {
       worker = new Worker(
-        /* webpackChunkName: "mtproto.worker" */
         new URL('./mtproto.worker.ts', import.meta.url),
         {type: 'module'}
       );
@@ -416,7 +423,6 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
     this.onWorkerFirstMessage(worker);
   }
-  // #endif
 
   private attachWorkerToPort(worker: SharedWorker | Worker, messagePort: SuperMessagePort<any, any, any>, type: string) {
     const port: MessagePort = (worker as SharedWorker).port || worker as any;
@@ -431,11 +437,11 @@ class ApiManagerProxy extends MTProtoMessagePort {
     this.log('set webWorker');
 
     // this.worker = worker;
-    // #if MTPROTO_SW
-    this.attachSendPort(worker);
-    // #else
-    this.attachWorkerToPort(worker, this, 'mtproto');
-    // #endif
+    if(import.meta.env.VITE_MTPROTO_SW) {
+      this.attachSendPort(worker);
+    } else {
+      this.attachWorkerToPort(worker, this, 'mtproto');
+    }
   }
 
   private loadState() {
@@ -458,16 +464,18 @@ class ApiManagerProxy extends MTProtoMessagePort {
     });
   }
 
-  // #if MTPROTO_WORKER
   public invokeCrypto<Method extends keyof CryptoMethods>(method: Method, ...args: Parameters<CryptoMethods[typeof method]>): Promise<Awaited<ReturnType<CryptoMethods[typeof method]>>> {
+    if(!import.meta.env.VITE_MTPROTO_WORKER) {
+      return;
+    }
+
     return cryptoMessagePort.invokeCrypto(method, ...args);
   }
-  // #endif
 
   public async toggleStorages(enabled: boolean, clearWrite: boolean) {
     await toggleStorages(enabled, clearWrite);
     this.invoke('toggleStorages', {enabled, clearWrite});
-    this.serviceMessagePort.invokeVoid('toggleStorages', {enabled, clearWrite});
+    this.serviceMessagePort?.invokeVoid('toggleStorages', {enabled, clearWrite});
   }
 
   public async getMirror<T extends keyof Mirrors>(name: T) {

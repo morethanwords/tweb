@@ -17,12 +17,12 @@ export const DEFAULT_BACKGROUND_SLUG = 'pattern';
 const threads = Math.min(4, navigator.hardwareConcurrency ?? 4);
 
 const App = {
-  id: +process.env.API_ID,
-  hash: process.env.API_HASH,
-  version: process.env.VERSION,
-  versionFull: process.env.VERSION_FULL,
-  build: +process.env.BUILD,
-  langPackVersion: '1.6.7',
+  id: +import.meta.env.VITE_API_ID,
+  hash: import.meta.env.VITE_API_HASH,
+  version: import.meta.env.VITE_VERSION,
+  versionFull: import.meta.env.VITE_VERSION_FULL,
+  build: +import.meta.env.VITE_BUILD,
+  langPackVersion: '2.1.9',
   langPack: 'webk',
   langPackCode: 'en',
   domains: MAIN_DOMAINS,

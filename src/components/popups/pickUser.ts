@@ -15,22 +15,21 @@ type PopupPickUserOptions = Modify<ConstructorParameters<typeof AppSelectPeers>[
   multiSelect?: never,
   appendTo?: never,
   managers?: never,
-  onSelect?: (peerId: PeerId) => Promise<void> | void
+  onSelect?: (peerId: PeerId) => Promise<void> | void,
+  middleware?: never
 }>;
 
 export default class PopupPickUser extends PopupElement {
-  protected selector: AppSelectPeers;
+  public selector: AppSelectPeers;
 
   constructor(options: PopupPickUserOptions) {
     super('popup-forward', {closable: true, overlayClosable: true, body: true, title: true});
 
     this.selector = new AppSelectPeers({
       ...options,
+      middleware: this.middlewareHelper.get(),
       appendTo: this.body,
-      onChange: async() => {
-        const selected = this.selector.getSelected();
-        const peerId = selected[selected.length - 1].toPeerId();
-
+      onSelect: async(peerId) => {
         if(options.onSelect) {
           const res = options.onSelect(peerId);
           if(res instanceof Promise) {
@@ -65,6 +64,12 @@ export default class PopupPickUser extends PopupElement {
     // this.scrollable = new Scrollable(this.body);
 
     this.title.append(this.selector.input);
+  }
+
+  protected destroy() {
+    super.destroy();
+    this.selector?.destroy();
+    this.selector = undefined;
   }
 
   public static async createPicker2({

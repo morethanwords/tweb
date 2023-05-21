@@ -837,6 +837,23 @@
   }
 }
 
+.chat-requests-container {
+  .chatlist-chat.no-wrap {
+    min-height: 5.75rem;
+    padding-bottom: 2.25rem !important;
+
+    .chatlist-chat-buttons {
+      position: absolute;
+      bottom: .5rem;
+      display: flex;
+    }
+
+    .btn-control-small {
+      margin-inline-end: .5rem;
+    }
+  }
+}
+
 .edit-contact-container {
   .input-wrapper {
     margin-top: 1.8125rem !important;
@@ -864,5 +881,17 @@
 
   .input-wrapper {
     margin-top: .875rem !important;
+  }
+}
+
+.chat-discussion-container {
+  .sticker-container {
+    width: 120px;
+    height: 120px;
+    margin-top: 1rem;
+  }
+
+  .caption {
+    margin-bottom: 1rem;
   }
 }

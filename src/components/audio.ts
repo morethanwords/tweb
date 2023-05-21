@@ -722,10 +722,19 @@ export default class AudioElement extends HTMLElement {
         }
       }
     } else if(uploadingFileName) {
+      this.classList.add('downloading');
       this.preloader = constructDownloadPreloader(false);
-      this.preloader.attachPromise(appDownloadManager.getUpload(uploadingFileName));
+      const promise = appDownloadManager.getUpload(uploadingFileName);
+      this.preloader.attachPromise(promise);
       this.dataset.isOutgoing = '1';
       this.preloader.attach(downloadDiv, false);
+      promise.then(() => {
+        this.classList.remove('downloading');
+        downloadDiv.classList.add('downloaded');
+        setTimeout(() => {
+          downloadDiv.remove();
+        }, 200);
+      });
       // onLoad();
     }
   }

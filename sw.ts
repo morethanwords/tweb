@@ -4,22 +4,22 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-// #if MTPROTO_SW
-import '../mtproto/mtproto.worker';
-// #endif
+import {logger, LogTypes} from './src/lib/logger';
+import {CACHE_ASSETS_NAME, requestCache} from './src/lib/serviceWorker/cache';
+import onStreamFetch from './src/lib/serviceWorker/stream';
+import {closeAllNotifications, onPing, onShownNotification} from './src/lib/serviceWorker/push';
+import CacheStorageController from './src/lib/files/cacheStorage';
+import {IS_SAFARI} from './src/environment/userAgent';
+import ServiceMessagePort from './src/lib/serviceWorker/serviceMessagePort';
+import listenMessagePort from './src/helpers/listenMessagePort';
+import {getWindowClients} from './src/helpers/context';
+import {MessageSendPort} from './src/lib/mtproto/superMessagePort';
+import handleDownload from './src/lib/serviceWorker/download';
+import onShareFetch, {checkWindowClientForDeferredShare} from './src/lib/serviceWorker/share';
 
-import {logger, LogTypes} from '../logger';
-import {CACHE_ASSETS_NAME, requestCache} from './cache';
-import onStreamFetch from './stream';
-import {closeAllNotifications, onPing, onShownNotification} from './push';
-import CacheStorageController from '../files/cacheStorage';
-import {IS_SAFARI} from '../../environment/userAgent';
-import ServiceMessagePort from './serviceMessagePort';
-import listenMessagePort from '../../helpers/listenMessagePort';
-import {getWindowClients} from '../../helpers/context';
-import {MessageSendPort} from '../mtproto/superMessagePort';
-import handleDownload from './download';
-import onShareFetch, {checkWindowClientForDeferredShare} from './share';
+// #if MTPROTO_SW
+// import '../mtproto/mtproto.worker';
+// #endif
 
 export const log = logger('SW', LogTypes.Error | LogTypes.Debug | LogTypes.Log | LogTypes.Warn, true);
 const ctx = self as any as ServiceWorkerGlobalScope;
@@ -115,15 +115,18 @@ listenMessagePort(serviceMessagePort, undefined, (source) => {
 // #endif
 
 const onFetch = (event: FetchEvent): void => {
-  // #if !DEBUG
   if(
+    import.meta.env.PROD &&
     !IS_SAFARI &&
     event.request.url.indexOf(location.origin + '/') === 0 &&
     event.request.url.match(/\.(js|css|jpe?g|json|wasm|png|mp3|svg|tgs|ico|woff2?|ttf|webmanifest?)(?:\?.*)?$/)
   ) {
     return event.respondWith(requestCache(event));
   }
-  // #endif
+
+  if(import.meta.env.DEV && event.request.url.endsWith('.ts')) {
+    return;
+  }
 
   try {
     // const [, url, scope, params] = /http[:s]+\/\/.*?(\/(.*?)(?:$|\/(.*)$))/.exec(event.request.url) || [];
@@ -151,6 +154,11 @@ const onFetch = (event: FetchEvent): void => {
         event.respondWith(new Response('pong'));
         break;
       }
+
+      // default: {
+      //   event.respondWith(fetch(event.request));
+      //   break;
+      // }
     }
   } catch(err) {
     log.error('fetch error', err);

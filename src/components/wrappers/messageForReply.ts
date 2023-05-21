@@ -15,6 +15,7 @@ import {MyDraftMessage} from '../../lib/appManagers/appDraftsManager';
 import {MyMessage} from '../../lib/appManagers/appMessagesManager';
 import isMessageRestricted from '../../lib/appManagers/utils/messages/isMessageRestricted';
 import I18n, {LangPackKey, i18n, UNSUPPORTED_LANG_PACK_KEY} from '../../lib/langPack';
+import {SERVICE_PEER_ID} from '../../lib/mtproto/mtproto_config';
 import parseEntities from '../../lib/richTextProcessor/parseEntities';
 import sortEntities from '../../lib/richTextProcessor/sortEntities';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
@@ -249,6 +250,20 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
         }
 
         if(found) {
+          sortEntities(entities);
+        }
+      }
+
+      if((message as Message.message).peerId === SERVICE_PEER_ID &&
+        (message as Message.message).fromId === (message as Message.message).peerId) {
+        const match = options.text.match(/[\d\-]{5,7}/);
+        if(match) {
+          entities.push({
+            _: 'messageEntitySpoiler',
+            offset: match.index,
+            length: match[0].length
+          });
+
           sortEntities(entities);
         }
       }

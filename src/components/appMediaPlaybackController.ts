@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type {MyDocument} from '../lib/appManagers/appDocsManager';
+import type {SearchSuperContext} from './appSearchSuper.';
 import rootScope from '../lib/rootScope';
-import {MyDocument} from '../lib/appManagers/appDocsManager';
 import deferredPromise, {CancellablePromise} from '../helpers/cancellablePromise';
 import {IS_APPLE, IS_SAFARI} from '../environment/userAgent';
 import {MOUNT_CLASS_TO} from '../config/debug';
 import simulateEvent from '../helpers/dom/dispatchEvent';
-import type {SearchSuperContext} from './appSearchSuper.';
 import {Document, DocumentAttribute, Message, PhotoSize} from '../layer';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import I18n from '../lib/langPack';

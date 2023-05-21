@@ -485,9 +485,6 @@ namespace I18n {
       this.element.classList.add('i18n');
 
       this.property = options?.property;
-      if(options && ((options as any as IntlElementOptions).key || (options as any as IntlDateElementOptions).date)) {
-        this.update(options);
-      }
 
       weakMap.set(this.element, this);
     }
@@ -505,6 +502,10 @@ namespace I18n {
 
     constructor(options: IntlElementOptions = {}) {
       super({...options, property: options.property ?? 'innerHTML'});
+
+      if(options?.key) {
+        this.update(options);
+      }
     }
 
     public update(options?: IntlElementOptions) {
@@ -557,6 +558,10 @@ namespace I18n {
     constructor(options: IntlDateElementOptions) {
       super({...options, property: options.property ?? 'textContent'});
       setDirection(this.element);
+
+      if(options?.date) {
+        this.update(options);
+      }
     }
 
     public update(options?: IntlDateElementOptions) {
@@ -632,4 +637,4 @@ export function join(elements: (Node | string)[], useLast = true, plain?: boolea
   return plain ? joined.join('') : joined;
 }
 
-MOUNT_CLASS_TO.I18n = I18n;
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.I18n = I18n);

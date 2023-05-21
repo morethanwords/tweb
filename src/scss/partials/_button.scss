@@ -276,9 +276,10 @@ $btn-menu-z-index: 4;
 
     &:before {
       color: var(--primary-text-color);
-      font-size: var(--icon-size);
+      font-size: var(--icon-size) !important;
       align-self: flex-start;
       margin-top: .125rem;
+      padding: 0;
     }
 
     &-icon,
@@ -678,22 +679,6 @@ $btn-menu-z-index: 4;
   }
 }
 
-.btn-control {
-  width: auto;
-  height: 2.5rem;
-  line-height: 2.5rem;
-  align-items: center;
-  padding-inline: .75rem 1.5rem;
-  margin: .9375rem auto 1rem;
-  border-radius: 1.25rem;
-  display: flex;
-
-  &.tgico:before {
-    font-size: 1.5rem;
-    margin-inline-end: .375rem;
-  }
-}
-
 // ! example: multiselect input, button in pinned messages chat, settings, chat background tab
 .btn-transparent {
   color: var(--primary-text-color);
@@ -734,6 +719,42 @@ $btn-menu-z-index: 4;
 
   &.btn-short:before {
     margin-inline-end: 1rem;
+  }
+}
+
+.btn-control {
+  width: auto;
+  height: 2.5rem;
+  line-height: 2.5rem;
+  align-items: center;
+  padding-inline: .75rem 1.5rem;
+  margin: .9375rem auto 1rem;
+  border-radius: 1.25rem;
+  display: flex;
+
+  &-small {
+    height: 1.875rem;
+    padding-inline: .75rem;
+    font-size: .9375rem;
+    width: auto;
+    margin: 0;
+    border-radius: .9375rem;
+    line-height: 1;
+    font-weight: var(--font-weight-bold);
+
+    @include animation-level(2) {
+      transition: width 0.2s, background-color .2s, color .2s;
+    }
+
+    &.active {
+      background-color: var(--light-primary-color) !important;
+      color: var(--primary-color);
+    }
+  }
+
+  &.tgico:before {
+    font-size: 1.5rem;
+    margin-inline-end: .375rem;
   }
 }
 

@@ -27,7 +27,10 @@ export default class DialogsPlaceholder {
   private availableLength: number;
 
   private avatarSize: number;
+  private avatarMarginRight: number;
   private marginVertical: number;
+  private marginLeft: number;
+  private gapVertical: number;
   private totalHeight: number;
   private lineHeight: number;
   private lineBorderRadius: number;
@@ -39,14 +42,18 @@ export default class DialogsPlaceholder {
     statusWidth: number
   }[];
 
-  private getRectFrom: () => DOMRectEditable;
+  private getRectFrom: () => Pick<DOMRectEditable, 'width' | 'height'>;
   private onRemove: () => void;
   private blockScrollable: Scrollable;
 
   constructor(sizes: Partial<{
     avatarSize: number,
+    avatarMarginRight: number,
     marginVertical: number,
-    totalHeight: number
+    marginLeft: number,
+    gapVertical: number,
+    totalHeight: number,
+    statusWidth: number
   }> = {}) {
     this.shimmer = new Shimmer();
     this.tempId = 0;
@@ -56,12 +63,15 @@ export default class DialogsPlaceholder {
 
     this.generatedValues = [];
     this.avatarSize = sizes.avatarSize ?? 54;
+    this.avatarMarginRight = sizes.avatarMarginRight ?? 10;
     this.marginVertical = sizes.marginVertical ?? 9;
+    this.marginLeft = sizes.marginLeft ?? 17;
+    this.gapVertical = sizes.gapVertical ?? 0;
     this.totalHeight = sizes.totalHeight ?? (this.avatarSize + this.marginVertical * 2);
     this.lineHeight = 10;
     this.lineBorderRadius = 6;
     this.lineMarginVertical = 8;
-    this.statusWidth = 24;
+    this.statusWidth = sizes.statusWidth ?? 24;
   }
 
   public attach({container, rect, getRectFrom, onRemove, blockScrollable}: {
@@ -73,6 +83,7 @@ export default class DialogsPlaceholder {
   }) {
     const {canvas} = this;
 
+    this.detachTime = undefined;
     this.onRemove = onRemove;
     this.getRectFrom = typeof(getRectFrom) === 'function' ? getRectFrom : (getRectFrom || container).getBoundingClientRect.bind(getRectFrom || container);
     if(this.blockScrollable = blockScrollable) {
@@ -95,6 +106,12 @@ export default class DialogsPlaceholder {
     if(!liteMode.isAvailable('animations')) {
       this.remove();
     }
+  }
+
+  public removeWithoutUnmounting() {
+    this.stopAnimation();
+    this.onRemove?.();
+    this.onRemove = undefined;
   }
 
   public remove() {
@@ -272,9 +289,12 @@ export default class DialogsPlaceholder {
     patternContext.globalCompositeOperation = 'destination-out';
 
     const dialogHeight = this.dialogHeight = this.totalHeight * dpr;
+    const gapVertical = this.gapVertical * dpr;
+    let gapVerticalSum = 0;
     const length = this.length = Math.ceil(canvas.height / dialogHeight);
     for(let i = 0; i < length; ++i) {
-      this.drawChat(patternContext, i, i * dialogHeight);
+      this.drawChat(patternContext, i, i * dialogHeight + gapVerticalSum);
+      gapVerticalSum += gapVertical;
     }
 
     return ctx.createPattern(patternCanvas, 'no-repeat');
@@ -286,7 +306,7 @@ export default class DialogsPlaceholder {
       generatedValues = this.generatedValues[i] = {
         firstLineWidth: 40 + Math.random() * 100, // 120
         secondLineWidth: 120 + Math.random() * 130, // 240
-        statusWidth: 24 + Math.random() * 16
+        statusWidth: this.statusWidth ? this.statusWidth + Math.random() * 16 : undefined
       };
     }
 
@@ -308,11 +328,11 @@ export default class DialogsPlaceholder {
       lineMarginVertical
     } = this;
 
-    let marginLeft = 17;
+    let marginLeft = this.marginLeft;
 
     if(avatarSize) {
       drawCircleFromStart(ctx, marginLeft, y + marginVertical, avatarSize / 2, true);
-      marginLeft += avatarSize + 10;
+      marginLeft += avatarSize + this.avatarMarginRight;
     }
 
     // 9 + 54 - 10 - 8 = 45 ........ 72 - 9 - 10 - 8
@@ -320,6 +340,6 @@ export default class DialogsPlaceholder {
     // roundRect(ctx, marginLeft, y + marginVertical + avatarSize - lineHeight - lineMarginVertical, secondLineWidth, lineHeight, lineBorderRadius, true);
     roundRect(ctx, marginLeft, y + this.totalHeight - marginVertical - lineHeight - lineMarginVertical, secondLineWidth, lineHeight, lineBorderRadius, true);
 
-    roundRect(ctx, canvas.width / dpr - 24 - statusWidth, y + marginVertical + lineMarginVertical, statusWidth, lineHeight, lineBorderRadius, true);
+    statusWidth && roundRect(ctx, canvas.width / dpr - 24 - statusWidth, y + marginVertical + lineMarginVertical, statusWidth, lineHeight, lineBorderRadius, true);
   }
 }

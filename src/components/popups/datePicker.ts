@@ -31,14 +31,18 @@ export default class PopupDatePicker extends PopupElement {
   protected hoursInputField: InputField;
   protected minutesInputField: InputField;
 
-  constructor(initDate: Date, public onPick: (timestamp: number) => void, protected options: Partial<{
-    noButtons: true,
-    noTitle: true,
-    minDate: Date,
-    maxDate: Date
-    withTime: true,
-    showOverflowMonths: true
-  }> & PopupOptions = {}) {
+  constructor(
+    initDate: Date,
+    public onPick: (timestamp: number) => void,
+    protected options: Partial<{
+      noButtons: true,
+      noTitle: true,
+      minDate: Date,
+      maxDate: Date
+      withTime: true,
+      showOverflowMonths: true
+    }> & PopupOptions = {}
+  ) {
     super('popup-date-picker', {
       body: true,
       overlayClosable: true,
@@ -96,7 +100,12 @@ export default class PopupDatePicker extends PopupElement {
       delimiter.classList.add('date-picker-time-delimiter');
       delimiter.append(':');
 
-      const handleTimeInput = (max: number, inputField: InputField, onInput: (length: number) => void, onOverflow?: (number: number) => void) => {
+      const handleTimeInput = (
+        max: number,
+        inputField: InputField,
+        onInput: (length: number) => void,
+        onOverflow?: (number: number) => void
+      ) => {
         const maxString = '' + max;
         this.listenerSetter.add(inputField.input)('input', (e) => {
           let value = inputField.value.replace(/\D/g, '');
@@ -139,7 +148,7 @@ export default class PopupDatePicker extends PopupElement {
 
       this.selectedDate = initDate;
 
-      initDate.setMinutes(initDate.getMinutes() + 10);
+      // initDate.setMinutes(initDate.getMinutes() + 10);
 
       this.hoursInputField.setValueSilently(('0' + initDate.getHours()).slice(-2));
       this.minutesInputField.setValueSilently(('0' + initDate.getMinutes()).slice(-2));
@@ -247,57 +256,10 @@ export default class PopupDatePicker extends PopupElement {
     this.setTimeTitle();
   };
 
-  public setTimeTitle() {
-    if(this.btnConfirm && this.selectedDate) {
-      let key: LangPackKey;
-      const args: FormatterArguments = [];
-      const date = new Date();
-      date.setHours(0, 0, 0, 0);
-
-      const timeOptions: Intl.DateTimeFormatOptions = {
-        minute: '2-digit',
-        hour: '2-digit'
-      };
-
-      const sendDate = new Date(this.selectedDate.getTime());
-      sendDate.setHours(+this.hoursInputField.value, +this.minutesInputField.value);
-
-      if(this.selectedDate.getTime() === date.getTime()) {
-        key = 'Schedule.SendToday';
-      }/*  else if(this.selectedDate.getTime() === (date.getTime() + 86400e3)) {
-        dayStr = 'Tomorrow';
-      } */ else {
-        key = 'Schedule.SendDate';
-
-        const dateOptions: Intl.DateTimeFormatOptions = {
-          month: 'short',
-          day: 'numeric'
-        };
-
-        if(sendDate.getFullYear() !== date.getFullYear()) {
-          dateOptions.year = 'numeric';
-        }
-
-        args.push(new I18n.IntlDateElement({
-          date: sendDate,
-          options: dateOptions
-        }).element);
-      }
-
-      args.push(new I18n.IntlDateElement({
-        date: sendDate,
-        options: timeOptions
-      }).element);
-
-      this.btnConfirm.replaceChildren(i18n(key, args));
-    }
-  }
+  public setTimeTitle() {}
 
   public setTitle() {
-    // const splitted = this.selectedDate.toString().split(' ', 3);
-    // this.title.innerText = splitted[0] + ', ' + splitted[1] + ' ' + splitted[2];
-    this.title.textContent = '';
-    this.title.append(new I18n.IntlDateElement({
+    this.title.replaceChildren(new I18n.IntlDateElement({
       date: this.selectedDate,
       options: {
         day: 'numeric',
@@ -330,14 +292,9 @@ export default class PopupDatePicker extends PopupElement {
       month: this.timeDiv && mediaSizes.isMobile ? 'short' : 'long'
     };
 
-    this.monthTitle.textContent = '';
-    this.monthTitle.append(new I18n.IntlDateElement({date: firstDate, options}).element);
-    // this.monthTitle.innerText = (this.timeDiv && mediaSizes.isMobile ? monthName.slice(0, 3) : monthName) + ' ' + this.selectedMonth.getFullYear();
+    this.monthTitle.replaceChildren(new I18n.IntlDateElement({date: firstDate, options}).element);
 
-    if(this.month) {
-      this.month.remove();
-    }
-
+    this.month?.remove();
     this.month = document.createElement('div');
     this.month.classList.add('date-picker-month');
 

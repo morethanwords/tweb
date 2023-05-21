@@ -11,19 +11,55 @@
       background-color: var(--secondary-color);
       color: #fff;
       font-size: 1.25rem;
+      position: relative;
 
       &:before {
         content: $tgico-link;
       }
+
+      &-svg {
+        // --stroke-offset: 0;
+        position: absolute;
+        width: 46px;
+        height: 46px;
+        transform: scaleX(-1) rotate(270deg);
+      }
+
+      &-circle {
+        fill: none;
+        stroke-width: 2px;
+        stroke: var(--color);
+        stroke-linecap: round;
+
+        @include animation-level(2) {
+          transition: stroke-dasharray var(--transition-standard-in);
+        }
+      }
     }
 
     &.active {
-      .usernames-username-status {
+      &:not(.is-link) .usernames-username-status {
         color: var(--primary-color) !important;
       }
 
       .usernames-username-icon {
         background-color: var(--primary-color);
+      }
+    }
+
+    &.is-link {
+      --color: var(--secondary-color);
+
+      &.active {
+        --color: var(--primary-color);
+      }
+
+      &.is-expired {
+        --color: var(--danger-color);
+      }
+
+      .usernames-username-icon {
+        background-color: var(--color);
       }
     }
   }

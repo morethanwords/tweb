@@ -19,7 +19,7 @@ import findUpClassName from '../../helpers/dom/findUpClassName';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import {attachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent';
 import isSelectionEmpty from '../../helpers/dom/isSelectionEmpty';
-import {Message, Poll, Chat as MTChat, MessageMedia, AvailableReaction, MessageEntity, InputStickerSet, StickerSet, Document, Reaction, Photo, SponsoredMessage} from '../../layer';
+import {Message, Poll, Chat as MTChat, MessageMedia, AvailableReaction, MessageEntity, InputStickerSet, StickerSet, Document, Reaction, Photo, SponsoredMessage, ChannelParticipant} from '../../layer';
 import PopupReportMessages from '../popups/reportMessages';
 import assumeType from '../../helpers/assumeType';
 import PopupSponsored from '../popups/sponsored';
@@ -50,6 +50,9 @@ import canSaveMessageMedia from '../../lib/appManagers/utils/messages/canSaveMes
 import getAlbumText from '../../lib/appManagers/utils/messages/getAlbumText';
 import PopupElement from '../popups';
 import AvatarElement from '../avatar';
+import getParticipantPeerId from '../../lib/appManagers/utils/chats/getParticipantPeerId';
+import confirmationPopup from '../confirmationPopup';
+import wrapPeerTitle from '../wrappers/peerTitle';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -1047,14 +1050,57 @@ export default class ChatContextMenu {
   private onDeleteClick = async() => {
     if(this.chat.selection.isSelecting) {
       simulateClickEvent(this.chat.selection.selectionDeleteBtn);
-    } else {
-      PopupElement.createPopup(
-        PopupDeleteMessages,
-        this.peerId,
-        this.isTargetAGroupedItem ? [this.mid] : await this.chat.getMidsByMid(this.mid),
-        this.chat.type
-      );
+      return;
     }
+
+    const {peerId, message} = this;
+    const {fromId, mid} = message;
+    const chatId = peerId.isUser() ? undefined : peerId.toChatId();
+    if(chatId && await this.managers.appChatsManager.isMegagroup(chatId) && !message.pFlags.out) {
+      const participants = await this.managers.appProfileManager.getParticipants(chatId, {_: 'channelParticipantsAdmins'}, 100);
+      const foundAdmin = participants.participants.some((participant) => getParticipantPeerId(participant) === fromId);
+      if(!foundAdmin) {
+        const [banUser, reportSpam, deleteAll] = await confirmationPopup({
+          titleLangKey: 'DeleteSingleMessagesTitle',
+          peerId: fromId,
+          descriptionLangKey: 'AreYouSureDeleteSingleMessageMega',
+          checkboxes: [{
+            text: 'DeleteBanUser'
+          }, {
+            text: 'DeleteReportSpam'
+          }, {
+            text: 'DeleteAllFrom',
+            textArgs: [await wrapPeerTitle({peerId: fromId})]
+          }],
+          button: {
+            langKey: 'Delete'
+          }
+        });
+
+        if(banUser) {
+          this.managers.appChatsManager.kickFromChannel(peerId.toChatId(), fromId);
+        }
+
+        if(reportSpam) {
+          this.managers.appMessagesManager.reportMessages(peerId, [mid], 'inputReportReasonSpam');
+        }
+
+        if(deleteAll) {
+          this.managers.appMessagesManager.doFlushHistory(peerId, false, true, undefined, fromId);
+        } else {
+          this.managers.appMessagesManager.deleteMessages(peerId, [mid], true);
+        }
+
+        return;
+      }
+    }
+
+    PopupElement.createPopup(
+      PopupDeleteMessages,
+      peerId,
+      this.isTargetAGroupedItem ? [mid] : await this.chat.getMidsByMid(mid),
+      this.chat.type
+    );
   };
 
   public static onDownloadClick(messages: MyMessage | MyMessage[], noForwards?: boolean): DownloadBlob | DownloadBlob[] {

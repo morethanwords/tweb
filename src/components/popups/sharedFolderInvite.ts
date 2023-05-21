@@ -141,6 +141,7 @@ export default class PopupSharedFolderInvite extends PopupElement {
 
     let shouldDeselect: boolean;
     this.selector = new AppSelectPeers({
+      middleware: this.middlewareHelper.get(),
       appendTo: this.body,
       onChange: onSelectionChange,
       onFirstRender: () => {

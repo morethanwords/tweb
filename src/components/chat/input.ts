@@ -8,7 +8,7 @@ import type {MyDocument} from '../../lib/appManagers/appDocsManager';
 import type {MyDraftMessage} from '../../lib/appManagers/appDraftsManager';
 import type Chat from './chat';
 import {AppImManager, APP_TABS} from '../../lib/appManagers/appImManager';
-import Recorder from '../../../public/recorder.min';
+import '../../../public/recorder.min';
 import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
 import opusDecodeController from '../../lib/opusDecodeController';
 import {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable, ButtonMenuSync} from '../buttonMenu';
@@ -110,6 +110,8 @@ import getPeerActiveUsernames from '../../lib/appManagers/utils/peers/getPeerAct
 import replaceContent from '../../helpers/dom/replaceContent';
 import getTextWidth from '../../helpers/canvas/getTextWidth';
 import {FontFull} from '../../config/font';
+
+// console.log('Recorder', Recorder);
 
 const RECORD_MIN_TIME = 500;
 
@@ -910,7 +912,8 @@ export default class ChatInput {
       }
     });
 
-    try {
+    const Recorder = (window as any).Recorder;
+    if(Recorder) try {
       this.recorder = new Recorder({
         // encoderBitRate: 32,
         // encoderPath: "../dist/encoderWorker.min.js",
@@ -1265,13 +1268,17 @@ export default class ChatInput {
       return;
     }
 
-    PopupElement.createPopup(PopupSchedule, initDate, (timestamp) => {
-      if(!middleware()) {
-        return;
-      }
+    PopupElement.createPopup(PopupSchedule, {
+      initDate,
+      onPick: (timestamp) => {
+        if(!middleware()) {
+          return;
+        }
 
-      this.setScheduleTimestamp(timestamp, callback);
-    }, canSendWhenOnline).show();
+        this.setScheduleTimestamp(timestamp, callback);
+      },
+      canSendWhenOnline
+    }).show();
   };
 
   public async setUnreadCount() {

@@ -71,7 +71,6 @@ html:not(.is-safari):not(.is-ios) {
   overflow-y: hidden;
   overflow-x: hidden;
   max-height: 100%;
-  // transform: translateZ(0);
 
   //@include respond-to(not-handhelds) {
     position: absolute;
@@ -95,7 +94,10 @@ html:not(.is-safari):not(.is-ios) {
     scrollbar-width: thin; // Firefox only
     scrollbar-color: rgba(0, 0, 0, 0) rgba(0, 0, 0, 0);
     -ms-overflow-style: none;
-    transform: translateZ(0);
+
+    @if $use-acceleration {
+      transform: translateZ(0);
+    }
 
     &.scrollable-y-bordered {
       border-top: 1px solid transparent;

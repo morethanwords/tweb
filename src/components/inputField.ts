@@ -627,14 +627,15 @@ export default class InputField {
   }
 
   public setDraftValue(value = '', silent?: boolean) {
+    let _value: Parameters<typeof replaceContent>[1] = value;
     if(!this.options.plainText) {
-      value = documentFragmentToHTML(wrapDraftText(value));
+      _value = /* documentFragmentToHTML */(wrapDraftText(value));
     }
 
     if(silent) {
-      this.setValueSilently(value, false);
+      this.setValueSilently(_value, false);
     } else {
-      this.value = value;
+      this.value = _value;
     }
   }
 

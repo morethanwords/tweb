@@ -112,6 +112,7 @@ export type State = {
   playbackParams: ReturnType<AppMediaPlaybackController['getPlaybackParams']>,
   keepSigned: boolean,
   chatContextMenuHintWasShown: boolean,
+  hideChatJoinRequests: {[peerId: PeerId]: number},
   stateId: number,
   notifySettings: {[k in Exclude<NotifyPeer['_'], 'notifyPeer'>]?: PeerNotifySettings.peerNotifySettings},
   confirmedWebViews: BotId[]
@@ -320,6 +321,7 @@ export const STATE_INIT: State = {
   },
   keepSigned: true,
   chatContextMenuHintWasShown: false,
+  hideChatJoinRequests: {},
   stateId: nextRandomUint(32),
   notifySettings: {},
   confirmedWebViews: []

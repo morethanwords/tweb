@@ -94,6 +94,8 @@ export type MessageSendPort = SendPort;
 type ListenerCallback = (payload: any, source: MessageEventSource, event: MessageEvent<any>) => any;
 type Listeners = Record<string, ListenerCallback>;
 
+const USE_LOCKS = true;
+
 // const PING_INTERVAL = DEBUG && false ? 0x7FFFFFFF : 5000;
 // const PING_TIMEOUT = DEBUG && false ? 0x7FFFFFFF : 10000;
 
@@ -186,7 +188,7 @@ export default class SuperMessagePort<
     // const task = this.createTask('open', undefined);
     // this.postMessage(port, task);
 
-    if(typeof(window) !== 'undefined') {
+    if(typeof(window) !== 'undefined' && USE_LOCKS) {
       if('locks' in navigator) {
         const id = ['lock', tabId, this.logSuffix || '', Math.random() * 0x7FFFFFFF | 0].join('-');
         this.log.warn('created lock', id);

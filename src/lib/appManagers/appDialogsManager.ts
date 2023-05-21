@@ -105,6 +105,7 @@ import AppChatFoldersTab from '../../components/sidebarLeft/tabs/chatFolders';
 import eachTimeout from '../../helpers/eachTimeout';
 import PopupSharedFolderInvite from '../../components/popups/sharedFolderInvite';
 import {CustomEmojiRendererElement} from '../richTextProcessor/wrapRichText';
+import showLimitPopup from '../../components/popups/limit';
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 
@@ -1764,6 +1765,7 @@ export class AppDialogsManager {
 
       const isFilterAvailable = this.filterId === -1 || REAL_FOLDERS.has(id) || await this.managers.filtersStorage.isFilterIdAvailable(id);
       if(!isFilterAvailable) {
+        showLimitPopup('folders');
         return false;
       }
 
@@ -2146,7 +2148,7 @@ export class AppDialogsManager {
         this.managers.apiManager.getAppConfig(),
         promise.then(({renderPromise}) => renderPromise).catch(() => {})
       ]).then(([filter, appConfig]) => {
-        if(filter._ !== 'dialogFilterChatlist' || this.filterId !== filterId) {
+        if(filter?._ !== 'dialogFilterChatlist' || this.filterId !== filterId) {
           return;
         }
 
@@ -2975,6 +2977,12 @@ export class AppDialogsManager {
     /* if(!dom.lastMessageSpan.classList.contains('user-typing')) */ {
       let mediaContainer: HTMLElement;
       const willPrepend: (Promise<any> | HTMLElement)[] = [];
+      if((lastMessage as Message.message).fwdFromId) {
+        const ico = document.createElement('span');
+        ico.classList.add('tgico-forward_filled', 'dialog-forward-ico');
+        willPrepend.push(ico);
+      }
+
       if(lastMessage && !draftMessage && !isRestricted) {
         const media = getMediaFromMessage(lastMessage, true);
         const videoTypes: Set<MyDocument['type']> = new Set(['video', 'gif', 'round']);
@@ -3373,7 +3381,7 @@ export class AppDialogsManager {
     });
 
     if(options.container) {
-      const method = !options.append ? 'append' : 'prepend';
+      const method = options.append === false ? 'prepend' : 'append';
       options.container[method](d.container);
     }
 

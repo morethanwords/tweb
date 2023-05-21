@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import ServiceMessagePort from '../serviceWorker/serviceMessagePort';
 import App from '../../config/app';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import callbackify from '../../helpers/callbackify';
@@ -22,7 +23,14 @@ export class AppManagersManager {
   private cryptoPortsAttached: number;
   private cryptoPortPromise: CancellablePromise<void>;
 
+  private _isServiceWorkerOnline: boolean;
+
+  private serviceMessagePort: ServiceMessagePort<true>;
+  private _serviceMessagePort: MessagePort
+
   constructor() {
+    this._isServiceWorkerOnline = true;
+
     this.cryptoWorkersURLs = [];
     this.cryptoPortsAttached = 0;
     this.cryptoPortPromise = deferredPromise();
@@ -87,6 +95,40 @@ export class AppManagersManager {
 
   public getManagers() {
     return this.managers ??= this.createManagers();
+  }
+
+  public get isServiceWorkerOnline() {
+    return this._isServiceWorkerOnline;
+  }
+
+  public set isServiceWorkerOnline(value) {
+    this._isServiceWorkerOnline = value;
+  }
+
+  public getServiceMessagePort() {
+    return this._isServiceWorkerOnline ? this.serviceMessagePort : undefined;
+  }
+
+  public onServiceWorkerPort(event: MessageEvent<any>) {
+    if(this.serviceMessagePort) {
+      this.serviceMessagePort.detachPort(this._serviceMessagePort);
+      this._serviceMessagePort = undefined;
+    } else {
+      this.serviceMessagePort = new ServiceMessagePort();
+      this.serviceMessagePort.addMultipleEventsListeners({
+        requestFilePart: (payload) => {
+          return callbackify(appManagersManager.getManagers(), (managers) => {
+            const {docId, dcId, offset, limit} = payload;
+            return managers.appDocsManager.requestDocPart(docId, dcId, offset, limit);
+          });
+        }
+      });
+    }
+
+    // * port can be undefined in the future
+    if(this._serviceMessagePort = event.ports[0]) {
+      this.serviceMessagePort.attachPort(this._serviceMessagePort);
+    }
   }
 }
 

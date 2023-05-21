@@ -253,6 +253,11 @@
 
     z-index: -3;
   }
+
+  & &-input[contenteditable="false"] {
+    opacity: var(--disabled-opacity);
+    pointer-events: none;
+  }
 }
 
 .input-fields-row {

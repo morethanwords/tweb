@@ -4911,7 +4911,8 @@ export namespace ChannelParticipantsFilter {
   };
 
   export type channelParticipantsAdmins = {
-    _: 'channelParticipantsAdmins'
+    _: 'channelParticipantsAdmins',
+    q?: string
   };
 
   export type channelParticipantsKicked = {

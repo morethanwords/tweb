@@ -212,7 +212,7 @@ const page = new Page('page-authCode', true, onFirstMount, (_authCode: typeof au
 
   rootScope.managers.appStateManager.pushToState('authState', {_: 'authStateAuthCode', sentCode: _authCode});
 
-  return getAnimation();
+  return getAnimation().catch(() => {});
 }, () => {
   codeInput.focus();
 });

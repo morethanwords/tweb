@@ -23,11 +23,7 @@ import App from '../../config/app';
 import DEBUG from '../../config/debug';
 import Modes from '../../config/modes';
 import noop from '../../helpers/noop';
-
-// #if MTPROTO_HAS_HTTP
 import HTTP from './transports/http';
-// #endif
-
 import type TcpObfuscated from './transports/tcpObfuscated';
 import bigInt from 'big-integer';
 import {ConnectionStatus} from './connectionStatus';
@@ -136,7 +132,7 @@ export default class MTPNetworker {
   private nextReqTimeout: number;
   private nextReq: number = 0;
 
-  // #if MTPROTO_HAS_HTTP
+  // HTTP-only
   private longPollInterval: number;
   private longPollPending: number;
   private checkConnectionRetryAt: number;
@@ -145,7 +141,6 @@ export default class MTPNetworker {
   private sleepAfter: number;
   private offline = false;
   private sendingLongPoll: boolean;
-  // #endif
 
   private seqNo: number;
   private prevSessionId: Uint8Array;
@@ -174,14 +169,14 @@ export default class MTPNetworker {
 
   public transport: MTTransport;
 
-  // #if MTPROTO_HAS_WS
+  // WS-only
   private pingDelayDisconnectDeferred: CancellablePromise<string>;
   private pingPromise: Promise<void>;
   // private pingInterval: number;
   private lastPingTime: number;
   private lastPingStartTime: number;
   private lastPingDelayDisconnectId: string;
-  // #endif
+
   // public onConnectionStatusChange: (online: boolean) => void;
 
   // private debugRequests: Array<{before: Uint8Array, after: Uint8Array}> = [];
@@ -415,28 +410,28 @@ export default class MTPNetworker {
 
       this.connectionInited = false;
 
-      // #if MTPROTO_HAS_HTTP
-      if(this.longPollInterval !== undefined) {
-        clearInterval(this.longPollInterval);
-        this.longPollInterval = undefined;
-      }
+      if(import.meta.env.VITE_MTPROTO_HAS_HTTP) {
+        if(this.longPollInterval !== undefined) {
+          clearInterval(this.longPollInterval);
+          this.longPollInterval = undefined;
+        }
 
-      this.clearCheckConnectionTimeout();
-      // #endif
+        this.clearCheckConnectionTimeout();
+      }
     }
 
     this.log('change transport', transport, oldTransport);
 
-    // #if MTPROTO_HAS_WS
-    this.clearPingDelayDisconnect();
+    if(import.meta.env.VITE_MTPROTO_HAS_WS) {
+      this.clearPingDelayDisconnect();
 
-    // if(this.pingInterval !== undefined) {
-    //   clearInterval(this.pingInterval);
-    //   this.pingInterval = undefined;
-    // }
+      // if(this.pingInterval !== undefined) {
+      //   clearInterval(this.pingInterval);
+      //   this.pingInterval = undefined;
+      // }
 
-    // this.clearPing();
-    // #endif
+      // this.clearPing();
+    }
 
     this.transport = transport;
     if(!transport) {
@@ -445,31 +440,27 @@ export default class MTPNetworker {
 
     transport.networker = this;
 
-    // #if MTPROTO_HAS_HTTP
-    // #if MTPROTO_HAS_WS
-    if(transport instanceof HTTP) {
-    // #endif
-      this.longPollInterval = ctx.setInterval(this.checkLongPoll, 10000);
-      this.checkLongPoll();
-      this.checkConnection('changed transport');
-    // #if MTPROTO_HAS_WS
-    }
-    // #endif
-    // #endif
-
-    // #if MTPROTO_HAS_WS
-    // * handle outcoming dead socket, server will close the connection
-    if((transport as TcpObfuscated).connection) {
-      // this.sendPingDelayDisconnect();
-
-      if(transport.connected) {
-        this.setConnectionStatus(ConnectionStatus.Connected);
+    if(import.meta.env.VITE_MTPROTO_HAS_HTTP) {
+      if(!import.meta.env.VITE_MTPROTO_HAS_WS || transport instanceof HTTP) {
+        this.longPollInterval = ctx.setInterval(this.checkLongPoll, 10000);
+        this.checkLongPoll();
+        this.checkConnection('changed transport');
       }
-
-      // this.pingInterval = ctx.setInterval(this.sendPing, PING_INTERVAL);
-      // this.sendPing();
     }
-    // #endif
+
+    if(import.meta.env.VITE_MTPROTO_HAS_WS) {
+      // * handle outcoming dead socket, server will close the connection
+      if((transport as TcpObfuscated).connection) {
+        // this.sendPingDelayDisconnect();
+
+        if(transport.connected) {
+          this.setConnectionStatus(ConnectionStatus.Connected);
+        }
+
+        // this.pingInterval = ctx.setInterval(this.sendPing, PING_INTERVAL);
+        // this.sendPing();
+      }
+    }
 
     this.resend();
   }
@@ -615,8 +606,11 @@ export default class MTPNetworker {
     .finally(onFinally);
   };
 
-  // #if MTPROTO_HAS_HTTP
   private checkLongPoll = () => {
+    if(!import.meta.env.VITE_MTPROTO_HAS_HTTP) {
+      return;
+    }
+
     const isClean = this.cleanupSent();
     // this.log.error('Check lp', this.longPollPending, this.dcId, isClean, this);
     if((this.longPollPending && Date.now() < this.longPollPending) ||
@@ -641,6 +635,10 @@ export default class MTPNetworker {
   };
 
   private sendLongPoll() {
+    if(!import.meta.env.VITE_MTPROTO_HAS_HTTP) {
+      return;
+    }
+
     if(this.sendingLongPoll) return;
     this.sendingLongPoll = true;
     const maxWait = 25000;
@@ -667,6 +665,10 @@ export default class MTPNetworker {
   }
 
   private checkConnection = (event: Event | string) => {
+    if(!import.meta.env.VITE_MTPROTO_HAS_HTTP) {
+      return;
+    }
+
     this.debug && this.log('Check connection', event);
     this.clearCheckConnectionTimeout();
 
@@ -702,6 +704,10 @@ export default class MTPNetworker {
   };
 
   private clearCheckConnectionTimeout() {
+    if(!import.meta.env.VITE_MTPROTO_HAS_HTTP) {
+      return;
+    }
+
     if(this.checkConnectionTimeout !== undefined) {
       clearTimeout(this.checkConnectionTimeout);
       this.checkConnectionTimeout = undefined;
@@ -709,6 +715,10 @@ export default class MTPNetworker {
   }
 
   private toggleOffline(offline: boolean) {
+    if(!import.meta.env.VITE_MTPROTO_HAS_HTTP) {
+      return;
+    }
+
     if(this.offline !== offline) {
       this.offline = offline;
 
@@ -728,20 +738,20 @@ export default class MTPNetworker {
         this.checkConnectionTimeout = ctx.setTimeout(() => this.checkConnection('from toggleOfline'), delay);
         this.checkConnectionPeriod = Math.min(30, (1 + this.checkConnectionPeriod) * 1.5);
 
-        // #if !MTPROTO_WORKER
-        document.body.addEventListener('online', this.checkConnection, false);
-        document.body.addEventListener('focus', this.checkConnection, false);
-        // #endif
+        if(!import.meta.env.VITE_MTPROTO_WORKER) {
+          document.body.addEventListener('online', this.checkConnection, false);
+          document.body.addEventListener('focus', this.checkConnection, false);
+        }
       } else {
         this.setConnectionStatus(ConnectionStatus.Connected);
         this.checkLongPoll();
 
         this.scheduleRequest();
 
-        // #if !MTPROTO_WORKER
-        document.body.removeEventListener('online', this.checkConnection);
-        document.body.removeEventListener('focus', this.checkConnection);
-        // #endif
+        if(!import.meta.env.VITE_MTPROTO_WORKER) {
+          document.body.removeEventListener('online', this.checkConnection);
+          document.body.removeEventListener('focus', this.checkConnection);
+        }
       }
     }
 
@@ -749,6 +759,9 @@ export default class MTPNetworker {
   }
 
   private handleSentEncryptedRequestHTTP(promise: ReturnType<MTPNetworker['sendEncryptedRequest']>, message: MTMessage, noResponseMsgs: string[]) {
+    if(!import.meta.env.VITE_MTPROTO_HAS_HTTP) {
+      return;
+    }
     // let timeout = setTimeout(() => {
     //   this.log.error('handleSentEncryptedRequestHTTP timeout', promise, message, noResponseMsgs);
     // }, 5e3);
@@ -787,7 +800,6 @@ export default class MTPNetworker {
       });
     });
   }
-  // #endif
 
   // тут можно сделать таймаут и выводить дисконнект
   private pushMessage(message: {
@@ -1032,10 +1044,12 @@ export default class MTPNetworker {
     // const currentTime = Date.now();
     let messagesByteLen = 0;
 
-    // #if MTPROTO_HAS_HTTP
-    let hasApiCall = false;
-    let hasHttpWait = false;
-    // #endif
+    let hasApiCall: boolean;
+    let hasHttpWait: boolean;
+    if(import.meta.env.VITE_MTPROTO_HAS_HTTP) {
+      hasApiCall = false;
+      hasHttpWait = false;
+    }
 
     let lengthOverflow = false;
 
@@ -1065,13 +1079,13 @@ export default class MTPNetworker {
         messages.push(message);
         messagesByteLen += messageByteLength;
 
-        // #if MTPROTO_HAS_HTTP
-        if(message.isAPI) {
-          hasApiCall = true;
-        } else if(message.longPoll) {
-          hasHttpWait = true;
+        if(import.meta.env.VITE_MTPROTO_HAS_HTTP) {
+          if(message.isAPI) {
+            hasApiCall = true;
+          } else if(message.longPoll) {
+            hasHttpWait = true;
+          }
         }
-        // #endif
 
         outMessage = message;
       } else {
@@ -1082,34 +1096,34 @@ export default class MTPNetworker {
       // }
     }
 
-    // #if MTPROTO_HAS_HTTP
-    // #if MTPROTO_HAS_WS
-    if(this.transport instanceof HTTP)
-    // #endif
-      if(hasApiCall && !hasHttpWait) {
-        const serializer = new TLSerialization({mtproto: true});
-        serializer.storeMethod('http_wait', {
-          max_delay: 500,
-          wait_after: 150,
-          max_wait: 3000
-        });
+    if(import.meta.env.VITE_MTPROTO_HAS_HTTP) {
+      if(!import.meta.env.VITE_MTPROTO_HAS_WS || this.transport instanceof HTTP) {
+        if(hasApiCall && !hasHttpWait) {
+          const serializer = new TLSerialization({mtproto: true});
+          serializer.storeMethod('http_wait', {
+            max_delay: 500,
+            wait_after: 150,
+            max_wait: 3000
+          });
 
-        messages.push({
-          msg_id: this.timeManager.generateId(),
-          seq_no: this.generateSeqNo(),
-          body: serializer.getBytes(true)
-        });
+          messages.push({
+            msg_id: this.timeManager.generateId(),
+            seq_no: this.generateSeqNo(),
+            body: serializer.getBytes(true)
+          });
+        }
       }
-    // #endif
+    }
 
     if(!messages.length) {
       // this.log('no scheduled messages')
       return;
     }
 
-    // #if MTPROTO_HAS_HTTP
-    const noResponseMsgs: Array<string> = messages.filter((message) => message.noResponse).map((message) => message.msg_id);
-    // #endif
+    let noResponseMsgs: Array<string>;
+    if(import.meta.env.VITE_MTPROTO_HAS_HTTP) {
+      noResponseMsgs = messages.filter((message) => message.noResponse).map((message) => message.msg_id);
+    }
 
     if(messages.length > 1) {
       const container = this.generateContainerMessage(messagesByteLen, messages);
@@ -1124,19 +1138,17 @@ export default class MTPNetworker {
 
     const promise = this.sendEncryptedRequest(outMessage);
 
-    // #if MTPROTO_HAS_HTTP
-    // #if MTPROTO_HAS_WS
-    if(this.transport instanceof HTTP)
-    // #endif
-      this.handleSentEncryptedRequestHTTP(promise, outMessage, noResponseMsgs);
-    // #endif
+    if(import.meta.env.VITE_MTPROTO_HAS_HTTP) {
+      if(!import.meta.env.VITE_MTPROTO_HAS_WS || this.transport instanceof HTTP) {
+        this.handleSentEncryptedRequestHTTP(promise, outMessage, noResponseMsgs);
+      }
+    }
 
-    // #if MTPROTO_HAS_WS
-    // #if MTPROTO_HAS_HTTP
-    if(!(this.transport instanceof HTTP))
-    // #endif
-      this.cleanupSent(); // ! WARNING
-    // #endif
+    if(import.meta.env.VITE_MTPROTO_HAS_WS) {
+      if(!import.meta.env.VITE_MTPROTO_HAS_HTTP || !(this.transport instanceof HTTP)) {
+        this.cleanupSent(); // ! WARNING
+      }
+    }
 
     if(lengthOverflow) {
       this.scheduleRequest();
@@ -1305,13 +1317,13 @@ export default class MTPNetworker {
     const promise: Promise<Uint8Array> = this.transport ? this.transport.send(requestData) as any : Promise.reject({});
     // this.debug && this.log.debug('sendEncryptedRequest: launched message into space:', message, promise);
 
-    // #if !MTPROTO_HAS_HTTP
-    return promise;
-    // #else
+    if(!import.meta.env.VITE_MTPROTO_HAS_HTTP) {
+      return promise;
+    }
 
-    // #if MTPROTO_HAS_WS
-    if(!(this.transport instanceof HTTP)) return promise;
-    // #endif
+    if(import.meta.env.VITE_MTPROTO_HAS_WS && !(this.transport instanceof HTTP)) {
+      return promise;
+    }
 
     const baseError: ApiError = {
       code: 406,
@@ -1337,7 +1349,6 @@ export default class MTPNetworker {
 
       throw error;
     });
-    // #endif
   }
 
   public parseResponse(responseBuffer: Uint8Array) {
@@ -1478,19 +1489,15 @@ export default class MTPNetworker {
       return;
     } */
 
-    // #if MTPROTO_HAS_HTTP
-    // #if MTPROTO_HAS_WS
-    if(this.transport instanceof HTTP) {
-    // #endif
-      if(this.offline) {
-        this.checkConnection('forced schedule');
-      }
+    if(import.meta.env.VITE_MTPROTO_HAS_HTTP) {
+      if(!import.meta.env.VITE_MTPROTO_HAS_WS || this.transport instanceof HTTP) {
+        if(this.offline) {
+          this.checkConnection('forced schedule');
+        }
 
-      delay ||= 0; // set zero timeout to pack other messages too
-    // #if MTPROTO_HAS_WS
+        delay ||= 0; // set zero timeout to pack other messages too
+      }
     }
-    // #endif
-    // #endif
 
     const nextReq = Date.now() + (delay || 0);
     if(this.nextReq && (delay === undefined || this.nextReq <= nextReq)) {
@@ -1515,15 +1522,14 @@ export default class MTPNetworker {
       this.nextReqTimeout = 0;
       this.nextReq = 0;
 
-      // #if MTPROTO_HAS_HTTP
-      // #if MTPROTO_HAS_WS
-      if(this.transport instanceof HTTP)
-      // #endif
-        if(this.offline) {
-        // this.log('Cancel scheduled');
-          return;
+      if(import.meta.env.VITE_MTPROTO_HAS_HTTP) {
+        if(!import.meta.env.VITE_MTPROTO_HAS_WS || this.transport instanceof HTTP) {
+          if(this.offline) {
+            // this.log('Cancel scheduled');
+            return;
+          }
         }
-      // #endif
+      }
 
       this.performScheduledRequest();
     };
@@ -1543,12 +1549,11 @@ export default class MTPNetworker {
 
     let delay: number;
 
-    // #if MTPROTO_HAS_HTTP
-    // #if MTPROTO_HAS_WS
-    if(this.transport instanceof HTTP)
-    // #endif
-      delay = 30000;
-    // #endif
+    if(import.meta.env.VITE_MTPROTO_HAS_HTTP) {
+      if(!import.meta.env.VITE_MTPROTO_HAS_WS || this.transport instanceof HTTP) {
+        delay = 30000;
+      }
+    }
 
     this.scheduleRequest(delay);
   }

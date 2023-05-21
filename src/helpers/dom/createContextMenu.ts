@@ -67,11 +67,14 @@ export default function createContextMenu<T extends ButtonMenuItemOptionsVerifia
         return;
       }
 
+      target.classList.add('menu-open');
+
       _element = initResult.element;
       const {cleanup, destroy} = initResult;
 
       positionMenu(e, _element);
       contextMenuController.openBtnMenu(_element, () => {
+        target.classList.remove('menu-open');
         onClose?.();
         cleanup();
 

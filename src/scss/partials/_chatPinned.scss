@@ -764,3 +764,21 @@
     }
   }
 }
+
+.pinned-requests {
+  &-title {
+    color: var(--primary-color);
+    font-weight: var(--font-weight-bold);
+
+    @include sidebar-transform(true, true);
+  }
+
+  &-title,
+  .stacked-avatars {
+    pointer-events: none;
+  }
+
+  &-wrapper {
+    justify-content: space-between;
+  }
+}

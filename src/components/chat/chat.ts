@@ -493,6 +493,9 @@ export default class Chat extends EventListenerBase<{
 
     const type = options.type ?? 'chat';
     this.setType(type);
+    if(this.selection) {
+      this.selection.isScheduled = type === 'scheduled';
+    }
 
     this.messagesStorageKey = `${this.peerId}_${this.type === 'scheduled' ? 'scheduled' : 'history'}`;
 

@@ -49,6 +49,7 @@ import AppAttachMenuBotsManager from './appAttachMenuBotsManager';
 import AppSeamlessLoginManager from './appSeamlessLoginManager';
 import AppThemesManager from './appThemesManager';
 import AppUsernamesManager from './appUsernamesManager';
+import AppChatInvitesManager from './appChatInvitesManager';
 
 export default function createManagers(appStoragesManager: AppStoragesManager, userId: UserId) {
   const managers = {
@@ -94,7 +95,8 @@ export default function createManagers(appStoragesManager: AppStoragesManager, u
     appAttachMenuBotsManager: new AppAttachMenuBotsManager,
     appSeamlessLoginManager: new AppSeamlessLoginManager,
     appThemesManager: new AppThemesManager,
-    appUsernamesManager: new AppUsernamesManager
+    appUsernamesManager: new AppUsernamesManager,
+    appChatInvitesManager: new AppChatInvitesManager
   };
 
   type T = typeof managers;

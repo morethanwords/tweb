@@ -90,6 +90,13 @@ $row-border-radius: $border-radius-medium;
       &-secondary {
         color: var(--secondary-text-color);
       }
+
+      .input-clear {
+        color: inherit;
+        text-align: right;
+        pointer-events: all;
+        cursor: text;
+      }
     }
 
     &-row {
@@ -320,27 +327,11 @@ $row-border-radius: $border-radius-medium;
     background-color: var(--light-secondary-text-color);
   }
 
-  > .btn-primary {
-    height: 1.875rem;
-    padding-inline: .75rem;
-    font-size: .9375rem;
-    width: auto;
-    margin: 0;
+  > .btn-control-small {
     position: absolute;
-    inset-inline-end: 1rem;
     top: 50%;
     transform: translateY(-50%);
-    border-radius: .9375rem;
-    line-height: 1.875rem;
-
-    @include animation-level(2) {
-      transition: width 0.2s, background-color .2s, color .2s;
-    }
-
-    &.active {
-      background-color: var(--light-primary-color) !important;
-      color: var(--primary-color);
-    }
+    inset-inline-end: 1rem;
   }
 
   &.accordion-toggler {

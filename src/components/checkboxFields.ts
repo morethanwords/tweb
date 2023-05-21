@@ -71,9 +71,10 @@ export default class CheckboxFields<K extends CheckboxFieldsField = CheckboxFiel
     });
 
     if(info.restrictionText) {
+      info.checkboxField.label.lastElementChild.classList.add('with-lock', 'tgico');
       info.checkboxField.input.disabled = true;
 
-      attachClickEvent(info.checkboxField.label, (e) => {
+      attachClickEvent(info.row.container, (e) => {
         toast(I18n.format(info.restrictionText, true));
       }, {listenerSetter: this.listenerSetter});
     }

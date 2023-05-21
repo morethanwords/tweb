@@ -52,25 +52,27 @@ export default class PinnedContainer {
     safeAssign(this, options);
 
     const {divAndCaption, className} = this;
-    divAndCaption.container.classList.add(CLASSNAME_BASE, 'hide');
-    divAndCaption.title.classList.add(CLASSNAME_BASE + '-title');
-    divAndCaption.subtitle.classList.add(CLASSNAME_BASE + '-subtitle');
-    divAndCaption.content.classList.add(CLASSNAME_BASE + '-content');
+    if(divAndCaption) {
+      divAndCaption.container.classList.add(CLASSNAME_BASE, 'hide');
+      divAndCaption.title.classList.add(CLASSNAME_BASE + '-title');
+      divAndCaption.subtitle.classList.add(CLASSNAME_BASE + '-subtitle');
+      divAndCaption.content.classList.add(CLASSNAME_BASE + '-content');
+    }
 
     this.btnClose = document.createElement('button');
     this.btnClose.classList.add(CLASSNAME_BASE + '-close', `pinned-${className}-close`, 'btn-icon', 'tgico-close');
 
     this.wrapper = document.createElement('div');
-    this.wrapper.classList.add(CLASSNAME_BASE + '-wrapper');
+    this.wrapper.classList.add(CLASSNAME_BASE + '-wrapper', `pinned-${className}-wrapper`);
     ripple(this.wrapper);
 
     this.wrapperUtils = document.createElement('div');
     this.wrapperUtils.classList.add(CLASSNAME_BASE + '-wrapper-utils');
     this.wrapperUtils.append(this.btnClose);
 
-    this.wrapper.append(...Array.from(divAndCaption.container.children), this.wrapperUtils);
+    this.wrapper.append(...(divAndCaption ? Array.from(divAndCaption.container.children) : []), this.wrapperUtils);
 
-    divAndCaption.container.append(this.wrapper/* , this.close */);
+    divAndCaption && divAndCaption.container.append(this.wrapper/* , this.close */);
 
     this.attachOnCloseEvent(this.btnClose);
   }

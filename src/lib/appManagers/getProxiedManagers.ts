@@ -5,11 +5,9 @@
  */
 
 import type createManagers from './createManagers';
+import type {AckedResult} from '../mtproto/superMessagePort';
 import {ModifyFunctionsToAsync} from '../../types';
 import apiManagerProxy from '../mtproto/mtprotoworker';
-import {AckedResult} from '../mtproto/superMessagePort';
-import noop from '../../helpers/noop';
-import dT from '../../helpers/dT';
 import DEBUG from '../../config/debug';
 
 // let stats: {

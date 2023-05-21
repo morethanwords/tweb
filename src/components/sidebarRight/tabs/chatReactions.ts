@@ -8,6 +8,7 @@ import replaceContent from '../../../helpers/dom/replaceContent';
 import debounce from '../../../helpers/schedulers/debounce';
 import {ChatReactions, Reaction} from '../../../layer';
 import {i18n, LangPackKey} from '../../../lib/langPack';
+import rootScope from '../../../lib/rootScope';
 import CheckboxField from '../../checkboxField';
 import Row, {RadioFormFromValues} from '../../row';
 import SettingSection from '../../settingSection';
@@ -17,11 +18,25 @@ import wrapStickerToRow from '../../wrappers/stickerToRow';
 export default class AppChatReactionsTab extends SliderSuperTabEventable {
   public chatId: ChatId;
 
-  public async init() {
+  public static getInitArgs(chatId: ChatId) {
+    return {
+      availableReactions: rootScope.managers.appReactionsManager.getActiveAvailableReactions(),
+      chatFull: rootScope.managers.appProfileManager.getChatFull(chatId)
+    };
+  }
+
+  public async init({
+    chatId,
+    p = AppChatReactionsTab.getInitArgs(chatId)
+  }: {
+    chatId: ChatId,
+    p?: ReturnType<typeof AppChatReactionsTab['getInitArgs']>
+  }) {
     this.setTitle('Reactions');
 
-    const availableReactions = await this.managers.appReactionsManager.getActiveAvailableReactions();
-    const chatFull = await this.managers.appProfileManager.getChatFull(this.chatId);
+    this.chatId = chatId;
+
+    const [availableReactions, chatFull] = await Promise.all([p.availableReactions, p.chatFull]);
     const isBroadcast = await this.managers.appChatsManager.isBroadcast(this.chatId);
 
     let _chatReactions = chatFull.available_reactions ?? {_: 'chatReactionsNone'};

@@ -282,7 +282,7 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
     const queueId = appImManager.chat.bubbles ? appImManager.chat.bubbles.lazyLoadQueue.queueId : undefined;
     if(!save) {
       download = appDownloadManager.downloadToDisc({media: doc, queueId}, true);
-    } else if(doc.type === 'pdf') {
+    } else if(doc.type === 'pdf' && false) {
       const canOpenAfter = /* managers.appDocsManager.downloading.has(doc.id) ||  */!preloader || preloader.detached;
       download = appDownloadManager.downloadMediaURL({media: doc, queueId});
       if(canOpenAfter) {

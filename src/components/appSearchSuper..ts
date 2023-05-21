@@ -17,8 +17,8 @@ import Scrollable, {ScrollableX} from './scrollable';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise} from '../hooks/useHeavyAnimationCheck';
 import I18n, {LangPackKey, i18n} from '../lib/langPack';
 import findUpClassName from '../helpers/dom/findUpClassName';
-import {getMiddleware, Middleware} from '../helpers/middleware';
-import {ChannelParticipant, Chat, ChatFull, ChatParticipant, ChatParticipants, Document, Message, MessageMedia, Photo, User, WebPage} from '../layer';
+import {getMiddleware, Middleware, MiddlewareHelper} from '../helpers/middleware';
+import {ChannelParticipant, Chat, ChatFull, ChatParticipant, ChatParticipants, Document, Message, MessageMedia, Photo, Update, User, WebPage} from '../layer';
 import SortedUserList from './sortedUserList';
 import findUpTag from '../helpers/dom/findUpTag';
 import appSidebarRight from './sidebarRight';
@@ -80,6 +80,7 @@ import ChatContextMenu from './chat/contextMenu';
 import PopupElement from './popups';
 import getParticipantRank from '../lib/appManagers/utils/chats/getParticipantRank';
 import {NULL_PEER_ID} from '../lib/mtproto/mtproto_config';
+import createParticipantContextMenu from '../helpers/dom/createParticipantContextMenu';
 
 // const testScroll = false;
 
@@ -342,6 +343,8 @@ export default class AppSearchSuper {
   public mediaTabsMap: Map<SearchSuperMediaType, SearchSuperMediaTab> = new Map();
 
   private membersList: SortedUserList;
+  private membersParticipantMap: Map<PeerId, ChatParticipant | ChannelParticipant>;
+  private membersMiddlewareHelper: MiddlewareHelper;
 
   private skipScroll: boolean;
 
@@ -1217,8 +1220,12 @@ export default class AppSearchSuper {
         }
       }
 
-      let membersList = this.membersList;
+      let membersList = this.membersList,
+        membersParticipantMap = this.membersParticipantMap,
+        membersMiddlewareHelper = this.membersMiddlewareHelper;
       if(!membersList) {
+        membersParticipantMap = this.membersParticipantMap = new Map();
+        membersMiddlewareHelper = this.membersMiddlewareHelper = getMiddleware();
         membersList = this.membersList = new SortedUserList({
           lazyLoadQueue: this.lazyLoadQueue,
           rippleEnabled: false,
@@ -1242,9 +1249,39 @@ export default class AppSearchSuper {
         });
         mediaTab.contentTab.append(membersList.list);
         this.afterPerforming(1, mediaTab.contentTab);
+
+        if(chatId) {
+          const middleware = membersMiddlewareHelper.get();
+          createParticipantContextMenu({
+            chatId,
+            listenTo: membersList.list,
+            participants: this.membersParticipantMap,
+            slider: appSidebarRight,
+            middleware
+          });
+
+          const onParticipantUpdate = (update: Update.updateChannelParticipant) => {
+            const peerId = getParticipantPeerId(update.prev_participant || update.new_participant);
+            if(!update.new_participant || (update.new_participant as ChannelParticipant.channelParticipantBanned).pFlags?.left) {
+              membersList.delete(peerId);
+              membersParticipantMap.delete(peerId);
+            } else if(!update.prev_participant && update.new_participant) {
+              renderParticipants([update.new_participant]);
+            }
+          };
+
+          rootScope.addEventListener('chat_participant', onParticipantUpdate);
+          middleware.onClean(() => {
+            rootScope.removeEventListener('chat_participant', onParticipantUpdate);
+          });
+        }
       }
 
-      const peerIds: {peerId: PeerId, rank: ReturnType<typeof getParticipantRank>}[] = participants.map((participant) => {
+      const peerIds: {
+        peerId: PeerId,
+        rank: ReturnType<typeof getParticipantRank>,
+        participant: typeof participants[0]
+      }[] = participants.map((participant) => {
         const peerId = userId ? (participant as Chat.chat).id.toPeerId(true) : getParticipantPeerId(participant as ChannelParticipant);
         if(chatId ? peerId.isAnyChat() : peerId.isUser()) {
           return;
@@ -1252,7 +1289,8 @@ export default class AppSearchSuper {
 
         return {
           peerId,
-          rank: getParticipantRank(participant as ChannelParticipant) as any
+          rank: getParticipantRank(participant as ChannelParticipant) as any,
+          participant
         };
       }).filter(Boolean);
 
@@ -1269,11 +1307,12 @@ export default class AppSearchSuper {
         return true;
       });
 
-      for(const {peerId, rank} of filtered) {
+      for(const {peerId, rank, participant} of filtered) {
         if(rank) {
           membersList.ranks.set(peerId, rank);
         }
 
+        membersParticipantMap.set(peerId, participant as ChannelParticipant);
         membersList.add(peerId);
       }
     };
@@ -1696,7 +1735,11 @@ export default class AppSearchSuper {
     this.middleware.clean();
     this.loadFirstTimePromise = undefined;
     this.cleanScrollPositions();
+
     this.membersList = undefined;
+    this.membersParticipantMap = undefined;
+    this.membersMiddlewareHelper?.destroy();
+    this.membersMiddlewareHelper = undefined;
   }
 
   public cleanScrollPositions() {

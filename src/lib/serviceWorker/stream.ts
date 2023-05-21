@@ -10,7 +10,7 @@ import debounce from '../../helpers/schedulers/debounce';
 import {InputFileLocation} from '../../layer';
 import CacheStorageController from '../files/cacheStorage';
 import {DownloadOptions, MyUploadFile} from '../mtproto/apiFileManager';
-import {getMtprotoMessagePort, log, serviceMessagePort} from './index.service';
+import {getMtprotoMessagePort, log, serviceMessagePort} from '../../../sw';
 import {ServiceRequestFilePartTaskPayload} from './serviceMessagePort';
 import timeout from './timeout';
 

@@ -34,8 +34,6 @@ export default class SortedUserList extends SortedList<SortedUser> {
   protected autonomous = true;
   protected createChatListOptions: Parameters<AppDialogsManager['createChatList']>[0];
   protected onListLengthChange: () => void;
-  protected getIndex: (element: SortedUser) => number;
-  protected onUpdate: (element: SortedUser) => void;
   protected managers: AppManagers;
 
   constructor(options: Partial<{

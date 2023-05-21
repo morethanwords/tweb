@@ -29,6 +29,8 @@ $chat-padding-handhelds: .5rem;
 $chat-input-inner-padding: .5rem;
 $chat-input-inner-padding-handhelds: .25rem;
 
+$use-acceleration: true;
+
 @function hover-color($color, $alpha: $hover-alpha) {
   @return rgba($color, $alpha);
 }
@@ -330,6 +332,28 @@ $chat-input-inner-padding-handhelds: .25rem;
   // * Night theme end
 }
 
+// ! TEMPORARY
+// .tgico-reply:before, 
+// .tgico-attach:before,
+// .tgico-saved:before,
+// .tgico-phone:before,
+.tgico-admin:before,
+// .tgico-message:before,
+.tgico-fontsize:before
+// .tgico-forward:before,
+// .tgico-reply_filled:before,
+// .tgico-forward_filled:before {
+{
+  font-size: 20px !important;
+  padding: 2px;
+}
+
+// ! TEMPORARY
+.tgico-endcall_filled,
+.tgico-phone_filled {
+  font-size: 26px !important;
+}
+
 @import "tgico";
 @import "fonts/roboto";
 @import "fonts/robotoMono";
@@ -478,6 +502,7 @@ body {
   //touch-action: pan-x pan-y;
   background-color: var(--body-background-color);
   color: var(--primary-text-color);
+  user-select: none;
 }
 
 
@@ -1558,6 +1583,12 @@ middle-ellipsis-element {
 
     &-name {
       padding: .5rem 1rem;
+      display: flex;
+      justify-content: space-between;
+
+      &-right {
+        font-weight: var(--font-weight-normal);
+      }
     }
 
     &-caption {
@@ -1588,28 +1619,6 @@ middle-ellipsis-element {
 
 hr {
   display: none !important;
-}
-
-// ! TEMPORARY
-// .tgico-reply:before, 
-// .tgico-attach:before,
-// .tgico-saved:before,
-// .tgico-phone:before,
-.tgico-admin:before,
-// .tgico-message:before,
-.tgico-fontsize:before
-// .tgico-forward:before,
-// .tgico-reply_filled:before,
-// .tgico-forward_filled:before {
-{
-  font-size: 20px !important;
-  padding: 2px;
-}
-
-// ! TEMPORARY
-.tgico-endcall_filled,
-.tgico-phone_filled {
-  font-size: 26px !important;
 }
 
 .stealthy {
@@ -2206,6 +2215,13 @@ hr {
     height: 3rem;
     text-transform: uppercase;
   }
+
+  &-subtitle {
+    text-align: center;
+    margin: 0.75rem 0 0.5rem;
+    color: var(--primary-color);
+    cursor: pointer;
+  }
 }
 
 .cant-select {
@@ -2235,4 +2251,8 @@ hr {
   &-inset {
     background: linear-gradient(var(--inner-shadow-degree), var(--surface-color) 0%, var(--surface-color) calc(var(--inner-shadow-size) / 2), transparent var(--inner-shadow-size), transparent calc(100% - var(--inner-shadow-size)), var(--surface-color) calc(100% - var(--inner-shadow-size) / 2), var(--surface-color) 100%);
   }
+}
+
+.range-steps-selector {
+  padding-top: 2.375rem;
 }

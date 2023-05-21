@@ -3236,10 +3236,6 @@ $bubble-border-radius-big: 12px;
       background-color: var(--message-out-primary-color);
     }
 
-    &-download:empty {
-      display: none;
-    }
-
     &.is-unread {
       .audio-waveform-bar {
         fill: var(--message-out-primary-color);

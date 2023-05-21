@@ -6,7 +6,7 @@
 
 import PopupElement from '.';
 import Currencies from '../../config/currencies';
-import {FontFamily, FontSize} from '../../config/font';
+import {FontFamily, FontFull, FontSize} from '../../config/font';
 import accumulate from '../../helpers/array/accumulate';
 import getTextWidth from '../../helpers/canvas/getTextWidth';
 import {detectUnifiedCardBrand} from '../../helpers/cards/cardBrands';
@@ -102,6 +102,75 @@ export function PaymentButton(options: {
 export type PaymentsCredentialsToken = {type: 'card', token?: string, id?: string};
 
 export type PopupPaymentResult = 'paid' | 'cancelled' | 'pending' | 'failed';
+
+export class InputRightNumber {
+  public input: HTMLInputElement;
+
+  constructor(public options: {
+    fontWeight?: number
+  } = {}) {
+    const input = this.input = document.createElement('input');
+    input.type = 'tel';
+    // const input: HTMLElement = document.createElement('div');
+    // input.contentEditable = 'true';
+    input.classList.add('input-clear');
+
+    const haveToIgnoreEvents = input instanceof HTMLInputElement ? 1 : 2;
+    const onSelectionChange = () => {
+      if(ignoreNextSelectionChange) {
+        --ignoreNextSelectionChange;
+        return;
+      }
+
+      // setTimeout(() => {
+      ignoreNextSelectionChange = haveToIgnoreEvents;
+      placeCaretAtEnd(input);
+      // }, 0);
+    };
+
+    const onFocus = () => {
+      // cancelEvent(e);
+      setTimeout(() => {
+        ignoreNextSelectionChange = haveToIgnoreEvents;
+        placeCaretAtEnd(input);
+        document.addEventListener('selectionchange', onSelectionChange);
+      }, 0);
+    };
+
+    const onFocusOut = () => {
+      input.addEventListener('focus', onFocus, {once: true});
+      document.removeEventListener('selectionchange', onSelectionChange);
+    };
+
+    let ignoreNextSelectionChange: number;
+    input.addEventListener('focusout', onFocusOut);
+    onFocusOut();
+  }
+
+  public get value() {
+    // return input.textContent;
+    return this.input.value;
+  }
+
+  public set value(value: string) {
+    this.input.value = value;
+    // input.textContent = wrapped;
+    this.onValue();
+  }
+
+  public onValue() {
+    if(document.activeElement === this.input) {
+      placeCaretAtEnd(this.input);
+    }
+
+    this.setWidth();
+  }
+
+  public setWidth() {
+    const width = getTextWidth(this.value, this.options?.fontWeight ? `${this.options.fontWeight} ${FontSize} ${FontFamily}` : FontFull);
+    this.input.style.width = width + 'px';
+  }
+}
 
 export default class PopupPayment extends PopupElement<{
   finish: (result: PopupPaymentResult) => void
@@ -344,44 +413,27 @@ export default class PopupPayment extends PopupElement<{
 
       const currencyData = Currencies[currency];
 
-      getTipsAmount = () => +getInputValue().replace(/\D/g, '');
-
-      const getInputValue = () => {
-        // return input.textContent;
-        return input.value;
-      };
-
-      const setInputWidth = () => {
-        const width = getTextWidth(getInputValue(), `500 ${FontSize} ${FontFamily}`);
-        input.style.width = width + 'px';
-      };
+      getTipsAmount = () => +inputRightNumber.value.replace(/\D/g, '');
 
       const setInputValue = (amount: string | number) => {
         amount = Math.min(+amount, +invoice.max_tip_amount);
         const wrapped = wrapAmount(amount, true);
 
-        input.value = wrapped;
-        // input.textContent = wrapped;
-        if(document.activeElement === input) {
-          placeCaretAtEnd(input);
-        }
+        inputRightNumber.value = wrapped;
 
-        unsetActiveTip && unsetActiveTip();
+        unsetActiveTip?.();
         const tipEl = this.tipButtonsMap.get(amount);
         if(tipEl) {
           tipEl.classList.add('active');
         }
 
-        setInputWidth();
         setTotal();
       };
 
       const tipsLabel = makeLabel();
       _i18n(tipsLabel.left, isReceipt ? 'PaymentTip' : 'PaymentTipOptional');
-      const input = document.createElement('input');
-      input.type = 'tel';
-      // const input: HTMLElement = document.createElement('div');
-      // input.contentEditable = 'true';
+      const inputRightNumber = new InputRightNumber({fontWeight: 500});
+      const {input} = inputRightNumber;
       input.classList.add('input-clear', tipsClassName + '-input');
       tipsLabel.right.append(input);
 
@@ -396,37 +448,6 @@ export default class PopupPayment extends PopupElement<{
           placeCaretAtEnd(input);
         }
       });
-
-      const haveToIgnoreEvents = input instanceof HTMLInputElement ? 1 : 2;
-      const onSelectionChange = () => {
-        if(ignoreNextSelectionChange) {
-          --ignoreNextSelectionChange;
-          return;
-        }
-
-        // setTimeout(() => {
-        ignoreNextSelectionChange = haveToIgnoreEvents;
-        placeCaretAtEnd(input);
-        // }, 0);
-      };
-
-      const onFocus = () => {
-        // cancelEvent(e);
-        setTimeout(() => {
-          ignoreNextSelectionChange = haveToIgnoreEvents;
-          placeCaretAtEnd(input);
-          document.addEventListener('selectionchange', onSelectionChange);
-        }, 0);
-      };
-
-      const onFocusOut = () => {
-        input.addEventListener('focus', onFocus, {once: true});
-        document.removeEventListener('selectionchange', onSelectionChange);
-      };
-
-      let ignoreNextSelectionChange: number;
-      input.addEventListener('focusout', onFocusOut);
-      onFocusOut();
 
       input.addEventListener('input', () => {
         setInputValue(getTipsAmount());

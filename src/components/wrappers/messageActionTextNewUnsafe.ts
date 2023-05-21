@@ -8,7 +8,7 @@ import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import {formatTime, ONE_DAY} from '../../helpers/date';
 import htmlToSpan from '../../helpers/dom/htmlToSpan';
 import setInnerHTML from '../../helpers/dom/setInnerHTML';
-import formatCallDuration from '../../helpers/formatCallDuration';
+import {wrapCallDuration} from './wrapDuration';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
 import {ForumTopic, Message, MessageAction} from '../../layer';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
@@ -133,7 +133,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
       case 'messageActionPhoneCall': {
         _ += '.' + (action as any).type;
 
-        args = [formatCallDuration(action.duration, plain)];
+        args = [wrapCallDuration(action.duration, plain)];
         break;
       }
 
@@ -146,7 +146,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         }
 
         if(action.duration !== undefined) {
-          args.push(formatCallDuration(action.duration, plain));
+          args.push(wrapCallDuration(action.duration, plain));
         } else if(noLinks) {
           args.push('');
         } else {
@@ -382,7 +382,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
             args.push(getNameDivHTML(message.fromId, plain));
           }
 
-          let duration: ReturnType<typeof formatCallDuration>;
+          let duration: ReturnType<typeof wrapCallDuration>;
           if(action.period > 1814400) {
             let key: LangPackKey;
             const args: FormatterArguments = [];
@@ -397,7 +397,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
 
             duration = plain ? I18n.format(key, true, args) : i18n(key, args);
           } else {
-            duration = formatCallDuration(action.period, plain);
+            duration = wrapCallDuration(action.period, plain);
           }
 
           args.push(duration);

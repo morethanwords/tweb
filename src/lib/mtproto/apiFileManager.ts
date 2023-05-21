@@ -41,8 +41,8 @@ import DownloadStorage from '../files/downloadStorage';
 import copy from '../../helpers/object/copy';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import {EXTENSION_MIME_TYPE_MAP, MIME_TYPE_EXTENSION_MAP} from '../../environment/mimeTypeMap';
-import {getServiceMessagePort} from './mtproto.worker';
 import isWebFileLocation from '../appManagers/utils/webFiles/isWebFileLocation';
+import appManagersManager from '../appManagers/appManagersManager';
 
 type Delayed = {
   offset: number,
@@ -503,7 +503,7 @@ export class ApiFileManager extends AppManager {
     const size = options.size ?? 0;
     const {dcId, location} = options;
     let {downloadId} = options;
-    if(downloadId && !getServiceMessagePort()) {
+    if(downloadId && !appManagersManager.getServiceMessagePort()) {
       this.log.error('download fallback to blob', options);
       downloadId = undefined;
     }

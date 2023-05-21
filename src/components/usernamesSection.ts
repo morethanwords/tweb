@@ -21,6 +21,23 @@ import Row from './row';
 import SettingSection from './settingSection';
 import {UsernameInputField} from './usernameInputField';
 
+const CLASS_NAME = 'usernames';
+
+export class UsernameRow extends Row {
+  constructor() {
+    super({
+      title: true,
+      subtitle: true,
+      clickable: true
+    });
+
+    this.container.classList.add(CLASS_NAME + '-username');
+    this.subtitle.classList.add(CLASS_NAME + '-username-status');
+    const media = this.createMedia('medium');
+    media.classList.add(CLASS_NAME + '-username-icon', 'tgico');
+  }
+}
+
 export default class UsernamesSection extends SettingSection {
   // public section: SettingSection;
 
@@ -47,7 +64,6 @@ export default class UsernamesSection extends SettingSection {
 
     const section = this;
 
-    const CLASS_NAME = 'usernames';
     const list = document.createElement('div');
     list.classList.add(CLASS_NAME);
 
@@ -67,21 +83,13 @@ export default class UsernamesSection extends SettingSection {
       },
       onElementCreate: (base) => {
         const username = _usernames.find((username) => username.username === base.id);
-        const row = new Row({
-          title: '@' + username.username,
-          subtitle: true,
-          clickable: true
-        });
+        const row = new UsernameRow();
+        row.title.textContent = '@' + username.username;
 
         const editable = !!username.pFlags.editable;
         const active = !!username.pFlags.active;
 
         if(editable) row.container.dataset.editable = '1';
-        row.container.dataset.username = username.username;
-        row.container.classList.add(CLASS_NAME + '-username');
-        row.subtitle.classList.add(CLASS_NAME + '-username-status');
-        const media = row.createMedia('medium');
-        media.classList.add(CLASS_NAME + '-username-icon', 'tgico');
 
         row.makeSortable();
 

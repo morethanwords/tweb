@@ -407,4 +407,9 @@
     {"name": "index_0", "type": "number"},
     {"name": "peer", "type": "Peer"}
   ]
+}, {
+  "predicate": "channelParticipantsAdmins",
+  "params": [
+    {"name": "q", "type": "string"}
+  ]
 }]

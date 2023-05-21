@@ -80,7 +80,7 @@ export default function hasRights(
         return false;
       }
 
-      if(rights._ === 'chatBannedRights' && myFlags[action]) {
+      if(!isAdmin && myFlags[action]) {
         return false;
       }
 
@@ -100,7 +100,7 @@ export default function hasRights(
     }
 
     case 'pin_messages': {
-      return isAdmin ? myFlags[action] || !!myFlags.post_messages : !myFlags[action];
+      return isAdmin ? !!(myFlags[action] || (!(chat as Chat.channel).pFlags.megagroup && myFlags.post_messages)) : !myFlags[action];
     }
 
     // case 'change_info': {
@@ -126,6 +126,7 @@ export default function hasRights(
       return false;
     }
 
+    case 'add_admins':
     case 'anonymous':
     case 'edit_messages':
     case 'manage_topics': {

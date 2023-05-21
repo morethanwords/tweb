@@ -23,14 +23,11 @@
     }
   }
 
-  .sidebar-left-section-name {
-    display: flex;
-    justify-content: space-between;
+  .sidebar-left-section-name-right {
     color: var(--secondary-text-color);
 
     &-right {
       cursor: pointer;
-      font-weight: var(--font-weight-normal);
       color: var(--primary-color);
     }
   }

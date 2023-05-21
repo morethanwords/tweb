@@ -19,7 +19,6 @@ import {AppManager} from './manager';
 import wrapPlainText from '../richTextProcessor/wrapPlainText';
 import assumeType from '../../helpers/assumeType';
 import {getEnvironment} from '../../environment/utils';
-import {isServiceWorkerOnline} from '../mtproto/mtproto.worker';
 import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
 import getDocumentInputFileLocation from './utils/docs/getDocumentInputFileLocation';
 import getDocumentURL from './utils/docs/getDocumentURL';
@@ -27,6 +26,7 @@ import makeError from '../../helpers/makeError';
 import {EXTENSION_MIME_TYPE_MAP} from '../../environment/mimeTypeMap';
 import {THUMB_TYPE_FULL} from '../mtproto/mtproto_config';
 import tsNow from '../../helpers/tsNow';
+import appManagersManager from './appManagersManager';
 
 export type MyDocument = Document.document;
 
@@ -246,7 +246,7 @@ export class AppDocsManager extends AppManager {
       doc.file_name = `${doc.type}_${date}${ext ? '.' + ext : ''}`;
     }
 
-    if(isServiceWorkerOnline() && ((doc.type === 'gif' && doc.size > 8e6) || doc.type === 'audio' || doc.type === 'video')/*  || doc.mime_type.indexOf('video/') === 0 */) {
+    if(appManagersManager.isServiceWorkerOnline && ((doc.type === 'gif' && doc.size > 8e6) || doc.type === 'audio' || doc.type === 'video')/*  || doc.mime_type.indexOf('video/') === 0 */) {
       doc.supportsStreaming = true;
 
       const cacheContext = this.thumbsStorage.getCacheContext(doc);
