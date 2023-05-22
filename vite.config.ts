@@ -2,6 +2,7 @@ import {defineConfig} from 'vite';
 import solidPlugin from 'vite-plugin-solid';
 import handlebars from 'vite-plugin-handlebars';
 import basicSsl from '@vitejs/plugin-basic-ssl';
+import {visualizer} from 'rollup-plugin-visualizer';
 
 const handlebarsPlugin = handlebars({
   context: {
@@ -18,7 +19,11 @@ export default defineConfig({
   plugins: [
     solidPlugin(),
     handlebarsPlugin as any,
-    USE_HTTPS ? basicSsl() : undefined
+    USE_HTTPS ? basicSsl() : undefined,
+    visualizer({
+      gzipSize: true,
+      template: 'treemap'
+    })
   ].filter(Boolean),
   server: {
     port: 8080,
@@ -28,7 +33,9 @@ export default defineConfig({
   build: {
     target: 'es2020',
     sourcemap: true,
-    assetsDir: ''
+    assetsDir: '',
+    copyPublicDir: false,
+    emptyOutDir: true
     // rollupOptions: {
     //   input: {
     //     main: './index.html',

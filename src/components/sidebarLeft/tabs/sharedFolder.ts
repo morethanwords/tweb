@@ -84,7 +84,7 @@ export class InviteLink {
       button = Button('', {text: 'ShareLink'});
       this.buttonText = button.lastElementChild as HTMLSpanElement;
       attachClickEvent(button, () => {
-        if(onButtonClick) onButtonClick();
+        if(this.onButtonClick) this.onButtonClick();
         else this.shareLink();
       }, {listenerSetter});
     }

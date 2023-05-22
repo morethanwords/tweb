@@ -385,7 +385,7 @@ export default class AppChatInviteLinksTab extends SliderSuperTabEventable {
         await this.managers.appChatInvitesManager.deleteRevokedExportedChatInvites(this.chatId, this.adminId);
         toggle();
 
-        Array.from(section.content.children).slice(2).forEach((el) => {
+        Array.from(section.content.children).forEach((el) => {
           const cache = invitesMap.get(el as HTMLElement);
           cache.destroy(true);
         });

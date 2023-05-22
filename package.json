@@ -19,7 +19,7 @@
     "change-version": "node ./src/scripts/change_version.js",
     "lint": "npx eslint \"src/**/**.ts\"",
     "start:vite": "vite",
-    "build:vite": "vite build"
+    "build:vite": "npm run generate-changelog && vite build"
   },
   "author": "",
   "license": "GPL-3.0-only",
@@ -72,6 +72,7 @@
     "postcss-loader": "^6.2.1",
     "postcss-preset-env": "^7.5.0",
     "qr-code-styling": "^1.5.0",
+    "rollup-plugin-visualizer": "^5.9.0",
     "sass": "^1.51.0",
     "sass-loader": "^12.6.0",
     "style-loader": "^3.3.1",

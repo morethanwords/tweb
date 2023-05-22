@@ -16,18 +16,11 @@ import appImManager from '../../../lib/appManagers/appImManager';
 import {AppManagers} from '../../../lib/appManagers/managers';
 import {i18n} from '../../../lib/langPack';
 import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
-import rootScope from '../../../lib/rootScope';
 import AppSelectPeers from '../../appSelectPeers';
-import confirmationPopup from '../../confirmationPopup';
-import PopupPickUser from '../../popups/pickUser';
 import Row from '../../row';
 import SettingSection from '../../settingSection';
-import {InviteLink} from '../../sidebarLeft/tabs/sharedFolder';
-import SliderSuperTab, {SliderSuperTabEventable} from '../../sliderTab';
-import getUserStatusString from '../../wrappers/getUserStatusString';
+import {SliderSuperTabEventable} from '../../sliderTab';
 import AppChatInviteLinksTab, {ChatInviteLink} from './chatInviteLinks';
-import AppChatRequestsTab from './chatRequests';
-import AppEditChatInviteLink from './editChatInviteLink';
 
 type ChatInvite = ExportedChatInvite.chatInviteExported;
 
