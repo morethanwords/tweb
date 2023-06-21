@@ -9,7 +9,7 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type {DcId} from '../types';
+import type {TrueDcId} from '../types';
 
 export const MAIN_DOMAINS = ['web.telegram.org', 'webk.telegram.org'];
 export const DEFAULT_BACKGROUND_SLUG = 'pattern';
@@ -26,7 +26,7 @@ const App = {
   langPack: 'webk',
   langPackCode: 'en',
   domains: MAIN_DOMAINS,
-  baseDcId: 2 as DcId,
+  baseDcId: 2 as TrueDcId,
   isMainDomain: MAIN_DOMAINS.includes(location.hostname),
   suffix: 'K',
   threads,
