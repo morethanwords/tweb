@@ -234,6 +234,11 @@ class ApiManagerProxy extends MTProtoMessagePort {
   }
 
   private attachServiceWorker(serviceWorker: ServiceWorker) {
+    if(this.lastServiceWorker === serviceWorker) {
+      this.log.warn('trying to attach same service worker');
+      return;
+    }
+
     this.lastServiceWorker && this.serviceMessagePort.detachPort(this.lastServiceWorker);
     this.serviceMessagePort.attachSendPort(this.lastServiceWorker = serviceWorker);
     this.serviceMessagePort.invokeVoid('hello', undefined);
@@ -242,7 +247,8 @@ class ApiManagerProxy extends MTProtoMessagePort {
   private _registerServiceWorker() {
     navigator.serviceWorker.register(
       // * doesn't work
-      // new URL('../../index.service', import.meta.url),
+      // new URL('../../../sw.ts', import.meta.url),
+      // '../../../sw',
       ServiceWorkerURL,
       {type: 'module', scope: './'}
     ).then((registration) => {
