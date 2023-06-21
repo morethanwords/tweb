@@ -3,6 +3,7 @@ import solidPlugin from 'vite-plugin-solid';
 import handlebars from 'vite-plugin-handlebars';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 import {visualizer} from 'rollup-plugin-visualizer';
+import autoprefixer from 'autoprefixer';
 
 const handlebarsPlugin = handlebars({
   context: {
@@ -14,6 +15,7 @@ const handlebarsPlugin = handlebars({
 });
 
 const USE_HTTPS = false;
+const NO_MINIFY = false;
 
 export default defineConfig({
   plugins: [
@@ -35,7 +37,8 @@ export default defineConfig({
     sourcemap: true,
     assetsDir: '',
     copyPublicDir: false,
-    emptyOutDir: true
+    emptyOutDir: true,
+    minify: NO_MINIFY ? false : undefined
     // rollupOptions: {
     //   input: {
     //     main: './index.html',
@@ -48,6 +51,11 @@ export default defineConfig({
     format: 'es'
   },
   css: {
-    devSourcemap: true
+    devSourcemap: true,
+    postcss: {
+      plugins: [
+        autoprefixer({}) // add options if needed
+      ]
+    }
   }
 });

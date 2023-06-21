@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {logger} from '../lib/logger';
+import {logger, LogTypes} from '../lib/logger';
 import insertInDescendSortedArray from './array/insertInDescendSortedArray';
 import {getMiddleware, MiddlewareHelper} from './middleware';
 import middlewarePromise from './middlewarePromise';
@@ -40,10 +40,11 @@ export class BatchProcessor<Item extends any = any> {
     this.middlewareHelper ??= getMiddleware();
 
     const prefix = 'BATCH-PROCESSOR-' + ++id;
+    const logTypes = LogTypes.Warn | LogTypes.Error;
     if(this.log) {
-      this.log = this.log.bindPrefix(prefix);
+      this.log = this.log.bindPrefix(prefix, logTypes);
     } else {
-      this.log = logger(prefix);
+      this.log = logger(prefix, logTypes);
     }
   }
 

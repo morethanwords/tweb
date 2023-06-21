@@ -115,6 +115,7 @@ export default class Chat extends EventListenerBase<{
     // * constructor end
 
     this.log = logger('CHAT', LogTypes.Log | LogTypes.Warn | LogTypes.Debug | LogTypes.Error);
+    // this.log = logger('CHAT', LogTypes.Warn | LogTypes.Error);
     this.log.warn('constructor');
 
     this.peerId = NULL_PEER_ID;
