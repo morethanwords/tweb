@@ -372,8 +372,8 @@ export class ApiManager extends ApiManagerMethods {
     return this.gettingNetworkers[getKey] = Promise.all([ak, ss].map((key) => sessionStorage.get(key)))
     .then(async([authKeyHex, serverSaltHex]) => {
       let networker: MTPNetworker, error: any;
-      if(authKeyHex && authKeyHex.length === 512) {
-        if(!serverSaltHex || serverSaltHex.length !== 16) {
+      if(authKeyHex?.length === 512) {
+        if(serverSaltHex?.length !== 16) {
           serverSaltHex = 'AAAAAAAAAAAAAAAA';
         }
 
@@ -386,9 +386,18 @@ export class ApiManager extends ApiManagerMethods {
         try { // if no saved state
           const auth = await this.authorizer.auth(dcId);
 
+          authKeyHex = bytesToHex(auth.authKey);
+          serverSaltHex = bytesToHex(auth.serverSalt);
+
+          if(dcId === App.baseDcId) {
+            sessionStorage.set({
+              auth_key_fingerprint: authKeyHex.slice(0, 8)
+            });
+          }
+
           sessionStorage.set({
-            [ak]: bytesToHex(auth.authKey),
-            [ss]: bytesToHex(auth.serverSalt)
+            [ak]: authKeyHex,
+            [ss]: serverSaltHex
           });
 
           networker = this.networkerFactory.getNetworker(dcId, auth.authKey, auth.authKeyId, auth.serverSalt, options);

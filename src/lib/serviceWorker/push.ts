@@ -15,7 +15,7 @@ import {NOTIFICATION_BADGE_PATH, NOTIFICATION_ICON_PATH} from '../../config/noti
 import {IS_FIREFOX} from '../../environment/userAgent';
 import deepEqual from '../../helpers/object/deepEqual';
 import IDBStorage from '../files/idb';
-import {log, serviceMessagePort} from '../../../sw';
+import {log, serviceMessagePort} from './index.service';
 import {ServicePushPingTaskPayload} from './serviceMessagePort';
 
 const ctx = self as any as ServiceWorkerGlobalScope;

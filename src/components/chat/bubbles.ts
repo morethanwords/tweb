@@ -568,7 +568,7 @@ export default class ChatBubbles {
         const webPage = (media as MessageMedia.messageMediaWebPage).webpage as WebPage.webPage;
         if(doc) {
           const documentContainer = bubble.querySelector<HTMLElement>(`.document-container[data-mid="${tempId}"]`);
-          const div = documentContainer.querySelector(`.document`);
+          const div = documentContainer?.querySelector(`.document`);
           if(div && !tempMessage.media?.document?.thumbs?.length && doc.thumbs?.length) {
             getHeavyAnimationPromise().then(async() => {
               const timeSpan = div.querySelector('.time');
