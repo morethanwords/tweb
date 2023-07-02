@@ -613,6 +613,37 @@
     }
   }
 
+  &-content-stories {
+    .grid {
+      grid-gap: 1px;
+
+      &-item {
+        padding-bottom: 177.77777778%;
+      }
+
+      &.one {
+        grid-template-columns: repeat(1, 1fr);
+
+        .grid-item {
+          padding-bottom: 100%;
+          display: flex;
+          justify-content: center;
+
+          &-media {
+            object-fit: contain;
+            width: auto;
+            left: auto;
+            right: auto;
+          }
+        }
+      }
+
+      &.two {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  }
+
   &-tabs-scrollable {
     .search-super-nav-scrollable {
       opacity: 1;

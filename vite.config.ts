@@ -3,6 +3,8 @@ import solidPlugin from 'vite-plugin-solid';
 import handlebars from 'vite-plugin-handlebars';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 import {visualizer} from 'rollup-plugin-visualizer';
+import checker from 'vite-plugin-checker';
+// import devtools from 'solid-devtools/vite'
 
 const handlebarsPlugin = handlebars({
   context: {
@@ -17,6 +19,13 @@ const USE_HTTPS = false;
 
 export default defineConfig({
   plugins: [
+    // devtools({
+    //   /* features options - all disabled by default */
+    //   autoname: true // e.g. enable autoname
+    // }),
+    checker({
+      typescript: true
+    }),
     solidPlugin(),
     handlebarsPlugin as any,
     USE_HTTPS ? basicSsl() : undefined,
