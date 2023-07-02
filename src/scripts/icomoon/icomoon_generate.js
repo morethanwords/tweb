@@ -24,7 +24,7 @@ function moveFiles(outPath) {
 [class*=" tgico-"]:before,
 [class*=" tgico-"]:after`);
   fs.writeFileSync(stylesOutPath + 'style.scss', styleText);
-  
+
   let variablesText = fs.readFileSync(outPath + 'variables.scss').toString();
   variablesText = variablesText.slice(variablesText.indexOf('\n\n') + 2);
   fs.writeFileSync(stylesOutPath + 'variables.scss', variablesText);
