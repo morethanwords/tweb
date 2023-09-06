@@ -6,7 +6,7 @@
 
 import createVideo from '../../helpers/dom/createVideo';
 import renderImageFromUrl from '../../helpers/dom/renderImageFromUrl';
-import {Document, StickerSet} from '../../layer';
+import {Document, DocumentAttribute, StickerSet} from '../../layer';
 import appDownloadManager from '../../lib/appManagers/appDownloadManager';
 import {AppManagers} from '../../lib/appManagers/managers';
 import lottieLoader from '../../lib/rlottie/lottieLoader';
@@ -15,8 +15,9 @@ import animationIntersector, {AnimationItemGroup} from '../animationIntersector'
 import LazyLoadQueue from '../lazyLoadQueue';
 import wrapSticker from './sticker';
 import {Middleware} from '../../helpers/middleware';
+import {EMOJI_TEXT_COLOR} from '../emoticonsDropdown';
 
-export default async function wrapStickerSetThumb({set, lazyLoadQueue, container, group, autoplay, width, height, managers = rootScope.managers, middleware}: {
+export default async function wrapStickerSetThumb({set, lazyLoadQueue, container, group, autoplay, width, height, managers = rootScope.managers, middleware, textColor}: {
   set: StickerSet.stickerSet,
   lazyLoadQueue: LazyLoadQueue,
   container: HTMLElement,
@@ -25,7 +26,8 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
   width: number,
   height: number,
   managers?: AppManagers
-  middleware?: Middleware
+  middleware?: Middleware,
+  textColor?: string
 }) {
   if(set.thumbs?.length) {
     container.classList.add('media-sticker-wrapper');
@@ -71,7 +73,9 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
               if(set.pFlags.videos) {
                 animationIntersector.addAnimation({
                   animation: media as HTMLVideoElement,
-                  group
+                  group,
+                  observeElement: media,
+                  type: 'video'
                 });
               }
             });
@@ -83,25 +87,30 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
     return;
   }
 
-  let getDocPromise: Promise<Document>;
+  let getDocPromise: Promise<Document.document>;
 
   if(set.thumb_document_id) {
     getDocPromise = managers.appEmojiManager.getCustomEmojiDocument(set.thumb_document_id);
   } else {
-    getDocPromise = managers.appStickersManager.getStickerSet(set).then((stickerSet) => stickerSet.documents[0]);
+    getDocPromise = managers.appStickersManager.getStickerSet(set).then((stickerSet) => stickerSet.documents[0] as Document.document);
   }
 
   const doc = await getDocPromise;
-  if(doc._ !== 'documentEmpty') { // as thumb will be used first sticker
-    wrapSticker({
-      doc,
-      div: container,
-      group: group,
-      lazyLoadQueue,
-      managers,
-      width,
-      height,
-      middleware
-    }); // kostil
+  if(!doc) {
+    return;
   }
+
+  const attribute = doc.attributes.find(a => a._ === 'documentAttributeCustomEmoji') as DocumentAttribute.documentAttributeCustomEmoji
+  // as thumb will be used first sticker
+  wrapSticker({
+    doc,
+    div: container,
+    group: group,
+    lazyLoadQueue,
+    managers,
+    width,
+    height,
+    middleware,
+    textColor: attribute?.pFlags?.text_color ? textColor || EMOJI_TEXT_COLOR : undefined
+  }); // kostil
 }

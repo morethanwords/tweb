@@ -20,7 +20,7 @@ export default class PopupForward extends PopupPickUser {
     chatRightsAction: ChatRights[] = ['send_plain']
   ) {
     super({
-      peerTypes: ['dialogs', 'contacts'],
+      peerType: ['dialogs', 'contacts'],
       onSelect: !peerIdMids && onSelect ? onSelect : async(peerId) => {
         if(onSelect) {
           const res = onSelect(peerId);
@@ -44,7 +44,7 @@ export default class PopupForward extends PopupPickUser {
           return;
         }
 
-        appImManager.setInnerPeer({peerId});
+        await appImManager.setInnerPeer({peerId});
         appImManager.chat.input.initMessagesForward(peerIdMids);
       },
       placeholder: 'ShareModal.Search.ForwardPlaceholder',

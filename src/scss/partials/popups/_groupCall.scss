@@ -27,6 +27,10 @@
       background-color: var(--gc-background-color);
       color: var(--gc-primary-text-color);
     }
+
+    &-close {
+      margin: 0;
+    }
   }
 
   // reset the color in inner popup
@@ -317,9 +321,9 @@
         }
       }
   
-      &:empty {
-        display: none;
-      }
+      // &:empty {
+      //   display: none;
+      // }
   
       &[data-layout="3"] .group-call-participant-video-container:first-child {
         width: 100%;

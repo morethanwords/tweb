@@ -24,7 +24,7 @@ export default function getPeerIdsFromMessage(message: Message.message | Message
     const results = (media as MessageMedia.messageMediaPoll).results;
     const recentVoters = results?.recent_voters;
     if(recentVoters?.length) {
-      peerIds.push(...recentVoters.map((userId) => userId.toPeerId()));
+      peerIds.push(...recentVoters.map((peer) => getPeerId(peer)));
     }
   }
 

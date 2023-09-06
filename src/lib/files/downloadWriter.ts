@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {getServiceMessagePort} from '../mtproto/mtproto.worker';
+import appManagersManager from '../appManagers/appManagersManager';
 import ServiceMessagePort from '../serviceWorker/serviceMessagePort';
 import StreamWriter from './streamWriter';
 
@@ -13,7 +13,7 @@ export default class DownloadWriter implements StreamWriter {
     private serviceMessagePort: ServiceMessagePort<true>,
     private downloadId: string
   ) {
-    this.serviceMessagePort = getServiceMessagePort();
+    this.serviceMessagePort = appManagersManager.getServiceMessagePort();
   }
 
   public async write(part: Uint8Array, offset?: number) {

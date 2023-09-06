@@ -14,11 +14,13 @@ import GroupCallParticipantMutedIcon from './participantMutedIcon';
 import GroupCallParticipantStatusElement from './participantStatus';
 import type GroupCallInstance from '../../lib/calls/groupCallInstance';
 import type LazyLoadQueue from '../lazyLoadQueue';
+import {MiddlewareHelper, getMiddleware} from '../../helpers/middleware';
 
 interface SortedParticipant extends SortedElementBase<PeerId> {
   dom: DialogDom,
   mutedIcon: GroupCallParticipantMutedIcon,
-  status: GroupCallParticipantStatusElement
+  status: GroupCallParticipantStatusElement,
+  middlewareHelper: MiddlewareHelper
 }
 
 export default class GroupCallParticipantsList extends SortedList<SortedParticipant> {
@@ -48,6 +50,7 @@ export default class GroupCallParticipantsList extends SortedList<SortedParticip
         positionElementByIndex(element.dom.listEl, this.list, idx);
       },
       onElementCreate: (base) => {
+        const middlewareHelper = getMiddleware();
         const {dom} = appDialogsManager.addDialogNew({
           peerId: base.id,
           container: false,
@@ -56,7 +59,8 @@ export default class GroupCallParticipantsList extends SortedList<SortedParticip
           meAsSaved: false,
           rippleEnabled: this.rippleEnabled,
           wrapOptions: {
-            lazyLoadQueue: this.lazyLoadQueue
+            lazyLoadQueue: this.lazyLoadQueue,
+            middleware: middlewareHelper.get()
           }
         });
 
@@ -69,6 +73,7 @@ export default class GroupCallParticipantsList extends SortedList<SortedParticip
         dom.listEl.append(mutedIcon.container);
         (base as SortedParticipant).mutedIcon = mutedIcon;
         (base as SortedParticipant).status = status;
+        (base as SortedParticipant).middlewareHelper = middlewareHelper;
 
         /* instance.getParticipantByPeerId(base.id).then((participant) => {
           const mutedState = getGroupCallParticipantMutedState(participant);
@@ -88,6 +93,7 @@ export default class GroupCallParticipantsList extends SortedList<SortedParticip
   }
 
   public destroy() {
+    super.clear();
     this.elements.forEach((element) => {
       this.onElementDestroy(element);
     });
@@ -95,5 +101,6 @@ export default class GroupCallParticipantsList extends SortedList<SortedParticip
 
   protected onElementDestroy(element: SortedParticipant) {
     element.mutedIcon.destroy();
+    element.middlewareHelper.destroy();
   }
 }

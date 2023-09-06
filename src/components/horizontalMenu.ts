@@ -38,10 +38,17 @@ export function horizontalMenu(
 
   const proxy = new Proxy(selectTab, {
     apply: (target, that, args) => {
-      const id = +args[0];
       const animate = args[1] !== undefined ? args[1] : true;
 
-      const el = (tabs.querySelector(`[data-tab="${id}"]`) || tabs.children[id]) as HTMLElement;
+      let id: number, el: HTMLElement;
+      if(args[0] instanceof HTMLElement) {
+        id = whichChild(args[0]);
+        el = args[0];
+      } else {
+        id = +args[0];
+        el = (tabs.querySelector(`[data-tab="${id}"]`) || tabs.children[id]) as HTMLElement;
+      }
+
       selectTarget(el, id, animate);
     }
   });

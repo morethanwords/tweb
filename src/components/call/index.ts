@@ -11,6 +11,7 @@ import ControlsHover from '../../helpers/dom/controlsHover';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import {addFullScreenListener, cancelFullScreen, isFullScreen, requestFullScreen} from '../../helpers/dom/fullScreen';
 import replaceContent from '../../helpers/dom/replaceContent';
+import safePlay from '../../helpers/dom/safePlay';
 import MovablePanel from '../../helpers/movablePanel';
 import onMediaLoad from '../../helpers/onMediaLoad';
 import themeController from '../../helpers/themeController';
@@ -20,7 +21,7 @@ import CALL_STATE from '../../lib/calls/callState';
 import I18n, {i18n} from '../../lib/langPack';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import animationIntersector from '../animationIntersector';
-import AvatarElement from '../avatar';
+import {avatarNew} from '../avatarNew';
 import ButtonIcon from '../buttonIcon';
 import GroupCallMicrophoneIconMini from '../groupCall/microphoneIconMini';
 import {MovableState} from '../movableElement';
@@ -92,13 +93,13 @@ export default class PopupCall extends PopupElement {
     avatarContainer.classList.add(className + '-avatar');
 
     const peerId = this.peerId = this.instance.interlocutorUserId.toPeerId();
-    const avatar = new AvatarElement();
-    avatar.classList.add('avatar-full');
-    avatar.updateWithOptions({
+    const {node} = avatarNew({
+      middleware: this.middlewareHelper.get(),
       isBig: true,
-      peerId: peerId
+      peerId,
+      size: 'full'
     });
-    avatarContainer.append(avatar);
+    avatarContainer.append(node);
 
     const title = new PeerTitle({
       peerId
@@ -320,7 +321,7 @@ export default class PopupCall extends PopupElement {
 
     video.classList.add(_className);
     if(video.paused) {
-      video.play();
+      safePlay(video);
     }
 
     attachClickEvent(container, () => {

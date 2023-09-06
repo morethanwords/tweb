@@ -11,7 +11,6 @@ import type Chat from './chat';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import insertInDescendSortedArray from '../../helpers/array/insertInDescendSortedArray';
 import positionElementByIndex from '../../helpers/dom/positionElementByIndex';
-import AvatarElement from '../avatar';
 import {Message} from '../../layer';
 import {NULL_PEER_ID, REPLIES_PEER_ID} from '../../lib/mtproto/mtproto_config';
 import {SERVICE_AS_REGULAR, STICKY_OFFSET} from './bubbles';
@@ -19,6 +18,8 @@ import forEachReverse from '../../helpers/array/forEachReverse';
 import partition from '../../helpers/array/partition';
 import noop from '../../helpers/noop';
 import getMessageThreadId from '../../lib/appManagers/utils/messages/getMessageThreadId';
+import {avatarNew} from '../avatarNew';
+import {MiddlewareHelper} from '../../helpers/middleware';
 
 type GroupItem = {
   bubble: HTMLElement,
@@ -39,11 +40,12 @@ class BubbleGroup {
   groups: BubbleGroups;
   items: GroupItem[]; // descend sorted
   avatarContainer: HTMLElement;
-  avatarLoadPromise: ReturnType<AvatarElement['updateWithOptions']>;
-  avatar: AvatarElement;
+  avatarLoadPromise: Promise<void>;
+  avatar: ReturnType<typeof avatarNew>;
   mounted: boolean;
   dateTimestamp: number;
   offset: number;
+  middlewareHelper: MiddlewareHelper;
 
   constructor(chat: Chat, groups: BubbleGroups, dateTimestamp: number) {
     this.container = document.createElement('div');
@@ -53,6 +55,7 @@ class BubbleGroup {
     this.items = [];
     this.dateTimestamp = dateTimestamp;
     this.offset = 0;
+    this.middlewareHelper = chat.bubbles.getMiddleware().create();
   }
 
   createAvatar(message: Message.message | Message.messageService) {
@@ -70,14 +73,15 @@ class BubbleGroup {
     const fwdFromId = message.fwdFromId;
     const isForwardFromChannel = message.from_id && message.from_id._ === 'peerChannel' && message.fromId === fwdFromId;
     const currentPeerId = this.chat.peerId;
-    const avatar = this.avatar = new AvatarElement();
-    this.avatar.classList.add('bubbles-group-avatar', 'user-avatar', 'avatar-40'/* , 'can-zoom-fade' */);
     const peerId = ((fwdFrom && (currentPeerId === rootScope.myId || currentPeerId === REPLIES_PEER_ID)) || isForwardFromChannel ? fwdFromId : message.fromId) || NULL_PEER_ID;
-    const avatarLoadPromise = this.avatar.updateWithOptions({
+    this.avatar = avatarNew({
+      middleware: this.middlewareHelper.get(),
+      size: 40,
       lazyLoadQueue: this.chat.bubbles.lazyLoadQueue,
       peerId,
       peerTitle: !fwdFromId && fwdFrom && fwdFrom.from_name ? /* '🔥 FF 🔥' */fwdFrom.from_name : undefined
     });
+    this.avatar.node.classList.add('bubbles-group-avatar', 'user-avatar'/* , 'can-zoom-fade' */);
 
     // this.avatarLoadPromise = Promise.all([
     //   avatarLoadPromise,
@@ -89,9 +93,9 @@ class BubbleGroup {
 
     //   return result;
     // });
-    this.avatarLoadPromise = avatarLoadPromise;
+    this.avatarLoadPromise = this.avatar.readyThumbPromise;
 
-    this.avatarContainer.append(this.avatar);
+    this.avatarContainer.append(this.avatar.node);
     this.container.append(this.avatarContainer);
 
     return this.avatarLoadPromise;
@@ -247,6 +251,7 @@ class BubbleGroup {
       this.container.remove();
       this.chat.bubbles.deleteEmptyDateGroups();
       this.mounted = false;
+      this.middlewareHelper.clean();
     } else {
       this.updateClassNames();
     }
@@ -361,7 +366,11 @@ export default class BubbleGroups {
     return this.itemsMap.get(bubble);
   }
 
-  getLastGroup() {
+  get firstGroup() {
+    return this.groups[this.groups.length - 1];
+  }
+
+  get lastGroup() {
     return this.groups[0];
   }
 
@@ -484,7 +493,7 @@ export default class BubbleGroups {
     const {dateTimestamp} = this.chat.bubbles.getDateForDateContainer(timestamp);
     const item: GroupItem = {
       mid,
-      groupMid: this.chat.type === 'scheduled' ? +`${(timestamp * 1000 - dateTimestamp) / 1000}.${mid}` : mid,
+      groupMid: this.chat.type === 'scheduled' ? +`${(timestamp * 1000 - dateTimestamp) / 1000}.${+('' + mid).replace('.', '')}` : mid,
       fromId: this.getMessageFromId(message),
       bubble,
       // timestamp: this.chat.type === 'scheduled' ? +`${(timestamp * 1000 - dateTimestamp) / 1000}.${mid}` : timestamp,

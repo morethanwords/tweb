@@ -4,10 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {WebDocument} from '../../layer';
+import type {InputWebFileLocation, WebDocument} from '../../layer';
 import type {MyDocument} from '../appManagers/appDocsManager';
 import type {MyPhoto} from '../appManagers/appPhotosManager';
+import {joinDeepPath} from '../../helpers/object/setDeepProperty';
+import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
 import {THUMB_TYPE_FULL} from '../mtproto/mtproto_config';
+import generateEmptyThumb from './utils/thumbs/generateEmptyThumb';
+import getStickerThumbKey from './utils/thumbs/getStickerThumbKey';
+import getThumbKey from './utils/thumbs/getThumbKey';
 
 export type ThumbCache = {
   downloaded: number,
@@ -23,35 +28,119 @@ export type ThumbsCache = {
 
 const thumbFullSize = THUMB_TYPE_FULL;
 
-export type ThumbStorageMedia = MyPhoto | MyDocument | WebDocument;
+export type ThumbStorageMedia = MyPhoto | MyDocument | WebDocument | InputWebFileLocation;
+
+export type StickerCachedThumbs = {
+  [docIdAndToneIndex: DocId]: StickerCachedThumb
+};
+export type StickerCachedThumb = {
+  url: string,
+  w: number,
+  h: number
+};
 
 export default class ThumbsStorage {
   private thumbsCache: ThumbsCache = {};
+  private stickerCachedThumbs: StickerCachedThumbs = {};
 
-  private getKey(media: ThumbStorageMedia) {
-    return media._ + ((media as MyPhoto).id ?? (media as WebDocument).url);
-  }
-
-  public getCacheContext(media: ThumbStorageMedia, thumbSize: string = thumbFullSize): ThumbCache {
+  public getCacheContext(
+    media: ThumbStorageMedia,
+    thumbSize: string = thumbFullSize,
+    key = getThumbKey(media)
+  ): ThumbCache {
     /* if(media._ === 'photo' && thumbSize !== 'i') {
       thumbSize = thumbFullSize;
     } */
 
-    const cache = this.thumbsCache[this.getKey(media)] ??= {};
-    return cache[thumbSize] ??= {downloaded: 0, url: '', type: thumbSize};
+    const cache = this.thumbsCache[key] ??= {};
+    return cache[thumbSize] ??= generateEmptyThumb(thumbSize);
   }
 
-  public setCacheContextURL(media: ThumbStorageMedia, thumbSize: string = thumbFullSize, url: string, downloaded: number = 0) {
-    const cacheContext = this.getCacheContext(media, thumbSize);
+  private mirrorCacheContext(key: string, thumbSize: string, value?: ThumbCache) {
+    MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
+      name: 'thumbs',
+      // key: [key, thumbSize].filter(Boolean).join('.'),
+      key: joinDeepPath(key, thumbSize),
+      value
+    });
+  }
+
+  private mirrorStickerThumb(key: string, value?: StickerCachedThumb) {
+    MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
+      name: 'stickerThumbs',
+      key,
+      value
+    });
+  }
+
+  public mirrorAll(port?: MessageEventSource) {
+    const instance = MTProtoMessagePort.getInstance<false>();
+    instance.invokeVoid('mirror', {
+      name: 'thumbs',
+      value: this.thumbsCache
+    }, port);
+
+    instance.invokeVoid('mirror', {
+      name: 'stickerThumbs',
+      value: this.stickerCachedThumbs
+    }, port);
+  }
+
+  public setCacheContextURL(
+    media: ThumbStorageMedia,
+    thumbSize: string = thumbFullSize,
+    url: string,
+    downloaded: number = 0,
+    key = getThumbKey(media)
+  ) {
+    const cacheContext = this.getCacheContext(media, thumbSize, key);
     cacheContext.url = url;
     cacheContext.downloaded = downloaded;
+    this.mirrorCacheContext(key, thumbSize, cacheContext);
     return cacheContext;
   }
 
-  public deleteCacheContext(media: ThumbStorageMedia, thumbSize: string = thumbFullSize) {
-    const cache = this.thumbsCache[this.getKey(media)];
+  public deleteCacheContext(
+    media: ThumbStorageMedia,
+    thumbSize: string = thumbFullSize,
+    key = getThumbKey(media)
+  ) {
+    const cache = this.thumbsCache[key];
     if(cache) {
+      this.mirrorCacheContext(key, thumbSize);
       delete cache[thumbSize];
+    }
+  }
+
+  public getStickerCachedThumb(docId: DocId, toneIndex: number | string) {
+    return this.stickerCachedThumbs[getStickerThumbKey(docId, toneIndex)];
+  }
+
+  public saveStickerPreview(docId: DocId, blob: Blob, width: number, height: number, toneIndex: number | string) {
+    const key = getStickerThumbKey(docId, toneIndex);
+    const thumb = this.stickerCachedThumbs[key];
+    if(thumb && thumb.w >= width && thumb.h >= height) {
+      return;
+    }
+
+    const cache = this.stickerCachedThumbs[key] = {
+      url: URL.createObjectURL(blob),
+      w: width,
+      h: height
+    };
+
+    this.mirrorStickerThumb(key, cache);
+  }
+
+  public clearColoredStickerThumbs() {
+    for(const key in this.stickerCachedThumbs) {
+      const [, toneIndex] = key.split('-');
+      if(toneIndex && isNaN(+toneIndex)) {
+        const thumb = this.stickerCachedThumbs[key];
+        URL.revokeObjectURL(thumb.url);
+        delete this.stickerCachedThumbs[key];
+        this.mirrorStickerThumb(key);
+      }
     }
   }
 }

@@ -27,6 +27,9 @@ import {AppManagers} from '../lib/appManagers/managers';
 import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 import wrapRichText from '../lib/richTextProcessor/wrapRichText';
 import liteMode from '../helpers/liteMode';
+import getPeerId from '../lib/appManagers/utils/peers/getPeerId';
+import Icon from './icon';
+import htmlToDocumentFragment from '../helpers/dom/htmlToDocumentFragment';
 
 let lineTotalLength = 0;
 const tailLength = 9;
@@ -141,12 +144,12 @@ const setQuizHint = (solution: string, solution_entities: any[], onHide: () => v
   element.classList.add('quiz-hint');
 
   const container = document.createElement('div');
-  container.classList.add('container', 'tgico');
+  container.classList.add('quiz-hint-container');
 
   const textEl = document.createElement('div');
-  textEl.classList.add('text');
+  textEl.classList.add('quiz-hint-text');
 
-  container.append(textEl);
+  container.append(Icon('info2', 'quiz-hint-icon'), textEl);
   element.append(container);
 
   setInnerHTML(textEl, wrapRichText(solution, {entities: solution_entities}));
@@ -265,26 +268,35 @@ export default class PollElement extends HTMLElement {
 
     this.classList.toggle('is-multiple', this.isMultiple);
 
-    const multipleSelect = this.isMultiple ? '<span class="poll-answer-selected tgico-check"></span>' : '';
     const votes = poll.answers.map((answer, idx) => {
-      return `
-        <div class="poll-answer" data-index="${idx}">
-          <div class="circle-hover">
-            <div class="animation-ring"></div>
-            <svg class="progress-ring">
-              <circle class="progress-ring__circle" cx="13" cy="13" r="9"></circle>
-            </svg>
-            ${multipleSelect}
-          </div>
-          <div class="poll-answer-percents"></div>
-          <div class="poll-answer-text"></div>
-          <svg version="1.1" class="poll-line" style="display: none;" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 485.9 35" xml:space="preserve">
-            <use href="#poll-line"></use>
+      const html = `
+      <div class="poll-answer" data-index="${idx}">
+        <div class="circle-hover">
+          <div class="animation-ring"></div>
+          <svg class="progress-ring">
+            <circle class="progress-ring__circle" cx="13" cy="13" r="9"></circle>
           </svg>
-          <span class="poll-answer-selected tgico"></span>
         </div>
+        <div class="poll-answer-percents"></div>
+        <div class="poll-answer-text"></div>
+        <svg version="1.1" class="poll-line" style="display: none;" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 485.9 35" xml:space="preserve">
+          <use href="#poll-line"></use>
+        </svg>
+      </div>
       `;
-    }).join('');
+      const fragment = htmlToDocumentFragment(html);
+      if(this.isMultiple) {
+        const span = document.createElement('span');
+        span.classList.add('poll-answer-selected');
+        span.append(Icon('check'));
+        fragment.firstElementChild.firstElementChild.append(span);
+      }
+
+      const span = document.createElement('span');
+      span.classList.add('poll-answer-selected');
+      fragment.firstElementChild.append(span);
+      return fragment;
+    });
 
     this.innerHTML = `
       <div class="poll-title"></div>
@@ -292,7 +304,9 @@ export default class PollElement extends HTMLElement {
         <div class="poll-type"></div>
         <div class="poll-avatars"></div>
       </div>
-      ${votes}`;
+    `;
+
+    this.append(...votes);
 
     setInnerHTML(this.firstElementChild, wrapEmojiText(poll.question));
 
@@ -455,7 +469,8 @@ export default class PollElement extends HTMLElement {
   initQuizHint(results: PollResults) {
     if(results.solution && results.solution_entities) {
       const toggleHint = document.createElement('div');
-      toggleHint.classList.add('tgico-tip', 'poll-hint');
+      toggleHint.classList.add('poll-hint');
+      toggleHint.append(Icon('tip'));
       this.descDiv.append(toggleHint);
 
       // let active = false;
@@ -537,7 +552,9 @@ export default class PollElement extends HTMLElement {
 
     if(this.isQuiz && (results.results?.length || this.isClosed)) {
       this.answerDivs.forEach((el, idx) => {
-        el.classList.toggle('is-correct', !!results.results[idx].pFlags.correct);
+        const result = results.results[idx];
+        const isCorrect = !!result.pFlags.correct;
+        el.classList.toggle('is-correct', isCorrect);
       });
 
       if(this.initQuizHint) {
@@ -555,9 +572,7 @@ export default class PollElement extends HTMLElement {
       }
 
       const timeEl = this.descDiv.querySelector('.poll-time');
-      if(timeEl) {
-        timeEl.remove();
-      }
+      timeEl?.remove();
     }
 
     if(this.isClosed) {
@@ -607,8 +622,8 @@ export default class PollElement extends HTMLElement {
         this.votersCountDiv.classList.toggle('hide', !!this.chosenIndexes.length);
       }
 
-      const peerIds = (results.recent_voters || []).map((userId) => userId.toPeerId());
-      const stackedAvatars = new StackedAvatars({avatarSize: 16});
+      const peerIds = (results.recent_voters || []).map((peer) => getPeerId(peer));
+      const stackedAvatars = new StackedAvatars({avatarSize: 16, middleware: this.middlewareHelper.get()});
       stackedAvatars.render(peerIds);
       replaceContent(this.avatarsDiv, stackedAvatars.container);
     }
@@ -628,7 +643,18 @@ export default class PollElement extends HTMLElement {
     this.svgLines.forEach((svg) => svg.style.display = '');
 
     this.answerDivs.forEach((el, idx) => {
-      el.classList.toggle('is-chosen', chosenIndexes.includes(idx));
+      const isChosen = chosenIndexes.includes(idx);
+      el.classList.toggle('is-chosen', isChosen);
+
+      const span = el.lastElementChild as HTMLElement;
+      let icon: HTMLElement;
+      if(el.classList.contains('is-correct') || (!this.isQuiz && isChosen)) {
+        icon = Icon('check');
+      } else if(isChosen) {
+        icon = Icon('close');
+      }
+
+      span.replaceChildren(icon);
     });
 
     const maxValue = Math.max(...percents);

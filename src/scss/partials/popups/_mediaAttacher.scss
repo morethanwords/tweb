@@ -43,11 +43,7 @@
         line-height: 2.25rem;
       }
     }
-  
-    &-close {
-      margin: -1px 0 0 -4px;
-    }
-  
+
     &-photo {
       max-width: 100%;
       overflow: hidden;
@@ -73,7 +69,7 @@
       font-size: 1rem;
       border-radius: $border-radius-medium;
 
-      &[data-placeholder]:not(:focus):empty ~ label {
+      &[data-placeholder]:not(:focus).is-empty ~ label {
         opacity: 0;
       }
     }
@@ -119,14 +115,6 @@
   .popup-header {
     padding: 0 1rem;
     height: 3.5rem;
-    margin: 0;
-  }
-
-  .popup-title {
-    padding-inline-start: 1.5rem;
-  }
-
-  .popup-close {
     margin: 0;
   }
 
@@ -297,16 +285,16 @@
     margin-bottom: 0 !important;
   }
 
+  .input-field-name {
+    margin-top: 0;
+  }
+
   .name-fields {
     display: flex;
     flex-direction: column;
     position: relative;
     padding-left: 116px;
     margin-top: 1rem;
-
-    .input-field:first-child {
-      margin-top: 0;
-    }
   }
 
   .avatar-placeholder {
@@ -314,5 +302,12 @@
     left: 0;
     top: 50%;
     transform: translateY(-50%);
+  }
+}
+
+.popup-create-poll {
+  .popup-close {
+    margin-top: -1px;
+    margin-inline-start: -4px;
   }
 }

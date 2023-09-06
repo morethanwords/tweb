@@ -5,6 +5,7 @@
  */
 
 import {MOUNT_CLASS_TO} from '../config/debug';
+import {_tgico} from '../helpers/tgico';
 
 export function putPreloader(elem: Element, returnDiv = false): HTMLElement {
   const html = `
@@ -30,14 +31,15 @@ export function putPreloader(elem: Element, returnDiv = false): HTMLElement {
 
 MOUNT_CLASS_TO.putPreloader = putPreloader;
 
-export function setButtonLoader(elem: HTMLButtonElement, icon = 'check') {
-  elem.classList.remove('tgico-' + icon);
+export function setButtonLoader(elem: HTMLButtonElement, icon: Icon = 'check') {
+  const iconElement = elem.querySelector(`.${_tgico(icon)}`);
+  iconElement?.remove();
   elem.disabled = true;
   putPreloader(elem);
 
   return () => {
     elem.replaceChildren();
-    elem.classList.add('tgico-' + icon);
+    if(iconElement) elem.append(iconElement);
     elem.removeAttribute('disabled');
   };
 }

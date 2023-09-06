@@ -19,6 +19,7 @@ import I18n, {i18n} from '../lib/langPack';
 import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 import Button from '../components/button';
 import {putPreloader} from '../components/putPreloader';
+import Icon from '../components/icon';
 
 let authCode: AuthState.signUp['authCode'] = null;
 
@@ -38,9 +39,7 @@ const onFirstMount = async() => {
   avatarPreview.id = 'canvas-avatar';
   avatarPreview.className = 'avatar-edit-canvas';
 
-  const addIco = document.createElement('span');
-  addIco.className = 'tgico tgico-cameraadd';
-
+  const addIco = Icon('cameraadd');
   page.imageDiv.append(avatarPreview, addIco);
 
   let uploadAvatar: () => CancellablePromise<InputFile>;

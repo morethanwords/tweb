@@ -41,7 +41,8 @@ import DownloadStorage from '../files/downloadStorage';
 import copy from '../../helpers/object/copy';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import {EXTENSION_MIME_TYPE_MAP, MIME_TYPE_EXTENSION_MAP} from '../../environment/mimeTypeMap';
-import {getServiceMessagePort} from './mtproto.worker';
+import isWebFileLocation from '../appManagers/utils/webFiles/isWebFileLocation';
+import appManagersManager from '../appManagers/appManagersManager';
 
 type Delayed = {
   offset: number,
@@ -63,7 +64,7 @@ export type DownloadOptions = {
 };
 
 export type DownloadMediaOptions = {
-  media: Photo.photo | Document.document | WebDocument,
+  media: Photo.photo | Document.document | WebDocument | InputWebFileLocation,
   thumb?: PhotoSize | Extract<VideoSize, VideoSize.videoSize>,
   queueId?: number,
   onlyCache?: boolean,
@@ -84,6 +85,8 @@ export type MyUploadFile = UploadFile.uploadFile | UploadWebFile.uploadWebFile;
 //   payload: ReferenceBytes,
 //   originalPayload: ReferenceBytes
 // };
+
+const DO_NOT_UPLOAD_FILES = false;
 
 const MAX_DOWNLOAD_FILE_PART_SIZE = 1 * 1024 * 1024;
 const MAX_UPLOAD_FILE_PART_SIZE = 512 * 1024;
@@ -259,7 +262,7 @@ export class ApiFileManager extends AppManager {
     queueId = 0,
     checkCancel?: () => void
   ) {
-    return this.downloadRequest(dcId, id, async() => { // do not remove async, because checkCancel will throw an error
+    return this.downloadRequest(this.webFileDcId, id, async() => { // do not remove async, because checkCancel will throw an error
       checkCancel?.();
 
       if('url' in location) {
@@ -287,7 +290,7 @@ export class ApiFileManager extends AppManager {
         offset,
         limit
       }, {
-        dcId,
+        dcId: this.webFileDcId,
         fileDownload: true
       });
     }, this.getDelta(limit), queueId);
@@ -437,7 +440,7 @@ export class ApiFileManager extends AppManager {
         }
 
         deferred.resolve(reference);
-      }, deferred.reject);
+      }, deferred.reject.bind(deferred));
     }
 
     // have to replace file_reference in any way, because location can be different everytime if it's stream
@@ -493,14 +496,14 @@ export class ApiFileManager extends AppManager {
   }
 
   private isLocalWebFile(url: string) {
-    return url.startsWith('assets/');
+    return url?.startsWith('assets/');
   }
 
   public download(options: DownloadOptions): DownloadPromise {
     const size = options.size ?? 0;
     const {dcId, location} = options;
     let {downloadId} = options;
-    if(downloadId && !getServiceMessagePort()) {
+    if(downloadId && !appManagersManager.getServiceMessagePort()) {
       this.log.error('download fallback to blob', options);
       downloadId = undefined;
     }
@@ -557,8 +560,8 @@ export class ApiFileManager extends AppManager {
       }
     };
 
-    const isWebFile = location._ === 'inputWebFileLocation';
-    const isLocalWebFile = isWebFile && this.isLocalWebFile(location.url);
+    const isWebFile = isWebFileLocation(location);
+    const isLocalWebFile = isWebFile && this.isLocalWebFile((location as InputWebFileLocation.inputWebFileLocation).url);
     const id = this.tempId++;
     const limitPart = isLocalWebFile ?
       size :
@@ -797,6 +800,7 @@ export class ApiFileManager extends AppManager {
     // const isWebDocument = media._ === 'webDocument';
     if(isDocument) media = this.appDocsManager.getDoc((media as Document.document).id);
     else if(isPhoto) media = this.appPhotosManager.getPhoto((media as Photo.photo).id);
+    options.media = media || options.media;
 
     const {fileName, downloadOptions} = getDownloadMediaDetails(options);
 
@@ -849,7 +853,7 @@ export class ApiFileManager extends AppManager {
     const isBigFile = fileSize >= 10485760;
     const partSize = this.getLimitPart(fileSize, true);
     const activeDelta = this.getDelta(partSize);
-    const totalParts = Math.ceil(fileSize / partSize);
+    const totalParts = DO_NOT_UPLOAD_FILES ? 0 : Math.ceil(fileSize / partSize);
     const fileId = randomLong();
     const resultInputFile: InputFile = {
       _: isBigFile ? 'inputFileBig' : 'inputFile',

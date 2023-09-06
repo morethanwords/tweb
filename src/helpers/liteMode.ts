@@ -15,11 +15,11 @@ export type LiteModeKey = 'all' | 'gif' | 'video' |
 
 export class LiteMode {
   public isEnabled() {
-    return rootScope.settings.liteMode.all;
+    return !!(rootScope.settings && rootScope.settings.liteMode.all);
   }
 
   public isAvailable(key: LiteModeKey) {
-    return !rootScope.settings.liteMode.all && !rootScope.settings.liteMode[key];
+    return !!(rootScope.settings && !rootScope.settings.liteMode.all && !rootScope.settings.liteMode[key]);
   }
 }
 

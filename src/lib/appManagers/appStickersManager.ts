@@ -40,7 +40,7 @@ const LOCAL_IDS: {[key in LOCAL_ID]: LOCAL_STICKER_SET_ID} = {
   GENERIC_ANIMATIONS: 'inputStickerSetEmojiGenericAnimations',
   DEFAULT_STATUSES: 'inputStickerSetEmojiDefaultStatuses',
   DEFAULT_TOPIC_ICONS: 'inputStickerSetEmojiDefaultTopicIcons'
-}
+};
 
 const LOCAL_IDS_SET: Set<LOCAL_STICKER_SET_ID> = new Set(Object.values(LOCAL_IDS) as any);
 
@@ -77,6 +77,12 @@ export class AppStickersManager extends AppManager {
     this.rootScope.addEventListener('user_auth', () => {
       setTimeout(() => {
         this.getAnimatedEmojiStickerSet();
+
+        Promise.resolve(this.getLocalStickerSet(LOCAL_IDS.GENERIC_ANIMATIONS)).then(async(messagesStickerSet) => {
+          for(const doc of messagesStickerSet.documents) {
+            await this.apiFileManager.downloadMedia({media: doc as Document.document});
+          }
+        });
         // this.getFavedStickersStickers();
       }, 1000);
 
@@ -253,7 +259,8 @@ export class AppStickersManager extends AppManager {
     return Promise.all([
       this.getLocalStickerSet(LOCAL_IDS.EMOJI),
       this.getLocalStickerSet(LOCAL_IDS.EMOJI_ANIMATIONS),
-      this.getAnimatedEmojiSounds()
+      this.getAnimatedEmojiSounds(),
+      this.getLocalStickerSet(LOCAL_IDS.GENERIC_ANIMATIONS)
     ]).then(([emoji, animations]) => {
       return {emoji, animations};
     });
@@ -285,7 +292,6 @@ export class AppStickersManager extends AppManager {
         const doc = this.appDocsManager.saveDoc({
           _: 'document',
           pFlags: {},
-          flags: 0,
           id: sound.id,
           access_hash: sound.access_hash,
           attributes: [{
@@ -339,7 +345,9 @@ export class AppStickersManager extends AppManager {
     return this.getRecentStickers(overwrite).then(() => this.recentStickers);
   }
 
-  public saveRecentSticker(docId: DocId, unsave?: boolean, attached?: boolean) {
+  public async saveRecentSticker(docId: DocId, unsave?: boolean, attached?: boolean) {
+    await this.getRecentStickersStickers();
+
     const doc = this.appDocsManager.getDoc(docId);
 
     findAndSplice(this.recentStickers, (_doc) => _doc.id === docId);

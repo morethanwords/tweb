@@ -29,12 +29,22 @@ export default class MentionsHelper extends AutocompletePeerHelper {
     );
   }
 
-  public checkQuery(query: string, peerId: PeerId, topMsgId: number) {
+  public checkQuery(
+    query: string,
+    peerId: PeerId,
+    topMsgId: number,
+    global?: boolean
+  ) {
     const trimmed = query.trim(); // check that there is no whitespace
     if(query.length !== trimmed.length) return false;
 
     const middleware = this.controller.getMiddleware();
-    this.managers.appProfileManager.getMentions(peerId && peerId.toChatId(), trimmed, topMsgId).then(async(peerIds) => {
+    this.managers.appProfileManager.getMentions(
+      peerId && peerId.toChatId(),
+      trimmed,
+      topMsgId,
+      global
+    ).then(async(peerIds) => {
       if(!middleware()) return;
 
       peerIds = peerIds.filter((peerId) => peerId !== rootScope.myId);
@@ -54,7 +64,9 @@ export default class MentionsHelper extends AutocompletePeerHelper {
         };
       });
 
-      this.render((await Promise.all(p)).filter(Boolean));
+      const out = (await Promise.all(p)).filter(Boolean);
+      if(!middleware()) return;
+      this.render(out, middleware);
     });
 
     return true;

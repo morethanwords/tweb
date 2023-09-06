@@ -34,11 +34,11 @@
 	}
 
 	&-count {
-		&:empty {
+		&.empty {
 			display: none;
 		}
 
-		&:not(:empty) + .btn-icon {
+		&:not(.empty) + .chat-search-calendar {
 			display: none;
 		}
 	}
@@ -68,9 +68,5 @@
 			opacity: 1;
 			visibility: visible;
 		}
-	}
-
-	.tgico-up {
-		margin-right: 2px;
 	}
 }

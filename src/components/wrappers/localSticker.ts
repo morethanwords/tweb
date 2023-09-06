@@ -31,7 +31,7 @@ export default async function wrapLocalSticker({
   managers?: AppManagers,
   middleware?: Middleware,
   autoplay?: boolean,
-  loop?: false
+  loop?: boolean
 }) {
   const container = document.createElement('div');
   container.classList.add('media-sticker-wrapper');

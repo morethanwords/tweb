@@ -51,6 +51,7 @@ export default class AppAddMembersTab extends SliderSuperTab {
 
     const isPrivacy = this.peerType === 'privacy';
     this.selector = new AppSelectPeers({
+      middleware: this.middlewareHelper.get(),
       appendTo: this.content,
       onChange: this.skippable ? null : (length) => {
         this.nextBtn.classList.toggle('is-visible', !!length);
@@ -67,8 +68,6 @@ export default class AppAddMembersTab extends SliderSuperTab {
       this.selector.addInitial(options.selectedPeerIds);
     }
 
-    this.nextBtn.classList.add('tgico-arrow_next');
-    this.nextBtn.replaceChildren();
     this.nextBtn.disabled = false;
     this.nextBtn.classList.toggle('is-visible', this.skippable);
   }

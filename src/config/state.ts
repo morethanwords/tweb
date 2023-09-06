@@ -112,8 +112,10 @@ export type State = {
   playbackParams: ReturnType<AppMediaPlaybackController['getPlaybackParams']>,
   keepSigned: boolean,
   chatContextMenuHintWasShown: boolean,
+  hideChatJoinRequests: {[peerId: PeerId]: number},
   stateId: number,
-  notifySettings: {[k in Exclude<NotifyPeer['_'], 'notifyPeer'>]?: PeerNotifySettings.peerNotifySettings}
+  notifySettings: {[k in Exclude<NotifyPeer['_'], 'notifyPeer'>]?: PeerNotifySettings.peerNotifySettings},
+  confirmedWebViews: BotId[]
 };
 
 // const BACKGROUND_DAY_MOBILE: Background = {
@@ -265,7 +267,9 @@ export const STATE_INIT: State = {
       },
       photo_size_max: 1048576,
       video_size_max: 15728640,
-      video_upload_maxbitrate: 100
+      video_upload_maxbitrate: 100,
+      small_queue_active_operations_max: 0,
+      large_queue_active_operations_max: 0
     },
     stickers: {
       suggest: 'all',
@@ -319,6 +323,8 @@ export const STATE_INIT: State = {
   },
   keepSigned: true,
   chatContextMenuHintWasShown: false,
+  hideChatJoinRequests: {},
   stateId: nextRandomUint(32),
-  notifySettings: {}
+  notifySettings: {},
+  confirmedWebViews: []
 };

@@ -22,6 +22,7 @@ import getPeerActiveUsernames from './utils/peers/getPeerActiveUsernames';
 import isPeerRestricted from './utils/peers/isPeerRestricted';
 import getPeerPhoto from './utils/peers/getPeerPhoto';
 import getServerMessageId from './utils/messageId/getServerMessageId';
+import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
 
 export type PeerType = 'channel' | 'chat' | 'megagroup' | 'group' | 'saved';
 export class AppPeersManager extends AppManager {
@@ -44,7 +45,7 @@ export class AppPeersManager extends AppManager {
 
   public getPeerMigratedTo(peerId: PeerId) {
     if(peerId.isUser()) {
-      return false;
+      return;
     }
 
     const chat = this.appChatsManager.getChat(peerId.toChatId()) as Chat.chat;
@@ -52,8 +53,6 @@ export class AppPeersManager extends AppManager {
     if(migratedTo && chat.pFlags.deactivated) {
       return getPeerId(migratedTo);
     }
-
-    return false;
   }
 
   public getOutputPeer(peerId: PeerId): Peer {
@@ -132,6 +131,10 @@ export class AppPeersManager extends AppManager {
 
   public isUser(peerId: PeerId)/* : peerId is UserId */ {
     return isUser(peerId);
+  }
+
+  public isRegularUser(peerId: PeerId) {
+    return this.isUser(peerId) && this.appUsersManager.isRegularUser(peerId);
   }
 
   public isAnyChat(peerId: PeerId) {
@@ -293,6 +296,22 @@ export class AppPeersManager extends AppManager {
       return !!(chat as Chat.chat).pFlags?.noforwards;
     }
   }
+
+  public mirrorAllPeers(port?: MessageEventSource) {
+    const peers: any = {
+      ...this.appUsersManager.getUsers()
+    };
+
+    const chats = this.appChatsManager.getChats();
+    for(const chatId in chats) {
+      peers[chatId.toPeerId(true)] = chats[chatId];
+    }
+
+    MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
+      name: 'peers',
+      value: peers
+    }, port);
+  }
 }
 
-export type IsPeerType = 'isChannel' | 'isMegagroup' | 'isAnyGroup' | 'isBroadcast' | 'isBot' | 'isContact' | 'isUser' | 'isAnyChat';
+export type IsPeerType = 'isChannel' | 'isMegagroup' | 'isAnyGroup' | 'isBroadcast' | 'isBot' | 'isContact' | 'isUser' | 'isAnyChat' | 'isRegularUser';

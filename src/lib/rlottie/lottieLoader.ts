@@ -21,10 +21,11 @@ export type LottieAssetName = 'EmptyFolder' | 'Folders_1' | 'Folders_2' |
   'TwoFactorSetupMonkeyCloseAndPeekToIdle' | 'TwoFactorSetupMonkeyIdle' |
   'TwoFactorSetupMonkeyPeek' | 'TwoFactorSetupMonkeyTracking' |
   'voice_outlined2' | 'voip_filled' | 'voice_mini' | 'jolly_roger' |
-  'Gift3' | 'Gift6' | 'Gift12';
+  'Gift3' | 'Gift6' | 'Gift12' | 'Folders_Shared' | 'UtyanSearch' |
+  'UtyanDiscussion' | 'UtyanLinks' | 'UtyanStories';
 
 export class LottieLoader {
-  private loadPromise: Promise<void> = !IS_WEB_ASSEMBLY_SUPPORTED ? Promise.reject() : undefined;
+  private loadPromise: Promise<void> = !IS_WEB_ASSEMBLY_SUPPORTED ? Promise.reject(makeError('NO_WASM')) : undefined;
   private loaded = false;
 
   private workersLimit = App.threads;
@@ -54,7 +55,7 @@ export class LottieLoader {
     return this.loadPromise = new Promise((resolve, reject) => {
       let remain = this.workersLimit;
       for(let i = 0; i < this.workersLimit; ++i) {
-        const worker = new Worker(new URL('./rlottie.worker.ts', import.meta.url));
+        const worker = new Worker(new URL('./rlottie.worker.ts', import.meta.url), {type: 'module'});
         const queryableWorker = this.workers[i] = new QueryableWorker(worker);
 
         queryableWorker.addEventListener('ready', () => {
@@ -183,8 +184,14 @@ export class LottieLoader {
     animationIntersector.addAnimation({
       animation: player,
       group,
+      observeElement: player.el[0],
       controlled: middleware,
-      liteModeKey: params.liteModeKey
+      liteModeKey: params.liteModeKey,
+      type: 'lottie'
+    });
+
+    params.middleware?.onDestroy(() => {
+      player.remove();
     });
 
     return player;

@@ -49,8 +49,8 @@ export default class AppEditProfileTab extends SliderSuperTab {
   private bioInputField: InputField;
   private usernameInputField: UsernameInputField;
 
-  private profileUrlContainer: HTMLDivElement;
-  private profileUrlAnchor: HTMLAnchorElement;
+  // private profileUrlContainer: HTMLDivElement;
+  // private profileUrlAnchor: HTMLAnchorElement;
 
   private editPeer: EditPeer;
 
@@ -62,7 +62,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
     };
   }
 
-  public async init(p: ReturnType<typeof AppEditProfileTab['getInitArgs']>) {
+  public async init(p: ReturnType<typeof AppEditProfileTab['getInitArgs']> = AppEditProfileTab.getInitArgs()) {
     this.container.classList.add('edit-profile-container');
     this.setTitle('EditAccount.Title');
 
@@ -91,18 +91,23 @@ export default class AppEditProfileTab extends SliderSuperTab {
         maxLength: bioMaxLength
       });
 
-      inputWrapper.append(this.firstNameInputField.container, this.lastNameInputField.container, this.bioInputField.container);
+      inputWrapper.append(
+        this.firstNameInputField.container,
+        this.lastNameInputField.container,
+        this.bioInputField.container
+      );
 
-      const caption = document.createElement('div');
-      caption.classList.add('caption');
-      i18n_({element: caption, key: 'Bio.Description'});
-
-      inputFields.push(this.firstNameInputField, this.lastNameInputField, this.bioInputField);
+      inputFields.push(
+        this.firstNameInputField,
+        this.lastNameInputField,
+        this.bioInputField
+      );
 
       this.editPeer = new EditPeer({
         peerId: rootScope.myId,
         inputFields,
-        listenerSetter: this.listenerSetter
+        listenerSetter: this.listenerSetter,
+        middleware: this.middlewareHelper.get()
       });
 
       this.content.append(this.editPeer.nextBtn);

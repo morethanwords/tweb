@@ -7,7 +7,7 @@
 import type {State} from '../../config/state';
 import rootScope from '../rootScope';
 import stateStorage from '../stateStorage';
-import setDeepProperty from '../../helpers/object/setDeepProperty';
+import setDeepProperty, {DEEP_PATH_JOINER} from '../../helpers/object/setDeepProperty';
 import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
 
 export class AppStateManager {
@@ -26,12 +26,12 @@ export class AppStateManager {
   public setByKey(key: string, value: any) {
     setDeepProperty(this.state, key, value);
 
-    const first = key.split('.')[0] as keyof State;
+    const first = key.split(DEEP_PATH_JOINER)[0] as keyof State;
     if(first === 'settings') {
       rootScope.dispatchEvent('settings_updated', {key, value, settings: this.state.settings});
     }
 
-    this.pushToState(first, this.state[first]);
+    return this.pushToState(first, this.state[first]);
   }
 
   public pushToState<T extends keyof State>(key: T, value: State[T], direct = true, onlyLocal?: boolean) {
@@ -39,13 +39,13 @@ export class AppStateManager {
       this.state[key] = value;
     }
 
-    this.setKeyValueToStorage(key, value, onlyLocal);
+    return this.setKeyValueToStorage(key, value, onlyLocal);
   }
 
   public setKeyValueToStorage<T extends keyof State>(key: T, value: State[T] = this.state[key], onlyLocal?: boolean) {
     MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {name: 'state', key, value});
 
-    this.storage.set({
+    return this.storage.set({
       [key]: value
     }, onlyLocal);
   }

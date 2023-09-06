@@ -5,7 +5,14 @@
  */
 
 @mixin animation-level($level: 2) {
+  // :global(body.animation-level-#{$level}) & {
   body.animation-level-#{$level} & {
+    @content;
+  }
+}
+
+@mixin animation-level-global($level: 2) {
+  :global(body.animation-level-#{$level}) & {
     @content;
   }
 }

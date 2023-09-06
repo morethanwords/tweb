@@ -30,7 +30,6 @@ import rootScope from '../rootScope';
 import appImManager from './appImManager';
 import appRuntimeManager from './appRuntimeManager';
 import {AppManagers} from './managers';
-import generateMessageId from './utils/messageId/generateMessageId';
 import getMessageThreadId from './utils/messages/getMessageThreadId';
 import getPeerColorById from './utils/peers/getPeerColorById';
 import getPeerId from './utils/peers/getPeerId';
@@ -104,8 +103,8 @@ export class UiNotificationsManager {
     this.log = logger('NOTIFICATIONS');
 
     navigator.vibrate = navigator.vibrate || (navigator as any).mozVibrate || (navigator as any).webkitVibrate;
-    this.setAppBadge = (navigator as any).setAppBadge && (navigator as any).setAppBadge.bind(navigator);
-    this.setAppBadge && this.setAppBadge(0);
+    this.setAppBadge = (navigator as any).setAppBadge?.bind(navigator);
+    this.setAppBadge?.(0);
 
     this.notificationsUiSupport = ('Notification' in window) || ('mozNotification' in navigator);
 
@@ -210,23 +209,30 @@ export class UiNotificationsManager {
 
       const peerId = notificationData.custom && notificationData.custom.peerId.toPeerId();
       console.log('click', notificationData, peerId);
-      if(peerId) {
-        this.topMessagesDeferred.then(async() => {
-          const chatId = peerId.isAnyChat() ? peerId.toChatId() : undefined;
-          if(chatId && !(await this.managers.appChatsManager.hasChat(chatId))) {
-            return;
-          }
-
-          if(peerId.isUser() && !(await this.managers.appUsersManager.hasUser(peerId.toUserId()))) {
-            return;
-          }
-
-          appImManager.setInnerPeer({
-            peerId,
-            lastMsgId: generateMessageId(+notificationData.custom.msg_id)
-          });
-        });
+      if(!peerId) {
+        return;
       }
+
+      this.topMessagesDeferred.then(async() => {
+        const chatId = peerId.isAnyChat() ? peerId.toChatId() : undefined;
+        let channelId: ChatId;
+        if(chatId) {
+          if(!(await this.managers.appChatsManager.hasChat(chatId))) {
+            return;
+          }
+
+          channelId = await this.managers.appChatsManager.isChannel(chatId) ? chatId : undefined;
+        }
+
+        if(!chatId && !(await this.managers.appUsersManager.hasUser(peerId.toUserId()))) {
+          return;
+        }
+
+        appImManager.setInnerPeer({
+          peerId,
+          lastMsgId: await this.managers.appMessagesIdsManager.generateMessageId(+notificationData.custom.msg_id, channelId)
+        });
+      });
     });
   }
 
@@ -695,7 +701,7 @@ export class UiNotificationsManager {
     } catch(e) {}
   }
 
-  public clear() {
+  public clear = () => {
     this.log.warn('clear');
 
     for(const i in this.notificationsShown) {
@@ -707,14 +713,21 @@ export class UiNotificationsManager {
     this.notificationsCount = 0;
 
     webPushApiManager.hidePushNotifications();
-  }
+  };
 
   public start() {
     this.log('start');
+    this.stopped = false;
 
     this.updateLocalSettings();
     rootScope.addEventListener('settings_updated', this.updateLocalSettings);
-    webPushApiManager.start();
+    apiManagerProxy.getState().then((state) => {
+      if(this.stopped || !state.keepSigned) {
+        return;
+      }
+
+      webPushApiManager.start();
+    });
 
     if(!this.notificationsUiSupport) {
       return false;

@@ -34,7 +34,7 @@
     flex-direction: column;
   }
 
-  hr {
+  .popup-body hr {
     display: block !important;
     margin: .5rem 0 !important;
     padding: 0 !important;
@@ -187,7 +187,8 @@
   &-tips {
     display: flex;
     justify-content: space-between;
-    margin: .75rem -.5rem 1.5rem;
+    flex-wrap: wrap;
+    margin: .25rem -.5rem 1.5rem;
 
     &-tip {
       --background-intensity: .1;
@@ -200,13 +201,14 @@
       font-weight: var(--font-weight-bold);
       font-size: var(--font-size-16);
       line-height: 2.5rem;
+      margin-top: .5rem;
 
       @include animation-level(2) {
         transition: color .1s ease-in-out, background-color .1s ease-in-out;
       }
 
-      & + & {
-        margin-left: .5rem;
+      &:not(:last-child) {
+        margin-right: .5rem;
       }
 
       &:not(.active) {

@@ -13,23 +13,13 @@ import MTTransport, {MTConnectionConstructable} from './transports/transport';
 import Modes from '../../config/modes';
 import App from '../../config/app';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-
-// #if MTPROTO_HAS_HTTP
 import HTTP from './transports/http';
-// #endif
-
-// #if MTPROTO_HAS_WS
 import Socket from './transports/websocket';
 import TcpObfuscated from './transports/tcpObfuscated';
 import {IS_WEB_WORKER} from '../../helpers/context';
 import {DcId} from '../../types';
 import {getEnvironment} from '../../environment/utils';
-
-// #if !MTPROTO_SW && SAFARI_PROXY_WEBSOCKET
 import SocketProxied from './transports/socketProxied';
-// #endif
-
-// #endif
 
 export type TransportType = 'websocket' | 'https' | 'http';
 export type ConnectionType = 'client' | 'download' | 'upload';
@@ -43,20 +33,24 @@ type Servers = {
 
 const TEST_SUFFIX = Modes.test ? '_test' : '';
 const PREMIUM_SUFFIX = '_premium';
+const RETRY_TIMEOUT_CLIENT = 3000;
+const RETRY_TIMEOUT_DOWNLOAD = 3000;
 
 export function getTelegramConnectionSuffix(connectionType: ConnectionType) {
   return connectionType === 'client' ? '' : '-1';
 }
 
-// #if MTPROTO_HAS_WS
 export function constructTelegramWebSocketUrl(dcId: DcId, connectionType: ConnectionType, premium?: boolean) {
+  if(!import.meta.env.VITE_MTPROTO_HAS_WS) {
+    return;
+  }
+
   const suffix = getTelegramConnectionSuffix(connectionType);
   const path = connectionType !== 'client' ? 'apiws' + TEST_SUFFIX + (premium ? PREMIUM_SUFFIX : '') : ('apiws' + TEST_SUFFIX);
   const chosenServer = `wss://${App.suffix.toLowerCase()}ws${dcId}${suffix}.web.telegram.org/${path}`;
 
   return chosenServer;
 }
-// #endif
 
 export class DcConfigurator {
   private sslSubdomains = ['pluto', 'venus', 'aurora', 'vesta', 'flora'];
@@ -77,26 +71,31 @@ export class DcConfigurator {
 
   public chosenServers: Servers = {} as any;
 
-  // #if MTPROTO_HAS_WS
   private transportSocket = (dcId: DcId, connectionType: ConnectionType, premium?: boolean) => {
+    if(!import.meta.env.VITE_MTPROTO_HAS_WS) {
+      return;
+    }
+
     const chosenServer = constructTelegramWebSocketUrl(dcId, connectionType, premium);
     const logSuffix = connectionType === 'upload' ? '-U' : connectionType === 'download' ? '-D' : '';
 
-    const retryTimeout = connectionType === 'client' ? 10000 : 10000;
+    const retryTimeout = connectionType === 'client' ? RETRY_TIMEOUT_CLIENT : RETRY_TIMEOUT_DOWNLOAD;
 
     let oooohLetMeLive: MTConnectionConstructable;
-    // #if MTPROTO_SW || !SAFARI_PROXY_WEBSOCKET
-    oooohLetMeLive = Socket;
-    // #else
-    oooohLetMeLive = (getEnvironment().IS_SAFARI && IS_WEB_WORKER && typeof(SocketProxied) !== 'undefined') /* || true */ ? SocketProxied : Socket;
-    // #endif
+    if(import.meta.env.VITE_MTPROTO_SW || !import.meta.env.VITE_SAFARI_PROXY_WEBSOCKET) {
+      oooohLetMeLive = Socket;
+    } else {
+      oooohLetMeLive = (getEnvironment().IS_SAFARI && IS_WEB_WORKER && typeof(SocketProxied) !== 'undefined') /* || true */ ? SocketProxied : Socket;
+    }
 
     return new TcpObfuscated(oooohLetMeLive, dcId, chosenServer, logSuffix, retryTimeout);
   };
-  // #endif
 
-  // #if MTPROTO_HAS_HTTP
   private transportHTTP = (dcId: DcId, connectionType: ConnectionType, premium?: boolean) => {
+    if(!import.meta.env.VITE_MTPROTO_HAS_HTTP) {
+      return;
+    }
+
     let chosenServer: string;
     if(Modes.ssl || !Modes.http) {
       const suffix = getTelegramConnectionSuffix(connectionType);
@@ -115,7 +114,6 @@ export class DcConfigurator {
     const logSuffix = connectionType === 'upload' ? '-U' : connectionType === 'download' ? '-D' : '';
     return new HTTP(dcId, chosenServer, logSuffix);
   };
-  // #endif
 
   public chooseServer(
     dcId: DcId,
@@ -147,13 +145,13 @@ export class DcConfigurator {
     if(!transports.length || !reuse/*  || (upload && transports.length < 1) */) {
       let transport: MTTransport;
 
-      // #if MTPROTO_HAS_WS && MTPROTO_HAS_HTTP
-      transport = (transportType === 'websocket' ? this.transportSocket : this.transportHTTP)(dcId, connectionType, premium);
-      // #elif !MTPROTO_HTTP
-      transport = this.transportSocket(dcId, connectionType, premium);
-      // #else
-      transport = this.transportHTTP(dcId, connectionType, premium);
-      // #endif
+      if(import.meta.env.VITE_MTPROTO_HAS_WS && import.meta.env.VITE_MTPROTO_HAS_HTTP) {
+        transport = (transportType === 'websocket' ? this.transportSocket : this.transportHTTP)(dcId, connectionType, premium);
+      } else if(!import.meta.env.VITE_MTPROTO_HTTP) {
+        transport = this.transportSocket(dcId, connectionType, premium);
+      } else {
+        transport = this.transportHTTP(dcId, connectionType, premium);
+      }
 
       if(!transport) {
         console.error('No chosenServer!', dcId);

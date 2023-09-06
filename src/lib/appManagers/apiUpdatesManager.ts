@@ -415,9 +415,12 @@ class ApiUpdatesManager {
   }
 
   private onDifferenceTooLong() {
-    this.appUsersManager.clear();
-    this.appChatsManager.clear();
-    this.appMessagesManager.clear();
+    for(const i in this) {
+      const value = this[i];
+      if(value instanceof AppManager) {
+        value.clear?.();
+      }
+    }
 
     this.rootScope.dispatchEvent('state_cleared');
   }
@@ -623,7 +626,7 @@ class ApiUpdatesManager {
   }
 
   public saveUpdate(update: Update) {
-    // this.debug && this.log('saveUpdate', update);
+    this.debug && this.log('update', update);
     this.dispatchEvent(update._, update as any);
   }
 
@@ -724,7 +727,7 @@ class ApiUpdatesManager {
           };
 
           const getChangelog = (lang: string) => {
-            fetch(`changelogs/${lang}_${newVersion.split(' ')[0]}.md`)
+            return fetch(`changelogs/${lang}_${newVersion.split(' ')[0]}.md`)
             .then((res) => (res.status === 200 && res.ok && res.text()) || Promise.reject())
             .then((text) => {
               const langStr = strs[lang] || strs.en;

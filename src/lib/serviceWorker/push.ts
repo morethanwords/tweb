@@ -12,7 +12,7 @@
 import {Database} from '../../config/databases';
 import DATABASE_STATE from '../../config/databases/state';
 import {NOTIFICATION_BADGE_PATH, NOTIFICATION_ICON_PATH} from '../../config/notifications';
-import {IS_FIREFOX, IS_MOBILE} from '../../environment/userAgent';
+import {IS_FIREFOX} from '../../environment/userAgent';
 import deepEqual from '../../helpers/object/deepEqual';
 import IDBStorage from '../files/idb';
 import {log, serviceMessagePort} from './index.service';
@@ -163,14 +163,14 @@ ctx.addEventListener('push', (event) => {
   } catch(err) {
     log(err);
 
-    const tag = 'fix';
-    const notificationPromise = ctx.registration.showNotification('Telegram', {tag});
+    // const tag = 'fix';
+    // const notificationPromise = ctx.registration.showNotification('Telegram', {tag});
 
-    notificationPromise.then(() => {
-      closeAllNotifications(tag);
-    });
+    // notificationPromise.then(() => {
+    //   closeAllNotifications(tag);
+    // });
 
-    event.waitUntil(notificationPromise);
+    // event.waitUntil(notificationPromise);
   }
 });
 
@@ -291,7 +291,7 @@ function fireNotification(obj: PushNotificationObject, settings: PushStorage['pu
   let tag = 'peer' + peerId;
 
   const messageKey = peerId + '_' + obj.custom.msg_id;
-  if(ignoreMessages) {
+  if(ignoreMessages.has(messageKey)) {
     const error = 'ignoring push';
     log.warn(error, obj);
     ignoreMessages.delete(messageKey);
@@ -349,7 +349,16 @@ export function onPing(payload: ServicePushPingTaskPayload, source?: MessageEven
   }
 }
 
-const ignoreMessages: Set<string> = new Set();
+const ignoreMessages: Map<string, number> = new Map();
 export function onShownNotification(payload: string) {
-  ignoreMessages.add(payload);
+  ignoreMessages.set(payload, Date.now());
 }
+
+setInterval(() => {
+  const time = Date.now();
+  ignoreMessages.forEach((_time, key) => {
+    if((time - _time) > 30e3) {
+      ignoreMessages.delete(key);
+    }
+  });
+}, 30 * 60e3);

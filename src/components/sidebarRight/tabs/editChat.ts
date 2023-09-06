@@ -10,11 +10,11 @@ import EditPeer from '../../editPeer';
 import Row, {CreateRowFromCheckboxField} from '../../row';
 import Button from '../../button';
 import {ChatRights} from '../../../lib/appManagers/appChatsManager';
-import {Chat, ChatFull} from '../../../layer';
+import {Chat, ChatFull, ChatParticipants} from '../../../layer';
 import AppChatTypeTab from './chatType';
 import rootScope from '../../../lib/rootScope';
 import AppGroupPermissionsTab from './groupPermissions';
-import {i18n, LangPackKey} from '../../../lib/langPack';
+import I18n, {i18n, LangPackKey} from '../../../lib/langPack';
 import PopupDeleteDialog from '../../popups/deleteDialog';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import toggleDisability from '../../../helpers/dom/toggleDisability';
@@ -25,6 +25,17 @@ import replaceContent from '../../../helpers/dom/replaceContent';
 import SettingSection from '../../settingSection';
 import getPeerActiveUsernames from '../../../lib/appManagers/utils/peers/getPeerActiveUsernames';
 import PopupElement from '../../popups';
+import AppChatAdministratorsTab from './chatAdministrators';
+import numberThousandSplitter from '../../../helpers/number/numberThousandSplitter';
+import AppChatMembersTab from './chatMembers';
+import AppRemovedUsersTab from './removedUsers';
+import AppChatDiscussionTab from './chatDiscussion';
+import wrapPeerTitle from '../../wrappers/peerTitle';
+import cancelEvent from '../../../helpers/dom/cancelEvent';
+import {toastNew} from '../../toast';
+import AppChatInviteLinksTab from './chatInviteLinks';
+import AppChatRequestsTab from './chatRequests';
+import {SliderSuperTabConstructable} from '../../sliderTab';
 
 export default class AppEditChatTab extends SliderSuperTab {
   private chatNameInputField: InputField;
@@ -35,7 +46,6 @@ export default class AppEditChatTab extends SliderSuperTab {
   protected async _init() {
     // * cleanup prev
     this.listenerSetter.removeAll();
-    this.scrollable.container.replaceChildren();
 
     this.container.classList.add('edit-peer-container', 'edit-group-container');
     this.setTitle('Edit');
@@ -48,7 +58,11 @@ export default class AppEditChatTab extends SliderSuperTab {
       canChangeType,
       canChangePermissions,
       canManageTopics,
-      appConfig
+      canManageAdmins,
+      canChangeInfo,
+      canDeleteChat,
+      appConfig,
+      availableReactions
     ] = await Promise.all([
       this.managers.appProfileManager.getChatFull(this.chatId, true),
       this.managers.appChatsManager.getChat(this.chatId) as Promise<Chat.chat | Chat.channel>,
@@ -57,8 +71,14 @@ export default class AppEditChatTab extends SliderSuperTab {
       this.managers.appChatsManager.hasRights(this.chatId, 'change_type'),
       this.managers.appChatsManager.hasRights(this.chatId, 'change_permissions'),
       this.managers.appChatsManager.hasRights(this.chatId, 'manage_topics'),
-      this.managers.apiManager.getAppConfig()
+      this.managers.appChatsManager.hasRights(this.chatId, 'change_permissions'),
+      this.managers.appChatsManager.hasRights(this.chatId, 'change_info'),
+      this.managers.appChatsManager.hasRights(this.chatId, 'delete_chat'),
+      this.managers.apiManager.getAppConfig(),
+      this.managers.appReactionsManager.getAvailableReactions()
     ]);
+
+    this.scrollable.container.replaceChildren();
 
     const chatUpdateListeners: {[type in 'full' | 'basic']: (() => void)[]} = {full: [], basic: []};
     const addChatUpdateListener = (callback: () => void, type: 'full' | 'basic' = 'basic') => {
@@ -74,7 +94,9 @@ export default class AppEditChatTab extends SliderSuperTab {
 
     this.listenerSetter.add(rootScope)('chat_full_update', async(chatId) => {
       if(this.chatId === chatId) {
-        chatFull = await this.managers.appProfileManager.getCachedFullChat(chatId) || chatFull;
+        chatFull = await this.managers.appProfileManager.getCachedFullChat(chatId) ||
+          chatFull ||
+          await this.managers.appProfileManager.getChatFull(chatId);
         chatUpdateListeners['full'].forEach((callback) => callback());
       }
     });
@@ -82,7 +104,7 @@ export default class AppEditChatTab extends SliderSuperTab {
     const peerId = this.chatId.toPeerId(true);
 
     {
-      const section = new SettingSection({noDelimiter: true, caption: true});
+      const section = new SettingSection({noDelimiter: true, caption: 'PeerInfo.SetAboutDescription'});
       const inputFields: InputField[] = [];
 
       const inputWrapper = document.createElement('div');
@@ -97,7 +119,8 @@ export default class AppEditChatTab extends SliderSuperTab {
       this.descriptionInputField = new InputField({
         label: 'DescriptionPlaceholder',
         name: 'chat-description',
-        maxLength: 255
+        maxLength: 255,
+        withLinebreaks: true
       });
 
       this.chatNameInputField.setOriginalValue(chat.title);
@@ -111,11 +134,17 @@ export default class AppEditChatTab extends SliderSuperTab {
         peerId,
         inputFields,
         listenerSetter: this.listenerSetter,
-        popupOptions: {isForum: (chat as Chat.channel).pFlags.forum}
+        popupOptions: {isForum: (chat as Chat.channel).pFlags.forum},
+        middleware: this.middlewareHelper.get()
       });
       this.content.append(this.editPeer.nextBtn);
 
       section.content.append(this.editPeer.avatarEdit.container, inputWrapper);
+      this.scrollable.append(section.container);
+    }
+
+    {
+      const section = new SettingSection({caption: true});
 
       if(canChangeType) {
         const chatTypeRow = new Row({
@@ -147,19 +176,72 @@ export default class AppEditChatTab extends SliderSuperTab {
         section.content.append(chatTypeRow.container);
       }
 
+      {
+        const inviteLinksRow = new Row({
+          titleLangKey: 'InviteLinks',
+          navigationTab: {
+            constructor: AppChatInviteLinksTab,
+            slider: this.slider,
+            getInitArgs: () => ({
+              chatId: this.chatId,
+              p: AppChatInviteLinksTab.getInitArgs(this.chatId)
+            })
+          },
+          icon: 'link',
+          listenerSetter: this.listenerSetter,
+          subtitle: true
+        });
+
+        const setInviteLinksCount = () => {
+          inviteLinksRow.subtitle.textContent = '1';
+        };
+
+        setInviteLinksCount();
+        addChatUpdateListener(setInviteLinksCount, 'full');
+
+        section.content.append(inviteLinksRow.container);
+      }
+
+      {
+        const requestsRow = new Row({
+          titleLangKey: isBroadcast ? 'SubscribeRequests' : 'MemberRequests',
+          navigationTab: {
+            constructor: AppChatRequestsTab,
+            getInitArgs: () => this.chatId,
+            slider: this.slider
+          },
+          icon: 'adduser',
+          listenerSetter: this.listenerSetter,
+          subtitle: true
+        });
+
+        const setRequestsCount = () => {
+          const count = chatFull.requests_pending;
+          requestsRow.subtitle.textContent = '' + count;
+          requestsRow.container.classList.toggle('hide', !count);
+        };
+
+        setRequestsCount();
+        addChatUpdateListener(setRequestsCount, 'full');
+
+        section.content.append(requestsRow.container);
+      }
+
       if(canChangeType || canChangePermissions) {
         const reactionsRow = new Row({
           titleLangKey: 'Reactions',
           icon: 'reactions',
-          clickable: () => {
-            const tab = this.slider.createTab(AppChatReactionsTab);
-            tab.chatId = this.chatId;
-            tab.open();
+          navigationTab: {
+            constructor: AppChatReactionsTab,
+            slider: this.slider,
+            getInitArgs: () => ({
+              chatId: this.chatId,
+              p: AppChatReactionsTab.getInitArgs(this.chatId)
+            })
           },
           listenerSetter: this.listenerSetter
         });
 
-        const availableReactions = await this.managers.appReactionsManager.getAvailableReactions();
         const availableReactionsLength = availableReactions.filter((availableReaction) => !availableReaction.pFlags.inactive).length;
         const setReactionsLength = () => {
           const chatAvailableReactions = chatFull.available_reactions ?? {_: 'chatReactionsNone'};
@@ -178,6 +260,46 @@ export default class AppEditChatTab extends SliderSuperTab {
         setReactionsLength();
         addChatUpdateListener(setReactionsLength, 'full');
         section.content.append(reactionsRow.container);
+      }
+
+      if(canChangeType) {
+        const discussionRow = new Row({
+          icon: 'comments',
+          titleLangKey: isBroadcast ? 'PeerInfo.Discussion' : 'LinkedChannel',
+          subtitle: true,
+          navigationTab: {
+            constructor: AppChatDiscussionTab,
+            getInitArgs: () => ({
+              chatId: this.chatId,
+              linkedChatId: (chatFull as ChatFull.channelFull).linked_chat_id,
+              p: AppChatDiscussionTab.getInitArgs()
+            }),
+            slider: this.slider
+          },
+          listenerSetter: this.listenerSetter
+        });
+
+        const setSubtitle = async() => {
+          const linkedChatId = (chatFull as ChatFull.channelFull).linked_chat_id;
+          let el: HTMLElement;
+          if(linkedChatId) {
+            el = await wrapPeerTitle({peerId: linkedChatId.toPeerId(true)});
+          } else {
+            el = i18n('PeerInfo.Discussion.Add');
+          }
+
+          if(!isBroadcast) {
+            discussionRow.container.classList.toggle('hide', !linkedChatId);
+          }
+
+          discussionRow.subtitle.replaceChildren(el);
+        };
+
+        await setSubtitle();
+        addChatUpdateListener(setSubtitle, 'full');
+
+        section.caption.replaceChildren(i18n('DiscussionInfo'));
+        section.content.append(discussionRow.container);
       }
 
       if(canChangePermissions && !isBroadcast) {
@@ -221,15 +343,24 @@ export default class AppEditChatTab extends SliderSuperTab {
         const topicsRow = new Row({
           checkboxField: new CheckboxField({toggle: true}),
           titleLangKey: 'Topics',
-          clickable: () => {},
+          clickable: (e) => {
+            if((chatFull as ChatFull.channelFull).linked_chat_id) {
+              toastNew({langPackKey: 'ChannelTopicsDiscussionForbidden'});
+              cancelEvent(e);
+              return;
+            }
+          },
           icon: 'topics',
           listenerSetter: this.listenerSetter
         });
 
         const setTopics = () => {
           const isForum = !!(chat as Chat.channel).pFlags.forum;
-          this.editPeer.avatarElem.parentElement.classList.toggle('is-forum', isForum);
+          this.editPeer.avatarElem.node.parentElement.classList.toggle('is-forum', isForum);
           topicsRow.checkboxField.setValueSilently(isForum);
+
+          // const linkedChatId = (chatFull as ChatFull.channelFull).linked_chat_id;
+          // topicsRow.toggleDisability(!!linkedChatId);
         };
 
         this.listenerSetter.add(topicsRow.checkboxField.input)('change', (e) => {
@@ -243,6 +374,7 @@ export default class AppEditChatTab extends SliderSuperTab {
 
         setTopics();
         addChatUpdateListener(setTopics);
+        addChatUpdateListener(setTopics, 'full');
 
         section.caption.replaceChildren(i18n('ForumToggleDescription'));
         section.content.append(topicsRow.container);
@@ -250,16 +382,7 @@ export default class AppEditChatTab extends SliderSuperTab {
 
       section.caption.classList.toggle('hide', !section.caption.childElementCount);
 
-      /* const administratorsRow = new Row({
-        titleLangKey: 'PeerInfo.Administrators',
-        subtitle: '' + ((chatFull as ChatFull.channelFull).admins_count || 1),
-        icon: 'admin',
-        clickable: true
-      });
-
-      section.content.append(administratorsRow.container); */
-
-      this.scrollable.append(section.container);
+      if(section.content.childElementCount) this.scrollable.append(section.container);
 
       attachClickEvent(this.editPeer.nextBtn, () => {
         this.editPeer.nextBtn.disabled = true;
@@ -286,63 +409,122 @@ export default class AppEditChatTab extends SliderSuperTab {
           this.close();
         });
       }, {listenerSetter: this.listenerSetter});
+    }
 
+    {
+      const section = new SettingSection({});
 
-      /* if(appChatsManager.hasRights(-this.peerId, 'change_info')) {
-        const discussionRow = new Row({
-          titleLangKey: 'PeerInfo.Discussion',
-          subtitleLangKey: 'PeerInfo.Discussion.Add',
-          clickable: true,
-          icon: 'message'
+      if(canManageAdmins) {
+        const administratorsRow = new Row({
+          titleLangKey: 'PeerInfo.Administrators',
+          subtitle: true,
+          icon: 'admin',
+          navigationTab: {
+            constructor: AppChatAdministratorsTab,
+            slider: this.slider,
+            getInitArgs: () => ({
+              chatId: this.chatId,
+              p: AppChatAdministratorsTab.getInitArgs(this.chatId)
+            })
+          },
+          listenerSetter: this.listenerSetter
         });
 
-        section.content.append(discussionRow.container);
+        const setAdministratorsLength = () => {
+          administratorsRow.subtitle.textContent = '' + ((chatFull as ChatFull.channelFull).admins_count || 1);
+        };
+
+        setAdministratorsLength();
+        addChatUpdateListener(setAdministratorsLength, 'full');
+
+        section.content.append(administratorsRow.container);
       }
 
-      const administratorsRow = new Row({
-        titleLangKey: 'PeerInfo.Administrators',
-        subtitle: '' + chatFull.admins_count,
-        icon: 'admin',
-        clickable: true
+      {
+        const membersRow = new Row({
+          titleLangKey: isBroadcast ? 'PeerInfo.Subscribers' : 'GroupMembers',
+          icon: 'newgroup',
+          clickable: () => {
+            this.slider.createTab(AppChatMembersTab).open(this.chatId);
+          },
+          listenerSetter: this.listenerSetter,
+          subtitle: true
+        });
+
+        // const i = new I18n.IntlElement();
+        // membersRow.subtitle.append(i.element);
+
+        const setMembersLength = () => {
+          const participants = isChannel ? (chatFull as ChatFull.channelFull).participants_count || 1 : ((chatFull as ChatFull.chatFull).participants as ChatParticipants.chatParticipants).participants.length;
+          membersRow.subtitle.textContent = numberThousandSplitter(participants);
+          // i.compareAndUpdate({
+          //   key: isBroadcast ? 'Subscribers' : 'Members',
+          //   args: [numberThousandSplitter(participants)]
+          // });
+        };
+
+        setMembersLength();
+        addChatUpdateListener(setMembersLength, 'full');
+
+        section.content.append(membersRow.container);
+      }
+
+      if(canChangePermissions) {
+        const removedUsersRow = new Row({
+          titleLangKey: 'ChannelBlockedUsers',
+          subtitle: true,
+          icon: 'deleteuser',
+          clickable: () => {
+            const tab = this.slider.createTab(AppRemovedUsersTab);
+            tab.open(this.chatId);
+          },
+          listenerSetter: this.listenerSetter
+        });
+
+        const setRemovedUsersLength = () => {
+          const kickedCount = (chatFull as ChatFull.channelFull).kicked_count || 0;
+          if(kickedCount) {
+            removedUsersRow.subtitle.textContent = numberThousandSplitter(kickedCount);
+          } else {
+            removedUsersRow.subtitle.replaceChildren(i18n('NoBlockedUsers'));
+          }
+        };
+
+        setRemovedUsersLength();
+        addChatUpdateListener(setRemovedUsersLength, 'full');
+
+        section.content.append(removedUsersRow.container);
+      }
+
+      this.scrollable.append(section.container);
+    }
+
+    if(isBroadcast && canChangeInfo) {
+      const section = new SettingSection({caption: 'ChannelSignMessagesInfo'});
+      const signMessagesCheckboxField = new CheckboxField({
+        text: 'ChannelSignMessages',
+        checked: !!(chat as Chat.channel).pFlags.signatures
       });
 
-      section.content.append(administratorsRow.container); */
-
-      if(isBroadcast && await this.managers.appChatsManager.hasRights(this.chatId, 'change_info')) {
-        const signMessagesCheckboxField = new CheckboxField({
-          text: 'ChannelSignMessages',
-          checked: !!(chat as Chat.channel).pFlags.signatures
+      this.listenerSetter.add(signMessagesCheckboxField.input)('change', () => {
+        const toggle = signMessagesCheckboxField.toggleDisability(true);
+        this.managers.appChatsManager.toggleSignatures(this.chatId, signMessagesCheckboxField.checked).then(() => {
+          toggle();
         });
+      });
 
-        this.listenerSetter.add(signMessagesCheckboxField.input)('change', () => {
-          const toggle = signMessagesCheckboxField.toggleDisability(true);
-          this.managers.appChatsManager.toggleSignatures(this.chatId, signMessagesCheckboxField.checked).then(() => {
-            toggle();
-          });
-        });
+      addChatUpdateListener(() => {
+        signMessagesCheckboxField.setValueSilently(!!(chat as Chat.channel).pFlags.signatures);
+      });
 
-        addChatUpdateListener(() => {
-          signMessagesCheckboxField.setValueSilently(!!(chat as Chat.channel).pFlags.signatures);
-        });
-
-        section.content.append(CreateRowFromCheckboxField(signMessagesCheckboxField).container);
-      }
+      section.content.append(CreateRowFromCheckboxField(signMessagesCheckboxField).container);
+      this.scrollable.append(section.container);
     }
 
     if(!isBroadcast) {
       const section = new SettingSection({
 
       });
-
-      /* const membersRow = new Row({
-        titleLangKey: isBroadcast ? 'PeerInfo.Subscribers' : 'GroupMembers',
-        icon: 'newgroup',
-        clickable: true
-      });
-
-      membersRow.subtitle.append(i18n('Subscribers', [numberThousandSplitter(335356)]));
-
-      section.content.append(membersRow.container); */
 
       if(!isBroadcast && canChangeType) {
         const showChatHistoryCheckboxField = new CheckboxField({
@@ -372,7 +554,7 @@ export default class AppEditChatTab extends SliderSuperTab {
       }
     }
 
-    if(await this.managers.appChatsManager.hasRights(this.chatId, 'delete_chat')) {
+    if(canDeleteChat) {
       const section = new SettingSection({});
 
       const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'delete', text: isBroadcast ? 'PeerInfo.DeleteChannel' : 'DeleteAndExitButton'});

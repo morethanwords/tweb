@@ -10,6 +10,7 @@ import appImManager from '../../lib/appManagers/appImManager';
 import {LangPackKey, _i18n, i18n} from '../../lib/langPack';
 import {ApiLimitType} from '../../lib/mtproto/api_methods';
 import rootScope from '../../lib/rootScope';
+import Icon from '../icon';
 import PopupPeer from './peer';
 
 const a: {[type in ApiLimitType]?: {
@@ -17,7 +18,7 @@ const a: {[type in ApiLimitType]?: {
   description: LangPackKey,
   descriptionPremium: LangPackKey,
   descriptionLocked: LangPackKey,
-  icon: string
+  icon: Icon
 }} = {
   pin: {
     title: 'LimitReached',
@@ -32,6 +33,13 @@ const a: {[type in ApiLimitType]?: {
     descriptionPremium: 'LimitReachedFoldersPremium',
     descriptionLocked: 'LimitReachedFoldersLocked',
     icon: 'limit_folders'
+  },
+  chatlistInvites: {
+    title: 'LimitReached',
+    description: 'LimitReachedSharedFolderInvites',
+    descriptionPremium: 'LimitReachedSharedFolderInvitesPremium',
+    descriptionLocked: 'LimitReachedSharedFolderInvitesLocked',
+    icon: 'limit_link'
   }
 };
 
@@ -70,9 +78,8 @@ class P extends PopupPeer {
       this.element.classList.add('is-premium');
     } else {
       const button = this.buttons.find((b) => !b.isCancel);
-      button.element.classList.add('popup-limit-button');
-      const i = document.createElement('i');
-      i.classList.add('popup-limit-button-icon', 'tgico-premium_double');
+      button.element.classList.add('popup-limit-button', 'shimmer');
+      const i = Icon('premium_double', 'popup-limit-button-icon');
       button.element.append(i);
     }
 
@@ -81,8 +88,7 @@ class P extends PopupPeer {
 
     const hint = document.createElement('div');
     hint.classList.add('popup-limit-hint');
-    const i = document.createElement('span');
-    i.classList.add('popup-limit-hint-icon', 'tgico-' + _a.icon);
+    const i = Icon(_a.icon, 'popup-limit-hint-icon');
     hint.append(i, '' + (options.isPremium ? options.limitPremium : options.limit));
 
     limitContainer.append(hint);

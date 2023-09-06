@@ -5,6 +5,7 @@
  */
 
 import {GrabEvent} from '../helpers/dom/attachGrabListeners';
+import safePlay from '../helpers/dom/safePlay';
 import appMediaPlaybackController from './appMediaPlaybackController';
 import RangeSelector from './rangeSelector';
 
@@ -74,7 +75,7 @@ export default class MediaProgressLine extends RangeSelector {
 
       onMouseUp: (e) => {
         // cancelEvent(e.event);
-        wasPlaying && this.media.play();
+        wasPlaying && safePlay(this.media);
         this.options?.onSeekEnd?.();
       }
     });

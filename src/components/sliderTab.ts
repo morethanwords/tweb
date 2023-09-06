@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import EventListenerBase from '../helpers/eventListenerBase';
+import EventListenerBase, {EventListenerListeners} from '../helpers/eventListenerBase';
 import ListenerSetter from '../helpers/listenerSetter';
 import {getMiddleware, MiddlewareHelper} from '../helpers/middleware';
 import noop from '../helpers/noop';
@@ -23,7 +23,7 @@ export interface SliderSuperTabEventableConstructable {
 }
 
 export default class SliderSuperTab {
-  public static getInitArgs?(fromTab: SliderSuperTab): any;
+  public static getInitArgs?(...args: any[]): any;
 
   public container: HTMLElement;
 
@@ -40,6 +40,8 @@ export default class SliderSuperTab {
 
   public managers: AppManagers;
   public middlewareHelper: MiddlewareHelper;
+
+  public isConfirmationNeededOnClose: () => void | boolean | Promise<any>; // should return boolean instantly or `Promise` from `confirmationPopup`
 
   constructor(slider: SidebarSlider, destroyable?: boolean) {
     this._constructor(slider, destroyable);
@@ -120,12 +122,12 @@ export default class SliderSuperTab {
   }
 }
 
-export class SliderSuperTabEventable extends SliderSuperTab {
+export class SliderSuperTabEventable<T extends EventListenerListeners = {}> extends SliderSuperTab {
   public eventListener: EventListenerBase<{
     destroy: () => void | Promise<any>,
     destroyAfter: (promise: Promise<void>) => void,
     close: () => void
-  }>;
+  } & T>;
 
   constructor(slider: SidebarSlider) {
     super(slider);
@@ -133,11 +135,14 @@ export class SliderSuperTabEventable extends SliderSuperTab {
   }
 
   onClose() {
+    // @ts-ignore
     this.eventListener.dispatchEvent('close');
   }
 
   onCloseAfterTimeout() {
+    // @ts-ignore
     const results = this.eventListener.dispatchResultableEvent('destroy');
+    // @ts-ignore
     this.eventListener.dispatchEvent('destroyAfter', Promise.all(results).then(noop, noop));
     this.eventListener.cleanup();
     return super.onCloseAfterTimeout();

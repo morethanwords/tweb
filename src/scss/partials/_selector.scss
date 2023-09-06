@@ -51,6 +51,7 @@
       border: none;
       outline: none;
       flex: 1 1 auto;
+      line-height: 1;
     }
 
     // ! only in this container need this padding
@@ -71,26 +72,13 @@
     border-radius: 1.5rem;
     user-select: none;
     flex: 0 0 auto;
-    transition: .2s opacity, .2s transform, .2s background-color;
     max-width: 11.25rem;
 
     @include text-overflow();
 
-    body.animation-level-0 & {
-      transition: none;
-    }
+    @include animation-level(2) {
+      transition: .2s opacity, .2s transform, .2s background-color;
 
-    @include hover() {
-      background-color: var(--light-danger-color);
-      cursor: pointer;
-
-      .selector-user-avatar:after {
-        opacity: 1;
-        transform: scaleX(-1) rotate(-90deg);
-      }
-    }
-
-    body:not(.animation-level-0) & {
       &.scale-in {
         animation: scaleIn .15s ease forwards;
       }
@@ -101,38 +89,55 @@
       }
     }
 
+    @include hover() {
+      background-color: var(--light-danger-color);
+      cursor: pointer;
+
+      .selector-user-avatar-close {
+        opacity: 1;
+        transform: scaleX(-1) rotate(-90deg);
+      }
+    }
+
     &-avatar {
-      float: left;
-      margin-inline-end: 8px;
-      overflow: hidden;
-      position: relative;
-      border-radius: 50% !important;
+      border-radius: inherit;
 
-      .is-rtl & {
-        float: right;
-      }
-
-      html.is-safari & {
-        -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%); // fix safari overflow
-      }
-
-      &:after {
+      &-close {
         position: absolute;
-        content: $tgico-close;
         inset-inline-start: 0;
         top: 0;
         background-color: var(--danger-color);
         height: 100%;
         width: 100%;
         z-index: 2;
-        font-size: 23px;
-        line-height: 32px !important;
+        font-size: 1.375rem;
+        line-height: var(--size) !important;
         opacity: 0;
-        transition: .2s opacity, .2s transform;
         transform: scaleX(-1) rotate(0deg);
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
 
-        body.animation-level-0 & {
-          transition: none;
+        @include animation-level(2) {
+          transition: .2s opacity, .2s transform;
+        }
+      }
+
+      &-container {
+        float: left;
+        margin-inline-end: 8px;
+        overflow: hidden;
+        position: relative;
+        border-radius: 50% !important;
+        color: #fff;
+  
+        .is-rtl & {
+          float: right;
+        }
+  
+        html.is-safari & {
+          -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%); // fix safari overflow
         }
       }
     }
@@ -142,9 +147,37 @@
     height: 100%;
     flex: 1 1 auto;
 
-    /* .scrollable > :first-child {
-      margin-top: .5rem;
-    } */
+    .scrollable {
+      display: flex;
+      flex-direction: column;
+
+      .sidebar-left-section-container,
+      .gradient-delimiter {
+        flex: 0 0 auto;
+      }
+    }
+  }
+
+  &-list-section-container {
+    flex: 1 1 auto !important;
+    // flex: 0 0 auto;
+    // min-height: 360px;
+
+    .sidebar-left-section {
+      display: flex;
+      flex-direction: column;
+
+      &,
+      .selector-list-section-content2 {
+        min-height: unquote('max(360px, 100%)');
+        // height: 1px; // fix height
+      }
+    }
+
+    .selector-list-section-content {
+      position: relative;
+      flex: 1 1 auto;
+    }
   }
 
   > hr {
@@ -157,7 +190,7 @@
     padding-inline-start: 11px;
   }
 
-  .checkbox-field {
+  .checkbox-field:not(.checkbox-field-toggle) {
     --offset-left: 0 !important;
     pointer-events: none;
     position: absolute !important;
@@ -199,5 +232,56 @@
     .dialog-avatar {
       margin-inline-start: #{$add} !important;
     }
+  }
+
+  &-empty-placeholder {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    padding: 0 1rem;
+
+    &-sticker {
+      width: 140px;
+      height: 140px;
+      position: relative;
+      margin-bottom: 1rem;
+    }
+
+    &-title {
+      font-size: var(--font-size-20);
+      font-weight: var(--font-weight-bold);
+      line-height: var(--line-height-20);
+    }
+
+    &-title,
+    &-description {
+      text-align: center;
+    }
+
+    &-description {
+      line-height: var(--line-height-16);
+      margin-top: .125rem;
+      padding-bottom: 40px;
+      color: var(--secondary-text-color);
+      @include text-overflow(false);
+    }
+
+    // .sidebar-left-section-name + & {
+    //   margin-top: 2rem;
+    // }
+  }
+
+  .dialogs-placeholder-canvas {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1;
   }
 }

@@ -22,7 +22,7 @@ export default class AppPrivacyAddToGroupsTab extends SliderSuperTabEventable {
       captions: [caption, caption, caption],
       exceptionTexts: ['PrivacySettingsController.NeverAllow', 'PrivacySettingsController.AlwaysAllow'],
       appendTo: this.scrollable,
-      skipTypes: [PrivacyType.Nobody],
+      // skipTypes: [PrivacyType.Nobody],
       managers: this.managers
     });
   }

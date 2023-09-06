@@ -10,30 +10,34 @@ import {simulateClickEvent, attachClickEvent} from '../helpers/dom/clickEvent';
 import findUpAsChild from '../helpers/dom/findUpAsChild';
 import findUpClassName from '../helpers/dom/findUpClassName';
 import getVisibleRect from '../helpers/dom/getVisibleRect';
+import safePlay from '../helpers/dom/safePlay';
 import ListenerSetter from '../helpers/listenerSetter';
 import {makeMediaSize} from '../helpers/mediaSize';
 import {getMiddleware, Middleware} from '../helpers/middleware';
 import {doubleRaf} from '../helpers/schedulers';
 import pause from '../helpers/schedulers/pause';
 import windowSize from '../helpers/windowSize';
+import {DocumentAttribute} from '../layer';
 import {MyDocument} from '../lib/appManagers/appDocsManager';
 import getStickerEffectThumb from '../lib/appManagers/utils/stickers/getStickerEffectThumb';
+import CustomEmojiElement from '../lib/customEmoji/element';
 import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
-import {CustomEmojiElement} from '../lib/richTextProcessor/wrapRichText';
 import lottieLoader from '../lib/rlottie/lottieLoader';
 import RLottiePlayer from '../lib/rlottie/rlottiePlayer';
 import rootScope from '../lib/rootScope';
 import animationIntersector, {AnimationItemGroup} from './animationIntersector';
+import {EMOJI_TEXT_COLOR} from './emoticonsDropdown';
 import SetTransition from './singleTransition';
 import wrapSticker from './wrappers/sticker';
 import {STICKER_EFFECT_MULTIPLIER} from './wrappers/sticker';
 
 let hasViewer = false;
-export default function attachStickerViewerListeners({listenTo, listenerSetter, selector, findTarget: originalFindTarget}: {
+export default function attachStickerViewerListeners({listenTo, listenerSetter, selector, findTarget: originalFindTarget, getTextColor}: {
   listenerSetter: ListenerSetter,
   listenTo: HTMLElement,
   selector?: string,
-  findTarget?: (e: MouseEvent) => HTMLElement
+  findTarget?: (e: MouseEvent) => HTMLElement,
+  getTextColor?: () => string
 }) {
   if(IS_TOUCH_SUPPORTED) {
     return;
@@ -72,7 +76,9 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
     const switchDuration = 200;
     const previousGroup = animationIntersector.getOnlyOnePlayableGroup();
     const _middleware = getMiddleware();
-    let container: HTMLElement, previousTransformer: HTMLElement;
+    let container: HTMLElement,
+      previousTransformer: HTMLElement,
+      isMouseUp = false;
 
     const doThatSticker = async({mediaContainer, doc, middleware, lockGroups, isSwitching}: {
       mediaContainer: HTMLElement,
@@ -93,6 +99,8 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
 
       const transformer = document.createElement('div');
       transformer.classList.add(className + '-transformer');
+      transformer.middlewareHelper = middleware.create();
+      middleware = transformer.middlewareHelper.get();
 
       const stickerContainer = document.createElement('div');
       stickerContainer.classList.add(className + '-sticker');
@@ -136,6 +144,8 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
       transformer.append(stickerContainer, stickerEmoji);
       container.append(transformer);
 
+      const attribute = doc.attributes.find((attribute) => attribute._ === 'documentAttributeCustomEmoji') as DocumentAttribute.documentAttributeCustomEmoji;
+
       const o = await wrapSticker({
         doc,
         div: stickerContainer,
@@ -150,7 +160,8 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
         isOut,
         withThumb: false,
         relativeEffect: true,
-        loopEffect: true
+        loopEffect: true,
+        textColor: attribute && attribute.pFlags.text_color ? getTextColor?.() || EMOJI_TEXT_COLOR : undefined
       }).then(({render}) => render);
       if(!middleware()) return;
 
@@ -203,7 +214,7 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
       return {
         ready: () => {
           if(player instanceof RLottiePlayer || player instanceof HTMLVideoElement) {
-            player.play();
+            safePlay(player);
           }
 
           if(effectThumb) {
@@ -235,6 +246,11 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
         });
         if(!result) return;
       } catch(err) {
+        return;
+      }
+
+      // * can't use middleware here
+      if(isMouseUp) {
         return;
       }
 
@@ -298,6 +314,7 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
         duration: switchDuration,
         onTransitionEnd: () => {
           _previousTransformer.remove();
+          _previousTransformer.middlewareHelper.destroy();
         }
       });
 
@@ -322,8 +339,9 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
     };
 
     const onMouseUp = () => {
+      isMouseUp = true;
       clearTimeout(timeout);
-      _middleware.clean();
+      // _middleware.clean();
 
       if(container) {
         SetTransition({
@@ -335,6 +353,7 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
             container.remove();
             animationIntersector.setOnlyOnePlayableGroup(previousGroup);
             animationIntersector.checkAnimations2(false);
+            _middleware.destroy();
             hasViewer = false;
           }
         });

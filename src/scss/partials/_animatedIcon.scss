@@ -134,15 +134,12 @@
 }
 
 .animated-button-icon {
-  > .tgico {
+  &-icon {
     position: absolute;
-    height: 24px;
-    line-height: 24px;
+    height: 1.5rem;
+    line-height: 1.5rem;
+    animation: hide-icon .4s forwards ease-in-out;
     
-    body:not(.animation-level-0) & {
-      animation: hide-icon .4s forwards ease-in-out;
-    }
-
     @include animation-level(0) {
       visibility: hidden;
       animation: none !important;

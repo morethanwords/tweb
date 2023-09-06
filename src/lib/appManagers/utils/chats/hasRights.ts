@@ -15,7 +15,12 @@ import {ChatRights} from '../../appChatsManager';
  * @param isThread
  * @returns
  */
-export default function hasRights(chat: Exclude<Chat, Chat.chatEmpty>, action: ChatRights, rights?: ChatAdminRights | ChatBannedRights, isThread?: boolean) {
+export default function hasRights(
+  chat: Exclude<Chat, Chat.chatEmpty>,
+  action: ChatRights,
+  rights?: ChatAdminRights | ChatBannedRights,
+  isThread?: boolean
+) {
   if(!chat) return false;
 
   if((chat as Chat.chat).pFlags.deactivated && action !== 'view_messages') {
@@ -23,7 +28,7 @@ export default function hasRights(chat: Exclude<Chat, Chat.chatEmpty>, action: C
   }
 
   const isCheckingRightsForSelf = rights === undefined;
-  if((chat as Chat.chat).pFlags.creator && isCheckingRightsForSelf) {
+  if((chat as Chat.chat).pFlags.creator && isCheckingRightsForSelf && action !== 'anonymous') {
     return true;
   }
 
@@ -75,7 +80,7 @@ export default function hasRights(chat: Exclude<Chat, Chat.chatEmpty>, action: C
         return false;
       }
 
-      if(rights._ === 'chatBannedRights' && myFlags[action]) {
+      if(!isAdmin && myFlags[action]) {
         return false;
       }
 
@@ -95,12 +100,20 @@ export default function hasRights(chat: Exclude<Chat, Chat.chatEmpty>, action: C
     }
 
     case 'pin_messages': {
-      return isAdmin ? myFlags[action] || !!myFlags.post_messages : !myFlags[action];
+      return isAdmin ? !!(myFlags[action] || (!(chat as Chat.channel).pFlags.megagroup && myFlags.post_messages)) : !myFlags[action];
     }
 
     // case 'change_info': {
     // return adminRights || isCheckingRightsForSelf ? adminFlags[action] : !myFlags[action];
     // }
+
+    case 'invite_links': {
+      if(chat._ === 'chat') {
+        return false;
+      }
+
+      return isAdmin && !!myFlags['invite_users'];
+    }
 
     case 'change_info':
     case 'invite_users': {
@@ -113,6 +126,8 @@ export default function hasRights(chat: Exclude<Chat, Chat.chatEmpty>, action: C
       return false;
     }
 
+    case 'add_admins':
+    case 'anonymous':
     case 'edit_messages':
     case 'manage_topics': {
       return isAdmin && !!myFlags[action];

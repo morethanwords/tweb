@@ -4,8 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import AvatarElement from './avatar';
 import type LazyLoadQueue from './lazyLoadQueue';
+import {Middleware, MiddlewareHelper} from '../helpers/middleware';
+import {avatarNew} from './avatarNew';
 
 const CLASS_NAME = 'stacked-avatars';
 const AVATAR_CLASS_NAME = CLASS_NAME + '-avatar';
@@ -15,25 +16,29 @@ export default class StackedAvatars {
   public container: HTMLElement;
   private lazyLoadQueue: LazyLoadQueue;
   private avatarSize: number;
+  private middlewareHelper: MiddlewareHelper;
 
   constructor(options: {
     lazyLoadQueue?: StackedAvatars['lazyLoadQueue'],
-    avatarSize: StackedAvatars['avatarSize']
+    avatarSize: StackedAvatars['avatarSize'],
+    middleware: Middleware
   }) {
     this.lazyLoadQueue = options.lazyLoadQueue;
     this.avatarSize = options.avatarSize;
+    this.middlewareHelper = options.middleware.create();
 
     this.container = document.createElement('div');
     this.container.classList.add(CLASS_NAME);
 
     this.container.style.setProperty('--avatar-size', options.avatarSize + 'px');
   }
+
   /**
    * MACOS, ANDROID - без реверса
    * WINDOWS DESKTOP - реверс
    * все приложения накладывают аватарку первую на вторую, а в макете зато вторая на первую, ЛОЛ!
    */
-  public render(peerIds: PeerId[], loadPromises?: Promise<any>[]) {
+  public render(peerIds: PeerId[], loadPromises: Promise<any>[] = []) {
     const children = this.container.children;
     peerIds = peerIds.slice().reverse();
     if(peerIds.length > 3) {
@@ -45,33 +50,36 @@ export default class StackedAvatars {
       if(!avatarContainer) {
         avatarContainer = document.createElement('div');
         avatarContainer.classList.add(AVATAR_CONTAINER_CLASS_NAME);
+        avatarContainer.middlewareHelper = this.middlewareHelper.get().create();
+      } else {
+        avatarContainer.middlewareHelper.clean();
       }
 
-      let avatarElem = avatarContainer.firstElementChild as AvatarElement;
-      if(!avatarElem) {
-        avatarElem = new AvatarElement();
-        avatarElem.classList.add('avatar-' + this.avatarSize, AVATAR_CLASS_NAME);
-        avatarElem.updateOptions({
-          isDialog: false,
-          loadPromises
-        });
-      }
-
-      avatarElem.updateWithOptions({
+      const avatarElem = avatarNew({
+        middleware: avatarContainer.middlewareHelper.get(),
+        size: this.avatarSize,
+        isDialog: false,
         lazyLoadQueue: this.lazyLoadQueue,
-        peerId: peerId
+        peerId
       });
+      avatarElem.node.classList.add(AVATAR_CLASS_NAME);
+      loadPromises?.push(avatarElem.readyThumbPromise);
 
-      if(!avatarElem.parentNode) {
-        avatarContainer.append(avatarElem);
-      }
+      avatarContainer.replaceChildren(avatarElem.node);
 
       if(!avatarContainer.parentNode) {
         this.container.append(avatarContainer);
       }
+
+      avatarContainer.classList.toggle('is-first', idx === 0);
     });
 
     // if were 3 and became 2
-    (Array.from(children) as HTMLElement[]).slice(peerIds.length).forEach((el) => el.remove());
+    (Array.from(children) as HTMLElement[]).slice(peerIds.length).forEach((el) => {
+      el.middlewareHelper.destroy();
+      el.remove();
+    });
+
+    return Promise.all(loadPromises);
   }
 }

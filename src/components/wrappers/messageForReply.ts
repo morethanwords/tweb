@@ -14,15 +14,17 @@ import {MyDocument} from '../../lib/appManagers/appDocsManager';
 import {MyDraftMessage} from '../../lib/appManagers/appDraftsManager';
 import {MyMessage} from '../../lib/appManagers/appMessagesManager';
 import isMessageRestricted from '../../lib/appManagers/utils/messages/isMessageRestricted';
-import I18n, {LangPackKey, i18n, UNSUPPORTED_LANG_PACK_KEY} from '../../lib/langPack';
+import I18n, {LangPackKey, i18n, UNSUPPORTED_LANG_PACK_KEY, FormatterArguments} from '../../lib/langPack';
+import {SERVICE_PEER_ID} from '../../lib/mtproto/mtproto_config';
 import parseEntities from '../../lib/richTextProcessor/parseEntities';
 import sortEntities from '../../lib/richTextProcessor/sortEntities';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import wrapPlainText from '../../lib/richTextProcessor/wrapPlainText';
-import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
+import wrapRichText, {WrapRichTextOptions} from '../../lib/richTextProcessor/wrapRichText';
 import rootScope from '../../lib/rootScope';
 import {Modify} from '../../types';
 import wrapMessageActionTextNew, {WrapMessageActionTextOptions} from './messageActionTextNew';
+import wrapPeerTitle from './peerTitle';
 
 export type WrapMessageForReplyOptions = Modify<WrapMessageActionTextOptions, {
   message: MyMessage | MyDraftMessage
@@ -39,19 +41,23 @@ export type WrapMessageForReplyOptions = Modify<WrapMessageActionTextOptions, {
 export default async function wrapMessageForReply<T extends WrapMessageForReplyOptions>(
   options: T
 ): Promise<T['plain'] extends true ? string : DocumentFragment> {
-  let {message, text, usingMids, plain, highlightWord, withoutMediaType} = options;
-  text ??= (message as Message.message).message;
+  options.text ??= (options.message as Message.message).message;
+  if(!options.plain && options.highlightWord) {
+    options.highlightWord = options.highlightWord.trim();
+  }
+
+  const {message, usingMids, plain, highlightWord, withoutMediaType} = options;
 
   const parts: (Node | string)[] = [];
 
   let hasAlbumKey = false;
-  const addPart = (langKey: LangPackKey, part?: string | HTMLElement | DocumentFragment) => {
+  const addPart = (langKey: LangPackKey, part?: string | HTMLElement | DocumentFragment, args?: FormatterArguments) => {
     if(langKey) {
       if(part === undefined && hasAlbumKey) {
         return;
       }
 
-      part = plain ? I18n.format(langKey, true) : i18n(langKey);
+      part = plain ? I18n.format(langKey, true, args) : i18n(langKey, args);
     }
 
     if(plain) {
@@ -90,7 +96,7 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
 
       if(usingFullAlbum) {
         const albumText = await appMessagesManager.getAlbumText(message.grouped_id);
-        text = albumText?.message || '';
+        options.text = albumText?.message || '';
         entities = albumText?.totalEntities || [];
 
         if(!withoutMediaType) {
@@ -102,7 +108,7 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
       usingFullAlbum = false;
     }
 
-    if((!usingFullAlbum && !withoutMediaType) || !text) {
+    if((!usingFullAlbum && !withoutMediaType) || !options.text) {
       const media = message.media;
       switch(media._) {
         case 'messageMediaPhoto':
@@ -112,7 +118,7 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
           addPart(undefined, plain ? media.emoticon : wrapEmojiText(media.emoticon));
           break;
         case 'messageMediaVenue': {
-          text = media.title;
+          options.text = media.title;
           addPart('AttachLocation');
           break;
         }
@@ -163,7 +169,7 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
               parts.push(span);
             }
 
-            text = '';
+            options.text = '';
           } else if(document.type === 'audio') {
             const attribute = document.attributes.find((attribute) => attribute._ === 'documentAttributeAudio' && (attribute.title || attribute.performer)) as DocumentAttribute.documentAttributeAudio;
             const f = '🎵' + ' ' + (attribute ? [attribute.title, attribute.performer].filter(Boolean).join(' - ') : document.file_name);
@@ -190,6 +196,22 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
           break;
         }
 
+        case 'messageMediaStory': {
+          if(media.pFlags.via_mention) {
+            const storyPeerId = media.user_id.toPeerId(false);
+            const isMyStory = storyPeerId === rootScope.myId;
+            addPart(
+              isMyStory ? 'StoryMentionYou' : 'StoryMention',
+              undefined,
+              [await wrapPeerTitle({peerId: isMyStory ? message.peerId : storyPeerId, plainText: plain})]
+            )
+          } else {
+            addPart('Story');
+          }
+
+          break;
+        }
+
         default:
           // messageText += media._;
           // /////appMessagesManager.log.warn('Got unknown media type!', message);
@@ -202,15 +224,14 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
       parts.splice(i, 0, ', ');
     }
 
-    if(text && length) {
+    if(options.text && length) {
       parts.push(', ');
     }
   }
 
   if((message as Message.messageService).action) {
     const actionWrapped = await wrapMessageActionTextNew({
-      message: (message as Message.messageService),
-      plain,
+      ...(options as Modify<typeof options, {message: Message.messageService}>),
       noLinks: true,
       noTextFormat: true
     });
@@ -221,27 +242,26 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
   }
 
   if(isRestricted) {
-    text = getRestrictionReason((message as Message.message).restriction_reason).text;
+    options.text = getRestrictionReason((message as Message.message).restriction_reason).text;
     entities = [];
   }
 
-  if(text) {
-    text = limitSymbols(text, 100);
+  if(options.text) {
+    options.text = limitSymbols(options.text, 100);
 
-    entities ??= parseEntities(text);
+    entities ??= parseEntities(options.text);
 
     if(plain) {
-      parts.push(wrapPlainText(text, entities));
+      parts.push(wrapPlainText(options.text, entities));
     } else {
       // let entities = parseEntities(text.replace(/\n/g, ' '));
 
       if(highlightWord) {
-        highlightWord = highlightWord.trim();
         let found = false;
         let match: any;
         const regExp = new RegExp(escapeRegExp(highlightWord), 'gi');
         entities = entities.slice(); // fix leaving highlight entity
-        while((match = regExp.exec(text)) !== null) {
+        while((match = regExp.exec(options.text)) !== null) {
           entities.push({_: 'messageEntityHighlight', length: highlightWord.length, offset: match.index});
           found = true;
         }
@@ -251,7 +271,23 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
         }
       }
 
-      const messageWrapped = wrapRichText(text, {
+      if((message as Message.message).peerId === SERVICE_PEER_ID &&
+        (message as Message.message).fromId === (message as Message.message).peerId) {
+        const match = options.text.match(/[\d\-]{5,7}/);
+        if(match) {
+          entities = entities.slice();
+          entities.push({
+            _: 'messageEntitySpoiler',
+            offset: match.index,
+            length: match[0].length
+          });
+
+          sortEntities(entities);
+        }
+      }
+
+      const messageWrapped = wrapRichText(options.text, {
+        ...options,
         noLinebreaks: true,
         entities,
         noLinks: true,

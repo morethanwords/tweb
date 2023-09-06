@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-@mixin sidebar-transform($centered: false, $transform: true) {
+@mixin sidebar-transform($centered: 0, $transform: true) {
 	@include respond-to(medium-screens) {
 		transition: transform var(--transition-standard-out);
 
 		body.is-right-column-shown & {
       @if $transform {
-        @if $centered {
-          transform: translate3d(calc(var(--right-column-width) * -.5), 0, 0);
+        @if $centered != 0 {
+          transform: translate3d(calc(var(--right-column-width) * #{$centered} * -.5), 0, 0);
         } @else {
           transform: translate3d(calc(var(--right-column-width) * -1), 0, 0);
         }
@@ -70,13 +70,16 @@ body.is-right-column-shown {
   
   --pinned-floating-audio-height: 0px;
   --pinned-floating-message-height: 0px;
-	--pinned-floating-height: calc(var(--pinned-floating-audio-height) + var(--pinned-floating-message-height) + var(--topbar-floating-call-height));
+  --pinned-floating-requests-height: 0px;
+  --pinned-floating-actions-height: 0px;
+	--pinned-floating-height: calc(var(--pinned-floating-audio-height) + var(--pinned-floating-message-height) + var(--pinned-floating-requests-height) + var(--pinned-floating-actions-height) + var(--topbar-floating-call-height));
   
-	--pinned-audio-height: 52px;
-	--pinned-message-height: 52px;
+  --pinned-container-height: 3.25rem;
+	--pinned-audio-height: var(--pinned-container-height);
+	--pinned-message-height: var(--pinned-container-height);
 
 	width: 100%;
-	z-index: 1;
+	z-index: 2;
 	min-height: var(--topbar-height) !important;
 	max-height: var(--topbar-height) !important;
 	margin-bottom: var(--pinned-floating-height);
@@ -101,6 +104,14 @@ body.is-right-column-shown {
 	&.is-pinned-message-floating {
 		--pinned-floating-message-height: var(--pinned-message-height);
 	}
+
+  &.is-pinned-requests-floating {
+    --pinned-floating-requests-height: var(--pinned-container-height);
+  }
+
+  &.is-pinned-actions-floating {
+    --pinned-floating-actions-height: var(--pinned-container-height);
+  }
 
 	&:not(.is-pinned-message-floating) {
 		.chat-utils {
@@ -182,7 +193,7 @@ body.is-right-column-shown {
 		align-items: center;
     font-weight: var(--font-weight-bold);
 	
-		span.emoji {
+		.emoji-native {
 			vertical-align: inherit;
 		}
 	}
@@ -191,10 +202,6 @@ body.is-right-column-shown {
 	.info {
 		@include text-overflow();
 		line-height: var(--line-height);
-	}
-
-	.info:not(:empty) {
-		margin-top: 1px;
 	}
 
 	.btn-menu-toggle {
@@ -217,7 +224,9 @@ body.is-right-column-shown {
 		flex: 1 1 auto;
 		overflow: hidden;
 		padding-inline-start: 49px;
-		//--utils-width: NaN;
+    height: 46px;
+    padding-top: 2px;
+    padding-bottom: 2px;
 
 		@include respond-to(handhelds) {
 			padding-inline-start: 52px;
@@ -241,6 +250,7 @@ body.is-right-column-shown {
       max-height: 3.5rem;
       flex: 1 1 auto;
       max-width: 100%;
+      z-index: 1; // fix menu overlap
     }
 	}
 
@@ -285,6 +295,7 @@ body.is-right-column-shown {
 	.person {
 		display: flex;
 		align-items: center;
+    height: 100%;
 
 		&-avatar {
 			flex: 0 0 auto;
@@ -412,7 +423,7 @@ body.is-right-column-shown {
     }
 
     &-center {
-      @include sidebar-transform(true);
+      @include sidebar-transform(1);
       @include text-overflow();
 
       @include respond-to(medium-screens) {
@@ -444,7 +455,7 @@ body.is-right-column-shown {
         transform-origin: right center;
       }
 
-      @include sidebar-transform(false, false);
+      @include sidebar-transform(0, false);
 
       &-canvas {
         width: 100%;

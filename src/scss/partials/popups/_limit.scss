@@ -99,6 +99,7 @@
     background: linear-gradient(84.4deg,#6c93ff -4.85%,#976fff 51.72%,#df69d1 110.7%);
     background-size: 200px 2rem;
     background-position-x: 100%;
+    min-width: 66px;
 
     @include animation-level(2) {
       transition: transform .3s cubic-bezier(.12,1.1,.56,1.1);

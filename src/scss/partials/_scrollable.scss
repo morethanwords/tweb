@@ -4,48 +4,47 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-html:not(.is-safari):not(.is-ios) {
+html:not(.is-safari):not(.is-ios):not(.is-mac) {
   .scrollable::-webkit-scrollbar {
     width: 0;
     height: 0;
     opacity: 0; // for safari
     width: .375rem;
   }
-  
+
   .scrollable::-webkit-scrollbar-thumb {
     width: 0;
     height: 0;
   }
-  
-  ::-webkit-scrollbar-thumb {
+
+  .scrollable::-webkit-scrollbar-thumb {
     opacity: 0;
     transition: .2s ease-in-out;
   }
-  
-  ::-webkit-scrollbar-button {
+
+  .scrollable::-webkit-scrollbar-button {
     width: 0;
     height: 0;
     display: none;
   }
-  
-  ::-webkit-scrollbar-corner {
+
+  .scrollable::-webkit-scrollbar-corner {
     background-color: transparent;
   }
 
   .scrollable:hover {
     scrollbar-color: var(--scrollbar-color) rgba(0, 0, 0, 0);
   }
-  
+
   .scrollable:hover::-webkit-scrollbar {
     opacity: 1; // for safari
   }
-  
+
   .scrollable:hover::-webkit-scrollbar-thumb {
     min-height: 5rem;
     max-height: 12.5rem;
     border-radius: $border-radius-medium;
     background-color: var(--scrollbar-color);
-    backdrop-filter: blur(100);
     opacity: 1;
   }
 }
@@ -71,7 +70,6 @@ html:not(.is-safari):not(.is-ios) {
   overflow-y: hidden;
   overflow-x: hidden;
   max-height: 100%;
-  // transform: translateZ(0);
 
   //@include respond-to(not-handhelds) {
     position: absolute;
@@ -95,7 +93,10 @@ html:not(.is-safari):not(.is-ios) {
     scrollbar-width: thin; // Firefox only
     scrollbar-color: rgba(0, 0, 0, 0) rgba(0, 0, 0, 0);
     -ms-overflow-style: none;
-    transform: translateZ(0);
+
+    @if $use-acceleration {
+      transform: translateZ(0);
+    }
 
     &.scrollable-y-bordered {
       border-top: 1px solid transparent;

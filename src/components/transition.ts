@@ -4,13 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import rootScope from '../lib/rootScope';
 import deferredPromise, {CancellablePromise} from '../helpers/cancellablePromise';
 import {dispatchHeavyAnimationEvent} from '../hooks/useHeavyAnimationCheck';
 import whichChild from '../helpers/dom/whichChild';
 import cancelEvent from '../helpers/dom/cancelEvent';
 import ListenerSetter from '../helpers/listenerSetter';
 import liteMode from '../helpers/liteMode';
+
+const USE_3D = true;
+
+function makeTranslate(x: number, y: number) {
+  return USE_3D ? `translate3d(${x}px, ${y}px, 0)` : `translate(${x}px, ${y}px)`;
+}
 
 function makeTransitionFunction(options: TransitionFunction) {
   return options;
@@ -22,8 +27,8 @@ const slideNavigation = makeTransitionFunction({
     const elements = [tabContent, prevTabContent];
     if(toRight) elements.reverse();
     elements[0].style.filter = `brightness(80%)`;
-    elements[0].style.transform = `translate3d(${-width * .25}px, 0, 0)`;
-    elements[1].style.transform = `translate3d(${width}px, 0, 0)`;
+    elements[0].style.transform = makeTranslate(-width * .25, 0);
+    elements[1].style.transform = makeTranslate(width, 0);
 
     tabContent.classList.add('active');
     void tabContent.offsetWidth; // reflow
@@ -58,8 +63,8 @@ const slideTabs = makeTransitionFunction({
     // void tabContent.offsetWidth; // reflow
     const elements = [tabContent, prevTabContent];
     if(toRight) elements.reverse();
-    elements[0].style.transform = `translate3d(${-width}px, 0, 0)`;
-    elements[1].style.transform = `translate3d(${width}px, 0, 0)`;
+    elements[0].style.transform = makeTranslate(-width, 0);
+    elements[1].style.transform = makeTranslate(width, 0);
 
     tabContent.classList.add('active');
     void tabContent.offsetWidth; // reflow
@@ -91,22 +96,22 @@ const slideTabs = makeTransitionFunction({
   animateFirst: false
 });
 
-const slideTopics = makeTransitionFunction({
-  callback: (tabContent, prevTabContent) => {
-    const rect = tabContent.getBoundingClientRect();
-    const offsetX = rect.width - 80;
+// const slideTopics = makeTransitionFunction({
+//   callback: (tabContent, prevTabContent) => {
+//     const rect = tabContent.getBoundingClientRect();
+//     const offsetX = rect.width - 80;
 
-    tabContent.style.transform = `transformX(${offsetX}px)`;
+//     tabContent.style.transform = `transformX(${offsetX}px)`;
 
-    tabContent.classList.add('active');
-    void tabContent.offsetWidth; // reflow
+//     tabContent.classList.add('active');
+//     void tabContent.offsetWidth; // reflow
 
-    tabContent.style.transform = '';
+//     tabContent.style.transform = '';
 
-    return () => {};
-  },
-  animateFirst: true
-});
+//     return () => {};
+//   },
+//   animateFirst: true
+// });
 
 const transitions: {[type in TransitionSliderType]?: TransitionFunction} = {
   navigation: slideNavigation,
@@ -120,6 +125,7 @@ type TransitionSliderOptions = {
   content: HTMLElement,
   type: TransitionSliderType,
   transitionTime: number,
+  onTransitionStart?: (id: number) => void,
   onTransitionEnd?: (id: number) => void,
   isHeavy?: boolean,
   once?: boolean,
@@ -139,6 +145,7 @@ const TransitionSlider = (options: TransitionSliderOptions) => {
     type,
     transitionTime,
     onTransitionEnd,
+    onTransitionStart,
     isHeavy = true,
     once = false,
     withAnimationListener = true,
@@ -212,6 +219,8 @@ const TransitionSlider = (options: TransitionSliderOptions) => {
 
     const prevId = selectTab.prevId();
     if(id === prevId) return false;
+
+    onTransitionStart?.(id);
 
     // console.log('selectTab id:', id);
 

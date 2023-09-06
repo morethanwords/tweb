@@ -22,20 +22,20 @@ const Modes = {
   noSharedWorker: location.search.indexOf('noSharedWorker=1') > 0
 };
 
-// #if MTPROTO_HAS_HTTP
-Modes.http = location.search.indexOf('http=1') > 0;
-// #endif
+if(import.meta.env.VITE_MTPROTO_HAS_HTTP) {
+  Modes.http = location.search.indexOf('http=1') > 0;
+}
 
-// #if MTPROTO_HTTP || !MTPROTO_HAS_WS
-Modes.http = true;
-// #endif
+if(import.meta.env.VITE_MTPROTO_HAS_HTTP || !import.meta.env.VITE_MTPROTO_HAS_WS) {
+  Modes.http = true;
+}
 
 if(Modes.http) {
   Modes.transport = 'https';
 }
 
-// #if MTPROTO_SW
-Modes.asServiceWorker = true;
-// #endif
+if(import.meta.env.VITE_MTPROTO_SW) {
+  Modes.asServiceWorker = true;
+}
 
 export default Modes;

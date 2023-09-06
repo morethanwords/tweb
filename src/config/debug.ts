@@ -6,7 +6,7 @@
 
 import Modes from './modes';
 
-export const IS_BETA = process.env.NODE_ENV !== 'production';
+export const IS_BETA = import.meta.env.DEV;
 export const DEBUG = (IS_BETA || Modes.debug)/*  && false */;
 const ctx: any = typeof(window) !== 'undefined' ? window : self;
 export const MOUNT_CLASS_TO: any = DEBUG || true/*  && false */ ? ctx : {};

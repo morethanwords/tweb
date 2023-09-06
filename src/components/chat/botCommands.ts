@@ -9,6 +9,7 @@ import callbackify from '../../helpers/callbackify';
 import AutocompletePeerHelper from './autocompletePeerHelper';
 import {processPeerFullForCommands} from './commandsHelper';
 import {AppManagers} from '../../lib/appManagers/managers';
+import {Middleware} from '../../helpers/middleware';
 
 const CLASS_NAME = 'bot-commands';
 export default class ChatBotCommands extends AutocompletePeerHelper {
@@ -29,7 +30,7 @@ export default class ChatBotCommands extends AutocompletePeerHelper {
     });
   }
 
-  public setUserId(userId: UserId, middleware: () => boolean) {
+  public setUserId(userId: UserId, middleware: Middleware) {
     if(this.userId === userId && this.list?.childElementCount) {
       this.toggle(false);
       return;
@@ -46,7 +47,7 @@ export default class ChatBotCommands extends AutocompletePeerHelper {
       const height = filtered.length * 50 + PADDING_TOP + PADDING_BOTTOM;
       this.container.style.setProperty('--height', height + 'px');
 
-      this.render(filtered);
+      this.render(filtered, middleware);
 
       // this.container.style.top =
     });

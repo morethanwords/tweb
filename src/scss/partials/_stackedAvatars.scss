@@ -27,9 +27,10 @@
       justify-content: center;
       border-radius: 50%;
       position: relative;
+      margin-right: var(--margin-right);
 
-      &:not(:first-child) {
-        margin-right: var(--margin-right);
+      &.is-first {
+        margin-right: 0;
       }
     }
   }

@@ -10,7 +10,7 @@
  */
 
 import type {ThumbCache} from '../storages/thumbs';
-import {AccountWallPapers, Document, DocumentAttribute, MessagesSavedGifs, PhotoSize, WallPaper} from '../../layer';
+import {Document, DocumentAttribute, MessagesSavedGifs, PhotoSize, WallPaper} from '../../layer';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
 import {getFullDate} from '../../helpers/date';
 import isObject from '../../helpers/object/isObject';
@@ -19,7 +19,6 @@ import {AppManager} from './manager';
 import wrapPlainText from '../richTextProcessor/wrapPlainText';
 import assumeType from '../../helpers/assumeType';
 import {getEnvironment} from '../../environment/utils';
-import {isServiceWorkerOnline} from '../mtproto/mtproto.worker';
 import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
 import getDocumentInputFileLocation from './utils/docs/getDocumentInputFileLocation';
 import getDocumentURL from './utils/docs/getDocumentURL';
@@ -27,6 +26,7 @@ import makeError from '../../helpers/makeError';
 import {EXTENSION_MIME_TYPE_MAP} from '../../environment/mimeTypeMap';
 import {THUMB_TYPE_FULL} from '../mtproto/mtproto_config';
 import tsNow from '../../helpers/tsNow';
+import appManagersManager from './appManagersManager';
 
 export type MyDocument = Document.document;
 
@@ -37,15 +37,19 @@ type WallPaperId = WallPaper.wallPaper['id'];
 let uploadWallPaperTempId = 0;
 
 export class AppDocsManager extends AppManager {
-  private docs: {[docId: DocId]: MyDocument};
+  private docs: {
+    [docId: DocId]: MyDocument
+  };
 
-  private stickerCachedThumbs: {[docId: DocId]: {[toneIndex: number]: {url: string, w: number, h: number}}};
-
-  private uploadingWallPapers: {[id: WallPaperId]: {cacheContext: ThumbCache, file: File}};
+  private uploadingWallPapers: {
+    [id: WallPaperId]: {
+      cacheContext: ThumbCache,
+      file: File
+    }
+  };
 
   protected after() {
     this.docs = {};
-    this.stickerCachedThumbs = {};
     this.uploadingWallPapers = {};
 
     MTProtoMessagePort.getInstance<false>().addEventListener('serviceWorkerOnline', (online) => {
@@ -122,7 +126,7 @@ export class AppDocsManager extends AppManager {
           }
 
           doc.duration = attribute.duration;
-          doc.type = attribute.pFlags.voice && doc.mime_type === 'audio/ogg' ? 'voice' : 'audio';
+          doc.type = attribute.pFlags.voice && doc.mime_type === EXTENSION_MIME_TYPE_MAP.ogg ? 'voice' : 'audio';
           break;
         }
 
@@ -154,10 +158,10 @@ export class AppDocsManager extends AppManager {
           }
 
           // * there can be no thumbs, then it is a document
-          if(/* apiDoc.thumbs &&  */doc.mime_type === 'image/webp' && (doc.thumbs || getEnvironment().IS_WEBP_SUPPORTED)) {
+          if(/* apiDoc.thumbs &&  */doc.mime_type === EXTENSION_MIME_TYPE_MAP.webp && (doc.thumbs || getEnvironment().IS_WEBP_SUPPORTED)) {
             doc.type = 'sticker';
             doc.sticker = 1;
-          } else if(doc.mime_type === 'video/webm') {
+          } else if(doc.mime_type === EXTENSION_MIME_TYPE_MAP.webm) {
             if(!getEnvironment().IS_WEBM_SUPPORTED) {
               break;
             }
@@ -177,7 +181,7 @@ export class AppDocsManager extends AppManager {
         }
 
         case 'documentAttributeAnimated': {
-          if((doc.mime_type === 'image/gif' || doc.mime_type === 'video/mp4')/*  && apiDoc.thumbs */) {
+          if((doc.mime_type === EXTENSION_MIME_TYPE_MAP.gif || doc.mime_type === EXTENSION_MIME_TYPE_MAP.mp4)/*  && apiDoc.thumbs */) {
             doc.type = 'gif';
           }
 
@@ -189,8 +193,7 @@ export class AppDocsManager extends AppManager {
 
     if(!doc.mime_type) {
       const ext = (doc.file_name || '').split('.').pop();
-      // @ts-ignore
-      const mappedMimeType = ext && EXTENSION_MIME_TYPE_MAP[ext.toLowerCase()];
+      const mappedMimeType = ext && EXTENSION_MIME_TYPE_MAP[ext.toLowerCase() as any as MTFileExtension];
       if(mappedMimeType) {
         doc.mime_type = mappedMimeType;
       } else {
@@ -198,16 +201,16 @@ export class AppDocsManager extends AppManager {
           case 'gif':
           case 'video':
           case 'round':
-            doc.mime_type = 'video/mp4';
+            doc.mime_type = EXTENSION_MIME_TYPE_MAP.mp4;
             break;
           case 'sticker':
-            doc.mime_type = 'image/webp';
+            doc.mime_type = EXTENSION_MIME_TYPE_MAP.webp;
             break;
           case 'audio':
-            doc.mime_type = 'audio/mpeg';
+            doc.mime_type = EXTENSION_MIME_TYPE_MAP.mp3;
             break;
           case 'voice':
-            doc.mime_type = 'audio/ogg';
+            doc.mime_type = EXTENSION_MIME_TYPE_MAP.ogg;
             break;
           default:
             doc.mime_type = 'application/octet-stream';
@@ -218,7 +221,7 @@ export class AppDocsManager extends AppManager {
       doc.type = 'pdf';
     } else if(doc.mime_type === EXTENSION_MIME_TYPE_MAP.gif) {
       doc.type = 'gif';
-    } else if(doc.mime_type === 'application/x-tgsticker' && doc.file_name === 'AnimatedSticker.tgs') {
+    } else if(doc.mime_type === EXTENSION_MIME_TYPE_MAP.tgs && doc.file_name === 'AnimatedSticker.tgs') {
       doc.type = 'sticker';
       doc.animated = true;
       doc.sticker = 2;
@@ -232,7 +235,7 @@ export class AppDocsManager extends AppManager {
       doc.file_name = `${doc.type}_${date}${ext ? '.' + ext : ''}`;
     }
 
-    if(isServiceWorkerOnline() && ((doc.type === 'gif' && doc.size > 8e6) || doc.type === 'audio' || doc.type === 'video')/*  || doc.mime_type.indexOf('video/') === 0 */) {
+    if(appManagersManager.isServiceWorkerOnline && ((doc.type === 'gif' && doc.size > 8e6) || doc.type === 'audio' || doc.type === 'video')/*  || doc.mime_type.indexOf('video/') === 0 */) {
       doc.supportsStreaming = true;
 
       const cacheContext = this.thumbsStorage.getCacheContext(doc);
@@ -270,31 +273,6 @@ export class AppDocsManager extends AppManager {
       queueId,
       onlyCache
     });
-  }
-
-  public getLottieCachedThumb(docId: DocId, toneIndex: number) {
-    const cached = this.stickerCachedThumbs[docId];
-    return cached && cached[toneIndex];
-  }
-
-  public saveLottiePreview(docId: DocId, blob: Blob, width: number, height: number, toneIndex: number) {
-    const doc = this.getDoc(docId);
-    if(!doc) {
-      return;
-    }
-
-    const cached = this.stickerCachedThumbs[doc.id] ??= {};
-
-    const thumb = cached[toneIndex];
-    if(thumb && thumb.w >= width && thumb.h >= height) {
-      return;
-    }
-
-    cached[toneIndex] = {
-      url: URL.createObjectURL(blob),
-      w: width,
-      h: height
-    };
   }
 
   public saveWebPConvertedStrippedThumb(docId: DocId, bytes: Uint8Array) {

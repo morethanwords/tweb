@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {logger} from '../lib/logger';
+import {logger, LogTypes} from '../lib/logger';
 import insertInDescendSortedArray from './array/insertInDescendSortedArray';
-import {getMiddleware, MiddlewareHelper} from './middleware';
+import {getMiddleware, Middleware, MiddlewareHelper} from './middleware';
 import middlewarePromise from './middlewarePromise';
 import safeAssign from './object/safeAssign';
 import pause from './schedulers/pause';
@@ -40,10 +40,11 @@ export class BatchProcessor<Item extends any = any> {
     this.middlewareHelper ??= getMiddleware();
 
     const prefix = 'BATCH-PROCESSOR-' + ++id;
+    const logTypes = LogTypes.Warn | LogTypes.Error;
     if(this.log) {
-      this.log = this.log.bindPrefix(prefix);
+      this.log = this.log.bindPrefix(prefix, logTypes);
     } else {
-      this.log = logger(prefix);
+      this.log = logger(prefix, logTypes);
     }
   }
 
@@ -141,7 +142,7 @@ export default class SortedList<SortedElement extends SortedElementBase, SortedE
   protected updateElementWith = (callback: () => void) => callback();
   protected updateListWith = (callback: (canUpdate: boolean | undefined) => void) => callback(true);
 
-  protected middleware: MiddlewareHelper;
+  protected middlewareHelper: MiddlewareHelper;
 
   protected batchProcessor: BatchProcessor<SortedElement>;
 
@@ -157,13 +158,15 @@ export default class SortedList<SortedElement extends SortedElementBase, SortedE
     updateElementWith?: SortedList<SortedElement>['updateElementWith'],
     updateListWith?: SortedList<SortedElement>['updateListWith'],
 
-    log?: SortedList<SortedElement>['log']
+    log?: SortedList<SortedElement>['log'],
+
+    middleware?: Middleware
   }) {
     safeAssign(this, options);
 
     this.elements = new Map();
     this.sorted = [];
-    this.middleware = getMiddleware();
+    this.middlewareHelper = options.middleware?.create() || getMiddleware();
 
     this.batchProcessor = new BatchProcessor<SortedElement>({
       log: this.log,
@@ -178,7 +181,7 @@ export default class SortedList<SortedElement extends SortedElementBase, SortedE
 
   public clear() {
     this.batchProcessor.clear();
-    this.middleware.clean();
+    this.middlewareHelper.clean();
     this.elements.clear();
     this.sorted.length = 0;
   }
@@ -196,7 +199,7 @@ export default class SortedList<SortedElement extends SortedElementBase, SortedE
   }
 
   public updateList(callback?: (updated: boolean) => void) {
-    const middleware = this.middleware.get();
+    const middleware = this.middlewareHelper.get();
     this.updateListWith((canUpdate) => {
       if(!middleware() || (canUpdate !== undefined && !canUpdate)) {
         callback?.(false);
@@ -257,7 +260,7 @@ export default class SortedList<SortedElement extends SortedElementBase, SortedE
       if(noScheduler) {
         this.onDelete(element);
       } else {
-        const middleware = this.middleware.get();
+        const middleware = this.middlewareHelper.get();
         this.updateElementWith(() => {
           if(!middleware()) {
             return;

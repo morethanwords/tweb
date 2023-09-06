@@ -10,6 +10,17 @@ import {IS_SAFARI} from '../environment/userAgent';
 import getVisibleRect from './dom/getVisibleRect';
 import reflowScrollableElement from './dom/reflowScrollableElement';
 
+let USE_REFLOW = false;
+if(IS_SAFARI) {
+  try {
+    // throw '';
+    const match = navigator.userAgent.match(/Version\/(.+?) /);
+    USE_REFLOW = +match[1] < 15.4;
+  } catch(err) {
+    USE_REFLOW = true;
+  }
+}
+
 export default class ScrollSaver {
   private scrollHeight: number;
   private scrollHeightMinusTop: number;
@@ -110,7 +121,7 @@ export default class ScrollSaver {
   }
 
   private onRestore(useReflow?: boolean) {
-    if(IS_SAFARI && useReflow/*  && !isAppleMobile */) { // * fix blinking and jumping
+    if(USE_REFLOW && useReflow/*  && !isAppleMobile */) { // * fix blinking and jumping
       reflowScrollableElement(this.container);
     }
   }

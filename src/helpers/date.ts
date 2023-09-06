@@ -6,11 +6,41 @@
 
 import {MOUNT_CLASS_TO} from '../config/debug';
 import I18n, {i18n} from '../lib/langPack';
+import capitalizeFirstLetter from './string/capitalizeFirstLetter';
 
 export const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 export const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+export const monthsLocalized = months.slice();
+export const daysLocalized = days.slice();
 
 export const ONE_DAY = 86400;
+
+export function getWeekDays() {
+  const dateTimeFormat = I18n.getDateTimeFormat({weekday: 'long'});
+  const date = new Date(Date.UTC(2017, 0, 2));
+  const out: string[] = [];
+  for(let i = 0; i < 7; ++i) {
+    out.push(capitalizeFirstLetter(dateTimeFormat.format(date)));
+    date.setDate(date.getDate() + 1);
+  }
+  return out;
+}
+
+export function getMonths() {
+  const dateTimeFormat = I18n.getDateTimeFormat({month: 'long'});
+  const date = new Date(Date.UTC(2017, 0, 1));
+  const out: string[] = [];
+  for(let i = 0; i < 12; ++i) {
+    out.push(capitalizeFirstLetter(dateTimeFormat.format(date)));
+    date.setMonth(date.getMonth() + 1);
+  }
+  return out;
+}
+
+export function fillLocalizedDates() {
+  monthsLocalized.splice(0, monthsLocalized.length, ...getMonths());
+  daysLocalized.splice(0, daysLocalized.length, ...getWeekDays());
+}
 
 // https://stackoverflow.com/a/6117889
 export const getWeekNumber = (date: Date) => {
@@ -113,22 +143,26 @@ export const getFullDate = (date: Date, options: Partial<{
   noTime: true,
   noSeconds: true,
   monthAsNumber: true,
-  leadingZero: true
+  leadingZero: true,
+  shortYear: boolean
 }> = {}) => {
   const joiner = options.monthAsNumber ? '.' : ' ';
   const time = ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2) + (options.noSeconds ? '' : ':' + ('0' + date.getSeconds()).slice(-2));
+  const fullYear = date.getFullYear();
 
   return (options.leadingZero ? ('0' + date.getDate()).slice(-2) : date.getDate()) +
     joiner + (options.monthAsNumber ? ('0' + (date.getMonth() + 1)).slice(-2) : months[date.getMonth()]) +
-    joiner + date.getFullYear() +
+    joiner + (('' + fullYear).slice(options.shortYear ? 2 : 0)) +
     (options.noTime ? '' : ', ' + time);
 };
 
 // https://github.com/DrKLO/Telegram/blob/d52b2c921abd3c1e8d6368858313ad0cb0468c07/TMessagesProj/src/main/java/org/telegram/ui/Adapters/FiltersView.java
 const minYear = 2013;
 const yearPattern = new RegExp('20[0-9]{1,2}');
-const monthYearOrDayPattern = new RegExp('(\\w{3,}) ([0-9]{0,4})', 'i');
-const yearOrDayAndMonthPattern = new RegExp('([0-9]{0,4}) (\\w{2,})', 'i');
+const anyLetterRegExp = `\\p{L}`;
+const monthPattern = new RegExp(`(${anyLetterRegExp}{3,})`, 'iu');
+const monthYearOrDayPattern = new RegExp(`(${anyLetterRegExp}{3,}) ([0-9]{0,4})`, 'iu');
+const yearOrDayAndMonthPattern = new RegExp(`([0-9]{0,4}) (${anyLetterRegExp}{2,})`, 'iu');
 const shortDate = new RegExp('^([0-9]{1,4})(\\.| |/|\\-)([0-9]{1,4})$', 'i');
 const longDate = new RegExp('^([0-9]{1,2})(\\.| |/|\\-)([0-9]{1,2})(\\.| |/|\\-)([0-9]{1,4})$', 'i');
 const numberOfDaysEachMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
@@ -144,7 +178,7 @@ export function fillTipDates(query: string, dates: DateData[]) {
     return;
   }
 
-  if('today'.indexOf(q) === 0) {
+  if(['today', I18n.format('Peer.Status.Today', true)].some((haystack) => haystack.indexOf(q) === 0)) {
     const date = new Date();
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -158,14 +192,14 @@ export function fillTipDates(query: string, dates: DateData[]) {
 
     const maxDate = date.getTime() - 1;
     dates.push({
-      title: 'Today',
+      title: I18n.format('Date.Today', true),
       minDate,
       maxDate
     });
     return;
   }
 
-  if('yesterday'.indexOf(q) === 0) {
+  if(['yesterday', I18n.format('Peer.Status.Yesterday', true)].some((haystack) => haystack.indexOf(q) === 0)) {
     const date = new Date();
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -179,7 +213,7 @@ export function fillTipDates(query: string, dates: DateData[]) {
 
     const maxDate = date.getTime() - 86400001;
     dates.push({
-      title: 'Yesterday',
+      title: capitalizeFirstLetter(I18n.format('Yesterday', true)),
       minDate,
       maxDate
     });
@@ -278,8 +312,54 @@ export function fillTipDates(query: string, dates: DateData[]) {
     return;
   }
 
+  if((matches = monthYearOrDayPattern.exec(q)) !== null) {
+    const g1 = matches[1];
+    const g2 = matches[2];
+    const month = getMonth(g1);
+    if(month >= 0) {
+      const k = +g2 || new Date().getUTCFullYear();
+      if(k > 0 && k <= 31) {
+        const day = k - 1;
+        createForDayMonth(dates, day, month);
+        return;
+      } else if(k >= minYear) {
+        const selectedYear = k;
+        createForMonthYear(dates, month, selectedYear);
+        return;
+      }
+    }
+  }
+
+  if((matches = yearOrDayAndMonthPattern.exec(q)) !== null) {
+    const g1 = matches[1];
+    const g2 = matches[2];
+    const month = getMonth(g2);
+    if(month >= 0) {
+      const k = +g1;
+      if(k > 0 && k <= 31) {
+        const day = k - 1;
+        createForDayMonth(dates, day, month);
+        return;
+      } else if(k >= minYear) {
+        const selectedYear = k;
+        createForMonthYear(dates, month, selectedYear);
+      }
+    }
+  }
+
+  if((matches = monthPattern.exec(q)) !== null) {
+    const g1 = matches[1];
+    const month = getMonth(g1);
+    if(month >= 0) {
+      const currentYear = new Date().getFullYear();
+      for(let i = currentYear; i >= minYear; --i) {
+        createForMonthYear(dates, month, i);
+      }
+    }
+  }
+
   if((matches = yearPattern.exec(q)) !== null) {
-    let selectedYear = +q;
+    let selectedYear = +matches[0];
     const currentYear = new Date().getFullYear();
     if(selectedYear < minYear) {
       selectedYear = minYear;
@@ -317,41 +397,6 @@ export function fillTipDates(query: string, dates: DateData[]) {
     }
 
     return;
-  }
-
-  if((matches = monthYearOrDayPattern.exec(q)) !== null) {
-    const g1 = matches[1];
-    const g2 = matches[2];
-    const month = getMonth(g1);
-    if(month >= 0) {
-      const k = +g2;
-      if(k > 0 && k <= 31) {
-        const day = k - 1;
-        createForDayMonth(dates, day, month);
-        return;
-      } else if(k >= minYear) {
-        const selectedYear = k;
-        createForMonthYear(dates, month, selectedYear);
-        return;
-      }
-    }
-  }
-
-  if((matches = yearOrDayAndMonthPattern.exec(q)) !== null) {
-    const g1 = matches[1];
-    const g2 = matches[2];
-    const month = getMonth(g2);
-    if(month >= 0) {
-      const k = +g1;
-      if(k > 0 && k <= 31) {
-        const day = k - 1;
-        createForDayMonth(dates, day, month);
-        return;
-      } else if(k >= minYear) {
-        const selectedYear = k;
-        createForMonthYear(dates, month, selectedYear);
-      }
-    }
   }
 }
 
@@ -418,12 +463,12 @@ function createForDayMonth(dates: DateData[], day: number, month: number) {
 
 function formatterMonthYear(timestamp: number) {
   const date = new Date(timestamp);
-  return months[date.getMonth()].slice(0, 3) + ' ' + date.getFullYear();
+  return monthsLocalized[date.getMonth()]/* .slice(0, 3) */ + ' ' + date.getFullYear();
 }
 
 function formatterDayMonth(timestamp: number) {
   const date = new Date(timestamp);
-  return months[date.getMonth()].slice(0, 3) + ' ' + date.getDate();
+  return monthsLocalized[date.getMonth()]/* .slice(0, 3) */ + ' ' + date.getDate();
 }
 
 function formatterYearMax(timestamp: number) {
@@ -433,7 +478,7 @@ function formatterYearMax(timestamp: number) {
 
 function formatWeekLong(timestamp: number) {
   const date = new Date(timestamp);
-  return days[date.getDay()];
+  return daysLocalized[date.getDay()];
 }
 
 function validDateForMonth(day: number, month: number) {
@@ -450,33 +495,9 @@ function isLeapYear(year: number) {
 }
 
 function getMonth(q: string) {
-  /* String[] months = new String[]{
-          LocaleController.getString("January", R.string.January).toLowerCase(),
-          LocaleController.getString("February", R.string.February).toLowerCase(),
-          LocaleController.getString("March", R.string.March).toLowerCase(),
-          LocaleController.getString("April", R.string.April).toLowerCase(),
-          LocaleController.getString("May", R.string.May).toLowerCase(),
-          LocaleController.getString("June", R.string.June).toLowerCase(),
-          LocaleController.getString("July", R.string.July).toLowerCase(),
-          LocaleController.getString("August", R.string.August).toLowerCase(),
-          LocaleController.getString("September", R.string.September).toLowerCase(),
-          LocaleController.getString("October", R.string.October).toLowerCase(),
-          LocaleController.getString("November", R.string.November).toLowerCase(),
-          LocaleController.getString("December", R.string.December).toLowerCase()
-  }; */
-
-  /* String[] monthsEng = new String[12];
-  Calendar c = Calendar.getInstance();
-  for (int i = 1; i <= 12; i++) {
-      c.set(0, 0, 0, 0, 0, 0);
-      c.set(Calendar.MONTH, i);
-      monthsEng[i - 1] = c.getDisplayName(Calendar.MONTH, Calendar.LONG, Locale.ENGLISH).toLowerCase();
-  } */
-
   q = q.toLowerCase();
   for(let i = 0; i < 12; i++) {
-    const month = months[i].toLowerCase();
-    if(month.indexOf(q) === 0) {
+    if([months[i], monthsLocalized[i]].some((month) => month.toLowerCase().indexOf(q) === 0)) {
       return i;
     }
   }

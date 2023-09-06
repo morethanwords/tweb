@@ -6,7 +6,7 @@
 
 import type ChatInput from './input';
 import DropdownHover from '../../helpers/dropdownHover';
-import {KeyboardButton, ReplyMarkup} from '../../layer';
+import {ReplyMarkup} from '../../layer';
 import rootScope from '../../lib/rootScope';
 import ListenerSetter, {Listener} from '../../helpers/listenerSetter';
 import findUpClassName from '../../helpers/dom/findUpClassName';
@@ -14,10 +14,7 @@ import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
 import findUpAsChild from '../../helpers/dom/findUpAsChild';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import {getHeavyAnimationPromise} from '../../hooks/useHeavyAnimationCheck';
-import confirmationPopup from '../confirmationPopup';
 import safeAssign from '../../helpers/object/safeAssign';
-import setInnerHTML from '../../helpers/dom/setInnerHTML';
-import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import {AppManagers} from '../../lib/appManagers/managers';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import Scrollable from '../scrollable';
@@ -32,6 +29,7 @@ export default class ReplyKeyboard extends DropdownHover {
   private touchListener: Listener;
   private chatInput: ChatInput;
   private scrollable: Scrollable;
+  private onClickMap: Map<HTMLElement, (e: Event) => void>;
 
   constructor(options: {
     listenerSetter: ListenerSetter,
@@ -49,6 +47,7 @@ export default class ReplyKeyboard extends DropdownHover {
     this.element.classList.add(ReplyKeyboard.BASE_CLASS);
     this.element.style.display = 'none';
 
+    this.onClickMap = new Map();
     this.scrollable = new Scrollable();
     this.element.append(this.scrollable.container);
 
@@ -86,27 +85,8 @@ export default class ReplyKeyboard extends DropdownHover {
         return;
       }
 
-      const type = target.dataset.type as KeyboardButton['_'];
-      const {peerId} = this;
-      switch(type) {
-        case 'keyboardButtonRequestPhone': {
-          confirmationPopup({
-            titleLangKey: 'ShareYouPhoneNumberTitle',
-            button: {
-              langKey: 'OK'
-            },
-            descriptionLangKey: 'AreYouSureShareMyContactInfoBot'
-          }).then(() => {
-            this.managers.appMessagesManager.sendContact(peerId, rootScope.myId);
-          });
-          break;
-        }
-
-        default: {
-          this.managers.appMessagesManager.sendText(peerId, target.dataset.text);
-          break;
-        }
-      }
+      const onClick = this.onClickMap.get(target);
+      onClick?.(e);
 
       this.toggle(false);
     }, {listenerSetter: this.listenerSetter});
@@ -144,6 +124,7 @@ export default class ReplyKeyboard extends DropdownHover {
       replyMarkup = await this.getReplyMarkup() as any;
     }
 
+    this.onClickMap.clear();
     this.scrollable.container.replaceChildren();
 
     for(const row of replyMarkup.rows) {
@@ -151,12 +132,10 @@ export default class ReplyKeyboard extends DropdownHover {
       div.classList.add(ReplyKeyboard.BASE_CLASS + '-row');
 
       for(const button of row.buttons) {
-        const btn = document.createElement('button');
-        btn.classList.add(ReplyKeyboard.BASE_CLASS + '-button', 'btn');
-        setInnerHTML(btn, wrapEmojiText(button.text));
-        btn.dataset.text = button.text;
-        btn.dataset.type = button._;
-        div.append(btn);
+        const {buttonEl, onClick} = this.chatInput.chat.bubbles.wrapKeyboardButton({button, replyMarkup});
+        this.onClickMap.set(buttonEl, onClick);
+        buttonEl.classList.add(ReplyKeyboard.BASE_CLASS + '-button', 'btn');
+        div.append(buttonEl);
       }
 
       this.scrollable.container.append(div);

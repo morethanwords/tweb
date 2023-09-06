@@ -161,13 +161,14 @@ function scrollWithJs(options: ScrollOptions): Promise<void> {
     return Promise.resolve();
   }
 
+  let jumpToScrollPosition: number;
   if(axis === 'y') {
     if(forceDirection === undefined) {
       if(path > maxDistance) {
-        scrollPosition = container.scrollTop += path - maxDistance;
+        jumpToScrollPosition = scrollPosition += path - maxDistance;
         path = maxDistance;
       } else if(path < -maxDistance) {
-        scrollPosition = container.scrollTop += path + maxDistance;
+        jumpToScrollPosition = scrollPosition += path + maxDistance;
         path = -maxDistance;
       }
     }/*  else if(forceDirection === FocusDirection.Up) { // * not tested yet
@@ -194,7 +195,7 @@ function scrollWithJs(options: ScrollOptions): Promise<void> {
     path = Math.min(path, remainingPath);
   }
 
-  const target = container[scrollPositionKey] + path;
+  const target = scrollPosition + path;
   const absPath = Math.abs(path);
   const duration = forceDuration ?? (
     MIN_JS_DURATION + (absPath / LONG_TRANSITION_MAX_DISTANCE) * (MAX_JS_DURATION - MIN_JS_DURATION)
@@ -244,6 +245,11 @@ function scrollWithJs(options: ScrollOptions): Promise<void> {
   const transition = transitionFunction ?? (absPath < SHORT_TRANSITION_MAX_DISTANCE ? shortTransition : longTransition);
   const getProgress = () => duration ? Math.min((Date.now() - startAt) / duration, 1) : 1;
   const tick = () => {
+    if(jumpToScrollPosition !== undefined) {
+      container[scrollPositionKey] = jumpToScrollPosition;
+      jumpToScrollPosition = undefined;
+    }
+
     const t = getProgress();
     const value = transition(t);
     const currentPath = path * (1 - value);
@@ -300,3 +306,5 @@ function longTransition(t: number) {
 function shortTransition(t: number) {
   return 1 - ((1 - t) ** 3.5);
 }
+
+export {shortTransition as shortScrollTransition};

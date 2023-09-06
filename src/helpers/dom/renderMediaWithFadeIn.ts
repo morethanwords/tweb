@@ -7,31 +7,40 @@
 import sequentialDom from '../sequentialDom';
 import {renderImageFromUrlPromise} from './renderImageFromUrl';
 
+const UNMOUNT_THUMBS = true;
+
 export default function renderMediaWithFadeIn(
   container: HTMLElement,
   media: Parameters<typeof renderImageFromUrlPromise>[0],
   url: string,
   needFadeIn: boolean,
   aspecter = container,
-  thumbImage?: HTMLElement
+  thumbImage?: HTMLElement,
+  fadeInElement = media,
+  onRender?: () => void,
+  onRenderFinish?: () => void
 ) {
   if(needFadeIn) {
-    media.classList.add('fade-in');
+    fadeInElement.classList.add('fade-in');
   }
 
   const promise = renderImageFromUrlPromise(media, url).then(() => {
     return sequentialDom.mutateElement(container, () => {
-      aspecter.append(media);
+      aspecter?.append(media);
 
       if(needFadeIn) {
-        media.addEventListener('animationend', () => {
+        onRender?.();
+        fadeInElement.addEventListener('animationend', () => {
           sequentialDom.mutate(() => {
-            media.classList.remove('fade-in');
-            thumbImage?.remove();
+            fadeInElement.classList.remove('fade-in');
+            UNMOUNT_THUMBS && thumbImage?.remove();
+            onRenderFinish?.();
           });
         }, {once: true});
       } else {
-        thumbImage?.remove();
+        UNMOUNT_THUMBS && thumbImage?.remove();
+        onRender?.();
+        onRenderFinish?.();
       }
     });
   });

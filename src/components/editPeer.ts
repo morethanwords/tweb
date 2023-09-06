@@ -6,19 +6,20 @@
 
 import {InputFile} from '../layer';
 import AvatarEdit from './avatarEdit';
-import AvatarElement from './avatar';
 import InputField from './inputField';
 import ListenerSetter from '../helpers/listenerSetter';
 import ButtonCorner from './buttonCorner';
 import safeAssign from '../helpers/object/safeAssign';
 import {NULL_PEER_ID} from '../lib/mtproto/mtproto_config';
+import {Middleware} from '../helpers/middleware';
+import {avatarNew} from './avatarNew';
 
 export default class EditPeer {
   public nextBtn: HTMLButtonElement;
 
   public uploadAvatar: () => Promise<InputFile>;
   public avatarEdit: AvatarEdit;
-  public avatarElem: AvatarElement;
+  public avatarElem: ReturnType<typeof avatarNew>;
 
   private inputFields: InputField[];
   private listenerSetter: ListenerSetter;
@@ -36,7 +37,8 @@ export default class EditPeer {
     withoutAvatar?: boolean,
     nextBtn?: HTMLButtonElement,
     avatarSize?: number,
-    popupOptions?: ConstructorParameters<typeof AvatarEdit>[1]
+    popupOptions?: ConstructorParameters<typeof AvatarEdit>[1],
+    middleware: Middleware
   }) {
     safeAssign(this, options);
 
@@ -51,18 +53,21 @@ export default class EditPeer {
     }
 
     if(!options.withoutAvatar) {
-      this.avatarElem = new AvatarElement();
-      this.avatarElem.classList.add('avatar-placeholder', 'avatar-' + this.avatarSize);
-      this.avatarElem.updateWithOptions({peerId: this.peerId});
+      this.avatarElem = avatarNew({
+        middleware: options.middleware,
+        size: this.avatarSize,
+        peerId: this.peerId
+      });
+      this.avatarElem.node.classList.add('avatar-placeholder');
 
       if(!options.doNotEditAvatar) {
         this.avatarEdit = new AvatarEdit((_upload) => {
           this.uploadAvatar = _upload;
           this.handleChange();
-          this.avatarElem.remove();
+          this.avatarElem.node.remove();
         }, options.popupOptions);
 
-        this.avatarEdit.container.append(this.avatarElem);
+        this.avatarEdit.container.append(this.avatarElem.node);
       }
     }
 

@@ -4,9 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {AppMessagesManager} from '../../lib/appManagers/appMessagesManager';
 import type ChatTopbar from './topbar';
-import rootScope from '../../lib/rootScope';
 import appMediaPlaybackController, {AppMediaPlaybackController} from '../appMediaPlaybackController';
 import DivAndCaption from '../divAndCaption';
 import PinnedContainer from './pinnedContainer';
@@ -23,6 +21,8 @@ import MediaProgressLine from '../mediaProgressLine';
 import VolumeSelector from '../volumeSelector';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import {AppManagers} from '../../lib/appManagers/managers';
+import Icon from '../icon';
+import {replaceButtonIcon} from '../button';
 
 export default class ChatAudio extends PinnedContainer {
   private toggleEl: HTMLElement;
@@ -39,9 +39,9 @@ export default class ChatAudio extends PinnedContainer {
       className: 'audio',
       divAndCaption: new DivAndCaption(
         'pinned-audio',
-        (title: string | HTMLElement | DocumentFragment, subtitle: string | HTMLElement | DocumentFragment) => {
-          replaceContent(this.divAndCaption.title, title);
-          replaceContent(this.divAndCaption.subtitle, subtitle);
+        (options) => {
+          replaceContent(this.divAndCaption.title, options.title);
+          replaceContent(this.divAndCaption.subtitle, options.subtitle);
         }
       ),
       onClose: () => {
@@ -71,7 +71,7 @@ export default class ChatAudio extends PinnedContainer {
     });
 
     this.toggleEl = ButtonIcon('', {noRipple: true});
-    this.toggleEl.classList.add('active', 'pinned-audio-ico', 'tgico');
+    this.toggleEl.classList.add('active', 'pinned-audio-ico');
     attachClick(this.toggleEl, () => {
       appMediaPlaybackController.toggle();
     });
@@ -139,13 +139,16 @@ export default class ChatAudio extends PinnedContainer {
   private onPlaybackParams = (playbackParams: ReturnType<AppMediaPlaybackController['getPlaybackParams']>) => {
     this.fasterEl.classList.toggle('active', playbackParams.playbackRate > 1);
 
-    this.repeatEl.classList.remove('tgico-audio_repeat', 'tgico-audio_repeat_single');
-    this.repeatEl.classList.add(playbackParams.loop ? 'tgico-audio_repeat_single' : 'tgico-audio_repeat');
+    this.repeatEl.querySelector('.button-icon').replaceWith(Icon(playbackParams.loop ? 'audio_repeat_single' : 'audio_repeat', 'button-icon'));
     this.repeatEl.classList.toggle('active', playbackParams.loop || playbackParams.round);
   };
 
+  private setPlayIcon(paused: boolean) {
+    replaceButtonIcon(this.toggleEl, paused ? 'play' : 'pause');
+  }
+
   private onPause = () => {
-    this.toggleEl.classList.remove('flip-icon');
+    this.setPlayIcon(true);
   };
 
   private onStop = () => {
@@ -177,9 +180,12 @@ export default class ChatAudio extends PinnedContainer {
       duration: doc.duration
     });
 
-    this.fill(title, subtitle, message);
-    // this.toggleEl.classList.add('flip-icon');
-    this.toggleEl.classList.toggle('flip-icon', !media.paused);
+    this.fill({
+      title,
+      subtitle,
+      message
+    });
+    this.setPlayIcon(media.paused);
     this.toggle(false);
   };
 }

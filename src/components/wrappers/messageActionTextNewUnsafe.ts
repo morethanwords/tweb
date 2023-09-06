@@ -8,9 +8,9 @@ import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import {formatTime, ONE_DAY} from '../../helpers/date';
 import htmlToSpan from '../../helpers/dom/htmlToSpan';
 import setInnerHTML from '../../helpers/dom/setInnerHTML';
-import formatCallDuration from '../../helpers/formatCallDuration';
+import {wrapCallDuration} from './wrapDuration';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
-import {ForumTopic, Message, MessageAction} from '../../layer';
+import {ForumTopic, Message, MessageAction, MessageReplyHeader} from '../../layer';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import I18n, {FormatterArgument, FormatterArguments, i18n, join, langPack, LangPackKey, _i18n} from '../../lib/langPack';
 import {GENERAL_TOPIC_ID} from '../../lib/mtproto/mtproto_config';
@@ -133,7 +133,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
       case 'messageActionPhoneCall': {
         _ += '.' + (action as any).type;
 
-        args = [formatCallDuration(action.duration, plain)];
+        args = [wrapCallDuration(action.duration, plain)];
         break;
       }
 
@@ -146,7 +146,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         }
 
         if(action.duration !== undefined) {
-          args.push(formatCallDuration(action.duration, plain));
+          args.push(wrapCallDuration(action.duration, plain));
         } else if(noLinks) {
           args.push('');
         } else {
@@ -279,7 +279,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
           args.push(getNameDivHTML(message.fromId, plain));
         }
 
-        args.push(wrapSomeText(action.title));
+        args.push(wrapSomeText(action.title, plain));
         break;
       }
 
@@ -316,6 +316,9 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         if(action.pFlags?.attach_menu) {
           langPackKey = 'ActionAttachMenuBotAllowed';
           break;
+        } else if(action.pFlags?.from_request) {
+          langPackKey = 'ActionBotAllowedRequest';
+          break;
         } else if(!action.domain) {
           break;
         }
@@ -343,8 +346,9 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         args = [price, getNameDivHTML(message.peerId, plain)];
 
         if(message.reply_to_mid) {
+          const replyTo = message.reply_to as MessageReplyHeader.messageReplyHeader;
           const invoiceMessage = await managers.appMessagesManager.getMessageByPeer(
-            message.reply_to?.reply_to_peer_id ? getPeerId(message.reply_to.reply_to_peer_id) : message.peerId,
+            replyTo?.reply_to_peer_id ? getPeerId(replyTo.reply_to_peer_id) : message.peerId,
             message.reply_to_mid
           );
 
@@ -382,7 +386,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
             args.push(getNameDivHTML(message.fromId, plain));
           }
 
-          let duration: ReturnType<typeof formatCallDuration>;
+          let duration: ReturnType<typeof wrapCallDuration>;
           if(action.period > 1814400) {
             let key: LangPackKey;
             const args: FormatterArguments = [];
@@ -397,7 +401,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
 
             duration = plain ? I18n.format(key, true, args) : i18n(key, args);
           } else {
-            duration = formatCallDuration(action.period, plain);
+            duration = wrapCallDuration(action.period, plain);
           }
 
           args.push(duration);
@@ -429,7 +433,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         }
 
         if(isTitleChanged) {
-          titleElement = wrapSomeText(action.title);
+          titleElement = wrapSomeText(action.title, plain);
         }
 
         if(isIconChanged && !isIconRemoved) {
@@ -481,7 +485,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         args = authorElement ? [authorElement] : [];
 
         if(action.emoticon) {
-          args.push(wrapEmojiText(action.emoticon));
+          args.push(wrapSomeText(action.emoticon, plain));
           langPackKey = isMe ? 'ChatThemeChangedYou' : 'ChatThemeChangedTo';
         } else {
           langPackKey = isMe ? 'ChatThemeDisabledYou' : 'ChatThemeDisabled';
@@ -502,6 +506,18 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
 
         langPackKey = isMe ? 'ActionGiftOutbound' : 'ActionGiftInbound';
 
+        break;
+      }
+
+      case 'messageActionWebViewDataSent': {
+        langPackKey = 'ActionBotWebViewData';
+        args = [wrapSomeText(action.text, plain)];
+        break;
+      }
+
+      case 'messageActionRequestedPeer': {
+        langPackKey = 'Chat.Service.PeerRequested';
+        args = [getNameDivHTML(getPeerId(action.peer), plain), getNameDivHTML(message.peerId, plain)];
         break;
       }
 

@@ -11,11 +11,14 @@ import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import rootScope from '../lib/rootScope';
 import {changeColorAccent, ColorRgb, getAccentColor, getAverageColor, getHexColorFromTelegramColor, getRgbColorFromTelegramColor, hexToRgb, hslaStringToHex, hsvToRgb, mixColors, rgbaToHexa, rgbaToHsla, rgbToHsv} from './color';
 import {MOUNT_CLASS_TO} from '../config/debug';
+import customProperties from './dom/customProperties';
+import {TelegramWebViewTheme} from '../types';
+import {joinDeepPath} from './object/setDeepProperty';
 
-type AppColorName = 'primary-color' | 'message-out-primary-color' |
+export type AppColorName = 'primary-color' | 'message-out-primary-color' |
   'surface-color' | 'danger-color' | 'primary-text-color' |
   'secondary-text-color' | 'message-out-background-color' |
-  'saved-color';
+  'saved-color' | 'message-background-color' | 'green-color';
 type AppColor = {
   rgb?: boolean,
   light?: boolean,
@@ -26,6 +29,7 @@ type AppColor = {
 };
 
 const appColorMap: {[name in AppColorName]: AppColor} = {
+  // 'background-color': {},
   'primary-color': {
     rgb: true,
     light: true,
@@ -50,6 +54,12 @@ const appColorMap: {[name in AppColorName]: AppColor} = {
     light: true,
     lightFilled: true
   },
+  'message-background-color': {
+    light: true,
+    lightFilled: true,
+    dark: true,
+    darkFilled: true
+  },
   'message-out-background-color': {
     light: true,
     lightFilled: true,
@@ -58,7 +68,8 @@ const appColorMap: {[name in AppColorName]: AppColor} = {
   },
   'saved-color': {
     lightFilled: true
-  }
+  },
+  'green-color': {}
 };
 
 const colorMap: {
@@ -67,22 +78,28 @@ const colorMap: {
   }
 } = {
   day: {
+    // 'background-color': '#f4f4f5',
     'primary-color': '#3390ec',
     'message-out-primary-color': '#4fae4e',
+    'message-background-color': '#ffffff',
     'surface-color': '#ffffff',
     'danger-color': '#df3f40',
     'primary-text-color': '#000000',
     'secondary-text-color': '#707579',
-    'saved-color': '#359AD4'
+    'saved-color': '#359AD4',
+    'green-color': '#70b768'
   },
   night: {
+    // 'background-color': '#181818',
     'primary-color': '#8774E1',
     'message-out-primary-color': '#8774E1',
+    'message-background-color': '#212121',
     'surface-color': '#212121',
     'danger-color': '#ff595a',
     'primary-text-color': '#ffffff',
     'secondary-text-color': '#aaaaaa',
-    'saved-color': '#8774E1'
+    'saved-color': '#8774E1',
+    'green-color': '#5CC85E'
   }
 };
 
@@ -165,9 +182,7 @@ export class ThemeController {
   public setTheme() {
     const isNight = this.isNight();
     const colorScheme = document.head.querySelector('[name="color-scheme"]');
-    if(colorScheme) {
-      colorScheme.setAttribute('content', isNight ? 'dark' : 'light');
-    }
+    colorScheme?.setAttribute('content', isNight ? 'dark' : 'light');
 
     document.documentElement.classList.toggle('night', isNight);
     this.setThemeColor();
@@ -185,10 +200,11 @@ export class ThemeController {
     style.textContent = `.night {${e.style.cssText}}`;
 
     this.applyHighlightningColor();
+    rootScope.dispatchEventSingle('theme_changed');
   }
 
   public async switchTheme(name: AppTheme['name']) {
-    await rootScope.managers.appStateManager.setByKey('settings.theme', name);
+    await rootScope.managers.appStateManager.setByKey(joinDeepPath('settings', 'theme'), name);
     rootScope.dispatchEvent('theme_change');
   }
 
@@ -223,14 +239,14 @@ export class ThemeController {
     };
   };
 
-  private applyAppColor({
+  public applyAppColor({
     name,
     hex,
     element,
     lightenAlpha = 0.08,
     darkenAlpha = lightenAlpha,
     mixColor,
-    isNight
+    isNight = this.isNight()
   }: {
     name: AppColorName,
     hex: string,
@@ -261,8 +277,13 @@ export class ThemeController {
       // appColor.darkFilled && ['dark-' + name, `hsl(${darkenedHsla.h}, ${darkenedHsla.s}%, ${darkenedHsla.l}%)`]
     ];
 
+    const isDocumentElement = element === document.documentElement;
     properties.filter(Boolean).forEach(([name, value]) => {
       element.style.setProperty('--' + name, value);
+
+      if(isDocumentElement) {
+        customProperties.setPropertyCache(name as AppColorName, value);
+      }
     });
   }
 
@@ -282,7 +303,7 @@ export class ThemeController {
 
     await this.AppBackgroundTab.setBackgroundDocument(themeSettings.wallpaper, newAppTheme.settings);
     themes[themes.indexOf(currentTheme)] = newAppTheme;
-    await rootScope.managers.appStateManager.setByKey('settings.themes', rootScope.settings.themes);
+    await rootScope.managers.appStateManager.setByKey(joinDeepPath('settings', 'themes'), rootScope.settings.themes);
     rootScope.dispatchEvent('theme_change');
   }
 
@@ -379,6 +400,25 @@ export class ThemeController {
     // }
 
     finalize();
+  }
+
+  public getThemeParamsForWebView() {
+    const themePropertiesMap: {[key in keyof TelegramWebViewTheme]: string} = {
+      bg_color: 'surface-color',
+      button_color: 'primary-color',
+      button_text_color: '#ffffff',
+      hint_color: 'secondary-text-color',
+      link_color: 'link-color',
+      secondary_bg_color: 'background-color-true',
+      text_color: 'primary-text-color'
+    };
+    const themeParams: TelegramWebViewTheme = {} as any;
+    for(const key in themePropertiesMap) {
+      const value = themePropertiesMap[key as keyof TelegramWebViewTheme];
+      themeParams[key as keyof TelegramWebViewTheme] = value[0] === '#' ? value : customProperties.getProperty(value as AppColorName);
+    }
+
+    return themeParams;
   }
 }
 

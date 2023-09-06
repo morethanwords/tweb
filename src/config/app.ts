@@ -9,23 +9,24 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type {DcId} from '../types';
+import type {TrueDcId} from '../types';
 
 export const MAIN_DOMAINS = ['web.telegram.org', 'webk.telegram.org'];
+export const DEFAULT_BACKGROUND_SLUG = 'pattern';
 
 const threads = Math.min(4, navigator.hardwareConcurrency ?? 4);
 
 const App = {
-  id: +process.env.API_ID,
-  hash: process.env.API_HASH,
-  version: process.env.VERSION,
-  versionFull: process.env.VERSION_FULL,
-  build: +process.env.BUILD,
-  langPackVersion: '1.0.8',
+  id: +import.meta.env.VITE_API_ID,
+  hash: import.meta.env.VITE_API_HASH,
+  version: import.meta.env.VITE_VERSION,
+  versionFull: import.meta.env.VITE_VERSION_FULL,
+  build: +import.meta.env.VITE_BUILD,
+  langPackVersion: '2.4.9',
   langPack: 'webk',
   langPackCode: 'en',
   domains: MAIN_DOMAINS,
-  baseDcId: 2 as DcId,
+  baseDcId: 2 as TrueDcId,
   isMainDomain: MAIN_DOMAINS.includes(location.hostname),
   suffix: 'K',
   threads,

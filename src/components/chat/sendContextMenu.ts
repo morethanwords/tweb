@@ -9,20 +9,22 @@ import {attachContextMenuListener} from '../../helpers/dom/attachContextMenuList
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import ListenerSetter from '../../helpers/listenerSetter';
 import rootScope from '../../lib/rootScope';
-import {ButtonMenuItemOptions, ButtonMenuSync} from '../buttonMenu';
+import {ButtonMenuItemOptionsVerifiable, ButtonMenuSync} from '../buttonMenu';
 
 export default class SendMenu {
   public sendMenu: HTMLElement;
-  private sendMenuButtons: (ButtonMenuItemOptions & {verify: () => boolean})[];
+  private sendMenuButtons: ButtonMenuItemOptionsVerifiable[];
   private type: 'schedule' | 'reminder';
 
   constructor(options: {
     onSilentClick: () => void,
     onScheduleClick: () => void,
+    onSendWhenOnlineClick?: () => void,
     listenerSetter?: ListenerSetter,
     openSide: string,
     onContextElement: HTMLElement,
-    onOpen?: () => boolean
+    onOpen?: () => boolean,
+    canSendWhenOnline?: () => boolean | Promise<boolean>
   }) {
     this.sendMenuButtons = [{
       icon: 'mute',
@@ -39,6 +41,11 @@ export default class SendMenu {
       text: 'Chat.Send.SetReminder',
       onClick: options.onScheduleClick,
       verify: () => this.type === 'reminder'
+    }, {
+      icon: 'online',
+      text: 'Schedule.SendWhenOnline',
+      onClick: options.onSendWhenOnlineClick,
+      verify: () => this.type === 'schedule' && options.canSendWhenOnline?.()
     }];
 
     this.sendMenu = ButtonMenuSync({buttons: this.sendMenuButtons, listenerSetter: options.listenerSetter});
@@ -46,16 +53,17 @@ export default class SendMenu {
 
     attachContextMenuListener({
       element: options.onContextElement,
-      callback: (e) => {
+      callback: async(e) => {
         if(options.onOpen && !options.onOpen()) {
           return;
         }
 
-        this.sendMenuButtons.forEach((button) => {
-          button.element.classList.toggle('hide', !button.verify());
-        });
-
         cancelEvent(e);
+        await Promise.all(this.sendMenuButtons.map(async(button) => {
+          const result = await button.verify();
+          button.element.classList.toggle('hide', !result);
+        }));
+
         contextMenuController.openBtnMenu(this.sendMenu);
       },
       listenerSetter: options.listenerSetter

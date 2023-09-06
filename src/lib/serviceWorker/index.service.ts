@@ -4,10 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-// #if MTPROTO_SW
-import '../mtproto/mtproto.worker';
-// #endif
-
 import {logger, LogTypes} from '../logger';
 import {CACHE_ASSETS_NAME, requestCache} from './cache';
 import onStreamFetch from './stream';
@@ -21,12 +17,18 @@ import {MessageSendPort} from '../mtproto/superMessagePort';
 import handleDownload from './download';
 import onShareFetch, {checkWindowClientForDeferredShare} from './share';
 
+// #if MTPROTO_SW
+// import '../mtproto/mtproto.worker';
+// #endif
+
 export const log = logger('SW', LogTypes.Error | LogTypes.Debug | LogTypes.Log | LogTypes.Warn, true);
 const ctx = self as any as ServiceWorkerGlobalScope;
 
 // #if !MTPROTO_SW
 let _mtprotoMessagePort: MessagePort;
 export const getMtprotoMessagePort = () => _mtprotoMessagePort;
+
+log('init');
 
 const sendMessagePort = (source: MessageSendPort) => {
   const channel = new MessageChannel();
@@ -115,15 +117,18 @@ listenMessagePort(serviceMessagePort, undefined, (source) => {
 // #endif
 
 const onFetch = (event: FetchEvent): void => {
-  // #if !DEBUG
   if(
+    import.meta.env.PROD &&
     !IS_SAFARI &&
     event.request.url.indexOf(location.origin + '/') === 0 &&
     event.request.url.match(/\.(js|css|jpe?g|json|wasm|png|mp3|svg|tgs|ico|woff2?|ttf|webmanifest?)(?:\?.*)?$/)
   ) {
     return event.respondWith(requestCache(event));
   }
-  // #endif
+
+  if(import.meta.env.DEV && event.request.url.endsWith('.ts')) {
+    return;
+  }
 
   try {
     // const [, url, scope, params] = /http[:s]+\/\/.*?(\/(.*?)(?:$|\/(.*)$))/.exec(event.request.url) || [];
@@ -151,6 +156,11 @@ const onFetch = (event: FetchEvent): void => {
         event.respondWith(new Response('pong'));
         break;
       }
+
+      // default: {
+      //   event.respondWith(fetch(event.request));
+      //   break;
+      // }
     }
   } catch(err) {
     log.error('fetch error', err);

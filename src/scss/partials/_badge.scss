@@ -22,7 +22,7 @@
     transition: background-color .2s ease-in-out;
   }
 
-  &:not(.tgico):empty {
+  &.is-badge-empty {
     display: none;
   }
 
@@ -36,15 +36,10 @@
     --padding: .5rem;
   }
 
-  &.tgico {
-    &:before {
-      font-size: var(--size);
-    }
-  }
-
-  /* &.tgico {
+  &-icon {
+    font-size: var(--size);
     padding: 0;
-  } */
+  }
 
   &-primary {
     background-color: var(--primary-color);

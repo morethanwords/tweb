@@ -7,10 +7,15 @@
 import numberThousandSplitter from '../../helpers/number/numberThousandSplitter';
 import {Chat, ChatParticipants} from '../../layer';
 import {i18n, LangPackKey} from '../../lib/langPack';
+import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import rootScope from '../../lib/rootScope';
 
-export default async function getChatMembersString(chatId: ChatId, managers = rootScope.managers) {
-  const chat: Chat = await managers.appChatsManager.getChat(chatId);
+export default async function getChatMembersString(
+  chatId: ChatId,
+  managers = rootScope.managers,
+  chat?: Chat
+) {
+  chat ??= await apiManagerProxy.getChat(chatId);
   if(chat._ === 'chatForbidden') {
     return i18n('YouWereKicked');
   }

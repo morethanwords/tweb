@@ -21,5 +21,5 @@
   return isInDOM(element.parentNode as HTMLElement, parentNode);
 } */
 export default function isInDOM(element: Element): boolean {
-  return element?.isConnected;
+  return !!element?.isConnected;
 }

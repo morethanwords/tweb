@@ -11,3 +11,5 @@ public3
 session_name.session
 tasks.txt
 yarn.lock
+stats.html
+ssh.json

@@ -80,10 +80,17 @@
     {"name": "localId", "type": "0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21"}
   ]
 }, {
+  "predicate": "dialogFilterChatlist",
+  "params": [
+    {"name": "localId", "type": "0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21"},
+    {"name": "pinnedPeerIds", "type": "PeerId[]"},
+    {"name": "includePeerIds", "type": "PeerId[]"},
+    {"name": "updatedTime", "type": "number"}
+  ]
+}, {
   "predicate": "message",
   "params": [
     {"name": "mid", "type": "number"},
-    {"name": "deleted", "type": "boolean"},
     {"name": "peerId", "type": "PeerId"},
     {"name": "fromId", "type": "PeerId"},
     {"name": "fwdFromId", "type": "PeerId"},
@@ -288,11 +295,6 @@
   ],
   "type": "Update"
 }, {
-  "predicate": "updateChannelMessageViews",
-  "params": [
-    {"name": "peerId", "type": "PeerId"}
-  ]
-}, {
   "predicate": "messages.stickerSet",
   "params": [
     {"name": "refreshTime", "type": "number"}
@@ -340,6 +342,18 @@
   "predicate": "messageMediaCall",
   "params": [
     {"name": "action", "type": "MessageAction.messageActionPhoneCall"}
+  ],
+  "type": "MessageMedia"
+}, {
+  "predicate": "messageMediaPhotoExternal",
+  "params": [
+    {"name": "photo", "type": "WebDocument"}
+  ],
+  "type": "MessageMedia"
+}, {
+  "predicate": "messageMediaDocumentExternal",
+  "params": [
+    {"name": "document", "type": "WebDocument"}
   ],
   "type": "MessageMedia"
 }, {
@@ -391,5 +405,10 @@
     {"name": "peerId", "type": "PeerId"},
     {"name": "index_0", "type": "number"},
     {"name": "peer", "type": "Peer"}
+  ]
+}, {
+  "predicate": "channelParticipantsAdmins",
+  "params": [
+    {"name": "q", "type": "string"}
   ]
 }]

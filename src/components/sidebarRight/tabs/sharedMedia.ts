@@ -5,19 +5,14 @@
  */
 
 import rootScope from '../../../lib/rootScope';
-import AppSearchSuper, {SearchSuperType} from '../../appSearchSuper.';
-import SidebarSlider, {SliderSuperTab} from '../../slider';
+import AppSearchSuper, {SearchSuperMediaTab, SearchSuperType} from '../../appSearchSuper.';
+import {SliderSuperTab} from '../../slider';
 import TransitionSlider from '../../transition';
 import AppEditChatTab from './editChat';
-import PeerTitle from '../../peerTitle';
 import AppEditContactTab from './editContact';
 import Button from '../../button';
 import ButtonIcon from '../../buttonIcon';
-import I18n, {i18n, LangPackKey} from '../../../lib/langPack';
-import {toastNew} from '../../toast';
-import AppAddMembersTab from '../../sidebarLeft/tabs/addMembers';
-import PopupPickUser from '../../popups/pickUser';
-import PopupPeer, {PopupPeerButtonCallbackCheckboxes, PopupPeerCheckboxOptions} from '../../popups/peer';
+import I18n, {i18n} from '../../../lib/langPack';
 import ButtonCorner from '../../buttonCorner';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import PeerProfile from '../../peerProfile';
@@ -26,6 +21,8 @@ import getMessageThreadId from '../../../lib/appManagers/utils/messages/getMessa
 import AppEditTopicTab from './editTopic';
 import liteMode from '../../../helpers/liteMode';
 import PopupElement from '../../popups';
+import AppEditBotTab from './editBot';
+import addChatUsers from '../../addChatUsers';
 
 type SharedMediaHistoryStorage = Partial<{
   [type in SearchSuperType]: {mid: number, peerId: PeerId}[]
@@ -74,25 +71,52 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     const transitionContainer = document.createElement('div');
     transitionContainer.className = 'transition slide-fade';
 
-    const transitionFirstItem = document.createElement('div');
-    transitionFirstItem.classList.add('transition-item');
+    const makeTransitionItem = (title?: HTMLElement) => {
+      const element = document.createElement('div');
+      element.classList.add('transition-item');
+
+      title ??= this.title.cloneNode() as any;
+      element.append(title);
+
+      return {element, title};
+    };
+
+    const transitionFirstItem = makeTransitionItem(this.title);
 
     this.titleI18n = new I18n.IntlElement();
     this.title.append(this.titleI18n.element);
     this.editBtn = ButtonIcon('edit');
     // const moreBtn = ButtonIcon('more');
 
-    transitionFirstItem.append(this.title, this.editBtn/* , moreBtn */);
+    transitionFirstItem.element.append(this.editBtn/* , moreBtn */);
 
-    const transitionLastItem = document.createElement('div');
-    transitionLastItem.classList.add('transition-item');
+    enum TitleIndex {
+      Profile = 0,
+      Members = 1,
+      Stories = 2,
+      Media = 3,
+      Groups = 4
+    }
 
-    const secondTitle: HTMLElement = this.title.cloneNode() as any;
-    secondTitle.append(i18n('PeerInfo.SharedMedia'));
+    const transitionSharedMedia = makeTransitionItem();
+    transitionSharedMedia.title.append(i18n('PeerInfo.SharedMedia'));
 
-    transitionLastItem.append(secondTitle);
+    const transitionStories = makeTransitionItem();
+    transitionStories.title.append(i18n('PublicStories'));
 
-    transitionContainer.append(transitionFirstItem, transitionLastItem);
+    const transitionMembers = makeTransitionItem();
+    transitionMembers.title.append(i18n('Members'));
+
+    const transitionGroups = makeTransitionItem();
+    transitionGroups.title.append(i18n('Groups'));
+
+    transitionContainer.append(...[
+      transitionFirstItem,
+      transitionMembers,
+      transitionStories,
+      transitionSharedMedia,
+      transitionGroups
+    ].map(({element}) => element));
 
     this.header.append(transitionContainer);
 
@@ -112,10 +136,28 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       setIsSharedMedia(top <= HEADER_HEIGHT);
     };
 
+    const getTitleIndex = (isSharedMedia = transition.prevId() !== TitleIndex.Profile) => {
+      let index = TitleIndex.Profile;
+      if(isSharedMedia) {
+        if(lastMediaTabType === 'stories') {
+          index = TitleIndex.Stories;
+        } else if(lastMediaTabType === 'members') {
+          index = TitleIndex.Members;
+        } else if(lastMediaTabType === 'groups') {
+          index = TitleIndex.Groups;
+        } else {
+          index = TitleIndex.Media;
+        }
+      }
+
+      return index;
+    };
+
     const setIsSharedMedia = (isSharedMedia: boolean) => {
       animatedCloseIcon.classList.toggle('state-back', this.isFirst || isSharedMedia);
       this.searchSuper.container.classList.toggle('is-full-viewport', isSharedMedia);
-      transition(+isSharedMedia);
+
+      transition(getTitleIndex(isSharedMedia));
 
       if(!isSharedMedia) {
         this.searchSuper.cleanScrollPositions();
@@ -129,7 +171,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       isHeavy: false
     });
 
-    transition(0);
+    transition(TitleIndex.Profile);
 
     attachClickEvent(this.closeBtn, (e) => {
       if(transition.prevId()) {
@@ -137,7 +179,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
           element: this.scrollable.container.firstElementChild as HTMLElement,
           position: 'start'
         });
-        transition(0);
+        transition(TitleIndex.Profile);
 
         if(!this.isFirst) {
           animatedCloseIcon.classList.remove('state-back');
@@ -148,33 +190,39 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     }, {listenerSetter: this.listenerSetter});
 
     attachClickEvent(this.editBtn, async() => {
-      let tab: AppEditChatTab | AppEditContactTab | AppEditTopicTab;
+      let tab: AppEditChatTab | AppEditContactTab | AppEditTopicTab | AppEditBotTab;
       const {peerId, threadId} = this;
       if(threadId && await this.managers.appPeersManager.isForum(peerId)) {
         tab = this.slider.createTab(AppEditTopicTab)
       } else if(peerId.isAnyChat()) {
         tab = this.slider.createTab(AppEditChatTab);
+      } else if(await this.managers.appUsersManager.isBot(peerId)) {
+        tab = this.slider.createTab(AppEditBotTab);
       } else {
         tab = this.slider.createTab(AppEditContactTab);
       }
 
-      if(tab) {
-        if(tab instanceof AppEditTopicTab) {
-          tab.open(peerId, this.threadId);
-        } else {
-          if(tab instanceof AppEditChatTab) {
-            tab.chatId = peerId.toChatId();
-          } else {
-            tab.peerId = peerId;
-          }
+      if(!tab) {
+        return;
+      }
 
-          tab.open();
+      if(tab instanceof AppEditTopicTab) {
+        tab.open(peerId, this.threadId);
+      } else if(tab instanceof AppEditBotTab) {
+        tab.open(peerId);
+      } else {
+        if(tab instanceof AppEditChatTab) {
+          tab.chatId = peerId.toChatId();
+        } else {
+          tab.peerId = peerId;
         }
+
+        tab.open();
       }
     }, {listenerSetter: this.listenerSetter});
 
     this.listenerSetter.add(rootScope)('contacts_update', (userId) => {
-      if(this.peerId === userId) {
+      if(this.peerId === userId.toPeerId(false)) {
         this.toggleEditBtn();
       }
     });
@@ -200,8 +248,13 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     // this.container.prepend(this.closeBtn.parentElement);
 
+    let lastMediaTabType: SearchSuperMediaTab['type'];
     this.searchSuper = new AppSearchSuper({
       mediaTabs: [{
+        inputFilter: 'inputMessagesFilterEmpty',
+        name: 'Stories',
+        type: 'stories'
+      }, {
         inputFilter: 'inputMessagesFilterEmpty',
         name: 'PeerMedia.Members',
         type: 'members'
@@ -232,6 +285,9 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       }],
       scrollable: this.scrollable,
       onChangeTab: (mediaTab) => {
+        lastMediaTabType = mediaTab.type;
+        transition(getTitleIndex());
+
         const timeout = mediaTab.type === 'members' && liteMode.isAvailable('animations') ? 250 : 0;
         setTimeout(() => {
           btnAddMembers.classList.toggle('is-hidden', mediaTab.type !== 'members');
@@ -250,103 +306,10 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     this.content.append(btnAddMembers);
 
     attachClickEvent(btnAddMembers, async() => {
-      const peerId = this.peerId;
-      const id = this.peerId.toChatId();
-      const isChannel = await this.managers.appChatsManager.isChannel(id);
-
-      const showConfirmation = (peerIds: PeerId[], callback: (checked: PopupPeerButtonCallbackCheckboxes) => void) => {
-        let titleLangKey: LangPackKey, titleLangArgs: any[],
-          descriptionLangKey: LangPackKey, descriptionLangArgs: any[],
-          checkboxes: PopupPeerCheckboxOptions[];
-
-        if(peerIds.length > 1) {
-          titleLangKey = 'AddMembersAlertTitle';
-          titleLangArgs = [i18n('Members', [peerIds.length])];
-          descriptionLangKey = 'AddMembersAlertCountText';
-          descriptionLangArgs = peerIds.map((peerId) => {
-            const b = document.createElement('b');
-            b.append(new PeerTitle({peerId}).element);
-            return b;
-          });
-
-          if(!isChannel) {
-            checkboxes = [{
-              text: 'AddMembersForwardMessages',
-              checked: true
-            }];
-          }
-        } else {
-          titleLangKey = 'AddOneMemberAlertTitle';
-          descriptionLangKey = 'AddMembersAlertNamesText';
-          const b = document.createElement('b');
-          b.append(new PeerTitle({
-            peerId: peerIds[0]
-          }).element);
-          descriptionLangArgs = [b];
-
-          if(!isChannel) {
-            checkboxes = [{
-              text: 'AddOneMemberForwardMessages',
-              textArgs: [new PeerTitle({peerId: peerIds[0]}).element],
-              checked: true
-            }];
-          }
-        }
-
-        descriptionLangArgs.push(new PeerTitle({
-          peerId
-        }).element);
-
-        PopupElement.createPopup(PopupPeer, 'popup-add-members', {
-          peerId,
-          titleLangKey,
-          descriptionLangKey,
-          descriptionLangArgs,
-          buttons: [{
-            langKey: 'Add',
-            callback
-          }],
-          checkboxes
-        }).show();
-      };
-
-      const onError = (err: any) => {
-        if(err.type === 'USER_PRIVACY_RESTRICTED') {
-          toastNew({langPackKey: 'InviteToGroupError'});
-        }
-      };
-
-      if(isChannel) {
-        const tab = this.slider.createTab(AppAddMembersTab);
-        tab.open({
-          type: 'channel',
-          skippable: false,
-          takeOut: (peerIds) => {
-            showConfirmation(peerIds, () => {
-              const promise = this.managers.appChatsManager.inviteToChannel(id, peerIds);
-              promise.catch(onError);
-              tab.attachToPromise(promise);
-            });
-
-            return false;
-          },
-          title: 'GroupAddMembers',
-          placeholder: 'SendMessageTo'
-        });
-      } else {
-        PopupElement.createPopup(PopupPickUser, {
-          peerTypes: ['contacts'],
-          placeholder: 'Search',
-          onSelect: (peerId) => {
-            setTimeout(() => {
-              showConfirmation([peerId], (checked) => {
-                this.managers.appChatsManager.addChatUser(id, peerId, checked.size ? undefined : 0)
-                .catch(onError);
-              });
-            }, 0);
-          }
-        });
-      }
+      addChatUsers({
+        peerId: this.peerId,
+        slider: this.slider
+      });
     }, {listenerSetter: this.listenerSetter});
 
     // console.log('construct shared media time:', performance.now() - perf);
@@ -514,7 +477,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
   private async toggleEditBtn<T extends boolean>(manual?: T): Promise<T extends true ? () => void : void> {
     let show: boolean;
     if(this.peerId.isUser()) {
-      show = this.peerId !== rootScope.myId && await this.managers.appUsersManager.isContact(this.peerId.toUserId());
+      show = this.peerId !== rootScope.myId && await this.managers.appUsersManager.canEdit(this.peerId.toUserId());
     } else {
       const chatId = this.peerId.toChatId();
       const isTopic = this.threadId && await this.managers.appChatsManager.isForum(chatId);

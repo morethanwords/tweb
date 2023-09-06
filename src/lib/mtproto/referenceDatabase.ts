@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {Photo, WallPaper} from '../../layer';
+import type {Photo, StoryItem, WallPaper} from '../../layer';
 import {logger} from '../logger';
 import bytesToHex from '../../helpers/bytes/bytesToHex';
 import deepEqual from '../../helpers/object/deepEqual';
 import {AppManager} from '../appManagers/manager';
 import makeError from '../../helpers/makeError';
 
-export type ReferenceContext = ReferenceContext.referenceContextProfilePhoto | ReferenceContext.referenceContextMessage | ReferenceContext.referenceContextEmojiesSounds | ReferenceContext.referenceContextReactions | ReferenceContext.referenceContextUserFull | ReferenceContext.referenceContextCustomEmoji | ReferenceContext.referenceContextAttachMenuBotIcon | ReferenceContext.referenceContextWallPaper;
+export type ReferenceContext = ReferenceContext.referenceContextProfilePhoto | ReferenceContext.referenceContextMessage | ReferenceContext.referenceContextEmojiesSounds | ReferenceContext.referenceContextReactions | ReferenceContext.referenceContextUserFull | ReferenceContext.referenceContextCustomEmoji | ReferenceContext.referenceContextAttachMenuBotIcon | ReferenceContext.referenceContextWallPaper | ReferenceContext.referenceContextStoryItem;
 export namespace ReferenceContext {
   export type referenceContextProfilePhoto = {
     type: 'profilePhoto',
@@ -51,6 +51,12 @@ export namespace ReferenceContext {
     type: 'wallPaper',
     wallPaperId: WallPaper['id']
   };
+
+  export type referenceContextStoryItem = {
+    type: 'storyItem',
+    peerId: PeerId,
+    storyId: StoryItem['id'],
+  }
 }
 
 export type ReferenceBytes = Photo.photo['file_reference'];
@@ -177,6 +183,11 @@ export class ReferenceDatabase extends AppManager {
 
       case 'wallPaper': {
         promise = this.appThemesManager.getWallPaperById(context.wallPaperId);
+        break;
+      }
+
+      case 'storyItem': {
+        promise = Promise.resolve(this.appStoriesManager.getStoryById(context.peerId, context.storyId, true));
         break;
       }
 

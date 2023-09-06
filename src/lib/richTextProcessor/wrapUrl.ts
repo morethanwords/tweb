@@ -20,7 +20,7 @@ export default function wrapUrl(url: string, unsafe?: number | boolean) {
   let onclick: typeof out['onclick'];
   /* if(unsafe === 2) {
     url = 'tg://unsafe_url?url=' + encodeURIComponent(url);
-  } else  */if((tgMeMatch = url.match(/^(?:https?:\/\/)?(?:(.+?)\.)?(?:(?:web|k|z)\.)?t(?:elegram)?\.me(?:\/(.+))?/))) {
+  } else  */if((tgMeMatch = url.match(/^(?:https?:\/\/)?(?:(.+?)\.)?(?:(?:web|k|z|a)\.)?t(?:elegram)?\.me(?:\/(.+))?/))) {
     const u = new URL(url);
     let prefix = tgMeMatch[1];
     if(prefix && T_ME_PREFIXES.has(tgMeMatch[1])) {
@@ -36,9 +36,10 @@ export default function wrapUrl(url: string, unsafe?: number | boolean) {
 
     if(path[0] && path[0][0] === '$' && path[0].length > 1) {
       onclick = 'invoice';
-    } else if(/^\W/.test(fullPath) && !PHONE_NUMBER_REG_EXP.test(fullPath)) { // second regexp is for phone numbers (t.me/+38050...)
+    } else if(/^\+/.test(fullPath) && !PHONE_NUMBER_REG_EXP.test(fullPath)) { // second regexp is for phone numbers (t.me/+38050...)
       onclick = 'joinchat';
-    } else switch(path[0]) {
+    } else if(path[0]) switch(path[0]) {
+      case 'addlist':
       case 'joinchat':
       case 'addstickers':
       case 'addemoji':
@@ -50,7 +51,7 @@ export default function wrapUrl(url: string, unsafe?: number | boolean) {
         }
 
       default:
-        if((path[1] && path[1].match(/^\d+(?:\?(?:comment|thread)=\d+)?$/)) || path.length === 1) {
+        if(path.length <= 2 || path[1]?.match(/^\d+(?:\?(?:comment|thread)=\d+)?$/) || path[1] === 's') {
           onclick = 'im';
           break;
         }

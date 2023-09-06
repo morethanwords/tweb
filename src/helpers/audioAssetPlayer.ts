@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import safePlay from './dom/safePlay';
+
 const ASSETS_PATH = 'assets/audio/';
 
 export default class AudioAssetPlayer<AssetName extends string> {
@@ -24,7 +26,7 @@ export default class AudioAssetPlayer<AssetName extends string> {
       audio.autoplay = true;
       audio.src = ASSETS_PATH + name;
       audio.loop = loop;
-      audio.play();
+      safePlay(audio);
     } catch(e) {
       console.error('playSound', name, e);
     }
@@ -43,7 +45,7 @@ export default class AudioAssetPlayer<AssetName extends string> {
     }
 
     audio = this.audio = new Audio();
-    audio.play();
+    safePlay(audio);
     return audio;
   }
 

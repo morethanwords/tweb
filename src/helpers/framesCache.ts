@@ -75,7 +75,7 @@ export class FramesCache {
       width,
       height,
       // color ? rgbaToHexa(color) : ''
-      color ? 'colored' : '',
+      // color ? 'colored' : '',
       toneIndex || ''
     ].filter(Boolean).join('-');
   }

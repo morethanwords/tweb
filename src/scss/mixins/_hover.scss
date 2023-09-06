@@ -32,6 +32,34 @@
   }
 }
 
+@mixin hover-global($color: null, $property: null, $use-transition: false) {
+  @if $color {
+    @if $color == filled-gray {
+      $color: var(--light-filled-secondary-text-color);
+    } @else if $color == gray {
+      $color: var(--light-secondary-text-color);
+    } @else if $color == blue or $color == primary {
+      $color: var(--light-primary-color);
+    } @else if $color == red {
+      $color: var(--light-danger-color);
+    }
+  }
+
+  :global(html.no-touch) &:hover,
+  :global(html.no-touch) &:active {
+    @if $property != null {
+      @if $use-transition {
+        transition: .2s #{$property};
+      }
+      
+      #{$property}: $color;
+    }
+    
+
+    @content;
+  }
+}
+
 @mixin hover-effect($color: gray, $use-transition: false) {
   @include hover($color, color, $use-transition) {
     @content;

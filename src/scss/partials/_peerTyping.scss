@@ -46,14 +46,14 @@
       animation-iteration-count: infinite;
       animation-timing-function: linear;
       animation-name: dotMiddle;
-    }
 
-    &-dot:first-child {
-      animation-name: dotFirst;
-    }
+      &-first {
+        animation-name: dotFirst;
+      }
 
-    &-dot:last-child {
-      animation-name: dotLast;
+      &-last {
+        animation-name: dotLast;
+      }
     }
   }
 
@@ -65,7 +65,8 @@
     border-radius: 2px;
     margin-right: .375rem;
     
-    &:before, &:after {
+    &:before,
+    &:after {
       display: block;
       content: " ";
       position: absolute;

@@ -5,6 +5,7 @@
  */
 
 import cancelEvent from '../../helpers/dom/cancelEvent';
+import safePlay from '../../helpers/dom/safePlay';
 import getImageFromStrippedThumb from '../../helpers/getImageFromStrippedThumb';
 import noop from '../../helpers/noop';
 import {Document, Photo, PhotoSize} from '../../layer';
@@ -45,7 +46,7 @@ export function onMediaSpoilerClick(options: {
   const video = mediaSpoiler.parentElement.querySelector('video');
   if(video && !mediaSpoiler.parentElement.querySelector('.video-play')) {
     video.autoplay = true;
-    video.play().catch(noop);
+    safePlay(video);
   }
 
   toggleMediaSpoiler({

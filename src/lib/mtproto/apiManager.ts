@@ -9,11 +9,6 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-// #if MTPROTO_AUTO
-import transportController from './transports/controller';
-import MTTransport from './transports/transport';
-// #endif
-
 import type {UserAuth} from './mtproto_config';
 import type {DcAuthKey, DcId, DcServerSalt, InvokeApiOptions} from '../../types';
 import type {MethodDeclMap} from '../../layer';
@@ -38,6 +33,8 @@ import ApiManagerMethods from './api_methods';
 import {getEnvironment} from '../../environment/utils';
 import toggleStorages from '../../helpers/toggleStorages';
 import tsNow from '../../helpers/tsNow';
+import transportController from './transports/controller';
+import MTTransport from './transports/transport';
 
 /* class RotatableArray<T> {
   public array: Array<T> = [];
@@ -94,11 +91,11 @@ export class ApiManager extends ApiManagerMethods {
 
     this.transportType = Modes.transport;
 
-    // #if MTPROTO_AUTO
-    transportController.addEventListener('transport', (transportType) => {
-      this.changeTransportType(transportType);
-    });
-    // #endif
+    if(import.meta.env.VITE_MTPROTO_AUTO) {
+      transportController.addEventListener('transport', (transportType) => {
+        this.changeTransportType(transportType);
+      });
+    }
 
     // * Make sure that the used autologin_token is no more than 10000 seconds old
     // * https://core.telegram.org/api/url-authorization
@@ -162,14 +159,13 @@ export class ApiManager extends ApiManagerMethods {
   } */
 
   private getTransportType(connectionType: ConnectionType) {
-    // #if MTPROTO_HTTP_UPLOAD
-    // @ts-ignore
-    const transportType: TransportType = connectionType === 'upload' && getEnvironment().IS_SAFARI ? 'https' : 'websocket';
-    // const transportType: TransportType = connectionType !== 'client' ? 'https' : 'websocket';
-    // #else
-    // @ts-ignore
-    const transportType: TransportType = this.transportType;
-    // #endif
+    let transportType: TransportType;
+    if(import.meta.env.VITE_MTPROTO_HTTP_UPLOAD) {
+      transportType = connectionType === 'upload' && getEnvironment().IS_SAFARI ? 'https' : 'websocket';
+      // const transportType: TransportType = connectionType !== 'client' ? 'https' : 'websocket';
+    } else {
+      transportType = this.transportType;
+    }
 
     return transportType;
   }
@@ -376,8 +372,8 @@ export class ApiManager extends ApiManagerMethods {
     return this.gettingNetworkers[getKey] = Promise.all([ak, ss].map((key) => sessionStorage.get(key)))
     .then(async([authKeyHex, serverSaltHex]) => {
       let networker: MTPNetworker, error: any;
-      if(authKeyHex && authKeyHex.length === 512) {
-        if(!serverSaltHex || serverSaltHex.length !== 16) {
+      if(authKeyHex?.length === 512) {
+        if(serverSaltHex?.length !== 16) {
           serverSaltHex = 'AAAAAAAAAAAAAAAA';
         }
 
@@ -390,9 +386,18 @@ export class ApiManager extends ApiManagerMethods {
         try { // if no saved state
           const auth = await this.authorizer.auth(dcId);
 
+          authKeyHex = bytesToHex(auth.authKey);
+          serverSaltHex = bytesToHex(auth.serverSalt);
+
+          if(dcId === App.baseDcId) {
+            sessionStorage.set({
+              auth_key_fingerprint: authKeyHex.slice(0, 8)
+            });
+          }
+
           sessionStorage.set({
-            [ak]: bytesToHex(auth.authKey),
-            [ss]: bytesToHex(auth.serverSalt)
+            [ak]: authKeyHex,
+            [ss]: serverSaltHex
           });
 
           networker = this.networkerFactory.getNetworker(dcId, auth.authKey, auth.authKeyId, auth.serverSalt, options);
@@ -669,9 +674,9 @@ export class ApiManager extends ApiManagerMethods {
       cachedNetworker.attachPromise(deferred, options as MTMessage);
       return promise;
     })
-    .then(deferred.resolve)
+    .then(deferred.resolve.bind(deferred))
     .catch(rejectPromise)
-    .catch(deferred.reject);
+    .catch(deferred.reject.bind(deferred));
 
     return deferred;
   }

@@ -11,6 +11,7 @@ import {i18n} from '../../lib/langPack';
 import {GROUP_CALL_PARTICIPANT_MUTED_STATE} from '.';
 import {GroupCallParticipantVideoType} from './participantVideo';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
+import Icon from '../icon';
 
 const className = 'group-call-participant-status';
 export default class GroupCallParticipantStatusElement {
@@ -24,9 +25,8 @@ export default class GroupCallParticipantStatusElement {
   public setState(state: GROUP_CALL_PARTICIPANT_MUTED_STATE, participant: GroupCallParticipant) {
     const states = GROUP_CALL_PARTICIPANT_MUTED_STATE;
     const icons = this.withIcons.filter((type) => !!participant[type]).map((type) => {
-      const iconClassName = `tgico-${type === 'presentation' ? 'listscreenshare' : 'videocamera_filled'}`;
-      const i = document.createElement('i');
-      i.classList.add(className + '-icon', className + '-icon-' + type, iconClassName);
+      const iconClassName: Icon = `${type === 'presentation' ? 'listscreenshare' : 'videocamera_filled'}`;
+      const i = Icon(iconClassName, className + '-icon', className + '-icon-' + type);
       return i;
     });
 

@@ -68,7 +68,7 @@ export default function createStickersContextMenu(options: {
       text: 'Chat.Send.WithoutSound',
       onClick: () => {
         onSend?.();
-        return EmoticonsDropdown.sendDocId(doc.id, false, true);
+        return appImManager.chat.input.emoticonsDropdown.sendDocId(doc.id, false, true);
       },
       verify: () => !!(appImManager.chat.peerId && appImManager.chat.peerId !== rootScope.myId)
     }, {

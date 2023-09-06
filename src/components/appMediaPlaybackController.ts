@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type {MyDocument} from '../lib/appManagers/appDocsManager';
+import type {SearchSuperContext} from './appSearchSuper.';
 import rootScope from '../lib/rootScope';
-import {MyDocument} from '../lib/appManagers/appDocsManager';
 import deferredPromise, {CancellablePromise} from '../helpers/cancellablePromise';
 import {IS_APPLE, IS_SAFARI} from '../environment/userAgent';
 import {MOUNT_CLASS_TO} from '../config/debug';
 import simulateEvent from '../helpers/dom/dispatchEvent';
-import type {SearchSuperContext} from './appSearchSuper.';
 import {Document, DocumentAttribute, Message, PhotoSize} from '../layer';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import I18n from '../lib/langPack';
@@ -24,6 +24,8 @@ import getPeerTitle from './wrappers/getPeerTitle';
 import appDownloadManager from '../lib/appManagers/appDownloadManager';
 import onMediaLoad from '../helpers/onMediaLoad';
 import EventListenerBase from '../helpers/eventListenerBase';
+import animationIntersector from './animationIntersector';
+import apiManagerProxy from '../lib/mtproto/mtprotoworker';
 
 // TODO: Safari: проверить стрим, включить его и сразу попробовать включить видео или другую песню
 // TODO: Safari: попробовать замаскировать подгрузку последнего чанка
@@ -185,6 +187,16 @@ export class AppMediaPlaybackController extends EventListenerBase<{
       };
     });
     Object.defineProperties(this, properties);
+
+    this.addEventListener('play', ({doc}) => {
+      if(doc.type === 'round') {
+        animationIntersector.toggleMediaPause(false);
+      }
+    });
+
+    this.addEventListener('pause', () => {
+      animationIntersector.toggleMediaPause(true);
+    });
   }
 
   private dispatchPlaybackParams() {
@@ -310,11 +322,11 @@ export class AppMediaPlaybackController extends EventListenerBase<{
       waitingStorage.set(mid, deferred);
     }
 
-    deferred.then(async() => {
+    deferred.then(() => {
       // media.autoplay = true;
       // console.log('will set media url:', media, doc, doc.type, doc.url);
 
-      if(doc.supportsStreaming || (await this.managers.thumbsStorage.getCacheContext(doc)).url) {
+      if(doc.supportsStreaming || (apiManagerProxy.getCacheContext(doc)).url) {
         this.onMediaDocumentLoad(media);
       } else {
         let set = this.waitingDocumentsForLoad[doc.id];
@@ -343,7 +355,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     }
 
     // setTimeout(() => {
-    const cacheContext = await this.managers.thumbsStorage.getCacheContext(doc);
+    const cacheContext = apiManagerProxy.getCacheContext(doc);
     media.src = cacheContext.url;
 
     if(this.playingMedia === media) {
@@ -441,7 +453,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     if(doc.thumbs?.length) {
       const size = doc.thumbs[doc.thumbs.length - 1];
       if(!(size as PhotoSize.photoStrippedSize).bytes) {
-        const cacheContext = await this.managers.thumbsStorage.getCacheContext(doc, size.type);
+        const cacheContext = apiManagerProxy.getCacheContext(doc, size.type);
 
         if(cacheContext.url) {
           artwork.push({

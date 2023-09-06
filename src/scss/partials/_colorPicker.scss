@@ -35,13 +35,10 @@
 
   &-inputs {
     display: flex;
+    gap: 1.25rem;
 
     .input-field {
       flex: 1 1 auto;
-
-      &:not(:first-child) {
-        margin-left: 1.25rem;
-      }
     }
   }
 }

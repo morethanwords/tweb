@@ -334,7 +334,7 @@ export default class SlicedArray<T extends ItemType> {
   }
 
   // * https://core.telegram.org/api/offsets
-  public sliceMe(offsetId: T, add_offset: number, limit: number) {
+  public sliceMe(offsetId: T, addOffset: number, limit: number) {
     let slice = this.slice;
     let offset = 0;
     let sliceOffset = 0;
@@ -357,15 +357,15 @@ export default class SlicedArray<T extends ItemType> {
       } */
     }
 
-    const sliceStart = Math.max(sliceOffset + add_offset, 0);
-    const sliceEnd = sliceOffset + add_offset + limit;
+    const sliceStart = Math.max(sliceOffset + addOffset, 0);
+    const sliceEnd = sliceOffset + addOffset + limit;
     // const fixHalfBackLimit = add_offset && !(limit / add_offset % 2) && (sliceEnd % 2) ? 1 : 0;
     // sliceEnd += fixHalfBackLimit;
 
     const sliced = slice.slice(sliceStart, sliceEnd) as Slice<T>;
 
-    const topWasMeantToLoad = add_offset < 0 ? limit + add_offset : limit;
-    const bottomWasMeantToLoad = Math.abs(add_offset);
+    const topWasMeantToLoad = addOffset < 0 ? limit + addOffset : limit;
+    const bottomWasMeantToLoad = Math.abs(addOffset);
 
     // can use 'slice' here to check because if it's end, then 'sliced' is out of 'slice'
     // useful when there is only 1 message in chat on its reopening

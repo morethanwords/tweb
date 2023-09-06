@@ -7,6 +7,7 @@
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import ListenerSetter from '../../helpers/listenerSetter';
 import {i18n, LangPackKey} from '../../lib/langPack';
+import Icon from '../icon';
 import ripple from '../ripple';
 
 export default function makeButton(className: string, listenerSetter: ListenerSetter, options: {
@@ -14,7 +15,7 @@ export default function makeButton(className: string, listenerSetter: ListenerSe
   isDanger?: boolean,
   noRipple?: boolean,
   callback?: () => void,
-  icon?: string,
+  icon?: Icon,
   isConfirm?: boolean,
 }) {
   const _className = className + '-button';
@@ -22,7 +23,7 @@ export default function makeButton(className: string, listenerSetter: ListenerSe
   buttonDiv.classList.add(_className, 'call-button', 'rp-overflow');
 
   if(options.icon) {
-    buttonDiv.classList.add('tgico-' + options.icon);
+    buttonDiv.append(Icon(options.icon));
   }
 
   if(!options.noRipple) {

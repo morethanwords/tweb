@@ -57,13 +57,11 @@ export class AppInlineBotsManager extends AppManager {
 
       botResults.results.forEach((result) => {
         if(result._ === 'botInlineMediaResult') {
-          if(result.document) {
-            result.document = this.appDocsManager.saveDoc(result.document);
-          }
-
-          if(result.photo) {
-            result.photo = this.appPhotosManager.savePhoto(result.photo);
-          }
+          result.document = this.appDocsManager.saveDoc(result.document);
+          result.photo = this.appPhotosManager.savePhoto(result.photo);
+        } else {
+          result.content = this.appWebDocsManager.saveWebDocument(result.content);
+          result.thumb = this.appWebDocsManager.saveWebDocument(result.thumb);
         }
 
         this.inlineResults[generateQId(queryId, result.id)] = result;
@@ -224,7 +222,8 @@ export class AppInlineBotsManager extends AppManager {
   }
 
   public switchInlineQuery(peerId: PeerId, threadId: number, botId: BotId, query: string) {
-    this.appDraftsManager.setDraft(peerId, threadId, '@' + this.appPeersManager.getPeerUsername(botId.toPeerId()) + ' ' + query);
+    const message = '@' + this.appPeersManager.getPeerUsername(botId.toPeerId()) + ' ' + query;
+    this.appDraftsManager.setDraft(peerId, threadId, message);
   }
 
   public callbackButtonClick(peerId: PeerId, mid: number, button: any) {
@@ -253,15 +252,12 @@ export class AppInlineBotsManager extends AppManager {
     })
   } */
 
-  public sendInlineResult(peerId: PeerId, botId: BotId, queryAndResultIds: string, options: MessageSendingParams & Partial<{
-    viaBotId: BotId,
-    queryId: string,
-    resultId: string,
-    replyMarkup: ReplyMarkup,
-    entities: MessageEntity[],
-    clearDraft: true,
-    geoPoint: GeoPoint
-  }> = {}) {
+  public sendInlineResult(
+    peerId: PeerId,
+    botId: BotId,
+    queryAndResultIds: string,
+    options: Parameters<AppMessagesManager['sendOther']>[2] = {}
+  ) {
     const inlineResult = this.inlineResults[queryAndResultIds];
     if(!inlineResult) {
       return;
@@ -269,18 +265,20 @@ export class AppInlineBotsManager extends AppManager {
 
     this.pushPopularBot(botId);
     const splitted = queryAndResultIds.split('_');
-    const queryID = splitted.shift();
-    const resultID = splitted.join('_');
+    const queryId = splitted.shift();
+    const resultId = splitted.join('_');
     options.viaBotId = botId;
-    options.queryId = queryID;
-    options.resultId = resultID;
+    options.queryId = queryId;
+    options.resultId = resultId;
     if(inlineResult.send_message.reply_markup) {
       options.replyMarkup = inlineResult.send_message.reply_markup;
     }
 
     if(inlineResult.send_message._ === 'botInlineMessageText') {
-      options.entities = inlineResult.send_message.entities;
-      this.appMessagesManager.sendText(peerId, inlineResult.send_message.message, options);
+      this.appMessagesManager.sendText(peerId, inlineResult.send_message.message, {
+        ...options,
+        entities: inlineResult.send_message.entities
+      });
     } else {
       let caption = '';
       let inputMedia: Parameters<AppMessagesManager['sendOther']>[1], messageMedia: MessageMedia;
@@ -295,6 +293,26 @@ export class AppInlineBotsManager extends AppManager {
               inputMedia = getDocumentMediaInput(document as MyDocument);
             } else {
               inputMedia = getPhotoMediaInput(photo as MyPhoto);
+            }
+          } else {
+            const webDocument = inlineResult.content || inlineResult.thumb;
+
+            if(webDocument) {
+              if(inlineResult.type === 'photo') {
+                inputMedia = {
+                  _: 'inputMediaPhotoExternal',
+                  pFlags: {},
+                  url: webDocument.url
+                };
+              } else {
+                inputMedia = {
+                  _: 'inputMediaDocumentExternal',
+                  pFlags: {},
+                  url: webDocument.url
+                };
+              }
+
+              options.webDocument = webDocument;
             }
           }
 

@@ -4,15 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type LazyLoadQueue from '../lazyLoadQueue';
 import {formatTime, getFullDate} from '../../helpers/date';
 import setInnerHTML from '../../helpers/dom/setInnerHTML';
+import {Middleware} from '../../helpers/middleware';
 import formatNumber from '../../helpers/number/formatNumber';
 import {Message} from '../../layer';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import {i18n, _i18n} from '../../lib/langPack';
+import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import rootScope from '../../lib/rootScope';
-import type LazyLoadQueue from '../lazyLoadQueue';
+import Icon from '../icon';
 import PeerTitle from '../peerTitle';
 import wrapReply from '../wrappers/reply';
 import Chat, {ChatType} from './chat';
@@ -22,7 +25,7 @@ const NBSP = '&nbsp;';
 
 const makeEdited = () => {
   const edited = document.createElement('i');
-  edited.classList.add('edited');
+  edited.classList.add('time-edited', 'time-part');
   _i18n(edited, 'EditedMessage');
   return edited;
 };
@@ -61,12 +64,12 @@ export namespace MessageRender {
         postViewsSpan.classList.add('post-views');
         postViewsSpan.textContent = formatNumber(message.views, 1);
 
-        const channelViews = document.createElement('i');
-        channelViews.classList.add('tgico-channelviews', 'time-icon');
+        const channelViews = Icon('channelviews', 'time-icon', 'time-part', 'time-icon-views');
 
         args.push(postViewsSpan, channelViews);
         if(postAuthor) {
           const span = document.createElement('span');
+          span.classList.add('post-author');
           setInnerHTML(span, wrapEmojiText(postAuthor));
           span.insertAdjacentHTML('beforeend', ',' + NBSP)
           args.push(span);
@@ -78,8 +81,7 @@ export namespace MessageRender {
       }
 
       if(chatType !== 'pinned' && message.pFlags.pinned) {
-        const i = document.createElement('i');
-        i.classList.add('tgico-pinnedchat', 'time-icon');
+        const i = Icon('pinnedchat', 'time-icon', 'time-pinned', 'time-part');
         args.unshift(i);
       }
 
@@ -107,12 +109,12 @@ export namespace MessageRender {
     }
 
     const timeSpan = document.createElement('span');
-    timeSpan.classList.add('time', 'tgico');
+    timeSpan.classList.add('time');
     // if(title) timeSpan.title = title;
     timeSpan.append(...args);
 
     const inner = document.createElement('div');
-    inner.classList.add('inner', 'tgico');
+    inner.classList.add('time-inner');
     if(title) inner.title = title;
 
     let clonedArgs = args;
@@ -127,7 +129,11 @@ export namespace MessageRender {
     //   _reactionsElement.init(reactionsMessage, 'inline');
     //   _reactionsElement.render();
     // }
-    clonedArgs = clonedArgs.map((a) => a instanceof HTMLElement && !a.classList.contains('i18n') && !a.classList.contains('reactions') ? a.cloneNode(true) as HTMLElement : a);
+    clonedArgs = clonedArgs.map((a) => {
+      return a instanceof HTMLElement && !a.classList.contains('i18n') && !a.classList.contains('reactions') ?
+        a.cloneNode(true) as HTMLElement :
+        a;
+    });
     if(time) {
       clonedArgs[clonedArgs.length - 1] = formatTime(date); // clone time
     }
@@ -138,13 +144,14 @@ export namespace MessageRender {
     return timeSpan;
   };
 
-  export const renderReplies = ({bubble, bubbleContainer, message, messageDiv, loadPromises, lazyLoadQueue}: {
+  export const renderReplies = ({bubble, bubbleContainer, message, messageDiv, loadPromises, lazyLoadQueue, middleware}: {
     bubble: HTMLElement,
     bubbleContainer: HTMLElement,
     message: Message.message,
     messageDiv: HTMLElement,
     loadPromises?: Promise<any>[],
-    lazyLoadQueue?: LazyLoadQueue
+    lazyLoadQueue?: LazyLoadQueue,
+    middleware: Middleware
   }) => {
     const isFooter = !bubble.classList.contains('sticker') && !bubble.classList.contains('emoji-big') && !bubble.classList.contains('round');
     const repliesFooter = new RepliesElement();
@@ -152,6 +159,7 @@ export namespace MessageRender {
     repliesFooter.type = isFooter ? 'footer' : 'beside';
     repliesFooter.loadPromises = loadPromises;
     repliesFooter.lazyLoadQueue = lazyLoadQueue;
+    repliesFooter.middlewareHelper = middleware.create();
     repliesFooter.init();
     bubbleContainer.prepend(repliesFooter);
     return isFooter;
@@ -169,27 +177,42 @@ export namespace MessageRender {
     }
 
     const currentReplyDiv = isReplacing ? bubbleContainer.querySelector('.reply') : null;
-    if(!message.reply_to_mid) {
+    const replyTo = message.reply_to;
+    if(!replyTo) {
       currentReplyDiv?.remove();
-
       bubble.classList.remove('is-reply');
       return;
     }
 
+    const isStoryReply = replyTo._ === 'messageReplyStoryHeader';
 
-    const replyToPeerId = message.reply_to.reply_to_peer_id ? getPeerId(message.reply_to.reply_to_peer_id) : chat.peerId;
+    const replyToPeerId = isStoryReply ? replyTo.user_id.toPeerId(false) : (replyTo.reply_to_peer_id ?
+      getPeerId(replyTo.reply_to_peer_id) :
+      chat.peerId);
 
-    const originalMessage = await rootScope.managers.appMessagesManager.getMessageByPeer(replyToPeerId, message.reply_to_mid);
+    const originalMessage = !isStoryReply && await apiManagerProxy.getMessageByPeer(replyToPeerId, message.reply_to_mid);
+    const originalStory = isStoryReply && await rootScope.managers.acknowledged.appStoriesManager.getStoryById(replyToPeerId, replyTo.story_id);
     let originalPeerTitle: string | HTMLElement;
 
-    // ///////this.log('message to render reply', originalMessage, originalPeerTitle, bubble, message);
-
     let titlePeerId: PeerId;
-    // need to download separately
-    if(!originalMessage) {
-      // ////////this.log('message to render reply empty, need download', message, message.reply_to_mid);
-      rootScope.managers.appMessagesManager.fetchMessageReplyTo(message);
+    if(isStoryReply) {
+      if(!originalStory.cached) {
+        chat.bubbles.needUpdate.push({replyToPeerId, replyStoryId: replyTo.story_id, mid: message.mid});
+        rootScope.managers.appMessagesManager.fetchMessageReplyTo(message);
+
+        originalPeerTitle = i18n('Loading');
+      } else {
+        titlePeerId = replyToPeerId;
+        originalPeerTitle = new PeerTitle({
+          peerId: titlePeerId,
+          dialog: false,
+          onlyFirstName: false,
+          plainText: false
+        }).element;
+      }
+    } else if(!originalMessage) {
       chat.bubbles.needUpdate.push({replyToPeerId, replyMid: message.reply_to_mid, mid: message.mid});
+      rootScope.managers.appMessagesManager.fetchMessageReplyTo(message);
 
       originalPeerTitle = i18n('Loading');
     } else {
@@ -199,11 +222,21 @@ export namespace MessageRender {
         peerId: titlePeerId,
         dialog: false,
         onlyFirstName: false,
-        plainText: false
+        plainText: false,
+        fromName: !titlePeerId ? (originalMessage as Message.message).fwd_from?.from_name : undefined
       }).element;
     }
 
-    const {container, fillPromise} = wrapReply(originalPeerTitle, undefined, chat.animationGroup, originalMessage, chat.isAnyGroup ? titlePeerId : undefined);
+    const {container, fillPromise} = wrapReply({
+      title: originalPeerTitle,
+      animationGroup: chat.animationGroup,
+      message: originalMessage,
+      isStoryExpired: isStoryReply && originalStory.cached && !(await originalStory.result),
+      storyItem: originalStory?.cached && await originalStory.result,
+      setColorPeerId: chat.isAnyGroup ? titlePeerId : undefined,
+      textColor: 'primary-text-color'
+    });
+
     await fillPromise;
     if(currentReplyDiv) {
       if(currentReplyDiv.classList.contains('floating-part')) {

@@ -37,6 +37,27 @@ type AppMediaViewerTargetType = {
   peerId: PeerId,
   message?: MyMessage
 };
+
+export const onMediaCaptionClick = (caption: HTMLElement, e: MouseEvent) => {
+  const a = findUpTag(e.target, 'A');
+  if(!a || a.classList.contains('timestamp')) {
+    return;
+  }
+
+  const spoiler = findUpClassName(e.target, 'spoiler');
+  if(a instanceof HTMLAnchorElement && (!spoiler || caption.classList.contains('is-spoiler-visible'))) { // close viewer if it's t.me/ redirect
+    const onclick = a.getAttribute('onclick');
+    if(!onclick || onclick.includes('showMaskedAlert')) {
+      return;
+    }
+
+    cancelEvent(e);
+    return () => {
+      a.click();
+    };
+  }
+};
+
 export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delete' | 'forward', AppMediaViewerTargetType> {
   protected listLoader: SearchListLoader<AppMediaViewerTargetType>;
   protected btnMenuForward: ButtonMenuItemOptionsVerifiable;
@@ -116,7 +137,8 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       text: 'MediaViewer.Context.Download',
       onClick: this.onDownloadClick
     }, this.btnMenuDelete = {
-      icon: 'delete danger',
+      icon: 'delete',
+      className: 'danger',
       text: 'Delete',
       onClick: this.onDeleteClick
     }];
@@ -133,31 +155,18 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     attachClickEvent(this.buttons.forward, this.onForwardClick);
     attachClickEvent(this.author.container, this.onAuthorClick);
 
-    const onCaptionClick = (e: MouseEvent) => {
-      const a = findUpTag(e.target, 'A');
-      if(a.classList.contains('timestamp')) {
-        return;
-      }
-
-      const spoiler = findUpClassName(e.target, 'spoiler');
-      if(a instanceof HTMLAnchorElement && (!spoiler || this.content.caption.classList.contains('is-spoiler-visible'))) { // close viewer if it's t.me/ redirect
-        const onclick = a.getAttribute('onclick');
-        if(!onclick || onclick.includes('showMaskedAlert')) {
-          return;
-        }
-
-        cancelEvent(e);
-
+    const onClick = (e: MouseEvent) => {
+      const callback = onMediaCaptionClick(this.content.caption, e);
+      if(callback) {
         this.close().then(() => {
-          this.content.caption.removeEventListener('click', onCaptionClick, {capture: true});
-          a.click();
+          this.content.caption.removeEventListener('click', onClick, {capture: true});
+          callback();
         });
-
         return false;
       }
     };
 
-    this.content.caption.addEventListener('click', onCaptionClick, {capture: true});
+    this.content.caption.addEventListener('click', onClick, {capture: true});
   }
 
   /* public close(e?: MouseEvent) {
@@ -194,10 +203,16 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
   onDeleteClick = () => {
     const target = this.target;
-    PopupElement.createPopup(PopupDeleteMessages, target.peerId, [target.mid], 'chat', () => {
-      this.target = {element: this.content.media} as any;
-      this.close();
-    });
+    PopupElement.createPopup(
+      PopupDeleteMessages,
+      target.peerId,
+      [target.mid],
+      'chat',
+      () => {
+        this.target = {element: this.content.media} as any;
+        this.close();
+      }
+    );
   };
 
   onForwardClick = () => {
@@ -252,7 +267,8 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
       html = wrapRichText(caption, {
         entities: (message as Message.message).totalEntities,
-        maxMediaTimestamp: ((media as MyDocument)?.type === 'video' && (media as MyDocument).duration) || undefined
+        maxMediaTimestamp: ((media as MyDocument)?.type === 'video' && (media as MyDocument).duration) || undefined,
+        textColor: 'white'
       });
     }
 

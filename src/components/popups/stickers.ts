@@ -34,7 +34,6 @@ import {copyTextToClipboard} from '../../helpers/clipboard';
 const ANIMATION_GROUP: AnimationItemGroup = 'STICKERS-POPUP';
 
 export default class PopupStickers extends PopupElement {
-  private stickersFooter: HTMLElement;
   private appendTo: HTMLElement;
   private updateAdded: {[setId: Long]: (added: boolean) => void};
   private sets: StickerSet.stickerSet[];
@@ -44,7 +43,14 @@ export default class PopupStickers extends PopupElement {
     private stickerSetInput: Parameters<AppStickersManager['getStickerSet']>[0] | Parameters<AppStickersManager['getStickerSet']>[0][],
     private isEmojis?: boolean
   ) {
-    super('popup-stickers', {closable: true, overlayClosable: true, body: true, scrollable: true, title: true});
+    super('popup-stickers', {
+      closable: true,
+      overlayClosable: true,
+      body: true,
+      scrollable: true,
+      title: true,
+      footer: true
+    });
 
     this.title.append(i18n('Loading'));
     this.updateAdded = {};
@@ -60,13 +66,8 @@ export default class PopupStickers extends PopupElement {
     this.appendTo.classList.add('is-loading');
     putPreloader(this.appendTo, true);
 
-    this.stickersFooter = document.createElement('div');
-    this.stickersFooter.classList.add('sticker-set-footer');
-
     const btn = Button('btn-primary btn-primary-transparent disable-hover', {noRipple: true, text: 'Loading'});
-    this.stickersFooter.append(btn);
-
-    this.body.append(this.stickersFooter);
+    this.footer.append(btn);
 
     attachStickerViewerListeners({listenTo: this.appendTo, listenerSetter: this.listenerSetter});
 
@@ -268,8 +269,8 @@ export default class PopupStickers extends PopupElement {
     });
     this.title.after(btnMenu);
 
-    this.stickersFooter.textContent = '';
-    this.stickersFooter.append(button);
+    this.footer.textContent = '';
+    this.footer.append(button);
 
     this.appendTo.classList.remove('is-loading');
     this.appendTo.textContent = '';

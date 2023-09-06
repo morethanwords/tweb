@@ -7,19 +7,19 @@
 import {hexToRgb} from '../../helpers/color';
 import {Message} from '../../layer';
 import getPeerColorById from '../../lib/appManagers/utils/peers/getPeerColorById';
-import {AnimationItemGroup} from '../animationIntersector';
+import {WrapPinnedContainerOptions} from '../chat/pinnedContainer';
 import ReplyContainer from '../chat/replyContainer';
 
-export default function wrapReply(
-  title: Parameters<ReplyContainer['fill']>[0],
-  subtitle: Parameters<ReplyContainer['fill']>[1],
-  animationGroup: AnimationItemGroup,
-  message?: Message.message | Message.messageService,
-  setColorPeerId?: PeerId
-) {
-  const replyContainer = new ReplyContainer('reply', animationGroup);
-  const fillPromise = replyContainer.fill(title, subtitle, message);
+export type WrapReplyOptions = WrapPinnedContainerOptions & {
+  setColorPeerId?: PeerId,
+  isStoryExpired?: boolean
+} & WrapSomethingOptions;
 
+export default function wrapReply(options: WrapReplyOptions) {
+  const replyContainer = new ReplyContainer('reply');
+  const fillPromise = replyContainer.fill(options);
+
+  const {setColorPeerId} = options;
   if(setColorPeerId) {
     const hex = getPeerColorById(setColorPeerId, false);
     const [r, g, b] = hexToRgb(hex);

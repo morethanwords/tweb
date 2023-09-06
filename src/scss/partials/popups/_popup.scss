@@ -4,18 +4,21 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+$popup-footer-button-size: 44px;
+$popup-footer-padding: .5rem;
+
 .popup {
   position: fixed!important;
   top: 0;
   right: 0;
   bottom: 0;
   left: 0;
-  max-width: none;
-  z-index: 3;
+  // max-width: none;
+  z-index: 4;
   background-color: rgba(0, 0, 0, .3);
   margin: 0;
   padding: 1.875rem;
-  box-shadow: none;
+  // box-shadow: none;
   opacity: 0;
   visibility: hidden;
   transition-property: opacity, visibility;
@@ -25,6 +28,7 @@
   overflow: auto;
   display: flex;
   user-select: none;
+  color: var(--primary-text-color);
 
   &.no-overlay {
     padding: 0;
@@ -40,7 +44,6 @@
     opacity: 1;
     visibility: visible;
     transition-delay: 0s, 0s;
-    z-index: 4;
 
     .popup-container {
       transform: translate3d(var(--translateX), 0, 0);
@@ -55,15 +58,12 @@
 
   &-title {
     flex: 1;
-    padding-inline: 1.5rem 1rem;
+    padding-inline: 0 1rem;
     margin: 0;
-    font-size: 1.25rem;
+    font-size: var(--font-size-20);
+    line-height: var(--line-height-20);
     font-weight: var(--font-weight-bold);
-    line-height: 1;
-
-    &:first-child {
-      padding-left: 0;
-    }
+    @include text-overflow();
   }
 
   &-container {
@@ -100,6 +100,9 @@
     z-index: 3;
     justify-self: center;
     flex: 0 0 auto;
+    width: 2.5rem;
+    height: 2.5rem;
+    margin-inline-end: 1.5rem;
   }
 
   &-header {
@@ -108,6 +111,10 @@
     align-items: center;
     flex: 0 0 auto;
     position: relative;
+
+    .btn-icon {
+      flex: 0 0 auto;
+    }
   }
 
   &-body {
@@ -120,10 +127,25 @@
       position: relative;
     }
 
-    .scrollable-y-bordered {
-      &:last-child {
-        border-bottom: none;
-      }
+    // .scrollable-y-bordered {
+    //   &:last-child {
+    //     margin-bottom: -1px;
+    //     // border will blink if child is added
+    //     // border-bottom: none;
+    //   }
+    // }
+  }
+
+  &-footer {
+    flex: 0 0 auto;
+    padding: #{$popup-footer-padding};
+    text-align: center;
+
+    .btn-primary {
+      text-transform: uppercase;
+      padding: 0 1.0625rem;
+      height: #{$popup-footer-button-size};
+      line-height: #{$popup-footer-button-size};
     }
   }
 
@@ -149,5 +171,15 @@
         margin-inline-end: .625rem;
 			}
 		}
+
+    &.is-vertical-layout {
+      flex-direction: column;
+      height: auto;
+      align-items: stretch;
+
+      .btn {
+        margin: 0 !important;
+      }
+    }
   }
 }

@@ -18,6 +18,7 @@
   align-items: center;
   user-select: none;
   width: auto !important;
+  gap: 10px;
 
   &:not(.is-visible) {
     display: none;
@@ -88,10 +89,10 @@
   &-header {
     font-weight: var(--font-weight-bold);
     font-size: 1.25rem;
-    
-    &:not(:last-child) {
-      margin-top: -10px;
-    }
+  }
+
+  &.has-icon &-header {
+    margin-top: -10px;
   }
 
   @media only screen and (max-height: 670px) {
@@ -99,16 +100,12 @@
       font-size: 0;
     }
     &-header {
-      margin-top: 0px;
+      margin-top: 0px !important;
     }
   }
 
   &.is-dragover {
     color: var(--primary-color);
-  }
-
-  & + & {
-    margin-top: 10px;
   }
 }
 

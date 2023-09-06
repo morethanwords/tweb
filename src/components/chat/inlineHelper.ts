@@ -114,7 +114,9 @@ export default class InlineHelper extends AutocompleteHelper {
       throw 'NO_INLINES';
     }
 
-    const renderPromise = this.managers.appInlineBotsManager.getInlineResults(peerId, peer.id, query).then((botResults) => {
+    const botId = peer.id;
+
+    const renderPromise = this.managers.appInlineBotsManager.getInlineResults(peerId, botId, query).then((botResults) => {
       if(!middleware()) {
         throw 'PEER_CHANGED';
       }
@@ -126,7 +128,7 @@ export default class InlineHelper extends AutocompleteHelper {
 
       const list = this.list.cloneNode() as HTMLElement;
       list.dataset.peerId = '' + peerId;
-      list.dataset.botId = '' + peer.id;
+      list.dataset.botId = '' + botId;
       list.dataset.queryId = '' + botResults.query_id;
 
       const gifsMasonry = new GifsMasonry(null, ANIMATION_GROUP, this.scrollable, false);
@@ -177,6 +179,7 @@ export default class InlineHelper extends AutocompleteHelper {
         }
 
         if(item._ === 'botInlineResult') {
+          // (preview || container).style.backgroundColor = '#ff00ff';
           if(item.thumb && item.thumb.mime_type.indexOf('image/') === 0) {
             let mediaContainer: HTMLElement;
             if(preview) {
@@ -259,14 +262,26 @@ export default class InlineHelper extends AutocompleteHelper {
 
         const parent = this.list.parentElement;
         parent.textContent = '';
-        if(botResults.switch_pm) {
-          const btnSwitchToPM = Button('btn-primary btn-secondary btn-primary-transparent primary');
-          setInnerHTML(btnSwitchToPM, wrapEmojiText(botResults.switch_pm.text));
-          attachClickEvent(btnSwitchToPM, (e) => {
-            this.chat.appImManager.setInnerPeer({peerId});
-            this.managers.appInlineBotsManager.switchToPM(peerId, peer.id, botResults.switch_pm.start_param);
+        const switchTo = botResults.switch_pm || botResults.switch_webview;
+        if(switchTo) {
+          const btnSwitchTo = Button('btn-primary btn-secondary btn-primary-transparent primary');
+          setInnerHTML(btnSwitchTo, wrapEmojiText(switchTo.text));
+          attachClickEvent(btnSwitchTo, async(e) => {
+            if(switchTo._ === 'inlineBotSwitchPM') {
+              await this.chat.appImManager.setInnerPeer({peerId});
+              this.managers.appInlineBotsManager.switchToPM(peerId, botId, switchTo.start_param);
+            } else {
+              await this.chat.appImManager.confirmBotWebView(botId);
+              this.chat.openWebApp({
+                botId,
+                url: switchTo.url,
+                isSimpleWebView: true,
+                buttonText: switchTo.text,
+                fromSwitchWebView: true
+              });
+            }
           });
-          parent.append(btnSwitchToPM);
+          parent.append(btnSwitchTo);
         }
         parent.append(this.list = list);
         this.container.classList.remove('cant-send');
@@ -289,7 +304,7 @@ export default class InlineHelper extends AutocompleteHelper {
 
         this.onChangeScreen();
 
-        this.toggle(!botResults.results.length && !botResults.switch_pm);
+        this.toggle(!botResults.results.length && !switchTo);
         this.scrollable.scrollTop = 0;
       });
     });

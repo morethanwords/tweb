@@ -22,12 +22,13 @@ import {AppManagers} from '../lib/appManagers/managers';
 import getServerMessageId from '../lib/appManagers/utils/messageId/getServerMessageId';
 import getPeerActiveUsernames from '../lib/appManagers/utils/peers/getPeerActiveUsernames';
 import I18n, {i18n, join} from '../lib/langPack';
+import {MTAppConfig} from '../lib/mtproto/appConfig';
 import wrapRichText from '../lib/richTextProcessor/wrapRichText';
 import rootScope from '../lib/rootScope';
-import AvatarElement from './avatar';
+import {avatarNew} from './avatarNew';
 import CheckboxField from './checkboxField';
 import {generateDelimiter} from './generateDelimiter';
-import PeerProfileAvatars from './peerProfileAvatars';
+import PeerProfileAvatars, {SHOW_NO_AVATAR} from './peerProfileAvatars';
 import Row from './row';
 import Scrollable from './scrollable';
 import SettingSection from './settingSection';
@@ -44,7 +45,7 @@ const setText = (text: Parameters<typeof setInnerHTML>[1], row: Row) => {
 export default class PeerProfile {
   public element: HTMLElement;
   private avatars: PeerProfileAvatars;
-  private avatar: AvatarElement;
+  private avatar: ReturnType<typeof avatarNew>;
   private section: SettingSection;
   private name: HTMLDivElement;
   private subtitle: HTMLDivElement;
@@ -180,7 +181,7 @@ export default class PeerProfile {
             window.open('https://fragment.com/numbers', '_blank');
           },
           separator: true,
-          multiline: true,
+          secondary: true,
           verify: async() => {
             const {isAnonymous} = await this.managers.appUsersManager.getUserPhone(this.peerId.toUserId()) || {};
             return isAnonymous;
@@ -279,7 +280,7 @@ export default class PeerProfile {
         return false;
       }
 
-      const isForum = await this.managers.appPeersManager.isForum(this.peerId);
+      const isForum = this.peerId.isAnyChat() ? await this.managers.appPeersManager.isForum(this.peerId) : false;
       if(isForum && this.threadId ? this.threadId === threadId : true) {
         return true;
       }
@@ -288,8 +289,13 @@ export default class PeerProfile {
     };
 
     listenerSetter.add(rootScope)('peer_title_edit', async(data) => {
+      const middleware = this.middlewareHelper.get();
       if(await n(data)) {
-        this.fillUsername();
+        if(!middleware()) return;
+        this.fillUsername().then((callback) => {
+          if(!middleware()) return;
+          callback?.();
+        });
         this.setMoreDetails(true);
       }
     });
@@ -390,21 +396,13 @@ export default class PeerProfile {
     return this.peerId !== rootScope.myId || !this.isDialog;
   }
 
-  private createAvatar() {
-    const avatar = new AvatarElement();
-    avatar.classList.add('profile-avatar', 'avatar-120');
-    avatar.isDialog = this.isDialog;
-    avatar.attachClickEvent();
-    return avatar;
-  }
-
   private async _setAvatar() {
     const {peerId} = this;
     const isTopic = !!(this.threadId && await this.managers.appPeersManager.isForum(peerId));
     if(this.canBeDetailed() && !isTopic) {
       const photo = await this.managers.appPeersManager.getPeerPhoto(peerId);
 
-      if(photo) {
+      if(photo || SHOW_NO_AVATAR) {
         const oldAvatars = this.avatars;
         this.avatars = new PeerProfileAvatars(this.scrollable, this.managers);
         await this.avatars.setPeer(peerId);
@@ -412,7 +410,7 @@ export default class PeerProfile {
         return () => {
           this.avatars.info.append(this.name, this.subtitle);
 
-          this.avatar?.remove();
+          if(this.avatar) this.avatar.node.remove();
           this.avatar = undefined;
 
           if(oldAvatars) oldAvatars.container.replaceWith(this.avatars.container);
@@ -425,15 +423,20 @@ export default class PeerProfile {
       }
     }
 
-    const avatar = this.createAvatar();
-    await avatar.updateWithOptions({
+    const avatar = avatarNew({
+      middleware: this.middlewareHelper.get(),
+      size: 120,
+      isDialog: this.isDialog,
       peerId,
       threadId: isTopic ? this.threadId : undefined,
       wrapOptions: {
         customEmojiSize: makeMediaSize(120, 120),
         middleware: this.middlewareHelper.get()
-      }
+      },
+      withStories: true
     });
+    avatar.node.classList.add('profile-avatar', 'avatar-120');
+    await avatar.readyThumbPromise;
 
     return () => {
       if(IS_PARALLAX_SUPPORTED) {
@@ -446,10 +449,10 @@ export default class PeerProfile {
         this.avatars = undefined;
       }
 
-      this.avatar?.remove();
+      if(this.avatar) this.avatar.node.remove();
       this.avatar = avatar;
 
-      this.section.content.prepend(this.avatar, this.name, this.subtitle);
+      this.section.content.prepend(this.avatar.node, this.name, this.subtitle);
     };
   }
 
@@ -568,9 +571,10 @@ export default class PeerProfile {
     };
   }
 
-  private async _setMoreDetails(peerId: PeerId, peerFull?: ChatFull | UserFull) {
+  private async _setMoreDetails(peerId: PeerId, peerFull: ChatFull | UserFull, appConfig:  MTAppConfig) {
     const m = this.getMiddlewarePromise();
     const isTopic = !!(this.threadId && await m(this.managers.appPeersManager.isForum(peerId)));
+    const isPremium = peerId.isUser() ? await m(this.managers.appUsersManager.isPremium(peerId.toUserId())) : undefined;
     if(isTopic) {
       let url = 'https://t.me/';
       const threadId = getServerMessageId(this.threadId);
@@ -590,7 +594,9 @@ export default class PeerProfile {
     // if(peerFull.about) {
     callbacks.push(() => {
       this.bio.subtitle.replaceChildren(i18n(peerId.isUser() ? 'UserBio' : 'Info'));
-      setText(peerFull.about ? wrapRichText(peerFull.about) : undefined, this.bio);
+      setText(peerFull.about ? wrapRichText(peerFull.about, {
+        whitelistedDomains: isPremium ? undefined : appConfig.whitelisted_domains
+      }) : undefined, this.bio);
     });
     // }
 
@@ -633,17 +639,21 @@ export default class PeerProfile {
       return;
     }
 
-    const result = await m(this.managers.acknowledged.appProfileManager.getProfileByPeerId(peerId, override));
-    const setPromise = m(result.result).then(async(peerFull) => {
+    const results = await m(Promise.all([
+      this.managers.acknowledged.appProfileManager.getProfileByPeerId(peerId, override),
+      this.managers.acknowledged.apiManager.getAppConfig()
+    ]));
+    const promises = results.map((result) => result.result) as [Promise<ChatFull | UserFull.userFull>, Promise<MTAppConfig>];
+    const setPromise = m(Promise.all(promises)).then(async([peerFull, appConfig]) => {
       if(await m(this.managers.appPeersManager.isPeerRestricted(peerId))) {
         // this.log.warn('peer changed');
         return;
       }
 
-      return m(this._setMoreDetails(peerId, peerFull));
+      return m(this._setMoreDetails(peerId, peerFull, appConfig));
     });
 
-    if(result.cached && manual) {
+    if(results.every((result) => result.cached) && manual) {
       return setPromise;
     } else {
       (manual || Promise.resolve())

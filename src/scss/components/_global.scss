@@ -3,7 +3,10 @@
 html {
   box-sizing: border-box;
 }
-*, *:before, *:after {
+
+*,
+*:before,
+*:after {
   box-sizing: inherit;
 }
 
@@ -31,17 +34,12 @@ button {
   border: none;
   cursor: pointer;
   padding: 0;
+  font-size: inherit;
 }
 
 img, 
 video {
   -webkit-user-drag: none;
-}
-
-// Positioning
-.valign-wrapper {
-  display: flex;
-  align-items: center;
 }
 
 // Z-levels
@@ -120,7 +118,8 @@ Utility Classes
   display: inline;
 }
 
-.center-align, .text-center {
+.center-align,
+.text-center {
   text-align: center;
 }
 

@@ -5,7 +5,7 @@
  */
 
 import EventListenerBase from '../helpers/eventListenerBase';
-import {TelegramWebViewEvent, TelegramWebViewEventCallback, TelegramWebViewEventMap} from '../types';
+import {TelegramWebViewEvent, TelegramWebViewEventCallback, TelegramWebViewEventMap, TelegramWebViewSendEventMap} from '../types';
 
 const weakMap: WeakMap<Window, TelegramWebViewEventCallback> = new WeakMap();
 window.addEventListener('message', (e) => {
@@ -21,16 +21,19 @@ export default class TelegramWebView extends EventListenerBase<{
   [type in keyof TelegramWebViewEventMap]: (data: TelegramWebViewEventMap[type]) => void
 }> {
   public iframe: HTMLIFrameElement;
+  public lastDispatchedWebViewEvent: {type: keyof TelegramWebViewSendEventMap, count: number};
 
-  constructor({url, sandbox}: {
+  constructor({url, sandbox, allow}: {
     url: string,
-    sandbox?: string
+    sandbox?: string,
+    allow?: string
   }) {
     super(false);
 
     const iframe = this.iframe = document.createElement('iframe');
     iframe.src = url;
     if(sandbox) iframe.setAttribute('sandbox', sandbox);
+    if(allow) iframe.allow = allow;
   }
 
   public onMount() {
@@ -47,7 +50,22 @@ export default class TelegramWebView extends EventListenerBase<{
       eventData = undefined;
     }
 
-    console.log('onTelegramWebViewEvent', eventType, eventData);
+    // console.log('onTelegramWebViewEvent', eventType, eventData);
     this.dispatchEvent(eventType, eventData as any);
   };
+
+  public dispatchWebViewEvent<T extends keyof TelegramWebViewSendEventMap>(
+    eventType: T,
+    eventData: TelegramWebViewSendEventMap[T]
+  ) {
+    if(this.lastDispatchedWebViewEvent?.type !== eventType) {
+      this.lastDispatchedWebViewEvent = {type: eventType, count: 0};
+    }
+
+    ++this.lastDispatchedWebViewEvent.count;
+    this.iframe.contentWindow.postMessage(JSON.stringify({
+      eventType,
+      eventData
+    }), '*');
+  }
 }

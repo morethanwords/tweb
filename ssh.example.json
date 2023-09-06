@@ -1,0 +1,7 @@
+{
+  "host": "127.0.0.1",
+  "username": "root",
+  "password": "",
+  "publicPath": "/root/tweb/public/",
+  "port": 22
+}

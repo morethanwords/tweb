@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+/* @refresh reload */
+
 import App from './config/app';
 import blurActiveElement from './helpers/dom/blurActiveElement';
 import cancelEvent from './helpers/dom/cancelEvent';
@@ -32,9 +34,10 @@ import {AuthState} from './types';
 import {IS_BETA} from './config/debug';
 import IS_INSTALL_PROMPT_SUPPORTED from './environment/installPrompt';
 import cacheInstallPrompt from './helpers/dom/installPrompt';
+import {fillLocalizedDates} from './helpers/date';
 // import appNavigationController from './components/appNavigationController';
 
-document.addEventListener('DOMContentLoaded', async() => {
+/* false &&  */document.addEventListener('DOMContentLoaded', async() => {
   toggleAttributePolyfill();
 
   // polyfill for replaceChildren
@@ -53,7 +56,7 @@ document.addEventListener('DOMContentLoaded', async() => {
   rootScope.managers = getProxiedManagers();
 
   const manifest = document.getElementById('manifest') as HTMLLinkElement;
-  manifest.href = `site${IS_APPLE && !IS_APPLE_MOBILE ? '_apple' : ''}.webmanifest?v=jw3mK7G9Aq`;
+  if(manifest) manifest.href = `site${IS_APPLE && !IS_APPLE_MOBILE ? '_apple' : ''}.webmanifest?v=jw3mK7G9Aq`;
 
   singleInstance.start();
 
@@ -62,7 +65,8 @@ document.addEventListener('DOMContentLoaded', async() => {
   let setViewportVH = false/* , hasFocus = false */;
   let lastVH: number;
   const setVH = () => {
-    const vh = (setViewportVH && !overlayCounter.isOverlayActive ? (w as VisualViewport).height || (w as Window).innerHeight : window.innerHeight) * 0.01;
+    let vh = (setViewportVH && !overlayCounter.isOverlayActive ? (w as VisualViewport).height || (w as Window).innerHeight : window.innerHeight) * 0.01;
+    vh = +vh.toFixed(2);
     if(lastVH === vh) {
       return;
     } else if(IS_TOUCH_SUPPORTED && lastVH < vh && (vh - lastVH) > 1) {
@@ -212,28 +216,28 @@ document.addEventListener('DOMContentLoaded', async() => {
     // force losing focus on input blur
     // focusin and focusout are not working on mobile
 
-    const onInResize = () => {
-      hasFocus = true;
-      window.addEventListener('resize', onOutResize, {once: true});
-    };
+    // const onInResize = () => {
+    //   hasFocus = true;
+    //   window.addEventListener('resize', onOutResize, {once: true});
+    // };
 
-    const onOutResize = () => {
-      hasFocus = false;
-      blurActiveElement();
-    };
+    // const onOutResize = () => {
+    //   hasFocus = false;
+    //   blurActiveElement();
+    // };
 
-    let hasFocus = false;
-    document.addEventListener('touchend', (e) => {
-      const input = (e.target as HTMLElement).closest('[contenteditable="true"], input');
-      if(!input) {
-        return;
-      }
+    // let hasFocus = false;
+    // document.addEventListener('touchend', (e) => {
+    //   const input = (e.target as HTMLElement).closest('[contenteditable="true"], input');
+    //   if(!input) {
+    //     return;
+    //   }
 
-      if(document.activeElement !== input && !hasFocus) {
-        console.log('input click', e, document.activeElement, input, input.matches(':focus'));
-        window.addEventListener('resize', onInResize, {once: true});
-      }
-    });
+    //   if(document.activeElement !== input && !hasFocus) {
+    //     console.log('input click', e, document.activeElement, input, input.matches(':focus'));
+    //     window.addEventListener('resize', onInResize, {once: true});
+    //   }
+    // });
   }
 
   if(!IS_TOUCH_SUPPORTED) {
@@ -273,7 +277,13 @@ document.addEventListener('DOMContentLoaded', async() => {
 
   if(langPack.appVersion !== App.langPackVersion) {
     I18n.getLangPack(langPack.lang_code);
+  } else {
+    fillLocalizedDates();
   }
+
+  rootScope.addEventListener('language_change', () => {
+    fillLocalizedDates();
+  });
 
   /**
    * won't fire if font is loaded too fast

@@ -17,15 +17,19 @@ export default function hasMarkupInSelection<T extends MarkdownType>(types: T[],
     const root = commonAncestor.nodeType === commonAncestor.ELEMENT_NODE ?
       commonAncestor as HTMLElement :
       (commonAncestor as ChildNode).parentElement;
-    const treeWalker = document.createTreeWalker(
-      root.closest('[contenteditable="true"]'),
+    const contentEditable = root.closest('[contenteditable="true"]');
+    const treeWalker = contentEditable ? document.createTreeWalker(
+      contentEditable,
       NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
       {acceptNode: (node) => range.intersectsNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT}
-    );
+    ) : undefined;
 
-    nodes = 0;
+    if(treeWalker) {
+      nodes = 0;
+    }
+
     let node: Node;
-    while(node = treeWalker.nextNode()) {
+    if(treeWalker) while(node = treeWalker.nextNode()) {
       ++nodes;
       for(const type of types) {
         const tag = markdownTags[type];

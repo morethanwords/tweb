@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import safePlay from '../../helpers/dom/safePlay';
 import EventListenerBase, {EventListenerListeners} from '../../helpers/eventListenerBase';
 import noop from '../../helpers/noop';
 import {logger} from '../logger';
@@ -69,7 +70,7 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
 
   public fixSafariAudio() {
     // if(this.fixedSafariAudio) return;
-    this.audio.play().catch(noop);
+    safePlay(this.audio);
     // this.fixedSafariAudio = true;
   }
 
@@ -200,7 +201,7 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
       elements.set(elementEndpoint, element);
     } else {
       if(element.paused) {
-        element.play().catch(noop);
+        safePlay(element);
       }
 
       // ! EVEN IF MEDIASTREAM IS THE SAME NEW TRACK WON'T PLAY WITHOUT REPLACING IT WHEN NEW PARTICIPANT IS ENTERING !

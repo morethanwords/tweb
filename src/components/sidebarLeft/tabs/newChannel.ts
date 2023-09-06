@@ -46,10 +46,14 @@ export default class AppNewChannelTab extends SliderSuperTab {
 
     this.channelDescriptionInputField = new InputField({
       label: 'DescriptionOptionalPlaceholder',
-      maxLength: 255
+      maxLength: 255,
+      withLinebreaks: true
     });
 
-    inputWrapper.append(this.channelNameInputField.container, this.channelDescriptionInputField.container);
+    inputWrapper.append(
+      this.channelNameInputField.container,
+      this.channelDescriptionInputField.container
+    );
 
     const onLengthChange = () => {
       this.nextBtn.classList.toggle('is-visible', !!this.channelNameInputField.value.length &&

@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type CustomEmojiElement from '../lib/customEmoji/element';
+import {CustomEmojiRendererElement} from '../lib/customEmoji/renderer';
 import cancelEvent from '../helpers/dom/cancelEvent';
 import simulateEvent from '../helpers/dom/dispatchEvent';
 import documentFragmentToHTML from '../helpers/dom/documentFragmentToHTML';
@@ -22,7 +24,7 @@ import {NULL_PEER_ID} from '../lib/mtproto/mtproto_config';
 import mergeEntities from '../lib/richTextProcessor/mergeEntities';
 import parseEntities from '../lib/richTextProcessor/parseEntities';
 import wrapDraftText from '../lib/richTextProcessor/wrapDraftText';
-import {createCustomFiller, CustomEmojiElement, CustomEmojiRendererElement, insertCustomFillers, renderEmojis} from '../lib/richTextProcessor/wrapRichText';
+import {createCustomFiller, insertCustomFillers} from '../lib/richTextProcessor/wrapRichText';
 
 export async function insertRichTextAsHTML(input: HTMLElement, text: string, entities: MessageEntity[], wrappingForPeerId: PeerId) {
   const loadPromises: Promise<any>[] = [];
@@ -312,13 +314,15 @@ export type InputFieldOptions = {
   validate?: () => boolean,
   inputMode?: 'tel' | 'numeric',
   withLinebreaks?: boolean,
-  autocomplete?: string
+  autocomplete?: string,
+  withBorder?: boolean
 };
 
-function createCustomEmojiRendererForInput() {
+function createCustomEmojiRendererForInput(textColor?: string) {
   const renderer = CustomEmojiRendererElement.create({
     wrappingDraft: true,
-    isSelectable: true
+    isSelectable: true,
+    textColor: textColor || 'primary-text-color'
   });
   return renderer;
 }
@@ -327,7 +331,7 @@ function processCustomEmojisInInput(input: HTMLElement) {
   const customEmojiElements = Array.from(input.querySelectorAll<CustomEmojiElement | HTMLElement>('.custom-emoji, .custom-emoji-placeholder'));
   let renderer = input.querySelector<CustomEmojiRendererElement>('.custom-emoji-renderer');
   if(!renderer && customEmojiElements.length) {
-    renderer = createCustomEmojiRendererForInput();
+    renderer = createCustomEmojiRendererForInput(input.dataset.textColor);
     input.prepend(renderer);
   } else if(renderer && !customEmojiElements.length) {
     renderer.remove();
@@ -338,9 +342,9 @@ function processCustomEmojisInInput(input: HTMLElement) {
     return;
   }
 
-  const customEmojis: Parameters<CustomEmojiRendererElement['add']>[0] = new Map();
+  const customEmojis: Parameters<CustomEmojiRendererElement['add']>[0]['addCustomEmojis'] = new Map();
   customEmojiElements.forEach((element) => {
-    const customEmojiElement = element instanceof CustomEmojiElement ? element : (element as any).customEmojiElement as CustomEmojiElement;
+    const customEmojiElement: CustomEmojiElement = (element as CustomEmojiElement).loop !== undefined ? element as CustomEmojiElement : (element as any).customEmojiElement as CustomEmojiElement;
     const {docId} = customEmojiElement;
     let set = customEmojis.get(docId);
     if(!set) {
@@ -369,7 +373,10 @@ function processCustomEmojisInInput(input: HTMLElement) {
     }
   }
 
-  renderer.add(customEmojis, false);
+  renderer.add({
+    addCustomEmojis: customEmojis,
+    lazyLoadQueue: false
+  });
   renderer.forceRender();
 }
 
@@ -394,7 +401,7 @@ export default class InputField {
       options.showLengthOn = Math.min(40, Math.round(options.maxLength / 3));
     }
 
-    const {placeholder, maxLength, showLengthOn, name, plainText, canBeEdited = true, autocomplete} = options;
+    const {placeholder, maxLength, showLengthOn, name, plainText, canBeEdited = true, autocomplete, withBorder} = options;
     const label = options.label || options.labelText;
 
     const onInputCallbacks: Array<() => void> = [];
@@ -404,7 +411,7 @@ export default class InputField {
         init();
       }
 
-      this.container.innerHTML = `<div class="input-field-input"></div>`;
+      this.container.innerHTML = `<div class="input-field-input is-empty"></div>`;
 
       input = this.container.firstElementChild as HTMLElement;
       input.contentEditable = '' + !!canBeEdited;
@@ -443,11 +450,14 @@ export default class InputField {
         // console.log('input');
         // return;
         // * because if delete all characters there will br left
-        if(isInputEmpty(input)) {
+        const isEmpty = isInputEmpty(input);
+        if(isEmpty) {
           // const textNode = Array.from(input.childNodes).find((node) => node.nodeType === node.TEXT_NODE) || document.createTextNode('');
           input.replaceChildren();
           // input.append(document.createTextNode('')); // need first text node to support history stack
         }
+
+        input.classList.toggle('is-empty', isEmpty);
 
         // const fillers = Array.from(input.querySelectorAll('.emoji-filler')) as HTMLElement[];
         // fillers.forEach((filler) => {
@@ -491,11 +501,16 @@ export default class InputField {
       // observer.observe(input, {characterData: true, childList: true, subtree: true});
     } else {
       this.container.innerHTML = `
-      <input type="text" ${name ? `name="${name}"` : ''} autocomplete="${autocomplete ?? 'off'}" ${label ? 'required=""' : ''} class="input-field-input">
+      <input type="text" ${name ? `name="${name}"` : ''} autocomplete="${autocomplete ?? 'off'}" ${label ? 'required=""' : ''} class="input-field-input is-empty">
       `;
 
       input = this.container.firstElementChild as HTMLElement;
       // input.addEventListener('input', () => checkAndSetRTL(input));
+
+      onInputCallbacks.push(() => {
+        const isEmpty = isInputEmpty(input);
+        input.classList.toggle('is-empty', isEmpty);
+      });
     }
 
     setDirection(input);
@@ -508,7 +523,7 @@ export default class InputField {
       _i18n(input, placeholder, undefined, 'placeholder');
     }
 
-    if(label || placeholder) {
+    if(withBorder !== false && withBorder || label || placeholder) {
       const border = document.createElement('div');
       border.classList.add('input-field-border');
       this.container.append(border);
@@ -603,6 +618,7 @@ export default class InputField {
   }
 
   public setValueSilently(value: Parameters<typeof replaceContent>[1], fromSet?: boolean) {
+    this.input.classList.toggle('is-empty', !value);
     if(this.options.plainText) {
       (this.input as HTMLInputElement).value = value as string;
     } else {
@@ -626,14 +642,15 @@ export default class InputField {
   }
 
   public setDraftValue(value = '', silent?: boolean) {
+    let _value: Parameters<typeof replaceContent>[1] = value;
     if(!this.options.plainText) {
-      value = documentFragmentToHTML(wrapDraftText(value));
+      _value = /* documentFragmentToHTML */(wrapDraftText(value));
     }
 
     if(silent) {
-      this.setValueSilently(value, false);
+      this.setValueSilently(_value, false);
     } else {
-      this.value = value;
+      this.value = _value;
     }
   }
 

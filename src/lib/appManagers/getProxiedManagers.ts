@@ -5,12 +5,13 @@
  */
 
 import type createManagers from './createManagers';
+import type {AckedResult} from '../mtproto/superMessagePort';
 import {ModifyFunctionsToAsync} from '../../types';
 import apiManagerProxy from '../mtproto/mtprotoworker';
-import {AckedResult} from '../mtproto/superMessagePort';
-import noop from '../../helpers/noop';
-import dT from '../../helpers/dT';
 import DEBUG from '../../config/debug';
+import dT from '../../helpers/dT';
+import noop from '../../helpers/noop';
+import copy from '../../helpers/object/copy';
 
 // let stats: {
 //   [manager: string]: {
@@ -53,7 +54,17 @@ import DEBUG from '../../config/debug';
 // }
 
 // setInterval(() => {
-//   console.log(dT(), '[PROXY] stats', stats, sentCount, sentMethods, sentMethods2);
+//   console.log(
+//     dT(),
+//     '[PROXY] stats',
+//     ...[
+//       stats,
+//       sentCount,
+//       sentMethods,
+//       sentMethods2
+//     ].map(copy),
+//     Object.entries(sentMethods).sort((a, b) => b[1] - a[1])
+//   );
 //   sentCount = 0;
 //   stats = {};
 //   sentMethods = {};
@@ -62,10 +73,10 @@ import DEBUG from '../../config/debug';
 
 const DEBUG_MANAGER_REQUESTS: {[managerName: string]: Set<string>} = {
   // appProfileManager: new Set(['getProfile', 'getProfileByPeerId'])
+  // appPeersManager: new Set(['getPeer'])
+  // appChatsManager: new Set(['getChat'])
+  // appMessagesManager: new Set(['getMessageByPeer', 'getGroupsFirstMessage'])
 };
-if(DEBUG) {
-  (window as any).DEBUG_MANAGER_REQUESTS = DEBUG_MANAGER_REQUESTS;
-}
 
 function createProxy(/* source: T,  */name: string, ack?: boolean) {
   const proxy = new Proxy({}, {

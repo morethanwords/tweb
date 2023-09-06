@@ -4,10 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type {SliderSuperTab} from './slider';
+import type {SliderSuperTabEventable, SliderSuperTabEventableConstructable} from './sliderTab';
 import CheckboxField, {CheckboxFieldOptions} from './checkboxField';
 import RadioField from './radioField';
 import ripple from './ripple';
-import {SliderSuperTab} from './slider';
 import RadioForm from './radioForm';
 import {i18n, LangPackKey} from '../lib/langPack';
 import replaceContent from '../helpers/dom/replaceContent';
@@ -16,6 +17,8 @@ import {attachClickEvent} from '../helpers/dom/clickEvent';
 import ListenerSetter from '../helpers/listenerSetter';
 import Button from './button';
 import createContextMenu from '../helpers/dom/createContextMenu';
+import SidebarSlider from './slider';
+import Icon from './icon';
 
 type K = string | HTMLElement | DocumentFragment | true;
 
@@ -31,7 +34,11 @@ const setContent = (element: HTMLElement, content: K) => {
 
 export type RowMediaSizeType = 'small' | 'medium' | 'big' | 'abitbigger' | 'bigger';
 
-export default class Row {
+type ConstructorP<T> = T extends {
+  new (...args: any[]): infer U;
+} ? U : never;
+
+export default class Row<T extends SliderSuperTabEventableConstructable = any> {
   public container: HTMLElement;
   public titleRow: HTMLElement;
   public titleRight: HTMLElement;
@@ -52,7 +59,7 @@ export default class Row {
   private _midtitle: HTMLElement;
 
   constructor(options: Partial<{
-    icon: string,
+    icon: Icon,
     subtitle: K,
     subtitleLangKey: LangPackKey,
     subtitleLangArgs: any[],
@@ -66,7 +73,12 @@ export default class Row {
     titleRight: K,
     titleRightSecondary: K,
     clickable: boolean | ((e: Event) => void),
-    navigationTab: SliderSuperTab,
+    navigationTab: {
+      constructor: T,
+      slider: SidebarSlider,
+      getInitArgs?: () => Promise<Parameters<ConstructorP<T>['init']>[0]> | Parameters<ConstructorP<T>['init']>[0]
+      args?: any
+    },
     havePadding: boolean,
     noRipple: boolean,
     noWrap: boolean,
@@ -74,7 +86,8 @@ export default class Row {
     buttonRight?: HTMLElement | boolean,
     buttonRightLangKey: LangPackKey,
     asLink: boolean,
-    contextMenu: Omit<Parameters<typeof createContextMenu>[0], 'findElement' | 'listenTo' | 'listenerSetter'>
+    contextMenu: Omit<Parameters<typeof createContextMenu>[0], 'findElement' | 'listenTo' | 'listenerSetter'>,
+    asLabel: boolean
   }> = {}) {
     if(options.checkboxFieldOptions) {
       options.checkboxField = new CheckboxField({
@@ -83,7 +96,7 @@ export default class Row {
       });
     }
 
-    const tagName = options.asLink ? 'a' : (options.radioField || options.checkboxField ? 'label' : 'div');
+    const tagName = options.asLink ? 'a' : (options.radioField || options.checkboxField || options.asLabel ? 'label' : 'div');
     this.container = document.createElement(tagName);
     this.container.classList.add('row', 'no-subtitle');
 
@@ -183,7 +196,7 @@ export default class Row {
     if(options.icon) {
       havePadding = true;
       // this.title.classList.add('tgico', 'tgico-' + options.icon);
-      this.container.classList.add('tgico', 'tgico-' + options.icon);
+      this.container.append(Icon(options.icon, 'row-icon'));
       this.container.classList.add('row-with-icon');
     }
 
@@ -192,7 +205,36 @@ export default class Row {
     }
 
     if(options.navigationTab) {
-      options.clickable = () => options.navigationTab.open();
+      let getInitArgs = options.navigationTab.getInitArgs;
+      if(!getInitArgs) {
+        const g = (options.navigationTab.constructor as any as typeof SliderSuperTab).getInitArgs;
+        if(g) {
+          // @ts-ignore
+          getInitArgs = () => g();
+        }
+      }
+
+      let args = options.navigationTab.args ?? getInitArgs?.();
+
+      options.clickable = async() => {
+        if(args instanceof Promise) {
+          args = await args;
+        }
+
+        // if(!Array.isArray(args)) {
+        //   args = [args];
+        // }
+
+        const tab = options.navigationTab.slider.createTab(options.navigationTab.constructor as any);
+        tab.open(args);
+
+        const eventListener = (tab as SliderSuperTabEventable).eventListener;
+        if(eventListener && getInitArgs) {
+          eventListener.addEventListener('destroyAfter', (promise) => {
+            args = promise.then(() => getInitArgs() as any);
+          });
+        }
+      };
     }
 
     if(options.clickable || options.radioField || options.checkboxField) {
@@ -217,7 +259,7 @@ export default class Row {
     if(options.buttonRight || options.buttonRightLangKey) {
       this.buttonRight = options.buttonRight instanceof HTMLElement ?
         options.buttonRight :
-        Button('btn-primary btn-color-primary', {text: options.buttonRightLangKey});
+        Button('btn-primary btn-color-primary btn-control-small', {text: options.buttonRightLangKey});
       this.container.append(this.buttonRight);
     }
 
@@ -309,9 +351,8 @@ export default class Row {
   }
 
   public makeSortable() {
-    const sortIcon = document.createElement('span');
-    this.container.classList.add('row-sortable', 'tgico');
-    sortIcon.classList.add('row-sortable-icon', 'tgico-menu');
+    const sortIcon = Icon('menu', 'row-sortable-icon');
+    this.container.classList.add('row-sortable');
     this.container.append(sortIcon);
   }
 

@@ -19,6 +19,11 @@ export interface MTAppConfig {
   round_video_encoding?:                     RoundVideoEncoding;
   chat_read_mark_expire_period?:             number;
   chat_read_mark_size_threshold?:            number;
+  chatlists_joined_limit_default:            number;
+  chatlists_joined_limit_premium:            number;
+  chatlist_invites_limit_default:            number;
+  chatlist_invites_limit_premium:            number;
+  chatlist_update_period:                    number;
   reactions_uniq_max?:                       number;
   ringtone_duration_max?:                    number;
   ringtone_size_max?:                        number;
@@ -75,6 +80,10 @@ export interface MTAppConfig {
   emojies_send_dice?:                        string[];
   emojies_send_dice_success?:                EmojiesSendDiceSuccess;
   emojies_sounds?:                           EmojiesSoundsClass;
+  stories_all_hidden?:                       boolean;
+  stories_changelog_user_id?:                UserId;
+  stories_export_nopublic_link?:             boolean;
+  stories_posting?:                          'enabled' | 'premium' | 'disabled';
 }
 
 export interface EmojiesSendDiceSuccess {

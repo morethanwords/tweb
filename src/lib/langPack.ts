@@ -318,10 +318,16 @@ namespace I18n {
     }
 
     if(lastAppliedLangCode !== currentLangCode) {
-      rootScope.dispatchEvent('language_change', currentLangCode);
+      if(lastAppliedLangCode && rootScope.myId) {
+        rootScope.managers.appReactionsManager.resetAvailableReactions();
+        rootScope.managers.appUsersManager.indexMyself();
+        rootScope.managers.dialogsStorage.indexMyDialog();
+      }
+
       lastAppliedLangCode = currentLangCode;
       cachedDateTimeFormats.clear();
       updateAmPm();
+      rootScope.dispatchEvent('language_change', currentLangCode);
     }
 
     const elements = Array.from(document.querySelectorAll(`.i18n`)) as HTMLElement[];
@@ -382,7 +388,7 @@ namespace I18n {
           a = document.createElement('a');
           const wrappedUrl = wrapUrl(url);
           a.href = wrappedUrl.url;
-          if(wrappedUrl.onclick) a.setAttribute('onclick', wrappedUrl.onclick);
+          if(wrappedUrl.onclick) a.setAttribute('onclick', wrappedUrl.onclick + '(this)');
           a.target = '_blank';
         } else {
           a = args[indexHolder.i++] as HTMLAnchorElement;
@@ -479,9 +485,6 @@ namespace I18n {
       this.element.classList.add('i18n');
 
       this.property = options?.property;
-      if(options && ((options as any as IntlElementOptions).key || (options as any as IntlDateElementOptions).date)) {
-        this.update(options);
-      }
 
       weakMap.set(this.element, this);
     }
@@ -499,6 +502,10 @@ namespace I18n {
 
     constructor(options: IntlElementOptions = {}) {
       super({...options, property: options.property ?? 'innerHTML'});
+
+      if(options?.key) {
+        this.update(options);
+      }
     }
 
     public update(options?: IntlElementOptions) {
@@ -528,7 +535,7 @@ namespace I18n {
   }
 
   const cachedDateTimeFormats: Map<string, Intl.DateTimeFormat> = new Map();
-  function getDateTimeFormat(options: Intl.DateTimeFormatOptions = {}) {
+  export function getDateTimeFormat(options: Intl.DateTimeFormatOptions = {}) {
     const json = JSON.stringify(options);
     let dateTimeFormat = cachedDateTimeFormats.get(json);
     if(!dateTimeFormat) {
@@ -551,6 +558,10 @@ namespace I18n {
     constructor(options: IntlDateElementOptions) {
       super({...options, property: options.property ?? 'textContent'});
       setDirection(this.element);
+
+      if(options?.date) {
+        this.update(options);
+      }
     }
 
     public update(options?: IntlDateElementOptions) {
@@ -602,11 +613,14 @@ export {i18n_};
 const _i18n = I18n._i18n;
 export {_i18n};
 
-export function joinElementsWith(elements: (Node | string)[], joiner: typeof elements[0] | ((isLast: boolean) => typeof elements[0])) {
-  const arr = elements.slice(0, 1);
+export function joinElementsWith<T extends Node | string | Array<Node | string>>(
+  elements: T[],
+  joiner: T | string | ((isLast: boolean) => T)
+): T[] {
+  const arr = elements.slice(0, 1) as T[];
   for(let i = 1; i < elements.length; ++i) {
     const isLast = (elements.length - 1) === i;
-    arr.push(typeof(joiner) === 'function' ? joiner(isLast) : joiner);
+    arr.push(typeof(joiner) === 'function' ? (joiner as any)(isLast) : joiner);
     arr.push(elements[i]);
   }
 
@@ -626,4 +640,4 @@ export function join(elements: (Node | string)[], useLast = true, plain?: boolea
   return plain ? joined.join('') : joined;
 }
 
-MOUNT_CLASS_TO.I18n = I18n;
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.I18n = I18n);

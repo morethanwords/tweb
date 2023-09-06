@@ -24,6 +24,7 @@ const sessionStorage = new LocalStorageController<{
   dc3_server_salt: string,
   dc4_server_salt: string,
   dc5_server_salt: string,
+  auth_key_fingerprint: string, // = dc${App.baseDcId}_auth_key.slice(0, 8)
   server_time_offset: number,
   xt_instance: AppInstance,
   kz_version: 'K' | 'Z',

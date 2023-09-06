@@ -4,8 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-// import { getRichValue } from "../helpers/dom";
 import {LangPackKey} from '../lib/langPack';
+import ButtonIcon from './buttonIcon';
+import Icon from './icon';
 import InputField from './inputField';
 
 export default class InputSearch {
@@ -13,16 +14,18 @@ export default class InputSearch {
   public input: HTMLElement;
   public inputField: InputField;
   public clearBtn: HTMLElement;
+  public searchIcon: HTMLElement;
 
   public prevValue = '';
   public timeout = 0;
   public onChange: (value: string) => void;
   public onClear: () => void;
 
-  constructor(placeholder: LangPackKey, onChange?: (value: string) => void) {
+  constructor(placeholder?: LangPackKey, onChange?: (value: string) => void) {
     this.inputField = new InputField({
       placeholder,
-      plainText: true
+      plainText: true,
+      withBorder: true
     });
 
     this.container = this.inputField.container;
@@ -34,11 +37,9 @@ export default class InputSearch {
     this.input = this.inputField.input;
     this.input.classList.add('input-search-input');
 
-    const searchIcon = document.createElement('i');
-    searchIcon.classList.add('tgico', 'tgico-search');
+    const searchIcon = this.searchIcon = Icon('search', 'input-search-icon', 'input-search-part');
 
-    this.clearBtn = document.createElement('i');
-    this.clearBtn.classList.add('tgico', 'btn-icon', 'tgico-close');
+    this.clearBtn = ButtonIcon('close input-search-clear input-search-part');
 
     this.input.addEventListener('input', this.onInput);
     this.clearBtn.addEventListener('click', this.onClearClick);
@@ -64,8 +65,8 @@ export default class InputSearch {
 
   onClearClick = () => {
     this.value = '';
-    this.onChange && this.onChange('');
-    this.onClear && this.onClear();
+    this.onChange?.('');
+    this.onClear?.();
   };
 
   get value() {

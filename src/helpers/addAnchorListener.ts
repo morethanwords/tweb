@@ -11,14 +11,14 @@ import parseUriParams from './string/parseUriParams';
 export default function addAnchorListener<Params extends {pathnameParams?: any, uriParams?: any}>(options: {
   name: 'showMaskedAlert' | 'execBotCommand' | 'searchByHashtag' | 'addstickers' | 'im' |
         'resolve' | 'privatepost' | 'addstickers' | 'voicechat' | 'joinchat' | 'join' | 'invoice' |
-        'addemoji' | 'setMediaTimestamp',
+        'addemoji' | 'setMediaTimestamp' | 'addlist',
   protocol?: 'tg',
-  callback: (params: Params, element?: HTMLAnchorElement) => boolean | any,
+  callback: (params: Params, element?: HTMLAnchorElement, masked?: boolean) => any,
   noPathnameParams?: boolean,
   noUriParams?: boolean,
   noCancelEvent?: boolean
 }) {
-  (window as any)[(options.protocol ? options.protocol + '_' : '') + options.name] = (element?: HTMLAnchorElement/* , e: Event */) => {
+  (window as any)[(options.protocol ? options.protocol + '_' : '') + options.name] = (element?: HTMLAnchorElement, e?: Event) => {
     !options.noCancelEvent && cancelEvent(null);
 
     let href = element.href;
@@ -39,7 +39,15 @@ export default function addAnchorListener<Params extends {pathnameParams?: any, 
     if(!options.noPathnameParams) pathnameParams = new URL(href).pathname.split('/').slice(1);
     if(!options.noUriParams) uriParams = parseUriParams(href);
 
-    const res = options.callback({pathnameParams, uriParams} as Params, element);
-    return res === undefined ? res : false;
+    const masked = element.href !== element.textContent && element.getAttribute('safe') === null;
+    const result = options.callback(
+      {pathnameParams, uriParams} as Params,
+      element,
+      masked
+    );
+
+    if(!e?.isTrusted) {
+      return result;
+    }
   };
 }

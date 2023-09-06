@@ -10,7 +10,7 @@ import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount
 import {PremiumGiftOption} from '../../layer';
 import appImManager from '../../lib/appManagers/appImManager';
 import I18n, {i18n, _i18n} from '../../lib/langPack';
-import AvatarElement from '../avatar';
+import {avatarNew} from '../avatarNew';
 import Button from '../button';
 import CheckboxField from '../checkboxField';
 import Row from '../row';
@@ -30,11 +30,12 @@ export default class PopupGiftPremium extends PopupElement {
 
   public async construct() {
     const {peerId, giftOptions} = this;
-    const avatar = new AvatarElement();
-    avatar.classList.add('avatar-100', className + '-avatar');
-    await avatar.updateWithOptions({
+    const avatar = avatarNew({
+      middleware: this.middlewareHelper.get(),
+      size: 100,
       peerId
     });
+    avatar.node.classList.add(className + '-avatar');
 
     const title = document.createElement('span');
     _i18n(title, 'GiftTelegramPremiumTitle');
@@ -109,7 +110,7 @@ export default class PopupGiftPremium extends PopupElement {
     }, {listenerSetter: this.listenerSetter});
 
     this.scrollable.append(
-      avatar,
+      avatar.node,
       title,
       subtitle,
       form,

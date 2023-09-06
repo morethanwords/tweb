@@ -5,7 +5,7 @@
  */
 
 import type LazyLoadQueue from './lazyLoadQueue';
-import appDialogsManager, {AppDialogsManager, DialogDom, DialogElementSize} from '../lib/appManagers/appDialogsManager';
+import appDialogsManager, {AppDialogsManager, DialogDom, DialogElement, DialogElementSize} from '../lib/appManagers/appDialogsManager';
 import {getHeavyAnimationPromise} from '../hooks/useHeavyAnimationCheck';
 import isInDOM from '../helpers/dom/isInDOM';
 import positionElementByIndex from '../helpers/dom/positionElementByIndex';
@@ -18,9 +18,11 @@ import getUserStatusString from './wrappers/getUserStatusString';
 import getChatMembersString from './wrappers/getChatMembersString';
 import wrapParticipantRank from './wrappers/participantRank';
 import getParticipantRank from '../lib/appManagers/utils/chats/getParticipantRank';
+import {Middleware, MiddlewareHelper} from '../helpers/middleware';
 
 interface SortedUser extends SortedElementBase<PeerId> {
-  dom: DialogDom
+  dom: DialogDom,
+  dialogElement: DialogElement
 }
 
 export default class SortedUserList extends SortedList<SortedUser> {
@@ -34,8 +36,6 @@ export default class SortedUserList extends SortedList<SortedUser> {
   protected autonomous = true;
   protected createChatListOptions: Parameters<AppDialogsManager['createChatList']>[0];
   protected onListLengthChange: () => void;
-  protected getIndex: (element: SortedUser) => number;
-  protected onUpdate: (element: SortedUser) => void;
   protected managers: AppManagers;
 
   constructor(options: Partial<{
@@ -48,13 +48,14 @@ export default class SortedUserList extends SortedList<SortedUser> {
     getIndex: SortedUserList['getIndex'],
     onUpdate: SortedUserList['onUpdate']
   }> & {
-    managers: SortedUserList['managers']
+    managers: SortedUserList['managers'],
+    middleware: Middleware
   }) {
     super({
       getIndex: options.getIndex || ((element) => element.id.isAnyChat() ? 0 : this.managers.appUsersManager.getUserStatusForSort(element.id)),
       onDelete: (element) => {
-        element.dom.listEl.remove();
-        this.onListLengthChange && this.onListLengthChange();
+        element.dialogElement.remove();
+        this.onListLengthChange?.();
       },
       onUpdate: options.onUpdate || (async(element) => {
         if(element.id.isAnyChat()) {
@@ -82,8 +83,10 @@ export default class SortedUserList extends SortedList<SortedUser> {
           meAsSaved: false,
           rippleEnabled: this.rippleEnabled,
           wrapOptions: {
-            lazyLoadQueue: this.lazyLoadQueue
-          }
+            lazyLoadQueue: this.lazyLoadQueue,
+            middleware: this.middlewareHelper.get()
+          },
+          withStories: true
         });
 
         const rank = this.ranks.get(base.id);
@@ -92,6 +95,7 @@ export default class SortedUserList extends SortedList<SortedUser> {
         }
 
         (base as SortedUser).dom = dialogElement.dom;
+        (base as SortedUser).dialogElement = dialogElement;
         return base as SortedUser;
       },
       updateElementWith: fastRaf,
@@ -111,7 +115,8 @@ export default class SortedUserList extends SortedList<SortedUser> {
         }
 
         callback(true);
-      }
+      },
+      middleware: options.middleware
     });
 
     safeAssign(this, options);

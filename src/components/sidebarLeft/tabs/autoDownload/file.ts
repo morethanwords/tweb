@@ -5,6 +5,7 @@
  */
 
 import formatBytes from '../../../../helpers/formatBytes';
+import {joinDeepPath} from '../../../../helpers/object/setDeepProperty';
 import debounce from '../../../../helpers/schedulers/debounce';
 import I18n from '../../../../lib/langPack';
 import rootScope from '../../../../lib/rootScope';
@@ -17,7 +18,7 @@ export default class AppAutoDownloadFileTab extends SliderSuperTabEventable {
     this.setTitle('AutoDownloadFiles');
 
     const debouncedSave = debounce((sizeMax: number) => {
-      this.managers.appStateManager.setByKey('settings.autoDownloadNew.file_size_max', sizeMax);
+      this.managers.appStateManager.setByKey(joinDeepPath('settings', 'autoDownloadNew', 'file_size_max'), sizeMax);
     }, 200, false, true);
 
     const section = autoDownloadPeerTypeSection('file', 'AutoDownloadFilesTitle', this.listenerSetter);

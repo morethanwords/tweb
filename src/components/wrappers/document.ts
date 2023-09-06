@@ -23,6 +23,7 @@ import getDownloadMediaDetails from '../../lib/appManagers/utils/download/getDow
 import choosePhotoSize from '../../lib/appManagers/utils/photos/choosePhotoSize';
 import {joinElementsWith} from '../../lib/langPack';
 import {MAX_FILE_SAVE_SIZE} from '../../lib/mtproto/mtproto_config';
+import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import wrapPlainText from '../../lib/richTextProcessor/wrapPlainText';
 import rootScope from '../../lib/rootScope';
 import type {ThumbCache} from '../../lib/storages/thumbs';
@@ -108,10 +109,10 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
 
   const hadContext = !!cacheContext;
   const getCacheContext = () => {
-    return hadContext ? cacheContext : managers.thumbsStorage.getCacheContext(doc);
+    return hadContext ? cacheContext : apiManagerProxy.getCacheContext(doc);
   };
 
-  cacheContext = await getCacheContext();
+  cacheContext = getCacheContext();
   let hasThumb = false;
   if((doc.thumbs?.length || (message.pFlags.is_outgoing && cacheContext.url && doc.type === 'photo'))/*  && doc.mime_type !== 'image/gif' */) {
     docDiv.classList.add('document-with-thumb');
@@ -282,13 +283,13 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
     const queueId = appImManager.chat.bubbles ? appImManager.chat.bubbles.lazyLoadQueue.queueId : undefined;
     if(!save) {
       download = appDownloadManager.downloadToDisc({media: doc, queueId}, true);
-    } else if(doc.type === 'pdf') {
+    } else if(doc.type === 'pdf' && false) {
       const canOpenAfter = /* managers.appDocsManager.downloading.has(doc.id) ||  */!preloader || preloader.detached;
       download = appDownloadManager.downloadMediaURL({media: doc, queueId});
       if(canOpenAfter) {
         download.then(() => {
           setTimeout(async() => { // wait for preloader animation end
-            const url = (await getCacheContext()).url;
+            const url = (getCacheContext()).url;
             window.open(url);
           }, liteMode.isAvailable('animations') ? 250 : 0);
         });

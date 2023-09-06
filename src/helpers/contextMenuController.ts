@@ -7,6 +7,7 @@
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import mediaSizes from './mediaSizes';
 import OverlayClickHandler from './overlayClickHandler';
+import overlayCounter from './overlayCounter';
 
 class ContextMenuController extends OverlayClickHandler {
   constructor() {
@@ -48,6 +49,17 @@ class ContextMenuController extends OverlayClickHandler {
     if(this.element) {
       this.element.classList.remove('active');
       this.element.parentElement.classList.remove('menu-open');
+
+      if(this.element.classList.contains('night')) {
+        const element = this.element;
+        setTimeout(() => {
+          if(element.classList.contains('active')) {
+            return;
+          }
+
+          element.classList.remove('night');
+        }, 400);
+      }
     }
 
     super.close();
@@ -58,6 +70,10 @@ class ContextMenuController extends OverlayClickHandler {
   }
 
   public openBtnMenu(element: HTMLElement, onClose?: () => void) {
+    if(overlayCounter.isDarkOverlayActive) {
+      element.classList.add('night');
+    }
+
     super.open(element);
 
     this.element.classList.add('active', 'was-open');

@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import ServiceMessagePort from '../serviceWorker/serviceMessagePort';
 import App from '../../config/app';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import callbackify from '../../helpers/callbackify';
@@ -16,13 +17,23 @@ import createManagers from './createManagers';
 
 type Managers = Awaited<ReturnType<typeof createManagers>>;
 
+// for testing cases without video streaming
+const CAN_USE_SERVICE_WORKER = true;
+
 export class AppManagersManager {
   private managers: Managers | Promise<Managers>;
   private cryptoWorkersURLs: string[];
   private cryptoPortsAttached: number;
   private cryptoPortPromise: CancellablePromise<void>;
 
+  private _isServiceWorkerOnline: boolean;
+
+  private serviceMessagePort: ServiceMessagePort<true>;
+  private _serviceMessagePort: MessagePort
+
   constructor() {
+    this._isServiceWorkerOnline = CAN_USE_SERVICE_WORKER;
+
     this.cryptoWorkersURLs = [];
     this.cryptoPortsAttached = 0;
     this.cryptoPortPromise = deferredPromise();
@@ -38,7 +49,7 @@ export class AppManagersManager {
       return callbackify(this.getManagers(), (managers) => {
         // @ts-ignore
         const manager = managers[name];
-        return manager[method].apply(manager, args);
+        return manager[method](...args);
       });
     });
 
@@ -72,7 +83,7 @@ export class AppManagersManager {
     });
   }
 
-  public async createManagers() {
+  private async createManagers() {
     const appStoragesManager = new AppStoragesManager();
 
     await Promise.all([
@@ -82,11 +93,45 @@ export class AppManagersManager {
     ]);
 
     const managers = await createManagers(appStoragesManager, appStateManager.userId);
-    return this.managers = managers;
+    return this.managers = managers; // have to overwrite cached promise
   }
 
   public getManagers() {
     return this.managers ??= this.createManagers();
+  }
+
+  public get isServiceWorkerOnline() {
+    return this._isServiceWorkerOnline;
+  }
+
+  public set isServiceWorkerOnline(value) {
+    this._isServiceWorkerOnline = CAN_USE_SERVICE_WORKER ? value : false;
+  }
+
+  public getServiceMessagePort() {
+    return this._isServiceWorkerOnline ? this.serviceMessagePort : undefined;
+  }
+
+  public onServiceWorkerPort(event: MessageEvent<any>) {
+    if(this.serviceMessagePort) {
+      this.serviceMessagePort.detachPort(this._serviceMessagePort);
+      this._serviceMessagePort = undefined;
+    } else {
+      this.serviceMessagePort = new ServiceMessagePort();
+      this.serviceMessagePort.addMultipleEventsListeners({
+        requestFilePart: (payload) => {
+          return callbackify(appManagersManager.getManagers(), (managers) => {
+            const {docId, dcId, offset, limit} = payload;
+            return managers.appDocsManager.requestDocPart(docId, dcId, offset, limit);
+          });
+        }
+      });
+    }
+
+    // * port can be undefined in the future
+    if(this._serviceMessagePort = event.ports[0]) {
+      this.serviceMessagePort.attachPort(this._serviceMessagePort);
+    }
   }
 }
 

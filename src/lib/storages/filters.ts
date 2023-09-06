@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {DialogFilter, ForumTopic, Update} from '../../layer';
+import type {ChatlistsChatlistUpdates, DialogFilter, ForumTopic, InputChatlist, InputPeer, Update, Updates} from '../../layer';
 import type {Dialog} from '../appManagers/appMessagesManager';
 import forEachReverse from '../../helpers/array/forEachReverse';
 import copy from '../../helpers/object/copy';
@@ -13,8 +13,9 @@ import findAndSplice from '../../helpers/array/findAndSplice';
 import assumeType from '../../helpers/assumeType';
 import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS, REAL_FOLDER_ID, START_LOCAL_ID} from '../mtproto/mtproto_config';
 import makeError from '../../helpers/makeError';
+import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 
-export type MyDialogFilter = DialogFilter.dialogFilter;
+export type MyDialogFilter = Exclude<DialogFilter, DialogFilter.dialogFilterDefault>;
 
 const convertment = [
   ['pinned_peers', 'pinnedPeerIds'],
@@ -24,10 +25,9 @@ const convertment = [
 
 const PREPENDED_FILTERS = REAL_FOLDERS.size;
 
-const LOCAL_FILTER: MyDialogFilter = {
+const LOCAL_FILTER: DialogFilter.dialogFilter = {
   _: 'dialogFilter',
   pFlags: {},
-  flags: 0,
   id: 0,
   title: '',
   exclude_peers: [],
@@ -209,11 +209,11 @@ export default class FiltersStorage extends AppManager {
       return true;
     }
 
-    if(REAL_FOLDERS.has(filter.id)) {
-      return (dialog as Dialog).folder_id === filter.id && this.dialogsStorage.canSaveDialogByPeerId(dialog.peerId);
-    }
+    const {peerId} = dialog;
 
-    const peerId = dialog.peerId;
+    if(REAL_FOLDERS.has(filter.id)) {
+      return (dialog as Dialog).folder_id === filter.id && this.dialogsStorage.canSaveDialog(peerId, dialog);
+    }
 
     // * check whether dialog exists
     if(!this.appMessagesManager.getDialogOnly(peerId)) {
@@ -221,16 +221,20 @@ export default class FiltersStorage extends AppManager {
     }
 
     // exclude_peers
-    if(filter.excludePeerIds.includes(peerId)) {
+    if((filter as DialogFilter.dialogFilter).excludePeerIds?.includes(peerId)) {
       return false;
     }
 
     // include_peers
-    if(filter.includePeerIds.includes(peerId)) {
+    if((filter as DialogFilter.dialogFilter).includePeerIds?.includes(peerId)) {
       return true;
     }
 
-    const pFlags = filter.pFlags;
+    const pFlags = (filter as DialogFilter.dialogFilter).pFlags;
+
+    if(!pFlags) {
+      return true;
+    }
 
     // exclude_archived
     if(pFlags.exclude_archived && (dialog as Dialog).folder_id === FOLDER_ID_ARCHIVE) {
@@ -336,21 +340,10 @@ export default class FiltersStorage extends AppManager {
   }
 
   public updateDialogFilter(filter: MyDialogFilter, remove = false, prepend = false) {
-    const flags = remove ? 0 : 1;
-
     return this.apiManager.invokeApi('messages.updateDialogFilter', {
-      flags,
       id: filter.id,
       filter: remove ? undefined : this.getOutputDialogFilter(filter)
-    }).then((bool) => { // возможно нужна проверка и откат, если результат не ТРУ
-      // console.log('updateDialogFilter bool:', bool);
-
-      /* if(!this.filters[filter.id]) {
-        this.saveDialogFilter(filter);
-      }
-
-      rootScope.$broadcast('filter_update', filter); */
-
+    }).then(() => {
       this.onUpdateDialogFilter({
         _: 'updateDialogFilter',
         id: filter.id,
@@ -358,21 +351,18 @@ export default class FiltersStorage extends AppManager {
       });
 
       if(prepend) {
-        const f: MyDialogFilter[] = [];
-        for(const filterId in this.filters) {
-          const filter = this.filters[filterId];
-          ++filter.localId;
-          f.push(filter);
-        }
-
-        filter.localId = START_LOCAL_ID;
-
+        const f = Object.values(this.filters);
         const order = f.sort((a, b) => a.localId - b.localId).map((filter) => filter.id);
+        indexOfAndSplice(order, filter.id);
+        indexOfAndSplice(order, FOLDER_ID_ARCHIVE);
+        order.splice(order[0] === FOLDER_ID_ALL ? 1 : 0, 0, filter.id);
         this.onUpdateDialogFilterOrder({
           _: 'updateDialogFilterOrder',
           order
         });
       }
+
+      return filter;
     });
   }
 
@@ -436,7 +426,7 @@ export default class FiltersStorage extends AppManager {
     type: 'pinned_peers' | 'include_peers' | 'exclude_peers' = 'pinned_peers'
   ) {
     const filter = this.getFilter(filterId);
-    const peers = filter?.[type];
+    const peers = (filter as DialogFilter.dialogFilter)?.[type];
     if(!peers?.length) {
       return;
     }
@@ -511,8 +501,9 @@ export default class FiltersStorage extends AppManager {
     assumeType<MyDialogFilter>(filter);
     if(!REAL_FOLDERS.has(filter.id)) {
       convertment.forEach(([from, to]) => {
-        assumeType<MyDialogFilter>(filter);
-        filter[to] = filter[from].map((peer) => this.appPeersManager.getPeerId(peer));
+        const arrayFrom = (filter as DialogFilter.dialogFilter)[from];
+        if(!arrayFrom) return;
+        (filter as DialogFilter.dialogFilter)[to] = arrayFrom.map((peer) => this.appPeersManager.getPeerId(peer));
       });
 
       this.filterIncludedPinnedPeers(filter);
@@ -523,7 +514,7 @@ export default class FiltersStorage extends AppManager {
 
     const oldFilter = this.filters[filter.id];
     if(oldFilter) {
-      Object.assign(oldFilter, filter);
+      filter = Object.assign(oldFilter, filter);
     } else {
       this.filters[filter.id] = filter;
     }
@@ -563,5 +554,163 @@ export default class FiltersStorage extends AppManager {
     const isFolderAvailable = this.filtersArr.filter((filter) => !REAL_FOLDERS.has(filter.id)).slice(0, limit).some((filter) => filter.id === filterId);
 
     return isFolderAvailable;
+  }
+
+  public getChatlistInput(id: number): InputChatlist {
+    return {
+      _: 'inputChatlistDialogFilter',
+      filter_id: id
+    };
+  }
+
+  /**
+   * @param filter should be client-generated
+   */
+  public exportChatlistInvite(filter: DialogFilter.dialogFilterChatlist) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'chatlists.exportChatlistInvite',
+      params: {
+        chatlist: this.getChatlistInput(filter.id),
+        title: filter.title,
+        peers: filter.include_peers
+      },
+      processResult: (exportedChatlistInvite) => {
+        this.saveDialogFilter(exportedChatlistInvite.filter);
+        return exportedChatlistInvite;
+      }
+    });
+  }
+
+  public deleteExportedInvite(id: number, slug: string) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'chatlists.deleteExportedInvite',
+      params: {
+        chatlist: this.getChatlistInput(id),
+        slug
+      },
+      processResult: (result) => result
+    });
+  }
+
+  public editExportedInvite(id: number, slug: string, peerIds: PeerId[], title: string) {
+    return this.apiManager.invokeApi('chatlists.editExportedInvite', {
+      chatlist: this.getChatlistInput(id),
+      slug,
+      title,
+      peers: peerIds.map((peerId) => this.appPeersManager.getInputPeerById(peerId))
+    });
+  }
+
+  public getExportedInvites(id: number) {
+    const filter = this.getFilter(id);
+    if(filter?._ === 'dialogFilter') {
+      return Promise.reject(makeError('FILTER_NOT_SUPPORTED'));
+    }
+
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'chatlists.getExportedInvites',
+      params: {
+        chatlist: this.getChatlistInput(id)
+      },
+      processResult: (exportedInvites) => {
+        this.appUsersManager.saveApiUsers(exportedInvites.users);
+        this.appChatsManager.saveApiChats(exportedInvites.chats);
+        return exportedInvites.invites;
+      }
+    });
+  }
+
+  public checkChatlistInvite(slug: string) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'chatlists.checkChatlistInvite',
+      params: {slug},
+      processResult: (chatlistInvite) => {
+        this.appUsersManager.saveApiUsers(chatlistInvite.users);
+        this.appChatsManager.saveApiChats(chatlistInvite.chats);
+        return chatlistInvite;
+      }
+    });
+  }
+
+  public joinChatlistInvite(slug: string, peerIds: PeerId[]) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'chatlists.joinChatlistInvite',
+      params: {
+        slug,
+        peers: peerIds.map((peerId) => this.appPeersManager.getInputPeerById(peerId))
+      },
+      processResult: (updates) => {
+        this.apiUpdatesManager.processUpdateMessage(updates);
+        const update = (updates as Updates.updates).updates.find((update) => update._ === 'updateDialogFilter') as Update.updateDialogFilter;
+        const filterId = update.id;
+        this.rootScope.dispatchEvent('filter_joined', this.getFilter(filterId));
+        return filterId;
+      }
+    });
+  }
+
+  public getChatlistUpdates(id: number) {
+    const filter = this.getFilter(id);
+    if(filter?._ !== 'dialogFilterChatlist') {
+      return Promise.reject(makeError('FILTER_NOT_SUPPORTED'));
+    }
+
+    const time = Date.now();
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'chatlists.getChatlistUpdates',
+      params: {
+        chatlist: this.getChatlistInput(id)
+      },
+      processResult: (chatlistUpdates) => {
+        this.appUsersManager.saveApiUsers(chatlistUpdates.users);
+        this.appChatsManager.saveApiChats(chatlistUpdates.chats);
+
+        const filter = this.getFilter(id);
+        if(filter?._ === 'dialogFilterChatlist') {
+          filter.updatedTime = time;
+          this.pushToState();
+        }
+
+        return chatlistUpdates;
+      }
+    });
+  }
+
+  public joinChatlistUpdates(id: number, peerIds: PeerId[]) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'chatlists.joinChatlistUpdates',
+      params: {
+        chatlist: this.getChatlistInput(id),
+        peers: peerIds.map((peerId) => this.appPeersManager.getInputPeerById(peerId))
+      },
+      processResult: (updates) => {
+        this.apiUpdatesManager.processUpdateMessage(updates);
+      }
+    });
+  }
+
+  public hideChatlistUpdates(id: number) {
+    return this.apiManager.invokeApiSingle('chatlists.hideChatlistUpdates', {
+      chatlist: this.getChatlistInput(id)
+    });
+  }
+
+  public getLeaveChatlistSuggestions(id: number) {
+    return this.apiManager.invokeApiSingle('chatlists.getLeaveChatlistSuggestions', {
+      chatlist: this.getChatlistInput(id)
+    });
+  }
+
+  public leaveChatlist(id: number, peerIds: PeerId[]) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'chatlists.leaveChatlist',
+      params: {
+        chatlist: this.getChatlistInput(id),
+        peers: peerIds.map((peerId) => this.appPeersManager.getInputPeerById(peerId))
+      },
+      processResult: (updates) => {
+        this.apiUpdatesManager.processUpdateMessage(updates);
+      }
+    });
   }
 }

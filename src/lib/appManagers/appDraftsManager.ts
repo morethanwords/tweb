@@ -14,17 +14,18 @@ import tsNow from '../../helpers/tsNow';
 import stateStorage from '../stateStorage';
 import assumeType from '../../helpers/assumeType';
 import {AppManager} from './manager';
-import generateMessageId from './utils/messageId/generateMessageId';
 import getServerMessageId from './utils/messageId/getServerMessageId';
 import draftsAreEqual from './utils/drafts/draftsAreEqual';
 
 export type MyDraftMessage = DraftMessage.draftMessage;
 
 export class AppDraftsManager extends AppManager {
-  private drafts: {[peerIdAndThreadId: string]: MyDraftMessage} = {};
+  private drafts: {[peerIdAndThreadId: string]: MyDraftMessage};
   private getAllDraftPromise: Promise<void>;
 
   protected after() {
+    this.clear(true);
+
     this.apiUpdatesManager.addMultipleEventsListeners({
       updateDraftMessage: (update) => {
         const peerId = this.appPeersManager.getPeerId(update.peer);
@@ -32,7 +33,8 @@ export class AppDraftsManager extends AppManager {
           peerId,
           threadId: update.threadId,
           draft: update.draft,
-          notify: true
+          notify: true,
+          force: true
         });
       }
     });
@@ -42,6 +44,14 @@ export class AppDraftsManager extends AppManager {
     });
   }
 
+  public clear = (init?: boolean) => {
+    if(!init) {
+      this.getAllDraftPromise = undefined;
+    }
+
+    this.drafts = {};
+  };
+
   private getKey(peerId: PeerId, threadId?: number) {
     return '' + peerId + (threadId ? '_' + threadId : '');
   }
@@ -49,6 +59,14 @@ export class AppDraftsManager extends AppManager {
   public getDraft(peerId: PeerId, threadId?: number) {
     return this.drafts[this.getKey(peerId, threadId)];
   }
+
+  // private generateDialog(peerId: PeerId) {
+  //   const dialog = this.dialogsStorage.generateDialog(peerId);
+  //   dialog.draft = this.drafts[peerId];
+  //   this.dialogsStorage.saveDialog(dialog);
+  //   this.appMessagesManager.newDialogsToHandle[peerId] = dialog;
+  //   this.appMessagesManager.scheduleHandleNewDialogs();
+  // }
 
   public addMissedDialogs() {
     return this.getAllDrafts().then(() => {
@@ -61,11 +79,7 @@ export class AppDraftsManager extends AppManager {
         const dialog = this.appMessagesManager.getDialogOnly(peerId);
         if(!dialog) {
           this.appMessagesManager.reloadConversation(peerId);
-          /* const dialog = appMessagesManager.generateDialog(peerId);
-          dialog.draft = this.drafts[key];
-          appMessagesManager.saveConversation(dialog);
-          appMessagesManager.newDialogsToHandle[peerId] = dialog;
-          appMessagesManager.scheduleHandleNewDialogs(); */
+          // this.generateDialog(peerId);
         }
       }
     });
@@ -75,20 +89,26 @@ export class AppDraftsManager extends AppManager {
     return this.getAllDraftPromise ??= this.apiManager.invokeApi('messages.getAllDrafts')
     .then((updates) => {
       const p = this.apiUpdatesManager.updatesState.syncLoading || Promise.resolve();
-      p.then(() => {
+      return p.then(() => {
         this.apiUpdatesManager.processUpdateMessage(updates);
       });
     });
   }
 
-  public saveDraft({peerId, threadId, draft: apiDraft, notify, force}: {
+  public saveDraft({
+    peerId,
+    threadId,
+    draft: apiDraft,
+    notify,
+    force
+  }: {
     peerId: PeerId,
     threadId?: number,
     draft: DraftMessage,
     notify?: boolean,
     force?: boolean
   }) {
-    const draft = this.processApiDraft(apiDraft);
+    const draft = this.processApiDraft(apiDraft, peerId);
 
     const key = this.getKey(peerId, threadId);
     if(draft) {
@@ -130,13 +150,14 @@ export class AppDraftsManager extends AppManager {
     return false;
   }
 
-  private processApiDraft(draft: DraftMessage): MyDraftMessage {
-    if(!draft || draft._ !== 'draftMessage') {
+  private processApiDraft(draft: DraftMessage, peerId: PeerId): MyDraftMessage {
+    if(draft?._ !== 'draftMessage') {
       return undefined;
     }
 
     if(draft.reply_to_msg_id) {
-      draft.reply_to_msg_id = generateMessageId(draft.reply_to_msg_id);
+      const channelId = this.appPeersManager.isChannel(peerId) ? peerId.toChatId() : undefined;
+      draft.reply_to_msg_id = this.appMessagesIdsManager.generateMessageId(draft.reply_to_msg_id, channelId);
     }
 
     return draft;
@@ -195,7 +216,15 @@ export class AppDraftsManager extends AppManager {
     });
 
     if(saveOnServer) {
-      return this.apiManager.invokeApi('messages.saveDraft', params);
+      const promise = this.apiManager.invokeApi('messages.saveDraft', params);
+      const dialog = this.dialogsStorage.getDialogOnly(peerId); // * create or delete dialog when draft changes
+      if(!dialog || !getServerMessageId(dialog.top_message)) {
+        return promise.then(() => {
+          return this.appMessagesManager.reloadConversation(peerId);
+        });
+      }
+
+      return promise;
     }
 
     return true;

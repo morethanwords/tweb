@@ -4,7 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import {_tgico} from '../helpers/tgico';
 import {Message} from '../layer';
+import Icon from './icon';
 /* import findUpClassName from "../helpers/dom/findUpClassName";
 import rootScope from "../lib/rootScope";
 import Transition from "./transition"; */
@@ -48,22 +50,20 @@ export function setSendingStatus(
 
   if(!className) {
     container.textContent = '';
+    container.classList.add('hide');
     return;
   }
 
-  const iconClassName = 'tgico-' + className;
   const lastElement = container.lastElementChild as HTMLElement;
-  if(lastElement && lastElement.classList.contains(iconClassName)) {
+  if(lastElement && lastElement.classList.contains(_tgico(className))) {
     return;
   }
 
-  const element = document.createElement('i');
-  element.classList.add('sending-status-icon', /* 'transition-item', */ iconClassName);
+  const element = Icon(className, 'sending-status-icon', 'sending-status-icon-' + className/* 'transition-item', */);
   container.append(element);
+  container.classList.remove('hide');
 
-  if(lastElement) {
-    lastElement.remove();
-  }
+  lastElement?.remove();
 
   /* if(!lastElement) {
     element.classList.add('active');

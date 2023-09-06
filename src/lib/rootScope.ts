@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config, Reaction} from '../layer';
+import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config, Reaction, AttachMenuBot, PeerSettings, StoryItem, UserStories} from '../layer';
 import type {Dialog, ForumTopic, MessagesStorageKey, MyMessage} from './appManagers/appMessagesManager';
 import type {MyDialogFilter} from './storages/filters';
 import type {Folder} from './storages/dialogs';
@@ -18,6 +18,8 @@ import type {Progress} from './appManagers/appDownloadManager';
 import type {CallId} from './appManagers/appCallsManager';
 import type {MyDocument} from './appManagers/appDocsManager';
 import type {MTAppConfig} from './mtproto/appConfig';
+import type StoriesCacheType from './appManagers/utils/stories/cacheType';
+import type {StoriesListPosition} from './appManagers/appStoriesManager';
 import {NULL_PEER_ID, UserAuth} from './mtproto/mtproto_config';
 import EventListenerBase from '../helpers/eventListenerBase';
 import {MOUNT_CLASS_TO} from '../config/debug';
@@ -29,26 +31,33 @@ export type BroadcastEvents = {
   'chat_update': ChatId,
   'chat_toggle_forum': {chatId: ChatId, enabled: boolean},
   'chat_participant': Update.updateChannelParticipant,
+  'chat_requests': {requestsPending: number, recentRequesters: UserId[], chatId: ChatId}
 
   'channel_update': ChatId,
 
   'user_update': UserId,
   'user_auth': UserAuth,
   'user_full_update': UserId,
+  'user_stories': {userId: UserId, available: boolean},
+  'user_stories_hidden': {userId: UserId, hidden: boolean},
+
+  'attach_menu_bot': AttachMenuBot,
 
   'peer_pinned_messages': {peerId: PeerId, mids?: number[], pinned?: boolean, unpinAll?: true},
   'peer_pinned_hidden': {peerId: PeerId, maxId: number},
   'peer_typings': {peerId: PeerId, threadId?: number, typings: UserTyping[]},
-  'peer_block': {peerId: PeerId, blocked: boolean},
+  'peer_block': {peerId: PeerId, blocked?: boolean, blockedMyStoriesFrom?: boolean},
   'peer_title_edit': {peerId: PeerId, threadId?: number},
   'peer_bio_edit': PeerId,
   'peer_deleted': PeerId, // left chat, deleted user dialog, left channel
   'peer_full_update': PeerId,
+  'peer_settings': {peerId: PeerId, settings: PeerSettings},
 
   'filter_delete': MyDialogFilter,
   'filter_update': MyDialogFilter,
   'filter_new': MyDialogFilter,
   'filter_order': number[],
+  'filter_joined': MyDialogFilter,
 
   'folder_unread': Omit<Folder, 'dialogs' | 'dispatchUnreadTimeout'>,
 
@@ -81,6 +90,14 @@ export type BroadcastEvents = {
   'messages_read': void,
   'messages_downloaded': {peerId: PeerId, mids: number[]},
   'messages_media_read': {peerId: PeerId, mids: number[]},
+
+  'story_update': {peerId: PeerId, story: StoryItem, modifiedPinned?: boolean, modifiedArchive?: boolean},
+  'story_deleted': {peerId: PeerId, id: number},
+  'story_new': {peerId: PeerId, story: StoryItem, cacheType: StoriesCacheType, maxReadId: number},
+  'stories_stories': UserStories,
+  'stories_read': {peerId: PeerId, maxReadId: number},
+  'stories_downloaded': {peerId: PeerId, ids: number[]},
+  'stories_position': {peerId: PeerId, position: StoriesListPosition},
 
   'replies_updated': Message.message,
 
@@ -124,6 +141,7 @@ export type BroadcastEvents = {
   'language_change': string,
 
   'theme_change': void,
+  'theme_changed': void,
 
   'media_play': void,
 
@@ -148,7 +166,9 @@ export type BroadcastEvents = {
 
   'logging_out': void,
 
-  'payment_sent': {peerId: PeerId, mid: number, receiptMessage: Message.messageService}
+  'payment_sent': {peerId: PeerId, mid: number, receiptMessage: Message.messageService},
+
+  'web_view_result_sent': Long,
 
   'premium_toggle': boolean,
   'premium_toggle_private': {isNew: boolean, isPremium: boolean},

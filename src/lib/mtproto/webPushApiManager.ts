@@ -12,9 +12,9 @@
 import type {PushNotificationObject} from '../serviceWorker/push';
 import type {ServicePushPingTaskPayload} from '../serviceWorker/serviceMessagePort';
 import type {NotificationSettings} from '../appManagers/uiNotificationsManager';
+import type ServiceMessagePort from '../serviceWorker/serviceMessagePort';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import {logger} from '../logger';
-import apiManagerProxy from './mtprotoworker';
 import I18n, {LangPackKey} from '../langPack';
 import {IS_MOBILE} from '../../environment/userAgent';
 import appRuntimeManager from '../appManagers/appRuntimeManager';
@@ -47,7 +47,9 @@ export class WebPushApiManager extends EventListenerBase<{
   private isAliveTO: any;
   private isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
   private userVisibleOnly = this.isFirefox ? false : true;
-  private log = logger('PM');
+  private log = logger('PUSH-API');
+
+  public serviceMessagePort: ServiceMessagePort<true>;
 
   constructor() {
     super(false);
@@ -151,14 +153,16 @@ export class WebPushApiManager extends EventListenerBase<{
     navigator.serviceWorker.ready.then((reg) => {
       reg.pushManager.getSubscription().then((subscription) => {
         this.log.warn('force unsubscribe', subscription);
-        if(subscription) {
-          subscription.unsubscribe().then((successful) => {
-            this.log.warn('force unsubscribe successful', successful);
-            this.isPushEnabled = false;
-          }).catch((e) => {
-            this.log.error('Unsubscription error: ', e);
-          });
+        if(!subscription) {
+          return;
         }
+
+        subscription.unsubscribe().then((successful) => {
+          this.log.warn('force unsubscribe successful', successful);
+          this.isPushEnabled = false;
+        }).catch((e) => {
+          this.log.error('Unsubscription error: ', e);
+        });
       }).catch((e) => {
         this.log.error('Error thrown while unsubscribing from ' +
           'push messaging.', e);
@@ -184,7 +188,7 @@ export class WebPushApiManager extends EventListenerBase<{
       lang[action as keyof typeof ACTIONS_LANG_MAP] = I18n.format(ACTIONS_LANG_MAP[action as keyof typeof ACTIONS_LANG_MAP], true);
     }
 
-    apiManagerProxy.serviceMessagePort.invokeVoid('pushPing', {
+    this.serviceMessagePort.invokeVoid('pushPing', {
       localNotifications: this.localNotificationsAvailable,
       lang: lang,
       settings: this.settings
@@ -204,7 +208,7 @@ export class WebPushApiManager extends EventListenerBase<{
       return;
     }
 
-    apiManagerProxy.serviceMessagePort.invokeVoid('notificationsClear', undefined);
+    this.serviceMessagePort.invokeVoid('notificationsClear', undefined);
   }
 
   public setUpServiceWorkerChannel() {
@@ -212,7 +216,7 @@ export class WebPushApiManager extends EventListenerBase<{
       return;
     }
 
-    apiManagerProxy.serviceMessagePort.addEventListener('pushClick', (payload) => {
+    this.serviceMessagePort.addEventListener('pushClick', (payload) => {
       if(singleInstance.deactivatedReason) {
         appRuntimeManager.reload();
         return;
@@ -255,7 +259,7 @@ export class WebPushApiManager extends EventListenerBase<{
       return;
     }
 
-    apiManagerProxy.serviceMessagePort.invokeVoid('shownNotification', peerId + '_' + getServerMessageId(mid));
+    this.serviceMessagePort.invokeVoid('shownNotification', peerId + '_' + getServerMessageId(mid));
   }
 }
 

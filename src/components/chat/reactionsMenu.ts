@@ -4,34 +4,42 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type {PeerAvailableReactions} from '../../lib/appManagers/appReactionsManager';
 import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
 import {IS_MOBILE, IS_SAFARI} from '../../environment/userAgent';
+import filterUnique from '../../helpers/array/filterUnique';
 import assumeType from '../../helpers/assumeType';
-import callbackify from '../../helpers/callbackify';
+import callbackifyAll from '../../helpers/callbackifyAll';
+import deferredPromise from '../../helpers/cancellablePromise';
+import cancelEvent from '../../helpers/dom/cancelEvent';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import findUpClassName from '../../helpers/dom/findUpClassName';
-import getVisibleRect from '../../helpers/dom/getVisibleRect';
+import ListenerSetter from '../../helpers/listenerSetter';
 import liteMode from '../../helpers/liteMode';
-import {getMiddleware} from '../../helpers/middleware';
+import {Middleware, getMiddleware} from '../../helpers/middleware';
 import noop from '../../helpers/noop';
 import {fastRaf} from '../../helpers/schedulers';
 import {Message, AvailableReaction, Reaction} from '../../layer';
 import {AppManagers} from '../../lib/appManagers/managers';
+import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import lottieLoader from '../../lib/rlottie/lottieLoader';
 import RLottiePlayer from '../../lib/rlottie/rlottiePlayer';
 import rootScope from '../../lib/rootScope';
 import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
-import Scrollable, {ScrollableBase, ScrollableX} from '../scrollable';
+import ButtonIcon from '../buttonIcon';
+import {EmoticonsDropdown} from '../emoticonsDropdown';
+import EmojiTab from '../emoticonsDropdown/tabs/emoji';
 import wrapSticker from '../wrappers/sticker';
 
 const REACTIONS_CLASS_NAME = 'btn-menu-reactions';
 const REACTION_CLASS_NAME = REACTIONS_CLASS_NAME + '-reaction';
 
-const REACTION_SIZE = 26;
-const PADDING = 4;
+const REACTION_SIZE = 28; // 36
+const PADDING = 6;
 export const REACTION_CONTAINER_SIZE = REACTION_SIZE + PADDING * 2;
 
 const CAN_USE_TRANSFORM = !IS_SAFARI;
+const SCALE_ON_HOVER = CAN_USE_TRANSFORM && false;
 
 type ChatReactionsMenuPlayers = {
   select?: RLottiePlayer,
@@ -44,35 +52,65 @@ export class ChatReactionsMenu {
   public widthContainer: HTMLElement;
   public container: HTMLElement;
   private reactionsMap: Map<HTMLElement, ChatReactionsMenuPlayers>;
-  public scrollable: ScrollableBase;
+  // private scrollable: ScrollableBase;
   private animationGroup: AnimationItemGroup;
-  private middleware: ReturnType<typeof getMiddleware>;
-  private message: Message.message;
+  private middlewareHelper: ReturnType<typeof getMiddleware>;
+  private managers: AppManagers;
+  private onFinish: (reaction?: Reaction | Promise<Reaction>) => void;
+  private listenerSetter: ListenerSetter;
+  private size: number;
+  private openSide: 'top' | 'bottom';
+  private getOpenPosition: (hasMenu: boolean) => DOMRectEditable;
 
-  constructor(
-    private managers: AppManagers,
-    private type: 'horizontal' | 'vertical',
-    middleware: ChatReactionsMenu['middleware']
-  ) {
+  constructor(options: {
+    managers: AppManagers,
+    type: 'horizontal' | 'vertical',
+    middleware: Middleware,
+    onFinish: ChatReactionsMenu['onFinish'],
+    size?: ChatReactionsMenu['size'],
+    openSide?: ChatReactionsMenu['openSide'],
+    getOpenPosition: ChatReactionsMenu['getOpenPosition']
+  }) {
+    this.managers = options.managers;
+    this.middlewareHelper = options.middleware ? options.middleware.create() : getMiddleware();
+    this.onFinish = options.onFinish;
+    this.listenerSetter = new ListenerSetter();
+    this.size = options.size ?? REACTION_SIZE;
+    this.openSide = options.openSide ?? 'bottom';
+    this.getOpenPosition = options.getOpenPosition;
+
+    this.middlewareHelper.get().onDestroy(() => {
+      this.listenerSetter.removeAll();
+    });
+
     const widthContainer = this.widthContainer = document.createElement('div');
-    widthContainer.classList.add(REACTIONS_CLASS_NAME + '-container');
-    widthContainer.classList.add(REACTIONS_CLASS_NAME + '-container-' + type);
+    widthContainer.classList.add(
+      REACTIONS_CLASS_NAME + '-container',
+      REACTIONS_CLASS_NAME + '-container-' + options.type,
+      'btn-menu-transition'
+    );
 
     const reactionsContainer = this.container = document.createElement('div');
-    reactionsContainer.classList.add(REACTIONS_CLASS_NAME);
+    reactionsContainer.classList.add(REACTIONS_CLASS_NAME/* , 'btn-menu-transition' */);
 
-    const reactionsScrollable = this.scrollable = type === 'vertical' ? new Scrollable(undefined) : new ScrollableX(undefined);
-    reactionsContainer.append(reactionsScrollable.container);
-    reactionsScrollable.onAdditionalScroll = this.onScroll;
-    reactionsScrollable.setListeners();
+    // const shadow = document.createElement('div');
+    // shadow.classList.add('inner-shadow');
 
-    reactionsScrollable.container.classList.add('no-scrollbar');
+    // const reactionsScrollable = this.scrollable = type === 'vertical' ? new Scrollable(undefined) : new ScrollableX(undefined);
+    // reactionsContainer.append(reactionsScrollable.container/* , shadow */);
+    // reactionsScrollable.onAdditionalScroll = this.onScroll;
+    // reactionsScrollable.setListeners();
+    // reactionsScrollable.container.classList.add('no-scrollbar');
 
-    // ['big'].forEach((type) => {
-    //   const bubble = document.createElement('div');
-    //   bubble.classList.add(REACTIONS_CLASS_NAME + '-bubble', REACTIONS_CLASS_NAME + '-bubble-' + type);
-    //   reactionsContainer.append(bubble);
-    // });
+    ['big'].forEach((type) => {
+      const bubble = document.createElement('div');
+      bubble.classList.add(
+        REACTIONS_CLASS_NAME + '-bubble',
+        REACTIONS_CLASS_NAME + '-bubble-' + type
+        // 'btn-menu-transition'
+      );
+      widthContainer.append(bubble);
+    });
 
     this.reactionsMap = new Map();
     this.animationGroup = `CHAT-MENU-REACTIONS-${Date.now()}`;
@@ -89,58 +127,177 @@ export class ChatReactionsMenu {
       const players = this.reactionsMap.get(reactionDiv);
       if(!players) return;
 
-      this.managers.appReactionsManager.sendReaction(this.message, players.reaction);
-    });
+      this.onFinish(players.reaction);
+    }, {listenerSetter: this.listenerSetter});
 
     widthContainer.append(reactionsContainer);
-
-    this.middleware = middleware ?? getMiddleware();
   }
 
-  public init(message: Message.message) {
-    this.message = message;
+  public async init(message?: Message.message) {
+    const middleware = this.middlewareHelper.get();
 
-    const middleware = this.middleware.get();
-    // const result = Promise.resolve(this.appReactionsManager.getAvailableReactionsForPeer(message.peerId)).then((res) => pause(1000).then(() => res));
-    const result = this.managers.appReactionsManager.getAvailableReactionsByMessage(message);
-    callbackify(result, (reactions) => {
-      if(!middleware() || !reactions.length) return;
-      reactions.forEach((reaction) => {
-        if(reaction.pFlags.premium && !rootScope.premium) return;
-        this.renderReaction(reaction);
+    const r = async(
+      {type, reactions}: PeerAvailableReactions,
+      availableReactions: AvailableReaction[]
+    ) => {
+      const maxLength = 7;
+      // const filtered = reactions.filter((reaction) => !reaction.pFlags.premium || rootScope.premium);
+      const filtered = reactions;
+      const sliced = filtered.slice(0, maxLength);
+      const renderPromises = sliced.map((reaction) => {
+        const availableReaction = reaction._ === 'reactionEmoji' ? availableReactions.find((_reaction) => _reaction.reaction === reaction.emoticon) : undefined;
+        return this.renderReaction(reaction, availableReaction);
       });
 
+      await Promise.all(renderPromises);
+      if(!middleware()) {
+        return;
+      }
+
+      if(filtered.length > maxLength) {
+        const moreButton = ButtonIcon(`${this.openSide === 'bottom' ? 'down' : 'up'} ${REACTIONS_CLASS_NAME}-more`, {noRipple: true});
+        this.container.append(moreButton);
+        attachClickEvent(moreButton, (e) => {
+          cancelEvent(e);
+
+          const reactionToDocId = async(reaction: Reaction) => {
+            let docId = (reaction as Reaction.reactionCustomEmoji).document_id;
+            if(!docId) {
+              const availableReactions = await apiManagerProxy.getAvailableReactions();
+              const availableReaction = availableReactions.find((_reaction) => _reaction.reaction === (reaction as Reaction.reactionEmoji).emoticon);
+              docId = availableReaction.select_animation.id;
+            }
+
+            return docId;
+          };
+
+          const reactionsToDocIds = (reactions: Reaction[]) => {
+            return Promise.all(reactions.map(reactionToDocId));
+          };
+
+          const noPacks = type !== 'chatReactionsAll';
+          const emojiTab = new EmojiTab({
+            noRegularEmoji: true,
+            noPacks,
+            managers: rootScope.managers,
+            mainSets: () => {
+              const topReactionsPromise = Promise.resolve(reactions)
+              // const topReactionsPromise = this.managers.appReactionsManager.getTopReactions()
+              .then(reactionsToDocIds);
+
+              const allRecentReactionsPromise = this.managers.appReactionsManager.getRecentReactions()
+              .then(reactionsToDocIds);
+
+              const topReactionsSlicedPromise = topReactionsPromise.then((docIds) => noPacks ? docIds : docIds.slice(0, 16));
+
+              const recentReactionsPromise = noPacks ? undefined : Promise.all([
+                topReactionsPromise,
+                allRecentReactionsPromise,
+                topReactionsSlicedPromise
+              ]).then(([topDocIds, recentDocIds, topSlicedDocIds]) => {
+                // filter recent reactions and add left top reactions
+                recentDocIds = recentDocIds.filter((docId) => !topSlicedDocIds.includes(docId));
+                recentDocIds.push(...topDocIds.slice(16));
+                return filterUnique(recentDocIds);
+              });
+
+              return [topReactionsSlicedPromise, recentReactionsPromise].filter(Boolean);
+            },
+            onClick: async(emoji) => {
+              if(emoji.docId && emoji.emoji) {
+                const availableReactions = await apiManagerProxy.getAvailableReactions();
+                const hasNativeReaction = availableReactions.some((_reaction) => _reaction.select_animation?.id === emoji.docId);
+                if(hasNativeReaction) {
+                  delete emoji.docId;
+                }
+              }
+
+              const reaction: Reaction = emoji.docId ? {
+                _: 'reactionCustomEmoji',
+                document_id: emoji.docId
+              } : {
+                _: 'reactionEmoji',
+                emoticon: emoji.emoji
+              };
+              deferred.resolve(reaction);
+              emoticonsDropdown.hideAndDestroy();
+            }
+          });
+
+          const emoticonsDropdown = new EmoticonsDropdown({
+            tabsToRender: [emojiTab],
+            customParentElement: document.body,
+            getOpenPosition: () => this.getOpenPosition(!noPacks)
+          });
+
+          if(noPacks) {
+            emoticonsDropdown.getElement().classList.add('shrink');
+          }
+
+          const deferred = deferredPromise<Reaction>();
+          this.onFinish(deferred);
+          emoticonsDropdown.addEventListener('closed', () => {
+            deferred.resolve(undefined);
+            emoticonsDropdown.hideAndDestroy();
+          });
+
+          emoticonsDropdown.onButtonClick();
+        }, {listenerSetter: this.listenerSetter});
+      }
+
       const setVisible = () => {
-        this.container.classList.add('is-visible');
+        this.widthContainer.classList.add('is-visible');
       };
 
-      if(result instanceof Promise) {
-        fastRaf(setVisible);
-      } else {
+      if(cached) {
         setVisible();
+      } else {
+        fastRaf(setVisible);
       }
+    };
+
+    const availableReactionsResult = apiManagerProxy.getAvailableReactions();
+    const peerAvailableReactionsResult = await this.managers.acknowledged.appReactionsManager.getAvailableReactionsByMessage(message);
+    const cached = !(availableReactionsResult instanceof Promise) && peerAvailableReactionsResult.cached;
+    const renderPromise = callbackifyAll([
+      peerAvailableReactionsResult.result,
+      availableReactionsResult
+    ], async([peerAvailableReactions, availableReactions]) => {
+      if(!middleware()) {
+        return;
+      }
+
+      if(peerAvailableReactions.type === 'chatReactionsNone') {
+        return;
+      }
+
+      return r(peerAvailableReactions, availableReactions);
     });
+
+    if(cached) {
+      await renderPromise;
+    }
   }
 
   public cleanup() {
-    this.middleware.clean();
-    this.scrollable.removeListeners();
+    this.middlewareHelper.clean();
+    // this.scrollable.removeListeners();
     this.reactionsMap.clear();
     animationIntersector.setOverrideIdleGroup(this.animationGroup, false);
     animationIntersector.checkAnimations(true, this.animationGroup, true);
   }
 
-  private onScroll = () => {
-    this.reactionsMap.forEach((players, div) => {
-      this.onScrollProcessItem(div, players);
-    });
-  };
+  // private onScroll = () => {
+  //   this.reactionsMap.forEach((players, div) => {
+  //     this.onScrollProcessItem(div, players);
+  //   });
+  // };
 
   private canUseAnimations() {
     return liteMode.isAvailable('animations') && liteMode.isAvailable('stickers_chat') && !IS_MOBILE;
   }
 
-  private renderReaction(reaction: AvailableReaction) {
+  private async renderReaction(reaction: Reaction, availableReaction?: AvailableReaction) {
     const reactionDiv = document.createElement('div');
     reactionDiv.classList.add(REACTION_CLASS_NAME);
 
@@ -159,15 +316,16 @@ export class ChatReactionsMenu {
     const players: ChatReactionsMenuPlayers = {
       selectWrapper,
       appearWrapper,
-      reaction: {_: 'reactionEmoji', emoticon: reaction.reaction}
+      reaction
     };
     this.reactionsMap.set(reactionDiv, players);
 
-    const middleware = this.middleware.get();
+    const middleware = this.middlewareHelper.get();
 
-    const hoverScale = IS_TOUCH_SUPPORTED ? 1 : 1.25;
+    const hoverScale = IS_TOUCH_SUPPORTED || !SCALE_ON_HOVER ? 1 : 1.25;
     const size = REACTION_SIZE * hoverScale;
 
+    const loadPromises: Promise<any>[] = [];
     const options = {
       width: size,
       height: size,
@@ -175,23 +333,43 @@ export class ChatReactionsMenu {
       needFadeIn: false,
       withThumb: false,
       group: this.animationGroup,
-      middleware
+      middleware,
+      loadPromises
     };
 
-    if(!this.canUseAnimations()) {
+    if(!this.canUseAnimations() || !availableReaction) {
       delete options.needFadeIn;
       delete options.withThumb;
 
-      wrapSticker({
-        doc: reaction.static_icon,
-        div: appearWrapper,
-        liteModeKey: false,
-        ...options
-      });
+      const wrap = () => {
+        wrapSticker({
+          doc,
+          div: appearWrapper,
+          liteModeKey: false,
+          play: availableReaction === undefined ? true : undefined,
+          ...options
+        });
+      };
+
+      let doc = availableReaction?.static_icon, delay = false;
+      if(!doc) {
+        const result = await this.managers.acknowledged.appEmojiManager.getCustomEmojiDocument((reaction as Reaction.reactionCustomEmoji).document_id);
+        if(result.cached) {
+          doc = await result.result;
+        } else {
+          delete options.loadPromises;
+          delay = true;
+          result.result.then((_doc) => (doc = _doc, wrap()));
+        }
+      }
+
+      if(!delay) {
+        wrap();
+      }
     } else {
       let isFirst = true;
       wrapSticker({
-        doc: reaction.appear_animation,
+        doc: availableReaction.appear_animation,
         div: appearWrapper,
         play: true,
         liteModeKey: false,
@@ -218,7 +396,7 @@ export class ChatReactionsMenu {
       }, noop);
 
       const selectLoadPromise = wrapSticker({
-        doc: reaction.select_animation,
+        doc: availableReaction.select_animation,
         div: selectWrapper,
         liteModeKey: false,
         ...options
@@ -232,43 +410,46 @@ export class ChatReactionsMenu {
     scaleContainer.append(appearWrapper);
     selectWrapper && scaleContainer.append(selectWrapper);
     reactionDiv.append(scaleContainer);
-    this.scrollable.append(reactionDiv);
+    // this.scrollable.append(reactionDiv);
+    this.container.append(reactionDiv);
+
+    return Promise.all(loadPromises);
   }
 
-  private onScrollProcessItem(div: HTMLElement, players: ChatReactionsMenuPlayers) {
-    // return;
+  // private onScrollProcessItem(div: HTMLElement, players: ChatReactionsMenuPlayers) {
+  //   // return;
 
-    const scaleContainer = div.firstElementChild as HTMLElement;
-    const visibleRect = getVisibleRect(div, this.scrollable.container);
-    let transform: string;
-    if(!visibleRect) {
-      if(!players.appearWrapper.classList.contains('hide') || !players.appear) {
-        return;
-      }
+  //   const scaleContainer = div.firstElementChild as HTMLElement;
+  //   const visibleRect = getVisibleRect(div, this.scrollable.container);
+  //   let transform: string;
+  //   if(!visibleRect) {
+  //     if(!players.appearWrapper.classList.contains('hide') || !players.appear) {
+  //       return;
+  //     }
 
-      if(players.select) {
-        players.select.stop();
-      }
+  //     if(players.select) {
+  //       players.select.stop();
+  //     }
 
-      players.appear.stop();
-      players.appear.autoplay = true;
-      players.appearWrapper.classList.remove('hide');
-      players.selectWrapper.classList.add('hide');
+  //     players.appear.stop();
+  //     players.appear.autoplay = true;
+  //     players.appearWrapper.classList.remove('hide');
+  //     players.selectWrapper.classList.add('hide');
 
-      transform = '';
-    } else if(visibleRect.overflow.left || visibleRect.overflow.right) {
-      const diff = Math.abs(visibleRect.rect.left - visibleRect.rect.right);
-      const scale = Math.min(diff ** 2 / REACTION_CONTAINER_SIZE ** 2, 1);
+  //     transform = '';
+  //   } else if(visibleRect.overflow.left || visibleRect.overflow.right) {
+  //     const diff = Math.abs(visibleRect.rect.left - visibleRect.rect.right);
+  //     const scale = Math.min(diff ** 2 / REACTION_CONTAINER_SIZE ** 2, 1);
 
-      transform = 'scale(' + scale + ')';
-    } else {
-      transform = '';
-    }
+  //     transform = 'scale(' + scale + ')';
+  //   } else {
+  //     transform = '';
+  //   }
 
-    if(CAN_USE_TRANSFORM) {
-      scaleContainer.style.transform = transform;
-    }
-  }
+  //   if(CAN_USE_TRANSFORM) {
+  //     scaleContainer.style.transform = transform;
+  //   }
+  // }
 
   private onMouseMove = (e: MouseEvent) => {
     const reactionDiv = findUpClassName(e.target, REACTION_CLASS_NAME);

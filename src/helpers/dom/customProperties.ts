@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type {AppColorName} from '../themeController';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import rootScope from '../../lib/rootScope';
 import mediaSizes from '../mediaSizes';
@@ -17,7 +18,7 @@ export class CustomProperties {
   constructor() {
     this.cache = {};
 
-    rootScope.addEventListener('theme_change', this.resetCache);
+    rootScope.addEventListener('theme_changed', this.resetCache);
     mediaSizes.addEventListener('resize', this.resetCache);
   }
 
@@ -27,22 +28,20 @@ export class CustomProperties {
     this.cache = {};
 
     for(const i in cache) {
-      this.getProperty(i);
+      this.getProperty(i as CustomProperty);
     }
   };
 
   public getProperty(name: CustomProperty) {
     let value = this.cache[name];
-    if(value) {
+    if(value !== undefined) {
       return value;
     }
 
-    if(!this.computedStyle) {
-      this.computedStyle = window.getComputedStyle(document.documentElement);
-    }
+    this.computedStyle ??= window.getComputedStyle(document.documentElement);
 
     value = this.computedStyle.getPropertyValue('--' + name).trim();
-    return this.cache[name] = value;
+    return this.setPropertyCache(name, value);
   }
 
   public getPropertyAsSize(name: CustomProperty) {
@@ -58,6 +57,10 @@ export class CustomProperties {
     }
 
     return size;
+  }
+
+  public setPropertyCache(name: CustomProperty, value: string) {
+    return this.cache[name] = value;
   }
 }
 

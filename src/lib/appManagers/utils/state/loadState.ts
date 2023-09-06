@@ -17,7 +17,7 @@ import sessionStorage from '../../../sessionStorage';
 import {recordPromiseBound} from '../../../../helpers/recordPromise';
 // import RESET_STORAGES_PROMISE from "../storages/resetStoragesPromise";
 import {StoragesResults} from '../storages/loadStorages';
-import {logger} from '../../../logger';
+import {LogTypes, logger} from '../../../logger';
 import {WallPaper} from '../../../../layer';
 
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
@@ -39,7 +39,7 @@ const REFRESH_KEYS: Array<keyof State> = [
 // const REFRESH_KEYS_WEEK = ['dialogs', 'allDialogsLoaded', 'updates', 'pinnedOrders'] as any as Array<keyof State>;
 
 async function loadStateInner() {
-  const log = logger('STATE-LOADER');
+  const log = logger('STATE-LOADER', LogTypes.Error);
 
   const totalPerf = performance.now();
   const recordPromise = recordPromiseBound(log);
@@ -48,9 +48,13 @@ async function loadStateInner() {
   .concat(
     recordPromise(sessionStorage.get('user_auth'), 'auth'),
     recordPromise(sessionStorage.get('state_id'), 'auth'),
-    recordPromise(sessionStorage.get('k_build'), 'auth')
+    recordPromise(sessionStorage.get('k_build'), 'auth'),
+    recordPromise(sessionStorage.get('auth_key_fingerprint'), 'auth'),
+    recordPromise(sessionStorage.get(`dc${App.baseDcId}_auth_key`), 'auth')
   )
-  .concat(recordPromise(stateStorage.get('user_auth'), 'old auth')); // support old webk format
+  .concat( // support old webk format
+    recordPromise(stateStorage.get('user_auth'), 'old auth')
+  );
 
   const arr = await Promise.all(promises);
   log.warn('promises', performance.now() - totalPerf);
@@ -125,6 +129,8 @@ async function loadStateInner() {
   let auth = arr.shift() as UserAuth | number;
   const stateId = arr.shift() as number;
   const sessionBuild = arr.shift() as number;
+  const authKeyFingerprint = arr.shift() as string;
+  const baseDcAuthKey = arr.shift() as string;
   const shiftedWebKAuth = arr.shift() as UserAuth | number;
   if(!auth && shiftedWebKAuth) { // support old webk auth
     auth = shiftedWebKAuth;
@@ -179,40 +185,51 @@ async function loadStateInner() {
   }
 
   const resetStorages: Set<keyof StoragesResults> = new Set();
+  const resetState = (preserveKeys: (keyof State)[]) => {
+    preserveKeys.push('authState', 'stateId');
+    const preserve: Map<keyof State, State[keyof State]> = new Map(
+      preserveKeys.map((key) => [key, state[key]])
+    );
+
+    state = copy(STATE_INIT);
+
+    preserve.forEach((value, key) => {
+      // @ts-ignore
+      state[key] = value;
+    });
+
+    const r: (keyof StoragesResults)[] = ['chats', 'dialogs', 'users'];
+    for(const key of r) {
+      resetStorages.add(key);
+      // this.storagesResults[key as keyof AppStateManager['storagesResults']].length = 0;
+    }
+
+    replaceState(state);
+  };
+
   if(state.stateId !== stateId) {
     if(stateId !== undefined) {
-      const preserve: Map<keyof State, State[keyof State]> = new Map([
-        ['authState', undefined],
-        ['stateId', undefined]
-      ]);
-
-      preserve.forEach((_, key) => {
-        preserve.set(key, copy(state[key]));
-      });
-
-      state = copy(STATE_INIT);
-
-      preserve.forEach((value, key) => {
-        // @ts-ignore
-        state[key] = value;
-      });
-
-      const r: {[k in keyof StoragesResults]: number} = {
-        chats: 1,
-        dialogs: 1,
-        users: 1
-      };
-      for(const key in r) {
-        resetStorages.add(key as keyof StoragesResults);
-        // this.storagesResults[key as keyof AppStateManager['storagesResults']].length = 0;
-      }
-
-      replaceState(state);
+      resetState([]);
     }
 
     await sessionStorage.set({
       state_id: state.stateId
     });
+  }
+
+  if(baseDcAuthKey) {
+    const _authKeyFingerprint = baseDcAuthKey.slice(0, 8);
+    if(!authKeyFingerprint) { // * migration, preserve settings
+      resetState(['settings']);
+    } else if(authKeyFingerprint !== _authKeyFingerprint) {
+      resetState([]);
+    }
+
+    if(authKeyFingerprint !== _authKeyFingerprint) {
+      await sessionStorage.set({
+        auth_key_fingerprint: _authKeyFingerprint
+      });
+    }
   }
 
   const time = Date.now();
@@ -286,10 +303,10 @@ async function loadStateInner() {
   let newVersion: string, oldVersion: string;
   if(state.version !== STATE_VERSION || state.build !== BUILD/*  || true */) {
     // reset filters and dialogs if version is older
-    if(/* compareVersion(state.version, '0.8.7') === -1 || state.build < 179 ||  */state.build < 217) {
-      state.allDialogsLoaded = copy(STATE_INIT.allDialogsLoaded);
-      state.pinnedOrders = copy(STATE_INIT.pinnedOrders);
-      state.filtersArr = copy(STATE_INIT.filtersArr);
+    if(state.build < 322) {
+      pushToState('allDialogsLoaded', copy(STATE_INIT.allDialogsLoaded));
+      pushToState('pinnedOrders', copy(STATE_INIT.pinnedOrders));
+      pushToState('filtersArr', copy(STATE_INIT.filtersArr));
 
       resetStorages.add('dialogs');
     }

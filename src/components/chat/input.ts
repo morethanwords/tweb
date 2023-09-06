@@ -5,25 +5,24 @@
  */
 
 import type {MyDocument} from '../../lib/appManagers/appDocsManager';
-import {AppImManager, APP_TABS} from '../../lib/appManagers/appImManager';
 import type {MyDraftMessage} from '../../lib/appManagers/appDraftsManager';
 import type Chat from './chat';
-import Recorder from '../../../public/recorder.min';
+import {AppImManager, APP_TABS} from '../../lib/appManagers/appImManager';
+import '../../../public/recorder.min';
 import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
-// import Recorder from '../opus-recorder/dist/recorder.min';
 import opusDecodeController from '../../lib/opusDecodeController';
 import {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable, ButtonMenuSync} from '../buttonMenu';
-import emoticonsDropdown from '../emoticonsDropdown';
+import emoticonsDropdown, {EmoticonsDropdown} from '../emoticonsDropdown';
 import PopupCreatePoll from '../popups/createPoll';
 import PopupForward from '../popups/forward';
 import PopupNewMedia from '../popups/newMedia';
 import {toast, toastNew} from '../toast';
-import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType} from '../../layer';
+import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton} from '../../layer';
 import StickersHelper from './stickersHelper';
 import ButtonIcon from '../buttonIcon';
 import ButtonMenuToggle from '../buttonMenuToggle';
 import ListenerSetter, {Listener} from '../../helpers/listenerSetter';
-import Button from '../button';
+import Button, {replaceButtonIcon} from '../button';
 import PopupSchedule from '../popups/schedule';
 import SendMenu from './sendContextMenu';
 import rootScope from '../../lib/rootScope';
@@ -53,7 +52,6 @@ import fixSafariStickyInput from '../../helpers/dom/fixSafariStickyInput';
 import ReplyKeyboard from './replyKeyboard';
 import InlineHelper from './inlineHelper';
 import debounce from '../../helpers/schedulers/debounce';
-import noop from '../../helpers/noop';
 import {putPreloader} from '../putPreloader';
 import SetTransition from '../singleTransition';
 import PeerTitle from '../peerTitle';
@@ -61,9 +59,8 @@ import {fastRaf} from '../../helpers/schedulers';
 import PopupDeleteMessages from '../popups/deleteMessages';
 import fixSafariStickyInputFocusing, {IS_STICKY_INPUT_BUGGED} from '../../helpers/dom/fixSafariStickyInputFocusing';
 import PopupPeer from '../popups/peer';
-import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport';
 import appMediaPlaybackController from '../appMediaPlaybackController';
-import {BOT_START_PARAM, NULL_PEER_ID} from '../../lib/mtproto/mtproto_config';
+import {BOT_START_PARAM, NULL_PEER_ID, SEND_WHEN_ONLINE_TIMESTAMP} from '../../lib/mtproto/mtproto_config';
 import setCaretAt from '../../helpers/dom/setCaretAt';
 import CheckboxField from '../checkboxField';
 import DropdownHover from '../../helpers/dropdownHover';
@@ -100,18 +97,28 @@ import hasMarkupInSelection from '../../helpers/dom/hasMarkupInSelection';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import RichInputHandler from '../../helpers/dom/richInputHandler';
 import {insertRichTextAsHTML} from '../inputField';
-import getCaretPosNew from '../../helpers/dom/getCaretPosNew';
 import draftsAreEqual from '../../lib/appManagers/utils/drafts/draftsAreEqual';
 import isSelectionEmpty from '../../helpers/dom/isSelectionEmpty';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import getAttachMenuBotIcon from '../../lib/appManagers/utils/attachMenuBots/getAttachMenuBotIcon';
-import TelegramWebView from '../telegramWebView';
 import forEachReverse from '../../helpers/array/forEachReverse';
 import {MARKDOWN_ENTITIES} from '../../lib/richTextProcessor';
 import IMAGE_MIME_TYPES_SUPPORTED from '../../environment/imageMimeTypesSupport';
 import VIDEO_MIME_TYPES_SUPPORTED from '../../environment/videoMimeTypesSupport';
 import {ChatRights} from '../../lib/appManagers/appChatsManager';
 import getPeerActiveUsernames from '../../lib/appManagers/utils/peers/getPeerActiveUsernames';
+import replaceContent from '../../helpers/dom/replaceContent';
+import getTextWidth from '../../helpers/canvas/getTextWidth';
+import {FontFamilyName, FontFull} from '../../config/font';
+import {ChatType} from './chat';
+import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
+import idleController from '../../helpers/idleController';
+import Icon from '../icon';
+import setBadgeContent from '../../helpers/setBadgeContent';
+import createBadge from '../../helpers/createBadge';
+import deepEqual from '../../helpers/object/deepEqual';
+
+// console.log('Recorder', Recorder);
 
 const RECORD_MIN_TIME = 500;
 
@@ -126,6 +133,9 @@ export const POSTING_NOT_ALLOWED_MAP: {[action in ChatRights]?: LangPackKey} = {
 };
 
 type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply';
+
+const CLASS_NAME = 'chat-input';
+const PEER_EXCEPTIONS = new Set<ChatType>(['scheduled', 'stories']);
 
 export default class ChatInput {
   // private static AUTO_COMPLETE_REG_EXP = /(\s|^)((?::|.)(?!.*[:@]).*|(?:[@\/]\S*))$/;
@@ -145,7 +155,7 @@ export default class ChatInput {
   private newMessageWrapper: HTMLDivElement;
   private btnToggleEmoticons: HTMLButtonElement;
   private btnToggleReplyMarkup: HTMLButtonElement;
-  private btnSendContainer: HTMLDivElement;
+  public btnSendContainer: HTMLDivElement;
 
   private replyKeyboard: ReplyKeyboard;
 
@@ -176,6 +186,7 @@ export default class ChatInput {
   public willSendWebPage: WebPage = null;
   private forwarding: {[fromPeerId: PeerId]: number[]};
   public replyToMsgId: number;
+  public replyToStoryId: number;
   public editMsgId: number;
   public editMessage: Message.message;
   private noWebPage: true;
@@ -235,16 +246,19 @@ export default class ChatInput {
   private releaseMediaPlayback: () => void;
 
   private botStartBtn: HTMLButtonElement;
+  private unblockBtn: HTMLButtonElement;
   private rowsWrapperWrapper: HTMLDivElement;
   private controlContainer: HTMLElement;
   private fakeSelectionWrapper: HTMLDivElement;
 
   private fakeWrapperTo: HTMLElement;
-  private toggleBotStartBtnDisability: () => void;
+  private toggleControlButtonDisability: () => void;
 
   private botCommandsToggle: HTMLElement;
   private botCommands: ChatBotCommands;
-  private botCommandsIcon: HTMLDivElement;
+  private botCommandsIcon: HTMLElement;
+  private botCommandsView: HTMLElement;
+  private botMenuButton: BotMenuButton.botMenuButton;
   private hasBotCommands: boolean;
 
   // private activeContainer: HTMLElement;
@@ -255,30 +269,60 @@ export default class ChatInput {
   private replyInTopicOverlay: HTMLDivElement;
   private restoreInputLock: () => void;
 
+  private isFocused: boolean;
+  public onFocusChange: (isFocused: boolean) => void;
+  public onMenuToggle: (isOpen: boolean) => void;
+  public onRecording: (isRecording: boolean) => void;
+
+  public emoticonsDropdown: EmoticonsDropdown;
+
+  public excludeParts: Partial<{
+    scheduled: boolean,
+    replyMarkup: boolean,
+    downButton: boolean,
+    reply: boolean,
+    forwardOptions: boolean,
+    mentionButton: boolean,
+    botCommands: boolean,
+    attachMenu: boolean,
+    commandsHelper: boolean
+  }>;
+  public globalMentions: boolean;
+
+  public onFileSelection: (promise: Promise<File[]>) => void;
+
+  private hasOffset: {type: 'commands' | 'as', forwards: boolean};
+
   constructor(
-    private chat: Chat,
+    public chat: Chat,
     private appImManager: AppImManager,
-    private managers: AppManagers
+    private managers: AppManagers,
+    private className: string
   ) {
     this.listenerSetter = new ListenerSetter();
+    this.excludeParts = {};
+    this.isFocused = false;
+    this.emoticonsDropdown = emoticonsDropdown;
   }
 
   public construct() {
+    const className2 = this.className;
+
     this.chatInput = document.createElement('div');
-    this.chatInput.classList.add('chat-input', 'hide');
+    this.chatInput.classList.add(CLASS_NAME, className2, 'hide');
 
     this.inputContainer = document.createElement('div');
-    this.inputContainer.classList.add('chat-input-container');
+    this.inputContainer.classList.add(`${CLASS_NAME}-container`, `${className2}-container`);
 
     this.rowsWrapperWrapper = document.createElement('div');
     this.rowsWrapperWrapper.classList.add('rows-wrapper-wrapper');
 
     this.rowsWrapper = document.createElement('div');
-    this.rowsWrapper.classList.add('rows-wrapper', 'chat-input-wrapper');
+    this.rowsWrapper.classList.add('rows-wrapper', `${CLASS_NAME}-wrapper`, `${className2}-wrapper`);
 
     this.rowsWrapperWrapper.append(this.rowsWrapper);
 
-    const tail = generateTail();
+    const tail = generateTail(!this.chat.isMainChat);
     this.rowsWrapper.append(tail);
 
     const fakeRowsWrapper = this.fakeRowsWrapper = document.createElement('div');
@@ -290,13 +334,9 @@ export default class ChatInput {
     this.inputContainer.append(this.rowsWrapperWrapper, fakeRowsWrapper, fakeSelectionWrapper);
     this.chatInput.append(this.inputContainer);
 
-    this.goDownBtn = ButtonCorner({icon: 'arrow_down', className: 'bubbles-corner-button chat-secondary-button bubbles-go-down hide'});
-    this.inputContainer.append(this.goDownBtn);
-
-    attachClickEvent(this.goDownBtn, (e) => {
-      cancelEvent(e);
-      this.chat.bubbles.onGoDownClick();
-    }, {listenerSetter: this.listenerSetter});
+    if(!this.excludeParts.downButton) {
+      this.constructGoDownButton();
+    }
 
     // * constructor end
 
@@ -376,17 +416,30 @@ export default class ChatInput {
     return button;
   }
 
-  public constructPeerHelpers() {
+  private constructGoDownButton() {
+    this.goDownBtn = ButtonCorner({icon: 'arrow_down', className: 'bubbles-corner-button chat-secondary-button bubbles-go-down hide'});
+    this.inputContainer.append(this.goDownBtn);
+
+    attachClickEvent(this.goDownBtn, (e) => {
+      cancelEvent(e);
+      this.chat.bubbles.onGoDownClick();
+    }, {listenerSetter: this.listenerSetter});
+  }
+
+  private constructReplyElements() {
     this.replyElements.container = document.createElement('div');
-    this.replyElements.container.classList.add('reply-wrapper');
+    this.replyElements.container.classList.add('reply-wrapper', 'rows-wrapper-row');
 
     this.replyElements.iconBtn = this.createButtonIcon('');
     this.replyElements.cancelBtn = this.createButtonIcon('close reply-cancel', {noRipple: true});
 
     this.replyElements.container.append(this.replyElements.iconBtn, this.replyElements.cancelBtn);
 
-    //
+    attachClickEvent(this.replyElements.cancelBtn, this.onHelperCancel, {listenerSetter: this.listenerSetter});
+    attachClickEvent(this.replyElements.container, this.onHelperClick, {listenerSetter: this.listenerSetter});
+  }
 
+  private constructForwardElements() {
     const onHideAuthorClick = () => {
       isChangingAuthor = true;
     };
@@ -499,28 +552,11 @@ export default class ChatInput {
       input.name = idx < 2 ? 'author' : 'caption';
       input.value = '' + +!(idx % 2);
     });
+  }
 
-    //
-
-    this.newMessageWrapper = document.createElement('div');
-    this.newMessageWrapper.classList.add('new-message-wrapper');
-
-    this.replyInTopicOverlay = document.createElement('div');
-    this.replyInTopicOverlay.classList.add('reply-in-topic-overlay', 'hide');
-    this.replyInTopicOverlay.append(i18n('Chat.Input.ReplyToAnswer'));
-
-    this.btnToggleEmoticons = this.createButtonIcon('none toggle-emoticons', {noRipple: true});
-
-    this.inputMessageContainer = document.createElement('div');
-    this.inputMessageContainer.classList.add('input-message-container');
-
-    this.goDownUnreadBadge = document.createElement('span');
-    this.goDownUnreadBadge.classList.add('badge', 'badge-24', 'badge-primary');
-    this.goDownBtn.append(this.goDownUnreadBadge);
-
+  private constructMentionButton() {
     this.goMentionBtn = ButtonCorner({icon: 'mention', className: 'bubbles-corner-button chat-secondary-button bubbles-go-mention'});
-    this.goMentionUnreadBadge = document.createElement('span');
-    this.goMentionUnreadBadge.classList.add('badge', 'badge-24', 'badge-primary');
+    this.goMentionUnreadBadge = createBadge('span', 24, 'primary');
     this.goMentionBtn.append(this.goMentionUnreadBadge);
     this.inputContainer.append(this.goMentionBtn);
 
@@ -537,7 +573,9 @@ export default class ChatInput {
         }
       });
     }, {listenerSetter: this.listenerSetter});
+  }
 
+  private constructScheduledButton() {
     this.btnScheduled = this.createButtonIcon('scheduled btn-scheduled float hide', {noRipple: true});
 
     attachClickEvent(this.btnScheduled, (e) => {
@@ -561,7 +599,9 @@ export default class ChatInput {
         this.btnScheduled.classList.toggle('hide', !value.length);
       });
     });
+  }
 
+  private constructReplyMarkup() {
     this.btnToggleReplyMarkup = this.createButtonIcon('botcom toggle-reply-markup float hide', {noRipple: true});
     this.replyKeyboard = new ReplyKeyboard({
       appendTo: this.rowsWrapper,
@@ -572,10 +612,13 @@ export default class ChatInput {
     });
     this.listenerSetter.add(this.replyKeyboard)('open', () => this.btnToggleReplyMarkup.classList.add('active'));
     this.listenerSetter.add(this.replyKeyboard)('close', () => this.btnToggleReplyMarkup.classList.remove('active'));
+  }
 
+  private constructBotCommands() {
     this.botCommands = new ChatBotCommands(this.rowsWrapper, this, this.managers);
     this.botCommandsToggle = document.createElement('div');
     this.botCommandsToggle.classList.add('new-message-bot-commands');
+    this.botCommandsToggle.append(Icon('webview', 'new-message-bot-commands-view-icon'));
 
     const scaler = document.createElement('div');
     scaler.classList.add('new-message-bot-commands-icon-scale');
@@ -583,16 +626,50 @@ export default class ChatInput {
     const icon = this.botCommandsIcon = document.createElement('div');
     icon.classList.add('animated-menu-icon', 'animated-menu-close-icon');
     scaler.append(icon);
-    this.botCommandsToggle.append(scaler);
 
+    this.botCommandsView = document.createElement('div');
+    this.botCommandsView.classList.add('new-message-bot-commands-view');
+    this.botCommandsToggle.append(scaler, this.botCommandsView);
+
+    let webViewTempId = 0, waitingForWebView = false;
     attachClickEvent(this.botCommandsToggle, (e) => {
       cancelEvent(e);
+      const botId = this.chat.peerId.toUserId();
+      const {botMenuButton} = this;
+      if(botMenuButton) {
+        if(waitingForWebView) {
+          return;
+        }
+
+        const tempId = ++webViewTempId;
+        waitingForWebView = true;
+
+        this.chat.appImManager.confirmBotWebView(botId).then(() => {
+          if(webViewTempId !== tempId) {
+            return;
+          }
+
+          return this.chat.openWebApp({
+            botId,
+            url: botMenuButton.url,
+            buttonText: botMenuButton.text,
+            fromBotMenu: true
+          });
+        }).finally(() => {
+          if(webViewTempId === tempId) {
+            waitingForWebView = false;
+          }
+        });
+        return;
+      }
+
+      const middleware = this.chat.bubbles.getMiddleware();
       const isShown = icon.classList.contains('state-back');
       if(isShown) {
         this.botCommands.toggle(true);
         icon.classList.remove('state-back');
       } else {
-        this.botCommands.setUserId(this.chat.peerId.toUserId(), this.chat.bubbles.getMiddleware());
+        this.botCommands.setUserId(botId, middleware);
         icon.classList.add('state-back');
       }
     }, {listenerSetter: this.listenerSetter});
@@ -604,26 +681,170 @@ export default class ChatInput {
     this.botCommands.addEventListener('hiding', () => {
       icon.classList.remove('state-back');
     });
+  }
+
+  private constructRecorder() {
+    const Recorder = (window as any).Recorder;
+    if(Recorder) try {
+      this.recorder = new Recorder({
+        // encoderBitRate: 32,
+        // encoderPath: "../dist/encoderWorker.min.js",
+        encoderSampleRate: 48000,
+        monitorGain: 0,
+        numberOfChannels: 1,
+        recordingGain: 1,
+        reuseWorker: true
+      });
+    } catch(err) {
+      console.error('Recorder constructor error:', err);
+    }
+
+    if(!this.recorder) {
+      return;
+    }
+
+    attachClickEvent(this.btnCancelRecord, this.onCancelRecordClick, {listenerSetter: this.listenerSetter});
+
+    this.recorder.onstop = () => {
+      this.setRecording(false);
+      this.chatInput.classList.remove('is-locked');
+      this.recordRippleEl.style.transform = '';
+    };
+
+    this.recorder.ondataavailable = (typedArray: Uint8Array) => {
+      if(this.releaseMediaPlayback) {
+        this.releaseMediaPlayback();
+        this.releaseMediaPlayback = undefined;
+      }
+
+      if(this.recordingOverlayListener) {
+        this.listenerSetter.remove(this.recordingOverlayListener);
+        this.recordingOverlayListener = undefined;
+      }
+
+      if(this.recordingNavigationItem) {
+        appNavigationController.removeItem(this.recordingNavigationItem);
+        this.recordingNavigationItem = undefined;
+      }
+
+      if(this.recordCanceled) {
+        return;
+      }
+
+      const sendingParams = this.chat.getMessageSendingParams();
+      const duration = (Date.now() - this.recordStartTime) / 1000 | 0;
+      const dataBlob = new Blob([typedArray], {type: 'audio/ogg'});
+      opusDecodeController.decode(typedArray, true).then((result) => {
+        opusDecodeController.setKeepAlive(false);
+
+        // тут objectURL ставится уже с audio/wav
+        this.managers.appMessagesManager.sendFile(sendingParams.peerId, {
+          ...sendingParams,
+          file: dataBlob,
+          isVoiceMessage: true,
+          isMedia: true,
+          duration,
+          waveform: result.waveform,
+          objectURL: result.url,
+          clearDraft: true
+        });
+
+        this.onMessageSent(false, true);
+      });
+    };
+  }
+
+  public constructPeerHelpers() {
+    if(!this.excludeParts.reply) {
+      this.constructReplyElements();
+
+      if(!this.excludeParts.forwardOptions) {
+        this.constructForwardElements();
+      }
+    }
+
+    this.newMessageWrapper = document.createElement('div');
+    this.newMessageWrapper.classList.add('new-message-wrapper', 'rows-wrapper-row');
+
+    this.replyInTopicOverlay = document.createElement('div');
+    this.replyInTopicOverlay.classList.add('reply-in-topic-overlay', 'hide');
+    this.replyInTopicOverlay.append(i18n('Chat.Input.ReplyToAnswer'));
+
+    this.btnToggleEmoticons = this.createButtonIcon('smile toggle-emoticons', {noRipple: true});
+
+    this.inputMessageContainer = document.createElement('div');
+    this.inputMessageContainer.classList.add('input-message-container');
+
+    if(this.goDownBtn) {
+      this.goDownUnreadBadge = createBadge('span', 24, 'primary');
+      this.goDownBtn.append(this.goDownUnreadBadge);
+    }
+
+    if(!this.excludeParts.mentionButton) {
+      this.constructMentionButton();
+    }
+
+    if(!this.excludeParts.scheduled) {
+      this.constructScheduledButton();
+    }
+
+    if(!this.excludeParts.replyMarkup) {
+      this.constructReplyMarkup();
+    }
+
+    if(!this.excludeParts.botCommands) {
+      this.constructBotCommands();
+    }
 
     // const getSendMediaRights = () => Promise.all([this.chat.canSend('send_photos'), this.chat.canSend('send_videos')]).then(([photos, videos]) => ({photos, videos}));
 
-    const onAttachMediaClick = (photos: boolean, videos: boolean) => {
+    let fileSelectionPromise: CancellablePromise<File[]>;
+    const onAttachClick = (documents?: boolean, photos?: boolean, videos?: boolean) => {
+      const promise = fileSelectionPromise = deferredPromise();
       this.fileInput.value = '';
 
-      const accept = [
-        ...(photos ? IMAGE_MIME_TYPES_SUPPORTED : []),
-        ...(videos ? VIDEO_MIME_TYPES_SUPPORTED : [])
-      ].join(', ');
+      promise.finally(() => {
+        idleController.removeEventListener('change', onIdleChange);
+        if(promise !== fileSelectionPromise) {
+          return;
+        }
+      });
 
-      this.fileInput.setAttribute('accept', accept);
-      this.willAttachType = 'media';
+      const onIdleChange = (idle: boolean) => {
+        if(promise !== fileSelectionPromise) {
+          promise.reject();
+          return;
+        }
+
+        if(!idle) {
+          setTimeout(() => {
+            promise.reject();
+          }, 1000);
+        }
+      };
+      idleController.addEventListener('change', onIdleChange);
+
+      if(documents) {
+        this.fileInput.removeAttribute('accept');
+        this.willAttachType = 'document';
+      } else {
+        const accept = [
+          ...(photos ? IMAGE_MIME_TYPES_SUPPORTED : []),
+          ...(videos ? VIDEO_MIME_TYPES_SUPPORTED : [])
+        ].join(', ');
+
+        this.fileInput.setAttribute('accept', accept);
+        this.willAttachType = 'media';
+      }
+
       this.fileInput.click();
+      this.onFileSelection?.(fileSelectionPromise);
     };
 
     this.attachMenuButtons = [{
       icon: 'image',
       text: 'Chat.Input.Attach.PhotoOrVideo',
-      onClick: () => onAttachMediaClick(true, true)
+      onClick: () => onAttachClick(false, true, true)
       // verify: () => getSendMediaRights().then(({photos, videos}) => photos && videos)
     }, /* {
       icon: 'image',
@@ -638,18 +859,18 @@ export default class ChatInput {
     }, */ {
       icon: 'document',
       text: 'Chat.Input.Attach.Document',
-      onClick: () => {
-        this.fileInput.value = '';
-        this.fileInput.removeAttribute('accept');
-        this.willAttachType = 'document';
-        this.fileInput.click();
-      }
+      onClick: () => onAttachClick(true)
       // verify: () => this.chat.canSend('send_docs')
     }, {
       icon: 'gift',
       text: 'GiftPremium',
       onClick: () => this.chat.appImManager.giftPremium(this.chat.peerId),
-      verify: () => Promise.all([this.chat.canGiftPremium(), this.managers.apiManager.getAppConfig()]).then(([canGift, {premium_gift_attach_menu_icon}]) => canGift && premium_gift_attach_menu_icon)
+      verify: () => {
+        return this.chat && Promise.all([
+          this.chat.canGiftPremium(),
+          this.managers.apiManager.getAppConfig()
+        ]).then(([canGift, {premium_gift_attach_menu_icon}]) => canGift && premium_gift_attach_menu_icon);
+      }
     }, {
       icon: 'poll',
       text: 'Poll',
@@ -674,10 +895,9 @@ export default class ChatInput {
       listenerSetter: this.listenerSetter,
       direction: 'top-left',
       buttons: this.attachMenuButtons,
-      onOpenBefore: async() => {
+      onOpenBefore: this.excludeParts.attachMenu ? undefined : async() => {
         const attachMenuBots = await this.managers.appAttachMenuBotsManager.getAttachMenuBots();
         const buttons = attachMenuButtons.slice();
-        console.log(attachMenuBots);
         const attachMenuBotsButtons = attachMenuBots.filter((attachMenuBot) => {
           return !attachMenuBot.pFlags.inactive;
         }).map((attachMenuBot) => {
@@ -685,57 +905,7 @@ export default class ChatInput {
           const button: typeof buttons[0] = {
             regularText: wrapEmojiText(attachMenuBot.short_name),
             onClick: () => {
-              this.managers.appAttachMenuBotsManager.requestWebView({
-                botId: attachMenuBot.bot_id,
-                peerId: this.chat.peerId,
-                ...this.chat.getMessageSendingParams()
-              }).then((webViewResultUrl) => {
-                const SANDBOX_ATTRIBUTES = [
-                  'allow-scripts',
-                  'allow-same-origin',
-                  'allow-popups',
-                  'allow-forms',
-                  'allow-modals'
-                  // 'allow-storage-access-by-user-activation'
-                ].join(' ');
-
-                class P extends PopupElement<{
-                  finish: () => void
-                }> {
-                  private telegramWebView: TelegramWebView;
-
-                  constructor(private url: string) {
-                    super('popup-payment popup-payment-verification', {
-                      closable: true,
-                      overlayClosable: true,
-                      body: true,
-                      titleRaw: attachMenuBot.short_name
-                    });
-
-                    this.d();
-                  }
-
-                  protected destroy() {
-                    this.telegramWebView.destroy();
-                    return super.destroy();
-                  }
-
-                  private d() {
-                    const telegramWebView = this.telegramWebView = new TelegramWebView({
-                      url: this.url,
-                      sandbox: SANDBOX_ATTRIBUTES
-                    });
-
-                    telegramWebView.iframe.classList.add('payment-verification');
-
-                    this.body.append(telegramWebView.iframe);
-                    this.show();
-                    telegramWebView.onMount();
-                  }
-                }
-
-                new P(webViewResultUrl.url);
-              });
+              this.chat.openWebApp({attachMenuBot, fromAttachMenu: true});
             },
             iconDoc: icon?.icon as MyDocument,
             verify: async() => {
@@ -768,10 +938,16 @@ export default class ChatInput {
 
         buttons.splice(buttons.length, 0, ...attachMenuBotsButtons);
         this.attachMenuButtons.splice(0, this.attachMenuButtons.length, ...buttons);
+      },
+      onOpen: () => {
+        this.onMenuToggle?.(true);
+      },
+      onClose: () => {
+        this.onMenuToggle?.(false);
       }
     });
-    this.attachMenu.classList.add('attach-file', 'tgico-attach');
-    this.attachMenu.classList.remove('tgico-more');
+    this.attachMenu.classList.add('attach-file');
+    this.attachMenu.firstElementChild.replaceWith(Icon('attach'));
 
     // this.inputContainer.append(this.sendMenu);
 
@@ -783,13 +959,22 @@ export default class ChatInput {
     this.fileInput.multiple = true;
     this.fileInput.style.display = 'none';
 
-    this.newMessageWrapper.append(...[this.botCommandsToggle, this.btnToggleEmoticons, this.inputMessageContainer, this.btnScheduled, this.btnToggleReplyMarkup, this.attachMenu, this.recordTimeEl, this.fileInput].filter(Boolean));
+    this.newMessageWrapper.append(...[
+      this.botCommandsToggle,
+      this.btnToggleEmoticons,
+      this.inputMessageContainer,
+      this.btnScheduled,
+      this.btnToggleReplyMarkup,
+      this.attachMenu,
+      this.recordTimeEl,
+      this.fileInput
+    ].filter(Boolean));
 
-    this.rowsWrapper.append(this.replyElements.container);
+    if(this.replyElements?.container) this.rowsWrapper.append(this.replyElements.container);
     this.autocompleteHelperController = new AutocompleteHelperController();
     this.stickersHelper = new StickersHelper(this.rowsWrapper, this.autocompleteHelperController, this.chat, this.managers);
     this.emojiHelper = new EmojiHelper(this.rowsWrapper, this.autocompleteHelperController, this, this.managers);
-    this.commandsHelper = new CommandsHelper(this.rowsWrapper, this.autocompleteHelperController, this, this.managers);
+    if(!this.excludeParts.commandsHelper) this.commandsHelper = new CommandsHelper(this.rowsWrapper, this.autocompleteHelperController, this, this.managers);
     this.mentionsHelper = new MentionsHelper(this.rowsWrapper, this.autocompleteHelperController, this, this.managers);
     this.inlineHelper = new InlineHelper(this.rowsWrapper, this.autocompleteHelperController, this.chat, this.managers);
     this.rowsWrapper.append(this.newMessageWrapper);
@@ -802,13 +987,16 @@ export default class ChatInput {
     this.recordRippleEl = document.createElement('div');
     this.recordRippleEl.classList.add('record-ripple');
 
-    this.btnSend = this.createButtonIcon('none btn-circle btn-send animated-button-icon');
-    this.btnSend.insertAdjacentHTML('afterbegin', `
-    <span class="tgico tgico-send"></span>
-    <span class="tgico tgico-schedule"></span>
-    <span class="tgico tgico-check"></span>
-    <span class="tgico tgico-microphone_filled"></span>
-    `);
+    this.btnSend = this.createButtonIcon();
+    this.btnSend.classList.add('btn-circle', 'btn-send', 'animated-button-icon');
+    const icons: [Icon, string][] = [
+      ['send', 'send'],
+      ['schedule', 'schedule'],
+      ['check', 'edit'],
+      ['microphone_filled', 'record'],
+      ['forward_filled', 'forward']
+    ];
+    this.btnSend.append(...icons.map(([name, type]) => Icon(name, 'animated-button-icon-icon', 'btn-send-icon-' + type)));
 
     this.btnSendContainer.append(this.recordRippleEl, this.btnSend);
 
@@ -820,21 +1008,25 @@ export default class ChatInput {
       onScheduleClick: () => {
         this.scheduleSending(undefined);
       },
+      onSendWhenOnlineClick: () => {
+        this.setScheduleTimestamp(SEND_WHEN_ONLINE_TIMESTAMP, this.sendMessage.bind(this, true));
+      },
       listenerSetter: this.listenerSetter,
       openSide: 'top-left',
       onContextElement: this.btnSend,
       onOpen: () => {
         return this.chat.type !== 'scheduled' && (!this.isInputEmpty() || !!Object.keys(this.forwarding).length);
-      }
+      },
+      canSendWhenOnline: this.canSendWhenOnline
     });
 
     this.btnSendContainer.append(this.sendMenu.sendMenu);
 
     this.inputContainer.append(this.btnCancelRecord, this.btnSendContainer);
 
-    emoticonsDropdown.attachButtonListener(this.btnToggleEmoticons, this.listenerSetter);
-    this.listenerSetter.add(emoticonsDropdown)('open', this.onEmoticonsOpen);
-    this.listenerSetter.add(emoticonsDropdown)('close', this.onEmoticonsClose);
+    this.emoticonsDropdown.attachButtonListener(this.btnToggleEmoticons, this.listenerSetter);
+    this.listenerSetter.add(this.emoticonsDropdown)('open', this.onEmoticonsOpen);
+    this.listenerSetter.add(this.emoticonsDropdown)('close', this.onEmoticonsClose);
 
     this.attachMessageInputField();
 
@@ -862,8 +1054,67 @@ export default class ChatInput {
       this.messageInputField?.onFakeInput();
     });
 
+    if(this.chat) {
+      this.setChatListeners();
+    }
+
+    this.constructRecorder();
+
+    this.updateSendBtn();
+
+    this.listenerSetter.add(this.fileInput)('change', (e) => {
+      const fileList = (e.target as HTMLInputElement & EventTarget).files;
+      const files = Array.from(fileList).slice();
+      fileSelectionPromise.resolve(files);
+      if(!files.length) {
+        return;
+      }
+
+      PopupElement.createPopup(PopupNewMedia, this.chat, files, this.willAttachType);
+      this.fileInput.value = '';
+    }, false);
+
+    attachClickEvent(this.btnSend, this.onBtnSendClick, {listenerSetter: this.listenerSetter, touchMouseDown: true});
+
+    this.saveDraftDebounced = debounce(() => this.saveDraft(), 2500, false, true);
+
+    const makeControlButton = (langKey: LangPackKey) => {
+      const button = Button('btn-primary btn-transparent text-bold chat-input-control-button');
+      button.append(i18n(langKey));
+      return button;
+    };
+
+    this.botStartBtn = makeControlButton('BotStart');
+    this.unblockBtn = makeControlButton('Unblock');
+
+    attachClickEvent(this.botStartBtn, this.startBot, {listenerSetter: this.listenerSetter});
+    attachClickEvent(this.unblockBtn, this.unblockUser, {listenerSetter: this.listenerSetter});
+
+    this.controlContainer.append(this.botStartBtn, this.unblockBtn, this.replyInTopicOverlay);
+
+    // * pinned part start
+    this.pinnedControlBtn = Button('btn-primary btn-transparent text-bold chat-input-control-button', {icon: 'unpin'});
+    this.controlContainer.append(this.pinnedControlBtn);
+
+    this.listenerSetter.add(this.pinnedControlBtn)('click', () => {
+      const peerId = this.chat.peerId;
+
+      PopupElement.createPopup(PopupPinMessage, peerId, 0, true, () => {
+        this.chat.appImManager.setPeer(); // * close tab
+
+        // ! костыль, это скроет закреплённые сообщения сразу, вместо того, чтобы ждать пока анимация перехода закончится
+        const originalChat = this.chat.appImManager.chat;
+        if(originalChat.topbar.pinnedMessage) {
+          originalChat.topbar.pinnedMessage.pinnedMessageContainer.toggle(true);
+        }
+      });
+    });
+    // * pinned part end
+  }
+
+  private setChatListeners() {
     this.listenerSetter.add(rootScope)('draft_updated', ({peerId, threadId, draft, force}) => {
-      if(this.chat.threadId !== threadId || this.chat.peerId !== peerId || this.chat.type === 'scheduled') return;
+      if(this.chat.threadId !== threadId || this.chat.peerId !== peerId || PEER_EXCEPTIONS.has(this.chat.type)) return;
       this.setDraft(draft, true, force);
     });
 
@@ -888,7 +1139,7 @@ export default class ChatInput {
     });
 
     this.listenerSetter.add(rootScope)('history_delete', ({peerId, msgs}) => {
-      if(this.chat.peerId === peerId && this.chat.type !== 'scheduled') {
+      if(this.chat.peerId === peerId && !PEER_EXCEPTIONS.has(this.chat.type)) {
         if(msgs.has(this.editMsgId)) {
           this.onMessageSent();
         }
@@ -912,161 +1163,6 @@ export default class ChatInput {
         }
       }
     });
-
-    try {
-      this.recorder = new Recorder({
-        // encoderBitRate: 32,
-        // encoderPath: "../dist/encoderWorker.min.js",
-        encoderSampleRate: 48000,
-        monitorGain: 0,
-        numberOfChannels: 1,
-        recordingGain: 1,
-        reuseWorker: true
-      });
-    } catch(err) {
-      console.error('Recorder constructor error:', err);
-    }
-
-    this.updateSendBtn();
-
-    this.listenerSetter.add(this.fileInput)('change', (e) => {
-      const files = (e.target as HTMLInputElement & EventTarget).files;
-      if(!files.length) {
-        return;
-      }
-
-      PopupElement.createPopup(PopupNewMedia, this.chat, Array.from(files).slice(), this.willAttachType);
-      this.fileInput.value = '';
-    }, false);
-
-    /* let time = Date.now();
-    this.btnSend.addEventListener('touchstart', (e) => {
-      time = Date.now();
-    });
-
-    let eventName1 = 'touchend';
-    this.btnSend.addEventListener(eventName1, (e: Event) => {
-      //cancelEvent(e);
-      console.log(eventName1 + ', time: ' + (Date.now() - time));
-    });
-
-    let eventName = 'mousedown';
-    this.btnSend.addEventListener(eventName, (e: Event) => {
-      cancelEvent(e);
-      console.log(eventName + ', time: ' + (Date.now() - time));
-    }); */
-    attachClickEvent(this.btnSend, this.onBtnSendClick, {listenerSetter: this.listenerSetter, touchMouseDown: true});
-
-    if(this.recorder) {
-      attachClickEvent(this.btnCancelRecord, this.onCancelRecordClick, {listenerSetter: this.listenerSetter});
-
-      this.recorder.onstop = () => {
-        this.setRecording(false);
-        this.chatInput.classList.remove('is-locked');
-        this.recordRippleEl.style.transform = '';
-      };
-
-      this.recorder.ondataavailable = (typedArray: Uint8Array) => {
-        if(this.releaseMediaPlayback) {
-          this.releaseMediaPlayback();
-          this.releaseMediaPlayback = undefined;
-        }
-
-        if(this.recordingOverlayListener) {
-          this.listenerSetter.remove(this.recordingOverlayListener);
-          this.recordingOverlayListener = undefined;
-        }
-
-        if(this.recordingNavigationItem) {
-          appNavigationController.removeItem(this.recordingNavigationItem);
-          this.recordingNavigationItem = undefined;
-        }
-
-        if(this.recordCanceled) {
-          return;
-        }
-
-        const {peerId, threadId} = this.chat;
-        const replyToMsgId = this.replyToMsgId;
-
-        const duration = (Date.now() - this.recordStartTime) / 1000 | 0;
-        const dataBlob = new Blob([typedArray], {type: 'audio/ogg'});
-        /* const fileName = new Date().toISOString() + ".opus";
-        console.log('Recorder data received', typedArray, dataBlob); */
-
-        // let perf = performance.now();
-        opusDecodeController.decode(typedArray, true).then((result) => {
-          // console.log('WAVEFORM!:', /* waveform,  */performance.now() - perf);
-
-          opusDecodeController.setKeepAlive(false);
-
-          // тут objectURL ставится уже с audio/wav
-          this.managers.appMessagesManager.sendFile(peerId, {
-            file: dataBlob,
-            isVoiceMessage: true,
-            isMedia: true,
-            duration,
-            waveform: result.waveform,
-            objectURL: result.url,
-            replyToMsgId,
-            threadId,
-            clearDraft: true
-          });
-
-          this.onMessageSent(false, true);
-        });
-      };
-    }
-
-    attachClickEvent(this.replyElements.cancelBtn, this.onHelperCancel, {listenerSetter: this.listenerSetter});
-    attachClickEvent(this.replyElements.container, this.onHelperClick, {listenerSetter: this.listenerSetter});
-
-    this.saveDraftDebounced = debounce(() => this.saveDraft(), 2500, false, true);
-
-    this.botStartBtn = Button('btn-primary btn-transparent text-bold chat-input-control-button');
-    this.botStartBtn.append(i18n('BotStart'));
-
-    attachClickEvent(this.botStartBtn, () => {
-      const {startParam} = this;
-      if(startParam === undefined) {
-        return;
-      }
-
-      const toggle = this.toggleBotStartBtnDisability = toggleDisability([this.botStartBtn], true);
-      const peerId = this.chat.peerId;
-      const middleware = this.chat.bubbles.getMiddleware(() => {
-        return this.chat.peerId === peerId && this.startParam === startParam && this.toggleBotStartBtnDisability === toggle;
-      });
-
-      this.managers.appMessagesManager.startBot(peerId.toUserId(), undefined, startParam).then(() => {
-        if(middleware()) {
-          toggle();
-          this.toggleBotStartBtnDisability = undefined;
-          this.setStartParam();
-        }
-      });
-    }, {listenerSetter: this.listenerSetter});
-
-    this.controlContainer.append(this.botStartBtn, this.replyInTopicOverlay);
-
-    // * pinned part start
-    this.pinnedControlBtn = Button('btn-primary btn-transparent text-bold chat-input-control-button', {icon: 'unpin'});
-    this.controlContainer.append(this.pinnedControlBtn);
-
-    this.listenerSetter.add(this.pinnedControlBtn)('click', () => {
-      const peerId = this.chat.peerId;
-
-      PopupElement.createPopup(PopupPinMessage, peerId, 0, true, () => {
-        this.chat.appImManager.setPeer(); // * close tab
-
-        // ! костыль, это скроет закреплённые сообщения сразу, вместо того, чтобы ждать пока анимация перехода закончится
-        const originalChat = this.chat.appImManager.chat;
-        if(originalChat.topbar.pinnedMessage) {
-          originalChat.topbar.pinnedMessage.pinnedMessageContainer.toggle(true);
-        }
-      });
-    });
-    // * pinned part end
   }
 
   public _center(neededFakeContainer: HTMLElement, animate?: boolean) {
@@ -1159,6 +1255,41 @@ export default class ChatInput {
     this.center(true);
   }
 
+  public unblockUser = () => {
+    const toggle = this.toggleControlButtonDisability = toggleDisability([this.unblockBtn], true);
+    const peerId = this.chat.peerId;
+    const middleware = this.chat.bubbles.getMiddleware(() => {
+      return this.chat.peerId === peerId && this.toggleControlButtonDisability === toggle;
+    });
+
+    this.managers.appUsersManager.toggleBlock(peerId, false).then(() => {
+      if(middleware()) {
+        toggle();
+        this.toggleControlButtonDisability = undefined;
+      }
+    });
+  };
+
+  public startBot = () => {
+    const {startParam} = this;
+
+    const toggle = this.toggleControlButtonDisability = toggleDisability([this.botStartBtn], true);
+    const peerId = this.chat.peerId;
+    const middleware = this.chat.bubbles.getMiddleware(() => {
+      return this.chat.peerId === peerId &&
+        this.startParam === startParam &&
+        this.toggleControlButtonDisability === toggle;
+    });
+
+    this.managers.appMessagesManager.startBot(peerId.toUserId(), undefined, startParam).then(() => {
+      if(middleware()) {
+        toggle();
+        this.toggleControlButtonDisability = undefined;
+        this.setStartParam();
+      }
+    });
+  };
+
   public isReplyInTopicOverlayNeeded() {
     return this.chat.isForum &&
       !this.chat.isForumTopic &&
@@ -1167,14 +1298,15 @@ export default class ChatInput {
   }
 
   public async getNeededFakeContainer(startParam = this.startParam) {
-    if(this.chat.selection.isSelecting) {
+    if(this.chat.selection?.isSelecting) {
       return this.fakeSelectionWrapper;
     } else if(
-      startParam !== undefined ||
+      // startParam !== undefined || // * startParam isn't always should force control container, so it's commented
       // !(await this.chat.canSend()) || // ! WARNING, TEMPORARILY COMMENTED
       this.chat.type === 'pinned' ||
       await this.chat.isStartButtonNeeded() ||
-      this.isReplyInTopicOverlayNeeded()
+      this.isReplyInTopicOverlayNeeded() ||
+      (this.chat.peerId.isUser() && this.chat.isUserBlocked)
     ) {
       return this.controlContainer;
     }
@@ -1207,51 +1339,85 @@ export default class ChatInput {
     opusDecodeController.setKeepAlive(false);
   };
 
+  private onEmoticonsToggle = (open: boolean) => {
+    if(!IS_TOUCH_SUPPORTED) {
+      this.btnToggleEmoticons.classList.toggle('active', open);
+    } else {
+      replaceButtonIcon(this.btnToggleEmoticons, open ? 'keyboard' : 'smile');
+    }
+  };
+
   private onEmoticonsOpen = () => {
-    const toggleClass = IS_TOUCH_SUPPORTED ? 'flip-icon' : 'active';
-    this.btnToggleEmoticons.classList.toggle(toggleClass, true);
+    this.onEmoticonsToggle(true);
   };
 
   private onEmoticonsClose = () => {
-    const toggleClass = IS_TOUCH_SUPPORTED ? 'flip-icon' : 'active';
-    this.btnToggleEmoticons.classList.toggle(toggleClass, false);
+    this.onEmoticonsToggle(false);
   };
 
   public getReadyToSend(callback: () => void) {
     return this.chat.type === 'scheduled' ? (this.scheduleSending(callback), true) : (callback(), false);
   }
 
-  public scheduleSending = async(callback: () => void = this.sendMessage.bind(this, true), initDate = new Date()) => {
-    const {peerId} = this.chat;
+  public canSendWhenOnline = async() => {
+    const peerId = this.chat.peerId;
+    if(rootScope.myId === peerId || !peerId.isUser()) {
+      return false;
+    }
+
+    if(!(await this.managers.appUsersManager.isUserOnlineVisible(peerId))) {
+      return false;
+    }
+
+    const user = await this.managers.appUsersManager.getUser(peerId);
+    return user.status?._ !== 'userStatusOnline';
+  };
+
+  public setScheduleTimestamp(timestamp: number, callback: () => void) {
     const middleware = this.chat.bubbles.getMiddleware();
-    const canSendWhenOnline = rootScope.myId !== peerId && peerId.isUser() && await this.managers.appUsersManager.isUserOnlineVisible(peerId);
+    const minTimestamp = (Date.now() / 1000 | 0) + 10;
+    if(timestamp <= minTimestamp) {
+      timestamp = undefined;
+    }
 
-    PopupElement.createPopup(PopupSchedule, initDate, (timestamp) => {
-      if(!middleware()) {
-        return;
-      }
+    this.scheduleDate = timestamp;
+    callback();
 
-      const minTimestamp = (Date.now() / 1000 | 0) + 10;
-      if(timestamp <= minTimestamp) {
-        timestamp = undefined;
-      }
+    if(this.chat.type !== 'scheduled' && timestamp) {
+      setTimeout(() => { // ! need timeout here because .forwardMessages will be called after timeout
+        if(!middleware()) {
+          return;
+        }
 
-      this.scheduleDate = timestamp;
-      callback();
+        const popups = PopupElement.getPopups(PopupStickers);
+        popups.forEach((popup) => popup.hide());
 
-      if(this.chat.type !== 'scheduled' && timestamp) {
-        setTimeout(() => { // ! need timeout here because .forwardMessages will be called after timeout
-          if(!middleware()) {
-            return;
-          }
+        this.appImManager.openScheduled(this.chat.peerId);
+      }, 0);
+    }
+  }
 
-          const popups = PopupElement.getPopups(PopupStickers);
-          popups.forEach((popup) => popup.hide());
+  public scheduleSending = async(
+    callback: () => void = this.sendMessage.bind(this, true),
+    initDate = new Date()
+  ) => {
+    const middleware = this.chat.bubbles.getMiddleware();
+    const canSendWhenOnline = await this.canSendWhenOnline();
+    if(!middleware()) {
+      return;
+    }
 
-          this.appImManager.openScheduled(peerId);
-        }, 0);
-      }
-    }, canSendWhenOnline).show();
+    PopupElement.createPopup(PopupSchedule, {
+      initDate,
+      onPick: (timestamp) => {
+        if(!middleware()) {
+          return;
+        }
+
+        this.setScheduleTimestamp(timestamp, callback);
+      },
+      canSendWhenOnline
+    }).show();
   };
 
   public async setUnreadCount() {
@@ -1261,12 +1427,12 @@ export default class ChatInput {
 
     const dialog = await this.managers.dialogsStorage.getDialogOrTopic(this.chat.peerId, this.chat.type === 'discussion' ? undefined : this.chat.threadId);
     const count = dialog?.unread_count;
-    this.goDownUnreadBadge.innerText = '' + (count || '');
+    setBadgeContent(this.goDownUnreadBadge, '' + (count || ''));
     this.goDownUnreadBadge.classList.toggle('badge-gray', await this.managers.appNotificationsManager.isPeerLocalMuted({peerId: this.chat.peerId, respectType: true, threadId: this.chat.threadId}));
 
     if(this.goMentionUnreadBadge && this.chat.type === 'chat') {
       const hasMentions = !!(dialog?.unread_mentions_count && dialog.unread_count);
-      this.goMentionUnreadBadge.innerText = hasMentions ? '' + (dialog.unread_mentions_count) : '';
+      setBadgeContent(this.goMentionUnreadBadge, hasMentions ? '' + (dialog.unread_mentions_count) : '');
       this.goMentionBtn.classList.toggle('is-visible', hasMentions);
     }
   }
@@ -1292,7 +1458,14 @@ export default class ChatInput {
   }
 
   public saveDraft() {
-    if(!this.chat.peerId || this.editMsgId || this.chat.type === 'scheduled') return;
+    if(
+      !this.chat.peerId ||
+      this.editMsgId ||
+      PEER_EXCEPTIONS.has(this.chat.type)
+    ) {
+      return;
+    }
+
     const draft = this.getCurrentInputAsDraft();
     this.managers.appDraftsManager.syncDraft(this.chat.peerId, this.chat.threadId, draft);
   }
@@ -1325,7 +1498,7 @@ export default class ChatInput {
   }
 
   public cleanup(helperToo = true) {
-    if(!this.chat.peerId) {
+    if(this.chat && !this.chat.peerId) {
       this.chatInput.classList.add('hide');
       this.goDownBtn.classList.add('hide');
     }
@@ -1335,9 +1508,9 @@ export default class ChatInput {
     this.lastTimeType = 0;
     this.startParam = undefined;
 
-    if(this.toggleBotStartBtnDisability) {
-      this.toggleBotStartBtnDisability();
-      this.toggleBotStartBtnDisability = undefined;
+    if(this.toggleControlButtonDisability) {
+      this.toggleControlButtonDisability();
+      this.toggleControlButtonDisability = undefined;
     }
 
     if(this.messageInput) {
@@ -1347,7 +1520,12 @@ export default class ChatInput {
   }
 
   public async setDraft(draft?: MyDraftMessage, fromUpdate = true, force = false) {
-    if((!force && !isInputEmpty(this.messageInput)) || this.chat.type === 'scheduled') return false;
+    if(
+      (!force && !isInputEmpty(this.messageInput)) ||
+      PEER_EXCEPTIONS.has(this.chat.type)
+    ) {
+      return false;
+    }
 
     if(!draft) {
       draft = await this.managers.appDraftsManager.getDraft(this.chat.peerId, this.chat.threadId);
@@ -1378,7 +1556,13 @@ export default class ChatInput {
     const wrappedDraft = wrapDraft(draft, this.chat.peerId);
     const currentDraft = this.getCurrentInputAsDraft();
 
-    if(draftsAreEqual(draft, currentDraft) &&/* this.messageInputField.value === wrappedDraft &&  */this.replyToMsgId === draft.reply_to_msg_id) return false;
+    if(
+      draftsAreEqual(draft, currentDraft) &&
+      /* this.messageInputField.value === wrappedDraft &&  */
+      this.replyToMsgId === draft.reply_to_msg_id
+    ) {
+      return false;
+    }
 
     if(fromUpdate) {
       this.clearHelper();
@@ -1396,7 +1580,7 @@ export default class ChatInput {
   private createSendAs() {
     this.sendAsPeerId = undefined;
 
-    if(this.chat.type === 'chat' || this.chat.type === 'discussion') {
+    if(this.chat && (this.chat.type === 'chat' || this.chat.type === 'discussion')) {
       let firstChange = true;
       this.sendAs = new ChatSendAs(
         this.managers,
@@ -1431,8 +1615,7 @@ export default class ChatInput {
   }
 
   public async finishPeerChange(options: Parameters<Chat['finishPeerChange']>[0]) {
-    const peerId = this.chat.peerId;
-    const {startParam, middleware} = options;
+    const {peerId, startParam, middleware} = options;
 
     const {
       forwardElements,
@@ -1463,12 +1646,12 @@ export default class ChatInput {
       this.managers.appPeersManager.isBroadcast(peerId),
       this.managers.appPeersManager.canPinMessage(peerId),
       this.managers.appPeersManager.isBot(peerId),
-      this.chat.canSend('send_messages'),
-      this.chat.canSend('send_plain'),
+      this.chat?.canSend('send_messages') || true,
+      this.chat?.canSend('send_plain') || true,
       this.getNeededFakeContainer(startParam),
       modifyAckedPromise(this.managers.acknowledged.appProfileManager.getProfileByPeerId(peerId)),
       btnScheduled ? modifyAckedPromise(this.managers.acknowledged.appMessagesManager.getScheduledMessages(peerId)) : undefined,
-      sendAs ? (sendAs.setPeerId(this.chat.peerId), sendAs.updateManual(true)) : undefined
+      sendAs ? (sendAs.setPeerId(peerId), sendAs.updateManual(true)) : undefined
     ]);
 
     const placeholderKey = this.messageInput ? await this.getPlaceholderKey(canSendPlain) : undefined;
@@ -1477,15 +1660,16 @@ export default class ChatInput {
       // console.warn('[input] finishpeerchange start');
 
       chatInput.classList.remove('hide');
-      goDownBtn.classList.toggle('is-broadcast', isBroadcast);
-      goDownBtn.classList.remove('hide');
-
+      if(goDownBtn) {
+        goDownBtn.classList.toggle('is-broadcast', isBroadcast);
+        goDownBtn.classList.remove('hide');
+      }
 
       if(this.goDownUnreadBadge) {
         this.setUnreadCount();
       }
 
-      if(this.chat.type === 'pinned') {
+      if(this.chat?.type === 'pinned') {
         chatInput.classList.toggle('can-pin', canPinMessage);
       }/*  else if(this.chat.type === 'chat') {
       } */
@@ -1510,6 +1694,7 @@ export default class ChatInput {
 
       if(botCommandsToggle) {
         this.hasBotCommands = undefined;
+        this.botMenuButton = undefined;
         this.botCommands.toggle(true, undefined, true);
         this.updateBotCommandsToggle(true);
         botCommandsToggle.remove();
@@ -1546,17 +1731,23 @@ export default class ChatInput {
       this.messageInputField?.onFakeInput(undefined, true);
 
       let haveSomethingInControl = false;
-      if(this.pinnedControlBtn) {
-        const good = this.chat.type === 'pinned';
+      if(this.chat && this.pinnedControlBtn) {
+        const good = !haveSomethingInControl && this.chat.type === 'pinned';
         haveSomethingInControl ||= good;
         this.pinnedControlBtn.classList.toggle('hide', !good);
         this.pinnedControlBtn.replaceChildren(i18n(canPinMessage ? 'Chat.Input.UnpinAll' : 'Chat.Pinned.DontShow'));
       }
 
-      {
-        const good = this.chat.isForum && !this.chat.isForumTopic && this.chat.type === 'chat';
+      if(this.chat) {
+        const good = !haveSomethingInControl && this.chat.isForum && !this.chat.isForumTopic && this.chat.type === 'chat';
         haveSomethingInControl ||= good;
         this.replyInTopicOverlay.classList.toggle('hide', !good);
+      }
+
+      if(this.chat) {
+        const good = !haveSomethingInControl && !isBot && peerId.isUser();
+        haveSomethingInControl ||= good;
+        this.unblockBtn.classList.toggle('hide', !good);
       }
 
       this.botStartBtn.classList.toggle('hide', haveSomethingInControl);
@@ -1572,11 +1763,28 @@ export default class ChatInput {
     };
   }
 
-  private updateOffset(type: 'commands' | 'as', forwards: boolean, skipAnimation?: boolean, useRafs?: number) {
+  private updateOffset(
+    type: ChatInput['hasOffset']['type'],
+    forwards: boolean,
+    skipAnimation?: boolean,
+    useRafs?: number
+  ) {
+    const prevOffset = this.hasOffset;
+    const newOffset: ChatInput['hasOffset'] = {type, forwards};
+    if(deepEqual(prevOffset, newOffset)) {
+      return;
+    }
+
+    this.hasOffset = newOffset;
+
     if(type) {
       this.newMessageWrapper.dataset.offset = type;
     } else {
       delete this.newMessageWrapper.dataset.offset;
+    }
+
+    if(prevOffset?.forwards === newOffset.forwards) {
+      return;
     }
 
     SetTransition({
@@ -1589,15 +1797,25 @@ export default class ChatInput {
   }
 
   private updateBotCommands(userFull: UserFull.userFull, skipAnimation?: boolean) {
-    this.hasBotCommands = !!userFull.bot_info?.commands?.length;
+    const botInfo = userFull.bot_info;
+    const menuButton = botInfo?.menu_button;
+    this.hasBotCommands = !!botInfo?.commands?.length;
+    this.botMenuButton = menuButton?._ === 'botMenuButton' ? menuButton : undefined;
+    replaceContent(this.botCommandsView, this.botMenuButton ? wrapEmojiText(this.botMenuButton.text) : '');
+    this.botCommandsIcon.classList.toggle('hide', !!this.botMenuButton);
+    this.botCommandsView.classList.toggle('hide', !this.botMenuButton);
+    this.botCommandsToggle.classList.toggle('is-view', !!this.botMenuButton);
     this.updateBotCommandsToggle(skipAnimation);
   }
 
   private updateBotCommandsToggle(skipAnimation?: boolean) {
-    const {botCommandsToggle, hasBotCommands} = this;
+    const {botCommandsToggle, hasBotCommands, botMenuButton} = this;
 
-    const show = !!hasBotCommands && this.isInputEmpty();
-    if(!hasBotCommands) {
+    const isNeeded = !!(hasBotCommands || botMenuButton);
+
+    const isInputEmpty = this.isInputEmpty();
+    const show = isNeeded && (isInputEmpty || !!botMenuButton);
+    if(!isNeeded) {
       if(!botCommandsToggle.parentElement) {
         return;
       }
@@ -1607,6 +1825,15 @@ export default class ChatInput {
 
     const forwards = show;
     const useRafs = botCommandsToggle.parentElement ? 0 : 2;
+
+    if(botMenuButton && isInputEmpty) {
+      // padding + icon size + icon margin
+      const width = getTextWidth(botMenuButton.text, FontFull) + 22 + 20 + 6;
+      this.newMessageWrapper.style.setProperty('--commands-size', `${Math.ceil(width)}px`);
+    } else {
+      // this.newMessageWrapper.style.setProperty('--commands-size', `38px`);
+      this.newMessageWrapper.style.removeProperty('--commands-size');
+    }
 
     if(!botCommandsToggle.parentElement) {
       this.newMessageWrapper.prepend(botCommandsToggle);
@@ -1630,6 +1857,8 @@ export default class ChatInput {
       await this.managers.appMessagesManager.isAnonymousSending(peerId)
     ) {
       key = 'SendAnonymously';
+    } else if(this.chat.type === 'stories') {
+      key = 'Story.ReplyPlaceholder';
     } else {
       key = 'Message';
     }
@@ -1763,8 +1992,8 @@ export default class ChatInput {
 
     if(IS_TOUCH_SUPPORTED) {
       attachClickEvent(this.messageInput, (e) => {
-        if(emoticonsDropdown.isActive()) {
-          emoticonsDropdown.toggle(false);
+        if(this.emoticonsDropdown.isActive()) {
+          this.emoticonsDropdown.toggle(false);
           blurActiveElement();
           cancelEvent(e);
           // this.messageInput.focus();
@@ -1809,15 +2038,27 @@ export default class ChatInput {
     });
 
     this.listenerSetter.add(this.messageInput)('focusin', () => {
+      this.isFocused = true;
+      // this.updateSendBtn();
+
       if((this.chat.type === 'chat' || this.chat.type === 'discussion') &&
         this.chat.bubbles.scrollable.loadedAll.bottom) {
         this.managers.appMessagesManager.readAllHistory(this.chat.peerId, this.chat.threadId);
       }
+
+      this.onFocusChange?.(true);
+    });
+
+    this.listenerSetter.add(this.messageInput)('focusout', () => {
+      this.isFocused = false;
+      // this.updateSendBtn();
+
+      this.onFocusChange?.(false);
     });
   }
 
   public canSendPlain() {
-    return !(!this.messageInput.isContentEditable && !this.chatInput.classList.contains('is-hidden'));
+    return this.messageInput.isContentEditable && !this.chatInput.classList.contains('is-hidden');
   }
 
   private prepareDocumentExecute = () => {
@@ -1871,11 +2112,16 @@ export default class ChatInput {
           k.push(type);
         }
 
+        let ret: boolean;
         if(!k.length) {
-          return this.resetCurrentFontFormatting();
+          ret = this.resetCurrentFontFormatting();
         } else {
-          return document.execCommand('fontName', false, 'markup-' + k.join('-'));
+          ret = document.execCommand('fontName', false, 'markup-' + k.join('-'));
         }
+
+        this.processCurrentFormatting();
+
+        return ret;
       };
     };
 
@@ -2004,12 +2250,36 @@ export default class ChatInput {
     return true;
   }
 
+  private processCurrentFormatting() {
+    // const perf = performance.now();
+    (this.messageInput.querySelectorAll('[style*="font-family"]') as NodeListOf<HTMLElement>).forEach((element) => {
+      const fontFamily = element.style.fontFamily;
+      if(fontFamily === FontFamilyName) {
+        return;
+      }
+
+      element.classList.add('is-markup');
+      element.dataset.markup = fontFamily;
+    });
+
+    (this.messageInput.querySelectorAll('.is-markup') as NodeListOf<HTMLElement>).forEach((element) => {
+      const fontFamily = element.style.fontFamily;
+      if(fontFamily && fontFamily !== FontFamilyName) {
+        return;
+      }
+
+      element.classList.remove('is-markup');
+      delete element.dataset.markup;
+    });
+    // console.log('process formatting', performance.now() - perf);
+  }
+
   private resetCurrentFormatting() {
     return document.execCommand('removeFormat', false, null);
   }
 
   private resetCurrentFontFormatting() {
-    return document.execCommand('fontName', false, 'Roboto');
+    return document.execCommand('fontName', false, FontFamilyName);
   }
 
   private handleMarkdownShortcut = (e: KeyboardEvent) => {
@@ -2181,6 +2451,8 @@ export default class ChatInput {
     }
 
     this.checkAutocomplete(richValue, caretPos, entities);
+
+    this.processCurrentFormatting();
 
     this.updateSendBtn();
   };
@@ -2358,11 +2630,17 @@ export default class ChatInput {
         this.stickersHelper.checkEmoticon(value);
       } else if(firstChar === '@') { // mentions
         const topMsgId = this.chat.threadId ? getServerMessageId(this.chat.threadId) : undefined;
-        if(await this.mentionsHelper.checkQuery(query, this.chat.peerId.isUser() ? NULL_PEER_ID : this.chat.peerId, topMsgId)) {
+        const result = this.mentionsHelper.checkQuery(
+          query,
+          this.chat.peerId.isUser() ? NULL_PEER_ID : this.chat.peerId,
+          topMsgId,
+          this.globalMentions
+        );
+        if(result) {
           foundHelper = this.mentionsHelper;
         }
       } else if(!matches[1] && firstChar === '/') { // commands
-        if(await this.commandsHelper.checkQuery(query, this.chat.peerId)) {
+        if(this.commandsHelper && await this.commandsHelper.checkQuery(query, this.chat.peerId)) {
           foundHelper = this.commandsHelper;
         }
       } else if(rootScope.settings.emoji.suggest) { // emoji
@@ -2459,12 +2737,16 @@ export default class ChatInput {
     });
     this.recording = value;
     this.updateSendBtn();
+    this.onRecording?.(value);
   }
 
   private onBtnSendClick = async(e: Event) => {
     cancelEvent(e);
 
-    if(!this.recorder || this.recording || !this.isInputEmpty() || this.forwarding || this.editMsgId) {
+    const isInputEmpty = this.isInputEmpty();
+    /* if(this.chat.type === 'stories' && isInputEmpty && !this.isFocused) {
+      return;
+    } else  */if(!this.recorder || this.recording || !isInputEmpty || this.forwarding || this.editMsgId) {
       if(this.recording) {
         if((Date.now() - this.recordStartTime) < RECORD_MIN_TIME) {
           this.onCancelRecordClick();
@@ -2526,7 +2808,7 @@ export default class ChatInput {
         };
 
         this.recordingOverlayListener = this.listenerSetter.add(document.body)('mousedown', (e) => {
-          if(!findUpClassName(e.target, 'chat-input') && !findUpClassName(e.target, 'popup-cancel-record')) {
+          if(!findUpClassName(e.target, CLASS_NAME) && !findUpClassName(e.target, 'popup-cancel-record')) {
             cancelEvent(e);
             showDiscardPopup();
           }
@@ -2570,13 +2852,14 @@ export default class ChatInput {
           // console.log('frequencyData', frequencyData, percents);
 
           this.recordRippleEl.style.transform = `scale(${percents})`;
+          // this.recordRippleEl.style.transform = `scale(0.8)`;
 
           const diff = Date.now() - this.recordStartTime;
           const ms = diff % 1000;
 
           const formatted = toHHMMSS(diff / 1000) + ',' + ('00' + Math.round(ms / 10)).slice(-2);
 
-          this.recordTimeEl.innerText = formatted;
+          this.recordTimeEl.textContent = formatted;
 
           fastRaf(r);
         };
@@ -2636,21 +2919,31 @@ export default class ChatInput {
       if(draft) {
         delete draft.pFlags.no_webpage;
       }
-      // const value = parseMarkdown(this.messageInputField.value, []);
-      // if(message.message !== value) {
+
       const originalDraft = {...message, _: 'draftMessage'} as DraftMessage.draftMessage;
-      if(originalDraft.entities?.length) {
+      if(originalDraft.entities?.length || draft?.entities?.length) {
         const canPassEntitiesTypes = new Set(Object.values(MARKDOWN_ENTITIES));
-        originalDraft.entities = originalDraft.entities.slice();
-        forEachReverse(originalDraft.entities, (entity, idx, arr) => {
-          if(!canPassEntitiesTypes.has(entity._)) {
-            arr.splice(idx, 1);
+        canPassEntitiesTypes.add('messageEntityCustomEmoji');
+
+        if(originalDraft?.entities) {
+          originalDraft.entities = originalDraft.entities.slice();
+        }
+
+        [originalDraft, draft].forEach((draft) => {
+          if(!draft?.entities) {
+            return;
+          }
+
+          forEachReverse(draft.entities, (entity, idx, arr) => {
+            if(!canPassEntitiesTypes.has(entity._)) {
+              arr.splice(idx, 1);
+            }
+          });
+
+          if(!draft.entities.length) {
+            delete draft.entities;
           }
         });
-
-        if(!originalDraft.entities.length) {
-          delete originalDraft.entities;
-        }
       }
 
       if(!draftsAreEqual(draft, originalDraft)) {
@@ -2666,6 +2959,8 @@ export default class ChatInput {
 
         return;
       }
+    } else if(this.helperType === 'reply') {
+      this.saveDraftDebounced();
     }
 
     this.clearHelper();
@@ -2750,15 +3045,16 @@ export default class ChatInput {
   }
 
   public updateSendBtn() {
-    let icon: 'send' | 'record' | 'edit' | 'schedule';
+    let icon: 'send' | 'record' | 'edit' | 'schedule' | 'forward';
 
     const isInputEmpty = this.isInputEmpty();
 
-    if(this.editMsgId) icon = 'edit';
+    /* if(this.chat.type === 'stories' && isInputEmpty && !this.isFocused) icon = 'forward';
+    else  */if(this.editMsgId) icon = 'edit';
     else if(!this.recorder || this.recording || !isInputEmpty || this.forwarding) icon = this.chat.type === 'scheduled' ? 'schedule' : 'send';
     else icon = 'record';
 
-    ['send', 'record', 'edit', 'schedule'].forEach((i) => {
+    ['send', 'record', 'edit', 'schedule', 'forward'].forEach((i) => {
       this.btnSend.classList.toggle(i, icon === i);
     });
 
@@ -2780,7 +3076,7 @@ export default class ChatInput {
   }
 
   public onMessageSent(clearInput = true, clearReply?: boolean) {
-    if(this.chat.type !== 'scheduled') {
+    if(!PEER_EXCEPTIONS.has(this.chat.type)) {
       this.managers.appMessagesManager.readAllHistory(this.chat.peerId, this.chat.threadId, true);
     }
 
@@ -2853,7 +3149,7 @@ export default class ChatInput {
         clearDraft: true
       });
 
-      if(this.chat.type === 'scheduled') {
+      if(PEER_EXCEPTIONS.has(this.chat.type)) {
         this.onMessageSent(true);
       } else {
         this.onMessageSent(false, false);
@@ -3129,7 +3425,7 @@ export default class ChatInput {
         }).element;
       }
 
-      this.setTopInfo('reply', f, peerTitleEl, message && (message as Message.message).message, undefined, message);
+      this.setTopInfo('reply', f, peerTitleEl, (message as Message.message)?.message || undefined, undefined, message);
       this.setReplyToMsgId(mid)
     };
     f();
@@ -3160,11 +3456,11 @@ export default class ChatInput {
     this.helperType = this.helperFunc = undefined;
 
     if(this.restoreInputLock) {
-      this.restoreInputLock?.();
+      this.restoreInputLock();
       this.restoreInputLock = undefined;
     }
 
-    if(this.chat.container.classList.contains('is-helper-active')) {
+    if(this.chat.container && this.chat.container.classList.contains('is-helper-active')) {
       appNavigationController.removeByType('input-helper');
       this.chat.container.classList.remove('is-helper-active');
       this.t();
@@ -3200,8 +3496,8 @@ export default class ChatInput {
   public setTopInfo(
     type: ChatInputHelperType,
     callerFunc: () => void,
-    title: Parameters<typeof wrapReply>[0] = '',
-    subtitle: Parameters<typeof wrapReply>[1] = '',
+    title: Parameters<typeof wrapReply>[0]['title'],
+    subtitle: Parameters<typeof wrapReply>[0]['subtitle'],
     input?: Parameters<InputFieldAnimated['setValueSilently']>[0],
     message?: any
   ) {
@@ -3220,7 +3516,13 @@ export default class ChatInput {
     const haveReply = oldReply.classList.contains('reply');
 
     this.replyElements.iconBtn.replaceWith(this.replyElements.iconBtn = this.createButtonIcon((type === 'webpage' ? 'link' : type) + ' active reply-icon', {noRipple: true}));
-    const {container} = wrapReply(title, subtitle, this.chat.animationGroup, message);
+    const {container} = wrapReply({
+      title,
+      subtitle,
+      animationGroup: this.chat.animationGroup,
+      message,
+      textColor: 'secondary-text-color'
+    });
     if(haveReply) {
       oldReply.replaceWith(container);
     } else {

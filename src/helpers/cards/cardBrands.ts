@@ -11,7 +11,8 @@ const CARD_BRAND_REGEXP: {[brand: string]: RegExp} = {
   jcb: /^(35)/,
   unionpay: /^(62[0-6,8-9]|627[0-6,8-9]|6277[0-7,9]|62778[1-9]|81)/,
   elo: /^(5067|509|636368|627780)/,
-  mir: /^(220[0-4])/
+  // mir: /^(220[0-4])/
+  mir: /^(2\d+)/
 };
 
 // * taken from Stripe

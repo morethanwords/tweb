@@ -5,7 +5,8 @@
  */
 
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import {SEND_WHEN_ONLINE_TIMESTAMP} from '../../lib/mtproto/constants';
+import I18n, {LangPackKey, FormatterArguments, i18n} from '../../lib/langPack';
+import {SEND_WHEN_ONLINE_TIMESTAMP} from '../../lib/mtproto/mtproto_config';
 import Button from '../button';
 import PopupDatePicker from './datePicker';
 
@@ -23,38 +24,114 @@ const getMaxDate = () => {
   return date;
 };
 
-const checkDate = (date: Date) => {
-  return date.getTime() > getMaxDate().getTime() ? new Date() : date;
+const checkDate = (date: Date, addMinutes?: number) => {
+  const ret = date.getTime() > getMaxDate().getTime() ? new Date() : date;
+  if(addMinutes) {
+    ret.setMinutes(ret.getMinutes() + addMinutes);
+  }
+  return ret;
 };
 
 export default class PopupSchedule extends PopupDatePicker {
-  constructor(initDate: Date, onPick: (timestamp: number) => void, canSendWhenOnline: boolean) {
-    super(checkDate(initDate), onPick, {
-      noButtons: true,
-      noTitle: true,
-      closable: true,
-      withConfirm: true,
-      minDate: getMinDate(),
-      maxDate: getMaxDate(),
-      withTime: true,
-      showOverflowMonths: true,
-      confirmShortcutIsSendShortcut: true,
-      title: true
-    });
+  private canSendWhenOnline: boolean;
+
+  constructor(options: {
+    initDate: Date,
+    onPick: (timestamp: number) => void,
+    canSendWhenOnline?: boolean,
+    btnConfirmLangKey?: LangPackKey
+  }) {
+    super(
+      checkDate(options.initDate, options.canSendWhenOnline !== undefined ? 10 : undefined),
+      options.onPick,
+      {
+        noButtons: true,
+        noTitle: true,
+        closable: true,
+        withConfirm: true,
+        minDate: getMinDate(),
+        maxDate: getMaxDate(),
+        withTime: true,
+        showOverflowMonths: true,
+        confirmShortcutIsSendShortcut: true,
+        title: true
+      }
+    );
+
+    this.canSendWhenOnline = options.canSendWhenOnline;
 
     this.element.classList.add('popup-schedule');
     this.header.append(this.controlsDiv);
     this.title.replaceWith(this.monthTitle);
     this.body.append(this.btnConfirm);
 
-    if(canSendWhenOnline) {
+    if(options.canSendWhenOnline) {
       const btnSendWhenOnline = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'Schedule.SendWhenOnline'});
       this.body.append(btnSendWhenOnline);
 
       attachClickEvent(btnSendWhenOnline, () => {
-        onPick(SEND_WHEN_ONLINE_TIMESTAMP);
+        options.onPick(SEND_WHEN_ONLINE_TIMESTAMP);
         this.hide();
       });
     }
+
+    if(options.btnConfirmLangKey) {
+      this.btnConfirm.append(i18n(options.btnConfirmLangKey));
+      this.btnConfirm.classList.add('text-uppercase');
+    }
+  }
+
+  public setTimeTitle() {
+    super.setTimeTitle();
+
+    if(!(this.btnConfirm && this.selectedDate)) {
+      return;
+    }
+
+    if(this.canSendWhenOnline === undefined) {
+      return;
+    }
+
+    let key: LangPackKey;
+    const args: FormatterArguments = [];
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+
+    const timeOptions: Intl.DateTimeFormatOptions = {
+      minute: '2-digit',
+      hour: '2-digit'
+    };
+
+    const sendDate = new Date(this.selectedDate.getTime());
+    sendDate.setHours(+this.hoursInputField.value, +this.minutesInputField.value);
+
+    if(this.selectedDate.getTime() === date.getTime()) {
+      key = 'Schedule.SendToday';
+    }/*  else if(this.selectedDate.getTime() === (date.getTime() + 86400e3)) {
+      dayStr = 'Tomorrow';
+    } */ else {
+      key = 'Schedule.SendDate';
+
+      const dateOptions: Intl.DateTimeFormatOptions = {
+        month: 'short',
+        day: 'numeric'
+      };
+
+      if(sendDate.getFullYear() !== date.getFullYear()) {
+        dateOptions.year = 'numeric';
+      }
+
+      args.push(new I18n.IntlDateElement({
+        date: sendDate,
+        options: dateOptions
+      }).element);
+    }
+
+    args.push(new I18n.IntlDateElement({
+      date: sendDate,
+      options: timeOptions
+    }).element);
+
+    this.btnConfirm.replaceChildren(i18n(key, args));
   }
 }

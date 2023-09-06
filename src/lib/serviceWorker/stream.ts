@@ -7,6 +7,7 @@
 import readBlobAsUint8Array from '../../helpers/blob/readBlobAsUint8Array';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import debounce from '../../helpers/schedulers/debounce';
+import pause from '../../helpers/schedulers/pause';
 import {InputFileLocation} from '../../layer';
 import CacheStorageController from '../files/cacheStorage';
 import {DownloadOptions, MyUploadFile} from '../mtproto/apiFileManager';
@@ -19,6 +20,7 @@ const cacheStorage = new CacheStorageController('cachedStreamChunks');
 const CHUNK_TTL = 86400;
 const CHUNK_CACHED_TIME_HEADER = 'Time-Cached';
 const USE_CACHE = true;
+const TEST_SLOW = false;
 
 const clearOldChunks = () => {
   return cacheStorage.timeoutOperation((cache) => {
@@ -53,14 +55,16 @@ setInterval(clearOldChunks, 1800e3);
 setInterval(() => {
   const mtprotoMessagePort = getMtprotoMessagePort();
   for(const [messagePort, promises] of deferredPromises) {
-    if(messagePort !== mtprotoMessagePort) {
-      for(const taskId in promises) {
-        const promise = promises[taskId];
-        promise.reject();
-      }
-
-      deferredPromises.delete(messagePort);
+    if(messagePort === mtprotoMessagePort) {
+      continue;
     }
+
+    for(const taskId in promises) {
+      const promise = promises[taskId];
+      promise.reject();
+    }
+
+    deferredPromises.delete(messagePort);
   }
 }, 120e3);
 
@@ -112,7 +116,7 @@ class Stream {
     deferred = promises[taskId] = deferredPromise();
 
     serviceMessagePort.invoke('requestFilePart', payload, undefined, mtprotoMessagePort)
-    .then(deferred.resolve, deferred.reject).finally(() => {
+    .then(deferred.resolve.bind(deferred), deferred.reject.bind(deferred)).finally(() => {
       if(promises[taskId] === deferred) {
         delete promises[taskId];
 
@@ -148,9 +152,21 @@ class Stream {
   }
 
   private requestFilePart(alignedOffset: number, limit: number, fromPreload?: boolean) {
-    return this.requestFilePartFromCache(alignedOffset, limit, fromPreload).then((bytes) => {
+    const promise = this.requestFilePartFromCache(alignedOffset, limit, fromPreload).then((bytes) => {
       return bytes || this.requestFilePartFromWorker(alignedOffset, limit, fromPreload);
     });
+
+    if(TEST_SLOW) {
+      return promise.then((bytes) => {
+        log.warn('delaying chunk', alignedOffset, limit);
+        return pause(3000).then(() => {
+          log.warn('releasing chunk', alignedOffset, limit);
+          return bytes;
+        });
+      });
+    }
+
+    return promise;
   }
 
   private saveChunkToCache(deferred: Promise<Uint8Array>, alignedOffset: number, limit: number) {

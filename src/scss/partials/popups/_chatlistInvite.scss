@@ -1,0 +1,101 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+.popup-chatlist-invite {
+  $parent: ".popup";
+
+  #{$parent} {
+    &-container {
+      //max-height: 468px;
+      height: auto;
+      max-height: unquote('min(640px, 100%)');
+      min-width: unquote('min(100%, 22.5rem)');
+      max-width: 22.5rem;
+      // padding: 0;
+    }
+
+    &-title {
+      height: auto;
+      padding-left: 1.5rem !important;
+    }
+  }
+
+  .sidebar-left-section-name-right {
+    color: var(--secondary-text-color);
+
+    &-right {
+      cursor: pointer;
+      color: var(--primary-color);
+    }
+  }
+
+  .menu-horizontal {
+    &-scrollable {
+      position: relative;
+      pointer-events: none;
+      display: flex;
+  
+      &:after {
+        content: none;
+      }
+  
+      .inner-shadow {
+        --inner-shadow-size: 50%;
+        z-index: 3;
+      }
+    }
+
+    &-div {
+      width: auto;
+      margin: 0 auto;
+
+      &-item {
+        padding: 0 .5rem;
+      }
+    }
+  }
+
+  &-description {
+    text-align: center;
+    margin: 1rem 1.5rem .5rem;
+  }
+
+  &-button {
+    &-text {
+      --badge-size: 1.125rem;
+      position: relative;
+
+      &:after {
+        position: absolute;
+        margin-inline-start: .25rem;
+        content: attr(data-badge);
+        color: var(--primary-color);
+        background-color: #fff;
+        border-radius: var(--badge-size);
+        min-width: var(--badge-size);
+        height: var(--badge-size);
+        line-height: var(--badge-size);
+        font-size: var(--font-size-14);
+        padding: 0 .3125rem;
+        top: 50%;
+        transform: translateY(-50%);
+        opacity: 1;
+
+        @include animation-level(2) {
+          transition: opacity var(--transition-standard-in);
+        }
+      }
+
+      &:not(.has-badge):after {
+        opacity: 0;
+      }
+    }
+  }
+
+  .already {
+    --primary-color: var(--secondary-color);
+  }
+}

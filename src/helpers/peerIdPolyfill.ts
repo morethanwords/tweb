@@ -23,16 +23,18 @@ String.prototype.isPeerId = function() {
   return /^[\d-]/.test(this.toString());
 };
 
+// * don't return just 'this', because Firefox returns empty `Number` class
 Number.prototype.toUserId = function() {
-  return this as any;
+  return +this;
 };
 
 Number.prototype.toChatId = function() {
   return Math.abs(this as any);
 };
 
+// * don't return just 'this', because Firefox returns empty `Number` class
 Number.prototype.toPeerId = function(isChat?: boolean) {
-  return isChat === undefined ? this as number : (isChat ? -Math.abs(this as number) : this as number);
+  return isChat === undefined ? +this : (isChat ? -Math.abs(this as number) : +this);
 };
 
 Number.prototype.isPeerId = function() {
@@ -54,9 +56,10 @@ Number.prototype.isPeerId = function() {
 
   // @ts-ignore
   Number.prototype[newMethod] = function() {
+    // * don't use just 'this', because Firefox returns empty `Number` class
     // @ts-ignore
     // eslint-disable-next-line no-useless-call
-    return originMethod.call(null, this);
+    return originMethod.call(null, +this);
   };
 });
 

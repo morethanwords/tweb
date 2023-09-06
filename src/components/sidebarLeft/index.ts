@@ -7,7 +7,6 @@
 import appImManager from '../../lib/appManagers/appImManager';
 import rootScope from '../../lib/rootScope';
 import {SearchGroup} from '../appSearch';
-import '../avatar';
 import Scrollable, {ScrollableX} from '../scrollable';
 import InputSearch from '../inputSearch';
 import SidebarSlider from '../slider';
@@ -21,7 +20,7 @@ import AppNewChannelTab from './tabs/newChannel';
 import AppContactsTab from './tabs/contacts';
 import AppArchivedTab from './tabs/archivedTab';
 import AppAddMembersTab from './tabs/addMembers';
-import I18n, {FormatterArguments, i18n, i18n_, LangPackKey} from '../../lib/langPack';
+import I18n, {i18n} from '../../lib/langPack';
 import AppPeopleNearbyTab from './tabs/peopleNearby';
 import {ButtonMenuItemOptions} from '../buttonMenu';
 import CheckboxField from '../checkboxField';
@@ -29,10 +28,8 @@ import {IS_MOBILE_SAFARI} from '../../environment/userAgent';
 import appNavigationController, {NavigationItem} from '../appNavigationController';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import findUpTag from '../../helpers/dom/findUpTag';
-import PeerTitle from '../peerTitle';
 import App from '../../config/app';
 import ButtonMenuToggle from '../buttonMenuToggle';
-import replaceContent from '../../helpers/dom/replaceContent';
 import sessionStorage from '../../lib/sessionStorage';
 import {attachClickEvent, CLICK_EVENT_NAME, simulateClickEvent} from '../../helpers/dom/clickEvent';
 import ButtonIcon from '../buttonIcon';
@@ -44,34 +41,36 @@ import noop from '../../helpers/noop';
 import ripple from '../ripple';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import formatNumber from '../../helpers/number/formatNumber';
-import AvatarElement from '../avatar';
 import {AppManagers} from '../../lib/appManagers/managers';
 import themeController from '../../helpers/themeController';
 import contextMenuController from '../../helpers/contextMenuController';
 import {DIALOG_LIST_ELEMENT_TAG} from '../../lib/appManagers/appDialogsManager';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import SettingSection, {SettingSectionOptions} from '../settingSection';
-import {FOLDER_ID_ARCHIVE} from '../../lib/mtproto/mtproto_config';
+import {FOLDER_ID_ARCHIVE, TEST_NO_STORIES} from '../../lib/mtproto/mtproto_config';
 import mediaSizes from '../../helpers/mediaSizes';
 import {fastRaf} from '../../helpers/schedulers';
 import {getInstallPrompt} from '../../helpers/dom/installPrompt';
 import liteMode from '../../helpers/liteMode';
 import AppPowerSavingTab from './tabs/powerSaving';
+import AppMyStoriesTab from './tabs/myStories';
+import {joinDeepPath} from '../../helpers/object/setDeepProperty';
+import Icon from '../icon';
+import AppSelectPeers from '../appSelectPeers';
+import setBadgeContent from '../../helpers/setBadgeContent';
+import createBadge from '../../helpers/createBadge';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
 export class AppSidebarLeft extends SidebarSlider {
   private toolsBtn: HTMLElement;
   private backBtn: HTMLButtonElement;
-  // private searchInput = document.getElementById('global-search') as HTMLInputElement;
-  private inputSearch: InputSearch;
+  public inputSearch: InputSearch;
 
   public archivedCount: HTMLSpanElement;
   public rect: DOMRect;
 
   private newBtnMenu: HTMLElement;
-
-  // private log = logger('SL');
 
   private searchGroups: {[k in 'contacts' | 'globalContacts' | 'messages' | 'people' | 'recent']: SearchGroup} = {} as any;
   private searchSuper: AppSearchSuper;
@@ -90,7 +89,8 @@ export class AppSidebarLeft extends SidebarSlider {
     this.managers = managers;
     // this._selectTab(0); // make first tab as default
 
-    this.inputSearch = new InputSearch('Search');
+    this.inputSearch = new InputSearch();
+    (this.inputSearch.input as HTMLInputElement).placeholder = ' ';
     const sidebarHeader = this.sidebarEl.querySelector('.item-main .sidebar-header');
     sidebarHeader.append(this.inputSearch.container);
 
@@ -98,7 +98,7 @@ export class AppSidebarLeft extends SidebarSlider {
       this.createTab(AppAddMembersTab).open({
         type: 'chat',
         skippable: true,
-        takeOut: (peerIds) => this.createTab(AppNewGroupTab).open(peerIds),
+        takeOut: (peerIds) => this.createTab(AppNewGroupTab).open({peerIds}),
         title: 'GroupAddMembers',
         placeholder: 'SendMessageTo'
       });
@@ -119,7 +119,8 @@ export class AppSidebarLeft extends SidebarSlider {
       },
       verify: async() => {
         const folder = await this.managers.dialogsStorage.getFolderDialogs(FOLDER_ID_ARCHIVE, false);
-        return !!folder.length || !(await this.managers.dialogsStorage.isDialogsLoaded(FOLDER_ID_ARCHIVE));
+        const hasArchiveStories = await this.managers.appStoriesManager.hasArchive();
+        return !!folder.length || hasArchiveStories || !(await this.managers.dialogsStorage.isDialogsLoaded(FOLDER_ID_ARCHIVE));
       }
     };
 
@@ -127,7 +128,7 @@ export class AppSidebarLeft extends SidebarSlider {
       toggle: true,
       checked: themeController.getTheme().name === 'night'
     });
-    themeCheckboxField.input.addEventListener('change', async() => {
+    themeCheckboxField.input.addEventListener('change', () => {
       themeController.switchTheme(themeCheckboxField.input.checked ? 'night' : 'day');
     });
 
@@ -146,6 +147,13 @@ export class AppSidebarLeft extends SidebarSlider {
         }, 0);
       }
     }, btnArchive, {
+      icon: 'stories',
+      text: 'MyStories.Title',
+      onClick: () => {
+        this.createTab(AppMyStoriesTab).open();
+      },
+      verify: () => !TEST_NO_STORIES
+    }, {
       icon: 'user',
       text: 'Contacts',
       onClick: onContactsClick
@@ -176,8 +184,8 @@ export class AppSidebarLeft extends SidebarSlider {
       },
       checkboxField: new CheckboxField({
         toggle: true,
-        checked: true,
-        stateKey: 'settings.liteMode.animations',
+        checked: liteMode.isAvailable('animations'),
+        stateKey: joinDeepPath('settings', 'liteMode', 'animations'),
         stateValueReverse: true
       }),
       verify: () => !liteMode.isEnabled()
@@ -209,14 +217,15 @@ export class AppSidebarLeft extends SidebarSlider {
         }, 0);
       }
     }, {
-      icon: 'char z',
-      text: 'ChatList.Menu.SwitchTo.Z',
+      icon: 'char' as Icon,
+      className: 'a',
+      text: 'ChatList.Menu.SwitchTo.A',
       onClick: () => {
         Promise.all([
           sessionStorage.set({kz_version: 'Z'}),
           sessionStorage.delete('tgme_sync')
         ]).then(() => {
-          location.href = 'https://web.telegram.org/z/';
+          location.href = 'https://web.telegram.org/a/';
         });
       },
       verify: () => App.isMainDomain
@@ -230,7 +239,7 @@ export class AppSidebarLeft extends SidebarSlider {
       },
       verify: () => App.isMainDomain
     }, */ {
-      icon: 'download',
+      icon: 'plusround',
       text: 'PWA.Install',
       onClick: () => {
         const installPrompt = getInstallPrompt();
@@ -261,10 +270,13 @@ export class AppSidebarLeft extends SidebarSlider {
         btnMenu.classList.add('has-footer');
         btnMenu.append(btnMenuFooter);
 
+        const a = btnMenu.querySelector('.a .btn-menu-item-icon');
+        if(a) a.textContent = 'A';
+
         btnArchive.element?.append(this.archivedCount);
-      }
+      },
+      noIcon: true
     });
-    this.toolsBtn.classList.remove('tgico-more');
     this.toolsBtn.classList.add('sidebar-tools-button', 'is-visible');
 
     this.backBtn.parentElement.insertBefore(this.toolsBtn, this.backBtn);
@@ -285,14 +297,13 @@ export class AppSidebarLeft extends SidebarSlider {
         icon: 'newprivate',
         text: 'NewPrivateChat',
         onClick: onContactsClick
-      }]
+      }],
+      noIcon: true
     });
     this.newBtnMenu.className = 'btn-circle rp btn-corner z-depth-1 btn-menu-toggle animated-button-icon';
     this.newBtnMenu.tabIndex = -1;
-    this.newBtnMenu.insertAdjacentHTML('afterbegin', `
-    <span class="tgico tgico-newchat_filled"></span>
-    <span class="tgico tgico-close"></span>
-    `);
+    const icons: Icon[] = ['newchat_filled', 'close'];
+    this.newBtnMenu.prepend(...icons.map((icon, idx) => Icon(icon, 'animated-button-icon-icon', 'animated-button-icon-icon-' + (idx === 0 ? 'first' : 'last'))));
     this.newBtnMenu.id = 'new-menu';
     sidebarHeader.nextElementSibling.append(this.newBtnMenu);
 
@@ -314,15 +325,14 @@ export class AppSidebarLeft extends SidebarSlider {
 
     this.inputSearch.input.addEventListener('focus', () => this.initSearch(), {once: true});
 
-    this.archivedCount = document.createElement('span');
-    this.archivedCount.className = 'archived-count badge badge-24 badge-gray';
+    this.archivedCount = createBadge('span', 24, 'gray');
+    this.archivedCount.classList.add('archived-count');
 
     rootScope.addEventListener('folder_unread', (folder) => {
       if(folder.id === FOLDER_ID_ARCHIVE) {
         // const count = folder.unreadMessagesCount;
         const count = folder.unreadPeerIds.size;
-        this.archivedCount.textContent = '' + formatNumber(count, 1);
-        this.archivedCount.classList.toggle('hide', !count);
+        setBadgeContent(this.archivedCount, count ? '' + formatNumber(count, 1) : '');
       }
     });
 
@@ -342,7 +352,11 @@ export class AppSidebarLeft extends SidebarSlider {
     };
     appNavigationController.pushItem(navigationItem);
 
-    apiManagerProxy.getState().then(() => {
+    apiManagerProxy.getState().then((state) => {
+      if(!state.keepSigned) {
+        return;
+      }
+
       const CHECK_UPDATE_INTERVAL = 1800e3;
       const checkUpdateInterval = setInterval(() => {
         fetch('version', {cache: 'no-cache'})
@@ -445,14 +459,22 @@ export class AppSidebarLeft extends SidebarSlider {
       // (this.inputSearch.input as HTMLInputElement).placeholder = pickedElements.length ? 'Search' : 'Telegram Search';
       this.inputSearch.container.classList.toggle('is-picked-twice', pickedElements.length === 2);
       this.inputSearch.container.classList.toggle('is-picked', !!pickedElements.length);
+      pickedElements.forEach((element, idx) => {
+        element.classList.remove('is-first', 'is-last');
+        element.classList.add(idx === 0 ? 'is-first' : 'is-last');
+      });
 
       if(pickedElements.length) {
-        this.inputSearch.input.style.setProperty('--paddingLeft', (pickedElements[pickedElements.length - 1].getBoundingClientRect().right - this.inputSearch.input.getBoundingClientRect().left) + 'px');
+        this.inputSearch.input.style.setProperty(
+          '--paddingLeft',
+          (pickedElements[pickedElements.length - 1].getBoundingClientRect().right - this.inputSearch.input.getBoundingClientRect().left) + 'px'
+        );
       } else {
         this.inputSearch.input.style.removeProperty('--paddingLeft');
       }
     };
 
+    const helperMiddlewareHelper = this.middlewareHelper.get().create();
     const helper = document.createElement('div');
     helper.classList.add('search-helper');
     helper.addEventListener('click', (e) => {
@@ -483,36 +505,13 @@ export class AppSidebarLeft extends SidebarSlider {
     searchSuper.nav.parentElement.append(helper);
 
     const renderEntity = (key: PeerId | string, title?: string | HTMLElement) => {
-      const div = document.createElement('div');
-      div.classList.add('selector-user'/* , 'scale-in' */);
-
-      const avatarEl = new AvatarElement();
-      avatarEl.classList.add('selector-user-avatar', 'tgico', 'avatar-32');
-      avatarEl.isDialog = true;
-
-      div.dataset.key = '' + key;
-      if(key.isPeerId()) {
-        if(title === undefined) {
-          title = new PeerTitle({peerId: key.toPeerId()}).element;
-        }
-
-        avatarEl.updateWithOptions({peerId: key as PeerId});
-      } else {
-        avatarEl.classList.add('tgico-calendarfilter');
-      }
-
-      if(title) {
-        if(typeof(title) === 'string') {
-          div.innerHTML = title;
-        } else {
-          replaceContent(div, title);
-          div.append(title);
-        }
-      }
-
-      div.insertAdjacentElement('afterbegin', avatarEl);
-
-      return div;
+      return AppSelectPeers.renderEntity({
+        key,
+        title,
+        middleware: helperMiddlewareHelper.get(),
+        avatarSize: 30,
+        fallbackIcon: 'calendarfilter'
+      }).element;
     };
 
     const unselectEntity = (target: HTMLElement) => {
@@ -523,6 +522,7 @@ export class AppSidebarLeft extends SidebarSlider {
         selectedPeerId = ''.toPeerId();
       }
 
+      target.middlewareHelper.destroy();
       target.remove();
       indexOfAndSplice(pickedElements, target);
 
@@ -538,6 +538,12 @@ export class AppSidebarLeft extends SidebarSlider {
       });
     };
 
+    const appendToHelper = (elements: HTMLElement[]) => {
+      helper.append(...elements);
+      helper.classList.toggle('hide', !helper.firstElementChild);
+      searchSuper.nav.classList.toggle('hide', !!helper.firstElementChild);
+    };
+
     this.inputSearch.onChange = (value) => {
       searchSuper.cleanupHTML();
       searchSuper.setQuery({
@@ -549,38 +555,31 @@ export class AppSidebarLeft extends SidebarSlider {
       });
       searchSuper.load(true);
 
+      helperMiddlewareHelper.clean();
       helper.replaceChildren();
       searchSuper.nav.classList.remove('hide');
-      if(!value) {
-      }
 
       if(!selectedPeerId && value.trim()) {
         const middleware = searchSuper.middleware.get();
         Promise.all([
-          // appMessagesManager.getConversationsAll(value).then((dialogs) => dialogs.map((d) => d.peerId)),
           this.managers.dialogsStorage.getDialogs({query: value}).then(({dialogs}) => dialogs.map((d) => d.peerId)),
           this.managers.appUsersManager.getContactsPeerIds(value, true)
         ]).then((results) => {
           if(!middleware()) return;
-          const peerIds = new Set(results[0].concat(results[1]));
+          const peerIds = new Set(results[0].concat(results[1]).slice(0, 20));
 
-          peerIds.forEach((peerId) => {
-            helper.append(renderEntity(peerId));
-          });
-
-          searchSuper.nav.classList.toggle('hide', !!helper.innerHTML);
-          // console.log('got peerIds by value:', value, [...peerIds]);
+          appendToHelper([...peerIds].map((peerId) => renderEntity(peerId)));
         });
       }
 
       if(!selectedMinDate && value.trim()) {
         const dates: DateData[] = [];
         fillTipDates(value, dates);
-        dates.forEach((dateData) => {
-          helper.append(renderEntity('date_' + dateData.minDate + '_' + dateData.maxDate, dateData.title));
+        const elements = dates.map((dateData) => {
+          return renderEntity('date_' + dateData.minDate + '_' + dateData.maxDate, dateData.title);
         });
 
-        searchSuper.nav.classList.toggle('hide', !!helper.innerHTML);
+        appendToHelper(elements);
       }
     };
 
@@ -612,6 +611,9 @@ export class AppSidebarLeft extends SidebarSlider {
       content: searchContainer.parentElement,
       type: 'zoom-fade',
       transitionTime: 150,
+      onTransitionStart: (id) => {
+        searchContainer.parentElement.parentElement.classList.toggle('is-search-active', id === 1);
+      },
       onTransitionEnd: (id) => {
         if(hideNewBtnMenuTimeout) clearTimeout(hideNewBtnMenuTimeout);
 

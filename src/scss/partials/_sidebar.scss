@@ -35,6 +35,8 @@
       padding-inline-start: 1.5rem;
       font-size: 1.25rem;
       color: var(--primary-text-color);
+
+      @include text-overflow(true);
     }
 
     .btn-icon + .btn-icon {

@@ -21,10 +21,11 @@ import {AppManagers} from '../../lib/appManagers/managers';
 import overlayCounter from '../../helpers/overlayCounter';
 import Scrollable from '../scrollable';
 import {getMiddleware, MiddlewareHelper} from '../../helpers/middleware';
-import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
+import ButtonIcon from '../buttonIcon';
+import Icon from '../icon';
 
 export type PopupButton = {
-  text?: string,
+  text?: HTMLElement | DocumentFragment,
   callback?: () => void,
   langKey?: LangPackKey,
   langArgs?: any[],
@@ -36,15 +37,17 @@ export type PopupButton = {
 
 export type PopupOptions = Partial<{
   closable: boolean,
+  onBackClick: () => void,
+  isConfirmationNeededOnClose: () => void | boolean | Promise<any>, // should return boolean instantly or `Promise` from `confirmationPopup`
   overlayClosable: boolean,
   withConfirm: LangPackKey | boolean,
   body: boolean,
+  footer: boolean,
   confirmShortcutIsSendShortcut: boolean,
   withoutOverlay: boolean,
   scrollable: boolean,
   buttons: Array<PopupButton>,
-  title: boolean | LangPackKey,
-  titleRaw: string
+  title: boolean | LangPackKey | DocumentFragment | HTMLElement
 }>;
 
 export interface PopupElementConstructable<T extends PopupElement = any> {
@@ -74,12 +77,14 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
   protected container = document.createElement('div');
   protected header = document.createElement('div');
   protected title = document.createElement('div');
+  protected footer: HTMLElement;
   protected btnClose: HTMLElement;
+  protected btnCloseAnimatedIcon: HTMLElement;
   protected btnConfirm: HTMLButtonElement;
   protected body: HTMLElement;
   protected buttonsEl: HTMLElement;
 
-  protected onEscape: () => boolean = () => true;
+  protected isConfirmationNeededOnClose: PopupOptions['isConfirmationNeededOnClose'];
 
   protected navigationItem: NavigationItem;
 
@@ -97,6 +102,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
   protected buttons: Array<PopupButton>;
 
   protected middlewareHelper: MiddlewareHelper;
+  protected destroyed: boolean;
 
   constructor(className: string, options: PopupOptions = {}) {
     super(false);
@@ -104,19 +110,24 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     this.element.className = 'popup' + (className ? ' ' + className : '');
     this.container.classList.add('popup-container', 'z-depth-1');
 
+    if(overlayCounter.isDarkOverlayActive) {
+      this.element.classList.add('night');
+    }
+
     this.header.classList.add('popup-header');
 
-    if(options.title || options.titleRaw) {
+    if(options.title) {
       this.title.classList.add('popup-title');
       if(typeof(options.title) === 'string') {
         _i18n(this.title, options.title);
-      } else if(options.titleRaw) {
-        this.title.append(wrapEmojiText(options.titleRaw));
+      } else if(typeof(options.title) !== 'boolean') {
+        this.title.append(options.title);
       }
 
       this.header.append(this.title);
     }
 
+    this.isConfirmationNeededOnClose = options.isConfirmationNeededOnClose;
     this.middlewareHelper = getMiddleware();
     this.listenerSetter = new ListenerSetter();
     this.managers = PopupElement.MANAGERS;
@@ -124,12 +135,27 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     this.confirmShortcutIsSendShortcut = options.confirmShortcutIsSendShortcut;
 
     if(options.closable) {
-      this.btnClose = document.createElement('span');
-      this.btnClose.classList.add('btn-icon', 'popup-close', 'tgico-close');
+      this.btnClose = ButtonIcon('', {noRipple: true});
+      this.btnClose.classList.add('popup-close');
       // ripple(this.closeBtn);
       this.header.prepend(this.btnClose);
 
-      attachClickEvent(this.btnClose, this.hide, {listenerSetter: this.listenerSetter, once: true});
+      if(options.onBackClick) {
+        this.btnCloseAnimatedIcon = document.createElement('div');
+        this.btnCloseAnimatedIcon.classList.add('animated-close-icon');
+        this.btnClose.append(this.btnCloseAnimatedIcon);
+      } else {
+        this.btnClose.append(Icon('close'));
+      }
+
+      attachClickEvent(this.btnClose, () => {
+        if(options.onBackClick && this.btnCloseAnimatedIcon.classList.contains('state-back')) {
+          this.btnClose.classList.remove('state-back');
+          options.onBackClick();
+        } else {
+          this.hide();
+        }
+      }, {listenerSetter: this.listenerSetter});
     }
 
     this.withoutOverlay = options.withoutOverlay;
@@ -139,9 +165,11 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
 
     if(options.overlayClosable) {
       attachClickEvent(this.element, (e: MouseEvent) => {
-        if(!findUpClassName(e.target, 'popup-container')) {
-          this.hide();
+        if(findUpClassName(e.target, 'popup-container')) {
+          return;
         }
+
+        this.hide();
       }, {listenerSetter: this.listenerSetter});
     }
 
@@ -152,7 +180,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
         this.btnConfirm.append(i18n(options.withConfirm));
       }
       this.header.append(this.btnConfirm);
-      ripple(this.btnConfirm);
+      // ripple(this.btnConfirm);
     }
 
     this.container.append(this.header);
@@ -167,8 +195,14 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
       this.attachScrollableListeners();
 
       if(!this.body) {
-        this.container.insertBefore(scrollable.container, this.header.nextSibling);
+        this.header.after(scrollable.container);
       }
+    }
+
+    if(options.footer) {
+      this.footer = document.createElement('div');
+      this.footer.classList.add('popup-footer');
+      (this.body || this.container).append(this.footer);
     }
 
     let btnConfirmOnEnter = this.btnConfirm;
@@ -186,14 +220,14 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
         }
 
         if(b.text) {
-          button.textContent =  b.text;
-        } else {
+          button.append(b.text);
+        } else if(b.langKey) {
           button.append(i18n(b.langKey, b.langArgs));
         }
 
         attachClickEvent(button, () => {
           b.callback?.();
-          this.destroy();
+          this.hide();
         }, {listenerSetter: this.listenerSetter, once: true});
 
         return b.element = button;
@@ -204,6 +238,10 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
         if(button) {
           btnConfirmOnEnter = button.element;
         }
+      }
+
+      if(buttons.length >= 3) {
+        buttonsDiv.classList.add('is-vertical-layout');
       }
 
       buttonsDiv.append(...buttonsElements);
@@ -230,8 +268,20 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
   public show() {
     this.navigationItem = {
       type: 'popup',
-      onPop: () => this.destroy(),
-      onEscape: this.onEscape
+      onPop: () => {
+        if(this.isConfirmationNeededOnClose) {
+          const result = this.isConfirmationNeededOnClose();
+          if(result) {
+            Promise.resolve(result).then(() => {
+              this.destroy();
+            });
+
+            return false;
+          }
+        }
+
+        return this.destroy();
+      }
     };
 
     appNavigationController.pushItem(this.navigationItem);
@@ -256,7 +306,9 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
       }
 
       this.listenerSetter.add(document.body)('keydown', (e) => {
-        if(PopupElement.POPUPS[PopupElement.POPUPS.length - 1] !== this) {
+        if(!this.btnConfirmOnEnter ||
+          (this.btnConfirmOnEnter as HTMLButtonElement).disabled ||
+          PopupElement.POPUPS[PopupElement.POPUPS.length - 1] !== this) {
           return;
         }
 
@@ -269,11 +321,24 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     // }
   }
 
-  public hide = () => {
+  public hide() {
+    if(this.destroyed || !this.navigationItem) {
+      return;
+    }
+
     appNavigationController.backByItem(this.navigationItem);
-  };
+  }
+
+  public forceHide() {
+    return this.destroy();
+  }
 
   protected destroy() {
+    if(this.destroyed) {
+      return;
+    }
+
+    this.destroyed = true;
     this.dispatchEvent<PopupListeners>('close');
     this.element.classList.add('hiding');
     this.element.classList.remove('active');
@@ -301,7 +366,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
       if(!this.withoutOverlay) {
         animationIntersector.checkAnimations2(false);
       }
-    }, 150);
+    }, 250);
   }
 
   public static reAppend() {

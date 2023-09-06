@@ -40,7 +40,6 @@
     
     margin-top: -9px;
     transform: rotate(45deg);
-    -webkit-transform: rotate(45deg);
     transition: .2s all;
   }
   
@@ -231,7 +230,7 @@
 
     &:focus ~ label,
     &:valid ~ label,
-    &:not(:empty) ~ label,
+    &:not(.is-empty) ~ label,
     &:disabled ~ label {
       transform: translate(-.1875rem, calc(var(--height) / -2 + .0625rem)) scale(.75);
       padding: 0 .3125rem;
@@ -253,6 +252,11 @@
 
     z-index: -3;
   }
+
+  & &-input[contenteditable="false"] {
+    opacity: var(--disabled-opacity);
+    pointer-events: none;
+  }
 }
 
 .input-fields-row {
@@ -261,15 +265,13 @@
   .input-field {
     flex: 1 1 auto;
     width: 1%; // fix width because of contenteditable
-
-    // &:not(:first-child) {
-    //   margin-left: 1rem;
-    // }
   }
 }
 
-.input-wrapper > * + * {
-  margin-top: 1.5rem;
+.input-wrapper {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: 100%;
 }
 
 ::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
@@ -285,7 +287,8 @@
   color: #909192;
 }
 
-input:focus, button:focus {
+input:focus,
+button:focus {
   outline: none;
 }
 
@@ -324,20 +327,76 @@ input:focus, button:focus {
 }
 
 .input-search {
+  --border-width: 1px;
+  --height: 42px;
+  --border-radius: 22px;
+  --padding-horizontal: calc(var(--height) + 3px - var(--border-width));
   position: relative;
   width: 100%;
   margin-inline: .4375rem;
   overflow: hidden;
-  --border-radius: 22px;
+  display: flex;
+  align-items: center;
 
   @include respond-to(handhelds) {
     margin-inline-start: 1rem;
   }
 
+  @keyframes grow-input {
+    from {
+      transform: scale(.5);
+      opacity: 0;
+    }
+
+    to {
+      transform: scale(1);
+      opacity: var(--max-opacity, 1);
+    }
+  }
+
+  @keyframes hide-input {
+    from {
+      transform: scale(1);
+      opacity: var(--max-opacity, 1);
+    }
+
+    to {
+      transform: scale(.5);
+      opacity: 0;
+    }
+  }
+
+  .will-animate {
+    @include animation-level(2) {
+      animation: grow-input .25s forwards ease-in-out;
+    }
+
+    &.is-hiding {
+      @include animation-level(2) {
+        animation: hide-input .25s forwards ease-in-out;
+      }
+
+      @include animation-level(0) {
+        opacity: 0;
+      }
+    }
+  }
+
+  &-placeholder {
+    position: absolute;
+    color: $placeholder-color;
+    z-index: 1;
+    white-space: nowrap;
+    left: calc(var(--padding-horizontal) + var(--border-width));
+    pointer-events: none;
+    transform-origin: left center;
+  }
+
   &-input {
-    --height: 42px;
+    --border-width: inherit;
+    --padding-horizontal: inherit;
     background-color: var(--input-search-background-color);
-    padding: 0px calc(var(--height) + 3px - var(--border-width));
+    padding: 0px var(--padding-horizontal);
     height: var(--height);
     min-height: var(--height) !important;
     max-height: var(--height) !important;
@@ -360,9 +419,15 @@ input:focus, button:focus {
       background-color: transparent;
       border-color: var(--primary-color);
 
-      & ~ .tgico {
+      & ~ .input-search-part {
+        --max-opacity: 1;
         color: var(--primary-color);
-        opacity: 1;
+      }
+
+      & ~ .preloader-container {
+        .preloader-path-new {
+          stroke: var(--primary-color);
+        }
       }
 
       & ~ .btn-icon {
@@ -374,19 +439,25 @@ input:focus, button:focus {
       color: #909192 !important;
     } */
 
-    /* &:empty ~ .tgico-close,  */&:placeholder-shown ~ .tgico-close {
+    &:placeholder-shown ~ .input-search-clear,
+    &:not(:placeholder-shown) ~ .input-search-placeholder {
       display: none;
     }
   }
 
-  > .tgico {
+  &.is-picked .input-search-placeholder {
+    display: none;
+  }
+
+  .input-search-part {
+    --max-opacity: .6;
     position: absolute;
-    top: 50%;
-    transform: translate(0, -50%);
+    // top: 50%;
+    // transform: translate(0, -50%);
     text-align: center;
     font-size: 1.5rem;
     color: var(--secondary-text-color);
-    opacity: .6;
+    opacity: var(--max-opacity);
     line-height: 1;
     z-index: 1;
 
@@ -395,22 +466,32 @@ input:focus, button:focus {
     }
   }
 
-  > .tgico-search {
+  &-icon,
+  .preloader-container {
     width: 1.5rem;
     height: 1.5rem;
     inset-inline-start: .8125rem;
     pointer-events: none;
   }
 
-  > .tgico-close {
+  .preloader-container {
+    right: auto;
+    z-index: 1;
+
+    .preloader-path-new {
+      stroke: var(--secondary-color);
+
+      @include animation-level(2) {
+        transition: stroke .2s ease-out !important;
+      }
+    }
+  }
+
+  &-clear {
     inset-inline-end: 0px;
     z-index: 1;
     width: 42px;
     height: 42px;
-
-    &:before { // ! я сгорел, почему-то здесь иконка сдвигается на пиксель влево, и это происходит из-за position: absolute на .tgico ...
-      margin-inline-end: -1px;
-    }
   }
 }
 
@@ -453,15 +534,7 @@ input:focus, button:focus {
     justify-content: center;
     top: 50%;
     transform: translateY(-50%);
-  
-    &:before {
-      content: $tgico-eye1;
-    }
-  
-    &.eye-hidden:before {
-      content: $tgico-eye2;
-    }
-    
+
     @include hover() {
       color: var(--primary-text-color);
     }

@@ -65,7 +65,7 @@ export default class CheckboxField {
     }
 
     if(options.stateKey) {
-      let loaded = false;
+      let loaded = options.checked !== undefined;
       const onChange = () => {
         if(!loaded) {
           return;
@@ -85,7 +85,7 @@ export default class CheckboxField {
         rootScope.managers.appStateManager.setByKey(options.stateKey, value);
       };
 
-      options.checked === undefined && apiManagerProxy.getState().then((state) => {
+      !loaded && apiManagerProxy.getState().then((state) => {
         loaded = true;
         const stateValue = getDeepProperty(state, options.stateKey);
         let checked: boolean;
