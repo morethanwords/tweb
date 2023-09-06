@@ -1,0 +1,23 @@
+@media print {
+  html, body {
+    min-height: 100% !important;
+    height: auto !important;
+    overflow-y: visible !important;
+    background-color: var(--background-color) !important;
+    print-color-adjust: exact;
+  }
+  .whole {
+    display: none !important;
+  }
+  .emoji-animation-container, .bubble-hover-reaction {
+    display: none !important;
+  }
+  .printable {
+    display: block !important;
+    print-color-adjust: exact;
+  }
+
+}
+
+
+
