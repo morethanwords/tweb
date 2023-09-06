@@ -41,6 +41,9 @@ import {Message} from '../../layer';
 import PopupElement from '../popups';
 import flatten from '../../helpers/array/flatten';
 import IS_STANDALONE from '../../environment/standalone';
+import rootScope from '../../lib/rootScope';
+import {toastNew} from '../toast';
+import confirmationPopup from '../confirmationPopup';
 
 const accumulateMapSet = (map: Map<any, Set<number>>) => {
   return [...map.values()].reduce((acc, v) => acc + v.size, 0);
@@ -58,6 +61,7 @@ class AppSelection extends EventListenerBase<{
 
   protected listenerSetter: ListenerSetter;
   public isScheduled: boolean;
+  public isStories: boolean;
   protected listenElement: HTMLElement;
 
   protected onToggleSelection: (forwards: boolean, animate: boolean) => void | Promise<void>;
@@ -374,9 +378,14 @@ class AppSelection extends EventListenerBase<{
     if(!size && !forceSelection) return;
 
     let cantForward = !size,
-      cantDelete = !size;
-    const cantSend = !size;
-    for(const [peerId, mids] of this.selectedMids) {
+      cantDelete = !size,
+      cantSend = !size;
+
+    if(this.isStories) {
+      cantForward = true;
+      cantSend = true;
+      cantDelete = this.selectedMids.keys().next().value !== rootScope.myId;
+    } else for(const [peerId, mids] of this.selectedMids) {
       const storageKey = this.getStorageKey(peerId);
       const r = await this.managers.appMessagesManager.cantForwardDeleteMids(storageKey, Array.from(mids));
       cantForward = r.cantForward;
@@ -468,9 +477,9 @@ class AppSelection extends EventListenerBase<{
     return true;
   }
 
-  public cancelSelection = async(doNotAnimate?: boolean) => {
+  public cancelSelection = (doNotAnimate?: boolean) => {
     if(doNotAnimate) this.doNotAnimate = true;
-    this.onCancelSelection && await this.onCancelSelection();
+    this.onCancelSelection?.();
     this.selectedMids.clear();
     this.toggleSelection();
     cancelSelection();
@@ -577,7 +586,9 @@ export class SearchSelection extends AppSelection {
   public selectionForwardBtn: HTMLElement;
   public selectionDeleteBtn: HTMLElement;
   public selectionGotoBtn: HTMLElement;
+  public selectionPinBtn: HTMLElement;
 
+  public isStoriesArchive: boolean;
   private isPrivate: boolean;
 
   constructor(private searchSuper: AppSearchSuper, managers: AppManagers, listenerSetter: ListenerSetter) {
@@ -633,10 +644,37 @@ export class SearchSelection extends AppSelection {
     this.toggleByElement(element);
   };
 
+  public onDeleteStoriesClick = async(ids = [...this.selectedMids.get(rootScope.myId)]) => {
+    await confirmationPopup({
+      titleLangKey: ids.length === 1 ? 'DeleteStoryTitle' : 'DeleteStoriesTitle',
+      descriptionLangKey: ids.length === 1 ? 'DeleteStorySubtitle' : 'DeleteStoriesSubtitle',
+      descriptionLangArgs: [ids.length],
+      button: {
+        langKey: 'Delete',
+        isDanger: true
+      }
+    });
+    this.cancelSelection();
+    this.managers.appStoriesManager.deleteStories(ids);
+  };
+
+  public onPinClick = (ids = [...this.selectedMids.get(rootScope.myId)]) => {
+    const promise = this.managers.appStoriesManager.togglePinned(ids, this.isStoriesArchive);
+    this.cancelSelection();
+    promise.then(() => {
+      if(ids.length === 1) {
+        toastNew({langPackKey: this.isStoriesArchive ? 'StoryPinnedToProfile' : 'StoryArchivedFromProfile'});
+      } else {
+        toastNew({langPackKey: this.isStoriesArchive ? 'StorySavedTitle' : 'StoryArchived', langPackArguments: [ids.length]});
+      }
+    });
+  };
+
   protected onUpdateContainer = (cantForward: boolean, cantDelete: boolean, cantSend: boolean) => {
     const length = this.length();
-    replaceContent(this.selectionCountEl, i18n('messages', [length]));
-    this.selectionGotoBtn.classList.toggle('hide', length !== 1);
+    replaceContent(this.selectionCountEl, i18n(this.isStories ? 'StoriesCount' : 'messages', [length]));
+    this.selectionPinBtn.classList.toggle('hide', !this.isStories || this.selectedMids.keys().next().value !== rootScope.myId);
+    this.selectionGotoBtn.classList.toggle('hide', this.isStories || length !== 1);
     this.selectionForwardBtn.classList.toggle('hide', cantForward);
     this.selectionDeleteBtn && this.selectionDeleteBtn.classList.toggle('hide', cantDelete);
   };
@@ -678,9 +716,12 @@ export class SearchSelection extends AppSelection {
         this.selectionCountEl = document.createElement('div');
         this.selectionCountEl.classList.add(BASE_CLASS + '-count');
 
-        this.selectionGotoBtn = ButtonIcon(`message ${BASE_CLASS}-goto`);
-
         const attachClickOptions: AttachClickOptions = {listenerSetter: this.listenerSetter};
+
+        this.selectionPinBtn = ButtonIcon(`${this.isStoriesArchive ? 'pin' : 'unpin'} ${BASE_CLASS}-pin`);
+        attachClickEvent(this.selectionPinBtn, () => this.onPinClick(), attachClickOptions);
+
+        this.selectionGotoBtn = ButtonIcon(`message ${BASE_CLASS}-goto`);
         attachClickEvent(this.selectionGotoBtn, () => {
           const peerId = [...this.selectedMids.keys()][0];
           const mid = [...this.selectedMids.get(peerId)][0];
@@ -704,6 +745,11 @@ export class SearchSelection extends AppSelection {
         if(this.isPrivate) {
           this.selectionDeleteBtn = ButtonIcon(`delete danger ${BASE_CLASS}-delete`);
           attachClickEvent(this.selectionDeleteBtn, () => {
+            if(this.isStories) {
+              this.onDeleteStoriesClick();
+              return;
+            }
+
             const peerId = this.searchSuper.searchContext.peerId;
             PopupElement.createPopup(
               PopupDeleteMessages,
@@ -720,6 +766,7 @@ export class SearchSelection extends AppSelection {
         this.selectionContainer.append(...[
           btnCancel,
           this.selectionCountEl,
+          this.selectionPinBtn,
           this.selectionGotoBtn,
           this.selectionForwardBtn,
           this.selectionDeleteBtn

@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import emoticonsDropdown, {EmoticonsDropdown, EMOTICONSSTICKERGROUP, EmoticonsTab} from '..';
+import {EmoticonsDropdown, EMOTICONSSTICKERGROUP, EmoticonsTab} from '..';
 import findUpClassName from '../../../helpers/dom/findUpClassName';
 import mediaSizes from '../../../helpers/mediaSizes';
 import {Document, MessagesAllStickers, StickerSet} from '../../../layer';
@@ -39,6 +39,7 @@ import {IgnoreMouseOutType} from '../../../helpers/dropdownHover';
 import customProperties from '../../../helpers/dom/customProperties';
 import windowSize from '../../../helpers/windowSize';
 import PopupElement from '../../popups';
+import Icon from '../../icon';
 
 export class SuperStickerRenderer {
   public lazyLoadQueue: LazyLoadQueueRepeat;
@@ -234,7 +235,7 @@ export class StickersTabCategory<Item extends StickersTabCategoryItem, Additiona
     this.gapY = options.gapY ?? 0;
   }
 
-  public setCategoryItemsHeight() {
+  public setCategoryItemsHeight(itemsLength = this.items.length) {
     const {width: containerWidth} = this.getContainerSize();
     const elementSize = this.getElementMediaSize().width;
 
@@ -242,7 +243,7 @@ export class StickersTabCategory<Item extends StickersTabCategoryItem, Additiona
     if(this.gapX) itemsPerRow -= Math.floor(itemsPerRow - 1) * this.gapX / elementSize;
     itemsPerRow = Math.floor(itemsPerRow);
 
-    const rows = Math.ceil(this.items.length / itemsPerRow);
+    const rows = Math.ceil(itemsLength / itemsPerRow);
     let height = rows * elementSize;
     if(this.gapY) height += (rows - 1) * this.gapY;
 
@@ -256,6 +257,7 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
   public container: HTMLElement;
   public menuWrapper: HTMLElement;
   public menu: HTMLElement;
+  public emoticonsDropdown: EmoticonsDropdown;
 
   protected categories: {[id: string]: Category};
   protected categoriesMap: Map<HTMLElement, Category>;
@@ -381,8 +383,8 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
     positionElementByIndex(menuTab, this.menu, posMenu);
   }
 
-  protected isCategoryVisible(category: Category) {
-    return this.categoriesIntersector.getVisible().includes(category.elements.container);
+  public isCategoryVisible(category: Category) {
+    return this.categoriesIntersector.isVisible(category.elements.container);
   }
 
   protected toggleLocalCategory(category: Category, visible: boolean) {
@@ -410,7 +412,7 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
     // category.elements.container.classList.toggle('hide', !visible);
   }
 
-  protected createLocalCategory(id: string, title: LangPackKey | '', icon?: string, noMenuTab?: boolean) {
+  protected createLocalCategory(id: string, title: LangPackKey | '', icon?: Icon, noMenuTab?: boolean) {
     const category = this.createCategory({id} as any, title && i18n(title), true, noMenuTab);
     category.local = true;
     this.localCategories.push(category);
@@ -420,7 +422,7 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
 
     if(!noMenuTab) {
       if(icon) {
-        category.elements.menuTab.classList.add('tgico', 'tgico-' + icon);
+        category.elements.menuTab.append(Icon(icon));
       }
 
       category.elements.menuTabPadding.remove();
@@ -472,7 +474,7 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
   }
 
   public init() {
-    this.listenerSetter.add(emoticonsDropdown)('closed', () => {
+    this.listenerSetter.add(this.emoticonsDropdown)('closed', () => {
       this.postponedEvents.forEach(({cb, args}) => {
         cb(...args);
       });
@@ -493,7 +495,7 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
 
   protected postponedEvent = <K>(cb: (...args: K[]) => void) => {
     return (...args: K[]) => {
-      if(emoticonsDropdown.isActive()) {
+      if(this.emoticonsDropdown.isActive()) {
         this.postponedEvents.push({cb, args});
       } else {
         cb(...args);
@@ -526,10 +528,14 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
   }
 
   private categoryAppendStickers(
+    count: number,
     category: StickersTabCategory<StickersTabItem>,
     promise: Promise<MyDocument[]>
   ) {
     const {container} = category.elements;
+
+    category.setCategoryItemsHeight(count);
+    container.classList.remove('hide');
 
     promise.then((documents) => {
       const isVisible = this.isCategoryVisible(category);
@@ -542,9 +548,6 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
           category.elements.items.append(element);
         }
       });
-
-      category.setCategoryItemsHeight();
-      container.classList.remove('hide');
     });
   }
 
@@ -554,6 +557,7 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
 
     const promise = this.managers.appStickersManager.getStickerSet(set);
     this.categoryAppendStickers(
+      set.count,
       category,
       promise.then((stickerSet) => stickerSet.documents as MyDocument[])
     );
@@ -564,7 +568,7 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
       set,
       container: menuTabPadding,
       group: EMOTICONSSTICKERGROUP,
-      lazyLoadQueue: EmoticonsDropdown.lazyLoadQueue,
+      lazyLoadQueue: this.emoticonsDropdown.lazyLoadQueue,
       width: 32,
       height: 32,
       autoplay: false
@@ -600,7 +604,7 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
       }
     }); */
 
-    const intersectionOptions: IntersectionObserverInit = {root: emoticonsDropdown.getElement()};
+    const intersectionOptions: IntersectionObserverInit = {root: this.emoticonsDropdown.getElement()};
     this.categoriesIntersector = new VisibilityIntersector(this.onCategoryVisibility, intersectionOptions);
 
     const clearCategoryItems = (category: StickersTabCategory<StickersTabItem>) => {
@@ -622,7 +626,7 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
         return;
       }
 
-      EmoticonsDropdown.onMediaClick(e);
+      this.emoticonsDropdown.onMediaClick(e);
     });
 
     this.menuOnClickResult = EmoticonsDropdown.menuOnClick(this, this.menu, this.scrollable, this.menuScroll);
@@ -674,8 +678,7 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
     });
 
     const premiumCategory = this.createLocalCategory('premium', 'PremiumStickersShort');
-    const s = document.createElement('span');
-    s.classList.add('tgico-star', 'color-premium');
+    const s = Icon('star', 'color-premium');
     premiumCategory.elements.menuTab.append(s);
 
     const promises = [
@@ -700,7 +703,7 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
       this.managers.appStickersManager.getPremiumStickers().then((stickers) => {
         const length = stickers.length;
         this.toggleLocalCategory(premiumCategory, rootScope.premium && !!length);
-        this.categoryAppendStickers(premiumCategory, Promise.resolve(stickers));
+        this.categoryAppendStickers(stickers.length, premiumCategory, Promise.resolve(stickers));
 
         rootScope.addEventListener('premium_toggle', (isPremium) => {
           this.toggleLocalCategory(this.categories['premium'], isPremium && !!length);
@@ -727,10 +730,15 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
       });
     });
 
-    this.superStickerRenderer = new SuperStickerRenderer(EmoticonsDropdown.lazyLoadQueue, EMOTICONSSTICKERGROUP, this.managers, intersectionOptions);
+    this.superStickerRenderer = new SuperStickerRenderer(
+      this.emoticonsDropdown.lazyLoadQueue,
+      EMOTICONSSTICKERGROUP,
+      this.managers,
+      intersectionOptions
+    );
 
     const rendererLazyLoadQueue = this.superStickerRenderer.lazyLoadQueue;
-    emoticonsDropdown.addLazyLoadQueueRepeat(rendererLazyLoadQueue, this.superStickerRenderer.processInvisible);
+    this.emoticonsDropdown.addLazyLoadQueueRepeat(rendererLazyLoadQueue, this.superStickerRenderer.processInvisible);
 
     // emoticonsDropdown.addEventListener('close', () => {
     //   this.categoriesIntersector.lock();
@@ -784,7 +792,7 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
       const category = this.categories[id];
       if(category) {
         this.positionCategory(category, true);
-        emoticonsDropdown.addEventListener('openAfterLayout', () => {
+        this.emoticonsDropdown.addEventListener('openAfterLayout', () => {
           this.menuOnClickResult.setActiveStatic(category);
         }, {once: true});
       }
@@ -825,10 +833,10 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
       listenTo: this.content,
       verifyRecent: (target) => !!findUpAsChild(target, this.categories['recent'].elements.items),
       onOpen: () => {
-        emoticonsDropdown.setIgnoreMouseOut(type, true);
+        this.emoticonsDropdown.setIgnoreMouseOut(type, true);
       },
       onClose: () => {
-        emoticonsDropdown.setIgnoreMouseOut(type, false);
+        this.emoticonsDropdown.setIgnoreMouseOut(type, false);
       }
     });
 
@@ -879,7 +887,7 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
   }
 
   public setTyping = (cancel = false) => {
-    if(!cancel && (!emoticonsDropdown.isActive() || emoticonsDropdown.tab !== this)) {
+    if(!cancel && (!this.emoticonsDropdown.isActive() || this.emoticonsDropdown.tab !== this)) {
       return;
     }
 

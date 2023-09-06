@@ -44,9 +44,14 @@ export default class AppPrivateSearchTab extends SliderSuperTab {
     const c = document.createElement('div');
     c.classList.add('chatlist-container');
     this.scrollable.container.replaceWith(c);
-    this.appSearch = new AppSearch(c, this.inputSearch, {
-      messages: new SearchGroup('Chat.Search.PrivateSearch', 'messages')
-    });
+    this.appSearch = new AppSearch(
+      c,
+      this.inputSearch,
+      {
+        messages: new SearchGroup('Chat.Search.PrivateSearch', 'messages')
+      },
+      this.middlewareHelper.get()
+    );
 
     if(!this.peerId) {
       this.query = query;

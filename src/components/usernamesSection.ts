@@ -17,6 +17,7 @@ import {Chat, User, Username} from '../layer';
 import {i18n, LangPackKey} from '../lib/langPack';
 import rootScope from '../lib/rootScope';
 import confirmationPopup from './confirmationPopup';
+import Icon from './icon';
 import Row from './row';
 import SettingSection from './settingSection';
 import {UsernameInputField} from './usernameInputField';
@@ -34,7 +35,8 @@ export class UsernameRow extends Row {
     this.container.classList.add(CLASS_NAME + '-username');
     this.subtitle.classList.add(CLASS_NAME + '-username-status');
     const media = this.createMedia('medium');
-    media.classList.add(CLASS_NAME + '-username-icon', 'tgico');
+    media.classList.add(CLASS_NAME + '-username-icon');
+    media.append(Icon('link'));
   }
 }
 
@@ -98,7 +100,8 @@ export default class UsernamesSection extends SettingSection {
         (base as SortedUsername).row = row;
 
         return base as SortedUsername;
-      }
+      },
+      middleware
     });
 
     const changeActive = (row: Row, active: boolean) => {

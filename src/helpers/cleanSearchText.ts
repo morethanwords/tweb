@@ -83,7 +83,7 @@ export type ProcessSearchTextOptions = Partial<{
   includeTag: boolean
 }>;
 
-export function processSearchText(text: string, options: ProcessSearchTextOptions = {}) {
+export function processSearchText(text = '', options: ProcessSearchTextOptions = {}) {
   const hasTag = options.includeTag && text.charAt(0) === '%';
   const originalText = text;
   if(options.clearBadChars) text = clearBadCharsAndTrim(text);

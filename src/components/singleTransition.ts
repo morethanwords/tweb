@@ -5,7 +5,9 @@
  */
 
 import liteMode from '../helpers/liteMode';
-import rootScope from '../lib/rootScope';
+
+const $TRANSITION_RAF = Symbol('RAF'),
+  $TRANSITION_TIMEOUT = Symbol('TIMEOUT');
 
 type SetTransitionOptions = {
   element: HTMLElement,
@@ -18,7 +20,8 @@ type SetTransitionOptions = {
 };
 const SetTransition = (options: SetTransitionOptions) => {
   const {element, className, forwards, duration, onTransitionEnd, onTransitionStart, useRafs} = options;
-  const {timeout, raf} = element.dataset;
+  const timeout: number = (element as any)[$TRANSITION_TIMEOUT];
+  const raf: number = (element as any)[$TRANSITION_RAF];
   if(timeout !== undefined) {
     clearTimeout(+timeout);
   }
@@ -29,7 +32,7 @@ const SetTransition = (options: SetTransitionOptions) => {
   if(raf !== undefined) {
     window.cancelAnimationFrame(+raf);
     if(!useRafs) {
-      delete element.dataset.raf;
+      delete (element as any)[$TRANSITION_RAF];
     }
   }
 
@@ -38,8 +41,8 @@ const SetTransition = (options: SetTransitionOptions) => {
   // }
 
   if(useRafs && liteMode.isAvailable('animations') && duration) {
-    element.dataset.raf = '' + window.requestAnimationFrame(() => {
-      delete element.dataset.raf;
+    (element as any)[$TRANSITION_RAF] = '' + window.requestAnimationFrame(() => {
+      delete (element as any)[$TRANSITION_RAF];
       SetTransition({
         ...options,
         useRafs: useRafs - 1
@@ -54,7 +57,7 @@ const SetTransition = (options: SetTransitionOptions) => {
   }
 
   const afterTimeout = () => {
-    delete element.dataset.timeout;
+    delete (element as any)[$TRANSITION_TIMEOUT];
     if(!forwards && className) {
       element.classList.remove('backwards', className);
     }
@@ -74,7 +77,7 @@ const SetTransition = (options: SetTransitionOptions) => {
   element.classList.add('animating');
 
   element.classList.toggle('backwards', !forwards);
-  element.dataset.timeout = '' + setTimeout(afterTimeout, duration);
+  (element as any)[$TRANSITION_TIMEOUT] = '' + setTimeout(afterTimeout, duration);
 };
 
 export default SetTransition;

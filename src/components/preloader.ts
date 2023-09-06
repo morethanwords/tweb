@@ -195,19 +195,17 @@ export default class ProgressivePreloader {
     .then(() => onEnd(null))
     .catch((err) => onEnd(err));
 
-    if(promise.addNotifyListener) {
-      promise.addNotifyListener((details: {done: number, total: number}) => {
-        /* if(details.done >= details.total) {
-          onEnd();
-        } */
+    promise.addNotifyListener?.((details: {done: number, total: number}) => {
+      /* if(details.done >= details.total) {
+        onEnd();
+      } */
 
-        if(tempId !== this.tempId) return;
+      if(tempId !== this.tempId) return;
 
-        // console.log('preloader download', promise, details);
-        const percents = details.done / details.total * 100;
-        this.setProgress(percents);
-      });
-    }
+      // console.log('preloader download', promise, details);
+      const percents = details.done / details.total * 100;
+      this.setProgress(percents);
+    });
   }
 
   public attach(elem: Element, reset = false, promise?: CancellablePromise<any>) {

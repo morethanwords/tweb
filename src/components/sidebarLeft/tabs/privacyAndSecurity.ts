@@ -35,6 +35,7 @@ import AppPrivacyVoicesTab from './privacy/voices';
 import SettingSection from '../../settingSection';
 import AppActiveWebSessionsTab from './activeWebSessions';
 import PopupElement from '../../popups';
+import AppPrivacyAboutTab from './privacy/about';
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;
@@ -77,7 +78,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       blockedUsersRow.freezed = true;
 
       let passwordState: AccountPassword;
-      const twoFactorRowOptions = {
+      const twoFactorRowOptions: ConstructorParameters<typeof Row>[0] = {
         icon: 'lock',
         titleLangKey: 'TwoStepVerification' as LangPackKey,
         subtitleLangKey: SUBTITLE,
@@ -253,6 +254,15 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         listenerSetter: this.listenerSetter
       });
 
+      const aboutRow = rowsByKeys['inputPrivacyKeyAbout'] = new Row({
+        titleLangKey: 'UserBio',
+        subtitleLangKey: SUBTITLE,
+        clickable: () => {
+          this.slider.createTab(AppPrivacyAboutTab).open();
+        },
+        listenerSetter: this.listenerSetter
+      });
+
       const updatePrivacyRow = (key: InputPrivacyKey['_']) => {
         const row = rowsByKeys[key];
         if(!row) {
@@ -280,7 +290,8 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         callRow.container,
         linkAccountRow.container,
         groupChatsAddRow.container,
-        voicesRow.container
+        voicesRow.container,
+        aboutRow.container
       );
       this.scrollable.append(section.container);
 
@@ -309,7 +320,9 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         if(enabled === undefined || enabled === checkboxField.checked) return;
         return this.managers.appPrivacyManager.setGlobalPrivacySettings({
           _: 'globalPrivacySettings',
-          archive_and_mute_new_noncontact_peers: checkboxField.checked
+          pFlags: {
+            archive_and_mute_new_noncontact_peers: checkboxField.checked || undefined
+          }
         });
       }, {once: true});
 
@@ -328,7 +341,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         this.listenerSetter.add(rootScope)('premium_toggle', onPremiumToggle);
         onPremiumToggle(rootScope.premium);
 
-        enabled = !!settings.archive_and_mute_new_noncontact_peers;
+        enabled = !!settings.pFlags.archive_and_mute_new_noncontact_peers;
 
         checkboxField.setValueSilently(enabled);
       });

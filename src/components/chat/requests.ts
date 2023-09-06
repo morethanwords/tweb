@@ -19,10 +19,12 @@ import AppChatRequestsTab from '../sidebarRight/tabs/chatRequests';
 import callbackify from '../../helpers/callbackify';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import {ONE_DAY} from '../../helpers/date';
+import {MiddlewareHelper, getMiddleware} from '../../helpers/middleware';
 
 export default class ChatRequests extends PinnedContainer {
   protected titleElement: I18n.IntlElement;
   protected stackedAvatars: StackedAvatars;
+  protected stackedAvatarsMiddlewareHelper: MiddlewareHelper;
   protected peerId: PeerId;
   // protected middlewareHelper: MiddlewareHelper;
 
@@ -73,7 +75,10 @@ export default class ChatRequests extends PinnedContainer {
 
   public unset(peerId: PeerId) {
     this.peerId = peerId;
-    this.stackedAvatars && this.stackedAvatars.container.remove();
+    if(this.stackedAvatars) {
+      this.stackedAvatars.container.remove();
+      this.stackedAvatarsMiddlewareHelper.destroy();
+    }
     this.toggle(true);
   }
 
@@ -83,7 +88,9 @@ export default class ChatRequests extends PinnedContainer {
     }
 
     const oldStackedAvatars = this.stackedAvatars;
-    const avatars = this.stackedAvatars = new StackedAvatars({avatarSize: 32});
+    const oldStackedAvatarsMiddlewareHelper = this.stackedAvatarsMiddlewareHelper;
+    this.stackedAvatarsMiddlewareHelper = getMiddleware();
+    const avatars = this.stackedAvatars = new StackedAvatars({avatarSize: 32, middleware: this.stackedAvatarsMiddlewareHelper.get()});
     const loadPromises: Promise<any>[] = [];
     avatars.render(peerIds, loadPromises);
     await Promise.all(loadPromises);
@@ -92,7 +99,10 @@ export default class ChatRequests extends PinnedContainer {
       this.peerId = peerId;
       this.titleElement.compareAndUpdate({args: [length]});
       this.wrapperUtils.before(avatars.container, this.titleElement.element);
-      oldStackedAvatars && oldStackedAvatars.container.remove();
+      if(oldStackedAvatars) {
+        oldStackedAvatars.container.remove();
+        oldStackedAvatarsMiddlewareHelper?.destroy();
+      }
       this.toggle(false);
     };
   }

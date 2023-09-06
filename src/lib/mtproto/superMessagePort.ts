@@ -95,6 +95,7 @@ type ListenerCallback = (payload: any, source: MessageEventSource, event: Messag
 type Listeners = Record<string, ListenerCallback>;
 
 const USE_LOCKS = true;
+const USE_BATCHING = true;
 
 // const PING_INTERVAL = DEBUG && false ? 0x7FFFFFFF : 5000;
 // const PING_TIMEOUT = DEBUG && false ? 0x7FFFFFFF : 10000;
@@ -155,7 +156,8 @@ export default class SuperMessagePort<
       pong: this.processPongTask,
       close: this.processCloseTask,
       // open: this.processOpenTask,
-      lock: this.processLockTask
+      lock: this.processLockTask,
+      batch: this.processBatchTask
     };
   }
 
@@ -282,6 +284,10 @@ export default class SuperMessagePort<
   protected postMessage(port: SendPort | SendPort[], task: Task) {
     const ports = Array.isArray(port) ? port : (port ? [port] : this.sendPorts);
     ports.forEach((port) => {
+      if(import.meta.env.MODE === 'test') {
+        return;
+      }
+
       port.postMessage(task, task.transfer as any);
     });
   }
@@ -291,20 +297,12 @@ export default class SuperMessagePort<
     // this.log('got message', task);
 
     const source: MessageEventSource = event.source || event.currentTarget as any; // can have no source
-    /* if(task.type === 'batch') {
-      const newEvent: MessageEvent = {data: event.data, source: event.source, currentTarget: event.currentTarget} as any;
-      task.payload.forEach((task) => {
-        // @ts-ignore
-        newEvent.data = task;
-        this.onMessage(newEvent);
-      });
-    } */
 
     // @ts-ignore
     this.processTaskMap[task.type](task, source, event);
   };
 
-  protected /* async */ releasePending() {
+  protected async releasePending() {
     // return;
 
     if(/* !this.listenPorts.length || !this.sendPorts.length ||  */this.releasingPending) {
@@ -313,35 +311,41 @@ export default class SuperMessagePort<
 
     this.releasingPending = true;
     // const perf = performance.now();
+
+    if(USE_BATCHING) {
+      await Promise.resolve();
+    }
     // await pause(0);
 
     this.debug && this.log.debug('releasing tasks, length:', this.pending.size/* , performance.now() - perf */);
 
     this.pending.forEach((portTasks, port) => {
-      // let batchTask: BatchTask;
-      // const tasks: Task[] = [];
-      // portTasks.forEach((task) => {
-      //   if(task.transfer) {
-      //     batchTask = undefined;
-      //     tasks.push(task);
-      //   } else {
-      //     if(!batchTask) {
-      //       batchTask = this.createTask('batch', []);
-      //       tasks.push(batchTask);
-      //     }
+      let tasks: Task[] = portTasks;
+      if(USE_BATCHING) {
+        let batchTask: BatchTask;
+        tasks = [];
+        portTasks.forEach((task) => {
+          if(task.transfer) {
+            batchTask = undefined;
+            tasks.push(task);
+          } else {
+            if(!batchTask) {
+              batchTask = this.createTask('batch', []);
+              tasks.push(batchTask);
+            }
 
-      //     batchTask.payload.push(task);
-      //   }
-      // });
+            batchTask.payload.push(task);
+          }
+        });
+      }
 
-      const tasks = portTasks;
       const ports = port ? [port] : this.sendPorts;
       if(!ports.length) {
         return;
       }
 
       tasks.forEach((task) => {
-        // if(task.type === 'batch') {
+        // if(USE_BATCHING && task.type === 'batch') {
         //   this.log(`batching ${task.payload.length} tasks`);
         // }
 
@@ -437,6 +441,19 @@ export default class SuperMessagePort<
 
   protected processCloseTask = (task: CloseTask, source: MessageEventSource, event: MessageEvent) => {
     this.detachPort(source);
+  };
+
+  protected processBatchTask = (task: BatchTask, source: MessageEventSource, event: MessageEvent) => {
+    if(!USE_BATCHING) {
+      return;
+    }
+
+    const newEvent: MessageEvent = {data: event.data, source: event.source, currentTarget: event.currentTarget} as any;
+    task.payload.forEach((task) => {
+      // @ts-ignore
+      newEvent.data = task;
+      this.onMessage(newEvent);
+    });
   };
 
   // * it's just an 'open' callback, DO NOT attach port from here

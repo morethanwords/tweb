@@ -12,8 +12,9 @@ import ripple from '../ripple';
 import ListenerSetter from '../../helpers/listenerSetter';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import {Message} from '../../layer';
+import {Message, StoryItem} from '../../layer';
 import safeAssign from '../../helpers/object/safeAssign';
+import ButtonIcon from '../buttonIcon';
 
 const classNames: string[] = ['is-pinned-message-shown', 'is-pinned-audio-shown'];
 const CLASSNAME_BASE = 'pinned-container';
@@ -23,6 +24,7 @@ export type WrapPinnedContainerOptions = {
   title: string | HTMLElement | DocumentFragment,
   subtitle?: WrapPinnedContainerOptions['title'],
   message?: Message.message | Message.messageService,
+  storyItem?: StoryItem.storyItem
 };
 
 export default class PinnedContainer {
@@ -59,15 +61,14 @@ export default class PinnedContainer {
       divAndCaption.content.classList.add(CLASSNAME_BASE + '-content');
     }
 
-    this.btnClose = document.createElement('button');
-    this.btnClose.classList.add(CLASSNAME_BASE + '-close', `pinned-${className}-close`, 'btn-icon', 'tgico-close');
+    this.btnClose = ButtonIcon(`close ${CLASSNAME_BASE + '-close'} pinned-${className}-close`, {noRipple: true});
 
     this.wrapper = document.createElement('div');
     this.wrapper.classList.add(CLASSNAME_BASE + '-wrapper', `pinned-${className}-wrapper`);
     ripple(this.wrapper);
 
     this.wrapperUtils = document.createElement('div');
-    this.wrapperUtils.classList.add(CLASSNAME_BASE + '-wrapper-utils');
+    this.wrapperUtils.classList.add(CLASSNAME_BASE + '-wrapper-utils', `pinned-${className}-wrapper-utils`);
     this.wrapperUtils.append(this.btnClose);
 
     this.wrapper.append(...(divAndCaption ? Array.from(divAndCaption.container.children) : []), this.wrapperUtils);

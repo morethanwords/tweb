@@ -7,6 +7,7 @@
 import mediaSizes from '../helpers/mediaSizes';
 import {Middleware} from '../helpers/middleware';
 import {Chat, Document, EmojiStatus, User} from '../layer';
+import apiManagerProxy from '../lib/mtproto/mtprotoworker';
 import rootScope from '../lib/rootScope';
 import generateFakeIcon from './generateFakeIcon';
 import generatePremiumIcon from './generatePremiumIcon';
@@ -21,7 +22,7 @@ export default async function generateTitleIcons(
   noPremiumIcon?: boolean
 ) {
   const elements: HTMLElement[] = [];
-  const peer: Chat | User = await rootScope.managers.appPeersManager.getPeer(peerId);
+  const peer: Chat | User = await apiManagerProxy.getPeer(peerId);
   if((peer as Chat.channel).pFlags.verified && !noVerifiedIcon) {
     elements.push(generateVerifiedIcon());
   }

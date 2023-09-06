@@ -26,7 +26,7 @@ export default class PrivacySection {
     titleLangKey: LangPackKey,
     key: keyof PrivacySection['peerIds'],
     row: Row,
-    icon: string,
+    icon: Icon,
     subtitleLangKey: LangPackKey,
     clickable: true
   }>;

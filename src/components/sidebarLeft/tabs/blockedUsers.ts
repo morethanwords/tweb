@@ -56,13 +56,19 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
     section.content.append(list);
 
     const add = async(peerId: PeerId, append: boolean) => {
-      const {dom} = appDialogsManager.addDialogNew({
+      const dialogElement = appDialogsManager.addDialogNew({
         peerId: peerId,
         container: list,
         rippleEnabled: true,
         avatarSize: 'abitbigger',
-        append
+        append,
+        wrapOptions: {
+          middleware: this.middlewareHelper.get()
+        }
       });
+
+      (dialogElement.container as any).dialogElement = dialogElement;
+      const {dom} = dialogElement;
 
       const user = await this.managers.appUsersManager.getUser(peerId.toUserId());
       if(!user) {
@@ -121,16 +127,18 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
     });
 
     this.listenerSetter.add(rootScope)('peer_block', (update) => {
-      const {peerId, blocked} = update;
+      const {peerId, blocked, blockedMyStoriesFrom} = update;
+      if(blockedMyStoriesFrom) {
+        return;
+      }
+
       const li = list.querySelector(`[data-peer-id="${peerId}"]`);
       if(blocked) {
         if(!li) {
           add(peerId, false);
         }
-      } else {
-        if(li) {
-          li.remove();
-        }
+      } else if(li) {
+        (li as any).dialogElement.remove();
       }
     });
 

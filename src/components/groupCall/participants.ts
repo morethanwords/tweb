@@ -72,7 +72,8 @@ export class GroupCallParticipantContextMenu {
       verify: () => true,
       onClick: this.onOpenProfileClick
     }, {
-      icon: 'deleteuser danger',
+      icon: 'deleteuser',
+      className: 'danger',
       text: 'VoiceChat.RemovePeer',
       verify: () => this.managers.appChatsManager.hasRights(this.chatId, 'ban_users'),
       onClick: async() => {

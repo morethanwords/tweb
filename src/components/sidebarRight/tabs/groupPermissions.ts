@@ -367,19 +367,22 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
 
       const add = (participant: ChannelParticipant.channelParticipantBanned, append: boolean) => {
         const peerId = getPeerId(participant.peer);
-        const {dom} = appDialogsManager.addDialogNew({
+        const dialogElement = appDialogsManager.addDialogNew({
           peerId,
           container: list,
           rippleEnabled: true,
           avatarSize: 'abitbigger',
-          append
+          append,
+          wrapOptions: {
+            middleware: this.middlewareHelper.get()
+          }
         });
 
         this.participants.set(peerId, participant);
 
-        (dom.listEl as any).dialogDom = dom;
+        (dialogElement.dom.listEl as any).dialogElement = dialogElement;
 
-        setSubtitle(dom, participant);
+        setSubtitle(dialogElement.dom, participant);
       };
 
       this.listenerSetter.add(rootScope)('chat_participant', (update) => {
@@ -400,14 +403,16 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
           if(!li) {
             add(newParticipant, false);
           } else {
-            setSubtitle((li as any).dialogDom, newParticipant);
+            setSubtitle((li as any).dialogElement.dom, newParticipant);
           }
 
           if(prevParticipant?._ !== 'channelParticipantBanned') {
             ++exceptionsCount;
           }
         } else {
-          li?.remove();
+          if(li) {
+            (li as any).dialogElement.remove();
+          }
 
           if(prevParticipant?._ === 'channelParticipantBanned') {
             --exceptionsCount;

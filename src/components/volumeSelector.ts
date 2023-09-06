@@ -6,13 +6,17 @@
 
 import cancelEvent from '../helpers/dom/cancelEvent';
 import {attachClickEvent} from '../helpers/dom/clickEvent';
+import findUpClassName from '../helpers/dom/findUpClassName';
 import ListenerSetter from '../helpers/listenerSetter';
-import rootScope from '../lib/rootScope';
+import {_tgico} from '../helpers/tgico';
 import appMediaPlaybackController from './appMediaPlaybackController';
+import {replaceButtonIcon} from './button';
 import RangeSelector from './rangeSelector';
 
+const className = 'player-volume';
+
 export default class VolumeSelector extends RangeSelector {
-  private static ICONS = ['volume_off', 'volume_mute', 'volume_down', 'volume_up'];
+  private static ICONS: Icon[] = ['volume_off', 'volume_mute', 'volume_down', 'volume_up'];
   public btn: HTMLElement;
   protected icon: HTMLSpanElement;
 
@@ -40,18 +44,20 @@ export default class VolumeSelector extends RangeSelector {
       } */
     });
 
-    const className = 'player-volume';
     const btn = this.btn = document.createElement('div');
     btn.classList.add('btn-icon', className);
-    const icon = this.icon = document.createElement('span');
-    icon.classList.add(className + '__icon');
 
-    btn.append(icon, this.container);
+    attachClickEvent(btn, (e) => {
+      if(!findUpClassName(e.target, className + '__icon')) {
+        return;
+      }
 
-    attachClickEvent(icon, this.onMuteClick, {listenerSetter: this.listenerSetter});
+      this.onMuteClick(e);
+    }, {listenerSetter: this.listenerSetter});
     this.listenerSetter.add(appMediaPlaybackController)('playbackParams', this.setVolume);
 
     this.setVolume();
+    btn.append(this.container);
   }
 
   private onMuteClick = (e?: Event) => {
@@ -74,8 +80,8 @@ export default class VolumeSelector extends RangeSelector {
       iconIndex = 2;
     }
 
-    VolumeSelector.ICONS.forEach((icon) => this.icon.classList.remove('tgico-' + icon));
-    this.icon.classList.add('tgico-' + VolumeSelector.ICONS[iconIndex]);
+    const newIcon = replaceButtonIcon(this.btn, VolumeSelector.ICONS[iconIndex]);
+    newIcon.classList.add(className + '__icon');
 
     if(!this.mousedown) {
       this.setProgress(muted ? 0 : volume);

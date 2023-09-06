@@ -98,7 +98,7 @@ export default class RLottiePlayer extends EventListenerBase<{
 
   public el: HTMLElement[];
   public canvas: HTMLCanvasElement[];
-  private contexts: CanvasRenderingContext2D[];
+  public contexts: CanvasRenderingContext2D[];
 
   public paused = true;
   // public paused = false;

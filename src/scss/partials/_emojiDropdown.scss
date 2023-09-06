@@ -22,6 +22,13 @@ $menu-height: 3.0625rem;
 	max-height: 100%;
 	user-select: none;
 
+  &.is-standalone {
+    transform-origin: 9rem 4.625rem !important;
+    transform: scale(.85);
+    bottom: auto;
+    left: auto;
+  }
+
 	@include respond-to(esg-top) {
 		position: absolute !important;
 		left: $chat-padding;
@@ -48,6 +55,14 @@ $menu-height: 3.0625rem;
 			transition: none;
 		}
 	}
+
+  &.shrink {
+    height: auto;
+
+    .emoticons-content .scrollable-y {
+      position: relative;
+    }
+  }
 
 	.emoji-container {
 		width: 100%;
@@ -119,7 +134,7 @@ $menu-height: 3.0625rem;
     /* display: flex; */
     flex-direction: column;
     height: 100%;
-    background-color: transparent;
+    background-color: transparent !important;
   }
 
   &-menu {
@@ -186,12 +201,6 @@ $menu-height: 3.0625rem;
         width: 100%;
         height: 100%;
         position: relative;
-      }
-
-      &.active {
-        &:not(.tgico) {
-          background-color: var(--light-secondary-text-color);
-        }
       }
     }
 
@@ -268,6 +277,23 @@ $menu-height: 3.0625rem;
     position: relative;
     // background-color: var(--surface-color);
 
+    // .scrollable-y,
+    // &.is-loaded .preloader {
+    //   opacity: 0;
+    // }
+
+    // &.is-loaded .scrollable-y,
+    // .preloader {
+    //   opacity: 1;
+    // }
+
+    // .preloader,
+    // .scrollable-y {
+    //   @include animation-level(2) {
+    //     transition: opacity var(--transition-standard-out);
+    //   }
+    // }
+
     .emoji-category {
       position: relative;
     }
@@ -301,17 +327,23 @@ $menu-height: 3.0625rem;
         z-index: 1;
         pointer-events: all;
       }
+
+      &-lock {
+        line-height: inherit;
+        vertical-align: middle;
+        margin-right: 0.125rem;
+        display: none;
+      }
     }
 
     &:not(.has-premium) .is-premium-set {
-      .category-title {
-        &:before {
-          content: $tgico-premium_lock;
-          line-height: inherit;
-          vertical-align: middle;
-          margin-right: 0.125rem;
-        }
+      .category-title-lock {
+        display: inline;
       }
+    }
+
+    .scrollable-y {
+      padding-bottom: .5rem;
     }
   }
 }

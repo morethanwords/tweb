@@ -12,7 +12,7 @@ import rootScope from '../../../lib/rootScope';
 import {IS_APPLE, IS_SAFARI} from '../../../environment/userAgent';
 import Row from '../../row';
 import AppBackgroundTab from './background';
-import I18n, {LangPackKey, _i18n} from '../../../lib/langPack';
+import I18n, {LangPackKey, _i18n, join} from '../../../lib/langPack';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import {BaseTheme} from '../../../layer';
 import eachMinute from '../../../helpers/eachMinute';
@@ -29,6 +29,7 @@ import themeController from '../../../helpers/themeController';
 import liteMode from '../../../helpers/liteMode';
 import AppPowerSavingTab from './powerSaving';
 import {toastNew} from '../../toast';
+import {joinDeepPath} from '../../../helpers/object/setDeepProperty';
 
 export class RangeSettingSelector {
   public container: HTMLDivElement;
@@ -107,7 +108,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
 
       const range = new RangeSettingSelector('TextSize', 1, rootScope.settings.messagesTextSize, 12, 20);
       range.onChange = (value) => {
-        rootScope.managers.appStateManager.setByKey('settings.messagesTextSize', value);
+        rootScope.managers.appStateManager.setByKey(joinDeepPath('settings', 'messagesTextSize'), value);
       };
 
       const chatBackgroundButton = Button('btn-primary btn-transparent', {icon: 'image', text: 'ChatBackground'});
@@ -129,7 +130,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
       const animationsCheckboxField = new CheckboxField({
         text: 'EnableAnimations',
         name: 'animations',
-        stateKey: 'settings.liteMode.animations',
+        stateKey: joinDeepPath('settings', 'liteMode', 'animations'),
         stateValueReverse: true,
         checked: false,
         listenerSetter: this.listenerSetter
@@ -337,7 +338,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
       form.style.marginTop = '.5rem';
 
       const name = 'theme';
-      const stateKey = 'settings.theme';
+      const stateKey = joinDeepPath('settings', 'theme');
 
       const dayRow = new Row({
         radioField: new RadioField({
@@ -419,7 +420,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
       const form = document.createElement('form');
 
       const name = 'send-shortcut';
-      const stateKey = 'settings.sendShortcut';
+      const stateKey = joinDeepPath('settings', 'sendShortcut');
 
       const enterRow = new Row({
         radioField: new RadioField({
@@ -451,7 +452,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
       const form = document.createElement('form');
 
       const name = 'distance-unit';
-      const stateKey = 'settings.distanceUnit';
+      const stateKey = joinDeepPath('settings', 'distanceUnit');
 
       const kilometersRow = new Row({
         radioField: new RadioField({
@@ -481,7 +482,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
       const form = document.createElement('form');
 
       const name = 'time-format';
-      const stateKey = 'settings.timeFormat';
+      const stateKey = joinDeepPath('settings', 'timeFormat');
 
       const formats: [State['settings']['timeFormat'], LangPackKey][] = [
         ['h12', 'General.TimeFormat.h12'],

@@ -18,6 +18,7 @@ import ListenerSetter from '../helpers/listenerSetter';
 import Button from './button';
 import createContextMenu from '../helpers/dom/createContextMenu';
 import SidebarSlider from './slider';
+import Icon from './icon';
 
 type K = string | HTMLElement | DocumentFragment | true;
 
@@ -58,7 +59,7 @@ export default class Row<T extends SliderSuperTabEventableConstructable = any> {
   private _midtitle: HTMLElement;
 
   constructor(options: Partial<{
-    icon: string,
+    icon: Icon,
     subtitle: K,
     subtitleLangKey: LangPackKey,
     subtitleLangArgs: any[],
@@ -195,7 +196,7 @@ export default class Row<T extends SliderSuperTabEventableConstructable = any> {
     if(options.icon) {
       havePadding = true;
       // this.title.classList.add('tgico', 'tgico-' + options.icon);
-      this.container.classList.add('tgico', 'tgico-' + options.icon);
+      this.container.append(Icon(options.icon, 'row-icon'));
       this.container.classList.add('row-with-icon');
     }
 
@@ -350,9 +351,8 @@ export default class Row<T extends SliderSuperTabEventableConstructable = any> {
   }
 
   public makeSortable() {
-    const sortIcon = document.createElement('span');
-    this.container.classList.add('row-sortable', 'tgico');
-    sortIcon.classList.add('row-sortable-icon', 'tgico-menu');
+    const sortIcon = Icon('menu', 'row-sortable-icon');
+    this.container.classList.add('row-sortable');
     this.container.append(sortIcon);
   }
 

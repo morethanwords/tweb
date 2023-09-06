@@ -22,6 +22,7 @@ import getServerMessageId from './utils/messageId/getServerMessageId';
 import {randomLong} from '../../helpers/random';
 import tsNow from '../../helpers/tsNow';
 import getPeerActiveUsernames from './utils/peers/getPeerActiveUsernames';
+import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
 
 export type Channel = Chat.channel;
 export type ChatRights = keyof ChatBannedRights['pFlags'] | keyof ChatAdminRights['pFlags'] | 'change_type' | 'change_permissions' | 'delete_chat' | 'view_participants' | 'invite_links';
@@ -136,6 +137,7 @@ export class AppChatsManager extends AppManager {
     const peerId = chat.id.toPeerId(true);
     if(oldChat === undefined) {
       this.chats[chat.id] = chat;
+      this.mirrorChat(chat);
     } else {
       const oldPhotoId = ((oldChat as Chat.chat).photo as ChatPhoto.chatPhoto)?.photo_id;
       const newPhotoId = ((chat as Chat.chat).photo as ChatPhoto.chatPhoto)?.photo_id;
@@ -149,6 +151,7 @@ export class AppChatsManager extends AppManager {
         (oldChat as Chat.channel).pFlags.fake !== (chat as Chat.channel).pFlags.fake;
 
       safeReplaceObject(oldChat, chat);
+      this.mirrorChat(oldChat);
       this.rootScope.dispatchEvent('chat_update', chat.id);
 
       if(changedPhoto) {
@@ -171,8 +174,20 @@ export class AppChatsManager extends AppManager {
     }
   }
 
+  private mirrorChat(chat: Chat) {
+    MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
+      name: 'peers',
+      key: '' + chat.id.toPeerId(true),
+      value: chat
+    });
+  }
+
   public getChat(id: ChatId) {
     return this.chats[id];
+  }
+
+  public getChats() {
+    return this.chats;
   }
 
   /**

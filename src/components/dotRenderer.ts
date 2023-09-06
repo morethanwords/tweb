@@ -175,7 +175,8 @@ export default class DotRenderer implements AnimationItemWrapper {
       animation: dotRenderer,
       group: animationGroup,
       observeElement: dotRenderer.canvas,
-      controlled: middleware
+      controlled: middleware,
+      type: 'dots'
     });
 
     return dotRenderer;

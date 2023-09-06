@@ -20,6 +20,7 @@ import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import {Poll} from '../../layer';
 import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 import confirmationPopup from '../confirmationPopup';
+import ButtonIcon from '../buttonIcon';
 
 const MAX_LENGTH_QUESTION = 255;
 const MAX_LENGTH_OPTION = 100;
@@ -300,13 +301,22 @@ export default class PopupCreatePoll extends PopupElement {
     };
     // poll.id = randomIDS;
 
-    const inputMediaPoll = await this.chat.managers.appPollsManager.getInputMediaPoll(poll, this.correctAnswers, quizSolution, quizSolutionEntities);
+    const inputMediaPoll = await this.chat.managers.appPollsManager.getInputMediaPoll(
+      poll,
+      this.correctAnswers,
+      quizSolution,
+      quizSolutionEntities
+    );
 
     // console.log('Will try to create poll:', inputMediaPoll);
 
-    this.chat.managers.appMessagesManager.sendOther(this.chat.peerId, inputMediaPoll, {
-      ...this.chat.getMessageSendingParams()
-    });
+    this.chat.managers.appMessagesManager.sendOther(
+      this.chat.peerId,
+      inputMediaPoll,
+      {
+        ...this.chat.getMessageSendingParams()
+      }
+    );
 
     if(this.chat.input.helperType === 'reply') {
       this.chat.input.clearHelper();
@@ -388,8 +398,7 @@ export default class PopupCreatePoll extends PopupElement {
       }
     });
 
-    const deleteBtn = document.createElement('span');
-    deleteBtn.classList.add('btn-icon', 'tgico-close');
+    const deleteBtn = ButtonIcon('close');
     questionField.container.append(deleteBtn);
 
     attachClickEvent(deleteBtn, this.onDeleteClick, {listenerSetter: this.listenerSetter, once: true});

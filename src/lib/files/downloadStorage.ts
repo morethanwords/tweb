@@ -42,7 +42,7 @@ export default class DownloadStorage implements FileStorage {
       appManagersManager.getServiceMessagePort().invoke('downloadCancel', downloadId);
     });
 
-    promise.then(deferred.resolve, deferred.reject);
+    promise.then(deferred.resolve.bind(deferred), deferred.reject.bind(deferred));
 
     return {
       deferred,

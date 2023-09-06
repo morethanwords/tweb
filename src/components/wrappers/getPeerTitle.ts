@@ -8,6 +8,7 @@ import _limitSymbols from '../../helpers/string/limitSymbols';
 import {Chat} from '../../layer';
 import getPeerActiveUsernames from '../../lib/appManagers/utils/peers/getPeerActiveUsernames';
 import I18n from '../../lib/langPack';
+import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import rootScope from '../../lib/rootScope';
 
@@ -33,7 +34,7 @@ export default async function getPeerTitle<T extends GetPeerTitleOptions>(
 
   let title = '';
   if(peerId.isUser()) {
-    const user = await managers.appUsersManager.getUser(peerId.toUserId());
+    const user = await apiManagerProxy.getUser(peerId.toUserId());
     if(user) {
       if(user.first_name) title += user.first_name;
       if(user.last_name && (!onlyFirstName || !title)) title += ' ' + user.last_name;
@@ -48,7 +49,7 @@ export default async function getPeerTitle<T extends GetPeerTitleOptions>(
     }
 
     if(!title) {
-      const chat = await managers.appChatsManager.getChat(peerId.toChatId()) as Chat.chat;
+      const chat = await apiManagerProxy.getChat(peerId.toChatId()) as Chat.chat;
       title = chat?.title || '';
     }
 

@@ -1,6 +1,10 @@
 import deepEqual from '../../../../helpers/object/deepEqual';
-import {Reaction} from '../../../../layer';
+import {AvailableReaction, Reaction} from '../../../../layer';
+import availableReactionToReaction from './availableReactionToReaction';
 
-export default function reactionsEqual(r1: Reaction, r2: Reaction) {
+export default function reactionsEqual(r1: Reaction | AvailableReaction, r2: Reaction | AvailableReaction) {
+  [r1, r2] = [r1, r2].map((r) => {
+    return r._ === 'availableReaction' ? availableReactionToReaction(r) : r;
+  });
   return deepEqual(r1, r2);
 }

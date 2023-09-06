@@ -14,7 +14,7 @@ export type SwipeHandlerHorizontalOptions = SwipeHandlerOptions & {
 };
 
 export default function handleHorizontalSwipe(options: SwipeHandlerHorizontalOptions) {
-  let cancelY = false;
+  let cancelY = false, hadMove = false;
   return new SwipeHandler({
     ...options,
     verifyTouchTarget: (e) => {
@@ -41,11 +41,12 @@ export default function handleHorizontalSwipe(options: SwipeHandlerHorizontalOpt
         cancelY = true;
       } */
 
+      hadMove = true;
       return options.onSwipe(xDiff, yDiff, e);
     },
     onReset: () => {
-      cancelY = false;
-      options.onReset && options.onReset();
+      if(hadMove) options.onReset?.();
+      cancelY = hadMove = false;
     },
     cancelEvent: false // cannot use cancelEvent on Safari iOS because scroll will be canceled too
   });

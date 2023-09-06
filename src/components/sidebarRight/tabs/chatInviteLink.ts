@@ -134,7 +134,10 @@ export default class AppChatInviteLinkTab extends SliderSuperTabEventable {
         container: list,
         rippleEnabled: true,
         avatarSize: 'abitbigger',
-        meAsSaved: false
+        meAsSaved: false,
+        wrapOptions: {
+          middleware: this.middlewareHelper.get()
+        }
       });
 
       attachClickEvent(dom.listEl, () => {
@@ -197,7 +200,10 @@ export default class AppChatInviteLinkTab extends SliderSuperTabEventable {
             rippleEnabled: true,
             avatarSize: 'abitbigger',
             append: true,
-            loadPromises
+            loadPromises,
+            wrapOptions: {
+              middleware: this.middlewareHelper.get()
+            }
           });
 
           dialogElements.set(peerId, dialogElement);
@@ -218,7 +224,7 @@ export default class AppChatInviteLinkTab extends SliderSuperTabEventable {
         const toggle = dialogElement.toggleDisability(true);
         try {
           await this.managers.appChatsManager.hideChatJoinRequest(chatId, peerId, add);
-          target.remove();
+          dialogElement.remove();
           dialogElements.delete(peerId);
 
           if(add) {

@@ -202,6 +202,9 @@ export default class AppChatReactionsTab extends SliderSuperTabEventable {
 
       if(chatReactions._ === 'chatReactionsSome') {
         chatReactions.reactions = makeReactionFromEmoticons(Array.from(emoticons));
+        if(!chatReactions.reactions.length) {
+          chatReactions = {_: 'chatReactionsNone'};
+        }
       }
 
       // const r = (chatReactions as ChatReactions.chatReactionsSome).reactions;

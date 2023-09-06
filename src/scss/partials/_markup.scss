@@ -1,0 +1,71 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+// [contenteditable=true] {
+  // [style*="markup"] {
+  //   font-family: inherit !important;
+  // }
+
+  // [style*="bold"] {
+  //   font-weight: bold;
+  // }
+
+  // [style*="italic"] {
+  //   font-style: italic;
+  // }
+
+  // [style*="underline"] {
+  //   text-decoration-line: underline;
+  // }
+
+  // [style*="strikethrough"] {
+  //   text-decoration-line: line-through;
+  // }
+
+  // [style*="underline"][style*="strikethrough"] {
+  //   text-decoration-line: underline line-through;
+  // }
+
+  // [style*="monospace"] {
+  //   font-family: var(--font-monospace) !important;
+  // }
+
+  // [style*="spoiler"] {
+  //   background-color: var(--spoiler-draft-background-color);
+  // }
+// }
+
+.is-markup {
+  font-family: inherit !important;
+}
+
+[data-markup*="bold"] {
+  font-weight: bold;
+}
+
+[data-markup*="italic"] {
+  font-style: italic;
+}
+
+[data-markup*="underline"] {
+  text-decoration-line: underline;
+}
+
+[data-markup*="strikethrough"] {
+  text-decoration-line: line-through;
+}
+
+[data-markup*="underline"][data-markup*="strikethrough"] {
+  text-decoration-line: underline line-through;
+}
+
+[data-markup*="monospace"] {
+  font-family: var(--font-monospace) !important;
+}
+
+[data-markup*="spoiler"] {
+  background-color: var(--spoiler-draft-background-color);
+}

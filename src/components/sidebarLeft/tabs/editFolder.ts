@@ -36,11 +36,13 @@ import showLimitPopup from '../../popups/limit';
 import toggleDisability from '../../../helpers/dom/toggleDisability';
 import PopupSharedFolderInvite from '../../popups/sharedFolderInvite';
 import PopupElement from '../../popups';
+import {TGICO_CLASS} from '../../../helpers/tgico';
+import Icon from '../../icon';
 
 const MAX_FOLDER_NAME_LENGTH = 12;
 
 type EditFolderButton = {
-  icon: string,
+  icon: Icon,
   name?: keyof DialogFilter.dialogFilter['pFlags'],
   withRipple?: true,
   text: LangPackKey
@@ -122,7 +124,8 @@ export default class AppEditFolderTab extends SliderSuperTab {
     this.confirmBtn = ButtonIcon('check btn-confirm hide blue');
     let deleting = false;
     const deleteFolderButton: ButtonMenuItemOptions = {
-      icon: 'delete danger',
+      icon: 'delete',
+      className: 'danger',
       text: 'FilterMenuDelete',
       onClick: () => {
         if(deleting) {
@@ -176,8 +179,8 @@ export default class AppEditFolderTab extends SliderSuperTab {
       const categories = section.generateContentElement();
       categories.classList.add('folder-categories');
 
-      buttons.forEach((o) => {
-        const button = Button('folder-category-button btn btn-primary btn-transparent', {
+      buttons.forEach((o, idx) => {
+        const button = Button('folder-category-button btn btn-primary btn-transparent' + (idx === 0 ? ' primary' : ' disable-hover'), {
           icon: o.icon,
           text: o.text,
           noRipple: o.withRipple ? undefined : true
@@ -194,7 +197,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
     };
 
     this.includePeerIds = generateList('folder-list-included', 'FilterInclude', this.includePeerIdsButtons = [{
-      icon: 'add primary',
+      icon: 'add',
       text: 'ChatList.Filter.Include.AddChat',
       withRipple: true
     }, {
@@ -220,7 +223,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
     }], this.flags, 'FilterIncludeInfo');
 
     this.excludePeerIds = generateList('folder-list-excluded', 'FilterExclude', this.excludePeerIdsButtons = [{
-      icon: 'minus primary',
+      icon: 'minus',
       text: 'FilterRemoveChats',
       withRipple: true
     }, {
@@ -238,7 +241,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
     }], this.flags, 'FilterExcludeInfo');
 
     this.inviteLinks = generateList('folder-list-links', 'InviteLinks', [{
-      icon: 'add primary',
+      icon: 'add',
       text: 'SharedFolder.CreateLink',
       withRipple: true
     }], {}, 'SharedFolder.Description');
@@ -426,7 +429,8 @@ export default class AppEditFolderTab extends SliderSuperTab {
 
           row.container.classList.add(CLASS_NAME + '-username', 'active');
           const media = row.createMedia('medium');
-          media.classList.add(CLASS_NAME + '-username-icon', 'tgico');
+          media.classList.add(CLASS_NAME + '-username-icon');
+          media.append(Icon('link'));
 
           content.append(row.container);
           map.set(row.container, chatlistInvite);
@@ -441,7 +445,8 @@ export default class AppEditFolderTab extends SliderSuperTab {
             text: 'CopyLink',
             onClick: () => copyTextToClipboard(map.get(target).url)
           }, {
-            icon: 'delete danger',
+            icon: 'delete',
+            className: 'danger',
             text: 'Delete',
             onClick: () => {
               const chatlistInvite = map.get(target);
@@ -628,14 +633,19 @@ export default class AppEditFolderTab extends SliderSuperTab {
 
         const loadPromises: Promise<any>[] = [];
         const containers = filtered.map((peerId) => {
-          const {dom} = appDialogsManager.addDialogNew({
+          const dialogElement = appDialogsManager.addDialogNew({
             peerId,
             rippleEnabled: false,
             meAsSaved: true,
             avatarSize: 'small',
             loadPromises,
-            autonomous: true
+            autonomous: true,
+            wrapOptions: {
+              middleware: this.middlewareHelper.get()
+            }
           });
+          (dialogElement.container as any).dialogElement = dialogElement;
+          const {dom} = dialogElement;
           dom.lastMessageSpan.parentElement.remove();
           return dom.containerEl;
         });

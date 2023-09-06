@@ -10,7 +10,7 @@
  */
 
 import type {ThumbCache} from '../storages/thumbs';
-import {AccountWallPapers, Document, DocumentAttribute, MessagesSavedGifs, PhotoSize, WallPaper} from '../../layer';
+import {Document, DocumentAttribute, MessagesSavedGifs, PhotoSize, WallPaper} from '../../layer';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
 import {getFullDate} from '../../helpers/date';
 import isObject from '../../helpers/object/isObject';
@@ -41,16 +41,6 @@ export class AppDocsManager extends AppManager {
     [docId: DocId]: MyDocument
   };
 
-  private stickerCachedThumbs: {
-    [docId: DocId]: {
-      [toneIndex: number | string]: {
-        url: string,
-        w: number,
-        h: number
-      }
-    }
-  };
-
   private uploadingWallPapers: {
     [id: WallPaperId]: {
       cacheContext: ThumbCache,
@@ -60,7 +50,6 @@ export class AppDocsManager extends AppManager {
 
   protected after() {
     this.docs = {};
-    this.stickerCachedThumbs = {};
     this.uploadingWallPapers = {};
 
     MTProtoMessagePort.getInstance<false>().addEventListener('serviceWorkerOnline', (online) => {
@@ -284,44 +273,6 @@ export class AppDocsManager extends AppManager {
       queueId,
       onlyCache
     });
-  }
-
-  public getLottieCachedThumb(docId: DocId, toneIndex: number | string) {
-    const cached = this.stickerCachedThumbs[docId];
-    return cached?.[toneIndex];
-  }
-
-  public saveLottiePreview(docId: DocId, blob: Blob, width: number, height: number, toneIndex: number | string) {
-    const doc = this.getDoc(docId);
-    if(!doc) {
-      return;
-    }
-
-    const cached = this.stickerCachedThumbs[doc.id] ??= {};
-
-    const thumb = cached[toneIndex];
-    if(thumb && thumb.w >= width && thumb.h >= height) {
-      return;
-    }
-
-    cached[toneIndex] = {
-      url: URL.createObjectURL(blob),
-      w: width,
-      h: height
-    };
-  }
-
-  public clearColoredStickerThumbs() {
-    for(const docId in this.stickerCachedThumbs) {
-      const cache = this.stickerCachedThumbs[docId];
-      for(const toneIndex in cache) {
-        if(isNaN(+toneIndex)) {
-          const thumb = cache[toneIndex];
-          URL.revokeObjectURL(thumb.url);
-          delete cache[toneIndex];
-        }
-      }
-    }
   }
 
   public saveWebPConvertedStrippedThumb(docId: DocId, bytes: Uint8Array) {

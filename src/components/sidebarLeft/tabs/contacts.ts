@@ -23,7 +23,7 @@ import PopupElement from '../../popups';
 
 export default class AppContactsTab extends SliderSuperTab {
   private inputSearch: InputSearch;
-  private middleware: ReturnType<typeof getMiddleware>;
+  private middlewareHelperLoad: ReturnType<typeof getMiddleware>;
   private sortedUserList: SortedUserList;
 
   public init() {
@@ -51,7 +51,7 @@ export default class AppContactsTab extends SliderSuperTab {
 
     this.title.replaceWith(this.inputSearch.container);
 
-    this.middleware = getMiddleware();
+    this.middlewareHelperLoad = getMiddleware();
 
     this.openContacts();
 
@@ -61,7 +61,8 @@ export default class AppContactsTab extends SliderSuperTab {
 
   protected createList() {
     const sortedUserList = new SortedUserList({
-      managers: this.managers
+      managers: this.managers,
+      middleware: this.middlewareHelper.get()
     });
     const list = sortedUserList.list;
     list.id = 'contacts';
@@ -73,7 +74,7 @@ export default class AppContactsTab extends SliderSuperTab {
   }
 
   protected onClose() {
-    this.middleware.clean();
+    this.middlewareHelperLoad.clean();
     /* // need to clear, and left 1 page for smooth slide
     let pageCount = appPhotosManager.windowH / 56 * 1.25 | 0;
     (Array.from(this.list.children) as HTMLElement[]).slice(pageCount).forEach((el) => el.remove()); */
@@ -85,8 +86,8 @@ export default class AppContactsTab extends SliderSuperTab {
   }
 
   public openContacts(query?: string) {
-    this.middleware.clean();
-    const middleware = this.middleware.get();
+    this.middlewareHelperLoad.clean();
+    const middleware = this.middlewareHelperLoad.get();
     this.scrollable.onScrolledBottom = null;
     this.scrollable.container.textContent = '';
 

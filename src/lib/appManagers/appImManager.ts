@@ -65,7 +65,7 @@ import {AppManagers} from './managers';
 import uiNotificationsManager from './uiNotificationsManager';
 import appMediaPlaybackController from '../../components/appMediaPlaybackController';
 import wrapEmojiText from '../richTextProcessor/wrapEmojiText';
-import wrapRichText, {CustomEmojiRendererElement, renderEmojis} from '../richTextProcessor/wrapRichText';
+import wrapRichText from '../richTextProcessor/wrapRichText';
 import wrapUrl from '../richTextProcessor/wrapUrl';
 import getUserStatusString from '../../components/wrappers/getUserStatusString';
 import getChatMembersString from '../../components/wrappers/getChatMembersString';
@@ -101,7 +101,18 @@ import liteMode, {LiteModeKey} from '../../helpers/liteMode';
 import RLottiePlayer from '../rlottie/rlottiePlayer';
 import PopupGiftPremium from '../../components/popups/giftPremium';
 import internalLinkProcessor from './internalLinkProcessor';
-import {IsPeerType} from './appPeersManager';
+import {createStoriesViewerWithPeer} from '../../components/stories/viewer';
+import type {CustomEmojiRendererElement} from '../customEmoji/renderer';
+import {Middleware} from '../../helpers/middleware';
+import lottieLoader from '../rlottie/lottieLoader';
+import wrapStickerAnimation, {emojiAnimationContainer} from '../../components/wrappers/stickerAnimation';
+import onMediaLoad from '../../helpers/onMediaLoad';
+import throttle from '../../helpers/schedulers/throttle';
+import appDownloadManager from './appDownloadManager';
+import getServerMessageId from './utils/messageId/getServerMessageId';
+import {findUpAvatar} from '../../components/avatarNew';
+import focusInput from '../../helpers/dom/focusInput';
+import safePlay from '../../helpers/dom/safePlay';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -156,7 +167,6 @@ export class AppImManager extends EventListenerBase<{
   private backgroundPromises: {[slug: string]: Promise<string>};
 
   private topbarCall: TopbarCall;
-  public emojiAnimationContainer: HTMLDivElement;
 
   private lastBackgroundUrl: string;
 
@@ -221,8 +231,6 @@ export class AppImManager extends EventListenerBase<{
     this.chatsContainer.classList.add('chats-container', 'tabs-container');
     this.chatsContainer.dataset.animation = 'navigation';
 
-    this.emojiAnimationContainer = document.createElement('div');
-    this.emojiAnimationContainer.classList.add('emoji-animation-container');
     this.appendEmojiAnimationContainer(mediaSizes.activeScreen);
 
     this.columnEl.append(this.chatsContainer);
@@ -505,7 +513,7 @@ export class AppImManager extends EventListenerBase<{
     this.addEventListener('peer_changed', async({peerId}) => {
       document.body.classList.toggle('has-chat', !!peerId);
 
-      this.emojiAnimationContainer.textContent = '';
+      emojiAnimationContainer.textContent = '';
 
       this.overrideHash(peerId);
 
@@ -792,10 +800,15 @@ export class AppImManager extends EventListenerBase<{
       }
     };
 
-    document.addEventListener('click', (e) => {
+    document.addEventListener('click', async(e) => {
       const anchor = findUpTag(e.target as HTMLElement, 'A') as HTMLAnchorElement;
       if(anchor?.href) {
         onAnchorClick(anchor);
+      }
+
+      const avatar = findUpAvatar(e.target);
+      if(avatar && avatar.classList.contains('has-stories') && !findUpClassName(e.target, 'stories-list')) {
+        this.openStoriesFromAvatar(avatar);
       }
     });
 
@@ -808,6 +821,15 @@ export class AppImManager extends EventListenerBase<{
     //   noPathnameParams: true,
     //   noUriParams: true
     // });
+  }
+
+  public async openStoriesFromAvatar(avatar: HTMLElement) {
+    const storyId = +avatar.dataset.storyId;
+    createStoriesViewerWithPeer({
+      target: () => avatar,
+      peerId: avatar.dataset.peerId.toPeerId(),
+      id: storyId || undefined
+    });
   }
 
   public getStackFromElement(element: HTMLElement) {
@@ -853,8 +875,8 @@ export class AppImManager extends EventListenerBase<{
 
   private appendEmojiAnimationContainer(screen: ScreenSize) {
     const appendTo = screen === ScreenSize.mobile ? this.columnEl : document.body;
-    if(this.emojiAnimationContainer.parentElement !== appendTo) {
-      appendTo.append(this.emojiAnimationContainer)
+    if(emojiAnimationContainer.parentElement !== appendTo) {
+      appendTo.append(emojiAnimationContainer)
     }
   }
 
@@ -911,12 +933,7 @@ export class AppImManager extends EventListenerBase<{
         !chat.input.recording &&
         chat.input.messageInput.isContentEditable
       ) {
-        chat.input.messageInput.focus();
-        placeCaretAtEnd(chat.input.messageInput);
-
-        // clone and dispatch same event to new input. it is needed for sending message if input was blurred
-        const newEvent = new KeyboardEvent(e.type, e);
-        chat.input.messageInput.dispatchEvent(newEvent);
+        focusInput(chat.input.messageInput, e);
       }
     };
 
@@ -1463,7 +1480,7 @@ export class AppImManager extends EventListenerBase<{
     const mediaDrops: ChatDragAndDrop[] = [];
     let mounted = false;
     const toggle = async(e: DragEvent, mount: boolean) => {
-      if(mount === mounted) return;
+      if(mount === mounted/*  || !mount */) return;
 
       const _types = e.dataTransfer.types;
       // @ts-ignore
@@ -1587,7 +1604,7 @@ export class AppImManager extends EventListenerBase<{
 
     let counter = 0;
     document.body.addEventListener('dragenter', (e) => {
-      counter++;
+      ++counter;
     });
 
     document.body.addEventListener('dragover', (e) => {
@@ -1599,8 +1616,7 @@ export class AppImManager extends EventListenerBase<{
     document.body.addEventListener('dragleave', (e) => {
       // this.log('dragleave', e, counter);
       // if((e.pageX <= 0 || e.pageX >= this.managers.appPhotosManager.windowW) || (e.pageY <= 0 || e.pageY >= this.managers.appPhotosManager.windowH)) {
-      counter--;
-      if(counter === 0) {
+      if(--counter === 0) {
       // if(!findUpClassName(e.target, 'drops-container')) {
         toggle(e, false);
       }
@@ -1725,8 +1741,11 @@ export class AppImManager extends EventListenerBase<{
   private createNewChat() {
     const chat = new Chat(
       this,
-      this.managers
+      this.managers,
+      true
     );
+
+    this.chatsContainer.append(chat.container);
 
     if(this.chats.length) {
       chat.setBackground(this.lastBackgroundUrl, true);
@@ -1918,8 +1937,9 @@ export class AppImManager extends EventListenerBase<{
       // default: {
         c += '-text';
         for(let i = 0; i < 3; ++i) {
+          const cc = c + '-dot';
           const dot = document.createElement('span');
-          dot.className = c + '-dot';
+          dot.className = cc + (i === 0 ? ' ' + cc + '-first' : (i === 2 ? ' ' + cc + '-last' : ''));
           el.append(dot);
         }
         break;
@@ -2223,7 +2243,7 @@ export class AppImManager extends EventListenerBase<{
 
     const placeholder = useWhitespace ? NBSP : ''; // ! HERE U CAN FIND WHITESPACE
     if(!result || result.cached || needClear === undefined) {
-      return await set();
+      return set();
     } else if(needClear) {
       return () => {
         element.textContent = placeholder;
@@ -2246,6 +2266,139 @@ export class AppImManager extends EventListenerBase<{
     this.managers.appProfileManager.getProfile(peerId.toUserId()).then((profile) => {
       PopupElement.createPopup(PopupGiftPremium, peerId, profile.premium_gifts);
     });
+  }
+
+  public requestPhone(peerId: PeerId) {
+    return confirmationPopup({
+      titleLangKey: 'ShareYouPhoneNumberTitle',
+      button: {
+        langKey: 'OK'
+      },
+      descriptionLangKey: 'AreYouSureShareMyContactInfoBot'
+    }).then(() => {
+      return this.managers.appMessagesManager.sendContact(peerId, rootScope.myId);
+    });
+  }
+
+  public onEmojiStickerClick = async({event, container, managers, peerId, middleware}: {
+    event: Event,
+    container: HTMLElement,
+    managers: AppManagers,
+    peerId: PeerId,
+    middleware: Middleware
+  }) => {
+    cancelEvent(event);
+
+    const bubble = findUpClassName(container, 'bubble');
+    const emoji = container.dataset.stickerEmoji;
+
+    const animation = !container.classList.contains('custom-emoji') ? lottieLoader.getAnimation(container) : undefined;
+    if(animation?.paused) {
+      const doc = await managers.appStickersManager.getAnimatedEmojiSoundDocument(emoji);
+      if(doc) {
+        const audio = document.createElement('audio');
+        audio.style.display = 'none';
+        container.parentElement.append(audio);
+
+        try {
+          const url = await appDownloadManager.downloadMediaURL({media: doc});
+
+          audio.src = url;
+          safePlay(audio);
+          await onMediaLoad(audio, undefined, true);
+
+          audio.addEventListener('ended', () => {
+            audio.src = '';
+            audio.remove();
+          }, {once: true});
+        } catch(err) {
+
+        }
+      }
+
+      animation.autoplay = true;
+      animation.restart();
+    }
+
+    if(!peerId.isUser() || !liteMode.isAvailable('effects_emoji')) {
+      return;
+    }
+
+    const activeAnimations: Set<{}> = (container as any).activeAnimations ??= new Set();
+    if(activeAnimations.size >= 3) {
+      return;
+    }
+
+    const doc = await managers.appStickersManager.getAnimatedEmojiSticker(emoji, true);
+    if(!doc) {
+      return;
+    }
+
+    const data: SendMessageEmojiInteractionData = (container as any).emojiData ??= {
+      a: [],
+      v: 1
+    };
+
+    const sendInteractionThrottled: () => void = (container as any).sendInteractionThrottled ??= throttle(() => {
+      const length = data.a.length;
+      if(!length) {
+        return;
+      }
+
+      const firstTime = data.a[0].t;
+
+      data.a.forEach((a) => {
+        a.t = (a.t - firstTime) / 1000;
+      });
+
+      const {peerId, threadId} = this.chat;
+
+      const bubble = findUpClassName(container, 'bubble');
+      managers.appMessagesManager.setTyping(peerId, {
+        _: 'sendMessageEmojiInteraction',
+        msg_id: getServerMessageId(+bubble.dataset.mid),
+        emoticon: emoji,
+        interaction: {
+          _: 'dataJSON',
+          data: JSON.stringify(data)
+        }
+      }, true, threadId);
+
+      data.a.length = 0;
+    }, 1000, false);
+
+    const o = {};
+    activeAnimations.add(o);
+
+    const isOut = bubble ? bubble.classList.contains('is-out') : undefined;
+    const {animationDiv} = wrapStickerAnimation({
+      doc,
+      middleware,
+      side: isOut ? 'right' : 'left',
+      size: 360,
+      target: container,
+      play: true,
+      withRandomOffset: true,
+      onUnmount: () => {
+        activeAnimations.delete(o);
+      },
+      scrollable: this.chat.bubbles.scrollable
+    });
+
+    if(isOut !== undefined && !isOut) {
+      animationDiv.classList.add('reflect-x');
+    }
+
+    // using a trick here: simulated event from interlocutor's interaction won't fire ours
+    if(event.isTrusted) {
+      data.a.push({
+        i: 1,
+        t: Date.now()
+      });
+
+      sendInteractionThrottled();
+    }
+    // });
   }
 }
 

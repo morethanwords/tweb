@@ -6,6 +6,7 @@ import type {AnimationItemGroup} from './components/animationIntersector';
 import type LazyLoadQueue from './components/lazyLoadQueue';
 import type {AppManagers} from './lib/appManagers/managers';
 import type {CustomProperty} from './helpers/dom/customProperties';
+import type Icons from './icons';
 
 declare global {
   interface AddEventListenerOptions extends EventListenerOptions {
@@ -40,6 +41,7 @@ declare global {
   type MTLong = string;
 
   type AppEmoji = {emoji: string, docId?: DocId};
+  type Icon = keyof typeof Icons;
 
   type MTMimeType = 'video/quicktime' | 'image/gif' | 'image/jpeg' | 'application/pdf' |
     'video/mp4' | 'image/webp' | 'audio/mpeg' | 'audio/ogg' | 'application/octet-stream' |
@@ -97,6 +99,7 @@ declare global {
 
   type DOMRectMinified = {top: number, right: number, bottom: number, left: number};
   type DOMRectEditable = DOMRectMinified & {width: number, height: number};
+  type MaybePromise<T> = Promise<T> | T;
 
   type WrapSomethingOptions = {
     lazyLoadQueue?: LazyLoadQueue | false,

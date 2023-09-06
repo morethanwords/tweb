@@ -9,6 +9,7 @@ import assumeType from '../../../helpers/assumeType';
 import createContextMenu from '../../../helpers/dom/createContextMenu';
 import positionElementByIndex from '../../../helpers/dom/positionElementByIndex';
 import Sortable from '../../../helpers/dom/sortable';
+import {joinDeepPath} from '../../../helpers/object/setDeepProperty';
 import {StickerSet, MessagesAllStickers} from '../../../layer';
 import {i18n, LangPackKey} from '../../../lib/langPack';
 import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
@@ -65,7 +66,7 @@ export default class AppStickersAndEmojiTab extends SliderSuperTab {
         if(rootScope.settings.stickers.suggest === value) return;
         rootScope.settings.stickers.suggest = value;
         setStickersSuggestDescription();
-        return this.managers.appStateManager.setByKey('settings.stickers.suggest', value);
+        return this.managers.appStateManager.setByKey(joinDeepPath('settings', 'stickers', 'suggest'), value);
       };
 
       createContextMenu({
@@ -124,7 +125,7 @@ export default class AppStickersAndEmojiTab extends SliderSuperTab {
         titleLangKey: 'InstalledStickers.LoopAnimated',
         checkboxField: new CheckboxField({
           name: 'loop',
-          stateKey: 'settings.stickers.loop',
+          stateKey: joinDeepPath('settings', 'stickers', 'loop'),
           listenerSetter: this.listenerSetter,
           toggle: true
         }),
@@ -148,7 +149,7 @@ export default class AppStickersAndEmojiTab extends SliderSuperTab {
         titleLangKey: 'GeneralSettings.EmojiPrediction',
         checkboxField: new CheckboxField({
           name: 'suggest-emoji',
-          stateKey: 'settings.emoji.suggest',
+          stateKey: joinDeepPath('settings', 'emoji', 'suggest'),
           listenerSetter: this.listenerSetter,
           toggle: true
         }),
@@ -159,7 +160,7 @@ export default class AppStickersAndEmojiTab extends SliderSuperTab {
         titleLangKey: 'GeneralSettings.BigEmoji',
         checkboxField: new CheckboxField({
           name: 'emoji-big',
-          stateKey: 'settings.emoji.big',
+          stateKey: joinDeepPath('settings', 'emoji', 'big'),
           listenerSetter: this.listenerSetter,
           toggle: true
         }),
@@ -182,7 +183,7 @@ export default class AppStickersAndEmojiTab extends SliderSuperTab {
         icon: 'replace',
         checkboxField: new CheckboxField({
           name: 'dynamic-pack-order',
-          stateKey: 'settings.stickers.dynamicPackOrder',
+          stateKey: joinDeepPath('settings', 'stickers', 'dynamicPackOrder'),
           listenerSetter: this.listenerSetter,
           toggle: true
         }),

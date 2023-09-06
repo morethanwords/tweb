@@ -12,11 +12,17 @@
 import {processSearchText, ProcessSearchTextOptions} from '../helpers/cleanSearchText';
 import flatten from '../helpers/array/flatten';
 
+type SearchIndexOptions = ProcessSearchTextOptions & {
+  minChars?: number,
+  fullWords?: boolean
+};
+
 export default class SearchIndex<SearchWhat> {
   private fullTexts: Map<SearchWhat, string> = new Map();
 
   // minChars can be 0 because it requires at least one word (one symbol) to be found
-  constructor(private options?: ProcessSearchTextOptions, private minChars = 0) {
+  constructor(private options: SearchIndexOptions = {}) {
+    options.minChars ??= 0;
   }
 
   public indexObject(id: SearchWhat, searchText: string) {
@@ -24,8 +30,8 @@ export default class SearchIndex<SearchWhat> {
       return false;
     } */
 
-    if(this.options && searchText.trim()) {
-      searchText = processSearchText(searchText, this.options);
+    if(searchText.trim()) {
+      searchText = this.processSearchText(searchText);
     }
 
     if(!searchText) {
@@ -50,10 +56,12 @@ export default class SearchIndex<SearchWhat> {
     }); */
   }
 
-  private _search(query: string) {
+  private _search(
+    query: string,
+    queryWords = query.split(' ').filter((word) => word.trim())
+  ) {
     const newFoundObjs: Array<{fullText: string, fullTextLength: number, what: SearchWhat, foundChars: number}> = [];
     const fullTexts = this.fullTexts;
-    const queryWords = query.split(' ');
     const queryWordsLength = queryWords.length;
     fullTexts.forEach((fullText, what) => {
       let found = true;
@@ -61,7 +69,11 @@ export default class SearchIndex<SearchWhat> {
       for(let i = 0; i < queryWordsLength; ++i) { // * verify that all words are found
         const word = queryWords[i];
         const idx = fullText.indexOf(word);
-        if(idx === -1 || (idx !== 0 && fullText[idx - 1] !== ' '/*  && !badCharsRe.test(fullText[idx - 1]) */)) { // * search only from word beginning
+        const isLastWord = i === queryWordsLength - 1;
+        if(
+          idx === -1 ||
+          (this.options.fullWords && !isLastWord && fullText[idx + word.length] !== ' ') || // if not last word, then next char must be space
+          (idx !== 0 && fullText[idx - 1] !== ' '/*  && !badCharsRe.test(fullText[idx - 1]) */)) { // * search only from word beginning
           found = false;
           break;
         }
@@ -72,7 +84,7 @@ export default class SearchIndex<SearchWhat> {
       if(found) {
         foundChars += queryWordsLength - 1;
         const fullTextLength = fullText.length;
-        if(this.minChars <= foundChars || fullTextLength <= foundChars) {
+        if(this.options.minChars <= foundChars || fullTextLength <= foundChars) {
           newFoundObjs.push({fullText, fullTextLength, what, foundChars});
         }
       }
@@ -82,12 +94,11 @@ export default class SearchIndex<SearchWhat> {
   }
 
   public search(query: string) {
-    if(this.options) {
-      query = processSearchText(query, this.options);
-    }
+    query = this.processSearchText(query);
 
     const queries = query.split('\x01');
-    const newFoundObjs = flatten(queries.map((query) => this._search(query)));
+    const results = queries.map((query) => this._search(query));
+    const newFoundObjs = flatten(results);
 
     newFoundObjs.sort((a, b) => a.fullTextLength - b.fullTextLength || b.foundChars - a.foundChars);
 
@@ -95,5 +106,9 @@ export default class SearchIndex<SearchWhat> {
     const newFoundObjs2: Set<SearchWhat> = new Set(newFoundObjs.map((o) => o.what));
 
     return newFoundObjs2;
+  }
+
+  public processSearchText(query: string) {
+    return this.options ? processSearchText(query, this.options) : query;
   }
 }

@@ -6,6 +6,7 @@
 
 import {MESSAGE_ID_OFFSET} from '../mtproto/mtproto_config';
 import getServerMessageId from './utils/messageId/getServerMessageId';
+import isLegacyMessageId from './utils/messageId/isLegacyMessageId';
 
 export class AppMessagesIdsManager {
   // private channelLocals: {[channelId: ChatId]: number} = {};
@@ -37,12 +38,8 @@ export class AppMessagesIdsManager {
     return localStart + messageId;
   }
 
-  public isLegacyMessageId(messageId: number) {
-    return typeof(messageId) === 'number' && messageId < MESSAGE_ID_OFFSET;
-  }
-
   public incrementMessageId(messageId: number, increment: number) {
-    return this.generateMessageId(getServerMessageId(messageId) + increment, this.isLegacyMessageId(messageId) ? 1 : 0);
+    return this.generateMessageId(getServerMessageId(messageId) + increment, isLegacyMessageId(messageId) ? 1 : 0);
   }
 
   public getMessageIdInfo(mid: number, channelId?: ChatId) {

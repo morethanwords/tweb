@@ -15,8 +15,9 @@ import animationIntersector, {AnimationItemGroup} from '../animationIntersector'
 import LazyLoadQueue from '../lazyLoadQueue';
 import wrapSticker from './sticker';
 import {Middleware} from '../../helpers/middleware';
+import {EMOJI_TEXT_COLOR} from '../emoticonsDropdown';
 
-export default async function wrapStickerSetThumb({set, lazyLoadQueue, container, group, autoplay, width, height, managers = rootScope.managers, middleware}: {
+export default async function wrapStickerSetThumb({set, lazyLoadQueue, container, group, autoplay, width, height, managers = rootScope.managers, middleware, textColor}: {
   set: StickerSet.stickerSet,
   lazyLoadQueue: LazyLoadQueue,
   container: HTMLElement,
@@ -25,7 +26,8 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
   width: number,
   height: number,
   managers?: AppManagers
-  middleware?: Middleware
+  middleware?: Middleware,
+  textColor?: string
 }) {
   if(set.thumbs?.length) {
     container.classList.add('media-sticker-wrapper');
@@ -71,7 +73,9 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
               if(set.pFlags.videos) {
                 animationIntersector.addAnimation({
                   animation: media as HTMLVideoElement,
-                  group
+                  group,
+                  observeElement: media,
+                  type: 'video'
                 });
               }
             });
@@ -107,6 +111,6 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
     width,
     height,
     middleware,
-    textColor: attribute?.pFlags?.text_color ? 'primary-text-color' : undefined
+    textColor: attribute?.pFlags?.text_color ? textColor || EMOJI_TEXT_COLOR : undefined
   }); // kostil
 }

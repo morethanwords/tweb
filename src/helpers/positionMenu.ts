@@ -27,7 +27,7 @@ export default function positionMenu(e: MouseEvent | Touch | TouchEvent, elem: H
 
   // * side mean the OPEN side
 
-  const getScrollWidthFromElement = (Array.from(elem.children) as HTMLElement[]).find((element) => element.classList.contains('btn-menu-item') && !element.classList.contains('hide')) || elem;
+  const getScrollWidthFromElement = (Array.from(elem.children) as HTMLElement[]).find((element) => element.classList.contains('btn-menu-items') || (element.classList.contains('btn-menu-item') && !element.classList.contains('hide'))) || elem;
 
   let {scrollWidth: menuWidth} = getScrollWidthFromElement;
   const {scrollHeight: menuHeight} = elem;

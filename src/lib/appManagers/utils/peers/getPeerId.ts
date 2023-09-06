@@ -1,8 +1,8 @@
 import isObject from '../../../../helpers/object/isObject';
-import {InputChannel, InputPeer, Peer} from '../../../../layer';
+import {InputChannel, InputPeer, InputUser, Peer} from '../../../../layer';
 import {NULL_PEER_ID} from '../../../mtproto/mtproto_config';
 
-export default function getPeerId(peerId: {user_id: UserId} | {channel_id: ChatId} | {chat_id: ChatId} | InputPeer | InputChannel | PeerId | string): PeerId {
+export default function getPeerId(peerId: {user_id: UserId} | {channel_id: ChatId} | {chat_id: ChatId} | InputUser | InputPeer | InputChannel | PeerId | string): PeerId {
   if(peerId !== undefined && ((peerId as string).isPeerId ? (peerId as string).isPeerId() : false)) return peerId as PeerId;
   // if(typeof(peerId) === 'string' && /^[uc]/.test(peerId)) return peerId as PeerId;
   // if(typeof(peerId) === 'number') return peerId;

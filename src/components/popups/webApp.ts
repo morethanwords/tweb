@@ -7,7 +7,7 @@
 import type AppAttachMenuBotsManager from '../../lib/appManagers/appAttachMenuBotsManager';
 import PopupElement from '.';
 import safeAssign from '../../helpers/object/safeAssign';
-import {AttachMenuBot, SimpleWebViewResult, WebViewResult} from '../../layer';
+import {AttachMenuBot, DataJSON, SimpleWebViewResult, WebViewResult} from '../../layer';
 import appImManager from '../../lib/appManagers/appImManager';
 import ButtonMenuToggle from '../buttonMenuToggle';
 import TelegramWebView from '../telegramWebView';
@@ -15,7 +15,7 @@ import {toastNew} from '../toast';
 import wrapPeerTitle from '../wrappers/peerTitle';
 import rootScope from '../../lib/rootScope';
 import themeController from '../../helpers/themeController';
-import {TelegramWebViewEventMap, TelegramWebViewSendEventMap} from '../../types';
+import {AnyFunction, TelegramWebViewEventMap, TelegramWebViewSendEventMap} from '../../types';
 import Button from '../button';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
@@ -44,7 +44,6 @@ export default class PopupWebApp extends PopupElement<{
   private attachMenuBot: AttachMenuBot;
   private mainButton: HTMLElement;
   private isCloseConfirmationNeeded: boolean;
-  private innerPopup: PopupPeer;
   private lastHeaderColor: TelegramWebViewEventMap['web_app_set_header_color']['color_key'];
   // private mainButtonText: HTMLElement;
 
@@ -57,9 +56,8 @@ export default class PopupWebApp extends PopupElement<{
       closable: true,
       overlayClosable: true,
       body: true,
-      title: true,
       footer: true,
-      titleRaw: options.attachMenuBot?.short_name,
+      title: wrapEmojiText(options.attachMenuBot?.short_name),
       onBackClick: () => {
         this.telegramWebView.dispatchWebViewEvent('back_button_pressed', undefined);
       },
@@ -124,7 +122,8 @@ export default class PopupWebApp extends PopupElement<{
         },
         verify: () => this.attachMenuBot && this.attachMenuBot.pFlags.inactive
       }, {
-        icon: 'delete danger',
+        icon: 'delete',
+        className: 'danger',
         text: 'BotWebViewDeleteBot',
         onClick: () => {
           appImManager.toggleBotInAttachMenu(botId, false).then(async(attachMenuBot) => {
@@ -257,10 +256,6 @@ export default class PopupWebApp extends PopupElement<{
     message,
     buttons
   }: TelegramWebViewEventMap['web_app_open_popup']) => {
-    if(this.innerPopup) {
-      return;
-    }
-
     const buttonLangPackKeysMap: {[type in typeof buttons[0]['type']]?: LangPackKey} = {
       cancel: 'Cancel',
       close: 'Close',
@@ -272,13 +267,13 @@ export default class PopupWebApp extends PopupElement<{
       PopupPeer,
       'popup-confirmation',
       {
-        titleRaw: title,
-        description: message,
+        title: title ? wrapEmojiText(title) : undefined,
+        description: wrapEmojiText(message),
         buttons: buttons.map(({type, text, id}) => {
           const langPackKey = buttonLangPackKeysMap[type];
           const button: PopupPeerOptions['buttons'][0] = {
             langKey: langPackKey,
-            textRaw: langPackKey ? undefined : text,
+            text: !langPackKey ? wrapEmojiText(text) : undefined,
             isCancel: true,
             isDanger: type === 'destructive',
             callback: () => {
@@ -291,21 +286,59 @@ export default class PopupWebApp extends PopupElement<{
       }
     );
 
-    popup.addEventListener('close', () => {
-      this.innerPopup = undefined;
-      this.telegramWebView.dispatchWebViewEvent('popup_closed', {
-        ...(pressedButtonId !== undefined ? {button_id: pressedButtonId} : {})
+    const promise = new Promise<void>((resolve) => {
+      popup.addEventListener('close', () => {
+        this.telegramWebView.dispatchWebViewEvent('popup_closed', {
+          ...(pressedButtonId !== undefined ? {button_id: pressedButtonId} : {})
+        });
+        resolve();
       });
     });
 
-    this.innerPopup = popup;
-
     popup.show();
+
+    return promise;
   };
 
   protected destroy() {
     this.telegramWebView.destroy();
     return super.destroy();
+  }
+
+  protected debouncePopupMethod<T extends AnyFunction, K extends keyof TelegramWebViewSendEventMap>(
+    callback: T,
+    resultType: K,
+    debouncedResult: TelegramWebViewSendEventMap[K]
+  ) {
+    let isOpen = false, debouncing = false;
+    return (async(...args: any[]) => {
+      if(isOpen) {
+        return;
+      }
+
+      const {lastDispatchedWebViewEvent} = this.telegramWebView;
+      if(!debouncing && lastDispatchedWebViewEvent?.type === resultType && lastDispatchedWebViewEvent.count >= 3) {
+        debouncing = true;
+        setTimeout(() => {
+          if(this.telegramWebView.lastDispatchedWebViewEvent === lastDispatchedWebViewEvent) {
+            this.telegramWebView.lastDispatchedWebViewEvent.count = 0;
+          }
+          debouncing = false;
+        }, 3000);
+      }
+
+      if(debouncing) {
+        this.telegramWebView.dispatchWebViewEvent(resultType, debouncedResult);
+        return;
+      }
+
+      isOpen = true;
+      try {
+        await callback(...args);
+      } finally {
+        isOpen = false;
+      }
+    }) as T;
   }
 
   protected createWebView() {
@@ -357,7 +390,7 @@ export default class PopupWebApp extends PopupElement<{
       web_app_setup_main_button: this.setupMainButton,
       web_app_setup_back_button: this.setupBackButton,
       web_app_setup_closing_behavior: ({need_confirmation}) => this.isCloseConfirmationNeeded = !!need_confirmation,
-      web_app_open_popup: this.openPopup,
+      web_app_open_popup: this.debouncePopupMethod(this.openPopup, 'popup_closed', {}),
       web_app_open_scan_qr_popup: () => telegramWebView.dispatchWebViewEvent('scan_qr_popup_closed', {}),
       web_app_read_text_from_clipboard: async({req_id}) => {
         const result: TelegramWebViewSendEventMap['clipboard_text_received'] = {
@@ -383,6 +416,59 @@ export default class PopupWebApp extends PopupElement<{
         }
 
         telegramWebView.dispatchWebViewEvent('clipboard_text_received', result);
+      },
+      web_app_request_write_access: this.debouncePopupMethod(async() => {
+        const botId = this.webViewOptions.botId;
+        const canSendMessage = await this.managers.appBotsManager.canSendMessage(botId);
+        const status: TelegramWebViewSendEventMap['write_access_requested'] = {status: 'allowed'};
+        if(!canSendMessage) {
+          try {
+            await confirmationPopup({
+              titleLangKey: 'WebApp.WriteAccess.Title',
+              descriptionLangKey: 'WebApp.WriteAccess.Description',
+              descriptionLangArgs: [await wrapPeerTitle({peerId: botId.toPeerId(false)})],
+              button: {
+                langKey: 'OK'
+              }
+            });
+
+            await this.managers.appBotsManager.allowSendMessage(botId);
+          } catch(err) {
+            status.status = 'cancelled';
+          }
+        }
+
+        telegramWebView.dispatchWebViewEvent('write_access_requested', status);
+      }, 'write_access_requested', {status: 'cancelled'}),
+      web_app_request_phone: this.debouncePopupMethod(async() => {
+        const status: TelegramWebViewSendEventMap['phone_requested'] = {status: 'sent'};
+        try {
+          const botId = this.webViewOptions.botId;
+          await this.managers.appMessagesManager.unblockBot(botId);
+          await appImManager.requestPhone(botId.toPeerId(false));
+        } catch(err) {
+          status.status = 'cancelled';
+        }
+
+        telegramWebView.dispatchWebViewEvent('phone_requested', status);
+      }, 'phone_requested', {status: 'cancelled'}),
+      web_app_invoke_custom_method: async({req_id, method, params}) => {
+        let result: DataJSON.dataJSON, error: ApiError;
+        try {
+          result = await this.managers.appAttachMenuBotsManager.invokeWebViewCustomMethod(
+            this.webViewOptions.botId,
+            method,
+            params
+          );
+        } catch(_error) {
+          error = _error;
+        }
+
+        telegramWebView.dispatchWebViewEvent('custom_method_invoked', {
+          req_id,
+          result: result && JSON.parse(result.data),
+          error: error?.type
+        });
       }
     });
 

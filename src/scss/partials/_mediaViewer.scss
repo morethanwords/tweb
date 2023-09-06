@@ -200,19 +200,20 @@ $inactive-opacity: .4;
   }
 
   &-switcher {
+    --offset-top: 7.5rem;
     position: absolute;
     left: 0;
     top: 3.75rem;
     width: 7rem;
-    height: calc(100% - 7.5rem);
+    height: calc(100% - var(--offset-top));
     cursor: pointer;
     // z-index: 5;
 
     html.no-touch & {
-      height: calc(100% - 3.75rem);
+      --offset-top: 3.75rem;
 
       &:hover {
-        .tgico-down {
+        .media-viewer-sibling-button {
           opacity: 1;
         }
       }
@@ -240,6 +241,7 @@ $inactive-opacity: .4;
     opacity: 0;
     transition: var(--open-duration) opacity;
     z-index: 5;
+    margin-top: calc(var(--offset-top) / -2);
     /* box-shadow: 0 1px 2px 0 rgba(16, 35, 47, 0.07); */
 
     @include respond-to(not-handhelds) {
@@ -562,14 +564,14 @@ $inactive-opacity: .4;
 
     &.is-zooming {
       .media-viewer-caption,
-      .media-viewer-switcher .tgico-down {
+      .media-viewer-switcher .media-viewer-sibling-button {
         opacity: 0 !important;
         pointer-events: none;
       }
     }
 
     &.highlight-switchers {
-      .media-viewer-switcher > span {
+      .media-viewer-sibling-button {
         opacity: 1;
       }
     }
@@ -623,16 +625,6 @@ $inactive-opacity: .4;
     height: 100%;
     margin: 0 auto;
   } */
-}
-
-.tgico-zoom {
-  &:before {
-    content: $tgico-zoomout;
-  }
-
-  &.zoom-in:before {
-    content: $tgico-zoomin;
-  }
 }
 
 .zoom-container {

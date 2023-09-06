@@ -440,7 +440,7 @@ export class ApiFileManager extends AppManager {
         }
 
         deferred.resolve(reference);
-      }, deferred.reject);
+      }, deferred.reject.bind(deferred));
     }
 
     // have to replace file_reference in any way, because location can be different everytime if it's stream

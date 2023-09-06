@@ -674,9 +674,9 @@ export class ApiManager extends ApiManagerMethods {
       cachedNetworker.attachPromise(deferred, options as MTMessage);
       return promise;
     })
-    .then(deferred.resolve)
+    .then(deferred.resolve.bind(deferred))
     .catch(rejectPromise)
-    .catch(deferred.reject);
+    .catch(deferred.reject.bind(deferred));
 
     return deferred;
   }

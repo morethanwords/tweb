@@ -81,22 +81,24 @@ export default class DropdownHover extends EventListenerBase<{
         }, TOGGLE_TIMEOUT);
       });
 
-      attachClickEvent(button, () => {
-        const type: IgnoreMouseOutType = 'click';
-        const ignore = !this.ignoreMouseOut.has(type);
-
-        if(ignore && !this.ignoreMouseOut.size) {
-          this.ignoreButtons.add(button);
-          setTimeout(() => {
-            this.detachClickEvent = attachClickEvent(window, this.onClickOut, {capture: true});
-          }, 0);
-        }
-
-        this.setIgnoreMouseOut(type, ignore);
-        this.toggle(ignore);
-      }, {listenerSetter});
+      attachClickEvent(button, this.onButtonClick.bind(this, button), {listenerSetter});
     }
   }
+
+  public onButtonClick = (button?: HTMLElement, e?: MouseEvent) => {
+    const type: IgnoreMouseOutType = 'click';
+    const ignore = !this.ignoreMouseOut.has(type);
+
+    if(ignore && !this.ignoreMouseOut.size) {
+      button && this.ignoreButtons.add(button);
+      setTimeout(() => {
+        this.detachClickEvent = attachClickEvent(window, this.onClickOut, {capture: true});
+      }, 0);
+    }
+
+    this.setIgnoreMouseOut(type, ignore);
+    this.toggle(ignore);
+  };
 
   protected onClickOut = (e: MouseEvent) => {
     const target = e.target as HTMLElement;

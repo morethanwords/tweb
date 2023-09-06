@@ -129,12 +129,7 @@ poll-element {
         display: flex;
         align-items: center;
         justify-content: center;
-
-        &:before {
-          content: $tgico-check;
-          //margin-left: 1px;
-          font-weight: var(--font-weight-bold);
-        }
+        font-weight: var(--font-weight-bold);
       }
 
       @include hover() {
@@ -254,12 +249,7 @@ poll-element {
         .poll-answer-selected {
           background: var(--danger-color);
           //line-height: 16px;
-
-          &:before {
-            content: $tgico-close;
-            font-size: 12px;
-            //margin-left: 2.5px;
-          }
+          font-size: 12px;
         }
       }
     }

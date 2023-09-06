@@ -71,7 +71,7 @@
               <div class="auth-image"></div>
               <div class="phone-wrapper">
                 <h4 class="phone"></h4>
-                <span class="phone-edit tgico-edit"></span>
+                <span class="phone-edit"></span>
               </div>
               <p class="subtitle sent-type"></p>
               <div class="input-wrapper"></div>
@@ -85,11 +85,17 @@
     <div class="whole page-chats" style="display: none;" id="page-chats">
       <svg style="position: absolute; top: -10000px; left: -10000px;">
         <defs id="svg-defs">
+          <clipPath id="tooltip-notch-clip">
+            <path d="M19 7C16.8992 7 13.59 3.88897 11.5003 1.67424C10.7648 0.894688 10.397 0.50491 10.0434 0.385149C9.70568 0.270811 9.4225 0.270474 9.08456 0.38401C8.73059 0.50293 8.36133 0.892443 7.62279 1.67147C5.52303 3.88637 2.18302 7 0 7L19 7Z" />
+          </clipPath>
+          <clipPath id="message-tail-clip">
+            <use href="#message-tail" />
+          </clipPath>
           <!-- <linearGradient id="topic-icon-gradient" x1="0" x2="0" y1="0" y2="1">
             <stop class="topic-icon-gradient-stop-1" offset="0%" />
             <stop class="topic-icon-gradient-stop-2" offset="100%" />
           </linearGradient> -->
-          <path id="message-tail" d="M1.00002881,1.03679295e-14 L7,0 L7,17 C6.8069969,14.1607017 6.12380234,11.2332513 4.95041634,8.21764872 C4.04604748,5.89342034 2.50413132,3.73337411 0.324667862,1.73751004 L0.324652538,1.73752677 C-0.0826597201,1.36452676 -0.110475289,0.731958677 0.262524727,0.324646419 C0.451952959,0.117792698 0.719544377,1.0985861e-14 1.00002881,1.04360964e-14 Z"></path>
+          <path id="message-tail" d="M1.00002881,1.03679295e-14 L7,0 L7,17 C6.8069969,14.1607017 6.12380234,11.2332513 4.95041634,8.21764872 C4.04604748,5.89342034 2.50413132,3.73337411 0.324667862,1.73751004 L0.324652538,1.73752677 C-0.0826597201,1.36452676 -0.110475289,0.731958677 0.262524727,0.324646419 C0.451952959,0.117792698 0.719544377,1.0985861e-14 1.00002881,1.04360964e-14 Z" />
           <path id="logo" fill-rule="evenodd" d="M80,0 C124.18278,0 160,35.81722 160,80 C160,124.18278 124.18278,160 80,160 C35.81722,160 0,124.18278 0,80 C0,35.81722 35.81722,0 80,0 Z M114.262551,46.4516129 L114.123923,46.4516129 C111.089589,46.5056249 106.482806,48.0771432 85.1289541,56.93769 L81.4133571,58.4849956 C72.8664779,62.0684477 57.2607933,68.7965125 34.5963033,78.66919 C30.6591745,80.2345564 28.5967328,81.765936 28.4089783,83.2633288 C28.0626453,86.0254269 31.8703852,86.959903 36.7890378,88.5302703 L38.2642674,89.0045258 C42.3926354,90.314406 47.5534685,91.7248852 50.3250916,91.7847532 C52.9151948,91.8407003 55.7944784,90.8162976 58.9629426,88.7115451 L70.5121776,80.9327422 C85.6657026,70.7535853 93.6285785,65.5352892 94.4008055,65.277854 L94.6777873,65.216416 C95.1594319,65.1213105 95.7366278,65.0717596 96.1481181,65.4374337 C96.6344248,65.8695939 96.5866185,66.6880224 96.5351057,66.9075859 C96.127514,68.6448691 75.2839361,87.6143392 73.6629144,89.2417998 L73.312196,89.6016896 C68.7645143,94.2254793 63.9030972,97.1721503 71.5637945,102.355193 L73.3593638,103.544598 C79.0660342,107.334968 82.9483395,110.083813 88.8107882,113.958377 L90.3875424,114.996094 C95.0654739,118.061953 98.7330313,121.697601 103.562866,121.253237 C105.740839,121.052855 107.989107,119.042224 109.175465,113.09692 L109.246762,112.727987 C112.002037,98.0012935 117.417883,66.09303 118.669527,52.9443975 C118.779187,51.7924073 118.641237,50.318088 118.530455,49.6708963 L118.474159,49.3781963 C118.341081,48.7651315 118.067967,48.0040758 117.346762,47.4189793 C116.412565,46.6610871 115.002114,46.4638844 114.262551,46.4516129 Z"/>
           <path id="poll-line" d="M4.47,5.33v13.6c0,4.97,4.03,9,9,9h458.16"/>
           <path id="check" fill="none" d="M 4.7071 12.2929 l 5 5 c 0.3905 0.3905 1.0237 0.3905 1.4142 0 l 11 -11" />
@@ -103,14 +109,18 @@
               <path d="M-6 16h6v17c-.193-2.84-.876-5.767-2.05-8.782-.904-2.325-2.446-4.485-4.625-6.48A1 1 0 01-6 16z" transform="matrix(1 0 0 -1 0 49)" id="corner-fill" fill="inherit"/>
             </g>
           </symbol>
-          <linearGradient id="g" x1="-300%" x2="-200%" y1="0" y2="0">
+          <!-- <linearGradient id="g" x1="-300%" x2="-200%" y1="0" y2="0">
             <stop offset="-10%" stop-opacity=".1"/>
             <stop offset="30%" stop-opacity=".07"/>
             <stop offset="70%" stop-opacity=".07"/>
             <stop offset="110%" stop-opacity=".1"/>
             <animate attributeName="x1" from="-300%" to="1200%" dur="3s" repeatCount="indefinite"/>
             <animate attributeName="x2" from="-200%" to="1300%" dur="3s" repeatCount="indefinite"/>
-          </linearGradient>
+          </linearGradient> -->
+          <!-- <linearGradient id="stories-gradient" x1="91.56%" y1="-0.56%" x2="13.42%" y2="102.37%">
+            <stop offset="0%" stop-color="#34C76F"></stop>
+            <stop offset="100%" stop-color="#3DA1FD"></stop>
+          </linearGradient> -->
         </defs>
       </svg>
       <div id="main-columns" class="tabs-container" data-animation="navigation">
@@ -140,26 +150,8 @@
           <div class="sidebar-content sidebar-slider tabs-container"></div>
         </div>
       </div>
-      <div class="emoji-dropdown" id="emoji-dropdown" style="display: none;">
-        <div class="emoji-container">
-          <div class="tabs-container">
-            <div class="tabs-tab gifs-padding">
-              <div class="emoticons-content" id="content-gifs">
-                <div class="gifs-masonry"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="emoji-tabs menu-horizontal-div emoticons-menu no-stripe">
-          <button class="menu-horizontal-div-item emoji-tabs-search justify-self-start btn-icon tgico-search" data-tab="-1"></button>
-          <button class="menu-horizontal-div-item emoji-tabs-emoji btn-icon tgico-smile" data-tab="0"></button>
-          <button class="menu-horizontal-div-item emoji-tabs-stickers btn-icon tgico-stickers_face" data-tab="1"></button>
-          <button class="menu-horizontal-div-item emoji-tabs-gifs btn-icon tgico-gifs" data-tab="2"></button>
-          <button class="menu-horizontal-div-item emoji-tabs-delete justify-self-end btn-icon tgico-deleteleft" data-tab="-1"></button>
-        </div>
-      </div>
     </div>
-
+    <div id="stories-viewer"></div>
     <script src="src/index.ts" type="module"></script>
   </body>
 </html>

@@ -1,0 +1,129 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+@import "../../scss/mixins";
+@import "../../scss/variables";
+
+.List {
+  display: flex;
+  flex-direction: row;
+
+  &.space-evenly {
+    justify-content: space-evenly;
+
+    &:before,
+    &:after {
+      display: none;
+    }
+  }
+
+  &:before,
+  &:after {
+    content: " ";
+    width: .375rem;
+    flex: 0 0 auto;
+  }
+
+  &Item {
+    --background-color: var(--surface-color);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 82px;
+    width: 74px;
+    padding: .3125rem .625rem;
+    cursor: pointer;
+    border-radius: $border-radius;
+    // pointer-events: all;
+    // transform: scale(calc(1 - (var(--progress) * (1 - 26px / 48px))));
+
+    // @include hover-global() {
+    //   --background-color: var(--light-filled-secondary-text-color);
+    //   background-color: var(--background-color);
+    // }
+
+    &Name {
+      // --max-opacity: 1;
+      font-size: var(--font-size-12);
+      line-height: 14px;
+      text-align: center;
+      opacity: calc(1 - (var(--progress) * 1.25));
+
+      @include text-overflow(true);
+    }
+
+    &.isRead &Name {
+      color: var(--secondary-text-color);
+      // --max-opacity: .4;
+    }
+
+    &:global(.menu-open) {
+      --background-color: var(--light-filled-secondary-text-color);
+      background-color: var(--background-color);
+    }
+
+    :global {
+      .has-stories {
+        &:before {
+          position: absolute;
+          top: 0;
+          right: 0;
+          bottom: 0;
+          left: 0;
+          content: " ";
+          background-color: var(--background-color);
+          border-radius: inherit;
+        }
+      }
+    }
+  }
+
+  &Container {
+    --progress: 0;
+    position: relative;
+    pointer-events: all;
+    width: 100%;
+    height: 92px;
+
+    &:not(:global(.disable-hover)) {
+      .ListItem {
+        @include hover-global() {
+          --background-color: var(--light-filled-secondary-text-color);
+          background-color: var(--background-color);
+        }
+      }
+    }
+
+    :global(.scrollable-x) {
+      position: relative;
+      padding: 5px 0;
+      // height: 92px;
+      // max-height: 92px;
+    }
+  }
+}
+
+:global(.stories-list) {
+  z-index: 1;
+  pointer-events: none;
+  position: relative;
+  height: 0;
+  opacity: 1;
+  visibility: visible;
+
+  :global(.is-search-active) & {
+    opacity: 0;
+    visibility: hidden;
+
+    @include animation-level-global(2) {
+      transition-delay: 0s, .15s;
+    }
+  }
+
+  @include animation-level-global(2) {
+    transition: opacity .15s ease, visibility 0s;
+  }
+}

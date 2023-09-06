@@ -114,12 +114,12 @@ export default class AppSettingsTab extends SliderSuperTab {
     } ? U : never;
 
     const m = <T extends SliderSuperTabConstructable>(
-      icon: string,
+      icon: Icon,
       text: LangPackKey,
       c: T,
       getInitArgs?: () => Promise<Parameters<ConstructorP<T>['init']>>
     ): {
-      icon: string,
+      icon: Icon,
       text: LangPackKey,
       tabConstructor: T,
       getInitArgs?: typeof getInitArgs,

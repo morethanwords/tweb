@@ -198,7 +198,8 @@ export default class AppChatInviteLinksTab extends SliderSuperTabEventable {
       },
       verify: () => menuInvite && !menuInvite.pFlags.revoked
     }, {
-      icon: 'delete danger',
+      icon: 'delete',
+      className: 'danger',
       text: 'RevokeLink',
       onClick: this.actions.revokeLink = async() => {
         const _menuItem = menuItem;
@@ -242,7 +243,8 @@ export default class AppChatInviteLinksTab extends SliderSuperTabEventable {
       },
       verify: () => menuInvite ? !menuInvite.pFlags.revoked : !!primaryInvite
     }, {
-      icon: 'delete danger',
+      icon: 'delete',
+      className: 'danger',
       text: 'DeleteLink',
       onClick: this.actions.deleteLink = () => {
         const _menuItem = menuItem;
@@ -335,7 +337,10 @@ export default class AppChatInviteLinksTab extends SliderSuperTabEventable {
             rippleEnabled: true,
             avatarSize: 'abitbigger',
             append: true,
-            loadPromises
+            loadPromises,
+            wrapOptions: {
+              middleware: this.middlewareHelper.get()
+            }
           });
 
           dom.lastMessageSpan.append(i18n('InviteLinkCount', [admin.invites_count]));

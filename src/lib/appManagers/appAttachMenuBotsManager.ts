@@ -12,6 +12,7 @@ import makeError from '../../helpers/makeError';
 import getAttachMenuBotIcon from './utils/attachMenuBots/getAttachMenuBotIcon';
 import getServerMessageId from './utils/messageId/getServerMessageId';
 import {randomLong} from '../../helpers/random';
+import getInputReplyTo from './utils/misc/getInputReplyTo';
 
 const BOTS_SUPPORTED = true;
 
@@ -178,12 +179,11 @@ export default class AppAttachMenuBotsManager extends AppManager {
         silent,
         platform,
         url,
-        reply_to_msg_id: replyToMsgId ? getServerMessageId(replyToMsgId) : undefined,
+        reply_to: getInputReplyTo({replyToMsgId, threadId}),
         from_bot_menu: fromBotMenu,
         theme_params: themeParams,
         send_as: sendAsPeerId ? this.appPeersManager.getInputPeerById(sendAsPeerId) : undefined,
-        start_param: startParam,
-        top_msg_id: threadId ? getServerMessageId(threadId) : undefined
+        start_param: startParam
       },
       processResult: (result) => {
         return result;
@@ -203,9 +203,8 @@ export default class AppAttachMenuBotsManager extends AppManager {
         bot: this.appUsersManager.getUserInput(options.botId),
         query_id: options.queryId,
         silent: options.silent,
-        reply_to_msg_id: options.replyToMsgId ? getServerMessageId(options.replyToMsgId) : undefined,
-        send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined,
-        top_msg_id: options.threadId ? getServerMessageId(options.threadId) : undefined
+        reply_to: getInputReplyTo({replyToMsgId: options.replyToMsgId, threadId: options.threadId}),
+        send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined
       },
       processResult: (result) => {
         return result;
@@ -252,6 +251,17 @@ export default class AppAttachMenuBotsManager extends AppManager {
       },
       processResult: (result) => {
         return result;
+      }
+    });
+  }
+
+  public invokeWebViewCustomMethod(botId: BotId, customMethod: string, params: string) {
+    return this.apiManager.invokeApi('bots.invokeWebViewCustomMethod', {
+      bot: this.appUsersManager.getUserInput(botId),
+      custom_method: customMethod,
+      params: {
+        _: 'dataJSON',
+        data: JSON.stringify(params)
       }
     });
   }

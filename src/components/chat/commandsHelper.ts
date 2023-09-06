@@ -89,7 +89,7 @@ export default class CommandsHelper extends AutocompletePeerHelper {
       }
 
       const filtered = processPeerFullForCommands(peerId, full, query);
-      this.render(filtered);
+      this.render(filtered, middleware);
       // console.log('found commands', found, filtered);
     });
 

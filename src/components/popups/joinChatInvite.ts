@@ -12,8 +12,7 @@ import appImManager from '../../lib/appManagers/appImManager';
 import {i18n, _i18n} from '../../lib/langPack';
 import {NULL_PEER_ID} from '../../lib/mtproto/mtproto_config';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
-import AvatarElement from '../avatar';
-import putPhoto from '../putPhoto';
+import {avatarNew} from '../avatarNew';
 import {toastNew} from '../toast';
 import wrapPhoto from '../wrappers/photo';
 
@@ -64,27 +63,34 @@ export default class PopupJoinChatInvite extends PopupElement {
 
     const {chatInvite, managers, hash} = this;
 
-    const avatarElem = new AvatarElement();
-    avatarElem.classList.add('avatar-100');
-    avatarElem.isDialog = false;
+    const avatarElem = avatarNew({
+      middleware: this.middlewareHelper.get(),
+      size: 100,
+      isDialog: false
+    });
     if(chatInvite.photo._ === 'photo') {
       chatInvite.photo = await managers.appPhotosManager.savePhoto(chatInvite.photo);
-      wrapPhoto({
-        container: avatarElem,
+      await wrapPhoto({
+        container: avatarElem.node,
         message: null,
         photo: chatInvite.photo,
         boxHeight: 100,
         boxWidth: 100,
         withoutPreloader: true
+      }).then((result) => {
+        avatarElem.node.classList.remove('media-container');
+        [result.images.thumb, result.images.full].forEach((image) => {
+          image.classList.replace('media-photo', 'avatar-photo');
+        });
+
+        return result.loadPromises.thumb;
       });
-      avatarElem.style.width = avatarElem.style.height = '';
+      avatarElem.node.style.width = avatarElem.node.style.height = '';
     } else {
-      putPhoto({
-        div: avatarElem,
-        peerId: NULL_PEER_ID,
-        isDialog: false,
-        title: chatInvite.title
+      avatarElem.render({
+        peerTitle: chatInvite.title
       });
+      await avatarElem.readyThumbPromise;
     }
 
     const title = document.createElement('div');
@@ -96,7 +102,7 @@ export default class PopupJoinChatInvite extends PopupElement {
     const peopleCount = i18n(isBroadcast ? 'Subscribers' : 'Members', [numberThousandSplitter(chatInvite.participants_count)]);
     peopleCount.classList.add('chat-participants-count');
 
-    this.body.append(avatarElem, title, peopleCount);
+    this.body.append(avatarElem.node, title, peopleCount);
 
     if(chatInvite.pFlags.request_needed) {
       const caption = document.createElement('div');

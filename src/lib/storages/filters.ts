@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {DialogFilter, ForumTopic, InputChatlist, InputPeer, Update, Updates} from '../../layer';
+import type {ChatlistsChatlistUpdates, DialogFilter, ForumTopic, InputChatlist, InputPeer, Update, Updates} from '../../layer';
 import type {Dialog} from '../appManagers/appMessagesManager';
 import forEachReverse from '../../helpers/array/forEachReverse';
 import copy from '../../helpers/object/copy';
@@ -212,7 +212,7 @@ export default class FiltersStorage extends AppManager {
     const {peerId} = dialog;
 
     if(REAL_FOLDERS.has(filter.id)) {
-      return (dialog as Dialog).folder_id === filter.id && this.dialogsStorage.canSaveDialogByPeerId(peerId);
+      return (dialog as Dialog).folder_id === filter.id && this.dialogsStorage.canSaveDialog(peerId, dialog);
     }
 
     // * check whether dialog exists

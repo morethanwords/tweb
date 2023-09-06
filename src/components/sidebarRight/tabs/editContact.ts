@@ -78,14 +78,15 @@ export default class AppEditContactTab extends SliderSuperTab {
         peerId: peerId,
         inputFields,
         listenerSetter: this.listenerSetter,
-        doNotEditAvatar: true
+        doNotEditAvatar: true,
+        middleware: this.middlewareHelper.get()
       });
       this.content.append(this.editPeer.nextBtn);
 
       if(peerId) {
         const div = document.createElement('div');
         div.classList.add('avatar-edit');
-        div.append(this.editPeer.avatarElem);
+        div.append(this.editPeer.avatarElem.node);
 
         const notificationsCheckboxField = new CheckboxField({
           text: 'Notifications'

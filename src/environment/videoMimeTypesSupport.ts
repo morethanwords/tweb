@@ -1,4 +1,4 @@
-import IS_MOV_SUPPORTED from './movSupport';
+import {IS_MOV_SUPPORTED} from './videoSupport';
 
 export type VIDEO_MIME_TYPE = 'image/gif' | 'video/mp4' | 'video/webm' | 'video/quicktime';
 const VIDEO_MIME_TYPES_SUPPORTED: Set<VIDEO_MIME_TYPE> = new Set([

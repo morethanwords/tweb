@@ -20,10 +20,14 @@ import debounce from '../helpers/schedulers/debounce';
 import overlayCounter from '../helpers/overlayCounter';
 import onMediaLoad from '../helpers/onMediaLoad';
 import {attachClickEvent} from '../helpers/dom/clickEvent';
+import safePlay from '../helpers/dom/safePlay';
+import ButtonIcon from '../components/buttonIcon';
+import Button from '../components/button';
+import Icon from '../components/icon';
 
 export default class VideoPlayer extends ControlsHover {
   private static PLAYBACK_RATES = [0.5, 1, 1.5, 2];
-  private static PLAYBACK_RATES_ICONS = ['playback_05', 'playback_1x', 'playback_15', 'playback_2x'];
+  private static PLAYBACK_RATES_ICONS: Icon[] = ['playback_05', 'playback_1x', 'playback_15', 'playback_2x'];
 
   protected video: HTMLVideoElement;
   protected wrapper: HTMLDivElement;
@@ -33,6 +37,7 @@ export default class VideoPlayer extends ControlsHover {
   protected listenerSetter: ListenerSetter;
   protected playbackRateButton: HTMLElement;
   protected pipButton: HTMLElement;
+  protected toggles: HTMLElement[];
 
   /* protected videoParent: HTMLElement;
   protected videoWhichChild: number; */
@@ -112,12 +117,19 @@ export default class VideoPlayer extends ControlsHover {
         if(err.name === 'NotAllowedError') {
           video.muted = true;
           video.autoplay = true;
-          video.play();
+          safePlay(video);
         }
       }).finally(() => { // due to autoplay, play will not call
-        this.wrapper.classList.toggle('is-playing', !this.video.paused);
+        this.setIsPlaing(!this.video.paused);
       });
     }
+  }
+
+  private setIsPlaing(isPlaying: boolean) {
+    this.wrapper.classList.toggle('is-playing', isPlaying);
+    this.toggles.forEach((toggle) => {
+      toggle.replaceChildren(Icon(isPlaying ? 'pause' : 'play'));
+    });
   }
 
   private stylePlayer(initDuration: number) {
@@ -130,22 +142,32 @@ export default class VideoPlayer extends ControlsHover {
     let timeDuration: HTMLElement;
 
     if(skin === 'default') {
-      this.playbackRateButton = this.wrapper.querySelector('.playback-rate') as HTMLElement;
-      this.pipButton = this.wrapper.querySelector('.pip') as HTMLElement;
+      const mainToggle = Button(`${skin}__button--big toggle`, {noRipple: true, icon: 'play'});
+      wrapper.firstElementChild.after(mainToggle);
 
-      const toggle = wrapper.querySelectorAll('.toggle') as NodeListOf<HTMLElement>;
-      const fullScreenButton = wrapper.querySelector('.fullscreen') as HTMLElement;
+      const leftControls = wrapper.querySelector('.left-controls') as HTMLElement;
+      const leftToggle = ButtonIcon(` ${skin}__button toggle`, {noRipple: true});
+      leftControls.prepend(leftToggle);
+
+      const rightControls = wrapper.querySelector('.right-controls') as HTMLElement;
+      this.playbackRateButton = ButtonIcon(` ${skin}__button btn-menu-toggle night`, {noRipple: true});
+      if(!IS_MOBILE && document.pictureInPictureEnabled) {
+        this.pipButton = ButtonIcon(`pip ${skin}__button`, {noRipple: true});
+      }
+      const fullScreenButton = ButtonIcon(` ${skin}__button`, {noRipple: true});
+      rightControls.append(...[this.playbackRateButton, this.pipButton, fullScreenButton].filter(Boolean));
+
+      const toggles = this.toggles = [leftToggle];
       const timeElapsed = wrapper.querySelector('#time-elapsed');
       timeDuration = wrapper.querySelector('#time-duration') as HTMLElement;
       timeDuration.textContent = toHHMMSS(video.duration | 0);
 
       const volumeSelector = new VolumeSelector(listenerSetter);
 
-      const leftControls = wrapper.querySelector('.left-controls');
       volumeSelector.btn.classList.remove('btn-icon');
       leftControls.insertBefore(volumeSelector.btn, timeElapsed.parentElement);
 
-      Array.from(toggle).forEach((button) => {
+      toggles.forEach((button) => {
         attachClickEvent(button, () => {
           this.togglePlay();
         }, {listenerSetter: this.listenerSetter});
@@ -240,6 +262,7 @@ export default class VideoPlayer extends ControlsHover {
       }, {listenerSetter: this.listenerSetter});
 
       addFullScreenListener(wrapper, this.onFullScreen.bind(this, fullScreenButton), listenerSetter);
+      this.onFullScreen(fullScreenButton);
 
       listenerSetter.add(video)('timeupdate', () => {
         timeElapsed.textContent = toHHMMSS(video.currentTime | 0);
@@ -265,11 +288,11 @@ export default class VideoPlayer extends ControlsHover {
     }
 
     listenerSetter.add(video)('play', () => {
-      wrapper.classList.add('is-playing');
+      this.setIsPlaing(true);
     });
 
     listenerSetter.add(video)('pause', () => {
-      wrapper.classList.remove('is-playing');
+      this.setIsPlaing(false);
     });
 
     if(video.duration || initDuration) {
@@ -289,23 +312,17 @@ export default class VideoPlayer extends ControlsHover {
     const skin = this.skin;
     if(skin === 'default') {
       return `
-      <button class="${skin}__button--big toggle tgico" title="Toggle Play"></button>
       <div class="${skin}__gradient-bottom ckin__controls"></div>
       <div class="${skin}__controls ckin__controls">
         <div class="bottom-controls">
           <div class="left-controls">
-            <button class="btn-icon ${skin}__button toggle tgico" title="Toggle Video"></button>
             <div class="time">
               <time id="time-elapsed">0:00</time>
               <span> / </span>
               <time id="time-duration">0:00</time>
             </div>
           </div>
-          <div class="right-controls">
-            <button class="btn-icon ${skin}__button btn-menu-toggle playback-rate night" title="Playback Rate"></button>
-            ${!IS_MOBILE && document.pictureInPictureEnabled ? `<button class="btn-icon ${skin}__button pip tgico-pip" title="Picture-in-Picture"></button>` : ''}
-            <button class="btn-icon ${skin}__button fullscreen tgico-fullscreen" title="Full Screen"></button>
-          </div>
+          <div class="right-controls"></div>
         </div>
       </div>`;
     }
@@ -334,22 +351,22 @@ export default class VideoPlayer extends ControlsHover {
         this.onPlaybackRackMenuToggle(false);
       } : undefined
     });
-    this.playbackRateButton.append(btnMenu);
-
     this.setPlaybackRateIcon();
+    this.playbackRateButton.append(btnMenu);
   }
 
   protected setPlaybackRateIcon() {
     const playbackRateButton = this.playbackRateButton;
-    VideoPlayer.PLAYBACK_RATES_ICONS.forEach((className) => {
-      className = 'tgico-' + className;
-      playbackRateButton.classList.remove(className);
-    });
 
     let idx = VideoPlayer.PLAYBACK_RATES.indexOf(appMediaPlaybackController.playbackRate);
     if(idx === -1) idx = VideoPlayer.PLAYBACK_RATES.indexOf(1);
 
-    playbackRateButton.classList.add('tgico-' + VideoPlayer.PLAYBACK_RATES_ICONS[idx]);
+    const icon = Icon(VideoPlayer.PLAYBACK_RATES_ICONS[idx]);
+    if(playbackRateButton.firstElementChild) {
+      playbackRateButton.firstElementChild.replaceWith(icon);
+    } else {
+      playbackRateButton.append(icon);
+    }
   }
 
   protected toggleFullScreen() {
@@ -396,12 +413,10 @@ export default class VideoPlayer extends ControlsHover {
     const isFull = isFullScreen();
     this.wrapper.classList.toggle('ckin__fullscreen', isFull);
     if(!isFull) {
-      fullScreenButton.classList.remove('tgico-smallscreen');
-      fullScreenButton.classList.add('tgico-fullscreen');
+      fullScreenButton.replaceChildren(Icon('fullscreen'));
       fullScreenButton.setAttribute('title', 'Full Screen');
     } else {
-      fullScreenButton.classList.remove('tgico-fullscreen');
-      fullScreenButton.classList.add('tgico-smallscreen');
+      fullScreenButton.replaceChildren(Icon('smallscreen'));
       fullScreenButton.setAttribute('title', 'Exit Full Screen');
     }
   }

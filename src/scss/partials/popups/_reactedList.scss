@@ -74,23 +74,6 @@
     background-color: var(--surface-color);
   }
 
-  .reacted-list {
-    &-reaction-icon {
-      display: flex;
-      width: var(--size);
-      height: var(--size);
-      position: absolute;
-      top: 50%;
-      inset-inline-end: 1rem;
-      transform: translateY(-50%);
-    }
-
-    &-checks {
-      margin-inline-end: .25rem;
-      font-size: 1.125rem;
-    }
-  }
-
   .chatlist-chat {
     padding-inline-end: 3.25rem !important;
   }

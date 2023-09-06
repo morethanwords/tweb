@@ -10,7 +10,7 @@ import htmlToSpan from '../../helpers/dom/htmlToSpan';
 import setInnerHTML from '../../helpers/dom/setInnerHTML';
 import {wrapCallDuration} from './wrapDuration';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
-import {ForumTopic, Message, MessageAction} from '../../layer';
+import {ForumTopic, Message, MessageAction, MessageReplyHeader} from '../../layer';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import I18n, {FormatterArgument, FormatterArguments, i18n, join, langPack, LangPackKey, _i18n} from '../../lib/langPack';
 import {GENERAL_TOPIC_ID} from '../../lib/mtproto/mtproto_config';
@@ -316,6 +316,9 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         if(action.pFlags?.attach_menu) {
           langPackKey = 'ActionAttachMenuBotAllowed';
           break;
+        } else if(action.pFlags?.from_request) {
+          langPackKey = 'ActionBotAllowedRequest';
+          break;
         } else if(!action.domain) {
           break;
         }
@@ -343,8 +346,9 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         args = [price, getNameDivHTML(message.peerId, plain)];
 
         if(message.reply_to_mid) {
+          const replyTo = message.reply_to as MessageReplyHeader.messageReplyHeader;
           const invoiceMessage = await managers.appMessagesManager.getMessageByPeer(
-            message.reply_to?.reply_to_peer_id ? getPeerId(message.reply_to.reply_to_peer_id) : message.peerId,
+            replyTo?.reply_to_peer_id ? getPeerId(replyTo.reply_to_peer_id) : message.peerId,
             message.reply_to_mid
           );
 

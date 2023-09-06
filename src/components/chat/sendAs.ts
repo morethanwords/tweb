@@ -10,15 +10,15 @@ import ListenerSetter from '../../helpers/listenerSetter';
 import liteMode from '../../helpers/liteMode';
 import {getMiddleware} from '../../helpers/middleware';
 import {modifyAckedPromise} from '../../helpers/modifyAckedResult';
-import {ChatFull} from '../../layer';
 import {AppManagers} from '../../lib/appManagers/managers';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import {i18n} from '../../lib/langPack';
 import {AckedResult} from '../../lib/mtproto/superMessagePort';
 import rootScope from '../../lib/rootScope';
-import AvatarElement from '../avatar';
+import {avatarNew} from '../avatarNew';
 import {ButtonMenuItemOptions, ButtonMenuSync} from '../buttonMenu';
 import ButtonMenuToggle from '../buttonMenuToggle';
+import Icon from '../icon';
 import PeerTitle from '../peerTitle';
 import SetTransition from '../singleTransition';
 import getChatMembersString from '../wrappers/getChatMembersString';
@@ -26,14 +26,14 @@ import getChatMembersString from '../wrappers/getChatMembersString';
 const SEND_AS_ANIMATION_DURATION = 300;
 
 export default class ChatSendAs {
-  private avatar: AvatarElement;
+  private avatar: ReturnType<typeof avatarNew>;
   private container: HTMLElement;
   private closeBtn: HTMLElement;
   private btnMenu: HTMLElement;
   private sendAsPeerIds: PeerId[];
   private sendAsPeerId: PeerId;
   private updatingPromise: ReturnType<ChatSendAs['updateManual']>;
-  private middleware: ReturnType<typeof getMiddleware>;
+  private middlewareHelper: ReturnType<typeof getMiddleware>;
   private listenerSetter: ListenerSetter;
   private peerId: PeerId;
   private addedListener: boolean;
@@ -44,7 +44,7 @@ export default class ChatSendAs {
     private onReady: (container: HTMLElement, skipAnimation?: boolean) => void,
     private onChange: (sendAsPeerId: PeerId) => void
   ) {
-    this.middleware = getMiddleware();
+    this.middlewareHelper = getMiddleware();
     this.listenerSetter = new ListenerSetter();
     this.construct();
   }
@@ -54,7 +54,8 @@ export default class ChatSendAs {
     this.container.classList.add('new-message-send-as-container');
 
     this.closeBtn = document.createElement('div');
-    this.closeBtn.classList.add('new-message-send-as-close', 'new-message-send-as-avatar', 'tgico-close');
+    this.closeBtn.classList.add('new-message-send-as-close', 'new-message-send-as-avatar');
+    this.closeBtn.append(Icon('close'));
 
     const sendAsButtons: ButtonMenuItemOptions[] = [{
       text: 'SendMessageAsTitle',
@@ -63,7 +64,7 @@ export default class ChatSendAs {
 
     this.buttons = [];
 
-    let previousAvatar: HTMLElement;
+    let previousAvatar: ChatSendAs['avatar'];
     const onSendAsMenuToggle = (visible: boolean) => {
       if(visible) {
         previousAvatar = this.avatar;
@@ -81,7 +82,7 @@ export default class ChatSendAs {
       });
       if(!isChanged) {
         SetTransition({
-          element: previousAvatar,
+          element: previousAvatar.node,
           className: 'is-visible',
           forwards: !visible,
           duration: SEND_AS_ANIMATION_DURATION,
@@ -140,7 +141,7 @@ export default class ChatSendAs {
           const currentPeerId = this.peerId;
           this.changeSendAsPeerId(sendAsPeerId);
 
-          const middleware = this.middleware.get();
+          const middleware = this.middlewareHelper.get();
           const executeButtonsUpdate = () => {
             if(this.sendAsPeerId !== sendAsPeerId || !middleware()) return;
             const peerIds = this.sendAsPeerIds.slice();
@@ -166,15 +167,18 @@ export default class ChatSendAs {
     const btnMenu = ButtonMenuSync({buttons}/* , this.listenerSetter */);
     buttons.forEach((button, idx) => {
       const peerId = peerIds[idx];
-      const avatar = new AvatarElement();
-      avatar.classList.add('avatar-26', 'btn-menu-item-icon');
-      avatar.updateWithOptions({peerId});
+      const avatar = avatarNew({
+        middleware: this.middlewareHelper.get(),
+        size: 26,
+        peerId
+      });
+      avatar.node.classList.add('btn-menu-item-icon');
 
       if(!idx) {
-        avatar.classList.add('active');
+        avatar.node.classList.add('active');
       }
 
-      button.element.prepend(avatar);
+      button.element.prepend(avatar.node);
     });
 
     this.buttons = buttons;
@@ -186,7 +190,7 @@ export default class ChatSendAs {
   private async updateAvatar(sendAsPeerId: PeerId, skipAnimation?: boolean) {
     const previousAvatar = this.avatar;
     if(previousAvatar) {
-      if(previousAvatar.peerId === sendAsPeerId) {
+      if(previousAvatar.node.dataset.peerId.toPeerId() === sendAsPeerId) {
         return;
       }
     }
@@ -197,15 +201,17 @@ export default class ChatSendAs {
 
     const useRafs = skipAnimation ? 0 : 2;
     const duration = skipAnimation ? 0 : SEND_AS_ANIMATION_DURATION;
-    const avatar = this.avatar = new AvatarElement();
-    avatar.classList.add('new-message-send-as-avatar', 'avatar-30');
-    await avatar.updateWithOptions({
+    const avatar = this.avatar = avatarNew({
+      middleware: this.middlewareHelper.get(),
+      size: 30,
       isDialog: false,
       peerId: sendAsPeerId
     });
+    avatar.node.classList.add('new-message-send-as-avatar');
+    await avatar.readyThumbPromise;
 
     SetTransition({
-      element: avatar,
+      element: avatar.node,
       className: 'is-visible',
       forwards: true,
       duration,
@@ -213,18 +219,18 @@ export default class ChatSendAs {
     });
     if(previousAvatar) {
       SetTransition({
-        element: previousAvatar,
+        element: previousAvatar.node,
         className: 'is-visible',
         forwards: false,
         duration,
         onTransitionEnd: () => {
-          previousAvatar.remove();
+          previousAvatar.node.remove();
         },
         useRafs
       });
     }
 
-    this.container.append(avatar);
+    this.container.append(avatar.node);
   }
 
   private changeSendAsPeerId(sendAsPeerId: PeerId, skipAnimation?: boolean) {
@@ -251,7 +257,7 @@ export default class ChatSendAs {
       return;
     }
 
-    const middleware = this.middleware.get(() => {
+    const middleware = this.middlewareHelper.get(() => {
       return !this.updatingPromise || this.updatingPromise === updatingPromise;
     });
 
@@ -328,7 +334,7 @@ export default class ChatSendAs {
       this.avatar = undefined;
     } */
 
-    this.middleware.clean();
+    this.middlewareHelper.clean();
     this.updatingPromise = undefined;
     this.peerId = peerId;
   }

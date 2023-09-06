@@ -11,6 +11,7 @@
 
 import type {Chat, ForumTopic as MTForumTopic, DialogPeer, Message, MessageAction, MessageMedia, MessagesForumTopics, MessagesPeerDialogs, Update, Peer} from '../../layer';
 import type {Dialog, ForumTopic, MyMessage} from '../appManagers/appMessagesManager';
+import type DATABASE_STATE from '../../config/databases/state';
 import tsNow from '../../helpers/tsNow';
 import SearchIndex from '../searchIndex';
 import {SliceEnd} from '../../helpers/slicedArray';
@@ -19,7 +20,6 @@ import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, NULL_PEER_ID, REAL_FOLDERS, REAL_FOLDE
 import {MaybePromise, NoneToVoidFunction} from '../../types';
 import ctx from '../../environment/ctx';
 import AppStorage from '../storage';
-import type DATABASE_STATE from '../../config/databases/state';
 import forEachReverse from '../../helpers/array/forEachReverse';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import insertInDescendSortedArray from '../../helpers/array/insertInDescendSortedArray';
@@ -753,12 +753,13 @@ export default class DialogsStorage extends AppManager {
       topDate = this.generateDialogPinnedDate(dialog);
       isPinned = true;
     } else {
-      message ||= this.appMessagesManager.getMessageByPeer(dialog.peerId, dialog.top_message);
+      const {peerId} = dialog;
+      message ||= this.appMessagesManager.getMessageByPeer(peerId, dialog.top_message);
 
       topDate = (message as Message.message)?.date || topDate;
 
       if(!isTopic) {
-        const channelId = this.appPeersManager.isChannel(dialog.peerId) && dialog.peerId.toChatId();
+        const channelId = this.appPeersManager.isChannel(peerId) && peerId.toChatId();
         if(channelId) {
           const channel = this.appChatsManager.getChat(channelId) as Chat.channel;
           if(!topDate || (channel.date && channel.date > topDate)) {
@@ -767,7 +768,10 @@ export default class DialogsStorage extends AppManager {
         }
       }
 
-      if(dialog.draft?._ === 'draftMessage' && dialog.draft.date > topDate) {
+      if(
+        dialog.draft?._ === 'draftMessage' &&
+        dialog.draft.date > topDate
+      ) {
         topDate = dialog.draft.date;
       }
     }
@@ -1077,7 +1081,8 @@ export default class DialogsStorage extends AppManager {
       const key = this.appMessagesManager.getUpdateAfterReloadKey(peerId, isForum ? this.getDialogKey(dialog) : undefined);
       const updates = this.appMessagesManager.newUpdatesAfterReloadToHandle[key];
       if(updates !== undefined) {
-        for(const update of updates) {
+        const slicedUpdates = [...updates]; // ! have to clone set, otherwise will have infinite loop if element is inserted again
+        for(const update of slicedUpdates) {
           updates.delete(update);
           this.apiUpdatesManager.saveUpdate(update);
         }
@@ -1093,12 +1098,13 @@ export default class DialogsStorage extends AppManager {
     }
   }
 
+  // ! do not use draft here, empty dialogs with drafts are excluded from .getDialogs response
   private getDialogOffsetDate(dialog: Dialog | ForumTopic) {
     const message = this.appMessagesManager.getMessageByPeer(dialog.peerId, dialog.top_message);
     return message?.date || 0;
   }
 
-  public canSaveDialogByPeerId(peerId: PeerId) {
+  public canSaveDialog(peerId: PeerId, dialog: Dialog | ForumTopic) {
     if(peerId.isAnyChat()) {
       const chat: Chat = this.appChatsManager.getChat(peerId.toChatId());
       // ! chatForbidden stays for chat where you're kicked
@@ -1110,6 +1116,8 @@ export default class DialogsStorage extends AppManager {
       ) {
         return false;
       }
+    } else if(this.appUsersManager.isDeleted(peerId.toUserId()) && !getServerMessageId(dialog.top_message)) {
+      return false;
     }
 
     return true;
@@ -1149,7 +1157,7 @@ export default class DialogsStorage extends AppManager {
       console.error('saveConversation not regular dialog', dialog, Object.assign({}, dialog));
     }
 
-    if(isDialog && !this.canSaveDialogByPeerId(peerId)) {
+    if(isDialog && !this.canSaveDialog(peerId, dialog)) {
       return false;
     }
 
@@ -1172,7 +1180,7 @@ export default class DialogsStorage extends AppManager {
     const wasDialogBefore = this.getDialogOrTopic(peerId, topicId);
 
     let mid: number, message: MyMessage;
-    if(dialog.top_message) {
+    if(dialog.top_message || true) {
       mid = this.appMessagesIdsManager.generateMessageId(dialog.top_message, channelId);// dialog.top_message;
 
       // preserve outgoing message
@@ -1182,7 +1190,7 @@ export default class DialogsStorage extends AppManager {
       }
 
       message = this.appMessagesManager.getMessageByPeer(peerId, mid);
-    } else {
+    }/*  else {
       mid = this.appMessagesManager.generateTempMessageId(peerId);
       message = {
         _: 'message',
@@ -1190,17 +1198,16 @@ export default class DialogsStorage extends AppManager {
         mid,
         from_id: this.appPeersManager.getOutputPeer(this.appUsersManager.getSelf().id.toPeerId(false)),
         peer_id: this.appPeersManager.getOutputPeer(peerId),
-        deleted: true,
         pFlags: {out: true},
         date: 0,
         message: ''
       };
       this.appMessagesManager.saveMessages([message], {isOutgoing: true});
-    }
+    } */
 
-    if(!message?.pFlags) {
-      this.appMessagesManager.log.error('saveConversation no message:', dialog, message);
-    }
+    // if(!message?.pFlags) {
+    //   this.appMessagesManager.log.error('saveConversation no message:', dialog, message);
+    // }
 
     dialog.top_message = mid;
     // dialog.unread_count = wasDialogBefore && dialog.read_inbox_max_id === getServerMessageId(wasDialogBefore.read_inbox_max_id) ? wasDialogBefore.unread_count : dialog.unread_count;
@@ -1216,11 +1223,15 @@ export default class DialogsStorage extends AppManager {
       } */
     }
 
-    dialog.draft = this.appDraftsManager.saveDraft({peerId, threadId: topicId, draft: dialog.draft});
+    dialog.draft = this.appDraftsManager.saveDraft({
+      peerId,
+      threadId: topicId,
+      draft: dialog.draft
+    });
     dialog.peerId = peerId;
     // dialog.indexes ??= {} as any;
 
-    // Because we saved message without dialog present
+    // * Because we saved message without dialog present
     if(message && message.pFlags.is_outgoing) {
       const isOut = message.pFlags.out;
       if(mid > dialog[isOut ? 'read_outbox_max_id' : 'read_inbox_max_id']) {
@@ -1236,6 +1247,7 @@ export default class DialogsStorage extends AppManager {
 
     const historyStorage = this.appMessagesManager.getHistoryStorage(peerId, topicId);
     const slice = historyStorage.history.slice;
+    if(!mid) {} else
     /* if(historyStorage === undefined) { // warning
       historyStorage.history.push(mid);
     } else  */if(!slice.length) {

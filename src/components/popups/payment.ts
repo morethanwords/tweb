@@ -22,13 +22,14 @@ import {formatPhoneNumber} from '../../helpers/formatPhoneNumber';
 import {makeMediaSize} from '../../helpers/mediaSize';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
 import ScrollSaver from '../../helpers/scrollSaver';
+import {_tgico} from '../../helpers/tgico';
 import tsNow from '../../helpers/tsNow';
 import {AccountTmpPassword, DocumentAttribute, InputInvoice, InputPaymentCredentials, LabeledPrice, Message, MessageMedia, PaymentRequestedInfo, PaymentSavedCredentials, PaymentsPaymentForm, PaymentsPaymentReceipt, PaymentsValidatedRequestedInfo, PostAddress, ShippingOption} from '../../layer';
 import I18n, {i18n, LangPackKey, _i18n} from '../../lib/langPack';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
 import rootScope from '../../lib/rootScope';
-import AvatarElement from '../avatar';
+import {avatarNew} from '../avatarNew';
 import Button from '../button';
 import CheckboxField from '../checkboxField';
 import PeerTitle from '../peerTitle';
@@ -581,7 +582,8 @@ export default class PopupPayment extends PopupElement<{
         str = brand + ' *' + card.cardNumber.split(' ').pop();
       }
 
-      methodRow.title.classList.remove('tgico', 'tgico-card_outline');
+      const outlineIcon = methodRow.container.querySelector(`.${_tgico('card_outline')}`);
+      outlineIcon?.remove();
       setRowIcon(methodRow, icon || brand.toLowerCase());
       setRowTitle(methodRow, str);
     };
@@ -619,10 +621,12 @@ export default class PopupPayment extends PopupElement<{
       subtitleLangKey: 'PaymentCheckoutProvider'
     });
 
-    const providerAvatar = new AvatarElement();
-    providerAvatar.classList.add('avatar-32');
-    providerRow.createMedia('small').append(providerAvatar);
-    /* await */ providerAvatar.updateWithOptions({peerId: paymentForm.provider_id.toPeerId()});
+    const providerAvatar = avatarNew({
+      middleware: this.middlewareHelper.get(),
+      size: 32,
+      peerId: paymentForm.provider_id.toPeerId()
+    });
+    providerRow.createMedia('small').append(providerAvatar.node);
 
     let shippingAddressRow: Row, shippingNameRow: Row, shippingEmailRow: Row, shippingPhoneRow: Row, shippingMethodRow: Row;
     let lastShippingOption: ShippingOption, onShippingAddressClick: (focus?: ConstructorParameters<typeof PopupPaymentShipping>[2]) => void, onShippingMethodClick: () => void;

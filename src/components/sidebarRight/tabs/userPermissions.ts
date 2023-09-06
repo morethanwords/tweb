@@ -85,7 +85,10 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
         container: list,
         rippleEnabled: true,
         avatarSize: 'abitbigger',
-        meAsSaved: false
+        meAsSaved: false,
+        wrapOptions: {
+          middleware: this.middlewareHelper.get()
+        }
       });
 
       dom.lastMessageSpan.append(getUserStatusString(await this.managers.appUsersManager.getUser(this.userId)));

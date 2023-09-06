@@ -11,7 +11,8 @@ import {WrapPinnedContainerOptions} from '../chat/pinnedContainer';
 import ReplyContainer from '../chat/replyContainer';
 
 export type WrapReplyOptions = WrapPinnedContainerOptions & {
-  setColorPeerId?: PeerId
+  setColorPeerId?: PeerId,
+  isStoryExpired?: boolean
 } & WrapSomethingOptions;
 
 export default function wrapReply(options: WrapReplyOptions) {

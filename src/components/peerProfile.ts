@@ -25,10 +25,10 @@ import I18n, {i18n, join} from '../lib/langPack';
 import {MTAppConfig} from '../lib/mtproto/appConfig';
 import wrapRichText from '../lib/richTextProcessor/wrapRichText';
 import rootScope from '../lib/rootScope';
-import AvatarElement from './avatar';
+import {avatarNew} from './avatarNew';
 import CheckboxField from './checkboxField';
 import {generateDelimiter} from './generateDelimiter';
-import PeerProfileAvatars from './peerProfileAvatars';
+import PeerProfileAvatars, {SHOW_NO_AVATAR} from './peerProfileAvatars';
 import Row from './row';
 import Scrollable from './scrollable';
 import SettingSection from './settingSection';
@@ -45,7 +45,7 @@ const setText = (text: Parameters<typeof setInnerHTML>[1], row: Row) => {
 export default class PeerProfile {
   public element: HTMLElement;
   private avatars: PeerProfileAvatars;
-  private avatar: AvatarElement;
+  private avatar: ReturnType<typeof avatarNew>;
   private section: SettingSection;
   private name: HTMLDivElement;
   private subtitle: HTMLDivElement;
@@ -181,7 +181,7 @@ export default class PeerProfile {
             window.open('https://fragment.com/numbers', '_blank');
           },
           separator: true,
-          multiline: true,
+          secondary: true,
           verify: async() => {
             const {isAnonymous} = await this.managers.appUsersManager.getUserPhone(this.peerId.toUserId()) || {};
             return isAnonymous;
@@ -396,21 +396,13 @@ export default class PeerProfile {
     return this.peerId !== rootScope.myId || !this.isDialog;
   }
 
-  private createAvatar() {
-    const avatar = new AvatarElement();
-    avatar.classList.add('profile-avatar', 'avatar-120');
-    avatar.isDialog = this.isDialog;
-    avatar.attachClickEvent();
-    return avatar;
-  }
-
   private async _setAvatar() {
     const {peerId} = this;
     const isTopic = !!(this.threadId && await this.managers.appPeersManager.isForum(peerId));
     if(this.canBeDetailed() && !isTopic) {
       const photo = await this.managers.appPeersManager.getPeerPhoto(peerId);
 
-      if(photo) {
+      if(photo || SHOW_NO_AVATAR) {
         const oldAvatars = this.avatars;
         this.avatars = new PeerProfileAvatars(this.scrollable, this.managers);
         await this.avatars.setPeer(peerId);
@@ -418,7 +410,7 @@ export default class PeerProfile {
         return () => {
           this.avatars.info.append(this.name, this.subtitle);
 
-          this.avatar?.remove();
+          if(this.avatar) this.avatar.node.remove();
           this.avatar = undefined;
 
           if(oldAvatars) oldAvatars.container.replaceWith(this.avatars.container);
@@ -431,15 +423,20 @@ export default class PeerProfile {
       }
     }
 
-    const avatar = this.createAvatar();
-    await avatar.updateWithOptions({
+    const avatar = avatarNew({
+      middleware: this.middlewareHelper.get(),
+      size: 120,
+      isDialog: this.isDialog,
       peerId,
       threadId: isTopic ? this.threadId : undefined,
       wrapOptions: {
         customEmojiSize: makeMediaSize(120, 120),
         middleware: this.middlewareHelper.get()
-      }
+      },
+      withStories: true
     });
+    avatar.node.classList.add('profile-avatar', 'avatar-120');
+    await avatar.readyThumbPromise;
 
     return () => {
       if(IS_PARALLAX_SUPPORTED) {
@@ -452,10 +449,10 @@ export default class PeerProfile {
         this.avatars = undefined;
       }
 
-      this.avatar?.remove();
+      if(this.avatar) this.avatar.node.remove();
       this.avatar = avatar;
 
-      this.section.content.prepend(this.avatar, this.name, this.subtitle);
+      this.section.content.prepend(this.avatar.node, this.name, this.subtitle);
     };
   }
 

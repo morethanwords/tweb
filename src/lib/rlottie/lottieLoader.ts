@@ -22,7 +22,7 @@ export type LottieAssetName = 'EmptyFolder' | 'Folders_1' | 'Folders_2' |
   'TwoFactorSetupMonkeyPeek' | 'TwoFactorSetupMonkeyTracking' |
   'voice_outlined2' | 'voip_filled' | 'voice_mini' | 'jolly_roger' |
   'Gift3' | 'Gift6' | 'Gift12' | 'Folders_Shared' | 'UtyanSearch' |
-  'UtyanDiscussion' | 'UtyanLinks';
+  'UtyanDiscussion' | 'UtyanLinks' | 'UtyanStories';
 
 export class LottieLoader {
   private loadPromise: Promise<void> = !IS_WEB_ASSEMBLY_SUPPORTED ? Promise.reject(makeError('NO_WASM')) : undefined;
@@ -184,8 +184,14 @@ export class LottieLoader {
     animationIntersector.addAnimation({
       animation: player,
       group,
+      observeElement: player.el[0],
       controlled: middleware,
-      liteModeKey: params.liteModeKey
+      liteModeKey: params.liteModeKey,
+      type: 'lottie'
+    });
+
+    params.middleware?.onDestroy(() => {
+      player.remove();
     });
 
     return player;

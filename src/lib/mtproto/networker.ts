@@ -566,7 +566,7 @@ export default class MTPNetworker {
 
     const log = this.log.bindPrefix('sendPingDelayDisconnect');
     this.debug && log.debug(`ping, timeout=${timeoutTime}, lastPingTime=${this.lastPingTime}, msgId=${options.messageId}, pingId=${pingId}`);
-    const rejectTimeout = ctx.setTimeout(deferred.reject, timeoutTime);
+    const rejectTimeout = ctx.setTimeout(deferred.reject.bind(deferred), timeoutTime);
 
     const onResolved = (reason: string) => {
       clearTimeout(rejectTimeout);

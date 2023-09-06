@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type {AppMessagesManager} from '../lib/appManagers/appMessagesManager';
 import IS_PARALLAX_SUPPORTED from '../environment/parallaxSupport';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import findAndSplice from '../helpers/array/findAndSplice';
@@ -12,18 +13,20 @@ import {attachClickEvent} from '../helpers/dom/clickEvent';
 import filterChatPhotosMessages from '../helpers/filterChatPhotosMessages';
 import ListenerSetter from '../helpers/listenerSetter';
 import ListLoader from '../helpers/listLoader';
+import {getMiddleware, MiddlewareHelper} from '../helpers/middleware';
 import {fastRaf} from '../helpers/schedulers';
 import {Message, ChatFull, MessageAction, Photo} from '../layer';
-import type {AppMessagesManager} from '../lib/appManagers/appMessagesManager';
 import {AppManagers} from '../lib/appManagers/managers';
 import choosePhotoSize from '../lib/appManagers/utils/photos/choosePhotoSize';
-import {openAvatarViewer} from './avatar';
-import {putAvatar} from './putPhoto';
+import {avatarNew} from './avatarNew';
 import Scrollable from './scrollable';
 import SwipeHandler from './swipeHandler';
 import wrapPhoto from './wrappers/photo';
+import openAvatarViewer from './openAvatarViewer';
+import Icon from './icon';
 
 const LOAD_NEAREST = 3;
+export const SHOW_NO_AVATAR = false;
 
 export default class PeerProfileAvatars {
   private static BASE_CLASS = 'profile-avatars';
@@ -42,6 +45,7 @@ export default class PeerProfileAvatars {
   private loadCallbacks: Map<Element, () => void>;
   private listenerSetter: ListenerSetter;
   private swipeHandler: SwipeHandler;
+  private middlewareHelper: MiddlewareHelper;
 
   constructor(
     public scrollable: Scrollable,
@@ -63,18 +67,14 @@ export default class PeerProfileAvatars {
     this.tabs.classList.add(PeerProfileAvatars.BASE_CLASS + '-tabs');
 
     this.arrowPrevious = document.createElement('div');
-    this.arrowPrevious.classList.add(PeerProfileAvatars.BASE_CLASS + '-arrow', 'tgico-avatarprevious');
+    this.arrowPrevious.classList.add(PeerProfileAvatars.BASE_CLASS + '-arrow');
+    this.arrowPrevious.append(Icon('avatarprevious', PeerProfileAvatars.BASE_CLASS + '-arrow-icon'));
 
-    /* const previousIcon = document.createElement('i');
-    previousIcon.classList.add(PeerProfileAvatars.BASE_CLASS + '-arrow-icon', 'tgico-previous');
-    this.arrowBack.append(previousIcon); */
+    this.middlewareHelper = getMiddleware();
 
     this.arrowNext = document.createElement('div');
-    this.arrowNext.classList.add(PeerProfileAvatars.BASE_CLASS + '-arrow', PeerProfileAvatars.BASE_CLASS + '-arrow-next', 'tgico-avatarnext');
-
-    /* const nextIcon = document.createElement('i');
-    nextIcon.classList.add(PeerProfileAvatars.BASE_CLASS + '-arrow-icon', 'tgico-next');
-    this.arrowNext.append(nextIcon); */
+    this.arrowNext.classList.add(PeerProfileAvatars.BASE_CLASS + '-arrow', PeerProfileAvatars.BASE_CLASS + '-arrow-next');
+    this.arrowNext.append(Icon('avatarnext', PeerProfileAvatars.BASE_CLASS + '-arrow-icon'));
 
     this.container.append(this.avatars, this.gradient, this.info, this.tabs, this.arrowPrevious, this.arrowNext);
 
@@ -256,9 +256,10 @@ export default class PeerProfileAvatars {
 
   public async setPeer(peerId: PeerId) {
     this.peerId = peerId;
+    this.middlewareHelper.clean();
 
     const photo = await this.managers.appPeersManager.getPeerPhoto(peerId);
-    if(!photo) {
+    if(!photo && !SHOW_NO_AVATAR) {
       return;
     }
 
@@ -330,7 +331,7 @@ export default class PeerProfileAvatars {
       }
     });
 
-    if(photo._ === 'userProfilePhoto') {
+    if(photo?._ === 'userProfilePhoto') {
       listLoader.current = photo.photo_id;
     }
 
@@ -353,6 +354,7 @@ export default class PeerProfileAvatars {
   }
 
   public processItem = async(photoId: Photo.photo['id'] | Message.messageService) => {
+    const middleware = this.middlewareHelper.get();
     const avatar = document.createElement('div');
     avatar.classList.add(PeerProfileAvatars.BASE_CLASS + '-avatar', 'media-container', 'hide');
 
@@ -382,8 +384,14 @@ export default class PeerProfileAvatars {
           img.classList.add('avatar-photo');
         });
       } else {
-        const photo = await this.managers.appPeersManager.getPeerPhoto(this.peerId);
-        await putAvatar(avatar, this.peerId, photo, 'photo_big', img);
+        const _avatar = avatarNew({
+          middleware,
+          size: 'full',
+          isBig: true,
+          peerId: this.peerId
+        });
+        await _avatar.readyThumbPromise;
+        avatar.append(_avatar.node);
       }
 
       avatar.classList.remove('hide');
@@ -420,5 +428,6 @@ export default class PeerProfileAvatars {
     this.listenerSetter.removeAll();
     this.swipeHandler.removeListeners();
     this.intersectionObserver?.disconnect();
+    this.middlewareHelper.destroy();
   }
 }

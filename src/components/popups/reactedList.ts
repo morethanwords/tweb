@@ -10,15 +10,77 @@ import ReactionsElement from '../chat/reactions';
 import {horizontalMenu} from '../horizontalMenu';
 import Scrollable from '../scrollable';
 import ScrollableLoader from '../../helpers/scrollableLoader';
-import appDialogsManager from '../../lib/appManagers/appDialogsManager';
+import appDialogsManager, {DialogDom, DialogElement} from '../../lib/appManagers/appDialogsManager';
 import replaceContent from '../../helpers/dom/replaceContent';
 import wrapSticker from '../wrappers/sticker';
 import ReactionElement from '../chat/reaction';
 import getUserStatusString from '../wrappers/getUserStatusString';
-import {makeMediaSize} from '../../helpers/mediaSize';
+import {MediaSize, makeMediaSize} from '../../helpers/mediaSize';
 import wrapCustomEmoji from '../wrappers/customEmoji';
 import SettingSection from '../settingSection';
 import {formatFullSentTime} from '../../helpers/date';
+import {Middleware} from '../../helpers/middleware';
+import rootScope from '../../lib/rootScope';
+import Icon from '../icon';
+
+const size = 24;
+const _mediaSize = makeMediaSize(size, size);
+export async function processDialogElementForReaction({
+  peerId,
+  dialogElement,
+  reaction,
+  middleware,
+  isMine,
+  date,
+  mediaSize = _mediaSize
+}: {
+  peerId: PeerId,
+  dialogElement: DialogElement,
+  reaction?: Reaction,
+  middleware: Middleware,
+  isMine: boolean,
+  date: number,
+  mediaSize?: MediaSize
+}) {
+  const {dom} = dialogElement;
+  if(reaction) {
+    const stickerContainer = document.createElement('div');
+    stickerContainer.classList.add('reacted-list-reaction-icon');
+
+    if(reaction._ === 'reactionEmoji') {
+      const availableReaction = await rootScope.managers.appReactionsManager.getReaction(reaction.emoticon);
+
+      wrapSticker({
+        doc: availableReaction.static_icon,
+        div: stickerContainer,
+        width: 24,
+        height: 24,
+        middleware
+      });
+    } else if(reaction._ === 'reactionCustomEmoji') {
+      stickerContainer.append(wrapCustomEmoji({
+        docIds: [reaction.document_id],
+        customEmojiSize: mediaSize,
+        middleware
+      }));
+    }
+
+    dom.listEl.append(stickerContainer);
+  }
+
+  if(date && isMine) {
+    const c = document.createElement('span');
+    dom.lastMessageSpan.style.cssText = `display: flex !important; align-items: center;`;
+    const span = Icon(reaction ? 'reactions' : 'checks', 'reacted-list-checks');
+    const fragment = document.createDocumentFragment();
+    c.append(formatFullSentTime(date, false));
+    fragment.append(span, c);
+    replaceContent(dom.lastMessageSpan, fragment);
+  } else {
+    const user = await rootScope.managers.appUsersManager.getUser(peerId.toUserId());
+    replaceContent(dom.lastMessageSpan, getUserStatusString(user));
+  }
+}
 
 export default class PopupReactedList extends PopupElement {
   constructor(
@@ -61,7 +123,11 @@ export default class PopupReactedList extends PopupElement {
       };
     });
 
-    reactionsElement.init(newMessage, 'block', this.middlewareHelper.get());
+    reactionsElement.init({
+      message: newMessage,
+      type: 'block',
+      middleware: this.middlewareHelper.get()
+    });
     reactionsElement.render();
     reactionsElement.classList.add('no-stripe');
     reactionsElement.classList.remove('has-no-reactions');
@@ -130,9 +196,6 @@ export default class PopupReactedList extends PopupElement {
         reactionCount.reaction = undefined;
       }
 
-      const size = 24;
-      const mediaSize = makeMediaSize(size, size);
-
       let nextOffset: string;
       const loader = new ScrollableLoader({
         scrollable,
@@ -141,53 +204,26 @@ export default class PopupReactedList extends PopupElement {
           nextOffset = result.nextOffset;
 
           await Promise.all(result.combined.map(async({peerId, reaction, date}) => {
-            const {dom} = appDialogsManager.addDialogNew({
+            const dialogElement = appDialogsManager.addDialogNew({
               peerId: peerId,
               autonomous: true,
               container: chatlist,
               avatarSize: 'abitbigger',
               rippleEnabled: false,
-              meAsSaved: false
+              meAsSaved: false,
+              wrapOptions: {
+                middleware: this.middlewareHelper.get()
+              }
             });
 
-            if(reaction) {
-              const stickerContainer = document.createElement('div');
-              stickerContainer.classList.add('reacted-list-reaction-icon');
-
-              if(reaction._ === 'reactionEmoji') {
-                const availableReaction = await this.managers.appReactionsManager.getReactionCached(reaction.emoticon);
-
-                wrapSticker({
-                  doc: availableReaction.static_icon,
-                  div: stickerContainer,
-                  width: 24,
-                  height: 24,
-                  middleware
-                });
-              } else if(reaction._ === 'reactionCustomEmoji') {
-                stickerContainer.append(wrapCustomEmoji({
-                  docIds: [reaction.document_id],
-                  customEmojiSize: mediaSize,
-                  middleware
-                }));
-              }
-
-              dom.listEl.append(stickerContainer);
-            }
-
-            if(date && message.pFlags.out) {
-              const c = document.createElement('span');
-              dom.lastMessageSpan.style.cssText = `display: flex !important; align-items: center;`;
-              const span = document.createElement('span');
-              span.classList.add(reaction ? 'tgico-reactions' : 'tgico-checks', 'reacted-list-checks');
-              const fragment = document.createDocumentFragment();
-              c.append(formatFullSentTime(date, false));
-              fragment.append(span, c);
-              replaceContent(dom.lastMessageSpan, fragment);
-            } else {
-              const user = await this.managers.appUsersManager.getUser(peerId.toUserId());
-              replaceContent(dom.lastMessageSpan, getUserStatusString(user));
-            }
+            await processDialogElementForReaction({
+              dialogElement,
+              date,
+              isMine: message.pFlags.out,
+              middleware,
+              peerId,
+              reaction
+            });
           }));
 
           return !nextOffset;
@@ -224,7 +260,7 @@ export default class PopupReactedList extends PopupElement {
     this.show();
   }
 
-  private createFakeReaction(icon: string, count: number) {
+  private createFakeReaction(icon: Icon, count: number) {
     const reaction = new ReactionElement();
     reaction.init('block', this.middlewareHelper.get());
     reaction.reactionCount = {
@@ -236,7 +272,8 @@ export default class PopupReactedList extends PopupElement {
     reaction.renderCounter();
 
     const allReactionsSticker = document.createElement('div');
-    allReactionsSticker.classList.add('reaction-counter', 'reaction-sticker-icon', 'tgico-' + icon);
+    allReactionsSticker.classList.add('reaction-counter', 'reaction-sticker-icon');
+    allReactionsSticker.append(Icon(icon));
     reaction.prepend(allReactionsSticker);
 
     return reaction;

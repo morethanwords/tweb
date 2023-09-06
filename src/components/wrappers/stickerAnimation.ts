@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type {MyDocument} from '../../lib/appManagers/appDocsManager';
 import IS_VIBRATE_SUPPORTED from '../../environment/vibrateSupport';
 import assumeType from '../../helpers/assumeType';
 import isInDOM from '../../helpers/dom/isInDOM';
@@ -12,14 +13,17 @@ import {getMiddleware, Middleware} from '../../helpers/middleware';
 import throttleWithRaf from '../../helpers/schedulers/throttleWithRaf';
 import windowSize from '../../helpers/windowSize';
 import {PhotoSize, VideoSize} from '../../layer';
-import {MyDocument} from '../../lib/appManagers/appDocsManager';
-import appImManager from '../../lib/appManagers/appImManager';
 import {AppManagers} from '../../lib/appManagers/managers';
 import RLottiePlayer from '../../lib/rlottie/rlottiePlayer';
+import Scrollable from '../scrollable';
 import wrapSticker from './sticker';
+
+export const emojiAnimationContainer = document.createElement('div');
+emojiAnimationContainer.classList.add('emoji-animation-container');
 
 export default function wrapStickerAnimation({
   size,
+  stickerSize,
   doc,
   middleware,
   target,
@@ -31,9 +35,11 @@ export default function wrapStickerAnimation({
   withRandomOffset,
   relativeEffect,
   loopEffect,
-  onUnmount
+  onUnmount,
+  scrollable
 }: {
   size: number,
+  stickerSize?: number,
   doc: MyDocument,
   middleware?: Middleware,
   target: HTMLElement,
@@ -45,7 +51,8 @@ export default function wrapStickerAnimation({
   withRandomOffset?: boolean,
   relativeEffect?: boolean,
   loopEffect?: boolean,
-  onUnmount?: () => void
+  onUnmount?: () => void,
+  scrollable?: Scrollable
 }) {
   const animationDiv = document.createElement('div');
   animationDiv.classList.add('emoji-animation');
@@ -56,10 +63,12 @@ export default function wrapStickerAnimation({
 
   let animation: RLottiePlayer;
   const unmountAnimation = () => {
-    middlewareHelper.clean();
-    animation?.remove();
+    middlewareHelper.destroy();
+    const a = animation;
+    animation = undefined;
+    a?.remove();
     animationDiv.remove();
-    appImManager.chat.bubbles.scrollable.container.removeEventListener('scroll', onScroll);
+    onScroll && scrollable.container.removeEventListener('scroll', onScroll);
     onUnmount?.();
   };
 
@@ -73,8 +82,8 @@ export default function wrapStickerAnimation({
     withThumb: false,
     needFadeIn: false,
     loop: !!loopEffect,
-    width: size,
-    height: size,
+    width: stickerSize || size,
+    height: stickerSize || size,
     play,
     group: 'none',
     skipRatio,
@@ -95,11 +104,17 @@ export default function wrapStickerAnimation({
       }
     });
 
+    animation.addEventListener('destroy', unmountAnimation);
+
     if(IS_VIBRATE_SUPPORTED) {
       animation.addEventListener('firstFrame', () => {
         navigator.vibrate(100);
       }, {once: true});
     }
+
+    animation.addEventListener('firstFrame', () => {
+      setPosition();
+    }, {once: true});
 
     return animation;
   });
@@ -147,16 +162,19 @@ export default function wrapStickerAnimation({
     }
   };
 
-  const onScroll = throttleWithRaf(setPosition);
-  appImManager.chat.bubbles.scrollable.container.addEventListener('scroll', onScroll);
+  let onScroll: () => void;
+  if(scrollable) {
+    onScroll = throttleWithRaf(setPosition);
+    scrollable.container.addEventListener('scroll', onScroll);
+  }
 
-  setPosition();
+  // setPosition();
 
   if(relativeEffect) {
     animationDiv.classList.add('is-relative');
     target.parentElement.append(animationDiv);
   } else {
-    appImManager.emojiAnimationContainer.append(animationDiv);
+    emojiAnimationContainer.append(animationDiv);
   }
 
   return {animationDiv, stickerPromise};

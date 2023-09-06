@@ -15,6 +15,11 @@
 	max-width: 100%;
 	left: 0;
   width: auto !important;
+  color: var(--primary-text-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--surface-color);
 
 	/* @include respond-to(esg-bottom-new) {
 		bottom: calc(100% + .5rem);
@@ -35,7 +40,8 @@
 		}
 	}
 
-	.bubbles:not(.is-selecting) ~ .chat-input &.is-visible:not(.backwards) {
+	.bubbles:not(.is-selecting) ~ .chat-input &.is-visible:not(.backwards),
+  #stories-viewer &.is-visible:not(.backwards) {
 		visibility: visible;
 		
 		@include animation-level(2) {

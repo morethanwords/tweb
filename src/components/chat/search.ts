@@ -21,6 +21,9 @@ import appNavigationController, {NavigationItem} from '../appNavigationControlle
 import {IS_MOBILE_SAFARI} from '../../environment/userAgent';
 import PopupElement from '../popups';
 import {DIALOG_LIST_ELEMENT_TAG} from '../../lib/appManagers/appDialogsManager';
+import {MiddlewareHelper, getMiddleware} from '../../helpers/middleware';
+import ButtonIcon from '../buttonIcon';
+import pause from '../../helpers/schedulers/pause';
 
 export default class ChatSearch {
   private element: HTMLElement;
@@ -45,13 +48,14 @@ export default class ChatSearch {
   private listenerSetter: ListenerSetter;
   private navigationItem: NavigationItem;
 
+  private middlewareHelper: MiddlewareHelper;
+
   constructor(private topbar: ChatTopbar, private chat: Chat, query?: string) {
+    this.middlewareHelper = getMiddleware();
     this.element = document.createElement('div');
     this.element.classList.add('sidebar-header', 'chat-search', 'chatlist-container');
 
-    this.backBtn = document.createElement('button');
-    this.backBtn.classList.add('btn-icon', 'tgico-left', 'sidebar-close-button');
-    ripple(this.backBtn);
+    this.backBtn = ButtonIcon('left sidebar-close-button');
 
     const listenerSetter = this.listenerSetter = new ListenerSetter();
 
@@ -72,21 +76,29 @@ export default class ChatSearch {
     this.searchGroup = new SearchGroup(false, 'messages', undefined, '', false);
     attachClick(this.searchGroup.list, this.onResultsClick);
 
-    this.appSearch = new AppSearch(this.results, this.inputSearch, {
-      messages: this.searchGroup
-    }, (count) => {
-      this.foundCount = count;
+    this.appSearch = new AppSearch(
+      this.results,
+      this.inputSearch,
+      {
+        messages: this.searchGroup
+      },
+      this.middlewareHelper.get(),
+      (count) => {
+        this.foundCount = count;
 
-      if(!this.foundCount) {
-        replaceContent(this.foundCountEl, this.inputSearch.value ? i18n('NoResult') : '');
-        this.results.classList.remove('active');
-        this.chat.bubbles.container.classList.remove('search-results-active');
-        this.upBtn.setAttribute('disabled', 'true');
-        this.downBtn.setAttribute('disabled', 'true');
-      } else {
-        this.selectResult(this.searchGroup.list.children[0] as HTMLElement);
+        const value = this.inputSearch.value;
+        this.foundCountEl.classList.toggle('empty', !value);
+        if(!this.foundCount) {
+          replaceContent(this.foundCountEl, value ? i18n('NoResult') : '');
+          this.results.classList.remove('active');
+          this.chat.bubbles.container.classList.remove('search-results-active');
+          this.upBtn.setAttribute('disabled', 'true');
+          this.downBtn.setAttribute('disabled', 'true');
+        } else {
+          this.selectResult(this.searchGroup.list.children[0] as HTMLElement);
+        }
       }
-    });
+    );
     this.appSearch.beginSearch(this.chat.peerId, this.chat.threadId);
 
     // appImManager.topbar.parentElement.insertBefore(this.results, appImManager.bubblesContainer);
@@ -100,18 +112,15 @@ export default class ChatSearch {
     ripple(this.footer);
 
     this.foundCountEl = document.createElement('span');
-    this.foundCountEl.classList.add('chat-search-count');
+    this.foundCountEl.classList.add('chat-search-count', 'empty');
 
-    this.dateBtn = document.createElement('button');
-    this.dateBtn.classList.add('btn-icon', 'tgico-calendar');
+    this.dateBtn = ButtonIcon('calendar chat-search-calendar', {noRipple: true});
 
     this.controls = document.createElement('div');
     this.controls.classList.add('chat-search-controls');
 
-    this.upBtn = document.createElement('button');
-    this.upBtn.classList.add('btn-icon', 'tgico-up');
-    this.downBtn = document.createElement('button');
-    this.downBtn.classList.add('btn-icon', 'tgico-down');
+    this.upBtn = ButtonIcon('up', {noRipple: true});
+    this.downBtn = ButtonIcon('down', {noRipple: true});
 
     this.upBtn.setAttribute('disabled', 'true');
     this.downBtn.setAttribute('disabled', 'true');
@@ -150,6 +159,7 @@ export default class ChatSearch {
   }
 
   public destroy() {
+    this.middlewareHelper.destroy();
     this.topbar.container.classList.remove('hide-pinned');
     this.element.remove();
     this.inputSearch.remove();

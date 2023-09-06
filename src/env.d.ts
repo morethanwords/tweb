@@ -1,4 +1,6 @@
+/* eslint-disable spaced-comment */
 /// <reference types="vite/client" />
+/// <reference types="vitest" />
 
 interface ImportMetaEnv {
   readonly VITE_API_ID: string;

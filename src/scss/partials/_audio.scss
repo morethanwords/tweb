@@ -525,12 +525,6 @@
     color: var(--primary-text-color);
   }
 
-  &-description:not(:empty) {
-    &:before {
-      content: " • ";
-    }
-  }
-
   &-time, 
   &-subtitle {
     font-size: .875rem;

@@ -18,13 +18,15 @@ import IS_GROUP_CALL_SUPPORTED from '../../environment/groupCallSupport';
 import addAnchorListener from '../../helpers/addAnchorListener';
 import assumeType from '../../helpers/assumeType';
 import findUpClassName from '../../helpers/dom/findUpClassName';
-import {ChatInvite, User, AttachMenuPeerType, MessagesBotApp, BotApp, ChatlistsChatlistInvite} from '../../layer';
+import {ChatInvite, User, AttachMenuPeerType, MessagesBotApp, BotApp, ChatlistsChatlistInvite, Chat} from '../../layer';
 import {i18n, LangPackKey, _i18n} from '../langPack';
 import {PHONE_NUMBER_REG_EXP} from '../richTextProcessor';
 import {isWebAppNameValid} from '../richTextProcessor/validators';
 import appImManager from './appImManager';
 import {INTERNAL_LINK_TYPE, InternalLinkTypeMap, InternalLink} from './internalLink';
 import {AppManagers} from './managers';
+import {createStoriesViewerWithPeer} from '../../components/stories/viewer';
+import {simulateClickEvent} from '../../helpers/dom/clickEvent';
 
 export class InternalLinkProcessor {
   protected managers: AppManagers;
@@ -196,6 +198,7 @@ export class InternalLinkProcessor {
     type K2 = {thread?: string, comment?: string, start?: string, t?: string};
     type K3 = {startattach?: string, attach?: string, choose?: TelegramChoosePeerType};
     type K4 = {startapp?: string};
+    type K5 = {story?: string};
 
     addAnchorListener<{
     //   pathnameParams: ['c', string, string],
@@ -204,12 +207,18 @@ export class InternalLinkProcessor {
     //   pathnameParams: [string, string?],
     //   uriParams: {comment?: number}
       pathnameParams: ['c', string, string] | [string, string?],
-      uriParams: K1 | K2 | K3 | K4
+      uriParams: K1 | K2 | K3 | K4 | K5
     }>({
       name: 'im',
       callback: async({pathnameParams, uriParams}, element, masked) => {
         let link: InternalLink;
-        if(PHONE_NUMBER_REG_EXP.test(pathnameParams[0])) {
+        if(pathnameParams?.[1] === 's') {
+          link = {
+            _: INTERNAL_LINK_TYPE.STORY,
+            domain: pathnameParams[0],
+            story: pathnameParams[2]
+          };
+        } else if(PHONE_NUMBER_REG_EXP.test(pathnameParams[0])) {
           link = {
             _: INTERNAL_LINK_TYPE.USER_PHONE_NUMBER,
             phone: pathnameParams[0].slice(1)
@@ -290,14 +299,17 @@ export class InternalLinkProcessor {
         startattach?: string,
         choose?: TelegramChoosePeerType,
         appname?: string,
-        startapp?: string
+        startapp?: string,
+        story?: string
       }
     }>({
       name: 'resolve',
       protocol: 'tg',
       callback: ({uriParams}, element, masked) => {
         let link: InternalLink;
-        if(uriParams.phone) {
+        if(uriParams.story) {
+          link = this.makeLink(INTERNAL_LINK_TYPE.STORY, uriParams as Required<typeof uriParams>);
+        } else if(uriParams.phone) {
           link = this.makeLink(INTERNAL_LINK_TYPE.USER_PHONE_NUMBER, uriParams as Required<typeof uriParams>);
         } else if(uriParams.domain === 'telegrampassport') {
 
@@ -604,6 +616,40 @@ export class InternalLinkProcessor {
     });
   };
 
+  public processStoryLink = async(link: InternalLink.InternalLinkStory) => {
+    const event = window.event;
+    const bubble = findUpClassName(event.target as HTMLElement, 'bubble');
+    if(bubble && bubble.classList.contains('story')) {
+      simulateClickEvent(bubble.querySelector('.media-container').querySelector('img, video'));
+      return;
+    }
+
+    let peer: User.user | Chat;
+    try {
+      peer = await this.managers.appUsersManager.resolveUsername(link.domain);
+    } catch(err) {
+      if((err as ApiError).type === 'USERNAME_NOT_OCCUPIED') {
+        toastNew({langPackKey: 'NoUsernameFound'});
+      } else {
+        console.error(err);
+      }
+
+      return;
+    }
+
+    const peerId = peer.id.toPeerId(peer._ !== 'user');
+    const storyItem = await this.managers.appStoriesManager.getStoryById(peerId, +link.story);
+    if(!storyItem) {
+      toastNew({langPackKey: 'NoStoryFound'});
+      return;
+    }
+
+    createStoriesViewerWithPeer({
+      peerId,
+      id: +link.story
+    });
+  };
+
   public processInternalLink(link: InternalLink) {
     const map: {
       [key in InternalLink['_']]?: (link: any) => any
@@ -618,7 +664,8 @@ export class InternalLinkProcessor {
       [INTERNAL_LINK_TYPE.INVOICE]: this.processInvoiceLink,
       [INTERNAL_LINK_TYPE.ATTACH_MENU_BOT]: this.processAttachMenuBotLink,
       [INTERNAL_LINK_TYPE.WEB_APP]: this.processWebAppLink,
-      [INTERNAL_LINK_TYPE.ADD_LIST]: this.processListLink
+      [INTERNAL_LINK_TYPE.ADD_LIST]: this.processListLink,
+      [INTERNAL_LINK_TYPE.STORY]: this.processStoryLink
     };
 
     const processor = map[link._];

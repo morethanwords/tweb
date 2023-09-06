@@ -18,62 +18,68 @@ export interface CancellablePromise<T> extends Promise<T> {
   addNotifyListener?: (callback: (...args: any[]) => void) => void,
 
   isFulfilled?: boolean,
-  isRejected?: boolean
+  isRejected?: boolean,
+
+  onFinish?: () => void,
+  _resolve?: (value: T) => void,
+  _reject?: (...args: any[]) => void
 }
 
+const deferredHelper = {
+  isFulfilled: false,
+  isRejected: false,
+
+  notify: () => {},
+  notifyAll: function(...args: any[]) {
+    this.lastNotify = args;
+    this.listeners?.forEach((callback: any) => callback(...args));
+  },
+
+  addNotifyListener: function(callback: (...args: any[]) => void) {
+    if(this.lastNotify) {
+      callback(...this.lastNotify);
+    }
+
+    (this.listeners ??= []).push(callback);
+  },
+
+  resolve: function(value) {
+    if(this.isFulfilled || this.isRejected) return;
+
+    this.isFulfilled = true;
+    this._resolve(value);
+    this.onFinish();
+  },
+
+  reject: function(...args) {
+    if(this.isRejected || this.isFulfilled) return;
+
+    this.isRejected = true;
+    this._reject(...args);
+    this.onFinish();
+  },
+
+  onFinish: function() {
+    this.notify = this.notifyAll = this.lastNotify = null;
+    if(this.listeners) this.listeners.length = 0;
+
+    if(this.cancel) {
+      this.cancel = noop;
+    }
+  }
+} as CancellablePromise<any>;
+
 export default function deferredPromise<T>() {
-  const deferredHelper: any = {
-    isFulfilled: false,
-    isRejected: false,
-
-    notify: () => {},
-    notifyAll: (...args: any[]) => {
-      deferredHelper.lastNotify = args;
-      deferredHelper.listeners.forEach((callback: any) => callback(...args));
-    },
-
-    listeners: [],
-    addNotifyListener: (callback: (...args: any[]) => void) => {
-      if(deferredHelper.lastNotify) {
-        callback(...deferredHelper.lastNotify);
-      }
-
-      deferredHelper.listeners.push(callback);
-    }
-  };
-
-  const deferred: CancellablePromise<T> = new Promise<T>((resolve, reject) => {
-    deferredHelper.resolve = (value: T) => {
-      if(deferred.isFulfilled || deferred.isRejected) return;
-
-      deferred.isFulfilled = true;
-      resolve(value);
-    };
-
-    deferredHelper.reject = (...args: any[]) => {
-      if(deferred.isRejected || deferred.isFulfilled) return;
-
-      deferred.isRejected = true;
-      reject(...args);
-    };
-  });
-
-  // @ts-ignore
-  /* deferred.then = (resolve: (value: T) => any, reject: (...args: any[]) => any) => {
-    const n = deferredPromise<ReturnType<typeof resolve>>();
-
-  }; */
-
-  deferred.catch(noop).finally(() => {
-    deferred.notify = deferred.notifyAll = deferred.lastNotify = null;
-    deferred.listeners.length = 0;
-
-    if(deferred.cancel) {
-      deferred.cancel = noop;
-    }
+  let resolve: (value: T) => void, reject: (...args: any[]) => void;
+  const deferred: CancellablePromise<T> = new Promise<T>((_resolve, _reject) => {
+    resolve = _resolve, reject = _reject;
   });
 
   Object.assign(deferred, deferredHelper);
+  deferred._resolve = resolve;
+  deferred._reject = reject;
 
   return deferred;
 }
+
+(self as any).deferredPromise = deferredPromise;

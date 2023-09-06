@@ -11,8 +11,7 @@ import {RIGHT_COLUMN_ACTIVE_CLASSNAME} from '../sidebarRight';
 import mediaSizes, {ScreenSize} from '../../helpers/mediaSizes';
 import {IS_SAFARI} from '../../environment/userAgent';
 import rootScope from '../../lib/rootScope';
-import AvatarElement from '../avatar';
-import Button from '../button';
+import Button, {replaceButtonIcon} from '../button';
 import ButtonIcon from '../buttonIcon';
 import ButtonMenuToggle from '../buttonMenuToggle';
 import ChatAudio from './audio';
@@ -32,7 +31,7 @@ import {toast, toastNew} from '../toast';
 import replaceContent from '../../helpers/dom/replaceContent';
 import {ChatFull, Chat as MTChat, GroupCall} from '../../layer';
 import PopupPickUser from '../popups/pickUser';
-import PopupPeer from '../popups/peer';
+import PopupPeer, {PopupPeerCheckboxOptions} from '../popups/peer';
 import AppEditContactTab from '../sidebarRight/tabs/editContact';
 import appMediaPlaybackController from '../appMediaPlaybackController';
 import IS_GROUP_CALL_SUPPORTED from '../../environment/groupCallSupport';
@@ -51,6 +50,12 @@ import PopupElement from '../popups';
 import ChatRequests from './requests';
 import modifyAckedResult, {modifyAckedPromise} from '../../helpers/modifyAckedResult';
 import callbackify from '../../helpers/callbackify';
+import ChatActions from './actions';
+import confirmationPopup from '../confirmationPopup';
+import {avatarNew, findUpAvatar} from '../avatarNew';
+import {MiddlewareHelper, getMiddleware} from '../../helpers/middleware';
+import setBadgeContent from '../../helpers/setBadgeContent';
+import createBadge from '../../helpers/createBadge';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -61,7 +66,8 @@ export default class ChatTopbar {
   private btnBack: HTMLButtonElement;
   private btnBackBadge: HTMLElement;
   private chatInfo: HTMLDivElement;
-  private avatarElement: AvatarElement;
+  private avatar: ReturnType<typeof avatarNew>;
+  private avatarMiddlewareHelper: MiddlewareHelper;
   private title: HTMLDivElement;
   private subtitle: HTMLDivElement;
   private chatUtils: HTMLDivElement;
@@ -73,6 +79,7 @@ export default class ChatTopbar {
   private btnSearch: HTMLButtonElement;
   private btnMore: HTMLElement;
 
+  private chatActions: ChatActions;
   private chatRequests: ChatRequests;
   private chatAudio: ChatAudio;
   public pinnedMessage: ChatPinnedMessage;
@@ -106,8 +113,8 @@ export default class ChatTopbar {
     this.container.dataset.floating = '0';
 
     this.btnBack = ButtonIcon('left sidebar-close-button', {noRipple: true});
-    this.btnBackBadge = document.createElement('span');
-    this.btnBackBadge.classList.add('badge', 'badge-20', 'badge-primary', 'back-unread-badge');
+    this.btnBackBadge = createBadge('span', 20, 'primary');
+    this.btnBackBadge.classList.add('back-unread-badge');
     this.btnBack.append(this.btnBackBadge);
 
     // * chat info section
@@ -139,9 +146,6 @@ export default class ChatTopbar {
     }
 
     content.append(top, bottom);
-    if(this.avatarElement) {
-      person.append(this.avatarElement);
-    }
 
     person.append(content);
     this.chatInfo.append(person);
@@ -152,6 +156,7 @@ export default class ChatTopbar {
 
     this.chatAudio = new ChatAudio(this, this.chat, this.managers);
     this.chatRequests = new ChatRequests(this, this.chat, this.managers);
+    this.chatActions = new ChatActions(this, this.chat, this.managers);
 
     if(this.menuButtons.length) {
       this.btnMore = ButtonMenuToggle({
@@ -199,6 +204,10 @@ export default class ChatTopbar {
       this.container.append(this.chatRequests.divAndCaption.container);
     }
 
+    if(this.chatActions) {
+      this.container.append(this.chatActions.divAndCaption.container);
+    }
+
     // * construction end
 
     // * fix topbar overflow section
@@ -221,7 +230,7 @@ export default class ChatTopbar {
           // if(!this.pinnedMessage.locked) {
           this.pinnedMessage.followPinnedMessage(mid);
           // }
-        } else {
+        } else if(container.dataset.peerId) {
           const peerId = container.dataset.peerId.toPeerId();
           const searchContext = appMediaPlaybackController.getSearchContext();
           this.chat.appImManager.setInnerPeer({
@@ -232,9 +241,14 @@ export default class ChatTopbar {
           });
         }
       } else {
+        const avatar = findUpAvatar(e.target);
         if(mediaSizes.activeScreen === ScreenSize.medium && document.body.classList.contains(LEFT_COLUMN_ACTIVE_CLASSNAME)) {
           onBtnBackClick();
-        } else if(findUpTag(e.target, 'AVATAR-ELEMENT')) {
+        } else if(avatar) {
+          if(avatar.classList.contains('has-stories')) {
+            return;
+          }
+
           this.appSidebarRight.toggleSidebar(!document.body.classList.contains(RIGHT_COLUMN_ACTIVE_CLASSNAME));
         } else {
           this.appSidebarRight.toggleSidebar(true);
@@ -314,7 +328,7 @@ export default class ChatTopbar {
       }
     }
 
-    const chat = await this.managers.appChatsManager.getChat(chatId);
+    const chat = await apiManagerProxy.getChat(chatId);
     return (chat as MTChat.chat).pFlags?.call_active || hasRights(chat, 'manage_call');
   };
 
@@ -347,10 +361,8 @@ export default class ChatTopbar {
     }, {
       icon: 'unmute',
       text: 'ChatList.Context.Unmute',
-      onClick: () => {
-        this.managers.appMessagesManager.togglePeerMute({peerId: this.peerId, threadId: this.chat.threadId});
-      },
-      verify: async() => this.chat.type === 'chat' && rootScope.myId !== this.peerId && (await this.managers.appNotificationsManager.isPeerLocalMuted({peerId: this.peerId, respectType: false, threadId: this.chat.threadId}))
+      onClick: this.onUnmuteClick,
+      verify: () => this.chat.type === 'chat' && rootScope.myId !== this.peerId && this.managers.appNotificationsManager.isPeerLocalMuted({peerId: this.peerId, respectType: false, threadId: this.chat.threadId})
     }, {
       icon: 'comments',
       text: 'ViewDiscussion',
@@ -421,13 +433,7 @@ export default class ChatTopbar {
       icon: 'adduser',
       text: 'AddContact',
       onClick: () => {
-        if(!this.appSidebarRight.isTabExists(AppEditContactTab)) {
-          const tab = this.appSidebarRight.createTab(AppEditContactTab);
-          tab.peerId = this.peerId;
-          tab.open();
-
-          this.appSidebarRight.toggleSidebar(true);
-        }
+        this.addContact();
       },
       verify: async() => this.peerId.isUser() && !(await this.managers.appPeersManager.isContact(this.peerId))
     }, {
@@ -486,23 +492,7 @@ export default class ChatTopbar {
       icon: 'lock',
       text: 'BlockUser',
       onClick: () => {
-        PopupElement.createPopup(PopupPeer, '', {
-          peerId: this.peerId,
-          titleLangKey: 'BlockUser',
-          descriptionLangKey: 'AreYouSureBlockContact2',
-          descriptionLangArgs: [new PeerTitle({peerId: this.peerId}).element],
-          buttons: [{
-            langKey: 'BlockUser',
-            isDanger: true,
-            callback: () => {
-              this.managers.appUsersManager.toggleBlock(this.peerId, true).then((value) => {
-                if(value) {
-                  toastNew({langPackKey: 'UserBlocked'});
-                }
-              });
-            }
-          }]
-        }).show();
+        this.blockUser();
       },
       verify: async() => {
         if(!this.peerId.isUser()) return false;
@@ -513,10 +503,8 @@ export default class ChatTopbar {
       icon: 'lockoff',
       text: 'Unblock',
       onClick: () => {
-        this.managers.appUsersManager.toggleBlock(this.peerId, false).then((value) => {
-          if(value) {
-            toastNew({langPackKey: 'UserUnblocked'});
-          }
+        this.managers.appUsersManager.toggleBlock(this.peerId, false).then(() => {
+          toastNew({langPackKey: 'UserUnblocked'});
         });
       },
       verify: async() => {
@@ -524,7 +512,8 @@ export default class ChatTopbar {
         return !!userFull?.pFlags?.blocked;
       }
     }, {
-      icon: 'delete danger',
+      icon: 'delete',
+      className: 'danger',
       text: 'Delete',
       onClick: () => {
         PopupElement.createPopup(PopupDeleteDialog, this.peerId/* , 'leave' */);
@@ -536,6 +525,56 @@ export default class ChatTopbar {
     this.attachClickEvent(this.btnSearch, (e) => {
       this.chat.initSearch();
     }, true);
+  }
+
+  public addContact() {
+    if(!this.appSidebarRight.isTabExists(AppEditContactTab)) {
+      const tab = this.appSidebarRight.createTab(AppEditContactTab);
+      tab.peerId = this.peerId;
+      tab.open();
+
+      this.appSidebarRight.toggleSidebar(true);
+    }
+  }
+
+  public async blockUser(showReport?: boolean, showDelete?: boolean, onConfirmed?: (promise: Promise<any>) => void) {
+    const peerId = this.peerId;
+    const checkboxes: PopupPeerCheckboxOptions[] = [
+      showReport && {
+        text: 'DeleteReportSpam',
+        checked: true
+      },
+      showDelete && {
+        text: 'DeleteThisChat',
+        checked: true
+      }
+    ];
+
+    const checked = await confirmationPopup({
+      peerId,
+      titleLangKey: 'BlockUser',
+      descriptionLangKey: 'AreYouSureBlockContact2',
+      descriptionLangArgs: [new PeerTitle({peerId}).element],
+      button: {
+        langKey: 'BlockUser',
+        isDanger: true
+      },
+      checkboxes: checkboxes.filter(Boolean)
+    });
+
+    const [reportSpam, deleteChat] = Array.isArray(checked) ? checked : [];
+
+    const promise = Promise.all([
+      reportSpam && this.managers.appMessagesManager.reportSpam(peerId),
+      deleteChat && this.managers.appMessagesManager.flushHistory(peerId, false, true),
+      this.managers.appUsersManager.toggleBlock(peerId, true)
+    ]);
+
+    onConfirmed?.(promise);
+
+    await promise;
+
+    toastNew({langPackKey: 'UserBlocked'});
   }
 
   public attachClickEvent(el: HTMLElement, cb: (e: MouseEvent) => void, noBlur?: boolean) {
@@ -554,20 +593,11 @@ export default class ChatTopbar {
     this.chat.appImManager.joinGroupCall(this.peerId);
   };
 
-  private constructAvatar() {
-    const avatarElement = new AvatarElement();
-    avatarElement.isDialog = true;
-    avatarElement.classList.add('avatar-42', 'person-avatar');
-    return avatarElement;
-  }
-
   private get peerId() {
     return this.chat.peerId;
   }
 
   public constructPeerHelpers() {
-    this.avatarElement = this.constructAvatar();
-
     this.subtitle = document.createElement('div');
     this.subtitle.classList.add('info');
 
@@ -576,7 +606,7 @@ export default class ChatTopbar {
     this.btnJoin = Button('btn-primary btn-color-primary chat-join hide');
     this.btnCall = ButtonIcon('phone');
     this.btnGroupCall = ButtonIcon('videochat');
-    this.btnPinned = ButtonIcon('pinlist');
+    this.btnPinned = ButtonIcon('pinlist chat-pinlist');
     this.btnMute = ButtonIcon('mute');
 
     this.attachClickEvent(this.btnCall, this.onCallClick.bind(this, 'voice'));
@@ -586,7 +616,14 @@ export default class ChatTopbar {
       this.openPinned(true);
     });
 
-    this.attachClickEvent(this.btnMute, this.onMuteClick);
+    this.attachClickEvent(this.btnMute, () => {
+      const muted = !!+this.btnMute.dataset.muted;
+      if(muted) {
+        this.onUnmuteClick();
+      } else {
+        this.onMuteClick();
+      }
+    });
 
     this.attachClickEvent(this.btnJoin, async() => {
       const middleware = this.chat.bubbles.getMiddleware();
@@ -615,14 +652,14 @@ export default class ChatTopbar {
       }
 
       const size = folder.unreadUnmutedPeerIds.size;
-      this.btnBackBadge.textContent = size ? '' + formatNumber(size, 1) : '';
+      setBadgeContent(this.btnBackBadge, size ? '' + formatNumber(size, 1) : '');
       // this.btnBack.classList.remove('tgico-left', 'tgico-previous');
       // this.btnBack.classList.add(size ? 'tgico-previous' : 'tgico-left');
     });
 
     this.listenerSetter.add(rootScope)('chat_update', async(chatId) => {
       if(this.peerId === chatId.toPeerId(true)) {
-        const chat = await this.managers.appChatsManager.getChat(chatId) as Channel/*  | Chat */;
+        const chat = await apiManagerProxy.getChat(chatId) as Channel/*  | Chat */;
 
         this.btnJoin.classList.toggle('hide', !(chat as Channel)?.pFlags?.left);
         this.setUtilsWidth();
@@ -673,6 +710,15 @@ export default class ChatTopbar {
       });
     });
 
+    this.listenerSetter.add(rootScope)('peer_settings', async({peerId, settings}) => {
+      if(this.peerId !== peerId) {
+        return;
+      }
+
+      const callback = this.chatActions.set(peerId, settings);
+      callback();
+    });
+
     this.chat.addEventListener('setPeer', (mid, isTopMessage) => {
       const middleware = this.chat.bubbles.getMiddleware();
       apiManagerProxy.getState().then((state) => {
@@ -717,6 +763,10 @@ export default class ChatTopbar {
     PopupElement.createPopup(PopupMute, this.peerId);
   };
 
+  private onUnmuteClick = () => {
+    this.managers.appMessagesManager.togglePeerMute({peerId: this.peerId, threadId: this.chat.threadId});
+  };
+
   private onResize = () => {
     this.setUtilsWidth(true);
     this.setFloating();
@@ -738,10 +788,12 @@ export default class ChatTopbar {
     this.pinnedMessage?.destroy(); // * возможно это можно не делать
     this.chatAudio?.destroy();
     this.chatRequests?.destroy();
+    this.chatActions?.destroy();
 
     delete this.pinnedMessage;
     delete this.chatAudio;
     delete this.chatRequests;
+    delete this.chatActions;
   }
 
   public cleanup() {
@@ -767,12 +819,24 @@ export default class ChatTopbar {
     const {peerId, threadId} = this.chat;
     const {middleware} = options;
 
-    let newAvatar: AvatarElement;
+    let newAvatar: ChatTopbar['avatar'], newAvatarMiddlewareHelper: ChatTopbar['avatarMiddlewareHelper'];
     if(this.chat.type === 'chat') {
-      if(this.avatarElement?.peerId !== this.peerId || this.avatarElement.threadId !== this.chat.threadId) {
-        newAvatar = this.constructAvatar();
+      const avatar = this.avatar;
+      if(!avatar ||
+          avatar.node.dataset.peerId.toPeerId() !== this.peerId ||
+          avatar.node.dataset.threadId !== (this.chat.threadId ? '' + this.chat.threadId : undefined)) {
+        newAvatar = avatarNew({
+          middleware: (newAvatarMiddlewareHelper = getMiddleware()).get(),
+          isDialog: true,
+          size: 42,
+          peerId,
+          threadId,
+          wrapOptions: {customEmojiSize: makeMediaSize(32, 32)},
+          withStories: true
+        });
+        newAvatar.node.classList.add('person-avatar');
       } else {
-        newAvatar = this.avatarElement;
+        newAvatar = this.avatar;
       }
     }
 
@@ -784,17 +848,23 @@ export default class ChatTopbar {
       setTitleCallback,
       setStatusCallback,
       state,
-      setRequestsCallback
+      setRequestsCallback,
+      setActionsCallback
     ] = await Promise.all([
       this.managers.appPeersManager.isBroadcast(peerId),
       this.managers.appPeersManager.isAnyChat(peerId),
-      peerId.isAnyChat() ? this.managers.appChatsManager.getChat(peerId.toChatId()) : undefined,
-      newAvatar ? newAvatar.updateWithOptions({peerId, threadId, wrapOptions: {customEmojiSize: makeMediaSize(32, 32)}}) : undefined,
+      peerId.isAnyChat() ? apiManagerProxy.getChat(peerId.toChatId()) : undefined,
+      newAvatar?.readyThumbPromise,
       this.setTitleManual(),
       this.setPeerStatusManual(true),
       apiManagerProxy.getState(),
-      modifyAckedPromise(this.chatRequests.setPeerId(peerId))
+      modifyAckedPromise(this.chatRequests.setPeerId(peerId)),
+      modifyAckedPromise(this.chatActions.setPeerId(peerId))
     ]);
+
+    if(!middleware() && newAvatarMiddlewareHelper) {
+      newAvatarMiddlewareHelper.destroy();
+    }
 
     return () => {
       const canHaveSomeButtons = !(this.chat.type === 'pinned' || this.chat.type === 'scheduled');
@@ -816,17 +886,18 @@ export default class ChatTopbar {
         this.btnPinned.classList.toggle('hide', !canHaveSomeButtons);
       }
 
-      if(this.avatarElement !== newAvatar) {
+      if(this.avatar !== newAvatar) {
         if(newAvatar) {
-          if(this.avatarElement) {
-            this.avatarElement.replaceWith(newAvatar);
-          } else {
-            this.person.prepend(newAvatar);
-          }
+          this.person.prepend(newAvatar.node);
         }
 
-        this.avatarElement?.remove();
-        this.avatarElement = newAvatar;
+        if(this.avatar) {
+          this.avatarMiddlewareHelper.destroy();
+          this.avatar.node.remove();
+        }
+
+        this.avatar = newAvatar;
+        this.avatarMiddlewareHelper = newAvatarMiddlewareHelper;
       }
 
       this.setUtilsWidth();
@@ -870,7 +941,19 @@ export default class ChatTopbar {
         this.chatRequests.unset(peerId);
       }
 
+      if(setActionsCallback.result instanceof Promise) {
+        this.chatActions.unset(peerId);
+      }
+
       callbackify(setRequestsCallback.result, (callback) => {
+        if(!middleware()) {
+          return;
+        }
+
+        callback();
+      });
+
+      callbackify(setActionsCallback.result, (callback) => {
         if(!middleware()) {
           return;
         }
@@ -967,13 +1050,13 @@ export default class ChatTopbar {
 
     const peerId = this.peerId;
     const muted = await this.managers.appNotificationsManager.isPeerLocalMuted({peerId, respectType: false, threadId: this.chat.threadId});
-    if(await this.managers.appPeersManager.isBroadcast(peerId)) { // not human
-      this.btnMute.classList.remove('tgico-mute', 'tgico-unmute');
-      this.btnMute.classList.add(muted ? 'tgico-unmute' : 'tgico-mute');
-      this.btnMute.style.display = '';
-    } else {
-      this.btnMute.style.display = 'none';
+    const isBroadcast = await this.managers.appPeersManager.isBroadcast(peerId);
+    if(isBroadcast) {
+      replaceButtonIcon(this.btnMute, muted ? 'unmute' : 'mute');
+      this.btnMute.dataset.muted = '' + +muted;
     }
+
+    this.btnMute.style.display = isBroadcast ? '' : 'none';
   }
 
   // ! У МЕНЯ ПРОСТО СГОРЕЛО, САФАРИ КОНЧЕННЫЙ БРАУЗЕР - ЕСЛИ НЕ СКРЫВАТЬ БЛОК, ТО ПРИ ПЕРЕВОРОТЕ ЭКРАНА НА АЙФОНЕ БЛОК БУДЕТ НЕПРАВИЛЬНО ШИРИНЫ, ДАЖЕ БЕЗ ЭТОЙ ФУНКЦИИ!
@@ -985,26 +1068,16 @@ export default class ChatTopbar {
       this.chatUtils.classList.add('hide');
     }
 
-    // mutationObserver.disconnect();
     this.setUtilsRAF = window.requestAnimationFrame(() => {
-      // mutationRAF = window.requestAnimationFrame(() => {
-
-      // setTimeout(() => {
       if(IS_SAFARI && resize) {
         this.chatUtils.classList.remove('hide');
       }
-      /* this.chatInfo.style.removeProperty('--utils-width');
-          void this.chatInfo.offsetLeft; // reflow */
+
       const width = /* chatUtils.scrollWidth */this.chatUtils.getBoundingClientRect().width;
       this.chat.log('utils width:', width);
       this.container.style.setProperty('--utils-width', width + 'px');
-      // this.chatInfo.classList.toggle('have-utils-width', !!width);
-      // }, 0);
 
       this.setUtilsRAF = 0;
-
-      // mutationObserver.observe(chatUtils, observeOptions);
-      // });
     });
   };
 
@@ -1012,6 +1085,7 @@ export default class ChatTopbar {
     const containers = [
       this.chatAudio,
       this.chatRequests,
+      this.chatActions,
       this.pinnedMessage?.pinnedMessageContainer
     ].filter(Boolean);
     const count = containers.reduce((acc, container) => {

@@ -14,7 +14,7 @@ import {MyDocument} from '../../lib/appManagers/appDocsManager';
 import {MyDraftMessage} from '../../lib/appManagers/appDraftsManager';
 import {MyMessage} from '../../lib/appManagers/appMessagesManager';
 import isMessageRestricted from '../../lib/appManagers/utils/messages/isMessageRestricted';
-import I18n, {LangPackKey, i18n, UNSUPPORTED_LANG_PACK_KEY} from '../../lib/langPack';
+import I18n, {LangPackKey, i18n, UNSUPPORTED_LANG_PACK_KEY, FormatterArguments} from '../../lib/langPack';
 import {SERVICE_PEER_ID} from '../../lib/mtproto/mtproto_config';
 import parseEntities from '../../lib/richTextProcessor/parseEntities';
 import sortEntities from '../../lib/richTextProcessor/sortEntities';
@@ -24,6 +24,7 @@ import wrapRichText, {WrapRichTextOptions} from '../../lib/richTextProcessor/wra
 import rootScope from '../../lib/rootScope';
 import {Modify} from '../../types';
 import wrapMessageActionTextNew, {WrapMessageActionTextOptions} from './messageActionTextNew';
+import wrapPeerTitle from './peerTitle';
 
 export type WrapMessageForReplyOptions = Modify<WrapMessageActionTextOptions, {
   message: MyMessage | MyDraftMessage
@@ -50,13 +51,13 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
   const parts: (Node | string)[] = [];
 
   let hasAlbumKey = false;
-  const addPart = (langKey: LangPackKey, part?: string | HTMLElement | DocumentFragment) => {
+  const addPart = (langKey: LangPackKey, part?: string | HTMLElement | DocumentFragment, args?: FormatterArguments) => {
     if(langKey) {
       if(part === undefined && hasAlbumKey) {
         return;
       }
 
-      part = plain ? I18n.format(langKey, true) : i18n(langKey);
+      part = plain ? I18n.format(langKey, true, args) : i18n(langKey, args);
     }
 
     if(plain) {
@@ -192,6 +193,22 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
 
         case 'messageMediaUnsupported': {
           addPart(UNSUPPORTED_LANG_PACK_KEY);
+          break;
+        }
+
+        case 'messageMediaStory': {
+          if(media.pFlags.via_mention) {
+            const storyPeerId = media.user_id.toPeerId(false);
+            const isMyStory = storyPeerId === rootScope.myId;
+            addPart(
+              isMyStory ? 'StoryMentionYou' : 'StoryMention',
+              undefined,
+              [await wrapPeerTitle({peerId: isMyStory ? message.peerId : storyPeerId, plainText: plain})]
+            )
+          } else {
+            addPart('Story');
+          }
+
           break;
         }
 

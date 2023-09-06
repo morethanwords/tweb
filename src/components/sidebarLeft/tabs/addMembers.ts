@@ -68,8 +68,6 @@ export default class AppAddMembersTab extends SliderSuperTab {
       this.selector.addInitial(options.selectedPeerIds);
     }
 
-    this.nextBtn.classList.add('tgico-arrow_next');
-    this.nextBtn.replaceChildren();
     this.nextBtn.disabled = false;
     this.nextBtn.classList.toggle('is-visible', this.skippable);
   }

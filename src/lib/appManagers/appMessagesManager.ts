@@ -13,11 +13,12 @@ import type {ApiFileManager} from '../mtproto/apiFileManager';
 import type {MediaSize} from '../../helpers/mediaSize';
 import type {Progress} from './appDownloadManager';
 import type {VIDEO_MIME_TYPE} from '../../environment/videoMimeTypesSupport';
+import type {Mirrors} from '../mtproto/mtprotoworker';
 import LazyLoadQueueBase from '../../components/lazyLoadQueueBase';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import tsNow from '../../helpers/tsNow';
 import {randomLong} from '../../helpers/random';
-import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal} from '../../layer';
+import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, InputUser} from '../../layer';
 import {ArgumentTypes, InvokeApiOptions, Modify} from '../../types';
 import {logger, LogTypes} from '../logger';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
@@ -41,9 +42,6 @@ import debounce from '../../helpers/schedulers/debounce';
 import {AppManager} from './manager';
 import getPhotoMediaInput from './utils/photos/getPhotoMediaInput';
 import getPhotoDownloadOptions from './utils/photos/getPhotoDownloadOptions';
-import fixEmoji from '../richTextProcessor/fixEmoji';
-import mergeEntities from '../richTextProcessor/mergeEntities';
-import parseEntities from '../richTextProcessor/parseEntities';
 import parseMarkdown from '../richTextProcessor/parseMarkdown';
 import getServerMessageId from './utils/messageId/getServerMessageId';
 import filterMessagesByInputFilter from './utils/messages/filterMessagesByInputFilter';
@@ -67,6 +65,12 @@ import getPeerActiveUsernames from './utils/peers/getPeerActiveUsernames';
 import {BroadcastEvents} from '../rootScope';
 import setBooleanFlag from '../../helpers/object/setBooleanFlag';
 import getMessageThreadId from './utils/messages/getMessageThreadId';
+import getInputReplyTo from './utils/misc/getInputReplyTo';
+import callbackify from '../../helpers/callbackify';
+import wrapMessageEntities from '../richTextProcessor/wrapMessageEntities';
+import isObject from '../../helpers/object/isObject';
+import isLegacyMessageId from './utils/messageId/isLegacyMessageId';
+import {joinDeepPath} from '../../helpers/object/setDeepProperty';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -74,6 +78,7 @@ import getMessageThreadId from './utils/messages/getMessageThreadId';
 const APITIMEOUT = 0;
 const DO_NOT_READ_HISTORY = false;
 const DO_NOT_SEND_MESSAGES = false;
+const GLOBAL_HISTORY_PEER_ID = NULL_PEER_ID;
 
 export type SendFileDetails = {
   file: File | Blob | MyDocument,
@@ -171,8 +176,11 @@ const processAfter = (cb: () => void) => {
 };
 
 export type MessageSendingParams = Partial<{
+  peerId: PeerId,
   threadId: number,
   replyToMsgId: number,
+  replyToStoryId: number,
+  replyTo: InputReplyTo,
   scheduleDate: number,
   silent: boolean,
   sendAsPeerId: number,
@@ -250,7 +258,7 @@ export class AppMessagesManager extends AppManager {
   public migratedToFrom: {[peerId: PeerId]: PeerId} = {};
 
   private newDialogsHandlePromise: Promise<any>;
-  private newDialogsToHandle: Map<PeerId, {dialog?: Dialog, topics?: Map<number, ForumTopic>}> = new Map();
+  public newDialogsToHandle: Map<PeerId, {dialog?: Dialog, topics?: Map<number, ForumTopic>}> = new Map();
   public newUpdatesAfterReloadToHandle: {[key: string]: Set<Update>} = {};
 
   private notificationsHandlePromise: number;
@@ -261,7 +269,7 @@ export class AppMessagesManager extends AppManager {
   }} = {};
 
   private reloadConversationsPromise: Promise<void>;
-  private reloadConversationsPeers: Map<PeerId, {inputDialogPeer: InputDialogPeer, promise: CancellablePromise<Dialog>}> = new Map();
+  private reloadConversationsPeers: Map<PeerId, {inputDialogPeer: InputDialogPeer, promise: CancellablePromise<Dialog>, sentRequest?: boolean}> = new Map();
 
   public log = logger('MESSAGES', LogTypes.Error | LogTypes.Debug | LogTypes.Log | LogTypes.Warn);
 
@@ -359,12 +367,16 @@ export class AppMessagesManager extends AppManager {
       msgs.forEach(({peerId, mid, isScheduled}) => {
         const storage = isScheduled ? this.getScheduledMessagesStorage(peerId) : this.getHistoryMessagesStorage(peerId);
         const message = this.getMessageFromStorage(storage, mid) as Message.message;
-        if(!message) return;
+        if(!message) {
+          return;
+        }
+
         message.media = {
           _: 'messageMediaWebPage',
           webpage: this.appWebPagesManager.getCachedWebPage(id)
         };
 
+        this.onMessageModification(message, storage); // * mirror it
         this.rootScope.dispatchEvent('message_edit', {
           storageKey: storage.key,
           peerId,
@@ -408,14 +420,17 @@ export class AppMessagesManager extends AppManager {
 
     this.rootScope.addEventListener('poll_update', ({poll}) => {
       const set = this.appPollsManager.pollToMessages[poll.id];
-      if(set) {
-        for(const key of set) {
-          const [peerId, mid] = key.split('_');
+      if(!set) {
+        return;
+      }
 
-          const message = this.getMessageByPeer(peerId.toPeerId(), +mid);
-          if(message) {
-            this.setDialogToStateIfMessageIsTop(message);
-          }
+      for(const key of set) {
+        const [peerId, mid] = key.split('_');
+
+        const message = this.getMessageByPeer(peerId.toPeerId(), +mid);
+        if(message) {
+          this.onMessageModification(message);
+          this.setDialogToStateIfMessageIsTop(message);
         }
       }
     });
@@ -601,7 +616,7 @@ export class AppMessagesManager extends AppManager {
 
     options.entities ??= [];
 
-    // this.checkSendOptions(options);
+    this.checkSendOptions(options);
     if(options.threadId && !options.replyToMsgId) {
       options.replyToMsgId = options.threadId;
     }
@@ -634,6 +649,7 @@ export class AppMessagesManager extends AppManager {
     message.message = text;
 
     const replyToMsgId = options.replyToMsgId ? getServerMessageId(options.replyToMsgId) : undefined;
+    const threadId = options.threadId ? getServerMessageId(options.threadId) : undefined;
     const isChannel = this.appPeersManager.isChannel(peerId);
 
     if(options.webPage) {
@@ -661,7 +677,7 @@ export class AppMessagesManager extends AppManager {
         apiPromise = this.apiManager.invokeApiAfter('messages.sendInlineBotResult', {
           peer: this.appPeersManager.getInputPeerById(peerId),
           random_id: message.random_id,
-          reply_to_msg_id: replyToMsgId || undefined,
+          reply_to: options.replyTo || getInputReplyTo({replyToMsgId, threadId}),
           query_id: options.queryId,
           id: options.resultId,
           clear_draft: options.clearDraft,
@@ -673,7 +689,7 @@ export class AppMessagesManager extends AppManager {
           peer: this.appPeersManager.getInputPeerById(peerId),
           message: text,
           random_id: message.random_id,
-          reply_to_msg_id: replyToMsgId || undefined,
+          reply_to: options.replyTo || getInputReplyTo({replyToMsgId, threadId}),
           entities: sendEntites,
           clear_draft: options.clearDraft,
           schedule_date: options.scheduleDate || undefined,
@@ -791,10 +807,11 @@ export class AppMessagesManager extends AppManager {
     const file = options.file;
     peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
 
-    // this.checkSendOptions(options);
+    this.checkSendOptions(options);
 
     const message = this.generateOutgoingMessage(peerId, options);
     const replyToMsgId = options.replyToMsgId ? getServerMessageId(options.replyToMsgId) : undefined;
+    const threadId = options.threadId ? getServerMessageId(options.threadId) : undefined;
 
     let attachType: 'document' | 'audio' | 'video' | 'voice' | 'photo', apiFileName: string;
 
@@ -876,9 +893,12 @@ export class AppMessagesManager extends AppManager {
         photo.sizes.unshift(strippedPhotoSize);
       }
 
-      const cacheContext = this.thumbsStorage.getCacheContext(photo, photoSize.type);
-      cacheContext.downloaded = file.size;
-      cacheContext.url = options.objectURL || '';
+      this.thumbsStorage.setCacheContextURL(
+        photo,
+        photoSize.type,
+        options.objectURL || '',
+        file.size
+      );
 
       photo = this.appPhotosManager.savePhoto(photo);
     } else if(getEnvironment().VIDEO_MIME_TYPES_SUPPORTED.has(fileType as VIDEO_MIME_TYPE)) {
@@ -930,9 +950,12 @@ export class AppMessagesManager extends AppManager {
       } as any;
 
       if(options.objectURL) {
-        const cacheContext = this.thumbsStorage.getCacheContext(document);
-        cacheContext.downloaded = file.size;
-        cacheContext.url = options.objectURL;
+        this.thumbsStorage.setCacheContextURL(
+          document,
+          undefined,
+          options.objectURL,
+          file.size
+        );
       }
 
       let thumb: PhotoSize.photoSize;
@@ -960,9 +983,12 @@ export class AppMessagesManager extends AppManager {
             size: options.thumb.blob.size
           };
 
-          const thumbCacheContext = this.thumbsStorage.getCacheContext(document, thumb.type);
-          thumbCacheContext.downloaded = thumb.size;
-          thumbCacheContext.url = options.thumb.url;
+          this.thumbsStorage.setCacheContextURL(
+            document,
+            thumb.type,
+            options.thumb.url,
+            thumb.size
+          );
         }
       }
 
@@ -1053,13 +1079,15 @@ export class AppMessagesManager extends AppManager {
 
             uploadPromise = this.apiFileManager.upload({file, fileName: uploadingFileName});
             uploadPromise.catch((err) => {
-              if(!uploaded) {
-                this.log('cancelling upload', media);
-
-                this.cancelPendingMessage(message.random_id);
-                this.setTyping(peerId, {_: 'sendMessageCancelAction'}, undefined, options.threadId);
-                sentDeferred.reject(err);
+              if(uploaded) {
+                return;
               }
+
+              this.log('cancelling upload', media);
+
+              this.cancelPendingMessage(message.random_id);
+              this.setTyping(peerId, {_: 'sendMessageCancelAction'}, undefined, options.threadId);
+              sentDeferred.reject(err);
             });
 
             uploadPromise.addNotifyListener((progress: Progress) => {
@@ -1163,7 +1191,7 @@ export class AppMessagesManager extends AppManager {
           media: inputMedia,
           message: caption,
           random_id: message.random_id,
-          reply_to_msg_id: replyToMsgId,
+          reply_to: options.replyTo || getInputReplyTo({replyToMsgId, threadId}),
           schedule_date: options.scheduleDate,
           silent: options.silent,
           entities,
@@ -1188,7 +1216,11 @@ export class AppMessagesManager extends AppManager {
         });
       });
 
-      sentDeferred.then(message.promise.resolve, message.promise.reject);
+      const messagePromise = message.promise as CancellablePromise<void>;
+      sentDeferred.then(
+        () => messagePromise.resolve(),
+        (err) => messagePromise.reject(err)
+      );
     }
 
     const ret: {
@@ -1211,7 +1243,7 @@ export class AppMessagesManager extends AppManager {
     sendFileDetails: SendFileDetails[],
     clearDraft?: boolean
   }) {
-    // this.checkSendOptions(options);
+    this.checkSendOptions(options);
 
     if(options.threadId && !options.replyToMsgId) {
       options.replyToMsgId = options.threadId;
@@ -1223,6 +1255,7 @@ export class AppMessagesManager extends AppManager {
 
     peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
     const replyToMsgId = options.replyToMsgId ? getServerMessageId(options.replyToMsgId) : undefined;
+    const threadId = options.threadId ? getServerMessageId(options.threadId) : undefined;
 
     let caption = options.caption || '';
     let entities = options.entities || [];
@@ -1293,7 +1326,7 @@ export class AppMessagesManager extends AppManager {
           return this.apiManager.invokeApi('messages.sendMultiMedia', {
             peer: inputPeer,
             multi_media: multiMedia,
-            reply_to_msg_id: replyToMsgId,
+            reply_to: options.replyTo || getInputReplyTo({replyToMsgId, threadId}),
             schedule_date: options.scheduleDate,
             silent: options.silent,
             clear_draft: options.clearDraft,
@@ -1400,14 +1433,16 @@ export class AppMessagesManager extends AppManager {
     peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
 
     const noOutgoingMessage = /* inputMedia?._ === 'inputMediaPhotoExternal' ||  */inputMedia?._ === 'inputMediaDocumentExternal';
-    // this.checkSendOptions(options);
+    this.checkSendOptions(options);
     const message = this.generateOutgoingMessage(peerId, options);
     const replyToMsgId = options.replyToMsgId ? getServerMessageId(options.replyToMsgId) : undefined;
+    const threadId = options.threadId ? getServerMessageId(options.threadId) : undefined;
 
     let media: MessageMedia;
     switch(inputMedia._) {
       case 'inputMediaPoll': {
-        const pollId = '' + message.id;
+        // const pollId = '' + message.id;
+        const pollId = randomLong();
         inputMedia.poll.id = pollId;
         this.appPollsManager.savePoll(inputMedia.poll, {
           _: 'pollResults',
@@ -1505,6 +1540,16 @@ export class AppMessagesManager extends AppManager {
         break;
       }
 
+      case 'inputMediaStory': {
+        media = {
+          _: 'messageMediaStory',
+          id: inputMedia.id,
+          pFlags: {},
+          user_id: this.appUsersManager.getUserId(inputMedia.user_id)
+        };
+        break;
+      }
+
       case 'messageMediaPending': {
         media = (inputMedia as any).messageMedia;
         break;
@@ -1530,7 +1575,7 @@ export class AppMessagesManager extends AppManager {
         apiPromise = this.apiManager.invokeApiAfter('messages.sendInlineBotResult', {
           peer: this.appPeersManager.getInputPeerById(peerId),
           random_id: message.random_id,
-          reply_to_msg_id: replyToMsgId || undefined,
+          reply_to: options.replyTo || getInputReplyTo({replyToMsgId, threadId}),
           query_id: options.queryId,
           id: options.resultId,
           clear_draft: options.clearDraft,
@@ -1543,7 +1588,7 @@ export class AppMessagesManager extends AppManager {
           peer: this.appPeersManager.getInputPeerById(peerId),
           media: inputMedia as InputMedia,
           random_id: message.random_id,
-          reply_to_msg_id: replyToMsgId || undefined,
+          reply_to: options.replyTo || getInputReplyTo({replyToMsgId, threadId}),
           message: '',
           clear_draft: options.clearDraft,
           schedule_date: options.scheduleDate,
@@ -1565,8 +1610,10 @@ export class AppMessagesManager extends AppManager {
         }
 
         this.apiUpdatesManager.processUpdateMessage(updates);
+        promise.resolve();
       }, (error: ApiError) => {
         toggleError(error);
+        promise.reject(error);
         throw error;
       }).finally(() => {
         if(this.pendingAfterMsgs[peerId] === sentRequestOptions) {
@@ -1583,19 +1630,25 @@ export class AppMessagesManager extends AppManager {
       noOutgoingMessage
     });
 
-    return message.promise;
+    const promise = message.promise;
+    return promise;
   }
 
-  /* private checkSendOptions(options: Partial<{
-    scheduleDate: number
-  }>) {
-    if(options.scheduleDate) {
-      const minTimestamp = (Date.now() / 1000 | 0) + 10;
-      if(options.scheduleDate <= minTimestamp) {
-        delete options.scheduleDate;
-      }
+  private checkSendOptions(options: MessageSendingParams) {
+    if(options.replyToStoryId) {
+      options.replyTo = {
+        _: 'inputReplyToStory',
+        story_id: options.replyToStoryId,
+        user_id: this.appUsersManager.getUserInput(options.peerId.toUserId())
+      };
     }
-  } */
+    // if(options.scheduleDate) {
+    //   const minTimestamp = (Date.now() / 1000 | 0) + 10;
+    //   if(options.scheduleDate <= minTimestamp) {
+    //     delete options.scheduleDate;
+    //   }
+    // }
+  }
 
   private beforeMessageSending(message: Message.message, options: Pick<MessageSendingParams, 'threadId'> & Partial<{
     isGroupedItem: boolean,
@@ -1716,7 +1769,7 @@ export class AppMessagesManager extends AppManager {
       message: '',
       grouped_id: options.groupId,
       random_id: randomLong(),
-      reply_to: this.generateReplyHeader(peerId, options.replyToMsgId, options.threadId),
+      reply_to: this.generateReplyHeader(options.replyTo || peerId, options.replyToMsgId, options.threadId),
       via_bot_id: options.viaBotId,
       reply_markup: options.replyMarkup,
       replies: this.generateReplies(peerId),
@@ -1732,7 +1785,15 @@ export class AppMessagesManager extends AppManager {
     return message;
   }
 
-  private generateReplyHeader(peerId: PeerId, replyToMsgId: number, replyToTopId?: number) {
+  private generateReplyHeader(peerId: PeerId | InputReplyTo, replyToMsgId: number, replyToTopId?: number): MessageReplyHeader {
+    if(isObject(peerId)) {
+      return {
+        _: 'messageReplyStoryHeader',
+        story_id: (peerId as InputReplyTo.inputReplyToStory).story_id,
+        user_id: this.appUsersManager.getUserId((peerId as InputReplyTo.inputReplyToStory).user_id)
+      };
+    }
+
     const isForum = this.appPeersManager.isForum(peerId);
     if(isForum && !replyToTopId) {
       const originalMessage = this.getMessageByPeer(peerId, replyToMsgId);
@@ -1990,7 +2051,7 @@ export class AppMessagesManager extends AppManager {
     const middleware = this.middleware.get();
     while(!this.dialogsStorage.isDialogsLoaded(folderId)) {
       const result = await this.getTopMessages({limit: 100, folderId});
-      if(!middleware() || result.isEnd) {
+      if(!middleware() || !result || result.isEnd) {
         break;
       }
     }
@@ -2119,7 +2180,13 @@ export class AppMessagesManager extends AppManager {
 
         // ! это может случиться, если запрос идёт не по папке 0, а по 1. почему-то read'ов нет
         // ! в итоге, чтобы получить 1 диалог, делается первый запрос по папке 0, потом запрос для архивных по папке 1, и потом ещё перезагрузка архивного диалога
-        if(!peerId && !getServerMessageId(dialog.read_inbox_max_id) && !getServerMessageId(dialog.read_outbox_max_id)) {
+        if(
+          !peerId &&
+          !getServerMessageId(dialog.read_inbox_max_id) &&
+          !getServerMessageId(dialog.read_outbox_max_id) &&
+          !dialog.unread_count &&
+          getServerMessageId(dialog.top_message)
+        ) {
           noIdsDialogs.set(dialog.peerId, {dialog: dialog as Dialog});
 
           this.log.error('noIdsDialogs', dialog, params);
@@ -2232,7 +2299,7 @@ export class AppMessagesManager extends AppManager {
     return promise;
   }
 
-  public async forwardMessages(
+  public async forwardMessagesInner(
     peerId: PeerId,
     fromPeerId: PeerId,
     mids: number[],
@@ -2306,7 +2373,7 @@ export class AppMessagesManager extends AppManager {
         keys.push('message');
       }
 
-      const replyToMid = originalMessage.reply_to?.reply_to_msg_id;
+      const replyToMid = (originalMessage.reply_to as MessageReplyHeader.messageReplyHeader)?.reply_to_msg_id;
       const replyToMessageIdx = mids.indexOf(replyToMid);
       if(replyToMid && replyToMessageIdx !== -1) {
         const newReplyToMid = newMids[replyToMessageIdx];
@@ -2403,6 +2470,30 @@ export class AppMessagesManager extends AppManager {
     return Promise.all(promises).then(noop);
   }
 
+  public forwardMessages(
+    peerId: PeerId,
+    fromPeerId: PeerId,
+    mids: number[],
+    options: MessageSendingParams & Partial<{
+      withMyScore: true,
+      dropAuthor: boolean,
+      dropCaptions: boolean
+    }> = {}
+  ) {
+    const channelId = this.appPeersManager.isChannel(fromPeerId) ? fromPeerId.toChatId() : undefined;
+    const splitted = this.appMessagesIdsManager.splitMessageIdsByChannels(mids, channelId);
+    const promises = splitted.map(([_channelId, {mids}]) => {
+      return this.forwardMessagesInner(
+        peerId,
+        _channelId ? channelId.toPeerId(true) : this.getMessageByPeer(fromPeerId, mids[0]).peerId,
+        mids,
+        options
+      );
+    });
+
+    return Promise.all(promises).then(noop);
+  }
+
   public generateEmptyMessage(mid: number): Message.message | Message.messageService {
     return undefined;
     // return {
@@ -2422,6 +2513,7 @@ export class AppMessagesManager extends AppManager {
 
       if(error) {
         message.error = error;
+        this.onMessageModification(message);
         this.rootScope.dispatchEvent('message_error', {storageKey: message.storageKey, tempId: message.mid, error});
 
         const dialog = this.getDialogOnly(message.peerId);
@@ -2430,8 +2522,31 @@ export class AppMessagesManager extends AppManager {
         }
       } else {
         delete message.error;
+        this.onMessageModification(message);
       }
     });
+  }
+
+  private onMessageModification(message: MyMessage, storage?: MessagesStorage | MessagesStorageKey) {
+    this.setMessageToStorage(storage ?? this.getHistoryMessagesStorage(message.peerId), message);
+  }
+
+  public mirrorAllMessages(port?: MessageEventSource) {
+    const mirror: Mirrors['messages'] = {};
+    [
+      this.messagesStorageByPeerId,
+      this.scheduledMessagesStorage
+    ].forEach((storages) => {
+      for(const key in storages) {
+        const storage = storages[key];
+        mirror[storage.key] = Object.fromEntries(storage.entries());
+      }
+    });
+
+    MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
+      name: 'messages',
+      value: mirror
+    }, port);
   }
 
   public getMessagesStorageByKey(key: MessagesStorageKey) {
@@ -2445,7 +2560,7 @@ export class AppMessagesManager extends AppManager {
     storage = this.getMessagesStorage(storage);
 
     // * use global storage instead
-    if(storage?.type === 'history' && this.appMessagesIdsManager.isLegacyMessageId(mid)) {
+    if(storage?.type === 'history' && isLegacyMessageId(mid)) {
       storage = this.getGlobalHistoryMessagesStorage();
     }
 
@@ -2457,18 +2572,41 @@ export class AppMessagesManager extends AppManager {
 
     const {mid} = message;
     // * global storage mirror
-    if(storage?.type === 'history' && this.appMessagesIdsManager.isLegacyMessageId(mid)) {
+    if(
+      storage?.type === 'history' &&
+      isLegacyMessageId(mid) &&
+      storage.peerId !== GLOBAL_HISTORY_PEER_ID
+    ) {
       const globalStorage = this.getGlobalHistoryMessagesStorage();
-      globalStorage.set(mid, message);
+      this.setMessageToStorage(globalStorage, message);
+    }
+
+    if(storage.type !== 'grouped') {
+      MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
+        name: 'messages',
+        key: joinDeepPath(storage.key, mid),
+        value: message
+      });
     }
 
     return storage?.set(mid, message);
   }
 
   public deleteMessageFromStorage(storage: MessagesStorage, mid: number) {
-    if(storage?.peerId && this.appMessagesIdsManager.isLegacyMessageId(mid)) {
+    if(
+      storage?.type === 'history' &&
+      isLegacyMessageId(mid) &&
+      storage.peerId !== GLOBAL_HISTORY_PEER_ID
+    ) {
       const globalStorage = this.getGlobalHistoryMessagesStorage();
-      globalStorage.delete(mid);
+      this.deleteMessageFromStorage(globalStorage, mid);
+    }
+
+    if(storage.type !== 'grouped') {
+      MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
+        name: 'messages',
+        key: joinDeepPath(storage.key, mid)
+      });
     }
 
     return storage?.delete(mid);
@@ -2504,7 +2642,7 @@ export class AppMessagesManager extends AppManager {
   }
 
   public getGlobalHistoryMessagesStorage() {
-    return this.getHistoryMessagesStorage(NULL_PEER_ID);
+    return this.getHistoryMessagesStorage(GLOBAL_HISTORY_PEER_ID);
   }
 
   public getMessagesStorage(key: MessagesStorageKey | MessagesStorage): MessagesStorage {
@@ -2516,7 +2654,7 @@ export class AppMessagesManager extends AppManager {
   }
 
   public getMessageById(messageId: number) {
-    if(this.appMessagesIdsManager.isLegacyMessageId(messageId)) {
+    if(isLegacyMessageId(messageId)) {
       return this.getMessageFromStorage(this.getGlobalHistoryMessagesStorage(), messageId);
     }
 
@@ -2582,16 +2720,18 @@ export class AppMessagesManager extends AppManager {
   }
 
   public reloadConversation(inputPeer?: PeerId | InputPeer): CancellablePromise<Dialog>;
-  public reloadConversation(inputPeer: PeerId | InputPeer) {
+  public reloadConversation(inputPeer: PeerId | InputPeer, useThrottled?: boolean) {
+    const log = this.log.bindPrefix('reloadConversation');
     let promise: CancellablePromise<Dialog>;
     if(inputPeer !== undefined) {
       const peerId = this.appPeersManager.getPeerId(inputPeer);
-      this.log.warn('reloadConversation', peerId);
 
       let obj = this.reloadConversationsPeers.get(peerId);
-      if(obj) {
+      if(obj && (useThrottled || !obj.sentRequest)) {
         promise = obj.promise;
       }
+
+      log.warn({peerId, throttled: !!promise, sentRequest: obj?.sentRequest});
 
       if(promise) {
         return promise;
@@ -2608,27 +2748,36 @@ export class AppMessagesManager extends AppManager {
       return promise || this.reloadConversationsPromise;
     }
 
+    log('creating throttled promise');
     this.reloadConversationsPromise = pause(0).then(() => {
-      const inputDialogPeers: InputDialogPeer[] = [];
-      const promises: {[peerId: string]: typeof promise} = {};
-      for(const [peerId, {inputDialogPeer, promise}] of this.reloadConversationsPeers) {
-        inputDialogPeers.push(inputDialogPeer);
-        promises[peerId] = promise;
-      }
+      const reloadConversationsPeers = new Map(this.reloadConversationsPeers);
+      const inputDialogPeers = [...reloadConversationsPeers.values()].map((obj) => {
+        obj.sentRequest = true;
+        return obj.inputDialogPeer;
+      });
 
       const fullfillLeft = () => {
-        for(const peerId in promises) {
-          this.reloadConversationsPeers.delete(+peerId);
-          promises[peerId].resolve(undefined);
+        log('fullfilling left', reloadConversationsPeers);
+        for(const [peerId, obj] of reloadConversationsPeers) {
+          if(this.reloadConversationsPeers.get(peerId) === obj) {
+            this.reloadConversationsPeers.delete(peerId);
+          }
+
+          obj.promise.resolve(undefined);
         }
       };
 
       const invoke = async() => {
         for(;;) {
-          const result = await this.apiManager.invokeApi('messages.getPeerDialogs', {peers: inputDialogPeers});
+          const result = await this.apiManager.invokeApi(
+            'messages.getPeerDialogs',
+            {peers: inputDialogPeers},
+            {floodMaxTimeout: Infinity}
+          );
           const currentState = this.apiUpdatesManager.updatesState;
           const {state} = result;
           if(currentState.pts && currentState.pts !== state.pts) {
+            this.log.warn('current pts is different, will try again', currentState.pts, state.pts);
             await pause(500);
             continue;
           }
@@ -2638,20 +2787,29 @@ export class AppMessagesManager extends AppManager {
       };
 
       return invoke().then((result) => {
-        for(const peerId in promises) {
-          this.reloadConversationsPeers.delete(+peerId);
+        log('result', result);
+
+        for(const [peerId, obj] of reloadConversationsPeers) {
+          if(this.reloadConversationsPeers.get(peerId) === obj) {
+            this.reloadConversationsPeers.delete(peerId);
+          }
         }
 
         this.dialogsStorage.applyDialogs(result);
 
         result.dialogs.forEach((dialog) => {
           const peerId = dialog.peerId;
-          if(peerId) {
-            promises[peerId].resolve(dialog as Dialog);
-            delete promises[peerId];
+          if(!peerId) {
+            return;
           }
+
+          const obj = reloadConversationsPeers.get(peerId);
+          obj.promise.resolve(dialog as Dialog);
+          reloadConversationsPeers.delete(peerId);
         });
-      }, noop).then(() => {
+      }, (err) => {
+        log.error(err);
+      }).then(() => {
         fullfillLeft();
 
         this.reloadConversationsPromise = null;
@@ -3064,14 +3222,16 @@ export class AppMessagesManager extends AppManager {
 
     const replyTo = message.reply_to;
     if(replyTo) {
-      const replyToChannelId = (replyTo.reply_to_peer_id as Peer.peerChannel)?.channel_id || channelId;
+      if(replyTo._ === 'messageReplyHeader') {
+        const replyToChannelId = (replyTo.reply_to_peer_id as Peer.peerChannel)?.channel_id || channelId;
 
-      if(replyTo.reply_to_msg_id) {
-        replyTo.reply_to_msg_id = message.reply_to_mid = this.appMessagesIdsManager.generateMessageId(replyTo.reply_to_msg_id, replyToChannelId);
-      }
+        if(replyTo.reply_to_msg_id) {
+          replyTo.reply_to_msg_id = message.reply_to_mid = this.appMessagesIdsManager.generateMessageId(replyTo.reply_to_msg_id, replyToChannelId);
+        }
 
-      if(replyTo.reply_to_top_id) {
-        replyTo.reply_to_top_id = this.appMessagesIdsManager.generateMessageId(replyTo.reply_to_top_id, replyToChannelId);
+        if(replyTo.reply_to_top_id) {
+          replyTo.reply_to_top_id = this.appMessagesIdsManager.generateMessageId(replyTo.reply_to_top_id, replyToChannelId);
+        }
       }
     }
 
@@ -3141,84 +3301,7 @@ export class AppMessagesManager extends AppManager {
       }
     } */
 
-    let unsupported = false;
-    const media = isMessage && message.media;
-    if(media) {
-      switch(media._) {
-        case 'messageMediaEmpty': {
-          delete message.media;
-          break;
-        }
-
-        case 'messageMediaPhoto': {
-          if(media.ttl_seconds) {
-            unsupported = true;
-          } else {
-            media.photo = this.appPhotosManager.savePhoto(media.photo, mediaContext);
-          }
-
-          if(!(media as MessageMedia.messageMediaPhoto).photo) { // * found this bug on test DC
-            delete message.media;
-          }
-
-          break;
-        }
-
-        case 'messageMediaPoll': {
-          const result = this.appPollsManager.savePoll(media.poll, media.results, message);
-          media.poll = result.poll;
-          media.results = result.results;
-          break;
-        }
-
-        case 'messageMediaDocument': {
-          if(media.ttl_seconds) {
-            unsupported = true;
-          } else {
-            const originalDoc = media.document;
-            media.document = this.appDocsManager.saveDoc(originalDoc, mediaContext); // 11.04.2020 warning
-
-            if(!media.document && originalDoc._ !== 'documentEmpty') {
-              unsupported = true;
-            }
-          }
-
-          break;
-        }
-
-        case 'messageMediaWebPage': {
-          const messageKey = this.appWebPagesManager.getMessageKeyForPendingWebPage(peerId, mid, options.isScheduled);
-          media.webpage = this.appWebPagesManager.saveWebPage(media.webpage, messageKey, mediaContext);
-
-          if(!media.webpage) {
-            delete message.media;
-          }
-
-          break;
-        }
-
-        /* case 'messageMediaGame':
-          AppGamesManager.saveGame(apiMessage.media.game, apiMessage.mid, mediaContext);
-          apiMessage.media.handleMessage = true;
-          break; */
-
-        case 'messageMediaInvoice': {
-          media.photo = this.appWebDocsManager.saveWebDocument(media.photo);
-          const extendedMedia = media.extended_media;
-          if(extendedMedia?._ === 'messageExtendedMedia') {
-            const extendedMediaMedia = extendedMedia.media;
-            (extendedMediaMedia as MessageMedia.messageMediaPhoto).photo = this.appPhotosManager.savePhoto((extendedMediaMedia as MessageMedia.messageMediaPhoto).photo, mediaContext);
-            (extendedMediaMedia as MessageMedia.messageMediaDocument).document = this.appDocsManager.saveDoc((extendedMediaMedia as MessageMedia.messageMediaDocument).document, mediaContext);
-          }
-          break;
-        }
-
-        case 'messageMediaUnsupported': {
-          unsupported = true;
-          break;
-        }
-      }
-    }
+    const unsupported = this.saveMessageMedia(message, mediaContext, options.isScheduled);
 
     // if(isMessage && !unsupported && message.entities) {
     //   unsupported = message.entities.some((entity) => entity._ === 'messageEntityCustomEmoji');
@@ -3391,6 +3474,103 @@ export class AppMessagesManager extends AppManager {
     return messages;
   }
 
+  public saveMessageMedia(message: {
+    media?: MessageMedia,
+    peerId?: PeerId,
+    mid?: number
+  }, mediaContext: ReferenceContext, isScheduled?: boolean) {
+    const {media} = message;
+    if(!media) {
+      return;
+    }
+
+    let unsupported = false;
+
+    switch(media._) {
+      case 'messageMediaEmpty': {
+        delete message.media;
+        break;
+      }
+
+      case 'messageMediaPhoto': {
+        if(media.ttl_seconds) {
+          unsupported = true;
+        } else {
+          media.photo = this.appPhotosManager.savePhoto(media.photo, mediaContext);
+        }
+
+        if(!(media as MessageMedia.messageMediaPhoto).photo) { // * found this bug on test DC
+          delete message.media;
+        }
+
+        break;
+      }
+
+      case 'messageMediaPoll': {
+        const result = this.appPollsManager.savePoll(media.poll, media.results, message.peerId && message as Message.message);
+        media.poll = result.poll;
+        media.results = result.results;
+        break;
+      }
+
+      case 'messageMediaDocument': {
+        if(media.ttl_seconds) {
+          unsupported = true;
+        } else {
+          const originalDoc = media.document;
+          media.document = this.appDocsManager.saveDoc(originalDoc, mediaContext); // 11.04.2020 warning
+          media.alt_document &&= this.appDocsManager.saveDoc(media.alt_document, mediaContext); // 11.04.2020 warning
+
+          if(!media.document && originalDoc._ !== 'documentEmpty') {
+            unsupported = true;
+          }
+        }
+
+        break;
+      }
+
+      case 'messageMediaWebPage': {
+        const messageKey = this.appWebPagesManager.getMessageKeyForPendingWebPage(message.peerId, message.mid, isScheduled);
+        media.webpage = this.appWebPagesManager.saveWebPage(media.webpage, messageKey, mediaContext);
+
+        if(!media.webpage) {
+          delete message.media;
+        }
+
+        break;
+      }
+
+      /* case 'messageMediaGame':
+        AppGamesManager.saveGame(apiMessage.media.game, apiMessage.mid, mediaContext);
+        apiMessage.media.handleMessage = true;
+        break; */
+
+      case 'messageMediaInvoice': {
+        media.photo = this.appWebDocsManager.saveWebDocument(media.photo);
+        const extendedMedia = media.extended_media;
+        if(extendedMedia?._ === 'messageExtendedMedia') {
+          const extendedMediaMedia = extendedMedia.media;
+          (extendedMediaMedia as MessageMedia.messageMediaPhoto).photo = this.appPhotosManager.savePhoto((extendedMediaMedia as MessageMedia.messageMediaPhoto).photo, mediaContext);
+          (extendedMediaMedia as MessageMedia.messageMediaDocument).document = this.appDocsManager.saveDoc((extendedMediaMedia as MessageMedia.messageMediaDocument).document, mediaContext);
+        }
+        break;
+      }
+
+      case 'messageMediaStory': {
+        const cache = this.appStoriesManager.getPeerStoriesCache(media.user_id.toPeerId(false));
+        media.story = this.appStoriesManager.saveStoryItems([media.story], cache)[0];
+        break;
+      }
+
+      case 'messageMediaUnsupported': {
+        unsupported = true;
+        break;
+      }
+    }
+
+    return unsupported;
+  }
+
   public async getFirstMessageToEdit(peerId: PeerId, threadId?: number) {
     const historyStorage = this.getHistoryStorage(peerId, threadId);
     const slice = historyStorage.history.slice;
@@ -3416,12 +3596,10 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
-  private wrapMessageEntities(message: Message.message) {
-    const apiEntities = message.entities ? message.entities.slice() : [];
-    message.message = fixEmoji(message.message, apiEntities);
-
-    const myEntities = parseEntities(message.message);
-    message.totalEntities = mergeEntities(apiEntities, myEntities); // ! only in this order, otherwise bold and emoji formatting won't work
+  private wrapMessageEntities(_message: Message.message) {
+    const {message, totalEntities} = wrapMessageEntities(_message.message, _message.entities);
+    _message.message = message;
+    _message.totalEntities = totalEntities;
   }
 
   public reportMessages(peerId: PeerId, mids: number[], reason: ReportReason['_'], message?: string) {
@@ -3435,8 +3613,18 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public startBot(botId: BotId, chatId?: ChatId, startParam?: string) {
+  public async unblockBot(botId: BotId) {
+    if(await this.appProfileManager.isUserBlocked(botId)) {
+      await this.appUsersManager.toggleBlock(botId.toPeerId(false), false);
+    }
+  }
+
+  public async startBot(botId: BotId, chatId?: ChatId, startParam?: string) {
     const peerId = chatId ? chatId.toPeerId(true) : botId.toPeerId();
+    if(!chatId) {
+      await this.unblockBot(botId);
+    }
+
     if(startParam) {
       const randomId = randomLong();
 
@@ -3484,6 +3672,11 @@ export class AppMessagesManager extends AppManager {
         };
       })
     }).then((updates) => {
+      const peerId = peerIds[0];
+      if(peerIds.length === 1 && folderId === FOLDER_ID_ALL) {
+        this.appProfileManager.refreshPeerSettingsIfNeeded(peerId);
+      }
+
       // this.log('editPeerFolders updates:', updates);
       this.apiUpdatesManager.processUpdateMessage(updates); // WARNING! возможно тут нужно добавлять channelId, и вызывать апдейт для каждого канала отдельно
     });
@@ -3594,7 +3787,6 @@ export class AppMessagesManager extends AppManager {
 
     if(!message ||
         message._ !== 'message' ||
-        message.deleted ||
         message.fwd_from ||
         message.via_bot_id ||
         message.media && goodMedias.indexOf(message.media._) === -1 ||
@@ -4021,7 +4213,7 @@ export class AppMessagesManager extends AppManager {
       return this.deleteMessagesInner(channelId, mids, revoke);
     });
 
-    return Promise.all(promises);
+    return Promise.all(promises).then(noop);
   }
 
   public readHistory(peerId: PeerId, maxId = 0, threadId?: number, force = false) {
@@ -4493,9 +4685,10 @@ export class AppMessagesManager extends AppManager {
     if(message._ === 'messageService') {
       const {action} = message;
       if(action._ === 'messageActionPaymentSent' && message.reply_to) {
+        const replyTo = message.reply_to as MessageReplyHeader.messageReplyHeader;
         this.rootScope.dispatchEvent('payment_sent', {
-          peerId: message.reply_to.reply_to_peer_id ?
-            this.appPeersManager.getPeerId(message.reply_to.reply_to_peer_id) :
+          peerId: replyTo.reply_to_peer_id ?
+            this.appPeersManager.getPeerId(replyTo.reply_to_peer_id) :
             message.peerId,
           mid: message.reply_to_mid,
           receiptMessage: message
@@ -4715,6 +4908,7 @@ export class AppMessagesManager extends AppManager {
     this.pushBatchUpdate('messages_reactions', this.batchUpdateReactions, key, () => copy(message.reactions));
 
     message.reactions = reactions;
+    this.onMessageModification(message);
 
     if(!update.local) {
       this.setDialogToStateIfMessageIsTop(message);
@@ -4898,6 +5092,7 @@ export class AppMessagesManager extends AppManager {
 
       // this.log.warn('read', messageId, isUnread, message)
       delete message.pFlags.unread;
+      this.onMessageModification(message, storage); // * mirror it
       foundAffected ||= true;
 
       if(!message.pFlags.out && foundDialog) {
@@ -4987,6 +5182,7 @@ export class AppMessagesManager extends AppManager {
       if(message) {
         if(message.pFlags.media_unread) {
           delete message.pFlags.media_unread;
+          this.onMessageModification(message);
           this.setDialogToStateIfMessageIsTop(message);
 
           if(!message.pFlags.out && message.pFlags.mentioned) {
@@ -5172,6 +5368,7 @@ export class AppMessagesManager extends AppManager {
     const message = this.getMessageByPeer(peerId, mid) as Message.message;
     if(message?.views !== undefined && message.views < views) {
       message.views = views;
+      this.onMessageModification(message);
       this.pushBatchUpdate('messages_views', this.batchUpdateViews, message.peerId + '_' + message.mid);
       this.setDialogToStateIfMessageIsTop(message);
     }
@@ -5247,6 +5444,8 @@ export class AppMessagesManager extends AppManager {
           // storage.history.push(mid);
           const message = storage.get(mid) as Message.message;
           message.pFlags.pinned = true;
+          this.onMessageModification(message, storage);
+          this.setDialogToStateIfMessageIsTop(message);
         }
 
         /* if(this.pinnedMessages[peerId]?.maxId) {
@@ -5260,6 +5459,8 @@ export class AppMessagesManager extends AppManager {
           // storage.history.findAndSplice((_mid) => _mid === mid);
           const message = storage.get(mid) as Message.message;
           delete message.pFlags.pinned;
+          this.onMessageModification(message, storage);
+          this.setDialogToStateIfMessageIsTop(message);
         }
       }
 
@@ -5552,7 +5753,7 @@ export class AppMessagesManager extends AppManager {
       for(const name in callbacks) {
         const {deferred, callback} = callbacks[name];
         // this.log(`finalizePendingMessageCallbacks: will invoke ${name} callback`);
-        callback(message).then(deferred.resolve, deferred.reject);
+        callback(message).then(deferred.resolve.bind(deferred), deferred.reject.bind(deferred));
       }
 
       delete this.tempFinalizeCallbacks[tempId];
@@ -5566,14 +5767,12 @@ export class AppMessagesManager extends AppManager {
         const photo = this.appPhotosManager.getPhoto('' + tempId);
         if(/* photo._ !== 'photoEmpty' */photo) {
           const newPhotoSize = newPhoto.sizes[newPhoto.sizes.length - 1];
-          const cacheContext = this.thumbsStorage.getCacheContext(newPhoto, newPhotoSize.type);
           const oldCacheContext = this.thumbsStorage.getCacheContext(photo, THUMB_TYPE_FULL);
-          Object.assign(cacheContext, oldCacheContext);
+          this.thumbsStorage.setCacheContextURL(newPhoto, newPhotoSize.type, oldCacheContext.url, oldCacheContext.downloaded);
 
-          const photoSize = newPhoto.sizes[newPhoto.sizes.length - 1] as PhotoSize.photoSize;
-
-          const downloadOptions = getPhotoDownloadOptions(newPhoto, photoSize);
-          const fileName = getFileNameByLocation(downloadOptions.location);
+          // const photoSize = newPhoto.sizes[newPhoto.sizes.length - 1] as PhotoSize.photoSize;
+          // const downloadOptions = getPhotoDownloadOptions(newPhoto, photoSize);
+          // const fileName = getFileNameByLocation(downloadOptions.location);
           // this.appDownloadManager.fakeDownload(fileName, oldCacheContext.url);
         }
       } else if(newDoc) {
@@ -5587,10 +5786,9 @@ export class AppMessagesManager extends AppManager {
             oldDoc.mime_type !== 'image/gif' &&
             oldCacheContext.url
           ) {
-            const cacheContext = this.thumbsStorage.getCacheContext(newDoc);
-            Object.assign(cacheContext, oldCacheContext);
+            this.thumbsStorage.setCacheContextURL(newDoc, undefined, oldCacheContext.url, oldCacheContext.downloaded);
 
-            const fileName = getDocumentInputFileName(newDoc);
+            // const fileName = getDocumentInputFileName(newDoc);
             // this.appDownloadManager.fakeDownload(fileName, oldCacheContext.url);
           }
         }
@@ -5614,6 +5812,7 @@ export class AppMessagesManager extends AppManager {
     }
 
     this.handleReleasingMessage(tempMessage, storage);
+    this.onMessageModification(message, storage); // * mirror it
 
     this.rootScope.dispatchEvent('message_sent', {storageKey: storage.key, tempId, tempMessage, mid: message.mid, message});
   }
@@ -6424,11 +6623,7 @@ export class AppMessagesManager extends AppManager {
   }
 
   public fetchSingleMessages() {
-    if(this.fetchSingleMessagesPromise) {
-      return this.fetchSingleMessagesPromise;
-    }
-
-    return this.fetchSingleMessagesPromise = pause(0).then(() => {
+    return this.fetchSingleMessagesPromise ??= pause(0).then(() => {
       const requestPromises: Promise<void>[] = [];
 
       for(const [peerId, map] of this.needSingleMessages) {
@@ -6502,8 +6697,8 @@ export class AppMessagesManager extends AppManager {
       }));
     }
 
-    if(peerId.isAnyChat() && this.appMessagesIdsManager.isLegacyMessageId(mid)) {
-      peerId = NULL_PEER_ID;
+    if(peerId.isAnyChat() && isLegacyMessageId(mid)) {
+      peerId = GLOBAL_HISTORY_PEER_ID;
     }
 
     const message = this.getMessageByPeer(peerId, mid);
@@ -6568,13 +6763,31 @@ export class AppMessagesManager extends AppManager {
     return Promise.all(promises);
   }
 
+  private clearMessageReplyTo(message: MyMessage) {
+    message = this.getMessageByPeer(message.peerId, message.mid); // message can come from other thread
+    delete message.reply_to_mid; // ! WARNING!
+    delete message.reply_to; // ! WARNING!
+    this.onMessageModification(message, this.getHistoryMessagesStorage(message.peerId)); // * mirror it
+  }
+
   public fetchMessageReplyTo(message: MyMessage) {
-    if(!message.reply_to_mid) return Promise.resolve(this.generateEmptyMessage(0));
-    const replyToPeerId = message.reply_to.reply_to_peer_id ? this.appPeersManager.getPeerId(message.reply_to.reply_to_peer_id) : message.peerId;
+    if(!message.reply_to) return Promise.resolve(this.generateEmptyMessage(0));
+    const replyTo = message.reply_to;
+    if(replyTo._ === 'messageReplyStoryHeader') {
+      const result = this.appStoriesManager.getStoryById(replyTo.user_id.toPeerId(false), replyTo.story_id);
+      return callbackify(result, (story) => {
+        // if(!story) {
+        //   this.clearMessageReplyTo(message);
+        // }
+
+        return story;
+      });
+    }
+
+    const replyToPeerId = replyTo.reply_to_peer_id ? this.appPeersManager.getPeerId(replyTo.reply_to_peer_id) : message.peerId;
     return this.reloadMessages(replyToPeerId, message.reply_to_mid).then((originalMessage) => {
       if(!originalMessage) { // ! break the infinite loop
-        message = this.getMessageByPeer(message.peerId, message.mid); // message can come from other thread
-        delete message.reply_to_mid; // ! WARNING!
+        this.clearMessageReplyTo(message);
       }
 
       if(message._ === 'messageService') {
@@ -6701,8 +6914,6 @@ export class AppMessagesManager extends AppManager {
 
       ++history.count;
       history.msgs.add(mid);
-
-      message.deleted = true;
 
       const groupedId = (message as Message.message).grouped_id;
       if(groupedId) {
@@ -6876,6 +7087,12 @@ export class AppMessagesManager extends AppManager {
       requested_peer: this.appPeersManager.getInputPeerById(requestedPeerId)
     }).then((updates) => {
       this.apiUpdatesManager.processUpdateMessage(updates);
+    });
+  }
+
+  public reportSpam(peerId: PeerId) {
+    return this.apiManager.invokeApi('messages.reportSpam', {
+      peer: this.appPeersManager.getInputPeerById(peerId)
     });
   }
 }

@@ -134,7 +134,8 @@ export default class AppEditChatTab extends SliderSuperTab {
         peerId,
         inputFields,
         listenerSetter: this.listenerSetter,
-        popupOptions: {isForum: (chat as Chat.channel).pFlags.forum}
+        popupOptions: {isForum: (chat as Chat.channel).pFlags.forum},
+        middleware: this.middlewareHelper.get()
       });
       this.content.append(this.editPeer.nextBtn);
 
@@ -355,7 +356,7 @@ export default class AppEditChatTab extends SliderSuperTab {
 
         const setTopics = () => {
           const isForum = !!(chat as Chat.channel).pFlags.forum;
-          this.editPeer.avatarElem.parentElement.classList.toggle('is-forum', isForum);
+          this.editPeer.avatarElem.node.parentElement.classList.toggle('is-forum', isForum);
           topicsRow.checkboxField.setValueSilently(isForum);
 
           // const linkedChatId = (chatFull as ChatFull.channelFull).linked_chat_id;

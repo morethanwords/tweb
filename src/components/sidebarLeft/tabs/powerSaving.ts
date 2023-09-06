@@ -8,6 +8,7 @@ import {State} from '../../../config/state';
 import flatten from '../../../helpers/array/flatten';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import {LiteModeKey} from '../../../helpers/liteMode';
+import {joinDeepPath} from '../../../helpers/object/setDeepProperty';
 import pause from '../../../helpers/schedulers/pause';
 import rootScope from '../../../lib/rootScope';
 import CheckboxFields, {CheckboxFieldsField} from '../../checkboxFields';
@@ -121,7 +122,7 @@ export default class AppPowerSavingTab extends SliderSuperTab {
         }
       }
 
-      await this.managers.appStateManager.setByKey('settings.liteMode', rootScope.settings.liteMode = liteMode);
+      await this.managers.appStateManager.setByKey(joinDeepPath('settings', 'liteMode'), rootScope.settings.liteMode = liteMode);
     });
 
     onAllChange(rootScope.settings.liteMode.all);

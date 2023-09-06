@@ -80,6 +80,10 @@ export interface MTAppConfig {
   emojies_send_dice?:                        string[];
   emojies_send_dice_success?:                EmojiesSendDiceSuccess;
   emojies_sounds?:                           EmojiesSoundsClass;
+  stories_all_hidden?:                       boolean;
+  stories_changelog_user_id?:                UserId;
+  stories_export_nopublic_link?:             boolean;
+  stories_posting?:                          'enabled' | 'premium' | 'disabled';
 }
 
 export interface EmojiesSendDiceSuccess {

@@ -222,7 +222,10 @@ export default class AppChatDiscussionTab extends SliderSuperTabEventable {
           container: chatlist,
           rippleEnabled: true,
           avatarSize: 'abitbigger',
-          loadPromises
+          loadPromises,
+          wrapOptions: {
+            middleware: this.middlewareHelper.get()
+          }
         });
 
         const username = getPeerActiveUsernames(chat)[0];

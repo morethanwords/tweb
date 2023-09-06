@@ -95,6 +95,7 @@ const lang = {
   'ChatMigration.From': 'Migrated from %s',
   'ChatMigration.To': 'Migrated to %s',
   'ConnectionStatus.ForceReconnect': 'force reconnect',
+  'ConnectionStatus.ReconnectInPlain': 'Reconnect in %ds',
   'ConnectionStatus.ReconnectIn': 'Reconnect in %ds, %s',
   'ConnectionStatus.Reconnect': 'reconnect',
   'ConnectionStatus.Reconnecting': 'Reconnecting...',
@@ -158,6 +159,8 @@ const lang = {
     'other_value': '%1$d websites'
   },
   'Privacy.SensitiveContent': 'Sensitive Content',
+  'Privacy.Bio': 'Who can see my bio',
+  'Privacy.BioCaption': 'You can restrict who can see your bio with granular precision.',
   'PrivacyModal.Search.Placeholder': 'Add Users or Groups...',
   'Permissions.NoExceptions': 'No exceptions',
   'Permissions.ExceptionsCount': {
@@ -182,6 +185,7 @@ const lang = {
   'LiteMode.Key.effects_emoji.Title': 'Emoji effect',
   'StickersTab.SearchPlaceholder': 'Search Stickers',
   'ForwardedFrom': 'Forwarded from %s',
+  'ForwardedStoryFrom': 'Forwarded Story\nFrom: %s',
   'Popup.Avatar.Title': 'Drag to Reposition',
   'Popup.Unpin.AllTitle': 'Unpin all messages',
   'Popup.Unpin.HideTitle': 'Hide pinned messages',
@@ -246,6 +250,45 @@ const lang = {
   'OpenChatlist': 'VIEW CHAT LIST',
   'RemoveSharedFolder': 'Are you sure you want to delete this folder? This will also deactivate all the invite links used to share this folder.',
   'OpenInNewTab': 'Open in new tab',
+  'Story': 'Story',
+  'Stories': 'Stories',
+  'StoriesCount': {
+    'one_value': '%1$d story',
+    'other_value': '%1$d stories'
+  },
+  'ExpiredStory': 'Expired Story',
+  'ExpiredStorySubtitle': 'From: %s',
+  'ExpiredStoryMention': 'The story you were mentioned in is no longer available',
+  'ExpiredStoryMentionYou': 'The story you mentioned %s in is no longer available',
+  'YourStory': 'Your story',
+  'MyStory': 'My Story',
+  'PublicStories': 'Public Stories',
+  'CloseFriendsTooltip': 'You are seeing this story because you have been added to %s\'s list of close friends.',
+  'CloseFriendsTooltipYou': 'Only people from you close friends list will see this story.',
+  'StoryMention': '%s mentioned you in a story',
+  'StoryMentionYou': 'You mentioned %s in a story',
+  'StoryMentionView': 'View Story',
+  'StoryCantReply': 'You can\'t reply to this story',
+  'MyStories.Title': 'My Stories',
+  'MyStories.Archive': 'Archive',
+  'MyStories.Subtitle': 'Only you can see archived stories unless you choose to save them to your profile.',
+  'MyStories.ShowArchive': 'Show Archive',
+  'Story.ReplyPlaceholder': 'Reply Privately...',
+  'SecondsShortAgo': '%ds ago',
+  'MinutesShortAgo': '%dm ago',
+  'HoursShortAgo': '%dh ago',
+  'DaysShortAgo': '%dd ago',
+  'StoryJustNow': 'just now',
+  'NoStoryFound': 'Sorry, this story doesn\'t seem to exist.',
+  'OpenStory': 'OPEN STORY',
+  'Story.AddToProfile': 'Save to Profile',
+  'Story.RemoveFromProfile': 'Remove from Profile',
+  'Story.NoSound': 'This video has no sound',
+  'Story.ExpiredToast': 'This story is no longer available',
+  'Story.ReportTitle': 'Report Story',
+  'WebApp.WriteAccess.Title': 'Allow Sending Messages',
+  'WebApp.WriteAccess.Description': 'Allow %s to send messages?',
+  'ActionBotAllowedRequest': 'You allowed this bot to message you when you accepted its request.',
 
   // * android
   'AccDescrEditing': 'Editing',
@@ -1165,6 +1208,42 @@ const lang = {
     'other_value': '%1$d invite links'
   },
   'LinksCreatedByThisAdmin': 'Invite links created by this admin',
+  'DeleteThisChat': 'Delete this chat',
+  'ShareFile': 'Share',
+  'StoryPinnedToProfile': 'Story saved to your profile.',
+  'StoryArchivedFromProfile': 'This story is hidden from your profile.',
+  'StorySavedTitle': {
+    'one_value': '%d story saved to your profile',
+    'other_value': '%d stories saved to your profile'
+  },
+  'StoryArchived': {
+    'one_value': '%d story removed from your profile',
+    'other_value': '%d stories removed from your profile'
+  },
+  'DeleteStoryTitle': 'Delete Story',
+  'DeleteStoriesTitle': 'Delete Stories',
+  'DeleteStorySubtitle': 'Are you sure you want to delete this story?',
+  'DeleteStoriesSubtitle': {
+    'one_value': 'Are you sure you want to delete %d story?',
+    'other_value': 'Are you sure you want to delete %d stories?'
+  },
+  'ProfileStoriesArchiveHint': 'Only you can see archived stories unless you choose to save them to your profile.',
+  'StoryCloseFriendsHint': 'You are seeing this story because **%s** added you to their list of Close Friends.',
+  'StorySelectedContactsHint': 'Only some contacts **%s** selected can view this story.',
+  'StoryContactsHint': 'Only **%s’s** contacts can view this story.',
+  'Views': {
+    'one_value': '%1$s view',
+    'other_value': '%1$s views'
+  },
+  'NobodyViews': 'No views yet',
+  'NobodyViewsArchived': 'No views available',
+  'NotificationsStoryMute2': 'Do Not Notify\nAbout Stories',
+  'NotificationsStoryUnmute2': 'Notify About\nStories',
+  'ArchivePeerStories': 'Hide Stories',
+  'UnarchiveStories': 'Unhide Stories',
+  'SavedStories': 'Posted Stories',
+  'ArchivedStories': 'Archived Stories',
+  'StoryViewLocation': 'View Location',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
@@ -1235,6 +1314,9 @@ const lang = {
   'Chat.Context.ReactedFast': {
     'other_value': '%d Reacted'
   },
+  'Chat.Confirm.ReportSpam.Header': 'Report Spam',
+  'Chat.Confirm.ReportSpam.Channel': 'Report Spam and Leave Channel?',
+  'Chat.Confirm.ReportSpam.Group': 'Report Spam and Leave Group?',
   'Chat.ChannelBadge': 'channel',
   'Chat.Date.ScheduledFor': 'Scheduled for %@',
   'Chat.Date.ScheduledForToday': 'Scheduled for today',

@@ -66,6 +66,16 @@ export class AppWebPagesManager extends AppManager {
         delete apiWebPage.site_name;
       }
 
+      for(const attribute of apiWebPage.attributes || []) {
+        switch(attribute._) {
+          case 'webPageAttributeStory': {
+            const cache = this.appStoriesManager.getPeerStoriesCache(attribute.user_id.toPeerId(false));
+            attribute.story = this.appStoriesManager.saveStoryItem(attribute.story, cache);
+            break;
+          }
+        }
+      }
+
       // delete apiWebPage.description
 
       if(!photoTypeSet.has(apiWebPage.type) &&

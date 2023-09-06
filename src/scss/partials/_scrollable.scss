@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-html:not(.is-safari):not(.is-ios) {
+html:not(.is-safari):not(.is-ios):not(.is-mac) {
   .scrollable::-webkit-scrollbar {
     width: 0;
     height: 0;
@@ -17,18 +17,18 @@ html:not(.is-safari):not(.is-ios) {
     height: 0;
   }
 
-  ::-webkit-scrollbar-thumb {
+  .scrollable::-webkit-scrollbar-thumb {
     opacity: 0;
     transition: .2s ease-in-out;
   }
 
-  ::-webkit-scrollbar-button {
+  .scrollable::-webkit-scrollbar-button {
     width: 0;
     height: 0;
     display: none;
   }
 
-  ::-webkit-scrollbar-corner {
+  .scrollable::-webkit-scrollbar-corner {
     background-color: transparent;
   }
 
@@ -45,7 +45,6 @@ html:not(.is-safari):not(.is-ios) {
     max-height: 12.5rem;
     border-radius: $border-radius-medium;
     background-color: var(--scrollbar-color);
-    backdrop-filter: blur(100);
     opacity: 1;
   }
 }

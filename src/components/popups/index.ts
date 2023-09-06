@@ -21,10 +21,11 @@ import {AppManagers} from '../../lib/appManagers/managers';
 import overlayCounter from '../../helpers/overlayCounter';
 import Scrollable from '../scrollable';
 import {getMiddleware, MiddlewareHelper} from '../../helpers/middleware';
-import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
+import ButtonIcon from '../buttonIcon';
+import Icon from '../icon';
 
 export type PopupButton = {
-  textRaw?: string,
+  text?: HTMLElement | DocumentFragment,
   callback?: () => void,
   langKey?: LangPackKey,
   langArgs?: any[],
@@ -46,8 +47,7 @@ export type PopupOptions = Partial<{
   withoutOverlay: boolean,
   scrollable: boolean,
   buttons: Array<PopupButton>,
-  title: boolean | LangPackKey,
-  titleRaw: string
+  title: boolean | LangPackKey | DocumentFragment | HTMLElement
 }>;
 
 export interface PopupElementConstructable<T extends PopupElement = any> {
@@ -110,14 +110,18 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     this.element.className = 'popup' + (className ? ' ' + className : '');
     this.container.classList.add('popup-container', 'z-depth-1');
 
+    if(overlayCounter.isDarkOverlayActive) {
+      this.element.classList.add('night');
+    }
+
     this.header.classList.add('popup-header');
 
-    if(options.title || options.titleRaw) {
+    if(options.title) {
       this.title.classList.add('popup-title');
       if(typeof(options.title) === 'string') {
         _i18n(this.title, options.title);
-      } else if(options.titleRaw) {
-        this.title.append(wrapEmojiText(options.titleRaw));
+      } else if(typeof(options.title) !== 'boolean') {
+        this.title.append(options.title);
       }
 
       this.header.append(this.title);
@@ -131,8 +135,8 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     this.confirmShortcutIsSendShortcut = options.confirmShortcutIsSendShortcut;
 
     if(options.closable) {
-      this.btnClose = document.createElement('span');
-      this.btnClose.classList.add('btn-icon', 'popup-close');
+      this.btnClose = ButtonIcon('', {noRipple: true});
+      this.btnClose.classList.add('popup-close');
       // ripple(this.closeBtn);
       this.header.prepend(this.btnClose);
 
@@ -141,7 +145,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
         this.btnCloseAnimatedIcon.classList.add('animated-close-icon');
         this.btnClose.append(this.btnCloseAnimatedIcon);
       } else {
-        this.btnClose.classList.add('tgico-close');
+        this.btnClose.append(Icon('close'));
       }
 
       attachClickEvent(this.btnClose, () => {
@@ -215,9 +219,9 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
           ripple(button);
         }
 
-        if(b.textRaw) {
-          button.append(wrapEmojiText(b.textRaw));
-        } else {
+        if(b.text) {
+          button.append(b.text);
+        } else if(b.langKey) {
           button.append(i18n(b.langKey, b.langArgs));
         }
 
@@ -362,7 +366,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
       if(!this.withoutOverlay) {
         animationIntersector.checkAnimations2(false);
       }
-    }, 150);
+    }, 250);
   }
 
   public static reAppend() {

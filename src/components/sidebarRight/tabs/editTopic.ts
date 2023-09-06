@@ -140,7 +140,10 @@ export default class AppEditTopicTab extends SliderSuperTab {
         managers: this.managers,
         isStandalone: true,
         noRegularEmoji: true,
-        stickerSetId: 'inputStickerSetEmojiDefaultTopicIcons',
+        mainSets: () => {
+          return this.managers.appStickersManager.getLocalStickerSet('inputStickerSetEmojiDefaultTopicIcons')
+          .then((messagesStickerSet) => messagesStickerSet.documents.map((doc) => doc.id));
+        },
         onClick: (emoji) => {
           emojiTab.setActive(!emoji.docId ? {emoji: undefined, docId: undefined} : emoji);
           this.setIcon(emoji.docId);

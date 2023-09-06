@@ -17,7 +17,8 @@ export type Middleware = {
 const createDetails = (): {
   cleaned?: boolean,
   inner: MiddlewareHelper[],
-  onCleanCallbacks: VoidFunction[]
+  onCleanCallbacks: VoidFunction[],
+  middleware?: Middleware
 } => ({
   cleaned: false,
   inner: [],
@@ -39,6 +40,7 @@ export class MiddlewareHelper {
     details.cleaned = true;
     details.inner.splice(0, details.inner.length).forEach((helper) => helper.destroy());
     details.onCleanCallbacks.splice(0, details.onCleanCallbacks.length).forEach((callback) => callback());
+    details.middleware = undefined;
     this.details = createDetails();
   }
 
@@ -53,9 +55,7 @@ export class MiddlewareHelper {
     }
   }
 
-  public get(additionalCallback?: () => boolean) {
-    const details = this.details;
-
+  private createMiddlewareForDetails(details: ReturnType<typeof createDetails>, additionalCallback?: () => boolean) {
     const middleware: Middleware = () => {
       return !details.cleaned && (!additionalCallback || additionalCallback());
     };
@@ -76,6 +76,19 @@ export class MiddlewareHelper {
     middleware.onDestroy = this.onDestroy;
 
     return middleware;
+  }
+
+  public get(additionalCallback?: () => boolean) {
+    const details = this.details;
+    if(details.cleaned) {
+      return this.createMiddlewareForDetails(details);
+    }
+
+    if(additionalCallback) {
+      return this.createMiddlewareForDetails(details, additionalCallback);
+    }
+
+    return details.middleware ??= this.createMiddlewareForDetails(details);
   }
 
   public onDestroy = (callback: VoidFunction) => {

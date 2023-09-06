@@ -12,7 +12,14 @@ import PopupPeer from './peer';
 
 export default class PopupReportMessagesConfirm extends PopupPeer {
   public static STICKER_EMOJI = '👮‍♀️';
-  constructor(peerId: PeerId, mids: number[], reason: ReportReason['_'], onConfirm?: () => void) {
+
+  constructor(
+    peerId: PeerId,
+    mids: number[],
+    reason: ReportReason['_'],
+    onFinish?: () => void,
+    isStory?: boolean
+  ) {
     super('popup-report-messages-confirm', {
       noTitle: true,
       descriptionLangKey: 'ReportInfo',
@@ -23,10 +30,16 @@ export default class PopupReportMessagesConfirm extends PopupPeer {
             return;
           }
 
-          onConfirm && onConfirm();
-          this.managers.appMessagesManager.reportMessages(peerId, mids, reason, inputField.value).then((bool) => {
-            if(!bool) return;
+          good = true;
+          onFinish?.();
+          let promise: Promise<any>;
+          if(isStory) {
+            promise = this.managers.appStoriesManager.report(peerId, mids, reason, inputField.value);
+          } else {
+            promise = this.managers.appMessagesManager.reportMessages(peerId, mids, reason, inputField.value);
+          }
 
+          promise.then(() => {
             toastNew({
               langPackKey: 'ReportSentInfo'
             });
@@ -58,6 +71,13 @@ export default class PopupReportMessagesConfirm extends PopupPeer {
     inputField.input.addEventListener('input', () => {
       this.buttons[0].element.toggleAttribute('disabled', !inputField.isValid());
     });
+
+    let good = false;
+    onFinish && this.addEventListener('close', () => {
+      if(!good) {
+        onFinish();
+      }
+    }, {once: true});
 
     this.body.append(inputField.container);
   }

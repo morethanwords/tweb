@@ -72,26 +72,13 @@
     border-radius: 1.5rem;
     user-select: none;
     flex: 0 0 auto;
-    transition: .2s opacity, .2s transform, .2s background-color;
     max-width: 11.25rem;
 
     @include text-overflow();
 
-    body.animation-level-0 & {
-      transition: none;
-    }
+    @include animation-level(2) {
+      transition: .2s opacity, .2s transform, .2s background-color;
 
-    @include hover() {
-      background-color: var(--light-danger-color);
-      cursor: pointer;
-
-      .selector-user-avatar:after {
-        opacity: 1;
-        transform: scaleX(-1) rotate(-90deg);
-      }
-    }
-
-    body:not(.animation-level-0) & {
       &.scale-in {
         animation: scaleIn .15s ease forwards;
       }
@@ -102,24 +89,21 @@
       }
     }
 
+    @include hover() {
+      background-color: var(--light-danger-color);
+      cursor: pointer;
+
+      .selector-user-avatar-close {
+        opacity: 1;
+        transform: scaleX(-1) rotate(-90deg);
+      }
+    }
+
     &-avatar {
-      float: left;
-      margin-inline-end: 8px;
-      overflow: hidden;
-      position: relative;
-      border-radius: 50% !important;
+      border-radius: inherit;
 
-      .is-rtl & {
-        float: right;
-      }
-
-      html.is-safari & {
-        -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%); // fix safari overflow
-      }
-
-      &:after {
+      &-close {
         position: absolute;
-        content: $tgico-close;
         inset-inline-start: 0;
         top: 0;
         background-color: var(--danger-color);
@@ -129,11 +113,31 @@
         font-size: 1.375rem;
         line-height: var(--size) !important;
         opacity: 0;
-        transition: .2s opacity, .2s transform;
         transform: scaleX(-1) rotate(0deg);
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
 
-        body.animation-level-0 & {
-          transition: none;
+        @include animation-level(2) {
+          transition: .2s opacity, .2s transform;
+        }
+      }
+
+      &-container {
+        float: left;
+        margin-inline-end: 8px;
+        overflow: hidden;
+        position: relative;
+        border-radius: 50% !important;
+        color: #fff;
+  
+        .is-rtl & {
+          float: right;
+        }
+  
+        html.is-safari & {
+          -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%); // fix safari overflow
         }
       }
     }
@@ -142,10 +146,6 @@
   .chatlist-container {
     height: 100%;
     flex: 1 1 auto;
-
-    /* .scrollable > :first-child {
-      margin-top: .5rem;
-    } */
 
     .scrollable {
       display: flex;

@@ -7,20 +7,36 @@
 import type {MyDocument} from '../lib/appManagers/appDocsManager';
 import {applyColorOnContext} from '../lib/rlottie/rlottiePlayer';
 import rootScope from '../lib/rootScope';
+import getStickerThumbKey from '../lib/storages/utils/thumbs/getStickerThumbKey';
 import customProperties from './dom/customProperties';
 
 const savingLottiePreview: {[docId: DocId]: {width: number, height: number}} = {};
 
 export function isSavingLottiePreview(doc: MyDocument, toneIndex: number | string, width: number, height: number) {
-  const key = doc.id + '-' + toneIndex;
+  const key = getStickerThumbKey(doc.id, toneIndex);
   const saving = savingLottiePreview[key];
   return saving && saving.width >= width && saving.height >= height;
 }
 
 let sharedCanvas: HTMLCanvasElement, sharedContext: CanvasRenderingContext2D;
+const createCanvas = () => {
+  rootScope.addEventListener('theme_change', () => {
+    rootScope.managers.thumbsStorage.clearColoredStickerThumbs();
+
+    for(const key in savingLottiePreview) {
+      const [, toneIndex] = key.split('-');
+      if(toneIndex && isNaN(+toneIndex)) {
+        delete savingLottiePreview[key];
+      }
+    }
+  });
+
+  sharedCanvas = document.createElement('canvas');
+  sharedContext = sharedCanvas.getContext('2d');
+};
 
 export async function saveLottiePreview(doc: MyDocument, canvas: HTMLCanvasElement, toneIndex: number | string) {
-  const key = doc.id + '-' + toneIndex;
+  const key = getStickerThumbKey(doc.id, toneIndex);
   const {width, height} = canvas;
   if(isSavingLottiePreview(doc, toneIndex, width, height)) {
     return;
@@ -31,7 +47,7 @@ export async function saveLottiePreview(doc: MyDocument, canvas: HTMLCanvasEleme
     height
   };
 
-  const thumb = await rootScope.managers.appDocsManager.getLottieCachedThumb(doc.id, toneIndex);
+  const thumb = await rootScope.managers.thumbsStorage.getStickerCachedThumb(doc.id, toneIndex);
   if(savingLottiePreview[key] !== saving) {
     return;
   }
@@ -42,19 +58,7 @@ export async function saveLottiePreview(doc: MyDocument, canvas: HTMLCanvasEleme
 
   if(typeof(toneIndex) === 'string') {
     if(!sharedCanvas) {
-      rootScope.addEventListener('theme_change', () => {
-        rootScope.managers.appDocsManager.clearColoredStickerThumbs();
-
-        for(const key in savingLottiePreview) {
-          const [, toneIndex] = key.split('-');
-          if(isNaN(+toneIndex)) {
-            delete savingLottiePreview[key];
-          }
-        }
-      });
-
-      sharedCanvas = document.createElement('canvas');
-      sharedContext = sharedCanvas.getContext('2d');
+      createCanvas();
     }
 
     sharedCanvas.width = width;
@@ -79,5 +83,5 @@ export async function saveLottiePreview(doc: MyDocument, canvas: HTMLCanvasEleme
     return;
   }
 
-  rootScope.managers.appDocsManager.saveLottiePreview(doc.id, blob, width, height, toneIndex);
+  rootScope.managers.thumbsStorage.saveStickerPreview(doc.id, blob, width, height, toneIndex);
 }

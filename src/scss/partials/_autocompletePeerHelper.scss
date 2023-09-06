@@ -33,13 +33,19 @@
       &-name {
         margin-left: .875rem;
         font-weight: var(--font-weight-bold);
-        flex: 0 0 auto;
+        max-width: 100%;
+        @include text-overflow();
       }
     
       &-description {
         margin-left: .5625rem;
         color: var(--secondary-text-color);
         @include text-overflow();
+      }
+
+      &-name,
+      &-description {
+        flex: 0 1 auto;
       }
 
       &-avatar {

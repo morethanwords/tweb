@@ -47,8 +47,8 @@ export default class MarkupTooltip {
 
     const tools1 = document.createElement('div');
     const tools2 = document.createElement('div');
-    tools1.classList.add('markup-tooltip-tools');
-    tools2.classList.add('markup-tooltip-tools');
+    tools1.classList.add('markup-tooltip-tools', 'markup-tooltip-tools-regular');
+    tools2.classList.add('markup-tooltip-tools', 'markup-tooltip-tools-link');
 
     const arr = ['bold', 'italic', 'underline', 'strikethrough', 'monospace', 'spoiler', 'link'] as (keyof MarkupTooltip['buttons'])[];
     arr.forEach((c) => {

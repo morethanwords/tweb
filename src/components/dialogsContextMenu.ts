@@ -15,7 +15,7 @@ import findUpTag from '../helpers/dom/findUpTag';
 import {toastNew} from './toast';
 import PopupMute from './popups/mute';
 import {AppManagers} from '../lib/appManagers/managers';
-import {GENERAL_TOPIC_ID} from '../lib/mtproto/mtproto_config';
+import {FOLDER_ID_ARCHIVE, GENERAL_TOPIC_ID} from '../lib/mtproto/mtproto_config';
 import showLimitPopup from './popups/limit';
 import createContextMenu from '../helpers/dom/createContextMenu';
 import PopupElement from './popups';
@@ -126,19 +126,19 @@ export default class DialogsContextMenu {
       icon: 'unmute',
       text: 'ChatList.Context.Unmute',
       onClick: this.onUnmuteClick,
-      verify: async() => {
-        return this.peerId !== rootScope.myId && (await this.managers.appNotificationsManager.isPeerLocalMuted({peerId: this.dialog.peerId, threadId: this.threadId}));
+      verify: () => {
+        return this.peerId !== rootScope.myId && this.managers.appNotificationsManager.isPeerLocalMuted({peerId: this.dialog.peerId, threadId: this.threadId});
       }
     }, {
       icon: 'archive',
       text: 'Archive',
       onClick: this.onArchiveClick,
-      verify: () => this.filterId === 0 && this.peerId !== rootScope.myId
+      verify: () => !this.threadId && (this.dialog as Dialog).folder_id !== FOLDER_ID_ARCHIVE && this.peerId !== rootScope.myId
     }, {
       icon: 'unarchive',
       text: 'Unarchive',
       onClick: this.onArchiveClick,
-      verify: () => this.filterId === 1 && this.peerId !== rootScope.myId
+      verify: () => this.filterId === FOLDER_ID_ARCHIVE && this.peerId !== rootScope.myId
     }, {
       icon: 'hide',
       text: 'Hide',
@@ -161,7 +161,8 @@ export default class DialogsContextMenu {
         return this.canManageTopics && !!(this.dialog as ForumTopic.forumTopic).pFlags.closed;
       }
     }, {
-      icon: 'delete danger',
+      icon: 'delete',
+      className: 'danger',
       text: 'Delete',
       onClick: this.onDeleteClick,
       verify: () => {

@@ -142,7 +142,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
       const uploadDeferred: CancellablePromise<any> = appDownloadManager.getNewDeferredForUpload(file.name, uploadPromise);
 
       const deferred = deferredPromise<void>();
-      deferred.addNotifyListener = uploadDeferred.addNotifyListener;
+      deferred.addNotifyListener = uploadDeferred.addNotifyListener.bind(uploadDeferred);
       deferred.cancel = uploadDeferred.cancel;
 
       uploadDeferred.then((wallPaper) => {
@@ -152,8 +152,8 @@ export default class AppBackgroundTab extends SliderSuperTab {
         const newKey = this.getWallPaperKey(wallPaper);
         this.elementsByKey.set(newKey, container);
 
-        AppBackgroundTab.setBackgroundDocument(wallPaper).then(deferred.resolve, deferred.reject);
-      }, deferred.reject);
+        AppBackgroundTab.setBackgroundDocument(wallPaper).then(deferred.resolve.bind(deferred), deferred.reject.bind(deferred));
+      }, deferred.reject.bind(deferred));
 
       const key = this.getWallPaperKey(wallPaper);
       deferred.catch(() => {
@@ -370,7 +370,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
         media: doc,
         queueId: appImManager.chat.bubbles ? appImManager.chat.bubbles.lazyLoadQueue.queueId : 0
       });
-      deferred.addNotifyListener = download.addNotifyListener;
+      deferred.addNotifyListener = download.addNotifyListener.bind(download);
       deferred.cancel = download.cancel;
     } else {
       download = Promise.resolve();
@@ -423,7 +423,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
             rootScope.managers.appStateManager.pushToState('settings', rootScope.settings);
           }
 
-          appImManager.applyCurrentTheme(slug, url, true).then(deferred.resolve);
+          appImManager.applyCurrentTheme(slug, url, true).then(deferred.resolve.bind(deferred));
         });
       };
 

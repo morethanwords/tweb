@@ -21,6 +21,7 @@ export default class TelegramWebView extends EventListenerBase<{
   [type in keyof TelegramWebViewEventMap]: (data: TelegramWebViewEventMap[type]) => void
 }> {
   public iframe: HTMLIFrameElement;
+  public lastDispatchedWebViewEvent: {type: keyof TelegramWebViewSendEventMap, count: number};
 
   constructor({url, sandbox, allow}: {
     url: string,
@@ -57,6 +58,11 @@ export default class TelegramWebView extends EventListenerBase<{
     eventType: T,
     eventData: TelegramWebViewSendEventMap[T]
   ) {
+    if(this.lastDispatchedWebViewEvent?.type !== eventType) {
+      this.lastDispatchedWebViewEvent = {type: eventType, count: 0};
+    }
+
+    ++this.lastDispatchedWebViewEvent.count;
     this.iframe.contentWindow.postMessage(JSON.stringify({
       eventType,
       eventData

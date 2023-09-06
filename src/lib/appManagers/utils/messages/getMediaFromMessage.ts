@@ -1,8 +1,8 @@
-import {Document, Game, Message, MessageAction, MessageExtendedMedia, MessageMedia, Photo, WebPage} from '../../../../layer';
+import {Document, Game, Message, MessageAction, MessageExtendedMedia, MessageMedia, Photo, StoryItem, WebPage} from '../../../../layer';
 
-export default function getMediaFromMessage(message: Message, onlyInner: true): Photo.photo | Document.document;
-export default function getMediaFromMessage(message: Message, onlyInner?: false): Photo.photo | Document.document | Game.game | WebPage.webPage;
-export default function getMediaFromMessage(message: Message, onlyInner = false): Photo.photo | Document.document | Game.game | WebPage.webPage {
+export default function getMediaFromMessage(message: Message | StoryItem.storyItem, onlyInner: true): Photo.photo | Document.document;
+export default function getMediaFromMessage(message: Message | StoryItem.storyItem, onlyInner?: false): Photo.photo | Document.document | Game.game | WebPage.webPage;
+export default function getMediaFromMessage(message: Message | StoryItem.storyItem, onlyInner = false): Photo.photo | Document.document | Game.game | WebPage.webPage {
   if(!message) return;
 
   let media: any;
@@ -16,7 +16,8 @@ export default function getMediaFromMessage(message: Message, onlyInner = false)
       messageMedia = ((messageMedia as MessageMedia.messageMediaInvoice).extended_media as MessageExtendedMedia.messageExtendedMedia).media;
     }
 
-    media = (messageMedia as MessageMedia.messageMediaDocument).document ||
+    media = /* (messageMedia as MessageMedia.messageMediaDocument).alt_document || */
+      (messageMedia as MessageMedia.messageMediaDocument).document ||
       (messageMedia as MessageMedia.messageMediaPhoto).photo ||
       (onlyInner ? undefined : (messageMedia as MessageMedia.messageMediaGame).game || messageMedia);
   }
