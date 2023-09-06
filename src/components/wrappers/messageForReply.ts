@@ -275,6 +275,7 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
         (message as Message.message).fromId === (message as Message.message).peerId) {
         const match = options.text.match(/[\d\-]{5,7}/);
         if(match) {
+          entities = entities.slice();
           entities.push({
             _: 'messageEntitySpoiler',
             offset: match.index,
