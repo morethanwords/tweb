@@ -13,10 +13,6 @@
       font-size: 1.25rem;
       position: relative;
 
-      &:before {
-        content: $tgico-link;
-      }
-
       &-svg {
         // --stroke-offset: 0;
         position: absolute;

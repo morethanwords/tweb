@@ -8,24 +8,25 @@ function resizeableImage(originalImage: HTMLImageElement, canvas?: HTMLCanvasEle
   let cropComponent: HTMLDivElement,
     container: HTMLDivElement,
     cropImage: HTMLImageElement,
-    event_state: Partial<{
-      mouse_x: number,
-      mouse_y: number,
-      container_width: number,
-      container_height: number,
-      container_left: number,
-      container_top: number
-    }> = {},
-    keyZoomValue = 4.0,
-    MINWIDTH = 50,
-    MINHEIGHT = 50,
-    CROPWIDTH = 200,
-    CROPHEIGHT = 200,
     cropLeft = 0,
     cropTop = 0,
     cropWidth = 0,
     cropHeight = 0,
     scaledRatio = 0;
+
+  const keyZoomValue = 4.0;
+  const event_state: Partial<{
+    mouse_x: number,
+    mouse_y: number,
+    container_width: number,
+    container_height: number,
+    container_left: number,
+    container_top: number
+  }> = {};
+  const MINWIDTH = 50,
+    MINHEIGHT = 50,
+    CROPWIDTH = 200,
+    CROPHEIGHT = 200;
 
   if(originalImage.complete) init();
   else originalImage.onload = init;
@@ -134,14 +135,12 @@ function resizeableImage(originalImage: HTMLImageElement, canvas?: HTMLCanvasEle
 
   function imgZoom(zoom: number) {
     zoom = zoom * Math.PI * 2
-    let newWidth = Math.floor(container.clientWidth + zoom),
+    const newWidth = Math.floor(container.clientWidth + zoom),
       newHeight = Math.floor(container.clientHeight + zoom),
       w = cropImage.clientWidth,
-      h = cropImage.clientHeight,
-      left: number,
-      top: number,
-      right: number,
-      bottom: number;
+      h = cropImage.clientHeight;
+    let left: number,
+      top: number;
 
     if(newWidth < MINWIDTH) {
       return;
@@ -151,8 +150,8 @@ function resizeableImage(originalImage: HTMLImageElement, canvas?: HTMLCanvasEle
 
     left = container.offsetLeft - (zoom / 2);
     top = container.offsetTop - (zoom / 2);
-    right = left + newWidth;
-    bottom = top + newHeight;
+    const right = left + newWidth;
+    const bottom = top + newHeight;
 
     if(left < 0) left = 0;
     if(top < 0) top = 0;
@@ -206,11 +205,7 @@ function resizeableImage(originalImage: HTMLImageElement, canvas?: HTMLCanvasEle
   }
 
   function moving(e: any) {
-    let currentTouch = {x: 0, y: 0},
-      left: number,
-      top: number,
-      w: number,
-      h: number;
+    const currentTouch = {x: 0, y: 0};
 
     e.preventDefault();
     e.stopPropagation();
@@ -218,10 +213,10 @@ function resizeableImage(originalImage: HTMLImageElement, canvas?: HTMLCanvasEle
     currentTouch.x = e.pageX || e.touches && e.touches[0].pageX;
     currentTouch.y = e.pageY || e.touches && e.touches[0].pageY;
 
-    left = currentTouch.x - (event_state.mouse_x - event_state.container_left);
-    top = currentTouch.y - (event_state.mouse_y - event_state.container_top);
-    w = container.offsetWidth;
-    h = container.offsetHeight;
+    let left = currentTouch.x - (event_state.mouse_x - event_state.container_left);
+    let top = currentTouch.y - (event_state.mouse_y - event_state.container_top);
+    const w = container.offsetWidth;
+    const h = container.offsetHeight;
 
     if(left < 0) left = 0;
     else if(left > cropImage.offsetWidth - w) left = cropImage.offsetWidth - w;

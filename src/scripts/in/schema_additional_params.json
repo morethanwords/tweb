@@ -91,7 +91,6 @@
   "predicate": "message",
   "params": [
     {"name": "mid", "type": "number"},
-    {"name": "deleted", "type": "boolean"},
     {"name": "peerId", "type": "PeerId"},
     {"name": "fromId", "type": "PeerId"},
     {"name": "fwdFromId", "type": "PeerId"},

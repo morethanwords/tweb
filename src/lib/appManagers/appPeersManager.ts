@@ -22,6 +22,7 @@ import getPeerActiveUsernames from './utils/peers/getPeerActiveUsernames';
 import isPeerRestricted from './utils/peers/isPeerRestricted';
 import getPeerPhoto from './utils/peers/getPeerPhoto';
 import getServerMessageId from './utils/messageId/getServerMessageId';
+import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
 
 export type PeerType = 'channel' | 'chat' | 'megagroup' | 'group' | 'saved';
 export class AppPeersManager extends AppManager {
@@ -294,6 +295,22 @@ export class AppPeersManager extends AppManager {
       const chat = this.appChatsManager.getChat(peerId.toChatId());
       return !!(chat as Chat.chat).pFlags?.noforwards;
     }
+  }
+
+  public mirrorAllPeers(port?: MessageEventSource) {
+    const peers: any = {
+      ...this.appUsersManager.getUsers()
+    };
+
+    const chats = this.appChatsManager.getChats();
+    for(const chatId in chats) {
+      peers[chatId.toPeerId(true)] = chats[chatId];
+    }
+
+    MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
+      name: 'peers',
+      value: peers
+    }, port);
   }
 }
 

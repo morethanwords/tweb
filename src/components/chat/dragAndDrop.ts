@@ -6,6 +6,7 @@
 
 import generatePathData from '../../helpers/generatePathData';
 import {FormatterArguments, i18n, LangPackKey} from '../../lib/langPack';
+import Icon from '../icon';
 
 export default class ChatDragAndDrop {
   container: HTMLDivElement;
@@ -14,7 +15,7 @@ export default class ChatDragAndDrop {
   path: SVGPathElement;
 
   constructor(appendTo: HTMLElement, private options: {
-    icon?: string,
+    icon?: Icon,
     header: LangPackKey,
     headerArgs?: FormatterArguments,
     subtitle?: LangPackKey,
@@ -35,7 +36,9 @@ export default class ChatDragAndDrop {
     let dropIcon: HTMLElement;
     if(options.icon) {
       dropIcon = document.createElement('div');
-      dropIcon.classList.add('drop-icon', 'tgico-' + options.icon);
+      dropIcon.classList.add('drop-icon');
+      dropIcon.append(Icon(options.icon));
+      this.container.classList.add('has-icon');
     }
 
     const dropHeader = document.createElement('div');
@@ -52,7 +55,7 @@ export default class ChatDragAndDrop {
     this.svg.append(this.path);
     this.outlineWrapper.append(this.svg);
 
-    this.container.append(...[this.outlineWrapper, dropIcon, dropHeader, dropSubtitle].filter(Boolean));
+    this.container.append(...[dropIcon, dropHeader, dropSubtitle, this.outlineWrapper].filter(Boolean));
     appendTo.append(this.container);
 
     this.container.addEventListener('dragover', this.onDragOver);

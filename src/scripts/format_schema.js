@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-let json = require('./in/schema');
+let json = require(__dirname + '/in/schema');
 
 let top = {};
 /* ['MTProto', 'API'].forEach(key => {
@@ -80,4 +80,4 @@ top = json;
 
 //console.log(out);
 
-require('fs').writeFileSync('./out/schema.json', JSON.stringify(top/* , null, '\t' */));
+require('fs').writeFileSync(__dirname + '/out/schema.json', JSON.stringify(top/* , null, '\t' */));

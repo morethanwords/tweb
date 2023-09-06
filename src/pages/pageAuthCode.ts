@@ -18,6 +18,7 @@ import lottieLoader from '../lib/rlottie/lottieLoader';
 import RLottiePlayer from '../lib/rlottie/rlottiePlayer';
 import setBlankToAnchor from '../lib/richTextProcessor/setBlankToAnchor';
 import {attachClickEvent} from '../helpers/dom/clickEvent';
+import Icon from '../components/icon';
 
 let authSentCode: AuthSentCode.authSentCode = null;
 
@@ -111,6 +112,7 @@ const onFirstMount = () => {
   page.pageEl.querySelector('.input-wrapper').append(codeInputField.container);
 
   const editButton = page.pageEl.querySelector('.phone-edit') as HTMLElement;
+  editButton.append(Icon('edit'));
   attachClickEvent(editButton, () => {
     return pageSignIn.mount();
   });

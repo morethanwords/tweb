@@ -37,7 +37,7 @@ export default class StickersHelper extends AutocompleteHelper {
       controller,
       listType: 'xy',
       onSelect: async(target) => {
-        return !(await EmoticonsDropdown.onMediaClick({target}, true));
+        return !(await this.chat.input.emoticonsDropdown.onMediaClick({target}, true));
       },
       waitForKey: ['ArrowUp', 'ArrowDown']
     });

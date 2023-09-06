@@ -49,7 +49,7 @@
   /* background: transparent;
   border-radius: inherit; */
 
-  html.is-safari &:not(:empty) {
+  html.is-safari & {
     -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%); // fix safari overflow
     border-radius: inherit;
   }

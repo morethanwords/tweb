@@ -55,13 +55,13 @@
         transform: translate(0, 0);
       }
 
-      &:before {
-        content: " ";
-        top: 0;
-        right: 0;
-        bottom: 0;
-        left: 0;
-      }
+      // &:before {
+      //   content: " ";
+      //   top: 0;
+      //   right: 0;
+      //   bottom: 0;
+      //   left: 0;
+      // }
     }
 
     &-avatar {
@@ -73,9 +73,13 @@
       background-color: #000;
       position: relative;
 
+      .avatar-full {
+        --multiplier: 0.2;
+      }
+
       .avatar-photo {
-        width: 100%;
-        height: 100%;
+        width: 100% !important;
+        height: 100% !important;
         object-fit: cover;
         pointer-events: none;
       }
@@ -169,7 +173,7 @@
       width: calc(100% / 3);
       opacity: 0;
 
-      &:before {
+      &-icon {
         position: absolute;
         top: 50%;
         transform: translateY(-50%);
@@ -199,7 +203,7 @@
         left: auto;
         right: 0;
         
-        &:before {
+        .profile-avatars-arrow-icon {
           left: auto;
           right: .625rem;
         }
@@ -305,7 +309,7 @@
     display: flex;
     align-items: flex-end;
 
-    span.emoji {
+    .emoji-native {
       vertical-align: inherit;
       min-width: min-content;
     }

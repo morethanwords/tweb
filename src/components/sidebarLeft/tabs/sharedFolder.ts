@@ -11,7 +11,7 @@ import shake from '../../../helpers/dom/shake';
 import toggleDisability from '../../../helpers/dom/toggleDisability';
 import ListenerSetter from '../../../helpers/listenerSetter';
 import {Chat, DialogFilter, ExportedChatlistInvite, User} from '../../../layer';
-import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
+import appDialogsManager, {DialogElement} from '../../../lib/appManagers/appDialogsManager';
 import appImManager from '../../../lib/appManagers/appImManager';
 import hasRights from '../../../lib/appManagers/utils/chats/hasRights';
 import getPeerActiveUsernames from '../../../lib/appManagers/utils/peers/getPeerActiveUsernames';
@@ -142,7 +142,7 @@ export default class AppSharedFolderTab extends SliderSuperTabEventable<{
   public chatlistInvite: ExportedChatlistInvite;
   private selector: AppSelectPeers;
 
-  private elementMap: Map<PeerId, HTMLElement>;
+  private elementMap: Map<PeerId, DialogElement>;
 
   public isConfirmationNeededOnClose = () => {
     if(this.confirmBtn.classList.contains('hide')) return;
@@ -195,7 +195,8 @@ export default class AppSharedFolderTab extends SliderSuperTabEventable<{
           text: 'CopyLink',
           onClick: () => inviteLink.copyLink()
         }, {
-          icon: 'delete danger',
+          icon: 'delete',
+          className: 'danger',
           text: 'DeleteLink',
           onClick: () => {
             this.managers.filtersStorage.deleteExportedInvite(
@@ -261,8 +262,9 @@ export default class AppSharedFolderTab extends SliderSuperTabEventable<{
 
       const _add = this.selector.add.bind(this.selector);
       this.selector.add = (...args) => {
-        const peerId = args[0].toPeerId();
-        const container = this.elementMap.get(peerId as PeerId);
+        const peerId = args[0].key.toPeerId();
+        const dialogElement = this.elementMap.get(peerId as PeerId);
+        const {container} = dialogElement;
         if(container.classList.contains('cant-select')) {
           let langPackKey: LangPackKey;
           if(peerId.isUser()) {
@@ -284,7 +286,7 @@ export default class AppSharedFolderTab extends SliderSuperTabEventable<{
       this.selector.remove = (...args) => {
         const peerId = args[0].toPeerId();
         if(this.selector.selected.size <= 1) {
-          shake(this.elementMap.get(peerId));
+          shake(this.elementMap.get(peerId).container);
           return false;
         }
 
@@ -361,15 +363,20 @@ export default class AppSharedFolderTab extends SliderSuperTabEventable<{
     const promises = peerIds.map(async(peerId) => {
       const peer = await this.managers.appPeersManager.getPeer(peerId);
 
-      const {dom} = appDialogsManager.addDialogNew({
+      const dialogElement = appDialogsManager.addDialogNew({
         peerId,
         container: this.selector.scrollable,
         rippleEnabled: true,
         avatarSize: 'abitbigger',
-        meAsSaved: false
+        meAsSaved: false,
+        wrapOptions: {
+          middleware: this.middlewareHelper.get()
+        }
       });
 
-      this.elementMap.set(peerId, dom.containerEl);
+      const {dom} = dialogElement;
+
+      this.elementMap.set(peerId, dialogElement);
 
       const selected = this.selector.selected.has(peerId);
       dom.containerEl.append(this.selector.checkbox(selected));

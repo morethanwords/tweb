@@ -11,7 +11,12 @@ export default function throttle<F extends AnyToVoidFunction>(
   let isPending: boolean;
   let args: Parameters<F>;
 
-  return (..._args: Parameters<F>) => {
+  const clear = () => {
+    clearInterval(interval!);
+    interval = null;
+  };
+
+  const ret = (..._args: Parameters<F>) => {
     isPending = true;
     args = _args;
 
@@ -24,8 +29,7 @@ export default function throttle<F extends AnyToVoidFunction>(
 
       interval = setInterval(() => {
         if(!isPending) {
-          clearInterval(interval!);
-          interval = null;
+          clear();
           return;
         }
 
@@ -35,4 +39,8 @@ export default function throttle<F extends AnyToVoidFunction>(
       }, ms) as any;
     }
   };
+
+  ret.clear = clear;
+
+  return ret;
 }

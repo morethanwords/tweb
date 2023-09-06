@@ -7,7 +7,8 @@
 import PopupElement, {PopupOptions} from '.';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import mediaSizes from '../../helpers/mediaSizes';
-import I18n, {FormatterArguments, i18n, LangPackKey} from '../../lib/langPack';
+import I18n from '../../lib/langPack';
+import ButtonIcon from '../buttonIcon';
 import InputField from '../inputField';
 
 export default class PopupDatePicker extends PopupElement {
@@ -71,12 +72,10 @@ export default class PopupDatePicker extends PopupElement {
     this.controlsDiv = document.createElement('div');
     this.controlsDiv.classList.add('date-picker-controls');
 
-    this.prevBtn = document.createElement('button');
-    this.prevBtn.classList.add('btn-icon', 'tgico-down', 'date-picker-prev');
+    this.prevBtn = ButtonIcon('down date-picker-prev', {noRipple: true});
     attachClickEvent(this.prevBtn, this.onPrevClick, {listenerSetter: this.listenerSetter});
 
-    this.nextBtn = document.createElement('button');
-    this.nextBtn.classList.add('btn-icon', 'tgico-down', 'date-picker-next');
+    this.nextBtn = ButtonIcon('down date-picker-next', {noRipple: true});
     attachClickEvent(this.nextBtn, this.onNextClick, {listenerSetter: this.listenerSetter});
 
     this.monthTitle = document.createElement('div');

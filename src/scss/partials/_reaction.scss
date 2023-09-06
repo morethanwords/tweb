@@ -32,6 +32,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    pointer-events: none;
     
     &-activate {
       position: absolute;
@@ -49,7 +50,7 @@
       }
     }
 
-    &:not(.is-static):not(.is-custom) {
+    &.is-regular {
       .media-sticker {
         --size: calc(var(--reaction-size) + var(--reaction-offset) * -2);
         width: var(--size) !important;
@@ -69,10 +70,6 @@
       .custom-emoji,
       .media-sticker {
         border-radius: inherit;
-      }
-
-      .custom-emoji-canvas {
-        z-index: auto;
       }
     }
   }

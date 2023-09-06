@@ -122,7 +122,7 @@ export default class PopupPickUser extends PopupElement {
   }
 
   public static createSharingPicker(onSelect: ConstructorParameters<typeof PopupPickUser>[0]['onSelect']) {
-    PopupElement.createPopup(PopupPickUser, {
+    return PopupElement.createPopup(PopupPickUser, {
       peerType: ['dialogs', 'contacts'],
       onSelect,
       placeholder: 'ShareModal.Search.Placeholder',

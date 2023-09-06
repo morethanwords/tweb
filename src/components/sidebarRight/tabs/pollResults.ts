@@ -13,6 +13,7 @@ import setInnerHTML from '../../../helpers/dom/setInnerHTML';
 import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
 import Button from '../../button';
 import {Message, MessageMedia} from '../../../layer';
+import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';
 
 export default class AppPollResultsTab extends SliderSuperTab {
   private resultsDiv: HTMLElement;
@@ -75,11 +76,15 @@ export default class AppPollResultsTab extends SliderSuperTab {
         this.managers.appPollsManager.getVotes(message, answer.option, offset, limit).then((votesList) => {
           votesList.votes.forEach((vote) => {
             const {dom} = appDialogsManager.addDialogNew({
-              peerId: vote.user_id.toPeerId(false),
+              peerId: getPeerId(vote.peer),
               container: list,
               rippleEnabled: false,
               meAsSaved: false,
-              avatarSize: 'small'
+              avatarSize: 'small',
+              withStories: false,
+              wrapOptions: {
+                middleware: this.middlewareHelper.get()
+              }
             });
             dom.lastMessageSpan.parentElement.remove();
           });

@@ -18,7 +18,7 @@
   font-weight: var(--font-weight-bold);
 }
 
-avatar-element {
+.avatar {
   --color-top: var(--avatar-color-top);
   --color-bottom: var(--avatar-color-bottom);
   border-radius: 50%;
@@ -60,38 +60,31 @@ avatar-element {
     --color-bottom: var(--peer-avatar-blue-bottom);
   }
 
-  &.tgico:before {
-    font-size: calc(32px / var(--multiplier));
-  }
-
-  &.tgico-calendarfilter:before {
-    font-size: calc(36px / var(--multiplier));
-  }
-
-  &.tgico-saved:before {
-    font-size: calc(30px / var(--multiplier)) !important; // ! IMPORTANT IS TEMPORARY
-  }
-
-  &.tgico-reply_filled:before {
-    font-size: calc(28px / var(--multiplier)) !important; // ! IMPORTANT IS TEMPORARY
-  }
-
-  /* &.tgico-savedmessages:before {
-    font-size: calc(25px / var(--multiplier));
-  } */
-
-  &.tgico-deletedaccount {
-    overflow: hidden;
+  &[data-color="archive"] {
     --color-top: var(--peer-avatar-archive-top);
     --color-bottom: var(--peer-avatar-archive-bottom);
-
-    &:before {
-      font-size: calc(30px / var(--multiplier));
-    }
   }
 
-  &:before {
+  &-icon {
+    font-size: calc(32px / var(--multiplier));
     line-height: inherit !important;
+
+    &-calendarfilter {
+      font-size: calc(36px / var(--multiplier));
+    }
+
+    &-saved {
+      font-size: calc(30px / var(--multiplier)) !important; // ! IMPORTANT IS TEMPORARY
+    }
+
+    &-reply_filled {
+      font-size: calc(28px / var(--multiplier)) !important; // ! IMPORTANT IS TEMPORARY
+    }
+
+    &-deletedaccount {
+      overflow: hidden;
+      font-size: calc(30px / var(--multiplier));
+    }
   }
 
   &.media-container {
@@ -111,7 +104,7 @@ avatar-element {
   //   }
   // }
   
-  img {
+  &-photo {
     //width: 100% !important;
     //height: 100% !important;
     width: var(--size) !important;
@@ -174,104 +167,161 @@ avatar-element {
     position: relative;
   }
 
-  /* &.avatar-54 {
-    width: 54px;
-    height: 54px;
-    line-height: 54px;
-    font-size: 1.25rem;
+  .avatar-stories-svg {
+    position: absolute;
+    inset: var(--offset);
+    width: calc(100% + var(--offset) * -2);
+    height: calc(100% + var(--offset) * -2);
 
-    &.tgico-savedmessages:before {
-      font-size: 26px;
-    }
+    &-circle {
+      // transform: rotate(126deg);
+      // transform-origin: center;
+      stroke-width: calc(var(--stroke-width) / 2);
+      stroke: var(--secondary-color);
 
-    &.tgico-avatar_deletedaccount:before {
-      font-size: 56px;
+      &.is-unread {
+        stroke-width: var(--stroke-width);
+        stroke: url(#stories-gradient);
+      }
     }
-  } */
+  }
+
+  &.has-stories {
+    // --stories-size: calc(var(--size) - 6px);
+    // width: var(--stories-size) !important;
+    // height: var(--stories-size) !important;
+    position: relative;
+    background: none;
+    pointer-events: all;
+
+    .avatar {
+      position: relative;
+    }
+  }
 
   // * can get multiplier by diving 54 / X
-  &.avatar-120 {
+  &-162 {
+    --size: 162px;
+    --multiplier: .333333;
+  }
+
+  &-144 {
+    --size: 144px;
+    --multiplier: .375;
+  }
+
+  &-120 {
     --size: 120px;
     --multiplier: .45;
   }
 
-  &.avatar-100 {
+  &-128 {
+    --size: 128px;
+    --multiplier: .421875;
+  }
+
+  &-100 {
     --size: 100px;
     --multiplier: .54;
   }
 
-  &.avatar-48 {
+  &-107 {
+    --size: 107px;
+    --multiplier: .504672;
+  }
+
+  &-86 {
+    --size: 86px;
+    --multiplier: .627907;
+  }
+
+  &-89 {
+    --size: 89px;
+    --multiplier: .606742;
+  }
+
+  &-76 {
+    --size: 76px;
+    --multiplier: .710526;
+  }
+
+  &-48 {
     --size: 48px;
     --multiplier: 1.125;
   }
 
-  &.avatar-46 {
+  &-46 {
     --size: 46px;
     --multiplier: 1.173913;
   }
 
-  &.avatar-44 {
+  &-44 {
     --size: 44px;
     --multiplier: 1.227272;
   }
 
-  &.avatar-42 {
+  &-42 {
     --size: 42px;
     --multiplier: 1.285714;
   }
 
-  &.avatar-40 {
+  &-40 {
     --size: 40px;
     --multiplier: 1.35;
   }
 
-  &.avatar-36 {
+  &-37 {
+    --size: 37px;
+    --multiplier: 1.459459;
+  }
+
+  &-36 {
     --size: 36px;
     --multiplier: 1.5;
   }
 
-  &.avatar-35 {
+  &-35 {
     --size: 35px;
     --multiplier: 1.542857;
   }
 
-  &.avatar-34 {
+  &-34 {
     --size: 34px;
     --multiplier: 1.588235;
   }
 
-  &.avatar-32 {
+  &-32 {
     --size: 32px;
     --multiplier: 1.6875;
   }
 
-  &.avatar-30 {
+  &-30 {
     --size: 30px;
     // --multiplier: 1.8; // text won't be centered
     --multiplier: 1.6875;
   }
 
-  &.avatar-26 {
+  &-26 {
     --size: 26px;
     --multiplier: 2.076923;
   }
 
-  &.avatar-24 {
+  &-24 {
     --size: 24px;
     --multiplier: 2.25;
   }
 
-  &.avatar-22 {
+  &-22 {
     --size: 22px;
     --multiplier: 2.454545;
   }
 
-  &.avatar-18 {
+  &-18 {
     --size: 18px;
     --multiplier: 3;
   }
 
-  &.avatar-16 {
+  &-16 {
     --size: 16px;
     --multiplier: 3.375;
   }

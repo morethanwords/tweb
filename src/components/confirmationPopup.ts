@@ -35,6 +35,11 @@ export default function confirmationPopup<T extends PopupConfirmationOptions>(
     options.buttons = buttons;
     options.checkboxes ??= checkbox && [checkbox];
 
-    PopupElement.createPopup(PopupPeer, 'popup-confirmation', options).show();
+    const popup = PopupElement.createPopup(PopupPeer, 'popup-confirmation', options);
+    popup.addEventListener('closeAfterTimeout', () => {
+      reject();
+    });
+
+    popup.show();
   });
 }

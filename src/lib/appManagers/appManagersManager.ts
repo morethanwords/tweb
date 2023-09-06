@@ -17,6 +17,9 @@ import createManagers from './createManagers';
 
 type Managers = Awaited<ReturnType<typeof createManagers>>;
 
+// for testing cases without video streaming
+const CAN_USE_SERVICE_WORKER = true;
+
 export class AppManagersManager {
   private managers: Managers | Promise<Managers>;
   private cryptoWorkersURLs: string[];
@@ -29,7 +32,7 @@ export class AppManagersManager {
   private _serviceMessagePort: MessagePort
 
   constructor() {
-    this._isServiceWorkerOnline = true;
+    this._isServiceWorkerOnline = CAN_USE_SERVICE_WORKER;
 
     this.cryptoWorkersURLs = [];
     this.cryptoPortsAttached = 0;
@@ -102,7 +105,7 @@ export class AppManagersManager {
   }
 
   public set isServiceWorkerOnline(value) {
-    this._isServiceWorkerOnline = value;
+    this._isServiceWorkerOnline = CAN_USE_SERVICE_WORKER ? value : false;
   }
 
   public getServiceMessagePort() {

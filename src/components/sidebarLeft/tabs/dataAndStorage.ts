@@ -22,6 +22,7 @@ import AppAutoDownloadFileTab from './autoDownload/file';
 import AppAutoDownloadPhotoTab from './autoDownload/photo';
 import AppAutoDownloadVideoTab from './autoDownload/video';
 import SettingSection from '../../settingSection';
+import {joinDeepPath} from '../../../helpers/object/setDeepProperty';
 
 const AUTO_DOWNLOAD_FOR_KEYS: {[k in keyof AutoDownloadPeerTypeSettings]: LangPackKey} = {
   contacts: 'AutoDownloadContacts',
@@ -132,7 +133,7 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
           row.container.classList.toggle('is-disabled', disabled);
         });
 
-        this.managers.appStateManager.setByKey('settings.autoDownloadNew', autoDownloadNew);
+        this.managers.appStateManager.setByKey(joinDeepPath('settings', 'autoDownloadNew'), autoDownloadNew);
 
         onChange();
       };

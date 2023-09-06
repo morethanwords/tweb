@@ -14,16 +14,15 @@ import blur from './blur';
 export default function getImageFromStrippedThumb(
   photo: MyPhoto | MyDocument,
   thumb: PhotoSize.photoCachedSize | PhotoSize.photoStrippedSize,
-  useBlur: boolean
+  useBlur: boolean | number,
+  url = getPreviewURLFromThumb(photo, thumb, false)
 ) {
-  const url = getPreviewURLFromThumb(photo, thumb, false);
-
   let element: HTMLImageElement | HTMLCanvasElement, loadPromise: Promise<void>;
   if(!useBlur) {
     element = new Image();
     loadPromise = renderImageFromUrlPromise(element, url);
   } else {
-    const result = blur(url);
+    const result = blur(url, typeof(useBlur) === 'number' ? useBlur : undefined);
     element = result.canvas;
     loadPromise = result.promise;
   }

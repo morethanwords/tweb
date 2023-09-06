@@ -9,6 +9,7 @@ import type {InputFile} from '../layer';
 import {attachClickEvent} from '../helpers/dom/clickEvent';
 import PopupElement from './popups';
 import PopupAvatar from './popups/avatar';
+import Icon from './icon';
 
 export default class AvatarEdit {
   public container: HTMLElement;
@@ -22,8 +23,7 @@ export default class AvatarEdit {
     this.canvas = document.createElement('canvas');
     this.canvas.classList.add('avatar-edit-canvas');
 
-    this.icon = document.createElement('span');
-    this.icon.classList.add('tgico', 'tgico-cameraadd');
+    this.icon = Icon('cameraadd', 'avatar-edit-icon');
 
     this.container.append(this.canvas, this.icon);
 

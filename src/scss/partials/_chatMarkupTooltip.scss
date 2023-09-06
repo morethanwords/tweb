@@ -57,11 +57,11 @@
 		flex: 0 0 auto;
 		max-width: 100%;
 
-		&:first-child {
+		&-regular {
 			width: $widthRegular;
 		}
 
-		&:last-child {
+		&-link {
 			width: $widthLink;
 
 			.markup-tooltip-delimiter {

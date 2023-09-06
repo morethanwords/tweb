@@ -20,6 +20,7 @@ import {logger} from '../logger';
 import {State} from '../../config/state';
 import toggleStorages from '../../helpers/toggleStorages';
 import appTabsManager from '../appManagers/appTabsManager';
+import callbackify from '../../helpers/callbackify';
 
 const log = logger('MTPROTO');
 // let haveState = false;
@@ -101,9 +102,19 @@ appManagersManager.start();
 appManagersManager.getManagers();
 appTabsManager.start();
 
+let isFirst = true;
 // let sentHello = false;
 listenMessagePort(port, (source) => {
   appTabsManager.addTab(source);
+  if(isFirst) {
+    isFirst = false;
+  } else {
+    callbackify(appManagersManager.getManagers(), (managers) => {
+      managers.thumbsStorage.mirrorAll(source);
+      managers.appPeersManager.mirrorAllPeers(source);
+      managers.appMessagesManager.mirrorAllMessages(source);
+    });
+  }
 
   // port.invokeVoid('hello', undefined, source);
   // if(!sentHello) {

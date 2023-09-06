@@ -1,6 +1,6 @@
 export default function generateVerifiedIcon() {
   const span = document.createElement('span');
-  span.classList.add('verified-icon', 'tgico');
+  span.classList.add('verified-icon');
 
   const size = 26; // 24
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');

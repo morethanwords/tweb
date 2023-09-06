@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import emoticonsDropdown, {EmoticonsDropdown, EmoticonsTab, EMOTICONSSTICKERGROUP} from '..';
+import {EmoticonsDropdown, EmoticonsTab, EMOTICONSSTICKERGROUP} from '..';
 import GifsMasonry from '../../gifsMasonry';
 import Scrollable from '../../scrollable';
 import {putPreloader} from '../../putPreloader';
@@ -15,6 +15,7 @@ export default class GifsTab implements EmoticonsTab {
   public content: HTMLElement;
   public scrollable: Scrollable;
   public tabId: number;
+  public emoticonsDropdown: EmoticonsDropdown;
 
   constructor(private managers: AppManagers) {
 
@@ -23,7 +24,7 @@ export default class GifsTab implements EmoticonsTab {
   init() {
     this.content = document.getElementById('content-gifs');
     const gifsContainer = this.content.firstElementChild as HTMLDivElement;
-    attachClickEvent(gifsContainer, EmoticonsDropdown.onMediaClick);
+    attachClickEvent(gifsContainer, this.emoticonsDropdown.onMediaClick);
 
     const scroll = this.scrollable = new Scrollable(this.content, 'GIFS');
     const masonry = new GifsMasonry(gifsContainer, EMOTICONSSTICKERGROUP, scroll);
@@ -37,7 +38,7 @@ export default class GifsTab implements EmoticonsTab {
       preloader.remove();
     });
 
-    emoticonsDropdown.addLazyLoadQueueRepeat(masonry.lazyLoadQueue, masonry.processInvisibleDiv);
+    this.emoticonsDropdown.addLazyLoadQueueRepeat(masonry.lazyLoadQueue, masonry.processInvisibleDiv);
 
     this.init = null;
   }

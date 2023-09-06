@@ -5,18 +5,17 @@
  */
 
 import type {LiteModeKey} from '../helpers/liteMode';
-import {CustomEmojiElement, CustomEmojiRendererElement} from '../lib/richTextProcessor/wrapRichText';
+import type RLottiePlayer from '../lib/rlottie/rlottiePlayer';
 import rootScope from '../lib/rootScope';
 import {IS_SAFARI} from '../environment/userAgent';
 import {MOUNT_CLASS_TO} from '../config/debug';
 import isInDOM from '../helpers/dom/isInDOM';
-import RLottiePlayer from '../lib/rlottie/rlottiePlayer';
 import indexOfAndSplice from '../helpers/array/indexOfAndSplice';
 import forEachReverse from '../helpers/array/forEachReverse';
 import idleController from '../helpers/idleController';
-import appMediaPlaybackController from './appMediaPlaybackController';
 import {fastRaf} from '../helpers/schedulers';
 import {Middleware} from '../helpers/middleware';
+import safePlay from '../helpers/dom/safePlay';
 
 export type AnimationItemGroup = '' | 'none' | 'chat' | 'lock' |
   'STICKERS-POPUP' | 'emoticons-dropdown' | 'STICKERS-SEARCH' | 'GIFS-SEARCH' |
@@ -27,8 +26,11 @@ export interface AnimationItem {
   group: AnimationItemGroup,
   animation: AnimationItemWrapper,
   liteModeKey?: LiteModeKey,
-  controlled?: boolean | Middleware
+  controlled?: boolean | Middleware,
+  type: AnimationItemType
 };
+
+export type AnimationItemType = 'lottie' | 'dots' | 'video' | 'emoji';
 
 export interface AnimationItemWrapper {
   remove: () => void;
@@ -83,9 +85,9 @@ export class AnimationIntersector {
             this.checkAnimation(animation, true);
 
             const _animation = animation.animation;
-            if(_animation instanceof RLottiePlayer/*  && animation.cachingDelta === 2 */) {
+            if(animation.type === 'lottie'/*  && animation.cachingDelta === 2 */) {
               // console.warn('will clear cache', player);
-              _animation.clearCache();
+              (_animation as RLottiePlayer).clearCache();
             }/*  else if(animation instanceof HTMLVideoElement && animation.src) {
               animation.dataset.src = animation.src;
               animation.src = '';
@@ -109,23 +111,21 @@ export class AnimationIntersector {
     this.intersectionLockedGroups = {};
     this.videosLocked = false;
 
-    appMediaPlaybackController.addEventListener('play', ({doc}) => {
-      if(doc.type === 'round') {
-        this.videosLocked = true;
-        this.checkAnimations2();
-      }
+    idleController.addEventListener('change', (idle) => {
+      this.checkAnimations2(idle);
     });
+  }
 
-    appMediaPlaybackController.addEventListener('pause', () => {
+  public toggleMediaPause(paused: boolean) {
+    if(paused) {
       if(this.videosLocked) {
         this.videosLocked = false;
         this.checkAnimations2();
       }
-    });
-
-    idleController.addEventListener('change', (idle) => {
-      this.checkAnimations2(idle);
-    });
+    } else {
+      this.videosLocked = true;
+      this.checkAnimations2();
+    }
   }
 
   public setOverrideIdleGroup(group: string, override: boolean) {
@@ -148,14 +148,14 @@ export class AnimationIntersector {
 
   public removeAnimation(player: AnimationItem) {
     const {el, animation} = player;
-    if(!(animation instanceof HTMLVideoElement)) {
+    if(!player.controlled && player.type !== 'video') {
       animation.remove();
     }
 
-    if(animation instanceof HTMLVideoElement && IS_SAFARI) {
+    if(player.type === 'video' && IS_SAFARI) {
       setTimeout(() => { // TODO: очистка по очереди, а не все вместе с этим таймаутом
-        animation.src = '';
-        animation.load();
+        (animation as HTMLVideoElement).src = '';
+        (animation as HTMLVideoElement).load();
       }, 1e3);
     }
 
@@ -182,25 +182,14 @@ export class AnimationIntersector {
   public addAnimation(options: {
     animation: AnimationItem['animation'],
     group?: AnimationItemGroup,
-    observeElement?: HTMLElement,
+    observeElement: HTMLElement,
     controlled?: AnimationItem['controlled'],
     liteModeKey?: LiteModeKey
+    type: AnimationItemType
   }) {
-    let {animation, group = '', observeElement, controlled, liteModeKey} = options;
+    const {animation, group = '', observeElement, controlled, liteModeKey, type} = options;
     if(group === 'none' || this.byPlayer.has(animation)) {
       return;
-    }
-
-    if(!observeElement) {
-      if(animation instanceof RLottiePlayer) {
-        observeElement = animation.el[0];
-      } else if(animation instanceof CustomEmojiRendererElement) {
-        observeElement = animation.canvas;
-      } else if(animation instanceof CustomEmojiElement) {
-        observeElement = animation.placeholder ?? animation;
-      } else if(animation instanceof HTMLElement) {
-        observeElement = animation;
-      }
     }
 
     const item: AnimationItem = {
@@ -208,7 +197,8 @@ export class AnimationIntersector {
       animation: animation,
       group,
       controlled,
-      liteModeKey
+      liteModeKey,
+      type
     };
 
     if(controlled && typeof(controlled) !== 'boolean') {
@@ -217,7 +207,7 @@ export class AnimationIntersector {
       });
     }
 
-    if(animation instanceof RLottiePlayer) {
+    if(item.type === 'lottie') {
       if(!rootScope.settings.stickers.loop && animation.loop) {
         animation.loop = rootScope.settings.stickers.loop;
       }
@@ -273,7 +263,7 @@ export class AnimationIntersector {
 
     if(blurred ||
       (this.onlyOnePlayableGroup && this.onlyOnePlayableGroup !== group) ||
-      (animation instanceof HTMLVideoElement && this.videosLocked)
+      (player.type === 'video' && this.videosLocked)
     ) {
       if(!animation.paused) {
         // console.warn('pause animation:', animation);
@@ -286,7 +276,7 @@ export class AnimationIntersector {
       (!idleController.isIdle || this.overrideIdleGroups.has(player.group))
     ) {
       // console.warn('play animation:', animation);
-      animation.play();
+      safePlay(animation);
     }
   }
 
@@ -356,7 +346,7 @@ export class AnimationIntersector {
     this.byPlayer.forEach((animationItem, animation) => {
       if(!!+animationItem.el.dataset.stickerLoop &&
         animation.loop !== loop &&
-        (animation instanceof RLottiePlayer || animation instanceof HTMLVideoElement)) {
+        (animationItem.type === 'lottie' || animationItem.type === 'video')) {
         changed = true;
         animation.loop = loop;
 

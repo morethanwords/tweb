@@ -6,7 +6,6 @@
 
 .ckin {
   &__player {
-    letter-spacing: 0.02em;
     user-select: none;
 
     &.ckin__fullscreen {
@@ -20,7 +19,6 @@
       z-index: 10000000;
       background: #000;
       border-radius: 0 !important;
-      display: -ms-flexbox;
       display: flex;
     
       video {
@@ -47,8 +45,6 @@
 .default {
   position: relative;
   font-size: 0;
-  //overflow: hidden;
-  //border-radius: 5px;
   display: flex;
 	align-items: center;
 	justify-content: center;
@@ -57,25 +53,9 @@
     cursor: pointer;
   }
 
-  /* &:before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    right: 0;
-    transition: opacity .2s;
-    opacity: 1;
-    visibility: visible;
-  } */
-
   &__button {
     color: #fff;
     padding: .375rem;
-
-    i {
-      align-self: center;
-    }
 
     &--big {
       background: none;
@@ -106,12 +86,6 @@
     }
   }
 
-  &:not(.played) {
-    .default__button--big {
-      opacity: 0;
-    }
-  }
-
   &__controls {
     position: absolute;
     bottom: 0;
@@ -128,6 +102,7 @@
     .progress-line {
       margin: 0 16px;
       border-radius: var(--border-radius);
+      background: rgba(255, 255, 255, .38);
   
       &__filled {
         background: var(--primary-color);
@@ -137,10 +112,6 @@
         background-color: #fff;
       }
   
-      & {
-        background: rgba(255, 255, 255, .38);
-      }
-
       @include respond-to(handhelds) {
         margin-bottom: -1px;
       }
@@ -171,15 +142,11 @@
     }
   }
 
-  .toggle:before {
-    content: $tgico-play;
-  }
-
-  .default__gradient-bottom {
+  &__gradient-bottom {
     transform: translate3d(0, 50px, 0);
   }
 
-  .default__controls {
+  &__controls {
     transform: translate3d(0, 52px, 0);
 
     @include respond-to(handhelds) {
@@ -206,16 +173,6 @@
     .default__button--big {
       opacity: 0;
     }
-
-    .toggle:not(.default__button--big) {
-      &:before {
-        content: $tgico-pause;
-      }
-    }
-  }
-
-  .is-seeking + .default__button--big {
-    opacity: 0;
   }
 
   .player-volume {
@@ -259,6 +216,7 @@
       padding: .375rem;
       font-size: 1.5rem;
       display: flex;
+      pointer-events: all;
     }
 
     .progress-line {
@@ -277,7 +235,7 @@
   }
 
   &.is-buffering {
-    > .toggle {
+    .default__button--big {
       display: none !important;
     }
   }

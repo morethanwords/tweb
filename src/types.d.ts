@@ -221,6 +221,13 @@ export type TelegramWebViewEventMap = {
   web_app_setup_back_button: {
     is_visible: boolean
   },
+  web_app_request_write_access: void, // 162
+  web_app_request_phone: void,        // 162
+  web_app_invoke_custom_method: {     // 162
+    req_id: string,
+    method: string,
+    params: any
+  },
   share_score: void,
   share_game: void,
   game_over: void,
@@ -268,6 +275,17 @@ export type TelegramWebViewSendEventMap = {
   clipboard_text_received: {
     req_id: string,
     data?: string
+  },
+  write_access_requested: { // 162
+    status: 'allowed' | 'cancelled'
+  },
+  phone_requested: {        // 162
+    status: 'sent' | 'cancelled'
+  },
+  custom_method_invoked: {  // 162
+    req_id: string,
+    result: any,
+    error?: string
   }
 };
 

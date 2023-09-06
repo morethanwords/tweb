@@ -9,7 +9,6 @@ import {logger, LogTypes} from '../lib/logger';
 import fastSmoothScroll, {ScrollOptions} from '../helpers/fastSmoothScroll';
 import useHeavyAnimationCheck from '../hooks/useHeavyAnimationCheck';
 import cancelEvent from '../helpers/dom/cancelEvent';
-import {IS_ANDROID} from '../environment/userAgent';
 /*
 var el = $0;
 var height = 0;
@@ -335,7 +334,8 @@ export class ScrollableX extends ScrollableBase {
     this.container.classList.add('scrollable-x');
 
     if(!IS_TOUCH_SUPPORTED) {
-      const scrollHorizontally = (e: any) => {
+      const scrollHorizontally = (e: WheelEvent) => {
+        e.stopPropagation();
         if(!e.deltaX && this.container.scrollWidth > this.container.clientWidth) {
           this.container.scrollLeft += e.deltaY / 4;
           cancelEvent(e);

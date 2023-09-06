@@ -5,19 +5,14 @@
  */
 
 import rootScope from '../../../lib/rootScope';
-import AppSearchSuper, {SearchSuperType} from '../../appSearchSuper.';
-import SidebarSlider, {SliderSuperTab} from '../../slider';
+import AppSearchSuper, {SearchSuperMediaTab, SearchSuperType} from '../../appSearchSuper.';
+import {SliderSuperTab} from '../../slider';
 import TransitionSlider from '../../transition';
 import AppEditChatTab from './editChat';
-import PeerTitle from '../../peerTitle';
 import AppEditContactTab from './editContact';
 import Button from '../../button';
 import ButtonIcon from '../../buttonIcon';
-import I18n, {i18n, LangPackKey} from '../../../lib/langPack';
-import {toastNew} from '../../toast';
-import AppAddMembersTab from '../../sidebarLeft/tabs/addMembers';
-import PopupPickUser from '../../popups/pickUser';
-import PopupPeer, {PopupPeerButtonCallbackCheckboxes, PopupPeerCheckboxOptions} from '../../popups/peer';
+import I18n, {i18n} from '../../../lib/langPack';
 import ButtonCorner from '../../buttonCorner';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import PeerProfile from '../../peerProfile';
@@ -76,25 +71,52 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     const transitionContainer = document.createElement('div');
     transitionContainer.className = 'transition slide-fade';
 
-    const transitionFirstItem = document.createElement('div');
-    transitionFirstItem.classList.add('transition-item');
+    const makeTransitionItem = (title?: HTMLElement) => {
+      const element = document.createElement('div');
+      element.classList.add('transition-item');
+
+      title ??= this.title.cloneNode() as any;
+      element.append(title);
+
+      return {element, title};
+    };
+
+    const transitionFirstItem = makeTransitionItem(this.title);
 
     this.titleI18n = new I18n.IntlElement();
     this.title.append(this.titleI18n.element);
     this.editBtn = ButtonIcon('edit');
     // const moreBtn = ButtonIcon('more');
 
-    transitionFirstItem.append(this.title, this.editBtn/* , moreBtn */);
+    transitionFirstItem.element.append(this.editBtn/* , moreBtn */);
 
-    const transitionLastItem = document.createElement('div');
-    transitionLastItem.classList.add('transition-item');
+    enum TitleIndex {
+      Profile = 0,
+      Members = 1,
+      Stories = 2,
+      Media = 3,
+      Groups = 4
+    }
 
-    const secondTitle: HTMLElement = this.title.cloneNode() as any;
-    secondTitle.append(i18n('PeerInfo.SharedMedia'));
+    const transitionSharedMedia = makeTransitionItem();
+    transitionSharedMedia.title.append(i18n('PeerInfo.SharedMedia'));
 
-    transitionLastItem.append(secondTitle);
+    const transitionStories = makeTransitionItem();
+    transitionStories.title.append(i18n('PublicStories'));
 
-    transitionContainer.append(transitionFirstItem, transitionLastItem);
+    const transitionMembers = makeTransitionItem();
+    transitionMembers.title.append(i18n('Members'));
+
+    const transitionGroups = makeTransitionItem();
+    transitionGroups.title.append(i18n('Groups'));
+
+    transitionContainer.append(...[
+      transitionFirstItem,
+      transitionMembers,
+      transitionStories,
+      transitionSharedMedia,
+      transitionGroups
+    ].map(({element}) => element));
 
     this.header.append(transitionContainer);
 
@@ -114,10 +136,28 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       setIsSharedMedia(top <= HEADER_HEIGHT);
     };
 
+    const getTitleIndex = (isSharedMedia = transition.prevId() !== TitleIndex.Profile) => {
+      let index = TitleIndex.Profile;
+      if(isSharedMedia) {
+        if(lastMediaTabType === 'stories') {
+          index = TitleIndex.Stories;
+        } else if(lastMediaTabType === 'members') {
+          index = TitleIndex.Members;
+        } else if(lastMediaTabType === 'groups') {
+          index = TitleIndex.Groups;
+        } else {
+          index = TitleIndex.Media;
+        }
+      }
+
+      return index;
+    };
+
     const setIsSharedMedia = (isSharedMedia: boolean) => {
       animatedCloseIcon.classList.toggle('state-back', this.isFirst || isSharedMedia);
       this.searchSuper.container.classList.toggle('is-full-viewport', isSharedMedia);
-      transition(+isSharedMedia);
+
+      transition(getTitleIndex(isSharedMedia));
 
       if(!isSharedMedia) {
         this.searchSuper.cleanScrollPositions();
@@ -131,7 +171,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       isHeavy: false
     });
 
-    transition(0);
+    transition(TitleIndex.Profile);
 
     attachClickEvent(this.closeBtn, (e) => {
       if(transition.prevId()) {
@@ -139,7 +179,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
           element: this.scrollable.container.firstElementChild as HTMLElement,
           position: 'start'
         });
-        transition(0);
+        transition(TitleIndex.Profile);
 
         if(!this.isFirst) {
           animatedCloseIcon.classList.remove('state-back');
@@ -182,7 +222,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     }, {listenerSetter: this.listenerSetter});
 
     this.listenerSetter.add(rootScope)('contacts_update', (userId) => {
-      if(this.peerId === userId) {
+      if(this.peerId === userId.toPeerId(false)) {
         this.toggleEditBtn();
       }
     });
@@ -208,8 +248,13 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     // this.container.prepend(this.closeBtn.parentElement);
 
+    let lastMediaTabType: SearchSuperMediaTab['type'];
     this.searchSuper = new AppSearchSuper({
       mediaTabs: [{
+        inputFilter: 'inputMessagesFilterEmpty',
+        name: 'Stories',
+        type: 'stories'
+      }, {
         inputFilter: 'inputMessagesFilterEmpty',
         name: 'PeerMedia.Members',
         type: 'members'
@@ -240,6 +285,9 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       }],
       scrollable: this.scrollable,
       onChangeTab: (mediaTab) => {
+        lastMediaTabType = mediaTab.type;
+        transition(getTitleIndex());
+
         const timeout = mediaTab.type === 'members' && liteMode.isAvailable('animations') ? 250 : 0;
         setTimeout(() => {
           btnAddMembers.classList.toggle('is-hidden', mediaTab.type !== 'members');

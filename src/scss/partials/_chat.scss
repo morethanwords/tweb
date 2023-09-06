@@ -15,7 +15,9 @@ $input-half-transition-time: math.div($input-transition-time, 2);
 $background-transition-time: 0.05s;
 $background-transition-total-time: #{$input-transition-time - $background-transition-time};
 
-$chat-input-border-radius: 1rem;
+// #bubble-contextmenu {
+//   max-width: 14rem;
+// }
 
 /* #bubble-contextmenu > div {
 	padding: 0 5.25 0 1rem;
@@ -26,65 +28,12 @@ $chat-input-border-radius: 1rem;
 } */
 
 .chat-input {
-	--translateY: 0;
-	--padding-bottom: #{$chat-padding-handhelds};
-	//--bottom: clamp(var(--padding-bottom), env(safe-area-inset-bottom), 1.3125rem);
-	--bottom: var(--padding-bottom);
 	display: flex;
 	width: 100%;
 	max-width: 100%;
-	padding-top: .25rem;
 	flex-direction: column;
 	flex: 0 0 auto;
 	position: relative;
-	transition: transform var(--transition-standard-out);
-	transform: translate3d(0, var(--translateY), 0);
-  z-index: 2; // fix safari topbar bug
-
-	/* body.is-keyboard-opened & {
-		--bottom: var(--padding-bottom);
-	} */
-
-	@include animation-level(0) {
-		transition: none !important;
-	}
-
-	/* // * for no ESG top
-	flex: 1 1 auto;
-	height: calc(100% - 56px); */
-
-	@include respond-to(esg-top) {
-		max-width: var(--messages-container-width) !important;
-	}
-
-	@include respond-to(not-handhelds) {
-		--padding-bottom: 1.25rem;
-	}
-
-	@include respond-to(esg-bottom) {
-		--padding-bottom: #{$chat-padding-handhelds};
-	}
-
-	@include respond-to(medium-screens) {
-		width: calc(100% - var(--right-column-width)) !important;
-
-		body.is-right-column-shown & {
-			transition: transform var(--transition-standard-in);
-			transform: translate3d(calc(var(--right-column-width) / -2), var(--translateY), 0) !important;
-		}
-	}
-
-	&.is-hidden {
-		--translateY: 100%;
-		transition: transform var(--transition-standard-in);
-		transform: translate3d(0, var(--translateY), 0) !important;
-		position: absolute !important;
-		bottom: 0;
-
-		.bubbles.is-selecting:not(.backwards) ~ & {
-			--translateY: 0;
-		}
-	}
 
 	&-container {
 		--padding-horizontal: var(--chat-input-padding);
@@ -92,76 +41,17 @@ $chat-input-border-radius: 1rem;
 		align-items: flex-end;
 		justify-content: center;
     // justify-content: space-between;
-		max-width: var(--messages-container-width);
+		max-width: var(--chat-input-max-width);
 		margin: 0 auto;
 		width: 100%;
 		padding: 0 var(--padding-horizontal);
 		flex: 0 0 auto;
 		position: relative;
-		padding-bottom: var(--bottom);
 
 		.btn-circle {
 			width: var(--chat-input-size);
 			height: var(--chat-input-size);
 		}
-
-    &.is-centering {
-      .new-message-wrapper {
-        pointer-events: none;
-      }
-
-      &:not(.backwards) {
-        .new-message-wrapper {
-          opacity: 0;
-        }
-    
-        .rows-wrapper {
-          max-height: var(--chat-input-size);
-          border-bottom-right-radius: $border-radius-big;
-  
-          .bubble-tail {
-            transform: scaleX(-1) translateX(#{.5625rem * 2});
-            opacity: 0;
-          }
-        }
-    
-        .reply-wrapper {
-          height: 0 !important;
-          opacity: 0;
-          pointer-events: none;
-        }
-    
-        .btn-send {
-          transform: scale(0);
-        }
-      }
-
-      &.animating {
-        .rows-wrapper {
-          transition: transform $input-transition-time, max-height $input-transition-time, border-radius $input-half-transition-time/* , opacity 0s 0s */;
-  
-          .bubble-tail {
-            transition: transform $input-half-transition-time, opacity .025s 0s;
-          }
-        }
-  
-        .selection-wrapper {
-          transition: opacity $input-half-transition-time .075s;
-        }
-
-        .btn-send {
-          transition: $input-transition-time transform;
-        }
-
-        &:not(.backwards) {
-          .rows-wrapper {
-            .bubble-tail {
-              transition: transform $input-half-transition-time, opacity .025s .075s;
-            }
-          }
-        }
-      }
-    }
 	}
 
 	/* @include respond-to(handhelds) {
@@ -177,20 +67,6 @@ $chat-input-border-radius: 1rem;
     bottom: calc(100% + .5rem);
     //right: var(--chat-input-padding);
 	}
-	
-	.toggle-emoticons {
-		&:before {
-			content: $tgico-smile;
-		}
-
-    // html.is-ios &:before {
-    //   content: $tgico-stickers;
-    // }
-
-		&.flip-icon:before {
-			content: $tgico-keyboard !important;
-		}
-	}
 
 	.btn-record-cancel {
     --multiplier: -1;
@@ -201,6 +77,7 @@ $chat-input-border-radius: 1rem;
 		position: absolute;
 		inset-inline-end: 0;
 		top: 0;
+    color: var(--danger-color) !important;
 
     @include hover() {
       &:after {
@@ -212,9 +89,6 @@ $chat-input-border-radius: 1rem;
       background-color: var(--light-danger-color);
     }
 
-    &:before {
-      color: var(--danger-color);
-    }
     // background-color: var(--danger-color) !important;
     // background-color: var(--surface-color) !important;
 
@@ -325,14 +199,10 @@ $chat-input-border-radius: 1rem;
 		// 	color: var(--primary-color) !important;
 		// }
 
-		.tgico-check {
+		.btn-send-icon-edit {
 			// color: var(--primary-color) !important;
-			height: 32px!important;
 			font-size: 2rem;
-
-			&:before {
-				font-weight: var(--font-weight-bold);
-			}
+      font-weight: var(--font-weight-bold);
 		}
 
 		// .tgico-schedule {
@@ -346,11 +216,13 @@ $chat-input-border-radius: 1rem;
 		// 	justify-content: center;
 		// }
 
-		&.send .tgico-send, 
-		&.record .tgico-microphone_filled,
-		&.edit .tgico-check,
-		&.schedule .tgico-schedule {
+		&.send .btn-send-icon-send, 
+		&.record .btn-send-icon-record,
+		&.edit .btn-send-icon-edit,
+		&.schedule .btn-send-icon-schedule,
+    &.forward .btn-send-icon-forward {
 			visibility: visible !important;
+      animation: grow-icon .4s forwards ease-in-out !important;
 		}
 
 		/* &:not(.record) {
@@ -358,15 +230,6 @@ $chat-input-border-radius: 1rem;
 				background-color: var(--light-primary-color);
 			}
 		} */
-
-		@include animation-level(2) {
-			&.send .tgico-send, 
-			&.record .tgico-microphone_filled,
-			&.edit .tgico-check,
-			&.schedule .tgico-schedule {
-				animation: grow-icon .4s forwards ease-in-out !important;
-			}
-		}
 	}
 
 	.btn-record-cancel, 
@@ -376,8 +239,9 @@ $chat-input-border-radius: 1rem;
 	}
 
 	.record-time {
-		height: 44px;
-		line-height: 44px;
+    color: var(--primary-text-color);
+		line-height: 1;
+    align-self: center;
 		display: none;
 
 		&:after {
@@ -502,6 +366,124 @@ $chat-input-border-radius: 1rem;
     color: var(--secondary-text-color);
     pointer-events: none;
     padding: 0 1rem;
+  }
+}
+
+.chat-input-main {
+  --translateY: 0;
+  --padding-bottom: #{$chat-padding-handhelds};
+  //--bottom: clamp(var(--padding-bottom), env(safe-area-inset-bottom), 1.3125rem);
+  --bottom: var(--padding-bottom);
+  padding-top: .25rem;
+  transition: transform var(--transition-standard-out);
+  transform: translate3d(0, var(--translateY), 0);
+  z-index: 2; // fix safari topbar bug
+
+  &-container {
+    padding-bottom: var(--bottom);
+
+    &.is-centering {
+      .new-message-wrapper {
+        pointer-events: none;
+      }
+
+      &:not(.backwards) {
+        .new-message-wrapper {
+          opacity: 0;
+        }
+    
+        .rows-wrapper {
+          max-height: var(--chat-input-size);
+          border-bottom-right-radius: $border-radius-big;
+  
+          .bubble-tail {
+            transform: scaleX(-1) translateX(#{.5625rem * 2});
+            opacity: 0;
+          }
+        }
+    
+        .reply-wrapper {
+          height: 0 !important;
+          opacity: 0;
+          pointer-events: none;
+        }
+    
+        .btn-send {
+          transform: scale(0);
+        }
+      }
+
+      &.animating {
+        .rows-wrapper {
+          transition: transform $input-transition-time, max-height $input-transition-time, border-radius $input-half-transition-time/* , opacity 0s 0s */;
+  
+          .bubble-tail {
+            transition: transform $input-half-transition-time, opacity .025s 0s;
+          }
+        }
+  
+        .selection-wrapper {
+          transition: opacity $input-half-transition-time .075s;
+        }
+
+        .btn-send {
+          transition: $input-transition-time transform;
+        }
+
+        &:not(.backwards) {
+          .rows-wrapper {
+            .bubble-tail {
+              transition: transform $input-half-transition-time, opacity .025s .075s;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /* body.is-keyboard-opened & {
+    --bottom: var(--padding-bottom);
+  } */
+
+  @include animation-level(0) {
+    transition: none !important;
+  }
+
+  /* // * for no ESG top
+  flex: 1 1 auto;
+  height: calc(100% - 56px); */
+
+  @include respond-to(esg-top) {
+    max-width: var(--messages-container-width) !important;
+  }
+
+  @include respond-to(not-handhelds) {
+    --padding-bottom: 1.25rem;
+  }
+
+  @include respond-to(esg-bottom) {
+    --padding-bottom: #{$chat-padding-handhelds};
+  }
+
+  @include respond-to(medium-screens) {
+    width: calc(100% - var(--right-column-width)) !important;
+
+    body.is-right-column-shown & {
+      transition: transform var(--transition-standard-in);
+      transform: translate3d(calc(var(--right-column-width) / -2), var(--translateY), 0) !important;
+    }
+  }
+
+  &.is-hidden {
+    --translateY: 100%;
+    transition: transform var(--transition-standard-in);
+    transform: translate3d(0, var(--translateY), 0) !important;
+    position: absolute !important;
+    bottom: 0;
+
+    .bubbles.is-selecting:not(.backwards) ~ & {
+      --translateY: 0;
+    }
   }
 
   .bubbles.is-selecting:not(.backwards) ~ & {
@@ -836,7 +818,7 @@ $chat-input-border-radius: 1rem;
 	max-width: calc(100% - (var(--chat-input-size) + #{$btn-send-margin}));
 	justify-content: center;
 	// background-color: var(--surface-color);
-	border-radius: $chat-input-border-radius;
+	border-radius: var(--chat-input-border-radius);
 	//box-shadow: 0 1px 2px 0 rgba(16, 35, 47, .07);
 	// box-shadow: 0px 1px 8px 1px rgba(0, 0, 0, .18);
 	min-height: var(--chat-input-size);
@@ -969,23 +951,19 @@ $chat-input-border-radius: 1rem;
 
 			@include respond-to(handhelds) {
 				padding: 0 .5rem;
-
-				&.tgico-send2 {
-					padding: 0 2px;
-				}
 			}
 
 			@media only screen and (max-width: 380px) { 
 				font-size: 0;
 
-				&:before {
+				.button-icon {
 					margin: 0;
 				}
 			}
 		}
 
 		&-forward {
-			&:before {
+			.button-icon {
 				margin-inline-end: 14px;
 			}
 		}
@@ -993,7 +971,7 @@ $chat-input-border-radius: 1rem;
 		&-delete {
 			margin-inline: .375rem .625rem;
 
-			&:before {
+			.button-icon {
 				margin-inline-end: 10px;
 			}
 		}
@@ -1117,7 +1095,7 @@ $chat-input-border-radius: 1rem;
 		}
 	}
 	
-	> div {
+  &-row {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
@@ -1125,7 +1103,7 @@ $chat-input-border-radius: 1rem;
 		position: relative;
 		// z-index: 2;
 		background-color: var(--surface-color);
-		border-radius: $chat-input-border-radius;
+		border-radius: var(--chat-input-border-radius);
 		padding: var(--padding);
 	}
 	
@@ -1341,16 +1319,14 @@ $chat-input-border-radius: 1rem;
         position: relative;
       }
 
-      &:before {
+      &-view-icon {
         font-size: 1.25rem;
         margin-right: .375rem;
         margin-left: -.125rem;
       }
 
-      &:not(.is-view) {
-        &:before {
-          display: none;
-        }
+      &:not(.is-view) .new-message-bot-commands-view-icon {
+        display: none;
       }
 
       &-view {
@@ -1388,7 +1364,7 @@ $chat-input-border-radius: 1rem;
           inset-inline-start: calc(var(--padding-horizontal) * -1 - .25rem) !important;
           width: auto;
           height: auto;
-          transform: scale3d(1, 1, 1);
+          // transform: scale3d(1, 1, 1);
 
           &-item {
             height: 2.25rem;

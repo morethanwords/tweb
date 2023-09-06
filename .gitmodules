@@ -7,3 +7,6 @@
 [submodule "src/rlottie-web"]
 	path = src/rlottie-web
 	url = https://github.com/morethanwords/rlottie-web
+[submodule "src/solid"]
+	path = src/solid
+	url = https://github.com/morethanwords/solid

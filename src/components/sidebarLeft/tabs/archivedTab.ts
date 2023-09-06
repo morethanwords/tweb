@@ -7,10 +7,15 @@
 import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
 import {SliderSuperTab} from '../../slider';
 import {FOLDER_ID_ARCHIVE, REAL_FOLDER_ID} from '../../../lib/mtproto/mtproto_config';
+import StoriesList from '../../stories/list';
+import {render} from 'solid-js/web';
 
 export default class AppArchivedTab extends SliderSuperTab {
   private static filterId: REAL_FOLDER_ID = FOLDER_ID_ARCHIVE;
   private wasFilterId: number;
+
+  private storiesListContainer: HTMLDivElement;
+  private disposeStories: () => void;
 
   public init() {
     this.wasFilterId = appDialogsManager.filterId;
@@ -30,11 +35,17 @@ export default class AppArchivedTab extends SliderSuperTab {
       scrollable.container.append(ul);
     }
 
+    const storiesListContainer = this.storiesListContainer = document.createElement('div');
+    storiesListContainer.classList.add('stories-list');
+
+    this.header.after(storiesListContainer);
+
     const scrollable = appDialogsManager.xds[AppArchivedTab.filterId].scrollable;
     this.scrollable.container.replaceWith(scrollable.container);
     scrollable.attachBorderListeners(this.container);
     // ! DO NOT UNCOMMENT NEXT LINE - chats will stop loading on scroll after closing the tab
     // this.scrollable = scrollable;
+
     return appDialogsManager.setFilterIdAndChangeTab(AppArchivedTab.filterId).then(({cached, renderPromise}) => {
       if(cached) {
         return renderPromise;
@@ -42,8 +53,22 @@ export default class AppArchivedTab extends SliderSuperTab {
     });
   }
 
+  private renderStories() {
+    this.disposeStories = render(() => {
+      return StoriesList({
+        foldInto: this.header,
+        setScrolledOn: this.container,
+        getScrollable: () => appDialogsManager.xds[AppArchivedTab.filterId].scrollable.container,
+        listenWheelOn: this.content,
+        archive: true,
+        offsetX: -84
+      });
+    }, this.storiesListContainer);
+  }
+
   // вообще, так делать нельзя, но нет времени чтобы переделать главный чатлист на слайд...
   onOpenAfterTimeout() {
+    this.renderStories();
     appDialogsManager.xds[this.wasFilterId].clear();
   }
 
@@ -53,6 +78,8 @@ export default class AppArchivedTab extends SliderSuperTab {
   }
 
   onCloseAfterTimeout() {
+    this.disposeStories?.();
+    this.disposeStories = undefined;
     appDialogsManager.xds[AppArchivedTab.filterId].clear();
     return super.onCloseAfterTimeout();
   }

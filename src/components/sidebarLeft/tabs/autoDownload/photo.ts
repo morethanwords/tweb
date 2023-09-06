@@ -10,33 +10,34 @@ import CheckboxField from '../../../checkboxField';
 import {SliderSuperTabEventable} from '../../../sliderTab';
 import Row, {CreateRowFromCheckboxField} from '../../../row';
 import SettingSection from '../../../settingSection';
+import {joinDeepPath} from '../../../../helpers/object/setDeepProperty';
 
 export function autoDownloadPeerTypeSection(type: 'photo' | 'video' | 'file', title: LangPackKey, listenerSetter: ListenerSetter) {
   const section = new SettingSection({name: title});
 
-  const key = 'settings.autoDownload.' + type + '.';
+  const key = joinDeepPath('settings', 'autoDownload', type);
   const contactsCheckboxField = new CheckboxField({
     text: 'AutodownloadContacts',
     name: 'contacts',
-    stateKey: key + 'contacts',
+    stateKey: joinDeepPath(key, 'contacts'),
     listenerSetter
   });
   const privateCheckboxField = new CheckboxField({
     text: 'AutodownloadPrivateChats',
     name: 'private',
-    stateKey: key + 'private',
+    stateKey: joinDeepPath(key, 'private'),
     listenerSetter
   });
   const groupsCheckboxField = new CheckboxField({
     text: 'AutodownloadGroupChats',
     name: 'groups',
-    stateKey: key + 'groups',
+    stateKey: joinDeepPath(key, 'groups'),
     listenerSetter
   });
   const channelsCheckboxField = new CheckboxField({
     text: 'AutodownloadChannels',
     name: 'channels',
-    stateKey: key + 'channels',
+    stateKey: joinDeepPath(key, 'channels'),
     listenerSetter
   });
 

@@ -48,6 +48,7 @@ import rootScope from '../../lib/rootScope';
 import shake from '../../helpers/dom/shake';
 import AUDIO_MIME_TYPES_SUPPORTED from '../../environment/audioMimeTypeSupport';
 import liteMode from '../../helpers/liteMode';
+import handleVideoLeak from '../../helpers/dom/handleVideoLeak';
 
 type SendFileParams = SendFileDetails & {
   file?: File,
@@ -144,7 +145,7 @@ export default class PopupNewMedia extends PopupElement {
 
     attachClickEvent(this.btnConfirm, () => this.send(), {listenerSetter: this.listenerSetter});
 
-    const btnMenu = await ButtonMenuToggle({
+    const btnMenu = ButtonMenuToggle({
       listenerSetter: this.listenerSetter,
       direction: 'bottom-left',
       buttons: [{
@@ -677,7 +678,8 @@ export default class PopupNewMedia extends PopupElement {
 
       let error: Error;
       try {
-        await onMediaLoad(video);
+        const promise = onMediaLoad(video);
+        await handleVideoLeak(video, promise);
       } catch(err) {
         error = err as any;
       }

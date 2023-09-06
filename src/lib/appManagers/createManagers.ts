@@ -50,6 +50,8 @@ import AppSeamlessLoginManager from './appSeamlessLoginManager';
 import AppThemesManager from './appThemesManager';
 import AppUsernamesManager from './appUsernamesManager';
 import AppChatInvitesManager from './appChatInvitesManager';
+import AppStoriesManager from './appStoriesManager';
+import AppBotsManager from './appBotsManager';
 
 export default function createManagers(appStoragesManager: AppStoragesManager, userId: UserId) {
   const managers = {
@@ -96,7 +98,9 @@ export default function createManagers(appStoragesManager: AppStoragesManager, u
     appSeamlessLoginManager: new AppSeamlessLoginManager,
     appThemesManager: new AppThemesManager,
     appUsernamesManager: new AppUsernamesManager,
-    appChatInvitesManager: new AppChatInvitesManager
+    appChatInvitesManager: new AppChatInvitesManager,
+    appStoriesManager: new AppStoriesManager,
+    appBotsManager: new AppBotsManager
   };
 
   type T = typeof managers;

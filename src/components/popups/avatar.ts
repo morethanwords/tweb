@@ -10,8 +10,8 @@ import PopupElement from '.';
 import {_i18n} from '../../lib/langPack';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import readBlobAsDataURL from '../../helpers/blob/readBlobAsDataURL';
-import rootScope from '../../lib/rootScope';
 import appDownloadManager from '../../lib/appManagers/appDownloadManager';
+import Button from '../button';
 
 export default class PopupAvatar extends PopupElement {
   private cropContainer: HTMLElement;
@@ -32,7 +32,7 @@ export default class PopupAvatar extends PopupElement {
   constructor(options: Partial<{
     isForum: boolean
   }> = {}) {
-    super('popup-avatar', {closable: true, withConfirm: true});
+    super('popup-avatar', {closable: true});
 
     this.h6 = document.createElement('h6');
     _i18n(this.h6, 'Popup.Avatar.Title');
@@ -75,7 +75,7 @@ export default class PopupAvatar extends PopupElement {
       });
     }, false);
 
-    this.btnConfirm.className = 'btn-primary btn-color-primary btn-circle btn-crop btn-icon tgico-check z-depth-1';
+    this.btnConfirm = Button(`btn-primary btn-color-primary btn-circle btn-crop btn-icon z-depth-1`, {noRipple: true, icon: 'check'});
     attachClickEvent(this.btnConfirm, () => {
       this.cropper.crop();
       this.hide();

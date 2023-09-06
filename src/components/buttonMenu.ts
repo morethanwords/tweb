@@ -19,10 +19,12 @@ import textToSvgURL from '../helpers/textToSvgURL';
 import customProperties from '../helpers/dom/customProperties';
 import {IS_MOBILE} from '../environment/userAgent';
 import ripple from './ripple';
+import Icon from './icon';
 
 export type ButtonMenuItemOptions = {
-  icon?: string,
+  icon?: Icon,
   iconDoc?: Document.document,
+  className?: string,
   text?: LangPackKey,
   textArgs?: FormatterArguments,
   regularText?: Parameters<typeof setInnerHTML>[1],
@@ -36,6 +38,7 @@ export type ButtonMenuItemOptions = {
   keepOpen?: boolean,
   separator?: boolean | HTMLElement,
   multiline?: boolean,
+  secondary?: boolean,
   loadPromise?: Promise<any>,
   waitForAnimation?: boolean
   /* , cancelEvent?: true */
@@ -48,12 +51,17 @@ export type ButtonMenuItemOptionsVerifiable = ButtonMenuItemOptions & {
 function ButtonMenuItem(options: ButtonMenuItemOptions) {
   if(options.element) return [options.separator as HTMLElement, options.element].filter(Boolean);
 
-  const {icon, iconDoc, text, onClick, checkboxField, noCheckboxClickListener} = options;
+  const {icon, iconDoc, className, text, onClick, checkboxField, noCheckboxClickListener} = options;
   const el = document.createElement('div');
-  el.className = 'btn-menu-item rp-overflow' + (icon ? ' tgico-' + icon : '');
+  const iconSplitted = icon?.split(' ');
+  el.className = 'btn-menu-item rp-overflow' + (iconSplitted?.length > 1 ? ' ' + iconSplitted.slice(1).join(' ') : '') + (className ? ' ' + className : '');
 
   if(IS_MOBILE) {
     ripple(el);
+  }
+
+  if(iconSplitted) {
+    el.append(Icon(iconSplitted[0] as Icon, 'btn-menu-item-icon'));
   }
 
   let textElement = options.textElement;
@@ -66,7 +74,7 @@ function ButtonMenuItem(options: ButtonMenuItemOptions) {
 
   if(iconDoc) {
     const iconElement = document.createElement('span');
-    iconElement.classList.add('btn-menu-item-icon');
+    iconElement.classList.add('btn-menu-item-icon', 'is-external');
     el.append(iconElement);
 
     options.loadPromise = wrapPhoto({
@@ -140,6 +148,11 @@ function ButtonMenuItem(options: ButtonMenuItemOptions) {
 
   if(options.separator === true) {
     options.separator = document.createElement('hr');
+  }
+
+  if(options.secondary) {
+    el.classList.add('is-secondary');
+    options.multiline = true;
   }
 
   if(options.multiline) {

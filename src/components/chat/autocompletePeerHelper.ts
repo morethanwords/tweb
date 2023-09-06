@@ -5,8 +5,9 @@
  */
 
 import setInnerHTML from '../../helpers/dom/setInnerHTML';
+import {Middleware} from '../../helpers/middleware';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
-import AvatarElement from '../avatar';
+import {avatarNew} from '../avatarNew';
 import PeerTitle from '../peerTitle';
 import Scrollable from '../scrollable';
 import AutocompleteHelper from './autocompleteHelper';
@@ -48,7 +49,11 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
     });
   }
 
-  public render(data: {peerId: PeerId, name?: string, description?: string}[], doNotShow?: boolean) {
+  public render(
+    data: {peerId: PeerId, name?: string, description?: string}[],
+    middleware: Middleware,
+    doNotShow?: boolean
+  ) {
     if(this.init) {
       if(!data.length) {
         return;
@@ -65,7 +70,8 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
           className: this.className,
           peerId: d.peerId,
           name: d.name,
-          description: d.description
+          description: d.description,
+          middleware
         });
 
         this.list.append(div);
@@ -81,7 +87,8 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
     className: string,
     peerId: PeerId,
     name?: string,
-    description?: string
+    description?: string,
+    middleware: Middleware
   }) {
     const BASE = AutocompletePeerHelper.BASE_CLASS_LIST_ELEMENT;
     options.className += '-list-element';
@@ -90,12 +97,13 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
     div.classList.add(BASE, options.className);
     div.dataset.peerId = '' + options.peerId;
 
-    const avatar = new AvatarElement();
-    avatar.classList.add('avatar-30', BASE + '-avatar', options.className + '-avatar');
-    avatar.updateWithOptions({
-      isDialog: false,
+    const {node} = avatarNew({
+      middleware: options.middleware,
+      isBig: false,
+      size: 30,
       peerId: options.peerId
     });
+    node.classList.add(BASE + '-avatar', options.className + '-avatar');
 
     const name = document.createElement('div');
     name.classList.add(BASE + '-name', options.className + '-name');
@@ -110,7 +118,7 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
       setInnerHTML(name, wrapEmojiText(options.name));
     }
 
-    div.append(avatar, name);
+    div.append(node, name);
 
     if(options.description) {
       const description = document.createElement('div');

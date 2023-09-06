@@ -76,20 +76,8 @@
     border-left: 1px solid var(--border-color);
   } */
 
-  /* body.is-forward-active & {
-    z-index: 4;
-  } */
-
   .sidebar-header {
     flex: 0 0 auto;
-
-    .sidebar-close-button.tgico:before {
-      content: $tgico-left;
-
-      @include respond-to(not-handhelds) {
-        content: $tgico-close;
-      }
-    }
   }
 
   #search-private-container {
@@ -98,10 +86,6 @@
       flex: 1 1 auto;
     }
   }
-
-  /* #forward-container {
-    z-index: 5;
-  } */
 
   .sidebar-search {
     display: none;
@@ -171,9 +155,7 @@
   }
 
   .btn-corner {
-    &.menu-open:before {
-      content: $tgico-close;
-    }
+    z-index: 2;
 
     @include respond-to(handhelds) {
       width: 54px;
@@ -187,17 +169,9 @@
   }
 
   &.can-add-members {
-    //@include respond-to(handhelds) {
-      .btn-corner:not(.is-hidden) {
-        transform: translateZ(0);
-      }
-    //}
-
-    /* @include hover() {
-      .btn-corner:not(.is-hidden) {
-        transform: translateZ(0);
-      }
-    } */
+    .btn-corner:not(.is-hidden) {
+      transform: translateZ(0);
+    }
   }
 }
 
@@ -278,6 +252,58 @@
       position: relative;
       display: flex;
     }
+
+    &.is-single {
+      order: 1;
+      top: auto;
+      // bottom: calc(var(--scrollable-size) * -1);
+      bottom: 0;
+      transform: translateY(calc(var(--scrollable-size) * -1));
+      height: 0;
+      opacity: 0;
+
+      @include animation-level(2) {
+        transition: opacity var(--transition-standard-in);
+      }
+
+      &:before {
+        top: -1px;
+        background-color: var(--border-color);
+      }
+
+      // &:before,
+      &:after {
+        display: none;
+      }
+
+      .search-super-nav-scrollable {
+        opacity: 0 !important;
+      }
+
+      .search-super-selection-container {
+        opacity: 1 !important;
+      }
+
+      &.is-selecting:not(.backwards) {
+        opacity: 1;
+        // transform: translateY(calc(var(--scrollable-size) * -1));
+      }
+    }
+  }
+
+  &-tab-container {
+    //height: 100%;
+    position: relative;
+    min-height: 150px;
+    background-color: var(--surface-color) !important;
+  }
+
+  &-content-container {
+    transform: translateY(0);
+
+    // * fix saving scroll on tab switching, when FROM tab has height < 100vh, and another is scrolled less than the FROM tab's height
+    // * adding 1 extra pixel for scroll
+    min-height: calc(100vh - 111px);
   }
 
   &-tabs-container {
@@ -285,46 +311,6 @@
     min-height: calc(100% - 49px);
     grid-template-rows: 100%;
     flex: 1 1 auto;
-    //position: absolute; // FIX THE SAFARI!
-    //position: relative;
-    /* width: 500%;
-    margin-left: -100%;
- */
-    /* > div {
-      height: 0;
-    
-      &.active {
-        height: auto;
-      }
-    } */
-
-    > div {
-      //height: 100%;
-      position: relative;
-      min-height: 150px;
-      background-color: var(--surface-color) !important;
-
-      /* > div:not(:empty) + .content-empty {
-        display: none;
-      } */
-
-      > div:first-child {
-        transform: translateY(0);
-
-        // * fix saving scroll on tab switching, when FROM tab has height < 100vh, and another is scrolled less than the FROM tab's height
-        // * adding 1 extra pixel for scroll
-        min-height: calc(100vh - 111px);
-      }
-    }
-
-    /* .scrollable-y {
-      height: auto;
-      position: absolute !important;
-    } */
-
-    /* > div > div:not(.scroll-padding) {
-      height: 100%;
-    } */
 
     .preloader {
       padding: 0;
@@ -364,27 +350,8 @@
       padding: 9px 0px 7px 24px;
     }
 
-    .video-time {
-      position: absolute;
-      left: 5px;
-      top: 4px;
-      height: 18px;
-      border-radius: 4px;
-      background-color: var(--message-time-background);
-      padding: 0px 6px 0px 5px;
-      z-index: 2;
-      font-size: 12px;
-      color: white;
-      line-height: 18px;
-    }
-
     .grid-item {
       overflow: hidden;
-    }
-
-    .checkbox-field {
-      right: .25rem;
-      top: .25rem;
     }
 
     /* span.video-play {
@@ -395,6 +362,28 @@
       line-height: 60px;
       cursor: pointer;
     } */
+  }
+
+  .video-time {
+    position: absolute;
+    left: 5px;
+    top: 4px;
+    height: 18px;
+    border-radius: 4px;
+    background-color: var(--message-time-background);
+    padding: 0px 6px 0px 5px;
+    z-index: 2;
+    font-size: 12px;
+    color: white;
+    line-height: 18px;
+  }
+
+  &-content-media,
+  &-content-stories {
+    .checkbox-field {
+      right: .25rem;
+      top: .25rem;
+    }
   }
 
   .checkbox {
@@ -617,7 +606,8 @@
       grid-gap: 1px;
 
       &-item {
-        padding-bottom: 177.77777778%;
+        // padding-bottom: 177.77777778%;
+        padding-bottom: 136.36363636%;
       }
 
       &.one {
@@ -646,6 +636,9 @@
   &-tabs-scrollable {
     .search-super-nav-scrollable {
       opacity: 1;
+      height: var(--scrollable-size);
+      max-height: var(--scrollable-size);
+      // background-color: inherit;
     }
 
     .search-super-nav-scrollable,
@@ -682,10 +675,11 @@
 
   &-selection {
     &-container {
+      background-color: inherit;
       position: absolute;
+      height: var(--scrollable-size);
       top: 0;
       right: 0;
-      bottom: 0;
       left: 0;
 
       display: flex;

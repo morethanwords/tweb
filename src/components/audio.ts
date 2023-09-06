@@ -37,6 +37,9 @@ import getMediaFromMessage from '../lib/appManagers/utils/messages/getMediaFromM
 import appDownloadManager from '../lib/appManagers/appDownloadManager';
 import wrapPhoto from './wrappers/photo';
 import {doubleRaf} from '../helpers/schedulers';
+import safePlay from '../helpers/dom/safePlay';
+import {_tgico} from '../helpers/tgico';
+import Icon from './icon';
 
 rootScope.addEventListener('messages_media_read', ({mids, peerId}) => {
   mids.forEach((mid) => {
@@ -179,8 +182,7 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
     audioEl.classList.add('can-transcribe');
     const speechRecognitionDiv = document.createElement('div');
     speechRecognitionDiv.classList.add('audio-to-text-button');
-    const speechRecognitionIcon = document.createElement('span');
-    speechRecognitionIcon.classList.add('tgico-transcribe');
+    const speechRecognitionIcon = Icon('transcribe');
     const speechRecognitionLoader = document.createElement('div');
     speechRecognitionLoader.classList.add('loader');
     speechRecognitionLoader.innerHTML = '<svg class="audio-transcribe-outline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 24"><rect class="audio-transcribe-outline-rect" fill="transparent" stroke-width="3" stroke-linejoin="round" rx="6" ry="6" stroke="var(--message-primary-color)" stroke-dashoffset="1" stroke-dasharray="32,68" width="32" height="24"></rect></svg>'
@@ -191,8 +193,8 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
       if(audioEl.transcriptionState === 0) {
         if(speechTextDiv) {
           speechTextDiv.classList.remove('hide');
-          speechRecognitionIcon.classList.remove('tgico-transcribe');
-          speechRecognitionIcon.classList.add('tgico-up');
+          speechRecognitionIcon.classList.remove(_tgico('transcribe'));
+          speechRecognitionIcon.classList.add(_tgico('up'));
           // TODO: State to enum
           audioEl.transcriptionState = 2;
         } else {
@@ -214,8 +216,8 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
       } else if(audioEl.transcriptionState === 2) {
         // Hide transcription
         speechTextDiv.classList.add('hide');
-        speechRecognitionIcon.classList.remove('tgico-up');
-        speechRecognitionIcon.classList.add('tgico-transcribe');
+        speechRecognitionIcon.classList.remove(_tgico('up'));
+        speechRecognitionIcon.classList.add(_tgico('transcribe'));
         audioEl.transcriptionState = 0;
       }
     };
@@ -348,7 +350,7 @@ async function wrapAudio(audioEl: AudioElement) {
       parts.push(await wrapSenderToPeer(message));
     }
 
-    descriptionEl.append(...joinElementsWith(parts, ' • '));
+    descriptionEl.append(' • ', ...joinElementsWith(parts, ' • '));
   }
 
   const html = `
@@ -567,7 +569,12 @@ export default class AudioElement extends HTMLElement {
         onPlay();
       }
 
-      attachClickEvent(toggle, (e) => this.togglePlay(e), {listenerSetter: this.listenerSetter});
+      const onToggleClick = (e: MouseEvent) => {
+        this.togglePlay(e);
+      };
+
+      toggle.addEventListener('click', onToggleClick);
+      // attachClickEvent(toggle, onToggleClick, {listenerSetter: this.listenerSetter});
 
       this.addAudioListener('ended', () => {
         toggle.classList.remove('playing');
@@ -705,7 +712,7 @@ export default class AudioElement extends HTMLElement {
           // setTimeout(() => {
           // release loaded audio
           if(!controlledAutoplay && appMediaPlaybackController.willBePlayedMedia === this.audio) {
-            this.audio.play();
+            safePlay(this.audio);
             appMediaPlaybackController.willBePlayed(undefined);
           }
           // }, 10e3);
@@ -718,7 +725,7 @@ export default class AudioElement extends HTMLElement {
         } else {
           attachClickEvent(toggle, () => {
             r(true);
-          }, {once: true, capture: true, passive: false, listenerSetter: this.listenerSetter});
+          }, {once: true, listenerSetter: this.listenerSetter});
         }
       }
     } else if(uploadingFileName) {
@@ -754,7 +761,7 @@ export default class AudioElement extends HTMLElement {
 
     if(paused) {
       this.setTargetsIfNeeded();
-      this.audio.play().catch(() => {});
+      safePlay(this.audio);
     } else {
       this.audio.pause();
     }

@@ -24,7 +24,7 @@
 		transform: translate3d(0, 0, 0);
 	}
 
-	.container {
+	&-container {
 		background: rgba(0, 0, 0, .7);
     text-align: center;
     width: auto;
@@ -48,21 +48,21 @@
 			font-size: 14px;
 		}
 
-		.text {
-			word-break: break-word;
-		}
-		
-		&:before {
-			content: $tgico-info2;
-			position: absolute;
-			left: 15px;
-			font-size: 1.5rem;
-			top: 12px;
-		}
-
 		a {
 			color: white;
-			border-bottom: 1px solid white;
+      text-decoration: underline;
+			// border-bottom: 1px solid white;
 		}
 	}
+
+  &-icon {
+    position: absolute;
+    left: 15px;
+    font-size: 1.5rem;
+    top: 12px;
+  }
+
+  &-text {
+    word-break: break-word;
+  }
 }

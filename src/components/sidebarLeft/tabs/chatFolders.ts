@@ -160,7 +160,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     caption.classList.add('caption');
     i18n_({element: caption, key: 'ChatList.Filter.Header'});
 
-    this.createFolderBtn = Button('btn-primary btn-color-primary btn-control tgico', {
+    this.createFolderBtn = Button('btn-primary btn-color-primary btn-control', {
       text: 'ChatList.Filter.NewTitle',
       icon: 'add'
     });

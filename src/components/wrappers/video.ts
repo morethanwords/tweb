@@ -5,15 +5,18 @@
  */
 
 import {IS_SAFARI} from '../../environment/userAgent';
+import {IS_H265_SUPPORTED} from '../../environment/videoSupport';
 import {animateSingle} from '../../helpers/animation';
 import {ChatAutoDownloadSettings} from '../../helpers/autoDownload';
 import deferredPromise from '../../helpers/cancellablePromise';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import createVideo from '../../helpers/dom/createVideo';
+import handleVideoLeak from '../../helpers/dom/handleVideoLeak';
 import isInDOM from '../../helpers/dom/isInDOM';
 import renderImageFromUrl from '../../helpers/dom/renderImageFromUrl';
-import getStrippedThumbIfNeeded from '../../helpers/getStrippedThumbIfNeeded';
+import safePlay from '../../helpers/dom/safePlay';
+import getMediaThumbIfNeeded from '../../helpers/getStrippedThumbIfNeeded';
 import liteMode from '../../helpers/liteMode';
 import makeError from '../../helpers/makeError';
 import mediaSizes, {ScreenSize} from '../../helpers/mediaSizes';
@@ -30,11 +33,14 @@ import appDownloadManager from '../../lib/appManagers/appDownloadManager';
 import appImManager from '../../lib/appManagers/appImManager';
 import {AppManagers} from '../../lib/appManagers/managers';
 import {NULL_PEER_ID} from '../../lib/mtproto/mtproto_config';
+import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import rootScope from '../../lib/rootScope';
 import {ThumbCache} from '../../lib/storages/thumbs';
 import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
 import appMediaPlaybackController, {MediaSearchContext} from '../appMediaPlaybackController';
 import AudioElement, {findMediaTargets} from '../audio';
+import Button from '../button';
+import Icon from '../icon';
 import LazyLoadQueue from '../lazyLoadQueue';
 import ProgressivePreloader from '../preloader';
 import wrapPhoto from './photo';
@@ -64,8 +70,9 @@ mediaSizes.addEventListener('changeScreen', (from, to) => {
   }
 });
 
-export default async function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, noPreview, withoutPreloader, loadPromises, noPlayButton, photoSize, videoSize, searchContext, autoDownload, managers = rootScope.managers, noAutoplayAttribute}: {
+export default async function wrapVideo({doc, altDoc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, noPreview, withoutPreloader, loadPromises, noPlayButton, photoSize, videoSize, searchContext, autoDownload, managers = rootScope.managers, noAutoplayAttribute, ignoreStreaming, canAutoplay, useBlur}: {
   doc: MyDocument,
+  altDoc?: MyDocument,
   container?: HTMLElement,
   message?: Message.message,
   boxWidth?: number,
@@ -86,12 +93,21 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
   videoSize?: Extract<VideoSize, VideoSize.videoSize>,
   searchContext?: MediaSearchContext,
   managers?: AppManagers,
-  noAutoplayAttribute?: boolean
+  noAutoplayAttribute?: boolean,
+  ignoreStreaming?: boolean,
+  canAutoplay?: boolean,
+  useBlur?: boolean | number,
 }) {
+  const supportsStreaming = doc.supportsStreaming && !ignoreStreaming;
+  if(!supportsStreaming && altDoc && !onlyPreview && !IS_H265_SUPPORTED) {
+    doc = altDoc;
+    altDoc = undefined;
+  }
+
   const autoDownloadSize = autoDownload?.video;
   let noAutoDownload = autoDownloadSize === 0;
   const isAlbumItem = !(boxWidth && boxHeight);
-  const canAutoplay = /* doc.sticker ||  */(
+  canAutoplay ??= /* doc.sticker ||  */(
     (
       doc.type !== 'video' || (
         doc.size <= MAX_VIDEO_AUTOPLAY_SIZE &&
@@ -112,7 +128,8 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
 
       if(!noPlayButton && doc.type !== 'round') {
         if(canAutoplay && !noAutoDownload) {
-          spanTime.classList.add('tgico', 'can-autoplay');
+          spanTime.classList.add('can-autoplay');
+          spanTime.append(Icon('nosound', 'video-time-icon'));
         } else {
           needPlayButton = true;
         }
@@ -127,14 +144,14 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
     }
 
     if(needPlayButton) {
-      spanPlay = document.createElement('span');
-      spanPlay.classList.add('video-play', 'tgico-largeplay', 'btn-circle', 'position-center');
+      spanPlay = Button('btn-circle video-play position-center', {icon: 'largeplay', noRipple: true});
       container.append(spanPlay);
     }
   }
 
   const res: {
     thumb?: typeof photoRes,
+    video?: HTMLVideoElement,
     loadPromise: Promise<any>
   } = {} as any;
 
@@ -153,7 +170,8 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
       loadPromises,
       autoDownloadSize,
       size: photoSize,
-      managers
+      managers,
+      useBlur
     });
 
     res.thumb = photoRes;
@@ -193,14 +211,13 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
     circle.style.strokeDasharray = roundVideoCircumference + ' ' + roundVideoCircumference;
     circle.style.strokeDashoffset = '' + roundVideoCircumference;
 
-    spanTime.classList.add('tgico');
-
     const isUnread = message.pFlags.media_unread;
     if(isUnread) {
       divRound.classList.add('is-unread');
     }
 
     const canvas = document.createElement('canvas');
+    canvas.classList.add('video-round-canvas');
     canvas.width = canvas.height = doc.w/*  * window.devicePixelRatio */;
 
     divRound.prepend(canvas, spanTime);
@@ -251,19 +268,29 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
           onFrame();
         }
 
-        spanTime.innerText = toHHMMSS(globalVideo.duration - globalVideo.currentTime, false);
+        spanTime.firstChild.nodeValue = toHHMMSS(globalVideo.duration - globalVideo.currentTime, false);
       };
 
       const throttledTimeUpdate = throttle(() => {
         fastRaf(onTimeUpdate);
       }, 1000, false);
 
+      const noSoundIcon = Icon('nosound', 'video-time-icon');
+      const setIsPaused = (paused: boolean) => {
+        divRound.classList.toggle('is-paused', paused);
+        if(paused) {
+          spanTime.append(noSoundIcon);
+        } else {
+          noSoundIcon.remove();
+        }
+      };
+
       const onPlay = () => {
         video.classList.add('hide');
-        divRound.classList.remove('is-paused');
+        setIsPaused(false);
         animateSingle(onFrame, canvas);
 
-        if(preloader && preloader.preloader && preloader.preloader.classList.contains('manual')) {
+        if(preloader?.preloader && preloader.preloader.classList.contains('manual')) {
           preloader.onClick();
         }
       };
@@ -274,15 +301,15 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
           return;
         }
 
-        divRound.classList.add('is-paused');
+        setIsPaused(true);
       };
 
       const onEnded = () => {
         video.classList.remove('hide');
-        divRound.classList.add('is-paused');
+        setIsPaused(true);
 
         video.currentTime = 0;
-        spanTime.innerText = toHHMMSS(globalVideo.duration, false);
+        spanTime.firstChild.nodeValue = toHHMMSS(globalVideo.duration, false);
 
         if(globalVideo.currentTime) {
           globalVideo.currentTime = 0;
@@ -318,7 +345,7 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
             appMediaPlaybackController.setTargets({peerId: message.peerId, mid: message.mid}, prev, next);
           }
 
-          globalVideo.play();
+          safePlay(globalVideo);
         } else {
           globalVideo.pause();
         }
@@ -349,7 +376,7 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
   }
 
   let photoRes: Awaited<ReturnType<typeof wrapPhoto>>;
-  if(message) {
+  if(message || onlyPreview) {
     photoRes = await wrapPhoto({
       photo: doc,
       message,
@@ -364,7 +391,8 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
       loadPromises,
       autoDownloadSize: autoDownload?.photo,
       size: photoSize,
-      managers
+      managers,
+      useBlur
     });
 
     res.thumb = photoRes;
@@ -381,7 +409,11 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
       foreignObject.append(video);
     }
   } else if(!noPreview) { // * gifs masonry
-    const gotThumb = getStrippedThumbIfNeeded(doc, {} as ThumbCache, true);
+    const gotThumb = getMediaThumbIfNeeded({
+      photo: doc,
+      cacheContext: {} as ThumbCache,
+      useBlur: useBlur || true
+    });
     if(gotThumb) {
       const thumbImage = gotThumb.image;
       thumbImage.classList.add('media-poster');
@@ -408,16 +440,21 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
     return res;
   }
 
-  if(!video.parentElement && container) {
+  const appendVideo = () => {
     (photoRes?.aspecter || container).append(video);
-  }
-
-  let cacheContext: ThumbCache;
-  const getCacheContext = async() => {
-    return cacheContext = await managers.thumbsStorage.getCacheContext(doc, videoSize?.type);
   };
 
-  await getCacheContext();
+  if(!video.parentElement && container/*  && !altDoc */) {
+    appendVideo();
+  }
+
+  let cacheContext: ThumbCache, altCacheContext: ThumbCache;
+  const getCacheContext = () => {
+    cacheContext = apiManagerProxy.getCacheContext(doc, videoSize?.type);
+    altDoc && (altCacheContext = apiManagerProxy.getCacheContext(altDoc, videoSize?.type));
+  };
+
+  getCacheContext();
 
   const uploadFileName = message?.uploadingFileName;
   if(uploadFileName) { // means upload
@@ -428,11 +465,11 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
     preloader.attachPromise(appDownloadManager.getUpload(uploadFileName));
     preloader.attach(container, false);
     noAutoDownload = undefined;
-  } else if(!cacheContext.downloaded && !doc.supportsStreaming && !withoutPreloader) {
+  } else if(!cacheContext.downloaded && !supportsStreaming && !withoutPreloader) {
     preloader = new ProgressivePreloader({
       attachMethod: 'prepend'
     });
-  } else if(doc.supportsStreaming) {
+  } else if(supportsStreaming && !withoutPreloader) {
     preloader = new ProgressivePreloader({
       cancelable: false,
       attachMethod: 'prepend'
@@ -454,13 +491,13 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
     }
   }, {once: true});
 
-  if(doc.type === 'video') {
+  if(doc.type === 'video' && spanTime) {
     const onTimeUpdate = () => {
       if(!video.duration) {
         return;
       }
 
-      spanTime.innerText = toHHMMSS(video.duration - video.currentTime, false);
+      spanTime.firstChild.nodeValue = toHHMMSS(video.duration - video.currentTime, false);
     };
 
     const throttledTimeUpdate = throttle(() => {
@@ -492,10 +529,10 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
       preloader.setManual();
     }
 
-    await getCacheContext();
+    getCacheContext();
     let loadPromise: Promise<any> = Promise.resolve();
     if((preloader && !uploadFileName) || withoutPreloader) {
-      if(!cacheContext.downloaded && !doc.supportsStreaming) {
+      if(!cacheContext.downloaded && !supportsStreaming) {
         const promise = loadPromise = appDownloadManager.downloadMediaURL({
           media: doc,
           queueId: lazyLoadQueue?.queueId,
@@ -506,7 +543,7 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
         if(preloader) {
           preloader.attach(container, false, promise);
         }
-      } else if(doc.supportsStreaming) {
+      } else if(supportsStreaming) {
         if(noAutoDownload) {
           loadPromise = Promise.reject(makeError('NO_AUTO_DOWNLOAD'));
         } else if(!cacheContext.downloaded && preloader) { // * check for uploading video
@@ -535,13 +572,29 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
         appMediaPlaybackController.resolveWaitingForLoadMedia(message.peerId, message.mid, message.pFlags.is_scheduled);
       }
 
-      await getCacheContext();
+      getCacheContext();
 
-      onMediaLoad(video).then(() => {
+      const onError = (err: any) => {
+        console.error('video load error', err);
+        if(spanTime) {
+          spanTime.classList.add('is-error');
+          const previousIcon = spanTime.querySelector('.video-time-icon');
+          const newIcon = Icon('sendingerror', 'video-time-icon');
+          if(previousIcon) previousIcon.replaceWith(newIcon);
+          else spanTime.append(newIcon);
+        }
+        renderDeferred.reject(err);
+      };
+      const onMediaLoadPromise = onMediaLoad(video);
+      const videoLeakPromise = handleVideoLeak(video, onMediaLoadPromise);
+      videoLeakPromise.catch(onError);
+      onMediaLoadPromise.then(() => {
         if(group) {
           animationIntersector.addAnimation({
             animation: video,
-            group
+            group,
+            observeElement: video,
+            type: 'video'
           });
         }
 
@@ -549,16 +602,34 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
           preloader.detach();
         }
 
-        renderDeferred.resolve();
-      }, (err) => {
-        console.error('video load error', err);
-        if(spanTime) {
-          spanTime.classList.add('is-error');
+        if(altDoc) {
+          videoLeakPromise.then(() => {
+            video.pause();
+            renderDeferred.resolve();
+          });
+          video.currentTime = 0.0001;
+        } else {
+          renderDeferred.resolve();
         }
-        renderDeferred.reject(err);
-      });
+      }, onError);
 
-      renderImageFromUrl(video, cacheContext.url);
+      if(altDoc && altCacheContext) {
+        const sources = [
+          {context: cacheContext, type: 'video/mp4; codecs="hev1"', width: doc.w},
+          {context: altCacheContext, type: 'video/mp4; codecs="avc1.64001E"', width: altDoc.w}
+        ].map(({context, type, width}) => {
+          const source = document.createElement('source');
+          source.src = context.url;
+          // source.type = type;
+          source.width = width;
+          return source;
+        });
+
+        video.append(...sources);
+        video.load();
+      } else {
+        renderImageFromUrl(video, cacheContext.url);
+      }
     }, noop);
 
     return {download: loadPromise, render: Promise.all([loadPromise, renderDeferred])};
@@ -568,25 +639,7 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
     preloader.setDownloadFunction(load);
   }
 
-  (container as any).preloader = preloader;
-
-  /* if(doc.size >= 20e6 && !doc.downloaded) {
-    let downloadDiv = document.createElement('div');
-    downloadDiv.classList.add('download');
-
-    let span = document.createElement('span');
-    span.classList.add('btn-circle', 'tgico-download');
-    downloadDiv.append(span);
-
-    downloadDiv.addEventListener('click', () => {
-      downloadDiv.remove();
-      loadVideo();
-    });
-
-    container.prepend(downloadDiv);
-
-    return;
-  } */
+  container && ((container as any).preloader = preloader);
 
   if(doc.type === 'gif' && !canAutoplay) {
     attachClickEvent(container, (e) => {
@@ -602,6 +655,10 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
 
   if(res.thumb) {
     await res.thumb.loadPromises.thumb;
+  }
+
+  if(video) {
+    res.video = video;
   }
 
   return res;

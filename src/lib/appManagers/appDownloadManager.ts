@@ -142,7 +142,7 @@ export class AppDownloadManager {
     }
 
     deferred = this.getNewDeferred(fileName);
-    this.managers.appMessagesManager.getUploadPromise(fileName).then(deferred.resolve, deferred.reject);
+    this.managers.appMessagesManager.getUploadPromise(fileName).then(deferred.resolve.bind(deferred), deferred.reject.bind(deferred));
     return deferred;
   }
 
@@ -164,7 +164,7 @@ export class AppDownloadManager {
     if(deferred) return deferred;
 
     deferred = this.getNewDeferred<Blob>(fileName, type);
-    getPromise().then(deferred.resolve, deferred.reject);
+    getPromise().then(deferred.resolve.bind(deferred), deferred.reject.bind(deferred));
     return deferred;
   }
 

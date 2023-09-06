@@ -181,6 +181,7 @@ export class AppPollsManager extends AppManager {
       this.log('getPollVotes messages:', votesList);
 
       this.appUsersManager.saveApiUsers(votesList.users);
+      this.appChatsManager.saveApiChats(votesList.chats);
 
       return votesList;
     });

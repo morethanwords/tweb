@@ -7,8 +7,13 @@
 import type {Awaited} from '../../types';
 import type {CacheStorageDbName} from '../files/cacheStorage';
 import type {State} from '../../config/state';
-import type {Message, MessagePeerReaction, PeerNotifySettings} from '../../layer';
+import type {Chat, ChatPhoto, Message, MessagePeerReaction, PeerNotifySettings, User, UserProfilePhoto} from '../../layer';
 import type {CryptoMethods} from '../crypto/crypto_methods';
+import type {ThumbStorageMedia} from '../storages/thumbs';
+import type ThumbsStorage from '../storages/thumbs';
+import type {AppReactionsManager} from '../appManagers/appReactionsManager';
+import type {MessagesStorageKey} from '../appManagers/appMessagesManager';
+import type {AppAvatarsManager, PeerPhotoSize} from '../appManagers/appAvatarsManager';
 import rootScope from '../rootScope';
 import webpWorkerController from '../webp/webpWorkerController';
 import {MOUNT_CLASS_TO} from '../../config/debug';
@@ -30,15 +35,43 @@ import ServiceMessagePort from '../serviceWorker/serviceMessagePort';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import {makeWorkerURL} from '../../helpers/setWorkerProxy';
 import ServiceWorkerURL from '../../../sw?worker&url';
+import {IS_SAFARI} from '../../environment/userAgent';
+import setDeepProperty from '../../helpers/object/setDeepProperty';
+import getThumbKey from '../storages/utils/thumbs/getThumbKey';
+import {NULL_PEER_ID, THUMB_TYPE_FULL} from './mtproto_config';
+import generateEmptyThumb from '../storages/utils/thumbs/generateEmptyThumb';
+import getStickerThumbKey from '../storages/utils/thumbs/getStickerThumbKey';
+import callbackify from '../../helpers/callbackify';
+import isLegacyMessageId from '../appManagers/utils/messageId/isLegacyMessageId';
 
 export type Mirrors = {
-  state: State
+  state: State,
+  thumbs: ThumbsStorage['thumbsCache'],
+  stickerThumbs: ThumbsStorage['stickerCachedThumbs'],
+  availableReactions: AppReactionsManager['availableReactions'] | Promise<AppReactionsManager['availableReactions']>,
+  messages: {
+    [type in string]: {
+      [mid in number]: Message.message | Message.messageService
+    }
+  },
+  groupedMessages: {
+    [groupedId in string]: Map<number, Message.message | Message.messageService>
+  },
+  peers: {
+    [peerId in PeerId]: Exclude<Chat, Chat.chatEmpty> | User.user
+  },
+  avatars: AppAvatarsManager['savedAvatarURLs']
 };
 
-export type MirrorTaskPayload<T extends keyof Mirrors = keyof Mirrors, K extends keyof Mirrors[T] = keyof Mirrors[T], J extends Mirrors[T][K] = Mirrors[T][K]> = {
+export type MirrorTaskPayload<
+  T extends keyof Mirrors = keyof Mirrors
+  // K extends keyof Mirrors[T] = keyof Mirrors[T],
+  // J extends Mirrors[T][K] = Mirrors[T][K]
+> = {
   name: T,
-  key?: K,
-  value: any
+  // key?: K,
+  key?: string,
+  value?: any
 };
 
 export type NotificationBuildTaskPayload = {
@@ -70,10 +103,59 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
   private pingServiceWorkerPromise: CancellablePromise<void>;
 
+  private processMirrorTaskMap: {
+    [type in keyof Mirrors]?: (payload: MirrorTaskPayload) => void
+  };
+
   constructor() {
     super();
 
-    this.mirrors = {} as any;
+    this.mirrors = {
+      state: undefined,
+      thumbs: {},
+      stickerThumbs: {},
+      availableReactions: undefined,
+      messages: {},
+      groupedMessages: {},
+      peers: {},
+      avatars: {}
+    };
+
+    this.processMirrorTaskMap = {
+      messages: (payload) => {
+        const message = payload.value as Message.message | Message.messageService;
+        let mid: number, groupedId: string;
+        if(message) {
+          mid = message.mid;
+          groupedId = (message as Message.message).grouped_id;
+        } else {
+          const [key, _mid] = payload.key.split('.');
+          mid = +_mid;
+          const previousMessage = this.mirrors.messages[key]?.[mid];
+          if(!previousMessage) {
+            return;
+          }
+
+          groupedId = (previousMessage as Message.message).grouped_id;
+        }
+
+        if(!groupedId) {
+          return;
+        }
+
+        const map = this.mirrors.groupedMessages[groupedId] ??= new Map();
+        if(!payload.value) {
+          map.delete(mid);
+
+          if(!map.size) {
+            delete this.mirrors.groupedMessages[groupedId];
+          }
+        } else {
+          map.set(mid, message);
+        }
+      }
+    };
+
     this.tabState = {
       chatPeerIds: [],
       idleStartTime: 0
@@ -245,6 +327,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
   }
 
   private _registerServiceWorker() {
+    if(import.meta.env.DEV && IS_SAFARI) {
+      return;
+    }
+
     navigator.serviceWorker.register(
       // * doesn't work
       // new URL('../../../sw.ts', import.meta.url),
@@ -493,6 +579,107 @@ class ApiManagerProxy extends MTProtoMessagePort {
     return this.getMirror('state');
   }
 
+  public getCacheContext(
+    media: ThumbStorageMedia,
+    thumbSize: string = THUMB_TYPE_FULL,
+    key = getThumbKey(media)
+  ) {
+    const cache = this.mirrors.thumbs[key];
+    return cache?.[thumbSize] || generateEmptyThumb(thumbSize);
+  }
+
+  public getStickerCachedThumb(docId: DocId, toneIndex: string | number) {
+    const key = getStickerThumbKey(docId, toneIndex);
+    return this.mirrors.stickerThumbs[key];
+  }
+
+  public getAvailableReactions() {
+    return this.mirrors.availableReactions ||= rootScope.managers.appReactionsManager.getAvailableReactions();
+  }
+
+  public getReaction(reaction: string) {
+    return callbackify(this.getAvailableReactions(), (availableReactions) => {
+      return availableReactions.find((availableReaction) => availableReaction.reaction === reaction);
+    });
+  }
+
+  public async getMessageFromStorage(key: MessagesStorageKey, mid: number) {
+    // * use global storage instead
+    if(key.endsWith('history') && isLegacyMessageId(mid)) {
+      key = this.getGlobalHistoryMessagesStorage();
+    }
+
+    const cache = this.mirrors.messages[key];
+    return cache?.[mid];
+  }
+
+  public getGroupsFirstMessage(message: Message.message) {
+    if(!message?.grouped_id) return message;
+
+    const storage = this.mirrors.groupedMessages[message.grouped_id];
+    let minMid = Number.MAX_SAFE_INTEGER;
+    for(const [mid, message] of storage) {
+      if(message.mid < minMid) {
+        minMid = message.mid;
+      }
+    }
+
+    return storage.get(minMid);
+  }
+
+  public getHistoryMessagesStorage(peerId: PeerId): MessagesStorageKey {
+    return `${peerId}_history`;
+  }
+
+  public getGlobalHistoryMessagesStorage(): MessagesStorageKey {
+    return this.getHistoryMessagesStorage(NULL_PEER_ID);
+  }
+
+  public getMessageById(messageId: number) {
+    if(isLegacyMessageId(messageId)) {
+      return this.getMessageFromStorage(this.getGlobalHistoryMessagesStorage(), messageId);
+    }
+  }
+
+  public async getMessageByPeer(peerId: PeerId, messageId: number) {
+    if(!peerId) {
+      return this.getMessageById(messageId);
+    }
+
+    return this.getMessageFromStorage(this.getHistoryMessagesStorage(peerId), messageId);
+  }
+
+  public async getPeer(peerId: PeerId) {
+    return this.mirrors.peers[peerId];
+  }
+
+  public async getUser(userId: UserId) {
+    return this.mirrors.peers[userId.toPeerId(false)] as User.user;
+  }
+
+  public async getChat(chatId: ChatId) {
+    return this.mirrors.peers[chatId.toPeerId(true)] as Exclude<Chat, Chat.chatEmpty>;
+  }
+
+  public async isForum(peerId: PeerId) {
+    const peer = await this.getPeer(peerId);
+    return !!(peer as Chat.channel)?.pFlags?.forum;
+  }
+
+  public isAvatarCached(peerId: PeerId, size?: PeerPhotoSize) {
+    const saved = this.mirrors.avatars[peerId];
+    if(size === undefined) {
+      return !!saved;
+    }
+
+    return !!(saved && saved[size] && !(saved[size] instanceof Promise));
+  }
+
+  public loadAvatar(peerId: PeerId, photo: UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto, size: PeerPhotoSize) {
+    const saved = this.mirrors.avatars[peerId] ??= {};
+    return saved[size] ??= rootScope.managers.appAvatarsManager.loadAvatar(peerId, photo, size);
+  }
+
   public updateTabState<T extends keyof TabState>(key: T, value: TabState[T]) {
     this.tabState[key] = value;
     this.invokeVoid('tabState', this.tabState);
@@ -504,17 +691,14 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
   private onMirrorTask = (payload: MirrorTaskPayload) => {
     const {name, key, value} = payload;
+    this.processMirrorTaskMap[name]?.(payload);
     if(!payload.hasOwnProperty('key')) {
       this.mirrors[name] = value;
       return;
     }
 
     const mirror = this.mirrors[name] ??= {} as any;
-    if(value === undefined) {
-      delete mirror[key];
-    } else {
-      mirror[key] = value;
-    }
+    setDeepProperty(mirror, key, value, true);
   };
 }
 

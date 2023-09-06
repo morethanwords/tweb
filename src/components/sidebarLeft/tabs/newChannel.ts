@@ -50,7 +50,10 @@ export default class AppNewChannelTab extends SliderSuperTab {
       withLinebreaks: true
     });
 
-    inputWrapper.append(this.channelNameInputField.container, this.channelDescriptionInputField.container);
+    inputWrapper.append(
+      this.channelNameInputField.container,
+      this.channelDescriptionInputField.container
+    );
 
     const onLengthChange = () => {
       this.nextBtn.classList.toggle('is-visible', !!this.channelNameInputField.value.length &&

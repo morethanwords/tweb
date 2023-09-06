@@ -9,8 +9,10 @@ import {attachClickEvent} from '../helpers/dom/clickEvent';
 import findUpAsChild from '../helpers/dom/findUpAsChild';
 import ListenerSetter from '../helpers/listenerSetter';
 import safeAssign from '../helpers/object/safeAssign';
+import {TGICO_CLASS} from '../helpers/tgico';
 import I18n, {LangPackKey} from '../lib/langPack';
 import CheckboxField from './checkboxField';
+import Icon from './icon';
 import Row from './row';
 import {toast} from './toast';
 
@@ -71,7 +73,7 @@ export default class CheckboxFields<K extends CheckboxFieldsField = CheckboxFiel
     });
 
     if(info.restrictionText) {
-      info.checkboxField.label.lastElementChild.classList.add('with-lock', 'tgico');
+      info.checkboxField.label.lastElementChild.classList.add('with-lock', TGICO_CLASS);
       info.checkboxField.input.disabled = true;
 
       attachClickEvent(info.row.container, (e) => {
@@ -92,8 +94,7 @@ export default class CheckboxFields<K extends CheckboxFieldsField = CheckboxFiel
       });
       nodes.push(container);
 
-      const span = document.createElement('span');
-      span.classList.add('tgico-down', 'accordion-icon');
+      const span = Icon('down', 'accordion-icon');
 
       nestedCounter = info.nestedCounter = document.createElement('b');
       this.setNestedCounter(info);

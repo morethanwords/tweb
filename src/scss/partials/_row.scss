@@ -134,7 +134,7 @@ $row-border-radius: $border-radius-medium;
       padding-inline-start: 4rem;
     }
 
-    /* .row-title */&.tgico:before {
+    /* .row-title */.row-icon {
       position: absolute;
       inset-inline-start: 1rem;
       font-size: 1.5rem;
@@ -147,7 +147,7 @@ $row-border-radius: $border-radius-medium;
       transform: translateY(-50%);
     }
 
-    &:not(.row-with-icon):before {
+    &:not(.row-with-icon) .row-icon {
       display: none;
     }
 
@@ -282,9 +282,9 @@ $row-border-radius: $border-radius-medium;
     line-height: var(--line-height-14);
     margin-top: .1875rem;
 
-    &:empty {
-      display: none;
-    }
+    // &:empty {
+    //   display: none;
+    // }
   }
 
   &-media {

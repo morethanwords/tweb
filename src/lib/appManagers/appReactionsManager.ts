@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import {MessagesReactions, type AvailableReaction, type Message, type MessagePeerReaction, type MessagesAvailableReactions, type Reaction, type ReactionCount, type Update, type Updates, ChatReactions, Peer, Document} from '../../layer';
 import findAndSplice from '../../helpers/array/findAndSplice';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import assumeType from '../../helpers/assumeType';
@@ -12,11 +13,13 @@ import callbackifyAll from '../../helpers/callbackifyAll';
 import copy from '../../helpers/object/copy';
 import pause from '../../helpers/schedulers/pause';
 import tsNow from '../../helpers/tsNow';
-import {AvailableReaction, Message, MessagePeerReaction, MessagesAvailableReactions, Reaction, ReactionCount, Update, Updates} from '../../layer';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
 import {AppManager} from './manager';
 import getServerMessageId from './utils/messageId/getServerMessageId';
 import reactionsEqual from './utils/reactions/reactionsEqual';
+import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
+import availableReactionToReaction from './utils/reactions/availableReactionToReaction';
+import {NULL_PEER_ID} from '../mtproto/mtproto_config';
 
 const SAVE_DOC_KEYS = [
   'static_icon' as const,
@@ -32,34 +35,43 @@ const REFERENCE_CONTEXT: ReferenceContext = {
   type: 'reactions'
 };
 
+export type PeerAvailableReactions = {
+  type: ChatReactions['_'],
+  reactions: Reaction[]
+};
+
 export class AppReactionsManager extends AppManager {
   private availableReactions: AvailableReaction[];
   private sendReactionPromises: Map<string, Promise<any>>;
   private lastSendingTimes: Map<string, number>;
+  private reactions: {[key in 'recent' | 'top']?: Reaction[]};
 
   protected after() {
     this.sendReactionPromises = new Map();
     this.lastSendingTimes = new Map();
+    this.reactions = {};
 
     this.rootScope.addEventListener('user_auth', () => {
       setTimeout(() => {
         Promise.resolve(this.getAvailableReactions()).then(async(availableReactions) => {
-          for(let i = 0, length = availableReactions.length; i < length; ++i) {
+          const toLoad: (Extract<keyof AvailableReaction, 'around_animation' | 'static_icon' | 'appear_animation' | 'center_icon'>)[] = [
+            'around_animation',
+            'static_icon',
+            'appear_animation',
+            'center_icon'
+          ];
+
+          for(let i = 0, length = Math.min(7, availableReactions.length); i < length; ++i) {
             const availableReaction = availableReactions[i];
-            await Promise.all([
-              availableReaction.around_animation && this.apiFileManager.downloadMedia({media: availableReaction.around_animation}),
-              availableReaction.static_icon && this.apiFileManager.downloadMedia({media: availableReaction.static_icon}),
-              availableReaction.appear_animation && this.apiFileManager.downloadMedia({media: availableReaction.appear_animation}),
-              availableReaction.center_icon && this.apiFileManager.downloadMedia({media: availableReaction.center_icon})
-            ]);
-
-            if(i > 15) {
-              break;
-            }
-
+            const promises = toLoad.map((key) => {
+              return availableReaction[key] && this.apiFileManager.downloadMedia({media: availableReaction[key]});
+            });
+            await Promise.all(promises);
             await pause(1000);
           }
         });
+
+        this.getTopReactions();
       }, 7.5e3);
     });
   }
@@ -87,6 +99,11 @@ export class AppReactionsManager extends AppManager {
           }
         }
 
+        MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {
+          name: 'availableReactions',
+          value: availableReactions
+        });
+
         return availableReactions;
       },
       params: {
@@ -101,67 +118,142 @@ export class AppReactionsManager extends AppManager {
     });
   }
 
-  public getAvailableReactionsForPeer(peerId: PeerId) {
+  public getAvailableReactionsForPeer(
+    peerId: PeerId,
+    unshiftQuickReaction?: boolean
+  ): PeerAvailableReactions | Promise<PeerAvailableReactions> {
     const activeAvailableReactions = this.getActiveAvailableReactions();
+    const topReactions = this.getTopReactions();
+    const quickReaction = this.getQuickReaction();
     if(peerId.isUser()) {
-      return this.unshiftQuickReaction(activeAvailableReactions);
+      return callbackifyAll([
+        topReactions,
+        quickReaction
+      ], ([topReactions, quickReaction]) => {
+        const p: PeerAvailableReactions = {type: 'chatReactionsAll', reactions: topReactions};
+        if(unshiftQuickReaction) {
+          this.unshiftQuickReactionInner(p, quickReaction);
+        }
+        return p;
+      });
     }
 
     const chatFull = this.appProfileManager.getChatFull(peerId.toChatId());
-    return callbackifyAll([activeAvailableReactions, chatFull, this.getQuickReaction()], ([activeAvailableReactions, chatFull, quickReaction]) => {
-      const chatAvailableReactions = chatFull.available_reactions ?? {_: 'chatReactionsNone'};
+    return callbackifyAll([
+      activeAvailableReactions,
+      chatFull,
+      quickReaction,
+      topReactions
+    ], ([
+      activeAvailableReactions,
+      chatFull,
+      quickReaction,
+      topReactions
+    ]) => {
+      let chatAvailableReactions = chatFull.available_reactions ?? {_: 'chatReactionsNone'};
 
-      let filteredChatAvailableReactions: AvailableReaction[] = [];
-      if(chatAvailableReactions._ === 'chatReactionsAll') {
-        filteredChatAvailableReactions = activeAvailableReactions;
-      } else if(chatAvailableReactions._ === 'chatReactionsSome') {
-        filteredChatAvailableReactions = chatAvailableReactions.reactions.map((reaction) => {
-          return activeAvailableReactions.find((availableReaction) => availableReaction.reaction === (reaction as Reaction.reactionEmoji).emoticon);
-        }).filter(Boolean);
+      if(chatAvailableReactions._ === 'chatReactionsAll' && !chatAvailableReactions.pFlags.allow_custom) {
+        chatAvailableReactions = {_: 'chatReactionsSome', reactions: activeAvailableReactions.map(availableReactionToReaction)};
       }
 
-      return this.unshiftQuickReactionInner(filteredChatAvailableReactions, quickReaction);
+      let filteredChatReactions: Reaction[] = [];
+      if(chatAvailableReactions._ === 'chatReactionsAll') {
+        filteredChatReactions = topReactions;
+      } else if(chatAvailableReactions._ === 'chatReactionsSome') {
+        const filteredChatAvailableReactions = chatAvailableReactions.reactions.map((reaction) => {
+          return activeAvailableReactions.find((availableReaction) => availableReaction.reaction === (reaction as Reaction.reactionEmoji).emoticon);
+        }).filter(Boolean);
+        const indexes = new Map(activeAvailableReactions.map((availableReaction, idx) => [availableReaction.reaction, idx]));
+        filteredChatAvailableReactions.sort((a, b) => indexes.get(a.reaction) - indexes.get(b.reaction));
+        filteredChatReactions = filteredChatAvailableReactions.map(availableReactionToReaction);
+      }
+
+      const p: PeerAvailableReactions = {
+        type: chatAvailableReactions._,
+        reactions: filteredChatReactions
+      };
+
+      if(chatAvailableReactions._ === 'chatReactionsAll' && unshiftQuickReaction) {
+        this.unshiftQuickReactionInner(p, quickReaction);
+      }
+
+      return p;
     });
   }
 
-  private unshiftQuickReactionInner(availableReactions: AvailableReaction[], quickReaction: Reaction | AvailableReaction) {
-    if(quickReaction && quickReaction._ !== 'reactionEmoji' && quickReaction._ !== 'availableReaction') return availableReactions;
-    const emoticon = (quickReaction as Reaction.reactionEmoji).emoticon || (quickReaction as AvailableReaction).reaction;
-    const availableReaction = findAndSplice(availableReactions, (availableReaction) => availableReaction.reaction === emoticon);
-    if(availableReaction) {
-      availableReactions.unshift(availableReaction);
+  public getReactions(type: 'recent' | 'top') {
+    if(this.reactions[type]) {
+      return this.reactions[type];
     }
 
-    return availableReactions;
-  }
-
-  private unshiftQuickReaction(
-    availableReactions: AvailableReaction[] | PromiseLike<AvailableReaction.availableReaction[]>,
-    quickReaction: ReturnType<AppReactionsManager['getQuickReaction']> = this.getQuickReaction()
-  ) {
-    return callbackifyAll([
-      availableReactions,
-      quickReaction
-    ], ([availableReactions, quickReaction]) => {
-      return this.unshiftQuickReactionInner(availableReactions, quickReaction);
+    return this.apiManager.invokeApiHashable({
+      method: type === 'recent' ? 'messages.getRecentReactions' : 'messages.getTopReactions',
+      params: {
+        limit: 75
+      },
+      processResult: (messagesReactions) => {
+        assumeType<MessagesReactions.messagesReactions>(messagesReactions);
+        return this.reactions[type] = messagesReactions.reactions;
+      }
     });
   }
 
-  public getAvailableReactionsByMessage(message: Message.message) {
-    if(!message) return [];
-    const peerId = (
-      message.fwd_from?.channel_post &&
-      this.appPeersManager.isMegagroup(message.peerId) &&
-      message.fromId === message.fwdFromId &&
-      message.fromId
-    ) || message.peerId;
-    return this.getAvailableReactionsForPeer(peerId);
+  public getTopReactions() {
+    return this.getReactions('top');
   }
 
-  public isReactionActive(reaction: string) {
-    if(!this.availableReactions) return false;
-    return !!this.availableReactions.find((availableReaction) => availableReaction.reaction === reaction);
+  public getRecentReactions() {
+    return this.getReactions('recent');
   }
+
+  private unshiftQuickReactionInner(peerAvailableReactions: PeerAvailableReactions, quickReaction: Reaction | AvailableReaction) {
+    if(quickReaction._ === 'availableReaction') {
+      quickReaction = availableReactionToReaction(quickReaction);
+    }
+
+    peerAvailableReactions.reactions = peerAvailableReactions.reactions.slice();
+    findAndSplice(peerAvailableReactions.reactions, (reaction) => reactionsEqual(reaction, quickReaction));
+    peerAvailableReactions.reactions.unshift(quickReaction);
+
+    return peerAvailableReactions;
+  }
+
+  // private unshiftQuickReaction(
+  //   availableReactions: AvailableReaction[] | PromiseLike<AvailableReaction.availableReaction[]>,
+  //   quickReaction: ReturnType<AppReactionsManager['getQuickReaction']> = this.getQuickReaction()
+  // ) {
+  //   return callbackifyAll([
+  //     availableReactions,
+  //     quickReaction
+  //   ], ([availableReactions, quickReaction]) => {
+  //     return this.unshiftQuickReactionInner(availableReactions, quickReaction);
+  //   });
+  // }
+
+  public getAvailableReactionsByMessage(
+    message: Message.message,
+    unshiftQuickReaction?: boolean
+  ): ReturnType<AppReactionsManager['getAvailableReactionsForPeer']> {
+    // if(!message) return {type: 'chatReactionsNone', reactions: []};
+    let peerId: PeerId;
+    if(!message) {
+      peerId = NULL_PEER_ID;
+    } else {
+      peerId = (
+        message.fwd_from?.channel_post &&
+        this.appPeersManager.isMegagroup(message.peerId) &&
+        message.fromId === message.fwdFromId &&
+        message.fromId
+      ) || message.peerId;
+    }
+
+    return this.getAvailableReactionsForPeer(peerId, unshiftQuickReaction);
+  }
+
+  // public isReactionActive(reaction: string) {
+  //   if(!this.availableReactions) return false;
+  //   return this.availableReactions.some((availableReaction) => availableReaction.reaction === reaction);
+  // }
 
   public getQuickReaction() {
     return callbackifyAll([
@@ -238,6 +330,8 @@ export class AppReactionsManager extends AppManager {
   }
 
   public async sendReaction(message: Message.message, reaction?: Reaction | AvailableReaction, onlyLocal?: boolean) {
+    message = this.appMessagesManager.getMessageByPeer(message.peerId, message.mid) as typeof message;
+
     if(reaction._ === 'availableReaction') {
       reaction = {
         _: 'reactionEmoji',
@@ -436,5 +530,17 @@ export class AppReactionsManager extends AppManager {
 
     this.sendReactionPromises.set(promiseKey, promise);
     return promise;
+  }
+
+  public getRandomGenericAnimation() {
+    return callbackify(this.appStickersManager.getLocalStickerSet('inputStickerSetEmojiGenericAnimations'), (messagesStickerSet) => {
+      const length = messagesStickerSet.documents.length;
+      if(!length) {
+        return;
+      }
+
+      const document = messagesStickerSet.documents[Math.floor(Math.random() * length)];
+      return document as Document.document;
+    });
   }
 }

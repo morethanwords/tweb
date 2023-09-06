@@ -13,12 +13,12 @@ $popup-footer-padding: .5rem;
   right: 0;
   bottom: 0;
   left: 0;
-  max-width: none;
-  z-index: 3;
+  // max-width: none;
+  z-index: 4;
   background-color: rgba(0, 0, 0, .3);
   margin: 0;
   padding: 1.875rem;
-  box-shadow: none;
+  // box-shadow: none;
   opacity: 0;
   visibility: hidden;
   transition-property: opacity, visibility;
@@ -28,6 +28,7 @@ $popup-footer-padding: .5rem;
   overflow: auto;
   display: flex;
   user-select: none;
+  color: var(--primary-text-color);
 
   &.no-overlay {
     padding: 0;
@@ -43,7 +44,6 @@ $popup-footer-padding: .5rem;
     opacity: 1;
     visibility: visible;
     transition-delay: 0s, 0s;
-    z-index: 4;
 
     .popup-container {
       transform: translate3d(var(--translateX), 0, 0);
@@ -58,16 +58,12 @@ $popup-footer-padding: .5rem;
 
   &-title {
     flex: 1;
-    padding-inline: 1.5rem 1rem;
+    padding-inline: 0 1rem;
     margin: 0;
     font-size: var(--font-size-20);
     line-height: var(--line-height-20);
     font-weight: var(--font-weight-bold);
     @include text-overflow();
-
-    &:first-child {
-      padding-left: 0;
-    }
   }
 
   &-container {
@@ -106,6 +102,7 @@ $popup-footer-padding: .5rem;
     flex: 0 0 auto;
     width: 2.5rem;
     height: 2.5rem;
+    margin-inline-end: 1.5rem;
   }
 
   &-header {

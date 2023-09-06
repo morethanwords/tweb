@@ -5,6 +5,7 @@
  */
 
 import cancelEvent from '../helpers/dom/cancelEvent';
+import Icon from './icon';
 import InputField, {InputFieldOptions} from './inputField';
 
 export class PasswordInputHelpers {
@@ -34,7 +35,8 @@ export class PasswordInputHelpers {
     } */
 
     const toggleVisible = this.toggleVisible = document.createElement('span');
-    toggleVisible.classList.add('toggle-visible', 'tgico');
+    toggleVisible.classList.add('toggle-visible');
+    toggleVisible.append(Icon('eye1'));
 
     container.classList.add('input-field-password');
     container.append(toggleVisible);
@@ -47,9 +49,9 @@ export class PasswordInputHelpers {
     cancelEvent(e);
     this.passwordVisible = !this.passwordVisible;
 
-    this.toggleVisible.classList.toggle('eye-hidden', this.passwordVisible);
+    this.toggleVisible.replaceChildren(Icon(this.passwordVisible ? 'eye2' : 'eye1'));
     (this.input as HTMLInputElement).type = this.passwordVisible ? 'text' : 'password';
-    this.onVisibilityClickAdditional && this.onVisibilityClickAdditional();
+    this.onVisibilityClickAdditional?.();
   };
 }
 

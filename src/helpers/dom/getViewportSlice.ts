@@ -63,7 +63,7 @@ export default function getViewportSlice({
   }
 
   if(extraMinLength) {
-    visible.unshift(...invisibleTop.splice(invisibleTop.length - extraMinLength, extraMinLength));
+    visible.unshift(...invisibleTop.splice(Math.max(0, invisibleTop.length - extraMinLength), extraMinLength));
     visible.push(...invisibleBottom.splice(0, extraMinLength));
   }
 

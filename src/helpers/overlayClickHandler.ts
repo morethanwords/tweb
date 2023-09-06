@@ -20,7 +20,7 @@ export default class OverlayClickHandler extends EventListenerBase<{
   protected listenerOptions: AddEventListenerOptions;
 
   constructor(
-    protected navigationType: NavigationItem['type'],
+    protected navigationType?: NavigationItem['type'],
     protected withOverlay?: boolean
   ) {
     super(false);
@@ -32,8 +32,11 @@ export default class OverlayClickHandler extends EventListenerBase<{
       return;
     }
 
-    if(this.element && findUpAsChild(e.target as HTMLElement, this.element)) {
-      return;
+    if(this.element) {
+      const isRoot = this.element === document.body;
+      if(!isRoot && findUpAsChild(e.target as HTMLElement, this.element)) {
+        return;
+      }
     }
 
     if(this.listenerOptions?.capture) {
@@ -57,15 +60,15 @@ export default class OverlayClickHandler extends EventListenerBase<{
 
     document.removeEventListener(CLICK_EVENT_NAME, this.onClick, this.listenerOptions);
 
-    if(!IS_MOBILE_SAFARI) {
+    if(!IS_MOBILE_SAFARI && this.navigationType) {
       appNavigationController.removeByType(this.navigationType);
     }
   }
 
-  public open(element: HTMLElement) {
+  public open(element = document.body) {
     this.close();
 
-    if(!IS_MOBILE_SAFARI) {
+    if(!IS_MOBILE_SAFARI && this.navigationType) {
       appNavigationController.pushItem({
         type: this.navigationType,
         onPop: (canAnimate) => {
@@ -87,7 +90,14 @@ export default class OverlayClickHandler extends EventListenerBase<{
       });
     }
 
-    this.overlay && this.element.parentElement.insertBefore(this.overlay, this.element);
+    const isRoot = this.element === document.body;
+    if(this.overlay) {
+      if(isRoot) {
+        this.element.append(this.overlay);
+      } else {
+        this.element.parentElement.insertBefore(this.overlay, this.element);
+      }
+    }
 
     // document.body.classList.add('disable-hover');
 

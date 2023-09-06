@@ -48,6 +48,8 @@ import type AppSeamlessLoginManager from './appSeamlessLoginManager';
 import type AppThemesManager from './appThemesManager';
 import type AppUsernamesManager from './appThemesManager';
 import type AppChatInvitesManager from './appChatInvitesManager';
+import type AppStoriesManager from './appStoriesManager';
+import type AppBotsManager from './appBotsManager';
 import type {AppManagers} from './managers';
 
 export class AppManager {
@@ -96,6 +98,8 @@ export class AppManager {
   protected appThemesManager: AppThemesManager;
   protected appUsernamesManager: AppUsernamesManager;
   protected appChatInvitesManager: AppChatInvitesManager;
+  protected appStoriesManager: AppStoriesManager;
+  protected appBotsManager: AppBotsManager;
 
   public clear: (init?: boolean) => void;
 

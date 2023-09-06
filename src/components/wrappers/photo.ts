@@ -14,7 +14,7 @@ import LazyLoadQueue from '../lazyLoadQueue';
 import ProgressivePreloader from '../preloader';
 import blur from '../../helpers/blur';
 import {AppManagers} from '../../lib/appManagers/managers';
-import getStrippedThumbIfNeeded from '../../helpers/getStrippedThumbIfNeeded';
+import getMediaThumbIfNeeded from '../../helpers/getStrippedThumbIfNeeded';
 import setAttachmentSize from '../../helpers/setAttachmentSize';
 import choosePhotoSize from '../../lib/appManagers/utils/photos/choosePhotoSize';
 import type {ThumbCache} from '../../lib/storages/thumbs';
@@ -26,8 +26,9 @@ import {THUMB_TYPE_FULL} from '../../lib/mtproto/mtproto_config';
 import {Middleware} from '../../helpers/middleware';
 import liteMode from '../../helpers/liteMode';
 import isWebFileLocation from '../../lib/appManagers/utils/webFiles/isWebFileLocation';
+import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 
-export default async function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size, withoutPreloader, loadPromises, autoDownloadSize, noBlur, noThumb, noFadeIn, blurAfter, managers = rootScope.managers, processUrl, fadeInElement, onRender, onRenderFinish}: {
+export default async function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size, withoutPreloader, loadPromises, autoDownloadSize, noBlur, noThumb, noFadeIn, blurAfter, managers = rootScope.managers, processUrl, fadeInElement, onRender, onRenderFinish, useBlur}: {
   photo: MyPhoto | MyDocument | WebDocument | InputWebFileLocation,
   message?: Message.message | Message.messageService,
   container?: HTMLElement,
@@ -49,7 +50,8 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
   processUrl?: (url: string) => Promise<string>,
   fadeInElement?: HTMLElement,
   onRender?: () => void,
-  onRenderFinish?: () => void
+  onRenderFinish?: () => void,
+  useBlur?: boolean | number
 }) {
   const ret = {
     loadPromises: {
@@ -119,7 +121,7 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
     );
     size = set.photoSize;
     isFit = set.isFit;
-    cacheContext = await managers.thumbsStorage.getCacheContext(photo, size.type);
+    cacheContext = apiManagerProxy.getCacheContext(photo, size.type);
 
     if(!isFit && !isWebDoc) {
       aspecter = document.createElement('div');
@@ -127,7 +129,13 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
       aspecter.style.width = set.size.width + 'px';
       aspecter.style.height = set.size.height + 'px';
 
-      const gotThumb = getStrippedThumbIfNeeded(photo, cacheContext, !noBlur, true);
+      const gotThumb = getMediaThumbIfNeeded({
+        photo,
+        cacheContext,
+        useBlur: useBlur !== undefined ? useBlur : !noBlur,
+        ignoreCache: true,
+        onlyStripped: true
+      });
       if(gotThumb) {
         loadThumbPromise = gotThumb.loadPromise;
         const thumbImage = gotThumb.image; // local scope
@@ -167,11 +175,16 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
       size = choosePhotoSize(photo, boxWidth, boxHeight, true);
     }
 
-    cacheContext = await managers.thumbsStorage.getCacheContext(photo, size?.type);
+    cacheContext = apiManagerProxy.getCacheContext(photo, size?.type);
   }
 
   if(!noThumb && !isWebDoc && !isWebFile && aspecter) {
-    const gotThumb = getStrippedThumbIfNeeded(photo, cacheContext, !noBlur);
+    const gotThumb = getMediaThumbIfNeeded({
+      photo,
+      cacheContext,
+      useBlur: useBlur !== undefined ? useBlur : !noBlur
+    });
+
     if(gotThumb) {
       loadThumbPromise = Promise.all([loadThumbPromise, gotThumb.loadPromise]);
       ret.loadPromises.thumb = ret.loadPromises.full = loadThumbPromise;
@@ -272,7 +285,7 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
     }
 
     const promise = getDownloadPromise();
-    const cacheContext = await managers.thumbsStorage.getCacheContext(photo, size?.type);
+    const cacheContext = apiManagerProxy.getCacheContext(photo, size?.type);
     if(
       preloader &&
       !cacheContext.downloaded &&
@@ -309,7 +322,8 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
   }
 
   // const perf = performance.now();
-  await loadThumbPromise;
+  // ! do not uncomment this, won't be able to modify element before the thumb is loaded
+  // await loadThumbPromise;
   ret.loadPromises.thumb = loadThumbPromise;
   ret.loadPromises.full = loadPromise || Promise.resolve();
   ret.preloader = preloader;

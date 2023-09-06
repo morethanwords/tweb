@@ -72,6 +72,7 @@ export default class PopupSharedFolderInvite extends PopupElement {
       const item = document.createElement('div');
       item.classList.add('menu-horizontal-div-item');
       const span = document.createElement('span');
+      span.classList.add('menu-horizontal-div-item-span');
       item.append(span);
       nav.append(item);
       return span;

@@ -82,8 +82,9 @@ export default class InputFieldAnimated extends InputField {
   }
 
   protected updateInnerHTML(innerHTML = this.input.innerHTML) {
-    innerHTML = innerHTML.replace(/<custom-emoji-renderer-element.+\/custom-emoji-renderer-element>/, '')
-    .replace(/(<custom-emoji-element.+?>).+?\/custom-emoji-element>/g, '$1</custom-emoji-element>')
+    innerHTML = innerHTML
+    .replace(/<custom-emoji-renderer-element.+\/custom-emoji-renderer-element>/, '')
+    .replace(/(<custom-emoji-element.+?>).+?\/custom-emoji-element>/g, '$1</custom-emoji-element>');
 
     if(USING_BOMS) {
       innerHTML = innerHTML.replace(USELESS_REG_EXP, '');

@@ -14,6 +14,9 @@ import formatNumber from '../../helpers/number/formatNumber';
 import {AppManagers} from '../../lib/appManagers/managers';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import type LazyLoadQueue from '../lazyLoadQueue';
+import {MiddlewareHelper} from '../../helpers/middleware';
+import {_tgico} from '../../helpers/tgico';
+import Icon from '../icon';
 
 const TAG_NAME = 'replies-element';
 
@@ -32,6 +35,7 @@ export default class RepliesElement extends HTMLElement {
   public stackedAvatars: StackedAvatars;
   public text: I18n.IntlElement;
   public managers: AppManagers;
+  public middlewareHelper: MiddlewareHelper;
 
   private updated = false;
 
@@ -64,7 +68,8 @@ export default class RepliesElement extends HTMLElement {
         if(!this.stackedAvatars) {
           this.stackedAvatars = new StackedAvatars({
             lazyLoadQueue: this.lazyLoadQueue,
-            avatarSize: 30
+            avatarSize: 30,
+            middleware: this.middlewareHelper.get()
           });
 
           this.stackedAvatars.container.classList.add('replies-footer-avatars');
@@ -74,14 +79,13 @@ export default class RepliesElement extends HTMLElement {
 
         this.stackedAvatars.render(replies.recent_repliers.map((peer) => getPeerId(peer)), this.loadPromises);
       } else {
-        if(leftPart && !leftPart.classList.contains('tgico-comments')) {
+        if(leftPart && !leftPart.classList.contains(_tgico('comments'))) {
           leftPart.remove();
           leftPart = null;
         }
 
         if(!leftPart) {
-          leftPart = document.createElement('span');
-          leftPart.classList.add('tgico-comments');
+          leftPart = Icon('comments', 'replies-footer-icon', 'replies-footer-icon-comments');
         }
       }
 
@@ -122,8 +126,7 @@ export default class RepliesElement extends HTMLElement {
         textSpan = document.createElement('span');
         textSpan.classList.add('replies-footer-text');
 
-        const iconSpan = document.createElement('span');
-        iconSpan.classList.add('tgico-next');
+        const iconSpan = Icon('next', 'replies-footer-icon', 'replies-footer-icon-next');
 
         const rippleContainer = document.createElement('div');
         ripple(rippleContainer);
@@ -134,7 +137,8 @@ export default class RepliesElement extends HTMLElement {
       replaceContent(textSpan, text.element);
     } else {
       this.classList.add('bubble-beside-button');
-      this.innerHTML = `<span class="tgico-commentssticker"></span><span class="replies-beside-text">${replies?.replies ? formatNumber(replies.replies, 0) : ''}</span>`;
+      this.innerHTML = `<span class="replies-beside-text">${replies?.replies ? formatNumber(replies.replies, 0) : ''}</span>`;
+      this.prepend(Icon('commentssticker'));
     }
 
     if(replies && !this.updated && !this.message.pFlags.is_outgoing) {

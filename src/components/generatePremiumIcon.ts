@@ -1,5 +1,6 @@
+import Icon from './icon';
+
 export default function generatePremiumIcon() {
-  const span = document.createElement('span');
-  span.classList.add('premium-icon', 'tgico-star');
+  const span = Icon('star', 'premium-icon');
   return span;
 }

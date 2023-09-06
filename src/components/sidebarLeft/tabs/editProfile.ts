@@ -91,14 +91,23 @@ export default class AppEditProfileTab extends SliderSuperTab {
         maxLength: bioMaxLength
       });
 
-      inputWrapper.append(this.firstNameInputField.container, this.lastNameInputField.container, this.bioInputField.container);
+      inputWrapper.append(
+        this.firstNameInputField.container,
+        this.lastNameInputField.container,
+        this.bioInputField.container
+      );
 
-      inputFields.push(this.firstNameInputField, this.lastNameInputField, this.bioInputField);
+      inputFields.push(
+        this.firstNameInputField,
+        this.lastNameInputField,
+        this.bioInputField
+      );
 
       this.editPeer = new EditPeer({
         peerId: rootScope.myId,
         inputFields,
-        listenerSetter: this.listenerSetter
+        listenerSetter: this.listenerSetter,
+        middleware: this.middlewareHelper.get()
       });
 
       this.content.append(this.editPeer.nextBtn);

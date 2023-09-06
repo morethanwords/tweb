@@ -84,5 +84,5 @@ function timedChunk<T extends HeavyQueue<T>>(queue: HeavyQueue<T>) {
 
     fastRaf(f);
     // setTimeout(f, 25);
-  }).then(queue.promise.resolve, queue.promise.reject);
+  }).then(queue.promise.resolve.bind(queue.promise), queue.promise.reject.bind(queue.promise));
 }

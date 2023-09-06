@@ -44,6 +44,7 @@ export default class PopupCreateContact extends PopupElement {
       maxLength: 70,
       required: true
     });
+    nameInputField.container.classList.add('input-field-name');
     const lastNameInputField = new InputField({
       label: 'LastName',
       name: 'create-contact-lastname',
@@ -55,8 +56,7 @@ export default class PopupCreateContact extends PopupElement {
     const onInput = () => {
       const name = nameInputField.value + ' ' + lastNameInputField.value;
       // const abbr = getAbbreviation(name);
-      editPeer.avatarElem.peerTitle = name;
-      editPeer.avatarElem.update();
+      editPeer.avatarElem.render({peerTitle: name});
     };
 
     this.listenerSetter.add(nameInputField.input)('input', onInput);
@@ -77,10 +77,11 @@ export default class PopupCreateContact extends PopupElement {
       listenerSetter: this.listenerSetter,
       doNotEditAvatar: true,
       nextBtn: this.btnConfirm,
-      avatarSize: 100
+      avatarSize: 100,
+      middleware: this.middlewareHelper.get()
     });
 
-    div.append(nameInputField.container, lastNameInputField.container, editPeer.avatarElem);
+    div.append(nameInputField.container, lastNameInputField.container, editPeer.avatarElem.node);
     this.container.append(div, telInputField.container);
 
     this.show();

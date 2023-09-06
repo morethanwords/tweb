@@ -18,7 +18,6 @@ import VideoPlayer from '../lib/mediaPlayer';
 import rootScope from '../lib/rootScope';
 import animationIntersector from './animationIntersector';
 import appMediaPlaybackController, {AppMediaPlaybackController} from './appMediaPlaybackController';
-import AvatarElement from './avatar';
 import ButtonIcon from './buttonIcon';
 import {ButtonMenuItemOptions} from './buttonMenu';
 import ButtonMenuToggle from './buttonMenuToggle';
@@ -46,7 +45,7 @@ import {attachClickEvent, hasMouseMovedSinceDown} from '../helpers/dom/clickEven
 import SearchListLoader from '../helpers/searchListLoader';
 import createVideo from '../helpers/dom/createVideo';
 import {AppManagers} from '../lib/appManagers/managers';
-import getStrippedThumbIfNeeded from '../helpers/getStrippedThumbIfNeeded';
+import getMediaThumbIfNeeded from '../helpers/getStrippedThumbIfNeeded';
 import setAttachmentSize from '../helpers/setAttachmentSize';
 import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 import LazyLoadQueueBase from './lazyLoadQueueBase';
@@ -59,6 +58,12 @@ import debounce from '../helpers/schedulers/debounce';
 import isBetween from '../helpers/number/isBetween';
 import findUpAsChild from '../helpers/dom/findUpAsChild';
 import liteMode from '../helpers/liteMode';
+import {avatarNew, findUpAvatar} from './avatarNew';
+import {MiddlewareHelper, getMiddleware} from '../helpers/middleware';
+import onMediaLoad from '../helpers/onMediaLoad';
+import handleVideoLeak from '../helpers/dom/handleVideoLeak';
+import Icon from './icon';
+import {replaceButtonIcon} from './button';
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
@@ -83,9 +88,15 @@ export default class AppMediaViewerBase<
 }> {
   protected wholeDiv: HTMLElement;
   protected overlaysDiv: HTMLElement;
-  protected author: {[k in 'container' | 'avatarEl' | 'nameEl' | 'date']: HTMLElement} = {} as any;
+  protected author: {
+    avatarEl: ReturnType<typeof avatarNew>,
+    avatarMiddlewareHelper?: MiddlewareHelper,
+    container: HTMLElement,
+    nameEl: HTMLElement,
+    date: HTMLElement
+  } = {} as any;
   protected content: {[k in 'main' | 'container' | 'media' | 'mover' | ContentAdditionType]: HTMLElement} = {} as any;
-  protected buttons: {[k in 'download' | 'close' | 'prev' | 'next' | 'mobile-close' | 'zoom' | ButtonsAdditionType]: HTMLElement} = {} as any;
+  protected buttons: {[k in 'download' | 'close' | 'prev' | 'next' | 'mobile-close' | 'zoomin' | ButtonsAdditionType]: HTMLElement} = {} as any;
   protected topbar: HTMLElement;
   protected moversContainer: HTMLElement;
 
@@ -189,9 +200,6 @@ export default class AppMediaViewerBase<
     this.author.container.classList.add(MEDIA_VIEWER_CLASSNAME + '-author', 'no-select');
     const authorRight = document.createElement('div');
 
-    this.author.avatarEl = new AvatarElement();
-    this.author.avatarEl.classList.add(MEDIA_VIEWER_CLASSNAME + '-userpic', 'avatar-44');
-
     this.author.nameEl = document.createElement('div');
     this.author.nameEl.classList.add(MEDIA_VIEWER_CLASSNAME + '-name');
 
@@ -200,19 +208,17 @@ export default class AppMediaViewerBase<
 
     authorRight.append(this.author.nameEl, this.author.date);
 
-    this.author.container.append(this.author.avatarEl, authorRight);
+    this.author.container.append(authorRight);
 
     // * buttons
     const buttonsDiv = document.createElement('div');
     buttonsDiv.classList.add(MEDIA_VIEWER_CLASSNAME + '-buttons');
 
-    topButtons.concat(['download', 'zoom', 'close']).forEach((name) => {
-      const button = ButtonIcon(name, {noRipple: true});
+    topButtons.concat(['download', 'zoomin', 'close']).forEach((name) => {
+      const button = ButtonIcon(name as Icon, {noRipple: true});
       this.buttons[name] = button;
       buttonsDiv.append(button);
     });
-
-    this.buttons.zoom.classList.add('zoom-in');
 
     // * zoom
     this.zoomElements.container = document.createElement('div');
@@ -272,11 +278,11 @@ export default class AppMediaViewerBase<
 
     this.buttons.prev = document.createElement('div');
     this.buttons.prev.className = `${MEDIA_VIEWER_CLASSNAME}-switcher ${MEDIA_VIEWER_CLASSNAME}-switcher-left`;
-    this.buttons.prev.innerHTML = `<span class="tgico-down ${MEDIA_VIEWER_CLASSNAME}-prev-button"></span>`;
+    this.buttons.prev.append(Icon('down', `${MEDIA_VIEWER_CLASSNAME}-sibling-button`, `${MEDIA_VIEWER_CLASSNAME}-prev-button`));
 
     this.buttons.next = document.createElement('div');
     this.buttons.next.className = `${MEDIA_VIEWER_CLASSNAME}-switcher ${MEDIA_VIEWER_CLASSNAME}-switcher-right`;
-    this.buttons.next.innerHTML = `<span class="tgico-down ${MEDIA_VIEWER_CLASSNAME}-next-button"></span>`;
+    this.buttons.next.append(Icon('down', `${MEDIA_VIEWER_CLASSNAME}-sibling-button`, `${MEDIA_VIEWER_CLASSNAME}-next-button`));
 
     this.moversContainer = document.createElement('div');
     this.moversContainer.classList.add(MEDIA_VIEWER_CLASSNAME + '-movers');
@@ -311,7 +317,7 @@ export default class AppMediaViewerBase<
       });
     });
 
-    attachClickEvent(this.buttons.zoom, () => {
+    attachClickEvent(this.buttons.zoomin, () => {
       if(this.isZooming) this.resetZoom();
       else {
         this.addZoomStep(true);
@@ -580,7 +586,7 @@ export default class AppMediaViewerBase<
       return;
     }
 
-    this.buttons.zoom.classList.toggle('zoom-in', !enable);
+    replaceButtonIcon(this.buttons.zoomin, !enable ? 'zoomin' : 'zoomout');
     this.zoomElements.container.classList.toggle('is-visible', this.isZooming = enable);
     this.wholeDiv.classList.toggle('is-zooming', enable);
 
@@ -708,6 +714,7 @@ export default class AppMediaViewerBase<
     }
 
     this.lazyLoadQueue.clear();
+    this.author.avatarMiddlewareHelper?.destroy();
 
     const promise = this.setMoverToTarget(this.target?.element, true).then(({onAnimationEnd}) => onAnimationEnd);
 
@@ -736,7 +743,7 @@ export default class AppMediaViewerBase<
   }
 
   protected toggleOverlay(active: boolean) {
-    overlayCounter.isOverlayActive = active;
+    overlayCounter.isDarkOverlayActive = active;
     animationIntersector.checkAnimations2(active);
   }
 
@@ -884,7 +891,7 @@ export default class AppMediaViewerBase<
 
     let rect: DOMRect;
     if(target) {
-      if(target instanceof AvatarElement || target.classList.contains('grid-item')/*  || target.classList.contains('document-ico') */) {
+      if(findUpAvatar(target) || target.classList.contains('grid-item')/*  || target.classList.contains('document-ico') */) {
         realParent = target;
         rect = target.getBoundingClientRect();
       } else if(target instanceof SVGImageElement || target.parentElement instanceof SVGForeignObjectElement) {
@@ -1068,7 +1075,7 @@ export default class AppMediaViewerBase<
       }
       // }
 
-      if(target.tagName === 'DIV' || target.tagName === 'AVATAR-ELEMENT') { // useContainerAsTarget
+      if(target.tagName === 'DIV' || findUpAvatar(target)) { // useContainerAsTarget
         const images = Array.from(target.querySelectorAll('img')) as HTMLImageElement[];
         const image = images.pop();
         if(image) {
@@ -1452,23 +1459,33 @@ export default class AppMediaViewerBase<
     }
 
     const oldAvatar = this.author.avatarEl;
-    const newAvatar = this.author.avatarEl = (oldAvatar.cloneNode() as AvatarElement);
+    const oldAvatarMiddlewareHelper = this.author.avatarMiddlewareHelper;
+    const newAvatar = this.author.avatarEl = avatarNew({
+      middleware: (this.author.avatarMiddlewareHelper = getMiddleware()).get(),
+      size: 44,
+      peerId: fromId as PeerId || NULL_PEER_ID,
+      peerTitle: isPeerId ? undefined : '' + fromId
+    });
+
+    newAvatar.node.classList.add(MEDIA_VIEWER_CLASSNAME + '-userpic');
 
     return Promise.all([
-      (this.author.avatarEl as AvatarElement).updateWithOptions({
-        peerId: fromId as PeerId || NULL_PEER_ID,
-        peerTitle: isPeerId ? undefined : '' + fromId
-      }),
-
+      newAvatar.readyThumbPromise,
       wrapTitlePromise
     ]).then(([_, title]) => {
-      if(this.author.avatarEl !== newAvatar) {
-        return;
-      }
-
       replaceContent(this.author.date, formatFullSentTime(timestamp));
       replaceContent(this.author.nameEl, title);
-      oldAvatar.replaceWith(this.author.avatarEl);
+
+      if(oldAvatar?.node && oldAvatar.node.parentElement) {
+        oldAvatar.node.replaceWith(this.author.avatarEl.node);
+      } else {
+        this.author.container.prepend(this.author.avatarEl.node);
+      }
+
+      if(oldAvatar) {
+        oldAvatar.node.remove();
+        oldAvatarMiddlewareHelper.destroy();
+      }
     });
   }
 
@@ -1602,7 +1619,12 @@ export default class AppMediaViewerBase<
         img = new Image();
         img.src = cacheContext.url;
       } else {
-        const gotThumb = getStrippedThumbIfNeeded(media, cacheContext, true);
+        const gotThumb = getMediaThumbIfNeeded({
+          photo: media,
+          cacheContext,
+          useBlur: true,
+          onlyStripped: true
+        });
         if(gotThumb) {
           thumbPromise = gotThumb.loadPromise;
           img = gotThumb.image;
@@ -1632,7 +1654,6 @@ export default class AppMediaViewerBase<
       // //////this.log('will wrap video', media, size);
 
       // потому что для safari нужно создать элемент из event'а
-      // const video = document.createElement('video');
       const useController = message && media.type !== 'gif';
       const video = /* useController ?
         appMediaPlaybackController.addMedia(message, false, true) as HTMLVideoElement :
@@ -1648,7 +1669,6 @@ export default class AppMediaViewerBase<
         // return;
 
         const div = mover.firstElementChild && mover.firstElementChild.classList.contains('media-viewer-aspecter') ? mover.firstElementChild : mover;
-        // const video = mover.querySelector('video') || document.createElement('video');
 
         const moverVideo = mover.querySelector('video');
         if(moverVideo) {
@@ -1844,17 +1864,21 @@ export default class AppMediaViewerBase<
 
             const url = (await getCacheContext()).url;
 
-            video.addEventListener('error', () => {
+            const onUnsupported = () => {
               toastNew({
                 langPackKey: IS_MOBILE ? 'Video.Unsupported.Mobile' : 'Video.Unsupported.Desktop'
               });
 
-              if(video.error.code !== 4) {
-                this.log.error('Error ' + video.error.code + '; details: ' + video.error.message);
+              const error = video.error;
+              if(error && error.code !== 4) {
+                this.log.error('Error ' + error.code + '; details: ' + error.message);
               }
 
               preloader?.detach();
-            }, {once: true});
+            };
+
+            handleVideoLeak(video, onMediaLoad(video)).catch(onUnsupported);
+            video.addEventListener('error', onUnsupported, {once: true});
 
             if(target instanceof SVGSVGElement/*  && (video.parentElement || !isSafari) */) { // if video exists
               // if(!video.parentElement) {

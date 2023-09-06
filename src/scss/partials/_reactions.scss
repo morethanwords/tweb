@@ -8,18 +8,28 @@
   &-block {
     display: flex;
     flex-wrap: wrap;
-    user-select: none;
 
     &.has-no-reactions {
       display: unset;
     }
   }
 
-  &-inline {
-    display: inline-flex;
+  &-renderer {
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
 
-    &:not(:empty) {
-      margin-right: .125rem;
+    &-canvas {
+      z-index: 1 !important;
     }
   }
+
+  // &-inline {
+  //   display: inline-flex;
+
+  //   &:not(:empty) {
+  //     margin-right: .125rem;
+  //   }
+  // }
 }

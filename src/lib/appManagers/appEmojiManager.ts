@@ -171,7 +171,7 @@ export class AppEmojiManager extends AppManager {
 
   private indexEmojis() {
     if(!this.index) {
-      this.index = new SearchIndex(undefined, 2);
+      this.index = new SearchIndex({minChars: 2, fullWords: true});
     }
 
     for(const langCode in this.keywordLangPacks) {

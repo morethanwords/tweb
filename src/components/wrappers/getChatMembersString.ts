@@ -7,6 +7,7 @@
 import numberThousandSplitter from '../../helpers/number/numberThousandSplitter';
 import {Chat, ChatParticipants} from '../../layer';
 import {i18n, LangPackKey} from '../../lib/langPack';
+import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import rootScope from '../../lib/rootScope';
 
 export default async function getChatMembersString(
@@ -14,7 +15,7 @@ export default async function getChatMembersString(
   managers = rootScope.managers,
   chat?: Chat
 ) {
-  chat ??= await managers.appChatsManager.getChat(chatId);
+  chat ??= await apiManagerProxy.getChat(chatId);
   if(chat._ === 'chatForbidden') {
     return i18n('YouWereKicked');
   }

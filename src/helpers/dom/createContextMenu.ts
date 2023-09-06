@@ -64,6 +64,7 @@ export default function createContextMenu<T extends ButtonMenuItemOptionsVerifia
 
       const initResult = await init();
       if(!initResult) {
+        onClose?.();
         return;
       }
 

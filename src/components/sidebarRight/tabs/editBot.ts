@@ -62,7 +62,8 @@ export default class AppEditBotTab extends SliderSuperTab {
       this.editPeer = new EditPeer({
         peerId,
         inputFields,
-        listenerSetter: this.listenerSetter
+        listenerSetter: this.listenerSetter,
+        middleware: this.middlewareHelper.get()
       });
 
       this.content.append(this.editPeer.nextBtn);

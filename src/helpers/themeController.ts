@@ -13,6 +13,7 @@ import {changeColorAccent, ColorRgb, getAccentColor, getAverageColor, getHexColo
 import {MOUNT_CLASS_TO} from '../config/debug';
 import customProperties from './dom/customProperties';
 import {TelegramWebViewTheme} from '../types';
+import {joinDeepPath} from './object/setDeepProperty';
 
 export type AppColorName = 'primary-color' | 'message-out-primary-color' |
   'surface-color' | 'danger-color' | 'primary-text-color' |
@@ -28,6 +29,7 @@ type AppColor = {
 };
 
 const appColorMap: {[name in AppColorName]: AppColor} = {
+  // 'background-color': {},
   'primary-color': {
     rgb: true,
     light: true,
@@ -76,6 +78,7 @@ const colorMap: {
   }
 } = {
   day: {
+    // 'background-color': '#f4f4f5',
     'primary-color': '#3390ec',
     'message-out-primary-color': '#4fae4e',
     'message-background-color': '#ffffff',
@@ -87,6 +90,7 @@ const colorMap: {
     'green-color': '#70b768'
   },
   night: {
+    // 'background-color': '#181818',
     'primary-color': '#8774E1',
     'message-out-primary-color': '#8774E1',
     'message-background-color': '#212121',
@@ -200,7 +204,7 @@ export class ThemeController {
   }
 
   public async switchTheme(name: AppTheme['name']) {
-    await rootScope.managers.appStateManager.setByKey('settings.theme', name);
+    await rootScope.managers.appStateManager.setByKey(joinDeepPath('settings', 'theme'), name);
     rootScope.dispatchEvent('theme_change');
   }
 
@@ -299,7 +303,7 @@ export class ThemeController {
 
     await this.AppBackgroundTab.setBackgroundDocument(themeSettings.wallpaper, newAppTheme.settings);
     themes[themes.indexOf(currentTheme)] = newAppTheme;
-    await rootScope.managers.appStateManager.setByKey('settings.themes', rootScope.settings.themes);
+    await rootScope.managers.appStateManager.setByKey(joinDeepPath('settings', 'themes'), rootScope.settings.themes);
     rootScope.dispatchEvent('theme_change');
   }
 

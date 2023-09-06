@@ -15,6 +15,8 @@ import GroupCallInstance from '../../lib/calls/groupCallInstance';
 import callVideoCanvasBlur from '../call/videoCanvasBlur';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import {AppManagers} from '../../lib/appManagers/managers';
+import safePlay from '../../helpers/dom/safePlay';
+import Icon from '../icon';
 
 const className = 'group-call-participant-video';
 
@@ -64,8 +66,7 @@ export default class GroupCallParticipantVideoElement {
     this.header = document.createElement('div');
     this.header.classList.add(className + '-header');
 
-    const icon = document.createElement('i');
-    icon.classList.add('group-call-pin-icon', 'tgico-pin');
+    const icon = Icon('pin', 'group-call-pin-icon');
     this.header.append(icon);
 
     this.container.append(this.header);
@@ -97,7 +98,7 @@ export default class GroupCallParticipantVideoElement {
     video.classList.add(className, 'call-video');
 
     if(video.paused) {
-      video.play();
+      safePlay(video);
     }
 
     const canvas = callVideoCanvasBlur(video);

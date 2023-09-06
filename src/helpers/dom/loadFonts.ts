@@ -4,8 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import {FontFamilyName} from '../../config/font';
 import noop from '../noop';
 import pause from '../schedulers/pause';
+import {TGICO_CLASS} from '../tgico';
 
 const texts = ['b', 'б'];
 type FontType = 'text' | 'icons' | 'monospace';
@@ -17,8 +19,8 @@ const cache: {
 } = {};
 
 const fonts: {[type in FontType]: string} = {
-  text: 'Roboto',
-  icons: 'tgico',
+  text: FontFamilyName,
+  icons: TGICO_CLASS,
   monospace: 'Roboto Mono'
 };
 

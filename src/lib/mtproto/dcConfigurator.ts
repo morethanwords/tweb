@@ -33,6 +33,8 @@ type Servers = {
 
 const TEST_SUFFIX = Modes.test ? '_test' : '';
 const PREMIUM_SUFFIX = '_premium';
+const RETRY_TIMEOUT_CLIENT = 3000;
+const RETRY_TIMEOUT_DOWNLOAD = 3000;
 
 export function getTelegramConnectionSuffix(connectionType: ConnectionType) {
   return connectionType === 'client' ? '' : '-1';
@@ -77,7 +79,7 @@ export class DcConfigurator {
     const chosenServer = constructTelegramWebSocketUrl(dcId, connectionType, premium);
     const logSuffix = connectionType === 'upload' ? '-U' : connectionType === 'download' ? '-D' : '';
 
-    const retryTimeout = connectionType === 'client' ? 10000 : 10000;
+    const retryTimeout = connectionType === 'client' ? RETRY_TIMEOUT_CLIENT : RETRY_TIMEOUT_DOWNLOAD;
 
     let oooohLetMeLive: MTConnectionConstructable;
     if(import.meta.env.VITE_MTPROTO_SW || !import.meta.env.VITE_SAFARI_PROXY_WEBSOCKET) {

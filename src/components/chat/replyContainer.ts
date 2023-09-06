@@ -7,7 +7,7 @@
 import replaceContent from '../../helpers/dom/replaceContent';
 import {Middleware} from '../../helpers/middleware';
 import limitSymbols from '../../helpers/string/limitSymbols';
-import {Document, Message, MessageMedia, Photo, WebPage, VideoSize} from '../../layer';
+import {Document, Message, MessageMedia, Photo, WebPage, VideoSize, StoryItem} from '../../layer';
 import appImManager from '../../lib/appManagers/appImManager';
 import choosePhotoSize from '../../lib/appManagers/utils/photos/choosePhotoSize';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
@@ -20,20 +20,25 @@ import {AnimationItemGroup} from '../animationIntersector';
 import {WrapRichTextOptions} from '../../lib/richTextProcessor/wrapRichText';
 import {WrapReplyOptions} from '../wrappers/reply';
 import {Modify} from '../../types';
+import {i18n} from '../../lib/langPack';
+import Icon from '../icon';
 
 const MEDIA_SIZE = 32;
 
 export async function wrapReplyDivAndCaption(options: {
   title: string | HTMLElement | DocumentFragment,
   titleEl: HTMLElement,
-  subtitle: string | HTMLElement | DocumentFragment,
+  subtitle?: string | HTMLElement | DocumentFragment,
   subtitleEl: HTMLElement,
   message: Message.message | Message.messageService,
+  storyItem?: StoryItem.storyItem,
   mediaEl: HTMLElement,
+  isStoryExpired?: boolean
 } & WrapRichTextOptions) {
   options.loadPromises ||= [];
 
   const {titleEl, subtitleEl, mediaEl, message, loadPromises, animationGroup} = options;
+  let {storyItem} = options;
 
   let wrappedTitle = options.title;
   if(wrappedTitle !== undefined) {
@@ -43,14 +48,27 @@ export async function wrapReplyDivAndCaption(options: {
     }
 
     replaceContent(titleEl, wrappedTitle);
+  } else if(options.isStoryExpired) {
+    const icon = Icon('bomb', 'expired-story-icon');
+    titleEl.append(icon, i18n('ExpiredStory'));
   }
 
-  let messageMedia: MessageMedia | WebPage.webPage = (message as Message.message)?.media;
+  let messageMedia: MessageMedia | WebPage.webPage = storyItem?.media || (message as Message.message)?.media;
+
+  if(messageMedia?._ === 'messageMediaStory') {
+    storyItem = messageMedia.story as StoryItem.storyItem;
+    messageMedia = storyItem?.media;
+  }
+
   let setMedia = false, isRound = false;
   const mediaChildren = mediaEl ? Array.from(mediaEl.children).slice() : [];
   let middleware: Middleware;
   if(messageMedia && mediaEl) {
-    subtitleEl.replaceChildren(await wrapMessageForReply(options));
+    if(storyItem && options.storyItem) {
+      subtitleEl.replaceChildren(i18n('Story'));
+    } else {
+      subtitleEl.replaceChildren(await wrapMessageForReply(options));
+    }
 
     messageMedia = (messageMedia as MessageMedia.messageMediaWebPage).webpage as WebPage.webPage || messageMedia;
     const photo = (messageMedia as MessageMedia.messageMediaPhoto).photo as Photo.photo;
@@ -112,10 +130,7 @@ export async function wrapReplyDivAndCaption(options: {
       }
     }
   } else {
-    if(message) {
-      subtitleEl.textContent = '';
-      subtitleEl.append(await wrapMessageForReply(options));
-    } else {
+    if(options.subtitle !== undefined) {
       let wrappedSubtitle = options.subtitle;
       if(typeof(wrappedSubtitle) === 'string') {
         wrappedSubtitle = limitSymbols(wrappedSubtitle, 140);
@@ -123,8 +138,19 @@ export async function wrapReplyDivAndCaption(options: {
       }
 
       replaceContent(subtitleEl, wrappedSubtitle || '');
+    } else if(storyItem) {
+      subtitleEl.replaceChildren(i18n('Story'));
+    } else if(options.isStoryExpired) {
+      const icon = Icon('bomb', 'expired-story-icon');
+      subtitleEl.replaceChildren(icon, i18n('ExpiredStory'));
+    } else if(message) {
+      subtitleEl.replaceChildren(await wrapMessageForReply(options));
     }
   }
+
+  // if(options.isStoryExpired) {
+  //   setMedia = true;
+  // }
 
   Promise.all(loadPromises).then(() => {
     if(middleware && !middleware()) return;
@@ -149,14 +175,16 @@ export default class ReplyContainer extends DivAndCaption<(options: WrapReplyOpt
       }
 
       const isMediaSet = await wrapReplyDivAndCaption({
-        // optional section
-        subtitle: '',
-
         ...(options as Modify<typeof options, {message: Message.message | Message.messageService}>),
         titleEl: this.title,
         subtitleEl: this.subtitle,
         mediaEl: this.mediaEl
       });
+
+      if(options.isStoryExpired) {
+        // this.mediaEl.classList.add('is-expired-story', 'tgico-clock');
+        this.container.classList.add('is-expired-story');
+      }
 
       this.container.classList.toggle('is-media', isMediaSet);
       if(isMediaSet) {

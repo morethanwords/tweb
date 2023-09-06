@@ -220,11 +220,11 @@ export function changeColorAccent(baseHsv: number[], accentHsv: number[], color:
     return color;
   }
 
-  const dist = Math.min(1.5 * colorHsv[1] / baseHsv[1], 1);
+  const dist = baseHsv[1] ? Math.min(1.5 * colorHsv[1] / baseHsv[1], 1) : 0;
 
   colorHsv[0] = Math.min(360, colorHsv[0] + accentHsv[0] - baseHsv[0]);
-  colorHsv[1] = Math.min(1, colorHsv[1] * accentHsv[1] / baseHsv[1]);
-  colorHsv[2] = Math.min(1, colorHsv[2] * (1 - dist + dist * accentHsv[2] / baseHsv[2]));
+  colorHsv[1] = baseHsv[1] ? Math.min(1, colorHsv[1] * accentHsv[1] / baseHsv[1]) : 0;
+  colorHsv[2] = baseHsv[2] ? Math.min(1, colorHsv[2] * (1 - dist + dist * accentHsv[2] / baseHsv[2])) : 0;
 
   let newColor = hsvToRgb(...colorHsv);
 

@@ -267,7 +267,9 @@ export const STATE_INIT: State = {
       },
       photo_size_max: 1048576,
       video_size_max: 15728640,
-      video_upload_maxbitrate: 100
+      video_upload_maxbitrate: 100,
+      small_queue_active_operations_max: 0,
+      large_queue_active_operations_max: 0
     },
     stickers: {
       suggest: 'all',

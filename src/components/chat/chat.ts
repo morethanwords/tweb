@@ -41,6 +41,7 @@ import {getColorsFromWallPaper} from '../../helpers/color';
 import liteMode from '../../helpers/liteMode';
 import PopupElement from '../popups';
 import PopupWebApp from '../popups/webApp';
+import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 
 export type ChatType = 'chat' | 'pinned' | 'discussion' | 'scheduled' | 'stories';
 
@@ -94,6 +95,7 @@ export default class Chat extends EventListenerBase<{
   public isForum: boolean;
   public isAllMessagesForum: boolean;
   public isAnonymousSending: boolean;
+  public isUserBlocked: boolean;
 
   public animationGroup: AnimationItemGroup;
 
@@ -459,7 +461,8 @@ export default class Chat extends EventListenerBase<{
       isChannel,
       isBot,
       isForum,
-      isAnonymousSending
+      isAnonymousSending,
+      isUserBlocked
     ] = await m(Promise.all([
       this.managers.appPeersManager.noForwards(peerId),
       this.managers.appPeersManager.isPeerRestricted(peerId),
@@ -470,7 +473,8 @@ export default class Chat extends EventListenerBase<{
       this.managers.appPeersManager.isChannel(peerId),
       this.managers.appPeersManager.isBot(peerId),
       this.managers.appPeersManager.isForum(peerId),
-      this.managers.appMessagesManager.isAnonymousSending(peerId)
+      this.managers.appMessagesManager.isAnonymousSending(peerId),
+      peerId.isUser() && this.managers.appProfileManager.isCachedUserBlocked(peerId)
     ]));
 
     // ! WARNING: TEMPORARY, HAVE TO GET TOPIC
@@ -488,6 +492,7 @@ export default class Chat extends EventListenerBase<{
     this.isForum = isForum;
     this.isAllMessagesForum = isForum && !threadId;
     this.isAnonymousSending = isAnonymousSending;
+    this.isUserBlocked = isUserBlocked;
 
     if(threadId && !this.isForum) {
       options.type = 'discussion';
@@ -642,7 +647,7 @@ export default class Chat extends EventListenerBase<{
   }
 
   public getMessage(mid: number) {
-    return this.managers.appMessagesManager.getMessageFromStorage(this.messagesStorageKey, mid);
+    return apiManagerProxy.getMessageFromStorage(this.messagesStorageKey, mid);
   }
 
   public async getMidsByMid(mid: number) {
@@ -667,8 +672,8 @@ export default class Chat extends EventListenerBase<{
     return this.getHistoryStorage().then((historyStorage) => historyStorage.maxId);
   }
 
-  public async _isAnyGroup(peerId: PeerId) {
-    return peerId === rootScope.myId || peerId === REPLIES_PEER_ID || (await this.managers.appPeersManager.isAnyGroup(peerId));
+  public _isAnyGroup(peerId: PeerId) {
+    return peerId === rootScope.myId || peerId === REPLIES_PEER_ID || this.managers.appPeersManager.isAnyGroup(peerId);
   }
 
   public initSearch(query?: string) {
@@ -682,9 +687,7 @@ export default class Chat extends EventListenerBase<{
       }
     } else {
       let tab = appSidebarRight.getTab(AppPrivateSearchTab);
-      if(!tab) {
-        tab = appSidebarRight.createTab(AppPrivateSearchTab);
-      }
+      tab ||= appSidebarRight.createTab(AppPrivateSearchTab);
 
       tab.open(this.peerId, this.threadId, this.bubbles.onDatePick, query);
     }
@@ -698,9 +701,14 @@ export default class Chat extends EventListenerBase<{
     return Promise.all([
       this.managers.appPeersManager.isBot(this.peerId),
       this.managers.appMessagesManager.getDialogOnly(this.peerId),
-      this.getHistoryStorage(true)
-    ]).then(([isBot, dialog, historyStorage]) => {
-      return isBot && !dialog && !historyStorage.history.length;
+      this.getHistoryStorage(true),
+      this.peerId.isUser() ? this.managers.appProfileManager.isCachedUserBlocked(this.peerId.toUserId()) : undefined
+    ]).then(([isBot, dialog, historyStorage, isUserBlocked]) => {
+      if(!isBot) {
+        return false;
+      }
+
+      return (!dialog && !historyStorage.history.length) || isUserBlocked;
     });
   }
 

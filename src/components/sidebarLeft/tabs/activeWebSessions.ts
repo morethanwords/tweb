@@ -9,7 +9,7 @@ import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import findUpClassName from '../../../helpers/dom/findUpClassName';
 import toggleDisability from '../../../helpers/dom/toggleDisability';
 import {WebAuthorization} from '../../../layer';
-import AvatarElement from '../../avatar';
+import {avatarNew} from '../../avatarNew';
 import Button from '../../button';
 import confirmationPopup from '../../confirmationPopup';
 import Row from '../../row';
@@ -32,10 +32,13 @@ export default class AppActiveWebSessionsTab extends SliderSuperTabEventable {
       });
 
       const media = row.createMedia('big');
-      const avatar = new AvatarElement();
-      avatar.classList.add('avatar-48');
-      await avatar.updateWithOptions({peerId});
-      media.append(avatar);
+      const avatar = avatarNew({
+        middleware: this.middlewareHelper.get(),
+        size: 48,
+        peerId
+      });
+      await avatar.readyThumbPromise;
+      media.append(avatar.node);
 
       row.container.dataset.hash = '' + auth.hash;
       row.container.dataset.peerId = '' + peerId;

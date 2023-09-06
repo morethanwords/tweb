@@ -23,14 +23,13 @@ import animationIntersector from '../animationIntersector';
 import mediaSizes from '../../helpers/mediaSizes';
 import {IS_ANDROID, IS_APPLE, IS_MOBILE, IS_SAFARI} from '../../environment/userAgent';
 import I18n, {FormatterArguments, i18n, langPack, LangPackKey, UNSUPPORTED_LANG_PACK_KEY, _i18n} from '../../lib/langPack';
-import AvatarElement from '../avatar';
 import ripple from '../ripple';
 import {MessageRender} from './messageRender';
 import LazyLoadQueue from '../lazyLoadQueue';
 import ListenerSetter from '../../helpers/listenerSetter';
 import PollElement from '../poll';
 import AudioElement from '../audio';
-import {ChannelParticipant, Chat as MTChat, ChatInvite, ChatParticipant, Document, GeoPoint, InputWebFileLocation, KeyboardButton, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, ReplyMarkup, RequestPeerType, SponsoredMessage, Update, UrlAuthResult, User, WebPage, InlineQueryPeerType, WebPageAttribute} from '../../layer';
+import {ChannelParticipant, Chat as MTChat, ChatInvite, ChatParticipant, Document, GeoPoint, InputWebFileLocation, KeyboardButton, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, ReplyMarkup, RequestPeerType, SponsoredMessage, Update, UrlAuthResult, User, WebPage, InlineQueryPeerType, WebPageAttribute, Reaction} from '../../layer';
 import {BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID, SEND_WHEN_ONLINE_TIMESTAMP} from '../../lib/mtproto/mtproto_config';
 import {FocusDirection, ScrollStartCallbackDimensions} from '../../helpers/fastSmoothScroll';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation} from '../../hooks/useHeavyAnimationCheck';
@@ -42,8 +41,8 @@ import {SliceEnd} from '../../helpers/slicedArray';
 import PeerTitle from '../peerTitle';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import findUpTag from '../../helpers/dom/findUpTag';
-import {toast, toastNew} from '../toast';
-import {getMiddleware, Middleware} from '../../helpers/middleware';
+import {hideToast, toast, toastNew} from '../toast';
+import {getMiddleware, Middleware, MiddlewareHelper} from '../../helpers/middleware';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import {attachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent';
 import htmlToDocumentFragment from '../../helpers/dom/htmlToDocumentFragment';
@@ -109,7 +108,7 @@ import isInDOM from '../../helpers/dom/isInDOM';
 import getStickerEffectThumb from '../../lib/appManagers/utils/stickers/getStickerEffectThumb';
 import attachStickerViewerListeners from '../stickerViewer';
 import {makeMediaSize, MediaSize} from '../../helpers/mediaSize';
-import wrapSticker, {onEmojiStickerClick} from '../wrappers/sticker';
+import wrapSticker from '../wrappers/sticker';
 import wrapAlbum from '../wrappers/album';
 import wrapDocument from '../wrappers/document';
 import wrapGroupedDocuments from '../wrappers/groupedDocuments';
@@ -144,13 +143,17 @@ import hasRights from '../../lib/appManagers/utils/chats/hasRights';
 import tsNow from '../../helpers/tsNow';
 import SwipeHandler from '../swipeHandler';
 import getSelectedText from '../../helpers/dom/getSelectedText';
-import {createStoriesViewerWithPeer} from '../stories/Viewer';
+import {createStoriesViewerWithPeer} from '../stories/viewer';
 import {render} from 'solid-js/web';
 import {createRoot, createEffect} from 'solid-js';
-import {StoryPreview, wrapStoryMedia} from '../stories/Preview';
+import {StoryPreview, wrapStoryMedia} from '../stories/preview';
 import wrapReply from '../wrappers/reply';
 import {modifyAckedPromise} from '../../helpers/modifyAckedResult';
 import callbackify from '../../helpers/callbackify';
+import {avatarNew, findUpAvatar} from '../avatarNew';
+import Icon from '../icon';
+import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
+import {_tgico} from '../../helpers/tgico';
 
 export const USER_REACTIONS_INLINE = false;
 const USE_MEDIA_TAILS = false;
@@ -161,7 +164,8 @@ const IGNORE_ACTIONS_ARRAY: [IGNORE_ACTION_KEY, IGNORE_ACTION_VALUE][] = [
   ['messageActionHistoryClear', true],
   ['messageActionChatCreate', (message) => message.pFlags.out],
   ['messageActionChannelMigrateFrom', true],
-  ['messageActionChatMigrateTo', true]
+  ['messageActionChatMigrateTo', true],
+  ['messageActionContactSignUp', true]
 ];
 const IGNORE_ACTIONS = new Map(IGNORE_ACTIONS_ARRAY);
 
@@ -491,8 +495,13 @@ export default class ChatBubbles {
         fastRaf(() => {
           const mid = +bubble.dataset.mid;
           if(bubbles[mid] === bubble && bubble.classList.contains('is-outgoing')) {
-            bubble.classList.remove('is-sending', 'is-outgoing');
-            bubble.classList.add((this.peerId === rootScope.myId && this.chat.type !== 'scheduled') || !this.unreadOut.has(mid) ? 'is-read' : 'is-sent');
+            bubble.classList.remove('is-outgoing');
+            this.setBubbleSendingStatus(
+              bubble,
+              (this.peerId === rootScope.myId && this.chat.type !== 'scheduled') || !this.unreadOut.has(mid) ?
+                'read' :
+                'sent'
+            );
           }
         });
       }
@@ -654,7 +663,7 @@ export default class ChatBubbles {
       if(this.bubbles[tempId] !== bubble) return;
 
       bubble.classList.remove('is-outgoing');
-      bubble.classList.add('is-error');
+      this.setBubbleSendingStatus(bubble, 'error');
     });
 
     this.listenerSetter.add(rootScope)('message_transcribed', ({peerId, mid, text, pending}) => {
@@ -706,8 +715,8 @@ export default class ChatBubbles {
           transcribedText.firstChild.textContent = text;
         }
 
-        speechRecognitionIcon.classList.remove('tgico-transcribe');
-        speechRecognitionIcon.classList.add('tgico-up');
+        speechRecognitionIcon.classList.remove(_tgico('transcribe'));
+        speechRecognitionIcon.classList.add(_tgico('up'));
 
         if(!pending && speechRecognitionLoader) {
           speechRecognitionLoader.classList.remove('active');
@@ -775,6 +784,7 @@ export default class ChatBubbles {
           return {bubble: findUpClassName(result.bubble, 'bubble'), message, changedResults};
         });
 
+        const waitPromise = deferredPromise<void>();
         (await Promise.all(a)).filter(Boolean).forEach(({bubble, message, changedResults}) => {
           if(!scrollSaver) {
             scrollSaver = this.createScrollSaver(false);
@@ -785,7 +795,7 @@ export default class ChatBubbles {
           const set = REACTIONS_ELEMENTS.get(key);
           if(set) {
             for(const element of set) {
-              element.update(message, changedResults);
+              element.update(message, changedResults, waitPromise);
             }
           } else if(!message.reactions || !message.reactions.results.length) {
             return;
@@ -795,6 +805,7 @@ export default class ChatBubbles {
         });
 
         scrollSaver?.restore();
+        waitPromise.resolve();
       });
     }
 
@@ -1064,8 +1075,7 @@ export default class ChatBubbles {
             });
 
             if(!icon) {
-              icon = document.createElement('span');
-              icon.classList.add('tgico-reply_filled', 'bubble-gesture-reply-icon');
+              icon = Icon('reply_filled', 'bubble-gesture-reply-icon');
             } else {
               icon.classList.remove('is-visible');
               icon.style.opacity = '';
@@ -1187,13 +1197,41 @@ export default class ChatBubbles {
       this.chat.input.setUnreadCount();
     });
 
+    const refreshInput = async() => {
+      const callbacks = await Promise.all([
+        this.finishPeerChange(),
+        this.chat.input.finishPeerChange({peerId: this.peerId, middleware: this.getMiddleware()})
+      ]);
+
+      callbacks.forEach((callback) => callback());
+    };
+
+    this.listenerSetter.add(rootScope)('user_full_update', async(userId) => {
+      const peerId = userId.toPeerId(false);
+      if(peerId !== this.peerId) {
+        return;
+      }
+
+      const middleware = this.getMiddleware();
+      const isUserBlocked = await this.managers.appProfileManager.isCachedUserBlocked(userId);
+      if(!middleware()) return;
+      const wasUserBlocked = this.chat.isUserBlocked;
+      // do not refresh if had no status since input is shown by default
+      if(wasUserBlocked === undefined ? isUserBlocked : wasUserBlocked !== isUserBlocked) {
+        this.chat.isUserBlocked = isUserBlocked;
+        refreshInput();
+      }
+    });
+
     this.listenerSetter.add(rootScope)('chat_update', async(chatId) => {
       const {peerId} = this;
       if(peerId !== chatId.toPeerId(true)) {
         return;
       }
 
-      const chat = await this.managers.appChatsManager.getChat(chatId);
+      const middleware = this.getMiddleware();
+      const chat = await apiManagerProxy.getChat(chatId);
+      if(!middleware()) return;
       const hadRights = this.chatInner.classList.contains('has-rights');
       const hadPlainRights = this.chat.input.canSendPlain();
       const [hasRights, hasPlainRights, canEmbedLinks] = await Promise.all([
@@ -1201,16 +1239,13 @@ export default class ChatBubbles {
         this.chat.canSend('send_plain'),
         this.chat.canSend('embed_links')
       ]);
+      if(!middleware()) return;
 
       if(hadRights !== hasRights || hadPlainRights !== hasPlainRights) {
-        const callbacks = await Promise.all([
-          this.finishPeerChange(),
-          this.chat.input.finishPeerChange({peerId: this.peerId, middleware: this.getMiddleware()})
-        ]);
-
-        callbacks.forEach((callback) => callback());
+        await refreshInput();
       }
 
+      if(!middleware()) return;
       // reset webpage
       if((canEmbedLinks && !this.chat.input.willSendWebPage) || (!canEmbedLinks && this.chat.input.willSendWebPage)) {
         this.chat.input.lastUrl = '';
@@ -1530,95 +1565,108 @@ export default class ChatBubbles {
 
   private onBubblesMouseMove = async(e: MouseEvent) => {
     const content = findUpClassName(e.target, 'bubble-content');
-    if(
+    if(!(
       this.chat.type !== 'scheduled' &&
       content &&
       !this.chat.selection.isSelecting &&
       !findUpClassName(e.target, 'service') &&
       !findUpClassName(e.target, 'bubble-beside-button')
-    ) {
-      const bubble = findUpClassName(content, 'bubble');
-      if(!this.chat.selection.canSelectBubble(bubble)) {
-        this.unhoverPrevious();
-        return;
-      }
-
-      let {hoverBubble, hoverReaction} = this;
-      if(bubble === hoverBubble) {
-        return;
-      }
-
+    )) {
       this.unhoverPrevious();
+      return;
+    }
 
-      hoverBubble = this.hoverBubble = bubble;
-      hoverReaction = this.hoverReaction;
-      // hoverReaction = contentWrapper.querySelector('.bubble-hover-reaction');
-      if(!hoverReaction) {
-        hoverReaction = this.hoverReaction = document.createElement('div');
-        hoverReaction.classList.add('bubble-hover-reaction');
+    const bubble = findUpClassName(content, 'bubble');
+    if(!this.chat.selection.canSelectBubble(bubble)) {
+      this.unhoverPrevious();
+      return;
+    }
 
-        const stickerWrapper = document.createElement('div');
-        stickerWrapper.classList.add('bubble-hover-reaction-sticker');
-        hoverReaction.append(stickerWrapper);
+    let {hoverBubble, hoverReaction} = this;
+    if(bubble === hoverBubble) {
+      return;
+    }
 
-        content.append(hoverReaction);
+    this.unhoverPrevious();
 
-        let message = await this.chat.getMessage(+bubble.dataset.mid);
-        if(message?._ !== 'message') {
-          this.unhoverPrevious();
-          return;
-        }
+    hoverBubble = this.hoverBubble = bubble;
+    hoverReaction = this.hoverReaction;
+    // hoverReaction = contentWrapper.querySelector('.bubble-hover-reaction');
+    if(hoverReaction) {
+      if(hoverReaction.dataset.loaded) {
+        this.setHoverVisible(hoverReaction, true);
+      }
 
-        message = await this.managers.appMessagesManager.getGroupsFirstMessage(message);
+      return;
+    }
 
-        const middleware = this.getMiddleware(() => this.hoverReaction === hoverReaction);
-        Promise.all([
-          this.managers.appReactionsManager.getAvailableReactionsByMessage(message),
-          pause(400)
-        ]).then(([availableReactions]) => {
-          const availableReaction = availableReactions[0];
-          if(!availableReaction) {
-            hoverReaction.remove();
+    hoverReaction = this.hoverReaction = document.createElement('div');
+    hoverReaction.classList.add('bubble-hover-reaction');
+    const middlewareHelper = hoverReaction.middlewareHelper = this.getMiddleware().create();
+    const middleware = middlewareHelper.get(() => this.hoverReaction === hoverReaction);
+
+    const stickerWrapper = document.createElement('div');
+    stickerWrapper.classList.add('bubble-hover-reaction-sticker');
+    hoverReaction.append(stickerWrapper);
+
+    content.append(hoverReaction);
+
+    let message = await this.chat.getMessage(+bubble.dataset.mid);
+    if(message?._ !== 'message') {
+      this.unhoverPrevious();
+      return;
+    }
+
+    message = await this.managers.appMessagesManager.getGroupsFirstMessage(message);
+
+    Promise.all([
+      this.managers.appReactionsManager.getAvailableReactionsByMessage(message, true),
+      apiManagerProxy.getAvailableReactions(),
+      pause(400)
+    ]).then(async([{reactions}, availableReactions]) => {
+      const reaction = reactions[0];
+      if(!reaction) {
+        hoverReaction.remove();
+        return;
+      }
+
+      const availableReaction = reaction._ === 'reactionEmoji' ? availableReactions.find((r) => r.reaction === reaction.emoticon) : undefined;
+      const doc = availableReaction?.select_animation ?? await this.managers.appEmojiManager.getCustomEmojiDocument((reaction as Reaction.reactionCustomEmoji).document_id);
+      if(!middleware()) {
+        return;
+      }
+
+      wrapSticker({
+        div: stickerWrapper,
+        doc,
+        width: 18,
+        height: 18,
+        needUpscale: true,
+        middleware,
+        group: this.chat.animationGroup,
+        withThumb: false,
+        needFadeIn: false
+      }).then(({render}) => render).then((player) => {
+        assumeType<RLottiePlayer>(player);
+
+        player.addEventListener('firstFrame', () => {
+          if(!middleware()) {
+            // debugger;
             return;
           }
 
-          wrapSticker({
-            div: stickerWrapper,
-            doc: availableReaction.select_animation,
-            width: 18,
-            height: 18,
-            needUpscale: true,
-            middleware,
-            group: this.chat.animationGroup,
-            withThumb: false,
-            needFadeIn: false
-          }).then(({render}) => render).then((player) => {
-            assumeType<RLottiePlayer>(player);
+          hoverReaction.dataset.loaded = '1';
+          this.setHoverVisible(hoverReaction, true);
+        }, {once: true});
 
-            player.addEventListener('firstFrame', () => {
-              if(!middleware()) {
-                // debugger;
-                return;
-              }
+        attachClickEvent(hoverReaction, (e) => {
+          cancelEvent(e); // cancel triggering selection
 
-              hoverReaction.dataset.loaded = '1';
-              this.setHoverVisible(hoverReaction, true);
-            }, {once: true});
-
-            attachClickEvent(hoverReaction, (e) => {
-              cancelEvent(e); // cancel triggering selection
-
-              this.managers.appReactionsManager.sendReaction(message as Message.message, availableReaction);
-              this.unhoverPrevious();
-            }, {listenerSetter: this.listenerSetter});
-          }, noop);
-        });
-      } else if(hoverReaction.dataset.loaded) {
-        this.setHoverVisible(hoverReaction, true);
-      }
-    } else {
-      this.unhoverPrevious();
-    }
+          this.managers.appReactionsManager.sendReaction(message as Message.message, reaction);
+          this.unhoverPrevious();
+        }, {listenerSetter: this.listenerSetter});
+      }, noop);
+    });
   };
 
   public setReactionsHoverListeners() {
@@ -1640,8 +1688,9 @@ export default class ChatBubbles {
       duration: 200,
       onTransitionEnd: visible ? undefined : () => {
         hoverReaction.remove();
+        hoverReaction.middlewareHelper.destroy();
       },
-      useRafs: 2
+      useRafs: visible ? 2 : 0
     });
   }
 
@@ -1649,8 +1698,9 @@ export default class ChatBubbles {
     const {hoverBubble, hoverReaction} = this;
     if(hoverBubble) {
       this.setHoverVisible(hoverReaction, false);
-      this.hoverBubble = undefined;
-      this.hoverReaction = undefined;
+      this.hoverBubble =
+        this.hoverReaction =
+        undefined;
     }
   };
 
@@ -1903,7 +1953,7 @@ export default class ChatBubbles {
 
     const stickerEmojiEl = findUpAttribute(target, 'data-sticker-emoji');
     if(stickerEmojiEl && stickerEmojiEl.parentElement.querySelectorAll('[data-sticker-emoji]').length === 1 && bubble.classList.contains('emoji-big')) {
-      onEmojiStickerClick({
+      this.chat.appImManager.onEmojiStickerClick({
         event: e,
         container: stickerEmojiEl,
         managers: this.managers,
@@ -1959,10 +2009,10 @@ export default class ChatBubbles {
       }
     }
 
-    const nameDiv = findUpClassName(target, 'peer-title') || findUpTag(target, 'AVATAR-ELEMENT') || findUpAttribute(target, 'data-saved-from');
+    const nameDiv = findUpClassName(target, 'peer-title') || findUpAvatar(target) || findUpAttribute(target, 'data-saved-from');
     if(nameDiv && nameDiv !== bubble) {
       target = nameDiv || target;
-      const peerIdStr = target.dataset.peerId || target.getAttribute('peer') || (target as AvatarElement).peerId;
+      const peerIdStr = target.dataset.peerId || target.getAttribute('peer')/*  || (target as AvatarElement).peerId */;
       const savedFrom = target.dataset.savedFrom;
       if(typeof(peerIdStr) === 'string' || savedFrom) {
         if(savedFrom) {
@@ -2084,6 +2134,7 @@ export default class ChatBubbles {
 
     if((target.tagName === 'IMG' && !target.classList.contains('emoji') && !target.classList.contains('document-thumb')) ||
       target.classList.contains('album-item') ||
+      target.classList.contains('album-item-media') ||
       // || isVideoComponentElement
       (target.tagName === 'VIDEO' && !bubble.classList.contains('round')) ||
       (documentDiv && !documentDiv.querySelector('.preloader-container')) ||
@@ -2156,11 +2207,12 @@ export default class ChatBubbles {
           selector = '.document-container';
         } else {
           const withTail = bubble.classList.contains('with-media-tail');
-          selector = '.album-item video, .album-item img, .preview video, .preview img, ';
+          // selector = '.album-item video, .album-item img, .preview video, .preview img, ';
+          selector = '.album-item, .preview, ';
           if(withTail) {
             selector += '.bubble__media-container';
           } else {
-            selector += '.attachment video, .attachment img';
+            selector += '.attachment';
           }
         }
 
@@ -2177,6 +2229,7 @@ export default class ChatBubbles {
         } else {
           const hasAspecter = !!bubble.querySelector('.media-container-aspecter');
           elements.forEach((element) => {
+            element = element.querySelector('video, img') || element;
             if(hasAspecter && !findUpClassName(element, 'media-container-aspecter')) return;
             const albumItem = findUpClassName(element, 'album-item');
             const parent = albumItem || element.parentElement;
@@ -2495,8 +2548,7 @@ export default class ChatBubbles {
             continue;
           }
 
-          bubble.classList.remove('is-sent', 'is-sending', 'is-outgoing'); // is-sending can be when there are bulk of updates (e.g. sending command to Stickers bot)
-          bubble.classList.add('is-read');
+          this.setBubbleSendingStatus(bubble, 'read');
         }
       }
     }
@@ -3573,7 +3625,7 @@ export default class ChatBubbles {
             continue;
           }
 
-          message = await this.managers.appMessagesManager.getGroupsFirstMessage(message);
+          message = apiManagerProxy.getGroupsFirstMessage(message);
           mids.push(message.mid);
         }
 
@@ -3717,7 +3769,7 @@ export default class ChatBubbles {
     const newFirstMid = newFirstGroup?.firstMid;
     const newLastMid = newLastGroup?.lastMid;
     const changedTop = firstMid !== newFirstMid;
-    const changedBottom = lastMid !== newLastMid;
+    const changedBottom = !!lastGroup && lastMid !== newLastMid; // if has no groups then save bottom scroll position
 
     // const reverse = loadQueue[0]?.reverse;
     const reverse = changedTop && !changedBottom;
@@ -4013,6 +4065,7 @@ export default class ChatBubbles {
   }) {
     let text: DocumentFragment | HTMLElement = wrapRichText(button.text, {noLinks: true, noLinebreaks: true});
     let buttonEl: HTMLButtonElement | HTMLAnchorElement;
+    let buttonIcon: HTMLElement;
     let onClick: (e: Event) => void;
 
     const {peerId} = this;
@@ -4033,6 +4086,7 @@ export default class ChatBubbles {
 
         buttonEl = htmlToDocumentFragment(r).firstElementChild as HTMLAnchorElement;
         buttonEl.classList.add('is-link');
+        buttonIcon = Icon('arrow_next');
 
         break;
       }
@@ -4040,6 +4094,7 @@ export default class ChatBubbles {
       case 'keyboardButtonSwitchInline': {
         buttonEl = document.createElement('button');
         buttonEl.classList.add('is-switch-inline');
+        buttonIcon = Icon('forward_filled');
         onClick = (e) => {
           cancelEvent(e);
 
@@ -4083,6 +4138,7 @@ export default class ChatBubbles {
 
         buttonEl = document.createElement('button');
         buttonEl.classList.add('is-buy');
+        buttonIcon = Icon('card');
 
         if(mediaInvoice?.receipt_msg_id) {
           text = i18n('Message.ReplyActionButtonShowReceipt');
@@ -4115,6 +4171,7 @@ export default class ChatBubbles {
       case 'keyboardButtonWebView': {
         buttonEl = document.createElement('button');
         buttonEl.classList.add('is-web-view');
+        buttonIcon = Icon('webview');
 
         onClick = async() => {
           await this.chat.appImManager.confirmBotWebView(botId);
@@ -4137,15 +4194,7 @@ export default class ChatBubbles {
         buttonEl.classList.add('is-request-phone');
 
         onClick = () => {
-          confirmationPopup({
-            titleLangKey: 'ShareYouPhoneNumberTitle',
-            button: {
-              langKey: 'OK'
-            },
-            descriptionLangKey: 'AreYouSureShareMyContactInfoBot'
-          }).then(() => {
-            this.managers.appMessagesManager.sendContact(peerId, rootScope.myId);
-          });
+          this.chat.appImManager.requestPhone(peerId);
         };
         break;
       }
@@ -4310,11 +4359,34 @@ export default class ChatBubbles {
       }
     }
 
+    if(buttonIcon) {
+      buttonIcon.classList.add('reply-markup-button-icon');
+    }
+
     if(!noTextInject) {
       buttonEl?.append(text);
     }
 
-    return {text, buttonEl, onClick};
+    return {text, buttonEl, buttonIcon, onClick};
+  }
+
+  private setBubbleSendingStatus(bubble: HTMLElement, status: 'sending' | 'error' | 'sent' | 'read', first?: boolean) {
+    !first && bubble.classList.remove('is-sending', 'is-error', 'is-sent', 'is-read');
+    bubble.classList.add('is-' + status);
+    bubble.querySelectorAll('.time, .time-inner').forEach((element) => {
+      let icon: Icon;
+      if(status === 'error') icon = 'sendingerror';
+      else if(status === 'sending') icon = 'sending';
+      else if(status === 'sent') icon = 'check';
+      else icon = 'checks';
+
+      const newIcon = Icon(icon, 'time-sending-status');
+      if(element.firstElementChild.classList.contains('time-sending-status')) {
+        element.firstElementChild.replaceWith(newIcon);
+      } else {
+        element.prepend(newIcon);
+      }
+    });
   }
 
   // reverse means top
@@ -4497,6 +4569,7 @@ export default class ChatBubbles {
         const messageMedia = message.media as MessageMedia.messageMediaStory;
         const storyPeerId = messageMedia.user_id.toPeerId(false);
         const storyId = messageMedia.id;
+        const isMyStory = storyPeerId === rootScope.myId;
 
         const result = await modifyAckedPromise(this.managers.acknowledged.appStoriesManager.getStoryById(storyPeerId, storyId));
         if(!result.cached) {
@@ -4505,22 +4578,30 @@ export default class ChatBubbles {
             this.safeRenderMessage(message, true, bubble);
           });
         } else if(!result.result) {
-          s.append(i18n('ExpiredStoryMention'));
+          let elem: HTMLElement;
+          if(isMyStory) elem = i18n('ExpiredStoryMentionYou', [await wrapPeerTitle({peerId: message.peerId})]);
+          else elem = i18n('ExpiredStoryMention');
+          const icon = Icon('bomb', 'expired-story-icon');
+          s.append(icon, elem);
         } else {
           s.classList.add('bubble-story-mention-wrapper');
 
           const avatarContainer = document.createElement('div');
           avatarContainer.classList.add('bubble-story-mention-avatar-container');
 
-          const avatar = new AvatarElement();
-          avatar.classList.add('avatar-100');
-          avatar.updateWithOptions({
+          const avatar = avatarNew({
+            middleware,
+            size: 100,
             peerId: storyPeerId,
             lazyLoadQueue: this.lazyLoadQueue,
-            loadPromises,
-            withStories: true
+            withStories: true,
+            storyId,
+            storyColors: {
+              read: 'rgba(255, 255, 255, .3)'
+            }
           });
-          avatar.dataset.storyId = '' + storyId;
+          avatar.node.dataset.storyId = '' + storyId;
+          loadPromises.push(avatar.readyThumbPromise);
 
           const deferred = deferredPromise<void>();
           loadPromises.push(deferred);
@@ -4537,10 +4618,12 @@ export default class ChatBubbles {
               });
 
               const {container, ready} = wrapStoryMedia({
+                peerId: storyPeerId,
                 storyItem: storyItem,
                 forPreview: true,
-                group: this.chat.animationGroup,
-                lazyLoadQueue: this.lazyLoadQueue
+                noInfo: true,
+                lazyLoadQueue: this.lazyLoadQueue,
+                withPreloader: true
               });
 
               createEffect(() => {
@@ -4557,14 +4640,18 @@ export default class ChatBubbles {
             });
           });
 
-          avatarContainer.append(avatar);
+          avatarContainer.append(avatar.node);
 
-          const text = i18n('StoryMention', [await wrapPeerTitle({peerId: storyPeerId})]);
+          const text = i18n(
+            isMyStory ? 'StoryMentionYou' : 'StoryMention',
+            [await wrapPeerTitle({peerId: isMyStory ? message.peerId : storyPeerId})]
+          );
           text.classList.add('bubble-story-mention-text');
 
           const button = Button('bubble-service-button bubble-story-mention-button', {noRipple: true, text: 'StoryMentionView'});
           attachClickEvent(button, () => {
-            createStoriesViewerWithPeer({peerId: storyPeerId, id: storyId});
+            simulateClickEvent(avatar.node);
+            // createStoriesViewerWithPeer({peerId: storyPeerId, id: storyId});
           }, {listenerSetter: this.listenerSetter});
 
           s.append(avatarContainer, text, button);
@@ -4644,7 +4731,7 @@ export default class ChatBubbles {
       bubble.dataset.replyToMid = '' + message.reply_to_mid;
 
       if(maxMediaTimestamp === undefined) {
-        const originalMessage = await rootScope.managers.appMessagesManager.getMessageByPeer(replyToPeerId, message.reply_to_mid);
+        const originalMessage = await apiManagerProxy.getMessageByPeer(replyToPeerId, message.reply_to_mid);
         if(originalMessage) {
           maxMediaTimestamp = getMediaDurationFromMessage(originalMessage as Message.message);
         } else {
@@ -4750,7 +4837,8 @@ export default class ChatBubbles {
 
       if(!message.fwd_from?.saved_from_msg_id && this.chat.type !== 'pinned') {
         const forward = document.createElement('div');
-        forward.classList.add('bubble-beside-button', 'forward', 'tgico-forward_filled');
+        forward.classList.add('bubble-beside-button', 'forward');
+        forward.append(Icon('forward_filled'));
         bubbleContainer.prepend(forward);
         bubble.classList.add('with-beside-button');
       }
@@ -4770,14 +4858,17 @@ export default class ChatBubbles {
       const containerDiv = document.createElement('div');
       containerDiv.classList.add('reply-markup');
       const onClickMap: Map<HTMLElement, (e: Event) => void> = new Map();
-      replyMarkupRows.forEach((row) => {
+      replyMarkupRows.forEach((row, idx, arr) => {
         const buttons = row.buttons;
+        const isLastRow = idx === arr.length - 1;
 
         const rowDiv = document.createElement('div');
         rowDiv.classList.add('reply-markup-row');
 
-        buttons.forEach((button) => {
-          const {text, buttonEl, onClick} = this.wrapKeyboardButton({
+        buttons.forEach((button, idx, arr) => {
+          const isFirst = idx === 0;
+          const isLast = idx === arr.length - 1;
+          const {text, buttonEl, buttonIcon, onClick} = this.wrapKeyboardButton({
             button,
             message: message as Message.message,
             noTextInject: true
@@ -4791,13 +4882,26 @@ export default class ChatBubbles {
             onClickMap.set(buttonEl, onClick);
           }
 
-          buttonEl.classList.add('reply-markup-button', 'rp', 'tgico');
+          if(isLastRow) {
+            if(isFirst) {
+              buttonEl.classList.add('is-first');
+            }
+
+            if(isLast) {
+              buttonEl.classList.add('is-last');
+            }
+          }
+
+          buttonEl.classList.add('reply-markup-button', 'rp');
           const t = document.createElement('span');
           t.classList.add('reply-markup-button-text');
           t.append(text);
 
+          // const after = document.createElement('div');
+          // after.classList.add('reply-markup-button-after');
+
           ripple(buttonEl);
-          buttonEl.append(t);
+          buttonEl.append(...[buttonIcon, t/* , after */].filter(Boolean));
 
           rowDiv.append(buttonEl);
         });
@@ -4829,14 +4933,6 @@ export default class ChatBubbles {
     }
 
     const isOutgoing = message.pFlags.is_outgoing/*  && this.peerId !== rootScope.myId */;
-    if(our) {
-      if(message.pFlags.unread || isOutgoing) this.unreadOut.add(message.mid);
-      let status = '';
-      if(message.error) status = 'is-error';
-      else if(isOutgoing) status = 'is-sending';
-      else status = message.pFlags.unread || (message as Message.message).pFlags.is_scheduled ? 'is-sent' : 'is-read';
-      bubble.classList.add(status);
-    }
 
     if(isOutgoing && !message.error) {
       bubble.classList.add('is-outgoing');
@@ -5168,6 +5264,7 @@ export default class ChatBubbles {
             bubbleContainer.style.minWidth = attachmentDiv.style.width;
             bubbleContainer.style.minHeight = attachmentDiv.style.height;
             // appPhotosManager.setAttachmentSize(doc, bubble);
+            const noPremium = messageMedia?.pFlags?.nopremium;
             wrapSticker({
               doc,
               div: attachmentDiv,
@@ -5182,10 +5279,24 @@ export default class ChatBubbles {
               withThumb: true,
               loadPromises,
               isOut,
-              noPremium: messageMedia?.pFlags?.nopremium
+              noPremium,
+              scrollable: this.scrollable,
+              showPremiumInfo: () => {
+                const a = document.createElement('a');
+                a.onclick = () => {
+                  hideToast();
+                  PopupElement.createPopup(PopupStickers, doc.stickerSetInput).show();
+                };
+
+                toastNew({
+                  langPackKey: 'Sticker.Premium.Click.Info',
+                  langPackArguments: [a]
+                });
+              }
             });
 
-            if((getStickerEffectThumb(doc) || isEmoji) && (isInUnread || isOutgoing)/*  || true */) {
+            const effectThumb = getStickerEffectThumb(doc);
+            if((effectThumb || isEmoji) && (isInUnread || isOutgoing)/*  || true */) {
               this.observer.observe(bubble, this.stickerEffectObserverCallback);
             }
           } else if(doc.type === 'video' || doc.type === 'gif' || doc.type === 'round'/*  && doc.size <= 20e6 */) {
@@ -5303,7 +5414,8 @@ export default class ChatBubbles {
         case 'messageMediaCall': {
           const action = messageMedia.action;
           const div = document.createElement('div');
-          div.classList.add('bubble-call', action.pFlags.video ? 'tgico-videocamera' : 'tgico-phone');
+          div.classList.add('bubble-call');
+          div.append(Icon(action.pFlags.video ? 'videocamera' : 'phone', 'bubble-call-icon'));
 
           const type: CallType = action.pFlags.video ? 'video' : 'voice';
           div.dataset.type = type;
@@ -5339,7 +5451,7 @@ export default class ChatBubbles {
             _i18n(subtitle, langPackKey);
           }
 
-          subtitle.classList.add('tgico', 'arrow-' + (action.duration !== undefined ? 'green' : 'red'));
+          subtitle.prepend(Icon('arrow_next', 'bubble-call-arrow', 'bubble-call-arrow-' + (action.duration !== undefined ? 'green' : 'red')));
 
           div.append(title, subtitle);
 
@@ -5379,15 +5491,15 @@ export default class ChatBubbles {
           contactDiv.append(contactDetails);
           contactDetails.append(contactNameDiv, contactNumberDiv);
 
-          const avatarElem = new AvatarElement();
-          avatarElem.updateWithOptions({
+          const avatarElem = avatarNew({
+            middleware,
+            size: 54,
             lazyLoadQueue: this.lazyLoadQueue,
             peerId: contact.user_id.toPeerId(),
             peerTitle: contact.user_id ? undefined : (fullName.trim() ? fullName : I18n.format('AttachContact', true)[0])
           });
-          avatarElem.classList.add('contact-avatar', 'avatar-54');
 
-          contactDiv.prepend(avatarElem);
+          contactDiv.prepend(avatarElem.node);
 
           bubble.classList.remove('is-message-empty');
           messageDiv.classList.add('contact-message');
@@ -5399,7 +5511,7 @@ export default class ChatBubbles {
         case 'messageMediaPoll': {
           bubble.classList.remove('is-message-empty');
 
-          const pollElement = wrapPoll(message);
+          const pollElement = wrapPoll(message, undefined, middleware);
           messageDiv.prepend(pollElement);
           messageDiv.classList.add('poll-message');
 
@@ -5437,7 +5549,8 @@ export default class ChatBubbles {
             setInnerHTML(priceEl, f);
           } else if(isNotPaid) {
             priceEl = document.createElement('span');
-            priceEl.classList.add('extended-media-buy', 'tgico-premium_lock');
+            priceEl.classList.add('extended-media-buy');
+            priceEl.append(Icon('premium_lock', 'extended-media-buy-icon'));
             attachmentDiv.classList.add('is-buy');
             _i18n(priceEl, 'Checkout.PayPrice', [wrappedPrice]);
 
@@ -5642,17 +5755,17 @@ export default class ChatBubbles {
                 </svg>
               `);
 
-              const avatarElement = new AvatarElement();
-              avatarElement.classList.add('geo-live-pin-avatar');
-              avatarElement.classList.add('avatar-54');
-              avatarElement.updateWithOptions({
+              const avatar = avatarNew({
+                middleware,
+                size: 54,
                 peerId: message.fromId,
                 isDialog: false,
-                loadPromises,
                 wrapOptions: newWrapOptions
               });
+              avatar.node.classList.add('geo-live-pin-avatar');
+              loadPromises.push(avatar.readyThumbPromise);
 
-              pin.append(avatarElement);
+              pin.append(avatar.node);
 
               imageContainer.append(pin);
             } else {
@@ -5992,7 +6105,7 @@ export default class ChatBubbles {
           nameDiv = document.createElement('div');
           nameDiv.append(title);
 
-          const peer = await this.managers.appPeersManager.getPeer(message.fromId);
+          const peer = await apiManagerProxy.getPeer(message.fromId);
           const pFlags = (peer as User.user)?.pFlags;
           if(pFlags && (pFlags.scam || pFlags.fake)) {
             nameDiv.append(generateFakeIcon(pFlags.scam));
@@ -6105,7 +6218,8 @@ export default class ChatBubbles {
 
     if(savedFrom && (this.chat.type === 'pinned' || fwdFrom.saved_from_msg_id) && this.peerId !== REPLIES_PEER_ID) {
       const goto = document.createElement('div');
-      goto.classList.add('bubble-beside-button', 'goto-original', 'tgico-arrow_next');
+      goto.classList.add('bubble-beside-button', 'goto-original');
+      goto.append(Icon('arrow_next'));
       bubbleContainer.append(goto);
       bubble.dataset.savedFrom = savedFrom;
       bubble.classList.add('with-beside-button');
@@ -6120,7 +6234,8 @@ export default class ChatBubbles {
         message: messageWithReplies,
         messageDiv,
         loadPromises,
-        lazyLoadQueue: this.lazyLoadQueue
+        lazyLoadQueue: this.lazyLoadQueue,
+        middleware
       });
 
       if(isFooter) {
@@ -6146,6 +6261,15 @@ export default class ChatBubbles {
       bubbleContainer.append(generateTail());
     }
 
+    if(our && (this.peerId !== rootScope.myId || isOut)) {
+      if(message.pFlags.unread || isOutgoing) this.unreadOut.add(message.mid);
+      let status: Parameters<ChatBubbles['setBubbleSendingStatus']>[1];
+      if(message.error) status = 'error';
+      else if(isOutgoing) status = 'sending';
+      else status = message.pFlags.unread || (message as Message.message).pFlags.is_scheduled ? 'sent' : 'read';
+      this.setBubbleSendingStatus(bubble, status, true);
+    }
+
     return ret;
   }
 
@@ -6166,7 +6290,13 @@ export default class ChatBubbles {
     // message = this.appMessagesManager.getMessageWithReactions(message);
 
     const reactionsElement = new ReactionsElement();
-    reactionsElement.init(reactionsMessage, 'block', bubble.middlewareHelper.get());
+    reactionsElement.init({
+      message: reactionsMessage,
+      type: 'block',
+      middleware: bubble.middlewareHelper.get(),
+      animationGroup: this.chat.animationGroup,
+      lazyLoadQueue: this.lazyLoadQueue
+    });
     reactionsElement.render(changedResults);
 
     if(bubble.classList.contains('is-message-empty')) {
@@ -6206,7 +6336,7 @@ export default class ChatBubbles {
 
   private setStoryContainerDimensions(container: HTMLElement) {
     const ratio = 9 / 16;
-    const height = 320;
+    const height = 256;
     const width = height * ratio;
     container.style.width = `${width}px`;
     container.style.height = `${height}px`;
@@ -6217,8 +6347,8 @@ export default class ChatBubbles {
     if(result.cached && !(await result.result)) {
       const peerTitle = await wrapPeerTitle({peerId: storyPeerId});
       const {container, fillPromise} = wrapReply({
-        title: isWebPage ? peerTitle : i18n('ExpiredStory'),
-        subtitle: isWebPage ? i18n('ExpiredStory') : i18n('ExpiredStorySubtitle', [peerTitle]),
+        title: isWebPage ? peerTitle : undefined,
+        subtitle: isWebPage ? undefined : i18n('ExpiredStorySubtitle', [peerTitle]),
         isStoryExpired: true
       });
 
@@ -6250,9 +6380,10 @@ export default class ChatBubbles {
         peerId,
         storyId,
         lazyLoadQueue: this.lazyLoadQueue,
-        group: this.chat.animationGroup,
+        // group: this.chat.animationGroup,
         autoDownload: this.chat.autoDownload,
         loadPromises,
+        canAutoplay: false,
         onExpiredStory: async() => {
           this.safeRenderMessage(message, true, bubble);
 
@@ -6264,7 +6395,8 @@ export default class ChatBubbles {
           // nameDiv?.remove();
 
           // container.replaceWith(replyContainer);
-        }
+        },
+        withPreloader: true
       });
     }, container);
     middleware.onClean(() => {
@@ -6573,12 +6705,12 @@ export default class ChatBubbles {
         const elementsToAnimate: HTMLElement[] = [contentWrapper];
         const item = this.bubbleGroups.getItemByBubble(bubble);
         if(item && item.group.avatar && item.group.lastItem === item) {
-          elementsToAnimate.push(item.group.avatar);
+          elementsToAnimate.push(item.group.avatar.node);
         }
 
         elementsToAnimate.forEach((element) => {
           element.classList.add('zoom-fade', 'can-zoom-fade');
-          element.style.transitionDelay = lastMsDelay + 'ms';
+          element.style.setProperty('transition-delay', lastMsDelay + 'ms', 'important');
         });
 
         if(idx === (mids.length - 1)) {
@@ -6622,11 +6754,14 @@ export default class ChatBubbles {
       });
     });
 
+    const perf = performance.now();
     let promise: Promise<any>;
     if(topIds.length || middleIds.length || bottomIds.length) {
       promise = Promise.all(promises);
 
-      dispatchHeavyAnimationEvent(promise, Math.max(...delays) + 200) // * 200 - transition time
+      const TRANSITION_TIME = 300;
+      const timeout = Math.max(...delays) + TRANSITION_TIME;
+      dispatchHeavyAnimationEvent(promise, timeout)
       .then(() => {
         fastRaf(() => {
           setBubbles.forEach((element) => {
@@ -6746,8 +6881,7 @@ export default class ChatBubbles {
 
       if(type === 'group') {
         listElements.forEach((elem) => {
-          const i = document.createElement('span');
-          i.classList.add('tgico-check');
+          const i = Icon('check', BASE_CLASS + '-list-check');
           elem.prepend(i);
         });
       } else if(type === 'saved') {

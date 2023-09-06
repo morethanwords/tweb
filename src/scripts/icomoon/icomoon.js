@@ -38,6 +38,9 @@ const PAGE = {
   FONT_NAME_INPUT: '[ng-model="fontPref.metadata.fontFamily"]',
   CLASS_PREFIX_INPUT: '[ng-model="fontPref.prefix"]',
   CSS_VARS_LABEL: '[ng-class*="fontPref.cssVars"]',
+  SHOW_CSS_SELECTOR: '[ng-class="{fgc10: showSelectorFocused, mbn: !fontPref.showSelector}"] .hoverE0',
+  CSS_CLASS_SELECTOR: '[ng-class="{mbm: fontPref.selector === \'class\', \'fgc10\': classSelectorFocused}"]',
+  CSS_CLASS_SELECTOR_INPUT: '[ng-model="fontPref.classSelector"]',
   EM_HEIGHT_INPUT: '[model="fontPref.metrics.emSize"] input',
   BASELINE_HEIGHT_INPUT: '[model="fontPref.metrics.baseline"] input',
   WHITESPACE_WIDTH_INPUT: '[model="fontPref.metrics.whitespace"] input'
@@ -240,7 +243,10 @@ async function pipeline(options = {}) {
     await fillInput(PAGE.FONT_NAME_INPUT, selection.preferences.fontPref.metadata.fontFamily);
     await fillInput(PAGE.CLASS_PREFIX_INPUT, selection.preferences.fontPref.prefix);
     await page.click(PAGE.CSS_VARS_LABEL);
-
+    await page.click(PAGE.SHOW_CSS_SELECTOR);
+    await sleep(200);
+    await page.click(PAGE.CSS_CLASS_SELECTOR);
+    await fillInput(PAGE.CSS_CLASS_SELECTOR_INPUT, '.' + selection.preferences.fontPref.metadata.fontFamily);
     await page.click(PAGE.SHOW_METRICS);
     await fillInput(PAGE.EM_HEIGHT_INPUT, selection.preferences.fontPref.metrics.emSize);
     await fillInput(PAGE.BASELINE_HEIGHT_INPUT, selection.preferences.fontPref.metrics.baseline);

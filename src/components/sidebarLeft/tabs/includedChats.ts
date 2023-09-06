@@ -9,7 +9,6 @@ import {SliderSuperTab} from '../../slider';
 import AppSelectPeers from '../../appSelectPeers';
 import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
 import ButtonIcon from '../../buttonIcon';
-import CheckboxField from '../../checkboxField';
 import Button from '../../button';
 import AppEditFolderTab from './editFolder';
 import I18n, {i18n, LangPackKey, _i18n, join} from '../../../lib/langPack';
@@ -24,6 +23,7 @@ import {MTAppConfig} from '../../../lib/mtproto/appConfig';
 import {attachClickEvent, simulateClickEvent} from '../../../helpers/dom/clickEvent';
 import SettingSection from '../../settingSection';
 import {DialogFilter} from '../../../layer';
+import Icon from '../../icon';
 
 export default class AppIncludedChatsTab extends SliderSuperTab {
   private editFolderTab: AppEditFolderTab;
@@ -152,12 +152,18 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
     peerIds.forEach((peerId) => {
       // if(other.includes(peerId)) return;
 
-      const {dom} = appDialogsManager.addDialogNew({
+      const dialogElement = appDialogsManager.addDialogNew({
         peerId: peerId,
         container: this.selector.scrollable,
         rippleEnabled: true,
-        avatarSize: 'abitbigger'
+        avatarSize: 'abitbigger',
+        wrapOptions: {
+          middleware: this.middlewareHelper.get()
+        }
       });
+
+      (dialogElement.container as any).dialogElement = dialogElement;
+      const {dom} = dialogElement;
 
       const selected = this.selector.selected.has(peerId);
       dom.containerEl.append(this.selector.checkbox(selected));
@@ -192,7 +198,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
 
     categoriesSection.container.classList.add('folder-categories');
 
-    let details: {[flag: string]: {ico: string, text: LangPackKey}};
+    let details: {[flag: string]: {ico: Icon, text: LangPackKey}};
     if(this.type === 'excluded') {
       details = {
         exclude_muted: {ico: 'mute', text: 'ChatList.Filter.MutedChats'},
@@ -237,7 +243,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
 
     let addedInitial = false;
     const _add = this.selector.add.bind(this.selector);
-    this.selector.add = (peerId, title, scroll) => {
+    this.selector.add = ({key: peerId, title, scroll}) => {
       if(this.selector.selected.size >= this.limit && addedInitial && !details[peerId]) {
         const el: HTMLInputElement = this.selector.list.querySelector(`[data-peer-id="${peerId}"] [type="checkbox"]`);
         if(el) {
@@ -251,10 +257,12 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
         return;
       }
 
-      const div = _add(peerId, details[peerId] ? i18n(details[peerId].text) : undefined, scroll);
-      if(details[peerId] && typeof(div) !== 'boolean') {
-        div.querySelector('avatar-element').classList.add('tgico-' + details[peerId].ico);
-      }
+      const div = _add({
+        key: peerId,
+        title: details[peerId] ? i18n(details[peerId].text) : undefined,
+        scroll,
+        fallbackIcon: details[peerId]?.ico
+      });
       return div;
     };
 
