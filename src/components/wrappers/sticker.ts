@@ -41,6 +41,8 @@ import liteMode, {LiteModeKey} from '../../helpers/liteMode';
 import Scrollable from '../scrollable';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import Icon from '../icon';
+import {leakVideoFallbacks, onVideoLeak} from '../../helpers/dom/handleVideoLeak';
+import noop from '../../helpers/noop';
 
 // https://github.com/telegramdesktop/tdesktop/blob/master/Telegram/SourceFiles/history/view/media/history_view_sticker.cpp#L40
 export const STICKER_EFFECT_MULTIPLIER = 1 + 0.245 * 2;
@@ -111,6 +113,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
   scrollable?: Scrollable
   showPremiumInfo?: () => void
 }) {
+  const options = arguments[0];
   div = Array.isArray(div) ? div : [div];
 
   liteModeKey ??= 'stickers_panel';
@@ -589,7 +592,8 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
                 return;
               }
 
-              if(media instanceof HTMLVideoElement) {
+              const isVideo = media instanceof HTMLVideoElement;
+              if(isVideo/*  && media.isConnected */) {
                 // * video sticker can have arbitrary dimensions
                 const {videoWidth, videoHeight} = media;
                 const ratio = videoWidth / videoHeight;
@@ -617,6 +621,38 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
               if(isSingleVideo) {
                 resolve(media as any);
                 return;
+              }
+
+              if(isVideo) {
+                leakVideoFallbacks.set(media, () => {
+                  const reset = () => {
+                    onVideoLeak(media).catch(noop);
+                  };
+
+                  if(!thumbImage || !(thumbImage instanceof HTMLImageElement)) {
+                    const d = document.createElement('div');
+                    wrapSticker({
+                      ...options,
+                      div: d,
+                      static: true,
+                      exportLoad: undefined,
+                      needFadeIn: false,
+                      lazyLoadQueue: undefined
+                      // onlyThumb: true
+                    }).then(({render}) => {
+                      return render;
+                    }).finally(() => {
+                      sequentialDom.mutateElement(media, () => {
+                        if(middleware()) div.append(...Array.from(d.children));
+                        media.remove();
+                        reset();
+                      });
+                    });
+                  } else {
+                    media.replaceWith(thumbImage);
+                    reset();
+                  }
+                });
               }
 
               div.append(media);

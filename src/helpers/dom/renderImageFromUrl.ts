@@ -30,7 +30,12 @@ export default function renderImageFromUrl(
 
   const isVideo = elem instanceof HTMLVideoElement;
   if(((loadedURLs[url]/*  && false */) && useCache) || isVideo) {
-    if(elem) {
+    /* if(isVideo) {
+      const source = document.createElement('source');
+      source.src = url;
+      source.type = 'video/webm';
+      elem.append(source);
+    } else  */if(elem) {
       set(elem, url);
     }
 
