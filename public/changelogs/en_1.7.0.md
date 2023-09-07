@@ -1,4 +1,4 @@
-🎄 Happy New Year to everyone! [WebK](http://web.telegram.org/k) launched its first update of 2023, adding a pack of feaures you can now enjoy on Web!
+🎄 Happy New Year to everyone! [WebK](http://web.telegram.org/k) launched its first update of 2023, adding a pack of features you can now enjoy on Web!
 
 📚 [Topics 2.0](https://telegram.org/blog/ultimate-privacy-topics-2-0#topics-2-0)
 Admins of **any group** can enable Topics, creating separate spaces within the group to discuss different subjects – with a sleek **two-column layout** to easily navigate chats.
