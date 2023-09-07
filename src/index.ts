@@ -109,24 +109,25 @@ import {fillLocalizedDates} from './helpers/date';
 
   window.addEventListener('resize', setVH);
   setVH();
+
   const preparePrint = () => {
-    const chatHeader = document.querySelector('.topbar');
-    const bubbles = document.querySelector('.bubbles');
+    const chat = document.querySelector('.chat.active');
+    const chatClone = chat.cloneNode(true) as HTMLElement;
+    chatClone.querySelectorAll('.chat-input, .chat-background').forEach((element) => element.remove());
+    const bubbles = chatClone.querySelector('.bubbles');
     const bubblesInner = bubbles.querySelector('.bubbles-inner');
-    const chatHeaderClone = chatHeader.cloneNode(true);
-    const bubblesClone = bubbles.cloneNode(true);
-    const bubblesInnerClone = bubblesInner.cloneNode(true);
-    bubblesClone.appendChild(bubblesInnerClone);
+    bubbles.replaceChildren(bubblesInner);
+    const video = bubbles.querySelectorAll<HTMLVideoElement>('video');
+    video.forEach((video) => (video.muted = true));
     const printable = document.createElement('div');
     printable.setAttribute('id', 'printable');
-    printable.append(chatHeaderClone);
-    printable.append(bubblesClone);
+    printable.append(chatClone);
     document.body.append(printable);
-  }
+  };
   const removePrint = () => {
     const printContent = document.getElementById('printable');
     printContent.remove();
-  }
+  };
   window.addEventListener('beforeprint', preparePrint);
   window.addEventListener('afterprint', removePrint);
 
