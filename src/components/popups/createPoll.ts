@@ -39,6 +39,7 @@ export default class PopupCreatePoll extends PopupElement {
   private correctAnswers: Uint8Array[];
   private quizSolutionField: InputField;
   private optionInputFields: InputField[];
+  private sent: boolean;
 
   constructor(private chat: Chat) {
     super('popup-create-poll popup-new-media', {
@@ -48,7 +49,7 @@ export default class PopupCreatePoll extends PopupElement {
       body: true,
       title: 'NewPoll',
       isConfirmationNeededOnClose: () => {
-        if(!this.getFilledAnswers().length) {
+        if(!this.getFilledAnswers().length || this.sent) {
           return;
         }
 
@@ -267,6 +268,7 @@ export default class PopupCreatePoll extends PopupElement {
       return;
     }
 
+    this.sent = true;
     this.hide();
 
     // const randomID = [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)];
