@@ -144,8 +144,8 @@ const calculateSegmentsDimensions = (s: number) => {
   };
 };
 
-export async function wrapPhotoToAvatar(avatarElem: ReturnType<typeof avatarNew>, photo: Parameters<typeof wrapPhoto>[0]['photo']) {
-  await wrapPhoto({
+export function wrapPhotoToAvatar(avatarElem: ReturnType<typeof avatarNew>, photo: Parameters<typeof wrapPhoto>[0]['photo']) {
+  return wrapPhoto({
     container: avatarElem.node,
     message: null,
     photo,
@@ -153,14 +153,22 @@ export async function wrapPhotoToAvatar(avatarElem: ReturnType<typeof avatarNew>
     boxWidth: 100,
     withoutPreloader: true
   }).then((result) => {
-    avatarElem.node.classList.remove('media-container');
+    avatarElem.node.classList.replace('media-container', 'avatar-relative');
+    avatarElem.node.style.width = avatarElem.node.style.height = '';
     [result.images.thumb, result.images.full].forEach((image) => {
+      if(!image) {
+        return;
+      }
+
       image.classList.replace('media-photo', 'avatar-photo');
     });
 
+    if(result.images.thumb) {
+      result.images.thumb.classList.add('avatar-photo-thumbnail');
+    }
+
     return result.loadPromises.thumb;
   });
-  avatarElem.node.style.width = avatarElem.node.style.height = '';
 }
 
 export const AvatarNew = (props: {

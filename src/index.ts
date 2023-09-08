@@ -112,6 +112,10 @@ import {fillLocalizedDates} from './helpers/date';
 
   const preparePrint = () => {
     const chat = document.querySelector('.chat.active');
+    if(!chat) {
+      return;
+    }
+
     const chatClone = chat.cloneNode(true) as HTMLElement;
     chatClone.querySelectorAll('.chat-input, .chat-background').forEach((element) => element.remove());
     const bubbles = chatClone.querySelector('.bubbles');
@@ -126,7 +130,7 @@ import {fillLocalizedDates} from './helpers/date';
   };
   const removePrint = () => {
     const printContent = document.getElementById('printable');
-    printContent.remove();
+    printContent?.remove();
   };
   window.addEventListener('beforeprint', preparePrint);
   window.addEventListener('afterprint', removePrint);
