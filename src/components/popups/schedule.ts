@@ -34,6 +34,7 @@ const checkDate = (date: Date, addMinutes?: number) => {
 
 export default class PopupSchedule extends PopupDatePicker {
   private canSendWhenOnline: boolean;
+  private isCustomButtonText: boolean;
 
   constructor(options: {
     initDate: Date,
@@ -59,6 +60,7 @@ export default class PopupSchedule extends PopupDatePicker {
     );
 
     this.canSendWhenOnline = options.canSendWhenOnline;
+    this.isCustomButtonText = !!options.btnConfirmLangKey;
 
     this.element.classList.add('popup-schedule');
     this.header.append(this.controlsDiv);
@@ -66,7 +68,7 @@ export default class PopupSchedule extends PopupDatePicker {
     this.body.append(this.btnConfirm);
 
     if(options.canSendWhenOnline) {
-      const btnSendWhenOnline = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'Schedule.SendWhenOnline'});
+      const btnSendWhenOnline = Button('btn-primary btn-secondary btn-primary-transparent primary popup-schedule-secondary', {text: 'Schedule.SendWhenOnline'});
       this.body.append(btnSendWhenOnline);
 
       attachClickEvent(btnSendWhenOnline, () => {
@@ -76,7 +78,7 @@ export default class PopupSchedule extends PopupDatePicker {
     }
 
     if(options.btnConfirmLangKey) {
-      this.btnConfirm.append(i18n(options.btnConfirmLangKey));
+      this.btnConfirm.replaceChildren(i18n(options.btnConfirmLangKey));
       this.btnConfirm.classList.add('text-uppercase');
     }
   }
@@ -88,7 +90,7 @@ export default class PopupSchedule extends PopupDatePicker {
       return;
     }
 
-    if(this.canSendWhenOnline === undefined) {
+    if(this.isCustomButtonText) {
       return;
     }
 

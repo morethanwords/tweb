@@ -168,7 +168,6 @@
       &-title {
         font-weight: var(--font-weight-bold);
         font-size: 20px;
-        margin-left: 1.5rem;
         flex: 1 1 auto;
       }
 
@@ -239,5 +238,9 @@
       width: 280px;
       margin-left: 2px;
     }
+  }
+
+  &-secondary {
+    margin-top: .5rem !important;
   }
 }
