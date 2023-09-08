@@ -1682,7 +1682,7 @@ const lang = {
   },
   'RecentSessions.Error.FreshReset': 'For security reasons, you can\'t terminate older sessions from a device that you\'ve just connected. Please use an earlier connection or wait for a few hours.',
   'RequestJoin.Button': 'Request to Join',
-  'RequestJoin.List.SearchEmpty': 'There were no results for \"%@\".\nTry a new search.',
+  'RequestJoin.List.SearchEmpty': 'There were no results for "%@".\nTry a new search.',
   'Stickers.SearchAdd': 'Add',
   'Stickers.SearchAdded': 'Added',
   'Stickers.SuggestStickers': 'Suggest Stickers by Emoji',
