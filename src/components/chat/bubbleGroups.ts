@@ -34,7 +34,7 @@ type GroupItem = {
   message: Message.message | Message.messageService // use it only to set avatar
 };
 
-class BubbleGroup {
+export class BubbleGroup {
   container: HTMLElement;
   chat: Chat;
   groups: BubbleGroups;
@@ -47,7 +47,7 @@ class BubbleGroup {
   offset: number;
   middlewareHelper: MiddlewareHelper;
 
-  constructor(chat: Chat, groups: BubbleGroups, dateTimestamp: number) {
+  constructor(chat: Chat, groups?: BubbleGroups, dateTimestamp?: number) {
     this.container = document.createElement('div');
     this.container.classList.add('bubbles-group');
     this.chat = chat;
@@ -58,7 +58,7 @@ class BubbleGroup {
     this.middlewareHelper = chat.bubbles.getMiddleware().create();
   }
 
-  createAvatar(message: Message.message | Message.messageService) {
+  createAvatar(message: Message.message | Message.messageService, options?: Partial<Parameters<typeof avatarNew>[0]>) {
     if(this.avatarLoadPromise) {
       return this.avatarLoadPromise;
     } else if(message._ === 'messageService') {
@@ -78,8 +78,10 @@ class BubbleGroup {
       middleware: this.middlewareHelper.get(),
       size: 40,
       lazyLoadQueue: this.chat.bubbles.lazyLoadQueue,
-      peerId,
-      peerTitle: !fwdFromId && fwdFrom && fwdFrom.from_name ? /* '🔥 FF 🔥' */fwdFrom.from_name : undefined
+      ...(options || {
+        peerId,
+        peerTitle: !fwdFromId && fwdFrom && fwdFrom.from_name ? /* '🔥 FF 🔥' */fwdFrom.from_name : undefined
+      })
     });
     this.avatar.node.classList.add('bubbles-group-avatar', 'user-avatar'/* , 'can-zoom-fade' */);
 

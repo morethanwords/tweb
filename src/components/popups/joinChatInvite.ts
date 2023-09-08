@@ -7,16 +7,32 @@
 import PopupElement, {addCancelButton} from '.';
 import setInnerHTML from '../../helpers/dom/setInnerHTML';
 import numberThousandSplitter from '../../helpers/number/numberThousandSplitter';
-import {ChatInvite} from '../../layer';
+import {Chat, ChatInvite} from '../../layer';
 import appImManager from '../../lib/appManagers/appImManager';
-import {i18n, _i18n} from '../../lib/langPack';
-import {NULL_PEER_ID} from '../../lib/mtproto/mtproto_config';
+import {i18n, _i18n, LangPackKey} from '../../lib/langPack';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
-import {avatarNew} from '../avatarNew';
+import rootScope from '../../lib/rootScope';
+import {avatarNew, wrapPhotoToAvatar} from '../avatarNew';
 import {toastNew} from '../toast';
-import wrapPhoto from '../wrappers/photo';
 
 // const FAKE_CHAT_ID = Number.MAX_SAFE_INTEGER - 0x1000;
+
+const getJoinLangKey = (chatInvite: ChatInvite.chatInvite | ChatInvite.chatInvitePeek): LangPackKey => {
+  if(chatInvite._ === 'chatInvitePeek') {
+    const chat = (chatInvite as ChatInvite.chatInvitePeek).chat as Chat.channel | Chat.chat;
+    return (chat as Chat.channel).pFlags.broadcast ? 'JoinByPeekChannelTitle' : 'JoinByPeekGroupTitle';
+  }
+
+  if(chatInvite.pFlags.request_needed) {
+    return 'RequestJoin.Button';
+  }
+
+  if(chatInvite.pFlags.broadcast) {
+    return 'JoinByPeekChannelTitle';
+  }
+
+  return 'JoinByPeekGroupTitle';
+};
 
 export default class PopupJoinChatInvite extends PopupElement {
   constructor(
@@ -28,22 +44,40 @@ export default class PopupJoinChatInvite extends PopupElement {
       overlayClosable: true,
       body: true,
       buttons: addCancelButton([{
-        langKey: chatInvite.pFlags.request_needed ? 'RequestJoin.Button' : (chatInvite.pFlags.broadcast ? 'JoinByPeekChannelTitle' : 'JoinByPeekGroupTitle'),
-        callback: () => {
-          this.managers.appChatsManager.importChatInvite(hash)
-          .then((chatId) => {
-            const peerId = chatId.toPeerId(true);
-            appImManager.setInnerPeer({peerId});
-          }, (error) => {
-            if(error.type === 'INVITE_REQUEST_SENT') {
-              toastNew({langPackKey: 'RequestToJoinSent'});
-            }
-          });
-        }
+        langKey: getJoinLangKey(chatInvite),
+        callback: () => PopupJoinChatInvite.import(hash)
       }])
     });
 
     this.construct();
+  }
+
+  public static openChat(chatId: ChatId) {
+    const peerId = chatId.toPeerId(true);
+    appImManager.setInnerPeer({peerId});
+  }
+
+  public static import(hash: string) {
+    rootScope.managers.appChatsManager.importChatInvite(hash)
+    .then((chatId) => {
+      this.openChat(chatId);
+    }, (error) => {
+      if(error.type === 'INVITE_REQUEST_SENT') {
+        toastNew({langPackKey: 'RequestToJoinSent'});
+      }
+    });
+  }
+
+  public static async open(hash: string, chatInvite: ChatInvite) {
+    if(chatInvite._ === 'chatInviteAlready') {
+      // load missing chat
+      await rootScope.managers.appChatsManager.checkChatInvite(hash);
+      this.openChat(chatInvite.chat.id);
+    } else if(chatInvite._ === 'chatInvitePeek') {
+      this.openChat(chatInvite.chat.id);
+    } else {
+      PopupElement.createPopup(PopupJoinChatInvite, hash, chatInvite);
+    }
   }
 
   private async construct() {
@@ -70,22 +104,7 @@ export default class PopupJoinChatInvite extends PopupElement {
     });
     if(chatInvite.photo._ === 'photo') {
       chatInvite.photo = await managers.appPhotosManager.savePhoto(chatInvite.photo);
-      await wrapPhoto({
-        container: avatarElem.node,
-        message: null,
-        photo: chatInvite.photo,
-        boxHeight: 100,
-        boxWidth: 100,
-        withoutPreloader: true
-      }).then((result) => {
-        avatarElem.node.classList.remove('media-container');
-        [result.images.thumb, result.images.full].forEach((image) => {
-          image.classList.replace('media-photo', 'avatar-photo');
-        });
-
-        return result.loadPromises.thumb;
-      });
-      avatarElem.node.style.width = avatarElem.node.style.height = '';
+      await wrapPhotoToAvatar(avatarElem, chatInvite.photo);
     } else {
       avatarElem.render({
         peerTitle: chatInvite.title

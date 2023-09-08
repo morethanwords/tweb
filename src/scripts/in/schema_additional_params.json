@@ -411,4 +411,9 @@
   "params": [
     {"name": "q", "type": "string"}
   ]
+}, {
+  "predicate": "sponsoredMessage",
+  "params": [
+    {"name": "viewed", "type": "boolean"}
+  ]
 }]

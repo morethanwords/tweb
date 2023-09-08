@@ -847,9 +847,16 @@ export class AppChatsManager extends AppManager {
     });
   }
 
+  public clickSponsoredMessage(chatId: ChatId, randomId: SponsoredMessage['random_id']) {
+    return this.apiManager.invokeApiSingle('channels.clickSponsoredMessage', {
+      channel: this.getChannelInput(chatId),
+      random_id: randomId
+    });
+  }
+
   public checkChatInvite(hash: string) {
     return this.apiManager.invokeApi('messages.checkChatInvite', {
-      hash: hash
+      hash
     }).then((chatInvite) => {
       if((chatInvite as ChatInvite.chatInvitePeek).chat) {
         this.saveApiChat((chatInvite as ChatInvite.chatInvitePeek).chat, true);

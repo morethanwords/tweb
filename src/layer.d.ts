@@ -9770,7 +9770,8 @@ export namespace SponsoredMessage {
     message: string,
     entities?: Array<MessageEntity>,
     sponsor_info?: string,
-    additional_info?: string
+    additional_info?: string,
+    viewed?: boolean
   };
 }
 

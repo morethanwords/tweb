@@ -124,7 +124,7 @@ export type ChatSetPeerOptions = {
   lastMsgId?: number,
   threadId?: number,
   startParam?: string,
-  stack?: number,
+  stack?: {mid: number, message?: Message.message},
   commentId?: number,
   type?: ChatType,
   mediaTimestamp?: number
@@ -774,16 +774,15 @@ export class AppImManager extends EventListenerBase<{
       config = _config;
     });
 
-    const onAnchorClick = (element: HTMLAnchorElement) => {
+    const onAuthAnchorClick = (element: HTMLAnchorElement) => {
       const url = new URL(element.href);
-      if(appConfig.url_auth_domains.includes(url.hostname)) {
+      if(appConfig.url_auth_domains?.includes(url.hostname)) {
         this.handleUrlAuth({url: element.href});
         cancelEvent();
         return;
       }
 
       const autologinToken = config.autologin_token;
-
       if(!autologinToken || !appConfig.autologin_domains) {
         return;
       }
@@ -800,10 +799,24 @@ export class AppImManager extends EventListenerBase<{
       }
     };
 
+    const onSponsoredAnchorClick = (element: HTMLAnchorElement) => {
+      const bubble = findUpClassName(element, 'bubble');
+      if(!bubble) {
+        return;
+      }
+
+      const message = (bubble as any).message as Message.message;
+      this.clickIfSponsoredMessage(message);
+    };
+
     document.addEventListener('click', async(e) => {
       const anchor = findUpTag(e.target as HTMLElement, 'A') as HTMLAnchorElement;
       if(anchor?.href) {
-        onAnchorClick(anchor);
+        onAuthAnchorClick(anchor);
+      }
+
+      if(anchor) {
+        onSponsoredAnchorClick(anchor);
       }
 
       const avatar = findUpAvatar(e.target);
@@ -823,6 +836,15 @@ export class AppImManager extends EventListenerBase<{
     // });
   }
 
+  public clickIfSponsoredMessage(message: Message.message) {
+    const sponsoredMessage = message?.sponsoredMessage;
+    if(!sponsoredMessage) {
+      return;
+    }
+
+    this.managers.appChatsManager.clickSponsoredMessage(message.peerId.toChatId(), sponsoredMessage.random_id);
+  }
+
   public async openStoriesFromAvatar(avatar: HTMLElement) {
     const storyId = +avatar.dataset.storyId;
     createStoriesViewerWithPeer({
@@ -832,9 +854,12 @@ export class AppImManager extends EventListenerBase<{
     });
   }
 
-  public getStackFromElement(element: HTMLElement) {
+  public getStackFromElement(element: HTMLElement): ChatSetPeerOptions['stack'] {
     const possibleBubble = findUpClassName(element, 'bubble');
-    return possibleBubble ? +possibleBubble.dataset.mid : undefined;
+    return possibleBubble ? {
+      mid: +possibleBubble.dataset.mid,
+      message: (possibleBubble as any).message
+    } : undefined;
   }
 
   private deleteFilesIterative(callback: (response: Response) => boolean) {
@@ -1124,7 +1149,7 @@ export class AppImManager extends EventListenerBase<{
     peerId: PeerId,
     lastMsgId: number,
     threadId: number,
-    stack?: number
+    stack?: ChatSetPeerOptions['stack']
   }) {
     if(await this.managers.appChatsManager.isForum(options.peerId.toChatId())) {
       await this.managers.dialogsStorage.getForumTopicOrReload(options.peerId, options.threadId);

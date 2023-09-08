@@ -12,7 +12,7 @@ import type Chat from './chat';
 import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
 import {logger} from '../../lib/logger';
 import rootScope from '../../lib/rootScope';
-import BubbleGroups from './bubbleGroups';
+import BubbleGroups, {BubbleGroup} from './bubbleGroups';
 import PopupDatePicker from '../popups/datePicker';
 import PopupForward from '../popups/forward';
 import PopupStickers from '../popups/stickers';
@@ -29,7 +29,7 @@ import LazyLoadQueue from '../lazyLoadQueue';
 import ListenerSetter from '../../helpers/listenerSetter';
 import PollElement from '../poll';
 import AudioElement from '../audio';
-import {ChannelParticipant, Chat as MTChat, ChatInvite, ChatParticipant, Document, GeoPoint, InputWebFileLocation, KeyboardButton, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, ReplyMarkup, RequestPeerType, SponsoredMessage, Update, UrlAuthResult, User, WebPage, InlineQueryPeerType, WebPageAttribute, Reaction} from '../../layer';
+import {ChannelParticipant, Chat as MTChat, ChatInvite, ChatParticipant, Document, GeoPoint, InputWebFileLocation, KeyboardButton, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, ReplyMarkup, RequestPeerType, SponsoredMessage, Update, UrlAuthResult, User, WebPage, InlineQueryPeerType, WebPageAttribute, Reaction, ChatPhoto} from '../../layer';
 import {BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID, SEND_WHEN_ONLINE_TIMESTAMP} from '../../lib/mtproto/mtproto_config';
 import {FocusDirection, ScrollStartCallbackDimensions} from '../../helpers/fastSmoothScroll';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation} from '../../hooks/useHeavyAnimationCheck';
@@ -150,7 +150,7 @@ import {StoryPreview, wrapStoryMedia} from '../stories/preview';
 import wrapReply from '../wrappers/reply';
 import {modifyAckedPromise} from '../../helpers/modifyAckedResult';
 import callbackify from '../../helpers/callbackify';
-import {avatarNew, findUpAvatar} from '../avatarNew';
+import {avatarNew, findUpAvatar, wrapPhotoToAvatar} from '../avatarNew';
 import Icon from '../icon';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import {_tgico} from '../../helpers/tgico';
@@ -1423,11 +1423,12 @@ export default class ChatBubbles {
         this.sendViewCountersDebounced();
       } else {
         const {sponsoredMessage} = this;
-        const randomId = sponsoredMessage?.random_id;
-        if(randomId) {
-          this.managers.appChatsManager.viewSponsoredMessage(this.peerId.toChatId(), randomId);
-          delete sponsoredMessage.random_id;
+        if(!sponsoredMessage || sponsoredMessage.viewed) {
+          return;
         }
+
+        sponsoredMessage.viewed = true;
+        this.managers.appChatsManager.viewSponsoredMessage(this.peerId.toChatId(), sponsoredMessage.random_id);
       }
     }
   };
@@ -1825,7 +1826,7 @@ export default class ChatBubbles {
 
     if(!bubble && !this.chat.selection.isSelecting) {
       const avatar = findUpClassName(target, 'user-avatar');
-      if(!avatar) {
+      if(!avatar || findUpClassName(target, 'bubbles-group-sponsored')) {
         return;
       }
 
@@ -1952,7 +1953,11 @@ export default class ChatBubbles {
     }
 
     const stickerEmojiEl = findUpAttribute(target, 'data-sticker-emoji');
-    if(stickerEmojiEl && stickerEmojiEl.parentElement.querySelectorAll('[data-sticker-emoji]').length === 1 && bubble.classList.contains('emoji-big')) {
+    if(
+      stickerEmojiEl &&
+      stickerEmojiEl.parentElement.querySelectorAll('[data-sticker-emoji]').length === 1 &&
+      bubble.classList.contains('emoji-big')
+    ) {
       this.chat.appImManager.onEmojiStickerClick({
         event: e,
         container: stickerEmojiEl,
@@ -2033,6 +2038,7 @@ export default class ChatBubbles {
           const peerId = peerIdStr.toPeerId();
           if(peerId !== NULL_PEER_ID) {
             this.chat.appImManager.setInnerPeer({peerId});
+            this.chat.appImManager.clickIfSponsoredMessage((bubble as any).message);
           } else {
             toast(I18n.format('HidAccount', true));
           }
@@ -3160,6 +3166,10 @@ export default class ChatBubbles {
       topMessage = 0;
     } */
 
+    if(stack) {
+      this.chat.appImManager.clickIfSponsoredMessage(stack.message);
+    }
+
     let followingUnread: boolean;
     let readMaxId = 0, savedPosition: ReturnType<AppImManager['getChatSavedPosition']>, overrideAdditionMsgId: number;
     if(!isTarget) {
@@ -3195,7 +3205,7 @@ export default class ChatBubbles {
 
     if(samePeer) {
       if(stack && lastMsgId) {
-        this.followStack.push(stack);
+        this.followStack.push(stack.mid);
       }
 
       const mounted = await m(this.getMountedBubble(lastMsgId));
@@ -4754,7 +4764,8 @@ export default class ChatBubbles {
       middleware,
       animationGroup: this.chat.animationGroup,
       maxMediaTimestamp,
-      textColor: 'primary-text-color'
+      textColor: 'primary-text-color',
+      passMaskedLinks: !!(message as Message.message).sponsoredMessage
     };
 
     const richText = messageMessage ? wrapRichText(messageMessage, richTextOptions) : undefined;
@@ -6013,18 +6024,21 @@ export default class ChatBubbles {
 
     let savedFrom = '';
 
+    const isSponsored = (message as Message.message).pFlags.sponsored;
     // const needName = ((peerId.isAnyChat() && (peerId !== message.fromId || our)) && message.fromId !== rootScope.myId) || message.viaBotId;
     const needName = (message.fromId !== rootScope.myId && this.chat.isAnyGroup) ||
       message.viaBotId ||
-      (message as Message.message).pFlags.sponsored ||
+      isSponsored ||
       storyFromPeerId;
     if(needName || fwdFrom || message.reply_to || topicNameButtonContainer) { // chat
-      let title: HTMLElement | DocumentFragment;
+      let title: HTMLElement;
       let titleVia: typeof title;
+      let noColor: boolean;
+      let peerIdForColor = message.fromId;
 
       const isForwardFromChannel = message.from_id?._ === 'peerChannel' && message.fromId === fwdFromId;
 
-      const mustHaveName = !!(message.viaBotId/*  || topicNameButtonContainer */) || storyFromPeerId;
+      const mustHaveName = !!(message.viaBotId/*  || topicNameButtonContainer */) || storyFromPeerId || isSponsored;
       const isHidden = fwdFrom && !fwdFrom.from_id;
       if(message.viaBotId) {
         titleVia = document.createElement('span');
@@ -6037,10 +6051,37 @@ export default class ChatBubbles {
       }
 
       const isForward = storyFromPeerId || fwdFromId || fwdFrom;
-      if(isHidden) {
+      const sponsoredMessage = (message as Message.message).sponsoredMessage;
+      if(isSponsored && (sponsoredMessage.webpage || sponsoredMessage.chat_invite)) {
+        let fragment: DocumentFragment;
+        const chatInvite = sponsoredMessage.chat_invite,
+          webPage = sponsoredMessage.webpage;
+        if(webPage) {
+          fragment = wrapEmojiText(webPage.site_name);
+        } else if(chatInvite) {
+          let chatTitle: string;
+          if(chatInvite._ !== 'chatInvite') {
+            chatTitle = (chatInvite.chat as MTChat.channel).title;
+            noColor = false;
+            peerIdForColor = (chatInvite.chat as MTChat.channel).id.toPeerId(true);
+          } else {
+            chatTitle = chatInvite.title;
+          }
+
+          fragment = wrapEmojiText(chatTitle);
+        }
+
+        if(fragment) {
+          title = document.createElement('span');
+          title.classList.add('peer-title');
+          title.append(fragment);
+        }
+
+        noColor ??= true;
+      } else if(isHidden) {
         title = document.createElement('span');
-        setInnerHTML(title, wrapEmojiText(fwdFrom.from_name));
         title.classList.add('peer-title');
+        setInnerHTML(title, wrapEmojiText(fwdFrom.from_name));
         bubble.classList.add('hidden-profile');
       } else {
         title = new PeerTitle({
@@ -6105,18 +6146,20 @@ export default class ChatBubbles {
           nameDiv = document.createElement('div');
           nameDiv.append(title);
 
-          const peer = await apiManagerProxy.getPeer(message.fromId);
-          const pFlags = (peer as User.user)?.pFlags;
-          if(pFlags && (pFlags.scam || pFlags.fake)) {
-            nameDiv.append(generateFakeIcon(pFlags.scam));
-          }
+          if(!noColor) {
+            const peer = await apiManagerProxy.getPeer(peerIdForColor);
+            const pFlags = (peer as User.user)?.pFlags;
+            if(pFlags && (pFlags.scam || pFlags.fake)) {
+              nameDiv.append(generateFakeIcon(pFlags.scam));
+            }
 
-          if(!our) {
-            nameDiv.style.color = getPeerColorById(message.fromId, false);
-            nameDiv.classList.add('colored-name');
-          }
+            if(!our) {
+              nameDiv.style.color = getPeerColorById(peerIdForColor, false);
+              nameDiv.classList.add('colored-name');
+            }
 
-          nameDiv.dataset.peerId = '' + message.fromId;
+            nameDiv.dataset.peerId = '' + peerIdForColor;
+          }
         } else /* if(!message.reply_to_mid) */ {
           bubble.classList.add('hide-name');
         }
@@ -6924,7 +6967,7 @@ export default class ChatBubbles {
           this.updatePlaceholderPosition = undefined;
         }
 
-        appendTo[method](bubble);
+        appendTo[method](appendWhat);
       };
 
       if(!isSponsored) {
@@ -6933,20 +6976,71 @@ export default class ChatBubbles {
       }
 
       const elements: (Node | string)[] = [];
-      const isBot = this.chat.isBot;
-      let renderPromise: Promise<any>, appendTo = this.container, method: 'append' | 'prepend' = 'append';
+      let isBot = this.chat.isBot;
+      let renderPromise: Promise<any>,
+        appendTo = this.container,
+        method: 'append' | 'prepend' = 'append',
+        appendWhat = bubble;
       if(this.chat.isRestricted) {
         renderPromise = this.renderEmptyPlaceholder('restricted', bubble, message, elements);
       } else if(isSponsored) {
-        let text: LangPackKey, mid: number, startParam: string, callback: () => void;
+        let text: LangPackKey,
+          mid: number,
+          startParam: string,
+          callback: () => void,
+          link: string;
 
         bubble.classList.add('avoid-selection');
         bubble.style.order = '999999';
+        bubble.style.marginBottom = '0px';
 
         const sponsoredMessage = this.sponsoredMessage = (message as Message.message).sponsoredMessage;
+        const webPage = sponsoredMessage.webpage;
         const peerId = getPeerId(sponsoredMessage.from_id);
+        if(peerId !== NULL_PEER_ID) {
+          isBot = peerId.isUser();
+        }
+
+        const getSponsoredPhoto = () => {
+          if(peerId === NULL_PEER_ID) {
+            let photo: Photo.photo | MTChat.channel;
+            const chatInvite = sponsoredMessage.chat_invite;
+            if(chatInvite) {
+              photo = (chatInvite as ChatInvite.chatInvite).photo as Photo.photo;
+              if(!photo) {
+                photo = (chatInvite as ChatInvite.chatInvitePeek).chat as MTChat.channel;
+              }
+            } else if(webPage) {
+              photo = webPage.photo as Photo.photo;
+            }
+
+            return photo;
+          }
+        };
+
+        const photo = getSponsoredPhoto();
+        const willHaveAvatar = peerId !== NULL_PEER_ID || photo;
+        if(sponsoredMessage.pFlags.show_peer_photo && willHaveAvatar) {
+          const photoIsPeer = photo && photo._ !== 'photo';
+          const bubbleGroup = new BubbleGroup(this.chat);
+          appendWhat = bubbleGroup.container;
+          bubbleGroup.container.classList.add('bubbles-group-sponsored');
+          bubbleGroup.createAvatar(message as Message.message, {
+            peerId: photoIsPeer ? photo.id.toPeerId(true) : (!photo ? peerId : undefined),
+            peer: photoIsPeer ? photo : undefined
+          });
+
+          if(photo && !photoIsPeer) {
+            wrapPhotoToAvatar(bubbleGroup.avatar, photo as Photo.photo);
+          }
+
+          bubbleGroup.container.append(bubble);
+        }
+
         // const peer = this.appPeersManager.getPeer(peerId);
-        if(sponsoredMessage.channel_post) {
+        if(webPage) {
+          text = 'OpenUrlTitle';
+        } else if(sponsoredMessage.channel_post) {
           text = 'OpenChannelPost';
           mid = sponsoredMessage.channel_post;
         } else if(sponsoredMessage.start_param || isBot) {
@@ -6956,9 +7050,14 @@ export default class ChatBubbles {
           text = await this.managers.appPeersManager.isAnyGroup(peerId) ? 'Chat.Message.ViewGroup' : 'Chat.Message.ViewChannel';
         }
 
-        if(sponsoredMessage.chat_invite) {
+        if(webPage) {
+          link = webPage.url;
+          // callback = () => {
+          //   window.open(webPage.url, '_blank');
+          // };
+        } else if(sponsoredMessage.chat_invite) {
           callback = () => {
-            PopupElement.createPopup(PopupJoinChatInvite, sponsoredMessage.chat_invite_hash, sponsoredMessage.chat_invite as ChatInvite.chatInvite);
+            PopupJoinChatInvite.open(sponsoredMessage.chat_invite_hash, sponsoredMessage.chat_invite);
           };
         } else if(sponsoredMessage.chat_invite_hash) {
           callback = () => {
@@ -6979,12 +7078,20 @@ export default class ChatBubbles {
           };
         }
 
-        const button = this.makeViewButton({text});
+        const button = this.makeViewButton({text, asLink: !!link});
+
+        if(link) {
+          (button as any as HTMLAnchorElement).href = link;
+          (button as any as HTMLAnchorElement).target = '_blank';
+        }
 
         this.observer.observe(button, this.viewsObserverCallback);
 
         if(callback) {
-          attachClickEvent(button, callback);
+          attachClickEvent(button, () => {
+            this.chat.appImManager.clickIfSponsoredMessage(message as Message.message);
+            callback();
+          });
         }
 
         bubble.querySelector('.bubble-content').prepend(button);

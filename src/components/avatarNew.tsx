@@ -30,6 +30,7 @@ import {AckedResult} from '../lib/mtproto/superMessagePort';
 import apiManagerProxy from '../lib/mtproto/mtprotoworker';
 import callbackify from '../helpers/callbackify';
 import Icon from './icon';
+import wrapPhoto from './wrappers/photo';
 
 const FADE_IN_DURATION = 200;
 const TEST_SWAPPING = 0;
@@ -143,6 +144,25 @@ const calculateSegmentsDimensions = (s: number) => {
   };
 };
 
+export async function wrapPhotoToAvatar(avatarElem: ReturnType<typeof avatarNew>, photo: Parameters<typeof wrapPhoto>[0]['photo']) {
+  await wrapPhoto({
+    container: avatarElem.node,
+    message: null,
+    photo,
+    boxHeight: 100,
+    boxWidth: 100,
+    withoutPreloader: true
+  }).then((result) => {
+    avatarElem.node.classList.remove('media-container');
+    [result.images.thumb, result.images.full].forEach((image) => {
+      image.classList.replace('media-photo', 'avatar-photo');
+    });
+
+    return result.loadPromises.thumb;
+  });
+  avatarElem.node.style.width = avatarElem.node.style.height = '';
+}
+
 export const AvatarNew = (props: {
   peerId?: PeerId,
   threadId?: number,
@@ -158,7 +178,8 @@ export const AvatarNew = (props: {
   props?: JSX.HTMLAttributes<HTMLDivElement>,
   storyColors?: Partial<{
     read: string
-  }>
+  }>,
+  peer?: Chat.channel | Chat.chat | User.user
 }) => {
   const [ready, setReady] = createSignal(false);
   const [icon, setIcon] = createSignal<Icon>();
@@ -440,6 +461,16 @@ export const AvatarNew = (props: {
       return;
     }
 
+    if(title) {
+      const color = getPeerColorById(peerId);
+      const abbr = wrapAbbreviation(title);
+      set({
+        abbreviature: documentFragmentToNodes(abbr),
+        color
+      });
+      return;
+    }
+
     if(threadId) {
       const topic = await managers.dialogsStorage.getForumTopic(peerId, threadId);
       set({isTopic: true});
@@ -455,7 +486,7 @@ export const AvatarNew = (props: {
       });
     }
 
-    const peer = await apiManagerProxy.getPeer(peerId);
+    const peer = props.peer ?? await apiManagerProxy.getPeer(peerId);
     if(!middleware()) {
       return;
     }
@@ -493,7 +524,7 @@ export const AvatarNew = (props: {
         return;
       }
 
-      const abbr = title ? wrapAbbreviation(title) : getPeerInitials(peer);
+      const abbr = /* title ? wrapAbbreviation(title) :  */getPeerInitials(peer);
       set({
         abbreviature: documentFragmentToNodes(abbr),
         color,
@@ -705,7 +736,11 @@ export const AvatarNew = (props: {
     updateStoriesSegments
   };
 
-  if(props.peerId !== undefined || props.peerTitle !== undefined) {
+  if(
+    props.peerId !== undefined ||
+    props.peerTitle !== undefined ||
+    props.peer !== undefined
+  ) {
     render();
   }
 

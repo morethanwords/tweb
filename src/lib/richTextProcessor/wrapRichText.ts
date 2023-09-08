@@ -43,6 +43,7 @@ export type WrapRichTextOptions = Partial<{
   noEncoding: boolean,
   isSelectable: boolean,
   whitelistedDomains?: string[],
+  passMaskedLinks?: boolean,
 
   contextHashtag?: string,
 
@@ -441,7 +442,7 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           }
 
           const currentContext = !!onclick;
-          if(!onclick && masked && !currentContext) {
+          if(!onclick && masked && !currentContext && !options.passMaskedLinks) {
             onclick = 'showMaskedAlert';
           }
 

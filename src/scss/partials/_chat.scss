@@ -1740,18 +1740,15 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
     height: .125rem;
   }
 
-	&.is-chat {
-		.is-in {
-			//margin-left: 45px;
+	&.is-chat .is-in,
+  .bubbles-group-sponsored {
+    .bubble-content-wrapper {
+      margin-inline-start: 45px; //margin-left: 3rem; #DO JS3
 
-			.bubble-content-wrapper {
-				margin-inline-start: 45px; //margin-left: 3rem; #DO JS3
-
-				@include respond-to(handhelds) {
-					max-width: calc(100% - var(--message-handhelds-margin));
-				}
-			}
-		}
+      @include respond-to(handhelds) {
+        max-width: calc(100% - var(--message-handhelds-margin));
+      }
+    }
 	}
 
 	&.is-channel:not(.is-chat) {

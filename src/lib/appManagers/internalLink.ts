@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type {ChatSetPeerOptions} from './appImManager';
+
 export enum INTERNAL_LINK_TYPE {
   MESSAGE,
   PRIVATE_POST,
@@ -30,7 +32,7 @@ export namespace InternalLink {
     thread?: string,
     start?: string,
     t?: string, // media timestamp
-    stack?: number // local
+    stack?: ChatSetPeerOptions['stack'] // local
   }
 
   export interface InternalLinkPrivatePost {
@@ -40,7 +42,7 @@ export namespace InternalLink {
     thread?: string,
     comment?: string,
     t?: string // media timestamp
-    stack?: number // local
+    stack?: ChatSetPeerOptions['stack'] // local
   }
 
   export interface InternalLinkStickerSet {

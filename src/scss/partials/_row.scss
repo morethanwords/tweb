@@ -253,8 +253,9 @@ $row-border-radius: $border-radius-medium;
 
     .checkbox-caption {
       padding-inline-start: 0;
-
-      @include text-overflow(true);
+      white-space: pre-wrap;
+      overflow: unset;
+      text-overflow: unset;
     }
 
     &-toggle {
