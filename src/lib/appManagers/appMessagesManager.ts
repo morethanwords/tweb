@@ -1040,6 +1040,11 @@ export class AppMessagesManager extends AppManager {
       }
     }
 
+    let sendEntites = this.getInputEntities(entities);
+    if(!sendEntites.length) {
+      sendEntites = undefined;
+    }
+
     message.entities = entities;
     message.message = caption;
     message.media = isDocument ? {
@@ -1194,7 +1199,7 @@ export class AppMessagesManager extends AppManager {
           reply_to: options.replyTo || getInputReplyTo({replyToMsgId, threadId}),
           schedule_date: options.scheduleDate,
           silent: options.silent,
-          entities,
+          entities: sendEntites,
           clear_draft: options.clearDraft,
           send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined,
           update_stickersets_order: options.updateStickersetOrder

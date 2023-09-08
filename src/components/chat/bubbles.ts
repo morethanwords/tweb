@@ -900,7 +900,16 @@ export default class ChatBubbles {
           });
         };
 
-        const detach = attachClickEvent(window, onClick, {listenerSetter: this.listenerSetter, once: true, capture: true});
+        const detach = attachClickEvent(
+          window,
+          onClick,
+          {
+            listenerSetter: this.listenerSetter,
+            once: true,
+            capture: true,
+            ignoreMove: true
+          }
+        );
         return;
       }
     });

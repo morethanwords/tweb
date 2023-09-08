@@ -618,13 +618,14 @@ export default class InputField {
   }
 
   public setValueSilently(value: Parameters<typeof replaceContent>[1], fromSet?: boolean) {
-    this.input.classList.toggle('is-empty', !value);
     if(this.options.plainText) {
       (this.input as HTMLInputElement).value = value as string;
     } else {
       replaceContent(this.input, value);
       processCustomEmojisInInput(this.input);
     }
+
+    this.input.classList.toggle('is-empty', isInputEmpty(this.input));
   }
 
   public isChanged() {
