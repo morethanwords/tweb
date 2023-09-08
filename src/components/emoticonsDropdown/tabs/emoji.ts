@@ -41,6 +41,7 @@ import PopupElement from '../../popups';
 import CustomEmojiElement from '../../../lib/customEmoji/element';
 import {CustomEmojiRendererElement} from '../../../lib/customEmoji/renderer';
 import Icon from '../../icon';
+import {NULL_PEER_ID} from '../../../lib/mtproto/mtproto_config';
 
 const loadedURLs: Set<string> = new Set();
 export function appendEmoji(emoji: string, container?: HTMLElement, prepend = false, unify = false) {
@@ -199,6 +200,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
   private activeElements: EmojiTabItem[];
   private noPacks: boolean;
   private preloaderDelay: number;
+  private freeCustomEmoji: Set<DocId>;
 
   constructor(options: {
     managers: AppManagers,
@@ -207,7 +209,8 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
     mainSets?: EmojiTab['mainSets'],
     onClick?: EmojiTab['onClick'],
     noPacks?: EmojiTab['noPacks'],
-    preloaderDelay?: EmojiTab['preloaderDelay']
+    preloaderDelay?: EmojiTab['preloaderDelay'],
+    freeCustomEmoji?: EmojiTab['freeCustomEmoji']
   }) {
     super(
       options.managers,
@@ -222,6 +225,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
     this.container.classList.add('emoji-padding');
     this.content.id = 'content-emoji';
     this.activeElements = [];
+    this.freeCustomEmoji ??= new Set();
   }
 
   public _onCategoryVisibility(category: EmojiTabCategory, visible: boolean) {
@@ -461,7 +465,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
 
       if(recentCategory) {
         this.createRendererForCategory(recentCategory);
-        if(recentEmojis) for(const emoji of recentEmojis) {
+        if(recentEmojis?.length) for(const emoji of recentEmojis) {
           this.addEmojiToCategory({
             category: recentCategory,
             emoji,
@@ -472,7 +476,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
 
       if(recentCustomCategory) {
         this.createRendererForCategory(recentCustomCategory);
-        if(recentCustom) for(const emoji of recentCustomEmojis) {
+        if(recentCustomEmojis?.length) for(const emoji of recentCustomEmojis) {
           this.addEmojiToCategory({
             category: recentCustomCategory,
             emoji,
@@ -644,7 +648,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
       set,
       container: menuTabPadding,
       group: EMOTICONSSTICKERGROUP,
-      lazyLoadQueue: this.emoticonsDropdown.lazyLoadQueue,
+      lazyLoadQueue: this.emoticonsDropdown?.lazyLoadQueue,
       width: 32,
       height: 32,
       autoplay: false,
@@ -653,7 +657,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
   }
 
   private get peerId() {
-    return this.emoticonsDropdown.chatInput.chat.peerId;
+    return this.emoticonsDropdown ? this.emoticonsDropdown.chatInput.chat.peerId : NULL_PEER_ID;
   }
 
   public getCustomCategory() {
@@ -662,7 +666,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
 
   public toggleCustomCategory() {
     const category = this.categories[CUSTOM_EMOJI_RECENT_ID];
-    const hasPremium = rootScope.premium || this.peerId === rootScope.myId;
+    const hasPremium = rootScope.premium || this.peerId === rootScope.myId || !!this.mainSets;
     const canSeeCustomCategory = hasPremium || this.isStandalone;
     super.toggleLocalCategory(category, !!category.items.length && canSeeCustomCategory);
     this.content.classList.toggle('has-premium', hasPremium);
@@ -785,7 +789,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
       emoji.docId &&
       !rootScope.premium && (
         this.isStandalone ? category.id !== CUSTOM_EMOJI_RECENT_ID : this.peerId !== rootScope.myId
-      )
+      ) && !this.freeCustomEmoji.has(emoji.docId)
     ) {
       const a = document.createElement('a');
       a.onclick = () => {

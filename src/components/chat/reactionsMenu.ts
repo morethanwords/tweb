@@ -160,10 +160,9 @@ export class ChatReactionsMenu {
         attachClickEvent(moreButton, (e) => {
           cancelEvent(e);
 
-          const reactionToDocId = async(reaction: Reaction) => {
+          const reactionToDocId = (reaction: Reaction) => {
             let docId = (reaction as Reaction.reactionCustomEmoji).document_id;
             if(!docId) {
-              const availableReactions = await apiManagerProxy.getAvailableReactions();
               const availableReaction = availableReactions.find((_reaction) => _reaction.reaction === (reaction as Reaction.reactionEmoji).emoticon);
               docId = availableReaction.select_animation.id;
             }
@@ -172,7 +171,7 @@ export class ChatReactionsMenu {
           };
 
           const reactionsToDocIds = (reactions: Reaction[]) => {
-            return Promise.all(reactions.map(reactionToDocId));
+            return reactions.map(reactionToDocId);
           };
 
           const noPacks = type !== 'chatReactionsAll';
@@ -221,7 +220,8 @@ export class ChatReactionsMenu {
               };
               deferred.resolve(reaction);
               emoticonsDropdown.hideAndDestroy();
-            }
+            },
+            freeCustomEmoji: new Set(availableReactions.map((availableReaction) => availableReaction.select_animation.id))
           });
 
           const emoticonsDropdown = new EmoticonsDropdown({

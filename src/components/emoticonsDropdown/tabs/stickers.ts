@@ -474,7 +474,7 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
   }
 
   public init() {
-    this.listenerSetter.add(this.emoticonsDropdown)('closed', () => {
+    this.emoticonsDropdown && this.listenerSetter.add(this.emoticonsDropdown)('closed', () => {
       this.postponedEvents.forEach(({cb, args}) => {
         cb(...args);
       });

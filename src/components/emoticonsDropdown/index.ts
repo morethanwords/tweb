@@ -159,7 +159,6 @@ export class EmoticonsDropdown extends DropdownHover {
 
       if(options.getOpenPosition) {
         const rect = options.getOpenPosition();
-        console.log(rect);
         this.element.style.top = rect.top + 'px';
         this.element.style.left = rect.left + 'px';
       } else if(options.customAnchorElement) {
