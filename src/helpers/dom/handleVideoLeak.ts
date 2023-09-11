@@ -83,7 +83,11 @@ export const leakVideoFallbacks = new WeakMap<HTMLElement, () => void>();
 IS_CHROMIUM && eventsOrder.forEach((event) => {
   document.addEventListener(event, (e) => {
     const target = e.target;
-    if(!(target instanceof HTMLVideoElement) || target.readyState > target.HAVE_METADATA) {
+    if(
+      !(target instanceof HTMLVideoElement) ||
+      target.readyState > target.HAVE_METADATA ||
+      (target as any).isScrubbing
+    ) {
       return;
     }
 

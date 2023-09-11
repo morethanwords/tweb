@@ -170,6 +170,10 @@ export default class PopupReactedList extends PopupElement {
       }
     }
 
+    if(reactionsElement.customEmojiRenderer) {
+      reactionsElement.append(reactionsElement.customEmojiRenderer);
+    }
+
     newMessage.reactions.results.forEach((reactionCount) => {
       const scrollable = new Scrollable(undefined);
       scrollable.container.classList.add('tabs-tab');
@@ -238,7 +242,7 @@ export default class PopupReactedList extends PopupElement {
     this.body.append(tabsContainer);
 
     const selectTab = horizontalMenu(reactionsElement, tabsContainer, (id, tabContent) => {
-      if(id === (reactionsElement.childElementCount - 1)) {
+      if(id >= (reactionsElement.childElementCount - (reactionsElement.customEmojiRenderer ? 2 : 1))) {
         return false;
       }
 

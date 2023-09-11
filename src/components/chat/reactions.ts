@@ -35,7 +35,7 @@ export default class ReactionsElement extends HTMLElement {
   private managers: AppManagers;
   private middleware: Middleware;
   private middlewareHelpers: Map<ReactionElement, MiddlewareHelper>;
-  private customEmojiRenderer: CustomEmojiRendererElement;
+  public customEmojiRenderer: CustomEmojiRendererElement;
   private customEmojiRendererMiddlewareHelper: MiddlewareHelper;
   private animationGroup: AnimationItemGroup;
   private lazyLoadQueue: LazyLoadQueue;
