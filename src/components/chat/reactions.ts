@@ -13,7 +13,6 @@ import {Message, ReactionCount} from '../../layer';
 import appImManager from '../../lib/appManagers/appImManager';
 import {AppManagers} from '../../lib/appManagers/managers';
 import reactionsEqual from '../../lib/appManagers/utils/reactions/reactionsEqual';
-import CustomEmojiElement from '../../lib/customEmoji/element';
 import {CustomEmojiRendererElement} from '../../lib/customEmoji/renderer';
 import rootScope from '../../lib/rootScope';
 import {AnimationItemGroup} from '../animationIntersector';
@@ -172,7 +171,7 @@ export default class ReactionsElement extends HTMLElement {
       (!!reactions.pFlags.can_see_list || this.message.peerId.isUser()) &&
       totalReactions < REACTION_DISPLAY_BLOCK_COUNTER_AT;
     const customEmojiElements: ReturnType<ReactionElement['render']>[] = new Array(counts.length);
-    this.sorted = counts.map((reactionCount, idx) => {
+    this.sorted = counts.map((reactionCount, idx, arr) => {
       let reactionElement: ReactionElement = this.sorted.find((reactionElement) => reactionsEqual(reactionElement.reactionCount.reaction, reactionCount.reaction));
       if(!reactionElement) {
         const middlewareHelper = this.middleware.create();
@@ -181,6 +180,7 @@ export default class ReactionsElement extends HTMLElement {
         this.middlewareHelpers.set(reactionElement, middlewareHelper);
       }
 
+      reactionElement.classList.toggle('is-last', idx === (arr.length - 1));
       positionElementByIndex(reactionElement, this, idx);
 
       const recentReactions = reactions.recent_reactions ?

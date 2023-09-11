@@ -13,7 +13,6 @@ import deepEqual from '../../helpers/object/deepEqual';
 import isObject from '../../helpers/object/isObject';
 import safeReplaceObject from '../../helpers/object/safeReplaceObject';
 import {ChannelParticipant, ChannelsCreateChannel, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatInvite, ChatParticipant, ChatPhoto, ChatReactions, InputChannel, InputChatPhoto, InputFile, InputPeer, MessagesSponsoredMessages, Peer, SponsoredMessage, Update, Updates} from '../../layer';
-import {isRestricted} from '../../helpers/restrictions';
 import {AppManager} from './manager';
 import hasRights from './utils/chats/hasRights';
 import getParticipantPeerId from './utils/chats/getParticipantPeerId';
@@ -26,6 +25,8 @@ import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
 
 export type Channel = Chat.channel;
 export type ChatRights = keyof ChatBannedRights['pFlags'] | keyof ChatAdminRights['pFlags'] | 'change_type' | 'change_permissions' | 'delete_chat' | 'view_participants' | 'invite_links';
+
+const TEST_SPONSORED = false;
 
 export class AppChatsManager extends AppManager {
   private storage: AppStoragesManager['storages']['chats'];
@@ -734,90 +735,54 @@ export class AppChatsManager extends AppManager {
     });
   }
 
-  public getSponsoredMessage(chatId: ChatId) {
-    // const s: MessagesSponsoredMessages.messagesSponsoredMessages = {
-    //   '_': 'messages.sponsoredMessages',
-    //   'messages': [
-    //     {
-    //       '_': 'sponsoredMessage',
-    //       'pFlags': {},
-    //       'flags': 9,
-    //       'random_id': new Uint8Array([
-    //         80,
-    //         5,
-    //         249,
-    //         174,
-    //         44,
-    //         73,
-    //         173,
-    //         14,
-    //         246,
-    //         81,
-    //         187,
-    //         182,
-    //         223,
-    //         5,
-    //         4,
-    //         128
-    //       ]),
-    //       'from_id': {
-    //         '_': 'peerUser',
-    //         'user_id': 983000232
-    //       },
-    //       'start_param': 'GreatMinds',
-    //       'message': 'This is a long sponsored message. In fact, it has the maximum length allowed on the platform – 160 characters 😬😬. It\'s promoting a bot with a start parameter.' + chatId
-    //     }
-    //   ],
-    //   'chats': [],
-    //   'users': [
-    //     {
-    //       '_': 'user',
-    //       'pFlags': {
-    //         'bot': true,
-    //         'verified': true,
-    //         'apply_min_photo': true
-    //       },
-    //       'flags': 34226219,
-    //       'id': 983000232,
-    //       'access_hash': '-294959558742535650',
-    //       'first_name': 'Quiz Bot',
-    //       'username': 'QuizBot',
-    //       'photo': {
-    //         '_': 'userProfilePhoto',
-    //         'pFlags': {},
-    //         'flags': 2,
-    //         'photo_id': '4221953848856651689',
-    //         'stripped_thumb': new Uint8Array([
-    //           1,
-    //           8,
-    //           8,
-    //           155,
-    //           247,
-    //           95,
-    //           103,
-    //           255,
-    //           0,
-    //           110,
-    //           138,
-    //           40,
-    //           174,
-    //           132,
-    //           142,
-    //           6,
-    //           238,
-    //           127
-    //         ]),
-    //         'dc_id': 2
-    //       },
-    //       'bot_info_version': 11,
-    //       'bot_inline_placeholder': 'Search a quiz...',
-    //       'sortName': 'quiz bot'
-    //     }
-    //   ]
-    // };
+  public getSponsoredMessage(chatId: ChatId): Promise<MessagesSponsoredMessages> {
+    let promise: Promise<MessagesSponsoredMessages>;
+    if(TEST_SPONSORED) promise = Promise.resolve({
+      '_': 'messages.sponsoredMessages',
+      'messages': [
+        {
+          '_': 'sponsoredMessage',
+          'pFlags': {},
+          'flags': 9,
+          'random_id': new Uint8Array([80, 5, 249, 174, 44, 73, 173, 14, 246, 81, 187, 182, 223, 5, 4, 128]),
+          'from_id': {
+            '_': 'peerUser',
+            'user_id': 983000232
+          },
+          'start_param': 'GreatMinds',
+          'message': 'This is a long sponsored message. In fact, it has the maximum length allowed on the platform – 160 characters 😬😬. It\'s promoting a bot with a start parameter.' + chatId
+        }
+      ],
+      'chats': [],
+      'users': [
+        {
+          '_': 'user',
+          'pFlags': {
+            'bot': true,
+            'verified': true,
+            'apply_min_photo': true
+          },
+          'flags': 34226219,
+          'id': 983000232,
+          'access_hash': '-294959558742535650',
+          'first_name': 'Quiz Bot',
+          'username': 'QuizBot',
+          'photo': {
+            '_': 'userProfilePhoto',
+            'pFlags': {},
+            'flags': 2,
+            'photo_id': '4221953848856651689',
+            'stripped_thumb': new Uint8Array([1, 8, 8, 155, 247, 95, 103, 255, 0, 110, 138, 40, 174, 132, 142, 6, 238, 127]),
+            'dc_id': 2
+          },
+          'bot_info_version': 11,
+          'bot_inline_placeholder': 'Search a quiz...',
+          'sortName': 'quiz bot'
+        }
+      ]
+    });
 
-    // const promise = Promise.resolve(s);
-    const promise = this.apiManager.invokeApiCacheable('channels.getSponsoredMessages', {
+    promise ||= this.apiManager.invokeApiCacheable('channels.getSponsoredMessages', {
       channel: this.getChannelInput(chatId)
     }, {cacheSeconds: 300});
 

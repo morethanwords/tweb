@@ -24,9 +24,9 @@ import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import CustomEmojiElement from '../../lib/customEmoji/element';
 import deferredPromise from '../../helpers/cancellablePromise';
 import callbackifyAll from '../../helpers/callbackifyAll';
-import getUnsafeRandomInt from '../../helpers/number/getUnsafeRandomInt';
 import BezierEasing from '../../vendor/bezierEasing';
-import {easeOutQuadApply} from '../../helpers/easing/easeOutQuad';
+import safePlay from '../../helpers/dom/safePlay';
+import lottieLoader from '../../lib/rlottie/lottieLoader';
 
 const CLASS_NAME = 'reaction';
 const TAG_NAME = CLASS_NAME + '-element';
@@ -37,6 +37,201 @@ export const REACTION_DISPLAY_INLINE_COUNTER_AT = 2;
 export const REACTION_DISPLAY_BLOCK_COUNTER_AT = 4;
 
 export type ReactionLayoutType = 'block' | 'inline';
+
+const defaultBezier = (val: number) => val;
+type Position = [number, number, number];
+type EasingFunction = typeof defaultBezier;
+type Layer = {
+  ddd: 0 | 1,
+  ind: number,
+  ty: number,
+  nm: string,
+  parent: number,
+  refId: string,
+  sr: number,
+  ks: {
+    o: Transformation, // opacity
+    p: Transformation, // position
+    a: Transformation, // anchor
+    s: Transformation, // scale
+  },
+  ao: number,
+  w: number,
+  h: number,
+  ip: number,
+  op: number,
+  st: number,
+  bm: number
+};
+type Transformation = {
+  a: 1,
+  k: Keyframe[]
+} | {
+  a: 0,
+  k: Position
+};
+type Keyframe = {
+  i?: KeyframeBezier,
+  o?: Keyframe['i'],
+  t: number,
+  s: Position
+};
+type KeyframeBezier = {
+  x: number | Position,
+  y: KeyframeBezier['x']
+};
+
+class TransformationComputator {
+  transformation: Transformation;
+  keyframes: Keyframe[];
+
+  keyframeIndex: number;
+  keyframe: Keyframe;
+  nextKeyframe: Keyframe;
+  beziers: EasingFunction | EasingFunction[];
+
+  constructor(transformation: Transformation) {
+    this.transformation = transformation;
+    this.keyframes = this.transformation.k as Keyframe[];
+
+    this.keyframeIndex = 0;
+    this.nextKeyframe = this.keyframes[this.keyframeIndex];
+  }
+
+  private withProgress(point: number) {
+    const pointsPlayed = point - this.keyframe.t;
+    let pointsProgress = pointsPlayed / (this.nextKeyframe.t - this.keyframe.t);
+
+    const isArrayBeziers = Array.isArray(this.beziers);
+    if(!isArrayBeziers) {
+      pointsProgress = (this.beziers as EasingFunction)(pointsProgress);
+    }
+
+    return this.keyframe.s.map((value: number, index: number) => {
+      return value + (this.nextKeyframe.s[index] - value) * (
+        isArrayBeziers ? (this.beziers as EasingFunction[])[index](pointsProgress) : pointsProgress
+      );
+    }) as Position;
+  }
+
+  computeAtPoint(point: number) {
+    if(!this.nextKeyframe) {
+      return;
+    }
+
+    if(point >= this.nextKeyframe.t) {
+      this.keyframe = this.nextKeyframe;
+      this.nextKeyframe = this.keyframes[++this.keyframeIndex];
+
+      if(this.keyframe.o && this.keyframe.i) {
+        if(!Array.isArray(this.keyframe.o.x)) {
+          // @ts-ignore
+          this.beziers = BezierEasing(this.keyframe.o.x, this.keyframe.o.y, this.keyframe.i.x, this.keyframe.i.y);
+        } else if(new Set(this.keyframe.o.x).size === 1) {
+          // @ts-ignore
+          this.beziers = BezierEasing(this.keyframe.o.x[0], this.keyframe.o.y[0], this.keyframe.i.x[0], this.keyframe.i.y[0]);
+        } else {
+          this.beziers = this.keyframe.o.x.map((_, index) => {
+            // @ts-ignore
+            return BezierEasing(this.keyframe.o.x[index], this.keyframe.o.y[index], this.keyframe.i.x[index], this.keyframe.i.y[index]);
+          });
+        }
+      } else {
+        this.beziers = defaultBezier;
+      }
+
+      if(!this.nextKeyframe || point === this.nextKeyframe.t) {
+        return this.keyframe.s;
+      } else {
+        return this.withProgress(point);
+      }
+    } else if(this.keyframe) {
+      return this.withProgress(point);
+    } else { // ! test
+      return this.nextKeyframe.s;
+    }
+  }
+}
+
+function computeLayerTransformations(layer: Layer) {
+  const ks = layer.ks;
+  const anchor = ks.a;
+  const op = layer.op;
+  const layerTransformations: ComputedFrameTransformations[] = new Array(op - 1);
+  const opacityComputator = ks.o && new TransformationComputator(ks.o);
+  const translationComputator = ks.p && new TransformationComputator(ks.p);
+  const scaleComputator = ks.s && new TransformationComputator(ks.s);
+  for(let point = 0; point < op; ++point) {
+    if(point < layer.ip) {
+      continue;
+    }
+
+    const prevTransformations = layerTransformations[point - 1] || {};
+    const transformations: ComputedFrameTransformations = {};
+
+    const translation = translationComputator.computeAtPoint(point);
+    if(translation) {
+      transformations.translation = translation;
+
+      if(anchor) {
+        transformations.anchor = anchor.k as Position;
+        // transformations.anchor = translation.map((value, index) => {
+        //   return anchor.k[index] as number + value;
+        // }) as Position;
+      }
+    } else {
+      transformations.translation = prevTransformations.translation;
+      transformations.anchor = prevTransformations.anchor;
+    }
+
+    const scale = scaleComputator.computeAtPoint(point);
+    if(scale) {
+      transformations.scale = scale;
+    } else {
+      transformations.scale = prevTransformations.scale;
+    }
+
+    const opacity = opacityComputator.computeAtPoint(point);
+    if(opacity) {
+      transformations.opacity = opacity;
+    } else {
+      transformations.opacity = prevTransformations.opacity;
+    }
+
+    if(translation || scale || opacity) {
+      layerTransformations[point] = transformations;
+    }
+  }
+
+  return layerTransformations;
+}
+
+type ComputedFrameTransformations = {
+  opacity?: Position,
+  translation?: Position,
+  anchor?: Position,
+  scale?: Position
+};
+
+let reactionGenericPromise: ReturnType<typeof loadReactionGeneric>;
+function loadReactionGeneric(): Promise<{layersPositions: ComputedFrameTransformations[][], op: number}> {
+  if(reactionGenericPromise) {
+    return reactionGenericPromise;
+  }
+
+  const url = lottieLoader.makeAssetUrl('ReactionGeneric');
+  const promise = reactionGenericPromise = lottieLoader.loadAnimationDataFromURL(url, 'json').then((animationData) => {
+    const placeholderLayers: Layer[] = animationData.layers.filter((layer: any) => layer.nm.startsWith('placeholder_'))/* .slice(0, 1) */;
+    const layersPositions: ComputedFrameTransformations[][] = [];
+    for(const layer of placeholderLayers) {
+      layersPositions.push(computeLayerTransformations(layer));
+    }
+
+    return {layersPositions, op: animationData.op};
+  });
+
+  return promise;
+}
 
 export default class ReactionElement extends HTMLElement {
   private type: ReactionLayoutType;
@@ -49,6 +244,7 @@ export default class ReactionElement extends HTMLElement {
   private managers: AppManagers;
   private middleware: Middleware;
   private customEmojiElement: CustomEmojiElement;
+  private hasAroundAnimation: Promise<void>;
 
   constructor() {
     super();
@@ -218,7 +414,7 @@ export default class ReactionElement extends HTMLElement {
   }
 
   public fireAroundAnimation(waitPromise: Promise<any>) {
-    if(!liteMode.isAvailable('effects_reactions')) {
+    if(this.hasAroundAnimation || !liteMode.isAvailable('effects_reactions')) {
       return;
     }
 
@@ -234,13 +430,16 @@ export default class ReactionElement extends HTMLElement {
       genericEffect?: Document.document,
       sticker?: Document.document
     }) => {
-      const size = genericEffect ? 20 : (this.type === 'inline' ? REACTION_INLINE_SIZE + 14 : REACTION_BLOCK_SIZE + 18);
+      const size = genericEffect ? 26 : (this.type === 'inline' ? REACTION_INLINE_SIZE + 14 : REACTION_BLOCK_SIZE + 18);
       const div = genericEffect ? undefined : document.createElement('div');
       div && div.classList.add(CLASS_NAME + '-sticker-activate');
 
+      const genericEffectSize = 100;
+      const isGenericMasked = genericEffect && sticker.sticker !== 2;
+
       const aroundParams: Parameters<typeof wrapStickerAnimation>[0] = {
         doc: genericEffect || availableReaction.around_animation,
-        size: 80,
+        size: genericEffect ? genericEffectSize : 80,
         target: this.stickerContainer,
         side: 'center',
         skipRatio: 1,
@@ -253,11 +452,13 @@ export default class ReactionElement extends HTMLElement {
       const aroundResult = wrapStickerAnimation(aroundParams);
       const genericResult = genericEffect && wrapStickerAnimation({
         ...aroundParams,
-        doc: sticker,
-        stickerSize: size
+        doc: isGenericMasked ? aroundParams.doc : sticker,
+        size: genericEffectSize,
+        stickerSize: size,
+        loopEffect: true
       });
-      const stickerResult = !genericEffect && wrapSticker({
-        div: div,
+      const stickerResult = (!genericEffect || isGenericMasked) && wrapSticker({
+        div: div || document.createElement('div'),
         doc: sticker || availableReaction.center_icon,
         width: size,
         height: size,
@@ -268,113 +469,132 @@ export default class ReactionElement extends HTMLElement {
         group: 'none',
         needFadeIn: false,
         managers: this.managers,
-        middleware: this.middleware
+        middleware: this.middleware,
+        textColor: 'primary-text-color',
+        loop: isGenericMasked
+        // static: isGenericMasked || undefined
       }).then(({render}) => render as Promise<RLottiePlayer>);
 
-      Promise.all([
+      return Promise.all([
         genericEffect ?
           genericResult.stickerPromise :
           stickerResult,
 
         aroundResult.stickerPromise,
 
+        stickerResult as any as Promise<(HTMLImageElement | HTMLVideoElement)[]>,
+
+        genericEffect && loadReactionGeneric(),
+
         waitPromise
-      ]).then(([iconPlayer, aroundPlayer, _]) => {
+      ]).then(([iconPlayer, aroundPlayer, maskedSticker, reactionGeneric, _]) => {
+        const deferred = deferredPromise<void>();
         const remove = () => {
+          deferred.resolve();
           // return;
           // if(!isInDOM(div)) return;
           iconPlayer.remove();
-          div.remove();
+          div?.remove();
           this.stickerContainer.classList.remove('has-animation');
         };
 
-        function randomPointOnCircle(cx: number, cy: number, radius: number) {
-          const angle = Math.random() * 2 * Math.PI;
-          const x = cx + radius * Math.cos(angle);
-          const y = cy + radius * Math.sin(angle);
-          return {x, y};
-        }
-
-        const firstStop = 0.5;
-        function interpolate(start: number, end1: number, end2: number, progress: number) {
-          if(progress <= firstStop) {
-            return start + (end1 - start) * (progress * (1 / firstStop));
-          } else {
-            return end1 + (end2 - end1) * ((progress - firstStop) * (1 / (1 - firstStop)));
-          }
-        }
-
         if(genericEffect) {
           const canvas = iconPlayer.canvas[0];
+          canvas.classList.add('hide');
           const context = iconPlayer.contexts[0];
           const dpr = canvas.dpr;
-          const newCanvasSize = aroundParams.size * dpr;
+          const newCanvasSize = genericEffectSize * dpr;
           const size = canvas.width;
-          canvas.width = newCanvasSize;
-          canvas.height = newCanvasSize;
           genericResult.animationDiv.append(canvas);
+          genericResult.animationDiv.style.transform = 'scaleX(-1)';
 
-          const generateItem = (): {
-            x: number,
-            y: number,
-            moveX: number,
-            moveY: number,
-            scale: number,
-            reflect: boolean
-          } => {
-            const point = randomPointOnCircle(CS, CS, CS / 2);
-            const scale = getUnsafeRandomInt(6, 10) / 10;
-            const maxSize = size * scale;
-            const topY = maxSize / 2;
-            let moveY = -getUnsafeRandomInt(10, 30) * dpr;
-            const minY = point.y + moveY;
-            if(minY < topY) { // prevent from going above the top
-              moveY += topY - minY;
+          const maskedMedia = maskedSticker?.[0];
+          const isMaskedVideo = maskedMedia instanceof HTMLVideoElement;
+
+          iconPlayer.addEventListener('firstFrame', () => {
+            iconPlayer.setSize(newCanvasSize, newCanvasSize);
+            canvas.classList.remove('hide');
+
+            if(isMaskedVideo) {
+              safePlay(maskedMedia);
+            }
+          }, {once: true});
+
+          let frameNo = 0;
+          const scale = newCanvasSize / 512;
+
+          const {layersPositions, op} = reactionGeneric;
+
+          iconPlayer.overrideRender = (frame) => {
+            if(isGenericMasked) {
+              frame = maskedMedia as any as HTMLCanvasElement;
             }
 
-            return {
-              ...point,
-              // x: CS / 2,
-              // y: CS,
-              moveX: getUnsafeRandomInt(-5, 5) * dpr,
-              moveY,
-              scale,
-              reflect: Math.random() > 0.5 && false
-            };
-          };
-
-          const S = newCanvasSize, CS = S / 2;
-          const items = new Array(7).fill(0).map(generateItem);
-
-          const easing = BezierEasing(/* .14, .46, .91, .13 */0.42, 0.0, 0.58, 1.0);
-          const duration = 1500, startTime = Date.now();
-          iconPlayer.overrideRender = (frame) => {
-            let progress = Math.min(1, (Date.now() - startTime) / duration);
-            console.log('progress', progress, easing(progress), easeOutQuadApply(progress, 1));
-            progress = easeOutQuadApply(progress, 1);
-            const isBitmap = frame instanceof ImageBitmap;
+            const isImageData = frame instanceof ImageData;
             context.clearRect(0, 0, newCanvasSize, newCanvasSize);
-            context.globalAlpha = interpolate(1, 1, 0, progress);
 
-            for(const item of items) {
-              const maxSize = size * item.scale;
-              const x = item.x + item.moveX * progress;
-              const y = interpolate(item.y, item.y + item.moveY, item.y + 30 * dpr, progress);
-              const scaledSize = interpolate(size, maxSize, maxSize, progress);
-              // context.save();
-              // context.translate(item.reflect ? newCanvasSize : 0, 0);
-              // context.scale(item.reflect ? -1 : 1, 1);
-              if(isBitmap) {
-                context.drawImage(frame, x, y, scaledSize, scaledSize);
+            for(let i = 0; i < layersPositions.length; ++i) {
+              const frames = layersPositions[i];
+              const transformations = frames[frameNo];
+              if(!transformations) {
+                continue;
               }
-              // context.restore();
+
+              let savedContext = false, flippedX = false, flippedY = false;
+              let scaledWidth = size, scaledHeight = size;
+              if(transformations.scale) {
+                const [x, y] = transformations.scale;
+                scaledWidth *= /* Math.abs */(x) * 4 / 100;
+                scaledHeight *= /* Math.abs */(y) * 4 / 100;
+
+                flippedX = x < 0/*  && false */;
+                flippedY = y < 0/*  && false */;
+              }
+
+              let [x, y] = transformations.translation;
+              x = (x + transformations.anchor[0]) * scale - Math.abs(scaledWidth) / 2;
+              y = (y + transformations.anchor[1]) * scale - Math.abs(scaledHeight) / 2;
+
+              if(flippedX || flippedY) {
+                savedContext = true;
+                context.save();
+                context.scale(flippedX ? -1 : 1, flippedY ? -1 : 1);
+
+                if(flippedX) x = -x;
+                if(flippedY) y = -y;
+              }
+
+              if(transformations.opacity) {
+                if(!savedContext) {
+                  savedContext = true;
+                  context.save();
+                }
+
+                context.globalAlpha = transformations.opacity[0] / 100;
+              }
+
+              if(isImageData) {
+                context.putImageData(frame as ImageData, x, y);
+              } else {
+                context.drawImage(frame as ImageBitmap, x, y, scaledWidth, scaledHeight);
+              }
+
+              if(savedContext) {
+                context.restore();
+              }
+            }
+
+            frameNo++;
+
+            if(frameNo >= op) {
+              removeOnFrame();
             }
           };
         }
 
         if(!iconPlayer || !aroundPlayer) {
           remove();
-          return;
+          return deferred;
         }
 
         const removeOnFrame = () => {
@@ -400,22 +620,20 @@ export default class ReactionElement extends HTMLElement {
           iconPlayer.play();
           aroundPlayer.play();
         }, {once: true});
+
+        return deferred;
       });
     };
 
     const onEmoticon = (sticker: Document.document, emoticon: string = sticker.stickerEmojiRaw) => {
-      callbackifyAll([
+      return callbackifyAll([
         apiManagerProxy.getReaction(emoticon),
         sticker ? this.managers.appReactionsManager.getRandomGenericAnimation() : undefined
       ], ([
         availableReaction,
         genericEffect
       ]) => {
-        if(!availableReaction) {
-          return;
-        }
-
-        onAvailableReaction(availableReaction ? {
+        return onAvailableReaction(availableReaction ? {
           availableReaction
         } : {
           genericEffect,
@@ -424,13 +642,20 @@ export default class ReactionElement extends HTMLElement {
       });
     };
 
+    let promise: Promise<void>;
     if(reaction._ === 'reactionEmoji') {
-      onEmoticon(undefined, reaction.emoticon);
+      promise = onEmoticon(undefined, reaction.emoticon);
     } else {
-      callbackify(this.managers.appEmojiManager.getCustomEmojiDocument(reaction.document_id), (doc) => {
-        onEmoticon(doc);
+      promise = callbackify(this.managers.appEmojiManager.getCustomEmojiDocument(reaction.document_id), (doc) => {
+        return onEmoticon(doc);
       });
     }
+
+    this.hasAroundAnimation = promise.finally(() => {
+      if(this.hasAroundAnimation === promise) {
+        this.hasAroundAnimation = undefined;
+      }
+    });
   }
 }
 

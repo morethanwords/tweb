@@ -22,7 +22,7 @@ export type LottieAssetName = 'EmptyFolder' | 'Folders_1' | 'Folders_2' |
   'TwoFactorSetupMonkeyPeek' | 'TwoFactorSetupMonkeyTracking' |
   'voice_outlined2' | 'voip_filled' | 'voice_mini' | 'jolly_roger' |
   'Gift3' | 'Gift6' | 'Gift12' | 'Folders_Shared' | 'UtyanSearch' |
-  'UtyanDiscussion' | 'UtyanLinks' | 'UtyanStories';
+  'UtyanDiscussion' | 'UtyanLinks' | 'UtyanStories' | 'ReactionGeneric';
 
 export class LottieLoader {
   private loadPromise: Promise<void> = !IS_WEB_ASSEMBLY_SUPPORTED ? Promise.reject(makeError('NO_WASM')) : undefined;
@@ -81,7 +81,7 @@ export class LottieLoader {
     });
   }
 
-  private makeAssetUrl(name: LottieAssetName) {
+  public makeAssetUrl(name: LottieAssetName) {
     return 'assets/tgs/' + name + '.json';
   }
 
@@ -90,7 +90,9 @@ export class LottieLoader {
     return this.loadAnimationFromURL(params, this.makeAssetUrl(name));
   }
 
-  public loadAnimationDataFromURL(url: string): Promise<Blob> {
+  public loadAnimationDataFromURL(url: string, method: 'json'): Promise<any>;
+  public loadAnimationDataFromURL(url: string, method?: 'blob'): Promise<Blob>;
+  public loadAnimationDataFromURL(url: string, method: 'json' | 'blob' = 'blob'): Promise<Blob | any> {
     if(!IS_WEB_ASSEMBLY_SUPPORTED) {
       return this.loadPromise as any;
     }
@@ -104,7 +106,7 @@ export class LottieLoader {
         .then((data) => apiManagerProxy.invokeCrypto('gzipUncompress', data))
         .then((arr) => blobConstruct(arr as Uint8Array, ''));
       } else {
-        return res.blob();
+        return res[method]();
       }
     });
     /* .then((str) => {

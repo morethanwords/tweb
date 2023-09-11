@@ -21,6 +21,8 @@ import wrapSticker from './sticker';
 export const emojiAnimationContainer = document.createElement('div');
 emojiAnimationContainer.classList.add('emoji-animation-container');
 
+const NO_UNMOUNT = false;
+
 export default function wrapStickerAnimation({
   size,
   stickerSize,
@@ -36,7 +38,8 @@ export default function wrapStickerAnimation({
   relativeEffect,
   loopEffect,
   onUnmount,
-  scrollable
+  scrollable,
+  textColor
 }: {
   size: number,
   stickerSize?: number,
@@ -52,7 +55,8 @@ export default function wrapStickerAnimation({
   relativeEffect?: boolean,
   loopEffect?: boolean,
   onUnmount?: () => void,
-  scrollable?: Scrollable
+  scrollable?: Scrollable,
+  textColor?: string
 }) {
   const animationDiv = document.createElement('div');
   animationDiv.classList.add('emoji-animation');
@@ -63,6 +67,10 @@ export default function wrapStickerAnimation({
 
   let animation: RLottiePlayer;
   const unmountAnimation = () => {
+    if(NO_UNMOUNT) {
+      return;
+    }
+
     middlewareHelper.destroy();
     const a = animation;
     animation = undefined;
@@ -89,7 +97,8 @@ export default function wrapStickerAnimation({
     skipRatio,
     managers,
     fullThumb,
-    isEffect: true
+    isEffect: true,
+    textColor
   }).then(({render}) => render).then((_animation) => {
     assumeType<RLottiePlayer>(_animation);
     if(!middleware()) {

@@ -248,6 +248,15 @@ export default class RLottiePlayer extends EventListenerBase<{
     }
   }
 
+  public setSize(width: number, height: number) {
+    this.width = width;
+    this.height = height;
+    this.canvas.forEach((canvas) => {
+      canvas.width = width;
+      canvas.height = height;
+    });
+  }
+
   public clearCache() {
     if(this.cachingDelta === Infinity) {
       return;

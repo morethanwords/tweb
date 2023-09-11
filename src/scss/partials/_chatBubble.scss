@@ -3329,14 +3329,15 @@ $message-padding-top: 6px;
   &.is-message-empty {
     .reactions-block {
       justify-content: flex-end;
+      position: relative;
+    }
+
+    .reactions-renderer {
+      inset: 0 !important;
     }
 
     .reaction-block {
       margin-right: .25rem;
-
-      &:last-child {
-        margin-right: 0;
-      }
 
       &.is-chosen {
         --chosen-background-color: var(--surface-color);

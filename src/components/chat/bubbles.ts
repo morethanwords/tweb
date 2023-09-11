@@ -1659,7 +1659,7 @@ export default class ChatBubbles {
       }).then(({render}) => render).then((player) => {
         assumeType<RLottiePlayer>(player);
 
-        player.addEventListener('firstFrame', () => {
+        const onFirstFrame = () => {
           if(!middleware()) {
             // debugger;
             return;
@@ -1667,7 +1667,13 @@ export default class ChatBubbles {
 
           hoverReaction.dataset.loaded = '1';
           this.setHoverVisible(hoverReaction, true);
-        }, {once: true});
+        };
+
+        if(Array.isArray(player)) {
+          onFirstFrame();
+        } else {
+          player.addEventListener('firstFrame', onFirstFrame, {once: true});
+        }
 
         attachClickEvent(hoverReaction, (e) => {
           cancelEvent(e); // cancel triggering selection
