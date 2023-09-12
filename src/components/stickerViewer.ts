@@ -11,6 +11,7 @@ import findUpAsChild from '../helpers/dom/findUpAsChild';
 import findUpClassName from '../helpers/dom/findUpClassName';
 import getVisibleRect from '../helpers/dom/getVisibleRect';
 import safePlay from '../helpers/dom/safePlay';
+import setCurrentTime from '../helpers/dom/setCurrentTime';
 import ListenerSetter from '../helpers/listenerSetter';
 import {makeMediaSize} from '../helpers/mediaSize';
 import {getMiddleware, Middleware} from '../helpers/middleware';
@@ -207,7 +208,7 @@ export default function attachStickerViewerListeners({listenTo, listenerSetter, 
       } else if(player instanceof HTMLVideoElement) {
         const prevPlayer = mediaContainer.querySelector<HTMLVideoElement>('video');
         if(prevPlayer) {
-          player.currentTime = prevPlayer.currentTime;
+          setCurrentTime(player, prevPlayer.currentTime);
         }
       }
 

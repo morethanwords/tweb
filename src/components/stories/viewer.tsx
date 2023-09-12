@@ -75,6 +75,7 @@ import setBlankToAnchor from '../../lib/richTextProcessor/setBlankToAnchor';
 import liteMode from '../../helpers/liteMode';
 import Icon from '../icon';
 import {ChatReactionsMenu} from '../chat/reactionsMenu';
+import setCurrentTime from '../../helpers/dom/setCurrentTime';
 
 export const STORY_DURATION = 5e3;
 const STORY_HEADER_AVATAR_SIZE = 32;
@@ -686,7 +687,7 @@ const Stories = (props: {
     });
 
     const reset = () => {
-      video.currentTime = 0;
+      setCurrentTime(video, 0);
     };
 
     // seek to start on story change

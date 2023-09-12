@@ -4,6 +4,7 @@ import noop from '../noop';
 import deepEqual from '../object/deepEqual';
 import onMediaLoad from '../onMediaLoad';
 import safePlay from './safePlay';
+import setCurrentTime from './setCurrentTime';
 
 export async function onVideoLeak(video: HTMLVideoElement) {
   // console.error('video is stuck', video.src, video, video.paused, videoPlaybackQuality);
@@ -23,10 +24,7 @@ export async function onVideoLeak(video: HTMLVideoElement) {
   }
 
   if(!paused) safePlay(video);
-  else {
-    video.isSeeking = true;
-    video.currentTime = 0.0001;
-  }
+  else setCurrentTime(video, 0.0001);
 
   return handleVideoLeak(video, onMediaLoad(video));
 }

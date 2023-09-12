@@ -40,6 +40,7 @@ import {doubleRaf} from '../helpers/schedulers';
 import safePlay from '../helpers/dom/safePlay';
 import {_tgico} from '../helpers/tgico';
 import Icon from './icon';
+import setCurrentTime from '../helpers/dom/setCurrentTime';
 
 rootScope.addEventListener('messages_media_read', ({mids, peerId}) => {
   mids.forEach((mid) => {
@@ -302,7 +303,7 @@ async function wrapVoiceMessage(audioEl: AudioElement) {
         }
 
         const scrubTime = offsetX / availW /* width */ * audio.duration;
-        audio.currentTime = scrubTime;
+        setCurrentTime(audio, scrubTime);
       }
     }, noop);
 
@@ -781,7 +782,7 @@ export default class AudioElement extends HTMLElement {
 
   public playWithTimestamp(timestamp: number) {
     this.load?.(true);
-    this.audio.currentTime = timestamp;
+    setCurrentTime(this.audio, timestamp);
     this.togglePlay(undefined, true);
     // appMediaPlaybackController.willBePlayed(this.audio); // prepare for loading audio
     // this.readyPromise.then(() => {

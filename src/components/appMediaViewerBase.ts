@@ -64,6 +64,7 @@ import onMediaLoad from '../helpers/onMediaLoad';
 import handleVideoLeak from '../helpers/dom/handleVideoLeak';
 import Icon from './icon';
 import {replaceButtonIcon} from './button';
+import setCurrentTime from '../helpers/dom/setCurrentTime';
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
@@ -1706,7 +1707,7 @@ export default class AppMediaViewerBase<
         }
 
         if(mediaTimestamp !== undefined) {
-          video.currentTime = mediaTimestamp;
+          setCurrentTime(video, mediaTimestamp);
         }
 
         // if(!video.parentElement) {

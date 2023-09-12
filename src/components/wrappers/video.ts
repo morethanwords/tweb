@@ -16,6 +16,7 @@ import handleVideoLeak from '../../helpers/dom/handleVideoLeak';
 import isInDOM from '../../helpers/dom/isInDOM';
 import renderImageFromUrl from '../../helpers/dom/renderImageFromUrl';
 import safePlay from '../../helpers/dom/safePlay';
+import setCurrentTime from '../../helpers/dom/setCurrentTime';
 import getMediaThumbIfNeeded from '../../helpers/getStrippedThumbIfNeeded';
 import liteMode from '../../helpers/liteMode';
 import makeError from '../../helpers/makeError';
@@ -308,11 +309,11 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
         video.classList.remove('hide');
         setIsPaused(true);
 
-        video.currentTime = 0;
+        setCurrentTime(video, 0);
         spanTime.firstChild.nodeValue = toHHMMSS(globalVideo.duration, false);
 
         if(globalVideo.currentTime) {
-          globalVideo.currentTime = 0;
+          setCurrentTime(globalVideo, 0);
         }
       };
 
@@ -607,8 +608,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
             video.pause();
             renderDeferred.resolve();
           });
-          video.isSeeking = true;
-          video.currentTime = 0.0001;
+          setCurrentTime(video, 0.0001);
         } else {
           renderDeferred.resolve();
         }

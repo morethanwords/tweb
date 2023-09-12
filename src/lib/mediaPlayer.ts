@@ -24,6 +24,7 @@ import safePlay from '../helpers/dom/safePlay';
 import ButtonIcon from '../components/buttonIcon';
 import Button from '../components/button';
 import Icon from '../components/icon';
+import setCurrentTime from '../helpers/dom/setCurrentTime';
 
 export default class VideoPlayer extends ControlsHover {
   private static PLAYBACK_RATES = [0.5, 1, 1.5, 2];
@@ -422,7 +423,7 @@ export default class VideoPlayer extends ControlsHover {
   }
 
   public setTimestamp(timestamp: number) {
-    this.video.currentTime = timestamp;
+    setCurrentTime(this.video, timestamp);
     this.togglePlay(true);
   }
 

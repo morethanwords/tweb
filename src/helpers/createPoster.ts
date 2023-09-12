@@ -8,6 +8,7 @@ import pause from './schedulers/pause';
 import {makeMediaSize} from './mediaSize';
 import scaleMediaElement from './canvas/scaleMediaElement';
 import preloadVideo from './preloadVideo';
+import setCurrentTime from './dom/setCurrentTime';
 
 export function createPosterFromMedia(media: HTMLVideoElement | HTMLImageElement) {
   let width: number, height: number;
@@ -36,11 +37,11 @@ export function createPosterFromVideo(video: HTMLVideoElement): ReturnType<typeo
         video.onseeked = undefined;
       };
 
-      video.currentTime = 0;
+      setCurrentTime(video, 0);
     };
 
     video.onerror = reject;
-    video.currentTime = Math.min(video.duration, 1);
+    setCurrentTime(video, Math.min(video.duration, 1));
   });
 }
 

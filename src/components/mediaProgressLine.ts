@@ -6,6 +6,7 @@
 
 import {GrabEvent} from '../helpers/dom/attachGrabListeners';
 import safePlay from '../helpers/dom/safePlay';
+import setCurrentTime from '../helpers/dom/setCurrentTime';
 import appMediaPlaybackController from './appMediaPlaybackController';
 import RangeSelector from './rangeSelector';
 
@@ -127,8 +128,7 @@ export default class MediaProgressLine extends RangeSelector {
 
   protected scrub(e: GrabEvent) {
     const scrubTime = super.scrub(e);
-    this.media.isSeeking = true;
-    this.media.currentTime = scrubTime;
+    setCurrentTime(this.media, scrubTime);
     return scrubTime;
   }
 

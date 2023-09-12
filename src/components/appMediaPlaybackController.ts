@@ -26,6 +26,7 @@ import onMediaLoad from '../helpers/onMediaLoad';
 import EventListenerBase from '../helpers/eventListenerBase';
 import animationIntersector from './animationIntersector';
 import apiManagerProxy from '../lib/mtproto/mtprotoworker';
+import setCurrentTime from '../helpers/dom/setCurrentTime';
 
 // TODO: Safari: проверить стрим, включить его и сразу попробовать включить видео или другую песню
 // TODO: Safari: попробовать замаскировать подгрузку последнего чанка
@@ -226,19 +227,19 @@ export class AppMediaPlaybackController extends EventListenerBase<{
 
   public seekBackward = (details: MediaSessionActionDetails, media = this.playingMedia) => {
     if(media) {
-      media.currentTime = Math.max(0, media.currentTime - (details.seekOffset || SEEK_OFFSET));
+      setCurrentTime(media, Math.max(0, media.currentTime - (details.seekOffset || SEEK_OFFSET)));
     }
   };
 
   public seekForward = (details: MediaSessionActionDetails, media = this.playingMedia) => {
     if(media) {
-      media.currentTime = Math.min(media.duration, media.currentTime + (details.seekOffset || SEEK_OFFSET));
+      setCurrentTime(media, Math.min(media.duration, media.currentTime + (details.seekOffset || SEEK_OFFSET)));
     }
   };
 
   public seekTo = (details: MediaSessionActionDetails, media = this.playingMedia) => {
     if(media) {
-      media.currentTime = details.seekTime;
+      setCurrentTime(media, details.seekTime);
     }
   };
 
@@ -390,10 +391,10 @@ export class AppMediaPlaybackController extends EventListenerBase<{
       // this.setSafariBuffering(media, true);
 
       media.addEventListener('progress', () => {
-        media.currentTime = media.duration - 1;
+        setCurrentTime(media, media.duration - 1);
 
         media.addEventListener('progress', () => {
-          media.currentTime = currentTime;
+          setCurrentTime(media, currentTime);
           // media.volume = 1;
           // this.setSafariBuffering(media, false);
 
@@ -718,7 +719,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
       media.pause();
     }
 
-    media.currentTime = 0;
+    setCurrentTime(media, 0);
     simulateEvent(media, 'ended'); // ! important, will be used to hide controls for audio element
 
     if(media === this.playingMedia) {
@@ -812,7 +813,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
 
   public seekToStart(media: HTMLMediaElement) {
     if(media?.currentTime > 5) {
-      media.currentTime = 0;
+      setCurrentTime(media, 0);
       this.toggle(true, media);
       return true;
     }
