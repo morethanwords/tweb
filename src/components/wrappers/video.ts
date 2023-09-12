@@ -607,6 +607,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
             video.pause();
             renderDeferred.resolve();
           });
+          video.isSeeking = true;
           video.currentTime = 0.0001;
         } else {
           renderDeferred.resolve();

@@ -613,7 +613,7 @@ export class AppUsersManager extends AppManager {
         this.onContactUpdated(userId, newContact, wasContact);
       }
 
-      if(TEST_NO_STORIES) {
+      if(!TEST_NO_STORIES) {
         if(wasStories !== newStories && newStories !== undefined) {
           this.rootScope.dispatchEvent('user_stories', {userId, available: newStories});
         }

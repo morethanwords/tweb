@@ -127,7 +127,7 @@ export default class MediaProgressLine extends RangeSelector {
 
   protected scrub(e: GrabEvent) {
     const scrubTime = super.scrub(e);
-    (this.media as any).isScrubbing = true;
+    this.media.isSeeking = true;
     this.media.currentTime = scrubTime;
     return scrubTime;
   }

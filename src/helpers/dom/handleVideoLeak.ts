@@ -23,7 +23,10 @@ export async function onVideoLeak(video: HTMLVideoElement) {
   }
 
   if(!paused) safePlay(video);
-  else video.currentTime = 0.0001;
+  else {
+    video.isSeeking = true;
+    video.currentTime = 0.0001;
+  }
 
   return handleVideoLeak(video, onMediaLoad(video));
 }
@@ -86,7 +89,7 @@ IS_CHROMIUM && eventsOrder.forEach((event) => {
     if(
       !(target instanceof HTMLVideoElement) ||
       target.readyState > target.HAVE_METADATA ||
-      (target as any).isScrubbing
+      target.isSeeking
     ) {
       return;
     }

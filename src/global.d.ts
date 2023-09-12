@@ -24,6 +24,10 @@ declare global {
     // middleware?: Middleware;
   }
 
+  interface HTMLMediaElement {
+    isSeeking?: boolean;
+  }
+
   // typescript is lack of types
   interface Selection {
     modify(alter: 'move' | 'extend', direction: 'forward' | 'backward' | 'left' | 'right', granularity: 'character' | 'word' | 'sentence' | 'line' | 'paragraph' | 'lineboundary' | 'sentenceboundary' | 'paragraphboundary' | 'documentboundary'): void;

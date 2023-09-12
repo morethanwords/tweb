@@ -626,7 +626,7 @@ class ApiUpdatesManager {
   }
 
   public saveUpdate(update: Update) {
-    this.debug && this.log('update', update);
+    this.debug && this.log.debug('update', update);
     this.dispatchEvent(update._, update as any);
   }
 
