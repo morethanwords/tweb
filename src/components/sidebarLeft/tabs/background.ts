@@ -13,7 +13,7 @@ import highlightningColor from '../../../helpers/highlightningColor';
 import copy from '../../../helpers/object/copy';
 import sequentialDom from '../../../helpers/sequentialDom';
 import ChatBackgroundGradientRenderer from '../../chat/gradientRenderer';
-import {Document, PhotoSize, WallPaper, WebDocument} from '../../../layer';
+import {Document, PhotoSize, WallPaper, WallPaperSettings, WebDocument} from '../../../layer';
 import {MyDocument} from '../../../lib/appManagers/appDocsManager';
 import appDownloadManager, {AppDownloadManager, DownloadBlob} from '../../../lib/appManagers/appDownloadManager';
 import appImManager from '../../../lib/appManagers/appImManager';
@@ -35,6 +35,11 @@ import {CreateRowFromCheckboxField} from '../../row';
 import {generateSection} from '../../settingSection';
 import {getColorsFromWallPaper} from '../../../helpers/color';
 import {DEFAULT_BACKGROUND_SLUG} from '../../../config/app';
+
+const needBlur = (wallPaper: WallPaper, respectPattern = true) => {
+  const blur = (wallPaper as WallPaper.wallPaper)?.settings?.pFlags?.blur;
+  return !!(blur && (!respectPattern || !(wallPaper as WallPaper.wallPaper).pFlags.pattern));
+};
 
 export default class AppBackgroundTab extends SliderSuperTab {
   public static tempId = 0;
@@ -78,11 +83,12 @@ export default class AppBackgroundTab extends SliderSuperTab {
       const blurCheckboxField = this.blurCheckboxField = new CheckboxField({
         text: 'ChatBackground.Blur',
         name: 'blur',
-        checked: (wallPaper as WallPaper.wallPaper)?.settings?.pFlags?.blur
+        checked: needBlur(wallPaper, false)
       });
 
+      this.toggleBlurCheckbox();
       this.listenerSetter.add(blurCheckboxField.input)('change', async() => {
-        this.theme.settings.wallpaper.settings.pFlags.blur = blurCheckboxField.input.checked || undefined;
+        (this.theme.settings.wallpaper.settings ??= {_: 'wallPaperSettings', pFlags: {}}).pFlags.blur = blurCheckboxField.input.checked || undefined;
         await this.managers.appStateManager.pushToState('settings', rootScope.settings);
 
         // * wait for animation end
@@ -180,7 +186,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
       this.theme.settings = copy(defaultTheme.settings);
       this.managers.appStateManager.pushToState('settings', rootScope.settings);
       appImManager.applyCurrentTheme(undefined, undefined, true);
-      this.blurCheckboxField.setValueSilently(this.theme.settings?.wallpaper?.settings?.pFlags?.blur);
+      this.blurCheckboxField.setValueSilently(needBlur(this.theme.settings?.wallpaper, false));
     }
   };
 
@@ -318,26 +324,26 @@ export default class AppBackgroundTab extends SliderSuperTab {
     const target = findUpClassName(e.target, 'grid-item') as HTMLElement;
     if(!target) return;
 
-    const wallpaper = this.wallPapersByElement.get(target);
-    if(wallpaper._ === 'wallPaperNoFile') {
-      AppBackgroundTab.setBackgroundDocument(wallpaper);
+    const wallPaper = this.wallPapersByElement.get(target);
+    if(wallPaper._ === 'wallPaperNoFile') {
+      AppBackgroundTab.setBackgroundDocument(wallPaper);
       return;
     }
 
-    const key = this.getWallPaperKey(wallpaper);
+    const key = this.getWallPaperKey(wallPaper);
     if(this.clicked.has(key)) return;
     this.clicked.add(key);
 
-    const doc = wallpaper.document as MyDocument;
+    const doc = wallPaper.document as MyDocument;
     const preloader = new ProgressivePreloader({
       cancelable: true,
       tryAgainOnFail: false
     });
 
     const load = async() => {
-      const promise = AppBackgroundTab.setBackgroundDocument(wallpaper);
+      const promise = AppBackgroundTab.setBackgroundDocument(wallPaper);
       const cacheContext = await this.managers.thumbsStorage.getCacheContext(doc);
-      if(!cacheContext.url || this.theme.settings?.wallpaper?.settings?.pFlags?.blur) {
+      if(!cacheContext.url || needBlur(wallPaper)) {
         preloader.attach(target, true, promise);
       }
     };
@@ -433,7 +439,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
       }
 
       const cacheContext = await rootScope.managers.thumbsStorage.getCacheContext(doc);
-      if(themeSettings.wallpaper?.settings?.pFlags?.blur) {
+      if(needBlur(wallPaper)) {
         setTimeout(() => {
           const {canvas, promise} = blur(cacheContext.url, 12, 4);
           promise.then(() => {
@@ -453,12 +459,19 @@ export default class AppBackgroundTab extends SliderSuperTab {
     return deferred;
   };
 
+  private toggleBlurCheckbox() {
+    const wallPaper = this.theme.settings?.wallpaper;
+    this.blurCheckboxField.toggleDisability(!wallPaper || wallPaper._ === 'wallPaperNoFile' || !!wallPaper?.pFlags?.pattern);
+  }
+
   private setActive = () => {
     const active = this.grid.querySelector('.active');
     const target = this.elementsByKey.get(this.getWallPaperKeyFromTheme(this.theme));
     if(active === target) {
       return;
     }
+
+    this.toggleBlurCheckbox();
 
     if(active) {
       active.classList.remove('active');
