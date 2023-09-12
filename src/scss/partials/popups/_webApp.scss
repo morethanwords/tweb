@@ -19,6 +19,15 @@
   //     height: 54px;
   //   }
   // }
+  --p-secondary-text-color: var(--secondary-text-color);
+  --p-light-secondary-text-color: var(--light-secondary-text-color);
+  --p-border-color: var(--border-color);
+
+  .btn-menu {
+    --secondary-text-color: var(--p-secondary-text-color);
+    --light-secondary-text-color: var(--p-light-secondary-text-color);
+    --border-color: var(--p-border-color);
+  }
 
   .popup-header,
   .popup-body {

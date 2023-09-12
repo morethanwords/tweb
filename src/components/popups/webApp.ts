@@ -25,6 +25,7 @@ import confirmationPopup from '../confirmationPopup';
 import PopupPeer, {PopupPeerOptions} from './peer';
 import {LangPackKey} from '../../lib/langPack';
 import PopupPickUser from './pickUser';
+import {calculateLuminance, calculateOpacity, getTextColor, hexToRgb, rgbaToRgb} from '../../helpers/color';
 
 const SANDBOX_ATTRIBUTES = [
   'allow-scripts',
@@ -44,7 +45,7 @@ export default class PopupWebApp extends PopupElement<{
   private attachMenuBot: AttachMenuBot;
   private mainButton: HTMLElement;
   private isCloseConfirmationNeeded: boolean;
-  private lastHeaderColor: TelegramWebViewEventMap['web_app_set_header_color']['color_key'];
+  private lastHeaderColor: TelegramWebViewEventMap['web_app_set_header_color'];
   // private mainButtonText: HTMLElement;
 
   constructor(options: {
@@ -185,9 +186,32 @@ export default class PopupWebApp extends PopupElement<{
     });
   };
 
-  protected setHeaderColor = (colorKey: PopupWebApp['lastHeaderColor'] = this.lastHeaderColor) => {
-    this.lastHeaderColor = colorKey;
-    this.header.style.backgroundColor = this.getThemeParams()[colorKey];
+  protected setHeaderColor = (color: PopupWebApp['lastHeaderColor'] = this.lastHeaderColor) => {
+    this.lastHeaderColor = color;
+
+    let backgroundColor: string;
+    const hex = color.color;
+    if(hex) {
+      const rgb = hexToRgb(hex);
+      const luminance = calculateLuminance(rgb);
+      const textColor = getTextColor(luminance);
+      const textOpacity = calculateOpacity(luminance, 2.5);
+      const textRgbColor = rgbaToRgb([...textColor, textOpacity], rgb);
+      const borderColor = rgbaToRgb([...rgb, 1 - 0.08], rgbaToRgb([255, 255, 255, 0.08], rgb));
+      backgroundColor = hex;
+      this.title.style.color = `rgb(${textColor.join(',')})`;
+      this.header.style.setProperty('--secondary-text-color', `rgb(${textRgbColor.join(', ')})`);
+      this.header.style.setProperty('--light-secondary-text-color', `rgba(${textColor.join(', ')}, ${0.08})`);
+      this.header.style.setProperty('--border-color', `rgb(${borderColor.join(', ')})`);
+    } else {
+      backgroundColor = this.getThemeParams()[color.color_key];
+      this.title.style.color = '';
+      this.header.style.removeProperty('--secondary-text-color');
+      this.header.style.removeProperty('--light-secondary-text-color');
+      this.header.style.removeProperty('--border-color');
+    }
+
+    this.header.style.backgroundColor = backgroundColor;
   };
 
   protected setBodyColor = (color: string) => {
@@ -385,7 +409,7 @@ export default class PopupWebApp extends PopupElement<{
       },
       web_app_request_theme: this.sendTheme,
       web_app_set_background_color: ({color}) => this.setBodyColor(color),
-      web_app_set_header_color: ({color_key}) => this.setHeaderColor(color_key),
+      web_app_set_header_color: this.setHeaderColor,
       web_app_switch_inline_query: this.switchInlineQuery,
       web_app_setup_main_button: this.setupMainButton,
       web_app_setup_back_button: this.setupBackButton,
@@ -483,7 +507,7 @@ export default class PopupWebApp extends PopupElement<{
 
     const telegramWebView = this.createWebView();
     this.setBodyColor(this.getThemeParams().bg_color);
-    this.setHeaderColor('bg_color');
+    this.setHeaderColor({color_key: 'bg_color'});
     this.body.prepend(telegramWebView.iframe);
     this.show();
     telegramWebView.onMount();

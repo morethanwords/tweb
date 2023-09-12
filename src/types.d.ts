@@ -182,7 +182,8 @@ export type TelegramWebViewEventMap = {
     req_id: string
   },
   web_app_set_header_color: {
-    color_key: 'bg_color' | 'secondary_bg_color'
+    color_key?: 'bg_color' | 'secondary_bg_color',
+    color?: string // 163, #RRGGBB
   },
   web_app_data_send: {
     data: string
