@@ -644,7 +644,7 @@ export default class ChatInput {
         const tempId = ++webViewTempId;
         waitingForWebView = true;
 
-        this.chat.appImManager.confirmBotWebView(botId).then(() => {
+        Promise.resolve().then(() => {
           if(webViewTempId !== tempId) {
             return;
           }
@@ -886,9 +886,6 @@ export default class ChatInput {
       verify: () => this.chat.peerId.isAnyChat() || this.chat.isBot
     }];
 
-    // preload the bots
-    this.managers.appAttachMenuBotsManager.getAttachMenuBots();
-
     const attachMenuButtons = this.attachMenuButtons.slice();
     this.attachMenu = ButtonMenuToggle({
       buttonOptions: {noRipple: true},
@@ -899,7 +896,7 @@ export default class ChatInput {
         const attachMenuBots = await this.managers.appAttachMenuBotsManager.getAttachMenuBots();
         const buttons = attachMenuButtons.slice();
         const attachMenuBotsButtons = attachMenuBots.filter((attachMenuBot) => {
-          return !attachMenuBot.pFlags.inactive;
+          return attachMenuBot.pFlags.show_in_attach_menu;
         }).map((attachMenuBot) => {
           const icon = getAttachMenuBotIcon(attachMenuBot);
           const button: typeof buttons[0] = {
@@ -1767,11 +1764,12 @@ export default class ChatInput {
     type: ChatInput['hasOffset']['type'],
     forwards: boolean,
     skipAnimation?: boolean,
-    useRafs?: number
+    useRafs?: number,
+    applySameType?: boolean // ! WARNING
   ) {
     const prevOffset = this.hasOffset;
     const newOffset: ChatInput['hasOffset'] = {type, forwards};
-    if(deepEqual(prevOffset, newOffset)) {
+    if(deepEqual(prevOffset, newOffset) && !applySameType) {
       return;
     }
 
@@ -1783,7 +1781,7 @@ export default class ChatInput {
       delete this.newMessageWrapper.dataset.offset;
     }
 
-    if(prevOffset?.forwards === newOffset.forwards) {
+    if(prevOffset?.forwards === newOffset.forwards && !applySameType) {
       return;
     }
 
@@ -1839,7 +1837,7 @@ export default class ChatInput {
       this.newMessageWrapper.prepend(botCommandsToggle);
     }
 
-    this.updateOffset('commands', forwards, skipAnimation, useRafs);
+    this.updateOffset('commands', forwards, skipAnimation, useRafs, true);
   }
 
   private async getPlaceholderKey(canSend?: boolean) {

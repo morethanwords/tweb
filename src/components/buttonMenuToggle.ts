@@ -12,6 +12,7 @@ import ButtonIcon from './buttonIcon';
 import ButtonMenu, {ButtonMenuItemOptionsVerifiable} from './buttonMenu';
 import filterAsync from '../helpers/array/filterAsync';
 import {doubleRaf} from '../helpers/schedulers';
+import callbackify from '../helpers/callbackify';
 
 // TODO: refactor for attachClickEvent, because if move finger after touchstart, it will start anyway
 export function ButtonMenuToggleHandler({
@@ -38,14 +39,14 @@ export function ButtonMenuToggleHandler({
       const result = onOpen?.(e);
       const open = () => {
         const openedMenu = el.querySelector('.btn-menu') as HTMLDivElement;
+        if(!openedMenu) {
+          return;
+        }
+
         contextMenuController.openBtnMenu(openedMenu, onClose);
       };
 
-      if(result instanceof Promise) {
-        result.then(open);
-      } else {
-        open();
-      }
+      callbackify(result, open);
     }
   });
 }
@@ -82,20 +83,27 @@ export default function ButtonMenuToggle({
 
   const listenerSetter = new ListenerSetter();
 
-  let element: HTMLElement, closeTimeout: number;
+  const clearCloseTimeout = () => {
+    clearTimeout(closeTimeout);
+    closeTimeout = undefined;
+  };
+
+  let element: HTMLElement, closeTimeout: number, tempId = 0;
   ButtonMenuToggleHandler({
     el: button,
     onOpen: async(e) => {
+      const _tempId = ++tempId;
       await onOpenBefore?.(e);
+      if(_tempId !== tempId) return;
       if(closeTimeout) {
-        clearTimeout(closeTimeout);
-        closeTimeout = undefined;
+        clearCloseTimeout();
         return;
       }
 
       const f = (b: (typeof buttons[0])[]) => filterAsync(b, (button) => button?.verify ? button.verify() ?? false : true);
 
       const filteredButtons = await f(buttons);
+      if(_tempId !== tempId) return;
       if(!filteredButtons.length) {
         return;
       }
@@ -104,17 +112,24 @@ export default function ButtonMenuToggle({
         buttons: filteredButtons,
         listenerSetter
       });
+      if(_tempId !== tempId) return;
       _element.classList.add(direction);
 
       await onOpen?.(e, _element);
+      if(_tempId !== tempId) return;
 
       button.append(_element);
       await doubleRaf();
+      if(_tempId !== tempId) {
+        _element.remove();
+      }
     },
     options: {
       listenerSetter: attachListenerSetter
     },
     onClose: () => {
+      ++tempId;
+      clearCloseTimeout();
       onClose?.();
 
       closeTimeout = window.setTimeout(() => {

@@ -271,7 +271,6 @@ export default class InlineHelper extends AutocompleteHelper {
               await this.chat.appImManager.setInnerPeer({peerId});
               this.managers.appInlineBotsManager.switchToPM(peerId, botId, switchTo.start_param);
             } else {
-              await this.chat.appImManager.confirmBotWebView(botId);
               this.chat.openWebApp({
                 botId,
                 url: switchTo.url,

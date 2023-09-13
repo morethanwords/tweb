@@ -7,11 +7,10 @@
 import type AppAttachMenuBotsManager from '../../lib/appManagers/appAttachMenuBotsManager';
 import PopupElement from '.';
 import safeAssign from '../../helpers/object/safeAssign';
-import {AttachMenuBot, DataJSON, SimpleWebViewResult, WebViewResult} from '../../layer';
+import {AttachMenuBot, DataJSON, WebViewResult} from '../../layer';
 import appImManager from '../../lib/appManagers/appImManager';
 import ButtonMenuToggle from '../buttonMenuToggle';
 import TelegramWebView from '../telegramWebView';
-import {toastNew} from '../toast';
 import wrapPeerTitle from '../wrappers/peerTitle';
 import rootScope from '../../lib/rootScope';
 import themeController from '../../helpers/themeController';
@@ -89,7 +88,7 @@ export default class PopupWebApp extends PopupElement<{
         onClick: () => {
           this.telegramWebView.dispatchWebViewEvent('settings_button_pressed', undefined);
         },
-        verify: () => this.attachMenuBot && this.attachMenuBot.pFlags.has_settings
+        verify: () => (this.attachMenuBot && this.attachMenuBot.pFlags.has_settings) || this.webViewOptions.hasSettings
       }, {
         icon: 'bots',
         text: 'BotWebViewOpenBot',
@@ -109,31 +108,23 @@ export default class PopupWebApp extends PopupElement<{
           telegramWebView.onMount();
         },
         verify: () => true
-      }, {
+      }, /* {
         icon: 'plusround',
         text: 'WebApp.InstallBot',
         onClick: () => {
           appImManager.toggleBotInAttachMenu(botId, true).then(async(attachMenuBot) => {
             this.attachMenuBot = attachMenuBot;
-            toastNew({
-              langPackKey: 'WebApp.Attach.Success',
-              langPackArguments: [await wrapPeerTitle({peerId: botPeerId})]
-            });
           });
         },
         verify: () => this.attachMenuBot && this.attachMenuBot.pFlags.inactive
-      }, {
+      },  */{
         icon: 'delete',
         className: 'danger',
         text: 'BotWebViewDeleteBot',
         onClick: () => {
           appImManager.toggleBotInAttachMenu(botId, false).then(async(attachMenuBot) => {
             this.attachMenuBot = attachMenuBot;
-            // this.forceHide();
-            toastNew({
-              langPackKey: 'WebApp.AttachRemove.Success',
-              langPackArguments: [await wrapPeerTitle({peerId: botPeerId})]
-            });
+            this.forceHide();
           });
         },
         verify: () => this.attachMenuBot && !this.attachMenuBot.pFlags.inactive,
@@ -390,7 +381,8 @@ export default class PopupWebApp extends PopupElement<{
         window.open(url, '_blank');
       },
       web_app_open_tg_link: ({path_full}) => {
-        appImManager.openUrl('https://t.me/' + path_full);
+        appImManager.openUrl('https://t.me' + path_full);
+        this.forceHide();
       },
       web_app_open_invoice: ({slug}) => {
         const link: InternalLink.InternalLinkInvoice = {

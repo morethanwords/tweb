@@ -80,7 +80,7 @@ export class BubbleGroup {
       lazyLoadQueue: this.chat.bubbles.lazyLoadQueue,
       ...(options || {
         peerId,
-        peerTitle: !fwdFromId && fwdFrom && fwdFrom.from_name ? /* '🔥 FF 🔥' */fwdFrom.from_name : undefined
+        peerTitle: !fwdFromId && fwdFrom && fwdFrom.from_name && peerId === NULL_PEER_ID ? /* '🔥 FF 🔥' */fwdFrom.from_name : undefined
       })
     });
     this.avatar.node.classList.add('bubbles-group-avatar', 'user-avatar'/* , 'can-zoom-fade' */);

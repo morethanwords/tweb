@@ -10,8 +10,9 @@ import CheckboxField, {CheckboxFieldOptions} from '../checkboxField';
 import setInnerHTML from '../../helpers/dom/setInnerHTML';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import {avatarNew} from '../avatarNew';
+import toggleDisability from '../../helpers/dom/toggleDisability';
 
-export type PopupPeerButton = Omit<PopupButton, 'callback'> & Partial<{callback: PopupPeerButtonCallback}>;
+export type PopupPeerButton = Omit<PopupButton, 'callback'> & Partial<{callback: PopupPeerButtonCallback, onlyWithCheckbox: PopupPeerCheckboxOptions}>;
 export type PopupPeerButtonCallbackCheckboxes = Set<LangPackKey>;
 export type PopupPeerButtonCallback = (checkboxes?: PopupPeerButtonCallbackCheckboxes) => void;
 export type PopupPeerCheckboxOptions = CheckboxFieldOptions & {checkboxField?: CheckboxField};
@@ -94,6 +95,15 @@ export default class PopupPeer extends PopupElement {
             });
             original(c);
           };
+        }
+
+        const checkbox = button.onlyWithCheckbox;
+        if(checkbox) {
+          const onChange = () => {
+            toggleDisability([button.element], !checkbox.checkboxField.checked);
+          };
+          this.listenerSetter.add(checkbox.checkboxField.input)('change', onChange);
+          onChange();
         }
       });
     }

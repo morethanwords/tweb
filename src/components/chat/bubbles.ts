@@ -4192,16 +4192,14 @@ export default class ChatBubbles {
         buttonEl.classList.add('is-web-view');
         buttonIcon = Icon('webview');
 
-        onClick = async() => {
-          await this.chat.appImManager.confirmBotWebView(botId);
-
+        onClick = () => {
           const toggle = toggleDisability([buttonEl], true);
           this.chat.openWebApp({
             botId,
             url: button.url,
             isSimpleWebView: button._ === 'keyboardButtonSimpleWebView',
             buttonText: button.text
-          }).then(() => {
+          }).finally(() => {
             toggle();
           });
         };

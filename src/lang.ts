@@ -289,6 +289,9 @@ const lang = {
   'WebApp.WriteAccess.Title': 'Allow Sending Messages',
   'WebApp.WriteAccess.Description': 'Allow %s to send messages?',
   'ActionBotAllowedRequest': 'You allowed this bot to message you when you accepted its request.',
+  'WebApp.Disclaimer.Check': 'I agree to the **[Terms of Use]()**',
+  'WebApp.AttachRemove.SuccessAll': '"%@" removed from all your menus.',
+  'WebApp.AttachRemove.SuccessSide': '"%@" removed from your side menu.',
 
   // * android
   'AccDescrEditing': 'Editing',
@@ -1244,6 +1247,14 @@ const lang = {
   'SavedStories': 'Posted Stories',
   'ArchivedStories': 'Archived Stories',
   'StoryViewLocation': 'View Location',
+  'BotWebAppDisclaimerSubtitle': 'You are about to use a mini app operated by an independent party **not affiliated with Telegram**. You must agree to the Terms of Use of mini apps to continue.',
+  'TermsOfUse': 'Terms of Use',
+  'WebAppDisclaimerUrl': 'https://telegram.org/tos/mini-apps',
+  'BotWebViewStartPermission': 'To launch this web app, you will connect to its website.',
+  'BotWebAppInstantViewOpen': 'Launch',
+  'BotAttachMenuShortcatAddedAttachAndSide': '**%s** shortcut added in attachment menu and side menu.',
+  'BotAttachMenuShortcatAddedSide': '**%s** shortcut added in side menu.',
+  'BotAttachMenuShortcatAddedAttach': '**%s** shortcut added in attachment menu.',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
@@ -1760,7 +1771,6 @@ const lang = {
   'VoiceChat.RemovePeer.Confirm.Channel': 'Do you want to remove %1$@ from the channel?',
   'VoiceChat.RemovePeer.Confirm': 'Are you sure you want to remove %1$@ from the group?',
   'VoiceChat.RemovePeer.Confirm.OK': 'Remove',
-  'WebApp.Attach.Success': '"%@" added to your attachment menu.',
   'WebApp.AttachRemove.Success': '"%@" removed from your attachment menu.',
   'WebApp.InstallBot': 'Install Bot'
 };

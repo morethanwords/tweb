@@ -113,6 +113,8 @@ import getServerMessageId from './utils/messageId/getServerMessageId';
 import {findUpAvatar} from '../../components/avatarNew';
 import focusInput from '../../helpers/dom/focusInput';
 import safePlay from '../../helpers/dom/safePlay';
+import {RequestWebViewOptions} from './appAttachMenuBotsManager';
+import PopupWebApp from '../../components/popups/webApp';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -598,52 +600,81 @@ export class AppImManager extends EventListenerBase<{
     }
   }
 
-  public async confirmBotWebViewInner(botId: BotId, requestWriteAccess?: boolean) {
+  public async confirmBotWebViewInner({
+    botId,
+    requestWriteAccess,
+    showDisclaimer
+  }: Parameters<AppImManager['confirmBotWebView']>[0]) {
     const peerId = botId.toPeerId();
+    if(showDisclaimer) {
+      const checkbox: Parameters<typeof confirmationPopup>[0]['checkbox'] = {
+        text: 'WebApp.Disclaimer.Check',
+        textArgs: [wrapRichText(I18n.format('WebAppDisclaimerUrl', true))]
+      };
+
+      return confirmationPopup({
+        titleLangKey: 'TermsOfUse',
+        descriptionLangKey: 'BotWebAppDisclaimerSubtitle',
+        checkbox,
+        button: {
+          langKey: 'Continue',
+          onlyWithCheckbox: checkbox
+        }
+      });
+    }
+
     return confirmationPopup({
-      titleLangKey: 'BotOpenPageTitle',
-      descriptionLangKey: 'BotOpenPageMessage',
-      descriptionLangArgs: [await wrapPeerTitle({peerId})],
+      title: await wrapPeerTitle({peerId}),
+      descriptionLangKey: 'BotWebViewStartPermission',
       checkbox: requestWriteAccess ? {
         text: 'OpenUrlOption2',
         textArgs: [await wrapPeerTitle({peerId})],
         checked: true
       } : undefined,
       button: {
-        langKey: 'OK'
-      }
+        langKey: 'BotWebAppInstantViewOpen'
+      },
+      peerId
     });
   }
 
-  public async confirmBotWebView(botId: BotId, requestWriteAccess?: boolean, ignoreConfirmedState?: boolean) {
+  public async pushBotIdAsConfirmed(botId: BotId) {
     const state = await apiManagerProxy.getState();
-    if(ignoreConfirmedState || !state.confirmedWebViews.includes(botId)) {
-      const haveWriteAccess = await this.confirmBotWebViewInner(botId, requestWriteAccess);
+    state.confirmedWebViews.push(botId);
+    await this.managers.appStateManager.pushToState('confirmedWebViews', state.confirmedWebViews);
+  }
 
-      state.confirmedWebViews.push(botId);
-      await this.managers.appStateManager.pushToState('confirmedWebViews', state.confirmedWebViews);
-
+  public async confirmBotWebView(options: {
+    botId: BotId,
+    requestWriteAccess?: boolean,
+    ignoreConfirmedState?: boolean,
+    showDisclaimer?: boolean
+  }): Promise<boolean> {
+    const state = await apiManagerProxy.getState();
+    if(options.ignoreConfirmedState || options.showDisclaimer || !state.confirmedWebViews.includes(options.botId)) {
+      const haveWriteAccess = await this.confirmBotWebViewInner(options);
+      await this.pushBotIdAsConfirmed(options.botId);
       return haveWriteAccess;
     }
   }
 
-  public async requestBotAttachPermission(botId: BotId, requestWriteAccess?: boolean) {
-    const peerId = botId.toPeerId();
-    return confirmationPopup({
-      button: {
-        langKey: 'Add'
-      },
-      descriptionLangKey: 'BotRequestAttachPermission',
-      descriptionLangArgs: [await wrapPeerTitle({peerId})],
-      checkbox: requestWriteAccess ? {
-        text: 'OpenUrlOption2',
-        textArgs: [await wrapPeerTitle({peerId})],
-        checked: true
-      } : undefined,
-      peerId,
-      titleLangKey: 'AddBot'
-    });
-  }
+  // public async requestBotAttachPermission(botId: BotId, requestWriteAccess?: boolean) {
+  //   const peerId = botId.toPeerId();
+  //   return confirmationPopup({
+  //     button: {
+  //       langKey: 'Add'
+  //     },
+  //     descriptionLangKey: 'BotRequestAttachPermission',
+  //     descriptionLangArgs: [await wrapPeerTitle({peerId})],
+  //     checkbox: requestWriteAccess ? {
+  //       text: 'OpenUrlOption2',
+  //       textArgs: [await wrapPeerTitle({peerId})],
+  //       checked: true
+  //     } : undefined,
+  //     peerId,
+  //     titleLangKey: 'AddBot'
+  //   });
+  // }
 
   public async toggleBotInAttachMenu(
     botId: BotId,
@@ -657,17 +688,91 @@ export class AppImManager extends EventListenerBase<{
     }
 
     if(attachMenuBot.pFlags.inactive) {
-      const haveWriteAccess = await this.requestBotAttachPermission(botId, attachMenuBot.pFlags.request_write_access);
+      // const haveWriteAccess = await this.requestBotAttachPermission(botId, attachMenuBot.pFlags.request_write_access);
+      await this.confirmBotWebViewInner({botId, showDisclaimer: true});
+      await this.pushBotIdAsConfirmed(botId);
+      const haveWriteAccess = true;
 
       await this.managers.appAttachMenuBotsManager.toggleBotInAttachMenu(botId, true, haveWriteAccess);
       // installed
       delete attachMenuBot.pFlags.inactive;
+
+      toastNew({
+        langPackKey: attachMenuBot.pFlags.show_in_attach_menu && attachMenuBot.pFlags.show_in_side_menu ?
+          'BotAttachMenuShortcatAddedAttachAndSide' : (
+            attachMenuBot.pFlags.show_in_attach_menu ?
+              'BotAttachMenuShortcatAddedAttach' :
+              'BotAttachMenuShortcatAddedSide'
+          ),
+        langPackArguments: [await wrapPeerTitle({peerId: botId.toPeerId(false)})]
+      });
     } else {
       await this.managers.appAttachMenuBotsManager.toggleBotInAttachMenu(botId, false);
       attachMenuBot.pFlags.inactive = true;
+
+      toastNew({
+        langPackKey: attachMenuBot.pFlags.show_in_attach_menu && attachMenuBot.pFlags.show_in_side_menu ?
+          'WebApp.AttachRemove.SuccessAll' : (
+            attachMenuBot.pFlags.show_in_attach_menu ?
+              'WebApp.AttachRemove.Success' :
+              'WebApp.AttachRemove.SuccessSide'
+          ),
+        langPackArguments: [await wrapPeerTitle({peerId: botId.toPeerId(false)})]
+      });
     }
 
     return attachMenuBot;
+  }
+
+  public async openWebApp(options: Partial<RequestWebViewOptions>) {
+    options.botId ??= options.attachMenuBot?.bot_id;
+    options.themeParams ??= {
+      _: 'dataJSON',
+      data: JSON.stringify(themeController.getThemeParamsForWebView())
+    };
+
+    if(
+      !options.attachMenuBot &&
+      (options.fromAttachMenu || options.fromSideMenu)
+    ) {
+      try {
+        options.attachMenuBot = await this.managers.appAttachMenuBotsManager.getAttachMenuBot(options.botId);
+      } catch(err) {}
+    }
+
+    if(!options.noConfirmation) {
+      const attachMenuBot = options.attachMenuBot;
+      let needDisclaimer: boolean;
+      if(options.fromSideMenu && attachMenuBot?.pFlags?.side_menu_disclaimer_needed) {
+        needDisclaimer = true;
+      } else {
+        const user = await apiManagerProxy.getUser(options.botId);
+        needDisclaimer = user.pFlags.bot_attach_menu && attachMenuBot?.pFlags?.inactive;
+      }
+
+      if(needDisclaimer) {
+        await this.toggleBotInAttachMenu(options.botId, true, attachMenuBot);
+      } else {
+        await this.confirmBotWebView({
+          botId: options.botId
+        });
+      }
+    }
+
+    try {
+      const webViewResultUrl = await this.managers.appAttachMenuBotsManager.requestWebView(options as RequestWebViewOptions);
+      PopupElement.createPopup(PopupWebApp, {
+        webViewResultUrl,
+        webViewOptions: options as RequestWebViewOptions,
+        attachMenuBot: options.attachMenuBot
+      });
+    } catch(err) {
+      if((err as ApiError).type === 'PEER_ID_INVALID' && options.attachMenuBot) {
+        toastNew({
+          langPackKey: 'BotAlreadyAddedToAttachMenu'
+        });
+      }
+    }
   }
 
   public handleUrlAuth(options: {
