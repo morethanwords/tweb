@@ -7,11 +7,10 @@
 import type AppAttachMenuBotsManager from '../../lib/appManagers/appAttachMenuBotsManager';
 import PopupElement from '.';
 import safeAssign from '../../helpers/object/safeAssign';
-import {AttachMenuBot, DataJSON, SimpleWebViewResult, WebViewResult} from '../../layer';
+import {AttachMenuBot, DataJSON, WebViewResult} from '../../layer';
 import appImManager from '../../lib/appManagers/appImManager';
 import ButtonMenuToggle from '../buttonMenuToggle';
 import TelegramWebView from '../telegramWebView';
-import {toastNew} from '../toast';
 import wrapPeerTitle from '../wrappers/peerTitle';
 import rootScope from '../../lib/rootScope';
 import themeController from '../../helpers/themeController';
@@ -25,6 +24,7 @@ import confirmationPopup from '../confirmationPopup';
 import PopupPeer, {PopupPeerOptions} from './peer';
 import {LangPackKey} from '../../lib/langPack';
 import PopupPickUser from './pickUser';
+import {calculateLuminance, calculateOpacity, getTextColor, hexToRgb, rgbaToRgb} from '../../helpers/color';
 
 const SANDBOX_ATTRIBUTES = [
   'allow-scripts',
@@ -44,7 +44,7 @@ export default class PopupWebApp extends PopupElement<{
   private attachMenuBot: AttachMenuBot;
   private mainButton: HTMLElement;
   private isCloseConfirmationNeeded: boolean;
-  private lastHeaderColor: TelegramWebViewEventMap['web_app_set_header_color']['color_key'];
+  private lastHeaderColor: TelegramWebViewEventMap['web_app_set_header_color'];
   // private mainButtonText: HTMLElement;
 
   constructor(options: {
@@ -88,7 +88,7 @@ export default class PopupWebApp extends PopupElement<{
         onClick: () => {
           this.telegramWebView.dispatchWebViewEvent('settings_button_pressed', undefined);
         },
-        verify: () => this.attachMenuBot && this.attachMenuBot.pFlags.has_settings
+        verify: () => (this.attachMenuBot && this.attachMenuBot.pFlags.has_settings) || this.webViewOptions.hasSettings
       }, {
         icon: 'bots',
         text: 'BotWebViewOpenBot',
@@ -108,31 +108,23 @@ export default class PopupWebApp extends PopupElement<{
           telegramWebView.onMount();
         },
         verify: () => true
-      }, {
+      }, /* {
         icon: 'plusround',
         text: 'WebApp.InstallBot',
         onClick: () => {
           appImManager.toggleBotInAttachMenu(botId, true).then(async(attachMenuBot) => {
             this.attachMenuBot = attachMenuBot;
-            toastNew({
-              langPackKey: 'WebApp.Attach.Success',
-              langPackArguments: [await wrapPeerTitle({peerId: botPeerId})]
-            });
           });
         },
         verify: () => this.attachMenuBot && this.attachMenuBot.pFlags.inactive
-      }, {
+      },  */{
         icon: 'delete',
         className: 'danger',
         text: 'BotWebViewDeleteBot',
         onClick: () => {
           appImManager.toggleBotInAttachMenu(botId, false).then(async(attachMenuBot) => {
             this.attachMenuBot = attachMenuBot;
-            // this.forceHide();
-            toastNew({
-              langPackKey: 'WebApp.AttachRemove.Success',
-              langPackArguments: [await wrapPeerTitle({peerId: botPeerId})]
-            });
+            this.forceHide();
           });
         },
         verify: () => this.attachMenuBot && !this.attachMenuBot.pFlags.inactive,
@@ -185,9 +177,32 @@ export default class PopupWebApp extends PopupElement<{
     });
   };
 
-  protected setHeaderColor = (colorKey: PopupWebApp['lastHeaderColor'] = this.lastHeaderColor) => {
-    this.lastHeaderColor = colorKey;
-    this.header.style.backgroundColor = this.getThemeParams()[colorKey];
+  protected setHeaderColor = (color: PopupWebApp['lastHeaderColor'] = this.lastHeaderColor) => {
+    this.lastHeaderColor = color;
+
+    let backgroundColor: string;
+    const hex = color.color;
+    if(hex) {
+      const rgb = hexToRgb(hex);
+      const luminance = calculateLuminance(rgb);
+      const textColor = getTextColor(luminance);
+      const textOpacity = calculateOpacity(luminance, 2.5);
+      const textRgbColor = rgbaToRgb([...textColor, textOpacity], rgb);
+      const borderColor = rgbaToRgb([...rgb, 1 - 0.08], rgbaToRgb([255, 255, 255, 0.08], rgb));
+      backgroundColor = hex;
+      this.title.style.color = `rgb(${textColor.join(',')})`;
+      this.header.style.setProperty('--secondary-text-color', `rgb(${textRgbColor.join(', ')})`);
+      this.header.style.setProperty('--light-secondary-text-color', `rgba(${textColor.join(', ')}, ${0.08})`);
+      this.header.style.setProperty('--border-color', `rgb(${borderColor.join(', ')})`);
+    } else {
+      backgroundColor = this.getThemeParams()[color.color_key];
+      this.title.style.color = '';
+      this.header.style.removeProperty('--secondary-text-color');
+      this.header.style.removeProperty('--light-secondary-text-color');
+      this.header.style.removeProperty('--border-color');
+    }
+
+    this.header.style.backgroundColor = backgroundColor;
   };
 
   protected setBodyColor = (color: string) => {
@@ -366,7 +381,8 @@ export default class PopupWebApp extends PopupElement<{
         window.open(url, '_blank');
       },
       web_app_open_tg_link: ({path_full}) => {
-        appImManager.openUrl('https://t.me/' + path_full);
+        appImManager.openUrl('https://t.me' + path_full);
+        this.forceHide();
       },
       web_app_open_invoice: ({slug}) => {
         const link: InternalLink.InternalLinkInvoice = {
@@ -385,7 +401,7 @@ export default class PopupWebApp extends PopupElement<{
       },
       web_app_request_theme: this.sendTheme,
       web_app_set_background_color: ({color}) => this.setBodyColor(color),
-      web_app_set_header_color: ({color_key}) => this.setHeaderColor(color_key),
+      web_app_set_header_color: this.setHeaderColor,
       web_app_switch_inline_query: this.switchInlineQuery,
       web_app_setup_main_button: this.setupMainButton,
       web_app_setup_back_button: this.setupBackButton,
@@ -483,7 +499,7 @@ export default class PopupWebApp extends PopupElement<{
 
     const telegramWebView = this.createWebView();
     this.setBodyColor(this.getThemeParams().bg_color);
-    this.setHeaderColor('bg_color');
+    this.setHeaderColor({color_key: 'bg_color'});
     this.body.prepend(telegramWebView.iframe);
     this.show();
     telegramWebView.onMount();

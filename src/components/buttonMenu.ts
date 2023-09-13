@@ -95,7 +95,7 @@ function ButtonMenuItem(options: ButtonMenuItemOptions) {
           svg.querySelectorAll('path').forEach((path) => {
             path.setAttributeNS(null, 'fill', color);
             path.style.stroke = color;
-            path.style.strokeWidth = '.25px';
+            path.style.strokeWidth = '.375px';
           });
           return textToSvgURL(svg.outerHTML);
         });

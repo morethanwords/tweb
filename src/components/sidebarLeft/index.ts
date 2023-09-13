@@ -59,6 +59,9 @@ import Icon from '../icon';
 import AppSelectPeers from '../appSelectPeers';
 import setBadgeContent from '../../helpers/setBadgeContent';
 import createBadge from '../../helpers/createBadge';
+import {MyDocument} from '../../lib/appManagers/appDocsManager';
+import getAttachMenuBotIcon from '../../lib/appManagers/utils/attachMenuBots/getAttachMenuBotIcon';
+import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -249,10 +252,36 @@ export class AppSidebarLeft extends SidebarSlider {
     }];
 
     const filteredButtons = menuButtons.filter(Boolean);
-
+    const filteredButtonsSliced = filteredButtons.slice();
     this.toolsBtn = ButtonMenuToggle({
       direction: 'bottom-right',
       buttons: filteredButtons,
+      onOpenBefore: async() => {
+        const attachMenuBots = await this.managers.appAttachMenuBotsManager.getAttachMenuBots();
+        const buttons = filteredButtonsSliced.slice();
+        const attachMenuBotsButtons = attachMenuBots.filter((attachMenuBot) => {
+          return attachMenuBot.pFlags.show_in_side_menu;
+        }).map((attachMenuBot) => {
+          const icon = getAttachMenuBotIcon(attachMenuBot);
+          const button: typeof buttons[0] = {
+            regularText: wrapEmojiText(attachMenuBot.short_name),
+            onClick: () => {
+              appImManager.openWebApp({
+                attachMenuBot,
+                botId: attachMenuBot.bot_id,
+                isSimpleWebView: true,
+                fromSideMenu: true
+              });
+            },
+            iconDoc: icon?.icon as MyDocument
+          };
+
+          return button;
+        });
+
+        buttons.splice(3, 0, ...attachMenuBotsButtons);
+        filteredButtons.splice(0, filteredButtons.length, ...buttons);
+      },
       onOpen: (e, btnMenu) => {
         const btnMenuFooter = document.createElement('a');
         btnMenuFooter.href = 'https://github.com/morethanwords/tweb/blob/master/CHANGELOG.md';

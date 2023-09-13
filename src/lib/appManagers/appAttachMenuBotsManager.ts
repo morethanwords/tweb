@@ -6,11 +6,10 @@
 
 import type {MessageSendingParams} from './appMessagesManager';
 import {AppManager} from './manager';
-import {AttachMenuBots, AttachMenuBot, Update, DataJSON, InputBotApp, BotApp} from '../../layer';
+import {AttachMenuBots, AttachMenuBot, Update, DataJSON, BotApp} from '../../layer';
 import assumeType from '../../helpers/assumeType';
 import makeError from '../../helpers/makeError';
 import getAttachMenuBotIcon from './utils/attachMenuBots/getAttachMenuBotIcon';
-import getServerMessageId from './utils/messageId/getServerMessageId';
 import {randomLong} from '../../helpers/random';
 import getInputReplyTo from './utils/misc/getInputReplyTo';
 
@@ -24,13 +23,16 @@ export type RequestWebViewOptions = MessageSendingParams & {
   fromBotMenu?: boolean,
   fromAttachMenu?: boolean,
   fromSwitchWebView?: boolean,
+  fromSideMenu?: boolean,
   attachMenuBot?: AttachMenuBot,
   url?: string,
   themeParams?: DataJSON,
   isSimpleWebView?: boolean,
   buttonText?: string,
   writeAllowed?: boolean,
-  app?: BotApp.botApp
+  app?: BotApp.botApp,
+  noConfirmation?: boolean,
+  hasSettings?: boolean
 };
 
 export default class AppAttachMenuBotsManager extends AppManager {
@@ -44,6 +46,18 @@ export default class AppAttachMenuBotsManager extends AppManager {
       updateAttachMenuBots: this.onUpdateAttachMenuBots,
 
       updateWebViewResultSent: this.onUpdateWebViewResultSent
+    });
+
+    this.rootScope.addEventListener('user_auth', () => {
+      this.appAttachMenuBotsManager.getAttachMenuBots();
+
+      setInterval(() => {
+        this.onUpdateAttachMenuBots({_: 'updateAttachMenuBots'});
+      }, 30 * 60e3);
+    });
+
+    this.rootScope.addEventListener('language_change', () => {
+      this.onUpdateAttachMenuBots({_: 'updateAttachMenuBots'});
     });
   }
 
@@ -120,6 +134,7 @@ export default class AppAttachMenuBotsManager extends AppManager {
       url,
       fromBotMenu,
       fromSwitchWebView,
+      fromSideMenu,
       themeParams,
       // platform,
       replyToMsgId,
@@ -163,7 +178,9 @@ export default class AppAttachMenuBotsManager extends AppManager {
           url,
           platform,
           from_switch_webview: fromSwitchWebView,
-          theme_params: themeParams
+          from_side_menu: fromSideMenu,
+          theme_params: themeParams,
+          start_param: startParam
         },
         processResult: (result) => {
           return result;

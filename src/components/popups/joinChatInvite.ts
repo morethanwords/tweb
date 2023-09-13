@@ -10,9 +10,11 @@ import numberThousandSplitter from '../../helpers/number/numberThousandSplitter'
 import {Chat, ChatInvite} from '../../layer';
 import appImManager from '../../lib/appManagers/appImManager';
 import {i18n, _i18n, LangPackKey} from '../../lib/langPack';
+import {NULL_PEER_ID} from '../../lib/mtproto/mtproto_config';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import rootScope from '../../lib/rootScope';
 import {avatarNew, wrapPhotoToAvatar} from '../avatarNew';
+import generateTitleIcons from '../generateTitleIcons';
 import {toastNew} from '../toast';
 
 // const FAKE_CHAT_ID = Number.MAX_SAFE_INTEGER - 0x1000;
@@ -113,8 +115,37 @@ export default class PopupJoinChatInvite extends PopupElement {
     }
 
     const title = document.createElement('div');
-    title.classList.add('chat-title');
-    setInnerHTML(title, wrapEmojiText(chatInvite.title));
+    title.classList.add('peer-title', 'chat-title');
+    const icons = await generateTitleIcons(
+      NULL_PEER_ID,
+      this.middlewareHelper.get(),
+      false,
+      false,
+      false,
+      {
+        _: 'channel',
+        pFlags: {
+          verified: chatInvite.pFlags.verified,
+          scam: chatInvite.pFlags.scam,
+          fake: chatInvite.pFlags.fake
+        },
+        date: 0,
+        id: 0,
+        photo: undefined,
+        title: ''
+      }
+    );
+
+    const titleFragment = wrapEmojiText(chatInvite.title);
+    if(icons.length) {
+      title.classList.add('with-icons');
+      const titleInner = document.createElement('span');
+      titleInner.classList.add('peer-title-inner');
+      titleInner.append(titleFragment);
+      title.append(titleInner, ...icons);
+    } else {
+      setInnerHTML(title, titleFragment);
+    }
     // avatarElem.setAttribute('peer', '' + -fakeChat.id);
 
     const isBroadcast = chatInvite.pFlags.broadcast;

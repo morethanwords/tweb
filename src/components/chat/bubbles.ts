@@ -4198,16 +4198,14 @@ export default class ChatBubbles {
         buttonEl.classList.add('is-web-view');
         buttonIcon = Icon('webview');
 
-        onClick = async() => {
-          await this.chat.appImManager.confirmBotWebView(botId);
-
+        onClick = () => {
           const toggle = toggleDisability([buttonEl], true);
           this.chat.openWebApp({
             botId,
             url: button.url,
             isSimpleWebView: button._ === 'keyboardButtonSimpleWebView',
             buttonText: button.text
-          }).then(() => {
+          }).finally(() => {
             toggle();
           });
         };
@@ -5656,12 +5654,13 @@ export default class ChatBubbles {
             this.setExtendedMediaMessagesPollInterval();
 
             const {width, height} = attachmentDiv.style;
-            const dotRenderer = DotRenderer.create({
+            const {dotRenderer, readyResult} = DotRenderer.create({
               width: parseInt(width),
               height: parseInt(height),
               middleware,
               animationGroup: this.chat.animationGroup
             });
+            loadPromises?.push(readyResult as Promise<any>);
             attachmentDiv.append(dotRenderer.canvas);
           }
 

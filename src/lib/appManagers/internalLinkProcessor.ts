@@ -572,9 +572,9 @@ export class InternalLinkProcessor {
 
     const botId = user.id;
 
-    let botApp: MessagesBotApp;
+    let messagesBotApp: MessagesBotApp;
     try {
-      botApp = await this.managers.appAttachMenuBotsManager.getBotApp(botId, link.appname);
+      messagesBotApp = await this.managers.appAttachMenuBotsManager.getBotApp(botId, link.appname);
     } catch(err) {
       if((err as ApiError).type === 'BOT_APP_INVALID') {
         toastNew({langPackKey: 'Alert.BotAppDoesntExist'});
@@ -584,16 +584,27 @@ export class InternalLinkProcessor {
       }
     }
 
+    const attachMenuBot = user.pFlags.bot_attach_menu && await appImManager.toggleBotInAttachMenu(botId, true);
+
     let haveWriteAccess: boolean;
-    if(botApp.pFlags.inactive || link.masked) {
-      haveWriteAccess = await appImManager.confirmBotWebViewInner(botId, botApp.pFlags.request_write_access);
+    if(attachMenuBot) {
+
+    } else if(messagesBotApp.pFlags.inactive || link.masked) {
+      haveWriteAccess = await appImManager.confirmBotWebViewInner({
+        botId,
+        requestWriteAccess: messagesBotApp.pFlags.request_write_access,
+        showDisclaimer: user.pFlags.bot_attach_menu && messagesBotApp.pFlags.inactive
+      });
     }
 
     appImManager.chat.openWebApp({
+      attachMenuBot,
       startParam: link.startapp,
       writeAllowed: haveWriteAccess,
       botId,
-      app: botApp.app as BotApp.botApp
+      app: messagesBotApp.app as BotApp.botApp,
+      noConfirmation: !attachMenuBot,
+      hasSettings: messagesBotApp.pFlags.has_settings
     });
   };
 

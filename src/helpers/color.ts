@@ -264,3 +264,30 @@ export function getColorsFromWallPaper(wallPaper: WallPaper) {
     wallPaper.settings.fourth_background_color
   ].filter(Boolean).map(getHexColorFromTelegramColor).join(',') : '';
 }
+
+export function rgbaToRgb(rgba: ColorRgba, bg: ColorRgb): ColorRgb {
+  const [r, g, b, a] = rgba;
+  return [
+    Math.round((a * (r / 255) + (a * (bg[0] / 255))) * 255),
+    Math.round((a * (g / 255) + (a * (bg[1] / 255))) * 255),
+    Math.round((a * (b / 255) + (a * (bg[2] / 255))) * 255)
+  ];
+}
+
+export function calculateLuminance(rgb: ColorRgb) {
+  const [r, g, b] = rgb;
+  const luminance = (0.2126 * r / 255 + 0.7152 * g / 255 + 0.0722 * b / 255);
+  return luminance;
+}
+
+export function getTextColor(luminance: number): ColorRgb {
+  return luminance > 0.5 ? [0, 0, 0] : [255, 255, 255];
+}
+
+export function calculateOpacity(luminance: number, targetContrast: number) {
+  const targetTextLuminance = luminance > 0.5 ? 0 : 1;
+  const adaptiveOpacity = (luminance - targetTextLuminance + targetContrast) / targetContrast;
+  const opacity = +Math.max(0.5, Math.min(0.64, adaptiveOpacity)).toFixed(2);
+
+  return opacity;
+}

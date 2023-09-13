@@ -750,24 +750,7 @@ export default class Chat extends EventListenerBase<{
 
   public async openWebApp(options: Partial<RequestWebViewOptions>) {
     Object.assign(options, this.getMessageSendingParams());
-    options.botId ??= options.attachMenuBot.bot_id;
-    options.themeParams ??= {
-      _: 'dataJSON',
-      data: JSON.stringify(themeController.getThemeParamsForWebView())
-    };
     options.peerId ??= this.peerId;
-
-    if(!options.attachMenuBot && !options.isSimpleWebView && !options.app) {
-      try {
-        options.attachMenuBot = await this.managers.appAttachMenuBotsManager.getAttachMenuBot(options.botId);
-      } catch(err) {}
-    }
-
-    const webViewResultUrl = await this.managers.appAttachMenuBotsManager.requestWebView(options as RequestWebViewOptions);
-    PopupElement.createPopup(PopupWebApp, {
-      webViewResultUrl,
-      webViewOptions: options as RequestWebViewOptions,
-      attachMenuBot: options.attachMenuBot
-    });
+    return this.appImManager.openWebApp(options);
   }
 }

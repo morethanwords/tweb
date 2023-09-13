@@ -2161,7 +2161,7 @@ export namespace MessagesFilter {
 /**
  * @link https://core.telegram.org/type/Update
  */
-export type Update = Update.updateNewMessage | Update.updateMessageID | Update.updateDeleteMessages | Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChatParticipants | Update.updateUserStatus | Update.updateUserName | Update.updateNewEncryptedMessage | Update.updateEncryptedChatTyping | Update.updateEncryption | Update.updateEncryptedMessagesRead | Update.updateChatParticipantAdd | Update.updateChatParticipantDelete | Update.updateDcOptions | Update.updateNotifySettings | Update.updateServiceNotification | Update.updatePrivacy | Update.updateUserPhone | Update.updateReadHistoryInbox | Update.updateReadHistoryOutbox | Update.updateWebPage | Update.updateReadMessagesContents | Update.updateChannelTooLong | Update.updateChannel | Update.updateNewChannelMessage | Update.updateReadChannelInbox | Update.updateDeleteChannelMessages | Update.updateChannelMessageViews | Update.updateChatParticipantAdmin | Update.updateNewStickerSet | Update.updateStickerSetsOrder | Update.updateStickerSets | Update.updateSavedGifs | Update.updateBotInlineQuery | Update.updateBotInlineSend | Update.updateEditChannelMessage | Update.updateBotCallbackQuery | Update.updateEditMessage | Update.updateInlineBotCallbackQuery | Update.updateReadChannelOutbox | Update.updateDraftMessage | Update.updateReadFeaturedStickers | Update.updateRecentStickers | Update.updateConfig | Update.updatePtsChanged | Update.updateChannelWebPage | Update.updateDialogPinned | Update.updatePinnedDialogs | Update.updateBotWebhookJSON | Update.updateBotWebhookJSONQuery | Update.updateBotShippingQuery | Update.updateBotPrecheckoutQuery | Update.updatePhoneCall | Update.updateLangPackTooLong | Update.updateLangPack | Update.updateFavedStickers | Update.updateChannelReadMessagesContents | Update.updateContactsReset | Update.updateChannelAvailableMessages | Update.updateDialogUnreadMark | Update.updateMessagePoll | Update.updateChatDefaultBannedRights | Update.updateFolderPeers | Update.updatePeerSettings | Update.updatePeerLocated | Update.updateNewScheduledMessage | Update.updateDeleteScheduledMessages | Update.updateTheme | Update.updateGeoLiveViewed | Update.updateLoginToken | Update.updateMessagePollVote | Update.updateDialogFilter | Update.updateDialogFilterOrder | Update.updateDialogFilters | Update.updatePhoneCallSignalingData | Update.updateChannelMessageForwards | Update.updateReadChannelDiscussionInbox | Update.updateReadChannelDiscussionOutbox | Update.updatePeerBlocked | Update.updateChannelUserTyping | Update.updatePinnedMessages | Update.updatePinnedChannelMessages | Update.updateChat | Update.updateGroupCallParticipants | Update.updateGroupCall | Update.updatePeerHistoryTTL | Update.updateChatParticipant | Update.updateChannelParticipant | Update.updateBotStopped | Update.updateGroupCallConnection | Update.updateBotCommands | Update.updatePendingJoinRequests | Update.updateBotChatInviteRequester | Update.updateMessageReactions | Update.updateAttachMenuBots | Update.updateWebViewResultSent | Update.updateBotMenuButton | Update.updateSavedRingtones | Update.updateTranscribedAudio | Update.updateReadFeaturedEmojiStickers | Update.updateUserEmojiStatus | Update.updateRecentEmojiStatuses | Update.updateRecentReactions | Update.updateMoveStickerSetToTop | Update.updateMessageExtendedMedia | Update.updateChannelPinnedTopic | Update.updateChannelPinnedTopics | Update.updateUser | Update.updateAutoSaveSettings | Update.updateGroupInvitePrivacyForbidden | Update.updateStory | Update.updateReadStories | Update.updateStoryID | Update.updateStoriesStealthMode | Update.updateSentStoryReaction | Update.updateNewDiscussionMessage | Update.updateDeleteDiscussionMessages | Update.updateChannelReload;
+export type Update = Update.updateNewMessage | Update.updateMessageID | Update.updateDeleteMessages | Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChatParticipants | Update.updateUserStatus | Update.updateUserName | Update.updateNewAuthorization | Update.updateNewEncryptedMessage | Update.updateEncryptedChatTyping | Update.updateEncryption | Update.updateEncryptedMessagesRead | Update.updateChatParticipantAdd | Update.updateChatParticipantDelete | Update.updateDcOptions | Update.updateNotifySettings | Update.updateServiceNotification | Update.updatePrivacy | Update.updateUserPhone | Update.updateReadHistoryInbox | Update.updateReadHistoryOutbox | Update.updateWebPage | Update.updateReadMessagesContents | Update.updateChannelTooLong | Update.updateChannel | Update.updateNewChannelMessage | Update.updateReadChannelInbox | Update.updateDeleteChannelMessages | Update.updateChannelMessageViews | Update.updateChatParticipantAdmin | Update.updateNewStickerSet | Update.updateStickerSetsOrder | Update.updateStickerSets | Update.updateSavedGifs | Update.updateBotInlineQuery | Update.updateBotInlineSend | Update.updateEditChannelMessage | Update.updateBotCallbackQuery | Update.updateEditMessage | Update.updateInlineBotCallbackQuery | Update.updateReadChannelOutbox | Update.updateDraftMessage | Update.updateReadFeaturedStickers | Update.updateRecentStickers | Update.updateConfig | Update.updatePtsChanged | Update.updateChannelWebPage | Update.updateDialogPinned | Update.updatePinnedDialogs | Update.updateBotWebhookJSON | Update.updateBotWebhookJSONQuery | Update.updateBotShippingQuery | Update.updateBotPrecheckoutQuery | Update.updatePhoneCall | Update.updateLangPackTooLong | Update.updateLangPack | Update.updateFavedStickers | Update.updateChannelReadMessagesContents | Update.updateContactsReset | Update.updateChannelAvailableMessages | Update.updateDialogUnreadMark | Update.updateMessagePoll | Update.updateChatDefaultBannedRights | Update.updateFolderPeers | Update.updatePeerSettings | Update.updatePeerLocated | Update.updateNewScheduledMessage | Update.updateDeleteScheduledMessages | Update.updateTheme | Update.updateGeoLiveViewed | Update.updateLoginToken | Update.updateMessagePollVote | Update.updateDialogFilter | Update.updateDialogFilterOrder | Update.updateDialogFilters | Update.updatePhoneCallSignalingData | Update.updateChannelMessageForwards | Update.updateReadChannelDiscussionInbox | Update.updateReadChannelDiscussionOutbox | Update.updatePeerBlocked | Update.updateChannelUserTyping | Update.updatePinnedMessages | Update.updatePinnedChannelMessages | Update.updateChat | Update.updateGroupCallParticipants | Update.updateGroupCall | Update.updatePeerHistoryTTL | Update.updateChatParticipant | Update.updateChannelParticipant | Update.updateBotStopped | Update.updateGroupCallConnection | Update.updateBotCommands | Update.updatePendingJoinRequests | Update.updateBotChatInviteRequester | Update.updateMessageReactions | Update.updateAttachMenuBots | Update.updateWebViewResultSent | Update.updateBotMenuButton | Update.updateSavedRingtones | Update.updateTranscribedAudio | Update.updateReadFeaturedEmojiStickers | Update.updateUserEmojiStatus | Update.updateRecentEmojiStatuses | Update.updateRecentReactions | Update.updateMoveStickerSetToTop | Update.updateMessageExtendedMedia | Update.updateChannelPinnedTopic | Update.updateChannelPinnedTopics | Update.updateUser | Update.updateAutoSaveSettings | Update.updateGroupInvitePrivacyForbidden | Update.updateStory | Update.updateReadStories | Update.updateStoryID | Update.updateStoriesStealthMode | Update.updateSentStoryReaction | Update.updateNewDiscussionMessage | Update.updateDeleteDiscussionMessages | Update.updateChannelReload;
 
 export namespace Update {
   export type updateNewMessage = {
@@ -2214,6 +2214,18 @@ export namespace Update {
     first_name: string,
     last_name: string,
     usernames: Array<Username>
+  };
+
+  export type updateNewAuthorization = {
+    _: 'updateNewAuthorization',
+    flags?: number,
+    pFlags: Partial<{
+      unconfirmed?: true,
+    }>,
+    hash: string | number,
+    date?: number,
+    device?: string,
+    location?: string
   };
 
   export type updateNewEncryptedMessage = {
@@ -2320,9 +2332,11 @@ export namespace Update {
 
   export type updateReadMessagesContents = {
     _: 'updateReadMessagesContents',
+    flags?: number,
     messages: Array<number>,
     pts: number,
-    pts_count: number
+    pts_count: number,
+    date?: number
   };
 
   export type updateChannelTooLong = {
@@ -4144,6 +4158,7 @@ export namespace Authorization {
       password_pending?: true,
       encrypted_requests_disabled?: true,
       call_requests_disabled?: true,
+      unconfirmed?: true,
     }>,
     hash: string | number,
     device_model: string,
@@ -4306,6 +4321,9 @@ export namespace ChatInvite {
       public?: true,
       megagroup?: true,
       request_needed?: true,
+      verified?: true,
+      scam?: true,
+      fake?: true,
     }>,
     title: string,
     about?: string,
@@ -10107,10 +10125,13 @@ export namespace AttachMenuBot {
       inactive?: true,
       has_settings?: true,
       request_write_access?: true,
+      show_in_attach_menu?: true,
+      show_in_side_menu?: true,
+      side_menu_disclaimer_needed?: true,
     }>,
     bot_id: string | number,
     short_name: string,
-    peer_types: Array<AttachMenuPeerType>,
+    peer_types?: Array<AttachMenuPeerType>,
     icons: Array<AttachMenuBotIcon>
   };
 }
@@ -10976,6 +10997,7 @@ export namespace MessagesBotApp {
     pFlags: Partial<{
       inactive?: true,
       request_write_access?: true,
+      has_settings?: true,
     }>,
     app: BotApp
   };
@@ -11418,7 +11440,7 @@ export namespace MediaAreaCoordinates {
 /**
  * @link https://core.telegram.org/type/MediaArea
  */
-export type MediaArea = MediaArea.mediaAreaVenue | MediaArea.inputMediaAreaVenue | MediaArea.mediaAreaGeoPoint | MediaArea.mediaAreaSuggestedReaction;
+export type MediaArea = MediaArea.mediaAreaVenue | MediaArea.inputMediaAreaVenue | MediaArea.mediaAreaGeoPoint;
 
 export namespace MediaArea {
   export type mediaAreaVenue = {
@@ -11443,17 +11465,6 @@ export namespace MediaArea {
     _: 'mediaAreaGeoPoint',
     coordinates: MediaAreaCoordinates,
     geo: GeoPoint
-  };
-
-  export type mediaAreaSuggestedReaction = {
-    _: 'mediaAreaSuggestedReaction',
-    flags?: number,
-    pFlags: Partial<{
-      dark?: true,
-      flipped?: true,
-    }>,
-    coordinates: MediaAreaCoordinates,
-    reaction: Reaction
   };
 }
 
@@ -11575,6 +11586,7 @@ export interface ConstructorDeclMap {
   'updateChatParticipants': Update.updateChatParticipants,
   'updateUserStatus': Update.updateUserStatus,
   'updateUserName': Update.updateUserName,
+  'updateNewAuthorization': Update.updateNewAuthorization,
   'updates.state': UpdatesState.updatesState,
   'updates.differenceEmpty': UpdatesDifference.updatesDifferenceEmpty,
   'updates.difference': UpdatesDifference.updatesDifference,
@@ -12601,7 +12613,6 @@ export interface ConstructorDeclMap {
   'inputMediaAreaVenue': MediaArea.inputMediaAreaVenue,
   'mediaAreaGeoPoint': MediaArea.mediaAreaGeoPoint,
   'updateSentStoryReaction': Update.updateSentStoryReaction,
-  'mediaAreaSuggestedReaction': MediaArea.mediaAreaSuggestedReaction,
   'messageEntityEmoji': MessageEntity.messageEntityEmoji,
   'messageEntityHighlight': MessageEntity.messageEntityHighlight,
   'messageEntityLinebreak': MessageEntity.messageEntityLinebreak,
@@ -14979,6 +14990,7 @@ export type AccountSetAuthorizationTTL = {
 
 export type AccountChangeAuthorizationSettings = {
   flags?: number,
+  confirmed?: boolean,
   hash: string | number,
   encrypted_requests_disabled?: boolean,
   call_requests_disabled?: boolean
@@ -15111,8 +15123,10 @@ export type MessagesProlongWebView = {
 export type MessagesRequestSimpleWebView = {
   flags?: number,
   from_switch_webview?: boolean,
+  from_side_menu?: boolean,
   bot: InputUser,
-  url: string,
+  url?: string,
+  start_param?: string,
   theme_params?: DataJSON,
   platform: string
 };
