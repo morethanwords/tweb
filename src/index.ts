@@ -35,9 +35,27 @@ import {IS_BETA} from './config/debug';
 import IS_INSTALL_PROMPT_SUPPORTED from './environment/installPrompt';
 import cacheInstallPrompt from './helpers/dom/installPrompt';
 import {fillLocalizedDates} from './helpers/date';
+import {nextRandomUint} from './helpers/random';
 // import appNavigationController from './components/appNavigationController';
 
 /* false &&  */document.addEventListener('DOMContentLoaded', async() => {
+  // * Randomly choose a version if user came from google
+  try {
+    if(
+      App.isMainDomain &&
+      document.referrer &&
+      /google\.\w+$/.test(new URL(document.referrer).host) &&
+      !localStorage.getItem('kz_version')
+    ) {
+      if(nextRandomUint(8) > 127) {
+        localStorage.setItem('kz_version', 'Z');
+        location.href = 'https://web.telegram.org/a/';
+      } else {
+        localStorage.setItem('kz_version', 'K');
+      }
+    }
+  } catch(err) {}
+
   toggleAttributePolyfill();
 
   // polyfill for replaceChildren

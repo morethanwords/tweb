@@ -32,6 +32,12 @@
       padding: 0;
       height: 100%;
     }
+
+    &-close {
+      @include respond-to(handhelds) {
+        margin-inline-end: 0;
+      }
+    }
   }
 
   .selector,
