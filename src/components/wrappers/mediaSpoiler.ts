@@ -7,7 +7,6 @@
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import safePlay from '../../helpers/dom/safePlay';
 import getImageFromStrippedThumb from '../../helpers/getImageFromStrippedThumb';
-import noop from '../../helpers/noop';
 import {Document, Photo, PhotoSize} from '../../layer';
 import DotRenderer from '../dotRenderer';
 import SetTransition from '../singleTransition';
@@ -56,7 +55,7 @@ export function onMediaSpoilerClick(options: {
   });
 }
 
-export function wrapMediaSpoilerWithImage(options: {
+function wrapMediaSpoilerWithImage(options: {
   image: Awaited<ReturnType<typeof getImageFromStrippedThumb>>['image']
 } & Parameters<typeof DotRenderer['create']>[0]) {
   const {middleware, image} = options;
@@ -70,14 +69,14 @@ export function wrapMediaSpoilerWithImage(options: {
   container.classList.add('media-spoiler-container');
   container.middlewareHelper = middleware.create();
 
-  const dotRenderer = DotRenderer.create({
+  const {dotRenderer, readyResult} = DotRenderer.create({
     ...options,
     middleware: container.middlewareHelper.get()
   });
 
   container.append(image, dotRenderer.canvas);
 
-  return container;
+  return {container, readyResult};
 }
 
 export default async function wrapMediaSpoiler(
@@ -95,8 +94,14 @@ export default async function wrapMediaSpoiler(
   const {image, loadPromise} = getImageFromStrippedThumb(media, thumb, true);
   await loadPromise;
 
-  return wrapMediaSpoilerWithImage({
+  const {container, readyResult} = wrapMediaSpoilerWithImage({
     ...options,
     image
   });
+
+  if(readyResult instanceof Promise) {
+    await readyResult;
+  }
+
+  return container;
 }

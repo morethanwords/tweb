@@ -5650,12 +5650,13 @@ export default class ChatBubbles {
             this.setExtendedMediaMessagesPollInterval();
 
             const {width, height} = attachmentDiv.style;
-            const dotRenderer = DotRenderer.create({
+            const {dotRenderer, readyResult} = DotRenderer.create({
               width: parseInt(width),
               height: parseInt(height),
               middleware,
               animationGroup: this.chat.animationGroup
             });
+            loadPromises?.push(readyResult as Promise<any>);
             attachmentDiv.append(dotRenderer.canvas);
           }
 
