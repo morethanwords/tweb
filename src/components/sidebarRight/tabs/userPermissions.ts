@@ -109,7 +109,7 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
       if(this.isAdmin) {
         const p = new ChatAdministratorRights(options);
 
-        const field = p.fields[p.fields.length - 1];
+        const field = p.fields.find((field) => field.flags[0] === 'add_admins');
 
         const onChange = () => {
           section.caption.replaceChildren(i18n(_canEditAdmin ? (field.checkboxField.checked ? 'Channel.Admin.AdminAccess' : 'Channel.Admin.AdminRestricted') : 'EditAdminCantEdit'));

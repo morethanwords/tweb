@@ -289,6 +289,11 @@ const lang = {
   'WebApp.WriteAccess.Title': 'Allow Sending Messages',
   'WebApp.WriteAccess.Description': 'Allow %s to send messages?',
   'ActionBotAllowedRequest': 'You allowed this bot to message you when you accepted its request.',
+  'AdminRights.ManageMessages': 'Manage Messages',
+  'AdminRights.ManageStories': 'Manage Stories',
+  'AdminRights.PostStories': 'Post Stories',
+  'AdminRights.EditStories': 'Edit Stories of Others',
+  'AdminRights.DeleteStories': 'Delete Stories of Others',
 
   // * android
   'AccDescrEditing': 'Editing',
