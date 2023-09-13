@@ -318,7 +318,15 @@
       max-height: calc(100 * var(--vh) - 3.75rem);
 
       &-item {
-        padding-inline-end: .375rem;
+        --padding-right: .375rem;
+
+        .is-mobile & {
+          --padding-right: .75rem;
+
+          .btn-menu-item-text {
+            margin-right: .75rem;
+          }
+        }
       }
     }
   }

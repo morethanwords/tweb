@@ -89,18 +89,22 @@ function ButtonMenuItem(options: ButtonMenuItemOptions) {
         return fetch(url)
         .then((response) => response.text())
         .then((text) => {
-          const color = customProperties.getProperty(document.documentElement.classList.contains('is-mobile') ? 'secondary-text-color' : 'primary-text-color');
+          const isMobile = document.documentElement.classList.contains('is-mobile');
+          const color = customProperties.getProperty(isMobile ? 'secondary-text-color' : 'primary-text-color');
           const doc = new DOMParser().parseFromString(text, 'image/svg+xml');
           const svg = doc.firstElementChild as HTMLElement;
           svg.querySelectorAll('path').forEach((path) => {
             path.setAttributeNS(null, 'fill', color);
             path.style.stroke = color;
-            path.style.strokeWidth = '.375px';
+            path.style.strokeWidth = (isMobile ? .625 : .375) + 'px';
           });
           return textToSvgURL(svg.outerHTML);
         });
       }
-    }).then((ret) => ret.loadPromises.thumb);
+    }).then((ret) => {
+      iconElement.style.width = iconElement.style.height = '';
+      return ret.loadPromises.thumb;
+    });
   }
 
   textElement.classList.add('btn-menu-item-text');
