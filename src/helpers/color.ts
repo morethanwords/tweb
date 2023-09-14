@@ -266,12 +266,10 @@ export function getColorsFromWallPaper(wallPaper: WallPaper) {
 }
 
 export function rgbaToRgb(rgba: ColorRgba, bg: ColorRgb): ColorRgb {
-  const [r, g, b, a] = rgba;
-  return [
-    Math.round((a * (r / 255) + (a * (bg[0] / 255))) * 255),
-    Math.round((a * (g / 255) + (a * (bg[1] / 255))) * 255),
-    Math.round((a * (b / 255) + (a * (bg[2] / 255))) * 255)
-  ];
+  const a = rgba[3];
+  return rgba.slice(0, 3).map((color, idx) => {
+    return clamp(Math.round((a * (color / 255) + (a * (bg[idx] / 255))) * 255), 0, 255);
+  }) as ColorRgb;
 }
 
 export function calculateLuminance(rgb: ColorRgb) {

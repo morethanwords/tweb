@@ -188,12 +188,13 @@ export default class PopupWebApp extends PopupElement<{
       const textColor = getTextColor(luminance);
       const textOpacity = calculateOpacity(luminance, 2.5);
       const textRgbColor = rgbaToRgb([...textColor, textOpacity], rgb);
-      const borderColor = rgbaToRgb([...rgb, 1 - 0.08], rgbaToRgb([255, 255, 255, 0.08], rgb));
+      // const borderColor = rgbaToRgb([...rgb, 1 - 0.08], rgb || rgbaToRgb([255, 255, 255, 0.08], rgb));
       backgroundColor = hex;
       this.title.style.color = `rgb(${textColor.join(',')})`;
       this.header.style.setProperty('--secondary-text-color', `rgb(${textRgbColor.join(', ')})`);
       this.header.style.setProperty('--light-secondary-text-color', `rgba(${textColor.join(', ')}, ${0.08})`);
-      this.header.style.setProperty('--border-color', `rgb(${borderColor.join(', ')})`);
+      // this.header.style.setProperty('--border-color', `rgb(${borderColor.join(', ')})`);
+      this.header.style.setProperty('--border-color', `rgba(${textColor.join(', ')}, ${0.08})`);
     } else {
       backgroundColor = this.getThemeParams()[color.color_key];
       this.title.style.color = '';
