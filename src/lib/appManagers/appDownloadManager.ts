@@ -111,14 +111,14 @@ export class AppDownloadManager {
   }
 
   public getNewDeferredForUpload<T extends Promise<any>>(fileName: string, promise: T) {
-    const deferred = this.getNewDeferred<InputFile>(fileName);
-    promise.then(deferred.resolve, deferred.reject);
+    const deferred: CancellablePromise<Awaited<T>> = this.getNewDeferred<InputFile>(fileName);
+    promise.then(deferred.resolve.bind(deferred), deferred.reject.bind(deferred));
 
     deferred.finally(() => {
       this.clearDownload(fileName);
     });
 
-    return deferred as CancellablePromise<Awaited<T>>;
+    return deferred;
   }
 
   private clearDownload(fileName: string, type?: DownloadType) {
