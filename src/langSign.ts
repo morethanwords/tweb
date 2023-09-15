@@ -3,14 +3,14 @@ const lang = {
   'Login.PhoneLabel': 'Phone Number',
   'Login.PhoneLabelInvalid': 'Phone Number Invalid',
   'Login.KeepSigned': 'Keep me signed in',
-  'Login.StartText': 'Please confirm your country and\nenter your phone number.',
+  'Login.StartText': 'Please confirm your country code\nand enter your phone number.',
   'Login.Code.SentSms': 'We have sent you an SMS\nwith the code.',
   'Login.Code.SentInApp': 'We have sent you a message in Telegram\nwith the code.',
-  'Login.Code.SentCall': 'We will call you and voice\nthe code.',
+  'Login.Code.SentCall': 'We will call you and dictate\nthe code.',
   'Login.Code.SentUnknown': 'Please check everything\nfor a code (type: %s)',
   'Login.Password.Title': 'Enter Your Password',
   'Login.Password.Subtitle': 'Your account is protected with\nan additional password',
-  'Login.Register.Subtitle': 'Enter your name and add\na profile picture',
+  'Login.Register.Subtitle': 'Enter your name and add\na profile photo',
   'PleaseWait': 'Please wait...',
 
   // * android

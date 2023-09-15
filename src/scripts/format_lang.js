@@ -19,7 +19,7 @@ let out = '';
   const path = `../${part}.ts`;
 
   let str = fs.readFileSync(path).toString()
-  .replace(/\s.+\/\/.+/g, '')
+  .replace(/\s+\/\/.+/g, '')
   // .replace(/\\'/g, '')
   .replace(/"/g, `\\"`)
   // .replace(/'/g, '"')
@@ -41,7 +41,7 @@ let out = '';
   // idx -= 1;
   // console.log(str.slice(idx, idx + 100));
   const json = JSON.parse(str);
-  // console.log(json);
+  console.log(json);
 
   for(const key in json) {
     const value = json[key];

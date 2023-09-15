@@ -23,6 +23,7 @@
 "EditFolder.Toast.ChooseChat" = "Please choose at least one chat for this folder.";
 "EditBot.Title" = "Edit Bot";
 "EditBot.Username.Caption" = "This username cannot be edited.";
+"EditBot.Buttons.Caption" = "Use [@BotFather](https://t.me/botfather) to manage this bot.";
 "EditBot.Buttons.Intro" = "Edit Intro";
 "EditBot.Buttons.Commands" = "Edit Commands";
 "EditBot.Buttons.Settings" = "Change Bot Settings";
@@ -80,6 +81,7 @@
 "ChatsNew_other" = "%d new chats";
 "ChatList.Main.EmptyPlaceholder.Title" = "Your chats will appear here";
 "ChatList.Main.EmptyPlaceholder.Subtitle" = "You have %s on Telegram";
+"ChatList.Main.EmptyPlaceholder.SubtitleNoContacts" = "Use Telegram app on your [Android](https://telegram.org/android) or [iOS](https://telegram.org/dl/ios) device to sync your contacts";
 "ChatList.Menu.SwitchTo.Webogram" = "Switch to Old Version";
 "ChatList.Menu.SwitchTo.A" = "Switch to A version";
 "ChatList.SharedFolder.Title" = "**You can join %s**";
@@ -125,6 +127,8 @@
 "Message.Context.Selection.Forward" = "Forward selected";
 "Message.Context.Selection.Download" = "Download selected";
 "Message.Context.Selection.SendNow" = "Send Now selected";
+"Message.Unsupported.Desktop" = "__This message is currently not supported on Telegram Web. Try [getdesktop.telegram.org](https://getdesktop.telegram.org/)__";
+"Message.Unsupported.Mobile" = "__This message is currently not supported on Telegram Web. Try [telegram.org/dl](https://telegram.org/dl/)__";
 "Checkbox.Enabled" = "Enabled";
 "Checkbox.Disabled" = "Disabled";
 "Error.PreviewSender.CaptionTooLong" = "Caption is too long.";
@@ -199,6 +203,8 @@
 "PaymentCard.Error.Incomplete" = "Incomplete card number";
 "LimitReached.Ok" = "OK, GOT IT";
 "Username.Purchase" = "**This username is already taken.** However, it is currently available for purchase. [Learn more…]()";
+"Video.Unsupported.Desktop" = "__Unfortunately, this video can't be played on Telegram Web. Try opening it with our [desktop app](https://getdesktop.telegram.org/) instead.__";
+"Video.Unsupported.Mobile" = "__Unfortunately, this video can't be played on Telegram Web. Try opening it with our [mobile app](https://telegram.org/dl/) instead.__";
 "Error.RequestPeer.NoRights.Channel" = "Sorry, you can't add bots to this channel.";
 "Error.RequestPeer.NoRights.Group" = "Sorry, you can't add bots to this group.";
 "JustArgument" = "%@";
@@ -253,6 +259,9 @@
 "WebApp.WriteAccess.Title" = "Allow Sending Messages";
 "WebApp.WriteAccess.Description" = "Allow %s to send messages?";
 "ActionBotAllowedRequest" = "You allowed this bot to message you when you accepted its request.";
+"WebApp.Disclaimer.Check" = "I agree to the **[Terms of Use]()**";
+"WebApp.AttachRemove.SuccessAll" = "\"%@\" removed from all your menus.";
+"WebApp.AttachRemove.SuccessSide" = "\"%@\" removed from your side menu.";
 "AccDescrEditing" = "Editing";
 "ActionCreateChannel" = "Channel created";
 "ActionCreateGroup" = "un1 created the group";
@@ -772,6 +781,7 @@
 "ReportChatIllegalDrugs" = "Illegal Drugs";
 "ReportChatPersonalDetails" = "Personal Details";
 "VoipPeerIncompatible" = "**%1$s**'s app is using an incompatible protocol. They need to update their app before you can call them.";
+"TelegramFeaturesUrl" = "https://t.me/TelegramTips";
 "ScamMessage" = "SCAM";
 "FakeMessage" = "FAKE";
 "TextCopied" = "Text copied to clipboard";
@@ -1119,6 +1129,14 @@
 "SavedStories" = "Posted Stories";
 "ArchivedStories" = "Archived Stories";
 "StoryViewLocation" = "View Location";
+"BotWebAppDisclaimerSubtitle" = "You are about to use a mini app operated by an independent party **not affiliated with Telegram**. You must agree to the Terms of Use of mini apps to continue.";
+"TermsOfUse" = "Terms of Use";
+"WebAppDisclaimerUrl" = "https://telegram.org/tos/mini-apps";
+"BotWebViewStartPermission" = "To launch this web app, you will connect to its website.";
+"BotWebAppInstantViewOpen" = "Launch";
+"BotAttachMenuShortcatAddedAttachAndSide" = "**%s** shortcut added in attachment menu and side menu.";
+"BotAttachMenuShortcatAddedSide" = "**%s** shortcut added in side menu.";
+"BotAttachMenuShortcatAddedAttach" = "**%s** shortcut added in attachment menu.";
 "AccountSettings.Filters" = "Chat Folders";
 "AccountSettings.Notifications" = "Notifications and Sounds";
 "AccountSettings.PrivacyAndSecurity" = "Privacy and Security";
@@ -1268,6 +1286,7 @@
 "Chat.Message.ViewGroup" = "VIEW GROUP";
 "Chat.Message.SendMessage" = "SEND MESSAGE";
 "Chat.Message.Sponsored.What" = "What are sponsored messages?";
+"Chat.Message.Sponsored.Link" = "https://promote.telegram.org";
 "Chat.Voice.Transribe.Error" = "No speech detected";
 "Chat.VoiceChat.JoinLink.Participants_ZeroValueHolder" = "no one joined yet";
 "Checkout.2FA.Text" = "Saving payment details is only available with 2-Step Verification.";
@@ -1565,7 +1584,6 @@
 "VoiceChat.RemovePeer.Confirm.Channel" = "Do you want to remove %1$@ from the channel?";
 "VoiceChat.RemovePeer.Confirm" = "Are you sure you want to remove %1$@ from the group?";
 "VoiceChat.RemovePeer.Confirm.OK" = "Remove";
-"WebApp.Attach.Success" = "\"%@\" added to your attachment menu.";
 "WebApp.AttachRemove.Success" = "\"%@\" removed from your attachment menu.";
 "WebApp.InstallBot" = "Install Bot";
 "Login.Title" = "Sign in to Telegram";

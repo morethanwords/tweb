@@ -41,13 +41,15 @@ import {nextRandomUint} from './helpers/random';
 /* false &&  */document.addEventListener('DOMContentLoaded', async() => {
   // * Randomly choose a version if user came from google
   try {
+    const SEARCH_ENGINE_REFERRERS = ['google', 'bing', 'duckduckgo', 'ya', 'yandex'];
+    const referrer = document.referrer.toLowerCase();
     if(
       App.isMainDomain &&
       document.referrer &&
-      /google\.\w+$/.test(new URL(document.referrer).host) &&
-      !localStorage.getItem('kz_version')
+      SEARCH_ENGINE_REFERRERS.some((engine) => referrer.includes(`//:${engine}.`))
     ) {
-      if(nextRandomUint(8) > 127) {
+      const version = localStorage.getItem('kz_version');
+      if(version === 'Z' || nextRandomUint(8) > 127) {
         localStorage.setItem('kz_version', 'Z');
         location.href = 'https://web.telegram.org/a/';
       } else {
