@@ -39,6 +39,7 @@
   &-subtitle {
     text-align: center;
     display: block;
+    @include text-overflow(false);
   }
 
   &-title {

@@ -236,15 +236,15 @@ function loadReactionGeneric(): Promise<{layersPositions: ComputedFrameTransform
 export default class ReactionElement extends HTMLElement {
   private type: ReactionLayoutType;
   private counter: HTMLElement;
-  private stickerContainer: HTMLElement;
+  public stickerContainer: HTMLElement;
   private stackedAvatars: StackedAvatars;
   private canRenderAvatars: boolean;
   private _reactionCount: ReactionCount;
-  private wrapStickerPromise: Awaited<ReturnType<typeof wrapSticker>>['render'];
-  private managers: AppManagers;
-  private middleware: Middleware;
+  public wrapStickerPromise: Awaited<ReturnType<typeof wrapSticker>>['render'];
+  public managers: AppManagers;
+  public middleware: Middleware;
   private customEmojiElement: CustomEmojiElement;
-  private hasAroundAnimation: Promise<void>;
+  public hasAroundAnimation: Promise<void>;
 
   constructor() {
     super();
@@ -413,12 +413,47 @@ export default class ReactionElement extends HTMLElement {
     }
   }
 
-  public fireAroundAnimation(waitPromise: Promise<any>) {
-    if(this.hasAroundAnimation || !liteMode.isAvailable('effects_reactions')) {
+  public fireAroundAnimation(waitPromise?: Promise<any>) {
+    return ReactionElement?.fireAroundAnimation({
+      waitPromise,
+      cache: this,
+      middleware: this.middleware,
+      reaction: this.reactionCount?.reaction,
+      stickerContainer: this.stickerContainer,
+      managers: this.managers,
+      sizes: {
+        genericEffect: 26,
+        genericEffectSize: 100,
+        size: this.type === 'inline' ? REACTION_INLINE_SIZE + 14 : REACTION_BLOCK_SIZE + 18,
+        effectSize: 80
+      }
+    });
+  }
+
+  public static fireAroundAnimation(options: {
+    waitPromise?: Promise<any>
+    cache?: {
+      hasAroundAnimation: ReactionElement['hasAroundAnimation'],
+      wrapStickerPromise?: ReactionElement['wrapStickerPromise']
+    },
+    reaction: Reaction,
+    managers?: AppManagers,
+    middleware: Middleware,
+    stickerContainer: HTMLElement,
+    sizes: {
+      genericEffect: number,
+      genericEffectSize: number,
+      size: number,
+      effectSize: number
+    }
+  }) {
+    if(options.cache.hasAroundAnimation || !liteMode.isAvailable('effects_reactions')) {
       return;
     }
 
-    const reaction = this.reactionCount.reaction;
+    options.managers ??= rootScope.managers;
+
+    const reaction = options.reaction;
     if(reaction._ === 'reactionEmpty') return;
 
     const onAvailableReaction = ({
@@ -430,22 +465,22 @@ export default class ReactionElement extends HTMLElement {
       genericEffect?: Document.document,
       sticker?: Document.document
     }) => {
-      const size = genericEffect ? 26 : (this.type === 'inline' ? REACTION_INLINE_SIZE + 14 : REACTION_BLOCK_SIZE + 18);
+      const size = genericEffect ? options.sizes.genericEffect : options.sizes.size;
       const div = genericEffect ? undefined : document.createElement('div');
       div && div.classList.add(CLASS_NAME + '-sticker-activate');
 
-      const genericEffectSize = 100;
+      const genericEffectSize = options.sizes.genericEffectSize;
       const isGenericMasked = genericEffect && sticker.sticker !== 2;
 
       const aroundParams: Parameters<typeof wrapStickerAnimation>[0] = {
         doc: genericEffect || availableReaction.around_animation,
-        size: genericEffect ? genericEffectSize : 80,
-        target: this.stickerContainer,
+        size: genericEffect ? genericEffectSize : options.sizes.effectSize,
+        target: options.stickerContainer,
         side: 'center',
         skipRatio: 1,
         play: false,
-        managers: this.managers,
-        middleware: this.middleware,
+        managers: options.managers,
+        middleware: options.middleware,
         scrollable: appImManager.chat.bubbles.scrollable
       };
 
@@ -468,8 +503,8 @@ export default class ReactionElement extends HTMLElement {
         skipRatio: 1,
         group: 'none',
         needFadeIn: false,
-        managers: this.managers,
-        middleware: this.middleware,
+        managers: options.managers,
+        middleware: options.middleware,
         textColor: 'primary-text-color',
         loop: isGenericMasked
         // static: isGenericMasked || undefined
@@ -486,7 +521,7 @@ export default class ReactionElement extends HTMLElement {
 
         genericEffect && loadReactionGeneric(),
 
-        waitPromise
+        options.waitPromise
       ]).then(([iconPlayer, aroundPlayer, maskedSticker, reactionGeneric, _]) => {
         const deferred = deferredPromise<void>();
         const remove = () => {
@@ -495,7 +530,7 @@ export default class ReactionElement extends HTMLElement {
           // if(!isInDOM(div)) return;
           iconPlayer.remove();
           div?.remove();
-          this.stickerContainer.classList.remove('has-animation');
+          options.stickerContainer.classList.remove('has-animation');
         };
 
         if(genericEffect) {
@@ -602,10 +637,12 @@ export default class ReactionElement extends HTMLElement {
           fastRaf(remove);
         };
 
+        options.middleware.onDestroy(removeOnFrame);
+
         !genericEffect && iconPlayer.addEventListener('enterFrame', (frameNo) => {
           if(frameNo === iconPlayer.maxFrame) {
-            if(this.wrapStickerPromise) { // wait for fade in animation
-              this.wrapStickerPromise.then(() => {
+            if(options.cache.wrapStickerPromise) { // wait for fade in animation
+              options.cache.wrapStickerPromise.then(() => {
                 setTimeout(removeOnFrame, 1e3);
               });
             } else {
@@ -615,8 +652,8 @@ export default class ReactionElement extends HTMLElement {
         });
 
         iconPlayer.addEventListener('firstFrame', () => {
-          div && this.stickerContainer.append(div);
-          this.stickerContainer.classList.add('has-animation');
+          div && options.stickerContainer.append(div);
+          options.stickerContainer.classList.add('has-animation');
           iconPlayer.play();
           aroundPlayer.play();
         }, {once: true});
@@ -628,7 +665,7 @@ export default class ReactionElement extends HTMLElement {
     const onEmoticon = (sticker: Document.document, emoticon: string = sticker.stickerEmojiRaw) => {
       return callbackifyAll([
         apiManagerProxy.getReaction(emoticon),
-        sticker ? this.managers.appReactionsManager.getRandomGenericAnimation() : undefined
+        sticker ? options.managers.appReactionsManager.getRandomGenericAnimation() : undefined
       ], ([
         availableReaction,
         genericEffect
@@ -646,14 +683,15 @@ export default class ReactionElement extends HTMLElement {
     if(reaction._ === 'reactionEmoji') {
       promise = onEmoticon(undefined, reaction.emoticon);
     } else {
-      promise = callbackify(this.managers.appEmojiManager.getCustomEmojiDocument(reaction.document_id), (doc) => {
+      promise = callbackify(options.managers.appEmojiManager.getCustomEmojiDocument(reaction.document_id), (doc) => {
         return onEmoticon(doc);
       });
     }
 
-    this.hasAroundAnimation = promise.finally(() => {
-      if(this.hasAroundAnimation === promise) {
-        this.hasAroundAnimation = undefined;
+    options.cache.hasAroundAnimation = promise;
+    promise.finally(() => {
+      if(options.cache.hasAroundAnimation === promise) {
+        options.cache.hasAroundAnimation = undefined;
       }
     });
   }

@@ -41,12 +41,10 @@ import {nextRandomUint} from './helpers/random';
 /* false &&  */document.addEventListener('DOMContentLoaded', async() => {
   // * Randomly choose a version if user came from google
   try {
-    const SEARCH_ENGINE_REFERRERS = ['google', 'bing', 'duckduckgo', 'ya', 'yandex'];
-    const referrer = document.referrer.toLowerCase();
     if(
       App.isMainDomain &&
       document.referrer &&
-      SEARCH_ENGINE_REFERRERS.some((engine) => referrer.includes(`//:${engine}.`))
+      /(^|\.)(google|bing|duckduckgo|ya|yandex)\./i.test(new URL(document.referrer).host)
     ) {
       const version = localStorage.getItem('kz_version');
       if(version === 'Z' || nextRandomUint(8) > 127) {

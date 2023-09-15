@@ -12,7 +12,7 @@ import overlayCounter from '../../helpers/overlayCounter';
 import throttle from '../../helpers/schedulers/throttle';
 import classNames from '../../helpers/string/classNames';
 import windowSize from '../../helpers/windowSize';
-import {Document, DocumentAttribute, GeoPoint, MediaArea, MessageMedia, Photo, StoryItem, StoryView, User, UserStories} from '../../layer';
+import {Document, DocumentAttribute, GeoPoint, MediaArea, MessageMedia, Photo, Reaction, StoryItem, StoryView, User, UserStories} from '../../layer';
 import animationIntersector from '../animationIntersector';
 import appNavigationController, {NavigationItem} from '../appNavigationController';
 import ButtonCorner from '../buttonCorner';
@@ -76,6 +76,7 @@ import liteMode from '../../helpers/liteMode';
 import Icon from '../icon';
 import {ChatReactionsMenu} from '../chat/reactionsMenu';
 import setCurrentTime from '../../helpers/dom/setCurrentTime';
+import ReactionElement from '../chat/reaction';
 
 export const STORY_DURATION = 5e3;
 const STORY_HEADER_AVATAR_SIZE = 32;
@@ -101,11 +102,11 @@ export const createMiddleware = () => {
   return middleware;
 };
 
-const ButtonIconTsx = (props: {icon: Icon, noRipple?: boolean} & JSX.HTMLAttributes<HTMLButtonElement>) => {
+const ButtonIconTsx = (props: {icon?: Icon, noRipple?: boolean} & JSX.HTMLAttributes<HTMLButtonElement>) => {
   const [, rest] = splitProps(props, ['icon', 'noRipple']);
   return (
     <button {...rest} class={classNames('btn-icon', props.class)} tabIndex={-1}>
-      {Icon(props.icon)}
+      {props.icon ? Icon(props.icon) : props.children}
     </button>
   );
 };
@@ -277,10 +278,65 @@ const StoryInput = (props: {
   const middlewareHelper = createMiddleware();
   const middleware = middlewareHelper.get();
 
+  let sendingReaction = false;
+  const sentReaction = createMemo(() => {
+    const reaction = (props.currentStory() as StoryItem.storyItem).sent_reaction;
+    if(reaction && sendingReaction) {
+      ReactionElement.fireAroundAnimation({
+        middleware: createMiddleware().get(),
+        reaction,
+        sizes: {
+          genericEffect: 26,
+          genericEffectSize: 100,
+          size: 22 + 18,
+          effectSize: 80
+        },
+        stickerContainer: btnReactionEl,
+        cache: btnReactionEl as any
+      });
+    }
+    return reaction;
+  });
+
   const chat = new Chat(appImManager, rootScope.managers, false, {elements: true, sharedMedia: true});
   chat.setType('stories');
 
+  const DEFAULT_REACTION_EMOTICON = '❤';
+  const haveDefaultReaction = createMemo(() => {
+    const reaction = sentReaction();
+    return (reaction as Reaction.reactionEmoji)?.emoticon === DEFAULT_REACTION_EMOTICON;
+  });
+
+  const onReactionClick = async() => {
+    const story = props.currentStory() as StoryItem.storyItem;
+
+    const isNewReaction = !story.sent_reaction;
+    const reaction: Reaction = !isNewReaction ? undefined : {_: 'reactionEmoji', emoticon: DEFAULT_REACTION_EMOTICON};
+    sendingReaction = true;
+    await rootScope.managers.acknowledged.appStoriesManager.sendReaction(
+      props.state.peerId,
+      story.id,
+      reaction
+    );
+    sendingReaction = false;
+  };
+
+  let btnReactionEl: HTMLButtonElement;
+  const btnReaction = (
+    <ButtonIconTsx
+      ref={btnReactionEl}
+      onClick={onReactionClick}
+      classList={{'is-default': haveDefaultReaction()}}
+      tabIndex={-1}
+      class="btn-circle btn-reaction chat-input-secondary-button chat-secondary-button"
+      noRipple={true}
+    >
+      {(haveDefaultReaction() || !sentReaction()) && Icon('reactions_filled')}
+    </ButtonIconTsx>
+  );
+
   const input = chat.input = new ChatInput(chat, appImManager, rootScope.managers, 'stories-input');
+  input.btnReaction = btnReactionEl;
   input.excludeParts = {
     replyMarkup: true,
     scheduled: true,
@@ -294,16 +350,61 @@ const StoryInput = (props: {
   };
   input.globalMentions = true;
 
-  const onMouseDown = (e: MouseEvent) => {
-    if(
-      focused() &&
-      !findUpClassName(e.target, styles.ViewerStoryPrivacy) &&
-      !findUpClassName(e.target, 'btn-icon') &&
-      !findUpClassName(e.target, styles.small) &&
-      !findUpAsChild(e.target as HTMLElement, input.emoticonsDropdown.getElement())
-    ) {
-      document.addEventListener('click', cancelEvent, {capture: true, once: true});
+  // const onMouseDown = (e: MouseEvent) => {
+  //   if(
+  //     focused() &&
+  //     !findUpClassName(e.target, styles.ViewerStoryPrivacy) &&
+  //     !findUpClassName(e.target, 'btn-icon') &&
+  //     !findUpClassName(e.target, styles.small) &&
+  //     !findUpAsChild(e.target as HTMLElement, input.emoticonsDropdown.getElement())
+  //   ) {
+  //     document.addEventListener('click', cancelEvent, {capture: true, once: true});
+  //   }
+
+  //   onFocusChange(false);
+  // };
+
+  const onClick = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const good = findUpClassName(target, styles.ViewerStory) ||
+      target.classList.contains(styles.Viewer);
+    if(!good) {
+      return;
     }
+
+    cancelEvent(e);
+    onFocusChange(false);
+  };
+
+  onCleanup(() => {
+    if(navigationItem) {
+      appNavigationController.removeItem(navigationItem);
+      navigationItem = undefined;
+    }
+  });
+
+  let navigationItem: NavigationItem;
+  const onFocusChange = (_focused: boolean) => {
+    if(_focused) {
+      playAfterFocus = !stories.paused;
+      // document.addEventListener('mousedown', onMouseDown, {capture: true, once: true});
+      document.addEventListener('click', onClick, {capture: true});
+      appNavigationController.pushItem(navigationItem = {
+        type: 'stories-focus',
+        onPop: () => {
+          onFocusChange(false);
+        }
+      });
+    } else {
+      // document.removeEventListener('mousedown', onMouseDown, {capture: true});
+      document.removeEventListener('click', onClick, {capture: true});
+      appNavigationController.removeItem(navigationItem);
+      navigationItem = undefined;
+    }
+
+    actions.toggle(_focused ? false : playAfterFocus);
+    setFocused(_focused);
+    input.freezeFocused(_focused);
   };
 
   let playAfterFocus = false;
@@ -312,15 +413,11 @@ const StoryInput = (props: {
       return;
     }
 
-    if(_focused) {
-      playAfterFocus = !stories.paused;
-      document.addEventListener('mousedown', onMouseDown, {capture: true, once: true});
-    } else {
-      document.removeEventListener('mousedown', onMouseDown, {capture: true});
+    if(!_focused) {
+      return;
     }
 
-    actions.toggle(_focused ? false : playAfterFocus);
-    setFocused(_focused);
+    onFocusChange(_focused);
   };
 
   let playAfter = false;
@@ -334,9 +431,11 @@ const StoryInput = (props: {
   input.onMenuToggle = input.onRecording = onMenuToggle;
   input.construct();
   input.constructPeerHelpers();
+  input.setShrinking(true);
   input.chatInput.classList.add(styles.hideOnSmall);
-  input.rowsWrapper.classList.add('night');
+  // input.rowsWrapper.classList.add('night');
   input.messageInput.dataset.textColor = 'white';
+  input.btnCancelRecord.style.visibility = 'hidden';
 
   createEffect(() => {
     input.replyToStoryId = props.currentStory().id;
@@ -344,8 +443,8 @@ const StoryInput = (props: {
 
   createEffect(() => {
     if(props.isActive()) {
-      const onOpen = (): void => (onMenuToggle(true), setFocused(true), undefined);
-      const onClose = (): void => (onMenuToggle(false), setFocused(false), undefined);
+      const onOpen = (): void => (onMenuToggle(true)/* , setFocused(true) */, undefined);
+      const onClose = (): void => (onMenuToggle(false)/* , setFocused(false) */, undefined);
       emoticonsDropdown.addEventListener('open', onOpen);
       emoticonsDropdown.addEventListener('close', onClose);
       emoticonsDropdown.chatInput = input;
@@ -611,33 +710,78 @@ const Stories = (props: {
   });
   const isActive = createMemo(() => stories.peer === props.state);
 
+  const createReactionsMenu = () => {
+    const [inited, setInited] = createSignal(false);
+    const middleware = createMiddleware().get();
+    const menu = new ChatReactionsMenu({
+      managers: rootScope.managers,
+      type: 'horizontal',
+      middleware,
+      onFinish: async(reaction) => {
+        // contextMenuController.close();
+        // reaction = await reaction;
+        // if(!reaction) {
+        //   return;
+        // }
+
+        // this.managers.appReactionsManager.sendReaction(reactionsMessage, reaction);
+      },
+      size: 36,
+      openSide: 'top',
+      getOpenPosition: () => undefined
+    });
+
+    menu.widthContainer.classList.add(styles.ViewerStoryReactions);
+
+    menu.init().then(() => {
+      setInited(true);
+    });
+
+    onCleanup(() => {
+      menu.cleanup();
+      menu.widthContainer.classList.remove('is-visible');
+      setTimeout(() => {
+        if(reactionsMenu() === menu) {
+          setReactionsMenu();
+        } else {
+          menu.widthContainer.remove();
+        }
+      }, 500);
+    });
+
+    createEffect(() => {
+      if(!focused()) {
+
+      }
+    });
+
+    createEffect(() => {
+      if(!inited()) {
+        return;
+      }
+
+      menu.widthContainer.classList.toggle('is-visible', inited() && focused());
+    });
+
+    setReactionsMenu(menu);
+  };
+
+  const firstFocusMemo = createMemo((_focused) => _focused || focused());
+
   createEffect(() => {
     if(focused() && !reactionsMenu()) {
-      const reactionsMenu = new ChatReactionsMenu({
-        managers: rootScope.managers,
-        type: 'horizontal',
-        middleware: getMiddleware().get(),
-        onFinish: async(reaction) => {
-          // contextMenuController.close();
-          // reaction = await reaction;
-          // if(!reaction) {
-          //   return;
-          // }
-
-          // this.managers.appReactionsManager.sendReaction(reactionsMessage, reaction);
-        },
-        size: 36,
-        openSide: 'top',
-        getOpenPosition: () => undefined
-      });
-
-      reactionsMenu.widthContainer.classList.add(styles.ViewerStoryReactions);
-
-      reactionsMenu.init().then(() => {
-        reactionsMenu.widthContainer.classList.add('is-visible');
-        setReactionsMenu(reactionsMenu);
-      });
+      createReactionsMenu();
     }
+    // const menu = untrack(() => reactionsMenu());
+    // if(focused()) {
+    //   if(!menu) {
+    //     createReactionsMenu();
+    //   } else if(menu.inited) {
+    //     menu.widthContainer.classList.add('is-visible');
+    //   }
+    // } else if(menu) {
+    //   menu.widthContainer.classList.remove('is-visible');
+    // }
   });
 
   const setVideoListeners = (video: HTMLVideoElement) => {

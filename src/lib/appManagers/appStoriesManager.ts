@@ -14,7 +14,7 @@ import deepEqual from '../../helpers/object/deepEqual';
 import safeReplaceObject from '../../helpers/object/safeReplaceObject';
 import pause from '../../helpers/schedulers/pause';
 import tsNow from '../../helpers/tsNow';
-import {ReportReason, StoriesAllStories, StoriesStories, StoriesUserStories, StoryItem, Update, UserStories} from '../../layer';
+import {Reaction, ReportReason, StoriesAllStories, StoriesStories, StoriesUserStories, StoryItem, Update, UserStories} from '../../layer';
 import {MTAppConfig} from '../mtproto/appConfig';
 import {SERVICE_PEER_ID, TEST_NO_STORIES} from '../mtproto/mtproto_config';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
@@ -771,6 +771,26 @@ export default class AppStoriesManager extends AppManager {
         message
       },
       processResult: () => {
+      }
+    });
+  }
+
+  public sendReaction(peerId: PeerId, id: number, reaction: Reaction) {
+    reaction ??= {_: 'reactionEmpty'};
+    const story = this.getStoryByIdCached(peerId, id) as StoryItem.storyItem;
+    this.saveStoryItems([{
+      ...story,
+      sent_reaction: reaction._ === 'reactionEmpty' ? undefined : reaction
+    }], this.getPeerStoriesCache(peerId));
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'stories.sendReaction',
+      params: {
+        user_id: this.appUsersManager.getUserInput(peerId.toUserId()),
+        reaction,
+        story_id: id
+      },
+      processResult: (updates) => {
+        this.apiUpdatesManager.processUpdateMessage(updates);
       }
     });
   }

@@ -285,6 +285,7 @@ export default class ReactionsElement extends HTMLElement {
       const reactionElement = this.sorted.find((reactionElement) => {
         return reactionsEqual(reactionElement.reactionCount.reaction, reactionCount.reaction);
       });
+
       reactionElement?.fireAroundAnimation(waitPromise);
     });
   }

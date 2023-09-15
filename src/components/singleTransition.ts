@@ -20,6 +20,7 @@ type SetTransitionOptions = {
 };
 const SetTransition = (options: SetTransitionOptions) => {
   const {element, className, forwards, duration, onTransitionEnd, onTransitionStart, useRafs} = options;
+  const classNames = className && className.split(' ');
   const timeout: number = (element as any)[$TRANSITION_TIMEOUT];
   const raf: number = (element as any)[$TRANSITION_RAF];
   if(timeout !== undefined) {
@@ -53,13 +54,13 @@ const SetTransition = (options: SetTransitionOptions) => {
   }
 
   if(forwards && className) {
-    element.classList.add(className);
+    element.classList.add(...classNames);
   }
 
   const afterTimeout = () => {
     delete (element as any)[$TRANSITION_TIMEOUT];
     if(!forwards && className) {
-      element.classList.remove('backwards', className);
+      element.classList.remove('backwards', ...classNames);
     }
 
     element.classList.remove('animating');

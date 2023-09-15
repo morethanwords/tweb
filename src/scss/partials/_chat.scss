@@ -6,7 +6,6 @@
 
 @use "sass:math";
 
-$btn-send-margin: .5rem;
 $chat-helper-size: 45px;
 $chat-input-box-shadow: 0px 1px 8px 1px rgb(0 0 0 / 12%);
 
@@ -190,6 +189,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
     background-color: var(--primary-color) !important;
     // color: var(--secondary-text-color);
 		z-index: 3;
+    opacity: 1 !important;
 
     @include hover() {
       background-color: var(--dark-primary-color) !important;
@@ -278,19 +278,44 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 	&.is-locked {
 		pointer-events: none;
 
-		.btn-icon,
-    &:not(.is-recording) .btn-send {
-			color: #c6cbce;
+		.btn-icon {
+			// color: #c6cbce;
+      opacity: var(--disabled-opacity);
 		}
 	}
-	
-	&.is-recording {
+
+  &.is-shrinking {
     &:not(.backwards) {
-      .btn-record-cancel {
+      .chat-input-secondary-button {
         opacity: 1;
         visibility: visible;
       }
 
+      .rows-wrapper {
+        width: calc(100% - (var(--chat-input-size) * 2 + #{$btn-send-margin * 2}));
+        // transform: translateX(calc((var(--chat-input-size) + 0.5rem) / -1)) scaleX(1);
+      }
+    }
+
+    &.animating {
+      .chat-input-secondary-button {
+        transition: visibility 0s $input-half-transition-time, opacity $input-half-transition-time 0s;
+      }
+
+      .rows-wrapper {
+        transition: width $input-transition-time;
+      }
+
+      &:not(.backwards) {
+        .chat-input-secondary-button {
+          transition: visibility 0s $input-half-transition-time, opacity $input-half-transition-time $input-half-transition-time;
+        }
+      }
+    }
+  }
+	
+	&.is-recording {
+    &:not(.backwards) {
       // unlock
       .btn-send, 
       .btn-record-cancel {
@@ -301,11 +326,6 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
         visibility: visible;
       }
 
-      .rows-wrapper {
-        width: calc(100% - (var(--chat-input-size) * 2 + #{$btn-send-margin * 2}));
-        // transform: translateX(calc((var(--chat-input-size) + 0.5rem) / -1)) scaleX(1);
-      }
-  
       .attach-file {
         display: none;
       }
@@ -316,23 +336,11 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
     }
 
     &.animating {
-      .btn-record-cancel {
-        transition: visibility 0s $input-half-transition-time, opacity $input-half-transition-time 0s;
-      }
-
       .record-ripple {
         transition: transform .03s ease-in-out, visibility $input-half-transition-time;
       }
 
-      .rows-wrapper {
-        transition: width $input-transition-time;
-      }
-
       &:not(.backwards) {
-        .btn-record-cancel {
-          transition: visibility 0s $input-half-transition-time, opacity $input-half-transition-time $input-half-transition-time;
-        }
-
         .record-ripple {
           transition: transform .03s, visibility 0s;
         }
@@ -340,8 +348,8 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
     }
 	}
 
-	&:not(.is-recording) {
-		.btn-record-cancel {
+	&:not(.is-shrinking) {
+		.chat-input-secondary-button {
 			margin-inline-end: 0;
 			width: 0px;
 		}

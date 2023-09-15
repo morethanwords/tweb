@@ -61,6 +61,7 @@ export class ChatReactionsMenu {
   private size: number;
   private openSide: 'top' | 'bottom';
   private getOpenPosition: (hasMenu: boolean) => DOMRectEditable;
+  public inited: boolean;
 
   constructor(options: {
     managers: AppManagers,
@@ -277,6 +278,8 @@ export class ChatReactionsMenu {
     if(cached) {
       await renderPromise;
     }
+
+    this.inited = true;
   }
 
   public cleanup() {

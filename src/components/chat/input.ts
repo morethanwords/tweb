@@ -145,7 +145,8 @@ export default class ChatInput {
   private fileInput: HTMLInputElement;
   private inputMessageContainer: HTMLDivElement;
   private btnSend: HTMLButtonElement;
-  private btnCancelRecord: HTMLButtonElement;
+  public btnCancelRecord: HTMLButtonElement;
+  public btnReaction: HTMLButtonElement;
   public lastUrl = '';
   private lastTimeType = 0;
 
@@ -270,6 +271,7 @@ export default class ChatInput {
   private restoreInputLock: () => void;
 
   private isFocused: boolean;
+  private freezedFocused: boolean;
   public onFocusChange: (isFocused: boolean) => void;
   public onMenuToggle: (isOpen: boolean) => void;
   public onRecording: (isRecording: boolean) => void;
@@ -410,7 +412,16 @@ export default class ChatInput {
     this.inputContainer.append(c);
   }
 
-  private createButtonIcon(...args: Parameters<typeof ButtonIcon>) {
+  public freezeFocused(focused: boolean) {
+    if(this.freezedFocused === focused) {
+      return;
+    }
+
+    this.freezedFocused = focused;
+    this.updateSendBtn();
+  }
+
+  public createButtonIcon(...args: Parameters<typeof ButtonIcon>) {
     const button = ButtonIcon(...args);
     button.tabIndex = -1;
     return button;
@@ -976,7 +987,7 @@ export default class ChatInput {
     this.inlineHelper = new InlineHelper(this.rowsWrapper, this.autocompleteHelperController, this.chat, this.managers);
     this.rowsWrapper.append(this.newMessageWrapper);
 
-    this.btnCancelRecord = this.createButtonIcon('binfilled btn-circle btn-record-cancel chat-secondary-button');
+    this.btnCancelRecord = this.createButtonIcon('binfilled btn-circle btn-record-cancel chat-input-secondary-button chat-secondary-button');
 
     this.btnSendContainer = document.createElement('div');
     this.btnSendContainer.classList.add('btn-send-container');
@@ -1019,7 +1030,7 @@ export default class ChatInput {
 
     this.btnSendContainer.append(this.sendMenu.sendMenu);
 
-    this.inputContainer.append(this.btnCancelRecord, this.btnSendContainer);
+    this.inputContainer.append(...[this.btnReaction, this.btnCancelRecord, this.btnSendContainer].filter(Boolean));
 
     this.emoticonsDropdown.attachButtonListener(this.btnToggleEmoticons, this.listenerSetter);
     this.listenerSetter.add(this.emoticonsDropdown)('open', this.onEmoticonsOpen);
@@ -2727,15 +2738,20 @@ export default class ChatInput {
       return;
     }
 
+    this.recording = value;
+    this.setShrinking(this.recording, ['is-recording']);
+    this.updateSendBtn();
+    this.onRecording?.(value);
+  }
+
+  public setShrinking(value?: boolean, classNames?: string[]) {
+    value ||= this.recording;
     SetTransition({
       element: this.chatInput,
-      className: 'is-recording',
+      className: 'is-shrinking' + (classNames ? ' ' + classNames.join(' ') : ''),
       forwards: value,
       duration: 200
     });
-    this.recording = value;
-    this.updateSendBtn();
-    this.onRecording?.(value);
   }
 
   private onBtnSendClick = async(e: Event) => {
@@ -3047,8 +3063,8 @@ export default class ChatInput {
 
     const isInputEmpty = this.isInputEmpty();
 
-    /* if(this.chat.type === 'stories' && isInputEmpty && !this.isFocused) icon = 'forward';
-    else  */if(this.editMsgId) icon = 'edit';
+    if(this.chat.type === 'stories' && isInputEmpty && !this.freezedFocused) icon = 'forward';
+    else if(this.editMsgId) icon = 'edit';
     else if(!this.recorder || this.recording || !isInputEmpty || this.forwarding) icon = this.chat.type === 'scheduled' ? 'schedule' : 'send';
     else icon = 'record';
 
