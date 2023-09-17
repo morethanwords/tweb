@@ -5,12 +5,30 @@
  */
 
 .popup-sponsored {
+  .popup-header {
+    height: auto;
+    min-height: 2.5rem;
+    padding-top: .375rem;
+    padding-bottom: .375rem;
+    margin-top: -.375rem;
+  }
+
+  .popup-title {
+    word-break: break-word;
+    white-space: pre-wrap;
+  }
+
+  .popup-buttons {
+    margin-bottom: -.5rem;
+    margin-top: .25rem;
+  }
+
   .scrollable-y {
     position: relative;
     max-height: 25rem;
     margin: 0 -1.5rem;
     width: calc(100% + 3rem);
-    padding: .5rem 1.5rem;
+    padding: 0 1.5rem;
     user-select: text;
   }
 }
