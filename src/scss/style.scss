@@ -116,6 +116,7 @@
 
   --chat-input-border-radius: 1rem;
   --chat-input-max-width: var(--messages-container-width);
+  --chat-input-btn-send-margin: #{$btn-send-margin};
 
   // https://github.com/overtake/TelegramSwift/blob/5cc7d2475fe4738a6aa0486c23eaf80a89d33b97/submodules/TGUIKit/TGUIKit/PresentationTheme.swift#L2054
   @include avatar-color("red", #FF845E, #D45246);
@@ -664,6 +665,7 @@ input:-webkit-autofill:active {
   bottom: auto !important;
   width: auto !important;
   z-index: 4 !important;
+  max-width: calc(100vw - 1rem);
 }
 
 .preloader {
@@ -1110,13 +1112,13 @@ not screen and (                min-resolution: 2dppx) {
   color: var(--secondary-text-color);
 }
 
-.message,
-[contenteditable],
-input {
-  &::selection {
-    background: var(--selection-background-color);
-  }
-}
+// .message,
+// [contenteditable],
+// input {
+//   &::selection {
+//     background: var(--selection-background-color);
+//   }
+// }
 
 .selection:after {
   content: " ";

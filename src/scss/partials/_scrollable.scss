@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-html:not(.is-safari):not(.is-ios):not(.is-mac) {
+html:not(.is-safari):not(.is-ios):not(.is-mac):not(.is-mobile) {
   .scrollable::-webkit-scrollbar {
     width: 0;
     height: 0;

@@ -110,6 +110,7 @@ $btn-menu-z-index: 4;
   // max-width: 16.25rem;
   -webkit-user-select: none; /* disable selection/Copy of UIWebView */
   -webkit-touch-callout: none; /* disable the IOS popup when long-press on a link */
+  width: max-content;
 
   &,
   &-items {
@@ -276,7 +277,7 @@ $btn-menu-z-index: 4;
     pointer-events: all !important;
     color: var(--primary-text-color);
     text-transform: none;
-    white-space: nowrap;
+    // white-space: nowrap;
     // overflow: hidden;
     // text-overflow: ellipsis;
     align-items: center;
