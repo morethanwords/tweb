@@ -297,9 +297,14 @@ export default class BubbleGroups {
 
   removeAndUnmountBubble(bubble: HTMLElement) {
     const item = this.getItemByBubble(bubble);
-    if(!item) {
-      if(bubble.parentElement) {
-        bubble.remove(); // * can be a placeholder
+    if(!item) { // * can be a placeholder
+      const parentElement = bubble.parentElement;
+      if(parentElement) {
+        if(parentElement.classList.contains('bubbles-group')) {
+          parentElement.remove();
+        } else {
+          bubble.remove();
+        }
       }
 
       return false;
