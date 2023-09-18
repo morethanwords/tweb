@@ -66,6 +66,7 @@ $color-inactive: rgba(255, 255, 255, .5);
       --scale: 1;
       display: flex;
       flex-direction: column;
+      align-items: center;
       padding-bottom: 3.5rem;
       margin: .75rem 0;
       max-height: 100%;
@@ -88,8 +89,9 @@ $color-inactive: rgba(255, 255, 255, .5);
         opacity: 1;
       }
   
-      &.hold .hideOnSmall:not(:global(.stories-input)),
-      &.small .hideOnSmall {
+      &.hold .hideOnSmall,
+      &.small .hideOnSmall,
+      &.small :global(.stories-input) {
         opacity: 0;
       }
     }
@@ -221,14 +223,6 @@ $color-inactive: rgba(255, 255, 255, .5);
         align-items: center;
         white-space: pre-wrap;
       }
-    }
-
-    &Share {
-      --size: 42px;
-      --offset: 13px;
-      font-size: 21px;
-      // backdrop-filter: blur(10px); // ! will blink on opacity change
-      background-color: rgba(0, 0, 0, .3) !important;
     }
 
     &Privacy {
@@ -478,13 +472,83 @@ $color-inactive: rgba(255, 255, 255, .5);
       --chat-input-size: 3rem;
       --chat-input-padding: 0rem;
       --chat-input-border-radius: #{$border-radius-medium};
-      --chat-input-max-width: 100%;
+      --chat-input-focus-offset: 135px;
+      --chat-input-max-width: calc(var(--stories-width) + var(--chat-input-focus-offset));
       --secondary-text-color: #707579;
       --primary-text-color: #fff;
+      --focus-translateX: 0px;
       position: absolute;
       bottom: 0;
+      width: var(--stories-width);
+      max-width: var(--chat-input-max-width);
+      opacity: 1;
+
+      // @include animation-level-global(2) {
+      //   transition: width var(--transition-standard-out), opacity var(--transition-standard-out) !important;
+      // }
+
+      // &.is-focused {
+      //   width: var(--chat-input-max-width);
+      // }
+
+      .rows-wrapper-wrapper {
+        @include animation-level-global(2) {
+          transition: transform var(--transition-standard-out) !important;
+        }
+      }
+
+      .btn-send-container {
+        opacity: 1;
+        visibility: visible;
+
+        @include animation-level-global(2) {
+          transition: transform var(--transition-standard-out), opacity var(--transition-standard-out), visibility var(--transition-standard-out);
+          transition-delay: 0s, 0s, 0s;
+        }
+      }
+
+      .rows-wrapper-wrapper {
+        transform: translateX(calc(var(--focus-translateX) * -1));
+        transform-origin: center left;
+      }
+
+      .btn-send-container,
+      .chat-input-secondary-button {
+        transform: translateX(var(--focus-translateX));
+        transform-origin: center right;
+      }
+
+      &.is-private {
+        .btn-reaction {
+          --add-translateX: calc(var(--chat-input-size) + #{$btn-send-margin});
+        }
+
+        &:not(.is-focused) .btn-send-container {
+          opacity: 0;
+          visibility: hidden;
+          transition-delay: 0s, 0s, var(--transition-standard-out-time);
+        }
+      }
+
+      &.is-focused {
+        --focus-translateX: calc(var(--chat-input-focus-offset) / 2);
+
+        .btn-reaction {
+          opacity: 0;
+          visibility: hidden;
+          transition-delay: 0s, 0s, 0s, var(--transition-standard-out-time);
+        }
+      }
 
       .rows-wrapper {
+        width: var(--stories-width);
+        // max-width: calc(var(--chat-input-max-width) - var(--chat-input-size) - #{$btn-send-margin});
+        max-width: calc(var(--chat-input-max-width) - (var(--chat-input-size) + #{$btn-send-margin}));
+
+        @include animation-level-global(2) {
+          transition: width var(--transition-standard-out) !important;
+        }
+
         .btn-icon {
           margin-block: 0 2px;
         }
@@ -496,11 +560,14 @@ $color-inactive: rgba(255, 255, 255, .5);
       }
 
       .btn-reaction {
+        --add-translateX: 0px;
         position: absolute;
+        transform: translateX(calc(var(--focus-translateX) + var(--add-translateX)));
         inset-inline-end: calc(var(--chat-input-size) + #{$btn-send-margin});
 
         @include animation-level-global(2) {
-          transition: .2s color;
+          transition: .2s color, transform var(--transition-standard-out), opacity var(--transition-standard-out), visibility var(--transition-standard-out-time);
+          transition-delay: 0s, 0s, 0s, 0s;
         }
 
         &:after {

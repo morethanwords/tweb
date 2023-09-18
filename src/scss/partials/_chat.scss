@@ -67,14 +67,18 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
     //right: var(--chat-input-padding);
 	}
 
+  .chat-input-secondary-button {
+    padding: 0;
+  }
+
 	.btn-record-cancel {
     --multiplier: -1;
 		visibility: hidden;
 		opacity: 0;
-		padding: 0;
 		z-index: 3;
 		position: absolute;
-		inset-inline-end: 0;
+		// inset-inline-end: 0;
+    inset-inline-end: calc(#{$btn-send-margin} + var(--chat-input-size) + var(--padding-horizontal));
 		top: 0;
     color: var(--danger-color) !important;
 
@@ -92,7 +96,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
     // background-color: var(--surface-color) !important;
 
 		// here percents can be used since there are no other transforms
-		transform: translateX(calc((100% + var(--padding-horizontal) + #{$btn-send-margin}) * var(--multiplier)));
+		// transform: translateX(calc((100% + var(--padding-horizontal) + #{$btn-send-margin}) * var(--multiplier)));
 
     .is-rtl & {
       --multiplier: 1;
@@ -348,12 +352,12 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
     }
 	}
 
-	&:not(.is-shrinking) {
-		.chat-input-secondary-button {
-			margin-inline-end: 0;
-			width: 0px;
-		}
-	}
+	// &:not(.is-shrinking) {
+	// 	.chat-input-secondary-button {
+	// 		margin-inline-end: 0;
+	// 		width: 0px;
+	// 	}
+	// }
 	
 	.new-message-wrapper {
 		opacity: 1;

@@ -40,7 +40,7 @@ export class BatchProcessor<Item extends any = any> {
     this.middlewareHelper ??= getMiddleware();
 
     const prefix = 'BATCH-PROCESSOR-' + ++id;
-    const logTypes = LogTypes.Warn | LogTypes.Error;
+    const logTypes = LogTypes.Log | LogTypes.Warn | LogTypes.Error;
     if(this.log) {
       this.log = this.log.bindPrefix(prefix, logTypes);
     } else {

@@ -133,6 +133,7 @@ export const POSTING_NOT_ALLOWED_MAP: {[action in ChatRights]?: LangPackKey} = {
 };
 
 type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply';
+type ChatSendBtnIcon = 'send' | 'record' | 'edit' | 'schedule' | 'forward';
 
 const CLASS_NAME = 'chat-input';
 const PEER_EXCEPTIONS = new Set<ChatType>(['scheduled', 'stories']);
@@ -149,6 +150,7 @@ export default class ChatInput {
   public btnReaction: HTMLButtonElement;
   public lastUrl = '';
   private lastTimeType = 0;
+  public noRipple: boolean;
 
   public chatInput: HTMLElement;
   public inputContainer: HTMLElement;
@@ -275,6 +277,9 @@ export default class ChatInput {
   public onFocusChange: (isFocused: boolean) => void;
   public onMenuToggle: (isOpen: boolean) => void;
   public onRecording: (isRecording: boolean) => void;
+  public onUpdateSendBtn: (icon: ChatSendBtnIcon) => void;
+  public onMessageSent2: () => void;
+  public forwardStoryCallback: () => void;
 
   public emoticonsDropdown: EmoticonsDropdown;
 
@@ -294,6 +299,7 @@ export default class ChatInput {
   public onFileSelection: (promise: Promise<File[]>) => void;
 
   private hasOffset: {type: 'commands' | 'as', forwards: boolean};
+  private canForwardStory: boolean;
 
   constructor(
     public chat: Chat,
@@ -422,6 +428,11 @@ export default class ChatInput {
   }
 
   public createButtonIcon(...args: Parameters<typeof ButtonIcon>) {
+    if(this.noRipple) {
+      args[1] ??= {};
+      args[1].noRipple = true;
+    }
+
     const button = ButtonIcon(...args);
     button.tabIndex = -1;
     return button;
@@ -2754,13 +2765,21 @@ export default class ChatInput {
     });
   }
 
+  public setCanForwardStory(value: boolean) {
+    // * true, because forward button will be hidden if it's a private story
+    // * this is to correctly animate the button on changing story
+    this.canForwardStory = value || true;
+    this.updateSendBtn();
+  }
+
   private onBtnSendClick = async(e: Event) => {
     cancelEvent(e);
 
     const isInputEmpty = this.isInputEmpty();
-    /* if(this.chat.type === 'stories' && isInputEmpty && !this.isFocused) {
+    if(this.chat.type === 'stories' && isInputEmpty && !this.freezedFocused && this.canForwardStory) {
+      this.forwardStoryCallback?.();
       return;
-    } else  */if(!this.recorder || this.recording || !isInputEmpty || this.forwarding || this.editMsgId) {
+    } else if(!this.recorder || this.recording || !isInputEmpty || this.forwarding || this.editMsgId) {
       if(this.recording) {
         if((Date.now() - this.recordStartTime) < RECORD_MIN_TIME) {
           this.onCancelRecordClick();
@@ -3059,11 +3078,11 @@ export default class ChatInput {
   }
 
   public updateSendBtn() {
-    let icon: 'send' | 'record' | 'edit' | 'schedule' | 'forward';
+    let icon: ChatSendBtnIcon;
 
     const isInputEmpty = this.isInputEmpty();
 
-    if(this.chat.type === 'stories' && isInputEmpty && !this.freezedFocused) icon = 'forward';
+    if(this.chat.type === 'stories' && isInputEmpty && !this.freezedFocused && this.canForwardStory) icon = 'forward';
     else if(this.editMsgId) icon = 'edit';
     else if(!this.recorder || this.recording || !isInputEmpty || this.forwarding) icon = this.chat.type === 'scheduled' ? 'schedule' : 'send';
     else icon = 'record';
@@ -3079,6 +3098,8 @@ export default class ChatInput {
     if(this.btnToggleReplyMarkup) {
       this.btnToggleReplyMarkup.classList.toggle('show', isInputEmpty && this.chat.type !== 'scheduled');
     }
+
+    this.onUpdateSendBtn?.(icon);
   }
 
   private getValueAndEntities(input: HTMLElement) {
@@ -3124,6 +3145,7 @@ export default class ChatInput {
     }
 
     this.updateSendBtn();
+    this.onMessageSent2?.();
   }
 
   public sendMessage(force = false) {

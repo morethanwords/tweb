@@ -49,9 +49,8 @@ export default function renderImageFromUrl(
     }
   } else {
     const isImage = elem instanceof HTMLImageElement;
-    const loader = isImage ? elem as HTMLImageElement : new Image();
+    const loader = isImage ? elem : new Image();
     // const loader = new Image();
-    loader.src = url;
     // let perf = performance.now();
 
     const onLoad = () => {
@@ -64,18 +63,26 @@ export default function renderImageFromUrl(
       // TODO: переделать прогрузки аватаров до начала анимации, иначе с этим ожиданием они неприятно появляются
       // callback && getHeavyAnimationPromise().then(() => callback());
       callback?.();
-
-      loader.removeEventListener('error', onError);
     };
 
-    const onError = (err: ErrorEvent) => {
-      console.error('Render image from url failed:', err, url, loader);
-      loader.removeEventListener('load', onLoad);
+    const onError = (err: DOMException) => {
+      if(!err.message.includes('cannot be decoded')) {
+        console.error('Render image from url failed:', err, url, loader, err.message, loader.naturalWidth);
+      }
+
       callback?.();
     };
 
-    loader.addEventListener('load', onLoad, {once: true});
-    loader.addEventListener('error', onError, {once: true});
+    loader.decoding = 'async';
+    loader.src = url;
+    loader.decode().then(onLoad, onError);
+    // const timeout = setTimeout(() => {
+    //   console.error('not yet decoded', loader, url);
+    //   debugger;
+    // }, 1e3);
+    // decodePromise.finally(() => {
+    //   clearTimeout(timeout);
+    // });
   }
 }
 

@@ -206,8 +206,9 @@ export class ChatReactionsMenu {
             onClick: async(emoji) => {
               if(emoji.docId && emoji.emoji) {
                 const availableReactions = await apiManagerProxy.getAvailableReactions();
-                const hasNativeReaction = availableReactions.some((_reaction) => _reaction.select_animation?.id === emoji.docId);
+                const hasNativeReaction = availableReactions.find((_reaction) => _reaction.select_animation?.id === emoji.docId);
                 if(hasNativeReaction) {
+                  emoji.emoji = hasNativeReaction.reaction;
                   delete emoji.docId;
                 }
               }

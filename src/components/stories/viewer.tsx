@@ -77,6 +77,7 @@ import Icon from '../icon';
 import {ChatReactionsMenu} from '../chat/reactionsMenu';
 import setCurrentTime from '../../helpers/dom/setCurrentTime';
 import ReactionElement from '../chat/reaction';
+import blurActiveElement from '../../helpers/dom/blurActiveElement';
 
 export const STORY_DURATION = 5e3;
 const STORY_HEADER_AVATAR_SIZE = 32;
@@ -271,17 +272,23 @@ const StoryInput = (props: {
   state: StoriesContextPeerState,
   currentStory: Accessor<StoryItem>,
   isActive: Accessor<boolean>,
-  focusedSignal: Signal<boolean>
+  focusedSignal: Signal<boolean>,
+  sendingReaction: Accessor<boolean>,
+  inputEmptySignal: Signal<boolean>,
+  isPublic: Accessor<boolean>,
+  sendReaction: (reaction: Reaction) => void,
+  shareStory: () => void
 }) => {
   const [stories, actions] = useStories();
   const [focused, setFocused] = props.focusedSignal;
+  const [inputEmpty, setInputEmpty] = props.inputEmptySignal;
+  const [recording, setRecording] = createSignal(false);
   const middlewareHelper = createMiddleware();
   const middleware = middlewareHelper.get();
 
-  let sendingReaction = false;
   const sentReaction = createMemo(() => {
     const reaction = (props.currentStory() as StoryItem.storyItem).sent_reaction;
-    if(reaction && sendingReaction) {
+    if(reaction && untrack(() => props.sendingReaction())) {
       ReactionElement.fireAroundAnimation({
         middleware: createMiddleware().get(),
         reaction,
@@ -309,16 +316,9 @@ const StoryInput = (props: {
 
   const onReactionClick = async() => {
     const story = props.currentStory() as StoryItem.storyItem;
-
     const isNewReaction = !story.sent_reaction;
     const reaction: Reaction = !isNewReaction ? undefined : {_: 'reactionEmoji', emoticon: DEFAULT_REACTION_EMOTICON};
-    sendingReaction = true;
-    await rootScope.managers.acknowledged.appStoriesManager.sendReaction(
-      props.state.peerId,
-      story.id,
-      reaction
-    );
-    sendingReaction = false;
+    props.sendReaction(reaction);
   };
 
   let btnReactionEl: HTMLButtonElement;
@@ -336,6 +336,7 @@ const StoryInput = (props: {
   );
 
   const input = chat.input = new ChatInput(chat, appImManager, rootScope.managers, 'stories-input');
+  input.noRipple = true;
   input.btnReaction = btnReactionEl;
   input.excludeParts = {
     replyMarkup: true,
@@ -365,15 +366,21 @@ const StoryInput = (props: {
   // };
 
   const onClick = (e: MouseEvent) => {
+    // if(!inputEmpty()) {
+    //   return;
+    // }
+
     const target = e.target as HTMLElement;
-    const good = findUpClassName(target, styles.ViewerStory) ||
-      target.classList.contains(styles.Viewer);
+    const good = !findUpClassName(target, styles.ViewerStoryReactions) && (
+      findUpClassName(target, styles.ViewerStory) ||
+      target.classList.contains(styles.Viewer)
+    );
     if(!good) {
       return;
     }
 
     cancelEvent(e);
-    onFocusChange(false);
+    setFocused(false);
   };
 
   onCleanup(() => {
@@ -384,28 +391,34 @@ const StoryInput = (props: {
   });
 
   let navigationItem: NavigationItem;
-  const onFocusChange = (_focused: boolean) => {
-    if(_focused) {
-      playAfterFocus = !stories.paused;
-      // document.addEventListener('mousedown', onMouseDown, {capture: true, once: true});
-      document.addEventListener('click', onClick, {capture: true});
-      appNavigationController.pushItem(navigationItem = {
-        type: 'stories-focus',
-        onPop: () => {
-          onFocusChange(false);
+  createEffect(
+    on(
+      () => focused(),
+      (focused) => {
+        if(focused) {
+          playAfterFocus = !stories.paused;
+          // document.addEventListener('mousedown', onMouseDown, {capture: true, once: true});
+          document.addEventListener('click', onClick, {capture: true});
+          appNavigationController.pushItem(navigationItem = {
+            type: 'stories-focus',
+            onPop: () => {
+              setFocused(false);
+            }
+          });
+        } else {
+          // document.removeEventListener('mousedown', onMouseDown, {capture: true});
+          document.removeEventListener('click', onClick, {capture: true});
+          appNavigationController.removeItem(navigationItem);
+          navigationItem = undefined;
         }
-      });
-    } else {
-      // document.removeEventListener('mousedown', onMouseDown, {capture: true});
-      document.removeEventListener('click', onClick, {capture: true});
-      appNavigationController.removeItem(navigationItem);
-      navigationItem = undefined;
-    }
 
-    actions.toggle(_focused ? false : playAfterFocus);
-    setFocused(_focused);
-    input.freezeFocused(_focused);
-  };
+        actions.toggle(focused ? false : playAfterFocus);
+        input.freezeFocused(focused);
+        input.chatInput.classList.toggle('is-focused', focused);
+        // input.setShrinking(!focused);
+      }
+    )
+  );
 
   let playAfterFocus = false;
   input.onFocusChange = (_focused: boolean) => {
@@ -417,7 +430,7 @@ const StoryInput = (props: {
       return;
     }
 
-    onFocusChange(_focused);
+    setFocused(_focused);
   };
 
   let playAfter = false;
@@ -428,14 +441,13 @@ const StoryInput = (props: {
 
     actions.toggle(open ? false : playAfter);
   };
-  input.onMenuToggle = input.onRecording = onMenuToggle;
+  input.onMenuToggle/*  = input.onRecording */ = onMenuToggle;
   input.construct();
   input.constructPeerHelpers();
-  input.setShrinking(true);
-  input.chatInput.classList.add(styles.hideOnSmall);
+  // input.setShrinking(true);
+  // input.chatInput.classList.add(styles.hideOnSmall);
   // input.rowsWrapper.classList.add('night');
   input.messageInput.dataset.textColor = 'white';
-  input.btnCancelRecord.style.visibility = 'hidden';
 
   createEffect(() => {
     input.replyToStoryId = props.currentStory().id;
@@ -456,6 +468,29 @@ const StoryInput = (props: {
     }
   });
 
+  createEffect(() => {
+    input.chatInput.classList.toggle('is-private', !props.isPublic());
+    input.setCanForwardStory(props.isPublic());
+  });
+
+  createEffect(() => {
+    const [_focused, _recording, isPublic] = [focused(), recording(), props.isPublic()];
+    const isReactionButtonVisible = !_focused;
+    const isMainButtonVisible = _focused ? true : isPublic;
+    const isRecordingButtonVisible = _recording;
+    const visibleButtons = Math.min(2, [
+      isReactionButtonVisible,
+      isMainButtonVisible,
+      isRecordingButtonVisible
+    ].reduce((acc, v) => acc + +v, 0));
+    const chatInputSize = 48;
+    const chatInputBtnSendMargin = 8;
+    const focusOffset = 135;
+    const width = stories.width - (chatInputSize + chatInputBtnSendMargin) * visibleButtons + (_focused ? focusOffset : 0);
+    input.rowsWrapper.style.setProperty('width', width + 'px', 'important');
+    input.chatInput.classList.toggle('is-focused', _focused);
+  });
+
   chat.peerId = props.state.peerId;
   chat.onChangePeer({
     peerId: props.state.peerId,
@@ -472,6 +507,9 @@ const StoryInput = (props: {
       input.onFileSelection =
       input.onMenuToggle =
       input.onRecording =
+      input.onUpdateSendBtn =
+      input.onMessageSent2 =
+      input.forwardStoryCallback =
       undefined;
     middlewareHelper.destroy();
     chat.destroy();
@@ -481,8 +519,24 @@ const StoryInput = (props: {
     onMenuToggle(true);
     promise.finally(() => {
       onMenuToggle(false);
-      console.log('filechange');
     });
+  };
+
+  input.onUpdateSendBtn = (icon) => {
+    setInputEmpty(icon === 'record' || icon === 'forward');
+  };
+
+  input.onMessageSent2 = () => {
+    blurActiveElement();
+    setFocused(false);
+  };
+
+  input.forwardStoryCallback = () => {
+    props.shareStory();
+  };
+
+  input.onRecording = (recording) => {
+    setRecording(recording);
   };
 
   return input.chatInput;
@@ -633,9 +687,6 @@ const Stories = (props: {
 
   peerTitleElement.classList.add(styles.ViewerStoryHeaderName);
 
-  const shareButton = ButtonCorner({icon: 'forward_filled', noRipple: true});
-  shareButton.classList.add(styles.ViewerStoryShare, 'is-visible');
-
   const bindOnAnyPopupClose = (wasPlaying = !stories.paused) => () => onAnyPopupClose(wasPlaying);
   const onAnyPopupClose = (wasPlaying: boolean) => {
     if(wasPlaying) {
@@ -659,10 +710,6 @@ const Stories = (props: {
 
     popup.addEventListener('closeAfterTimeout', bindOnAnyPopupClose(wasPlaying));
   };
-  shareButton.addEventListener('click', (e) => {
-    cancelEvent(e);
-    onShareClick();
-  });
 
   const avatarInfo = AvatarNew({
     size: 162/* 54 */,
@@ -693,7 +740,13 @@ const Stories = (props: {
   const [date, setDate] = createSignal<{timestamp: number, edited?: boolean}>();
   const [loading, setLoading] = createSignal(false);
   const focusedSignal = createSignal(false);
-  const [focused] = focusedSignal;
+  const sendingReactionSignal = createSignal(false);
+  const inputEmptySignal = createSignal(true);
+  const isPublicSignal = createSignal(false);
+  const [focused, setFocused] = focusedSignal;
+  const [sendingReaction, setSendingReaction] = sendingReactionSignal;
+  const [inputEmpty] = inputEmptySignal;
+  const [isPublic, setIsPublic] = isPublicSignal;
   const [noSound, setNoSound] = createSignal(false);
   const [sliding, setSliding] = createSignal(false);
   const [privacyType, setPrivacyType] = createSignal<StoryPrivacyType>();
@@ -710,6 +763,21 @@ const Stories = (props: {
   });
   const isActive = createMemo(() => stories.peer === props.state);
 
+  const sendReaction = async(reaction: Reaction | Promise<Reaction>) => {
+    const peerId = props.state.peerId;
+    const storyId = currentStory().id;
+    setFocused(false);
+
+    reaction = await reaction;
+    if(!reaction) {
+      return;
+    }
+
+    setSendingReaction(true);
+    await rootScope.managers.acknowledged.appStoriesManager.sendReaction(peerId, storyId, reaction);
+    setSendingReaction(false);
+  };
+
   const createReactionsMenu = () => {
     const [inited, setInited] = createSignal(false);
     const middleware = createMiddleware().get();
@@ -717,15 +785,7 @@ const Stories = (props: {
       managers: rootScope.managers,
       type: 'horizontal',
       middleware,
-      onFinish: async(reaction) => {
-        // contextMenuController.close();
-        // reaction = await reaction;
-        // if(!reaction) {
-        //   return;
-        // }
-
-        // this.managers.appReactionsManager.sendReaction(reactionsMessage, reaction);
-      },
+      onFinish: sendReaction,
       size: 36,
       openSide: 'top',
       getOpenPosition: () => undefined
@@ -733,55 +793,41 @@ const Stories = (props: {
 
     menu.widthContainer.classList.add(styles.ViewerStoryReactions);
 
-    menu.init().then(() => {
+    menu.init().finally(() => {
       setInited(true);
     });
 
-    onCleanup(() => {
-      menu.cleanup();
-      menu.widthContainer.classList.remove('is-visible');
-      setTimeout(() => {
-        if(reactionsMenu() === menu) {
-          setReactionsMenu();
-        } else {
-          menu.widthContainer.remove();
-        }
-      }, 500);
-    });
-
-    createEffect(() => {
-      if(!focused()) {
-
-      }
-    });
-
+    let timeout: number;
     createEffect(() => {
       if(!inited()) {
         return;
       }
 
-      menu.widthContainer.classList.toggle('is-visible', inited() && focused());
+      const isVisible = shouldMenuBeVisible();
+      menu.widthContainer.classList.toggle('is-visible', isVisible);
+
+      if(!isVisible) {
+        timeout = window.setTimeout(() => {
+          setReactionsMenu();
+          menu.cleanup();
+        }, liteMode.isAvailable('animations') ? 200 : 0);
+      } else {
+        clearTimeout(timeout);
+      }
     });
 
     setReactionsMenu(menu);
   };
 
-  const firstFocusMemo = createMemo((_focused) => _focused || focused());
+  const shouldMenuBeVisible = () => focused() && inputEmpty();
+  const haveToCreateMenu = createMemo(() => {
+    return reactionsMenu() ? true : shouldMenuBeVisible();
+  });
 
   createEffect(() => {
-    if(focused() && !reactionsMenu()) {
+    if(haveToCreateMenu()) {
       createReactionsMenu();
     }
-    // const menu = untrack(() => reactionsMenu());
-    // if(focused()) {
-    //   if(!menu) {
-    //     createReactionsMenu();
-    //   } else if(menu.inited) {
-    //     menu.widthContainer.classList.add('is-visible');
-    //   }
-    // } else if(menu) {
-    //   menu.widthContainer.classList.remove('is-visible');
-    // }
   });
 
   const setVideoListeners = (video: HTMLVideoElement) => {
@@ -931,7 +977,8 @@ const Stories = (props: {
       setDate({timestamp: date, edited});
       setNoSound(noSound);
       setVideoDuration(videoDuration && (videoDuration * 1000));
-      shareButton.classList.toggle('hide', !isPublic);
+      setIsPublic(isPublic);
+      // shareButton.classList.toggle('hide', !isPublic);
     };
 
     isMe && createEffect(async() => {
@@ -1358,7 +1405,20 @@ const Stories = (props: {
 
   const storyInput = props.state.peerId !== CHANGELOG_PEER_ID &&
     props.state.peerId !== rootScope.myId &&
-    <StoryInput {...mergeProps(props, {currentStory, isActive, focusedSignal})} />;
+    <StoryInput
+      {
+        ...mergeProps(props, {
+          currentStory,
+          isActive,
+          focusedSignal,
+          sendingReaction,
+          inputEmptySignal,
+          sendReaction,
+          isPublic,
+          shareStory: onShareClick
+        })
+      }
+    />;
 
   // * top menu start
 
@@ -1750,7 +1810,10 @@ const Stories = (props: {
         [styles.hold]: stories.hideInterface && isActive(),
         [styles.focused]: focused()
       }}
-      style={{'--translateX': isActive() ? 0 : calculateTranslateX()}}
+      style={{
+        '--translateX': isActive() ? 0 : calculateTranslateX(),
+        '--stories-width': stories.width + 'px'
+      }}
       onClick={(e) => {
         if(!isActive()) {
           actions.set({peer: props.state, index: props.state.index});
@@ -1819,7 +1882,6 @@ const Stories = (props: {
             </div>
           </div>
           {caption() && captionContainer}
-          {shareButton}
           {reactionsMenu()?.widthContainer}
         </div>
         <div class={styles.ViewerStoryInfo}>

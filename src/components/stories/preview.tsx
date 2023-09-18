@@ -100,7 +100,7 @@ export const wrapStoryMedia = (props: {
   const wrappers = {
     photo: (messageMedia: MessageMedia.messageMediaPhoto | MessageMedia.messageMediaDocument) => {
       const photo = (messageMedia as MessageMedia.messageMediaDocument).document as Document.document || (messageMedia as MessageMedia.messageMediaPhoto).photo as Photo.photo;
-      wrapPhoto({
+      const result = wrapPhoto({
         ...props,
         container: div,
         photo,
@@ -115,7 +115,9 @@ export const wrapStoryMedia = (props: {
           // noThumb: true
         }),
         withoutPreloader: !props.withPreloader
-      }).then(async(result) => {
+      });
+
+      result.then(async(result) => {
         if(!middleware()) return;
         if(props.childrenClassName) setChildrenClassName(result, props.childrenClassName);
         await result.loadPromises.thumb;
@@ -126,12 +128,14 @@ export const wrapStoryMedia = (props: {
         if(!middleware()) return;
         setMedia(result.images.full);
       });
+
+      return result;
     },
 
     video: (messageMedia: MessageMedia.messageMediaDocument) => {
       const document = messageMedia.document as Document.document;
       const altDocument = messageMedia.alt_document as Document.document;
-      wrapVideo({
+      const result = wrapVideo({
         ...props,
         container: div,
         doc: document,
@@ -149,7 +153,9 @@ export const wrapStoryMedia = (props: {
           photoSize: choosePhotoSize(document, 200, 200, false)
         }),
         withoutPreloader: !props.withPreloader
-      }).then(async(result) => {
+      });
+
+      result.then(async(result) => {
         if(!middleware()) return;
         if(props.childrenClassName) {
           if(result?.thumb) setChildrenClassName(result.thumb, props.childrenClassName);
@@ -170,27 +176,30 @@ export const wrapStoryMedia = (props: {
 
         setMedia(video);
       });
+
+      return result;
     }
   };
 
+  let mediaResult: ReturnType<typeof wrapPhoto | typeof wrapVideo>;
   switch(messageMedia._) {
     case 'messageMediaPhoto': {
-      wrappers.photo(messageMedia);
+      mediaResult = wrappers.photo(messageMedia);
       break;
     }
 
     case 'messageMediaDocument': {
       // if(!props.group && props.forPreview) {
-      //   wrappers.photo(messageMedia);
+      //   mediaResult = wrappers.photo(messageMedia);
       // } else {
-      wrappers.video(messageMedia);
+      mediaResult = wrappers.video(messageMedia);
       // }
 
       break;
     }
   }
 
-  return {container, div, media, thumb, ready};
+  return {container, div, media, mediaResult, thumb, ready};
 };
 
 export const StoryPreview = (props: {
