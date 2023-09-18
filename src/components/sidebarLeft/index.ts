@@ -505,7 +505,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     const helperMiddlewareHelper = this.middlewareHelper.get().create();
     const helper = document.createElement('div');
-    helper.classList.add('search-helper');
+    helper.classList.add('search-helper', 'hide');
     helper.addEventListener('click', (e) => {
       const target = findUpClassName(e.target, 'selector-user');
       if(!target) {
@@ -565,12 +565,18 @@ export class AppSidebarLeft extends SidebarSlider {
       pickedElements.forEach((el) => {
         unselectEntity(el);
       });
+
+      onHelperLength();
+    };
+
+    const onHelperLength = (hide = !helper.firstElementChild) => {
+      helper.classList.toggle('hide', hide);
+      searchSuper.nav.classList.toggle('hide', !hide);
     };
 
     const appendToHelper = (elements: HTMLElement[]) => {
       helper.append(...elements);
-      helper.classList.toggle('hide', !helper.firstElementChild);
-      searchSuper.nav.classList.toggle('hide', !!helper.firstElementChild);
+      onHelperLength();
     };
 
     this.inputSearch.onChange = (value) => {
@@ -585,8 +591,7 @@ export class AppSidebarLeft extends SidebarSlider {
       searchSuper.load(true);
 
       helperMiddlewareHelper.clean();
-      helper.replaceChildren();
-      searchSuper.nav.classList.remove('hide');
+      onHelperLength(true);
 
       if(!selectedPeerId && value.trim()) {
         const middleware = searchSuper.middleware.get();
