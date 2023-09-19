@@ -912,7 +912,16 @@ class Some<T extends Dialog | ForumTopic = Dialog | ForumTopic> {
             return this.sortedList.add(this.getDialogKey(dialog as T));
           });
 
-          await Promise.all(loadPromises).catch();
+          let processed = false;
+          await Promise.race([
+            Promise.all(loadPromises).catch(),
+            pause(1000).then(() => {
+              if(!processed) {
+                log.error('loadPromises are still pending?', loadPromises, dialogs);
+              }
+            })
+          ]);
+          processed = true;
           if(this.loadDialogsRenderPromise !== renderPromise) {
             throw middlewareError;
           }
@@ -2609,7 +2618,7 @@ export class AppDialogsManager {
       }
 
       return;
-    } else if(hasContacts) return;
+    } else if(hasContacts || !this.xd.scrollable.loadedAll.bottom) return;
 
     parts.classList.add('with-contacts');
 
