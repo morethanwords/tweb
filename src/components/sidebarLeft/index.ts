@@ -62,6 +62,7 @@ import createBadge from '../../helpers/createBadge';
 import {MyDocument} from '../../lib/appManagers/appDocsManager';
 import getAttachMenuBotIcon from '../../lib/appManagers/utils/attachMenuBots/getAttachMenuBotIcon';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
+import flatten from '../../helpers/array/flatten';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -566,6 +567,7 @@ export class AppSidebarLeft extends SidebarSlider {
         unselectEntity(el);
       });
 
+      helper.replaceChildren();
       onHelperLength();
     };
 
@@ -593,18 +595,7 @@ export class AppSidebarLeft extends SidebarSlider {
       helperMiddlewareHelper.clean();
       onHelperLength(true);
 
-      if(!selectedPeerId && value.trim()) {
-        const middleware = searchSuper.middleware.get();
-        Promise.all([
-          this.managers.dialogsStorage.getDialogs({query: value}).then(({dialogs}) => dialogs.map((d) => d.peerId)),
-          this.managers.appUsersManager.getContactsPeerIds(value, true)
-        ]).then((results) => {
-          if(!middleware()) return;
-          const peerIds = new Set(results[0].concat(results[1]).slice(0, 20));
-
-          appendToHelper([...peerIds].map((peerId) => renderEntity(peerId)));
-        });
-      }
+      const promises: MaybePromise<HTMLElement[]>[] = [];
 
       if(!selectedMinDate && value.trim()) {
         const dates: DateData[] = [];
@@ -613,8 +604,29 @@ export class AppSidebarLeft extends SidebarSlider {
           return renderEntity('date_' + dateData.minDate + '_' + dateData.maxDate, dateData.title);
         });
 
-        appendToHelper(elements);
+        promises.push(elements);
       }
+
+      if(!selectedPeerId && value.trim()) {
+        const middleware = searchSuper.middleware.get();
+        const promise = Promise.all([
+          this.managers.dialogsStorage.getDialogs({query: value}).then(({dialogs}) => dialogs.map((d) => d.peerId)),
+          this.managers.appUsersManager.getContactsPeerIds(value, true)
+        ]).then((results) => {
+          if(!middleware()) return;
+          const peerIds = new Set(results[0].concat(results[1]).slice(0, 20));
+
+          return [...peerIds].map((peerId) => renderEntity(peerId));
+        });
+
+        promises.push(promise);
+      }
+
+      Promise.all(promises).then((arrays) => {
+        helper.replaceChildren();
+        const flattened = flatten(arrays);
+        appendToHelper(flattened);
+      });
     };
 
     searchSuper.tabs.inputMessagesFilterEmpty.addEventListener('mousedown', (e) => {
