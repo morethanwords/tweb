@@ -18,7 +18,7 @@ import appNavigationController, {NavigationItem} from '../appNavigationControlle
 import ButtonCorner from '../buttonCorner';
 import PeerTitle from '../peerTitle';
 import SwipeHandler from '../swipeHandler';
-import styles from './Viewer.module.scss';
+import styles from './viewer.module.scss';
 import {createSignal, createEffect, JSX, For, Accessor, onCleanup, createMemo, mergeProps, createContext, useContext, Context, ParentComponent, splitProps, untrack, on, getOwner, runWithOwner, createRoot, ParentProps, Suspense, batch, Signal, onMount, Setter, createReaction, Show} from 'solid-js';
 import {unwrap} from 'solid-js/store';
 import {assign, Portal} from 'solid-js/web';

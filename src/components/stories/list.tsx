@@ -7,7 +7,7 @@
 import {JSX, createSignal, For, createEffect, createResource, SuspenseList, Suspense, getOwner, runWithOwner, ParentComponent, Accessor, createRoot, untrack, onMount, createMemo, Owner, splitProps, onCleanup, on} from 'solid-js';
 import {ScrollableX} from '../scrollable';
 import {createMiddleware, createStoriesViewer} from './viewer';
-import styles from './List.module.scss';
+import styles from './list.module.scss';
 import PeerTitle from '../peerTitle';
 import mediaSizes from '../../helpers/mediaSizes';
 import rootScope from '../../lib/rootScope';
