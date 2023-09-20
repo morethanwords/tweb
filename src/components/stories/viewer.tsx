@@ -78,6 +78,9 @@ import {ChatReactionsMenu} from '../chat/reactionsMenu';
 import setCurrentTime from '../../helpers/dom/setCurrentTime';
 import ReactionElement from '../chat/reaction';
 import blurActiveElement from '../../helpers/dom/blurActiveElement';
+import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
+import reactionsEqual from '../../lib/appManagers/utils/reactions/reactionsEqual';
+import wrapSticker from '../wrappers/sticker';
 
 export const STORY_DURATION = 5e3;
 const STORY_HEADER_AVATAR_SIZE = 32;
@@ -268,16 +271,20 @@ const StorySlide = (props: {
   return ret;
 };
 
+const DEFAULT_REACTION_EMOTICON = '❤';
+const isDefaultReaction = (reaction: Reaction) => (reaction as Reaction.reactionEmoji)?.emoticon === DEFAULT_REACTION_EMOTICON;
+
 const StoryInput = (props: {
   state: StoriesContextPeerState,
   currentStory: Accessor<StoryItem>,
   isActive: Accessor<boolean>,
   focusedSignal: Signal<boolean>,
-  sendingReaction: Accessor<boolean>,
+  sendingReaction: Accessor<HTMLElement>,
   inputEmptySignal: Signal<boolean>,
   isPublic: Accessor<boolean>,
-  sendReaction: (reaction: Reaction) => void,
-  shareStory: () => void
+  sendReaction: (reaction: Reaction, target: HTMLElement) => void,
+  shareStory: () => void,
+  reaction: Accessor<JSX.Element>
 }) => {
   const [stories, actions] = useStories();
   const [focused, setFocused] = props.focusedSignal;
@@ -286,39 +293,39 @@ const StoryInput = (props: {
   const middlewareHelper = createMiddleware();
   const middleware = middlewareHelper.get();
 
-  const sentReaction = createMemo(() => {
+  createEffect(() => {
     const reaction = (props.currentStory() as StoryItem.storyItem).sent_reaction;
-    if(reaction && untrack(() => props.sendingReaction())) {
-      ReactionElement.fireAroundAnimation({
-        middleware: createMiddleware().get(),
-        reaction,
-        sizes: {
-          genericEffect: 26,
-          genericEffectSize: 100,
-          size: 22 + 18,
-          effectSize: 80
-        },
-        stickerContainer: btnReactionEl,
-        cache: btnReactionEl as any
-      });
+    if(!reaction) {
+      return;
     }
-    return reaction;
+
+    const target = untrack(() => props.sendingReaction());
+    if(!target || target !== btnReactionEl) {
+      return;
+    }
+
+    ReactionElement.fireAroundAnimation({
+      middleware: createMiddleware().get(),
+      reaction,
+      sizes: {
+        genericEffect: 26,
+        genericEffectSize: 100,
+        size: 22 + 18,
+        effectSize: 80
+      },
+      stickerContainer: target,
+      cache: target as any
+    });
   });
 
   const chat = new Chat(appImManager, rootScope.managers, false, {elements: true, sharedMedia: true});
   chat.setType('stories');
 
-  const DEFAULT_REACTION_EMOTICON = '❤';
-  const haveDefaultReaction = createMemo(() => {
-    const reaction = sentReaction();
-    return (reaction as Reaction.reactionEmoji)?.emoticon === DEFAULT_REACTION_EMOTICON;
-  });
-
   const onReactionClick = async() => {
     const story = props.currentStory() as StoryItem.storyItem;
     const isNewReaction = !story.sent_reaction;
     const reaction: Reaction = !isNewReaction ? undefined : {_: 'reactionEmoji', emoticon: DEFAULT_REACTION_EMOTICON};
-    props.sendReaction(reaction);
+    props.sendReaction(reaction, btnReactionEl);
   };
 
   let btnReactionEl: HTMLButtonElement;
@@ -326,12 +333,11 @@ const StoryInput = (props: {
     <ButtonIconTsx
       ref={btnReactionEl}
       onClick={onReactionClick}
-      classList={{'is-default': haveDefaultReaction()}}
       tabIndex={-1}
       class="btn-circle btn-reaction chat-input-secondary-button chat-secondary-button"
       noRipple={true}
     >
-      {(haveDefaultReaction() || !sentReaction()) && Icon('reactions_filled')}
+      {props.reaction()}
     </ButtonIconTsx>
   );
 
@@ -735,12 +741,13 @@ const Stories = (props: {
   const [content, setContent] = createSignal<JSX.Element>();
   const [videoDuration, setVideoDuration] = createSignal<number>();
   const [caption, setCaption] = createSignal<JSX.Element>();
+  const [reaction, setReaction] = createSignal<JSX.Element>();
   const [captionOpacity, setCaptionOpacity] = createSignal(0);
   const [captionActive, setCaptionActive] = createSignal(false);
   const [date, setDate] = createSignal<{timestamp: number, edited?: boolean}>();
   const [loading, setLoading] = createSignal(false);
   const focusedSignal = createSignal(false);
-  const sendingReactionSignal = createSignal(false);
+  const sendingReactionSignal = createSignal<HTMLElement>();
   const inputEmptySignal = createSignal(true);
   const isPublicSignal = createSignal(false);
   const [focused, setFocused] = focusedSignal;
@@ -763,19 +770,29 @@ const Stories = (props: {
   });
   const isActive = createMemo(() => stories.peer === props.state);
 
-  const sendReaction = async(reaction: Reaction | Promise<Reaction>) => {
+  const sendReaction = async(reaction: Reaction | Promise<Reaction>, target: HTMLElement) => {
     const peerId = props.state.peerId;
-    const storyId = currentStory().id;
-    setFocused(false);
+    const story = currentStory() as StoryItem.storyItem;
+    const storyId = story.id;
+    const sentReaction = story.sent_reaction;
 
-    reaction = await reaction;
-    if(!reaction) {
-      return;
+    // * wait for picker
+    if(reaction instanceof Promise) {
+      reaction = await reaction;
+      if(!reaction) {
+        return;
+      }
     }
 
-    setSendingReaction(true);
-    await rootScope.managers.acknowledged.appStoriesManager.sendReaction(peerId, storyId, reaction);
-    setSendingReaction(false);
+    const isNewReaction = !reactionsEqual(sentReaction, reaction);
+    if(!isNewReaction) {
+      reaction = undefined;
+    }
+
+    setFocused(false);
+    setSendingReaction(target);
+    await rootScope.managers.acknowledged.appStoriesManager.sendReaction(peerId, storyId, reaction as Reaction);
+    setSendingReaction();
   };
 
   const createReactionsMenu = () => {
@@ -785,10 +802,11 @@ const Stories = (props: {
       managers: rootScope.managers,
       type: 'horizontal',
       middleware,
-      onFinish: sendReaction,
+      onFinish: (reaction) => sendReaction(reaction, storyDiv),
       size: 36,
       openSide: 'top',
-      getOpenPosition: () => undefined
+      getOpenPosition: () => undefined,
+      noMoreButton: true
     });
 
     menu.widthContainer.classList.add(styles.ViewerStoryReactions);
@@ -916,6 +934,7 @@ const Stories = (props: {
     const uStackedAvatars = isMe ? createUnifiedSignal<StackedAvatars>() : undefined;
     const uCaption = createUnifiedSignal<JSX.Element>();
     const uContent = createUnifiedSignal<JSX.Element>();
+    const uReaction = createUnifiedSignal<JSX.Element>();
     const recentViewersMemo = isMe ? createMemo<UserId[]>((previousRecentViewers) => {
       const views = story.views;
       const recentViewers = views?.recent_viewers;
@@ -1030,13 +1049,14 @@ const Stories = (props: {
     });
 
     createEffect(() => {
-      uContent(null);
-
       const media = untrack(() => getMediaFromMessage(story));
       const mediaId = media.id;
       if(!mediaId) {
+        uContent();
         return;
       }
+
+      uContent(null);
 
       const wrapped = wrapStoryMedia({
         peerId: props.state.peerId,
@@ -1075,17 +1095,71 @@ const Stories = (props: {
       createReaction(onMedia)(() => wrapped.media());
     });
 
+    createEffect(async() => {
+      let reactionNode: JSX.Element;
+      const sentReaction = story.sent_reaction;
+      const isDefault = isDefaultReaction(sentReaction);
+      if(!sentReaction || isDefault) {
+        reactionNode = Icon('reactions_filled', ...['btn-reaction-icon', isDefault && 'btn-reaction-default'].filter(Boolean));
+      } else {
+        let doc: Document.document;
+        const isCustomEmoji = sentReaction._ === 'reactionCustomEmoji';
+        const middleware = createMiddleware().get();
+        uReaction(null);
+        if(isCustomEmoji) {
+          const result = await rootScope.managers.acknowledged.appEmojiManager.getCustomEmojiDocument(sentReaction.document_id);
+          if(!middleware()) return;
+          if(!result.cached) {
+            uReaction();
+          }
+
+          doc = await result.result;
+        } else {
+          const result = apiManagerProxy.getAvailableReactions();
+          if(result instanceof Promise) {
+            uReaction();
+          }
+          const availableReactions = await result;
+          if(!middleware()) return;
+          const availableReaction = availableReactions.find((availableReaction) => reactionsEqual(sentReaction, availableReaction));
+          doc = /* availableReaction.center_icon ??  */availableReaction.static_icon;
+        }
+
+        const div = document.createElement('div');
+        div.classList.add('btn-reaction-sticker');
+        const loadPromises: Promise<any>[] = [];
+        await wrapSticker({
+          div,
+          doc,
+          width: 26,
+          height: 26,
+          play: false,
+          isCustomEmoji,
+          textColor: 'white',
+          middleware,
+          loadPromises
+        });
+
+        await Promise.all(loadPromises);
+        if(!middleware()) return;
+        reactionNode = div;
+      }
+
+      uReaction(reactionNode);
+    });
+
     createEffect(
       on(
-        () => [uStackedAvatars?.(), uCaption(), uContent()] as const,
-        ([stackedAvatars, caption, content]) => {
-          if(stackedAvatars === null || caption === null || content === null) {
+        () => [uStackedAvatars?.(), uCaption(), uContent(), uReaction?.()] as const,
+        ([stackedAvatars, caption, content, reaction]) => {
+          if(stackedAvatars === null || caption === null || content === null || reaction === null) {
             return;
           }
 
           setStackedAvatars(stackedAvatars);
           setCaption(caption);
           setContent(content);
+          setReaction(reaction);
           props.onReady?.();
 
           createEffect(() => {
@@ -1415,7 +1489,8 @@ const Stories = (props: {
           inputEmptySignal,
           sendReaction,
           isPublic,
-          shareStory: onShareClick
+          shareStory: onShareClick,
+          reaction
         })
       }
     />;
@@ -1800,7 +1875,7 @@ const Stories = (props: {
     }
   });
 
-  let div: HTMLDivElement, headerDiv: HTMLDivElement;
+  let div: HTMLDivElement, storyDiv: HTMLDivElement, headerDiv: HTMLDivElement;
   const ret = (
     <div
       ref={div}
@@ -1828,6 +1903,7 @@ const Stories = (props: {
           !stories.hideInterface &&
           !findUpClassName(e.target, styles.ViewerStoryHeader) &&
           !findUpClassName(e.target, 'stories-input') &&
+          !findUpClassName(e.target, styles.ViewerStoryReactions) &&
           findUpClassName(e.target, styles.ViewerStory)
         ) {
           const rect = div.getBoundingClientRect();
@@ -1838,7 +1914,7 @@ const Stories = (props: {
       onTransitionStart={onTransitionStart}
       onTransitionEnd={onTransitionEnd}
     >
-      <div class={classNames(styles.ViewerStory, loading() && isActive() && 'shimmer')}>
+      <div ref={storyDiv} class={classNames(styles.ViewerStory, loading() && isActive() && 'shimmer')}>
         <div class={styles.ViewerStoryContent}>
           {contentItem}
         </div>
@@ -2021,15 +2097,21 @@ export default function StoriesViewer(props: {
     });
 
     const storiesReadiness: Set<ReturnType<typeof Stories>> = new Set();
+    // const perf = performance.now();
+    let wasReady = false;
 
-    const perf = performance.now();
     const createStories = (peer: StoriesContextPeerState, index: Accessor<number>) => {
       const onReady = () => {
+        if(wasReady) {
+          return;
+        }
+
         storiesReadiness.add(ret);
-        console.log('stories ready', peer.peerId, storiesReadiness.size);
+        // console.log('stories ready', peer.peerId, storiesReadiness.size);
 
         if(storiesReadiness.size === stories.peers.length) {
-          console.log('ready', performance.now() - perf);
+          wasReady = true;
+          // console.log('ready', performance.now() - perf);
           runWithOwner(owner, () => {
             onMount(() => {
               open();
@@ -2084,6 +2166,7 @@ export default function StoriesViewer(props: {
         !findUpClassName(e.target, styles.ViewerStoryMediaArea) &&
         !findUpClassName(e.target, styles.ViewerStoryPrivacy) &&
         !findUpClassName(e.target, styles.ViewerStoryCaptionText) &&
+        !findUpClassName(e.target, styles.ViewerStoryReactions) &&
         !!findUpClassName(e.target, styles.ViewerStory) &&
         !findUpClassName(e.target, styles.small) &&
         !findUpClassName(e.target, styles.focused);
@@ -2103,7 +2186,8 @@ export default function StoriesViewer(props: {
         !stories.paused ||
         findUpClassName(e.target, 'btn-icon') ||
         findUpClassName(e.target, styles.ViewerStoryPrivacy) ||
-        findUpClassName(e.target, 'btn-corner')) {
+        findUpClassName(e.target, 'btn-corner') ||
+        findUpClassName(e.target, styles.ViewerStoryReactions)) {
         return;
       }
 
@@ -2148,7 +2232,10 @@ export default function StoriesViewer(props: {
     // await avatarFrom.readyThumbPromise;
 
     createEffect(() => {
-      avatarFrom.render({peerId: stories.peer.peerId});
+      const peerId = stories.peer?.peerId;
+      if(peerId) {
+        avatarFrom.render({peerId: stories.peer.peerId});
+      }
     });
   };
 
@@ -2197,13 +2284,13 @@ export default function StoriesViewer(props: {
   };
 
   const animate = (el: Element, forwards: boolean, done: () => void) => {
-    if(!liteMode.isAvailable('animations')) {
+    const container = getActiveStoryContainer(el);
+    if(!liteMode.isAvailable('animations') || !container) {
       done();
       return;
     }
 
     const containers = Array.from(el.querySelectorAll(`.${styles.ViewerStoryContainer}`));
-    const container = getActiveStoryContainer(el);
     let needAvatarOpacity: boolean;
     const target = untrack(() => {
       const target = props.target?.();

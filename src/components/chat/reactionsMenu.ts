@@ -61,6 +61,7 @@ export class ChatReactionsMenu {
   private size: number;
   private openSide: 'top' | 'bottom';
   private getOpenPosition: (hasMenu: boolean) => DOMRectEditable;
+  private noMoreButton: boolean;
   public inited: boolean;
 
   constructor(options: {
@@ -70,7 +71,8 @@ export class ChatReactionsMenu {
     onFinish: ChatReactionsMenu['onFinish'],
     size?: ChatReactionsMenu['size'],
     openSide?: ChatReactionsMenu['openSide'],
-    getOpenPosition: ChatReactionsMenu['getOpenPosition']
+    getOpenPosition: ChatReactionsMenu['getOpenPosition'],
+    noMoreButton?: boolean
   }) {
     this.managers = options.managers;
     this.middlewareHelper = options.middleware ? options.middleware.create() : getMiddleware();
@@ -79,6 +81,7 @@ export class ChatReactionsMenu {
     this.size = options.size ?? REACTION_SIZE;
     this.openSide = options.openSide ?? 'bottom';
     this.getOpenPosition = options.getOpenPosition;
+    this.noMoreButton = options.noMoreButton;
 
     this.middlewareHelper.get().onDestroy(() => {
       this.listenerSetter.removeAll();
@@ -155,7 +158,7 @@ export class ChatReactionsMenu {
         return;
       }
 
-      if(filtered.length > maxLength) {
+      if(filtered.length > maxLength && !this.noMoreButton) {
         const moreButton = ButtonIcon(`${this.openSide === 'bottom' ? 'down' : 'up'} ${REACTIONS_CLASS_NAME}-more`, {noRipple: true});
         this.container.append(moreButton);
         attachClickEvent(moreButton, (e) => {

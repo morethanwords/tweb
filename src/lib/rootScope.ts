@@ -93,6 +93,7 @@ export type BroadcastEvents = {
 
   'story_update': {peerId: PeerId, story: StoryItem, modifiedPinned?: boolean, modifiedArchive?: boolean},
   'story_deleted': {peerId: PeerId, id: number},
+  'story_expired': {peerId: PeerId, id: number},
   'story_new': {peerId: PeerId, story: StoryItem, cacheType: StoriesCacheType, maxReadId: number},
   'stories_stories': UserStories,
   'stories_read': {peerId: PeerId, maxReadId: number},

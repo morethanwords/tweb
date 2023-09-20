@@ -559,7 +559,8 @@ const createStoriesStore = (props: {
       newPeers.splice(peerIndex, 1);
       setState({
         index: state.index > peerIndex ? state.index - 1 : state.index,
-        peers: newPeers
+        peers: newPeers,
+        ...(newPeers.length ? {} : {ended: true})
       });
 
       if(isActive) {
@@ -731,6 +732,9 @@ const createStoriesStore = (props: {
 
   listenerSetter.add(rootScope)('story_update', onStoryUpdate);
   listenerSetter.add(rootScope)('story_deleted', onStoryDeleted);
+  if(!props.archive && !props.pinned) {
+    listenerSetter.add(rootScope)('story_expired', onStoryDeleted);
+  }
   if((!props.archive || !singlePeerId) && !props.pinned) {
     listenerSetter.add(rootScope)('stories_stories', onStoriesStories);
     listenerSetter.add(rootScope)('story_new', onStoryNew);

@@ -434,8 +434,10 @@ $color-inactive: rgba(255, 255, 255, .5);
       backdrop-filter: blur(25px);
       opacity: 1 !important;
       visibility: visible !important;
-      max-width: 355px;
-      width: 355px;
+      // max-width: 355px;
+      // width: 355px;
+      max-width: 319px;
+      width: 319px;
 
       :global {
         .btn-menu-reactions {
@@ -482,6 +484,10 @@ $color-inactive: rgba(255, 255, 255, .5);
       width: var(--stories-width);
       max-width: var(--chat-input-max-width);
       opacity: 1;
+
+      @include animation-level-global(2) {
+        transition: opacity var(--transition-standard-out) !important;
+      }
 
       // @include animation-level-global(2) {
       //   transition: width var(--transition-standard-out), opacity var(--transition-standard-out) !important;
@@ -574,8 +580,14 @@ $color-inactive: rgba(255, 255, 255, .5);
           display: none;
         }
 
-        &.is-default {
-          --color: #FF3B30 !important;
+        &-default {
+          color: #FF3B30 !important;
+        }
+
+        &-sticker {
+          width: 26px;
+          height: 26px;
+          position: relative;
         }
       }
 

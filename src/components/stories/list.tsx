@@ -230,7 +230,8 @@ function _StoriesList(props: {
     };
 
     const target = createMemo(() => {
-      return items.get(stories.peer).querySelector('.avatar');
+      const item = items.get(peer);
+      return item?.querySelector('.avatar');
     });
 
     createStoriesViewer({onExit, target});

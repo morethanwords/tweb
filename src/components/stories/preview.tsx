@@ -11,12 +11,12 @@ import {Photo, StoryItem, Document, MessageMedia} from '../../layer';
 import choosePhotoSize from '../../lib/appManagers/utils/photos/choosePhotoSize';
 import wrapPhoto from '../wrappers/photo';
 import wrapVideo from '../wrappers/video';
-import {Middleware} from '../../helpers/middleware';
 import {createMiddleware} from './viewer';
 import LazyLoadQueue from '../lazyLoadQueue';
 import {AnimationItemGroup} from '../animationIntersector';
 import {ChatAutoDownloadSettings} from '../../helpers/autoDownload';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
+import {IS_SAFARI} from '../../environment/userAgent';
 
 let processing = false;
 const pollStories = () => {
@@ -106,7 +106,8 @@ export const wrapStoryMedia = (props: {
         photo,
         middleware,
         ...(props.forPreview && {
-          size: choosePhotoSize(photo, 150, 200)
+          size: choosePhotoSize(photo, 150, 200),
+          useRenderCache: false
         }),
         ...(props.forViewer && {
           size: choosePhotoSize(photo, Infinity, Infinity),
@@ -165,14 +166,17 @@ export const wrapStoryMedia = (props: {
         if(!middleware()) return;
         if(result?.thumb) setThumb(result.thumb.images.full as any || result.thumb.images.thumb);
         setReady(true);
-        await result?.loadPromise;
-        if(!middleware()) return;
-
         const video = result?.video;
         if(video && props.forViewer) {
           video.loop = false;
           video.muted = true;
+
+          if(IS_SAFARI) { // * force Safari to load the video
+            video.load();
+          }
         }
+        await result?.loadPromise;
+        if(!middleware()) return;
 
         setMedia(video);
       });

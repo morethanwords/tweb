@@ -86,7 +86,11 @@ export default function renderImageFromUrl(
   }
 }
 
-export function renderImageFromUrlPromise(elem: Parameters<typeof renderImageFromUrl>[0], url: string, useCache?: boolean) {
+export function renderImageFromUrlPromise(
+  elem: Parameters<typeof renderImageFromUrl>[0],
+  url: string,
+  useCache?: boolean
+) {
   return new Promise<void>((resolve) => {
     renderImageFromUrl(elem, url, resolve, useCache);
   });

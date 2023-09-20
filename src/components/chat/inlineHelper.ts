@@ -31,6 +31,7 @@ import {AnimationItemGroup} from '../animationIntersector';
 import wrapPhoto from '../wrappers/photo';
 import {i18n} from '../../lib/langPack';
 import {POSTING_NOT_ALLOWED_MAP} from './input';
+import liteMode from '../../helpers/liteMode';
 
 const ANIMATION_GROUP: AnimationItemGroup = 'INLINE-HELPER';
 // const GRID_ITEMS = 5;
@@ -208,7 +209,12 @@ export default class InlineHelper extends AutocompleteHelper {
                   const image = new Image();
                   image.classList.add('media-photo');
                   readBlobAsDataURL(blob).then((dataURL) => {
-                    renderMediaWithFadeIn(mediaContainer, image, dataURL, true);
+                    renderMediaWithFadeIn({
+                      container: mediaContainer,
+                      media: image,
+                      url: dataURL,
+                      needFadeIn: liteMode.isAvailable('animations')
+                    });
                   });
                 });
               }

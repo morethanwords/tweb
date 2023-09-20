@@ -44,13 +44,17 @@ type StoriesPeerCache = {
   position?: StoriesListPosition
 };
 
+type ExpiringItem = {peerId: PeerId, id: number, timestamp: number};
+
 const TEST_SKIPPED = false;
 const TEST_READ = false;
+const TEST_EXPIRING = 0;
 
 export default class AppStoriesManager extends AppManager {
   private cache: {[userId: UserId]: StoriesPeerCache};
   private lists: {[type in StoriesListType]: PeerId[]};
   private changelogPeerId: PeerId;
+  private expiring: ExpiringItem[];
 
   protected after() {
     this.clear(true);
@@ -118,6 +122,8 @@ export default class AppStoriesManager extends AppManager {
         this.getAllStories(false, undefined, true);
       }, 2e3);
     });
+
+    setInterval(() => this.checkExpired(), 5e3);
   }
 
   public clear = (init?: boolean) => {
@@ -126,7 +132,30 @@ export default class AppStoriesManager extends AppManager {
       stories: [],
       archive: []
     };
+    this.expiring = [];
   };
+
+  private checkExpired() {
+    const now = tsNow(true);
+    let item: ExpiringItem;
+    while(item = this.expiring[0]) {
+      if(item.timestamp > now) {
+        break;
+      }
+
+      this.expiring.shift();
+      const cache = this.getPeerStoriesCache(item.peerId, false);
+      if(!cache) {
+        continue;
+      }
+
+      const spliced = indexOfAndSplice(cache.stories, item.id);
+      if(spliced !== undefined) {
+        this.updateListCachePosition(cache);
+        this.rootScope.dispatchEvent('story_expired', {peerId: cache.peerId, id: item.id});
+      }
+    }
+  }
 
   private setChangelogPeerIdFromAppConfig = (appConfig: MTAppConfig) => {
     const userId = appConfig.stories_changelog_user_id;
@@ -270,6 +299,20 @@ export default class AppStoriesManager extends AppManager {
         insertStory(cache.archiveStories, storyItem.id, StoriesCacheType.Archive);
         modifiedArchive = true;
       }
+    }
+
+    if(cacheType === StoriesCacheType.Stories) {
+      if(TEST_EXPIRING) {
+        storyItem.expire_date = tsNow(true) + TEST_EXPIRING;
+      }
+
+      const pos = this.expiring.findIndex((item) => item.peerId === cache.peerId && item.id === storyItem.id);
+      insertInDescendSortedArray(
+        this.expiring,
+        {peerId: cache.peerId, id: storyItem.id, timestamp: storyItem.expire_date},
+        (item) => 0x7FFFFFFF - (item.timestamp),
+        pos
+      );
     }
 
     if(cacheType) {

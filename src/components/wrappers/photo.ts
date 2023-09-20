@@ -28,7 +28,7 @@ import liteMode from '../../helpers/liteMode';
 import isWebFileLocation from '../../lib/appManagers/utils/webFiles/isWebFileLocation';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 
-export default async function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size, withoutPreloader, loadPromises, autoDownloadSize, noBlur, noThumb, noFadeIn, blurAfter, managers = rootScope.managers, processUrl, fadeInElement, onRender, onRenderFinish, useBlur}: {
+export default async function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size, withoutPreloader, loadPromises, autoDownloadSize, noBlur, noThumb, noFadeIn, blurAfter, managers = rootScope.managers, processUrl, fadeInElement, onRender, onRenderFinish, useBlur, useRenderCache}: {
   photo: MyPhoto | MyDocument | WebDocument | InputWebFileLocation,
   message?: Message.message | Message.messageService,
   container?: HTMLElement,
@@ -51,7 +51,8 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
   fadeInElement?: HTMLElement,
   onRender?: () => void,
   onRenderFinish?: () => void,
-  useBlur?: boolean | number
+  useBlur?: boolean | number,
+  useRenderCache?: boolean
 }) {
   const ret = {
     loadPromises: {
@@ -251,7 +252,18 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
   };
 
   const renderOnLoad = (url: string) => {
-    return renderMediaWithFadeIn(container, media, url, needFadeIn, aspecter, thumbImage, fadeInElement, onRender, onRenderFinish);
+    return renderMediaWithFadeIn({
+      container,
+      media,
+      url,
+      needFadeIn,
+      aspecter,
+      thumbImage,
+      fadeInElement,
+      onRender,
+      onRenderFinish,
+      useRenderCache
+    });
   };
 
   const onLoad = async(url: string) => {
