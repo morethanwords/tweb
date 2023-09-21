@@ -126,6 +126,9 @@ export default class CheckboxField {
 
       const toggle = document.createElement('div');
       toggle.classList.add('checkbox-toggle');
+      const circle = document.createElement('div');
+      circle.classList.add('checkbox-toggle-circle');
+      toggle.append(circle);
       label.append(toggle);
     } else {
       const box = document.createElement('div');

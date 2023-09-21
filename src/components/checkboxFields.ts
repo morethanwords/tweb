@@ -73,7 +73,12 @@ export default class CheckboxFields<K extends CheckboxFieldsField = CheckboxFiel
     });
 
     if(info.restrictionText) {
-      info.checkboxField.label.lastElementChild.classList.add('with-lock', TGICO_CLASS);
+      if(!info.nestedTo) {
+        const circle = info.checkboxField.label.lastElementChild.firstElementChild;
+        circle.classList.add('with-lock');
+        circle.append(Icon('premium_lock', 'checkbox-caption-lock'));
+      }
+
       info.checkboxField.input.disabled = true;
 
       attachClickEvent(info.row.container, (e) => {
