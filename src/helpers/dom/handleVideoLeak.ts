@@ -6,6 +6,8 @@ import onMediaLoad from '../onMediaLoad';
 import safePlay from './safePlay';
 import setCurrentTime from './setCurrentTime';
 
+const USE_FIX = IS_CHROMIUM;
+
 export async function onVideoLeak(video: HTMLVideoElement) {
   // console.error('video is stuck', video.src, video, video.paused, videoPlaybackQuality);
   const firstElementChild = video.firstElementChild as HTMLSourceElement;
@@ -42,7 +44,7 @@ export async function testVideoLeak(
 
 // * fix new memory leak of chrome
 export default async function handleVideoLeak(video: HTMLVideoElement, loadPromise?: Promise<any>) {
-  if(!IS_CHROMIUM) {
+  if(!USE_FIX) {
     return loadPromise;
   }
 
@@ -61,7 +63,10 @@ export default async function handleVideoLeak(video: HTMLVideoElement, loadPromi
     return;
   }
 
-  if(video.getVideoPlaybackQuality().totalVideoFrames) {
+  if(
+    video.getVideoPlaybackQuality().totalVideoFrames ||
+    video.readyState > video.HAVE_METADATA // * video can lose metadata on timeupdate if has no next chunk
+  ) {
     return;
   }
 
@@ -81,7 +86,7 @@ const eventsOrderLength = eventsOrder.length;
 
 const sawEvents = new WeakMap<HTMLElement, {events: Set<string>}>();
 export const leakVideoFallbacks = new WeakMap<HTMLElement, () => void>();
-IS_CHROMIUM && eventsOrder.forEach((event) => {
+USE_FIX && eventsOrder.forEach((event) => {
   document.addEventListener(event, (e) => {
     const target = e.target;
     if(

@@ -441,11 +441,12 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
     return res;
   }
 
+  // ! do not append before load or will get `URL safety check` error
   const appendVideo = () => {
     (photoRes?.aspecter || container).append(video);
   };
 
-  if(!video.parentElement && container/*  && !altDoc */) {
+  if(!video.parentElement && container && video.poster/*  && !altDoc */) {
     appendVideo();
   }
 
@@ -576,7 +577,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
       getCacheContext();
 
       const onError = (err: any) => {
-        console.error('video load error', err);
+        console.error('video load error', video, err);
         if(spanTime) {
           spanTime.classList.add('is-error');
           const previousIcon = spanTime.querySelector('.video-time-icon');
@@ -601,6 +602,10 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
 
         if(preloader && !uploadFileName) {
           preloader.detach();
+        }
+
+        if(!video.parentElement && container && !video.poster/*  && !altDoc */) {
+          appendVideo();
         }
 
         if(altDoc) {

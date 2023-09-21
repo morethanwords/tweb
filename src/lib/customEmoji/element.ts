@@ -11,7 +11,6 @@ import {MiddlewareHelper} from '../../helpers/middleware';
 import {createCustomFiller} from '../richTextProcessor/wrapRichText';
 import RLottiePlayer from '../rlottie/rlottiePlayer';
 import {CustomEmojiRendererElement, SyncedPlayer} from './renderer';
-import setCurrentTime from '../../helpers/dom/setCurrentTime';
 
 export type CustomEmojiElements = Set<CustomEmojiElement>;
 
@@ -163,7 +162,7 @@ export default class CustomEmojiElement extends HTMLElement {
     this.paused = false;
 
     if(this.player instanceof HTMLVideoElement) {
-      setCurrentTime(this.player, this.renderer.lastPausedVideo?.currentTime ?? this.player.currentTime);
+      this.player.currentTime = this.renderer.lastPausedVideo?.currentTime ?? this.player.currentTime;
       safePlay(this.player);
     }
 
