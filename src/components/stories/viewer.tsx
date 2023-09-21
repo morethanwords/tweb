@@ -281,6 +281,7 @@ const StoryInput = (props: {
   focusedSignal: Signal<boolean>,
   sendingReaction: Accessor<HTMLElement>,
   inputEmptySignal: Signal<boolean>,
+  inputMenuOpenSignal: Signal<boolean>,
   isPublic: Accessor<boolean>,
   sendReaction: (reaction: Reaction, target: HTMLElement) => void,
   shareStory: () => void,
@@ -289,6 +290,7 @@ const StoryInput = (props: {
   const [stories, actions] = useStories();
   const [focused, setFocused] = props.focusedSignal;
   const [inputEmpty, setInputEmpty] = props.inputEmptySignal;
+  const [inputMenuOpen, setInputMenuOpen] = props.inputMenuOpenSignal;
   const [recording, setRecording] = createSignal(false);
   const middlewareHelper = createMiddleware();
   const middleware = middlewareHelper.get();
@@ -446,6 +448,7 @@ const StoryInput = (props: {
     }
 
     actions.toggle(open ? false : playAfter);
+    setInputMenuOpen(open);
   };
   input.onMenuToggle/*  = input.onRecording */ = onMenuToggle;
   input.construct();
@@ -749,10 +752,12 @@ const Stories = (props: {
   const focusedSignal = createSignal(false);
   const sendingReactionSignal = createSignal<HTMLElement>();
   const inputEmptySignal = createSignal(true);
+  const inputMenuOpenSignal = createSignal(false);
   const isPublicSignal = createSignal(false);
   const [focused, setFocused] = focusedSignal;
   const [sendingReaction, setSendingReaction] = sendingReactionSignal;
   const [inputEmpty] = inputEmptySignal;
+  const [inputMenuOpen] = inputMenuOpenSignal;
   const [isPublic, setIsPublic] = isPublicSignal;
   const [noSound, setNoSound] = createSignal(false);
   const [sliding, setSliding] = createSignal(false);
@@ -837,7 +842,7 @@ const Stories = (props: {
     setReactionsMenu(menu);
   };
 
-  const shouldMenuBeVisible = () => focused() && inputEmpty();
+  const shouldMenuBeVisible = () => focused() && inputEmpty() && !inputMenuOpen();
   const haveToCreateMenu = createMemo(() => {
     return reactionsMenu() ? true : shouldMenuBeVisible();
   });
@@ -1487,6 +1492,7 @@ const Stories = (props: {
           focusedSignal,
           sendingReaction,
           inputEmptySignal,
+          inputMenuOpenSignal,
           sendReaction,
           isPublic,
           shareStory: onShareClick,
