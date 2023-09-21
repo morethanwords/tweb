@@ -8,6 +8,9 @@ import replaceContent from '../helpers/dom/replaceContent';
 import OverlayClickHandler from '../helpers/overlayClickHandler';
 import {FormatterArguments, i18n, LangPackKey} from '../lib/langPack';
 
+const toastsContainer = document.createElement('div');
+toastsContainer.classList.add('toasts-container');
+
 const toastEl = document.createElement('div');
 toastEl.classList.add('toast');
 let timeout: number;
@@ -37,7 +40,11 @@ export function toast(content: string | Node, onClose?: () => void) {
   replaceContent(toastEl, content);
 
   if(!toastEl.parentElement) {
-    document.body.append(toastEl);
+    if(!toastsContainer.parentNode) {
+      document.body.append(toastsContainer);
+    }
+
+    toastsContainer.append(toastEl);
     void toastEl.offsetLeft; // reflow
   }
 

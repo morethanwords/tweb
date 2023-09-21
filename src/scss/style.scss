@@ -749,20 +749,29 @@ input:-webkit-autofill:active {
   }
 }
 
-.toast {
+.toasts-container {
   position: fixed;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.toast {
   padding: .5rem 1rem;
   background-color: rgba(0, 0, 0, .66);
   color: #fff;
   font-size: 1rem;
   border-radius: $border-radius-medium;
-  z-index: 5;
   max-width: unquote('min(30rem, calc(100vw - 2rem))');
   opacity: 0;
   backdrop-filter: blur(25px);
+  pointer-events: all;
 
   &.is-visible {
     opacity: 1;
