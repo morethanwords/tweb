@@ -63,6 +63,7 @@ export default class CheckboxFields<K extends CheckboxFieldsField = CheckboxFiel
       subtitleLangKey: info.description,
       clickable: info.nested ? (e) => {
         if(findUpAsChild(e.target as HTMLElement, row.checkboxField.label)) {
+          row.checkboxField.checked = !row.checkboxField.checked;
           return;
         }
 
@@ -108,6 +109,8 @@ export default class CheckboxFields<K extends CheckboxFieldsField = CheckboxFiel
       row.container.classList.add('accordion-toggler');
       row.titleRow.classList.add('with-delimiter');
 
+      // * will control it myself, otherwise on mobiles it will be toggled everytime
+      row.checkboxField.input.disabled = true;
       row.checkboxField.setValueSilently(this.getNestedCheckedLength(info) === info.nested.length);
 
       info.toggleWith ??= {checked: info.nested, unchecked: info.nested};
@@ -124,6 +127,10 @@ export default class CheckboxFields<K extends CheckboxFieldsField = CheckboxFiel
 
         const other = this.fields.filter((i) => arr.includes(i));
         other.forEach((info) => {
+          if(info.restrictionText) {
+            return;
+          }
+
           info.checkboxField.setValueSilently(value);
           if(info.nestedTo && !nested) {
             this.setNestedCounter(info.nestedTo);

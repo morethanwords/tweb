@@ -137,12 +137,12 @@ export default class PopupCreatePoll extends PopupElement {
     });
 
     this.listenerSetter.add(this.multipleCheckboxField.input)('change', () => {
-      const checked = this.multipleCheckboxField.input.checked;
+      const checked = this.multipleCheckboxField.checked;
       this.quizCheckboxField.input.toggleAttribute('disabled', checked);
     });
 
     this.listenerSetter.add(this.quizCheckboxField.input)('change', () => {
-      const checked = this.quizCheckboxField.input.checked;
+      const checked = this.quizCheckboxField.checked;
 
       (Array.from(this.questions.children) as HTMLElement[]).map((el) => {
         el.classList.toggle('radio-field', checked);
@@ -226,7 +226,7 @@ export default class PopupCreatePoll extends PopupElement {
       return false;
     }
 
-    if(this.quizCheckboxField.input.checked && !this.correctAnswers?.length) {
+    if(this.quizCheckboxField.checked && !this.correctAnswers?.length) {
       return false;
     }
 
@@ -276,15 +276,15 @@ export default class PopupCreatePoll extends PopupElement {
 
     const pFlags: Poll['pFlags'] = {};
 
-    if(this.anonymousCheckboxField && !this.anonymousCheckboxField.input.checked) {
+    if(this.anonymousCheckboxField && !this.anonymousCheckboxField.checked) {
       pFlags.public_voters = true;
     }
 
-    if(this.multipleCheckboxField.input.checked) {
+    if(this.multipleCheckboxField.checked) {
       pFlags.multiple_choice = true;
     }
 
-    if(this.quizCheckboxField.input.checked) {
+    if(this.quizCheckboxField.checked) {
       pFlags.quiz = true;
     }
 
@@ -388,7 +388,7 @@ export default class PopupCreatePoll extends PopupElement {
     attachClickEvent(questionField.input, cancelEvent, {listenerSetter: this.listenerSetter});
     radioField.label.classList.add('hidden-widget');
     radioField.input.disabled = true;
-    if(!this.quizCheckboxField.input.checked) {
+    if(!this.quizCheckboxField.checked) {
       radioField.label.classList.remove('radio-field');
     }
     this.listenerSetter.add(radioField.input)('change', () => {

@@ -148,7 +148,7 @@ export default class Row<T extends SliderSuperTabEventableConstructable = any> {
 
         if(options.withCheckboxSubtitle && !isToggle) {
           const onChange = () => {
-            replaceContent(this.subtitle, i18n(this.checkboxField.input.checked ? 'Checkbox.Enabled' : 'Checkbox.Disabled'));
+            replaceContent(this.subtitle, i18n(this.checkboxField.checked ? 'Checkbox.Enabled' : 'Checkbox.Disabled'));
           };
 
           if(options.listenerSetter) options.listenerSetter.add(this.checkboxField.input)('change', onChange);

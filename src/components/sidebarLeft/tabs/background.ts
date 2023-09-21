@@ -88,7 +88,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
 
       this.toggleBlurCheckbox();
       this.listenerSetter.add(blurCheckboxField.input)('change', async() => {
-        (this.theme.settings.wallpaper.settings ??= {_: 'wallPaperSettings', pFlags: {}}).pFlags.blur = blurCheckboxField.input.checked || undefined;
+        (this.theme.settings.wallpaper.settings ??= {_: 'wallPaperSettings', pFlags: {}}).pFlags.blur = blurCheckboxField.checked || undefined;
         await this.managers.appStateManager.pushToState('settings', rootScope.settings);
 
         // * wait for animation end

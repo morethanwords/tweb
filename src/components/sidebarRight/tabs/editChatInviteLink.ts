@@ -394,7 +394,7 @@ export default class AppEditChatInviteLink extends SliderSuperTabEventable<{
     }
 
     this.listenerSetter.add(approveNewMembersCheckboxField.input)('change', () => {
-      usersLimitSection.container.classList.toggle('hide', approveNewMembersCheckboxField.input.checked);
+      usersLimitSection.container.classList.toggle('hide', approveNewMembersCheckboxField.checked);
     });
 
     if(invite) {
