@@ -283,8 +283,7 @@ export default class CountryInputField extends InputField {
     const phoneCode = phoneCodeEl?.innerText;
     const countryCode = phoneCode && phoneCode.replace(/\D/g, '');
 
-    replaceContent(this.input, i18n(defaultName as any));
-    this.simulateInputEvent();
+    this.value = i18n(defaultName as any);
     this.lastCountrySelected = countries.find((c) => c.default_name === defaultName);
     this.lastCountryCodeSelected = countryCode && this.lastCountrySelected.country_codes.find((_countryCode) => _countryCode.country_code === countryCode);
 
@@ -297,7 +296,7 @@ export default class CountryInputField extends InputField {
   }
 
   public override(country: HelpCountry, code: HelpCountryCode, countryName?: string) {
-    replaceContent(this.input, country ? i18n(country.default_name as any) : countryName);
+    this.setValueSilently(country ? i18n(country.default_name as any) : countryName);
     this.lastCountrySelected = country;
     this.lastCountryCodeSelected = code;
     this.options.onCountryChange?.(this.lastCountrySelected, this.lastCountryCodeSelected);
