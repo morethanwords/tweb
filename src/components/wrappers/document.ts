@@ -29,6 +29,7 @@ import rootScope from '../../lib/rootScope';
 import type {ThumbCache} from '../../lib/storages/thumbs';
 import {MediaSearchContext} from '../appMediaPlaybackController';
 import AudioElement from '../audio';
+import confirmationPopup from '../confirmationPopup';
 import LazyLoadQueue from '../lazyLoadQueue';
 import {MiddleEllipsisElement} from '../middleEllipsis';
 import ProgressivePreloader from '../preloader';
@@ -298,6 +299,16 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
       download = appDownloadManager.downloadMediaURL({media: doc, queueId});
     } else {
       download = appDownloadManager.downloadToDisc({media: doc, queueId});
+
+      if(doc.mime_type === 'image/svg+xml') {
+        confirmationPopup({
+          descriptionLangKey: 'Chat.File.QuickLook.Svg',
+          button: {
+            langKey: 'OK',
+            isCancel: true
+          }
+        });
+      }
     }
 
     download.catch(() => {

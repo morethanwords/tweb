@@ -1335,6 +1335,7 @@ const lang = {
   'Chat.DropQuickDesc': 'in a quick way',
   'Chat.DropAsFilesDesc': 'without compression',
   'Chat.Edit.Cancel.Text': 'Are you sure you want to discard all changes?',
+  'Chat.File.QuickLook.Svg': 'Previewing this file can potentially expose your IP address to its creator.',
   'Chat.Input.ReplyToAnswer': 'Reply to message in topics',
   'Chat.OwnerBadge': 'owner',
   'Chat.SendVoice.PrivacyError': '%@ doesn\'t accept voice and video messages',
