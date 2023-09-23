@@ -25,6 +25,8 @@ import {StoriesProvider, useStories} from './store';
 import appImManager from '../../lib/appManagers/appImManager';
 import appSidebarLeft from '../sidebarLeft';
 import AppMyStoriesTab from '../sidebarLeft/tabs/myStories';
+import {toastNew} from '../toast';
+import wrapPeerTitle from '../wrappers/peerTitle';
 
 const TEST_COUNT = 0;
 
@@ -230,7 +232,7 @@ function _StoriesList(props: {
     };
 
     const target = createMemo(() => {
-      const item = items.get(peer);
+      const item = items.get(stories.peer);
       return item?.querySelector('.avatar');
     });
 
@@ -441,12 +443,22 @@ function _StoriesList(props: {
   );
 
   onMount(() => {
-    const toggleMute = (mute: boolean) => {
+    const toggleMute = async(mute: boolean) => {
       rootScope.managers.appNotificationsManager.toggleStoriesMute(peer.peerId, mute);
+
+      toastNew({
+        langPackKey: mute ? 'NotificationsStoryMutedHint' : 'NotificationsStoryUnmutedHint',
+        langPackArguments: [await wrapPeerTitle({peerId: peer.peerId})]
+      });
     };
 
-    const toggleHidden = (hidden: boolean) => {
+    const toggleHidden = async(hidden: boolean) => {
       rootScope.managers.appStoriesManager.toggleStoriesHidden(peer.peerId, hidden);
+
+      toastNew({
+        langPackKey: hidden ? 'StoriesMovedToContacts' : 'StoriesMovedToDialogs',
+        langPackArguments: [await wrapPeerTitle({peerId: peer.peerId})]
+      });
     };
 
     let peer: PeerStories, isSelf: boolean;
@@ -505,7 +517,7 @@ function _StoriesList(props: {
       findElement: (e) => {
         return !folded() && findUpClassName(e.target, styles.ListItem);
       },
-      onOpen: (target) => {
+      onOpen: (e, target) => {
         peer = itemsTarget.get(target as HTMLDivElement);
         isSelf = peer.peerId === rootScope.myId;
       },
@@ -521,31 +533,6 @@ function _StoriesList(props: {
     </>
   );
 }
-
-const MySuspense: ParentComponent<{}> = (props) => {
-  const ret = (
-    <Suspense>
-      {props.children}
-    </Suspense>
-  );
-
-  const signal = ret as any as Accessor<JSX.Element>;
-  const [yo, setYo] = createSignal(false);
-
-  createEffect(() => {
-    if(signal()) {
-      setYo(true);
-    }
-
-    console.log('wtf', signal());
-  });
-
-  return (
-    <>
-      {yo() || signal() ? props.children : undefined}
-    </>
-  );
-};
 
 export default function StoriesList(props: Parameters<typeof StoriesProvider>[0] & Parameters<typeof _StoriesList>[0]) {
   const [, rest] = splitProps(props, ['foldInto', 'getScrollable', 'listenWheelOn', 'setScrolledOn', 'offsetX']);

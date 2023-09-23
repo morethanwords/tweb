@@ -123,7 +123,7 @@ const hideQuizHint = (element: HTMLElement, onHide: () => void, timeout: number)
 
   clearTimeout(timeout);
   setTimeout(() => {
-    onHide();
+    onHide?.();
     element.remove();
 
     if(prevQuizHint === element && prevQuizHintOnHide === onHide && prevQuizHintTimeout === timeout) {
@@ -135,13 +135,21 @@ const hideQuizHint = (element: HTMLElement, onHide: () => void, timeout: number)
 
 let prevQuizHint: HTMLElement, prevQuizHintOnHide: () => void, prevQuizHintTimeout: number;
 let isListenerSet = false;
-const setQuizHint = (solution: string, solution_entities: any[], onHide: () => void) => {
+export const setQuizHint = (options: {
+  textElement: HTMLElement | DocumentFragment,
+  textRight?: HTMLElement | DocumentFragment,
+  onHide?: () => void,
+  appendTo: HTMLElement,
+  from: 'top' | 'bottom',
+  duration: number,
+  icon: Icon
+}) => {
   if(prevQuizHint) {
     hideQuizHint(prevQuizHint, prevQuizHintOnHide, prevQuizHintTimeout);
   }
 
   const element = document.createElement('div');
-  element.classList.add('quiz-hint');
+  element.classList.add('quiz-hint', 'from-' + options.from);
 
   const container = document.createElement('div');
   container.classList.add('quiz-hint-container');
@@ -149,20 +157,34 @@ const setQuizHint = (solution: string, solution_entities: any[], onHide: () => v
   const textEl = document.createElement('div');
   textEl.classList.add('quiz-hint-text');
 
-  container.append(Icon('info2', 'quiz-hint-icon'), textEl);
+  let textRightEl: HTMLElement;
+  if(options.textRight) {
+    textRightEl = document.createElement('div');
+    textRightEl.classList.add('quiz-hint-text-right');
+    textRightEl.append(options.textRight);
+    container.classList.add('has-right-text');
+  }
+
+  container.append(...[
+    Icon(options.icon, 'quiz-hint-icon'),
+    textEl,
+    textRightEl
+  ].filter(Boolean));
   element.append(container);
 
-  setInnerHTML(textEl, wrapRichText(solution, {entities: solution_entities}));
-  appImManager.chat.bubbles.container.append(element);
+  setInnerHTML(textEl, options.textElement);
+  options.appendTo.append(element);
 
   void element.offsetLeft; // reflow
   element.classList.add('active');
 
+  const hide = () => {
+    hideQuizHint(element, options.onHide, timeout);
+  };
+
   prevQuizHint = element;
-  prevQuizHintOnHide = onHide;
-  prevQuizHintTimeout = window.setTimeout(() => {
-    hideQuizHint(element, onHide, prevQuizHintTimeout);
-  }, IS_TOUCH_SUPPORTED ? 5000 : 7000);
+  prevQuizHintOnHide = options.onHide;
+  const timeout = prevQuizHintTimeout = window.setTimeout(hide, options.duration);
 
   if(!isListenerSet) {
     isListenerSet = true;
@@ -172,6 +194,8 @@ const setQuizHint = (solution: string, solution_entities: any[], onHide: () => v
       }
     });
   }
+
+  return {hide};
 };
 
 export default class PollElement extends HTMLElement {
@@ -479,9 +503,16 @@ export default class PollElement extends HTMLElement {
 
         // active = true;
         toggleHint.classList.add('active');
-        setQuizHint(results.solution, results.solution_entities, () => {
-          // active = false;
-          toggleHint.classList.remove('active');
+        setQuizHint({
+          textElement: wrapRichText(results.solution, {entities: results.solution_entities}),
+          appendTo: appImManager.chat.bubbles.container,
+          from: 'top',
+          duration: IS_TOUCH_SUPPORTED ? 5000 : 7000,
+          icon: 'info2',
+          onHide: () => {
+            // active = false;
+            toggleHint.classList.remove('active');
+          }
         });
       });
 

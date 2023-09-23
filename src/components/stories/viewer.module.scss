@@ -21,6 +21,18 @@ $color-inactive: rgba(255, 255, 255, .5);
   display: flex;
   align-items: center;
   justify-content: center;
+  visibility: visible;
+
+  &.isInvisible {
+    visibility: hidden;
+
+    :global {
+      .btn-send-container,
+      .btn-send .animated-button-icon-icon {
+        visibility: hidden !important;
+      }
+    }
+  }
 
   &Background {
     position: absolute;
@@ -408,6 +420,7 @@ $color-inactive: rgba(255, 255, 255, .5);
         &Cell {
           display: table-cell;
           vertical-align: bottom;
+          user-select: text;
         }
       }
     }

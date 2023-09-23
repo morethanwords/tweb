@@ -165,7 +165,6 @@ export class AppImManager extends EventListenerBase<{
   private prevTab: HTMLElement;
   private chatsSelectTabDebounced: () => void;
 
-  public markupTooltip: MarkupTooltip;
   private backgroundPromises: {[slug: string]: Promise<string>};
 
   private topbarCall: TopbarCall;
@@ -582,6 +581,7 @@ export class AppImManager extends EventListenerBase<{
     this.attachKeydownListener();
     this.handleAutologinDomains();
     this.checkForShare();
+    this.init();
   }
 
   private checkForShare() {
@@ -1600,8 +1600,7 @@ export class AppImManager extends EventListenerBase<{
     }
 
     // if(!isTouchSupported) {
-    this.markupTooltip = new MarkupTooltip(this);
-    this.markupTooltip.handleSelection();
+    MarkupTooltip.getInstance().handleSelection();
     // }
   }
 
@@ -1937,11 +1936,6 @@ export class AppImManager extends EventListenerBase<{
   }
 
   public async setPeer(options: Partial<ChatSetInnerPeerOptions> = {}, animate?: boolean): Promise<boolean> {
-    if(this.init) {
-      this.init();
-      this.init = null;
-    }
-
     options.peerId ??= NULL_PEER_ID;
     options.peerId = await this.managers.appPeersManager.getPeerMigratedTo(options.peerId) || options.peerId;
 

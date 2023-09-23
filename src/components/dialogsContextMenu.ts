@@ -41,7 +41,7 @@ export default class DialogsContextMenu {
       listenTo: element,
       buttons: this.getButtons(),
       appendTo: document.getElementById('page-chats'),
-      onOpen: async(li) => {
+      onOpen: async(e, li) => {
         this.li = li;
         li.classList.add('menu-open');
         this.peerId = li.dataset.peerId.toPeerId();
@@ -50,7 +50,7 @@ export default class DialogsContextMenu {
         this.filterId = this.threadId ? undefined : appDialogsManager.filterId;
         this.canManageTopics = this.threadId ? await this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'manage_topics') : undefined;
       },
-      onBeforeOpen: async() => {
+      onOpenBefore: async() => {
         // delete button
         const langPackKey: LangPackKey = this.threadId ? 'Delete' : await this.managers.appPeersManager.getDeleteButtonText(this.peerId);
         const lastButton = this.buttons[this.buttons.length - 1];

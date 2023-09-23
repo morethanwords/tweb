@@ -232,7 +232,7 @@ class SearchContextMenu {
       icon: 'select',
       text: 'Message.Context.Select',
       onClick: this.onSelectClick,
-      verify: () => !this.isSelected,
+      verify: () => !this.isSelected && (!this.storyItem || this.peerId === rootScope.myId),
       withSelection: true
     }, {
       icon: 'select',
@@ -243,12 +243,12 @@ class SearchContextMenu {
     }, {
       icon: 'pin',
       text: 'Story.AddToProfile',
-      onClick: this.onStoryTogglePinClick,
+      onClick: () => this.onStoryTogglePinClick(true),
       verify: () => this.storyItem && this.peerId === rootScope.myId && !this.storyItem.pFlags.pinned
     }, {
       icon: 'unpin',
       text: 'Story.RemoveFromProfile',
-      onClick: this.onStoryTogglePinClick,
+      onClick: () => this.onStoryTogglePinClick(false),
       verify: () => this.storyItem && this.peerId === rootScope.myId && this.storyItem.pFlags.pinned
     }, {
       icon: 'delete',
@@ -317,8 +317,8 @@ class SearchContextMenu {
     }
   };
 
-  private onStoryTogglePinClick = () => {
-    this.searchSuper.selection.onPinClick([this.storyItem.id]);
+  private onStoryTogglePinClick = (pin: boolean) => {
+    this.searchSuper.selection.onPinClick([this.storyItem.id], pin);
   };
 }
 
@@ -1508,6 +1508,8 @@ export default class AppSearchSuper {
         },
         selection: this.selection
       });
+
+      this._loadStories();
     });
     return promise;
   }

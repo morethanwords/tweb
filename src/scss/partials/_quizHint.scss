@@ -6,19 +6,26 @@
 
 .quiz-hint {
 	position: absolute;
-	left: 0;
 	display: flex;
-	width: 100%;
-	justify-content: center;
-	//z-index: 5;
-	top: 8px;
 	align-items: center;
-	transform: translate3d(0, calc(-100% - 10px), 0);
+	justify-content: center;
+	width: 100%;
+  padding: 0 .5rem;
 	transition: transform .2s ease;
 
 	body.animation-level-0 & {
 		transition: none;
 	}
+
+  &.from-top {
+    top: .5rem;
+    transform: translate3d(0, calc(-100% - 10px), 0);
+  }
+
+  &.from-bottom {
+    bottom: .5rem;
+    transform: translate3d(0, calc(100% + 10px), 0);
+  }
 
 	&.active {
 		transform: translate3d(0, 0, 0);
@@ -26,21 +33,26 @@
 
 	&-container {
 		background: rgba(0, 0, 0, .7);
+    backdrop-filter: var(--menu-backdrop-filter);
     text-align: center;
-    width: auto;
     padding: 10px 18px 12px 50px;
     min-height: 48px;
     border-radius: 12px;
     line-height: 1.5;
     color: white;
     font-size: 15px;
-    max-width: 400px;
+    max-width: unquote("min(100%, 400px)");
     overflow: hidden;
 		text-align: start;
 		position: relative;
 		display: flex;
 		align-items: center;
 		flex-wrap: wrap;
+
+    &.has-right-text {
+      justify-content: space-between;
+      flex: 1 1 auto;
+    }
 
 		@include respond-to(handhelds) {
 			padding: 10px 18px 12px 54px;

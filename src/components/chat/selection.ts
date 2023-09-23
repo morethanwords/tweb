@@ -658,14 +658,14 @@ export class SearchSelection extends AppSelection {
     this.managers.appStoriesManager.deleteStories(ids);
   };
 
-  public onPinClick = (ids = [...this.selectedMids.get(rootScope.myId)]) => {
-    const promise = this.managers.appStoriesManager.togglePinned(ids, this.isStoriesArchive);
+  public onPinClick = (ids = [...this.selectedMids.get(rootScope.myId)], pin: boolean) => {
+    const promise = this.managers.appStoriesManager.togglePinned(ids, pin);
     this.cancelSelection();
     promise.then(() => {
       if(ids.length === 1) {
-        toastNew({langPackKey: this.isStoriesArchive ? 'StoryPinnedToProfile' : 'StoryArchivedFromProfile'});
+        toastNew({langPackKey: pin ? 'StoryPinnedToProfile' : 'StoryArchivedFromProfile'});
       } else {
-        toastNew({langPackKey: this.isStoriesArchive ? 'StorySavedTitle' : 'StoryArchived', langPackArguments: [ids.length]});
+        toastNew({langPackKey: pin ? 'StorySavedTitle' : 'StoryArchived', langPackArguments: [ids.length]});
       }
     });
   };
@@ -719,7 +719,7 @@ export class SearchSelection extends AppSelection {
         const attachClickOptions: AttachClickOptions = {listenerSetter: this.listenerSetter};
 
         this.selectionPinBtn = ButtonIcon(`${this.isStoriesArchive ? 'pin' : 'unpin'} ${BASE_CLASS}-pin`);
-        attachClickEvent(this.selectionPinBtn, () => this.onPinClick(), attachClickOptions);
+        attachClickEvent(this.selectionPinBtn, () => this.onPinClick(undefined, this.isStoriesArchive), attachClickOptions);
 
         this.selectionGotoBtn = ButtonIcon(`message ${BASE_CLASS}-goto`);
         attachClickEvent(this.selectionGotoBtn, () => {

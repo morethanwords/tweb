@@ -22,7 +22,8 @@ export default function createContextMenu<T extends ButtonMenuItemOptionsVerifia
   filterButtons,
   onOpen,
   onClose,
-  onBeforeOpen,
+  onCloseAfter,
+  onOpenBefore,
   listenerSetter: attachListenerSetter,
   middleware,
   listenForClick
@@ -32,9 +33,10 @@ export default function createContextMenu<T extends ButtonMenuItemOptionsVerifia
   listenTo: HTMLElement,
   appendTo?: HTMLElement,
   filterButtons?: (buttons: T[]) => Promise<T[]>,
-  onOpen?: (target: HTMLElement) => any,
+  onOpen?: (e: Event, target: HTMLElement) => any,
   onClose?: () => any,
-  onBeforeOpen?: () => any,
+  onCloseAfter?: () => any,
+  onOpenBefore?: () => any,
   listenerSetter?: ListenerSetter,
   middleware?: Middleware,
   listenForClick?: boolean
@@ -60,7 +62,7 @@ export default function createContextMenu<T extends ButtonMenuItemOptionsVerifia
     if(e instanceof MouseEvent || e.hasOwnProperty('cancelBubble')) (e as any).cancelBubble = true;
 
     const r = async() => {
-      await onOpen?.(target);
+      await onOpen?.(e, target);
 
       const initResult = await init();
       if(!initResult) {
@@ -80,6 +82,7 @@ export default function createContextMenu<T extends ButtonMenuItemOptionsVerifia
         cleanup();
 
         setTimeout(() => {
+          onCloseAfter?.();
           destroy();
         }, 300);
       });
@@ -123,7 +126,7 @@ export default function createContextMenu<T extends ButtonMenuItemOptionsVerifia
     });
     _element.classList.add('contextmenu');
 
-    await onBeforeOpen?.();
+    await onOpenBefore?.();
 
     appendTo.append(_element);
 

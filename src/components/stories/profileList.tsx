@@ -17,7 +17,6 @@ const TEST_TWO = false;
 
 function _StoriesProfileList(props: {
   onReady?: () => void,
-  onLoadCallback?: (callback: () => Promise<boolean>) => void,
   onLengthChange?: (length: number) => void,
   selection?: SearchSelection
 }) {
@@ -26,8 +25,6 @@ function _StoriesProfileList(props: {
   const [length, setLength] = createSignal(0);
   const [viewerId, setViewerId] = createSignal<number>();
   const items = new Map<number, HTMLElement>();
-
-  props.onLoadCallback(actions.load);
 
   const onReady = () => {
     const list = <For each={stories.peer.stories}>{Item}</For>;
@@ -143,7 +140,7 @@ function _StoriesProfileList(props: {
 }
 
 export default function StoriesProfileList(props: Parameters<typeof StoriesProvider>[0] & Parameters<typeof _StoriesProfileList>[0]) {
-  const [, rest] = splitProps(props, ['onReady', 'onLoadCallback', 'onLengthChange', 'selection']);
+  const [, rest] = splitProps(props, ['onReady', 'onLengthChange', 'selection']);
   return (
     <StoriesProvider {...rest}>
       <_StoriesProfileList {...props} />

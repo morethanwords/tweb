@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {StoriesListPosition} from '../../lib/appManagers/appStoriesManager';
+import type {StoriesListPosition, StoriesListType} from '../../lib/appManagers/appStoriesManager';
 import {untrack, createEffect, on, createMemo, batch, onCleanup, createContext, ParentComponent, splitProps, useContext, getOwner, runWithOwner} from 'solid-js';
 import {createStore, reconcile} from 'solid-js/store';
 import mediaSizes from '../../helpers/mediaSizes';
@@ -17,6 +17,8 @@ import rootScope, {BroadcastEvents} from '../../lib/rootScope';
 import {STORY_DURATION, createListenerSetter} from './viewer';
 import insertInDescendSortedArray from '../../helpers/array/insertInDescendSortedArray';
 import {AnyFunction} from '../../types';
+import findAndSplice from '../../helpers/array/findAndSplice';
+import forEachReverse from '../../helpers/array/forEachReverse';
 
 export type NextPrevStory = () => void;
 export type ChangeStoryParams = {
@@ -122,7 +124,8 @@ const createStoriesStore = (props: {
   index?: number,
   peerId?: PeerId,
   pinned?: boolean,
-  archive?: boolean
+  archive?: boolean,
+  onLoadCallback?: (callback: () => Promise<boolean>) => void,
 }): StoriesContextValue => {
   const getNearestStory = (
     next: boolean,
@@ -187,6 +190,7 @@ const createStoriesStore = (props: {
   let loadState: string, loaded: boolean;
   const [state, setState] = createStore(initialState);
   const singlePeerId = props.peerId;
+  const currentListType: StoriesListType = props.archive ? 'archive' : 'stories';
   const {positions, onPosition} = createPositions(new Map(globalPositions));
   const postponedPositions: Array<BroadcastEvents['stories_position']> = [];
 
@@ -388,7 +392,14 @@ const createStoriesStore = (props: {
         state.freezedSorting.delete(type);
 
         if(!state.freezedSorting.size) {
-          postponedPositions.splice(0, Infinity).forEach(onStoriesPosition);
+          postponedPositions.splice(0, Infinity).forEach((data) => onStoriesPosition(data, true));
+        } else if(type === 'viewer') {
+          forEachReverse(postponedPositions, (data, idx) => {
+            if(data.position && data.position.type !== currentListType) {
+              postponedPositions.splice(idx, 1);
+              onStoriesPosition(data, true);
+            }
+          });
         }
       }
     },
@@ -517,8 +528,9 @@ const createStoriesStore = (props: {
     }
 
     batch(() => {
+      setState('peers', reconcile(peers, {key: 'peerId', merge: true}));
       setState({
-        peers,
+        // peers,
         index: modifyCurrentIndex
       });
 
@@ -539,7 +551,7 @@ const createStoriesStore = (props: {
       return false;
     }
 
-    return (props.archive && position.type === 'archive') || (!props.archive && position.type === 'stories');
+    return position.type === currentListType;
   };
 
   const addUserStories = (userStories: UserStories[]) => {
@@ -557,10 +569,11 @@ const createStoriesStore = (props: {
     batch(() => {
       const newPeers = state.peers.slice();
       newPeers.splice(peerIndex, 1);
+      const newIndex = state.index > peerIndex ? state.index - 1 : state.index;
       setState({
-        index: state.index > peerIndex ? state.index - 1 : state.index,
         peers: newPeers,
-        ...(newPeers.length ? {} : {ended: true})
+        ...(newPeers.length ? {} : {ended: true}),
+        ...(newIndex < newPeers.length ? {index: newIndex} : {ended: true})
       });
 
       if(isActive) {
@@ -705,11 +718,12 @@ const createStoriesStore = (props: {
   //   }
   // };
 
-  const onStoriesPosition = (data: BroadcastEvents['stories_position']) => {
+  const onStoriesPosition = (data: BroadcastEvents['stories_position'], ignoreFreezed?: boolean) => {
     const {peerId, position} = data;
-    if(state.freezedSorting.size) {
+    if(state.freezedSorting.size && !ignoreFreezed) {
       const previousPosition = positions.get(peerId);
-      if(previousPosition?.type === position?.type) {
+      if(previousPosition?.type === position?.type || (state.hasViewer && previousPosition && position)) {
+        findAndSplice(postponedPositions, (data) => data.peerId === peerId);
         postponedPositions.push(data);
         return;
       }
@@ -744,7 +758,9 @@ const createStoriesStore = (props: {
   }
   // * updates section end
 
-  if(!state.ready) {
+  if(props.onLoadCallback) {
+    props.onLoadCallback(actions.load);
+  } else if(!state.ready) {
     actions.load();
   } else if(state.peer.index === undefined) {
     actions.resetIndexes();

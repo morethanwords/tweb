@@ -19,8 +19,13 @@ import clamp from '../../helpers/number/clamp';
 import matchUrl from '../../lib/richTextProcessor/matchUrl';
 import matchUrlProtocol from '../../lib/richTextProcessor/matchUrlProtocol';
 import hasMarkupInSelection from '../../helpers/dom/hasMarkupInSelection';
+import {applyMarkdown} from '../../helpers/dom/markdown';
+import findUpClassName from '../../helpers/dom/findUpClassName';
+import overlayCounter from '../../helpers/overlayCounter';
 
 export default class MarkupTooltip {
+  private static INSTANCE: MarkupTooltip;
+
   public container: HTMLElement;
   private wrapper: HTMLElement;
   private buttons: {[type in MarkdownType]: HTMLElement} = {} as any;
@@ -32,10 +37,15 @@ export default class MarkupTooltip {
   private linkInput: HTMLInputElement;
   private savedRange: Range;
   private mouseUpCounter: number = 0;
+  private input: HTMLElement;
   // private log: ReturnType<typeof logger>;
 
-  constructor(private appImManager: AppImManager) {
+  constructor() {
     // this.log = logger('MARKUP');
+  }
+
+  public static getInstance() {
+    return this.INSTANCE ||= new MarkupTooltip();
   }
 
   private init() {
@@ -50,7 +60,15 @@ export default class MarkupTooltip {
     tools1.classList.add('markup-tooltip-tools', 'markup-tooltip-tools-regular');
     tools2.classList.add('markup-tooltip-tools', 'markup-tooltip-tools-link');
 
-    const arr = ['bold', 'italic', 'underline', 'strikethrough', 'monospace', 'spoiler', 'link'] as (keyof MarkupTooltip['buttons'])[];
+    const arr = [
+      'bold',
+      'italic',
+      'underline',
+      'strikethrough',
+      'monospace',
+      'spoiler',
+      'link'
+    ] as (keyof MarkupTooltip['buttons'])[];
     arr.forEach((c) => {
       const button = ButtonIcon(c, {noRipple: true});
       tools1.append(this.buttons[c] = button);
@@ -58,7 +76,7 @@ export default class MarkupTooltip {
       if(c !== 'link') {
         button.addEventListener('mousedown', (e) => {
           cancelEvent(e);
-          this.appImManager.chat.input.applyMarkdown(c);
+          applyMarkdown(this.input, c);
           this.cancelClosening();
 
           /* this.mouseUpCounter = 0;
@@ -175,7 +193,7 @@ export default class MarkupTooltip {
     if(url && !matchUrlProtocol(url)) {
       url = 'https://' + url;
     }
-    this.appImManager.chat.input.applyMarkdown('link', url);
+    applyMarkdown(this.input, 'link', url);
     setTimeout(() => {
       this.hide();
     }, 0);
@@ -189,7 +207,7 @@ export default class MarkupTooltip {
     const selection = window.getSelection();
     selection.removeAllRanges();
     selection.addRange(range);
-    this.appImManager.chat.input.messageInput.focus();
+    this.input.focus();
   }
 
   public hide() {
@@ -197,6 +215,7 @@ export default class MarkupTooltip {
 
     if(this.init) return;
 
+    this.input = undefined;
     this.container.classList.remove('is-visible');
     // document.removeEventListener('mouseup', this.onMouseUp);
     document.removeEventListener('mouseup', this.onMouseUpSingle);
@@ -256,11 +275,12 @@ export default class MarkupTooltip {
 
     const bodyRect = document.body.getBoundingClientRect();
     const selectionRect = range.getBoundingClientRect();
-    const inputRect = this.appImManager.chat.input.rowsWrapper.getBoundingClientRect();
+    const rowsWrapper = findUpClassName(this.input, 'rows-wrapper');
+    const inputRect = rowsWrapper.getBoundingClientRect();
 
     this.container.style.maxWidth = inputRect.width + 'px';
 
-    const visibleRect = getVisibleRect(undefined, this.appImManager.chat.input.messageInput, false, selectionRect);
+    const visibleRect = getVisibleRect(undefined, this.input, false, selectionRect);
 
     const selectionTop = visibleRect.rect.top/* selectionRect.top */ + (bodyRect.top * -1);
 
@@ -305,6 +325,8 @@ export default class MarkupTooltip {
     if(this.container.classList.contains('is-visible')) {
       return;
     }
+
+    this.container.classList.toggle('night', overlayCounter.isDarkOverlayActive);
 
     this.setActiveMarkupButton();
 
@@ -384,6 +406,10 @@ export default class MarkupTooltip {
     }
   }
 
+  public canFormatInput(input: Element) {
+    return input.classList.contains('input-message-input');
+  }
+
   public handleSelection() {
     if(this.addedListener) return;
     this.addedListener = true;
@@ -394,13 +420,8 @@ export default class MarkupTooltip {
         return;
       }
 
-      const {chat} = this.appImManager;
-      if(!chat?.input) {
-        return;
-      }
-
-      const messageInput = chat.input.messageInput;
-      if(document.activeElement !== messageInput) {
+      const activeElement = document.activeElement as HTMLElement;
+      if(this.input ? activeElement !== this.input : !this.canFormatInput(activeElement)) {
         this.hide();
         return;
       }
@@ -410,6 +431,8 @@ export default class MarkupTooltip {
         this.hide();
         return;
       }
+
+      this.input = activeElement;
 
       if(IS_TOUCH_SUPPORTED) {
         if(IS_APPLE) {
@@ -432,7 +455,7 @@ export default class MarkupTooltip {
       } else if(this.container && this.container.classList.contains('is-visible')) {
         this.setActiveMarkupButton();
         this.setTooltipPosition();
-      } else if(messageInput.matches(':active')) {
+      } else if(this.input.matches(':active')) {
         this.setMouseUpEvent();
       } else {
         this.show();

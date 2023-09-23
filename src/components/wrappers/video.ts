@@ -23,7 +23,7 @@ import makeError from '../../helpers/makeError';
 import mediaSizes, {ScreenSize} from '../../helpers/mediaSizes';
 import {Middleware} from '../../helpers/middleware';
 import noop from '../../helpers/noop';
-import onMediaLoad from '../../helpers/onMediaLoad';
+import onMediaLoad, {shouldIgnoreVideoError} from '../../helpers/onMediaLoad';
 import {fastRaf} from '../../helpers/schedulers';
 import throttle from '../../helpers/schedulers/throttle';
 import sequentialDom from '../../helpers/sequentialDom';
@@ -480,6 +480,10 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
 
   const renderDeferred = deferredPromise<void>();
   video.addEventListener('error', (e) => {
+    if(shouldIgnoreVideoError(e)) {
+      return;
+    }
+
     if(video.error.code !== 4) {
       console.error('Error ' + video.error.code + '; details: ' + video.error.message);
     }

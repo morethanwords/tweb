@@ -115,7 +115,10 @@ export type State = {
   hideChatJoinRequests: {[peerId: PeerId]: number},
   stateId: number,
   notifySettings: {[k in Exclude<NotifyPeer['_'], 'notifyPeer'>]?: PeerNotifySettings.peerNotifySettings},
-  confirmedWebViews: BotId[]
+  confirmedWebViews: BotId[],
+  seenTooltips: {
+    storySound: boolean
+  }
 };
 
 // const BACKGROUND_DAY_MOBILE: Background = {
@@ -326,5 +329,8 @@ export const STATE_INIT: State = {
   hideChatJoinRequests: {},
   stateId: nextRandomUint(32),
   notifySettings: {},
-  confirmedWebViews: []
+  confirmedWebViews: [],
+  seenTooltips: {
+    storySound: false
+  }
 };

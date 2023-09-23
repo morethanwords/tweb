@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import {IS_MOBILE} from '../../environment/userAgent';
 import type {MyDialogFilter} from '../storages/filters';
 
 /**
@@ -32,4 +33,4 @@ export const FOLDER_ID_ARCHIVE: REAL_FOLDER_ID = 1;
 export const REAL_FOLDERS: Set<number> = new Set([FOLDER_ID_ALL, FOLDER_ID_ARCHIVE]);
 export const START_LOCAL_ID = Math.max(...Array.from(REAL_FOLDERS)) + 1 as MyDialogFilter['localId'];
 
-export const TEST_NO_STORIES = true;
+export const TEST_NO_STORIES = IS_MOBILE;

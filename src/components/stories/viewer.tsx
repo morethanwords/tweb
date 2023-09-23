@@ -81,6 +81,11 @@ import blurActiveElement from '../../helpers/dom/blurActiveElement';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import reactionsEqual from '../../lib/appManagers/utils/reactions/reactionsEqual';
 import wrapSticker from '../wrappers/sticker';
+import createContextMenu from '../../helpers/dom/createContextMenu';
+import {joinDeepPath} from '../../helpers/object/setDeepProperty';
+import isTargetAnInput from '../../helpers/dom/isTargetAnInput';
+import {setQuizHint} from '../poll';
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
 
 export const STORY_DURATION = 5e3;
 const STORY_HEADER_AVATAR_SIZE = 32;
@@ -285,7 +290,10 @@ const StoryInput = (props: {
   isPublic: Accessor<boolean>,
   sendReaction: (reaction: Reaction, target: HTMLElement) => void,
   shareStory: () => void,
-  reaction: Accessor<JSX.Element>
+  reaction: Accessor<JSX.Element>,
+  copyStoryLink: () => void,
+  contextMenuOptions: Partial<Parameters<typeof createContextMenu>[0]>,
+  onMessageSent: () => void
 }) => {
   const [stories, actions] = useStories();
   const [focused, setFocused] = props.focusedSignal;
@@ -358,6 +366,7 @@ const StoryInput = (props: {
     botCommands: true
   };
   input.globalMentions = true;
+  input.getMiddleware = (...args) => middleware.create().get(...args);
 
   // const onMouseDown = (e: MouseEvent) => {
   //   if(
@@ -538,10 +547,25 @@ const StoryInput = (props: {
   input.onMessageSent2 = () => {
     blurActiveElement();
     setFocused(false);
+    props.onMessageSent();
   };
 
-  input.forwardStoryCallback = () => {
-    props.shareStory();
+  input.forwardStoryCallback = (e) => {
+    const story = props.currentStory() as StoryItem.storyItem;
+    if(story.pFlags.noforwards) {
+      const {open} = createContextMenu({
+        buttons: [{
+          icon: 'copy',
+          text: 'CopyLink',
+          onClick: props.copyStoryLink
+        }],
+        listenTo: input.btnSendContainer,
+        ...props.contextMenuOptions
+      });
+      open(e);
+    } else {
+      props.shareStory();
+    }
   };
 
   input.onRecording = (recording) => {
@@ -562,7 +586,8 @@ const showTooltip = ({
   text,
   textElement,
   paddingX = 0,
-  centerVertically
+  centerVertically,
+  onClose
 }: {
   element: HTMLElement,
   container?: HTMLElement,
@@ -570,7 +595,8 @@ const showTooltip = ({
   text?: LangPackKey,
   textElement?: HTMLElement,
   paddingX?: number,
-  centerVertically?: boolean
+  centerVertically?: boolean,
+  onClose?: () => void
 }) => {
   const containerRect = container.getBoundingClientRect();
   const elementRect = element.getBoundingClientRect();
@@ -649,6 +675,7 @@ const showTooltip = ({
         duration: 200,
         forwards: false,
         onTransitionEnd: () => {
+          onClose?.();
           dispose();
         }
       });
@@ -676,7 +703,8 @@ const Stories = (props: {
   index: Accessor<number>,
   splitByDays?: boolean,
   pinned?: boolean,
-  onReady?: () => void
+  onReady?: () => void,
+  close: (callback: () => void) => void
 }) => {
   const avatar = AvatarNew({
     size: STORY_HEADER_AVATAR_SIZE,
@@ -706,7 +734,8 @@ const Stories = (props: {
   const onShareClick = (wasPlaying = !stories.paused) => {
     actions.pause();
     const popup = PopupPickUser.createSharingPicker(async(peerId) => {
-      const inputUser = await rootScope.managers.appUsersManager.getUserInput(props.state.peerId.toUserId());
+      const storyPeerId = props.state.peerId;
+      const inputUser = await rootScope.managers.appUsersManager.getUserInput(storyPeerId.toUserId());
       rootScope.managers.appMessagesManager.sendOther(
         peerId,
         {
@@ -714,6 +743,10 @@ const Stories = (props: {
           id: currentStory().id,
           user_id: inputUser
         }
+      );
+
+      showMessageSentTooltip(
+        i18n(peerId === rootScope.myId ? 'StorySharedToSavedMessages' : 'StorySharedTo', [await wrapPeerTitle({peerId})])
       );
     });
 
@@ -854,7 +887,9 @@ const Stories = (props: {
   });
 
   const setVideoListeners = (video: HTMLVideoElement) => {
+    let cleaned = false;
     onCleanup(() => {
+      cleaned = true;
       video.pause();
       // video.src = '';
       // video.load();
@@ -925,6 +960,27 @@ const Stories = (props: {
     createEffect(() => {
       video.muted = stories.muted;
     });
+
+    apiManagerProxy.getState().then((state) => {
+      if(!cleaned && !state.seenTooltips.storySound) {
+        runWithOwner(owner, () => {
+          const playingMemo = createMemo((prev) => prev || (isActive() && stories.startTime));
+          createEffect(() => {
+            if(playingMemo()) {
+              const {close} = showTooltip({
+                ...muteTooltipOptions,
+                textElement: i18n('Story.SoundTooltip')
+              });
+              setTooltipCloseCallback(() => close);
+            }
+          });
+        });
+
+        rootScope.managers.appStateManager.setByKey(joinDeepPath('seenTooltips', 'storySound'), true);
+      }
+    });
+
+    const owner = getOwner();
   };
 
   const setStory = async(story: StoryItem) => {
@@ -978,15 +1034,62 @@ const Stories = (props: {
                 onClick={(e) => {
                   if(!isActive()) return;
                   cancelEvent(e);
-                  const a = window.document.createElement('a');
-                  a.href = 'https://maps.google.com/maps?q=' + geoPoint.lat + ',' + geoPoint.long;
-                  a.append(i18n('StoryViewLocation'));
+
+                  const href = 'https://maps.google.com/maps?q=' + geoPoint.lat + ',' + geoPoint.long;
+
+                  let a: HTMLAnchorElement, ignoreClickEvent = false, hasPopup: boolean;
+                  const aa = (
+                    <a
+                      ref={a}
+                      href={href}
+                      onClick={async(e) => {
+                        if(ignoreClickEvent) {
+                          ignoreClickEvent = false;
+                          return;
+                        }
+
+                        hasPopup = true;
+                        cancelEvent(e);
+                        try {
+                          await confirmationPopup({
+                            descriptionLangKey: 'Popup.OpenInGoogleMaps',
+                            button: {
+                              langKey: 'Open'
+                            }
+                          });
+                        } catch(err) {
+                          if(wasPlaying) {
+                            actions.play();
+                          }
+
+                          return;
+                        }
+
+                        ignoreClickEvent = true;
+                        a.click();
+                      }}
+                    >
+                      {i18n('StoryViewLocation')}
+                    </a>
+                  );
                   setBlankToAnchor(a);
+                  const wasPlaying = !stories.paused;
+                  actions.pause();
                   const {close} = showTooltip({
                     element: div,
                     vertical: 'top',
                     textElement: a,
-                    centerVertically: !!rotation
+                    centerVertically: !!rotation,
+                    onClose: () => {
+                      if(hasPopup) {
+                        hasPopup = false;
+                        return;
+                      }
+
+                      if(wasPlaying) {
+                        actions.play();
+                      }
+                    }
                   });
                   setTooltipCloseCallback(() => close);
                 }}
@@ -1314,11 +1417,8 @@ const Stories = (props: {
   const toggleMute = (e: MouseEvent) => {
     if(noSound()) {
       const {close} = showTooltip({
-        container: headerDiv,
-        element: e.target as HTMLElement,
-        vertical: 'bottom',
-        textElement: i18n('Story.NoSound'),
-        paddingX: 13
+        ...muteTooltipOptions,
+        textElement: i18n('Story.NoSound')
       });
       setTooltipCloseCallback(() => close);
       return;
@@ -1327,13 +1427,39 @@ const Stories = (props: {
     actions.toggleMute();
   };
 
+  let muteButtonButton: HTMLButtonElement;
   const muteButton = (
     <ButtonIconTsx
+      ref={muteButtonButton}
       classList={{[styles.noSound]: noSound()}}
       icon={stories.muted || noSound() ? 'speakerofffilled' : 'speakerfilled'}
       onClick={toggleMute}
     />
   );
+
+  const copyLink = () => {
+    copyTextToClipboard(`https://t.me/${getPeerActiveUsernames(user)[0]}/s/${currentStory().id}`);
+    toastNew({
+      langPackKey: 'LinkCopied'
+    });
+  };
+
+  const topMenuOptions: Partial<Parameters<typeof createContextMenu>[0]> = {
+    onOpenBefore: async() => {
+      user = await rootScope.managers.appUsersManager.getUser(props.state.peerId.toUserId());
+    },
+    onOpen: () => {
+      wasPlaying = !stories.paused;
+      actions.pause();
+    },
+    onCloseAfter: () => {
+      if(wasPlaying && !ignoreOnClose) {
+        actions.play();
+      }
+
+      ignoreOnClose = false;
+    }
+  };
 
   // * caption start
 
@@ -1420,7 +1546,11 @@ const Stories = (props: {
       class={classNames('scrollable', 'scrollable-y', 'no-scrollbar', styles.ViewerStoryCaption)}
       onScroll={onCaptionScroll}
     >
-      <div ref={captionText} class={classNames('spoilers-container', styles.ViewerStoryCaptionText)} onClick={onCaptionClick}>
+      <div
+        ref={captionText}
+        class={classNames('spoilers-container', styles.ViewerStoryCaptionText)}
+        onClick={onCaptionClick}
+      >
         <div class={styles.ViewerStoryCaptionTextCell}>
           {caption()}
         </div>
@@ -1482,6 +1612,30 @@ const Stories = (props: {
     return joinElementsWith(elements, JOINER);
   };
 
+  const showMessageSentTooltip = (textElement: HTMLElement, peerId?: PeerId) => {
+    let a: HTMLAnchorElement;
+    if(peerId) {
+      a = document.createElement('a');
+      a.href = '#';
+      a.addEventListener('click', (e) => {
+        cancelEvent(e);
+        props.close(() => {
+          appImManager.setInnerPeer({peerId});
+        });
+      }, {capture: true, passive: false});
+      a.append(i18n('ViewInChat'));
+    }
+
+    setQuizHint({
+      textElement,
+      textRight: a,
+      appendTo: storyDiv,
+      from: 'bottom',
+      duration: 3000,
+      icon: 'checkround_filled'
+    });
+  };
+
   const storyInput = props.state.peerId !== CHANGELOG_PEER_ID &&
     props.state.peerId !== rootScope.myId &&
     <StoryInput
@@ -1496,7 +1650,12 @@ const Stories = (props: {
           sendReaction,
           isPublic,
           shareStory: onShareClick,
-          reaction
+          reaction,
+          copyStoryLink: copyLink,
+          contextMenuOptions: topMenuOptions,
+          onMessageSent: () => {
+            showMessageSentTooltip(i18n('Story.Tooltip.MessageSent'), props.state.peerId);
+          }
         })
       }
     />;
@@ -1518,8 +1677,13 @@ const Stories = (props: {
     return (visible ? !isHidden : isHidden) && isContact;
   };
 
-  const togglePeerHidden = (hidden: boolean) => {
-    rootScope.managers.appStoriesManager.toggleStoriesHidden(props.state.peerId, hidden);
+  const togglePeerHidden = async(hidden: boolean) => {
+    const peerId = props.state.peerId;
+    rootScope.managers.appStoriesManager.toggleStoriesHidden(peerId, hidden);
+    toastNew({
+      langPackKey: hidden ? 'StoriesMovedToContacts' : 'StoriesMovedToDialogs',
+      langPackArguments: [await wrapPeerTitle({peerId})]
+    });
   };
 
   let wasPlaying = false, user: User.user, ignoreOnClose = false;
@@ -1557,25 +1721,20 @@ const Stories = (props: {
       },
       verify: () => {
         const story = currentStory();
-        return !!(story as StoryItem.storyItem)?.pFlags?.public;
+        return !!(story as StoryItem.storyItem)?.pFlags?.public && !(story as StoryItem.storyItem).pFlags.noforwards;
       }
     }, {
       icon: 'copy',
       text: 'CopyLink',
-      onClick: () => {
-        copyTextToClipboard(`https://t.me/${getPeerActiveUsernames(user)[0]}/s/${currentStory().id}`);
-        toastNew({
-          langPackKey: 'LinkCopied'
-        });
-      },
-      verify: async() => {
+      onClick: copyLink,
+      verify: () => {
         const story = currentStory();
         if(story._ !== 'storyItem') {
           return false;
         }
 
-        const appConfig = await rootScope.managers.apiManager.getAppConfig();
-        return (story.pFlags.public || appConfig.stories_export_nopublic_link) && !!getPeerActiveUsernames(user)[0];
+        // const appConfig = await rootScope.managers.apiManager.getAppConfig();
+        return (story.pFlags.public/*  || appConfig.stories_export_nopublic_link */) && !!getPeerActiveUsernames(user)[0];
       }
     }, {
       icon: 'download',
@@ -1589,8 +1748,12 @@ const Stories = (props: {
         appDownloadManager.downloadToDisc({media: unwrap(media)});
       },
       verify: () => {
+        if(props.state.peerId === rootScope.myId) {
+          return true;
+        }
+
         const story = currentStory();
-        return !!(story?._ === 'storyItem' && !story.pFlags.noforwards);
+        return !!(story?._ === 'storyItem' && !story.pFlags.noforwards && rootScope.premium);
       }
     }, {
       icon: 'archive',
@@ -1645,20 +1808,7 @@ const Stories = (props: {
       // separator: true
     }],
     direction: 'bottom-left',
-    onOpenBefore: async() => {
-      user = await rootScope.managers.appUsersManager.getUser(props.state.peerId.toUserId());
-    },
-    onOpen: () => {
-      wasPlaying = !stories.paused;
-      actions.pause();
-    },
-    onCloseAfter: () => {
-      if(wasPlaying && !ignoreOnClose) {
-        actions.play();
-      }
-
-      ignoreOnClose = false;
-    }
+    ...topMenuOptions
   });
   btnMenu.classList.add('night');
 
@@ -1786,8 +1936,9 @@ const Stories = (props: {
           });
         },
         onSelect: (peerId) => {
-          // const participant = popup.selector.participants.get(peerId);
-          // openPermissions(participant);
+          props.close(() => {
+            appImManager.setInnerPeer({peerId});
+          });
         },
         placeholder: 'SearchPlaceholder',
         exceptSelf: true,
@@ -1984,6 +2135,13 @@ const Stories = (props: {
     return isOut;
   });
 
+  const muteTooltipOptions: Parameters<typeof showTooltip>[0] = {
+    container: headerDiv,
+    element: muteButtonButton,
+    vertical: 'bottom',
+    paddingX: 13
+  };
+
   return (
     <Show when={w()}>
       {ret}
@@ -2016,6 +2174,9 @@ export default function StoriesViewer(props: {
   const [show, setShow] = createSignal(false);
   const wasShown = createMemo((shown) => shown || show());
 
+  // * fix `ended` property
+  actions.viewerReady(false);
+
   const CANCELABLE_KEYS: Set<string> = new Set([
     'ArrowRight',
     'ArrowLeft',
@@ -2024,7 +2185,7 @@ export default function StoriesViewer(props: {
   ]);
 
   const onKeyDown = (e: KeyboardEvent) => {
-    if((document.activeElement as HTMLElement)?.isContentEditable) {
+    if(isTargetAnInput(document.activeElement as HTMLElement)) {
       throttledKeyDown.clear();
       return;
     }
@@ -2083,7 +2244,13 @@ export default function StoriesViewer(props: {
     emoticonsDropdown.chatInput = undefined;
   });
 
-  const close = () => {
+  const close = (callback?: () => void) => {
+    callback && runWithOwner(owner, () => {
+      onCleanup(() => {
+        callback();
+      });
+    });
+
     dispose();
     actions.pause();
     throttledKeyDown.clear();
@@ -2103,7 +2270,7 @@ export default function StoriesViewer(props: {
     });
 
     const storiesReadiness: Set<ReturnType<typeof Stories>> = new Set();
-    // const perf = performance.now();
+    const perf = performance.now();
     let wasReady = false;
 
     const createStories = (peer: StoriesContextPeerState, index: Accessor<number>) => {
@@ -2113,11 +2280,11 @@ export default function StoriesViewer(props: {
         }
 
         storiesReadiness.add(ret);
-        // console.log('stories ready', peer.peerId, storiesReadiness.size);
+        console.log('stories ready', peer.peerId, storiesReadiness.size, performance.now() - perf);
 
         if(storiesReadiness.size === stories.peers.length) {
           wasReady = true;
-          // console.log('ready', performance.now() - perf);
+          console.log('ready', performance.now() - perf);
           runWithOwner(owner, () => {
             onMount(() => {
               open();
@@ -2133,6 +2300,7 @@ export default function StoriesViewer(props: {
           splitByDays={props.splitByDays}
           pinned={props.pinned}
           onReady={onReady}
+          close={close}
         />
       );
 
@@ -2142,8 +2310,7 @@ export default function StoriesViewer(props: {
     return (
       <div
         ref={div}
-        class={styles.Viewer}
-        style={{visibility: show() ? 'visible' : 'hidden'}}
+        class={classNames(styles.Viewer, !show() && styles.isInvisible)}
         onClick={(e) => {
           if(animating) {
             cancelEvent(e);
@@ -2156,7 +2323,7 @@ export default function StoriesViewer(props: {
         }}
       >
         <div ref={backgroundDiv} class={styles.ViewerBackground} />
-        <ButtonIconTsx ref={closeButton} icon={'close'} class={styles.ViewerClose} onClick={close} />
+        <ButtonIconTsx ref={closeButton} icon={'close'} class={styles.ViewerClose} onClick={() => close()} />
         <For each={stories.peers}>{createStories}</For>
       </div>
     );
@@ -2257,14 +2424,7 @@ export default function StoriesViewer(props: {
       return;
     }
 
-    close();
-
-    runWithOwner(owner, () => {
-      onCleanup(() => {
-        callback();
-      });
-    });
-
+    close(callback);
     return false;
   };
 

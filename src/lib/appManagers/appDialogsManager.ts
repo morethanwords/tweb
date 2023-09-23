@@ -1841,7 +1841,7 @@ export class AppDialogsManager {
       }],
       listenTo: this.folders.menu,
       findElement: (e) => findUpClassName(e.target, 'menu-horizontal-div-item'),
-      onOpen: (target) => {
+      onOpen: (e, target) => {
         clickFilterId = +target.dataset.filterId;
       }
     });

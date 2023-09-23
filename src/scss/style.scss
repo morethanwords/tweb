@@ -772,6 +772,7 @@ input:-webkit-autofill:active {
   opacity: 0;
   backdrop-filter: blur(25px);
   pointer-events: all;
+  word-break: break-word;
 
   &.is-visible {
     opacity: 1;

@@ -461,7 +461,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
           listenTo: content,
           listenerSetter: this.listenerSetter,
           findElement: (e) => findUpClassName(e.target, 'row'),
-          onOpen: (_target) => target = _target
+          onOpen: (e, _target) => target = _target
         });
 
         attachClickEvent(this.inviteLinksCreate, async() => {

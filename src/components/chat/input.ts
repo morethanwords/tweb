@@ -117,6 +117,8 @@ import Icon from '../icon';
 import setBadgeContent from '../../helpers/setBadgeContent';
 import createBadge from '../../helpers/createBadge';
 import deepEqual from '../../helpers/object/deepEqual';
+import {clearMarkdownExecutions, createMarkdownCache, handleMarkdownShortcut, maybeClearUndoHistory, processCurrentFormatting} from '../../helpers/dom/markdown';
+import MarkupTooltip from './markupTooltip';
 
 // console.log('Recorder', Recorder);
 
@@ -216,12 +218,6 @@ export default class ChatInput {
 
   public willAttachType: 'document' | 'media';
 
-  private lockRedo = false;
-  private canRedoFromHTML = '';
-  private readonly undoHistory: string[] = [];
-  private readonly executedHistory: string[] = [];
-  private canUndoFromHTML = '';
-
   private autocompleteHelperController: AutocompleteHelperController;
   private stickersHelper: StickersHelper;
   private emojiHelper: EmojiHelper;
@@ -279,7 +275,7 @@ export default class ChatInput {
   public onRecording: (isRecording: boolean) => void;
   public onUpdateSendBtn: (icon: ChatSendBtnIcon) => void;
   public onMessageSent2: () => void;
-  public forwardStoryCallback: () => void;
+  public forwardStoryCallback: (e: MouseEvent) => void;
 
   public emoticonsDropdown: EmoticonsDropdown;
 
@@ -584,7 +580,7 @@ export default class ChatInput {
 
     attachClickEvent(this.goMentionBtn, (e) => {
       cancelEvent(e);
-      const middleware = this.chat.bubbles.getMiddleware();
+      const middleware = this.getMiddleware();
       this.managers.appMessagesManager.goToNextMention(this.chat.peerId, this.chat.threadId).then((mid) => {
         if(!middleware()) {
           return;
@@ -685,7 +681,7 @@ export default class ChatInput {
         return;
       }
 
-      const middleware = this.chat.bubbles.getMiddleware();
+      const middleware = this.getMiddleware();
       const isShown = icon.classList.contains('state-back');
       if(isShown) {
         this.botCommands.toggle(true);
@@ -959,6 +955,7 @@ export default class ChatInput {
         this.attachMenuButtons.splice(0, this.attachMenuButtons.length, ...buttons);
       },
       onOpen: () => {
+        this.emoticonsDropdown?.toggle(false);
         this.onMenuToggle?.(true);
       },
       onClose: () => {
@@ -1034,7 +1031,12 @@ export default class ChatInput {
       openSide: 'top-left',
       onContextElement: this.btnSend,
       onOpen: () => {
-        return this.chat.type !== 'scheduled' && (!this.isInputEmpty() || !!Object.keys(this.forwarding).length);
+        const good = this.chat.type !== 'scheduled' && (!this.isInputEmpty() || !!Object.keys(this.forwarding).length);
+        if(good) {
+          this.emoticonsDropdown?.toggle(false);
+        }
+
+        return good;
       },
       canSendWhenOnline: this.canSendWhenOnline
     });
@@ -1277,7 +1279,7 @@ export default class ChatInput {
   public unblockUser = () => {
     const toggle = this.toggleControlButtonDisability = toggleDisability([this.unblockBtn], true);
     const peerId = this.chat.peerId;
-    const middleware = this.chat.bubbles.getMiddleware(() => {
+    const middleware = this.getMiddleware(() => {
       return this.chat.peerId === peerId && this.toggleControlButtonDisability === toggle;
     });
 
@@ -1294,7 +1296,7 @@ export default class ChatInput {
 
     const toggle = this.toggleControlButtonDisability = toggleDisability([this.botStartBtn], true);
     const peerId = this.chat.peerId;
-    const middleware = this.chat.bubbles.getMiddleware(() => {
+    const middleware = this.getMiddleware(() => {
       return this.chat.peerId === peerId &&
         this.startParam === startParam &&
         this.toggleControlButtonDisability === toggle;
@@ -1393,7 +1395,7 @@ export default class ChatInput {
   };
 
   public setScheduleTimestamp(timestamp: number, callback: () => void) {
-    const middleware = this.chat.bubbles.getMiddleware();
+    const middleware = this.getMiddleware();
     const minTimestamp = (Date.now() / 1000 | 0) + 10;
     if(timestamp <= minTimestamp) {
       timestamp = undefined;
@@ -1402,7 +1404,7 @@ export default class ChatInput {
     this.scheduleDate = timestamp;
     callback();
 
-    if(this.chat.type !== 'scheduled' && timestamp) {
+    if(this.chat.type !== 'scheduled' && this.chat.type !== 'stories' && timestamp) {
       setTimeout(() => { // ! need timeout here because .forwardMessages will be called after timeout
         if(!middleware()) {
           return;
@@ -1416,11 +1418,15 @@ export default class ChatInput {
     }
   }
 
+  public getMiddleware(...args: Parameters<Chat['bubbles']['getMiddleware']>) {
+    return this.chat.bubbles.getMiddleware(...args);
+  }
+
   public scheduleSending = async(
     callback: () => void = this.sendMessage.bind(this, true),
     initDate = new Date()
   ) => {
-    const middleware = this.chat.bubbles.getMiddleware();
+    const middleware = this.getMiddleware();
     const canSendWhenOnline = await this.canSendWhenOnline();
     if(!middleware()) {
       return;
@@ -1962,6 +1968,7 @@ export default class ChatInput {
     this.messageInputField.inputFake.classList.replace('input-field-input', 'input-message-input');
     this.messageInput = this.messageInputField.input;
     this.attachMessageInputListeners();
+    createMarkdownCache(this.messageInput);
 
     if(IS_STICKY_INPUT_BUGGED) {
       fixSafariStickyInputFocusing(this.messageInput);
@@ -1983,7 +1990,7 @@ export default class ChatInput {
         cancelEvent(e);
         this.sendMessage();
       } else if(e.ctrlKey || e.metaKey) {
-        this.handleMarkdownShortcut(e);
+        handleMarkdownShortcut(this.messageInput, e);
       } else if((key === 'PageUp' || key === 'PageDown') && !e.shiftKey) { // * fix pushing page to left (Chrome Windows)
         e.preventDefault();
 
@@ -2081,284 +2088,6 @@ export default class ChatInput {
     return this.messageInput.isContentEditable && !this.chatInput.classList.contains('is-hidden');
   }
 
-  private prepareDocumentExecute = () => {
-    this.executedHistory.push(this.messageInput.innerHTML);
-    return () => this.canUndoFromHTML = this.messageInput.innerHTML;
-  };
-
-  private undoRedo = (e: Event, type: 'undo' | 'redo', needHTML: string) => {
-    cancelEvent(e); // cancel legacy event
-
-    let html = this.messageInput.innerHTML;
-    if(html && html !== needHTML) {
-      this.lockRedo = true;
-
-      let sameHTMLTimes = 0;
-      do {
-        document.execCommand(type, false, null);
-        const currentHTML = this.messageInput.innerHTML;
-        if(html === currentHTML) {
-          if(++sameHTMLTimes > 2) { // * unlink, removeFormat (а может и нет, случай: заболдить подчёркнутый текст (выделить ровно его), попробовать отменить)
-            break;
-          }
-        } else {
-          sameHTMLTimes = 0;
-        }
-
-        html = currentHTML;
-      } while(html !== needHTML);
-
-      this.lockRedo = false;
-    }
-  };
-
-  public applyMarkdown(type: MarkdownType, href?: string) {
-    // const MONOSPACE_FONT = 'var(--font-monospace)';
-    // const SPOILER_FONT = 'spoiler';
-    const commandsMap: Partial<{[key in typeof type]: string | (() => void)}> = {
-      // bold: 'Bold',
-      // italic: 'Italic',
-      // underline: 'Underline',
-      // strikethrough: 'Strikethrough',
-      // monospace: () => document.execCommand('fontName', false, MONOSPACE_FONT),
-      link: href ? () => document.execCommand('createLink', false, href) : () => document.execCommand('unlink', false, null)
-      // spoiler: () => document.execCommand('fontName', false, SPOILER_FONT)
-    };
-
-    const c = (type: MarkdownType) => {
-      commandsMap[type] = () => {
-        const k = (canCombine.includes(type) ? canCombine : [type]).filter((type) => hasMarkup[type]);
-        if(!indexOfAndSplice(k, type)) {
-          k.push(type);
-        }
-
-        let ret: boolean;
-        if(!k.length) {
-          ret = this.resetCurrentFontFormatting();
-        } else {
-          ret = document.execCommand('fontName', false, 'markup-' + k.join('-'));
-        }
-
-        this.processCurrentFormatting();
-
-        return ret;
-      };
-    };
-
-    const canCombine = ['bold', 'italic', 'underline', 'strikethrough', 'spoiler'] as (typeof type)[];
-    canCombine.forEach((type) => {
-      c(type);
-    });
-
-    c('monospace');
-
-    if(!commandsMap[type]) {
-      return false;
-    }
-
-    const command = commandsMap[type];
-
-    // type = 'monospace';
-
-    // const saveExecuted = this.prepareDocumentExecute();
-    const executed: any[] = [];
-    /**
-     * * clear previous formatting, due to Telegram's inability to handle several entities
-     */
-    /* const checkForSingle = () => {
-      const nodes = getSelectedNodes();
-      //console.log('Using formatting:', commandsMap[type], nodes, this.executedHistory);
-
-      const parents = [...new Set(nodes.map((node) => node.parentNode))];
-      //const differentParents = !!nodes.find((node) => node.parentNode !== firstParent);
-      const differentParents = parents.length > 1;
-
-      let notSingle = false;
-      if(differentParents) {
-        notSingle = true;
-      } else {
-        const node = nodes[0];
-        if(node && (node.parentNode as HTMLElement) !== this.messageInput && (node.parentNode.parentNode as HTMLElement) !== this.messageInput) {
-          notSingle = true;
-        }
-      }
-
-      if(notSingle) {
-        //if(type === 'monospace') {
-          executed.push(document.execCommand('styleWithCSS', false, 'true'));
-        //}
-
-        executed.push(document.execCommand('unlink', false, null));
-        executed.push(document.execCommand('removeFormat', false, null));
-        executed.push(typeof(command) === 'function' ? command() : document.execCommand(command, false, null));
-
-        //if(type === 'monospace') {
-          executed.push(document.execCommand('styleWithCSS', false, 'false'));
-        //}
-      }
-    }; */
-
-    // fix applying markdown when range starts from contenteditable="false"
-    let textNode: Text;
-    // do {
-    //   // const {node, offset, selection} = getCaretPosNew(this.messageInput, true);
-    //   const selection = document.getSelection();
-    //   const range = selection.getRangeAt(0);
-    //   const {node, offset} = getCaretPosF(this.messageInput, range.startContainer, range.startOffset);
-    //   // const node = range.startContainer as ChildNode;
-    //   if(node?.textContent === BOM || (node as HTMLElement)?.isContentEditable === false) {
-    //     // selection.modify('extend', 'backward', 'character');
-    //     textNode = document.createTextNode(BOM);
-    //     (node.nodeType === node.ELEMENT_NODE ? node : node.parentElement).before(textNode);
-    //     range.setStart(textNode, 0);
-    //   }/*  else {
-    //     break;
-    //   } */
-
-    //   break;
-    // } while(true);
-
-    const richInputHandler = RichInputHandler.getInstance();
-    const restore = richInputHandler.prepareApplyingMarkdown();
-
-    const listener = this.listenerSetter.add(this.messageInput)('input', cancelEvent, {capture: true, passive: false}) as any as Listener;
-
-    executed.push(document.execCommand('styleWithCSS', false, 'true'));
-
-    const hasMarkup = hasMarkupInSelection(Object.keys(commandsMap) as (typeof type)[]);
-
-    // * monospace can't be combined with different types
-    /* if(type === 'monospace' || type === 'spoiler') {
-      // executed.push(document.execCommand('styleWithCSS', false, 'true'));
-
-      const haveThisType = hasMarkup[type];
-      // executed.push(document.execCommand('removeFormat', false, null));
-
-      if(haveThisType) {
-        executed.push(this.resetCurrentFontFormatting());
-      } else {
-        // if(type === 'monospace' || hasMarkup['monospace']) {
-        //   executed.push(this.resetCurrentFormatting());
-        // }
-
-        executed.push(typeof(command) === 'function' ? command() : document.execCommand(command, false, null));
-      }
-    } else  */{
-      if(hasMarkup['monospace'] && type === 'link') {
-        executed.push(this.resetCurrentFormatting());
-      }
-
-      executed.push(typeof(command) === 'function' ? command() : document.execCommand(command, false, null));
-    }
-
-    executed.push(document.execCommand('styleWithCSS', false, 'false'));
-
-    restore();
-
-    // checkForSingle();
-    // saveExecuted();
-    this.appImManager.markupTooltip?.setActiveMarkupButton();
-
-    if(textNode) {
-      (textNode.parentElement === this.messageInput ? textNode : textNode.parentElement).remove();
-      textNode.nodeValue = '';
-    }
-
-    this.listenerSetter.remove(listener);
-    this.messageInputField.simulateInputEvent();
-
-    return true;
-  }
-
-  private processCurrentFormatting() {
-    // const perf = performance.now();
-    (this.messageInput.querySelectorAll('[style*="font-family"]') as NodeListOf<HTMLElement>).forEach((element) => {
-      const fontFamily = element.style.fontFamily;
-      if(fontFamily === FontFamilyName) {
-        return;
-      }
-
-      element.classList.add('is-markup');
-      element.dataset.markup = fontFamily;
-    });
-
-    (this.messageInput.querySelectorAll('.is-markup') as NodeListOf<HTMLElement>).forEach((element) => {
-      const fontFamily = element.style.fontFamily;
-      if(fontFamily && fontFamily !== FontFamilyName) {
-        return;
-      }
-
-      element.classList.remove('is-markup');
-      delete element.dataset.markup;
-    });
-    // console.log('process formatting', performance.now() - perf);
-  }
-
-  private resetCurrentFormatting() {
-    return document.execCommand('removeFormat', false, null);
-  }
-
-  private resetCurrentFontFormatting() {
-    return document.execCommand('fontName', false, FontFamilyName);
-  }
-
-  private handleMarkdownShortcut = (e: KeyboardEvent) => {
-    // console.log('handleMarkdownShortcut', e);
-    const formatKeys: {[key: string]: MarkdownType} = {
-      'KeyB': 'bold',
-      'KeyI': 'italic',
-      'KeyU': 'underline',
-      'KeyS': 'strikethrough',
-      'KeyM': 'monospace',
-      'KeyP': 'spoiler'
-    };
-
-    if(this.appImManager.markupTooltip) {
-      formatKeys['KeyK'] = 'link';
-    }
-
-    const code = e.code;
-    const applyMarkdown = formatKeys[code];
-
-    const selection = document.getSelection();
-    if(!isSelectionEmpty(selection) && applyMarkdown) {
-      // * костыльчик
-      if(code === 'KeyK') {
-        this.appImManager.markupTooltip.showLinkEditor();
-      } else {
-        this.applyMarkdown(applyMarkdown);
-      }
-
-      cancelEvent(e); // cancel legacy event
-    }
-
-    // return;
-    if(code === 'KeyZ') {
-      let html = this.messageInput.innerHTML;
-
-      if(e.shiftKey) {
-        if(this.undoHistory.length) {
-          this.executedHistory.push(html);
-          html = this.undoHistory.pop();
-          this.undoRedo(e, 'redo', html);
-          html = this.messageInput.innerHTML;
-          this.canRedoFromHTML = this.undoHistory.length ? html : '';
-          this.canUndoFromHTML = html;
-        }
-      } else {
-        // * подождём, когда пользователь сам восстановит поле до нужного состояния, которое стало сразу после saveExecuted
-        if(this.executedHistory.length && (!this.canUndoFromHTML || html === this.canUndoFromHTML)) {
-          this.undoHistory.push(html);
-          html = this.executedHistory.pop();
-          this.undoRedo(e, 'undo', html);
-
-          // * поставим новое состояние чтобы снова подождать, если пользователь изменит что-то, и потом попробует откатить до предыдущего состояния
-          this.canUndoFromHTML = this.canRedoFromHTML = this.messageInput.innerHTML;
-        }
-      }
-    }
-  };
-
   public onMessageInput = (e?: Event) => {
     // * validate due to manual formatting through browser's context menu
     /* const inputType = (e as InputEvent).inputType;
@@ -2382,10 +2111,7 @@ export default class ChatInput {
 
     // this.chat.log('messageInput entities', richValue, value, markdownEntities, caretPos);
 
-    if(this.canRedoFromHTML && !this.lockRedo && this.messageInput.innerHTML !== this.canRedoFromHTML) {
-      this.canRedoFromHTML = '';
-      this.undoHistory.length = 0;
-    }
+    maybeClearUndoHistory(this.messageInput);
 
     const urlEntities: Array<MessageEntity.messageEntityUrl | MessageEntity.messageEntityTextUrl> = (!this.editMessage?.media || this.editMessage.media._ === 'messageMediaWebPage') && entities.filter((e) => e._ === 'messageEntityUrl' || e._ === 'messageEntityTextUrl') as any;
     if(urlEntities.length) {
@@ -2439,7 +2165,7 @@ export default class ChatInput {
         this.managers.appMessagesManager.setTyping(this.chat.peerId, {_: 'sendMessageCancelAction'}, undefined, this.chat.threadId);
       }
 
-      this.appImManager.markupTooltip?.hide();
+      MarkupTooltip.getInstance().hide();
 
       // * Chrome has a bug - it will preserve the formatting if the input with monospace text is cleared
       // * so have to reset formatting
@@ -2472,7 +2198,7 @@ export default class ChatInput {
 
     this.checkAutocomplete(richValue, caretPos, entities);
 
-    this.processCurrentFormatting();
+    processCurrentFormatting(this.messageInput);
 
     this.updateSendBtn();
   };
@@ -2777,7 +2503,7 @@ export default class ChatInput {
 
     const isInputEmpty = this.isInputEmpty();
     if(this.chat.type === 'stories' && isInputEmpty && !this.freezedFocused && this.canForwardStory) {
-      this.forwardStoryCallback?.();
+      this.forwardStoryCallback?.(e as MouseEvent);
       return;
     } else if(!this.recorder || this.recording || !isInputEmpty || this.forwarding || this.editMsgId) {
       if(this.recording) {
@@ -3056,11 +2782,7 @@ export default class ChatInput {
       // this.attachMessageInputField();
       // this.messageInput.innerText = '';
 
-      // clear executions
-      this.canRedoFromHTML = '';
-      this.undoHistory.length = 0;
-      this.executedHistory.length = 0;
-      this.canUndoFromHTML = '';
+      clearMarkdownExecutions(this.messageInput);
     }
 
     let set = false;
