@@ -2276,27 +2276,42 @@ export default function StoriesViewer(props: {
       }
     });
 
-    const storiesReadiness: Set<ReturnType<typeof Stories>> = new Set();
+    const storiesReadiness: Set<PeerId> = new Set();
     const perf = performance.now();
     let wasReady = false;
 
+    const openOnReady = () => {
+      clearTimeout(timeout)
+      wasReady = true;
+      console.log('ready', performance.now() - perf);
+      runWithOwner(owner, () => {
+        onMount(() => {
+          open();
+        });
+      });
+    };
+
+    const timeout = setTimeout(() => {
+      stories.peers
+      .filter((peer) => !storiesReadiness.has(peer.peerId))
+      .forEach((peer) => {
+        console.error('stories not ready', peer);
+      });
+      openOnReady();
+    }, 250);
+
     const createStories = (peer: StoriesContextPeerState, index: Accessor<number>) => {
       const onReady = () => {
+        storiesReadiness.add(peer.peerId);
+
         if(wasReady) {
           return;
         }
 
-        storiesReadiness.add(ret);
         console.log('stories ready', peer.peerId, storiesReadiness.size, performance.now() - perf);
 
         if(storiesReadiness.size === stories.peers.length) {
-          wasReady = true;
-          console.log('ready', performance.now() - perf);
-          runWithOwner(owner, () => {
-            onMount(() => {
-              open();
-            });
-          });
+          openOnReady();
         }
       };
 
