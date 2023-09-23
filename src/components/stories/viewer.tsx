@@ -2032,6 +2032,13 @@ const Stories = (props: {
     }
   });
 
+  const onProfileClick = () => {
+    const peerId = props.state.peerId;
+    props.close(() => {
+      appImManager.setInnerPeer({peerId});
+    });
+  };
+
   let div: HTMLDivElement, storyDiv: HTMLDivElement, headerDiv: HTMLDivElement;
   const ret = (
     <div
@@ -2081,7 +2088,7 @@ const Stories = (props: {
             {slides}
           </div>
           <div ref={headerDiv} class={classNames(styles.ViewerStoryHeader, 'night')}>
-            <div class={styles.ViewerStoryHeaderLeft}>
+            <div class={styles.ViewerStoryHeaderLeft} onClick={onProfileClick}>
               {avatar.element}
               <div class={styles.ViewerStoryHeaderInfo}>
                 <div class={styles.ViewerStoryHeaderRow}>
