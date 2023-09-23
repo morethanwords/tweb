@@ -32,7 +32,7 @@ export function putPreloader(elem: Element, returnDiv = false): HTMLElement {
 MOUNT_CLASS_TO.putPreloader = putPreloader;
 
 export function setButtonLoader(elem: HTMLButtonElement, icon: Icon = 'check') {
-  const iconElement = elem.querySelector(`.${_tgico(icon)}`);
+  const iconElement = elem.querySelector('.tgico');
   iconElement?.remove();
   elem.disabled = true;
   putPreloader(elem);

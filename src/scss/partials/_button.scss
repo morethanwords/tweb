@@ -908,10 +908,6 @@ $btn-menu-z-index: 4;
   @include respond-to(handhelds) {
     --size: 46px;
   }
-  
-  path {
-    fill: white;
-  }
 }
 
 .btn-disabled {

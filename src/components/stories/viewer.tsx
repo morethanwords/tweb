@@ -1234,7 +1234,7 @@ const Stories = (props: {
         }
 
         const div = document.createElement('div');
-        div.classList.add('btn-reaction-sticker');
+        div.classList.add('btn-reaction-sticker', 'night');
         const loadPromises: Promise<any>[] = [];
         await wrapSticker({
           div,

@@ -47,6 +47,7 @@ import noop from '../../helpers/noop';
 // https://github.com/telegramdesktop/tdesktop/blob/master/Telegram/SourceFiles/history/view/media/history_view_sticker.cpp#L40
 export const STICKER_EFFECT_MULTIPLIER = 1 + 0.245 * 2;
 const EMOJI_EFFECT_MULTIPLIER = 3;
+const UNMOUNT_THUMBS = true;
 
 const locksUrls: {[docId: string]: string} = {};
 
@@ -586,7 +587,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
 
               if(!media) {
                 if(!isSingleVideo || !isAnimated) {
-                  thumbImage?.remove();
+                  UNMOUNT_THUMBS && thumbImage?.remove();
                 }
 
                 return;
@@ -661,10 +662,10 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
                 thumbImage && thumbImage.classList.add('fade-out');
                 onAnimationEnd(media, () => {
                   media.classList.remove('fade-in');
-                  thumbImage?.remove();
+                  UNMOUNT_THUMBS && thumbImage?.remove();
                 }, 400);
               } else {
-                thumbImage?.remove();
+                UNMOUNT_THUMBS && thumbImage?.remove();
               }
 
               if(isAnimated) {
