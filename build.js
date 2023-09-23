@@ -82,7 +82,7 @@ const onCompiled = async() => {
   clearOldFiles();
 
   const archiveName = 'archive.zip';
-  const archivePath = path.join(publicPath, archiveName);
+  const archivePath = path.join(__dirname, archiveName);
   execSync(`zip -r ${archivePath} *`, {
     cwd: publicPath
   });
