@@ -13,10 +13,10 @@ const useHttp = process.argv[4] !== 'https';
 const publicFolderName = thirdTour ? 'public3' : 'public';
 const port = forcePort ? +forcePort : (thirdTour ? 8443 : 80);
 
-app.set('etag', false)
+app.set('etag', false);
 app.use((req, res, next) => {
-  res.set('Cache-Control', 'no-store')
-  next()
+  res.set('Cache-Control', 'no-store');
+  next();
 });
 app.use(compression());
 app.use(express.static(publicFolderName));
