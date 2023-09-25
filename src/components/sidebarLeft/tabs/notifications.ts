@@ -15,6 +15,7 @@ import convertKeyToInputKey from '../../../helpers/string/convertKeyToInputKey';
 import {MUTE_UNTIL} from '../../../lib/mtproto/mtproto_config';
 import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 import SettingSection from '../../settingSection';
+import {joinDeepPath} from '../../../helpers/object/setDeepProperty';
 
 type InputNotifyKey = Exclude<InputNotifyPeer['_'], 'inputNotifyPeer' | 'inputNotifyForumTopic'>;
 
@@ -120,7 +121,12 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
       });
 
       const soundRow = new Row({
-        checkboxField: new CheckboxField({text: 'Notifications.Sound', checked: true, stateKey: 'settings.notifications.sound', listenerSetter: this.listenerSetter}),
+        checkboxField: new CheckboxField({
+          text: 'Notifications.Sound',
+          checked: true,
+          stateKey: joinDeepPath('settings', 'notifications', 'sound'),
+          listenerSetter: this.listenerSetter
+        }),
         subtitleLangKey: 'Loading',
         listenerSetter: this.listenerSetter,
         withCheckboxSubtitle: true
