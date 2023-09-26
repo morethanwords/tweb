@@ -1263,9 +1263,14 @@ export class AppMessagesManager extends AppManager {
     const threadId = options.threadId ? getServerMessageId(options.threadId) : undefined;
 
     let caption = options.caption || '';
-    let entities = options.entities || [];
+    const entities = options.entities || [];
     if(caption) {
       caption = parseMarkdown(caption, entities);
+    }
+
+    let sendEntities = this.getInputEntities(entities);
+    if(!sendEntities.length) {
+      sendEntities = undefined;
     }
 
     const log = this.log.bindPrefix('sendAlbum');
@@ -1401,13 +1406,13 @@ export class AppMessagesManager extends AppManager {
         media: inputMedia,
         random_id: message.random_id,
         message: caption,
-        entities
+        entities: sendEntities
       };
 
       // * only 1 caption for all inputs
       if(caption) {
         caption = '';
-        entities = [];
+        sendEntities = undefined;
       }
 
       return inputSingleMedia;

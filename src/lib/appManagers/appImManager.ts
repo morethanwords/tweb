@@ -704,7 +704,7 @@ export class AppImManager extends EventListenerBase<{
               'BotAttachMenuShortcatAddedAttach' :
               'BotAttachMenuShortcatAddedSide'
           ),
-        langPackArguments: [await wrapPeerTitle({peerId: botId.toPeerId(false)})]
+        langPackArguments: [wrapEmojiText(attachMenuBot.short_name)]
       });
     } else {
       await this.managers.appAttachMenuBotsManager.toggleBotInAttachMenu(botId, false);
@@ -717,7 +717,7 @@ export class AppImManager extends EventListenerBase<{
               'WebApp.AttachRemove.Success' :
               'WebApp.AttachRemove.SuccessSide'
           ),
-        langPackArguments: [await wrapPeerTitle({peerId: botId.toPeerId(false)})]
+        langPackArguments: [wrapEmojiText(attachMenuBot.short_name)]
       });
     }
 
