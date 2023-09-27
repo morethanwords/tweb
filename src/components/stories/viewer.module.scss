@@ -105,6 +105,7 @@ $color-inactive: rgba(255, 255, 255, .5);
       &.small .hideOnSmall,
       &.small :global(.stories-input) {
         opacity: 0;
+        pointer-events: none;
       }
     }
 

@@ -5788,7 +5788,7 @@ export default class ChatBubbles {
                 wrapOptions: newWrapOptions
               });
               avatar.node.classList.add('geo-live-pin-avatar');
-              loadPromises.push(avatar.readyThumbPromise);
+              loadPromises?.push(avatar.readyThumbPromise);
 
               pin.append(avatar.node);
 
