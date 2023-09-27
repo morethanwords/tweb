@@ -1471,7 +1471,7 @@ export default class ChatBubbles {
 
     const onResizeEnd = () => {
       const height = container.offsetHeight;
-      const isScrolledDown = this.scrollable.isScrolledDown;
+      const isScrolledDown = this.scrollable.isScrolledToEnd;
       if(height !== wasHeight && (!skip || !isScrolledDown)) { // * fix opening keyboard while ESG is active, offsetHeight will change right between 'start' and this first frame
         part += wasHeight - height;
       }
@@ -1481,7 +1481,7 @@ export default class ChatBubbles {
       } */
 
       if(part) {
-        this.scrollable.setScrollTopSilently(this.scrollable.scrollTop + Math.round(part));
+        this.scrollable.setScrollPositionSilently(this.scrollable.scrollPosition + Math.round(part));
       }
 
       wasHeight = height;
@@ -1531,7 +1531,7 @@ export default class ChatBubbles {
           this.log('resize start', realDiff, this.scrollable.scrollTop, this.scrollable.container.offsetHeight, this.scrollable.isScrolledDown);
         } */
 
-        if(realDiff < 0 && this.scrollable.isScrolledDown) {
+        if(realDiff < 0 && this.scrollable.isScrolledToEnd) {
           // if(isSafari) { // * fix opening keyboard while ESG is active
           part = -realDiff;
           // }
@@ -1549,8 +1549,8 @@ export default class ChatBubbles {
       } */
 
       if(diff) {
-        const needScrollTop = this.scrollable.scrollTop + diff;
-        this.scrollable.setScrollTopSilently(needScrollTop);
+        const needScrollTop = this.scrollable.scrollPosition + diff;
+        this.scrollable.setScrollPositionSilently(needScrollTop);
       }
 
       setEndRAF(false);
@@ -2670,7 +2670,7 @@ export default class ChatBubbles {
         this.scrollable.scrollTop += add; */
         setPaddingTo = this.chatInner;
         setPaddingTo.style.paddingTop = clientHeight + 'px';
-        this.scrollable.setScrollTopSilently(scrollHeight);
+        this.scrollable.setScrollPositionSilently(scrollHeight);
         this.isTopPaddingSet = true;
       }
     }
@@ -2842,7 +2842,7 @@ export default class ChatBubbles {
 
     // fix flickering date when opening unread chat and focusing message
     if(forceDirection === FocusDirection.Static) {
-      this.scrollable.lastScrollPosition = this.scrollable.scrollTop;
+      this.scrollable.lastScrollPosition = this.scrollable.scrollPosition;
     }
 
     return promise;
@@ -3057,8 +3057,8 @@ export default class ChatBubbles {
 
     // clear messages
     if(bubblesToo) {
-      this.scrollable.container.textContent = '';
-      this.chatInner.textContent = '';
+      this.scrollable.replaceChildren();
+      this.chatInner.replaceChildren();
       this.cleanupPlaceholders();
     }
 
@@ -3389,7 +3389,7 @@ export default class ChatBubbles {
 
     if(!cached && !samePeer) {
       await m(this.chat.finishPeerChange(finishPeerChangeOptions));
-      this.scrollable.container.replaceChildren();
+      this.scrollable.replaceChildren();
       // oldContainer.textContent = '';
       // oldChatInner.remove();
       this.preloader.attach(this.container);
@@ -3423,7 +3423,7 @@ export default class ChatBubbles {
       const scrollable = this.scrollable;
       scrollable.lastScrollDirection = 0;
       scrollable.lastScrollPosition = 0;
-      replaceContent(scrollable.container, chatInner);
+      scrollable.replaceChildren(chatInner);
       // this.chat.topbar.container.nextElementSibling.replaceWith(container);
 
       if(oldPlaceholderBubble) {
@@ -3449,7 +3449,7 @@ export default class ChatBubbles {
 
       // if(dialog && lastMsgID && lastMsgID !== topMessage && (this.bubbles[lastMsgID] || this.firstUnreadBubble)) {
       if(savedPosition) {
-        scrollable.setScrollTopSilently(savedPosition.top);
+        scrollable.setScrollPositionSilently(savedPosition.top);
         /* const mountedByLastMsgId = this.getMountedBubble(lastMsgId);
         let bubble: HTMLElement = mountedByLastMsgId?.bubble;
         if(!bubble?.parentElement) {
@@ -3464,14 +3464,14 @@ export default class ChatBubbles {
       } else if(haveToScrollToBubble) {
         let unsetPadding: () => void;
         if(scrollFromDown) {
-          scrollable.setScrollTopSilently(99999);
+          scrollable.setScrollPositionSilently(99999);
         } else if(scrollFromUp) {
           const set = this.setTopPadding();
           if(set.isPaddingNeeded) {
             unsetPadding = set.unsetPadding;
           }
 
-          scrollable.setScrollTopSilently(0);
+          scrollable.setScrollPositionSilently(0);
         }
 
         // const mountedByLastMsgId = lastMsgId ? this.getMountedBubble(lastMsgId) : {bubble: this.getLastBubble()};
@@ -3503,7 +3503,7 @@ export default class ChatBubbles {
           });
         }
       } else {
-        scrollable.setScrollTopSilently(99999);
+        scrollable.setScrollPositionSilently(99999);
       }
 
       // if(!cached) {
@@ -6601,8 +6601,8 @@ export default class ChatBubbles {
       if(isLoading ||
         (
           state ??= {
-            scrollHeight: this.scrollable.scrollHeight,
-            clientHeight: this.scrollable.container.clientHeight
+            scrollHeight: this.scrollable.scrollSize,
+            clientHeight: this.scrollable.clientSize
           },
           state.scrollHeight !== state.clientHeight
         )
@@ -7302,7 +7302,7 @@ export default class ChatBubbles {
     if(scrollSaver) {
       scrollSaver.restore();
     } else if(invisibleTop.length) {
-      this.scrollable.lastScrollPosition = this.scrollable.scrollTop;
+      this.scrollable.lastScrollPosition = this.scrollable.scrollPosition;
     }
   }
 

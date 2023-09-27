@@ -213,7 +213,7 @@ export default class PopupSharedFolderInvite extends PopupElement {
     this.scrollable = this.selector.scrollable;
     this.attachScrollableListeners();
 
-    this.scrollable.container.prepend(n, description);
+    this.scrollable.prepend(n, description);
 
     this.btnConfirm.classList.add(`${CLASS_NAME}-button`);
     const addFolderI18n = new I18n.IntlElement({

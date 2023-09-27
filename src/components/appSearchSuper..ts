@@ -562,7 +562,7 @@ export default class AppSearchSuper {
         this.skipScroll = false;
       } else {
         const offsetTop = this.container.offsetTop;
-        let scrollTop = this.scrollable.scrollTop;
+        let scrollTop = this.scrollable.scrollPosition;
         if(scrollTop < offsetTop) {
           this.scrollable.scrollIntoViewNew({
             element: this.container,
@@ -572,7 +572,7 @@ export default class AppSearchSuper {
           scrollTop = offsetTop;
         }
 
-        fromMediaTab.scroll = {scrollTop: scrollTop, scrollHeight: this.scrollable.scrollHeight};
+        fromMediaTab.scroll = {scrollTop: scrollTop, scrollHeight: this.scrollable.scrollSize};
 
         if(newMediaTab.scroll === undefined) {
           const rect = this.container.getBoundingClientRect();
@@ -619,7 +619,7 @@ export default class AppSearchSuper {
       // console.log('what y', this.tabSelected.style.transform);
       if(this.mediaTab.scroll !== undefined) {
         this.mediaTab.contentTab.style.transform = '';
-        this.scrollable.scrollTop = this.mediaTab.scroll.scrollTop;
+        this.scrollable.scrollPosition = this.mediaTab.scroll.scrollTop;
       }
 
       if(unlockScroll) {
@@ -1964,7 +1964,7 @@ export default class AppSearchSuper {
 
     this.monthContainers = {};
     this.searchGroupMedia.clear();
-    this.scrollable.scrollTop = 0;
+    this.scrollable.scrollPosition = 0;
 
     /* if(testScroll) {
       for(let i = 0; i < 1500; ++i) {

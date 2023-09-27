@@ -25,6 +25,7 @@ export default class AppContactsTab extends SliderSuperTab {
   private inputSearch: InputSearch;
   private middlewareHelperLoad: ReturnType<typeof getMiddleware>;
   private sortedUserList: SortedUserList;
+  private listsContainer: HTMLElement;
 
   public init() {
     this.container.id = 'contacts-container';
@@ -52,6 +53,9 @@ export default class AppContactsTab extends SliderSuperTab {
     this.title.replaceWith(this.inputSearch.container);
 
     this.middlewareHelperLoad = getMiddleware();
+
+    const listsContainer = this.listsContainer = document.createElement('div');
+    this.scrollable.append(listsContainer);
 
     this.openContacts();
 
@@ -89,7 +93,7 @@ export default class AppContactsTab extends SliderSuperTab {
     this.middlewareHelperLoad.clean();
     const middleware = this.middlewareHelperLoad.get();
     this.scrollable.onScrolledBottom = null;
-    this.scrollable.container.textContent = '';
+    this.listsContainer.replaceChildren();
 
     this.managers.appUsersManager.getContactsPeerIds(query, undefined, 'online').then((contacts) => {
       if(!middleware()) {
@@ -121,7 +125,7 @@ export default class AppContactsTab extends SliderSuperTab {
         }
       };
 
-      replaceContent(this.scrollable.container, sortedUserList.list);
+      replaceContent(this.listsContainer, sortedUserList.list);
     });
   }
 }

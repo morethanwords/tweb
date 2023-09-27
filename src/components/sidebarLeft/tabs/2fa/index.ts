@@ -105,6 +105,6 @@ export default class AppTwoStepVerificationTab extends SliderSuperTab {
       });
     }
 
-    this.scrollable.container.append(section.container);
+    this.scrollable.append(section.container);
   }
 }

@@ -192,7 +192,7 @@ export default class PopupReactedList extends PopupElement {
       }, undefined, false, true);
 
       section.content.append(chatlist);
-      scrollable.container.append(section.container);
+      scrollable.append(section.container);
 
       const skipReadParticipants = (reactionCount.reaction as any) !== 'checks';
       const skipReactionsList = (reactionCount.reaction as any) === 'checks';

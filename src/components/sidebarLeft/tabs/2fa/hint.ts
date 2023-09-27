@@ -88,7 +88,7 @@ export default class AppTwoStepVerificationHintTab extends SliderSuperTab {
 
     section.content.append(inputWrapper);
 
-    this.scrollable.container.append(section.container);
+    this.scrollable.append(section.container);
   }
 
   onOpenAfterTimeout() {

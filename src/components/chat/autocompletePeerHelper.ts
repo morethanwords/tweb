@@ -44,7 +44,7 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
 
     this.addEventListener('visible', () => {
       setTimeout(() => { // it is not rendered yet
-        this.scrollable.container.scrollTop = 0;
+        this.scrollable.scrollPosition = 0;
       }, 0);
     });
   }

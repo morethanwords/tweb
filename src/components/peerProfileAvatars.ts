@@ -82,9 +82,9 @@ export default class PeerProfileAvatars {
     this.listenerSetter = new ListenerSetter();
 
     const checkScrollTop = () => {
-      if(this.scrollable.scrollTop !== 0) {
+      if(this.scrollable.scrollPosition !== 0) {
         this.scrollable.scrollIntoViewNew({
-          element: this.scrollable.container.firstElementChild as HTMLElement,
+          element: this.scrollable.firstElementChild as HTMLElement,
           position: 'start'
         });
         return false;

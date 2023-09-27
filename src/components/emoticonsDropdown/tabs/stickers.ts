@@ -263,6 +263,7 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
   protected categoriesMap: Map<HTMLElement, Category>;
   protected categoriesByMenuTabMap: Map<HTMLElement, Category>;
   protected categoriesIntersector: VisibilityIntersector;
+  protected categoriesContainer: HTMLElement;
   protected localCategories: Category[];
 
   protected listenerSetter: ListenerSetter;
@@ -311,6 +312,8 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
     this.container.append(this.menuWrapper, this.content);
 
     this.scrollable = new Scrollable(this.content, 'STICKERS');
+    this.categoriesContainer = document.createElement('div');
+    this.scrollable.append(this.categoriesContainer);
   }
 
   public getCategoryByContainer(container: HTMLElement) {
@@ -379,7 +382,7 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
 
       return category.mounted && !category.menuScroll && category.elements.menuTab;
     }).length : 0xFFFF;
-    positionElementByIndex(container, this.scrollable.container, posItems);
+    positionElementByIndex(container, this.categoriesContainer, posItems);
     positionElementByIndex(menuTab, this.menu, posMenu);
   }
 
@@ -405,7 +408,7 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
       });
       const itemsIdx = idx - notMountedItems, menuIdx = idx - notMountedMenus;
       category.elements.menuTab && positionElementByIndex(category.elements.menuTab, this.menu, menuIdx);
-      positionElementByIndex(category.elements.container, this.scrollable.container, itemsIdx);
+      positionElementByIndex(category.elements.container, this.categoriesContainer, itemsIdx);
     }
 
     category.mounted = visible;

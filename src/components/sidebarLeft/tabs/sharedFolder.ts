@@ -310,7 +310,7 @@ export default class AppSharedFolderTab extends SliderSuperTabEventable<{
       });
     }, {listenerSetter: this.listenerSetter});
 
-    this.selector.scrollable.container.prepend(...[
+    this.selector.scrollable.prepend(...[
       this.stickerContainer,
       this.caption,
       linkSection?.container
@@ -365,7 +365,7 @@ export default class AppSharedFolderTab extends SliderSuperTabEventable<{
 
       const dialogElement = appDialogsManager.addDialogNew({
         peerId,
-        container: this.selector.scrollable,
+        container: this.selector.list,
         rippleEnabled: true,
         avatarSize: 'abitbigger',
         meAsSaved: false,

@@ -78,7 +78,7 @@ export default class AppEditChatTab extends SliderSuperTab {
       this.managers.appReactionsManager.getAvailableReactions()
     ]);
 
-    this.scrollable.container.replaceChildren();
+    this.scrollable.replaceChildren();
 
     const chatUpdateListeners: {[type in 'full' | 'basic']: (() => void)[]} = {full: [], basic: []};
     const addChatUpdateListener = (callback: () => void, type: 'full' | 'basic' = 'basic') => {

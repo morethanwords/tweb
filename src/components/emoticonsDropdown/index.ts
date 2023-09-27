@@ -410,7 +410,7 @@ export class EmoticonsDropdown extends DropdownHover {
   private onSelectTabClick = (id: number) => {
     if(this.tabId === id) {
       const {tab} = this;
-      this.scrollTo(tab, tab.scrollable.container.firstElementChild as HTMLElement);
+      this.scrollTo(tab, tab.scrollable.firstElementChild as HTMLElement);
       return;
     }
 
@@ -492,7 +492,7 @@ export class EmoticonsDropdown extends DropdownHover {
           // scroll to first
           prevTab.menuScroll.container.parentElement.classList.remove('active');
           prevTab.menuScroll.scrollIntoViewNew({
-            element: prevTab.menuScroll.container.firstElementChild as HTMLElement,
+            element: prevTab.menuScroll.firstElementChild as HTMLElement,
             forceDirection: scroll ? undefined : FocusDirection.Static,
             position: 'center',
             axis: 'x',
@@ -527,7 +527,7 @@ export class EmoticonsDropdown extends DropdownHover {
         return;
       }
 
-      emoticons.scrollable.scrollTop = tab.elements.container.offsetTop + 1;
+      emoticons.scrollable.scrollPosition = tab.elements.container.offsetTop + 1;
       const s = emoticons.menuScroll.container;
       const e = tab.elements.menuTab;
       s.scrollLeft = e.offsetLeft - s.clientWidth / 2 + e.offsetWidth / 2;
@@ -542,7 +542,7 @@ export class EmoticonsDropdown extends DropdownHover {
 
       // console.log('sticky scrollTop', stuck, target, scrollable.container.scrollTop, jumpedTo);
 
-      if(Math.abs(jumpedTo - scrollable.container.scrollTop) <= 1) {
+      if(Math.abs(jumpedTo - scrollable.scrollPosition) <= 1) {
         return;
       } else {
         jumpedTo = -1;
@@ -597,7 +597,7 @@ export class EmoticonsDropdown extends DropdownHover {
 
       scrollingToContent = true;
       scrollable.scrollIntoViewNew({
-        element: offsetTop ? tab.elements.container : scrollable.container.firstElementChild as HTMLElement,
+        element: offsetTop ? tab.elements.container : scrollable.firstElementChild as HTMLElement,
         position: 'start',
         axis: 'y',
         getElementPosition: offsetTop ? ({elementPosition}) => elementPosition + additionalOffset : undefined,
@@ -615,7 +615,7 @@ export class EmoticonsDropdown extends DropdownHover {
 
     const a = scrollable.onAdditionalScroll ? scrollable.onAdditionalScroll.bind(scrollable) : noop;
     scrollable.onAdditionalScroll = () => {
-      emoticons.content.parentElement.classList.toggle('scrolled-top', !scrollable.scrollTop);
+      emoticons.content.parentElement.classList.toggle('scrolled-top', !scrollable.scrollPosition);
       a();
     };
 

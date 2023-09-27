@@ -125,7 +125,7 @@ export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSu
 
     inputContent.append(inputWrapper);
 
-    this.scrollable.container.append(section.container);
+    this.scrollable.append(section.container);
   }
 
   onOpenAfterTimeout() {

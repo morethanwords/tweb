@@ -154,7 +154,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
 
       const dialogElement = appDialogsManager.addDialogNew({
         peerId: peerId,
-        container: this.selector.scrollable,
+        container: this.selector.list,
         rippleEnabled: true,
         avatarSize: 'abitbigger',
         wrapOptions: {
@@ -266,7 +266,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
       return div;
     };
 
-    this.selector.scrollable.container.append(categoriesSection.container, this.selector.scrollable.container.lastElementChild);
+    this.selector.scrollable.append(categoriesSection.container, this.selector.scrollable.container.lastElementChild);
 
     this.selector.addInitial(selectedPeers);
     addedInitial = true;

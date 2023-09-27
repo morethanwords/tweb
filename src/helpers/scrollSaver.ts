@@ -124,12 +124,14 @@ export default class ScrollSaver {
     if(USE_REFLOW && useReflow/*  && !isAppleMobile */) { // * fix blinking and jumping
       reflowScrollableElement(this.container);
     }
+
+    this.scrollable.onSizeChange();
   }
 
   private setScrollTop(newScrollTop: number, useReflow?: boolean) {
     // touchSupport for safari iOS
     // isTouchSupported && isApple && (container.container.style.overflow = 'hidden');
-    this.scrollable.setScrollTopSilently(this.scrollTop = newScrollTop);
+    this.scrollable.setScrollPositionSilently(this.scrollTop = newScrollTop);
     // container.scrollTop = scrollHeight;
     // isTouchSupported && isApple && (container.container.style.overflow = '');
 
@@ -137,7 +139,7 @@ export default class ScrollSaver {
   }
 
   public restore(useReflow?: boolean) {
-    const {scrollTop, scrollHeight} = this.scrollable;
+    const {scrollPosition: scrollTop, scrollSize: scrollHeight} = this.scrollable;
     this.scrollHeight = scrollHeight;
 
     if(!this.elements.length) { // maybe all messages have been deleted

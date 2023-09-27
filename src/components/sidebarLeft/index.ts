@@ -468,7 +468,7 @@ export class AppSidebarLeft extends SidebarSlider {
     });
 
     searchContainer.prepend(searchSuper.nav.parentElement.parentElement);
-    scrollable.container.append(searchSuper.container);
+    scrollable.append(searchSuper.container);
 
     const resetSearch = () => {
       searchSuper.setQuery({

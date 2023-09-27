@@ -42,7 +42,7 @@ export default class EmojiHelper extends AutocompleteHelper {
 
     this.addEventListener('visible', () => {
       setTimeout(() => { // it is not rendered yet
-        this.scrollable.container.scrollLeft = 0;
+        this.scrollable.scrollPosition = 0;
       }, 0);
     });
   }

@@ -97,4 +97,8 @@
   .already {
     --primary-color: var(--secondary-color);
   }
+
+  .selector-list-section-container .sidebar-left-section {
+    min-height: auto !important;
+  }
 }

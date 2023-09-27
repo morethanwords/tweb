@@ -496,7 +496,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
 
         if(id !== EMOJI_RECENT_ID && id !== CUSTOM_EMOJI_RECENT_ID) {
           category.menuScroll = this.menuInnerScroll;
-          this.menuInnerScroll.container.append(category.elements.menuTab);
+          this.menuInnerScroll.append(category.elements.menuTab);
         }
       });
 
@@ -844,6 +844,6 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
   }
 
   public onClose() {
-    this.closeScrollTop = this.scrollable.scrollTop;
+    this.closeScrollTop = this.scrollable.scrollPosition;
   }
 }

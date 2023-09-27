@@ -176,7 +176,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     attachClickEvent(this.closeBtn, (e) => {
       if(transition.prevId()) {
         this.scrollable.scrollIntoViewNew({
-          element: this.scrollable.container.firstElementChild as HTMLElement,
+          element: this.scrollable.container.querySelector('.profile-content') as HTMLElement,
           position: 'start'
         });
         transition(TitleIndex.Profile);

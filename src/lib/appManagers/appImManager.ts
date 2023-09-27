@@ -1466,7 +1466,7 @@ export class AppImManager extends EventListenerBase<{
     const chatPositions = stateStorage.getFromCache('chatPositions');
     if(!(chatBubbles.scrollable.getDistanceToEnd() <= 16 && chatBubbles.scrollable.loadedAll.bottom) && chatBubbles.getRenderedLength()) {
       chatBubbles.sliceViewport(true);
-      const top = chatBubbles.scrollable.scrollTop;
+      const top = chatBubbles.scrollable.scrollPosition;
 
       const position = {
         mids: getObjectKeysAndSort(chatBubbles.bubbles, 'desc').filter((mid) => mid > 0 && !chatBubbles.skippedMids.has(mid)),

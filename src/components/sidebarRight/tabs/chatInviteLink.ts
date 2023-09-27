@@ -291,7 +291,7 @@ export default class AppChatInviteLinkTab extends SliderSuperTabEventable {
 
       this.content.remove();
       selector.scrollable.attachBorderListeners(this.container);
-      selector.scrollable.container.prepend(...Array.from(this.scrollable.container.children));
+      selector.scrollable.prepend(...Array.from(this.scrollable.container.children));
 
       if(chatInvite.usage_limit) {
         const i = i18n('PeopleJoinedRemaining', [chatInvite.usage_limit - chatInvite.usage]);

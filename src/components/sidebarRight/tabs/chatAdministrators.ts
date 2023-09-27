@@ -155,7 +155,7 @@ export default class AppChatAdministratorsTab extends SliderSuperTabEventable {
 
       section.content.append(row.container);
 
-      this.selector.scrollable.container.append(section.container, this.selector.scrollable.container.lastElementChild);
+      this.selector.scrollable.append(section.container, this.selector.scrollable.container.lastElementChild);
     }
 
     createParticipantContextMenu({

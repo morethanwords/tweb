@@ -100,7 +100,7 @@ export default class Sortable {
       }
 
       if(change !== undefined) {
-        this.scrollable.container[this.scrollable.scrollProperty] += change;
+        this.scrollable.scrollPosition += change;
       }
     }
   };
@@ -115,9 +115,9 @@ export default class Sortable {
   };
 
   private onScroll = () => {
-    const scrollPos = this.scrollable.container[this.scrollable.scrollProperty];
+    const scrollPos = this.scrollable.scrollPosition;
     const diff = this.addScrollPos = scrollPos - this.startScrollPos;
-    const isVertical = this.scrollable.scrollProperty === 'scrollTop';
+    const isVertical = this.scrollable.scrollPositionProperty === 'scrollTop';
     this.swipeHandler.add(isVertical ? 0 : diff, isVertical ? diff : 0);
   };
 
@@ -133,7 +133,7 @@ export default class Sortable {
     this.addScrollPos = 0;
 
     if(this.scrollable) {
-      this.startScrollPos = this.scrollable.container[this.scrollable.scrollProperty];
+      this.startScrollPos = this.scrollable.scrollPosition;
       this.scrollableRect = this.scrollable.container.getBoundingClientRect();
       this.scrollable.container.addEventListener('scroll', this.onScroll);
     }

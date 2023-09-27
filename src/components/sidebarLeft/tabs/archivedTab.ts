@@ -32,7 +32,7 @@ export default class AppArchivedTab extends SliderSuperTab {
         id: AppArchivedTab.filterId,
         localId: FOLDER_ID_ARCHIVE
       });
-      scrollable.container.append(ul);
+      scrollable.append(ul);
     }
 
     const storiesListContainer = this.storiesListContainer = document.createElement('div');

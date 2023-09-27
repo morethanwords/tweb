@@ -30,6 +30,8 @@ import wrapCustomEmoji from '../wrappers/customEmoji';
 import emoticonsDropdown from '../emoticonsDropdown';
 import ButtonMenuToggle from '../buttonMenuToggle';
 import {copyTextToClipboard} from '../../helpers/clipboard';
+import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
+import {onMediaCaptionClick} from '../appMediaViewer';
 
 const ANIMATION_GROUP: AnimationItemGroup = 'STICKERS-POPUP';
 
@@ -86,6 +88,20 @@ export default class PopupStickers extends PopupElement {
     this.listenerSetter.add(rootScope)('stickers_installed', onStickerSetUpdate);
     this.listenerSetter.add(rootScope)('stickers_deleted', onStickerSetUpdate);
 
+    const onClick = (e: MouseEvent) => {
+      const callback = onMediaCaptionClick(this.container, e);
+      if(callback) {
+        this.addEventListener('closeAfterTimeout', callback);
+        this.hide();
+        return false;
+      }
+    };
+
+    this.container.addEventListener('click', onClick, {capture: true});
+    this.middlewareHelper.onDestroy(() => {
+      this.container.removeEventListener('click', onClick, {capture: true});
+    });
+
     this.loadStickerSet();
   }
 
@@ -96,7 +112,7 @@ export default class PopupStickers extends PopupElement {
     let headerRow: Row, updateAdded: (added: boolean) => void;
     if(set) {
       headerRow = new Row({
-        title: wrapEmojiText(set.title),
+        title: wrapRichText(set.title),
         subtitle: i18n(set.pFlags.emojis ? 'EmojiCount' : 'Stickers', [set.count]),
         buttonRight: true
       });
@@ -249,7 +265,7 @@ export default class PopupStickers extends PopupElement {
     }, {listenerSetter: this.listenerSetter});
 
     if(sets.length === 1) {
-      setInnerHTML(this.title, wrapEmojiText(firstSet.set.title));
+      setInnerHTML(this.title, wrapRichText(firstSet.set.title));
     } else {
       setInnerHTML(this.title, i18n('Emoji'));
     }

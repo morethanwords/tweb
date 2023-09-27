@@ -46,7 +46,7 @@ export default class StickersHelper extends AutocompleteHelper {
 
     this.addEventListener('visible', () => {
       setTimeout(() => { // it is not rendered yet
-        this.scrollable.container.scrollTop = 0;
+        this.scrollable.scrollPosition = 0;
       }, 0);
 
       rootScope.dispatchEvent('choosing_sticker', true);
@@ -118,7 +118,7 @@ export default class StickersHelper extends AutocompleteHelper {
         this.onChangeScreen();
 
         this.toggle(!stickers.length);
-        this.scrollable.scrollTop = 0;
+        this.scrollable.scrollPosition = 0;
       });
     });
   }

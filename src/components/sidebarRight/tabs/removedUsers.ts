@@ -72,8 +72,8 @@ export default class AppRemovedUsersTab extends SliderSuperTabEventable {
     });
 
     section.container.firstElementChild.remove();
-    this.selector.scrollable.container.firstElementChild.remove();
-    this.selector.scrollable.container.append(section.container, this.selector.scrollable.container.lastElementChild);
+    this.selector.scrollable.firstElementChild?.remove();
+    this.selector.scrollable.append(section.container, this.selector.scrollable.container.lastElementChild);
 
     createParticipantContextMenu({
       listenTo: this.selector.scrollable.container,

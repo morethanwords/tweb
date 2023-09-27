@@ -125,7 +125,7 @@ export default class ReplyKeyboard extends DropdownHover {
     }
 
     this.onClickMap.clear();
-    this.scrollable.container.replaceChildren();
+    this.scrollable.replaceChildren();
 
     for(const row of replyMarkup.rows) {
       const div = document.createElement('div');
@@ -138,7 +138,7 @@ export default class ReplyKeyboard extends DropdownHover {
         div.append(buttonEl);
       }
 
-      this.scrollable.container.append(div);
+      this.scrollable.append(div);
     }
   }
 

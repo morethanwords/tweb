@@ -44,7 +44,7 @@ export default class AppTwoStepVerificationReEnterPasswordTab extends SliderSupe
     inputWrapper.append(passwordInputField.container, btnContinue);
     section.content.append(monkey.container, inputWrapper);
 
-    this.scrollable.container.append(section.container);
+    this.scrollable.append(section.container);
 
     passwordInputField.input.addEventListener('keypress', (e) => {
       if(passwordInputField.input.classList.contains('error')) {

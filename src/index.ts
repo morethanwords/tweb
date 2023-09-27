@@ -36,6 +36,7 @@ import IS_INSTALL_PROMPT_SUPPORTED from './environment/installPrompt';
 import cacheInstallPrompt from './helpers/dom/installPrompt';
 import {fillLocalizedDates} from './helpers/date';
 import {nextRandomUint} from './helpers/random';
+import {IS_OVERLAY_SCROLL_SUPPORTED, USE_NATIVE_SCROLL} from './environment/overlayScrollSupport';
 // import appNavigationController from './components/appNavigationController';
 
 /* false &&  */document.addEventListener('DOMContentLoaded', async() => {
@@ -196,6 +197,14 @@ import {nextRandomUint} from './helpers/random';
 
   if(IS_EMOJI_SUPPORTED) {
     document.documentElement.classList.add('native-emoji');
+  }
+
+  if(USE_NATIVE_SCROLL) {
+    document.documentElement.classList.add('native-scroll');
+  } else if(IS_OVERLAY_SCROLL_SUPPORTED) {
+    document.documentElement.classList.add('overlay-scroll');
+  } else {
+    document.documentElement.classList.add('custom-scroll');
   }
 
   // prevent firefox image dragging

@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-html:not(.is-safari):not(.is-ios):not(.is-mac):not(.is-mobile) {
+html.overlay-scroll {
   .scrollable::-webkit-scrollbar {
     width: 0;
     height: 0;
@@ -46,6 +46,18 @@ html:not(.is-safari):not(.is-ios):not(.is-mac):not(.is-mobile) {
     border-radius: $border-radius-medium;
     background-color: var(--scrollbar-color);
     opacity: 1;
+  }
+}
+
+html.custom-scroll {
+  .scrollable::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+
+  .scrollable:hover .scrollable-thumb,
+  .scrollable-thumb.is-focused {
+    opacity: .4;
   }
 }
 
@@ -124,12 +136,35 @@ html:not(.is-safari):not(.is-ios):not(.is-mac):not(.is-mobile) {
     } */
   }
 
-  &-padding {
-    min-width: 100%;
-    height: 100%;
-  }
+  // &-padding {
+  //   min-width: 100%;
+  //   height: 100%;
+  // }
 
   /* html.is-safari &-padding {
     margin-right: -6px;
   } */
+
+  &-thumb {
+    position: absolute;
+    right: 1px;
+    width: 5px;
+    //margin-left: 2px;
+    background-color: #000;
+    //cursor: grab;
+    cursor: default;
+    opacity: 0;
+    border-radius: $border-radius;
+    // z-index: 5;
+
+    @include animation-level(2) {
+      transition: opacity .1s ease-in-out;
+    }
+
+    &-container {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+  }
 }

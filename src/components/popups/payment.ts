@@ -314,7 +314,7 @@ export default class PopupPayment extends PopupElement<{
     const preloaderContainer = document.createElement('div');
     preloaderContainer.classList.add(className + '-preloader-container');
     const preloader = putPreloader(preloaderContainer, true);
-    this.scrollable.container.append(preloaderContainer);
+    this.scrollable.append(preloaderContainer);
 
     const inputInvoice = this.inputInvoice;
     if(!paymentForm) {

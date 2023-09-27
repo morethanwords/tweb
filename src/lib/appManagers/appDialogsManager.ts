@@ -1063,7 +1063,6 @@ class Some<T extends Dialog | ForumTopic = Dialog | ForumTopic> {
     this.scrollable.container.addEventListener('scroll', this.onChatsRegularScroll);
     this.scrollable.onScrolledTop = this.onChatsScrollTop.bind(this);
     this.scrollable.onScrolledBottom = this.onChatsScroll.bind(this);
-    this.scrollable.setVirtualContainer(this.sortedList.list);
   }
 
   public clear() {
@@ -1430,7 +1429,10 @@ class Some2 extends Some<Dialog> {
       log: this.log,
       list: list,
       indexKey,
-      onListLengthChange: appDialogsManager.onListLengthChange
+      onListLengthChange: () => {
+        scrollable.onSizeChange();
+        appDialogsManager.onListLengthChange?.();
+      }
     });
 
     this.scrollable = scrollable;
@@ -2325,7 +2327,7 @@ export class AppDialogsManager {
     if(forwards) {
       isMounted = !!filterRendered.topNotificationContainer.parentElement;
       if(!isMounted) {
-        filterRendered.scrollable.container.prepend(filterRendered.topNotificationContainer);
+        filterRendered.scrollable.prepend(filterRendered.topNotificationContainer);
       }
     }
 
@@ -2390,7 +2392,7 @@ export class AppDialogsManager {
     bottom.classList.add('chatlist-bottom');
 
     top.append(ul);
-    scrollable.container.append(top, bottom);
+    scrollable.append(top, bottom);
     /* parts.append(top, bottom);
     scrollable.container.append(parts); */
 

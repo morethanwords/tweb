@@ -122,7 +122,7 @@ export default class AppMyStoriesTab extends SliderSuperTab {
       searchSuper.destroy();
     });
 
-    this.scrollable.container.append(...[
+    this.scrollable.append(...[
       section?.container,
       searchSuper.container,
       placeholder

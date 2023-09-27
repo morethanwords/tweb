@@ -74,7 +74,7 @@ export default class InlineHelper extends AutocompleteHelper {
 
     this.addEventListener('visible', () => {
       setTimeout(() => { // it is not rendered yet
-        this.scrollable.container.scrollTop = 0;
+        this.scrollable.scrollPosition = 0;
       }, 0);
     });
 
@@ -310,7 +310,7 @@ export default class InlineHelper extends AutocompleteHelper {
         this.onChangeScreen();
 
         this.toggle(!botResults.results.length && !switchTo);
-        this.scrollable.scrollTop = 0;
+        this.scrollable.scrollPosition = 0;
       });
     });
 

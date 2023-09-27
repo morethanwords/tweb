@@ -56,6 +56,7 @@ export default class AppSelectPeers {
     handheldsSize: 66,
     avatarSize: 48
   } */);
+  protected oldList: HTMLElement;
   private chatsContainer = document.createElement('div');
   public scrollable: Scrollable;
   private selectedScrollable: Scrollable;
@@ -197,8 +198,8 @@ export default class AppSelectPeers {
       const middleware = this.middlewareHelperLoader.get();
       if(needSwitchList) {
         this.needSwitchList = false;
-        this.scrollable.splitUp.replaceWith(this.list);
-        this.scrollable.setVirtualContainer(this.list);
+        this.oldList.replaceWith(this.list);
+        this.oldList = undefined;
       }
 
       peerIds = peerIds.filter((peerId) => {
@@ -308,9 +309,8 @@ export default class AppSelectPeers {
     if(!this.scrollable) {
       this.scrollable = new Scrollable(this.chatsContainer);
     } else {
-      this.scrollable.container.append(this.chatsContainer);
+      this.scrollable.append(this.chatsContainer);
     }
-    this.scrollable.setVirtualContainer(this.list);
 
     attachClickEvent(this.chatsContainer, (e) => {
       const target = findUpAttribute(e.target, 'data-peer-id') as HTMLElement;
@@ -346,7 +346,7 @@ export default class AppSelectPeers {
     };
 
     if(this.input && !this.noDelimiter) {
-      this.scrollable.container.prepend(generateDelimiter());
+      this.scrollable.prepend(generateDelimiter());
     }
 
     this.listenerSetter = new ListenerSetter();
@@ -443,7 +443,8 @@ export default class AppSelectPeers {
       ++this.tempIds[i];
     }
 
-    const oldList = this.scrollable.splitUp;
+    const oldList = this.list;
+    this.oldList = oldList;
     this.list = appDialogsManager.createChatList();
 
     this.promise = undefined;
@@ -898,7 +899,7 @@ export default class AppSelectPeers {
     const promises = peerIds.map(async(peerId) => {
       const dialogElement = appDialogsManager.addDialogNew({
         peerId: peerId,
-        container: this.scrollable,
+        container: this.list,
         rippleEnabled: this.rippleEnabled,
         avatarSize: this.avatarSize,
         meAsSaved: this.meAsSaved,

@@ -50,6 +50,6 @@ export default class AppTwoStepVerificationSetTab extends SliderSuperTab {
 
     inputContent.append(inputWrapper);
 
-    this.scrollable.container.append(section.container);
+    this.scrollable.append(section.container);
   }
 }
