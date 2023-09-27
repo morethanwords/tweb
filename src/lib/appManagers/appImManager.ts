@@ -996,11 +996,11 @@ export class AppImManager extends EventListenerBase<{
   }
 
   private toggleChatGradientAnimation(activatingChat: Chat) {
-    this.chats.forEach((chat) => {
-      if(chat.gradientRenderer) {
-        chat.gradientRenderer.scrollAnimate(liteMode.isAvailable('animations') && chat === activatingChat);
-      }
-    });
+    // this.chats.forEach((chat) => {
+    //   if(chat.gradientRenderer) {
+    //     chat.gradientRenderer.scrollAnimate(liteMode.isAvailable('animations') && chat === activatingChat);
+    //   }
+    // });
   }
 
   private appendEmojiAnimationContainer(screen: ScreenSize) {

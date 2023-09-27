@@ -38,8 +38,8 @@ export default class ChatBackgroundGradientRenderer {
     {x: 0.75, y: 0.40}
   ];
   private readonly _phases = this._positions.length;
-  private _onWheelRAF: number;
-  private _scrollDelta: number;
+  // private _onWheelRAF: number;
+  // private _scrollDelta: number;
 
   // private _ts = 0;
   // private _fps = 15;
@@ -51,7 +51,7 @@ export default class ChatBackgroundGradientRenderer {
   private _hc: HTMLCanvasElement;
   private _hctx: CanvasRenderingContext2D;
 
-  private _addedScrollListener: boolean;
+  // private _addedScrollListener: boolean;
   private _animatingToNextPosition: boolean;
   private _nextPositionTail: number;
   private _nextPositionTails: number;
@@ -134,16 +134,16 @@ export default class ChatBackgroundGradientRenderer {
     }
   }
 
-  private onWheel = (e: {deltaY: number}) => {
-    if(this._animatingToNextPosition) {
-      return;
-    }
+  // private onWheel = (e: {deltaY: number}) => {
+  //   if(this._animatingToNextPosition) {
+  //     return;
+  //   }
 
-    this._scrollDelta += e.deltaY;
-    if(this._onWheelRAF === undefined) {
-      this._onWheelRAF = requestAnimationFrame(this.drawOnWheel);
-    }
-  };
+  //   this._scrollDelta += e.deltaY;
+  //   if(this._onWheelRAF === undefined) {
+  //     this._onWheelRAF = requestAnimationFrame(this.drawOnWheel);
+  //   }
+  // };
 
   private changeTailAndDraw(diff: number) {
     this.changeTail(diff);
@@ -151,15 +151,15 @@ export default class ChatBackgroundGradientRenderer {
     this.drawGradient(curPos);
   }
 
-  private drawOnWheel = () => {
-    const value = this._scrollDelta / this._scrollTails;
-    this._scrollDelta %= this._scrollTails;
-    const diff = value > 0 ? Math.floor(value) : Math.ceil(value);
-    if(diff) {
-      this.changeTailAndDraw(diff);
-    }
-    this._onWheelRAF = undefined;
-  };
+  // private drawOnWheel = () => {
+  //   const value = this._scrollDelta / this._scrollTails;
+  //   this._scrollDelta %= this._scrollTails;
+  //   const diff = value > 0 ? Math.floor(value) : Math.ceil(value);
+  //   if(diff) {
+  //     this.changeTailAndDraw(diff);
+  //   }
+  //   this._onWheelRAF = undefined;
+  // };
 
   private drawNextPositionAnimated = (getProgress?: () => number) => {
     let done: boolean, id: ImageData;
@@ -193,6 +193,73 @@ export default class ChatBackgroundGradientRenderer {
 
     return !done;
   };
+
+  // private getGradientImageData(positions: {x: number, y: number}[], phase = this._phase, progress = this._tail / this._tails) {
+  //   const id = this._hctx.createImageData(this._width, this._height);
+  //   const pixels = id.data;
+  //   const colorsLength = this._colors.length;
+
+  //   const positionsForPhase = (phase: number) => {
+  //     const result: typeof positions = [];
+  //     for(let i = 0; i != 4; ++i) {
+  //       result[i] = this._positions[(phase + i * 2) % 8];
+  //       // result[i].second = 1.f - result[i].second;
+  //     }
+  //     return result;
+  //   };
+
+  //   const previousPhase = (phase + 1) % 8;
+  //   const previous = positionsForPhase(previousPhase);
+  //   const current = positionsForPhase(phase);
+
+  //   let offset = 0;
+  //   for(let y = 0; y < this._height; ++y) {
+  //     const directPixelY = y / this._height;
+  //     const centerDistanceY = directPixelY - 0.5;
+  //     const centerDistanceY2 = centerDistanceY * centerDistanceY;
+  //     for(let x = 0; x < this._width; ++x) {
+  //       const directPixelX = x / this._width;
+  //       const centerDistanceX = directPixelX - 0.5;
+  //       const centerDistance = Math.sqrt(centerDistanceX * centerDistanceX + centerDistanceY2);
+
+  //       const swirlFactor = 0.35 * centerDistance;
+  //       const theta = swirlFactor * swirlFactor * 0.8 * 8.0;
+  //       const sinTheta = Math.sin(theta);
+  //       const cosTheta = Math.cos(theta);
+
+  //       const pixelX = Math.max(0.0, Math.min(1.0, 0.5 + centerDistanceX * cosTheta - centerDistanceY * sinTheta));
+  //       const pixelY = Math.max(0.0, Math.min(1.0, 0.5 + centerDistanceX * sinTheta + centerDistanceY * cosTheta));
+
+  //       let distanceSum = 0.0;
+  //       let r = 0.0;
+  //       let g = 0.0;
+  //       let b = 0.0;
+  //       for(let i = 0; i < colorsLength; ++i) {
+  //         // const colorX = positions[i].x;
+  //         // const colorY = positions[i].y;
+  //         const colorX = previous[i].x + (current[i].x - previous[i].x) * progress;
+  //         const colorY = previous[i].y + (current[i].y - previous[i].y) * progress;
+
+  //         const distanceX = pixelX - colorX;
+  //         const distanceY = pixelY - colorY;
+
+  //         let distance = Math.max(0.0, 0.9 - Math.sqrt(distanceX * distanceX + distanceY * distanceY));
+  //         distance = distance * distance * distance * distance;
+  //         distanceSum += distance;
+
+  //         r += distance * this._colors[i].r / 255;
+  //         g += distance * this._colors[i].g / 255;
+  //         b += distance * this._colors[i].b / 255;
+  //       }
+
+  //       pixels[offset++] = r / distanceSum * 255.0;
+  //       pixels[offset++] = g / distanceSum * 255.0;
+  //       pixels[offset++] = b / distanceSum * 255.0;
+  //       pixels[offset++] = 0xFF;
+  //     }
+  //   }
+  //   return id;
+  // }
 
   private getGradientImageData(positions: {x: number, y: number}[]) {
     const id = this._hctx.createImageData(this._width, this._height);
@@ -284,11 +351,11 @@ export default class ChatBackgroundGradientRenderer {
     this._frames = [];
     this._phase = 0;
     this._tail = 0;
-    this._scrollDelta = 0;
-    if(this._onWheelRAF !== undefined) {
-      cancelAnimationFrame(this._onWheelRAF);
-      this._onWheelRAF = undefined;
-    }
+    // this._scrollDelta = 0;
+    // if(this._onWheelRAF !== undefined) {
+    //   cancelAnimationFrame(this._onWheelRAF);
+    //   this._onWheelRAF = undefined;
+    // }
 
     const colors = el.getAttribute('data-colors').split(',').reverse();
     this._colors = colors.map((color) => {
@@ -315,8 +382,8 @@ export default class ChatBackgroundGradientRenderer {
       return;
     }
 
-    const pos = this.curPosition(this._phase, this._tail);
-    this.drawGradient(pos);
+    const position = this.curPosition(this._phase, this._tail);
+    this.drawGradient(position);
   }
 
   public toNextPosition(getProgress?: () => number) {
@@ -386,24 +453,24 @@ export default class ChatBackgroundGradientRenderer {
 
   // public toNextPositionThrottled = throttle(this.toNextPosition.bind(this), 100, true);
 
-  public scrollAnimate(start?: boolean) {
-    return;
+  // public scrollAnimate(start?: boolean) {
+  //   return;
 
-    if(this._colors.length < 2 && start) {
-      return;
-    }
+  //   if(this._colors.length < 2 && start) {
+  //     return;
+  //   }
 
-    if(start && !this._addedScrollListener) {
-      document.addEventListener('wheel', this.onWheel);
-      this._addedScrollListener = true;
-    } else if(!start && this._addedScrollListener) {
-      document.removeEventListener('wheel', this.onWheel);
-      this._addedScrollListener = false;
-    }
-  }
+  //   if(start && !this._addedScrollListener) {
+  //     document.addEventListener('wheel', this.onWheel);
+  //     this._addedScrollListener = true;
+  //   } else if(!start && this._addedScrollListener) {
+  //     document.removeEventListener('wheel', this.onWheel);
+  //     this._addedScrollListener = false;
+  //   }
+  // }
 
   public cleanup() {
-    this.scrollAnimate(false);
+    // this.scrollAnimate(false);
     // this.animate(false);
   }
 

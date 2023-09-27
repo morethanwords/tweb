@@ -222,9 +222,9 @@ export default class Chat extends EventListenerBase<{
       gradientCanvas = this.gradientCanvas = canvas;
       gradientCanvas.classList.add('chat-background-item-canvas', 'chat-background-item-color-canvas');
 
-      if(liteMode.isAvailable('animations')) {
-        gradientRenderer.scrollAnimate(true);
-      }
+      // if(liteMode.isAvailable('animations')) {
+      //   gradientRenderer.scrollAnimate(true);
+      // }
       // } else {
       //   item.style.backgroundColor = color;
       //   item.style.backgroundImage = 'none';
