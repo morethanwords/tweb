@@ -116,7 +116,8 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
   };
 
   protected onHistoryMultiappend = async(message: Message.message | Message.messageService) => {
-    if(this.searchContext.folderId !== undefined) {
+    const {searchContext} = this;
+    if(searchContext.folderId !== undefined) {
       return;
     }
 
@@ -125,33 +126,22 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
       return;
     }
 
-    if(message.peerId !== this.searchContext.peerId) {
+    if(message.peerId !== searchContext.peerId) {
       return;
     }
 
     const filtered = await this.filterMids([message.mid]);
+    if(this.searchContext !== searchContext) return;
     const targets = (await Promise.all(filtered.map((message) => this.processItem(message)))).filter(Boolean);
-    if(targets.length) {
-      /* const {previous, current, next} = this;
-      const targets = previous.concat(current, next);
-      const currentIdx = targets.length;
-      const mid = targets[0].mid;
-      let i = 0, length = targets.length;
-      for(; i < length; ++i) {
-        const target = targets[i];
-        if(!target || mid < target.mid) {
-          break;
-        }
-      }
+    if(this.searchContext !== searchContext) return;
+    if(!targets.length) {
+      return;
+    }
 
-      if(i < currentIdx) previous.push(...targets);
-      else next. */
-
-      if(!this.current) {
-        this.previous.push(...targets);
-      } else {
-        this.next.push(...targets);
-      }
+    if(!this.current) {
+      this.previous.push(...targets);
+    } else {
+      this.next.push(...targets);
     }
   };
 

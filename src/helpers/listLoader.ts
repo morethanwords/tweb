@@ -180,7 +180,11 @@ export default class ListLoader<T extends {}, P extends {}> {
         processedArr.push(processed);
       });
 
-      const results = await Promise.all(processedArr);
+      const results = (await Promise.all(processedArr)).filter(Boolean);
+      if((older ? this.loadPromiseDown : this.loadPromiseUp) !== promise) {
+        return;
+      }
+
       if(older) {
         if(this.reverse) this.previous.unshift(...results);
         else this.next.push(...results);
@@ -189,7 +193,7 @@ export default class ListLoader<T extends {}, P extends {}> {
         else this.previous.unshift(...results);
       }
 
-      this.onLoadedMore && this.onLoadedMore();
+      this.onLoadedMore?.();
     }, () => {}).then(() => {
       if(older) this.loadPromiseDown = null;
       else this.loadPromiseUp = null;
