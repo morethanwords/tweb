@@ -21,7 +21,7 @@ import {IS_SAFARI} from '../../environment/userAgent';
 let processing = false;
 const pollStories = () => {
   if(processing) return;
-  const promises: Promise<any>[] = [];
+  const promises: PromiseLike<any>[] = [];
   wrappedStories.forEach((map, peerId) => {
     const ids = [...map.keys()];
     const promise = rootScope.managers.appStoriesManager.getStoriesById(peerId, ids, true).then(() => {

@@ -912,16 +912,7 @@ class Some<T extends Dialog | ForumTopic = Dialog | ForumTopic> {
             return this.sortedList.add(this.getDialogKey(dialog as T));
           });
 
-          let processed = false;
-          await Promise.race([
-            Promise.all(loadPromises).catch(),
-            pause(1000).then(() => {
-              if(!processed) {
-                log.error('loadPromises are still pending?', loadPromises, dialogs);
-              }
-            })
-          ]);
-          processed = true;
+          await Promise.all(loadPromises).catch()
           if(this.loadDialogsRenderPromise !== renderPromise) {
             throw middlewareError;
           }

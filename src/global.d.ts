@@ -103,7 +103,7 @@ declare global {
 
   type DOMRectMinified = {top: number, right: number, bottom: number, left: number};
   type DOMRectEditable = DOMRectMinified & {width: number, height: number};
-  type MaybePromise<T> = Promise<T> | T;
+  type MaybePromise<T> = PromiseLike<T> | T;
 
   type WrapSomethingOptions = {
     lazyLoadQueue?: LazyLoadQueue | false,

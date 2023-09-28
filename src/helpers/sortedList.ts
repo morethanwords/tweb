@@ -19,7 +19,7 @@ export type SortedElementBase<T = any> = {
 let id = 0;
 
 export class BatchProcessor<Item extends any = any> {
-  protected queue: Promise<Item>[];
+  protected queue: MaybePromise<Item>[];
   protected promise: Promise<void>;
 
   protected middlewareHelper: MiddlewareHelper;
@@ -84,9 +84,11 @@ export class BatchProcessor<Item extends any = any> {
 
       const perf = performance.now();
       const promises = queue.map((promise) => {
-        promise.then((details) => {
-          log('render item time', performance.now() - perf, details);
-        });
+        if(promise instanceof Promise) {
+          promise.then((details) => {
+            log('render item time', performance.now() - perf, details);
+          });
+        }
 
         return promise;
       });
@@ -237,8 +239,23 @@ export default class SortedList<SortedElement extends SortedElementBase, SortedE
     };
 
     this.elements.set(id, base as SortedElement);
-    const createPromise = Promise.resolve(this.onElementCreate(base));
-    return this.batchProcessor.addToQueue(createPromise);
+    let result = this.onElementCreate(base);
+    if(result instanceof Promise) {
+      let processed = false;
+      result = Promise.race([
+        result.then((result) => {
+          processed = true;
+          return result;
+        }),
+        pause(1000).then(() => {
+          if(!processed) {
+            console.error('loadPromises are still pending?', base);
+            return base;
+          }
+        })
+      ]);
+    }
+    return this.batchProcessor.addToQueue(result);
 
     // return element;
   }
