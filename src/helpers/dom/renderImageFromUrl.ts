@@ -41,7 +41,7 @@ export default function renderImageFromUrl(
 
     if(callback) {
       if(isVideo) {
-        onMediaLoad(elem).then(callback);
+        return onMediaLoad(elem).then(callback);
       } else {
         callback?.();
       }
@@ -59,10 +59,21 @@ export default function renderImageFromUrl(
       }
 
       loadedURLs[url] = true;
-      // console.log('onload:', url, performance.now() - perf);
+      // console.log('onload:', url, performance.now(), loader.naturalWidth, loader.naturalHeight);
       // TODO: переделать прогрузки аватаров до начала анимации, иначе с этим ожиданием они неприятно появляются
       // callback && getHeavyAnimationPromise().then(() => callback());
       callback?.();
+
+      // if(loader.naturalWidth) {
+      //   const interval = setInterval(() => {
+      //     if(!loader.naturalWidth) {
+      //       const parents = getParents(loader);
+      //       console.warn('image no dimensions', loader.isConnected, parents, (parents[parents.length - 1] as HTMLElement).outerHTML, loader.src === url);
+      //     }
+      //   }, 1);
+
+      //   setTimeout(() => clearInterval(interval), 1e3);
+      // }
     };
 
     const onError = (err: DOMException) => {
@@ -75,7 +86,7 @@ export default function renderImageFromUrl(
 
     loader.decoding = 'async';
     loader.src = url;
-    loader.decode().then(onLoad, onError);
+    return loader.decode().then(onLoad, onError);
     // const timeout = setTimeout(() => {
     //   console.error('not yet decoded', loader, url);
     //   debugger;

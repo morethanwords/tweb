@@ -18,7 +18,7 @@ import getPeerPhoto from '../lib/appManagers/utils/peers/getPeerPhoto';
 import wrapAbbreviation from '../lib/richTextProcessor/wrapAbbreviation';
 import getPeerInitials from './wrappers/getPeerInitials';
 import liteMode from '../helpers/liteMode';
-import {renderImageFromUrlPromise} from '../helpers/dom/renderImageFromUrl';
+import renderImageFromUrl, {renderImageFromUrlPromise} from '../helpers/dom/renderImageFromUrl';
 import getPreviewURLFromBytes from '../helpers/bytes/getPreviewURLFromBytes';
 import classNames from '../helpers/string/classNames';
 import {wrapTopicIcon} from './wrappers/messageActionTextNewUnsafe';
@@ -399,18 +399,10 @@ export const AvatarNew = (props: {
     }
 
     const renderPromise = callbackify(loadPromise, (url) => {
-      // let ii: HTMLImageElement;
-      // const i = <img ref={ii} onLoad={() => {console.log('rendered lol', url)}} />;
-      // const timeout = setTimeout(() => {
-      //   console.warn('not rendered', {ii}, ii instanceof HTMLImageElement, url, ii.height);
-      // }, 1e3);
-      // renderImageFromUrlPromise(ii, url, useCache/* , !cached */).then(() => {
-      //   console.log('rendered', url);
-      //   clearTimeout(timeout);
-      // });
-
-      return renderImageFromUrlPromise(image, url, useCache/* , !cached */);
-    }).then(() => callback());
+      const result = renderImageFromUrl(image, url, undefined, useCache);
+      callbackify(result, callback);
+      return result instanceof Promise ? result : Promise.resolve(result);
+    });
 
     return {
       cached,
@@ -514,7 +506,7 @@ export const AvatarNew = (props: {
     const size: PeerPhotoSize = isBig ? 'photo_big' : 'photo_small';
     const photo = getPeerPhoto(peer);
     const avatarAvailable = !!photo;
-    const avatarRendered = !!media();
+    const avatarRendered = avatarAvailable && !!media(); // if avatar isn't available, let's reset it
     const isAvatarCached = avatarAvailable && apiManagerProxy.isAvatarCached(peerId, size);
     if(!middleware()) {
       return;
