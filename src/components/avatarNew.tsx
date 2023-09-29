@@ -268,6 +268,13 @@ export const AvatarNew = (props: {
         sections = [segmentToSection({length: 1, type: segment.type})];
       } else {
         sections = segments.map((segment) => segmentToSection(segment, !!firstCloseSegment));
+        const totalLength = sections.reduce((sum, section) => sum + section.length, 0);
+        if(totalLength > 30) {
+          sections = sections.map((section) => ({
+            ...section,
+            length: Math.floor(section.length / totalLength * 30)
+          })).filter((section) => section.length > 0);
+        }
       }
 
       dashedCircle.render(sections);
