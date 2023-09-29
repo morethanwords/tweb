@@ -1335,6 +1335,10 @@ export default class AppSearchSuper {
           middleware
         });
         attachClickEvent(membersList.list, (e) => {
+          if(findUpClassName(e.target, 'has-stories')) {
+            return;
+          }
+
           const li = findUpTag(e.target, DIALOG_LIST_ELEMENT_TAG);
           if(!li) {
             return;
