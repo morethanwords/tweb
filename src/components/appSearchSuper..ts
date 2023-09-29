@@ -926,8 +926,9 @@ export default class AppSearchSuper {
 
     const subtitleFragment = wrapWebPageDescription(webPage);
     const aFragment = htmlToDocumentFragment(wrapRichText(webPage.url || ''));
-    const a = aFragment.firstElementChild;
-    if(a instanceof HTMLAnchorElement) {
+    const a = aFragment.firstElementChild as HTMLAnchorElement;
+    const aIsAnchor = a instanceof HTMLAnchorElement;
+    if(aIsAnchor) {
       try { // can have 'URIError: URI malformed'
         a.innerText = decodeURIComponent(a.href);
       } catch(err) {
@@ -956,8 +957,15 @@ export default class AppSearchSuper {
       subtitle: subtitleFragment,
       havePadding: true,
       clickable: true,
-      noRipple: true
+      noRipple: true,
+      asLink: aIsAnchor
     });
+
+    if(aIsAnchor) {
+      (row.container as HTMLAnchorElement).href = a.href;
+      row.container.setAttribute('onclick', a.getAttribute('onclick'));
+      (row.container as HTMLAnchorElement).target = a.target;
+    }
 
     row.applyMediaElement(previewDiv, 'big');
 

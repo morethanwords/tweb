@@ -498,26 +498,6 @@
       }
     }
 
-    a:not(:last-child) {
-      position: relative;
-      z-index: 2;
-    }
-
-    .anchor-url:last-child {
-      position: unset;
-
-      &:before {
-        position: absolute;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        left: 0;
-        content: " ";
-        cursor: pointer;
-        z-index: 1;
-      }
-    }
-
     .media-photo {
       object-fit: cover;
       width: 100%;
