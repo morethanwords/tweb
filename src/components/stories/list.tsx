@@ -335,7 +335,7 @@ function _StoriesList(props: {
       <div
         ref={(el) => (items.set(peer, el), itemsTarget.set(el, peer))}
         class={styles.ListItem}
-        classList={{[styles.isRead]: !isMyStory && !peer.stories.some((story) => story.id > peer.maxReadId)}}
+        classList={{[styles.isRead]: !isMyStory && peer.maxReadId && peer.maxReadId >= peer.stories[peer.stories.length - 1].id}}
         onClick={onClick}
         style={calculateMovement()}
       >
