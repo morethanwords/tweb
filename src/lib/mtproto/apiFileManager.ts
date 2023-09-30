@@ -87,6 +87,7 @@ export type MyUploadFile = UploadFile.uploadFile | UploadWebFile.uploadWebFile;
 // };
 
 const DO_NOT_UPLOAD_FILES = false;
+const PREPARE_CACHE = false;
 
 const MAX_DOWNLOAD_FILE_PART_SIZE = 1 * 1024 * 1024;
 const MAX_UPLOAD_FILE_PART_SIZE = 512 * 1024;
@@ -168,6 +169,32 @@ export class ApiFileManager extends AppManager {
       this.maxUploadParts = this.rootScope.premium ? appConfig.upload_max_fileparts_premium : appConfig.upload_max_fileparts_default;
       this.maxDownloadParts = appConfig.upload_max_fileparts_premium;
     });
+
+    if(PREPARE_CACHE) {
+      const perf = performance.now();
+      const storage = this.getFileStorage();
+      storage.timeoutOperation(async(cache) => {
+        const [requests, responses] = await Promise.all([cache.keys(), cache.matchAll()]);
+
+        for(let i = 0, length = requests.length; i < length; ++i) {
+          const request = requests[i];
+          const response = responses[i];
+          const url = request.url;
+          const size = +response.headers.get('content-length');
+          const splitted = url.split('/').pop().split('_');
+          if(splitted[0] === 'photo' || splitted[0] === 'document') {
+            this.thumbsStorage.setCacheContextURL(
+              {_: splitted[0], id: splitted[1]} as Photo.photo,
+              splitted[2],
+              '',
+              size
+            );
+          }
+        }
+
+        console.log('finished cache preparing', performance.now() - perf);
+      });
+    }
   }
 
   private downloadRequest(dcId: 'upload', id: number, cb: () => Promise<void>, activeDelta: number, queueId?: number): Promise<void>;
@@ -828,7 +855,7 @@ export class ApiFileManager extends AppManager {
     }
 
     return this.downloadMedia(options).then((blob) => {
-      if(!cacheContext.downloaded || cacheContext.downloaded < blob.size) {
+      if(!cacheContext.downloaded || !cacheContext.url || cacheContext.downloaded < blob.size) {
         const url = URL.createObjectURL(blob);
         cacheContext = this.thumbsStorage.setCacheContextURL(media as any, cacheContext.type, url, blob.size);
       }
