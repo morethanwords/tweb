@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {JSX, createSignal, For, createEffect, createResource, SuspenseList, Suspense, getOwner, runWithOwner, ParentComponent, Accessor, createRoot, untrack, onMount, createMemo, Owner, splitProps, onCleanup, on} from 'solid-js';
+import {JSX, createSignal, For, createEffect, createResource, SuspenseList, Suspense, getOwner, runWithOwner, ParentComponent, Accessor, createRoot, untrack, onMount, createMemo, Owner, splitProps, onCleanup, on, Show} from 'solid-js';
 import {ScrollableX} from '../scrollable';
 import {createMiddleware, createStoriesViewer} from './viewer';
 import styles from './list.module.scss';
@@ -13,7 +13,7 @@ import mediaSizes from '../../helpers/mediaSizes';
 import rootScope from '../../lib/rootScope';
 import fastSmoothScroll from '../../helpers/fastSmoothScroll';
 import cancelEvent from '../../helpers/dom/cancelEvent';
-import {animateSingle} from '../../helpers/animation';
+import {animateSingle, cancelAnimationByKey} from '../../helpers/animation';
 import {CancellablePromise} from '../../helpers/cancellablePromise';
 import clamp from '../../helpers/number/clamp';
 import debounce from '../../helpers/schedulers/debounce';
@@ -27,8 +27,13 @@ import appSidebarLeft from '../sidebarLeft';
 import AppMyStoriesTab from '../sidebarLeft/tabs/myStories';
 import {toastNew} from '../toast';
 import wrapPeerTitle from '../wrappers/peerTitle';
+import liteMode from '../../helpers/liteMode';
+import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
+import SwipeHandler from '../swipeHandler';
 
 const TEST_COUNT = 0;
+const STATE_FOLDED = 1;
+const STATE_UNFOLDED = 0;
 
 const ScrollableXTsx = (props: {
   children: JSX.Element
@@ -43,31 +48,6 @@ const ScrollableXTsx = (props: {
   const scrollable = new ScrollableX(undefined, undefined, undefined, undefined, container);
   return ret;
 };
-
-// const AvatarTsx = (props: {
-//   peerId: PeerId,
-//   size: number
-// } & JSX.HTMLAttributes<HTMLElement>) => {
-//   const avatarElement = new AvatarElement();
-//   avatarElement.classList.add('avatar-' + props.size);
-
-//   const [, rest] = splitProps(props, ['peerId', 'size']);
-
-//   const [loaded] = createResource(
-//     () => props.peerId,
-//     (peerId) => {
-//       return avatarElement.updateWithOptions({
-//         peerId,
-//         isDialog: false,
-//         withStories: true
-//       }).then(() => true);
-//     }
-//   );
-
-//   return (
-//     <Passthrough element={avatarElement} {...rest} />
-//   );
-// };
 
 const PeerTitleTsx = (props: {
   peerId: PeerId,
@@ -104,9 +84,11 @@ function _StoriesList(props: {
   type PeerStories = typeof stories['peers'][0];
   const [stories, actions] = useStories();
   const [viewerPeer, setViewerPeer] = createSignal<PeerStories>();
-  const [progress, setProgress] = createSignal(1);
+  const [progress, _setProgress] = createSignal(STATE_FOLDED);
   const [containerRect, setContainerRect] = createSignal<DOMRect>();
-  const folded = createMemo(() => progress() === 1);
+  const [isTransition, setIsTransition] = createSignal(false);
+  const folded = createMemo(() => progress() === STATE_FOLDED);
+  const shouldStoriesSegmentsBeFolded = createMemo(() => progress() !== STATE_UNFOLDED);
   const peers = createMemo(() => {
     const peers = stories.peers;
     if(TEST_COUNT) {
@@ -114,6 +96,10 @@ function _StoriesList(props: {
     }
     return peers;
   });
+  const setProgress = (progress: number, skipAnimation?: boolean) => {
+    if(liteMode.isAvailable('animations') && !skipAnimation) setIsTransition(true);
+    _setProgress(progress);
+  };
 
   let toRect: DOMRect, fromRect: DOMRect;
   const myIndex = createMemo(() => peers().findIndex((peer) => peer.peerId === rootScope.myId));
@@ -151,17 +137,24 @@ function _StoriesList(props: {
     });
   };
 
+  const clearAnimation = () => {
+    cancelAnimationByKey(container);
+  };
+
   const onContainerClick = (e: MouseEvent) => {
     const wasProgress = progress();
-    if(wasProgress > 0) {
-      scrollTo(wasProgress, true);
+    if(wasProgress !== STATE_UNFOLDED) {
+      // scrollTo(wasProgress, true);
+      clearAnimation();
+      setProgress(STATE_UNFOLDED);
       cancelEvent(e);
     }
   };
 
   let animation: CancellablePromise<void>, animationOpening: boolean;
   const onScrolled = () => {
-    // return;
+    return;
+
     const wasProgress = progress();
     if(wasProgress >= 1 || wasProgress <= 0) {
       return;
@@ -171,18 +164,23 @@ function _StoriesList(props: {
   };
 
   const debounced = debounce(onScrolled, 100, false, true);
-  const onWheel = (e: WheelEvent) => {
-    // if(findUpClassName(e.target, 'folders-tabs-scrollable')) {
-    //   return;
-    // }
 
-    if(!peers().length) {
+  const onMove = (delta: number, e?: WheelEvent | TouchEvent) => {
+    const scrollTop = props.getScrollable().scrollTop;
+    const isWheel = e instanceof WheelEvent;
+    if(isWheel || true) {
+      const newState = delta < 0 ? STATE_UNFOLDED : STATE_FOLDED;
+      if((scrollTop && progress() !== STATE_UNFOLDED) || progress() === newState) {
+        return;
+      }
+
+      e && cancelEvent(e);
+      setProgress(newState);
       return;
     }
 
-    const delta: number = -(e as any).wheelDeltaY;
-    const scrollTop = props.getScrollable().scrollTop;
     const wasProgress = progress();
+    container.classList.add(styles.skipAnimation);
 
     // if user starts to scroll down when it's being opened
     if(delta > 0 && animation && animationOpening) {
@@ -193,9 +191,9 @@ function _StoriesList(props: {
 
     if(
       animation ||
-      (wasProgress >= 1 && delta > 0) ||
-      (wasProgress <= 0 && delta <= 0) ||
-      scrollTop
+      (wasProgress >= STATE_FOLDED && delta > 0) ||
+      (wasProgress <= STATE_UNFOLDED && delta <= 0)/*  ||
+      (scrollTop && progress() !== STATE_UNFOLDED) */
     ) {
       return;
     }
@@ -207,19 +205,49 @@ function _StoriesList(props: {
 
     let value = delta / 600;
     value = clamp(wasProgress + value, 0, 1);
+    console.log('value', value);
     setProgress(value);
     if(value >= 1 || value <= 0) {
       debounced.clearTimeout();
       onScrolled();
     } else {
-      cancelEvent(e);
+      e && cancelEvent(e);
       debounced();
     }
+  };
+
+  const onWheel = (e: WheelEvent) => {
+    if(!peers().length) {
+      return;
+    }
+
+    const wheelDeltaY = (e as any).wheelDeltaY as number;
+    const delta: number = -wheelDeltaY;
+    onMove(delta, e);
   };
   props.listenWheelOn.addEventListener('wheel', onWheel, {passive: false});
   onCleanup(() => {
     props.listenWheelOn.removeEventListener('wheel', onWheel);
   });
+
+  if(IS_TOUCH_SUPPORTED) {
+    const swipeHandler = new SwipeHandler({
+      element: props.listenWheelOn,
+      onSwipe: (xDiff, yDiff, e) => {
+        const delta = -yDiff;
+        onMove(delta, e as any as TouchEvent);
+      },
+      cancelEvent: false,
+      cursor: '',
+      verifyTouchTarget: (e) => {
+        return e instanceof TouchEvent && !findUpClassName(e.target, 'folders-tabs-scrollable');
+      }
+    });
+
+    onCleanup(() => {
+      swipeHandler.removeListeners();
+    });
+  }
 
   createEffect(() => {
     const peer = viewerPeer();
@@ -240,7 +268,7 @@ function _StoriesList(props: {
   });
 
   const onItemClick = (peer: PeerStories, e: MouseEvent) => {
-    if(progress() > 0) {
+    if(progress() !== STATE_UNFOLDED) {
       return onContainerClick(e);
     }
 
@@ -253,35 +281,43 @@ function _StoriesList(props: {
   const ITEM_WIDTH = 74 + ITEM_MARGIN * 2;
   const ITEM_AVATAR_SIZE = 54;
 
+  const foldedLength = createMemo(() => Math.min(3, peers().length - (myIndex() !== -1 ? 1 : 0)));
+  const indexes = createMemo(() => {
+    return {
+      min: myIndex() === 0 ? 1 : 0,
+      max:  myIndex() === 0 ? foldedLength() : foldedLength() - 1
+    };
+  });
+
+  const isItemOut = (index: number, _indexes: ReturnType<typeof indexes> = indexes()) => {
+    const {min: minIndex, max: maxIndex} = _indexes;
+    return index < minIndex || index > maxIndex;
+  };
+
   const Item = (peer: PeerStories, idx: Accessor<number>) => {
     const onClick = onItemClick.bind(null, peer);
 
-    const calculateMovement = (): JSX.CSSProperties => {
+    const calculateMovement = createMemo(() => {
       const rect = containerRect();
-      const cssProperties: JSX.CSSProperties = {};
       const value = progress();
       const index = idx();
       const marginEvenly = spaceEvenly();
       const containerPadding = marginEvenly ? 0 : CONTAINER_PADDING;
 
-      const minIndex = myIndex() === 0 ? 1 : 0;
-      const maxIndex = myIndex() === 0 ? foldedLength() : foldedLength() - 1;
-      const isOut = index < minIndex || index > maxIndex;
+      const _indexes = indexes();
+      const isOut = isItemOut(index, _indexes);
       const fromLeft = fromRect.left + containerPadding;
       const left = fromLeft + index * ITEM_WIDTH + marginEvenly * (index + 1);
       const realLeft = rect.left + containerPadding + index * ITEM_WIDTH + marginEvenly * (index + 1);
       if(realLeft > rect.right) {
-        return cssProperties;
+        return;
       }
 
+      const cssProperties: JSX.CSSProperties = {};
       if(isOut) {
-        cssProperties['z-index'] = isOut ? 0 : 1;
+        cssProperties['z-index'] = 100 - index;
       } else {
-        cssProperties['z-index'] = foldedLength() + 1 - index;
-      }
-
-      if(!fromRect) {
-        return cssProperties;
+        cssProperties['z-index'] = 100 + foldedLength() + 1 - index;
       }
 
       // if(myIndex() === 0 && index !== 0) {
@@ -289,35 +325,29 @@ function _StoriesList(props: {
       // }
 
       const desiredX = toRect.right + (props.offsetX || 0);
-      const indexOffsetX = isOut ? 0 : (maxIndex - index) * 16;
+      const indexOffsetX = isOut ? 0 : (_indexes.max - index) * 16;
       let distanceX = desiredX - left + 5 - indexOffsetX;
 
       let _scale: number;
       if(isOut) {
-        distanceX += 8 * (index < minIndex ? 1 : -1);
+        cssProperties['transform-origin'] = 'center 43.75%';
+        distanceX += 8 * (index < _indexes.min ? 1 : -1);
         _scale = 0.2;
       } else {
-        _scale = 26 / 48;
+        _scale = 26.67 / 48;
       }
 
       const translateX = distanceX * value;
       const translate = `translateX(${translateX}px)`;
       const scaleValue = 1 - (value * (1 - _scale));
       const scale = `scale(${scaleValue})`;
-      avatar.setIsStoryFolded(value !== 0);
-      // avatar.setSize(54 * scaleValue);
-
-      // if(index() === 0) {
-      //   console.table([{left, desiredX, distanceX, translateX}]);
-      // }
-
       cssProperties.transform = `${translate} ${scale}`;
-      // if(isOut) {
-      //   cssProperties.opacity = 1 - value;
-      // }
-
-      return cssProperties;
-    };
+      return {
+        isOut,
+        isLastIn: !isOut && index === _indexes.max,
+        cssProperties
+      };
+    });
 
     const avatar = AvatarNew({
       peerId: peer.peerId,
@@ -326,18 +356,25 @@ function _StoriesList(props: {
         onClick
       },
       isDialog: false,
-      withStories: true
+      withStories: true,
+      isStoryFolded: shouldStoriesSegmentsBeFolded
     });
 
     const isMyStory = peer.peerId === rootScope.myId;
 
-    return (
+    const ret = (
       <div
         ref={(el) => (items.set(peer, el), itemsTarget.set(el, peer))}
         class={styles.ListItem}
-        classList={{[styles.isRead]: !isMyStory && peer.maxReadId && peer.maxReadId >= peer.stories[peer.stories.length - 1].id}}
+        classList={{
+          [styles.isRead]: !isMyStory && peer.maxReadId && peer.maxReadId >= peer.stories[peer.stories.length - 1].id,
+          [styles.isMasked]: (() => {
+            const movement = calculateMovement();
+            return movement && !movement.isOut && !movement.isLastIn;
+          })()
+        }}
         onClick={onClick}
-        style={calculateMovement()}
+        style={calculateMovement()?.cssProperties}
       >
         {avatar.element}
         <div class={styles.ListItemName}>
@@ -345,9 +382,14 @@ function _StoriesList(props: {
         </div>
       </div>
     );
+
+    return (
+      <Show when={/* isTransition() ||  */calculateMovement() || !folded()}>
+        {ret}
+      </Show>
+    );
   };
 
-  const foldedLength = createMemo(() => Math.min(3, peers().length - (myIndex() !== -1 ? 1 : 0)));
   const MOVE_Y = -69, CONTAINER_PADDING = 6, CONTAINER_HEIGHT = 92;
   let scrolling = false;
   const calculateMovement = (): JSX.CSSProperties => {
@@ -396,7 +438,7 @@ function _StoriesList(props: {
 
   // * lock horizontal scroll when folded
   createEffect(() => {
-    if(folded()) {
+    if(folded() || isTransition()) {
       const onWheel = cancelEvent;
       const scrollableX = getMenuScrollable();
       scrollableX.addEventListener('wheel', onWheel, {capture: true});
@@ -407,6 +449,10 @@ function _StoriesList(props: {
   });
 
   createEffect(() => {
+    if(isTransition()) {
+      return;
+    }
+
     actions.toggleSorting('list', !folded());
   });
 
@@ -426,8 +472,10 @@ function _StoriesList(props: {
     <div
       ref={container}
       class={styles.ListContainer}
-      classList={{'disable-hover': folded()}}
+      classList={{'disable-hover': folded() || isTransition()}}
       style={calculateMovement()}
+      onTransitionStart={(e) => e.target === container && setIsTransition(true)}
+      onTransitionEnd={(e) => e.target === container && setIsTransition(false)}
     >
       <ScrollableXTsx>
         <div

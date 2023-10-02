@@ -90,6 +90,8 @@ import {attachClickEvent} from '../../helpers/dom/clickEvent';
 export const STORY_DURATION = 5e3;
 const STORY_HEADER_AVATAR_SIZE = 32;
 const STORY_SCALE_SMALL = 0.33;
+const STORIES_PRESERVE = 2;
+const STORIES_PRESERVE_HIDDEN = 2;
 let CHANGELOG_PEER_ID = SERVICE_PEER_ID;
 
 rootScope.addEventListener('app_config', (appConfig) => {
@@ -293,7 +295,9 @@ const StoryInput = (props: {
   reaction: Accessor<JSX.Element>,
   copyStoryLink: () => void,
   contextMenuOptions: Partial<Parameters<typeof createContextMenu>[0]>,
-  onMessageSent: () => void
+  onMessageSent: () => void,
+  setInputReady: Setter<boolean>,
+  isFull: Accessor<boolean>
 }) => {
   const [stories, actions] = useStories();
   const [focused, setFocused] = props.focusedSignal;
@@ -503,21 +507,26 @@ const StoryInput = (props: {
     ].reduce((acc, v) => acc + +v, 0));
     const chatInputSize = 48;
     const chatInputBtnSendMargin = 8;
-    const focusOffset = 135;
-    const width = stories.width - (chatInputSize + chatInputBtnSendMargin) * visibleButtons + (_focused ? focusOffset : 0);
+    const chatInputPadding = props.isFull() ? 8 : 0;
+    const focusOffset = props.isFull() ? 0 : 135;
+    const width = stories.width - (chatInputSize + chatInputBtnSendMargin) * visibleButtons + (_focused ? focusOffset : 0) - chatInputPadding * 2;
     input.rowsWrapper.style.setProperty('width', width + 'px', 'important');
     input.chatInput.classList.toggle('is-focused', _focused);
   });
 
   chat.peerId = props.state.peerId;
   chat.onChangePeer({
-    peerId: props.state.peerId,
+    peerId: chat.peerId,
     type: 'stories'
   }, middlewarePromise(middleware)).then(() => {
-    chat.finishPeerChange({
-      peerId: props.state.peerId,
+    if(!middleware()) return;
+    return chat.finishPeerChange({
+      peerId: chat.peerId,
       middleware
     });
+  }).then(() => {
+    if(!middleware()) return;
+    props.setInputReady(true);
   });
 
   onCleanup(() => {
@@ -704,7 +713,9 @@ const Stories = (props: {
   splitByDays?: boolean,
   pinned?: boolean,
   onReady?: () => void,
-  close: (callback: () => void) => void
+  close: (callback?: () => void) => void,
+  peers: StoriesContextPeerState[],
+  isFull: Accessor<boolean>
 }) => {
   const avatar = AvatarNew({
     size: STORY_HEADER_AVATAR_SIZE,
@@ -792,6 +803,7 @@ const Stories = (props: {
   const [inputEmpty] = inputEmptySignal;
   const [inputMenuOpen] = inputMenuOpenSignal;
   const [isPublic, setIsPublic] = isPublicSignal;
+  const [inputReady, setInputReady] = createSignal(isMe);
   const [noSound, setNoSound] = createSignal(false);
   const [sliding, setSliding] = createSignal(false);
   const [privacyType, setPrivacyType] = createSignal<StoryPrivacyType>();
@@ -983,11 +995,119 @@ const Stories = (props: {
     const owner = getOwner();
   };
 
+  const setStoryMeta = (story: StoryItem.storyItemSkipped | StoryItem.storyItem) => {
+    let privacyType = getStoryPrivacyType(story as StoryItem.storyItem);
+    if(/* !isMe &&  */privacyType === 'public') {
+      privacyType = undefined;
+    }
+
+    const messageMedia = unwrap((story as StoryItem.storyItem).media);
+    const document = (messageMedia as MessageMedia.messageMediaDocument)?.document as Document.document;
+    const videoAttribute = document && document.attributes.find((attribute) => attribute._ === 'documentAttributeVideo') as DocumentAttribute.documentAttributeVideo;
+    const noSound = videoAttribute ? !!videoAttribute.pFlags.nosound : false;
+    const videoDuration = videoAttribute?.duration;
+    const date = story.date;
+    const edited = (story as StoryItem.storyItem).pFlags.edited;
+    const isPublic = !!(story as StoryItem.storyItem).pFlags.public;
+    const mediaAreas = (story as StoryItem.storyItem).media_areas && (
+      <For each={(story as StoryItem.storyItem).media_areas}>
+        {(mediaArea) => {
+          const {x, y, w, h, rotation} = mediaArea.coordinates;
+          const geoPoint = (mediaArea as MediaArea.mediaAreaGeoPoint).geo as GeoPoint.geoPoint;
+          const playingMemo = createMemo((prev) => prev || (isActive() && stories.startTime));
+          let div: HTMLDivElement;
+          return (
+            <div
+              ref={div}
+              class={classNames(styles.ViewerStoryMediaArea, playingMemo() && 'shimmer', 'shimmer-bright', 'shimmer-once')}
+              style={`left: ${x}%; top: ${y}%; width: ${w}%; height: ${h}%; --rotate: ${rotation}deg`}
+              onClick={(e) => {
+                if(!isActive()) return;
+                cancelEvent(e);
+
+                const href = 'https://maps.google.com/maps?q=' + geoPoint.lat + ',' + geoPoint.long;
+
+                let a: HTMLAnchorElement, ignoreClickEvent = false, hasPopup: boolean;
+                const aa = (
+                  <a
+                    ref={a}
+                    href={href}
+                    onClick={async(e) => {
+                      if(ignoreClickEvent) {
+                        ignoreClickEvent = false;
+                        return;
+                      }
+
+                      hasPopup = true;
+                      cancelEvent(e);
+                      try {
+                        await confirmationPopup({
+                          descriptionLangKey: 'Popup.OpenInGoogleMaps',
+                          button: {
+                            langKey: 'Open'
+                          }
+                        });
+                      } catch(err) {
+                        if(wasPlaying) {
+                          actions.play();
+                        }
+
+                        return;
+                      }
+
+                      ignoreClickEvent = true;
+                      a.click();
+                    }}
+                  >
+                    {i18n('StoryViewLocation')}
+                  </a>
+                );
+                setBlankToAnchor(a);
+                const wasPlaying = !stories.paused;
+                actions.pause();
+                const {close} = showTooltip({
+                  element: div,
+                  vertical: 'top',
+                  textElement: a,
+                  centerVertically: !!rotation,
+                  onClose: () => {
+                    if(hasPopup) {
+                      hasPopup = false;
+                      return;
+                    }
+
+                    if(wasPlaying) {
+                      actions.play();
+                    }
+                  }
+                });
+                setTooltipCloseCallback(() => close);
+              }}
+            />
+          );
+        }}
+      </For>
+    );
+
+    setMediaAreas(mediaAreas);
+    setPrivacyType(privacyType);
+    setDate({timestamp: date, edited});
+    setNoSound(noSound);
+    setVideoDuration(videoDuration && (videoDuration * 1000));
+    setIsPublic(isPublic);
+    // shareButton.classList.toggle('hide', !isPublic);
+  };
+
   const setStory = async(story: StoryItem) => {
     setLoading(true);
     if(story._ !== 'storyItem') {
+      setStackedAvatars();
       setContent();
+      setCaption();
+      setReaction();
+      setStoryMeta(story as StoryItem.storyItemSkipped);
       rootScope.managers.appStoriesManager.getStoryById(props.state.peerId, story.id);
+      props.onReady?.();
       return;
     }
 
@@ -1004,109 +1124,6 @@ const Stories = (props: {
       }
       return recentViewers;
     }) : undefined;
-
-    const setStoryMeta = () => {
-      let privacyType = getStoryPrivacyType(story);
-      if(/* !isMe &&  */privacyType === 'public') {
-        privacyType = undefined;
-      }
-
-      const messageMedia = unwrap(story.media);
-      const document = (messageMedia as MessageMedia.messageMediaDocument).document as Document.document;
-      const videoAttribute = document && document.attributes.find((attribute) => attribute._ === 'documentAttributeVideo') as DocumentAttribute.documentAttributeVideo;
-      const noSound = videoAttribute ? !!videoAttribute.pFlags.nosound : false;
-      const videoDuration = videoAttribute?.duration;
-      const date = story.date;
-      const edited = story.pFlags.edited;
-      const isPublic = !!story.pFlags.public;
-      const mediaAreas = story.media_areas && (
-        <For each={story.media_areas}>
-          {(mediaArea) => {
-            const {x, y, w, h, rotation} = mediaArea.coordinates;
-            const geoPoint = (mediaArea as MediaArea.mediaAreaGeoPoint).geo as GeoPoint.geoPoint;
-            const playingMemo = createMemo((prev) => prev || (isActive() && stories.startTime));
-            let div: HTMLDivElement;
-            return (
-              <div
-                ref={div}
-                class={classNames(styles.ViewerStoryMediaArea, playingMemo() && 'shimmer', 'shimmer-bright', 'shimmer-once')}
-                style={`left: ${x}%; top: ${y}%; width: ${w}%; height: ${h}%; --rotate: ${rotation}deg`}
-                onClick={(e) => {
-                  if(!isActive()) return;
-                  cancelEvent(e);
-
-                  const href = 'https://maps.google.com/maps?q=' + geoPoint.lat + ',' + geoPoint.long;
-
-                  let a: HTMLAnchorElement, ignoreClickEvent = false, hasPopup: boolean;
-                  const aa = (
-                    <a
-                      ref={a}
-                      href={href}
-                      onClick={async(e) => {
-                        if(ignoreClickEvent) {
-                          ignoreClickEvent = false;
-                          return;
-                        }
-
-                        hasPopup = true;
-                        cancelEvent(e);
-                        try {
-                          await confirmationPopup({
-                            descriptionLangKey: 'Popup.OpenInGoogleMaps',
-                            button: {
-                              langKey: 'Open'
-                            }
-                          });
-                        } catch(err) {
-                          if(wasPlaying) {
-                            actions.play();
-                          }
-
-                          return;
-                        }
-
-                        ignoreClickEvent = true;
-                        a.click();
-                      }}
-                    >
-                      {i18n('StoryViewLocation')}
-                    </a>
-                  );
-                  setBlankToAnchor(a);
-                  const wasPlaying = !stories.paused;
-                  actions.pause();
-                  const {close} = showTooltip({
-                    element: div,
-                    vertical: 'top',
-                    textElement: a,
-                    centerVertically: !!rotation,
-                    onClose: () => {
-                      if(hasPopup) {
-                        hasPopup = false;
-                        return;
-                      }
-
-                      if(wasPlaying) {
-                        actions.play();
-                      }
-                    }
-                  });
-                  setTooltipCloseCallback(() => close);
-                }}
-              />
-            );
-          }}
-        </For>
-      );
-
-      setMediaAreas(mediaAreas);
-      setPrivacyType(privacyType);
-      setDate({timestamp: date, edited});
-      setNoSound(noSound);
-      setVideoDuration(videoDuration && (videoDuration * 1000));
-      setIsPublic(isPublic);
-      // shareButton.classList.toggle('hide', !isPublic);
-    };
 
     isMe && createEffect(async() => {
       let stackedAvatars: StackedAvatars;
@@ -1171,7 +1188,7 @@ const Stories = (props: {
         storyItem: unwrap(story),
         forViewer: true,
         childrenClassName: styles.ViewerStoryContentMedia,
-        useBlur: 6
+        useBlur: 12
       });
 
       const onReady = () => {
@@ -1258,12 +1275,13 @@ const Stories = (props: {
 
     createEffect(
       on(
-        () => [uStackedAvatars?.(), uCaption(), uContent(), uReaction?.()] as const,
-        ([stackedAvatars, caption, content, reaction]) => {
-          if(stackedAvatars === null || caption === null || content === null || reaction === null) {
+        () => [inputReady(), uStackedAvatars?.(), uCaption(), uContent(), uReaction?.()] as const,
+        ([inputReady, ...u]) => {
+          if(!inputReady || u.some((v) => v === null)) {
             return;
           }
 
+          const [stackedAvatars, caption, content, reaction] = u;
           setStackedAvatars(stackedAvatars);
           setCaption(caption);
           setContent(content);
@@ -1271,7 +1289,7 @@ const Stories = (props: {
           props.onReady?.();
 
           createEffect(() => {
-            setStoryMeta();
+            setStoryMeta(story);
           });
         },
         {defer: true}
@@ -1364,7 +1382,9 @@ const Stories = (props: {
   const slides = <StorySlides {...mergeProps(props, {currentStory})} />;
 
   const calculateTranslateX = () => {
-    const diff = props.index() - stories.index;
+    // const diff = props.index() - stories.index;
+    const diff = props.index() - props.peers.indexOf(stories.peer);
+    // diff = clamp(diff, -STORIES_PRESERVE, STORIES_PRESERVE);
     const storyWidth = stories.width;
     const MARGIN = 40;
     const multiplier = diff > 0 ? 1 : -1;
@@ -1655,7 +1675,8 @@ const Stories = (props: {
           contextMenuOptions: topMenuOptions,
           onMessageSent: () => {
             showMessageSentTooltip(i18n('Story.Tooltip.MessageSent'), props.state.peerId);
-          }
+          },
+          setInputReady
         })
       }
     />;
@@ -2050,8 +2071,7 @@ const Stories = (props: {
         [styles.focused]: focused()
       }}
       style={{
-        '--translateX': isActive() ? 0 : calculateTranslateX(),
-        '--stories-width': stories.width + 'px'
+        '--translateX': isActive() ? 0 : calculateTranslateX()
       }}
       onClick={(e) => {
         if(!isActive()) {
@@ -2119,6 +2139,12 @@ const Stories = (props: {
               {videoDuration() && muteButton}
               {/* <ButtonIconTsx icon={'more'} /> */}
               {btnMenu}
+              {props.isFull() && (
+                <ButtonIconTsx
+                  icon={'close'}
+                  onClick={() => props.close()}
+                />
+              )}
             </div>
           </div>
           {caption() && captionContainer}
@@ -2149,8 +2175,14 @@ const Stories = (props: {
     paddingX: 13
   };
 
+  const ww = createMemo(() => {
+    const diff = Math.abs(props.index() - props.peers.indexOf(stories.peer));
+    const shouldBeVisible = diff <= STORIES_PRESERVE;
+    return shouldBeVisible;
+  });
+
   return (
-    <Show when={w()}>
+    <Show when={ww()}>
       {ret}
     </Show>
   );
@@ -2179,6 +2211,7 @@ export default function StoriesViewer(props: {
 }) {
   const [stories, actions] = useStories();
   const [show, setShow] = createSignal(false);
+  const isFull = createMemo(() => stories.width === windowSize.width);
   const wasShown = createMemo((shown) => shown || show());
 
   // * fix `ended` property
@@ -2277,6 +2310,7 @@ export default function StoriesViewer(props: {
     });
 
     const storiesReadiness: Set<PeerId> = new Set();
+    const storiesShouldBeReady: Set<PeerId> = new Set();
     const perf = performance.now();
     let wasReady = false;
 
@@ -2292,8 +2326,9 @@ export default function StoriesViewer(props: {
     };
 
     const timeout = setTimeout(() => {
+      console.error('stories timeout');
       stories.peers
-      .filter((peer) => !storiesReadiness.has(peer.peerId))
+      .filter((peer) => storiesShouldBeReady.has(peer.peerId) && !storiesReadiness.has(peer.peerId))
       .forEach((peer) => {
         console.error('stories not ready', peer);
       });
@@ -2310,10 +2345,12 @@ export default function StoriesViewer(props: {
 
         console.log('stories ready', peer.peerId, storiesReadiness.size, performance.now() - perf);
 
-        if(storiesReadiness.size === stories.peers.length) {
+        if(storiesReadiness.size === storiesShouldBeReady.size) {
           openOnReady();
         }
       };
+
+      storiesShouldBeReady.add(peer.peerId);
 
       const ret = (
         <Stories
@@ -2323,16 +2360,26 @@ export default function StoriesViewer(props: {
           pinned={props.pinned}
           onReady={onReady}
           close={close}
+          peers={itemsToRender()}
+          isFull={isFull}
         />
       );
 
       return ret;
     };
 
+    const preserve = STORIES_PRESERVE + STORIES_PRESERVE_HIDDEN;
+    const getItemsToRender = (index: number) => stories.peers.slice(Math.max(index - preserve, 0), Math.min(index + preserve + 1, stories.peers.length));
+    const itemsToRender = createMemo(() => getItemsToRender(stories.index));
+
     return (
       <div
         ref={div}
-        class={classNames(styles.Viewer, !show() && styles.isInvisible)}
+        class={classNames(
+          styles.Viewer,
+          !show() && styles.isInvisible,
+          isFull() && styles.isFull
+        )}
         onClick={(e) => {
           if(animating) {
             cancelEvent(e);
@@ -2343,10 +2390,15 @@ export default function StoriesViewer(props: {
             close();
           }
         }}
+        style={{
+          '--stories-width': stories.width + 'px',
+          '--stories-height': stories.height + 'px'
+        }}
       >
         <div ref={backgroundDiv} class={styles.ViewerBackground} />
         <ButtonIconTsx ref={closeButton} icon={'close'} class={styles.ViewerClose} onClick={() => close()} />
-        <For each={stories.peers}>{createStories}</For>
+        {/* <For each={stories.peers}>{createStories}</For> */}
+        <For each={itemsToRender()}>{createStories}</For>
       </div>
     );
   });
@@ -2418,19 +2470,32 @@ export default function StoriesViewer(props: {
       useCache: false
     });
 
-    createEffect(() => {
-      if(avatarFrom.ready()) {
-        setShow(true);
-      }
-    });
+    avatarFrom.node.style.cssText = `position: absolute; visibility: hidden; z-index: 1000; transform-origin: top left;`;
+    document.body.append(avatarFrom.node);
 
-    // await avatarFrom.readyThumbPromise;
+    if(!untrack(() => show())) {
+      createEffect(() => {
+        if(avatarFrom.ready()) {
+          setShow(true);
+        }
+      });
+    }
 
     createEffect(() => {
       const peerId = stories.peer?.peerId;
-      if(peerId) {
-        avatarFrom.render({peerId: stories.peer.peerId});
+      if(!peerId || !avatarFrom) {
+        return;
       }
+
+      avatarFrom.render({peerId});
+    });
+
+    onCleanup(() => {
+      if(!avatarFrom) {
+        return;
+      }
+
+      avatarFrom.node.remove();
     });
   };
 
@@ -2524,10 +2589,14 @@ export default function StoriesViewer(props: {
       avatar.style.visibility = 'hidden';
       // const rectFrom = props.target.querySelector('.avatar').getBoundingClientRect();
       const rectTo = avatar.getBoundingClientRect();
-      avatarFrom.node.style.cssText = `position: absolute; top: ${rectFrom.top}px; left: ${rectFrom.left}px; z-index: 1000; transform-origin: top left;`;
+      avatarFrom.node.style.top = `${rectFrom.top}px`;
+      avatarFrom.node.style.left = `${rectFrom.left}px`;
+      avatarFrom.node.style.visibility = '';
+      if(!avatarFrom.node.parentElement) {
+        document.body.append(avatarFrom.node);
+      }
       const translateX = rectTo.left - rectFrom.left;
       const translateY = rectTo.top - rectFrom.top;
-      document.body.append(avatarFrom.node);
 
       const keyframes: Keyframe[] = [{
         transform: `translate(0, 0) scale(${rectFrom.width / STORY_HEADER_AVATAR_SIZE})`

@@ -8,6 +8,7 @@ import checker from 'vite-plugin-checker';
 import autoprefixer from 'autoprefixer';
 import {resolve} from 'path';
 import {existsSync} from 'fs';
+import {ServerOptions} from 'vite';
 
 const rootDir = resolve(__dirname);
 
@@ -20,7 +21,12 @@ const handlebarsPlugin = handlebars({
   }
 });
 
-const USE_HTTPS = false;
+const serverOptions: ServerOptions = {
+  https: false,
+  // host: '192.168.92.78',
+  port: 8080
+};
+
 const NO_MINIFY = false;
 const HAS_SOLID = existsSync(resolve(rootDir, 'src/solid/packages/solid/dist'));
 
@@ -41,7 +47,7 @@ export default defineConfig({
     }),
     solidPlugin(),
     handlebarsPlugin as any,
-    USE_HTTPS ? basicSsl() : undefined,
+    serverOptions.https ? basicSsl() : undefined,
     visualizer({
       gzipSize: true,
       template: 'treemap'
@@ -74,10 +80,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/tests/setup.ts']
   },
-  server: {
-    port: 8080,
-    https: USE_HTTPS
-  },
+  server: serverOptions,
   base: '',
   build: {
     target: 'es2020',

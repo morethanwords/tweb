@@ -34,6 +34,50 @@ $color-inactive: rgba(255, 255, 255, .5);
     }
   }
 
+  &.isFull {
+    .ViewerBackground {
+      background-color: #000;
+    }
+
+    .ViewerClose {
+      display: none;
+    }
+
+    .ViewerStoryContainer {
+      // height: 100%;
+      margin: 0;
+    }
+
+    :global(.stories-input) {
+      --chat-input-padding: .5rem;
+      --chat-input-background-color: #212121;
+      --chat-input-focus-offset: 0px;
+      --backdrop-filter: unset;
+    }
+
+    // .ViewerStory {
+    //   height: 100%;
+    //   // aspect-ratio: unset;
+    // }
+
+    // .ViewerStory,
+    // .ViewerStoryContent,
+    // .ViewerStoryContentMedia {
+    //   border-radius: #{$border-radius-medium};
+    // }
+
+    // .ViewerStoryContent {
+    //   aspect-ratio: inherit;
+    //   overflow: hidden;
+    //   top: 50%;
+    //   transform: translateY(-50%);
+    // }
+
+    // :global(.stories-input) {
+    //   bottom: .5rem;
+    // }
+  }
+
   &Background {
     position: absolute;
     top: 0;
@@ -54,13 +98,12 @@ $color-inactive: rgba(255, 255, 255, .5);
   // }
 
   &Story {
-    --height: calc(var(--vh, 1vh) * 100 - 3rem - .5rem - 1.5rem);
     display: flex;
     flex-direction: column;
-    height: var(--height);
+    width: var(--stories-width);
     aspect-ratio: 9 / 16;
+    // max-width: var(--stories-width);
     border-radius: calc(#{$border-radius-medium} * (1 / var(--scale)));
-    background-color: #000;
     overflow: hidden;
     position: relative;
 
@@ -261,6 +304,7 @@ $color-inactive: rgba(255, 255, 255, .5);
       left: 0;
       z-index: 0;
       pointer-events: none;
+      background-color: #000;
 
       &Item {
         position: relative;
@@ -494,6 +538,8 @@ $color-inactive: rgba(255, 255, 255, .5);
       --secondary-text-color: #707579;
       --primary-text-color: #fff;
       --focus-translateX: 0px;
+      --chat-input-background-color: rgba(0, 0, 0, .5);
+      --backdrop-filter: blur(25px);
       position: absolute;
       bottom: 0;
       width: var(--stories-width);
@@ -564,7 +610,7 @@ $color-inactive: rgba(255, 255, 255, .5);
       .rows-wrapper {
         width: var(--stories-width);
         // max-width: calc(var(--chat-input-max-width) - var(--chat-input-size) - #{$btn-send-margin});
-        max-width: calc(var(--chat-input-max-width) - (var(--chat-input-size) + #{$btn-send-margin}));
+        max-width: calc(var(--chat-input-max-width) - (var(--chat-input-size) + #{$btn-send-margin} + var(--chat-input-padding)));
 
         @include animation-level-global(2) {
           transition: width var(--transition-standard-out) !important;
@@ -584,7 +630,7 @@ $color-inactive: rgba(255, 255, 255, .5);
         --add-translateX: 0px;
         position: absolute;
         transform: translateX(calc(var(--focus-translateX) + var(--add-translateX)));
-        inset-inline-end: calc(var(--chat-input-size) + #{$btn-send-margin});
+        inset-inline-end: calc(var(--chat-input-size) + var(--chat-input-padding) + #{$btn-send-margin});
 
         @include animation-level-global(2) {
           transition: .2s color, transform var(--transition-standard-out), opacity var(--transition-standard-out), visibility var(--transition-standard-out-time);
@@ -620,12 +666,12 @@ $color-inactive: rgba(255, 255, 255, .5);
       .btn-reaction {
         --color: var(--secondary-text-color);
         color: var(--color);
-        background-color: rgba(0, 0, 0, .5) !important;
+        background-color: var(--chat-input-background-color) !important;
 
         @include hover-global() {
           --color: var(--primary-text-color);
           color: var(--color) !important;
-          background-color: rgba(0, 0, 0, .5) !important;
+          background-color: var(--chat-input-background-color) !important;
         }
       }
 
@@ -664,12 +710,12 @@ $color-inactive: rgba(255, 255, 255, .5);
       .bubble-tail,
       .chat-input-secondary-button,
       .emoji-dropdown {
-        background-color: rgba(0, 0, 0, .5) !important;
-        backdrop-filter: blur(25px);
+        background-color: var(--chat-input-background-color) !important;
+        backdrop-filter: var(--backdrop-filter);
       }
 
       .btn-send {
-        backdrop-filter: blur(25px);
+        backdrop-filter: var(--backdrop-filter);
       }
 
       // .bubble-tail {
@@ -710,8 +756,8 @@ $color-inactive: rgba(255, 255, 255, .5);
     }
 
     .autocomplete-helper {
-      background-color: rgba(0, 0, 0, .5) !important;
-      backdrop-filter: blur(25px);
+      background-color: var(--chat-input-background-color) !important;
+      backdrop-filter: var(--backdrop-filter);
     }
   }
 

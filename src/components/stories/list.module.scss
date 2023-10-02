@@ -37,6 +37,7 @@
     padding: .3125rem .625rem;
     cursor: pointer;
     border-radius: $border-radius;
+    transform: translateX(0) scale(1);
     // pointer-events: all;
     // transform: scale(calc(1 - (var(--progress) * (1 - 26px / 48px))));
 
@@ -45,12 +46,20 @@
     //   background-color: var(--background-color);
     // }
 
+    @include animation-level-global(2) {
+      transition: transform var(--transition-standard-in);
+    }
+
     &Name {
       // --max-opacity: 1;
       font-size: var(--font-size-12);
       line-height: 14px;
       text-align: center;
       opacity: calc(1 - (var(--progress) * 1.25));
+
+      @include animation-level-global(2) {
+        transition: opacity var(--transition-standard-in);
+      }
 
       @include text-overflow(true);
     }
@@ -60,22 +69,47 @@
       // --max-opacity: .4;
     }
 
+    &.isMasked {
+      :global(.avatar-stories-simple) {
+        mask-image: linear-gradient(90deg, #fff 73%, transparent 0);
+        mask-composite: xor;
+      }
+    }
+
     &:global(.menu-open) {
       --background-color: var(--light-filled-secondary-text-color);
       background-color: var(--background-color);
     }
 
     :global {
-      .has-stories {
-        &:before {
+      .avatar {
+        &-background {
           position: absolute;
           top: 0;
           right: 0;
           bottom: 0;
           left: 0;
-          content: " ";
           background-color: var(--background-color);
-          border-radius: inherit;
+          border-radius: 50%;
+        }
+
+        &-stories-svg {
+          opacity: calc(1 - var(--progress));
+        }
+
+        &-stories-simple {
+          opacity: var(--progress);
+        }
+
+        &-stories-svg,
+        &-stories-simple {
+          @include animation-level-global(2) {
+            transition: opacity var(--transition-standard-in);
+          }
+        }
+
+        &-stories-svg {
+          z-index: 1;
         }
       }
     }
@@ -87,6 +121,19 @@
     pointer-events: all;
     width: 100%;
     height: 92px;
+    // transform: translateY(var(--progress) * -69px);
+    transform: translateY(0);
+
+    &.skipAnimation {
+      &,
+      .ListItem {
+        transition: none !important;
+      }
+    }
+
+    @include animation-level-global(2) {
+      transition: transform var(--transition-standard-in);
+    }
 
     &:not(:global(.disable-hover)) {
       .ListItem {

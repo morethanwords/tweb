@@ -9,7 +9,7 @@ import type {PeerPhotoSize} from '../lib/appManagers/appAvatarsManager';
 import type {StoriesSegment, StoriesSegments} from '../lib/appManagers/appStoriesManager';
 import {getMiddleware, type Middleware} from '../helpers/middleware';
 import deferredPromise from '../helpers/cancellablePromise';
-import {createSignal, createEffect, createMemo, onCleanup, JSX, createRoot, runWithOwner, getOwner, Show, untrack, Accessor} from 'solid-js';
+import {createSignal, createEffect, createMemo, onCleanup, JSX, createRoot, runWithOwner, getOwner, Show, untrack, Accessor, Signal} from 'solid-js';
 import rootScope from '../lib/rootScope';
 import {NULL_PEER_ID, REPLIES_PEER_ID} from '../lib/mtproto/mtproto_config';
 import {Chat, ChatPhoto, User, UserProfilePhoto} from '../layer';
@@ -187,7 +187,8 @@ export const AvatarNew = (props: {
   storyColors?: Partial<{
     read: string
   }>,
-  peer?: Chat.channel | Chat.chat | User.user
+  peer?: Chat.channel | Chat.chat | User.user,
+  isStoryFolded?: Accessor<boolean>
 }) => {
   const [ready, setReady] = createSignal(false);
   const [icon, setIcon] = createSignal<Icon>();
@@ -198,7 +199,6 @@ export const AvatarNew = (props: {
   const [isForum, setIsForum] = createSignal(false);
   const [isTopic, setIsTopic] = createSignal(false);
   const [storiesSegments, setStoriesSegments] = createSignal<StoriesSegments>();
-  const [isStoryFolded, setIsStoryFolded] = createSignal<boolean>(false);
   const storyDimensions: Accessor<ReturnType<typeof calculateSegmentsDimensions>> = createMemo((previousDimensions) => {
     if(storiesSegments() === undefined) {
       return;
@@ -210,7 +210,7 @@ export const AvatarNew = (props: {
 
     return calculateSegmentsDimensions(props.size as number);
   });
-  const dashedCircleCanvas = createMemo(() => {
+  const storiesCircle = createMemo(() => {
     // if(isStoryFolded()) {
     //   return;
     // }
@@ -218,6 +218,25 @@ export const AvatarNew = (props: {
     const dimensions = storyDimensions();
     if(!dimensions) {
       return;
+    }
+
+    let simple: JSX.Element;
+    if(props.isStoryFolded !== undefined) {
+      const status = createMemo(() => {
+        const segments = storiesSegments();
+        const firstCloseSegment = segments.find((segment) => segment.type === 'close');
+        const segment = firstCloseSegment || segments.find((segment) => segment.type === 'unread') || segments[0];
+        return segment.type;
+      });
+
+      simple = (
+        <div
+          class="avatar-stories-simple"
+          classList={{['is-' + status()]: true}}
+        >
+
+        </div>
+      );
     }
 
     const segmentToSection = (segment: StoriesSegment, unreadAsClose?: boolean): DashedCircleSection => {
@@ -259,28 +278,25 @@ export const AvatarNew = (props: {
 
     createEffect(() => {
       const segments = storiesSegments();
-      const folded = isStoryFolded();
-
       const firstCloseSegment = segments.find((segment) => segment.type === 'close');
-      let sections: DashedCircleSection[];
-      if(folded) {
-        const segment = firstCloseSegment || segments.find((segment) => segment.type === 'unread') || segments[0];
-        sections = [segmentToSection({length: 1, type: segment.type})];
-      } else {
-        sections = segments.map((segment) => segmentToSection(segment, !!firstCloseSegment));
-        const totalLength = sections.reduce((sum, section) => sum + section.length, 0);
-        if(totalLength > 30) {
-          sections = sections.map((section) => ({
-            ...section,
-            length: Math.floor(section.length / totalLength * 30)
-          })).filter((section) => section.length > 0);
-        }
+      let sections = segments.map((segment) => segmentToSection(segment, !!firstCloseSegment));
+      const totalLength = sections.reduce((sum, section) => sum + section.length, 0);
+      if(totalLength > 30) {
+        sections = sections.map((section) => ({
+          ...section,
+          length: Math.floor(section.length / totalLength * 30)
+        })).filter((section) => section.length > 0);
       }
 
       dashedCircle.render(sections);
     });
 
-    return canvas;
+    return simple ? (
+      <>
+        {canvas}
+        {simple}
+      </>
+    ) : canvas;
   });
 
   const readyPromise = deferredPromise<void>();
@@ -678,7 +694,7 @@ export const AvatarNew = (props: {
 
   const classList = (): JSX.CustomAttributes<HTMLDivElement>['classList'] => {
     return {
-      ...(!dashedCircleCanvas() && innerClassList()),
+      ...(!storiesCircle() && innerClassList()),
       'has-stories': !!storyDimensions()
     };
   };
@@ -703,7 +719,8 @@ export const AvatarNew = (props: {
   const wtf = (
     <Show when={storyDimensions()} fallback={inner}>
       <div>
-        {dashedCircleCanvas()}
+        {storiesCircle()}
+        {props.isStoryFolded !== undefined && <div class="avatar-background"></div>}
         <div
           class={`avatar avatar-like avatar-${storyDimensions().willBeSize}`}
           classList={innerClassList()}
@@ -738,7 +755,6 @@ export const AvatarNew = (props: {
     readyThumbPromise,
     node,
     render,
-    setIsStoryFolded,
     setIcon,
     updateStoriesSegments
   };

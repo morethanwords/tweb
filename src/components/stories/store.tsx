@@ -455,7 +455,7 @@ const createStoriesStore = (props: {
 
   const calculateStoryWidth = (height = calculateStoryHeight()) => {
     const ratio = 9 / 16;
-    return height * ratio;
+    return Math.min(windowSize.width, height * ratio);
   };
 
   const calculateSize = () => {

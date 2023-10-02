@@ -167,22 +167,31 @@
     position: relative;
   }
 
-  .avatar-stories-svg {
+  &-stories-svg {
     position: absolute;
     inset: var(--offset);
     width: calc(100% + var(--offset) * -2);
     height: calc(100% + var(--offset) * -2);
+  }
 
-    &-circle {
-      // transform: rotate(126deg);
-      // transform-origin: center;
-      stroke-width: calc(var(--stroke-width) / 2);
-      stroke: var(--secondary-color);
+  &-stories-simple {
+    --offset: -.25rem;
+    position: absolute;
+    // width: var(--size);
+    // height: var(--size);
+    top: var(--offset);
+    right: var(--offset);
+    bottom: var(--offset);
+    left: var(--offset);
+    border-radius: 50%;
+    background: var(--avatar-color-story-read);
+    
+    &.is-unread {
+      background-image: linear-gradient(215.87deg, var(--avatar-color-story-unread-from) -1.61%, var(--avatar-color-story-unread-to) 97.44%);
+    }
 
-      &.is-unread {
-        stroke-width: var(--stroke-width);
-        stroke: url(#stories-gradient);
-      }
+    &.is-close {
+      background-image: linear-gradient(180deg, var(--avatar-color-story-close-from) 0%, var(--avatar-color-story-close-to) 100%);
     }
   }
 

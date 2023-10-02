@@ -322,7 +322,12 @@ export default class ChatInput {
     this.rowsWrapperWrapper.classList.add('rows-wrapper-wrapper');
 
     this.rowsWrapper = document.createElement('div');
-    this.rowsWrapper.classList.add('rows-wrapper', `${CLASS_NAME}-wrapper`, `${className2}-wrapper`);
+    this.rowsWrapper.classList.add(...[
+      'rows-wrapper',
+      `${CLASS_NAME}-wrapper`,
+      `${className2}-wrapper`,
+      this.chat.type !== 'stories' && 'chat-rows-wrapper'
+    ].filter(Boolean));
 
     this.rowsWrapperWrapper.append(this.rowsWrapper);
 

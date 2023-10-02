@@ -1052,6 +1052,20 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
   }
 }
 
+.chat-rows-wrapper {
+  @include respond-to(handhelds) {
+		--padding-vertical: 1px;
+	}
+
+	@media only screen and (max-width: 420px) { 
+		max-width: 100%;
+	}
+	
+	@include respond-to(esg-bottom) {
+		--padding-vertical: 1px;
+	}
+}
+
 .rows-wrapper {
   transform: translateX(0) scaleX(1);
   border-end-end-radius: 0;
@@ -1065,18 +1079,6 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
     opacity: 1;
 	}
 
-	@include respond-to(handhelds) {
-		--padding-vertical: 1px;
-	}
-
-	@media only screen and (max-width: 420px) { 
-		max-width: 100%;
-	}
-	
-	@include respond-to(esg-bottom) {
-		--padding-vertical: 1px;
-	}
-	
 	.bubble-tail {
 		//content: '';
 		position: absolute;
