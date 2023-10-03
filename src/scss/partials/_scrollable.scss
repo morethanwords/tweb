@@ -57,7 +57,7 @@ html.custom-scroll {
 
   .scrollable:hover .scrollable-thumb,
   .scrollable-thumb.is-focused {
-    opacity: .4;
+    opacity: 1;
   }
 }
 
@@ -150,7 +150,7 @@ html.custom-scroll {
     right: 1px;
     width: 5px;
     //margin-left: 2px;
-    background-color: #000;
+    background-color: var(--scrollbar-color);
     //cursor: grab;
     cursor: default;
     opacity: 0;
