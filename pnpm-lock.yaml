@@ -29,6 +29,9 @@ devDependencies:
   '@solid-primitives/refs':
     specifier: ^1.0.4
     version: 1.0.4(solid-js@1.7.9)
+  '@solid-primitives/transition-group':
+    specifier: ^1.0.3
+    version: 1.0.3(solid-js@1.7.9)
   '@types/big-integer':
     specifier: ^0.0.31
     version: 0.0.31
@@ -1721,8 +1724,8 @@ packages:
       solid-js: 1.7.9
     dev: true
 
-  /@solid-primitives/transition-group@1.0.2(solid-js@1.7.9):
-    resolution: {integrity: sha512-+o3J7TnU0/Sok+LKA0z0wvhim88dpd2eFBk8/05adE6wVypVlME8sKqTMO+xRv8HoT4Kq3sczmvwV07FKg2n+g==}
+  /@solid-primitives/transition-group@1.0.3(solid-js@1.7.9):
+    resolution: {integrity: sha512-TnFADZhx9sibdoW5gxkU1QmLabzV2H2OBKYGS2aR5IC61Q/+7v8wlxOJEevxXNbPiRo6qlE3STLU3L9XS8hDbA==}
     peerDependencies:
       solid-js: ^1.6.12
     dependencies:
@@ -4493,7 +4496,7 @@ packages:
       solid-js: ^1.6.12
     dependencies:
       '@solid-primitives/refs': 1.0.4(solid-js@1.7.9)
-      '@solid-primitives/transition-group': 1.0.2(solid-js@1.7.9)
+      '@solid-primitives/transition-group': 1.0.3(solid-js@1.7.9)
       solid-js: 1.7.9
     dev: true
 
