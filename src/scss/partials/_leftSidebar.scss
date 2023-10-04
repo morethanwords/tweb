@@ -859,6 +859,10 @@
   .sidebar-content {
     // height: calc(100% + 92px);
     transform: translateY(calc(92px - var(--stories-scrolled)));
+
+    @include animation-level(2) {
+      transition: transform var(--transition-standard-in);
+    }
   }
 }
 
