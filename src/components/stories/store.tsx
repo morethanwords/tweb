@@ -467,8 +467,7 @@ const createStoriesStore = (props: {
     setState(calculateSize());
   };
 
-  onResize();
-  listenerSetter.add(mediaSizes)('resize', onResize);
+  createEffect(onResize);
   // * size section end
 
   const getPeerIndex = (peerId: PeerId, peers = state.peers) => {

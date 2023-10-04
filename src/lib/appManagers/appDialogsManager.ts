@@ -1893,29 +1893,11 @@ export class AppDialogsManager {
   private _renderStories() {
     this.chatsContainer.parentElement.parentElement.firstElementChild.after(this.storiesListContainer);
     return StoriesList({
-      // peers: [{
-      //   peerId: 61004386,
-      //   stories: []
-      // }, {
-      //   peerId: 36265675,
-      //   stories: []
-      // }, {
-      //   peerId: 36265675,
-      //   stories: []
-      // }, {
-      //   peerId: 36265675,
-      //   stories: []
-      // }, {
-      //   peerId: 36265675,
-      //   stories: []
-      // }, {
-      //   peerId: 36265675,
-      //   stories: []
-      // }],
       foldInto: document.querySelector('.item-main .input-search input'),
       setScrolledOn: this.chatsContainer,
       getScrollable: () => this.xd.scrollable.container,
-      listenWheelOn: this.bottomPart
+      listenWheelOn: this.bottomPart,
+      offsetX: -1
     });
   }
 

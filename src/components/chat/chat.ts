@@ -69,6 +69,7 @@ export default class Chat extends EventListenerBase<{
 
   public type: ChatType;
   public messagesStorageKey: MessagesStorageKey;
+  public isStandalone: boolean;
 
   public noForwards: boolean;
 

@@ -9,7 +9,7 @@ import {IS_MOBILE, IS_SAFARI} from '../../environment/userAgent';
 import findUpClassName from './findUpClassName';
 import fixSafariStickyInput from './fixSafariStickyInput';
 
-export const IS_STICKY_INPUT_BUGGED = IS_SAFARI && IS_MOBILE && IS_TOUCH_SUPPORTED;
+export const IS_STICKY_INPUT_BUGGED = IS_SAFARI && IS_MOBILE && IS_TOUCH_SUPPORTED && false;
 
 if(IS_STICKY_INPUT_BUGGED) {
   const key: 'clientY' | 'pageY' = 'clientY';

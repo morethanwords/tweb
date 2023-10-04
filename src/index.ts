@@ -36,7 +36,7 @@ import IS_INSTALL_PROMPT_SUPPORTED from './environment/installPrompt';
 import cacheInstallPrompt from './helpers/dom/installPrompt';
 import {fillLocalizedDates} from './helpers/date';
 import {nextRandomUint} from './helpers/random';
-import {IS_OVERLAY_SCROLL_SUPPORTED, USE_NATIVE_SCROLL} from './environment/overlayScrollSupport';
+import {IS_OVERLAY_SCROLL_SUPPORTED, USE_CUSTOM_SCROLL, USE_NATIVE_SCROLL} from './environment/overlayScrollSupport';
 // import appNavigationController from './components/appNavigationController';
 
 /* false &&  */document.addEventListener('DOMContentLoaded', async() => {
@@ -203,7 +203,7 @@ import {IS_OVERLAY_SCROLL_SUPPORTED, USE_NATIVE_SCROLL} from './environment/over
     document.documentElement.classList.add('native-scroll');
   } else if(IS_OVERLAY_SCROLL_SUPPORTED) {
     document.documentElement.classList.add('overlay-scroll');
-  } else {
+  } else if(USE_CUSTOM_SCROLL) {
     document.documentElement.classList.add('custom-scroll');
   }
 

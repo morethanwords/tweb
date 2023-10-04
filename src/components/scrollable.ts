@@ -10,6 +10,7 @@ import fastSmoothScroll, {ScrollOptions} from '../helpers/fastSmoothScroll';
 import useHeavyAnimationCheck from '../hooks/useHeavyAnimationCheck';
 import cancelEvent from '../helpers/dom/cancelEvent';
 import {IS_OVERLAY_SCROLL_SUPPORTED} from '../environment/overlayScrollSupport';
+import {IS_MOBILE_SAFARI, IS_SAFARI} from '../environment/userAgent';
 /*
 var el = $0;
 var height = 0;
@@ -398,6 +399,9 @@ export default class Scrollable extends ScrollableBase {
     }
 
     this.container.classList.add('scrollable-y');
+    if(IS_SAFARI && !IS_MOBILE_SAFARI) {
+      this.container.classList.add('no-scrollbar');
+    }
     this.setListeners();
   }
 

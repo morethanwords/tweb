@@ -39,13 +39,46 @@ $color-inactive: rgba(255, 255, 255, .5);
       background-color: #000;
     }
 
-    .ViewerClose {
-      display: none;
+    &.isReady {
+      perspective: 1000px;
+      transform-style: preserve-3d;
+      overflow: hidden; // magic property
     }
 
-    .ViewerStoryContainer {
+    &.isReady .ViewerStoryContainer {
+      --transition-time: .3s;
+      --transition: var(--transition-standard-easing) var(--transition-time);
+      visibility: hidden;
+      opacity: 0;
       // height: 100%;
       margin: 0;
+      transition-delay: 0s, 0s, var(--transition-time);
+
+      @include animation-level-global(2) {
+        transition: opacity var(--transition-time), transform var(--transition-time), visibility var(--transition-time);
+      }
+
+      &.fromLeft {
+        transform: rotateY(90deg) translateX(50%) rotateY(-90deg) translateX(-50%) rotateY(-90deg);
+
+        &.current {
+          transform: rotateY(90deg) translateX(50%) rotateY(0deg) translateX(-50%) rotateY(-90deg);
+        }
+      }
+
+      &.current {
+        opacity: 1;
+        visibility: visible;
+        transition-delay: 0s, 0s, 0s;
+      }
+
+      &.fromRight {
+        transform: rotateY(-90deg) translateX(-50%) rotateY(90deg) translateX(50%) rotateY(90deg);
+
+        &.current {
+          transform: rotateY(-90deg) translateX(-50%) rotateY(0deg) translateX(50%) rotateY(90deg);
+        }
+      }
     }
 
     :global(.stories-input) {
@@ -127,12 +160,18 @@ $color-inactive: rgba(255, 255, 255, .5);
       max-height: 100%;
       // * use 3d to fix blinking
       transform: translate3d(var(--translateX), 0, 0) scale3d(var(--scale), var(--scale), 1);
+      will-change: transform, opacity;
       // opacity: 1;
       position: absolute;
+      opacity: 1;
       // overflow: hidden;
 
       @include animation-level-global(2) {
-        transition: transform var(--transition-standard-out)/* , opacity var(--transition-standard-out) */;
+        transition: transform var(--transition-standard-out), opacity var(--transition-standard-out);
+      }
+
+      &.fadeIn {
+        opacity: 0;
       }
 
       &.small {
@@ -153,13 +192,13 @@ $color-inactive: rgba(255, 255, 255, .5);
     }
 
     &Container .hideOnSmall,
-    &Container &Content {
+    &Container &ContentMediaContainer {
       @include animation-level-global(2) {
         transition: opacity var(--transition-standard-out) !important;
       }
     }
 
-    &Container.small &Content {
+    &Container.small &ContentMediaContainer {
       opacity: .5;
     }
 
@@ -171,7 +210,7 @@ $color-inactive: rgba(255, 255, 255, .5);
       }
     }
 
-    &Container.focused &Content {
+    &Container.focused &ContentMediaContainer {
       opacity: .8;
     }
 
@@ -437,7 +476,7 @@ $color-inactive: rgba(255, 255, 255, .5);
       padding-top: 70%;
       padding-left: 1rem;
       // padding-right: 3.5rem;
-      padding-right: 4rem;
+      padding-right: 1rem;
       padding-bottom: .5rem;
       color: var(--white);
       font-size: var(--font-size-16);

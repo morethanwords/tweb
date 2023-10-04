@@ -6,23 +6,56 @@
 
 import {MOUNT_CLASS_TO} from '../config/debug';
 import {IS_WORKER} from './context';
+import createUnifiedSignal from './solid/createUnifiedSignal';
 
 export class WindowSize {
-  public width: number;
-  public height: number;
+  private _width: ReturnType<typeof createUnifiedSignal<number>>;
+  private _height: ReturnType<typeof createUnifiedSignal<number>>;
+  // private rAF: number;
+  private viewport: VisualViewport | Window;
 
   constructor() {
     if(IS_WORKER) {
       return;
     }
 
-    const w = 'visualViewport' in window ? window.visualViewport : window;
+    this._width = createUnifiedSignal();
+    this._height = createUnifiedSignal();
+
+    this.viewport = /* 'visualViewport' in window ? window.visualViewport :  */window;
     const set = () => {
-      this.width = w.width || (w as any as Window).innerWidth;
-      this.height = w.height || (w as any as Window).innerHeight;
+      this.setDimensions();
+
+      // if(this.width === undefined) {
+      //   this.setDimensions();
+      //   return;
+      // }
+
+      // if(this.rAF) window.cancelAnimationFrame(this.rAF);
+      // this.rAF = window.requestAnimationFrame(() => {
+      //   this.rAF = 0;
+
+      //   batch(() => {
+      //     this.setDimensions();
+      //   });
+      // });
     };
-    w.addEventListener('resize', set);
+    this.viewport.addEventListener('resize', set);
     set();
+  }
+
+  private setDimensions() {
+    const w = this.viewport;
+    this._width((w as VisualViewport).width || (w as Window).innerWidth);
+    this._height((w as VisualViewport).height || (w as Window).innerHeight);
+  }
+
+  public get width() {
+    return this._width();
+  }
+
+  public get height() {
+    return this._height();
   }
 }
 

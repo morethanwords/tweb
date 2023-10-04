@@ -288,7 +288,8 @@ export default class ChatInput {
     mentionButton: boolean,
     botCommands: boolean,
     attachMenu: boolean,
-    commandsHelper: boolean
+    commandsHelper: boolean,
+    emoticons: boolean
   }>;
   public globalMentions: boolean;
 
@@ -793,7 +794,7 @@ export default class ChatInput {
     this.replyInTopicOverlay.classList.add('reply-in-topic-overlay', 'hide');
     this.replyInTopicOverlay.append(i18n('Chat.Input.ReplyToAnswer'));
 
-    this.btnToggleEmoticons = this.createButtonIcon('smile toggle-emoticons', {noRipple: true});
+    if(!this.excludeParts.emoticons) this.btnToggleEmoticons = this.createButtonIcon('smile toggle-emoticons', {noRipple: true});
 
     this.inputMessageContainer = document.createElement('div');
     this.inputMessageContainer.classList.add('input-message-container');
@@ -1050,9 +1051,11 @@ export default class ChatInput {
 
     this.inputContainer.append(...[this.btnReaction, this.btnCancelRecord, this.btnSendContainer].filter(Boolean));
 
-    this.emoticonsDropdown.attachButtonListener(this.btnToggleEmoticons, this.listenerSetter);
-    this.listenerSetter.add(this.emoticonsDropdown)('open', this.onEmoticonsOpen);
-    this.listenerSetter.add(this.emoticonsDropdown)('close', this.onEmoticonsClose);
+    if(this.btnToggleEmoticons) {
+      this.emoticonsDropdown.attachButtonListener(this.btnToggleEmoticons, this.listenerSetter);
+      this.listenerSetter.add(this.emoticonsDropdown)('open', this.onEmoticonsOpen);
+      this.listenerSetter.add(this.emoticonsDropdown)('close', this.onEmoticonsClose);
+    }
 
     this.attachMessageInputField();
 
@@ -1366,6 +1369,10 @@ export default class ChatInput {
   };
 
   private onEmoticonsToggle = (open: boolean) => {
+    if(!this.btnToggleEmoticons) {
+      return;
+    }
+
     if(!IS_TOUCH_SUPPORTED) {
       this.btnToggleEmoticons.classList.toggle('active', open);
     } else {
@@ -2032,7 +2039,9 @@ export default class ChatInput {
           return;
         }
 
-        this.appImManager.selectTab(APP_TABS.CHAT); // * set chat tab for album orientation
+        if(!this.chat.isStandalone) {
+          this.appImManager.selectTab(APP_TABS.CHAT); // * set chat tab for album orientation
+        }
         // this.saveScroll();
       }, {listenerSetter: this.listenerSetter});
 

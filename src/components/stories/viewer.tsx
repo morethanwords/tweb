@@ -15,13 +15,12 @@ import windowSize from '../../helpers/windowSize';
 import {Document, DocumentAttribute, GeoPoint, MediaArea, MessageMedia, Photo, Reaction, StoryItem, StoryView, User, UserStories} from '../../layer';
 import animationIntersector from '../animationIntersector';
 import appNavigationController, {NavigationItem} from '../appNavigationController';
-import ButtonCorner from '../buttonCorner';
 import PeerTitle from '../peerTitle';
 import SwipeHandler from '../swipeHandler';
 import styles from './viewer.module.scss';
-import {createSignal, createEffect, JSX, For, Accessor, onCleanup, createMemo, mergeProps, createContext, useContext, Context, ParentComponent, splitProps, untrack, on, getOwner, runWithOwner, createRoot, ParentProps, Suspense, batch, Signal, onMount, Setter, createReaction, Show} from 'solid-js';
+import {createSignal, createEffect, JSX, For, Accessor, onCleanup, createMemo, mergeProps, createContext, useContext, Context, ParentComponent, splitProps, untrack, on, getOwner, runWithOwner, createRoot, ParentProps, Suspense, batch, Signal, onMount, Setter, createReaction, Show, FlowComponent, useTransition, $TRACK} from 'solid-js';
 import {unwrap} from 'solid-js/store';
-import {assign, Portal} from 'solid-js/web';
+import {assign, isServer, Portal} from 'solid-js/web';
 import {Transition} from 'solid-transition-group';
 import rootScope from '../../lib/rootScope';
 import ListenerSetter from '../../helpers/listenerSetter';
@@ -85,7 +84,12 @@ import createContextMenu from '../../helpers/dom/createContextMenu';
 import {joinDeepPath} from '../../helpers/object/setDeepProperty';
 import isTargetAnInput from '../../helpers/dom/isTargetAnInput';
 import {setQuizHint} from '../poll';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import {doubleRaf} from '../../helpers/schedulers';
+import type {ListTransitionOptions} from '@solid-primitives/transition-group';
+import {resolveElements, resolveFirst} from '@solid-primitives/refs';
+import noop from '../../helpers/noop';
+import {Modify} from '../../types';
+import {IS_MOBILE} from '../../environment/userAgent';
 
 export const STORY_DURATION = 5e3;
 const STORY_HEADER_AVATAR_SIZE = 32;
@@ -138,6 +142,201 @@ const MessageInputField = (props: {}) => {
       {inputField.inputFake}
     </div>
   );
+};
+
+export function createListTransition<T extends object>(
+  source: Accessor<readonly T[]>,
+  options: Modify<ListTransitionOptions<T>, {exitMethod?: ListTransitionOptions<T>['exitMethod'] | 'keep-relative'}>
+): Accessor<T[]> {
+  const initSource = untrack(source);
+
+  if(isServer) {
+    const copy = initSource.slice();
+    return () => copy;
+  }
+
+  const {onChange} = options;
+
+  // if appear is enabled, the initial transition won't have any previous elements.
+  // otherwise the elements will match and transition skipped, or transitioned if the source is different from the initial value
+  let prevSet: ReadonlySet<T> = new Set(options.appear ? undefined : initSource);
+  const exiting = new WeakSet<T>();
+
+  const [toRemove, setToRemove] = createSignal<T[]>([], {equals: false});
+  const [isTransitionPending] = useTransition();
+
+  const finishRemoved: (els: T[]) => void =
+    options.exitMethod === 'remove' ?
+      noop :
+      (els) => {
+        setToRemove((p) => (p.push(...els), p));
+        for(const el of els) exiting.delete(el);
+      };
+
+  type RemovedOptions = {
+    elements: T[],
+    element: T,
+    previousElements: T[],
+    previousIndex: number,
+    side: 'start' | 'end'
+  };
+
+  let handleRemoved: (options: RemovedOptions) => void;
+  if(options.exitMethod === 'remove') {
+    handleRemoved = noop;
+  } else if(options.exitMethod === 'keep-index') {
+    handleRemoved = (options) => options.elements.splice(options.previousIndex, 0, options.element);
+  } else if(options.exitMethod === 'keep-relative') {
+    handleRemoved = (options) => {
+      let index: number;
+      if(options.side === 'start') {
+        index = options.previousIndex;
+      } else {
+        // index = options.elements.length - (options.previousElements.length - 1 - options.previousIndex);
+        index = options.elements.length;
+      }
+
+      options.elements.splice(index, 0, options.element);
+    };
+  } else {
+    handleRemoved = (options) => options.elements.push(options.element);
+  }
+
+  const compute = (prev: T[]) => {
+    const elsToRemove = toRemove();
+    const sourceList = source();
+    (sourceList as any)[$TRACK]; // top level store tracking
+
+    if(untrack(isTransitionPending)) {
+      // wait for pending transition to end before animating
+      isTransitionPending();
+      return prev;
+    }
+
+    if(elsToRemove.length) {
+      const next = prev.filter(e => !elsToRemove.includes(e));
+      elsToRemove.length = 0;
+      onChange({list: next, added: [], removed: [], unchanged: next, finishRemoved});
+      return next;
+    }
+
+    return untrack(() => {
+      const nextSet: ReadonlySet<T> = new Set(sourceList);
+      const next: T[] = sourceList.slice();
+
+      const added: T[] = [];
+      const removed: T[] = [];
+      const unchanged: T[] = [];
+
+      for(const el of sourceList) {
+        (prevSet.has(el) ? unchanged : added).push(el);
+      }
+
+      const removedOptions: Modify<RemovedOptions, {element?: T, previousIndex?: number}> = {
+        elements: next,
+        previousElements: prev,
+        side: 'start'
+      };
+
+      let nothingChanged = !added.length;
+      for(let i = 0; i < prev.length; ++i) {
+        const el = prev[i]!;
+        if(!nextSet.has(el)) {
+          if(!exiting.has(el)) {
+            removed.push(el);
+            exiting.add(el);
+          }
+
+          removedOptions.element = el;
+          removedOptions.previousIndex = i;
+
+          handleRemoved(removedOptions as RemovedOptions);
+        } else {
+          removedOptions.side = 'end';
+        }
+
+        if(nothingChanged && el !== next[i]) {
+          nothingChanged = false;
+        }
+      }
+
+      // skip if nothing changed
+      if(!removed.length && nothingChanged) {
+        return prev;
+      }
+
+      onChange({list: next, added, removed, unchanged, finishRemoved});
+
+      prevSet = nextSet;
+      return next;
+    });
+  };
+
+  return createMemo(compute, options.appear ? [] : initSource.slice());
+}
+
+export const TransitionGroup: FlowComponent<{
+  noWait: Accessor<boolean>,
+  transitions: WeakMap<Element, Accessor<boolean>>
+}> = (props) => {
+  const observeElement = (element: Element, callback: () => void) => {
+    const transition = props.transitions.get(element);
+    createEffect((prev) => {
+      const t = transition();
+      if(prev || t) {
+        if(!t) {
+          callback();
+        }
+
+        return true;
+      }
+    });
+  };
+
+  const disposers: Map<Element, () => void> = new Map();
+  const exitElement = (element: Element, callback: () => void) => {
+    createRoot((dispose) => {
+      disposers.set(element, dispose);
+
+      observeElement(element, () => {
+        dispose();
+        callback();
+      });
+
+      onCleanup(() => {
+        if(disposers.get(element) === dispose) {
+          disposers.delete(element);
+        }
+      });
+    });
+  };
+
+  onCleanup(() => {
+    disposers.forEach((dispose) => dispose());
+  });
+
+  const listTransition = createListTransition(resolveElements(() => props.children).toArray, {
+    exitMethod: 'keep-relative',
+    onChange: ({added, removed, finishRemoved}) => {
+      for(const element of added) {
+        const dispose = disposers.get(element);
+        dispose?.();
+      }
+
+      if(props.noWait?.() || !liteMode.isAvailable('animations')) {
+        finishRemoved(removed);
+        return;
+      }
+
+      for(const element of removed) {
+        exitElement(element, () => {
+          finishRemoved([element]);
+        });
+      }
+    }
+  }) as unknown as JSX.Element;
+
+  return listTransition;
 };
 
 export function createListenerSetter() {
@@ -334,6 +533,7 @@ const StoryInput = (props: {
 
   const chat = new Chat(appImManager, rootScope.managers, false, {elements: true, sharedMedia: true});
   chat.setType('stories');
+  chat.isStandalone = true;
 
   const onReactionClick = async() => {
     const story = props.currentStory() as StoryItem.storyItem;
@@ -367,7 +567,8 @@ const StoryInput = (props: {
     mentionButton: true,
     attachMenu: true,
     commandsHelper: true,
-    botCommands: true
+    botCommands: true,
+    emoticons: IS_MOBILE
   };
   input.globalMentions = true;
   input.getMiddleware = (...args) => middleware.create().get(...args);
@@ -417,7 +618,7 @@ const StoryInput = (props: {
       () => focused(),
       (focused) => {
         if(focused) {
-          playAfterFocus = !stories.paused;
+          playAfterFocus = untrack(() => !stories.paused);
           // document.addEventListener('mousedown', onMouseDown, {capture: true, once: true});
           document.addEventListener('click', onClick, {capture: true});
           appNavigationController.pushItem(navigationItem = {
@@ -437,7 +638,8 @@ const StoryInput = (props: {
         input.freezeFocused(focused);
         input.chatInput.classList.toggle('is-focused', focused);
         // input.setShrinking(!focused);
-      }
+      },
+      {defer: true}
     )
   );
 
@@ -715,7 +917,8 @@ const Stories = (props: {
   onReady?: () => void,
   close: (callback?: () => void) => void,
   peers: StoriesContextPeerState[],
-  isFull: Accessor<boolean>
+  isFull: Accessor<boolean>,
+  transitionSignal: Signal<boolean>
 }) => {
   const avatar = AvatarNew({
     size: STORY_HEADER_AVATAR_SIZE,
@@ -805,7 +1008,7 @@ const Stories = (props: {
   const [isPublic, setIsPublic] = isPublicSignal;
   const [inputReady, setInputReady] = createSignal(isMe);
   const [noSound, setNoSound] = createSignal(false);
-  const [sliding, setSliding] = createSignal(false);
+  const [sliding, setSliding] = props.transitionSignal;
   const [privacyType, setPrivacyType] = createSignal<StoryPrivacyType>();
   const [mediaAreas, setMediaAreas] = createSignal<JSX.Element>();
   const [stackedAvatars, setStackedAvatars] = createSignal<StackedAvatars>();
@@ -929,6 +1132,14 @@ const Stories = (props: {
       }
     };
 
+    const reset = () => {
+      if(!video.currentTime) {
+        return;
+      }
+
+      setCurrentTime(video, 0);
+    };
+
     video.addEventListener('waiting', onWaiting);
 
     onCleanup(() => {
@@ -946,31 +1157,35 @@ const Stories = (props: {
       }
     });
 
-    const reset = () => {
-      setCurrentTime(video, 0);
+    const onFirstActive = () => {
+      // seek to start on story change
+      createEffect(on(
+        () => [/* props.state.index,  */isActive()],
+        ([/* index,  */isActive]) => {
+          if(isActive) {
+            return;
+          }
+
+          reset();
+        }
+      ));
+
+      createEffect(() => {
+        video.muted = stories.muted;
+      });
     };
 
-    // seek to start on story change
-    createEffect(on(
-      () => [/* props.state.index,  */isActive()],
-      ([/* index,  */isActive]) => {
-        if(isActive) {
-          return;
-        }
-
-        reset();
-      }
-    ));
+    if(isActive()) {
+      onFirstActive();
+    } else {
+      createReaction(onFirstActive)(() => isActive());
+    }
 
     const story = untrack(() => currentStory());
     createEffect(() => {
       if(isActive() && !stories.startTime && currentStory() === story) {
         reset();
       }
-    });
-
-    createEffect(() => {
-      video.muted = stories.muted;
     });
 
     apiManagerProxy.getState().then((state) => {
@@ -1187,6 +1402,9 @@ const Stories = (props: {
         peerId: props.state.peerId,
         storyItem: unwrap(story),
         forViewer: true,
+        containerProps: {
+          class: styles.ViewerStoryContentMediaContainer
+        },
         childrenClassName: styles.ViewerStoryContentMedia,
         useBlur: 12
       });
@@ -1377,14 +1595,27 @@ const Stories = (props: {
     playOnReady();
   };
 
-  createEffect(playOnOpen) // play on open
+  createEffect(playOnOpen); // play on open
 
   const slides = <StorySlides {...mergeProps(props, {currentStory})} />;
 
+  let shouldAddTranslateX = true;
   const calculateTranslateX = () => {
-    // const diff = props.index() - stories.index;
-    const diff = props.index() - props.peers.indexOf(stories.peer);
-    // diff = clamp(diff, -STORIES_PRESERVE, STORIES_PRESERVE);
+    let diff = diffToActive();
+    if(!diff) {
+      return '0px';
+    }
+
+    if(
+      shouldShow() &&
+      stories.hasViewer &&
+      fadeIn() &&
+      shouldAddTranslateX
+    ) {
+      if(diff > 0) ++diff;
+      else --diff;
+    }
+
     const storyWidth = stories.width;
     const MARGIN = 40;
     const multiplier = diff > 0 ? 1 : -1;
@@ -1425,6 +1656,7 @@ const Stories = (props: {
       return;
     }
 
+    shouldAddTranslateX = true;
     setSliding(false);
     // transitionPromise?.resolve();
     if(!isActive()) {
@@ -1571,7 +1803,7 @@ const Stories = (props: {
         class={classNames('spoilers-container', styles.ViewerStoryCaptionText)}
         onClick={onCaptionClick}
       >
-        <div class={styles.ViewerStoryCaptionTextCell}>
+        <div class={styles.ViewerStoryCaptionTextCell} dir="auto">
           {caption()}
         </div>
       </div>
@@ -2044,14 +2276,30 @@ const Stories = (props: {
 
   // * my footer end
 
-  createEffect(() => {
-    if(stories.peer && !liteMode.isAvailable('animations')) {
-      untrack(() => {
-        onTransitionStart();
-        onTransitionEnd();
-      });
-    }
-  });
+  createEffect(
+    on(
+      () => [isActive(), currentStory()],
+      () => {
+        if(liteMode.isAvailable('animations')) {
+          return;
+        }
+
+        untrack(() => {
+          onTransitionStart();
+          onTransitionEnd();
+        });
+      }
+    )
+  );
+
+  // createEffect(() => {
+  //   if(stories.peer && !liteMode.isAvailable('animations')) {
+  //     untrack(() => {
+  //       onTransitionStart();
+  //       onTransitionEnd();
+  //     });
+  //   }
+  // });
 
   const onProfileClick = () => {
     const peerId = props.state.peerId;
@@ -2060,18 +2308,77 @@ const Stories = (props: {
     });
   };
 
+  const diffToActive = createMemo(() => {
+    return props.index() - props.peers.indexOf(stories.peer);
+  });
+
+  const fromLeft = createMemo<boolean>((prev) => {
+    return sliding() ? prev : diffToActive() < 0;
+  });
+
+  const fromRight = createMemo<boolean>((prev) => {
+    return sliding() ? prev : diffToActive() > 0;
+  });
+
+  const [fadeIn, setFadeIn] = createSignal(false);
+
+  const shouldShow = createMemo((/* prev */) => {
+    const diff = Math.abs(diffToActive());
+    let shouldBeVisible: boolean;
+    if(/* props.isFull() &&  */!stories.hasViewer) {
+      shouldBeVisible = diff === 0;
+
+      if(!props.isFull() && diff <= STORIES_PRESERVE) {
+        shouldAddTranslateX = false;
+      }
+    } else {
+      shouldBeVisible = diff <= STORIES_PRESERVE;
+    }
+
+    // if(!shouldBeVisible && prev) {
+    //   return sliding();
+    // }
+
+    return shouldBeVisible;
+  });
+
+  createEffect<boolean>((prev) => {
+    if(!shouldShow()) {
+      // if(prev) {
+      setFadeIn(true);
+      // }
+
+      return true;
+    } else if(prev) {
+      setFadeIn(true);
+
+      doubleRaf().then(() => {
+        setFadeIn(false);
+      });
+
+      return true;
+    }
+  });
+
   let div: HTMLDivElement, storyDiv: HTMLDivElement, headerDiv: HTMLDivElement;
   const ret = (
     <div
       ref={div}
       class={styles.ViewerStoryContainer}
       classList={{
-        [styles.small]: !isActive(),
+        ...(props.isFull() ? {
+          [styles.fromLeft]: fromLeft(),
+          [styles.current]: isActive(),
+          [styles.fromRight]: fromRight()
+        } : {
+          [styles.small]: !isActive()
+        }),
         [styles.hold]: stories.hideInterface && isActive(),
-        [styles.focused]: focused()
+        [styles.focused]: focused(),
+        [styles.fadeIn]: fadeIn()
       }}
-      style={{
-        '--translateX': isActive() ? 0 : calculateTranslateX()
+      style={!props.isFull() && {
+        '--translateX': calculateTranslateX()
       }}
       onClick={(e) => {
         if(!isActive()) {
@@ -2085,6 +2392,7 @@ const Stories = (props: {
         } else if(
           !stories.paused &&
           !stories.hideInterface &&
+          !findUpAsChild(e.target, captionText) &&
           !findUpClassName(e.target, styles.ViewerStoryHeader) &&
           !findUpClassName(e.target, 'stories-input') &&
           !findUpClassName(e.target, styles.ViewerStoryReactions) &&
@@ -2150,23 +2458,17 @@ const Stories = (props: {
           {caption() && captionContainer}
           {reactionsMenu()?.widthContainer}
         </div>
-        <div class={styles.ViewerStoryInfo}>
-          {avatarInfo.node}
-          {peerTitleInfoElement}
-        </div>
+        {!props.isFull() && (
+          <div class={styles.ViewerStoryInfo}>
+            {avatarInfo.node}
+            {peerTitleInfoElement}
+          </div>
+        )}
       </div>
       {storyInput || footer}
       {/* <MessageInputField /> */}
     </div>
   );
-
-  const w = createMemo((prev) => {
-    return true;
-    if(sliding()) return prev;
-    const diff = Math.abs(stories.index - stories.peers.indexOf(props.state));
-    const isOut = diff < 3;
-    return isOut;
-  });
 
   const muteTooltipOptions: Parameters<typeof showTooltip>[0] = {
     container: headerDiv,
@@ -2175,14 +2477,8 @@ const Stories = (props: {
     paddingX: 13
   };
 
-  const ww = createMemo(() => {
-    const diff = Math.abs(props.index() - props.peers.indexOf(stories.peer));
-    const shouldBeVisible = diff <= STORIES_PRESERVE;
-    return shouldBeVisible;
-  });
-
   return (
-    <Show when={ww()}>
+    <Show when={shouldShow()}>
       {ret}
     </Show>
   );
@@ -2211,7 +2507,11 @@ export default function StoriesViewer(props: {
 }) {
   const [stories, actions] = useStories();
   const [show, setShow] = createSignal(false);
-  const isFull = createMemo(() => stories.width === windowSize.width);
+  const isFull = createMemo(() => {
+    return windowSize.height > windowSize.width ||
+      windowSize.width < (stories.width + 135 + 8 * 2) ||
+      stories.width === windowSize.width;
+  });
   const wasShown = createMemo((shown) => shown || show());
 
   // * fix `ended` property
@@ -2291,6 +2591,7 @@ export default function StoriesViewer(props: {
       });
     });
 
+    actions.viewerReady(false);
     dispose();
     actions.pause();
     throttledKeyDown.clear();
@@ -2343,7 +2644,7 @@ export default function StoriesViewer(props: {
           return;
         }
 
-        console.log('stories ready', peer.peerId, storiesReadiness.size, performance.now() - perf);
+        // console.log('stories ready', peer.peerId, storiesReadiness.size, performance.now() - perf);
 
         if(storiesReadiness.size === storiesShouldBeReady.size) {
           openOnReady();
@@ -2352,6 +2653,7 @@ export default function StoriesViewer(props: {
 
       storiesShouldBeReady.add(peer.peerId);
 
+      const transitionSignal = createSignal(false);
       const ret = (
         <Stories
           state={peer}
@@ -2362,8 +2664,19 @@ export default function StoriesViewer(props: {
           close={close}
           peers={itemsToRender()}
           isFull={isFull}
+          transitionSignal={transitionSignal}
         />
       );
+
+      const ref = resolveFirst(() => ret);
+      createEffect(() => {
+        const element = ref();
+        if(!element) {
+          return;
+        }
+
+        transitions.set(element, transitionSignal[0]);
+      });
 
       return ret;
     };
@@ -2371,6 +2684,8 @@ export default function StoriesViewer(props: {
     const preserve = STORIES_PRESERVE + STORIES_PRESERVE_HIDDEN;
     const getItemsToRender = (index: number) => stories.peers.slice(Math.max(index - preserve, 0), Math.min(index + preserve + 1, stories.peers.length));
     const itemsToRender = createMemo(() => getItemsToRender(stories.index));
+    const btnClose = <ButtonIconTsx ref={closeButton} icon={'close'} class={styles.ViewerClose} onClick={() => close()} />;
+    const transitions: WeakMap<Element, Accessor<boolean>> = new WeakMap();
 
     return (
       <div
@@ -2378,7 +2693,8 @@ export default function StoriesViewer(props: {
         class={classNames(
           styles.Viewer,
           !show() && styles.isInvisible,
-          isFull() && styles.isFull
+          isFull() && styles.isFull,
+          stories.hasViewer && styles.isReady
         )}
         onClick={(e) => {
           if(animating) {
@@ -2396,9 +2712,11 @@ export default function StoriesViewer(props: {
         }}
       >
         <div ref={backgroundDiv} class={styles.ViewerBackground} />
-        <ButtonIconTsx ref={closeButton} icon={'close'} class={styles.ViewerClose} onClick={() => close()} />
+        {!isFull() && btnClose}
         {/* <For each={stories.peers}>{createStories}</For> */}
-        <For each={itemsToRender()}>{createStories}</For>
+        <TransitionGroup noWait={() => isFull()/*  || !stories.hasViewer */} transitions={transitions}>
+          <For each={itemsToRender()}>{createStories}</For>
+        </TransitionGroup>
       </div>
     );
   });
@@ -2406,7 +2724,33 @@ export default function StoriesViewer(props: {
   let pauseTimeout: number;
   const swipeHandler = new SwipeHandler({
     element: div,
-    onSwipe: () => {},
+    onSwipe: (xDiff, yDiff, e) => {
+      if(!(e instanceof TouchEvent)) {
+        return;
+      }
+
+      const jumpOn = Math.min(125, windowSize.width / 3);
+      const closeOn = Math.min(125, windowSize.height * 0.2);
+      if(yDiff > closeOn) {
+        close();
+        return true;
+      }
+
+      if(Math.abs(xDiff) < jumpOn) {
+        return false;
+      }
+
+      const peerIndex = stories.peers.indexOf(stories.peer);
+      const neighbourIndex = peerIndex + (xDiff < 0 ? 1 : -1);
+      const neighbour = stories.peers[neighbourIndex];
+      if(!neighbour) {
+        close();
+      } else {
+        actions.set({peer: neighbour});
+      }
+
+      return true;
+    },
     verifyTouchTarget: (e) => {
       return !findUpClassName(e.target, 'btn-icon') &&
         !findUpClassName(e.target, 'btn-corner') &&
@@ -2636,7 +2980,10 @@ export default function StoriesViewer(props: {
     }], options);
 
     // * animate simple opacity
-    const opacityAnimations = (containerAnimation ? [backgroundDiv, closeButton] : [container, el]).map((element) => {
+    const opacityAnimations = (containerAnimation ?
+      [backgroundDiv, !isFull() && closeButton].filter(Boolean) :
+      [container, el]
+    ).map((element) => {
       return element.animate([{opacity: 0}, {opacity: 1}], options);
     });
 
@@ -2753,8 +3100,8 @@ export default function StoriesViewer(props: {
         }}
         onExit={(el, done) => {
           animating = true;
-          animate(el, false, done);
           actions.viewerReady(false);
+          animate(el, false, done);
         }}
         onAfterExit={() => {
           animating = false;

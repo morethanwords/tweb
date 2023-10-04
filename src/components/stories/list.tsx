@@ -163,14 +163,19 @@ function _StoriesList(props: {
     scrollTo(wasProgress);
   };
 
-  const debounced = debounce(onScrolled, 100, false, true);
+  const debounced = debounce(onScrolled, 75, false, true);
 
   const onMove = (delta: number, e?: WheelEvent | TouchEvent) => {
     const scrollTop = props.getScrollable().scrollTop;
     const isWheel = e instanceof WheelEvent;
     if(isWheel || true) {
       const newState = delta < 0 ? STATE_UNFOLDED : STATE_FOLDED;
-      if((scrollTop && progress() !== STATE_UNFOLDED) || progress() === newState) {
+      if((scrollTop && progress() !== STATE_UNFOLDED) || debounced.isDebounced()) {
+        debounced();
+        return;
+      }
+
+      if(progress() === newState) {
         return;
       }
 
@@ -240,7 +245,7 @@ function _StoriesList(props: {
       cancelEvent: false,
       cursor: '',
       verifyTouchTarget: (e) => {
-        return e instanceof TouchEvent && !findUpClassName(e.target, 'folders-tabs-scrollable');
+        return e instanceof TouchEvent && peers().length && !findUpClassName(e.target, 'folders-tabs-scrollable');
       }
     });
 
@@ -472,7 +477,10 @@ function _StoriesList(props: {
     <div
       ref={container}
       class={styles.ListContainer}
-      classList={{'disable-hover': folded() || isTransition()}}
+      classList={{
+        'disable-hover': folded() || isTransition(),
+        [styles.skipAnimation]: folded() && !isTransition()
+      }}
       style={calculateMovement()}
       onTransitionStart={(e) => e.target === container && setIsTransition(true)}
       onTransitionEnd={(e) => e.target === container && setIsTransition(false)}

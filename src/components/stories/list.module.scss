@@ -125,7 +125,6 @@
     transform: translateY(0);
 
     &.skipAnimation {
-      &,
       .ListItem {
         transition: none !important;
       }
