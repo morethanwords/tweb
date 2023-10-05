@@ -77,7 +77,6 @@ export class ChatPermissions extends CheckboxFields<PermissionsCheckboxFieldsFie
       {flags: ['send_polls'], text: 'UserRestrictionsSendPolls', exceptionText: 'UserRestrictionsNoSendPolls'}
     ];
 
-    const mediaToggleWith = mediaNested;
     const v: PermissionsCheckboxFieldsField[] = [
       {flags: ['send_plain'], text: 'UserRestrictionsSend', exceptionText: 'UserRestrictionsNoSend'},
       {flags: ['send_media'], text: 'UserRestrictionsSendMedia', exceptionText: 'UserRestrictionsNoSendMedia', nested: mediaNested},
@@ -96,7 +95,7 @@ export class ChatPermissions extends CheckboxFields<PermissionsCheckboxFieldsFie
     });
 
     mediaNested.forEach((info) => info.nestedTo = map.send_media);
-    map.send_media.toggleWith = {unchecked: mediaToggleWith, checked: mediaToggleWith};
+    map.send_media.toggleWith = {unchecked: mediaNested, checked: mediaNested};
     map.embed_links.toggleWith = {checked: [map.send_plain]};
     map.send_plain.toggleWith = {unchecked: [map.embed_links]};
 
@@ -179,11 +178,25 @@ export class ChatAdministratorRights extends CheckboxFields<AdministratorRightsC
     const isForum = !!(chat as Chat.channel).pFlags.forum;
     const rights = this.rights = options.participant ? options.participant.admin_rights : undefined;
 
+    const manageMessagesNested: AdministratorRightsCheckboxFieldsField[] = isBroadcast && [
+      {flags: ['post_messages'], text: 'EditAdminPostMessages'},
+      {flags: ['edit_messages'], text: 'EditAdminEditMessages'},
+      {flags: ['delete_messages'], text: 'EditAdminDeleteMessages'}
+    ];
+
+    const manageStoriesNested: AdministratorRightsCheckboxFieldsField[] = isBroadcast && [
+      {flags: ['post_stories' as any], text: 'AdminRights.PostStories'},
+      {flags: ['edit_stories' as any], text: 'AdminRights.EditStories'},
+      {flags: ['delete_stories' as any], text: 'AdminRights.DeleteStories'}
+    ];
+
+    const manageMessagesNestedKey: ChatRights = 'post_messages_nested' as any;
+    const manageStoriesNestedKey: ChatRights = 'post_stories_nested' as any;
     let v: AdministratorRightsCheckboxFieldsField[] = [
       {flags: ['change_info'], text: isBroadcast ? 'EditAdminChangeChannelInfo' : 'EditAdminChangeGroupInfo'},
-      isBroadcast && {flags: ['post_messages'], text: 'EditAdminPostMessages'},
-      isBroadcast && {flags: ['edit_messages'], text: 'EditAdminEditMessages'},
-      {flags: ['delete_messages'], text: isBroadcast ? 'EditAdminDeleteMessages' : 'EditAdminGroupDeleteMessages'},
+      isBroadcast && {flags: [manageMessagesNestedKey], text: 'AdminRights.ManageMessages', nested: manageMessagesNested},
+      isBroadcast && {flags: [manageStoriesNestedKey], text: 'AdminRights.ManageStories', nested: manageStoriesNested},
+      !isBroadcast && {flags: ['delete_messages'], text: isBroadcast ? 'EditAdminDeleteMessages' : 'EditAdminGroupDeleteMessages'},
       !isBroadcast && {flags: ['ban_users'], text: 'EditAdminBanUsers'},
       !isBroadcast && {flags: ['invite_users'], text: 'EditAdminAddUsersViaLink'},
       !isBroadcast && {flags: ['pin_messages'], text: 'EditAdminPinMessages'},
@@ -194,12 +207,25 @@ export class ChatAdministratorRights extends CheckboxFields<AdministratorRightsC
       {flags: ['add_admins'], text: 'EditAdminAddAdmins', checked: rights ? undefined : false}
     ];
 
+    const map: {[action in ChatRights]?: AdministratorRightsCheckboxFieldsField} = {};
     v = v.filter(Boolean);
-
+    if(manageMessagesNested) v.push(...manageMessagesNested);
+    if(manageStoriesNested) v.push(...manageStoriesNested);
     v.forEach((info) => {
       const mainFlag = info.flags[0];
+      map[mainFlag] = info;
       info.checked ??= hasRights(chat, mainFlag, rights);
     });
+
+    if(manageMessagesNested) {
+      manageMessagesNested.forEach((info) => info.nestedTo = map[manageMessagesNestedKey]);
+      map[manageMessagesNestedKey].toggleWith = {unchecked: manageMessagesNested, checked: manageMessagesNested};
+    }
+
+    if(manageStoriesNested) {
+      manageStoriesNested.forEach((info) => info.nestedTo = map[manageStoriesNestedKey]);
+      map[manageStoriesNestedKey].toggleWith = {unchecked: manageStoriesNested, checked: manageStoriesNested};
+    }
 
     this.fields = v;
 
@@ -215,10 +241,12 @@ export class ChatAdministratorRights extends CheckboxFields<AdministratorRightsC
       } else if((isCreator && !CREATOR_EXCEPTIONS.has(mainFlag as ChatRights)) || !hasRights(chat, mainFlag)) {
         info.restrictionText = 'EditCantEditPermissions';
       }
+    }
 
-      // if(info.nestedTo) {
-      //   continue;
-      // }
+    for(const info of this.fields) {
+      if(info.nestedTo) {
+        continue;
+      }
 
       const {nodes} = this.createField(info);
       options.appendTo.append(...nodes);

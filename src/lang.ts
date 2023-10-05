@@ -294,6 +294,11 @@ const lang = {
   'WebApp.Disclaimer.Check': 'I agree to the **[Terms of Use]()**',
   'WebApp.AttachRemove.SuccessAll': '"%@" removed from all your menus.',
   'WebApp.AttachRemove.SuccessSide': '"%@" removed from your side menu.',
+  'AdminRights.ManageMessages': 'Manage Messages',
+  'AdminRights.ManageStories': 'Manage Stories',
+  'AdminRights.PostStories': 'Post Stories',
+  'AdminRights.EditStories': 'Edit Stories of Others',
+  'AdminRights.DeleteStories': 'Delete Stories of Others',
 
   // * android
   'AccDescrEditing': 'Editing',
