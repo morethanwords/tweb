@@ -585,24 +585,7 @@ export class AppUsersManager extends AppManager {
       const wasContact = !!oldUser.pFlags.contact;
       const newContact = !!user.pFlags.contact;
 
-      const wasStories = oldUser.stories_max_id ? true : (oldUser.pFlags.stories_unavailable ? false : undefined);
-      let newStories = user.stories_max_id ? true : (user.pFlags.stories_unavailable ? false : undefined);
-      if(wasStories !== newStories) {
-        if(newStories === undefined) {
-          if(wasStories) {
-            user.stories_max_id = oldUser.stories_max_id;
-          }
-
-          newStories = wasStories;
-        }/*  else {
-          if(!newStories) {
-            delete user.pFlags.stories_unavailable;
-          }
-        } */
-      }
-
-      const wasStoriesHidden = oldUser.pFlags.stories_hidden;
-      const newStoriesHidden = user.pFlags.stories_hidden;
+      const storiesCallback = this.appStoriesManager.saveApiPeerStories(user, oldUser);
 
       safeReplaceObject(oldUser, user);
       this.mirrorUser(oldUser);
@@ -613,15 +596,7 @@ export class AppUsersManager extends AppManager {
         this.onContactUpdated(userId, newContact, wasContact);
       }
 
-      if(!TEST_NO_STORIES) {
-        if(wasStories !== newStories && newStories !== undefined) {
-          this.rootScope.dispatchEvent('user_stories', {userId, available: newStories});
-        }
-
-        if(wasStoriesHidden !== newStoriesHidden) {
-          this.rootScope.dispatchEvent('user_stories_hidden', {userId, hidden: newStoriesHidden});
-        }
-      }
+      storiesCallback?.();
 
       if(changedPhoto) {
         this.rootScope.dispatchEvent('avatar_update', {peerId});

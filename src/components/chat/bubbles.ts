@@ -4590,7 +4590,7 @@ export default class ChatBubbles {
         loadPromises.push(promise);
       } else if(isStoryMention) {
         const messageMedia = message.media as MessageMedia.messageMediaStory;
-        const storyPeerId = messageMedia.user_id.toPeerId(false);
+        const storyPeerId = getPeerId(messageMedia.peer);
         const storyId = messageMedia.id;
         const isMyStory = storyPeerId === rootScope.myId;
 
@@ -5057,7 +5057,7 @@ export default class ChatBubbles {
           }
 
           const storyAttribute = webPage.attributes?.find((attribute) => attribute._ === 'webPageAttributeStory') as WebPageAttribute.webPageAttributeStory;
-          const storyPeerId = storyAttribute && storyAttribute.user_id.toPeerId(false);
+          const storyPeerId = storyAttribute && getPeerId(storyAttribute.peer);
           const storyId = storyAttribute && storyAttribute.id;
 
           if(storyAttribute) {
@@ -5973,7 +5973,7 @@ export default class ChatBubbles {
 
         case 'messageMediaStory': {
           const storyId = messageMedia.id;
-          const storyPeerId = messageMedia.user_id.toPeerId(false);
+          const storyPeerId = getPeerId(messageMedia.peer);
 
           const replyContainer = await this.getStoryReplyIfExpired(storyPeerId, storyId, false);
           if(replyContainer) {

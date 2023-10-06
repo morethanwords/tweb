@@ -151,9 +151,13 @@ export class AppChatsManager extends AppManager {
         (oldChat as Chat.channel).pFlags.scam !== (chat as Chat.channel).pFlags.scam ||
         (oldChat as Chat.channel).pFlags.fake !== (chat as Chat.channel).pFlags.fake;
 
+      const storiesCallback = this.appStoriesManager.saveApiPeerStories(chat as Chat.channel, oldChat as Chat.channel);
+
       safeReplaceObject(oldChat, chat);
       this.mirrorChat(oldChat);
       this.rootScope.dispatchEvent('chat_update', chat.id);
+
+      storiesCallback?.();
 
       if(changedPhoto) {
         this.rootScope.dispatchEvent('avatar_update', {peerId});

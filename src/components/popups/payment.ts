@@ -353,9 +353,10 @@ export default class PopupPayment extends PopupElement<{
     const currency = invoice.currency;
 
     const isRecurring = invoice.pFlags.recurring && !isReceipt;
+    const hasTerms = !!invoice.terms_url;
 
     await peerTitle.update({peerId: paymentForm.bot_id.toPeerId()});
-    const peerTitle2 = isRecurring ? await wrapPeerTitle({peerId: paymentForm.bot_id.toPeerId()}) : undefined;
+    const peerTitle2 = isRecurring || hasTerms ? await wrapPeerTitle({peerId: paymentForm.bot_id.toPeerId()}) : undefined;
     preloaderContainer.remove();
     this.element.classList.remove('is-loading');
 
@@ -774,16 +775,16 @@ export default class PopupPayment extends PopupElement<{
       shippingPhoneRow
     ].filter(Boolean);
 
-    const acceptTermsCheckboxField = isRecurring && new CheckboxField({
-      text: 'Payments.Recurrent.Accept',
-      textArgs: [wrapRichText(invoice.recurring_terms_url), peerTitle2]
+    const acceptTermsCheckboxField = (isRecurring || hasTerms) && new CheckboxField({
+      text: isRecurring ? 'Payments.Recurrent.Accept' : 'Payments.Terms.Accept',
+      textArgs: [wrapRichText(invoice.terms_url), peerTitle2]
     });
 
-    const acceptTermsRow = isRecurring && createRow({
+    const acceptTermsRow = acceptTermsCheckboxField && createRow({
       checkboxField: acceptTermsCheckboxField
     });
 
-    const recurringElements = isRecurring ? [document.createElement('hr'), acceptTermsRow.container] : [];
+    const recurringElements = acceptTermsCheckboxField ? [document.createElement('hr'), acceptTermsRow.container] : [];
 
     this.scrollable.append(...[
       document.createElement('hr'),

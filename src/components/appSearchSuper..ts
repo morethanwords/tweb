@@ -1891,7 +1891,8 @@ export default class AppSearchSuper {
   public canViewStories() {
     return this.mediaTabsMap.has('stories') &&
       this.searchContext.peerId.isUser() &&
-      this.managers.appStoriesManager.getPinnedStories(this.searchContext.peerId.toUserId(), 1).then((storyItems) => !!storyItems.length);
+      this.managers.appStoriesManager.getPinnedStories(this.searchContext.peerId, 1)
+      .then((storyItems) => !!storyItems.length);
   }
 
   public cleanup() {

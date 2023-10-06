@@ -299,6 +299,7 @@ const lang = {
   'AdminRights.PostStories': 'Post Stories',
   'AdminRights.EditStories': 'Edit Stories of Others',
   'AdminRights.DeleteStories': 'Delete Stories of Others',
+  'Payments.Terms.Accept': 'I accept [Terms of Service]() of **%@**.',
 
   // * android
   'AccDescrEditing': 'Editing',

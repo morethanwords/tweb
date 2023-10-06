@@ -271,7 +271,7 @@ export namespace InputMedia {
 
   export type inputMediaStory = {
     _: 'inputMediaStory',
-    user_id: InputUser,
+    peer: InputPeer,
     id: number
   };
 }
@@ -669,6 +669,9 @@ export namespace Chat {
       join_to_send?: true,
       join_request?: true,
       forum?: true,
+      stories_hidden?: true,
+      stories_hidden_min?: true,
+      stories_unavailable?: true,
     }>,
     flags2?: number,
     id: string | number,
@@ -682,7 +685,8 @@ export namespace Chat {
     banned_rights?: ChatBannedRights,
     default_banned_rights?: ChatBannedRights,
     participants_count?: number,
-    usernames?: Array<Username>
+    usernames?: Array<Username>,
+    stories_max_id?: number
   };
 
   export type channelForbidden = {
@@ -747,6 +751,7 @@ export namespace ChatFull {
       antispam?: true,
       participants_hidden?: true,
       translations_disabled?: true,
+      stories_pinned_available?: true,
     }>,
     flags2?: number,
     id: string | number,
@@ -783,7 +788,8 @@ export namespace ChatFull {
     requests_pending?: number,
     recent_requesters?: Array<string | number>,
     default_send_as?: Peer,
-    available_reactions?: ChatReactions
+    available_reactions?: ChatReactions,
+    stories?: PeerStories
   };
 }
 
@@ -1082,7 +1088,7 @@ export namespace MessageMedia {
     pFlags: Partial<{
       via_mention?: true,
     }>,
-    user_id: string | number,
+    peer: Peer,
     id: number,
     story?: StoryItem
   };
@@ -1858,7 +1864,7 @@ export namespace UserFull {
     bot_broadcast_admin_rights?: ChatAdminRights,
     premium_gifts?: Array<PremiumGiftOption>,
     wallpaper?: WallPaper,
-    stories?: UserStories
+    stories?: PeerStories
   };
 }
 
@@ -2974,13 +2980,13 @@ export namespace Update {
 
   export type updateStory = {
     _: 'updateStory',
-    user_id: string | number,
+    peer: Peer,
     story: StoryItem
   };
 
   export type updateReadStories = {
     _: 'updateReadStories',
-    user_id: string | number,
+    peer: Peer,
     max_id: number
   };
 
@@ -2997,7 +3003,7 @@ export namespace Update {
 
   export type updateSentStoryReaction = {
     _: 'updateSentStoryReaction',
-    user_id: string | number,
+    peer: Peer,
     story_id: number,
     reaction: Reaction
   };
@@ -6267,7 +6273,7 @@ export namespace Invoice {
     prices: Array<LabeledPrice>,
     max_tip_amount?: string | number,
     suggested_tip_amounts?: Array<string | number>,
-    recurring_terms_url?: string
+    terms_url?: string
   };
 }
 
@@ -8246,6 +8252,9 @@ export namespace ChatAdminRights {
       manage_call?: true,
       other?: true,
       manage_topics?: true,
+      post_stories?: true,
+      edit_stories?: true,
+      delete_stories?: true,
     }>
   };
 }
@@ -8803,7 +8812,7 @@ export namespace WebPageAttribute {
   export type webPageAttributeStory = {
     _: 'webPageAttributeStory',
     flags?: number,
-    user_id: string | number,
+    peer: Peer,
     id: number,
     story?: StoryItem
   };
@@ -11204,7 +11213,9 @@ export namespace StoryViews {
       has_viewers?: true,
     }>,
     views_count: number,
-    reactions_count: number,
+    forwards_count?: number,
+    reactions?: Array<ReactionCount>,
+    reactions_count?: number,
     recent_viewers?: Array<string | number>
   };
 }
@@ -11243,6 +11254,7 @@ export namespace StoryItem {
       edited?: true,
       contacts?: true,
       selected_contacts?: true,
+      out?: true,
     }>,
     id: number,
     date: number,
@@ -11254,21 +11266,6 @@ export namespace StoryItem {
     privacy?: Array<PrivacyRule>,
     views?: StoryViews,
     sent_reaction?: Reaction
-  };
-}
-
-/**
- * @link https://core.telegram.org/type/UserStories
- */
-export type UserStories = UserStories.userStories;
-
-export namespace UserStories {
-  export type userStories = {
-    _: 'userStories',
-    flags?: number,
-    user_id: string | number,
-    max_read_id?: number,
-    stories: Array<StoryItem>
   };
 }
 
@@ -11293,7 +11290,8 @@ export namespace StoriesAllStories {
     }>,
     count: number,
     state: string,
-    user_stories: Array<UserStories>,
+    peer_stories: Array<PeerStories>,
+    chats: Array<Chat>,
     users: Array<User>,
     stealth_mode: StoriesStealthMode
   };
@@ -11309,19 +11307,7 @@ export namespace StoriesStories {
     _: 'stories.stories',
     count: number,
     stories: Array<StoryItem>,
-    users: Array<User>
-  };
-}
-
-/**
- * @link https://core.telegram.org/type/stories.UserStories
- */
-export type StoriesUserStories = StoriesUserStories.storiesUserStories;
-
-export namespace StoriesUserStories {
-  export type storiesUserStories = {
-    _: 'stories.userStories',
-    stories: UserStories,
+    chats: Array<Chat>,
     users: Array<User>
   };
 }
@@ -11440,7 +11426,7 @@ export namespace MediaAreaCoordinates {
 /**
  * @link https://core.telegram.org/type/MediaArea
  */
-export type MediaArea = MediaArea.mediaAreaVenue | MediaArea.inputMediaAreaVenue | MediaArea.mediaAreaGeoPoint;
+export type MediaArea = MediaArea.mediaAreaVenue | MediaArea.inputMediaAreaVenue | MediaArea.mediaAreaGeoPoint | MediaArea.mediaAreaSuggestedReaction;
 
 export namespace MediaArea {
   export type mediaAreaVenue = {
@@ -11465,6 +11451,112 @@ export namespace MediaArea {
     _: 'mediaAreaGeoPoint',
     coordinates: MediaAreaCoordinates,
     geo: GeoPoint
+  };
+
+  export type mediaAreaSuggestedReaction = {
+    _: 'mediaAreaSuggestedReaction',
+    flags?: number,
+    pFlags: Partial<{
+      dark?: true,
+      flipped?: true,
+    }>,
+    coordinates: MediaAreaCoordinates,
+    reaction: Reaction
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/PeerStories
+ */
+export type PeerStories = PeerStories.peerStories;
+
+export namespace PeerStories {
+  export type peerStories = {
+    _: 'peerStories',
+    flags?: number,
+    peer: Peer,
+    max_read_id?: number,
+    stories: Array<StoryItem>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/stories.PeerStories
+ */
+export type StoriesPeerStories = StoriesPeerStories.storiesPeerStories;
+
+export namespace StoriesPeerStories {
+  export type storiesPeerStories = {
+    _: 'stories.peerStories',
+    stories: PeerStories,
+    chats: Array<Chat>,
+    users: Array<User>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/stories.BoostsStatus
+ */
+export type StoriesBoostsStatus = StoriesBoostsStatus.storiesBoostsStatus;
+
+export namespace StoriesBoostsStatus {
+  export type storiesBoostsStatus = {
+    _: 'stories.boostsStatus',
+    flags?: number,
+    pFlags: Partial<{
+      my_boost?: true,
+    }>,
+    level: number,
+    current_level_boosts: number,
+    boosts: number,
+    next_level_boosts?: number,
+    premium_audience?: StatsPercentValue
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/stories.CanApplyBoostResult
+ */
+export type StoriesCanApplyBoostResult = StoriesCanApplyBoostResult.storiesCanApplyBoostOk | StoriesCanApplyBoostResult.storiesCanApplyBoostReplace;
+
+export namespace StoriesCanApplyBoostResult {
+  export type storiesCanApplyBoostOk = {
+    _: 'stories.canApplyBoostOk'
+  };
+
+  export type storiesCanApplyBoostReplace = {
+    _: 'stories.canApplyBoostReplace',
+    current_boost: Peer,
+    chats: Array<Chat>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/Booster
+ */
+export type Booster = Booster.booster;
+
+export namespace Booster {
+  export type booster = {
+    _: 'booster',
+    user_id: string | number,
+    expires: number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/stories.BoostersList
+ */
+export type StoriesBoostersList = StoriesBoostersList.storiesBoostersList;
+
+export namespace StoriesBoostersList {
+  export type storiesBoostersList = {
+    _: 'stories.boostersList',
+    flags?: number,
+    count: number,
+    boosters: Array<Booster>,
+    next_offset?: string,
+    users: Array<User>
   };
 }
 
@@ -12586,13 +12678,11 @@ export interface ConstructorDeclMap {
   'storyItemDeleted': StoryItem.storyItemDeleted,
   'storyItemSkipped': StoryItem.storyItemSkipped,
   'storyItem': StoryItem.storyItem,
-  'userStories': UserStories.userStories,
   'updateStory': Update.updateStory,
   'updateReadStories': Update.updateReadStories,
   'stories.allStoriesNotModified': StoriesAllStories.storiesAllStoriesNotModified,
   'stories.allStories': StoriesAllStories.storiesAllStories,
   'stories.stories': StoriesStories.storiesStories,
-  'stories.userStories': StoriesUserStories.storiesUserStories,
   'inputPrivacyValueAllowCloseFriends': InputPrivacyRule.inputPrivacyValueAllowCloseFriends,
   'privacyValueAllowCloseFriends': PrivacyRule.privacyValueAllowCloseFriends,
   'storyView': StoryView.storyView,
@@ -12613,6 +12703,14 @@ export interface ConstructorDeclMap {
   'inputMediaAreaVenue': MediaArea.inputMediaAreaVenue,
   'mediaAreaGeoPoint': MediaArea.mediaAreaGeoPoint,
   'updateSentStoryReaction': Update.updateSentStoryReaction,
+  'mediaAreaSuggestedReaction': MediaArea.mediaAreaSuggestedReaction,
+  'peerStories': PeerStories.peerStories,
+  'stories.peerStories': StoriesPeerStories.storiesPeerStories,
+  'stories.boostsStatus': StoriesBoostsStatus.storiesBoostsStatus,
+  'stories.canApplyBoostOk': StoriesCanApplyBoostResult.storiesCanApplyBoostOk,
+  'stories.canApplyBoostReplace': StoriesCanApplyBoostResult.storiesCanApplyBoostReplace,
+  'booster': Booster.booster,
+  'stories.boostersList': StoriesBoostersList.storiesBoostersList,
   'messageEntityEmoji': MessageEntity.messageEntityEmoji,
   'messageEntityHighlight': MessageEntity.messageEntityHighlight,
   'messageEntityLinebreak': MessageEntity.messageEntityLinebreak,
@@ -15608,19 +15706,15 @@ export type ContactsEditCloseFriends = {
   id: Array<string | number>
 };
 
-export type ContactsToggleStoriesHidden = {
-  id: InputUser,
-  hidden: boolean
-};
-
 export type StoriesCanSendStory = {
-
+  peer: InputPeer
 };
 
 export type StoriesSendStory = {
   flags?: number,
   pinned?: boolean,
   noforwards?: boolean,
+  peer: InputPeer,
   media: InputMedia,
   media_areas?: Array<MediaArea>,
   caption?: string,
@@ -15632,6 +15726,7 @@ export type StoriesSendStory = {
 
 export type StoriesEditStory = {
   flags?: number,
+  peer: InputPeer,
   id: number,
   media?: InputMedia,
   media_areas?: Array<MediaArea>,
@@ -15641,10 +15736,12 @@ export type StoriesEditStory = {
 };
 
 export type StoriesDeleteStories = {
+  peer: InputPeer,
   id: Array<number>
 };
 
 export type StoriesTogglePinned = {
+  peer: InputPeer,
   id: Array<number>,
   pinned: boolean
 };
@@ -15656,23 +15753,20 @@ export type StoriesGetAllStories = {
   state?: string
 };
 
-export type StoriesGetUserStories = {
-  user_id: InputUser
-};
-
 export type StoriesGetPinnedStories = {
-  user_id: InputUser,
+  peer: InputPeer,
   offset_id: number,
   limit: number
 };
 
 export type StoriesGetStoriesArchive = {
+  peer: InputPeer,
   offset_id: number,
   limit: number
 };
 
 export type StoriesGetStoriesByID = {
-  user_id: InputUser,
+  peer: InputPeer,
   id: Array<number>
 };
 
@@ -15680,17 +15774,13 @@ export type StoriesToggleAllStoriesHidden = {
   hidden: boolean
 };
 
-export type StoriesGetAllReadUserStories = {
-
-};
-
 export type StoriesReadStories = {
-  user_id: InputUser,
+  peer: InputPeer,
   max_id: number
 };
 
 export type StoriesIncrementStoryViews = {
-  user_id: InputUser,
+  peer: InputPeer,
   id: Array<number>
 };
 
@@ -15698,6 +15788,7 @@ export type StoriesGetStoryViewsList = {
   flags?: number,
   just_contacts?: boolean,
   reactions_first?: boolean,
+  peer: InputPeer,
   q?: string,
   id: number,
   offset: string,
@@ -15705,23 +15796,20 @@ export type StoriesGetStoryViewsList = {
 };
 
 export type StoriesGetStoriesViews = {
+  peer: InputPeer,
   id: Array<number>
 };
 
 export type StoriesExportStoryLink = {
-  user_id: InputUser,
+  peer: InputPeer,
   id: number
 };
 
 export type StoriesReport = {
-  user_id: InputUser,
+  peer: InputPeer,
   id: Array<number>,
   reason: ReportReason,
   message: string
-};
-
-export type UsersGetStoriesMaxIDs = {
-  id: Array<InputUser>
 };
 
 export type StoriesActivateStealthMode = {
@@ -15740,7 +15828,7 @@ export type ContactsSetBlocked = {
 export type StoriesSendReaction = {
   flags?: number,
   add_to_recent?: boolean,
-  user_id: InputUser,
+  peer: InputPeer,
   story_id: number,
   reaction: Reaction
 };
@@ -15757,6 +15845,45 @@ export type BotsInvokeWebViewCustomMethod = {
   bot: InputUser,
   custom_method: string,
   params: DataJSON
+};
+
+export type StoriesGetPeerStories = {
+  peer: InputPeer
+};
+
+export type StoriesGetAllReadPeerStories = {
+
+};
+
+export type StoriesGetPeerMaxIDs = {
+  id: Array<InputPeer>
+};
+
+export type StoriesGetChatsToSend = {
+
+};
+
+export type StoriesTogglePeerStoriesHidden = {
+  peer: InputPeer,
+  hidden: boolean
+};
+
+export type StoriesGetBoostsStatus = {
+  peer: InputPeer
+};
+
+export type StoriesGetBoostersList = {
+  peer: InputPeer,
+  offset: string,
+  limit: number
+};
+
+export type StoriesCanApplyBoost = {
+  peer: InputPeer
+};
+
+export type StoriesApplyBoost = {
+  peer: InputPeer
 };
 
 export interface MethodDeclMap {
@@ -16273,31 +16400,36 @@ export interface MethodDeclMap {
   'account.invalidateSignInCodes': {req: AccountInvalidateSignInCodes, res: boolean},
   'channels.clickSponsoredMessage': {req: ChannelsClickSponsoredMessage, res: boolean},
   'contacts.editCloseFriends': {req: ContactsEditCloseFriends, res: boolean},
-  'contacts.toggleStoriesHidden': {req: ContactsToggleStoriesHidden, res: boolean},
   'stories.canSendStory': {req: StoriesCanSendStory, res: boolean},
   'stories.sendStory': {req: StoriesSendStory, res: Updates},
   'stories.editStory': {req: StoriesEditStory, res: Updates},
   'stories.deleteStories': {req: StoriesDeleteStories, res: Array<number>},
   'stories.togglePinned': {req: StoriesTogglePinned, res: Array<number>},
   'stories.getAllStories': {req: StoriesGetAllStories, res: StoriesAllStories},
-  'stories.getUserStories': {req: StoriesGetUserStories, res: StoriesUserStories},
   'stories.getPinnedStories': {req: StoriesGetPinnedStories, res: StoriesStories},
   'stories.getStoriesArchive': {req: StoriesGetStoriesArchive, res: StoriesStories},
   'stories.getStoriesByID': {req: StoriesGetStoriesByID, res: StoriesStories},
   'stories.toggleAllStoriesHidden': {req: StoriesToggleAllStoriesHidden, res: boolean},
-  'stories.getAllReadUserStories': {req: StoriesGetAllReadUserStories, res: Updates},
   'stories.readStories': {req: StoriesReadStories, res: Array<number>},
   'stories.incrementStoryViews': {req: StoriesIncrementStoryViews, res: boolean},
   'stories.getStoryViewsList': {req: StoriesGetStoryViewsList, res: StoriesStoryViewsList},
   'stories.getStoriesViews': {req: StoriesGetStoriesViews, res: StoriesStoryViews},
   'stories.exportStoryLink': {req: StoriesExportStoryLink, res: ExportedStoryLink},
   'stories.report': {req: StoriesReport, res: boolean},
-  'users.getStoriesMaxIDs': {req: UsersGetStoriesMaxIDs, res: Array<number>},
   'stories.activateStealthMode': {req: StoriesActivateStealthMode, res: Updates},
   'contacts.setBlocked': {req: ContactsSetBlocked, res: boolean},
   'stories.sendReaction': {req: StoriesSendReaction, res: Updates},
   'bots.canSendMessage': {req: BotsCanSendMessage, res: boolean},
   'bots.allowSendMessage': {req: BotsAllowSendMessage, res: Updates},
   'bots.invokeWebViewCustomMethod': {req: BotsInvokeWebViewCustomMethod, res: DataJSON},
+  'stories.getPeerStories': {req: StoriesGetPeerStories, res: StoriesPeerStories},
+  'stories.getAllReadPeerStories': {req: StoriesGetAllReadPeerStories, res: Updates},
+  'stories.getPeerMaxIDs': {req: StoriesGetPeerMaxIDs, res: Array<number>},
+  'stories.getChatsToSend': {req: StoriesGetChatsToSend, res: MessagesChats},
+  'stories.togglePeerStoriesHidden': {req: StoriesTogglePeerStoriesHidden, res: boolean},
+  'stories.getBoostsStatus': {req: StoriesGetBoostsStatus, res: StoriesBoostsStatus},
+  'stories.getBoostersList': {req: StoriesGetBoostersList, res: StoriesBoostersList},
+  'stories.canApplyBoost': {req: StoriesCanApplyBoost, res: StoriesCanApplyBoostResult},
+  'stories.applyBoost': {req: StoriesApplyBoost, res: boolean},
 }
 

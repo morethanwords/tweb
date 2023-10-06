@@ -34,6 +34,11 @@ export class AppPeersManager extends AppManager {
     else appUsersManager.saveApiUser(instance);
   } */
 
+  public saveApiPeers(object: {chats?: Chat[], users?: User[]}) {
+    this.appChatsManager.saveApiChats(object.chats);
+    this.appUsersManager.saveApiUsers(object.users);
+  }
+
   public canPinMessage(peerId: PeerId) {
     return peerId.isUser() || this.appChatsManager.hasRights(peerId.toChatId(), 'pin_messages');
   }

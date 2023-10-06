@@ -69,7 +69,7 @@ export class AppWebPagesManager extends AppManager {
       for(const attribute of apiWebPage.attributes || []) {
         switch(attribute._) {
           case 'webPageAttributeStory': {
-            const cache = this.appStoriesManager.getPeerStoriesCache(attribute.user_id.toPeerId(false));
+            const cache = this.appStoriesManager.getPeerStoriesCache(this.appPeersManager.getPeerId(attribute.peer));
             attribute.story = this.appStoriesManager.saveStoryItem(attribute.story, cache);
             break;
           }

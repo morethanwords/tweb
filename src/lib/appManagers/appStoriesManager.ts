@@ -14,7 +14,7 @@ import deepEqual from '../../helpers/object/deepEqual';
 import safeReplaceObject from '../../helpers/object/safeReplaceObject';
 import pause from '../../helpers/schedulers/pause';
 import tsNow from '../../helpers/tsNow';
-import {Reaction, ReportReason, StoriesAllStories, StoriesStories, StoriesUserStories, StoryItem, Update, UserStories} from '../../layer';
+import {Reaction, ReportReason, StoriesAllStories, StoriesStories, StoriesPeerStories, StoryItem, Update, PeerStories, User, Chat} from '../../layer';
 import {MTAppConfig} from '../mtproto/appConfig';
 import {SERVICE_PEER_ID, TEST_NO_STORIES} from '../mtproto/mtproto_config';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
@@ -81,8 +81,8 @@ export default class AppStoriesManager extends AppManager {
       const cache = this.getPeerStoriesCache(peerId, false);
       if(!cache) {
         if(isContact && hasStories) {
-          Promise.resolve(this.getUserStories(peerId.toUserId())).then((userStories) => {
-            this.rootScope.dispatchEvent('stories_stories', userStories);
+          Promise.resolve(this.getPeerStories(peerId)).then((peerStories) => {
+            this.rootScope.dispatchEvent('stories_stories', peerStories);
           });
         }
 
@@ -96,8 +96,7 @@ export default class AppStoriesManager extends AppManager {
       }
     });
 
-    this.rootScope.addEventListener('user_stories_hidden', ({userId}) => {
-      const peerId = userId.toPeerId(false);
+    this.rootScope.addEventListener('peer_stories_hidden', ({peerId}) => {
       const cache = this.getPeerStoriesCache(peerId, false);
       if(!cache) {
         return;
@@ -182,7 +181,7 @@ export default class AppStoriesManager extends AppManager {
     const isMe = cache.peerId === this.rootScope.myId;
     const isUnread = unreadType !== 'read';
     const isChangelog = cache.peerId === this.changelogPeerId;
-    const isPremium = this.appUsersManager.isPremium(cache.peerId.toUserId());
+    const isPremium = cache.peerId.isUser() ? this.appUsersManager.isPremium(cache.peerId.toUserId()) : false;
     const index = [
       isMe,
       isUnread,
@@ -198,9 +197,9 @@ export default class AppStoriesManager extends AppManager {
       return;
     }
 
-    const user = this.appUsersManager.getUser(cache.peerId.toUserId());
+    const peer = this.appPeersManager.getPeer(cache.peerId) as User.user | Chat.channel;
     const position: StoriesListPosition = {
-      type: user.pFlags.stories_hidden ? 'archive' : 'stories',
+      type: peer.pFlags.stories_hidden ? 'archive' : 'stories',
       index
     };
 
@@ -244,10 +243,10 @@ export default class AppStoriesManager extends AppManager {
     } : undefined;
   }
 
-  public convertPeerStoriesCache(cache: StoriesPeerCache): UserStories {
+  public convertPeerStoriesCache(cache: StoriesPeerCache): PeerStories {
     return {
-      _: 'userStories',
-      user_id: cache.peerId.toUserId(),
+      _: 'peerStories',
+      peer: this.appPeersManager.getOutputPeer(cache.peerId),
       stories: cache.stories.map((storyId) => cache.storiesMap.get(storyId)),
       max_read_id: cache.maxReadId
     };
@@ -372,12 +371,15 @@ export default class AppStoriesManager extends AppManager {
     });
 
     if(cache.stories.length && cacheType === StoriesCacheType.Stories) { // * fix peer missing flag
-      const user = this.appUsersManager.getUser(cache.peerId.toUserId());
-      if(!user.stories_max_id) {
-        this.appUsersManager.saveApiUsers([{
-          ...user,
+      const peer = this.getPeer(cache.peerId);
+      if(!peer.stories_max_id) {
+        const newPeer: typeof peer = {
+          ...peer,
           stories_max_id: cache.storiesMap.get(cache.stories[cache.stories.length - 1]).id
-        }]);
+        };
+
+        if(cache.peerId.isUser()) this.appUsersManager.saveApiUsers([newPeer as User.user]);
+        else this.appChatsManager.saveApiChats([newPeer as Chat.channel]);
       }
     }
 
@@ -386,8 +388,52 @@ export default class AppStoriesManager extends AppManager {
     return newStoryItems;
   }
 
+  public getPeer(peerId: PeerId) {
+    return this.appPeersManager.getPeer(peerId) as User.user | Chat.channel;
+  }
+
+  public saveApiPeerStories<T extends User.user | Chat.channel>(peer: T, oldPeer?: T) {
+    if(peer._ !== 'channel' && peer._ !== 'user') {
+      return;
+    }
+
+    const wasStories = oldPeer.stories_max_id ? true : (oldPeer.pFlags.stories_unavailable ? false : undefined);
+    let newStories = peer.stories_max_id ? true : (peer.pFlags.stories_unavailable ? false : undefined);
+    if(wasStories !== newStories) {
+      if(newStories === undefined) {
+        if(wasStories) {
+          peer.stories_max_id = oldPeer.stories_max_id;
+        }
+
+        newStories = wasStories;
+      }/*  else {
+        if(!newStories) {
+          delete peer.pFlags.stories_unavailable;
+        }
+      } */
+    }
+
+    const wasStoriesHidden = oldPeer.pFlags.stories_hidden;
+    const newStoriesHidden = peer.pFlags.stories_hidden;
+
+    return () => {
+      if(TEST_NO_STORIES) {
+        return;
+      }
+
+      const peerId = peer.id.toPeerId(peer._ !== 'user');
+      if(wasStories !== newStories && newStories !== undefined) {
+        this.rootScope.dispatchEvent('peer_stories', {peerId, available: newStories});
+      }
+
+      if(wasStoriesHidden !== newStoriesHidden) {
+        this.rootScope.dispatchEvent('peer_stories_hidden', {peerId, hidden: newStoriesHidden});
+      }
+    };
+  }
+
   public saveStoriesStories(storiesStories: StoriesStories, cache: StoriesPeerCache, cacheType?: StoriesCacheType) {
-    this.appUsersManager.saveApiUsers(storiesStories.users);
+    this.appPeersManager.saveApiPeers(storiesStories);
     const storyItems = this.saveStoryItems(storiesStories.stories, cache, cacheType) as StoryItem.storyItem[];
 
     if(TEST_NO_STORIES) {
@@ -397,16 +443,16 @@ export default class AppStoriesManager extends AppManager {
     return storyItems;
   }
 
-  public saveUserStories(userStories: UserStories) {
-    const peerId = userStories.user_id.toPeerId(false);
+  public savePeerStories(peerStories: PeerStories) {
+    const peerId = this.appPeersManager.getPeerId(peerStories.peer);
     const cache = this.getPeerStoriesCache(peerId);
 
     if(TEST_NO_STORIES) {
-      userStories.stories = [];
+      peerStories.stories = [];
     }
 
     if(TEST_SKIPPED) {
-      userStories.stories = userStories.stories.map((storyItem) => {
+      peerStories.stories = peerStories.stories.map((storyItem) => {
         return {
           _: 'storyItemSkipped',
           id: storyItem.id,
@@ -418,25 +464,25 @@ export default class AppStoriesManager extends AppManager {
     }
 
     const cacheType = this.getCacheTypeForPeerId(peerId, true);
-    cache.maxReadId = userStories.max_read_id ?? 0;
-    userStories.stories = this.saveStoryItems(userStories.stories, cache, cacheType);
+    cache.maxReadId = peerStories.max_read_id ?? 0;
+    peerStories.stories = this.saveStoryItems(peerStories.stories, cache, cacheType);
 
     if(cache.dispatchStoriesEvent) {
       delete cache.dispatchStoriesEvent;
-      this.rootScope.dispatchEvent('user_stories', {
-        userId: userStories.user_id,
+      this.rootScope.dispatchEvent('peer_stories', {
+        peerId,
         available: cache.stories.length > 0
       });
     }
 
-    return userStories;
+    return peerStories;
   }
 
   public getUnreadType(peerId: PeerId, storyId?: number, cache = this.getPeerStoriesCache(peerId)): StoriesSegment['type'] {
     storyId ??= cache.stories[cache.stories.length - 1];
     if(!storyId && !cache.dispatchStoriesEvent) {
       cache.dispatchStoriesEvent = true;
-      this.getUserStories(peerId.toUserId());
+      this.getPeerStories(peerId);
     }
 
     if(!storyId) {
@@ -449,7 +495,7 @@ export default class AppStoriesManager extends AppManager {
   public getPeerStoriesSegments(peerId: PeerId): StoriesSegments | Promise<StoriesSegments> {
     const cache = this.getPeerStoriesCache(peerId);
     if(cache.maxReadId === undefined) {
-      return callbackify(this.getUserStories(peerId.toUserId()), () => this.getPeerStoriesSegments(peerId));
+      return callbackify(this.getPeerStories(peerId), () => this.getPeerStoriesSegments(peerId));
     }
 
     if(!cache.stories.length) {
@@ -475,17 +521,18 @@ export default class AppStoriesManager extends AppManager {
     return segments;
   }
 
-  public deleteStories(ids: StoryItem['id'][]) {
+  public deleteStories(peerId: PeerId, ids: StoryItem['id'][]) {
     return this.apiManager.invokeApiSingleProcess({
       method: 'stories.deleteStories',
       params: {
+        peer: this.appPeersManager.getInputPeerById(peerId),
         id: ids
       },
       processResult: (ids) => {
         ids.forEach((id) => {
           this.apiUpdatesManager.processLocalUpdate({
             _: 'updateStory',
-            user_id: this.appPeersManager.peerId.toUserId(),
+            peer: this.appPeersManager.getOutputPeer(peerId),
             story: {
               _: 'storyItemDeleted',
               id
@@ -496,11 +543,12 @@ export default class AppStoriesManager extends AppManager {
     });
   }
 
-  public togglePinned(storyId: StoryItem['id'] | StoryItem['id'][], pinned: boolean) {
+  public togglePinned(peerId: PeerId, storyId: StoryItem['id'] | StoryItem['id'][], pinned: boolean) {
     if(!Array.isArray(storyId)) storyId = [storyId];
     return this.apiManager.invokeApiSingleProcess({
       method: 'stories.togglePinned',
       params: {
+        peer: this.appPeersManager.getInputPeerById(peerId),
         id: storyId,
         pinned
       },
@@ -546,29 +594,29 @@ export default class AppStoriesManager extends AppManager {
       },
       processResult: (storiesAllStories) => {
         assumeType<StoriesAllStories.storiesAllStories>(storiesAllStories);
-        this.appUsersManager.saveApiUsers(storiesAllStories.users);
-        storiesAllStories.user_stories = storiesAllStories.user_stories
-        .map((userStories) => this.saveUserStories(userStories))
-        .filter((userStories) => userStories.stories.length);
+        this.appPeersManager.saveApiPeers(storiesAllStories);
+        storiesAllStories.peer_stories = storiesAllStories.peer_stories
+        .map((peerStories) => this.savePeerStories(peerStories))
+        .filter((peerStories) => peerStories.stories.length);
         return storiesAllStories;
       }
     });
   }
 
-  public getUserStories(userId: UserId) {
-    const cache = this.getPeerStoriesCache(userId.toPeerId(false));
+  public getPeerStories(peerId: PeerId) {
+    const cache = this.getPeerStoriesCache(peerId);
     if(cache.maxReadId !== undefined) {
       return this.convertPeerStoriesCache(cache);
     }
 
     return this.apiManager.invokeApiSingleProcess({
-      method: 'stories.getUserStories',
+      method: 'stories.getPeerStories',
       params: {
-        user_id: this.appUsersManager.getUserInput(userId)
+        peer: this.appPeersManager.getInputPeerById(peerId)
       },
-      processResult: (userStories) => {
-        this.appUsersManager.saveApiUsers(userStories.users);
-        return this.saveUserStories(userStories.stories);
+      processResult: (storiesPeerStories) => {
+        this.appPeersManager.saveApiPeers(storiesPeerStories);
+        return this.savePeerStories(storiesPeerStories.stories);
       }
     });
   }
@@ -605,8 +653,8 @@ export default class AppStoriesManager extends AppManager {
     return storyItems;
   }
 
-  public getPinnedStories(userId: UserId, limit: number, offsetId: number = 0) {
-    const cache = this.getPeerStoriesCache(userId.toPeerId(false));
+  public getPinnedStories(peerId: PeerId, limit: number, offsetId: number = 0) {
+    const cache = this.getPeerStoriesCache(peerId);
     const slice = this.getCachedStories(cache, true, limit, offsetId);
     if(slice) {
       return slice;
@@ -615,7 +663,7 @@ export default class AppStoriesManager extends AppManager {
     return this.apiManager.invokeApiSingleProcess({
       method: 'stories.getPinnedStories',
       params: {
-        user_id: this.appUsersManager.getUserInput(userId),
+        peer: this.appPeersManager.getInputPeerById(peerId),
         limit,
         offset_id: offsetId
       },
@@ -623,8 +671,8 @@ export default class AppStoriesManager extends AppManager {
     });
   }
 
-  public getStoriesArchive(limit: number, offsetId: number = 0) {
-    const cache = this.getPeerStoriesCache(this.appPeersManager.peerId);
+  public getStoriesArchive(peerId: PeerId, limit: number, offsetId: number = 0) {
+    const cache = this.getPeerStoriesCache(peerId);
     const slice = this.getCachedStories(cache, false, limit, offsetId);
     if(slice) {
       return slice;
@@ -633,6 +681,7 @@ export default class AppStoriesManager extends AppManager {
     return this.apiManager.invokeApiSingleProcess({
       method: 'stories.getStoriesArchive',
       params: {
+        peer: this.appPeersManager.getInputPeerById(peerId),
         limit,
         offset_id: offsetId
       },
@@ -645,7 +694,7 @@ export default class AppStoriesManager extends AppManager {
       const ids = [...cache.getStoriesPromises.keys()];
 
       const promise = this.apiManager.invokeApi('stories.getStoriesByID', {
-        user_id: this.appUsersManager.getUserInput(cache.peerId.toUserId()),
+        peer: this.appPeersManager.getInputPeerById(cache.peerId),
         id: ids
       }, {floodMaxTimeout: Infinity});
 
@@ -723,7 +772,7 @@ export default class AppStoriesManager extends AppManager {
 
     this.apiUpdatesManager.processLocalUpdate({
       _: 'updateReadStories',
-      user_id: peerId.toUserId(),
+      peer: this.appPeersManager.getOutputPeer(peerId),
       max_id: maxId
     });
 
@@ -734,7 +783,7 @@ export default class AppStoriesManager extends AppManager {
     return this.apiManager.invokeApiSingleProcess({
       method: 'stories.readStories',
       params: {
-        user_id: this.appUsersManager.getUserInput(peerId.toUserId()),
+        peer: this.appPeersManager.getInputPeerById(peerId),
         max_id: maxId
       },
       processResult: () => {
@@ -746,7 +795,7 @@ export default class AppStoriesManager extends AppManager {
     return this.apiManager.invokeApiSingleProcess({
       method: 'stories.incrementStoryViews',
       params: {
-        user_id: this.appUsersManager.getUserInput(peerId.toUserId()),
+        peer: this.appPeersManager.getInputPeerById(peerId),
         id: ids
       },
       processResult: () => {
@@ -754,10 +803,11 @@ export default class AppStoriesManager extends AppManager {
     });
   }
 
-  public getStoryViewsList(id: number, limit: number, offset: string = '', q?: string, justContacts?: boolean) {
+  public getStoryViewsList(peerId: PeerId, id: number, limit: number, offset: string = '', q?: string, justContacts?: boolean) {
     return this.apiManager.invokeApiSingleProcess({
       method: 'stories.getStoryViewsList',
       params: {
+        peer: this.appPeersManager.getInputPeerById(peerId),
         id,
         limit,
         offset,
@@ -765,7 +815,7 @@ export default class AppStoriesManager extends AppManager {
         just_contacts: justContacts
       },
       processResult: (storiesStoryViews) => {
-        this.appUsersManager.saveApiUsers(storiesStoryViews.users);
+        this.appPeersManager.saveApiPeers(storiesStoryViews);
 
         return {
           count: storiesStoryViews.count,
@@ -776,14 +826,15 @@ export default class AppStoriesManager extends AppManager {
     });
   }
 
-  public getStoriesViews(ids: number[]) {
+  public getStoriesViews(peerId: PeerId, ids: number[]) {
     return this.apiManager.invokeApiSingleProcess({
       method: 'stories.getStoriesViews',
       params: {
+        peer: this.appPeersManager.getInputPeerById(peerId),
         id: ids
       },
       processResult: (storiesStoryViews) => {
-        this.appUsersManager.saveApiUsers(storiesStoryViews.users);
+        this.appPeersManager.saveApiPeers(storiesStoryViews);
 
         const cache = this.getPeerStoriesCache(this.appPeersManager.peerId);
         storiesStoryViews.views.forEach((views, idx) => {
@@ -808,7 +859,7 @@ export default class AppStoriesManager extends AppManager {
     return this.apiManager.invokeApiSingleProcess({
       method: 'stories.report',
       params: {
-        user_id: this.appUsersManager.getUserInput(peerId.toUserId()),
+        peer: this.appPeersManager.getInputPeerById(peerId),
         id,
         reason: {_: reason},
         message
@@ -828,7 +879,7 @@ export default class AppStoriesManager extends AppManager {
     return this.apiManager.invokeApiSingleProcess({
       method: 'stories.sendReaction',
       params: {
-        user_id: this.appUsersManager.getUserInput(peerId.toUserId()),
+        peer: this.appPeersManager.getInputPeerById(peerId),
         reaction,
         story_id: id
       },
@@ -858,6 +909,7 @@ export default class AppStoriesManager extends AppManager {
 
   public getCacheTypeForPeerId(peerId: PeerId, ignoreNoContact?: boolean) {
     if(
+      peerId.isUser() &&
       !this.appUsersManager.isContact(peerId.toUserId()) &&
       peerId !== this.changelogPeerId &&
       !ignoreNoContact
@@ -876,29 +928,30 @@ export default class AppStoriesManager extends AppManager {
   }
 
   public toggleStoriesHidden(peerId: PeerId, hidden: boolean) {
-    const userId = peerId.toUserId();
     return this.apiManager.invokeApiSingleProcess({
-      method: 'contacts.toggleStoriesHidden',
+      method: 'stories.togglePeerStoriesHidden',
       params: {
-        id: this.appUsersManager.getUserInput(userId),
+        peer: this.appPeersManager.getInputPeerById(peerId),
         hidden
       },
       processResult: () => {
-        const user = this.appUsersManager.getUser(userId);
-        const pFlags = {...user.pFlags};
+        const peer = this.getPeer(peerId);
+        const pFlags = {...peer.pFlags};
         if(hidden) pFlags.stories_hidden = true;
         else delete pFlags.stories_hidden;
-        this.appUsersManager.saveApiUsers([{
-          ...user,
+        const newPeer: typeof peer = {
+          ...peer,
           pFlags
-        }]);
+        };
+        if(peerId.isUser()) this.appUsersManager.saveApiUsers([newPeer as User.user]);
+        else this.appChatsManager.saveApiChats([newPeer as Chat.channel]);
         this.appNotificationsManager.toggleStoriesMute(peerId, hidden, true);
       }
     });
   }
 
   protected onUpdateStory = (update: Update.updateStory) => {
-    const peerId = update.user_id.toPeerId(false);
+    const peerId = this.appPeersManager.getPeerId(update.peer);
     const cache = this.getPeerStoriesCache(peerId);
     let {story} = update;
 
@@ -908,7 +961,7 @@ export default class AppStoriesManager extends AppManager {
     }
 
     if(cache.maxReadId === undefined) {
-      Promise.resolve(this.getUserStories(peerId.toUserId())).then((userStories) => {
+      Promise.resolve(this.getPeerStories(peerId)).then((userStories) => {
         this.rootScope.dispatchEvent('stories_stories', userStories);
       });
       return;
@@ -923,7 +976,7 @@ export default class AppStoriesManager extends AppManager {
   };
 
   protected onUpdateReadStories = (update: Update.updateReadStories) => {
-    const peerId = update.user_id.toPeerId(false);
+    const peerId = this.appPeersManager.getPeerId(update.peer);
     const cache = this.getPeerStoriesCache(peerId);
     cache.maxReadId = update.max_id;
     this.updateListCachePosition(cache);

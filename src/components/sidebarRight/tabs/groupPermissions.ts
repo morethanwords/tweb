@@ -185,9 +185,9 @@ export class ChatAdministratorRights extends CheckboxFields<AdministratorRightsC
     ];
 
     const manageStoriesNested: AdministratorRightsCheckboxFieldsField[] = isBroadcast && [
-      {flags: ['post_stories' as any], text: 'AdminRights.PostStories'},
-      {flags: ['edit_stories' as any], text: 'AdminRights.EditStories'},
-      {flags: ['delete_stories' as any], text: 'AdminRights.DeleteStories'}
+      {flags: ['post_stories'], text: 'AdminRights.PostStories'},
+      {flags: ['edit_stories'], text: 'AdminRights.EditStories'},
+      {flags: ['delete_stories'], text: 'AdminRights.DeleteStories'}
     ];
 
     const manageMessagesNestedKey: ChatRights = 'post_messages_nested' as any;

@@ -14,6 +14,7 @@ import {MyDocument} from '../../lib/appManagers/appDocsManager';
 import {MyDraftMessage} from '../../lib/appManagers/appDraftsManager';
 import {MyMessage} from '../../lib/appManagers/appMessagesManager';
 import isMessageRestricted from '../../lib/appManagers/utils/messages/isMessageRestricted';
+import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import I18n, {LangPackKey, i18n, UNSUPPORTED_LANG_PACK_KEY, FormatterArguments} from '../../lib/langPack';
 import {SERVICE_PEER_ID} from '../../lib/mtproto/mtproto_config';
 import parseEntities from '../../lib/richTextProcessor/parseEntities';
@@ -198,7 +199,7 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
 
         case 'messageMediaStory': {
           if(media.pFlags.via_mention) {
-            const storyPeerId = media.user_id.toPeerId(false);
+            const storyPeerId = getPeerId(media.peer);
             const isMyStory = storyPeerId === rootScope.myId;
             addPart(
               isMyStory ? 'StoryMentionYou' : 'StoryMention',

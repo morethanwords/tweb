@@ -644,7 +644,9 @@ export class SearchSelection extends AppSelection {
     this.toggleByElement(element);
   };
 
-  public onDeleteStoriesClick = async(ids = [...this.selectedMids.get(rootScope.myId)]) => {
+  public onDeleteStoriesClick = async(ids?: number[]) => {
+    const peerId = [...this.selectedMids.keys()][0];
+    ids ||= [...this.selectedMids.get(peerId)];
     await confirmationPopup({
       titleLangKey: ids.length === 1 ? 'DeleteStoryTitle' : 'DeleteStoriesTitle',
       descriptionLangKey: ids.length === 1 ? 'DeleteStorySubtitle' : 'DeleteStoriesSubtitle',
@@ -655,11 +657,13 @@ export class SearchSelection extends AppSelection {
       }
     });
     this.cancelSelection();
-    this.managers.appStoriesManager.deleteStories(ids);
+    this.managers.appStoriesManager.deleteStories(peerId, ids);
   };
 
-  public onPinClick = (ids = [...this.selectedMids.get(rootScope.myId)], pin: boolean) => {
-    const promise = this.managers.appStoriesManager.togglePinned(ids, pin);
+  public onPinClick = (ids: number[], pin: boolean) => {
+    const peerId = [...this.selectedMids.keys()][0];
+    ids ||= [...this.selectedMids.get(peerId)];
+    const promise = this.managers.appStoriesManager.togglePinned(peerId, ids, pin);
     this.cancelSelection();
     promise.then(() => {
       if(ids.length === 1) {

@@ -10,7 +10,7 @@ import {createStore, reconcile} from 'solid-js/store';
 import mediaSizes from '../../helpers/mediaSizes';
 import clamp from '../../helpers/number/clamp';
 import windowSize from '../../helpers/windowSize';
-import {StoryItem, UserStories} from '../../layer';
+import {StoryItem, PeerStories} from '../../layer';
 import StoriesCacheType from '../../lib/appManagers/utils/stories/cacheType';
 import insertStory from '../../lib/appManagers/utils/stories/insertStory';
 import rootScope, {BroadcastEvents} from '../../lib/rootScope';
@@ -19,6 +19,7 @@ import insertInDescendSortedArray from '../../helpers/array/insertInDescendSorte
 import {AnyFunction} from '../../types';
 import findAndSplice from '../../helpers/array/findAndSplice';
 import forEachReverse from '../../helpers/array/forEachReverse';
+import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 
 export type NextPrevStory = () => void;
 export type ChangeStoryParams = {
@@ -263,8 +264,8 @@ const createStoriesStore = (props: {
         });
       }
 
-      return rootScope.managers.appStoriesManager.getUserStories(peerId).then((userStories) => {
-        addUserStories([userStories]);
+      return rootScope.managers.appStoriesManager.getPeerStories(peerId).then((peerStories) => {
+        addPeerStories([peerStories]);
         return loaded = true;
       });
     }
@@ -276,7 +277,7 @@ const createStoriesStore = (props: {
     ).then((storiesAllStories) => {
       loadState = storiesAllStories.state;
       loaded = !storiesAllStories.pFlags.has_more;
-      addUserStories(storiesAllStories.user_stories);
+      addPeerStories(storiesAllStories.peer_stories);
 
       if(!loaded) {
         // pause(5000).then(load);
@@ -474,12 +475,12 @@ const createStoriesStore = (props: {
     return peers.findIndex((peer) => peer.peerId === peerId);
   };
 
-  const userStoriesToPeer = (userStories: UserStories): StoriesContextPeerState => {
+  const userStoriesToPeer = (peerStories: PeerStories): StoriesContextPeerState => {
     const peer: StoriesContextPeerState = {
       // index: 0,
-      peerId: userStories.user_id.toPeerId(false),
-      stories: userStories.stories,
-      maxReadId: userStories.max_read_id
+      peerId: getPeerId(peerStories.peer),
+      stories: peerStories.stories,
+      maxReadId: peerStories.max_read_id
     };
 
     peer.index = getPeerInitialIndex(peer);
@@ -553,8 +554,8 @@ const createStoriesStore = (props: {
     return position.type === currentListType;
   };
 
-  const addUserStories = (userStories: UserStories[]) => {
-    const peers = userStories.map(userStoriesToPeer);
+  const addPeerStories = (peerStories: PeerStories[]) => {
+    const peers = peerStories.map(userStoriesToPeer);
     addPeers(peers);
     setState({ready: true});
   };
@@ -612,13 +613,13 @@ const createStoriesStore = (props: {
     setState('peers', peerIndex, 'stories', storyIndex, reconcile(story));
   };
 
-  const onStoriesStories = (userStories: UserStories) => {
-    const peerId = userStories.user_id.toPeerId(false);
+  const onStoriesStories = (peerStories: PeerStories) => {
+    const peerId = getPeerId(peerStories.peer);
     if(!canAddPeer(peerId)) {
       return;
     }
 
-    addUserStories([userStories]);
+    addPeerStories([peerStories]);
   };
 
   const onStoryNew = ({peerId, story, cacheType, maxReadId}: BroadcastEvents['story_new']) => {

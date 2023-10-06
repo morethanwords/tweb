@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config, Reaction, AttachMenuBot, PeerSettings, StoryItem, UserStories} from '../layer';
+import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config, Reaction, AttachMenuBot, PeerSettings, StoryItem, PeerStories} from '../layer';
 import type {Dialog, ForumTopic, MessagesStorageKey, MyMessage} from './appManagers/appMessagesManager';
 import type {MyDialogFilter} from './storages/filters';
 import type {Folder} from './storages/dialogs';
@@ -38,8 +38,6 @@ export type BroadcastEvents = {
   'user_update': UserId,
   'user_auth': UserAuth,
   'user_full_update': UserId,
-  'user_stories': {userId: UserId, available: boolean},
-  'user_stories_hidden': {userId: UserId, hidden: boolean},
 
   'attach_menu_bot': AttachMenuBot,
 
@@ -52,6 +50,8 @@ export type BroadcastEvents = {
   'peer_deleted': PeerId, // left chat, deleted user dialog, left channel
   'peer_full_update': PeerId,
   'peer_settings': {peerId: PeerId, settings: PeerSettings},
+  'peer_stories': {peerId: PeerId, available: boolean},
+  'peer_stories_hidden': {peerId: PeerId, hidden: boolean},
 
   'filter_delete': MyDialogFilter,
   'filter_update': MyDialogFilter,
@@ -95,7 +95,7 @@ export type BroadcastEvents = {
   'story_deleted': {peerId: PeerId, id: number},
   'story_expired': {peerId: PeerId, id: number},
   'story_new': {peerId: PeerId, story: StoryItem, cacheType: StoriesCacheType, maxReadId: number},
-  'stories_stories': UserStories,
+  'stories_stories': PeerStories,
   'stories_read': {peerId: PeerId, maxReadId: number},
   'stories_downloaded': {peerId: PeerId, ids: number[]},
   'stories_position': {peerId: PeerId, position: StoriesListPosition},

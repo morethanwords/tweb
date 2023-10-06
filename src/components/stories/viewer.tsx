@@ -12,7 +12,7 @@ import overlayCounter from '../../helpers/overlayCounter';
 import throttle from '../../helpers/schedulers/throttle';
 import classNames from '../../helpers/string/classNames';
 import windowSize from '../../helpers/windowSize';
-import {Document, DocumentAttribute, GeoPoint, MediaArea, MessageMedia, Photo, Reaction, StoryItem, StoryView, User, UserStories} from '../../layer';
+import {Document, DocumentAttribute, GeoPoint, MediaArea, MessageMedia, Photo, Reaction, StoryItem, StoryView, User, Chat as MTChat, PeerStories} from '../../layer';
 import animationIntersector from '../animationIntersector';
 import appNavigationController, {NavigationItem} from '../appNavigationController';
 import PeerTitle from '../peerTitle';
@@ -949,18 +949,21 @@ const Stories = (props: {
     actions.pause();
     const popup = PopupPickUser.createSharingPicker(async(peerId) => {
       const storyPeerId = props.state.peerId;
-      const inputUser = await rootScope.managers.appUsersManager.getUserInput(storyPeerId.toUserId());
+      const inputPeer = await rootScope.managers.appPeersManager.getInputPeerById(storyPeerId);
       rootScope.managers.appMessagesManager.sendOther(
         peerId,
         {
           _: 'inputMediaStory',
           id: currentStory().id,
-          user_id: inputUser
+          peer: inputPeer
         }
       );
 
       showMessageSentTooltip(
-        i18n(peerId === rootScope.myId ? 'StorySharedToSavedMessages' : 'StorySharedTo', [await wrapPeerTitle({peerId})])
+        i18n(
+          peerId === rootScope.myId ? 'StorySharedToSavedMessages' : 'StorySharedTo',
+          [await wrapPeerTitle({peerId})]
+        )
       );
     });
 
@@ -1690,7 +1693,7 @@ const Stories = (props: {
   );
 
   const copyLink = () => {
-    copyTextToClipboard(`https://t.me/${getPeerActiveUsernames(user)[0]}/s/${currentStory().id}`);
+    copyTextToClipboard(`https://t.me/${getPeerActiveUsernames(peer)[0]}/s/${currentStory().id}`);
     toastNew({
       langPackKey: 'LinkCopied'
     });
@@ -1698,7 +1701,7 @@ const Stories = (props: {
 
   const topMenuOptions: Partial<Parameters<typeof createContextMenu>[0]> = {
     onOpenBefore: async() => {
-      user = await rootScope.managers.appUsersManager.getUser(props.state.peerId.toUserId());
+      peer = await rootScope.managers.appStoriesManager.getPeer(props.state.peerId);
     },
     onOpen: () => {
       wasPlaying = !stories.paused;
@@ -1939,13 +1942,13 @@ const Stories = (props: {
     });
   };
 
-  let wasPlaying = false, user: User.user, ignoreOnClose = false;
+  let wasPlaying = false, peer: User.user | MTChat.channel, ignoreOnClose = false;
   const btnMenu = ButtonMenuToggle({
     buttons: [{
       icon: 'plusround',
       text: 'Story.AddToProfile',
       onClick: () => {
-        rootScope.managers.appStoriesManager.togglePinned(currentStory().id, true).then(() => {
+        rootScope.managers.appStoriesManager.togglePinned(props.state.peerId, currentStory().id, true).then(() => {
           toastNew({langPackKey: 'StoryPinnedToProfile'});
         });
       },
@@ -1957,7 +1960,7 @@ const Stories = (props: {
       icon: 'crossround',
       text: 'Story.RemoveFromProfile',
       onClick: () => {
-        rootScope.managers.appStoriesManager.togglePinned(currentStory().id, false).then(() => {
+        rootScope.managers.appStoriesManager.togglePinned(props.state.peerId, currentStory().id, false).then(() => {
           toastNew({langPackKey: 'StoryArchivedFromProfile'});
         });
       },
@@ -1987,7 +1990,7 @@ const Stories = (props: {
         }
 
         // const appConfig = await rootScope.managers.apiManager.getAppConfig();
-        return (story.pFlags.public/*  || appConfig.stories_export_nopublic_link */) && !!getPeerActiveUsernames(user)[0];
+        return (story.pFlags.public/*  || appConfig.stories_export_nopublic_link */) && !!getPeerActiveUsernames(peer)[0];
       }
     }, {
       icon: 'download',
@@ -2023,6 +2026,7 @@ const Stories = (props: {
       text: 'Delete',
       onClick: async() => {
         const id = currentStory().id;
+        const peerId = props.state.peerId;
         ignoreOnClose = true;
         const onAnyPopupClose = bindOnAnyPopupClose(wasPlaying);
         try {
@@ -2039,7 +2043,7 @@ const Stories = (props: {
           return;
         }
 
-        rootScope.managers.appStoriesManager.deleteStories([id]);
+        rootScope.managers.appStoriesManager.deleteStories(peerId, [id]);
       },
       verify: () => props.state.peerId === rootScope.myId
     }, {
@@ -2161,6 +2165,7 @@ const Stories = (props: {
         getMoreCustom: (q) => {
           const loadCount = 50;
           return rootScope.managers.appStoriesManager.getStoryViewsList(
+            props.state.peerId,
             currentStory().id,
             loadCount,
             nextOffset,
@@ -2201,6 +2206,7 @@ const Stories = (props: {
   });
 
   const onDeleteClick = isMe && (async() => {
+    const peerId = props.state.peerId;
     const storyId = currentStory().id;
     await confirmationPopup({
       titleLangKey: 'DeleteStoryTitle',
@@ -2211,7 +2217,7 @@ const Stories = (props: {
       }
     });
 
-    rootScope.managers.appStoriesManager.deleteStories([storyId]);
+    rootScope.managers.appStoriesManager.deleteStories(peerId, [storyId]);
   });
 
   if(isMe) {
@@ -2232,7 +2238,7 @@ const Stories = (props: {
 
       const ids = Array.from(viewedStories);
       viewedStories.clear();
-      promise = rootScope.managers.appStoriesManager.getStoriesViews(ids).then(() => {
+      promise = rootScope.managers.appStoriesManager.getStoriesViews(props.state.peerId, ids).then(() => {
         promise = undefined;
       });
 
@@ -3162,15 +3168,15 @@ export const createStoriesViewerWithPeer = async(
   }
 ): Promise<void> => {
   const [, rest] = splitProps(props, ['peerId', 'id']);
-  const userStories = await rootScope.managers.appStoriesManager.getUserStories(props.peerId);
-  const storyIndex = props.id ? userStories.stories.findIndex((story) => story.id === props.id) : undefined;
+  const peerStories = await rootScope.managers.appStoriesManager.getPeerStories(props.peerId);
+  const storyIndex = props.id ? peerStories.stories.findIndex((story) => story.id === props.id) : undefined;
   if(props.id && storyIndex === -1) {
     const storyItem = await rootScope.managers.appStoriesManager.getStoryById(props.peerId, props.id);
     if(!storyItem) {
       toastNew({langPackKey: 'Story.ExpiredToast'});
       return;
     }
-    // if(storyItem) { // own story can be missed in UserStories
+    // if(storyItem) { // own story can be missed in PeerStories
     //   return createStoriesViewerWithPeer(props);
     // }
 
@@ -3186,8 +3192,8 @@ export const createStoriesViewerWithPeer = async(
     ...rest,
     peers: [{
       peerId: props.peerId,
-      stories: userStories.stories,
-      maxReadId: userStories.max_read_id,
+      stories: peerStories.stories,
+      maxReadId: peerStories.max_read_id,
       index: storyIndex
     }],
     index: 0

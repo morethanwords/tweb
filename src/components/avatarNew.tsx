@@ -9,7 +9,7 @@ import type {PeerPhotoSize} from '../lib/appManagers/appAvatarsManager';
 import type {StoriesSegment, StoriesSegments} from '../lib/appManagers/appStoriesManager';
 import {getMiddleware, type Middleware} from '../helpers/middleware';
 import deferredPromise from '../helpers/cancellablePromise';
-import {createSignal, createEffect, createMemo, onCleanup, JSX, createRoot, runWithOwner, getOwner, Show, untrack, Accessor, Signal} from 'solid-js';
+import {createSignal, createEffect, createMemo, onCleanup, JSX, createRoot, Show, Accessor} from 'solid-js';
 import rootScope from '../lib/rootScope';
 import {NULL_PEER_ID, REPLIES_PEER_ID} from '../lib/mtproto/mtproto_config';
 import {Chat, ChatPhoto, User, UserProfilePhoto} from '../layer';
@@ -74,8 +74,8 @@ rootScope.addEventListener('peer_title_edit', async(data) => {
   }
 });
 
-rootScope.addEventListener('user_stories', ({userId}) => {
-  onAvatarStoriesUpdate({peerId: userId.toPeerId(false)});
+rootScope.addEventListener('peer_stories', ({peerId}) => {
+  onAvatarStoriesUpdate({peerId});
 });
 rootScope.addEventListener('stories_read', onAvatarStoriesUpdate);
 rootScope.addEventListener('story_deleted', onAvatarStoriesUpdate);
@@ -520,7 +520,7 @@ export const AvatarNew = (props: {
     }
 
     const _isForum = !!(peer as Chat.channel)?.pFlags?.forum;
-    const storiesSegmentsResult = withStories && ((peer as User.user)?.stories_max_id || storyId) && await getStoriesSegments(peerId, storyId);
+    const storiesSegmentsResult = withStories && ((peer as User.user | Chat.channel)?.stories_max_id || storyId) && await getStoriesSegments(peerId, storyId);
     const storiesSegments = storiesSegmentsResult?.cached ? await storiesSegmentsResult.result : undefined;
     if(!middleware()) {
       return;

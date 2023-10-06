@@ -1555,7 +1555,7 @@ export class AppMessagesManager extends AppManager {
           _: 'messageMediaStory',
           id: inputMedia.id,
           pFlags: {},
-          user_id: this.appUsersManager.getUserId(inputMedia.user_id)
+          peer: this.appPeersManager.getOutputPeer(this.appPeersManager.getPeerId(inputMedia.peer))
         };
         break;
       }
@@ -3567,7 +3567,7 @@ export class AppMessagesManager extends AppManager {
       }
 
       case 'messageMediaStory': {
-        const cache = this.appStoriesManager.getPeerStoriesCache(media.user_id.toPeerId(false));
+        const cache = this.appStoriesManager.getPeerStoriesCache(this.appPeersManager.getPeerId(media.peer));
         media.story = this.appStoriesManager.saveStoryItems([media.story], cache)[0];
         break;
       }
