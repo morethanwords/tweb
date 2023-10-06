@@ -1269,6 +1269,7 @@ const lang = {
   'StoriesMovedToDialogs': 'Stories of **%s** were moved to **Chats**.',
   'StorySharedTo': 'Story forwarded to **%s**.',
   'StorySharedToSavedMessages': 'Story forwarded to **Saved Messages**',
+  'BoostLinkButton': 'BOOST',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

@@ -5081,7 +5081,8 @@ export default class ChatBubbles {
               telegram_botapp: 'Chat.Message.ViewApp',
               telegram_user: 'Chat.Message.SendMessage',
               telegram_chatlist: 'OpenChatlist',
-              telegram_story: 'OpenStory'
+              telegram_story: 'OpenStory',
+              telegram_channel_boost: 'BoostLinkButton'
             };
 
             const langPackKey = map[webPage.type] || 'OpenMessage';

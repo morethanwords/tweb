@@ -199,6 +199,7 @@ export class InternalLinkProcessor {
     type K3 = {startattach?: string, attach?: string, choose?: TelegramChoosePeerType};
     type K4 = {startapp?: string};
     type K5 = {story?: string};
+    type K6 = {boost?: string};
 
     addAnchorListener<{
     //   pathnameParams: ['c', string, string],
@@ -207,12 +208,19 @@ export class InternalLinkProcessor {
     //   pathnameParams: [string, string?],
     //   uriParams: {comment?: number}
       pathnameParams: ['c', string, string] | [string, string?],
-      uriParams: K1 | K2 | K3 | K4 | K5
+      uriParams: K1 | K2 | K3 | K4 | K5 | K6
     }>({
       name: 'im',
       callback: async({pathnameParams, uriParams}, element, masked) => {
         let link: InternalLink;
-        if(pathnameParams?.[1] === 's') {
+        if('boost' in uriParams || pathnameParams?.[0] === 'boost') {
+          const channel = pathnameParams?.[0] === 'c' ? pathnameParams[1] : (uriParams as any).c;
+          link = {
+            _: INTERNAL_LINK_TYPE.BOOST,
+            domain: channel ? undefined : ('boost' in uriParams ? pathnameParams[0] : pathnameParams[1]),
+            channel
+          };
+        } else if(pathnameParams?.[1] === 's') {
           link = {
             _: INTERNAL_LINK_TYPE.STORY,
             domain: pathnameParams[0],
@@ -392,6 +400,21 @@ export class InternalLinkProcessor {
           return this.processInternalLink(link);
         }
       });
+    });
+
+    // tg://boost?channel=123 tg://boost?domain=username
+    addAnchorListener<{
+      uriParams: {
+        channel?: string,
+        domain?: string
+      }
+    }>({
+      name: 'boost',
+      protocol: 'tg',
+      callback: ({uriParams}) => {
+        const link = this.makeLink(INTERNAL_LINK_TYPE.BOOST, uriParams);
+        return this.processInternalLink(link);
+      }
     });
   }
 
