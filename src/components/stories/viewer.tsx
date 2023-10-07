@@ -72,7 +72,7 @@ import {StoriesContextPeerState, useStories, StoriesProvider} from './store';
 import createUnifiedSignal from '../../helpers/solid/createUnifiedSignal';
 import setBlankToAnchor from '../../lib/richTextProcessor/setBlankToAnchor';
 import liteMode from '../../helpers/liteMode';
-import Icon from '../icon';
+import Icon, {getIconContent} from '../icon';
 import {ChatReactionsMenu} from '../chat/reactionsMenu';
 import setCurrentTime from '../../helpers/dom/setCurrentTime';
 import ReactionElement from '../chat/reaction';
@@ -123,6 +123,15 @@ const ButtonIconTsx = (props: {icon?: Icon, noRipple?: boolean} & JSX.HTMLAttrib
     <button {...rest} class={classNames('btn-icon', props.class)} tabIndex={-1}>
       {props.icon ? Icon(props.icon) : props.children}
     </button>
+  );
+};
+
+const IconTsx = (props: {icon: Icon} & JSX.HTMLAttributes<HTMLSpanElement>) => {
+  const [, rest] = splitProps(props, ['icon']);
+  return (
+    <span {...rest} class={classNames('tgico', props.class)}>
+      {getIconContent(props.icon)}
+    </span>
   );
 };
 
@@ -328,10 +337,20 @@ export const TransitionGroup: FlowComponent<{
         return;
       }
 
+      const filtered: Element[] = [];
       for(const element of removed) {
+        if(!props.transitions.has(element)) {
+          filtered.push(element);
+          continue;
+        }
+
         exitElement(element, () => {
           finishRemoved([element]);
         });
+      }
+
+      if(filtered.length) {
+        finishRemoved(filtered);
       }
     }
   }) as unknown as JSX.Element;
@@ -492,8 +511,7 @@ const StoryInput = (props: {
   sendReaction: (reaction: Reaction, target: HTMLElement) => void,
   shareStory: () => void,
   reaction: Accessor<JSX.Element>,
-  copyStoryLink: () => void,
-  contextMenuOptions: Partial<Parameters<typeof createContextMenu>[0]>,
+  onShareButtonClick: (e: MouseEvent, listenTo: HTMLElement) => void,
   onMessageSent: () => void,
   setInputReady: Setter<boolean>,
   isFull: Accessor<boolean>
@@ -505,31 +523,6 @@ const StoryInput = (props: {
   const [recording, setRecording] = createSignal(false);
   const middlewareHelper = createMiddleware();
   const middleware = middlewareHelper.get();
-
-  createEffect(() => {
-    const reaction = (props.currentStory() as StoryItem.storyItem).sent_reaction;
-    if(!reaction) {
-      return;
-    }
-
-    const target = untrack(() => props.sendingReaction());
-    if(!target || target !== btnReactionEl) {
-      return;
-    }
-
-    ReactionElement.fireAroundAnimation({
-      middleware: createMiddleware().get(),
-      reaction,
-      sizes: {
-        genericEffect: 26,
-        genericEffectSize: 100,
-        size: 22 + 18,
-        effectSize: 80
-      },
-      stickerContainer: target,
-      cache: target as any
-    });
-  });
 
   const chat = new Chat(appImManager, rootScope.managers, false, {elements: true, sharedMedia: true});
   chat.setType('stories');
@@ -762,21 +755,7 @@ const StoryInput = (props: {
   };
 
   input.forwardStoryCallback = (e) => {
-    const story = props.currentStory() as StoryItem.storyItem;
-    if(story.pFlags.noforwards) {
-      const {open} = createContextMenu({
-        buttons: [{
-          icon: 'copy',
-          text: 'CopyLink',
-          onClick: props.copyStoryLink
-        }],
-        listenTo: input.btnSendContainer,
-        ...props.contextMenuOptions
-      });
-      open(e);
-    } else {
-      props.shareStory();
-    }
+    props.onShareButtonClick(e, input.btnSendContainer);
   };
 
   input.onRecording = (recording) => {
@@ -970,6 +949,24 @@ const Stories = (props: {
     popup.addEventListener('closeAfterTimeout', bindOnAnyPopupClose(wasPlaying));
   };
 
+  const onShareButtonClick = (e: MouseEvent, listenTo: HTMLElement) => {
+    const story = currentStory() as StoryItem.storyItem;
+    if(story.pFlags.noforwards) {
+      const {open} = createContextMenu({
+        buttons: [{
+          icon: 'link',
+          text: 'CopyLink',
+          onClick: copyLink
+        }],
+        listenTo: listenTo,
+        ...topMenuOptions
+      });
+      open(e);
+    } else {
+      onShareClick();
+    }
+  };
+
   const avatarInfo = AvatarNew({
     size: 162/* 54 */,
     peerId: props.state.peerId,
@@ -1009,7 +1006,6 @@ const Stories = (props: {
   const [inputEmpty] = inputEmptySignal;
   const [inputMenuOpen] = inputMenuOpenSignal;
   const [isPublic, setIsPublic] = isPublicSignal;
-  const [inputReady, setInputReady] = createSignal(isMe);
   const [noSound, setNoSound] = createSignal(false);
   const [sliding, setSliding] = props.transitionSignal;
   const [privacyType, setPrivacyType] = createSignal<StoryPrivacyType>();
@@ -1025,6 +1021,31 @@ const Stories = (props: {
     return expireDate <= tsNow(true);
   });
   const isActive = createMemo(() => stories.peer === props.state);
+
+  createEffect(() => {
+    const reaction = (currentStory() as StoryItem.storyItem).sent_reaction;
+    if(!reaction) {
+      return;
+    }
+
+    const target = untrack(() => sendingReaction());
+    if(!target || target === storyDiv) {
+      return;
+    }
+
+    ReactionElement.fireAroundAnimation({
+      middleware: createMiddleware().get(),
+      reaction,
+      sizes: {
+        genericEffect: 26,
+        genericEffectSize: 100,
+        size: 22 + 18,
+        effectSize: 80
+      },
+      stickerContainer: target,
+      cache: target as any
+    });
+  });
 
   const sendReaction = async(reaction: Reaction | Promise<Reaction>, target: HTMLElement) => {
     const peerId = props.state.peerId;
@@ -1409,7 +1430,7 @@ const Stories = (props: {
           class: styles.ViewerStoryContentMediaContainer
         },
         childrenClassName: styles.ViewerStoryContentMedia,
-        useBlur: 12
+        useBlur: 40
       });
 
       const onReady = () => {
@@ -1702,6 +1723,8 @@ const Stories = (props: {
   const topMenuOptions: Partial<Parameters<typeof createContextMenu>[0]> = {
     onOpenBefore: async() => {
       peer = await rootScope.managers.appStoriesManager.getPeer(props.state.peerId);
+      story = currentStory() as StoryItem.storyItem;
+      peerId = props.state.peerId;
     },
     onOpen: () => {
       wasPlaying = !stories.paused;
@@ -1891,8 +1914,11 @@ const Stories = (props: {
     });
   };
 
-  const storyInput = props.state.peerId !== CHANGELOG_PEER_ID &&
+  const needStoryInput = props.state.peerId !== CHANGELOG_PEER_ID &&
     props.state.peerId !== rootScope.myId &&
+    props.state.peerId.isUser();
+  const [inputReady, setInputReady] = createSignal(!needStoryInput);
+  const storyInput = needStoryInput &&
     <StoryInput
       {
         ...mergeProps(props, {
@@ -1906,8 +1932,7 @@ const Stories = (props: {
           isPublic,
           shareStory: onShareClick,
           reaction,
-          copyStoryLink: copyLink,
-          contextMenuOptions: topMenuOptions,
+          onShareButtonClick,
           onMessageSent: () => {
             showMessageSentTooltip(i18n('Story.Tooltip.MessageSent'), props.state.peerId);
           },
@@ -1924,13 +1949,12 @@ const Stories = (props: {
       return false;
     }
 
-    const userId = peerId.toUserId();
-    const [user, isContact] = await Promise.all([
-      rootScope.managers.appUsersManager.getUser(userId),
-      rootScope.managers.appUsersManager.isContact(userId)
+    const [peer, isSubscribed] = await Promise.all([
+      rootScope.managers.appStoriesManager.getPeer(peerId),
+      rootScope.managers.appStoriesManager.isSubcribedToPeer(peerId)
     ]);
-    const isHidden = !!user.pFlags.stories_hidden;
-    return (visible ? !isHidden : isHidden) && isContact;
+    const isHidden = !!peer.pFlags.stories_hidden;
+    return (visible ? !isHidden : isHidden) && isSubscribed;
   };
 
   const togglePeerHidden = async(hidden: boolean) => {
@@ -1942,32 +1966,43 @@ const Stories = (props: {
     });
   };
 
-  let wasPlaying = false, peer: User.user | MTChat.channel, ignoreOnClose = false;
+  const togglePinned = async(pinned: boolean) => {
+    const peerId = props.state.peerId;
+    rootScope.managers.appStoriesManager.togglePinned(peerId, currentStory().id, pinned).then(() => {
+      toastNew({
+        langPackKey: pinned ?
+          (peerId.isUser() ? 'StoryPinnedToProfile' : 'StoryPinnedToPosts') :
+          (peerId.isUser() ? 'StoryArchivedFromProfile' : 'StoryUnpinnedFromPosts')
+      });
+    });
+  };
+
+  let wasPlaying = false,
+    peer: User.user | MTChat.channel,
+    peerId: PeerId,
+    story: StoryItem.storyItem | StoryItem.storyItemSkipped,
+    ignoreOnClose = false;
   const btnMenu = ButtonMenuToggle({
     buttons: [{
       icon: 'plusround',
       text: 'Story.AddToProfile',
-      onClick: () => {
-        rootScope.managers.appStoriesManager.togglePinned(props.state.peerId, currentStory().id, true).then(() => {
-          toastNew({langPackKey: 'StoryPinnedToProfile'});
-        });
-      },
-      verify: () => {
-        const story = currentStory() as StoryItem.storyItem;
-        return props.state.peerId === rootScope.myId && !story.pFlags?.pinned;
-      }
+      onClick: () => togglePinned(true),
+      verify: () => peerId === rootScope.myId && !(story as StoryItem.storyItem).pFlags?.pinned
     }, {
       icon: 'crossround',
       text: 'Story.RemoveFromProfile',
-      onClick: () => {
-        rootScope.managers.appStoriesManager.togglePinned(props.state.peerId, currentStory().id, false).then(() => {
-          toastNew({langPackKey: 'StoryArchivedFromProfile'});
-        });
-      },
-      verify: () => {
-        const story = currentStory() as StoryItem.storyItem;
-        return props.state.peerId === rootScope.myId && !!story.pFlags?.pinned;
-      }
+      onClick: () => togglePinned(false),
+      verify: () => peerId === rootScope.myId && !!(story as StoryItem.storyItem).pFlags?.pinned
+    }, {
+      icon: 'plusround',
+      text: 'SaveToPosts',
+      onClick: () => togglePinned(true),
+      verify: () => !peerId.isUser() && !(story as StoryItem.storyItem).pFlags?.pinned && rootScope.managers.appStoriesManager.hasRights(peerId, story.id, 'pin')
+    }, {
+      icon: 'crossround',
+      text: 'RemoveFromPosts',
+      onClick: () => togglePinned(false),
+      verify: () => !peerId.isUser() && !!(story as StoryItem.storyItem).pFlags?.pinned && rootScope.managers.appStoriesManager.hasRights(peerId, story.id, 'pin')
     }, {
       icon: 'forward',
       text: 'ShareFile',
@@ -1976,15 +2011,13 @@ const Stories = (props: {
         onShareClick(wasPlaying);
       },
       verify: () => {
-        const story = currentStory();
         return !!(story as StoryItem.storyItem)?.pFlags?.public && !(story as StoryItem.storyItem).pFlags.noforwards;
       }
     }, {
-      icon: 'copy',
+      icon: 'link',
       text: 'CopyLink',
       onClick: copyLink,
       verify: () => {
-        const story = currentStory();
         if(story._ !== 'storyItem') {
           return false;
         }
@@ -2045,7 +2078,7 @@ const Stories = (props: {
 
         rootScope.managers.appStoriesManager.deleteStories(peerId, [id]);
       },
-      verify: () => props.state.peerId === rootScope.myId
+      verify: () => rootScope.managers.appStoriesManager.hasRights(peerId, story.id, 'delete')
     }, {
       icon: 'flag',
       className: 'danger',
@@ -2061,7 +2094,7 @@ const Stories = (props: {
           true
         );
       },
-      verify: () => props.state.peerId !== rootScope.myId && props.state.peerId !== CHANGELOG_PEER_ID
+      verify: () => !(story as StoryItem.storyItem).pFlags?.out && props.state.peerId !== CHANGELOG_PEER_ID
       // separator: true
     }],
     direction: 'bottom-left',
@@ -2264,8 +2297,16 @@ const Stories = (props: {
     });
   }
 
-  const footer = (isMe || CHANGELOG_PEER_ID === props.state.peerId) && (
-    <div class={classNames(styles.ViewerStoryFooter, styles.hideOnSmall, !isMe && styles.isChangelog)}>
+  let footerReactionElement: HTMLSpanElement;
+  const footer = (isMe || CHANGELOG_PEER_ID === props.state.peerId || !props.state.peerId.isUser()) && (
+    <div
+      class={classNames(
+        styles.ViewerStoryFooter,
+        styles.hideOnSmall,
+        rootScope.myId === props.state.peerId && styles.isMe,
+        CHANGELOG_PEER_ID === props.state.peerId && styles.isChangelog
+      )}
+    >
       {isMe ? (
         <>
           <div class={styles.ViewerStoryFooterLeft} onClick={openViewsList}>
@@ -2276,7 +2317,36 @@ const Stories = (props: {
             <ButtonIconTsx icon="delete" onClick={onDeleteClick} />
           </div>
         </>
-      ) : i18n('StoryCantReply')}
+      ) : (!props.state.peerId.isUser() ? (
+        <>
+          <div class={styles.ViewerStoryFooterLeft}>
+            <span class={styles.ViewerStoryFooterIcon}>
+              {Icon('eye1', styles.ViewerStoryFooterIconIcon)}
+              {(currentStory() as StoryItem.storyItem).views?.views_count || 1}
+            </span>
+          </div>
+          <div class={styles.ViewerStoryFooterRight}>
+            <ButtonIconTsx
+              icon="forward"
+              onClick={(e) => {
+                onShareButtonClick(e, e.target as HTMLElement);
+              }}
+            />
+            <span
+              ref={footerReactionElement}
+              class={classNames(
+                styles.ViewerStoryFooterIcon,
+                styles.ViewerStoryFooterReaction,
+                (currentStory() as StoryItem.storyItem).sent_reaction && styles.isReacted
+              )}
+              onClick={(e) => sendReaction({_: 'reactionEmoji', emoticon: DEFAULT_REACTION_EMOTICON}, footerReactionElement.firstElementChild as HTMLElement)}
+            >
+              <IconTsx icon={(currentStory() as StoryItem.storyItem).sent_reaction ? 'reactions_filled' : 'reactions'} class={styles.ViewerStoryFooterIconIcon}></IconTsx>
+              {(currentStory() as StoryItem.storyItem).views?.reactions_count || 0}
+            </span>
+          </div>
+        </>
+      ) : i18n('StoryCantReply'))}
     </div>
   );
 
@@ -2682,6 +2752,10 @@ export default function StoriesViewer(props: {
         }
 
         transitions.set(element, transitionSignal[0]);
+
+        onCleanup(() => {
+          transitions.delete(element);
+        });
       });
 
       return ret;
@@ -3170,7 +3244,7 @@ export const createStoriesViewerWithPeer = async(
   const [, rest] = splitProps(props, ['peerId', 'id']);
   const peerStories = await rootScope.managers.appStoriesManager.getPeerStories(props.peerId);
   const storyIndex = props.id ? peerStories.stories.findIndex((story) => story.id === props.id) : undefined;
-  if(props.id && storyIndex === -1) {
+  if(props.id) {
     const storyItem = await rootScope.managers.appStoriesManager.getStoryById(props.peerId, props.id);
     if(!storyItem) {
       toastNew({langPackKey: 'Story.ExpiredToast'});
@@ -3183,7 +3257,8 @@ export const createStoriesViewerWithPeer = async(
     createStoriesViewerWithStory({
       ...rest,
       peerId: props.peerId,
-      storyItem
+      storyItem,
+      singleStory: true
     });
     return;
   }

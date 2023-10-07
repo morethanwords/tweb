@@ -544,7 +544,17 @@ function _StoriesList(props: {
             type: 'chat'
           });
         },
-        verify: () => !isSelf
+        verify: () => !isSelf && peer.peerId.isUser()
+      }, {
+        icon: 'channel',
+        text: 'OpenChannel2',
+        onClick: () => {
+          appImManager.setInnerPeer({
+            peerId: peer.peerId,
+            type: 'chat'
+          });
+        },
+        verify: () => !peer.peerId.isUser()
       }, {
         icon: 'mute',
         text: 'NotificationsStoryMute2',

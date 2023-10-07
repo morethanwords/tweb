@@ -1270,6 +1270,11 @@ const lang = {
   'StorySharedTo': 'Story forwarded to **%s**.',
   'StorySharedToSavedMessages': 'Story forwarded to **Saved Messages**',
   'BoostLinkButton': 'BOOST',
+  'SaveToPosts': 'Post to Profile',
+  'RemoveFromPosts': 'Remove from Posts',
+  'StoryPinnedToPosts': 'Story posted to the channel page',
+  'StoryUnpinnedFromPosts': 'Story removed from the channel page',
+  'ProfileStories': 'Posts',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

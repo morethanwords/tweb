@@ -74,26 +74,11 @@ export default class AppStoriesManager extends AppManager {
     this.rootScope.addEventListener('app_config', this.setChangelogPeerIdFromAppConfig);
 
     this.rootScope.addEventListener('contacts_update', (userId) => {
-      const peerId = userId.toPeerId(false);
-      const user = this.appUsersManager.getUser(userId);
-      const isContact = this.appUsersManager.isContact(userId);
-      const hasStories = user.stories_max_id !== undefined;
-      const cache = this.getPeerStoriesCache(peerId, false);
-      if(!cache) {
-        if(isContact && hasStories) {
-          Promise.resolve(this.getPeerStories(peerId)).then((peerStories) => {
-            this.rootScope.dispatchEvent('stories_stories', peerStories);
-          });
-        }
+      this.onSubscriptionUpdate(userId.toPeerId(false));
+    });
 
-        return;
-      }
-
-      const position = cache.position;
-      this.updateListCachePosition(cache);
-      if(!position && cache.position) { // added to list
-        this.rootScope.dispatchEvent('stories_stories', this.convertPeerStoriesCache(cache));
-      }
+    this.rootScope.addEventListener('chat_participation', ({chatId}) => {
+      this.onSubscriptionUpdate(chatId.toPeerId(true));
     });
 
     this.rootScope.addEventListener('peer_stories_hidden', ({peerId}) => {
@@ -133,6 +118,32 @@ export default class AppStoriesManager extends AppManager {
     };
     this.expiring = [];
   };
+
+  private onSubscriptionUpdate(peerId: PeerId) {
+    const peer = this.getPeer(peerId);
+    if(!peer) {
+      return;
+    }
+
+    const cache = this.getPeerStoriesCache(peerId, false);
+    if(!cache) {
+      const isSubscribed = this.isSubcribedToPeer(peerId);
+      const hasStories = peer.stories_max_id !== undefined;
+      if(isSubscribed && hasStories) {
+        Promise.resolve(this.getPeerStories(peerId)).then((peerStories) => {
+          this.rootScope.dispatchEvent('stories_stories', peerStories);
+        });
+      }
+
+      return;
+    }
+
+    const position = cache.position;
+    this.updateListCachePosition(cache);
+    if(!position && cache.position) { // added to list
+      this.rootScope.dispatchEvent('stories_stories', this.convertPeerStoriesCache(cache));
+    }
+  }
 
   private checkExpired() {
     const now = tsNow(true);
@@ -872,9 +883,19 @@ export default class AppStoriesManager extends AppManager {
   public sendReaction(peerId: PeerId, id: number, reaction: Reaction) {
     reaction ??= {_: 'reactionEmpty'};
     const story = this.getStoryByIdCached(peerId, id) as StoryItem.storyItem;
+    const views = story.views;
+    const newSentReaction: Reaction = reaction._ === 'reactionEmpty' ? undefined : reaction;
+    if(views) {
+      views.reactions_count ??= 0;
+      if(!story.sent_reaction && newSentReaction) {
+        ++views.reactions_count;
+      } else if(story.sent_reaction && !newSentReaction) {
+        --views.reactions_count;
+      }
+    }
     this.saveStoryItems([{
       ...story,
-      sent_reaction: reaction._ === 'reactionEmpty' ? undefined : reaction
+      sent_reaction: newSentReaction
     }], this.getPeerStoriesCache(peerId));
     return this.apiManager.invokeApiSingleProcess({
       method: 'stories.sendReaction',
@@ -907,12 +928,21 @@ export default class AppStoriesManager extends AppManager {
     this.rootScope.dispatchEvent('story_deleted', {peerId: cache.peerId, id});
   }
 
-  public getCacheTypeForPeerId(peerId: PeerId, ignoreNoContact?: boolean) {
+  public isSubcribedToPeer(peerId: PeerId) {
+    if(peerId.isUser()) {
+      return this.appUsersManager.isContact(peerId.toUserId());
+    } else {
+      const chatId = peerId.toChatId();
+      const chat = this.appChatsManager.getChat(chatId) as Chat.channel;
+      return this.appChatsManager.isBroadcast(chatId) && !chat.pFlags.left;
+    }
+  }
+
+  public getCacheTypeForPeerId(peerId: PeerId, ignoreNoSubscription?: boolean) {
     if(
-      peerId.isUser() &&
-      !this.appUsersManager.isContact(peerId.toUserId()) &&
+      !this.isSubcribedToPeer(peerId) &&
       peerId !== this.changelogPeerId &&
-      !ignoreNoContact
+      !ignoreNoSubscription
     ) {
       return;
     }
@@ -925,6 +955,62 @@ export default class AppStoriesManager extends AppManager {
 
   public isStoryExpired(story: StoryItem.storyItemSkipped | StoryItem.storyItem) {
     return story.expire_date <= tsNow(true);
+  }
+
+  public hasRights(peerId: PeerId, storyId: number, right: 'send' | 'edit' | 'delete' | 'archive' | 'pin') {
+    if(peerId.isUser()) {
+      return this.appPeersManager.peerId === peerId;
+    }
+
+    const chatId = peerId.toChatId();
+    const story = this.getStoryByIdCached(peerId, storyId) as StoryItem.storyItem;
+    const isMyStory = !!story.pFlags.out;
+
+    const canEdit = this.appChatsManager.hasRights(chatId, 'edit_stories');
+    const canPost = this.appChatsManager.hasRights(chatId, 'post_stories');
+    const canDelete = this.appChatsManager.hasRights(chatId, 'delete_stories');
+    switch(right) {
+      case 'send': {
+        return canPost;
+      }
+
+      case 'edit': {
+        return !isMyStory ? canEdit : canPost;
+      }
+
+      case 'delete': {
+        return !isMyStory ? canDelete : canPost;
+      }
+
+      case 'archive': {
+        return canEdit;
+      }
+
+      case 'pin': {
+        return canEdit;
+      }
+
+      default: {
+        return false;
+      }
+    }
+  }
+
+  public cantPinDeleteStories(peerId: PeerId, storyIds: number[]) {
+    let cantPin = !storyIds.length, cantDelete = !storyIds.length;
+    for(const storyId of storyIds) {
+      if(!cantPin) {
+        cantPin = !this.hasRights(peerId, storyId, 'pin');
+      }
+
+      if(!cantDelete) {
+        cantDelete = !this.hasRights(peerId, storyId, 'delete');
+      }
+
+      if(cantPin && cantDelete) break;
+    }
+
+    return {cantPin, cantDelete};
   }
 
   public toggleStoriesHidden(peerId: PeerId, hidden: boolean) {

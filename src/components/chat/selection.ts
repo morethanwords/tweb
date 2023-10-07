@@ -65,7 +65,7 @@ class AppSelection extends EventListenerBase<{
   protected listenElement: HTMLElement;
 
   protected onToggleSelection: (forwards: boolean, animate: boolean) => void | Promise<void>;
-  protected onUpdateContainer: (cantForward: boolean, cantDelete: boolean, cantSend: boolean) => void;
+  protected onUpdateContainer: (cantForward: boolean, cantDelete: boolean, cantSend: boolean, cantPin: boolean) => void;
   protected onCancelSelection: () => void;
   protected toggleByMid: (peerId: PeerId, mid: number) => void;
   protected toggleByElement: (bubble: HTMLElement) => void;
@@ -379,12 +379,16 @@ class AppSelection extends EventListenerBase<{
 
     let cantForward = !size,
       cantDelete = !size,
-      cantSend = !size;
+      cantSend = !size,
+      cantPin = !size;
 
     if(this.isStories) {
       cantForward = true;
       cantSend = true;
-      cantDelete = this.selectedMids.keys().next().value !== rootScope.myId;
+      const peerId = this.selectedMids.keys().next().value;
+      const r = await this.managers.appStoriesManager.cantPinDeleteStories(peerId, Array.from(this.selectedMids.get(peerId)));
+      cantPin = r.cantPin;
+      cantDelete = r.cantDelete;
     } else for(const [peerId, mids] of this.selectedMids) {
       const storageKey = this.getStorageKey(peerId);
       const r = await this.managers.appMessagesManager.cantForwardDeleteMids(storageKey, Array.from(mids));
@@ -394,7 +398,7 @@ class AppSelection extends EventListenerBase<{
       if(cantForward && cantDelete) break;
     }
 
-    this.onUpdateContainer?.(cantForward, cantDelete, cantSend);
+    this.onUpdateContainer?.(cantForward, cantDelete, cantSend, cantPin);
   }
 
   private getStorageKey(peerId: PeerId): MessagesStorageKey {
@@ -674,10 +678,10 @@ export class SearchSelection extends AppSelection {
     });
   };
 
-  protected onUpdateContainer = (cantForward: boolean, cantDelete: boolean, cantSend: boolean) => {
+  protected onUpdateContainer = (cantForward: boolean, cantDelete: boolean, cantSend: boolean, cantPin: boolean) => {
     const length = this.length();
     replaceContent(this.selectionCountEl, i18n(this.isStories ? 'StoriesCount' : 'messages', [length]));
-    this.selectionPinBtn.classList.toggle('hide', !this.isStories || this.selectedMids.keys().next().value !== rootScope.myId);
+    this.selectionPinBtn.classList.toggle('hide', !this.isStories || cantPin);
     this.selectionGotoBtn.classList.toggle('hide', this.isStories || length !== 1);
     this.selectionForwardBtn.classList.toggle('hide', cantForward);
     this.selectionDeleteBtn && this.selectionDeleteBtn.classList.toggle('hide', cantDelete);

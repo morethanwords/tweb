@@ -127,6 +127,7 @@ const createStoriesStore = (props: {
   pinned?: boolean,
   archive?: boolean,
   onLoadCallback?: (callback: () => Promise<boolean>) => void,
+  singleStory?: boolean
 }): StoriesContextValue => {
   const getNearestStory = (
     next: boolean,
@@ -190,7 +191,7 @@ const createStoriesStore = (props: {
 
   let loadState: string, loaded: boolean;
   const [state, setState] = createStore(initialState);
-  const singlePeerId = props.peerId;
+  const singlePeerId = props.peerId || (props.peers && props.peers[0].peerId);
   const currentListType: StoriesListType = props.archive ? 'archive' : 'stories';
   const {positions, onPosition} = createPositions(new Map(globalPositions));
   const postponedPositions: Array<BroadcastEvents['stories_position']> = [];
@@ -244,7 +245,7 @@ const createStoriesStore = (props: {
         if(pinned) {
           promise = rootScope.managers.appStoriesManager.getPinnedStories(peerId, loadCount, offsetId);
         } else {
-          promise = rootScope.managers.appStoriesManager.getStoriesArchive(loadCount, offsetId);
+          promise = rootScope.managers.appStoriesManager.getStoriesArchive(peerId, loadCount, offsetId);
         }
         return promise.then((storyItems) => {
           if(!offsetId) {
@@ -627,6 +628,10 @@ const createStoriesStore = (props: {
       return;
     }
 
+    if(props.pinned && !(story as StoryItem.storyItem).pFlags?.pinned) {
+      return;
+    }
+
     const peerIndex = getPeerIndex(peerId);
     if(peerIndex === -1) {
       const peer: StoriesContextPeerState = {
@@ -749,9 +754,11 @@ const createStoriesStore = (props: {
   if(!props.archive && !props.pinned) {
     listenerSetter.add(rootScope)('story_expired', onStoryDeleted);
   }
-  if((!props.archive || !singlePeerId) && !props.pinned) {
-    listenerSetter.add(rootScope)('stories_stories', onStoriesStories);
+  if(!props.singleStory) {
     listenerSetter.add(rootScope)('story_new', onStoryNew);
+  }
+  if(!singlePeerId) {
+    listenerSetter.add(rootScope)('stories_stories', onStoriesStories);
     listenerSetter.add(rootScope)('stories_read', onStoriesRead);
     // listenerSetter.add(rootScope)('user_stories_hidden', onUserStoriesHidden);
     listenerSetter.add(rootScope)('stories_position', onStoriesPosition);

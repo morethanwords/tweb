@@ -109,6 +109,7 @@ export type SearchSuperMediaTab = {
   type: SearchSuperMediaType,
   contentTab?: HTMLElement,
   menuTab?: HTMLElement,
+  menuTabName?: HTMLElement;
   scroll?: {scrollTop: number, scrollHeight: number}
 };
 
@@ -165,7 +166,7 @@ class SearchContextMenu {
           !(await this.managers.appMessagesManager.canForward(this.message)));
         this.selectedMessages = !isStory && searchSuper.selection.isSelecting ? await searchSuper.selection.getSelectedMessages() : undefined;
 
-        await Promise.all(this.buttons.map(async(button) => {
+        const f = await Promise.all(this.buttons.map(async(button) => {
           let good: boolean;
 
           if(this.searchSuper.selection.isSelecting && !button.withSelection) {
@@ -175,7 +176,12 @@ class SearchContextMenu {
           }
 
           button.element.classList.toggle('hide', !good);
+          return good;
         }));
+
+        if(!f.some((v) => v)) {
+          return;
+        }
 
         item.classList.add('menu-open');
 
@@ -232,7 +238,7 @@ class SearchContextMenu {
       icon: 'select',
       text: 'Message.Context.Select',
       onClick: this.onSelectClick,
-      verify: () => !this.isSelected && (!this.storyItem || this.peerId === rootScope.myId),
+      verify: () => !this.isSelected && (!this.storyItem || this.storyItem.pFlags.out),
       withSelection: true
     }, {
       icon: 'select',
@@ -251,13 +257,23 @@ class SearchContextMenu {
       onClick: () => this.onStoryTogglePinClick(false),
       verify: () => this.storyItem && this.peerId === rootScope.myId && this.storyItem.pFlags.pinned
     }, {
+      icon: 'pin',
+      text: 'SaveToPosts',
+      onClick: () => this.onStoryTogglePinClick(true),
+      verify: () => this.storyItem && !this.peerId.isUser() && !this.storyItem.pFlags.pinned && this.managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
+    }, {
+      icon: 'unpin',
+      text: 'RemoveFromPosts',
+      onClick: () => this.onStoryTogglePinClick(false),
+      verify: () => this.storyItem && !this.peerId.isUser() && this.storyItem.pFlags.pinned && this.managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'pin')
+    }, {
       icon: 'delete',
       className: 'danger',
       text: 'Delete',
       onClick: this.onDeleteClick,
       verify: () => {
         if(this.storyItem) {
-          return this.peerId === rootScope.myId;
+          return this.managers.appStoriesManager.hasRights(this.peerId, this.storyItem.id, 'delete');
         }
 
         return !this.searchSuper.selection.isSelecting && this.managers.appMessagesManager.canDeleteMessage(this.message);
@@ -450,7 +466,7 @@ export default class AppSearchSuper {
       span.classList.add('menu-horizontal-div-item-span');
       const i = document.createElement('i');
 
-      span.append(i18n(mediaTab.name));
+      span.append(mediaTab.menuTabName = i18n(mediaTab.name));
       span.append(i);
 
       menuTab.append(span);
@@ -1761,6 +1777,9 @@ export default class AppSearchSuper {
 
     if(canViewStories) {
       firstMediaTab = storiesTab;
+
+      const newTitle = i18n(peerId.isUser() ? 'Stories' : 'ProfileStories');
+      storiesTab.menuTabName.replaceWith(storiesTab.menuTabName = newTitle);
     } else if(canViewMembers) {
       firstMediaTab = membersTab;
     }
@@ -1799,7 +1818,7 @@ export default class AppSearchSuper {
     if(peerId.isUser()) {
       findAndSplice(toLoad, (mediaTab) => mediaTab.type === 'members');
     } else {
-      findAndSpliceAll(toLoad, (mediaTab) => mediaTab.type === 'groups' || mediaTab.type === 'stories');
+      findAndSpliceAll(toLoad, (mediaTab) => mediaTab.type === 'groups');
     }
 
     if(!toLoad.length) {
@@ -1888,11 +1907,11 @@ export default class AppSearchSuper {
     return !!userFull.common_chats_count;
   }
 
-  public canViewStories() {
+  public async canViewStories() {
     return this.mediaTabsMap.has('stories') &&
-      this.searchContext.peerId.isUser() &&
+      (this.searchContext.peerId.isUser() || await this.managers.appPeersManager.isChannel(this.searchContext.peerId)) &&
       this.managers.appStoriesManager.getPinnedStories(this.searchContext.peerId, 1)
-      .then((storyItems) => !!storyItems.length);
+      .then((storyItems) => !!storyItems.length).catch(() => false);
   }
 
   public cleanup() {

@@ -5,7 +5,7 @@
  */
 
 import {splitProps, createEffect, createSignal, For, JSX, createMemo, onCleanup, untrack, createComputed, createReaction} from 'solid-js';
-import {createStoriesViewer, createStoriesViewerWithPeer} from './viewer';
+import {createStoriesViewer} from './viewer';
 import {Document, MessageMedia, Photo, StoryItem} from '../../layer';
 import {wrapStoryMedia} from './preview';
 import getMediaThumbIfNeeded from '../../helpers/getStrippedThumbIfNeeded';

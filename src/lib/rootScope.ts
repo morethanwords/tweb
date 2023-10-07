@@ -31,6 +31,7 @@ export type BroadcastEvents = {
   'chat_update': ChatId,
   'chat_toggle_forum': {chatId: ChatId, enabled: boolean},
   'chat_participant': Update.updateChannelParticipant,
+  'chat_participation': {chatId: ChatId, left: boolean},
   'chat_requests': {requestsPending: number, recentRequesters: UserId[], chatId: ChatId}
 
   'channel_update': ChatId,

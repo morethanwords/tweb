@@ -388,8 +388,27 @@ $color-inactive: rgba(255, 255, 255, .5);
         align-items: center;
       }
 
-      &Left {
+      &Icon {
+        display: flex;
+        align-items: center;
+
+        &Icon {
+          font-size: 1.5rem;
+          margin-inline-end: .375rem;
+        }
+      }
+
+      &Reaction {
+        height: 2.5rem;
+        padding: .5rem;
         cursor: pointer;
+        border-radius: $border-radius;
+
+        @include hover-global(gray, background-color, false);
+      }
+
+      &Reaction.isReacted &IconIcon {
+        color: #FF3B30;
       }
 
       :global {
@@ -404,6 +423,10 @@ $color-inactive: rgba(255, 255, 255, .5);
           --border-size: 2px;
           margin-right: .5rem;
         }
+      }
+
+      &.isMe &Left {
+        cursor: pointer;
       }
 
       &.isChangelog {
@@ -467,13 +490,15 @@ $color-inactive: rgba(255, 255, 255, .5);
     &Caption {
       $shadow-size: .75rem;
       position: absolute;
-      top: 50%;
+      // top: 50%;
+      // padding-top: 70%;
+      top: calc(100% - 320px);
+      padding-top: 264px;
       right: 0;
       bottom: 0;
       left: 0;
       height: auto;
       width: auto;
-      padding-top: 70%;
       padding-left: 1rem;
       // padding-right: 3.5rem;
       padding-right: 1rem;

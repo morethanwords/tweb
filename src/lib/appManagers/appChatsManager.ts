@@ -151,6 +151,8 @@ export class AppChatsManager extends AppManager {
         (oldChat as Chat.channel).pFlags.scam !== (chat as Chat.channel).pFlags.scam ||
         (oldChat as Chat.channel).pFlags.fake !== (chat as Chat.channel).pFlags.fake;
 
+      const changedParticipation = (oldChat as Chat.channel).pFlags.left !== (chat as Chat.channel).pFlags.left;
+
       const storiesCallback = this.appStoriesManager.saveApiPeerStories(chat as Chat.channel, oldChat as Chat.channel);
 
       safeReplaceObject(oldChat, chat);
@@ -158,6 +160,10 @@ export class AppChatsManager extends AppManager {
       this.rootScope.dispatchEvent('chat_update', chat.id);
 
       storiesCallback?.();
+
+      if(changedParticipation) {
+        this.rootScope.dispatchEvent('chat_participation', {chatId: chat.id, left: !!(chat as Chat.channel).pFlags.left});
+      }
 
       if(changedPhoto) {
         this.rootScope.dispatchEvent('avatar_update', {peerId});
