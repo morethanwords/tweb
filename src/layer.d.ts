@@ -977,7 +977,7 @@ export namespace Message {
 /**
  * @link https://core.telegram.org/type/MessageMedia
  */
-export type MessageMedia = MessageMedia.messageMediaEmpty | MessageMedia.messageMediaPhoto | MessageMedia.messageMediaGeo | MessageMedia.messageMediaContact | MessageMedia.messageMediaUnsupported | MessageMedia.messageMediaDocument | MessageMedia.messageMediaWebPage | MessageMedia.messageMediaVenue | MessageMedia.messageMediaGame | MessageMedia.messageMediaInvoice | MessageMedia.messageMediaGeoLive | MessageMedia.messageMediaPoll | MessageMedia.messageMediaDice | MessageMedia.messageMediaStory | MessageMedia.messageMediaCall | MessageMedia.messageMediaPhotoExternal | MessageMedia.messageMediaDocumentExternal;
+export type MessageMedia = MessageMedia.messageMediaEmpty | MessageMedia.messageMediaPhoto | MessageMedia.messageMediaGeo | MessageMedia.messageMediaContact | MessageMedia.messageMediaUnsupported | MessageMedia.messageMediaDocument | MessageMedia.messageMediaWebPage | MessageMedia.messageMediaVenue | MessageMedia.messageMediaGame | MessageMedia.messageMediaInvoice | MessageMedia.messageMediaGeoLive | MessageMedia.messageMediaPoll | MessageMedia.messageMediaDice | MessageMedia.messageMediaStory | MessageMedia.messageMediaGiveaway | MessageMedia.messageMediaCall | MessageMedia.messageMediaPhotoExternal | MessageMedia.messageMediaDocumentExternal;
 
 export namespace MessageMedia {
   export type messageMediaEmpty = {
@@ -1093,6 +1093,18 @@ export namespace MessageMedia {
     story?: StoryItem
   };
 
+  export type messageMediaGiveaway = {
+    _: 'messageMediaGiveaway',
+    flags?: number,
+    pFlags: Partial<{
+      only_new_subscribers?: true,
+    }>,
+    channels: Array<string | number>,
+    quantity: number,
+    months: number,
+    until_date: number
+  };
+
   export type messageMediaCall = {
     _: 'messageMediaCall',
     action?: MessageAction.messageActionPhoneCall
@@ -1112,7 +1124,7 @@ export namespace MessageMedia {
 /**
  * @link https://core.telegram.org/type/MessageAction
  */
-export type MessageAction = MessageAction.messageActionEmpty | MessageAction.messageActionChatCreate | MessageAction.messageActionChatEditTitle | MessageAction.messageActionChatEditPhoto | MessageAction.messageActionChatDeletePhoto | MessageAction.messageActionChatAddUser | MessageAction.messageActionChatDeleteUser | MessageAction.messageActionChatJoinedByLink | MessageAction.messageActionChannelCreate | MessageAction.messageActionChatMigrateTo | MessageAction.messageActionChannelMigrateFrom | MessageAction.messageActionPinMessage | MessageAction.messageActionHistoryClear | MessageAction.messageActionGameScore | MessageAction.messageActionPaymentSentMe | MessageAction.messageActionPaymentSent | MessageAction.messageActionPhoneCall | MessageAction.messageActionScreenshotTaken | MessageAction.messageActionCustomAction | MessageAction.messageActionBotAllowed | MessageAction.messageActionSecureValuesSentMe | MessageAction.messageActionSecureValuesSent | MessageAction.messageActionContactSignUp | MessageAction.messageActionGeoProximityReached | MessageAction.messageActionGroupCall | MessageAction.messageActionInviteToGroupCall | MessageAction.messageActionSetMessagesTTL | MessageAction.messageActionGroupCallScheduled | MessageAction.messageActionSetChatTheme | MessageAction.messageActionChatJoinedByRequest | MessageAction.messageActionWebViewDataSentMe | MessageAction.messageActionWebViewDataSent | MessageAction.messageActionGiftPremium | MessageAction.messageActionTopicCreate | MessageAction.messageActionTopicEdit | MessageAction.messageActionSuggestProfilePhoto | MessageAction.messageActionRequestedPeer | MessageAction.messageActionSetChatWallPaper | MessageAction.messageActionSetSameChatWallPaper | MessageAction.messageActionDiscussionStarted | MessageAction.messageActionChatLeave | MessageAction.messageActionChannelDeletePhoto | MessageAction.messageActionChannelEditTitle | MessageAction.messageActionChannelEditPhoto | MessageAction.messageActionChannelEditVideo | MessageAction.messageActionChatEditVideo | MessageAction.messageActionChatAddUsers | MessageAction.messageActionChatJoined | MessageAction.messageActionChatReturn | MessageAction.messageActionChatJoinedYou | MessageAction.messageActionChatReturnYou;
+export type MessageAction = MessageAction.messageActionEmpty | MessageAction.messageActionChatCreate | MessageAction.messageActionChatEditTitle | MessageAction.messageActionChatEditPhoto | MessageAction.messageActionChatDeletePhoto | MessageAction.messageActionChatAddUser | MessageAction.messageActionChatDeleteUser | MessageAction.messageActionChatJoinedByLink | MessageAction.messageActionChannelCreate | MessageAction.messageActionChatMigrateTo | MessageAction.messageActionChannelMigrateFrom | MessageAction.messageActionPinMessage | MessageAction.messageActionHistoryClear | MessageAction.messageActionGameScore | MessageAction.messageActionPaymentSentMe | MessageAction.messageActionPaymentSent | MessageAction.messageActionPhoneCall | MessageAction.messageActionScreenshotTaken | MessageAction.messageActionCustomAction | MessageAction.messageActionBotAllowed | MessageAction.messageActionSecureValuesSentMe | MessageAction.messageActionSecureValuesSent | MessageAction.messageActionContactSignUp | MessageAction.messageActionGeoProximityReached | MessageAction.messageActionGroupCall | MessageAction.messageActionInviteToGroupCall | MessageAction.messageActionSetMessagesTTL | MessageAction.messageActionGroupCallScheduled | MessageAction.messageActionSetChatTheme | MessageAction.messageActionChatJoinedByRequest | MessageAction.messageActionWebViewDataSentMe | MessageAction.messageActionWebViewDataSent | MessageAction.messageActionGiftPremium | MessageAction.messageActionTopicCreate | MessageAction.messageActionTopicEdit | MessageAction.messageActionSuggestProfilePhoto | MessageAction.messageActionRequestedPeer | MessageAction.messageActionSetChatWallPaper | MessageAction.messageActionSetSameChatWallPaper | MessageAction.messageActionGiftCode | MessageAction.messageActionDiscussionStarted | MessageAction.messageActionChatLeave | MessageAction.messageActionChannelDeletePhoto | MessageAction.messageActionChannelEditTitle | MessageAction.messageActionChannelEditPhoto | MessageAction.messageActionChannelEditVideo | MessageAction.messageActionChatEditVideo | MessageAction.messageActionChatAddUsers | MessageAction.messageActionChatJoined | MessageAction.messageActionChatReturn | MessageAction.messageActionChatJoinedYou | MessageAction.messageActionChatReturnYou;
 
 export namespace MessageAction {
   export type messageActionEmpty = {
@@ -1356,6 +1368,17 @@ export namespace MessageAction {
   export type messageActionSetSameChatWallPaper = {
     _: 'messageActionSetSameChatWallPaper',
     wallpaper: WallPaper
+  };
+
+  export type messageActionGiftCode = {
+    _: 'messageActionGiftCode',
+    flags?: number,
+    pFlags: Partial<{
+      via_giveaway?: true,
+    }>,
+    boost_peer?: Peer,
+    months: number,
+    slug: string
   };
 
   export type messageActionDiscussionStarted = {
@@ -5701,7 +5724,7 @@ export namespace DraftMessage {
     pFlags: Partial<{
       no_webpage?: true,
     }>,
-    reply_to_msg_id?: number,
+    reply_to?: MessageReplyHeader,
     message: string,
     entities?: Array<MessageEntity>,
     date: number
@@ -9287,9 +9310,12 @@ export namespace MessageReplyHeader {
       reply_to_scheduled?: true,
       forum_topic?: true,
     }>,
-    reply_to_msg_id: number,
+    reply_to_msg_id?: number,
     reply_to_peer_id?: Peer,
-    reply_to_top_id?: number
+    reply_header?: MessageFwdHeader,
+    reply_to_top_id?: number,
+    quote_text?: string,
+    quote_entities?: Array<MessageEntity>
   };
 
   export type messageReplyStoryHeader = {
@@ -10324,7 +10350,7 @@ export namespace AttachMenuPeerType {
 /**
  * @link https://core.telegram.org/type/InputInvoice
  */
-export type InputInvoice = InputInvoice.inputInvoiceMessage | InputInvoice.inputInvoiceSlug;
+export type InputInvoice = InputInvoice.inputInvoiceMessage | InputInvoice.inputInvoiceSlug | InputInvoice.inputInvoicePremiumGiftCode;
 
 export namespace InputInvoice {
   export type inputInvoiceMessage = {
@@ -10336,6 +10362,12 @@ export namespace InputInvoice {
   export type inputInvoiceSlug = {
     _: 'inputInvoiceSlug',
     slug: string
+  };
+
+  export type inputInvoicePremiumGiftCode = {
+    _: 'inputInvoicePremiumGiftCode',
+    purpose: InputStorePaymentPurpose,
+    option: PremiumGiftCodeOption
   };
 }
 
@@ -10388,7 +10420,7 @@ export namespace HelpPremiumPromo {
 /**
  * @link https://core.telegram.org/type/InputStorePaymentPurpose
  */
-export type InputStorePaymentPurpose = InputStorePaymentPurpose.inputStorePaymentPremiumSubscription | InputStorePaymentPurpose.inputStorePaymentGiftPremium;
+export type InputStorePaymentPurpose = InputStorePaymentPurpose.inputStorePaymentPremiumSubscription | InputStorePaymentPurpose.inputStorePaymentGiftPremium | InputStorePaymentPurpose.inputStorePaymentPremiumGiftCode | InputStorePaymentPurpose.inputStorePaymentPremiumGiveaway;
 
 export namespace InputStorePaymentPurpose {
   export type inputStorePaymentPremiumSubscription = {
@@ -10403,6 +10435,29 @@ export namespace InputStorePaymentPurpose {
   export type inputStorePaymentGiftPremium = {
     _: 'inputStorePaymentGiftPremium',
     user_id: InputUser,
+    currency: string,
+    amount: string | number
+  };
+
+  export type inputStorePaymentPremiumGiftCode = {
+    _: 'inputStorePaymentPremiumGiftCode',
+    flags?: number,
+    users: Array<InputUser>,
+    boost_peer?: InputPeer,
+    currency: string,
+    amount: string | number
+  };
+
+  export type inputStorePaymentPremiumGiveaway = {
+    _: 'inputStorePaymentPremiumGiveaway',
+    flags?: number,
+    pFlags: Partial<{
+      only_new_subscribers?: true,
+    }>,
+    boost_peer: InputPeer,
+    additional_peers?: Array<InputPeer>,
+    random_id: string | number,
+    until_date: number,
     currency: string,
     amount: string | number
   };
@@ -11371,7 +11426,10 @@ export namespace InputReplyTo {
     _: 'inputReplyToMessage',
     flags?: number,
     reply_to_msg_id: number,
-    top_msg_id?: number
+    top_msg_id?: number,
+    reply_to_peer_id?: InputPeer,
+    quote_text?: string,
+    quote_entities?: Array<MessageEntity>
   };
 
   export type inputReplyToStory = {
@@ -11510,7 +11568,8 @@ export namespace StoriesBoostsStatus {
     current_level_boosts: number,
     boosts: number,
     next_level_boosts?: number,
-    premium_audience?: StatsPercentValue
+    premium_audience?: StatsPercentValue,
+    boost_url: string
   };
 }
 
@@ -11557,6 +11616,92 @@ export namespace StoriesBoostersList {
     boosters: Array<Booster>,
     next_offset?: string,
     users: Array<User>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/messages.WebPage
+ */
+export type MessagesWebPage = MessagesWebPage.messagesWebPage;
+
+export namespace MessagesWebPage {
+  export type messagesWebPage = {
+    _: 'messages.webPage',
+    webpage: WebPage,
+    chats: Array<Chat>,
+    users: Array<User>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/PremiumGiftCodeOption
+ */
+export type PremiumGiftCodeOption = PremiumGiftCodeOption.premiumGiftCodeOption;
+
+export namespace PremiumGiftCodeOption {
+  export type premiumGiftCodeOption = {
+    _: 'premiumGiftCodeOption',
+    flags?: number,
+    users: number,
+    months: number,
+    store_product?: string,
+    store_quantity?: number,
+    currency: string,
+    amount: string | number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/payments.CheckedGiftCode
+ */
+export type PaymentsCheckedGiftCode = PaymentsCheckedGiftCode.paymentsCheckedGiftCode;
+
+export namespace PaymentsCheckedGiftCode {
+  export type paymentsCheckedGiftCode = {
+    _: 'payments.checkedGiftCode',
+    flags?: number,
+    pFlags: Partial<{
+      via_giveaway?: true,
+    }>,
+    from_id: Peer,
+    giveaway_msg_id?: number,
+    to_id?: string | number,
+    date: number,
+    months: number,
+    used_date?: number,
+    chats: Array<Chat>,
+    users: Array<User>
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/payments.GiveawayInfo
+ */
+export type PaymentsGiveawayInfo = PaymentsGiveawayInfo.paymentsGiveawayInfo | PaymentsGiveawayInfo.paymentsGiveawayInfoResults;
+
+export namespace PaymentsGiveawayInfo {
+  export type paymentsGiveawayInfo = {
+    _: 'payments.giveawayInfo',
+    flags?: number,
+    pFlags: Partial<{
+      participating?: true,
+      preparing_results?: true,
+    }>,
+    joined_too_early_date?: number,
+    admin_disallowed_chat_id?: string | number
+  };
+
+  export type paymentsGiveawayInfoResults = {
+    _: 'payments.giveawayInfoResults',
+    flags?: number,
+    pFlags: Partial<{
+      winner?: true,
+      refunded?: true,
+    }>,
+    gift_code_slug?: string,
+    finish_date: number,
+    winners_count: number,
+    activated_count: number
   };
 }
 
@@ -12711,6 +12856,16 @@ export interface ConstructorDeclMap {
   'stories.canApplyBoostReplace': StoriesCanApplyBoostResult.storiesCanApplyBoostReplace,
   'booster': Booster.booster,
   'stories.boostersList': StoriesBoostersList.storiesBoostersList,
+  'messages.webPage': MessagesWebPage.messagesWebPage,
+  'inputStorePaymentPremiumGiftCode': InputStorePaymentPurpose.inputStorePaymentPremiumGiftCode,
+  'inputStorePaymentPremiumGiveaway': InputStorePaymentPurpose.inputStorePaymentPremiumGiveaway,
+  'inputInvoicePremiumGiftCode': InputInvoice.inputInvoicePremiumGiftCode,
+  'premiumGiftCodeOption': PremiumGiftCodeOption.premiumGiftCodeOption,
+  'payments.checkedGiftCode': PaymentsCheckedGiftCode.paymentsCheckedGiftCode,
+  'messageMediaGiveaway': MessageMedia.messageMediaGiveaway,
+  'messageActionGiftCode': MessageAction.messageActionGiftCode,
+  'payments.giveawayInfo': PaymentsGiveawayInfo.paymentsGiveawayInfo,
+  'payments.giveawayInfoResults': PaymentsGiveawayInfo.paymentsGiveawayInfoResults,
   'messageEntityEmoji': MessageEntity.messageEntityEmoji,
   'messageEntityHighlight': MessageEntity.messageEntityHighlight,
   'messageEntityLinebreak': MessageEntity.messageEntityLinebreak,
@@ -13694,8 +13849,7 @@ export type MessagesGetPeerDialogs = {
 export type MessagesSaveDraft = {
   flags?: number,
   no_webpage?: boolean,
-  reply_to_msg_id?: number,
-  top_msg_id?: number,
+  reply_to?: InputReplyTo,
   peer: InputPeer,
   message: string,
   entities?: Array<MessageEntity>
@@ -15886,6 +16040,24 @@ export type StoriesApplyBoost = {
   peer: InputPeer
 };
 
+export type PaymentsGetPremiumGiftCodeOptions = {
+  flags?: number,
+  boost_peer?: InputPeer
+};
+
+export type PaymentsCheckGiftCode = {
+  slug: string
+};
+
+export type PaymentsApplyGiftCode = {
+  slug: string
+};
+
+export type PaymentsGetGiveawayInfo = {
+  peer: InputPeer,
+  msg_id: number
+};
+
 export interface MethodDeclMap {
   'invokeAfterMsg': {req: InvokeAfterMsg, res: any},
   'invokeAfterMsgs': {req: InvokeAfterMsgs, res: any},
@@ -16062,7 +16234,7 @@ export interface MethodDeclMap {
   'messages.getInlineGameHighScores': {req: MessagesGetInlineGameHighScores, res: MessagesHighScores},
   'messages.getCommonChats': {req: MessagesGetCommonChats, res: MessagesChats},
   'help.setBotUpdatesStatus': {req: HelpSetBotUpdatesStatus, res: boolean},
-  'messages.getWebPage': {req: MessagesGetWebPage, res: WebPage},
+  'messages.getWebPage': {req: MessagesGetWebPage, res: MessagesWebPage},
   'messages.toggleDialogPin': {req: MessagesToggleDialogPin, res: boolean},
   'messages.reorderPinnedDialogs': {req: MessagesReorderPinnedDialogs, res: boolean},
   'messages.getPinnedDialogs': {req: MessagesGetPinnedDialogs, res: MessagesPeerDialogs},
@@ -16431,5 +16603,9 @@ export interface MethodDeclMap {
   'stories.getBoostersList': {req: StoriesGetBoostersList, res: StoriesBoostersList},
   'stories.canApplyBoost': {req: StoriesCanApplyBoost, res: StoriesCanApplyBoostResult},
   'stories.applyBoost': {req: StoriesApplyBoost, res: boolean},
+  'payments.getPremiumGiftCodeOptions': {req: PaymentsGetPremiumGiftCodeOptions, res: Array<PremiumGiftCodeOption>},
+  'payments.checkGiftCode': {req: PaymentsCheckGiftCode, res: PaymentsCheckedGiftCode},
+  'payments.applyGiftCode': {req: PaymentsApplyGiftCode, res: Updates},
+  'payments.getGiveawayInfo': {req: PaymentsGetGiveawayInfo, res: PaymentsGiveawayInfo},
 }
 
