@@ -1,6 +1,7 @@
 import deepEqual from '../../../../helpers/object/deepEqual';
 import isObject from '../../../../helpers/object/isObject';
 import {DraftMessage} from '../../../../layer';
+import repliesAreEqual from '../messages/repliesAreEqual';
 
 export default function draftsAreEqual(draft1: DraftMessage, draft2: DraftMessage) {
   if(typeof(draft1) !== typeof(draft2)) {
@@ -16,7 +17,7 @@ export default function draftsAreEqual(draft1: DraftMessage, draft2: DraftMessag
   }
 
   if(draft1._ === 'draftMessage' && draft2._ === draft1._) {
-    if(draft1.reply_to_msg_id !== draft2.reply_to_msg_id) {
+    if(!repliesAreEqual(draft1.reply_to, draft2.reply_to)) {
       return false;
     }
 

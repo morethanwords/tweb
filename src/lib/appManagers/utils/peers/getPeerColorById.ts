@@ -11,7 +11,7 @@
   #ce671b     5          orange
 */
 const DialogColorsFg = ['#fc5c51', '#0fb297', '#d09306', '#3d72ed', '#895dd5', '#cd4073', '#00c1a6', '#fa790f'];
-const DialogColors = ['red', 'green', 'yellow', 'blue', 'violet', 'pink', 'cyan', 'orange'];
+const DialogColors = ['red', 'green', 'yellow', 'blue', 'violet', 'pink', 'cyan', 'orange'] as const;
 const DialogColorsMap = [0, 7, 4, 1, 6, 3, 5];
 
 export default function getPeerColorById(peerId: PeerId, pic = true) {

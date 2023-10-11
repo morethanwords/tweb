@@ -977,6 +977,8 @@
 }
 
 .range-setting-selector {
+  --option-width: 3px;
+  --option-height: 10px;
   --background-color: var(--secondary-color);
   padding: 1rem .875rem;
 
@@ -998,13 +1000,13 @@
     color: var(--secondary-text-color);
     font-size: var(--font-size-14);
     position: absolute;
-    height: 10px;
-    width: 3px;
-    top: -4px;
+    height: var(--option-height);
+    width: var(--option-width);
+    top: calc((var(--height) - var(--option-height)) / 2);
     background-color: var(--background-color);
     border-radius: 2px;
     z-index: 1;
-    margin-left: -1.5px;
+    margin-left: calc(var(--option-width) / -2);
 
     &.active {
       background-color: var(--primary-color);

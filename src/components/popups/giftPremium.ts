@@ -63,8 +63,6 @@ export default class PopupGiftPremium extends PopupElement {
 
       const isYears = !(giftOption.months % 12);
       const checkboxField = new CheckboxField({
-        // text: 'Months',
-        // textArgs: [giftOption.months],
         checked: idx === 0,
         round: true,
         name: 'gift-months',

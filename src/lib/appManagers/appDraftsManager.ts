@@ -9,7 +9,7 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import {MessageEntity, DraftMessage, MessagesSaveDraft} from '../../layer';
+import {MessageEntity, DraftMessage, MessagesSaveDraft, MessageReplyHeader, InputReplyTo} from '../../layer';
 import tsNow from '../../helpers/tsNow';
 import stateStorage from '../stateStorage';
 import assumeType from '../../helpers/assumeType';
@@ -139,7 +139,7 @@ export class AppDraftsManager extends AppManager {
       return true;
     }
 
-    if(draft.reply_to_msg_id !== undefined && draft.reply_to_msg_id > 0) {
+    if(draft.reply_to !== undefined && (draft.reply_to as MessageReplyHeader.messageReplyHeader).reply_to_msg_id > 0) {
       return false;
     }
 
@@ -155,9 +155,10 @@ export class AppDraftsManager extends AppManager {
       return undefined;
     }
 
-    if(draft.reply_to_msg_id) {
+    const replyTo = draft.reply_to as MessageReplyHeader.messageReplyHeader;
+    if(replyTo?.reply_to_msg_id) {
       const channelId = this.appPeersManager.isChannel(peerId) ? peerId.toChatId() : undefined;
-      draft.reply_to_msg_id = this.appMessagesIdsManager.generateMessageId(draft.reply_to_msg_id, channelId);
+      replyTo.reply_to_msg_id = this.appMessagesIdsManager.generateMessageId(replyTo.reply_to_msg_id, channelId);
     }
 
     return draft;
@@ -185,8 +186,12 @@ export class AppDraftsManager extends AppManager {
       const message = localDraft.message;
       const entities: MessageEntity[] = localDraft.entities;
 
-      if(localDraft.reply_to_msg_id) {
-        params.reply_to_msg_id = getServerMessageId(localDraft.reply_to_msg_id);
+      const replyTo = localDraft.reply_to as MessageReplyHeader.messageReplyHeader;
+      if(replyTo) {
+        params.reply_to = {
+          _: 'inputReplyToMessage',
+          reply_to_msg_id: getServerMessageId(replyTo.reply_to_msg_id)
+        };
       }
 
       if(entities?.length) {
@@ -201,7 +206,12 @@ export class AppDraftsManager extends AppManager {
     }
 
     if(threadId) {
-      params.top_msg_id = getServerMessageId(threadId);
+      const inputReplyTo: InputReplyTo.inputReplyToMessage = params.reply_to ??= {_: 'inputReplyToMessage'} as any;
+      if(!inputReplyTo.reply_to_msg_id) {
+        inputReplyTo.reply_to_msg_id = getServerMessageId(threadId);
+      } else {
+        inputReplyTo.top_msg_id = getServerMessageId(threadId);
+      }
     }
 
     const saveLocalDraft = draftObj || localDraft;

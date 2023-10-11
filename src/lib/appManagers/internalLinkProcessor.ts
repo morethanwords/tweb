@@ -27,6 +27,7 @@ import {INTERNAL_LINK_TYPE, InternalLinkTypeMap, InternalLink} from './internalL
 import {AppManagers} from './managers';
 import {createStoriesViewerWithPeer} from '../../components/stories/viewer';
 import {simulateClickEvent} from '../../helpers/dom/clickEvent';
+import PopupBoostsViaGifts from '../../components/popups/boostsViaGifts';
 
 export class InternalLinkProcessor {
   protected managers: AppManagers;
@@ -684,6 +685,10 @@ export class InternalLinkProcessor {
     });
   };
 
+  public processBoostLink = async(link: InternalLink.InternalLinkBoost) => {
+    PopupElement.createPopup(PopupBoostsViaGifts, -1304089532);
+  };
+
   public processInternalLink(link: InternalLink) {
     const map: {
       [key in InternalLink['_']]?: (link: any) => any
@@ -699,7 +704,8 @@ export class InternalLinkProcessor {
       [INTERNAL_LINK_TYPE.ATTACH_MENU_BOT]: this.processAttachMenuBotLink,
       [INTERNAL_LINK_TYPE.WEB_APP]: this.processWebAppLink,
       [INTERNAL_LINK_TYPE.ADD_LIST]: this.processListLink,
-      [INTERNAL_LINK_TYPE.STORY]: this.processStoryLink
+      [INTERNAL_LINK_TYPE.STORY]: this.processStoryLink,
+      [INTERNAL_LINK_TYPE.BOOST]: this.processBoostLink
     };
 
     const processor = map[link._];

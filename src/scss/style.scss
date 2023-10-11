@@ -87,6 +87,7 @@
   --font-size-16: 16px;
   --font-size-15: 15px;
   --font-size-14: 14px;
+  --font-size-13: 13px;
   --font-size-12: 12px;
   --font-size: var(--font-size-16);
   --esg-sticker-size: 72px;
@@ -408,6 +409,7 @@
 @import "partials/popups/giftPremium";
 @import "partials/popups/webApp";
 @import "partials/popups/chatlistInvite";
+@import "partials/popups/boostsViaGifts";
 
 @import "partials/pages/pages";
 @import "partials/pages/authCode";

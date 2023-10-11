@@ -17,7 +17,7 @@ import PopupCreatePoll from '../popups/createPoll';
 import PopupForward from '../popups/forward';
 import PopupNewMedia from '../popups/newMedia';
 import {toast, toastNew} from '../toast';
-import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton} from '../../layer';
+import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageReplyHeader} from '../../layer';
 import StickersHelper from './stickersHelper';
 import ButtonIcon from '../buttonIcon';
 import ButtonMenuToggle from '../buttonMenuToggle';
@@ -1487,7 +1487,11 @@ export default class ChatInput {
         pFlags: {
           no_webpage: this.noWebPage
         },
-        reply_to_msg_id: this.replyToMsgId
+        reply_to: this.replyToMsgId ? {
+          _: 'messageReplyHeader',
+          pFlags: {},
+          reply_to_msg_id: this.replyToMsgId
+        } : undefined
       };
     }
 
@@ -1593,10 +1597,11 @@ export default class ChatInput {
     const wrappedDraft = wrapDraft(draft, this.chat.peerId);
     const currentDraft = this.getCurrentInputAsDraft();
 
+    const draftReplyToMsgId = (draft.reply_to as MessageReplyHeader.messageReplyHeader)?.reply_to_msg_id;
     if(
       draftsAreEqual(draft, currentDraft) &&
       /* this.messageInputField.value === wrappedDraft &&  */
-      this.replyToMsgId === draft.reply_to_msg_id
+      this.replyToMsgId === draftReplyToMsgId
     ) {
       return false;
     }
@@ -1606,8 +1611,8 @@ export default class ChatInput {
     }
 
     this.noWebPage = draft.pFlags.no_webpage;
-    if(draft.reply_to_msg_id) {
-      this.initMessageReply(draft.reply_to_msg_id);
+    if(draftReplyToMsgId) {
+      this.initMessageReply(draftReplyToMsgId);
     }
 
     this.setInputValue(wrappedDraft, fromUpdate, fromUpdate);
