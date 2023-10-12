@@ -543,6 +543,55 @@ $color-inactive: rgba(255, 255, 255, .5);
       overflow: hidden;
       border-radius: 6px;
       z-index: 1;
+
+      &Reaction {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: unset;
+
+        &Bubbles {
+          position: absolute;
+          inset: 0;
+          background-color: #fff;
+          border-radius: 50%;
+          filter: drop-shadow(0 .125rem .25rem rgba(0, 0, 0, .1));
+          pointer-events: none;
+
+          &.dark {
+            background-color: #000;
+            opacity: .5;
+          }
+        }
+
+        &Bubble {
+          position: absolute;
+          background-color: inherit;
+          border-radius: 50%;
+          width: 24%;
+          height: 24%;
+          top: 71%;
+          left: 71%;
+
+          &.small {
+            width: 10%;
+            height: 10%;
+            top: 93%;
+            left: 93%;
+          }
+        }
+
+        &Inner {
+          position: absolute;
+          width: 72%;
+          height: 72%;
+          pointer-events: none;
+
+          :global(.media-sticker) {
+            border-radius: .625rem;
+          }
+        }
+      }
     }
 
     &Reactions {

@@ -504,11 +504,10 @@ const StoryInput = (props: {
   currentStory: Accessor<StoryItem>,
   isActive: Accessor<boolean>,
   focusedSignal: Signal<boolean>,
-  sendingReaction: Accessor<HTMLElement>,
   inputEmptySignal: Signal<boolean>,
   inputMenuOpenSignal: Signal<boolean>,
   isPublic: Accessor<boolean>,
-  sendReaction: (reaction: Reaction, target: HTMLElement) => void,
+  sendReaction: StorySendReaction,
   shareStory: () => void,
   reaction: Accessor<JSX.Element>,
   onShareButtonClick: (e: MouseEvent, listenTo: HTMLElement) => void,
@@ -532,7 +531,7 @@ const StoryInput = (props: {
     const story = props.currentStory() as StoryItem.storyItem;
     const isNewReaction = !story.sent_reaction;
     const reaction: Reaction = !isNewReaction ? undefined : {_: 'reactionEmoji', emoticon: DEFAULT_REACTION_EMOTICON};
-    props.sendReaction(reaction, btnReactionEl);
+    props.sendReaction({reaction, target: btnReactionEl});
   };
 
   let btnReactionEl: HTMLButtonElement;
@@ -888,6 +887,242 @@ const showTooltip = ({
   return {close};
 };
 
+const renderStoryReaction = async(props: {
+  reaction: Reaction,
+  uReaction: ReturnType<typeof createUnifiedSignal<JSX.Element>>,
+  div: HTMLDivElement,
+  size: number,
+  textColor: string,
+  play: boolean
+}) => {
+  let doc: Document.document;
+  const {reaction, div, size, textColor, play, uReaction} = props;
+  const isCustomEmoji = reaction._ === 'reactionCustomEmoji';
+  const middleware = createMiddleware().get();
+  uReaction(null);
+  if(isCustomEmoji) {
+    const result = await rootScope.managers.acknowledged.appEmojiManager.getCustomEmojiDocument(reaction.document_id);
+    if(!middleware()) return;
+    if(!result.cached) {
+      uReaction();
+    }
+
+    doc = await result.result;
+  } else {
+    const result = apiManagerProxy.getAvailableReactions();
+    if(result instanceof Promise) {
+      uReaction();
+    }
+    const availableReactions = await result;
+    if(!middleware()) return;
+    const availableReaction = availableReactions.find((availableReaction) => reactionsEqual(reaction, availableReaction));
+    doc = /* availableReaction.center_icon ??  */play ? availableReaction.select_animation : availableReaction.static_icon;
+  }
+
+  const loadPromises: Promise<any>[] = [];
+  await wrapSticker({
+    div,
+    doc,
+    width: size,
+    height: size,
+    play,
+    // isCustomEmoji,
+    textColor,
+    middleware,
+    loadPromises,
+    loop: play || undefined
+  });
+
+  await Promise.all(loadPromises);
+  if(!middleware()) return;
+  uReaction(div);
+};
+
+const StoryMediaArea = (props: {
+  mediaArea: MediaArea,
+  isActive: Accessor<boolean>,
+  setTooltipCloseCallback: Setter<() => void>,
+  setReady: Setter<boolean>,
+  sendReaction: StorySendReaction
+}) => {
+  const [stories, actions] = useStories();
+  const {x, y, w, h, rotation} = props.mediaArea.coordinates;
+  // const rotation = 10;
+  // const w = 100 / stories.width * 100;
+  // const h = 100 / stories.height * 100;
+  const playingMemo = createMemo((prev) => prev || (props.isActive() && stories.startTime));
+  const [children, setChildren] = createSignal<JSX.Element>();
+
+  const onLocationClick = async() => {
+    const geoPoint = (props.mediaArea as MediaArea.mediaAreaGeoPoint).geo as GeoPoint.geoPoint;
+    const href = 'https://maps.google.com/maps?q=' + geoPoint.lat + ',' + geoPoint.long;
+
+    const onAnchorClick = async(e: MouseEvent) => {
+      if(ignoreClickEvent) {
+        ignoreClickEvent = false;
+        return;
+      }
+
+      hasPopup = true;
+      cancelEvent(e);
+      try {
+        await confirmationPopup({
+          descriptionLangKey: 'Popup.OpenInGoogleMaps',
+          button: {
+            langKey: 'Open'
+          }
+        });
+      } catch(err) {
+        if(wasPlaying) {
+          actions.play();
+        }
+
+        return;
+      }
+
+      ignoreClickEvent = true;
+      a.click();
+    };
+
+    let a: HTMLAnchorElement, ignoreClickEvent = false, hasPopup: boolean;
+    const aa = (
+      <a
+        ref={a}
+        href={href}
+        onClick={onAnchorClick}
+      >
+        {i18n('StoryViewLocation')}
+      </a>
+    );
+    setBlankToAnchor(a);
+    const wasPlaying = !stories.paused;
+    actions.pause();
+    const {close} = showTooltip({
+      element: div,
+      vertical: 'top',
+      textElement: a,
+      centerVertically: !!rotation,
+      onClose: () => {
+        if(hasPopup) {
+          hasPopup = false;
+          return;
+        }
+
+        if(wasPlaying) {
+          actions.play();
+        }
+      }
+    });
+    props.setTooltipCloseCallback(() => close);
+  };
+
+  const onReactionClick = () => {
+    const mediaArea = props.mediaArea as MediaArea.mediaAreaSuggestedReaction;
+    const size = stories.width * w / 100;
+    const multiplier = 2.6875;
+    props.sendReaction({
+      reaction: mediaArea.reaction,
+      target: div,
+      sizes: {
+        genericEffect: size * 0.375,
+        genericEffectSize: size * 1.5,
+        size,
+        effectSize: size * multiplier
+      },
+      textColor: mediaArea.pFlags.dark ? 'white' : undefined,
+      fireSame: true
+    });
+  };
+
+  const onClick = (e: MouseEvent) => {
+    if(!props.isActive()) {
+      return;
+    }
+
+    cancelEvent(e);
+    onTypeClick(e);
+  };
+
+  const renderReaction = (mediaArea: MediaArea.mediaAreaSuggestedReaction) => {
+    const reaction = mediaArea.reaction;
+    const div = document.createElement('div');
+    div.classList.add(styles.ViewerStoryMediaAreaReactionInner);
+    const uReaction = createUnifiedSignal<JSX.Element>();
+    const size = stories.width * w / 100 * 0.72;
+    renderStoryReaction({
+      reaction,
+      uReaction,
+      div,
+      size,
+      textColor: mediaArea.pFlags.dark ? 'white' : undefined,
+      play: true
+    });
+
+    createEffect(() => {
+      const element = uReaction();
+      if(element === null) {
+        return;
+      }
+
+      setChildren((
+        <>
+          <div
+            class={classNames(
+              styles.ViewerStoryMediaAreaReactionBubbles,
+              mediaArea.pFlags.dark && styles.dark
+            )}
+          >
+            <div class={styles.ViewerStoryMediaAreaReactionBubble}></div>
+            <div class={classNames(styles.ViewerStoryMediaAreaReactionBubble, styles.small)}></div>
+          </div>
+          {element}
+        </>
+      ));
+      props.setReady(true);
+    });
+  };
+
+  let onTypeClick: (e: MouseEvent) => any;
+  if(props.mediaArea._ === 'mediaAreaSuggestedReaction') {
+    onTypeClick = onReactionClick;
+    renderReaction(props.mediaArea);
+  } else {
+    onTypeClick = onLocationClick;
+    props.setReady(true);
+  }
+
+  let div: HTMLDivElement;
+  return (
+    <div
+      ref={div}
+      class={classNames(
+        styles.ViewerStoryMediaArea,
+        ...(props.mediaArea._ !== 'mediaAreaSuggestedReaction' ? [
+          playingMemo() && 'shimmer',
+          'shimmer-bright',
+          'shimmer-once'
+        ] : []),
+        ...(props.mediaArea._ === 'mediaAreaSuggestedReaction' ? [
+          styles.ViewerStoryMediaAreaReaction
+        ] : [])
+      )}
+      style={`left: ${x}%; top: ${y}%; width: ${w}%; height: ${h}%; --rotate: ${rotation}deg`}
+      onClick={onClick}
+    >
+      {children()}
+    </div>
+  );
+};
+
+type StorySendReactionAnimation = {
+  reaction: Reaction | Promise<Reaction>,
+  target: HTMLElement,
+  sizes?: Parameters<(typeof ReactionElement)['fireAroundAnimation']>[0]['sizes'],
+  textColor?: string,
+  fireSame?: boolean
+};
+type StorySendReaction = (params: StorySendReactionAnimation) => void;
+
 const Stories = (props: {
   state: StoriesContextPeerState,
   index: Accessor<number>,
@@ -997,7 +1232,7 @@ const Stories = (props: {
   const [date, setDate] = createSignal<{timestamp: number, edited?: boolean}>();
   const [loading, setLoading] = createSignal(false);
   const focusedSignal = createSignal(false);
-  const sendingReactionSignal = createSignal<HTMLElement>();
+  const sendingReactionSignal = createSignal<StorySendReactionAnimation>();
   const inputEmptySignal = createSignal(true);
   const inputMenuOpenSignal = createSignal(false);
   const isPublicSignal = createSignal(false);
@@ -1021,6 +1256,29 @@ const Stories = (props: {
     return expireDate <= tsNow(true);
   });
   const isActive = createMemo(() => stories.peer === props.state);
+  const [forceReaction, setForceReaction] = createSignal(false, {equals: false});
+
+  const fireReactionAnimation = (reaction: Reaction, params = untrack(() => sendingReaction())) => {
+    if(!params || params.target === storyDiv) {
+      return;
+    }
+
+    const sizes = params.sizes ?? {
+      genericEffect: 26,
+      genericEffectSize: 100,
+      size: 22 + 18,
+      effectSize: 80
+    };
+
+    ReactionElement.fireAroundAnimation({
+      middleware: createMiddleware().get(),
+      reaction,
+      sizes,
+      stickerContainer: params.target,
+      cache: params.target as any,
+      textColor: params.textColor
+    });
+  };
 
   createEffect(() => {
     const reaction = (currentStory() as StoryItem.storyItem).sent_reaction;
@@ -1028,26 +1286,12 @@ const Stories = (props: {
       return;
     }
 
-    const target = untrack(() => sendingReaction());
-    if(!target || target === storyDiv) {
-      return;
-    }
-
-    ReactionElement.fireAroundAnimation({
-      middleware: createMiddleware().get(),
-      reaction,
-      sizes: {
-        genericEffect: 26,
-        genericEffectSize: 100,
-        size: 22 + 18,
-        effectSize: 80
-      },
-      stickerContainer: target,
-      cache: target as any
-    });
+    forceReaction();
+    fireReactionAnimation(reaction);
   });
 
-  const sendReaction = async(reaction: Reaction | Promise<Reaction>, target: HTMLElement) => {
+  const sendReaction: StorySendReaction = async(params) => {
+    let {reaction} = params;
     const peerId = props.state.peerId;
     const story = currentStory() as StoryItem.storyItem;
     const storyId = story.id;
@@ -1062,13 +1306,22 @@ const Stories = (props: {
     }
 
     const isNewReaction = !reactionsEqual(sentReaction, reaction);
-    if(!isNewReaction) {
+    if(!isNewReaction && !params.fireSame) {
       reaction = undefined;
     }
 
     setFocused(false);
-    setSendingReaction(target);
-    await rootScope.managers.acknowledged.appStoriesManager.sendReaction(peerId, storyId, reaction as Reaction);
+    setSendingReaction(params);
+
+    if(!isNewReaction && params.fireSame) {
+      setForceReaction(true);
+    }
+
+    await rootScope.managers.acknowledged.appStoriesManager.sendReaction(
+      peerId,
+      storyId,
+      unwrap(reaction as Reaction)
+    );
     setSendingReaction();
   };
 
@@ -1079,7 +1332,7 @@ const Stories = (props: {
       managers: rootScope.managers,
       type: 'horizontal',
       middleware,
-      onFinish: (reaction) => sendReaction(reaction, storyDiv),
+      onFinish: (reaction) => sendReaction({reaction, target: storyDiv}),
       size: 36,
       openSide: 'top',
       getOpenPosition: () => undefined,
@@ -1248,87 +1501,7 @@ const Stories = (props: {
     const date = story.date;
     const edited = (story as StoryItem.storyItem).pFlags.edited;
     const isPublic = !!(story as StoryItem.storyItem).pFlags.public;
-    const mediaAreas = (story as StoryItem.storyItem).media_areas && (
-      <For each={(story as StoryItem.storyItem).media_areas}>
-        {(mediaArea) => {
-          const {x, y, w, h, rotation} = mediaArea.coordinates;
-          const geoPoint = (mediaArea as MediaArea.mediaAreaGeoPoint).geo as GeoPoint.geoPoint;
-          const playingMemo = createMemo((prev) => prev || (isActive() && stories.startTime));
-          let div: HTMLDivElement;
-          return (
-            <div
-              ref={div}
-              class={classNames(styles.ViewerStoryMediaArea, playingMemo() && 'shimmer', 'shimmer-bright', 'shimmer-once')}
-              style={`left: ${x}%; top: ${y}%; width: ${w}%; height: ${h}%; --rotate: ${rotation}deg`}
-              onClick={(e) => {
-                if(!isActive()) return;
-                cancelEvent(e);
 
-                const href = 'https://maps.google.com/maps?q=' + geoPoint.lat + ',' + geoPoint.long;
-
-                let a: HTMLAnchorElement, ignoreClickEvent = false, hasPopup: boolean;
-                const aa = (
-                  <a
-                    ref={a}
-                    href={href}
-                    onClick={async(e) => {
-                      if(ignoreClickEvent) {
-                        ignoreClickEvent = false;
-                        return;
-                      }
-
-                      hasPopup = true;
-                      cancelEvent(e);
-                      try {
-                        await confirmationPopup({
-                          descriptionLangKey: 'Popup.OpenInGoogleMaps',
-                          button: {
-                            langKey: 'Open'
-                          }
-                        });
-                      } catch(err) {
-                        if(wasPlaying) {
-                          actions.play();
-                        }
-
-                        return;
-                      }
-
-                      ignoreClickEvent = true;
-                      a.click();
-                    }}
-                  >
-                    {i18n('StoryViewLocation')}
-                  </a>
-                );
-                setBlankToAnchor(a);
-                const wasPlaying = !stories.paused;
-                actions.pause();
-                const {close} = showTooltip({
-                  element: div,
-                  vertical: 'top',
-                  textElement: a,
-                  centerVertically: !!rotation,
-                  onClose: () => {
-                    if(hasPopup) {
-                      hasPopup = false;
-                      return;
-                    }
-
-                    if(wasPlaying) {
-                      actions.play();
-                    }
-                  }
-                });
-                setTooltipCloseCallback(() => close);
-              }}
-            />
-          );
-        }}
-      </For>
-    );
-
-    setMediaAreas(mediaAreas);
     setPrivacyType(privacyType);
     setDate({timestamp: date, edited});
     setNoSound(noSound);
@@ -1344,6 +1517,7 @@ const Stories = (props: {
       setContent();
       setCaption();
       setReaction();
+      setMediaAreas();
       setStoryMeta(story as StoryItem.storyItemSkipped);
       rootScope.managers.appStoriesManager.getStoryById(props.state.peerId, story.id);
       props.onReady?.();
@@ -1355,6 +1529,7 @@ const Stories = (props: {
     const uCaption = createUnifiedSignal<JSX.Element>();
     const uContent = createUnifiedSignal<JSX.Element>();
     const uReaction = createUnifiedSignal<JSX.Element>();
+    const uMediaAreas = createUnifiedSignal<JSX.Element>();
     const recentViewersMemo = isMe ? createMemo<UserId[]>((previousRecentViewers) => {
       const views = story.views;
       const recentViewers = views?.recent_viewers;
@@ -1468,66 +1643,77 @@ const Stories = (props: {
       const isDefault = isDefaultReaction(sentReaction);
       if(!sentReaction || isDefault) {
         reactionNode = Icon('reactions_filled', ...['btn-reaction-icon', isDefault && 'btn-reaction-default'].filter(Boolean));
+        uReaction(reactionNode);
       } else {
-        let doc: Document.document;
-        const isCustomEmoji = sentReaction._ === 'reactionCustomEmoji';
-        const middleware = createMiddleware().get();
-        uReaction(null);
-        if(isCustomEmoji) {
-          const result = await rootScope.managers.acknowledged.appEmojiManager.getCustomEmojiDocument(sentReaction.document_id);
-          if(!middleware()) return;
-          if(!result.cached) {
-            uReaction();
-          }
-
-          doc = await result.result;
-        } else {
-          const result = apiManagerProxy.getAvailableReactions();
-          if(result instanceof Promise) {
-            uReaction();
-          }
-          const availableReactions = await result;
-          if(!middleware()) return;
-          const availableReaction = availableReactions.find((availableReaction) => reactionsEqual(sentReaction, availableReaction));
-          doc = /* availableReaction.center_icon ??  */availableReaction.static_icon;
-        }
-
         const div = document.createElement('div');
         div.classList.add('btn-reaction-sticker', 'night');
-        const loadPromises: Promise<any>[] = [];
-        await wrapSticker({
+        renderStoryReaction({
+          reaction: sentReaction,
+          uReaction,
           div,
-          doc,
-          width: 26,
-          height: 26,
-          play: false,
-          isCustomEmoji,
+          size: 26,
           textColor: 'white',
-          middleware,
-          loadPromises
+          play: false
         });
+      }
+    });
 
-        await Promise.all(loadPromises);
-        if(!middleware()) return;
-        reactionNode = div;
+    createEffect(() => {
+      if(!(story as StoryItem.storyItem).media_areas) {
+        uMediaAreas();
+        return;
       }
 
-      uReaction(reactionNode);
+      uMediaAreas(null);
+
+      const [allReady, setAllReady] = createSignal(false);
+      const [readyCount, setReadyCount] = createSignal(0);
+      const mediaAreas = (
+        <For each={(story as StoryItem.storyItem).media_areas}>
+          {(mediaArea) => {
+            const [ready, setReady] = createSignal(false);
+
+            createReaction(() => {
+              console.log('mediaArea ready');
+              setReadyCount((count) => count + 1);
+              if(readyCount() === (story as StoryItem.storyItem).media_areas.length) {
+                setAllReady(true);
+              }
+            })(ready);
+
+            return (
+              <StoryMediaArea
+                mediaArea={mediaArea}
+                isActive={isActive}
+                setTooltipCloseCallback={setTooltipCloseCallback}
+                setReady={setReady}
+                sendReaction={sendReaction}
+              />
+            );
+          }}
+        </For>
+      );
+
+      createReaction(() => {
+        console.log('mediaAreas ready');
+        uMediaAreas(mediaAreas);
+      })(allReady);
     });
 
     createEffect(
       on(
-        () => [inputReady(), uStackedAvatars?.(), uCaption(), uContent(), uReaction?.()] as const,
+        () => [inputReady(), uStackedAvatars?.(), uCaption(), uContent(), uReaction?.(), uMediaAreas()] as const,
         ([inputReady, ...u]) => {
           if(!inputReady || u.some((v) => v === null)) {
             return;
           }
 
-          const [stackedAvatars, caption, content, reaction] = u;
+          const [stackedAvatars, caption, content, reaction, mediaAreas] = u;
           setStackedAvatars(stackedAvatars);
           setCaption(caption);
           setContent(content);
           setReaction(reaction);
+          setMediaAreas(mediaAreas);
           props.onReady?.();
 
           createEffect(() => {
@@ -1925,7 +2111,6 @@ const Stories = (props: {
           currentStory,
           isActive,
           focusedSignal,
-          sendingReaction,
           inputEmptySignal,
           inputMenuOpenSignal,
           sendReaction,
@@ -2339,7 +2524,7 @@ const Stories = (props: {
                 styles.ViewerStoryFooterReaction,
                 (currentStory() as StoryItem.storyItem).sent_reaction && styles.isReacted
               )}
-              onClick={(e) => sendReaction({_: 'reactionEmoji', emoticon: DEFAULT_REACTION_EMOTICON}, footerReactionElement.firstElementChild as HTMLElement)}
+              onClick={(e) => sendReaction({reaction: {_: 'reactionEmoji', emoticon: DEFAULT_REACTION_EMOTICON}, target: footerReactionElement.firstElementChild as HTMLElement})}
             >
               <IconTsx icon={(currentStory() as StoryItem.storyItem).sent_reaction ? 'reactions_filled' : 'reactions'} class={styles.ViewerStoryFooterIconIcon}></IconTsx>
               {(currentStory() as StoryItem.storyItem).views?.reactions_count || 0}
