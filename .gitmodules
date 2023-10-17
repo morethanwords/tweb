@@ -10,3 +10,4 @@
 [submodule "src/solid"]
 	path = src/solid
 	url = https://github.com/morethanwords/solid
+  branch = no-errors
