@@ -1179,7 +1179,7 @@ const Stories = (props: {
           [await wrapPeerTitle({peerId})]
         )
       );
-    });
+    }, ['send_media']);
 
     popup.addEventListener('closeAfterTimeout', bindOnAnyPopupClose(wasPlaying));
   };
