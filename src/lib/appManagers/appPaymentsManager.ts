@@ -4,11 +4,20 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {InputInvoice, InputPaymentCredentials, PaymentRequestedInfo, PaymentsPaymentForm} from '../../layer';
+import {HelpPremiumPromo, InputInvoice, InputPaymentCredentials, PaymentRequestedInfo, PaymentsPaymentForm} from '../../layer';
 import {AppManager} from './manager';
 import getServerMessageId from './utils/messageId/getServerMessageId';
 
 export default class AppPaymentsManager extends AppManager {
+  private premiumPromo: MaybePromise<HelpPremiumPromo>;
+
+  protected after() {
+    // * reset premium promo
+    this.rootScope.addEventListener('premium_toggle', () => {
+      this.getPremiumPromo(true);
+    });
+  }
+
   public getInputInvoiceBySlug(slug: string): InputInvoice.inputInvoiceSlug {
     return {
       _: 'inputInvoiceSlug',
@@ -83,6 +92,25 @@ export default class AppPaymentsManager extends AppManager {
     return this.apiManager.invokeApi('payments.clearSavedInfo', {
       info,
       credentials
+    });
+  }
+
+  public getPremiumPromo(overwrite?: boolean) {
+    if(overwrite && this.premiumPromo) {
+      this.premiumPromo = undefined;
+    }
+
+    return this.premiumPromo ??= this.apiManager.invokeApiSingleProcess({
+      method: 'help.getPremiumPromo',
+      params: {},
+      processResult: (helpPremiumPromo) => {
+        this.appUsersManager.saveApiUsers(helpPremiumPromo.users);
+        helpPremiumPromo.videos = helpPremiumPromo.videos.map((doc) => {
+          return this.appDocsManager.saveDoc(doc, {type: 'premiumPromo'});
+        });
+
+        return this.premiumPromo = helpPremiumPromo;
+      }
     });
   }
 }

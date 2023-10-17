@@ -6,7 +6,6 @@
 
 import {SliderSuperTab} from '../../slider';
 import ButtonMenuToggle from '../../buttonMenuToggle';
-import Button from '../../button';
 import AppPrivacyAndSecurityTab from './privacyAndSecurity';
 import AppGeneralSettingsTab from './generalSettings';
 import AppEditProfileTab from './editProfile';
@@ -30,6 +29,7 @@ import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import SettingSection from '../../settingSection';
 import AppStickersAndEmojiTab from './stickersAndEmoji';
 import ButtonCorner from '../../buttonCorner';
+import PopupPremium from '../../popups/premium';
 
 export default class AppSettingsTab extends SliderSuperTab {
   private buttons: {
@@ -44,6 +44,7 @@ export default class AppSettingsTab extends SliderSuperTab {
 
   private languageRow: Row;
   private devicesRow: Row;
+  private premiumRow: Row;
 
   private authorizations: Authorization.authorization[];
   private getAuthorizationsPromise: Promise<AccountAuthorizations.accountAuthorizations>;
@@ -197,7 +198,6 @@ export default class AppSettingsTab extends SliderSuperTab {
         },
         listenerSetter: this.listenerSetter
       }),
-
       this.languageRow = new Row({
         titleLangKey: 'AccountSettings.Language',
         titleRightSecondary: i18n('LanguageName'),
@@ -214,10 +214,28 @@ export default class AppSettingsTab extends SliderSuperTab {
     // const profileSection = new SettingSection({fullWidth: true, noPaddingTop: true});
     // profileSection.content.append(this.profile.element);
 
+    this.premiumRow = new Row({
+      titleLangKey: 'ActionGiftPremiumTitle',
+      icon: 'star',
+      iconClasses: ['row-icon-premium-color'],
+      clickable: () => {
+        PopupPremium.show();
+      },
+      listenerSetter: this.listenerSetter
+    })
+
     const buttonsSection = new SettingSection();
     buttonsSection.content.append(buttonsDiv);
 
-    this.scrollable.append(this.profile.element/* profileSection.container */, buttonsSection.container);
+    const premiumSection = new SettingSection();
+    premiumSection.content.append(this.premiumRow.container);
+
+    this.scrollable.append(
+      this.profile.element,
+      /* profileSection.container, */
+      buttonsSection.container,
+      premiumSection.container
+    );
 
     const getEditProfileArgs = () => {
       editProfileArgs = AppEditProfileTab.getInitArgs();

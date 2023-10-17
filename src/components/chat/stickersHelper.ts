@@ -71,8 +71,11 @@ export default class StickersHelper extends AutocompleteHelper {
     this.lazyLoadQueue?.clear();
 
     preloadAnimatedEmojiSticker(emoticon);
-    this.managers.appStickersManager.getStickersByEmoticon(emoticon, true, rootScope.settings.stickers.suggest === 'all')
-    .then((stickers) => {
+    this.managers.appStickersManager.getStickersByEmoticon({
+      emoticon,
+      includeOurStickers: true,
+      includeServerStickers: rootScope.settings.stickers.suggest === 'all'
+    }).then((stickers) => {
       if(!middleware()) {
         return;
       }
@@ -131,6 +134,10 @@ export default class StickersHelper extends AutocompleteHelper {
 
     this.scrollable = new Scrollable(this.container);
     this.lazyLoadQueue = new LazyLoadQueue();
-    this.superStickerRenderer = new SuperStickerRenderer(this.lazyLoadQueue, this.chat.animationGroup, this.managers);
+    this.superStickerRenderer = new SuperStickerRenderer({
+      regularLazyLoadQueue: this.lazyLoadQueue,
+      group: this.chat.animationGroup,
+      managers: this.managers
+    });
   }
 }

@@ -7,11 +7,13 @@
 import liteMode from '../../helpers/liteMode';
 import {doubleRaf} from '../../helpers/schedulers';
 import appImManager from '../../lib/appManagers/appImManager';
-import {LangPackKey, _i18n, i18n} from '../../lib/langPack';
+import {LangPackKey} from '../../lib/langPack';
 import {ApiLimitType} from '../../lib/mtproto/api_methods';
 import rootScope from '../../lib/rootScope';
 import Icon from '../icon';
 import PopupPeer from './peer';
+import LimitLine from '../limit';
+import PopupPremium from './premium';
 
 const a: {[type in ApiLimitType]?: {
   title: LangPackKey,
@@ -47,7 +49,8 @@ class P extends PopupPeer {
   constructor(options: {
     isPremium: boolean,
     limit: number,
-    limitPremium: number
+    limitPremium: number,
+    feature?: PremiumPromoFeatureType
   }, _a: typeof a[keyof typeof a]) {
     super('popup-limit', {
       buttons: options.isPremium === undefined ? [{
@@ -59,9 +62,9 @@ class P extends PopupPeer {
       }] : [{
         langKey: 'IncreaseLimit',
         callback: () => {
-          appImManager.openPremiumBot();
-        },
-        noRipple: true
+          PopupPremium.show(options.feature);
+        }
+        // noRipple: true
       }, {
         langKey: 'Cancel',
         isCancel: true
@@ -78,7 +81,7 @@ class P extends PopupPeer {
       this.element.classList.add('is-premium');
     } else {
       const button = this.buttons.find((b) => !b.isCancel);
-      button.element.classList.add('popup-limit-button', 'shimmer');
+      button.element.classList.add('popup-limit-button'/* , 'shimmer' */);
       const i = Icon('premium_double', 'popup-limit-button-icon');
       button.element.append(i);
     }
@@ -94,20 +97,7 @@ class P extends PopupPeer {
     limitContainer.append(hint);
 
     if(!isLocked) {
-      const limit = document.createElement('div');
-      limit.classList.add('limit-line');
-
-      const free = document.createElement('div');
-      free.classList.add('limit-line-free');
-
-      const premium = document.createElement('div');
-      premium.classList.add('limit-line-premium');
-
-      limit.append(free, premium);
-
-      _i18n(free, 'LimitFree');
-      premium.append(i18n('LimitPremium'), '' + options.limitPremium);
-
+      const limit = new LimitLine({limitPremium: options.limitPremium}).limit;
       limitContainer.append(limit);
     }
 
@@ -130,6 +120,13 @@ class P extends PopupPeer {
 }
 
 export default async function showLimitPopup(type: keyof typeof a) {
+  // const featureMap: {[type in keyof typeof a]?: PremiumPromoFeatureType} = {
+  //   folders: 'double_limits',
+  //   pin: 'double_limits',
+  //   chatlistInvites: 'double_limits'
+  // };
+  const feature: PremiumPromoFeatureType = 'double_limits';
+
   const _a = a[type];
   const [appConfig, limit, limitPremium] = await Promise.all([
     rootScope.managers.apiManager.getAppConfig(),
@@ -139,6 +136,8 @@ export default async function showLimitPopup(type: keyof typeof a) {
   new P({
     isPremium: isLocked ? undefined : rootScope.premium,
     limit,
-    limitPremium
+    limitPremium,
+    // feature: featureMap[type]
+    feature
   }, _a).show();
 }

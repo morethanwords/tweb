@@ -30,12 +30,13 @@ import getPrivacyRulesDetails from '../../../lib/appManagers/utils/privacy/getPr
 import PrivacyType from '../../../lib/appManagers/utils/privacy/privacyType';
 import confirmationPopup, {PopupConfirmationOptions} from '../../confirmationPopup';
 import noop from '../../../helpers/noop';
-import {toastNew} from '../../toast';
+import {hideToast, toastNew} from '../../toast';
 import AppPrivacyVoicesTab from './privacy/voices';
 import SettingSection from '../../settingSection';
 import AppActiveWebSessionsTab from './activeWebSessions';
 import PopupElement from '../../popups';
 import AppPrivacyAboutTab from './privacy/about';
+import PopupPremium from '../../popups/premium';
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;
@@ -246,7 +247,13 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         subtitleLangKey: SUBTITLE,
         clickable: () => {
           if(!rootScope.premium) {
-            toastNew({langPackKey: 'PrivacyVoiceMessagesPremiumOnly'});
+            const a = document.createElement('a');
+            a.onclick = () => {
+              hideToast();
+              a.onclick = undefined;
+              PopupPremium.show();
+            };
+            toastNew({langPackKey: 'PrivacySettings.Voice.PremiumError', langPackArguments: [a]});
           } else {
             this.slider.createTab(AppPrivacyVoicesTab).open();
           }
