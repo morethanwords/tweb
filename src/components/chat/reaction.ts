@@ -692,6 +692,10 @@ export default class ReactionElement extends HTMLElement {
       });
     }
 
+    options.middleware.onDestroy(() => {
+      options.cache.hasAroundAnimation = undefined;
+    });
+
     options.cache.hasAroundAnimation = promise;
     promise.finally(() => {
       if(options.cache.hasAroundAnimation === promise) {

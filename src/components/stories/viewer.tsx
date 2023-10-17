@@ -18,13 +18,13 @@ import appNavigationController, {NavigationItem} from '../appNavigationControlle
 import PeerTitle from '../peerTitle';
 import SwipeHandler from '../swipeHandler';
 import styles from './viewer.module.scss';
-import {createSignal, createEffect, JSX, For, Accessor, onCleanup, createMemo, mergeProps, createContext, useContext, Context, ParentComponent, splitProps, untrack, on, getOwner, runWithOwner, createRoot, ParentProps, Suspense, batch, Signal, onMount, Setter, createReaction, Show, FlowComponent, useTransition, $TRACK} from 'solid-js';
+import {createSignal, createEffect, JSX, For, Accessor, onCleanup, createMemo, mergeProps, createContext, useContext, Context, ParentComponent, splitProps, untrack, on, getOwner, runWithOwner, createRoot, ParentProps, Suspense, batch, Signal, onMount, Setter, createReaction, Show, FlowComponent, useTransition, $TRACK, Owner} from 'solid-js';
 import {unwrap} from 'solid-js/store';
 import {assign, isServer, Portal} from 'solid-js/web';
 import {Transition} from 'solid-transition-group';
 import rootScope from '../../lib/rootScope';
 import ListenerSetter from '../../helpers/listenerSetter';
-import {getMiddleware} from '../../helpers/middleware';
+import {Middleware, getMiddleware} from '../../helpers/middleware';
 import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
 import wrapMessageEntities from '../../lib/richTextProcessor/wrapMessageEntities';
 import tsNow from '../../helpers/tsNow';
@@ -90,6 +90,7 @@ import {resolveElements, resolveFirst} from '@solid-primitives/refs';
 import noop from '../../helpers/noop';
 import {Modify} from '../../types';
 import {IS_MOBILE} from '../../environment/userAgent';
+import formatNumber from '../../helpers/number/formatNumber';
 
 export const STORY_DURATION = 5e3;
 const STORY_HEADER_AVATAR_SIZE = 32;
@@ -1258,6 +1259,12 @@ const Stories = (props: {
   const isActive = createMemo(() => stories.peer === props.state);
   const [forceReaction, setForceReaction] = createSignal(false, {equals: false});
 
+  let currentStoryMiddleware: Middleware;
+  createEffect(() => {
+    currentStory();
+    currentStoryMiddleware = createMiddleware().get();
+  });
+
   const fireReactionAnimation = (reaction: Reaction, params = untrack(() => sendingReaction())) => {
     if(!params || params.target === storyDiv) {
       return;
@@ -1271,11 +1278,11 @@ const Stories = (props: {
     };
 
     ReactionElement.fireAroundAnimation({
-      middleware: createMiddleware().get(),
+      middleware: params.fireSame ? currentStoryMiddleware : createMiddleware().get(),
       reaction,
       sizes,
       stickerContainer: params.target,
-      cache: params.target as any,
+      cache: params.fireSame ? {} : params.target as any,
       textColor: params.textColor
     });
   };
@@ -2507,7 +2514,7 @@ const Stories = (props: {
           <div class={styles.ViewerStoryFooterLeft}>
             <span class={styles.ViewerStoryFooterIcon}>
               {Icon('eye1', styles.ViewerStoryFooterIconIcon)}
-              {(currentStory() as StoryItem.storyItem).views?.views_count || 1}
+              {formatNumber((currentStory() as StoryItem.storyItem).views?.views_count || 1, 1)}
             </span>
           </div>
           <div class={styles.ViewerStoryFooterRight}>
