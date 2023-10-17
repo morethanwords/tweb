@@ -18,7 +18,7 @@ import appNavigationController, {NavigationItem} from '../appNavigationControlle
 import PeerTitle from '../peerTitle';
 import SwipeHandler from '../swipeHandler';
 import styles from './viewer.module.scss';
-import {createSignal, createEffect, JSX, For, Accessor, onCleanup, createMemo, mergeProps, createContext, useContext, Context, ParentComponent, splitProps, untrack, on, getOwner, runWithOwner, createRoot, ParentProps, Suspense, batch, Signal, onMount, Setter, createReaction, Show, FlowComponent, useTransition, $TRACK, Owner} from 'solid-js';
+import {createSignal, createEffect, JSX, For, Accessor, onCleanup, createMemo, mergeProps, createContext, useContext, Context, ParentComponent, splitProps, untrack, on, getOwner, runWithOwner, createRoot, ParentProps, Suspense, batch, Signal, onMount, Setter, createReaction, Show, FlowComponent, useTransition, $TRACK, Owner, createRenderEffect} from 'solid-js';
 import {unwrap} from 'solid-js/store';
 import {assign, isServer, Portal} from 'solid-js/web';
 import {Transition} from 'solid-transition-group';
@@ -940,6 +940,7 @@ const renderStoryReaction = async(props: {
 };
 
 const StoryMediaArea = (props: {
+  story: StoryItem.storyItem,
   mediaArea: MediaArea,
   isActive: Accessor<boolean>,
   setTooltipCloseCallback: Setter<() => void>,
@@ -1046,10 +1047,19 @@ const StoryMediaArea = (props: {
 
   const renderReaction = (mediaArea: MediaArea.mediaAreaSuggestedReaction) => {
     const reaction = mediaArea.reaction;
-    const div = document.createElement('div');
-    div.classList.add(styles.ViewerStoryMediaAreaReactionInner);
+    const [count, setCount] = createSignal<number>(0);
     const uReaction = createUnifiedSignal<JSX.Element>();
     const size = stories.width * w / 100 * 0.72;
+
+    let div: HTMLDivElement;
+    (<div
+      ref={div}
+      class={classNames(
+        styles.ViewerStoryMediaAreaReactionInner,
+        count() && styles.hasCount
+      )}
+    />);
+
     renderStoryReaction({
       reaction,
       uReaction,
@@ -1057,6 +1067,13 @@ const StoryMediaArea = (props: {
       size,
       textColor: mediaArea.pFlags.dark ? 'white' : undefined,
       play: true
+    });
+
+    createRenderEffect(() => {
+      const views = props.story.views;
+      const reactions = views?.reactions;
+      const reactionCount = reactions?.find((reactionCount) => reactionsEqual(reactionCount.reaction, reaction));
+      setCount(reactionCount?.count ?? 0);
     });
 
     createEffect(() => {
@@ -1070,13 +1087,25 @@ const StoryMediaArea = (props: {
           <div
             class={classNames(
               styles.ViewerStoryMediaAreaReactionBubbles,
-              mediaArea.pFlags.dark && styles.dark
+              mediaArea.pFlags.dark && styles.dark,
+              count() && styles.hasCount
             )}
           >
             <div class={styles.ViewerStoryMediaAreaReactionBubble}></div>
             <div class={classNames(styles.ViewerStoryMediaAreaReactionBubble, styles.small)}></div>
           </div>
           {element}
+          <div
+            class={classNames(
+              styles.ViewerStoryMediaAreaReactionCount,
+              mediaArea.pFlags.dark && styles.dark,
+              count() && styles.hasCount
+            )}
+            // style={{'font-size': size * .275 + 'px'}}
+            style={{'font-size': `calc(var(--stories-width) * ${w / 100 * 0.72 * .275})`}}
+          >
+            {count() ? formatNumber(count(), 1) : ''}
+          </div>
         </>
       ));
       props.setReady(true);
@@ -1293,6 +1322,8 @@ const Stories = (props: {
       return;
     }
 
+    // ! DO NOT REMOVE ! it handles update, since I don't observe any property in reaction
+    (reaction as Reaction.reactionCustomEmoji)?.document_id;
     forceReaction();
     fireReactionAnimation(reaction);
   });
@@ -1690,6 +1721,7 @@ const Stories = (props: {
 
             return (
               <StoryMediaArea
+                story={story}
                 mediaArea={mediaArea}
                 isActive={isActive}
                 setTooltipCloseCallback={setTooltipCloseCallback}

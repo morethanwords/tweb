@@ -19,6 +19,7 @@ import {MTAppConfig} from '../mtproto/appConfig';
 import {SERVICE_PEER_ID, TEST_NO_STORIES} from '../mtproto/mtproto_config';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
 import {AppManager} from './manager';
+import reactionsEqual from './utils/reactions/reactionsEqual';
 import StoriesCacheType from './utils/stories/cacheType';
 import insertStory from './utils/stories/insertStory';
 
@@ -885,14 +886,41 @@ export default class AppStoriesManager extends AppManager {
     const story = this.getStoryByIdCached(peerId, id) as StoryItem.storyItem;
     const views = story.views;
     const newSentReaction: Reaction = reaction._ === 'reactionEmpty' ? undefined : reaction;
+
     if(views) {
+      const unsetPreviousReaction = () => {
+        const reactionCount = views.reactions?.find((reactionCount) => reactionsEqual(reactionCount.reaction, story.sent_reaction));
+        if(reactionCount) {
+          --reactionCount.count;
+          if(!reactionCount.count) {
+            indexOfAndSplice(views.reactions, reactionCount);
+          }
+        }
+      };
+
       views.reactions_count ??= 0;
       if(!story.sent_reaction && newSentReaction) {
         ++views.reactions_count;
       } else if(story.sent_reaction && !newSentReaction) {
         --views.reactions_count;
       }
+
+      unsetPreviousReaction();
+      if(newSentReaction) {
+        let reactionCount = views.reactions?.find((reactionCount) => reactionsEqual(reactionCount.reaction, newSentReaction));
+        if(!reactionCount) {
+          views.reactions ??= [];
+          views.reactions.push(reactionCount = {
+            _: 'reactionCount',
+            reaction: newSentReaction,
+            count: 0
+          });
+        }
+
+        ++reactionCount.count;
+      }
     }
+
     this.saveStoryItems([{
       ...story,
       sent_reaction: newSentReaction

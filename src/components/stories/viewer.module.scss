@@ -586,9 +586,39 @@ $color-inactive: rgba(255, 255, 255, .5);
           width: 72%;
           height: 72%;
           pointer-events: none;
+          transform: scale(1);
+          transform-origin: center 5%;
+
+          @include animation-level-global(2) {
+            transition: transform .15s ease-in-out;
+          }
+
+          &.hasCount {
+            transform: scale(0.85);
+          }
 
           :global(.media-sticker) {
             border-radius: .625rem;
+          }
+        }
+
+        &Count {
+          position: absolute;
+          bottom: 0;
+          font-weight: var(--font-weight-bold);
+          color: #000;
+          opacity: 0;
+
+          @include animation-level-global(2) {
+            transition: opacity .15s ease-in-out;
+          }
+
+          &.hasCount {
+            opacity: 1;
+          }
+
+          &.dark {
+            color: #fff;
           }
         }
       }
