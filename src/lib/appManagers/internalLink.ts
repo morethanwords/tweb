@@ -16,10 +16,11 @@ export enum INTERNAL_LINK_TYPE {
   ATTACH_MENU_BOT,
   WEB_APP,
   ADD_LIST,
-  STORY
+  STORY,
+  PREMIUM_FEATURES
 };
 
-export type InternalLink = InternalLink.InternalLinkMessage | InternalLink.InternalLinkPrivatePost | InternalLink.InternalLinkStickerSet | InternalLink.InternalLinkJoinChat | InternalLink.InternalLinkVoiceChat | InternalLink.InternalLinkUserPhoneNumber | InternalLink.InternalLinkInvoice | InternalLink.InternalLinkEmojiSet | InternalLink.InternalLinkAttachMenuBot | InternalLink.InternalLinkWebApp | InternalLink.InternalLinkAddList | InternalLink.InternalLinkStory;
+export type InternalLink = InternalLink.InternalLinkMessage | InternalLink.InternalLinkPrivatePost | InternalLink.InternalLinkStickerSet | InternalLink.InternalLinkJoinChat | InternalLink.InternalLinkVoiceChat | InternalLink.InternalLinkUserPhoneNumber | InternalLink.InternalLinkInvoice | InternalLink.InternalLinkEmojiSet | InternalLink.InternalLinkAttachMenuBot | InternalLink.InternalLinkWebApp | InternalLink.InternalLinkAddList | InternalLink.InternalLinkStory | InternalLink.InternalLinkPremiumFeatures;
 
 export namespace InternalLink {
   export interface InternalLinkMessage {
@@ -105,6 +106,11 @@ export namespace InternalLink {
     domain: string,
     story: string
   }
+
+  export interface InternalLinkPremiumFeatures {
+    _: INTERNAL_LINK_TYPE.PREMIUM_FEATURES,
+    ref?: string
+  }
 }
 
 export type InternalLinkTypeMap = {
@@ -120,4 +126,5 @@ export type InternalLinkTypeMap = {
   [INTERNAL_LINK_TYPE.WEB_APP]: InternalLink.InternalLinkWebApp,
   [INTERNAL_LINK_TYPE.ADD_LIST]: InternalLink.InternalLinkAddList,
   [INTERNAL_LINK_TYPE.STORY]: InternalLink.InternalLinkStory,
+  [INTERNAL_LINK_TYPE.PREMIUM_FEATURES]: InternalLink.InternalLinkPremiumFeatures,
 };

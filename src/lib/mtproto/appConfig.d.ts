@@ -58,7 +58,7 @@ export interface MTAppConfig {
   reactions_user_max_premium?:               number;
   reactions_in_chat_max?:                    number;
   default_emoji_statuses_stickerset_id?:     string;
-  premium_promo_order?:                      string[];
+  premium_promo_order?:                      PremiumPromoFeatureType[];
   premium_bot_username?:                     string;
   premium_playmarket_direct_currency_list?:  string[];
   forum_upgrade_participants_min?:           number;

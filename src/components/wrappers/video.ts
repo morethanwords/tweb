@@ -117,7 +117,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
   );
   let spanTime: HTMLElement, spanPlay: HTMLElement;
 
-  if(!noInfo) {
+  if(!noInfo && container) {
     spanTime = document.createElement('span');
     spanTime.classList.add('video-time');
     container.append(spanTime);
@@ -222,7 +222,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
 
     divRound.prepend(canvas, spanTime);
     divRound.append(video);
-    container.append(divRound);
+    container?.append(divRound);
 
     const ctx = canvas.getContext('2d');
     /* ctx.beginPath();
@@ -417,7 +417,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
     if(gotThumb) {
       const thumbImage = gotThumb.image;
       thumbImage.classList.add('media-poster');
-      container.append(thumbImage);
+      container?.append(thumbImage);
       res.thumb = {
         loadPromises: {
           thumb: gotThumb.loadPromise,

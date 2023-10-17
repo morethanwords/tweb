@@ -40,22 +40,31 @@ import customProperties from '../../../helpers/dom/customProperties';
 import windowSize from '../../../helpers/windowSize';
 import PopupElement from '../../popups';
 import Icon from '../../icon';
+import safeAssign from '../../../helpers/object/safeAssign';
 
 export class SuperStickerRenderer {
   public lazyLoadQueue: LazyLoadQueueRepeat;
   private animated: Set<HTMLElement> = new Set();
+  private regularLazyLoadQueue: LazyLoadQueue;
+  private group: AnimationItemGroup;
+  private managers: AppManagers;
+  private intersectionObserverInit: IntersectionObserverInit;
+  private visibleRenderOptions: Partial<Parameters<typeof wrapSticker>[0]>;
 
-  constructor(
-    private regularLazyLoadQueue: LazyLoadQueue,
-    private group: AnimationItemGroup,
-    private managers: AppManagers,
-    private options?: IntersectionObserverInit
-  ) {
+  constructor(options: {
+    regularLazyLoadQueue: LazyLoadQueue,
+    group: AnimationItemGroup,
+    managers: AppManagers,
+    intersectionObserverInit?: SuperStickerRenderer['intersectionObserverInit'],
+    visibleRenderOptions?: SuperStickerRenderer['visibleRenderOptions']
+  }) {
+    safeAssign(this, options);
+
     this.lazyLoadQueue = new LazyLoadQueueRepeat(undefined, ({target, visible}) => {
       if(!visible) {
         this.processInvisible(target);
       }
-    }, options);
+    }, this.intersectionObserverInit);
   }
 
   public clear() {
@@ -80,7 +89,8 @@ export class SuperStickerRenderer {
       lazyLoadQueue: this.regularLazyLoadQueue,
       group: this.group,
       onlyThumb: doc.animated,
-      loadPromises
+      loadPromises,
+      ...(doc.animated ? {} : this.visibleRenderOptions || {})
     });
 
     return element;
@@ -129,7 +139,8 @@ export class SuperStickerRenderer {
       onlyThumb: false,
       play: true,
       loop: true,
-      withLock: true
+      withLock: true,
+      ...(this.visibleRenderOptions || {})
     }).then(({render}) => render);
 
     promise.then(() => {
@@ -152,7 +163,7 @@ export class SuperStickerRenderer {
 
     this.checkAnimationContainer(element, false);
 
-    element.textContent = '';
+    element.replaceChildren();
     this.renderSticker(doc, element as HTMLDivElement);
   };
 }
@@ -730,12 +741,12 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
       });
     });
 
-    this.superStickerRenderer = new SuperStickerRenderer(
-      this.emoticonsDropdown.lazyLoadQueue,
-      EMOTICONSSTICKERGROUP,
-      this.managers,
-      intersectionOptions
-    );
+    this.superStickerRenderer = new SuperStickerRenderer({
+      regularLazyLoadQueue: this.emoticonsDropdown.lazyLoadQueue,
+      group: EMOTICONSSTICKERGROUP,
+      managers: this.managers,
+      intersectionObserverInit: intersectionOptions
+    });
 
     const rendererLazyLoadQueue = this.superStickerRenderer.lazyLoadQueue;
     this.emoticonsDropdown.addLazyLoadQueueRepeat(rendererLazyLoadQueue, this.superStickerRenderer.processInvisible);

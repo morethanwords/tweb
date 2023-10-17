@@ -27,6 +27,8 @@ import {INTERNAL_LINK_TYPE, InternalLinkTypeMap, InternalLink} from './internalL
 import {AppManagers} from './managers';
 import {createStoriesViewerWithPeer} from '../../components/stories/viewer';
 import {simulateClickEvent} from '../../helpers/dom/clickEvent';
+import PopupPremium from '../../components/popups/premium';
+import rootScope from '../rootScope';
 
 export class InternalLinkProcessor {
   protected managers: AppManagers;
@@ -393,6 +395,20 @@ export class InternalLinkProcessor {
         }
       });
     });
+
+    // tg://premium_offer?ref=premium tg://premium_offer
+    addAnchorListener<{
+      uriParams: {
+        ref?: string
+      }
+    }>({
+      name: 'premium_offer',
+      protocol: 'tg',
+      callback: ({uriParams}) => {
+        const link = this.makeLink(INTERNAL_LINK_TYPE.PREMIUM_FEATURES, uriParams);
+        return this.processInternalLink(link);
+      }
+    });
   }
 
   private makeLink<T extends INTERNAL_LINK_TYPE>(type: T, uriParams: Omit<InternalLinkTypeMap[T], '_'>) {
@@ -650,6 +666,15 @@ export class InternalLinkProcessor {
     });
   };
 
+  public processPremiumFeaturesLink = async(link: InternalLink.InternalLinkPremiumFeatures) => {
+    if(rootScope.premium) {
+      toastNew({langPackKey: 'Premium.Offset.AlreadyHave'});
+      return;
+    }
+
+    PopupPremium.show();
+  };
+
   public processInternalLink(link: InternalLink) {
     const map: {
       [key in InternalLink['_']]?: (link: any) => any
@@ -665,7 +690,8 @@ export class InternalLinkProcessor {
       [INTERNAL_LINK_TYPE.ATTACH_MENU_BOT]: this.processAttachMenuBotLink,
       [INTERNAL_LINK_TYPE.WEB_APP]: this.processWebAppLink,
       [INTERNAL_LINK_TYPE.ADD_LIST]: this.processListLink,
-      [INTERNAL_LINK_TYPE.STORY]: this.processStoryLink
+      [INTERNAL_LINK_TYPE.STORY]: this.processStoryLink,
+      [INTERNAL_LINK_TYPE.PREMIUM_FEATURES]: this.processPremiumFeaturesLink
     };
 
     const processor = map[link._];

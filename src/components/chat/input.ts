@@ -117,6 +117,7 @@ import Icon from '../icon';
 import setBadgeContent from '../../helpers/setBadgeContent';
 import createBadge from '../../helpers/createBadge';
 import deepEqual from '../../helpers/object/deepEqual';
+import PopupPremium from '../popups/premium';
 
 // console.log('Recorder', Recorder);
 
@@ -3209,6 +3210,7 @@ export default class ChatInput {
     }
 
     if(document.sticker && getStickerEffectThumb(document) && !rootScope.premium) {
+      PopupPremium.show('premium_stickers');
       return false;
     }
 

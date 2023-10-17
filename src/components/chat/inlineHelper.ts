@@ -320,7 +320,11 @@ export default class InlineHelper extends AutocompleteHelper {
 
     this.scrollable = new Scrollable(this.container);
     this.lazyLoadQueue = new LazyLoadQueue();
-    this.superStickerRenderer = new SuperStickerRenderer(this.lazyLoadQueue, ANIMATION_GROUP, this.managers);
+    this.superStickerRenderer = new SuperStickerRenderer({
+      regularLazyLoadQueue: this.lazyLoadQueue,
+      group: ANIMATION_GROUP,
+      managers: this.managers
+    });
 
     const span = i18n(POSTING_NOT_ALLOWED_MAP['send_inline']);
     span.classList.add('inline-helper-cant-send');

@@ -57,6 +57,7 @@
   --popup-transition-function: cubic-bezier(.4, 0, .2, 1);
   // --popup-transition-time: .15s;
   --popup-transition-time: .15s;
+  --popup-transition: var(--popup-transition-time) var(--popup-transition-function);
   //--layer-transition: .3s cubic-bezier(.33, 1, .68, 1);
   //--layer-transition: none;
   --btn-corner-transition: .2s cubic-bezier(.34, 1.56, .64, 1);
@@ -229,6 +230,7 @@
   --backdrop-opacity: .85;
   --menu-background-color: rgba(var(--surface-color-rgb), var(--backdrop-opacity));
   --rlottie-vector-fill: rgba(0, 0, 0, #{$hover-alpha});
+  --limit-line-free-color: #F1F3F5;
 
   --message-time-color: var(--secondary-text-color);
   --message-checkbox-color: #61c642;
@@ -298,6 +300,7 @@
   --monospace-text-color: var(--primary-text-color);
   --menu-background-color: rgba(var(--surface-color-rgb), .75);
   --rlottie-vector-fill: var(--light-secondary-text-color);
+  --limit-line-free-color: var(--light-filled-secondary-text-color);
 
   --message-time-color: var(--secondary-text-color);
   --message-checkbox-color: var(--primary-color);
@@ -401,6 +404,7 @@
 @import "partials/popups/giftPremium";
 @import "partials/popups/webApp";
 @import "partials/popups/chatlistInvite";
+@import "partials/popups/premium";
 
 @import "partials/pages/pages";
 @import "partials/pages/authCode";
@@ -1799,18 +1803,16 @@ hr {
   display: flex;
   // background: linear-gradient(84.4deg, #6C93FF -4.85%, #976FFF 51.72%, #DF69D1 110.7%), #F1F3F5;
 
-  &-free {
-    color: #000;
-  }
-
-  &-premium {
+  &-premium,
+  &-custom  {
     color: #fff;
   }
 
   &-free {
+    color: var(--primary-text-color);
     border-top-left-radius: $border-radius-medium;
     border-bottom-left-radius: $border-radius-medium;
-    background-color: #F1F3F5;
+    background-color: var(--limit-line-free-color);
   }
 
   &-premium {
@@ -1819,8 +1821,15 @@ hr {
     background: linear-gradient(84.4deg, #6C93FF -4.85%, #976FFF 51.72%, #DF69D1 110.7%);
   }
 
+  &-custom {
+    border-top-right-radius: $border-radius-medium;
+    border-bottom-right-radius: $border-radius-medium;
+    background: var(--limit-color) !important;
+  }
+
   &-free,
-  &-premium {
+  &-premium,
+  &-custom {
     flex: 1 1 0;
     padding: 0 .75rem;
     display: flex;
