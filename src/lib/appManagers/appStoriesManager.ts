@@ -797,8 +797,6 @@ export default class AppStoriesManager extends AppManager {
       params: {
         peer: this.appPeersManager.getInputPeerById(peerId),
         max_id: maxId
-      },
-      processResult: () => {
       }
     });
   }
@@ -809,8 +807,6 @@ export default class AppStoriesManager extends AppManager {
       params: {
         peer: this.appPeersManager.getInputPeerById(peerId),
         id: ids
-      },
-      processResult: () => {
       }
     });
   }
@@ -875,8 +871,6 @@ export default class AppStoriesManager extends AppManager {
         id,
         reason: {_: reason},
         message
-      },
-      processResult: () => {
       }
     });
   }
@@ -1060,6 +1054,33 @@ export default class AppStoriesManager extends AppManager {
         if(peerId.isUser()) this.appUsersManager.saveApiUsers([newPeer as User.user]);
         else this.appChatsManager.saveApiChats([newPeer as Chat.channel]);
         this.appNotificationsManager.toggleStoriesMute(peerId, hidden, true);
+      }
+    });
+  }
+
+  public getBoostsStatus(peerId: PeerId) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'stories.getBoostsStatus',
+      params: {
+        peer: this.appPeersManager.getInputPeerById(peerId)
+      }
+    });
+  }
+
+  public canApplyBoost(peerId: PeerId) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'stories.canApplyBoost',
+      params: {
+        peer: this.appPeersManager.getInputPeerById(peerId)
+      }
+    });
+  }
+
+  public applyBoost(peerId: PeerId) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'stories.applyBoost',
+      params: {
+        peer: this.appPeersManager.getInputPeerById(peerId)
       }
     });
   }

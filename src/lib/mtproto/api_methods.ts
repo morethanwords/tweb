@@ -151,9 +151,9 @@ export default abstract class ApiManagerMethods extends AppManager {
     });
   }
 
-  public invokeApiSingleProcess<T extends keyof MethodDeclMap, R>(o: {
+  public invokeApiSingleProcess<T extends keyof MethodDeclMap, R = MethodDeclMap[T]['res']>(o: {
     method: T,
-    processResult: (response: MethodDeclMap[T]['res']) => R,
+    processResult?: (response: MethodDeclMap[T]['res']) => R,
     processError?: (error: ApiError) => any,
     params?: MethodDeclMap[T]['req'],
     options?: InvokeApiOptions & {cacheKey?: string, overwrite?: boolean}
@@ -173,7 +173,7 @@ export default abstract class ApiManagerMethods extends AppManager {
     const getNewPromise = () => {
       const promise = map.get(cacheKey);
       return promise === p ? undefined : promise;
-    }
+    };
 
     const originalPromise = this.invokeApi(method, params, options);
     const newPromise: Promise<Awaited<R>> = originalPromise.then((result) => {

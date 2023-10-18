@@ -12,8 +12,7 @@ export default class AppBotsManager extends AppManager {
       method: 'bots.canSendMessage',
       params: {
         bot: this.appUsersManager.getUserInput(botId)
-      },
-      processResult: (response) => response
+      }
     });
   }
 
