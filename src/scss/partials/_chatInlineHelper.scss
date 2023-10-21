@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 .inline-helper {
   $parent: ".inline-helper";
   user-select: none;
@@ -24,6 +30,7 @@
 
   .btn-primary {
     border-radius: unset;
+    margin-top: 0 !important;
   }
 
   &-results:not(.is-gallery) {
