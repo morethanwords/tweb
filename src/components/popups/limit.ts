@@ -4,14 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import liteMode from '../../helpers/liteMode';
-import {doubleRaf} from '../../helpers/schedulers';
-import appImManager from '../../lib/appManagers/appImManager';
-import {LangPackKey, _i18n, i18n} from '../../lib/langPack';
+import {LangPackKey} from '../../lib/langPack';
 import {ApiLimitType} from '../../lib/mtproto/api_methods';
 import rootScope from '../../lib/rootScope';
-import Icon from '../icon';
 import PopupPeer from './peer';
+import LimitLine from '../limit';
+import PopupPremium from './premium';
 
 const a: {[type in ApiLimitType]?: {
   title: LangPackKey,
@@ -47,7 +45,8 @@ class P extends PopupPeer {
   constructor(options: {
     isPremium: boolean,
     limit: number,
-    limitPremium: number
+    limitPremium: number,
+    feature?: PremiumPromoFeatureType
   }, _a: typeof a[keyof typeof a]) {
     super('popup-limit', {
       buttons: options.isPremium === undefined ? [{
@@ -59,9 +58,9 @@ class P extends PopupPeer {
       }] : [{
         langKey: 'IncreaseLimit',
         callback: () => {
-          appImManager.openPremiumBot();
+          PopupPremium.show(options.feature);
         },
-        noRipple: true
+        iconRight: 'premium_double'
       }, {
         langKey: 'Cancel',
         isCancel: true
@@ -71,65 +70,39 @@ class P extends PopupPeer {
       titleLangKey: _a.title
     });
 
-    const isLocked = options.isPremium === undefined;
-    if(isLocked) {
-      this.element.classList.add('is-locked');
-    } else if(options.isPremium) {
-      this.element.classList.add('is-premium');
+    const limit = new LimitLine({
+      limitPremium: options.limitPremium,
+      hint: {
+        icon: _a.icon,
+        content: '' + (options.isPremium ? options.limitPremium : options.limit)
+      }
+    });
+
+    if(options.isPremium !== undefined) {
+      limit.setProgress(options.isPremium ? 1 : 0.5);
     } else {
-      const button = this.buttons.find((b) => !b.isCancel);
-      button.element.classList.add('popup-limit-button', 'shimmer');
-      const i = Icon('premium_double', 'popup-limit-button-icon');
-      button.element.append(i);
+      const limitLine = limit.container.querySelector('.limit-line');
+      limitLine?.remove();
     }
 
-    const limitContainer = document.createElement('div');
-    limitContainer.classList.add('popup-limit-line');
-
-    const hint = document.createElement('div');
-    hint.classList.add('popup-limit-hint');
-    const i = Icon(_a.icon, 'popup-limit-hint-icon');
-    hint.append(i, '' + (options.isPremium ? options.limitPremium : options.limit));
-
-    limitContainer.append(hint);
-
-    if(!isLocked) {
-      const limit = document.createElement('div');
-      limit.classList.add('limit-line');
-
-      const free = document.createElement('div');
-      free.classList.add('limit-line-free');
-
-      const premium = document.createElement('div');
-      premium.classList.add('limit-line-premium');
-
-      limit.append(free, premium);
-
-      _i18n(free, 'LimitFree');
-      premium.append(i18n('LimitPremium'), '' + options.limitPremium);
-
-      limitContainer.append(limit);
-    }
-
-    this.container.insertBefore(limitContainer, this.description);
+    this.description.before(limit.container);
 
     // if(options.isPremium === false) {
     //   this.buttons.pop().element.remove();
     // }
 
-    const setHintActive = () => {
-      hint.classList.add('active');
-    };
-
-    if(liteMode.isAvailable('animations')) {
-      doubleRaf().then(setHintActive);
-    } else {
-      setHintActive();
-    }
+    limit._setHintActive();
   }
 }
 
 export default async function showLimitPopup(type: keyof typeof a) {
+  // const featureMap: {[type in keyof typeof a]?: PremiumPromoFeatureType} = {
+  //   folders: 'double_limits',
+  //   pin: 'double_limits',
+  //   chatlistInvites: 'double_limits'
+  // };
+  const feature: PremiumPromoFeatureType = 'double_limits';
+
   const _a = a[type];
   const [appConfig, limit, limitPremium] = await Promise.all([
     rootScope.managers.apiManager.getAppConfig(),
@@ -139,6 +112,8 @@ export default async function showLimitPopup(type: keyof typeof a) {
   new P({
     isPremium: isLocked ? undefined : rootScope.premium,
     limit,
-    limitPremium
+    limitPremium,
+    // feature: featureMap[type]
+    feature
   }, _a).show();
 }

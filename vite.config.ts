@@ -28,7 +28,7 @@ const serverOptions: ServerOptions = {
 };
 
 const NO_MINIFY = false;
-const HAS_SOLID = existsSync(resolve(rootDir, 'src/solid/packages/solid/dist'));
+const HAS_SOLID = existsSync(resolve(rootDir, 'src/vendor/solid'));
 
 console.log('has built solid', HAS_SOLID);
 
@@ -111,10 +111,11 @@ export default defineConfig({
   resolve: {
     // conditions: ['development', 'browser'],
     alias: HAS_SOLID ? {
-      'rxcore': resolve(rootDir, 'src/solid/packages/solid/web/core'),
-      'solid-js/jsx-runtime': resolve(rootDir, 'src/solid/packages/solid/jsx'),
-      'solid-js/web': resolve(rootDir, 'src/solid/packages/solid/web'),
-      'solid-js': resolve(rootDir, 'src/solid/packages/solid')
+      'rxcore': resolve(rootDir, 'src/vendor/solid/web/core'),
+      'solid-js/jsx-runtime': resolve(rootDir, 'src/vendor/solid/jsx'),
+      'solid-js/web': resolve(rootDir, 'src/vendor/solid/web'),
+      'solid-js/store': resolve(rootDir, 'src/vendor/solid/store'),
+      'solid-js': resolve(rootDir, 'src/vendor/solid')
     } : undefined
   }
 });

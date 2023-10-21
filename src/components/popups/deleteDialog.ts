@@ -35,7 +35,7 @@ export default class PopupDeleteDialog {
       onSelect && onSelect(promise);
     }; */
 
-    const callbackLeave = (checked: PopupPeerButtonCallbackCheckboxes, flush = checkboxes && !!checked.size) => {
+    const callbackLeave = (e: MouseEvent, checked: PopupPeerButtonCallbackCheckboxes, flush = checkboxes && !!checked.size) => {
       let promise = managers.appChatsManager.leave(peerId.toChatId());
 
       if(flush) {
@@ -47,7 +47,7 @@ export default class PopupDeleteDialog {
       onSelect?.(promise);
     };
 
-    const callbackDelete = (checked: PopupPeerButtonCallbackCheckboxes) => {
+    const callbackDelete = (e: MouseEvent, checked: PopupPeerButtonCallbackCheckboxes) => {
       let promise: Promise<any>;
 
       if(threadId) {
@@ -58,7 +58,7 @@ export default class PopupDeleteDialog {
         if(checked.size) {
           promise = managers.appChatsManager.delete(peerId.toChatId());
         } else {
-          return callbackLeave(checked);
+          return callbackLeave(e, checked);
         }
       }
 
@@ -175,7 +175,7 @@ export default class PopupDeleteDialog {
           buttons = [{
             langKey: 'DeleteChatUser',
             isDanger: true,
-            callback: (checkboxes) => callbackLeave(checkboxes, true)
+            callback: (e, checkboxes) => callbackLeave(e, checkboxes, true)
           }];
         }
 

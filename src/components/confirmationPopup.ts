@@ -18,7 +18,7 @@ export default function confirmationPopup<T extends PopupConfirmationOptions>(
 ): Promise<T['checkboxes'] extends PopupPeerCheckboxOptions[] ? Array<boolean> : (T['checkbox'] extends PopupPeerCheckboxOptions ? boolean : void)> {
   return new Promise<any>((resolve, reject) => {
     const {button, checkbox} = options;
-    button.callback = (set) => {
+    button.callback = (e, set) => {
       if(checkbox || !set) {
         resolve(set ? !!set.size : undefined);
       } else {

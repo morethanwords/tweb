@@ -11,7 +11,17 @@ import deepEqual from '../../helpers/object/deepEqual';
 import {AppManager} from '../appManagers/manager';
 import makeError from '../../helpers/makeError';
 
-export type ReferenceContext = ReferenceContext.referenceContextProfilePhoto | ReferenceContext.referenceContextMessage | ReferenceContext.referenceContextEmojiesSounds | ReferenceContext.referenceContextReactions | ReferenceContext.referenceContextUserFull | ReferenceContext.referenceContextCustomEmoji | ReferenceContext.referenceContextAttachMenuBotIcon | ReferenceContext.referenceContextWallPaper | ReferenceContext.referenceContextStoryItem;
+export type ReferenceContext =
+  ReferenceContext.referenceContextProfilePhoto |
+  ReferenceContext.referenceContextMessage |
+  ReferenceContext.referenceContextEmojiesSounds |
+  ReferenceContext.referenceContextReactions |
+  ReferenceContext.referenceContextUserFull |
+  ReferenceContext.referenceContextCustomEmoji |
+  ReferenceContext.referenceContextAttachMenuBotIcon |
+  ReferenceContext.referenceContextWallPaper |
+  ReferenceContext.referenceContextStoryItem |
+  ReferenceContext.referenceContextPremiumPromo;
 export namespace ReferenceContext {
   export type referenceContextProfilePhoto = {
     type: 'profilePhoto',
@@ -56,7 +66,11 @@ export namespace ReferenceContext {
     type: 'storyItem',
     peerId: PeerId,
     storyId: StoryItem['id'],
-  }
+  };
+
+  export type referenceContextPremiumPromo = {
+    type: 'premiumPromo'
+  };
 }
 
 export type ReferenceBytes = Photo.photo['file_reference'];
@@ -188,6 +202,11 @@ export class ReferenceDatabase extends AppManager {
 
       case 'storyItem': {
         promise = Promise.resolve(this.appStoriesManager.getStoryById(context.peerId, context.storyId, true));
+        break;
+      }
+
+      case 'premiumPromo': {
+        promise = Promise.resolve(this.appPaymentsManager.getPremiumPromo(true));
         break;
       }
 

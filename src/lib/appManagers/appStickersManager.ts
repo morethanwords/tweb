@@ -159,7 +159,10 @@ export class AppStickersManager extends AppManager {
     }
 
     if(!this.getGreetingStickersPromise) {
-      this.getGreetingStickersPromise = this.getStickersByEmoticon('👋⭐️', false).then((docs) => {
+      this.getGreetingStickersPromise = this.getStickersByEmoticon({
+        emoticon: '👋⭐️',
+        includeServerStickers: true
+      }).then((docs) => {
         if(!docs.length) throw 'NO_STICKERS';
         this.greetingStickers = docs.slice() as Document.document[];
         this.greetingStickers.sort((a, b) => Math.random() - Math.random());
@@ -551,11 +554,18 @@ export class AppStickersManager extends AppManager {
   }
 
   public getPromoPremiumStickers() {
-    return this.getStickersByEmoticon('⭐️⭐️', false);
+    return this.getStickersByEmoticon({
+      emoticon: '⭐️⭐️',
+      includeServerStickers: true
+    });
   }
 
   public getPremiumStickers() {
-    return this.getStickersByEmoticon('📂⭐️', false);
+    return this.getStickersByEmoticon({
+      emoticon: '📂⭐️',
+      includeServerStickers: true,
+      excludePremiumEffectStickers: true
+    });
   }
 
   public getFavedStickers(overwrite?: boolean) {
@@ -715,7 +725,17 @@ export class AppStickersManager extends AppManager {
   }
 
   // TODO: detect "🤷" by "🤷‍♂️"
-  public getStickersByEmoticon(emoticon: string, includeOurStickers = true, includeServerStickers = true) {
+  public getStickersByEmoticon({
+    emoticon,
+    includeOurStickers,
+    includeServerStickers,
+    excludePremiumEffectStickers
+  }: {
+    emoticon: string,
+    includeOurStickers?: boolean,
+    includeServerStickers?: boolean,
+    excludePremiumEffectStickers?: boolean
+  }) {
     emoticon = fixEmoji(emoticon);
     const cacheKey = emoticon + (includeOurStickers ? '1' : '0') + (includeServerStickers ? '1' : '0');
     if(this.getStickersByEmoticonsPromises[cacheKey]) return this.getStickersByEmoticonsPromises[cacheKey];
@@ -776,7 +796,7 @@ export class AppStickersManager extends AppManager {
 
       forEachReverse(stickers, (sticker, idx, arr) => {
         if((sticker.sticker === 3 && !getEnvironment().IS_WEBM_SUPPORTED) ||
-          (!this.rootScope.premium && getStickerEffectThumb(sticker))) {
+          (excludePremiumEffectStickers && !this.rootScope.premium && getStickerEffectThumb(sticker))) {
           arr.splice(idx, 1);
         }
       });

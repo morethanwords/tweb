@@ -60,6 +60,7 @@ export default class Row<T extends SliderSuperTabEventableConstructable = any> {
 
   constructor(options: Partial<{
     icon: Icon,
+    iconClasses: string[],
     subtitle: K,
     subtitleLangKey: LangPackKey,
     subtitleLangArgs: any[],
@@ -70,6 +71,7 @@ export default class Row<T extends SliderSuperTabEventableConstructable = any> {
     withCheckboxSubtitle: boolean,
     title: K,
     titleLangKey: LangPackKey,
+    titleLangArgs: any[],
     titleRight: K,
     titleRightSecondary: K,
     clickable: boolean | ((e: Event) => void),
@@ -175,7 +177,7 @@ export default class Row<T extends SliderSuperTabEventableConstructable = any> {
       if(options.title) {
         setContent(this.title, options.title);
       } else if(options.titleLangKey) {
-        this.title.append(i18n(options.titleLangKey));
+        this.title.append(i18n(options.titleLangKey, options.titleLangArgs));
       }
 
       c.append(this.title);
@@ -196,7 +198,11 @@ export default class Row<T extends SliderSuperTabEventableConstructable = any> {
     if(options.icon) {
       havePadding = true;
       // this.title.classList.add('tgico', 'tgico-' + options.icon);
-      this.container.append(Icon(options.icon, 'row-icon'));
+      if(options.iconClasses?.length) {
+        this.container.append(Icon(options.icon, 'row-icon', ...options.iconClasses));
+      } else {
+        this.container.append(Icon(options.icon, 'row-icon'));
+      }
       this.container.classList.add('row-with-icon');
     }
 

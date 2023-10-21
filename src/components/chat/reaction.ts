@@ -445,7 +445,8 @@ export default class ReactionElement extends HTMLElement {
       genericEffectSize: number,
       size: number,
       effectSize: number
-    }
+    },
+    textColor?: string
   }) {
     if(options.cache.hasAroundAnimation || !liteMode.isAvailable('effects_reactions')) {
       return;
@@ -472,6 +473,8 @@ export default class ReactionElement extends HTMLElement {
       const genericEffectSize = options.sizes.genericEffectSize;
       const isGenericMasked = genericEffect && sticker.sticker !== 2;
 
+      const textColor = options.textColor || 'primary-text-color';
+
       const aroundParams: Parameters<typeof wrapStickerAnimation>[0] = {
         doc: genericEffect || availableReaction.around_animation,
         size: genericEffect ? genericEffectSize : options.sizes.effectSize,
@@ -490,7 +493,8 @@ export default class ReactionElement extends HTMLElement {
         doc: isGenericMasked ? aroundParams.doc : sticker,
         size: genericEffectSize,
         stickerSize: size,
-        loopEffect: true
+        loopEffect: true,
+        textColor
       });
       const stickerResult = (!genericEffect || isGenericMasked) && wrapSticker({
         div: div || document.createElement('div'),
@@ -505,7 +509,7 @@ export default class ReactionElement extends HTMLElement {
         needFadeIn: false,
         managers: options.managers,
         middleware: options.middleware,
-        textColor: 'primary-text-color',
+        textColor,
         loop: isGenericMasked
         // static: isGenericMasked || undefined
       }).then(({render}) => render as Promise<RLottiePlayer>);
@@ -687,6 +691,10 @@ export default class ReactionElement extends HTMLElement {
         return onEmoticon(doc);
       });
     }
+
+    options.middleware.onDestroy(() => {
+      options.cache.hasAroundAnimation = undefined;
+    });
 
     options.cache.hasAroundAnimation = promise;
     promise.finally(() => {

@@ -26,7 +26,8 @@ type HashOptions = {
 
 export type ApiLimitType = 'pin' | 'folderPin' | 'folders' |
   'favedStickers' | 'reactions' | 'bio' | 'topicPin' | 'caption' |
-  'chatlistsJoined' | 'chatlistInvites';
+  'chatlistsJoined' | 'chatlistInvites' | 'channels' | 'links' |
+  'gifs' | 'folderPeers' | 'uploadFileParts';
 
 export default abstract class ApiManagerMethods extends AppManager {
   private afterMessageIdTemp: number;
@@ -150,9 +151,9 @@ export default abstract class ApiManagerMethods extends AppManager {
     });
   }
 
-  public invokeApiSingleProcess<T extends keyof MethodDeclMap, R>(o: {
+  public invokeApiSingleProcess<T extends keyof MethodDeclMap, R = MethodDeclMap[T]['res']>(o: {
     method: T,
-    processResult: (response: MethodDeclMap[T]['res']) => R,
+    processResult?: (response: MethodDeclMap[T]['res']) => R,
     processError?: (error: ApiError) => any,
     params?: MethodDeclMap[T]['req'],
     options?: InvokeApiOptions & {cacheKey?: string, overwrite?: boolean}
@@ -172,7 +173,7 @@ export default abstract class ApiManagerMethods extends AppManager {
     const getNewPromise = () => {
       const promise = map.get(cacheKey);
       return promise === p ? undefined : promise;
-    }
+    };
 
     const originalPromise = this.invokeApi(method, params, options);
     const newPromise: Promise<Awaited<R>> = originalPromise.then((result) => {
@@ -341,7 +342,12 @@ export default abstract class ApiManagerMethods extends AppManager {
         topicPin: 'topics_pinned_limit',
         caption: ['caption_length_limit_default', 'caption_length_limit_premium'],
         chatlistInvites: ['chatlist_invites_limit_default', 'chatlist_invites_limit_premium'],
-        chatlistsJoined: ['chatlists_joined_limit_default', 'chatlists_joined_limit_premium']
+        chatlistsJoined: ['chatlists_joined_limit_default', 'chatlists_joined_limit_premium'],
+        channels: ['channels_limit_default', 'channels_limit_premium'],
+        links: ['channels_public_limit_default', 'channels_public_limit_premium'],
+        gifs: ['saved_gifs_limit_default', 'saved_gifs_limit_premium'],
+        folderPeers: ['dialog_filters_chats_limit_default', 'dialog_filters_chats_limit_premium'],
+        uploadFileParts: ['upload_max_fileparts_default', 'upload_max_fileparts_premium']
       };
 
       isPremium ??= this.rootScope.premium;

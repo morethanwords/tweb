@@ -163,13 +163,12 @@
       } */
 
       .selector-user {
-        height: 30px;
+        --selector-user-size: 30px;
         position: absolute !important;
         inset-inline-start: 6px;
         top: 6px;
         z-index: 1;
         margin-inline-start: 0;
-        line-height: 1.875rem;
       }
 
       &.is-picked {

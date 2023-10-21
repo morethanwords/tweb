@@ -587,8 +587,7 @@ export default class FiltersStorage extends AppManager {
       params: {
         chatlist: this.getChatlistInput(id),
         slug
-      },
-      processResult: (result) => result
+      }
     });
   }
 

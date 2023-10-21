@@ -46,6 +46,10 @@ declare global {
 
   type AppEmoji = {emoji: string, docId?: DocId};
   type Icon = keyof typeof Icons;
+  type PremiumPromoFeatureType = 'stories' | 'double_limits' | 'voice_to_text' | 'faster_download' |
+    'translations' | 'animated_emoji' | 'more_upload' | 'emoji_status' | 'profile_badge' |
+    'advanced_chat_management' | 'no_ads' | 'app_icons' | 'infinite_reactions' |
+    'animated_userpics' | 'premium_stickers';
 
   type MTMimeType = 'video/quicktime' | 'image/gif' | 'image/jpeg' | 'application/pdf' |
     'video/mp4' | 'image/webp' | 'audio/mpeg' | 'audio/ogg' | 'application/octet-stream' |
@@ -76,7 +80,8 @@ declare global {
     'CHAT_ADMIN_INVITE_REQUIRED' | 'BOT_APP_INVALID' | 'FILTER_NOT_SUPPORTED' | 'INVITES_TOO_MUCH' |
     'FILTERS_TOO_MUCH' | 'PEERS_LIST_EMPTY' | 'INVITE_SLUG_EXPIRED' | 'DIALOG_FILTERS_TOO_MUCH' |
     'CHATLISTS_TOO_MUCH' | 'FRESH_RESET_AUTHORISATION_FORBIDDEN' | 'NO_USER' | 'USER_PRIVACY_RESTRICTED' |
-    'REACTION_INVALID' | 'INVITE_HASH_EXPIRED' | 'PHONE_NOT_OCCUPIED' | 'PARTICIPANT_ID_INVALID';
+    'REACTION_INVALID' | 'INVITE_HASH_EXPIRED' | 'PHONE_NOT_OCCUPIED' | 'PARTICIPANT_ID_INVALID' |
+    'PREMIUM_ACCOUNT_REQUIRED' | 'BOOST_NOT_MODIFIED' | 'PREMIUM_GIFTED_NOT_ALLOWED' | `FLOOD_WAIT_${number}`;
 
   type ErrorType = LocalErrorType | ServerErrorType;
 

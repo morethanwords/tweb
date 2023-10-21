@@ -14,11 +14,12 @@ import deepEqual from '../../helpers/object/deepEqual';
 import safeReplaceObject from '../../helpers/object/safeReplaceObject';
 import pause from '../../helpers/schedulers/pause';
 import tsNow from '../../helpers/tsNow';
-import {Reaction, ReportReason, StoriesAllStories, StoriesStories, StoriesPeerStories, StoryItem, Update, PeerStories, User, Chat} from '../../layer';
+import {Reaction, ReportReason, StoriesAllStories, StoriesStories, StoriesPeerStories, StoryItem, Update, PeerStories, User, Chat, StoriesCanApplyBoost, StoriesCanApplyBoostResult} from '../../layer';
 import {MTAppConfig} from '../mtproto/appConfig';
 import {SERVICE_PEER_ID, TEST_NO_STORIES} from '../mtproto/mtproto_config';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
 import {AppManager} from './manager';
+import reactionsEqual from './utils/reactions/reactionsEqual';
 import StoriesCacheType from './utils/stories/cacheType';
 import insertStory from './utils/stories/insertStory';
 
@@ -796,8 +797,6 @@ export default class AppStoriesManager extends AppManager {
       params: {
         peer: this.appPeersManager.getInputPeerById(peerId),
         max_id: maxId
-      },
-      processResult: () => {
       }
     });
   }
@@ -808,8 +807,6 @@ export default class AppStoriesManager extends AppManager {
       params: {
         peer: this.appPeersManager.getInputPeerById(peerId),
         id: ids
-      },
-      processResult: () => {
       }
     });
   }
@@ -874,8 +871,6 @@ export default class AppStoriesManager extends AppManager {
         id,
         reason: {_: reason},
         message
-      },
-      processResult: () => {
       }
     });
   }
@@ -885,14 +880,41 @@ export default class AppStoriesManager extends AppManager {
     const story = this.getStoryByIdCached(peerId, id) as StoryItem.storyItem;
     const views = story.views;
     const newSentReaction: Reaction = reaction._ === 'reactionEmpty' ? undefined : reaction;
+
     if(views) {
+      const unsetPreviousReaction = () => {
+        const reactionCount = views.reactions?.find((reactionCount) => reactionsEqual(reactionCount.reaction, story.sent_reaction));
+        if(reactionCount) {
+          --reactionCount.count;
+          if(!reactionCount.count) {
+            indexOfAndSplice(views.reactions, reactionCount);
+          }
+        }
+      };
+
       views.reactions_count ??= 0;
       if(!story.sent_reaction && newSentReaction) {
         ++views.reactions_count;
       } else if(story.sent_reaction && !newSentReaction) {
         --views.reactions_count;
       }
+
+      unsetPreviousReaction();
+      if(newSentReaction) {
+        let reactionCount = views.reactions?.find((reactionCount) => reactionsEqual(reactionCount.reaction, newSentReaction));
+        if(!reactionCount) {
+          views.reactions ??= [];
+          views.reactions.push(reactionCount = {
+            _: 'reactionCount',
+            reaction: newSentReaction,
+            count: 0
+          });
+        }
+
+        ++reactionCount.count;
+      }
     }
+
     this.saveStoryItems([{
       ...story,
       sent_reaction: newSentReaction
@@ -1032,6 +1054,40 @@ export default class AppStoriesManager extends AppManager {
         if(peerId.isUser()) this.appUsersManager.saveApiUsers([newPeer as User.user]);
         else this.appChatsManager.saveApiChats([newPeer as Chat.channel]);
         this.appNotificationsManager.toggleStoriesMute(peerId, hidden, true);
+      }
+    });
+  }
+
+  public getBoostsStatus(peerId: PeerId) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'stories.getBoostsStatus',
+      params: {
+        peer: this.appPeersManager.getInputPeerById(peerId)
+      }
+    });
+  }
+
+  public canApplyBoost(peerId: PeerId) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'stories.canApplyBoost',
+      params: {
+        peer: this.appPeersManager.getInputPeerById(peerId)
+      },
+      processResult: (storiesCanApplyBoostResult) => {
+        this.appPeersManager.saveApiPeers(storiesCanApplyBoostResult as StoriesCanApplyBoostResult.storiesCanApplyBoostReplace);
+        return storiesCanApplyBoostResult;
+      },
+      options: {
+        floodMaxTimeout: 0
+      }
+    });
+  }
+
+  public applyBoost(peerId: PeerId) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'stories.applyBoost',
+      params: {
+        peer: this.appPeersManager.getInputPeerById(peerId)
       }
     });
   }

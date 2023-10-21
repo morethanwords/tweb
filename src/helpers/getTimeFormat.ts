@@ -1,12 +1,13 @@
+// https://stackoverflow.com/a/61676104
 export default function getTimeFormat(): 'h12' | 'h23' {
-  // try {
-  //   const resolvedOptions = Intl.DateTimeFormat(navigator.language,  {hour: 'numeric'}).resolvedOptions();
-  //   if('hourCycle' in resolvedOptions) {
-  //     return (resolvedOptions as any).hourCycle === 'h12' ? 'h12' : 'h23';
-  //   } else {
-  //     return resolvedOptions.hour12 ? 'h12' : 'h23';
-  //   }
-  // } catch(err) {
-  return new Date().toLocaleString().match(/\s(AM|PM)/) ? 'h12' : 'h23';
-  // }
+  const t = document.createElement('input');
+  t.type = 'time';
+  t.value = '15:00';
+  t.style.visibility = 'hidden';
+  document.body.append(t);
+  const offsetWidth = t.offsetWidth;
+  t.remove();
+  const timeFormat = offsetWidth > 110 ? 'h12' : 'h23';
+  // console.log('timeFormat', timeFormat, offsetWidth);
+  return timeFormat;
 }

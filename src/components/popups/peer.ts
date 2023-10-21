@@ -14,7 +14,7 @@ import toggleDisability from '../../helpers/dom/toggleDisability';
 
 export type PopupPeerButton = Omit<PopupButton, 'callback'> & Partial<{callback: PopupPeerButtonCallback, onlyWithCheckbox: PopupPeerCheckboxOptions}>;
 export type PopupPeerButtonCallbackCheckboxes = Set<LangPackKey>;
-export type PopupPeerButtonCallback = (checkboxes?: PopupPeerButtonCallbackCheckboxes) => void;
+export type PopupPeerButtonCallback = (e: MouseEvent, checkboxes?: PopupPeerButtonCallbackCheckboxes) => void;
 export type PopupPeerCheckboxOptions = CheckboxFieldOptions & {checkboxField?: CheckboxField};
 
 export type PopupPeerOptions = Omit<PopupOptions, 'buttons' | 'title'> & Partial<{
@@ -24,7 +24,7 @@ export type PopupPeerOptions = Omit<PopupOptions, 'buttons' | 'title'> & Partial
   titleLangKey: LangPackKey,
   titleLangArgs: any[],
   noTitle: boolean,
-  description: Parameters<typeof setInnerHTML>[1],
+  description: Parameters<typeof setInnerHTML>[1] | true,
   descriptionRaw: string,
   descriptionLangKey: LangPackKey,
   descriptionLangArgs: any[],
@@ -67,7 +67,7 @@ export default class PopupPeer extends PopupElement {
       const p = this.description = document.createElement('p');
       p.classList.add('popup-description');
       if(options.descriptionLangKey) p.append(i18n(options.descriptionLangKey, options.descriptionLangArgs));
-      else if(options.description) setInnerHTML(p, options.description);
+      else if(options.description && options.description !== true) setInnerHTML(p, options.description);
       else if(options.descriptionRaw) p.append(wrapEmojiText(options.descriptionRaw));
 
       fragment.append(p);
@@ -86,14 +86,14 @@ export default class PopupPeer extends PopupElement {
       options.buttons.forEach((button) => {
         if(button.callback) {
           const original = button.callback;
-          button.callback = () => {
+          button.callback = (e) => {
             const c: Set<LangPackKey> = new Set();
             options.checkboxes.forEach((o) => {
               if(o.checkboxField.checked) {
                 c.add(o.text);
               }
             });
-            original(c);
+            original(e, c);
           };
         }
 
@@ -108,6 +108,6 @@ export default class PopupPeer extends PopupElement {
       });
     }
 
-    this.container.insertBefore(fragment, this.header.nextElementSibling);
+    this.header.after(fragment);
   }
 }

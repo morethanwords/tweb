@@ -6,6 +6,8 @@
 
 .popup-peer {
   $parent: ".popup";
+  --popup-min-width: 19.5rem;
+  --popup-max-width: 25rem;
 
   #{$parent} {
     &-header {
@@ -20,8 +22,6 @@
     
     &-container {
       padding: .75rem .5rem;
-      min-width: unquote('min(100%, 19.5rem)');
-      max-width: unquote('min(400px, 100%)');
       width: min-content;
     }
 
@@ -40,11 +40,11 @@
       margin-bottom: 0;
       min-width: unquote('min(100%, 15rem)');
       max-width: fit-content;
-      text-overflow: ellipsis;
-      overflow: hidden;
-      word-break: break-word;
       line-height: var(--line-height);
       padding: .625rem 1rem .5rem;
+      white-space: pre-wrap;
+
+      @include text-overflow(false);
     }
   }
 

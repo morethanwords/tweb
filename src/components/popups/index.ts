@@ -23,16 +23,19 @@ import Scrollable from '../scrollable';
 import {getMiddleware, MiddlewareHelper} from '../../helpers/middleware';
 import ButtonIcon from '../buttonIcon';
 import Icon from '../icon';
+import toggleDisability from '../../helpers/dom/toggleDisability';
 
 export type PopupButton = {
   text?: HTMLElement | DocumentFragment,
-  callback?: () => void,
+  callback?: (e: MouseEvent) => void | MaybePromise<boolean>,
   langKey?: LangPackKey,
   langArgs?: any[],
   isDanger?: boolean,
   isCancel?: boolean,
   element?: HTMLButtonElement,
-  noRipple?: boolean
+  noRipple?: boolean,
+  iconLeft?: Icon,
+  iconRight?: Icon
 };
 
 export type PopupOptions = Partial<{
@@ -214,54 +217,87 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
       (this.body || this.container).append(this.footer);
     }
 
-    let btnConfirmOnEnter = this.btnConfirm;
-    const buttons = this.buttons = options.buttons;
-    if(buttons?.length) {
-      const buttonsDiv = this.buttonsEl = document.createElement('div');
-      buttonsDiv.classList.add('popup-buttons');
-
-      const buttonsElements = buttons.map((b) => {
-        const button = document.createElement('button');
-        button.className = 'btn' + (b.isDanger ? ' danger' : ' primary');
-
-        if(!b.noRipple) {
-          ripple(button);
-        }
-
-        if(b.text) {
-          button.append(b.text);
-        } else if(b.langKey) {
-          button.append(i18n(b.langKey, b.langArgs));
-        }
-
-        attachClickEvent(button, () => {
-          b.callback?.();
-          this.hide();
-        }, {listenerSetter: this.listenerSetter, once: true});
-
-        return b.element = button;
-      });
-
-      if(!btnConfirmOnEnter && buttons.length === 2) {
-        const button = buttons.find((button) => !button.isCancel);
-        if(button) {
-          btnConfirmOnEnter = button.element;
-        }
-      }
-
-      if(buttons.length >= 3) {
-        buttonsDiv.classList.add('is-vertical-layout');
-      }
-
-      buttonsDiv.append(...buttonsElements);
-      this.container.append(buttonsDiv);
-    }
-
-    this.btnConfirmOnEnter = btnConfirmOnEnter;
+    this.btnConfirmOnEnter = this.btnConfirm;
+    this.setButtons(options.buttons);
 
     this.element.append(this.container);
 
     PopupElement.POPUPS.push(this);
+  }
+
+  protected setButtons(buttons: PopupButton[]) {
+    this.buttons = buttons;
+    if(this.buttonsEl) {
+      this.buttonsEl.remove();
+      this.buttonsEl = undefined;
+    }
+
+    if(!buttons?.length) {
+      return;
+    }
+
+    const buttonsDiv = this.buttonsEl = document.createElement('div');
+    buttonsDiv.classList.add('popup-buttons');
+
+    const buttonsElements = buttons.map((b) => {
+      const button = document.createElement('button');
+      button.className = 'popup-button btn' + (b.isDanger ? ' danger' : ' primary');
+
+      if(!b.noRipple) {
+        ripple(button);
+      }
+
+      if(b.text) {
+        button.append(b.text);
+      } else if(b.langKey) {
+        button.append(i18n(b.langKey, b.langArgs));
+      }
+
+      if(b.iconLeft || b.iconRight) {
+        const i = Icon(b.iconLeft || b.iconRight, 'popup-button-icon', b.iconLeft ? 'left' : 'right');
+        button.classList.add('with-icon');
+        if(b.iconLeft) button.prepend(i);
+        else button.append(i);
+      }
+
+      attachClickEvent(button, async(e) => {
+        let result = b.callback?.(e);
+        if(result !== undefined && result instanceof Promise) {
+          const toggle = toggleDisability([b.element], true);
+          try {
+            result = await result;
+          } catch(err) {
+            result = false;
+          }
+
+          if(result === false) {
+            toggle();
+          }
+        }
+
+        if(result === false) {
+          return;
+        }
+
+        this.hide();
+      }, {listenerSetter: this.listenerSetter});
+
+      return b.element = button;
+    });
+
+    if(!this.btnConfirmOnEnter && buttons.length === 2) {
+      const button = buttons.find((button) => !button.isCancel);
+      if(button) {
+        this.btnConfirmOnEnter = button.element;
+      }
+    }
+
+    if(buttons.length >= 3) {
+      buttonsDiv.classList.add('is-vertical-layout');
+    }
+
+    buttonsDiv.append(...buttonsElements);
+    this.container.append(buttonsDiv);
   }
 
   protected attachScrollableListeners(setClassOn?: HTMLElement) {

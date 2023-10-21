@@ -77,7 +77,9 @@ export default function wrapStickerAnimation({
     a?.remove();
     animationDiv.remove();
     onScroll && scrollable.container.removeEventListener('scroll', onScroll);
-    onUnmount?.();
+    if(a) {
+      onUnmount?.();
+    }
   };
 
   const middlewareHelper = middleware?.create() ?? getMiddleware();

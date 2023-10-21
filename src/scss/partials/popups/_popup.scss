@@ -10,6 +10,8 @@ $popup-footer-abitlarger-button-size: 48px;
 $popup-footer-abitlarger-padding: 1rem;
 
 .popup {
+  --popup-min-width: auto;
+  --popup-max-width: auto;
   position: fixed!important;
   top: 0;
   right: 0;
@@ -82,6 +84,8 @@ $popup-footer-abitlarger-padding: 1rem;
     flex-direction: column;
     overflow: hidden;
     margin: auto;
+    min-width: unquote('min(100%, var(--popup-min-width))');
+    max-width: unquote('min(100%, var(--popup-max-width))');
     
     body.animation-level-0 & {
       transition: none;
@@ -196,6 +200,38 @@ $popup-footer-abitlarger-padding: 1rem;
     }
   }
 
+  &-button {
+    font-weight: var(--font-weight-bold);
+    padding: 0 1rem;
+    text-transform: uppercase;
+    border-radius: $border-radius-medium;
+    position: relative;
+    max-width: 100%;
+    height: 2.5rem;
+    @include text-overflow();
+
+    & + & {
+      margin-inline-end: .625rem;
+    }
+
+    &.with-icon {
+      display: flex;
+      align-items: center;
+    }
+
+    &-icon {
+      &.left {
+        font-size: 1.25rem;
+        margin-inline: -.1875rem .1875rem;
+      }
+
+      &.right {
+        font-size: 1.5rem;
+        margin-inline-start: .625rem;
+      }
+    }
+  }
+
   &-buttons {
 		display: flex;
     flex-direction: row-reverse;
@@ -204,27 +240,12 @@ $popup-footer-abitlarger-padding: 1rem;
     height: 3rem;
     padding: 0 .5rem;
 
-		.btn {
-      font-weight: var(--font-weight-bold);
-			padding: 0 1rem;
-			text-transform: uppercase;
-			border-radius: $border-radius-medium;
-      position: relative;
-      max-width: 100%;
-      height: 2.5rem;
-      @include text-overflow();
-
-			& + .btn {
-        margin-inline-end: .625rem;
-			}
-		}
-
     &.is-vertical-layout {
       flex-direction: column;
       height: auto;
       align-items: stretch;
 
-      .btn {
+      .popup-button {
         margin: 0 !important;
       }
     }

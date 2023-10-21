@@ -14,7 +14,8 @@
     "generate-changelog": "node ./src/scripts/generate_changelog.js",
     "generate-icons": "node ./src/scripts/icomoon/icomoon_generate.js",
     "change-version": "node ./src/scripts/change_version.js",
-    "lint": "npx eslint \"src/**/**.ts\""
+    "lint": "npx eslint \"src/**/**.ts\"",
+    "build:solid": "node ./src/scripts/build_solid.js"
   },
   "author": "",
   "license": "GPL-3.0-only",
@@ -38,6 +39,7 @@
     "big-integer": "^1.6.51",
     "browserslist": "^4.21.5",
     "compression": "^1.7.4",
+    "csstype": "^3.1.2",
     "eslint": "^8.21.0",
     "express": "^4.18.2",
     "fast-png": "^6.1.0",
@@ -50,7 +52,6 @@
     "qr-code-styling": "^1.5.0",
     "rollup-plugin-visualizer": "^5.9.0",
     "sass": "^1.64.2",
-    "solid-js": "^1.7.9",
     "solid-transition-group": "^0.2.2",
     "text-encoding": "^0.7.0",
     "typescript": "^4.9.5",

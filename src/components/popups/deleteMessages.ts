@@ -32,8 +32,8 @@ export default class PopupDeleteMessages {
     const managers = PopupElement.MANAGERS;
 
     mids = mids.slice();
-    const callback = (checked: PopupPeerButtonCallbackCheckboxes, revoke?: boolean) => {
-      onConfirm && onConfirm();
+    const callback = (e: MouseEvent, checked: PopupPeerButtonCallbackCheckboxes, revoke?: boolean) => {
+      onConfirm?.();
       if(type === 'scheduled') {
         managers.appMessagesManager.deleteScheduledMessages(peerId, mids);
       } else {
@@ -95,7 +95,7 @@ export default class PopupDeleteMessages {
             }
           }
         } else {
-          buttons[0].callback = (checked) => callback(checked, true);
+          buttons[0].callback = (e, checked) => callback(e, checked, true);
         }
       }
     }

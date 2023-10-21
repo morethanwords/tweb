@@ -65,7 +65,6 @@ const slideTabs = makeTransitionFunction({
     if(toRight) elements.reverse();
     elements[0].style.transform = makeTranslate(-width, 0);
     elements[1].style.transform = makeTranslate(width, 0);
-
     tabContent.classList.add('active');
     void tabContent.offsetWidth; // reflow
 
@@ -96,6 +95,33 @@ const slideTabs = makeTransitionFunction({
   animateFirst: false
 });
 
+const slidePremium = makeTransitionFunction({
+  callback: (tabContent, prevTabContent, toRight) => {
+    const width = prevTabContent.getBoundingClientRect().width;
+    const elements = [tabContent, prevTabContent];
+    const classes = ['slide-right', 'slide-left'];
+    if(toRight) {
+      elements.reverse();
+      classes.reverse();
+    }
+
+    elements[0].style.transform = makeTranslate(-width, 0);
+    elements[1].style.transform = makeTranslate(width, 0);
+    tabContent.classList.add('active', classes[0]);
+    prevTabContent.classList.add(classes[1]);
+    void tabContent.offsetWidth; // reflow
+
+    tabContent.style.transform = '';
+    tabContent.classList.remove(classes[0]);
+
+    return () => {
+      prevTabContent.style.transform = '';
+      prevTabContent.classList.remove(classes[1]);
+    };
+  },
+  animateFirst: false
+});
+
 // const slideTopics = makeTransitionFunction({
 //   callback: (tabContent, prevTabContent) => {
 //     const rect = tabContent.getBoundingClientRect();
@@ -115,11 +141,12 @@ const slideTabs = makeTransitionFunction({
 
 const transitions: {[type in TransitionSliderType]?: TransitionFunction} = {
   navigation: slideNavigation,
+  premiumTabs: slidePremium,
   tabs: slideTabs
   // topics: slideTopics
 };
 
-type TransitionSliderType = 'tabs' | 'navigation' | 'zoom-fade' | 'slide-fade' | 'topics' | 'none'/*  | 'counter' */;
+type TransitionSliderType = 'tabs' | 'premiumTabs' | 'navigation' | 'zoom-fade' | 'slide-fade' | 'topics' | 'none'/*  | 'counter' */;
 
 type TransitionSliderOptions = {
   content: HTMLElement,

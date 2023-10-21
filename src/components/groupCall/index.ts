@@ -381,7 +381,7 @@ export default class PopupGroupCall extends PopupElement {
         }],
         buttons: [{
           langKey: 'VoiceChat.End.OK',
-          callback: (checkboxes) => {
+          callback: (e, checkboxes) => {
             hangUp(!!checkboxes.size);
           },
           isDanger: true

@@ -163,9 +163,6 @@ export default class AppAttachMenuBotsManager extends AppManager {
             access_hash: app.access_hash,
             id: app.id
           }
-        },
-        processResult: (result) => {
-          return result;
         }
       });
     }
@@ -181,9 +178,6 @@ export default class AppAttachMenuBotsManager extends AppManager {
           from_side_menu: fromSideMenu,
           theme_params: themeParams,
           start_param: startParam
-        },
-        processResult: (result) => {
-          return result;
         }
       });
     }
@@ -201,9 +195,6 @@ export default class AppAttachMenuBotsManager extends AppManager {
         theme_params: themeParams,
         send_as: sendAsPeerId ? this.appPeersManager.getInputPeerById(sendAsPeerId) : undefined,
         start_param: startParam
-      },
-      processResult: (result) => {
-        return result;
       }
     });
   }
@@ -222,9 +213,6 @@ export default class AppAttachMenuBotsManager extends AppManager {
         silent: options.silent,
         reply_to: getInputReplyTo({replyToMsgId: options.replyToMsgId, threadId: options.threadId}),
         send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined
-      },
-      processResult: (result) => {
-        return result;
       }
     });
   }
@@ -236,11 +224,11 @@ export default class AppAttachMenuBotsManager extends AppManager {
         bot: this.appUsersManager.getUserInput(botId),
         enabled,
         write_allowed: writeAllowed
-      },
+      }/* ,
       processResult: (result) => {
         return result;
         // this.apiUpdatesManager.processLocalUpdate({_: 'updateAttachMenuBots'});
-      }
+      } */
     });
   }
 
@@ -265,9 +253,6 @@ export default class AppAttachMenuBotsManager extends AppManager {
           short_name: shortName
         },
         hash: 0
-      },
-      processResult: (result) => {
-        return result;
       }
     });
   }

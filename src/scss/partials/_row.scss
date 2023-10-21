@@ -134,7 +134,8 @@ $row-border-radius: $border-radius-medium;
       padding-inline-start: 4rem;
     }
 
-    /* .row-title */.row-icon {
+    /* .row-title */
+    .row-icon {
       position: absolute;
       inset-inline-start: 1rem;
       font-size: 1.5rem;
@@ -145,6 +146,14 @@ $row-border-radius: $border-radius-medium;
       // margin-top: -.125rem;
       top: 50%;
       transform: translateY(-50%);
+
+      &-premium-color {
+        color: var(--primary-color);
+      }
+
+      &-custom-color {
+        color: var(--custom-icon-color);
+      }
     }
 
     &:not(.row-with-icon) .row-icon {

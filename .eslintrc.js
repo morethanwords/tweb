@@ -13,6 +13,12 @@ module.exports = {
   plugins: [
     '@typescript-eslint'
   ],
+  ignorePatterns: [
+    'src/vendor/**',
+    'src/solid/**',
+    'src/opus-recorder/**',
+    'public/**'
+  ],
   overrides: [{
     files: ['*.ts'],
 

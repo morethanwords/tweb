@@ -7211,7 +7211,12 @@ export default class ChatBubbles {
   }
 
   private makeViewButton<T extends Parameters<typeof Button>[1]>(options: T) {
-    return Button('btn-primary btn-primary-transparent bubble-view-button', options);
+    const button = Button('btn-primary btn-primary-transparent bubble-view-button', options);
+    const text = button.querySelector('.i18n');
+    if(text) {
+      text.classList.add('bubble-view-button-text');
+    }
+    return button;
   }
 
   private generateLocalMessageId(addOffset = 0) {

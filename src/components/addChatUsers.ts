@@ -25,7 +25,7 @@ export default async function addChatUsers({
   const isChannel = await rootScope.managers.appChatsManager.isChannel(id);
   const isBroadcast = await rootScope.managers.appChatsManager.isBroadcast(id);
 
-  const showConfirmation = (peerIds: PeerId[], callback: (checked: PopupPeerButtonCallbackCheckboxes) => void) => {
+  const showConfirmation = (peerIds: PeerId[], callback: (e: MouseEvent, checked: PopupPeerButtonCallbackCheckboxes) => void) => {
     let titleLangKey: LangPackKey, titleLangArgs: any[],
       descriptionLangKey: LangPackKey, descriptionLangArgs: any[],
       checkboxes: PopupPeerCheckboxOptions[];
@@ -110,7 +110,7 @@ export default async function addChatUsers({
       placeholder: 'Search',
       onSelect: (peerId) => {
         setTimeout(() => {
-          showConfirmation([peerId], (checked) => {
+          showConfirmation([peerId], (e, checked) => {
             rootScope.managers.appChatsManager.addChatUser(id, peerId, checked.size ? undefined : 0)
             .catch(onError);
           });

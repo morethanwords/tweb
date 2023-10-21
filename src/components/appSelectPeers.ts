@@ -1002,12 +1002,15 @@ export default class AppSelectPeers {
     }
 
     if(title) {
+      const t = document.createElement('div');
+      t.classList.add('selector-user-title');
       if(typeof(title) === 'string') {
-        div.innerHTML = title;
+        t.innerHTML = title;
       } else {
-        replaceContent(div, title);
-        div.append(title);
+        replaceContent(t, title);
+        t.append(title);
       }
+      div.append(t);
     }
 
     div.insertAdjacentElement('afterbegin', avatarContainer);
