@@ -4,13 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import liteMode from '../../helpers/liteMode';
-import {doubleRaf} from '../../helpers/schedulers';
-import appImManager from '../../lib/appManagers/appImManager';
 import {LangPackKey} from '../../lib/langPack';
 import {ApiLimitType} from '../../lib/mtproto/api_methods';
 import rootScope from '../../lib/rootScope';
-import Icon from '../icon';
 import PopupPeer from './peer';
 import LimitLine from '../limit';
 import PopupPremium from './premium';
@@ -63,8 +59,8 @@ class P extends PopupPeer {
         langKey: 'IncreaseLimit',
         callback: () => {
           PopupPremium.show(options.feature);
-        }
-        // noRipple: true
+        },
+        iconRight: 'premium_double'
       }, {
         langKey: 'Cancel',
         isCancel: true
@@ -74,48 +70,28 @@ class P extends PopupPeer {
       titleLangKey: _a.title
     });
 
-    const isLocked = options.isPremium === undefined;
-    if(isLocked) {
-      this.element.classList.add('is-locked');
-    } else if(options.isPremium) {
-      this.element.classList.add('is-premium');
+    const limit = new LimitLine({
+      limitPremium: options.limitPremium,
+      hint: {
+        icon: _a.icon,
+        content: '' + (options.isPremium ? options.limitPremium : options.limit)
+      }
+    });
+
+    if(options.isPremium !== undefined) {
+      limit.setProgress(options.isPremium ? 1 : 0.5);
     } else {
-      const button = this.buttons.find((b) => !b.isCancel);
-      button.element.classList.add('popup-limit-button'/* , 'shimmer' */);
-      const i = Icon('premium_double', 'popup-limit-button-icon');
-      button.element.append(i);
+      const limitLine = limit.container.querySelector('.limit-line');
+      limitLine?.remove();
     }
 
-    const limitContainer = document.createElement('div');
-    limitContainer.classList.add('popup-limit-line');
-
-    const hint = document.createElement('div');
-    hint.classList.add('popup-limit-hint');
-    const i = Icon(_a.icon, 'popup-limit-hint-icon');
-    hint.append(i, '' + (options.isPremium ? options.limitPremium : options.limit));
-
-    limitContainer.append(hint);
-
-    if(!isLocked) {
-      const limit = new LimitLine({limitPremium: options.limitPremium}).limit;
-      limitContainer.append(limit);
-    }
-
-    this.container.insertBefore(limitContainer, this.description);
+    this.description.before(limit.container);
 
     // if(options.isPremium === false) {
     //   this.buttons.pop().element.remove();
     // }
 
-    const setHintActive = () => {
-      hint.classList.add('active');
-    };
-
-    if(liteMode.isAvailable('animations')) {
-      doubleRaf().then(setHintActive);
-    } else {
-      setHintActive();
-    }
+    limit._setHintActive();
   }
 }
 

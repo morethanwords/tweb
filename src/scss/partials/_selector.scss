@@ -61,18 +61,33 @@
   }
 
   &-user {
+    --selector-user-size: 2rem;
     color: var(--primary-text-color);
     background-color: var(--light-secondary-text-color);
     font-size: 1rem;
     padding-inline-end: 17px;
     margin-inline: -.25rem .75rem;
-    height: 2rem;
-    line-height: 2rem;
+    height: var(--selector-user-size);
+    line-height: var(--selector-user-size);
     margin-bottom: 7px;
     border-radius: 1.5rem;
     user-select: none;
     flex: 0 0 auto;
     max-width: 11.25rem;
+
+    &-alone {
+      margin: 0;
+    }
+
+    &.hover-primary {
+      @include hover() {
+        background-color: var(--light-primary-color);
+      }
+
+      .selector-user-avatar-close {
+        display: none;
+      }
+    }
 
     @include text-overflow();
 
@@ -101,6 +116,8 @@
 
     &-avatar {
       border-radius: inherit;
+      margin-top: calc((var(--selector-user-size) - var(--size)) / 2);
+      margin-left: calc((var(--selector-user-size) - var(--size)) / 2);
 
       &-close {
         position: absolute;
@@ -131,6 +148,7 @@
         position: relative;
         border-radius: 50% !important;
         color: #fff;
+        flex: 0 0 auto;
   
         .is-rtl & {
           float: right;
@@ -140,6 +158,10 @@
           -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%); // fix safari overflow
         }
       }
+    }
+
+    &-title {
+      @include text-overflow();
     }
   }
 

@@ -14,7 +14,7 @@ import deepEqual from '../../helpers/object/deepEqual';
 import safeReplaceObject from '../../helpers/object/safeReplaceObject';
 import pause from '../../helpers/schedulers/pause';
 import tsNow from '../../helpers/tsNow';
-import {Reaction, ReportReason, StoriesAllStories, StoriesStories, StoriesPeerStories, StoryItem, Update, PeerStories, User, Chat} from '../../layer';
+import {Reaction, ReportReason, StoriesAllStories, StoriesStories, StoriesPeerStories, StoryItem, Update, PeerStories, User, Chat, StoriesCanApplyBoost, StoriesCanApplyBoostResult} from '../../layer';
 import {MTAppConfig} from '../mtproto/appConfig';
 import {SERVICE_PEER_ID, TEST_NO_STORIES} from '../mtproto/mtproto_config';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
@@ -1072,6 +1072,13 @@ export default class AppStoriesManager extends AppManager {
       method: 'stories.canApplyBoost',
       params: {
         peer: this.appPeersManager.getInputPeerById(peerId)
+      },
+      processResult: (storiesCanApplyBoostResult) => {
+        this.appPeersManager.saveApiPeers(storiesCanApplyBoostResult as StoriesCanApplyBoostResult.storiesCanApplyBoostReplace);
+        return storiesCanApplyBoostResult;
+      },
+      options: {
+        floodMaxTimeout: 0
       }
     });
   }

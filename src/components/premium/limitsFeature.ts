@@ -40,7 +40,7 @@ export default class LimitsFeature {
         color: limit.backgroundColor
       });
       limitTextContainer.append(limitTitle, limitSubtitle);
-      limitContainer.append(limitTextContainer, limitLine.limit);
+      limitContainer.append(limitTextContainer, limitLine.container);
       return limitContainer;
     });
     const containers = await Promise.all(promises);

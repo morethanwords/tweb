@@ -201,14 +201,14 @@ export const PREMIUM_FEATURES: {[type in PremiumPromoFeatureType]?: PremiumPromo
   },
   translations: {
     feature: 'translations',
-    icon: 'premium_double',
+    icon: 'premium_translate',
     titleLangKey: 'Premium.Boarding.Translate.Title',
     subtitleLangKey: 'Premium.Boarding.Translate.Info',
     videoPosition: 'top'
   },
   animated_emoji: {
     feature: 'animated_emoji',
-    icon: 'premium_double',
+    icon: 'premium_emoji',
     titleLangKey: 'Premium.Boarding.Emoji.Title',
     subtitleLangKey: 'Premium.Boarding.Emoji.Info'
   },
@@ -227,7 +227,7 @@ export const PREMIUM_FEATURES: {[type in PremiumPromoFeatureType]?: PremiumPromo
   },
   emoji_status: {
     feature: 'emoji_status',
-    icon: 'premium_double',
+    icon: 'premium_status',
     titleLangKey: 'Premium.Boarding.Status.Title',
     subtitleLangKey: 'Premium.Boarding.Status.Info',
     videoPosition: 'top'

@@ -484,6 +484,13 @@
     }
   }
 
+  .upgraded-stories {
+    .carousel-item-content-top-section {
+      height: auto !important;
+      flex: 1 1 auto;
+    }
+  }
+
   &-controls {
     position: absolute;
     bottom: 0;
@@ -498,6 +505,7 @@
     transform: translateX(-50%);
 
     &-dots {
+      --dots-color: var(--border-color);
       --dot-width: calc(.625rem + .5rem);
       --count: 8;
       --center: calc((var(--amount) * var(--dot-width)) / 2);
@@ -512,12 +520,16 @@
       @include animation-level(2) {
         transition: transform var(--transition-standard-in);
       }
+
+      .night & {
+        --dots-color: var(--secondary-text-color);
+      }
     }
 
     &-dot {
       width: .5rem;
       height: .5rem;
-      background-color: var(--border-color);
+      background-color: var(--dots-color);
       border-radius: 50%;
       cursor: pointer;
 

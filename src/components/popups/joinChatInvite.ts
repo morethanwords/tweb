@@ -47,7 +47,9 @@ export default class PopupJoinChatInvite extends PopupElement {
       body: true,
       buttons: addCancelButton([{
         langKey: getJoinLangKey(chatInvite),
-        callback: () => PopupJoinChatInvite.import(hash)
+        callback: () => {
+          PopupJoinChatInvite.import(hash);
+        }
       }])
     });
 

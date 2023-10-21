@@ -300,6 +300,18 @@ const lang = {
   'AdminRights.EditStories': 'Edit Stories of Others',
   'AdminRights.DeleteStories': 'Delete Stories of Others',
   'Payments.Terms.Accept': 'I accept [Terms of Service]() of **%@**.',
+  'Boost.EnableStoriesFor': 'Enable Stories For',
+  'Boost.DescriptionJustReachedLevel1': 'This channel reached **Level 1** and can now post stories.',
+  'Boost.DescriptionJustReachedLevel': 'This channel reached **Level %1$d** and can now post %2$s per day.',
+  'Boost.DescriptionNextLevel': '%1$s needs %2$s to be able to post %3$s per day. Help make it possible!',
+  'Boost.StoriesCount': {
+    'one_value': '**%d** story',
+    'other_value': '**%d** stories'
+  },
+  'Boost.Already': 'Already Boosted',
+  'Boost.AlreadyDescription': 'You are already boosting this channel.',
+  'Boost.Replace': 'Replace Boost',
+  'Yes': 'Yes',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -1313,6 +1325,23 @@ const lang = {
   'StoryPinnedToPosts': 'Story posted to the channel page',
   'StoryUnpinnedFromPosts': 'Story removed from the channel page',
   'ProfileStories': 'Posts',
+  'BoostsLevel': 'Level %d',
+  'BoostChannel': 'Boost Channel',
+  'ChannelNeedBoostsDescriptionLevel1': 'This channel needs %s to enable stories. Help make it possible!',
+  'HelpUpgradeChannel': 'Help upgrade this channel',
+  'PremiumNeeded': 'Premium needed!',
+  'PremiumNeededForBoosting': 'Only **Telegram Premium** subscribers can boost channels. Do you want to subscribe to **Telegram Premium**?',
+  'ReplaceBoostChannelDescription': 'You currently boost **%1$s**. Do you want to boost **%2$s** instead?',
+  'CantBoostTooOften': 'Can\'t boost too often!',
+  'CantBoostTooOftenDescription': 'You can only change the channel you boost once a day. You will be able to boost in **%s.**',
+  'CantBoostWithGiftedPremium': 'Can\'t boost with gifted Premium!',
+  'CantBoostWithGiftedPremiumDescription': 'Because your **Telegram Premium** subscription was gifted to you, you can\'t use it to boost channels.',
+  'MoreBoosts': {
+    'one_value': '**%d** more boost',
+    'other_value': '**%d** more boosts'
+  },
+  'BoostsMaxLevelReached': 'Maximum Level Reached',
+  'YouBoostedChannel2': 'You boosted %s!',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

@@ -163,6 +163,7 @@ export default class FeaturesCarousel {
             title.classList.add('above-top-section-title');
             aboveTopSection.append(title);
             this.carouselItems[featureIndex].prepend(aboveTopSection);
+            this.carouselItems[featureIndex].classList.add('upgraded-stories');
             slideTopSectionContainer.append(stories.features);
           }
           slideTopSectionContainer.style.position = 'relative';
