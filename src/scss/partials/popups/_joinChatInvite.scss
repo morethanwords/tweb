@@ -5,15 +5,18 @@
  */
  
 .popup-join-chat-invite {
+  --popup-min-width: 22.5rem;
+  --popup-max-width: 420px;
   user-select: none;
 
-  .popup-container {
-    max-width: 420px;
-  }
-  
   .popup-body {
     align-items: center;
     padding: .5rem 0 1.25rem;
+  }
+
+  .popup-description {
+    margin: .5rem 0 -.5rem;
+    text-align: center;
   }
 
   .chat-title {

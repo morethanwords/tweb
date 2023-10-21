@@ -16,6 +16,7 @@ import rootScope from '../../lib/rootScope';
 import {avatarNew, wrapPhotoToAvatar} from '../avatarNew';
 import generateTitleIcons from '../generateTitleIcons';
 import {toastNew} from '../toast';
+import PopupPeer from './peer';
 
 // const FAKE_CHAT_ID = Number.MAX_SAFE_INTEGER - 0x1000;
 
@@ -36,7 +37,7 @@ const getJoinLangKey = (chatInvite: ChatInvite.chatInvite | ChatInvite.chatInvit
   return 'JoinByPeekGroupTitle';
 };
 
-export default class PopupJoinChatInvite extends PopupElement {
+export default class PopupJoinChatInvite extends PopupPeer {
   constructor(
     private hash: string,
     private chatInvite: ChatInvite.chatInvite
@@ -50,7 +51,8 @@ export default class PopupJoinChatInvite extends PopupElement {
         callback: () => {
           PopupJoinChatInvite.import(hash);
         }
-      }])
+      }]),
+      description: true
     });
 
     this.construct();
@@ -150,11 +152,18 @@ export default class PopupJoinChatInvite extends PopupElement {
     }
     // avatarElem.setAttribute('peer', '' + -fakeChat.id);
 
+    if(chatInvite.about) {
+      this.description.replaceChildren(wrapEmojiText(chatInvite.about));
+    } else {
+      this.description.remove();
+      this.description = undefined;
+    }
+
     const isBroadcast = chatInvite.pFlags.broadcast;
     const peopleCount = i18n(isBroadcast ? 'Subscribers' : 'Members', [numberThousandSplitter(chatInvite.participants_count)]);
     peopleCount.classList.add('chat-participants-count');
 
-    this.body.append(avatarElem.node, title, peopleCount);
+    this.body.append(...[avatarElem.node, title, peopleCount, this.description].filter(Boolean));
 
     if(chatInvite.pFlags.request_needed) {
       const caption = document.createElement('div');
