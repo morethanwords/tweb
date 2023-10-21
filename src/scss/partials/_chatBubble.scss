@@ -518,6 +518,11 @@ $message-padding-top: 6px;
     align-items: center;
     justify-content: center;
     text-decoration: none !important;
+    padding: 0 .375rem;
+
+    &-text {
+      @include text-overflow(true);
+    }
 
     @include hover() {
       background-color: var(--light-filled-message-primary-color);
