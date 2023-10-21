@@ -55,10 +55,6 @@ export default class AppAttachMenuBotsManager extends AppManager {
         this.onUpdateAttachMenuBots({_: 'updateAttachMenuBots'});
       }, 30 * 60e3);
     });
-
-    this.rootScope.addEventListener('language_change', () => {
-      this.onUpdateAttachMenuBots({_: 'updateAttachMenuBots'});
-    });
   }
 
   public clear = (init = false) => {
@@ -78,6 +74,14 @@ export default class AppAttachMenuBotsManager extends AppManager {
   private onUpdateWebViewResultSent = (update: Update.updateWebViewResultSent) => {
     this.rootScope.dispatchEvent('web_view_result_sent', update.query_id);
   };
+
+  public onLanguageChange() {
+    if(!this.attachMenuBots?.size) {
+      return;
+    }
+
+    this.onUpdateAttachMenuBots({_: 'updateAttachMenuBots'});
+  }
 
   public saveAttachMenuBot(attachMenuBot: AttachMenuBot) {
     this.attachMenuBots.set(attachMenuBot.bot_id, attachMenuBot);

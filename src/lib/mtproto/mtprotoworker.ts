@@ -255,6 +255,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
     rootScope.addEventListener('language_change', (language) => {
       rootScope.managers.networkerFactory.setLanguage(language);
+      rootScope.managers.appAttachMenuBotsManager.onLanguageChange();
     });
 
     window.addEventListener('online', () => {
