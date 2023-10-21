@@ -38,9 +38,6 @@ import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import {Message, WallPaper} from '../../layer';
 import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
 import {getColorsFromWallPaper} from '../../helpers/color';
-import liteMode from '../../helpers/liteMode';
-import PopupElement from '../popups';
-import PopupWebApp from '../popups/webApp';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 
 export type ChatType = 'chat' | 'pinned' | 'discussion' | 'scheduled' | 'stories';

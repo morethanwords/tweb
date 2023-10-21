@@ -410,8 +410,15 @@ export class ThemeController {
       hint_color: 'secondary-text-color',
       link_color: 'link-color',
       secondary_bg_color: 'background-color-true',
-      text_color: 'primary-text-color'
+      text_color: 'primary-text-color',
+      header_bg_color: 'surface-color',
+      accent_text_color: 'primary-color',
+      section_bg_color: 'surface-color',
+      section_header_text_color: 'primary-color',
+      subtitle_text_color: 'secondary-text-color',
+      destructive_text_color: 'danger-color'
     };
+
     const themeParams: TelegramWebViewTheme = {} as any;
     for(const key in themePropertiesMap) {
       const value = themePropertiesMap[key as keyof TelegramWebViewTheme];
