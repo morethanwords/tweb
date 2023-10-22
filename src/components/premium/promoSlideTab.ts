@@ -104,7 +104,7 @@ export default class PromoSlideTab {
 
     const getSelectedOption = () => periodOptions[rows.findIndex((row) => row.checkboxField.checked)];
 
-    form.addEventListener('change', () => {
+    form?.addEventListener('change', () => {
       this.selectPeriod(getSelectedOption());
     });
 
@@ -136,9 +136,7 @@ export default class PromoSlideTab {
     tab.append(options.header, options.body);
 
     tab.classList.add('premium-promo-tab', 'not-bottom', 'scrollable', 'scrollable-y');
-    if(!options.isPremiumActive) {
-      options.container.classList.add('fixed-size');
-    }
+    options.container.classList.add('fixed-size');
     this.tab = tab;
 
     tab.addEventListener('scroll', (e) => {

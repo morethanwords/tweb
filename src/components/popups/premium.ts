@@ -18,6 +18,7 @@ import {Middleware} from '../../helpers/middleware';
 import {AppManagers} from '../../lib/appManagers/managers';
 import type {MTAppConfig} from '../../lib/mtproto/appConfig';
 import appImManager from '../../lib/appManagers/appImManager';
+import rootScope from '../../lib/rootScope';
 
 export type PopupPremiumProps = {
   order: PremiumPromoFeatureType[],
@@ -90,7 +91,7 @@ export default class PopupPremium extends PopupElement {
       return {titleLangArgs, subtitleLangArgs};
     };
 
-    const isPremiumActive = !premiumPromo.status_entities.length;
+    const isPremiumActive = rootScope.premium;
     this.props = {
       order,
       features: await Promise.all(order.map(async(feature) => {
@@ -189,9 +190,6 @@ export default class PopupPremium extends PopupElement {
           this.featureSlideTab.featureCarousel.ready(updateActionLayout);
         } else {
           updateActionLayout();
-          if(this.props.isPremiumActive) {
-            tabsContainer.classList.remove('fixed-size');
-          }
         }
       }
     });
@@ -205,6 +203,11 @@ export default class PopupPremium extends PopupElement {
     this.featureSlideTab.transition = transition;
 
     this.actionButton.addEventListener('click', () => {
+      if(this.props.isPremiumActive) {
+        this.hide();
+        return;
+      }
+
       this.buyPremium();
     }, {once: true});
     this.actionButton.append(this.actionButtonText.element);
