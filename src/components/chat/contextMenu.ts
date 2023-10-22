@@ -134,7 +134,9 @@ export default class ChatContextMenu {
           'poll-element',
           '.attachment',
           '.reply-markup-button',
-          '.bubble-view-button'
+          '.bubble-view-button',
+          '.webpage',
+          '.bubbles-group-avatar'
         ];
         const good = !(e.target as HTMLElement).closest(badSelectors.join(', '));
         if(good) {

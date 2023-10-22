@@ -154,6 +154,7 @@ import {avatarNew, findUpAvatar, wrapPhotoToAvatar} from '../avatarNew';
 import Icon from '../icon';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import {_tgico} from '../../helpers/tgico';
+import setBlankToAnchor from '../../lib/richTextProcessor/setBlankToAnchor';
 
 export const USER_REACTIONS_INLINE = false;
 const USE_MEDIA_TAILS = false;
@@ -2188,7 +2189,7 @@ export default class ChatBubbles {
         return;
       }
 
-      const SINGLE_MEDIA_CLASSNAME = 'webpage';
+      const SINGLE_MEDIA_CLASSNAME = 'has-webpage';
       const isSingleMedia = bubble.classList.contains(SINGLE_MEDIA_CLASSNAME);
 
       const f = documentDiv ? (media: any) => {
@@ -2229,7 +2230,7 @@ export default class ChatBubbles {
         } else {
           const withTail = bubble.classList.contains('with-media-tail');
           // selector = '.album-item video, .album-item img, .preview video, .preview img, ';
-          selector = '.album-item, .preview, ';
+          selector = '.album-item, .webpage-preview, ';
           if(withTail) {
             selector += '.bubble__media-container';
           } else {
@@ -4979,7 +4980,12 @@ export default class ChatBubbles {
 
     const isMessageEmpty = !messageMessage/*  && (!topicNameButtonContainer || isStandaloneMedia) */;
 
-    let viewButton: HTMLAnchorElement, storyFromPeerId: PeerId;
+    const invertMedia = isMessage && message.pFlags.invert_media;
+    if(invertMedia) {
+      bubble.classList.add('invert-media');
+    }
+
+    let storyFromPeerId: PeerId;
     // media
     if(messageMedia/*  && messageMedia._ === 'messageMediaPhoto' */) {
       attachmentDiv = document.createElement('div');
@@ -5049,6 +5055,7 @@ export default class ChatBubbles {
         }
 
         case 'messageMediaWebPage': {
+          const className = 'webpage';
           processingWebPage = true;
 
           const webPage: WebPage = messageMedia.webpage;
@@ -5058,7 +5065,7 @@ export default class ChatBubbles {
 
           const storyAttribute = webPage.attributes?.find((attribute) => attribute._ === 'webPageAttributeStory') as WebPageAttribute.webPageAttributeStory;
           const storyPeerId = storyAttribute && getPeerId(storyAttribute.peer);
-          const storyId = storyAttribute && storyAttribute.id;
+          const storyId = storyAttribute?.id;
 
           if(storyAttribute) {
             const replyContainer = await this.getStoryReplyIfExpired(storyPeerId, storyId, true);
@@ -5066,13 +5073,17 @@ export default class ChatBubbles {
               bubble.classList.add('is-expired-story');
               messageDiv.append(replyContainer);
               messageDiv.classList.add('expired-story-message');
-              viewButton = undefined;
               break;
             }
           }
 
+          const box = document.createElement('a');
+          box.classList.add(className);
+
+          const quoteClassName = `${className}-quote`;
           const wrapped = wrapUrl(webPage.url);
-          const SAFE_TYPES: Set<typeof wrapped['onclick']> = new Set(['im', 'addlist']);
+          const SAFE_TYPES: Set<typeof wrapped['onclick']> = new Set(['im', 'addlist', 'boost']);
+          let viewButton: HTMLElement;
           if(SAFE_TYPES.has(wrapped?.onclick)) {
             const map: {[type: string]: LangPackKey} = {
               telegram_channel: 'Chat.Message.ViewChannel',
@@ -5086,37 +5097,44 @@ export default class ChatBubbles {
             };
 
             const langPackKey = map[webPage.type] || 'OpenMessage';
-            viewButton = this.makeViewButton({text: langPackKey, asLink: true});
-            viewButton.href = wrapped.url;
-            viewButton.setAttribute('onclick', `${wrapped.onclick}(this)`);
-            viewButton.setAttribute('safe', '');
+            box.setAttribute('onclick', `${wrapped.onclick}(this)`);
+            box.setAttribute('safe', '');
+
+            viewButton = document.createElement('div');
+            viewButton.classList.add(`${className}-button`);
+            viewButton.append(i18n(langPackKey));
+          } else {
+            setBlankToAnchor(box);
           }
 
-          bubble.classList.add('webpage');
+          box.href = wrapped.url;
 
-          const box = document.createElement('div');
-          box.classList.add('web');
+          bubble.classList.add('has-webpage');
 
           const quote = document.createElement('div');
-          quote.classList.add('quote');
+          quote.classList.add(quoteClassName);
+
+          if(viewButton) {
+            quote.classList.add('has-button');
+          }
 
           let previewResizer: HTMLDivElement, preview: HTMLDivElement;
           const photo: Photo.photo = webPage.photo as any;
           const doc = webPage.document as MyDocument;
+          const hasLargeMedia = !!webPage.pFlags.has_large_media;
           if(photo || doc || storyAttribute) {
             previewResizer = document.createElement('div');
-            previewResizer.classList.add('preview-resizer');
+            previewResizer.classList.add(`${className}-preview-resizer`);
             preview = document.createElement('div');
-            preview.classList.add('preview');
+            preview.classList.add(`${className}-preview`);
             previewResizer.append(preview);
           }
 
-          const quoteTextDiv = document.createElement('div');
-          quoteTextDiv.classList.add('quote-text');
+          const contentDiv = document.createElement('div');
+          contentDiv.classList.add(`${className}-content`);
 
           if(doc) {
             if(doc.type === 'gif' || doc.type === 'video' || doc.type === 'round') {
-              // if(doc.size <= 20e6) {
               const mediaSize = doc.type === 'round' ? mediaSizes.active.round : mediaSizes.active.webpage;
               if(doc.type === 'round') {
                 bubble.classList.add('round');
@@ -5124,6 +5142,7 @@ export default class ChatBubbles {
               } else {
                 bubble.classList.add('video');
               }
+
               wrapVideo({
                 doc,
                 container: preview,
@@ -5138,7 +5157,6 @@ export default class ChatBubbles {
                 autoDownload: this.chat.autoDownload,
                 noInfo: message.mid < 0
               });
-              // }
             } else {
               const docDiv = await wrapDocument({
                 message: message as Message.message,
@@ -5157,73 +5175,66 @@ export default class ChatBubbles {
                 canTranscribeVoice: true
               });
               preview.append(docDiv);
-              preview.classList.add('preview-with-document');
-              quoteTextDiv.classList.add('has-document');
-              // messageDiv.classList.add((webpage.type || 'document') + '-message');
-              // doc = null;
+              preview.classList.add(`${className}-preview-with-document`);
+              contentDiv.classList.add('has-document');
             }
           }
 
-          if(previewResizer) {
-            quoteTextDiv.append(previewResizer);
-          }
-
-          let t: HTMLElement;
+          const textElements: HTMLElement[] = [];
           if(webPage.site_name) {
             const html = wrapRichText(webPage.url);
             const a: HTMLAnchorElement = htmlToDocumentFragment(html).firstElementChild as any;
-            a.classList.add('webpage-name');
+            a.classList.add(`${className}-name`);
             const strong = document.createElement('strong');
             setInnerHTML(strong, wrapEmojiText(webPage.site_name));
             a.textContent = '';
             a.append(strong);
-            quoteTextDiv.append(a);
-            t = a;
+            contentDiv.append(a);
+            textElements.push(a);
           }
 
           const title = wrapWebPageTitle(webPage);
           if(title.textContent) {
             const titleDiv = document.createElement('div');
-            titleDiv.classList.add('title');
+            titleDiv.classList.add(`${className}-title`);
             const strong = document.createElement('strong');
             setInnerHTML(strong, title);
             titleDiv.append(strong);
-            quoteTextDiv.append(titleDiv);
-            t = titleDiv;
+            contentDiv.append(titleDiv);
+            textElements.push(titleDiv);
           }
 
           const description = wrapWebPageDescription(webPage);
           if(description.textContent) {
             const textDiv = document.createElement('div');
-            textDiv.classList.add('text');
+            textDiv.classList.add(`${className}-text`);
             setInnerHTML(textDiv, description);
-            quoteTextDiv.append(textDiv);
-            t = textDiv;
+            contentDiv.append(textDiv);
+            textElements.push(textDiv);
           }
 
-          /* if(t) {
-            t.append(timeSpan);
-          } else {
-            box.classList.add('no-text');
-          } */
+          if(textElements.length) {
+            textElements.slice(1).forEach((element) => element.classList.add(`${className}-text-margin-top`));
+          }
 
-          quote.append(quoteTextDiv);
+          const border = document.createElement('div');
+          border.classList.add(`${className}-border`);
 
+          quote.append(border, contentDiv);
+
+          let isSquare = false;
           if(photo && !doc) {
             bubble.classList.add('photo');
 
             const size: PhotoSize.photoSize = photo.sizes[photo.sizes.length - 1] as any;
-            let isSquare = false;
-            if(size.w === size.h && t) {
+            if(size.w === size.h && textElements[0] && !hasLargeMedia) {
               bubble.classList.add('is-square-photo');
+              box.classList.add('has-square-photo');
               isSquare = true;
               setAttachmentSize(photo, preview, 48, 48, false);
-
-              /* if(t) {
-                t.append(timeSpan);
-              } */
-            } else if(size.h > size.w) {
+            } else if(size.h > size.w && !hasLargeMedia) {
               bubble.classList.add('is-vertical-photo');
+              box.classList.add('has-vertical-photo');
             }
 
             wrapPhoto({
@@ -5255,16 +5266,14 @@ export default class ChatBubbles {
             });
           }
 
+          contentDiv[invertMedia || isSquare ? 'prepend' : 'append'](previewResizer);
+          if(viewButton) {
+            contentDiv.append(viewButton);
+          }
+
           box.append(quote);
-
-          // bubble.prepend(box);
-          // if(timeSpan.parentElement === messageDiv) {
-          messageDiv.insertBefore(box, timeSpan);
-          // } else {
-          //   messageDiv.append(box);
-          // }
-
-          // this.log('night running', bubble.scrollHeight);
+          if(invertMedia) timeSpan.parentElement.prepend(box);
+          else timeSpan.before(box);
 
           break;
         }
@@ -6030,11 +6039,6 @@ export default class ChatBubbles {
 
     if(isStandaloneMedia) {
       bubble.classList.add('just-media');
-    }
-
-    if(viewButton) {
-      timeSpan.before(viewButton);
-      // messageDiv.append(viewButton);
     }
 
     let savedFrom = '';

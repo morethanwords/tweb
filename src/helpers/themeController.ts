@@ -38,7 +38,8 @@ const appColorMap: {[name in AppColorName]: AppColor} = {
     darkRgb: true
   },
   'message-out-primary-color': {
-    lightFilled: true
+    lightFilled: true,
+    rgb: true
   },
   'surface-color': {
     rgb: true
