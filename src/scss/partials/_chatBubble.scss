@@ -96,6 +96,9 @@ $message-padding-horizontal: 10px;
 
 .bubble {
   --line-height: var(--messages-line-height);
+  --primary-color: var(--message-primary-color);
+  --name-color-rgb: var(--message-primary-color-rgb);
+  --secondary-text-color: var(--message-status-color);
   position: relative;
   z-index: 1;
   margin: 0 auto $bubble-margin;
@@ -1188,6 +1191,12 @@ $message-padding-horizontal: 10px;
 
       &-ico {
         font-size: 0;
+      }
+
+      &-toggle {
+        .part {
+          background-color: var(--message-icon-text-color);
+        }
       }
     }
 
@@ -2369,16 +2378,24 @@ $message-padding-horizontal: 10px;
 
 .webpage {
   $parent: ".webpage";
-  $border-radius: .375rem;
+  $border-radius: .25rem;
   $webpage-padding: .5rem;
   $webpage-padding-vertical: .25rem;
+  --webpage-color-rgb: var(--name-color-rgb);
+  // --webpage-color-rgb: 255,0,255;
+  --webpage-color: rgb(var(--webpage-color-rgb));
+  --primary-color: var(--webpage-color);
+  --secondary-color: var(--webpage-color);
+  --secondary-text-color: var(--webpage-color);
+  --link-color: var(--webpage-color);
+  --message-highlightning-color: rgba(var(--webpage-color-rgb), .3);
   margin: .25rem 0;
   max-width: 100%;
   overflow: hidden;
   font-size: var(--messages-secondary-text-size);
   line-height: var(--messages-secondary-line-height);
   user-select: none;
-  background-color: rgba(var(--message-primary-color-rgb), .1);
+  background-color: rgba(var(--webpage-color-rgb), .1);
   border-radius: $border-radius;
   text-decoration: none !important;
   color: var(--primary-text-color);
@@ -2435,7 +2452,6 @@ $message-padding-horizontal: 10px;
     border-radius: $border-radius;
     overflow: hidden;
     user-select: none;
-    cursor: pointer;
     position: relative;
     width: max-content;
 
@@ -2447,6 +2463,7 @@ $message-padding-horizontal: 10px;
     &-with-document {
       margin-bottom: 0 !important;
       min-width: 100%;
+      overflow: unset;
     }
 
     &-with-document &-resizer {
@@ -2456,6 +2473,7 @@ $message-padding-horizontal: 10px;
     &-resizer {
       display: flex;
       margin: $webpage-padding-vertical 0;
+      cursor: pointer;
     }
 
     &.is-round {
@@ -2466,9 +2484,14 @@ $message-padding-horizontal: 10px;
     }
   }
 
+  &-name,
+  &-button,
+  .anchor-url {
+    color: var(--webpage-color);
+  }
+
   &-name {
     text-decoration: none !important;
-    color: var(--message-primary-color);
   }
 
   &-text {
@@ -2487,7 +2510,7 @@ $message-padding-horizontal: 10px;
   &-border {
     flex: 0 0 auto;
     width: .1875rem;
-    background-color: var(--message-primary-color);
+    background-color: var(--webpage-color);
   }
 
   &-quote {
@@ -2513,9 +2536,8 @@ $message-padding-horizontal: 10px;
     line-height: $height;
     margin-top: $margin;
     margin-bottom: #{-$webpage-padding-vertical};
-    border-top: $border solid rgba(var(--message-primary-color-rgb), .2);
+    border-top: $border solid rgba(var(--webpage-color-rgb), .2);
     font-size: var(--messages-text-size);
-    color: var(--message-primary-color);
     text-align: center;
     font-weight: var(--font-weight-bold);
 
@@ -3024,6 +3046,7 @@ $message-padding-horizontal: 10px;
   --light-message-background-color: var(--light-message-out-background-color);
   --light-filled-message-background-color: var(--light-filled-message-out-background-color);
   --dark-message-background-color: var(--dark-message-out-background-color);
+  --message-icon-text-color: var(--message-out-icon-text-color);
   --link-color: var(--message-out-link-color);
   --message-primary-color: var(--message-out-primary-color);
   --message-primary-color-rgb: var(--message-out-primary-color-rgb);
@@ -3159,7 +3182,7 @@ $message-padding-horizontal: 10px;
   /* &.is-message-empty .time:after {
     margin-bottom: 1px;
   } */
-  
+
   &.forwarded {
     .name {
       color: var(--message-out-primary-color);
@@ -3179,45 +3202,6 @@ $message-padding-horizontal: 10px;
   .document-ico:after {
     border-top-color: var(--message-background-color);
     border-right-color: var(--message-background-color);
-  }
-
-  .audio {
-    &-waveform {
-      &-bar {
-        fill: var(--message-out-primary-color);
-
-        &.active {
-          fill: var(--message-out-primary-color) !important;
-        }
-      }
-    }
-
-    &-time,
-    &-subtitle {
-      color: var(--message-out-status-color);
-    }
-
-    &-toggle,
-    &-download,
-    &.corner-download .preloader-container {
-      background-color: var(--message-out-primary-color);
-    }
-
-    &.is-unread {
-      .audio-waveform-bar {
-        fill: var(--message-out-primary-color);
-      }
-      
-      .audio-time:after {
-        background-color: var(--message-out-primary-color);
-      }
-    }
-
-    &-toggle {
-      .part {
-        background-color: var(--message-out-audio-play-button-color);
-      }
-    }
   }
 
   &.is-message-empty.is-group-last {
@@ -3265,30 +3249,14 @@ $message-padding-horizontal: 10px;
     }
   }
 
-  .contact-number, 
-  .document-size,
-  .bubble-call-subtitle {
-    color: var(--message-out-status-color);
-  }
-
   .bubble-call-arrow {
     transform: rotate(-45deg);
   }
 
   poll-element {
     .poll {
-      &-desc, 
-      &-votes-count {
-        color: var(--message-out-primary-color);
-      }
-
-      &-line use {
-        stroke: var(--message-out-primary-color);
-      }
-
       &-answer-selected {
-        background-color: var(--message-out-primary-color);
-        color: var(--light-filled-message-out-primary-color);
+        color: var(--message-out-icon-text-color);
       }
 
       html.no-touch &-answer:hover {
@@ -3296,11 +3264,6 @@ $message-padding-horizontal: 10px;
           background-color: var(--message-out-primary-color);
           opacity: .08;
         }
-      }
-
-      &-footer-button, 
-      &-hint {
-        color: var(--message-out-primary-color);
       }
 
       &-avatars {
@@ -3329,16 +3292,11 @@ $message-padding-horizontal: 10px;
 
   .audio {
     .progress-line {
-      --color: var(--message-out-primary-color);
-
       &:before, 
       &__loaded {
-        background-color: var(--message-out-primary-color);
+        opacity: .1;
+        background-color: var(--primary-color);
       }
-    }
-
-    .preloader-container {
-      --color: var(--message-background-color);
     }
   }
 

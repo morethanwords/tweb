@@ -5284,7 +5284,7 @@ export default class ChatBubbles {
             });
           }
 
-          contentDiv[invertMedia || isSquare ? 'prepend' : 'append'](previewResizer);
+          previewResizer && contentDiv[invertMedia || isSquare ? 'prepend' : 'append'](previewResizer);
           if(viewButton) {
             contentDiv.append(viewButton);
           }

@@ -248,11 +248,12 @@
   --light-filled-message-primary-color: var(--light-filled-primary-color);
   --message-secondary-color: var(--secondary-color);
   --message-error-color: var(--danger-color);
+  --message-icon-text-color: #fff;
 
   --message-out-link-color: var(--link-color);
   --message-out-status-color: var(--message-out-primary-color);
   --message-out-time-color: var(--message-out-status-color);
-  --message-out-audio-play-button-color: #fff;
+  --message-out-icon-text-color: #fff;
   --message-out-selection-background-color: var(--selection-background-color);
 
   --gc-background-color: #212121;
@@ -316,11 +317,12 @@
   --message-checkbox-border-color: #fff;
   --message-secondary-color: var(--secondary-color);
   --message-error-color: #fff;
+  --message-icon-text-color: #fff;
 
   --message-out-link-color: #fff;
   --message-out-status-color: #fff;
   --message-out-time-color: rgba(255, 255, 255, .6);
-  --message-out-audio-play-button-color: var(--message-out-background-color);
+  --message-out-icon-text-color: var(--message-out-background-color);
   --message-out-selection-background-color: rgba(var(--surface-color-rgb), .4);
   // * Night theme end
 }
