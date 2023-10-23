@@ -155,6 +155,7 @@ import Icon from '../icon';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import {_tgico} from '../../helpers/tgico';
 import setBlankToAnchor from '../../lib/richTextProcessor/setBlankToAnchor';
+import addAnchorListener from '../../helpers/addAnchorListener';
 
 export const USER_REACTIONS_INLINE = false;
 const USE_MEDIA_TAILS = false;
@@ -2088,6 +2089,21 @@ export default class ChatBubbles {
     }
 
     if(await this.checkTargetForMediaViewer(target, e)) {
+      return;
+    }
+
+    const webPageContainer = findUpClassName(target, 'webpage') as HTMLAnchorElement;
+    if(webPageContainer) {
+      if(findUpClassName(target, 'webpage-preview-resizer')) {
+        e.preventDefault();
+        return;
+      }
+
+      const callback = webPageContainer.dataset.callback as Parameters<typeof addAnchorListener>[0]['name'];
+      if(callback) {
+        (window as any)[callback](findUpTag(target, 'A'), e);
+      }
+
       return;
     }
 
@@ -5097,14 +5113,16 @@ export default class ChatBubbles {
             };
 
             const langPackKey = map[webPage.type] || 'OpenMessage';
-            box.setAttribute('onclick', `${wrapped.onclick}(this)`);
-            box.setAttribute('safe', '');
-
+            box.dataset.callback = wrapped.onclick;
             viewButton = document.createElement('div');
             viewButton.classList.add(`${className}-button`);
             viewButton.append(i18n(langPackKey));
           } else {
             setBlankToAnchor(box);
+
+            if(!messageMedia.pFlags.safe) {
+              box.dataset.callback = 'showMaskedAlert';
+            }
           }
 
           box.href = wrapped.url;
