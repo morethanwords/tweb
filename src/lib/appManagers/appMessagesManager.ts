@@ -18,7 +18,7 @@ import LazyLoadQueueBase from '../../components/lazyLoadQueueBase';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import tsNow from '../../helpers/tsNow';
 import {randomLong} from '../../helpers/random';
-import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, InputUser} from '../../layer';
+import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, InputUser, MessagesSendMessage, MessagesSendMedia} from '../../layer';
 import {ArgumentTypes, InvokeApiOptions, Modify} from '../../types';
 import {logger, LogTypes} from '../logger';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
@@ -373,6 +373,8 @@ export class AppMessagesManager extends AppManager {
 
         message.media = {
           _: 'messageMediaWebPage',
+          pFlags: {},
+          ...(message.media as MessageMedia.messageMediaWebPage || {}),
           webpage: this.appWebPagesManager.getCachedWebPage(id)
         };
 
@@ -600,21 +602,32 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public async sendText(peerId: PeerId, text: string, options: MessageSendingParams & Partial<{
-    entities: MessageEntity[],
-    viaBotId: BotId,
-    queryId: string,
-    resultId: string,
-    noWebPage: true,
-    replyMarkup: ReplyMarkup,
-    clearDraft: true,
-    webPage: WebPage,
-  }> = {}): Promise<void> {
+  public async sendText(
+    peerId: PeerId,
+    text: string,
+    options: MessageSendingParams & Partial<{
+      entities: MessageEntity[],
+      viaBotId: BotId,
+      queryId: string,
+      resultId: string,
+      noWebPage: true,
+      replyMarkup: ReplyMarkup,
+      clearDraft: true,
+      webPage: WebPage,
+      webPageOptions: Partial<{
+        largeMedia: boolean,
+        smallMedia: boolean,
+        optional: boolean,
+        invertMedia: boolean
+      }>
+    }> = {}
+  ): Promise<void> {
     if(!text.trim()) {
       return;
     }
 
     options.entities ??= [];
+    options.webPageOptions ??= {};
 
     this.checkSendOptions(options);
     if(options.threadId && !options.replyToMsgId) {
@@ -655,8 +668,16 @@ export class AppMessagesManager extends AppManager {
     if(options.webPage) {
       message.media = {
         _: 'messageMediaWebPage',
+        pFlags: {
+          force_large_media: options.webPageOptions.largeMedia || undefined,
+          force_small_media: options.webPageOptions.smallMedia || undefined
+        },
         webpage: options.webPage
       };
+
+      if(options.webPageOptions.invertMedia) {
+        message.pFlags.invert_media = true;
+      }
     }
 
     const toggleError = (error?: ApiError) => {
@@ -672,46 +693,60 @@ export class AppMessagesManager extends AppManager {
       }
 
       const sendAs = options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined
+      const inputPeer = this.appPeersManager.getInputPeerById(peerId);
+      const replyTo = options.replyTo || getInputReplyTo({replyToMsgId, threadId});
       let apiPromise: any;
       if(options.viaBotId) {
         apiPromise = this.apiManager.invokeApiAfter('messages.sendInlineBotResult', {
-          peer: this.appPeersManager.getInputPeerById(peerId),
+          peer: inputPeer,
           random_id: message.random_id,
-          reply_to: options.replyTo || getInputReplyTo({replyToMsgId, threadId}),
+          reply_to: replyTo,
           query_id: options.queryId,
           id: options.resultId,
           clear_draft: options.clearDraft,
           send_as: sendAs
         }, sentRequestOptions);
       } else {
-        apiPromise = this.apiManager.invokeApiAfter('messages.sendMessage', {
-          no_webpage: options.noWebPage,
-          peer: this.appPeersManager.getInputPeerById(peerId),
+        const commonOptions: Partial<MessagesSendMessage | MessagesSendMedia> = {
+          peer: inputPeer,
           message: text,
           random_id: message.random_id,
-          reply_to: options.replyTo || getInputReplyTo({replyToMsgId, threadId}),
+          reply_to: replyTo,
           entities: sendEntites,
           clear_draft: options.clearDraft,
           schedule_date: options.scheduleDate || undefined,
           silent: options.silent,
           send_as: sendAs,
           update_stickersets_order: options.updateStickersetOrder
-        }, sentRequestOptions);
+        };
+
+        apiPromise = this.apiManager.invokeApiAfter(
+          options.webPage ? 'messages.sendMedia' : 'messages.sendMessage',
+          {
+            ...commonOptions as any,
+            ...(options.webPage ? {
+              media: {
+                _: 'inputMediaWebPage',
+                url: (options.webPage as WebPage.webPage).url,
+                pFlags: {
+                  force_large_media: options.webPageOptions.largeMedia,
+                  force_small_media: options.webPageOptions.smallMedia,
+                  optional: options.webPageOptions.optional
+                }
+              },
+              invert_media: options.webPageOptions.invertMedia
+            } : {
+              no_webpage: options.noWebPage
+            })
+          },
+          sentRequestOptions
+        );
       }
 
-      /* function is<T>(value: any, condition: boolean): value is T {
-        return condition;
-      } */
-
-      // this.log('sendText', message.mid);
       this.pendingAfterMsgs[peerId] = sentRequestOptions;
 
       return apiPromise.then((updates: Updates) => {
-        // this.log('sendText sent', message.mid);
-        // if(is<Updates.updateShortSentMessage>(updates, updates._ === 'updateShortSentMessage')) {
         if(updates._ === 'updateShortSentMessage') {
-          // assumeType<Updates.updateShortSentMessage>(updates);
-
           // * fix copying object with promise
           const promise = message.promise;
           delete message.promise;
@@ -754,11 +789,7 @@ export class AppMessagesManager extends AppManager {
           });
         }
 
-        // this.reloadConversation(peerId);
-
-        // setTimeout(() => {
         this.apiUpdatesManager.processUpdateMessage(updates);
-        // }, 5000);
         message.promise.resolve();
       }, (error: ApiError) => {
         toggleError(error);
@@ -815,7 +846,7 @@ export class AppMessagesManager extends AppManager {
 
     let attachType: 'document' | 'audio' | 'video' | 'voice' | 'photo', apiFileName: string;
 
-    const fileType = 'mime_type' in file ? file.mime_type : file.type;
+    const fileType = (file as Document.document).mime_type || file.type;
     const fileName = file instanceof File ? file.name : '';
     const isDocument = !(file instanceof File) && !(file instanceof Blob);
     let caption = options.caption || '';

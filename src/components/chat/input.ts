@@ -41,7 +41,6 @@ import {attachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent
 import isInputEmpty from '../../helpers/dom/isInputEmpty';
 import isSendShortcutPressed from '../../helpers/dom/isSendShortcutPressed';
 import placeCaretAtEnd from '../../helpers/dom/placeCaretAtEnd';
-import {MarkdownType} from '../../helpers/dom/getRichElementValue';
 import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 import EmojiHelper from './emojiHelper';
 import CommandsHelper from './commandsHelper';
@@ -93,12 +92,9 @@ import PopupStickers from '../popups/stickers';
 import wrapPeerTitle from '../wrappers/peerTitle';
 import wrapReply from '../wrappers/reply';
 import {getEmojiFromElement} from '../emoticonsDropdown/tabs/emoji';
-import hasMarkupInSelection from '../../helpers/dom/hasMarkupInSelection';
-import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import RichInputHandler from '../../helpers/dom/richInputHandler';
 import {insertRichTextAsHTML} from '../inputField';
 import draftsAreEqual from '../../lib/appManagers/utils/drafts/draftsAreEqual';
-import isSelectionEmpty from '../../helpers/dom/isSelectionEmpty';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import getAttachMenuBotIcon from '../../lib/appManagers/utils/attachMenuBots/getAttachMenuBotIcon';
 import forEachReverse from '../../helpers/array/forEachReverse';
@@ -109,7 +105,7 @@ import {ChatRights} from '../../lib/appManagers/appChatsManager';
 import getPeerActiveUsernames from '../../lib/appManagers/utils/peers/getPeerActiveUsernames';
 import replaceContent from '../../helpers/dom/replaceContent';
 import getTextWidth from '../../helpers/canvas/getTextWidth';
-import {FontFamilyName, FontFull} from '../../config/font';
+import {FontFull} from '../../config/font';
 import {ChatType} from './chat';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import idleController from '../../helpers/idleController';
@@ -120,6 +116,7 @@ import deepEqual from '../../helpers/object/deepEqual';
 import {clearMarkdownExecutions, createMarkdownCache, handleMarkdownShortcut, maybeClearUndoHistory, processCurrentFormatting} from '../../helpers/dom/markdown';
 import MarkupTooltip from './markupTooltip';
 import PopupPremium from '../popups/premium';
+import {AppMessagesManager} from '../../lib/appManagers/appMessagesManager';
 
 // console.log('Recorder', Recorder);
 
@@ -185,11 +182,19 @@ export default class ChatInput {
     container: HTMLElement,
     modifyArgs?: ButtonMenuItemOptions[]
   };
+  private webPageElements: {
+    below: ButtonMenuItemOptions,
+    larger: ButtonMenuItemOptions,
+    smaller: ButtonMenuItemOptions,
+    container: HTMLElement
+  };
   private forwardHover: DropdownHover;
+  private webPageHover: DropdownHover;
   private forwardWasDroppingAuthor: boolean;
 
   private getWebPagePromise: Promise<void>;
   public willSendWebPage: WebPage = null;
+  public webPageOptions: Parameters<AppMessagesManager['sendText']>[2]['webPageOptions'] = {};
   private forwarding: {[fromPeerId: PeerId]: number[]};
   public replyToMsgId: number;
   public replyToStoryId: number;
@@ -199,6 +204,7 @@ export default class ChatInput {
   public scheduleDate: number;
   public sendSilent: true;
   public startParam: string;
+  public invertMedia: boolean;
 
   private recorder: any;
   public recording = false;
@@ -456,7 +462,7 @@ export default class ChatInput {
     this.replyElements.container.classList.add('reply-wrapper', 'rows-wrapper-row');
 
     this.replyElements.iconBtn = this.createButtonIcon('');
-    this.replyElements.cancelBtn = this.createButtonIcon('close reply-cancel', {noRipple: true});
+    this.replyElements.cancelBtn = this.createButtonIcon('close reply-cancel active', {noRipple: true});
 
     this.replyElements.container.append(this.replyElements.iconBtn, this.replyElements.cancelBtn);
 
@@ -480,23 +486,23 @@ export default class ChatInput {
         text: 'Chat.Alert.Forward.Action.Show1',
         onClick: onHideAuthorClick,
         checkForClose: () => this.canToggleHideAuthor(),
-        checkboxField: new CheckboxField({checked: true})
+        radioGroup: 'author'
       },
       forwardElements.hideSender = {
         text: 'Chat.Alert.Forward.Action.Hide1',
         onClick: onHideAuthorClick,
         checkForClose: () => this.canToggleHideAuthor(),
-        checkboxField: new CheckboxField({checked: false})
+        radioGroup: 'author'
       },
       forwardElements.showCaption = {
         text: 'Chat.Alert.Forward.Action.ShowCaption',
         onClick: onHideCaptionClick,
-        checkboxField: new CheckboxField({checked: true})
+        radioGroup: 'caption'
       },
       forwardElements.hideCaption = {
         text: 'Chat.Alert.Forward.Action.HideCaption',
         onClick: onHideCaptionClick,
-        checkboxField: new CheckboxField({checked: false})
+        radioGroup: 'caption'
       },
       forwardElements.changePeer = {
         text: 'Chat.Alert.Forward.Action.Another',
@@ -508,75 +514,100 @@ export default class ChatInput {
     ];
     const forwardBtnMenu = forwardElements.container = ButtonMenuSync({
       buttons: forwardButtons,
+      radioGroups: [{
+        name: 'author',
+        onChange: (value) => {
+          const checked = !!+value;
+          if(isChangingAuthor) {
+            this.forwardWasDroppingAuthor = !checked;
+          }
+
+          const replyTitle = this.replyElements.container.querySelector('.reply-title');
+          if(replyTitle) {
+            const el = replyTitle.firstElementChild as HTMLElement;
+            const i = I18n.weakMap.get(el) as I18n.IntlElement;
+            const langPackKey: LangPackKey = forwardElements.showSender.checkboxField.checked ? 'Chat.Accessory.Forward' : 'Chat.Accessory.Hidden';
+            i.key = langPackKey;
+            i.update();
+          }
+        },
+        checked: 0
+      }, {
+        name: 'caption',
+        onChange: (value) => {
+          const checked = !!+value;
+          let b: ButtonMenuItemOptions;
+          if(checked && this.forwardWasDroppingAuthor !== undefined) {
+            b = this.forwardWasDroppingAuthor ? forwardElements.hideSender : forwardElements.showSender;
+          } else {
+            b = checked ? forwardElements.showSender : forwardElements.hideSender;
+          }
+
+          b.checkboxField.checked = true;
+        },
+        checked: 0
+      }],
       listenerSetter: this.listenerSetter
     });
-    // forwardBtnMenu.classList.add('top-center');
-
-    const children = Array.from(forwardBtnMenu.children) as HTMLElement[];
-    const groups: {
-      elements: HTMLElement[],
-      onChange: (value: string, event: Event) => void
-    }[] = [{
-      elements: children.slice(0, 2),
-      onChange: (value, e) => {
-        const checked = !!+value;
-        if(isChangingAuthor) {
-          this.forwardWasDroppingAuthor = !checked;
-        }
-
-        const replyTitle = this.replyElements.container.querySelector('.reply-title');
-        if(replyTitle) {
-          const el = replyTitle.firstElementChild as HTMLElement;
-          const i = I18n.weakMap.get(el) as I18n.IntlElement;
-          const langPackKey: LangPackKey = forwardElements.showSender.checkboxField.checked ? 'Chat.Accessory.Forward' : 'Chat.Accessory.Hidden';
-          i.key = langPackKey;
-          i.update();
-        }
-      }
-    }, {
-      elements: children.slice(2, 4),
-      onChange: (value) => {
-        const checked = !!+value;
-        let b: ButtonMenuItemOptions;
-        if(checked && this.forwardWasDroppingAuthor !== undefined) {
-          b = this.forwardWasDroppingAuthor ? forwardElements.hideSender : forwardElements.showSender;
-        } else {
-          b = checked ? forwardElements.showSender : forwardElements.hideSender;
-        }
-
-        b.checkboxField.checked = true;
-      }
-    }];
-    groups.forEach((group) => {
-      const container = RadioForm(group.elements.map((e) => {
-        return {
-          container: e,
-          input: e.querySelector('input')
-        };
-      }), group.onChange);
-
-      const hr = document.createElement('hr');
-      container.append(hr);
-      forwardBtnMenu.append(container);
-    });
-
-    forwardBtnMenu.append(forwardElements.changePeer.element);
 
     if(!IS_TOUCH_SUPPORTED) {
-      const forwardHover = this.forwardHover = new DropdownHover({
-        element: forwardBtnMenu
-      });
+      this.forwardHover = new DropdownHover({element: forwardBtnMenu});
     }
 
     forwardElements.modifyArgs = forwardButtons.slice(0, -1);
     this.replyElements.container.append(forwardBtnMenu);
+  }
 
-    forwardElements.modifyArgs.forEach((b, idx) => {
-      const {input} = b.checkboxField;
-      input.type = 'radio';
-      input.name = idx < 2 ? 'author' : 'caption';
-      input.value = '' + +!(idx % 2);
+  private constructWebPageElements() {
+    this.webPageElements = {} as any;
+    const buttons: ButtonMenuItemOptions[] = [{
+      text: 'AboveMessage',
+      onClick: () => {},
+      radioGroup: 'position'
+    }, this.webPageElements.below = {
+      text: 'BelowMessage',
+      onClick: () => {},
+      radioGroup: 'position'
+    }, this.webPageElements.larger = {
+      text: 'LargerMedia',
+      onClick: () => {},
+      radioGroup: 'size'
+    }, this.webPageElements.smaller = {
+      text: 'SmallerMedia',
+      onClick: () => {},
+      radioGroup: 'size'
+    }, {
+      text: 'WebPage.RemovePreview',
+      onClick: () => {
+        this.onHelperCancel();
+      },
+      icon: 'delete',
+      danger: true
+    }];
+    const btnMenu = this.webPageElements.container = ButtonMenuSync({
+      buttons,
+      radioGroups: [{
+        name: 'position',
+        onChange: (value) => {
+          this.webPageOptions.invertMedia = !!+value;
+        },
+        checked: 0
+      }, {
+        name: 'size',
+        onChange: (value) => {
+          this.webPageOptions.largeMedia = !!+value;
+          this.webPageOptions.smallMedia = !+value;
+        },
+        checked: 0
+      }],
+      listenerSetter: this.listenerSetter
     });
+
+    if(!IS_TOUCH_SUPPORTED) {
+      this.webPageHover = new DropdownHover({element: btnMenu});
+    }
+
+    this.replyElements.container.append(btnMenu);
   }
 
   private constructMentionButton() {
@@ -785,6 +816,7 @@ export default class ChatInput {
 
       if(!this.excludeParts.forwardOptions) {
         this.constructForwardElements();
+        this.constructWebPageElements();
       }
     }
 
@@ -2152,13 +2184,29 @@ export default class ChatInput {
           const promise = this.getWebPagePromise = Promise.all([
             this.managers.appWebPagesManager.getWebPage(url),
             this.chat.canSend('embed_links')
-          ]).then(([webpage, canEmbedLinks]) => {
+          ]).then(([webPage, canEmbedLinks]) => {
             if(this.getWebPagePromise === promise) this.getWebPagePromise = undefined;
             if(this.lastUrl !== url) return;
-            if(webpage?._  === 'webPage' && canEmbedLinks) {
-              this.setTopInfo('webpage', () => {}, webpage.site_name || webpage.title || 'Webpage', webpage.description || webpage.url || '');
+            if(webPage?._  === 'webPage' && canEmbedLinks) {
+              const newReply = this.setTopInfo(
+                'webpage',
+                () => {},
+                webPage.site_name || webPage.title || 'Webpage',
+                webPage.description || webPage.url || ''
+              );
+              this.webPageHover?.attachButtonListener(newReply, this.listenerSetter);
               delete this.noWebPage;
-              this.willSendWebPage = webpage;
+              this.willSendWebPage = webPage;
+              if(this.webPageElements) {
+                this.webPageElements.below.checkboxField.checked = true;
+
+                const sizeGroupContainer = this.webPageElements.larger.element.parentElement;
+                sizeGroupContainer.classList.toggle('hide', !webPage.pFlags.has_large_media);
+                this.webPageElements.larger.checkboxField.checked = true;
+              }
+              this.webPageOptions = {
+                optional: true
+              };
             } else if(this.willSendWebPage) {
               this.onHelperCancel();
             }
@@ -2750,15 +2798,25 @@ export default class ChatInput {
     cancelEvent(e);
 
     if(!findUpClassName(e.target, 'reply')) return;
+    let possibleBtnMenuContainer: HTMLElement;
     if(this.helperType === 'forward') {
       const {forwardElements} = this;
-      if(forwardElements && IS_TOUCH_SUPPORTED && !forwardElements.container.classList.contains('active')) {
-        contextMenuController.openBtnMenu(forwardElements.container);
+      if(forwardElements && IS_TOUCH_SUPPORTED) {
+        possibleBtnMenuContainer = forwardElements.container;
       }
     } else if(this.helperType === 'reply') {
       this.chat.setMessageId(this.replyToMsgId);
     } else if(this.helperType === 'edit') {
       this.chat.setMessageId(this.editMsgId);
+    } else if(!this.helperType) {
+      const {webPageElements} = this;
+      if(webPageElements) {
+        possibleBtnMenuContainer = webPageElements.container;
+      }
+    }
+
+    if(possibleBtnMenuContainer && !possibleBtnMenuContainer.classList.contains('active')) {
+      contextMenuController.openBtnMenu(possibleBtnMenuContainer);
     }
   };
 
@@ -2924,6 +2982,7 @@ export default class ChatInput {
         ...sendingParams,
         noWebPage: noWebPage,
         webPage: this.getWebPagePromise ? undefined : this.willSendWebPage,
+        webPageOptions: this.webPageOptions,
         clearDraft: true
       });
 
@@ -2940,11 +2999,16 @@ export default class ChatInput {
       const forwarding = copy(this.forwarding);
       // setTimeout(() => {
       for(const fromPeerId in forwarding) {
-        this.managers.appMessagesManager.forwardMessages(peerId, fromPeerId.toPeerId(), forwarding[fromPeerId], {
-          ...sendingParams,
-          dropAuthor: this.forwardElements && this.forwardElements.hideSender.checkboxField.checked,
-          dropCaptions: this.isDroppingCaptions()
-        }).catch(async(err: ApiError) => {
+        this.managers.appMessagesManager.forwardMessages(
+          peerId,
+          fromPeerId.toPeerId(),
+          forwarding[fromPeerId],
+          {
+            ...sendingParams,
+            dropAuthor: this.forwardElements && this.forwardElements.hideSender.checkboxField.checked,
+            dropCaptions: this.isDroppingCaptions()
+          }
+        ).catch(async(err: ApiError) => {
           if(err.type === 'VOICE_MESSAGES_FORBIDDEN') {
             toastNew({
               langPackKey: 'Chat.SendVoice.PrivacyError',
@@ -3164,10 +3228,7 @@ export default class ChatInput {
         intl.update();
       });
 
-      if(this.forwardHover) {
-        this.forwardHover.attachButtonListener(newReply, this.listenerSetter);
-      }
-
+      this.forwardHover?.attachButtonListener(newReply, this.listenerSetter);
       this.forwarding = fromPeerIdsMids;
     };
 
@@ -3302,25 +3363,17 @@ export default class ChatInput {
       message,
       textColor: 'secondary-text-color'
     });
+
     if(haveReply) {
       oldReply.replaceWith(container);
     } else {
-      replyParent.insertBefore(container, replyParent.lastElementChild);
-    }
-
-    if(type === 'webpage') {
-      container.style.cursor = 'default';
+      replyParent.lastElementChild.before(container);
     }
 
     if(!this.chat.container.classList.contains('is-helper-active')) {
       this.chat.container.classList.add('is-helper-active');
       this.t();
     }
-
-    /* const scroll = appImManager.scrollable;
-    if(scroll.isScrolledDown && !scroll.scrollLocked && !appImManager.messagesQueuePromise && !appImManager.setPeerPromise) {
-      scroll.scrollTo(scroll.scrollHeight, 'top', true, true, 200);
-    } */
 
     if(!IS_MOBILE) {
       appNavigationController.pushItem({

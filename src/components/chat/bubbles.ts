@@ -5139,7 +5139,8 @@ export default class ChatBubbles {
           let previewResizer: HTMLDivElement, preview: HTMLDivElement;
           const photo: Photo.photo = webPage.photo as any;
           const doc = webPage.document as MyDocument;
-          const hasLargeMedia = !!webPage.pFlags.has_large_media;
+          const hasLargeMedia = !!(messageMedia.pFlags.force_large_media || webPage.pFlags.has_large_media);
+          const hasSmallMedia = !!messageMedia.pFlags.force_small_media;
           if(photo || doc || storyAttribute) {
             previewResizer = document.createElement('div');
             previewResizer.classList.add(`${className}-preview-resizer`);
@@ -5231,9 +5232,9 @@ export default class ChatBubbles {
             textElements.push(textDiv);
           }
 
-          if(textElements.length) {
-            textElements.slice(1).forEach((element) => element.classList.add(`${className}-text-margin-top`));
-          }
+          // if(textElements.length) {
+          //   textElements.slice(1).forEach((element) => element.classList.add(`${className}-text-margin-top`));
+          // }
 
           const border = document.createElement('div');
           border.classList.add(`${className}-border`);
@@ -5245,7 +5246,7 @@ export default class ChatBubbles {
             bubble.classList.add('photo');
 
             const size: PhotoSize.photoSize = photo.sizes[photo.sizes.length - 1] as any;
-            if(size.w === size.h && textElements[0] && !hasLargeMedia) {
+            if(((size.w === size.h && !hasLargeMedia) || hasSmallMedia) && textElements[0]) {
               bubble.classList.add('is-square-photo');
               box.classList.add('has-square-photo');
               isSquare = true;

@@ -2379,7 +2379,7 @@ $message-padding-horizontal: 10px;
 .webpage {
   $parent: ".webpage";
   $border-radius: .25rem;
-  $webpage-padding: .5rem;
+  $webpage-padding: .375rem;
   $webpage-padding-vertical: .25rem;
   --webpage-color-rgb: var(--name-color-rgb);
   // --webpage-color-rgb: 255,0,255;
@@ -2472,7 +2472,7 @@ $message-padding-horizontal: 10px;
 
     &-resizer {
       display: flex;
-      margin: $webpage-padding-vertical 0;
+      margin: #{calc($webpage-padding-vertical - 1px)} 0;
       cursor: pointer;
     }
 
@@ -2497,9 +2497,9 @@ $message-padding-horizontal: 10px;
   &-text {
     word-break: break-word;
 
-    &-margin-top {
-      margin-top: .125rem;
-    }
+    // &-margin-top {
+    //   margin-top: .125rem;
+    // }
 
     // &-first-element {
     //   display: block;
@@ -2528,7 +2528,7 @@ $message-padding-horizontal: 10px;
   }
 
   &-button {
-    $height: 2.5rem;
+    $height: 2.25rem;
     $margin: .375rem;
     $border: .0625rem;
     height: #{$height + $margin + $border};
