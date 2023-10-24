@@ -20,10 +20,12 @@ import customProperties from '../helpers/dom/customProperties';
 import {IS_MOBILE} from '../environment/userAgent';
 import ripple from './ripple';
 import Icon from './icon';
+import RadioForm from './radioForm';
 
 export type ButtonMenuItemOptions = {
   icon?: Icon,
   iconDoc?: Document.document,
+  danger?: boolean,
   className?: string,
   text?: LangPackKey,
   textArgs?: FormatterArguments,
@@ -40,7 +42,8 @@ export type ButtonMenuItemOptions = {
   multiline?: boolean,
   secondary?: boolean,
   loadPromise?: Promise<any>,
-  waitForAnimation?: boolean
+  waitForAnimation?: boolean,
+  radioGroup?: string,
   /* , cancelEvent?: true */
 };
 
@@ -54,7 +57,10 @@ function ButtonMenuItem(options: ButtonMenuItemOptions) {
   const {icon, iconDoc, className, text, onClick, checkboxField, noCheckboxClickListener} = options;
   const el = document.createElement('div');
   const iconSplitted = icon?.split(' ');
-  el.className = 'btn-menu-item rp-overflow' + (iconSplitted?.length > 1 ? ' ' + iconSplitted.slice(1).join(' ') : '') + (className ? ' ' + className : '');
+  el.className = 'btn-menu-item rp-overflow' +
+    (iconSplitted?.length > 1 ? ' ' + iconSplitted.slice(1).join(' ') : '') +
+    (className ? ' ' + className : '') +
+    (options.danger ? ' danger' : '');
 
   if(IS_MOBILE) {
     ripple(el);
@@ -166,25 +172,60 @@ function ButtonMenuItem(options: ButtonMenuItemOptions) {
   return [options.separator as HTMLElement, options.element = el].filter(Boolean);
 }
 
-export function ButtonMenuSync({listenerSetter, buttons}: {
+export function ButtonMenuSync({listenerSetter, buttons, radioGroups}: {
   buttons: ButtonMenuItemOptions[],
+  radioGroups?: {
+    name: string,
+    onChange: (value: string, e: Event) => any,
+    checked: number // idx
+  }[],
   listenerSetter?: ListenerSetter
 }) {
   const el: HTMLElement = document.createElement('div');
   el.classList.add('btn-menu');
 
+  if(radioGroups) {
+    buttons.forEach((b) => {
+      if(!b.radioGroup) {
+        return;
+      }
+
+      b.checkboxField ??= new CheckboxField();
+    });
+  }
+
   if(listenerSetter) {
     buttons.forEach((b) => {
-      if(b.options) {
-        b.options.listenerSetter = listenerSetter;
-      } else {
-        b.options = {listenerSetter};
-      }
+      (b.options ??= {}).listenerSetter = listenerSetter;
     });
   }
 
   const items = buttons.map(ButtonMenuItem);
   el.append(...flatten(items));
+
+  if(radioGroups) {
+    radioGroups.forEach((group) => {
+      const elements = buttons.filter((button) => button.radioGroup === group.name);
+
+      const hr = document.createElement('hr');
+      elements[0].element.replaceWith(hr);
+
+      const container = RadioForm(elements.map((e, idx) => {
+        const input = e.checkboxField.input;
+        input.type = 'radio';
+        input.name = group.name;
+        input.value = '' + +(idx === group.checked);
+        input.checked = idx === group.checked;
+        return {
+          container: e.element,
+          input: e.checkboxField.input
+        };
+      }), group.onChange);
+
+      hr.before(container);
+      container.append(hr);
+    });
+  }
 
   return el;
 }

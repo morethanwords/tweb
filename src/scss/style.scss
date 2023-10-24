@@ -105,6 +105,15 @@
   --selection-color: inherit;
   --white: #ffffff;
 
+  --ripple-duration: .7s;
+  --ripple-start-scale: 0;
+  --ripple-end-scale: 2;
+
+  @include respond-to(until-floating-left-sidebar) {
+    --ripple-duration: .4s;
+    --ripple-start-scale: .27;
+  }
+
   --topbar-floating-scaleX: 1;
   --topbar-call-height: 3rem;
   --topbar-floating-call-height: 0px;

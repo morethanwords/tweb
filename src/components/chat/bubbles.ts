@@ -5096,6 +5096,7 @@ export default class ChatBubbles {
 
           const box = document.createElement('a');
           box.classList.add(className);
+          ripple(box);
 
           const quoteClassName = `${className}-quote`;
           const wrapped = wrapUrl(webPage.url);

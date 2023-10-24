@@ -122,6 +122,7 @@ export default function ripple(
       circle.style.width = circle.style.height = size + 'px';
       circle.style.left = x + 'px';
       circle.style.top = y + 'px';
+      circle.style.opacity = '0';
 
       // нижний код выполняется с задержкой
       /* animationEndPromise = new Promise((resolve) => {
@@ -138,6 +139,9 @@ export default function ripple(
         span.style.display = ''; */
 
       r.append(circle);
+
+      void circle.offsetWidth; // force reflow
+      circle.style.opacity = '';
 
       if(auto) {
         // window.addEventListener('mousemove', handler, {once: true, passive: true});
