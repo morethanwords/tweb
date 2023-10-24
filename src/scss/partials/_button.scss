@@ -299,7 +299,7 @@ $btn-menu-z-index: 4;
     }
     
     @include animation-level(2) {
-      transition: transform var(--btn-menu-transition);
+      transition: transform .1s var(--transition-standard-easing);
     }
 
     &:active {

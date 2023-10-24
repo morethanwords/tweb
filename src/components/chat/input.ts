@@ -17,7 +17,7 @@ import PopupCreatePoll from '../popups/createPoll';
 import PopupForward from '../popups/forward';
 import PopupNewMedia from '../popups/newMedia';
 import {toast, toastNew} from '../toast';
-import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageReplyHeader} from '../../layer';
+import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageReplyHeader, MessageMedia} from '../../layer';
 import StickersHelper from './stickersHelper';
 import ButtonIcon from '../buttonIcon';
 import ButtonMenuToggle from '../buttonMenuToggle';
@@ -183,6 +183,7 @@ export default class ChatInput {
     modifyArgs?: ButtonMenuItemOptions[]
   };
   private webPageElements: {
+    above: ButtonMenuItemOptions,
     below: ButtonMenuItemOptions,
     larger: ButtonMenuItemOptions,
     smaller: ButtonMenuItemOptions,
@@ -560,7 +561,7 @@ export default class ChatInput {
 
   private constructWebPageElements() {
     this.webPageElements = {} as any;
-    const buttons: ButtonMenuItemOptions[] = [{
+    const buttons: ButtonMenuItemOptions[] = [this.webPageElements.above = {
       text: 'AboveMessage',
       onClick: () => {},
       radioGroup: 'position'
@@ -2165,67 +2166,7 @@ export default class ChatInput {
 
     maybeClearUndoHistory(this.messageInput);
 
-    const urlEntities: Array<MessageEntity.messageEntityUrl | MessageEntity.messageEntityTextUrl> = (!this.editMessage?.media || this.editMessage.media._ === 'messageMediaWebPage') && entities.filter((e) => e._ === 'messageEntityUrl' || e._ === 'messageEntityTextUrl') as any;
-    if(urlEntities.length) {
-      for(const entity of urlEntities) {
-        let url: string;
-        if(entity._ === 'messageEntityTextUrl') {
-          url = entity.url;
-        } else {
-          url = richValue.slice(entity.offset, entity.offset + entity.length);
-
-          if(!(url.includes('http://') || url.includes('https://'))) {
-            continue;
-          }
-        }
-
-        if(this.lastUrl !== url) {
-          this.lastUrl = url;
-          const promise = this.getWebPagePromise = Promise.all([
-            this.managers.appWebPagesManager.getWebPage(url),
-            this.chat.canSend('embed_links')
-          ]).then(([webPage, canEmbedLinks]) => {
-            if(this.getWebPagePromise === promise) this.getWebPagePromise = undefined;
-            if(this.lastUrl !== url) return;
-            if(webPage?._  === 'webPage' && canEmbedLinks) {
-              const newReply = this.setTopInfo(
-                'webpage',
-                () => {},
-                webPage.site_name || webPage.title || 'Webpage',
-                webPage.description || webPage.url || ''
-              );
-              this.webPageHover?.attachButtonListener(newReply, this.listenerSetter);
-              delete this.noWebPage;
-              this.willSendWebPage = webPage;
-              if(this.webPageElements) {
-                this.webPageElements.below.checkboxField.checked = true;
-
-                const sizeGroupContainer = this.webPageElements.larger.element.parentElement;
-                sizeGroupContainer.classList.toggle('hide', !webPage.pFlags.has_large_media);
-                this.webPageElements.larger.checkboxField.checked = true;
-              }
-              this.webPageOptions = {
-                optional: true
-              };
-            } else if(this.willSendWebPage) {
-              this.onHelperCancel();
-            }
-          });
-        }
-
-        break;
-      }
-    } else if(this.lastUrl) {
-      this.lastUrl = '';
-      delete this.noWebPage;
-      this.willSendWebPage = null;
-
-      if(this.helperType) {
-        this.helperFunc();
-      } else {
-        this.clearHelper();
-      }
-    }
+    this.processWebPage(richValue, entities);
 
     const isEmpty = !richValue.trim();
     if(isEmpty) {
@@ -2270,6 +2211,103 @@ export default class ChatInput {
 
     this.updateSendBtn();
   };
+
+  private processWebPage(richValue: string, entities: MessageEntity[]) {
+    const messageMedia = this.editMessage?.media;
+    const invertMedia = this.editMessage?.pFlags?.invert_media;
+    const webPage = (messageMedia as MessageMedia.messageMediaWebPage)?.webpage as WebPage.webPage;
+    const urlEntities: Array<MessageEntity.messageEntityUrl | MessageEntity.messageEntityTextUrl> =
+      (!messageMedia || webPage) &&
+      entities.filter((e) => e._ === 'messageEntityUrl' || e._ === 'messageEntityTextUrl') as any;
+    if(!urlEntities.length) {
+      if(this.lastUrl) {
+        this.lastUrl = '';
+        delete this.noWebPage;
+        this.willSendWebPage = null;
+
+        if(this.helperType) {
+          this.helperFunc();
+        } else {
+          this.clearHelper();
+        }
+      }
+
+      return;
+    }
+
+    let foundUrl = webPage?.url;
+    if(!foundUrl) for(const entity of urlEntities) {
+      let url: string;
+      if(entity._ === 'messageEntityTextUrl') {
+        url = entity.url;
+      } else {
+        url = richValue.slice(entity.offset, entity.offset + entity.length);
+
+        if(!(url.includes('http://') || url.includes('https://'))) {
+          continue;
+        }
+      }
+
+      foundUrl = url;
+      break;
+    }
+
+    if(this.lastUrl === foundUrl) {
+      return;
+    }
+
+    if(!foundUrl) {
+      if(this.willSendWebPage) {
+        this.onHelperCancel();
+      }
+
+      return;
+    }
+
+    this.lastUrl = foundUrl;
+    const oldWebPage = webPage;
+    const promise = this.getWebPagePromise = Promise.all([
+      this.managers.appWebPagesManager.getWebPage(foundUrl),
+      this.chat.canSend('embed_links')
+    ]).then(([webPage, canEmbedLinks]) => {
+      if(this.getWebPagePromise === promise) this.getWebPagePromise = undefined;
+      if(this.lastUrl !== foundUrl) return;
+      if(webPage?._  === 'webPage' && canEmbedLinks) {
+        const newReply = this.setTopInfo(
+          'webpage',
+          () => {},
+          webPage.site_name || webPage.title || 'Webpage',
+          webPage.description || webPage.url || ''
+        );
+
+        this.webPageHover?.attachButtonListener(newReply, this.listenerSetter);
+        delete this.noWebPage;
+        this.willSendWebPage = webPage;
+
+        if(this.webPageElements) {
+          const positionElement = oldWebPage && invertMedia ? this.webPageElements.above : this.webPageElements.below;
+          positionElement.checkboxField.checked = true;
+
+          const sizeElement = oldWebPage && (messageMedia as MessageMedia.messageMediaWebPage).pFlags.force_small_media ? this.webPageElements.smaller : this.webPageElements.larger;
+          sizeElement.checkboxField.checked = true;
+
+          const sizeGroupContainer = sizeElement.element.parentElement;
+          sizeGroupContainer.classList.toggle('hide', !webPage.pFlags.has_large_media);
+        }
+
+        this.webPageOptions = {
+          optional: true,
+          ...(oldWebPage ? {
+            invertMedia: oldWebPage && invertMedia || undefined,
+            smallMedia: oldWebPage && (messageMedia as MessageMedia.messageMediaWebPage).pFlags.force_small_media || undefined,
+            largeMedia: oldWebPage && (messageMedia as MessageMedia.messageMediaWebPage).pFlags.force_large_media || undefined
+          } : {})
+        };
+      } else if(this.willSendWebPage) {
+        this.onHelperCancel();
+      }
+    });
+  }
 
   public insertAtCaret(insertText: string, insertEntity?: MessageEntity, isHelper = true) {
     if(!this.canSendPlain()) {
@@ -2965,10 +3003,16 @@ export default class ChatInput {
     if(editMsgId) {
       const message = this.editMessage;
       if(value.trim() || message.media) {
-        this.managers.appMessagesManager.editMessage(message, value, {
-          entities,
-          noWebPage: noWebPage
-        });
+        this.managers.appMessagesManager.editMessage(
+          message,
+          value,
+          {
+            entities,
+            noWebPage,
+            webPage: this.getWebPagePromise ? undefined : this.willSendWebPage,
+            webPageOptions: this.webPageOptions
+          }
+        );
 
         this.onMessageSent();
       } else {
@@ -2980,7 +3024,7 @@ export default class ChatInput {
       this.managers.appMessagesManager.sendText(peerId, value, {
         entities,
         ...sendingParams,
-        noWebPage: noWebPage,
+        noWebPage,
         webPage: this.getWebPagePromise ? undefined : this.willSendWebPage,
         webPageOptions: this.webPageOptions,
         clearDraft: true

@@ -156,6 +156,7 @@ import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import {_tgico} from '../../helpers/tgico';
 import setBlankToAnchor from '../../lib/richTextProcessor/setBlankToAnchor';
 import addAnchorListener from '../../helpers/addAnchorListener';
+import {hexToRgb} from '../../helpers/color';
 
 export const USER_REACTIONS_INLINE = false;
 const USE_MEDIA_TAILS = false;
@@ -5139,8 +5140,8 @@ export default class ChatBubbles {
           let previewResizer: HTMLDivElement, preview: HTMLDivElement;
           const photo: Photo.photo = webPage.photo as any;
           const doc = webPage.document as MyDocument;
-          const hasLargeMedia = !!(messageMedia.pFlags.force_large_media || webPage.pFlags.has_large_media);
-          const hasSmallMedia = !!messageMedia.pFlags.force_small_media;
+          const hasLargeMedia = !!webPage.pFlags.has_large_media;
+          const hasSmallMedia = !hasLargeMedia && !!messageMedia.pFlags.force_small_media;
           if(photo || doc || storyAttribute) {
             previewResizer = document.createElement('div');
             previewResizer.classList.add(`${className}-preview-resizer`);
@@ -6061,6 +6062,11 @@ export default class ChatBubbles {
     }
 
     let savedFrom = '';
+
+    if(!isOut) {
+      const nameColor = getPeerColorById(message.fromId, false);
+      bubble.style.setProperty('--name-color-rgb', hexToRgb(nameColor).join(','));
+    }
 
     const isSponsored = (message as Message.message).pFlags.sponsored;
     // const needName = ((peerId.isAnyChat() && (peerId !== message.fromId || our)) && message.fromId !== rootScope.myId) || message.viaBotId;

@@ -514,12 +514,15 @@ export class AppMessagesManager extends AppManager {
     return obj.deferred;
   }
 
-  public editMessage(message: any, text: string, options: Partial<{
-    noWebPage: true,
-    newMedia: any,
-    scheduleDate: number,
-    entities: MessageEntity[]
-  }> = {}): Promise<void> {
+  public editMessage(
+    message: MyMessage,
+    text: string,
+    options: Partial<{
+      newMedia: InputMedia,
+      scheduleDate: number,
+      entities: MessageEntity[]
+    }> & Partial<Pick<Parameters<AppMessagesManager['sendText']>[2], 'webPage' | 'webPageOptions' | 'noWebPage'>> = {}
+  ): Promise<void> {
     /* if(!this.canEditMessage(messageId)) {
       return Promise.reject({type: 'MESSAGE_EDIT_FORBIDDEN'});
     } */
@@ -534,32 +537,40 @@ export class AppMessagesManager extends AppManager {
     }
 
     const entities = options.entities || [];
-    if(text) {
-      text = parseMarkdown(text, entities);
+    text &&= parseMarkdown(text, entities);
+
+    let sendEntites = this.getInputEntities(entities);
+    if(!sendEntites.length) {
+      sendEntites = undefined;
     }
 
-    const schedule_date = options.scheduleDate || (message.pFlags.is_scheduled ? message.date : undefined);
+    const webPageSend = this.processMessageWebPageOptions(message as Message.message, options);
+
+    const schedule_date = options.scheduleDate || ((message as Message.message).pFlags.is_scheduled ? message.date : undefined);
     return this.apiManager.invokeApi('messages.editMessage', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       id: message.id,
       message: text,
       media: options.newMedia,
-      entities: entities.length ? this.getInputEntities(entities) : undefined,
+      entities: sendEntites,
       no_webpage: options.noWebPage,
-      schedule_date
+      schedule_date,
+      ...webPageSend
     }).then((updates) => {
       this.apiUpdatesManager.processUpdateMessage(updates);
-    }, (error) => {
+    }, (error: ApiError) => {
       this.log.error('editMessage error:', error);
 
-      if(error && error.type === 'MESSAGE_NOT_MODIFIED') {
+      if(error?.type === 'MESSAGE_NOT_MODIFIED') {
         error.handled = true;
         return;
       }
-      if(error && error.type === 'MESSAGE_EMPTY') {
+
+      if(error?.type === 'MESSAGE_EMPTY') {
         error.handled = true;
       }
-      return Promise.reject(error);
+
+      throw error;
     });
   }
 
@@ -665,20 +676,7 @@ export class AppMessagesManager extends AppManager {
     const threadId = options.threadId ? getServerMessageId(options.threadId) : undefined;
     const isChannel = this.appPeersManager.isChannel(peerId);
 
-    if(options.webPage) {
-      message.media = {
-        _: 'messageMediaWebPage',
-        pFlags: {
-          force_large_media: options.webPageOptions.largeMedia || undefined,
-          force_small_media: options.webPageOptions.smallMedia || undefined
-        },
-        webpage: options.webPage
-      };
-
-      if(options.webPageOptions.invertMedia) {
-        message.pFlags.invert_media = true;
-      }
-    }
+    const webPageSend = this.processMessageWebPageOptions(message, options);
 
     const toggleError = (error?: ApiError) => {
       this.onMessagesSendError([message], error);
@@ -724,20 +722,7 @@ export class AppMessagesManager extends AppManager {
           options.webPage ? 'messages.sendMedia' : 'messages.sendMessage',
           {
             ...commonOptions as any,
-            ...(options.webPage ? {
-              media: {
-                _: 'inputMediaWebPage',
-                url: (options.webPage as WebPage.webPage).url,
-                pFlags: {
-                  force_large_media: options.webPageOptions.largeMedia,
-                  force_small_media: options.webPageOptions.smallMedia,
-                  optional: options.webPageOptions.optional
-                }
-              },
-              invert_media: options.webPageOptions.invertMedia
-            } : {
-              no_webpage: options.noWebPage
-            })
+            ...webPageSend
           },
           sentRequestOptions
         );
@@ -1960,6 +1945,45 @@ export class AppMessagesManager extends AppManager {
     return fwdHeader;
   }
 
+  private processMessageWebPageOptions(
+    message: Message.message,
+    options: Parameters<AppMessagesManager['sendText']>[2]
+  ): {media: InputMedia.inputMediaWebPage, invert_media: boolean} | {no_webpage: boolean} | {} {
+    if(message._ !== 'message') {
+      return {};
+    }
+
+    if(!options.webPage) {
+      return {no_webpage: options.noWebPage};
+    }
+
+    message.media = {
+      _: 'messageMediaWebPage',
+      pFlags: {
+        force_large_media: options.webPageOptions.largeMedia || undefined,
+        force_small_media: options.webPageOptions.smallMedia || undefined
+      },
+      webpage: options.webPage
+    };
+
+    if(options.webPageOptions.invertMedia) {
+      message.pFlags.invert_media = true;
+    }
+
+    return {
+      media: {
+        _: 'inputMediaWebPage',
+        url: (options.webPage as WebPage.webPage).url,
+        pFlags: {
+          force_large_media: options.webPageOptions.largeMedia || undefined,
+          force_small_media: options.webPageOptions.smallMedia || undefined,
+          optional: options.webPageOptions.optional || undefined
+        }
+      },
+      invert_media: options.webPageOptions.invertMedia
+    };
+  }
+
   public generateFakeAvatarMessage(peerId: PeerId, photo: Photo) {
     const maxId = Number.MAX_SAFE_INTEGER;
     const message: Message.messageService = {
@@ -2401,6 +2425,10 @@ export class AppMessagesManager extends AppManager {
         // 'reply_markup'
       ];
 
+      const flags: Array<keyof Message.message['pFlags']> = [
+        'invert_media'
+      ];
+
       if(!options.dropAuthor) {
         message.fwd_from = this.generateForwardHeader(peerId, originalMessage);
         keys.push('views', 'forwards');
@@ -2432,6 +2460,11 @@ export class AppMessagesManager extends AppManager {
       keys.forEach((key) => {
         // @ts-ignore
         message[key] = copy(originalMessage[key]);
+      });
+
+      flags.forEach((key) => {
+        // @ts-ignore
+        message.pFlags[key] = originalMessage.pFlags[key];
       });
 
       const document = (message.media as MessageMedia.messageMediaDocument)?.document as MyDocument;
