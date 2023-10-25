@@ -344,10 +344,10 @@ const lang = {
   'Boost.AlreadyDescription': 'You are already boosting this channel.',
   'Boost.Replace': 'Replace Boost',
   'Yes': 'Yes',
-  'AboveMessage': 'Above the Message',
-  'BelowMessage': 'Below the Message',
-  'LargerMedia': 'Larger Media',
-  'SmallerMedia': 'Smaller Media',
+  'AboveMessage': 'Show Above the Message',
+  'BelowMessage': 'Show Below the Message',
+  'LargerMedia': 'Show Larger Media',
+  'SmallerMedia': 'Show Smaller Media',
   'WebPage.RemovePreview': 'Remove Link Preview',
 
   // * android

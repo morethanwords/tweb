@@ -17,7 +17,7 @@ import PopupCreatePoll from '../popups/createPoll';
 import PopupForward from '../popups/forward';
 import PopupNewMedia from '../popups/newMedia';
 import {toast, toastNew} from '../toast';
-import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageReplyHeader, MessageMedia} from '../../layer';
+import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageReplyHeader, MessageMedia, InputReplyTo} from '../../layer';
 import StickersHelper from './stickersHelper';
 import ButtonIcon from '../buttonIcon';
 import ButtonMenuToggle from '../buttonMenuToggle';
@@ -305,6 +305,7 @@ export default class ChatInput {
 
   private hasOffset: {type: 'commands' | 'as', forwards: boolean};
   private canForwardStory: boolean;
+  private processingDraftMessage: DraftMessage.draftMessage;
 
   constructor(
     public chat: Chat,
@@ -591,6 +592,7 @@ export default class ChatInput {
         name: 'position',
         onChange: (value) => {
           this.webPageOptions.invertMedia = !!+value;
+          this.saveDraftDebounced?.();
         },
         checked: 0
       }, {
@@ -598,6 +600,7 @@ export default class ChatInput {
         onChange: (value) => {
           this.webPageOptions.largeMedia = !!+value;
           this.webPageOptions.smallMedia = !+value;
+          this.saveDraftDebounced?.();
         },
         checked: 0
       }],
@@ -1512,19 +1515,31 @@ export default class ChatInput {
     const {value, entities} = getRichValueWithCaret(this.messageInputField.input, true, false);
 
     let draft: DraftMessage.draftMessage;
-    if((value.length || ignoreEmptyValue) || this.replyToMsgId) {
+    if((value.length || ignoreEmptyValue) || this.replyToMsgId || this.willSendWebPage) {
+      const webPage = this.willSendWebPage as WebPage.webPage;
+      const webPageOptions = this.webPageOptions;
+      const hasLargeMedia = !!webPage?.pFlags?.has_large_media;
       draft = {
         _: 'draftMessage',
         date: tsNow(true),
         message: value,
         entities: entities.length ? entities : undefined,
         pFlags: {
-          no_webpage: this.noWebPage
+          no_webpage: this.noWebPage,
+          invert_media: webPageOptions?.invertMedia || undefined
         },
         reply_to: this.replyToMsgId ? {
-          _: 'messageReplyHeader',
-          pFlags: {},
+          _: 'inputReplyToMessage',
           reply_to_msg_id: this.replyToMsgId
+        } : undefined,
+        media: webPage ? {
+          _: 'inputMediaWebPage',
+          pFlags: {
+            force_large_media: hasLargeMedia && webPageOptions?.largeMedia || undefined,
+            force_small_media: hasLargeMedia && webPageOptions?.smallMedia || undefined,
+            optional: true
+          },
+          url: webPage.url
         } : undefined
       };
     }
@@ -1631,7 +1646,7 @@ export default class ChatInput {
     const wrappedDraft = wrapDraft(draft, this.chat.peerId);
     const currentDraft = this.getCurrentInputAsDraft();
 
-    const draftReplyToMsgId = (draft.reply_to as MessageReplyHeader.messageReplyHeader)?.reply_to_msg_id;
+    const draftReplyToMsgId = (draft.reply_to as InputReplyTo.inputReplyToMessage)?.reply_to_msg_id;
     if(
       draftsAreEqual(draft, currentDraft) &&
       /* this.messageInputField.value === wrappedDraft &&  */
@@ -1649,7 +1664,7 @@ export default class ChatInput {
       this.initMessageReply(draftReplyToMsgId);
     }
 
-    this.setInputValue(wrappedDraft, fromUpdate, fromUpdate);
+    this.setInputValue(wrappedDraft, fromUpdate, fromUpdate, draft);
     return true;
   }
 
@@ -2212,14 +2227,20 @@ export default class ChatInput {
     this.updateSendBtn();
   };
 
-  private processWebPage(richValue: string, entities: MessageEntity[]) {
-    const messageMedia = this.editMessage?.media;
-    const invertMedia = this.editMessage?.pFlags?.invert_media;
-    const webPage = (messageMedia as MessageMedia.messageMediaWebPage)?.webpage as WebPage.webPage;
+  private processWebPage(
+    richValue: string,
+    entities: MessageEntity[],
+    message: Message.message | DraftMessage.draftMessage = this.processingDraftMessage || this.editMessage
+  ) {
+    const messageMedia = message?.media;
+    const invertMedia = message?.pFlags?.invert_media;
+    const webPageUrl = messageMedia?._ === 'inputMediaWebPage' ?
+      messageMedia.url :
+      ((messageMedia as MessageMedia.messageMediaWebPage)?.webpage as WebPage.webPage)?.url;
     const urlEntities: Array<MessageEntity.messageEntityUrl | MessageEntity.messageEntityTextUrl> =
-      (!messageMedia || webPage) &&
+      (!messageMedia || webPageUrl) &&
       entities.filter((e) => e._ === 'messageEntityUrl' || e._ === 'messageEntityTextUrl') as any;
-    if(!urlEntities.length) {
+    if(!urlEntities?.length) {
       if(this.lastUrl) {
         this.lastUrl = '';
         delete this.noWebPage;
@@ -2235,7 +2256,7 @@ export default class ChatInput {
       return;
     }
 
-    let foundUrl = webPage?.url;
+    let foundUrl = webPageUrl;
     if(!foundUrl) for(const entity of urlEntities) {
       let url: string;
       if(entity._ === 'messageEntityTextUrl') {
@@ -2265,7 +2286,7 @@ export default class ChatInput {
     }
 
     this.lastUrl = foundUrl;
-    const oldWebPage = webPage;
+    const oldWebPage = webPageUrl;
     const promise = this.getWebPagePromise = Promise.all([
       this.managers.appWebPagesManager.getWebPage(foundUrl),
       this.chat.canSend('embed_links')
@@ -2785,7 +2806,32 @@ export default class ChatInput {
         delete draft.pFlags.no_webpage;
       }
 
-      const originalDraft = {...message, _: 'draftMessage'} as DraftMessage.draftMessage;
+      const replyTo = message.reply_to?._ === 'messageReplyHeader' ? message.reply_to : undefined;
+      const messageMedia = message?.media?._ === 'messageMediaWebPage' ? message.media : undefined;
+      const hasLargeMedia = (messageMedia?.webpage as WebPage.webPage)?.pFlags?.has_large_media;
+      const originalDraft: DraftMessage.draftMessage = {
+        _: 'draftMessage',
+        date: draft?.date,
+        message: message.message,
+        entities: message.entities,
+        pFlags: {
+          invert_media: message.pFlags.invert_media
+        },
+        media: messageMedia && {
+          _: 'inputMediaWebPage',
+          pFlags: {
+            force_large_media: hasLargeMedia && messageMedia.pFlags.force_large_media || undefined,
+            force_small_media: hasLargeMedia && messageMedia.pFlags.force_small_media || undefined,
+            optional: true
+          },
+          url: (messageMedia.webpage as WebPage.webPage).url
+        },
+        reply_to: replyTo && {
+          _: 'inputReplyToMessage',
+          reply_to_msg_id: replyTo.reply_to_msg_id
+        }
+      };
+
       if(originalDraft.entities?.length || draft?.entities?.length) {
         const canPassEntitiesTypes = new Set(Object.values(MARKDOWN_ENTITIES));
         canPassEntitiesTypes.add('messageEntityCustomEmoji');
@@ -3364,15 +3410,22 @@ export default class ChatInput {
     });
   }
 
-  public setInputValue(value: Parameters<InputFieldAnimated['setValueSilently']>[0], clear = true, focus = true) {
-    if(!value) value = '';
+  public setInputValue(
+    value: Parameters<InputFieldAnimated['setValueSilently']>[0],
+    clear = true,
+    focus = true,
+    draftMessage?: DraftMessage.draftMessage
+  ) {
+    value ||= '';
 
     if(clear) this.clearInput(false, false, value as string);
     else this.messageInputField.setValueSilently(value);
 
     fastRaf(() => {
       focus && placeCaretAtEnd(this.messageInput);
+      this.processingDraftMessage = draftMessage;
       this.onMessageInput();
+      this.processingDraftMessage = undefined;
       this.messageInput.scrollTop = this.messageInput.scrollHeight;
     });
   }

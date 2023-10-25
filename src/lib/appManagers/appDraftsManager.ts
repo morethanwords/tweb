@@ -9,7 +9,7 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import {MessageEntity, DraftMessage, MessagesSaveDraft, MessageReplyHeader, InputReplyTo} from '../../layer';
+import {MessageEntity, DraftMessage, MessagesSaveDraft, MessageReplyHeader, InputReplyTo, MessageMedia, WebPage, InputMedia} from '../../layer';
 import tsNow from '../../helpers/tsNow';
 import stateStorage from '../stateStorage';
 import assumeType from '../../helpers/assumeType';
@@ -139,7 +139,7 @@ export class AppDraftsManager extends AppManager {
       return true;
     }
 
-    if(draft.reply_to !== undefined && (draft.reply_to as MessageReplyHeader.messageReplyHeader).reply_to_msg_id > 0) {
+    if(draft.reply_to !== undefined && (draft.reply_to as InputReplyTo.inputReplyToMessage).reply_to_msg_id > 0) {
       return false;
     }
 
@@ -155,7 +155,7 @@ export class AppDraftsManager extends AppManager {
       return undefined;
     }
 
-    const replyTo = draft.reply_to as MessageReplyHeader.messageReplyHeader;
+    const replyTo = draft.reply_to as InputReplyTo.inputReplyToMessage;
     if(replyTo?.reply_to_msg_id) {
       const channelId = this.appPeersManager.isChannel(peerId) ? peerId.toChatId() : undefined;
       replyTo.reply_to_msg_id = this.appMessagesIdsManager.generateMessageId(replyTo.reply_to_msg_id, channelId);
@@ -186,7 +186,7 @@ export class AppDraftsManager extends AppManager {
       const message = localDraft.message;
       const entities: MessageEntity[] = localDraft.entities;
 
-      const replyTo = localDraft.reply_to as MessageReplyHeader.messageReplyHeader;
+      const replyTo = localDraft.reply_to as InputReplyTo.inputReplyToMessage;
       if(replyTo) {
         params.reply_to = {
           _: 'inputReplyToMessage',
@@ -200,6 +200,14 @@ export class AppDraftsManager extends AppManager {
 
       if(localDraft.pFlags.no_webpage) {
         params.no_webpage = localDraft.pFlags.no_webpage;
+      }
+
+      if(localDraft.pFlags.invert_media) {
+        params.invert_media = localDraft.pFlags.invert_media;
+      }
+
+      if(localDraft.media) {
+        params.media = localDraft.media;
       }
 
       params.message = message;
