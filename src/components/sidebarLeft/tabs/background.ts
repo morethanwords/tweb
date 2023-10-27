@@ -185,7 +185,9 @@ export default class AppBackgroundTab extends SliderSuperTab {
       ++AppBackgroundTab.tempId;
       this.theme.settings = copy(defaultTheme.settings);
       this.managers.appStateManager.pushToState('settings', rootScope.settings);
-      appImManager.applyCurrentTheme(undefined, undefined, true);
+      appImManager.applyCurrentTheme({
+        broadcastEvent: true
+      });
       this.blurCheckboxField.setValueSilently(needBlur(this.theme.settings?.wallpaper, false));
     }
   };
@@ -429,7 +431,11 @@ export default class AppBackgroundTab extends SliderSuperTab {
             rootScope.managers.appStateManager.pushToState('settings', rootScope.settings);
           }
 
-          appImManager.applyCurrentTheme(slug, url, true).then(deferred.resolve.bind(deferred));
+          appImManager.applyCurrentTheme({
+            slug,
+            backgroundUrl: url,
+            broadcastEvent: true
+          }).then(deferred.resolve.bind(deferred));
         });
       };
 

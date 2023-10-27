@@ -266,10 +266,10 @@ export class AppImManager extends EventListenerBase<{
       this.deleteFilesIterative((response) => {
         return response.headers.get('Content-Type') === 'image/svg+xml';
       }).then(() => {
-        this.applyCurrentTheme();
+        this.applyCurrentTheme({noSetTheme: true});
       });
     } else {
-      this.applyCurrentTheme();
+      this.applyCurrentTheme({noSetTheme: true});
     }
 
     // * fix simultaneous opened both sidebars, can happen when floating sidebar is opened with left sidebar
@@ -300,7 +300,11 @@ export class AppImManager extends EventListenerBase<{
     });
 
     rootScope.addEventListener('theme_change', () => {
-      this.applyCurrentTheme();
+      this.applyCurrentTheme({
+        broadcastEvent: true,
+        noSetTheme: true,
+        skipAnimation: true
+      });
     });
 
     rootScope.addEventListener('choosing_sticker', (choosing) => {
@@ -1415,7 +1419,7 @@ export class AppImManager extends EventListenerBase<{
     next();
   };
 
-  public setCurrentBackground(broadcastEvent = false): ReturnType<AppImManager['setBackground']> {
+  public setCurrentBackground(broadcastEvent = false, skipAnimation?: boolean): ReturnType<AppImManager['setBackground']> {
     const theme = themeController.getTheme();
 
     const slug = (theme.settings?.wallpaper as WallPaper.wallPaper)?.slug;
@@ -1426,7 +1430,7 @@ export class AppImManager extends EventListenerBase<{
 
       // if(!isDefaultBackground) {
       return this.getBackground(slug).then((url) => {
-        return this.setBackground(url, broadcastEvent);
+        return this.setBackground(url, broadcastEvent, skipAnimation);
       }, () => { // * if NO_ENTRY_FOUND
         theme.settings = copy(defaultTheme.settings); // * reset background
         return this.setCurrentBackground(true);
@@ -1434,7 +1438,7 @@ export class AppImManager extends EventListenerBase<{
       // }
     }
 
-    return this.setBackground('', broadcastEvent);
+    return this.setBackground('', broadcastEvent, skipAnimation);
   }
 
   private getBackground(slug: string) {
@@ -1443,9 +1447,9 @@ export class AppImManager extends EventListenerBase<{
     });
   }
 
-  public setBackground(url: string, broadcastEvent = true): Promise<void> {
+  public setBackground(url: string, broadcastEvent = true, skipAnimation?: boolean): Promise<void> {
     this.lastBackgroundUrl = url;
-    const promises = this.chats.map((chat) => chat.setBackground(url));
+    const promises = this.chats.map((chat) => chat.setBackground(url, skipAnimation));
     return promises[promises.length - 1].then(() => {
       if(broadcastEvent) {
         rootScope.dispatchEvent('background_change');
@@ -1496,14 +1500,29 @@ export class AppImManager extends EventListenerBase<{
     return cache && cache[key];
   }
 
-  public applyCurrentTheme(slug?: string, backgroundUrl?: string, broadcastEvent?: boolean) {
+  public applyCurrentTheme({
+    slug,
+    backgroundUrl,
+    broadcastEvent,
+    noSetTheme,
+    skipAnimation
+  }: {
+    slug?: string,
+    backgroundUrl?: string,
+    broadcastEvent?: boolean,
+    noSetTheme?: boolean,
+    skipAnimation?: boolean
+  } = {}) {
     if(backgroundUrl) {
       this.backgroundPromises[slug] = Promise.resolve(backgroundUrl);
     }
 
-    themeController.setTheme();
+    !noSetTheme && themeController.setTheme();
 
-    return this.setCurrentBackground(broadcastEvent === undefined ? !!slug : broadcastEvent);
+    return this.setCurrentBackground(
+      broadcastEvent === undefined ? !!slug : broadcastEvent,
+      skipAnimation
+    );
   }
 
   private setSettings = () => {

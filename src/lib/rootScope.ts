@@ -142,7 +142,7 @@ export type BroadcastEvents = {
 
   'language_change': string,
 
-  'theme_change': void,
+  'theme_change': {x: number, y: number} | void,
   'theme_changed': void,
 
   'media_play': void,

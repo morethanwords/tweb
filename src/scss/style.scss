@@ -2299,3 +2299,11 @@ hr {
 .tgico {
   pointer-events: none;
 }
+
+.no-view-transition::view-transition-old(root) {
+  animation: none;
+}
+
+.no-view-transition::view-transition-new(root) {
+  animation: none;
+}
