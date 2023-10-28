@@ -67,6 +67,7 @@ export default class MarkupTooltip {
       'strikethrough',
       'monospace',
       'spoiler',
+      'quote',
       'link'
     ] as (keyof MarkupTooltip['buttons'])[];
     arr.forEach((c) => {

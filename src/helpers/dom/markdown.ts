@@ -9,6 +9,7 @@ import {FontFamilyName} from '../../config/font';
 import indexOfAndSplice from '../array/indexOfAndSplice';
 import cancelEvent from './cancelEvent';
 import simulateEvent from './dispatchEvent';
+import getCharAfterRange from './getCharAfterRange';
 import {MarkdownType} from './getRichElementValue';
 import hasMarkupInSelection from './hasMarkupInSelection';
 import isSelectionEmpty from './isSelectionEmpty';
@@ -113,6 +114,7 @@ export function applyMarkdown(input: HTMLElement, type: MarkdownType, href?: str
     // strikethrough: 'Strikethrough',
     // monospace: () => document.execCommand('fontName', false, MONOSPACE_FONT),
     link: href ? () => document.execCommand('createLink', false, href) : () => document.execCommand('unlink', false, null)
+    // quote: () => document.execCommand('formatBlock', false, 'blockquote')
     // spoiler: () => document.execCommand('fontName', false, SPOILER_FONT)
   };
 
@@ -121,6 +123,14 @@ export function applyMarkdown(input: HTMLElement, type: MarkdownType, href?: str
       const k = (canCombine.includes(type) ? canCombine : [type]).filter((type) => hasMarkup[type]);
       if(!indexOfAndSplice(k, type)) {
         k.push(type);
+      }
+
+      if(type === 'quote' && k.includes(type)) {
+        const selection = document.getSelection();
+        if(selection.rangeCount && getCharAfterRange(selection.getRangeAt(0)) === '\n') {
+          const toLeft = false;
+          selection.modify(selection.isCollapsed ? 'move' : 'extend', toLeft ? 'backward' : 'forward', 'character');
+        }
       }
 
       let ret: boolean;
@@ -136,7 +146,7 @@ export function applyMarkdown(input: HTMLElement, type: MarkdownType, href?: str
     };
   };
 
-  const canCombine = ['bold', 'italic', 'underline', 'strikethrough', 'spoiler'] as (typeof type)[];
+  const canCombine: (typeof type)[] = ['bold', 'italic', 'underline', 'strikethrough', 'spoiler', 'quote'];
   canCombine.forEach((type) => {
     c(type);
   });
@@ -265,6 +275,11 @@ export function applyMarkdown(input: HTMLElement, type: MarkdownType, href?: str
 export function processCurrentFormatting(input: HTMLElement) {
   // const perf = performance.now();
   (input.querySelectorAll('[style*="font-family"]') as NodeListOf<HTMLElement>).forEach((element) => {
+    if(element.style.caretColor) { // cleared blockquote
+      element.style.cssText = '';
+      return;
+    }
+
     const fontFamily = element.style.fontFamily;
     if(fontFamily === FontFamilyName) {
       return;

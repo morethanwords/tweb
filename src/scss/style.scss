@@ -2307,3 +2307,42 @@ hr {
 .no-view-transition::view-transition-new(root) {
   animation: none;
 }
+
+.quote,
+[data-markup*="quote"] {
+  padding: 1px 0;
+  padding-inline: .375rem 1.125rem;
+  border-radius: 3px;
+  margin: 0;
+  background-color: rgba(var(--primary-color-rgb), .1);
+  border-inline-start: 3px solid var(--primary-color);
+  display: inline-block;
+  position: relative;
+  font-size: var(--messages-secondary-text-size);
+  line-height: var(--messages-secondary-line-height);
+  white-space: pre-wrap;
+  max-width: 100%;
+
+  // &-icon,
+  &:before {
+    position: absolute;
+    top: .125rem;
+    inset-inline-end: .1875rem;
+    color: var(--primary-color);
+    font-size: 78.571428%;
+    line-height: 1;
+  }
+
+  &:before {
+    // content: var(--quote-icon);
+    content: $tgico-quote;
+    font-family: '#{$tgico-font-family}' !important;
+  }
+}
+
+.quote-block,
+[data-markup*="quote"] {
+  display: block;
+  width: fit-content;
+  // width: min-content;
+}

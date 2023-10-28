@@ -57,6 +57,7 @@ export type WrapRichTextOptions = Partial<{
   voodoo?: boolean,
   customEmojis?: Map<DocId, CustomEmojiElements>,
   customWraps?: Set<HTMLElement>,
+  ignoreNextIndex?: number,
 }> & CustomEmojiRendererElementOptions;
 
 function createMarkupFormatting(formatting: string) {
@@ -390,7 +391,10 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
       }
 
       case 'messageEntityLinebreak': {
-        if(options.wrappingDraft && IS_FIREFOX) {
+        // slice linebreaks before and after quote
+        if(options.ignoreNextIndex === nasty.i || (options.wrappingDraft && nextEntity?._ === 'messageEntityBlockquote' && nextEntity.offset === endOffset)) {
+          usedText = true;
+        } else if(options.wrappingDraft && IS_FIREFOX) {
           element = document.createElement('br');
           usedText = true;
         }
@@ -573,6 +577,44 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           element.classList.add('is-disabled');
         }
 
+        break;
+      }
+
+      case 'messageEntityBlockquote': {
+        if(options.noTextFormat) {
+          break;
+        }
+
+        element = document.createElement('blockquote');
+        element.classList.add('quote');
+
+        let i = nasty.i, foundNextLinebreakIndex = -1;
+        if(options.wrappingDraft) for(; i < length; ++i) {
+          const n = entities[i];
+          if(n._ === 'messageEntityLinebreak' && n.offset >= endOffset) {
+            foundNextLinebreakIndex = i;
+            break;
+          }
+        }
+
+        if(foundNextLinebreakIndex !== -1) {
+          options.ignoreNextIndex = foundNextLinebreakIndex;
+          element.classList.add('quote-block');
+        }
+
+        if(options.wrappingDraft) {
+          element = createMarkupFormatting('quote');
+          break;
+        }
+
+        // if(!options.wrappingDraft) {
+        //   const i = Icon('quote', 'quote-icon');
+        //   element.textContent = partText;
+        //   usedText = true;
+        //   element.prepend(i);
+        // } else {
+        //   element.classList.add('quote-use-before');
+        // }
         break;
       }
     }

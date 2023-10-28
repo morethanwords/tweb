@@ -97,6 +97,7 @@ $message-padding-horizontal: 10px;
 .bubble {
   --line-height: var(--messages-line-height);
   --primary-color: var(--message-primary-color);
+  --primary-color-rgb: var(--message-primary-color-rgb);
   --name-color-rgb: var(--message-primary-color-rgb);
   --secondary-text-color: var(--message-status-color);
   position: relative;
@@ -2403,6 +2404,10 @@ $message-padding-horizontal: 10px;
   text-decoration: none !important;
   color: var(--primary-text-color);
   display: block;
+
+  @include hover() {
+    background-color: rgba(var(--webpage-color-rgb), .2);
+  }
 
   & + .time {
     display: block;

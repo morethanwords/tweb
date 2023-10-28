@@ -12,10 +12,16 @@
 import {MessageEntity} from '../../layer';
 import BOM from '../string/bom';
 
-export type MarkdownType = 'bold' | 'italic' | 'underline' | 'strikethrough' | 'monospace' | 'link' | 'mentionName' | 'spoiler'/*  | 'customEmoji' */;
+export type MarkdownType = 'bold' | 'italic' | 'underline' | 'strikethrough' |
+  'monospace' | 'link' | 'mentionName' | 'spoiler' | 'quote'/*  | 'customEmoji' */;
 export type MarkdownTag = {
   match: string,
-  entityName: Extract<MessageEntity['_'], 'messageEntityBold' | 'messageEntityUnderline' | 'messageEntityItalic' | 'messageEntityCode' | 'messageEntityStrike' | 'messageEntityTextUrl' | 'messageEntityMentionName' | 'messageEntitySpoiler'/*  | 'messageEntityCustomEmoji' */>;
+  entityName: Extract<
+    MessageEntity['_'], 'messageEntityBold' | 'messageEntityUnderline' |
+    'messageEntityItalic' | 'messageEntityCode' | 'messageEntityStrike' |
+    'messageEntityTextUrl' | 'messageEntityMentionName' | 'messageEntitySpoiler' |
+    'messageEntityBlockquote'/*  | 'messageEntityCustomEmoji' */
+  >;
 };
 
 // https://core.telegram.org/bots/api#html-style
@@ -51,6 +57,10 @@ export const markdownTags: {[type in MarkdownType]: MarkdownTag} = {
   spoiler: {
     match: '[style*="spoiler"]',
     entityName: 'messageEntitySpoiler'
+  },
+  quote: {
+    match: '[style*="quote"], .quote',
+    entityName: 'messageEntityBlockquote'
   }
   // customEmoji: {
   //   match: '.custom-emoji',
@@ -88,7 +98,8 @@ const BLOCK_TAGS = new Set([
   'H1',
   'TR',
   'OL',
-  'UL'
+  'UL',
+  'BLOCKQUOTE'
 ]);
 
 // const INSERT_NEW_LINE_TAGS = new Set([
@@ -211,7 +222,7 @@ export default function getRichElementValue(
   };
 
   const isSelected = selNode === node;
-  const isBlock = BLOCK_TAGS.has(node.tagName);
+  const isBlock = BLOCK_TAGS.has(node.tagName) || node.matches(markdownTags.quote.match);
   if(isBlock && ((line.length && line[line.length - 1].slice(-1) !== '\n') || node.tagName === 'BR'/*  || (BLOCK_TAGS.has(node.tagName) && lines.length) */)) {
     pushLine();
   } else {
