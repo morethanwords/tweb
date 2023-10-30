@@ -2344,5 +2344,6 @@ hr {
 [data-markup*="quote"] {
   display: block;
   width: fit-content;
+  margin-inline-end: auto;
   // width: min-content;
 }

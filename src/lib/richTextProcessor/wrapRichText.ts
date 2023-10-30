@@ -587,6 +587,7 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
 
         element = document.createElement('blockquote');
         element.classList.add('quote');
+        element.dir = 'auto';
 
         let i = nasty.i, foundNextLinebreakIndex = -1;
         if(options.wrappingDraft) for(; i < length; ++i) {
@@ -604,6 +605,7 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
 
         if(options.wrappingDraft) {
           element = createMarkupFormatting('quote');
+          element.dir = 'auto';
           break;
         }
 

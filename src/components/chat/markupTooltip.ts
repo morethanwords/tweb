@@ -274,21 +274,31 @@ export default class MarkupTooltip {
     const selection = document.getSelection();
     const range = selection.getRangeAt(0);
 
+    const rowsWrapper = findUpClassName(this.input, 'rows-wrapper');
+    const currentTools = this.container.classList.contains('is-link') ? this.wrapper.lastElementChild : this.wrapper.firstElementChild;
     const bodyRect = document.body.getBoundingClientRect();
     const selectionRect = range.getBoundingClientRect();
-    const rowsWrapper = findUpClassName(this.input, 'rows-wrapper');
     const inputRect = rowsWrapper.getBoundingClientRect();
+    const sizesRect = currentTools.getBoundingClientRect();
 
     this.container.style.maxWidth = inputRect.width + 'px';
 
-    const visibleRect = getVisibleRect(undefined, this.input, false, selectionRect);
+    const visibleRect = getVisibleRect(
+      undefined,
+      this.input,
+      false,
+      selectionRect
+    );
 
-    const selectionTop = visibleRect.rect.top/* selectionRect.top */ + (bodyRect.top * -1);
+    const {newHeight = 0, oldHeight = newHeight} = this.input as any;
 
-    const currentTools = this.container.classList.contains('is-link') ? this.wrapper.lastElementChild : this.wrapper.firstElementChild;
+    if(!visibleRect) { // can be when modifying quote that's not in visible area
+      return;
+    }
 
-    const sizesRect = currentTools.getBoundingClientRect();
-    const top = selectionTop - sizesRect.height - 8;
+    const selectionTop = (visibleRect ? visibleRect.rect.top : inputRect.top) /* selectionRect.top */ + (bodyRect.top * -1);
+
+    const top = selectionTop - sizesRect.height - 8 + (true ? oldHeight - newHeight : 0);
 
     const minX = inputRect.left;
     const maxX = (inputRect.left + inputRect.width) - Math.min(inputRect.width, sizesRect.width);

@@ -125,7 +125,7 @@ export function applyMarkdown(input: HTMLElement, type: MarkdownType, href?: str
         k.push(type);
       }
 
-      if(type === 'quote' && k.includes(type)) {
+      if(type === 'quote'/*  && k.includes(type) */) {
         const selection = document.getSelection();
         if(selection.rangeCount && getCharAfterRange(selection.getRangeAt(0)) === '\n') {
           const toLeft = false;
@@ -287,6 +287,7 @@ export function processCurrentFormatting(input: HTMLElement) {
 
     element.classList.add('is-markup');
     element.dataset.markup = fontFamily;
+    element.dir = 'auto';
   });
 
   (input.querySelectorAll('.is-markup') as NodeListOf<HTMLElement>).forEach((element) => {
