@@ -13,8 +13,10 @@ $bubble-overflow-big: math.div($bubble-margin-big, 2);
 $bubble-beside-button-width: 38px;
 $bubble-border-radius-medium: 8px;
 $bubble-border-radius-big: 16px;
-$message-padding-top: 6px;
-$message-padding-horizontal: 10px;
+$message-padding-top: 4px;
+$message-padding-horizontal: 8px;
+$reply-padding-top: 8px;
+$reply-padding-horizontal: 8px;
 
 @keyframes bubbleSelected {
   0% {
@@ -99,6 +101,7 @@ $message-padding-horizontal: 10px;
   --primary-color: var(--message-primary-color);
   --primary-color-rgb: var(--message-primary-color-rgb);
   --name-color-rgb: var(--message-primary-color-rgb);
+  --name-color: rgb(var(--name-color-rgb));
   --secondary-text-color: var(--message-status-color);
   position: relative;
   z-index: 1;
@@ -582,22 +585,10 @@ $message-padding-horizontal: 10px;
     }
   }
 
-  &:not(.is-group-last) .bubble-content-wrapper > .user-avatar {
-    display: none;
-  }
-
   &.photo, 
   &.video {
     .bubble-content {
       width: min-content;
-    }
-    
-    .webpage {
-      max-width: 100%;
-    }
-
-    .message {
-      max-width: 420px;
     }
   }
 
@@ -868,7 +859,7 @@ $message-padding-horizontal: 10px;
     }
   }
 
-  .anchor-url {
+  .anchor-url:not(.reply-markup-button) {
     @include hover() {
       text-decoration: underline !important;
     }
@@ -1013,74 +1004,31 @@ $message-padding-horizontal: 10px;
 
   .reply.is-expired-story {
     .reply-subtitle {
-      color: var(--message-primary-color);
+      color: var(--primary-color);
     }
+  }
+
+  .message .reply {
+    margin-left: 0;
+    margin-right: 0;
+    margin-bottom: .125rem;
+    // min-width: auto;
+    // max-width: none;
   }
 
   .reply {
-    padding: .25rem;
-    margin: .375rem;
-    margin-top: 0;
-    cursor: pointer;
-    border-radius: .25rem;
-    min-width: 7.75rem;
-    width: auto;
-
-    // &-media {
-    //   &.is-expired-story {
-    //     background-color: var(--light-filled-message-primary-color);
-    //     display: flex;
-    //     align-items: center;
-    //     justify-content: center;
-    //     color: var(--message-primary-color);
-
-    //     &:before {
-    //       font-size: 1.25rem;
-    //     }
-    //   }
-    // }
-
-    // &.floating-part .reply-media.is-expired-story {
-    //   background-color: var(--message-highlightning-color);
-    //   color: #fff;
-    // }
-
-    &-media {
-      top: .125rem;
-    }
-
-    &-content {
-      //max-width: 300px;
-      position: absolute;
-      max-width: calc(100% - 1.25rem);
-      height: auto;
-      min-height: 32px;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-      overflow: hidden;
-    }
-  }
-
-  .message + .reply {
-    margin-bottom: 0; // ! same margin as between name and message
-  }
-
-  &:not(.just-media) {
-    .reply {
-      border-radius: $bubble-border-radius-medium;
-      // border-top-left-radius: $bubble-border-radius-medium;
-      // border-top-right-radius: $bubble-border-radius-medium;
-
-      @include hover() {
-        background-color: var(--light-filled-message-primary-color);
-      }
-    }
+    // min-width: unquote("max(120px, calc(100% - 1rem))");
+    // max-width: calc(100% - 1rem);
+    margin: 0 $reply-padding-horizontal .5rem;
   }
 
   &.just-media {
     .floating-part {
-      padding: .375rem .5rem;
-      border-radius: $bubble-border-radius-big;
+      --primary-color: #fff;
+      --primary-color-rgb: 255, 255, 255;
+      --ripple-color: rgba(var(--primary-color-rgb), .1);
+      // padding: .375rem .5rem;
+      border-radius: .25rem;
       position: absolute;
       top: 0;
       // margin-bottom: 0;
@@ -1100,7 +1048,7 @@ $message-padding-horizontal: 10px;
       line-height: var(--line-height);
 
       .peer-title {
-        font-weight: 400 !important;
+        font-weight: var(--font-weight-normal) !important;
         // pointer-events: none;
       }
     }
@@ -1110,12 +1058,9 @@ $message-padding-horizontal: 10px;
     }
 
     .reply {
-      height: 54px;
-      max-height: 54px;
-
-      @include respond-to(handhelds) {
-        padding: 8px 6px 8px 8px;
-      }
+      // @include respond-to(handhelds) {
+      //   padding: 8px 6px 8px 8px;
+      // }
 
       &-content {
         margin-top: 0;
@@ -1126,12 +1071,21 @@ $message-padding-horizontal: 10px;
       &-title,
       &-subtitle, 
       i {
-        color: #fff !important;
+        color: var(--primary-color) !important;
       }
 
-      &-border {
-        background: #fff !important;
+      &-subtitle {
+        overflow: hidden;
       }
+
+      @include hover() {
+        background-color: var(--message-highlightning-hover-color);
+      }
+    }
+
+    .name-with-reply {
+      border-radius: $bubble-border-radius-big;
+      padding: .375rem .5rem;
     }
   }
 
@@ -1271,14 +1225,10 @@ $message-padding-horizontal: 10px;
       .reply {
         margin-top: 0 !important;
         margin-right: 2.5rem !important;
-        color: var(--message-primary-color);
-
-        &-border {
-          visibility: hidden;
-        }
+        background-color: transparent;
 
         &-content {
-          margin-left: 0;
+          margin-inline-start: .375rem;
         }
       }
 
@@ -1320,6 +1270,7 @@ $message-padding-horizontal: 10px;
       &-number {
         font-size: 14px;
         line-height: 1.4;
+        color: var(--message-status-color);
       }
     }
   }
@@ -1439,6 +1390,11 @@ $message-padding-horizontal: 10px;
     .message {
       padding: 0 !important;
       border-radius: inherit;
+
+      .reply {
+        margin-left: $reply-padding-horizontal;
+        margin-right: $reply-padding-horizontal;
+      }
     }
 
     .document-container {
@@ -1737,9 +1693,11 @@ $message-padding-horizontal: 10px;
     min-height: 5.5rem;
   }
 
-  .colored-name .premium-icon {
-    opacity: .6;
-    color: inherit;
+  .colored-name {
+    .premium-icon {
+      opacity: .6;
+      color: inherit;
+    }
   }
   
   .time {
@@ -1991,7 +1949,7 @@ $message-padding-horizontal: 10px;
     &.hide-name, 
     &:not(.is-group-first)/* , &.is-out */ {
       .reply {
-        margin-top: 6px;
+        margin-top: $reply-padding-top;
       }
     }
   }
@@ -2377,37 +2335,80 @@ $message-padding-horizontal: 10px;
   // }
 }
 
+.quote-like {
+  --border-radius: .25rem;
+  --primary-color: rgb(var(--name-color-rgb));
+  --primary-color-rgb: var(--name-color-rgb);
+  background-color: rgba(var(--primary-color-rgb), .1);
+  overflow: hidden;
+  border-radius: var(--border-radius);
+
+  &-hoverable {
+    --ripple-color: rgba(var(--primary-color-rgb), .2);
+    --ripple-duration: 0.4s;
+    --ripple-start-scale: 0.4;
+    cursor: pointer;
+    user-select: none;
+
+    @include hover() {
+      background-color: rgba(var(--primary-color-rgb), .2);
+    }
+  }
+
+  &-border:before {
+    content: " ";
+    position: absolute;
+    inset-inline-start: 0;
+    top: 0;
+    bottom: -2px;
+    flex: 0 0 auto;
+    width: .1875rem;
+    // background-color: var(--primary-color);
+    background-image: linear-gradient(
+      0deg,
+      rgba(var(--primary-color-rgb), .2) 0%,
+      rgba(var(--primary-color-rgb), .2) 50%,
+      var(--primary-color) 50%,
+      var(--primary-color) 100%
+    );
+    background-size: 100% 1rem;
+    background-position: 0 -2px;
+    transform: skew(0deg, -45deg);
+  }
+
+  &-icon {
+    &:after {
+      position: absolute;
+      top: .125rem;
+      inset-inline-end: .1875rem;
+      color: var(--primary-color);
+      font-size: 78.571428%;
+      line-height: 1;
+    }
+
+    &:after {
+      // content: var(--quote-icon);
+      content: $tgico-quote;
+      font-family: '#{$tgico-font-family}' !important;
+    }
+  }
+}
+
 .webpage {
   $parent: ".webpage";
-  $border-radius: .25rem;
   $webpage-padding: .375rem;
   $webpage-padding-vertical: .25rem;
-  --webpage-color-rgb: var(--name-color-rgb);
-  // --webpage-color-rgb: 255,0,255;
-  --webpage-color: rgb(var(--webpage-color-rgb));
-  --primary-color: var(--webpage-color);
-  --secondary-color: var(--webpage-color);
-  --secondary-text-color: var(--webpage-color);
-  --link-color: var(--webpage-color);
-  --message-highlightning-color: rgba(var(--webpage-color-rgb), .3);
-  --ripple-color: rgba(var(--webpage-color-rgb), .2);
-  --ripple-duration: 0.4s;
-  --ripple-start-scale: 0.4;
+  --secondary-color: var(--primary-color);
+  --secondary-text-color: var(--primary-color);
+  --link-color: var(--primary-color);
+  --message-highlightning-color: rgba(var(--primary-color-rgb), .3);
   margin: .25rem 0;
-  max-width: 100%;
-  overflow: hidden;
+  // max-width: 100%;
   font-size: var(--messages-secondary-text-size);
   line-height: var(--messages-secondary-line-height);
-  user-select: none;
-  background-color: rgba(var(--webpage-color-rgb), .1);
-  border-radius: $border-radius;
   text-decoration: none !important;
   color: var(--primary-text-color);
   display: block;
-
-  @include hover() {
-    background-color: rgba(var(--webpage-color-rgb), .2);
-  }
 
   & + .time {
     display: block;
@@ -2457,7 +2458,7 @@ $message-padding-horizontal: 10px;
   &-preview {
     max-width: unquote('min(420px, 100%)');
     max-height: unquote('min(340px, 100%)');
-    border-radius: $border-radius;
+    border-radius: var(--border-radius);
     overflow: hidden;
     user-select: none;
     position: relative;
@@ -2495,7 +2496,7 @@ $message-padding-horizontal: 10px;
   &-name,
   &-button,
   .anchor-url {
-    color: var(--webpage-color);
+    color: var(--primary-color);
   }
 
   &-name {
@@ -2515,12 +2516,6 @@ $message-padding-horizontal: 10px;
     // }
   }
 
-  &-border {
-    flex: 0 0 auto;
-    width: .1875rem;
-    background-color: var(--webpage-color);
-  }
-
   &-quote {
     max-width: 100%;
     overflow: hidden;
@@ -2533,6 +2528,7 @@ $message-padding-horizontal: 10px;
     flex: 1 1 auto;
     overflow: hidden;
     padding: $webpage-padding-vertical $webpage-padding;
+    padding-inline-start: #{calc($webpage-padding + 3px)};
   }
 
   &-button {
@@ -2544,7 +2540,7 @@ $message-padding-horizontal: 10px;
     line-height: $height;
     margin-top: $margin;
     margin-bottom: #{-$webpage-padding-vertical};
-    border-top: $border solid rgba(var(--webpage-color-rgb), .2);
+    border-top: $border solid rgba(var(--primary-color-rgb), .2);
     font-size: var(--messages-text-size);
     text-align: center;
     font-weight: var(--font-weight-bold);
@@ -3022,30 +3018,6 @@ $message-padding-horizontal: 10px;
   code {
     color: var(--monospace-text-color);
   }
-
-  &:not(.just-media) {
-    .reply {
-      &.is-overriding-color {
-        .reply-border {
-          background-color: rgb(var(--override-color));
-        }
-
-        .reply-title {
-          color: rgb(var(--override-color));
-        }
-
-        @include hover() {
-          background-color: rgba(var(--override-color), #{$hover-alpha});
-        }
-      }
-    }
-
-    // &:not(.is-group-first) {
-    //   .reply {
-    //     border-top-left-radius: .25rem;
-    //   }
-    // }
-  }
 }
 
 .bubble.is-out {
@@ -3416,27 +3388,27 @@ $message-padding-horizontal: 10px;
 }
 
 .reply-markup-button,
-.bubble.just-media .reply,
 .bubble-beside-button,
 .bubble-service-button {
-  &:after {
-    display: block;
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    border-radius: inherit;
-    opacity: 0;
-    z-index: -1;
-    background-color: #fff;
-  }
+  // &:after {
+  //   display: block;
+  //   position: absolute;
+  //   top: 0;
+  //   right: 0;
+  //   bottom: 0;
+  //   left: 0;
+  //   border-radius: inherit;
+  //   opacity: 0;
+  //   z-index: -1;
+  //   background-color: #fff;
+  // }
 
   @include hover() {
-    &:after {
-      content: " ";
-      opacity: var(--hover-alpha);
-    }
+    background-color: var(--message-highlightning-hover-color);
+    // &:after {
+    //   content: " ";
+    //   opacity: var(--hover-alpha);
+    // }
   }
 }
 

@@ -24,6 +24,7 @@ import wrapTelegramUrlToAnchor from './wrapTelegramUrlToAnchor';
 import {IS_FIREFOX} from '../../environment/userAgent';
 import CustomEmojiElement, {CustomEmojiElements} from '../customEmoji/element';
 import {CustomEmojiRendererElementOptions, CustomEmojiRendererElement} from '../customEmoji/renderer';
+import {setDirection} from '../../helpers/dom/setInnerHTML';
 
 export type WrapRichTextOptions = Partial<{
   entities: MessageEntity[],
@@ -585,9 +586,15 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           break;
         }
 
-        element = document.createElement('blockquote');
-        element.classList.add('quote');
-        element.dir = 'auto';
+        if(options.wrappingDraft) {
+          element = createMarkupFormatting('quote');
+        } else {
+          element = document.createElement('blockquote');
+          element.classList.add('quote');
+        }
+
+        element.classList.add('quote-like', 'quote-like-border', 'quote-like-icon');
+        setDirection(element);
 
         let i = nasty.i, foundNextLinebreakIndex = -1;
         if(options.wrappingDraft) for(; i < length; ++i) {
@@ -600,13 +607,6 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
 
         if(foundNextLinebreakIndex !== -1) {
           options.ignoreNextIndex = foundNextLinebreakIndex;
-          element.classList.add('quote-block');
-        }
-
-        if(options.wrappingDraft) {
-          element = createMarkupFormatting('quote');
-          element.dir = 'auto';
-          break;
         }
 
         // if(!options.wrappingDraft) {

@@ -68,6 +68,7 @@
   --message-beside-button-margin: calc((var(--message-beside-button-size) + .5rem) * -1);
   --message-time-background: rgba(0, 0, 0, .35);
   --message-highlightning-color: hsla(85.5319, 36.9171%, 40.402%, .4);//rgba(77, 142, 80, .4);
+  --message-highlightning-hover-color: rgba(var(--message-highlightning-color-rgb), calc(var(--message-highlightning-alpha) + .24));
   --messages-container-width: #{$messages-container-width};
   --messages-text-size: 16px;
   --messages-line-height: 1.3125;
@@ -2311,33 +2312,15 @@ hr {
 .quote,
 [data-markup*="quote"] {
   padding: 1px 0;
-  padding-inline: .375rem 1.125rem;
-  border-radius: 3px;
-  margin: 0;
-  background-color: rgba(var(--primary-color-rgb), .1);
-  border-inline-start: 3px solid var(--primary-color);
+  padding-inline: .5625rem 1.125rem;
+  margin: 2px 0;
   display: inline-block;
   position: relative;
   font-size: var(--messages-secondary-text-size);
   line-height: var(--messages-secondary-line-height);
   white-space: pre-wrap;
   max-width: 100%;
-
-  // &-icon,
-  &:before {
-    position: absolute;
-    top: .125rem;
-    inset-inline-end: .1875rem;
-    color: var(--primary-color);
-    font-size: 78.571428%;
-    line-height: 1;
-  }
-
-  &:before {
-    // content: var(--quote-icon);
-    content: $tgico-quote;
-    font-family: '#{$tgico-font-family}' !important;
-  }
+  vertical-align: bottom;
 }
 
 .quote-block,

@@ -9,7 +9,7 @@ import type {Theme} from '../layer';
 import type AppBackgroundTab from '../components/sidebarLeft/tabs/background';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import rootScope from '../lib/rootScope';
-import {changeColorAccent, ColorRgb, getAccentColor, getAverageColor, getHexColorFromTelegramColor, getRgbColorFromTelegramColor, hexToRgb, hslaStringToHex, hsvToRgb, mixColors, rgbaToHexa, rgbaToHsla, rgbToHsv} from './color';
+import {changeColorAccent, ColorRgb, getAccentColor, getAverageColor, getHexColorFromTelegramColor, getRgbColorFromTelegramColor, hexToRgb, hslaStringToHex, hslaStringToRgba, hsvToRgb, mixColors, rgbaToHexa, rgbaToHsla, rgbToHsv} from './color';
 import {MOUNT_CLASS_TO} from '../config/debug';
 import customProperties from './dom/customProperties';
 import {TelegramWebViewTheme} from '../types';
@@ -169,14 +169,16 @@ export class ThemeController {
   }
 
   public applyHighlightningColor() {
-    let hsla: string;
+    let hsla = 'hsla(85.5319, 36.9171%, 40.402%, .4)';
     const theme = this.getTheme();
     if(theme.settings?.highlightningColor) {
       hsla = theme.settings.highlightningColor;
-      document.documentElement.style.setProperty('--message-highlightning-color', hsla);
-    } else {
-      document.documentElement.style.removeProperty('--message-highlightning-color');
     }
+
+    const highlightningRgba = hslaStringToRgba(hsla);
+    document.documentElement.style.setProperty('--message-highlightning-color', hsla);
+    document.documentElement.style.setProperty('--message-highlightning-color-rgb', highlightningRgba.slice(0, 3).join(','));
+    document.documentElement.style.setProperty('--message-highlightning-alpha', '' + highlightningRgba[3] / 255);
 
     if(!IS_TOUCH_SUPPORTED && hsla) {
       this.themeColor = hslaStringToHex(hsla);

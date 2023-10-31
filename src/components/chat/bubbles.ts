@@ -5074,6 +5074,7 @@ export default class ChatBubbles {
         case 'messageMediaWebPage': {
           const className = 'webpage';
           processingWebPage = true;
+          attachmentDiv = undefined;
 
           const webPage: WebPage = messageMedia.webpage;
           if(webPage._ !== 'webPage') {
@@ -5095,7 +5096,7 @@ export default class ChatBubbles {
           }
 
           const box = document.createElement('a');
-          box.classList.add(className);
+          box.classList.add(className, 'quote-like', 'quote-like-hoverable');
           ripple(box);
 
           const quoteClassName = `${className}-quote`;
@@ -5132,7 +5133,7 @@ export default class ChatBubbles {
           bubble.classList.add('has-webpage');
 
           const quote = document.createElement('div');
-          quote.classList.add(quoteClassName);
+          quote.classList.add(quoteClassName, 'quote-like-border');
 
           if(viewButton) {
             quote.classList.add('has-button');
@@ -5238,10 +5239,10 @@ export default class ChatBubbles {
           //   textElements.slice(1).forEach((element) => element.classList.add(`${className}-text-margin-top`));
           // }
 
-          const border = document.createElement('div');
-          border.classList.add(`${className}-border`);
+          // const border = document.createElement('div');
+          // border.classList.add(`${className}-border`, 'quote-like-border');
 
-          quote.append(border, contentDiv);
+          quote.append(contentDiv);
 
           let isSquare = false;
           if(photo && !doc) {
@@ -6006,7 +6007,7 @@ export default class ChatBubbles {
           const storyId = messageMedia.id;
           const storyPeerId = getPeerId(messageMedia.peer);
 
-          const replyContainer = await this.getStoryReplyIfExpired(storyPeerId, storyId, false);
+          const replyContainer = await this.getStoryReplyIfExpired(storyPeerId, storyId, false, true);
           if(replyContainer) {
             bubble.classList.add('is-expired-story');
             // attachmentDiv = replyContainer;
@@ -6045,8 +6046,19 @@ export default class ChatBubbles {
           break;
       }
 
+      if(processingWebPage) {
+        attachmentDiv = undefined;
+      }
+
       if(!processingWebPage && attachmentDiv) {
         bubbleContainer.append(attachmentDiv);
+      }
+
+      if(attachmentDiv) {
+        const width = attachmentDiv.style.width;
+        if(width) {
+          bubbleContainer.style.maxWidth = width;
+        }
       }
 
       /* if(bubble.classList.contains('is-message-empty') && (bubble.classList.contains('photo') || bubble.classList.contains('video'))) {
@@ -6151,7 +6163,16 @@ export default class ChatBubbles {
           chat: this.chat,
           bubble,
           bubbleContainer,
-          message
+          message,
+          appendCallback: (container) => {
+            if(attachmentDiv) {
+              attachmentDiv.after(container);
+            } else if(bubble.classList.contains('is-message-empty')) {
+              bubbleContainer.append(container);
+            } else {
+              messageDiv.prepend(container);
+            }
+          }
         });
       }
 
@@ -6430,14 +6451,15 @@ export default class ChatBubbles {
     container.style.height = `${height}px`;
   }
 
-  private async getStoryReplyIfExpired(storyPeerId: PeerId, storyId: number, isWebPage: boolean) {
+  private async getStoryReplyIfExpired(storyPeerId: PeerId, storyId: number, isWebPage: boolean, noBorder?: boolean) {
     const result = await this.managers.acknowledged.appStoriesManager.getStoryById(storyPeerId, storyId);
     if(result.cached && !(await result.result)) {
       const peerTitle = await wrapPeerTitle({peerId: storyPeerId});
       const {container, fillPromise} = wrapReply({
         title: isWebPage ? peerTitle : undefined,
         subtitle: isWebPage ? undefined : i18n('ExpiredStorySubtitle', [peerTitle]),
-        isStoryExpired: true
+        isStoryExpired: true,
+        noBorder
       });
 
       return container;

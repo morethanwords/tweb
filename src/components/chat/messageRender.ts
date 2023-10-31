@@ -165,11 +165,12 @@ export namespace MessageRender {
     return isFooter;
   };
 
-  export const setReply = async({chat, bubble, bubbleContainer, message}: {
+  export const setReply = async({chat, bubble, bubbleContainer, message, appendCallback}: {
     chat: Chat,
     bubble: HTMLElement,
     bubbleContainer?: HTMLElement,
-    message: Message.message
+    message: Message.message,
+    appendCallback?: (container: HTMLElement) => void
   }) => {
     const isReplacing = !bubbleContainer;
     if(isReplacing) {
@@ -227,14 +228,16 @@ export namespace MessageRender {
       }).element;
     }
 
+    const isStoryExpired = isStoryReply && originalStory.cached && !(await originalStory.result);
     const {container, fillPromise} = wrapReply({
       title: originalPeerTitle,
       animationGroup: chat.animationGroup,
       message: originalMessage,
-      isStoryExpired: isStoryReply && originalStory.cached && !(await originalStory.result),
+      isStoryExpired,
       storyItem: originalStory?.cached && await originalStory.result,
       setColorPeerId: chat.isAnyGroup ? titlePeerId : undefined,
-      textColor: 'primary-text-color'
+      textColor: 'primary-text-color',
+      isQuote: !isStoryReply ? replyTo.quote_text !== undefined : undefined
     });
 
     await fillPromise;
@@ -244,7 +247,7 @@ export namespace MessageRender {
       }
       currentReplyDiv.replaceWith(container);
     } else {
-      bubbleContainer.append(container);
+      appendCallback(container);
     }
     // bubbleContainer.insertBefore(, nameContainer);
     bubble.classList.add('is-reply');

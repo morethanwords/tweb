@@ -14,6 +14,7 @@ import {MarkdownType} from './getRichElementValue';
 import hasMarkupInSelection from './hasMarkupInSelection';
 import isSelectionEmpty from './isSelectionEmpty';
 import RichInputHandler from './richInputHandler';
+import {setDirection} from './setInnerHTML';
 
 const cacheMap = new WeakMap<HTMLElement, MarkdownCache>();
 
@@ -287,7 +288,7 @@ export function processCurrentFormatting(input: HTMLElement) {
 
     element.classList.add('is-markup');
     element.dataset.markup = fontFamily;
-    element.dir = 'auto';
+    setDirection(element);
   });
 
   (input.querySelectorAll('.is-markup') as NodeListOf<HTMLElement>).forEach((element) => {
