@@ -21,6 +21,7 @@ import {IS_MOBILE} from '../environment/userAgent';
 import ripple from './ripple';
 import Icon from './icon';
 import RadioForm from './radioForm';
+import rootScope from '../lib/rootScope';
 
 export type ButtonMenuItemOptions = {
   icon?: Icon,
@@ -50,6 +51,8 @@ export type ButtonMenuItemOptions = {
 export type ButtonMenuItemOptionsVerifiable = ButtonMenuItemOptions & {
   verify?: () => boolean | Promise<boolean>
 };
+
+let addedThemeListener = false;
 
 function ButtonMenuItem(options: ButtonMenuItemOptions) {
   if(options.element) return [options.separator as HTMLElement, options.element].filter(Boolean);
@@ -83,6 +86,36 @@ function ButtonMenuItem(options: ButtonMenuItemOptions) {
     iconElement.classList.add('btn-menu-item-icon', 'is-external');
     el.append(iconElement);
 
+    if(!addedThemeListener) {
+      addedThemeListener = true;
+
+      rootScope.addEventListener('theme_changed', () => {
+        const elements = document.querySelectorAll<HTMLElement>('.btn-menu-item-icon.is-external');
+        elements.forEach((element) => {
+          const set = (element as any).set;
+          set?.(true);
+        });
+      });
+    }
+
+    const set = async(manual?: boolean) => {
+      const isMobile = document.documentElement.classList.contains('is-mobile');
+      const svg: SVGSVGElement = (iconElement as any).svg;
+      const color = customProperties.getProperty(isMobile ? 'secondary-text-color' : 'primary-text-color');
+      svg.querySelectorAll('path').forEach((path) => {
+        path.setAttributeNS(null, 'fill', color);
+        path.style.stroke = color;
+        path.style.strokeWidth = (isMobile ? .625 : .375) + 'px';
+      });
+
+      const url = await textToSvgURL(svg.outerHTML);
+      if(!manual) {
+        return url;
+      }
+
+      ((iconElement as any).image as HTMLImageElement).src = url;
+    };
+
     options.loadPromise = wrapPhoto({
       container: iconElement,
       photo: iconDoc,
@@ -91,24 +124,17 @@ function ButtonMenuItem(options: ButtonMenuItemOptions) {
       withoutPreloader: true,
       noFadeIn: true,
       noBlur: true,
-      processUrl: (url) => {
-        return fetch(url)
-        .then((response) => response.text())
-        .then((text) => {
-          const isMobile = document.documentElement.classList.contains('is-mobile');
-          const color = customProperties.getProperty(isMobile ? 'secondary-text-color' : 'primary-text-color');
-          const doc = new DOMParser().parseFromString(text, 'image/svg+xml');
-          const svg = doc.firstElementChild as HTMLElement;
-          svg.querySelectorAll('path').forEach((path) => {
-            path.setAttributeNS(null, 'fill', color);
-            path.style.stroke = color;
-            path.style.strokeWidth = (isMobile ? .625 : .375) + 'px';
-          });
-          return textToSvgURL(svg.outerHTML);
-        });
+      processUrl: async(url) => {
+        const text = await (await fetch(url)).text();
+        const doc = new DOMParser().parseFromString(text, 'image/svg+xml');
+        const svg = doc.firstElementChild as HTMLElement;
+        (iconElement as any).svg = svg;
+        (iconElement as any).set = set;
+        return set();
       }
     }).then((ret) => {
       iconElement.style.width = iconElement.style.height = '';
+      (iconElement as any).image = ret.images.full;
       return ret.loadPromises.thumb;
     });
   }
