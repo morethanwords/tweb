@@ -9,7 +9,7 @@ import type {Theme} from '../layer';
 import type AppBackgroundTab from '../components/sidebarLeft/tabs/background';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import rootScope from '../lib/rootScope';
-import {changeColorAccent, ColorRgb, getAccentColor, getAverageColor, getHexColorFromTelegramColor, getRgbColorFromTelegramColor, hexToRgb, hslaStringToHex, hslaStringToRgba, hsvToRgb, mixColors, rgbaToHexa, rgbaToHsla, rgbToHsv} from './color';
+import {changeColorAccent, ColorRgb, getAccentColor, getAverageColor, getHexColorFromTelegramColor, getRgbColorFromTelegramColor, hexToRgb, hslaStringToHex, hslaStringToRgba, hslaToRgba, hsvToRgb, mixColors, rgbaToHexa, rgbaToHsla, rgbToHsv} from './color';
 import {MOUNT_CLASS_TO} from '../config/debug';
 import customProperties from './dom/customProperties';
 import {TelegramWebViewTheme} from '../types';
@@ -83,7 +83,7 @@ const colorMap: {
   day: {
     // 'background-color': '#f4f4f5',
     'primary-color': '#3390ec',
-    'message-out-primary-color': '#4fae4e',
+    'message-out-primary-color': '#5CA853',
     'message-background-color': '#ffffff',
     'surface-color': '#ffffff',
     'danger-color': '#df3f40',
@@ -402,7 +402,7 @@ export class ThemeController {
       return;
     }
 
-    const messageLightenAlpha = isNight ? 0.92 : 0.12;
+    const messageLightenAlpha = isNight ? 1 : 0.12;
     const baseMessageColor = hexToRgb(baseColors['message-out-primary-color']);
     hsvTemp1 = rgbToHsv(...baseMessageColor);
     const baseMessageOutBackgroundColor = mixColors(baseMessageColor, hexToRgb(baseColors['surface-color']), messageLightenAlpha);
@@ -435,7 +435,13 @@ export class ThemeController {
 
     const accentColor2 = themeSettings.outbox_accent_color !== undefined && rgbToHsv(...getRgbColorFromTelegramColor(themeSettings.outbox_accent_color));
 
-    const newMessageOutBackgroundColor = mixColors(myMessagesAccent, hexToRgb(baseColors['surface-color']), messageLightenAlpha);
+    let newMessageOutBackgroundColor = mixColors(myMessagesAccent, hexToRgb(baseColors['surface-color']), messageLightenAlpha);
+
+    if(!isNight/*  || true */) {
+      const messageOutBackgroundColorHsl = rgbaToHsla(...newMessageOutBackgroundColor);
+      messageOutBackgroundColorHsl.s = Math.min(messageOutBackgroundColorHsl.s + (isNight ? 8 : 63), 100);
+      newMessageOutBackgroundColor = hslaToRgba(messageOutBackgroundColorHsl.h, messageOutBackgroundColorHsl.s, messageOutBackgroundColorHsl.l, messageOutBackgroundColorHsl.a).slice(0, 3) as ColorRgb;
+    }
 
     applyAppColor({
       name: 'message-out-background-color',
