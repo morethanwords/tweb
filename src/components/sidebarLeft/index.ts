@@ -142,7 +142,7 @@ export class AppSidebarLeft extends SidebarSlider {
       });
     });
 
-    rootScope.addEventListener('theme_change', () => {
+    rootScope.addEventListener('theme_changed', () => {
       themeCheckboxField.setValueSilently(themeController.getTheme().name === 'night');
     });
 

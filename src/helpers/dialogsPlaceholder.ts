@@ -245,13 +245,13 @@ export default class DialogsPlaceholder {
       return middleware();
     });
 
-    rootScope.addEventListener('theme_change', this.onThemeChange);
+    rootScope.addEventListener('theme_changed', this.onThemeChange);
     mediaSizes.addEventListener('resize', this.onResize);
   }
 
   private stopAnimation() {
     ++this.tempId;
-    rootScope.removeEventListener('theme_change', this.onThemeChange);
+    rootScope.removeEventListener('theme_changed', this.onThemeChange);
     mediaSizes.removeEventListener('resize', this.onResize);
   }
 

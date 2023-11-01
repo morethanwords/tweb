@@ -373,7 +373,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
         }
       });
 
-      this.listenerSetter.add(rootScope)('theme_change', () => {
+      this.listenerSetter.add(rootScope)('theme_changed', () => {
         currentTheme = themeController.getTheme();
         const newIsNight = themeController.isNight();
         if(isNight === newIsNight) {

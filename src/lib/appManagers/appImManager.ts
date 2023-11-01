@@ -115,6 +115,8 @@ import focusInput from '../../helpers/dom/focusInput';
 import safePlay from '../../helpers/dom/safePlay';
 import {RequestWebViewOptions} from './appAttachMenuBotsManager';
 import PopupWebApp from '../../components/popups/webApp';
+import {hexToRgb} from '../../helpers/color';
+import getPeerColorById from './utils/peers/getPeerColorById';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -299,7 +301,7 @@ export class AppImManager extends EventListenerBase<{
       this.saveChatPosition(chat);
     });
 
-    rootScope.addEventListener('theme_change', () => {
+    rootScope.addEventListener('theme_changed', () => {
       this.applyCurrentTheme({
         broadcastEvent: true,
         noSetTheme: true,
@@ -1550,6 +1552,7 @@ export class AppImManager extends EventListenerBase<{
     document.body.classList.toggle('animation-level-0', !liteMode.isAvailable('animations'));
     document.body.classList.toggle('animation-level-1', false);
     document.body.classList.toggle('animation-level-2', liteMode.isAvailable('animations'));
+    document.documentElement.style.setProperty('--name-color-rgb', hexToRgb(getPeerColorById(rootScope.myId, false)).join(','));
 
     this.chatsSelectTabDebounced = debounce(() => {
       const topbar = this.chat.topbar;
