@@ -88,7 +88,7 @@ import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
 import wrapMessageActionTextNew from '../wrappers/messageActionTextNew';
 import isMentionUnread from '../../lib/appManagers/utils/messages/isMentionUnread';
 import getMediaFromMessage from '../../lib/appManagers/utils/messages/getMediaFromMessage';
-import getPeerColorById from '../../lib/appManagers/utils/peers/getPeerColorById';
+import {getPeerColorIndexByPeer, getPeerColorsByPeer} from '../../lib/appManagers/utils/peers/getPeerColorById';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import getServerMessageId from '../../lib/appManagers/utils/messageId/getServerMessageId';
 import {AppManagers} from '../../lib/appManagers/managers';
@@ -232,7 +232,7 @@ export default class ChatBubbles {
   // public messagesCount: number = -1;
 
   private unreadOut = new Set<number>();
-  public needUpdate: {replyToPeerId: PeerId, replyMid?: number, replyStoryId?: number, mid: number}[] = []; // if need wrapSingleMessage
+  private needUpdate: {replyToPeerId: PeerId, replyMid?: number, replyStoryId?: number, mid: number}[] = []; // if need wrapSingleMessage
 
   public bubbles: {[mid: string]: HTMLElement} = {};
   public skippedMids: Set<number> = new Set();
@@ -827,9 +827,9 @@ export default class ChatBubbles {
       const property: keyof typeof needUpdate[0] = options.mids ? 'replyMid' : 'replyStoryId';
       ids.forEach((id) => {
         const filtered: typeof needUpdate[0][] = [];
-        forEachReverse(this.needUpdate, (obj, idx) => {
+        forEachReverse(needUpdate, (obj, idx) => {
           if(obj[property] === id && (obj.replyToPeerId === peerId || !peerId)) {
-            this.needUpdate.splice(idx, 1)[0];
+            needUpdate.splice(idx, 1)[0];
             filtered.push(obj);
           }
         });
@@ -847,7 +847,10 @@ export default class ChatBubbles {
           MessageRender.setReply({
             chat: this.chat,
             bubble,
-            message
+            message,
+            middleware: bubble.middlewareHelper.get(),
+            lazyLoadQueue: this.lazyLoadQueue,
+            needUpdate: this.needUpdate
           });
 
           if(!originalMessage) {
@@ -3069,7 +3072,7 @@ export default class ChatBubbles {
     this.dateMessages = {};
     this.bubbleGroups.cleanup();
     this.unreadOut.clear();
-    this.needUpdate.length = 0;
+    this.needUpdate = [];
     this.lazyLoadQueue.clear();
     this.renderNewPromises.clear();
 
@@ -6076,9 +6079,17 @@ export default class ChatBubbles {
 
     let savedFrom = '';
 
-    if(!isOut) {
-      const nameColor = getPeerColorById(message.fromId, false);
-      bubble.style.setProperty('--name-color-rgb', hexToRgb(nameColor).join(','));
+    if(isStandaloneMedia) {
+      const peer = await apiManagerProxy.getPeer(message.fromId);
+      const colors = getPeerColorsByPeer(peer);
+      const length = colors.length;
+      bubble.style.setProperty('--peer-color-rgb', `var(--message-empty-primary-color-rgb)`);
+      bubble.style.setProperty('--peer-border-background', `var(--message-empty-peer-${length}-border-background)`);
+    } else if(!isOut) {
+      const peer = await apiManagerProxy.getPeer(message.fromId);
+      const colorIndex = getPeerColorIndexByPeer(peer);
+      bubble.style.setProperty('--peer-color-rgb', `var(--peer-${colorIndex}-color-rgb)`);
+      bubble.style.setProperty('--peer-border-background', `var(--peer-${colorIndex}-border-background)`);
     }
 
     const isSponsored = (message as Message.message).pFlags.sponsored;
@@ -6155,7 +6166,7 @@ export default class ChatBubbles {
           message.reply_to?._ === 'messageReplyStoryHeader' || (
             message.reply_to_mid &&
             message.reply_to_mid !== this.chat.threadId
-          )
+          ) || message.reply_to?.reply_from
         ) &&
         (!this.chat.isAllMessagesForum || (message.reply_to as MessageReplyHeader.messageReplyHeader).reply_to_top_id)
       ) {
@@ -6172,7 +6183,10 @@ export default class ChatBubbles {
             } else {
               messageDiv.prepend(container);
             }
-          }
+          },
+          middleware,
+          lazyLoadQueue: this.lazyLoadQueue,
+          needUpdate: this.needUpdate
         });
       }
 
@@ -6193,7 +6207,6 @@ export default class ChatBubbles {
         title.dataset.peerId = '' + (storyFromPeerId || fwdFromId);
 
         if((this.peerId === rootScope.myId || this.peerId === REPLIES_PEER_ID || isForwardFromChannel) && !isStandaloneMedia && !storyFromPeerId) {
-          nameDiv.style.color = getPeerColorById(fwdFromId, false);
           nameDiv.classList.add('colored-name');
           nameDiv.append(title);
         } else {
@@ -6220,7 +6233,6 @@ export default class ChatBubbles {
             }
 
             if(!our) {
-              nameDiv.style.color = getPeerColorById(peerIdForColor, false);
               nameDiv.classList.add('colored-name');
             }
 
@@ -7588,7 +7600,7 @@ export default class ChatBubbles {
 
     const isBroadcast = this.chat.isBroadcast;
     // console.time('appImManager call getHistory');
-    const pageCount = Math.min(30, windowSize.height / 40/*  * 1.25 */ | 0);
+    const pageCount = Math.min(40, windowSize.height / 40/*  * 1.25 */ | 0);
     // const loadCount = Object.keys(this.bubbles).length > 0 ? 50 : pageCount;
     const realLoadCount = isBroadcast ? 20 : (Object.keys(this.bubbles).length > 0 ? Math.max(35, pageCount) : pageCount);
     // const realLoadCount = pageCount;//const realLoadCount = 50;

@@ -1757,7 +1757,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 	&.is-chat .is-in,
   .bubbles-group-sponsored {
     .bubble-content-wrapper {
-      margin-inline-start: 45px; //margin-left: 3rem; #DO JS3
+      margin-inline-start: 2.875rem; //margin-left: 3rem; #DO JS3
 
       @include respond-to(handhelds) {
         max-width: calc(100% - var(--message-handhelds-margin));

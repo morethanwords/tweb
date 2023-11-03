@@ -20,6 +20,7 @@ import PeerTitle from '../peerTitle';
 import wrapReply from '../wrappers/reply';
 import Chat, {ChatType} from './chat';
 import RepliesElement from './replies';
+import ChatBubbles from './bubbles';
 
 const NBSP = '&nbsp;';
 
@@ -165,12 +166,15 @@ export namespace MessageRender {
     return isFooter;
   };
 
-  export const setReply = async({chat, bubble, bubbleContainer, message, appendCallback}: {
+  export const setReply = async({chat, bubble, bubbleContainer, message, appendCallback, middleware, lazyLoadQueue, needUpdate}: {
     chat: Chat,
     bubble: HTMLElement,
     bubbleContainer?: HTMLElement,
     message: Message.message,
-    appendCallback?: (container: HTMLElement) => void
+    appendCallback?: (container: HTMLElement) => void,
+    middleware: Middleware,
+    lazyLoadQueue: LazyLoadQueue,
+    needUpdate: ChatBubbles['needUpdate']
   }) => {
     const isReplacing = !bubbleContainer;
     if(isReplacing) {
@@ -187,18 +191,22 @@ export namespace MessageRender {
 
     const isStoryReply = replyTo._ === 'messageReplyStoryHeader';
 
-    const replyToPeerId = isStoryReply ? replyTo.user_id.toPeerId(false) : (replyTo.reply_to_peer_id ?
-      getPeerId(replyTo.reply_to_peer_id) :
-      chat.peerId);
+    const replyToPeerId = isStoryReply ?
+      replyTo.user_id.toPeerId(false) :
+      (
+        replyTo.reply_to_peer_id ?
+          getPeerId(replyTo.reply_to_peer_id) :
+          chat.peerId
+      );
 
     const originalMessage = !isStoryReply && await apiManagerProxy.getMessageByPeer(replyToPeerId, message.reply_to_mid);
     const originalStory = isStoryReply && await rootScope.managers.acknowledged.appStoriesManager.getStoryById(replyToPeerId, replyTo.story_id);
-    let originalPeerTitle: string | HTMLElement;
+    let originalPeerTitle: string | HTMLElement | DocumentFragment;
 
     let titlePeerId: PeerId;
     if(isStoryReply) {
       if(!originalStory.cached) {
-        chat.bubbles.needUpdate.push({replyToPeerId, replyStoryId: replyTo.story_id, mid: message.mid});
+        needUpdate.push({replyToPeerId, replyStoryId: replyTo.story_id, mid: message.mid});
         rootScope.managers.appMessagesManager.fetchMessageReplyTo(message);
 
         originalPeerTitle = i18n('Loading');
@@ -212,13 +220,25 @@ export namespace MessageRender {
         }).element;
       }
     } else if(!originalMessage) {
-      chat.bubbles.needUpdate.push({replyToPeerId, replyMid: message.reply_to_mid, mid: message.mid});
-      rootScope.managers.appMessagesManager.fetchMessageReplyTo(message);
+      // from different peer
+      if(replyTo.reply_from) {
+        originalPeerTitle = new PeerTitle({
+          peerId: getPeerId(replyTo.reply_from?.from_id || replyTo.reply_to_peer_id),
+          dialog: false,
+          onlyFirstName: false,
+          plainText: false
+        }).element;
+      } else {
+        needUpdate.push({replyToPeerId, replyMid: message.reply_to_mid, mid: message.mid});
+        rootScope.managers.appMessagesManager.fetchMessageReplyTo(message);
 
-      originalPeerTitle = i18n('Loading');
+        originalPeerTitle = i18n('Loading');
+      }
     } else {
       const originalMessageFwdFromId = (originalMessage as Message.message).fwdFromId;
-      titlePeerId = message.fwdFromId && message.fwdFromId === originalMessageFwdFromId ? message.fwdFromId : originalMessage.fromId || originalMessageFwdFromId;
+      titlePeerId = message.fwdFromId && message.fwdFromId === originalMessageFwdFromId ?
+        message.fwdFromId :
+        originalMessage.fromId || originalMessageFwdFromId;
       originalPeerTitle = new PeerTitle({
         peerId: titlePeerId,
         dialog: false,
@@ -226,6 +246,28 @@ export namespace MessageRender {
         plainText: false,
         fromName: !titlePeerId ? (originalMessage as Message.message).fwd_from?.from_name : undefined
       }).element;
+    }
+
+    if(!isStoryReply && replyTo.reply_from) {
+      const fragment = document.createDocumentFragment();
+      let icon: HTMLElement;
+      if(replyTo.reply_from.channel_post) {
+        fragment.append(icon = Icon('newchannel_filled'), originalPeerTitle);
+      } else if(replyTo.reply_to_peer_id) {
+        const groupPeerTitle = new PeerTitle({
+          peerId: getPeerId(replyTo.reply_to_peer_id),
+          dialog: false,
+          onlyFirstName: false,
+          plainText: false
+        }).element;
+
+        fragment.append(originalPeerTitle, ' ', icon = Icon('newgroup'), ' ', groupPeerTitle);
+      }
+
+      if(icon) {
+        icon.classList.add('inline-icon', 'reply-title-icon');
+        originalPeerTitle = fragment;
+      }
     }
 
     const isStoryExpired = isStoryReply && originalStory.cached && !(await originalStory.result);
@@ -237,7 +279,10 @@ export namespace MessageRender {
       storyItem: originalStory?.cached && await originalStory.result,
       setColorPeerId: chat.isAnyGroup ? titlePeerId : undefined,
       textColor: 'primary-text-color',
-      isQuote: !isStoryReply ? replyTo.quote_text !== undefined : undefined
+      isQuote: !isStoryReply ? replyTo.pFlags.quote : undefined,
+      middleware,
+      lazyLoadQueue,
+      replyHeader: replyTo
     });
 
     await fillPromise;

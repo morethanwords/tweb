@@ -144,6 +144,9 @@
   --peer-avatar-saved-top: var(--light-filled-saved-color);
   --peer-avatar-saved-bottom: var(--saved-color);
 
+  --peer-color: var(--primary-color);
+  --peer-color-rgb: var(--primary-color-rgb);
+
   --avatar-color-story-unread-from: #34c76f;
   --avatar-color-story-unread-to: #3da1fd;
   --avatar-color-story-close-from: #88D93A;
@@ -256,9 +259,12 @@
   --message-primary-color: var(--primary-color);
   --message-primary-color-rgb: var(--primary-color-rgb);
   --light-filled-message-primary-color: var(--light-filled-primary-color);
+  --message-status-color: var(--secondary-text-color);
   --message-secondary-color: var(--secondary-color);
   --message-error-color: var(--danger-color);
   --message-icon-text-color: #fff;
+  --message-empty-primary-color: #fff;
+  --message-empty-primary-color-rgb: 255,255,255;
 
   --message-out-link-color: var(--link-color);
   --message-out-status-color: var(--message-out-primary-color);
@@ -325,6 +331,7 @@
   --message-time-color: var(--secondary-text-color);
   --message-checkbox-color: var(--primary-color);
   --message-checkbox-border-color: #fff;
+  --message-status-color: var(--secondary-color);
   --message-secondary-color: var(--secondary-color);
   --message-error-color: #fff;
   --message-icon-text-color: #fff;
@@ -2329,4 +2336,9 @@ hr {
   width: fit-content;
   margin-inline-end: auto;
   // width: min-content;
+}
+
+.inline-icon {
+  vertical-align: bottom;
+  line-height: inherit;
 }

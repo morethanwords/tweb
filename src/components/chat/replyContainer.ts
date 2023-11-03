@@ -4,40 +4,43 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import replaceContent from '../../helpers/dom/replaceContent';
 import {Middleware} from '../../helpers/middleware';
-import limitSymbols from '../../helpers/string/limitSymbols';
-import {Document, Message, MessageMedia, Photo, WebPage, VideoSize, StoryItem} from '../../layer';
+import {Document, Message, MessageMedia, Photo, WebPage, VideoSize, StoryItem, MessageReplyHeader} from '../../layer';
 import appImManager from '../../lib/appManagers/appImManager';
 import choosePhotoSize from '../../lib/appManagers/utils/photos/choosePhotoSize';
-import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import DivAndCaption from '../divAndCaption';
 import wrapMessageForReply from '../wrappers/messageForReply';
 import wrapPhoto from '../wrappers/photo';
 import wrapSticker from '../wrappers/sticker';
 import wrapVideo from '../wrappers/video';
-import {AnimationItemGroup} from '../animationIntersector';
-import {WrapRichTextOptions} from '../../lib/richTextProcessor/wrapRichText';
+import wrapRichText, {WrapRichTextOptions} from '../../lib/richTextProcessor/wrapRichText';
 import {WrapReplyOptions} from '../wrappers/reply';
 import {Modify} from '../../types';
 import {i18n} from '../../lib/langPack';
 import Icon from '../icon';
+import LazyLoadQueue from '../lazyLoadQueue';
+import replaceContent from '../../helpers/dom/replaceContent';
+import limitSymbols from '../../helpers/string/limitSymbols';
+import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 
 const MEDIA_SIZE = 32;
 
 export async function wrapReplyDivAndCaption(options: {
-  title: string | HTMLElement | DocumentFragment,
+  title?: string | HTMLElement | DocumentFragment,
   titleEl: HTMLElement,
   subtitle?: string | HTMLElement | DocumentFragment,
   subtitleEl: HTMLElement,
   message: Message.message | Message.messageService,
   storyItem?: StoryItem.storyItem,
   mediaEl: HTMLElement,
-  isStoryExpired?: boolean
+  isStoryExpired?: boolean,
+  middleware?: Middleware,
+  lazyLoadQueue?: false | LazyLoadQueue,
+  replyHeader?: MessageReplyHeader
 } & WrapRichTextOptions) {
   options.loadPromises ||= [];
 
-  const {titleEl, subtitleEl, mediaEl, message, loadPromises, animationGroup} = options;
+  const {titleEl, subtitleEl, mediaEl, message, loadPromises, animationGroup, middleware, lazyLoadQueue, replyHeader} = options;
   let {storyItem} = options;
 
   let wrappedTitle = options.title;
@@ -53,7 +56,11 @@ export async function wrapReplyDivAndCaption(options: {
     titleEl.append(icon, i18n('ExpiredStory'));
   }
 
-  let messageMedia: MessageMedia | WebPage.webPage = storyItem?.media || (message as Message.message)?.media;
+  const isMessageReply = replyHeader?._ === 'messageReplyHeader';
+
+  let messageMedia: MessageMedia | WebPage.webPage = storyItem?.media ||
+    (message as Message.message)?.media ||
+    (isMessageReply && replyHeader.reply_media);
 
   if(messageMedia?._ === 'messageMediaStory') {
     storyItem = messageMedia.story as StoryItem.storyItem;
@@ -62,26 +69,16 @@ export async function wrapReplyDivAndCaption(options: {
 
   let setMedia = false, isRound = false;
   const mediaChildren = mediaEl ? Array.from(mediaEl.children).slice() : [];
-  let middleware: Middleware;
   if(messageMedia && mediaEl) {
-    if(storyItem && options.storyItem) {
-      subtitleEl.replaceChildren(i18n('Story'));
-    } else {
-      subtitleEl.replaceChildren(await wrapMessageForReply(options));
-    }
-
     messageMedia = (messageMedia as MessageMedia.messageMediaWebPage).webpage as WebPage.webPage || messageMedia;
     const photo = (messageMedia as MessageMedia.messageMediaPhoto).photo as Photo.photo;
     const document = (messageMedia as MessageMedia.messageMediaDocument).document as Document.document;
     if(photo || (document && document.thumbs?.length)/* ['video', 'sticker', 'gif', 'round', 'photo', 'audio'].indexOf(document.type) !== -1) */) {
-      middleware = appImManager.chat.bubbles.getMiddleware();
-      const lazyLoadQueue = appImManager.chat.bubbles.lazyLoadQueue;
-
       if(document?.type === 'sticker') {
         await wrapSticker({
           doc: document,
           div: mediaEl,
-          lazyLoadQueue,
+          lazyLoadQueue: lazyLoadQueue || undefined,
           group: animationGroup,
           // onlyThumb: document.sticker === 2,
           width: MEDIA_SIZE,
@@ -97,7 +94,7 @@ export async function wrapReplyDivAndCaption(options: {
           container: mediaEl,
           boxWidth: MEDIA_SIZE,
           boxHeight: MEDIA_SIZE,
-          lazyLoadQueue,
+          lazyLoadQueue: lazyLoadQueue || undefined,
           noPlayButton: true,
           noInfo: true,
           middleware,
@@ -129,23 +126,34 @@ export async function wrapReplyDivAndCaption(options: {
         }
       }
     }
-  } else {
-    if(options.subtitle !== undefined) {
-      let wrappedSubtitle = options.subtitle;
-      if(typeof(wrappedSubtitle) === 'string') {
-        wrappedSubtitle = limitSymbols(wrappedSubtitle, 140);
-        wrappedSubtitle = wrapEmojiText(wrappedSubtitle);
-      }
+  }
 
-      replaceContent(subtitleEl, wrappedSubtitle || '');
-    } else if(storyItem) {
-      subtitleEl.replaceChildren(i18n('Story'));
-    } else if(options.isStoryExpired) {
-      const icon = Icon('bomb', 'expired-story-icon');
-      subtitleEl.replaceChildren(icon, i18n('ExpiredStory'));
-    } else if(message) {
-      subtitleEl.replaceChildren(await wrapMessageForReply(options));
+  if(options.subtitle !== undefined) {
+    let wrappedSubtitle = options.subtitle;
+    if(typeof(wrappedSubtitle) === 'string') {
+      wrappedSubtitle = limitSymbols(wrappedSubtitle, 140);
+      wrappedSubtitle = wrapEmojiText(wrappedSubtitle);
     }
+
+    replaceContent(subtitleEl, wrappedSubtitle || '');
+  } else if(storyItem && options.storyItem) {
+    subtitleEl.replaceChildren(i18n('Story'));
+  } else if(options.isStoryExpired) {
+    const icon = Icon('bomb', 'expired-story-icon');
+    subtitleEl.replaceChildren(icon, i18n('ExpiredStory'));
+  } else if(isMessageReply && replyHeader.quote_text) {
+    const fragment = wrapRichText(limitSymbols(replyHeader.quote_text, 200), {
+      ...options,
+      noLinebreaks: true,
+      entities: replyHeader.quote_entities,
+      noLinks: true,
+      noTextFormat: true
+    });
+
+    subtitleEl.replaceChildren(fragment);
+  } else if(message) {
+    const fragment = await wrapMessageForReply(options);
+    subtitleEl.replaceChildren(fragment);
   }
 
   // if(options.isStoryExpired) {

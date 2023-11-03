@@ -623,9 +623,7 @@ export default class ChatPinnedMessage {
       // writeMediaTo.innerHTML = writeMediaTo.style.cssText = writeMediaTo.dataset.docId = '';
       const loadPromises: Promise<any>[] = [];
       const isMediaSet = await wrapReplyDivAndCaption({
-        title: undefined,
         titleEl: null,
-        subtitle: (message as Message.message).message,
         subtitleEl: writeTo,
         message,
         mediaEl: writeMediaTo,

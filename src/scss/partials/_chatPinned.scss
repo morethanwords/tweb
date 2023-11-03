@@ -239,6 +239,10 @@
     }
   }
 
+  &.quote-like-icon &-title {
+    padding-inline-end: .875rem;
+  }
+
   .peer-title {
     font-weight: var(--font-weight-bold);
   }

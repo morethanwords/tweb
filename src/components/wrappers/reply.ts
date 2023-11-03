@@ -5,7 +5,8 @@
  */
 
 import {hexToRgb} from '../../helpers/color';
-import {Message} from '../../layer';
+import {setDirection} from '../../helpers/dom/setInnerHTML';
+import {Message, MessageReplyHeader} from '../../layer';
 import getPeerColorById from '../../lib/appManagers/utils/peers/getPeerColorById';
 import {WrapPinnedContainerOptions} from '../chat/pinnedContainer';
 import ReplyContainer from '../chat/replyContainer';
@@ -15,7 +16,8 @@ export type WrapReplyOptions = WrapPinnedContainerOptions & {
   setColorPeerId?: PeerId,
   isStoryExpired?: boolean,
   isQuote?: boolean,
-  noBorder?: boolean
+  noBorder?: boolean,
+  replyHeader?: MessageReplyHeader
 } & WrapSomethingOptions;
 
 export default function wrapReply(options: WrapReplyOptions) {
@@ -23,6 +25,7 @@ export default function wrapReply(options: WrapReplyOptions) {
   const fillPromise = replyContainer.fill(options);
 
   replyContainer.container.classList.add('quote-like', 'quote-like-hoverable', 'quote-like-border');
+  setDirection(replyContainer.container);
   // replyContainer.border.classList.add('quote-like-border');
   replyContainer.border.remove();
   ripple(replyContainer.container, undefined, undefined, true);

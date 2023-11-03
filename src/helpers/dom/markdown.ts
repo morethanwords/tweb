@@ -289,12 +289,20 @@ export function processCurrentFormatting(input: HTMLElement) {
     element.classList.add('is-markup');
     element.dataset.markup = fontFamily;
     setDirection(element);
+
+    if(fontFamily.includes('quote')) {
+      element.classList.add('quote-like', 'quote-like-icon', 'quote-like-border');
+    }
   });
 
   (input.querySelectorAll('.is-markup') as NodeListOf<HTMLElement>).forEach((element) => {
     const fontFamily = element.style.fontFamily;
     if(fontFamily && fontFamily !== FontFamilyName) {
       return;
+    }
+
+    if(!fontFamily.includes('quote')) {
+      element.classList.remove('quote-like', 'quote-like-icon', 'quote-like-border');
     }
 
     element.classList.remove('is-markup');

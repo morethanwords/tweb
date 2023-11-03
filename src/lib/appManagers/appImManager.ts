@@ -115,8 +115,7 @@ import focusInput from '../../helpers/dom/focusInput';
 import safePlay from '../../helpers/dom/safePlay';
 import {RequestWebViewOptions} from './appAttachMenuBotsManager';
 import PopupWebApp from '../../components/popups/webApp';
-import {hexToRgb} from '../../helpers/color';
-import getPeerColorById from './utils/peers/getPeerColorById';
+import {setPeerColors} from './utils/peers/getPeerColorById';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -586,6 +585,7 @@ export class AppImManager extends EventListenerBase<{
     this.onHashChange(true);
     this.attachKeydownListener();
     this.handleAutologinDomains();
+    this.handlePeerColors();
     this.checkForShare();
     this.init();
   }
@@ -945,6 +945,13 @@ export class AppImManager extends EventListenerBase<{
     //   noPathnameParams: true,
     //   noUriParams: true
     // });
+  }
+
+  private handlePeerColors() {
+    rootScope.addEventListener('app_config', async(appConfig) => {
+      const user = await apiManagerProxy.getUser(rootScope.myId.toUserId());
+      setPeerColors(appConfig, user);
+    });
   }
 
   public clickIfSponsoredMessage(message: Message.message) {
@@ -1552,7 +1559,6 @@ export class AppImManager extends EventListenerBase<{
     document.body.classList.toggle('animation-level-0', !liteMode.isAvailable('animations'));
     document.body.classList.toggle('animation-level-1', false);
     document.body.classList.toggle('animation-level-2', liteMode.isAvailable('animations'));
-    document.documentElement.style.setProperty('--name-color-rgb', hexToRgb(getPeerColorById(rootScope.myId, false)).join(','));
 
     this.chatsSelectTabDebounced = debounce(() => {
       const topbar = this.chat.topbar;

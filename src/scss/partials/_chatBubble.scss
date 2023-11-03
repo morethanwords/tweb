@@ -7,16 +7,18 @@
 @use "sass:math";
 
 $bubble-margin: .125rem;
-$bubble-margin-big: .5rem;
-$bubble-overflow: math.div($bubble-margin-big, 8);
+$bubble-margin-big: .375rem;
+$bubble-overflow: math.max(math.div($bubble-margin-big, 8), .0625rem);
 $bubble-overflow-big: math.div($bubble-margin-big, 2);
 $bubble-beside-button-width: 38px;
-$bubble-border-radius-medium: 8px;
-$bubble-border-radius-big: 16px;
+$bubble-border-radius-medium: 5px;
+$bubble-border-radius-big: 15px;
 $message-padding-top: 4px;
+$message-padding-bottom: 5px;
 $message-padding-horizontal: 8px;
 $reply-padding-top: 8px;
 $reply-padding-horizontal: 8px;
+$time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 
 @keyframes bubbleSelected {
   0% {
@@ -100,8 +102,6 @@ $reply-padding-horizontal: 8px;
   --line-height: var(--messages-line-height);
   --primary-color: var(--message-primary-color);
   --primary-color-rgb: var(--message-primary-color-rgb);
-  --name-color-rgb: var(--message-primary-color-rgb);
-  --name-color: rgb(var(--name-color-rgb));
   --secondary-text-color: var(--message-status-color);
   position: relative;
   z-index: 1;
@@ -1113,7 +1113,7 @@ $reply-padding-horizontal: 8px;
 
   .message {
     font-size: var(--messages-text-size);
-    padding: 0 $message-padding-horizontal $message-padding-top;
+    padding: 0 $message-padding-horizontal $message-padding-bottom;
     max-width: 100%;
     color: var(--primary-text-color);
     line-height: var(--line-height); // 21 / 16
@@ -1123,10 +1123,6 @@ $reply-padding-horizontal: 8px;
 
     .custom-emoji {
       display: inline-flex; // fix RTL thumb absolute position
-    }
-
-    &:last-child {
-      padding-top: $message-padding-top;
     }
   }
 
@@ -1213,6 +1209,14 @@ $reply-padding-horizontal: 8px;
   .message.voice-message {
     padding: 8px !important;
     //padding: 4px 6px 4px 8px !important;
+
+    .reply {
+      margin-bottom: .375rem;
+    }
+
+    + .name {
+      margin-bottom: -8px;
+    }
   }
 
   .message.expired-story-message {
@@ -1694,6 +1698,8 @@ $reply-padding-horizontal: 8px;
   }
 
   .colored-name {
+    color: rgb(var(--peer-color-rgb)) !important;
+
     .premium-icon {
       opacity: .6;
       color: inherit;
@@ -1720,7 +1726,7 @@ $reply-padding-horizontal: 8px;
       order: 5;
       font-size: calc(var(--messages-text-size) + 3px);
       //vertical-align: middle;
-      margin-left: 1px;
+      // margin-left: 1px;
       line-height: var(--messages-time-text-size); // of message
       color: var(--message-status-color);
     }
@@ -1835,8 +1841,9 @@ $reply-padding-horizontal: 8px;
   }
 
   pre {
-    display: inline;
+    // display: inline;
     margin: 0;
+    padding: .5rem;
   }
 
   .anchor-url {
@@ -1922,9 +1929,9 @@ $reply-padding-horizontal: 8px;
     &.video {
       &:not(.is-reply) .bubble-content > .name {
         //padding-bottom: .2675rem;
-        padding-bottom: 6px;
+        padding-bottom: $message-padding-top;
       }
-      
+
       &:not(.is-message-empty) .message {
         //padding-top: .2675rem;
         padding-top: $message-padding-top;
@@ -2337,8 +2344,8 @@ $reply-padding-horizontal: 8px;
 
 .quote-like {
   --border-radius: .25rem;
-  --primary-color: rgb(var(--name-color-rgb));
-  --primary-color-rgb: var(--name-color-rgb);
+  --primary-color: rgb(var(--peer-color-rgb));
+  --primary-color-rgb: var(--peer-color-rgb);
   background-color: rgba(var(--primary-color-rgb), .1);
   overflow: hidden;
   border-radius: var(--border-radius);
@@ -2359,20 +2366,13 @@ $reply-padding-horizontal: 8px;
     content: " ";
     position: absolute;
     inset-inline-start: 0;
-    top: 0;
+    top: -2px;
     bottom: -2px;
     flex: 0 0 auto;
     width: .1875rem;
-    // background-color: var(--primary-color);
-    background-image: linear-gradient(
-      0deg,
-      rgba(var(--primary-color-rgb), .2) 0%,
-      rgba(var(--primary-color-rgb), .2) 50%,
-      var(--primary-color) 50%,
-      var(--primary-color) 100%
-    );
+    background: var(--peer-border-background, rgb(var(--peer-color-rgb)));
     background-size: 100% 1rem;
-    background-position: 0 -2px;
+    background-position: 0 2px;
     transform: skew(0deg, -45deg);
   }
 
@@ -2972,7 +2972,7 @@ $reply-padding-horizontal: 8px;
   }
   
   .time {
-    margin-left: #{math.div($message-padding-horizontal, -2)};
+    margin-left: $time-margin-left;
     padding-right: $message-padding-horizontal;
 
     &-inner {
@@ -3035,6 +3035,8 @@ $reply-padding-horizontal: 8px;
   --message-time-color: var(--message-out-time-color);
   --message-status-color: var(--message-out-status-color);
   --link-color: var(--message-primary-color);
+  --peer-color-rgb: var(--message-primary-color-rgb);
+  --peer-border-background: var(--message-out-peer-border-background);
 
   .bubble-content {
     margin-left: auto;
@@ -3151,8 +3153,9 @@ $reply-padding-horizontal: 8px;
   }
 
   .time {
-    padding-right: #{math.div($message-padding-horizontal, 2)};
-    margin-left: #{math.div($message-padding-horizontal, -2)};
+    // padding-right: #{math.div($message-padding-horizontal, 2)};
+    padding-right: #{$message-padding-horizontal - 2px};
+    margin-left: $time-margin-left;
 
     &-inner {
       bottom: 4px;
