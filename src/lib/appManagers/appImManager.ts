@@ -948,10 +948,15 @@ export class AppImManager extends EventListenerBase<{
   }
 
   private handlePeerColors() {
-    rootScope.addEventListener('app_config', async(appConfig) => {
+    let lastAppConfig: MTAppConfig;
+    const onAppConfig = (appConfig: MTAppConfig = lastAppConfig) => {
       const user = apiManagerProxy.getUser(rootScope.myId.toUserId());
       setPeerColors(appConfig, user);
-    });
+      lastAppConfig = appConfig;
+    };
+    rootScope.addEventListener('app_config', onAppConfig);
+    rootScope.addEventListener('theme_changed', () => onAppConfig());
+    this.managers.apiManager.getAppConfig().then(onAppConfig);
   }
 
   public clickIfSponsoredMessage(message: Message.message) {
