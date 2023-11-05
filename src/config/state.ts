@@ -148,7 +148,7 @@ export const DEFAULT_THEME: Theme = {
     pFlags: {},
     base_theme: {_: 'baseThemeClassic'},
     accent_color: 0x3390ec,
-    message_colors: [0x4fae4e],
+    message_colors: [0x5CA853],
     wallpaper: {
       _: 'wallPaper',
       pFlags: {

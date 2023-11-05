@@ -33,7 +33,6 @@
  * --------------------------------------------------
  */
 .c-ripple {
-  --ripple-duration: .7s;
   //display: none !important;
   position: absolute;
   top: 0;
@@ -55,75 +54,33 @@
   }
 
   &__circle {
-    // opacity: .08;
+    opacity: 1;
     background-color: var(--ripple-color);
     display: block;
     position: absolute;
     transform: scale(0);
     border-radius: 50%;
-    animation: ripple-effect .7s forwards;
-    //animation-timing-function: ease-out;
-    transition: .35s opacity, .35s background-color;
-    //overflow: hidden;
+    animation-name: ripple-effect;
+    animation-fill-mode: forwards;
+    animation-duration: var(--ripple-duration);
+    transition: calc(var(--ripple-duration) / 2) opacity, calc(var(--ripple-duration) / 2) background-color;
+    // transition: calc(var(--ripple-duration) / 2.5) opacity, calc(var(--ripple-duration) / 2) background-color;
     pointer-events: none;
-
-    // .btn-menu &, 
-    // .c-ripple.is-square & {
-    //   animation-name: ripple-effect-handhelds;
-    //   //animation-timing-function: ease-out;
-    //   animation-duration: .2s;
-    //   transition-duration: .1s;
-    //   //border-radius: 15%;
-    // }
-
-    /* @include respond-to(handhelds) {
-      animation-duration: .2s;
-      transition-duration: .1s;
-      //border-radius: 15%;
-    } */
   }
-
-  // .btn-menu &, 
-  // &.is-square {
-  //   --ripple-duration: .2s;
-  // }
 
   &__circle.hiding, 
   &__square.hiding {
     opacity: 0;
-  }
-}
-
-@include respond-to(until-floating-left-sidebar) {
-  .c-ripple {
-    --ripple-duration: .4s;
-
-    &__circle {
-      animation-name: ripple-effect-handhelds;
-      //animation-timing-function: ease-out;
-      animation-duration: .4s;
-      transition-duration: .3s;
-    }
+    // transition: calc(var(--ripple-duration) / 2) opacity, calc(var(--ripple-duration) / 2) background-color;
   }
 }
 
 @keyframes ripple-effect {
-  0% {
-    transform: scale(0);
+  from {
+    transform: scale(var(--ripple-start-scale));
   }
 
   to {
-    transform: scale(2);
-  }
-}
-
-@keyframes ripple-effect-handhelds {
-  0% {
-    // transform: scale(.85);
-    transform: scale(.27);
-  }
-
-  to {
-    transform: scale(2);
+    transform: scale(var(--ripple-end-scale));
   }
 }

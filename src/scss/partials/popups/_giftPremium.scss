@@ -20,7 +20,7 @@
     &-header {
       height: 3.5rem;
       margin: 0;
-      padding: 0 1rem;
+      padding: 0 .5rem;
       margin-bottom: -2rem;
     }
   }
@@ -39,6 +39,7 @@
   &-subtitle {
     text-align: center;
     display: block;
+    padding: 0 2rem;
     @include text-overflow(false);
   }
 
@@ -77,6 +78,7 @@
     height: 20px;
     display: inline-block;
     line-height: 20px;
+    font-weight: var(--font-weight-bold);
   }
 
   &-confirm {
@@ -85,6 +87,7 @@
     font-weight: var(--font-weight-bold);
     color: #fff;
     text-transform: uppercase;
+    height: 3rem;
 
     @include hover() {
       &:after {

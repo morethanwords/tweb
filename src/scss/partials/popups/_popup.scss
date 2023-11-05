@@ -6,6 +6,8 @@
 
 $popup-footer-button-size: 44px;
 $popup-footer-padding: .5rem;
+$popup-footer-abitlarger-button-size: 48px;
+$popup-footer-abitlarger-padding: 1rem;
 
 .popup {
   --popup-min-width: auto;
@@ -116,6 +118,42 @@ $popup-footer-padding: .5rem;
     flex: 0 0 auto;
     position: relative;
 
+    &.is-floating {
+      position: absolute;
+      top: 0;
+      right: 0;
+      left: 0;
+      z-index: 4;
+
+      .popup-title,
+      .popup-header-background {
+        opacity: 0;
+        // visibility: hidden;
+
+        @include animation-level(2) {
+          transition: opacity var(--transition-standard-in)/* , visibility 0s */;
+          // transition-delay: 0s, var(--transition-standard-in-time);
+        }
+      }
+
+      &:not(.scrolled-top) {
+        .popup-title,
+        .popup-header-background {
+          opacity: 1;
+          // visibility: visible;
+          // transition-delay: 0s, 0s !important;
+        }
+      }
+    }
+
+    &-background {
+      position: absolute;
+      inset: 0;
+      background-color: var(--surface-color);
+      border-bottom: 1px solid var(--border-color);
+      z-index: -1;
+    }
+
     .btn-icon {
       flex: 0 0 auto;
     }
@@ -150,6 +188,15 @@ $popup-footer-padding: .5rem;
       padding: 0 1.0625rem;
       height: #{$popup-footer-button-size};
       line-height: #{$popup-footer-button-size};
+    }
+
+    &.abitlarger {
+      padding: #{$popup-footer-abitlarger-padding};
+
+      .btn-primary {
+        height: #{$popup-footer-abitlarger-button-size};
+        line-height: #{$popup-footer-abitlarger-button-size};
+      }
     }
   }
 

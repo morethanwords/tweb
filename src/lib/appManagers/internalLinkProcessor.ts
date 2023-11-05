@@ -27,6 +27,7 @@ import {INTERNAL_LINK_TYPE, InternalLinkTypeMap, InternalLink} from './internalL
 import {AppManagers} from './managers';
 import {createStoriesViewerWithPeer} from '../../components/stories/viewer';
 import {simulateClickEvent} from '../../helpers/dom/clickEvent';
+import PopupBoostsViaGifts from '../../components/popups/boostsViaGifts';
 import PopupPremium from '../../components/popups/premium';
 import rootScope from '../rootScope';
 import PopupBoost from '../../components/popups/boost';

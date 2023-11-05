@@ -207,6 +207,8 @@ import {IS_OVERLAY_SCROLL_SUPPORTED, USE_CUSTOM_SCROLL, USE_NATIVE_SCROLL} from 
     document.documentElement.classList.add('custom-scroll');
   }
 
+  // document.documentElement.style.setProperty('--quote-icon', `"${getIconContent('quote')}"`);
+
   // prevent firefox image dragging
   document.addEventListener('dragstart', (e) => {
     if((e.target as HTMLElement)?.tagName === 'IMG') {

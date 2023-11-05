@@ -133,10 +133,16 @@ export class AppSidebarLeft extends SidebarSlider {
       checked: themeController.getTheme().name === 'night'
     });
     themeCheckboxField.input.addEventListener('change', () => {
-      themeController.switchTheme(themeCheckboxField.checked ? 'night' : 'day');
+      const item = findUpClassName(themeCheckboxField.label, 'btn-menu-item');
+      const icon = item.querySelector('.tgico');
+      const rect = icon.getBoundingClientRect();
+      themeController.switchTheme(themeCheckboxField.checked ? 'night' : 'day', {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2
+      });
     });
 
-    rootScope.addEventListener('theme_change', () => {
+    rootScope.addEventListener('theme_changed', () => {
       themeCheckboxField.setValueSilently(themeController.getTheme().name === 'night');
     });
 

@@ -9,11 +9,13 @@ import type {Theme} from '../layer';
 import type AppBackgroundTab from '../components/sidebarLeft/tabs/background';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import rootScope from '../lib/rootScope';
-import {changeColorAccent, ColorRgb, getAccentColor, getAverageColor, getHexColorFromTelegramColor, getRgbColorFromTelegramColor, hexToRgb, hslaStringToHex, hsvToRgb, mixColors, rgbaToHexa, rgbaToHsla, rgbToHsv} from './color';
+import {changeColorAccent, ColorRgb, getAccentColor, getAverageColor, getHexColorFromTelegramColor, getRgbColorFromTelegramColor, hexToRgb, hslaStringToHex, hslaStringToRgba, hslaToRgba, hsvToRgb, mixColors, rgbaToHexa, rgbaToHsla, rgbToHsv} from './color';
 import {MOUNT_CLASS_TO} from '../config/debug';
 import customProperties from './dom/customProperties';
 import {TelegramWebViewTheme} from '../types';
 import {joinDeepPath} from './object/setDeepProperty';
+import windowSize from './windowSize';
+import liteMode from './liteMode';
 
 export type AppColorName = 'primary-color' | 'message-out-primary-color' |
   'surface-color' | 'danger-color' | 'primary-text-color' |
@@ -38,7 +40,8 @@ const appColorMap: {[name in AppColorName]: AppColor} = {
     darkRgb: true
   },
   'message-out-primary-color': {
-    lightFilled: true
+    lightFilled: true,
+    rgb: true
   },
   'surface-color': {
     rgb: true
@@ -80,7 +83,7 @@ const colorMap: {
   day: {
     // 'background-color': '#f4f4f5',
     'primary-color': '#3390ec',
-    'message-out-primary-color': '#4fae4e',
+    'message-out-primary-color': '#5CA853',
     'message-background-color': '#ffffff',
     'surface-color': '#ffffff',
     'danger-color': '#df3f40',
@@ -109,10 +112,11 @@ export class ThemeController {
   private systemTheme: AppTheme['name'];
   private styleElement: HTMLStyleElement;
   public AppBackgroundTab: typeof AppBackgroundTab;
+  private applied: boolean;
 
   constructor() {
-    rootScope.addEventListener('theme_change', () => {
-      this.setTheme();
+    rootScope.addEventListener('theme_change', (coordinates) => {
+      this.setTheme(typeof(coordinates) === 'object' ? coordinates : undefined);
     });
 
     // rootScope.addEventListener('settings_updated', ())
@@ -165,21 +169,23 @@ export class ThemeController {
   }
 
   public applyHighlightningColor() {
-    let hsla: string;
+    let hsla = 'hsla(85.5319, 36.9171%, 40.402%, .4)';
     const theme = this.getTheme();
     if(theme.settings?.highlightningColor) {
       hsla = theme.settings.highlightningColor;
-      document.documentElement.style.setProperty('--message-highlightning-color', hsla);
-    } else {
-      document.documentElement.style.removeProperty('--message-highlightning-color');
     }
+
+    const highlightningRgba = hslaStringToRgba(hsla);
+    document.documentElement.style.setProperty('--message-highlightning-color', hsla);
+    document.documentElement.style.setProperty('--message-highlightning-color-rgb', highlightningRgba.slice(0, 3).join(','));
+    document.documentElement.style.setProperty('--message-highlightning-alpha', '' + highlightningRgba[3] / 255);
 
     if(!IS_TOUCH_SUPPORTED && hsla) {
       this.themeColor = hslaStringToHex(hsla);
     }
   }
 
-  public setTheme() {
+  public _setTheme() {
     const isNight = this.isNight();
     const colorScheme = document.head.querySelector('[name="color-scheme"]');
     colorScheme?.setAttribute('content', isNight ? 'dark' : 'light');
@@ -203,9 +209,57 @@ export class ThemeController {
     rootScope.dispatchEventSingle('theme_changed');
   }
 
-  public async switchTheme(name: AppTheme['name']) {
+  public setTheme(coordinates?: {x: number, y: number}) {
+    if(!('startViewTransition' in document) || !this.applied) {
+      this.applied = true;
+      this._setTheme();
+      return;
+    }
+
+    if(!liteMode.isAvailable('animations')) {
+      coordinates = undefined;
+    }
+
+    if(coordinates) {
+      document.documentElement.classList.add('no-view-transition');
+    }
+
+    const transition = (document as any).startViewTransition(() => {
+      this._setTheme();
+    });
+
+    if(!coordinates) {
+      return;
+    }
+
+    const {x, y} = coordinates;
+    // Get the distance to the furthest corner
+    const endRadius = Math.hypot(
+      Math.max(x, windowSize.width - x),
+      Math.max(y, windowSize.height - y)
+    );
+
+    transition.ready.then(() => {
+      document.documentElement.animate({
+        clipPath: [
+          `circle(0 at ${x}px ${y}px)`,
+          `circle(${endRadius}px at ${x}px ${y}px)`
+        ]
+      }, {
+        duration: 500,
+        easing: 'ease-in-out',
+        pseudoElement: '::view-transition-new(root)'
+      });
+    });
+
+    transition.finished.finally(() => {
+      document.documentElement.classList.remove('no-view-transition');
+    });
+  }
+
+  public async switchTheme(name: AppTheme['name'], coordinates?: {x: number, y: number}) {
     await rootScope.managers.appStateManager.setByKey(joinDeepPath('settings', 'theme'), name);
-    rootScope.dispatchEvent('theme_change');
+    rootScope.dispatchEvent('theme_change', coordinates);
   }
 
   public isNight() {
@@ -348,7 +402,7 @@ export class ThemeController {
       return;
     }
 
-    const messageLightenAlpha = isNight ? 0.92 : 0.12;
+    const messageLightenAlpha = isNight ? 1 : 0.12;
     const baseMessageColor = hexToRgb(baseColors['message-out-primary-color']);
     hsvTemp1 = rgbToHsv(...baseMessageColor);
     const baseMessageOutBackgroundColor = mixColors(baseMessageColor, hexToRgb(baseColors['surface-color']), messageLightenAlpha);
@@ -381,7 +435,13 @@ export class ThemeController {
 
     const accentColor2 = themeSettings.outbox_accent_color !== undefined && rgbToHsv(...getRgbColorFromTelegramColor(themeSettings.outbox_accent_color));
 
-    const newMessageOutBackgroundColor = mixColors(myMessagesAccent, hexToRgb(baseColors['surface-color']), messageLightenAlpha);
+    let newMessageOutBackgroundColor = mixColors(myMessagesAccent, hexToRgb(baseColors['surface-color']), messageLightenAlpha);
+
+    if(!isNight/*  || true */) {
+      const messageOutBackgroundColorHsl = rgbaToHsla(...newMessageOutBackgroundColor);
+      messageOutBackgroundColorHsl.s = Math.min(messageOutBackgroundColorHsl.s + (isNight ? 8 : 63), 100);
+      newMessageOutBackgroundColor = hslaToRgba(messageOutBackgroundColorHsl.h, messageOutBackgroundColorHsl.s, messageOutBackgroundColorHsl.l, messageOutBackgroundColorHsl.a).slice(0, 3) as ColorRgb;
+    }
 
     applyAppColor({
       name: 'message-out-background-color',
@@ -410,8 +470,15 @@ export class ThemeController {
       hint_color: 'secondary-text-color',
       link_color: 'link-color',
       secondary_bg_color: 'background-color-true',
-      text_color: 'primary-text-color'
+      text_color: 'primary-text-color',
+      header_bg_color: 'surface-color',
+      accent_text_color: 'primary-color',
+      section_bg_color: 'surface-color',
+      section_header_text_color: 'primary-color',
+      subtitle_text_color: 'secondary-text-color',
+      destructive_text_color: 'danger-color'
     };
+
     const themeParams: TelegramWebViewTheme = {} as any;
     for(const key in themePropertiesMap) {
       const value = themePropertiesMap[key as keyof TelegramWebViewTheme];

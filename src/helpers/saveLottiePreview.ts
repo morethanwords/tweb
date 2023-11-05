@@ -20,7 +20,7 @@ export function isSavingLottiePreview(doc: MyDocument, toneIndex: number | strin
 
 let sharedCanvas: HTMLCanvasElement, sharedContext: CanvasRenderingContext2D;
 const createCanvas = () => {
-  rootScope.addEventListener('theme_change', () => {
+  rootScope.addEventListener('theme_changed', () => {
     rootScope.managers.thumbsStorage.clearColoredStickerThumbs();
 
     for(const key in savingLottiePreview) {

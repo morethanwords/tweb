@@ -247,6 +247,7 @@ poll-element {
         }
 
         .poll-answer-selected {
+          color: #fff !important;
           background: var(--danger-color);
           //line-height: 16px;
           font-size: 12px;

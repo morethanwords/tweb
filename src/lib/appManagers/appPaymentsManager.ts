@@ -95,6 +95,18 @@ export default class AppPaymentsManager extends AppManager {
     });
   }
 
+  public getPremiumGiftCodeOptions(peerId: PeerId) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'payments.getPremiumGiftCodeOptions',
+      params: {
+        boost_peer: this.appPeersManager.getInputPeerById(peerId)
+      },
+      processResult: (premiumGiftCodeOptions) => {
+        return premiumGiftCodeOptions.filter((option) => !option.store_product);
+      }
+    });
+  }
+
   public getPremiumPromo(overwrite?: boolean) {
     if(overwrite && this.premiumPromo) {
       this.premiumPromo = undefined;

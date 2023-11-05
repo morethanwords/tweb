@@ -88,7 +88,7 @@ import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
 import wrapMessageActionTextNew from '../wrappers/messageActionTextNew';
 import isMentionUnread from '../../lib/appManagers/utils/messages/isMentionUnread';
 import getMediaFromMessage from '../../lib/appManagers/utils/messages/getMediaFromMessage';
-import getPeerColorById from '../../lib/appManagers/utils/peers/getPeerColorById';
+import {getPeerColorIndexByPeer, getPeerColorsByPeer} from '../../lib/appManagers/utils/peers/getPeerColorById';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import getServerMessageId from '../../lib/appManagers/utils/messageId/getServerMessageId';
 import {AppManagers} from '../../lib/appManagers/managers';
@@ -154,6 +154,9 @@ import {avatarNew, findUpAvatar, wrapPhotoToAvatar} from '../avatarNew';
 import Icon from '../icon';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import {_tgico} from '../../helpers/tgico';
+import setBlankToAnchor from '../../lib/richTextProcessor/setBlankToAnchor';
+import addAnchorListener from '../../helpers/addAnchorListener';
+import {hexToRgb} from '../../helpers/color';
 
 export const USER_REACTIONS_INLINE = false;
 const USE_MEDIA_TAILS = false;
@@ -229,7 +232,7 @@ export default class ChatBubbles {
   // public messagesCount: number = -1;
 
   private unreadOut = new Set<number>();
-  public needUpdate: {replyToPeerId: PeerId, replyMid?: number, replyStoryId?: number, mid: number}[] = []; // if need wrapSingleMessage
+  private needUpdate: {replyToPeerId: PeerId, replyMid?: number, replyStoryId?: number, mid: number}[] = []; // if need wrapSingleMessage
 
   public bubbles: {[mid: string]: HTMLElement} = {};
   public skippedMids: Set<number> = new Set();
@@ -824,9 +827,9 @@ export default class ChatBubbles {
       const property: keyof typeof needUpdate[0] = options.mids ? 'replyMid' : 'replyStoryId';
       ids.forEach((id) => {
         const filtered: typeof needUpdate[0][] = [];
-        forEachReverse(this.needUpdate, (obj, idx) => {
+        forEachReverse(needUpdate, (obj, idx) => {
           if(obj[property] === id && (obj.replyToPeerId === peerId || !peerId)) {
-            this.needUpdate.splice(idx, 1)[0];
+            needUpdate.splice(idx, 1)[0];
             filtered.push(obj);
           }
         });
@@ -844,7 +847,12 @@ export default class ChatBubbles {
           MessageRender.setReply({
             chat: this.chat,
             bubble,
-            message
+            message,
+            middleware: bubble.middlewareHelper.get(),
+            lazyLoadQueue: this.lazyLoadQueue,
+            needUpdate: this.needUpdate,
+            isStandaloneMedia: bubble.classList.contains('just-media'),
+            isOut: bubble.classList.contains('is-out')
           });
 
           if(!originalMessage) {
@@ -1239,8 +1247,7 @@ export default class ChatBubbles {
       }
 
       const middleware = this.getMiddleware();
-      const chat = await apiManagerProxy.getChat(chatId);
-      if(!middleware()) return;
+      const chat = apiManagerProxy.getChat(chatId);
       const hadRights = this.chatInner.classList.contains('has-rights');
       const hadPlainRights = this.chat.input.canSendPlain();
       const [hasRights, hasPlainRights, canEmbedLinks] = await Promise.all([
@@ -2090,6 +2097,21 @@ export default class ChatBubbles {
       return;
     }
 
+    const webPageContainer = findUpClassName(target, 'webpage') as HTMLAnchorElement;
+    if(webPageContainer) {
+      if(findUpClassName(target, 'webpage-preview-resizer')) {
+        e.preventDefault();
+        return;
+      }
+
+      const callback = webPageContainer.dataset.callback as Parameters<typeof addAnchorListener>[0]['name'];
+      if(callback) {
+        (window as any)[callback](findUpTag(target, 'A'), e);
+      }
+
+      return;
+    }
+
     if(['IMG', 'DIV', 'SPAN'/* , 'A' */].indexOf(target.tagName) === -1) target = findUpTag(target, 'DIV');
 
     if(['DIV', 'SPAN'].indexOf(target.tagName) !== -1/*  || target.tagName === 'A' */) {
@@ -2188,7 +2210,7 @@ export default class ChatBubbles {
         return;
       }
 
-      const SINGLE_MEDIA_CLASSNAME = 'webpage';
+      const SINGLE_MEDIA_CLASSNAME = 'has-webpage';
       const isSingleMedia = bubble.classList.contains(SINGLE_MEDIA_CLASSNAME);
 
       const f = documentDiv ? (media: any) => {
@@ -2229,7 +2251,7 @@ export default class ChatBubbles {
         } else {
           const withTail = bubble.classList.contains('with-media-tail');
           // selector = '.album-item video, .album-item img, .preview video, .preview img, ';
-          selector = '.album-item, .preview, ';
+          selector = '.album-item, .webpage-preview, ';
           if(withTail) {
             selector += '.bubble__media-container';
           } else {
@@ -3051,7 +3073,7 @@ export default class ChatBubbles {
     this.dateMessages = {};
     this.bubbleGroups.cleanup();
     this.unreadOut.clear();
-    this.needUpdate.length = 0;
+    this.needUpdate = [];
     this.lazyLoadQueue.clear();
     this.renderNewPromises.clear();
 
@@ -4979,7 +5001,12 @@ export default class ChatBubbles {
 
     const isMessageEmpty = !messageMessage/*  && (!topicNameButtonContainer || isStandaloneMedia) */;
 
-    let viewButton: HTMLAnchorElement, storyFromPeerId: PeerId;
+    const invertMedia = isMessage && message.pFlags.invert_media;
+    if(invertMedia) {
+      bubble.classList.add('invert-media');
+    }
+
+    let storyFromPeerId: PeerId;
     // media
     if(messageMedia/*  && messageMedia._ === 'messageMediaPhoto' */) {
       attachmentDiv = document.createElement('div');
@@ -5049,7 +5076,9 @@ export default class ChatBubbles {
         }
 
         case 'messageMediaWebPage': {
+          const className = 'webpage';
           processingWebPage = true;
+          attachmentDiv = undefined;
 
           const webPage: WebPage = messageMedia.webpage;
           if(webPage._ !== 'webPage') {
@@ -5058,7 +5087,7 @@ export default class ChatBubbles {
 
           const storyAttribute = webPage.attributes?.find((attribute) => attribute._ === 'webPageAttributeStory') as WebPageAttribute.webPageAttributeStory;
           const storyPeerId = storyAttribute && getPeerId(storyAttribute.peer);
-          const storyId = storyAttribute && storyAttribute.id;
+          const storyId = storyAttribute?.id;
 
           if(storyAttribute) {
             const replyContainer = await this.getStoryReplyIfExpired(storyPeerId, storyId, true);
@@ -5066,13 +5095,18 @@ export default class ChatBubbles {
               bubble.classList.add('is-expired-story');
               messageDiv.append(replyContainer);
               messageDiv.classList.add('expired-story-message');
-              viewButton = undefined;
               break;
             }
           }
 
+          const box = document.createElement('a');
+          box.classList.add(className, 'quote-like', 'quote-like-hoverable');
+          ripple(box);
+
+          const quoteClassName = `${className}-quote`;
           const wrapped = wrapUrl(webPage.url);
-          const SAFE_TYPES: Set<typeof wrapped['onclick']> = new Set(['im', 'addlist']);
+          const SAFE_TYPES: Set<typeof wrapped['onclick']> = new Set(['im', 'addlist', 'boost']);
+          let viewButton: HTMLElement;
           if(SAFE_TYPES.has(wrapped?.onclick)) {
             const map: {[type: string]: LangPackKey} = {
               telegram_channel: 'Chat.Message.ViewChannel',
@@ -5086,37 +5120,47 @@ export default class ChatBubbles {
             };
 
             const langPackKey = map[webPage.type] || 'OpenMessage';
-            viewButton = this.makeViewButton({text: langPackKey, asLink: true});
-            viewButton.href = wrapped.url;
-            viewButton.setAttribute('onclick', `${wrapped.onclick}(this)`);
-            viewButton.setAttribute('safe', '');
+            box.dataset.callback = wrapped.onclick;
+            viewButton = document.createElement('div');
+            viewButton.classList.add(`${className}-button`);
+            viewButton.append(i18n(langPackKey));
+          } else {
+            setBlankToAnchor(box);
+
+            if(!messageMedia.pFlags.safe) {
+              box.dataset.callback = 'showMaskedAlert';
+            }
           }
 
-          bubble.classList.add('webpage');
+          box.href = wrapped.url;
 
-          const box = document.createElement('div');
-          box.classList.add('web');
+          bubble.classList.add('has-webpage');
 
           const quote = document.createElement('div');
-          quote.classList.add('quote');
+          quote.classList.add(quoteClassName, 'quote-like-border');
+
+          if(viewButton) {
+            quote.classList.add('has-button');
+          }
 
           let previewResizer: HTMLDivElement, preview: HTMLDivElement;
           const photo: Photo.photo = webPage.photo as any;
           const doc = webPage.document as MyDocument;
+          const hasLargeMedia = !!webPage.pFlags.has_large_media;
+          const hasSmallMedia = !hasLargeMedia && !!messageMedia.pFlags.force_small_media;
           if(photo || doc || storyAttribute) {
             previewResizer = document.createElement('div');
-            previewResizer.classList.add('preview-resizer');
+            previewResizer.classList.add(`${className}-preview-resizer`);
             preview = document.createElement('div');
-            preview.classList.add('preview');
+            preview.classList.add(`${className}-preview`);
             previewResizer.append(preview);
           }
 
-          const quoteTextDiv = document.createElement('div');
-          quoteTextDiv.classList.add('quote-text');
+          const contentDiv = document.createElement('div');
+          contentDiv.classList.add(`${className}-content`);
 
           if(doc) {
             if(doc.type === 'gif' || doc.type === 'video' || doc.type === 'round') {
-              // if(doc.size <= 20e6) {
               const mediaSize = doc.type === 'round' ? mediaSizes.active.round : mediaSizes.active.webpage;
               if(doc.type === 'round') {
                 bubble.classList.add('round');
@@ -5124,6 +5168,7 @@ export default class ChatBubbles {
               } else {
                 bubble.classList.add('video');
               }
+
               wrapVideo({
                 doc,
                 container: preview,
@@ -5138,7 +5183,6 @@ export default class ChatBubbles {
                 autoDownload: this.chat.autoDownload,
                 noInfo: message.mid < 0
               });
-              // }
             } else {
               const docDiv = await wrapDocument({
                 message: message as Message.message,
@@ -5157,73 +5201,66 @@ export default class ChatBubbles {
                 canTranscribeVoice: true
               });
               preview.append(docDiv);
-              preview.classList.add('preview-with-document');
-              quoteTextDiv.classList.add('has-document');
-              // messageDiv.classList.add((webpage.type || 'document') + '-message');
-              // doc = null;
+              preview.classList.add(`${className}-preview-with-document`);
+              contentDiv.classList.add('has-document');
             }
           }
 
-          if(previewResizer) {
-            quoteTextDiv.append(previewResizer);
-          }
-
-          let t: HTMLElement;
+          const textElements: HTMLElement[] = [];
           if(webPage.site_name) {
             const html = wrapRichText(webPage.url);
             const a: HTMLAnchorElement = htmlToDocumentFragment(html).firstElementChild as any;
-            a.classList.add('webpage-name');
+            a.classList.add(`${className}-name`);
             const strong = document.createElement('strong');
             setInnerHTML(strong, wrapEmojiText(webPage.site_name));
             a.textContent = '';
             a.append(strong);
-            quoteTextDiv.append(a);
-            t = a;
+            contentDiv.append(a);
+            textElements.push(a);
           }
 
           const title = wrapWebPageTitle(webPage);
           if(title.textContent) {
             const titleDiv = document.createElement('div');
-            titleDiv.classList.add('title');
+            titleDiv.classList.add(`${className}-title`);
             const strong = document.createElement('strong');
             setInnerHTML(strong, title);
             titleDiv.append(strong);
-            quoteTextDiv.append(titleDiv);
-            t = titleDiv;
+            contentDiv.append(titleDiv);
+            textElements.push(titleDiv);
           }
 
           const description = wrapWebPageDescription(webPage);
           if(description.textContent) {
             const textDiv = document.createElement('div');
-            textDiv.classList.add('text');
+            textDiv.classList.add(`${className}-text`);
             setInnerHTML(textDiv, description);
-            quoteTextDiv.append(textDiv);
-            t = textDiv;
+            contentDiv.append(textDiv);
+            textElements.push(textDiv);
           }
 
-          /* if(t) {
-            t.append(timeSpan);
-          } else {
-            box.classList.add('no-text');
-          } */
+          // if(textElements.length) {
+          //   textElements.slice(1).forEach((element) => element.classList.add(`${className}-text-margin-top`));
+          // }
 
-          quote.append(quoteTextDiv);
+          // const border = document.createElement('div');
+          // border.classList.add(`${className}-border`, 'quote-like-border');
 
+          quote.append(contentDiv);
+
+          let isSquare = false;
           if(photo && !doc) {
             bubble.classList.add('photo');
 
             const size: PhotoSize.photoSize = photo.sizes[photo.sizes.length - 1] as any;
-            let isSquare = false;
-            if(size.w === size.h && t) {
+            if(((size.w === size.h && !hasLargeMedia) || hasSmallMedia) && textElements[0]) {
               bubble.classList.add('is-square-photo');
+              box.classList.add('has-square-photo');
               isSquare = true;
               setAttachmentSize(photo, preview, 48, 48, false);
-
-              /* if(t) {
-                t.append(timeSpan);
-              } */
-            } else if(size.h > size.w) {
+            } else if(size.h > size.w && !hasLargeMedia) {
               bubble.classList.add('is-vertical-photo');
+              box.classList.add('has-vertical-photo');
             }
 
             wrapPhoto({
@@ -5255,16 +5292,14 @@ export default class ChatBubbles {
             });
           }
 
+          previewResizer && contentDiv[invertMedia || isSquare ? 'prepend' : 'append'](previewResizer);
+          if(viewButton) {
+            contentDiv.append(viewButton);
+          }
+
           box.append(quote);
-
-          // bubble.prepend(box);
-          // if(timeSpan.parentElement === messageDiv) {
-          messageDiv.insertBefore(box, timeSpan);
-          // } else {
-          //   messageDiv.append(box);
-          // }
-
-          // this.log('night running', bubble.scrollHeight);
+          if(invertMedia) timeSpan.parentElement.prepend(box);
+          else timeSpan.before(box);
 
           break;
         }
@@ -5976,7 +6011,7 @@ export default class ChatBubbles {
           const storyId = messageMedia.id;
           const storyPeerId = getPeerId(messageMedia.peer);
 
-          const replyContainer = await this.getStoryReplyIfExpired(storyPeerId, storyId, false);
+          const replyContainer = await this.getStoryReplyIfExpired(storyPeerId, storyId, false, true);
           if(replyContainer) {
             bubble.classList.add('is-expired-story');
             // attachmentDiv = replyContainer;
@@ -6015,8 +6050,19 @@ export default class ChatBubbles {
           break;
       }
 
+      if(processingWebPage) {
+        attachmentDiv = undefined;
+      }
+
       if(!processingWebPage && attachmentDiv) {
         bubbleContainer.append(attachmentDiv);
+      }
+
+      if(attachmentDiv) {
+        const width = attachmentDiv.style.width;
+        if(width) {
+          bubbleContainer.style.maxWidth = width;
+        }
       }
 
       /* if(bubble.classList.contains('is-message-empty') && (bubble.classList.contains('photo') || bubble.classList.contains('video'))) {
@@ -6032,12 +6078,11 @@ export default class ChatBubbles {
       bubble.classList.add('just-media');
     }
 
-    if(viewButton) {
-      timeSpan.before(viewButton);
-      // messageDiv.append(viewButton);
-    }
-
     let savedFrom = '';
+
+    if(isStandaloneMedia || !isOut) {
+      this.chat.appImManager.setPeerColorToElement(message.fromId, bubble, isStandaloneMedia);
+    }
 
     const isSponsored = (message as Message.message).pFlags.sponsored;
     // const needName = ((peerId.isAnyChat() && (peerId !== message.fromId || our)) && message.fromId !== rootScope.myId) || message.viaBotId;
@@ -6113,7 +6158,7 @@ export default class ChatBubbles {
           message.reply_to?._ === 'messageReplyStoryHeader' || (
             message.reply_to_mid &&
             message.reply_to_mid !== this.chat.threadId
-          )
+          ) || message.reply_to?.reply_from
         ) &&
         (!this.chat.isAllMessagesForum || (message.reply_to as MessageReplyHeader.messageReplyHeader).reply_to_top_id)
       ) {
@@ -6121,7 +6166,21 @@ export default class ChatBubbles {
           chat: this.chat,
           bubble,
           bubbleContainer,
-          message
+          message,
+          appendCallback: (container) => {
+            if(attachmentDiv) {
+              attachmentDiv.after(container);
+            } else if(bubble.classList.contains('is-message-empty')) {
+              bubbleContainer.append(container);
+            } else {
+              messageDiv.prepend(container);
+            }
+          },
+          middleware,
+          lazyLoadQueue: this.lazyLoadQueue,
+          needUpdate: this.needUpdate,
+          isStandaloneMedia,
+          isOut
         });
       }
 
@@ -6142,7 +6201,6 @@ export default class ChatBubbles {
         title.dataset.peerId = '' + (storyFromPeerId || fwdFromId);
 
         if((this.peerId === rootScope.myId || this.peerId === REPLIES_PEER_ID || isForwardFromChannel) && !isStandaloneMedia && !storyFromPeerId) {
-          nameDiv.style.color = getPeerColorById(fwdFromId, false);
           nameDiv.classList.add('colored-name');
           nameDiv.append(title);
         } else {
@@ -6162,14 +6220,13 @@ export default class ChatBubbles {
           nameDiv.append(title);
 
           if(!noColor) {
-            const peer = await apiManagerProxy.getPeer(peerIdForColor);
+            const peer = apiManagerProxy.getPeer(peerIdForColor);
             const pFlags = (peer as User.user)?.pFlags;
             if(pFlags && (pFlags.scam || pFlags.fake)) {
               nameDiv.append(generateFakeIcon(pFlags.scam));
             }
 
             if(!our) {
-              nameDiv.style.color = getPeerColorById(peerIdForColor, false);
               nameDiv.classList.add('colored-name');
             }
 
@@ -6400,14 +6457,15 @@ export default class ChatBubbles {
     container.style.height = `${height}px`;
   }
 
-  private async getStoryReplyIfExpired(storyPeerId: PeerId, storyId: number, isWebPage: boolean) {
+  private async getStoryReplyIfExpired(storyPeerId: PeerId, storyId: number, isWebPage: boolean, noBorder?: boolean) {
     const result = await this.managers.acknowledged.appStoriesManager.getStoryById(storyPeerId, storyId);
     if(result.cached && !(await result.result)) {
       const peerTitle = await wrapPeerTitle({peerId: storyPeerId});
       const {container, fillPromise} = wrapReply({
         title: isWebPage ? peerTitle : undefined,
         subtitle: isWebPage ? undefined : i18n('ExpiredStorySubtitle', [peerTitle]),
-        isStoryExpired: true
+        isStoryExpired: true,
+        noBorder
       });
 
       return container;
@@ -7536,7 +7594,7 @@ export default class ChatBubbles {
 
     const isBroadcast = this.chat.isBroadcast;
     // console.time('appImManager call getHistory');
-    const pageCount = Math.min(30, windowSize.height / 40/*  * 1.25 */ | 0);
+    const pageCount = Math.min(40, windowSize.height / 40/*  * 1.25 */ | 0);
     // const loadCount = Object.keys(this.bubbles).length > 0 ? 50 : pageCount;
     const realLoadCount = isBroadcast ? 20 : (Object.keys(this.bubbles).length > 0 ? Math.max(35, pageCount) : pageCount);
     // const realLoadCount = pageCount;//const realLoadCount = 50;

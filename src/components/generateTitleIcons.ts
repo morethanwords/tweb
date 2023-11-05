@@ -22,7 +22,7 @@ export default async function generateTitleIcons(
   noPremiumIcon?: boolean,
   peer?: Chat | User
 ) {
-  peer ??= await apiManagerProxy.getPeer(peerId);
+  peer ??= apiManagerProxy.getPeer(peerId);
   const elements: HTMLElement[] = [];
   if((peer as Chat.channel).pFlags.verified && !noVerifiedIcon) {
     elements.push(generateVerifiedIcon());

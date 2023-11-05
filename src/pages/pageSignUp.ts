@@ -39,7 +39,7 @@ const onFirstMount = async() => {
   avatarPreview.id = 'canvas-avatar';
   avatarPreview.className = 'avatar-edit-canvas';
 
-  const addIco = Icon('cameraadd');
+  const addIco = Icon('cameraadd', 'avatar-edit-icon');
   page.imageDiv.append(avatarPreview, addIco);
 
   let uploadAvatar: () => CancellablePromise<InputFile>;

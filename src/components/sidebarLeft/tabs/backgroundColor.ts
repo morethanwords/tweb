@@ -134,7 +134,9 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
 
       this.managers.appStateManager.pushToState('settings', rootScope.settings);
 
-      appImManager.applyCurrentTheme(undefined, undefined, true);
+      appImManager.applyCurrentTheme({
+        broadcastEvent: true
+      });
       this.setActive();
     }
   };

@@ -8,7 +8,7 @@ import {addCancelButton} from '.';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import formatDuration from '../../helpers/formatDuration';
-import {StoriesBoostsStatus} from '../../layer';
+import {PremiumBoostsStatus} from '../../layer';
 import appImManager from '../../lib/appManagers/appImManager';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import {i18n} from '../../lib/langPack';
@@ -41,7 +41,7 @@ export default class PopupBoost extends PopupPeer {
 
   private async construct() {
     let [boostsStatus] = await Promise.all([
-      this.managers.appStoriesManager.getBoostsStatus(this.peerId)
+      this.managers.appBoostsManager.getBoostsStatus(this.peerId)
     ]);
 
     console.log(boostsStatus);
@@ -70,7 +70,7 @@ export default class PopupBoost extends PopupPeer {
       hasMyBoost: boolean,
       updated = false;
 
-    const setBoostsStatus = (_boostsStatus: StoriesBoostsStatus) => {
+    const setBoostsStatus = (_boostsStatus: PremiumBoostsStatus) => {
       boostsStatus = _boostsStatus;
       hasStories = boostsStatus.level > 0 || boostsStatus.next_level_boosts === boostsStatus.boosts;
       needBoostsForNextLevel = boostsStatus.next_level_boosts - boostsStatus.boosts;
@@ -234,23 +234,23 @@ export default class PopupBoost extends PopupPeer {
           throw {type};
         }
 
-        const canApplyBoostResult = await this.managers.appStoriesManager.canApplyBoost(this.peerId);
-        console.log(canApplyBoostResult);
-        if(canApplyBoostResult._ === 'stories.canApplyBoostReplace') {
-          await confirmationPopup({
-            titleLangKey: 'Boost.Replace',
-            descriptionLangKey: 'ReplaceBoostChannelDescription',
-            descriptionLangArgs: [
-              await wrapPeerTitle({peerId: getPeerId(canApplyBoostResult.current_boost)}),
-              await wrapPeerTitle({peerId: this.peerId})
-            ],
-            button: {
-              langKey: 'Boost.Replace'
-            }
-          });
-        }
+        // const canApplyBoostResult = await this.managers.appStoriesManager.canApplyBoost(this.peerId);
+        // console.log(canApplyBoostResult);
+        // if(canApplyBoostResult._ === 'stories.canApplyBoostReplace') {
+        //   await confirmationPopup({
+        //     titleLangKey: 'Boost.Replace',
+        //     descriptionLangKey: 'ReplaceBoostChannelDescription',
+        //     descriptionLangArgs: [
+        //       await wrapPeerTitle({peerId: getPeerId(canApplyBoostResult.current_boost)}),
+        //       await wrapPeerTitle({peerId: this.peerId})
+        //     ],
+        //     button: {
+        //       langKey: 'Boost.Replace'
+        //     }
+        //   });
+        // }
 
-        await this.managers.appStoriesManager.applyBoost(this.peerId);
+        await this.managers.appBoostsManager.applyBoost(this.peerId);
         // boostsStatus = await this.managers.appStoriesManager.getBoostsStatus(this.peerId);
         // setBoostsStatus(boostsStatus);
         updated = true;

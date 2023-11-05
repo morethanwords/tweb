@@ -45,6 +45,7 @@ export default class PopupWebApp extends PopupElement<{
   private mainButton: HTMLElement;
   private isCloseConfirmationNeeded: boolean;
   private lastHeaderColor: TelegramWebViewEventMap['web_app_set_header_color'];
+  private showSettingsButton: boolean;
   // private mainButtonText: HTMLElement;
 
   constructor(options: {
@@ -88,7 +89,8 @@ export default class PopupWebApp extends PopupElement<{
         onClick: () => {
           this.telegramWebView.dispatchWebViewEvent('settings_button_pressed', undefined);
         },
-        verify: () => (this.attachMenuBot && this.attachMenuBot.pFlags.has_settings) || this.webViewOptions.hasSettings
+        // verify: () => (this.attachMenuBot && this.attachMenuBot.pFlags.has_settings) || this.webViewOptions.hasSettings
+        verify: () => this.showSettingsButton
       }, {
         icon: 'bots',
         text: 'BotWebViewOpenBot',
@@ -267,6 +269,12 @@ export default class PopupWebApp extends PopupElement<{
     this.btnCloseAnimatedIcon.classList.toggle('state-back', is_visible);
   };
 
+  protected setupSettingsButton = ({
+    is_visible
+  }: TelegramWebViewEventMap['web_app_setup_settings_button']) => {
+    this.showSettingsButton = is_visible;
+  };
+
   protected openPopup = async({
     title,
     message,
@@ -383,7 +391,7 @@ export default class PopupWebApp extends PopupElement<{
       },
       web_app_open_tg_link: ({path_full}) => {
         appImManager.openUrl('https://t.me' + path_full);
-        this.forceHide();
+        // this.forceHide();
       },
       web_app_open_invoice: ({slug}) => {
         const link: InternalLink.InternalLinkInvoice = {
@@ -406,6 +414,7 @@ export default class PopupWebApp extends PopupElement<{
       web_app_switch_inline_query: this.switchInlineQuery,
       web_app_setup_main_button: this.setupMainButton,
       web_app_setup_back_button: this.setupBackButton,
+      web_app_setup_settings_button: this.setupSettingsButton,
       web_app_setup_closing_behavior: ({need_confirmation}) => this.isCloseConfirmationNeeded = !!need_confirmation,
       web_app_open_popup: this.debouncePopupMethod(this.openPopup, 'popup_closed', {}),
       web_app_open_scan_qr_popup: () => telegramWebView.dispatchWebViewEvent('scan_qr_popup_closed', {}),
@@ -415,7 +424,7 @@ export default class PopupWebApp extends PopupElement<{
         };
 
         let data: string;
-        if(this.webViewOptions.fromAttachMenu) try {
+        if(this.attachMenuBot && !this.attachMenuBot.pFlags.inactive) try {
           const permission = await navigator.permissions.query({
             // @ts-ignore
             name: 'clipboard-read'

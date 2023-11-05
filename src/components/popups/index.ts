@@ -50,7 +50,8 @@ export type PopupOptions = Partial<{
   withoutOverlay: boolean,
   scrollable: boolean,
   buttons: Array<PopupButton>,
-  title: boolean | LangPackKey | DocumentFragment | HTMLElement
+  title: boolean | LangPackKey | DocumentFragment | HTMLElement,
+  floatingHeader: boolean
 }>;
 
 export interface PopupElementConstructable<T extends PopupElement = any> {
@@ -196,6 +197,14 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     if(options.scrollable) {
       const scrollable = this.scrollable = new Scrollable(this.body);
       this.attachScrollableListeners();
+
+      if(options.floatingHeader) {
+        this.attachScrollableListeners(this.header);
+        const background = document.createElement('div');
+        background.classList.add('popup-header-background');
+        this.header.prepend(background);
+        this.header.classList.add('is-floating');
+      }
 
       if(!this.body) {
         this.header.after(scrollable.container);

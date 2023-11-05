@@ -68,6 +68,7 @@
   --message-beside-button-margin: calc((var(--message-beside-button-size) + .5rem) * -1);
   --message-time-background: rgba(0, 0, 0, .35);
   --message-highlightning-color: hsla(85.5319, 36.9171%, 40.402%, .4);//rgba(77, 142, 80, .4);
+  --message-highlightning-hover-color: rgba(var(--message-highlightning-color-rgb), calc(var(--message-highlightning-alpha) + .24));
   --messages-container-width: #{$messages-container-width};
   --messages-text-size: 16px;
   --messages-line-height: 1.3125;
@@ -88,6 +89,7 @@
   --font-size-16: 16px;
   --font-size-15: 15px;
   --font-size-14: 14px;
+  --font-size-13: 13px;
   --font-size-12: 12px;
   --font-size: var(--font-size-16);
   --esg-sticker-size: 72px;
@@ -103,6 +105,15 @@
   --selection-background-color: rgba(var(--primary-color-rgb), .4);
   --selection-color: inherit;
   --white: #ffffff;
+
+  --ripple-duration: .7s;
+  --ripple-start-scale: 0;
+  --ripple-end-scale: 2;
+
+  @include respond-to(until-floating-left-sidebar) {
+    --ripple-duration: .4s;
+    --ripple-start-scale: .27;
+  }
 
   --topbar-floating-scaleX: 1;
   --topbar-call-height: 3rem;
@@ -132,6 +143,9 @@
 
   --peer-avatar-saved-top: var(--light-filled-saved-color);
   --peer-avatar-saved-bottom: var(--saved-color);
+
+  --peer-color: var(--primary-color);
+  --peer-color-rgb: var(--primary-color-rgb);
 
   --avatar-color-story-unread-from: #34c76f;
   --avatar-color-story-unread-to: #3da1fd;
@@ -243,14 +257,19 @@
   --message-checkbox-color: #61c642;
   --message-checkbox-border-color: #fff;
   --message-primary-color: var(--primary-color);
+  --message-primary-color-rgb: var(--primary-color-rgb);
   --light-filled-message-primary-color: var(--light-filled-primary-color);
+  --message-status-color: var(--secondary-text-color);
   --message-secondary-color: var(--secondary-color);
   --message-error-color: var(--danger-color);
+  --message-icon-text-color: #fff;
+  --message-empty-primary-color: #fff;
+  --message-empty-primary-color-rgb: 255,255,255;
 
   --message-out-link-color: var(--link-color);
   --message-out-status-color: var(--message-out-primary-color);
   --message-out-time-color: var(--message-out-status-color);
-  --message-out-audio-play-button-color: #fff;
+  --message-out-icon-text-color: #fff;
   --message-out-selection-background-color: var(--selection-background-color);
 
   --gc-background-color: #212121;
@@ -312,17 +331,20 @@
   --message-time-color: var(--secondary-text-color);
   --message-checkbox-color: var(--primary-color);
   --message-checkbox-border-color: #fff;
+  --message-status-color: var(--secondary-color);
   --message-secondary-color: var(--secondary-color);
   --message-error-color: #fff;
+  --message-icon-text-color: #fff;
 
   --message-out-link-color: #fff;
   --message-out-status-color: #fff;
   --message-out-time-color: rgba(255, 255, 255, .6);
-  --message-out-audio-play-button-color: var(--message-out-background-color);
+  --message-out-icon-text-color: var(--message-out-background-color);
   --message-out-selection-background-color: rgba(var(--surface-color-rgb), .4);
   // * Night theme end
 }
 
+// @import "components/prism";
 @import "tgico";
 @import "fonts/roboto";
 @import "fonts/robotoMono";
@@ -411,6 +433,7 @@
 @import "partials/popups/giftPremium";
 @import "partials/popups/webApp";
 @import "partials/popups/chatlistInvite";
+@import "partials/popups/boostsViaGifts";
 @import "partials/popups/premium";
 @import "partials/popups/boost";
 
@@ -2284,4 +2307,39 @@ hr {
 
 .tgico {
   pointer-events: none;
+}
+
+.no-view-transition::view-transition-old(root) {
+  animation: none;
+}
+
+.no-view-transition::view-transition-new(root) {
+  animation: none;
+}
+
+.quote,
+[data-markup*="quote"] {
+  padding: 1px 0;
+  padding-inline: .5625rem 1.125rem;
+  margin: 2px 0;
+  display: inline-block;
+  position: relative;
+  font-size: var(--messages-secondary-text-size);
+  line-height: var(--messages-secondary-line-height);
+  white-space: pre-wrap;
+  max-width: 100%;
+  vertical-align: bottom;
+}
+
+.quote-block,
+[data-markup*="quote"] {
+  display: block;
+  width: fit-content;
+  margin-inline-end: auto;
+  // width: min-content;
+}
+
+.inline-icon {
+  vertical-align: bottom;
+  line-height: inherit;
 }

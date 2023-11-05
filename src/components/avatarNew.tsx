@@ -13,7 +13,7 @@ import {createSignal, createEffect, createMemo, onCleanup, JSX, createRoot, Show
 import rootScope from '../lib/rootScope';
 import {NULL_PEER_ID, REPLIES_PEER_ID} from '../lib/mtproto/mtproto_config';
 import {Chat, ChatPhoto, User, UserProfilePhoto} from '../layer';
-import getPeerColorById from '../lib/appManagers/utils/peers/getPeerColorById';
+import {getPeerAvatarColorByPeer} from '../lib/appManagers/utils/peers/getPeerColorById';
 import getPeerPhoto from '../lib/appManagers/utils/peers/getPeerPhoto';
 import wrapAbbreviation from '../lib/richTextProcessor/wrapAbbreviation';
 import getPeerInitials from './wrappers/getPeerInitials';
@@ -484,8 +484,9 @@ export const AvatarNew = (props: {
       return;
     }
 
+    const peer = props.peer ?? apiManagerProxy.getPeer(peerId);
     if(title) {
-      const color = getPeerColorById(peerId);
+      const color = getPeerAvatarColorByPeer(peer);
       const abbr = wrapAbbreviation(title);
       set({
         abbreviature: documentFragmentToNodes(abbr),
@@ -509,7 +510,6 @@ export const AvatarNew = (props: {
       });
     }
 
-    const peer = props.peer ?? await apiManagerProxy.getPeer(peerId);
     if(!middleware()) {
       return;
     }
@@ -537,9 +537,9 @@ export const AvatarNew = (props: {
 
     let isSet = false;
     if(!avatarRendered && !isAvatarCached) {
-      let color = '';
+      let color: string;
       if(peerId && (peerId !== myId || !isDialog)) {
-        color = getPeerColorById(peerId);
+        color = getPeerAvatarColorByPeer(peer);
       }
 
       if(peerId === REPLIES_PEER_ID) {
@@ -756,7 +756,8 @@ export const AvatarNew = (props: {
     node,
     render,
     setIcon,
-    updateStoriesSegments
+    updateStoriesSegments,
+    set
   };
 
   if(

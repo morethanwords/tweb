@@ -42,6 +42,8 @@ import {_tgico} from '../helpers/tgico';
 import Icon from './icon';
 import setCurrentTime from '../helpers/dom/setCurrentTime';
 
+const UNMOUNT_PRELOADER = true;
+
 rootScope.addEventListener('messages_media_read', ({mids, peerId}) => {
   mids.forEach((mid) => {
     const attr = `[data-mid="${mid}"][data-peer-id="${peerId}"]`;
@@ -704,11 +706,13 @@ export default class AudioElement extends HTMLElement {
         this.classList.add('downloading');
 
         this.readyPromise.then(() => {
-          this.classList.remove('downloading');
-          downloadDiv.classList.add('downloaded');
-          setTimeout(() => {
-            downloadDiv.remove();
-          }, 200);
+          if(UNMOUNT_PRELOADER) {
+            this.classList.remove('downloading');
+            downloadDiv.classList.add('downloaded');
+            setTimeout(() => {
+              downloadDiv.remove();
+            }, 200);
+          }
 
           // setTimeout(() => {
           // release loaded audio

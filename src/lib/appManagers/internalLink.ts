@@ -48,6 +48,7 @@ export namespace InternalLink {
     thread?: string,
     start?: string,
     t?: string, // media timestamp
+    single?: string,
     stack?: ChatSetPeerOptions['stack'] // local
   }
 

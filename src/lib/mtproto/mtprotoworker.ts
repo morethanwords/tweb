@@ -255,6 +255,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
     rootScope.addEventListener('language_change', (language) => {
       rootScope.managers.networkerFactory.setLanguage(language);
+      rootScope.managers.appAttachMenuBotsManager.onLanguageChange();
     });
 
     window.addEventListener('online', () => {
@@ -641,7 +642,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
     }
   }
 
-  public async getMessageByPeer(peerId: PeerId, messageId: number) {
+  public getMessageByPeer(peerId: PeerId, messageId: number) {
     if(!peerId) {
       return this.getMessageById(messageId);
     }
@@ -649,20 +650,20 @@ class ApiManagerProxy extends MTProtoMessagePort {
     return this.getMessageFromStorage(this.getHistoryMessagesStorage(peerId), messageId);
   }
 
-  public async getPeer(peerId: PeerId) {
+  public getPeer(peerId: PeerId) {
     return this.mirrors.peers[peerId];
   }
 
-  public async getUser(userId: UserId) {
+  public getUser(userId: UserId) {
     return this.mirrors.peers[userId.toPeerId(false)] as User.user;
   }
 
-  public async getChat(chatId: ChatId) {
+  public getChat(chatId: ChatId) {
     return this.mirrors.peers[chatId.toPeerId(true)] as Exclude<Chat, Chat.chatEmpty>;
   }
 
-  public async isForum(peerId: PeerId) {
-    const peer = await this.getPeer(peerId);
+  public isForum(peerId: PeerId) {
+    const peer = this.getPeer(peerId);
     return !!(peer as Chat.channel)?.pFlags?.forum;
   }
 

@@ -300,6 +300,38 @@ const lang = {
   'AdminRights.EditStories': 'Edit Stories of Others',
   'AdminRights.DeleteStories': 'Delete Stories of Others',
   'Payments.Terms.Accept': 'I accept [Terms of Service]() of **%@**.',
+  'AddChannel': 'Add Channel',
+  'AllSubscribers': 'All Subscribers',
+  'OnlyNewSubscribers': 'Only New Subscribers',
+  'Ends': 'Ends',
+  'BoostsViaGifts.Title': 'Boosts via Gifts',
+  'BoostsViaGifts.Subtitle': 'Get more boosts for your channel by gifting Premium to your subscribers.',
+  'BoostsViaGifts.Create': 'Create Giveaway',
+  'BoostsViaGifts.CreateSubtitle': 'winners are chosen randomly',
+  'BoostsViaGifts.Specific': 'Award Specific Users',
+  'BoostsViaGifts.SpecificSubtitle': 'select recipients',
+  'BoostsViaGifts.Prepaid': 'Prepaid Giveaway',
+  'BoostsViaGifts.PrepaidSubtitle': {
+    'one_value': '%d subscription for %s',
+    'other_value': '%d subscriptions for %s'
+  },
+  'BoostsViaGifts.Quantity': 'Quantity of prizes',
+  'BoostsViaGifts.QuantitySubtitle': 'Choose how many Premium subscriptions to give away and boosts to receive. For larger volumes, use [fragment.com](https://fragment.com).',
+  'BoostsViaGifts.Channels': 'Channels Included in the giveaway',
+  'BoostsViaGifts.ChannelSubscription': {
+    'one_value': 'this channel will receive %d boost',
+    'other_value': 'this channel will receive %d boosts'
+  },
+  'BoostsViaGifts.Users': 'Users eligible for the giveaway',
+  'BoostsViaGifts.UsersSubtitle': 'Choose if you want to limit the giveaway only to those who joined the channel after the giveaway started.',
+  'BoostsViaGifts.End': 'Date when giveaway ends',
+  'BoostsViaGifts.EndSubtitle': {
+    'one_value': 'Choose when %d subscriber of your channel will receive Telegram Premium.',
+    'other_value': 'Choose when %d subscribers of your channel will be randomly selected to receive Telegram Premium.'
+  },
+  'BoostsViaGifts.Duration': 'Duration of premium subscriptions',
+  'BoostsViaGifts.DurationSubtitle': 'You can review the list of features and terms of use for Telegram Premium [here]().',
+  'BoostsViaGifts.Start': 'START GIVEAWAY',
   'Boost.EnableStoriesFor': 'Enable Stories For',
   'Boost.DescriptionJustReachedLevel1': 'This channel reached **Level 1** and can now post stories.',
   'Boost.DescriptionJustReachedLevel': 'This channel reached **Level %1$d** and can now post %2$s per day.',
@@ -312,6 +344,12 @@ const lang = {
   'Boost.AlreadyDescription': 'You are already boosting this channel.',
   'Boost.Replace': 'Replace Boost',
   'Yes': 'Yes',
+  'AboveMessage': 'Show Above the Message',
+  'BelowMessage': 'Show Below the Message',
+  'LargerMedia': 'Show Larger Media',
+  'SmallerMedia': 'Show Smaller Media',
+  'WebPage.RemovePreview': 'Remove Link Preview',
+  'Quote': 'Quote',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',

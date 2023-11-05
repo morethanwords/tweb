@@ -17,7 +17,7 @@ import PopupCreatePoll from '../popups/createPoll';
 import PopupForward from '../popups/forward';
 import PopupNewMedia from '../popups/newMedia';
 import {toast, toastNew} from '../toast';
-import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton} from '../../layer';
+import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageReplyHeader, MessageMedia, InputReplyTo} from '../../layer';
 import StickersHelper from './stickersHelper';
 import ButtonIcon from '../buttonIcon';
 import ButtonMenuToggle from '../buttonMenuToggle';
@@ -41,7 +41,6 @@ import {attachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent
 import isInputEmpty from '../../helpers/dom/isInputEmpty';
 import isSendShortcutPressed from '../../helpers/dom/isSendShortcutPressed';
 import placeCaretAtEnd from '../../helpers/dom/placeCaretAtEnd';
-import {MarkdownType} from '../../helpers/dom/getRichElementValue';
 import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 import EmojiHelper from './emojiHelper';
 import CommandsHelper from './commandsHelper';
@@ -93,12 +92,9 @@ import PopupStickers from '../popups/stickers';
 import wrapPeerTitle from '../wrappers/peerTitle';
 import wrapReply from '../wrappers/reply';
 import {getEmojiFromElement} from '../emoticonsDropdown/tabs/emoji';
-import hasMarkupInSelection from '../../helpers/dom/hasMarkupInSelection';
-import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import RichInputHandler from '../../helpers/dom/richInputHandler';
 import {insertRichTextAsHTML} from '../inputField';
 import draftsAreEqual from '../../lib/appManagers/utils/drafts/draftsAreEqual';
-import isSelectionEmpty from '../../helpers/dom/isSelectionEmpty';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import getAttachMenuBotIcon from '../../lib/appManagers/utils/attachMenuBots/getAttachMenuBotIcon';
 import forEachReverse from '../../helpers/array/forEachReverse';
@@ -109,7 +105,7 @@ import {ChatRights} from '../../lib/appManagers/appChatsManager';
 import getPeerActiveUsernames from '../../lib/appManagers/utils/peers/getPeerActiveUsernames';
 import replaceContent from '../../helpers/dom/replaceContent';
 import getTextWidth from '../../helpers/canvas/getTextWidth';
-import {FontFamilyName, FontFull} from '../../config/font';
+import {FontFull} from '../../config/font';
 import {ChatType} from './chat';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import idleController from '../../helpers/idleController';
@@ -120,6 +116,7 @@ import deepEqual from '../../helpers/object/deepEqual';
 import {clearMarkdownExecutions, createMarkdownCache, handleMarkdownShortcut, maybeClearUndoHistory, processCurrentFormatting} from '../../helpers/dom/markdown';
 import MarkupTooltip from './markupTooltip';
 import PopupPremium from '../popups/premium';
+import {AppMessagesManager} from '../../lib/appManagers/appMessagesManager';
 
 // console.log('Recorder', Recorder);
 
@@ -185,11 +182,20 @@ export default class ChatInput {
     container: HTMLElement,
     modifyArgs?: ButtonMenuItemOptions[]
   };
+  private webPageElements: {
+    above: ButtonMenuItemOptions,
+    below: ButtonMenuItemOptions,
+    larger: ButtonMenuItemOptions,
+    smaller: ButtonMenuItemOptions,
+    container: HTMLElement
+  };
   private forwardHover: DropdownHover;
+  private webPageHover: DropdownHover;
   private forwardWasDroppingAuthor: boolean;
 
   private getWebPagePromise: Promise<void>;
   public willSendWebPage: WebPage = null;
+  public webPageOptions: Parameters<AppMessagesManager['sendText']>[2]['webPageOptions'] = {};
   private forwarding: {[fromPeerId: PeerId]: number[]};
   public replyToMsgId: number;
   public replyToStoryId: number;
@@ -199,6 +205,7 @@ export default class ChatInput {
   public scheduleDate: number;
   public sendSilent: true;
   public startParam: string;
+  public invertMedia: boolean;
 
   private recorder: any;
   public recording = false;
@@ -298,6 +305,7 @@ export default class ChatInput {
 
   private hasOffset: {type: 'commands' | 'as', forwards: boolean};
   private canForwardStory: boolean;
+  private processingDraftMessage: DraftMessage.draftMessage;
 
   constructor(
     public chat: Chat,
@@ -456,7 +464,7 @@ export default class ChatInput {
     this.replyElements.container.classList.add('reply-wrapper', 'rows-wrapper-row');
 
     this.replyElements.iconBtn = this.createButtonIcon('');
-    this.replyElements.cancelBtn = this.createButtonIcon('close reply-cancel', {noRipple: true});
+    this.replyElements.cancelBtn = this.createButtonIcon('close reply-cancel active', {noRipple: true});
 
     this.replyElements.container.append(this.replyElements.iconBtn, this.replyElements.cancelBtn);
 
@@ -480,23 +488,23 @@ export default class ChatInput {
         text: 'Chat.Alert.Forward.Action.Show1',
         onClick: onHideAuthorClick,
         checkForClose: () => this.canToggleHideAuthor(),
-        checkboxField: new CheckboxField({checked: true})
+        radioGroup: 'author'
       },
       forwardElements.hideSender = {
         text: 'Chat.Alert.Forward.Action.Hide1',
         onClick: onHideAuthorClick,
         checkForClose: () => this.canToggleHideAuthor(),
-        checkboxField: new CheckboxField({checked: false})
+        radioGroup: 'author'
       },
       forwardElements.showCaption = {
         text: 'Chat.Alert.Forward.Action.ShowCaption',
         onClick: onHideCaptionClick,
-        checkboxField: new CheckboxField({checked: true})
+        radioGroup: 'caption'
       },
       forwardElements.hideCaption = {
         text: 'Chat.Alert.Forward.Action.HideCaption',
         onClick: onHideCaptionClick,
-        checkboxField: new CheckboxField({checked: false})
+        radioGroup: 'caption'
       },
       forwardElements.changePeer = {
         text: 'Chat.Alert.Forward.Action.Another',
@@ -508,75 +516,102 @@ export default class ChatInput {
     ];
     const forwardBtnMenu = forwardElements.container = ButtonMenuSync({
       buttons: forwardButtons,
+      radioGroups: [{
+        name: 'author',
+        onChange: (value) => {
+          const checked = !!+value;
+          if(isChangingAuthor) {
+            this.forwardWasDroppingAuthor = !checked;
+          }
+
+          const replyTitle = this.replyElements.container.querySelector('.reply-title');
+          if(replyTitle) {
+            const el = replyTitle.firstElementChild as HTMLElement;
+            const i = I18n.weakMap.get(el) as I18n.IntlElement;
+            const langPackKey: LangPackKey = forwardElements.showSender.checkboxField.checked ? 'Chat.Accessory.Forward' : 'Chat.Accessory.Hidden';
+            i.key = langPackKey;
+            i.update();
+          }
+        },
+        checked: 0
+      }, {
+        name: 'caption',
+        onChange: (value) => {
+          const checked = !!+value;
+          let b: ButtonMenuItemOptions;
+          if(checked && this.forwardWasDroppingAuthor !== undefined) {
+            b = this.forwardWasDroppingAuthor ? forwardElements.hideSender : forwardElements.showSender;
+          } else {
+            b = checked ? forwardElements.showSender : forwardElements.hideSender;
+          }
+
+          b.checkboxField.checked = true;
+        },
+        checked: 0
+      }],
       listenerSetter: this.listenerSetter
     });
-    // forwardBtnMenu.classList.add('top-center');
-
-    const children = Array.from(forwardBtnMenu.children) as HTMLElement[];
-    const groups: {
-      elements: HTMLElement[],
-      onChange: (value: string, event: Event) => void
-    }[] = [{
-      elements: children.slice(0, 2),
-      onChange: (value, e) => {
-        const checked = !!+value;
-        if(isChangingAuthor) {
-          this.forwardWasDroppingAuthor = !checked;
-        }
-
-        const replyTitle = this.replyElements.container.querySelector('.reply-title');
-        if(replyTitle) {
-          const el = replyTitle.firstElementChild as HTMLElement;
-          const i = I18n.weakMap.get(el) as I18n.IntlElement;
-          const langPackKey: LangPackKey = forwardElements.showSender.checkboxField.checked ? 'Chat.Accessory.Forward' : 'Chat.Accessory.Hidden';
-          i.key = langPackKey;
-          i.update();
-        }
-      }
-    }, {
-      elements: children.slice(2, 4),
-      onChange: (value) => {
-        const checked = !!+value;
-        let b: ButtonMenuItemOptions;
-        if(checked && this.forwardWasDroppingAuthor !== undefined) {
-          b = this.forwardWasDroppingAuthor ? forwardElements.hideSender : forwardElements.showSender;
-        } else {
-          b = checked ? forwardElements.showSender : forwardElements.hideSender;
-        }
-
-        b.checkboxField.checked = true;
-      }
-    }];
-    groups.forEach((group) => {
-      const container = RadioForm(group.elements.map((e) => {
-        return {
-          container: e,
-          input: e.querySelector('input')
-        };
-      }), group.onChange);
-
-      const hr = document.createElement('hr');
-      container.append(hr);
-      forwardBtnMenu.append(container);
-    });
-
-    forwardBtnMenu.append(forwardElements.changePeer.element);
 
     if(!IS_TOUCH_SUPPORTED) {
-      const forwardHover = this.forwardHover = new DropdownHover({
-        element: forwardBtnMenu
-      });
+      this.forwardHover = new DropdownHover({element: forwardBtnMenu});
     }
 
     forwardElements.modifyArgs = forwardButtons.slice(0, -1);
     this.replyElements.container.append(forwardBtnMenu);
+  }
 
-    forwardElements.modifyArgs.forEach((b, idx) => {
-      const {input} = b.checkboxField;
-      input.type = 'radio';
-      input.name = idx < 2 ? 'author' : 'caption';
-      input.value = '' + +!(idx % 2);
+  private constructWebPageElements() {
+    this.webPageElements = {} as any;
+    const buttons: ButtonMenuItemOptions[] = [this.webPageElements.above = {
+      text: 'AboveMessage',
+      onClick: () => {},
+      radioGroup: 'position'
+    }, this.webPageElements.below = {
+      text: 'BelowMessage',
+      onClick: () => {},
+      radioGroup: 'position'
+    }, this.webPageElements.larger = {
+      text: 'LargerMedia',
+      onClick: () => {},
+      radioGroup: 'size'
+    }, this.webPageElements.smaller = {
+      text: 'SmallerMedia',
+      onClick: () => {},
+      radioGroup: 'size'
+    }, {
+      text: 'WebPage.RemovePreview',
+      onClick: () => {
+        this.onHelperCancel();
+      },
+      icon: 'delete',
+      danger: true
+    }];
+    const btnMenu = this.webPageElements.container = ButtonMenuSync({
+      buttons,
+      radioGroups: [{
+        name: 'position',
+        onChange: (value) => {
+          this.webPageOptions.invertMedia = !!+value;
+          this.saveDraftDebounced?.();
+        },
+        checked: 0
+      }, {
+        name: 'size',
+        onChange: (value) => {
+          this.webPageOptions.largeMedia = !!+value;
+          this.webPageOptions.smallMedia = !+value;
+          this.saveDraftDebounced?.();
+        },
+        checked: 0
+      }],
+      listenerSetter: this.listenerSetter
     });
+
+    if(!IS_TOUCH_SUPPORTED) {
+      this.webPageHover = new DropdownHover({element: btnMenu});
+    }
+
+    this.replyElements.container.append(btnMenu);
   }
 
   private constructMentionButton() {
@@ -785,6 +820,7 @@ export default class ChatInput {
 
       if(!this.excludeParts.forwardOptions) {
         this.constructForwardElements();
+        this.constructWebPageElements();
       }
     }
 
@@ -1479,16 +1515,32 @@ export default class ChatInput {
     const {value, entities} = getRichValueWithCaret(this.messageInputField.input, true, false);
 
     let draft: DraftMessage.draftMessage;
-    if((value.length || ignoreEmptyValue) || this.replyToMsgId) {
+    if((value.length || ignoreEmptyValue) || this.replyToMsgId || this.willSendWebPage) {
+      const webPage = this.willSendWebPage as WebPage.webPage;
+      const webPageOptions = this.webPageOptions;
+      const hasLargeMedia = !!webPage?.pFlags?.has_large_media;
       draft = {
         _: 'draftMessage',
         date: tsNow(true),
         message: value,
         entities: entities.length ? entities : undefined,
         pFlags: {
-          no_webpage: this.noWebPage
+          no_webpage: this.noWebPage,
+          invert_media: webPageOptions?.invertMedia || undefined
         },
-        reply_to_msg_id: this.replyToMsgId
+        reply_to: this.replyToMsgId ? {
+          _: 'inputReplyToMessage',
+          reply_to_msg_id: this.replyToMsgId
+        } : undefined,
+        media: webPage ? {
+          _: 'inputMediaWebPage',
+          pFlags: {
+            force_large_media: hasLargeMedia && webPageOptions?.largeMedia || undefined,
+            force_small_media: hasLargeMedia && webPageOptions?.smallMedia || undefined,
+            optional: true
+          },
+          url: webPage.url
+        } : undefined
       };
     }
 
@@ -1594,10 +1646,11 @@ export default class ChatInput {
     const wrappedDraft = wrapDraft(draft, this.chat.peerId);
     const currentDraft = this.getCurrentInputAsDraft();
 
+    const draftReplyToMsgId = (draft.reply_to as InputReplyTo.inputReplyToMessage)?.reply_to_msg_id;
     if(
       draftsAreEqual(draft, currentDraft) &&
       /* this.messageInputField.value === wrappedDraft &&  */
-      this.replyToMsgId === draft.reply_to_msg_id
+      this.replyToMsgId === draftReplyToMsgId
     ) {
       return false;
     }
@@ -1607,11 +1660,11 @@ export default class ChatInput {
     }
 
     this.noWebPage = draft.pFlags.no_webpage;
-    if(draft.reply_to_msg_id) {
-      this.initMessageReply(draft.reply_to_msg_id);
+    if(draftReplyToMsgId) {
+      this.initMessageReply(draftReplyToMsgId);
     }
 
-    this.setInputValue(wrappedDraft, fromUpdate, fromUpdate);
+    this.setInputValue(wrappedDraft, fromUpdate, fromUpdate, draft);
     return true;
   }
 
@@ -2128,51 +2181,7 @@ export default class ChatInput {
 
     maybeClearUndoHistory(this.messageInput);
 
-    const urlEntities: Array<MessageEntity.messageEntityUrl | MessageEntity.messageEntityTextUrl> = (!this.editMessage?.media || this.editMessage.media._ === 'messageMediaWebPage') && entities.filter((e) => e._ === 'messageEntityUrl' || e._ === 'messageEntityTextUrl') as any;
-    if(urlEntities.length) {
-      for(const entity of urlEntities) {
-        let url: string;
-        if(entity._ === 'messageEntityTextUrl') {
-          url = entity.url;
-        } else {
-          url = richValue.slice(entity.offset, entity.offset + entity.length);
-
-          if(!(url.includes('http://') || url.includes('https://'))) {
-            continue;
-          }
-        }
-
-        if(this.lastUrl !== url) {
-          this.lastUrl = url;
-          const promise = this.getWebPagePromise = Promise.all([
-            this.managers.appWebPagesManager.getWebPage(url),
-            this.chat.canSend('embed_links')
-          ]).then(([webpage, canEmbedLinks]) => {
-            if(this.getWebPagePromise === promise) this.getWebPagePromise = undefined;
-            if(this.lastUrl !== url) return;
-            if(webpage?._  === 'webPage' && canEmbedLinks) {
-              this.setTopInfo('webpage', () => {}, webpage.site_name || webpage.title || 'Webpage', webpage.description || webpage.url || '');
-              delete this.noWebPage;
-              this.willSendWebPage = webpage;
-            } else if(this.willSendWebPage) {
-              this.onHelperCancel();
-            }
-          });
-        }
-
-        break;
-      }
-    } else if(this.lastUrl) {
-      this.lastUrl = '';
-      delete this.noWebPage;
-      this.willSendWebPage = null;
-
-      if(this.helperType) {
-        this.helperFunc();
-      } else {
-        this.clearHelper();
-      }
-    }
+    this.processWebPage(richValue, entities);
 
     const isEmpty = !richValue.trim();
     if(isEmpty) {
@@ -2217,6 +2226,109 @@ export default class ChatInput {
 
     this.updateSendBtn();
   };
+
+  private processWebPage(
+    richValue: string,
+    entities: MessageEntity[],
+    message: Message.message | DraftMessage.draftMessage = this.processingDraftMessage || this.editMessage
+  ) {
+    const messageMedia = message?.media;
+    const invertMedia = message?.pFlags?.invert_media;
+    const webPageUrl = messageMedia?._ === 'inputMediaWebPage' ?
+      messageMedia.url :
+      ((messageMedia as MessageMedia.messageMediaWebPage)?.webpage as WebPage.webPage)?.url;
+    const urlEntities: Array<MessageEntity.messageEntityUrl | MessageEntity.messageEntityTextUrl> =
+      (!messageMedia || webPageUrl) &&
+      entities.filter((e) => e._ === 'messageEntityUrl' || e._ === 'messageEntityTextUrl') as any;
+    if(!urlEntities?.length) {
+      if(this.lastUrl) {
+        this.lastUrl = '';
+        delete this.noWebPage;
+        this.willSendWebPage = null;
+
+        if(this.helperType) {
+          this.helperFunc();
+        } else {
+          this.clearHelper();
+        }
+      }
+
+      return;
+    }
+
+    let foundUrl = webPageUrl;
+    if(!foundUrl) for(const entity of urlEntities) {
+      let url: string;
+      if(entity._ === 'messageEntityTextUrl') {
+        url = entity.url;
+      } else {
+        url = richValue.slice(entity.offset, entity.offset + entity.length);
+
+        if(!(url.includes('http://') || url.includes('https://'))) {
+          continue;
+        }
+      }
+
+      foundUrl = url;
+      break;
+    }
+
+    if(this.lastUrl === foundUrl) {
+      return;
+    }
+
+    if(!foundUrl) {
+      if(this.willSendWebPage) {
+        this.onHelperCancel();
+      }
+
+      return;
+    }
+
+    this.lastUrl = foundUrl;
+    const oldWebPage = webPageUrl;
+    const promise = this.getWebPagePromise = Promise.all([
+      this.managers.appWebPagesManager.getWebPage(foundUrl),
+      this.chat.canSend('embed_links')
+    ]).then(([webPage, canEmbedLinks]) => {
+      if(this.getWebPagePromise === promise) this.getWebPagePromise = undefined;
+      if(this.lastUrl !== foundUrl) return;
+      if(webPage?._  === 'webPage' && canEmbedLinks) {
+        const newReply = this.setTopInfo({
+          type: 'webpage',
+          callerFunc: () => {},
+          title: webPage.site_name || webPage.title || 'Webpage',
+          subtitle: webPage.description || webPage.url || ''
+        });
+
+        this.webPageHover?.attachButtonListener(newReply, this.listenerSetter);
+        delete this.noWebPage;
+        this.willSendWebPage = webPage;
+
+        if(this.webPageElements) {
+          const positionElement = oldWebPage && invertMedia ? this.webPageElements.above : this.webPageElements.below;
+          positionElement.checkboxField.checked = true;
+
+          const sizeElement = oldWebPage && (messageMedia as MessageMedia.messageMediaWebPage).pFlags.force_small_media ? this.webPageElements.smaller : this.webPageElements.larger;
+          sizeElement.checkboxField.checked = true;
+
+          const sizeGroupContainer = sizeElement.element.parentElement;
+          sizeGroupContainer.classList.toggle('hide', !webPage.pFlags.has_large_media);
+        }
+
+        this.webPageOptions = {
+          optional: true,
+          ...(oldWebPage ? {
+            invertMedia: oldWebPage && invertMedia || undefined,
+            smallMedia: oldWebPage && (messageMedia as MessageMedia.messageMediaWebPage).pFlags.force_small_media || undefined,
+            largeMedia: oldWebPage && (messageMedia as MessageMedia.messageMediaWebPage).pFlags.force_large_media || undefined
+          } : {})
+        };
+      } else if(this.willSendWebPage) {
+        this.onHelperCancel();
+      }
+    });
+  }
 
   public insertAtCaret(insertText: string, insertEntity?: MessageEntity, isHelper = true) {
     if(!this.canSendPlain()) {
@@ -2694,7 +2806,32 @@ export default class ChatInput {
         delete draft.pFlags.no_webpage;
       }
 
-      const originalDraft = {...message, _: 'draftMessage'} as DraftMessage.draftMessage;
+      const replyTo = message.reply_to?._ === 'messageReplyHeader' ? message.reply_to : undefined;
+      const messageMedia = message?.media?._ === 'messageMediaWebPage' ? message.media : undefined;
+      const hasLargeMedia = (messageMedia?.webpage as WebPage.webPage)?.pFlags?.has_large_media;
+      const originalDraft: DraftMessage.draftMessage = {
+        _: 'draftMessage',
+        date: draft?.date,
+        message: message.message,
+        entities: message.entities,
+        pFlags: {
+          invert_media: message.pFlags.invert_media
+        },
+        media: messageMedia && {
+          _: 'inputMediaWebPage',
+          pFlags: {
+            force_large_media: hasLargeMedia && messageMedia.pFlags.force_large_media || undefined,
+            force_small_media: hasLargeMedia && messageMedia.pFlags.force_small_media || undefined,
+            optional: true
+          },
+          url: (messageMedia.webpage as WebPage.webPage).url
+        },
+        reply_to: replyTo && {
+          _: 'inputReplyToMessage',
+          reply_to_msg_id: replyTo.reply_to_msg_id
+        }
+      };
+
       if(originalDraft.entities?.length || draft?.entities?.length) {
         const canPassEntitiesTypes = new Set(Object.values(MARKDOWN_ENTITIES));
         canPassEntitiesTypes.add('messageEntityCustomEmoji');
@@ -2745,15 +2882,25 @@ export default class ChatInput {
     cancelEvent(e);
 
     if(!findUpClassName(e.target, 'reply')) return;
+    let possibleBtnMenuContainer: HTMLElement;
     if(this.helperType === 'forward') {
       const {forwardElements} = this;
-      if(forwardElements && IS_TOUCH_SUPPORTED && !forwardElements.container.classList.contains('active')) {
-        contextMenuController.openBtnMenu(forwardElements.container);
+      if(forwardElements && IS_TOUCH_SUPPORTED) {
+        possibleBtnMenuContainer = forwardElements.container;
       }
     } else if(this.helperType === 'reply') {
       this.chat.setMessageId(this.replyToMsgId);
     } else if(this.helperType === 'edit') {
       this.chat.setMessageId(this.editMsgId);
+    } else if(!this.helperType) {
+      const {webPageElements} = this;
+      if(webPageElements) {
+        possibleBtnMenuContainer = webPageElements.container;
+      }
+    }
+
+    if(possibleBtnMenuContainer && !possibleBtnMenuContainer.classList.contains('active')) {
+      contextMenuController.openBtnMenu(possibleBtnMenuContainer);
     }
   };
 
@@ -2902,10 +3049,16 @@ export default class ChatInput {
     if(editMsgId) {
       const message = this.editMessage;
       if(value.trim() || message.media) {
-        this.managers.appMessagesManager.editMessage(message, value, {
-          entities,
-          noWebPage: noWebPage
-        });
+        this.managers.appMessagesManager.editMessage(
+          message,
+          value,
+          {
+            entities,
+            noWebPage,
+            webPage: this.getWebPagePromise ? undefined : this.willSendWebPage,
+            webPageOptions: this.webPageOptions
+          }
+        );
 
         this.onMessageSent();
       } else {
@@ -2917,8 +3070,9 @@ export default class ChatInput {
       this.managers.appMessagesManager.sendText(peerId, value, {
         entities,
         ...sendingParams,
-        noWebPage: noWebPage,
+        noWebPage,
         webPage: this.getWebPagePromise ? undefined : this.willSendWebPage,
+        webPageOptions: this.webPageOptions,
         clearDraft: true
       });
 
@@ -2935,11 +3089,16 @@ export default class ChatInput {
       const forwarding = copy(this.forwarding);
       // setTimeout(() => {
       for(const fromPeerId in forwarding) {
-        this.managers.appMessagesManager.forwardMessages(peerId, fromPeerId.toPeerId(), forwarding[fromPeerId], {
-          ...sendingParams,
-          dropAuthor: this.forwardElements && this.forwardElements.hideSender.checkboxField.checked,
-          dropCaptions: this.isDroppingCaptions()
-        }).catch(async(err: ApiError) => {
+        this.managers.appMessagesManager.forwardMessages(
+          peerId,
+          fromPeerId.toPeerId(),
+          forwarding[fromPeerId],
+          {
+            ...sendingParams,
+            dropAuthor: this.forwardElements && this.forwardElements.hideSender.checkboxField.checked,
+            dropCaptions: this.isDroppingCaptions()
+          }
+        ).catch(async(err: ApiError) => {
           if(err.type === 'VOICE_MESSAGES_FORBIDDEN') {
             toastNew({
               langPackKey: 'Chat.SendVoice.PrivacyError',
@@ -3045,7 +3204,14 @@ export default class ChatInput {
       }
 
       const replyFragment = await wrapMessageForReply({message, usingMids: [message.mid]});
-      this.setTopInfo('edit', f, i18n('AccDescrEditing'), replyFragment, input, message);
+      this.setTopInfo({
+        type: 'edit',
+        callerFunc: f,
+        title: i18n('AccDescrEditing'),
+        subtitle: replyFragment,
+        input,
+        message
+      });
 
       this.editMsgId = mid;
       this.editMessage = message;
@@ -3150,7 +3316,12 @@ export default class ChatInput {
         );
       }
 
-      const newReply = this.setTopInfo('forward', f, title, subtitleFragment);
+      const newReply = this.setTopInfo({
+        type: 'forward',
+        callerFunc: f,
+        title,
+        subtitle: subtitleFragment
+      });
 
       forwardElements.modifyArgs.forEach((b, idx) => {
         const text = b.textElement;
@@ -3159,10 +3330,7 @@ export default class ChatInput {
         intl.update();
       });
 
-      if(this.forwardHover) {
-        this.forwardHover.attachButtonListener(newReply, this.listenerSetter);
-      }
-
+      this.forwardHover?.attachButtonListener(newReply, this.listenerSetter);
       this.forwarding = fromPeerIdsMids;
     };
 
@@ -3193,13 +3361,22 @@ export default class ChatInput {
           }
         });
       } else {
+        const peerId = message.fromId;
         peerTitleEl = new PeerTitle({
           peerId: message.fromId,
-          dialog: false
+          dialog: false,
+          fromName: !peerId ? (message as Message.message).fwd_from?.from_name : undefined
         }).element;
       }
 
-      this.setTopInfo('reply', f, peerTitleEl, (message as Message.message)?.message || undefined, undefined, message);
+      this.setTopInfo({
+        type: 'reply',
+        callerFunc: f,
+        title: peerTitleEl,
+        subtitle: (message as Message.message)?.message || undefined,
+        message,
+        setColorPeerId: message.fromId
+      });
       this.setReplyToMsgId(mid)
     };
     f();
@@ -3254,27 +3431,40 @@ export default class ChatInput {
     });
   }
 
-  public setInputValue(value: Parameters<InputFieldAnimated['setValueSilently']>[0], clear = true, focus = true) {
-    if(!value) value = '';
+  public setInputValue(
+    value: Parameters<InputFieldAnimated['setValueSilently']>[0],
+    clear = true,
+    focus = true,
+    draftMessage?: DraftMessage.draftMessage
+  ) {
+    value ||= '';
 
     if(clear) this.clearInput(false, false, value as string);
     else this.messageInputField.setValueSilently(value);
 
     fastRaf(() => {
       focus && placeCaretAtEnd(this.messageInput);
+      this.processingDraftMessage = draftMessage;
       this.onMessageInput();
+      this.processingDraftMessage = undefined;
       this.messageInput.scrollTop = this.messageInput.scrollHeight;
     });
   }
 
-  public setTopInfo(
+  public setTopInfo({
+    type,
+    callerFunc,
+    title,
+    subtitle,
+    setColorPeerId,
+    input,
+    message
+  }: {
     type: ChatInputHelperType,
     callerFunc: () => void,
-    title: Parameters<typeof wrapReply>[0]['title'],
-    subtitle: Parameters<typeof wrapReply>[0]['subtitle'],
     input?: Parameters<InputFieldAnimated['setValueSilently']>[0],
     message?: any
-  ) {
+  } & Pick<Parameters<typeof wrapReply>[0], 'title' | 'subtitle' | 'setColorPeerId'>) {
     if(this.willSendWebPage && type === 'reply') {
       return;
     }
@@ -3293,29 +3483,22 @@ export default class ChatInput {
     const {container} = wrapReply({
       title,
       subtitle,
+      setColorPeerId,
       animationGroup: this.chat.animationGroup,
       message,
       textColor: 'secondary-text-color'
     });
+
     if(haveReply) {
       oldReply.replaceWith(container);
     } else {
-      replyParent.insertBefore(container, replyParent.lastElementChild);
-    }
-
-    if(type === 'webpage') {
-      container.style.cursor = 'default';
+      replyParent.lastElementChild.before(container);
     }
 
     if(!this.chat.container.classList.contains('is-helper-active')) {
       this.chat.container.classList.add('is-helper-active');
       this.t();
     }
-
-    /* const scroll = appImManager.scrollable;
-    if(scroll.isScrolledDown && !scroll.scrollLocked && !appImManager.messagesQueuePromise && !appImManager.setPeerPromise) {
-      scroll.scrollTo(scroll.scrollHeight, 'top', true, true, 200);
-    } */
 
     if(!IS_MOBILE) {
       appNavigationController.pushItem({

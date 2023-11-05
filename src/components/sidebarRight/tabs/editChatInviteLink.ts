@@ -22,108 +22,13 @@ import {InputRightNumber} from '../../popups/payment';
 import PopupSchedule from '../../popups/schedule';
 import {setButtonLoader} from '../../putPreloader';
 import RangeSelector from '../../rangeSelector';
+import RangeStepsSelector from '../../rangeStepsSelector';
 import Row from '../../row';
 import SettingSection from '../../settingSection';
 import SliderSuperTab, {SliderSuperTabEventable} from '../../sliderTab';
 import {wrapFormattedDuration} from '../../wrappers/wrapDuration';
 
 type ChatInvite = ExportedChatInvite.chatInviteExported;
-
-type RangeStep<T extends any = any> = [HTMLElement | string, T];
-class RangeStepsSelector<T extends any = any> {
-  public container: HTMLElement;
-  private steps: RangeStep<T>[];
-  private range: RangeSelector;
-  private optionsElements: {container: HTMLElement}[];
-
-  public middleware: Middleware;
-  public onValue: (value: T) => void;
-  public generateStep: (value: T) => RangeStep<T>;
-  public generateSteps: (values: T[]) => RangeStep<T>[];
-
-  constructor(options: {
-    middleware: RangeStepsSelector<T>['middleware'],
-    generateStep: RangeStepsSelector<T>['generateStep'],
-    generateSteps: RangeStepsSelector<T>['generateSteps'],
-    onValue?: RangeStepsSelector<T>['onValue']
-  }) {
-    safeAssign(this, options);
-
-    const container = this.container = document.createElement('div');
-    container.classList.add('range-setting-selector', 'range-steps-selector');
-
-    this.middleware.onClean(() => {
-      this.range.removeListeners();
-    });
-
-    const range = this.range = new RangeSelector({step: 1});
-    range.setListeners();
-    range.setHandlers({
-      onScrub: this.onIndex
-    });
-
-    container.append(range.container);
-  }
-
-  protected createOption(label: RangeStep[0], idx: number, maxIndex: number) {
-    const option = document.createElement('div');
-    option.classList.add('range-setting-selector-option');
-    const text = document.createElement('div');
-    text.classList.add('range-setting-selector-option-text');
-    text.replaceChildren(label);
-    option.append(text);
-    option.style.left = `${idx / maxIndex * 100}%`;
-
-    if(idx === 0) option.classList.add('is-first');
-    else if(idx === maxIndex) {
-      option.style.left = '';
-      option.style.right = '0';
-      option.classList.add('is-last');
-    }
-
-    return {container: option};
-  }
-
-  public setSteps(steps: RangeStep[], index?: number) {
-    if(this.optionsElements) {
-      this.optionsElements.forEach(({container}) => container.remove());
-    }
-
-    const maxIndex = steps.length - 1;
-    this.range.setMinMax(0, maxIndex);
-    this.steps = steps;
-
-    this.optionsElements = steps.map(([label], idx) => {
-      const option = this.createOption(label, idx, maxIndex);
-      this.range.container.append(option.container);
-      return option;
-    });
-
-    if(index !== undefined) {
-      this.setIndex(index);
-    }
-  }
-
-  protected onIndex = (index: number) => {
-    this.onValue?.(this.steps[index][1]);
-    this.optionsElements.forEach(({container}, idx) => {
-      container.classList.toggle('active', index >= idx);
-    });
-  };
-
-  public setIndex(index: number) {
-    this.range.setProgress(index);
-    this.onIndex(index);
-  }
-
-  public removeListeners() {
-    this.range.removeListeners();
-  }
-
-  public get value() {
-    return this.steps[this.range.value][1];
-  }
-}
 
 export function findClosestDifference(array: Array<number>, difference: number) {
   const differences = array.map((value, idx) => {

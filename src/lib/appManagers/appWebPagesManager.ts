@@ -142,8 +142,9 @@ export class AppWebPagesManager extends AppManager {
   public getWebPage(url: string) {
     return this.apiManager.invokeApiHashable({
       method: 'messages.getWebPage',
-      processResult: (webPage) => {
-        return this.saveWebPage(webPage);
+      processResult: (messagesWebPage) => {
+        this.appPeersManager.saveApiPeers(messagesWebPage);
+        return this.saveWebPage(messagesWebPage.webpage);
       },
       params: {
         url

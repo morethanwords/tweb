@@ -15,7 +15,7 @@ export default async function getChatMembersString(
   managers = rootScope.managers,
   chat?: Chat
 ) {
-  chat ??= await apiManagerProxy.getChat(chatId);
+  chat ??= apiManagerProxy.getChat(chatId);
   if(chat._ === 'chatForbidden') {
     return i18n('YouWereKicked');
   }

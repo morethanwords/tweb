@@ -899,6 +899,7 @@ export default class AppSearchSuper {
 
       webPage = {
         _: 'webPage',
+        pFlags: {},
         url,
         display_url,
         id: '',

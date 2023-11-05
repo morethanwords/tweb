@@ -18,7 +18,7 @@ import LazyLoadQueueBase from '../../components/lazyLoadQueueBase';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import tsNow from '../../helpers/tsNow';
 import {randomLong} from '../../helpers/random';
-import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, InputUser} from '../../layer';
+import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions, Document, InputFile, Reaction, ForumTopic as MTForumTopic, MessagesForumTopics, MessagesGetReplies, MessagesGetHistory, MessagesAffectedHistory, UrlAuthResult, MessagesTranscribedAudio, ReadParticipantDate, WebDocument, MessagesSearch, MessagesSearchGlobal, InputReplyTo, InputUser, MessagesSendMessage, MessagesSendMedia} from '../../layer';
 import {ArgumentTypes, InvokeApiOptions, Modify} from '../../types';
 import {logger, LogTypes} from '../logger';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
@@ -373,6 +373,8 @@ export class AppMessagesManager extends AppManager {
 
         message.media = {
           _: 'messageMediaWebPage',
+          pFlags: {},
+          ...(message.media as MessageMedia.messageMediaWebPage || {}),
           webpage: this.appWebPagesManager.getCachedWebPage(id)
         };
 
@@ -512,12 +514,15 @@ export class AppMessagesManager extends AppManager {
     return obj.deferred;
   }
 
-  public editMessage(message: any, text: string, options: Partial<{
-    noWebPage: true,
-    newMedia: any,
-    scheduleDate: number,
-    entities: MessageEntity[]
-  }> = {}): Promise<void> {
+  public editMessage(
+    message: MyMessage,
+    text: string,
+    options: Partial<{
+      newMedia: InputMedia,
+      scheduleDate: number,
+      entities: MessageEntity[]
+    }> & Partial<Pick<Parameters<AppMessagesManager['sendText']>[2], 'webPage' | 'webPageOptions' | 'noWebPage'>> = {}
+  ): Promise<void> {
     /* if(!this.canEditMessage(messageId)) {
       return Promise.reject({type: 'MESSAGE_EDIT_FORBIDDEN'});
     } */
@@ -532,32 +537,40 @@ export class AppMessagesManager extends AppManager {
     }
 
     const entities = options.entities || [];
-    if(text) {
-      text = parseMarkdown(text, entities);
+    text &&= parseMarkdown(text, entities);
+
+    let sendEntites = this.getInputEntities(entities);
+    if(!sendEntites.length) {
+      sendEntites = undefined;
     }
 
-    const schedule_date = options.scheduleDate || (message.pFlags.is_scheduled ? message.date : undefined);
+    const webPageSend = this.processMessageWebPageOptions(message as Message.message, options);
+
+    const schedule_date = options.scheduleDate || ((message as Message.message).pFlags.is_scheduled ? message.date : undefined);
     return this.apiManager.invokeApi('messages.editMessage', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       id: message.id,
       message: text,
       media: options.newMedia,
-      entities: entities.length ? this.getInputEntities(entities) : undefined,
+      entities: sendEntites,
       no_webpage: options.noWebPage,
-      schedule_date
+      schedule_date,
+      ...webPageSend
     }).then((updates) => {
       this.apiUpdatesManager.processUpdateMessage(updates);
-    }, (error) => {
+    }, (error: ApiError) => {
       this.log.error('editMessage error:', error);
 
-      if(error && error.type === 'MESSAGE_NOT_MODIFIED') {
+      if(error?.type === 'MESSAGE_NOT_MODIFIED') {
         error.handled = true;
         return;
       }
-      if(error && error.type === 'MESSAGE_EMPTY') {
+
+      if(error?.type === 'MESSAGE_EMPTY') {
         error.handled = true;
       }
-      return Promise.reject(error);
+
+      throw error;
     });
   }
 
@@ -600,21 +613,32 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public async sendText(peerId: PeerId, text: string, options: MessageSendingParams & Partial<{
-    entities: MessageEntity[],
-    viaBotId: BotId,
-    queryId: string,
-    resultId: string,
-    noWebPage: true,
-    replyMarkup: ReplyMarkup,
-    clearDraft: true,
-    webPage: WebPage,
-  }> = {}): Promise<void> {
+  public async sendText(
+    peerId: PeerId,
+    text: string,
+    options: MessageSendingParams & Partial<{
+      entities: MessageEntity[],
+      viaBotId: BotId,
+      queryId: string,
+      resultId: string,
+      noWebPage: true,
+      replyMarkup: ReplyMarkup,
+      clearDraft: true,
+      webPage: WebPage,
+      webPageOptions: Partial<{
+        largeMedia: boolean,
+        smallMedia: boolean,
+        optional: boolean,
+        invertMedia: boolean
+      }>
+    }> = {}
+  ): Promise<void> {
     if(!text.trim()) {
       return;
     }
 
     options.entities ??= [];
+    options.webPageOptions ??= {};
 
     this.checkSendOptions(options);
     if(options.threadId && !options.replyToMsgId) {
@@ -652,12 +676,7 @@ export class AppMessagesManager extends AppManager {
     const threadId = options.threadId ? getServerMessageId(options.threadId) : undefined;
     const isChannel = this.appPeersManager.isChannel(peerId);
 
-    if(options.webPage) {
-      message.media = {
-        _: 'messageMediaWebPage',
-        webpage: options.webPage
-      };
-    }
+    const webPageSend = this.processMessageWebPageOptions(message, options);
 
     const toggleError = (error?: ApiError) => {
       this.onMessagesSendError([message], error);
@@ -672,46 +691,47 @@ export class AppMessagesManager extends AppManager {
       }
 
       const sendAs = options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined
+      const inputPeer = this.appPeersManager.getInputPeerById(peerId);
+      const replyTo = options.replyTo || getInputReplyTo({replyToMsgId, threadId});
       let apiPromise: any;
       if(options.viaBotId) {
         apiPromise = this.apiManager.invokeApiAfter('messages.sendInlineBotResult', {
-          peer: this.appPeersManager.getInputPeerById(peerId),
+          peer: inputPeer,
           random_id: message.random_id,
-          reply_to: options.replyTo || getInputReplyTo({replyToMsgId, threadId}),
+          reply_to: replyTo,
           query_id: options.queryId,
           id: options.resultId,
           clear_draft: options.clearDraft,
           send_as: sendAs
         }, sentRequestOptions);
       } else {
-        apiPromise = this.apiManager.invokeApiAfter('messages.sendMessage', {
-          no_webpage: options.noWebPage,
-          peer: this.appPeersManager.getInputPeerById(peerId),
+        const commonOptions: Partial<MessagesSendMessage | MessagesSendMedia> = {
+          peer: inputPeer,
           message: text,
           random_id: message.random_id,
-          reply_to: options.replyTo || getInputReplyTo({replyToMsgId, threadId}),
+          reply_to: replyTo,
           entities: sendEntites,
           clear_draft: options.clearDraft,
           schedule_date: options.scheduleDate || undefined,
           silent: options.silent,
           send_as: sendAs,
           update_stickersets_order: options.updateStickersetOrder
-        }, sentRequestOptions);
+        };
+
+        apiPromise = this.apiManager.invokeApiAfter(
+          options.webPage ? 'messages.sendMedia' : 'messages.sendMessage',
+          {
+            ...commonOptions as any,
+            ...webPageSend
+          },
+          sentRequestOptions
+        );
       }
 
-      /* function is<T>(value: any, condition: boolean): value is T {
-        return condition;
-      } */
-
-      // this.log('sendText', message.mid);
       this.pendingAfterMsgs[peerId] = sentRequestOptions;
 
       return apiPromise.then((updates: Updates) => {
-        // this.log('sendText sent', message.mid);
-        // if(is<Updates.updateShortSentMessage>(updates, updates._ === 'updateShortSentMessage')) {
         if(updates._ === 'updateShortSentMessage') {
-          // assumeType<Updates.updateShortSentMessage>(updates);
-
           // * fix copying object with promise
           const promise = message.promise;
           delete message.promise;
@@ -754,11 +774,7 @@ export class AppMessagesManager extends AppManager {
           });
         }
 
-        // this.reloadConversation(peerId);
-
-        // setTimeout(() => {
         this.apiUpdatesManager.processUpdateMessage(updates);
-        // }, 5000);
         message.promise.resolve();
       }, (error: ApiError) => {
         toggleError(error);
@@ -815,7 +831,7 @@ export class AppMessagesManager extends AppManager {
 
     let attachType: 'document' | 'audio' | 'video' | 'voice' | 'photo', apiFileName: string;
 
-    const fileType = 'mime_type' in file ? file.mime_type : file.type;
+    const fileType = (file as Document.document).mime_type || file.type;
     const fileName = file instanceof File ? file.name : '';
     const isDocument = !(file instanceof File) && !(file instanceof Blob);
     let caption = options.caption || '';
@@ -1929,6 +1945,45 @@ export class AppMessagesManager extends AppManager {
     return fwdHeader;
   }
 
+  private processMessageWebPageOptions(
+    message: Message.message,
+    options: Parameters<AppMessagesManager['sendText']>[2]
+  ): {media: InputMedia.inputMediaWebPage, invert_media: boolean} | {no_webpage: boolean} | {} {
+    if(message._ !== 'message') {
+      return {};
+    }
+
+    if(!options.webPage) {
+      return {no_webpage: options.noWebPage};
+    }
+
+    message.media = {
+      _: 'messageMediaWebPage',
+      pFlags: {
+        force_large_media: options.webPageOptions.largeMedia || undefined,
+        force_small_media: options.webPageOptions.smallMedia || undefined
+      },
+      webpage: options.webPage
+    };
+
+    if(options.webPageOptions.invertMedia) {
+      message.pFlags.invert_media = true;
+    }
+
+    return {
+      media: {
+        _: 'inputMediaWebPage',
+        url: (options.webPage as WebPage.webPage).url,
+        pFlags: {
+          force_large_media: options.webPageOptions.largeMedia || undefined,
+          force_small_media: options.webPageOptions.smallMedia || undefined,
+          optional: options.webPageOptions.optional || undefined
+        }
+      },
+      invert_media: options.webPageOptions.invertMedia
+    };
+  }
+
   public generateFakeAvatarMessage(peerId: PeerId, photo: Photo) {
     const maxId = Number.MAX_SAFE_INTEGER;
     const message: Message.messageService = {
@@ -2370,6 +2425,10 @@ export class AppMessagesManager extends AppManager {
         // 'reply_markup'
       ];
 
+      const flags: Array<keyof Message.message['pFlags']> = [
+        'invert_media'
+      ];
+
       if(!options.dropAuthor) {
         message.fwd_from = this.generateForwardHeader(peerId, originalMessage);
         keys.push('views', 'forwards');
@@ -2401,6 +2460,11 @@ export class AppMessagesManager extends AppManager {
       keys.forEach((key) => {
         // @ts-ignore
         message[key] = copy(originalMessage[key]);
+      });
+
+      flags.forEach((key) => {
+        // @ts-ignore
+        message.pFlags[key] = originalMessage.pFlags[key];
       });
 
       const document = (message.media as MessageMedia.messageMediaDocument)?.document as MyDocument;

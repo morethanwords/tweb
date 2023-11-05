@@ -127,7 +127,7 @@ const ButtonIconTsx = (props: {icon?: Icon, noRipple?: boolean} & JSX.HTMLAttrib
   );
 };
 
-const IconTsx = (props: {icon: Icon} & JSX.HTMLAttributes<HTMLSpanElement>) => {
+export const IconTsx = (props: {icon: Icon} & JSX.HTMLAttributes<HTMLSpanElement>) => {
   const [, rest] = splitProps(props, ['icon']);
   return (
     <span {...rest} class={classNames('tgico', props.class)}>

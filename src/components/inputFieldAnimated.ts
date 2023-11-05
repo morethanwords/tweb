@@ -67,6 +67,8 @@ export default class InputFieldAnimated extends InputField {
     if(setHeight) {
       this.onChangeHeight?.(newHeight);
       this.input.style.height = newHeight ? newHeight + 'px' : '';
+      (this.input as any).oldHeight = (this.input as any).newHeight;
+      (this.input as any).newHeight = newHeight;
     }
 
     const className = 'is-changing-height';
@@ -77,6 +79,7 @@ export default class InputFieldAnimated extends InputField {
       duration: transitionDuration,
       onTransitionEnd: () => {
         this.input.classList.remove(className);
+        (this.input as any).oldHeight = (this.input as any).newHeight;
       }
     });
   }

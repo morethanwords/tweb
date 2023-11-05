@@ -24,6 +24,7 @@ import wrapTelegramUrlToAnchor from './wrapTelegramUrlToAnchor';
 import {IS_FIREFOX} from '../../environment/userAgent';
 import CustomEmojiElement, {CustomEmojiElements} from '../customEmoji/element';
 import {CustomEmojiRendererElementOptions, CustomEmojiRendererElement} from '../customEmoji/renderer';
+import {setDirection} from '../../helpers/dom/setInnerHTML';
 
 export type WrapRichTextOptions = Partial<{
   entities: MessageEntity[],
@@ -57,6 +58,7 @@ export type WrapRichTextOptions = Partial<{
   voodoo?: boolean,
   customEmojis?: Map<DocId, CustomEmojiElements>,
   customWraps?: Set<HTMLElement>,
+  ignoreNextIndex?: number,
 }> & CustomEmojiRendererElementOptions;
 
 function createMarkupFormatting(formatting: string) {
@@ -216,7 +218,23 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
 
       case 'messageEntityPre':
       case 'messageEntityCode': {
-        if(options.wrappingDraft) {
+        if((entity as MessageEntity.messageEntityPre).language && !options.noTextFormat && false) {
+          (window as any).Prism = window.Prism || {};
+          (window as any).Prism.manual = true;
+
+          const container = document.createElement('pre');
+          element = document.createElement('code');
+          element.textContent = partText;
+          usedText = true;
+          container.append(element);
+          fragment.append(container);
+
+          import('prismjs').then((Prism) => {
+            const html = Prism.highlight(fullEntityText, Prism.languages.javascript, 'javascript');
+            console.log(Prism, html);
+            element.innerHTML = html;
+          });
+        } else if(options.wrappingDraft) {
           element = createMarkupFormatting('monospace');
           // element = document.createElement('span');
           // element.style.fontFamily = 'var(--font-monospace)';
@@ -390,7 +408,10 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
       }
 
       case 'messageEntityLinebreak': {
-        if(options.wrappingDraft && IS_FIREFOX) {
+        // slice linebreaks before and after quote
+        if(options.ignoreNextIndex === nasty.i || (options.wrappingDraft && nextEntity?._ === 'messageEntityBlockquote' && nextEntity.offset === endOffset)) {
+          usedText = true;
+        } else if(options.wrappingDraft && IS_FIREFOX) {
           element = document.createElement('br');
           usedText = true;
         }
@@ -573,6 +594,45 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           element.classList.add('is-disabled');
         }
 
+        break;
+      }
+
+      case 'messageEntityBlockquote': {
+        if(options.noTextFormat) {
+          break;
+        }
+
+        if(options.wrappingDraft) {
+          element = createMarkupFormatting('quote');
+        } else {
+          element = document.createElement('blockquote');
+          element.classList.add('quote');
+        }
+
+        element.classList.add('quote-like', 'quote-like-border', 'quote-like-icon');
+        setDirection(element);
+
+        let i = nasty.i, foundNextLinebreakIndex = -1;
+        if(options.wrappingDraft) for(; i < length; ++i) {
+          const n = entities[i];
+          if(n._ === 'messageEntityLinebreak' && n.offset >= endOffset) {
+            foundNextLinebreakIndex = i;
+            break;
+          }
+        }
+
+        if(foundNextLinebreakIndex !== -1) {
+          options.ignoreNextIndex = foundNextLinebreakIndex;
+        }
+
+        // if(!options.wrappingDraft) {
+        //   const i = Icon('quote', 'quote-icon');
+        //   element.textContent = partText;
+        //   usedText = true;
+        //   element.prepend(i);
+        // } else {
+        //   element.classList.add('quote-use-before');
+        // }
         break;
       }
     }
