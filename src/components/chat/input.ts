@@ -3374,7 +3374,8 @@ export default class ChatInput {
         callerFunc: f,
         title: peerTitleEl,
         subtitle: (message as Message.message)?.message || undefined,
-        message
+        message,
+        setColorPeerId: message.fromId
       });
       this.setReplyToMsgId(mid)
     };
