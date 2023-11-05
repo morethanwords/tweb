@@ -457,6 +457,14 @@ export default class ChatContextMenu {
       onClick: this.onCopyClick,
       verify: () => !this.noForwards && !!(this.message as Message.message).message && this.isTextSelected
     }, {
+      icon: 'message_quote',
+      text: 'Quote',
+      onClick: this.onQuoteClick,
+      verify: async() => await this.chat.canSend() &&
+        !this.message.pFlags.is_outgoing &&
+        !!this.chat.input.messageInput && !!(this.message as Message.message).message && this.isTextSelected &&
+        false
+    }, {
       icon: 'copy',
       text: 'Message.Context.Selection.Copy',
       onClick: this.onCopyClick,
@@ -1141,6 +1149,12 @@ export default class ChatContextMenu {
       this.isTargetAGroupedItem ? [mid] : await this.chat.getMidsByMid(mid),
       this.chat.type
     );
+  };
+
+  private onQuoteClick = () => {
+    const text = this.selectedMessagesText;
+    console.log(text);
+    // this.chat.input.insertAtCaret();
   };
 
   public static onDownloadClick(messages: MyMessage | MyMessage[], noForwards?: boolean): DownloadBlob | DownloadBlob[] {

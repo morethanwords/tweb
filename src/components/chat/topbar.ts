@@ -328,7 +328,7 @@ export default class ChatTopbar {
       }
     }
 
-    const chat = await apiManagerProxy.getChat(chatId);
+    const chat = apiManagerProxy.getChat(chatId);
     return (chat as MTChat.chat).pFlags?.call_active || hasRights(chat, 'manage_call');
   };
 
@@ -657,9 +657,9 @@ export default class ChatTopbar {
       // this.btnBack.classList.add(size ? 'tgico-previous' : 'tgico-left');
     });
 
-    this.listenerSetter.add(rootScope)('chat_update', async(chatId) => {
+    this.listenerSetter.add(rootScope)('chat_update', (chatId) => {
       if(this.peerId === chatId.toPeerId(true)) {
-        const chat = await apiManagerProxy.getChat(chatId) as Channel/*  | Chat */;
+        const chat = apiManagerProxy.getChat(chatId) as Channel/*  | Chat */;
 
         this.btnJoin.classList.toggle('hide', !(chat as Channel)?.pFlags?.left);
         this.setUtilsWidth();

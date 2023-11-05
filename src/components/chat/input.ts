@@ -2294,12 +2294,12 @@ export default class ChatInput {
       if(this.getWebPagePromise === promise) this.getWebPagePromise = undefined;
       if(this.lastUrl !== foundUrl) return;
       if(webPage?._  === 'webPage' && canEmbedLinks) {
-        const newReply = this.setTopInfo(
-          'webpage',
-          () => {},
-          webPage.site_name || webPage.title || 'Webpage',
-          webPage.description || webPage.url || ''
-        );
+        const newReply = this.setTopInfo({
+          type: 'webpage',
+          callerFunc: () => {},
+          title: webPage.site_name || webPage.title || 'Webpage',
+          subtitle: webPage.description || webPage.url || ''
+        });
 
         this.webPageHover?.attachButtonListener(newReply, this.listenerSetter);
         delete this.noWebPage;
@@ -3204,7 +3204,14 @@ export default class ChatInput {
       }
 
       const replyFragment = await wrapMessageForReply({message, usingMids: [message.mid]});
-      this.setTopInfo('edit', f, i18n('AccDescrEditing'), replyFragment, input, message);
+      this.setTopInfo({
+        type: 'edit',
+        callerFunc: f,
+        title: i18n('AccDescrEditing'),
+        subtitle: replyFragment,
+        input,
+        message
+      });
 
       this.editMsgId = mid;
       this.editMessage = message;
@@ -3309,7 +3316,12 @@ export default class ChatInput {
         );
       }
 
-      const newReply = this.setTopInfo('forward', f, title, subtitleFragment);
+      const newReply = this.setTopInfo({
+        type: 'forward',
+        callerFunc: f,
+        title,
+        subtitle: subtitleFragment
+      });
 
       forwardElements.modifyArgs.forEach((b, idx) => {
         const text = b.textElement;
@@ -3349,13 +3361,21 @@ export default class ChatInput {
           }
         });
       } else {
+        const peerId = message.fromId;
         peerTitleEl = new PeerTitle({
           peerId: message.fromId,
-          dialog: false
+          dialog: false,
+          fromName: !peerId ? (message as Message.message).fwd_from?.from_name : undefined
         }).element;
       }
 
-      this.setTopInfo('reply', f, peerTitleEl, (message as Message.message)?.message || undefined, undefined, message);
+      this.setTopInfo({
+        type: 'reply',
+        callerFunc: f,
+        title: peerTitleEl,
+        subtitle: (message as Message.message)?.message || undefined,
+        message
+      });
       this.setReplyToMsgId(mid)
     };
     f();
@@ -3430,14 +3450,20 @@ export default class ChatInput {
     });
   }
 
-  public setTopInfo(
+  public setTopInfo({
+    type,
+    callerFunc,
+    title,
+    subtitle,
+    setColorPeerId,
+    input,
+    message
+  }: {
     type: ChatInputHelperType,
     callerFunc: () => void,
-    title: Parameters<typeof wrapReply>[0]['title'],
-    subtitle: Parameters<typeof wrapReply>[0]['subtitle'],
     input?: Parameters<InputFieldAnimated['setValueSilently']>[0],
     message?: any
-  ) {
+  } & Pick<Parameters<typeof wrapReply>[0], 'title' | 'subtitle' | 'setColorPeerId'>) {
     if(this.willSendWebPage && type === 'reply') {
       return;
     }
@@ -3456,6 +3482,7 @@ export default class ChatInput {
     const {container} = wrapReply({
       title,
       subtitle,
+      setColorPeerId,
       animationGroup: this.chat.animationGroup,
       message,
       textColor: 'secondary-text-color'

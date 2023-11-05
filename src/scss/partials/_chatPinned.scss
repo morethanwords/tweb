@@ -239,6 +239,13 @@
     }
   }
 
+  &-background-canvas {
+    position: absolute;
+    top: -6px;
+    bottom: -6px;
+    right: 9px;
+  }
+
   &.quote-like-icon &-title {
     padding-inline-end: .875rem;
   }

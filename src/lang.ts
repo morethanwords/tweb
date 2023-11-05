@@ -349,6 +349,7 @@ const lang = {
   'LargerMedia': 'Show Larger Media',
   'SmallerMedia': 'Show Smaller Media',
   'WebPage.RemovePreview': 'Remove Link Preview',
+  'Quote': 'Quote',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',

@@ -115,7 +115,7 @@ import focusInput from '../../helpers/dom/focusInput';
 import safePlay from '../../helpers/dom/safePlay';
 import {RequestWebViewOptions} from './appAttachMenuBotsManager';
 import PopupWebApp from '../../components/popups/webApp';
-import {setPeerColors} from './utils/peers/getPeerColorById';
+import {getPeerColorIndexByPeer, getPeerColorsByPeer, setPeerColors} from './utils/peers/getPeerColorById';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -752,7 +752,7 @@ export class AppImManager extends EventListenerBase<{
       if(options.fromSideMenu && attachMenuBot?.pFlags?.side_menu_disclaimer_needed) {
         needDisclaimer = true;
       } else {
-        const user = await apiManagerProxy.getUser(options.botId);
+        const user = apiManagerProxy.getUser(options.botId);
         needDisclaimer = user.pFlags.bot_attach_menu && attachMenuBot?.pFlags?.inactive;
       }
 
@@ -949,7 +949,7 @@ export class AppImManager extends EventListenerBase<{
 
   private handlePeerColors() {
     rootScope.addEventListener('app_config', async(appConfig) => {
-      const user = await apiManagerProxy.getUser(rootScope.myId.toUserId());
+      const user = apiManagerProxy.getUser(rootScope.myId.toUserId());
       setPeerColors(appConfig, user);
     });
   }
@@ -2430,6 +2430,34 @@ export class AppImManager extends EventListenerBase<{
     }).then(() => {
       return this.managers.appMessagesManager.sendContact(peerId, rootScope.myId);
     });
+  }
+
+  public setPeerColorToElement(
+    peerId: PeerId,
+    element: HTMLElement,
+    messageHighlightning?: boolean,
+    colorAsOut?: boolean
+  ) {
+    const peer = apiManagerProxy.getPeer(peerId);
+    let peerColorRgbValue: string, peerBorderBackgroundValue: string;
+    if(messageHighlightning || colorAsOut) {
+      const colors = getPeerColorsByPeer(peer);
+      const length = colors.length;
+      const property = messageHighlightning ? 'message-empty' : 'message-out';
+      peerColorRgbValue = `var(--${property}-primary-color-rgb)`;
+      peerBorderBackgroundValue = `var(--${property}-peer-${length}-border-background)`;
+    } else {
+      const colorIndex = getPeerColorIndexByPeer(peer);
+      if(colorIndex === -1) {
+        return;
+      }
+
+      peerColorRgbValue = `var(--peer-${colorIndex}-color-rgb)`;
+      peerBorderBackgroundValue = `var(--peer-${colorIndex}-border-background)`;
+    }
+
+    element.style.setProperty('--peer-color-rgb', peerColorRgbValue);
+    element.style.setProperty('--peer-border-background', peerBorderBackgroundValue);
   }
 
   public onEmojiStickerClick = async({event, container, managers, peerId, middleware}: {

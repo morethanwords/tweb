@@ -850,7 +850,9 @@ export default class ChatBubbles {
             message,
             middleware: bubble.middlewareHelper.get(),
             lazyLoadQueue: this.lazyLoadQueue,
-            needUpdate: this.needUpdate
+            needUpdate: this.needUpdate,
+            isStandaloneMedia: bubble.classList.contains('just-media'),
+            isOut: bubble.classList.contains('is-out')
           });
 
           if(!originalMessage) {
@@ -1245,8 +1247,7 @@ export default class ChatBubbles {
       }
 
       const middleware = this.getMiddleware();
-      const chat = await apiManagerProxy.getChat(chatId);
-      if(!middleware()) return;
+      const chat = apiManagerProxy.getChat(chatId);
       const hadRights = this.chatInner.classList.contains('has-rights');
       const hadPlainRights = this.chat.input.canSendPlain();
       const [hasRights, hasPlainRights, canEmbedLinks] = await Promise.all([
@@ -6079,17 +6080,8 @@ export default class ChatBubbles {
 
     let savedFrom = '';
 
-    if(isStandaloneMedia) {
-      const peer = await apiManagerProxy.getPeer(message.fromId);
-      const colors = getPeerColorsByPeer(peer);
-      const length = colors.length;
-      bubble.style.setProperty('--peer-color-rgb', `var(--message-empty-primary-color-rgb)`);
-      bubble.style.setProperty('--peer-border-background', `var(--message-empty-peer-${length}-border-background)`);
-    } else if(!isOut) {
-      const peer = await apiManagerProxy.getPeer(message.fromId);
-      const colorIndex = getPeerColorIndexByPeer(peer);
-      bubble.style.setProperty('--peer-color-rgb', `var(--peer-${colorIndex}-color-rgb)`);
-      bubble.style.setProperty('--peer-border-background', `var(--peer-${colorIndex}-border-background)`);
+    if(isStandaloneMedia || !isOut) {
+      this.chat.appImManager.setPeerColorToElement(message.fromId, bubble, isStandaloneMedia);
     }
 
     const isSponsored = (message as Message.message).pFlags.sponsored;
@@ -6186,7 +6178,9 @@ export default class ChatBubbles {
           },
           middleware,
           lazyLoadQueue: this.lazyLoadQueue,
-          needUpdate: this.needUpdate
+          needUpdate: this.needUpdate,
+          isStandaloneMedia,
+          isOut
         });
       }
 
@@ -6226,7 +6220,7 @@ export default class ChatBubbles {
           nameDiv.append(title);
 
           if(!noColor) {
-            const peer = await apiManagerProxy.getPeer(peerIdForColor);
+            const peer = apiManagerProxy.getPeer(peerIdForColor);
             const pFlags = (peer as User.user)?.pFlags;
             if(pFlags && (pFlags.scam || pFlags.fake)) {
               nameDiv.append(generateFakeIcon(pFlags.scam));

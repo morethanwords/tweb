@@ -166,7 +166,7 @@ export namespace MessageRender {
     return isFooter;
   };
 
-  export const setReply = async({chat, bubble, bubbleContainer, message, appendCallback, middleware, lazyLoadQueue, needUpdate}: {
+  export const setReply = async({chat, bubble, bubbleContainer, message, appendCallback, middleware, lazyLoadQueue, needUpdate, isStandaloneMedia, isOut}: {
     chat: Chat,
     bubble: HTMLElement,
     bubbleContainer?: HTMLElement,
@@ -174,7 +174,9 @@ export namespace MessageRender {
     appendCallback?: (container: HTMLElement) => void,
     middleware: Middleware,
     lazyLoadQueue: LazyLoadQueue,
-    needUpdate: ChatBubbles['needUpdate']
+    needUpdate: ChatBubbles['needUpdate'],
+    isStandaloneMedia: boolean,
+    isOut: boolean
   }) => {
     const isReplacing = !bubbleContainer;
     if(isReplacing) {
@@ -223,7 +225,7 @@ export namespace MessageRender {
       // from different peer
       if(replyTo.reply_from) {
         originalPeerTitle = new PeerTitle({
-          peerId: getPeerId(replyTo.reply_from?.from_id || replyTo.reply_to_peer_id),
+          peerId: titlePeerId = getPeerId(replyTo.reply_from?.from_id || replyTo.reply_to_peer_id),
           dialog: false,
           onlyFirstName: false,
           plainText: false
@@ -277,12 +279,14 @@ export namespace MessageRender {
       message: originalMessage,
       isStoryExpired,
       storyItem: originalStory?.cached && await originalStory.result,
-      setColorPeerId: chat.isAnyGroup ? titlePeerId : undefined,
+      setColorPeerId: titlePeerId,
       textColor: 'primary-text-color',
       isQuote: !isStoryReply ? replyTo.pFlags.quote : undefined,
       middleware,
       lazyLoadQueue,
-      replyHeader: replyTo
+      replyHeader: replyTo,
+      useHighlightningColor: isStandaloneMedia,
+      colorAsOut: isOut
     });
 
     await fillPromise;

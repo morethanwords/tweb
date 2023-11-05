@@ -140,12 +140,18 @@ export type SendMessageEmojiInteractionData = {
 
 export type TelegramWebViewTheme = {
   bg_color: string,
-  secondary_bg_color: string,
+  secondary_bg_color: string,         // 143
   text_color: string,
   hint_color: string,
   link_color: string,
   button_color: string,
-  button_text_color: string
+  button_text_color: string,          // 166
+  header_bg_color: string,            // 166
+  accent_text_color: string,          // 166
+  section_bg_color: string            // 166
+  section_header_text_color: string,  // 166
+  subtitle_text_color: string,        // 166
+  destructive_text_color: string      // 166
 };
 
 /**
@@ -222,6 +228,9 @@ export type TelegramWebViewEventMap = {
   web_app_setup_back_button: {
     is_visible: boolean
   },
+  web_app_setup_settings_button: {
+    is_visible: boolean
+  },  // 166
   web_app_request_write_access: void, // 162
   web_app_request_phone: void,        // 162
   web_app_invoke_custom_method: {     // 162

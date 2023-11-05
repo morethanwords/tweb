@@ -580,12 +580,12 @@ class ForumTab extends SliderSuperTabEventable {
       this.xd.fullReset();
     });
 
-    this.listenerSetter.add(rootScope)('chat_update', async(chatId) => {
+    this.listenerSetter.add(rootScope)('chat_update', (chatId) => {
       if(this.peerId !== chatId.toPeerId(true)) {
         return;
       }
 
-      const chat = await apiManagerProxy.getChat(chatId);
+      const chat = apiManagerProxy.getChat(chatId);
       if(!(chat as Chat.channel).pFlags.forum) {
         appDialogsManager.toggleForumTab(undefined, this);
       }
@@ -1500,7 +1500,7 @@ class Some2 extends Some<Dialog> {
     });
   }
 
-  public async processDialogForCallStatus(peerId: PeerId, dom?: DialogDom) {
+  public processDialogForCallStatus(peerId: PeerId, dom?: DialogDom) {
     if(!IS_GROUP_CALL_SUPPORTED) {
       return;
     }
@@ -1508,7 +1508,7 @@ class Some2 extends Some<Dialog> {
     if(!dom) dom = this.getDialogDom(peerId);
     if(!dom) return;
 
-    const chat = await apiManagerProxy.getChat(peerId.toChatId()) as Chat.chat | Chat.channel;
+    const chat = apiManagerProxy.getChat(peerId.toChatId()) as Chat.chat | Chat.channel;
     this.setCallStatus(dom, !!(chat.pFlags.call_active && chat.pFlags.call_not_empty));
   }
 
@@ -2970,7 +2970,7 @@ export class AppDialogsManager {
         dialog.draft?._ === 'draftMessage' && (
           !peerId.isAnyChat() ||
           dialog._ === 'forumTopic' ||
-          !(await middleware(apiManagerProxy.isForum(peerId)))
+          !apiManagerProxy.isForum(peerId)
         )
       ) {
         draftMessage = dialog.draft;
@@ -3359,7 +3359,7 @@ export class AppDialogsManager {
       const {peerId} = options;
       const getDialogPromise = this.getDialog(peerId, options.threadId);
       const promise = getDialogPromise.then((dialog) => {
-        const promises: Promise<any>[] = [];
+        const promises: (Promise<any> | void)[] = [];
         const isUser = peerId.isUser();
         if(!isUser && dialog._ === 'dialog') {
           promises.push(this.xd.processDialogForCallStatus(peerId, ret.dom));

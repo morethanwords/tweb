@@ -218,7 +218,23 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
 
       case 'messageEntityPre':
       case 'messageEntityCode': {
-        if(options.wrappingDraft) {
+        if((entity as MessageEntity.messageEntityPre).language && !options.noTextFormat && false) {
+          (window as any).Prism = window.Prism || {};
+          (window as any).Prism.manual = true;
+
+          const container = document.createElement('pre');
+          element = document.createElement('code');
+          element.textContent = partText;
+          usedText = true;
+          container.append(element);
+          fragment.append(container);
+
+          import('prismjs').then((Prism) => {
+            const html = Prism.highlight(fullEntityText, Prism.languages.javascript, 'javascript');
+            console.log(Prism, html);
+            element.innerHTML = html;
+          });
+        } else if(options.wrappingDraft) {
           element = createMarkupFormatting('monospace');
           // element = document.createElement('span');
           // element.style.fontFamily = 'var(--font-monospace)';

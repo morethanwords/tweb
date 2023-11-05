@@ -103,6 +103,8 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
   --primary-color: var(--message-primary-color);
   --primary-color-rgb: var(--message-primary-color-rgb);
   --secondary-text-color: var(--message-status-color);
+  --peer-color-rgb: var(--message-primary-color-rgb);
+  --peer-border-background: rgb(var(--peer-color-rgb));
   position: relative;
   z-index: 1;
   margin: 0 auto $bubble-margin;
@@ -1190,6 +1192,14 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
     @include respond-to(handhelds) {
       // width: 280px;
       max-width: unquote("min(100%, 300px)") !important;
+
+      .reply {
+        max-width: 284px !important;
+      }
+    }
+
+    .reply {
+      max-width: 348px !important;
     }
   }
 
@@ -1211,6 +1221,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
     //padding: 4px 6px 4px 8px !important;
 
     .reply {
+      margin-top: 0 !important;
       margin-bottom: .375rem;
     }
 
@@ -2366,14 +2377,16 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
     content: " ";
     position: absolute;
     inset-inline-start: 0;
-    top: -2px;
-    bottom: -2px;
+    top: 0;
+    bottom: 0;
+    // top: -2px;
+    // bottom: -2px;
     flex: 0 0 auto;
     width: .1875rem;
     background: var(--peer-border-background, rgb(var(--peer-color-rgb)));
-    background-size: 100% 1rem;
-    background-position: 0 2px;
-    transform: skew(0deg, -45deg);
+    // background-size: 100% 1rem;
+    // background-position: 0 2px;
+    // transform: skew(0deg, -45deg);
   }
 
   &-icon {
@@ -3131,25 +3144,6 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
     .message {
       right: 0;
     }
-  }
-
-  &:not(.just-media) {
-    .reply {
-      &-border {
-        background-color: var(--message-out-primary-color) !important;
-      }
-
-      &-title,
-      i {
-        color: var(--message-out-primary-color) !important;
-      }
-    }
-
-    // &:not(.is-group-first) {
-    //   .reply {
-    //     border-top-right-radius: .25rem;
-    //   }
-    // }
   }
 
   .time {

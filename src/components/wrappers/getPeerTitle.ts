@@ -34,7 +34,7 @@ export default async function getPeerTitle<T extends GetPeerTitleOptions>(
 
   let title = '';
   if(peerId.isUser()) {
-    const user = await apiManagerProxy.getUser(peerId.toUserId());
+    const user = apiManagerProxy.getUser(peerId.toUserId());
     if(user) {
       if(user.first_name) title += user.first_name;
       if(user.last_name && (!onlyFirstName || !title)) title += ' ' + user.last_name;
@@ -49,7 +49,7 @@ export default async function getPeerTitle<T extends GetPeerTitleOptions>(
     }
 
     if(!title) {
-      const chat = await apiManagerProxy.getChat(peerId.toChatId()) as Chat.chat;
+      const chat = apiManagerProxy.getChat(peerId.toChatId()) as Chat.chat;
       title = chat?.title || '';
     }
 

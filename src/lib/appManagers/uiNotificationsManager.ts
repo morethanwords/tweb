@@ -31,7 +31,7 @@ import appImManager from './appImManager';
 import appRuntimeManager from './appRuntimeManager';
 import {AppManagers} from './managers';
 import getMessageThreadId from './utils/messages/getMessageThreadId';
-import getPeerColorById from './utils/peers/getPeerColorById';
+import {getPeerAvatarColorByPeer} from './utils/peers/getPeerColorById';
 import getPeerId from './utils/peers/getPeerId';
 import {logger} from '../logger';
 
@@ -250,9 +250,10 @@ export class UiNotificationsManager {
     const peerId = message.peerId;
     const isAnyChat = peerId.isAnyChat();
     const notification: NotifyOptions = {};
-    const [peerString, isForum = false] = await Promise.all([
+    const [peerString, isForum = false, peer] = await Promise.all([
       this.managers.appPeersManager.getPeerString(peerId),
-      isAnyChat && this.managers.appPeersManager.isForum(peerId)
+      isAnyChat && this.managers.appPeersManager.isForum(peerId),
+      apiManagerProxy.getPeer(peerId)
     ]);
     let notificationMessage: string;
     let wrappedMessage = false;
@@ -348,7 +349,7 @@ export class UiNotificationsManager {
         avatarContext.clearRect(0, 0, avatarCanvas.width, avatarCanvas.height);
       }
 
-      const color = getPeerColorById(peerId, true);
+      const color = getPeerAvatarColorByPeer(peer);
       let gradient = this.avatarGradients[color];
       if(!gradient) {
         gradient = this.avatarGradients[color] = avatarContext.createLinearGradient(avatarCanvas.width / 2, 0, avatarCanvas.width / 2, avatarCanvas.height);
