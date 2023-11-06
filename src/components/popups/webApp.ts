@@ -46,6 +46,7 @@ export default class PopupWebApp extends PopupElement<{
   private isCloseConfirmationNeeded: boolean;
   private lastHeaderColor: TelegramWebViewEventMap['web_app_set_header_color'];
   private showSettingsButton: boolean;
+  private readyResult: TelegramWebViewEventMap['iframe_ready'];
   // private mainButtonText: HTMLElement;
 
   constructor(options: {
@@ -103,6 +104,11 @@ export default class PopupWebApp extends PopupElement<{
         icon: 'rotate_left',
         text: 'BotWebViewReloadPage',
         onClick: () => {
+          if(this.readyResult?.reload_supported) {
+            this.telegramWebView.dispatchWebViewEvent('reload_iframe', undefined);
+            return;
+          }
+
           const oldWebView = this.telegramWebView;
           const telegramWebView = this.createWebView();
           oldWebView.iframe.replaceWith(telegramWebView.iframe);
@@ -375,6 +381,9 @@ export default class PopupWebApp extends PopupElement<{
     telegramWebView.iframe.allowFullscreen = true;
 
     telegramWebView.addMultipleEventsListeners({
+      iframe_ready: (result) => {
+        this.readyResult = result;
+      },
       web_app_data_send: ({data}) => {
         if(!this.webViewOptions.isSimpleWebView || this.webViewOptions.fromSwitchWebView) {
           return;

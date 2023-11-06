@@ -158,6 +158,9 @@ export type TelegramWebViewTheme = {
  * @link https://core.telegram.org/api/web-events#postmessage-api
  */
 export type TelegramWebViewEventMap = {
+  iframe_ready: {
+    reload_supported?: boolean
+  },
   payment_form_submit: {
     credentials: any,
     title: string
@@ -296,7 +299,8 @@ export type TelegramWebViewSendEventMap = {
     req_id: string,
     result: any,
     error?: string
-  }
+  },
+  reload_iframe: void,      // 166
 };
 
 // export type TelegramWebViewSendSerializedEvent<T extends keyof TelegramWebViewSendEventMap> = {
