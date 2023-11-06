@@ -232,22 +232,7 @@ export class ScrollableBase {
       this.lastScrollDirection = this.lastScrollPosition === scrollPosition ? 0 : (this.lastScrollPosition < scrollPosition ? 1 : -1); // * 1 - bottom, -1 - top
       this.lastScrollPosition = scrollPosition;
 
-      if(USE_OWN_SCROLL && this.thumb) {
-        const scrollSize = this.container[this.scrollSizeProperty];
-        const clientSize = this.container[this.clientSizeProperty];
-        const divider = scrollSize / clientSize / 0.75;
-        const thumbSize = Math.max(20, clientSize / divider);
-        const value = scrollPosition / (scrollSize - clientSize) * clientSize;
-        // const b = (scrollPosition + clientSize) / scrollSize;
-        const b = scrollPosition / (scrollSize - clientSize);
-        const maxValue = clientSize - thumbSize;
-        if(clientSize < scrollSize) {
-          this.thumb.style.height = thumbSize + 'px';
-          this.thumb.style.transform = `translateY(${Math.min(maxValue, value - thumbSize * b)}px)`;
-        } else {
-          this.thumb.style.height = '0px';
-        }
-      }
+      this.updateThumb(scrollPosition);
 
       // lastScrollDirection check is useless here, every callback should decide on its own
       if(this.onAdditionalScroll/*  && this.lastScrollDirection !== 0 */) {
@@ -259,6 +244,27 @@ export class ScrollableBase {
       }
     });
   };
+
+  public updateThumb(scrollPosition = this.scrollPosition) {
+    if(!USE_OWN_SCROLL || !this.thumb) {
+      return;
+    }
+
+    const scrollSize = this.container[this.scrollSizeProperty];
+    const clientSize = this.container[this.clientSizeProperty];
+    const divider = scrollSize / clientSize / 0.75;
+    const thumbSize = Math.max(20, clientSize / divider);
+    const value = scrollPosition / (scrollSize - clientSize) * clientSize;
+    // const b = (scrollPosition + clientSize) / scrollSize;
+    const b = scrollPosition / (scrollSize - clientSize);
+    const maxValue = clientSize - thumbSize;
+    if(clientSize < scrollSize) {
+      this.thumb.style.height = thumbSize + 'px';
+      this.thumb.style.transform = `translateY(${Math.min(maxValue, value - thumbSize * b)}px)`;
+    } else {
+      this.thumb.style.height = '0px';
+    }
+  }
 
   public cancelMeasure() {
     if(this.onScrollMeasure) {

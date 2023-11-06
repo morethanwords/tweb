@@ -3459,6 +3459,7 @@ export default class ChatBubbles {
       scrollable.lastScrollDirection = 0;
       scrollable.lastScrollPosition = 0;
       scrollable.replaceChildren(chatInner);
+      scrollable.updateThumb(scrollable.lastScrollPosition);
       // this.chat.topbar.container.nextElementSibling.replaceWith(container);
 
       if(oldPlaceholderBubble) {
