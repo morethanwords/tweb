@@ -47,6 +47,7 @@ export default class PopupWebApp extends PopupElement<{
   private lastHeaderColor: TelegramWebViewEventMap['web_app_set_header_color'];
   private showSettingsButton: boolean;
   private readyResult: TelegramWebViewEventMap['iframe_ready'];
+  private reloadTimeout: number;
   // private mainButtonText: HTMLElement;
 
   constructor(options: {
@@ -104,16 +105,25 @@ export default class PopupWebApp extends PopupElement<{
         icon: 'rotate_left',
         text: 'BotWebViewReloadPage',
         onClick: () => {
-          if(this.readyResult?.reload_supported) {
-            this.telegramWebView.dispatchWebViewEvent('reload_iframe', undefined);
+          const fallbackReload = () => {
+            const oldWebView = this.telegramWebView;
+            const telegramWebView = this.createWebView();
+            oldWebView.iframe.replaceWith(telegramWebView.iframe);
+            oldWebView.destroy();
+            telegramWebView.onMount();
+          };
+
+          if(!this.readyResult?.reload_supported) {
+            fallbackReload();
             return;
           }
 
-          const oldWebView = this.telegramWebView;
-          const telegramWebView = this.createWebView();
-          oldWebView.iframe.replaceWith(telegramWebView.iframe);
-          oldWebView.destroy();
-          telegramWebView.onMount();
+          this.reloadTimeout = window.setTimeout(() => {
+            this.reloadTimeout = undefined;
+            fallbackReload();
+          }, 300);
+
+          this.telegramWebView.dispatchWebViewEvent('reload_iframe', undefined);
         },
         verify: () => true
       }, /* {
@@ -383,6 +393,12 @@ export default class PopupWebApp extends PopupElement<{
     telegramWebView.addMultipleEventsListeners({
       iframe_ready: (result) => {
         this.readyResult = result;
+      },
+      iframe_will_reload: () => {
+        if(this.reloadTimeout) {
+          clearTimeout(this.reloadTimeout);
+          this.reloadTimeout = undefined;
+        }
       },
       web_app_data_send: ({data}) => {
         if(!this.webViewOptions.isSimpleWebView || this.webViewOptions.fromSwitchWebView) {

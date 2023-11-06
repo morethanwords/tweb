@@ -161,6 +161,7 @@ export type TelegramWebViewEventMap = {
   iframe_ready: {
     reload_supported?: boolean
   },
+  iframe_will_reload: void,
   payment_form_submit: {
     credentials: any,
     title: string
