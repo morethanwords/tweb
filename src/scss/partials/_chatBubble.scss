@@ -6,20 +6,6 @@
 
 @use "sass:math";
 
-$bubble-margin: .125rem;
-$bubble-margin-big: .375rem;
-$bubble-overflow: math.max(math.div($bubble-margin-big, 8), .0625rem);
-$bubble-overflow-big: math.div($bubble-margin-big, 2);
-$bubble-beside-button-width: 38px;
-$bubble-border-radius-medium: 5px;
-$bubble-border-radius-big: 15px;
-$message-padding-top: 4px;
-$message-padding-bottom: 5px;
-$message-padding-horizontal: 8px;
-$reply-padding-top: 8px;
-$reply-padding-horizontal: 8px;
-$time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
-
 @keyframes bubbleSelected {
   0% {
     opacity: 0;

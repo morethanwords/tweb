@@ -14,6 +14,20 @@ $input-half-transition-time: math.div($input-transition-time, 2);
 $background-transition-time: 0.05s;
 $background-transition-total-time: #{$input-transition-time - $background-transition-time};
 
+$bubble-margin: .125rem;
+$bubble-margin-big: .375rem;
+$bubble-overflow: math.max(math.div($bubble-margin-big, 8), .0625rem);
+$bubble-overflow-big: math.div($bubble-margin-big, 2);
+$bubble-beside-button-width: 38px;
+$bubble-border-radius-medium: 5px;
+$bubble-border-radius-big: 15px;
+$message-padding-top: 4px;
+$message-padding-bottom: 5px;
+$message-padding-horizontal: 8px;
+$reply-padding-top: 8px;
+$reply-padding-horizontal: 8px;
+$time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
+
 // #bubble-contextmenu {
 //   max-width: 14rem;
 // }
@@ -1749,9 +1763,10 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
     padding: 0 $chat-padding-handhelds;
 	}
 
+  // * fix useless scroll in empty chats
   &:after {
     content: " ";
-    height: .125rem;
+    height: $bubble-overflow;
   }
 
 	&.is-chat .is-in,

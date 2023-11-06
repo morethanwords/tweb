@@ -142,8 +142,9 @@ export default class ScrollSaver {
     const {scrollPosition: scrollTop, scrollSize: scrollHeight} = this.scrollable;
     this.scrollHeight = scrollHeight;
 
-    if(!this.elements.length) { // maybe all messages have been deleted
-      this._restore(useReflow);
+    if(!this.elements.length) { // maybe all messages have been deleted or adding first message
+      // this._restore(useReflow);
+      this.setScrollTop(0, useReflow); // fix scrolling to first new message
       return;
     }
 
