@@ -4514,12 +4514,6 @@ export default class ChatBubbles {
       }
     }
 
-    if(isInUnread && this.observer) {
-      // this.log('not our message', message, message.pFlags.unread);
-      this.observer.observe(bubble, this.unreadedObserverCallback);
-      this.unreaded.set(bubble, message.mid);
-    }
-
     const loadPromises: Promise<any>[] = [];
     const ret = {
       bubble,
@@ -4537,7 +4531,7 @@ export default class ChatBubbles {
 
     const isStoryMention = isMessage && (message.media as MessageMedia.messageMediaStory)?.pFlags?.via_mention;
     const regularAsService = !!isStoryMention;
-
+    let returnService: boolean;
     if(regularAsService || (!isMessage && (!message.action || !SERVICE_AS_REGULAR.has(message.action._)))) {
       const action = (message as Message.messageService).action;
       if(action) {
@@ -4722,6 +4716,16 @@ export default class ChatBubbles {
         bubble.classList.add('is-group-last');
       }
 
+      returnService = true;
+    }
+
+    if(isInUnread && this.observer) {
+      // this.log('not our message', message, message.pFlags.unread);
+      this.observer.observe(bubble, this.unreadedObserverCallback);
+      this.unreaded.set(bubble, message.mid);
+    }
+
+    if(returnService) {
       return ret;
     }
 
