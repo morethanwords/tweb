@@ -821,11 +821,13 @@ export default class ChatBubbles {
       await getHeavyAnimationPromise();
       if(!middleware()) return;
 
+      const callbacks: (() => void)[] = [];
+
       const peerId = options.peerId;
       const ids = options.mids || options.ids;
       const needUpdate = this.needUpdate;
       const property: keyof typeof needUpdate[0] = options.mids ? 'replyMid' : 'replyStoryId';
-      ids.forEach((id) => {
+      const promises = ids.map((id) => {
         const filtered: typeof needUpdate[0][] = [];
         forEachReverse(needUpdate, (obj, idx) => {
           if(obj[property] === id && (obj.replyToPeerId === peerId || !peerId)) {
@@ -834,7 +836,7 @@ export default class ChatBubbles {
           }
         });
 
-        filtered.forEach(async({mid, replyMid, replyToPeerId}) => {
+        const promises = filtered.map(async({mid, replyMid, replyToPeerId}) => {
           const bubble = this.bubbles[mid];
           if(!bubble) return;
 
@@ -842,37 +844,48 @@ export default class ChatBubbles {
             this.chat.getMessage(mid) as Promise<Message.message>,
             replyMid && this.managers.appMessagesManager.getMessageByPeer(replyToPeerId, replyMid) as Promise<Message.message>
           ]);
-          if(!middleware()) return;
 
-          MessageRender.setReply({
-            chat: this.chat,
-            bubble,
-            message,
-            middleware: bubble.middlewareHelper.get(),
-            lazyLoadQueue: this.lazyLoadQueue,
-            needUpdate: this.needUpdate,
-            isStandaloneMedia: bubble.classList.contains('just-media'),
-            isOut: bubble.classList.contains('is-out')
-          });
-
-          if(!originalMessage) {
-            return;
-          }
-
-          let maxMediaTimestamp: number;
-          const timestamps = bubble.querySelectorAll<HTMLAnchorElement>('.timestamp');
-          if(maxMediaTimestamp = getMediaDurationFromMessage(originalMessage)) {
-            timestamps.forEach((timestamp) => {
-              const value = +timestamp.dataset.timestamp;
-              if(value < maxMediaTimestamp) {
-                timestamp.classList.remove('is-disabled');
-              } else {
-                timestamp.removeAttribute('href');
-              }
+          callbacks.push(() => {
+            MessageRender.setReply({
+              chat: this.chat,
+              bubble,
+              message,
+              middleware: bubble.middlewareHelper.get(),
+              lazyLoadQueue: this.lazyLoadQueue,
+              needUpdate: this.needUpdate,
+              isStandaloneMedia: bubble.classList.contains('just-media'),
+              isOut: bubble.classList.contains('is-out')
             });
-          }
+
+            if(!originalMessage) {
+              return;
+            }
+
+            let maxMediaTimestamp: number;
+            const timestamps = bubble.querySelectorAll<HTMLAnchorElement>('.timestamp');
+            if(maxMediaTimestamp = getMediaDurationFromMessage(originalMessage)) {
+              timestamps.forEach((timestamp) => {
+                const value = +timestamp.dataset.timestamp;
+                if(value < maxMediaTimestamp) {
+                  timestamp.classList.remove('is-disabled');
+                } else {
+                  timestamp.removeAttribute('href');
+                }
+              });
+            }
+          });
         });
+
+        return Promise.all(promises);
       });
+
+      await Promise.all(promises);
+      if(!middleware() || !callbacks.length) return;
+
+      const scrollSaver = this.createScrollSaver(true);
+      scrollSaver.save();
+      callbacks.forEach((callback) => callback());
+      scrollSaver.restore();
     };
 
     !DO_NOT_UPDATE_MESSAGE_REPLY && this.listenerSetter.add(rootScope)('messages_downloaded', updateMessageReply);
