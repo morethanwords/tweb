@@ -56,10 +56,6 @@ export class InviteLink {
     listenerSetter: ListenerSetter,
     url?: string
   }) {
-    if(url) {
-      this.url = url;
-    }
-
     this.onButtonClick = onButtonClick;
 
     const linkContainer = this.container = document.createElement('div');
@@ -110,6 +106,7 @@ export class InviteLink {
       s = url.split('//').slice(1).join('//');
     }
     this.textElement.replaceChildren(wrapPlainText(s));
+    this.url = url;
   }
 
   public copyLink = (url: string = this.url) => {

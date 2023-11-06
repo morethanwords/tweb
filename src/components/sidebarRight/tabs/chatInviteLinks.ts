@@ -317,7 +317,8 @@ export default class AppChatInviteLinksTab extends SliderSuperTabEventable {
       const section = adminsLinks = new SettingSection({name: 'LinksCreatedByOtherAdmins'});
 
       const promise = p.adminsInvites.then((adminsInvites) => {
-        const {admins} = adminsInvites;
+        let {admins} = adminsInvites;
+        admins = admins.filter((admin) => admin.admin_id.toPeerId(false) !== rootScope.myId);
         if(!admins.length) {
           section.container.classList.add('hide');
           return;
@@ -327,10 +328,6 @@ export default class AppChatInviteLinksTab extends SliderSuperTabEventable {
         const loadPromises: Promise<any>[] = [];
         admins.forEach((admin) => {
           const peerId = admin.admin_id.toPeerId(false);
-          if(peerId === rootScope.myId) {
-            return;
-          }
-
           const {dom} = appDialogsManager.addDialogNew({
             peerId,
             container: chatlist,
