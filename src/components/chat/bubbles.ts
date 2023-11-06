@@ -821,7 +821,7 @@ export default class ChatBubbles {
       await getHeavyAnimationPromise();
       if(!middleware()) return;
 
-      const callbacks: (() => void)[] = [];
+      const callbacks: (() => Promise<any>)[] = [];
 
       const peerId = options.peerId;
       const ids = options.mids || options.ids;
@@ -845,8 +845,8 @@ export default class ChatBubbles {
             replyMid && this.managers.appMessagesManager.getMessageByPeer(replyToPeerId, replyMid) as Promise<Message.message>
           ]);
 
-          callbacks.push(() => {
-            MessageRender.setReply({
+          callbacks.push(async() => {
+            const promise = MessageRender.setReply({
               chat: this.chat,
               bubble,
               message,
@@ -858,8 +858,10 @@ export default class ChatBubbles {
             });
 
             if(!originalMessage) {
-              return;
+              return promise;
             }
+
+            await promise;
 
             let maxMediaTimestamp: number;
             const timestamps = bubble.querySelectorAll<HTMLAnchorElement>('.timestamp');
@@ -884,7 +886,7 @@ export default class ChatBubbles {
 
       const scrollSaver = this.createScrollSaver(true);
       scrollSaver.save();
-      callbacks.forEach((callback) => callback());
+      await Promise.all(callbacks.map((callback) => callback()));
       scrollSaver.restore();
     };
 
