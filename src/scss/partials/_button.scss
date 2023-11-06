@@ -367,6 +367,16 @@ $btn-menu-z-index: 4;
       }
     }
 
+    &-badge {
+      text-transform: uppercase;
+      border-radius: 4px;
+      background-color: var(--primary-color);
+      color: #fff;
+      padding: .125rem .3125rem;
+      flex: 0 0 auto;
+      margin-inline-end: .125rem;
+    }
+
     &-subtitle {
       font-size: .875rem;
       color: var(--secondary-text-color);

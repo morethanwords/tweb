@@ -280,7 +280,8 @@ export class AppSidebarLeft extends SidebarSlider {
                 fromSideMenu: true
               });
             },
-            iconDoc: icon?.icon as MyDocument
+            iconDoc: icon?.icon as MyDocument,
+            new: attachMenuBot.pFlags.side_menu_disclaimer_needed && attachMenuBot.pFlags.inactive
           };
 
           return button;

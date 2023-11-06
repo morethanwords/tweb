@@ -11,7 +11,7 @@ import {AttachClickOptions, attachClickEvent} from '../helpers/dom/clickEvent';
 import findUpClassName from '../helpers/dom/findUpClassName';
 import setInnerHTML from '../helpers/dom/setInnerHTML';
 import ListenerSetter from '../helpers/listenerSetter';
-import {FormatterArguments, i18n, LangPackKey} from '../lib/langPack';
+import {_i18n, FormatterArguments, i18n, LangPackKey} from '../lib/langPack';
 import CheckboxField from './checkboxField';
 import {Document} from '../layer';
 import wrapPhoto from './wrappers/photo';
@@ -27,6 +27,7 @@ export type ButtonMenuItemOptions = {
   icon?: Icon,
   iconDoc?: Document.document,
   danger?: boolean,
+  new?: boolean,
   className?: string,
   text?: LangPackKey,
   textArgs?: FormatterArguments,
@@ -141,6 +142,13 @@ function ButtonMenuItem(options: ButtonMenuItemOptions) {
 
   textElement.classList.add('btn-menu-item-text');
   el.append(textElement);
+
+  if(options.new) {
+    const badge = document.createElement('span');
+    badge.classList.add('btn-menu-item-badge');
+    _i18n(badge, 'New');
+    el.append(badge);
+  }
 
   const keepOpen = !!checkboxField || !!options.keepOpen;
 

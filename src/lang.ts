@@ -350,6 +350,7 @@ const lang = {
   'SmallerMedia': 'Show Smaller Media',
   'WebPage.RemovePreview': 'Remove Link Preview',
   'Quote': 'Quote',
+  'New': 'New',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
