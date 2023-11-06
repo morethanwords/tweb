@@ -5104,10 +5104,10 @@ export default class ChatBubbles {
 
           if(storyAttribute) {
             const replyContainer = await this.getStoryReplyIfExpired(storyPeerId, storyId, true);
-            if(replyContainer) {
-              bubble.classList.add('is-expired-story');
-              messageDiv.append(replyContainer);
-              messageDiv.classList.add('expired-story-message');
+            if(replyContainer === null) {
+              // bubble.classList.add('is-expired-story');
+              // timeSpan.before(replyContainer);
+              // messageDiv.classList.add('expired-story-message');
               break;
             }
           }
@@ -6473,6 +6473,10 @@ export default class ChatBubbles {
   private async getStoryReplyIfExpired(storyPeerId: PeerId, storyId: number, isWebPage: boolean, noBorder?: boolean) {
     const result = await this.managers.acknowledged.appStoriesManager.getStoryById(storyPeerId, storyId);
     if(result.cached && !(await result.result)) {
+      if(isWebPage) {
+        return null;
+      }
+
       const peerTitle = await wrapPeerTitle({peerId: storyPeerId});
       const {container, fillPromise} = wrapReply({
         title: isWebPage ? peerTitle : undefined,
@@ -6514,6 +6518,8 @@ export default class ChatBubbles {
         loadPromises,
         canAutoplay: false,
         onExpiredStory: async() => {
+          await getHeavyAnimationPromise(); // wait for scroll to end
+          message = await this.chat.getMessage(message.mid) as Message.message;
           this.safeRenderMessage(message, true, bubble);
 
           // await fillPromise;
