@@ -1121,6 +1121,7 @@ export class AppImManager extends EventListenerBase<{
     }
 
     if(params.tgaddr) {
+      appNavigationController.replaceState();
       this.openUrl(params.tgaddr);
       return;
     }

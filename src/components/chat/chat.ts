@@ -714,12 +714,14 @@ export default class Chat extends EventListenerBase<{
     return {
       peerId: this.peerId,
       threadId: this.threadId,
-      replyToMsgId: this.input.replyToMsgId,
-      replyToStoryId: this.input.replyToStoryId,
-      scheduleDate: this.input.scheduleDate,
-      silent: this.input.sendSilent,
-      sendAsPeerId: this.input.sendAsPeerId,
-      updateStickersetOrder: rootScope.settings.stickers.dynamicPackOrder
+      updateStickersetOrder: rootScope.settings.stickers.dynamicPackOrder,
+      ...(this.input && {
+        replyToMsgId: this.input.replyToMsgId,
+        replyToStoryId: this.input.replyToStoryId,
+        scheduleDate: this.input.scheduleDate,
+        silent: this.input.sendSilent,
+        sendAsPeerId: this.input.sendAsPeerId
+      })
     };
   }
 
