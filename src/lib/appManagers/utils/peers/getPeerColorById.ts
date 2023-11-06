@@ -29,12 +29,12 @@ export function getPeerAvatarColorByPeer(peer: Chat | User) {
     const hue = hsla.h;
 
     if(hue >= 345 || hue < 29) idx = 0; // red
-    if(hue < 67) idx = 1; // orange
-    if(hue < 140) idx = 3; // green
-    if(hue < 199) idx = 4; // cyan
-    if(hue < 234) idx = 5; // blue
-    if(hue < 301) idx = 2; // violet
-    idx = 6; // pink
+    else if(hue < 67) idx = 1; // orange
+    else if(hue < 140) idx = 3; // green
+    else if(hue < 199) idx = 4; // cyan
+    else if(hue < 234) idx = 5; // blue
+    else if(hue < 301) idx = 2; // violet
+    else idx = 6; // pink
 
     color = DialogColors[idx];
   }
