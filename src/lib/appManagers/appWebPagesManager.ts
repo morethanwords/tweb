@@ -61,7 +61,7 @@ export class AppWebPagesManager extends AppManager {
       }
 
       const siteName = apiWebPage.site_name;
-      const shortTitle = apiWebPage.title || apiWebPage.author || siteName || '';
+      const shortTitle = apiWebPage.title || apiWebPage.author || '';
       if(siteName && shortTitle === siteName) {
         delete apiWebPage.site_name;
       }
