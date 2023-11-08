@@ -374,7 +374,8 @@ $btn-menu-z-index: 4;
       color: #fff;
       padding: .125rem .3125rem;
       flex: 0 0 auto;
-      margin-inline-end: .125rem;
+      // margin-inline-end: .125rem;
+      transform: scale(.75);
     }
 
     &-subtitle {
@@ -761,15 +762,12 @@ $btn-menu-z-index: 4;
   }
 
   &-transparent {
+    --ripple-color: var(--light-primary-color);
     color: var(--primary-color);
     background-color: transparent;
 
     @include hover() {
       background: var(--light-primary-color);
-    }
-
-    .c-ripple__circle {
-      background-color: var(--light-primary-color);
     }
 
     &.danger {

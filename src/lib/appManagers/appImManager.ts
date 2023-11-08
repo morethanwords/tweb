@@ -749,8 +749,12 @@ export class AppImManager extends EventListenerBase<{
     if(!options.noConfirmation) {
       const attachMenuBot = options.attachMenuBot;
       let needDisclaimer: boolean;
-      if(options.fromSideMenu && attachMenuBot?.pFlags?.side_menu_disclaimer_needed) {
-        needDisclaimer = true;
+      if(options.fromSideMenu) {
+        if(attachMenuBot?.pFlags?.side_menu_disclaimer_needed) {
+          needDisclaimer = true;
+        } else {
+          await this.pushBotIdAsConfirmed(options.botId);
+        }
       } else {
         const user = apiManagerProxy.getUser(options.botId);
         needDisclaimer = user.pFlags.bot_attach_menu && attachMenuBot?.pFlags?.inactive;
