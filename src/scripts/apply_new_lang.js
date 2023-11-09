@@ -14,7 +14,8 @@ https.get('https://translations.telegram.org/en/webk/export', (response) => {
       'one',
       'two',
       'few',
-      'many'
+      'many',
+      'other'
     ]);
 
     ['lang', 'langSign'].forEach((part) => {
