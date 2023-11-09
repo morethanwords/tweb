@@ -620,6 +620,10 @@ export const AvatarNew = (props: {
       set.add(ret);
     }
 
+    if(_props?.peerId !== undefined && props.peerId !== _props.peerId) {
+      node.dataset.peerId = '' + _props.peerId;
+    }
+
     if(_props) Object.assign(props, _props);
     middlewareHelper.clean();
     const middleware = middlewareHelper.get();

@@ -27,10 +27,10 @@ import {INTERNAL_LINK_TYPE, InternalLinkTypeMap, InternalLink} from './internalL
 import {AppManagers} from './managers';
 import {createStoriesViewerWithPeer} from '../../components/stories/viewer';
 import {simulateClickEvent} from '../../helpers/dom/clickEvent';
-import PopupBoostsViaGifts from '../../components/popups/boostsViaGifts';
 import PopupPremium from '../../components/popups/premium';
 import rootScope from '../rootScope';
 import PopupBoost from '../../components/popups/boost';
+import PopupGiftLink from '../../components/popups/giftLink';
 
 export class InternalLinkProcessor {
   protected managers: AppManagers;
@@ -447,6 +447,33 @@ export class InternalLinkProcessor {
         return this.processInternalLink(link);
       }
     });
+
+    // t.me/giftcode/slug
+    addAnchorListener<{pathnameParams: ['giftcode', string]}>({
+      name: 'giftcode',
+      callback: ({pathnameParams}) => {
+        const link: InternalLink = {
+          _: INTERNAL_LINK_TYPE.GIFT_CODE,
+          slug: pathnameParams[1]
+        };
+
+        return this.processInternalLink(link);
+      }
+    });
+
+    // tg://giftcode?slug=...
+    addAnchorListener<{
+      uriParams: {
+        slug: string
+      }
+    }>({
+      name: 'giftcode',
+      protocol: 'tg',
+      callback: ({uriParams}) => {
+        const link = this.makeLink(INTERNAL_LINK_TYPE.GIFT_CODE, uriParams);
+        return this.processInternalLink(link);
+      }
+    });
   }
 
   private makeLink<T extends INTERNAL_LINK_TYPE>(type: T, uriParams: Omit<InternalLinkTypeMap[T], '_'>) {
@@ -734,6 +761,10 @@ export class InternalLinkProcessor {
     PopupPremium.show();
   };
 
+  public processGiftCodeLink = (link: InternalLink.InternalLinkGiftCode) => {
+    PopupElement.createPopup(PopupGiftLink, link.slug);
+  };
+
   public processInternalLink(link: InternalLink) {
     const map: {
       [key in InternalLink['_']]?: (link: any) => any
@@ -751,7 +782,8 @@ export class InternalLinkProcessor {
       [INTERNAL_LINK_TYPE.ADD_LIST]: this.processListLink,
       [INTERNAL_LINK_TYPE.STORY]: this.processStoryLink,
       [INTERNAL_LINK_TYPE.BOOST]: this.processBoostLink,
-      [INTERNAL_LINK_TYPE.PREMIUM_FEATURES]: this.processPremiumFeaturesLink
+      [INTERNAL_LINK_TYPE.PREMIUM_FEATURES]: this.processPremiumFeaturesLink,
+      [INTERNAL_LINK_TYPE.GIFT_CODE]: this.processGiftCodeLink
     };
 
     const processor = map[link._];

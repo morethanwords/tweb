@@ -4,7 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {AppImManager} from '../../lib/appManagers/appImManager';
 import ButtonIcon from '../buttonIcon';
 import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
 import {IS_APPLE, IS_MOBILE} from '../../environment/userAgent';
@@ -23,12 +22,14 @@ import {applyMarkdown} from '../../helpers/dom/markdown';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import overlayCounter from '../../helpers/overlayCounter';
 
+type TooltipTypes = Extract<MarkdownType, 'bold' | 'italic' | 'underline' | 'strikethrough' | 'monospace' | 'spoiler' | 'quote' | 'link'>;
+
 export default class MarkupTooltip {
   private static INSTANCE: MarkupTooltip;
 
   public container: HTMLElement;
   private wrapper: HTMLElement;
-  private buttons: {[type in MarkdownType]: HTMLElement} = {} as any;
+  private buttons: {[type in TooltipTypes]: HTMLElement} = {} as any;
   private linkBackButton: HTMLElement;
   private linkApplyButton: HTMLButtonElement;
   private hideTimeout: number;
@@ -60,24 +61,26 @@ export default class MarkupTooltip {
     tools1.classList.add('markup-tooltip-tools', 'markup-tooltip-tools-regular');
     tools2.classList.add('markup-tooltip-tools', 'markup-tooltip-tools-link');
 
-    const arr = [
+    const arr: Array<keyof MarkupTooltip['buttons'] | [keyof MarkupTooltip['buttons'], Icon]> = [
       'bold',
       'italic',
       'underline',
       'strikethrough',
       'monospace',
       'spoiler',
-      'quote',
+      ['quote', 'quote_outline'],
       'link'
-    ] as (keyof MarkupTooltip['buttons'])[];
+    ];
     arr.forEach((c) => {
-      const button = ButtonIcon(c, {noRipple: true});
-      tools1.append(this.buttons[c] = button);
+      const type = typeof(c) === 'string' ? c : c[0];
+      const icon = typeof(c) === 'string' ? c : c[1];
+      const button = ButtonIcon(icon, {noRipple: true});
+      tools1.append(this.buttons[type] = button);
 
       if(c !== 'link') {
         button.addEventListener('mousedown', (e) => {
           cancelEvent(e);
-          applyMarkdown(this.input, c);
+          applyMarkdown(this.input, type);
           this.cancelClosening();
 
           /* this.mouseUpCounter = 0;
@@ -241,19 +244,19 @@ export default class MarkupTooltip {
 
     // (parents as HTMLElement[]).forEach((node) => {
     //   for(const type in markdownTags) {
-    //     const tag = markdownTags[type as MarkdownType];
+    //     const tag = markdownTags[type as TooltipTypes];
     //     const closest = node.closest(tag.match + ', [contenteditable="true"]');
     //     if(closest !== this.appImManager.chat.input.messageInput) {
-    //       currentMarkups.add(this.buttons[type as MarkdownType]);
+    //       currentMarkups.add(this.buttons[type as TooltipTypes]);
     //     }
     //   }
     // });
 
-    const types = Object.keys(this.buttons) as MarkdownType[];
+    const types = Object.keys(this.buttons) as TooltipTypes[];
     const markup = hasMarkupInSelection(types);
     types.forEach((type) => {
       if(markup[type]) {
-        currentMarkups.add(this.buttons[type as MarkdownType]);
+        currentMarkups.add(this.buttons[type as TooltipTypes]);
       }
     });
 

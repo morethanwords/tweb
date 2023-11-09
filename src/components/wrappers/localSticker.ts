@@ -13,6 +13,7 @@ import rootScope from '../../lib/rootScope';
 import wrapSticker from './sticker';
 
 export default async function wrapLocalSticker({
+  container,
   emoji,
   width,
   height,
@@ -22,6 +23,7 @@ export default async function wrapLocalSticker({
   loop = false,
   autoplay = true
 }: {
+  container?: HTMLElement,
   doc?: MyDocument,
   // url?: string,
   emoji?: string,
@@ -33,7 +35,7 @@ export default async function wrapLocalSticker({
   autoplay?: boolean,
   loop?: boolean
 }) {
-  const container = document.createElement('div');
+  container ||= document.createElement('div');
   container.classList.add('media-sticker-wrapper');
 
   let playerPromise: Promise<RLottiePlayer>;

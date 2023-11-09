@@ -258,6 +258,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         break;
       }
 
+      case 'messageActionGiveawayLaunch':
       case 'messageActionContactSignUp':
       case 'messageActionChatReturn':
       case 'messageActionChatLeave':

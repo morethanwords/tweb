@@ -351,6 +351,35 @@ const lang = {
   'WebPage.RemovePreview': 'Remove Link Preview',
   'Quote': 'Quote',
   'New': 'New',
+  'Giveaway.ToBeSelected': {
+    'one_value': '%d winner to be selected on %s',
+    'other_value': '%d winners to be selected on %s'
+  },
+  'Giveaway.ToBeSelectedFull': 'Giveaway: %s',
+  'Giveaway.Info.Users': {
+    'one_value': '**%d** random user that joined',
+    'other_value': '**%d** random users that joined'
+  },
+  'Giveaway.Info.OtherChannels': {
+    'one_value': '**%d** other listed channel',
+    'other_value': '**%d** other listed channels'
+  },
+  'Giveaway.Info': 'On **%s**, Telegram will automatically select %s **%s**.',
+  'Giveaway.Info.End': 'On **%s**, Telegram automatically selected %s **%s**.',
+  'Giveaway.Info.Date': 'On **%s**, Telegram will automatically select %s **%s** after **%s**.',
+  'Giveaway.Info.Date.End': 'On **%s**, Telegram automatically selected %s **%s** after **%s**.',
+  'Giveaway.Info.Several': 'On **%s**, Telegram will automatically select %s **%s** and %s.',
+  'Giveaway.Info.Several.End': 'On **%s**, Telegram automatically selected %s **%s** and %s.',
+  'Giveaway.Info.Several.Date': 'On **%s**, Telegram will automatically select %s **%s** and %s after **%s**.',
+  'Giveaway.Info.Several.Date.End': 'On **%s**, Telegram automatically selected %s **%s** and %s after **%s**.',
+  'Giveaway.Participation': 'You are participating in this giveaway, because you have joined channel **%s**.',
+  'Giveaway.Participation.Multi': 'You are participating in this giveaway, because you have joined channel **%s** (and %s).',
+  'Giveaway.TakePart': 'To take part in this giveaway please join channel **%s** before **%s**.',
+  'Giveaway.TakePart.Multi': 'To take part in this giveaway please join channel **%s** (and %s) before **%s**.',
+  'Giveaway.Won': 'You won a prize in this giveaway %s',
+  'BoostingUserWasSelected': '%s was selected by the channel',
+  'Giveaway.SendLinkToFriend': 'You can also **[send this link]()** to a friend as a gift.',
+  'Giveaway.SendLinkToAnyone': 'You can also **[send this link]()** to anyone as a gift.',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -1381,6 +1410,81 @@ const lang = {
   },
   'BoostsMaxLevelReached': 'Maximum Level Reached',
   'YouBoostedChannel2': 'You boosted %s!',
+  'BoostingGiveawayJustStarted': '%s just started a giveaway of Telegram Premium subscriptions to its followers.',
+  'BoostingWinnersDate': '**Winners Selection Date**',
+  'BoostingGiveawayPrizes': '**Giveaway Prizes**',
+  'BoostingGiveawayMsgInfoPlural1': {
+    'other_value': '**%1$d** Telegram Premium'
+  },
+  'BoostingGiveawayMsgInfoPlural2': {
+    'one_value': 'Subscription for %2$s.',
+    'other_value': 'Subscriptions for %2$s.'
+  },
+  'BoostingGiveawayMsgParticipants': '**Participants**',
+  'BoostingGiveawayMsgAllSubsPlural': {
+    'one_value': 'All subscribers of the channel:',
+    'other_value': 'All subscribers of the channels:'
+  },
+  'BoostingGiveawayMsgNewSubsPlural': {
+    'one_value': 'New subscribers of the channel:',
+    'other_value': 'New subscribers of the channels:'
+  },
+  'BoostingHowItWork': 'LEARN MORE',
+  'BoldMonths': {
+    'one_value': '**%1$d** month',
+    'other_value': '**%1$d** months'
+  },
+  'BoldYears': {
+    'one_value': '**%1$d** year',
+    'other_value': '**%1$d** years'
+  },
+  'BoostingGiveAwayFromCountries': 'from %1$s',
+  'BoostingGiveAwayAbout': 'About this giveaway',
+  'BoostingGiveawayHowItWorksText': {
+    'one_value': 'This giveaway is sponsored by the admins of **%2$s**, who acquired **%3$s Telegram Premium** subscription for %4$s for its followers.',
+    'other_value': 'This giveaway is sponsored by the admins of **%2$s**, who acquired **%3$s Telegram Premium** subscriptions for %4$s for its followers.'
+  },
+  'BoostingGiveawayHowItWorksTextEnd': {
+    'one_value': 'This giveaway was sponsored by the admins of **%2$s**, who acquired **%3$s Telegram Premium** subscription for %4$s for its followers.',
+    'other_value': 'This giveaway was sponsored by the admins of **%2$s**, who acquired **%3$s Telegram Premium** subscriptions for %4$s for its followers.'
+  },
+  'BoostingGiveawayYouNotWon': 'You didn\'t win a prize in this giveaway.',
+  'BoostingGiveawayNotEligible': 'You are not eligible to participate in this giveaway, because you joined this channel on **%1$s**, which is before the contest started.',
+  'BoostingGiveawayNotEligibleAdmin': 'You are not eligible to participate in this giveaway, because you are an admin of participating channel (**%1$s**).',
+  'BoostingGiveawayNotEligibleCountry': 'You are not eligible to participate in this giveaway, because your country is not included in the terms of the giveaway.',
+  'BoostingGiveawayUsedLinksPlural': {
+    'other_value': '**%1$d** of the winners already used their gift links.'
+  },
+  'BoostingGiveawayViewPrize': 'View my prize',
+  'BoostingGiveawayCanceledByPayment': 'The channel cancelled the prizes by reversing the payment for them.',
+  'BoostingGiveawayEnd': 'Giveaway ended',
+  'BoostingCongratulations': 'Congratulations!',
+  'BoostingReceivedPrizeFrom': 'You won a prize in a giveaway organized by **%s**.',
+  'BoostingReceivedPrizeDuration': 'Your prize is a **Telegram Premium** subscription for %s.',
+  'BoostingUnclaimedPrize': 'Unclaimed Prize',
+  'BoostingYouHaveUnclaimedPrize': 'You have an unclaimed prize from a giveaway by **%s**.',
+  'BoostingUnclaimedPrizeDuration': 'This prize is a **Telegram Premium** subscription for %s.',
+  'BoostingReceivedGiftOpenBtn': 'Open Gift Link',
+  'BoostingReceivedGiftNoName': 'You\'ve received a gift.',
+  'BoostingReceivedGiftFrom': 'You\'ve received a gift\nfrom **%s**.',
+  'BoostingReceivedGiftDuration': 'Your gift is a **Telegram Premium**\nsubscription for %s.',
+  'BoostingUsedGiftLink': 'Used Gift Link',
+  'BoostingGiftLink': 'Gift Link',
+  'BoostingLinkUsed': 'This link was used to activate\na **Telegram Premium** subscription.',
+  'BoostingLinkAllows': 'This link allows you to activate\na **Telegram Premium** subscription.',
+  'BoostingLinkAllowsToUser': 'This link allows **%1$s** to activate a **Telegram Premium** subscription.',
+  'BoostingLinkAllowsAnyone': 'This link allows anyone to activate\na **Telegram Premium** subscription.',
+  'BoostingFrom': 'From',
+  'BoostingTo': 'To',
+  'BoostingGift': 'Gift',
+  'BoostingYouWereSelected': 'You were selected by the channel',
+  'BoostingReason': 'Reason',
+  'BoostingDate': 'Date',
+  'BoostingTelegramPremiumFor': 'Telegram Premium for %s',
+  'BoostingUsedLinkDate': 'This link was used on %s.',
+  'BoostingIncompleteGiveaway': 'Incomplete Giveaway',
+  'BoostingNoRecipient': 'No recipient',
+  'BoostingUseLink': 'Use Link',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
@@ -1951,7 +2055,8 @@ const lang = {
   'Premium.Boarding.AppStore.Cancelled': 'Purchase was canceled or failed.',
   'Premium.Boarding.AppStore.Success': 'You successfully subscribed for Telegram Premium.',
   'Premium.Boarding.Subscribe': 'Subscribe for %@ per month',
-  'Premium.Offset.AlreadyHave': 'You already have Telegram Premium.'
+  'Premium.Offset.AlreadyHave': 'You already have Telegram Premium.',
+  'GiftLink.UseSuccess': 'You successfully activated gift link.'
 };
 
 export default lang;

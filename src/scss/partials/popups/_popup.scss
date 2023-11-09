@@ -96,6 +96,16 @@ $popup-footer-abitlarger-padding: 1rem;
     .peer-title {
       font-weight: var(--font-weight-bold);
     }
+
+    &-danger {
+      color: var(--danger-color);
+      padding: .5rem 1rem;
+      text-align: center;
+      font-weight: var(--font-weight-bold);
+      display: block;
+      background-color: rgba(var(--danger-color-rgb), .1);
+      border-radius: $border-radius-big;
+    }
   }
 
   &-centerer {

@@ -5,6 +5,7 @@
  */
 
 import assumeType from '../../helpers/assumeType';
+import {formatDate} from '../../helpers/date';
 import htmlToDocumentFragment from '../../helpers/dom/htmlToDocumentFragment';
 import {getRestrictionReason} from '../../helpers/restrictions';
 import escapeRegExp from '../../helpers/string/escapeRegExp';
@@ -111,7 +112,7 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
 
     if((!usingFullAlbum && !withoutMediaType) || !options.text) {
       const media = message.media;
-      switch(media._) {
+      switch(media?._) {
         case 'messageMediaPhoto':
           addPart('AttachPhoto');
           break;
@@ -213,7 +214,21 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
           break;
         }
 
+        case 'messageMediaPhotoExternal':
+        case 'messageMediaDocumentExternal':
+        case 'messageMediaWebPage': {
+          break;
+        }
+
+        case 'messageMediaGiveaway': {
+          const date = formatDate(new Date(media.until_date * 1000));
+          addPart('Giveaway.ToBeSelectedFull', undefined, [i18n('Giveaway.ToBeSelected', [media.quantity, plain ? date.textContent : date])]);
+          break;
+        }
+
         default:
+          addPart(UNSUPPORTED_LANG_PACK_KEY);
+          options.text = '';
           // messageText += media._;
           // /////appMessagesManager.log.warn('Got unknown media type!', message);
           break;

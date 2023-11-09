@@ -125,4 +125,44 @@ export default class AppPaymentsManager extends AppManager {
       }
     });
   }
+
+  public checkGiftCode(slug: string) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'payments.checkGiftCode',
+      params: {slug},
+      processResult: (checkedGiftCode) => {
+        this.appPeersManager.saveApiPeers(checkedGiftCode);
+
+        if(checkedGiftCode.giveaway_msg_id) {
+          const fromPeerId = this.appPeersManager.getPeerId(checkedGiftCode.from_id);
+          checkedGiftCode.giveaway_msg_id = this.appMessagesIdsManager.generateMessageId(
+            checkedGiftCode.giveaway_msg_id,
+            fromPeerId.isUser() ? undefined : fromPeerId.toChatId()
+          );
+        }
+
+        return checkedGiftCode;
+      }
+    });
+  }
+
+  public applyGiftCode(slug: string) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'payments.applyGiftCode',
+      params: {slug},
+      processResult: (updates) => {
+        this.apiUpdatesManager.processUpdateMessage(updates);
+      }
+    });
+  }
+
+  public getGiveawayInfo(peerId: PeerId, mid: number) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'payments.getGiveawayInfo',
+      params: {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        msg_id: getServerMessageId(mid)
+      }
+    });
+  }
 }

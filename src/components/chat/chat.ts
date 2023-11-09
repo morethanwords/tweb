@@ -39,6 +39,7 @@ import {Message, WallPaper} from '../../layer';
 import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
 import {getColorsFromWallPaper} from '../../helpers/color';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
+import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 
 export type ChatType = 'chat' | 'pinned' | 'discussion' | 'scheduled' | 'stories';
 
@@ -96,6 +97,8 @@ export default class Chat extends EventListenerBase<{
   public isUserBlocked: boolean;
 
   public animationGroup: AnimationItemGroup;
+
+  public destroyPromise: CancellablePromise<void>;
 
   constructor(
     public appImManager: AppImManager,
@@ -397,6 +400,7 @@ export default class Chat extends EventListenerBase<{
   }
 
   public beforeDestroy() {
+    this.destroyPromise = deferredPromise();
     this.bubbles.cleanup();
   }
 
@@ -410,6 +414,7 @@ export default class Chat extends EventListenerBase<{
   public destroy() {
     // const perf = performance.now();
 
+    this.destroyPromise?.resolve();
     this.destroySharedMediaTab();
     this.topbar?.destroy();
     this.bubbles?.destroy();

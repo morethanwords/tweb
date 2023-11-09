@@ -17,7 +17,7 @@ export class AppMessagesIdsManager {
     return +(this.generateMessageId(messageId, channelId) + 0.0001).toFixed(4);
   }
 
-  public generateMessageId(messageId: number, channelId: ChatId) {
+  public generateMessageId(messageId: number, channelId?: ChatId) {
     if(
       !channelId ||
       !Number.isInteger(messageId) ||

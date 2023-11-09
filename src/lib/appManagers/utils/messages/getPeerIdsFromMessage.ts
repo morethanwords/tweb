@@ -26,6 +26,11 @@ export default function getPeerIdsFromMessage(message: Message.message | Message
     if(recentVoters?.length) {
       peerIds.push(...recentVoters.map((peer) => getPeerId(peer)));
     }
+
+    const channels = (media as MessageMedia.messageMediaGiveaway).channels;
+    if(channels?.length) {
+      peerIds.push(...channels.map((chatId) => chatId.toPeerId(true)));
+    }
   }
 
   const recentReactions = ((message as Message.message).reactions)?.recent_reactions;
@@ -47,6 +52,14 @@ export default function getPeerIdsFromMessage(message: Message.message | Message
       (action as MessageAction.messageActionChannelMigrateFrom).chat_id
     ];
     peerIds.push(...chatIds.filter(Boolean).map((chatId) => chatId.toPeerId(true)));
+
+    const peers = [
+      (action as MessageAction.messageActionGiftCode).boost_peer,
+      (action as MessageAction.messageActionRequestedPeer).peer,
+      (action as MessageAction.messageActionGeoProximityReached).from_id,
+      (action as MessageAction.messageActionGeoProximityReached).to_id
+    ];
+    peerIds.push(...peers.filter(Boolean).map((peer) => getPeerId(peer)));
   }
 
   const recentRepliers = ((message as Message.message).replies)?.recent_repliers;

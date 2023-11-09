@@ -240,7 +240,7 @@ export namespace MessageRender {
       const originalMessageFwdFromId = (originalMessage as Message.message).fwdFromId;
       titlePeerId = message.fwdFromId && message.fwdFromId === originalMessageFwdFromId ?
         message.fwdFromId :
-        originalMessage.fromId || originalMessageFwdFromId;
+        originalMessageFwdFromId || originalMessage.fromId;
       originalPeerTitle = new PeerTitle({
         peerId: titlePeerId,
         dialog: false,
@@ -263,7 +263,7 @@ export namespace MessageRender {
           plainText: false
         }).element;
 
-        fragment.append(originalPeerTitle, ' ', icon = Icon('newgroup'), ' ', groupPeerTitle);
+        fragment.append(originalPeerTitle, ' ', icon = Icon('group_filled'), ' ', groupPeerTitle);
       }
 
       if(icon) {

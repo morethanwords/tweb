@@ -49,7 +49,7 @@ const ScrollableXTsx = (props: {
   return ret;
 };
 
-const PeerTitleTsx = (props: {
+export const PeerTitleTsx = (props: {
   peerId: PeerId,
   onlyFirstName?: boolean
 }) => {

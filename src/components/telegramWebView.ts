@@ -50,7 +50,7 @@ export default class TelegramWebView extends EventListenerBase<{
       eventData = undefined;
     }
 
-    console.log('onTelegramWebViewEvent', eventType, eventData);
+    // console.log('onTelegramWebViewEvent', eventType, eventData);
     this.dispatchEvent(eventType, eventData as any);
   };
 

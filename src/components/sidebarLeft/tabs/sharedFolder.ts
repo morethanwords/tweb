@@ -50,8 +50,8 @@ export class InviteLink {
     listenerSetter,
     url
   }: {
-    buttons: Parameters<typeof ButtonMenuToggle>[0]['buttons'],
-    button?: HTMLButtonElement,
+    buttons?: Parameters<typeof ButtonMenuToggle>[0]['buttons'],
+    button?: HTMLButtonElement | false,
     onButtonClick?: () => void,
     listenerSetter: ListenerSetter,
     url?: string
@@ -67,16 +67,22 @@ export class InviteLink {
     const text = this.textElement = document.createElement('div');
     text.classList.add('invite-link-text');
 
-    const buttonMenu = ButtonMenuToggle({
-      buttons,
-      direction: 'bottom-left',
-      buttonOptions: {noRipple: true},
-      listenerSetter
-    });
+    let rightButton: HTMLElement;
+    if(buttons) {
+      rightButton = ButtonMenuToggle({
+        buttons,
+        direction: 'bottom-left',
+        buttonOptions: {noRipple: true},
+        listenerSetter
+      });
+    } else {
+      rightButton = ButtonIcon('copy', {noRipple: true});
+      attachClickEvent(rightButton, () => this.copyLink(), {listenerSetter});
+    }
 
-    buttonMenu.classList.add('invite-link-menu');
+    rightButton.classList.add('invite-link-menu');
 
-    if(!button) {
+    if(!button && button !== false) {
       button = Button('', {text: 'ShareLink'});
       this.buttonText = button.lastElementChild as HTMLSpanElement;
       attachClickEvent(button, () => {
@@ -85,17 +91,19 @@ export class InviteLink {
       }, {listenerSetter});
     }
 
-    this.button = button;
-    button.className = 'btn-primary btn-color-primary invite-link-button';
+    if(button) {
+      this.button = button;
+      button.className = 'btn-primary btn-color-primary invite-link-button';
+    }
 
     if(url) this.setUrl(url);
     ripple(link);
     link.append(
       text,
-      buttonMenu
+      rightButton
     );
 
-    linkContainer.append(link, button);
+    linkContainer.append(link, button || '');
 
     attachClickEvent(link, () => this.copyLink(), {listenerSetter});
   }

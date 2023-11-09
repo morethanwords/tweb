@@ -51,6 +51,27 @@ export const getWeekNumber = (date: Date) => {
   return Math.ceil((((d.getTime() - yearStart.getTime()) / ONE_DAY) + 1) / 7);
 };
 
+export function formatDate(date: Date, today?: Date) {
+  if(!today) {
+    today = new Date();
+    today.setHours(0, 0, 0, 0);
+  }
+
+  const options: Intl.DateTimeFormatOptions = {
+    day: 'numeric',
+    month: 'long'
+  };
+
+  if(date.getFullYear() !== today.getFullYear()) {
+    options.year = 'numeric';
+  }
+
+  return new I18n.IntlDateElement({
+    date,
+    options
+  }).element;
+}
+
 export function formatDateAccordingToTodayNew(time: Date) {
   const today = new Date();
   const now = today.getTime() / 1000 | 0;
@@ -77,6 +98,7 @@ export function formatDateAccordingToTodayNew(time: Date) {
 
 export function formatFullSentTimeRaw(timestamp: number, options: {
   capitalize?: boolean
+  noToday?: boolean
 } = {}) {
   const date = new Date();
   const time = new Date(timestamp * 1000);
@@ -85,9 +107,9 @@ export function formatFullSentTimeRaw(timestamp: number, options: {
   const timeEl = formatTime(time);
 
   let dateEl: Node | string;
-  if((now - timestamp) < ONE_DAY && date.getDate() === time.getDate()) { // if the same day
+  if((now - timestamp) < ONE_DAY && date.getDate() === time.getDate() && !options.noToday) { // if the same day
     dateEl = i18n(options.capitalize ? 'Date.Today' : 'Peer.Status.Today');
-  } else if((now - timestamp) < (ONE_DAY * 2) && (date.getDate() - 1) === time.getDate()) { // yesterday
+  } else if((now - timestamp) < (ONE_DAY * 2) && (date.getDate() - 1) === time.getDate() && !options.noToday) { // yesterday
     dateEl = i18n(options.capitalize ? 'Yesterday' : 'Peer.Status.Yesterday');
 
     if(options.capitalize) {
@@ -117,9 +139,10 @@ export function formatFullSentTimeRaw(timestamp: number, options: {
   return {dateEl, timeEl};
 }
 
-export function formatFullSentTime(timestamp: number, capitalize = true) {
+export function formatFullSentTime(timestamp: number, capitalize = true, noToday = false) {
   const {dateEl, timeEl} = formatFullSentTimeRaw(timestamp, {
-    capitalize
+    capitalize,
+    noToday
   });
 
   const fragment = document.createDocumentFragment();
@@ -155,6 +178,14 @@ export const getFullDate = (date: Date, options: Partial<{
     joiner + (('' + fullYear).slice(options.shortYear ? 2 : 0)) +
     (options.noTime ? '' : ', ' + time);
 };
+
+export function formatMonthsDuration(months: number, bold?: boolean) {
+  const isYears = months >= 12 && !(months % 12);
+  return i18n(
+    bold ? (isYears ? 'BoldYears' : 'BoldMonths') : (isYears ? 'Years' : 'Months'),
+    [isYears ? months / 12 : months]
+  );
+}
 
 // https://github.com/DrKLO/Telegram/blob/d52b2c921abd3c1e8d6368858313ad0cb0468c07/TMessagesProj/src/main/java/org/telegram/ui/Adapters/FiltersView.java
 const minYear = 2013;

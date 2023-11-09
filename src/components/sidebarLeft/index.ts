@@ -281,7 +281,7 @@ export class AppSidebarLeft extends SidebarSlider {
               });
             },
             iconDoc: icon?.icon as MyDocument,
-            new: attachMenuBot.pFlags.side_menu_disclaimer_needed && attachMenuBot.pFlags.inactive
+            new: attachMenuBot.pFlags.side_menu_disclaimer_needed || attachMenuBot.pFlags.inactive
           };
 
           return button;

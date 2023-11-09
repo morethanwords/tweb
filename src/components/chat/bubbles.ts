@@ -29,7 +29,7 @@ import LazyLoadQueue from '../lazyLoadQueue';
 import ListenerSetter from '../../helpers/listenerSetter';
 import PollElement from '../poll';
 import AudioElement from '../audio';
-import {ChannelParticipant, Chat as MTChat, ChatInvite, ChatParticipant, Document, GeoPoint, InputWebFileLocation, KeyboardButton, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, ReplyMarkup, RequestPeerType, SponsoredMessage, Update, UrlAuthResult, User, WebPage, InlineQueryPeerType, WebPageAttribute, Reaction, ChatPhoto} from '../../layer';
+import {ChannelParticipant, Chat as MTChat, ChatInvite, ChatParticipant, Document, GeoPoint, InputWebFileLocation, KeyboardButton, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, ReplyMarkup, RequestPeerType, SponsoredMessage, Update, UrlAuthResult, User, WebPage, InlineQueryPeerType, WebPageAttribute, Reaction, ChatPhoto, MessageAction} from '../../layer';
 import {BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID, SEND_WHEN_ONLINE_TIMESTAMP} from '../../lib/mtproto/mtproto_config';
 import {FocusDirection, ScrollStartCallbackDimensions} from '../../helpers/fastSmoothScroll';
 import useHeavyAnimationCheck, {getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation} from '../../hooks/useHeavyAnimationCheck';
@@ -156,7 +156,10 @@ import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import {_tgico} from '../../helpers/tgico';
 import setBlankToAnchor from '../../lib/richTextProcessor/setBlankToAnchor';
 import addAnchorListener from '../../helpers/addAnchorListener';
-import {hexToRgb} from '../../helpers/color';
+import {formatDate, formatFullSentTime, formatMonthsDuration} from '../../helpers/date';
+import {JSX} from 'solid-js';
+import Giveaway, {getGiftAssetName, onGiveawayClick} from './giveaway';
+import PopupGiftLink from '../popups/giftLink';
 
 export const USER_REACTIONS_INLINE = false;
 const USE_MEDIA_TAILS = false;
@@ -2051,10 +2054,10 @@ export default class ChatBubbles {
       }
     }
 
-    const nameDiv = findUpClassName(target, 'peer-title') || findUpAvatar(target) || findUpAttribute(target, 'data-saved-from');
+    const nameDiv = findUpClassName(target, 'peer-title') || findUpAvatar(target) || findUpAttribute(target, 'data-saved-from') || findUpClassName(target, 'selector-user');
     if(nameDiv && nameDiv !== bubble) {
       target = nameDiv || target;
-      const peerIdStr = target.dataset.peerId || target.getAttribute('peer')/*  || (target as AvatarElement).peerId */;
+      const peerIdStr = target.dataset.peerId || target.getAttribute('peer') || target.dataset.key/*  || (target as AvatarElement).peerId */;
       const savedFrom = target.dataset.savedFrom;
       if(typeof(peerIdStr) === 'string' || savedFrom) {
         if(savedFrom) {
@@ -2952,19 +2955,7 @@ export default class ChatBubbles {
     } else if(isScheduled && timestamp === SEND_WHEN_ONLINE_TIMESTAMP) {
       dateElement = i18n('MessageScheduledUntilOnline');
     } else {
-      const options: Intl.DateTimeFormatOptions = {
-        day: 'numeric',
-        month: 'long'
-      };
-
-      if(date.getFullYear() !== today.getFullYear()) {
-        options.year = 'numeric';
-      }
-
-      dateElement = new I18n.IntlDateElement({
-        date,
-        options
-      }).element;
+      dateElement = formatDate(date, today);
 
       if(isScheduled) {
         dateElement = i18n('Chat.Date.ScheduledFor', [dateElement]);
@@ -3461,7 +3452,6 @@ export default class ChatBubbles {
       scrollable.lastScrollDirection = 0;
       scrollable.lastScrollPosition = 0;
       scrollable.replaceChildren(chatInner);
-      scrollable.updateThumb(scrollable.lastScrollPosition);
       // this.chat.topbar.container.nextElementSibling.replaceWith(container);
 
       if(oldPlaceholderBubble) {
@@ -3543,6 +3533,8 @@ export default class ChatBubbles {
       } else {
         scrollable.setScrollPositionSilently(99999);
       }
+
+      scrollable.updateThumb(scrollable.lastScrollPosition);
 
       // if(!cached) {
       this.onRenderScrollSet();
@@ -4556,7 +4548,40 @@ export default class ChatBubbles {
       s.classList.add('service-msg');
       if(action) {
         let promise: Promise<any>;
-        if(action._ === 'messageActionChannelMigrateFrom') {
+        if(action._ === 'messageActionGiftCode') {
+          const isUnclaimed = action.pFlags.unclaimed;
+          const isGiveaway = action.pFlags.via_giveaway;
+          const title = i18n(isUnclaimed ? 'BoostingUnclaimedPrize' : 'BoostingCongratulations');
+          const subtitle = document.createElement('span');
+          subtitle.append(
+            i18n(
+              isUnclaimed ? 'BoostingYouHaveUnclaimedPrize' : (isGiveaway ? 'BoostingReceivedPrizeFrom' : (action.boost_peer ? 'BoostingReceivedGiftFrom' : 'BoostingReceivedGiftNoName')),
+              action.boost_peer ? [await wrapPeerTitle({peerId: getPeerId(action.boost_peer)})] : undefined
+            ),
+            document.createElement('br'),
+            document.createElement('br'),
+            i18n(
+              isUnclaimed ? 'BoostingUnclaimedPrizeDuration' : (isGiveaway ? 'BoostingReceivedPrizeDuration' : 'BoostingReceivedGiftDuration'),
+              [formatMonthsDuration(action.months, true)]
+            )
+          );
+
+          const assetName = getGiftAssetName(action.months);
+
+          this.wrapGift({
+            content: bubbleContainer,
+            service: s,
+            middleware,
+            loadPromises,
+            assetName,
+            title,
+            subtitle,
+            buttonText: 'BoostingReceivedGiftOpenBtn',
+            buttonCallback: () => {
+              PopupElement.createPopup(PopupGiftLink, action.slug);
+            }
+          });
+        } else if(action._ === 'messageActionChannelMigrateFrom') {
           const peerTitle = new PeerTitle();
           promise = peerTitle.update({peerId: action.chat_id.toPeerId(true), wrapOptions});
           s.append(i18n('ChatMigration.From', [peerTitle.element]));
@@ -4573,47 +4598,25 @@ export default class ChatBubbles {
 
         if(action._ === 'messageActionGiftPremium') {
           const content = bubbleContainer.cloneNode(false) as HTMLElement;
-          content.classList.add('bubble-premium-gift-container');
+          content.classList.add('has-service-before');
 
           const service = s.cloneNode(false) as HTMLElement;
-          service.classList.add('bubble-premium-gift-wrapper');
-
-          const size = 160;
 
           const months = action.months;
-
-          const durationAssetMap: {[key: number]: LottieAssetName} = {
-            3: 'Gift3',
-            6: 'Gift6',
-            12: 'Gift12'
-          };
-
-          const assetName = durationAssetMap[clamp(months, 3, 12)];
-
-          const promise = wrapLocalSticker({
-            width: size,
-            height: size,
-            assetName,
-            middleware,
-            loop: false,
-            autoplay: liteMode.isAvailable('stickers_chat')
-          }).then(({container, promise}) => {
-            container.classList.add('bubble-premium-gift-sticker');
-            container.style.position = 'relative';
-            container.style.width = container.style.height = size + 'px';
-            service.prepend(container);
-            return promise;
-          });
-
-          const isYears = months >= 12 && !(months % 12);
-          const duration = i18n(isYears ? 'Years' : 'Months', [isYears ? months / 12 : months]);
+          const assetName = getGiftAssetName(months);
 
           const title = i18n('ActionGiftPremiumTitle');
-          const subtitle = i18n('ActionGiftPremiumSubtitle', [duration]);
-          title.classList.add('text-bold');
+          const subtitle = i18n('ActionGiftPremiumSubtitle', [formatMonthsDuration(months, false)]);
 
-          service.append(title, subtitle);
-          loadPromises.push(promise);
+          this.wrapGift({
+            content,
+            service,
+            middleware,
+            loadPromises,
+            assetName,
+            title,
+            subtitle
+          });
 
           content.append(service);
           bubbleContainer.after(content);
@@ -5125,7 +5128,7 @@ export default class ChatBubbles {
 
           const quoteClassName = `${className}-quote`;
           const wrapped = wrapUrl(webPage.url);
-          const SAFE_TYPES: Set<typeof wrapped['onclick']> = new Set(['im', 'addlist', 'boost']);
+          const SAFE_TYPES: Set<typeof wrapped['onclick']> = new Set(['im', 'addlist', 'boost', 'giftcode']);
           let viewButton: HTMLElement;
           if(SAFE_TYPES.has(wrapped?.onclick)) {
             const map: {[type: string]: LangPackKey} = {
@@ -5136,7 +5139,8 @@ export default class ChatBubbles {
               telegram_user: 'Chat.Message.SendMessage',
               telegram_chatlist: 'OpenChatlist',
               telegram_story: 'OpenStory',
-              telegram_channel_boost: 'BoostLinkButton'
+              telegram_channel_boost: 'BoostLinkButton',
+              telegram_giftcode: 'Open'
             };
 
             const langPackKey = map[webPage.type] || 'OpenMessage';
@@ -6062,6 +6066,28 @@ export default class ChatBubbles {
           break;
         }
 
+        case 'messageMediaGiveaway': {
+          const giveaway = messageMedia as MessageMedia.messageMediaGiveaway;
+          bubble.classList.remove('is-message-empty');
+          bubble.classList.add('is-giveaway');
+          processingWebPage = true;
+          const button = this.makeViewButton({text: 'BoostingHowItWork'});
+          const container = document.createElement('div');
+          bubbleContainer.append(button, container);
+          attachClickEvent(button, () => {
+            onGiveawayClick(message as Message.message);
+          });
+          this.wrapSomeSolid(
+            () => Giveaway({
+              giveaway,
+              loadPromises
+            }),
+            container,
+            middleware
+          );
+          break;
+        }
+
         default:
           attachmentDiv = undefined;
           bubble.classList.remove('is-message-empty');
@@ -6101,7 +6127,11 @@ export default class ChatBubbles {
     let savedFrom = '';
 
     if(isStandaloneMedia || !isOut) {
-      this.chat.appImManager.setPeerColorToElement(message.fromId, bubble, isStandaloneMedia);
+      this.chat.appImManager.setPeerColorToElement(
+        (message as Message.message).fwdFromId || message.fromId,
+        bubble,
+        isStandaloneMedia
+      );
     }
 
     const isSponsored = (message as Message.message).pFlags.sponsored;
@@ -6496,6 +6526,67 @@ export default class ChatBubbles {
     }
   }
 
+  private wrapGift({
+    content,
+    service,
+    middleware,
+    loadPromises,
+    assetName,
+    title,
+    subtitle,
+    buttonText,
+    buttonCallback
+  }: {
+    content: HTMLElement,
+    service: HTMLElement,
+    middleware: Middleware,
+    loadPromises: Promise<any>[],
+    assetName: LottieAssetName,
+    title: HTMLElement,
+    subtitle: HTMLElement,
+    buttonText?: LangPackKey,
+    buttonCallback?: () => void
+  }) {
+    content.classList.add('bubble-premium-gift-container');
+    service.classList.add('bubble-premium-gift-wrapper');
+    title.classList.add('text-bold');
+
+    const size = 160;
+
+    const promise = wrapLocalSticker({
+      width: size,
+      height: size,
+      assetName,
+      middleware,
+      loop: false,
+      autoplay: liteMode.isAvailable('stickers_chat')
+    }).then(({container, promise}) => {
+      container.classList.add('bubble-premium-gift-sticker');
+      container.style.position = 'relative';
+      container.style.width = container.style.height = size + 'px';
+      service.prepend(container);
+      return promise;
+    });
+
+    const button = buttonText &&
+      Button('bubble-service-button', {noRipple: true, text: buttonText});
+
+    if(button && buttonCallback) {
+      attachClickEvent(button, buttonCallback);
+    }
+
+    service.append(title, subtitle);
+    button && service.append(button);
+    loadPromises.push(promise);
+  }
+
+  private wrapSomeSolid(func: () => JSX.Element, container: HTMLElement, middleware: Middleware) {
+    const dispose = render(func, container);
+    middleware.onClean(() => {
+      (this.chat.destroyPromise || this.chat.setPeerPromise || Promise.resolve()).then(dispose);
+    });
+  }
+
   private wrapStory({
     message,
     bubble,
@@ -6515,7 +6606,7 @@ export default class ChatBubbles {
   }) {
     container.dataset.storyPeerId = '' + peerId;
     container.dataset.storyId = '' + storyId;
-    const dispose = render(() => {
+    this.wrapSomeSolid(() => {
       return StoryPreview({
         peerId,
         storyId,
@@ -6540,10 +6631,7 @@ export default class ChatBubbles {
         },
         withPreloader: true
       });
-    }, container);
-    middleware.onClean(() => {
-      (this.chat.setPeerPromise || Promise.resolve()).then(dispose);
-    });
+    }, container, middleware);
   }
 
   private wrapTitleAndRank(title: HTMLElement, rank: ReturnType<typeof getParticipantRank> | 0) {

@@ -47,6 +47,7 @@ const appColorMap: {[name in AppColorName]: AppColor} = {
     rgb: true
   },
   'danger-color': {
+    rgb: true,
     light: true,
     dark: true
   },

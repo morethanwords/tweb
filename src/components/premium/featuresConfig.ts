@@ -75,18 +75,18 @@ const stories: PremiumPromoFeature = {
     titleLangKey: 'PremiumStoriesStealth',
     subtitleLangKey: 'PremiumStoriesStealthDescription',
     iconColor: '#7889FE',
-    icon: 'hide'
-  }, { // no outline icon
+    icon: 'eyecross_outline'
+  }, {
     titleLangKey: 'PremiumStoriesViews',
     subtitleLangKey: 'PremiumStoriesViewsDescription',
     iconColor: '#A45FE6',
-    icon: 'eye1'
+    icon: 'eye'
   }, {
     titleLangKey: 'PremiumStoriesExpiration',
     subtitleLangKey: 'PremiumStoriesExpirationDescription',
     iconColor: '#C355AE',
     icon: 'timer'
-  }, { // no outlined icon
+  }, {
     titleLangKey: 'PremiumStoriesSaveToGallery',
     subtitleLangKey: 'PremiumStoriesSaveToGalleryDescription',
     iconColor: '#E85D43',

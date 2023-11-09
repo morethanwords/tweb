@@ -21,6 +21,7 @@ export enum INTERNAL_LINK_TYPE {
   STORY,
   BOOST,
   PREMIUM_FEATURES,
+  GIFT_CODE
 };
 
 export type InternalLink =
@@ -37,7 +38,8 @@ export type InternalLink =
   InternalLink.InternalLinkAddList |
   InternalLink.InternalLinkStory |
   InternalLink.InternalLinkBoost |
-  InternalLink.InternalLinkPremiumFeatures;
+  InternalLink.InternalLinkPremiumFeatures |
+  InternalLink.InternalLinkGiftCode;
 
 export namespace InternalLink {
   export interface InternalLinkMessage {
@@ -135,6 +137,11 @@ export namespace InternalLink {
     _: INTERNAL_LINK_TYPE.PREMIUM_FEATURES,
     ref?: string
   }
+
+  export interface InternalLinkGiftCode {
+    _: INTERNAL_LINK_TYPE.GIFT_CODE,
+    slug: string
+  }
 }
 
 export type InternalLinkTypeMap = {
@@ -152,4 +159,5 @@ export type InternalLinkTypeMap = {
   [INTERNAL_LINK_TYPE.STORY]: InternalLink.InternalLinkStory,
   [INTERNAL_LINK_TYPE.BOOST]: InternalLink.InternalLinkBoost,
   [INTERNAL_LINK_TYPE.PREMIUM_FEATURES]: InternalLink.InternalLinkPremiumFeatures,
+  [INTERNAL_LINK_TYPE.GIFT_CODE]: InternalLink.InternalLinkGiftCode,
 };
