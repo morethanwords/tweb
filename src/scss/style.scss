@@ -2318,6 +2318,12 @@ hr {
   animation: none;
 }
 
+.reverse::view-transition-old(root) {
+  background: none;
+  // position: relative;
+  z-index: 2;
+}
+
 .quote,
 [data-markup*="quote"] {
   padding: 1px 0;

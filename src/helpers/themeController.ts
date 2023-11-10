@@ -221,8 +221,11 @@ export class ThemeController {
       coordinates = undefined;
     }
 
+    const reverse = !this.isNight();
     if(coordinates) {
       document.documentElement.classList.add('no-view-transition');
+      document.documentElement.classList.toggle('reverse', reverse);
+      void document.documentElement.offsetLeft; // reflow
     }
 
     const transition = (document as any).startViewTransition(() => {
@@ -249,12 +252,13 @@ export class ThemeController {
       }, {
         duration: 500,
         easing: 'ease-in-out',
-        pseudoElement: '::view-transition-new(root)'
+        pseudoElement: `::view-transition-${reverse ? 'old' : 'new'}(root)`,
+        direction: reverse ? 'reverse' : 'normal'
       });
     });
 
     transition.finished.finally(() => {
-      document.documentElement.classList.remove('no-view-transition');
+      document.documentElement.classList.remove('no-view-transition', 'reverse');
     });
   }
 
