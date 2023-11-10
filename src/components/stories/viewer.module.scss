@@ -916,6 +916,10 @@ $color-inactive: rgba(255, 255, 255, .5);
       background-color: var(--chat-input-background-color) !important;
       backdrop-filter: var(--backdrop-filter);
     }
+
+    .quiz-hint {
+      z-index: 5;
+    }
   }
 
   &Close {
