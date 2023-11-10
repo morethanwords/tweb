@@ -4681,7 +4681,8 @@ export default class ChatBubbles {
                 forPreview: true,
                 noInfo: true,
                 lazyLoadQueue: this.lazyLoadQueue,
-                withPreloader: true
+                withPreloader: true,
+                noAspecter: true
               });
 
               createEffect(() => {
