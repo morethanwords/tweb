@@ -621,7 +621,11 @@ export default class ChatBubbles {
           }
         } else if(webPage && !bubble.querySelector('.web')) {
           getHeavyAnimationPromise().then(() => {
-            this.safeRenderMessage(message, true, bubble);
+            this.safeRenderMessage({
+              message,
+              reverse: true,
+              bubble
+            });
             this.scrollToBubbleIfLast(bubble);
           });
         }
@@ -656,7 +660,11 @@ export default class ChatBubbles {
         return;
       }
 
-      this.safeRenderMessage(message, true, bubble);
+      this.safeRenderMessage({
+        message,
+        reverse: true,
+        bubble
+      });
     });
 
     this.listenerSetter.add(rootScope)('message_error', async({storageKey, tempId}) => {
@@ -750,7 +758,11 @@ export default class ChatBubbles {
 
       const mainMid = getMainMidForGrouped(mids);
       const message = messages.find((message) => message.mid === mainMid);
-      this.safeRenderMessage(message, true, bubble);
+      this.safeRenderMessage({
+        message,
+        reverse: true,
+        bubble
+      });
     });
 
     // this.listenerSetter.add(rootScope)('peer_title_edit', async(peerId) => {
@@ -1309,7 +1321,11 @@ export default class ChatBubbles {
             const bubble = this.bubbles[message.mid];
             if(!bubble) return;
 
-            this.safeRenderMessage(message, true, bubble);
+            this.safeRenderMessage({
+              message,
+              reverse: true,
+              bubble
+            });
           } else {
             toDelete.push(mid);
           }
@@ -1344,7 +1360,11 @@ export default class ChatBubbles {
             return;
           }
 
-          this.safeRenderMessage(message, true, bubble);
+          this.safeRenderMessage({
+            message,
+            reverse: true,
+            bubble
+          });
         });
       }
     });
@@ -3884,7 +3904,9 @@ export default class ChatBubbles {
     // this.messagesQueueOnRender();
     // }
 
-    this.messagesQueueOnRenderAdditional?.();
+    if(loadQueue.some((details) => details.canAnimateLadder)) {
+      this.messagesQueueOnRenderAdditional?.();
+    }
 
     this.ejectBubbles();
     for(const [bubble, oldBubble] of this.bubblesToReplace) {
@@ -4034,13 +4056,21 @@ export default class ChatBubbles {
     attachmentDiv.append(container);
   }
 
-  private async safeRenderMessage(
+  private async safeRenderMessage({
+    message,
+    reverse,
+    bubble,
+    updatePosition = true,
+    processResult,
+    canAnimateLadder
+  }: {
     message: Message.message | Message.messageService,
     reverse?: boolean,
     bubble?: HTMLElement,
-    updatePosition = true,
-    processResult?: (result: ReturnType<ChatBubbles['renderMessage']>, bubble: HTMLElement) => typeof result
-  ) {
+    updatePosition?: boolean,
+    processResult?: (result: ReturnType<ChatBubbles['renderMessage']>, bubble: HTMLElement) => typeof result,
+    canAnimateLadder?: boolean
+  }) {
     if(!message || this.renderingMessages.has(message.mid) || (this.bubbles[message.mid] && !bubble)) {
       return;
     }
@@ -4048,7 +4078,10 @@ export default class ChatBubbles {
     const middlewareHelper = this.getMiddleware().create();
     const middleware = middlewareHelper.get();
 
-    let result: Awaited<ReturnType<ChatBubbles['renderMessage']>> & {updatePosition: typeof updatePosition};
+    let result: Awaited<ReturnType<ChatBubbles['renderMessage']>> & {
+      updatePosition: typeof updatePosition,
+      canAnimateLadder?: boolean
+    };
     try {
       this.renderingMessages.add(message.mid);
 
@@ -4083,7 +4116,7 @@ export default class ChatBubbles {
         originalPromise = processResult(originalPromise, bubble);
       }
 
-      const promise = originalPromise.then((r) => ((r && middleware() ? {...r, updatePosition} : undefined) as typeof result));
+      const promise = originalPromise.then((r) => ((r && middleware() ? {...r, updatePosition, canAnimateLadder} : undefined) as typeof result));
 
       this.renderMessagesQueue(promise.catch(() => undefined));
 
@@ -4633,7 +4666,11 @@ export default class ChatBubbles {
         if(!result.cached) {
           s.append(i18n('Loading'));
           (result.result as Promise<any>).then(() => {
-            this.safeRenderMessage(message, true, bubble);
+            this.safeRenderMessage({
+              message,
+              reverse: true,
+              bubble
+            });
           });
         } else if(!result.result) {
           let elem: HTMLElement;
@@ -6664,7 +6701,11 @@ export default class ChatBubbles {
         onExpiredStory: async() => {
           await getHeavyAnimationPromise(); // wait for scroll to end
           message = await this.chat.getMessage(message.mid) as Message.message;
-          this.safeRenderMessage(message, true, bubble);
+          this.safeRenderMessage({
+            message,
+            reverse: true,
+            bubble
+          });
 
           // await fillPromise;
 
@@ -6750,7 +6791,11 @@ export default class ChatBubbles {
       } else if(message.pFlags.local) {
         return this.processLocalMessageRender(message);
       } else {
-        return this.safeRenderMessage(message, reverse);
+        return this.safeRenderMessage({
+          message,
+          reverse,
+          canAnimateLadder: true
+        });
       }
     };
 
@@ -6978,6 +7023,11 @@ export default class ChatBubbles {
         // lastMsDelay = (idx || 0.1) * 1000;
 
         const contentWrapper = bubble.lastElementChild as HTMLElement;
+        if(!contentWrapper) {
+          log.warn('bubble not ready yet', mid, this.batchProcessor);
+          return;
+        }
+
         const elementsToAnimate: HTMLElement[] = [contentWrapper];
         const item = this.bubbleGroups.getItemByBubble(bubble);
         if(item && item.group.avatar && item.group.lastItem === item) {
@@ -7185,7 +7235,7 @@ export default class ChatBubbles {
     const isSponsored = !!(message as Message.message).pFlags.sponsored;
     const m = middlewarePromise(middleware);
 
-    const p: Parameters<ChatBubbles['safeRenderMessage']>[4] = async(result) => {
+    const p: Parameters<ChatBubbles['safeRenderMessage']>[0]['processResult'] = async(result) => {
       const {bubble} = await m(result);
       if(!bubble) {
         return result;
@@ -7419,13 +7469,13 @@ export default class ChatBubbles {
       return result;
     };
 
-    return this.safeRenderMessage(
+    return this.safeRenderMessage({
       message,
-      !isSponsored,
-      undefined,
-      false,
-      p
-    );
+      reverse: !isSponsored,
+      updatePosition: false,
+      processResult: p,
+      canAnimateLadder: true
+    });
   }
 
   private makeViewButton<T extends Parameters<typeof Button>[1]>(options: T) {
