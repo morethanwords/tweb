@@ -77,6 +77,7 @@ function _StoriesProfileList(props: {
       peerId: stories.peer.peerId,
       storyItem: storyItem as StoryItem.storyItem,
       forPreview: true,
+      noAspecter: true,
       containerProps: {
         // @ts-ignore
         'data-mid': storyItem.id,

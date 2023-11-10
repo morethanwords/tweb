@@ -76,9 +76,20 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
   const isDocument = photo._ === 'document';
   const isImageFromDocument = isDocument && photo.mime_type.startsWith('image/') && !size;
   const isWebDoc = isWebDocument(photo);
-  if(!((photo as MyPhoto).sizes || (photo as MyDocument).thumbs) && !isWebDoc && !isImageFromDocument && !isWebFile) {
+  if(
+    !((photo as MyPhoto).sizes || (photo as MyDocument).thumbs) &&
+    !isWebDoc &&
+    !isImageFromDocument &&
+    !isWebFile
+  ) {
     if(boxWidth && boxHeight && !size && isDocument) {
-      setAttachmentSize(photo, container, boxWidth, boxHeight, undefined, message);
+      setAttachmentSize({
+        photo,
+        element: container,
+        boxWidth,
+        boxHeight,
+        message
+      });
     }
 
     return ret;
@@ -104,22 +115,20 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
   // } else {
 
   if(boxWidth && boxHeight && !size && !isWebFile && container) { // !album
-    const set = setAttachmentSize(
+    const set = setAttachmentSize({
       photo,
-      container,
+      element: container,
       boxWidth,
       boxHeight,
-      undefined,
       message,
-      undefined,
-      isImageFromDocument ? {
+      photoSize: isImageFromDocument ? {
         _: 'photoSize',
         w: photo.w,
         h: photo.h,
         size: photo.size,
         type: THUMB_TYPE_FULL
       } : undefined
-    );
+    });
     size = set.photoSize;
     isFit = set.isFit;
     cacheContext = apiManagerProxy.getCacheContext(photo, size.type);

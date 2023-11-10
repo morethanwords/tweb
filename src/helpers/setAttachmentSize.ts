@@ -12,16 +12,25 @@ import choosePhotoSize from '../lib/appManagers/utils/photos/choosePhotoSize';
 import {MediaSize, makeMediaSize} from './mediaSize';
 import isWebDocument from '../lib/appManagers/utils/webDocs/isWebDocument';
 
-export default function setAttachmentSize(
+export default function setAttachmentSize({
+  photo,
+  element,
+  boxWidth,
+  boxHeight,
+  noZoom = true,
+  message,
+  pushDocumentSize,
+  photoSize
+}: {
   photo: MyPhoto | MyDocument | WebDocument,
   element: HTMLElement | SVGForeignObjectElement,
   boxWidth: number,
   boxHeight: number,
-  noZoom = true,
+  noZoom?: boolean,
   message?: any,
   pushDocumentSize?: boolean,
   photoSize?: ReturnType<typeof choosePhotoSize>
-) {
+}) {
   const _isWebDocument = isWebDocument(photo);
   // if(_isWebDocument && pushDocumentSize === undefined) {
   //   pushDocumentSize = true;

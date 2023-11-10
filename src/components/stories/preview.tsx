@@ -7,7 +7,7 @@
 import {createSignal, createEffect, on, JSX, onCleanup, catchError} from 'solid-js';
 import {unwrap} from 'solid-js/store';
 import rootScope from '../../lib/rootScope';
-import {Photo, StoryItem, Document, MessageMedia} from '../../layer';
+import {Photo, StoryItem, Document, MessageMedia, Message} from '../../layer';
 import choosePhotoSize from '../../lib/appManagers/utils/photos/choosePhotoSize';
 import wrapPhoto from '../wrappers/photo';
 import wrapVideo from '../wrappers/video';
@@ -47,23 +47,30 @@ const wrappedStories: Map<PeerId, Map<number, {mounted: number}>> = new Map();
 (window as any).wrappedStories = wrappedStories;
 setInterval(pollStories, 300e3);
 
-export const wrapStoryMedia = (props: {
+type CommonProperties = {
   peerId: PeerId,
+  message?: Message.message,
+  boxWidth?: number,
+  boxHeight?: number,
+  withPreloader?: boolean,
+  noInfo?: boolean,
+  group?: AnimationItemGroup,
+  lazyLoadQueue?: LazyLoadQueue,
+  autoDownload?: ChatAutoDownloadSettings,
+  canAutoplay?: boolean,
+  noAspecter?: boolean
+};
+
+export const wrapStoryMedia = (props: {
   storyItem: StoryItem.storyItem,
   forPreview?: boolean,
   forViewer?: boolean,
-  lazyLoadQueue?: LazyLoadQueue,
-  group?: AnimationItemGroup,
-  autoDownload?: ChatAutoDownloadSettings,
   containerProps?: JSX.HTMLAttributes<HTMLDivElement>,
   childrenClassName?: string,
-  canAutoplay?: boolean,
-  noInfo?: boolean,
   noPlayButton?: boolean,
   onlyPreview?: boolean,
-  useBlur?: boolean | number,
-  withPreloader?: boolean
-}) => {
+  useBlur?: boolean | number
+} & CommonProperties) => {
   const [thumb, setThumb] = createSignal<HTMLImageElement | HTMLCanvasElement>();
   const [media, setMedia] = createSignal<HTMLImageElement | HTMLVideoElement>();
   const [ready, setReady] = createSignal(false);
@@ -106,7 +113,10 @@ export const wrapStoryMedia = (props: {
         photo,
         middleware,
         ...(props.forPreview && {
-          size: choosePhotoSize(photo, 150, 200),
+          ...(props.noAspecter && {
+            size: choosePhotoSize(photo, 150, 200)
+          }),
+          // size: choosePhotoSize(photo, 150, 200),
           useRenderCache: false
         }),
         ...(props.forViewer && {
@@ -150,8 +160,10 @@ export const wrapStoryMedia = (props: {
           noAutoplayAttribute: true
         }),
         ...(props.forPreview && {
-          onlyPreview: true,
-          photoSize: choosePhotoSize(document, 200, 200, false)
+          ...(props.noAspecter && {
+            photoSize: choosePhotoSize(document, 200, 200, false)
+          }),
+          onlyPreview: true
         }),
         withoutPreloader: !props.withPreloader
       });
@@ -207,17 +219,10 @@ export const wrapStoryMedia = (props: {
 };
 
 export const StoryPreview = (props: {
-  peerId: PeerId,
   storyId: number,
-  lazyLoadQueue?: LazyLoadQueue,
-  group?: AnimationItemGroup,
-  canAutoplay?: boolean,
-  autoDownload?: ChatAutoDownloadSettings,
   loadPromises?: Promise<any>[],
   onExpiredStory?: () => void,
-  noInfo?: boolean,
-  withPreloader?: boolean
-}) => {
+} & CommonProperties) => {
   let {loadPromises} = props;
   if(loadPromises) {
     delete props.loadPromises;

@@ -2054,7 +2054,7 @@ export default class ChatBubbles {
       }
     }
 
-    const nameDiv = findUpClassName(target, 'peer-title') || findUpAvatar(target) || findUpAttribute(target, 'data-saved-from') || findUpClassName(target, 'selector-user');
+    const nameDiv = findUpClassName(target, 'peer-title') || findUpAvatar(target) || findUpClassName(target, 'selector-user') || findUpAttribute(target, 'data-saved-from');
     if(nameDiv && nameDiv !== bubble) {
       target = nameDiv || target;
       const peerIdStr = target.dataset.peerId || target.getAttribute('peer') || target.dataset.key/*  || (target as AvatarElement).peerId */;
@@ -2217,11 +2217,11 @@ export default class ChatBubbles {
       }
 
       if(bubble.classList.contains('story')) {
-        const container = target.parentElement.parentElement;
+        const container = findUpAttribute(target, 'data-story-peer-id');
         const storyPeerId = container.dataset.storyPeerId.toPeerId();
         const storyId = +container.dataset.storyId;
         createStoriesViewerWithPeer({
-          target: () => target,
+          target: () => container.querySelector('.media-container-aspecter') || target,
           peerId: storyPeerId,
           id: storyId
         });
@@ -5281,7 +5281,13 @@ export default class ChatBubbles {
               bubble.classList.add('is-square-photo');
               box.classList.add('has-square-photo');
               isSquare = true;
-              setAttachmentSize(photo, preview, 48, 48, false);
+              setAttachmentSize({
+                photo,
+                element: preview,
+                boxWidth: 48,
+                boxHeight: 48,
+                noZoom: false
+              });
             } else if(size.h > size.w && !hasLargeMedia) {
               bubble.classList.add('is-vertical-photo');
               box.classList.add('has-vertical-photo');
@@ -5304,7 +5310,32 @@ export default class ChatBubbles {
 
           if(storyAttribute) {
             bubble.classList.add('photo', 'story');
-            this.setStoryContainerDimensions(preview);
+            const size = mediaSizes.active.webpage;
+
+            // set container dimensions before the story is loaded
+            setAttachmentSize({
+              photo: {
+                _: 'photo',
+                id: 0,
+                sizes: [{
+                  _: 'photoSize',
+                  w: 180,
+                  h: 320,
+                  type: 'q',
+                  size: 0
+                }],
+                pFlags: {},
+                access_hash: 0,
+                file_reference: [],
+                date: 0,
+                dc_id: 0
+              },
+              element: preview,
+              boxWidth: size.width,
+              boxHeight: size.height,
+              message
+            });
+
             this.wrapStory({
               message: message as Message.message,
               bubble,
@@ -5312,7 +5343,9 @@ export default class ChatBubbles {
               storyId,
               container: preview,
               middleware,
-              loadPromises
+              loadPromises,
+              boxWidth: size.width,
+              boxHeight: size.height
             });
           }
 
@@ -5343,7 +5376,12 @@ export default class ChatBubbles {
             const sizes = mediaSizes.active;
             const isEmoji = bubble.classList.contains('emoji-big');
             const boxSize = isEmoji ? sizes.emojiSticker : (doc.animated ? sizes.animatedSticker : sizes.staticSticker);
-            setAttachmentSize(doc, attachmentDiv, boxSize.width, boxSize.height);
+            setAttachmentSize({
+              photo: doc,
+              element: attachmentDiv,
+              boxWidth: boxSize.width,
+              boxHeight: boxSize.height
+            });
             // let preloader = new ProgressivePreloader(attachmentDiv, false);
             bubbleContainer.style.minWidth = attachmentDiv.style.width;
             bubbleContainer.style.minHeight = attachmentDiv.style.height;
@@ -6594,7 +6632,9 @@ export default class ChatBubbles {
     storyId,
     container,
     middleware,
-    loadPromises
+    loadPromises,
+    boxWidth,
+    boxHeight
   }: {
     message: Message.message,
     bubble: HTMLElement,
@@ -6602,14 +6642,19 @@ export default class ChatBubbles {
     storyId: number,
     container: HTMLElement,
     middleware: Middleware,
-    loadPromises: Promise<any>[]
+    loadPromises: Promise<any>[],
+    boxWidth?: number,
+    boxHeight?: number
   }) {
     container.dataset.storyPeerId = '' + peerId;
     container.dataset.storyId = '' + storyId;
     this.wrapSomeSolid(() => {
       return StoryPreview({
+        message,
         peerId,
         storyId,
+        boxWidth,
+        boxHeight,
         lazyLoadQueue: this.lazyLoadQueue,
         // group: this.chat.animationGroup,
         autoDownload: this.chat.autoDownload,

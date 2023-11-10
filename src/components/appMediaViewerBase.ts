@@ -1612,7 +1612,14 @@ export default class AppMediaViewerBase<
     }
     const maxHeight = windowH - 120 - padding;
     let thumbPromise: Promise<any> = Promise.resolve();
-    const size = setAttachmentSize(media, container, maxWidth, maxHeight, mediaSizes.isMobile ? false : true, undefined, !!(isDocument && media.w && media.h)).photoSize;
+    const size = setAttachmentSize({
+      photo: media,
+      element: container,
+      boxWidth: maxWidth,
+      boxHeight: maxHeight,
+      noZoom: mediaSizes.isMobile ? false : true,
+      pushDocumentSize: !!(isDocument && media.w && media.h)
+    }).photoSize;
     if(useContainerAsTarget) {
       const cacheContext = await this.managers.thumbsStorage.getCacheContext(media, size.type);
       let img: HTMLImageElement | HTMLCanvasElement;
