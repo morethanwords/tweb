@@ -12,7 +12,7 @@ import overlayCounter from '../../helpers/overlayCounter';
 import throttle from '../../helpers/schedulers/throttle';
 import classNames from '../../helpers/string/classNames';
 import windowSize from '../../helpers/windowSize';
-import {Document, DocumentAttribute, GeoPoint, MediaArea, MessageMedia, Photo, Reaction, StoryItem, StoryView, User, Chat as MTChat, PeerStories} from '../../layer';
+import {Document, DocumentAttribute, GeoPoint, MediaArea, MessageMedia, Photo, Reaction, StoryItem, StoryView, User, Chat as MTChat, PeerStories, AvailableReaction} from '../../layer';
 import animationIntersector from '../animationIntersector';
 import appNavigationController, {NavigationItem} from '../appNavigationController';
 import PeerTitle from '../peerTitle';
@@ -91,6 +91,7 @@ import noop from '../../helpers/noop';
 import {Modify} from '../../types';
 import {IS_MOBILE} from '../../environment/userAgent';
 import formatNumber from '../../helpers/number/formatNumber';
+import callbackify from '../../helpers/callbackify';
 
 export const STORY_DURATION = 5e3;
 const STORY_HEADER_AVATAR_SIZE = 32;
@@ -901,6 +902,7 @@ const renderStoryReaction = async(props: {
   const isCustomEmoji = reaction._ === 'reactionCustomEmoji';
   const middleware = createMiddleware().get();
   uReaction(null);
+  let availableReaction: MaybePromise<AvailableReaction>;
   if(isCustomEmoji) {
     const result = await rootScope.managers.acknowledged.appEmojiManager.getCustomEmojiDocument(reaction.document_id);
     if(!middleware()) return;
@@ -909,16 +911,26 @@ const renderStoryReaction = async(props: {
     }
 
     doc = await result.result;
+    availableReaction = apiManagerProxy.getReaction(doc.stickerEmojiRaw);
   } else {
-    const result = apiManagerProxy.getAvailableReactions();
-    if(result instanceof Promise) {
+    const availableReactionsResult = apiManagerProxy.getAvailableReactions();
+    if(availableReactionsResult instanceof Promise) {
       uReaction();
     }
-    const availableReactions = await result;
+    const availableReactions = await availableReactionsResult;
     if(!middleware()) return;
-    const availableReaction = availableReactions.find((availableReaction) => reactionsEqual(reaction, availableReaction));
+    availableReaction = availableReactions.find((availableReaction) => reactionsEqual(reaction, availableReaction));
     doc = /* availableReaction.center_icon ??  */play ? availableReaction.select_animation : availableReaction.static_icon;
   }
+
+  // preload animation
+  availableReaction && callbackify(availableReaction, (availableReaction) => {
+    if(availableReaction?.around_animation) {
+      appDownloadManager.downloadMedia({
+        media: availableReaction.around_animation
+      });
+    }
+  });
 
   const loadPromises: Promise<any>[] = [];
   await wrapSticker({
