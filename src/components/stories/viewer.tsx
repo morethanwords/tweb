@@ -1622,7 +1622,8 @@ const Stories = (props: {
           entities: totalEntities,
           middleware,
           textColor: 'white',
-          loadPromises
+          loadPromises,
+          passMaskedLinks: CHANGELOG_PEER_ID === props.state.peerId
         });
 
         uCaption(null);
@@ -2081,7 +2082,6 @@ const Stories = (props: {
       style={captionOpacity() && {opacity: 1 - captionOpacity() * 0.5}}
     >
       {content()}
-      {mediaAreas()}
     </div>
   );
 
@@ -2768,6 +2768,14 @@ const Stories = (props: {
             </div>
           </div>
           {caption() && captionContainer}
+          {mediaAreas() && (
+            <div
+              class={styles.ViewerStoryMediaAreas}
+              style={captionOpacity() && {'opacity': 1 - captionOpacity() * 0.5, 'z-index': 0}}
+            >
+              {mediaAreas()}
+            </div>
+          )}
           {reactionsMenu()?.widthContainer}
         </div>
         {!props.isFull() && (

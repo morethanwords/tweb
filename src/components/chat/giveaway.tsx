@@ -20,6 +20,8 @@ import {createMiddleware} from '../stories/viewer';
 import wrapLocalSticker from '../wrappers/localSticker';
 import {For} from 'solid-js';
 import wrapPeerTitle from '../wrappers/peerTitle';
+import PopupElement from '../popups';
+import PopupGiftLink from '../popups/giftLink';
 
 export function getGiftAssetName(months: number) {
   const durationAssetMap: {[key: number]: LottieAssetName} = {
@@ -142,8 +144,8 @@ export async function onGiveawayClick(message: Message.message) {
     }
   });
 
-  if(!isWinner) {
-    return;
+  if(isWinner) {
+    PopupElement.createPopup(PopupGiftLink, giveawayInfo.gift_code_slug);
   }
 }
 

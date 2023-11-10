@@ -507,6 +507,8 @@ $color-inactive: rgba(255, 255, 255, .5);
       font-size: var(--font-size-16);
       line-height: var(--line-height-16);
       white-space: pre-wrap;
+      text-shadow: $shadow;
+      z-index: 1;
       -webkit-mask-image: linear-gradient(
         to bottom,
         rgb(0, 0, 0, 0) 0%,
@@ -543,6 +545,7 @@ $color-inactive: rgba(255, 255, 255, .5);
       overflow: hidden;
       border-radius: 6px;
       z-index: 1;
+      pointer-events: all;
 
       &Reaction {
         display: flex;
@@ -622,6 +625,14 @@ $color-inactive: rgba(255, 255, 255, .5);
           }
         }
       }
+    }
+
+    &MediaAreas {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      opacity: 1;
+      pointer-events: none;
     }
 
     &Reactions {

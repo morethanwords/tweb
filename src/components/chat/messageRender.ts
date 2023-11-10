@@ -205,7 +205,7 @@ export namespace MessageRender {
     const originalStory = isStoryReply && await rootScope.managers.acknowledged.appStoriesManager.getStoryById(replyToPeerId, replyTo.story_id);
     let originalPeerTitle: string | HTMLElement | DocumentFragment;
 
-    let titlePeerId: PeerId;
+    let titlePeerId: PeerId, setColorPeerId: PeerId;
     if(isStoryReply) {
       if(!originalStory.cached) {
         needUpdate.push({replyToPeerId, replyStoryId: replyTo.story_id, mid: message.mid});
@@ -241,6 +241,9 @@ export namespace MessageRender {
       titlePeerId = message.fwdFromId && message.fwdFromId === originalMessageFwdFromId ?
         message.fwdFromId :
         originalMessageFwdFromId || originalMessage.fromId;
+      setColorPeerId = message.fwdFromId && message.fwdFromId === originalMessageFwdFromId ?
+        undefined :
+        originalMessage.fromId;
       originalPeerTitle = new PeerTitle({
         peerId: titlePeerId,
         dialog: false,
@@ -279,7 +282,7 @@ export namespace MessageRender {
       message: originalMessage,
       isStoryExpired,
       storyItem: originalStory?.cached && await originalStory.result,
-      setColorPeerId: titlePeerId,
+      setColorPeerId: setColorPeerId || titlePeerId,
       textColor: 'primary-text-color',
       isQuote: !isStoryReply ? replyTo.pFlags.quote : undefined,
       middleware,
