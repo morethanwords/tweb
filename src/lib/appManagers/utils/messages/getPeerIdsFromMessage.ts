@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {Message, MessageAction, MessageMedia} from '../../../../layer';
+import {Message, MessageAction, MessageMedia, WebPage, WebPageAttribute} from '../../../../layer';
 import getPeerId from '../peers/getPeerId';
 
 export default function getPeerIdsFromMessage(message: Message.message | Message.messageService) {
@@ -25,6 +25,14 @@ export default function getPeerIdsFromMessage(message: Message.message | Message
     const recentVoters = results?.recent_voters;
     if(recentVoters?.length) {
       peerIds.push(...recentVoters.map((peer) => getPeerId(peer)));
+    }
+
+    const webPage = (media as MessageMedia.messageMediaWebPage)?.webpage as WebPage.webPage;
+    if(webPage) {
+      const storyAttribute = webPage.attributes?.find((attribute) => attribute._ === 'webPageAttributeStory') as WebPageAttribute.webPageAttributeStory;
+      if(storyAttribute) {
+        peerIds.push(getPeerId(storyAttribute.peer));
+      }
     }
 
     const channels = (media as MessageMedia.messageMediaGiveaway).channels;
