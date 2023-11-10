@@ -46,6 +46,8 @@ export default class DialogsPlaceholder {
   private onRemove: () => void;
   private blockScrollable: Scrollable;
 
+  private night: boolean;
+
   constructor(sizes: Partial<{
     avatarSize: number,
     avatarMarginRight: number,
@@ -53,9 +55,11 @@ export default class DialogsPlaceholder {
     marginLeft: number,
     gapVertical: number,
     totalHeight: number,
-    statusWidth: number
+    statusWidth: number,
+    night: boolean
   }> = {}) {
     this.shimmer = new Shimmer();
+    this.shimmer.night = this.night = sizes.night;
     this.tempId = 0;
     this.canvas = document.createElement('canvas');
     this.canvas.classList.add('dialogs-placeholder-canvas');
@@ -282,7 +286,7 @@ export default class DialogsPlaceholder {
     patternCanvas.width = canvas.width;
     patternCanvas.height = canvas.height;
 
-    patternContext.fillStyle = customProperties.getProperty('surface-color');
+    patternContext.fillStyle = customProperties.getProperty('surface-color', this.night);
     patternContext.fillRect(0, 0, patternCanvas.width, patternCanvas.height);
 
     patternContext.fillStyle = '#000';

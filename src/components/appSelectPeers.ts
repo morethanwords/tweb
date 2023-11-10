@@ -135,6 +135,8 @@ export default class AppSelectPeers {
 
   private withStories: boolean;
 
+  private night: boolean;
+
   constructor(options: {
     appendTo: AppSelectPeers['appendTo'],
     managers: AppSelectPeers['managers'],
@@ -168,7 +170,8 @@ export default class AppSelectPeers {
     scrollable?: AppSelectPeers['scrollable'],
     getMoreCustom?: AppSelectPeers['getMoreCustom'],
     placeholderElementsGap?: number,
-    withStories?: AppSelectPeers['withStories']
+    withStories?: AppSelectPeers['withStories'],
+    night?: boolean
   }) {
     safeAssign(this, options);
 
@@ -187,7 +190,8 @@ export default class AppSelectPeers {
       marginLeft: 12 + (this.design === 'square' ? 48 : 0),
       totalHeight: 56,
       gapVertical: options.placeholderElementsGap,
-      statusWidth: 0
+      statusWidth: 0,
+      night: this.night
     });
 
     this.container.classList.add('selector', 'selector-' + this.design);

@@ -19,6 +19,8 @@ export default class Shimmer {
   private text: string;
   private fillStyle: CanvasRenderingContext2D['fillStyle'];
 
+  public night: boolean;
+
   private keepTime() {
     this.diffTime = Date.now() - this.currTime;
     this.currTime = Date.now();
@@ -95,8 +97,8 @@ export default class Shimmer {
     lightLeft = clamp(this.lightSource - this.lightSpread, 0, 1);
     lightRight = clamp(this.lightSource + this.lightSpread, 0, 1);
 
-    const backgroundColor = customProperties.getProperty('background-color-true');
-    const shimmerColor = customProperties.getProperty('surface-color');
+    const backgroundColor = customProperties.getProperty('background-color-true', this.night);
+    const shimmerColor = customProperties.getProperty('surface-color', this.night);
     gradient.addColorStop(lightLeft, backgroundColor);
     gradient.addColorStop(lightCenter, shimmerColor);
     gradient.addColorStop(lightRight, backgroundColor);

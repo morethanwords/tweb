@@ -4,7 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {AppColorName} from '../themeController';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import rootScope from '../../lib/rootScope';
 import mediaSizes from '../mediaSizes';
@@ -12,11 +11,18 @@ import mediaSizes from '../mediaSizes';
 export type CustomProperty = string;
 
 export class CustomProperties {
-  private cache: {[k in CustomProperty]?: string};
+  private cache: {[k in CustomProperty]?: [string, string]};
   private computedStyle: CSSStyleDeclaration;
+  private nightComputedStyle: CSSStyleDeclaration;
+  private nightElement: HTMLElement;
 
   constructor() {
     this.cache = {};
+
+    this.nightElement = document.createElement('div');
+    this.nightElement.className = 'night';
+    this.nightElement.style.display = 'none';
+    document.body.append(this.nightElement);
 
     rootScope.addEventListener('theme_changed', this.resetCache);
     mediaSizes.addEventListener('resize', this.resetCache);
@@ -32,16 +38,18 @@ export class CustomProperties {
     }
   };
 
-  public getProperty(name: CustomProperty) {
-    let value = this.cache[name];
-    if(value !== undefined) {
-      return value;
+  public getProperty(name: CustomProperty, night?: boolean) {
+    const values = this.cache[name];
+    const index = night ? 1 : 0;
+    if(values?.[index]) {
+      return values[index];
     }
 
     this.computedStyle ??= window.getComputedStyle(document.documentElement);
+    this.nightComputedStyle ??= window.getComputedStyle(this.nightElement)
 
-    value = this.computedStyle.getPropertyValue('--' + name).trim();
-    return this.setPropertyCache(name, value);
+    const value = (night ? this.nightComputedStyle : this.computedStyle).getPropertyValue('--' + name).trim();
+    return this.setPropertyCache(name, value, night);
   }
 
   public getPropertyAsSize(name: CustomProperty) {
@@ -59,8 +67,8 @@ export class CustomProperties {
     return size;
   }
 
-  public setPropertyCache(name: CustomProperty, value: string) {
-    return this.cache[name] = value;
+  public setPropertyCache(name: CustomProperty, value: string, night?: boolean) {
+    return (this.cache[name] ??= [] as any)[night ? 1 : 0] = value;
   }
 }
 

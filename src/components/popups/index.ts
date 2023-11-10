@@ -108,6 +108,8 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
   protected middlewareHelper: MiddlewareHelper;
   protected destroyed: boolean;
 
+  protected night: boolean;
+
   constructor(className: string, options: PopupOptions = {}) {
     super(false);
     this.element.classList.add('popup');
@@ -115,6 +117,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     this.container.classList.add('popup-container', 'z-depth-1');
 
     if(overlayCounter.isDarkOverlayActive) {
+      this.night = true;
       this.element.classList.add('night');
     }
 

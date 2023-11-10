@@ -55,7 +55,8 @@ export default class PopupPickUser extends PopupElement {
       multiSelect: false,
       rippleEnabled: false,
       avatarSize: 'abitbigger',
-      managers: this.managers
+      managers: this.managers,
+      night: this.night
     });
 
     this.scrollable = this.selector.scrollable;
