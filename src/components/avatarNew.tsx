@@ -31,6 +31,7 @@ import apiManagerProxy from '../lib/mtproto/mtprotoworker';
 import callbackify from '../helpers/callbackify';
 import Icon from './icon';
 import wrapPhoto from './wrappers/photo';
+import customProperties from '../helpers/dom/customProperties';
 
 const FADE_IN_DURATION = 200;
 const TEST_SWAPPING = 0;
@@ -106,8 +107,8 @@ const createUnreadGradient = (context: CanvasRenderingContext2D, size: number, d
     size * 0.1342364286 * dpr,
     size * 1.02370714286 * dpr
   );
-  gradient.addColorStop(0, '#34C76F');
-  gradient.addColorStop(1, '#3DA1FD');
+  gradient.addColorStop(0, customProperties.getProperty('avatar-color-story-unread-from'));
+  gradient.addColorStop(1, customProperties.getProperty('avatar-color-story-unread-to'));
   return gradient;
 };
 
@@ -118,8 +119,8 @@ const createCloseGradient = (context: CanvasRenderingContext2D, size: number, dp
     size * 0.5 * dpr,
     size * 1 * dpr
   );
-  gradient.addColorStop(0, '#88D93A');
-  gradient.addColorStop(1, '#30B73B');
+  gradient.addColorStop(0, customProperties.getProperty('avatar-color-story-close-from'));
+  gradient.addColorStop(1, customProperties.getProperty('avatar-color-story-close-to'));
   return gradient;
 };
 
@@ -242,7 +243,7 @@ export const AvatarNew = (props: {
     const segmentToSection = (segment: StoriesSegment, unreadAsClose?: boolean): DashedCircleSection => {
       if(segment.type === 'read') {
         return {
-          color: props.storyColors?.read || '#c4c9cc',
+          color: props.storyColors?.read || customProperties.getProperty('avatar-color-story-read'),
           length: segment.length,
           lineWidth: dimensions.strokeWidth / 2
         };

@@ -151,7 +151,7 @@
   --avatar-color-story-unread-to: #3da1fd;
   --avatar-color-story-close-from: #88D93A;
   --avatar-color-story-close-to: #30B73B;
-  --avatar-color-story-read: #c4c9cc;
+  --avatar-color-story-read: var(--secondary-color);
 
   --avatar-color-top: var(--peer-avatar-saved-top);
   --avatar-color-bottom: var(--peer-avatar-saved-bottom);
