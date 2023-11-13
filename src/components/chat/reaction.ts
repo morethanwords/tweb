@@ -27,6 +27,7 @@ import callbackifyAll from '../../helpers/callbackifyAll';
 import BezierEasing from '../../vendor/bezierEasing';
 import safePlay from '../../helpers/dom/safePlay';
 import lottieLoader from '../../lib/rlottie/lottieLoader';
+import Scrollable from '../scrollable';
 
 const CLASS_NAME = 'reaction';
 const TAG_NAME = CLASS_NAME + '-element';
@@ -426,7 +427,8 @@ export default class ReactionElement extends HTMLElement {
         genericEffectSize: 100,
         size: this.type === 'inline' ? REACTION_INLINE_SIZE + 14 : REACTION_BLOCK_SIZE + 18,
         effectSize: 80
-      }
+      },
+      scrollable: appImManager.chat.bubbles.scrollable
     });
   }
 
@@ -446,7 +448,8 @@ export default class ReactionElement extends HTMLElement {
       size: number,
       effectSize: number
     },
-    textColor?: string
+    textColor?: string,
+    scrollable?: Scrollable
   }) {
     if(options.cache.hasAroundAnimation || !liteMode.isAvailable('effects_reactions')) {
       return;
@@ -484,7 +487,7 @@ export default class ReactionElement extends HTMLElement {
         play: false,
         managers: options.managers,
         middleware: options.middleware,
-        scrollable: appImManager.chat.bubbles.scrollable
+        scrollable: options.scrollable
       };
 
       const aroundResult = wrapStickerAnimation(aroundParams);
