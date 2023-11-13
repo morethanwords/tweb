@@ -44,6 +44,7 @@ export async function onGiveawayClick(message: Message.message) {
   const isRefunded = isResults && giveawayInfo.pFlags.refunded;
   const isWinner = !isRefunded && isResults && giveawayInfo.pFlags.winner;
   const isParticipating = !isResults && giveawayInfo.pFlags.participating;
+  const onlyNewSubscribers = giveaway.pFlags.only_new_subscribers;
 
   const formatDate = (timestamp: number) => formatFullSentTime(timestamp, undefined, true);
 
@@ -58,7 +59,7 @@ export async function onGiveawayClick(message: Message.message) {
     subtitleKey += '.Several';
     subtitleArgs.push(i18n('Giveaway.Info.OtherChannels', [giveaway.channels.length - 1]));
   }
-  if(giveawayInfo.start_date) {
+  if(onlyNewSubscribers) {
     subtitleKey += '.Date';
     subtitleArgs.push(formatDate(giveawayInfo.start_date));
   }
