@@ -21,7 +21,9 @@ export type ReferenceContext =
   ReferenceContext.referenceContextAttachMenuBotIcon |
   ReferenceContext.referenceContextWallPaper |
   ReferenceContext.referenceContextStoryItem |
-  ReferenceContext.referenceContextPremiumPromo;
+  ReferenceContext.referenceContextPremiumPromo |
+  ReferenceContext.referenceContextWebPage;
+
 export namespace ReferenceContext {
   export type referenceContextProfilePhoto = {
     type: 'profilePhoto',
@@ -70,6 +72,11 @@ export namespace ReferenceContext {
 
   export type referenceContextPremiumPromo = {
     type: 'premiumPromo'
+  };
+
+  export type referenceContextWebPage = {
+    type: 'webPage',
+    url: string
   };
 }
 
@@ -207,6 +214,11 @@ export class ReferenceDatabase extends AppManager {
 
       case 'premiumPromo': {
         promise = Promise.resolve(this.appPaymentsManager.getPremiumPromo(true));
+        break;
+      }
+
+      case 'webPage': {
+        promise = Promise.resolve(this.appWebPagesManager.getWebPage(context.url));
         break;
       }
 

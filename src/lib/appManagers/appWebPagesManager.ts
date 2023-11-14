@@ -38,10 +38,16 @@ export class AppWebPagesManager extends AppManager {
     if(apiWebPage._ === 'webPageNotModified' || apiWebPage._ === 'webPageEmpty') return;
     const {id} = apiWebPage;
 
+    mediaContext ??= {
+      type: 'webPage',
+      url: apiWebPage.url
+    };
+
     const oldWebPage = this.webpages[id];
     const isUpdated = oldWebPage &&
       oldWebPage._ === apiWebPage._ &&
-      (oldWebPage as WebPage.webPage).hash === (oldWebPage as WebPage.webPage).hash;
+      (oldWebPage as WebPage.webPage).hash !== (apiWebPage as WebPage.webPage).hash;
+    let isMediaUpdated = false;
 
     if(apiWebPage._ === 'webPage') {
       if(apiWebPage.photo?._ === 'photo') {
@@ -60,6 +66,11 @@ export class AppWebPagesManager extends AppManager {
         delete apiWebPage.document;
       }
 
+      if(oldWebPage?._ === apiWebPage._) {
+        isMediaUpdated = oldWebPage.photo?.id !== apiWebPage.photo?.id ||
+          oldWebPage.document?.id !== apiWebPage.document?.id;
+      }
+
       const siteName = apiWebPage.site_name;
       const shortTitle = apiWebPage.title || apiWebPage.author || '';
       if(siteName && shortTitle === siteName) {
@@ -75,8 +86,6 @@ export class AppWebPagesManager extends AppManager {
           }
         }
       }
-
-      // delete apiWebPage.description
 
       if(!photoTypeSet.has(apiWebPage.type) &&
         !apiWebPage.description &&
@@ -97,7 +106,7 @@ export class AppWebPagesManager extends AppManager {
       safeReplaceObject(oldWebPage, apiWebPage);
     }
 
-    if(!messageKey && pendingSet !== undefined && isUpdated) {
+    if(((!messageKey && isUpdated) || isMediaUpdated) && pendingSet !== undefined) {
       const msgs: {peerId: PeerId, mid: number, isScheduled: boolean}[] = [];
       pendingSet.forEach((value) => {
         const [peerId, mid, isScheduled] = value.split('_');
