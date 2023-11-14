@@ -1273,6 +1273,7 @@ const Stories = (props: {
   const [captionActive, setCaptionActive] = createSignal(false);
   const [date, setDate] = createSignal<{timestamp: number, edited?: boolean}>();
   const [loading, setLoading] = createSignal(false);
+  const [canShareStory, setCanShareStory] = createSignal();
   const focusedSignal = createSignal(false);
   const sendingReactionSignal = createSignal<StorySendReactionAnimation>();
   const inputEmptySignal = createSignal(true);
@@ -1551,12 +1552,15 @@ const Stories = (props: {
     const date = story.date;
     const edited = (story as StoryItem.storyItem).pFlags.edited;
     const isPublic = !!(story as StoryItem.storyItem).pFlags.public;
+    const peer = apiManagerProxy.getPeer(props.state.peerId);
+    const usernames = getPeerActiveUsernames(peer);
 
     setPrivacyType(privacyType);
     setDate({timestamp: date, edited});
     setNoSound(noSound);
     setVideoDuration(videoDuration && (videoDuration * 1000));
     setIsPublic(isPublic);
+    setCanShareStory(isPublic && (!(story as StoryItem.storyItem).pFlags.noforwards || !!usernames[0]));
     // shareButton.classList.toggle('hide', !isPublic);
   };
 
@@ -2562,12 +2566,14 @@ const Stories = (props: {
             </span>
           </div>
           <div class={styles.ViewerStoryFooterRight}>
-            <ButtonIconTsx
-              icon="forward"
-              onClick={(e) => {
-                onShareButtonClick(e, e.target as HTMLElement);
-              }}
-            />
+            {canShareStory() && (
+              <ButtonIconTsx
+                icon="forward"
+                onClick={(e) => {
+                  onShareButtonClick(e, e.target as HTMLElement);
+                }}
+              />
+            )}
             <span
               ref={footerReactionElement}
               class={classNames(
@@ -3155,7 +3161,9 @@ export default function StoriesViewer(props: {
         return;
       }
 
-      avatarFrom.render({peerId});
+      untrack(() => {
+        avatarFrom.render({peerId});
+      });
     });
 
     onCleanup(() => {
@@ -3244,10 +3252,19 @@ export default function StoriesViewer(props: {
     const rectTo = container.getBoundingClientRect();
     const borderRadius = avatarFrom ? '50%' : window.getComputedStyle(container).borderRadius;
 
+    // ! manually reverse the keyframes because Safari treats `direction: reverse` with lags
+    const makeKeyframes = (keyframes: Keyframe[]) => {
+      if(!forwards) {
+        keyframes.reverse();
+      }
+
+      return keyframes;
+    };
+
     const options: KeyframeAnimationOptions = {
       duration: 250,
-      easing: 'cubic-bezier(0.4, 0.0, 0.6, 1)',
-      direction: forwards ? 'normal' : 'reverse'
+      easing: 'cubic-bezier(0.4, 0.0, 0.6, 1)'
+      // direction: forwards ? 'normal' : 'reverse'
     };
 
     // * animate avatar movement
@@ -3266,11 +3283,11 @@ export default function StoriesViewer(props: {
       const translateX = rectTo.left - rectFrom.left;
       const translateY = rectTo.top - rectFrom.top;
 
-      const keyframes: Keyframe[] = [{
+      const keyframes: Keyframe[] = makeKeyframes([{
         transform: `translate(0, 0) scale(${rectFrom.width / STORY_HEADER_AVATAR_SIZE})`
       }, {
         transform: `translate(${translateX}px, ${translateY}px) scale(1)`
-      }];
+      }]);
 
       if(needAvatarOpacity) {
         keyframes[0].opacity = 0;
@@ -3291,7 +3308,7 @@ export default function StoriesViewer(props: {
     // * animate main container
     const translateX = rectFrom && rectFrom.left - (windowSize.width / 2) + rectFrom.width / 2;
     const translateY = rectFrom && rectFrom.top - (windowSize.height / 2) + rectFrom.height / 2;
-    const containerAnimation = rectFrom && container.animate([{
+    const containerAnimation = rectFrom && container.animate(makeKeyframes([{
       borderRadius,
       transform: `translate3d(${translateX}px, ${translateY}px, 0) scale3d(${rectFrom.width / rectTo.width}, ${rectFrom.height / rectTo.height}, 1)`,
       opacity: 0
@@ -3301,14 +3318,14 @@ export default function StoriesViewer(props: {
     }, {
       borderRadius: '0%',
       transform: `translate3d(0, 0, 0) scale3d(1, 1, 1)`
-    }], options);
+    }]), options);
 
     // * animate simple opacity
     const opacityAnimations = (containerAnimation ?
       [backgroundDiv, !isFull() && closeButton].filter(Boolean) :
       [container, el]
     ).map((element) => {
-      return element.animate([{opacity: 0}, {opacity: 1}], options);
+      return element.animate(makeKeyframes([{opacity: 0}, {opacity: 1}]), options);
     });
 
     // * animate small containers
@@ -3319,13 +3336,13 @@ export default function StoriesViewer(props: {
     const animateSmallContainers = (containers: Element[], next: boolean) => {
       if(!rectFrom) {
         return containers.map((container) => {
-          return container.animate([{opacity: 0}, {opacity: 1}], options);
+          return container.animate(makeKeyframes([{opacity: 0}, {opacity: 1}]), options);
         });
       }
 
       return containers.map((container, idx, arr) => {
         const offsetX = (next ? idx + 1 : (arr.length - idx)) * 60 * (next ? -1 : 1);
-        return container.animate([{
+        return container.animate(makeKeyframes([{
           transform: `translate3d(calc(var(--translateX) + ${offsetX}px), 0, 0) scale3d(${STORY_SCALE_SMALL / 2}, ${STORY_SCALE_SMALL / 2}, 1)`,
           opacity: 0.001 // fix lag with fractal opacity so element should be prepared for animation
         }, {
@@ -3334,7 +3351,7 @@ export default function StoriesViewer(props: {
         }, {
           transform: `translate3d(var(--translateX), 0, 0) scale3d(${STORY_SCALE_SMALL}, ${STORY_SCALE_SMALL}, 1)`,
           opacity: 1
-        }], options);
+        }]), options);
       })
     };
 

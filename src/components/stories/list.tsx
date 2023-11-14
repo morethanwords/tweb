@@ -285,12 +285,13 @@ function _StoriesList(props: {
   const ITEM_MARGIN = 0;
   const ITEM_WIDTH = 74 + ITEM_MARGIN * 2;
   const ITEM_AVATAR_SIZE = 54;
+  const STACKED_LENGTH = 3;
 
-  const foldedLength = createMemo(() => Math.min(3, peers().length - (myIndex() !== -1 ? 1 : 0)));
+  const foldedLength = createMemo(() => Math.min(STACKED_LENGTH, peers().length - (myIndex() !== -1 ? 1 : 0)));
   const indexes = createMemo(() => {
     return {
-      min: myIndex() === 0 ? 1 : 0,
-      max:  myIndex() === 0 ? foldedLength() : foldedLength() - 1
+      min: myIndex() === 0 && peers().length > STACKED_LENGTH ? 1 : 0,
+      max: myIndex() === 0 ? foldedLength() : foldedLength() - 1
     };
   });
 
