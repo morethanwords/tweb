@@ -36,9 +36,9 @@
     width: calc(var(--right-column-width));
     transition: transform var(--transition-standard-out);
     position: absolute;
-    right: 0;
+    inset-inline-end: 0;
     z-index: 3;
-    transform: translate3d(var(--right-column-width), 0, 0);
+    transform: translate3d(calc(var(--right-column-width) * var(--reflect)), 0, 0);
     //transform: translate3d(calc(var(--right-column-width) + 1px), 0, 0);
   
     .sidebar-content {
@@ -68,8 +68,8 @@
 
   @include respond-to(medium-screens) {
     width: calc(var(--right-column-width) + 1px);
-    transform: translate3d(calc(var(--right-column-width) + 1px), 0, 0);
-    border-left: 1px solid var(--border-color);
+    transform: translate3d(calc((var(--right-column-width) + 1px) * var(--reflect)), 0, 0);
+    border-inline-start: 1px solid var(--border-color);
   }
 
   /* @include respond-to(medium-screens) {
@@ -161,7 +161,7 @@
       width: 54px;
       height: 54px;
       bottom: 14px;
-      right: 14px;
+      inset-inline-end: 14px;
 
       position: fixed !important;
       z-index: 1;
@@ -192,12 +192,12 @@
 
   .search-super-month-name {
     border-top: 1px solid var(--border-color);
-    padding: 24px 0px 0px 24px;
+    padding: 1.5rem 1.5rem 0;
     font-weight: var(--font-weight-bold);
     color: var(--secondary-text-color);
 
     @include respond-to(handhelds) {
-      padding: 18px 0px 0px 16px;
+      padding: 1rem 1rem 0;
     }
   }
 
@@ -236,7 +236,7 @@
       position: absolute;
       width: 100%;
       height: 1px;
-      left: 0;
+      inset-inline-start: 0;
       top: 0;
       background-color: inherit;
       display: block;
@@ -338,7 +338,7 @@
 
   .sent-time {
     flex: 0 0 auto;
-    margin-left: 8px;
+    margin-inline-start: 8px;
     margin-top: 3px;
     font-size: 12px;
     color: var(--secondary-text-color);
@@ -366,7 +366,7 @@
 
   .video-time {
     position: absolute;
-    left: 5px;
+    inset-inline-start: 5px;
     top: 4px;
     height: 18px;
     border-radius: 4px;
@@ -381,7 +381,7 @@
   &-content-media,
   &-content-stories {
     .checkbox-field {
-      right: .25rem;
+      inset-inline-end: .25rem;
       top: .25rem;
     }
   }
@@ -471,7 +471,7 @@
     .search-super-item {
       display: flex;
       flex-direction: column;
-      padding-left: 4.4375rem;
+      padding-inline-start: 4.4375rem;
       position: relative;
       overflow: hidden;
       min-height: 4.375rem;
@@ -485,7 +485,7 @@
       border-radius: .375rem;
       overflow: hidden;
       position: absolute;
-      left: .6875rem;
+      inset-inline-start: .6875rem;
 
       &.empty {
         display: flex;
@@ -601,8 +601,7 @@
           &-media {
             object-fit: contain;
             width: auto;
-            left: auto;
-            right: auto;
+            inset-inline: auto auto;
           }
         }
       }
@@ -669,7 +668,7 @@
       opacity: 0;
 
       .btn-icon + .btn-icon {
-        margin-left: .5rem;
+        margin-inline-start: .5rem;
       }
 
       @include respond-to(handhelds) {
@@ -683,7 +682,7 @@
       color: var(--primary-text-color);
       white-space: nowrap;
       text-transform: capitalize;
-      margin-left: 1.5rem;
+      margin-inline-start: 1.5rem;
     }
   }
 }

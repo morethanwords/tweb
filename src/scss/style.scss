@@ -36,12 +36,19 @@
   --vh: 1vh;
   --z-below: -1;
   --hover-alpha: #{$hover-alpha};
+  --reflect: 1;
 
   --transition-standard-easing: cubic-bezier(.4, .0, .2, 1);
   --transition-standard-in-time: .3s;
   --transition-standard-out-time: .25s;
   --transition-standard-in: var(--transition-standard-in-time) var(--transition-standard-easing);
   --transition-standard-out: var(--transition-standard-out-time) var(--transition-standard-easing);
+  --transform-origin-left-center: left center;
+
+  &.is-rtl {
+    --reflect: -1;
+    --transform-origin-left-center: right center;
+  }
   
   --pm-transition: .2s ease-in-out;
   --layer-transition: .2s cubic-bezier(.4, .0, .2, 1);
@@ -50,6 +57,7 @@
   --btn-menu-transition: .2s cubic-bezier(.4, 0, .2, 1);
   --esg-transition: var(--btn-menu-transition);
   --input-transition: .2s ease-out;
+  --input-placeholder-transition: .15s ease-out;
   --sticker-viewer-open-transition-in: .2s var(--transition-standard-easing);
   --sticker-viewer-open-transition-out: .2s var(--transition-standard-easing);
   // --sticker-viewer-switch-transition: .2s cubic-bezier(.07,1.21,.56,1.2);
@@ -1068,12 +1076,12 @@ not screen and (                min-resolution: 2dppx) {
     position: absolute;
     opacity: 0;
     max-width: 100%;
-    padding-right: 0.5rem;
+    padding-inline-end: 0.5rem;
     @include text-overflow(true);
     
     @include animation-level(2) {
-      transform: translateX(1.75rem);
-      transition: opacity var(--input-transition) .01s, transform var(--input-transition) .01s;
+      transform: translateX(calc(1rem * var(--reflect)));
+      transition: opacity var(--input-placeholder-transition) .01s, transform var(--input-placeholder-transition) .01s;
     }
   }
   
@@ -2017,17 +2025,9 @@ hr {
       // }
     }
 
-    &-subtitle {
-      display: block !important; // can drop to none if it's empty
-    }
-
     &-row {
       height: 1.375rem;
     }
-  }
-
-  &.chatlist-chat-small {
-    
   }
 
   &.chatlist-chat-abitbigger {

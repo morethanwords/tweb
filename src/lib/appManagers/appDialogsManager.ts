@@ -373,6 +373,11 @@ export class DialogElement extends Row {
 
     this.subtitleRow.classList.add('dialog-subtitle');
 
+    // if(I18n.isRTL) {
+    //   // this.subtitle.dir = '';
+    //   // this.subtitle.dir = 'rtl';
+    // }
+
     const dom: DialogDom = this.dom = {
       avatarEl: avatar,
       captionDiv,
@@ -3012,7 +3017,7 @@ export class AppDialogsManager {
 
     /* if(!dom.lastMessageSpan.classList.contains('user-typing')) */ {
       let mediaContainer: HTMLElement;
-      const willPrepend: (Promise<any> | HTMLElement)[] = [];
+      let willPrepend: (Promise<any> | HTMLElement)[] = [];
       let icon: Icon;
       if(draftMessage) {
 
@@ -3119,11 +3124,33 @@ export class AppDialogsManager {
       }
 
       if(willPrepend.length) {
-        const elements = await middleware(Promise.all(willPrepend));
-        fragment.prepend(...elements);
+        willPrepend = await middleware(Promise.all(willPrepend));
+        // fragment.prepend(...(willPrepend as HTMLElement[]));
       }
 
-      replaceContent(dom.lastMessageSpan, fragment);
+      // const flex = !!mediaContainer && (willPrepend as HTMLElement[])[0] === mediaContainer;
+      const flex = true;
+      dom.lastMessageSpan.classList.toggle('dialog-subtitle-flex', flex);
+      if(flex) {
+        const parts = [...willPrepend, fragment].map((part, idx, arr) => {
+          const span = document.createElement('span');
+          span.classList.add('dialog-subtitle-span');
+          // if(part !== mediaContainer) {
+          span.classList.add('dialog-subtitle-span-overflow');
+          // }
+          if(idx === (arr.length - 1)) {
+            span.classList.add('dialog-subtitle-span-last');
+            span.dir = 'auto';
+          }
+          span.append(part as HTMLElement);
+          // setInnerHTML(span, part as HTMLElement);
+          return span;
+        });
+        dom.lastMessageSpan.replaceChildren(...parts);
+        // dom.lastMessageSpan.replaceChildren(...[mediaContainer, span].filter(Boolean));
+      } else {
+        replaceContent(dom.lastMessageSpan, fragment);
+      }
     }
 
     if(lastMessage || draftMessage/*  && lastMessage._ !== 'draftMessage' */) {

@@ -496,7 +496,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 
     body.is-right-column-shown & {
       transition: transform var(--transition-standard-in);
-      transform: translate3d(calc(var(--right-column-width) / -2), var(--translateY), 0) !important;
+      transform: translate3d(calc(var(--right-column-width) / -2 * var(--reflect)), var(--translateY), 0) !important;
     }
   }
 
@@ -744,11 +744,12 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 			}
 
 			@include respond-to(medium-screens) {
+        transform-origin: var(--transform-origin-left-center);
+
 				@include animation-level(2) {
 					// !WARNING, МАГИЧЕСКОЕ ЧИСЛО
 					margin: -18.5rem 0 -22rem 0;
 					transform: scale(1);
-					transform-origin: left center;
 					transition: transform var(--transition-standard-out), opacity var(--transition-standard-out) !important;
 				}
 
@@ -1105,11 +1106,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 		//background-position: 0 100%;
 		//background-image: url('assets/img/msg-tail-left-blur.svg');
 		fill: var(--surface-color);
-		transform: scaleX(-1);
-
-    .is-rtl & {
-      transform: scaleX(1);
-    }
+		transform: scaleX(calc(var(--reflect) * -1));
 	}
 
 	.attach-file {
@@ -1657,7 +1654,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 	@include respond-to(medium-screens) {
 		body.is-right-column-shown & {
 			transition: transform var(--transition-standard-in);
-			transform: translate3d(calc(var(--right-column-width) / -2), var(--translateY), 0);
+			transform: translate3d(calc(var(--right-column-width) / -2 * var(--reflect)), var(--translateY), 0);
 		}
 	}
 
@@ -1678,11 +1675,11 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
       }
 
       .is-in .bubble-content-wrapper {
-        transform: translateX(2.5rem) scale(1);
+        transform: translateX(calc(2.5rem * var(--reflect))) scale(1);
       }
 
       .bubbles-group-avatar {
-        transform: translate3d(2.5rem, 0, 0) scale3d(.76, .76, 1);
+        transform: translate3d(calc(2.5rem * var(--reflect)), 0, 0) scale3d(.76, .76, 1);
       }
     }
 

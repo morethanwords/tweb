@@ -60,10 +60,7 @@
 
     &-background {
       // it is needed for circle scale animation
-      top: -15%; 
-      right: -15%;
-      bottom: -15%;
-      left: -15%;
+      inset: -15%;
 
       background-color: var(--primary-color);
       transform: scale(0);
@@ -382,9 +379,10 @@
       border: 2px solid var(--secondary-color);
       background-color: var(--surface-color);
       content: " ";
-      transform: translateX(calc(var(--offset) * -1));
+      transform: translateX(calc(var(--offset) * var(--reflect) * -1));
       border-radius: 50%;
       position: absolute;
+      inset-inline-start: 0;
 
       @include animation-level(2) {
         transition: border-color .1s, transform .1s cubic-bezier(.22, .75, .7, 1.3);
@@ -416,7 +414,7 @@
     .checkbox-toggle-circle {
       border-color: var(--primary-color);
       color: var(--primary-color);
-      transform: translateX(calc(var(--toggle-width) - 1.25rem + var(--offset)));
+      transform: translateX(calc((var(--toggle-width) - 1.25rem + var(--offset)) * var(--reflect)));
     }
   }
 }

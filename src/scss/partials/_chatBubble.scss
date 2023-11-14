@@ -262,10 +262,10 @@
   &-select-checkbox {
     z-index: 3;
     position: absolute;
-    left: 0;
+    inset-inline-start: 0;
     display: flex;
     margin: 0;
-    
+
     .checkbox-box-border {
       border-color: var(--message-checkbox-border-color);
     }
@@ -339,13 +339,13 @@
 
     &.hover-reaction-visible {
       .bubble-beside-button {
-        transform: translateX(1.125rem);
+        transform: translateX(calc(1.125rem * var(--reflect)));
 
         .bubble.is-out & {
-          transform: translateX(-1.125rem);
+          transform: translateX(calc(-1.125rem * var(--reflect)));
 
           &.goto-original {
-            transform: translateX(-1.125rem) rotate(180deg);
+            transform: translateX(calc(-1.125rem * var(--reflect))) rotate(180deg);
           }
         }
       }
@@ -356,7 +356,7 @@
     --size: 1.875rem;
     --offset: calc(var(--size) * -.75);
     position: absolute;
-    right: var(--offset);
+    inset-inline-end: var(--offset);
     // bottom: -.0625rem;
     bottom: 0;
     width: var(--size);
@@ -466,7 +466,7 @@
 
   &-beside-button {
     position: absolute;
-    right: var(--message-beside-button-margin);
+    inset-inline-end: var(--message-beside-button-margin);
     bottom: 0;
     width: var(--message-beside-button-size);
     height: var(--message-beside-button-size);
@@ -701,8 +701,8 @@
 
   &:not(.is-message-empty) .attachment/* ,
   &:not(.is-message-empty).is-reply .attachment */ {
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
+    border-end-start-radius: 0;
+    border-end-end-radius: 0;
   }
   
   &:not(.emoji-big) .attachment {
@@ -1088,8 +1088,8 @@
   &.is-reply .attachment,
   &:not(.hide-name)/* .is-message-empty */ .attachment/* ,
   &:not(.hide-name):not(.sticker) .attachment */ {
-    border-top-left-radius: 0;
-    border-top-right-radius: 0;
+    border-start-start-radius: 0;
+    border-start-end-radius: 0;
   }
 
   .message,
@@ -1495,8 +1495,8 @@
 
         .document-wrapper {
           padding-top: .5rem;
-          border-top-left-radius: inherit;
-          border-top-right-radius: inherit;
+          border-start-start-radius: inherit;
+          border-start-end-radius: inherit;
         }
       }
 
@@ -1507,8 +1507,8 @@
 
         .document-wrapper {
           padding-bottom: .5rem;
-          border-bottom-left-radius: inherit;
-          border-bottom-right-radius: inherit;
+          border-end-start-radius: inherit;
+          border-end-end-radius: inherit;
         }
       }
     }
@@ -1684,8 +1684,8 @@
   }
 
   &.with-replies .attachment {
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
+    border-end-start-radius: 0;
+    border-end-end-radius: 0;
   }
 
   &.with-beside-replies .bubble-content {
@@ -1973,7 +1973,7 @@
     z-index: -2;
     display: block;
     fill: var(--message-background-color);
-    transform: translateY(1px);
+    transform: translateY(1px) scaleX(var(--reflect));
   }
 
   &.photo, 
@@ -2049,8 +2049,8 @@
       display: flex;
       align-items: center;
       padding: 0 .5rem;
-      border-bottom-left-radius: inherit;
-      border-bottom-right-radius: inherit;
+      border-end-start-radius: inherit;
+      border-end-end-radius: inherit;
       color: var(--primary-color);
       min-width: 15rem;
 
@@ -2072,8 +2072,7 @@
         height: 1.5rem;
 
         &-comments {
-          margin-left: .125rem;
-          margin-right: .375rem;
+          margin-inline: .125rem .375rem;
         }
 
         &-next {
@@ -2085,7 +2084,7 @@
       &-text {
         font-weight: var(--font-weight-bold);
         font-size: .9375rem;
-        margin-left: .5rem;
+        margin-inline-start: .5rem;
         display: flex;
         align-items: center;
         color: var(--primary-color);
@@ -2104,7 +2103,7 @@
             background-color: var(--primary-color);
             width: .5rem;
             height: .5rem;
-            margin-left: .75rem;
+            margin-inline-end: .75rem;
             border-radius: 50%;
           }
         }
@@ -2159,8 +2158,8 @@
 
   &.with-reply-markup {
     .bubble-content {
-      border-bottom-left-radius: $bubble-border-radius-medium !important;
-      border-bottom-right-radius: $bubble-border-radius-medium !important;
+      border-end-start-radius: $bubble-border-radius-medium !important;
+      border-end-end-radius: $bubble-border-radius-medium !important;
     }
   }
 
@@ -2524,7 +2523,7 @@
         &-resizer {
           width: 3rem;
           height: 3rem;
-          float: right;
+          float: inline-end;
           margin-inline-start: .625rem;
         }
       }
@@ -2995,7 +2994,10 @@
   .bubble-content {
     &,
     .poll-footer-button {
-      border-radius: $bubble-border-radius-medium $bubble-border-radius-big $bubble-border-radius-big $bubble-border-radius-medium;
+      border-start-start-radius: $bubble-border-radius-medium;
+      border-start-end-radius: $bubble-border-radius-big;
+      border-end-end-radius: $bubble-border-radius-big;
+      border-end-start-radius: $bubble-border-radius-medium;
     }
 
     &-wrapper {
@@ -3008,7 +3010,7 @@
   &.is-group-first {
     .bubble-content,
     .poll-footer-button {
-      border-top-left-radius: $bubble-border-radius-big;
+      border-start-start-radius: $bubble-border-radius-big;
     }
   }
 
@@ -3016,11 +3018,11 @@
     &.can-have-tail {
       .bubble-content,
       .poll-footer-button {
-        border-bottom-left-radius: 0 !important;
+        border-end-start-radius: 0 !important;
       }
 
       .bubble-tail {
-        margin-left: -8.4px;
+        margin-inline-start: -8.4px;
       }
   
       /* .bubble-content:after {
@@ -3032,7 +3034,7 @@
     &:not(.can-have-tail) {
       .bubble-content, 
       .poll-footer-button {
-        border-bottom-left-radius: $bubble-border-radius-big;
+        border-end-start-radius: $bubble-border-radius-big;
       }
     }
   }
@@ -3071,7 +3073,7 @@
 
     &.with-media-tail {
       .attachment {
-        border-bottom-left-radius: 0;
+        border-end-start-radius: 0;
       }
 
       .bubble__media-container {
@@ -3123,7 +3125,10 @@
 
     &, 
     .poll-footer-button {
-      border-radius: $bubble-border-radius-big $bubble-border-radius-medium $bubble-border-radius-medium $bubble-border-radius-big;
+      border-start-start-radius: $bubble-border-radius-big;
+      border-start-end-radius: $bubble-border-radius-medium;
+      border-end-end-radius: $bubble-border-radius-medium;
+      border-end-start-radius: $bubble-border-radius-big;
     }
 
     .name {
@@ -3136,10 +3141,10 @@
       }
 
       @include respond-to(medium-screens) {
-        transform: scale(1) translateX(calc((var(--chat-input-size) + #{$btn-send-margin}) * -1));
+        transform: scale(1) translateX(calc((var(--chat-input-size) + #{$btn-send-margin}) * var(--reflect) * -1));
 
         &.zoom-fade {
-          transform: scale3d(.8, .8, 1) translateX(calc((var(--chat-input-size) + #{$btn-send-margin}) * -1));
+          transform: scale3d(.8, .8, 1) translateX(calc((var(--chat-input-size) + #{$btn-send-margin}) * var(--reflect) * -1));
         }
 
         @include animation-level(2) {
@@ -3173,7 +3178,7 @@
   &.is-group-first {
     .bubble-content, 
     .poll-footer-button {
-      border-top-right-radius: $bubble-border-radius-big;
+      border-start-end-radius: $bubble-border-radius-big;
     }
   }
     
@@ -3181,12 +3186,12 @@
     &.can-have-tail {
       .bubble-content, 
       .poll-footer-button {
-        border-bottom-right-radius: 0 !important;
+        border-end-end-radius: 0 !important;
       }
 
       .bubble-tail {
-        right: -8.4px;
-        transform: translateY(1px) scaleX(-1);
+        inset-inline-end: -8.4px;
+        transform: translateY(1px) scaleX(calc(var(--reflect) * -1));
       }
       
       /* .bubble-content:after {
@@ -3198,18 +3203,18 @@
     &:not(.can-have-tail) {
       .bubble-content, 
       .poll-footer-button {
-        border-bottom-right-radius: $bubble-border-radius-big;
+        border-end-end-radius: $bubble-border-radius-big;
       }
     }
   }
 
   &.just-media {
     .floating-part {
-      right: calc(100% + 10px);
+      inset-inline-end: calc(100% + 10px);
     }
 
     .message {
-      right: 0;
+      inset-inline-end: 0;
     }
   }
 
@@ -3259,7 +3264,7 @@
 
     &.with-media-tail {
       .attachment {
-        border-bottom-right-radius: 0;
+        border-end-end-radius: 0;
       }
 
       .bubble__media-container {
@@ -3345,8 +3350,7 @@
   }
 
   .bubble-beside-button {
-    right: auto;
-    left: var(--message-beside-button-margin);
+    inset-inline: var(--message-beside-button-margin) auto;
     //transform: scaleX(-1);
 
     &.goto-original {
@@ -3375,8 +3379,7 @@
   }
 
   .bubble-hover-reaction {
-    right: auto;
-    left: var(--offset);
+    inset-inline: var(--offset) auto;
   }
 
   /* &.sticker {
@@ -3422,11 +3425,11 @@
     font-weight: var(--font-weight-bold);
 
     &.is-first {
-      border-bottom-left-radius: $border-radius-big;
+      border-end-start-radius: $border-radius-big;
     }
 
     &.is-last {
-      border-bottom-right-radius: $border-radius-big;
+      border-end-end-radius: $border-radius-big;
     }
 
     &-text {

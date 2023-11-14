@@ -335,7 +335,7 @@ import {IS_OVERLAY_SCROLL_SUPPORTED, USE_CUSTOM_SCROLL, USE_NATIVE_SCROLL} from 
   console.log('got state, time:', performance.now() - perf);
 
   if(langPack.lang_code === 'ar' && IS_BETA && false) {
-    document.body.classList.add('is-rtl');
+    document.documentElement.classList.add('is-rtl');
     document.documentElement.dir = 'rtl';
     document.documentElement.lang = langPack.lang_code;
     I18n.setRTL(true);

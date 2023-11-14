@@ -7,10 +7,7 @@
 .topics {
   &-slider {
     position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
+    inset: 0;
     pointer-events: none;
     overflow: hidden;
   }
@@ -26,15 +23,15 @@
     &.is-floating {
       --offset: 5.0625rem;
       --width: calc(var(--left-column-width) - var(--offset));
-      transform: translateX(var(--width));
+      transform: translateX(calc(var(--width) * var(--reflect)));
       overflow: unset !important;
       position: absolute;
       top: 0;
       bottom: 0;
-      right: 0;
+      inset-inline-end: 0;
       z-index: 1;
       pointer-events: all;
-      border-left: 1px solid var(--border-color);
+      border-inline-start: 1px solid var(--border-color);
     }
   
     &.is-visible {
@@ -71,10 +68,10 @@
       &__rows {
         overflow: hidden;
         flex: 1 1 auto;
-        padding-left: .5rem;
+        padding-inline-start: .5rem;
   
         .sidebar-header__title {
-          padding-left: 0 !important;
+          padding-inline-start: 0 !important;
           font-size: var(--font-size-16);
           line-height: var(--line-height-16);
           margin-bottom: .125rem;
@@ -95,7 +92,7 @@
 
     .chatlist-chat {
       min-height: 4rem;
-      padding-left: .75rem;
+      padding-inline-start: .75rem;
     }
   }
 }
@@ -103,7 +100,7 @@
 .topic {
   &-name {
     .topic-icon {
-      margin-right: .25rem;
+      margin-inline-end: .25rem;
     }
 
     &-button {
@@ -134,10 +131,7 @@
       &:before {
         content: " ";
         position: absolute;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        left: 0;
+        inset: 0;
         background-color: var(--color);
         opacity: #{$hover-alpha};
         border-radius: 1.5rem;
@@ -252,7 +246,7 @@
       .topic-icon {
         --size: var(--esg-emoji-size);
         --custom-emoji-size: inherit;
-        margin-left: calc((var(--custom-emoji-size) - var(--esg-emoji-size)) / 2);
+        margin-inline-start: calc((var(--custom-emoji-size) - var(--esg-emoji-size)) / 2);
       }
     }
   }

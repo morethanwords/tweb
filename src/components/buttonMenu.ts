@@ -79,6 +79,7 @@ function ButtonMenuItem(options: ButtonMenuItemOptions) {
     textElement = options.textElement = text ? i18n(text, options.textArgs) : document.createElement('span');
     if(options.regularText) {
       setInnerHTML(textElement, options.regularText);
+      textElement.dir = '';
     }
   }
 

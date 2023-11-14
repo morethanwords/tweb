@@ -71,7 +71,7 @@
 
     &.isMasked {
       :global(.avatar-stories-simple) {
-        mask-image: linear-gradient(90deg, #fff 73%, transparent 0);
+        mask-image: linear-gradient(calc(90deg * var(--reflect)), #fff 73%, transparent 0);
         mask-composite: xor;
       }
     }

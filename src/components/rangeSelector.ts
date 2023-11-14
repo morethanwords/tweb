@@ -7,6 +7,7 @@
 import attachGrabListeners, {GrabEvent} from '../helpers/dom/attachGrabListeners';
 import clamp from '../helpers/number/clamp';
 import safeAssign from '../helpers/object/safeAssign';
+import I18n from '../lib/langPack';
 
 export default class RangeSelector {
   public container: HTMLDivElement;
@@ -145,7 +146,17 @@ export default class RangeSelector {
 
   protected scrub(event: GrabEvent) {
     const rectMax = this.vertical ? this.rect.height : this.rect.width;
-    const offsetAxisValue = clamp(this.vertical ? -(event.y - this.rect.bottom) : event.x - this.rect.left, 0, rectMax);
+    let offsetAxisValue = clamp(
+      this.vertical ?
+        -(event.y - this.rect.bottom) :
+        event.x - this.rect.left,
+      0,
+      rectMax
+    );
+
+    if(!this.vertical && I18n.isRTL) {
+      offsetAxisValue = rectMax - offsetAxisValue;
+    }
 
     let value = this.min + (offsetAxisValue / rectMax * (this.max - this.min));
 

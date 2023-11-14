@@ -18,7 +18,7 @@ import {CancellablePromise} from '../../helpers/cancellablePromise';
 import clamp from '../../helpers/number/clamp';
 import debounce from '../../helpers/schedulers/debounce';
 import {AvatarNew} from '../avatarNew';
-import {i18n} from '../../lib/langPack';
+import I18n, {i18n} from '../../lib/langPack';
 import createContextMenu from '../../helpers/dom/createContextMenu';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import {StoriesProvider, useStories} from './store';
@@ -343,7 +343,7 @@ function _StoriesList(props: {
       }
 
       const translateX = distanceX * value;
-      const translate = `translateX(${translateX}px)`;
+      const translate = `translateX(${translateX * (I18n.isRTL ? -1 : 1)}px)`;
       const scaleValue = 1 - (value * (1 - _scale));
       const scale = `scale(${scaleValue})`;
       cssProperties.transform = `${translate} ${scale}`;

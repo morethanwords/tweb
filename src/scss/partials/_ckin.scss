@@ -340,9 +340,9 @@ video::-webkit-media-controls-enclosure {
         background-color: var(--color);
         cursor: pointer;
         position: absolute;
-        right: 0;
+        inset-inline-end: 0;
         top: calc((var(--thumb-size) - var(--height)) / -2);
-        transform: translateX(calc(var(--thumb-size) / 2)) scale(1);
+        transform: translateX(calc(var(--thumb-size) / 2 * var(--reflect))) scale(1);
 
         @include animation-level(2) {
           transition: transform .125s ease-in-out;
@@ -352,10 +352,11 @@ video::-webkit-media-controls-enclosure {
   }
 
   &.is-focused .progress-line__filled:not(.progress-line__loaded):after {
-    transform: translateX(calc(var(--thumb-size) / 2)) scale(1.125);
+    transform: translateX(calc(var(--thumb-size) / 2 * var(--reflect))) scale(1.125);
   }
 
-  &__loaded, &:before {
+  &__loaded,
+  &:before {
     opacity: .3;
     background-color: var(--secondary-color);
   }
@@ -379,7 +380,7 @@ video::-webkit-media-controls-enclosure {
   &.use-transform {
     .progress-line__filled {
       width: 100%;
-      transform-origin: left center;
+      transform-origin: var(--transform-origin-left-center);
     }
   }
 }

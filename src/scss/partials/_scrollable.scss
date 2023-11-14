@@ -147,7 +147,7 @@ html.custom-scroll {
 
   &-thumb {
     position: absolute;
-    right: 1px;
+    inset-inline-end: 1px;
     width: 5px;
     //margin-left: 2px;
     background-color: var(--scrollbar-color);

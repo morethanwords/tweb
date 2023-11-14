@@ -222,7 +222,7 @@
   &-media {
     border-radius: .125rem;
     position: relative;
-    float: left;
+    float: inline-start;
     margin-inline-end: .375rem;
     margin-bottom: .25rem;
   }
@@ -243,7 +243,7 @@
     position: absolute;
     top: -6px;
     bottom: -6px;
-    right: 9px;
+    inset-inline-end: 9px;
   }
 
   &.quote-like-icon &-title {
@@ -296,7 +296,7 @@
     }
 
     .pinned-container-content {
-      margin-right: .5rem;
+      margin-inline-end: .5rem;
 
       @include respond-to(medium-screens) {
 				body.is-right-column-shown & {
@@ -320,10 +320,7 @@
       border-top: 1px solid var(--border-color);
       border-bottom: 1px solid var(--border-color);
       position: absolute;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      left: 0;
+      inset: 0;
     }
 
     // &:before {
@@ -388,7 +385,7 @@
     width: 2rem;
     height: 2rem;
     position: absolute;
-    margin-left: -.25rem;
+    margin-inline-start: -.25rem;
 
     @include animation-level(2) {
       transition: transform var(--pm-transition)/* , opacity var(--pm-transition) */;
@@ -414,7 +411,7 @@
   &.is-media {
     .pinned-message-title, 
     .pinned-message-subtitle {
-      transform: translateX(2.25rem);
+      transform: translateX(calc(2.25rem * var(--reflect)));
       //overflow: hidden !important;
     }
   }
@@ -429,7 +426,7 @@
   }
 
   &:not(.is-floating) {
-    margin-right: 1rem;
+    margin-inline-end: 1rem;
     //width: 15.5rem;
 
     /* .pinned-message-content {
@@ -442,7 +439,7 @@
 
     > .pinned-message-close {
       display: flex;
-      margin-right: .75rem;
+      margin-inline-end: .75rem;
       order: 0;
     }
   }
@@ -467,11 +464,11 @@
     }
 
     .pinned-container-wrapper {
-      padding-left: 1rem;
+      padding-inline-start: 1rem;
     }
 
     .pinned-container-content {
-      margin-right: 0;
+      margin-inline-end: 0;
     }
   }
 
@@ -520,7 +517,7 @@
         transform: scale(0.68);
         opacity: 0;
       }
-      
+
       /* .animated-super-row {
         transition: none !important;
       } */
@@ -530,7 +527,7 @@
   .animated-super-row {
     --translateY: 16px;
   }
-  
+
   .pinned-message-media {
     --translateY: 32px;
   }
@@ -605,7 +602,7 @@
   }
 
   &:not(.is-floating) {
-    padding-right: 1.75rem;
+    padding-inline-end: 1.75rem;
     max-width: 210px;
     position: relative;
   }
@@ -618,7 +615,7 @@
     overflow: visible !important;
 
     > .btn-icon {
-      margin-left: 0 !important;
+      margin-inline-start: 0 !important;
     }
   }
 
@@ -641,7 +638,7 @@
   }
 
   &-content {
-    margin-left: .75rem;
+    margin-inline-start: .75rem;
   }
 
   &-progress {
@@ -653,7 +650,7 @@
     bottom: 0;
     left: 0;
     transform: scaleX(var(--topbar-floating-scaleX)) translateY(var(--translateY));
-    transform-origin: left center;
+    transform-origin: var(--transform-origin-left-center);
 
     @include sidebar-transform(0, false);
 
@@ -748,7 +745,8 @@
       }
     }
 
-    &:hover, &:active {
+    &:hover,
+    &:active {
       .progress-line-container {
         opacity: 1;
         visibility: visible;
@@ -828,7 +826,7 @@
 
     &-utils {
       // 2.5rem = button size, 1rem = container padding
-      margin-left: -3.5rem;
+      margin-inline-start: -3.5rem;
     }
 
     &.is-disabled {

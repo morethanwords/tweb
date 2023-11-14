@@ -10,10 +10,15 @@ import whichChild from '../helpers/dom/whichChild';
 import cancelEvent from '../helpers/dom/cancelEvent';
 import ListenerSetter from '../helpers/listenerSetter';
 import liteMode from '../helpers/liteMode';
+import I18n from '../lib/langPack';
 
 const USE_3D = true;
 
 function makeTranslate(x: number, y: number) {
+  if(I18n.isRTL) {
+    x = -x;
+  }
+
   return USE_3D ? `translate3d(${x}px, ${y}px, 0)` : `translate(${x}px, ${y}px)`;
 }
 

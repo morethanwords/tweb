@@ -11,9 +11,9 @@
 		body.is-right-column-shown & {
       @if $transform {
         @if $centered != 0 {
-          transform: translate3d(calc(var(--right-column-width) * #{$centered} * -.5), 0, 0);
+          transform: translate3d(calc(var(--right-column-width) * #{$centered} * -.5 * var(--reflect)), 0, 0);
         } @else {
-          transform: translate3d(calc(var(--right-column-width) * -1), 0, 0);
+          transform: translate3d(calc(var(--right-column-width) * -1 * var(--reflect)), 0, 0);
         }
       }
 
@@ -192,12 +192,12 @@ body.is-right-column-shown {
 		display: flex;
 		align-items: center;
     font-weight: var(--font-weight-bold);
-	
+
 		.emoji-native {
 			vertical-align: inherit;
 		}
 	}
-	
+
 	.peer-title, 
 	.info {
 		@include text-overflow();
@@ -208,15 +208,15 @@ body.is-right-column-shown {
 		.btn-menu {
 			top: calc(100% + 7px);
 			max-height: calc(100 * var(--vh) - 4.375rem);
-			
+
 			@include respond-to(handhelds) {
 				max-height: calc(100 * var(--vh) - 3.75rem);
 				top: 29px;
 			}
 		}
-		
+
 		@include respond-to(handhelds) {
-			margin-left: 0;
+			margin-inline-start: 0;
 		}
 	}
 	
@@ -448,12 +448,8 @@ body.is-right-column-shown {
       left: 0;
       z-index: -1;
       transform: scale(var(--topbar-floating-scaleX), -1);
-      transform-origin: left center;
+      transform-origin: var(--transform-origin-left-center);
       pointer-events: none;
-
-      .is-rtl & {
-        transform-origin: right center;
-      }
 
       @include sidebar-transform(0, false);
 
@@ -467,7 +463,7 @@ body.is-right-column-shown {
   .back-unread-badge {
     position: absolute;
     top: -.25rem;
-    right: -.5rem;
+    inset-inline-end: -.5rem;
 
     @include respond-to(not-handhelds) {
       display: none;

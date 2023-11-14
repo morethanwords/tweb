@@ -343,6 +343,29 @@ ul.chatlist {
     }
 
     &-subtitle {
+      &-flex {
+        display: flex;
+      }
+
+      &-span {
+        flex: 0 0 auto;
+        // flex: 0 1 auto;
+        // max-width: 100%;
+
+        &-overflow {
+          text-overflow: ellipsis;
+          overflow: hidden;
+          white-space: pre;
+        }
+
+        &-last {
+          flex: unset;
+          max-width: none;
+          // flex: 1;
+          white-space: nowrap;
+        }
+      }
+
       &-badge {
         display: block !important;
         margin-inline-start: .5rem;
@@ -427,7 +450,7 @@ ul.chatlist {
 
     &-group-call-icon {
       position: absolute;
-      left: 45px;
+      inset-inline-start: 45px;
       top: 45px;
       border: 2px solid var(--surface-color);
       overflow: hidden;

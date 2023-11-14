@@ -142,17 +142,13 @@
       }
 
       &-container {
-        float: left;
+        float: inline-start;
         margin-inline-end: 8px;
         overflow: hidden;
         position: relative;
         border-radius: 50% !important;
         color: #fff;
         flex: 0 0 auto;
-  
-        .is-rtl & {
-          float: right;
-        }
   
         html.is-safari & {
           -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%); // fix safari overflow
