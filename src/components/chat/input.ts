@@ -464,7 +464,7 @@ export default class ChatInput {
     this.replyElements.container.classList.add('reply-wrapper', 'rows-wrapper-row');
 
     this.replyElements.iconBtn = this.createButtonIcon('');
-    this.replyElements.cancelBtn = this.createButtonIcon('close reply-cancel active', {noRipple: true});
+    this.replyElements.cancelBtn = this.createButtonIcon('close reply-cancel', {noRipple: true});
 
     this.replyElements.container.append(this.replyElements.iconBtn, this.replyElements.cancelBtn);
 
@@ -3479,7 +3479,7 @@ export default class ChatInput {
     const oldReply = replyParent.lastElementChild.previousElementSibling;
     const haveReply = oldReply.classList.contains('reply');
 
-    this.replyElements.iconBtn.replaceWith(this.replyElements.iconBtn = this.createButtonIcon((type === 'webpage' ? 'link' : type) + ' active reply-icon', {noRipple: true}));
+    this.replyElements.iconBtn.replaceWith(this.replyElements.iconBtn = this.createButtonIcon((type === 'webpage' ? 'link' : type) + ' reply-icon', {noRipple: true}));
     const {container} = wrapReply({
       title,
       subtitle,
@@ -3488,6 +3488,8 @@ export default class ChatInput {
       message,
       textColor: 'secondary-text-color'
     });
+
+    this.appImManager.setPeerColorToElement(setColorPeerId, replyParent);
 
     if(haveReply) {
       oldReply.replaceWith(container);

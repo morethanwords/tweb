@@ -2448,6 +2448,14 @@ export class AppImManager extends EventListenerBase<{
     messageHighlightning?: boolean,
     colorAsOut?: boolean
   ) {
+    const colorProperty = '--peer-color-rgb';
+    const borderBackgroundProperty = '--peer-border-background';
+    if(!peerId) {
+      element.style.removeProperty(colorProperty);
+      element.style.removeProperty(borderBackgroundProperty);
+      return;
+    }
+
     const peer = apiManagerProxy.getPeer(peerId);
     let peerColorRgbValue: string, peerBorderBackgroundValue: string;
     if(messageHighlightning || colorAsOut) {
@@ -2466,8 +2474,8 @@ export class AppImManager extends EventListenerBase<{
       peerBorderBackgroundValue = `var(--peer-${colorIndex}-border-background)`;
     }
 
-    element.style.setProperty('--peer-color-rgb', peerColorRgbValue);
-    element.style.setProperty('--peer-border-background', peerBorderBackgroundValue);
+    element.style.setProperty(colorProperty, peerColorRgbValue);
+    element.style.setProperty(borderBackgroundProperty, peerBorderBackgroundValue);
   }
 
   public onEmojiStickerClick = async({event, container, managers, peerId, middleware}: {

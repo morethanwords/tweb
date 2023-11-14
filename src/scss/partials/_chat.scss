@@ -1193,6 +1193,11 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 				margin-left: .5rem;
 			} */
 
+      &-icon,
+      &-cancel {
+        color: rgb(var(--peer-color-rgb, var(--primary-color-rgb)));
+      }
+
 			&-icon {
 				order: 0;
 				pointer-events: none;

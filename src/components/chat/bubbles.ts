@@ -5209,7 +5209,7 @@ export default class ChatBubbles {
           const photo: Photo.photo = webPage.photo as any;
           const doc = webPage.document as MyDocument;
           const hasLargeMedia = !!webPage.pFlags.has_large_media;
-          const hasSmallMedia = !hasLargeMedia && !!messageMedia.pFlags.force_small_media;
+          const hasSmallMedia = !!(hasLargeMedia && messageMedia.pFlags.force_small_media);
           if(photo || doc || storyAttribute) {
             previewResizer = document.createElement('div');
             previewResizer.classList.add(`${className}-preview-resizer`);
