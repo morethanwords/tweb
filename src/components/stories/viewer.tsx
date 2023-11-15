@@ -92,6 +92,8 @@ import {Modify} from '../../types';
 import {IS_MOBILE} from '../../environment/userAgent';
 import formatNumber from '../../helpers/number/formatNumber';
 import callbackify from '../../helpers/callbackify';
+import {dispatchHeavyAnimationEvent} from '../../hooks/useHeavyAnimationCheck';
+import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 
 export const STORY_DURATION = 5e3;
 const STORY_HEADER_AVATAR_SIZE = 32;
@@ -3425,6 +3427,9 @@ export default function StoriesViewer(props: {
     }
   });
 
+  let deferred: CancellablePromise<void> = deferredPromise<void>();
+  dispatchHeavyAnimationEvent(deferred, 1000);
+
   let animating = true;
   return (
     <Show when={wasShown()} fallback={ret}>
@@ -3437,9 +3442,12 @@ export default function StoriesViewer(props: {
         onAfterEnter={() => {
           animating = false;
           actions.viewerReady(true);
+          deferred.resolve();
           // play();
         }}
         onExit={(el, done) => {
+          deferred = deferredPromise();
+          dispatchHeavyAnimationEvent(deferred, 1000);
           animating = true;
           actions.viewerReady(false);
           animate(el, false, done);
@@ -3448,6 +3456,7 @@ export default function StoriesViewer(props: {
           animating = false;
           props.onExit?.();
           stop();
+          deferred.resolve();
         }}
         appear
       >
