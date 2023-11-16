@@ -27,7 +27,7 @@ import DEBUG, {MOUNT_CLASS_TO} from '../../config/debug';
 import PeerTitle from '../../components/peerTitle';
 import I18n, {FormatterArguments, i18n, LangPackKey, _i18n} from '../langPack';
 import findUpTag from '../../helpers/dom/findUpTag';
-import lottieLoader from '../rlottie/lottieLoader';
+import lottieLoader, {LottieLoader} from '../rlottie/lottieLoader';
 import wrapPhoto from '../../components/wrappers/photo';
 import AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
 import appSidebarLeft from '../../components/sidebarLeft';
@@ -315,6 +315,10 @@ export class DialogElement extends Row {
 
     this.titleRow.classList.add('dialog-title');
 
+    const isActive = !autonomous &&
+      appImManager.chat &&
+      appImManager.isSamePeer(appImManager.chat, {peerId, threadId: threadId, type: 'chat'});
+
     const peerTitle = new PeerTitle();
     const peerTitlePromise = peerTitle.update({
       peerId,
@@ -323,7 +327,10 @@ export class DialogElement extends Row {
       onlyFirstName,
       withIcons: !noIcons,
       threadId: threadId,
-      wrapOptions: newWrapOptions
+      wrapOptions: {
+        textColor: appDialogsManager.getPrimaryColor(isActive),
+        ...newWrapOptions
+      }
     });
 
     loadPromises?.push(peerTitlePromise);
@@ -395,14 +402,13 @@ export class DialogElement extends Row {
     if(!autonomous) {
       (li as any).dialogDom = dom;
 
-      const chat = appImManager.chat;
-      if(chat && appImManager.isSamePeer(chat, {peerId, threadId: threadId, type: 'chat'})) {
-        appDialogsManager.setDialogActive(li, true);
-      }
-
       if(isMainList && appDialogsManager.forumTab?.peerId === peerId && !threadId) {
         li.classList.add('is-forum-open');
       }
+    }
+
+    if(isActive) {
+      appDialogsManager.setDialogActive(li, true);
     }
   }
 
@@ -1659,6 +1665,7 @@ export class AppDialogsManager {
   private storiesListContainer: HTMLDivElement;
   private bottomPart: HTMLDivElement;
   private disposeStories: () => void;
+  public resizeStoriesList: () => void;
 
   public start() {
     const managers = this.managers = getProxiedManagers();
@@ -1902,7 +1909,10 @@ export class AppDialogsManager {
       setScrolledOn: this.chatsContainer,
       getScrollable: () => this.xd.scrollable.container,
       listenWheelOn: this.bottomPart,
-      offsetX: -1
+      offsetX: -1,
+      resizeCallback: (callback) => {
+        this.resizeStoriesList = callback;
+      }
     });
   }
 
@@ -2047,6 +2057,10 @@ export class AppDialogsManager {
     return active ? 'white' : 'secondary-text-color';
   }
 
+  public getPrimaryColor(active: boolean) {
+    return active ? 'white' : 'primary-color';
+  }
+
   public setDialogActiveStatus(listEl: HTMLElement, active: boolean) {
     listEl.classList.toggle('active', active);
 
@@ -2054,6 +2068,12 @@ export class AppDialogsManager {
     customEmojiRenderers.forEach((customEmojiRenderer) => {
       customEmojiRenderer.textColor = this.getTextColor(active);
     });
+
+    const emojiStatus = listEl.querySelector<HTMLElement>('.emoji-status-text-color');
+    const player = emojiStatus && lottieLoader.getAnimation(emojiStatus);
+    if(player) {
+      player.setColor(this.getPrimaryColor(active), true);
+    }
   }
 
   public setDialogActive(listEl: HTMLElement, active: boolean) {
@@ -2079,7 +2099,9 @@ export class AppDialogsManager {
     // const filter = filtersArr.find((filter) => filter.id !== FOLDER_ID_ARCHIVE);
 
     this.disposeStories?.();
-    this.disposeStories = undefined;
+    this.disposeStories =
+      this.resizeStoriesList =
+      undefined;
 
     const addFilters = (filters: MyDialogFilter[]) => {
       for(const filter of filters) {

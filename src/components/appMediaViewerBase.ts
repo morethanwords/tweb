@@ -153,6 +153,8 @@ export default class AppMediaViewerBase<
   protected clampZoomDebounced: ReturnType<typeof debounce<() => void>>;
   protected ignoreNextClick: boolean;
 
+  protected middlewareHelper: MiddlewareHelper;
+
   get target() {
     return this.listLoader.current;
   }
@@ -168,6 +170,7 @@ export default class AppMediaViewerBase<
     super(false);
 
     this.managers = rootScope.managers;
+    this.middlewareHelper = getMiddleware();
 
     this.log = logger('AMV');
     this.preloader = new ProgressivePreloader();
@@ -738,6 +741,7 @@ export default class AppMediaViewerBase<
     promise.finally(() => {
       this.wholeDiv.remove();
       this.toggleOverlay(false);
+      this.middlewareHelper.destroy();
     });
 
     return promise;
@@ -1090,7 +1094,7 @@ export default class AppMediaViewerBase<
         mediaElement = new Image();
         src = target.src;
       } else if(target instanceof HTMLVideoElement) {
-        mediaElement = createVideo();
+        mediaElement = createVideo({middleware: mover.middlewareHelper.get()});
         mediaElement.src = target.src;
       } else if(target instanceof SVGSVGElement) {
         const clipId = target.dataset.clipId;
@@ -1389,6 +1393,7 @@ export default class AppMediaViewerBase<
     mover.style.transform = newTransform;
 
     setTimeout(() => {
+      mover.middlewareHelper.destroy();
       mover.remove();
     }, 350);
   }
@@ -1397,6 +1402,7 @@ export default class AppMediaViewerBase<
     const newMover = document.createElement('div');
     newMover.classList.add('media-viewer-mover');
     newMover.style.display = 'none';
+    newMover.middlewareHelper = this.middlewareHelper.get().create();
 
     if(this.content.mover) {
       const oldMover = this.content.mover;
@@ -1462,7 +1468,7 @@ export default class AppMediaViewerBase<
     const oldAvatar = this.author.avatarEl;
     const oldAvatarMiddlewareHelper = this.author.avatarMiddlewareHelper;
     const newAvatar = this.author.avatarEl = avatarNew({
-      middleware: (this.author.avatarMiddlewareHelper = getMiddleware()).get(),
+      middleware: (this.author.avatarMiddlewareHelper = this.middlewareHelper.get().create()).get(),
       size: 44,
       peerId: fromId as PeerId || NULL_PEER_ID,
       peerTitle: isPeerId ? undefined : '' + fromId
@@ -1661,11 +1667,12 @@ export default class AppMediaViewerBase<
     if(isVideo) {
       // //////this.log('will wrap video', media, size);
 
+      const middleware = mover.middlewareHelper.get();
       // потому что для safari нужно создать элемент из event'а
       const useController = message && media.type !== 'gif';
       const video = /* useController ?
         appMediaPlaybackController.addMedia(message, false, true) as HTMLVideoElement :
-         */createVideo({pip: useController});
+         */createVideo({pip: useController, middleware});
 
       if(this.wholeDiv.classList.contains('no-forwards')) {
         video.addEventListener('contextmenu', cancelEvent);
@@ -1887,6 +1894,9 @@ export default class AppMediaViewerBase<
 
             handleVideoLeak(video, onMediaLoad(video)).catch(onUnsupported);
             video.addEventListener('error', onUnsupported, {once: true});
+            middleware.onClean(() => {
+              video.removeEventListener('error', onUnsupported);
+            });
 
             if(target instanceof SVGSVGElement/*  && (video.parentElement || !isSafari) */) { // if video exists
               // if(!video.parentElement) {

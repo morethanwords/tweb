@@ -64,7 +64,7 @@ function replaceColors(writeIn: typeof DialogColorsFg, colors: MTAppConfig['peer
 
 export function makeColorsGradient(colors: string[], partSize?: number) {
   const length = colors.length;
-  partSize ||= length === 3 ? 5 : 6;
+  partSize ||= 5;
   if(length !== 3) {
     colors = colors.slice().reverse();
   }

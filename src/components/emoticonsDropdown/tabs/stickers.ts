@@ -41,6 +41,7 @@ import windowSize from '../../../helpers/windowSize';
 import PopupElement from '../../popups';
 import Icon from '../../icon';
 import safeAssign from '../../../helpers/object/safeAssign';
+import {getMiddleware, Middleware, MiddlewareHelper} from '../../../helpers/middleware';
 
 export class SuperStickerRenderer {
   public lazyLoadQueue: LazyLoadQueueRepeat;
@@ -193,6 +194,8 @@ export class StickersTabCategory<Item extends StickersTabCategoryItem, Additiona
   public local?: boolean;
   public menuScroll?: ScrollableX;
 
+  public middlewareHelper: MiddlewareHelper;
+
   constructor(options: {
     id: string,
     title: HTMLElement | DocumentFragment,
@@ -201,7 +204,8 @@ export class StickersTabCategory<Item extends StickersTabCategoryItem, Additiona
     getElementMediaSize: StickersTabCategory<Item>['getElementMediaSize'],
     gapX: number,
     gapY: number,
-    noMenuTab?: boolean
+    noMenuTab?: boolean,
+    middleware?: Middleware
   }) {
     const container = document.createElement('div');
     container.classList.add('emoji-category');
@@ -244,6 +248,7 @@ export class StickersTabCategory<Item extends StickersTabCategoryItem, Additiona
     this.getElementMediaSize = options.getElementMediaSize;
     this.gapX = options.gapX ?? 0;
     this.gapY = options.gapY ?? 0;
+    this.middlewareHelper = options.middleware ? options.middleware.create() : getMiddleware();
   }
 
   public setCategoryItemsHeight(itemsLength = this.items.length) {
@@ -289,6 +294,8 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
 
   public getContainerSize: Category['getContainerSize'];
 
+  public middlewareHelper: MiddlewareHelper;
+
   constructor(
     protected managers: AppManagers,
     protected categoryItemsClassName: string,
@@ -304,6 +311,7 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
     this.postponedEvents = [];
 
     this.listenerSetter = new ListenerSetter();
+    this.middlewareHelper = getMiddleware();
 
     this.container = document.createElement('div');
     this.container.classList.add('tabs-tab', 'emoticons-container');
@@ -335,7 +343,17 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
     return this.categoriesByMenuTabMap.get(menuTab);
   }
 
-  protected createCategory(stickerSet: StickerSet, title: HTMLElement | DocumentFragment, isLocal?: boolean, noMenuTab?: boolean) {
+  protected createCategory({
+    stickerSet,
+    title,
+    isLocal,
+    noMenuTab
+  }: {
+    stickerSet: StickerSet,
+    title: HTMLElement | DocumentFragment,
+    isLocal?: boolean,
+    noMenuTab?: boolean
+  }) {
     const category: Category = new StickersTabCategory({
       id: '' + stickerSet.id,
       title,
@@ -356,7 +374,8 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
       getElementMediaSize: this.getElementMediaSize,
       gapX: this.gapX,
       gapY: this.gapY,
-      noMenuTab
+      noMenuTab,
+      middleware: this.middlewareHelper.get()
     }) as any;
 
     if(this.categoryItemsClassName) {
@@ -426,8 +445,23 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
     // category.elements.container.classList.toggle('hide', !visible);
   }
 
-  protected createLocalCategory(id: string, title: LangPackKey | '', icon?: Icon, noMenuTab?: boolean) {
-    const category = this.createCategory({id} as any, title && i18n(title), true, noMenuTab);
+  protected createLocalCategory({
+    id,
+    title,
+    icon,
+    noMenuTab
+  }: {
+    id: string,
+    title: LangPackKey | '',
+    icon?: Icon,
+    noMenuTab?: boolean
+  }) {
+    const category = this.createCategory({
+      stickerSet: {id} as any,
+      title: title && i18n(title),
+      isLocal: true,
+      noMenuTab
+    });
     category.local = true;
     this.localCategories.push(category);
     if(category.elements.title) {
@@ -465,6 +499,7 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
       delete this.categories[category.id];
       this.categoriesMap.delete(category.elements.container);
       this.categoriesByMenuTabMap.delete(category.elements.menuTab);
+      category.middlewareHelper.destroy();
 
       return true;
     }
@@ -505,6 +540,7 @@ export class EmoticonsTabC<Category extends StickersTabCategory<any, any>> imple
     this.scrollable.destroy();
     this.menuScroll?.destroy();
     this.menuOnClickResult?.stickyIntersector?.disconnect();
+    this.middlewareHelper.destroy();
   }
 
   protected postponedEvent = <K>(cb: (...args: K[]) => void) => {
@@ -566,7 +602,10 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
   }
 
   private async renderStickerSet(set: StickerSet.stickerSet, prepend = false) {
-    const category = this.createCategory(set, wrapEmojiText(set.title));
+    const category = this.createCategory({
+      stickerSet: set,
+      title: wrapEmojiText(set.title)
+    });
     const {menuTabPadding} = category.elements;
 
     const promise = this.managers.appStickersManager.getStickerSet(set);
@@ -585,7 +624,8 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
       lazyLoadQueue: this.emoticonsDropdown.lazyLoadQueue,
       width: 32,
       height: 32,
-      autoplay: false
+      autoplay: false,
+      middleware: category.middlewareHelper.get()
     });
   }
 
@@ -671,10 +711,18 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
       category.elements.container.classList.remove('hide');
     };
 
-    const favedCategory = this.createLocalCategory('faved', 'FavoriteStickers', 'savedmessages');
+    const favedCategory = this.createLocalCategory({
+      id: 'faved',
+      title: 'FavoriteStickers',
+      icon: 'savedmessages'
+    });
     // favedCategory.elements.menuTab.classList.add('active');
 
-    const recentCategory = this.createLocalCategory('recent', 'Stickers.Recent', 'recent');
+    const recentCategory = this.createLocalCategory({
+      id: 'recent',
+      title: 'Stickers.Recent',
+      icon: 'recent'
+    });
     recentCategory.limit = 20;
 
     const clearButton = ButtonIcon('close', {noRipple: true});
@@ -691,7 +739,10 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
       }, noop);
     });
 
-    const premiumCategory = this.createLocalCategory('premium', 'PremiumStickersShort');
+    const premiumCategory = this.createLocalCategory({
+      id: 'premium',
+      title: 'PremiumStickersShort'
+    });
     const s = Icon('star', 'color-premium');
     premiumCategory.elements.menuTab.append(s);
 

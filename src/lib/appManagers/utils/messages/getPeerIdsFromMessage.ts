@@ -39,6 +39,11 @@ export default function getPeerIdsFromMessage(message: Message.message | Message
     if(channels?.length) {
       peerIds.push(...channels.map((chatId) => chatId.toPeerId(true)));
     }
+
+    const peer = (media as MessageMedia.messageMediaStory).peer;
+    if(peer) {
+      peerIds.push(getPeerId(peer));
+    }
   }
 
   const recentReactions = ((message as Message.message).reactions)?.recent_reactions;

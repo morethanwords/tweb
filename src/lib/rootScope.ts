@@ -42,6 +42,8 @@ export type BroadcastEvents = {
 
   'attach_menu_bot': AttachMenuBot,
 
+  'emoji_status_change': void,
+
   'peer_pinned_messages': {peerId: PeerId, mids?: number[], pinned?: boolean, unpinAll?: true},
   'peer_pinned_hidden': {peerId: PeerId, maxId: number},
   'peer_typings': {peerId: PeerId, threadId?: number, typings: UserTyping[]},

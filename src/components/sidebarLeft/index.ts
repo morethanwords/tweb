@@ -36,7 +36,7 @@ import ButtonIcon from '../buttonIcon';
 import confirmationPopup from '../confirmationPopup';
 import IS_GEOLOCATION_SUPPORTED from '../../environment/geolocationSupport';
 import type SortedUserList from '../sortedUserList';
-import Button, {ButtonOptions} from '../button';
+import Button, {ButtonOptions, replaceButtonIcon} from '../button';
 import noop from '../../helpers/noop';
 import ripple from '../ripple';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
@@ -44,7 +44,7 @@ import formatNumber from '../../helpers/number/formatNumber';
 import {AppManagers} from '../../lib/appManagers/managers';
 import themeController from '../../helpers/themeController';
 import contextMenuController from '../../helpers/contextMenuController';
-import {DIALOG_LIST_ELEMENT_TAG} from '../../lib/appManagers/appDialogsManager';
+import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '../../lib/appManagers/appDialogsManager';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import SettingSection, {SettingSectionOptions} from '../settingSection';
 import {FOLDER_ID_ARCHIVE, TEST_NO_STORIES} from '../../lib/mtproto/mtproto_config';
@@ -55,7 +55,7 @@ import liteMode from '../../helpers/liteMode';
 import AppPowerSavingTab from './tabs/powerSaving';
 import AppMyStoriesTab from './tabs/myStories';
 import {joinDeepPath} from '../../helpers/object/setDeepProperty';
-import Icon from '../icon';
+import Icon, {getIconContent} from '../icon';
 import AppSelectPeers from '../appSelectPeers';
 import setBadgeContent from '../../helpers/setBadgeContent';
 import createBadge from '../../helpers/createBadge';
@@ -63,6 +63,15 @@ import {MyDocument} from '../../lib/appManagers/appDocsManager';
 import getAttachMenuBotIcon from '../../lib/appManagers/utils/attachMenuBots/getAttachMenuBotIcon';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import flatten from '../../helpers/array/flatten';
+import EmojiTab from '../emoticonsDropdown/tabs/emoji';
+import {EmoticonsDropdown} from '../emoticonsDropdown';
+import cloneDOMRect from '../../helpers/dom/cloneDOMRect';
+import {AccountEmojiStatuses, Document, EmojiStatus} from '../../layer';
+import filterUnique from '../../helpers/array/filterUnique';
+import {Middleware, MiddlewareHelper} from '../../helpers/middleware';
+import wrapEmojiStatus from '../wrappers/emojiStatus';
+import {makeMediaSize} from '../../helpers/mediaSize';
+import ReactionElement from '../chat/reaction';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -372,6 +381,173 @@ export class AppSidebarLeft extends SidebarSlider {
         setBadgeContent(this.archivedCount, count ? '' + formatNumber(count, 1) : '');
       }
     });
+
+    let statusMiddlewareHelper: MiddlewareHelper, fireOnNew: boolean;
+    const premiumMiddlewareHelper = this.getMiddleware().create();
+    const statusBtnIcon = ButtonIcon(' sidebar-emoji-status', {noRipple: true});
+    attachClickEvent(statusBtnIcon, () => {
+      const emojiTab = new EmojiTab({
+        noRegularEmoji: true,
+        managers: rootScope.managers,
+        mainSets: () => {
+          const defaultStatuses = this.managers.appStickersManager.getLocalStickerSet('inputStickerSetEmojiDefaultStatuses')
+          .then((stickerSet) => {
+            return stickerSet.documents.map((doc) => doc.id);
+          });
+
+          const convertEmojiStatuses = (emojiStatuses: AccountEmojiStatuses) => {
+            return (emojiStatuses as AccountEmojiStatuses.accountEmojiStatuses)
+            .statuses
+            .map((status) => (status as EmojiStatus.emojiStatus).document_id)
+            .filter(Boolean);
+          };
+
+          return [
+            Promise.all([
+              defaultStatuses,
+              this.managers.appUsersManager.getRecentEmojiStatuses().then(convertEmojiStatuses),
+              this.managers.appUsersManager.getDefaultEmojiStatuses().then(convertEmojiStatuses),
+              this.managers.appEmojiManager.getRecentEmojis('custom')
+            ]).then((arrays) => {
+              return filterUnique(flatten(arrays));
+            })
+          ];
+        },
+        onClick: async(emoji) => {
+          emoticonsDropdown.hideAndDestroy();
+
+          const noStatus = getIconContent('star') === emoji.emoji;
+          let emojiStatus: EmojiStatus;
+          if(noStatus) {
+            emojiStatus = {
+              _: 'emojiStatusEmpty'
+            };
+          } else {
+            emojiStatus = {
+              _: 'emojiStatus',
+              document_id: emoji.docId
+            };
+
+            fireOnNew = true;
+          }
+
+          this.managers.appUsersManager.updateEmojiStatus(emojiStatus);
+        }
+      });
+
+      const emoticonsDropdown = new EmoticonsDropdown({
+        tabsToRender: [emojiTab],
+        customParentElement: document.body,
+        getOpenPosition: () => {
+          const rect = statusBtnIcon.getBoundingClientRect();
+          const cloned = cloneDOMRect(rect);
+          cloned.left = rect.left + rect.width / 2;
+          cloned.top = rect.top + rect.height / 2;
+          return cloned;
+        }
+      });
+
+      const textColor = 'primary-color';
+
+      emoticonsDropdown.setTextColor(textColor);
+
+      emoticonsDropdown.addEventListener('closed', () => {
+        emoticonsDropdown.hideAndDestroy();
+      });
+
+      emoticonsDropdown.onButtonClick();
+
+      emojiTab.initPromise.then(() => {
+        const emojiElement = Icon('star', 'super-emoji-premium-icon');
+        emojiElement.style.color = `var(--${textColor})`;
+
+        const category = emojiTab.getCustomCategory();
+
+        emojiTab.addEmojiToCategory({
+          category,
+          element: emojiElement,
+          batch: false,
+          prepend: true
+          // active: !iconEmojiId
+        });
+
+        // if(iconEmojiId) {
+        //   emojiTab.setActive({docId: iconEmojiId, emoji: ''});
+        // }
+      });
+    });
+
+    const wrapStatus = async(middleware: Middleware) => {
+      const user = apiManagerProxy.getUser(rootScope.myId.toUserId());
+      const emojiStatus = user.emoji_status as EmojiStatus.emojiStatus;
+      if(!emojiStatus) {
+        statusBtnIcon.replaceChildren();
+        replaceButtonIcon(statusBtnIcon, 'star');
+        return;
+      }
+
+      fireOnNew && ReactionElement.fireAroundAnimation({
+        middleware: statusMiddlewareHelper?.get() || this.getMiddleware(),
+        reaction: {
+          _: 'reactionCustomEmoji',
+          document_id: emojiStatus.document_id
+        },
+        sizes: {
+          genericEffect: 26,
+          genericEffectSize: 100,
+          size: 22 + 18,
+          effectSize: 80
+        },
+        stickerContainer: statusBtnIcon,
+        cache: statusBtnIcon as any,
+        textColor: 'primary-color'
+      });
+
+      fireOnNew = false;
+
+      const container = await wrapEmojiStatus({
+        wrapOptions: {
+          middleware
+        },
+        emojiStatus,
+        size: makeMediaSize(24, 24)
+      });
+
+      container.classList.replace('emoji-status', 'sidebar-emoji-status-emoji');
+
+      statusBtnIcon.replaceChildren(container);
+    };
+
+    const onPremium = async(isPremium: boolean) => {
+      premiumMiddlewareHelper.clean();
+      const middleware = premiumMiddlewareHelper.get();
+      if(isPremium) {
+        await wrapStatus((statusMiddlewareHelper = middleware.create()).get());
+        if(!middleware()) return;
+        sidebarHeader.append(statusBtnIcon);
+
+        const onEmojiStatusChange = () => {
+          const oldStatusMiddlewareHelper = statusMiddlewareHelper;
+          wrapStatus((statusMiddlewareHelper = middleware.create()).get())
+          .finally(() => {
+            oldStatusMiddlewareHelper.destroy();
+          });
+        };
+
+        rootScope.addEventListener('emoji_status_change', onEmojiStatusChange);
+
+        middleware.onClean(() => {
+          rootScope.removeEventListener('emoji_status_change', onEmojiStatusChange);
+        });
+      } else {
+        statusBtnIcon.remove();
+      }
+
+      appDialogsManager.resizeStoriesList?.();
+    };
+
+    appImManager.addEventListener('premium_toggle', onPremium);
+    if(rootScope.premium) onPremium(true);
 
     this.managers.appUsersManager.getTopPeers('correspondents');
 

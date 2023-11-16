@@ -208,7 +208,7 @@ export default class PopupStickers extends PopupElement {
 
         (Array.from(fragment.children) as HTMLElement[]).slice(1).forEach((element) => {
           const span = document.createElement('span');
-          span.classList.add('super-emoji');
+          span.classList.add('super-emoji', 'super-emoji-custom');
           element.replaceWith(span);
           span.append(element);
         });
@@ -216,7 +216,7 @@ export default class PopupStickers extends PopupElement {
         divs = [fragment];
 
         itemsContainer.classList.replace('sticker-set-stickers', 'super-emojis');
-        itemsContainer.classList.add('is-emojis', 'not-local');
+        itemsContainer.classList.add('is-emojis');
       } else {
         divs = await Promise.all(docs.map(async(doc) => {
           const div = document.createElement('div');

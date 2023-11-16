@@ -52,6 +52,15 @@ export class CustomProperties {
     return this.setPropertyCache(name, value, night);
   }
 
+  public getPropertyAsColor(name: CustomProperty) {
+    const value = this.getProperty(name);
+    if(value[0] === '#') {
+      return value;
+    }
+
+    return `rgb(${value})`;
+  }
+
   public getPropertyAsSize(name: CustomProperty) {
     const value = this.getProperty(name);
     let size: number;

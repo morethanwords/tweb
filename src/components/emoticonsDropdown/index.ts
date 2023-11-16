@@ -375,21 +375,25 @@ export class EmoticonsDropdown extends DropdownHover {
       });
     }
 
-    this.listenerSetter.add(appImManager)('peer_changing', () => {
+    const onPeerChanging = () => {
       if(this._chatInput || this.isStandalone) {
         return;
       }
 
       this.toggle(false);
-    });
-    this.listenerSetter.add(appImManager)('peer_changed', () => {
+    };
+
+    const onPeerChanged = () => {
       if(this._chatInput || this.isStandalone) {
         return;
       }
 
       this.checkRights();
-    });
-    this.checkRights();
+    };
+
+    this.listenerSetter.add(appImManager)('peer_changing', onPeerChanging);
+    this.listenerSetter.add(appImManager)('peer_changed', onPeerChanged);
+    onPeerChanged();
 
     return super.init();
   }
@@ -414,7 +418,7 @@ export class EmoticonsDropdown extends DropdownHover {
       return;
     }
 
-    const rights: { [tabId: number]: ChatRights } = {
+    const rights: {[tabId: number]: ChatRights} = {
       ...(this.getTabsFromRenderer(StickersTab) && {[this.getTabsFromRenderer(StickersTab).tabId]: 'send_stickers'}),
       ...(this.getTabsFromRenderer(GifsTab) && {[this.getTabsFromRenderer(GifsTab).tabId]: 'send_gifs'})
     };

@@ -7,7 +7,6 @@
 import type {LiteModeKey} from '../helpers/liteMode';
 import type RLottiePlayer from '../lib/rlottie/rlottiePlayer';
 import rootScope from '../lib/rootScope';
-import {IS_SAFARI} from '../environment/userAgent';
 import {MOUNT_CLASS_TO} from '../config/debug';
 import isInDOM from '../helpers/dom/isInDOM';
 import indexOfAndSplice from '../helpers/array/indexOfAndSplice';
@@ -38,7 +37,9 @@ export interface AnimationItemWrapper {
   pause: () => any;
   play: () => any;
   autoplay: boolean;
+  _autoplay?: boolean;
   loop: boolean | number;
+  _loop?: boolean | number;
   // onVisibilityChange?: (visible: boolean) => boolean;
 };
 
@@ -150,13 +151,6 @@ export class AnimationIntersector {
     const {el, animation} = player;
     if(!player.controlled && player.type !== 'video') {
       animation.remove();
-    }
-
-    if(player.type === 'video' && IS_SAFARI) {
-      setTimeout(() => { // TODO: очистка по очереди, а не все вместе с этим таймаутом
-        (animation as HTMLVideoElement).src = '';
-        (animation as HTMLVideoElement).load();
-      }, 1e3);
     }
 
     const group = this.byGroups[player.group];
@@ -333,8 +327,8 @@ export class AnimationIntersector {
     this.byPlayer.forEach((animationItem, animation) => {
       if(animationItem.liteModeKey === liteModeKey) {
         changed = true;
-        animation.autoplay = play ? !!+animationItem.el.dataset.stickerPlay : false;
-        animation.loop = play ? !!+animationItem.el.dataset.stickerLoop && rootScope.settings.stickers.loop : false;
+        animation.autoplay = play ? animation._autoplay : false;
+        animation.loop = play ? rootScope.settings.stickers.loop && animation._loop : false;
       }
     });
 
@@ -344,14 +338,14 @@ export class AnimationIntersector {
   public setLoop(loop: boolean) {
     let changed = false;
     this.byPlayer.forEach((animationItem, animation) => {
-      if(!!+animationItem.el.dataset.stickerLoop &&
+      if(animation._loop &&
         animation.loop !== loop &&
         (animationItem.type === 'lottie' || animationItem.type === 'video')) {
         changed = true;
         animation.loop = loop;
 
         // if(animation._autoplay && animation.autoplay !== animation._autoplay) {
-        animation.autoplay = !!+animationItem.el.dataset.stickerPlay;
+        animation.autoplay = animation._autoplay;
         // }
       }
     });

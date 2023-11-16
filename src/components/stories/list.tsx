@@ -79,7 +79,8 @@ function _StoriesList(props: {
   getScrollable: () => HTMLElement,
   listenWheelOn: HTMLElement,
   archive?: boolean,
-  offsetX?: number
+  offsetX?: number,
+  resizeCallback?: (callback: () => void) => void
 }) {
   type PeerStories = typeof stories['peers'][0];
   const [stories, actions] = useStories();
@@ -290,7 +291,7 @@ function _StoriesList(props: {
   const foldedLength = createMemo(() => Math.min(STACKED_LENGTH, peers().length - (myIndex() !== -1 ? 1 : 0)));
   const indexes = createMemo(() => {
     return {
-      min: myIndex() === 0 && peers().length > STACKED_LENGTH ? 1 : 0,
+      min: myIndex() === 0 && peers().length > 1 ? 1 : 0,
       max: myIndex() === 0 ? foldedLength() : foldedLength() - 1
     };
   });
@@ -472,6 +473,7 @@ function _StoriesList(props: {
     mediaSizes.removeEventListener('resize', onResize);
   });
   onResize();
+  props.resizeCallback?.(onResize);
 
   let container: HTMLDivElement;
   const r = (
@@ -602,7 +604,7 @@ function _StoriesList(props: {
 }
 
 export default function StoriesList(props: Parameters<typeof StoriesProvider>[0] & Parameters<typeof _StoriesList>[0]) {
-  const [, rest] = splitProps(props, ['foldInto', 'getScrollable', 'listenWheelOn', 'setScrolledOn', 'offsetX']);
+  const [, rest] = splitProps(props, ['foldInto', 'getScrollable', 'listenWheelOn', 'setScrolledOn', 'offsetX', 'resizeCallback']);
   // return <_StoriesList />;
   return (
     <StoriesProvider {...rest}>

@@ -120,13 +120,12 @@ export default class PopupJoinChatInvite extends PopupPeer {
 
     const title = document.createElement('div');
     title.classList.add('peer-title', 'chat-title');
-    const icons = await generateTitleIcons(
-      NULL_PEER_ID,
-      this.middlewareHelper.get(),
-      false,
-      false,
-      false,
-      {
+    const icons = await generateTitleIcons({
+      peerId: NULL_PEER_ID,
+      noVerifiedIcon: false,
+      noFakeIcon: false,
+      noPremiumIcon: false,
+      peer: {
         _: 'channel',
         pFlags: {
           verified: chatInvite.pFlags.verified,
@@ -137,8 +136,11 @@ export default class PopupJoinChatInvite extends PopupPeer {
         id: 0,
         photo: undefined,
         title: ''
+      },
+      wrapOptions: {
+        middleware: this.middlewareHelper.get()
       }
-    );
+    });
 
     const titleFragment = wrapEmojiText(chatInvite.title);
     if(icons.length) {

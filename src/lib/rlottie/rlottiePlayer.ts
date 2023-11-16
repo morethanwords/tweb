@@ -33,7 +33,7 @@ export type RLottieOptions = {
   skipRatio?: number,
   initFrame?: number, // index
   color?: RLottieColor,
-  textColor?: CustomProperty,
+  textColor?: WrapSomethingOptions['textColor'],
   name?: string,
   skipFirstFrameRendering?: boolean,
   toneIndex?: number,
@@ -124,8 +124,8 @@ export default class RLottiePlayer extends EventListenerBase<{
   private cachingDelta = 0;
 
   private initFrame: number;
-  private color: RLottieColor;
-  private textColor: CustomProperty;
+  private color: RLottieOptions['color'];
+  private textColor: RLottieOptions['textColor'];
 
   public minFrame: number;
   public maxFrame: number;
@@ -370,6 +370,28 @@ export default class RLottiePlayer extends EventListenerBase<{
     this.cleanup();
   }
 
+  public applyColor(context: CanvasRenderingContext2D) {
+    applyColorOnContext(
+      context,
+      // this.color || customProperties.getPropertyAsColor(typeof(this.textColor) === 'function' ? this.textColor() : this.textColor),
+      this.color || customProperties.getPropertyAsColor(this.textColor),
+      0,
+      0,
+      this.width,
+      this.height
+    );
+  }
+
+  public applyColorForAllContexts() {
+    if(!this.color && !this.textColor) {
+      return;
+    }
+
+    this.contexts.forEach((context) => {
+      this.applyColor(context);
+    });
+  }
+
   public renderFrame2(frame: Uint8ClampedArray | HTMLCanvasElement | ImageBitmap, frameNo: number) {
     /* this.setListenerResult('enterFrame', frameNo);
     return; */
@@ -407,14 +429,7 @@ export default class RLottiePlayer extends EventListenerBase<{
         }
 
         if(this.color || this.textColor) {
-          applyColorOnContext(
-            context,
-            this.color || customProperties.getProperty(this.textColor),
-            0,
-            0,
-            this.width,
-            this.height
-          );
+          this.applyColor(context);
         }
 
         if(!this.renderedFirstFrame) {
@@ -483,11 +498,17 @@ export default class RLottiePlayer extends EventListenerBase<{
   }
 
   private onLap() {
-    if(++this.playedTimes === this.loop) {
-      this.loop = false;
+    ++this.playedTimes;
+    if(typeof(this.loop) === 'number' && this.playedTimes >= this.loop) {
+      this.loop =
+        this.autoplay =
+        this._loop =
+        this._autoplay =
+        false;
     }
 
     if(!this.loop) {
+      this.clearCache();
       this.pause(false);
       return false;
     }
@@ -604,11 +625,16 @@ export default class RLottiePlayer extends EventListenerBase<{
     this.play();
   }
 
-  public setColor(color: RLottieColor, renderIfPaused: boolean) {
-    this.color = color;
+  public setColor(color: RLottieColor | string, renderIfPaused: boolean) {
+    if(typeof(color) === 'string') {
+      this.textColor = color;
+    } else {
+      this.color = color;
+    }
 
     if(renderIfPaused && this.paused) {
-      this.renderFrame2(this.imageData.data, this.curFrame);
+      this.applyColorForAllContexts();
+      // this.renderFrame2(this.imageData?.data, this.curFrame);
     }
   }
 

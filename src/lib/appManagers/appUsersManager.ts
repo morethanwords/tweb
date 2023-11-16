@@ -17,7 +17,7 @@ import cleanUsername from '../../helpers/cleanUsername';
 import tsNow from '../../helpers/tsNow';
 import isObject from '../../helpers/object/isObject';
 import safeReplaceObject from '../../helpers/object/safeReplaceObject';
-import {Chat, ContactsResolvedPeer, InputContact, InputGeoPoint, InputMedia, InputPeer, InputUser, User as MTUser, UserProfilePhoto, UserStatus} from '../../layer';
+import {AccountEmojiStatuses, Chat, ContactsResolvedPeer, EmojiStatus, InputContact, InputGeoPoint, InputMedia, InputPeer, InputUser, User as MTUser, UserProfilePhoto, UserStatus} from '../../layer';
 import parseEntities from '../richTextProcessor/parseEntities';
 import wrapUrl from '../richTextProcessor/wrapUrl';
 import SearchIndex from '../searchIndex';
@@ -54,6 +54,9 @@ export class AppUsersManager extends AppManager {
 
   private getTopPeersPromises: {[type in TopPeerType]?: Promise<MyTopPeer[]>};
 
+  private defaultEmojiStatuses: MaybePromise<AccountEmojiStatuses>;
+  private recentEmojiStatuses: MaybePromise<AccountEmojiStatuses>;
+
   protected after() {
     this.clear(true);
 
@@ -65,22 +68,24 @@ export class AppUsersManager extends AppManager {
       updateUserStatus: (update) => {
         const userId = update.user_id;
         const user = this.users[userId];
-        if(user) {
-          user.status = update.status;
-          if(user.status) {
-            if('expires' in user.status) {
-              user.status.expires -= this.timeManager.getServerTimeOffset();
-            }
+        if(!user) {
+          return;
+        }
 
-            if('was_online' in user.status) {
-              user.status.was_online -= this.timeManager.getServerTimeOffset();
-            }
+        user.status = update.status;
+        if(user.status) {
+          if('expires' in user.status) {
+            user.status.expires -= this.timeManager.getServerTimeOffset();
           }
 
-          // user.sortStatus = this.getUserStatusForSort(user.status);
-          this.rootScope.dispatchEvent('user_update', userId);
-          this.setUserToStateIfNeeded(user);
-        } // ////else console.warn('No user by id:', userId);
+          if('was_online' in user.status) {
+            user.status.was_online -= this.timeManager.getServerTimeOffset();
+          }
+        }
+
+        // user.sortStatus = this.getUserStatusForSort(user.status);
+        this.rootScope.dispatchEvent('user_update', userId);
+        this.setUserToStateIfNeeded(user);
       },
 
       // updateUserPhoto: (update) => {
@@ -109,17 +114,37 @@ export class AppUsersManager extends AppManager {
       updateUserName: (update) => {
         const userId = update.user_id;
         const user = this.users[userId];
-        if(user) {
-          this.forceUserOnline(userId);
-
-          this.saveApiUser({
-            ...user,
-            first_name: update.first_name,
-            last_name: update.last_name,
-            username: undefined,
-            usernames: update.usernames
-          }, true);
+        if(!user) {
+          return;
         }
+
+        this.forceUserOnline(userId);
+        this.saveApiUser({
+          ...user,
+          first_name: update.first_name,
+          last_name: update.last_name,
+          username: undefined,
+          usernames: update.usernames
+        }, true);
+      },
+
+      updateUserEmojiStatus: (update) => {
+        const userId = update.user_id;
+        const user = this.users[userId];
+        if(!user) {
+          return;
+        }
+
+        this.forceUserOnline(userId);
+        this.saveApiUser({
+          ...user,
+          emoji_status: update.emoji_status
+        }, true);
+      },
+
+      updateRecentEmojiStatuses: () => {
+        this.recentEmojiStatuses = undefined;
+        this.getRecentEmojiStatuses();
       }
     });
 
@@ -559,6 +584,10 @@ export class AppUsersManager extends AppManager {
     //   user.username = user.usernames.find((username) => username.pFlags.active).username;
     // }
 
+    if(user.emoji_status?._ === 'emojiStatusEmpty') {
+      delete user.emoji_status;
+    }
+
     const peerId = userId.toPeerId(false);
     if(oldUser === undefined) {
       this.users[userId] = user;
@@ -571,9 +600,12 @@ export class AppUsersManager extends AppManager {
       const oldPhotoId = (oldUser.photo as UserProfilePhoto.userProfilePhoto)?.photo_id;
       const newPhotoId = (user.photo as UserProfilePhoto.userProfilePhoto)?.photo_id;
       const changedPhoto = oldPhotoId !== newPhotoId;
+      const changedEmojiStatus = (oldUser.emoji_status as EmojiStatus.emojiStatus)?.document_id !==
+        (user.emoji_status as EmojiStatus.emojiStatus)?.document_id;
 
       const changedPremium = oldUser.pFlags.premium !== user.pFlags.premium;
       const changedAnyBadge = changedPremium ||
+        changedEmojiStatus ||
         oldUser.pFlags.verified !== user.pFlags.verified ||
         oldUser.pFlags.scam !== user.pFlags.scam ||
         oldUser.pFlags.fake !== user.pFlags.fake;
@@ -609,6 +641,10 @@ export class AppUsersManager extends AppManager {
       // whitelisted domains
       if(changedPremium) {
         this.rootScope.dispatchEvent('peer_bio_edit', peerId);
+      }
+
+      if(changedEmojiStatus && user.pFlags.self) {
+        this.rootScope.dispatchEvent('emoji_status_change');
       }
     }
 
@@ -1144,6 +1180,32 @@ export class AppUsersManager extends AppManager {
         this.appChatsManager.saveApiChats(messagesChats.chats);
         return messagesChats;
       }
+    });
+  }
+
+  public updateEmojiStatus(emojiStatus: EmojiStatus) {
+    return this.apiManager.invokeApi('account.updateEmojiStatus', {
+      emoji_status: emojiStatus
+    }).then(() => {
+      this.apiUpdatesManager.processLocalUpdate({
+        _: 'updateUserEmojiStatus',
+        user_id: this.getSelf().id,
+        emoji_status: emojiStatus
+      });
+    });
+  }
+
+  public getDefaultEmojiStatuses() {
+    return this.defaultEmojiStatuses ??= this.apiManager.invokeApiSingleProcess({
+      method: 'account.getDefaultEmojiStatuses',
+      processResult: (emojiStatuses) => this.defaultEmojiStatuses = emojiStatuses
+    });
+  }
+
+  public getRecentEmojiStatuses() {
+    return this.recentEmojiStatuses ??= this.apiManager.invokeApiSingleProcess({
+      method: 'account.getRecentEmojiStatuses',
+      processResult: (emojiStatuses) => this.recentEmojiStatuses = emojiStatuses
     });
   }
 }

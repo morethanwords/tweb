@@ -23,15 +23,15 @@ $menu-height: 3.0625rem;
 	user-select: none;
 
   &.is-standalone {
-    transform-origin: 9rem 4.625rem !important;
+    transform-origin: calc(9rem * var(--reflect)) 4.625rem !important;
     transform: scale(.85);
     bottom: auto;
-    left: auto;
+    inset-inline-start: auto;
   }
 
 	@include respond-to(esg-top) {
 		position: absolute !important;
-		left: $chat-padding;
+		inset-inline-start: $chat-padding;
 		bottom: 5.125rem;
 		height: 26.25rem;
 		max-height: 26.25rem;
@@ -54,6 +54,10 @@ $menu-height: 3.0625rem;
 		body.animation-level-0 & {
 			transition: none;
 		}
+
+    .is-rtl & {
+      transform-origin: 100% 100%;
+    }
 	}
 
   &.shrink {
@@ -83,14 +87,14 @@ $menu-height: 3.0625rem;
 
 		&-search {
 			position: absolute;
-			left: 0;
-			margin-left: .5rem !important;
+			inset-inline-start: 0;
+			margin-inline-start: .5rem !important;
 		}
 
 		&-delete {
 			position: absolute;
-			right: 0;
-			margin-right: .5rem !important;
+			inset-inline-end: 0;
+			margin-inline-end: .5rem !important;
 		}
 
     .menu-horizontal-div-item {
@@ -144,10 +148,7 @@ $menu-height: 3.0625rem;
     min-height: $menu-height;
     align-items: center;
     padding: 0 .3125rem;
-
-    // exclusive
     z-index: 4;
-    // background-color: var(--surface-color);
     background-color: transparent;
 
     &-wrapper {
@@ -178,9 +179,6 @@ $menu-height: 3.0625rem;
       flex: 0 0 auto;
       padding: 0;
       margin: 0 .3125rem;
-
-      // exclusive
-      flex: 0 0 auto;
 
       &.not-local {
         --item-size: 2.375rem;
@@ -230,14 +228,6 @@ $menu-height: 3.0625rem;
       .menu-horizontal-div-item {
         transform: scale(1);
         margin: 0 !important;
-
-        // &:first-child {
-        //   margin-left: 0;
-        // }
-
-        // &:last-child {
-        //   margin-right: 0;
-        // }
 
         @include animation-level(2) {
           transition: transform $menu-transition-duration $menu-inner-transition !important;
@@ -320,7 +310,7 @@ $menu-height: 3.0625rem;
 
       .btn-icon {
         position: absolute;
-        right: 0.5rem;
+        inset-inline-end: 0.5rem;
         top: 50%;
         transform: translateY(-50%);
         font-size: 1.25rem;
@@ -331,7 +321,7 @@ $menu-height: 3.0625rem;
       &-lock {
         line-height: inherit;
         vertical-align: middle;
-        margin-right: 0.125rem;
+        margin-inline-end: 0.125rem;
         display: none;
       }
     }

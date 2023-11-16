@@ -736,6 +736,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
     renderer.size = options.customEmojiSize || mediaSizes.active.customEmoji;
     renderer.isSelectable = options.isSelectable;
     renderer.textColor = options.textColor;
+    // renderer.textColor = typeof(options.textColor) === 'function' ? options.textColor() : options.textColor;
     renderer.observeResizeElement = options.observeResizeElement;
     if(options.wrappingDraft) {
       renderer.contentEditable = 'false';
@@ -775,7 +776,6 @@ export type CustomEmojiRendererElementOptions = Partial<{
   isSelectable: boolean,
   wrappingDraft: boolean,
 
-  textColor?: CustomProperty,
   observeResizeElement?: HTMLElement
 }> & WrapSomethingOptions;
 

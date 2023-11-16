@@ -33,7 +33,7 @@ export default function Button<T extends ButtonOptions>(className: string, optio
   }
 
   if(options.icon) {
-    replaceButtonIcon(button, options.icon);
+    replaceButtonIcon(button, options.icon, false);
   }
 
   if(options.onlyMobile) {
@@ -51,7 +51,7 @@ export default function Button<T extends ButtonOptions>(className: string, optio
   return button as any;
 }
 
-export function replaceButtonIcon(element: HTMLElement, icon: Icon, oldIcon = element.querySelector('.button-icon')) {
+export function replaceButtonIcon(element: HTMLElement, icon: Icon, oldIcon: Element | false = element.querySelector('.button-icon')) {
   const newIcon = Icon(icon, 'button-icon');
   if(oldIcon) oldIcon.replaceWith(newIcon);
   else element.append(newIcon);

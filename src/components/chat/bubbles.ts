@@ -6270,10 +6270,20 @@ export default class ChatBubbles {
         setInnerHTML(title, wrapEmojiText(fwdFrom.from_name));
         bubble.classList.add('hidden-profile');
       } else {
+        const titlePeerId = storyFromPeerId || fwdFromId || message.fromId;
+        const colorIndex = getPeerColorIndexByPeer(apiManagerProxy.getPeer(titlePeerId));
+        let textColorProperty: string;
+        if(colorIndex !== -1) {
+          textColorProperty = `peer-${colorIndex}-color-rgb`;
+        }
+
         title = new PeerTitle({
-          peerId: storyFromPeerId || fwdFromId || message.fromId,
+          peerId: titlePeerId,
           withPremiumIcon: !isForward,
-          wrapOptions
+          wrapOptions: {
+            ...wrapOptions,
+            textColor: textColorProperty
+          }
         }).element;
       }
 

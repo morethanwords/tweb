@@ -187,6 +187,19 @@
         }
       }
     }
+
+    .sidebar-emoji-status {
+      width: 2.5rem;
+      height: 2.5rem;
+      flex: 0 0 auto;
+      color: var(--primary-color);
+
+      &-emoji {
+        position: relative;
+        width: 1.5rem;
+        height: 1.5rem;
+      }
+    }
   
     .search-helper {
       display: flex;

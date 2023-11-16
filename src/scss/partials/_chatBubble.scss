@@ -1695,7 +1695,8 @@
   .colored-name {
     color: rgb(var(--peer-color-rgb)) !important;
 
-    .premium-icon {
+    .premium-icon,
+    .emoji-status-text-color {
       opacity: .6;
       color: inherit;
     }

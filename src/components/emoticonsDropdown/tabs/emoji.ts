@@ -50,7 +50,7 @@ export function appendEmoji(emoji: string, container?: HTMLElement, prepend = fa
   // .reduce((prev, curr) => prev + String.fromCodePoint(parseInt(curr, 16)), '');
 
   const spanEmoji = document.createElement('span');
-  spanEmoji.classList.add('super-emoji');
+  spanEmoji.classList.add('super-emoji', 'super-emoji-regular');
 
   let kek: DocumentFragment;
   if(unify && !IS_EMOJI_SUPPORTED) {
@@ -201,6 +201,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
   private noPacks: boolean;
   private preloaderDelay: number;
   private freeCustomEmoji: Set<DocId>;
+  public initPromise: Promise<void>;
 
   constructor(options: {
     managers: AppManagers,
@@ -380,9 +381,13 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
     }
 
     preparedMap.forEach((emojis, [titleLangPackKey, icon]) => {
-      const category = this.createLocalCategory(titleLangPackKey, titleLangPackKey, icon as Icon, !icon);
+      const category = this.createLocalCategory({
+        id: titleLangPackKey,
+        title: titleLangPackKey,
+        icon: icon as Icon,
+        noMenuTab: !icon
+      });
       category.elements.container.classList.remove('hide');
-      category.elements.items.classList.add(icon && !this.isStandalone ? 'is-local' : 'not-local');
 
       emojis.forEach((unified) => {
         /* if(emojiUnicode(emoji) === '1f481-200d-2642') {
@@ -492,7 +497,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
           return;
         }
 
-        this.toggleLocalCategory(category, true);
+        this.toggleLocalCategory(category, !!category.items.length);
 
         if(id !== EMOJI_RECENT_ID && id !== CUSTOM_EMOJI_RECENT_ID) {
           category.menuScroll = this.menuInnerScroll;
@@ -607,7 +612,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
       getTextColor: () => this.textColor
     });
 
-    return promise;
+    return this.initPromise = promise;
   }
 
   public get textColor() {
@@ -615,7 +620,10 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
   }
 
   private renderStickerSet(set: StickerSet.stickerSet, prepend?: boolean) {
-    const category = this.createCategory(set, wrapEmojiText(set.title));
+    const category = this.createCategory({
+      stickerSet: set,
+      title: wrapEmojiText(set.title)
+    });
     this.positionCategory(category, prepend);
     const {container, menuTabPadding} = category.elements;
     category.elements.items.classList.add('not-local');
@@ -652,7 +660,8 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
       width: 32,
       height: 32,
       autoplay: false,
-      textColor: this.textColor
+      textColor: this.textColor,
+      middleware: category.middlewareHelper.get()
     });
   }
 
@@ -717,7 +726,7 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
     } else if(emoji.docId) {
       const customEmojiElement = CustomEmojiElement.create(emoji.docId);
       const span = document.createElement('span');
-      span.classList.add(/* 'emoji',  */'super-emoji');
+      span.classList.add(/* 'emoji',  */'super-emoji', 'super-emoji-custom');
       span.append(customEmojiElement);
       element = span;
     } else {

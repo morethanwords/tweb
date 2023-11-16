@@ -4,24 +4,28 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import mediaSizes from '../helpers/mediaSizes';
-import {Middleware} from '../helpers/middleware';
-import {Chat, Document, EmojiStatus, User} from '../layer';
+import {Chat, User} from '../layer';
 import apiManagerProxy from '../lib/mtproto/mtprotoworker';
-import rootScope from '../lib/rootScope';
 import generateFakeIcon from './generateFakeIcon';
 import generatePremiumIcon from './generatePremiumIcon';
 import generateVerifiedIcon from './generateVerifiedIcon';
-import wrapSticker from './wrappers/sticker';
+import wrapEmojiStatus from './wrappers/emojiStatus';
 
-export default async function generateTitleIcons(
+export default async function generateTitleIcons({
+  peerId,
+  noVerifiedIcon,
+  noFakeIcon,
+  noPremiumIcon,
+  peer,
+  wrapOptions
+}: {
   peerId: PeerId,
-  middleware?: Middleware,
+  wrapOptions: WrapSomethingOptions,
   noVerifiedIcon?: boolean,
   noFakeIcon?: boolean,
   noPremiumIcon?: boolean,
   peer?: Chat | User
-) {
+}) {
   peer ??= apiManagerProxy.getPeer(peerId);
   const elements: HTMLElement[] = [];
   if((peer as Chat.channel).pFlags.verified && !noVerifiedIcon) {
@@ -32,36 +36,16 @@ export default async function generateTitleIcons(
     elements.push(generateFakeIcon((peer as User.user).pFlags.scam));
   }
 
-  if((peer as User.user).pFlags.premium && !noPremiumIcon) {
+  if((peer as User.user).pFlags.premium && !noPremiumIcon && wrapOptions?.middleware) {
     const emojiStatus = (peer as User.user).emoji_status;
-    if(emojiStatus && emojiStatus._ !== 'emojiStatusEmpty' && false) {
-      const container = document.createElement('span');
-      container.classList.add('emoji-status');
-      const result = await rootScope.managers.acknowledged.appEmojiManager.getCustomEmojiDocument((emojiStatus as EmojiStatus.emojiStatus).document_id);
-      const wrap = async(doc: Document.document) => {
-        const size = mediaSizes.active.emojiStatus
-        const loadPromises: Promise<any>[] = [];
-        await wrapSticker({
-          doc,
-          div: container,
-          width: size.width,
-          height: size.height,
-          loop: 2,
-          play: true,
-          group: 'EMOJI-STATUS',
-          loadPromises,
-          middleware
-          // group: 'none'
-        });
+    if(emojiStatus && emojiStatus._ !== 'emojiStatusEmpty') {
+      const {middleware} = wrapOptions;
+      const container = await wrapEmojiStatus({
+        emojiStatus,
+        wrapOptions
+      });
 
-        await Promise.all(loadPromises);
-      };
-
-      const p = result.result.then(wrap);
-      if(result.cached) {
-        await p;
-      }
-
+      if(!middleware()) return elements;
       elements.push(container);
     } else {
       elements.push(generatePremiumIcon());

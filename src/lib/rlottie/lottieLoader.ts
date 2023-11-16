@@ -15,6 +15,7 @@ import apiManagerProxy from '../mtproto/mtprotoworker';
 import IS_WEB_ASSEMBLY_SUPPORTED from '../../environment/webAssemblySupport';
 import makeError from '../../helpers/makeError';
 import App from '../../config/app';
+import rootScope from '../rootScope';
 
 export type LottieAssetName = 'EmptyFolder' | 'Folders_1' | 'Folders_2' |
   'TwoFactorSetupMonkeyClose' | 'TwoFactorSetupMonkeyCloseAndPeek' |
@@ -36,6 +37,14 @@ export class LottieLoader {
   private curWorkerNum = 0;
 
   private log = logger('LOTTIE', LogTypes.Error);
+
+  constructor() {
+    rootScope.addEventListener('theme_changed', () => {
+      for(const reqId in this.players) {
+        this.players[reqId].applyColorForAllContexts();
+      }
+    });
+  }
 
   public getAnimation(element: HTMLElement) {
     for(const i in this.players) {

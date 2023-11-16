@@ -26,7 +26,7 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
   width: number,
   height: number,
   managers?: AppManagers
-  middleware?: Middleware,
+  middleware: Middleware,
   textColor?: string
 }) {
   if(set.thumbs?.length) {
@@ -56,7 +56,7 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
         } else {
           let media: HTMLElement;
           if(set.pFlags.videos) {
-            media = createVideo();
+            media = createVideo({middleware});
             (media as HTMLVideoElement).autoplay = true;
             (media as HTMLVideoElement).muted = true;
             (media as HTMLVideoElement).loop = true;

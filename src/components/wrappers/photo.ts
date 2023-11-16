@@ -213,7 +213,7 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
 
   let media: HTMLVideoElement | HTMLImageElement;
   if(size?._ === 'videoSize') {
-    media = ret.images.full = createVideo();
+    media = ret.images.full = createVideo({middleware});
     media.autoplay = true;
     media.loop = true;
     media.muted = true;

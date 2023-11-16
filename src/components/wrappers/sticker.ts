@@ -149,8 +149,8 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
       div.dataset.stickerEmoji = emoji;
     }
 
-    div.dataset.stickerPlay = '' + +(play || false);
-    div.dataset.stickerLoop = '' + +(loop || false);
+    // div.dataset.stickerPlay = '' + +(play || false);
+    // div.dataset.stickerLoop = '' + +(loop || false);
 
     div.classList.add('media-sticker-wrapper');
   });
@@ -531,10 +531,12 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
         if(asStatic) {
           media = new Image();
         } else {
-          const video = media = createVideo();
+          const video = media = createVideo({middleware});
           video.muted = true;
           if(play) video.autoplay = true;
           if(loop) video.loop = true;
+          video._autoplay = play || false;
+          video._loop = loop || false;
 
           if(loop && typeof(loop) === 'number') {
             let previousTime = 0, playedTimes = 0;

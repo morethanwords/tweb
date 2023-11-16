@@ -148,7 +148,8 @@ export class AppImManager extends EventListenerBase<{
   chat_changing: (details: {from: Chat, to: Chat}) => void,
   peer_changed: (chat: Chat) => void,
   peer_changing: (chat: Chat) => void,
-  tab_changing: (tabId: number) => void
+  tab_changing: (tabId: number) => void,
+  premium_toggle: (premium: boolean) => void
 }> {
   public columnEl = document.getElementById('column-center') as HTMLDivElement;
   public chatsContainer: HTMLElement;
@@ -247,7 +248,12 @@ export class AppImManager extends EventListenerBase<{
     rootScope.addEventListener('settings_updated', this.setSettings);
 
     const onPremiumToggle = (isPremium: boolean) => {
+      if(document.body.classList.contains('is-premium') === isPremium) {
+        return;
+      }
+
       document.body.classList.toggle('is-premium', isPremium);
+      this.dispatchEvent('premium_toggle', isPremium);
     };
     rootScope.addEventListener('premium_toggle', onPremiumToggle);
     onPremiumToggle(rootScope.premium);

@@ -26,7 +26,6 @@ import findUpClassName from '../../helpers/dom/findUpClassName';
 import blurActiveElement from '../../helpers/dom/blurActiveElement';
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import findUpTag from '../../helpers/dom/findUpTag';
 import {toast, toastNew} from '../toast';
 import replaceContent from '../../helpers/dom/replaceContent';
 import {ChatFull, Chat as MTChat, GroupCall} from '../../layer';
@@ -48,7 +47,7 @@ import {FOLDER_ID_ALL} from '../../lib/mtproto/mtproto_config';
 import formatNumber from '../../helpers/number/formatNumber';
 import PopupElement from '../popups';
 import ChatRequests from './requests';
-import modifyAckedResult, {modifyAckedPromise} from '../../helpers/modifyAckedResult';
+import {modifyAckedPromise} from '../../helpers/modifyAckedResult';
 import callbackify from '../../helpers/callbackify';
 import ChatActions from './actions';
 import confirmationPopup from '../confirmationPopup';
@@ -93,6 +92,8 @@ export default class ChatTopbar {
   private buttonsToVerify: ButtonToVerify[];
   private chatInfoContainer: HTMLDivElement;
   private person: HTMLDivElement;
+
+  private titleMiddlewareHelper: MiddlewareHelper;
 
   constructor(
     private chat: Chat,
@@ -785,6 +786,8 @@ export default class ChatTopbar {
     this.listenerSetter.removeAll();
     window.clearInterval(this.setPeerStatusInterval);
 
+    this.titleMiddlewareHelper?.destroy();
+    this.avatarMiddlewareHelper?.destroy();
     this.pinnedMessage?.destroy(); // * возможно это можно не делать
     this.chatAudio?.destroy();
     this.chatRequests?.destroy();
@@ -965,8 +968,11 @@ export default class ChatTopbar {
 
   public async setTitleManual(count?: number) {
     const {peerId, threadId} = this.chat;
-    const middleware = () => this.chat.bubbles.getMiddleware();
     let titleEl: HTMLElement, icons: Element[];
+    const oldMiddlewareHelper = this.titleMiddlewareHelper;
+    oldMiddlewareHelper?.destroy();
+    const middlewareHelper = this.titleMiddlewareHelper = getMiddleware();
+    const middleware = middlewareHelper.get();
     if(this.chat.type === 'pinned') {
       if(count === undefined) titleEl = i18n('Loading');
       else titleEl = i18n('PinnedMessagesCount', [count]);
@@ -1023,7 +1029,8 @@ export default class ChatTopbar {
           peerId,
           dialog: true,
           withIcons: !threadId,
-          threadId: threadId
+          threadId: threadId,
+          wrapOptions: {middleware}
         })
         // generateTitleIcons(peerId)
       ]);

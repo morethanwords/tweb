@@ -187,7 +187,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
 
   let preloader: ProgressivePreloader; // it must be here, otherwise will get error before initialization in round onPlay
 
-  const video = createVideo();
+  const video = createVideo({middleware});
   video.classList.add('media-video');
   video.muted = true;
   if(doc.type === 'round') {

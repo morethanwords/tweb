@@ -14,7 +14,7 @@ import setInnerHTML from '../helpers/dom/setInnerHTML';
 import ListenerSetter from '../helpers/listenerSetter';
 import makeError from '../helpers/makeError';
 import {makeMediaSize} from '../helpers/mediaSize';
-import {getMiddleware, MiddlewareHelper} from '../helpers/middleware';
+import {getMiddleware, Middleware, MiddlewareHelper} from '../helpers/middleware';
 import middlewarePromise from '../helpers/middlewarePromise';
 import {Chat, ChatFull, User, UserFull} from '../layer';
 import appImManager from '../lib/appManagers/appImManager';
@@ -397,6 +397,7 @@ export default class PeerProfile {
   }
 
   private async _setAvatar() {
+    const middleware = this.middlewareHelper.get();
     const {peerId} = this;
     const isTopic = !!(this.threadId && await this.managers.appPeersManager.isForum(peerId));
     if(this.canBeDetailed() && !isTopic) {
@@ -405,9 +406,14 @@ export default class PeerProfile {
       if(photo || SHOW_NO_AVATAR) {
         const oldAvatars = this.avatars;
         this.avatars = new PeerProfileAvatars(this.scrollable, this.managers);
-        await this.avatars.setPeer(peerId);
+        const [nameCallback] = await Promise.all([
+          this.fillName(middleware, true),
+          this.avatars.setPeer(peerId)
+        ]);
 
         return () => {
+          nameCallback();
+
           this.avatars.info.append(this.name, this.subtitle);
 
           if(this.avatar) this.avatar.node.remove();
@@ -424,21 +430,26 @@ export default class PeerProfile {
     }
 
     const avatar = avatarNew({
-      middleware: this.middlewareHelper.get(),
+      middleware,
       size: 120,
       isDialog: this.isDialog,
       peerId,
       threadId: isTopic ? this.threadId : undefined,
       wrapOptions: {
         customEmojiSize: makeMediaSize(120, 120),
-        middleware: this.middlewareHelper.get()
+        middleware
       },
       withStories: true
     });
     avatar.node.classList.add('profile-avatar', 'avatar-120');
-    await avatar.readyThumbPromise;
+    const [nameCallback] = await Promise.all([
+      this.fillName(middleware, false),
+      avatar.readyThumbPromise
+    ]);
 
     return () => {
+      nameCallback();
+
       if(IS_PARALLAX_SUPPORTED) {
         this.scrollable.container.classList.remove('parallax');
       }
@@ -515,14 +526,18 @@ export default class PeerProfile {
     }
   }
 
-  private async fillName() {
+  private async fillName(middleware: Middleware, white?: boolean) {
     const {peerId} = this;
     const [element/* , icons */] = await Promise.all([
       wrapPeerTitle({
         peerId,
         dialog: this.isDialog,
         withIcons: !this.threadId,
-        threadId: this.threadId
+        threadId: this.threadId,
+        wrapOptions: {
+          middleware,
+          textColor: white ? 'white' : undefined
+        }
       })
 
       // generateTitleIcons(peerId)
@@ -536,7 +551,6 @@ export default class PeerProfile {
 
   private async fillRows(manual: Promise<any>) {
     return Promise.all([
-      this.fillName(),
       this.fillUsername(),
       this.fillUserPhone(),
       this.fillNotifications(),

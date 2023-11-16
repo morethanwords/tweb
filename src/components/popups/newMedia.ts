@@ -664,7 +664,7 @@ export default class PopupNewMedia extends PopupElement {
     const isVideo = file.type.startsWith('video/');
 
     if(isVideo) {
-      const video = createVideo();
+      const video = createVideo({middleware: params.middlewareHelper.get()});
       video.src = params.objectURL = await apiManagerProxy.invoke('createObjectURL', file);
       video.autoplay = true;
       video.controls = false;
