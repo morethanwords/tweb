@@ -178,7 +178,7 @@ export default function getRichElementValue(
   selNode?: Node,
   selOffset?: number,
   entities?: MessageEntity[],
-  offset = {offset: 0}
+  offset: {offset: number, isInQuote?: boolean} = {offset: 0}
 ) {
   if(node.nodeType === node.TEXT_NODE) { // TEXT
     let nodeValue = node.nodeValue;
@@ -194,6 +194,10 @@ export default function getRichElementValue(
     } */
 
     if(nodeValue) {
+      if(offset.isInQuote && nodeValue.endsWith('\n')) { // slice last linebreak from quote
+        nodeValue = nodeValue.slice(0, -1);
+      }
+
       if(selNode === node) {
         line.push(nodeValue.substr(0, selOffset) + SELECTION_SEPARATOR + nodeValue.substr(selOffset));
       } else {
@@ -222,7 +226,8 @@ export default function getRichElementValue(
   };
 
   const isSelected = selNode === node;
-  const isBlock = BLOCK_TAGS.has(node.tagName) || node.matches(markdownTags.quote.match);
+  const isQuote = node.matches(markdownTags.quote.match);
+  const isBlock = BLOCK_TAGS.has(node.tagName) || isQuote;
   if(isBlock && ((line.length && line[line.length - 1].slice(-1) !== '\n') || node.tagName === 'BR'/*  || (BLOCK_TAGS.has(node.tagName) && lines.length) */)) {
     pushLine();
   } else {
@@ -254,8 +259,12 @@ export default function getRichElementValue(
 
   const isTableCell = node.matches(tabulationMatch);
   const wasEntitiesLength = entities?.length;
-  const wasLinesLength = lines.length;
+  // const wasLinesLength = lines.length;
   let wasNodeEmpty = true;
+
+  if(isQuote) {
+    offset.isInQuote = true;
+  }
 
   let curChild = node.firstChild as HTMLElement;
   while(curChild) {
@@ -265,6 +274,10 @@ export default function getRichElementValue(
     if(!isLineEmpty(line)) {
       wasNodeEmpty = false;
     }
+  }
+
+  if(isQuote) {
+    offset.isInQuote = false;
   }
 
   // can test on text with list (https://www.who.int/initiatives/sports-and-health)

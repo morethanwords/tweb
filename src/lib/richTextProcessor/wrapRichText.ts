@@ -59,6 +59,7 @@ export type WrapRichTextOptions = Partial<{
   customEmojis?: Map<DocId, CustomEmojiElements>,
   customWraps?: Set<HTMLElement>,
   ignoreNextIndex?: number,
+  doubleLinebreak?: number
 }> & CustomEmojiRendererElementOptions;
 
 function createMarkupFormatting(formatting: string) {
@@ -415,6 +416,12 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           element = document.createElement('br');
           usedText = true;
         }
+
+        if(options.doubleLinebreak === nasty.i) {
+          options.doubleLinebreak = undefined;
+          (element || fragment).append('\n\n');
+          usedText = true;
+        }
         // if(options.noLinebreaks) {
         //   insertPart(entity, ' ');
         // } else {
@@ -612,8 +619,8 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
         element.classList.add('quote-like', 'quote-like-border', 'quote-like-icon');
         setDirection(element);
 
-        let i = nasty.i, foundNextLinebreakIndex = -1;
-        if(options.wrappingDraft) for(; i < length; ++i) {
+        let foundNextLinebreakIndex = -1;
+        for(let i = nasty.i; i < length; ++i) {
           const n = entities[i];
           if(n._ === 'messageEntityLinebreak' && n.offset >= endOffset) {
             foundNextLinebreakIndex = i;
@@ -621,7 +628,39 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           }
         }
 
-        if(foundNextLinebreakIndex !== -1) {
+        if(!options.wrappingDraft) {
+          // * ignore inner linebreak if found and double next linebreak
+          const container = document.createElement('div');
+          container.append(element);
+          fragment.append(container);
+
+          if(nasty.text[endOffset - 1] === '\n') {
+            let lastInnerLinebreakIndex = -1;
+            for(let i = nasty.i; i < length; ++i) {
+              const n = entities[i];
+              if(n.offset >= endOffset) {
+                break;
+              }
+
+              if(n._ === 'messageEntityLinebreak') {
+                lastInnerLinebreakIndex = i;
+              }
+            }
+
+            if(lastInnerLinebreakIndex !== -1) {
+              options.ignoreNextIndex = lastInnerLinebreakIndex;
+            }
+          } else if(foundNextLinebreakIndex !== -1) {
+            options.ignoreNextIndex = foundNextLinebreakIndex;
+          }
+
+          // if(nasty.text[endOffset - 1] === '\n' &&
+          //   foundNextLinebreakIndex !== -1 &&
+          //   nasty.text[endPartOffset + 1] === '\n') {
+          //   options.ignoreNextIndex = foundNextLinebreakIndex - 1;
+          //   options.doubleLinebreak = foundNextLinebreakIndex;
+          // }
+        } else if(foundNextLinebreakIndex !== -1) {
           options.ignoreNextIndex = foundNextLinebreakIndex;
         }
 
