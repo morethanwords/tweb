@@ -1466,6 +1466,16 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
         justify-content: center;
         z-index: 1;
       }
+
+      &-lock {
+        opacity: .2;
+        vertical-align: bottom;
+        margin-inline-start: .25rem;
+
+        .is-premium & {
+          display: none;
+        }
+      }
     }
 
     &.has-offset {

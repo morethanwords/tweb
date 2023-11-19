@@ -20,6 +20,7 @@ import {ButtonMenuItemOptions, ButtonMenuSync} from '../buttonMenu';
 import ButtonMenuToggle from '../buttonMenuToggle';
 import Icon from '../icon';
 import PeerTitle from '../peerTitle';
+import PopupPremium from '../popups/premium';
 import SetTransition from '../singleTransition';
 import getChatMembersString from '../wrappers/getChatMembersString';
 
@@ -30,7 +31,7 @@ export default class ChatSendAs {
   private container: HTMLElement;
   private closeBtn: HTMLElement;
   private btnMenu: HTMLElement;
-  private sendAsPeerIds: PeerId[];
+  private sendAsPeers: {peerId: PeerId, needPremium?: boolean}[];
   private sendAsPeerId: PeerId;
   private updatingPromise: ReturnType<ChatSendAs['updateManual']>;
   private middlewareHelper: ReturnType<typeof getMiddleware>;
@@ -117,9 +118,11 @@ export default class ChatSendAs {
     this.container.append(this.closeBtn);
   }
 
-  private async updateButtons(peerIds: PeerId[]) {
-    const promises: Promise<ButtonMenuItemOptions>[] = peerIds.map(async(sendAsPeerId, idx) => {
+  private async updateButtons(peers: ChatSendAs['sendAsPeers']) {
+    const promises: Promise<ButtonMenuItemOptions>[] = peers.map(async(sendAsPeer, idx) => {
       const textElement = document.createElement('div');
+
+      const {peerId: sendAsPeerId, needPremium} = sendAsPeer;
 
       const subtitle = document.createElement('div');
       subtitle.classList.add('btn-menu-item-subtitle');
@@ -128,26 +131,39 @@ export default class ChatSendAs {
       } else if(sendAsPeerId === this.peerId) {
         subtitle.append(i18n('VoiceChat.DiscussionGroup'));
       } else {
-        subtitle.append(await getChatMembersString(sendAsPeerId.toChatId()));
+        subtitle.append(await Promise.resolve(getChatMembersString(sendAsPeerId.toChatId())));
+      }
+
+      const title = document.createElement('div');
+      title.append(new PeerTitle({peerId: sendAsPeerId}).element);
+
+      if(needPremium) {
+        title.append(Icon('premium_lock', 'new-message-send-as-lock'));
       }
 
       textElement.append(
-        new PeerTitle({peerId: sendAsPeerId}).element,
+        title,
         subtitle
       );
 
       return {
         onClick: idx ? async() => {
+          if(sendAsPeer.needPremium && !rootScope.premium) {
+            PopupPremium.show();
+            return;
+          }
+
           const currentPeerId = this.peerId;
           this.changeSendAsPeerId(sendAsPeerId);
 
           const middleware = this.middlewareHelper.get();
           const executeButtonsUpdate = () => {
             if(this.sendAsPeerId !== sendAsPeerId || !middleware()) return;
-            const peerIds = this.sendAsPeerIds.slice();
-            indexOfAndSplice(peerIds, sendAsPeerId);
-            peerIds.unshift(sendAsPeerId);
-            this.updateButtons(peerIds);
+            const peers = this.sendAsPeers.slice();
+            const idx = peers.findIndex((peer) => peer.peerId === sendAsPeerId);
+            if(idx !== -1) peers.splice(idx, 1);
+            peers.unshift(sendAsPeer);
+            this.updateButtons(peers);
           };
 
           if(liteMode.isAvailable('animations')) {
@@ -166,7 +182,7 @@ export default class ChatSendAs {
     const buttons = await Promise.all(promises);
     const btnMenu = ButtonMenuSync({buttons}/* , this.listenerSetter */);
     buttons.forEach((button, idx) => {
-      const peerId = peerIds[idx];
+      const {peerId} = peers[idx];
       const avatar = avatarNew({
         middleware: this.middlewareHelper.get(),
         size: 26,
@@ -282,13 +298,23 @@ export default class ChatSendAs {
       this.managers.appChatsManager.getSendAs(chatId).then((sendAsPeers) => {
         if(!middleware()) return;
 
-        const peers = sendAsPeers.filter((sendAsPeer) => !sendAsPeer.pFlags.premium_required).map((sendAsPeer) => sendAsPeer.peer);
-        const peerIds = peers.map((peer) => getPeerId(peer));
-        this.sendAsPeerIds = peerIds.slice();
+        const peers: ChatSendAs['sendAsPeers'] = sendAsPeers.map((sendAsPeer) => {
+          return {
+            peerId: getPeerId(sendAsPeer.peer),
+            needPremium: sendAsPeer.pFlags.premium_required
+          }
+        });
+        this.sendAsPeers = peers.slice();
 
-        indexOfAndSplice(peerIds, sendAsPeerId);
-        peerIds.unshift(sendAsPeerId);
-        this.updateButtons(peerIds);
+        const idx = peers.findIndex((peer) => peer.peerId === sendAsPeerId);
+        if(idx !== -1) {
+          const peer = peers.splice(idx, 1)[0];
+          peers.unshift(peer);
+        } else {
+          peers.unshift({peerId: sendAsPeerId});
+        }
+
+        this.updateButtons(peers);
       });
 
       const callback = () => {
