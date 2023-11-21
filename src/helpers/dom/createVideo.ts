@@ -13,7 +13,7 @@ export default function createVideo({
   video.setAttribute('playsinline', 'true');
   // createdVideos.push(video);
 
-  middleware.onDestroy(() => {
+  middleware?.onDestroy(() => {
     video.src = '';
     video.load();
   });
