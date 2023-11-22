@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {InputUser} from '../../layer';
+import {ChatInvite, InputUser, Updates} from '../../layer';
 import {AppManager} from './manager';
 import getPeerId from './utils/peers/getPeerId';
 
@@ -23,6 +23,25 @@ export default class AppChatInvitesManager extends AppManager {
         });
       }
     });
+  }
+
+  public saveChatInvite(hash: string, chatInvite: ChatInvite) {
+    if(!chatInvite) {
+      return;
+    }
+
+    if((chatInvite as ChatInvite.chatInvitePeek).chat) {
+      this.appChatsManager.saveApiChat((chatInvite as ChatInvite.chatInvitePeek).chat, true);
+    }
+
+    if((chatInvite as ChatInvite.chatInvite).photo) {
+      (chatInvite as ChatInvite.chatInvite).photo = this.appPhotosManager.savePhoto(
+        (chatInvite as ChatInvite.chatInvite).photo,
+        {type: 'chatInvite', hash}
+      );
+    }
+
+    return chatInvite;
   }
 
   public exportChatInvite({
@@ -47,6 +66,21 @@ export default class AppChatInvitesManager extends AppManager {
     });
   }
 
+  public checkChatInvite(hash: string) {
+    return this.apiManager.invokeApi('messages.checkChatInvite', {hash}).then((chatInvite) => {
+      return this.appChatInvitesManager.saveChatInvite(hash, chatInvite);
+    });
+  }
+
+  public importChatInvite(hash: string) {
+    return this.apiManager.invokeApi('messages.importChatInvite', {hash})
+    .then((updates) => {
+      this.apiUpdatesManager.processUpdateMessage(updates);
+      const chat = (updates as Updates.updates).chats[0];
+      return chat.id;
+    });
+  }
+
   public getExportedChatInvites({
     chatId,
     revoked,
@@ -61,9 +95,9 @@ export default class AppChatInvitesManager extends AppManager {
       admin_id: adminId ? this.appUsersManager.getUserInput(adminId) : {_: 'inputUserSelf'},
       limit: 50,
       revoked
-    }).then((chatInvites) => {
-      this.appUsersManager.saveApiUsers(chatInvites.users);
-      return chatInvites;
+    }).then((exportedChatInvites) => {
+      this.appUsersManager.saveApiUsers(exportedChatInvites.users);
+      return exportedChatInvites;
     });
   }
 
@@ -92,9 +126,9 @@ export default class AppChatInvitesManager extends AppManager {
       usage_limit: usageLimit,
       request_needed: requestNeeded,
       title
-    }).then((chatInvite) => {
-      this.appUsersManager.saveApiUsers(chatInvite.users);
-      return chatInvite;
+    }).then((exportedChatInvite) => {
+      this.appUsersManager.saveApiUsers(exportedChatInvite.users);
+      return exportedChatInvite;
     });
   }
 

@@ -64,7 +64,7 @@ export default class PopupJoinChatInvite extends PopupPeer {
   }
 
   public static import(hash: string) {
-    rootScope.managers.appChatsManager.importChatInvite(hash)
+    rootScope.managers.appChatInvitesManager.importChatInvite(hash)
     .then((chatId) => {
       this.openChat(chatId);
     }, (error) => {
@@ -77,7 +77,7 @@ export default class PopupJoinChatInvite extends PopupPeer {
   public static async open(hash: string, chatInvite: ChatInvite) {
     if(chatInvite._ === 'chatInviteAlready') {
       // load missing chat
-      await rootScope.managers.appChatsManager.checkChatInvite(hash);
+      await rootScope.managers.appChatInvitesManager.checkChatInvite(hash);
       this.openChat(chatInvite.chat.id);
     } else if(chatInvite._ === 'chatInvitePeek') {
       this.openChat(chatInvite.chat.id);

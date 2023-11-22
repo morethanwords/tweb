@@ -12,6 +12,7 @@ import makeError from '../../helpers/makeError';
 import getAttachMenuBotIcon from './utils/attachMenuBots/getAttachMenuBotIcon';
 import {randomLong} from '../../helpers/random';
 import getInputReplyTo from './utils/misc/getInputReplyTo';
+import {ReferenceContext} from '../mtproto/referenceDatabase';
 
 const BOTS_SUPPORTED = true;
 
@@ -96,6 +97,25 @@ export default class AppAttachMenuBotsManager extends AppManager {
     if((attachMenuBots as any).saved) return;
     (attachMenuBots as any).saved = true;
     attachMenuBots.forEach((user) => this.saveAttachMenuBot(user));
+  }
+
+  public saveBotApp(botId: BotId, botApp: BotApp) {
+    if(!botApp) {
+      return;
+    }
+
+    assumeType<BotApp.botApp>(botApp);
+
+    const referenceContext: ReferenceContext = {
+      type: 'botApp',
+      botId,
+      appName: botApp.short_name
+    };
+
+    botApp.photo = this.appPhotosManager.savePhoto(botApp.photo, referenceContext);
+    botApp.document = this.appDocsManager.saveDoc(botApp.document, referenceContext);
+
+    return botApp;
   }
 
   public getAttachMenuBots() {
@@ -258,6 +278,10 @@ export default class AppAttachMenuBotsManager extends AppManager {
           short_name: shortName
         },
         hash: 0
+      },
+      processResult: (messagesBotApp) => {
+        messagesBotApp.app = this.saveBotApp(botId, messagesBotApp.app);
+        return messagesBotApp;
       }
     });
   }

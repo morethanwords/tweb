@@ -22,7 +22,9 @@ export type ReferenceContext =
   ReferenceContext.referenceContextWallPaper |
   ReferenceContext.referenceContextStoryItem |
   ReferenceContext.referenceContextPremiumPromo |
-  ReferenceContext.referenceContextWebPage;
+  ReferenceContext.referenceContextWebPage |
+  ReferenceContext.referenceContextBotApp |
+  ReferenceContext.referenceContextChatInvite;
 
 export namespace ReferenceContext {
   export type referenceContextProfilePhoto = {
@@ -77,6 +79,17 @@ export namespace ReferenceContext {
   export type referenceContextWebPage = {
     type: 'webPage',
     url: string
+  };
+
+  export type referenceContextBotApp = {
+    type: 'botApp',
+    botId: BotId,
+    appName: string
+  };
+
+  export type referenceContextChatInvite = {
+    type: 'chatInvite',
+    hash: string
   };
 }
 
@@ -219,6 +232,16 @@ export class ReferenceDatabase extends AppManager {
 
       case 'webPage': {
         promise = Promise.resolve(this.appWebPagesManager.getWebPage(context.url));
+        break;
+      }
+
+      case 'botApp': {
+        promise = Promise.resolve(this.appAttachMenuBotsManager.getBotApp(context.botId, context.appName));
+        break;
+      }
+
+      case 'chatInvite': {
+        promise = Promise.resolve(this.appChatInvitesManager.checkChatInvite(context.hash));
         break;
       }
 

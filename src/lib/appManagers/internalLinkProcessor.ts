@@ -531,11 +531,7 @@ export class InternalLinkProcessor {
   };
 
   public processJoinChatLink = (link: InternalLink.InternalLinkJoinChat) => {
-    return this.managers.appChatsManager.checkChatInvite(link.invite).then((chatInvite) => {
-      if((chatInvite as ChatInvite.chatInvitePeek).chat) {
-        this.managers.appChatsManager.saveApiChat((chatInvite as ChatInvite.chatInvitePeek).chat, true);
-      }
-
+    return this.managers.appChatInvitesManager.checkChatInvite(link.invite).then((chatInvite) => {
       // console.log(chatInvite);
 
       if(chatInvite._ === 'chatInviteAlready' ||

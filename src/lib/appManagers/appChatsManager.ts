@@ -22,6 +22,7 @@ import {randomLong} from '../../helpers/random';
 import tsNow from '../../helpers/tsNow';
 import getPeerActiveUsernames from './utils/peers/getPeerActiveUsernames';
 import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
+import getPeerId from './utils/peers/getPeerId';
 
 export type Channel = Chat.channel;
 export type ChatRights = keyof ChatBannedRights['pFlags'] | keyof ChatAdminRights['pFlags'] | 'change_type' | 'change_permissions' | 'delete_chat' | 'view_participants' | 'invite_links';
@@ -729,15 +730,6 @@ export class AppChatsManager extends AppManager {
     });
   }
 
-  public importChatInvite(hash: string) {
-    return this.apiManager.invokeApi('messages.importChatInvite', {hash})
-    .then((updates) => {
-      this.apiUpdatesManager.processUpdateMessage(updates);
-      const chat = (updates as Updates.updates).chats[0];
-      return chat.id;
-    });
-  }
-
   public checkUsername(chatId: ChatId, username: string) {
     return this.apiManager.invokeApi('channels.checkUsername', {
       channel: this.getChannelInput(chatId),
@@ -797,19 +789,42 @@ export class AppChatsManager extends AppManager {
     }, {cacheSeconds: 300});
 
     return promise.then((sponsoredMessages) => {
-      if(sponsoredMessages._ === 'messages.sponsoredMessages') {
-        this.appUsersManager.saveApiUsers(sponsoredMessages.users);
-        this.appChatsManager.saveApiChats(sponsoredMessages.chats);
-
-        const sponsoredMessage = sponsoredMessages.messages.shift();
-        sponsoredMessages.messages.push(sponsoredMessage);
-
-        sponsoredMessages.messages.forEach((sponsoredMessage) => {
-          if(sponsoredMessage.channel_post) {
-            sponsoredMessage.channel_post = this.appMessagesIdsManager.generateMessageId(sponsoredMessage.channel_post, (sponsoredMessage.from_id as Peer.peerChannel).channel_id);
-          }
-        });
+      if(sponsoredMessages._ !== 'messages.sponsoredMessages') {
+        return sponsoredMessages;
       }
+
+      this.appPeersManager.saveApiPeers(sponsoredMessages);
+
+      const sponsoredMessage = sponsoredMessages.messages.shift();
+      sponsoredMessages.messages.push(sponsoredMessage);
+
+      sponsoredMessages.messages.forEach((sponsoredMessage) => {
+        const peerId = getPeerId(sponsoredMessage.from_id);
+        if(sponsoredMessage.channel_post) {
+          sponsoredMessage.channel_post = this.appMessagesIdsManager.generateMessageId(
+            sponsoredMessage.channel_post,
+            peerId.toChatId()
+          );
+        }
+
+        if(sponsoredMessage.webpage) {
+          sponsoredMessage.webpage.photo = this.appPhotosManager.savePhoto(sponsoredMessage.webpage.photo);
+        }
+
+        if(sponsoredMessage.app) {
+          sponsoredMessage.app = this.appAttachMenuBotsManager.saveBotApp(
+            peerId.toUserId(),
+            sponsoredMessage.app
+          );
+        }
+
+        if(sponsoredMessage.chat_invite) {
+          sponsoredMessage.chat_invite = this.appChatInvitesManager.saveChatInvite(
+            sponsoredMessage.chat_invite_hash,
+            sponsoredMessage.chat_invite
+          );
+        }
+      });
 
       return sponsoredMessages;
     });
@@ -826,18 +841,6 @@ export class AppChatsManager extends AppManager {
     return this.apiManager.invokeApiSingle('channels.clickSponsoredMessage', {
       channel: this.getChannelInput(chatId),
       random_id: randomId
-    });
-  }
-
-  public checkChatInvite(hash: string) {
-    return this.apiManager.invokeApi('messages.checkChatInvite', {
-      hash
-    }).then((chatInvite) => {
-      if((chatInvite as ChatInvite.chatInvitePeek).chat) {
-        this.saveApiChat((chatInvite as ChatInvite.chatInvitePeek).chat, true);
-      }
-
-      return chatInvite;
     });
   }
 
