@@ -12,7 +12,7 @@ import overlayCounter from '../../helpers/overlayCounter';
 import throttle from '../../helpers/schedulers/throttle';
 import classNames from '../../helpers/string/classNames';
 import windowSize from '../../helpers/windowSize';
-import {Document, DocumentAttribute, GeoPoint, MediaArea, MessageMedia, Photo, Reaction, StoryItem, StoryView, User, Chat as MTChat, PeerStories, AvailableReaction} from '../../layer';
+import {Document, DocumentAttribute, GeoPoint, MediaArea, MessageMedia, Photo, Reaction, StoryItem, StoryView, User, Chat as MTChat, PeerStories, AvailableReaction, MessageEntity} from '../../layer';
 import animationIntersector from '../animationIntersector';
 import appNavigationController, {NavigationItem} from '../appNavigationController';
 import PeerTitle from '../peerTitle';
@@ -25,7 +25,7 @@ import {Transition} from 'solid-transition-group';
 import rootScope from '../../lib/rootScope';
 import ListenerSetter from '../../helpers/listenerSetter';
 import {Middleware, getMiddleware} from '../../helpers/middleware';
-import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
+import wrapRichText, {WrapRichTextOptions} from '../../lib/richTextProcessor/wrapRichText';
 import wrapMessageEntities from '../../lib/richTextProcessor/wrapMessageEntities';
 import tsNow from '../../helpers/tsNow';
 import {LangPackKey, i18n, joinElementsWith} from '../../lib/langPack';
@@ -102,6 +102,7 @@ const STORY_HEADER_AVATAR_SIZE = 32;
 const STORY_SCALE_SMALL = 0.33;
 const STORIES_PRESERVE = 2;
 const STORIES_PRESERVE_HIDDEN = 2;
+const STORY_REPOST_ICON: Icon = 'audio_repeat';
 let CHANGELOG_PEER_ID = SERVICE_PEER_ID;
 
 rootScope.addEventListener('app_config', (appConfig) => {
@@ -1600,6 +1601,20 @@ const Stories = (props: {
       return recentViewers;
     }) : undefined;
 
+    const getRichTextOptions = (
+      peerId: PeerId,
+      entities: MessageEntity[],
+      loadPromises?: Promise<any>[]
+    ): WrapRichTextOptions => {
+      return {
+        entities,
+        middleware,
+        textColor: 'white',
+        loadPromises,
+        passMaskedLinks: CHANGELOG_PEER_ID === peerId
+      };
+    };
+
     isMe && createEffect(async() => {
       let stackedAvatars: StackedAvatars;
       const recentViewers = recentViewersMemo();
@@ -1629,13 +1644,10 @@ const Stories = (props: {
       if(caption?.trim()) {
         const loadPromises: Promise<any>[] = [];
         const {message, totalEntities} = wrapMessageEntities(caption, entities?.slice());
-        const wrapped = wrapRichText(message, {
-          entities: totalEntities,
-          middleware,
-          textColor: 'white',
-          loadPromises,
-          passMaskedLinks: CHANGELOG_PEER_ID === props.state.peerId
-        });
+        const wrapped = wrapRichText(
+          message,
+          getRichTextOptions(props.state.peerId, totalEntities, loadPromises)
+        );
 
         uCaption(null);
         await Promise.all(loadPromises);
@@ -1770,7 +1782,16 @@ const Stories = (props: {
 
       uRepost(null);
 
-      const ret: {reply: JSX.Element, header: JSX.Element} = {} as any;
+      const [headerContent, setHeaderContent] = createSignal<JSX.Element>();
+      const [subtitle, setSubtitle] = createSignal<JSX.Element>();
+
+      const ret: {reply: JSX.Element, header: JSX.Element} = {
+        header: (
+          <span class={styles.ViewerStoryHeaderRepost}>
+            {headerContent()}
+          </span>
+        )
+      } as any;
       const fwdFromPeerId = fwdFrom.from && getPeerId(fwdFrom.from);
       const fwdFromName = fwdFrom.from_name;
       const peerTitleOptions: Parameters<typeof wrapPeerTitle>[0] = {
@@ -1778,14 +1799,56 @@ const Stories = (props: {
         fromName: fwdFromName
       };
 
-      const {element, readyThumbPromise} = avatarNew({
+      const {node, readyThumbPromise} = avatarNew({
         peerId: fwdFromPeerId,
         peerTitle: fwdFromName,
         size: 16,
-        props: {
-          class: styles.ViewerStoryHeaderRepostAvatar
-        },
+        // props: {
+        //   class: styles.ViewerStoryHeaderRepostAvatar
+        // },
         middleware
+      });
+
+      const subtitleElement = (
+        <span>{subtitle()}</span>
+      );
+
+      const processStoryPromise = async(promise: Promise<StoryItem.storyItem>, cached: boolean) => {
+        const storyItem = await promise;
+        if(!middleware()) {
+          return;
+        }
+
+        if(cached && !storyItem.caption) {
+          setSubtitle(i18n('Story'));
+          return;
+        }
+
+        const loadPromises: Promise<any>[] = [];
+        const {message, totalEntities} = wrapMessageEntities(storyItem.caption, storyItem.entities?.slice());
+        const wrapped = wrapRichText(
+          message,
+          getRichTextOptions(fwdFromPeerId, totalEntities, loadPromises)
+        );
+        await Promise.all(loadPromises);
+        if(!middleware()) {
+          return;
+        }
+
+        setSubtitle(documentFragmentToNodes(wrapped));
+      };
+
+      const storyPromise = fwdFrom.story_id && rootScope.managers.acknowledged.appStoriesManager.getStoryById(
+        fwdFromPeerId,
+        fwdFrom.story_id
+      ).then(async(ackedResult) => {
+        const promise = processStoryPromise(ackedResult.result, ackedResult.cached);
+        if(!ackedResult.cached) {
+          setSubtitle(i18n('Story'));
+          return;
+        }
+
+        return promise;
       });
 
       const [reply, headerPeerTitle, headerAvatar] = await Promise.all([
@@ -1806,7 +1869,7 @@ const Stories = (props: {
 
           const {container, fillPromise} = wrapReply({
             title,
-            subtitle: i18n('Story'),
+            subtitle: subtitleElement as HTMLElement,
             useHighlightningColor: true,
             setColorPeerId: fwdFromPeerId
           });
@@ -1815,18 +1878,19 @@ const Stories = (props: {
           return container;
         }),
         wrapPeerTitle(peerTitleOptions),
-        readyThumbPromise.then(() => element)
+        readyThumbPromise.then(() => node),
+        storyPromise
       ]);
       if(!middleware()) return;
 
+      headerPeerTitle.classList.add(styles.ViewerStoryHeaderRepostTitle);
+
       ret.reply = reply;
-      ret.header = (
-        <span class={styles.ViewerStoryHeaderRepost}>
-          {Icon('audio_repeat', styles.ViewerStoryHeaderRepostIcon)}
-          {headerAvatar}
-          {headerPeerTitle}
-        </span>
-      );
+      setHeaderContent([
+        Icon(STORY_REPOST_ICON, styles.ViewerStoryHeaderRepostIcon),
+        headerAvatar,
+        headerPeerTitle
+      ]);
 
       uRepost(ret);
     });
@@ -2220,7 +2284,7 @@ const Stories = (props: {
     if(repost()) {
       joined = [
         joined[0],
-        <span class={classNames(styles.ViewerStoryHeaderSecondary, 'text-top')}>{joined.slice(1)}</span>
+        <span class={styles.ViewerStoryHeaderSecondary}>{joined.slice(1)}</span>
       ];
     }
 
@@ -2802,7 +2866,15 @@ const Stories = (props: {
           const fwdFrom = (story as StoryItem.storyItem).fwd_from;
           if(fwdFrom.from) {
             props.close(() => {
-              appImManager.setInnerPeer({peerId: getPeerId(fwdFrom.from)});
+              const peerId = getPeerId(fwdFrom.from);
+              if(fwdFrom.story_id) {
+                createStoriesViewerWithPeer({
+                  peerId,
+                  id: fwdFrom.story_id
+                });
+              } else {
+                appImManager.setInnerPeer({peerId});
+              }
             });
           } else {
             toastNew({
@@ -2856,7 +2928,7 @@ const Stories = (props: {
                 <div
                   class={classNames(
                     // styles.ViewerStoryHeaderRow,
-                    !repost() && styles.ViewerStoryHeaderSecondary,
+                    repost() ? styles.hasRepost : styles.ViewerStoryHeaderSecondary,
                     styles.ViewerStoryHeaderTime
                   )}
                 >
