@@ -209,6 +209,10 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 		z-index: 3;
     opacity: 1 !important;
 
+    .is-rtl & {
+      transform: scaleX(-1);
+    }
+
     @include hover() {
       background-color: var(--dark-primary-color) !important;
     }
@@ -1351,8 +1355,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 
       &-view-icon {
         font-size: 1.25rem;
-        margin-right: .375rem;
-        margin-left: -.125rem;
+        margin-inline: -.125rem .375rem;
       }
 
       &:not(.is-view) .new-message-bot-commands-view-icon {
@@ -1370,7 +1373,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-left: -1px;
+        margin-inline-start: -1px;
       }
 
       .animated-menu-close-icon {
@@ -1494,13 +1497,13 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 
       &:not(.backwards) {
         .toggle-emoticons {
-          transform: translateX(var(--offset-translateX));
+          transform: translateX(calc(var(--offset-translateX) * var(--reflect)));
         }
   
         .input-message-container {
-          --translateX: calc(var(--offset-translateX));
+          --translateX: var(--offset-translateX);
           margin-inline-end: var(--translateX);
-          transform: translate(var(--translateX));
+          transform: translate(calc(var(--translateX) * var(--reflect)));
         }
 
         .new-message-send-as-container,
@@ -1527,18 +1530,18 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
     }
 
     .btn-menu {
-			bottom: calc(100% + 1.125rem);
+			inset-block-end: calc(100% + 1.125rem);
 
 			@include respond-to(esg-bottom-new) {
-				bottom: calc(100% + .875rem);
+				inset-block-end: calc(100% + .875rem);
 			}
 
       &.top-left {
-        right: calc(var(--padding-horizontal) * -1 - .125rem);
+        inset-inline-end: calc(var(--padding-horizontal) * -1 - .125rem);
       }
 
       &.top-right {
-        left: calc(var(--padding-horizontal) * -1 - .125rem);
+        inset-inline-start: calc(var(--padding-horizontal) * -1 - .125rem);
       }
 		}
 	}
@@ -1781,25 +1784,25 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
     height: $bubble-overflow;
   }
 
-	&.is-chat .is-in,
-  .bubbles-group-sponsored {
-    .bubble-content-wrapper {
-      margin-inline-start: 2.875rem; //margin-left: 3rem; #DO JS3
-
+	&.is-chat .is-in/* ,
+  .bubbles-group-sponsored */ {
+    .bubble {
       @include respond-to(handhelds) {
-        max-width: calc(100% - var(--message-handhelds-margin));
+        --max-width: calc(100% - var(--message-handhelds-margin));
       }
+    }
+
+    .bubble-content-wrapper {
+      margin-inline-start: 2.875rem;
     }
 	}
 
-	&.is-channel:not(.is-chat) {
+	&.is-broadcast {
 		.bubble {
-			&-content-wrapper {
-				max-width: 100%;
-			}
+			--max-width: 100%;
 
-			&.with-beside-button .bubble-content-wrapper {
-				max-width: calc(100% - var(--message-beside-button-margin) * -1) !important;
+			&.with-beside-button {
+				--max-width: calc(100% - var(--message-beside-button-margin) * -1);
 			}
 		}
 	}
@@ -1808,8 +1811,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 		margin-bottom: 1rem; // .25rem is eaten by the last bubble's margin-bottom
 	} */
 
-	&:not(.is-channel),
-  &.is-chat {
+	&:not(.is-broadcast) {
 		.message,
 		.name {
 			max-width: 480px;
@@ -1827,17 +1829,6 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 			}
 		}
 	}
-
-  > .bubble.is-in {
-    // margin-left: 0;
-    width: 100%;
-
-    @include respond-to(medium-screens) {
-      .bubble-content-wrapper {
-        max-width: 85%;
-      }
-    }
-  }
 }
 
 .bubbles-go-down {

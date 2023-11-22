@@ -31,7 +31,7 @@ const makeEdited = () => {
   return edited;
 };
 
-const makeSponsored = () => i18n('SponsoredMessage');
+// const makeSponsored = () => i18n('SponsoredMessage');
 
 export namespace MessageRender {
   /* export const setText = () => {
@@ -52,11 +52,11 @@ export namespace MessageRender {
       // reactionsElement: ReactionsElement,
       // reactionsMessage: Message.message;
 
-    const isSponsored = !!(message as Message.message).pFlags.sponsored;
-    const isMessage = !('action' in message) && !isSponsored;
+    // const isSponsored = !!(message as Message.message).pFlags.sponsored;
+    const isMessage = !('action' in message)/*  && !isSponsored */;
     // let hasReactions: boolean;
 
-    const time: HTMLElement = isSponsored ? undefined : formatTime(date);
+    const time: HTMLElement = /* isSponsored ? undefined :  */formatTime(date);
     if(isMessage) {
       if(message.views) {
         const postAuthor = message.post_author || message.fwd_from?.post_author;
@@ -72,7 +72,7 @@ export namespace MessageRender {
           const span = document.createElement('span');
           span.classList.add('post-author');
           setInnerHTML(span, wrapEmojiText(postAuthor));
-          span.insertAdjacentHTML('beforeend', ',' + NBSP)
+          span.insertAdjacentHTML('beforeend', '<span class="post-author-comma">,' + NBSP + '</span>');
           args.push(span);
         }
       }
@@ -95,15 +95,15 @@ export namespace MessageRender {
       //   reactionsElement.render();
       //   args.unshift(reactionsElement);
       // }
-    } else if(isSponsored) {
+    }/*  else if(isSponsored) {
       args.push(sponsoredSpan = makeSponsored());
-    }
+    } */
 
     if(time) {
       args.push(time);
     }
 
-    let title = isSponsored ? undefined : getFullDate(date);
+    let title = /* isSponsored ? undefined :  */getFullDate(date);
     if(isMessage) {
       title += (message.edit_date && !message.pFlags.edit_hide ? `\nEdited: ${getFullDate(new Date(message.edit_date * 1000))}` : '') +
         (message.fwd_from ? `\nOriginal: ${getFullDate(new Date(message.fwd_from.date * 1000))}` : '');
@@ -122,9 +122,9 @@ export namespace MessageRender {
     if(editedSpan) {
       clonedArgs[clonedArgs.indexOf(editedSpan)] = makeEdited();
     }
-    if(sponsoredSpan) {
-      clonedArgs[clonedArgs.indexOf(sponsoredSpan)] = makeSponsored();
-    }
+    // if(sponsoredSpan) {
+    //   clonedArgs[clonedArgs.indexOf(sponsoredSpan)] = makeSponsored();
+    // }
     // if(reactionsElement) {
     //   const _reactionsElement = clonedArgs[clonedArgs.indexOf(reactionsElement)] = new ReactionsElement();
     //   _reactionsElement.init(reactionsMessage, 'inline');

@@ -150,6 +150,10 @@ Utility Classes
   font-weight: 500 !important;
 }
 
+.text-capitalize {
+  text-transform: capitalize;
+}
+
 // * fix text fractional width
 .text-super {
   display: inline-table;

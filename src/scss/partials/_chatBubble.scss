@@ -91,6 +91,7 @@
   --secondary-text-color: var(--message-status-color);
   --peer-color-rgb: var(--message-primary-color-rgb);
   --peer-border-background: rgb(var(--peer-color-rgb));
+  --max-width: 100%;
   position: relative;
   z-index: 1;
   margin: 0 auto $bubble-margin;
@@ -98,6 +99,31 @@
   display: flex;
   flex-wrap: wrap;
   //flex-direction: column; // fix 'Unread messages', still need to refactor it
+
+  &.is-sponsored {
+    --max-width: calc(80% - var(--message-beside-button-margin) * -1) !important;
+    width: 100%;
+    order: 999999;
+    margin-bottom: 0;
+
+    .bubble-content-wrapper {
+      width: 100%;
+    }
+
+    .bubble-content {
+      width: unquote('min(100%, 15rem)') !important;
+    }
+  }
+
+  &:not(.service) {
+    @include respond-to(not-handhelds) {
+      --max-width: 85%;
+    }
+  }
+
+  @include respond-to(handhelds) {
+    --max-width: calc(100% - var(--message-handhelds-margin));
+  }
 
   &.is-gesturing-reply {
     transform: translateX(0);
@@ -481,7 +507,11 @@
     cursor: pointer;
     transform: translateX(0);
 
-    html.no-touch & {
+    &-top {
+      inset-block: .375rem auto;
+    }
+
+    html.no-touch &.with-hover {
       opacity: 0;
     }
 
@@ -844,7 +874,8 @@
     }
   }
 
-  .anchor-url:not(.reply-markup-button) {
+  .anchor-url:not(.reply-markup-button),
+  .mention {
     @include hover() {
       text-decoration: underline !important;
     }
@@ -1683,6 +1714,13 @@
     }
   }
 
+  .post-author {
+    &-comma {
+      float: inline-end;
+      direction: ltr;
+    }
+  }
+
   &.with-replies .attachment {
     border-end-start-radius: 0;
     border-end-end-radius: 0;
@@ -1714,9 +1752,14 @@
     z-index: 1;
     /* display: inline-flex;
     align-items: center; */
-    direction: ltr;
-    float: right; // * rtl fix
     cursor: pointer;
+    direction: ltr; // * rtl fix
+    float: right;   // * rtl fix
+
+    .is-rtl & {
+      float: inline-end;
+      direction: inherit;
+    }
 
     &-sending-status {
       order: 5;
@@ -1729,11 +1772,11 @@
 
     &-part {
       font-size: 1.125rem;
-      margin-right: .375rem;
+      margin-inline-end: .375rem;
     }
 
     &-pinned {
-      margin-right: .125rem;
+      margin-inline-end: .125rem;
     }
 
     &-icon {
@@ -1741,7 +1784,7 @@
       height: 1.125rem;
 
       &-views {
-        margin-left: 2px;
+        margin-inline-start: 2px;
       }
     }
 
@@ -1754,7 +1797,7 @@
       pointer-events: all;
       position: absolute;
       bottom: 0;
-      right: 0;
+      inset-inline-end: 0;
       display: flex;
       align-items: center;
       line-height: 1;
@@ -2078,7 +2121,7 @@
 
         &-next {
           position: absolute;
-          right: .1875rem;
+          inset-inline-end: .1875rem;
         }
       }
 
@@ -2451,6 +2494,7 @@
     flex: 0 0 auto;
     width: .1875rem;
     background: var(--peer-border-background, rgb(var(--peer-color-rgb)));
+    z-index: 1;
     // background-size: 100% 1rem;
     // background-position: 0 2px;
     // transform: skew(0deg, -45deg);
@@ -2579,8 +2623,15 @@
     color: var(--primary-color);
   }
 
+  .anchor-url,
+  .mention {
+    position: relative;
+    z-index: 1;
+  }
+
   &-name {
     text-decoration: none !important;
+    display: block;
   }
 
   &-text {
@@ -2624,6 +2675,7 @@
     font-size: var(--messages-text-size);
     text-align: center;
     font-weight: var(--font-weight-bold);
+    text-transform: uppercase;
 
     @include text-overflow(true);
   }
@@ -2914,16 +2966,7 @@
 .bubble-content-wrapper {
   display: flex;
   flex-direction: column;
-
-  .bubble:not(.service) & {
-    @include respond-to(not-handhelds) {
-      max-width: 85%;
-    }
-  }
-
-  @include respond-to(handhelds) {
-    max-width: calc(100% - var(--message-handhelds-margin));
-  }
+  max-width: var(--max-width);
 }
 
 .bubble.service {
@@ -3003,7 +3046,7 @@
 
     &-wrapper {
       &.can-zoom-fade {
-        transform-origin: center left;
+        transform-origin: var(--transform-origin-left-center);
       }
     }
   }
@@ -3055,8 +3098,8 @@
   }
   
   .time {
-    margin-left: $time-margin-left;
-    padding-right: $message-padding-horizontal;
+    margin-inline-start: $time-margin-left;
+    padding-inline-end: $message-padding-horizontal;
 
     &-inner {
       margin-bottom: 4px;
@@ -3138,7 +3181,7 @@
 
     /* html:not(.is-firefox) */ &-wrapper {
       &.can-zoom-fade {
-        transform-origin: center right;
+        transform-origin: var(--transform-origin-right-center);
       }
 
       @include respond-to(medium-screens) {
@@ -3221,8 +3264,8 @@
 
   .time {
     // padding-right: #{math.div($message-padding-horizontal, 2)};
-    padding-right: #{$message-padding-horizontal - 2px};
-    margin-left: $time-margin-left;
+    padding-inline-end: #{$message-padding-horizontal - 2px};
+    margin-inline-start: $time-margin-left;
 
     &-inner {
       bottom: 4px;

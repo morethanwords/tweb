@@ -54,6 +54,7 @@ import confirmationPopup from '../confirmationPopup';
 import wrapPeerTitle from '../wrappers/peerTitle';
 import Icon from '../icon';
 import cloneDOMRect from '../../helpers/dom/cloneDOMRect';
+import PopupPremium from '../popups/premium';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -629,6 +630,14 @@ export default class ChatContextMenu {
       text: 'Chat.Message.Sponsored.What',
       onClick: () => {
         PopupElement.createPopup(PopupSponsored);
+      },
+      verify: () => this.isSponsored,
+      isSponsored: true
+    }, {
+      icon: 'hide',
+      text: 'HideAd',
+      onClick: () => {
+        PopupPremium.show('no_ads');
       },
       verify: () => this.isSponsored,
       isSponsored: true
