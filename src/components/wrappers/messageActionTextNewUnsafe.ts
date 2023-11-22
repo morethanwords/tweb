@@ -522,6 +522,29 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         break;
       }
 
+      case 'messageActionGiveawayResults': {
+        langPackKey = 'Giveaway.Results';
+        args = [action.winners_count];
+
+        if(action.unclaimed_count) {
+          args = [
+            plain ?
+              I18n.format(langPackKey, true, args as FormatterArguments) :
+              i18n(langPackKey, args as FormatterArguments)
+          ];
+
+          langPackKey = 'Giveaway.Results.Combined';
+          const unclaimedLangPackKey: LangPackKey = 'Giveaway.Results.Unclaimed';
+          const unclaimedArgs: FormatterArguments = [action.unclaimed_count];
+          args.push(
+            plain ?
+              I18n.format(unclaimedLangPackKey, true, unclaimedArgs) :
+              i18n(unclaimedLangPackKey, unclaimedArgs)
+          );
+        }
+        break;
+      }
+
       default:
         langPackKey = (langPack[_] || `[${action._}]`) as any;
         break;

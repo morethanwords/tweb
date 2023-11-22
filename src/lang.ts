@@ -317,7 +317,7 @@ const lang = {
   },
   'BoostsViaGifts.Quantity': 'Quantity of prizes',
   'BoostsViaGifts.QuantitySubtitle': 'Choose how many Premium subscriptions to give away and boosts to receive. For larger volumes, use [fragment.com](https://fragment.com).',
-  'BoostsViaGifts.Channels': 'Channels Included in the giveaway',
+  'BoostsViaGifts.Channels': 'Channels included in the giveaway',
   'BoostsViaGifts.ChannelSubscription': {
     'one_value': 'this channel will receive %d boost',
     'other_value': 'this channel will receive %d boosts'
@@ -380,6 +380,16 @@ const lang = {
   'BoostingUserWasSelected': '%s was selected by the channel',
   'Giveaway.SendLinkToFriend': 'You can also **[send this link]()** to a friend as a gift.',
   'Giveaway.SendLinkToAnyone': 'You can also **[send this link]()** to anyone as a gift.',
+  'Multiplier': '%s x %s',
+  'Giveaway.Results': {
+    'one_value': '%d winner of the giveaway was randomly selected by Telegram and received private message with giftcode.',
+    'other_value': '%d winners of the giveaway were randomly selected by Telegram and received private messages with giftcodes.'
+  },
+  'Giveaway.Results.Unclaimed': {
+    'one_value': '%d undistributed link code was forwarded to channel administrators.',
+    'other_value': '%d undistributed link codes were forwarded to channel administrators.'
+  },
+  'Giveaway.Results.Combined': '%s\n%s',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -1504,6 +1514,17 @@ const lang = {
   'MediaZoomIn': 'Zoom In',
   'MediaZoomOut': 'Zoom Out',
   'StatisticViews': 'Views',
+  'Recipient': {
+    'one_value': '%1$d recipient',
+    'other_value': '%1$d recipients'
+  },
+  'BoostingFromAllCountries': 'from all countries',
+  'BoostingFromCountriesCount': {
+    'one_value': 'from %1$d country',
+    'other_value': 'from %1$d countries'
+  },
+  'HideAd': 'Hide',
+  'SponsoredMessageRecommended': 'recommended',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
@@ -2075,7 +2096,8 @@ const lang = {
   'Premium.Boarding.AppStore.Success': 'You successfully subscribed for Telegram Premium.',
   'Premium.Boarding.Subscribe': 'Subscribe for %@ per month',
   'Premium.Offset.AlreadyHave': 'You already have Telegram Premium.',
-  'GiftLink.UseSuccess': 'You successfully activated gift link.'
+  'GiftLink.UseSuccess': 'You successfully activated gift link.',
+  'Giveaway.Type.Specific.Modal.SelectUsers': 'Select Users'
 };
 
 export default lang;
