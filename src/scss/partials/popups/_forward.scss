@@ -25,12 +25,24 @@
       @include respond-to(handhelds) {
         padding-left: .8125rem;
       }
+
+      // .btn-primary {
+      //   width: auto;
+      //   height: 2.5rem;
+      //   padding: 0 1rem;
+      // }
     }
 
     &-title {
       flex-grow: 1;
       padding: 0;
-      height: 100%;
+      min-height: 40px !important;
+      display: flex;
+      align-items: center;
+
+      .selector-search-input {
+        font-size: var(--font-size-20);
+      }
     }
 
     &-close {
@@ -51,17 +63,37 @@
   }
 
   .selector {
-    &-search-input {
-      font-size: var(--font-size-20);
-      line-height: 1;
-      padding: .5rem 0;
-      padding-inline: 0 1.5rem;
-      width: 100%;
-      height: 100%;
+    &-search {
+      // padding-inline: 0 !important;
+      gap: .5rem;
 
-      @include respond-to(handhelds) {
-        padding-left: 1.1875rem;
+      &-section {
+        padding: 0 !important;
+
+        &-container {
+          width: 100%;
+          padding-bottom: .75rem;
+          border-bottom: 1px solid var(--border-color);
+
+          & + .popup-body .scrollable {
+            padding-top: .5rem !important;
+          }
+        }
+
+        // .sidebar-left-section-content {
+        //   margin: 0 !important;
+        // }
       }
+
+      &-input {
+        line-height: 1;
+        padding: 0 !important;
+        min-height: 2rem;
+      }
+    }
+
+    &-user {
+      margin: 0 !important;
     }
 
     .chatlist {
@@ -76,5 +108,6 @@
   .sidebar-left-section {
     padding-top: 0 !important;
     margin-bottom: 0 !important;
+    box-shadow: none !important;
   }
 }

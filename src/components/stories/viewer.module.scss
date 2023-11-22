@@ -228,7 +228,7 @@ $color-inactive: rgba(255, 255, 255, .5);
         border-radius: 1px;
         height: inherit;
         background-color: rgba(255, 255, 255, .3);
-        margin-left: .1875rem;
+        margin-inline-start: .1875rem;
         flex: 1 1 auto;
         position: relative;
         min-width: .375rem;
@@ -326,7 +326,7 @@ $color-inactive: rgba(255, 255, 255, .5);
       border-radius: 50%;
       width: 1.5rem;
       height: 1.5rem;
-      margin-right: .5rem;
+      margin-inline-end: .5rem;
       cursor: pointer;
       color: #fff;
       font-size: 1rem;
@@ -422,7 +422,7 @@ $color-inactive: rgba(255, 255, 255, .5);
           --border-color: #000;
           --margin-right: -1rem;
           --border-size: 2px;
-          margin-right: .5rem;
+          margin-inline-end: .5rem;
         }
       }
 
@@ -438,10 +438,7 @@ $color-inactive: rgba(255, 255, 255, .5);
 
     &Shadow {
       position: absolute;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      left: 0;
+      inset: 0;
       background: linear-gradient(180deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0) 10.86%);
       pointer-events: none;
 

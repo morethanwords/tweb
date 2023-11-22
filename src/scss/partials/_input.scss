@@ -47,8 +47,7 @@
     position: absolute;
     color: $placeholder-color;
     top: 0;
-    inset-inline-start: 1rem;
-    right: auto;
+    inset-inline: 1rem auto;
     z-index: 2;
     height: 1.5rem;
     transform: translate(0, 0);

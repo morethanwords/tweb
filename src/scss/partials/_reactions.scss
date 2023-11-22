@@ -15,10 +15,7 @@
   }
 
   &-renderer {
-    top: auto !important;
-    right: auto !important;
-    bottom: auto !important;
-    left: auto !important;
+    inset: auto !important;
 
     &-canvas {
       z-index: 1 !important;

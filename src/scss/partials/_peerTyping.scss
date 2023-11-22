@@ -8,7 +8,7 @@
 
 .peer-typing {
   //display: flex;
-  margin-right: 4px;
+  margin-inline-end: 4px;
   
   &-container {
     --color: var(--primary-color);
@@ -63,17 +63,14 @@
     overflow: hidden;
     position: relative;
     border-radius: 2px;
-    margin-right: .375rem;
+    margin-inline-end: .375rem;
     
     &:before,
     &:after {
       display: block;
       content: " ";
       position: absolute;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      left: 0;
+      inset: 0;
       background-color: var(--color);
       border-radius: inherit;
     }
@@ -88,7 +85,7 @@
   }
 
   &-record {
-    margin-right: .375rem;
+    margin-inline-end: .375rem;
 
     &:before {
       content: " ";
@@ -102,7 +99,7 @@
   }
 
   &-choosing-sticker {
-    margin-right: .375rem;
+    margin-inline-end: .375rem;
     flex: 0 0 auto;
     display: flex;
     align-items: center;

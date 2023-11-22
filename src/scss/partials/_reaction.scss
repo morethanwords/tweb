@@ -36,10 +36,7 @@
     
     &-activate {
       position: absolute;
-      top: var(--reaction-offset);
-      right: var(--reaction-offset);
-      bottom: var(--reaction-offset);
-      left: var(--reaction-offset);
+      inset: var(--reaction-offset);
       z-index: 1;
       // animation: reaction-activate 2s linear forwards;
     }
@@ -57,10 +54,7 @@
         height: var(--size) !important;
         max-width: var(--size);
         max-height: var(--size);
-        top: auto;
-        right: auto;
-        bottom: auto;
-        left: auto;
+        inset: auto;
       }
     }
 
@@ -114,10 +108,7 @@
     @include hover() {
       &:after {
         position: absolute;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        left: 0;
+        inset: 0;
         content: " ";
         background-color: var(--chosen-background-color);
         border-radius: inherit;
@@ -131,16 +122,13 @@
     }
 
     &.is-last {
-      margin-right: 0;
+      margin-inline-end: 0;
     }
 
     &:before {
       content: " ";
       position: absolute;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      left: 0;
+      inset: 0;
       background-color: var(--chosen-background-color);
       // visibility: hidden;
       border-radius: inherit;
@@ -183,7 +171,7 @@
       --border-color: transparent;
       --border-size: .125rem;
       --margin-right: -.875rem;
-      margin-left: .1875rem;
+      margin-inline-start: .1875rem;
       // margin-right: .0625rem;
     }
   }
@@ -191,7 +179,8 @@
   &-block &-counter {
     font-size: .9375rem !important;
     font-weight: var(--font-weight-bold);
-    margin: 0 .0625rem 0 .375rem;
+    margin-block: 0;
+    margin-inline: .375rem .0625rem;
     line-height: 1.125rem;
     position: relative;
   }

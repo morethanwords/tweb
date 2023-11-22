@@ -85,10 +85,7 @@ html.custom-scroll {
 
   //@include respond-to(not-handhelds) {
     position: absolute;
-    top: 0px;
-    left: 0px;
-    bottom: 0px;
-    right: 0px;
+    inset: 0;
   //}
 
   -webkit-overflow-scrolling: touch;

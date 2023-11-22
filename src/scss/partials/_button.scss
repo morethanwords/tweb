@@ -101,6 +101,8 @@ $btn-menu-z-index: 4;
 }
 
 .btn-menu {
+  --transform-origin-x: center;
+  --transform-origin-y: center;
   position: absolute;
   z-index: $btn-menu-z-index;
   top: 100%;
@@ -111,6 +113,7 @@ $btn-menu-z-index: 4;
   -webkit-user-select: none; /* disable selection/Copy of UIWebView */
   -webkit-touch-callout: none; /* disable the IOS popup when long-press on a link */
   width: max-content;
+  transform-origin: var(--transform-origin-x) var(--transform-origin-y);
 
   &,
   &-items {
@@ -214,53 +217,52 @@ $btn-menu-z-index: 4;
     }
   } */
 
-  &.bottom-left,
-  .is-rtl &.bottom-right {
-    right: 0;
-    left: auto;
-    top: 100%;
-    transform-origin: top right;
+  &.bottom-left {
+    --transform-origin-x: var(--transform-origin-inline-end);
+    --transform-origin-y: top;
+    inset-block: 100% auto;
+    inset-inline: auto 0;
   }
 
-  &.bottom-right,
-  .is-rtl &.bottom-left {
-    left: 0;
-    right: auto;
-    top: 100%;
-    transform-origin: top left;
+  &.bottom-right {
+    --transform-origin-x: var(--transform-origin-inline-start);
+    --transform-origin-y: top;
+    inset-block: 100% auto;
+    inset-inline: 0 auto;
   }
 
   &.bottom-center {
-    transform-origin: top center;
+    --transform-origin-x: center;
+    --transform-origin-y: top;
   }
 
   &.top-left {
-    top: initial;
-    right: 0;
-    left: auto;
-    bottom: 100%;
-    transform-origin: bottom right;
+    --transform-origin-x: var(--transform-origin-inline-end);
+    --transform-origin-y: bottom;
+    inset-block: auto 100%;
+    inset-inline: auto 0;
   }
 
-  &.top-right,
-  .is-rtl &.top-left {
-    top: initial;
-    left: 0;
-    right: auto;
-    bottom: 100%;
-    transform-origin: bottom left;
+  &.top-right {
+    --transform-origin-x: var(--transform-origin-inline-start);
+    --transform-origin-y: bottom;
+    inset-block: auto 100%;
+    inset-inline: 0 auto;
   }
 
   &.top-center {
-    transform-origin: bottom center;
+    --transform-origin-x: center;
+    --transform-origin-y: bottom;
   }
 
   &.center-left {
-    transform-origin: center right;
+    --transform-origin-x: var(--transform-origin-inline-end);
+    --transform-origin-y: center;
   }
 
   &.center-right {
-    transform-origin: center left;
+    --transform-origin-x: var(--transform-origin-inline-start);
+    --transform-origin-y: center;
   }
 
   &-item {
@@ -271,7 +273,8 @@ $btn-menu-z-index: 4;
     --icon-size: 1.25rem;
     display: flex;
     position: relative;
-    padding: var(--padding-vertical) var(--padding-right) var(--padding-vertical) var(--padding-left);
+    padding-block: var(--padding-vertical);
+    padding-inline: var(--padding-left) var(--padding-right);
     height: 2rem;
     cursor: pointer !important;
     pointer-events: all !important;

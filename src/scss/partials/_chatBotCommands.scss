@@ -71,16 +71,16 @@
       flex-direction: column;
       align-items: flex-start;
       justify-content: center;
-      padding-left: 3.375rem;
+      padding-inline-start: 3.375rem;
 
       &-avatar {
         position: absolute;
-        left: .75rem;
+        inset-inline-start: .75rem;
       }
 
       &-name,
       &-description {
-        margin-left: 0;
+        margin-inline-start: 0;
         font-size: .875rem;
         line-height: var(--line-height-14);
       }

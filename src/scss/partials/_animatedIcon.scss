@@ -9,14 +9,21 @@
   transform: rotate(-45deg);
   pointer-events: none;
 
-  &, &:before, &:after {
+  .is-rtl & {
+    transform: rotate(135deg);
+  }
+
+  &,
+  &:before,
+  &:after {
     width: 1.125rem;
     height: .125rem;
     border-radius: .125rem;
     background-color: var(--secondary-text-color);
   }
 
-  &:before, &:after {
+  &:before,
+  &:after {
     position: absolute;
     left: 0;
     top: 0;
@@ -28,13 +35,19 @@
   }
 
   @include animation-level(2) {
-    &, &:before, &:after {
+    &,
+    &:before,
+    &:after {
       transition: transform var(--slide-header-transition);
     }
   }
 
   &.state-back {
     transform: rotate(180deg);
+
+    .is-rtl & {
+      transform: rotate(0deg);
+    }
 
     &:before {
       transform: rotate(45deg) scaleX(.75) translateY(-.375rem);
@@ -50,7 +63,9 @@
   --color: var(--secondary-text-color);
   position: absolute;
 
-  &, &:before, &:after {
+  &,
+  &:before,
+  &:after {
     width: 1.125rem;
     height: .125rem;
     border-radius: .125rem;
@@ -58,13 +73,20 @@
     transform: rotate(0);
   }
 
+  .is-rtl & {
+    transform: rotate(180deg);
+  }
+
   @include animation-level(2) {
-    &, &:before, &:after {
+    &,
+    &:before,
+    &:after {
       transition: transform .25s;
     }
   }
 
-  &:before, &:after {
+  &:before,
+  &:after {
     position: absolute;
     left: 0;
     content: "";
@@ -81,6 +103,10 @@
   &.state-back {
     transform: rotate(180deg);
 
+    .is-rtl & {
+      transform: rotate(0deg);
+    }
+
     &:before {
       transform: rotate(45deg) scaleX(.75) translate(.375rem, -.1875rem);
     }
@@ -93,6 +119,7 @@
 
 .animated-menu-close-icon {
   margin-top: -.625rem;
+  transform: translate(0, 0) rotate(0) !important;
 
   &:before {
     top: .3125rem;
@@ -108,7 +135,7 @@
   }
 
   &.state-back {
-    transform: translate(0, .3125rem) rotate(135deg);
+    transform: translate(0, .3125rem) rotate(135deg) !important;
 
     &:before {
       transform: rotate(45deg);

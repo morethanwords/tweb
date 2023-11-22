@@ -43,11 +43,17 @@
   --transition-standard-out-time: .25s;
   --transition-standard-in: var(--transition-standard-in-time) var(--transition-standard-easing);
   --transition-standard-out: var(--transition-standard-out-time) var(--transition-standard-easing);
+  --transform-origin-inline-start: left;
+  --transform-origin-inline-end: right;
   --transform-origin-left-center: left center;
+  --transform-origin-right-center: right center;
 
   &.is-rtl {
     --reflect: -1;
+    --transform-origin-inline-start: right;
+    --transform-origin-inline-end: left;
     --transform-origin-left-center: right center;
+    --transform-origin-right-center: left center;
   }
   
   --pm-transition: .2s ease-in-out;
@@ -2325,4 +2331,9 @@ hr {
 .inline-icon {
   vertical-align: bottom;
   line-height: inherit;
+}
+
+.icon-reflect {
+  display: inline-block;
+  transform: scaleX(-1);
 }

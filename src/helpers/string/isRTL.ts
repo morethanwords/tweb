@@ -7,3 +7,7 @@ const ltrChars  = 'A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02B8\u0300-\u0590\u0
 export default function isRTL(s: string, anyChar?: boolean) {
   return anyChar ? justRtlDirCheck.test(s) : fullRtlDirCheck.test(s);
 }
+
+export function endsWithRTL(s: string) {
+  return justRtlDirCheck.test(s?.slice(-1));
+}

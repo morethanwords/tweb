@@ -199,7 +199,7 @@ $inactive-opacity: .4;
   &-switcher {
     --offset-top: 7.5rem;
     position: absolute;
-    inset-inline-start: 0;
+    left: 0;
     top: 3.75rem;
     width: 7rem;
     height: calc(100% - var(--offset-top));
@@ -221,7 +221,8 @@ $inactive-opacity: .4;
     }
 
     &-right {
-      inset-inline: auto 0;
+      left: auto;
+      right: 0;
     }
   }
 
@@ -231,9 +232,9 @@ $inactive-opacity: .4;
     position: absolute;
     color: #fff;
     font-size: 2rem;
-    inset-inline-start: 1rem;
+    left: 1rem;
     top: 50%;
-    transform: translateY(-50%) rotate(90deg);
+    transform: translateY(-50%);
     opacity: 0;
     transition: var(--open-duration) opacity;
     z-index: 5;
@@ -242,16 +243,17 @@ $inactive-opacity: .4;
 
     @include respond-to(not-handhelds) {
       font-size: 3rem;
-      inset-inline-start: 2rem;
+      left: 2rem;
     }
   }
 
   &-next-button {
-    inset-inline: auto 1rem;
-    transform: translateY(-50%) rotate(-90deg);
+    left: auto;
+    right: 1rem;
+    transform: translateY(-50%);
 
     @include respond-to(not-handhelds) {
-      inset-inline-end: 2rem;
+      right: 2rem;
     }
   }
 
