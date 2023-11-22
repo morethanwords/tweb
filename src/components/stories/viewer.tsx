@@ -52,7 +52,7 @@ import confirmationPopup from '../confirmationPopup';
 import {formatDateAccordingToTodayNew, formatFullSentTime} from '../../helpers/date';
 import getVisibleRect from '../../helpers/dom/getVisibleRect';
 import onMediaLoad from '../../helpers/onMediaLoad';
-import {AvatarNew} from '../avatarNew';
+import {AvatarNew, avatarNew} from '../avatarNew';
 import documentFragmentToNodes from '../../helpers/dom/documentFragmentToNodes';
 import clamp from '../../helpers/number/clamp';
 import {SERVICE_PEER_ID} from '../../lib/mtproto/mtproto_config';
@@ -94,6 +94,8 @@ import formatNumber from '../../helpers/number/formatNumber';
 import callbackify from '../../helpers/callbackify';
 import {dispatchHeavyAnimationEvent} from '../../hooks/useHeavyAnimationCheck';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
+import wrapReply from '../wrappers/reply';
+import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 
 export const STORY_DURATION = 5e3;
 const STORY_HEADER_AVATAR_SIZE = 32;
@@ -1270,6 +1272,7 @@ const Stories = (props: {
   const [content, setContent] = createSignal<JSX.Element>();
   const [videoDuration, setVideoDuration] = createSignal<number>();
   const [caption, setCaption] = createSignal<JSX.Element>();
+  const [repost, setRepost] = createSignal<{reply: JSX.Element, header: JSX.Element}>();
   const [reaction, setReaction] = createSignal<JSX.Element>();
   const [captionOpacity, setCaptionOpacity] = createSignal(0);
   const [captionActive, setCaptionActive] = createSignal(false);
@@ -1574,6 +1577,7 @@ const Stories = (props: {
       setCaption();
       setReaction();
       setMediaAreas();
+      setRepost();
       setStoryMeta(story as StoryItem.storyItemSkipped);
       rootScope.managers.appStoriesManager.getStoryById(props.state.peerId, story.id);
       props.onReady?.();
@@ -1586,6 +1590,7 @@ const Stories = (props: {
     const uContent = createUnifiedSignal<JSX.Element>();
     const uReaction = createUnifiedSignal<JSX.Element>();
     const uMediaAreas = createUnifiedSignal<JSX.Element>();
+    const uRepost = createUnifiedSignal<{reply: JSX.Element, header: JSX.Element}>();
     const recentViewersMemo = isMe ? createMemo<UserId[]>((previousRecentViewers) => {
       const views = story.views;
       const recentViewers = views?.recent_viewers;
@@ -1694,7 +1699,7 @@ const Stories = (props: {
       createReaction(onMedia)(() => wrapped.media());
     });
 
-    createEffect(async() => {
+    createEffect(() => {
       let reactionNode: JSX.Element;
       const sentReaction = story.sent_reaction;
       const isDefault = isDefaultReaction(sentReaction);
@@ -1731,7 +1736,6 @@ const Stories = (props: {
             const [ready, setReady] = createSignal(false);
 
             createReaction(() => {
-              console.log('mediaArea ready');
               setReadyCount((count) => count + 1);
               if(readyCount() === (story as StoryItem.storyItem).media_areas.length) {
                 setAllReady(true);
@@ -1753,25 +1757,95 @@ const Stories = (props: {
       );
 
       createReaction(() => {
-        console.log('mediaAreas ready');
         uMediaAreas(mediaAreas);
       })(allReady);
     });
 
+    createEffect(async() => {
+      const fwdFrom = story.fwd_from;
+      if(!fwdFrom) {
+        uRepost();
+        return;
+      }
+
+      uRepost(null);
+
+      const ret: {reply: JSX.Element, header: JSX.Element} = {} as any;
+      const fwdFromPeerId = fwdFrom.from && getPeerId(fwdFrom.from);
+      const fwdFromName = fwdFrom.from_name;
+      const peerTitleOptions: Parameters<typeof wrapPeerTitle>[0] = {
+        peerId: fwdFromPeerId,
+        fromName: fwdFromName
+      };
+
+      const {element, readyThumbPromise} = avatarNew({
+        peerId: fwdFromPeerId,
+        peerTitle: fwdFromName,
+        size: 16,
+        props: {
+          class: styles.ViewerStoryHeaderRepostAvatar
+        },
+        middleware
+      });
+
+      const [reply, headerPeerTitle, headerAvatar] = await Promise.all([
+        wrapPeerTitle(peerTitleOptions).then(async(peerTitle) => {
+          const title = document.createDocumentFragment();
+          if(fwdFromPeerId) {
+            const isBroadcast = await rootScope.managers.appPeersManager.isBroadcast(fwdFromPeerId);
+            const icon = Icon(
+              isBroadcast ? 'newchannel_filled' : (fwdFromPeerId.isUser() ? 'newprivate_filled' : 'group_filled'),
+              'inline-icon',
+              'reply-title-icon',
+              'with-margin'
+            );
+            title.append(icon);
+          }
+
+          title.append(peerTitle);
+
+          const {container, fillPromise} = wrapReply({
+            title,
+            subtitle: i18n('Story'),
+            useHighlightningColor: true,
+            setColorPeerId: fwdFromPeerId
+          });
+
+          await fillPromise;
+          return container;
+        }),
+        wrapPeerTitle(peerTitleOptions),
+        readyThumbPromise.then(() => element)
+      ]);
+      if(!middleware()) return;
+
+      ret.reply = reply;
+      ret.header = (
+        <span class={styles.ViewerStoryHeaderRepost}>
+          {Icon('audio_repeat', styles.ViewerStoryHeaderRepostIcon)}
+          {headerAvatar}
+          {headerPeerTitle}
+        </span>
+      );
+
+      uRepost(ret);
+    });
+
     createEffect(
       on(
-        () => [inputReady(), uStackedAvatars?.(), uCaption(), uContent(), uReaction?.(), uMediaAreas()] as const,
+        () => [inputReady(), uStackedAvatars?.(), uCaption(), uContent(), uReaction?.(), uMediaAreas(), uRepost()] as const,
         ([inputReady, ...u]) => {
           if(!inputReady || u.some((v) => v === null)) {
             return;
           }
 
-          const [stackedAvatars, caption, content, reaction, mediaAreas] = u;
+          const [stackedAvatars, caption, content, reaction, mediaAreas, repost] = u;
           setStackedAvatars(stackedAvatars);
           setCaption(caption);
           setContent(content);
           setReaction(reaction);
           setMediaAreas(mediaAreas);
+          setRepost(repost);
           props.onReady?.();
 
           createEffect(() => {
@@ -2057,7 +2131,8 @@ const Stories = (props: {
     }
 
     cancelEvent(e);
-    const visibleTextHeight = captionScrollable.clientHeight - captionScrollable.clientWidth * 0.7 - 8;
+    // const visibleTextHeight = captionScrollable.clientHeight - captionScrollable.clientWidth * 0.7 - 8;
+    const visibleTextHeight = 56;
     const path = Math.min(captionText.scrollHeight - visibleTextHeight, captionScrollable.clientHeight - 60);
     scrollPath(path);
   };
@@ -2065,9 +2140,16 @@ const Stories = (props: {
   const captionContainer = (
     <div
       ref={captionScrollable}
-      class={classNames('scrollable', 'scrollable-y', 'no-scrollbar', styles.ViewerStoryCaption)}
+      class={classNames(
+        'scrollable',
+        'scrollable-y',
+        'no-scrollbar',
+        styles.ViewerStoryCaption,
+        repost() && caption() && styles.hasReply
+      )}
       onScroll={onCaptionScroll}
     >
+      {repost()?.reply}
       <div
         ref={captionText}
         class={classNames('spoilers-container', styles.ViewerStoryCaptionText)}
@@ -2130,7 +2212,19 @@ const Stories = (props: {
       elements.push(i18n('EditedMessage'));
     }
 
-    return joinElementsWith(elements, JOINER);
+    if(repost()) {
+      elements.unshift(repost().header as HTMLElement);
+    }
+
+    let joined: JSX.Element[] = joinElementsWith(elements, JOINER);
+    if(repost()) {
+      joined = [
+        joined[0],
+        <span class={classNames(styles.ViewerStoryHeaderSecondary, 'text-top')}>{joined.slice(1)}</span>
+      ];
+    }
+
+    return joined;
   };
 
   const showMessageSentTooltip = (textElement: HTMLElement, peerId?: PeerId) => {
@@ -2703,6 +2797,18 @@ const Stories = (props: {
       onClick={(e) => {
         if(!isActive()) {
           actions.set({peer: props.state, index: props.state.index});
+        } else if(findUpClassName(e.target, 'reply')) {
+          const story = currentStory();
+          const fwdFrom = (story as StoryItem.storyItem).fwd_from;
+          if(fwdFrom.from) {
+            props.close(() => {
+              appImManager.setInnerPeer({peerId: getPeerId(fwdFrom.from)});
+            });
+          } else {
+            toastNew({
+              langPackKey: 'HidAccount'
+            });
+          }
         } else if(
           captionScrollable.scrollTop &&
           !findUpAsChild(e.target, captionText) &&
@@ -2750,7 +2856,7 @@ const Stories = (props: {
                 <div
                   class={classNames(
                     // styles.ViewerStoryHeaderRow,
-                    styles.ViewerStoryHeaderSecondary,
+                    !repost() && styles.ViewerStoryHeaderSecondary,
                     styles.ViewerStoryHeaderTime
                   )}
                 >
@@ -2775,7 +2881,7 @@ const Stories = (props: {
               )}
             </div>
           </div>
-          {caption() && captionContainer}
+          {(caption() || repost()) && captionContainer}
           {mediaAreas() && (
             <div
               class={styles.ViewerStoryMediaAreas}
@@ -3086,6 +3192,7 @@ export default function StoriesViewer(props: {
     verifyTouchTarget: (e) => {
       return !findUpClassName(e.target, 'btn-icon') &&
         !findUpClassName(e.target, 'btn-corner') &&
+        !findUpClassName(e.target, 'reply') &&
         !findUpClassName(e.target, styles.ViewerStoryMediaArea) &&
         !findUpClassName(e.target, styles.ViewerStoryPrivacy) &&
         !findUpClassName(e.target, styles.ViewerStoryCaptionText) &&

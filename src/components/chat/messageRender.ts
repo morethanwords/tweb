@@ -257,7 +257,7 @@ export namespace MessageRender {
       const fragment = document.createDocumentFragment();
       let icon: HTMLElement;
       if(replyTo.reply_from.channel_post) {
-        fragment.append(icon = Icon('newchannel_filled'), originalPeerTitle);
+        fragment.append(icon = Icon('newchannel_filled', 'with-margin'), originalPeerTitle);
       } else if(replyTo.reply_to_peer_id) {
         const groupPeerTitle = new PeerTitle({
           peerId: getPeerId(replyTo.reply_to_peer_id),

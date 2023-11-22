@@ -253,6 +253,14 @@
   .peer-title {
     font-weight: var(--font-weight-bold);
   }
+
+  &-title-icon {
+    opacity: .5;
+
+    &.with-margin {
+      margin-inline-end: .125rem;
+    }
+  }
 }
 
 .pinned-container {
