@@ -302,6 +302,7 @@ export default class FeaturesCarousel {
       withoutPreloader: true,
       noInfo: true,
       noPlayButton: true,
+      middleware: this.middleware,
       ...(mount && {container: deviceFrame as HTMLElement})
     });
     await wrappedVideo.loadPromise;

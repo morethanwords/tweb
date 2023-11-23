@@ -41,6 +41,7 @@ export interface PremiumPromoFeature {
     free?: number,
     premium?: number
   }>;
+  new?: boolean
 }
 
 export const PREMIUM_FEATURES_COLORS: string[] = [
@@ -231,6 +232,22 @@ export const PREMIUM_FEATURES: {[type in PremiumPromoFeatureType]?: PremiumPromo
     titleLangKey: 'Premium.Boarding.Status.Title',
     subtitleLangKey: 'Premium.Boarding.Status.Info',
     videoPosition: 'top'
+  },
+  colors: {
+    feature: 'colors',
+    icon: 'premium_colors',
+    titleLangKey: 'Premium.Promo.Colors.Title',
+    subtitleLangKey: 'Premium.Promo.Colors.Subtitle',
+    videoPosition: 'top',
+    new: true
+  },
+  wallpaper: {
+    feature: 'wallpaper',
+    icon: 'premium_wallpaper',
+    titleLangKey: 'Premium.Promo.Wallpaper.Title',
+    subtitleLangKey: 'Premium.Promo.Wallpaper.Subtitle',
+    videoPosition: 'top',
+    new: true
   },
   profile_badge: {
     feature: 'profile_badge',

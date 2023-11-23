@@ -106,6 +106,21 @@ $row-border-radius: $border-radius-medium;
         }
       }
     }
+
+    &-badge {
+      text-transform: uppercase;
+      border-radius: 4px;
+      background-color: var(--primary-color);
+      color: #fff;
+      padding: .1875rem .3125rem;
+      font-size: 75%;
+      margin-inline-start: .375rem;
+      font-weight: var(--font-weight-bold);
+      display: inline-block;
+      line-height: 1;
+      position: relative;
+      top: -1px;
+    }
   }
 
   &-title-right,

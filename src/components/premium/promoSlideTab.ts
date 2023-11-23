@@ -12,16 +12,92 @@ import Icon from '../icon';
 import {PopupPremiumProps} from '../popups/premium';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
 import CheckboxField from '../checkboxField';
-import {PremiumSubscriptionOption} from '../../layer';
+import {PremiumGiftCodeOption, PremiumSubscriptionOption} from '../../layer';
 import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
 import setInnerHTML from '../../helpers/dom/setInnerHTML';
 import {onMediaCaptionClick} from '../appMediaViewer';
+import {formatMonthsDuration} from '../../helpers/date';
 
 type PromoSlideTabOptions = PopupPremiumProps & {
   container: HTMLElement,
   header: HTMLElement,
   body: HTMLElement
 };
+
+export function premiumOptionsForm<T extends PremiumSubscriptionOption | PremiumGiftCodeOption>({
+  periodOptions,
+  onOption,
+  checked = 0,
+  users = 1
+}: {
+  periodOptions: T[],
+  onOption: (option: T) => void,
+  checked?: number,
+  users?: number
+}) {
+  const isGiftCode = periodOptions[0]._ === 'premiumGiftCodeOption';
+  const shortestOption = periodOptions.slice().sort((a, b) => a.months - b.months)[0];
+  const wrapCurrency = (amount: number | string) => paymentsWrapCurrencyAmount(amount, shortestOption.currency, false, true);
+  const keys: {[key: number]: LangPackKey} = isGiftCode ? undefined : {
+    12: 'PremiumTierAnnual',
+    6: 'PremiumTierSemiannual',
+    1: 'PremiumTierMonthly'
+  };
+
+  const rows = periodOptions.map((option, idx) => {
+    const amountPerUser = +option.amount / (isGiftCode ? (option as PremiumGiftCodeOption).users : 1);
+    let subtitle: HTMLElement;
+    if(isGiftCode) {
+      subtitle = i18n('Multiplier', [wrapCurrency(amountPerUser), users]);
+    } else if(option !== shortestOption) {
+      subtitle = i18n('PricePerMonth', [wrapCurrency(+option.amount / option.months)]);
+    }
+
+    if(option !== shortestOption) {
+      const span = document.createElement('span');
+      const badge = document.createElement('span');
+      badge.classList.add('popup-gift-premium-discount');
+      const shortestAmount = +shortestOption.amount * option.months / shortestOption.months;
+      const discount = Math.round((1 - +option.amount / shortestAmount) * 100);
+      badge.textContent = '-' + discount + '%';
+      span.append(badge, subtitle);
+      subtitle = span;
+    }
+
+    const checkboxField = new CheckboxField({
+      checked: idx === checked,
+      round: true,
+      name: 'premium-period',
+      asRadio: true
+    });
+
+    const row = new Row({
+      title: keys ? i18n(keys[option.months] || 'Months', [option.months]) : formatMonthsDuration(option.months, false),
+      checkboxField,
+      clickable: true,
+      subtitle: subtitle,
+      titleRightSecondary: wrapCurrency(isGiftCode ? amountPerUser * users : option.amount)
+    });
+
+    row.container.classList.add('popup-gift-premium-option');
+
+    return row;
+  });
+
+  const form = document.createElement('form');
+  form.classList.add('popup-gift-premium-options');
+  form.append(...rows.map((row) => row.container));
+
+  const getSelectedOption = () => periodOptions[rows.findIndex((row) => row.checkboxField.checked)];
+
+  form.addEventListener('change', () => {
+    onOption(getSelectedOption());
+  });
+
+  onOption(getSelectedOption());
+
+  return form;
+}
 
 export default class PromoSlideTab {
   public tab: HTMLElement;
@@ -53,59 +129,11 @@ export default class PromoSlideTab {
     headingTextDescription.append(options.isPremiumActive ? i18n('TelegramPremiumSubscribedSubtitle') : i18n('Premium.Boarding.Info'));
     headingTextContainer.append(headingTextTitle, headingTextDescription);
 
-    const periodOptions = options.premiumPromo.period_options;
-    const shortestOption = periodOptions.slice().sort((a, b) => a.months - b.months)[0];
-    const wrapCurrency = (amount: number | string) => paymentsWrapCurrencyAmount(amount, shortestOption.currency, false, true);
-    const keys: {[key: number]: LangPackKey} = {
-      12: 'PremiumTierAnnual',
-      6: 'PremiumTierSemiannual',
-      1: 'PremiumTierMonthly'
-    };
-
-    const rows = options.isPremiumActive ? [] : periodOptions.map((option, idx) => {
-      let subtitle = option !== shortestOption ? i18n('PricePerMonth', [wrapCurrency(+option.amount / option.months)]) : undefined;
-      if(option !== shortestOption) {
-        const span = document.createElement('span');
-        const badge = document.createElement('span');
-        badge.classList.add('popup-gift-premium-discount');
-        const shortestAmount = +shortestOption.amount * option.months / shortestOption.months;
-        const discount = Math.round((1 - +option.amount / shortestAmount) * 100);
-        badge.textContent = '-' + discount + '%';
-        span.append(badge, subtitle);
-        subtitle = span;
+    const form = !options.isPremiumActive && premiumOptionsForm({
+      periodOptions: options.premiumPromo.period_options,
+      onOption: (option) => {
+        this.selectPeriod?.(option);
       }
-
-      const checkboxField = new CheckboxField({
-        checked: idx === 0,
-        round: true,
-        name: 'premium-period',
-        asRadio: true
-      });
-
-      const row = new Row({
-        title: i18n(keys[option.months] || 'Months', [option.months]),
-        checkboxField,
-        clickable: true,
-        subtitle: subtitle,
-        titleRightSecondary: wrapCurrency(option.amount)
-      });
-
-      row.container.classList.add('popup-gift-premium-option');
-
-      return row;
-    });
-
-    let form: HTMLFormElement;
-    if(rows.length) {
-      form = document.createElement('form');
-      form.classList.add('popup-gift-premium-options');
-      form.append(...rows.map((row) => row.container));
-    }
-
-    const getSelectedOption = () => periodOptions[rows.findIndex((row) => row.checkboxField.checked)];
-
-    form?.addEventListener('change', () => {
-      this.selectPeriod(getSelectedOption());
     });
 
     const featuresContainer = document.createElement('div');
@@ -165,6 +193,12 @@ export default class PromoSlideTab {
       media.classList.add('premium-promo-tab-icon');
       media.append(Icon(f.icon));
       media.style.backgroundColor = PREMIUM_FEATURES_COLORS[idx];
+
+      if(f.new) {
+        const badge = i18n('New');
+        badge.classList.add('row-title-badge');
+        row.title.append(badge);
+      }
 
       return row.container;
     });

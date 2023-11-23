@@ -213,7 +213,7 @@ export default class PopupPremium extends PopupElement {
     this.actionButton.append(this.actionButtonText.element);
     this.actionButtonContainer.append(this.actionButton);
 
-    this.feature && selectFeature(this.feature);
+    this.feature && await selectFeature(this.feature);
     transition(this.feature ? 1 : 0);
 
     this.show();
