@@ -25,6 +25,11 @@ import {IS_FIREFOX} from '../../environment/userAgent';
 import CustomEmojiElement, {CustomEmojiElements} from '../customEmoji/element';
 import {CustomEmojiRendererElementOptions, CustomEmojiRendererElement} from '../customEmoji/renderer';
 import {setDirection} from '../../helpers/dom/setInnerHTML';
+import {i18n} from '../langPack';
+import Icon from '../../components/icon';
+import {CodeLanguageAliases, highlightCode} from '../../codeLanguages';
+import callbackify from '../../helpers/callbackify';
+import findIndexFrom from '../../helpers/array/findIndexFrom';
 
 export type WrapRichTextOptions = Partial<{
   entities: MessageEntity[],
@@ -219,29 +224,59 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
 
       case 'messageEntityPre':
       case 'messageEntityCode': {
-        if((entity as MessageEntity.messageEntityPre).language && !options.noTextFormat && false) {
-          (window as any).Prism = window.Prism || {};
-          (window as any).Prism.manual = true;
-
-          const container = document.createElement('pre');
-          element = document.createElement('code');
-          element.textContent = partText;
-          usedText = true;
-          container.append(element);
-          fragment.append(container);
-
-          import('prismjs').then((Prism) => {
-            const html = Prism.highlight(fullEntityText, Prism.languages.javascript, 'javascript');
-            console.log(Prism, html);
-            element.innerHTML = html;
-          });
-        } else if(options.wrappingDraft) {
+        const entityLanguage = (entity as MessageEntity.messageEntityPre).language;
+        if(options.wrappingDraft) {
           element = createMarkupFormatting('monospace');
+          if(entityLanguage) {
+            element.dataset.language = entityLanguage;
+          }
           // element = document.createElement('span');
           // element.style.fontFamily = 'var(--font-monospace)';
           // element.style.fontFamily = 'markup-monospace';
+        } else if(entityLanguage && !options.noTextFormat) {
+          const container = document.createElement('pre');
+          const content = document.createElement('div');
+          content.classList.add('code-content');
+          element = document.createElement('code');
+          element.classList.add('code-code');
+          fragment.append(container);
+          content.append(element);
+
+          container.classList.add('quote-like', 'quote-like-border', 'code');
+
+          const languageName = CodeLanguageAliases[entityLanguage.toLowerCase()];
+
+          const header = document.createElement('div');
+          header.classList.add('code-header');
+          const headerName = document.createElement('span');
+          headerName.classList.add('code-header-name');
+          headerName.append(languageName || i18n('CopyCode'));
+          const headerWrapButton = Icon('menu', 'code-header-button', 'code-header-toggle-wrap');
+          header.append(headerName, headerWrapButton, Icon('copy', 'code-header-button', 'code-header-copy'));
+
+          container.append(header, content);
+
+          const result = highlightCode(fullEntityText, languageName);
+          callbackify(result, (html) => {
+            if(html) {
+              element.innerHTML = html;
+            }
+          });
+
+          usedText = true;
+          if(result instanceof Promise) {
+            element.textContent = fullEntityText;
+          }
+
+          let realNextEntityIndex = findIndexFrom(entities, (n) => n.offset >= endOffset, nasty.i + 1);
+          if(realNextEntityIndex === -1) realNextEntityIndex = entities.length - 1;
+          nasty.i = realNextEntityIndex;
+          nasty.usedLength = endOffset;
+          nasty.lastEntity = entities[realNextEntityIndex - 1];
+          nextEntity = entities[nasty.i + 1];
         } else if(!options.noTextFormat) {
           element = document.createElement('code');
+          element.classList.add('monospace-text');
         }
 
         break;
@@ -628,7 +663,7 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           }
         }
 
-        if(!options.wrappingDraft) {
+        if(!options.wrappingDraft && endOffset < nasty.text.length) {
           // * ignore inner linebreak if found and double next linebreak
           const container = document.createElement('div');
           container.append(element);
@@ -660,7 +695,9 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           //   options.ignoreNextIndex = foundNextLinebreakIndex - 1;
           //   options.doubleLinebreak = foundNextLinebreakIndex;
           // }
-        } else if(foundNextLinebreakIndex !== -1) {
+        }
+
+        if(options.wrappingDraft && foundNextLinebreakIndex !== -1) {
           options.ignoreNextIndex = foundNextLinebreakIndex;
         }
 

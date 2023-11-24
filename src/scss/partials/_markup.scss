@@ -64,6 +64,10 @@
 
 [data-markup*="monospace"] {
   font-family: var(--font-monospace) !important;
+
+  // &[data-language] {
+  //   color: var(--primary-color);
+  // }
 }
 
 [data-markup*="spoiler"] {

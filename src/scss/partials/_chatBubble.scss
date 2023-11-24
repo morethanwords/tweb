@@ -141,7 +141,7 @@
       transform: translateY(-50%);
       color: #fff;
       border-radius: 50%;
-      background-color: var(--message-highlightning-color);
+      background-color: var(--message-highlighting-color);
       opacity: 0;
       display: flex;
       align-items: center;
@@ -199,7 +199,7 @@
 
   &.is-highlighted:after {
     //background-color: rgba(0, 132, 255, .3);
-    background-color: var(--message-highlightning-color);
+    background-color: var(--message-highlighting-color);
 
     body:not(.animation-level-0) & {
       animation: bubbleSelected 2s linear;
@@ -237,7 +237,7 @@
 
   &.is-selected {
     &:after {
-      background-color: var(--message-highlightning-color);
+      background-color: var(--message-highlighting-color);
     }
 
     body:not(.animation-level-0) & {
@@ -503,7 +503,7 @@
     color: var(--badge-text-color);
     border-radius: 50%;
     //background: rgba(0, 0, 0, .16);
-    background: var(--message-highlightning-color);
+    background: var(--message-highlighting-color);
     cursor: pointer;
     transform: translateX(0);
 
@@ -689,7 +689,7 @@
     }
 
     &.is-message-empty .message {
-      background: var(--message-highlightning-color);
+      background: var(--message-highlighting-color);
     }
   }
 
@@ -814,7 +814,7 @@
   }
 
   .album-item {
-    background-color: var(--message-highlightning-color);
+    background-color: var(--message-highlighting-color);
     max-width: 100%;
     cursor: pointer;
     position: absolute;
@@ -1049,7 +1049,7 @@
       top: 0;
       // margin-bottom: 0;
       margin: 0;
-      background-color: var(--message-highlightning-color);
+      background-color: var(--message-highlighting-color);
       white-space: nowrap;
       max-width: 15rem;
 
@@ -1096,7 +1096,7 @@
       }
 
       @include hover() {
-        background-color: var(--message-highlightning-hover-color);
+        background-color: var(--message-highlighting-hover-color);
       }
     }
 
@@ -1459,7 +1459,7 @@
 
       &.is-highlighted {
         .document-selection {
-          background-color: var(--message-highlightning-color);
+          background-color: var(--message-highlighting-color);
         }
 
         body:not(.animation-level-0) & {
@@ -1472,7 +1472,7 @@
 
       &.is-selected {
         .document-selection {
-          background-color: var(--message-highlightning-color);
+          background-color: var(--message-highlighting-color);
         }
 
         body:not(.animation-level-0) & {
@@ -1879,12 +1879,6 @@
     }
   }
 
-  pre {
-    // display: inline;
-    margin: 0;
-    padding: .5rem;
-  }
-
   .anchor-url {
     text-decoration: underline;
   }
@@ -2190,7 +2184,7 @@
     }
   }
 
-  code {
+  .monospace-text {
     cursor: pointer;
   }
 
@@ -2336,7 +2330,7 @@
   &-service-button {
     min-height: 34px;
     font-weight: var(--font-weight-bold);
-    background-color: rgba(var(--message-highlightning-color-rgb), .8);
+    background-color: rgba(var(--message-highlighting-color-rgb), .8);
     color: currentColor;
     padding: 0 1.25rem;
     border-radius: 34px;
@@ -2458,64 +2452,14 @@
     }
   }
 
+  .verified-icon {
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+
   // .document-message + .audio-transcribed-text {
   //   margin-bottom: .75rem;
   // }
-}
-
-.quote-like {
-  --border-radius: .25rem;
-  --primary-color: rgb(var(--peer-color-rgb));
-  --primary-color-rgb: var(--peer-color-rgb);
-  background-color: rgba(var(--primary-color-rgb), .1);
-  overflow: hidden;
-  border-radius: var(--border-radius);
-
-  &-hoverable {
-    --ripple-color: rgba(var(--primary-color-rgb), .2);
-    --ripple-duration: 0.4s;
-    --ripple-start-scale: 0.4;
-    cursor: pointer;
-    user-select: none;
-
-    @include hover() {
-      background-color: rgba(var(--primary-color-rgb), .2);
-    }
-  }
-
-  &-border:before {
-    content: " ";
-    position: absolute;
-    inset-inline-start: 0;
-    top: 0;
-    bottom: 0;
-    // top: -2px;
-    // bottom: -2px;
-    flex: 0 0 auto;
-    width: .1875rem;
-    background: var(--peer-border-background, rgb(var(--peer-color-rgb)));
-    z-index: 1;
-    // background-size: 100% 1rem;
-    // background-position: 0 2px;
-    // transform: skew(0deg, -45deg);
-  }
-
-  &-icon {
-    &:after {
-      position: absolute;
-      top: .125rem;
-      inset-inline-end: .1875rem;
-      color: var(--primary-color);
-      font-size: 78.571428%;
-      line-height: 1;
-    }
-
-    &:after {
-      // content: var(--quote-icon);
-      content: $tgico-quote;
-      font-family: '#{$tgico-font-family}' !important;
-    }
-  }
 }
 
 .webpage {
@@ -2525,7 +2469,7 @@
   --secondary-color: var(--primary-color);
   --secondary-text-color: var(--primary-color);
   --link-color: var(--primary-color);
-  --message-highlightning-color: rgba(var(--primary-color-rgb), .3);
+  --message-highlighting-color: rgba(var(--primary-color-rgb), .3);
   margin: .25rem 0;
   // max-width: 100%;
   font-size: var(--messages-secondary-text-size);
@@ -2675,7 +2619,7 @@
     font-size: var(--messages-text-size);
     text-align: center;
     font-weight: var(--font-weight-bold);
-    text-transform: uppercase;
+    // text-transform: uppercase;
 
     @include text-overflow(true);
   }
@@ -2990,7 +2934,7 @@
   .service-msg {
     color: #fff;
     //background-color: rgba(0, 0, 0, .24);
-    background-color: var(--message-highlightning-color);
+    background-color: var(--message-highlighting-color);
     font-size: var(--messages-service-text-size);
     padding: .28125rem .625rem;
     // padding: .1875rem .5rem;
@@ -3140,8 +3084,7 @@
     }
   } */
 
-  pre, 
-  code {
+  .monospace-text {
     color: var(--monospace-text-color);
   }
 }
@@ -3465,7 +3408,7 @@
     position: relative;
     overflow: hidden;
     //line-height: var(--line-height);
-    background: var(--message-highlightning-color);
+    background: var(--message-highlighting-color);
     font-weight: var(--font-weight-bold);
 
     &.is-first {
@@ -3515,7 +3458,7 @@
   // }
 
   @include hover() {
-    background-color: var(--message-highlightning-hover-color);
+    background-color: var(--message-highlighting-hover-color);
     // &:after {
     //   content: " ";
     //   opacity: var(--hover-alpha);

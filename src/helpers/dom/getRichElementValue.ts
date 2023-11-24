@@ -127,7 +127,15 @@ function checkNodeForEntity(node: Node, value: string, entities: MessageEntity[]
       continue;
     }
 
-    if(tag.entityName === 'messageEntityTextUrl') {
+    let codeElement: HTMLElement;
+    if(tag.entityName === 'messageEntityCode' && (codeElement = parentElement.closest('[data-language]'))) {
+      entities.push({
+        _: 'messageEntityPre',
+        language: codeElement.dataset.language || '',
+        offset: offset.offset,
+        length: value.length
+      });
+    } else if(tag.entityName === 'messageEntityTextUrl') {
       entities.push({
         _: tag.entityName,
         url: (closest as HTMLAnchorElement).href,

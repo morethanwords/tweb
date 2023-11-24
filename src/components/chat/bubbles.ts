@@ -954,15 +954,31 @@ export default class ChatBubbles {
     this.listenerSetter.add(this.scrollable.container)('mousedown', (e) => {
       if(e.button !== 0) return;
 
-      const code: HTMLElement = findUpTag(e.target, 'CODE');
+      const codeContainer = findUpClassName(e.target, 'code-header') && findUpClassName(e.target, 'code');
+      const code: HTMLElement = codeContainer?.querySelector<HTMLElement>('.code-code') || findUpClassName(e.target, 'monospace-text');
       if(code) {
+        const isTogglingWrap = !!findUpClassName(e.target, 'code-header-toggle-wrap');
         cancelEvent(e);
-        copyFromElement(code);
+        if(!isTogglingWrap) {
+          copyFromElement(code);
+        }
 
         const onClick = (e: MouseEvent) => {
           cancelEvent(e);
+
+          if(isTogglingWrap) {
+            // const scrollSaver = this.createScrollSaver(true);
+            // scrollSaver.save();
+            const present = codeContainer.classList.toggle('is-scrollable');
+            // code.classList.toggle('scrollable', present);
+            // code.classList.toggle('scrollable-x', present);
+            code.classList.toggle('no-scrollbar', present);
+            // scrollSaver.restore();
+            return;
+          }
+
           toastNew({
-            langPackKey: 'TextCopied',
+            langPackKey: 'CodeCopied',
             onClose: () => {
               detach();
             }

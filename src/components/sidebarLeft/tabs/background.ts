@@ -9,7 +9,7 @@ import blur from '../../../helpers/blur';
 import deferredPromise, {CancellablePromise} from '../../../helpers/cancellablePromise';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import findUpClassName from '../../../helpers/dom/findUpClassName';
-import highlightningColor from '../../../helpers/highlightningColor';
+import highlightingColor from '../../../helpers/highlightingColor';
 import copy from '../../../helpers/object/copy';
 import sequentialDom from '../../../helpers/sequentialDom';
 import ChatBackgroundGradientRenderer from '../../chat/gradientRenderer';
@@ -422,10 +422,10 @@ export default class AppBackgroundTab extends SliderSuperTab {
             return;
           }
 
-          const hsla = highlightningColor(Array.from(pixel) as any);
+          const hsla = highlightingColor(Array.from(pixel) as any);
 
           themeSettings.wallpaper = wallPaper;
-          themeSettings.highlightningColor = hsla;
+          themeSettings.highlightingColor = hsla;
 
           if(!hadSettings) {
             rootScope.managers.appStateManager.pushToState('settings', rootScope.settings);

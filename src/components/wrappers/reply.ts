@@ -21,7 +21,7 @@ import wrapSticker from './sticker';
 
 export type WrapReplyOptions = WrapPinnedContainerOptions & {
   setColorPeerId?: PeerId,
-  useHighlightningColor?: boolean,
+  useHighlightingColor?: boolean,
   colorAsOut?: boolean,
   isStoryExpired?: boolean,
   isQuote?: boolean,
@@ -53,12 +53,12 @@ export default function wrapReply(options: WrapReplyOptions) {
     appImManager.setPeerColorToElement(
       setColorPeerId,
       replyContainer.container,
-      options.useHighlightningColor,
+      options.useHighlightingColor,
       options.colorAsOut
     );
 
     const peer = apiManagerProxy.getPeer(setColorPeerId);
-    const docId = (peer as User.user).background_emoji_id;
+    const docId = (peer as User.user).color?.background_emoji_id;
     if(docId) {
       rootScope.managers.appEmojiManager.getCustomEmojiDocument(docId).then((doc) => {
         const CANVAS_WIDTH = 117;
@@ -107,7 +107,7 @@ export default function wrapReply(options: WrapReplyOptions) {
           ctx.globalAlpha = 1;
 
           let color: string;
-          if(options.useHighlightningColor) {
+          if(options.useHighlightingColor) {
             color = '#ffffff';
           } else if(options.colorAsOut) {
             color = customProperties.getProperty('message-out-primary-color');

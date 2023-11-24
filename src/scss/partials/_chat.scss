@@ -283,7 +283,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 
 	.record-ripple {
 		border-radius: 50%;
-		background-color: var(--message-highlightning-color);
+		background-color: var(--message-highlighting-color);
 		width: 300px;
 		height: 300px;
 		transform: scale(0);

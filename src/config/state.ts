@@ -23,7 +23,7 @@ const BUILD = App.build;
 export type Background = {
   type?: 'color' | 'image' | 'default', // ! DEPRECATED
   blur: boolean,
-  highlightningColor?: string,
+  highlightingColor?: string,
   color?: string,
   slug?: string,        // image slug
   intensity?: number,   // pattern intensity
@@ -33,7 +33,7 @@ export type Background = {
 export type AppTheme = Modify<Theme, {
   name: 'day' | 'night' | 'system',
   settings?: Modify<ThemeSettings, {
-    highlightningColor: string
+    highlightingColor: string
   }>
 }>;
 
@@ -125,7 +125,7 @@ export type State = {
 //   blur: false,
 //   slug: '',
 //   color: '#dbddbb,#6ba587,#d5d88d,#88b884',
-//   highlightningColor: 'hsla(86.4, 43.846153%, 45.117647%, .4)',
+//   highlightingColor: 'hsla(86.4, 43.846153%, 45.117647%, .4)',
 //   intensity: 0,
 //   id: '1'
 // };
@@ -134,7 +134,7 @@ export type State = {
 //   blur: false,
 //   slug: '',
 //   color: '#0f0f0f',
-//   highlightningColor: 'hsla(0, 0%, 3.82353%, 0.4)',
+//   highlightingColor: 'hsla(0, 0%, 3.82353%, 0.4)',
 //   intensity: 0,
 //   id: '-1'
 // };
@@ -206,14 +206,14 @@ export const DEFAULT_THEME: Theme = {
 const makeDefaultAppTheme = (
   name: AppTheme['name'],
   baseTheme: BaseTheme['_'],
-  highlightningColor: string
+  highlightingColor: string
 ): AppTheme => {
   return {
     ...DEFAULT_THEME,
     name,
     settings: {
       ...DEFAULT_THEME.settings.find((s) => s.base_theme._ === baseTheme),
-      highlightningColor
+      highlightingColor
     }
   };
 };

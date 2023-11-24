@@ -1,0 +1,82 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+.quote-like {
+  --border-radius: .25rem;
+  --primary-color: rgb(var(--peer-color-rgb));
+  --primary-color-rgb: var(--peer-color-rgb);
+  background-color: rgba(var(--primary-color-rgb), .1);
+  overflow: hidden;
+  border-radius: var(--border-radius);
+  position: relative;
+
+  &-hoverable {
+    --ripple-color: rgba(var(--primary-color-rgb), .2);
+    --ripple-duration: 0.4s;
+    --ripple-start-scale: 0.4;
+    cursor: pointer;
+    user-select: none;
+
+    @include hover() {
+      background-color: rgba(var(--primary-color-rgb), .2);
+    }
+  }
+
+  &-border:before {
+    content: " ";
+    position: absolute;
+    inset-inline-start: 0;
+    top: 0;
+    bottom: 0;
+    // top: -2px;
+    // bottom: -2px;
+    flex: 0 0 auto;
+    width: .1875rem;
+    background: var(--peer-border-background, rgb(var(--peer-color-rgb)));
+    z-index: 1;
+    // background-size: 100% 1rem;
+    // background-position: 0 2px;
+    // transform: skew(0deg, -45deg);
+  }
+
+  &-icon {
+    &:after {
+      position: absolute;
+      top: .125rem;
+      inset-inline-end: .1875rem;
+      color: var(--primary-color);
+      font-size: 78.571428%;
+      line-height: 1;
+    }
+
+    &:after {
+      // content: var(--quote-icon);
+      content: $tgico-quote;
+      font-family: '#{$tgico-font-family}' !important;
+    }
+  }
+}
+
+.quote,
+[data-markup*="quote"] {
+  padding: 1px 0;
+  padding-inline: .5625rem 1.125rem;
+  margin: 2px 0;
+  display: inline-block;
+  font-size: var(--messages-secondary-text-size);
+  line-height: var(--messages-secondary-line-height);
+  white-space: pre-wrap;
+  max-width: 100%;
+  vertical-align: bottom;
+}
+
+.quote-block,
+[data-markup*="quote"] {
+  display: block;
+  width: fit-content;
+  margin-inline-end: auto;
+  // width: min-content;
+}

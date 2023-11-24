@@ -81,8 +81,8 @@
   --message-beside-button-size: 2.375rem;
   --message-beside-button-margin: calc((var(--message-beside-button-size) + .5rem) * -1);
   --message-time-background: rgba(0, 0, 0, .35);
-  --message-highlightning-color: hsla(85.5319, 36.9171%, 40.402%, .4);//rgba(77, 142, 80, .4);
-  --message-highlightning-hover-color: rgba(var(--message-highlightning-color-rgb), calc(var(--message-highlightning-alpha) + .24));
+  --message-highlighting-color: hsla(85.5319, 36.9171%, 40.402%, .4);//rgba(77, 142, 80, .4);
+  --message-highlighting-hover-color: rgba(var(--message-highlighting-color-rgb), calc(var(--message-highlighting-alpha) + .24));
   --messages-container-width: #{$messages-container-width};
   --messages-text-size: 16px;
   --messages-line-height: 1.3125;
@@ -113,6 +113,7 @@
   --round-video-size: 280px;
   --menu-box-shadow: 0px 0px 10px var(--menu-box-shadow-color);
   --menu-backdrop-filter: blur(50px);
+  --font-regular: "Roboto", -apple-system, apple color emoji, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
   --font-monospace: 'Roboto Mono', monospace;
   --font-weight-bold: 500;
   --font-weight-normal: 400;
@@ -248,6 +249,7 @@
   --input-search-border-color: #dfe1e5;
 
   --secondary-color: #c4c9cc;
+  --warning-color: #fed85a;
 
   // --avatar-online-color: #0ac630;
   --avatar-online-color: var(--primary-color);
@@ -358,7 +360,7 @@
   // * Night theme end
 }
 
-// @import "components/prism";
+@import "components/prism";
 @import "tgico";
 @import "fonts/roboto";
 @import "fonts/robotoMono";
@@ -421,6 +423,7 @@
 @import "partials/shimmer";
 @import "partials/inviteLink";
 @import "partials/markup";
+@import "partials/quote";
 
 @import "partials/popups/popup";
 @import "partials/popups/editAvatar";
@@ -568,7 +571,7 @@ optgroup,
 select,
 textarea,
 html {
-  font-family: "Roboto", -apple-system, apple color emoji, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  font-family: var(--font-regular);
 }
 
 input,
@@ -609,7 +612,12 @@ samp {
   margin: 0 auto;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-weight: var(--font-weight-bold);
 }
 
@@ -1512,7 +1520,7 @@ middle-ellipsis-element {
 
   .video-time {
     padding: 0 .375rem;
-    background-color: var(--message-highlightning-color) !important;
+    background-color: var(--message-highlighting-color) !important;
 
     &:before {
       margin-inline-start: .25rem;
@@ -2306,28 +2314,6 @@ hr {
   z-index: 2;
 }
 
-.quote,
-[data-markup*="quote"] {
-  padding: 1px 0;
-  padding-inline: .5625rem 1.125rem;
-  margin: 2px 0;
-  display: inline-block;
-  position: relative;
-  font-size: var(--messages-secondary-text-size);
-  line-height: var(--messages-secondary-line-height);
-  white-space: pre-wrap;
-  max-width: 100%;
-  vertical-align: bottom;
-}
-
-.quote-block,
-[data-markup*="quote"] {
-  display: block;
-  width: fit-content;
-  margin-inline-end: auto;
-  // width: min-content;
-}
-
 .inline-icon {
   vertical-align: bottom;
   line-height: inherit;
@@ -2336,4 +2322,68 @@ hr {
 .icon-reflect {
   display: inline-block;
   transform: scaleX(-1);
+}
+
+.code {
+  --font-size: var(--messages-secondary-text-size);
+  display: block;
+  margin: .25rem 0;
+  // padding: .5rem;
+  font-size: var(--font-size);
+
+  &-header {
+    background-color: rgba(var(--primary-color-rgb), .2);
+    color: var(--primary-color);
+    font-family: var(--font-regular);
+    font-weight: var(--font-weight-bold);
+    display: flex;
+    align-items: center;
+    padding-inline-end: .0625rem !important;
+    cursor: pointer;
+    line-height: 1;
+    padding: .0625rem .625rem;
+
+    .night & {
+      background-color: rgba(0, 0, 0, .2);
+    }
+
+    &-name {
+      flex: 1 1 auto;
+      @include text-overflow(true);
+    }
+
+    &-button {
+      font-size: calc(var(--font-size) + 4px);
+      pointer-events: all;
+      border-radius: 50%;
+      padding: .25rem;
+
+      @include hover() {
+        background-color: rgba(var(--primary-color-rgb), .16);
+      }
+    }
+
+    &-toggle-wrap {
+      margin-inline-start: .875rem;
+    }
+  }
+
+  &-content {
+    line-height: calc(var(--font-size) + 5px);
+    // padding: .25rem .625rem;
+  }
+
+  &-code {
+    display: block;
+    padding: .25rem .625rem;
+  }
+
+  &.is-scrollable &-code {
+    overflow: auto;
+    white-space: pre;
+  }
+
+  .night & {
+    background-color: rgba(0, 0, 0, .8);
+  }
 }

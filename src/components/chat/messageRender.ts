@@ -288,7 +288,7 @@ export namespace MessageRender {
       middleware,
       lazyLoadQueue,
       replyHeader: replyTo,
-      useHighlightningColor: isStandaloneMedia,
+      useHighlightingColor: isStandaloneMedia,
       colorAsOut: isOut
     });
 

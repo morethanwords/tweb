@@ -8,7 +8,7 @@ import {AppTheme} from '../../../config/state';
 import {hexaToRgba} from '../../../helpers/color';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import findUpClassName from '../../../helpers/dom/findUpClassName';
-import highlightningColor from '../../../helpers/highlightningColor';
+import highlightingColor from '../../../helpers/highlightingColor';
 import throttle from '../../../helpers/schedulers/throttle';
 import themeController from '../../../helpers/themeController';
 import appImManager from '../../../lib/appManagers/appImManager';
@@ -116,7 +116,7 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
     } else {
       const rgba = hexaToRgba(hex);
       const settings = this.theme.settings;
-      const hsla = highlightningColor(rgba);
+      const hsla = highlightingColor(rgba);
 
       const wallPaper: WallPaper.wallPaperNoFile = {
         _: 'wallPaperNoFile',
@@ -130,7 +130,7 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
       };
 
       settings.wallpaper = wallPaper;
-      settings.highlightningColor = hsla;
+      settings.highlightingColor = hsla;
 
       this.managers.appStateManager.pushToState('settings', rootScope.settings);
 

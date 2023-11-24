@@ -169,17 +169,17 @@ export class ThemeController {
     }
   }
 
-  public applyHighlightningColor() {
+  public applyHighlightingColor() {
     let hsla = 'hsla(85.5319, 36.9171%, 40.402%, .4)';
     const theme = this.getTheme();
-    if(theme.settings?.highlightningColor) {
-      hsla = theme.settings.highlightningColor;
+    if(theme.settings?.highlightingColor) {
+      hsla = theme.settings.highlightingColor;
     }
 
-    const highlightningRgba = hslaStringToRgba(hsla);
-    document.documentElement.style.setProperty('--message-highlightning-color', hsla);
-    document.documentElement.style.setProperty('--message-highlightning-color-rgb', highlightningRgba.slice(0, 3).join(','));
-    document.documentElement.style.setProperty('--message-highlightning-alpha', '' + highlightningRgba[3] / 255);
+    const highlightingRgba = hslaStringToRgba(hsla);
+    document.documentElement.style.setProperty('--message-highlighting-color', hsla);
+    document.documentElement.style.setProperty('--message-highlighting-color-rgb', highlightingRgba.slice(0, 3).join(','));
+    document.documentElement.style.setProperty('--message-highlighting-alpha', '' + highlightingRgba[3] / 255);
 
     if(!IS_TOUCH_SUPPORTED && hsla) {
       this.themeColor = hslaStringToHex(hsla);
@@ -206,7 +206,7 @@ export class ThemeController {
     this.applyTheme(rootScope.settings.themes.find((theme) => theme.name === 'night'), e, true);
     style.textContent = `.night {${e.style.cssText}}`;
 
-    this.applyHighlightningColor();
+    this.applyHighlightingColor();
     !silent && rootScope.dispatchEventSingle('theme_changed');
   }
 
@@ -359,7 +359,7 @@ export class ThemeController {
       name: currentTheme.name,
       settings: {
         ...themeSettings,
-        highlightningColor: ''
+        highlightingColor: ''
       }
     };
 

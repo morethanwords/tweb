@@ -392,9 +392,11 @@ const lang = {
   'Giveaway.Results.Combined': '%s\n%s',
   'SimilarChannels': 'Similar Channels',
   'Premium.Promo.Colors.Title': 'Name and Profile Colors',
-  'Premium.Promo.Colors.Subtitle': 'Choose a color for your profile, name, and replies to your messages.',
+  'Premium.Promo.Colors.Subtitle': 'Choose a color and logo for your profile and replies to your messages.',
   'Premium.Promo.Wallpaper.Title': 'Wallpapers for Both Sides',
   'Premium.Promo.Wallpaper.Subtitle': 'Set custom wallpapers for you and your chat partner.',
+  'CopyCode': 'copy',
+  'CodeCopied': 'Code copied to clipboard',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',

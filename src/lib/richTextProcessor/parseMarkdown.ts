@@ -30,20 +30,22 @@ export default function parseMarkdown(raw: string, currentEntities: MessageEntit
     const matchIndex = rawOffset + match.index;
     newTextParts.push(raw.substr(0, match.index));
     const text = (match[3] || match[8] || match[11] || match[13]);
-    rawOffset -= text.length;
+    // rawOffset -= text.length;
     // text = text.replace(/^\s+|\s+$/g, '');
-    rawOffset += text.length;
+    // rawOffset += text.length;
 
     let entity: MessageEntity;
     pushedEntity = false;
     if(text.match(/^`*$/)) {
       newTextParts.push(match[0]);
     } else if(match[3]) { // pre
+      const languageMatch = match[3].match(/(.+?)\n/);
+      const code = languageMatch ? match[3].slice(languageMatch[0].length) : match[3];
       entity = {
         _: 'messageEntityPre',
-        language: '',
+        language: languageMatch?.[1] || '',
         offset: matchIndex + match[1].length,
-        length: text.length
+        length: code.length
       };
 
       if(pushEntity(entity)) {
@@ -52,7 +54,11 @@ export default function parseMarkdown(raw: string, currentEntities: MessageEntit
           rawOffset -= 1;
         }
 
-        newTextParts.push(match[1] + text + match[5]);
+        if(languageMatch) {
+          rawOffset -= languageMatch[0].length;
+        }
+
+        newTextParts.push(match[1] + code + match[5]);
 
         rawOffset -= match[2].length + match[4].length;
       }
