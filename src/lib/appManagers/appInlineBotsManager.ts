@@ -12,8 +12,8 @@
 import type {MyDocument} from './appDocsManager';
 import type {MyPhoto} from './appPhotosManager';
 import type {MyTopPeer} from './appUsersManager';
-import type {AppMessagesManager, MessageSendingParams} from './appMessagesManager';
-import {BotInlineResult, GeoPoint, InputGeoPoint, InputMedia, MessageEntity, MessageMedia, MessagesBotResults, ReplyMarkup} from '../../layer';
+import type {AppMessagesManager} from './appMessagesManager';
+import {BotInlineResult, GeoPoint, InputGeoPoint, MessageMedia} from '../../layer';
 import insertInDescendSortedArray from '../../helpers/array/insertInDescendSortedArray';
 import {AppManager} from './manager';
 import getPhotoMediaInput from './utils/photos/getPhotoMediaInput';
@@ -256,7 +256,7 @@ export class AppInlineBotsManager extends AppManager {
     peerId: PeerId,
     botId: BotId,
     queryAndResultIds: string,
-    options: Parameters<AppMessagesManager['sendOther']>[2] = {}
+    options: Parameters<AppMessagesManager['sendOther']>[0] = {}
   ) {
     const inlineResult = this.inlineResults[queryAndResultIds];
     if(!inlineResult) {
@@ -275,13 +275,15 @@ export class AppInlineBotsManager extends AppManager {
     }
 
     if(inlineResult.send_message._ === 'botInlineMessageText') {
-      this.appMessagesManager.sendText(peerId, inlineResult.send_message.message, {
+      this.appMessagesManager.sendText({
         ...options,
+        peerId,
+        text: inlineResult.send_message.message,
         entities: inlineResult.send_message.entities
       });
     } else {
       let caption = '';
-      let inputMedia: Parameters<AppMessagesManager['sendOther']>[1], messageMedia: MessageMedia;
+      let inputMedia: Parameters<AppMessagesManager['sendOther']>[0]['inputMedia'], messageMedia: MessageMedia;
       const sendMessage = inlineResult.send_message;
       switch(sendMessage._) {
         case 'botInlineMessageMediaAuto': {
@@ -403,7 +405,7 @@ export class AppInlineBotsManager extends AppManager {
         };
       }
 
-      this.appMessagesManager.sendOther(peerId, inputMedia, options);
+      this.appMessagesManager.sendOther({...options, peerId, inputMedia});
     }
   }
 

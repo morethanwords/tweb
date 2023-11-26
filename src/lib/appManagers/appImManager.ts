@@ -26,7 +26,7 @@ import {MOUNT_CLASS_TO} from '../../config/debug';
 import appNavigationController from '../../components/appNavigationController';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import I18n, {i18n, join, LangPackKey} from '../langPack';
-import {ChatFull, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult, WallPaper, Config, AttachMenuBot, Peer, InputChannel} from '../../layer';
+import {ChatFull, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult, WallPaper, Config, AttachMenuBot, Peer, InputChannel, HelpPeerColors} from '../../layer';
 import PeerTitle from '../../components/peerTitle';
 import {PopupPeerCheckboxOptions} from '../../components/popups/peer';
 import blurActiveElement from '../../helpers/dom/blurActiveElement';
@@ -116,6 +116,7 @@ import safePlay from '../../helpers/dom/safePlay';
 import {RequestWebViewOptions} from './appAttachMenuBotsManager';
 import PopupWebApp from '../../components/popups/webApp';
 import {getPeerColorIndexByPeer, getPeerColorsByPeer, setPeerColors} from './utils/peers/getPeerColorById';
+import PopupBoostsViaGifts from '../../components/popups/boostsViaGifts';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -606,7 +607,7 @@ export class AppImManager extends EventListenerBase<{
           const foundMedia = share.files.some((file) => MEDIA_MIME_TYPES_SUPPORTED.has(file.type));
           PopupElement.createPopup(PopupNewMedia, this.chat, share.files, foundMedia ? 'media' : 'document');
         } else {
-          this.managers.appMessagesManager.sendText(peerId, share.text);
+          this.managers.appMessagesManager.sendText({peerId, text: share.text});
         }
       });
     }
@@ -958,15 +959,14 @@ export class AppImManager extends EventListenerBase<{
   }
 
   private handlePeerColors() {
-    let lastAppConfig: MTAppConfig;
-    const onAppConfig = (appConfig: MTAppConfig = lastAppConfig) => {
+    let lastHelpPeerColors: HelpPeerColors.helpPeerColors;
+    const onHelpPeerColors = (helpPeerColors: HelpPeerColors.helpPeerColors = lastHelpPeerColors) => {
       const user = apiManagerProxy.getUser(rootScope.myId.toUserId());
-      setPeerColors(appConfig, user);
-      lastAppConfig = appConfig;
+      setPeerColors(helpPeerColors.colors, user);
+      lastHelpPeerColors = helpPeerColors;
     };
-    rootScope.addEventListener('app_config', onAppConfig);
-    rootScope.addEventListener('theme_changed', () => onAppConfig());
-    this.managers.apiManager.getAppConfig().then(onAppConfig);
+    rootScope.addEventListener('theme_changed', () => onHelpPeerColors());
+    this.managers.apiManager.getPeerColors().then(onHelpPeerColors);
   }
 
   public clickIfSponsoredMessage(message: Message.message) {
@@ -1190,6 +1190,10 @@ export class AppImManager extends EventListenerBase<{
   public async op(options: {
     peer: User.user | MTChat
   } & Omit<ChatSetPeerOptions, 'peerId'>) {
+    if(!options.peer) {
+      return;
+    }
+
     const isUser = options.peer._ === 'user';
     const isChannel = options.peer._ === 'channel';
     let peerId = options.peer.id.toPeerId(!isUser);
@@ -1290,11 +1294,9 @@ export class AppImManager extends EventListenerBase<{
       return this.setInnerPeer(options);
     }
 
-    return this.managers.appMessagesManager.reloadMessages(options.peerId, options.threadId).then((message) => {
+    return this.managers.appMessagesManager.reloadMessages(options.peerId, options.threadId).then(async(message) => {
       if(!message) {
         options.lastMsgId = undefined;
-      } else {
-        this.managers.appMessagesManager.generateThreadServiceStartMessage(message);
       }
 
       return this.setInnerPeer({
@@ -2302,7 +2304,7 @@ export class AppImManager extends EventListenerBase<{
         ((chatInfo as ChatFull.chatFull).participants as ChatParticipants.chatParticipants)?.participants?.length ||
         1;
       // if(participants_count) {
-      let subtitle = await getChatMembersString(chatId);
+      let subtitle = await Promise.resolve(getChatMembersString(chatId));
 
       if(participants_count < 2) {
         return subtitle;
@@ -2451,7 +2453,7 @@ export class AppImManager extends EventListenerBase<{
   public setPeerColorToElement(
     peerId: PeerId,
     element: HTMLElement,
-    messageHighlightning?: boolean,
+    messageHighlighting?: boolean,
     colorAsOut?: boolean
   ) {
     const colorProperty = '--peer-color-rgb';
@@ -2464,10 +2466,10 @@ export class AppImManager extends EventListenerBase<{
 
     const peer = apiManagerProxy.getPeer(peerId);
     let peerColorRgbValue: string, peerBorderBackgroundValue: string;
-    if(messageHighlightning || colorAsOut) {
+    if(messageHighlighting || colorAsOut) {
       const colors = getPeerColorsByPeer(peer);
       const length = colors.length;
-      const property = messageHighlightning ? 'message-empty' : 'message-out';
+      const property = messageHighlighting ? 'message-empty' : 'message-out';
       peerColorRgbValue = `var(--${property}-primary-color-rgb)`;
       peerBorderBackgroundValue = `var(--${property}-peer-${length}-border-background)`;
     } else {

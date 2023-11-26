@@ -75,7 +75,10 @@ export class InternalLinkProcessor {
           this.managers.appMessagesManager.sendText(peerId, '/' + command);
         }); */
 
-        return this.managers.appMessagesManager.sendText(appImManager.chat.peerId, '/' + command + (bot ? '@' + bot : ''));
+        return this.managers.appMessagesManager.sendText({
+          peerId: appImManager.chat.peerId,
+          text: '/' + command + (bot ? '@' + bot : '')
+        });
       }
     });
 

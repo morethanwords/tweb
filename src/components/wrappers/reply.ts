@@ -8,7 +8,7 @@ import customProperties from '../../helpers/dom/customProperties';
 import {setDirection} from '../../helpers/dom/setInnerHTML';
 import noop from '../../helpers/noop';
 import pause from '../../helpers/schedulers/pause';
-import {MessageReplyHeader, User} from '../../layer';
+import {MessageEntity, MessageReplyHeader, User} from '../../layer';
 import appImManager from '../../lib/appManagers/appImManager';
 import {getPeerColorsByPeer} from '../../lib/appManagers/utils/peers/getPeerColorById';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
@@ -26,7 +26,8 @@ export type WrapReplyOptions = WrapPinnedContainerOptions & {
   isStoryExpired?: boolean,
   isQuote?: boolean,
   noBorder?: boolean,
-  replyHeader?: MessageReplyHeader
+  replyHeader?: MessageReplyHeader,
+  quote?: {text: string, entities?: MessageEntity[]}
 } & WrapSomethingOptions;
 
 export default function wrapReply(options: WrapReplyOptions) {

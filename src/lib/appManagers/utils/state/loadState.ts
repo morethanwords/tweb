@@ -335,7 +335,7 @@ async function loadStateInner() {
             }
 
             const newTheme = state.settings.themes.find((t) => t.name === oldTheme.name);
-            newTheme.settings.highlightningColor = oldBackground.highlightningColor;
+            newTheme.settings.highlightingColor = oldBackground.highlightingColor;
 
             const getColorFromHex = (hex: string) => hex && parseInt(hex.slice(1), 16);
 
@@ -402,6 +402,24 @@ async function loadStateInner() {
 
     if(state.build < 312 && typeof(state.settings.stickers.suggest) === 'boolean') {
       state.settings.stickers.suggest = state.settings.stickers.suggest ? 'all' : 'none';
+    }
+
+    // fix typo
+    if(state.build <= 432) {
+      let changed = false;
+      try {
+        for(const theme of state.settings.themes) {
+          if(!theme.settings.highlightingColor) {
+            theme.settings.highlightingColor = (theme.settings as any).highlightningColor;
+            delete (theme.settings as any).highlightningColor;
+            changed = true;
+          }
+        }
+      } catch(err) {}
+
+      if(changed) {
+        pushToState('settings', state.settings);
+      }
     }
 
     if(compareVersion(state.version, STATE_VERSION) !== 0) {

@@ -11,7 +11,6 @@ import assumeType from '../../helpers/assumeType';
 import makeError from '../../helpers/makeError';
 import getAttachMenuBotIcon from './utils/attachMenuBots/getAttachMenuBotIcon';
 import {randomLong} from '../../helpers/random';
-import getInputReplyTo from './utils/misc/getInputReplyTo';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
 
 const BOTS_SUPPORTED = true;
@@ -162,11 +161,9 @@ export default class AppAttachMenuBotsManager extends AppManager {
       fromSideMenu,
       themeParams,
       // platform,
-      replyToMsgId,
       silent,
       sendAsPeerId,
       startParam,
-      threadId,
       isSimpleWebView,
       app,
       writeAllowed
@@ -215,7 +212,7 @@ export default class AppAttachMenuBotsManager extends AppManager {
         silent,
         platform,
         url,
-        reply_to: getInputReplyTo({replyToMsgId, threadId}),
+        reply_to: this.appMessagesManager.getInputReplyTo(options),
         from_bot_menu: fromBotMenu,
         theme_params: themeParams,
         send_as: sendAsPeerId ? this.appPeersManager.getInputPeerById(sendAsPeerId) : undefined,
@@ -236,7 +233,7 @@ export default class AppAttachMenuBotsManager extends AppManager {
         bot: this.appUsersManager.getUserInput(options.botId),
         query_id: options.queryId,
         silent: options.silent,
-        reply_to: getInputReplyTo({replyToMsgId: options.replyToMsgId, threadId: options.threadId}),
+        reply_to: this.appMessagesManager.getInputReplyTo(options),
         send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined
       }
     });

@@ -591,8 +591,9 @@ export default class PopupNewMedia extends PopupElement {
     const sendingParams = this.chat.getMessageSendingParams();
     this.iterate((sendFileParams) => {
       if(caption && sendFileParams.length !== length) {
-        this.managers.appMessagesManager.sendText(peerId, caption, {
+        this.managers.appMessagesManager.sendText({
           ...sendingParams,
+          text: caption,
           clearDraft: true
         });
 
@@ -612,7 +613,7 @@ export default class PopupNewMedia extends PopupElement {
         sendFileDetails: d
       };
 
-      this.managers.appMessagesManager.sendAlbum(peerId, Object.assign({
+      this.managers.appMessagesManager.sendAlbum(Object.assign({
         ...sendingParams,
         caption,
         isMedia,

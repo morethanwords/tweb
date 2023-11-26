@@ -531,15 +531,23 @@ export default class ChatBubbles {
 
         fastRaf(() => {
           const mid = +bubble.dataset.mid;
-          if(bubbles[mid] === bubble && bubble.classList.contains('is-outgoing')) {
-            bubble.classList.remove('is-outgoing');
-            this.setBubbleSendingStatus(
-              bubble,
-              (this.peerId === rootScope.myId && this.chat.type !== 'scheduled') || !this.unreadOut.has(mid) ?
-                'read' :
-                'sent'
-            );
+          if(bubbles[mid] !== bubble || !bubble.classList.contains('is-outgoing')) {
+            return;
           }
+
+          bubble.classList.remove('is-outgoing');
+
+          let status: Parameters<ChatBubbles['setBubbleSendingStatus']>[1];
+          if(bubble.classList.contains('is-out')) {
+            status = (this.peerId === rootScope.myId && this.chat.type !== 'scheduled') || !this.unreadOut.has(mid) ?
+              'read' :
+              'sent';
+          }
+
+          this.setBubbleSendingStatus(
+            bubble,
+            status
+          );
         });
       }
 
@@ -1243,6 +1251,10 @@ export default class ChatBubbles {
 
       if(liteMode.isAvailable('chat_background')) {
         this.updateGradient = true;
+      }
+
+      if(this.chat.threadId && getMessageThreadId(message, this.chat.isForum) !== this.chat.threadId) {
+        return;
       }
 
       if(!this.scrollable.loadedAll.bottom) {
@@ -4495,7 +4507,7 @@ export default class ChatBubbles {
 
         if(!message) {
           onClick = () => {
-            this.managers.appMessagesManager.sendText(peerId, button.text);
+            this.managers.appMessagesManager.sendText({peerId, text: button.text});
           };
         }
 
@@ -4514,10 +4526,19 @@ export default class ChatBubbles {
     return {text, buttonEl, buttonIcon, onClick};
   }
 
-  private setBubbleSendingStatus(bubble: HTMLElement, status: 'sending' | 'error' | 'sent' | 'read', first?: boolean) {
+  private setBubbleSendingStatus(bubble: HTMLElement, status?: 'sending' | 'error' | 'sent' | 'read', first?: boolean) {
     !first && bubble.classList.remove('is-sending', 'is-error', 'is-sent', 'is-read');
-    bubble.classList.add('is-' + status);
+    status && bubble.classList.add('is-' + status);
     bubble.querySelectorAll('.time, .time-inner').forEach((element) => {
+      const isReplacingFirst = element.firstElementChild.classList.contains('time-sending-status');
+      if(!status) {
+        if(isReplacingFirst) {
+          element.firstElementChild.remove();
+        }
+
+        return;
+      }
+
       let icon: Icon;
       if(status === 'error') icon = 'sendingerror';
       else if(status === 'sending') icon = 'sending';
@@ -4525,7 +4546,7 @@ export default class ChatBubbles {
       else icon = 'checks';
 
       const newIcon = Icon(icon, 'time-sending-status');
-      if(element.firstElementChild.classList.contains('time-sending-status')) {
+      if(isReplacingFirst) {
         element.firstElementChild.replaceWith(newIcon);
       } else {
         element.prepend(newIcon);
@@ -6719,7 +6740,10 @@ export default class ChatBubbles {
       if(message.error) status = 'error';
       else if(isOutgoing) status = 'sending';
       else status = message.pFlags.unread || (message as Message.message).pFlags.is_scheduled ? 'sent' : 'read';
-      this.setBubbleSendingStatus(bubble, status, true);
+
+      if(isOut || (status !== 'sent' && status !== 'read')) {
+        this.setBubbleSendingStatus(bubble, status, true);
+      }
     }
 
     return ret;
@@ -8040,13 +8064,6 @@ export default class ChatBubbles {
 
     const processResult = async(historyResult: Awaited<typeof result['result']>) => {
       if((historyResult as HistoryResult).isEnd?.top) {
-        if(this.chat.type === 'discussion') { // * inject discussion start
-          const serviceStartMessageId = await this.managers.appMessagesManager.getThreadServiceMessageId(this.peerId, this.chat.threadId);
-          if(serviceStartMessageId) historyResult.history.push(serviceStartMessageId);
-          const mids = await this.chat.getMidsByMid(this.chat.threadId);
-          historyResult.history.push(...mids.reverse());
-        }
-
         // synchronize bot placeholder appearance
         await this.managers.appProfileManager.getProfileByPeerId(peerId);
 

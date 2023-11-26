@@ -124,7 +124,7 @@ export class InviteLink {
 
   public shareLink = (url: string = this.url) => {
     PopupPickUser.createSharingPicker((peerId) => {
-      rootScope.managers.appMessagesManager.sendText(peerId, url);
+      rootScope.managers.appMessagesManager.sendText({peerId, text: url});
       appImManager.setInnerPeer({peerId});
     });
   };
@@ -398,7 +398,7 @@ export default class AppSharedFolderTab extends SliderSuperTabEventable<{
       } else if(!canSelect) {
         subtitle = i18n('SharedFolder.Cant.Share');
       } else {
-        subtitle = await getChatMembersString(peer.id, undefined, peer);
+        subtitle = await Promise.resolve(getChatMembersString(peer.id, undefined, peer));
       }
 
       dom.lastMessageSpan.append(subtitle);

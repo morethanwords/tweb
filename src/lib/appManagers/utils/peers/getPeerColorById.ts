@@ -1,7 +1,6 @@
-import {hexToRgb, hexaToHsla} from '../../../../helpers/color';
+import {getHexColorFromTelegramColor, hexToRgb, hexaToHsla} from '../../../../helpers/color';
 import themeController from '../../../../helpers/themeController';
-import {Chat, User} from '../../../../layer';
-import type {MTAppConfig} from '../../../mtproto/appConfig';
+import {Chat, HelpPeerColorOption, HelpPeerColorSet, User} from '../../../../layer';
 
 const DialogColorsFg: Array<string[]> = [['#CC5049'], ['#D67722'], ['#955CDB'], ['#40A920'], ['#309EBA'], ['#368AD1'], ['#C7508B']],
   DialogColors = ['red', 'orange', 'violet', 'green', 'cyan', 'blue', 'pink'] as const;
@@ -44,8 +43,8 @@ export function getPeerAvatarColorByPeer(peer: Chat | User) {
 
 export function getPeerColorIndexByPeer(peer: Chat | User) {
   if(!peer) return -1;
-  const colorIndex = (peer as User.user).color;
-  return colorIndex ?? getPeerColorIndexById(peer.id);
+  const peerColor = (peer as User.user).color;
+  return peerColor?.color ?? getPeerColorIndexById(peer.id);
 }
 
 export function getPeerColorsByPeer(peer: Chat | User) {
@@ -53,10 +52,16 @@ export function getPeerColorsByPeer(peer: Chat | User) {
   return DialogColorsFg[colorIndex] ?? [];
 }
 
-function replaceColors(writeIn: typeof DialogColorsFg, colors: MTAppConfig['peer_colors']) {
-  for(const index in colors) {
-    const c = colors[index].map((color) => '#' + color);
-    writeIn[+index] = c;
+function replaceColors(writeIn: typeof DialogColorsFg, peerColorOptions: HelpPeerColorOption[], dark?: boolean) {
+  for(const peerColorOption of peerColorOptions) {
+    const colorSet = (dark ? peerColorOption.dark_colors : peerColorOption.colors) as HelpPeerColorSet.helpPeerColorSet;
+    const colors = colorSet?.colors;
+    if(!colors?.length) {
+      continue;
+    }
+
+    const c = colors.map((color) => getHexColorFromTelegramColor(color));
+    writeIn[peerColorOption.color_id] = c;
   }
 
   return writeIn;
@@ -82,13 +87,10 @@ export function makeColorsGradient(colors: string[], partSize?: number) {
   return `repeating-linear-gradient(-45deg, ${str})`;
 }
 
-export function setPeerColors(appConfig: MTAppConfig, user: User.user) {
-  const peerColors = appConfig.peer_colors || {};
-  const darkPeerColors = appConfig.dark_peer_colors || {};
-
-  let newColors = replaceColors(_DialogColorsFg.slice(), peerColors);
+export function setPeerColors(peerColorOptions: HelpPeerColorOption[], user: User.user) {
+  let newColors = replaceColors(_DialogColorsFg.slice(), peerColorOptions);
   if(themeController.isNight()) {
-    newColors = replaceColors(newColors, darkPeerColors);
+    newColors = replaceColors(newColors, peerColorOptions, true);
   }
   DialogColorsFg.splice(0, DialogColorsFg.length, ...newColors);
 
@@ -141,6 +143,4 @@ export function setPeerColors(appConfig: MTAppConfig, user: User.user) {
 
     document.documentElement.style.setProperty(peerProperty, borderBackground);
   });
-
-  console.log('setPeerColors', appConfig, DialogColorsFg);
 }

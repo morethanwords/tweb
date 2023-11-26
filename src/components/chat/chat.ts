@@ -723,6 +723,7 @@ export default class Chat extends EventListenerBase<{
       ...(this.input && {
         replyToMsgId: this.input.replyToMsgId,
         replyToStoryId: this.input.replyToStoryId,
+        replyToQuote: this.input.replyToQuote,
         scheduleDate: this.input.scheduleDate,
         silent: this.input.sendSilent,
         sendAsPeerId: this.input.sendAsPeerId

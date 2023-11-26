@@ -110,7 +110,7 @@ export default class PopupGiftLink extends PopupElement {
       cancelEvent(e);
       this.hideWithCallback(() => {
         PopupPickUser.createSharingPicker((peerId) => {
-          rootScope.managers.appMessagesManager.sendText(peerId, url);
+          rootScope.managers.appMessagesManager.sendText({peerId, text: url});
           appImManager.setInnerPeer({peerId});
         });
       });

@@ -65,7 +65,6 @@ import getPeerActiveUsernames from './utils/peers/getPeerActiveUsernames';
 import {BroadcastEvents} from '../rootScope';
 import setBooleanFlag from '../../helpers/object/setBooleanFlag';
 import getMessageThreadId from './utils/messages/getMessageThreadId';
-import getInputReplyTo from './utils/misc/getInputReplyTo';
 import callbackify from '../../helpers/callbackify';
 import wrapMessageEntities from '../richTextProcessor/wrapMessageEntities';
 import isObject from '../../helpers/object/isObject';
@@ -175,17 +174,18 @@ const processAfter = (cb: () => void) => {
   cb();
 };
 
-export type MessageSendingParams = Partial<{
-  peerId: PeerId,
-  threadId: number,
-  replyToMsgId: number,
-  replyToStoryId: number,
-  replyTo: InputReplyTo,
-  scheduleDate: number,
-  silent: boolean,
-  sendAsPeerId: number,
-  updateStickersetOrder: boolean
-}>;
+export type MessageSendingParams = {
+  peerId?: PeerId,
+  threadId?: number,
+  replyToMsgId?: number,
+  replyToStoryId?: number,
+  replyToQuote?: {text: string, entities?: MessageEntity[], offset?: number},
+  replyTo?: InputReplyTo,
+  scheduleDate?: number,
+  silent?: boolean,
+  sendAsPeerId?: number,
+  updateStickersetOrder?: boolean
+};
 
 type RequestHistoryOptions = {
   peerId?: PeerId;
@@ -521,7 +521,7 @@ export class AppMessagesManager extends AppManager {
       newMedia: InputMedia,
       scheduleDate: number,
       entities: MessageEntity[]
-    }> & Partial<Pick<Parameters<AppMessagesManager['sendText']>[2], 'webPage' | 'webPageOptions' | 'noWebPage'>> = {}
+    }> & Partial<Pick<Parameters<AppMessagesManager['sendText']>[0], 'webPage' | 'webPageOptions' | 'noWebPage'>> = {}
   ): Promise<void> {
     /* if(!this.canEditMessage(messageId)) {
       return Promise.reject({type: 'MESSAGE_EDIT_FORBIDDEN'});
@@ -614,9 +614,8 @@ export class AppMessagesManager extends AppManager {
   }
 
   public async sendText(
-    peerId: PeerId,
-    text: string,
     options: MessageSendingParams & Partial<{
+      text: string,
       entities: MessageEntity[],
       viaBotId: BotId,
       queryId: string,
@@ -631,8 +630,9 @@ export class AppMessagesManager extends AppManager {
         optional: boolean,
         invertMedia: boolean
       }>
-    }> = {}
+    }>
   ): Promise<void> {
+    let {peerId, text} = options;
     if(!text.trim()) {
       return;
     }
@@ -641,9 +641,6 @@ export class AppMessagesManager extends AppManager {
     options.webPageOptions ??= {};
 
     this.checkSendOptions(options);
-    if(options.threadId && !options.replyToMsgId) {
-      options.replyToMsgId = options.threadId;
-    }
 
     const config = await this.apiManager.getConfig();
     const MAX_LENGTH = config.message_length_max;
@@ -672,8 +669,6 @@ export class AppMessagesManager extends AppManager {
     message.entities = entities;
     message.message = text;
 
-    const replyToMsgId = options.replyToMsgId ? getServerMessageId(options.replyToMsgId) : undefined;
-    const threadId = options.threadId ? getServerMessageId(options.threadId) : undefined;
     const isChannel = this.appPeersManager.isChannel(peerId);
 
     const webPageSend = this.processMessageWebPageOptions(message, options);
@@ -692,7 +687,7 @@ export class AppMessagesManager extends AppManager {
 
       const sendAs = options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined
       const inputPeer = this.appPeersManager.getInputPeerById(peerId);
-      const replyTo = options.replyTo || getInputReplyTo({replyToMsgId, threadId});
+      const replyTo = options.replyTo;
       let apiPromise: any;
       if(options.viaBotId) {
         apiPromise = this.apiManager.invokeApiAfter('messages.sendInlineBotResult', {
@@ -796,13 +791,17 @@ export class AppMessagesManager extends AppManager {
 
     const promises: ReturnType<AppMessagesManager['sendText']>[] = [message.promise];
     for(let i = 1; i < splitted.length; ++i) {
-      promises.push(this.sendText(peerId, splitted[i], options));
+      promises.push(this.sendText({
+        ...options,
+        peerId,
+        text: splitted[i]
+      }));
     }
 
     return Promise.all(promises).then(noop);
   }
 
-  public sendFile(peerId: PeerId, options: MessageSendingParams & SendFileDetails & Partial<{
+  public sendFile(options: MessageSendingParams & SendFileDetails & Partial<{
     isRoundMessage: boolean,
     isVoiceMessage: boolean,
     isGroupedItem: boolean,
@@ -821,13 +820,12 @@ export class AppMessagesManager extends AppManager {
     processAfter?: typeof processAfter
   }>) {
     const file = options.file;
+    let {peerId} = options;
     peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
 
     this.checkSendOptions(options);
 
     const message = this.generateOutgoingMessage(peerId, options);
-    const replyToMsgId = options.replyToMsgId ? getServerMessageId(options.replyToMsgId) : undefined;
-    const threadId = options.threadId ? getServerMessageId(options.threadId) : undefined;
 
     let attachType: 'document' | 'audio' | 'video' | 'voice' | 'photo', apiFileName: string;
 
@@ -1212,7 +1210,7 @@ export class AppMessagesManager extends AppManager {
           media: inputMedia,
           message: caption,
           random_id: message.random_id,
-          reply_to: options.replyTo || getInputReplyTo({replyToMsgId, threadId}),
+          reply_to: options.replyTo,
           schedule_date: options.scheduleDate,
           silent: options.silent,
           entities: sendEntites,
@@ -1257,7 +1255,7 @@ export class AppMessagesManager extends AppManager {
     return ret;
   }
 
-  public async sendAlbum(peerId: PeerId, options: MessageSendingParams & {
+  public async sendAlbum(options: MessageSendingParams & {
     isMedia?: boolean,
     entities?: MessageEntity[],
     caption?: string,
@@ -1266,17 +1264,12 @@ export class AppMessagesManager extends AppManager {
   }) {
     this.checkSendOptions(options);
 
-    if(options.threadId && !options.replyToMsgId) {
-      options.replyToMsgId = options.threadId;
-    }
-
     if(options.sendFileDetails.length === 1) {
-      return this.sendFile(peerId, {...options, ...options.sendFileDetails[0]});
+      return this.sendFile({...options, ...options.sendFileDetails[0]});
     }
 
+    let {peerId} = options;
     peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
-    const replyToMsgId = options.replyToMsgId ? getServerMessageId(options.replyToMsgId) : undefined;
-    const threadId = options.threadId ? getServerMessageId(options.threadId) : undefined;
 
     let caption = options.caption || '';
     const entities = options.entities || [];
@@ -1300,12 +1293,15 @@ export class AppMessagesManager extends AppManager {
     };
 
     const messages = options.sendFileDetails.map((details, idx) => {
-      const o: Parameters<AppMessagesManager['sendFile']>[1] = {
+      const o: Parameters<AppMessagesManager['sendFile']>[0] = {
+        peerId,
         isGroupedItem: true,
         isMedia: options.isMedia,
         scheduleDate: options.scheduleDate,
         silent: options.silent,
-        replyToMsgId,
+        replyToMsgId: options.replyToMsgId,
+        replyToStoryId: options.replyToStoryId,
+        replyToQuote: options.replyToQuote,
         threadId: options.threadId,
         sendAsPeerId: options.sendAsPeerId,
         groupId,
@@ -1316,10 +1312,9 @@ export class AppMessagesManager extends AppManager {
       if(idx === 0) {
         o.caption = caption;
         o.entities = entities;
-        // o.replyToMsgId = replyToMsgId;
       }
 
-      return this.sendFile(peerId, o).message;
+      return this.sendFile(o).message;
     });
 
     if(options.clearDraft) {
@@ -1352,7 +1347,7 @@ export class AppMessagesManager extends AppManager {
           return this.apiManager.invokeApi('messages.sendMultiMedia', {
             peer: inputPeer,
             multi_media: multiMedia,
-            reply_to: options.replyTo || getInputReplyTo({replyToMsgId, threadId}),
+            reply_to: options.replyTo,
             schedule_date: options.scheduleDate,
             silent: options.silent,
             clear_draft: options.clearDraft,
@@ -1440,13 +1435,12 @@ export class AppMessagesManager extends AppManager {
   }
 
   public sendContact(peerId: PeerId, contactPeerId: PeerId) {
-    return this.sendOther(peerId, this.appUsersManager.getContactMediaInput(contactPeerId));
+    return this.sendOther({peerId, inputMedia: this.appUsersManager.getContactMediaInput(contactPeerId)});
   }
 
   public sendOther(
-    peerId: PeerId,
-    inputMedia: InputMedia | {_: 'messageMediaPending', messageMedia: MessageMedia},
     options: MessageSendingParams & Partial<{
+      inputMedia: InputMedia | {_: 'messageMediaPending', messageMedia: MessageMedia},
       viaBotId: BotId,
       replyMarkup: ReplyMarkup,
       clearDraft: true,
@@ -1454,15 +1448,14 @@ export class AppMessagesManager extends AppManager {
       resultId: string,
       geoPoint: GeoPoint,
       webDocument?: WebDocument
-    }> = {}
+    }>
   ) {
+    let {peerId, inputMedia} = options;
     peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
 
     const noOutgoingMessage = /* inputMedia?._ === 'inputMediaPhotoExternal' ||  */inputMedia?._ === 'inputMediaDocumentExternal';
     this.checkSendOptions(options);
     const message = this.generateOutgoingMessage(peerId, options);
-    const replyToMsgId = options.replyToMsgId ? getServerMessageId(options.replyToMsgId) : undefined;
-    const threadId = options.threadId ? getServerMessageId(options.threadId) : undefined;
 
     let media: MessageMedia;
     switch(inputMedia._) {
@@ -1601,7 +1594,7 @@ export class AppMessagesManager extends AppManager {
         apiPromise = this.apiManager.invokeApiAfter('messages.sendInlineBotResult', {
           peer: this.appPeersManager.getInputPeerById(peerId),
           random_id: message.random_id,
-          reply_to: options.replyTo || getInputReplyTo({replyToMsgId, threadId}),
+          reply_to: options.replyTo,
           query_id: options.queryId,
           id: options.resultId,
           clear_draft: options.clearDraft,
@@ -1614,7 +1607,7 @@ export class AppMessagesManager extends AppManager {
           peer: this.appPeersManager.getInputPeerById(peerId),
           media: inputMedia as InputMedia,
           random_id: message.random_id,
-          reply_to: options.replyTo || getInputReplyTo({replyToMsgId, threadId}),
+          reply_to: options.replyTo,
           message: '',
           clear_draft: options.clearDraft,
           schedule_date: options.scheduleDate,
@@ -1660,14 +1653,33 @@ export class AppMessagesManager extends AppManager {
     return promise;
   }
 
-  private checkSendOptions(options: MessageSendingParams) {
+  public getInputReplyTo(options: MessageSendingParams): InputReplyTo {
     if(options.replyToStoryId) {
-      options.replyTo = {
+      return {
         _: 'inputReplyToStory',
         story_id: options.replyToStoryId,
         user_id: this.appUsersManager.getUserInput(options.peerId.toUserId())
       };
+    } else if(options.replyToMsgId) {
+      return {
+        _: 'inputReplyToMessage',
+        reply_to_msg_id: getServerMessageId(options.replyToMsgId),
+        top_msg_id: options.threadId ? getServerMessageId(options.threadId) : undefined,
+        ...(options.replyToQuote && {
+          quote_text: options.replyToQuote.text,
+          quote_entities: options.replyToQuote.entities,
+          quote_offset: options.replyToQuote.offset
+        })
+      };
     }
+  }
+
+  private checkSendOptions(options: MessageSendingParams) {
+    if(options.threadId && !options.replyToMsgId) {
+      options.replyToMsgId = options.threadId;
+    }
+
+    options.replyTo ??= this.getInputReplyTo(options);
     // if(options.scheduleDate) {
     //   const minTimestamp = (Date.now() / 1000 | 0) + 10;
     //   if(options.scheduleDate <= minTimestamp) {
@@ -1769,10 +1781,6 @@ export class AppMessagesManager extends AppManager {
       replyMarkup: ReplyMarkup,
     }>
   ) {
-    if(options.threadId && !options.replyToMsgId) {
-      options.replyToMsgId = options.threadId;
-    }
-
     let postAuthor: string;
     const isBroadcast = this.appPeersManager.isBroadcast(peerId);
     if(isBroadcast) {
@@ -1795,7 +1803,7 @@ export class AppMessagesManager extends AppManager {
       message: '',
       grouped_id: options.groupId,
       random_id: randomLong(),
-      reply_to: this.generateReplyHeader(options.replyTo || peerId, options.replyToMsgId, options.threadId),
+      reply_to: this.generateReplyHeader(peerId, options.replyTo),
       via_bot_id: options.viaBotId,
       reply_markup: options.replyMarkup,
       replies: this.generateReplies(peerId),
@@ -1811,16 +1819,24 @@ export class AppMessagesManager extends AppManager {
     return message;
   }
 
-  private generateReplyHeader(peerId: PeerId | InputReplyTo, replyToMsgId: number, replyToTopId?: number): MessageReplyHeader {
-    if(isObject(peerId)) {
+  private generateReplyHeader(peerId: PeerId, replyTo: InputReplyTo): MessageReplyHeader {
+    if(!replyTo) {
+      return;
+    }
+
+    if(replyTo._ === 'inputReplyToStory') {
       return {
         _: 'messageReplyStoryHeader',
-        story_id: (peerId as InputReplyTo.inputReplyToStory).story_id,
-        user_id: this.appUsersManager.getUserId((peerId as InputReplyTo.inputReplyToStory).user_id)
+        story_id: replyTo.story_id,
+        user_id: this.appUsersManager.getUserId(replyTo.user_id)
       };
     }
 
+    const channelId = this.appPeersManager.isChannel(peerId) ? peerId.toChatId() : undefined;
     const isForum = this.appPeersManager.isForum(peerId);
+    const replyToMsgId = this.appMessagesIdsManager.generateMessageId(replyTo.reply_to_msg_id, channelId);
+    let replyToTopId = replyTo.top_msg_id ? this.appMessagesIdsManager.generateMessageId(replyTo.top_msg_id, channelId) : undefined;
+
     if(isForum && !replyToTopId) {
       const originalMessage = this.getMessageByPeer(peerId, replyToMsgId);
       if(originalMessage) {
@@ -1840,6 +1856,13 @@ export class AppMessagesManager extends AppManager {
 
     if(replyToTopId && header.reply_to_msg_id !== replyToTopId) {
       header.reply_to_top_id = replyToTopId;
+    }
+
+    if(replyTo.quote_text) {
+      header.quote_text = replyTo.quote_text;
+      header.quote_entities = replyTo.quote_entities;
+      header.quote_offset = replyTo.quote_offset;
+      header.pFlags.quote = true;
     }
 
     return header;
@@ -1947,7 +1970,7 @@ export class AppMessagesManager extends AppManager {
 
   private processMessageWebPageOptions(
     message: Message.message,
-    options: Parameters<AppMessagesManager['sendText']>[2]
+    options: Parameters<AppMessagesManager['sendText']>[0]
   ): {media: InputMedia.inputMediaWebPage, invert_media: boolean} | {no_webpage: boolean} | {} {
     if(message._ !== 'message') {
       return {};
@@ -2384,7 +2407,9 @@ export class AppMessagesManager extends AppManager {
       const mid = mids[i];
       const originalMessage = this.getMessageByPeer(fromPeerId, mid) as Message.message;
       if(originalMessage.pFlags.is_outgoing) { // this can happen when forwarding a changelog
-        this.sendText(peerId, originalMessage.message, {
+        this.sendText({
+          peerId,
+          text: originalMessage.message,
           entities: originalMessage.entities,
           scheduleDate: options.scheduleDate,
           silent: options.silent
@@ -3220,18 +3245,22 @@ export class AppMessagesManager extends AppManager {
     return out;
   }
 
-  public generateTempMessageId(peerId: PeerId) {
-    const dialog = this.getDialogOnly(peerId);
+  public generateTempMessageId(peerId: PeerId, topMessage?: number) {
+    const dialog = topMessage ? undefined : this.getDialogOnly(peerId);
     const channelId = this.appPeersManager.isChannel(peerId) ? peerId.toChatId() : undefined;
 
-    let topMessage = dialog?.top_message || 0;
-    let tempMid = this.tempMids[peerId];
+    topMessage ??= dialog?.top_message || 0;
+    const tempMid = this.tempMids[peerId];
     if(tempMid && tempMid > topMessage) {
       topMessage = tempMid;
     }
 
-    tempMid = this.appMessagesIdsManager.generateTempMessageId(topMessage, channelId);
-    return this.tempMids[peerId] = tempMid;
+    const newMid = this.appMessagesIdsManager.generateTempMessageId(topMessage, channelId);
+    if(!tempMid || newMid > tempMid) {
+      this.tempMids[peerId] = newMid;
+    }
+
+    return newMid;
   }
 
   public setMessageUnreadByDialog(
@@ -3729,11 +3758,17 @@ export class AppMessagesManager extends AppManager {
 
         throw error;
       }).then(() => {
-        return this.sendText(peerId, str + '@' + this.appPeersManager.getPeerUsername(botId.toPeerId()));
+        return this.sendText({
+          peerId,
+          text: str + '@' + this.appPeersManager.getPeerUsername(botId.toPeerId())
+        });
       });
     }
 
-    return this.sendText(peerId, str);
+    return this.sendText({
+      peerId,
+      text: str
+    });
   }
 
   public editPeerFolders(peerIds: PeerId[], folderId: number) {
@@ -4074,27 +4109,30 @@ export class AppMessagesManager extends AppManager {
 
   public generateThreadServiceStartMessage(message: Message.message | Message.messageService) {
     const threadKey = message.peerId + '_' + message.mid;
-    if(this.threadsServiceMessagesIdsStorage[threadKey]) return;
+    const serviceStartMid = this.threadsServiceMessagesIdsStorage[threadKey];
+    if(serviceStartMid) return serviceStartMid;
 
-    const channelId = this.appPeersManager.isChannel(message.peerId) ? message.peerId.toChatId() : undefined;
     const maxMessageId = getServerMessageId(Math.max(...this.getMidsByMessage(message)));
     const serviceStartMessage: Message.messageService = {
       _: 'messageService',
       pFlags: {
         is_single: true
       },
-      id: this.appMessagesIdsManager.generateTempMessageId(maxMessageId, channelId),
+      id: this.generateTempMessageId(message.peerId, maxMessageId),
       date: message.date,
       from_id: {_: 'peerUser', user_id: NULL_PEER_ID}/* message.from_id */,
       peer_id: message.peer_id,
       action: {
         _: 'messageActionDiscussionStarted'
       },
-      reply_to: this.generateReplyHeader(message.peerId, message.id)
+      reply_to: this.generateReplyHeader(
+        message.peerId,
+        this.getInputReplyTo({replyToMsgId: message.id, threadId: message.id})
+      )
     };
 
     this.saveMessages([serviceStartMessage], {isOutgoing: true});
-    this.threadsServiceMessagesIdsStorage[threadKey] = serviceStartMessage.mid;
+    return this.threadsServiceMessagesIdsStorage[threadKey] = serviceStartMessage.mid;
   }
 
   public getThreadServiceMessageId(peerId: PeerId, threadId: number) {
@@ -4106,15 +4144,14 @@ export class AppMessagesManager extends AppManager {
       peer: this.appPeersManager.getInputPeerById(peerId),
       msg_id: getServerMessageId(mid)
     }).then((result) => {
-      this.appChatsManager.saveApiChats(result.chats);
-      this.appUsersManager.saveApiUsers(result.users);
+      this.appPeersManager.saveApiPeers(result);
       this.saveMessages(result.messages);
 
       const message = this.getMessageWithReplies(result.messages[0] as Message.message);
       const threadKey = message.peerId + '_' + message.mid;
       const channelId = message.peerId.toChatId();
 
-      this.generateThreadServiceStartMessage(message);
+      // this.generateThreadServiceStartMessage(message);
 
       const historyStorage = this.getHistoryStorage(message.peerId, message.mid);
       const newMaxId = result.max_id = this.appMessagesIdsManager.generateMessageId(result.max_id, channelId) || 0;
@@ -4301,7 +4338,7 @@ export class AppMessagesManager extends AppManager {
     if(!readMaxId) {
       if(threadId && !force) {
         const forumTopic = this.dialogsStorage.getForumTopic(peerId, threadId);
-        if(!getServerMessageId(forumTopic.read_inbox_max_id)) {
+        if(forumTopic && !getServerMessageId(forumTopic.read_inbox_max_id)) {
           force = true;
         }
       }
@@ -6479,6 +6516,18 @@ export class AppMessagesManager extends AppManager {
     // * album end
 
     if(options.threadId) {
+      if(isTopEnd) {
+        // const last = historyStorage.history.last || options.threadId;
+        const firstMessage = this.getMessageByPeer(peerId, options.threadId/* last[last.length - 1] */) as Message.message;
+        const message = this.getMessageWithReplies(firstMessage);
+        const threadServiceMid = this.generateThreadServiceStartMessage(message);
+        const mids = this.getMidsByMessage(message);
+        historyStorage.history.insertSlice([
+          threadServiceMid,
+          ...mids.sort((a, b) => b - a)
+        ]);
+      }
+
       return historyResult;
     }
 

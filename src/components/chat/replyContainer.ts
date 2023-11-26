@@ -5,7 +5,7 @@
  */
 
 import {Middleware} from '../../helpers/middleware';
-import {Document, Message, MessageMedia, Photo, WebPage, VideoSize, StoryItem, MessageReplyHeader} from '../../layer';
+import {Document, Message, MessageMedia, Photo, WebPage, VideoSize, StoryItem, MessageReplyHeader, MessageEntity} from '../../layer';
 import appImManager from '../../lib/appManagers/appImManager';
 import choosePhotoSize from '../../lib/appManagers/utils/photos/choosePhotoSize';
 import DivAndCaption from '../divAndCaption';
@@ -36,12 +36,13 @@ export async function wrapReplyDivAndCaption(options: {
   isStoryExpired?: boolean,
   middleware?: Middleware,
   lazyLoadQueue?: false | LazyLoadQueue,
-  replyHeader?: MessageReplyHeader
+  replyHeader?: MessageReplyHeader,
+  quote?: {text: string, entities?: MessageEntity[]}
 } & WrapRichTextOptions) {
   options.loadPromises ||= [];
 
   const {titleEl, subtitleEl, mediaEl, message, loadPromises, animationGroup, middleware, lazyLoadQueue, replyHeader} = options;
-  let {storyItem} = options;
+  let {storyItem, quote} = options;
 
   let wrappedTitle = options.title;
   if(wrappedTitle !== undefined) {
@@ -57,6 +58,13 @@ export async function wrapReplyDivAndCaption(options: {
   }
 
   const isMessageReply = replyHeader?._ === 'messageReplyHeader';
+
+  if(isMessageReply && replyHeader.quote_text) {
+    quote ??= {
+      text: replyHeader.quote_text,
+      entities: replyHeader.quote_entities
+    };
+  }
 
   let messageMedia: MessageMedia | WebPage.webPage = storyItem?.media ||
     (message as Message.message)?.media ||
@@ -141,13 +149,13 @@ export async function wrapReplyDivAndCaption(options: {
   } else if(options.isStoryExpired) {
     const icon = Icon('bomb', 'expired-story-icon');
     subtitleEl.replaceChildren(icon, i18n('ExpiredStory'));
-  } else if(isMessageReply && replyHeader.quote_text) {
-    const fragment = wrapRichText(limitSymbols(replyHeader.quote_text, 200), {
+  } else if(quote) {
+    const fragment = wrapRichText(limitSymbols(quote.text, 200), {
       ...options,
       noLinebreaks: true,
-      entities: replyHeader.quote_entities,
-      noLinks: true,
-      noTextFormat: true
+      entities: quote.entities,
+      noLinks: true
+      // noTextFormat: true
     });
 
     subtitleEl.replaceChildren(fragment);

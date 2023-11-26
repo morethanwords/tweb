@@ -1211,14 +1211,14 @@ const Stories = (props: {
     const popup = PopupPickUser.createSharingPicker(async(peerId) => {
       const storyPeerId = props.state.peerId;
       const inputPeer = await rootScope.managers.appPeersManager.getInputPeerById(storyPeerId);
-      rootScope.managers.appMessagesManager.sendOther(
+      rootScope.managers.appMessagesManager.sendOther({
         peerId,
-        {
+        inputMedia: {
           _: 'inputMediaStory',
           id: currentStory().id,
           peer: inputPeer
         }
-      );
+      });
 
       showMessageSentTooltip(
         i18n(
@@ -1870,7 +1870,7 @@ const Stories = (props: {
           const {container, fillPromise} = wrapReply({
             title,
             subtitle: subtitleElement as HTMLElement,
-            useHighlightningColor: true,
+            useHighlightingColor: true,
             setColorPeerId: fwdFromPeerId
           });
 
@@ -2213,13 +2213,13 @@ const Stories = (props: {
       )}
       onScroll={onCaptionScroll}
     >
-      {repost()?.reply}
       <div
         ref={captionText}
         class={classNames('spoilers-container', styles.ViewerStoryCaptionText)}
         onClick={onCaptionClick}
       >
         <div class={styles.ViewerStoryCaptionTextCell} dir="auto">
+          {repost()?.reply}
           {caption()}
         </div>
       </div>

@@ -55,6 +55,7 @@ import wrapPeerTitle from '../wrappers/peerTitle';
 import Icon from '../icon';
 import cloneDOMRect from '../../helpers/dom/cloneDOMRect';
 import PopupPremium from '../popups/premium';
+import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -232,6 +233,7 @@ export default class ChatContextMenu {
       this.isSelected = this.chat.selection.isMidSelected(this.messagePeerId, this.mid);
       this.message = avatar ? undefined : (bubble as any).message || await this.chat.getMessage(this.mid);
       this.albumMessages = (this.message as Message.message)?.grouped_id ? await this.managers.appMessagesManager.getMessagesByAlbum((this.message as Message.message).grouped_id) : undefined;
+      if(!groupedItem && this.albumMessages) this.message = this.albumMessages[0];
       this.noForwards = this.message && !isSponsored && !(await this.managers.appMessagesManager.canForward(this.message));
       this.viewerPeerId = undefined;
       this.canOpenReactedList = undefined;
@@ -423,6 +425,15 @@ export default class ChatContextMenu {
       },
       verify: () => this.chat.type === 'scheduled'
     }, {
+      icon: 'message_quote',
+      text: 'Quote',
+      onClick: this.onQuoteClick,
+      verify: async() => await this.chat.canSend() &&
+        !this.message.pFlags.is_outgoing &&
+        !!this.chat.input.messageInput &&
+        !!(this.message as Message.message).message &&
+        this.isTextSelected
+    }, {
       icon: 'reply',
       text: 'Reply',
       onClick: this.onReplyClick,
@@ -457,14 +468,6 @@ export default class ChatContextMenu {
       text: 'Chat.CopySelectedText',
       onClick: this.onCopyClick,
       verify: () => !this.noForwards && !!(this.message as Message.message).message && this.isTextSelected
-    }, {
-      icon: 'message_quote',
-      text: 'Quote',
-      onClick: this.onQuoteClick,
-      verify: async() => await this.chat.canSend() &&
-        !this.message.pFlags.is_outgoing &&
-        !!this.chat.input.messageInput && !!(this.message as Message.message).message && this.isTextSelected &&
-        false
     }, {
       icon: 'copy',
       text: 'Message.Context.Selection.Copy',
@@ -1161,9 +1164,38 @@ export default class ChatContextMenu {
   };
 
   private onQuoteClick = () => {
-    const text = this.selectedMessagesText;
-    console.log(text);
-    // this.chat.input.insertAtCaret();
+    const selection = document.getSelection();
+    const range = selection.getRangeAt(0);
+    const span = document.createElement('span');
+    const needle = '\x02';
+    // * can't surround it with `surroundContents` because it doesn't work for multiple entities
+    span.append(needle, range.cloneContents(), needle);
+    const {value} = getRichValueWithCaret(findUpClassName(this.target, 'spoilers-container'), true);
+    const startIndex = value.indexOf(needle);
+    const endIndex = value.lastIndexOf(needle) - 1;
+    span.firstChild.remove();
+    span.lastChild.remove();
+    // * let's parse it again to fix entities
+    const slicedValue = getRichValueWithCaret(span, true);
+    const maxLength = 1024;
+    if(slicedValue.value.length > maxLength) { // * fix overflow
+      slicedValue.value = slicedValue.value.slice(0, maxLength);
+      slicedValue.entities = slicedValue.entities // * fix length for entities
+      .filter((entity) => entity.offset < maxLength)
+      .map((entity) => {
+        if((entity.offset + entity.length) > maxLength) {
+          entity.length = maxLength - entity.offset;
+        }
+
+        return entity;
+      });
+    }
+
+    this.chat.input.initMessageReply(this.mid, {
+      text: slicedValue.value,
+      entities: slicedValue.entities,
+      offset: startIndex
+    });
   };
 
   public static onDownloadClick(messages: MyMessage | MyMessage[], noForwards?: boolean): DownloadBlob | DownloadBlob[] {

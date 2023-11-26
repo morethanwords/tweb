@@ -479,7 +479,7 @@ export default class ChatTopbar {
       icon: 'bots',
       text: 'Settings',
       onClick: () => {
-        this.managers.appMessagesManager.sendText(this.peerId, '/settings');
+        this.managers.appMessagesManager.sendText({peerId: this.peerId, text: '/settings'});
       },
       verify: async() => {
         try {

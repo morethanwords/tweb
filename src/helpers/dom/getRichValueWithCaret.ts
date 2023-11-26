@@ -15,7 +15,7 @@ import combineSameEntities from '../../lib/richTextProcessor/combineSameEntities
 import sortEntities from '../../lib/richTextProcessor/sortEntities';
 import getRichElementValue, {SELECTION_SEPARATOR} from './getRichElementValue';
 
-export function getCaretPos(field: HTMLElement) {
+export function getCaretPos(field: Node) {
   const sel = window.getSelection();
   let selNode: Node;
   let selOffset: number;
@@ -53,7 +53,7 @@ export function getCaretPos(field: HTMLElement) {
 }
 
 export default function getRichValueWithCaret(
-  field: HTMLElement | DocumentFragment,
+  field: Node | HTMLElement | DocumentFragment,
   withEntities = true,
   withCaret = true
 ) {
@@ -71,7 +71,7 @@ export default function getRichValueWithCaret(
       curChild = curChild.nextSibling as any;
     }
   } else {
-    getRichElementValue(field, lines, line, selNode, selOffset, entities, offset);
+    getRichElementValue(field as HTMLElement, lines, line, selNode, selOffset, entities, offset);
   }
 
   if(line.length) {
@@ -101,4 +101,5 @@ export default function getRichValueWithCaret(
   return {value, entities, caretPos};
 }
 
+MOUNT_CLASS_TO.getCaretPos = getCaretPos;
 MOUNT_CLASS_TO.getRichValueWithCaret = getRichValueWithCaret;

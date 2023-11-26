@@ -6,6 +6,7 @@
 
 import type {MyDocument} from '../../lib/appManagers/appDocsManager';
 import type {MyDraftMessage} from '../../lib/appManagers/appDraftsManager';
+import type {AppMessagesManager, MessageSendingParams} from '../../lib/appManagers/appMessagesManager';
 import type Chat from './chat';
 import {AppImManager, APP_TABS} from '../../lib/appManagers/appImManager';
 import '../../../public/recorder.min';
@@ -116,7 +117,6 @@ import deepEqual from '../../helpers/object/deepEqual';
 import {clearMarkdownExecutions, createMarkdownCache, handleMarkdownShortcut, maybeClearUndoHistory, processCurrentFormatting} from '../../helpers/dom/markdown';
 import MarkupTooltip from './markupTooltip';
 import PopupPremium from '../popups/premium';
-import {AppMessagesManager} from '../../lib/appManagers/appMessagesManager';
 
 // console.log('Recorder', Recorder);
 
@@ -195,10 +195,11 @@ export default class ChatInput {
 
   private getWebPagePromise: Promise<void>;
   public willSendWebPage: WebPage = null;
-  public webPageOptions: Parameters<AppMessagesManager['sendText']>[2]['webPageOptions'] = {};
+  public webPageOptions: Parameters<AppMessagesManager['sendText']>[0]['webPageOptions'] = {};
   private forwarding: {[fromPeerId: PeerId]: number[]};
   public replyToMsgId: number;
   public replyToStoryId: number;
+  public replyToQuote: MessageSendingParams['replyToQuote'];
   public editMsgId: number;
   public editMessage: Message.message;
   private noWebPage: true;
@@ -798,7 +799,7 @@ export default class ChatInput {
         opusDecodeController.setKeepAlive(false);
 
         // тут objectURL ставится уже с audio/wav
-        this.managers.appMessagesManager.sendFile(sendingParams.peerId, {
+        this.managers.appMessagesManager.sendFile({
           ...sendingParams,
           file: dataBlob,
           isVoiceMessage: true,
@@ -3067,9 +3068,10 @@ export default class ChatInput {
         return;
       }
     } else if(value.trim()) {
-      this.managers.appMessagesManager.sendText(peerId, value, {
-        entities,
+      this.managers.appMessagesManager.sendText({
         ...sendingParams,
+        text: value,
+        entities,
         noWebPage,
         webPage: this.getWebPagePromise ? undefined : this.willSendWebPage,
         webPageOptions: this.webPageOptions,
@@ -3145,7 +3147,7 @@ export default class ChatInput {
       return false;
     }
 
-    this.managers.appMessagesManager.sendFile(this.chat.peerId, {
+    this.managers.appMessagesManager.sendFile({
       ...this.chat.getMessageSendingParams(),
       file: document,
       isMedia: true,
@@ -3337,19 +3339,19 @@ export default class ChatInput {
     f();
   }
 
-  public async initMessageReply(mid: number) {
-    if(this.replyToMsgId === mid) {
+  public async initMessageReply(mid: number, quote?: ChatInput['replyToQuote']) {
+    if(this.replyToMsgId === mid && deepEqual(this.replyToQuote, quote)) {
       return;
     }
 
     let message = await this.chat.getMessage(mid);
     const f = () => {
-      let peerTitleEl: HTMLElement;
+      let title: HTMLElement, subtitle: string | HTMLElement;
       if(!message) { // load missing replying message
-        peerTitleEl = i18n('Loading');
+        subtitle = i18n('Loading');
 
         this.managers.appMessagesManager.reloadMessages(this.chat.peerId, mid).then((_message) => {
-          if(this.replyToMsgId !== mid) {
+          if(this.replyToMsgId !== mid || !deepEqual(this.replyToQuote, quote)) {
             return;
           }
 
@@ -3362,28 +3364,32 @@ export default class ChatInput {
         });
       } else {
         const peerId = message.fromId;
-        peerTitleEl = new PeerTitle({
+        title = new PeerTitle({
           peerId: message.fromId,
           dialog: false,
           fromName: !peerId ? (message as Message.message).fwd_from?.from_name : undefined
         }).element;
+
+        title = i18n(quote ? 'ReplyToQuote' : 'ReplyTo', [title]);
       }
 
       this.setTopInfo({
         type: 'reply',
         callerFunc: f,
-        title: peerTitleEl,
-        subtitle: (message as Message.message)?.message || undefined,
+        title,
+        subtitle: message && !quote ? (message as Message.message)?.message : undefined,
         message,
-        setColorPeerId: message.fromId
+        setColorPeerId: message.fromId,
+        quote: message ? quote : undefined
       });
-      this.setReplyToMsgId(mid)
+      this.setReplyToMsgId(mid, quote);
     };
     f();
   }
 
-  public setReplyToMsgId(mid: number) {
+  public setReplyToMsgId(mid: number, quote?: ChatInput['replyToQuote']) {
     this.replyToMsgId = mid;
+    this.replyToQuote = quote;
     this.center(true);
   }
 
@@ -3458,13 +3464,14 @@ export default class ChatInput {
     subtitle,
     setColorPeerId,
     input,
-    message
+    message,
+    quote
   }: {
     type: ChatInputHelperType,
     callerFunc: () => void,
     input?: Parameters<InputFieldAnimated['setValueSilently']>[0],
     message?: any
-  } & Pick<Parameters<typeof wrapReply>[0], 'title' | 'subtitle' | 'setColorPeerId'>) {
+  } & Pick<Parameters<typeof wrapReply>[0], 'title' | 'subtitle' | 'setColorPeerId' | 'quote'>) {
     if(this.willSendWebPage && type === 'reply') {
       return;
     }
@@ -3486,7 +3493,8 @@ export default class ChatInput {
       setColorPeerId,
       animationGroup: this.chat.animationGroup,
       message,
-      textColor: 'secondary-text-color'
+      textColor: 'secondary-text-color',
+      quote
     });
 
     this.appImManager.setPeerColorToElement(setColorPeerId, replyParent);

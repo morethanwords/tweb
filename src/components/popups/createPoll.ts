@@ -312,13 +312,10 @@ export default class PopupCreatePoll extends PopupElement {
 
     // console.log('Will try to create poll:', inputMediaPoll);
 
-    this.chat.managers.appMessagesManager.sendOther(
-      this.chat.peerId,
-      inputMediaPoll,
-      {
-        ...this.chat.getMessageSendingParams()
-      }
-    );
+    this.chat.managers.appMessagesManager.sendOther({
+      ...this.chat.getMessageSendingParams(),
+      inputMedia: inputMediaPoll
+    });
 
     if(this.chat.input.helperType === 'reply') {
       this.chat.input.clearHelper();

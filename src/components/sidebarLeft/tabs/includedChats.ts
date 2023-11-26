@@ -257,13 +257,13 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
         return;
       }
 
-      const div = _add({
+      const ret = _add({
         key: peerId,
         title: details[peerId] ? i18n(details[peerId].text) : undefined,
         scroll,
         fallbackIcon: details[peerId]?.ico
       });
-      return div;
+      return ret;
     };
 
     this.selector.scrollable.append(categoriesSection.container, this.selector.scrollable.container.lastElementChild);
