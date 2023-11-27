@@ -3641,7 +3641,8 @@ export default class ChatBubbles {
           return;
         }
 
-        scrollable.checkForTriggers();
+        // scrollable.checkForTriggers();
+        scrollable.onScroll(); // * have to refresh scroll position, not just check with previous position
 
         if(options.mediaTimestamp !== undefined) {
           // ! :(

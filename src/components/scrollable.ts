@@ -435,22 +435,20 @@ export default class Scrollable extends ScrollableBase {
       return;
     }
 
-    const scrollHeight = this.container.scrollHeight;
-    if(!scrollHeight) { // незачем вызывать триггеры если блок пустой или не виден
+    const {scrollSize, scrollPosition, clientSize} = this;
+    if(!scrollSize) { // незачем вызывать триггеры если блок пустой или не виден
       return;
     }
 
-    const clientHeight = this.container.clientHeight;
-    const maxScrollTop = scrollHeight - clientHeight;
-    const scrollTop = this.lastScrollPosition;
+    const maxScrollPosition = scrollSize - clientSize;
 
     // this.log('checkForTriggers:', scrollTop, maxScrollTop);
 
-    if(this.onScrolledTop && scrollTop <= this.onScrollOffset && this.lastScrollDirection <= 0/* && direction === -1 */) {
+    if(this.onScrolledTop && scrollPosition <= this.onScrollOffset && this.lastScrollDirection <= 0/* && direction === -1 */) {
       this.onScrolledTop();
     }
 
-    if(this.onScrolledBottom && (maxScrollTop - scrollTop) <= this.onScrollOffset && this.lastScrollDirection >= 0/* && direction === 1 */) {
+    if(this.onScrolledBottom && (maxScrollPosition - scrollPosition) <= this.onScrollOffset && this.lastScrollDirection >= 0/* && direction === 1 */) {
       this.onScrolledBottom();
     }
   };
