@@ -1550,6 +1550,14 @@ const lang = {
   'ReplyToQuote': 'Reply to quote by %s',
   'BoostingGiveawayPrivateChannel': 'Channel is Private',
   'BoostingGiveawayPrivateChannelWarning': 'Are you sure you want to add a private channel? Users won\'t be able to join it without an invite link.',
+  'ReplyToAnotherChat': 'Reply in Another Chat',
+  'DoNotReply': 'Do Not Reply',
+  'DoNotQuote': 'Do Not Quote',
+  'DoNotForward': 'Do Not Forward',
+  'ReplyToDialog': 'Reply in...',
+  'SavedMessagesInfoQuote': 'Quote here to save.',
+  'ReplyPrivate': 'This reply is from a private chat.',
+  'QuotePrivate': 'This quote is from a private chat',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

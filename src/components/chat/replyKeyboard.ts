@@ -108,7 +108,7 @@ export default class ReplyKeyboard extends DropdownHover {
       !replyMarkup.pFlags.hidden &&
       !replyMarkup.pFlags.used) {
       replyMarkup.pFlags.used = true;
-      this.chatInput.initMessageReply(replyMarkup.mid);
+      this.chatInput.initMessageReply({replyToMsgId: replyMarkup.mid});
     }
   }
 

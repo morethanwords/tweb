@@ -960,6 +960,10 @@ $color-inactive: rgba(255, 255, 255, .5);
       display: block;
       max-width: 100%;
       width: fit-content;
+
+      &-title-icon {
+        opacity: .5;
+      }
       // background-color: rgba(0, 0, 0, .25);
     }
   }

@@ -9,7 +9,7 @@ import {formatTime, getFullDate} from '../../helpers/date';
 import setInnerHTML from '../../helpers/dom/setInnerHTML';
 import {Middleware} from '../../helpers/middleware';
 import formatNumber from '../../helpers/number/formatNumber';
-import {Message} from '../../layer';
+import {Message, MessageReplyHeader} from '../../layer';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import {i18n, _i18n} from '../../lib/langPack';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
@@ -205,6 +205,7 @@ export namespace MessageRender {
     const originalStory = isStoryReply && await rootScope.managers.acknowledged.appStoriesManager.getStoryById(replyToPeerId, replyTo.story_id);
     let originalPeerTitle: string | HTMLElement | DocumentFragment;
 
+    let isReplyFromAnotherPeer = false;
     let titlePeerId: PeerId, setColorPeerId: PeerId;
     if(isStoryReply) {
       if(!originalStory.cached) {
@@ -224,11 +225,14 @@ export namespace MessageRender {
     } else if(!originalMessage) {
       // from different peer
       if(replyTo.reply_from) {
+        isReplyFromAnotherPeer = true;
+        titlePeerId = getPeerId(replyTo.reply_from?.from_id || replyTo.reply_to_peer_id);
         originalPeerTitle = new PeerTitle({
-          peerId: titlePeerId = getPeerId(replyTo.reply_from?.from_id || replyTo.reply_to_peer_id),
+          peerId: titlePeerId || undefined,
           dialog: false,
           onlyFirstName: false,
-          plainText: false
+          plainText: false,
+          fromName: replyTo.reply_from?.from_name
         }).element;
       } else {
         needUpdate.push({replyToPeerId, replyMid: message.reply_to_mid, mid: message.mid});
@@ -267,6 +271,8 @@ export namespace MessageRender {
         }).element;
 
         fragment.append(originalPeerTitle, ' ', icon = Icon('group_filled'), ' ', groupPeerTitle);
+      } else {
+        fragment.append(icon = Icon('newprivate_filled', 'with-margin'), originalPeerTitle);
       }
 
       if(icon) {
@@ -279,7 +285,15 @@ export namespace MessageRender {
     const {container, fillPromise} = wrapReply({
       title: originalPeerTitle,
       animationGroup: chat.animationGroup,
-      message: originalMessage,
+      message: originalMessage || (isReplyFromAnotherPeer ? {
+        _: 'message',
+        pFlags: {},
+        id: 0,
+        date: 0,
+        message: '',
+        peer_id: undefined,
+        media: (replyTo as MessageReplyHeader.messageReplyHeader).reply_media
+      } : undefined),
       isStoryExpired,
       storyItem: originalStory?.cached && await originalStory.result,
       setColorPeerId: setColorPeerId || titlePeerId,

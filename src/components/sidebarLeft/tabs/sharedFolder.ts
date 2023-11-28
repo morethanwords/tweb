@@ -123,9 +123,11 @@ export class InviteLink {
   };
 
   public shareLink = (url: string = this.url) => {
-    PopupPickUser.createSharingPicker((peerId) => {
-      rootScope.managers.appMessagesManager.sendText({peerId, text: url});
-      appImManager.setInnerPeer({peerId});
+    PopupPickUser.createSharingPicker({
+      onSelect: (peerId) => {
+        rootScope.managers.appMessagesManager.sendText({peerId, text: url});
+        appImManager.setInnerPeer({peerId});
+      }
     });
   };
 }

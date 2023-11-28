@@ -2459,11 +2459,11 @@ export class AppImManager extends EventListenerBase<{
   ) {
     const colorProperty = '--peer-color-rgb';
     const borderBackgroundProperty = '--peer-border-background';
-    if(!peerId) {
-      element.style.removeProperty(colorProperty);
-      element.style.removeProperty(borderBackgroundProperty);
-      return;
-    }
+    // if(!peerId) {
+    //   element.style.removeProperty(colorProperty);
+    //   element.style.removeProperty(borderBackgroundProperty);
+    //   return;
+    // }
 
     const peer = apiManagerProxy.getPeer(peerId);
     let peerColorRgbValue: string, peerBorderBackgroundValue: string;
@@ -2472,10 +2472,12 @@ export class AppImManager extends EventListenerBase<{
       const length = colors.length;
       const property = messageHighlighting ? 'message-empty' : 'message-out';
       peerColorRgbValue = `var(--${property}-primary-color-rgb)`;
-      peerBorderBackgroundValue = `var(--${property}-peer-${length}-border-background)`;
+      peerBorderBackgroundValue = `var(--${property}-peer-${Math.max(1, length)}-border-background)`;
     } else {
       const colorIndex = getPeerColorIndexByPeer(peer);
       if(colorIndex === -1) {
+        element.style.removeProperty(colorProperty);
+        element.style.removeProperty(borderBackgroundProperty);
         return;
       }
 

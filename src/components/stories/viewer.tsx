@@ -1208,25 +1208,28 @@ const Stories = (props: {
 
   const onShareClick = (wasPlaying = !stories.paused) => {
     actions.pause();
-    const popup = PopupPickUser.createSharingPicker(async(peerId) => {
-      const storyPeerId = props.state.peerId;
-      const inputPeer = await rootScope.managers.appPeersManager.getInputPeerById(storyPeerId);
-      rootScope.managers.appMessagesManager.sendOther({
-        peerId,
-        inputMedia: {
-          _: 'inputMediaStory',
-          id: currentStory().id,
-          peer: inputPeer
-        }
-      });
+    const popup = PopupPickUser.createSharingPicker({
+      onSelect: async(peerId) => {
+        const storyPeerId = props.state.peerId;
+        const inputPeer = await rootScope.managers.appPeersManager.getInputPeerById(storyPeerId);
+        rootScope.managers.appMessagesManager.sendOther({
+          peerId,
+          inputMedia: {
+            _: 'inputMediaStory',
+            id: currentStory().id,
+            peer: inputPeer
+          }
+        });
 
-      showMessageSentTooltip(
-        i18n(
-          peerId === rootScope.myId ? 'StorySharedToSavedMessages' : 'StorySharedTo',
-          [await wrapPeerTitle({peerId})]
-        )
-      );
-    }, ['send_media']);
+        showMessageSentTooltip(
+          i18n(
+            peerId === rootScope.myId ? 'StorySharedToSavedMessages' : 'StorySharedTo',
+            [await wrapPeerTitle({peerId})]
+          )
+        );
+      },
+      chatRightsActions: ['send_media']
+    });
 
     popup.addEventListener('closeAfterTimeout', bindOnAnyPopupClose(wasPlaying));
   };

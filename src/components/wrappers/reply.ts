@@ -50,7 +50,7 @@ export default function wrapReply(options: WrapReplyOptions) {
   }
 
   const {setColorPeerId} = options;
-  if(setColorPeerId) {
+  if(setColorPeerId !== undefined) {
     appImManager.setPeerColorToElement(
       setColorPeerId,
       replyContainer.container,
@@ -59,7 +59,7 @@ export default function wrapReply(options: WrapReplyOptions) {
     );
 
     const peer = apiManagerProxy.getPeer(setColorPeerId);
-    const docId = (peer as User.user).color?.background_emoji_id;
+    const docId = (peer as User.user)?.color?.background_emoji_id;
     if(docId) {
       rootScope.managers.appEmojiManager.getCustomEmojiDocument(docId).then((doc) => {
         const CANVAS_WIDTH = 117;

@@ -6,7 +6,6 @@
 
 import {Middleware} from '../../helpers/middleware';
 import {Document, Message, MessageMedia, Photo, WebPage, VideoSize, StoryItem, MessageReplyHeader, MessageEntity} from '../../layer';
-import appImManager from '../../lib/appManagers/appImManager';
 import choosePhotoSize from '../../lib/appManagers/utils/photos/choosePhotoSize';
 import DivAndCaption from '../divAndCaption';
 import wrapMessageForReply from '../wrappers/messageForReply';

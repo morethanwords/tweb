@@ -1127,7 +1127,7 @@ export default class ChatBubbles {
             return;
           }
 
-          this.chat.input.initMessageReply(mid);
+          this.chat.input.initMessageReply({replyToMsgId: mid});
         }
       });
     } else if(IS_TOUCH_SUPPORTED) {
@@ -1234,7 +1234,7 @@ export default class ChatBubbles {
 
             if(shouldReply) {
               const {mid} = _target.dataset;
-              this.chat.input.initMessageReply(+mid);
+              this.chat.input.initMessageReply({replyToMsgId: +mid});
               shouldReply = false;
             }
           });
@@ -2270,11 +2270,15 @@ export default class ChatBubbles {
           return;
         }
 
+        const replyToMid = replyTo.reply_to_msg_id;
+        if(!replyToMid) {
+          toastNew({langPackKey: replyTo.pFlags.quote ? 'QuotePrivate' : 'ReplyPrivate'});
+          return;
+        }
+
         this.followStack.push(bubbleMid);
 
         const replyToPeerId = replyTo.reply_to_peer_id ? getPeerId(replyTo.reply_to_peer_id) : this.peerId;
-        const replyToMid = replyTo.reply_to_msg_id;
-
         this.chat.appImManager.setInnerPeer({
           peerId: replyToPeerId,
           lastMsgId: replyToMid,

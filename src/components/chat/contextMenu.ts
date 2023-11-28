@@ -56,6 +56,7 @@ import Icon from '../icon';
 import cloneDOMRect from '../../helpers/dom/cloneDOMRect';
 import PopupPremium from '../popups/premium';
 import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
+import {ChatInputReplyTo} from './input';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -428,7 +429,7 @@ export default class ChatContextMenu {
       icon: 'message_quote',
       text: 'Quote',
       onClick: this.onQuoteClick,
-      verify: async() => await this.chat.canSend() &&
+      verify: async() => /* await this.chat.canSend() && */
         !this.message.pFlags.is_outgoing &&
         !!this.chat.input.messageInput &&
         !!(this.message as Message.message).message &&
@@ -438,7 +439,7 @@ export default class ChatContextMenu {
       text: 'Reply',
       onClick: this.onReplyClick,
       verify: async() => !this.isLegacy &&
-        await this.chat.canSend() &&
+        // await this.chat.canSend() &&
         !this.message.pFlags.is_outgoing &&
         !!this.chat.input.messageInput &&
         this.chat.type !== 'scheduled'/* ,
@@ -1037,8 +1038,16 @@ export default class ChatContextMenu {
     }
   };
 
-  private onReplyClick = () => {
-    this.chat.input.initMessageReply(this.mid);
+  private onReplyClick = async() => {
+    const {mid, peerId} = this;
+    const replyTo: ChatInputReplyTo = {replyToMsgId: mid};
+    if(!await this.chat.canSend()) {
+      replyTo.replyToPeerId = peerId;
+      this.chat.input.createReplyPicker(replyTo);
+      return;
+    }
+
+    this.chat.input.initMessageReply(replyTo);
   };
 
   private onFaveStickerClick = (unfave?: boolean) => {
@@ -1163,19 +1172,33 @@ export default class ChatContextMenu {
     );
   };
 
-  private onQuoteClick = () => {
+  private onQuoteClick = async() => {
     const selection = document.getSelection();
     const range = selection.getRangeAt(0);
     const span = document.createElement('span');
+    span.append(range.cloneContents());
+
+    // * find the index
     const needle = '\x02';
-    // * can't surround it with `surroundContents` because it doesn't work for multiple entities
-    span.append(needle, range.cloneContents(), needle);
-    const {value} = getRichValueWithCaret(findUpClassName(this.target, 'spoilers-container'), true);
+    const container = findUpClassName(this.target, 'spoilers-container');
+    const skipSelectors: string[] = ['.reply'];
+    const s = skipSelectors.map((selector) => {
+      const element = container.querySelector(selector);
+      if(element) {
+        const textNode = document.createTextNode('');
+        element.replaceWith(textNode);
+        return [textNode, element];
+      }
+    }).filter(Boolean);
+    range.startContainer.nodeValue = needle + range.startContainer.nodeValue;
+    range.endContainer.nodeValue += needle;
+    const {value} = getRichValueWithCaret(container, true);
     const startIndex = value.indexOf(needle);
-    const endIndex = value.lastIndexOf(needle) - 1;
-    span.firstChild.remove();
-    span.lastChild.remove();
-    // * let's parse it again to fix entities
+    s.forEach(([textNode, element]) => textNode.replaceWith(element));
+    range.startContainer.nodeValue = range.startContainer.nodeValue.slice(1);
+    range.endContainer.nodeValue = range.endContainer.nodeValue.slice(0, -1);
+
+    // * let's parse the value with fixed entities
     const slicedValue = getRichValueWithCaret(span, true);
     const maxLength = 1024;
     if(slicedValue.value.length > maxLength) { // * fix overflow
@@ -1191,11 +1214,25 @@ export default class ChatContextMenu {
       });
     }
 
-    this.chat.input.initMessageReply(this.mid, {
+    const quote: ChatInputReplyTo['replyToQuote'] = {
       text: slicedValue.value,
-      entities: slicedValue.entities,
+      entities: slicedValue.entities.length ? slicedValue.entities : undefined,
       offset: startIndex
-    });
+    };
+
+    const {mid, peerId} = this;
+    const replyTo: ChatInputReplyTo = {
+      replyToMsgId: mid,
+      replyToQuote: quote
+    };
+
+    if(!await this.chat.canSend()) {
+      replyTo.replyToPeerId = peerId;
+      this.chat.input.createReplyPicker(replyTo);
+      return;
+    }
+
+    this.chat.input.initMessageReply(replyTo);
   };
 
   public static onDownloadClick(messages: MyMessage | MyMessage[], noForwards?: boolean): DownloadBlob | DownloadBlob[] {

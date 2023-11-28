@@ -16,6 +16,7 @@ import assumeType from '../../helpers/assumeType';
 import {AppManager} from './manager';
 import getServerMessageId from './utils/messageId/getServerMessageId';
 import draftsAreEqual from './utils/drafts/draftsAreEqual';
+import isObject from '../../helpers/object/isObject';
 
 export type MyDraftMessage = DraftMessage.draftMessage;
 
@@ -159,6 +160,8 @@ export class AppDraftsManager extends AppManager {
     if(replyTo?.reply_to_msg_id) {
       const channelId = this.appPeersManager.isChannel(peerId) ? peerId.toChatId() : undefined;
       replyTo.reply_to_msg_id = this.appMessagesIdsManager.generateMessageId(replyTo.reply_to_msg_id, channelId);
+      replyTo.top_msg_id &&= this.appMessagesIdsManager.generateMessageId(replyTo.top_msg_id, channelId);
+      replyTo.reply_to_peer_id &&= this.appPeersManager.getPeerId(replyTo.reply_to_peer_id);
     }
 
     return draft;
@@ -192,6 +195,10 @@ export class AppDraftsManager extends AppManager {
           _: 'inputReplyToMessage',
           reply_to_msg_id: getServerMessageId(replyTo.reply_to_msg_id)
         };
+
+        if(replyTo.reply_to_peer_id && !isObject(replyTo.reply_to_peer_id)) {
+          params.reply_to.reply_to_peer_id = this.appPeersManager.getInputPeerById(replyTo.reply_to_peer_id);
+        }
       }
 
       if(entities?.length) {

@@ -117,6 +117,8 @@ import deepEqual from '../../helpers/object/deepEqual';
 import {clearMarkdownExecutions, createMarkdownCache, handleMarkdownShortcut, maybeClearUndoHistory, processCurrentFormatting} from '../../helpers/dom/markdown';
 import MarkupTooltip from './markupTooltip';
 import PopupPremium from '../popups/premium';
+import PopupPickUser from '../popups/pickUser';
+import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 
 // console.log('Recorder', Recorder);
 
@@ -134,6 +136,7 @@ export const POSTING_NOT_ALLOWED_MAP: {[action in ChatRights]?: LangPackKey} = {
 
 type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply';
 type ChatSendBtnIcon = 'send' | 'record' | 'edit' | 'schedule' | 'forward';
+export type ChatInputReplyTo = Pick<MessageSendingParams, 'replyToMsgId' | 'replyToQuote' | 'replyToStoryId' | 'replyToPeerId'>;
 
 const CLASS_NAME = 'chat-input';
 const PEER_EXCEPTIONS = new Set<ChatType>(['scheduled', 'stories']);
@@ -170,7 +173,10 @@ export default class ChatInput {
   private replyElements: {
     container: HTMLElement,
     cancelBtn: HTMLButtonElement,
-    iconBtn: HTMLButtonElement
+    iconBtn: HTMLButtonElement,
+    menuContainer: HTMLElement,
+    doNotReply: ButtonMenuItemOptions,
+    doNotQuote: ButtonMenuItemOptions
   } = {} as any;
 
   private forwardElements: {
@@ -191,15 +197,17 @@ export default class ChatInput {
   };
   private forwardHover: DropdownHover;
   private webPageHover: DropdownHover;
+  private replyHover: DropdownHover;
   private forwardWasDroppingAuthor: boolean;
 
   private getWebPagePromise: Promise<void>;
   public willSendWebPage: WebPage = null;
   public webPageOptions: Parameters<AppMessagesManager['sendText']>[0]['webPageOptions'] = {};
   private forwarding: {[fromPeerId: PeerId]: number[]};
-  public replyToMsgId: number;
-  public replyToStoryId: number;
+  public replyToMsgId: MessageSendingParams['replyToMsgId'];
+  public replyToStoryId: MessageSendingParams['replyToStoryId'];
   public replyToQuote: MessageSendingParams['replyToQuote'];
+  public replyToPeerId: MessageSendingParams['replyToPeerId'];
   public editMsgId: number;
   public editMessage: Message.message;
   private noWebPage: true;
@@ -224,6 +232,7 @@ export default class ChatInput {
   public helperType: Exclude<ChatInputHelperType, 'webpage'>;
   private helperFunc: () => void | Promise<void>;
   private helperWaitingForward: boolean;
+  private helperWaitingReply: boolean;
 
   public willAttachType: 'document' | 'media';
 
@@ -471,6 +480,33 @@ export default class ChatInput {
 
     attachClickEvent(this.replyElements.cancelBtn, this.onHelperCancel, {listenerSetter: this.listenerSetter});
     attachClickEvent(this.replyElements.container, this.onHelperClick, {listenerSetter: this.listenerSetter});
+
+    const buttons: ButtonMenuItemOptions[] = [{
+      icon: 'replace',
+      text: 'ReplyToAnotherChat',
+      onClick: () => this.changeReplyRecipient()
+    }, this.replyElements.doNotReply = {
+      icon: 'delete',
+      text: 'DoNotReply',
+      onClick: this.onHelperCancel,
+      danger: true,
+      separator: true
+    }, this.replyElements.doNotQuote = {
+      icon: 'delete',
+      text: 'DoNotQuote',
+      onClick: this.onHelperCancel,
+      danger: true
+    }];
+    const btnMenu = this.replyElements.menuContainer = ButtonMenuSync({
+      buttons,
+      listenerSetter: this.listenerSetter
+    });
+
+    if(!IS_TOUCH_SUPPORTED) {
+      this.replyHover = new DropdownHover({element: btnMenu});
+    }
+
+    this.replyElements.container.append(btnMenu);
   }
 
   private constructForwardElements() {
@@ -513,6 +549,12 @@ export default class ChatInput {
           this.changeForwardRecipient();
         },
         icon: 'replace'
+      },
+      {
+        icon: 'delete',
+        text: 'DoNotForward',
+        onClick: this.onHelperCancel,
+        danger: true
       }
     ];
     const forwardBtnMenu = forwardElements.container = ButtonMenuSync({
@@ -557,7 +599,7 @@ export default class ChatInput {
       this.forwardHover = new DropdownHover({element: forwardBtnMenu});
     }
 
-    forwardElements.modifyArgs = forwardButtons.slice(0, -1);
+    forwardElements.modifyArgs = forwardButtons.slice(0, -2);
     this.replyElements.container.append(forwardBtnMenu);
   }
 
@@ -1520,6 +1562,7 @@ export default class ChatInput {
       const webPage = this.willSendWebPage as WebPage.webPage;
       const webPageOptions = this.webPageOptions;
       const hasLargeMedia = !!webPage?.pFlags?.has_large_media;
+      const replyTo = this.getReplyTo();
       draft = {
         _: 'draftMessage',
         date: tsNow(true),
@@ -1529,9 +1572,16 @@ export default class ChatInput {
           no_webpage: this.noWebPage,
           invert_media: webPageOptions?.invertMedia || undefined
         },
-        reply_to: this.replyToMsgId ? {
+        reply_to: replyTo ? {
           _: 'inputReplyToMessage',
-          reply_to_msg_id: this.replyToMsgId
+          reply_to_msg_id: replyTo.replyToMsgId,
+          top_msg_id: this.chat.threadId,
+          reply_to_peer_id: replyTo.replyToPeerId,
+          ...(replyTo.replyToQuote && {
+            quote_text: replyTo.replyToQuote.text,
+            quote_entities: replyTo.replyToQuote.entities,
+            quote_offset: replyTo.replyToQuote.offset
+          })
         } : undefined,
         media: webPage ? {
           _: 'inputMediaWebPage',
@@ -1647,12 +1697,9 @@ export default class ChatInput {
     const wrappedDraft = wrapDraft(draft, this.chat.peerId);
     const currentDraft = this.getCurrentInputAsDraft();
 
-    const draftReplyToMsgId = (draft.reply_to as InputReplyTo.inputReplyToMessage)?.reply_to_msg_id;
-    if(
-      draftsAreEqual(draft, currentDraft) &&
-      /* this.messageInputField.value === wrappedDraft &&  */
-      this.replyToMsgId === draftReplyToMsgId
-    ) {
+    const replyTo = draft.reply_to as InputReplyTo.inputReplyToMessage;
+    const draftReplyToMsgId = replyTo?.reply_to_msg_id;
+    if(draftsAreEqual(draft, currentDraft)) {
       return false;
     }
 
@@ -1662,7 +1709,15 @@ export default class ChatInput {
 
     this.noWebPage = draft.pFlags.no_webpage;
     if(draftReplyToMsgId) {
-      this.initMessageReply(draftReplyToMsgId);
+      this.initMessageReply({
+        replyToMsgId: draftReplyToMsgId,
+        replyToPeerId: replyTo.reply_to_peer_id && getPeerId(replyTo.reply_to_peer_id),
+        replyToQuote: replyTo.quote_text && {
+          text: replyTo.quote_text,
+          entities: replyTo.quote_entities,
+          offset: replyTo.quote_offset
+        }
+      });
     }
 
     this.setInputValue(wrappedDraft, fromUpdate, fromUpdate, draft);
@@ -2885,22 +2940,17 @@ export default class ChatInput {
     if(!findUpClassName(e.target, 'reply')) return;
     let possibleBtnMenuContainer: HTMLElement;
     if(this.helperType === 'forward') {
-      const {forwardElements} = this;
-      if(forwardElements && IS_TOUCH_SUPPORTED) {
-        possibleBtnMenuContainer = forwardElements.container;
-      }
+      possibleBtnMenuContainer = this.forwardElements?.container;
     } else if(this.helperType === 'reply') {
       this.chat.setMessageId(this.replyToMsgId);
+      possibleBtnMenuContainer = this.replyElements?.menuContainer;
     } else if(this.helperType === 'edit') {
       this.chat.setMessageId(this.editMsgId);
     } else if(!this.helperType) {
-      const {webPageElements} = this;
-      if(webPageElements) {
-        possibleBtnMenuContainer = webPageElements.container;
-      }
+      possibleBtnMenuContainer = this.webPageElements?.container;
     }
 
-    if(possibleBtnMenuContainer && !possibleBtnMenuContainer.classList.contains('active')) {
+    if(IS_TOUCH_SUPPORTED && possibleBtnMenuContainer && !possibleBtnMenuContainer.classList.contains('active')) {
       contextMenuController.openBtnMenu(possibleBtnMenuContainer);
     }
   };
@@ -2914,9 +2964,13 @@ export default class ChatInput {
     this.clearHelper();
     this.updateSendBtn();
     let selected = false;
-    const popup = PopupElement.createPopup(PopupForward, forwarding, () => {
-      selected = true;
-    });
+    const popup = PopupElement.createPopup(
+      PopupForward,
+      forwarding,
+      () => {
+        selected = true;
+      }
+    );
 
     popup.addEventListener('close', () => {
       this.helperWaitingForward = false;
@@ -2925,6 +2979,41 @@ export default class ChatInput {
         helperFunc();
       }
     });
+  }
+
+  private async changeReplyRecipient() {
+    if(this.helperWaitingReply) return;
+    this.helperWaitingReply = true;
+
+    const replyTo = this.getReplyTo();
+    replyTo.replyToPeerId ??= this.chat.peerId;
+    const helperFunc = this.helperFunc;
+    this.clearHelper();
+    this.updateSendBtn();
+
+    try {
+      await this.createReplyPicker(replyTo);
+    } catch(err) {
+      helperFunc();
+    }
+
+    this.helperWaitingReply = false;
+  }
+
+  public async createReplyPicker(replyTo: ChatInputReplyTo) {
+    const peerId = await PopupPickUser.createReplyPicker();
+    this.appImManager.setInnerPeer({peerId}).then(() => {
+      this.appImManager.chat.input.initMessageReply(replyTo);
+    });
+  }
+
+  public getReplyTo(): ChatInputReplyTo {
+    if(!this.replyToMsgId && !this.replyToStoryId) {
+      return;
+    }
+
+    const {replyToMsgId, replyToStoryId, replyToQuote, replyToPeerId} = this;
+    return {replyToMsgId, replyToStoryId, replyToQuote, replyToPeerId};
   }
 
   public async clearInput(canSetDraft = true, fireEvent = true, clearValue = '') {
@@ -3339,19 +3428,25 @@ export default class ChatInput {
     f();
   }
 
-  public async initMessageReply(mid: number, quote?: ChatInput['replyToQuote']) {
-    if(this.replyToMsgId === mid && deepEqual(this.replyToQuote, quote)) {
+  public async initMessageReply(replyTo: ReturnType<ChatInput['getReplyTo']>) {
+    if(deepEqual(this.getReplyTo(), replyTo)) {
       return;
     }
 
-    let message = await this.chat.getMessage(mid);
+    let {replyToMsgId, replyToQuote, replyToPeerId} = replyTo;
+    replyToPeerId ??= this.chat.peerId;
+    let message = await (
+      replyToPeerId ?
+        this.managers.appMessagesManager.getMessageByPeer(replyToPeerId, replyToMsgId) :
+        this.chat.getMessage(replyToMsgId)
+    );
     const f = () => {
       let title: HTMLElement, subtitle: string | HTMLElement;
       if(!message) { // load missing replying message
-        subtitle = i18n('Loading');
+        title = i18n('Loading');
 
-        this.managers.appMessagesManager.reloadMessages(this.chat.peerId, mid).then((_message) => {
-          if(this.replyToMsgId !== mid || !deepEqual(this.replyToQuote, quote)) {
+        this.managers.appMessagesManager.reloadMessages(replyToPeerId, replyToMsgId).then((_message) => {
+          if(!deepEqual(this.getReplyTo(), replyTo)) {
             return;
           }
 
@@ -3370,27 +3465,34 @@ export default class ChatInput {
           fromName: !peerId ? (message as Message.message).fwd_from?.from_name : undefined
         }).element;
 
-        title = i18n(quote ? 'ReplyToQuote' : 'ReplyTo', [title]);
+        title = i18n(replyToQuote ? 'ReplyToQuote' : 'ReplyTo', [title]);
+        subtitle = (message && !replyToQuote && (message as Message.message)?.message) || undefined;
       }
 
-      subtitle ||= message && !quote && (message as Message.message)?.message;
-      this.setTopInfo({
+      const newReply = this.setTopInfo({
         type: 'reply',
         callerFunc: f,
         title,
-        subtitle: subtitle || undefined,
+        subtitle,
         message,
         setColorPeerId: message?.fromId,
-        quote: message ? quote : undefined
+        quote: message ? replyToQuote : undefined
       });
-      this.setReplyToMsgId(mid, quote);
+      this.setReplyTo(replyTo);
+
+      this.replyElements.doNotReply.element.classList.toggle('hide', !!replyToQuote);
+      this.replyElements.doNotQuote.element.classList.toggle('hide', !replyToQuote);
+      this.replyHover?.attachButtonListener(newReply, this.listenerSetter);
     };
     f();
   }
 
-  public setReplyToMsgId(mid: number, quote?: ChatInput['replyToQuote']) {
-    this.replyToMsgId = mid;
-    this.replyToQuote = quote;
+  public setReplyTo(replyTo: ChatInputReplyTo) {
+    const {replyToMsgId, replyToQuote, replyToPeerId, replyToStoryId} = replyTo || {};
+    this.replyToMsgId = replyToMsgId;
+    this.replyToStoryId = replyToStoryId;
+    this.replyToQuote = replyToQuote;
+    this.replyToPeerId = replyToPeerId;
     this.center(true);
   }
 
@@ -3406,7 +3508,7 @@ export default class ChatInput {
     }
 
     if(type !== 'reply') {
-      this.setReplyToMsgId(undefined);
+      this.setReplyTo(undefined);
       this.forwarding = undefined;
     }
 

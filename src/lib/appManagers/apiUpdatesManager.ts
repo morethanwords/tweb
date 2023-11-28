@@ -221,7 +221,8 @@ class ApiUpdatesManager {
             message: updateMessage.message,
             fwd_from: updateMessage.fwd_from,
             reply_to: updateMessage.reply_to,
-            entities: updateMessage.entities
+            entities: updateMessage.entities,
+            ttl_period: updateMessage.ttl_period
           },
           pts: updateMessage.pts,
           pts_count: updateMessage.pts_count

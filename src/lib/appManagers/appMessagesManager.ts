@@ -22,15 +22,13 @@ import {Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, Input
 import {ArgumentTypes, InvokeApiOptions, Modify} from '../../types';
 import {logger, LogTypes} from '../logger';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
-import DialogsStorage, {GLOBAL_FOLDER_ID} from '../storages/dialogs';
+import {GLOBAL_FOLDER_ID} from '../storages/dialogs';
 import {ChatRights} from './appChatsManager';
 import {MyDocument} from './appDocsManager';
 import {MyPhoto} from './appPhotosManager';
-import {getFileNameByLocation} from '../../helpers/fileName';
 import DEBUG from '../../config/debug';
 import SlicedArray, {Slice, SliceEnd} from '../../helpers/slicedArray';
 import {FOLDER_ID_ALL, GENERAL_TOPIC_ID, MUTE_UNTIL, NULL_PEER_ID, REAL_FOLDER_ID, REPLIES_HIDDEN_CHANNEL_ID, REPLIES_PEER_ID, SERVICE_PEER_ID, THUMB_TYPE_FULL} from '../mtproto/mtproto_config';
-// import telegramMeWebManager from '../mtproto/telegramMeWebManager';
 import {getMiddleware} from '../../helpers/middleware';
 import assumeType from '../../helpers/assumeType';
 import copy from '../../helpers/object/copy';
@@ -41,7 +39,6 @@ import splitStringByLength from '../../helpers/string/splitStringByLength';
 import debounce from '../../helpers/schedulers/debounce';
 import {AppManager} from './manager';
 import getPhotoMediaInput from './utils/photos/getPhotoMediaInput';
-import getPhotoDownloadOptions from './utils/photos/getPhotoDownloadOptions';
 import parseMarkdown from '../richTextProcessor/parseMarkdown';
 import getServerMessageId from './utils/messageId/getServerMessageId';
 import filterMessagesByInputFilter from './utils/messages/filterMessagesByInputFilter';
@@ -50,7 +47,6 @@ import {getEnvironment} from '../../environment/utils';
 import getDialogIndex from './utils/dialogs/getDialogIndex';
 import defineNotNumerableProperties from '../../helpers/object/defineNotNumerableProperties';
 import getDocumentMediaInput from './utils/docs/getDocumentMediaInput';
-import getDocumentInputFileName from './utils/docs/getDocumentInputFileName';
 import getFileNameForUpload from '../../helpers/getFileNameForUpload';
 import noop from '../../helpers/noop';
 import appTabsManager from './appTabsManager';
@@ -67,9 +63,9 @@ import setBooleanFlag from '../../helpers/object/setBooleanFlag';
 import getMessageThreadId from './utils/messages/getMessageThreadId';
 import callbackify from '../../helpers/callbackify';
 import wrapMessageEntities from '../richTextProcessor/wrapMessageEntities';
-import isObject from '../../helpers/object/isObject';
 import isLegacyMessageId from './utils/messageId/isLegacyMessageId';
 import {joinDeepPath} from '../../helpers/object/setDeepProperty';
+import getPeerId from './utils/peers/getPeerId';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -180,6 +176,7 @@ export type MessageSendingParams = {
   replyToMsgId?: number,
   replyToStoryId?: number,
   replyToQuote?: {text: string, entities?: MessageEntity[], offset?: number},
+  replyToPeerId?: PeerId,
   replyTo?: InputReplyTo,
   scheduleDate?: number,
   silent?: boolean,
@@ -738,6 +735,7 @@ export class AppMessagesManager extends AppManager {
           newMessage.id = updates.id;
           newMessage.media = updates.media;
           newMessage.entities = updates.entities;
+          newMessage.ttl_period = updates.ttl_period;
           this.wrapMessageEntities(newMessage);
           if(updates.pFlags.out) {
             newMessage.pFlags.out = true;
@@ -1664,6 +1662,7 @@ export class AppMessagesManager extends AppManager {
       return {
         _: 'inputReplyToMessage',
         reply_to_msg_id: getServerMessageId(options.replyToMsgId),
+        reply_to_peer_id: options.replyToPeerId && this.appPeersManager.getInputPeerById(options.replyToPeerId),
         top_msg_id: options.threadId ? getServerMessageId(options.threadId) : undefined,
         ...(options.replyToQuote && {
           quote_text: options.replyToQuote.text,
@@ -1832,22 +1831,25 @@ export class AppMessagesManager extends AppManager {
       };
     }
 
+    const replyToPeerId = this.appPeersManager.getPeerId(replyTo.reply_to_peer_id);
+    if(replyToPeerId) {
+      peerId = replyToPeerId;
+    }
+
     const channelId = this.appPeersManager.isChannel(peerId) ? peerId.toChatId() : undefined;
     const isForum = this.appPeersManager.isForum(peerId);
     const replyToMsgId = this.appMessagesIdsManager.generateMessageId(replyTo.reply_to_msg_id, channelId);
     let replyToTopId = replyTo.top_msg_id ? this.appMessagesIdsManager.generateMessageId(replyTo.top_msg_id, channelId) : undefined;
+    const originalMessage = this.getMessageByPeer(peerId, replyToMsgId);
 
-    if(isForum && !replyToTopId) {
-      const originalMessage = this.getMessageByPeer(peerId, replyToMsgId);
-      if(originalMessage) {
-        replyToTopId = getMessageThreadId(originalMessage, true);
-      }
+    if(isForum && !replyToTopId && originalMessage) {
+      replyToTopId = getMessageThreadId(originalMessage, true);
     }
 
     const header: MessageReplyHeader = {
       _: 'messageReplyHeader',
-      reply_to_msg_id: replyToMsgId || replyToTopId,
-      pFlags: {}
+      pFlags: {},
+      reply_to_msg_id: replyToMsgId || replyToTopId
     };
 
     if(replyToTopId && isForum && GENERAL_TOPIC_ID !== replyToTopId) {
@@ -1864,6 +1866,17 @@ export class AppMessagesManager extends AppManager {
       header.quote_offset = replyTo.quote_offset;
       header.pFlags.quote = true;
     }
+
+    if(replyToPeerId) {
+      if(replyToPeerId.isUser() || !this.appChatsManager.isInChat(replyToPeerId.toChatId())) {
+        delete header.reply_to_msg_id;
+      } else {
+        header.reply_to_peer_id = this.appPeersManager.getOutputPeer(replyToPeerId);
+      }
+    }
+
+    header.reply_media = (originalMessage as Message.message)?.media;
+    header.reply_from = this.generateForwardHeader(peerId, originalMessage as Message.message);
 
     return header;
   }
@@ -1919,6 +1932,10 @@ export class AppMessagesManager extends AppManager {
   }
 
   private generateForwardHeader(peerId: PeerId, originalMessage: Message.message) {
+    if(!originalMessage) {
+      return;
+    }
+
     const myId = this.appUsersManager.getSelf().id.toPeerId();
     const fromId = originalMessage.fromId;
     if(fromId === myId && originalMessage.peerId === myId && !originalMessage.fwd_from) {
@@ -3321,6 +3338,12 @@ export class AppMessagesManager extends AppManager {
       }
     }
 
+    const mediaContext: ReferenceContext = {
+      type: 'message',
+      peerId,
+      messageId: mid
+    };
+
     // this.log(dT(), 'msg unread', mid, apiMessage.pFlags.out, dialog && dialog[apiMessage.pFlags.out ? 'read_outbox_max_id' : 'read_inbox_max_id'])
 
     const replyTo = message.reply_to;
@@ -3335,6 +3358,8 @@ export class AppMessagesManager extends AppManager {
         if(replyTo.reply_to_top_id) {
           replyTo.reply_to_top_id = this.appMessagesIdsManager.generateMessageId(replyTo.reply_to_top_id, replyToChannelId);
         }
+
+        this.saveMessageMedia(replyTo, mediaContext, options.isScheduled);
       }
     }
 
@@ -3390,12 +3415,6 @@ export class AppMessagesManager extends AppManager {
         fwdHeader.date -= this.timeManager.getServerTimeOffset();
       }
     }
-
-    const mediaContext: ReferenceContext = {
-      type: 'message',
-      peerId,
-      messageId: mid
-    };
 
     /* if(isMessage) {
       const entities = message.entities;
@@ -3579,10 +3598,12 @@ export class AppMessagesManager extends AppManager {
 
   public saveMessageMedia(message: {
     media?: MessageMedia,
+    reply_media?: MessageMedia,
     peerId?: PeerId,
     mid?: number
   }, mediaContext: ReferenceContext, isScheduled?: boolean) {
-    const {media} = message;
+    const key = 'media' in message ? 'media' : 'reply_media';
+    const media = message[key];
     if(!media) {
       return;
     }
@@ -3591,7 +3612,7 @@ export class AppMessagesManager extends AppManager {
 
     switch(media._) {
       case 'messageMediaEmpty': {
-        delete message.media;
+        delete message[key];
         break;
       }
 
@@ -3603,7 +3624,7 @@ export class AppMessagesManager extends AppManager {
         }
 
         if(!(media as MessageMedia.messageMediaPhoto).photo) { // * found this bug on test DC
-          delete message.media;
+          delete message[key];
         }
 
         break;
@@ -3633,11 +3654,11 @@ export class AppMessagesManager extends AppManager {
       }
 
       case 'messageMediaWebPage': {
-        const messageKey = this.appWebPagesManager.getMessageKeyForPendingWebPage(message.peerId, message.mid, isScheduled);
+        const messageKey = message.peerId ? this.appWebPagesManager.getMessageKeyForPendingWebPage(message.peerId, message.mid, isScheduled) : undefined;
         media.webpage = this.appWebPagesManager.saveWebPage(media.webpage, messageKey, mediaContext);
 
         if(!media.webpage) {
-          delete message.media;
+          delete message[key];
         }
 
         break;
@@ -6517,15 +6538,28 @@ export class AppMessagesManager extends AppManager {
 
     if(options.threadId) {
       if(isTopEnd) {
-        // const last = historyStorage.history.last || options.threadId;
+        const last = historyStorage.history.last;
         const firstMessage = this.getMessageByPeer(peerId, options.threadId/* last[last.length - 1] */) as Message.message;
         const message = this.getMessageWithReplies(firstMessage);
         const threadServiceMid = this.generateThreadServiceStartMessage(message);
         const mids = this.getMidsByMessage(message);
-        historyStorage.history.insertSlice([
+        const addSlice = [
           threadServiceMid,
           ...mids.sort((a, b) => b - a)
-        ]);
+        ];
+
+        // * shouldn't happen, but just in case
+        forEachReverse(addSlice, (mid, idx, arr) => {
+          if(last.includes(mid)) {
+            arr.splice(idx, 1);
+          }
+        });
+
+        if(last.isEnd(SliceEnd.Top)) {
+          addSlice.unshift(last[last.length - 1]);
+        }
+
+        historyStorage.history.insertSlice(addSlice);
       }
 
       return historyResult;

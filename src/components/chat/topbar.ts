@@ -442,31 +442,33 @@ export default class ChatTopbar {
       text: 'ShareContact',
       onClick: () => {
         const contactPeerId = this.peerId;
-        PopupPickUser.createSharingPicker((peerId) => {
-          return new Promise((resolve, reject) => {
-            PopupElement.createPopup(PopupPeer, '', {
-              titleLangKey: 'SendMessageTitle',
-              descriptionLangKey: 'SendContactToGroupText',
-              descriptionLangArgs: [new PeerTitle({peerId, dialog: true}).element],
-              buttons: [{
-                langKey: 'Send',
-                callback: () => {
-                  resolve();
+        PopupPickUser.createSharingPicker({
+          onSelect: (peerId) => {
+            return new Promise((resolve, reject) => {
+              PopupElement.createPopup(PopupPeer, '', {
+                titleLangKey: 'SendMessageTitle',
+                descriptionLangKey: 'SendContactToGroupText',
+                descriptionLangArgs: [new PeerTitle({peerId, dialog: true}).element],
+                buttons: [{
+                  langKey: 'Send',
+                  callback: () => {
+                    resolve();
 
-                  this.managers.appMessagesManager.sendContact(peerId, contactPeerId);
-                  this.chat.appImManager.setInnerPeer({peerId});
-                }
-              }, {
-                langKey: 'Cancel',
-                callback: () => {
-                  reject();
-                },
-                isCancel: true
-              }],
-              peerId,
-              overlayClosable: true
-            }).show();
-          });
+                    this.managers.appMessagesManager.sendContact(peerId, contactPeerId);
+                    this.chat.appImManager.setInnerPeer({peerId});
+                  }
+                }, {
+                  langKey: 'Cancel',
+                  callback: () => {
+                    reject();
+                  },
+                  isCancel: true
+                }],
+                peerId,
+                overlayClosable: true
+              }).show();
+            });
+          }
         });
       },
       verify: async() => rootScope.myId !== this.peerId && this.peerId.isUser() && (await this.managers.appPeersManager.isContact(this.peerId)) && !!(await this.managers.appUsersManager.getUser(this.peerId.toUserId())).phone

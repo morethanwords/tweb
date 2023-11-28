@@ -164,16 +164,43 @@ export default class PopupPickUser extends PopupElement {
     return this.createPicker2({peerType, filterPeerTypeBy, chatRightsActions});
   }
 
-  public static createSharingPicker(
+  public static createSharingPicker(options: {
     onSelect: ConstructorParameters<typeof PopupPickUser>[0]['onSelect'],
-    chatRightsActions: PopupPickUserOptions['chatRightsActions'] = ['send_plain']
-  ) {
+    chatRightsActions?: PopupPickUserOptions['chatRightsActions'],
+    placeholder?: LangPackKey,
+    selfPresence?: LangPackKey
+  }) {
+    options.chatRightsActions ??= ['send_plain'];
+    options.placeholder ??= 'ShareModal.Search.Placeholder';
+    options.selfPresence ??= 'ChatYourSelf';
     return PopupElement.createPopup(PopupPickUser, {
-      peerType: ['dialogs', 'contacts'],
-      onSelect,
-      placeholder: 'ShareModal.Search.Placeholder',
-      chatRightsActions,
-      selfPresence: 'ChatYourSelf'
+      ...options,
+      peerType: ['dialogs', 'contacts']
+    });
+  }
+
+  public static createSharingPicker2(options?: Modify<Parameters<typeof PopupPickUser['createSharingPicker']>[0], {onSelect?: never}>) {
+    return new Promise<PeerId>((resolve, reject) => {
+      let resolved = false;
+      const popup = PopupPickUser.createSharingPicker({
+        ...(options || {}),
+        onSelect: (peerId) => {
+          resolved = true;
+          resolve(peerId);
+        }
+      });
+      popup.addEventListener('close', () => {
+        if(!resolved) {
+          reject();
+        }
+      });
+    });
+  }
+
+  public static createReplyPicker() {
+    return this.createSharingPicker2({
+      placeholder: 'ReplyToDialog',
+      selfPresence: 'SavedMessagesInfoQuote'
     });
   }
 }
