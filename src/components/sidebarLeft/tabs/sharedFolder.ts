@@ -266,8 +266,8 @@ export default class AppSharedFolderTab extends SliderSuperTabEventable<{
       this.selector.renderResultsFunc(peers.map((peer) => peerIds.get(peer)));
 
       const _add = this.selector.add.bind(this.selector);
-      this.selector.add = (...args) => {
-        const peerId = args[0].key.toPeerId();
+      this.selector.add = (options) => {
+        const peerId = options.key.toPeerId();
         const dialogElement = this.elementMap.get(peerId as PeerId);
         const {container} = dialogElement;
         if(container.classList.contains('cant-select')) {
@@ -284,7 +284,7 @@ export default class AppSharedFolderTab extends SliderSuperTabEventable<{
           return;
         }
 
-        return _add(...args);
+        return _add(options);
       };
 
       const _remove = this.selector.remove.bind(this.selector);

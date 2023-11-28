@@ -588,7 +588,7 @@ export class InternalLinkProcessor {
 
         //   }
         // };
-        return PopupElement.createPopup(PopupPayment, undefined, inputInvoice, paymentForm);
+        return PopupElement.createPopup(PopupPayment, {inputInvoice, paymentForm});
       });
     });
   };

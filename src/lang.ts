@@ -397,6 +397,11 @@ const lang = {
   'Premium.Promo.Wallpaper.Subtitle': 'Set custom wallpapers for you and your chat partner.',
   'CopyCode': 'copy',
   'CodeCopied': 'Code copied to clipboard',
+  'Giveaway.MaximumSubscribers': {
+    'one_value': 'You can select up to %d subscriber',
+    'other_value': 'You can select up to %d subscribers'
+  },
+  'AddChannels': 'Add Channels',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -1532,6 +1537,19 @@ const lang = {
   },
   'HideAd': 'Hide',
   'SponsoredMessageRecommended': 'recommended',
+  'BoostingSelectCountry': 'Select Countries',
+  'BoostingSelectUpToWarningCountriesPlural': {
+    'one_value': 'You can select up to %1$d country.',
+    'other_value': 'You can select up to %1$d countries.'
+  },
+  'BoostingSelectUpToWarningChannelsPlural': {
+    'one_value': 'You can select up to %1$d channel.',
+    'other_value': 'You can select up to %1$d channels.'
+  },
+  'ReplyTo': 'Reply to %s',
+  'ReplyToQuote': 'Reply to quote by %s',
+  'BoostingGiveawayPrivateChannel': 'Channel is Private',
+  'BoostingGiveawayPrivateChannelWarning': 'Are you sure you want to add a private channel? Users won\'t be able to join it without an invite link.',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

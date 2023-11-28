@@ -35,9 +35,10 @@ export default class AppPaymentsManager extends AppManager {
 
   public getPaymentForm(invoice: InputInvoice) {
     return this.apiManager.invokeApi('payments.getPaymentForm', {
-      invoice
+      invoice,
+      theme_params: this.apiManager.getThemeParams()
     }).then((paymentForm) => {
-      this.appUsersManager.saveApiUsers(paymentForm.users);
+      this.appPeersManager.saveApiPeers(paymentForm);
       paymentForm.photo = this.appWebDocsManager.saveWebDocument(paymentForm.photo);
 
       return paymentForm;
@@ -49,7 +50,7 @@ export default class AppPaymentsManager extends AppManager {
       peer: this.appPeersManager.getInputPeerById(peerId),
       msg_id: getServerMessageId(mid)
     }).then((paymentForm) => {
-      this.appUsersManager.saveApiUsers(paymentForm.users);
+      this.appPeersManager.saveApiPeers(paymentForm);
       paymentForm.photo = this.appWebDocsManager.saveWebDocument(paymentForm.photo);
 
       return paymentForm;
@@ -102,7 +103,7 @@ export default class AppPaymentsManager extends AppManager {
         boost_peer: this.appPeersManager.getInputPeerById(peerId)
       },
       processResult: (premiumGiftCodeOptions) => {
-        return premiumGiftCodeOptions.filter((option) => !option.store_product);
+        return premiumGiftCodeOptions/* .filter((option) => !option.store_product) */;
       }
     });
   }
@@ -116,7 +117,7 @@ export default class AppPaymentsManager extends AppManager {
       method: 'help.getPremiumPromo',
       params: {},
       processResult: (helpPremiumPromo) => {
-        this.appUsersManager.saveApiUsers(helpPremiumPromo.users);
+        this.appPeersManager.saveApiPeers(helpPremiumPromo);
         helpPremiumPromo.videos = helpPremiumPromo.videos.map((doc) => {
           return this.appDocsManager.saveDoc(doc, {type: 'premiumPromo'});
         });

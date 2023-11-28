@@ -74,14 +74,9 @@
   }
 
   &-specific {
-    .row-subtitle {
-      display: flex;
-      align-items: center;
-    }
-
     &-next {
       font-size: 1rem;
-      margin-left: 1px;
+      margin-inline-start: 1px;
     }
   }
 
@@ -180,5 +175,20 @@
     &.is-chosen {
       color: var(--primary-color);
     }
+  }
+
+  .popup-gift-premium {
+    &-options {
+      margin: 0;
+    }
+
+    &-option {
+      --primary-color: rgb(var(--primary-color-rgb)) !important;
+    }
+  }
+
+  .is-flex {
+    display: flex;
+    align-items: center;
   }
 }

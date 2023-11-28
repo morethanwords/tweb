@@ -136,6 +136,15 @@ export default class AppSelectPeers {
   private withStories: boolean;
 
   private night: boolean;
+  public searchSection: SettingSection;
+
+  private checkboxSide: 'right' | 'left';
+  private noPlaceholder: boolean;
+
+  private limit: number;
+  private limitCallback: () => void;
+
+  private excludePeerIds: Set<PeerId>;
 
   constructor(options: {
     appendTo: AppSelectPeers['appendTo'],
@@ -171,19 +180,25 @@ export default class AppSelectPeers {
     getMoreCustom?: AppSelectPeers['getMoreCustom'],
     placeholderElementsGap?: number,
     withStories?: AppSelectPeers['withStories'],
-    night?: boolean
+    night?: boolean,
+    checkboxSide?: 'right' | 'left',
+    noPlaceholder?: boolean,
+    excludePeerIds?: AppSelectPeers['excludePeerIds']
   }) {
     safeAssign(this, options);
 
+    this.checkboxSide ??= 'right';
     this.exceptSelf ??= false;
     this.meAsSaved ??= !(this.peerType.length === 1 && this.peerType[0] === 'channelParticipants');
     this.headerSearch ??= this.multiSelect && !this.noSearch;
     // this.noSearch ??= !this.multiSelect;
     this.noShadow ??= !!this.input || !this.sectionCaption;
+    this.excludePeerIds ??= new Set();
+    if(this.exceptSelf) this.excludePeerIds.add(rootScope.myId);
 
     this.middlewareHelper = options.middleware.create();
     this.middlewareHelperLoader = this.middlewareHelper.get().create();
-    this.dialogsPlaceholder = new DialogsPlaceholder({
+    if(!this.noPlaceholder) this.dialogsPlaceholder = new DialogsPlaceholder({
       avatarSize: 42,
       avatarMarginRight: 18,
       marginVertical: 7,
@@ -194,7 +209,11 @@ export default class AppSelectPeers {
       night: this.night
     });
 
-    this.container.classList.add('selector', 'selector-' + this.design);
+    this.container.classList.add(
+      'selector',
+      'selector-' + this.design,
+      'selector-' + this.checkboxSide
+    );
 
     const f = (this.renderResultsFunc || this.renderResults).bind(this);
     this.renderResultsFunc = async(peerIds, append?: boolean) => {
@@ -207,6 +226,10 @@ export default class AppSelectPeers {
       }
 
       peerIds = peerIds.filter((peerId) => {
+        if(this.excludePeerIds.has(peerId)) {
+          return false;
+        }
+
         const notRendered = !this.renderedPeerIds.has(peerId);
         if(notRendered) this.renderedPeerIds.add(peerId);
         return notRendered;
@@ -256,8 +279,9 @@ export default class AppSelectPeers {
     }
 
     if(this.headerSearch) {
-      const section = new SettingSection({});
+      const section = this.searchSection = new SettingSection({});
       section.innerContainer.classList.add('selector-search-section');
+      section.container.classList.add('selector-search-section-container');
       const topContainer = document.createElement('div');
       topContainer.classList.add('selector-search-container');
 
@@ -337,7 +361,8 @@ export default class AppSelectPeers {
       }
 
       // target.classList.toggle('active');
-      if(!(this.selected.has(key) ? this.remove(key) : this.add({key}))) {
+      const result = this.selected.has(key) ? this.remove(key) : this.add({key});
+      if(!result) {
         return;
       }
 
@@ -402,6 +427,11 @@ export default class AppSelectPeers {
 
     const filterPeerTypeBy: IsPeerType[] = types.map((type) => isPeerTypeMap[type]);
     return filterPeerTypeBy;
+  }
+
+  public setLimit(limit: number, callback: AppSelectPeers['limitCallback']) {
+    this.limit = limit;
+    this.limitCallback = callback;
   }
 
   public destroy() {
@@ -487,7 +517,7 @@ export default class AppSelectPeers {
     oldList.style.overflow = 'hidden';
     oldList.style.height = `${height}px`;
 
-    this.dialogsPlaceholder.attach({
+    this.dialogsPlaceholder?.attach({
       container: this.section.content,
       blockScrollable: this.scrollable,
       // getRectFrom: () => this.section.content.getBoundingClientRect()
@@ -863,10 +893,10 @@ export default class AppSelectPeers {
 
         const length = this.list.childElementCount;
         if(loadedAll && !length) {
-          this.dialogsPlaceholder.detach(length);
+          this.dialogsPlaceholder?.detach(length);
           return this.processPlaceholderOnResults();
         } else if(length || loadedAll) {
-          this.dialogsPlaceholder.detach(length);
+          this.dialogsPlaceholder?.detach(length);
           this.emptySearchPlaceholderHideSetter?.(true);
         }
       }
@@ -945,7 +975,7 @@ export default class AppSelectPeers {
   public async wrapSubtitle(peerId: PeerId) {
     let subtitleEl: HTMLElement;
     if(peerId.isAnyChat()) {
-      subtitleEl = await getChatMembersString(peerId.toChatId());
+      subtitleEl = await Promise.resolve(getChatMembersString(peerId.toChatId()));
     } else if(peerId === rootScope.myId && this.meAsSaved) {
       subtitleEl = i18n(this.selfPresence);
     } else {
@@ -1034,13 +1064,18 @@ export default class AppSelectPeers {
     scroll?: boolean,
     fireOnChange?: boolean,
     fallbackIcon?: Icon
-  }) {
+  }): false | ReturnType<typeof AppSelectPeers['renderEntity']> {
+    if(this.limit && this.selected.size >= this.limit) {
+      this.limitCallback?.();
+      return false;
+    }
+
     // console.trace('add');
     this.selected.add(key);
 
     if(!this.multiSelect || !this.input) {
       fireOnChange && this.onChange?.(this.selected.size);
-      return true;
+      return false;
     }
 
     if(this.query.trim()) {
@@ -1048,16 +1083,20 @@ export default class AppSelectPeers {
       this.onInput();
     }
 
-    const {element: div} = AppSelectPeers.renderEntity({
+    const rendered = AppSelectPeers.renderEntity({
       key,
       middleware: this.middlewareHelper.get(),
       title,
       avatarSize: 32,
       fallbackIcon
     });
-    div.classList.add('scale-in');
+    const {element} = rendered;
 
-    this.selectedContainer.insertBefore(div, this.input);
+    if(scroll) {
+      element.classList.add('scale-in');
+    }
+
+    this.selectedContainer.insertBefore(element, this.input);
     // this.selectedScrollable.scrollTop = this.selectedScrollable.scrollHeight;
     fireOnChange && this.onChange?.(this.selected.size);
 
@@ -1068,10 +1107,10 @@ export default class AppSelectPeers {
       });
     }
 
-    return div;
+    return rendered;
   }
 
-  public remove(key: PeerId | string, fireOnChange = true) {
+  public remove(key: PeerId | string, fireOnChange = true): boolean {
     if(!this.multiSelect) {
       return false;
     }
@@ -1153,6 +1192,10 @@ export default class AppSelectPeers {
   }
 
   public addInitial(values: any[]) {
+    if(!values?.length) {
+      return;
+    }
+
     this.addBatch(values);
 
     this.input && window.requestAnimationFrame(() => { // ! not the best place for this raf though it works

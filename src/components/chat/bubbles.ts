@@ -2057,8 +2057,10 @@ export default class ChatBubbles {
 
       PopupElement.createPopup(
         PopupPayment,
-        message as Message.message,
-        await this.managers.appPaymentsManager.getInputInvoiceByPeerId(message.peerId, message.mid)
+        {
+          message:message as Message.message,
+          inputInvoice: await this.managers.appPaymentsManager.getInputInvoiceByPeerId(message.peerId, message.mid)
+        }
       );
       return;
     }
@@ -2153,7 +2155,11 @@ export default class ChatBubbles {
             const message = await this.managers.appMessagesManager.getMessageByPeer(peerId.toPeerId(), +mid);
             if(message) {
               const inputInvoice = await this.managers.appPaymentsManager.getInputInvoiceByPeerId(this.peerId, +bubble.dataset.mid);
-              PopupElement.createPopup(PopupPayment, message as Message.message, inputInvoice, undefined, true);
+              PopupElement.createPopup(PopupPayment, {
+                message: message as Message.message,
+                inputInvoice,
+                isReceipt: true
+              });
             }
           } else {
             this.chat.appImManager.setInnerPeer({
@@ -5289,6 +5295,7 @@ export default class ChatBubbles {
                 text = !(peer as MTChat.channel)?.pFlags?.broadcast ? 'Chat.Message.ViewGroup' : 'Chat.Message.ViewChannel';
               }
 
+              const chatInvite = sponsoredMessage.chat_invite, chatInviteHash = sponsoredMessage.chat_invite_hash;
               if(sponsoredMessage.app) {
                 callback = () => {
                   const user = apiManagerProxy.getUser(peerId.toUserId());
@@ -5311,15 +5318,19 @@ export default class ChatBubbles {
                 // callback = () => {
                 //   window.open(webPage.url, '_blank');
                 // };
-              } else if(sponsoredMessage.chat_invite) {
+              } else if(chatInvite) {
+                if((chatInvite as ChatInvite.chatInvite).pFlags?.broadcast ||
+                  ((chatInvite as ChatInvite.chatInviteAlready).chat as MTChat.channel)?.pFlags?.broadcast) {
+                  text = 'Chat.Message.ViewChannel';
+                }
                 callback = () => {
-                  PopupJoinChatInvite.open(sponsoredMessage.chat_invite_hash, sponsoredMessage.chat_invite);
+                  PopupJoinChatInvite.open(chatInviteHash, chatInvite);
                 };
-              } else if(sponsoredMessage.chat_invite_hash) {
+              } else if(chatInviteHash) {
                 callback = () => {
                   const link: InternalLink = {
                     _: INTERNAL_LINK_TYPE.JOIN_CHAT,
-                    invite: sponsoredMessage.chat_invite_hash
+                    invite: chatInviteHash
                   };
 
                   internalLinkProcessor.processInternalLink(link);

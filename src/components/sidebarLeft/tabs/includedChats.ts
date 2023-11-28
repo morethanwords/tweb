@@ -245,16 +245,9 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
     const _add = this.selector.add.bind(this.selector);
     this.selector.add = ({key: peerId, title, scroll}) => {
       if(this.selector.selected.size >= this.limit && addedInitial && !details[peerId]) {
-        const el: HTMLInputElement = this.selector.list.querySelector(`[data-peer-id="${peerId}"] [type="checkbox"]`);
-        if(el) {
-          setTimeout(() => {
-            el.checked = false;
-          }, 0);
-        }
-
         const str = I18n.format(this.type === 'excluded' ? 'ChatList.Filter.Exclude.LimitReached': 'ChatList.Filter.Include.LimitReached', true);
         toast(str);
-        return;
+        return false;
       }
 
       const ret = _add({

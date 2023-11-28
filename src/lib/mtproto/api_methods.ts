@@ -8,7 +8,7 @@ import ctx from '../../environment/ctx';
 import assumeType from '../../helpers/assumeType';
 import callbackify from '../../helpers/callbackify';
 import {ignoreRestrictionReasons} from '../../helpers/restrictions';
-import {Config, HelpAppConfig, MethodDeclMap, User} from '../../layer';
+import {Config, DataJSON, HelpAppConfig, HelpPeerColors, MethodDeclMap, User} from '../../layer';
 import {InvokeApiOptions} from '../../types';
 import {AppManager} from '../appManagers/manager';
 import {MTAppConfig} from './appConfig';
@@ -54,6 +54,8 @@ export default abstract class ApiManagerMethods extends AppManager {
 
   protected config: Config;
   protected appConfig: MTAppConfig;
+
+  protected themeParams: DataJSON;
 
   constructor() {
     super();
@@ -356,5 +358,17 @@ export default abstract class ApiManagerMethods extends AppManager {
       const key = Array.isArray(a) ? a[isPremium ? 1 : 0] : a;
       return appConfig[key] as number;
     });
+  }
+
+  public getPeerColors() {
+    return this.apiManager.invokeApiCacheable('help.getPeerColors', {hash: 0}) as Promise<HelpPeerColors.helpPeerColors>;
+  }
+
+  public setThemeParams(themeParams: DataJSON) {
+    this.themeParams = themeParams;
+  }
+
+  public getThemeParams() {
+    return this.themeParams;
   }
 }

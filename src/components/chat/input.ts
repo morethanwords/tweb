@@ -3373,13 +3373,14 @@ export default class ChatInput {
         title = i18n(quote ? 'ReplyToQuote' : 'ReplyTo', [title]);
       }
 
+      subtitle ||= message && !quote && (message as Message.message)?.message;
       this.setTopInfo({
         type: 'reply',
         callerFunc: f,
         title,
-        subtitle: message && !quote ? (message as Message.message)?.message : undefined,
+        subtitle: subtitle || undefined,
         message,
-        setColorPeerId: message.fromId,
+        setColorPeerId: message?.fromId,
         quote: message ? quote : undefined
       });
       this.setReplyToMsgId(mid, quote);

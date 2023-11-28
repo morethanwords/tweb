@@ -20,6 +20,7 @@ import setInnerHTML from '../../helpers/dom/setInnerHTML';
 import toggleDisability from '../../helpers/dom/toggleDisability';
 import {formatPhoneNumber} from '../../helpers/formatPhoneNumber';
 import {makeMediaSize} from '../../helpers/mediaSize';
+import safeAssign from '../../helpers/object/safeAssign';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
 import ScrollSaver from '../../helpers/scrollSaver';
 import {_tgico} from '../../helpers/tgico';
@@ -178,13 +179,17 @@ export default class PopupPayment extends PopupElement<{
 }> {
   private tipButtonsMap: Map<number, HTMLElement>;
   private result: PopupPaymentResult;
+  private message: Message.message;
+  private inputInvoice: InputInvoice;
+  private paymentForm?: PaymentsPaymentForm | PaymentsPaymentReceipt;
+  private isReceipt: boolean;
 
-  constructor(
-    private message: Message.message,
-    private inputInvoice: InputInvoice,
-    private paymentForm?: PaymentsPaymentForm | PaymentsPaymentReceipt,
-    private isReceipt?: boolean
-  ) {
+  constructor(options: {
+    message?: Message.message,
+    inputInvoice: InputInvoice,
+    paymentForm?: PaymentsPaymentForm | PaymentsPaymentReceipt,
+    isReceipt?: boolean
+  }) {
     super('popup-payment', {
       closable: true,
       overlayClosable: true,
@@ -192,6 +197,8 @@ export default class PopupPayment extends PopupElement<{
       scrollable: true,
       title: true
     });
+
+    safeAssign(this, options);
 
     this.result = 'cancelled';
 

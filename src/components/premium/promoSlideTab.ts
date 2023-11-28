@@ -28,12 +28,14 @@ export function premiumOptionsForm<T extends PremiumSubscriptionOption | Premium
   periodOptions,
   onOption,
   checked = 0,
-  users = 1
+  users = 1,
+  discountInTitle
 }: {
   periodOptions: T[],
   onOption: (option: T) => void,
   checked?: number,
-  users?: number
+  users?: number,
+  discountInTitle?: boolean
 }) {
   const isGiftCode = periodOptions[0]._ === 'premiumGiftCodeOption';
   const shortestOption = periodOptions.slice().sort((a, b) => a.months - b.months)[0];
@@ -46,6 +48,7 @@ export function premiumOptionsForm<T extends PremiumSubscriptionOption | Premium
 
   const rows = periodOptions.map((option, idx) => {
     const amountPerUser = +option.amount / (isGiftCode ? (option as PremiumGiftCodeOption).users : 1);
+    let title = keys ? i18n(keys[option.months] || 'Months', [option.months]) : formatMonthsDuration(option.months, false);
     let subtitle: HTMLElement;
     if(isGiftCode) {
       subtitle = i18n('Multiplier', [wrapCurrency(amountPerUser), users]);
@@ -60,8 +63,12 @@ export function premiumOptionsForm<T extends PremiumSubscriptionOption | Premium
       const shortestAmount = +shortestOption.amount * option.months / shortestOption.months;
       const discount = Math.round((1 - +option.amount / shortestAmount) * 100);
       badge.textContent = '-' + discount + '%';
-      span.append(badge, subtitle);
-      subtitle = span;
+      span.append(badge, discountInTitle ? title : subtitle);
+      if(discountInTitle) {
+        title = span;
+      } else {
+        subtitle = span;
+      }
     }
 
     const checkboxField = new CheckboxField({
@@ -72,11 +79,11 @@ export function premiumOptionsForm<T extends PremiumSubscriptionOption | Premium
     });
 
     const row = new Row({
-      title: keys ? i18n(keys[option.months] || 'Months', [option.months]) : formatMonthsDuration(option.months, false),
+      title,
       checkboxField,
       clickable: true,
-      subtitle: subtitle,
-      titleRightSecondary: wrapCurrency(isGiftCode ? amountPerUser * users : option.amount)
+      subtitle,
+      rightTextContent: wrapCurrency(isGiftCode ? amountPerUser * users : option.amount)
     });
 
     row.container.classList.add('popup-gift-premium-option');

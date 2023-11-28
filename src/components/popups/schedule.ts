@@ -38,6 +38,8 @@ export default class PopupSchedule extends PopupDatePicker {
 
   constructor(options: {
     initDate: Date,
+    minDate?: Date,
+    maxDate?: Date,
     onPick: (timestamp: number) => void,
     canSendWhenOnline?: boolean,
     btnConfirmLangKey?: LangPackKey
@@ -50,8 +52,8 @@ export default class PopupSchedule extends PopupDatePicker {
         noTitle: true,
         closable: true,
         withConfirm: true,
-        minDate: getMinDate(),
-        maxDate: getMaxDate(),
+        minDate: options.minDate ?? getMinDate(),
+        maxDate: options.maxDate ?? getMaxDate(),
         withTime: true,
         showOverflowMonths: true,
         confirmShortcutIsSendShortcut: true,

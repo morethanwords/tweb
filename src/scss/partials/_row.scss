@@ -50,6 +50,36 @@ $row-border-radius: $border-radius-medium;
     order: 0;
   }
 
+  &-grid {
+    display: grid;
+    justify-content: initial;
+    grid-template-columns: auto 1fr auto;
+    grid-template-rows: auto auto;
+    grid-template-areas: "left title right" "left subtitle right";
+    align-items: center;
+    padding-inline-start: 1rem !important;
+
+    .row-title {
+      grid-area: title;
+    }
+
+    .row-subtitle {
+      grid-area: subtitle;
+    }
+
+    .checkbox-field {
+      --offset-left: 0 !important;
+      grid-area: left;
+      width: 3.5rem;
+      position: relative !important;
+    }
+
+    .row-right {
+      margin-inline-start: 1rem;
+      grid-area: right;
+    }
+  }
+
   &-big {
     min-height: 4.5rem;
     padding-block: .5625rem;
@@ -350,13 +380,6 @@ $row-border-radius: $border-radius-medium;
 
   &.menu-open {
     background-color: var(--light-secondary-text-color);
-  }
-
-  > .btn-control-small {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    inset-inline-end: 1rem;
   }
 
   &.accordion-toggler {

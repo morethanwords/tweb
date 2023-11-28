@@ -159,7 +159,7 @@ export default class AppAttachMenuBotsManager extends AppManager {
       fromBotMenu,
       fromSwitchWebView,
       fromSideMenu,
-      themeParams,
+      themeParams = this.apiManager.getThemeParams(),
       // platform,
       silent,
       sendAsPeerId,

@@ -282,11 +282,11 @@ export default class AppMediaViewerBase<
 
     this.buttons.prev = document.createElement('div');
     this.buttons.prev.className = `${MEDIA_VIEWER_CLASSNAME}-switcher ${MEDIA_VIEWER_CLASSNAME}-switcher-left`;
-    this.buttons.prev.append(Icon('down', `${MEDIA_VIEWER_CLASSNAME}-sibling-button`, `${MEDIA_VIEWER_CLASSNAME}-prev-button`));
+    this.buttons.prev.append(Icon('previous', `${MEDIA_VIEWER_CLASSNAME}-sibling-button`, `${MEDIA_VIEWER_CLASSNAME}-prev-button`));
 
     this.buttons.next = document.createElement('div');
     this.buttons.next.className = `${MEDIA_VIEWER_CLASSNAME}-switcher ${MEDIA_VIEWER_CLASSNAME}-switcher-right`;
-    this.buttons.next.append(Icon('down', `${MEDIA_VIEWER_CLASSNAME}-sibling-button`, `${MEDIA_VIEWER_CLASSNAME}-next-button`));
+    this.buttons.next.append(Icon('next', `${MEDIA_VIEWER_CLASSNAME}-sibling-button`, `${MEDIA_VIEWER_CLASSNAME}-next-button`));
 
     this.moversContainer = document.createElement('div');
     this.moversContainer.classList.add(MEDIA_VIEWER_CLASSNAME + '-movers');

@@ -120,7 +120,18 @@ export class ThemeController {
       this.setTheme(typeof(coordinates) === 'object' ? coordinates : undefined);
     });
 
+    rootScope.addEventListener('theme_changed', () => {
+      this.setWorkerThemeParams();
+    });
+
     // rootScope.addEventListener('settings_updated', ())
+  }
+
+  private setWorkerThemeParams() {
+    rootScope.managers.apiManager.setThemeParams({
+      _: 'dataJSON',
+      data: JSON.stringify(this.getThemeParamsForWebView())
+    });
   }
 
   private get themeColorElem() {
@@ -213,8 +224,14 @@ export class ThemeController {
   public setTheme(coordinates?: {x: number, y: number}) {
     if(!('startViewTransition' in document) || !this.applied) {
       const silent = !this.applied;
+      const wasApplied = this.applied;
       this.applied = true;
+
       this._setTheme(silent);
+      if(!wasApplied) {
+        this.setWorkerThemeParams();
+      }
+
       return;
     }
 

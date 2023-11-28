@@ -56,6 +56,10 @@
   }
 
   &-option {
+    .row-title {
+      text-transform: capitalize;
+    }
+
     &:nth-child(1) {
       --primary-color: #C564F3;
     }
@@ -73,12 +77,13 @@
     background-color: var(--primary-color);
     border-radius: 6px;
     color: #fff;
-    margin-right: .375rem;
+    margin-inline-end: .375rem;
     padding: 0 0.3125rem;
     height: 20px;
     display: inline-block;
     line-height: 20px;
     font-weight: var(--font-weight-bold);
+    font-size: var(--font-size-13);
   }
 
   &-confirm {

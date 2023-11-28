@@ -8,7 +8,6 @@ import IS_EMOJI_SUPPORTED from '../environment/emojiSupport';
 import cancelEvent from '../helpers/dom/cancelEvent';
 import findUpClassName from '../helpers/dom/findUpClassName';
 import findUpTag from '../helpers/dom/findUpTag';
-import replaceContent from '../helpers/dom/replaceContent';
 import setInnerHTML from '../helpers/dom/setInnerHTML';
 import fastSmoothScroll from '../helpers/fastSmoothScroll';
 import {randomLong} from '../helpers/random';
@@ -28,6 +27,7 @@ const setCountries = () => {
 };
 
 let init = () => {
+  init = undefined;
   setCountries();
   rootScope.addEventListener('language_change', () => {
     setCountries();
@@ -35,6 +35,39 @@ let init = () => {
 };
 
 const VIRTUAL_COUNTRIES = new Set(['FT']);
+
+export function filterCountries(value: string, excludeVirtual?: boolean) {
+  init?.();
+
+  value = value.toLowerCase();
+  const filtered = countries.filter((c) => {
+    if(excludeVirtual && VIRTUAL_COUNTRIES.has(c.iso2)) {
+      return false;
+    }
+
+    const names = [
+      c.name,
+      c.default_name,
+      c.iso2
+    ];
+
+    names.filter(Boolean).forEach((name) => {
+      const abbr = name.split(' ').filter((word) => /\w/.test(word)).map((word) => word[0]).join('');
+      if(abbr.length > 1) {
+        names.push(abbr);
+      }
+    });
+
+    const good = !!names.filter(Boolean).find((str) => str.toLowerCase().indexOf(value) !== -1)/*  === 0 */;// i.test(c.name);
+    return good;
+  });
+
+  return filtered;
+}
+
+export function sortCountries(countries: HelpCountry.helpCountry[]) {
+  return countries.sort((a, b) => (a.name || a.default_name).localeCompare(b.name || b.default_name));
+}
 
 export default class CountryInputField extends InputField {
   private lastCountrySelected: HelpCountry;
@@ -55,10 +88,7 @@ export default class CountryInputField extends InputField {
       ...options
     });
 
-    if(init) {
-      init();
-      init = undefined;
-    }
+    init?.();
 
     this.liMap = new Map();
 
@@ -194,31 +224,9 @@ export default class CountryInputField extends InputField {
       if(e.ctrlKey || key === 'Control') return false;
 
       // let i = new RegExp('^' + this.value, 'i');
-      const _value = this.value.toLowerCase();
-      const matches: HelpCountry[] = [];
-      countries.forEach((c) => {
-        const arr = this.liMap.get(c.iso2);
-        if(!arr) {
-          return;
-        }
-
-        const names = [
-          c.name,
-          c.default_name,
-          c.iso2
-        ];
-
-        names.filter(Boolean).forEach((name) => {
-          const abbr = name.split(' ').filter((word) => /\w/.test(word)).map((word) => word[0]).join('');
-          if(abbr.length > 1) {
-            names.push(abbr);
-          }
-        });
-
-        const good = !!names.filter(Boolean).find((str) => str.toLowerCase().indexOf(_value) !== -1)/*  === 0 */;// i.test(c.name);
-
-        arr.forEach((li) => li.style.display = good ? '' : 'none');
-        if(good) matches.push(c);
+      const filtered = new Set(filterCountries(this.value).map((c) => c.iso2));
+      this.liMap.forEach((arr, iso2) => {
+        arr.forEach((li) => li.style.display = filtered.has(iso2) ? '' : 'none');
       });
 
       // Код ниже автоматически выберет страну если она осталась одна при поиске
@@ -230,7 +238,7 @@ export default class CountryInputField extends InputField {
         clickEvent.initEvent('mousedown', true, true);
         matches[0].li[0].dispatchEvent(clickEvent);
         return false;
-      } else  */if(matches.length === 0) {
+      } else  */if(!filtered.size) {
         countries.forEach((c) => {
           const arr = this.liMap.get(c.iso2);
           if(!arr) {
@@ -239,9 +247,9 @@ export default class CountryInputField extends InputField {
 
           arr.forEach((li) => li.style.display = '');
         });
-      } else if(matches.length === 1 && key === 'Enter') {
+      } else if(filtered.size === 1 && key === 'Enter') {
         cancelEvent(e);
-        this.selectCountryByTarget(this.liMap.get(matches[0].iso2)[0]);
+        this.selectCountryByTarget(this.liMap.get([...filtered][0])[0]);
       }
     };
 

@@ -888,15 +888,16 @@ export class AppImManager extends EventListenerBase<{
 
   private handleAutologinDomains() {
     let appConfig: MTAppConfig, config: Config.config;
-    rootScope.addEventListener('app_config', (_appConfig) => {
-      appConfig = _appConfig;
-    });
-
-    rootScope.addEventListener('config', (_config) => {
-      config = _config;
-    });
+    rootScope.addEventListener('app_config', (_appConfig) => appConfig = _appConfig);
+    rootScope.addEventListener('config', (_config) => config = _config);
+    this.managers.apiManager.getAppConfig().then((_appConfig) => appConfig = _appConfig);
+    this.managers.apiManager.getConfig().then((_config) => config = _config);
 
     const onAuthAnchorClick = (element: HTMLAnchorElement) => {
+      if(!appConfig) {
+        return;
+      }
+
       const url = new URL(element.href);
       if(appConfig.url_auth_domains?.includes(url.hostname)) {
         this.handleUrlAuth({url: element.href});

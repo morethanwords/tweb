@@ -172,7 +172,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
 
     if(options.overlayClosable) {
       attachClickEvent(this.element, (e: MouseEvent) => {
-        if(findUpClassName(e.target, 'popup-container')) {
+        if(findUpClassName(e.target, 'popup-container') || !(e.target as HTMLElement).isConnected) {
           return;
         }
 
@@ -308,9 +308,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
   }
 
   protected onContentUpdate() {
-    if(this.scrollable) {
-      this.scrollable.onAdditionalScroll();
-    }
+    this.scrollable?.onAdditionalScroll?.();
   }
 
   public show() {

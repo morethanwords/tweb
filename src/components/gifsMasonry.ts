@@ -15,6 +15,7 @@ import rootScope from '../lib/rootScope';
 import LazyLoadQueueRepeat2 from './lazyLoadQueueRepeat2';
 import wrapVideo from './wrappers/video';
 import noop from '../helpers/noop';
+import {MiddlewareHelper, getMiddleware} from '../helpers/middleware';
 
 const width = 400;
 const maxSingleWidth = width - 100;
@@ -25,6 +26,7 @@ export default class GifsMasonry {
   private scrollPromise: CancellablePromise<void> = Promise.resolve();
   private timeout: number = 0;
   private managers: AppManagers;
+  private middlewareHelper: MiddlewareHelper;
 
   constructor(
     private element: HTMLElement,
@@ -33,6 +35,7 @@ export default class GifsMasonry {
     attach = true
   ) {
     this.managers = rootScope.managers;
+    this.middlewareHelper = getMiddleware();
 
     this.lazyLoadQueue = new LazyLoadQueueRepeat2(undefined, ({target, visible}) => {
       if(visible) {
@@ -78,6 +81,7 @@ export default class GifsMasonry {
   public detach() {
     this.clear();
     this.scrollable.container.removeEventListener('scroll', this.onScroll);
+    this.middlewareHelper.destroy();
   }
 
   public clear() {
@@ -205,7 +209,8 @@ export default class GifsMasonry {
       container: div as HTMLDivElement,
       lazyLoadQueue: null,
       noInfo: true,
-      onlyPreview: true
+      onlyPreview: true,
+      middleware: this.middlewareHelper.get()
     });
   }
 }

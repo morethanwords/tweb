@@ -58,6 +58,8 @@ export default class Row<T extends SliderSuperTabEventableConstructable = any> {
   private _subtitle: HTMLElement;
   private _midtitle: HTMLElement;
 
+  public openContextMenu: ReturnType<typeof createContextMenu>['open'];
+
   constructor(options: Partial<{
     icon: Icon,
     iconClasses: string[],
@@ -74,7 +76,7 @@ export default class Row<T extends SliderSuperTabEventableConstructable = any> {
     titleLangArgs: any[],
     titleRight: K,
     titleRightSecondary: K,
-    clickable: boolean | ((e: Event) => void),
+    clickable: boolean | ((e: MouseEvent) => void),
     navigationTab: {
       constructor: T,
       slider: SidebarSlider,
@@ -87,6 +89,8 @@ export default class Row<T extends SliderSuperTabEventableConstructable = any> {
     listenerSetter: ListenerSetter,
     buttonRight?: HTMLElement | boolean,
     buttonRightLangKey: LangPackKey,
+    rightContent?: HTMLElement,
+    rightTextContent?: string,
     asLink: boolean,
     contextMenu: Omit<Parameters<typeof createContextMenu>[0], 'findElement' | 'listenTo' | 'listenerSetter'>,
     asLabel: boolean
@@ -263,18 +267,31 @@ export default class Row<T extends SliderSuperTabEventableConstructable = any> {
     }
 
     if(options.buttonRight || options.buttonRightLangKey) {
-      this.buttonRight = options.buttonRight instanceof HTMLElement ?
+      options.rightContent = this.buttonRight = options.buttonRight instanceof HTMLElement ?
         options.buttonRight :
         Button('btn-primary btn-color-primary btn-control-small', {text: options.buttonRightLangKey});
-      this.container.append(this.buttonRight);
+    }
+
+    if(options.rightTextContent) {
+      options.rightContent = document.createElement('span');
+      options.rightContent.classList.add('row-title-right-secondary');
+      options.rightContent.textContent = options.rightTextContent;
+    }
+
+    if(options.rightContent) {
+      options.rightContent.classList.add('row-right');
+      this.container.classList.add('row-grid');
+      this.container.append(options.rightContent);
     }
 
     if(options.contextMenu) {
-      createContextMenu({
+      const {open} = createContextMenu({
         ...options.contextMenu,
         listenTo: this.container,
         listenerSetter: options.listenerSetter
       });
+
+      this.openContextMenu = open;
     }
   }
 

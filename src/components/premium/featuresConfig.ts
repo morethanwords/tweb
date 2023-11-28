@@ -233,16 +233,16 @@ export const PREMIUM_FEATURES: {[type in PremiumPromoFeatureType]?: PremiumPromo
     subtitleLangKey: 'Premium.Boarding.Status.Info',
     videoPosition: 'top'
   },
-  colors: {
-    feature: 'colors',
+  peer_colors: {
+    feature: 'peer_colors',
     icon: 'premium_colors',
     titleLangKey: 'Premium.Promo.Colors.Title',
     subtitleLangKey: 'Premium.Promo.Colors.Subtitle',
     videoPosition: 'top',
     new: true
   },
-  wallpaper: {
-    feature: 'wallpaper',
+  wallpapers: {
+    feature: 'wallpapers',
     icon: 'premium_wallpaper',
     titleLangKey: 'Premium.Promo.Wallpaper.Title',
     subtitleLangKey: 'Premium.Promo.Wallpaper.Subtitle',

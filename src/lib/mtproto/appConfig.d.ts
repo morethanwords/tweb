@@ -84,9 +84,11 @@ export interface MTAppConfig {
   stories_changelog_user_id?:                UserId;
   stories_export_nopublic_link?:             boolean;
   stories_posting?:                          'enabled' | 'premium' | 'disabled';
-  peer_colors?:                              {[index: string]: string[]};
-  dark_peer_colors?:                         {[index: string]: string[]};
-  peer_colors_available?:                    number[];
+  giveaway_add_peers_max?:                   number;
+  giveaway_boosts_per_premium?:              number;
+  giveaway_countries_max?:                   number;
+  giveaway_gifts_purchase_available?:        boolean;
+  giveaway_period_max?:                      number;
 }
 
 export interface EmojiesSendDiceSuccess {

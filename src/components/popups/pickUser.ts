@@ -7,43 +7,67 @@
 import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
 import AppSelectPeers, {SelectSearchPeerType} from '../appSelectPeers';
 import PopupElement from '.';
-import {_i18n} from '../../lib/langPack';
+import {LangPackKey, _i18n, i18n} from '../../lib/langPack';
 import {Modify} from '../../types';
 import {IsPeerType} from '../../lib/appManagers/appPeersManager';
+import ButtonCorner from '../buttonCorner';
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
 
 type PopupPickUserOptions = Modify<ConstructorParameters<typeof AppSelectPeers>[0], {
   multiSelect?: never,
   appendTo?: never,
   managers?: never,
   onSelect?: (peerId: PeerId) => Promise<void> | void,
-  middleware?: never
+  onMultiSelect?: (peerIds: PeerId[]) => Promise<void> | void,
+  middleware?: never,
+  titleLangKey?: LangPackKey,
+  initial?: PeerId[]
 }>;
 
 export default class PopupPickUser extends PopupElement {
   public selector: AppSelectPeers;
 
   constructor(options: PopupPickUserOptions) {
-    super('popup-forward', {closable: true, overlayClosable: true, body: true, title: true});
+    super(
+      'popup-forward',
+      {
+        closable: true,
+        overlayClosable: true,
+        body: true,
+        title: options.titleLangKey ?? true
+        // withConfirm: options.onMultiSelect ? 'OK' : undefined
+        // footer: !!options.onMultiSelect,
+        // withConfirm: !!options.onMultiSelect
+      }
+    );
+
+    const isMultiSelect = !!options.onMultiSelect;
+
+    const onSelect = async(peerId: PeerId | PeerId[]) => {
+      const callback = options.onSelect || options.onMultiSelect;
+      if(callback) {
+        const res = callback(peerId as any);
+        if(res instanceof Promise) {
+          try {
+            await res;
+          } catch(err) {
+            return;
+          }
+        }
+      }
+
+      this.selector = null;
+      this.hide();
+    };
 
     this.selector = new AppSelectPeers({
       ...options,
       middleware: this.middlewareHelper.get(),
       appendTo: this.body,
-      onSelect: async(peerId) => {
-        if(options.onSelect) {
-          const res = options.onSelect(peerId);
-          if(res instanceof Promise) {
-            try {
-              await res;
-            } catch(err) {
-              return;
-            }
-          }
-        }
-
-        this.selector = null;
-        this.hide();
-      },
+      onChange: isMultiSelect ? (length) => {
+        this.btnConfirm.classList.toggle('is-visible', !!length);
+      } : undefined,
+      onSelect: isMultiSelect ? undefined : onSelect,
       onFirstRender: () => {
         this.show();
         this.selector.checkForTriggers(); // ! due to zero height before mounting
@@ -52,19 +76,37 @@ export default class PopupPickUser extends PopupElement {
           this.selector.input.focus();
         }
       },
-      multiSelect: false,
+      multiSelect: isMultiSelect,
       rippleEnabled: false,
       avatarSize: 'abitbigger',
       managers: this.managers,
-      night: this.night
+      night: this.night,
+      headerSearch: isMultiSelect
     });
 
     this.scrollable = this.selector.scrollable;
-    this.attachScrollableListeners();
 
-    // this.scrollable = new Scrollable(this.body);
+    if(isMultiSelect) {
+      this.header.after(this.selector.searchSection.container);
+      // this.btnConfirm.append(i18n('OK'));
+      // this.footer.append(this.btnConfirm);
+      // this.body.after(this.footer);
+      // this.footer.classList.add('abitlarger');
 
-    this.title.append(this.selector.input);
+      this.btnConfirm = this.btnConfirmOnEnter = ButtonCorner({icon: 'check'});
+      this.body.append(this.btnConfirm);
+
+      attachClickEvent(this.btnConfirm, () => {
+        onSelect(this.selector.getSelected() as PeerId[]);
+      }, {listenerSetter: this.listenerSetter});
+
+      if(options.initial) {
+        this.selector.addInitial(options.initial);
+      }
+    } else {
+      this.title.append(this.selector.input);
+      this.attachScrollableListeners();
+    }
   }
 
   protected destroy() {

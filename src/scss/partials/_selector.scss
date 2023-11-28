@@ -47,6 +47,17 @@
     flex-flow: wrap;
     position: relative;
 
+    &-section {
+      &-container {
+        &.is-countries {
+          .selector-user-avatar {
+            --multiplier: 1.125;
+            background: none;
+          }
+        }
+      }
+    }
+
     &-input {
       border: none;
       outline: none;
@@ -236,6 +247,12 @@
     }
   }
 
+  &-left {
+    .checkbox-field-round {
+      inset-inline: 1.125rem auto;
+    }
+  }
+
   &-square {
     $add: 3rem;
 
@@ -301,5 +318,17 @@
     bottom: 0;
     left: 0;
     z-index: 1;
+  }
+
+  &.is-countries {
+    .selector-countries-emoji {
+      font-size: 125%;
+    }
+
+    .row-title {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
   }
 }

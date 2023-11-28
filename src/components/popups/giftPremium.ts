@@ -74,7 +74,7 @@ export default class PopupGiftPremium extends PopupElement {
         checkboxField,
         clickable: true,
         subtitle,
-        titleRightSecondary: wrapCurrency(giftOption.amount)
+        rightTextContent: wrapCurrency(giftOption.amount)
       });
 
       row.container.classList.add(className + '-option');

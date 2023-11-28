@@ -111,7 +111,7 @@
     }
 
     .bubble-content {
-      width: unquote('min(100%, 15rem)') !important;
+      min-width: unquote('min(100%, 15rem)') !important;
     }
   }
 
@@ -526,7 +526,7 @@
     // color: var(--message-primary-color);
     color: rgb(var(--peer-color-rgb));
     height: 2.5rem;
-    margin: 0 0.5625rem .3125rem;
+    margin: 0 0.5625rem;
     width: auto;
     display: flex;
     align-items: center;
