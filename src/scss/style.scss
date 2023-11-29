@@ -86,6 +86,7 @@
   --messages-container-width: #{$messages-container-width};
   --messages-text-size: 16px;
   --messages-line-height: 1.3125;
+  // --messages-line-height: calc(var(--messages-text-size) + 5px);
   --messages-secondary-text-size: calc(var(--messages-text-size) - 2px);
   --messages-secondary-line-height: calc(var(--messages-secondary-text-size) + 4px);
   --messages-time-text-size: calc(var(--messages-text-size) - 4px);

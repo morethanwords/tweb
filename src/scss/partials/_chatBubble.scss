@@ -2872,19 +2872,17 @@
 // }
 
 // * fix scroll with only 1 bubble
-.bubbles-date-group:last-of-type {
-  .bubbles-group:last-of-type {
-    .bubble:last-of-type {
-      // margin-bottom: $bubble-overflow;
-      margin-bottom: 0;
-      /* &:after, .document-container:last-of-type .document-selection {
-        bottom: 0 !important;
-      } */
+.bubbles-group-last {
+  .bubble.is-group-last {
+    // margin-bottom: $bubble-overflow;
+    margin-bottom: 0;
+    /* &:after, .document-container:last-of-type .document-selection {
+      bottom: 0 !important;
+    } */
 
-      &:after,
-      .document-container:last-of-type .document-selection {
-        bottom: -#{$bubble-overflow};
-      }
+    &:after,
+    .document-container:last-of-type .document-selection {
+      bottom: -#{$bubble-overflow};
     }
   }
 }

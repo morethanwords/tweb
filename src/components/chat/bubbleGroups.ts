@@ -242,6 +242,7 @@ export class BubbleGroup {
     const unmountedLength = dateGroups.slice(idx + 1).reduce((acc, v) => acc + (v.mounted ? 0 : 1), 0);
     positionElementByIndex(this.container, dateContainer.container, STICKY_OFFSET + dateGroupsLength - 1 - idx - unmountedLength);
     this.mounted = true;
+    this.groups?.updateGroupsClassNames();
   }
 
   onItemUnmount() {
@@ -254,6 +255,7 @@ export class BubbleGroup {
       this.chat.bubbles.deleteEmptyDateGroups();
       this.mounted = false;
       this.middlewareHelper.clean();
+      this.groups?.updateGroupsClassNames();
     } else {
       this.updateClassNames();
     }
@@ -470,7 +472,16 @@ export default class BubbleGroups {
   }
 
   insertGroup(group: BubbleGroup) {
-    return insertInDescendSortedArray(this.groups, group, this.sortGroupsKey);
+    const idx = insertInDescendSortedArray(this.groups, group, this.sortGroupsKey);
+    // this.updateGroupsClassNames();
+    return idx;
+  }
+
+  updateGroupsClassNames() {
+    this.groups.forEach((group, idx, arr) => {
+      group.container.classList.toggle('bubbles-group-last', idx === 0);
+      group.container.classList.toggle('bubbles-group-first', idx === (arr.length - 1));
+    });
   }
 
   addItemToCache(item: GroupItem) {
