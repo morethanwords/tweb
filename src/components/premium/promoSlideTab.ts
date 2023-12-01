@@ -205,6 +205,7 @@ export default class PromoSlideTab {
         const badge = i18n('New');
         badge.classList.add('row-title-badge');
         row.title.append(badge);
+        badge.style.backgroundColor = PREMIUM_FEATURES_COLORS[idx];
       }
 
       return row.container;

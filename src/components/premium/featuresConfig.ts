@@ -45,20 +45,23 @@ export interface PremiumPromoFeature {
 }
 
 export const PREMIUM_FEATURES_COLORS: string[] = [
-  '#f2862d',
-  '#ef813d',
-  '#e87460',
-  '#e16782',
-  '#d560a6',
-  '#c062d1',
-  '#a66cf3',
-  '#9873ff',
-  '#8780ff',
-  '#6699fe',
-  '#54abe3',
-  '#51b6ae',
-  '#4ec17b',
-  '#4cc663'
+  '#ef6922',
+  '#e95a2c',
+  '#e74e33',
+  '#e3433c',
+  '#db374b',
+  '#cb3e6d',
+  '#bc4395',
+  '#ab4ac4',
+  '#9b4fed',
+  '#8958ff',
+  '#676bff',
+  '#5b79ff',
+  '#4492ff',
+  '#429bd5',
+  '#41a6a5',
+  '#3eb26d',
+  '#3dbd4a'
 ];
 
 const stories: PremiumPromoFeature = {
