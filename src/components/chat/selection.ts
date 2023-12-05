@@ -44,6 +44,7 @@ import IS_STANDALONE from '../../environment/standalone';
 import rootScope from '../../lib/rootScope';
 import {toastNew} from '../toast';
 import confirmationPopup from '../confirmationPopup';
+import {TEST_BUBBLES_DELETION} from './bubbles';
 
 const accumulateMapSet = (map: Map<any, Set<number>>) => {
   return [...map.values()].reduce((acc, v) => acc + v.size, 0);
@@ -1062,6 +1063,10 @@ export default class ChatSelection extends AppSelection {
         this.selectionDeleteBtn = Button('btn-primary btn-transparent danger text-bold selection-container-delete', {icon: 'delete'});
         this.selectionDeleteBtn.append(i18n('Delete'));
         attachClickEvent(this.selectionDeleteBtn, () => {
+          if(TEST_BUBBLES_DELETION) {
+            return this.chat.bubbles.deleteMessagesByIds(this.getSelectedMids(), true);
+          }
+
           PopupElement.createPopup(
             PopupDeleteMessages,
             this.chat.peerId,

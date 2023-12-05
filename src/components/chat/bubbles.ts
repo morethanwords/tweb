@@ -50,7 +50,7 @@ import reflowScrollableElement from '../../helpers/dom/reflowScrollableElement';
 import replaceContent from '../../helpers/dom/replaceContent';
 import setInnerHTML, {setDirection} from '../../helpers/dom/setInnerHTML';
 import whichChild from '../../helpers/dom/whichChild';
-import {cancelAnimationByKey} from '../../helpers/animation';
+import {animateSingle, cancelAnimationByKey} from '../../helpers/animation';
 import assumeType from '../../helpers/assumeType';
 import debounce, {DebounceReturnType} from '../../helpers/schedulers/debounce';
 import windowSize from '../../helpers/windowSize';
@@ -160,8 +160,11 @@ import {JSX} from 'solid-js';
 import Giveaway, {getGiftAssetName, onGiveawayClick} from './giveaway';
 import PopupGiftLink from '../popups/giftLink';
 import PopupPremium from '../popups/premium';
+import getParents from '../../helpers/dom/getParents';
+import positionElementByIndex from '../../helpers/dom/positionElementByIndex';
 
 export const USER_REACTIONS_INLINE = false;
+export const TEST_BUBBLES_DELETION = false;
 const USE_MEDIA_TAILS = false;
 type MESSAGE_ACTION_TYPE = Message.messageService['action']['_'];
 type IGNORE_ACTION_KEY = MESSAGE_ACTION_TYPE;
@@ -276,6 +279,7 @@ export default class ChatBubbles {
     div: HTMLElement,
     firstTimestamp: number,
     container: HTMLElement,
+    groupsLength: number,
     timeout?: number
   }} = {};
 
@@ -368,6 +372,8 @@ export default class ChatBubbles {
 
   private updateLocationOnEdit: Map<HTMLElement, (message: Message.message) => void> = new Map();
   public replySwipeHandler: SwipeHandler;
+
+  private remover: HTMLDivElement;
 
   constructor(
     private chat: Chat,
@@ -1071,9 +1077,15 @@ export default class ChatBubbles {
     const chatInner = this.chatInner = document.createElement('div');
     chatInner.classList.add('bubbles-inner');
 
+    const removerContainer = document.createElement('div');
+    removerContainer.classList.add('bubbles-remover-container');
+    const remover = this.remover = document.createElement('div');
+    remover.classList.add('bubbles-remover', 'bubbles-inner');
+    removerContainer.append(remover);
+
     this.setScroll();
 
-    container.append(this.scrollable.container);
+    container.append(removerContainer, this.scrollable.container);
   }
 
   public attachContainerListeners() {
@@ -1086,14 +1098,19 @@ export default class ChatBubbles {
       this.listenerSetter.add(container)('dblclick', async(e) => {
         const bubble = findUpClassName(e.target, 'grouped-item') || findUpClassName(e.target, 'bubble');
         if(bubble) {
-          const mid = +bubble.dataset.mid
+          const mid = +bubble.dataset.mid;
+
+          if(TEST_BUBBLES_DELETION) {
+            return this.deleteMessagesByIds([mid], true);
+          }
+
           this.log('debug message:', await this.chat.getMessage(mid));
           this.highlightBubble(bubble);
         }
       });
     }
 
-    if(!IS_MOBILE) {
+    if(!IS_MOBILE && !TEST_BUBBLES_DELETION) {
       this.listenerSetter.add(container)('dblclick', async(e) => {
         if(this.chat.type === 'pinned' ||
           this.chat.selection.isSelecting ||
@@ -2715,9 +2732,45 @@ export default class ChatBubbles {
     }
   }
 
-  public destroyBubble(bubble: HTMLElement, mid = +bubble.dataset.mid) {
+  public destroyBubble(
+    bubble: HTMLElement,
+    mid = +bubble.dataset.mid,
+    animate?: boolean
+  ) {
+    let placeholder: HTMLElement, canBeDeleted: {
+      element: HTMLElement,
+      parentElement: HTMLElement,
+      index: number,
+      rect: DOMRect,
+      marginBottom?: number,
+      previousElement?: HTMLElement,
+      previousSameKindElement?: HTMLElement
+    }[];
+    let wasScrollSize: number;
+    if(animate && bubble.isConnected) {
+      const goodSelectors: string[] = ['.bubbles-date-group', '.bubbles-group', '.bubble'];
+      canBeDeleted = [bubble, ...getParents(bubble, goodSelectors[0])].map((element, idx, arr) => {
+        const length = arr.length;
+        const selectors = goodSelectors.slice(0, length - idx);
+        const sameKind = Array.from(arr[length - 1].parentElement.querySelectorAll<HTMLElement>(selectors.join(' ')));
+        const previousSameKindElement = sameKind[sameKind.indexOf(element) - 1];
+        return {
+          element,
+          parentElement: element.parentElement,
+          index: whichChild(element, false),
+          rect: element.getBoundingClientRect(),
+          previousElement: element.previousElementSibling as HTMLElement,
+          marginBottom: parseInt(window.getComputedStyle(element).marginBottom),
+          previousSameKindElement
+        };
+      });
+
+      wasScrollSize = this.scrollable.scrollSize;
+      placeholder = document.createElement('div');
+      placeholder.classList.add('bubble-delete-placeholder');
+    }
+
     // this.log.warn('destroy bubble', bubble, mid);
-    bubble.middlewareHelper.destroy();
 
     /* const mounted = this.getMountedBubble(mid);
     if(!mounted) return; */
@@ -2732,6 +2785,9 @@ export default class ChatBubbles {
       this.firstUnreadBubble = null;
     }
 
+    const scrollSaver = canBeDeleted && this.createScrollSaver(false);
+    scrollSaver?.save();
+
     this.bubbleGroups.removeAndUnmountBubble(bubble);
     if(this.observer) {
       this.observer.unobserve(bubble, this.unreadedObserverCallback);
@@ -2743,16 +2799,105 @@ export default class ChatBubbles {
       this.observer.unobserve(bubble, this.stickerEffectObserverCallback);
     }
 
+    if(canBeDeleted) {
+      let deletingItem: typeof canBeDeleted[0];
+      canBeDeleted.forEach((item) => {
+        if(!item.element.parentElement) {
+          deletingItem = item;
+        }
+      });
+
+      const height = wasScrollSize - this.scrollable.scrollSize;
+      const isDeletingOnlyBubble = deletingItem === canBeDeleted[0];
+      const isGroupLastBubble = bubble.classList.contains('is-group-last');
+      const isGroupFirstBubble = bubble.classList.contains('is-group-first');
+
+      placeholder.style.cssText = `width: 100%; height: ${height}px;`;
+      deletingItem.element.style.cssText = `position: absolute; z-index: 0; left: 0; right: 0; top: ${deletingItem.rect.top - 56}px; height: ${deletingItem.rect.height}px;`;
+
+      this.remover.append(deletingItem.element);
+
+      canBeDeleted.forEach((item) => {
+        if(!item.element.parentElement) {
+          positionElementByIndex(item.element, item.parentElement, item.index, -1);
+        }
+      });
+
+      // * if joined groups that were splitted before with this bubble, let's insert placeholder inside of a new group
+      if(deletingItem.previousElement && !deletingItem.previousElement.parentElement && canBeDeleted[0].previousSameKindElement) {
+        canBeDeleted[0].previousSameKindElement.after(placeholder);
+      } else {
+        positionElementByIndex(placeholder, deletingItem.parentElement, deletingItem.index, -1);
+      }/*  else if(canBeDeleted[0].nextSameKindElement) {
+        canBeDeleted[0].nextSameKindElement.before(placeholder);
+      } */
+
+      // if(false && isDeletingOnlyBubble && isGroupLastBubble && !isGroupFirstBubble) {
+      //   canBeDeleted[1].element.after(placeholder);
+      // } else if(deletingItem.previousElement?.parentElement) {
+      //   deletingItem.previousElement.after(placeholder);
+      // } else if(deletingItem.nextElement?.parentElement) {
+      //   deletingItem.nextElement.before(placeholder);
+      // } else {
+      //   positionElementByIndex(placeholder, deletingItem.parentElement, deletingItem.index, -1);
+      // }
+
+      scrollSaver.restore();
+      scrollSaver.save(); // * save again after moving elements
+
+      const options: KeyframeAnimationOptions = {duration: 300, fill: 'forwards', easing: 'cubic-bezier(.4, .0, .2, 1)'};
+
+      // const contentWrapper = bubble.querySelector<HTMLElement>('.bubble-content-wrapper');
+      // const bubbleDeleteKeyframe: Keyframe = {transform: 'scale(0)'};
+      // const bubbleDeleteKeyframe: Keyframe = {transform: `translateX(${3 * (bubble.classList.contains('is-out') ? 1 : -1)}rem)`};
+      // const avatarContainer = isDeletingOnlyBubble && isGroupLastBubble && !isGroupFirstBubble && deletingItem.parentElement.querySelector<HTMLElement>('.bubbles-group-avatar-container');
+      const avatarContainer = isDeletingOnlyBubble && isGroupLastBubble && !isGroupFirstBubble && deletingItem.parentElement.querySelector<HTMLElement>('.bubbles-group-avatar');
+      // const avatarForDeletion = isGroupLastBubble && isGroupFirstBubble && bubble.parentElement.querySelector<HTMLElement>('.bubbles-group-avatar');
+      // false && [contentWrapper, avatarForDeletion].filter(Boolean).forEach((element) => {
+      //   element.style.transformOrigin = `var(--transform-origin-inline-${bubble.classList.contains('is-out') ? 'end' : 'start'}) top`;
+      // });
+      // * fix jumping floating avatar when height reaches 0px
+      const placeholderAnimation = placeholder.animate([/* {height: `${rect.height}px`},  */{height: '0.01px', marginBottom: '0px'}], options);
+      const deletionAnimation = deletingItem.element.animate([/* {opacity: 1},  */{/* filter: 'blur(8px)',  */opacity: 0/* , ...(isDeletingOnlyBubble ? bubbleDeleteKeyframe : {}) */}], options);
+      // const bubbleDeletionAnimation = /* deletingItem !== canBeDeleted[0] &&  */false && contentWrapper.animate([bubbleDeleteKeyframe], options);
+      // const avatarDeletionAnimation = false && avatarForDeletion && avatarForDeletion.animate([bubbleDeleteKeyframe], options);
+      // const avatarAnimation = avatarContainer ? avatarContainer.animate([{transform: `translateY(0px)`}, {transform: `translateY(-${deletingItem.marginBottom}px)`}], {...options/* , duration: +options.duration + 2000, fill: 'auto' */}) : undefined;
+      const avatarAnimation = avatarContainer ? avatarContainer.animate([{transform: `translateY(-${deletingItem.marginBottom}px)`}, {transform: `translateY(-${deletingItem.marginBottom}px)`}], options) : undefined;
+      // const avatarAnimation = avatarContainer && avatarContainer.animate([{bottom: `0px`}, {bottom: `${deletingItem.marginBottom}px`}], {...options, duration: +options.duration + 200, fill: 'auto'});
+      const promises = [placeholderAnimation, deletionAnimation, avatarAnimation/* , bubbleDeletionAnimation, avatarDeletionAnimation */].filter(Boolean).map((animation) => animation.finished);
+      let finished = false;
+      const promise = Promise.all(promises).then(() => {
+        finished = true;
+        placeholder.remove();
+        deletingItem.element.remove();
+        avatarAnimation?.cancel();
+        bubble.middlewareHelper.destroy();
+      });
+
+      dispatchHeavyAnimationEvent(promise);
+
+      scrollSaver && animateSingle(() => {
+        if(finished) {
+          return false;
+        }
+
+        scrollSaver.restore();
+        return true;
+      }, this.scrollable.container);
+    } else {
+      bubble.middlewareHelper.destroy();
+    }
+
     // this.reactions.delete(mid);
   }
 
   public deleteMessagesByIds(mids: number[], permanent = true, ignoreOnScroll?: boolean) {
     let deleted = false;
-    mids.forEach((mid) => {
+    mids.slice().sort((a, b) => b - a).forEach((mid) => {
       const bubble = this.bubbles[mid];
       if(!bubble) return;
 
-      this.destroyBubble(bubble, mid);
+      this.destroyBubble(bubble, mid, permanent && liteMode.isAvailable('animations'));
 
       deleted = true;
     });
@@ -3104,7 +3249,8 @@ export default class ChatBubbles {
     ret = this.dateMessages[dateTimestamp] = {
       div: bubble,
       container,
-      firstTimestamp: date.getTime()
+      firstTimestamp: date.getTime(),
+      groupsLength: 0
     };
 
     const haveTimestamps = getObjectKeysAndSort(this.dateMessages, 'asc');
@@ -3894,8 +4040,10 @@ export default class ChatBubbles {
       this.chatInner.classList.toggle('has-rights', canWrite);
       this.container.classList.toggle('is-chat-input-hidden', !canWrite);
 
-      this.chatInner.classList.toggle('is-chat', isAnyGroup);
-      this.chatInner.classList.toggle('is-broadcast', isBroadcast);
+      [this.chatInner, this.remover].forEach((element) => {
+        element.classList.toggle('is-chat', isAnyGroup);
+        element.classList.toggle('is-broadcast', isBroadcast);
+      });
 
       this.createResizeObserver();
     };
@@ -8201,24 +8349,23 @@ export default class ChatBubbles {
   }
 
   public deleteEmptyDateGroups() {
-    const mustBeCount = this.stickyIntersector ? STICKY_OFFSET : 1;
     let deleted = false;
     for(const i in this.dateMessages) {
       const dateMessage = this.dateMessages[i];
 
-      if(dateMessage.container.childElementCount === mustBeCount) { // only date div + sentinel div
-        dateMessage.container.remove();
-        if(this.stickyIntersector) {
-          this.stickyIntersector.unobserve(dateMessage.container, dateMessage.div);
-        }
-        delete this.dateMessages[i];
-        deleted = true;
-
-        // * no sense in it
-        /* if(dateMessage.div === this.previousStickyDate) {
-          this.previousStickyDate = undefined;
-        } */
+      if(dateMessage.groupsLength) {
+        continue;
       }
+
+      dateMessage.container.remove();
+      this.stickyIntersector?.unobserve(dateMessage.container, dateMessage.div);
+      delete this.dateMessages[i];
+      deleted = true;
+
+      // * no sense in it
+      /* if(dateMessage.div === this.previousStickyDate) {
+        this.previousStickyDate = undefined;
+      } */
     }
 
     if(!deleted) {

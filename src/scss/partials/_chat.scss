@@ -1750,6 +1750,24 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 	}
 }
 
+.bubbles-remover {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%) !important;
+  z-index: 0;
+
+  &-container {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  &:after {
+    display: none;
+  }
+}
+
 .bubbles-inner {
 	width: 100%;
 	display: flex;

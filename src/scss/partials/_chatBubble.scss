@@ -115,6 +115,10 @@
     }
   }
 
+  // &.is-deleting:after {
+  //   display: none;
+  // }
+
   &:not(.service) {
     @include respond-to(not-handhelds) {
       --max-width: 85%;
@@ -957,7 +961,7 @@
         pointer-events: none;
         
         .bubble-content-wrapper {
-          transform: scale3d(.8, .8, 1) translateX(0);
+          transform: translateX(0) scale3d(.8, .8, 1);
           //transform: scale(.8) translateX(0);
           opacity: 0;
         }
@@ -3126,10 +3130,10 @@
       }
 
       @include respond-to(medium-screens) {
-        transform: scale(1) translateX(calc((var(--chat-input-size) + #{$btn-send-margin}) * var(--reflect) * -1));
+        transform: translateX(calc((var(--chat-input-size) + #{$btn-send-margin}) * var(--reflect) * -1)) scale(1);
 
         &.zoom-fade {
-          transform: scale3d(.8, .8, 1) translateX(calc((var(--chat-input-size) + #{$btn-send-margin}) * var(--reflect) * -1));
+          transform: translateX(calc((var(--chat-input-size) + #{$btn-send-margin}) * var(--reflect) * -1)) scale3d(.8, .8, 1);
         }
 
         @include animation-level(2) {
@@ -3138,14 +3142,14 @@
 
         //@include respond-to(no-floating-left-sidebar) {
           body.is-right-column-shown & {
-            transform: scale(1) translateX(0);
+            transform: translateX(0) scale(1);
             
             @include animation-level(2) {
               transition: var(--bubble-transition-in);
             }
   
             &.zoom-fade {
-              transform: scale3d(.8, .8, 1) translateX(0);
+              transform: translateX(0) scale3d(.8, .8, 1);
             }
           }
         //}

@@ -13,7 +13,7 @@ import insertInDescendSortedArray from '../../helpers/array/insertInDescendSorte
 import positionElementByIndex from '../../helpers/dom/positionElementByIndex';
 import {Message} from '../../layer';
 import {NULL_PEER_ID, REPLIES_PEER_ID} from '../../lib/mtproto/mtproto_config';
-import {SERVICE_AS_REGULAR, STICKY_OFFSET} from './bubbles';
+import ChatBubbles, {SERVICE_AS_REGULAR, STICKY_OFFSET} from './bubbles';
 import forEachReverse from '../../helpers/array/forEachReverse';
 import partition from '../../helpers/array/partition';
 import noop from '../../helpers/noop';
@@ -46,6 +46,7 @@ export class BubbleGroup {
   dateTimestamp: number;
   offset: number;
   middlewareHelper: MiddlewareHelper;
+  dateContainer: ReturnType<ChatBubbles['getDateContainerByTimestamp']>;
 
   constructor(chat: Chat, groups?: BubbleGroups, dateTimestamp?: number) {
     this.container = document.createElement('div');
@@ -234,13 +235,14 @@ export class BubbleGroup {
       return;
     }
 
-    const dateContainer = this.chat.bubbles.getDateContainerByTimestamp(this.dateTimestamp / 1000);
+    const dateContainer = this.dateContainer = this.chat.bubbles.getDateContainerByTimestamp(this.dateTimestamp / 1000);
     // const idx = this.groups.indexOf(group);
     const dateGroups = this.groups.groups.filter((_group) => _group.dateTimestamp === this.dateTimestamp);
     const dateGroupsLength = dateGroups.length;
     const idx = dateGroups.indexOf(this);
     const unmountedLength = dateGroups.slice(idx + 1).reduce((acc, v) => acc + (v.mounted ? 0 : 1), 0);
     positionElementByIndex(this.container, dateContainer.container, STICKY_OFFSET + dateGroupsLength - 1 - idx - unmountedLength);
+    ++dateContainer.groupsLength;
     this.mounted = true;
     this.groups?.updateGroupsClassNames();
   }
@@ -252,6 +254,8 @@ export class BubbleGroup {
 
     if(!this.items.length) {
       this.container.remove();
+      this.dateContainer && --this.dateContainer.groupsLength;
+      this.dateContainer = undefined;
       this.chat.bubbles.deleteEmptyDateGroups();
       this.mounted = false;
       this.middlewareHelper.clean();

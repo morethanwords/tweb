@@ -57,6 +57,7 @@ import cloneDOMRect from '../../helpers/dom/cloneDOMRect';
 import PopupPremium from '../popups/premium';
 import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 import {ChatInputReplyTo} from './input';
+import {TEST_BUBBLES_DELETION} from './bubbles';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -1162,6 +1163,10 @@ export default class ChatContextMenu {
 
         return;
       }
+    }
+
+    if(TEST_BUBBLES_DELETION) {
+      return this.chat.bubbles.deleteMessagesByIds(await this.chat.getMidsByMid(mid), true);
     }
 
     PopupElement.createPopup(

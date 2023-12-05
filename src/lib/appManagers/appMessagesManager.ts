@@ -73,6 +73,7 @@ import getPeerId from './utils/peers/getPeerId';
 const APITIMEOUT = 0;
 const DO_NOT_READ_HISTORY = false;
 const DO_NOT_SEND_MESSAGES = false;
+const DO_NOT_DELETE_MESSAGES = false;
 const GLOBAL_HISTORY_PEER_ID = NULL_PEER_ID;
 
 export type SendFileDetails = {
@@ -4302,6 +4303,17 @@ export class AppMessagesManager extends AppManager {
       // filter outgoing messages
       return this.appMessagesIdsManager.generateMessageId(messageId, channelId) === mid && messageId;
     }).filter(Boolean);
+
+    if(DO_NOT_DELETE_MESSAGES) {
+      this.apiUpdatesManager.processLocalUpdate({
+        _: 'updateDeleteMessages',
+        messages: mids,
+        pts: 0,
+        pts_count: 0
+      });
+
+      return;
+    }
 
     if(channelId) {
       promise = this.apiManager.invokeApi('channels.deleteMessages', {
