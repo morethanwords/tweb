@@ -6549,7 +6549,7 @@ export class AppMessagesManager extends AppManager {
     // * album end
 
     if(options.threadId) {
-      if(isTopEnd) {
+      if(isTopEnd && !this.appPeersManager.isForum(peerId)) {
         const last = historyStorage.history.last;
         const firstMessage = this.getMessageByPeer(peerId, options.threadId/* last[last.length - 1] */) as Message.message;
         const message = this.getMessageWithReplies(firstMessage);
