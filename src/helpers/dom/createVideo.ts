@@ -1,3 +1,4 @@
+import {getHeavyAnimationPromise} from '../../hooks/useHeavyAnimationCheck';
 import {Middleware} from '../middleware';
 
 // const createdVideos: HTMLVideoElement[] = [];
@@ -13,7 +14,8 @@ export default function createVideo({
   video.setAttribute('playsinline', 'true');
   // createdVideos.push(video);
 
-  middleware?.onDestroy(() => {
+  middleware?.onDestroy(async() => {
+    await getHeavyAnimationPromise();
     video.src = '';
     video.load();
   });
