@@ -141,6 +141,10 @@ export default function hasRights(
     case 'view_participants': {
       return !!(chat._ === 'chat' || !chat.pFlags.broadcast || chat.pFlags.creator || chat.admin_rights);
     }
+
+    case 'create_giveaway': {
+      return isAdmin && !!myFlags['post_messages'];
+    }
   }
 
   return true;

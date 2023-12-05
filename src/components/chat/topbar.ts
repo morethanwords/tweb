@@ -55,6 +55,7 @@ import {avatarNew, findUpAvatar} from '../avatarNew';
 import {MiddlewareHelper, getMiddleware} from '../../helpers/middleware';
 import setBadgeContent from '../../helpers/setBadgeContent';
 import createBadge from '../../helpers/createBadge';
+import PopupBoostsViaGifts from '../popups/boostsViaGifts';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -477,6 +478,13 @@ export default class ChatTopbar {
       text: 'GiftPremium',
       onClick: () => this.chat.appImManager.giftPremium(this.peerId),
       verify: () => this.chat.canGiftPremium()
+    }, {
+      icon: 'boost',
+      text: 'BoostsViaGifts.Title',
+      onClick: () => {
+        PopupElement.createPopup(PopupBoostsViaGifts, this.peerId);
+      },
+      verify: async() => await this.managers.appPeersManager.isBroadcast(this.peerId) && this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'create_giveaway')
     }, {
       icon: 'bots',
       text: 'Settings',
