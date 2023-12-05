@@ -1877,7 +1877,7 @@ export class AppMessagesManager extends AppManager {
     }
 
     header.reply_media = (originalMessage as Message.message)?.media;
-    header.reply_from = this.generateForwardHeader(peerId, originalMessage as Message.message);
+    header.reply_from = this.generateForwardHeader(peerId, originalMessage as Message.message, true);
 
     return header;
   }
@@ -1932,14 +1932,14 @@ export class AppMessagesManager extends AppManager {
     return pFlags;
   }
 
-  private generateForwardHeader(peerId: PeerId, originalMessage: Message.message) {
+  private generateForwardHeader(peerId: PeerId, originalMessage: Message.message, isReply?: boolean) {
     if(!originalMessage) {
       return;
     }
 
     const myId = this.appUsersManager.getSelf().id.toPeerId();
     const fromId = originalMessage.fromId;
-    if(fromId === myId && originalMessage.peerId === myId && !originalMessage.fwd_from) {
+    if(fromId === myId && originalMessage.peerId === myId && !originalMessage.fwd_from && !isReply) {
       return;
     }
 
@@ -1978,7 +1978,7 @@ export class AppMessagesManager extends AppManager {
       fwdHeader.channel_post = originalMessage.id;
     }
 
-    if(peerId === myId && !isUserHidden) {
+    if(peerId === myId && !isUserHidden && !isReply) {
       fwdHeader.saved_from_msg_id = originalMessage.id;
       fwdHeader.saved_from_peer = this.appPeersManager.getOutputPeer(originalMessage.peerId);
     }
