@@ -116,7 +116,6 @@ import safePlay from '../../helpers/dom/safePlay';
 import {RequestWebViewOptions} from './appAttachMenuBotsManager';
 import PopupWebApp from '../../components/popups/webApp';
 import {getPeerColorIndexByPeer, getPeerColorsByPeer, setPeerColors} from './utils/peers/getPeerColorById';
-import PopupBoostsViaGifts from '../../components/popups/boostsViaGifts';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -2305,7 +2304,7 @@ export class AppImManager extends EventListenerBase<{
         ((chatInfo as ChatFull.chatFull).participants as ChatParticipants.chatParticipants)?.participants?.length ||
         1;
       // if(participants_count) {
-      let subtitle = await Promise.resolve(getChatMembersString(chatId));
+      let subtitle = await getChatMembersString(chatId);
 
       if(participants_count < 2) {
         return subtitle;

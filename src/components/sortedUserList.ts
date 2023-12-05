@@ -59,7 +59,7 @@ export default class SortedUserList extends SortedList<SortedUser> {
       },
       onUpdate: options.onUpdate || (async(element) => {
         if(element.id.isAnyChat()) {
-          const status = await Promise.resolve(getChatMembersString(element.id.toChatId(), this.managers));
+          const status = await getChatMembersString(element.id.toChatId(), this.managers);
           replaceContent(element.dom.lastMessageSpan, status);
         } else {
           const status = getUserStatusString(await this.managers.appUsersManager.getUser(element.id));

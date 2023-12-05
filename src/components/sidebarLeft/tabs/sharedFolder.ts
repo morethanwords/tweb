@@ -400,7 +400,7 @@ export default class AppSharedFolderTab extends SliderSuperTabEventable<{
       } else if(!canSelect) {
         subtitle = i18n('SharedFolder.Cant.Share');
       } else {
-        subtitle = await Promise.resolve(getChatMembersString(peer.id, undefined, peer));
+        subtitle = await getChatMembersString(peer.id, undefined, peer);
       }
 
       dom.lastMessageSpan.append(subtitle);

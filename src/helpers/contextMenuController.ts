@@ -4,7 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import {ButtonMenuItemOptions} from '../components/buttonMenu';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
+import findUpClassName from './dom/findUpClassName';
 import mediaSizes from './mediaSizes';
 import OverlayClickHandler from './overlayClickHandler';
 import overlayCounter from './overlayCounter';
@@ -32,6 +34,9 @@ class ContextMenuController extends OverlayClickHandler {
   }
 
   private onMouseMove = (e: MouseEvent) => {
+    const element = findUpClassName(e.target, 'btn-menu-item');
+    const inner = (element as any)?.inner as ButtonMenuItemOptions['inner'];
+
     const rect = this.element.getBoundingClientRect();
     const {clientX, clientY} = e;
 

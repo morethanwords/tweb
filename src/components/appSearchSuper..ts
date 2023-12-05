@@ -102,7 +102,8 @@ export type SearchSuperContext = {
   maxDate?: number
 };
 
-export type SearchSuperMediaType = 'stories' | 'members' | 'media' | 'files' | 'links' | 'music' | 'chats' | 'voice' | 'groups';
+export type SearchSuperMediaType = 'stories' | 'members' | 'media' |
+  'files' | 'links' | 'music' | 'chats' | 'voice' | 'groups' | 'similar';
 export type SearchSuperMediaTab = {
   inputFilter: SearchSuperType,
   name: LangPackKey,
@@ -1276,7 +1277,7 @@ export default class AppSearchSuper {
             });
 
             dom.lastMessageSpan.append(await (peerId.isUser() ?
-              getUserStatusString(await this.managers.appUsersManager.getUser(peerId.toUserId())) :
+              Promise.resolve(getUserStatusString(await this.managers.appUsersManager.getUser(peerId.toUserId()))) :
               getChatMembersString(peerId.toChatId())));
           });
 
@@ -1543,6 +1544,8 @@ export default class AppSearchSuper {
     return promise;
   }
 
+  private async loadSimilarChannels(mediaTab: SearchSuperMediaTab) {}
+
   private loadType(
     mediaTab: SearchSuperMediaTab,
     justLoad: boolean,
@@ -1561,6 +1564,8 @@ export default class AppSearchSuper {
       otherPromise = this.loadMembers(mediaTab);
     } else if(mediaTab.type === 'stories') {
       otherPromise = this.loadStories(mediaTab);
+    } else if(mediaTab.type === 'similar') {
+      otherPromise = this.loadSimilarChannels(mediaTab);
     }
 
     if(otherPromise) {
@@ -1716,12 +1721,14 @@ export default class AppSearchSuper {
       counters,
       canViewMembers,
       canViewGroups,
-      canViewStories
+      canViewStories,
+      canViewSimilar
     ] = await Promise.all([
       this.managers.appMessagesManager.getSearchCounters(peerId, filters, undefined, threadId),
       this.canViewMembers(),
       this.canViewGroups(),
-      this.canViewStories()
+      this.canViewStories(),
+      this.canViewSimilar()
     ]);
 
     if(!middleware()) {
@@ -1757,11 +1764,13 @@ export default class AppSearchSuper {
     const membersTab = this.mediaTabsMap.get('members');
     const storiesTab = this.mediaTabsMap.get('stories');
     const groupsTab = this.mediaTabsMap.get('groups');
+    const similarTab = this.mediaTabsMap.get('similar');
 
     const a: [SearchSuperMediaTab, boolean][] = [
       [storiesTab, canViewStories],
       [membersTab, canViewMembers],
-      [groupsTab, canViewGroups]
+      [groupsTab, canViewGroups],
+      [similarTab, canViewSimilar]
     ];
 
     a.forEach(([tab, value]) => {
@@ -1913,6 +1922,10 @@ export default class AppSearchSuper {
       (this.searchContext.peerId.isUser() || await this.managers.appPeersManager.isChannel(this.searchContext.peerId)) &&
       this.managers.appStoriesManager.getPinnedStories(this.searchContext.peerId, 1)
       .then((storyItems) => !!storyItems.length).catch(() => false);
+  }
+
+  public async canViewSimilar() {
+    return !this.searchContext.peerId.isUser();
   }
 
   public cleanup() {

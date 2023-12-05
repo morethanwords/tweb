@@ -8,7 +8,7 @@ import type {Dialog} from '../lib/appManagers/appMessagesManager';
 import type {ForumTopic} from '../layer';
 import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '../lib/appManagers/appDialogsManager';
 import rootScope from '../lib/rootScope';
-import {ButtonMenuItemOptionsVerifiable, ButtonMenuSync} from './buttonMenu';
+import {ButtonMenuItemOptionsVerifiable} from './buttonMenu';
 import PopupDeleteDialog from './popups/deleteDialog';
 import {i18n, LangPackKey, _i18n} from '../lib/langPack';
 import findUpTag from '../helpers/dom/findUpTag';
@@ -21,6 +21,7 @@ import createContextMenu from '../helpers/dom/createContextMenu';
 import PopupElement from './popups';
 import cancelEvent from '../helpers/dom/cancelEvent';
 import IS_SHARED_WORKER_SUPPORTED from '../environment/sharedWorkerSupport';
+import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 
 export default class DialogsContextMenu {
   private buttons: ButtonMenuItemOptionsVerifiable[];
@@ -160,6 +161,25 @@ export default class DialogsContextMenu {
       verify: () => {
         return this.canManageTopics && !!(this.dialog as ForumTopic.forumTopic).pFlags.closed;
       }
+    }, {
+      icon: 'folder',
+      text: 'FilterAddTo',
+      onClick: () => {},
+      inner: async() => {
+        const filters = await this.managers.filtersStorage.getDialogFilters();
+        return {
+          buttons: filters.map((filter) => {
+            const title = document.createElement('span');
+            title.append(wrapEmojiText(filter.title));
+            return {
+              icon: 'folder',
+              textElement: title,
+              onClick: () => {}
+            };
+          })
+        };
+      },
+      verify: () => false
     }, {
       icon: 'delete',
       className: 'danger',

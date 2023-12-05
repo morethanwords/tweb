@@ -1,8 +1,13 @@
-export default function getParents(elem: Node) {
-  var parents: Node[] = [];
-  while(elem.parentNode && elem.parentNode.nodeName.toLowerCase() != 'body') {
-    elem = elem.parentNode;
+export default function getParents(elem: HTMLElement, selector?: string) {
+  const parents: HTMLElement[] = [];
+  while(elem.parentElement && elem.parentElement !== document.body) {
+    elem = elem.parentElement;
     parents.push(elem);
+
+    if(selector && elem.matches(selector)) {
+      break;
+    }
   }
+
   return parents;
 }

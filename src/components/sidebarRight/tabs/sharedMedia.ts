@@ -20,7 +20,6 @@ import {Message} from '../../../layer';
 import getMessageThreadId from '../../../lib/appManagers/utils/messages/getMessageThreadId';
 import AppEditTopicTab from './editTopic';
 import liteMode from '../../../helpers/liteMode';
-import PopupElement from '../../popups';
 import AppEditBotTab from './editBot';
 import addChatUsers from '../../addChatUsers';
 
@@ -282,7 +281,11 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         inputFilter: 'inputMessagesFilterEmpty',
         name: 'ChatList.Filter.Groups',
         type: 'groups'
-      }],
+      }/* , {
+        inputFilter: 'inputMessagesFilterEmpty',
+        name: 'SimilarChannels',
+        type: 'similar'
+      } */],
       scrollable: this.scrollable,
       onChangeTab: (mediaTab) => {
         lastMediaTabType = mediaTab.type;

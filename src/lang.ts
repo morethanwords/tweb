@@ -1558,6 +1558,7 @@ const lang = {
   'SavedMessagesInfoQuote': 'Quote here to save.',
   'ReplyPrivate': 'This reply is from a private chat.',
   'QuotePrivate': 'This quote is from a private chat',
+  'FilterAddTo': 'Add to folder',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

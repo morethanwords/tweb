@@ -3101,7 +3101,12 @@ export default function StoriesViewer(props: {
     });
 
     actions.viewerReady(false);
-    dispose();
+    if(dispose) {
+      deferred = deferredPromise();
+      dispatchHeavyAnimationEvent(deferred, 1000);
+      dispose();
+      dispose = undefined;
+    }
     actions.pause();
     throttledKeyDown.clear();
     setShow(false);
@@ -3628,8 +3633,6 @@ export default function StoriesViewer(props: {
           // play();
         }}
         onExit={(el, done) => {
-          deferred = deferredPromise();
-          dispatchHeavyAnimationEvent(deferred, 1000);
           animating = true;
           actions.viewerReady(false);
           animate(el, false, done);

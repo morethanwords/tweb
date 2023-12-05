@@ -23,6 +23,7 @@ import Icon from './icon';
 import RadioForm from './radioForm';
 import rootScope from '../lib/rootScope';
 
+type ButtonMenuItemInner = Omit<Parameters<typeof ButtonMenuSync>[0], 'listenerSetter'>;
 export type ButtonMenuItemOptions = {
   icon?: Icon,
   iconDoc?: Document.document,
@@ -46,6 +47,7 @@ export type ButtonMenuItemOptions = {
   loadPromise?: Promise<any>,
   waitForAnimation?: boolean,
   radioGroup?: string,
+  inner?: (() => MaybePromise<ButtonMenuItemInner>) | ButtonMenuItemInner
   /* , cancelEvent?: true */
 };
 
@@ -202,6 +204,12 @@ function ButtonMenuItem(options: ButtonMenuItemOptions) {
 
   if(options.multiline) {
     el.classList.add('is-multiline');
+  }
+
+  if(options.inner) {
+    el.append(Icon('next', 'btn-menu-item-icon', 'btn-menu-item-icon-right'));
+    el.classList.add('has-inner');
+    (el as any).inner = options.inner;
   }
 
   return [options.separator as HTMLElement, options.element = el].filter(Boolean);

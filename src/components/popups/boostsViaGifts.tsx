@@ -412,7 +412,7 @@ export default class PopupBoostsViaGifts extends PopupElement {
             (
               <span ref={subtitleElement}>
                 {idx() === 0 && i18n('BoostsViaGifts.ChannelSubscription', [boosts()])}
-                {idx() !== 0 && getChatMembersString(peerId.toChatId())}
+                {idx() !== 0 && getChatMembersString(peerId.toChatId(), undefined, undefined, true) as HTMLElement}
               </span>
             );
             const row = new Row({

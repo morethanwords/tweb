@@ -335,6 +335,14 @@ $btn-menu-z-index: 4;
       padding: 0;
       position: relative;
 
+      &-right {
+        margin-inline: .25rem -.5rem;
+        font-size: calc(var(--icon-size) - 2px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
       &.is-external {
         --add: .25rem;
         margin-top: 0;

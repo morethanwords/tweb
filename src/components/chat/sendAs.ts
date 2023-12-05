@@ -131,7 +131,7 @@ export default class ChatSendAs {
       } else if(sendAsPeerId === this.peerId) {
         subtitle.append(i18n('VoiceChat.DiscussionGroup'));
       } else {
-        subtitle.append(await Promise.resolve(getChatMembersString(sendAsPeerId.toChatId())));
+        subtitle.append(await getChatMembersString(sendAsPeerId.toChatId()));
       }
 
       const title = document.createElement('div');

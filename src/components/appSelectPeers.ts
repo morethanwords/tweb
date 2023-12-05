@@ -975,7 +975,7 @@ export default class AppSelectPeers {
   public async wrapSubtitle(peerId: PeerId) {
     let subtitleEl: HTMLElement;
     if(peerId.isAnyChat()) {
-      subtitleEl = await Promise.resolve(getChatMembersString(peerId.toChatId()));
+      subtitleEl = await getChatMembersString(peerId.toChatId());
     } else if(peerId === rootScope.myId && this.meAsSaved) {
       subtitleEl = i18n(this.selfPresence);
     } else {
