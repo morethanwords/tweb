@@ -233,7 +233,7 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
           // element = document.createElement('span');
           // element.style.fontFamily = 'var(--font-monospace)';
           // element.style.fontFamily = 'markup-monospace';
-        } else if(entityLanguage && !options.noTextFormat) {
+        } else if(entity._ === 'messageEntityPre' && !options.noTextFormat) {
           const container = document.createElement('pre');
           const content = document.createElement('div');
           content.classList.add('code-content');
@@ -256,15 +256,15 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
 
           container.append(header, content);
 
-          const result = highlightCode(fullEntityText, languageName);
-          callbackify(result, (html) => {
+          const result = languageName && highlightCode(fullEntityText, languageName);
+          result && callbackify(result, (html) => {
             if(html) {
               element.innerHTML = html;
             }
           });
 
           usedText = true;
-          if(result instanceof Promise) {
+          if(!result || result instanceof Promise) {
             element.textContent = fullEntityText;
           }
 
