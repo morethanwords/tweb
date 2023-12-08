@@ -1668,7 +1668,7 @@ export class AppImManager extends EventListenerBase<{
         return;
       }
 
-      const rights = await PopupNewMedia.canSend(this.chat.peerId, true);
+      const rights = await PopupNewMedia.canSend({...this.chat.getMessageSendingParams(), onlyVisible: true});
 
       const _dropsContainer = newMediaPopup ? mediaDropsContainer : dropsContainer;
       const _drops = newMediaPopup ? mediaDrops : drops;

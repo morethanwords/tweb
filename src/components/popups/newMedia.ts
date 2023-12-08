@@ -104,7 +104,7 @@ export default class PopupNewMedia extends PopupElement {
     this.construct(willAttachType);
   }
 
-  public static async canSend(peerId: PeerId, onlyVisible?: boolean) {
+  public static async canSend({peerId, onlyVisible, threadId}: {peerId?: PeerId, onlyVisible?: boolean, threadId?: number}) {
     const actions: ChatRights[] = [
       'send_photos',
       'send_videos',
@@ -114,7 +114,7 @@ export default class PopupNewMedia extends PopupElement {
     ];
 
     const actionsPromises = actions.map((action) => {
-      return peerId.isAnyChat() && !onlyVisible ? rootScope.managers.appChatsManager.hasRights(peerId.toChatId(), action) : true;
+      return peerId.isAnyChat() && !onlyVisible ? rootScope.managers.appChatsManager.hasRights(peerId.toChatId(), action, undefined, threadId ? true : undefined) : true;
     });
 
     const out: {[action in ChatRights]?: boolean} = {};
@@ -137,7 +137,10 @@ export default class PopupNewMedia extends PopupElement {
     const captionMaxLength = await this.managers.apiManager.getLimit('caption');
     this.captionLengthMax = captionMaxLength;
 
-    const canSend = await PopupNewMedia.canSend(this.chat.peerId, true);
+    const canSend = await PopupNewMedia.canSend({
+      ...this.chat.getMessageSendingParams(),
+      onlyVisible: true
+    });
 
     const canSendPhotos = canSend.send_photos;
     const canSendVideos = canSend.send_videos;
@@ -523,9 +526,9 @@ export default class PopupNewMedia extends PopupElement {
       return;
     }
 
-    const {peerId, input} = this.chat;
+    const {input} = this.chat;
 
-    const canSend = await PopupNewMedia.canSend(peerId);
+    const canSend = await PopupNewMedia.canSend(this.chat.getMessageSendingParams());
     const willAttach = this.willAttach;
     willAttach.isMedia = willAttach.type === 'media' || undefined;
     const {sendFileDetails, isMedia} = willAttach;

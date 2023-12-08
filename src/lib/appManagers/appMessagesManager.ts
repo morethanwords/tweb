@@ -4094,7 +4094,7 @@ export class AppMessagesManager extends AppManager {
       peer: this.appPeersManager.getInputPeerById(peerId),
       filters,
       top_msg_id: threadId ? getServerMessageId(threadId) : undefined
-    });
+    }, {cacheSeconds: 60e3});
 
     if(migration) {
       const legacyResult = func(method, {
