@@ -198,6 +198,7 @@ export default class ChatInput {
   private forwardHover: DropdownHover;
   private webPageHover: DropdownHover;
   private replyHover: DropdownHover;
+  private currentHover: DropdownHover;
   private forwardWasDroppingAuthor: boolean;
 
   private getWebPagePromise: Promise<void>;
@@ -243,6 +244,7 @@ export default class ChatInput {
   private mentionsHelper: MentionsHelper;
   private inlineHelper: InlineHelper;
   private listenerSetter: ListenerSetter;
+  private hoverListenerSetter: ListenerSetter;
 
   private pinnedControlBtn: HTMLButtonElement;
 
@@ -324,6 +326,7 @@ export default class ChatInput {
     private className: string
   ) {
     this.listenerSetter = new ListenerSetter();
+    this.hoverListenerSetter = new ListenerSetter();
     this.excludeParts = {};
     this.isFocused = false;
     this.emoticonsDropdown = emoticonsDropdown;
@@ -1636,6 +1639,7 @@ export default class ChatInput {
     // this.chat.log.error('Input destroying');
 
     this.listenerSetter.removeAll();
+    this.setCurrentHover();
   }
 
   public cleanup(helperToo = true) {
@@ -2357,7 +2361,7 @@ export default class ChatInput {
           subtitle: webPage.description || webPage.url || ''
         });
 
-        this.webPageHover?.attachButtonListener(newReply, this.listenerSetter);
+        this.setCurrentHover(this.webPageHover, newReply);
         delete this.noWebPage;
         this.willSendWebPage = webPage;
 
@@ -2956,7 +2960,7 @@ export default class ChatInput {
   };
 
   private changeForwardRecipient() {
-    if(this.helperWaitingForward) return;
+    if(this.helperWaitingForward || !this.helperFunc) return;
     this.helperWaitingForward = true;
 
     const forwarding = copy(this.forwarding);
@@ -3421,7 +3425,7 @@ export default class ChatInput {
         intl.update();
       });
 
-      this.forwardHover?.attachButtonListener(newReply, this.listenerSetter);
+      this.setCurrentHover(this.forwardHover, newReply);
       this.forwarding = fromPeerIdsMids;
     };
 
@@ -3482,9 +3486,19 @@ export default class ChatInput {
 
       this.replyElements.doNotReply.element.classList.toggle('hide', !!replyToQuote);
       this.replyElements.doNotQuote.element.classList.toggle('hide', !replyToQuote);
-      this.replyHover?.attachButtonListener(newReply, this.listenerSetter);
+      this.setCurrentHover(this.replyHover, newReply);
     };
     f();
+  }
+
+  private setCurrentHover(dropdownHover?: DropdownHover, newReply?: HTMLElement) {
+    if(this.currentHover) {
+      this.currentHover.toggle(false);
+    }
+
+    this.hoverListenerSetter.removeAll();
+    this.currentHover = dropdownHover;
+    dropdownHover?.attachButtonListener(newReply, this.listenerSetter);
   }
 
   public setReplyTo(replyTo: ChatInputReplyTo) {
@@ -3514,6 +3528,8 @@ export default class ChatInput {
 
     this.editMsgId = this.editMessage = undefined;
     this.helperType = this.helperFunc = undefined;
+    this.setCurrentHover();
+    this.saveDraftDebounced();
 
     if(this.restoreInputLock) {
       this.restoreInputLock();

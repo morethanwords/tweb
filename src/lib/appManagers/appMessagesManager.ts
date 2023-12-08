@@ -1832,6 +1832,7 @@ export class AppMessagesManager extends AppManager {
       };
     }
 
+    const replyWillBeInPeerId = peerId;
     const replyToPeerId = this.appPeersManager.getPeerId(replyTo.reply_to_peer_id);
     if(replyToPeerId) {
       peerId = replyToPeerId;
@@ -1869,15 +1870,19 @@ export class AppMessagesManager extends AppManager {
     }
 
     if(replyToPeerId) {
-      if(replyToPeerId.isUser() || !this.appChatsManager.isInChat(replyToPeerId.toChatId())) {
+      if(replyToPeerId.isUser() || !this.appPeersManager.isPeerPublic(replyToPeerId)) {
         delete header.reply_to_msg_id;
+        header.quote_text = (originalMessage as Message.message).message;
       } else {
         header.reply_to_peer_id = this.appPeersManager.getOutputPeer(replyToPeerId);
       }
     }
 
     header.reply_media = (originalMessage as Message.message)?.media;
-    header.reply_from = this.generateForwardHeader(peerId, originalMessage as Message.message, true);
+
+    if(replyWillBeInPeerId !== originalMessage.peerId) {
+      header.reply_from = this.generateForwardHeader(peerId, originalMessage as Message.message, true);
+    }
 
     return header;
   }
@@ -1953,6 +1958,7 @@ export class AppMessagesManager extends AppManager {
     if(originalMessage.fwd_from) {
       fwdHeader.from_id = originalMessage.fwd_from.from_id;
       fwdHeader.from_name = originalMessage.fwd_from.from_name;
+      fwdHeader.channel_post = originalMessage.fwd_from.channel_post;
       fwdHeader.post_author = originalMessage.fwd_from.post_author;
     } else {
       fwdHeader.post_author = originalMessage.post_author;
@@ -1968,14 +1974,10 @@ export class AppMessagesManager extends AppManager {
       if(!isUserHidden) {
         fwdHeader.from_id = this.appPeersManager.getOutputPeer(fromId);
       }
-    }
 
-    if(this.appPeersManager.isBroadcast(originalMessage.peerId)) {
-      if(originalMessage.post_author) {
-        fwdHeader.post_author = originalMessage.post_author;
+      if(this.appPeersManager.isBroadcast(originalMessage.peerId)) {
+        fwdHeader.channel_post = originalMessage.id;
       }
-
-      fwdHeader.channel_post = originalMessage.id;
     }
 
     if(peerId === myId && !isUserHidden && !isReply) {

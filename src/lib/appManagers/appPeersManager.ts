@@ -150,6 +150,10 @@ export class AppPeersManager extends AppManager {
     return isPeerRestricted(this.getPeer(peerId));
   }
 
+  public isPeerPublic(peerId: PeerId) {
+    return !!getPeerActiveUsernames(this.getPeer(peerId))[0];
+  }
+
   public getRestrictionReasonText(peerId: PeerId) {
     const peer = this.getPeer(peerId) as Chat.channel | User.user;
     const reason = peer.restriction_reason ? getRestrictionReason(peer.restriction_reason) : undefined;
