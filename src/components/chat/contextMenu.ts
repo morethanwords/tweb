@@ -58,6 +58,7 @@ import PopupPremium from '../popups/premium';
 import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 import {ChatInputReplyTo} from './input';
 import {TEST_BUBBLES_DELETION} from './bubbles';
+import cancelSelection from '../../helpers/dom/cancelSelection';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -76,6 +77,7 @@ export default class ChatContextMenu {
   private target: HTMLElement;
   private isTargetAGroupedItem: boolean;
   private isTextSelected: boolean;
+  private isTextFromMultipleMessagesSelected: boolean;
   private isAnchorTarget: boolean;
   private isUsernameTarget: boolean;
   private isSponsored: boolean;
@@ -199,6 +201,13 @@ export default class ChatContextMenu {
         this.target.classList.contains('anchor-url')
       );
       this.isUsernameTarget = this.target.tagName === 'A' && this.target.classList.contains('mention');
+
+      if(this.isTextSelected) {
+        const range = document.getSelection().getRangeAt(0);
+        this.isTextFromMultipleMessagesSelected = findUpClassName(range.startContainer.parentElement, 'spoilers-container') !== findUpClassName(range.endContainer.parentElement, 'spoilers-container');
+      } else {
+        this.isTextFromMultipleMessagesSelected = false;
+      }
 
       this.sponsoredMessage = isSponsored ? (bubble as any).message.sponsoredMessage : undefined;
 
@@ -434,7 +443,8 @@ export default class ChatContextMenu {
         !this.message.pFlags.is_outgoing &&
         !!this.chat.input.messageInput &&
         !!(this.message as Message.message).message &&
-        this.isTextSelected
+        this.isTextSelected &&
+        !this.isTextFromMultipleMessagesSelected
     }, {
       icon: 'reply',
       text: 'Reply',
@@ -1180,8 +1190,9 @@ export default class ChatContextMenu {
   private onQuoteClick = async() => {
     const selection = document.getSelection();
     const range = selection.getRangeAt(0);
-    const span = document.createElement('span');
-    span.append(range.cloneContents());
+    const {startContainer, startOffset, endContainer, endOffset} = range;
+    const startValue = startContainer.nodeValue;
+    const endValue = endContainer.nodeValue;
 
     // * find the index
     const needle = '\x02';
@@ -1195,20 +1206,40 @@ export default class ChatContextMenu {
         return [textNode, element];
       }
     }).filter(Boolean);
-    range.startContainer.nodeValue = needle + range.startContainer.nodeValue;
-    range.endContainer.nodeValue += needle;
-    const {value} = getRichValueWithCaret(container, true);
-    const startIndex = value.indexOf(needle);
-    s.forEach(([textNode, element]) => textNode.replaceWith(element));
-    range.startContainer.nodeValue = range.startContainer.nodeValue.slice(1);
-    range.endContainer.nodeValue = range.endContainer.nodeValue.slice(0, -1);
+    if(startContainer === endContainer) {
+      startContainer.nodeValue = startValue.slice(0, startOffset) + needle + startValue.slice(startOffset, endOffset) + needle + startValue.slice(endOffset);
+    } else {
+      endContainer.nodeValue = endValue.slice(0, endOffset) + needle + endValue.slice(endOffset);
+      startContainer.nodeValue = startValue.slice(0, startOffset) + needle + startValue.slice(startOffset);
+    }
+    const {value: valueBefore} = getRichValueWithCaret(container);
+    const startIndex = valueBefore.indexOf(needle);
+    const endIndex = valueBefore.lastIndexOf(needle) - 1;
+    startContainer.nodeValue = startValue;
+    endContainer.nodeValue = endValue;
 
-    // * let's parse the value with fixed entities
-    const slicedValue = getRichValueWithCaret(span, true);
+    // * have to fix entities
+    let {value: valueAfter, entities} = getRichValueWithCaret(container, true);
+    let value = valueAfter.slice(startIndex, endIndex);
+    for(let i = 0; i < entities.length; ++i) {
+      const entity = entities[i];
+      const startOffset = entity.offset;
+      const endOffset = startOffset + entity.length;
+      if(endOffset < startIndex || startOffset >= endIndex) {
+        entities.splice(i--, 1);
+        continue;
+      }
+
+      entity.offset = Math.max(startOffset - startIndex, 0);
+      const distance = Math.max(startIndex - startOffset, 0);
+      const maxLength = endIndex - startIndex - entity.offset;
+      entity.length = Math.min(entity.length - distance, maxLength);
+    }
+
     const maxLength = 1024;
-    if(slicedValue.value.length > maxLength) { // * fix overflow
-      slicedValue.value = slicedValue.value.slice(0, maxLength);
-      slicedValue.entities = slicedValue.entities // * fix length for entities
+    if(value.length > maxLength) { // * fix overflow
+      value = value.slice(0, maxLength);
+      entities = entities // * fix length for entities
       .filter((entity) => entity.offset < maxLength)
       .map((entity) => {
         if((entity.offset + entity.length) > maxLength) {
@@ -1220,8 +1251,8 @@ export default class ChatContextMenu {
     }
 
     const quote: ChatInputReplyTo['replyToQuote'] = {
-      text: slicedValue.value,
-      entities: slicedValue.entities.length ? slicedValue.entities : undefined,
+      text: value,
+      entities: entities?.length ? entities : undefined,
       offset: startIndex
     };
 
@@ -1230,6 +1261,9 @@ export default class ChatContextMenu {
       replyToMsgId: mid,
       replyToQuote: quote
     };
+
+    s.forEach(([textNode, element]) => textNode.replaceWith(element));
+    cancelSelection();
 
     if(!await this.chat.canSend()) {
       replyTo.replyToPeerId = peerId;

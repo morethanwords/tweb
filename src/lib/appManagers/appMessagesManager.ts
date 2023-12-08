@@ -1872,7 +1872,7 @@ export class AppMessagesManager extends AppManager {
     if(replyToPeerId) {
       if(replyToPeerId.isUser() || !this.appPeersManager.isPeerPublic(replyToPeerId)) {
         delete header.reply_to_msg_id;
-        header.quote_text = (originalMessage as Message.message).message;
+        header.quote_text ??= (originalMessage as Message.message).message;
       } else {
         header.reply_to_peer_id = this.appPeersManager.getOutputPeer(replyToPeerId);
       }
