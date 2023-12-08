@@ -1792,9 +1792,15 @@ export class AppMessagesManager extends AppManager {
       }
     }
 
+    let topMessage: number;
+    if(options.threadId && !this.appPeersManager.isForum(peerId)) {
+      const historyStorage = this.getHistoryStorage(peerId, options.threadId);
+      topMessage = historyStorage.history.first[0];
+    }
+
     const message: Message.message = {
       _: 'message',
-      id: this.generateTempMessageId(peerId),
+      id: this.generateTempMessageId(peerId, topMessage),
       from_id: options.sendAsPeerId ? this.appPeersManager.getOutputPeer(options.sendAsPeerId) : this.generateFromId(peerId),
       peer_id: this.appPeersManager.getOutputPeer(peerId),
       post_author: postAuthor,
@@ -6569,8 +6575,9 @@ export class AppMessagesManager extends AppManager {
           }
         });
 
-        if(last.isEnd(SliceEnd.Top)) {
-          addSlice.unshift(last[last.length - 1]);
+        const lastLength = last.length;
+        if(last.isEnd(SliceEnd.Top) && lastLength) {
+          addSlice.unshift(last[lastLength - 1]);
         }
 
         historyStorage.history.insertSlice(addSlice);
