@@ -1219,13 +1219,22 @@ export default class ChatContextMenu {
     endContainer.nodeValue = endValue;
 
     // * have to fix entities
+    const SUPPORTED_ENTITIES = new Set<MessageEntity['_']>([
+      'messageEntityBold',
+      'messageEntityItalic',
+      'messageEntityUnderline',
+      'messageEntityStrike',
+      'messageEntitySpoiler',
+      'messageEntityCustomEmoji',
+      'messageEntityEmoji'
+    ]);
     let {value: valueAfter, entities} = getRichValueWithCaret(container, true);
     let value = valueAfter.slice(startIndex, endIndex);
     for(let i = 0; i < entities.length; ++i) {
       const entity = entities[i];
       const startOffset = entity.offset;
       const endOffset = startOffset + entity.length;
-      if(endOffset < startIndex || startOffset >= endIndex) {
+      if(endOffset < startIndex || startOffset >= endIndex || !SUPPORTED_ENTITIES.has(entity._)) {
         entities.splice(i--, 1);
         continue;
       }
@@ -1252,7 +1261,7 @@ export default class ChatContextMenu {
 
     const quote: ChatInputReplyTo['replyToQuote'] = {
       text: value,
-      entities: entities?.length ? entities : undefined,
+      entities: entities.length ? entities : undefined,
       offset: startIndex
     };
 
