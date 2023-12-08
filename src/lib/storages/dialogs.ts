@@ -136,10 +136,9 @@ export default class DialogsStorage extends AppManager {
     });
 
     this.rootScope.addEventListener('chat_update', (chatId) => {
-      const chat = this.appChatsManager.getChat(chatId);
-
       const peerId = chatId.toPeerId(true);
-      if((chat as Chat.chat).pFlags.left && this.getDialogOnly(peerId)) {
+      const dialog = this.getDialogOnly(peerId);
+      if(dialog && !this.canSaveDialog(peerId, dialog)) {
         this.dropDialogOnDeletion(peerId);
       }
     });
@@ -1110,6 +1109,7 @@ export default class DialogsStorage extends AppManager {
       // ! chatForbidden stays for chat where you're kicked
       if(
         chat._ === 'channelForbidden' ||
+        (chat as Chat.chat).pFlags.deactivated ||
         // || chat._ === 'chatForbidden'
         (chat as Chat.chat).pFlags.left
         // || (chat as any).pFlags.kicked
@@ -1157,10 +1157,6 @@ export default class DialogsStorage extends AppManager {
       console.error('saveConversation not regular dialog', dialog, Object.assign({}, dialog));
     }
 
-    if(isDialog && !this.canSaveDialog(peerId, dialog)) {
-      return false;
-    }
-
     if(isDialog && !channelId && peerId.isAnyChat()) {
       const chat = this.appChatsManager.getChat(peerId.toChatId()) as Chat.chat;
       if(chat && chat.migrated_to && chat.pFlags.deactivated) {
@@ -1170,6 +1166,10 @@ export default class DialogsStorage extends AppManager {
         dialog.migratedTo = migratedToPeer;
         // return;
       }
+    }
+
+    if(isDialog && !this.canSaveDialog(peerId, dialog)) {
+      return false;
     }
 
     if(isDialog && !dialog.migratedTo) {
