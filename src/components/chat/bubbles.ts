@@ -2745,8 +2745,7 @@ export default class ChatBubbles {
       marginBottom?: number,
       previousElement?: HTMLElement,
       previousSameKindElement?: HTMLElement
-    }[];
-    let wasScrollSize: number;
+    }[], wasScrollSize: number, padding: ReturnType<ChatBubbles['setTopPadding']>;
     if(animate && bubble.isConnected) {
       const goodSelectors: string[] = ['.bubbles-date-group', '.bubbles-group', '.bubble'];
       canBeDeleted = [bubble, ...getParents(bubble, goodSelectors[0])].map((element, idx, arr) => {
@@ -2765,6 +2764,7 @@ export default class ChatBubbles {
         };
       });
 
+      padding = this.setTopPadding();
       wasScrollSize = this.scrollable.scrollSize;
       placeholder = document.createElement('div');
       placeholder.classList.add('bubble-delete-placeholder');
@@ -2872,6 +2872,9 @@ export default class ChatBubbles {
         deletingItem.element.remove();
         avatarAnimation?.cancel();
         bubble.middlewareHelper.destroy();
+        getHeavyAnimationPromise().then(() => {
+          padding.unsetPadding?.();
+        });
       });
 
       dispatchHeavyAnimationEvent(promise);
@@ -2963,10 +2966,12 @@ export default class ChatBubbles {
     return {
       isPaddingNeeded,
       unsetPadding: isPaddingNeeded ? () => {
-        if(middleware() && isPaddingNeeded) {
-          setPaddingTo.style.paddingTop = '';
-          this.isTopPaddingSet = false;
+        if(!middleware()) {
+          return;
         }
+
+        setPaddingTo.style.paddingTop = '';
+        this.isTopPaddingSet = false;
       } : undefined
     };
   }
