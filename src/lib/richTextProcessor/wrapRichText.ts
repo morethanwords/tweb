@@ -168,7 +168,8 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
 
     let element: HTMLElement,
       property: 'textContent' | 'alt' = 'textContent',
-      usedText = false;
+      usedText = false,
+      processingBlockElement = false;
     switch(entity._) {
       case 'messageEntityBold': {
         if(!options.noTextFormat) {
@@ -268,12 +269,14 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
             element.textContent = fullEntityText;
           }
 
-          let realNextEntityIndex = findIndexFrom(entities, (n) => n.offset >= endOffset, nasty.i + 1);
-          if(realNextEntityIndex === -1) realNextEntityIndex = entities.length - 1;
-          nasty.i = realNextEntityIndex;
+          let lastInnerEntityIndex = findIndexFrom(entities, (n) => n.offset >= endOffset, nasty.i + 1);
+          if(lastInnerEntityIndex === -1) lastInnerEntityIndex = entities.length - 1;
+          else lastInnerEntityIndex -= 1;
+          nasty.i = lastInnerEntityIndex;
           nasty.usedLength = endOffset;
-          nasty.lastEntity = entities[realNextEntityIndex - 1];
-          nextEntity = entities[nasty.i + 1];
+          nasty.lastEntity = entities[lastInnerEntityIndex];
+          nextEntity = undefined;
+          processingBlockElement = true;
         } else if(!options.noTextFormat) {
           element = document.createElement('code');
           element.classList.add('monospace-text');
@@ -654,63 +657,73 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
         element.classList.add('quote-like', 'quote-like-border', 'quote-like-icon');
         setDirection(element);
 
-        let foundNextLinebreakIndex = -1;
-        for(let i = nasty.i; i < length; ++i) {
-          const n = entities[i];
-          if(n._ === 'messageEntityLinebreak' && n.offset >= endOffset) {
-            foundNextLinebreakIndex = i;
-            break;
-          }
-        }
+        processingBlockElement = true;
+        break;
+      }
+    }
 
-        if(!options.wrappingDraft && endOffset < nasty.text.length) {
-          // * ignore inner linebreak if found and double next linebreak
+    if(processingBlockElement) {
+      let foundNextLinebreakIndex = -1;
+      for(let i = nasty.i; i < length; ++i) {
+        const n = entities[i];
+        if(n._ === 'messageEntityLinebreak' && n.offset >= endOffset) {
+          foundNextLinebreakIndex = i;
+          break;
+        }
+      }
+
+      if(foundNextLinebreakIndex !== -1 && nasty.text.slice(endOffset, entities[foundNextLinebreakIndex].offset).trim()) {
+        foundNextLinebreakIndex = -1;
+      }
+
+      if(!options.wrappingDraft && endOffset < nasty.text.length) {
+        // * ignore inner linebreak if found and double next linebreak
+        if(!element.parentElement) {
           const container = document.createElement('div');
           container.append(element);
           fragment.append(container);
-
-          if(nasty.text[endOffset - 1] === '\n') {
-            let lastInnerLinebreakIndex = -1;
-            for(let i = nasty.i; i < length; ++i) {
-              const n = entities[i];
-              if(n.offset >= endOffset) {
-                break;
-              }
-
-              if(n._ === 'messageEntityLinebreak') {
-                lastInnerLinebreakIndex = i;
-              }
-            }
-
-            if(lastInnerLinebreakIndex !== -1) {
-              options.ignoreNextIndex = lastInnerLinebreakIndex;
-            }
-          } else if(foundNextLinebreakIndex !== -1) {
-            options.ignoreNextIndex = foundNextLinebreakIndex;
-          }
-
-          // if(nasty.text[endOffset - 1] === '\n' &&
-          //   foundNextLinebreakIndex !== -1 &&
-          //   nasty.text[endPartOffset + 1] === '\n') {
-          //   options.ignoreNextIndex = foundNextLinebreakIndex - 1;
-          //   options.doubleLinebreak = foundNextLinebreakIndex;
-          // }
         }
 
-        if(options.wrappingDraft && foundNextLinebreakIndex !== -1) {
+        if(nasty.text[endOffset - 1] === '\n') {
+          let lastInnerLinebreakIndex = -1;
+          for(let i = nasty.i; i < length; ++i) {
+            const n = entities[i];
+            if(n.offset >= endOffset) {
+              break;
+            }
+
+            if(n._ === 'messageEntityLinebreak') {
+              lastInnerLinebreakIndex = i;
+            }
+          }
+
+          if(lastInnerLinebreakIndex !== -1) {
+            options.ignoreNextIndex = lastInnerLinebreakIndex;
+          }
+        } else if(foundNextLinebreakIndex !== -1) {
           options.ignoreNextIndex = foundNextLinebreakIndex;
         }
 
-        // if(!options.wrappingDraft) {
-        //   const i = Icon('quote', 'quote-icon');
-        //   element.textContent = partText;
-        //   usedText = true;
-        //   element.prepend(i);
-        // } else {
-        //   element.classList.add('quote-use-before');
+        // if(nasty.text[endOffset - 1] === '\n' &&
+        //   foundNextLinebreakIndex !== -1 &&
+        //   nasty.text[endPartOffset + 1] === '\n') {
+        //   options.ignoreNextIndex = foundNextLinebreakIndex - 1;
+        //   options.doubleLinebreak = foundNextLinebreakIndex;
         // }
-        break;
       }
+
+      if(options.wrappingDraft && foundNextLinebreakIndex !== -1) {
+        options.ignoreNextIndex = foundNextLinebreakIndex;
+      }
+
+      // if(!options.wrappingDraft) {
+      //   const i = Icon('quote', 'quote-icon');
+      //   element.textContent = partText;
+      //   usedText = true;
+      //   element.prepend(i);
+      // } else {
+      //   element.classList.add('quote-use-before');
+      // }
     }
 
     if(!usedText && partText) {

@@ -28,8 +28,9 @@ export default function parseMarkdown(raw: string, currentEntities: MessageEntit
   let rawOffset = 0, match;
   while(match = raw.match(MARKDOWN_REG_EXP)) {
     const matchIndex = rawOffset + match.index;
-    newTextParts.push(raw.substr(0, match.index));
-    const text = (match[3] || match[8] || match[11] || match[13]);
+    const beforeMatch = match.index > 0 && raw.slice(0, match.index);
+    beforeMatch && newTextParts.push(beforeMatch);
+    const text = match[3] || match[8] || match[11] || match[13];
     // rawOffset -= text.length;
     // text = text.replace(/^\s+|\s+$/g, '');
     // rawOffset += text.length;
@@ -39,8 +40,15 @@ export default function parseMarkdown(raw: string, currentEntities: MessageEntit
     if(text.match(/^`*$/)) {
       newTextParts.push(match[0]);
     } else if(match[3]) { // pre
-      const languageMatch = match[3].match(/(.+?)\n/);
-      const code = languageMatch ? match[3].slice(languageMatch[0].length) : match[3];
+      let languageMatch = match[3].match(/(.*?)\n/);
+      if(!languageMatch?.[1]) {
+        languageMatch = undefined;
+      }
+
+      let code = languageMatch ? match[3].slice(languageMatch[1].length) : match[3];
+      const startIndex = code[0] === '\n' ? 1 : 0;
+      const endIndex = code[code.length - 1] === '\n' ? -1 : undefined;
+      code = code.slice(startIndex, endIndex);
       entity = {
         _: 'messageEntityPre',
         language: languageMatch?.[1] || '',
@@ -49,8 +57,7 @@ export default function parseMarkdown(raw: string, currentEntities: MessageEntit
       };
 
       if(pushEntity(entity)) {
-        if(match[5] === '\n') {
-          match[5] = '';
+        if(endIndex) {
           rawOffset -= 1;
         }
 
@@ -58,7 +65,17 @@ export default function parseMarkdown(raw: string, currentEntities: MessageEntit
           rawOffset -= languageMatch[0].length;
         }
 
-        newTextParts.push(match[1] + code + match[5]);
+        let whitespace = '';
+        if(match[1]) {
+          whitespace = match[1];
+        } else {
+          const previousPart = newTextParts[newTextParts.length - 1];
+          if(previousPart && !/\s/.test(previousPart[previousPart.length - 1])) {
+            whitespace = '\n';
+          }
+        }
+
+        newTextParts.push(whitespace, code, match[5]);
 
         rawOffset -= match[2].length + match[4].length;
       }
@@ -117,7 +134,7 @@ export default function parseMarkdown(raw: string, currentEntities: MessageEntit
     rawOffset += match.index + match[0].length;
   }
 
-  newTextParts.push(raw);
+  raw && newTextParts.push(raw);
   let newText = newTextParts.join('');
   if(!newText.replace(/\s+/g, '').length) {
     newText = raw;
