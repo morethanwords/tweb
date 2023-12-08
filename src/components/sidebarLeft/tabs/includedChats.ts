@@ -24,6 +24,7 @@ import {attachClickEvent, simulateClickEvent} from '../../../helpers/dom/clickEv
 import SettingSection from '../../settingSection';
 import {DialogFilter} from '../../../layer';
 import Icon from '../../icon';
+import showLimitPopup from '../../popups/limit';
 
 export default class AppIncludedChatsTab extends SliderSuperTab {
   private editFolderTab: AppEditFolderTab;
@@ -245,8 +246,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
     const _add = this.selector.add.bind(this.selector);
     this.selector.add = ({key: peerId, title, scroll}) => {
       if(this.selector.selected.size >= this.limit && addedInitial && !details[peerId]) {
-        const str = I18n.format(this.type === 'excluded' ? 'ChatList.Filter.Exclude.LimitReached': 'ChatList.Filter.Include.LimitReached', true);
-        toast(str);
+        showLimitPopup('folderPeers');
         return false;
       }
 

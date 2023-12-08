@@ -1559,6 +1559,9 @@ const lang = {
   'ReplyPrivate': 'This reply is from a private chat.',
   'QuotePrivate': 'This quote is from a private chat',
   'FilterAddTo': 'Add to folder',
+  'LimitReachedChatInFolders': 'Sorry, you can\'t add more than **%1$d** chats to a folder. You can increase this limit to **%2$d** by subscribing to **Telegram Premium**.',
+  'LimitReachedChatInFoldersPremium': 'Sorry, you can\'t add more than **%1$d** chats to a folder. Please create a new one.',
+  'LimitReachedChatInFoldersLocked': 'Sorry, you can\'t add more than **%1$d** chats to a folder. Please create a new one. We are working to let you increase this limit in the future.',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
@@ -1782,8 +1785,6 @@ const lang = {
   'ChatList.Filter.MutedChats': 'Muted',
   'ChatList.Filter.ReadChats': 'Read',
   'ChatList.Filter.Archive': 'Archived',
-  'ChatList.Filter.Include.LimitReached': 'Sorry, you can only add up to 100 individual chats. Try using chat types.',
-  'ChatList.Filter.Exclude.LimitReached': 'Sorry, you can only add up to 100 individual chats. Try using chat types.',
   'ChatList.Filter.Confirm.Remove.Header': 'Remove Folder',
   'ChatList.Filter.Confirm.Remove.Text': 'Are you sure you want to remove this folder? Your chats will not be deleted.',
   'ChatList.Mute.1Hour': 'For 1 Hour',

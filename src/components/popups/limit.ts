@@ -32,6 +32,13 @@ const a: {[type in ApiLimitType]?: {
     descriptionLocked: 'LimitReachedFoldersLocked',
     icon: 'limit_folders'
   },
+  folderPeers: {
+    title: 'LimitReached',
+    description: 'LimitReachedChatInFolders',
+    descriptionPremium: 'LimitReachedChatInFoldersPremium',
+    descriptionLocked: 'LimitReachedChatInFoldersLocked',
+    icon: 'limit_folders'
+  },
   chatlistInvites: {
     title: 'LimitReached',
     description: 'LimitReachedSharedFolderInvites',
