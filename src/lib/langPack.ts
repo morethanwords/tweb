@@ -514,8 +514,10 @@ namespace I18n {
       safeAssign(this, options);
 
       if(this.property === 'innerHTML') {
-        this.element.textContent = '';
-        this.element.append(...format(this.key, false, this.args) as any);
+        this.element.replaceChildren(...format(this.key, false, this.args) as any);
+        if(this.args?.length) {
+          this.element.normalize();
+        }
       } else {
         // @ts-ignore
         const v = this.element[this.property];

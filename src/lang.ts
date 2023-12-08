@@ -1562,6 +1562,8 @@ const lang = {
   'LimitReachedChatInFolders': 'Sorry, you can\'t add more than **%1$d** chats to a folder. You can increase this limit to **%2$d** by subscribing to **Telegram Premium**.',
   'LimitReachedChatInFoldersPremium': 'Sorry, you can\'t add more than **%1$d** chats to a folder. Please create a new one.',
   'LimitReachedChatInFoldersLocked': 'Sorry, you can\'t add more than **%1$d** chats to a folder. Please create a new one. We are working to let you increase this limit in the future.',
+  'ZoomOut': 'Zoom out',
+  'LanguagesChartTitle': 'Languages',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

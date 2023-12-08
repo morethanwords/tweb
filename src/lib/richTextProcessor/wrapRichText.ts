@@ -801,6 +801,8 @@ export default function wrapRichText(text: string, options: WrapRichTextOptions 
     insertCustomFillers(customWraps);
   }
 
+  fragment.normalize();
+
   return fragment;
 }
 
