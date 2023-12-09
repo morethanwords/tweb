@@ -1918,10 +1918,17 @@ export default class AppSearchSuper {
   }
 
   public async canViewStories() {
-    return this.mediaTabsMap.has('stories') &&
-      (this.searchContext.peerId.isUser() || await this.managers.appPeersManager.isChannel(this.searchContext.peerId)) &&
-      this.managers.appStoriesManager.getPinnedStories(this.searchContext.peerId, 1)
+    if(!this.mediaTabsMap.has('stories')) {
+      return false;
+    }
+
+    if(this.searchContext.peerId.isUser()) {
+      return this.managers.appStoriesManager.getPinnedStories(this.searchContext.peerId, 1)
       .then((storyItems) => !!storyItems.length).catch(() => false);
+    }
+
+    const chatFull = await this.managers.appProfileManager.getChatFull(this.searchContext.peerId.toChatId());
+    return !!(chatFull as ChatFull.channelFull).pFlags.stories_pinned_available;
   }
 
   public async canViewSimilar() {
