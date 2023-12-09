@@ -463,11 +463,13 @@ export default class ReactionElement extends HTMLElement {
     const onAvailableReaction = ({
       availableReaction,
       genericEffect,
-      sticker
+      sticker,
+      onlyAround
     }: {
       availableReaction?: AvailableReaction,
       genericEffect?: Document.document,
-      sticker?: Document.document
+      sticker?: Document.document,
+      onlyAround?: boolean
     }) => {
       const size = genericEffect ? options.sizes.genericEffect : options.sizes.size;
       const div = genericEffect ? undefined : document.createElement('div');
@@ -499,7 +501,7 @@ export default class ReactionElement extends HTMLElement {
         loopEffect: true,
         textColor
       });
-      const stickerResult = (!genericEffect || isGenericMasked) && wrapSticker({
+      const stickerResult = (!genericEffect || isGenericMasked) && !onlyAround && wrapSticker({
         div: div || document.createElement('div'),
         doc: sticker || availableReaction.center_icon,
         width: size,
@@ -530,12 +532,16 @@ export default class ReactionElement extends HTMLElement {
 
         options.waitPromise
       ]).then(([iconPlayer, aroundPlayer, maskedSticker, reactionGeneric, _]) => {
+        if(onlyAround) {
+          iconPlayer = aroundPlayer;
+        }
+
         const deferred = deferredPromise<void>();
         const remove = () => {
           deferred.resolve();
           // return;
           // if(!isInDOM(div)) return;
-          iconPlayer.remove();
+          iconPlayer?.remove();
           div?.remove();
           options.stickerContainer.classList.remove('has-animation');
         };
@@ -678,7 +684,8 @@ export default class ReactionElement extends HTMLElement {
         genericEffect
       ]) => {
         return onAvailableReaction(availableReaction ? {
-          availableReaction
+          availableReaction,
+          onlyAround: !!sticker
         } : {
           genericEffect,
           sticker

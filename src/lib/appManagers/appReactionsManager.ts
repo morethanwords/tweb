@@ -153,7 +153,10 @@ export class AppReactionsManager extends AppManager {
       let chatAvailableReactions = chatFull.available_reactions ?? {_: 'chatReactionsNone'};
 
       if(chatAvailableReactions._ === 'chatReactionsAll' && !chatAvailableReactions.pFlags.allow_custom) {
-        chatAvailableReactions = {_: 'chatReactionsSome', reactions: activeAvailableReactions.map(availableReactionToReaction)};
+        chatAvailableReactions = {
+          _: 'chatReactionsSome',
+          reactions: activeAvailableReactions.map(availableReactionToReaction)
+        };
       }
 
       let filteredChatReactions: Reaction[] = [];
@@ -161,11 +164,13 @@ export class AppReactionsManager extends AppManager {
         filteredChatReactions = topReactions;
       } else if(chatAvailableReactions._ === 'chatReactionsSome') {
         const filteredChatAvailableReactions = chatAvailableReactions.reactions.map((reaction) => {
-          return activeAvailableReactions.find((availableReaction) => availableReaction.reaction === (reaction as Reaction.reactionEmoji).emoticon);
+          return activeAvailableReactions.find((availableReaction) => availableReaction.reaction === (reaction as Reaction.reactionEmoji).emoticon) || reaction;
         }).filter(Boolean);
         const indexes = new Map(activeAvailableReactions.map((availableReaction, idx) => [availableReaction.reaction, idx]));
-        filteredChatAvailableReactions.sort((a, b) => indexes.get(a.reaction) - indexes.get(b.reaction));
-        filteredChatReactions = filteredChatAvailableReactions.map(availableReactionToReaction);
+        filteredChatAvailableReactions.sort((a, b) => (indexes.get((a as AvailableReaction.availableReaction).reaction) || 0) - (indexes.get((b as AvailableReaction.availableReaction).reaction) || 0));
+        filteredChatReactions = filteredChatAvailableReactions.map((reaction) => {
+          return reaction._ === 'availableReaction' ? availableReactionToReaction(reaction) : reaction;
+        });
       }
 
       const p: PeerAvailableReactions = {
