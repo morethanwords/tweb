@@ -606,7 +606,7 @@ export class ApiManager extends ApiManagerMethods {
 
           return this.cachedExportPromise[dcId].then(() => performRequest());
         } else if(error.code === 303) {
-          const newDcId = +error.type.match(/^(PHONE_MIGRATE_|NETWORK_MIGRATE_|USER_MIGRATE_)(\d+)/)[2] as DcId;
+          const newDcId = +error.type.match(/^(PHONE_MIGRATE_|NETWORK_MIGRATE_|USER_MIGRATE_|STATS_MIGRATE_)(\d+)/)[2] as DcId;
           if(newDcId !== dcId) {
             if(options.dcId) {
               options.dcId = newDcId;

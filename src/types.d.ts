@@ -90,6 +90,10 @@ export type Mutable<T> = {
 
 export type MaybePromise<T> = T | Promise<T>;
 
+export type PickByType<T, Value> = {
+  [P in keyof T as T[P] extends Value | undefined ? P : never]: T[P]
+};
+
 export type AuthState = AuthState.signIn | AuthState.signQr | AuthState.authCode | AuthState.password | AuthState.signUp | AuthState.signedIn | AuthState.signImport;
 export namespace AuthState {
   export type signIn = {

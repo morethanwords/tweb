@@ -53,6 +53,7 @@ import AppChatInvitesManager from './appChatInvitesManager';
 import AppStoriesManager from './appStoriesManager';
 import AppBotsManager from './appBotsManager';
 import AppBoostsManager from './appBoostsManager';
+import AppStatisticsManager from './appStatisticsManager';
 
 export default function createManagers(appStoragesManager: AppStoragesManager, userId: UserId) {
   const managers = {
@@ -102,7 +103,8 @@ export default function createManagers(appStoragesManager: AppStoragesManager, u
     appChatInvitesManager: new AppChatInvitesManager,
     appStoriesManager: new AppStoriesManager,
     appBotsManager: new AppBotsManager,
-    appBoostsManager: new AppBoostsManager
+    appBoostsManager: new AppBoostsManager,
+    appStatisticsManager: new AppStatisticsManager
   };
 
   type T = typeof managers;

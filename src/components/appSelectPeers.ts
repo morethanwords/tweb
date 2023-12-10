@@ -37,13 +37,14 @@ import getDialogIndex from '../lib/appManagers/utils/dialogs/getDialogIndex';
 import {generateDelimiter} from './generateDelimiter';
 import SettingSection from './settingSection';
 import liteMode from '../helpers/liteMode';
-import emptySearchPlaceholder from './appSelectPeersT';
+import emptyPlaceholder from './emptyPlaceholder';
 import {Middleware, MiddlewareHelper, getMiddleware} from '../helpers/middleware';
-import {createSignal, Setter} from 'solid-js';
+import {createSignal, Setter, JSX, createRoot, createEffect} from 'solid-js';
 import DialogsPlaceholder from '../helpers/dialogsPlaceholder';
 import ListenerSetter from '../helpers/listenerSetter';
 import {avatarNew} from './avatarNew';
 import Icon from './icon';
+import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 
 export type SelectSearchPeerType = 'contacts' | 'dialogs' | 'channelParticipants' | 'custom';
 export type FilterPeerTypeByFunc = (peer: ReturnType<AppPeersManager['getPeer']>) => boolean;
@@ -846,15 +847,28 @@ export default class AppSelectPeers {
         this.emptySearchPlaceholderMiddlewareHelper = getMiddleware();
         const middleware = this.emptySearchPlaceholderMiddlewareHelper.get();
         const [query, setQuery] = createSignal(this.query);
+        const [description, setDescription] = createSignal<JSX.Element>();
         const [hide, setHide] = createSignal(false);
         this.emptySearchPlaceholderQuerySetter = setQuery;
         this.emptySearchPlaceholderHideSetter = setHide;
-        return emptySearchPlaceholder(middleware, query, hide).then((container) => {
+
+        createRoot((dispose) => {
+          middleware.onClean(dispose);
+          createEffect(() => {
+            setDescription(i18n('RequestJoin.List.SearchEmpty', [wrapEmojiText(query())]));
+          });
+        });
+        return emptyPlaceholder({
+          middleware,
+          title: () => i18n('SearchEmptyViewTitle'),
+          description,
+          hide
+        }).then((container) => {
           if(!middleware()) {
             return;
           }
 
-          this.section.content.prepend(container as HTMLElement);
+          this.section.content.prepend(container);
         });
       } else {
         this.dialogsPlaceholder?.detach(length);

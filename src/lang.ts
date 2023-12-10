@@ -1564,6 +1564,14 @@ const lang = {
   'LimitReachedChatInFoldersLocked': 'Sorry, you can\'t add more than **%1$d** chats to a folder. Please create a new one. We are working to let you increase this limit in the future.',
   'ZoomOut': 'Zoom out',
   'LanguagesChartTitle': 'Languages',
+  'ViewsPerStory': 'Views Per Story',
+  'SharesPerStory': 'Shares Per Story',
+  'ReactionsPerStory': 'Reactions Per Story',
+  'ReactionsPerPost': 'Reactions Per Post',
+  'ReactionsByEmotionChartTitle': 'Reactions',
+  'IVInteractionsChartTitle': 'IV Interactions',
+  'StoryInteractionsChartTitle': 'Story Views and Shares',
+  'StoryReactionsByEmotionChartTitle': 'Story Reactions',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

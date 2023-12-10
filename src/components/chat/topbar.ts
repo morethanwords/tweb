@@ -56,6 +56,7 @@ import {MiddlewareHelper, getMiddleware} from '../../helpers/middleware';
 import setBadgeContent from '../../helpers/setBadgeContent';
 import createBadge from '../../helpers/createBadge';
 import PopupBoostsViaGifts from '../popups/boostsViaGifts';
+import AppStatisticsTab from '../sidebarRight/tabs/statistics';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -478,6 +479,14 @@ export default class ChatTopbar {
       text: 'GiftPremium',
       onClick: () => this.chat.appImManager.giftPremium(this.peerId),
       verify: () => this.chat.canGiftPremium()
+    }, {
+      icon: 'admin',
+      text: 'Statistics',
+      onClick: () => {
+        this.appSidebarRight.createTab(AppStatisticsTab).open(this.peerId.toChatId());
+        this.appSidebarRight.toggleSidebar(true);
+      },
+      verify: () => true
     }, {
       icon: 'boost',
       text: 'BoostsViaGifts.Title',

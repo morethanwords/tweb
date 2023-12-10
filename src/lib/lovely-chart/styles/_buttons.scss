@@ -1,0 +1,63 @@
+.lovely-chart--button {
+  border: 1px solid #E6ECF0;
+  padding: 7px 7px;
+  display: flex;
+  border-radius: 18px;
+  text-decoration: none;
+  position: relative;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+
+  border-color: var(--dataset-color);
+  background-color: transparent;
+  color: var(--dataset-color);
+
+  &.lovely-chart--state-checked {
+    background-color: var(--dataset-color);
+    animation-duration: 500ms;
+
+    .lovely-chart--button-check {
+      opacity: 1;
+    }
+
+    .lovely-chart--button-label {
+      color: #fff;
+      transform: translateX(9px);
+    }
+  }
+
+  &.lovely-chart--state-shake {
+    animation-name: lovely-chart--animation-shake;
+  }
+
+  &-check {
+    display: inline-block;
+    position: absolute;
+    left: 7px;
+    width: 20px;
+    height: 20px;
+    opacity: 0;
+    transition: opacity 300ms ease-out;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  
+    &::after {
+      content: '';
+      width: 19px;
+      height: 14px;
+      background-image: url("data:image/svg+xml,%3Csvg width='19' height='14' viewBox='0 0 19 14' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M15.6526 3.41756L15.6529 3.4178L15.6583 3.40917C15.8556 3.09241 15.8003 2.6705 15.5103 2.41675C15.1882 2.1349 14.6986 2.16754 14.4167 2.48966L7.96223 9.86623L5.54798 7.45199L5.54827 7.4517L5.54059 7.44517L5.46002 7.37663L5.46029 7.37632L5.45203 7.37038C5.1491 7.15241 4.72444 7.17952 4.45197 7.45199C4.14931 7.75465 4.14931 8.24535 4.45197 8.54801L7.45197 11.548L7.45165 11.5483L7.4597 11.5551L7.54419 11.6265L7.5439 11.6268L7.55257 11.633C7.8705 11.8583 8.31743 11.8141 8.58322 11.5103L15.5832 3.51034L15.5835 3.51061L15.5895 3.50251L15.6526 3.41756Z' fill='white' stroke='white' stroke-width='0.25'/%3E%3C/svg%3E%0A");
+      background-size: 100%;
+    }
+  }
+
+  &-label {
+    display: inline-block;
+    font-size: 14px;
+    font-weight: 500;
+    color: inherit;
+    padding: 0 13px;
+    transition: transform 300ms ease-out, color 300ms ease-out;
+  }
+}

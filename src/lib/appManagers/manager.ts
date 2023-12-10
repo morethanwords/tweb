@@ -51,6 +51,7 @@ import type AppChatInvitesManager from './appChatInvitesManager';
 import type AppStoriesManager from './appStoriesManager';
 import type AppBotsManager from './appBotsManager';
 import type AppBoostsManager from './appBoostsManager';
+import type AppStatisticsManager from './appStatisticsManager';
 import type {AppManagers} from './managers';
 
 export class AppManager {
@@ -102,6 +103,7 @@ export class AppManager {
   protected appStoriesManager: AppStoriesManager;
   protected appBotsManager: AppBotsManager;
   protected appBoostsManager: AppBoostsManager;
+  protected appStatisticsManager: AppStatisticsManager;
 
   public clear: (init?: boolean) => void;
 
