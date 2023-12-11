@@ -303,13 +303,9 @@ export default class SlicedArray<T extends ItemType> {
   public findSliceOffset(maxId: T) {
     let slice: Slice<T>;
     for(let i = 0; i < this.slices.length; ++i) {
-      let offset = 0;
       slice = this.slices[i];
-      if(slice.length < 2) {
-        continue;
-      }
 
-      for(; offset < slice.length; ++offset) {
+      for(let offset = 0; offset < slice.length; ++offset) {
         if(compareValue(maxId, slice[offset]) >= 0) {
           /* if(!offset) { // because can't find 3 in [[5,4], [2,1]]
             return undefined;

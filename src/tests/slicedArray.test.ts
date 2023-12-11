@@ -1,4 +1,4 @@
-import SlicedArray, {Slice} from '../helpers/slicedArray';
+import SlicedArray, {Slice, SliceEnd} from '../helpers/slicedArray';
 
 test('Slicing returns new Slice', () => {
   const sliced = new SlicedArray();
@@ -76,6 +76,16 @@ describe('Inserting', () => {
     expect(slices.length).toEqual(1);
   });
 
+  test('Insert slice to a single-value slice', () => {
+    const sliced = new SlicedArray<number>();
+    // @ts-ignore
+    const slices = sliced.slices;
+    sliced.insertSlice([3, 2]);
+    sliced.delete(3);
+    sliced.insertSlice([4, 2]);
+    expect([...slices[0]]).toEqual([4, 2]);
+  });
+
   test('Return inserted & flattened slice', () => {
     expect(slices[0]).toEqual(returnedSlice);
   });
@@ -121,5 +131,15 @@ describe('Slicing', () => {
         expect([...slice]).toEqual(values.slice(idx + addOffset, idx + addOffset + limit));
       });
     });
+  });
+
+  test('Add bottom end slice and slice from it', () => {
+    const value = (VALUES_LENGTH + 1) * INCREMENTOR;
+    const slice = sliced.insertSlice([value]);
+    slice.setEnd(SliceEnd.Bottom);
+
+    const result = sliced.sliceMe(value, 0, limit);
+
+    expect([...result.slice]).toEqual([]);
   });
 });
