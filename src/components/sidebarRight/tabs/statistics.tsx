@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {StatsAbsValueAndPrev, StatsBroadcastStats, StatsGraph, StatsPercentValue} from '../../../layer';
+import {Message, StatsAbsValueAndPrev, StatsBroadcastStats, StatsGraph, StatsPercentValue, StoryItem} from '../../../layer';
 import I18n, {LangPackKey, i18n, joinElementsWith} from '../../../lib/langPack';
 import Section from '../../section';
 import {SliderSuperTabEventable} from '../../sliderTab';
 import {For, render} from 'solid-js/web';
-import {JSX, createSignal, onMount} from 'solid-js';
+import {JSX, createEffect, createRoot, createSignal, onMount} from 'solid-js';
 import formatNumber from '../../../helpers/number/formatNumber';
 import {create} from '../../../lib/lovely-chart/LovelyChart';
 import {FontFamily, FontWeight} from '../../../config/font';
@@ -22,6 +22,12 @@ import deferredPromise, {CancellablePromise} from '../../../helpers/cancellableP
 import liteMode from '../../../helpers/liteMode';
 import classNames from '../../../helpers/string/classNames';
 import Icon from '../../icon';
+import indexOfAndSplice from '../../../helpers/array/indexOfAndSplice';
+import Row from '../../row';
+import {wrapReplyDivAndCaption} from '../../chat/replyContainer';
+import {formatFullSentTime} from '../../../helpers/date';
+import numberThousandSplitter from '../../../helpers/number/numberThousandSplitter';
+import {wrapStoryMedia} from '../../stories/preview';
 
 const CHANNEL_GRAPHS_TITLES: {[key in keyof PickByType<StatsBroadcastStats, StatsGraph>]: LangPackKey} = {
   growth_graph: 'GrowthChartTitle',
@@ -120,6 +126,8 @@ function calculateMinimapRange(range: Array<number>, values: Array<number>) {
 export default class AppStatisticsTab extends SliderSuperTabEventable {
   private chatId: ChatId;
   private stats: StatsBroadcastStats;
+  private messages: Map<number, Message.message>;
+  private stories: Map<number, StoryItem.storyItem>;
   private dcId: DcId;
   private openPromise: CancellablePromise<void>;
 
@@ -127,7 +135,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
     this.openPromise.resolve();
   }
 
-  private _construct() {
+  private _construct(recentPosts: HTMLElement[]) {
     const dateElement = new I18n.IntlDateElement({options: {}});
     const getLabelDate: Parameters<typeof createLovelyChart>[1]['getLabelDate'] = (label, options = {}) => {
       options.displayYear ??= true;
@@ -340,6 +348,9 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
           </div>
         </Section>
         <For each={graphs}>{renderGraph}</For>
+        {recentPosts.length && <Section name="RecentPosts">
+          {recentPosts}
+        </Section>}
       </>
     );
 
@@ -351,7 +362,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
     this.stats = stats;
     this.dcId = dcId;
 
-    const promises: Promise<any>[] = [];
+    const promises: PromiseLike<any>[] = [];
     for(const key in stats) {
       const value = stats[key as keyof typeof stats];
       if((value as StatsGraph)._ === 'statsGraphAsync') {
@@ -373,7 +384,134 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
       }
     }
 
-    return Promise.all(promises);
+    const peerId = this.chatId.toPeerId(true);
+    stats.recent_posts_interactions ||= [];
+    const recentPosts = stats.recent_posts_interactions;
+    recentPosts.forEach((postInteractionCounters) => {
+      let promise: PromiseLike<any>;
+      if(postInteractionCounters._ === 'postInteractionCountersMessage') {
+        promise = this.managers.appMessagesManager.reloadMessages(peerId, postInteractionCounters.msg_id)
+        .then((message) => {
+          if(!message) {
+            indexOfAndSplice(recentPosts, postInteractionCounters);
+            return;
+          }
+
+          this.messages.set(message.mid, message as Message.message);
+        });
+      } else {
+        promise = this.managers.appStoriesManager.getStoryById(peerId, postInteractionCounters.story_id)
+        .then((storyItem) => {
+          if(!storyItem) {
+            indexOfAndSplice(recentPosts, postInteractionCounters);
+            return;
+          }
+
+          this.stories.set(storyItem.id, storyItem);
+        });
+      }
+
+      promises.push(promise);
+    });
+
+    const middleware = this.middlewareHelper.get();
+    return Promise.all(promises).then(() => {
+      const promises = recentPosts.map(async(postInteractionCounters) => {
+        const subtitleRightFragment = document.createDocumentFragment();
+        const a: [Icon, number][] = [
+          ['reactions', postInteractionCounters.reactions],
+          ['reply', postInteractionCounters.forwards]
+        ];
+
+        a.forEach(([icon, count]) => {
+          if(!count) {
+            return;
+          }
+
+          const i = Icon(icon, 'statistics-post-counter-icon');
+          if(icon === 'reply') {
+            i.classList.add('icon-reflect');
+          }
+
+          const e = document.createElement('span');
+          e.classList.add('statistics-post-counter');
+          e.append(i, formatNumber(count, 1));
+          subtitleRightFragment.append(e);
+        });
+
+        const row = new Row({
+          title: true,
+          titleRight: i18n('Views', [numberThousandSplitter(postInteractionCounters.views)]),
+          subtitle: true,
+          subtitleRight: subtitleRightFragment,
+          clickable: true,
+          noWrap: true
+        });
+
+        const {container} = row;
+        container.classList.add('statistics-post');
+
+        row.title.classList.add('statistics-post-title');
+
+        const mediaEl = document.createElement('div');
+        mediaEl.classList.add('statistics-post-media');
+        if(postInteractionCounters._ === 'postInteractionCountersMessage') {
+          container.classList.add('statistics-post-message');
+          const message = this.messages.get(postInteractionCounters.msg_id);
+          const isMediaSet = await wrapReplyDivAndCaption({
+            titleEl: row.subtitle,
+            title: formatFullSentTime(message.date),
+            subtitleEl: row.title,
+            message,
+            mediaEl,
+            middleware,
+            withoutMediaType: true
+          });
+
+          if(isMediaSet) {
+            row.applyMediaElement(mediaEl, 'abitbigger');
+          }
+        } else {
+          container.classList.add('statistics-post-story');
+          const storyItem = this.stories.get(postInteractionCounters.story_id);
+          row.title.append(i18n('Story'));
+          row.subtitle.append(formatFullSentTime(storyItem.date));
+
+          const border = document.createElement('div');
+          border.classList.add('avatar-stories-simple', 'is-unread');
+          mediaEl.append(border);
+
+          await createRoot((dispose) => {
+            middleware.onDestroy(dispose);
+            const {ready, div} = wrapStoryMedia({
+              storyItem,
+              peerId,
+              forPreview: true,
+              noInfo: true,
+              withPreloader: false,
+              noAspecter: true
+            });
+
+            const deferred = deferredPromise<void>();
+
+            createEffect(() => {
+              if(ready()) {
+                mediaEl.append(div);
+                deferred.resolve();
+              }
+            });
+
+            return deferred;
+          });
+
+          row.applyMediaElement(mediaEl, 'abitbigger');
+        }
+
+        return container;
+      });
+
+      return Promise.all(promises);
+    });
   }
 
   public async init(chatId: ChatId) {
@@ -381,6 +519,8 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
     this.setTitle('Statistics');
 
     this.chatId = chatId;
+    this.messages = new Map();
+    this.stories = new Map();
     this.openPromise = deferredPromise<void>();
 
     const promise = Promise.all([
@@ -401,10 +541,11 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
     });
 
     this.scrollable.append(element);
-    promise.then(async() => {
+    promise.then(async([_, recentPosts, __]) => {
+      console.log(this.stats, this.messages, this.stories);
       const div = document.createElement('div');
       this.scrollable.append(div);
-      const dispose = render(() => this._construct(), div);
+      const dispose = render(() => this._construct(recentPosts), div);
       this.eventListener.addEventListener('destroy', dispose);
 
       if(liteMode.isAvailable('animations')) {

@@ -996,4 +996,63 @@
       pointer-events: all;
     }
   }
+
+  &-post {
+    &-title {
+      font-weight: var(--font-weight-bold);
+    }
+
+    &-media {
+      border-radius: $border-radius;
+
+      .media-photo {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+    }
+
+    &-counter {
+      display: flex;
+      align-items: center;
+      gap: .125rem;
+
+      &-icon {
+        font-size: var(--font-size-16);
+      }
+    }
+
+    &-story {
+      .statistics-post-media {
+        border-radius: 50%;
+        padding: 0.125rem;
+      }
+
+      .media-container {
+        width: 100%;
+        height: 100%;
+        position: relative;
+        border: 2px solid var(--surface-color);
+      }
+
+      .avatar-stories-simple {
+        --offset: 0px;
+      }
+    }
+
+    .media-container,
+    .media-photo {
+      border-radius: inherit;
+    }
+
+    .row-title-right {
+      font-size: var(--font-size-14);
+    }
+
+    .row-subtitle-right {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+  }
 }

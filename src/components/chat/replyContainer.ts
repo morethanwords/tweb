@@ -36,7 +36,8 @@ export async function wrapReplyDivAndCaption(options: {
   middleware?: Middleware,
   lazyLoadQueue?: false | LazyLoadQueue,
   replyHeader?: MessageReplyHeader,
-  quote?: {text: string, entities?: MessageEntity[]}
+  quote?: {text: string, entities?: MessageEntity[]},
+  withoutMediaType?: boolean
 } & WrapRichTextOptions) {
   options.loadPromises ||= [];
 

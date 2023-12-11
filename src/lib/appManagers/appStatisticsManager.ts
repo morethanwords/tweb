@@ -29,6 +29,12 @@ export default class AppStoriesManager extends AppManager {
         channel: this.appChatsManager.getChannelInput(chatId)
       },
       processResult: (stats) => {
+        stats.recent_posts_interactions.forEach((postInteractionCounters) => {
+          if(postInteractionCounters._ === 'postInteractionCountersMessage') {
+            postInteractionCounters.msg_id = this.appMessagesIdsManager.generateMessageId(postInteractionCounters.msg_id, chatId);
+          }
+        });
+
         return {
           stats,
           dcId: options.dcId

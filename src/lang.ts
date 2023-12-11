@@ -1572,6 +1572,7 @@ const lang = {
   'IVInteractionsChartTitle': 'IV Interactions',
   'StoryInteractionsChartTitle': 'Story Views and Shares',
   'StoryReactionsByEmotionChartTitle': 'Story Reactions',
+  'RecentPosts': 'Recent posts',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
