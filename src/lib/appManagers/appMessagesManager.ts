@@ -1886,7 +1886,7 @@ export class AppMessagesManager extends AppManager {
 
     header.reply_media = (originalMessage as Message.message)?.media;
 
-    if(replyWillBeInPeerId !== originalMessage.peerId) {
+    if(originalMessage && replyWillBeInPeerId !== originalMessage.peerId) {
       header.reply_from = this.generateForwardHeader(peerId, originalMessage as Message.message, true);
     }
 
