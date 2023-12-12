@@ -108,7 +108,7 @@ export default class PopupJoinChatInvite extends PopupPeer {
       size: 100,
       isDialog: false
     });
-    if(chatInvite.photo._ === 'photo') {
+    if(chatInvite.photo?._ === 'photo') {
       chatInvite.photo = await managers.appPhotosManager.savePhoto(chatInvite.photo);
       await wrapPhotoToAvatar(avatarElem, chatInvite.photo);
     } else {
