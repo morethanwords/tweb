@@ -305,6 +305,7 @@ export function createTooltip(
     switch(data.tooltipFormatter) {
       case 'statsFormatDayHourFull':
         return statsFormatDayHourFull(data.xLabels[labelIndex].value, data);
+      case 'statsTooltipFormat(\'week\')':
       case 'statsTooltipFormat(\'day\')':
         return data.getLabelDate(data.xLabels[labelIndex]);
       case 'statsTooltipFormat(\'hour\')':

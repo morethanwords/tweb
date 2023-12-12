@@ -10,23 +10,27 @@ import {DcId, InvokeApiOptions} from '../../types';
 import {AppManager} from './manager';
 
 export default class AppStoriesManager extends AppManager {
-  public getBroadcastStats(chatId: ChatId, dcId?: DcId): Promise<{stats: StatsBroadcastStats, dcId: DcId}> {
-    if(dcId === undefined) {
-      return callbackify(this.appProfileManager.getChatFull(chatId), async(chatFull) => {
-        let dcId = (chatFull as ChatFull.channelFull).stats_dc;
-        if(dcId === undefined) {
-          dcId = await this.apiManager.getBaseDcId();
-        }
+  private async getInvokeOptions(chatId: ChatId, dcId?: DcId) {
+    dcId ??= await callbackify(this.appProfileManager.getChatFull(chatId), async(chatFull) => {
+      let dcId = (chatFull as ChatFull.channelFull).stats_dc;
+      if(dcId === undefined) {
+        dcId = await this.apiManager.getBaseDcId();
+      }
 
-        return this.getBroadcastStats(chatId, dcId);
-      });
-    }
+      return dcId;
+    });
 
     const options: InvokeApiOptions = {dcId};
+    return options;
+  }
+
+  public async getBroadcastStats(chatId: ChatId, dark?: boolean, dcId?: DcId): Promise<{stats: StatsBroadcastStats, dcId: DcId}> {
+    const options = await this.getInvokeOptions(chatId, dcId);
     return this.apiManager.invokeApiSingleProcess({
       method: 'stats.getBroadcastStats',
       params: {
-        channel: this.appChatsManager.getChannelInput(chatId)
+        channel: this.appChatsManager.getChannelInput(chatId),
+        dark
       },
       processResult: (stats) => {
         stats.recent_posts_interactions.forEach((postInteractionCounters) => {
@@ -52,6 +56,26 @@ export default class AppStoriesManager extends AppManager {
         x
       },
       options: {dcId}
+    });
+  }
+
+  public async getMegagroupStats(chatId: ChatId, dark?: boolean, dcId?: DcId) {
+    const options = await this.getInvokeOptions(chatId, dcId);
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'stats.getMegagroupStats',
+      params: {
+        channel: this.appChatsManager.getChannelInput(chatId),
+        dark
+      },
+      processResult: (stats) => {
+        this.appPeersManager.saveApiPeers(stats);
+
+        return {
+          stats,
+          dcId: options.dcId
+        };
+      },
+      options
     });
   }
 }

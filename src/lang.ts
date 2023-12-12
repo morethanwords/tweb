@@ -1573,6 +1573,43 @@ const lang = {
   'StoryInteractionsChartTitle': 'Story Views and Shares',
   'StoryReactionsByEmotionChartTitle': 'Story Reactions',
   'RecentPosts': 'Recent posts',
+  'GroupMembersChartTitle': 'Group members',
+  'NewMembersBySourceChartTitle': 'New members by source',
+  'MembersLanguageChartTitle': 'Members\' primary language',
+  'MessagesChartTitle': 'Messages',
+  'ActionsChartTitle': 'Actions',
+  'MembersOverviewTitle': 'Members',
+  'MessagesOverview': 'Messages',
+  'ViewingMembers': 'Viewing Members',
+  'PostingMembers': 'Posting Members',
+  'TopDaysOfWeekChartTitle': 'Top days of week',
+  'CharactersPerMessage': '%s per message',
+  'Characters': {
+    'one_value': '%1$d character',
+    'other_value': '%1$d characters'
+  },
+  'Deletions': {
+    'one_value': '%1$d deletion',
+    'other_value': '%1$d deletions'
+  },
+  'Bans': {
+    'one_value': '%1$d ban',
+    'other_value': '%1$d bans'
+  },
+  'Restrictions': {
+    'one_value': '%1$d restriction',
+    'other_value': '%1$d restrictions'
+  },
+  'Invitations': {
+    'one_value': '%1$d invitation',
+    'other_value': '%1$d invitations'
+  },
+  'TopAdmins': 'Top admins',
+  'TopMembers': 'Top members',
+  'TopInviters': 'Top inviters',
+  'StoryStatistics': 'Story Statistics',
+  'PostStatistics': 'Post Statistics',
+  'ViewStatistics': 'View Statistics',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
@@ -2143,7 +2180,8 @@ const lang = {
   'Premium.Boarding.Subscribe': 'Subscribe for %@ per month',
   'Premium.Offset.AlreadyHave': 'You already have Telegram Premium.',
   'GiftLink.UseSuccess': 'You successfully activated gift link.',
-  'Giveaway.Type.Specific.Modal.SelectUsers': 'Select Users'
+  'Giveaway.Type.Specific.Modal.SelectUsers': 'Select Users',
+  'GroupStats.Title': 'Group Statistics'
 };
 
 export default lang;

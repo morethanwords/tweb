@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {JSX, ParentComponent} from 'solid-js';
+import {JSX, ParentComponent, Ref} from 'solid-js';
 import {LangPackKey, FormatterArguments, i18n} from '../lib/langPack';
 import {generateDelimiter} from './generateDelimiter';
 import classNames from '../helpers/string/classNames';
@@ -37,10 +37,11 @@ const SectionCaption = (props: Pick<SectionOptions, 'caption' | 'captionArgs'>) 
     </SectionContent>
   );
 };
-const Section: ParentComponent<SectionOptions> = (props) => {
+const Section: ParentComponent<SectionOptions & {ref?: Ref<HTMLDivElement>}> = (props) => {
   return (
     <div
       class={classNames(className + '-container', props.class)}
+      ref={props.ref}
     >
       <div
         class={classNames(

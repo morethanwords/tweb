@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {Message, StatsAbsValueAndPrev, StatsBroadcastStats, StatsGraph, StatsPercentValue, StoryItem} from '../../../layer';
-import I18n, {LangPackKey, i18n, joinElementsWith} from '../../../lib/langPack';
+import {Message, PostInteractionCounters, StatsAbsValueAndPrev, StatsBroadcastStats, StatsGraph, StatsGroupTopAdmin, StatsGroupTopInviter, StatsGroupTopPoster, StatsMegagroupStats, StatsPercentValue, StoryItem} from '../../../layer';
+import I18n, {LangPackKey, i18n, join, joinElementsWith} from '../../../lib/langPack';
 import Section from '../../section';
 import {SliderSuperTabEventable} from '../../sliderTab';
 import {For, render} from 'solid-js/web';
@@ -28,6 +28,10 @@ import {wrapReplyDivAndCaption} from '../../chat/replyContainer';
 import {formatFullSentTime} from '../../../helpers/date';
 import numberThousandSplitter from '../../../helpers/number/numberThousandSplitter';
 import {wrapStoryMedia} from '../../stories/preview';
+import {attachClickEvent} from '../../../helpers/dom/clickEvent';
+import findUpClassName from '../../../helpers/dom/findUpClassName';
+import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
+import Button from '../../button';
 
 const CHANNEL_GRAPHS_TITLES: {[key in keyof PickByType<StatsBroadcastStats, StatsGraph>]: LangPackKey} = {
   growth_graph: 'GrowthChartTitle',
@@ -44,7 +48,18 @@ const CHANNEL_GRAPHS_TITLES: {[key in keyof PickByType<StatsBroadcastStats, Stat
   story_reactions_by_emotion_graph: 'StoryReactionsByEmotionChartTitle'
 };
 
-const OVERVIEW_ITEMS: {[key in keyof PickByType<StatsBroadcastStats, StatsAbsValueAndPrev | StatsPercentValue>]: LangPackKey} = {
+const GROUP_GRAPH_TITLES: {[key in keyof PickByType<StatsMegagroupStats, StatsGraph>]: LangPackKey} = {
+  growth_graph: 'GrowthChartTitle',
+  members_graph: 'GroupMembersChartTitle',
+  new_members_by_source_graph: 'NewMembersBySourceChartTitle',
+  languages_graph: 'MembersLanguageChartTitle',
+  messages_graph: 'MessagesChartTitle',
+  actions_graph: 'ActionsChartTitle',
+  top_hours_graph: 'TopHoursChartTitle',
+  weekdays_graph: 'TopDaysOfWeekChartTitle'
+};
+
+const CHANNEL_OVERVIEW_ITEMS: {[key in keyof PickByType<StatsBroadcastStats, StatsAbsValueAndPrev | StatsPercentValue>]: LangPackKey} = {
   followers: 'FollowersChartTitle',
   enabled_notifications: 'EnabledNotifications',
   views_per_post: 'ViewsPerPost',
@@ -55,6 +70,13 @@ const OVERVIEW_ITEMS: {[key in keyof PickByType<StatsBroadcastStats, StatsAbsVal
   reactions_per_story: 'ReactionsPerStory'
 };
 
+const GROUP_OVERVIEW_ITEMS: {[key in keyof PickByType<StatsMegagroupStats, StatsAbsValueAndPrev | StatsPercentValue>]: LangPackKey} = {
+  members: 'MembersOverviewTitle',
+  messages: 'MessagesOverview',
+  viewers: 'ViewingMembers',
+  posters: 'PostingMembers'
+};
+
 let lovelyChartPromise: Promise<any>;
 let createLovelyChart: typeof create;
 function ensureLovelyChart() {
@@ -63,9 +85,7 @@ function ensureLovelyChart() {
   });
 }
 
-export function buildGraph(
-  result: StatsGraph, isPercentage?: boolean
-) {
+export function buildGraph(result: StatsGraph, isPercentage?: boolean) {
   if(result?._ !== 'statsGraph') {
     return;
   }
@@ -73,6 +93,7 @@ export function buildGraph(
   const data = JSON.parse(result.json.data);
   const [x, ...y] = data.columns;
   const hasSecondYAxis = data.y_scaled;
+  isPercentage ??= !!data.percentage;
 
   return {
     type: isPercentage ? 'area' : data.types.y0,
@@ -125,17 +146,28 @@ function calculateMinimapRange(range: Array<number>, values: Array<number>) {
 
 export default class AppStatisticsTab extends SliderSuperTabEventable {
   private chatId: ChatId;
-  private stats: StatsBroadcastStats;
+  private mid: number;
+  private storyId: number;
+  private stats: StatsBroadcastStats | StatsMegagroupStats;
   private messages: Map<number, Message.message>;
   private stories: Map<number, StoryItem.storyItem>;
   private dcId: DcId;
   private openPromise: CancellablePromise<void>;
+  private isBroadcast: boolean;
+  private isMegagroup: boolean;
+  private isMessage: boolean;
+  private isStory: boolean;
 
   protected onOpenAfterTimeout(): void {
     this.openPromise.resolve();
   }
 
-  private _construct(recentPosts: HTMLElement[]) {
+  private _construct(
+    recentPosts: {container: HTMLElement, postInteractionCounters: PostInteractionCounters}[],
+    topPosters: {container: HTMLElement, peerId: PeerId}[],
+    topAdmins: {container: HTMLElement, peerId: PeerId}[],
+    topInviters: {container: HTMLElement, peerId: PeerId}[]
+  ) {
     const dateElement = new I18n.IntlDateElement({options: {}});
     const getLabelDate: Parameters<typeof createLovelyChart>[1]['getLabelDate'] = (label, options = {}) => {
       options.displayYear ??= true;
@@ -215,20 +247,21 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
       getLabelTime
     };
 
-    const graphs = Object.keys(CHANNEL_GRAPHS_TITLES).map((key) => {
-      const statsGraph = this.stats[key as keyof typeof CHANNEL_GRAPHS_TITLES];
+    const titles = this.stats._ === 'stats.broadcastStats' ? CHANNEL_GRAPHS_TITLES : GROUP_GRAPH_TITLES;
+    const graphs = Object.keys(titles).map((key) => {
+      const statsGraph = this.stats[key as keyof typeof titles];
       return statsGraph && {
         statsGraph,
-        title: CHANNEL_GRAPHS_TITLES[key as keyof typeof CHANNEL_GRAPHS_TITLES],
-        isPercentage: key === 'languages_graph'
+        title: titles[key as keyof typeof titles]
       };
     }).filter(Boolean);
-    const renderGraph = ({statsGraph, title, isPercentage}: typeof graphs[0]) => {
-      const graph = buildGraph(statsGraph, isPercentage);
+    const renderGraph = ({statsGraph, title}: typeof graphs[0]) => {
+      const graph = buildGraph(statsGraph);
+
+      console.log('builded graph', graph);
 
       onMount(() => {
         const params: Parameters<typeof createLovelyChart>[1] = {
-          // title: I18n.format(title, true),
           ...addOptions,
           headerElements: {
             title: titleElement,
@@ -240,7 +273,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
               const statsGraph = await this.managers.appStatisticsManager.loadAsyncGraph(graph.zoomToken, x, this.dcId);
               return {
                 ...addOptions,
-                ...buildGraph(statsGraph, isPercentage)
+                ...buildGraph(statsGraph, graph.isPercentage)
               };
             },
             zoomOutLabel: I18n.format('ZoomOut', true)
@@ -261,7 +294,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
       t.classList.add('statistics-title-text');
       titleElement.append(t);
       let zoomOutElement: HTMLElement;
-      if(graph.zoomToken || isPercentage) {
+      if(graph.zoomToken || graph.isPercentage) {
         zoomOutElement = document.createElement('div');
         zoomOutElement.classList.add('statistics-title-zoom');
         zoomOutElement.append(Icon('zoomout', 'statistics-title-zoom-icon'), i18n('ZoomOut'));
@@ -275,11 +308,12 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
       );
     };
 
-    const overviewItems = Object.keys(OVERVIEW_ITEMS).map((key) => {
-      const value = this.stats[key as keyof typeof OVERVIEW_ITEMS];
+    const overviewTitles = this.stats._ === 'stats.broadcastStats' ? CHANNEL_OVERVIEW_ITEMS : GROUP_OVERVIEW_ITEMS;
+    const overviewItems: {value: StatsAbsValueAndPrev | StatsPercentValue, title: LangPackKey}[] = Object.keys(overviewTitles).map((key) => {
+      const value = this.stats[key as keyof typeof overviewTitles];
       return value && {
         value,
-        title: OVERVIEW_ITEMS[key as keyof typeof OVERVIEW_ITEMS]
+        title: overviewTitles[key as keyof typeof overviewTitles]
       };
     });
 
@@ -340,6 +374,8 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
       );
     };
 
+    const topPeersTitles: [LangPackKey, LangPackKey, LangPackKey] = ['TopMembers', 'TopAdmins', 'TopInviters'];
+    let postsContainer: HTMLDivElement;
     const ret = (
       <>
         <Section name="StatisticOverview" nameRight={formatDateRange(this.stats.period.min_date, this.stats.period.max_date)}>
@@ -348,17 +384,199 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
           </div>
         </Section>
         <For each={graphs}>{renderGraph}</For>
-        {recentPosts.length && <Section name="RecentPosts">
-          {recentPosts}
+        {recentPosts.length && <Section ref={postsContainer} name="RecentPosts">
+          {recentPosts.map(({container}) => container)}
         </Section>}
+        <For each={[topPosters, topAdmins, topInviters]}>{(topPeers, idx) => {
+          if(!topPeers.length) {
+            return;
+          }
+
+          topPeers = topPeers.slice();
+
+          const chatlist = appDialogsManager.createChatList();
+          chatlist.append(...topPeers.splice(0, 10).map(({container}) => container));
+          let moreButton: HTMLElement;
+          if(topPeers.length) {
+            moreButton = Button('btn btn-primary btn-transparent primary', {icon: 'down', text: 'PollResults.LoadMore', textArgs: [topPeers.length]});
+            attachClickEvent(moreButton, () => {
+              moreButton.remove();
+              chatlist.append(...topPeers.map(({container}) => container));
+            }, {listenerSetter: this.listenerSetter});
+          }
+          return (
+            <Section name={topPeersTitles[idx()]} nameRight={formatDateRange(this.stats.period.min_date, this.stats.period.max_date)}>
+              {chatlist}
+              {moreButton}
+            </Section>
+          );
+        }}</For>
       </>
     );
+
+    if(postsContainer) {
+      const map: Map<HTMLElement, PostInteractionCounters> = new Map();
+      recentPosts.forEach(({container, postInteractionCounters}) => {
+        map.set(container, postInteractionCounters);
+      });
+
+      const findTarget = (e: MouseEvent) => findUpClassName(e.target, 'statistics-post');
+      const findCounters = (e: MouseEvent) => map.get(findTarget(e));
+
+      attachClickEvent(postsContainer, (e) => {
+        const counters = findCounters(e);
+        if(!counters) {
+          return;
+        }
+
+        console.log(counters);
+      }, {listenerSetter: this.listenerSetter});
+    }
 
     return ret;
   }
 
+  private async renderRecentPost(postInteractionCounters: PostInteractionCounters) {
+    const subtitleRightFragment = document.createDocumentFragment();
+    const a: [Icon, number][] = [
+      ['reactions', postInteractionCounters.reactions],
+      ['reply', postInteractionCounters.forwards]
+    ];
+
+    a.forEach(([icon, count]) => {
+      if(!count) {
+        return;
+      }
+
+      const i = Icon(icon, 'statistics-post-counter-icon');
+      if(icon === 'reply') {
+        i.classList.add('icon-reflect');
+      }
+
+      const e = document.createElement('span');
+      e.classList.add('statistics-post-counter');
+      e.append(i, formatNumber(count, 1));
+      subtitleRightFragment.append(e);
+    });
+
+    const row = new Row({
+      title: true,
+      titleRight: i18n('Views', [numberThousandSplitter(postInteractionCounters.views)]),
+      subtitle: true,
+      subtitleRight: subtitleRightFragment,
+      clickable: true,
+      noWrap: true
+    });
+
+    const {container} = row;
+    container.classList.add('statistics-post');
+
+    row.title.classList.add('statistics-post-title');
+
+    const middleware = this.middlewareHelper.get();
+    const mediaEl = document.createElement('div');
+    mediaEl.classList.add('statistics-post-media');
+    if(postInteractionCounters._ === 'postInteractionCountersMessage') {
+      container.classList.add('statistics-post-message');
+      const message = this.messages.get(postInteractionCounters.msg_id);
+      const isMediaSet = await wrapReplyDivAndCaption({
+        titleEl: row.subtitle,
+        title: formatFullSentTime(message.date),
+        subtitleEl: row.title,
+        message,
+        mediaEl,
+        middleware,
+        withoutMediaType: true
+      });
+
+      if(isMediaSet) {
+        row.applyMediaElement(mediaEl, 'abitbigger');
+      }
+    } else {
+      container.classList.add('statistics-post-story');
+      const storyItem = this.stories.get(postInteractionCounters.story_id);
+      row.title.append(i18n('Story'));
+      row.subtitle.append(formatFullSentTime(storyItem.date));
+
+      const border = document.createElement('div');
+      border.classList.add('avatar-stories-simple', 'is-unread');
+      mediaEl.append(border);
+
+      await createRoot((dispose) => {
+        middleware.onDestroy(dispose);
+        const {ready, div} = wrapStoryMedia({
+          storyItem,
+          peerId: this.chatId.toPeerId(true),
+          forPreview: true,
+          noInfo: true,
+          withPreloader: false,
+          noAspecter: true
+        });
+
+        const deferred = deferredPromise<void>();
+
+        createEffect(() => {
+          if(ready()) {
+            mediaEl.append(div);
+            deferred.resolve();
+          }
+        });
+
+        return deferred;
+      });
+
+      row.applyMediaElement(mediaEl, 'abitbigger');
+    }
+
+    return {container, postInteractionCounters};
+  }
+
+  private renderTopPeer = async(topPoster: StatsGroupTopPoster | StatsGroupTopAdmin | StatsGroupTopInviter) => {
+    const peerId = topPoster.user_id.toPeerId(false);
+    const loadPromises: Promise<any>[] = [];
+    const {dom} = appDialogsManager.addDialogNew({
+      peerId: peerId,
+      container: false,
+      rippleEnabled: true,
+      avatarSize: 'abitbigger',
+      loadPromises,
+      wrapOptions: {
+        middleware: this.middlewareHelper.get()
+      }
+    });
+
+    let toJoin: Node[];
+    if(topPoster._ === 'statsGroupTopPoster') {
+      toJoin = [
+        topPoster.messages && i18n('messages', [topPoster.messages]),
+        topPoster.avg_chars && i18n('CharactersPerMessage', [i18n('Characters', [topPoster.avg_chars])])
+      ];
+    } else if(topPoster._ === 'statsGroupTopAdmin') {
+      toJoin = [
+        topPoster.deleted && i18n('Deletions', [topPoster.deleted]),
+        topPoster.banned && i18n('Bans', [topPoster.banned]),
+        topPoster.kicked && i18n('Restrictions', [topPoster.kicked])
+      ];
+    } else {
+      toJoin = [
+        topPoster.invitations && i18n('Invitations', [topPoster.invitations])
+      ];
+    }
+
+    toJoin = toJoin.filter(Boolean);
+    if(toJoin.length) {
+      dom.lastMessageSpan.replaceChildren(...join(toJoin, false));
+    }
+
+    await Promise.all(loadPromises);
+    return {container: dom.listEl, peerId};
+  };
+
   private async loadStats() {
-    const {stats, dcId} = await this.managers.appStatisticsManager.getBroadcastStats(this.chatId);
+    const peerId = this.chatId.toPeerId(true);
+    const manager = this.managers.appStatisticsManager;
+    const func = this.isBroadcast ? manager.getBroadcastStats : manager.getMegagroupStats;
+    const {stats, dcId} = await func(this.chatId);
     this.stats = stats;
     this.dcId = dcId;
 
@@ -384,9 +602,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
       }
     }
 
-    const peerId = this.chatId.toPeerId(true);
-    stats.recent_posts_interactions ||= [];
-    const recentPosts = stats.recent_posts_interactions;
+    const recentPosts = (stats as StatsBroadcastStats).recent_posts_interactions || [];
     recentPosts.forEach((postInteractionCounters) => {
       let promise: PromiseLike<any>;
       if(postInteractionCounters._ === 'postInteractionCountersMessage') {
@@ -414,119 +630,54 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
       promises.push(promise);
     });
 
-    const middleware = this.middlewareHelper.get();
+    const topPosters = (stats as StatsMegagroupStats).top_posters || [];
+    const topAdmins = (stats as StatsMegagroupStats).top_admins || [];
+    const topInvites = (stats as StatsMegagroupStats).top_inviters || [];
+    const renderedTopPosters = topPosters.map(this.renderTopPeer);
+    const renderedTopAdmins = topAdmins.map(this.renderTopPeer);
+    const renderedTopInviters = topInvites.map(this.renderTopPeer);
+
     return Promise.all(promises).then(() => {
-      const promises = recentPosts.map(async(postInteractionCounters) => {
-        const subtitleRightFragment = document.createDocumentFragment();
-        const a: [Icon, number][] = [
-          ['reactions', postInteractionCounters.reactions],
-          ['reply', postInteractionCounters.forwards]
-        ];
-
-        a.forEach(([icon, count]) => {
-          if(!count) {
-            return;
-          }
-
-          const i = Icon(icon, 'statistics-post-counter-icon');
-          if(icon === 'reply') {
-            i.classList.add('icon-reflect');
-          }
-
-          const e = document.createElement('span');
-          e.classList.add('statistics-post-counter');
-          e.append(i, formatNumber(count, 1));
-          subtitleRightFragment.append(e);
-        });
-
-        const row = new Row({
-          title: true,
-          titleRight: i18n('Views', [numberThousandSplitter(postInteractionCounters.views)]),
-          subtitle: true,
-          subtitleRight: subtitleRightFragment,
-          clickable: true,
-          noWrap: true
-        });
-
-        const {container} = row;
-        container.classList.add('statistics-post');
-
-        row.title.classList.add('statistics-post-title');
-
-        const mediaEl = document.createElement('div');
-        mediaEl.classList.add('statistics-post-media');
-        if(postInteractionCounters._ === 'postInteractionCountersMessage') {
-          container.classList.add('statistics-post-message');
-          const message = this.messages.get(postInteractionCounters.msg_id);
-          const isMediaSet = await wrapReplyDivAndCaption({
-            titleEl: row.subtitle,
-            title: formatFullSentTime(message.date),
-            subtitleEl: row.title,
-            message,
-            mediaEl,
-            middleware,
-            withoutMediaType: true
-          });
-
-          if(isMediaSet) {
-            row.applyMediaElement(mediaEl, 'abitbigger');
-          }
-        } else {
-          container.classList.add('statistics-post-story');
-          const storyItem = this.stories.get(postInteractionCounters.story_id);
-          row.title.append(i18n('Story'));
-          row.subtitle.append(formatFullSentTime(storyItem.date));
-
-          const border = document.createElement('div');
-          border.classList.add('avatar-stories-simple', 'is-unread');
-          mediaEl.append(border);
-
-          await createRoot((dispose) => {
-            middleware.onDestroy(dispose);
-            const {ready, div} = wrapStoryMedia({
-              storyItem,
-              peerId,
-              forPreview: true,
-              noInfo: true,
-              withPreloader: false,
-              noAspecter: true
-            });
-
-            const deferred = deferredPromise<void>();
-
-            createEffect(() => {
-              if(ready()) {
-                mediaEl.append(div);
-                deferred.resolve();
-              }
-            });
-
-            return deferred;
-          });
-
-          row.applyMediaElement(mediaEl, 'abitbigger');
-        }
-
-        return container;
+      const recentPostsPromises = recentPosts.map((postInteractionCounters) => {
+        return this.renderRecentPost(postInteractionCounters);
       });
+
+      const promises = [
+        Promise.all(recentPostsPromises),
+        Promise.all(renderedTopPosters),
+        Promise.all(renderedTopAdmins),
+        Promise.all(renderedTopInviters)
+      ] as const;
 
       return Promise.all(promises);
     });
   }
 
-  public async init(chatId: ChatId) {
+  public async init(chatId: ChatId, mid?: number, storyId?: number) {
     this.container.classList.add('statistics-container');
-    this.setTitle('Statistics');
 
     this.chatId = chatId;
+    this.mid = mid;
+    this.storyId = storyId;
     this.messages = new Map();
     this.stories = new Map();
     this.openPromise = deferredPromise<void>();
 
+    if(mid) {
+      this.isMessage = true;
+    } else if(storyId) {
+      this.isStory = true;
+    } else {
+      this.isBroadcast = await this.managers.appChatsManager.isBroadcast(chatId);
+      this.isMegagroup = await this.managers.appChatsManager.isMegagroup(chatId);
+    }
+
+    this.setTitle(this.isBroadcast ? 'Statistics' : (this.isMegagroup ? 'GroupStats.Title' : (this.isStory ? 'StoryStatistics' : 'PostStatistics')));
+
     const promise = Promise.all([
       ensureLovelyChart(),
-      this.loadStats(),
-      this.openPromise
+      this.openPromise,
+      this.loadStats()
     ]);
 
     const [hide, setHide] = createSignal(false);
@@ -541,11 +692,11 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
     });
 
     this.scrollable.append(element);
-    promise.then(async([_, recentPosts, __]) => {
+    promise.then(async([_, __, loaded]) => {
       console.log(this.stats, this.messages, this.stories);
       const div = document.createElement('div');
       this.scrollable.append(div);
-      const dispose = render(() => this._construct(recentPosts), div);
+      const dispose = render(() => this._construct(...loaded), div);
       this.eventListener.addEventListener('destroy', dispose);
 
       if(liteMode.isAvailable('animations')) {

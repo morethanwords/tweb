@@ -280,5 +280,5 @@ export function createMinimap(container: HTMLElement, data: StatisticsGraph, col
     children[2].style.width = `${(1 - end) * 100}%`;
   }
 
-  return {update, toggle};
+  return {update, updateRange: _updateRange, toggle};
 }

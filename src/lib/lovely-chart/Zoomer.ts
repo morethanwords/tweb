@@ -97,8 +97,9 @@ export function createZoomer(
       if(shouldZoomToLines) {
         minimap.toggle(_isZoomed);
         tools.redraw();
-        container.style.width = `${container.scrollWidth}px`;
-        container.style.height = `${container.scrollHeight}px`;
+        const {scrollWidth, scrollHeight} = container;
+        container.style.width = `${scrollWidth}px`;
+        container.style.height = `${scrollHeight}px`;
       }
 
       stateManager.update({
@@ -165,13 +166,13 @@ export function createZoomer(
       overviewData,
       {
         type: 'pie',
-        labels: overviewData.labels.slice(labelIndex - 3, labelIndex + 4),
-        datasets: overviewData.datasets.map((dataset) => {
-          return {
-            ...dataset,
-            values: dataset.values.slice(labelIndex - 3, labelIndex + 4)
-          };
-        })
+        // labels: overviewData.labels.slice(labelIndex - 3, labelIndex + 4),
+        labels: overviewData.labels.slice(),
+        datasets: overviewData.datasets.map((dataset) => ({
+          ...dataset,
+          // values: dataset.values.slice(labelIndex - 3, labelIndex + 4)
+          values: dataset.values.slice()
+        }))
       }
     );
   }

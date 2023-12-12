@@ -25,6 +25,7 @@ export function analyzeData(data: StatisticsGraph, term?: 'day' | 'hour') {
     case 'statsFormatDayHour':
       xLabels = statsFormatDayHour(labels, data);
       break;
+    case 'statsFormat(\'week\')':
     case 'statsFormat(\'day\')':
       xLabels = statsFormatDay(labels, data);
       break;

@@ -54,6 +54,17 @@ export function create(container: HTMLElement, originalData: StatisticsGraph) {
   _setupComponents();
   _setupGlobalListeners();
 
+  // * quick fix for area chart
+  if(originalData.type === 'area') {
+    setTimeout(() => {
+      _onZoomIn((originalData.labelToIndex + originalData.labelFromIndex) / 2 | 0);
+
+      setTimeout(() => {
+        _minimap.updateRange({begin: 1 - (1 / 7), end: 1});
+      }, 10);
+    }, 0);
+  }
+
   function _setupComponents() {
     _setupContainer();
     _header = createHeader(_element, _data.title, _data.zoomOutLabel, _onZoomOut, originalData.headerElements?.title, originalData.headerElements?.caption, originalData.headerElements?.zoomOut);
@@ -191,25 +202,17 @@ export function create(container: HTMLElement, originalData: StatisticsGraph) {
   }
 
   function _getCaption(state: typeof _state) {
-    let startIndex;
-    let endIndex;
+    const startIndex = state.labelFromIndex;
+    const endIndex = state.labelToIndex;
+    const xLabels = _data.xLabels;
 
-    if(_zoomer && _zoomer.isZoomed()) {
-      // TODO Fix label
-      startIndex = state.labelFromIndex === 0 ? 0 : state.labelFromIndex + 1;
-      endIndex = state.labelToIndex === state.totalXWidth - 1 ? state.labelToIndex : state.labelToIndex - 1;
-    } else {
-      startIndex = state.labelFromIndex;
-      endIndex = state.labelToIndex;
-    }
-
-    return isDataRange(_data.xLabels[startIndex], _data.xLabels[endIndex]) ?
+    return isDataRange(xLabels[startIndex], xLabels[endIndex]) ?
       (
-        `${_data.getLabelDate(_data.xLabels[startIndex])}` +
+        `${_data.getLabelDate(xLabels[startIndex])}` +
         ' — ' +
-        `${_data.getLabelDate(_data.xLabels[endIndex])}`
+        `${_data.getLabelDate(xLabels[endIndex])}`
       ) :
-      _data.getLabelDate(_data.xLabels[startIndex], {displayWeekDay: true});
+      _data.getLabelDate(xLabels[startIndex], {displayWeekDay: true});
   }
 
   function onThemeChange(myColors?: LovelyChartColors) {
