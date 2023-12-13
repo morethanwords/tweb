@@ -2344,9 +2344,9 @@ hr {
     line-height: 1;
     padding: .0625rem .625rem;
 
-    .night & {
-      background-color: rgba(0, 0, 0, .2);
-    }
+    // .night & {
+    //   background-color: rgba(0, 0, 0, .2);
+    // }
 
     &-name {
       flex: 1 1 auto;
