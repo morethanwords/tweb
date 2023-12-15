@@ -80,7 +80,7 @@ import SuperIntersectionObserver from '../../helpers/dom/superIntersectionObserv
 import generateFakeIcon from '../generateFakeIcon';
 import copyFromElement from '../../helpers/dom/copyFromElement';
 import PopupElement from '../popups';
-import setAttachmentSize from '../../helpers/setAttachmentSize';
+import setAttachmentSize, {EXPAND_TEXT_WIDTH} from '../../helpers/setAttachmentSize';
 import wrapWebPageDescription from '../wrappers/webPageDescription';
 import wrapWebPageTitle from '../wrappers/webPageTitle';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
@@ -6530,7 +6530,17 @@ export default class ChatBubbles {
           }
 
           bubble.classList.add('photo', 'story');
-          this.setStoryContainerDimensions(attachmentDiv);
+          if(withReplies) {
+            setAttachmentSize({
+              size: makeMediaSize(EXPAND_TEXT_WIDTH, mediaSizes.active.regular.height),
+              boxWidth: mediaSizes.active.regular.width,
+              boxHeight: mediaSizes.active.regular.height,
+              message,
+              element: attachmentDiv
+            });
+          } else {
+            this.setStoryContainerDimensions(attachmentDiv);
+          }
 
           if(isMessageEmpty) {
             canHaveTail = false;
