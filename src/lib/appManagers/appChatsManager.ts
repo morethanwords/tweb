@@ -25,7 +25,9 @@ import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
 import getPeerId from './utils/peers/getPeerId';
 
 export type Channel = Chat.channel;
-export type ChatRights = keyof ChatBannedRights['pFlags'] | keyof ChatAdminRights['pFlags'] | 'change_type' | 'change_permissions' | 'delete_chat' | 'view_participants' | 'invite_links' | 'create_giveaway';
+export type ChatRights = keyof ChatBannedRights['pFlags'] | keyof ChatAdminRights['pFlags'] |
+  'change_type' | 'change_permissions' | 'delete_chat' | 'view_participants' |
+  'invite_links' | 'create_giveaway'/*  | 'view_statistics' */;
 
 const TEST_SPONSORED = false;
 

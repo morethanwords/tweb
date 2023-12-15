@@ -99,7 +99,7 @@ export default class ChatTopbar {
 
   constructor(
     private chat: Chat,
-    private appSidebarRight: AppSidebarRight,
+    public appSidebarRight: AppSidebarRight,
     private managers: AppManagers
   ) {
     this.listenerSetter = new ListenerSetter();
@@ -480,13 +480,13 @@ export default class ChatTopbar {
       onClick: () => this.chat.appImManager.giftPremium(this.peerId),
       verify: () => this.chat.canGiftPremium()
     }, {
-      icon: 'admin',
+      icon: 'statistics',
       text: 'Statistics',
       onClick: () => {
         this.appSidebarRight.createTab(AppStatisticsTab).open(this.peerId.toChatId());
         this.appSidebarRight.toggleSidebar(true);
       },
-      verify: () => true
+      verify: () => this.managers.appProfileManager.canViewStatistics(this.peerId)
     }, {
       icon: 'boost',
       text: 'BoostsViaGifts.Title',

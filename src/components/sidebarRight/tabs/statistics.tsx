@@ -4,19 +4,20 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {Message, PostInteractionCounters, StatsAbsValueAndPrev, StatsBroadcastStats, StatsGraph, StatsGroupTopAdmin, StatsGroupTopInviter, StatsGroupTopPoster, StatsMegagroupStats, StatsPercentValue, StoryItem} from '../../../layer';
+import type TChart from '../../../lib/tchart/chart';
+import type {TChartData, TChatOriginalData} from '../../../lib/tchart/types';
+import {Message, MessagesMessages, PostInteractionCounters, PublicForward, StatsAbsValueAndPrev, StatsBroadcastStats, StatsGraph, StatsGroupTopAdmin, StatsGroupTopInviter, StatsGroupTopPoster, StatsMegagroupStats, StatsMessageStats, StatsPercentValue, StatsPublicForwards, StatsStoryStats, StoryItem} from '../../../layer';
 import I18n, {LangPackKey, i18n, join, joinElementsWith} from '../../../lib/langPack';
 import Section from '../../section';
 import {SliderSuperTabEventable} from '../../sliderTab';
 import {For, render} from 'solid-js/web';
-import {JSX, createEffect, createRoot, createSignal, onMount} from 'solid-js';
+import {Accessor, JSX, createEffect, createRoot, createSignal, onMount} from 'solid-js';
 import formatNumber from '../../../helpers/number/formatNumber';
-import {create} from '../../../lib/lovely-chart/LovelyChart';
-import {FontFamily, FontWeight} from '../../../config/font';
+import {FontFamily} from '../../../config/font';
 import {DcId, PickByType} from '../../../types';
 import rootScope from '../../../lib/rootScope';
 import customProperties from '../../../helpers/dom/customProperties';
-import {hexToRgb, mixColors, rgbaToHexa} from '../../../helpers/color';
+import {hexToRgb, mixColors} from '../../../helpers/color';
 import emptyPlaceholder from '../../emptyPlaceholder';
 import deferredPromise, {CancellablePromise} from '../../../helpers/cancellablePromise';
 import liteMode from '../../../helpers/liteMode';
@@ -32,6 +33,16 @@ import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import findUpClassName from '../../../helpers/dom/findUpClassName';
 import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
 import Button from '../../button';
+import themeController from '../../../helpers/themeController';
+import assumeType from '../../../helpers/assumeType';
+import getChatMembersString from '../../wrappers/getChatMembersString';
+import createContextMenu from '../../../helpers/dom/createContextMenu';
+import appImManager from '../../../lib/appManagers/appImManager';
+import {createStoriesViewerWithPeer} from '../../stories/viewer';
+import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';
+import {avatarNew} from '../../avatarNew';
+import wrapPeerTitle from '../../wrappers/peerTitle';
+import toggleDisability from '../../../helpers/dom/toggleDisability';
 
 const CHANNEL_GRAPHS_TITLES: {[key in keyof PickByType<StatsBroadcastStats, StatsGraph>]: LangPackKey} = {
   growth_graph: 'GrowthChartTitle',
@@ -59,6 +70,13 @@ const GROUP_GRAPH_TITLES: {[key in keyof PickByType<StatsMegagroupStats, StatsGr
   weekdays_graph: 'TopDaysOfWeekChartTitle'
 };
 
+const MESSAGE_GRAPH_TITLES: {[key in keyof PickByType<StatsMessageStats, StatsGraph>]: LangPackKey} = {
+  views_graph: 'ViewsAndSharesChartTitle',
+  reactions_by_emotion_graph: 'ReactionsByEmotionChartTitle'
+};
+
+const STORY_GRAPH_TITLES = MESSAGE_GRAPH_TITLES;
+
 const CHANNEL_OVERVIEW_ITEMS: {[key in keyof PickByType<StatsBroadcastStats, StatsAbsValueAndPrev | StatsPercentValue>]: LangPackKey} = {
   followers: 'FollowersChartTitle',
   enabled_notifications: 'EnabledNotifications',
@@ -77,78 +95,43 @@ const GROUP_OVERVIEW_ITEMS: {[key in keyof PickByType<StatsMegagroupStats, Stats
   posters: 'PostingMembers'
 };
 
-let lovelyChartPromise: Promise<any>;
-let createLovelyChart: typeof create;
-function ensureLovelyChart() {
-  return lovelyChartPromise ??= import('../../../lib/lovely-chart/LovelyChart').then((module) => {
-    createLovelyChart = module.create;
+const MESSAGE_OVERVIEW_ITEMS: {[key in keyof PickByType<StatsMessageStats, StatsAbsValueAndPrev | StatsPercentValue>]: LangPackKey} = {
+  views: 'StatisticViews',
+  public_shares: 'PublicShares',
+  reactions: 'Reactions',
+  private_shares: 'PrivateShares'
+};
+
+const STORY_OVERVIEW_ITEMS = MESSAGE_OVERVIEW_ITEMS;
+
+let TChartPromise: Promise<any>;
+let _TChart: typeof TChart;
+function ensureTChart() {
+  return TChartPromise ??= import('../../../lib/tchart/chart').then((module) => {
+    _TChart = module.default;
   });
-}
-
-export function buildGraph(result: StatsGraph, isPercentage?: boolean) {
-  if(result?._ !== 'statsGraph') {
-    return;
-  }
-
-  const data = JSON.parse(result.json.data);
-  const [x, ...y] = data.columns;
-  const hasSecondYAxis = data.y_scaled;
-  isPercentage ??= !!data.percentage;
-
-  return {
-    type: isPercentage ? 'area' : data.types.y0,
-    zoomToken: result.zoom_token,
-    labelFormatter: data.xTickFormatter,
-    tooltipFormatter: data.xTooltipFormatter,
-    labels: x.slice(1),
-    hideCaption: !data.subchart.show,
-    hasSecondYAxis,
-    isStacked: data.stacked && !hasSecondYAxis,
-    isPercentage,
-    datasets: y.map((item: any) => {
-      const key = item[0];
-
-      return {
-        name: data.names[key],
-        color: extractColor(data.colors[key]),
-        values: item.slice(1)
-      };
-    }),
-    ...calculateMinimapRange(data.subchart.defaultZoom, x.slice(1))
-  };
 }
 
 function extractColor(color: string): string {
   return color.substring(color.indexOf('#'));
 }
 
-function calculateMinimapRange(range: Array<number>, values: Array<number>) {
-  const [min, max] = range;
+const makeAbsStats = (value: number, approximate?: boolean): StatsAbsValueAndPrev => {
+  return {
+    _: 'statsAbsValueAndPrev',
+    current: value,
+    previous: 0,
+    approximate
+  };
+};
 
-  let minIndex = 0;
-  let maxIndex = values.length - 1;
-
-  values.forEach((item, index) => {
-    if(!minIndex && item >= min) {
-      minIndex = index;
-    }
-
-    if(!maxIndex && item >= max) {
-      maxIndex = index;
-    }
-  });
-
-  const begin = Math.max(0, minIndex / (values.length - 1));
-  const end = Math.min(1, maxIndex / (values.length - 1));
-
-  return {minimapRange: {begin, end}, labelFromIndex: minIndex, labelToIndex: maxIndex};
-}
+type StatisticsPublicForwards = {rendered: HTMLElement[], left: number, count: number, loadMore?: () => Promise<void>};
 
 export default class AppStatisticsTab extends SliderSuperTabEventable {
   private chatId: ChatId;
   private mid: number;
   private storyId: number;
-  private stats: StatsBroadcastStats | StatsMegagroupStats;
+  private stats: StatsBroadcastStats | StatsMegagroupStats | StatsMessageStats | StatsStoryStats;
   private messages: Map<number, Message.message>;
   private stories: Map<number, StoryItem.storyItem>;
   private dcId: DcId;
@@ -166,13 +149,15 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
     recentPosts: {container: HTMLElement, postInteractionCounters: PostInteractionCounters}[],
     topPosters: {container: HTMLElement, peerId: PeerId}[],
     topAdmins: {container: HTMLElement, peerId: PeerId}[],
-    topInviters: {container: HTMLElement, peerId: PeerId}[]
+    topInviters: {container: HTMLElement, peerId: PeerId}[],
+    publicForwards: Accessor<StatisticsPublicForwards>
   ) {
     const dateElement = new I18n.IntlDateElement({options: {}});
-    const getLabelDate: Parameters<typeof createLovelyChart>[1]['getLabelDate'] = (label, options = {}) => {
+    const getLabelDate: TChartData['getLabelDate'] = (value, options = {}) => {
       options.displayYear ??= true;
+      options.isMonthShort ??= true;
 
-      const date = new Date(label.value);
+      const date = new Date(value);
       dateElement.update({
         date,
         options: {
@@ -180,7 +165,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
           year: options.displayYear ? 'numeric' : undefined,
           hour: options.displayHours ? '2-digit' : undefined,
           minute: options.displayHours ? '2-digit' : undefined,
-          month: 'short',
+          month: options.isMonthShort ? 'short' : 'long',
           day: 'numeric'
         }
       });
@@ -188,8 +173,8 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
       return dateElement.element.textContent;
     };
 
-    const getLabelTime: Parameters<typeof createLovelyChart>[1]['getLabelTime'] = (label) => {
-      const date = new Date(label.value);
+    const getLabelTime: TChartData['getLabelTime'] = (value: number) => {
+      const date = new Date(value);
       dateElement.update({
         date,
         options: {
@@ -202,35 +187,47 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
     };
 
     const makeColors = () => {
-      const maskColor = mixColors(
-        hexToRgb(customProperties.getProperty('primary-color')),
-        hexToRgb(customProperties.getProperty('surface-color')),
+      const surface = customProperties.getProperty('surface-color');
+      const primary = customProperties.getProperty('primary-color');
+      const secondary = customProperties.getProperty('secondary-color');
+      const surfaceRgb = hexToRgb(surface);
+
+      const miniMask = mixColors(
+        hexToRgb(secondary),
+        mixColors(
+          hexToRgb(primary),
+          surfaceRgb,
+          0.1
+        ),
         0.2
       );
 
-      const colors: Parameters<typeof createLovelyChart>[1]['myColors'] = {
-        'background': customProperties.getProperty('surface-color'),
-        'text-color': customProperties.getProperty('primary-text-color'),
-        'minimap-mask': `${rgbaToHexa(maskColor)}/0.6`,
-        'minimap-slider': `${customProperties.getProperty('primary-color')}/0.2`,
-        'grid-lines': `${customProperties.getProperty('secondary-text-color')}/0.2`,
-        'zoom-out-text': customProperties.getProperty('primary-color'),
-        'tooltip-background': customProperties.getProperty('background-color'),
-        'tooltip-arrow': customProperties.getProperty('secondary-color'),
-        'mask': `${customProperties.getProperty('surface-color')}/0.5`,
-        'x-axis-text': customProperties.getProperty('secondary-text-color'),
-        'y-axis-text': customProperties.getProperty('secondary-text-color')
+      const miniFrame = mixColors(
+        hexToRgb(secondary),
+        mixColors(
+          hexToRgb(primary),
+          surfaceRgb,
+          0.3
+        ),
+        0.4
+      );
+
+      const colors: ConstructorParameters<typeof TChart>[0]['settings']['COLORS'] = {
+        primary: customProperties.getProperty('primary-color'),
+        secondary: customProperties.getProperty('secondary-color'),
+        background: surface,
+        backgroundRgb: surfaceRgb,
+        text: customProperties.getProperty('primary-text-color'),
+        dates: customProperties.getProperty('secondary-text-color'),
+        grid: `rgba(${hexToRgb(customProperties.getProperty('secondary-text-color')).join(', ')}, 0.2)`,
+        axis: {
+          x: customProperties.getProperty('secondary-text-color'),
+          y: customProperties.getProperty('secondary-text-color')
+        },
+        barsSelectionBackground: `rgba(${surfaceRgb.join(', ')}, 0.5)`,
+        miniMask: `rgba(${miniMask.join(', ')}, 0.6)`,
+        miniFrame: `rgb(${miniFrame.join(', ')})`
       };
-
-      for(const i in colors) {
-        let color = colors[i as keyof typeof colors];
-        const splitted = color.split('/');
-        if(splitted.length === 2) {
-          color = `rgba(${hexToRgb(splitted[0]).join(', ')}, ${splitted[1]})`;
-        }
-
-        document.documentElement.style.setProperty(`--lovely-chart-${i}`, color);
-      }
 
       return colors;
     };
@@ -239,51 +236,100 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
       colors = makeColors();
     });
 
-    const addOptions: Partial<Parameters<typeof createLovelyChart>[1]> = {
-      axesFont: `${FontWeight} 10px ${FontFamily}`,
-      pieFont: {weight: 500, font: FontFamily},
-      myColors: {...colors},
-      getLabelDate,
-      getLabelTime
-    };
-
-    const titles = this.stats._ === 'stats.broadcastStats' ? CHANNEL_GRAPHS_TITLES : GROUP_GRAPH_TITLES;
-    const graphs = Object.keys(titles).map((key) => {
+    const titles = this.isBroadcast ? CHANNEL_GRAPHS_TITLES : (this.isMegagroup ? GROUP_GRAPH_TITLES : (this.isStory ? STORY_GRAPH_TITLES : MESSAGE_GRAPH_TITLES));
+    const graphs: {statsGraph: StatsGraph.statsGraph, title: LangPackKey, percentage: boolean}[] = Object.keys(titles).map((key) => {
       const statsGraph = this.stats[key as keyof typeof titles];
       return statsGraph && {
         statsGraph,
-        title: titles[key as keyof typeof titles]
+        title: titles[key as keyof typeof titles],
+        percentage: (key as keyof typeof titles) === 'languages_graph'
       };
     }).filter(Boolean);
-    const renderGraph = ({statsGraph, title}: typeof graphs[0]) => {
-      const graph = buildGraph(statsGraph);
-
-      console.log('builded graph', graph);
-
+    const renderGraph = ({statsGraph, title, percentage}: typeof graphs[0]) => {
       onMount(() => {
-        const params: Parameters<typeof createLovelyChart>[1] = {
-          ...addOptions,
-          headerElements: {
-            title: titleElement,
-            caption: captionElement,
-            zoomOut: zoomOutElement
-          },
-          ...graph.zoomToken ? {
-            onZoom: async(x) => {
-              const statsGraph = await this.managers.appStatisticsManager.loadAsyncGraph(graph.zoomToken, x, this.dcId);
-              return {
-                ...addOptions,
-                ...buildGraph(statsGraph, graph.isPercentage)
-              };
-            },
-            zoomOutLabel: I18n.format('ZoomOut', true)
-          } : {},
-          ...graph
+        let data: TChatOriginalData = JSON.parse(statsGraph.json.data);
+        // console.log('data', JSON.parse(statsGraph.json.data));
+
+        const prepareData = (data: TChatOriginalData, percentage?: boolean) => {
+          for(const i in data.colors) {
+            const color = data.colors[i];
+            data.colors[i] = extractColor(color);
+          }
+
+          if(percentage) for(const i in data.types) {
+            if(data.types[i] === 'bar') {
+              data.types[i] = 'area';
+            }
+          }
+
+          return data;
         };
 
-        const {onThemeChange} = createLovelyChart(container, params);
+        data = prepareData(data, percentage);
+
+        type T = ConstructorParameters<typeof TChart>[0]['data'];
+        const addOptions: Partial<T> = {
+          getLabelDate,
+          getLabelTime,
+          tooltipOnHover: true
+        };
+
+        const zoomToken = statsGraph.zoom_token;
+        const tChart = _TChart.render({
+          container,
+          data: {
+            ...data,
+            ...addOptions,
+            x_on_zoom: zoomToken ? async(x) => {
+              const statsGraph = await this.managers.appStatisticsManager.loadAsyncGraph(zoomToken, x, this.dcId);
+              if(statsGraph._ === 'statsGraphError') {
+                return;
+              }
+
+              // console.log('zoom data', JSON.parse((statsGraph as StatsGraph.statsGraph).json.data));
+
+              return {
+                ...prepareData(JSON.parse((statsGraph as StatsGraph.statsGraph).json.data), percentage),
+                ...addOptions
+              };
+            } : undefined
+          } as T,
+          settings: {
+            darkMode: themeController.isNight(),
+            ALL_LABEL: I18n.format('Chart.Tooltip.All', true),
+            DATES_SIDE: 'left',
+            DATES_WEIGHT: 'normal',
+            DATES_FONT_SIZE: 14,
+            ZOOM_TEXT: I18n.format('ZoomOut', true),
+            FONT: {
+              family: FontFamily,
+              bold: '500',
+              normal: '400'
+            },
+            COLORS: colors
+          }
+        });
+
+        const setStyles = () => {
+          const p: [property: string, value: string][] = [
+            ['primary-color', colors.primary],
+            ['background-color', colors.background],
+            ['background-color-rgb', colors.backgroundRgb.join(', ')],
+            ['text-color', colors.text],
+            ['secondary-color', colors.secondary],
+            ['font-family', FontFamily]
+          ];
+
+          p.forEach(([property, value]) => {
+            tChart.$wrapper.style.setProperty(`--tchart-${property}`, value);
+          });
+        };
+
+        setStyles();
+
         this.listenerSetter.add(rootScope)('theme_changed', () => {
-          onThemeChange({...colors});
+          tChart.setDarkMode(themeController.isNight(), {...colors});
+          setStyles();
         });
       });
 
@@ -293,13 +339,13 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
       const t = i18n(title);
       t.classList.add('statistics-title-text');
       titleElement.append(t);
-      let zoomOutElement: HTMLElement;
-      if(graph.zoomToken || graph.isPercentage) {
-        zoomOutElement = document.createElement('div');
-        zoomOutElement.classList.add('statistics-title-zoom');
-        zoomOutElement.append(Icon('zoomout', 'statistics-title-zoom-icon'), i18n('ZoomOut'));
-        titleElement.append(zoomOutElement);
-      }
+      // let zoomOutElement: HTMLElement;
+      // if(graph.zoomToken || graph.isPercentage) {
+      //   zoomOutElement = document.createElement('div');
+      //   zoomOutElement.classList.add('statistics-title-zoom');
+      //   zoomOutElement.append(Icon('zoomout', 'statistics-title-zoom-icon'), i18n('ZoomOut'));
+      //   titleElement.append(zoomOutElement);
+      // }
       let container: HTMLDivElement;
       return (
         <Section name={titleElement} nameRight={captionElement}>
@@ -308,14 +354,14 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
       );
     };
 
-    const overviewTitles = this.stats._ === 'stats.broadcastStats' ? CHANNEL_OVERVIEW_ITEMS : GROUP_OVERVIEW_ITEMS;
+    const overviewTitles = this.stats._ === 'stats.broadcastStats' ? CHANNEL_OVERVIEW_ITEMS : (this.isMegagroup ? GROUP_OVERVIEW_ITEMS : (this.isStory ? STORY_OVERVIEW_ITEMS : MESSAGE_OVERVIEW_ITEMS));
     const overviewItems: {value: StatsAbsValueAndPrev | StatsPercentValue, title: LangPackKey}[] = Object.keys(overviewTitles).map((key) => {
       const value = this.stats[key as keyof typeof overviewTitles];
       return value && {
         value,
         title: overviewTitles[key as keyof typeof overviewTitles]
       };
-    });
+    }).filter(Boolean);
 
     const formatDateRange = (min: number, max: number) => {
       return joinElementsWith([min, max].map((timestamp) => {
@@ -338,6 +384,10 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
         v = `${n}%`;
       } else {
         v = formatNumber(value.current, 1);
+
+        if(value.approximate) {
+          v = '≈' + v;
+        }
 
         if(!value.current && !value.previous) {
           return;
@@ -374,11 +424,20 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
       );
     };
 
+    const createMoreButton = (count: number, callback: (button: HTMLElement) => any) => {
+      const button = Button('btn btn-primary btn-transparent primary', {icon: 'down', text: 'PollResults.LoadMore', textArgs: [count]});
+      attachClickEvent(button, () => {
+        callback(button);
+      }, {listenerSetter: this.listenerSetter});
+      return button;
+    };
+
+    const period = (this.stats as StatsBroadcastStats).period;
     const topPeersTitles: [LangPackKey, LangPackKey, LangPackKey] = ['TopMembers', 'TopAdmins', 'TopInviters'];
     let postsContainer: HTMLDivElement;
     const ret = (
       <>
-        <Section name="StatisticOverview" nameRight={formatDateRange(this.stats.period.min_date, this.stats.period.max_date)}>
+        <Section name="StatisticOverview" nameRight={period && formatDateRange(period.min_date, period.max_date)}>
           <div class="statistics-overview">
             <For each={overviewItems}>{renderOverviewItem}</For>
           </div>
@@ -398,19 +457,51 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
           chatlist.append(...topPeers.splice(0, 10).map(({container}) => container));
           let moreButton: HTMLElement;
           if(topPeers.length) {
-            moreButton = Button('btn btn-primary btn-transparent primary', {icon: 'down', text: 'PollResults.LoadMore', textArgs: [topPeers.length]});
-            attachClickEvent(moreButton, () => {
+            moreButton = createMoreButton(topPeers.length, () => {
               moreButton.remove();
               chatlist.append(...topPeers.map(({container}) => container));
-            }, {listenerSetter: this.listenerSetter});
+            });
           }
           return (
-            <Section name={topPeersTitles[idx()]} nameRight={formatDateRange(this.stats.period.min_date, this.stats.period.max_date)}>
+            <Section name={topPeersTitles[idx()]} nameRight={period && formatDateRange(period.min_date, period.max_date)}>
               {chatlist}
               {moreButton}
             </Section>
           );
         }}</For>
+        {publicForwards().count && <Section name="PublicSharesCount" nameArgs={[publicForwards().count]}>
+          <div
+            ref={(el) => {
+              appDialogsManager.setListClickListener(
+                el,
+                (target) => {
+                  const storyId = target.dataset.storyId;
+                  if(storyId) {
+                    createStoriesViewerWithPeer({
+                      target: () => target.querySelector('.avatar'),
+                      peerId: target.dataset.peerId.toPeerId(),
+                      id: +target.dataset.storyId
+                    });
+                    return false;
+                  }
+                },
+                undefined,
+                undefined,
+                true
+              );
+            }}
+          >
+            {publicForwards().rendered}
+          </div>
+          {publicForwards().loadMore && createMoreButton(
+            publicForwards().count - publicForwards().rendered.length,
+            (button) => {
+              const toggle = toggleDisability(button, true);
+              const promise = publicForwards().loadMore();
+              promise.finally(() => toggle());
+            }
+          )}
+        </Section>}
       </>
     );
 
@@ -420,23 +511,72 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
         map.set(container, postInteractionCounters);
       });
 
-      const findTarget = (e: MouseEvent) => findUpClassName(e.target, 'statistics-post');
-      const findCounters = (e: MouseEvent) => map.get(findTarget(e));
+      const findTarget = (e: MouseEvent | TouchEvent) => findUpClassName(e.target, 'statistics-post');
+      let counters: PostInteractionCounters;
+
+      const onOpenClick = () => {
+        this.slider.createTab(AppStatisticsTab).open(
+          this.chatId,
+          (counters as PostInteractionCounters.postInteractionCountersMessage).msg_id,
+          (counters as PostInteractionCounters.postInteractionCountersStory).story_id
+        );
+      };
 
       attachClickEvent(postsContainer, (e) => {
-        const counters = findCounters(e);
+        counters = map.get(findTarget(e));
         if(!counters) {
           return;
         }
 
-        console.log(counters);
+        onOpenClick();
       }, {listenerSetter: this.listenerSetter});
+
+      createContextMenu({
+        buttons: [{
+          icon: 'statistics',
+          text: 'ViewStatistics',
+          onClick: onOpenClick
+        }, {
+          icon: 'message',
+          text: 'Message.Context.Goto',
+          onClick: () => {
+            appImManager.setInnerPeer({
+              peerId: this.chatId.toPeerId(true),
+              lastMsgId: (counters as PostInteractionCounters.postInteractionCountersMessage).msg_id
+            });
+          },
+          verify: () => counters._ === 'postInteractionCountersMessage'
+        }, {
+          icon: 'stories',
+          text: 'ViewStory',
+          onClick: () => {
+            createStoriesViewerWithPeer({
+              peerId: this.chatId.toPeerId(true),
+              id: (counters as PostInteractionCounters.postInteractionCountersStory).story_id
+            });
+          },
+          verify: () => counters._ === 'postInteractionCountersStory'
+        }],
+        listenTo: postsContainer,
+        listenerSetter: this.listenerSetter,
+        findElement: (e) => {
+          const target = findTarget(e);
+          counters = map.get(target);
+          return target;
+        },
+        middleware: this.middlewareHelper.get()
+      });
     }
 
     return ret;
   }
 
-  private async renderRecentPost(postInteractionCounters: PostInteractionCounters) {
+  private async renderRecentPost(
+    postInteractionCounters: PostInteractionCounters,
+    peerId: PeerId = this.chatId.toPeerId(true),
+    message?: Message.message,
+    storyItem?: StoryItem.storyItem
+  ) {
     const subtitleRightFragment = document.createDocumentFragment();
     const a: [Icon, number][] = [
       ['reactions', postInteractionCounters.reactions],
@@ -465,7 +605,8 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
       subtitle: true,
       subtitleRight: subtitleRightFragment,
       clickable: true,
-      noWrap: true
+      noWrap: true,
+      asLink: !!(message || storyItem)
     });
 
     const {container} = row;
@@ -476,9 +617,30 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
     const middleware = this.middlewareHelper.get();
     const mediaEl = document.createElement('div');
     mediaEl.classList.add('statistics-post-media');
-    if(postInteractionCounters._ === 'postInteractionCountersMessage') {
+    if(message || storyItem) {
+      const {node, readyThumbPromise, setStoriesSegments} = avatarNew({
+        middleware,
+        size: 42,
+        isDialog: true,
+        peerId
+      });
+
+      row.container.dataset.peerId = '' + peerId;
+      if(storyItem) {
+        setStoriesSegments([{length: 1, type: 'unread'}]);
+        row.container.dataset.storyId = '' + storyItem.id;
+      } else {
+        row.container.dataset.mid = '' + message.mid;
+      }
+
+      mediaEl.append(node);
+      await readyThumbPromise;
+      row.title.append(await wrapPeerTitle({peerId}));
+      row.subtitle.append(formatFullSentTime(message?.date || storyItem?.date));
+      row.applyMediaElement(mediaEl, 'abitbigger');
+    } else if(postInteractionCounters._ === 'postInteractionCountersMessage') {
       container.classList.add('statistics-post-message');
-      const message = this.messages.get(postInteractionCounters.msg_id);
+      message ||= this.messages.get(postInteractionCounters.msg_id);
       const isMediaSet = await wrapReplyDivAndCaption({
         titleEl: row.subtitle,
         title: formatFullSentTime(message.date),
@@ -494,7 +656,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
       }
     } else {
       container.classList.add('statistics-post-story');
-      const storyItem = this.stories.get(postInteractionCounters.story_id);
+      storyItem ||= this.stories.get(postInteractionCounters.story_id);
       row.title.append(i18n('Story'));
       row.subtitle.append(formatFullSentTime(storyItem.date));
 
@@ -531,8 +693,8 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
     return {container, postInteractionCounters};
   }
 
-  private renderTopPeer = async(topPoster: StatsGroupTopPoster | StatsGroupTopAdmin | StatsGroupTopInviter) => {
-    const peerId = topPoster.user_id.toPeerId(false);
+  private renderPeer = async(peer: StatsGroupTopPoster | StatsGroupTopAdmin | StatsGroupTopInviter | Message.message) => {
+    const peerId = peer._ === 'message' ? peer.peerId : peer.user_id.toPeerId(false);
     const loadPromises: Promise<any>[] = [];
     const {dom} = appDialogsManager.addDialogNew({
       peerId: peerId,
@@ -546,20 +708,26 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
     });
 
     let toJoin: Node[];
-    if(topPoster._ === 'statsGroupTopPoster') {
+    if(peer._ === 'message') {
       toJoin = [
-        topPoster.messages && i18n('messages', [topPoster.messages]),
-        topPoster.avg_chars && i18n('CharactersPerMessage', [i18n('Characters', [topPoster.avg_chars])])
+        await getChatMembersString(peerId.toChatId()),
+        i18n('Views', [formatNumber(peer.views, 1)])
       ];
-    } else if(topPoster._ === 'statsGroupTopAdmin') {
+      dom.listEl.dataset.mid = '' + peer.mid;
+    } else if(peer._ === 'statsGroupTopPoster') {
       toJoin = [
-        topPoster.deleted && i18n('Deletions', [topPoster.deleted]),
-        topPoster.banned && i18n('Bans', [topPoster.banned]),
-        topPoster.kicked && i18n('Restrictions', [topPoster.kicked])
+        peer.messages && i18n('messages', [peer.messages]),
+        peer.avg_chars && i18n('CharactersPerMessage', [i18n('Characters', [peer.avg_chars])])
+      ];
+    } else if(peer._ === 'statsGroupTopAdmin') {
+      toJoin = [
+        peer.deleted && i18n('Deletions', [peer.deleted]),
+        peer.banned && i18n('Bans', [peer.banned]),
+        peer.kicked && i18n('Restrictions', [peer.kicked])
       ];
     } else {
       toJoin = [
-        topPoster.invitations && i18n('Invitations', [topPoster.invitations])
+        peer.invitations && i18n('Invitations', [peer.invitations])
       ];
     }
 
@@ -572,20 +740,57 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
     return {container: dom.listEl, peerId};
   };
 
+  private renderPublicForward = async(publicForward: PublicForward) => {
+    if(publicForward._ === 'publicForwardMessage') {
+      const message = publicForward.message as Message.message;
+      return this.renderRecentPost({
+        _: 'postInteractionCountersMessage',
+        forwards: message.forwards,
+        msg_id: message.mid,
+        views: message.views,
+        reactions: message.reactions ? message.reactions.results.reduce((acc, v) => acc + v.count, 0) : 0
+      }, message.peerId, message);
+    }
+
+    const storyItem = publicForward.story as StoryItem.storyItem;
+    if(!storyItem) {
+      return;
+    }
+
+    const storyViews = storyItem.views;
+    return this.renderRecentPost({
+      _: 'postInteractionCountersStory',
+      forwards: storyViews?.forwards_count || 0,
+      story_id: storyItem.id,
+      views: storyViews?.views_count || 0,
+      reactions: storyViews?.reactions_count || 0
+    }, getPeerId(publicForward.peer), undefined, storyItem);
+  };
+
   private async loadStats() {
     const peerId = this.chatId.toPeerId(true);
     const manager = this.managers.appStatisticsManager;
-    const func = this.isBroadcast ? manager.getBroadcastStats : manager.getMegagroupStats;
-    const {stats, dcId} = await func(this.chatId);
+    const loadLimit = 100;
+    const func = this.isBroadcast ? manager.getBroadcastStats : (this.isMegagroup ? manager.getMegagroupStats : (this.isStory ? manager.getStoryStats : manager.getMessageStats));
+    const postPromise = this.isMessage ? this.managers.appMessagesManager.reloadMessages(peerId, this.mid) : undefined;
+    const postPublicForwardsPromise = this.isMessage ? manager.getMessagePublicForwards({peerId, mid: this.mid, limit: loadLimit}) : undefined;
+    const storyPromise = this.isStory ? this.managers.appStoriesManager.getStoryById(peerId, this.storyId) : undefined;
+    const storyPublicForwardsPromise = this.isStory ? manager.getStoryPublicForwards({peerId, id: this.storyId, limit: loadLimit}) : undefined;
+    const {stats, dcId} = await func({
+      peerId,
+      dark: themeController.isNight(),
+      storyId: this.storyId,
+      mid: this.mid
+    });
     this.stats = stats;
     this.dcId = dcId;
 
     const promises: PromiseLike<any>[] = [];
     for(const key in stats) {
-      const value = stats[key as keyof typeof stats];
-      if((value as StatsGraph)._ === 'statsGraphAsync') {
-        const promise = this.managers.appStatisticsManager.loadAsyncGraph(
-          (value as StatsGraph.statsGraphAsync).token,
+      const value = stats[key as keyof typeof stats] as any as StatsGraph;
+      if(value._ === 'statsGraphAsync') {
+        const promise = manager.loadAsyncGraph(
+          value.token,
           undefined,
           dcId
         ).then((statsGraph) => {
@@ -597,7 +802,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
           stats[key as keyof typeof stats] = statsGraph as any;
         });
         promises.push(promise);
-      } else if((value as StatsGraph)._ === 'statsGraphError') {
+      } else if(value._ === 'statsGraphError') {
         delete stats[key as keyof typeof stats];
       }
     }
@@ -630,12 +835,103 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
       promises.push(promise);
     });
 
+    const renderedPublicForwards = Promise.all([
+      postPromise,
+      postPublicForwardsPromise,
+      storyPromise,
+      storyPublicForwardsPromise
+    ]).then(async([message, messagePublicForwards, storyItem, storyPublicForwards]) => {
+      const [f, setF] = createSignal<StatisticsPublicForwards>({
+        rendered: [],
+        left: 0,
+        count: 0
+      }, {equals: false});
+      if(!message && !storyItem) {
+        return f;
+      }
+
+      assumeType<StatsMessageStats | StatsStoryStats>(stats);
+
+      if(message) {
+        assumeType<Message.message>(message);
+        const totalPublicForwards = (messagePublicForwards as MessagesMessages.messagesMessagesSlice).count ?? messagePublicForwards.messages.length;
+        stats.views = makeAbsStats(message.views);
+        stats.reactions = makeAbsStats(message.reactions ? message.reactions.results.reduce((acc, v) => acc + v.count, 0) : 0);
+        stats.public_shares = makeAbsStats(totalPublicForwards);
+        stats.private_shares = makeAbsStats(message.forwards - totalPublicForwards, true);
+
+        setF((value) => (value.count = totalPublicForwards, value));
+
+        let offsetRate: number, offsetId: number, offsetPeerId: PeerId;
+        const r = async(messagesMessages: Exclude<MessagesMessages, MessagesMessages.messagesMessagesNotModified>) => {
+          const messages = messagesMessages.messages as Message.message[];
+          const lastMessage = messages[messages.length - 1];
+          offsetRate = (messagesMessages as MessagesMessages.messagesMessagesSlice).next_rate;
+          offsetId = lastMessage?.mid;
+          offsetPeerId = lastMessage?.peerId;
+
+          const promises = messages.map(this.renderPeer);
+          const rendered = await Promise.all(promises);
+          setF((value) => {
+            value.rendered.push(...rendered.map(({container}) => container));
+            value.loadMore = offsetRate ? () => {
+              return manager.getMessagePublicForwards({
+                peerId,
+                mid: this.mid,
+                offsetRate,
+                limit: loadLimit,
+                offsetId,
+                offsetPeerId
+              }).then(r);
+            } : undefined;
+            return value;
+          });
+        };
+
+        await r(messagePublicForwards);
+      } else {
+        const totalPublicForwards = storyPublicForwards.count;
+        const storyViews = storyItem.views;
+        stats.views = makeAbsStats(storyViews.views_count);
+        stats.reactions = makeAbsStats(storyViews.reactions_count || 0);
+        stats.public_shares = makeAbsStats(totalPublicForwards);
+        stats.private_shares = makeAbsStats(Math.abs((storyViews.forwards_count || 0) - totalPublicForwards), true);
+
+        setF((value) => (value.count = totalPublicForwards, value));
+
+        let offset: string;
+        const r = async(statsPublicForwards: StatsPublicForwards.statsPublicForwards) => {
+          offset = statsPublicForwards.next_offset;
+
+          const promises = statsPublicForwards.forwards.map(this.renderPublicForward);
+          const rendered = await Promise.all(promises);
+          setF((value) => {
+            value.rendered.push(...rendered.map(({container}) => container));
+            value.loadMore = offset ? () => {
+              return manager.getStoryPublicForwards({
+                peerId,
+                id: storyItem.id,
+                limit: loadLimit,
+                offset
+              }).then(r);
+            } : undefined;
+            return value;
+          });
+        };
+
+        await r(storyPublicForwards);
+      }
+
+      return f;
+    });
+    promises.push(renderedPublicForwards);
+
     const topPosters = (stats as StatsMegagroupStats).top_posters || [];
     const topAdmins = (stats as StatsMegagroupStats).top_admins || [];
     const topInvites = (stats as StatsMegagroupStats).top_inviters || [];
-    const renderedTopPosters = topPosters.map(this.renderTopPeer);
-    const renderedTopAdmins = topAdmins.map(this.renderTopPeer);
-    const renderedTopInviters = topInvites.map(this.renderTopPeer);
+    const renderedTopPosters = topPosters.map(this.renderPeer);
+    const renderedTopAdmins = topAdmins.map(this.renderPeer);
+    const renderedTopInviters = topInvites.map(this.renderPeer);
 
     return Promise.all(promises).then(() => {
       const recentPostsPromises = recentPosts.map((postInteractionCounters) => {
@@ -646,7 +942,8 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
         Promise.all(recentPostsPromises),
         Promise.all(renderedTopPosters),
         Promise.all(renderedTopAdmins),
-        Promise.all(renderedTopInviters)
+        Promise.all(renderedTopInviters),
+        renderedPublicForwards
       ] as const;
 
       return Promise.all(promises);
@@ -675,7 +972,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
     this.setTitle(this.isBroadcast ? 'Statistics' : (this.isMegagroup ? 'GroupStats.Title' : (this.isStory ? 'StoryStatistics' : 'PostStatistics')));
 
     const promise = Promise.all([
-      ensureLovelyChart(),
+      ensureTChart(),
       this.openPromise,
       this.loadStats()
     ]);

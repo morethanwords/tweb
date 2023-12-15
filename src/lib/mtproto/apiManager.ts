@@ -538,7 +538,7 @@ export class ApiManager extends ApiManagerMethods {
 
       if(!options.noErrorBox) {
         error.input = method;
-        error.stack = stack || (error.originalError && error.originalError.stack) || error.stack || (new Error()).stack;
+        // error.stack = stack || (error.originalError && error.originalError.stack) || error.stack || (new Error()).stack;
         setTimeout(() => {
           if(!error.handled) {
             if(error.code === 401) {
@@ -558,7 +558,7 @@ export class ApiManager extends ApiManagerMethods {
     let dcId: DcId;
 
     let cachedNetworker: MTPNetworker;
-    const stack = (new Error()).stack || 'empty stack';
+    // const stack = (new Error()).stack || 'empty stack';
     const performRequest = (): Promise<any> => {
       if(afterMessageId) {
         const after = this.afterMessageTempIds[afterMessageId];

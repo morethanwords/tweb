@@ -96,6 +96,8 @@ import {dispatchHeavyAnimationEvent} from '../../hooks/useHeavyAnimationCheck';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import wrapReply from '../wrappers/reply';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
+import appSidebarRight from '../sidebarRight';
+import AppStatisticsTab from '../sidebarRight/tabs/statistics';
 
 export const STORY_DURATION = 5e3;
 const STORY_HEADER_AVATAR_SIZE = 32;
@@ -2457,6 +2459,19 @@ const Stories = (props: {
       text: 'UnarchiveStories',
       onClick: () => togglePeerHidden(false),
       verify: () => isPeerArchived(false)
+    }, {
+      icon: 'statistics',
+      text: 'ViewStatistics',
+      onClick: () => {
+        const storyId = currentStory().id;
+        props.close(() => {
+          setTimeout(() => {
+            appSidebarRight.createTab(AppStatisticsTab).open(peerId.toChatId(), undefined, storyId);
+            appSidebarRight.toggleSidebar(true);
+          }, 0);
+        });
+      },
+      verify: () => rootScope.managers.appProfileManager.canViewStatistics(peerId)
     }, {
       icon: 'delete danger' as Icon,
       text: 'Delete',

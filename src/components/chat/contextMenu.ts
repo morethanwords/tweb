@@ -59,6 +59,7 @@ import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 import {ChatInputReplyTo} from './input';
 import {TEST_BUBBLES_DELETION} from './bubbles';
 import cancelSelection from '../../helpers/dom/cancelSelection';
+import AppStatisticsTab from '../sidebarRight/tabs/statistics';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -568,6 +569,11 @@ export default class ChatContextMenu {
         return await this.managers.appMessagesManager.canEditMessage(this.message, 'poll') && poll && !poll.pFlags.closed && !this.message.pFlags.is_outgoing;
       }/* ,
       cancelEvent: true */
+    }, {
+      icon: 'statistics',
+      text: 'ViewStatistics',
+      onClick: this.onStatisticsClick,
+      verify: async() => await this.managers.appPeersManager.isBroadcast(this.peerId) && this.managers.appProfileManager.canViewStatistics(this.peerId)
     }, {
       icon: 'forward',
       text: 'Forward',
@@ -1245,7 +1251,8 @@ export default class ChatContextMenu {
       entity.length = Math.min(entity.length - distance, maxLength);
     }
 
-    const maxLength = 1024;
+    const appConfig = await this.managers.apiManager.getAppConfig();
+    const maxLength = appConfig.quote_length_max ?? 1024;
     if(value.length > maxLength) { // * fix overflow
       value = value.slice(0, maxLength);
       entities = entities // * fix length for entities
@@ -1281,6 +1288,11 @@ export default class ChatContextMenu {
     }
 
     this.chat.input.initMessageReply(replyTo);
+  };
+
+  private onStatisticsClick = () => {
+    this.chat.topbar.appSidebarRight.createTab(AppStatisticsTab).open(this.peerId.toChatId(), this.mid);
+    this.chat.topbar.appSidebarRight.toggleSidebar(true);
   };
 
   public static onDownloadClick(messages: MyMessage | MyMessage[], noForwards?: boolean): DownloadBlob | DownloadBlob[] {

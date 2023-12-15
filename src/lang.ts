@@ -402,6 +402,7 @@ const lang = {
     'other_value': 'You can select up to %d subscribers'
   },
   'AddChannels': 'Add Channels',
+  'Chart.Tooltip.All': 'All',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -1610,6 +1611,14 @@ const lang = {
   'StoryStatistics': 'Story Statistics',
   'PostStatistics': 'Post Statistics',
   'ViewStatistics': 'View Statistics',
+  'ViewsAndSharesChartTitle': 'Views and Shares',
+  'PublicShares': 'Public Shares',
+  'PrivateShares': 'Private Shares',
+  'PublicSharesCount': {
+    'one_value': '%1$s public share',
+    'other_value': '%1$s public shares'
+  },
+  'ViewStory': 'View Story',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

@@ -903,6 +903,7 @@
   &-container {
     .sidebar-left-section-name {
       color: var(--primary-text-color);
+      margin: 0 -.5rem;
     }
 
     .sidebar-left-section-name-right {
@@ -917,7 +918,7 @@
     grid-template-columns: 1fr 1fr;
     row-gap: 1rem;
     padding: 0 1rem;
-    margin: 0.5rem 0;
+    margin: 0.5rem -.5rem;
 
     &-item {
       display: flex;
@@ -956,46 +957,46 @@
     margin: 0 -.5rem;
   }
 
-  &-title {
-    display: grid;
-    grid-template-columns: 100%;
-    grid-template-rows: 100%;
+  // &-title {
+  //   display: grid;
+  //   grid-template-columns: 100%;
+  //   grid-template-rows: 100%;
 
-    &-zoom,
-    &-text {
-      opacity: 1;
-      grid-row-start: 1;
-      grid-column-start: 1;
+  //   &-zoom,
+  //   &-text {
+  //     opacity: 1;
+  //     grid-row-start: 1;
+  //     grid-column-start: 1;
 
-      @include animation-level(2) {
-        transition: opacity var(--transition-standard-in);
-      }
-    }
+  //     @include animation-level(2) {
+  //       transition: opacity var(--transition-standard-in);
+  //     }
+  //   }
 
-    &-zoom {
-      display: flex;
-      align-items: center;
-      gap: .25rem;
-      pointer-events: none;
-      opacity: 0;
-      cursor: var(--custom-cursor, pointer);
-      color: var(--primary-color);
+  //   &-zoom {
+  //     display: flex;
+  //     align-items: center;
+  //     gap: .25rem;
+  //     pointer-events: none;
+  //     opacity: 0;
+  //     cursor: var(--custom-cursor, pointer);
+  //     color: var(--primary-color);
 
-      &-icon {
-        font-size: 1.5rem;
-      }
-    }
+  //     &-icon {
+  //       font-size: 1.5rem;
+  //     }
+  //   }
 
-    &.is-zoomed &-text {
-      opacity: 0;
-      pointer-events: none;
-    }
+  //   &.is-zoomed &-text {
+  //     opacity: 0;
+  //     pointer-events: none;
+  //   }
 
-    &.is-zoomed &-zoom {
-      opacity: 1;
-      pointer-events: all;
-    }
-  }
+  //   &.is-zoomed &-zoom {
+  //     opacity: 1;
+  //     pointer-events: all;
+  //   }
+  // }
 
   &-post {
     &-title {
