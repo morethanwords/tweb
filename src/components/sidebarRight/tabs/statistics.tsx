@@ -982,7 +982,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
     const element = await emptyPlaceholder({
       title: () => i18n('LoadingStats'),
       description: () => i18n('LoadingStatsDescription'),
-      assetName: 'Stats',
+      assetName: 'StatsEmoji',
       middleware: this.middlewareHelper.get(),
       hide,
       isFullSize: true

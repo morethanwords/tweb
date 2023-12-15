@@ -104,7 +104,7 @@ const STORY_HEADER_AVATAR_SIZE = 32;
 const STORY_SCALE_SMALL = 0.33;
 const STORIES_PRESERVE = 2;
 const STORIES_PRESERVE_HIDDEN = 2;
-const STORY_REPOST_ICON: Icon = 'audio_repeat';
+const STORY_REPOST_ICON: Icon = 'reposticon';
 let CHANGELOG_PEER_ID = SERVICE_PEER_ID;
 
 rootScope.addEventListener('app_config', (appConfig) => {
