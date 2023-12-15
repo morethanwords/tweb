@@ -437,4 +437,25 @@
   "params": [
     {"name": "reply_to_peer_id", "type": "PeerId | InputPeer"}
   ]
+}, {
+  "predicate": "stats.messageStats",
+  "params": [
+    {"name": "views", "type": "StatsAbsValueAndPrev"},
+    {"name": "reactions", "type": "StatsAbsValueAndPrev"},
+    {"name": "public_shares", "type": "StatsAbsValueAndPrev"},
+    {"name": "private_shares", "type": "StatsAbsValueAndPrev"}
+  ]
+}, {
+  "predicate": "stats.storyStats",
+  "params": [
+    {"name": "views", "type": "StatsAbsValueAndPrev"},
+    {"name": "reactions", "type": "StatsAbsValueAndPrev"},
+    {"name": "public_shares", "type": "StatsAbsValueAndPrev"},
+    {"name": "private_shares", "type": "StatsAbsValueAndPrev"}
+  ]
+}, {
+  "predicate": "statsAbsValueAndPrev",
+  "params": [
+    {"name": "approximate", "type": "boolean"}
+  ]
 }]
