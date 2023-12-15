@@ -761,6 +761,7 @@ export const AvatarNew = (props: {
     node,
     render,
     setIcon,
+    setStoriesSegments,
     updateStoriesSegments,
     set
   };

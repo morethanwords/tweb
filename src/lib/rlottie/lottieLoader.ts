@@ -23,7 +23,8 @@ export type LottieAssetName = 'EmptyFolder' | 'Folders_1' | 'Folders_2' |
   'TwoFactorSetupMonkeyPeek' | 'TwoFactorSetupMonkeyTracking' |
   'voice_outlined2' | 'voip_filled' | 'voice_mini' | 'jolly_roger' |
   'Gift3' | 'Gift6' | 'Gift12' | 'Folders_Shared' | 'UtyanSearch' |
-  'UtyanDiscussion' | 'UtyanLinks' | 'UtyanStories' | 'ReactionGeneric';
+  'UtyanDiscussion' | 'UtyanLinks' | 'UtyanStories' | 'ReactionGeneric' |
+  'Stats';
 
 export class LottieLoader {
   private loadPromise: Promise<void> = !IS_WEB_ASSEMBLY_SUPPORTED ? Promise.reject(makeError('NO_WASM')) : undefined;

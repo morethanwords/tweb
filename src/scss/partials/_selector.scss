@@ -280,6 +280,13 @@
     width: 100%;
     padding: 0 1rem;
 
+    &.is-full {
+      justify-content: center;
+      inset: 0;
+      transform: none;
+      background-color: var(--surface-color);
+    }
+
     &-sticker {
       width: 140px;
       height: 140px;

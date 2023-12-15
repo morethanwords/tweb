@@ -1,0 +1,711 @@
+.tchart {
+  $d-tip: 120ms;
+  $d-tip-hide: 80ms;
+  $d-switcher: 0.2s;
+  $d-zoom: 0.25s;
+
+  display: inline-block;
+  white-space: normal;
+  vertical-align: top;
+  width: 100%;
+
+  position: relative;
+  padding-top: 21px;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: none;
+  touch-action: manipulation;
+  font-family: var(--tchart-font-family);
+  user-select: none;
+  z-index: 1;
+
+  &--wrapper {
+    --tchart-primary-color: #108be3;
+    --tchart-background-color: #fff;
+    --tchart-background-color-rgb: 255, 255, 255;
+    --tchart-text-color: #000;
+    --tchart-secondary-color: #d2d5d7;
+    --tchart-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --tchart-letter-spacing-small: -0.015em;
+    --tchart-letter-spacing-large: -0.035em;
+
+    position: relative;
+    width: 100%;
+    white-space: nowrap;
+    font-size: 0;
+
+    html.dark & {
+      --tchart-primary-color: #48aaf0;
+      --tchart-background-color: #242e3e;
+      --tchart-background-color-rgb: 36, 46, 62;
+      --tchart-text-color: #fff;
+      --tchart-secondary-color: #767c85;
+    }
+  }
+
+  &#{&}__master {
+    .tchart--switcher {
+      opacity: 0;
+      // transform: scale(0.8);
+    }
+
+    .tchart--switcher.tchart--switcher__visible {
+      opacity: 1;
+      // transform: none;
+      z-index: 15;
+    }
+  }
+
+  &#{&}__slave {
+    margin-left: -100%;
+    visibility: hidden;
+
+    .tchart--switcher {
+      opacity: 0;
+      // transform: scale(0.8);
+    }
+
+    .tchart--switcher.tchart--switcher__visible {
+      opacity: 1;
+      // transform: none;
+      z-index: 15;
+    }
+
+    .tchart--header {
+      display: none;
+    }
+  }
+
+  //block subchart handle drag
+  &#{&}__no-subchart &--graph:after {
+    content: "";
+    position: absolute;
+    z-index: 11;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 45px;
+  }
+
+  &#{&}__no-subchart &--switchers {
+    margin-top: -36px;
+  }
+
+  &--header {
+    position: absolute;
+    font-size: 16px;
+    color: var(--tchart-text-color);
+    left: 16px;
+    top: 0px;
+    letter-spacing: var(--tchart-letter-spacing-small);
+    font-weight: 700;
+    z-index: 11;
+    margin: 0;
+    padding: 0;
+
+    transform-origin: 0 -28px;
+    transform: none;
+    transition: opacity $d-zoom ease, transform $d-zoom ease,
+      visibility $d-zoom step-start;
+    visibility: inherit;
+    opacity: 1;
+
+    &#{&}__hidden {
+      transform: scale(0.54);
+      transition: opacity $d-zoom ease, transform $d-zoom ease,
+        visibility $d-zoom step-end;
+      visibility: hidden;
+      opacity: 0;
+    }
+
+    @media only screen and (max-width: 374px) {
+      font-size: 14px;
+      top: 4px;
+    }
+  }
+
+  &--zoom {
+    position: absolute;
+    font-size: 16px;
+    color: var(--tchart-primary-color);
+    left: 17px;
+    top: 2px;
+    letter-spacing: var(--tchart-letter-spacing-small);
+    font-weight: 700;
+    z-index: 11;
+    height: 17px;
+    line-height: 15px;
+    padding-left: 25px;
+    cursor: pointer;
+
+    transform-origin: 0 35px;
+    transform: scale(0.54);
+    transition: opacity $d-zoom ease, transform $d-zoom ease,
+      visibility $d-zoom step-end;
+    visibility: hidden;
+    opacity: 0;
+
+    &#{&}__visible {
+      transform: none;
+      transition: opacity $d-zoom ease, transform $d-zoom ease,
+        visibility $d-zoom step-start;
+      visibility: inherit;
+      opacity: 1;
+    }
+
+    @media (pointer: fine) {
+      &:hover {
+        .tchart--zoom-icon:after {
+          transform: translate(-0.2px, 0.9px) rotate(55deg);
+        }
+      }
+    }
+
+    @media only screen and (max-width: 374px) {
+      font-size: 14px;
+      top: 6px;
+    }
+
+    &-icon {
+      position: absolute;
+      left: 0;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      box-sizing: border-box;
+      border: 2px solid var(--tchart-primary-color);
+
+      &:before {
+        content: "";
+        position: absolute;
+        height: 2px;
+        top: 3px;
+        transform: translateY(0.5px);
+        width: 5px;
+        left: 2px;
+        background: var(--tchart-primary-color);
+        border-radius: 1px;
+      }
+
+      &:after {
+        content: "";
+        position: absolute;
+        height: 2px;
+        width: 8px;
+        left: 11px;
+        top: 3px;
+        transform-origin: -6px 1px;
+        transform: translate(-0.3px, 0.8px) rotate(45deg);
+        transition: 0.17s transform ease;
+        background: var(--tchart-primary-color);
+        border-radius: 1px;
+      }
+    }
+  }
+
+  &--graph {
+    position: relative;
+    width: 100%;
+    height: 380px;
+    margin-top: -15px;
+
+    &-canvas {
+      position: relative;
+      height: 100%;
+      width: 100%;
+      z-index: 10;
+      -webkit-tap-highlight-color: transparent;
+
+      &#{&}__handle-pointer {
+        cursor: pointer;
+      }
+
+      &#{&}__handle-grab {
+        cursor: grab;
+      }
+
+      &#{&}__handle-col-resize {
+        cursor: col-resize;
+      }
+
+      &#{&}__tip-pointer {
+        cursor: pointer;
+      }
+    }
+  }
+
+  &--tip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: var(--tchart-background-color);
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.135);
+    padding: 8px 12px 4px;
+    border-radius: 10px;
+    z-index: 20;
+    min-width: 160px;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+
+    transition: opacity $d-tip-hide linear, visibility $d-tip-hide step-end;
+    opacity: 0;
+    visibility: hidden;
+
+    &#{&}__shiftHide {
+      transition: opacity $d-tip-hide * 2 ease-in,
+        transform $d-tip-hide * 3 ease-in, visibility $d-tip-hide * 3 step-end;
+    }
+
+    &#{&}__visible {
+      transition: opacity $d-tip linear, visibility $d-tip step-start;
+      opacity: 1;
+      visibility: inherit;
+    }
+
+    &#{&}__has_no_items {
+      display: none;
+    }
+
+    &#{&}__has-zoom {
+      cursor: pointer;
+
+      @media (pointer: fine) {
+        &:hover {
+          .tchart--tip-arrow {
+            transform: translateX(2px);
+          }
+        }
+      }
+
+      &:active {
+        .tchart--tip-arrow {
+          transform: translateX(5px);
+        }
+      }
+    }
+
+    &#{&}__has-zoom &-arrow {
+      display: block;
+    }
+
+    &#{&}__loading &-arrow {
+      display: none;
+    }
+
+    &#{&}__loading &-loader {
+      display: block;
+    }
+
+    &#{&}__error &-arrow {
+      &:before,
+      &:after {
+        background: #e53e3e !important;
+      }
+
+      animation: tchart_animation_error 0.5s linear;
+
+      @keyframes tchart_animation_error {
+        8%,
+        41% {
+          transform: translateX(-4px);
+        }
+
+        25%,
+        58% {
+          transform: translateX(4px);
+        }
+
+        75% {
+          transform: translateX(-2px);
+        }
+
+        92% {
+          transform: translateX(2px);
+        }
+
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+      }
+    }
+
+    &#{&}__piemode &-header {
+      display: none;
+    }
+
+    &#{&}__scroll {
+      width: 183px;
+    }
+
+    // &#{&}__scroll &-scroller {
+    //   padding-right: 6px;
+    // }
+
+    &#{&}__has_less &-scroller-wrapper {
+      &:before {
+        opacity: 1;
+      }
+    }
+
+    &#{&}__has_more &-scroller-wrapper {
+      &:after {
+        opacity: 1;
+      }
+    }
+
+    &-scroller-wrapper {
+      position: relative;
+
+      &:before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 25px;
+        background: linear-gradient(
+          to bottom,
+          rgba(var(--tchart-background-color-rgb), 1) 0%,
+          rgba(var(--tchart-background-color-rgb), 0) 100%
+        );
+        z-index: 1;
+        opacity: 0;
+        transition: 0.2s opacity ease;
+      }
+
+      &:after {
+        content: "";
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        height: 25px;
+        background: linear-gradient(
+          to top,
+          rgba(var(--tchart-background-color-rgb), 1) 0%,
+          rgba(var(--tchart-background-color-rgb), 0) 100%
+        );
+        z-index: 1;
+        opacity: 0;
+        transition: 0.2s opacity ease;
+      }
+    }
+
+    &-scroller {
+      max-height: 147px;
+      overflow-y: auto;
+
+      &::-webkit-scrollbar {
+        display: none;
+      }
+    }
+
+    &-header {
+      position: relative;
+      font-weight: 700;
+      letter-spacing: var(--tchart-letter-spacing-small);
+      font-size: 13px;
+      color: var(--tchart-text-color);
+      margin: 0;
+      padding: 0;
+      margin-bottom: 6px;
+      white-space: nowrap;
+      display: inline-block;
+    }
+
+    &-arrow {
+      position: absolute;
+      top: 10px;
+      right: 14px;
+      width: 6px;
+      height: 10px;
+      transition: 0.17s transform ease;
+      display: none;
+
+      &:before,
+      &:after {
+        content: "";
+        position: absolute;
+        height: 2px;
+        width: 7px;
+        right: -1px;
+        top: 4px;
+        transform-origin: 100% 50%;
+        background: var(--tchart-secondary-color);
+        border-radius: 1px 0.5px 0.5px 1px;
+      }
+
+      &:before {
+        transform: translateY(-0.5px) rotate(-45deg) scaleY(0.8);
+      }
+
+      &:after {
+        transform: translateY(0.5px) rotate(45deg) scaleY(0.8);
+      }
+    }
+
+    &-loader {
+      display: none;
+      animation: tchart_animation_loading 600ms infinite linear;
+      position: absolute;
+      top: 9px;
+      right: 9px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      border: 2px solid var(--tchart-secondary-color);
+      border-right-color: #333;
+
+      @keyframes tchart_animation_loading {
+        to {
+          transform: rotate(1turn);
+        }
+      }
+    }
+
+    &-row {
+      position: relative;
+      width: 100%;
+      height: 14px;
+      margin-bottom: 7px;
+
+      &-per {
+        position: absolute;
+        left: 0;
+        top: 0;
+        font-weight: 700;
+        letter-spacing: var(--tchart-letter-spacing-small);
+        font-size: 13px;
+        color: var(--tchart-text-color);
+        text-align: right;
+        margin: 0;
+      }
+
+      &-label {
+        position: absolute;
+        top: 0;
+        left: 0;
+        font-size: 13px;
+        color: var(--tchart-text-color);
+        white-space: nowrap;
+        max-width: 120px; //can be safely changed to any value, js calcs for tooltip overall width take it into consideration
+        text-overflow: ellipsis;
+        overflow: hidden;
+      }
+
+      &-value {
+        position: absolute;
+        top: 0;
+        right: 0;
+        text-align: right;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: var(--tchart-letter-spacing-small);
+        white-space: nowrap;
+      }
+    }
+  }
+
+  &--line {
+    position: absolute;
+    width: 1px;
+    z-index: 15;
+    pointer-events: none;
+
+    transition: opacity $d-tip-hide linear, visibility $d-tip-hide step-end;
+    opacity: 0;
+    visibility: hidden;
+
+    &#{&}__visible {
+      transition: opacity $d-tip linear, visibility $d-tip step-start;
+      opacity: 1;
+      visibility: inherit;
+    }
+
+    &#{&}__has_no_items {
+      display: none;
+    }
+
+    &#{&}__piemode {
+      display: none;
+    }
+
+    &-fill {
+      position: absolute;
+      left: 0;
+      width: 1px;
+    }
+
+    &-point {
+      position: absolute;
+      display: block;
+      box-sizing: border-box;
+      background: var(--tchart-background-color);
+      border: 2px solid transparent;
+      width: 10px;
+      height: 10px;
+      margin-left: -5px;
+      margin-top: -5px;
+      left: 0;
+      z-index: 12;
+      border-radius: 50%;
+    }
+  }
+
+  &--switchers {
+    position: relative;
+    z-index: 12;
+    width: calc(100% - 32px);
+    margin: 16px auto 0;
+    font-size: 0;
+    transition: margin 0.45s;
+  }
+
+  &--switcher {
+    display: inline-block;
+    position: relative;
+    height: 36px;
+    cursor: pointer;
+    border-radius: 18px;
+    margin: 0 6px 8px 0;
+    padding: 0 22px 0 22px;
+    box-sizing: border-box;
+    background-color: transparent;
+    box-shadow: inset 0 0 0 2px currentcolor;
+    transition: background-color $d-switcher, opacity 0.3s linear;
+    -webkit-tap-highlight-color: transparent;
+
+    &#{&}__denied {
+      animation: tchart_animation_shake 0.5s linear;
+
+      @keyframes tchart_animation_shake {
+        8%,
+        41% {
+          transform: translateX(-6px);
+        }
+
+        25%,
+        58% {
+          transform: translateX(6px);
+        }
+
+        75% {
+          transform: translateX(-3px);
+        }
+
+        92% {
+          transform: translateX(3px);
+        }
+
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+      }
+    }
+
+    &#{&}__active {
+      background-color: currentcolor;
+
+      &:before {
+        opacity: 1;
+      }
+
+      .tchart--switcher-text {
+        color: #fff;
+        left: 8px;
+      }
+    }
+
+    &:before {
+      content: "";
+      position: absolute;
+      top: 5px;
+      left: 6px;
+      height: 25px;
+      width: 25px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25' viewBox='0 0 60 60'%3E%3Cpath d='M17.2,33.7L24.2,41.0L40.6,22.2' stroke-linejoin='round' fill='none' stroke='%23ffffff' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E");
+      transition: opacity $d-switcher;
+      opacity: 0;
+    }
+
+    &-text {
+      position: relative;
+      display: inline-block;
+      font-size: 14px;
+      line-height: 36px;
+      left: 0;
+      letter-spacing: var(--tchart-letter-spacing-large);
+      transition: left $d-switcher, color $d-switcher;
+      color: currentcolor;
+      font-weight: 500;
+    }
+  }
+
+  &--switchers__side-legend:not(&--switchers__no-space) {
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    margin: 0 !important; //override __no-subchart shift
+    padding: 0 16px;
+    width: 200px; //js takes it into account
+    display: inline-flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  &--switchers__side-legend &--switcher {
+    display: block;
+    width: fit-content;
+    height: 22px;
+    border-radius: 0;
+    margin: 2px 0;
+    padding: 0 0 0 20px;
+    box-sizing: border-box;
+    background-color: transparent !important;
+    box-shadow: none;
+    flex: 0 0 auto;
+
+    &#{&}__first {
+      margin-top: auto;
+    }
+
+    &#{&}__last {
+      margin-bottom: auto;
+    }
+
+    &:before {
+      display: inline-block;
+      height: 9px;
+      width: 17px;
+      transform: rotate(-45deg) translate3d(0px, -4px, 0);
+      border-width: 0 0 3px 3px;
+      border-style: solid;
+      margin: 3px 0 0;
+      vertical-align: text-top;
+      transition: none;
+      opacity: 0;
+      background-image: none;
+    }
+  }
+
+  &--switchers__side-legend &--switcher__active {
+    background-color: transparent;
+
+    &:before {
+      opacity: 1 !important;
+    }
+  }
+
+  &--switchers__side-legend &--switcher &--switcher-text,
+  &--switchers__side-legend &--switcher__active &--switcher-text {
+    color: currentColor;
+    left: 7px;
+    line-height: 22px;
+    max-width: 140px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
+}

@@ -402,6 +402,7 @@ const lang = {
     'other_value': 'You can select up to %d subscribers'
   },
   'AddChannels': 'Add Channels',
+  'Chart.Tooltip.All': 'All',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -1564,6 +1565,60 @@ const lang = {
   'LimitReachedChatInFoldersLocked': 'Sorry, you can\'t add more than **%1$d** chats to a folder. Please create a new one. We are working to let you increase this limit in the future.',
   'ZoomOut': 'Zoom out',
   'LanguagesChartTitle': 'Languages',
+  'ViewsPerStory': 'Views Per Story',
+  'SharesPerStory': 'Shares Per Story',
+  'ReactionsPerStory': 'Reactions Per Story',
+  'ReactionsPerPost': 'Reactions Per Post',
+  'ReactionsByEmotionChartTitle': 'Reactions',
+  'IVInteractionsChartTitle': 'IV Interactions',
+  'StoryInteractionsChartTitle': 'Story Views and Shares',
+  'StoryReactionsByEmotionChartTitle': 'Story Reactions',
+  'RecentPosts': 'Recent posts',
+  'GroupMembersChartTitle': 'Group members',
+  'NewMembersBySourceChartTitle': 'New members by source',
+  'MembersLanguageChartTitle': 'Members\' primary language',
+  'MessagesChartTitle': 'Messages',
+  'ActionsChartTitle': 'Actions',
+  'MembersOverviewTitle': 'Members',
+  'MessagesOverview': 'Messages',
+  'ViewingMembers': 'Viewing Members',
+  'PostingMembers': 'Posting Members',
+  'TopDaysOfWeekChartTitle': 'Top days of week',
+  'CharactersPerMessage': '%s per message',
+  'Characters': {
+    'one_value': '%1$d character',
+    'other_value': '%1$d characters'
+  },
+  'Deletions': {
+    'one_value': '%1$d deletion',
+    'other_value': '%1$d deletions'
+  },
+  'Bans': {
+    'one_value': '%1$d ban',
+    'other_value': '%1$d bans'
+  },
+  'Restrictions': {
+    'one_value': '%1$d restriction',
+    'other_value': '%1$d restrictions'
+  },
+  'Invitations': {
+    'one_value': '%1$d invitation',
+    'other_value': '%1$d invitations'
+  },
+  'TopAdmins': 'Top admins',
+  'TopMembers': 'Top members',
+  'TopInviters': 'Top inviters',
+  'StoryStatistics': 'Story Statistics',
+  'PostStatistics': 'Post Statistics',
+  'ViewStatistics': 'View Statistics',
+  'ViewsAndSharesChartTitle': 'Views and Shares',
+  'PublicShares': 'Public Shares',
+  'PrivateShares': 'Private Shares',
+  'PublicSharesCount': {
+    'one_value': '%1$s public share',
+    'other_value': '%1$s public shares'
+  },
+  'ViewStory': 'View Story',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
@@ -2134,7 +2189,8 @@ const lang = {
   'Premium.Boarding.Subscribe': 'Subscribe for %@ per month',
   'Premium.Offset.AlreadyHave': 'You already have Telegram Premium.',
   'GiftLink.UseSuccess': 'You successfully activated gift link.',
-  'Giveaway.Type.Specific.Modal.SelectUsers': 'Select Users'
+  'Giveaway.Type.Specific.Modal.SelectUsers': 'Select Users',
+  'GroupStats.Title': 'Group Statistics'
 };
 
 export default lang;

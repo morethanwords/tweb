@@ -9108,7 +9108,8 @@ export namespace StatsAbsValueAndPrev {
   export type statsAbsValueAndPrev = {
     _: 'statsAbsValueAndPrev',
     current: number,
-    previous: number
+    previous: number,
+    approximate?: boolean
   };
 }
 
@@ -9498,7 +9499,11 @@ export namespace StatsMessageStats {
   export type statsMessageStats = {
     _: 'stats.messageStats',
     views_graph: StatsGraph,
-    reactions_by_emotion_graph: StatsGraph
+    reactions_by_emotion_graph: StatsGraph,
+    views?: StatsAbsValueAndPrev,
+    reactions?: StatsAbsValueAndPrev,
+    public_shares?: StatsAbsValueAndPrev,
+    private_shares?: StatsAbsValueAndPrev
   };
 }
 
@@ -11898,6 +11903,9 @@ export namespace StoryFwdHeader {
   export type storyFwdHeader = {
     _: 'storyFwdHeader',
     flags?: number,
+    pFlags: Partial<{
+      modified?: true,
+    }>,
     from?: Peer,
     from_name?: string,
     story_id?: number
@@ -11936,7 +11944,46 @@ export namespace StatsStoryStats {
   export type statsStoryStats = {
     _: 'stats.storyStats',
     views_graph: StatsGraph,
-    reactions_by_emotion_graph: StatsGraph
+    reactions_by_emotion_graph: StatsGraph,
+    views?: StatsAbsValueAndPrev,
+    reactions?: StatsAbsValueAndPrev,
+    public_shares?: StatsAbsValueAndPrev,
+    private_shares?: StatsAbsValueAndPrev
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/PublicForward
+ */
+export type PublicForward = PublicForward.publicForwardMessage | PublicForward.publicForwardStory;
+
+export namespace PublicForward {
+  export type publicForwardMessage = {
+    _: 'publicForwardMessage',
+    message: Message
+  };
+
+  export type publicForwardStory = {
+    _: 'publicForwardStory',
+    peer: Peer,
+    story: StoryItem
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/stats.PublicForwards
+ */
+export type StatsPublicForwards = StatsPublicForwards.statsPublicForwards;
+
+export namespace StatsPublicForwards {
+  export type statsPublicForwards = {
+    _: 'stats.publicForwards',
+    flags?: number,
+    count: number,
+    forwards: Array<PublicForward>,
+    next_offset?: string,
+    chats: Array<Chat>,
+    users: Array<User>
   };
 }
 
@@ -13182,6 +13229,9 @@ export interface ConstructorDeclMap {
   'postInteractionCountersMessage': PostInteractionCounters.postInteractionCountersMessage,
   'postInteractionCountersStory': PostInteractionCounters.postInteractionCountersStory,
   'stats.storyStats': StatsStoryStats.statsStoryStats,
+  'publicForwardMessage': PublicForward.publicForwardMessage,
+  'publicForwardStory': PublicForward.publicForwardStory,
+  'stats.publicForwards': StatsPublicForwards.statsPublicForwards,
   'peerColor': PeerColor.peerColor,
   'help.peerColorSet': HelpPeerColorSet.helpPeerColorSet,
   'help.peerColorProfileSet': HelpPeerColorSet.helpPeerColorProfileSet,
@@ -16199,6 +16249,7 @@ export type StoriesSendStory = {
   flags?: number,
   pinned?: boolean,
   noforwards?: boolean,
+  fwd_modified?: boolean,
   peer: InputPeer,
   media: InputMedia,
   media_areas?: Array<MediaArea>,
@@ -16445,6 +16496,13 @@ export type StatsGetStoryStats = {
   dark?: boolean,
   peer: InputPeer,
   id: number
+};
+
+export type StatsGetStoryPublicForwards = {
+  peer: InputPeer,
+  id: number,
+  offset: string,
+  limit: number
 };
 
 export type HelpGetPeerColors = {
@@ -17013,6 +17071,7 @@ export interface MethodDeclMap {
   'messages.searchEmojiStickerSets': {req: MessagesSearchEmojiStickerSets, res: MessagesFoundStickerSets},
   'channels.getChannelRecommendations': {req: ChannelsGetChannelRecommendations, res: MessagesChats},
   'stats.getStoryStats': {req: StatsGetStoryStats, res: StatsStoryStats},
+  'stats.getStoryPublicForwards': {req: StatsGetStoryPublicForwards, res: StatsPublicForwards},
   'help.getPeerColors': {req: HelpGetPeerColors, res: HelpPeerColors},
   'help.getPeerProfileColors': {req: HelpGetPeerProfileColors, res: HelpPeerColors},
 }

@@ -2344,9 +2344,9 @@ hr {
     line-height: 1;
     padding: .0625rem .625rem;
 
-    .night & {
-      background-color: rgba(0, 0, 0, .2);
-    }
+    // .night & {
+    //   background-color: rgba(0, 0, 0, .2);
+    // }
 
     &-name {
       flex: 1 1 auto;
@@ -2386,5 +2386,18 @@ hr {
 
   .night & {
     background-color: rgba(0, 0, 0, .8);
+  }
+}
+
+.tchart {
+  &--wrapper {
+    --tchart-letter-spacing-small: auto !important;
+    --tchart-letter-spacing-large: auto !important;
+    margin-top: -12px;
+    z-index: 0;
+  }
+
+  &--zoom {
+    inset: -8px 1rem auto auto !important;
   }
 }

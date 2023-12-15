@@ -56,6 +56,7 @@ import {MiddlewareHelper, getMiddleware} from '../../helpers/middleware';
 import setBadgeContent from '../../helpers/setBadgeContent';
 import createBadge from '../../helpers/createBadge';
 import PopupBoostsViaGifts from '../popups/boostsViaGifts';
+import AppStatisticsTab from '../sidebarRight/tabs/statistics';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -98,7 +99,7 @@ export default class ChatTopbar {
 
   constructor(
     private chat: Chat,
-    private appSidebarRight: AppSidebarRight,
+    public appSidebarRight: AppSidebarRight,
     private managers: AppManagers
   ) {
     this.listenerSetter = new ListenerSetter();
@@ -478,6 +479,14 @@ export default class ChatTopbar {
       text: 'GiftPremium',
       onClick: () => this.chat.appImManager.giftPremium(this.peerId),
       verify: () => this.chat.canGiftPremium()
+    }, {
+      icon: 'statistics',
+      text: 'Statistics',
+      onClick: () => {
+        this.appSidebarRight.createTab(AppStatisticsTab).open(this.peerId.toChatId());
+        this.appSidebarRight.toggleSidebar(true);
+      },
+      verify: () => this.managers.appProfileManager.canViewStatistics(this.peerId)
     }, {
       icon: 'boost',
       text: 'BoostsViaGifts.Title',

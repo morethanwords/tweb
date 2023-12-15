@@ -145,6 +145,10 @@ export default function hasRights(
     case 'create_giveaway': {
       return isAdmin && !!myFlags['post_messages'];
     }
+
+    // case 'view_statistics': {
+    //   return isAdmin && !!myFlags['other'];
+    // }
   }
 
   return true;

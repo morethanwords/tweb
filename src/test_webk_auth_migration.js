@@ -5,12 +5,12 @@
     keys.push(`dc${i}_server_salt`);
     keys.push(`dc${i}_auth_key`);
   }
-  
+
   const values = await Promise.all(keys.map(key => appStorage.get(key)));
   keys.push('user_auth');
   values.push(typeof(auth) === 'number' ? {dcID: values[0] || 2, id: auth} : auth);
-  
-  let obj = {};
+
+  const obj = {};
   keys.forEach((key, idx) => {
     obj[key] = values[idx];
   });
@@ -19,8 +19,9 @@
   console.log(obj);
 })();
 
-copy(JSON.stringify(window.exported));
+{
+  copy(JSON.stringify(window.exported));
 
-
-var obj = JSON.parse();
-appStorage.set(obj);
+  const obj = JSON.parse();
+  appStorage.set(obj);
+}

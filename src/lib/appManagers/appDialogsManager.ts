@@ -2830,8 +2830,8 @@ export class AppDialogsManager {
   }
 
   public setListClickListener(
-    list: HTMLUListElement,
-    onFound?: () => void,
+    list: HTMLElement,
+    onFound?: (target: HTMLElement) => void | boolean,
     withContext = false,
     autonomous = false,
     openInner = false
@@ -2865,7 +2865,9 @@ export class AppDialogsManager {
       const lastMsgId = +elem.dataset.mid || undefined;
       const threadId = +elem.dataset.threadId || undefined;
 
-      onFound?.();
+      if(onFound?.(elem) === false) {
+        return;
+      }
 
       const isForum = !!elem.querySelector('.is-forum');
       if(isForum && !e.shiftKey && !lastMsgId) {
