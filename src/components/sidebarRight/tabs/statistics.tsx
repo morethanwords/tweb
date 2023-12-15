@@ -150,7 +150,8 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
     topPosters: {container: HTMLElement, peerId: PeerId}[],
     topAdmins: {container: HTMLElement, peerId: PeerId}[],
     topInviters: {container: HTMLElement, peerId: PeerId}[],
-    publicForwards: Accessor<StatisticsPublicForwards>
+    publicForwards: Accessor<StatisticsPublicForwards>,
+    currentPost: (typeof recentPosts)[0]
   ) {
     const dateElement = new I18n.IntlDateElement({options: {}});
     const getLabelDate: TChartData['getLabelDate'] = (value, options = {}) => {
@@ -437,6 +438,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
     let postsContainer: HTMLDivElement;
     const ret = (
       <>
+        {currentPost && <Section>{currentPost.container}</Section>}
         <Section name="StatisticOverview" nameRight={period && formatDateRange(period.min_date, period.max_date)}>
           <div class="statistics-overview">
             <For each={overviewItems}>{renderOverviewItem}</For>
@@ -575,7 +577,8 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
     postInteractionCounters: PostInteractionCounters,
     peerId: PeerId = this.chatId.toPeerId(true),
     message?: Message.message,
-    storyItem?: StoryItem.storyItem
+    storyItem?: StoryItem.storyItem,
+    noLabels?: boolean
   ) {
     const subtitleRightFragment = document.createDocumentFragment();
     const a: [Icon, number][] = [
@@ -583,7 +586,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
       ['reply', postInteractionCounters.forwards]
     ];
 
-    a.forEach(([icon, count]) => {
+    !noLabels && a.forEach(([icon, count]) => {
       if(!count) {
         return;
       }
@@ -601,9 +604,9 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
 
     const row = new Row({
       title: true,
-      titleRight: i18n('Views', [numberThousandSplitter(postInteractionCounters.views)]),
+      titleRight: noLabels ? undefined : i18n('Views', [numberThousandSplitter(postInteractionCounters.views)]),
       subtitle: true,
-      subtitleRight: subtitleRightFragment,
+      subtitleRight: noLabels ? undefined : subtitleRightFragment,
       clickable: true,
       noWrap: true,
       asLink: !!(message || storyItem)
@@ -651,9 +654,13 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
         withoutMediaType: true
       });
 
-      if(isMediaSet) {
-        row.applyMediaElement(mediaEl, 'abitbigger');
+      if(!isMediaSet) {
+        const {node, readyThumbPromise} = avatarNew({middleware, peerId, size: 42});
+        mediaEl.append(node);
+        await readyThumbPromise;
       }
+
+      row.applyMediaElement(mediaEl, 'abitbigger');
     } else {
       container.classList.add('statistics-post-story');
       storyItem ||= this.stories.get(postInteractionCounters.story_id);
@@ -704,7 +711,8 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
       loadPromises,
       wrapOptions: {
         middleware: this.middlewareHelper.get()
-      }
+      },
+      meAsSaved: false
     });
 
     let toJoin: Node[];
@@ -854,6 +862,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
 
       if(message) {
         assumeType<Message.message>(message);
+        this.messages.set(message.mid, message);
         const totalPublicForwards = (messagePublicForwards as MessagesMessages.messagesMessagesSlice).count ?? messagePublicForwards.messages.length;
         stats.views = makeAbsStats(message.views);
         stats.reactions = makeAbsStats(message.reactions ? message.reactions.results.reduce((acc, v) => acc + v.count, 0) : 0);
@@ -938,12 +947,21 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
         return this.renderRecentPost(postInteractionCounters);
       });
 
+      const currentPostPromise = this.isMessage ? this.renderRecentPost({
+        _: 'postInteractionCountersMessage',
+        msg_id: this.mid,
+        forwards: 0,
+        reactions: 0,
+        views: 0
+      }, undefined, undefined, undefined, true) : undefined;
+
       const promises = [
         Promise.all(recentPostsPromises),
         Promise.all(renderedTopPosters),
         Promise.all(renderedTopAdmins),
         Promise.all(renderedTopInviters),
-        renderedPublicForwards
+        renderedPublicForwards,
+        currentPostPromise
       ] as const;
 
       return Promise.all(promises);
