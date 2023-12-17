@@ -1194,6 +1194,7 @@ export default class ChatContextMenu {
   };
 
   private onQuoteClick = async() => {
+    const {mid, peerId} = this;
     const selection = document.getSelection();
     const range = selection.getRangeAt(0);
     const {startContainer, startOffset, endContainer, endOffset} = range;
@@ -1212,17 +1213,35 @@ export default class ChatContextMenu {
         return [textNode, element];
       }
     }).filter(Boolean);
-    if(startContainer === endContainer) {
+
+    let insertedStartNode: Text, insertedEndNode: Text;
+    if(startValue === null) {
+      startContainer.parentNode.insertBefore(
+        insertedStartNode = document.createTextNode(needle),
+        startOffset === 0 ? startContainer : startContainer.nextSibling
+      );
+    }
+
+    if(endValue === null) {
+      endContainer.parentNode.insertBefore(
+        insertedEndNode = document.createTextNode(needle),
+        endOffset === 0 ? endContainer : endContainer.nextSibling
+      );
+    }
+
+    if(startContainer === endContainer && !insertedStartNode) {
       startContainer.nodeValue = startValue.slice(0, startOffset) + needle + startValue.slice(startOffset, endOffset) + needle + startValue.slice(endOffset);
     } else {
-      endContainer.nodeValue = endValue.slice(0, endOffset) + needle + endValue.slice(endOffset);
-      startContainer.nodeValue = startValue.slice(0, startOffset) + needle + startValue.slice(startOffset);
+      if(!insertedEndNode) endContainer.nodeValue = endValue.slice(0, endOffset) + needle + endValue.slice(endOffset);
+      if(!insertedStartNode) startContainer.nodeValue = startValue.slice(0, startOffset) + needle + startValue.slice(startOffset);
     }
     const {value: valueBefore} = getRichValueWithCaret(container);
     const startIndex = valueBefore.indexOf(needle);
-    const endIndex = valueBefore.lastIndexOf(needle) - 1;
-    startContainer.nodeValue = startValue;
-    endContainer.nodeValue = endValue;
+    const endIndex = valueBefore.indexOf(needle, startIndex + 1) - 1;
+    if(insertedStartNode) insertedStartNode.remove();
+    else startContainer.nodeValue = startValue;
+    if(insertedEndNode) insertedEndNode.remove();
+    else endContainer.nodeValue = endValue;
 
     // * have to fix entities
     const SUPPORTED_ENTITIES = new Set<MessageEntity['_']>([
@@ -1272,7 +1291,6 @@ export default class ChatContextMenu {
       offset: startIndex
     };
 
-    const {mid, peerId} = this;
     const replyTo: ChatInputReplyTo = {
       replyToMsgId: mid,
       replyToQuote: quote
