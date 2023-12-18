@@ -2000,7 +2000,7 @@ export default class ChatInput {
 
   private async getPlaceholderParams(canSend?: boolean): Promise<Parameters<ChatInput['updateMessageInputPlaceholder']>[0]> {
     canSend ??= await this.chat.canSend('send_plain');
-    const {peerId, threadId, isForum} = this.chat;
+    const {peerId, threadId, isForum, type} = this.chat;
     let key: LangPackKey, args: FormatterArguments;
     if(!canSend) {
       key = 'Channel.Persmission.MessageBlock';
@@ -2013,9 +2013,9 @@ export default class ChatInput {
       await this.managers.appMessagesManager.isAnonymousSending(peerId)
     ) {
       key = 'SendAnonymously';
-    } else if(this.chat.type === 'stories') {
+    } else if(type === 'stories') {
       key = 'Story.ReplyPlaceholder';
-    } else if(isForum && this.chat.type === 'chat') {
+    } else if(isForum && type === 'chat' && !threadId) {
       const topic = await this.managers.dialogsStorage.getForumTopic(peerId, GENERAL_TOPIC_ID);
       if(topic) {
         key = 'TypeMessageIn';
