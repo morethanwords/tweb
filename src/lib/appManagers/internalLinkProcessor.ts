@@ -589,6 +589,12 @@ export class InternalLinkProcessor {
         //   }
         // };
         return PopupElement.createPopup(PopupPayment, {inputInvoice, paymentForm});
+      }, (err) => {
+        if((err as ApiError).type === 'SLUG_INVALID') {
+          toastNew({langPackKey: 'PaymentInvoiceLinkInvalid'});
+        }
+
+        throw err;
       });
     });
   };

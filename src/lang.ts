@@ -1622,6 +1622,7 @@ const lang = {
   'ViewStory': 'View Story',
   'TopicViewAsTopics': 'View as topics',
   'TypeMessageIn': 'Message in %1$s',
+  'PaymentInvoiceLinkInvalid': 'Invalid invoice',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
