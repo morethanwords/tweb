@@ -1004,6 +1004,21 @@ export class AppChatsManager extends AppManager {
     });
   }
 
+  public toggleViewForumAsMessages(chatId: ChatId, enabled: boolean) {
+    this.apiUpdatesManager.processLocalUpdate({
+      _: 'updateChannelViewForumAsMessages',
+      channel_id: chatId,
+      enabled
+    });
+
+    this.apiManager.invokeApi('channels.toggleViewForumAsMessages', {
+      channel: this.getChannelInput(chatId),
+      enabled
+    }).then((updates) => {
+      this.apiUpdatesManager.processUpdateMessage(updates);
+    });
+  }
+
   private onUpdateChannelParticipant = (update: Update.updateChannelParticipant) => {
     this.appProfileManager.invalidateChannelParticipants(update.channel_id);
     this.rootScope.dispatchEvent('chat_participant', update);

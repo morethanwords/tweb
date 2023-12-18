@@ -31,7 +31,7 @@ import PopupPinMessage from '../popups/unpinMessage';
 import tsNow from '../../helpers/tsNow';
 import appNavigationController, {NavigationItem} from '../appNavigationController';
 import {IS_MOBILE, IS_MOBILE_SAFARI} from '../../environment/userAgent';
-import I18n, {i18n, join, LangPackKey} from '../../lib/langPack';
+import I18n, {FormatterArguments, i18n, join, LangPackKey} from '../../lib/langPack';
 import {generateTail} from './bubbles';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import ButtonCorner from '../buttonCorner';
@@ -60,7 +60,7 @@ import PopupDeleteMessages from '../popups/deleteMessages';
 import fixSafariStickyInputFocusing, {IS_STICKY_INPUT_BUGGED} from '../../helpers/dom/fixSafariStickyInputFocusing';
 import PopupPeer from '../popups/peer';
 import appMediaPlaybackController from '../appMediaPlaybackController';
-import {BOT_START_PARAM, NULL_PEER_ID, SEND_WHEN_ONLINE_TIMESTAMP} from '../../lib/mtproto/mtproto_config';
+import {BOT_START_PARAM, GENERAL_TOPIC_ID, NULL_PEER_ID, SEND_WHEN_ONLINE_TIMESTAMP} from '../../lib/mtproto/mtproto_config';
 import setCaretAt from '../../helpers/dom/setCaretAt';
 import CheckboxField from '../checkboxField';
 import DropdownHover from '../../helpers/dropdownHover';
@@ -123,6 +123,7 @@ import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 // console.log('Recorder', Recorder);
 
 const RECORD_MIN_TIME = 500;
+const REPLY_IN_TOPIC = false;
 
 export const POSTING_NOT_ALLOWED_MAP: {[action in ChatRights]?: LangPackKey} = {
   send_voices: 'GlobalAttachVoiceRestricted',
@@ -873,9 +874,11 @@ export default class ChatInput {
     this.newMessageWrapper = document.createElement('div');
     this.newMessageWrapper.classList.add('new-message-wrapper', 'rows-wrapper-row');
 
-    this.replyInTopicOverlay = document.createElement('div');
-    this.replyInTopicOverlay.classList.add('reply-in-topic-overlay', 'hide');
-    this.replyInTopicOverlay.append(i18n('Chat.Input.ReplyToAnswer'));
+    if(REPLY_IN_TOPIC) {
+      this.replyInTopicOverlay = document.createElement('div');
+      this.replyInTopicOverlay.classList.add('reply-in-topic-overlay', 'hide');
+      this.replyInTopicOverlay.append(i18n('Chat.Input.ReplyToAnswer'));
+    }
 
     if(!this.excludeParts.emoticons) this.btnToggleEmoticons = this.createButtonIcon('smile toggle-emoticons', {noRipple: true});
 
@@ -1202,7 +1205,7 @@ export default class ChatInput {
     attachClickEvent(this.botStartBtn, this.startBot, {listenerSetter: this.listenerSetter});
     attachClickEvent(this.unblockBtn, this.unblockUser, {listenerSetter: this.listenerSetter});
 
-    this.controlContainer.append(this.botStartBtn, this.unblockBtn, this.replyInTopicOverlay);
+    this.controlContainer.append(...[this.botStartBtn, this.unblockBtn, this.replyInTopicOverlay].filter(Boolean));
 
     // * pinned part start
     this.pinnedControlBtn = Button('btn-primary btn-transparent text-bold chat-input-control-button', {icon: 'unpin'});
@@ -1403,7 +1406,8 @@ export default class ChatInput {
   };
 
   public isReplyInTopicOverlayNeeded() {
-    return this.chat.isForum &&
+    return REPLY_IN_TOPIC &&
+      this.chat.isForum &&
       !this.chat.isForumTopic &&
       !this.replyToMsgId &&
       this.chat.type === 'chat';
@@ -1753,8 +1757,8 @@ export default class ChatInput {
             return;
           }
 
-          this.getPlaceholderKey().then((key) => {
-            this.updateMessageInputPlaceholder(key);
+          this.getPlaceholderParams().then((params) => {
+            this.updateMessageInputPlaceholder(params);
           });
         }
       );
@@ -1805,7 +1809,7 @@ export default class ChatInput {
       sendAs ? (sendAs.setPeerId(peerId), sendAs.updateManual(true)) : undefined
     ]);
 
-    const placeholderKey = this.messageInput ? await this.getPlaceholderKey(canSendPlain) : undefined;
+    const placeholderParams = this.messageInput ? await this.getPlaceholderParams(canSendPlain) : undefined;
 
     return () => {
       // console.warn('[input] finishpeerchange start');
@@ -1864,7 +1868,7 @@ export default class ChatInput {
       sendMenu?.setPeerId(peerId);
 
       if(this.messageInput) {
-        this.updateMessageInput(canSend, canSendPlain, placeholderKey);
+        this.updateMessageInput(canSend, canSendPlain, placeholderParams);
         this.messageInput.dataset.peerId = '' + peerId;
 
         if(filteredAttachMenuButtons && attachMenu) {
@@ -1889,7 +1893,7 @@ export default class ChatInput {
         this.pinnedControlBtn.replaceChildren(i18n(canPinMessage ? 'Chat.Input.UnpinAll' : 'Chat.Pinned.DontShow'));
       }
 
-      if(this.chat) {
+      if(REPLY_IN_TOPIC && this.chat) {
         const good = !haveSomethingInControl && this.chat.isForum && !this.chat.isForumTopic && this.chat.type === 'chat';
         haveSomethingInControl ||= good;
         this.replyInTopicOverlay.classList.toggle('hide', !good);
@@ -1994,10 +1998,10 @@ export default class ChatInput {
     this.updateOffset('commands', forwards, skipAnimation, useRafs, true);
   }
 
-  private async getPlaceholderKey(canSend?: boolean) {
+  private async getPlaceholderParams(canSend?: boolean): Promise<Parameters<ChatInput['updateMessageInputPlaceholder']>[0]> {
     canSend ??= await this.chat.canSend('send_plain');
     const {peerId, threadId, isForum} = this.chat;
-    let key: LangPackKey;
+    let key: LangPackKey, args: FormatterArguments;
     if(!canSend) {
       key = 'Channel.Persmission.MessageBlock';
     } else if(threadId && !isForum) {
@@ -2011,24 +2015,34 @@ export default class ChatInput {
       key = 'SendAnonymously';
     } else if(this.chat.type === 'stories') {
       key = 'Story.ReplyPlaceholder';
+    } else if(isForum && this.chat.type === 'chat') {
+      const topic = await this.managers.dialogsStorage.getForumTopic(peerId, GENERAL_TOPIC_ID);
+      if(topic) {
+        key = 'TypeMessageIn';
+        args = [wrapEmojiText(topic.title)];
+      } else {
+        key = 'Message';
+      }
     } else {
       key = 'Message';
     }
 
-    return key;
+    return {key, args};
   }
 
-  private updateMessageInputPlaceholder(key: LangPackKey) {
+  private updateMessageInputPlaceholder({key, args = []}: {key: LangPackKey, args?: FormatterArguments}) {
     // console.warn('[input] update placeholder');
-    const i = I18n.weakMap.get(this.messageInput) as I18n.IntlElement;
+    // const i = I18n.weakMap.get(this.messageInput) as I18n.IntlElement;
+    const i = I18n.weakMap.get(this.messageInputField.placeholder) as I18n.IntlElement;
     if(!i) {
       return;
     }
 
     const oldKey = i.key;
-    i.compareAndUpdate({key});
+    const oldArgs = i.args;
+    i.compareAndUpdate({key, args});
 
-    return {oldKey, newKey: key};
+    return {oldKey, oldArgs};
   }
 
   private filterAttachMenuButtons() {
@@ -2041,7 +2055,7 @@ export default class ChatInput {
   public updateMessageInput(
     canSend: boolean,
     canSendPlain: boolean,
-    placeholderKey: LangPackKey
+    placeholderParams: Parameters<ChatInput['updateMessageInputPlaceholder']>[0]
   ) {
     const {chatInput, messageInput} = this;
     const isHidden = chatInput.classList.contains('is-hidden');
@@ -2055,11 +2069,11 @@ export default class ChatInput {
 
     const isEditingAndLocked = canSend && !canSendPlain && this.restoreInputLock;
 
-    !isEditingAndLocked && this.updateMessageInputPlaceholder(placeholderKey);
+    !isEditingAndLocked && this.updateMessageInputPlaceholder(placeholderParams);
 
     if(isEditingAndLocked) {
       this.restoreInputLock = () => {
-        this.updateMessageInputPlaceholder(placeholderKey);
+        this.updateMessageInputPlaceholder(placeholderParams);
         this.messageInput.contentEditable = 'false';
       };
     } else if(!canSend || !canSendPlain) {
@@ -2085,6 +2099,7 @@ export default class ChatInput {
     const oldInputField = this.messageInputField;
     this.messageInputField = new InputFieldAnimated({
       placeholder: 'Message',
+      // placeholderAsElement: true,
       name: 'message',
       withLinebreaks: true
     });
@@ -2102,9 +2117,10 @@ export default class ChatInput {
 
     if(oldInputField) {
       oldInputField.input.replaceWith(this.messageInputField.input);
+      oldInputField.placeholder.replaceWith(this.messageInputField.placeholder);
       oldInputField.inputFake.replaceWith(this.messageInputField.inputFake);
     } else {
-      this.inputMessageContainer.append(this.messageInputField.input, this.messageInputField.inputFake);
+      this.inputMessageContainer.append(this.messageInputField.input, this.messageInputField.placeholder, this.messageInputField.inputFake);
     }
   }
 
@@ -3287,14 +3303,14 @@ export default class ChatInput {
     const f = async() => {
       let restoreInputLock: () => void;
       if(!this.messageInput.isContentEditable) {
-        const placeholderKey = await this.getPlaceholderKey(true);
+        const placeholderParams = await this.getPlaceholderParams(true);
         const {contentEditable} = this.messageInput;
         this.messageInput.contentEditable = 'true';
-        const {oldKey} = this.updateMessageInputPlaceholder(placeholderKey);
+        const {oldKey, oldArgs} = this.updateMessageInputPlaceholder(placeholderParams);
 
         restoreInputLock = () => {
           this.messageInput.contentEditable = contentEditable;
-          this.updateMessageInputPlaceholder(oldKey);
+          this.updateMessageInputPlaceholder({key: oldKey, args: oldArgs});
         };
       }
 

@@ -1286,8 +1286,12 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
     }
   } */
 
+  .input-field-placeholder {
+    inset-inline-start: unset;
+  }
+
   .input-message-input {
-    margin-top: -1px;
+    // margin-top: -1px;
     max-height: calc(30rem - 2.5rem) !important; // 2.5rem - input helper (reply)
 
     @media only screen and (max-height: 30rem) {
@@ -1574,6 +1578,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
   min-height: calc(var(--chat-input-size) - var(--padding-vertical) * 2);
   display: flex;
   align-items: center;
+  padding: 0 .5625rem;
 
   .scrollable {
     position: relative;
@@ -1585,7 +1590,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
   background: none;
   border: none;
   width: 100%;
-  padding: .5rem .5625rem;
+  padding: .5rem 0;
   /* height: 100%; */
   //min-height: inherit;
   overflow-y: none;

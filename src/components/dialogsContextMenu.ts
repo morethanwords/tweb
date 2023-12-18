@@ -22,6 +22,7 @@ import PopupElement from './popups';
 import cancelEvent from '../helpers/dom/cancelEvent';
 import IS_SHARED_WORKER_SUPPORTED from '../environment/sharedWorkerSupport';
 import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
+import appImManager from '../lib/appManagers/appImManager';
 
 export default class DialogsContextMenu {
   private buttons: ButtonMenuItemOptionsVerifiable[];
@@ -78,6 +79,13 @@ export default class DialogsContextMenu {
         cancelEvent(e);
       },
       verify: () => IS_SHARED_WORKER_SUPPORTED
+    }, {
+      icon: 'topics',
+      text: 'TopicViewAsTopics',
+      onClick: () => {
+        appImManager.disableViewAsMessages(this.peerId);
+      },
+      verify: () => !!(this.dialog && (this.dialog as Dialog).pFlags.view_forum_as_messages)
     }, {
       icon: 'unread',
       text: 'MarkAsUnread',

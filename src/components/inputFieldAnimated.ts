@@ -28,9 +28,9 @@ export default class InputFieldAnimated extends InputField {
       this.onFakeInput();
     });
 
-    if(options.placeholder) {
-      _i18n(this.inputFake, options.placeholder, undefined, 'placeholder');
-    }
+    // if(options.placeholder) {
+    //   _i18n(this.inputFake, options.placeholder, undefined, 'placeholder');
+    // }
 
     this.input.classList.add('scrollable', 'scrollable-y', 'no-scrollbar');
     // this.wasInputFakeClientHeight = 0;

@@ -302,6 +302,7 @@ export enum InputState {
 
 export type InputFieldOptions = {
   placeholder?: LangPackKey,
+  placeholderAsElement?: boolean,
   label?: LangPackKey,
   labelOptions?: any[],
   labelText?: string | DocumentFragment,
@@ -384,6 +385,7 @@ export default class InputField {
   public container: HTMLElement;
   public input: HTMLElement;
   public label: HTMLLabelElement;
+  public placeholder: HTMLElement;
 
   public originalValue: string;
 
@@ -411,7 +413,7 @@ export default class InputField {
         init();
       }
 
-      this.container.innerHTML = `<div class="input-field-input is-empty"></div>`;
+      this.container.innerHTML = `<div class="input-field-input"></div>`;
 
       input = this.container.firstElementChild as HTMLElement;
       input.contentEditable = '' + !!canBeEdited;
@@ -457,7 +459,7 @@ export default class InputField {
           // input.append(document.createTextNode('')); // need first text node to support history stack
         }
 
-        input.classList.toggle('is-empty', isEmpty);
+        this.setEmpty(isEmpty);
 
         // const fillers = Array.from(input.querySelectorAll('.emoji-filler')) as HTMLElement[];
         // fillers.forEach((filler) => {
@@ -501,16 +503,13 @@ export default class InputField {
       // observer.observe(input, {characterData: true, childList: true, subtree: true});
     } else {
       this.container.innerHTML = `
-      <input type="text" ${name ? `name="${name}"` : ''} autocomplete="${autocomplete ?? 'off'}" ${label ? 'required=""' : ''} class="input-field-input is-empty">
+      <input type="text" ${name ? `name="${name}"` : ''} autocomplete="${autocomplete ?? 'off'}" ${label ? 'required=""' : ''} class="input-field-input">
       `;
 
       input = this.container.firstElementChild as HTMLElement;
       // input.addEventListener('input', () => checkAndSetRTL(input));
 
-      onInputCallbacks.push(() => {
-        const isEmpty = isInputEmpty(input);
-        input.classList.toggle('is-empty', isEmpty);
-      });
+      onInputCallbacks.push(this.setEmpty);
     }
 
     setDirection(input);
@@ -520,7 +519,14 @@ export default class InputField {
     }
 
     if(placeholder) {
-      _i18n(input, placeholder, undefined, 'placeholder');
+      // if(options.placeholderAsElement) {
+      this.placeholder = document.createElement('span');
+      this.placeholder.classList.add('input-field-placeholder');
+      this.container.append(this.placeholder);
+      _i18n(this.placeholder, placeholder, undefined);
+      // } else {
+      //   _i18n(input, placeholder, undefined, 'placeholder');
+      // }
     }
 
     if(withBorder !== false && withBorder || label || placeholder) {
@@ -580,6 +586,7 @@ export default class InputField {
     }
 
     this.input = input;
+    this.setEmpty(true);
   }
 
   public select() {
@@ -625,8 +632,14 @@ export default class InputField {
       processCustomEmojisInInput(this.input);
     }
 
-    this.input.classList.toggle('is-empty', isInputEmpty(this.input));
+    this.setEmpty();
   }
+
+  private setEmpty = (empty = isInputEmpty(this.input)) => {
+    [this.input, this.placeholder].filter(Boolean).forEach((el) => {
+      el.classList.toggle('is-empty', empty);
+    });
+  };
 
   public isChanged() {
     return this.value !== this.originalValue;

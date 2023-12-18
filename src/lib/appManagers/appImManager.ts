@@ -2097,6 +2097,12 @@ export class AppImManager extends EventListenerBase<{
     });
   }
 
+  public async disableViewAsMessages(peerId: PeerId) {
+    await this.managers.appChatsManager.toggleViewForumAsMessages(peerId.toChatId(), false);
+    this.selectTab(APP_TABS.CHATLIST);
+    appDialogsManager.toggleForumTabByPeerId(peerId, true);
+  }
+
   private getTypingElement(action: SendMessageAction) {
     const el = document.createElement('span');
     let c = 'peer-typing';

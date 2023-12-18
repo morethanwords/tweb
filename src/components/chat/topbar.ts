@@ -28,7 +28,7 @@ import cancelEvent from '../../helpers/dom/cancelEvent';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import {toast, toastNew} from '../toast';
 import replaceContent from '../../helpers/dom/replaceContent';
-import {ChatFull, Chat as MTChat, GroupCall} from '../../layer';
+import {ChatFull, Chat as MTChat, GroupCall, Dialog} from '../../layer';
 import PopupPickUser from '../popups/pickUser';
 import PopupPeer, {PopupPeerCheckboxOptions} from '../popups/peer';
 import AppEditContactTab from '../sidebarRight/tabs/editContact';
@@ -403,6 +403,16 @@ export default class ChatTopbar {
       text: 'PeerInfo.Action.VoiceChat',
       onClick: this.onJoinGroupCallClick,
       verify: this.verifyVideoChatButton.bind(this, 'group')
+    }, {
+      icon: 'topics',
+      text: 'TopicViewAsTopics',
+      onClick: () => {
+        this.chat.appImManager.disableViewAsMessages(this.peerId);
+      },
+      verify: async() => {
+        const dialog = await this.managers.appMessagesManager.getDialogOnly(this.peerId);
+        return !!(dialog && (dialog as Dialog.dialog).pFlags.view_forum_as_messages);
+      }
     }, {
       icon: 'select',
       text: 'Chat.Menu.SelectMessages',

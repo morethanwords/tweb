@@ -161,7 +161,9 @@ export default class DialogsStorage extends AppManager {
 
       updatePinnedDialogs: this.onUpdatePinnedDialogs,
 
-      updateChannelPinnedTopics: this.onUpdateChannelPinnedTopics
+      updateChannelPinnedTopics: this.onUpdateChannelPinnedTopics,
+
+      updateChannelViewForumAsMessages: this.onUpdateChannelViewForumAsMessages
     });
 
     return Promise.all([
@@ -1791,5 +1793,17 @@ export default class DialogsStorage extends AppManager {
       const pinned = topics.filter((topic) => topic.pFlags.pinned);
       this.handleDialogsPinned(filterId, pinned.map((topic) => topic.id));
     }
+  };
+
+  private onUpdateChannelViewForumAsMessages = (update: Update.updateChannelViewForumAsMessages) => {
+    const peerId = update.channel_id.toPeerId(true);
+    const dialog = this.getDialogOnly(peerId);
+    if(!dialog) {
+      return;
+    }
+
+    if(update.enabled) dialog.pFlags.view_forum_as_messages = true;
+    else delete dialog.pFlags.view_forum_as_messages;
+    this.setDialogToState(dialog);
   };
 }

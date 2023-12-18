@@ -1619,6 +1619,8 @@ const lang = {
     'other_value': '%1$s public shares'
   },
   'ViewStory': 'View Story',
+  'TopicViewAsTopics': 'View as topics',
+  'TypeMessageIn': 'Message in %1$s',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

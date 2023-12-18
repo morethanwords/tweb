@@ -5,9 +5,7 @@
  */
 
 import type {MyDialogFilter} from '../storages/filters';
-import type LazyLoadQueue from '../../components/lazyLoadQueue';
 import type {Dialog, ForumTopic, MyMessage} from './appMessagesManager';
-import type {MyPhoto} from './appPhotosManager';
 import type {MyDocument} from './appDocsManager';
 import type {State} from '../../config/state';
 import PopupElement from '../../components/popups';
@@ -23,11 +21,11 @@ import appImManager, {AppImManager, APP_TABS} from './appImManager';
 import Button from '../../components/button';
 import SetTransition from '../../components/singleTransition';
 import {MyDraftMessage} from './appDraftsManager';
-import DEBUG, {MOUNT_CLASS_TO} from '../../config/debug';
+import {MOUNT_CLASS_TO} from '../../config/debug';
 import PeerTitle from '../../components/peerTitle';
 import I18n, {FormatterArguments, i18n, LangPackKey, _i18n} from '../langPack';
 import findUpTag from '../../helpers/dom/findUpTag';
-import lottieLoader, {LottieLoader} from '../rlottie/lottieLoader';
+import lottieLoader from '../rlottie/lottieLoader';
 import wrapPhoto from '../../components/wrappers/photo';
 import AppEditFolderTab from '../../components/sidebarLeft/tabs/editFolder';
 import appSidebarLeft from '../../components/sidebarLeft';
@@ -45,9 +43,9 @@ import isInDOM from '../../helpers/dom/isInDOM';
 import {setSendingStatus} from '../../components/sendingStatus';
 import SortedList, {SortedElementBase} from '../../helpers/sortedList';
 import debounce from '../../helpers/schedulers/debounce';
-import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, NULL_PEER_ID, REAL_FOLDERS, REAL_FOLDER_ID} from '../mtproto/mtproto_config';
+import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, NULL_PEER_ID, REAL_FOLDERS} from '../mtproto/mtproto_config';
 import groupCallActiveIcon from '../../components/groupCallActiveIcon';
-import {Chat, ChatlistsChatlistUpdates, DialogFilter, Message, MessageReplyHeader, NotifyPeer} from '../../layer';
+import {Chat, ChatlistsChatlistUpdates, DialogFilter, Message, MessageReplyHeader} from '../../layer';
 import IS_GROUP_CALL_SUPPORTED from '../../environment/groupCallSupport';
 import mediaSizes from '../../helpers/mediaSizes';
 import appNavigationController, {NavigationItem} from '../../components/appNavigationController';
@@ -491,6 +489,14 @@ class ForumTab extends SliderSuperTabEventable {
     });
   }
 
+  private _close = () => {
+    if(!this.slider) {
+      appDialogsManager.toggleForumTab(undefined, this);
+    } else {
+      this.close();
+    }
+  };
+
   public init(options: {
     peerId: PeerId,
     managers: AppManagers
@@ -506,9 +512,7 @@ class ForumTab extends SliderSuperTabEventable {
       this.closeBtn.replaceChildren(Icon('close'));
       this.container.classList.add('active', 'is-floating');
 
-      attachClickEvent(this.closeBtn, () => {
-        appDialogsManager.toggleForumTab(undefined, this);
-      }, {listenerSetter: this.listenerSetter});
+      attachClickEvent(this.closeBtn, this._close, {listenerSetter: this.listenerSetter});
     }
 
     this.rows = document.createElement('div');
@@ -535,13 +539,6 @@ class ForumTab extends SliderSuperTabEventable {
     });
     this.xd.bindScrollable();
 
-    const getOptionsForMessages = (): Parameters<AppImManager['isSamePeer']>[0] => {
-      return {
-        peerId: this.peerId,
-        type: 'chat'
-      };
-    };
-
     const btnMenu = ButtonMenuToggle({
       listenerSetter: this.listenerSetter,
       direction: 'bottom-left',
@@ -559,13 +556,10 @@ class ForumTab extends SliderSuperTabEventable {
       }, {
         icon: 'message',
         text: 'ForumTopic.Context.ShowAsMessages',
-        onClick: () => {
-          const chat = appImManager.chat;
-          appImManager[chat?.peerId === this.peerId ? 'setPeer' : 'setInnerPeer'](getOptionsForMessages());
-        },
+        onClick: this.viewAsMessages,
         verify: () => {
           const chat = appImManager.chat;
-          return !chat || !appImManager.isSamePeer(chat, getOptionsForMessages());
+          return !chat || !appImManager.isSamePeer(chat, this.getOptionsForMessages());
         }
       }, {
         icon: 'adduser',
@@ -681,6 +675,21 @@ class ForumTab extends SliderSuperTabEventable {
     super.onCloseAfterTimeout();
     this.xd.destroy();
   }
+
+  public getOptionsForMessages(): Parameters<AppImManager['isSamePeer']>[0] {
+    return {
+      peerId: this.peerId,
+      type: 'chat'
+    };
+  }
+
+  public viewAsMessages = async() => {
+    const chat = appImManager.chat;
+    const peerId = this.peerId;
+    this._close();
+    await this.managers.appChatsManager.toggleViewForumAsMessages(peerId.toChatId(), true);
+    appImManager[chat?.peerId === peerId ? 'setPeer' : 'setInnerPeer'](this.getOptionsForMessages());
+  };
 }
 
 const NOT_IMPLEMENTED_ERROR = new Error('not implemented');
@@ -2773,10 +2782,22 @@ export class AppDialogsManager {
     dispatchHeavyAnimationEvent(deferred, duration).then(() => deferred.resolve());
   }
 
-  public toggleForumTabByPeerId(peerId: PeerId, show?: boolean) {
+  public async toggleForumTabByPeerId(peerId: PeerId, show?: boolean) {
     const {managers} = this;
     const history = appSidebarLeft.getHistory();
     const lastTab = history[history.length - 1];
+
+    const dialog = await managers.dialogsStorage.getDialogOnly(peerId);
+    const viewAsMessages = dialog && !!dialog.pFlags.view_forum_as_messages;
+    if(viewAsMessages) {
+      const isSamePeer = appImManager.chat?.peerId === peerId;
+      appImManager[isSamePeer ? 'setPeer' : 'setInnerPeer']({
+        type: 'chat',
+        peerId
+      });
+      return;
+    }
+
     let forumTab: ForumTab;
     if(lastTab/*  && !(lastTab instanceof AppArchivedTab) */) {
       if(lastTab instanceof ForumTab && lastTab.peerId === peerId && show) {

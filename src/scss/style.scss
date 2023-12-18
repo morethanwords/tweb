@@ -1082,33 +1082,6 @@ not screen and (                min-resolution: 2dppx) {
   }
 }
 
-[contenteditable][data-placeholder] {
-  &:before {
-    content: attr(data-placeholder);
-    color: #a2acb4;
-    display: block; /* For Firefox By Ariel Flesler */
-    pointer-events: none;
-    position: absolute;
-    opacity: 0;
-    max-width: 100%;
-    padding-inline-end: 0.5rem;
-    @include text-overflow(true);
-    
-    @include animation-level(2) {
-      transform: translateX(calc(1rem * var(--reflect)));
-      transition: opacity var(--input-placeholder-transition) .01s, transform var(--input-placeholder-transition) .01s;
-    }
-  }
-  
-  &.is-empty:before {
-    opacity: 1;
-    
-    @include animation-level(2) {
-      transform: translateX(0);
-    }
-  }
-}
-
 .sticky_sentinel {
   position: absolute;
   left: 0;

@@ -52,8 +52,6 @@ export default class InputSearch {
 
     const value = this.value;
 
-    // this.input.classList.toggle('is-empty', !value.trim());
-
     if(value !== this.prevValue) {
       this.prevValue = value;
       clearTimeout(this.timeout);

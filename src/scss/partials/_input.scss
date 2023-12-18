@@ -12,10 +12,18 @@
 .input-field {
   --height: 54px;
   --border-radius: #{$border-radius-medium};
+  // --padding: calc((var(--height) - var(--border-width) * 2 - var(--line-height)) / 2);
+  --padding: 1rem;
+  --padding-horizontal: 1rem;
+  --border-width: 1px;
   position: relative;
+  display: flex;
+  align-items: center;
 
   @include respond-to(handhelds) {
     --height: 50px;
+    --padding: .9375rem;
+    --padding-horizontal: .9375rem;
   }
   
   .arrow-down {
@@ -93,10 +101,6 @@
   }
   
   &-input {
-    // --padding: calc((var(--height) - var(--border-width) * 2 - var(--line-height)) / 2);
-    --padding: 1rem;
-    --padding-horizontal: 1rem;
-    --border-width: 1px;
     border: var(--border-width) solid var(--input-search-border-color);
     border-radius: var(--border-radius);
     background-color: var(--surface-color);
@@ -130,11 +134,6 @@
       font-family: "Roboto", -apple-system, apple color emoji, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif !important;
       font-size: 1rem !important;
       color: var(--primary-text-color) !important;
-    }
-
-    @include respond-to(handhelds) {
-      --padding: .9375rem;
-      --padding-horizontal: .9375rem;
     }
 
     @include animation-level(0) {
@@ -231,6 +230,10 @@
       padding: 0 .3125rem;
       opacity: 1;
     }
+
+    &:not(:focus).is-empty ~ .input-field-placeholder ~ label {
+      opacity: 0;
+    }
   }
 
   &-input-fake {
@@ -251,6 +254,31 @@
   & &-input[contenteditable="false"] {
     opacity: var(--disabled-opacity);
     pointer-events: none;
+  }
+
+  &-placeholder {
+    color: #a2acb4;
+    display: block; /* For Firefox By Ariel Flesler */
+    pointer-events: none;
+    position: absolute;
+    opacity: 0;
+    max-width: 100%;
+    padding-inline-end: 0.5rem;
+    inset-inline-start: var(--padding-horizontal);
+    @include text-overflow(true);
+
+    @include animation-level(2) {
+      transform: translateX(calc(1rem * var(--reflect)));
+      transition: opacity var(--input-placeholder-transition) .01s, transform var(--input-placeholder-transition) .01s;
+    }
+
+    &.is-empty {
+      opacity: 1;
+
+      @include animation-level(2) {
+        transform: translateX(0);
+      }
+    }
   }
 }
 
