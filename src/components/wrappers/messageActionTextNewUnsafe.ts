@@ -526,7 +526,7 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         langPackKey = 'Giveaway.Results';
         args = [action.winners_count];
 
-        if(action.unclaimed_count) {
+        const setCombined = (addLangPackKey: LangPackKey, addArgs?: FormatterArguments) => {
           args = [
             plain ?
               I18n.format(langPackKey, true, args as FormatterArguments) :
@@ -534,13 +534,17 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
           ];
 
           langPackKey = 'Giveaway.Results.Combined';
-          const unclaimedLangPackKey: LangPackKey = 'Giveaway.Results.Unclaimed';
-          const unclaimedArgs: FormatterArguments = [action.unclaimed_count];
           args.push(
             plain ?
-              I18n.format(unclaimedLangPackKey, true, unclaimedArgs) :
-              i18n(unclaimedLangPackKey, unclaimedArgs)
+              I18n.format(addLangPackKey, true, addArgs) :
+              i18n(addLangPackKey, addArgs)
           );
+        };
+
+        if(!action.winners_count) {
+          setCombined('Giveaway.Results.NoWinners');
+        } else if(action.unclaimed_count) {
+          setCombined('Giveaway.Results.Unclaimed', [action.unclaimed_count]);
         }
         break;
       }

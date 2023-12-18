@@ -389,6 +389,7 @@ const lang = {
     'one_value': '%d undistributed link code was forwarded to channel administrators.',
     'other_value': '%d undistributed link codes were forwarded to channel administrators.'
   },
+  'Giveaway.Results.NoWinners': 'No winners were selected.',
   'Giveaway.Results.Combined': '%s\n%s',
   'SimilarChannels': 'Similar Channels',
   'Premium.Promo.Colors.Title': 'Name and Profile Colors',
