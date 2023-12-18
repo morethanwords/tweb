@@ -3371,6 +3371,13 @@
     inset-inline: var(--offset) auto;
   }
 
+  .code {
+    .night & {
+      --primary-color-rgb: var(--message-out-background-color-rgb);
+      --primary-color: #fff;
+    }
+  }
+
   /* &.sticker {
     .message {
       margin-right: 0;

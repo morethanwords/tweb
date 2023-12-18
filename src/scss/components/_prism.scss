@@ -55,7 +55,12 @@ https://prismjs.com/download.html#themes=prism&languages=markup+css+clike+javasc
 .prism-token.prism-builtin,
 .prism-token.prism-inserted {
   // color: #690;
-  color: var(--primary-text-color);
+  // color: var(--primary-text-color);
+  color: var(--secondary-text-color);
+
+  .night & {
+    color: var(--primary-color);
+  }
 }
 
 .prism-token.prism-operator,
@@ -92,12 +97,12 @@ https://prismjs.com/download.html#themes=prism&languages=markup+css+clike+javasc
 .prism-token.prism-important,
 .prism-token.prism-variable {
   // color: #e90;
-  color: var(--warning-color);
+  color: var(--primary-text-color);
 }
 
 .prism-token.prism-important,
 .prism-token.prism-bold {
-  font-weight: bold;
+  font-weight: var(--font-weight-bold);
 }
 .prism-token.prism-italic {
   font-style: italic;

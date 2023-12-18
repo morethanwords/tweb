@@ -68,7 +68,8 @@ const appColorMap: {[name in AppColorName]: AppColor} = {
     light: true,
     lightFilled: true,
     dark: true,
-    darkFilled: true
+    darkFilled: true,
+    rgb: true
   },
   'saved-color': {
     lightFilled: true
