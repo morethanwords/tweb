@@ -6642,11 +6642,12 @@ export default class ChatBubbles {
 
     let savedFrom = '';
 
-    if(isStandaloneMedia || !isOut) {
+    if(isStandaloneMedia || !isOut || (message as Message.message).fwdFromId) {
       this.chat.appImManager.setPeerColorToElement(
         (message as Message.message).fwdFromId || message.fromId,
         bubble,
-        isStandaloneMedia
+        isStandaloneMedia,
+        isOut
       );
     }
 
