@@ -36,7 +36,7 @@ import {AnimationItemGroup} from '../animationIntersector';
 import scaleMediaElement from '../../helpers/canvas/scaleMediaElement';
 import {doubleRaf} from '../../helpers/schedulers';
 import defineNotNumerableProperties from '../../helpers/object/defineNotNumerableProperties';
-import {DocumentAttribute, Photo, PhotoSize} from '../../layer';
+import {DocumentAttribute, DraftMessage, Photo, PhotoSize} from '../../layer';
 import {getPreviewBytesFromURL} from '../../helpers/bytes/getPreviewURLFromBytes';
 import {renderImageFromUrlPromise} from '../../helpers/dom/renderImageFromUrl';
 import ButtonMenuToggle from '../buttonMenuToggle';
@@ -49,6 +49,8 @@ import shake from '../../helpers/dom/shake';
 import AUDIO_MIME_TYPES_SUPPORTED from '../../environment/audioMimeTypeSupport';
 import liteMode from '../../helpers/liteMode';
 import handleVideoLeak from '../../helpers/dom/handleVideoLeak';
+import wrapDraft from '../wrappers/draft';
+import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 
 type SendFileParams = SendFileDetails & {
   file?: File,
@@ -70,7 +72,7 @@ export function getCurrentNewMediaPopup() {
 
 export default class PopupNewMedia extends PopupElement {
   private mediaContainer: HTMLElement;
-  private wasInputValue: string;
+  private wasDraft: DraftMessage.draftMessage;
 
   private willAttach: Partial<{
     type: 'media' | 'document',
@@ -244,12 +246,20 @@ export default class PopupNewMedia extends PopupElement {
     this.messageInputField.input.classList.replace('input-field-input', 'input-message-input');
     this.messageInputField.inputFake.classList.replace('input-field-input', 'input-message-input');
 
-    c.append(this.messageInputField.input, this.messageInputField.inputFake);
+    c.append(this.messageInputField.input, this.messageInputField.placeholder, this.messageInputField.inputFake);
     inputContainer.append(c, this.btnConfirm);
 
     if(!this.ignoreInputValue) {
-      this.messageInputField.value = this.wasInputValue = this.chat.input.messageInputField.input.innerHTML;
-      this.chat.input.messageInputField.value = '';
+      this.wasDraft = this.chat.input.getCurrentInputAsDraft();
+      if(this.wasDraft) {
+        const wrappedDraft = wrapDraft(this.wasDraft, {
+          wrappingForPeerId: this.chat.peerId,
+          animationGroup: this.animationGroup
+        });
+
+        this.messageInputField.setValueSilently(wrappedDraft);
+        this.chat.input.messageInputField.value = '';
+      }
     }
 
     this.container.append(inputContainer);
@@ -520,7 +530,7 @@ export default class PopupNewMedia extends PopupElement {
   };
 
   private async send(force = false) {
-    let caption = this.messageInputField.value;
+    let {value: caption, entities} = getRichValueWithCaret(this.messageInputField.input, true, false);
     if(caption.length > this.captionLengthMax) {
       toast(I18n.format('Error.PreviewSender.CaptionTooLong', true));
       return;
@@ -597,10 +607,11 @@ export default class PopupNewMedia extends PopupElement {
         this.managers.appMessagesManager.sendText({
           ...sendingParams,
           text: caption,
+          entities,
           clearDraft: true
         });
 
-        caption = undefined;
+        caption = entities = undefined;
       }
 
       const d: SendFileDetails[] = sendFileParams.map((params) => {
@@ -616,19 +627,21 @@ export default class PopupNewMedia extends PopupElement {
         sendFileDetails: d
       };
 
-      this.managers.appMessagesManager.sendAlbum(Object.assign({
+      this.managers.appMessagesManager.sendAlbum({
         ...sendingParams,
         caption,
+        entities,
         isMedia,
-        clearDraft: true
-      }, w));
+        clearDraft: true,
+        ...w
+      });
 
-      caption = undefined;
+      caption = entities = undefined;
     });
 
     input.replyToMsgId = this.chat.threadId;
     input.onMessageSent();
-    this.wasInputValue = undefined;
+    this.wasDraft = undefined;
 
     this.hide();
   }
@@ -866,8 +879,8 @@ export default class PopupNewMedia extends PopupElement {
     if(!this.element.classList.contains('active')) {
       this.listenerSetter.add(document.body)('keydown', this.onKeyDown);
       !this.ignoreInputValue && this.addEventListener('close', () => {
-        if(this.wasInputValue) {
-          this.chat.input.messageInputField.value = this.wasInputValue;
+        if(this.wasDraft) {
+          this.chat.input.setDraft(this.wasDraft, false, true);
         }
       });
       this.show();

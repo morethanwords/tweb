@@ -4,11 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type {AnimationItemGroup} from '../../components/animationIntersector';
 import rootScope from '../rootScope';
 import wrapRichText from './wrapRichText';
 
 export default function wrapDraftText(text: string, options: Partial<{
-  wrappingForPeerId: PeerId
+  wrappingForPeerId: PeerId,
+  animationGroup?: AnimationItemGroup
 }> & Parameters<typeof wrapRichText>[1] = {}) {
   if(!text) {
     return wrapRichText('');

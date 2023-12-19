@@ -1702,7 +1702,7 @@ export default class ChatInput {
       }
     }
 
-    const wrappedDraft = wrapDraft(draft, this.chat.peerId);
+    const wrappedDraft = wrapDraft(draft, {wrappingForPeerId: this.chat.peerId});
     const currentDraft = this.getCurrentInputAsDraft();
 
     const replyTo = draft.reply_to as InputReplyTo.inputReplyToMessage;
