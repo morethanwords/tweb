@@ -258,7 +258,7 @@ export default class AppChatInviteLinkTab extends SliderSuperTabEventable {
         findElement: (e) => target = findUpClassName(e.target, 'chatlist-chat')
       });
 
-      promises.push(load().then(onResult));
+      promises.push(load('', () => true).then(onResult));
     }
 
     if(chatInvite.usage) {

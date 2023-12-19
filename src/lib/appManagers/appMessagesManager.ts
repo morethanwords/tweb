@@ -185,6 +185,15 @@ export type MessageSendingParams = {
   updateStickersetOrder?: boolean
 };
 
+export type MessageForwardParams = MessageSendingParams & {
+  fromPeerId: PeerId,
+  mids: number[]
+} & Partial<{
+  withMyScore: true,
+  dropAuthor: boolean,
+  dropCaptions: boolean
+}>;
+
 type RequestHistoryOptions = {
   peerId?: PeerId;
   offsetId?: number;
@@ -2206,14 +2215,17 @@ export class AppMessagesManager extends AppManager {
   }
 
   // public lolSet = new Set();
-  public getTopMessages({limit, folderId}: {
+  public getTopMessages({limit, folderId, query, offsetTopicId}: {
     limit: number,
-    folderId: number
+    folderId: number,
+    query?: string,
+    offsetTopicId?: ForumTopic['id']
   }) {
     // const dialogs = this.dialogsStorage.getFolder(folderId);
     const offsetId = 0;
     let offsetPeerId: PeerId;
     let offsetIndex = 0;
+    query ||= undefined;
 
     let offsetDate = this.dialogsStorage.getOffsetDate(folderId);
     if(offsetDate) {
@@ -2223,7 +2235,9 @@ export class AppMessagesManager extends AppManager {
 
     const useLimit = 100;
     const middleware = this.middleware.get();
-    const peerId = this.dialogsStorage.isFilterIdForForum(folderId) ? folderId : undefined;
+    const isForum = this.dialogsStorage.isFilterIdForForum(folderId);
+    const isSearch = !!query;
+    const peerId = isForum ? folderId : undefined;
 
     const processResult = (result: MessagesDialogs | MessagesForumTopics) => {
       if(!middleware() || result._ === 'messages.dialogsNotModified') return null;
@@ -2250,7 +2264,7 @@ export class AppMessagesManager extends AppManager {
       let hasPrepend = false;
       const noIdsDialogs: BroadcastEvents['dialogs_multiupdate'] = new Map();
       const setFolderId: REAL_FOLDER_ID = folderId === GLOBAL_FOLDER_ID ? FOLDER_ID_ALL : folderId as REAL_FOLDER_ID;
-      const saveGlobalOffset = !!peerId || folderId === GLOBAL_FOLDER_ID;
+      const saveGlobalOffset = (!!peerId && !isSearch) || folderId === GLOBAL_FOLDER_ID;
       const items: Array<Dialog | ForumTopic> =
         (result as MessagesDialogs.messagesDialogsSlice).dialogs as Dialog[] ||
         (result as MessagesForumTopics).topics as ForumTopic[];
@@ -2267,7 +2281,7 @@ export class AppMessagesManager extends AppManager {
 
         this.dialogsStorage.saveDialog({
           dialog,
-          ignoreOffsetDate: true,
+          ignoreOffsetDate: !isSearch,
           saveGlobalOffset
         });
 
@@ -2336,7 +2350,7 @@ export class AppMessagesManager extends AppManager {
       // exclude empty draft dialogs
       const folderDialogs = this.dialogsStorage.getFolderDialogs(folderId, false);
       let dialogsLength = 0;
-      for(let i = 0, length = folderDialogs.length; i < length; ++i) {
+      if(!isSearch) for(let i = 0, length = folderDialogs.length; i < length; ++i) {
         const dialog = folderDialogs[i];
         if(getServerMessageId(dialog.top_message)) {
           ++dialogsLength;
@@ -2345,11 +2359,17 @@ export class AppMessagesManager extends AppManager {
         }
       }
 
-      const isEnd = /* limit > dialogsResult.dialogs.length || */
-        !count ||
-        dialogsLength >= count ||
-        !items.length;
-      if(isEnd) {
+      let isEnd: boolean;
+      if(isSearch) {
+        isEnd = !count || items.length === count;
+      } else {
+        isEnd = /* limit > dialogsResult.dialogs.length || */
+          !count ||
+          dialogsLength >= count ||
+          !items.length;
+      }
+
+      if(isEnd && !isSearch) {
         this.dialogsStorage.setDialogsLoaded(folderId, true);
       }
 
@@ -2375,9 +2395,10 @@ export class AppMessagesManager extends AppManager {
         params: params = {
           channel: this.appChatsManager.getChannelInput(peerId.toChatId()),
           limit: useLimit,
-          offset_date: offsetDate,
+          offset_date: offsetTopicId ? undefined : offsetDate,
           offset_id: offsetId,
-          offset_topic: 0
+          offset_topic: offsetTopicId,
+          q: query
         },
         options: {
           // timeout: APITIMEOUT,
@@ -2413,18 +2434,10 @@ export class AppMessagesManager extends AppManager {
     return promise;
   }
 
-  public async forwardMessagesInner(
-    peerId: PeerId,
-    fromPeerId: PeerId,
-    mids: number[],
-    options: MessageSendingParams & Partial<{
-      withMyScore: true,
-      dropAuthor: boolean,
-      dropCaptions: boolean
-    }> = {}
-  ) {
-    delete options.replyToMsgId;
-    delete options.threadId;
+  public async forwardMessagesInner(options: MessageForwardParams) {
+    let {peerId, fromPeerId, mids} = options;
+    // delete options.replyToMsgId;
+    // delete options.threadId;
 
     peerId = this.appPeersManager.getPeerMigratedTo(peerId) || peerId;
     mids = mids.slice().sort((a, b) => a - b);
@@ -2435,6 +2448,8 @@ export class AppMessagesManager extends AppManager {
       if(originalMessage.pFlags.is_outgoing) { // this can happen when forwarding a changelog
         this.sendText({
           peerId,
+          threadId: options.threadId,
+          sendAsPeerId: options.sendAsPeerId,
           text: originalMessage.message,
           entities: originalMessage.entities,
           scheduleDate: options.scheduleDate,
@@ -2572,7 +2587,8 @@ export class AppMessagesManager extends AppManager {
       schedule_date: options.scheduleDate,
       drop_author: options.dropAuthor,
       drop_media_captions: options.dropCaptions,
-      send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined
+      send_as: options.sendAsPeerId ? this.appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined,
+      top_msg_id: options.threadId ? this.appMessagesIdsManager.generateMessageId(options.threadId) : undefined
     }, sentRequestOptions).then((updates) => {
       this.log('forwardMessages updates:', updates);
       this.apiUpdatesManager.processUpdateMessage(updates);
@@ -2589,31 +2605,30 @@ export class AppMessagesManager extends AppManager {
 
     const promises: (typeof promise)[] = [promise];
     if(overflowMids.length) {
-      promises.push(this.forwardMessages(peerId, fromPeerId, overflowMids, options));
+      promises.push(this.forwardMessages({
+        ...options,
+        peerId,
+        fromPeerId,
+        mids: overflowMids
+      }));
     }
 
     return Promise.all(promises).then(noop);
   }
 
-  public forwardMessages(
-    peerId: PeerId,
-    fromPeerId: PeerId,
-    mids: number[],
-    options: MessageSendingParams & Partial<{
-      withMyScore: true,
-      dropAuthor: boolean,
-      dropCaptions: boolean
-    }> = {}
-  ) {
+  public forwardMessages(options: MessageForwardParams) {
+    this.checkSendOptions(options);
+
+    const {peerId, fromPeerId, mids} = options;
     const channelId = this.appPeersManager.isChannel(fromPeerId) ? fromPeerId.toChatId() : undefined;
     const splitted = this.appMessagesIdsManager.splitMessageIdsByChannels(mids, channelId);
     const promises = splitted.map(([_channelId, {mids}]) => {
-      return this.forwardMessagesInner(
+      return this.forwardMessagesInner({
+        ...options,
         peerId,
-        _channelId ? channelId.toPeerId(true) : this.getMessageByPeer(fromPeerId, mids[0]).peerId,
-        mids,
-        options
-      );
+        fromPeerId: _channelId ? channelId.toPeerId(true) : this.getMessageByPeer(fromPeerId, mids[0]).peerId,
+        mids
+      });
     });
 
     return Promise.all(promises).then(noop);

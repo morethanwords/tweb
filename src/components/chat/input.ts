@@ -3200,16 +3200,13 @@ export default class ChatInput {
       const forwarding = copy(this.forwarding);
       // setTimeout(() => {
       for(const fromPeerId in forwarding) {
-        this.managers.appMessagesManager.forwardMessages(
-          peerId,
-          fromPeerId.toPeerId(),
-          forwarding[fromPeerId],
-          {
-            ...sendingParams,
-            dropAuthor: this.forwardElements && this.forwardElements.hideSender.checkboxField.checked,
-            dropCaptions: this.isDroppingCaptions()
-          }
-        ).catch(async(err: ApiError) => {
+        this.managers.appMessagesManager.forwardMessages({
+          ...sendingParams,
+          fromPeerId: fromPeerId.toPeerId(),
+          mids: forwarding[fromPeerId],
+          dropAuthor: this.forwardElements && this.forwardElements.hideSender.checkboxField.checked,
+          dropCaptions: this.isDroppingCaptions()
+        }).catch(async(err: ApiError) => {
           if(err.type === 'VOICE_MESSAGES_FORBIDDEN') {
             toastNew({
               langPackKey: 'Chat.SendVoice.PrivacyError',

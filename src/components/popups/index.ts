@@ -157,7 +157,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
 
       attachClickEvent(this.btnClose, () => {
         if(options.onBackClick && this.btnCloseAnimatedIcon.classList.contains('state-back')) {
-          this.btnClose.classList.remove('state-back');
+          this.btnCloseAnimatedIcon.classList.remove('state-back');
           options.onBackClick();
         } else {
           this.hide();

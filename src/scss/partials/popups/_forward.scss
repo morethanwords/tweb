@@ -52,7 +52,7 @@
     }
   }
 
-  .selector,
+  .selector.active,
   .chatlist-container {
     height: auto;
     overflow: hidden;
@@ -109,5 +109,20 @@
     padding-top: 0 !important;
     margin-bottom: 0 !important;
     box-shadow: none !important;
+  }
+
+  .chatlist-container {
+    .scrollable {
+      border-bottom: none;
+      border-top-color: var(--surface-color);
+    }
+  }
+
+  .tabs-container {
+    height: 100%;
+  }
+
+  .selector {
+    display: none;
   }
 }

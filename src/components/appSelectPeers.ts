@@ -132,7 +132,7 @@ export default class AppSelectPeers {
 
   public participants: Map<PeerId, ChatParticipant | ChannelParticipant> = new Map();
   private listenerSetter: ListenerSetter;
-  public getMoreCustom: (q?: string) => Promise<{result: PeerId[], isEnd: boolean}>;
+  public getMoreCustom: (q: string, middleware: () => boolean) => Promise<{result: PeerId[], isEnd: boolean}>;
 
   private withStories: boolean;
 
@@ -184,7 +184,8 @@ export default class AppSelectPeers {
     night?: boolean,
     checkboxSide?: 'right' | 'left',
     noPlaceholder?: boolean,
-    excludePeerIds?: AppSelectPeers['excludePeerIds']
+    excludePeerIds?: AppSelectPeers['excludePeerIds'],
+    placeholderSizes?: ConstructorParameters<typeof DialogsPlaceholder>[0]
   }) {
     safeAssign(this, options);
 
@@ -199,7 +200,7 @@ export default class AppSelectPeers {
 
     this.middlewareHelper = options.middleware.create();
     this.middlewareHelperLoader = this.middlewareHelper.get().create();
-    if(!this.noPlaceholder) this.dialogsPlaceholder = new DialogsPlaceholder({
+    if(!this.noPlaceholder) this.dialogsPlaceholder = new DialogsPlaceholder(options.placeholderSizes || {
       avatarSize: 42,
       avatarMarginRight: 18,
       marginVertical: 7,
@@ -515,10 +516,12 @@ export default class AppSelectPeers {
     //   oldList.lastElementChild.remove();
     //   oldListHeight -= elementHeight;
     // }
-    oldList.style.overflow = 'hidden';
-    oldList.style.height = `${height}px`;
+    if(height) {
+      oldList.style.overflow = 'hidden';
+      oldList.style.height = `${height}px`;
+    }
 
-    this.dialogsPlaceholder?.attach({
+    height && this.dialogsPlaceholder?.attach({
       container: this.section.content,
       blockScrollable: this.scrollable,
       // getRectFrom: () => this.section.content.getBoundingClientRect()
@@ -552,6 +555,11 @@ export default class AppSelectPeers {
 
     this.getMoreResults();
   };
+
+  public clearInput() {
+    this.input.value = '';
+    this.onInput();
+  }
 
   private async renderSaved() {
     if(
@@ -609,7 +617,7 @@ export default class AppSelectPeers {
       const newOffsetIndex = getDialogIndex(dialogs[dialogs.length - 1]) || 0;
 
       dialogs = dialogs.slice();
-      findAndSplice(dialogs, d => d.peerId === rootScope.myId); // no my account
+      findAndSplice(dialogs, (d) => d.peerId === rootScope.myId); // no my account
 
       if(this.chatRightsActions) {
         dialogs = await filterAsync(dialogs, (d) => this.filterByRights(d.peerId));
@@ -647,6 +655,8 @@ export default class AppSelectPeers {
           return this.getMoreContacts();
         }
       }
+    } else if(this.renderedPeerIds.size < pageCount) {
+      return this.getMoreDialogs();
     }
   }
 
@@ -793,7 +803,7 @@ export default class AppSelectPeers {
     }
 
     const {middleware} = this.getTempId('custom');
-    const promise = this.getMoreCustom(this.query);
+    const promise = this.getMoreCustom(this.query, middleware);
 
     promise.catch(() => {
       if(!middleware()) {
@@ -1093,8 +1103,7 @@ export default class AppSelectPeers {
     }
 
     if(this.query.trim()) {
-      this.input.value = '';
-      this.onInput();
+      this.clearInput();
     }
 
     const rendered = AppSelectPeers.renderEntity({

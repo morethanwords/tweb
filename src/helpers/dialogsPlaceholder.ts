@@ -47,15 +47,18 @@ export default class DialogsPlaceholder {
   private blockScrollable: Scrollable;
 
   private night: boolean;
+  private noSecondLine: boolean;
 
   constructor(sizes: Partial<{
     avatarSize: number,
     avatarMarginRight: number,
     marginVertical: number,
     marginLeft: number,
+    lineMarginVertical: number,
     gapVertical: number,
     totalHeight: number,
     statusWidth: number,
+    noSecondLine: boolean,
     night: boolean
   }> = {}) {
     this.shimmer = new Shimmer();
@@ -74,8 +77,9 @@ export default class DialogsPlaceholder {
     this.totalHeight = sizes.totalHeight ?? (this.avatarSize + this.marginVertical * 2);
     this.lineHeight = 10;
     this.lineBorderRadius = 6;
-    this.lineMarginVertical = 8;
+    this.lineMarginVertical = sizes.lineMarginVertical ?? 8;
     this.statusWidth = sizes.statusWidth ?? 24;
+    this.noSecondLine = sizes.noSecondLine;
   }
 
   public attach({container, rect, getRectFrom, onRemove, blockScrollable}: {
@@ -309,7 +313,7 @@ export default class DialogsPlaceholder {
     if(!generatedValues) {
       generatedValues = this.generatedValues[i] = {
         firstLineWidth: 40 + Math.random() * 100, // 120
-        secondLineWidth: 120 + Math.random() * 130, // 240
+        secondLineWidth: this.noSecondLine ? 0 : 120 + Math.random() * 130, // 240
         statusWidth: this.statusWidth ? this.statusWidth + Math.random() * 16 : undefined
       };
     }
@@ -342,7 +346,7 @@ export default class DialogsPlaceholder {
     // 9 + 54 - 10 - 8 = 45 ........ 72 - 9 - 10 - 8
     roundRect(ctx, marginLeft, y + marginVertical + lineMarginVertical, firstLineWidth, lineHeight, lineBorderRadius, true);
     // roundRect(ctx, marginLeft, y + marginVertical + avatarSize - lineHeight - lineMarginVertical, secondLineWidth, lineHeight, lineBorderRadius, true);
-    roundRect(ctx, marginLeft, y + this.totalHeight - marginVertical - lineHeight - lineMarginVertical, secondLineWidth, lineHeight, lineBorderRadius, true);
+    secondLineWidth && roundRect(ctx, marginLeft, y + this.totalHeight - marginVertical - lineHeight - lineMarginVertical, secondLineWidth, lineHeight, lineBorderRadius, true);
 
     statusWidth && roundRect(ctx, canvas.width / dpr - 24 - statusWidth, y + marginVertical + lineMarginVertical, statusWidth, lineHeight, lineBorderRadius, true);
   }

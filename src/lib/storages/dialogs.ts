@@ -39,6 +39,7 @@ import {BroadcastEvents} from '../rootScope';
 import assumeType from '../../helpers/assumeType';
 import makeError from '../../helpers/makeError';
 import callbackify from '../../helpers/callbackify';
+import {logger} from '../logger';
 
 export type FolderDialog = {
   dialog: Dialog,
@@ -74,7 +75,7 @@ export default class DialogsStorage extends AppManager {
   private cachedResults: {
     query: string,
     count: number,
-    dialogs: Dialog[],
+    dialogs: (Dialog | ForumTopic)[],
     folderId: number
   };
 
@@ -82,8 +83,11 @@ export default class DialogsStorage extends AppManager {
     topics: Map<number, ForumTopic>,
     deletedTopics: Set<number>,
     getTopicPromises: Map<number, CancellablePromise<ForumTopic>>,
+    index: SearchIndex<ForumTopic['id']>,
     getTopicsPromise?: Promise<any>
   }>;
+
+  private log = logger('DIALOGS');
 
   protected after() {
     this.clear(true);
@@ -296,12 +300,7 @@ export default class DialogsStorage extends AppManager {
     this.folders = {};
     this.dialogsOffsetDate = {};
     this.dialogsNum = 0;
-    this.dialogsIndex = new SearchIndex({
-      clearBadChars: true,
-      ignoreCase: true,
-      latinize: true,
-      includeTag: true
-    });
+    this.dialogsIndex = this.createSearchIndex();
     this.cachedResults = {
       query: '',
       count: 0,
@@ -309,6 +308,15 @@ export default class DialogsStorage extends AppManager {
       folderId: 0
     };
   };
+
+  private createSearchIndex<T>() {
+    return new SearchIndex<T>({
+      clearBadChars: true,
+      ignoreCase: true,
+      latinize: true,
+      includeTag: true
+    });
+  }
 
   public handleDialogUnpinning(dialog: Dialog | ForumTopic, folderId: number) {
     delete dialog.pFlags.pinned;
@@ -909,7 +917,7 @@ export default class DialogsStorage extends AppManager {
       if(!isTopic && saveGlobalOffset) {
         const savedGlobalOffsetDate = this.dialogsOffsetDate[GLOBAL_FOLDER_ID];
         if(!savedGlobalOffsetDate || offsetDate < savedGlobalOffsetDate) {
-          this.dialogsOffsetDate[GLOBAL_FOLDER_ID] = offsetDate;
+          this.setDialogOffsetDate(GLOBAL_FOLDER_ID, offsetDate);
         }
       }
 
@@ -922,7 +930,7 @@ export default class DialogsStorage extends AppManager {
           return;
         }
 
-        this.dialogsOffsetDate[folderId] = offsetDate;
+        this.setDialogOffsetDate(folderId, offsetDate);
       }
     }
 
@@ -939,7 +947,7 @@ export default class DialogsStorage extends AppManager {
     } */
   }
 
-  public dropDialogFromFolders(peerId: PeerId, topicId?: number) {
+  public dropDialogFromFolders(peerId: PeerId, topicId?: number, keepLocal?: boolean) {
     const foundDialog = this.getDialog(peerId, undefined, topicId, false);
     const [dialog, index] = foundDialog;
     if(dialog) {
@@ -953,7 +961,14 @@ export default class DialogsStorage extends AppManager {
 
       this.processDialogForFilters(dialog, true);
 
-      this.dialogsIndex.indexObject(peerId, '');
+      if(!keepLocal) {
+        if(topicId) {
+          const cache = this.getForumTopicsCache(peerId);
+          cache.index.indexObject(topicId, '');
+        } else {
+          this.dialogsIndex.indexObject(peerId, '');
+        }
+      }
 
       if(wasPinned) {
         this.savePinnedOrders();
@@ -965,7 +980,7 @@ export default class DialogsStorage extends AppManager {
 
   public dropDialog(peerId: PeerId, topicId?: number, keepLocal?: boolean) {
     const dialog = this.getDialogOrTopic(peerId, topicId);
-    const foundDialog = this.dropDialogFromFolders(peerId, topicId);
+    const foundDialog = this.dropDialogFromFolders(peerId, topicId, keepLocal);
     if(dialog) {
       if(!keepLocal) {
         if(topicId) {
@@ -1105,6 +1120,11 @@ export default class DialogsStorage extends AppManager {
     return message?.date || 0;
   }
 
+  private setDialogOffsetDate(folderId: number, offsetDate: number) {
+    this.log('setting offset date', folderId, offsetDate);
+    return this.dialogsOffsetDate[folderId] = offsetDate;
+  }
+
   public canSaveDialog(peerId: PeerId, dialog: Dialog | ForumTopic) {
     if(peerId.isAnyChat()) {
       const chat: Chat = this.appChatsManager.getChat(peerId.toChatId());
@@ -1151,12 +1171,12 @@ export default class DialogsStorage extends AppManager {
     }
 
     if(!peerId) {
-      console.error('saveConversation no peerId???', dialog, folderId);
+      this.log.error('saveConversation no peerId???', dialog, folderId);
       return false;
     }
 
     if(!isTopic && dialog._ !== 'dialog'/*  || peerId === 239602833 */) {
-      console.error('saveConversation not regular dialog', dialog, Object.assign({}, dialog));
+      this.log.error('saveConversation not regular dialog', dialog, Object.assign({}, dialog));
     }
 
     if(isDialog && !channelId && peerId.isAnyChat()) {
@@ -1174,7 +1194,10 @@ export default class DialogsStorage extends AppManager {
       return false;
     }
 
-    if(isDialog && !dialog.migratedTo) {
+    if(isTopic) {
+      const cache = this.getForumTopicsCache(peerId);
+      cache.index.indexObject(topicId, dialog.title);
+    } else if(isDialog && !dialog.migratedTo) {
       const peerText = this.appPeersManager.getPeerSearchText(peerId);
       this.dialogsIndex.indexObject(peerId, peerText);
     }
@@ -1328,7 +1351,9 @@ export default class DialogsStorage extends AppManager {
     offsetIndex?: number,
     limit?: number,
     filterId?: number,
-    skipMigrated?: boolean
+    skipMigrated?: boolean,
+    forceLocal?: boolean,
+    recursion?: boolean
   }): MaybePromise<{
     dialogs: Folder['dialogs'],
     count: number,
@@ -1340,7 +1365,9 @@ export default class DialogsStorage extends AppManager {
       offsetIndex,
       limit = 20,
       filterId = FOLDER_ID_ALL,
-      skipMigrated = false
+      skipMigrated = this.isFilterIdForForum(filterId),
+      forceLocal,
+      recursion
     } = options;
 
     const isForum = this.isFilterIdForForum(filterId);
@@ -1373,17 +1400,23 @@ export default class DialogsStorage extends AppManager {
 
     const indexKey = this.getDialogIndexKeyByFilterId(filterId);
 
-    if(query && !isForum) {
-      if(!limit || this.cachedResults.query !== query || this.cachedResults.folderId !== filterId) {
+    if(query) {
+      if(!limit || this.cachedResults.query !== query || this.cachedResults.folderId !== filterId || recursion) {
         this.cachedResults.query = query;
         this.cachedResults.folderId = filterId;
 
-        const results = this.dialogsIndex.search(query);
+        const index = isForum ? this.getForumTopicsCache(filterId).index : this.dialogsIndex;
+        const results = index.search(query);
 
-        const dialogs: Dialog[] = [];
-        for(const peerId in this.dialogs) {
+        const dialogs: DialogsStorage['cachedResults']['dialogs'] = [];
+        if(isForum) for(const topicId of results) {
+          const topic = this.getForumTopic(filterId, topicId);
+          if(topic) {
+            dialogs.push(topic);
+          }
+        } else for(const peerId of results) {
           const dialog = this.dialogs[peerId];
-          if(results.has(dialog.peerId) && dialog.folder_id === filterId) {
+          if(dialog && dialog.folder_id === filterId) {
             dialogs.push(dialog);
           }
         }
@@ -1409,17 +1442,30 @@ export default class DialogsStorage extends AppManager {
 
     const loadedAll = this.isDialogsLoaded(realFolderId);
     const isEnoughDialogs = curDialogStorage.length >= (offset + limit);
-    if(query || loadedAll || isEnoughDialogs) {
+    if((isForum ? false : query) || loadedAll || isEnoughDialogs || forceLocal) {
       const dialogs = curDialogStorage.slice(offset, offset + limit);
       return {
         dialogs,
         count: loadedAll ? curDialogStorage.length : null,
         isTopEnd: curDialogStorage.length && ((dialogs[0] && dialogs[0] === curDialogStorage[0]) || this.getDialogIndex(curDialogStorage[0], indexKey) < offsetIndex),
-        isEnd: (query || loadedAll) && (offset + limit) >= curDialogStorage.length
+        isEnd: ((isForum ? false : query) || loadedAll) && (offset + limit) >= curDialogStorage.length
       };
     }
 
-    return this.appMessagesManager.getTopMessages({limit, folderId: realFolderId}).then((result) => {
+    return this.appMessagesManager.getTopMessages({
+      limit,
+      folderId: realFolderId,
+      query,
+      offsetTopicId: isForum && query ? (curDialogStorage[curDialogStorage.length - 1] as ForumTopic)?.id : undefined
+    }).then((result) => {
+      if(query) {
+        return this.getDialogs({
+          ...options,
+          forceLocal: true,
+          recursion: true
+        });
+      }
+
       // const curDialogStorage = this[folderId];
       if(skipMigrated) {
         curDialogStorage = this.getFolderDialogs(filterId, skipMigrated);
@@ -1439,7 +1485,7 @@ export default class DialogsStorage extends AppManager {
       const dialogs = curDialogStorage.slice(offset, offset + limit);
       return {
         dialogs,
-        count: result.count === undefined ? curDialogStorage.length : result.count,
+        count: result.count ?? curDialogStorage.length,
         isTopEnd: curDialogStorage.length && ((dialogs[0] && dialogs[0] === curDialogStorage[0]) || this.getDialogIndex(curDialogStorage[0], indexKey) < offsetIndex),
         // isEnd: this.isDialogsLoaded(realFolderId) && (offset + limit) >= curDialogStorage.length
         isEnd: result.isEnd
@@ -1487,7 +1533,8 @@ export default class DialogsStorage extends AppManager {
       forumTopics = {
         topics: new Map(),
         deletedTopics: new Set(),
-        getTopicPromises: new Map()
+        getTopicPromises: new Map(),
+        index: this.createSearchIndex()
       };
 
       this.forumTopics.set(peerId, forumTopics);

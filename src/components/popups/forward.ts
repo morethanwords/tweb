@@ -16,12 +16,12 @@ import PopupElement from '.';
 export default class PopupForward extends PopupPickUser {
   constructor(
     peerIdMids?: {[fromPeerId: PeerId]: number[]},
-    onSelect?: (peerId: PeerId) => Promise<void> | void,
+    onSelect?: (peerId: PeerId, threadId?: number) => Promise<void> | void,
     chatRightsAction: ChatRights[] = ['send_plain']
   ) {
     super({
       peerType: ['dialogs', 'contacts'],
-      onSelect: !peerIdMids && onSelect ? onSelect : async(peerId) => {
+      onSelect: !peerIdMids && onSelect ? onSelect : async(peerId, threadId) => {
         if(onSelect) {
           const res = onSelect(peerId);
           if(res instanceof Promise) {
@@ -34,7 +34,11 @@ export default class PopupForward extends PopupPickUser {
           for(const fromPeerId in peerIdMids) {
             const mids = peerIdMids[fromPeerId];
             count += mids.length;
-            this.managers.appMessagesManager.forwardMessages(peerId, fromPeerId.toPeerId(), mids);
+            this.managers.appMessagesManager.forwardMessages({
+              peerId,
+              fromPeerId: fromPeerId.toPeerId(),
+              mids
+            });
           }
 
           toastNew({
@@ -44,12 +48,13 @@ export default class PopupForward extends PopupPickUser {
           return;
         }
 
-        await appImManager.setInnerPeer({peerId});
+        await appImManager.setInnerPeer({peerId, threadId});
         appImManager.chat.input.initMessagesForward(peerIdMids);
       },
       placeholder: 'ShareModal.Search.ForwardPlaceholder',
       chatRightsActions: chatRightsAction,
-      selfPresence: 'ChatYourSelf'
+      selfPresence: 'ChatYourSelf',
+      useTopics: !onSelect
     });
   }
 
