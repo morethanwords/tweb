@@ -5,6 +5,7 @@
  */
 
 import type CustomEmojiElement from '../lib/customEmoji/element';
+import type {AnimationItemGroup} from './animationIntersector';
 import {CustomEmojiRendererElement} from '../lib/customEmoji/renderer';
 import cancelEvent from '../helpers/dom/cancelEvent';
 import simulateEvent from '../helpers/dom/dispatchEvent';
@@ -319,12 +320,14 @@ export type InputFieldOptions = {
   withBorder?: boolean
 };
 
-function createCustomEmojiRendererForInput(textColor?: string) {
+function createCustomEmojiRendererForInput(textColor?: string, animationGroup?: AnimationItemGroup) {
   const renderer = CustomEmojiRendererElement.create({
     wrappingDraft: true,
     isSelectable: true,
-    textColor: textColor || 'primary-text-color'
+    textColor: textColor || 'primary-text-color',
+    animationGroup
   });
+
   return renderer;
 }
 
@@ -332,7 +335,7 @@ function processCustomEmojisInInput(input: HTMLElement) {
   const customEmojiElements = Array.from(input.querySelectorAll<CustomEmojiElement | HTMLElement>('.custom-emoji, .custom-emoji-placeholder'));
   let renderer = input.querySelector<CustomEmojiRendererElement>('.custom-emoji-renderer');
   if(!renderer && customEmojiElements.length) {
-    renderer = createCustomEmojiRendererForInput(input.dataset.textColor);
+    renderer = createCustomEmojiRendererForInput(input.dataset.textColor, input.dataset.animationGroup as AnimationItemGroup);
     input.prepend(renderer);
   } else if(renderer && !customEmojiElements.length) {
     renderer.remove();

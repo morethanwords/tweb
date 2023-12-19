@@ -522,7 +522,7 @@ export class CustomEmojiRendererElement extends HTMLElement {
               }
             }
 
-            if(element.isConnected) {
+            if(element.isConnected || middleware?.()) {
               animationIntersector.addAnimation({
                 animation: element,
                 group: element.renderer.animationGroup,

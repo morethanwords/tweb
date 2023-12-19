@@ -32,7 +32,7 @@ import createContextMenu from '../../helpers/dom/createContextMenu';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import wrapMediaSpoiler, {toggleMediaSpoiler} from '../wrappers/mediaSpoiler';
 import {MiddlewareHelper} from '../../helpers/middleware';
-import {AnimationItemGroup} from '../animationIntersector';
+import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
 import scaleMediaElement from '../../helpers/canvas/scaleMediaElement';
 import {doubleRaf} from '../../helpers/schedulers';
 import defineNotNumerableProperties from '../../helpers/object/defineNotNumerableProperties';
@@ -102,7 +102,7 @@ export default class PopupNewMedia extends PopupElement {
       scrollable: true
     });
 
-    this.animationGroup = '';
+    this.animationGroup = 'NEW-MEDIA';
     this.construct(willAttachType);
   }
 
@@ -240,6 +240,7 @@ export default class PopupNewMedia extends PopupElement {
       maxLength: this.captionLengthMax
     });
 
+    this.messageInputField.input.dataset.animationGroup = this.animationGroup;
     this.listenerSetter.add(this.scrollable.container)('scroll', this.onScroll);
     this.listenerSetter.add(this.messageInputField.input)('scroll', this.onScroll);
 
@@ -879,15 +880,20 @@ export default class PopupNewMedia extends PopupElement {
 
   private onRender() {
     // show now
-    if(!this.element.classList.contains('active')) {
-      this.listenerSetter.add(document.body)('keydown', this.onKeyDown);
-      !this.ignoreInputValue && this.addEventListener('close', () => {
-        if(this.wasDraft) {
-          this.chat.input.setDraft(this.wasDraft, false, true);
-        }
-      });
-      this.show();
+    if(this.element.classList.contains('active')) {
+      return;
     }
+
+    this.listenerSetter.add(document.body)('keydown', this.onKeyDown);
+    animationIntersector.setOnlyOnePlayableGroup(this.animationGroup);
+    this.addEventListener('close', () => {
+      animationIntersector.setOnlyOnePlayableGroup();
+
+      if(!this.ignoreInputValue && this.wasDraft) {
+        this.chat.input.setDraft(this.wasDraft, false, true);
+      }
+    });
+    this.show();
   }
 
   private setTitle() {

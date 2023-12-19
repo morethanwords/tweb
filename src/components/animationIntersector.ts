@@ -19,7 +19,7 @@ import safePlay from '../helpers/dom/safePlay';
 export type AnimationItemGroup = '' | 'none' | 'chat' | 'lock' |
   'STICKERS-POPUP' | 'emoticons-dropdown' | 'STICKERS-SEARCH' | 'GIFS-SEARCH' |
   `CHAT-MENU-REACTIONS-${number}` | 'INLINE-HELPER' | 'GENERAL-SETTINGS' | 'STICKER-VIEWER' | 'EMOJI' |
-  'EMOJI-STATUS' | `chat-${number}` | 'PREMIUM-PROMO';
+  'EMOJI-STATUS' | `chat-${number}` | 'PREMIUM-PROMO' | 'NEW-MEDIA';
 export interface AnimationItem {
   el: HTMLElement,
   group: AnimationItemGroup,
