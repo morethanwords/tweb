@@ -249,7 +249,7 @@ export default class PopupNewMedia extends PopupElement {
     c.append(this.messageInputField.input, this.messageInputField.placeholder, this.messageInputField.inputFake);
     inputContainer.append(c, this.btnConfirm);
 
-    if(!this.ignoreInputValue) {
+    if(!this.ignoreInputValue && !this.chat.input.editMsgId) {
       this.wasDraft = this.chat.input.getCurrentInputAsDraft();
       if(this.wasDraft) {
         const wrappedDraft = wrapDraft(this.wasDraft, {
@@ -607,8 +607,8 @@ export default class PopupNewMedia extends PopupElement {
         this.managers.appMessagesManager.sendText({
           ...sendingParams,
           text: caption,
-          entities,
-          clearDraft: true
+          entities
+          // clearDraft: true
         });
 
         caption = entities = undefined;
@@ -632,15 +632,18 @@ export default class PopupNewMedia extends PopupElement {
         caption,
         entities,
         isMedia,
-        clearDraft: true,
+        // clearDraft: true,
         ...w
       });
 
       caption = entities = undefined;
     });
 
-    input.replyToMsgId = this.chat.threadId;
-    input.onMessageSent();
+    if(sendingParams.replyToMsgId) {
+      input.onHelperCancel();
+    }
+    // input.replyToMsgId = this.chat.threadId;
+    // input.onMessageSent();
     this.wasDraft = undefined;
 
     this.hide();
