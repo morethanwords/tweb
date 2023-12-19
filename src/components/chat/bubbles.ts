@@ -1937,9 +1937,10 @@ export default class ChatBubbles {
         this.log('will readHistory by maxId:', maxId);
       }
 
-      // return;
+      // const promise = Promise.resolve();
+      const promise = this.managers.appMessagesManager.readHistory(this.peerId, maxId, this.chat.threadId);
 
-      return this.managers.appMessagesManager.readHistory(this.peerId, maxId, this.chat.threadId).catch((err: any) => {
+      return promise.catch((err: any) => {
         this.log.error('readHistory err:', err);
         this.managers.appMessagesManager.readHistory(this.peerId, maxId, this.chat.threadId);
       }).finally(() => {
@@ -5005,14 +5006,20 @@ export default class ChatBubbles {
       returnService = true;
     }
 
-    if(isInUnread && this.observer) {
+    const setUnreadObserver = isInUnread && this.observer ? (element: HTMLElement = bubble) => {
       // this.log('not our message', message, message.pFlags.unread);
-      this.observer.observe(bubble, this.unreadedObserverCallback);
-      this.unreaded.set(bubble, message.mid);
+      this.observer.observe(element, this.unreadedObserverCallback);
+      this.unreaded.set(element, message.mid);
+    } : undefined;
+
+    const isBroadcast = this.chat.isBroadcast;
+    if(returnService) {
+      setUnreadObserver?.();
+      return ret;
     }
 
-    if(returnService) {
-      return ret;
+    if(!isBroadcast) {
+      setUnreadObserver?.();
     }
 
     const isSponsored = (message as Message.message).pFlags.sponsored;
@@ -5162,6 +5169,10 @@ export default class ChatBubbles {
 
       if(I18n.isRTL ? !endsWithRTL(messageMessage) : haveRTLChar) {
         timeSpan.classList.add('is-block');
+      }
+
+      if(isBroadcast) {
+        setUnreadObserver?.(timeSpan);
       }
     } else {
       bubble.classList.add('is-sponsored');
