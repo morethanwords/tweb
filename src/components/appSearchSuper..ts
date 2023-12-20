@@ -1923,8 +1923,10 @@ export default class AppSearchSuper {
     }
 
     if(this.searchContext.peerId.isUser()) {
-      return this.managers.appStoriesManager.getPinnedStories(this.searchContext.peerId, 1)
-      .then((storyItems) => !!storyItems.length).catch(() => false);
+      const promise = this.storiesArchive ?
+        this.managers.appStoriesManager.getStoriesArchive(this.searchContext.peerId, 1) :
+        this.managers.appStoriesManager.getPinnedStories(this.searchContext.peerId, 1);
+      return promise.then((storyItems) => !!storyItems.length).catch(() => false);
     }
 
     const chatFull = await this.managers.appProfileManager.getChatFull(this.searchContext.peerId.toChatId());
