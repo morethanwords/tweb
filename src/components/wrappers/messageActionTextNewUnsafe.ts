@@ -542,7 +542,8 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         };
 
         if(!action.winners_count) {
-          setCombined('Giveaway.Results.NoWinners');
+          langPackKey = 'Giveaway.Results.NoWinners';
+          args = [action.unclaimed_count];
         } else if(action.unclaimed_count) {
           setCombined('Giveaway.Results.Unclaimed', [action.unclaimed_count]);
         }
