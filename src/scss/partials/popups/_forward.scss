@@ -120,9 +120,9 @@
 
   .tabs-container {
     height: 100%;
-  }
 
-  .selector {
-    display: none;
+    .selector:not(.active) {
+      display: none;
+    }
   }
 }
