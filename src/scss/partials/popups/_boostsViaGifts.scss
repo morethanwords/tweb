@@ -124,6 +124,22 @@
     }
   }
 
+  &-additional-row {
+    height: 3rem;
+    padding: 0 1rem;
+    display: flex;
+    align-items: center;
+
+    &-count {
+      flex: 0 0 auto;
+      width: 2.5rem;
+    }
+
+    &-input {
+      flex: 1 1 auto;
+    }
+  }
+
   .scrollable-y {
     border-top: none !important;
   }

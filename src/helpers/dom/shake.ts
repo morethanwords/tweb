@@ -1,4 +1,3 @@
-import rootScope from '../../lib/rootScope';
 import liteMode from '../liteMode';
 
 export default function shake(element: HTMLElement) {

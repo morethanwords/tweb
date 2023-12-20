@@ -6,15 +6,15 @@
 
 import {render} from 'solid-js/web';
 import PopupElement from '.';
-import I18n, {i18n, join} from '../../lib/langPack';
+import I18n, {_i18n, i18n, join} from '../../lib/langPack';
 import Row from '../row';
 import CheckboxField from '../checkboxField';
 import Section from '../section';
 import RangeStepsSelector from '../rangeStepsSelector';
-import {For, JSX, createEffect, createMemo, createSignal} from 'solid-js';
+import {For, JSX, createEffect, createMemo, createSignal, untrack} from 'solid-js';
 import tsNow from '../../helpers/tsNow';
 import PopupSchedule from './schedule';
-import {formatFullSentTime} from '../../helpers/date';
+import {formatFullSentTime, formatMonthsDuration} from '../../helpers/date';
 import renderImageFromUrl from '../../helpers/dom/renderImageFromUrl';
 import Icon from '../icon';
 import {AvatarNew} from '../avatarNew';
@@ -40,6 +40,7 @@ import getPeerActiveUsernames from '../../lib/appManagers/utils/peers/getPeerAct
 import confirmationPopup from '../confirmationPopup';
 import {randomLong} from '../../helpers/random';
 import PopupPayment from './payment';
+import shake from '../../helpers/dom/shake';
 
 export default class PopupBoostsViaGifts extends PopupElement {
   private premiumGiftCodeOptions: PremiumGiftCodeOption[];
@@ -73,6 +74,9 @@ export default class PopupBoostsViaGifts extends PopupElement {
     const [option, setOption] = createSignal<PremiumGiftCodeOption>();
     const [countries, setCountries] = createSignal<string[]>();
     const [onlyNewSubscribers, setOnlyNewSubscribers] = createSignal(false);
+    const [additionalPrizes, setAdditionalPrizes] = createSignal(false);
+    const [additionalPrize, setAdditionalPrize] = createSignal('');
+    const [showPrizes, setShowPrizes] = createSignal(true);
     const boosts = createMemo(() => count() * (this.appConfig.giveaway_boosts_per_premium ?? 1));
 
     const range: RangeStepsSelector<number> = new RangeStepsSelector({
@@ -397,7 +401,12 @@ export default class PopupBoostsViaGifts extends PopupElement {
       <>
         <Section
           name="BoostsViaGifts.Quantity"
-          nameRight={<span class="popup-boosts-badge"><IconTsx icon="boost" class="popup-boosts-badge-icon" />{boosts()}</span>}
+          nameRight={
+            <span class="popup-boosts-badge">
+              <IconTsx icon="boost" class="popup-boosts-badge-icon" />
+              {boosts()}
+            </span>
+          }
           caption="BoostsViaGifts.QuantitySubtitle"
           captionOld={true}
         >
@@ -440,7 +449,11 @@ export default class PopupBoostsViaGifts extends PopupElement {
           }}</For>
           {/* (peerIds().length - 1) < this.channelsLimit &&  */addChannelButton}
         </Section>
-        <Section name="BoostsViaGifts.Users" caption="BoostsViaGifts.UsersSubtitle" captionOld={true}>
+        <Section
+          name="BoostsViaGifts.Users"
+          caption="BoostsViaGifts.UsersSubtitle"
+          captionOld={true}
+        >
           <form>
             {new Row({
               titleLangKey: 'AllSubscribers',
@@ -466,7 +479,81 @@ export default class PopupBoostsViaGifts extends PopupElement {
             }).container}
           </form>
         </Section>
-        <Section name="BoostsViaGifts.End" caption="BoostsViaGifts.EndSubtitle" captionArgs={[boosts()]} captionOld={true}>
+      </>
+    );
+
+    const additionalPrizeDiv = (
+      <div class="popup-boosts-additional-row">
+        <div class="popup-boosts-additional-row-count">{count()}</div>
+        <input
+          ref={(el) => {
+            _i18n(el, 'BoostsViaGifts.AdditionalPrizeLabel', undefined, 'placeholder');
+          }}
+          class="input-clear popup-boosts-additional-row-input"
+          onInput={(e) => {
+            const target = e.target as HTMLInputElement;
+            let value = target.value;
+            const isOverflow = value.length > 128;
+            if(isOverflow) {
+              target.value = value = value.slice(0, 128);
+            }
+
+            setAdditionalPrize(value);
+            if(isOverflow) {
+              shake(target);
+            }
+          }}
+        />
+      </div>
+    );
+
+    const notSpecific2 = (
+      <>
+        <Section
+          caption={additionalPrizes() ? 'BoostsViaGifts.AdditionalPrizesSubtitle' : 'BoostsViaGifts.AdditionalPrizesSubtitleOff'}
+          captionArgs={additionalPrizes() ? [
+            i18n(
+              additionalPrize() ? 'BoostsViaGifts.AdditionalPrizesDetailedWith' : 'BoostsViaGifts.AdditionalPrizesDetailed',
+              [count(), additionalPrize(), formatMonthsDuration(option().months, true)].filter(Boolean)
+            )
+          ] : undefined}
+          captionOld={true}
+        >
+          {new Row({
+            titleLangKey: 'BoostsViaGifts.AdditionalPrizes',
+            clickable: () => {
+              setAdditionalPrizes((value) => !value);
+            },
+            checkboxField: new CheckboxField({
+              toggle: true,
+              checked: untrack(additionalPrizes)
+            }),
+            listenerSetter: this.listenerSetter
+          }).container}
+          {additionalPrizes() && additionalPrizeDiv}
+        </Section>
+        <Section
+          caption="BoostsViaGifts.ShowWinnersSubtitle"
+          captionOld={true}
+        >
+          {new Row({
+            titleLangKey: 'BoostsViaGifts.ShowWinners',
+            clickable: () => {
+              setShowPrizes((value) => !value);
+            },
+            checkboxField: new CheckboxField({
+              toggle: true,
+              checked: untrack(showPrizes)
+            }),
+            listenerSetter: this.listenerSetter
+          }).container}
+        </Section>
+        <Section
+          name="BoostsViaGifts.End"
+          caption="BoostsViaGifts.EndSubtitle"
+          captionArgs={[boosts()]}
+          captionOld={true}
+        >
           {expirationRow.container}
         </Section>
       </>
@@ -484,9 +571,15 @@ export default class PopupBoostsViaGifts extends PopupElement {
           </form>
         </Section>
         {!specific() && notSpecific}
-        <Section name="BoostsViaGifts.Duration" caption="BoostsViaGifts.DurationSubtitle" captionArgs={[premiumPromoAnchor]} captionOld={true}>
+        <Section
+          name="BoostsViaGifts.Duration"
+          caption="BoostsViaGifts.DurationSubtitle"
+          captionArgs={[premiumPromoAnchor]}
+          captionOld={true}
+        >
           {durationForm()}
         </Section>
+        {!specific() && notSpecific2}
       </>
     );
 
@@ -507,7 +600,8 @@ export default class PopupBoostsViaGifts extends PopupElement {
       return {
         _: 'inputStorePaymentPremiumGiveaway',
         pFlags: {
-          only_new_subscribers: onlyNewSubscribers() || undefined
+          only_new_subscribers: onlyNewSubscribers() || undefined,
+          winners_are_visible: showPrizes() || undefined
         },
         amount,
         currency,
@@ -515,7 +609,8 @@ export default class PopupBoostsViaGifts extends PopupElement {
         random_id: randomLong(),
         until_date: expiration(),
         additional_peers: peers.length > 1 ? peers.slice(1) : undefined,
-        countries_iso2: countries()?.length ? countries() : undefined
+        countries_iso2: countries()?.length ? countries() : undefined,
+        prize_description: additionalPrize() || undefined
       };
     };
 
