@@ -75,9 +75,15 @@
           padding-bottom: .75rem;
           border-bottom: 1px solid var(--border-color);
 
-          & + .popup-body .scrollable {
-            padding-top: .5rem !important;
-          }
+          & + .popup-body {
+            .scrollable {
+              padding-top: .5rem !important;
+            }
+
+            .chatlist {
+              margin-top: .5rem !important;
+            }
+          } 
         }
 
         // .sidebar-left-section-content {

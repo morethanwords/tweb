@@ -183,6 +183,7 @@ export default class PopupPickUser extends PopupElement {
       if(options.initial) {
         this.selector.addInitial(options.initial);
       }
+      this.selector.container.classList.add('active');
     } else {
       this.title.append(this.selector.input);
       this.attachScrollableListeners();
