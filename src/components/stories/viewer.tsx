@@ -1738,7 +1738,7 @@ const Stories = (props: {
     });
 
     createEffect(() => {
-      if(!(story as StoryItem.storyItem).media_areas) {
+      if(!(story as StoryItem.storyItem).media_areas?.length) {
         uMediaAreas();
         return;
       }

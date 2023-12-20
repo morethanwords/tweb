@@ -30,6 +30,10 @@ export class AppWebPagesManager extends AppManager {
     this.apiUpdatesManager.addMultipleEventsListeners({
       updateWebPage: (update) => {
         this.saveWebPage(update.webpage);
+      },
+
+      updateChannelWebPage: (update) => {
+        this.saveWebPage(update.webpage);
       }
     });
   }
