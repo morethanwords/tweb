@@ -265,6 +265,7 @@
     max-width: 100%;
     padding-inline-end: 0.5rem;
     inset-inline-start: var(--padding-horizontal);
+    z-index: 1;
     @include text-overflow(true);
 
     @include animation-level(2) {
@@ -462,8 +463,8 @@ button:focus {
       color: #909192 !important;
     } */
 
-    &:placeholder-shown ~ .input-search-clear,
-    &:not(:placeholder-shown) ~ .input-search-placeholder {
+    &.is-empty ~ .input-search-clear,
+    &:not(.is-empty) ~ .input-search-placeholder {
       display: none;
     }
   }
