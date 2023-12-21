@@ -8,10 +8,17 @@ import {T_ME_PREFIXES} from '../lib/mtproto/mtproto_config';
 import cancelEvent from './dom/cancelEvent';
 import parseUriParams from './string/parseUriParams';
 
+type InternalLinkAnchorType = 'showMaskedAlert' | 'execBotCommand' | 'searchByHashtag' | 'addstickers' | 'im' |
+  'resolve' | 'privatepost' | 'addstickers' | 'voicechat' | 'joinchat' | 'join' | 'invoice' |
+  'addemoji' | 'setMediaTimestamp' | 'addlist' | 'boost' | 'premium_offer' | 'giftcode';
+
+export const UNSAFE_ANCHOR_LINK_TYPES: Set<InternalLinkAnchorType> = new Set([
+  'showMaskedAlert',
+  'execBotCommand'
+]);
+
 export default function addAnchorListener<Params extends {pathnameParams?: any, uriParams?: any}>(options: {
-  name: 'showMaskedAlert' | 'execBotCommand' | 'searchByHashtag' | 'addstickers' | 'im' |
-        'resolve' | 'privatepost' | 'addstickers' | 'voicechat' | 'joinchat' | 'join' | 'invoice' |
-        'addemoji' | 'setMediaTimestamp' | 'addlist' | 'boost' | 'premium_offer' | 'giftcode',
+  name: InternalLinkAnchorType,
   protocol?: 'tg',
   callback: (params: Params, element?: HTMLAnchorElement, masked?: boolean) => any,
   noPathnameParams?: boolean,

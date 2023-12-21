@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {Message, MessageAction, MessageMedia, WebPage, WebPageAttribute} from '../../../../layer';
+import {Message, MessageAction, MessageMedia, Peer, WebPage, WebPageAttribute} from '../../../../layer';
 import getPeerId from '../peers/getPeerId';
 
 export default function getPeerIdsFromMessage(message: Message.message | Message.messageService) {
@@ -16,34 +16,28 @@ export default function getPeerIdsFromMessage(message: Message.message | Message
 
   const media = (message as Message.message).media;
   if(media) {
-    const contactUserId = (media as MessageMedia.messageMediaContact).user_id;
-    if(contactUserId !== undefined) {
-      peerIds.push(contactUserId.toPeerId());
-    }
+    const userIds: UserId[] = [
+      (media as MessageMedia.messageMediaContact).user_id,
+      ...((media as MessageMedia.messageMediaGiveawayResults).winners || [])
+    ];
+    peerIds.push(...userIds.filter(Boolean).map((userId) => userId.toPeerId()));
 
-    const results = (media as MessageMedia.messageMediaPoll).results;
-    const recentVoters = results?.recent_voters;
-    if(recentVoters?.length) {
-      peerIds.push(...recentVoters.map((peer) => getPeerId(peer)));
-    }
+    const chatIds: ChatId[] = [
+      ...((media as MessageMedia.messageMediaGiveaway).channels || []),
+      (media as MessageMedia.messageMediaGiveawayResults).channel_id
+    ];
+    peerIds.push(...chatIds.filter(Boolean).map((chatId) => chatId.toPeerId(true)));
 
+    const peers: Peer[] = [
+      ...((media as MessageMedia.messageMediaPoll).results?.recent_voters || []),
+      (media as MessageMedia.messageMediaStory).peer
+    ];
     const webPage = (media as MessageMedia.messageMediaWebPage)?.webpage as WebPage.webPage;
     if(webPage) {
       const storyAttribute = webPage.attributes?.find((attribute) => attribute._ === 'webPageAttributeStory') as WebPageAttribute.webPageAttributeStory;
-      if(storyAttribute) {
-        peerIds.push(getPeerId(storyAttribute.peer));
-      }
+      peers.push(storyAttribute?.peer);
     }
-
-    const channels = (media as MessageMedia.messageMediaGiveaway).channels;
-    if(channels?.length) {
-      peerIds.push(...channels.map((chatId) => chatId.toPeerId(true)));
-    }
-
-    const peer = (media as MessageMedia.messageMediaStory).peer;
-    if(peer) {
-      peerIds.push(getPeerId(peer));
-    }
+    peerIds.push(...peers.filter(Boolean).map((peer) => getPeerId(peer)));
   }
 
   const recentReactions = ((message as Message.message).reactions)?.recent_reactions;
@@ -66,7 +60,7 @@ export default function getPeerIdsFromMessage(message: Message.message | Message
     ];
     peerIds.push(...chatIds.filter(Boolean).map((chatId) => chatId.toPeerId(true)));
 
-    const peers = [
+    const peers: Peer[] = [
       (action as MessageAction.messageActionGiftCode).boost_peer,
       (action as MessageAction.messageActionRequestedPeer).peer,
       (action as MessageAction.messageActionGeoProximityReached).from_id,

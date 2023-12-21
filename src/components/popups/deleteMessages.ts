@@ -109,7 +109,7 @@ export default class PopupDeleteMessages {
           if(foundGiveaway && foundGiveaway.until_date >= tsNow(true)) {
             title = 'BoostingGiveawayDeleteMsgTitle';
             description = 'BoostingGiveawayDeleteMsgText';
-            descriptionArgs = [formatFullSentTime(foundGiveaway.until_date)];
+            descriptionArgs = [formatFullSentTime(foundGiveaway.until_date, undefined, true)];
           }
 
           buttons[0].callback = (e, checked) => callback(e, checked, true);

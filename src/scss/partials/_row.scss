@@ -37,6 +37,10 @@ $row-border-radius: $border-radius-medium;
   &.no-wrap {
     padding-top: 0 !important;
     padding-bottom: 0 !important;
+
+    br {
+      display: none;
+    }
   }
 
   a {

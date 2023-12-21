@@ -7,10 +7,10 @@
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import {formatTime, ONE_DAY} from '../../helpers/date';
 import htmlToSpan from '../../helpers/dom/htmlToSpan';
-import setInnerHTML from '../../helpers/dom/setInnerHTML';
+import setInnerHTML, {setDirection} from '../../helpers/dom/setInnerHTML';
 import {wrapCallDuration} from './wrapDuration';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
-import {ForumTopic, Message, MessageAction, MessageReplyHeader} from '../../layer';
+import {ForumTopic, Message, MessageAction, MessageMedia, MessageReplyHeader} from '../../layer';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import I18n, {FormatterArgument, FormatterArguments, i18n, join, langPack, LangPackKey, _i18n} from '../../lib/langPack';
 import {GENERAL_TOPIC_ID} from '../../lib/mtproto/mtproto_config';
@@ -35,8 +35,8 @@ async function wrapLinkToMessage(options: WrapMessageForReplyOptions) {
 
   const a = document.createElement('i');
   a.dataset.savedFrom = (options.message as Message.message).peerId + '_' + (options.message as Message.message).mid;
-  a.dir = 'auto';
   a.append(wrapped);
+  setDirection(a);
   return a;
 }
 
@@ -100,6 +100,35 @@ async function wrapMessageActionTopicIconAndName(options: WrapMessageActionTextO
   span.classList.add('topic-name');
   span.append(await wrapMessageActionTopicIcon(options), wrapSomeText(action.title, options.plain));
   return span;
+}
+
+export function wrapMessageGiveawayResults(action: MessageAction.messageActionGiveawayResults | MessageMedia.messageMediaGiveawayResults, plain?: boolean) {
+  let langPackKey: LangPackKey = 'Giveaway.Results';
+  let args: FormatterArguments = [action.winners_count];
+
+  const setCombined = (addLangPackKey: LangPackKey, addArgs?: FormatterArguments) => {
+    args = [
+      plain ?
+        I18n.format(langPackKey, true, args as FormatterArguments) :
+        i18n(langPackKey, args as FormatterArguments)
+    ];
+
+    langPackKey = 'Giveaway.Results.Combined';
+    args.push(
+      plain ?
+        I18n.format(addLangPackKey, true, addArgs) :
+        i18n(addLangPackKey, addArgs)
+    );
+  };
+
+  if(!action.winners_count) {
+    langPackKey = 'Giveaway.Results.NoWinners';
+    args = [action.unclaimed_count];
+  } else if(action.unclaimed_count) {
+    setCombined('Giveaway.Results.Unclaimed', [action.unclaimed_count]);
+  }
+
+  return {langPackKey, args};
 }
 
 export default async function wrapMessageActionTextNewUnsafe(options: WrapMessageActionTextOptions) {
@@ -523,30 +552,9 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
       }
 
       case 'messageActionGiveawayResults': {
-        langPackKey = 'Giveaway.Results';
-        args = [action.winners_count];
-
-        const setCombined = (addLangPackKey: LangPackKey, addArgs?: FormatterArguments) => {
-          args = [
-            plain ?
-              I18n.format(langPackKey, true, args as FormatterArguments) :
-              i18n(langPackKey, args as FormatterArguments)
-          ];
-
-          langPackKey = 'Giveaway.Results.Combined';
-          args.push(
-            plain ?
-              I18n.format(addLangPackKey, true, addArgs) :
-              i18n(addLangPackKey, addArgs)
-          );
-        };
-
-        if(!action.winners_count) {
-          langPackKey = 'Giveaway.Results.NoWinners';
-          args = [action.unclaimed_count];
-        } else if(action.unclaimed_count) {
-          setCombined('Giveaway.Results.Unclaimed', [action.unclaimed_count]);
-        }
+        const r = wrapMessageGiveawayResults(action, plain);
+        langPackKey = r.langPackKey;
+        args = r.args;
         break;
       }
 

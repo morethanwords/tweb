@@ -806,6 +806,7 @@
       color: var(--secondary-text-color);
       line-height: var(--line-height);
       padding: 0 1rem;
+      word-break: break-word;
 
       @include respond-to(handhelds) {
         margin: .5rem;

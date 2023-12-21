@@ -389,7 +389,10 @@ const lang = {
     'one_value': '%d undistributed link code was forwarded to channel administrators.',
     'other_value': '%d undistributed link codes were forwarded to channel administrators.'
   },
-  'Giveaway.Results.NoWinners': 'No winners were selected.',
+  'Giveaway.Results.NoWinners': {
+    'one_value': 'Due to the giveaway terms, no winner could be selected by Telegram, **1** gift link was forwarded to channel administrators.',
+    'other_value': 'Due to the giveaway terms, no winners could be selected by Telegram, all **%d** gift links were forwarded to channel administrators.'
+  },
   'Giveaway.Results.Combined': '%s\n%s',
   'SimilarChannels': 'Similar Channels',
   'Premium.Promo.Colors.Title': 'Name and Profile Colors',
@@ -404,6 +407,42 @@ const lang = {
   },
   'AddChannels': 'Add Channels',
   'Chart.Tooltip.All': 'All',
+  'BoostsViaGifts.ShowWinners': 'Show Winners',
+  'BoostsViaGifts.ShowWinnersSubtitle': 'Choose whether to make the list of winners public when the giveaway ends.',
+  'BoostsViaGifts.AdditionalPrizeLabel': 'Enter Your Prize',
+  'BoostsViaGifts.AdditionalPrizes': 'Additional Prizes',
+  'BoostsViaGifts.AdditionalPrizesSubtitle': 'All prizes: %s',
+  'BoostsViaGifts.AdditionalPrizesSubtitleOff': 'Turn this on if you want to give the winners your own prizes in addition to Telegram Premium subscriptions.',
+  'BoostsViaGifts.AdditionalPrizesDetailed': {
+    'one_value': '**%d** Telegram Premium subscription for %s',
+    'other_value': '**%d** Telegram Premium subscriptions for %s'
+  },
+  'BoostsViaGifts.AdditionalPrizesDetailedWith': {
+    'one_value': '**%d** %s with Telegram Premium subscription for %s',
+    'other_value': '**%d** %s with Telegram Premium subscriptions for %s'
+  },
+  'Giveaway.AlsoPrizes': '**%s** also included **%d** **%s** in the prizes. %s',
+  'Giveaway.AlsoPrizes2': {
+    'one_value': 'Admins of the channel are responsible for delivering this prize.',
+    'other_value': 'Admins of the channel are responsible for delivering these prizes.'
+  },
+  'Giveaway.With': 'with',
+  'Giveaway.WithSubscriptionsSingle': 'Telegram Premium subscription for %s',
+  'Giveaway.WithSubscriptionsPlural': 'Telegram Premium subscriptions for %s',
+  'Giveaway.Results.Title': {
+    'one_value': '**Winner Selected!**',
+    'other_value': '**Winners Selected!**'
+  },
+  'BoostingGiveawayResultsMsgAllWinnersReceivedLinks': 'All winners received gift links in private messages.',
+  'Giveaway.Results.Subtitle': {
+    'one_value': '%1$d winner of the **[Giveaway]()** was randomly selected by Telegram.',
+    'other_value': '%1$d winners of the **[Giveaway]()** were randomly selected by Telegram.'
+  },
+  'Giveaway.Results.Footer': {
+    'one_value': 'The winner received their gift link in a private message.',
+    'other_value': 'All winners received their gift links in private messages.'
+  },
+  'Giveaway.Results.AndMore': '**and %d more!**',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -1623,6 +1662,12 @@ const lang = {
   'TopicViewAsTopics': 'View as topics',
   'TypeMessageIn': 'Message in %1$s',
   'PaymentInvoiceLinkInvalid': 'Invalid invoice',
+  'BoostingGiveawayDeleteMsgTitle': 'Delete announcement',
+  'BoostingGiveawayDeleteMsgText': 'Deleting this message won\'t cancel the giveaway — the winners will still be selected on **%s**.\n\nOnce deleted, the Giveaway Announcement cannot be restored.',
+  'BoostingGiveawayResultsMsgWinners': {
+    'one_value': '**Winner**',
+    'other_value': '**Winners**'
+  },
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
@@ -2039,7 +2084,7 @@ const lang = {
   'PrivacySettings.VoiceCalls': 'Calls',
   'PrivacySettings.Forwards': 'Forwarded Messages',
   'PrivacySettings.Groups': 'Groups and Channels',
-  'PrivacySettings.Voice.PremiumError' :'Only subscribers of [Telegram Premium]() can restrict receiving Voice and Video Messages.',
+  'PrivacySettings.Voice.PremiumError': 'Only subscribers of [Telegram Premium]() can restrict receiving Voice and Video Messages.',
   'PrivacySettingsController.AddUsers': 'Add Users',
   'PrivacySettingsController.GroupDescription': 'You can restrict who can add you to groups and channels with granular precision.',
   'PrivacySettingsController.Forwards.CustomHelp': 'You can restrict who can add a link to your account when forwarding your messages.',

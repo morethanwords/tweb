@@ -154,7 +154,7 @@ import Icon from '../icon';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import {_tgico} from '../../helpers/tgico';
 import setBlankToAnchor from '../../lib/richTextProcessor/setBlankToAnchor';
-import addAnchorListener from '../../helpers/addAnchorListener';
+import addAnchorListener, {UNSAFE_ANCHOR_LINK_TYPES} from '../../helpers/addAnchorListener';
 import {formatDate, formatMonthsDuration} from '../../helpers/date';
 import {JSX} from 'solid-js';
 import Giveaway, {getGiftAssetName, onGiveawayClick} from './giveaway';
@@ -224,7 +224,8 @@ const webPageTypes: {[type in WebPage.webPage['type']]?: LangPackKey} = {
   telegram_chatlist: 'OpenChatlist',
   telegram_story: 'OpenStory',
   telegram_channel_boost: 'BoostLinkButton',
-  telegram_giftcode: 'Open'
+  telegram_giftcode: 'Open',
+  telegram_chat: 'OpenGroup'
 };
 
 type Bubble = {
@@ -5083,7 +5084,7 @@ export default class ChatBubbles {
       bubble.dataset.textMid = '' + albumTextMessage.mid;
     }
 
-    const replyTo = message.reply_to;
+    let replyTo = message.reply_to;
     if(replyTo?._ === 'messageReplyHeader') {
       const replyToPeerId = replyTo.reply_to_peer_id ? getPeerId(replyTo.reply_to_peer_id) : this.peerId;
       bubble.dataset.replyToPeerId = '' + replyToPeerId;
@@ -5430,10 +5431,9 @@ export default class ChatBubbles {
 
           const quoteClassName = `${className}-quote`;
           const wrapped = wrapUrl(webPage.url);
-          const SAFE_TYPES: Set<typeof wrapped['onclick']> = new Set(['im', 'addlist', 'boost', 'giftcode']);
           let viewButton: HTMLElement;
           // if(sponsoredMessage) sponsoredMessage.pFlags.show_peer_photo = true;
-          if(SAFE_TYPES.has(wrapped?.onclick) || isSponsored) {
+          if((wrapped.onclick && !UNSAFE_ANCHOR_LINK_TYPES.has(wrapped.onclick)) || isSponsored) {
             viewButton = document.createElement('div');
             viewButton.classList.add(`${className}-button`);
             setDirection(viewButton);
@@ -6571,8 +6571,14 @@ export default class ChatBubbles {
           break;
         }
 
+        case 'messageMediaGiveawayResults':
         case 'messageMediaGiveaway': {
-          const giveaway = messageMedia as MessageMedia.messageMediaGiveaway;
+          const giveaway = messageMedia;
+
+          if(giveaway._ === 'messageMediaGiveawayResults') {
+            replyTo = undefined;
+          }
+
           bubble.classList.remove('is-message-empty');
           bubble.classList.add('is-giveaway');
           processingWebPage = true;
@@ -6655,7 +6661,7 @@ export default class ChatBubbles {
     const needName = (message.fromId !== rootScope.myId && this.chat.isAnyGroup) ||
       message.viaBotId ||
       storyFromPeerId;
-    if(needName || fwdFrom || message.reply_to || topicNameButtonContainer) { // chat
+    if(needName || fwdFrom || replyTo || topicNameButtonContainer) { // chat
       let title: HTMLElement;
       let titleVia: typeof title;
       let noColor: boolean;
@@ -6703,12 +6709,12 @@ export default class ChatBubbles {
       if(
         isMessage &&
         (
-          message.reply_to?._ === 'messageReplyStoryHeader' || (
+          replyTo?._ === 'messageReplyStoryHeader' || (
             message.reply_to_mid &&
             message.reply_to_mid !== this.chat.threadId
-          ) || message.reply_to?.reply_from
+          ) || replyTo?.reply_from
         ) &&
-        (!this.chat.isAllMessagesForum || (message.reply_to as MessageReplyHeader.messageReplyHeader).reply_to_top_id)
+        (!this.chat.isAllMessagesForum || (replyTo as MessageReplyHeader.messageReplyHeader).reply_to_top_id)
       ) {
         replyContainer = await MessageRender.setReply({
           chat: this.chat,

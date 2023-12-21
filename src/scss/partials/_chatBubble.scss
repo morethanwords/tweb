@@ -2382,13 +2382,22 @@
 
   &-giveaway {
     text-align: center;
-    padding: 0 .5rem;
+    padding: 0 1rem;
     max-width: 100%;
     line-height: calc(var(--font-size) + .25rem);
     white-space: pre-wrap;
     word-break: break-word;
     max-width: 16rem;
     margin: 0 auto .5rem;
+
+    &-results &-sticker {
+      margin-top: 1rem;
+    }
+
+    &-link {
+      pointer-events: all;
+      cursor: pointer;
+    }
 
     &-sticker {
       margin: 0 auto;
@@ -2398,7 +2407,7 @@
 
       &-counter {
         background-color: var(--primary-color);
-        color: #fff;
+        color: var(--message-icon-text-color);
         border: 2px solid var(--message-background-color);
         border-radius: 1.5rem;
         height: 1.5rem;
@@ -2438,6 +2447,10 @@
       max-width: 100% !important;
       pointer-events: all;
 
+      .is-out & {
+        --peer-color-rgb: var(--message-out-primary-color-rgb) !important;
+      }
+
       @include hover() {
         background-color: rgba(var(--peer-color-rgb), .2) !important;
       }
@@ -2453,6 +2466,33 @@
       .emoji {
         line-height: inherit !important;
       }
+    }
+
+    &-with {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      opacity: .4;
+      gap: .5rem;
+      flex: 0 0 auto;
+      padding: 0 .25rem;
+      margin-top: .125rem;
+
+      &:before,
+      &:after {
+        content: " ";
+        display: block;
+        height: .0625rem;
+        background-color: currentColor;
+        flex: 1 1 auto;
+        border-radius: 1px;
+        opacity: .5;
+      }
+    }
+
+    &-and-more {
+      margin-top: .375rem;
     }
   }
 
@@ -3087,7 +3127,7 @@
   } */
 
   .monospace-text {
-    color: var(--monospace-text-color);
+    color: rgb(var(--peer-color-rgb));
   }
 }
 
@@ -3376,6 +3416,10 @@
       --primary-color-rgb: var(--message-out-background-color-rgb);
       --primary-color: #fff;
     }
+  }
+
+  .monospace-text {
+    color: var(--message-time-color);
   }
 
   /* &.sticker {

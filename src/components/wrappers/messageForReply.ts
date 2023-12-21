@@ -26,6 +26,7 @@ import wrapRichText, {WrapRichTextOptions} from '../../lib/richTextProcessor/wra
 import rootScope from '../../lib/rootScope';
 import {Modify} from '../../types';
 import wrapMessageActionTextNew, {WrapMessageActionTextOptions} from './messageActionTextNew';
+import {wrapMessageGiveawayResults} from './messageActionTextNewUnsafe';
 import wrapPeerTitle from './peerTitle';
 
 export type WrapMessageForReplyOptions = Modify<WrapMessageActionTextOptions, {
@@ -223,6 +224,12 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
         case 'messageMediaGiveaway': {
           const date = formatDate(new Date(media.until_date * 1000));
           addPart('Giveaway.ToBeSelectedFull', undefined, [i18n('Giveaway.ToBeSelected', [media.quantity, plain ? date.textContent : date])]);
+          break;
+        }
+
+        case 'messageMediaGiveawayResults': {
+          const {langPackKey, args} = wrapMessageGiveawayResults(media, plain);
+          addPart(langPackKey, undefined, args);
           break;
         }
 

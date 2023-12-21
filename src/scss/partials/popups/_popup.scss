@@ -86,7 +86,7 @@ $popup-footer-abitlarger-padding: 1rem;
     margin: auto;
     min-width: unquote('min(100%, var(--popup-min-width))');
     max-width: unquote('min(100%, var(--popup-max-width))');
-    
+
     body.animation-level-0 & {
       transition: none;
     }
@@ -97,14 +97,18 @@ $popup-footer-abitlarger-padding: 1rem;
       font-weight: var(--font-weight-bold);
     }
 
-    &-danger {
-      color: var(--danger-color);
+    &-framed {
       padding: .5rem 1rem;
       text-align: center;
       font-weight: var(--font-weight-bold);
       display: block;
-      background-color: rgba(var(--danger-color-rgb), .1);
       border-radius: $border-radius-big;
+      background-color: var(--light-secondary-text-color);
+    }
+
+    &-danger {
+      color: var(--danger-color);
+      background-color: rgba(var(--danger-color-rgb), .1);
     }
   }
 

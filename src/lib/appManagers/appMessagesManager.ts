@@ -3710,6 +3710,11 @@ export class AppMessagesManager extends AppManager {
         break;
       }
 
+      case 'messageMediaGiveawayResults': {
+        media.launch_msg_id = this.appMessagesIdsManager.generateMessageId(media.launch_msg_id, media.channel_id);
+        break;
+      }
+
       case 'messageMediaUnsupported': {
         unsupported = true;
         break;
