@@ -14,7 +14,7 @@ import deepEqual from '../../helpers/object/deepEqual';
 import safeReplaceObject from '../../helpers/object/safeReplaceObject';
 import pause from '../../helpers/schedulers/pause';
 import tsNow from '../../helpers/tsNow';
-import {Reaction, ReportReason, StoriesAllStories, StoriesStories, StoriesPeerStories, StoryItem, Update, PeerStories, User, Chat} from '../../layer';
+import {Reaction, ReportReason, StoriesAllStories, StoriesStories, StoryItem, Update, PeerStories, User, Chat, StoryView} from '../../layer';
 import {MTAppConfig} from '../mtproto/appConfig';
 import {SERVICE_PEER_ID, TEST_NO_STORIES} from '../mtproto/mtproto_config';
 import {ReferenceContext} from '../mtproto/referenceDatabase';
@@ -825,9 +825,21 @@ export default class AppStoriesManager extends AppManager {
       processResult: (storiesStoryViews) => {
         this.appPeersManager.saveApiPeers(storiesStoryViews);
 
+        storiesStoryViews.views.forEach((storyView) => {
+          (storyView as StoryView.storyViewPublicForward).message = this.appMessagesManager.saveMessage((storyView as StoryView.storyViewPublicForward).message);
+          (storyView as StoryView.storyViewPublicRepost).story = (storyView as StoryView.storyViewPublicRepost).story && this.appStoriesManager.saveStoryItem(
+            (storyView as StoryView.storyViewPublicRepost).story,
+            this.appStoriesManager.getPeerStoriesCache(this.appPeersManager.getPeerId((storyView as StoryView.storyViewPublicRepost).peer_id))
+          );
+        });
+
+        const views = storiesStoryViews.views.filter((storyView) => {
+          return storyView._ === 'storyView';
+        }) as StoryView.storyView[];
+
         return {
           count: storiesStoryViews.count,
-          views: storiesStoryViews.views,
+          views: views,
           nextOffset: storiesStoryViews.next_offset
         };
       }

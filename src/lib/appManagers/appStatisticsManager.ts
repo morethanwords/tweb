@@ -6,7 +6,7 @@
 
 import assumeType from '../../helpers/assumeType';
 import callbackify from '../../helpers/callbackify';
-import {ChatFull, Message, MessagesMessages, PublicForward, StatsBroadcastStats, StatsGraph} from '../../layer';
+import {ChatFull, Message, MessagesMessages, PublicForward, StatsBroadcastStats, StatsGraph, StatsPublicForwards} from '../../layer';
 import {DcId, InvokeApiOptions} from '../../types';
 import {AppManager} from './manager';
 import getServerMessageId from './utils/messageId/getServerMessageId';
@@ -38,6 +38,18 @@ export default class AppStatisticsManager extends AppManager {
     options.dcId = dcId;
     return options;
   }
+
+  private processPublicForwards = (statsPublicForwards: StatsPublicForwards) => {
+    this.appPeersManager.saveApiPeers(statsPublicForwards);
+    statsPublicForwards.forwards.forEach((publicForward) => {
+      (publicForward as PublicForward.publicForwardMessage).message = this.appMessagesManager.saveMessage((publicForward as PublicForward.publicForwardMessage).message);
+      (publicForward as PublicForward.publicForwardStory).story = (publicForward as PublicForward.publicForwardStory).story && this.appStoriesManager.saveStoryItem(
+        (publicForward as PublicForward.publicForwardStory).story,
+        this.appStoriesManager.getPeerStoriesCache(this.appPeersManager.getPeerId((publicForward as PublicForward.publicForwardStory).peer))
+      );
+    });
+    return statsPublicForwards;
+  };
 
   public async getBroadcastStats(params: GetStatsParams): Promise<{stats: StatsBroadcastStats, dcId: DcId}> {
     const options = await this.getInvokeOptions(params);
@@ -97,10 +109,8 @@ export default class AppStatisticsManager extends AppManager {
   public async getMessagePublicForwards(params: {
     peerId: PeerId,
     mid: number,
-    offsetRate?: number,
-    offsetPeerId?: PeerId,
-    offsetId?: number,
-    limit: number
+    limit: number,
+    offset?: string
   }) {
     const options = await this.getInvokeOptions(params);
     return this.apiManager.invokeApiSingleProcess({
@@ -108,17 +118,10 @@ export default class AppStatisticsManager extends AppManager {
       params: {
         channel: this.appChatsManager.getChannelInput(params.peerId.toChatId()),
         msg_id: getServerMessageId(params.mid),
-        offset_rate: params.offsetRate ?? 0,
-        offset_peer: params.offsetPeerId ? this.appPeersManager.getInputPeerById(params.offsetPeerId) : {_: 'inputPeerEmpty'},
-        offset_id: params.offsetId ? getServerMessageId(params.offsetId) : 0,
+        offset: params.offset,
         limit: params.limit
       },
-      processResult: (messagesMessages) => {
-        assumeType<Exclude<MessagesMessages, MessagesMessages.messagesMessagesNotModified>>(messagesMessages);
-        this.appPeersManager.saveApiPeers(messagesMessages);
-        this.appMessagesManager.saveMessages(messagesMessages.messages);
-        return messagesMessages;
-      },
+      processResult: this.processPublicForwards,
       options
     });
   }
@@ -176,17 +179,7 @@ export default class AppStatisticsManager extends AppManager {
         limit: params.limit,
         offset: params.offset
       },
-      processResult: (statsPublicForwards) => {
-        this.appPeersManager.saveApiPeers(statsPublicForwards);
-        statsPublicForwards.forwards.forEach((publicForward) => {
-          (publicForward as PublicForward.publicForwardMessage).message = this.appMessagesManager.saveMessage((publicForward as PublicForward.publicForwardMessage).message);
-          (publicForward as PublicForward.publicForwardStory).story = (publicForward as PublicForward.publicForwardStory).story && this.appStoriesManager.saveStoryItem(
-            (publicForward as PublicForward.publicForwardStory).story,
-            this.appStoriesManager.getPeerStoriesCache(this.appPeersManager.getPeerId((publicForward as PublicForward.publicForwardStory).peer))
-          );
-        });
-        return statsPublicForwards;
-      },
+      processResult: this.processPublicForwards,
       options
     });
   }

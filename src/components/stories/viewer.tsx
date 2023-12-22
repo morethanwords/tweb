@@ -2608,7 +2608,7 @@ const Stories = (props: {
 
   const openViewsList = isMe && (() => {
     let nextOffset: string;
-    const viewsMap: Map<PeerId, StoryView> = new Map();
+    const viewsMap: Map<PeerId, StoryView.storyView> = new Map();
     const popup: PopupPickUser = PopupElement.createPopup(
       PopupPickUser,
       {
@@ -2621,7 +2621,7 @@ const Stories = (props: {
             loadCount,
             nextOffset,
             q
-          ).then(({count, nextOffset: _nextOffset, views}) => {
+          ).then(({nextOffset: _nextOffset, views}) => {
             nextOffset = _nextOffset;
             return {
               result: views.map((storyView) => {
