@@ -17,6 +17,13 @@ import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
 import setInnerHTML from '../../helpers/dom/setInnerHTML';
 import {onMediaCaptionClick} from '../appMediaViewer';
 import {formatMonthsDuration} from '../../helpers/date';
+import wrapPeerTitle from '../wrappers/peerTitle';
+import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
+import rootScope from '../../lib/rootScope';
+import {PeerTitleOptions} from '../peerTitle';
+import {InviteLink} from '../sidebarLeft/tabs/sharedFolder';
+import anchorCallback from '../../helpers/dom/anchorCallback';
+import PopupGiftLink from '../popups/giftLink';
 
 type PromoSlideTabOptions = PopupPremiumProps & {
   container: HTMLElement,
@@ -106,79 +113,184 @@ export function premiumOptionsForm<T extends PremiumSubscriptionOption | Premium
   return form;
 }
 
+export function getGiftDetails(options: PopupPremiumProps) {
+  const gift = options.gift;
+  if(!gift) {
+    return;
+  }
+
+  let fromPeerId: PeerId, toPeerId: PeerId;
+  if(gift._ === 'payments.checkedGiftCode') {
+    fromPeerId = getPeerId(gift.from_id) || options.peerId;
+  } else {
+    fromPeerId = options.isOut ? rootScope.myId : options.peerId;
+  }
+
+  toPeerId = options.isOut ? options.peerId : rootScope.myId;
+  toPeerId ||= rootScope.myId;
+
+  const isOutbound = toPeerId !== rootScope.myId;
+  const isUnclaimed = gift._ !== 'payments.checkedGiftCode' || !gift.used_date;
+  return {fromPeerId, toPeerId, isOutbound, isUnclaimed, gift};
+}
+
 export default class PromoSlideTab {
   public tab: HTMLElement;
   public transition: ReturnType<typeof TransitionSlider>;
   public selectFeature: (feature: PremiumPromoFeatureType) => Promise<void>;
   public selectPeriod: (option: PremiumSubscriptionOption) => void;
-  public close: (callback: () => void) => void;
+  public close: (callback?: () => void) => void;
 
-  constructor(options: PromoSlideTabOptions) {
+  constructor(public options: PromoSlideTabOptions) {
     this.initPremiumTab(options);
   }
 
-  private initPremiumTab(options: PromoSlideTabOptions) {
-    const tab = document.createElement('div');
+  private async initPremiumTab(options: PromoSlideTabOptions) {
+    const tab = this.tab = document.createElement('div');
+    tab.append(options.header, options.body);
+    tab.classList.add('premium-promo-tab', 'not-bottom', 'scrollable', 'scrollable-y');
+    tab.addEventListener('scroll', this.onTabScroll);
+
+    options.body.append(...[
+      this.createImageContainer(),
+      await this.createHeading(),
+      options.type === 'premium' && !options.isPremiumActive && this.createOptionsForm(),
+      this.createFeaturesContainer()
+    ].filter(Boolean));
+    options.container.classList.add('fixed-size');
+  }
+
+  private async createHeading() {
+    const headingTextContainer = document.createElement('div');
+    headingTextContainer.classList.add('popup-premium-heading-text-container');
+    const headingTextTitle = document.createElement('div');
+    headingTextTitle.classList.add('popup-premium-heading-text-title');
+    const headingTextDescription = document.createElement('div');
+    headingTextDescription.classList.add('popup-premium-heading-text-description');
+
+    const wrapTitleOptions: PeerTitleOptions = {onlyFirstName: true};
+
+    let title: HTMLElement, description: HTMLElement;
+    const giftDetails = getGiftDetails(this.options);
+    if(giftDetails) {
+      headingTextTitle.classList.add('smaller-text');
+      const {fromPeerId, toPeerId, isOutbound, isUnclaimed, gift} = giftDetails;
+      const giftMonths = i18n('GiftMonths', [gift.months]);
+      if(isOutbound) {
+        title = i18n(
+          'GiftModal.Title.You',
+          [
+            await wrapPeerTitle({...wrapTitleOptions, peerId: toPeerId}),
+            giftMonths
+          ]
+        );
+      } else {
+        title = i18n(
+          fromPeerId ?
+            'TelegramPremiumUserGiftedPremiumDialogTitleWithPlural' :
+            'TelegramPremiumUserGiftedPremiumDialogTitleWithPluralSomeone',
+          [
+            fromPeerId && await wrapPeerTitle({...wrapTitleOptions, peerId: fromPeerId}),
+            giftMonths
+          ].filter(Boolean)
+        );
+      }
+
+      if(isOutbound) {
+        description = i18n(
+          'TelegramPremiumUserGiftedPremiumOutboundDialogSubtitle',
+          [await wrapPeerTitle({...wrapTitleOptions, peerId: toPeerId})]
+        );
+      } else {
+        if(gift._ === 'messageActionGiftPremium') {
+          description = i18n('TelegramPremiumUserGiftedPremiumDialogSubtitle');
+        } else {
+          const url = 'https://t.me/giftcode/' + gift.slug;
+
+          const inviteLink = new InviteLink({
+            button: false,
+            listenerSetter: this.options.listenerSetter,
+            url
+          });
+
+          let text: HTMLElement;
+          if(!isUnclaimed) {
+            text = i18n('BoostingLinkUsed');
+          } else {
+            text = i18n(
+              'GiftCode.ShareReceived',
+              [
+                anchorCallback(async() => {
+                  this.close();
+                  PopupGiftLink.shareGiftLink(url);
+                })
+              ]
+            );
+          }
+
+          description = document.createElement('div');
+          description.append(text, inviteLink.container);
+        }
+      }
+    } else {
+      title = this.options.isPremiumActive ? i18n('TelegramPremiumSubscribedTitle') : i18n('Premium.Boarding.Title');
+      description = this.options.isPremiumActive ? i18n('TelegramPremiumSubscribedSubtitle') : i18n('Premium.Boarding.Info');
+    }
+
+    headingTextTitle.append(title);
+    headingTextDescription.append(description);
+    headingTextContainer.append(headingTextTitle, headingTextDescription);
+    return headingTextContainer;
+  }
+
+  private createFeaturesContainer() {
+    const featuresContainer = document.createElement('div');
+    featuresContainer.classList.add('popup-premium-features-container');
+    featuresContainer.append(...[
+      ...this.createFeatures(this.options.features, this.options.order),
+      this.options.type === 'premium' && this.options.premiumPromo.status_text && this.createStatusText()
+    ].filter(Boolean));
+    return featuresContainer;
+  }
+
+  private createImageContainer() {
     const premiumImageContainer = document.createElement('div');
     premiumImageContainer.classList.add('popup-premium-header-image-container');
     const premiumImage = document.createElement('img');
     premiumImage.src = `assets/img/premium-star${window.devicePixelRatio > 1 ? '@2x' : ''}.png`;
     premiumImage.classList.add('popup-premium-header-image');
     premiumImageContainer.append(premiumImage);
-    options.body.append(premiumImageContainer);
-    const headingTextContainer = document.createElement('div');
-    headingTextContainer.classList.add('popup-premium-heading-text-container');
-    const headingTextTitle = document.createElement('div');
-    headingTextTitle.append(options.isPremiumActive ? i18n('TelegramPremiumSubscribedTitle') : i18n('Premium.Boarding.Title'));
-    headingTextTitle.classList.add('popup-premium-heading-text-title');
-    const headingTextDescription = document.createElement('div');
-    headingTextDescription.classList.add('popup-premium-heading-text-description');
-    headingTextDescription.append(options.isPremiumActive ? i18n('TelegramPremiumSubscribedSubtitle') : i18n('Premium.Boarding.Info'));
-    headingTextContainer.append(headingTextTitle, headingTextDescription);
+    return premiumImageContainer;
+  }
 
-    const form = !options.isPremiumActive && premiumOptionsForm({
-      periodOptions: options.premiumPromo.period_options,
+  private createStatusText() {
+    const statusText = document.createElement('div');
+    statusText.classList.add('popup-premium-status-text');
+    const wrapped = wrapRichText(this.options.premiumPromo.status_text, {entities: this.options.premiumPromo.status_entities});
+    setInnerHTML(statusText, wrapped);
+
+    const onClick = (e: MouseEvent) => {
+      const callback = onMediaCaptionClick(statusText, e);
+      if(!callback) {
+        return;
+      }
+
+      this.close(() => {
+        statusText.removeEventListener('click', onClick, {capture: true});
+        callback();
+      });
+    };
+
+    statusText.addEventListener('click', onClick, {capture: true});
+    return statusText;
+  }
+
+  private createOptionsForm() {
+    return premiumOptionsForm({
+      periodOptions: this.options.premiumPromo.period_options,
       onOption: (option) => {
         this.selectPeriod?.(option);
       }
-    });
-
-    const featuresContainer = document.createElement('div');
-    featuresContainer.classList.add('popup-premium-features-container');
-    featuresContainer.append(...this.createFeatures(options.features, options.order));
-    if(options.premiumPromo.status_text) {
-      const statusText = document.createElement('div');
-      statusText.classList.add('popup-premium-status-text');
-      const wrapped = wrapRichText(options.premiumPromo.status_text, {entities: options.premiumPromo.status_entities});
-      setInnerHTML(statusText, wrapped);
-      featuresContainer.append(statusText);
-
-      const onClick = (e: MouseEvent) => {
-        const callback = onMediaCaptionClick(statusText, e);
-        if(!callback) {
-          return;
-        }
-
-        this.close(() => {
-          statusText.removeEventListener('click', onClick, {capture: true});
-          callback();
-        });
-      };
-
-      statusText.addEventListener('click', onClick, {capture: true});
-    }
-    options.body.append(...[headingTextContainer, form, featuresContainer].filter(Boolean));
-    tab.append(options.header, options.body);
-
-    tab.classList.add('premium-promo-tab', 'not-bottom', 'scrollable', 'scrollable-y');
-    options.container.classList.add('fixed-size');
-    this.tab = tab;
-
-    tab.addEventListener('scroll', (e) => {
-      const {scrollTop, scrollHeight} = tab;
-      options.header.classList.toggle('is-visible', scrollTop > 100);
-      options.header.classList.toggle('not-top', scrollTop > 0);
-      tab.classList.toggle('not-bottom', (scrollHeight - scrollTop) > tab.offsetHeight);
     });
   }
 
@@ -211,4 +323,12 @@ export default class PromoSlideTab {
       return row.container;
     });
   }
+
+  private onTabScroll = () => {
+    const {tab, options} = this;
+    const {scrollTop, scrollHeight} = tab;
+    options.header.classList.toggle('is-visible', scrollTop > 100);
+    options.header.classList.toggle('not-top', scrollTop > 0);
+    tab.classList.toggle('not-bottom', (scrollHeight - scrollTop) > tab.offsetHeight);
+  };
 }

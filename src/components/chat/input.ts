@@ -3249,7 +3249,7 @@ export default class ChatInput {
     }
 
     if(document.sticker && getStickerEffectThumb(document) && !rootScope.premium) {
-      PopupPremium.show('premium_stickers');
+      PopupPremium.show({feature: 'premium_stickers'});
       return false;
     }
 

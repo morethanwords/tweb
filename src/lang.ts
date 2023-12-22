@@ -443,6 +443,9 @@ const lang = {
     'other_value': 'All winners received their gift links in private messages.'
   },
   'Giveaway.Results.AndMore': '**and %d more!**',
+  'GiftCode.ShareReceived': 'This link allows you or **[anyone you choose]()** to activate a **Telegram Premium** subscription.',
+  'GiftModal.Title.You': 'You gifted **%1$s** a %2$s subscription to Telegram Premium.',
+  'GiftCode.Activation.After': 'You can activate this gift code after **%1$s** or **[send the link]()** to a friend.',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -1668,6 +1671,20 @@ const lang = {
     'one_value': '**Winner**',
     'other_value': '**Winners**'
   },
+  'GiftPremiumUseGiftBtn': 'Use Gift',
+  'ActionGiftPremiumView': 'View',
+  'TelegramPremiumUserGiftedPremiumDialogTitleWithPlural': '**%1$s** has gifted you a %2$s subscription to Telegram Premium.',
+  'TelegramPremiumUserGiftedPremiumDialogTitleWithPluralSomeone': 'Someone has gifted you a %1$s subscription to Telegram Premium.',
+  'TelegramPremiumUserGiftedPremiumDialogSubtitle': 'You now have access to additional features.',
+  'TelegramPremiumUserGiftedPremiumOutboundDialogSubtitle': '**%1$s** now has access to additional features.',
+  'GiftMonths': {
+    'one_value': '%1$d-month',
+    'other_value': '%1$d-months'
+  },
+  'BoostingGiftLinkForwardedTo': 'Gift link forwarded to **%1$s**.',
+  'BoostingGiftLinkForwardedToSavedMsg': 'Gift link forwarded to **Saved Messages**.',
+  'GiftPremiumActivateForFree': 'Activate For Free',
+  'GiftPremiumActivateErrorTitle': 'You already have Telegram Premium',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
@@ -2226,9 +2243,7 @@ const lang = {
   'Premium.Boarding.PeerStatus.Default.Title': 'This is %@\'s current status.',
   'Premium.Boarding.PeerStatus.Custom.Title': 'This is %@\'s current status from\n🤡 [%@]().',
   'Premium.Boarding.PeerStatus.Info': 'Emoji status is a premium feature.\nOther features included in **Telegram Premium**:',
-  'Premium.Boarding.Peer.Gift.You.Title': 'You gifted [%1$@](profile) a %2$@-month subscription to Telegram Premium',
   'Premium.Boarding.Peer.Gift.You.Info': 'They now have access to additional features.',
-  'Premium.Boarding.Peer.Gift.Title': '[%1$@](profile) has gifted you a %2$@-month subscription to Telegram Premium',
   'Premium.Boarding.Peer.Gift.Info': 'You now have access to additional features.',
   'Premium.Boarding.About.Title': 'About Telegram Premium',
   'Premium.Boarding.About.Text': 'While the free version of Telegram already gives its users more than any other messaging application, **Telegram Premium** pushes its capabilities even further.\n\n**Telegram Premium** is a paid option, because most Premium Features require additional expenses from Telegram to third parties such as data center providers and server manufacturers. Contributions from **Telegram Premium** users allow us to cover such costs and also help Telegram stay free for everyone.',

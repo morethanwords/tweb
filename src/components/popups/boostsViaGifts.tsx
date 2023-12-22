@@ -41,6 +41,7 @@ import confirmationPopup from '../confirmationPopup';
 import {randomLong} from '../../helpers/random';
 import PopupPayment from './payment';
 import shake from '../../helpers/dom/shake';
+import anchorCallback from '../../helpers/dom/anchorCallback';
 
 export default class PopupBoostsViaGifts extends PopupElement {
   private premiumGiftCodeOptions: PremiumGiftCodeOption[];
@@ -220,11 +221,9 @@ export default class PopupBoostsViaGifts extends PopupElement {
     createRow.container.classList.add('popup-boosts-type');
     specificRow.container.classList.add('popup-boosts-type', 'popup-boosts-specific');
 
-    const premiumPromoAnchor = document.createElement('a');
-    premiumPromoAnchor.onclick = (e) => {
-      cancelEvent(e);
+    const premiumPromoAnchor = anchorCallback(() => {
       PopupPremium.show();
-    };
+    });
 
     let lastOptionIndex: number;
     createEffect(() => {

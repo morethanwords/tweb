@@ -232,7 +232,8 @@ export default function Giveaway(props: {
     const entity = AppSelectPeers.renderEntity({
       key: peerId,
       middleware,
-      avatarSize: 30
+      avatarSize: 30,
+      meAsSaved: false
     });
 
     appImManager.setPeerColorToElement(peerId, entity.element);

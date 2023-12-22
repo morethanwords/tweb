@@ -133,12 +133,13 @@ export default class AppPaymentsManager extends AppManager {
       params: {slug},
       processResult: (checkedGiftCode) => {
         this.appPeersManager.saveApiPeers(checkedGiftCode);
+        checkedGiftCode.slug = slug;
 
         if(checkedGiftCode.giveaway_msg_id) {
-          const fromPeerId = this.appPeersManager.getPeerId(checkedGiftCode.from_id);
+          const fromPeerId = checkedGiftCode.from_id && this.appPeersManager.getPeerId(checkedGiftCode.from_id);
           checkedGiftCode.giveaway_msg_id = this.appMessagesIdsManager.generateMessageId(
             checkedGiftCode.giveaway_msg_id,
-            fromPeerId.isUser() ? undefined : fromPeerId.toChatId()
+            !fromPeerId || fromPeerId.isUser() ? undefined : fromPeerId.toChatId()
           );
         }
 
@@ -148,6 +149,8 @@ export default class AppPaymentsManager extends AppManager {
   }
 
   public applyGiftCode(slug: string) {
+    // return Promise.reject({type: 'PREMIUM_SUB_ACTIVE_UNTIL_1703345751'});
+
     return this.apiManager.invokeApiSingleProcess({
       method: 'payments.applyGiftCode',
       params: {slug},

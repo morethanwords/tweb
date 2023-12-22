@@ -11,6 +11,12 @@
     padding: 0;
     height: 660px;
     border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+
+    &.no-button {
+      height: 580px;
+    }
   }
 
   .popup-close {
@@ -33,11 +39,6 @@
     }
 
     &-background {
-      background-color: var(--surface-color);
-      position: absolute;
-      inset: 0;
-      z-index: -1;
-      border-bottom: 1px solid transparent;
       opacity: 0;
 
       @include animation-level(2) {
@@ -77,7 +78,7 @@
   .popup-body {
     overflow: visible;
     margin-top: -1.5rem;
-    padding: 0 1rem;
+    padding: 0 .5rem;
     position: relative;
   }
 
@@ -98,6 +99,7 @@
     &-container {
       padding: 1rem;
       background-color: var(--surface-color);
+      flex: 0 0 auto;
     }
 
     &-icon {
@@ -113,6 +115,12 @@
       font-weight: var(--font-weight-bold);
       line-height: 32px;
       margin: .375rem 0;
+
+      &.smaller-text {
+        font-size: var(--font-size-18);
+        line-height: var(--line-height-18);
+        margin-top: .625rem;
+      }
     }
 
     &-text-description {
@@ -123,11 +131,12 @@
 
     &-text-container {
       margin-top: calc(100px - 0.75rem);
+      padding: 0 .625rem;
     }
   }
 
   &-features-container {
-    margin-top: 1rem;
+    margin: 1rem 0 .5rem;
   }
 
   &-header-image {
@@ -145,7 +154,7 @@
 
   &-status-text {
     color: var(--secondary-text-color);
-    margin: 1rem .5rem .375rem;
+    margin: 1rem .5rem 0;
     white-space: pre-wrap;
     font-size: var(--font-size-16);
     line-height: var(--line-height-16);
@@ -171,16 +180,13 @@
 
   .premium-tabs {
     width: 420px;
-    height: 100%;
+    flex: 1 1 auto;
     max-width: 100%;
     padding: 0;
+    overflow: hidden;
 
     @include respond-to(handhelds) {
       width: 330px;
-    }
-
-    &.fixed-size {
-      height: 580px;
     }
   }
 
@@ -263,6 +269,7 @@
       z-index: 1;
       opacity: .7;
       font-size: 90px;
+      color: #fff;
     }
 
     .shimmer {
@@ -542,4 +549,17 @@
       }
     }
   }
+
+  .invite-link-container {
+    margin: .5rem -.625rem -.5rem;
+  }
+
+  // * commented, was by design but looks odd
+  // .row {
+  //   padding-inline-start: 5.5rem !important;
+
+  //   &-media {
+  //     inset-inline-start: 1.75rem !important;
+  //   }
+  // }
 }

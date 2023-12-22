@@ -454,10 +454,11 @@ export class InternalLinkProcessor {
     // t.me/giftcode/slug
     addAnchorListener<{pathnameParams: ['giftcode', string]}>({
       name: 'giftcode',
-      callback: ({pathnameParams}) => {
+      callback: ({pathnameParams}, element) => {
         const link: InternalLink = {
           _: INTERNAL_LINK_TYPE.GIFT_CODE,
-          slug: pathnameParams[1]
+          slug: pathnameParams[1],
+          stack: appImManager.getStackFromElement(element)
         };
 
         return this.processInternalLink(link);
@@ -472,8 +473,9 @@ export class InternalLinkProcessor {
     }>({
       name: 'giftcode',
       protocol: 'tg',
-      callback: ({uriParams}) => {
+      callback: ({uriParams}, element) => {
         const link = this.makeLink(INTERNAL_LINK_TYPE.GIFT_CODE, uriParams);
+        link.stack = appImManager.getStackFromElement(element);
         return this.processInternalLink(link);
       }
     });
@@ -767,7 +769,7 @@ export class InternalLinkProcessor {
   };
 
   public processGiftCodeLink = (link: InternalLink.InternalLinkGiftCode) => {
-    PopupElement.createPopup(PopupGiftLink, link.slug);
+    PopupElement.createPopup(PopupGiftLink, link.slug, link.stack);
   };
 
   public processInternalLink(link: InternalLink) {

@@ -25,6 +25,7 @@ import wrapJoinVoiceChatAnchor from './joinVoiceChatAnchor';
 import {WrapMessageActionTextOptions} from './messageActionTextNew';
 import wrapMessageForReply, {WrapMessageForReplyOptions} from './messageForReply';
 import wrapPeerTitle from './peerTitle';
+import shouldDisplayGiftCodeAsGift from '../../helpers/shouldDisplayGiftCodeAsGift';
 
 async function wrapLinkToMessage(options: WrapMessageForReplyOptions) {
   const wrapped = await wrapMessageForReply(options);
@@ -523,8 +524,20 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         break;
       }
 
+      case 'messageActionGiftCode':
       case 'messageActionGiftPremium': {
-        const isMe = !!message.pFlags.out;
+        const isGiftCode = action._ === 'messageActionGiftCode';
+        if(isGiftCode && !shouldDisplayGiftCodeAsGift(action)) {
+          langPackKey = 'BoostingReceivedGiftNoName';
+          if(action.boost_peer) {
+            langPackKey = 'BoostingReceivedGiftFrom';
+            args = [getNameDivHTML(getPeerId(action.boost_peer), plain)];
+          }
+
+          break;
+        }
+
+        const isMe = !!message.pFlags.out && !isGiftCode;
         let authorElement: ReturnType<typeof getNameDivHTML>;
         if(!isMe) {
           authorElement = getNameDivHTML(message.fromId, plain);

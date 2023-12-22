@@ -604,7 +604,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
     });
   }
 
-  public async getMessageFromStorage(key: MessagesStorageKey, mid: number) {
+  public getMessageFromStorage(key: MessagesStorageKey, mid: number) {
     // * use global storage instead
     if(key.endsWith('history') && isLegacyMessageId(mid)) {
       key = this.getGlobalHistoryMessagesStorage();

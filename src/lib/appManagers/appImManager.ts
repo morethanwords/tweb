@@ -127,7 +127,7 @@ export type ChatSetPeerOptions = {
   lastMsgId?: number,
   threadId?: number,
   startParam?: string,
-  stack?: {mid: number, message?: Message.message},
+  stack?: {peerId: PeerId, mid: number, message?: Message.message, isOut?: boolean},
   commentId?: number,
   type?: ChatType,
   mediaTimestamp?: number
@@ -989,9 +989,16 @@ export class AppImManager extends EventListenerBase<{
 
   public getStackFromElement(element: HTMLElement): ChatSetPeerOptions['stack'] {
     const possibleBubble = findUpClassName(element, 'bubble');
+    const chatContainer = possibleBubble && findUpClassName(possibleBubble, 'chat');
+    const chat = chatContainer && this.chats.find((chat) => chat.container === chatContainer);
+    const peerId = chat?.peerId;
+    const mid = possibleBubble && +possibleBubble.dataset.mid;
+    const message: Message.message = (possibleBubble as any)?.message || (peerId && apiManagerProxy.getMessageByPeer(peerId, mid))
     return possibleBubble ? {
-      mid: +possibleBubble.dataset.mid,
-      message: (possibleBubble as any).message
+      peerId,
+      mid,
+      message,
+      isOut: message ? !!message.pFlags.out : undefined
     } : undefined;
   }
 
