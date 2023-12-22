@@ -28,16 +28,12 @@ export default async function generateTitleIcons({
 }) {
   peer ??= apiManagerProxy.getPeer(peerId);
   const elements: HTMLElement[] = [];
-  if((peer as Chat.channel).pFlags.verified && !noVerifiedIcon) {
-    elements.push(generateVerifiedIcon());
-  }
-
   if(((peer as Chat.channel).pFlags.fake || (peer as User.user).pFlags.scam) && !noFakeIcon) {
     elements.push(generateFakeIcon((peer as User.user).pFlags.scam));
   }
 
-  if((peer as User.user).pFlags.premium && !noPremiumIcon && wrapOptions?.middleware) {
-    const emojiStatus = (peer as User.user).emoji_status;
+  if(!noPremiumIcon && wrapOptions?.middleware) {
+    const emojiStatus = (peer as User.user | Chat.channel).emoji_status;
     if(emojiStatus && emojiStatus._ !== 'emojiStatusEmpty') {
       const {middleware} = wrapOptions;
       const container = await wrapEmojiStatus({
@@ -47,9 +43,13 @@ export default async function generateTitleIcons({
 
       if(!middleware()) return elements;
       elements.push(container);
-    } else {
+    } else if((peer as User.user).pFlags.premium) {
       elements.push(generatePremiumIcon());
     }
+  }
+
+  if((peer as Chat.channel).pFlags.verified && !noVerifiedIcon) {
+    elements.push(generateVerifiedIcon());
   }
 
   return elements;

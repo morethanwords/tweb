@@ -12,7 +12,7 @@
 import deepEqual from '../../helpers/object/deepEqual';
 import isObject from '../../helpers/object/isObject';
 import safeReplaceObject from '../../helpers/object/safeReplaceObject';
-import {ChannelParticipant, ChannelsCreateChannel, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatInvite, ChatParticipant, ChatPhoto, ChatReactions, InputChannel, InputChatPhoto, InputFile, InputPeer, MessagesSponsoredMessages, Peer, SponsoredMessage, Update, Updates} from '../../layer';
+import {ChannelParticipant, ChannelsCreateChannel, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatInvite, ChatParticipant, ChatPhoto, ChatReactions, EmojiStatus, InputChannel, InputChatPhoto, InputFile, InputPeer, MessagesSponsoredMessages, Peer, SponsoredMessage, Update, Updates} from '../../layer';
 import {AppManager} from './manager';
 import hasRights from './utils/chats/hasRights';
 import getParticipantPeerId from './utils/chats/getParticipantPeerId';
@@ -138,6 +138,10 @@ export class AppChatsManager extends AppManager {
       this.usernames[searchUsername] = chat.id;
     } */
 
+    if((chat as Chat.channel).emoji_status?._ === 'emojiStatusEmpty') {
+      delete (chat as Chat.channel).emoji_status;
+    }
+
     const peerId = chat.id.toPeerId(true);
     if(oldChat === undefined) {
       this.chats[chat.id] = chat;
@@ -147,10 +151,13 @@ export class AppChatsManager extends AppManager {
       const newPhotoId = ((chat as Chat.chat).photo as ChatPhoto.chatPhoto)?.photo_id;
       const toggledForum = (oldChat as Chat.channel).pFlags.forum !== (chat as Chat.channel).pFlags.forum;
       const changedPhoto = oldPhotoId !== newPhotoId || toggledForum;
+      const changedEmojiStatus = ((oldChat as Chat.channel).emoji_status as EmojiStatus.emojiStatus)?.document_id !==
+        ((chat as Chat.channel).emoji_status as EmojiStatus.emojiStatus)?.document_id;
 
       const changedTitle = oldChat.title !== chat.title || changedUsername;
 
-      const changedAnyBadge = (oldChat as Chat.channel).pFlags.verified !== (chat as Chat.channel).pFlags.verified ||
+      const changedAnyBadge = changedEmojiStatus ||
+        (oldChat as Chat.channel).pFlags.verified !== (chat as Chat.channel).pFlags.verified ||
         (oldChat as Chat.channel).pFlags.scam !== (chat as Chat.channel).pFlags.scam ||
         (oldChat as Chat.channel).pFlags.fake !== (chat as Chat.channel).pFlags.fake;
 
