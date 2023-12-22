@@ -314,27 +314,41 @@ export default class PopupPickUser extends PopupElement {
     this.selector = undefined;
   }
 
-  public static async createPicker2({
+  public static async createPicker2<T extends boolean = false>({
     peerType,
     filterPeerTypeBy,
-    chatRightsActions
+    chatRightsActions,
+    multiSelect,
+    limit,
+    limitCallback
   }: {
     peerType?: SelectSearchPeerType[],
     filterPeerTypeBy: AppSelectPeers['filterPeerTypeBy'],
-    chatRightsActions?: PopupPickUserOptions['chatRightsActions']
+    chatRightsActions?: PopupPickUserOptions['chatRightsActions'],
+    multiSelect?: T,
+    limit?: number,
+    limitCallback?: () => void
   }) {
-    return new Promise<PeerId>((resolve, reject) => {
+    return new Promise<T extends false ? PeerId : PeerId[]>((resolve, reject) => {
       let resolved = false;
       const popup = PopupElement.createPopup(PopupPickUser, {
         peerType,
         placeholder: 'SelectChat',
-        onSelect: (peerId) => {
-          resolve(peerId);
+        onSelect: multiSelect ? undefined : (peerId) => {
+          resolve(peerId as any);
           resolved = true;
         },
+        onMultiSelect: multiSelect ? (peerIds) => {
+          resolve(peerIds as any);
+          resolved = true;
+        } : undefined,
         filterPeerTypeBy,
         chatRightsActions
       });
+
+      if(limit) {
+        popup.selector.setLimit(limit, limitCallback);
+      }
 
       popup.addEventListener('close', () => {
         if(!resolved) {

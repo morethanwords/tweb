@@ -447,6 +447,19 @@ const lang = {
   'GiftModal.Title.You': 'You gifted **%1$s** a %2$s subscription to Telegram Premium.',
   'GiftCode.Activation.After': 'You can activate this gift code after **%1$s** or **[send the link]()** to a friend.',
   'Story.ViewPost': 'View Message',
+  'RequestPeer.MultipleLimit': 'You can select up to %s.',
+  'RequestPeer.MultipleLimit.Users': {
+    'one_value': '%d user',
+    'other_value': '%d users'
+  },
+  'RequestPeer.MultipleLimit.Channels': {
+    'one_value': '%d channels',
+    'other_value': '%d channelss'
+  },
+  'RequestPeer.MultipleLimit.Groups': {
+    'one_value': '%d group',
+    'other_value': '%d groups'
+  },
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',

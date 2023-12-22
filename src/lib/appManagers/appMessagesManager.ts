@@ -7277,12 +7277,12 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public sendBotRequestedPeer(peerId: PeerId, mid: number, buttonId: number, requestedPeerId: PeerId) {
+  public sendBotRequestedPeer(peerId: PeerId, mid: number, buttonId: number, requestedPeerIds: PeerId[]) {
     return this.apiManager.invokeApi('messages.sendBotRequestedPeer', {
       peer: this.appPeersManager.getInputPeerById(peerId),
       msg_id: getServerMessageId(mid),
       button_id: buttonId,
-      requested_peer: this.appPeersManager.getInputPeerById(requestedPeerId)
+      requested_peers: requestedPeerIds.map((peerId) => this.appPeersManager.getInputPeerById(peerId))
     }).then((updates) => {
       this.apiUpdatesManager.processUpdateMessage(updates);
     });

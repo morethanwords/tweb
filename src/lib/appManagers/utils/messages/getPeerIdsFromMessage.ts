@@ -62,7 +62,7 @@ export default function getPeerIdsFromMessage(message: Message.message | Message
 
     const peers: Peer[] = [
       (action as MessageAction.messageActionGiftCode).boost_peer,
-      (action as MessageAction.messageActionRequestedPeer).peer,
+      ...(action as MessageAction.messageActionRequestedPeer).peers || [],
       (action as MessageAction.messageActionGeoProximityReached).from_id,
       (action as MessageAction.messageActionGeoProximityReached).to_id
     ];

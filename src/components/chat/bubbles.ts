@@ -22,7 +22,7 @@ import StickyIntersector from '../stickyIntersector';
 import animationIntersector from '../animationIntersector';
 import mediaSizes from '../../helpers/mediaSizes';
 import {IS_ANDROID, IS_APPLE, IS_MOBILE, IS_SAFARI} from '../../environment/userAgent';
-import I18n, {FormatterArguments, i18n, langPack, LangPackKey, UNSUPPORTED_LANG_PACK_KEY, _i18n} from '../../lib/langPack';
+import I18n, {FormatterArguments, i18n, langPack, LangPackKey, UNSUPPORTED_LANG_PACK_KEY, _i18n, join} from '../../lib/langPack';
 import ripple from '../ripple';
 import {MessageRender} from './messageRender';
 import LazyLoadQueue from '../lazyLoadQueue';
@@ -4622,18 +4622,41 @@ export default class ChatBubbles {
             };
           }
 
-          const requestedPeerId = await PopupPickUser.createPicker2({
+          const requestedPeerIds = await PopupPickUser.createPicker2({
             peerType: _peerType,
-            filterPeerTypeBy
+            filterPeerTypeBy,
+            multiSelect: true,
+            limit: button.max_quantity,
+            limitCallback: () => {
+              toastNew({
+                langPackKey: 'RequestPeer.MultipleLimit',
+                langPackArguments: [
+                  i18n(
+                    isRequestingUser ? 'RequestPeer.MultipleLimit.Users' : (isRequestingChannel ? 'RequestPeer.MultipleLimit.Channels' : 'RequestPeer.MultipleLimit.Groups'),
+                    [button.max_quantity]
+                  )
+                ]
+              });
+            }
           });
 
           if(!isRequestingUser) {
-            const descriptionLangArgs: Parameters<typeof confirmationPopup>[0]['descriptionLangArgs'] = [
-              await wrapPeerTitle({peerId: requestedPeerId}),
+            type P = Parameters<typeof confirmationPopup>[0];
+            const requestedPeerTitles = await Promise.all(requestedPeerIds.map((peerId) => wrapPeerTitle({peerId})));
+            const joinedTitles = join(requestedPeerTitles, false);
+            let joinedTitlesElement: HTMLElement;
+            if(joinedTitles.length === 1) {
+              joinedTitlesElement = joinedTitles[0] as HTMLElement;
+            } else {
+              joinedTitlesElement = document.createElement('span');
+              joinedTitlesElement.append(...joinedTitles);
+            }
+            const descriptionLangArgs: P['descriptionLangArgs'] = [
+              joinedTitlesElement,
               await wrapPeerTitle({peerId})
             ];
 
-            const descriptionLangKey: Parameters<typeof confirmationPopup>[0]['descriptionLangKey'] = 'Chat.Service.PeerRequest.Confirm.Plain';
+            const descriptionLangKey: P['descriptionLangKey'] = 'Chat.Service.PeerRequest.Confirm.Plain';
 
             // if(peerType.bot_admin_rights) {
             //   descriptionLangKey = 'Chat.Service.PeerRequest.Confirm.Permission';
@@ -4656,7 +4679,7 @@ export default class ChatBubbles {
             peerId,
             messageMid,
             button.button_id,
-            requestedPeerId
+            requestedPeerIds
           ).catch((err: ApiError) => {
             if(err.type === 'CHAT_ADMIN_INVITE_REQUIRED') {
               toastNew({

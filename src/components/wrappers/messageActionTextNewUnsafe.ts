@@ -159,6 +159,27 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
       return plain ? getPeerTitle({peerId, plainText: plain}) : wrapPeerTitle({peerId});
     };
 
+    const getSeveralNameDivHTML = async(peerIds: PeerId[], plain: boolean) => {
+      if(peerIds.length === 1) {
+        return getNameDivHTML(peerIds[0], plain);
+      }
+
+      const joined = join(
+        await Promise.all(peerIds.map((peerId) => getNameDivHTML(peerId, plain))),
+        false,
+        plain
+      );
+
+      if(plain) {
+        return Array.isArray(joined) ? joined.join('') : joined;
+      } else {
+        const fragment = document.createElement('span');
+        fragment.append(...joined);
+        args.push(fragment);
+        return fragment;
+      }
+    };
+
     switch(action._) {
       case 'messageActionPhoneCall': {
         _ += '.' + (action as any).type;
@@ -322,24 +343,8 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
 
         args = [getNameDivHTML(message.fromId, plain)];
 
-        if(users.length > 1) {
-          const joined = join(
-            await Promise.all(users.map((userId: UserId) => getNameDivHTML(userId.toPeerId(), plain))),
-            false,
-            plain
-          );
-
-          if(plain) {
-            args.push(...joined);
-          } else {
-            const fragment = document.createElement('span');
-            fragment.append(...joined);
-            args.push(fragment);
-          }
-        } else {
-          args.push(getNameDivHTML(users[0].toPeerId(), plain));
-        }
-
+        const peerIds = users.map((userId) => userId.toPeerId(false));
+        args.push(getSeveralNameDivHTML(peerIds, plain));
         break;
       }
 
@@ -560,7 +565,10 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
 
       case 'messageActionRequestedPeer': {
         langPackKey = 'Chat.Service.PeerRequested';
-        args = [getNameDivHTML(getPeerId(action.peer), plain), getNameDivHTML(message.peerId, plain)];
+        args = [
+          getSeveralNameDivHTML(action.peers.map((peer) => getPeerId(peer)), plain),
+          getNameDivHTML(message.peerId, plain)
+        ];
         break;
       }
 
