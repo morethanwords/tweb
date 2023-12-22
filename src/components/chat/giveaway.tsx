@@ -107,7 +107,7 @@ export async function onGiveawayClick(message: Message.message) {
     }
 
     if(!isParticipating && giveawayInfo.start_date) {
-      subsubtitleArgs.push(formatDate(giveawayInfo.start_date));
+      subsubtitleArgs.push(formatDate(giveaway.until_date));
     }
   }
 
