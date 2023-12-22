@@ -30,6 +30,7 @@ import SettingSection from '../../settingSection';
 import AppStickersAndEmojiTab from './stickersAndEmoji';
 import ButtonCorner from '../../buttonCorner';
 import PopupPremium from '../../popups/premium';
+import appImManager from '../../../lib/appManagers/appImManager';
 
 export default class AppSettingsTab extends SliderSuperTab {
   private buttons: {
@@ -222,13 +223,30 @@ export default class AppSettingsTab extends SliderSuperTab {
         PopupPremium.show();
       },
       listenerSetter: this.listenerSetter
-    })
+    });
+
+    const giftPremium = new Row({
+      titleLangKey: 'GiftPremiumGifting',
+      icon: 'gift',
+      clickable: async() => {
+        const appConfig = await this.managers.apiManager.getAppConfig();
+        const user = await this.managers.appUsersManager.resolveUsername(appConfig.premium_bot_username);
+        const peerId = user.id.toPeerId(false);
+        this.managers.appMessagesManager.sendText({peerId, text: '/gift'});
+        appImManager.setInnerPeer({peerId});
+      },
+      listenerSetter: this.listenerSetter
+    });
+
+    const badge = i18n('New');
+    badge.classList.add('row-title-badge');
+    giftPremium.title.append(badge);
 
     const buttonsSection = new SettingSection();
     buttonsSection.content.append(buttonsDiv);
 
     const premiumSection = new SettingSection();
-    premiumSection.content.append(this.premiumRow.container);
+    premiumSection.content.append(this.premiumRow.container, giftPremium.container);
 
     this.scrollable.append(
       this.profile.element,

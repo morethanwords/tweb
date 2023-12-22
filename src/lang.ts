@@ -1702,6 +1702,7 @@ const lang = {
   'BoostingGiftLinkForwardedToSavedMsg': 'Gift link forwarded to **Saved Messages**.',
   'GiftPremiumActivateForFree': 'Activate For Free',
   'GiftPremiumActivateErrorTitle': 'You already have Telegram Premium',
+  'GiftPremiumGifting': 'Premium Gifting',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
