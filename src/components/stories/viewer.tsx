@@ -98,6 +98,8 @@ import wrapReply from '../wrappers/reply';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import appSidebarRight from '../sidebarRight';
 import AppStatisticsTab from '../sidebarRight/tabs/statistics';
+import getStoryRepostInfo from '../../lib/appManagers/utils/stories/repostInfo';
+import anchorCallback from '../../helpers/dom/anchorCallback';
 
 export const STORY_DURATION = 5e3;
 const STORY_HEADER_AVATAR_SIZE = 32;
@@ -964,7 +966,8 @@ const StoryMediaArea = (props: {
   isActive: Accessor<boolean>,
   setTooltipCloseCallback: Setter<() => void>,
   setReady: Setter<boolean>,
-  sendReaction: StorySendReaction
+  sendReaction: StorySendReaction,
+  close: (callback?: () => void) => void,
 }) => {
   const [stories, actions] = useStories();
   const {x, y, w, h, rotation} = props.mediaArea.coordinates;
@@ -973,6 +976,9 @@ const StoryMediaArea = (props: {
   // const h = 100 / stories.height * 100;
   const playingMemo = createMemo((prev) => prev || (props.isActive() && stories.startTime));
   const [children, setChildren] = createSignal<JSX.Element>();
+  const isLocation = createMemo(() => props.mediaArea._ === 'mediaAreaGeoPoint' || props.mediaArea._ === 'mediaAreaVenue');
+  const isReaction = createMemo(() => props.mediaArea._ === 'mediaAreaSuggestedReaction');
+  const isPost = createMemo(() => props.mediaArea._ === 'mediaAreaChannelPost');
 
   const onLocationClick = async() => {
     const geoPoint = (props.mediaArea as MediaArea.mediaAreaGeoPoint).geo as GeoPoint.geoPoint;
@@ -1006,7 +1012,7 @@ const StoryMediaArea = (props: {
     };
 
     let a: HTMLAnchorElement, ignoreClickEvent = false, hasPopup: boolean;
-    const aa = (
+    (
       <a
         ref={a}
         href={href}
@@ -1053,6 +1059,38 @@ const StoryMediaArea = (props: {
       textColor: mediaArea.pFlags.dark ? 'white' : undefined,
       fireSame: true
     });
+  };
+
+  const onPostClick = () => {
+    const openPost = () => {
+      props.close(() => {
+        const mediaArea = props.mediaArea as MediaArea.mediaAreaChannelPost;
+        appImManager.setInnerPeer({
+          peerId: mediaArea.channel_id.toPeerId(true),
+          lastMsgId: mediaArea.msg_id
+        });
+      });
+    };
+
+    const a = anchorCallback(() => {
+      close();
+      openPost();
+    });
+    a.append(i18n('Story.ViewPost'));
+    const wasPlaying = !stories.paused;
+    actions.pause();
+    const {close} = showTooltip({
+      element: div,
+      vertical: 'top',
+      textElement: a,
+      centerVertically: false,
+      onClose: () => {
+        if(wasPlaying) {
+          actions.play();
+        }
+      }
+    });
+    props.setTooltipCloseCallback(() => close);
   };
 
   const onClick = (e: MouseEvent) => {
@@ -1132,11 +1170,16 @@ const StoryMediaArea = (props: {
   };
 
   let onTypeClick: (e: MouseEvent) => any;
-  if(props.mediaArea._ === 'mediaAreaSuggestedReaction') {
+  if(isReaction()) {
     onTypeClick = onReactionClick;
-    renderReaction(props.mediaArea);
-  } else {
+    renderReaction(props.mediaArea as MediaArea.mediaAreaSuggestedReaction);
+  } else if(isLocation()) {
     onTypeClick = onLocationClick;
+    props.setReady(true);
+  } else if(isPost()) {
+    onTypeClick = onPostClick;
+    props.setReady(true);
+  } else {
     props.setReady(true);
   }
 
@@ -1146,12 +1189,12 @@ const StoryMediaArea = (props: {
       ref={div}
       class={classNames(
         styles.ViewerStoryMediaArea,
-        ...(props.mediaArea._ !== 'mediaAreaSuggestedReaction' ? [
+        ...(isLocation() ? [
           playingMemo() && 'shimmer',
           'shimmer-bright',
           'shimmer-once'
         ] : []),
-        ...(props.mediaArea._ === 'mediaAreaSuggestedReaction' ? [
+        ...(isReaction() ? [
           styles.ViewerStoryMediaAreaReaction
         ] : [])
       )}
@@ -1767,6 +1810,7 @@ const Stories = (props: {
                 setTooltipCloseCallback={setTooltipCloseCallback}
                 setReady={setReady}
                 sendReaction={sendReaction}
+                close={props.close}
               />
             );
           }}
@@ -1779,12 +1823,13 @@ const Stories = (props: {
     });
 
     createEffect(async() => {
-      const fwdFrom = story.fwd_from;
-      if(!fwdFrom) {
+      const repostInfo = getStoryRepostInfo(story);
+      if(!repostInfo) {
         uRepost();
         return;
       }
 
+      const {fwdFrom, mediaAreaChannelPost} = repostInfo;
       uRepost(null);
 
       const [headerContent, setHeaderContent] = createSignal<JSX.Element>();
@@ -1797,8 +1842,16 @@ const Stories = (props: {
           </span>
         )
       } as any;
-      const fwdFromPeerId = fwdFrom.from && getPeerId(fwdFrom.from);
-      const fwdFromName = fwdFrom.from_name;
+
+      let fwdFromPeerId: PeerId, fwdFromName: string, fwdFromStoryId: number;
+      if(fwdFrom) {
+        fwdFromPeerId = fwdFrom.from && getPeerId(fwdFrom.from);
+        fwdFromName = fwdFrom.from_name;
+        fwdFromStoryId = fwdFrom.story_id;
+      } else {
+        fwdFromPeerId = mediaAreaChannelPost.channel_id.toPeerId(true);
+      }
+
       const peerTitleOptions: Parameters<typeof wrapPeerTitle>[0] = {
         peerId: fwdFromPeerId,
         fromName: fwdFromName
@@ -1843,9 +1896,9 @@ const Stories = (props: {
         setSubtitle(documentFragmentToNodes(wrapped));
       };
 
-      const storyPromise = fwdFrom.story_id && rootScope.managers.acknowledged.appStoriesManager.getStoryById(
+      const storyPromise = fwdFromStoryId && rootScope.managers.acknowledged.appStoriesManager.getStoryById(
         fwdFromPeerId,
-        fwdFrom.story_id
+        fwdFromStoryId
       ).then(async(ackedResult) => {
         const promise = processStoryPromise(ackedResult.result, ackedResult.cached);
         if(!ackedResult.cached) {
@@ -1872,6 +1925,13 @@ const Stories = (props: {
 
           title.append(peerTitle);
 
+          if(fwdFromName || mediaAreaChannelPost) {
+            const container = document.createElement('div');
+            container.classList.add(styles.ViewerStoryRepostSmall);
+            container.append(title);
+            return container;
+          }
+
           const {container, fillPromise} = wrapReply({
             title,
             subtitle: subtitleElement as HTMLElement,
@@ -1890,6 +1950,7 @@ const Stories = (props: {
 
       headerPeerTitle.classList.add(styles.ViewerStoryHeaderRepostTitle);
 
+      reply.classList.add(styles.ViewerStoryRepost);
       ret.reply = reply;
       setHeaderContent([
         Icon(STORY_REPOST_ICON, styles.ViewerStoryHeaderRepostIcon),
@@ -2879,24 +2940,31 @@ const Stories = (props: {
       onClick={(e) => {
         if(!isActive()) {
           actions.set({peer: props.state, index: props.state.index});
-        } else if(findUpClassName(e.target, 'reply')) {
+        } else if(findUpClassName(e.target, styles.ViewerStoryRepost)) {
           const story = currentStory();
-          const fwdFrom = (story as StoryItem.storyItem).fwd_from;
-          if(fwdFrom.from) {
+          const repostInfo = getStoryRepostInfo(story as StoryItem.storyItem);
+          if(!repostInfo) {
+            toastNew({
+              langPackKey: 'HidAccount'
+            });
+            return;
+          }
+
+          const {fwdFrom, mediaAreaChannelPost} = repostInfo
+          if(fwdFrom?.from || mediaAreaChannelPost) {
             props.close(() => {
-              const peerId = getPeerId(fwdFrom.from);
-              if(fwdFrom.story_id) {
+              const peerId = fwdFrom ? getPeerId(fwdFrom.from) : mediaAreaChannelPost.channel_id.toPeerId(true);
+              if(fwdFrom?.story_id) {
                 createStoriesViewerWithPeer({
                   peerId,
                   id: fwdFrom.story_id
                 });
               } else {
-                appImManager.setInnerPeer({peerId});
+                appImManager.setInnerPeer({
+                  peerId,
+                  lastMsgId: mediaAreaChannelPost?.msg_id
+                });
               }
-            });
-          } else {
-            toastNew({
-              langPackKey: 'HidAccount'
             });
           }
         } else if(
@@ -3287,7 +3355,7 @@ export default function StoriesViewer(props: {
     verifyTouchTarget: (e) => {
       return !findUpClassName(e.target, 'btn-icon') &&
         !findUpClassName(e.target, 'btn-corner') &&
-        !findUpClassName(e.target, 'reply') &&
+        !findUpClassName(e.target, styles.ViewerStoryRepost) &&
         !findUpClassName(e.target, styles.ViewerStoryMediaArea) &&
         !findUpClassName(e.target, styles.ViewerStoryPrivacy) &&
         !findUpClassName(e.target, styles.ViewerStoryCaptionText) &&

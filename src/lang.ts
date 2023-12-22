@@ -446,6 +446,7 @@ const lang = {
   'GiftCode.ShareReceived': 'This link allows you or **[anyone you choose]()** to activate a **Telegram Premium** subscription.',
   'GiftModal.Title.You': 'You gifted **%1$s** a %2$s subscription to Telegram Premium.',
   'GiftCode.Activation.After': 'You can activate this gift code after **%1$s** or **[send the link]()** to a friend.',
+  'Story.ViewPost': 'View Message',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
