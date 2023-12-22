@@ -573,8 +573,8 @@ export default class ChatPinnedMessage {
     }
   }
 
-  public async followPinnedMessage(mid: number) {
-    const message = await this.chat.getMessage(mid);
+  public followPinnedMessage(mid: number) {
+    const message = this.chat.getMessage(mid);
     if(!message) {
       return;
     }
@@ -597,7 +597,7 @@ export default class ChatPinnedMessage {
     const count = this.count;
     if(count) {
       const pinnedIndex = this.pinnedIndex;
-      const message = await this.chat.getMessage(this.pinnedMid);
+      const message = this.chat.getMessage(this.pinnedMid);
 
       // this.animatedCounter.prepareNumber(count);
 

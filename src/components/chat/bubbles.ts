@@ -4637,7 +4637,8 @@ export default class ChatBubbles {
                   )
                 ]
               });
-            }
+            },
+            titleLangKey: isRequestingUser ? 'RequestPeer.Title.Users' : (isRequestingChannel ? 'RequestPeer.Title.Channels' : 'RequestPeer.Title.Groups')
           });
 
           if(!isRequestingUser) {

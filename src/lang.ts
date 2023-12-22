@@ -460,6 +460,9 @@ const lang = {
     'one_value': '%d group',
     'other_value': '%d groups'
   },
+  'RequestPeer.Title.Users': 'Choose Users',
+  'RequestPeer.Title.Groups': 'Choose Groups',
+  'RequestPeer.Title.Channels': 'Choose Channels',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',

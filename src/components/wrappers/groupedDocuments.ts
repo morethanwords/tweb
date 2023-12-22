@@ -60,7 +60,7 @@ export default async function wrapGroupedDocuments({
   } */
 
   const promises = mids.map(async(mid, idx) => {
-    const message = (await chat.getMessage(mid)) as Message.message;
+    const message = chat.getMessage(mid) as Message.message;
     const div = await wrapDocument({
       message,
       loadPromises,

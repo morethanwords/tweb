@@ -201,7 +201,7 @@ export namespace MessageRender {
           chat.peerId
       );
 
-    const originalMessage = !isStoryReply && await apiManagerProxy.getMessageByPeer(replyToPeerId, message.reply_to_mid);
+    const originalMessage = !isStoryReply && apiManagerProxy.getMessageByPeer(replyToPeerId, message.reply_to_mid);
     const originalStory = isStoryReply && await rootScope.managers.acknowledged.appStoriesManager.getStoryById(replyToPeerId, replyTo.story_id);
     let originalPeerTitle: string | HTMLElement | DocumentFragment;
 

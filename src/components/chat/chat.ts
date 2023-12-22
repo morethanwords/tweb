@@ -654,7 +654,7 @@ export default class Chat extends EventListenerBase<{
   }
 
   public async getMidsByMid(mid: number) {
-    return this.managers.appMessagesManager.getMidsByMessage(await this.getMessage(mid));
+    return this.managers.appMessagesManager.getMidsByMessage(this.getMessage(mid));
   }
 
   public getHistoryStorage(ignoreThreadId?: boolean) {

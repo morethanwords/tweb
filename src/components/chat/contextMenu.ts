@@ -243,7 +243,7 @@ export default class ChatContextMenu {
 
       this.isLegacy = this.messagePeerId && this.messagePeerId !== this.peerId;
       this.isSelected = this.chat.selection.isMidSelected(this.messagePeerId, this.mid);
-      this.message = avatar ? undefined : (bubble as any).message || await this.chat.getMessage(this.mid);
+      this.message = avatar ? undefined : (bubble as any).message || this.chat.getMessage(this.mid);
       this.albumMessages = (this.message as Message.message)?.grouped_id ? await this.managers.appMessagesManager.getMessagesByAlbum((this.message as Message.message).grouped_id) : undefined;
       if(!groupedItem && this.albumMessages) this.message = this.albumMessages[0];
       this.noForwards = this.message && !isSponsored && !(await this.managers.appMessagesManager.canForward(this.message));
@@ -1039,10 +1039,10 @@ export default class ChatContextMenu {
       mids = this.chat.selection.getSelectedMids();
     }
 
-    const parts: string[] = await Promise.all(mids.map(async(mid) => {
-      const message = (await this.chat.getMessage(mid)) as Message.message;
+    const parts: string[] = mids.map((mid) => {
+      const message = this.chat.getMessage(mid) as Message.message;
       return message?.message ? message.message + '\n' : '';
-    }));
+    });
 
     return parts.join('');
   }

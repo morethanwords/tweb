@@ -3293,8 +3293,8 @@ export default class ChatInput {
     return true;
   } */
 
-  public async initMessageEditing(mid: number) {
-    const message = (await this.chat.getMessage(mid)) as Message.message;
+  public initMessageEditing(mid: number) {
+    const message = this.chat.getMessage(mid) as Message.message;
 
     let input = wrapDraftText(message.message, {entities: message.totalEntities, wrappingForPeerId: this.chat.peerId});
     const f = async() => {
