@@ -1569,6 +1569,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 }
 
 .input-message-container {
+  --imc-padding-horizontal: .5625rem;
   width: 1%;
   max-height: inherit;
   flex: 1 1 auto;
@@ -1578,7 +1579,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
   min-height: calc(var(--chat-input-size) - var(--padding-vertical) * 2);
   display: flex;
   align-items: center;
-  padding: 0 .5625rem;
+  padding: 0 var(--imc-padding-horizontal);
 
   .scrollable {
     position: relative;

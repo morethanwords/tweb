@@ -241,11 +241,12 @@
     pointer-events: none;
     position: absolute !important;
     top: 0;
-    left: 0;
 
     // * override scrollable styles
     bottom: auto!important;
-    right: auto!important;
+    left: var(--imc-padding-horizontal) !important;
+    right: var(--imc-padding-horizontal)!important;
+    width: auto !important;
     height: auto!important;
 
     z-index: -3;
