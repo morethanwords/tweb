@@ -389,7 +389,10 @@ const lang = {
     'one_value': '%d undistributed link code was forwarded to channel administrators.',
     'other_value': '%d undistributed link codes were forwarded to channel administrators.'
   },
-  'Giveaway.Results.NoWinners': 'No winners were selected.',
+  'Giveaway.Results.NoWinners': {
+    'one_value': 'Due to the giveaway terms, no winner could be selected by Telegram, **1** gift link was forwarded to channel administrators.',
+    'other_value': 'Due to the giveaway terms, no winners could be selected by Telegram, all **%d** gift links were forwarded to channel administrators.'
+  },
   'Giveaway.Results.Combined': '%s\n%s',
   'SimilarChannels': 'Similar Channels',
   'Premium.Promo.Colors.Title': 'Name and Profile Colors',
@@ -404,6 +407,59 @@ const lang = {
   },
   'AddChannels': 'Add Channels',
   'Chart.Tooltip.All': 'All',
+  'BoostsViaGifts.ShowWinners': 'Show Winners',
+  'BoostsViaGifts.ShowWinnersSubtitle': 'Choose whether to make the list of winners public when the giveaway ends.',
+  'BoostsViaGifts.AdditionalPrizeLabel': 'Enter Your Prize',
+  'BoostsViaGifts.AdditionalPrizes': 'Additional Prizes',
+  'BoostsViaGifts.AdditionalPrizesSubtitle': 'All prizes: %s',
+  'BoostsViaGifts.AdditionalPrizesSubtitleOff': 'Turn this on if you want to give the winners your own prizes in addition to Telegram Premium subscriptions.',
+  'BoostsViaGifts.AdditionalPrizesDetailed': {
+    'one_value': '**%d** Telegram Premium subscription for %s',
+    'other_value': '**%d** Telegram Premium subscriptions for %s'
+  },
+  'BoostsViaGifts.AdditionalPrizesDetailedWith': {
+    'one_value': '**%d** %s with Telegram Premium subscription for %s',
+    'other_value': '**%d** %s with Telegram Premium subscriptions for %s'
+  },
+  'Giveaway.AlsoPrizes': '**%s** also included **%d** **%s** in the prizes. %s',
+  'Giveaway.AlsoPrizes2': {
+    'one_value': 'Admins of the channel are responsible for delivering this prize.',
+    'other_value': 'Admins of the channel are responsible for delivering these prizes.'
+  },
+  'Giveaway.With': 'with',
+  'Giveaway.WithSubscriptionsSingle': 'Telegram Premium subscription for %s',
+  'Giveaway.WithSubscriptionsPlural': 'Telegram Premium subscriptions for %s',
+  'Giveaway.Results.Title': {
+    'one_value': '**Winner Selected!**',
+    'other_value': '**Winners Selected!**'
+  },
+  'BoostingGiveawayResultsMsgAllWinnersReceivedLinks': 'All winners received gift links in private messages.',
+  'Giveaway.Results.Subtitle': {
+    'one_value': '%1$d winner of the **[Giveaway]()** was randomly selected by Telegram.',
+    'other_value': '%1$d winners of the **[Giveaway]()** were randomly selected by Telegram.'
+  },
+  'Giveaway.Results.Footer': {
+    'one_value': 'The winner received their gift link in a private message.',
+    'other_value': 'All winners received their gift links in private messages.'
+  },
+  'Giveaway.Results.AndMore': '**and %d more!**',
+  'GiftCode.ShareReceived': 'This link allows you or **[anyone you choose]()** to activate a **Telegram Premium** subscription.',
+  'GiftModal.Title.You': 'You gifted **%1$s** a %2$s subscription to Telegram Premium.',
+  'GiftCode.Activation.After': 'You can activate this gift code after **%1$s** or **[send the link]()** to a friend.',
+  'Story.ViewPost': 'View Message',
+  'RequestPeer.MultipleLimit': 'You can select up to %s.',
+  'RequestPeer.MultipleLimit.Users': {
+    'one_value': '%d user',
+    'other_value': '%d users'
+  },
+  'RequestPeer.MultipleLimit.Channels': {
+    'one_value': '%d channels',
+    'other_value': '%d channelss'
+  },
+  'RequestPeer.MultipleLimit.Groups': {
+    'one_value': '%d group',
+    'other_value': '%d groups'
+  },
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -1623,6 +1679,26 @@ const lang = {
   'TopicViewAsTopics': 'View as topics',
   'TypeMessageIn': 'Message in %1$s',
   'PaymentInvoiceLinkInvalid': 'Invalid invoice',
+  'BoostingGiveawayDeleteMsgTitle': 'Delete announcement',
+  'BoostingGiveawayDeleteMsgText': 'Deleting this message won\'t cancel the giveaway — the winners will still be selected on **%s**.\n\nOnce deleted, the Giveaway Announcement cannot be restored.',
+  'BoostingGiveawayResultsMsgWinners': {
+    'one_value': '**Winner**',
+    'other_value': '**Winners**'
+  },
+  'GiftPremiumUseGiftBtn': 'Use Gift',
+  'ActionGiftPremiumView': 'View',
+  'TelegramPremiumUserGiftedPremiumDialogTitleWithPlural': '**%1$s** has gifted you a %2$s subscription to Telegram Premium.',
+  'TelegramPremiumUserGiftedPremiumDialogTitleWithPluralSomeone': 'Someone has gifted you a %1$s subscription to Telegram Premium.',
+  'TelegramPremiumUserGiftedPremiumDialogSubtitle': 'You now have access to additional features.',
+  'TelegramPremiumUserGiftedPremiumOutboundDialogSubtitle': '**%1$s** now has access to additional features.',
+  'GiftMonths': {
+    'one_value': '%1$d-month',
+    'other_value': '%1$d-months'
+  },
+  'BoostingGiftLinkForwardedTo': 'Gift link forwarded to **%1$s**.',
+  'BoostingGiftLinkForwardedToSavedMsg': 'Gift link forwarded to **Saved Messages**.',
+  'GiftPremiumActivateForFree': 'Activate For Free',
+  'GiftPremiumActivateErrorTitle': 'You already have Telegram Premium',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
@@ -2039,7 +2115,7 @@ const lang = {
   'PrivacySettings.VoiceCalls': 'Calls',
   'PrivacySettings.Forwards': 'Forwarded Messages',
   'PrivacySettings.Groups': 'Groups and Channels',
-  'PrivacySettings.Voice.PremiumError' :'Only subscribers of [Telegram Premium]() can restrict receiving Voice and Video Messages.',
+  'PrivacySettings.Voice.PremiumError': 'Only subscribers of [Telegram Premium]() can restrict receiving Voice and Video Messages.',
   'PrivacySettingsController.AddUsers': 'Add Users',
   'PrivacySettingsController.GroupDescription': 'You can restrict who can add you to groups and channels with granular precision.',
   'PrivacySettingsController.Forwards.CustomHelp': 'You can restrict who can add a link to your account when forwarding your messages.',
@@ -2181,9 +2257,7 @@ const lang = {
   'Premium.Boarding.PeerStatus.Default.Title': 'This is %@\'s current status.',
   'Premium.Boarding.PeerStatus.Custom.Title': 'This is %@\'s current status from\n🤡 [%@]().',
   'Premium.Boarding.PeerStatus.Info': 'Emoji status is a premium feature.\nOther features included in **Telegram Premium**:',
-  'Premium.Boarding.Peer.Gift.You.Title': 'You gifted [%1$@](profile) a %2$@-month subscription to Telegram Premium',
   'Premium.Boarding.Peer.Gift.You.Info': 'They now have access to additional features.',
-  'Premium.Boarding.Peer.Gift.Title': '[%1$@](profile) has gifted you a %2$@-month subscription to Telegram Premium',
   'Premium.Boarding.Peer.Gift.Info': 'You now have access to additional features.',
   'Premium.Boarding.About.Title': 'About Telegram Premium',
   'Premium.Boarding.About.Text': 'While the free version of Telegram already gives its users more than any other messaging application, **Telegram Premium** pushes its capabilities even further.\n\n**Telegram Premium** is a paid option, because most Premium Features require additional expenses from Telegram to third parties such as data center providers and server manufacturers. Contributions from **Telegram Premium** users allow us to cover such costs and also help Telegram stay free for everyone.',

@@ -23,7 +23,7 @@ export interface PremiumPromoFeature {
   _titleLangArgs?: (managers: AppManagers) => MaybePromise<FormatterArguments>;
   _subtitleLangArgs?: (managers: AppManagers) => MaybePromise<FormatterArguments>;
   videoPosition?: 'bottom' | 'top';
-  video?: Document;
+  video?: Document.document;
   wrappedVideo?: any;
   type?: string;
   content?: Array<{
@@ -41,7 +41,8 @@ export interface PremiumPromoFeature {
     free?: number,
     premium?: number
   }>;
-  new?: boolean
+  new?: boolean,
+  builded?: boolean
 }
 
 export const PREMIUM_FEATURES_COLORS: string[] = [

@@ -658,7 +658,7 @@ export default class ChatContextMenu {
       icon: 'hand',
       text: 'HideAd',
       onClick: () => {
-        PopupPremium.show('no_ads');
+        PopupPremium.show({feature: 'no_ads'});
       },
       verify: () => this.isSponsored,
       isSponsored: true

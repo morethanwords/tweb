@@ -337,6 +337,7 @@ $color-inactive: rgba(255, 255, 255, .5);
         font-weight: var(--font-weight-bold);
         max-width: 100%;
         overflow: hidden;
+        flex: 0 0 auto;
 
         &Title {
           @include text-overflow(true);
@@ -710,6 +711,25 @@ $color-inactive: rgba(255, 255, 255, .5);
       }
     }
 
+    &Repost {
+      margin-bottom: .25rem;
+      width: fit-content;
+      max-width: 100%;
+
+      &Small {
+        height: 1.5rem;
+        line-height: 1.5rem;
+        border-radius: 1rem;
+        padding: 0 .5rem;
+        background-color: rgba(0, 0, 0, .2);
+        font-size: var(--font-size-14);
+        font-weight: var(--font-weight-bold);
+        cursor: pointer;
+
+        @include text-overflow(true);
+      }
+    }
+
     :global {
       .btn-icon {
         color: #fff;
@@ -956,15 +976,12 @@ $color-inactive: rgba(255, 255, 255, .5);
 
     .reply {
       --peer-color-rgb: 255, 255, 255;  
-      margin-bottom: .25rem;
       display: block;
-      max-width: 100%;
-      width: fit-content;
+      background-color: rgba(0, 0, 0, .2);
 
-      &-title-icon {
-        opacity: .5;
-      }
-      // background-color: rgba(0, 0, 0, .25);
+      // &-title-icon {
+      //   opacity: .5;
+      // }
     }
   }
 

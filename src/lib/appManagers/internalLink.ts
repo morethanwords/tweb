@@ -140,7 +140,8 @@ export namespace InternalLink {
 
   export interface InternalLinkGiftCode {
     _: INTERNAL_LINK_TYPE.GIFT_CODE,
-    slug: string
+    slug: string,
+    stack?: ChatSetPeerOptions['stack'] // local
   }
 }
 

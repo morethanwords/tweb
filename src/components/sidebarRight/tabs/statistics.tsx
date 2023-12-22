@@ -863,7 +863,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
       if(message) {
         assumeType<Message.message>(message);
         this.messages.set(message.mid, message);
-        const totalPublicForwards = (messagePublicForwards as MessagesMessages.messagesMessagesSlice).count ?? messagePublicForwards.messages.length;
+        const totalPublicForwards = messagePublicForwards.count;
         stats.views = makeAbsStats(message.views);
         stats.reactions = makeAbsStats(message.reactions ? message.reactions.results.reduce((acc, v) => acc + v.count, 0) : 0);
         stats.public_shares = makeAbsStats(totalPublicForwards);
@@ -871,26 +871,20 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
 
         setF((value) => (value.count = totalPublicForwards, value));
 
-        let offsetRate: number, offsetId: number, offsetPeerId: PeerId;
-        const r = async(messagesMessages: Exclude<MessagesMessages, MessagesMessages.messagesMessagesNotModified>) => {
-          const messages = messagesMessages.messages as Message.message[];
-          const lastMessage = messages[messages.length - 1];
-          offsetRate = (messagesMessages as MessagesMessages.messagesMessagesSlice).next_rate;
-          offsetId = lastMessage?.mid;
-          offsetPeerId = lastMessage?.peerId;
+        let offset: string;
+        const r = async(statsPublicForwards: StatsPublicForwards.statsPublicForwards) => {
+          offset = statsPublicForwards.next_offset;
 
-          const promises = messages.map(this.renderPeer);
+          const promises = statsPublicForwards.forwards.map(this.renderPublicForward);
           const rendered = await Promise.all(promises);
           setF((value) => {
             value.rendered.push(...rendered.map(({container}) => container));
-            value.loadMore = offsetRate ? () => {
+            value.loadMore = offset ? () => {
               return manager.getMessagePublicForwards({
                 peerId,
                 mid: this.mid,
-                offsetRate,
                 limit: loadLimit,
-                offsetId,
-                offsetPeerId
+                offset
               }).then(r);
             } : undefined;
             return value;

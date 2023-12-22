@@ -47,7 +47,6 @@ export const langPack: {[actionType: string]: LangPackKey} = {
   'messageActionHistoryClear': 'HistoryCleared',
   'messageActionDiscussionStarted': 'DiscussionStarted',
   'messageActionGiveawayLaunch': 'BoostingGiveawayJustStarted',
-  'messageActionGiftCode': 'BoostingReceivedGiftNoName',
 
   'messageActionChannelMigrateFrom': 'ActionMigrateFromGroup',
 
@@ -342,8 +341,8 @@ namespace I18n {
     });
   }
 
-  function pushNextArgument(out: ReturnType<typeof superFormatter>, args: FormatterArguments, indexHolder: {i: number}) {
-    const arg = args[indexHolder.i++];
+  function pushNextArgument(out: ReturnType<typeof superFormatter>, args: FormatterArguments, indexHolder: {i: number}, i?: number) {
+    const arg = args[i === undefined ? indexHolder.i++ : i];
     if(Array.isArray(arg)) {
       out.push(...arg as any);
     } else {
@@ -351,7 +350,15 @@ namespace I18n {
     }
   }
 
-  export function superFormatter(input: string, args?: FormatterArguments, indexHolder = {i: 0}): Exclude<FormatterArgument, FormatterArgument[]>[] {
+  export function superFormatter(input: string, args?: FormatterArguments, indexHolder?: {i: number}): Exclude<FormatterArgument, FormatterArgument[]>[] {
+    if(!indexHolder) { // set starting index for arguments without order
+      indexHolder = {i: 0};
+      const indexes = input.match(/(%|un)\d+/g);
+      if(indexes?.length) {
+        indexHolder.i = Math.max(...indexes.map((str) => +str.replace(/\D/g, '')));
+      }
+    }
+
     const out: ReturnType<typeof superFormatter> = [];
     const regExp = /(\*\*|__)(.+?)\1|(\n)|(\[.+?\]\(.*?\))|un\d|%\d\$.|%./g;
 
@@ -359,7 +366,9 @@ namespace I18n {
     input.replace(regExp, (match, p1: any, p2: any, p3: any, p4: string, offset: number, string: string) => {
       // console.table({match, p1, p2, offset, string});
 
-      out.push(string.slice(lastIndex, offset));
+      if(offset > lastIndex) {
+        out.push(string.slice(lastIndex, offset));
+      }
 
       if(p1) {
         // offset += p1.length;
@@ -412,7 +421,13 @@ namespace I18n {
           out.push(a);
         }
       } else if(args) {
-        pushNextArgument(out, args, indexHolder);
+        const index = match.replace(/\D/g, '');
+        pushNextArgument(
+          out,
+          args,
+          indexHolder,
+          !index || Number.isNaN(+index) ? undefined : Math.min(args.length - 1, +index - 1)
+        );
       }
 
       lastIndex = offset + match.length;

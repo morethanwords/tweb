@@ -18,13 +18,14 @@ import TransitionSlider from '../transition';
 import {Middleware} from '../../helpers/middleware';
 import {PopupPremiumProps} from '../popups/premium';
 import cancelEvent from '../../helpers/dom/cancelEvent';
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
 
 export default class FeaturesCarousel {
-  public features: PremiumPromoFeature[];
+  private features: PremiumPromoFeature[];
   public container: HTMLElement;
-  public carouselItems: HTMLElement[];
+  private carouselItems: HTMLElement[];
   private outerLayoutUpdater: (feature: any) => void;
-  public selectedFeature: PremiumPromoFeatureType;
+  private selectedFeature: PremiumPromoFeatureType;
   private managers: AppManagers;
   private dotsContainer: HTMLDivElement;
   public controlsContainer: HTMLDivElement;
@@ -50,7 +51,7 @@ export default class FeaturesCarousel {
     this.carouselItems = this.features.map((feature) => {
       const container = document.createElement('div');
       container.classList.add('carousel-item', 'tabs-tab');
-      if(feature.video || feature.type === 'premium-stickers') {
+      if(feature.videoPosition || feature.type === 'premium-stickers') {
         const title = document.createElement('div');
         title.classList.add('carousel-item-content-title');
         const subtitle = document.createElement('div');
@@ -88,7 +89,7 @@ export default class FeaturesCarousel {
         this.carouselItems[index].prepend(slideTopSectionContainer);
       }
 
-      if(feature.video) {
+      if(feature.videoPosition) {
         this.downloadVideo(index);
         let frame = slideTopSectionContainer.querySelector<HTMLElement>('.device-frame');
         if(!frame) {
@@ -104,7 +105,7 @@ export default class FeaturesCarousel {
       }
     });
 
-    this.initCarouselControls();
+    this.initCarouselControls(options);
   }
 
   public cleanup() {
@@ -127,7 +128,7 @@ export default class FeaturesCarousel {
     const slideTopSectionContainer = this.carouselItems[featureIndex].querySelector('.carousel-item-content-top-section') as HTMLElement;
     slideTopSectionContainer.removeEventListener('scroll', this.scrollListener);
     slideTopSectionContainer.removeAttribute('style');
-    if(feature.video) {
+    if(feature.videoPosition) {
       await this.appendVideo(featureIndex, this.carouselItems[featureIndex].querySelector('.device-frame'));
     } else {
       if(feature.type !== 'premium-stickers') {
@@ -203,7 +204,7 @@ export default class FeaturesCarousel {
       this.header.classList.remove('not-top');
     }
 
-    if(this.features[featureIndex].video || this.features[featureIndex].type === 'premium-stickers') {
+    if(this.features[featureIndex].videoPosition || this.features[featureIndex].type === 'premium-stickers') {
       backButton.style.color = '#ffffff';
       this.carouselItems[featureIndex].classList.remove('feature-background');
       this.carouselItemsContainer.classList.remove('full');
@@ -260,66 +261,92 @@ export default class FeaturesCarousel {
     this.dotsContainer.style.setProperty('--start', '' + startFrom);
   }
 
-  private initCarouselControls() {
+  private initCarouselControls(options: PopupPremiumProps) {
     this.controlsContainer = document.createElement('div');
     this.controlsContainer.classList.add('popup-premium-controls');
     this.dotsContainer = document.createElement('div');
     this.dotsContainer.classList.add('popup-premium-controls-dots');
     this.controlsContainer.append(this.dotsContainer);
-    this.features.forEach((f, i) => this.dotsContainer.append(this.createFeatureDot(f.feature, i)));
-    this.dotsContainer.addEventListener('click', (e) => {
+    this.features.forEach((f, i) => this.dotsContainer.append(this.createFeatureDot(options, f.feature, i)));
+    attachClickEvent(this.dotsContainer, (e) => {
       e.stopPropagation();
-    });
-    this.container.addEventListener('click', (e) => {
+    }, {listenerSetter: options.listenerSetter});
+    attachClickEvent(this.container, (e) => {
       const rect = this.container.getBoundingClientRect();
       const selectedFeatureIndex = this.features.findIndex((f) => f.feature === this.selectedFeature);
       const add = (rect.left + rect.width / 2) < e.clientX ? 1 : -1;
       const feature = this.features[selectedFeatureIndex + add];
       feature && this.selectSlide(feature.feature);
-    });
+    }, {listenerSetter: options.listenerSetter});
   }
 
-  private createFeatureDot(feature: PremiumPromoFeatureType, index: number) {
+  private createFeatureDot(options: PopupPremiumProps, feature: PremiumPromoFeatureType, index: number) {
     const dot = document.createElement('div');
     dot.classList.add('popup-premium-controls-dot');
     if(feature === this.selectedFeature) {
       dot.classList.add('active');
     }
     dot.dataset.feature = feature;
-    dot.addEventListener('click', (e) => {
+    attachClickEvent(dot, (e) => {
       cancelEvent(e);
       if(feature !== this.selectedFeature) {
         this.selectSlide(feature);
       }
-    });
+    }, {listenerSetter: options.listenerSetter});
     return dot;
   }
 
   private async downloadVideo(featureIndex: number, deviceFrame?: Element, mount = false) {
+    const doc = this.features[featureIndex].video;
+    if(!doc) {
+      return {
+        video: undefined as HTMLVideoElement,
+        loadPromise: new Promise(() => {})
+      };
+    }
+
     const wrappedVideo = await wrapVideo({
-      doc: this.features[featureIndex].video as any,
-      altDoc: null,
+      doc: doc as any,
       withoutPreloader: true,
       noInfo: true,
       noPlayButton: true,
       middleware: this.middleware,
       ...(mount && {container: deviceFrame as HTMLElement})
     });
-    await wrappedVideo.loadPromise;
-    this.features[featureIndex].wrappedVideo = wrappedVideo;
+
+    return this.features[featureIndex].wrappedVideo = wrappedVideo;
   }
 
   private async appendVideo(featureIndex: number, deviceFrame: Element) {
-    const shimmer = document.createElement('div');
-    shimmer.classList.add('shimmer');
-    const premiumIcon = Icon('star', 'device-frame-preload-icon');
-    deviceFrame.append(shimmer, premiumIcon);
-    if(this.features[featureIndex].wrappedVideo) {
+    if(this.features[featureIndex].builded) {
+      return;
+    }
+
+    this.features[featureIndex].builded = true;
+    let shimmer: HTMLElement, premiumIcon: HTMLElement;
+
+    let wrappedVideo = this.features[featureIndex].wrappedVideo;
+    if(!wrappedVideo?.loaded) {
+      shimmer = document.createElement('div');
+      shimmer.classList.add('shimmer');
+      premiumIcon = Icon('star', 'device-frame-preload-icon');
+      deviceFrame.append(...[wrappedVideo.thumb.images.thumb, shimmer, premiumIcon].filter(Boolean));
+    }
+
+    if(wrappedVideo) {
       deviceFrame.append(this.features[featureIndex].wrappedVideo.video);
     } else {
-      await this.downloadVideo(featureIndex, deviceFrame, true);
+      wrappedVideo = await this.downloadVideo(featureIndex, deviceFrame, true);
+      wrappedVideo.loadPromise.then(() => {
+        wrappedVideo.loaded = true;
+      });
     }
-    shimmer.remove();
-    premiumIcon.remove();
+
+    if(shimmer) {
+      wrappedVideo.loadPromise.then(() => {
+        shimmer.remove();
+        premiumIcon.remove();
+      });
+    }
   }
 }

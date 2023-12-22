@@ -42,6 +42,7 @@ import CustomEmojiElement from '../../../lib/customEmoji/element';
 import {CustomEmojiRendererElement} from '../../../lib/customEmoji/renderer';
 import Icon from '../../icon';
 import {NULL_PEER_ID} from '../../../lib/mtproto/mtproto_config';
+import anchorCallback from '../../../helpers/dom/anchorCallback';
 
 const loadedURLs: Set<string> = new Set();
 export function appendEmoji(emoji: string, container?: HTMLElement, prepend = false, unify = false) {
@@ -800,11 +801,10 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
         this.isStandalone ? category.id !== CUSTOM_EMOJI_RECENT_ID : this.peerId !== rootScope.myId
       ) && !this.freeCustomEmoji.has(emoji.docId)
     ) {
-      const a = document.createElement('a');
-      a.onclick = () => {
-        appImManager.openPremiumBot();
+      const a = anchorCallback(() => {
         hideToast();
-      };
+        appImManager.openPremiumBot();
+      });
       toastNew({
         langPackKey: 'CustomEmoji.PremiumAlert',
         langPackArguments: [a]

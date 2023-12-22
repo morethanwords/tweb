@@ -10,8 +10,10 @@ import PopupPeer, {PopupPeerButtonCallbackCheckboxes, PopupPeerOptions} from './
 import {ChatType} from '../chat/chat';
 import {i18n, LangPackKey} from '../../lib/langPack';
 import hasRights from '../../lib/appManagers/utils/chats/hasRights';
-import filterAsync from '../../helpers/array/filterAsync';
 import wrapPeerTitle from '../wrappers/peerTitle';
+import {Message, MessageMedia} from '../../layer';
+import {formatFullSentTime} from '../../helpers/date';
+import tsNow from '../../helpers/tsNow';
 
 export default class PopupDeleteMessages {
   constructor(
@@ -27,11 +29,12 @@ export default class PopupDeleteMessages {
   private async construct() {
     let {peerId, mids, type, onConfirm, threadId} = this;
 
-    const peerTitleElement = await wrapPeerTitle({peerId, threadId});
+    mids = mids.slice();
 
     const managers = PopupElement.MANAGERS;
+    const peerTitleElement = await wrapPeerTitle({peerId, threadId});
+    const messages = await Promise.all(mids.map((mid) => managers.appMessagesManager.getMessageByPeer(peerId, mid)));
 
-    mids = mids.slice();
     const callback = (e: MouseEvent, checked: PopupPeerButtonCallbackCheckboxes, revoke?: boolean) => {
       onConfirm?.();
       if(type === 'scheduled') {
@@ -74,8 +77,8 @@ export default class PopupDeleteMessages {
 
         const _hasRights = hasRights(chat, 'delete_messages');
         if(chat._ === 'chat') {
-          const canRevoke = _hasRights ? mids.slice() : await filterAsync(mids, async(mid) => {
-            const message = await managers.appMessagesManager.getMessageByPeer(peerId, mid);
+          const canRevoke = _hasRights ? mids.slice() : mids.filter((mid, idx) => {
+            const message = messages[idx];
             return message.fromId === rootScope.myId;
           });
 
@@ -95,6 +98,20 @@ export default class PopupDeleteMessages {
             }
           }
         } else {
+          let foundGiveaway: MessageMedia.messageMediaGiveaway;
+          messages.find((message) => {
+            return message &&
+              (message as Message.message).media?._ === 'messageMediaGiveaway' &&
+              !(message as Message.message).fwdFromId &&
+              (foundGiveaway = (message as Message.message).media as MessageMedia.messageMediaGiveaway);
+          });
+
+          if(foundGiveaway && foundGiveaway.until_date >= tsNow(true)) {
+            title = 'BoostingGiveawayDeleteMsgTitle';
+            description = 'BoostingGiveawayDeleteMsgText';
+            descriptionArgs = [formatFullSentTime(foundGiveaway.until_date, undefined, true)];
+          }
+
           buttons[0].callback = (e, checked) => callback(e, checked, true);
         }
       }

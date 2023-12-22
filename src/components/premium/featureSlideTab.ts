@@ -8,6 +8,7 @@ import ButtonIcon from '../buttonIcon';
 import FeaturesCarousel from './featuresCarousel';
 import {PopupPremiumProps} from '../popups/premium';
 import TransitionSlider from '../transition';
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
 
 type FeatureSlideTabOptions = PopupPremiumProps & {
   header: HTMLElement,
@@ -40,10 +41,11 @@ export default class FeatureSlideTab {
     });
     tab.append(this.featureCarousel.container, this.featureCarousel.controlsContainer);
     this.tab = tab;
-    this.backBtn.addEventListener('click', () => {
+
+    attachClickEvent(this.backBtn, () => {
       this.featureCarousel.slideIndex = undefined;
       this.transition(0);
-    });
+    }, {listenerSetter: options.listenerSetter});
   }
 
   public setCarouselSlide(feature: PremiumPromoFeatureType) {

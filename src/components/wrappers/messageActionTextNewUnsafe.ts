@@ -7,10 +7,10 @@
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import {formatTime, ONE_DAY} from '../../helpers/date';
 import htmlToSpan from '../../helpers/dom/htmlToSpan';
-import setInnerHTML from '../../helpers/dom/setInnerHTML';
+import setInnerHTML, {setDirection} from '../../helpers/dom/setInnerHTML';
 import {wrapCallDuration} from './wrapDuration';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
-import {ForumTopic, Message, MessageAction, MessageReplyHeader} from '../../layer';
+import {ForumTopic, Message, MessageAction, MessageMedia, MessageReplyHeader} from '../../layer';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import I18n, {FormatterArgument, FormatterArguments, i18n, join, langPack, LangPackKey, _i18n} from '../../lib/langPack';
 import {GENERAL_TOPIC_ID} from '../../lib/mtproto/mtproto_config';
@@ -25,6 +25,7 @@ import wrapJoinVoiceChatAnchor from './joinVoiceChatAnchor';
 import {WrapMessageActionTextOptions} from './messageActionTextNew';
 import wrapMessageForReply, {WrapMessageForReplyOptions} from './messageForReply';
 import wrapPeerTitle from './peerTitle';
+import shouldDisplayGiftCodeAsGift from '../../helpers/shouldDisplayGiftCodeAsGift';
 
 async function wrapLinkToMessage(options: WrapMessageForReplyOptions) {
   const wrapped = await wrapMessageForReply(options);
@@ -35,8 +36,8 @@ async function wrapLinkToMessage(options: WrapMessageForReplyOptions) {
 
   const a = document.createElement('i');
   a.dataset.savedFrom = (options.message as Message.message).peerId + '_' + (options.message as Message.message).mid;
-  a.dir = 'auto';
   a.append(wrapped);
+  setDirection(a);
   return a;
 }
 
@@ -102,6 +103,35 @@ async function wrapMessageActionTopicIconAndName(options: WrapMessageActionTextO
   return span;
 }
 
+export function wrapMessageGiveawayResults(action: MessageAction.messageActionGiveawayResults | MessageMedia.messageMediaGiveawayResults, plain?: boolean) {
+  let langPackKey: LangPackKey = 'Giveaway.Results';
+  let args: FormatterArguments = [action.winners_count];
+
+  const setCombined = (addLangPackKey: LangPackKey, addArgs?: FormatterArguments) => {
+    args = [
+      plain ?
+        I18n.format(langPackKey, true, args as FormatterArguments) :
+        i18n(langPackKey, args as FormatterArguments)
+    ];
+
+    langPackKey = 'Giveaway.Results.Combined';
+    args.push(
+      plain ?
+        I18n.format(addLangPackKey, true, addArgs) :
+        i18n(addLangPackKey, addArgs)
+    );
+  };
+
+  if(!action.winners_count) {
+    langPackKey = 'Giveaway.Results.NoWinners';
+    args = [action.unclaimed_count];
+  } else if(action.unclaimed_count) {
+    setCombined('Giveaway.Results.Unclaimed', [action.unclaimed_count]);
+  }
+
+  return {langPackKey, args};
+}
+
 export default async function wrapMessageActionTextNewUnsafe(options: WrapMessageActionTextOptions) {
   const {plain, message, noLinks} = options;
   const element: HTMLElement = plain ? undefined : document.createElement('span');
@@ -127,6 +157,27 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
 
     const getNameDivHTML = (peerId: PeerId, plain: boolean) => {
       return plain ? getPeerTitle({peerId, plainText: plain}) : wrapPeerTitle({peerId});
+    };
+
+    const getSeveralNameDivHTML = async(peerIds: PeerId[], plain: boolean) => {
+      if(peerIds.length === 1) {
+        return getNameDivHTML(peerIds[0], plain);
+      }
+
+      const joined = join(
+        await Promise.all(peerIds.map((peerId) => getNameDivHTML(peerId, plain))),
+        false,
+        plain
+      );
+
+      if(plain) {
+        return Array.isArray(joined) ? joined.join('') : joined;
+      } else {
+        const fragment = document.createElement('span');
+        fragment.append(...joined);
+        args.push(fragment);
+        return fragment;
+      }
     };
 
     switch(action._) {
@@ -292,24 +343,8 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
 
         args = [getNameDivHTML(message.fromId, plain)];
 
-        if(users.length > 1) {
-          const joined = join(
-            await Promise.all(users.map((userId: UserId) => getNameDivHTML(userId.toPeerId(), plain))),
-            false,
-            plain
-          );
-
-          if(plain) {
-            args.push(...joined);
-          } else {
-            const fragment = document.createElement('span');
-            fragment.append(...joined);
-            args.push(fragment);
-          }
-        } else {
-          args.push(getNameDivHTML(users[0].toPeerId(), plain));
-        }
-
+        const peerIds = users.map((userId) => userId.toPeerId(false));
+        args.push(getSeveralNameDivHTML(peerIds, plain));
         break;
       }
 
@@ -494,8 +529,20 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         break;
       }
 
+      case 'messageActionGiftCode':
       case 'messageActionGiftPremium': {
-        const isMe = !!message.pFlags.out;
+        const isGiftCode = action._ === 'messageActionGiftCode';
+        if(isGiftCode && !shouldDisplayGiftCodeAsGift(action)) {
+          langPackKey = 'BoostingReceivedGiftNoName';
+          if(action.boost_peer) {
+            langPackKey = 'BoostingReceivedGiftFrom';
+            args = [getNameDivHTML(getPeerId(action.boost_peer), plain)];
+          }
+
+          break;
+        }
+
+        const isMe = !!message.pFlags.out && !isGiftCode;
         let authorElement: ReturnType<typeof getNameDivHTML>;
         if(!isMe) {
           authorElement = getNameDivHTML(message.fromId, plain);
@@ -518,34 +565,17 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
 
       case 'messageActionRequestedPeer': {
         langPackKey = 'Chat.Service.PeerRequested';
-        args = [getNameDivHTML(getPeerId(action.peer), plain), getNameDivHTML(message.peerId, plain)];
+        args = [
+          getSeveralNameDivHTML(action.peers.map((peer) => getPeerId(peer)), plain),
+          getNameDivHTML(message.peerId, plain)
+        ];
         break;
       }
 
       case 'messageActionGiveawayResults': {
-        langPackKey = 'Giveaway.Results';
-        args = [action.winners_count];
-
-        const setCombined = (addLangPackKey: LangPackKey, addArgs?: FormatterArguments) => {
-          args = [
-            plain ?
-              I18n.format(langPackKey, true, args as FormatterArguments) :
-              i18n(langPackKey, args as FormatterArguments)
-          ];
-
-          langPackKey = 'Giveaway.Results.Combined';
-          args.push(
-            plain ?
-              I18n.format(addLangPackKey, true, addArgs) :
-              i18n(addLangPackKey, addArgs)
-          );
-        };
-
-        if(!action.winners_count) {
-          setCombined('Giveaway.Results.NoWinners');
-        } else if(action.unclaimed_count) {
-          setCombined('Giveaway.Results.Unclaimed', [action.unclaimed_count]);
-        }
+        const r = wrapMessageGiveawayResults(action, plain);
+        langPackKey = r.langPackKey;
+        args = r.args;
         break;
       }
 

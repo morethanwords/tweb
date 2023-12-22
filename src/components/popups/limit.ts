@@ -65,7 +65,7 @@ class P extends PopupPeer {
       }] : [{
         langKey: 'IncreaseLimit',
         callback: () => {
-          PopupPremium.show(options.feature);
+          PopupPremium.show({feature: options.feature});
         },
         iconRight: 'premium_double'
       }, {

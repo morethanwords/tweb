@@ -1020,12 +1020,13 @@ export default class AppSelectPeers {
     return checkboxField.label;
   }
 
-  public static renderEntity({key, middleware, title, avatarSize, fallbackIcon}: {
+  public static renderEntity({key, middleware, title, avatarSize, fallbackIcon, meAsSaved = true}: {
     key: PeerId | string,
     middleware: Middleware,
     title?: string | HTMLElement,
     avatarSize: number,
-    fallbackIcon?: Icon
+    fallbackIcon?: Icon,
+    meAsSaved?: boolean
   }) {
     const div = document.createElement('div');
     div.classList.add('selector-user');
@@ -1039,7 +1040,7 @@ export default class AppSelectPeers {
     const avatarEl = avatarNew({
       middleware: div.middlewareHelper.get(),
       size: avatarSize,
-      isDialog: true
+      isDialog: meAsSaved
     });
     avatarEl.node.classList.add('selector-user-avatar');
     avatarContainer.append(avatarEl.node, avatarClose);
@@ -1048,7 +1049,7 @@ export default class AppSelectPeers {
     if(key.isPeerId()) {
       if(title === undefined) {
         const peerTitle = new PeerTitle();
-        peerTitle.update({peerId: key.toPeerId(), dialog: true});
+        peerTitle.update({peerId: key.toPeerId(), dialog: meAsSaved});
         title = peerTitle.element;
       }
 
