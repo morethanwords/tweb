@@ -609,7 +609,7 @@ export default class PopupBoostsViaGifts extends PopupElement {
         until_date: expiration(),
         additional_peers: peers.length > 1 ? peers.slice(1) : undefined,
         countries_iso2: countries()?.length ? countries() : undefined,
-        prize_description: additionalPrize() || undefined
+        prize_description: (additionalPrizes() && additionalPrize()) || undefined
       };
     };
 
