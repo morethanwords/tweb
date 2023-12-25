@@ -330,7 +330,7 @@ export default class FeaturesCarousel {
       shimmer = document.createElement('div');
       shimmer.classList.add('shimmer');
       premiumIcon = Icon('star', 'device-frame-preload-icon');
-      deviceFrame.append(...[wrappedVideo.thumb.images.thumb, shimmer, premiumIcon].filter(Boolean));
+      deviceFrame.append(...[wrappedVideo?.thumb?.images?.thumb, shimmer, premiumIcon].filter(Boolean));
     }
 
     if(wrappedVideo) {
