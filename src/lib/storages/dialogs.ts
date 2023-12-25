@@ -1021,6 +1021,23 @@ export default class DialogsStorage extends AppManager {
    */
   public dropDialogOnDeletion(peerId: PeerId, topicId?: number) {
     this.dropDialogWithEvent(peerId, topicId);
+
+    // * drop 'you joined this channel' service message
+    if(this.appPeersManager.isBroadcast(peerId)) {
+      const historyStorage = this.appMessagesManager.getHistoryStorage(peerId);
+      const mid = historyStorage?.channelJoinedMid;
+      if(mid) {
+        historyStorage.channelJoinedMid = undefined;
+        this.apiUpdatesManager.processLocalUpdate({
+          _: 'updateDeleteChannelMessages',
+          channel_id: peerId.toChatId(),
+          messages: [mid],
+          pts: undefined,
+          pts_count: undefined
+        });
+      }
+    }
+
     this.rootScope.dispatchEvent('peer_deleted', peerId);
   }
 
@@ -1275,19 +1292,20 @@ export default class DialogsStorage extends AppManager {
     if(!mid) {} else
     /* if(historyStorage === undefined) { // warning
       historyStorage.history.push(mid);
-    } else  */if(!slice.length) {
+    } else  */if(!slice.length || !slice.isEnd(SliceEnd.Bottom)) {  // * second condition will probably never happen, however, if it does, then it will fix slice with top_message
       historyStorage.history.unshift(mid);
-      historyStorage.count ||= 1;
+      historyStorage.count ||= historyStorage.history.length;
       if(this.appMessagesManager.mergeReplyKeyboard(historyStorage, message)) {
         this.rootScope.dispatchEvent('history_reply_markup', {peerId});
       }
-    } else if(!slice.isEnd(SliceEnd.Bottom)) { // * this will probably never happen, however, if it does, then it will fix slice with top_message
-      const slice = historyStorage.history.insertSlice([mid]);
-      slice.setEnd(SliceEnd.Bottom);
-      historyStorage.count ||= 1;
-      if(this.appMessagesManager.mergeReplyKeyboard(historyStorage, message)) {
-        this.rootScope.dispatchEvent('history_reply_markup', {peerId});
-      }
+    } else if(isDialog && !wasDialogBefore) {
+      this.appMessagesManager.insertChannelJoinedService(peerId, historyStorage);
+    }
+
+    // * if set channel joined message
+    if(isDialog && dialog.top_message < historyStorage.history.first[0]) {
+      mid = dialog.top_message = historyStorage.history.first[0];
+      dialog.topMessage = this.appMessagesManager.getMessageByPeer(peerId, dialog.top_message);
     }
 
     historyStorage.maxId = mid;

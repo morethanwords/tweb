@@ -66,6 +66,7 @@ import wrapMessageEntities from '../richTextProcessor/wrapMessageEntities';
 import isLegacyMessageId from './utils/messageId/isLegacyMessageId';
 import {joinDeepPath} from '../../helpers/object/setDeepProperty';
 import getPeerId from './utils/peers/getPeerId';
+import insertInDescendSortedArray from '../../helpers/array/insertInDescendSortedArray';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -106,6 +107,9 @@ export type HistoryStorage = {
   replyMarkup?: Exclude<ReplyMarkup, ReplyMarkup.replyInlineMarkup>,
 
   type: 'history' | 'replies' | 'search',
+
+  channelJoinedMid?: number,
+  originalInsertSlice?: SlicedArray<number>['insertSlice']
 };
 
 export type HistoryResult = {
@@ -4679,6 +4683,107 @@ export class AppMessagesManager extends AppManager {
     return promise;
   }
 
+  public getDetailsForChannelJoinedService(peerId: PeerId, historyStorage: HistoryStorage, slice?: SlicedArray<number>['slice']) {
+    if(historyStorage.channelJoinedMid) {
+      return;
+    }
+
+    const chatId = peerId.toChatId();
+    const chat = this.appChatsManager.getChat(chatId);
+    const date = (chat as Chat.channel)?.date;
+    if(!date) {
+      return;
+    }
+
+    const slices = slice ? [slice] : historyStorage.history.slices;
+    for(const slice of slices) {
+      let newerMessage: Message, olderMessage: Message;
+
+      for(const mid of slice) {
+        const message = this.getMessageByPeer(peerId, mid);
+        if(message.date >= date) {
+          newerMessage = message;
+        } else {
+          olderMessage = message;
+          break;
+        }
+      }
+
+      const isNewerGood = newerMessage || slice.isEnd(SliceEnd.Bottom);
+      const isOlderGood = olderMessage || slice.isEnd(SliceEnd.Top);
+      if(isNewerGood && isOlderGood) {
+        return {
+          date,
+          slice,
+          newerMessage,
+          olderMessage
+        };
+      }
+    }
+  }
+
+  public insertChannelJoinedService(peerId: PeerId, historyStorage: HistoryStorage, _slice?: SlicedArray<number>['slice']) {
+    const details = this.getDetailsForChannelJoinedService(peerId, historyStorage, _slice);
+    if(!details) {
+      return false;
+    }
+
+    const {date, slice, newerMessage, olderMessage} = details;
+
+    const mid = this.generateTempMessageId(peerId, olderMessage?.mid || newerMessage.mid - 1);
+    this.log('will insert channel joined', peerId, mid, newerMessage?.mid, olderMessage?.mid, slice);
+
+    const message: Message.messageService = {
+      _: 'messageService',
+      pFlags: {
+        is_single: true
+      },
+      id: mid,
+      date,
+      from_id: {_: 'peerUser', user_id: NULL_PEER_ID},
+      peer_id: this.appPeersManager.getOutputPeer(peerId),
+      action: {
+        _: 'messageActionChannelJoined'
+      }
+    };
+    this.saveMessages([message], {isOutgoing: true});
+
+    // const insertSlice = historyStorage.originalInsertSlice || historyStorage.history.insertSlice.bind(historyStorage.history);
+    // insertSlice([newerMessage?.mid, message.mid, olderMessage?.mid].filter(Boolean));
+    insertInDescendSortedArray(slice, mid);
+
+    historyStorage.maxId = Math.max(historyStorage.maxId, message.mid);
+    historyStorage.channelJoinedMid = message.mid;
+    if(historyStorage.originalInsertSlice) {
+      historyStorage.history.insertSlice = historyStorage.originalInsertSlice;
+      delete historyStorage.originalInsertSlice;
+    }
+
+    const dialog = this.getDialogOnly(peerId);
+    if(dialog && dialog.top_message < message.mid) {
+      this.setDialogTopMessage(message, dialog);
+      this.handleNewMessage(message);
+    }
+
+    return true;
+  }
+
+  private processNewHistoryStorage(peerId: PeerId, historyStorage: HistoryStorage) {
+    if(this.appPeersManager.isBroadcast(peerId) && !historyStorage.originalInsertSlice) {
+      historyStorage.originalInsertSlice = historyStorage.history.insertSlice.bind(historyStorage.history);
+      historyStorage.history.insertSlice = (...args) => {
+        const slice = historyStorage.originalInsertSlice(...args);
+        if(slice) {
+          this.insertChannelJoinedService(peerId, historyStorage, slice);
+        }
+
+        return slice;
+      };
+    }
+
+    return historyStorage;
+  }
+
   public createHistoryStorage(type: HistoryStorage['type']): HistoryStorage {
     return {count: null, history: new SlicedArray(), type};
   }
@@ -4689,7 +4794,7 @@ export class AppMessagesManager extends AppManager {
       return (this.threadsStorage[peerId] ??= {})[threadId] ??= this.createHistoryStorage('replies');
     }
 
-    return this.historiesStorage[peerId] ??= this.createHistoryStorage('history');
+    return this.historiesStorage[peerId] ??= this.processNewHistoryStorage(peerId, this.createHistoryStorage('history'));
   }
 
   public getHistoryStorageTransferable(peerId: PeerId, threadId?: number) {

@@ -1703,6 +1703,7 @@ const lang = {
   'GiftPremiumActivateForFree': 'Activate For Free',
   'GiftPremiumActivateErrorTitle': 'You already have Telegram Premium',
   'GiftPremiumGifting': 'Premium Gifting',
+  'ChannelJoined': 'You joined this channel',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

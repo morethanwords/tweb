@@ -3028,7 +3028,10 @@ export class AppDialogsManager {
 
       lastMessage = (dialog as Dialog).topMessage;
       if(lastMessage?.mid !== dialog.top_message) {
-        lastMessage = apiManagerProxy.getMessageByPeer(peerId, dialog.top_message);
+        const trueLastMessage = apiManagerProxy.getMessageByPeer(peerId, dialog.top_message);
+        if((trueLastMessage as Message.messageService).action?._ !== 'messageActionChannelJoined') {
+          lastMessage = trueLastMessage;
+        }
       }
     }
 

@@ -47,6 +47,7 @@ export const langPack: {[actionType: string]: LangPackKey} = {
   'messageActionHistoryClear': 'HistoryCleared',
   'messageActionDiscussionStarted': 'DiscussionStarted',
   'messageActionGiveawayLaunch': 'BoostingGiveawayJustStarted',
+  'messageActionChannelJoined': 'ChannelJoined',
 
   'messageActionChannelMigrateFrom': 'ActionMigrateFromGroup',
 

@@ -209,6 +209,10 @@
   "params": [],
   "type": "MessageAction"
 }, {
+  "predicate": "messageActionChannelJoined",
+  "params": [],
+  "type": "MessageAction"
+}, {
   "predicate": "messageActionChatLeave",
   "params": [
     {"name": "user_id", "type": "UserId"}

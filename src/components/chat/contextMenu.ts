@@ -418,7 +418,9 @@ export default class ChatContextMenu {
       icon: 'send2',
       text: 'Message.Context.Selection.SendNow',
       onClick: this.onSendScheduledClick,
-      verify: () => this.chat.type === 'scheduled' && this.isSelected && !this.chat.selection.selectionSendNowBtn.hasAttribute('disabled'),
+      verify: () => this.chat.type === 'scheduled' &&
+        this.isSelected &&
+        !this.chat.selection.selectionSendNowBtn.hasAttribute('disabled'),
       notDirect: () => true,
       withSelection: true
     }, {
@@ -470,12 +472,16 @@ export default class ChatContextMenu {
       icon: 'edit',
       text: 'Edit',
       onClick: this.onEditClick,
-      verify: async() => (await this.managers.appMessagesManager.canEditMessage(this.message, 'text')) && !!this.chat.input.messageInput
+      verify: async() => (await this.managers.appMessagesManager.canEditMessage(this.message, 'text')) &&
+        !!this.chat.input.messageInput
     }, {
       icon: 'copy',
       text: 'Copy',
       onClick: this.onCopyClick,
-      verify: () => !this.noForwards && !!(this.message as Message.message).message && !this.isTextSelected && (!this.isAnchorTarget || (this.message as Message.message).message !== this.target.innerText)
+      verify: () => !this.noForwards &&
+        !!(this.message as Message.message).message &&
+        !this.isTextSelected &&
+        (!this.isAnchorTarget || (this.message as Message.message).message !== this.target.innerText)
     }, {
       icon: 'copy',
       text: 'Chat.CopySelectedText',
@@ -566,19 +572,27 @@ export default class ChatContextMenu {
       onClick: this.onStopPoll,
       verify: async() => {
         const poll = (this.message as any).media?.poll;
-        return await this.managers.appMessagesManager.canEditMessage(this.message, 'poll') && poll && !poll.pFlags.closed && !this.message.pFlags.is_outgoing;
+        return await this.managers.appMessagesManager.canEditMessage(this.message, 'poll') &&
+          poll &&
+          !poll.pFlags.closed &&
+          !this.message.pFlags.is_outgoing;
       }/* ,
       cancelEvent: true */
     }, {
       icon: 'statistics',
       text: 'ViewStatistics',
       onClick: this.onStatisticsClick,
-      verify: async() => await this.managers.appPeersManager.isBroadcast(this.peerId) && this.managers.appProfileManager.canViewStatistics(this.peerId)
+      verify: async() => await this.managers.appPeersManager.isBroadcast(this.peerId) &&
+        this.managers.appProfileManager.canViewStatistics(this.peerId) &&
+        !this.message.pFlags.is_outgoing
     }, {
       icon: 'forward',
       text: 'Forward',
       onClick: this.onForwardClick, // let forward the message if it's outgoing but not ours (like a changelog)
-      verify: () => !this.noForwards && this.chat.type !== 'scheduled' && (!this.message.pFlags.is_outgoing || this.message.fromId === SERVICE_PEER_ID) && this.message._ !== 'messageService'
+      verify: () => !this.noForwards &&
+        this.chat.type !== 'scheduled' &&
+        (!this.message.pFlags.is_outgoing || this.message.fromId === SERVICE_PEER_ID) &&
+        this.message._ !== 'messageService'
     }, {
       icon: 'forward',
       text: 'Message.Context.Selection.Forward',
@@ -600,7 +614,10 @@ export default class ChatContextMenu {
       onClick: () => {
         PopupElement.createPopup(PopupReportMessages, this.peerId, [this.mid]);
       },
-      verify: () => !this.message.pFlags.out && this.message._ === 'message' && !this.message.pFlags.is_outgoing && this.managers.appPeersManager.isChannel(this.peerId),
+      verify: () => !this.message.pFlags.out &&
+        this.message._ === 'message' &&
+        !this.message.pFlags.is_outgoing &&
+        this.managers.appPeersManager.isChannel(this.peerId),
       notDirect: () => true,
       withSelection: true
     }, {
@@ -629,7 +646,8 @@ export default class ChatContextMenu {
           return false;
         }
       },
-      verify: () => !this.peerId.isUser() && (!!(this.message as Message.message).reactions?.recent_reactions?.length || this.managers.appMessagesManager.canViewMessageReadParticipants(this.message)),
+      verify: () => !this.peerId.isUser() &&
+        (!!(this.message as Message.message).reactions?.recent_reactions?.length || this.managers.appMessagesManager.canViewMessageReadParticipants(this.message)),
       notDirect: () => true,
       localName: 'views'
     }, {

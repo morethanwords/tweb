@@ -53,7 +53,7 @@ export type SlicedArraySerialized<T extends ItemType> = {
 };
 
 export default class SlicedArray<T extends ItemType> {
-  private slices: Slice<T>[]/*  = [[7,6,5],[4,3,2],[1,0,-1]] */;
+  public slices: Slice<T>[]/*  = [[7,6,5],[4,3,2],[1,0,-1]] */;
   private sliceConstructor: SliceConstructor<T>;
 
   constructor() {
@@ -388,7 +388,7 @@ export default class SlicedArray<T extends ItemType> {
       this.slices.unshift(slice);
     }
 
-    slice.unshift(...items);
+    this.insertSlice(items);
   }
 
   public push(...items: T[]) {
