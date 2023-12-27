@@ -5000,10 +5000,6 @@ export default class ChatBubbles {
             updateHidden(!force);
           };
 
-          attachClickEvent(bubbleContainer, () => {
-            toggle();
-          });
-
           const deferred = deferredPromise<void>();
 
           const updateHidden = async(hidden: boolean) => {
@@ -5028,6 +5024,7 @@ export default class ChatBubbles {
                 }
               },
               onReady: async() => {
+                bubbleContainer.classList.add('is-clickable');
                 await getHeavyAnimationPromise();
 
                 const state = await apiManagerProxy.getState();
@@ -5038,6 +5035,13 @@ export default class ChatBubbles {
                 if(cached) {
                   deferred.resolve();
                 }
+
+                attachClickEvent(bubbleContainer, () => {
+                  toggle();
+                });
+              },
+              onEmpty: () => {
+                deferred.resolve();
               }
             }),
             c,

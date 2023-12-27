@@ -380,6 +380,10 @@
         }
       }
     }
+
+    &.is-clickable {
+      cursor: pointer;
+    }
   }
 
   &-hover-reaction {
@@ -2503,8 +2507,6 @@
 
   &.is-similar-channels {
     .bubble-content {
-      cursor: pointer;
-
       &-wrapper {
         padding: 0 !important;
       }

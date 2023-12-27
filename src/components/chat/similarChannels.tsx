@@ -28,7 +28,8 @@ export default function SimilarChannels(props: {
   chatId: ChatId,
   onClose: () => void,
   onAcked?: (cached: boolean) => void,
-  onReady?: () => void
+  onReady?: () => void,
+  onEmpty?: () => void
 }) {
   const [premium, setPremium] = createSignal(rootScope.premium);
   const [details, setDetails] = createSignal<Awaited<Awaited<ReturnType<typeof getDetails>>['results']>>();
@@ -65,6 +66,11 @@ export default function SimilarChannels(props: {
 
     const details = await results;
     if(!middleware()) {
+      return;
+    }
+
+    if(!details[0].chats.length) {
+      props.onEmpty?.();
       return;
     }
 
