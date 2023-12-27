@@ -65,8 +65,8 @@ import callbackify from '../../helpers/callbackify';
 import wrapMessageEntities from '../richTextProcessor/wrapMessageEntities';
 import isLegacyMessageId from './utils/messageId/isLegacyMessageId';
 import {joinDeepPath} from '../../helpers/object/setDeepProperty';
-import getPeerId from './utils/peers/getPeerId';
 import insertInDescendSortedArray from '../../helpers/array/insertInDescendSortedArray';
+import {LOCAL_ENTITIES} from '../richTextProcessor';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -507,8 +507,10 @@ export class AppMessagesManager extends AppManager {
 
   public getInputEntities(entities: MessageEntity[]) {
     const sendEntites = copy(entities);
-    sendEntites.forEach((entity) => {
-      if(entity._ === 'messageEntityMentionName') {
+    forEachReverse(sendEntites, (entity, idx, arr) => {
+      if(LOCAL_ENTITIES.has(entity._)) {
+        arr.splice(idx, 1);
+      } else if(entity._ === 'messageEntityMentionName') {
         (entity as any as MessageEntity.inputMessageEntityMentionName)._ = 'inputMessageEntityMentionName';
         (entity as any as MessageEntity.inputMessageEntityMentionName).user_id = this.appUsersManager.getUserInput(entity.user_id);
       }

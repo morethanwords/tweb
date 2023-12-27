@@ -112,6 +112,14 @@ for(const i in MARKDOWN_ENTITIES) {
 
 export const PHONE_NUMBER_REG_EXP = /^\+\d+$/;
 
+export const LOCAL_ENTITIES = new Set<MessageEntity['_']>([
+  'messageEntityLinebreak',
+  'messageEntityCaret',
+  'messageEntityHighlight',
+  'messageEntityBotCommand',
+  'messageEntityTimestamp'
+]);
+
 /* export function parseEmojis(text: string) {
   return text.replace(/:([a-z0-9\-\+\*_]+?):/gi, function (all, shortcut) {
     var emojiCode = EmojiHelper.shortcuts[shortcut]
