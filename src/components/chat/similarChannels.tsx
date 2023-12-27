@@ -1,0 +1,251 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+import {createEffect, createSignal, JSX, For, untrack, Accessor, onCleanup} from 'solid-js';
+import {i18n} from '../../lib/langPack';
+import {ButtonIconTsx, IconTsx, createMiddleware, showTooltip} from '../stories/viewer';
+import rootScope from '../../lib/rootScope';
+import {AvatarNew} from '../avatarNew';
+import PeerTitle from '../peerTitle';
+import {ScrollableXTsx} from '../stories/list';
+import formatNumber from '../../helpers/number/formatNumber';
+import {Chat, MessagesChats} from '../../layer';
+import computeLockColor from '../../helpers/computeLockColor';
+import classNames from '../../helpers/string/classNames';
+import cancelEvent from '../../helpers/dom/cancelEvent';
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import findUpClassName from '../../helpers/dom/findUpClassName';
+import PopupPremium from '../popups/premium';
+import appImManager from '../../lib/appManagers/appImManager';
+import anchorCallback from '../../helpers/dom/anchorCallback';
+import PopupElement from '../popups';
+import PopupPickUser from '../popups/pickUser';
+
+export default function SimilarChannels(props: {
+  chatId: ChatId,
+  onClose: () => void,
+  onAcked?: (cached: boolean) => void,
+  onReady?: () => void
+}) {
+  const [premium, setPremium] = createSignal(rootScope.premium);
+  const [details, setDetails] = createSignal<Awaited<Awaited<ReturnType<typeof getDetails>>['results']>>();
+  const [list, setList] = createSignal<JSX.Element>();
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 20;
+  canvas.height = 20;
+  const context = canvas.getContext('2d', {alpha: false, willReadFrequently: true});
+
+  rootScope.addEventListener('premium_toggle', setPremium);
+
+  const getDetails = async() => {
+    const results = await Promise.all([
+      rootScope.managers.acknowledged.appChatsManager.getChannelRecommendations(props.chatId),
+      rootScope.managers.acknowledged.apiManager.getLimit('recommendedChannels', false),
+      rootScope.managers.acknowledged.apiManager.getLimit('recommendedChannels', true)
+    ]);
+
+    return {
+      cached: results.every((result) => result.cached),
+      results: Promise.all(results.map((result) => result.result)) as Promise<[MessagesChats, number, number]>
+    };
+  };
+
+  createEffect(async() => {
+    premium();
+    const middleware = createMiddleware().get();
+    const {cached, results} = await getDetails();
+    props.onAcked?.(cached);
+    if(!middleware()) {
+      return;
+    }
+
+    const details = await results;
+    if(!middleware()) {
+      return;
+    }
+
+    setDetails(details);
+  });
+
+  createEffect(async() => {
+    const d = details();
+    if(!d) {
+      return;
+    }
+
+    const [messagesChats, defaultLimit, premiumLimit] = d;
+    const count = (messagesChats as MessagesChats.messagesChatsSlice).count ?? messagesChats.chats.length;
+    const hasMore = count > defaultLimit;
+    const rendered: Map<HTMLElement, Chat.channel> = new Map();
+
+    const Item = (chat: Chat.channel, idx: Accessor<number>) => {
+      const [badgeBackgroundUrl, setBadgeBackgroundUrl] = createSignal<string>();
+      const onImageLoad = (image: HTMLImageElement) => {
+        if(image.naturalWidth < 100) {
+          return;
+        }
+
+        // const perf = performance.now();
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        setBadgeBackgroundUrl(computeLockColor(canvas));
+        // console.log('lock color', performance.now() - perf);
+      };
+      const peerId = chat.id.toPeerId(true);
+      const isLast = hasMore && idx() === defaultLimit - 1;
+
+      const avatar = untrack(() => {
+        return AvatarNew({
+          peerId: peerId,
+          size: 60,
+          processImageOnLoad: onImageLoad
+        });
+      });
+      avatar.node.classList.add('similar-channels-channel-avatar');
+      promises.push(avatar.readyThumbPromise);
+      if(isLast) {
+        avatar.node.classList.add('similar-channels-channel-avatar-stack-first');
+      }
+
+      let nameElement: HTMLElement;
+      if(!isLast) {
+        const peerTitle = new PeerTitle();
+        promises.push(peerTitle.update({peerId}));
+        nameElement = peerTitle.element;
+      } else {
+        nameElement = i18n('MoreSimilar');
+      }
+      nameElement.classList.add('similar-channels-channel-name');
+
+      const icon = (
+        <IconTsx
+          icon={isLast ? 'premium_lock' : 'newprivate_filled'}
+          class="similar-channels-channel-badge-icon"
+        />
+      );
+
+      return (
+        <div
+          class={classNames('similar-channels-channel', isLast && 'is-last')}
+          ref={(el) => rendered.set(el, isLast ? undefined : chat)}
+        >
+          {isLast ? (
+            <div class="similar-channels-channel-avatar-stack">
+              {avatar.element}
+              <div class="similar-channels-channel-avatar-stack-middle" />
+              <div class="similar-channels-channel-avatar-stack-last" />
+            </div>
+          ) : avatar.element}
+          <span
+            class="similar-channels-channel-badge"
+            style={badgeBackgroundUrl() && {'background-image': `url(${badgeBackgroundUrl()})`}}
+          >
+            {isLast ? (
+              <>
+                {`+${count - defaultLimit}`}
+                {!untrack(premium) && icon}
+              </>
+            ) : (
+              <>
+                {icon}
+                {formatNumber(chat.participants_count || 1, 1)}
+              </>
+            )}
+          </span>
+          {nameElement}
+        </div>
+      );
+    };
+
+    const middleware = createMiddleware().get();
+    const promises: Promise<any>[] = [];
+    let ref: HTMLDivElement;
+    const list = (
+      <div ref={ref} class="similar-channels-list">
+        <For each={(messagesChats.chats as Chat.channel[]).slice(0, defaultLimit)}>
+          {Item}
+        </For>
+      </div>
+    );
+
+    const detach = attachClickEvent(ref, (e) => {
+      const target = findUpClassName(e.target, 'similar-channels-channel');
+      if(!target) {
+        return;
+      }
+
+      cancelEvent(e);
+      const chat = rendered.get(target);
+      if(chat) {
+        appImManager.setInnerPeer({peerId: chat.id.toPeerId(true)});
+        return;
+      }
+
+      if(premium()) {
+        PopupElement.createPopup(PopupPickUser, {
+          onSelect: (peerId) => {
+            appImManager.setInnerPeer({peerId});
+          },
+          peerType: ['custom'],
+          getMoreCustom: async() => {
+            return {
+              result: messagesChats.chats.map((chat) => chat.id.toPeerId(true)),
+              isEnd: true
+            };
+          },
+          headerLangPackKey: 'SimilarChannels'
+        });
+        return;
+      }
+
+      const anchor = anchorCallback(() => {
+        close();
+        PopupPremium.show();
+      });
+      anchor.classList.add('primary');
+
+      const {close} = showTooltip({
+        element: target.querySelector('.similar-channels-channel-avatar-stack, .similar-channels-channel-avatar'),
+        container: target.parentElement,
+        vertical: 'top',
+        textElement: i18n(
+          'SimilarChannels.Unlock',
+          [
+            anchor,
+            premiumLimit
+          ]
+        ),
+        icon: 'star'
+      });
+    });
+    onCleanup(detach);
+
+    await Promise.all(promises);
+    if(!middleware()) {
+      return;
+    }
+
+    setList(list);
+    props.onReady?.();
+  });
+
+  return (
+    <div class="similar-channels-container">
+      <svg class="similar-channels-notch" width="19" height="7" viewBox="0 0 19 7" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path class="similar-channels-notch-path" fill-rule="evenodd" clip-rule="evenodd" d="M19 7C16.8992 7 13.59 3.88897 11.5003 1.67424C10.7648 0.894688 10.397 0.50491 10.0434 0.385149C9.70568 0.270811 9.4225 0.270474 9.08456 0.38401C8.73059 0.50293 8.36133 0.892443 7.62279 1.67147C5.52303 3.88637 2.18302 7 0 7L19 7Z" />
+      </svg>
+      <div class="similar-channels-header">
+        {i18n('SimilarChannels')}
+        <ButtonIconTsx icon="close" onClick={props.onClose} />
+      </div>
+      <ScrollableXTsx>
+        <div class="similar-channels-list-margin"></div>
+        {list()}
+        <div class="similar-channels-list-margin"></div>
+      </ScrollableXTsx>
+    </div>
+  );
+}

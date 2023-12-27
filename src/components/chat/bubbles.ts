@@ -164,6 +164,8 @@ import getParents from '../../helpers/dom/getParents';
 import positionElementByIndex from '../../helpers/dom/positionElementByIndex';
 import shouldDisplayGiftCodeAsGift from '../../helpers/shouldDisplayGiftCodeAsGift';
 import anchorCallback from '../../helpers/dom/anchorCallback';
+import SimilarChannels from './similarChannels';
+import clearMessageId from '../../lib/appManagers/utils/messageId/clearMessageId';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -1388,7 +1390,8 @@ export default class ChatBubbles {
         return;
       }
 
-      const mids = getObjectKeysAndSort(this.bubbles, 'desc').filter((mid) => mid > 0);
+      // * filter local and outgoing
+      const mids = getObjectKeysAndSort(this.bubbles, 'desc').filter((mid) => mid > 0 && clearMessageId(mid, false) === mid);
       const middleware = this.getMiddleware();
       this.managers.appMessagesManager.reloadMessages(this.peerId, mids).then((messages) => {
         if(!middleware()) return;
@@ -2869,9 +2872,7 @@ export default class ChatBubbles {
       const avatarAnimation = avatarContainer ? avatarContainer.animate([{transform: `translateY(-${deletingItem.marginBottom}px)`}, {transform: `translateY(-${deletingItem.marginBottom}px)`}], options) : undefined;
       // const avatarAnimation = avatarContainer && avatarContainer.animate([{bottom: `0px`}, {bottom: `${deletingItem.marginBottom}px`}], {...options, duration: +options.duration + 200, fill: 'auto'});
       const promises = [placeholderAnimation, deletionAnimation, avatarAnimation/* , bubbleDeletionAnimation, avatarDeletionAnimation */].filter(Boolean).map((animation) => animation.finished);
-      let finished = false;
       const promise = Promise.all(promises).then(() => {
-        finished = true;
         placeholder.remove();
         deletingItem.element.remove();
         avatarAnimation?.cancel();
@@ -2881,21 +2882,35 @@ export default class ChatBubbles {
         });
       });
 
-      dispatchHeavyAnimationEvent(promise);
-
-      scrollSaver && animateSingle(() => {
-        if(finished) {
-          return false;
-        }
-
-        scrollSaver.restore();
-        return true;
-      }, this.scrollable.container);
+      this.animateSomethingWithScroll(promise, scrollSaver);
     } else {
       bubble.middlewareHelper.destroy();
     }
 
     // this.reactions.delete(mid);
+  }
+
+  private animateSomethingWithScroll(promise: Promise<any>, scrollSaver?: ScrollSaver) {
+    if(!scrollSaver) {
+      scrollSaver = this.createScrollSaver(true);
+      scrollSaver.save();
+    }
+
+    let finished = false;
+    promise.then(() => {
+      finished = true;
+    });
+
+    dispatchHeavyAnimationEvent(promise);
+
+    scrollSaver && animateSingle(() => {
+      if(finished) {
+        return false;
+      }
+
+      scrollSaver.restore();
+      return true;
+    }, this.scrollable.container);
   }
 
   public deleteMessagesByIds(mids: number[], permanent = true, ignoreOnScroll?: boolean) {
@@ -4943,6 +4958,93 @@ export default class ChatBubbles {
 
           content.append(service);
           bubbleContainer.after(content);
+        } else if(action._ === 'messageActionChannelJoined') {
+          bubble.classList.add('is-similar-channels');
+
+          const c = document.createElement('div');
+          c.classList.add('bubble-similar-channels');
+
+          let visible = false;
+          const toggle = (force = !visible, noAnimation?: boolean) => {
+            if(force === visible) {
+              return;
+            }
+
+            visible = force;
+
+            if(force && !c.parentElement) {
+              bubbleContainer.after(c);
+            }
+
+            if(!liteMode.isAvailable('animations')) {
+              noAnimation = true;
+            }
+
+            let scrollSaver: ScrollSaver;
+            if(bubble.isConnected) {
+              scrollSaver = this.createScrollSaver(true);
+              scrollSaver.save();
+            }
+
+            const options: KeyframeAnimationOptions = {duration: noAnimation ? 0 : 300, fill: 'forwards', easing: 'cubic-bezier(.4, .0, .2, 1)'};
+            const keyframes: Keyframe[] = [{height: '0'/* , transform: 'scale(0)', opacity: '0' */}, {height: '9.125rem'/* , transform: 'scale(1)', opacity: '1' */}];
+            if(!force) keyframes.reverse();
+            const animation = c.animate(keyframes, options);
+            if(scrollSaver) this.animateSomethingWithScroll(animation.finished, scrollSaver);
+            if(!force) animation.finished.then(() => {
+              if(visible === force) {
+                c.remove();
+              }
+            });
+
+            updateHidden(!force);
+          };
+
+          attachClickEvent(bubbleContainer, () => {
+            toggle();
+          });
+
+          const deferred = deferredPromise<void>();
+
+          const updateHidden = async(hidden: boolean) => {
+            const state = await apiManagerProxy.getState();
+            if(hidden) state.hiddenSimilarChannels.push(peerId);
+            else indexOfAndSplice(state.hiddenSimilarChannels, peerId);
+            await this.managers.appStateManager.pushToState('hiddenSimilarChannels', state.hiddenSimilarChannels);
+          };
+
+          const peerId = this.chat.peerId;
+          let cached: boolean;
+          this.wrapSomeSolid(
+            () => SimilarChannels({
+              chatId: peerId.toChatId(),
+              onClose: () => {
+                toggle(false);
+              },
+              onAcked: (_cached) => {
+                cached = _cached;
+                if(!cached) {
+                  deferred.resolve();
+                }
+              },
+              onReady: async() => {
+                await getHeavyAnimationPromise();
+
+                const state = await apiManagerProxy.getState();
+                if(!state.hiddenSimilarChannels.includes(peerId)) {
+                  toggle(true, cached);
+                }
+
+                if(cached) {
+                  deferred.resolve();
+                }
+              }
+            }),
+            c,
+            middleware
+          );
+
+          loadPromises.push(deferred);
         }
 
         loadPromises.push(promise);

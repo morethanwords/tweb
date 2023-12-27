@@ -1,0 +1,110 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+.tooltip {
+  position: fixed;
+  padding: .5625rem 1rem;
+  font-size: var(--font-size-15);
+  line-height: calc(var(--font-size-15) + 5px);
+  color: #fff;
+  z-index: 4;
+  word-break: break-word;
+  // transform: scale(1);
+
+  a {
+    font-weight: var(--font-weight-bold);
+    color: currentColor;
+  }
+
+  &.mounted {
+    transform: scale(0.9);
+    // transform: translateY(-.375rem) scale(1);
+  }
+
+  &-background {
+    content: " ";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    box-shadow: 0px 2px 16px 0px rgba(0, 0, 0, 0.23);
+    border-radius: 15px;
+    z-index: -1;
+  }
+
+  &-background,
+  &-notch {
+    backdrop-filter: blur(25px);
+    background-color: rgba(29, 29, 29, .74);
+  }
+
+  &-part {
+    opacity: 0;
+    // transform: scale(0.4);
+
+    @include animation-level(2) {
+      transition: opacity var(--btn-menu-transition);
+    }
+  }
+
+  &-notch {
+    position: absolute;
+    width: 19px;
+    height: 8px;
+    left: var(--notch-offset);
+    clip-path: url(#tooltip-notch-clip);
+
+    .tooltip-bottom & {
+      top: -7px;
+    }
+    
+    .tooltip-top & {
+      bottom: -7px;
+      transform: scaleY(-1);
+    }
+  }
+
+  &-text {
+    font-size: var(--font-size-14);
+    line-height: calc(var(--font-size-14) + 2px);
+  }
+
+  &-with-icon &-text {
+    padding-inline-start: 2.3125rem;
+    margin-inline-start: -.1875rem;
+    position: relative;
+  }
+
+  &-icon {
+    font-size: 1.5rem;
+    position: absolute;
+    top: 50%;
+    inset-inline-start: 0;
+    transform: translateY(-50%);
+  }
+
+  &.is-visible {
+    @include animation-level(2) {
+      transition: transform var(--btn-menu-transition);
+    }
+
+    // transform: translateY(0) scale(1);
+
+    // &.backwards {
+    //   transform: translateY(.375rem);
+    // }
+
+    &:not(.backwards) {
+      transform: scale(1);
+      // transform: translateY(0);
+
+      .tooltip-part {
+        opacity: 1;
+      }
+    }
+  }
+}

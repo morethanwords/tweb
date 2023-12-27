@@ -5,7 +5,12 @@
  */
 
 @mixin text-overflow($no-wrap: true) {
-  @if $no-wrap != false {
+  @if type-of($no-wrap) == number {
+    display: -webkit-box;
+    -webkit-line-clamp: $no-wrap;
+    -webkit-box-orient: vertical;
+    word-break: break-word;
+  } @else if $no-wrap != false {
     white-space: nowrap;
   } @else {
     word-break: break-word;

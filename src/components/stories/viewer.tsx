@@ -128,7 +128,7 @@ export const createMiddleware = () => {
   return middleware;
 };
 
-const ButtonIconTsx = (props: {icon?: Icon, noRipple?: boolean} & JSX.HTMLAttributes<HTMLButtonElement>) => {
+export const ButtonIconTsx = (props: {icon?: Icon, noRipple?: boolean} & JSX.HTMLAttributes<HTMLButtonElement>) => {
   const [, rest] = splitProps(props, ['icon', 'noRipple']);
   return (
     <button {...rest} class={classNames('btn-icon', props.class)} tabIndex={-1}>
@@ -779,7 +779,7 @@ const JOINER = ' • ';
 
 const KEEP_TOOLTIP = true;
 const tooltipOverlayClickHandler = new OverlayClickHandler(undefined, true);
-const showTooltip = ({
+export const showTooltip = ({
   element,
   container = element.parentElement,
   vertical,
@@ -787,7 +787,8 @@ const showTooltip = ({
   textElement,
   paddingX = 0,
   centerVertically,
-  onClose
+  onClose,
+  icon
 }: {
   element: HTMLElement,
   container?: HTMLElement,
@@ -796,7 +797,8 @@ const showTooltip = ({
   textElement?: HTMLElement,
   paddingX?: number,
   centerVertically?: boolean,
-  onClose?: () => void
+  onClose?: () => void,
+  icon?: Icon
 }) => {
   const containerRect = container.getBoundingClientRect();
   const elementRect = element.getBoundingClientRect();
@@ -836,12 +838,15 @@ const showTooltip = ({
     const tooltip = (
       <div
         ref={div}
-        class={classNames('tooltip', 'tooltip-' + vertical)}
+        class={classNames('tooltip', 'tooltip-' + vertical, icon && 'tooltip-with-icon')}
         style={getStyle()}
       >
         <div class="tooltip-part tooltip-background"></div>
         <span class="tooltip-part tooltip-notch"></span>
-        <div class="tooltip-part tooltip-text">{textElement}</div>
+        <div class="tooltip-part tooltip-text">
+          {icon && <IconTsx icon={icon} class="tooltip-icon" />}
+          {textElement}
+        </div>
       </div>
     );
 

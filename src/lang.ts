@@ -463,6 +463,10 @@ const lang = {
   'RequestPeer.Title.Users': 'Choose Users',
   'RequestPeer.Title.Groups': 'Choose Groups',
   'RequestPeer.Title.Channels': 'Choose Channels',
+  'SimilarChannels.Unlock': {
+    'one_value': 'Subscribe to **[Telegram Premium]()** to unlock up to **%d** similar channel.',
+    'other_value': 'Subscribe to **[Telegram Premium]()** to unlock up to **%d** similar channels.'
+  },
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -1704,6 +1708,8 @@ const lang = {
   'GiftPremiumActivateErrorTitle': 'You already have Telegram Premium',
   'GiftPremiumGifting': 'Premium Gifting',
   'ChannelJoined': 'You joined this channel',
+  'UnlockSimilar': 'Unlock more channels',
+  'MoreSimilar': 'More Channels',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

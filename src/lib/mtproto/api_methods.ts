@@ -27,7 +27,7 @@ type HashOptions = {
 export type ApiLimitType = 'pin' | 'folderPin' | 'folders' |
   'favedStickers' | 'reactions' | 'bio' | 'topicPin' | 'caption' |
   'chatlistsJoined' | 'chatlistInvites' | 'channels' | 'links' |
-  'gifs' | 'folderPeers' | 'uploadFileParts';
+  'gifs' | 'folderPeers' | 'uploadFileParts' | 'recommendedChannels';
 
 export default abstract class ApiManagerMethods extends AppManager {
   private afterMessageIdTemp: number;
@@ -349,7 +349,8 @@ export default abstract class ApiManagerMethods extends AppManager {
         links: ['channels_public_limit_default', 'channels_public_limit_premium'],
         gifs: ['saved_gifs_limit_default', 'saved_gifs_limit_premium'],
         folderPeers: ['dialog_filters_chats_limit_default', 'dialog_filters_chats_limit_premium'],
-        uploadFileParts: ['upload_max_fileparts_default', 'upload_max_fileparts_premium']
+        uploadFileParts: ['upload_max_fileparts_default', 'upload_max_fileparts_premium'],
+        recommendedChannels: ['recommended_channels_limit_default', 'recommended_channels_limit_premium']
       };
 
       isPremium ??= this.rootScope.premium;

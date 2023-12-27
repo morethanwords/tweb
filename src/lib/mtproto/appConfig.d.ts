@@ -90,6 +90,8 @@ export interface MTAppConfig {
   giveaway_gifts_purchase_available?:        boolean;
   giveaway_period_max?:                      number;
   quote_length_max?:                         number;
+  recommended_channels_limit_default?:       number;
+  recommended_channels_limit_premium?:       number;
 }
 
 export interface EmojiesSendDiceSuccess {

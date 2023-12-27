@@ -265,8 +265,7 @@ export class AppPeersManager extends AppManager {
     if(this.isUser(peerId)) {
       text = '%pu ' + this.appUsersManager.getUserSearchText(peerId.toUserId());
     } else {
-      const chat = this.appChatsManager.getChat(peerId.toChatId());
-      text = '%pg ' + (chat.title || '');
+      text = '%pg ' + this.appChatsManager.getChatSearchText(peerId.toChatId());
     }
 
     return text;

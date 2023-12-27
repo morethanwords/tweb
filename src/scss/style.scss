@@ -98,8 +98,11 @@
   --line-height-20: 26px;
   --line-height-18: 24px;
   --line-height-16: 21px;
+  --line-height-15: 20px;
   --line-height-14: 18px;
+  --line-height-13: 17px;
   --line-height-12: 16px;
+  --line-height-11: 15px;
   --line-height: 1.3125;
   --font-size-20: 20px;
   --font-size-18: 18px;
@@ -108,6 +111,7 @@
   --font-size-14: 14px;
   --font-size-13: 13px;
   --font-size-12: 12px;
+  --font-size-11: 11px;
   --font-size: var(--font-size-16);
   --esg-sticker-size: 72px;
   --esg-custom-emoji-size: 36px;
@@ -427,6 +431,8 @@
 @import "partials/inviteLink";
 @import "partials/markup";
 @import "partials/quote";
+@import "partials/similarChannels";
+@import "partials/tooltip";
 
 @import "partials/popups/popup";
 @import "partials/popups/editAvatar";
@@ -2157,92 +2163,6 @@ hr {
 
   &-contacts {
     --gradient-colors: #C36EFF, #8B60FA;
-  }
-}
-
-.tooltip {
-  position: fixed;
-  padding: .5625rem 1rem;
-  font-size: var(--font-size-15);
-  line-height: calc(var(--font-size-15) + 5px);
-  color: #fff;
-  z-index: 4;
-  word-break: break-word;
-  // transform: scale(1);
-
-  a {
-    font-weight: var(--font-weight-bold);
-    color: currentColor;
-  }
-
-  &.mounted {
-    transform: scale(0.9);
-    // transform: translateY(-.375rem) scale(1);
-  }
-
-  &-background {
-    content: " ";
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    box-shadow: 0px 2px 16px 0px rgba(0, 0, 0, 0.23);
-    border-radius: 15px;
-    z-index: -1;
-  }
-
-  &-background,
-  &-notch {
-    backdrop-filter: blur(25px);
-    background-color: rgba(29, 29, 29, .74);
-  }
-
-  &-part {
-    opacity: 0;
-    // transform: scale(0.4);
-
-    @include animation-level(2) {
-      transition: opacity var(--btn-menu-transition);
-    }
-  }
-
-  &-notch {
-    position: absolute;
-    width: 19px;
-    height: 8px;
-    left: var(--notch-offset);
-    clip-path: url(#tooltip-notch-clip);
-
-    .tooltip-bottom & {
-      top: -7px;
-    }
-    
-    .tooltip-top & {
-      bottom: -7px;
-      transform: scaleY(-1);
-    }
-  }
-
-  &.is-visible {
-    @include animation-level(2) {
-      transition: transform var(--btn-menu-transition);
-    }
-
-    // transform: translateY(0) scale(1);
-
-    // &.backwards {
-    //   transform: translateY(.375rem);
-    // }
-
-    &:not(.backwards) {
-      transform: scale(1);
-      // transform: translateY(0);
-
-      .tooltip-part {
-        opacity: 1;
-      }
-    }
   }
 }
 

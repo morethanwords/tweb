@@ -12,7 +12,7 @@
 import deepEqual from '../../helpers/object/deepEqual';
 import isObject from '../../helpers/object/isObject';
 import safeReplaceObject from '../../helpers/object/safeReplaceObject';
-import {ChannelParticipant, ChannelsCreateChannel, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatInvite, ChatParticipant, ChatPhoto, ChatReactions, EmojiStatus, InputChannel, InputChatPhoto, InputFile, InputPeer, MessagesSponsoredMessages, Peer, SponsoredMessage, Update, Updates} from '../../layer';
+import {ChannelParticipant, ChannelsCreateChannel, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatInvite, ChatParticipant, ChatPhoto, ChatReactions, EmojiStatus, InputChannel, InputChatPhoto, InputFile, InputPeer, MessagesChats, MessagesSponsoredMessages, Peer, SponsoredMessage, Update, Updates} from '../../layer';
 import {AppManager} from './manager';
 import hasRights from './utils/chats/hasRights';
 import getParticipantPeerId from './utils/chats/getParticipantPeerId';
@@ -38,6 +38,8 @@ export class AppChatsManager extends AppManager {
   // private usernames: any;
   // private channelAccess: any;
   // private megagroups: {[id: number]: true};
+
+  private recommendations: {[chatId: ChatId]: MaybePromise<MessagesChats>};
 
   protected after() {
     this.clear(true);
@@ -73,6 +75,10 @@ export class AppChatsManager extends AppManager {
 
         this.storage.delete(peerId.toChatId());
       });
+
+      this.rootScope.addEventListener('premium_toggle', () => {
+        this.recommendations = {};
+      });
     });
   }
 
@@ -91,6 +97,8 @@ export class AppChatsManager extends AppManager {
     } else {
       this.chats = {};
     }
+
+    this.recommendations = {};
   };
 
   public saveApiChats(apiChats: any[], override?: boolean) {
@@ -338,6 +346,20 @@ export class AppChatsManager extends AppManager {
       return (this.isMegagroup(id) ? 's' : 'c') + id + '_' + (chat as Chat.channel).access_hash;
     }
     return 'g' + id;
+  }
+
+  public getChatSearchText(id: ChatId) {
+    const chat = this.chats[id];
+    if(!chat) {
+      return '';
+    }
+
+    const arr: string[] = [
+      chat.title,
+      ...getPeerActiveUsernames(chat)
+    ];
+
+    return arr.filter(Boolean).join(' ');
   }
 
   public createChannel(options: ChannelsCreateChannel): Promise<ChatId> {
@@ -1024,6 +1046,31 @@ export class AppChatsManager extends AppManager {
     }).then((updates) => {
       this.apiUpdatesManager.processUpdateMessage(updates);
     });
+  }
+
+  public getChannelRecommendations(chatId: ChatId) {
+    const result = this.recommendations[chatId];
+    if(result) {
+      return result;
+    }
+
+    const promise = this.recommendations[chatId] = this.apiManager.invokeApiSingleProcess({
+      method: 'channels.getChannelRecommendations',
+      params: {
+        channel: this.getChannelInput(chatId)
+      },
+      processResult: (messagesChats) => {
+        this.saveApiChats(messagesChats.chats);
+
+        if(this.recommendations[chatId] === promise) {
+          this.recommendations[chatId] = messagesChats;
+        }
+
+        return messagesChats;
+      }
+    });
+
+    return promise;
   }
 
   private onUpdateChannelParticipant = (update: Update.updateChannelParticipant) => {

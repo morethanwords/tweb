@@ -4701,6 +4701,12 @@ export class AppMessagesManager extends AppManager {
 
       for(const mid of slice) {
         const message = this.getMessageByPeer(peerId, mid);
+        if(!message) {
+          this.log.error('no message from historyStorage?', peerId, historyStorage, slice, mid);
+          debugger;
+          continue;
+        }
+
         if(message.date >= date) {
           newerMessage = message;
         } else {
@@ -4762,8 +4768,9 @@ export class AppMessagesManager extends AppManager {
     const dialog = this.getDialogOnly(peerId);
     if(dialog && dialog.top_message < message.mid) {
       this.setDialogTopMessage(message, dialog);
-      this.handleNewMessage(message);
     }
+
+    this.handleNewMessage(message);
 
     return true;
   }

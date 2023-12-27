@@ -118,7 +118,8 @@ export type State = {
   confirmedWebViews: BotId[],
   seenTooltips: {
     storySound: boolean
-  }
+  },
+  hiddenSimilarChannels: number[]
 };
 
 // const BACKGROUND_DAY_MOBILE: Background = {
@@ -332,5 +333,6 @@ export const STATE_INIT: State = {
   confirmedWebViews: [],
   seenTooltips: {
     storySound: false
-  }
+  },
+  hiddenSimilarChannels: []
 };

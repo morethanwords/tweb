@@ -189,7 +189,8 @@ export const AvatarNew = (props: {
     read: string
   }>,
   peer?: Chat.channel | Chat.chat | User.user,
-  isStoryFolded?: Accessor<boolean>
+  isStoryFolded?: Accessor<boolean>,
+  processImageOnLoad?: (image: HTMLImageElement) => void
 }) => {
   const [ready, setReady] = createSignal(false);
   const [icon, setIcon] = createSignal<Icon>();
@@ -396,7 +397,12 @@ export const AvatarNew = (props: {
         thumbElement = thumbImage = document.createElement('img');
         thumbImage.className = 'avatar-photo avatar-photo-thumbnail';
         const url = getPreviewURLFromBytes(photo.stripped_thumb);
-        renderThumbPromise = renderImageFromUrlPromise(thumbImage, url).then(() => {
+        renderThumbPromise = renderImageFromUrlPromise(
+          thumbImage,
+          url,
+          props.useCache,
+          props.processImageOnLoad
+        ).then(() => {
           if(media() || !middleware()) {
             return;
           }
@@ -423,7 +429,7 @@ export const AvatarNew = (props: {
     }
 
     const renderPromise = callbackify(loadPromise, (url) => {
-      const result = renderImageFromUrl(image, url, undefined, useCache);
+      const result = renderImageFromUrl(image, url, undefined, useCache, props.processImageOnLoad);
       callbackify(result, callback);
       return result instanceof Promise ? result : Promise.resolve(result);
     });

@@ -85,6 +85,9 @@ import findAndSpliceAll from '../helpers/array/findAndSpliceAll';
 import deferredPromise from '../helpers/cancellablePromise';
 import {createRoot} from 'solid-js';
 import StoriesProfileList from './stories/profileList';
+import Button from './button';
+import anchorCallback from '../helpers/dom/anchorCallback';
+import PopupPremium from './popups/premium';
 
 // const testScroll = false;
 
@@ -1544,7 +1547,85 @@ export default class AppSearchSuper {
     return promise;
   }
 
-  private async loadSimilarChannels(mediaTab: SearchSuperMediaTab) {}
+  private async loadSimilarChannels(mediaTab: SearchSuperMediaTab) {
+    const middlewareHelper = this.middleware.get().create();
+
+    const renderChats = async(chats: Chat[], middleware: Middleware) => {
+      const chatlist = appDialogsManager.createChatList({new: true});
+
+      const promises = chats.map(async(chat) => {
+        const loadPromises: Promise<any>[] = [];
+        const {dom} = appDialogsManager.addDialogNew({
+          peerId: chat.id.toPeerId(true),
+          container: chatlist,
+          avatarSize: 'abitbigger',
+          autonomous: false,
+          wrapOptions: {
+            middleware
+          },
+          loadPromises
+        });
+
+        dom.lastMessageSpan.append(await getChatMembersString(chat.id, this.managers, chat));
+
+        return Promise.all(loadPromises);
+      });
+
+      await Promise.all(promises);
+      return chatlist;
+    };
+
+    const createPaywall = (limit: number) => {
+      const wall = document.createElement('div');
+      wall.classList.add('similar-channels-paywall');
+      const btn = Button('btn-primary btn-color-primary', {icon: 'premium_unlock', text: 'UnlockSimilar'});
+      btn.classList.add('similar-channels-paywall-button');
+      const onClick = () => PopupPremium.show();
+      const anchor = anchorCallback(onClick);
+      attachClickEvent(btn, onClick);
+      anchor.classList.add('primary');
+      const subtitle = i18n('SimilarChannels.Unlock', [anchor, limit]);
+      subtitle.classList.add('similar-channels-paywall-subtitle');
+      wall.append(btn, subtitle);
+      return wall;
+    };
+
+    let paywall: HTMLElement, wasPremium: boolean;
+    const onPremium = async(isPremium: boolean) => {
+      if(wasPremium === isPremium) {
+        return;
+      }
+
+      middlewareHelper.clean();
+      const middleware = middlewareHelper.get();
+
+      const [messagesChats, premiumLimit] = await Promise.all([
+        this.managers.appChatsManager.getChannelRecommendations(this.searchContext.peerId.toChatId()),
+        this.managers.apiManager.getLimit('recommendedChannels', true)
+      ]);
+
+      const chatlist = await renderChats(messagesChats.chats, middleware);
+      if(!middleware()) {
+        return;
+      }
+
+      mediaTab.contentTab.replaceChildren(chatlist);
+      this.afterPerforming(1, mediaTab.contentTab);
+      this.loaded[mediaTab.type] = true;
+
+      if(!isPremium) {
+        paywall ||= createPaywall(premiumLimit);
+        mediaTab.contentTab.append(paywall);
+      }
+    };
+
+    rootScope.addEventListener('premium_toggle', onPremium);
+    this.middleware.get().onClean(() => {
+      rootScope.removeEventListener('premium_toggle', onPremium);
+    });
+
+    return onPremium(rootScope.premium);
+  }
 
   private loadType(
     mediaTab: SearchSuperMediaTab,
@@ -1922,19 +2003,30 @@ export default class AppSearchSuper {
       return false;
     }
 
-    if(this.searchContext.peerId.isUser()) {
+    const {peerId} = this.searchContext;
+    if(peerId.isUser()) {
       const promise = this.storiesArchive ?
-        this.managers.appStoriesManager.getStoriesArchive(this.searchContext.peerId, 1) :
-        this.managers.appStoriesManager.getPinnedStories(this.searchContext.peerId, 1);
+        this.managers.appStoriesManager.getStoriesArchive(peerId, 1) :
+        this.managers.appStoriesManager.getPinnedStories(peerId, 1);
       return promise.then((storyItems) => !!storyItems.length).catch(() => false);
     }
 
-    const chatFull = await this.managers.appProfileManager.getChatFull(this.searchContext.peerId.toChatId());
+    const chatFull = await this.managers.appProfileManager.getChatFull(peerId.toChatId());
     return !!(chatFull as ChatFull.channelFull).pFlags.stories_pinned_available;
   }
 
   public async canViewSimilar() {
-    return !this.searchContext.peerId.isUser();
+    const {peerId} = this.searchContext;
+    if(peerId.isUser()) {
+      return false;
+    }
+
+    try {
+      const messagesChats = await this.managers.appChatsManager.getChannelRecommendations(peerId.toChatId());
+      return !!messagesChats.chats.length;
+    } catch(err) {
+      return false;
+    }
   }
 
   public cleanup() {

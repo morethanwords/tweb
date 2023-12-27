@@ -1,0 +1,211 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+.similar-channels {
+  &-container {
+    display: block;
+    background-color: var(--surface-color);
+    border-radius: 15px;
+    height: 8.5rem;
+    padding: .375rem 0 .25rem;
+    margin-top: .625rem;
+    position: relative;
+
+    .scrollable {
+      position: relative;
+      display: flex;
+    }
+  }
+
+  &-notch {
+    position: absolute;
+    width: 19px;
+    height: 7px;
+    top: -7px;
+    left: 50%;
+    transform: translateX(-50%);
+
+    &-path {
+      fill: var(--surface-color);
+    }
+  }
+
+  &-header {
+    height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-inline: .75rem .25rem;
+    font-size: var(--font-size-14);
+    font-weight: var(--font-weight-bold);
+
+    .btn-icon {
+      font-size: 1.25rem;
+      padding: .25rem;
+    }
+  }
+
+  &-list {
+    display: flex;
+    gap: .5rem;
+
+    &-margin {
+      width: .25rem;
+      flex: 0 0 auto;
+    }
+  }
+
+  &-channel {
+    width: 4.75rem;
+    height: 6.375rem;
+    padding: .5rem;
+    border-radius: $border-radius-medium;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    position: relative;
+
+    @include hover-background-effect() {
+      .similar-channels-channel-badge {
+        border-color: var(--light-filled-secondary-text-color);
+      }
+    }
+
+    &.is-last {
+      width: 6rem;
+      color: var(--secondary-text-color);
+
+      .similar-channels-channel-badge {
+        background: var(--secondary-color) !important;
+      }
+
+      .similar-channels-channel-badge-icon {
+        font-size: 9.5px;
+      }
+
+      .similar-channels-channel-name {
+        max-width: 3.75rem;
+      }
+    }
+
+    &-avatar {
+      flex: 0 0 auto;
+
+      &-stack {
+        position: relative;
+        width: 60px;
+        height: 60px;
+        flex: 0 0 auto;
+        z-index: 0;
+
+        &-first,
+        &-middle,
+        &-last {
+          position: absolute;
+          top: 0;
+          outline: 2px solid var(--surface-color);
+        }
+
+        &-middle,
+        &-last {
+          background-color: var(--secondary-color);
+          width: 100%;
+          height: 100%;
+          border-radius: 50%;
+        }
+
+        &-first {
+          inset-inline-start: -.625rem;
+          z-index: 3;
+        }
+
+        &-middle {
+          z-index: 2;
+        }
+
+        &-last {
+          inset-inline-end: -.625rem;
+        }
+      }
+    }
+
+    &-name {
+      margin-top: .25rem;
+      font-size: var(--font-size-11);
+      line-height: 13px;
+      max-height: 1.875rem;
+      text-align: center;
+      flex: 0 0 auto;
+      @include text-overflow(2);
+    }
+
+    &-badge {
+      position: absolute;
+      background-color: #000;
+      top: 53px;
+      height: 18px;
+      border: 1.5px solid var(--surface-color);
+      padding-inline: .1875rem .25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 19px;
+      color: #fff;
+      font-size: 9px;
+      font-weight: var(--font-weight-bold);
+      background-repeat: no-repeat;
+      background-size: cover;
+
+      &-icon {
+        font-size: 8.5px;
+      }
+    }
+  }
+}
+
+.similar-channels-paywall {
+  padding: 0 1rem 1rem;
+  position: relative;
+  z-index: 1;
+
+  &:before {
+    content: " ";
+    display: block;
+    top: -6rem;
+    right: 0;
+    left: 0;
+    height: 5rem;
+    background: linear-gradient(0, var(--surface-color), transparent);
+    position: absolute;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  &-button {
+    margin: 1rem 0;
+    text-transform: uppercase;
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .625rem;
+
+    .button-icon {
+      order: 3;
+      font-size: 1.25rem;
+    }
+  }
+
+  &-subtitle {
+    display: block;
+    text-align: center;
+    text-wrap: balance;
+    font-size: var(--font-size-15);
+    line-height: var(--line-height-15);
+    color: var(--secondary-text-color);
+  }
+}

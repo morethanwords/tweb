@@ -2501,6 +2501,29 @@
     height: 1.125rem;
   }
 
+  &.is-similar-channels {
+    .bubble-content {
+      cursor: pointer;
+
+      &-wrapper {
+        padding: 0 !important;
+      }
+    }
+  }
+
+  &-similar-channels {
+    height: 0;
+    overflow: hidden;
+
+    // @include animation-level(2) {
+    //   transition: height var(--transition-standard-in);
+    // }
+
+    // &.is-visible {
+    //   height: 9.125rem;
+    // }
+  }
+
   // .document-message + .audio-transcribed-text {
   //   margin-bottom: .75rem;
   // }

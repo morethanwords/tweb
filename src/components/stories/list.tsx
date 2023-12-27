@@ -35,7 +35,7 @@ const TEST_COUNT = 0;
 const STATE_FOLDED = 1;
 const STATE_UNFOLDED = 0;
 
-const ScrollableXTsx = (props: {
+export const ScrollableXTsx = (props: {
   children: JSX.Element
 }) => {
   let container: HTMLDivElement;

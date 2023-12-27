@@ -94,7 +94,8 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       Members = 1,
       Stories = 2,
       Media = 3,
-      Groups = 4
+      Groups = 4,
+      Similar = 5
     }
 
     const transitionSharedMedia = makeTransitionItem();
@@ -109,12 +110,16 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     const transitionGroups = makeTransitionItem();
     transitionGroups.title.append(i18n('Groups'));
 
+    const transitionSimilar = makeTransitionItem();
+    transitionSimilar.title.append(i18n('SimilarChannels'));
+
     transitionContainer.append(...[
       transitionFirstItem,
       transitionMembers,
       transitionStories,
       transitionSharedMedia,
-      transitionGroups
+      transitionGroups,
+      transitionSimilar
     ].map(({element}) => element));
 
     this.header.append(transitionContainer);
@@ -144,6 +149,8 @@ export default class AppSharedMediaTab extends SliderSuperTab {
           index = TitleIndex.Members;
         } else if(lastMediaTabType === 'groups') {
           index = TitleIndex.Groups;
+        } else if(lastMediaTabType === 'similar') {
+          index = TitleIndex.Similar;
         } else {
           index = TitleIndex.Media;
         }
@@ -281,11 +288,11 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         inputFilter: 'inputMessagesFilterEmpty',
         name: 'ChatList.Filter.Groups',
         type: 'groups'
-      }/* , {
+      }, {
         inputFilter: 'inputMessagesFilterEmpty',
         name: 'SimilarChannels',
         type: 'similar'
-      } */],
+      }],
       scrollable: this.scrollable,
       onChangeTab: (mediaTab) => {
         lastMediaTabType = mediaTab.type;

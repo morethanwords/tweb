@@ -7,7 +7,7 @@
 import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
 import AppSelectPeers, {SelectSearchPeerType} from '../appSelectPeers';
 import PopupElement from '.';
-import {LangPackKey, _i18n} from '../../lib/langPack';
+import {LangPackKey, _i18n, i18n} from '../../lib/langPack';
 import {Modify} from '../../types';
 import {IsPeerType} from '../../lib/appManagers/appPeersManager';
 import ButtonCorner from '../buttonCorner';
@@ -32,7 +32,8 @@ type PopupPickUserOptions = Modify<ConstructorParameters<typeof AppSelectPeers>[
   middleware?: never,
   titleLangKey?: LangPackKey,
   initial?: PeerId[],
-  useTopics?: boolean
+  useTopics?: boolean,
+  headerLangPackKey?: LangPackKey
 }>;
 
 async function wrapTopicRow({
@@ -185,7 +186,12 @@ export default class PopupPickUser extends PopupElement {
       }
       this.selector.container.classList.add('active');
     } else {
-      this.title.append(this.selector.input);
+      if(options.headerLangPackKey) {
+        this.title.append(i18n(options.headerLangPackKey));
+      } else {
+        this.title.append(this.selector.input);
+      }
+
       this.attachScrollableListeners();
       this.transition = TransitionSlider({
         content: tabsContainer,

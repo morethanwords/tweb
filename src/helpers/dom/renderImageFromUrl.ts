@@ -20,8 +20,12 @@ export default function renderImageFromUrl(
   elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLVideoElement,
   url: string,
   callback?: () => void,
-  useCache = true
-) {
+  useCache?: boolean,
+  processImageOnLoad?: (image: HTMLImageElement) => void
+): MaybePromise<void> {
+  if(processImageOnLoad) useCache = false;
+  useCache ??= processImageOnLoad === undefined;
+
   if(!url) {
     console.error('renderImageFromUrl: no url?', elem, url);
     callback?.();
@@ -60,6 +64,7 @@ export default function renderImageFromUrl(
 
       loadedURLs[url] = true;
       // console.log('onload:', url, performance.now(), loader.naturalWidth, loader.naturalHeight);
+      processImageOnLoad?.(loader);
       // TODO: переделать прогрузки аватаров до начала анимации, иначе с этим ожиданием они неприятно появляются
       // callback && getHeavyAnimationPromise().then(() => callback());
       callback?.();
@@ -100,9 +105,10 @@ export default function renderImageFromUrl(
 export function renderImageFromUrlPromise(
   elem: Parameters<typeof renderImageFromUrl>[0],
   url: string,
-  useCache?: boolean
+  useCache?: boolean,
+  processImageOnLoad?: (image: HTMLImageElement) => void
 ) {
   return new Promise<void>((resolve) => {
-    renderImageFromUrl(elem, url, resolve, useCache);
+    renderImageFromUrl(elem, url, resolve, useCache, processImageOnLoad);
   });
 }
