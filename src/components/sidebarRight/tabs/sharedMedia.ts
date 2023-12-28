@@ -16,12 +16,13 @@ import I18n, {i18n} from '../../../lib/langPack';
 import ButtonCorner from '../../buttonCorner';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import PeerProfile from '../../peerProfile';
-import {Message} from '../../../layer';
+import {Chat, Message} from '../../../layer';
 import getMessageThreadId from '../../../lib/appManagers/utils/messages/getMessageThreadId';
 import AppEditTopicTab from './editTopic';
 import liteMode from '../../../helpers/liteMode';
 import AppEditBotTab from './editBot';
 import addChatUsers from '../../addChatUsers';
+import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 
 type SharedMediaHistoryStorage = Partial<{
   [type in SearchSuperType]: {mid: number, peerId: PeerId}[]
@@ -485,13 +486,19 @@ export default class AppSharedMediaTab extends SliderSuperTab {
   }
 
   private async toggleEditBtn<T extends boolean>(manual?: T): Promise<T extends true ? () => void : void> {
+    const {peerId} = this;
     let show: boolean;
-    if(this.peerId.isUser()) {
-      show = this.peerId !== rootScope.myId && await this.managers.appUsersManager.canEdit(this.peerId.toUserId());
+    if(peerId.isUser()) {
+      show = peerId !== rootScope.myId && await this.managers.appUsersManager.canEdit(peerId.toUserId());
     } else {
-      const chatId = this.peerId.toChatId();
-      const isTopic = this.threadId && await this.managers.appChatsManager.isForum(chatId);
-      show = await this.managers.appChatsManager.hasRights(chatId, isTopic ? 'manage_topics' : 'change_info');
+      const chatId = peerId.toChatId();
+      const isTopic = this.threadId && apiManagerProxy.isForum(peerId);
+      if(isTopic) {
+        show = await this.managers.appChatsManager.hasRights(chatId, 'manage_topics');
+      } else {
+        const chat = apiManagerProxy.getChat(chatId);
+        show = !!(chat as Chat.channel).admin_rights || await this.managers.appChatsManager.hasRights(chatId, 'change_info');
+      }
     }
 
     const callback = () => {

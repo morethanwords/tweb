@@ -114,6 +114,7 @@ export async function onGiveawayClick(message: Message.message) {
   const title = i18n(
     isResults ? 'BoostingGiveawayHowItWorksTextEnd' : 'BoostingGiveawayHowItWorksText',
     [
+      undefined,
       await wrapPeerTitle({peerId: giveawayPeerId}),
       quantity,
       duration

@@ -63,7 +63,10 @@ export default class CheckboxFields<K extends CheckboxFieldsField = CheckboxFiel
       subtitleLangKey: info.description,
       clickable: info.nested ? (e) => {
         if(findUpAsChild(e.target as HTMLElement, row.checkboxField.label)) {
-          row.checkboxField.checked = !row.checkboxField.checked;
+          if(!row.checkboxField.input.disabled) {
+            row.checkboxField.checked = !row.checkboxField.checked;
+          }
+
           return;
         }
 
@@ -82,7 +85,7 @@ export default class CheckboxFields<K extends CheckboxFieldsField = CheckboxFiel
 
       info.checkboxField.input.disabled = true;
 
-      attachClickEvent(info.row.container, (e) => {
+      if(!info.nested) attachClickEvent(info.row.container, (e) => {
         toast(I18n.format(info.restrictionText, true));
       }, {listenerSetter: this.listenerSetter});
     }

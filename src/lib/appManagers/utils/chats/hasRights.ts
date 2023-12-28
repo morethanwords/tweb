@@ -115,19 +115,23 @@ export default function hasRights(
       return isAdmin && !!myFlags['invite_users'];
     }
 
-    case 'change_info':
-    case 'invite_users': {
-      return isAdmin ? !!myFlags[action] : !myFlags[action];
-    }
-
     // * only creator can do that
     case 'change_type':
     case 'delete_chat': {
       return false;
     }
 
+    case 'change_info':
+    case 'invite_users': {
+      return isAdmin || (chat as Chat.channel).pFlags.broadcast ? !!myFlags[action] : !myFlags[action];
+    }
+
+    case 'delete_stories':
+    case 'edit_stories':
+    case 'post_stories':
     case 'add_admins':
     case 'anonymous':
+    case 'post_messages':
     case 'edit_messages':
     case 'manage_topics': {
       return isAdmin && !!myFlags[action];

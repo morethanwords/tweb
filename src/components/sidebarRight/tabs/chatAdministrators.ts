@@ -8,7 +8,6 @@ import deferredPromise from '../../../helpers/cancellablePromise';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import createParticipantContextMenu from '../../../helpers/dom/createParticipantContextMenu';
 import {ChannelParticipant, Chat, ChatFull, ChatParticipant} from '../../../layer';
-import getParticipantPeerId from '../../../lib/appManagers/utils/chats/getParticipantPeerId';
 import {i18n} from '../../../lib/langPack';
 import rootScope from '../../../lib/rootScope';
 import AppSelectPeers from '../../appSelectPeers';

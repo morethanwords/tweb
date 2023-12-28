@@ -4,7 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import deferredPromise from '../../../helpers/cancellablePromise';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import createParticipantContextMenu from '../../../helpers/dom/createParticipantContextMenu';
 import {ChannelParticipant} from '../../../layer';
@@ -72,7 +71,8 @@ export default class AppRemovedUsersTab extends SliderSuperTabEventable {
     });
 
     section.container.firstElementChild.remove();
-    this.selector.scrollable.firstElementChild?.remove();
+    const hr = this.selector.scrollable.container.querySelector('.gradient-delimiter');
+    hr?.remove();
     this.selector.scrollable.append(section.container, this.selector.scrollable.container.lastElementChild);
 
     createParticipantContextMenu({

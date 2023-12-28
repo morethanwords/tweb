@@ -42,7 +42,7 @@ export default class AppChatMembersTab extends SliderSuperTabEventable {
   private selector: AppSelectPeers;
 
   public async init(chatId: ChatId) {
-    const chat = await this.managers.appChatsManager.getChat(chatId);
+    const chat = await this.managers.appChatsManager.getChat(chatId) as Chat.channel | Chat.chat;
     const isBroadcast = await this.managers.appChatsManager.isBroadcast(chatId);
     const channelFull = await this.managers.appProfileManager.getChannelFull(chatId).catch(() => undefined as ChatFull.channelFull);
     this.container.classList.add('edit-peer-container', 'chat-members-container');
@@ -60,7 +60,9 @@ export default class AppChatMembersTab extends SliderSuperTabEventable {
 
     const participantsCount = (chat as Chat.chat).participants_count/*  + (channelFull?.admins_count || 0) */;
     // const participantsCount = Infinity;
-    const canHideMembers = !isBroadcast && participantsCount >= ((await this.managers.apiManager.getAppConfig()).hidden_members_group_size_min || 0);
+    const canHideMembers = !isBroadcast &&
+      participantsCount >= ((await this.managers.apiManager.getAppConfig()).hidden_members_group_size_min || 0) &&
+      !!chat.admin_rights;
 
     const {selector, loadPromise} = createSelectorForParticipants({
       appendTo: this.content,
