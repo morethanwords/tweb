@@ -334,7 +334,7 @@ export default abstract class ApiManagerMethods extends AppManager {
     if(
       this.appConfig &&
       !overwrite &&
-      (this.requestedAppConfig || !this.appConfig.cachedTime || (Date.now() - this.appConfig.cachedTime) < 86400e3)
+      (this.requestedAppConfig || (Date.now() - (this.appConfig.cachedTime || 0)) < 86400e3)
     ) {
       return this.appConfig;
     }
