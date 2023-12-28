@@ -54,12 +54,19 @@ export default abstract class ApiManagerMethods extends AppManager {
 
   protected config: Config;
   protected appConfig: MTAppConfig;
+  protected requestedAppConfig: boolean;
 
   protected themeParams: DataJSON;
 
   constructor() {
     super();
     this.afterMessageIdTemp = 0;
+  }
+
+  protected after() {
+    return this.appStateManager.getState().then((state) => {
+      this.applyAppConfig(state.appConfig, false);
+    });
   }
 
   abstract setUserAuth(userAuth: UserAuth | UserId): Promise<void>;
@@ -310,23 +317,39 @@ export default abstract class ApiManagerMethods extends AppManager {
     });
   }
 
+  private applyAppConfig(appConfig: MTAppConfig, save?: boolean) {
+    this.appConfig = appConfig;
+    ignoreRestrictionReasons(appConfig.ignore_restriction_reasons ?? []);
+
+    if(save) {
+      appConfig.cachedTime = Date.now();
+      this.appStateManager.pushToState('appConfig', appConfig);
+    }
+
+    this.rootScope.dispatchEvent('app_config', appConfig);
+    return appConfig;
+  }
+
   public getAppConfig(overwrite?: boolean) {
-    if(this.appConfig && !overwrite) {
+    if(
+      this.appConfig &&
+      !overwrite &&
+      (this.requestedAppConfig || !this.appConfig.cachedTime || (Date.now() - this.appConfig.cachedTime) < 86400e3)
+    ) {
       return this.appConfig;
     }
 
     return this.invokeApiSingleProcess({
       method: 'help.getAppConfig',
       params: {
-        hash: 0
+        hash: this.appConfig?.hash || 0
       },
-      processResult: (helpAppConfig) => {
+      processResult: async(helpAppConfig) => {
         assumeType<HelpAppConfig.helpAppConfig>(helpAppConfig);
+        this.requestedAppConfig = true;
         const config = helpAppConfig.config as any as MTAppConfig;
-        this.appConfig = config;
-        ignoreRestrictionReasons(config.ignore_restriction_reasons ?? []);
-        this.rootScope.dispatchEvent('app_config', config);
-        return config;
+        config.hash = helpAppConfig.hash;
+        return this.applyAppConfig(config, true);
       },
       options: {overwrite}
     });

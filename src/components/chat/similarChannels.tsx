@@ -23,6 +23,7 @@ import appImManager from '../../lib/appManagers/appImManager';
 import anchorCallback from '../../helpers/dom/anchorCallback';
 import PopupElement from '../popups';
 import PopupPickUser from '../popups/pickUser';
+import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 
 export default function SimilarChannels(props: {
   chatId: ChatId,
@@ -43,15 +44,17 @@ export default function SimilarChannels(props: {
   rootScope.addEventListener('premium_toggle', setPremium);
 
   const getDetails = async() => {
+    const r = apiManagerProxy.isPremiumFeaturesHidden();
     const results = await Promise.all([
       rootScope.managers.acknowledged.appChatsManager.getChannelRecommendations(props.chatId),
       rootScope.managers.acknowledged.apiManager.getLimit('recommendedChannels', false),
-      rootScope.managers.acknowledged.apiManager.getLimit('recommendedChannels', true)
+      rootScope.managers.acknowledged.apiManager.getLimit('recommendedChannels', true),
+      {cached: !(r instanceof Promise), result: Promise.resolve(r)}
     ]);
 
     return {
       cached: results.every((result) => result.cached),
-      results: Promise.all(results.map((result) => result.result)) as Promise<[MessagesChats, number, number]>
+      results: Promise.all(results.map((result) => result.result)) as Promise<[MessagesChats, number, number, boolean]>
     };
   };
 
@@ -83,9 +86,9 @@ export default function SimilarChannels(props: {
       return;
     }
 
-    const [messagesChats, defaultLimit, premiumLimit] = d;
+    const [messagesChats, defaultLimit, premiumLimit, isPremiumFeaturesHidden] = d;
     const count = (messagesChats as MessagesChats.messagesChatsSlice).count ?? messagesChats.chats.length;
-    const hasMore = count > defaultLimit;
+    const hasMore = count > defaultLimit && !isPremiumFeaturesHidden;
     const rendered: Map<HTMLElement, Chat.channel> = new Map();
 
     const Item = (chat: Chat.channel, idx: Accessor<number>) => {

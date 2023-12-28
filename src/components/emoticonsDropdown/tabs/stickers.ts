@@ -42,6 +42,8 @@ import PopupElement from '../../popups';
 import Icon from '../../icon';
 import safeAssign from '../../../helpers/object/safeAssign';
 import {getMiddleware, Middleware, MiddlewareHelper} from '../../../helpers/middleware';
+import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
+import getStickerEffectThumb from '../../../lib/appManagers/utils/stickers/getStickerEffectThumb';
 
 export class SuperStickerRenderer {
   public lazyLoadQueue: LazyLoadQueueRepeat;
@@ -587,10 +589,17 @@ export default class StickersTab extends EmoticonsTabC<StickersTabCategory<Stick
     category.setCategoryItemsHeight(count);
     container.classList.remove('hide');
 
-    promise.then((documents) => {
+    Promise.all([
+      promise,
+      apiManagerProxy.isPremiumFeaturesHidden()
+    ]).then(([documents, isPremiumFeaturesHidden]) => {
       const isVisible = this.isCategoryVisible(category);
 
       documents.forEach((document) => {
+        if(isPremiumFeaturesHidden && getStickerEffectThumb(document)) {
+          return;
+        }
+
         const element = this.superStickerRenderer.renderSticker(document);
         category.items.push({document, element});
 

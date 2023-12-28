@@ -37,6 +37,7 @@ import AppActiveWebSessionsTab from './activeWebSessions';
 import PopupElement from '../../popups';
 import AppPrivacyAboutTab from './privacy/about';
 import PopupPremium from '../../popups/premium';
+import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;
@@ -54,7 +55,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
     };
   }
 
-  public init(p: ReturnType<typeof AppPrivacyAndSecurityTab['getInitArgs']>) {
+  public async init(p: ReturnType<typeof AppPrivacyAndSecurityTab['getInitArgs']>) {
     this.container.classList.add('dont-u-dare-block-me');
     this.setTitle('PrivacySettings');
 
@@ -242,7 +243,9 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         listenerSetter: this.listenerSetter
       });
 
-      const voicesRow = rowsByKeys['inputPrivacyKeyVoiceMessages'] = new Row({
+      const isPremiumFeaturesHidden = await apiManagerProxy.isPremiumFeaturesHidden();
+      let voicesRow: Row;
+      if(!isPremiumFeaturesHidden) voicesRow = rowsByKeys['inputPrivacyKeyVoiceMessages'] = new Row({
         titleLangKey: 'PrivacyVoiceMessagesTitle',
         subtitleLangKey: SUBTITLE,
         clickable: () => {
@@ -290,7 +293,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         });
       };
 
-      section.content.append(
+      section.content.append(...[
         numberVisibilityRow.container,
         lastSeenTimeRow.container,
         photoVisibilityRow.container,
@@ -299,7 +302,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         groupChatsAddRow.container,
         voicesRow.container,
         aboutRow.container
-      );
+      ].filter(Boolean));
       this.scrollable.append(section.container);
 
       for(const key in rowsByKeys) {

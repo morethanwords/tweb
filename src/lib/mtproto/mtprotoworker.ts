@@ -43,6 +43,7 @@ import generateEmptyThumb from '../storages/utils/thumbs/generateEmptyThumb';
 import getStickerThumbKey from '../storages/utils/thumbs/getStickerThumbKey';
 import callbackify from '../../helpers/callbackify';
 import isLegacyMessageId from '../appManagers/utils/messageId/isLegacyMessageId';
+import {MTAppConfig} from './appConfig';
 
 export type Mirrors = {
   state: State,
@@ -106,6 +107,8 @@ class ApiManagerProxy extends MTProtoMessagePort {
   private processMirrorTaskMap: {
     [type in keyof Mirrors]?: (payload: MirrorTaskPayload) => void
   };
+
+  private appConfig: MaybePromise<MTAppConfig>;
 
   constructor() {
     super();
@@ -679,6 +682,38 @@ class ApiManagerProxy extends MTProtoMessagePort {
   public loadAvatar(peerId: PeerId, photo: UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto, size: PeerPhotoSize) {
     const saved = this.mirrors.avatars[peerId] ??= {};
     return saved[size] ??= rootScope.managers.appAvatarsManager.loadAvatar(peerId, photo, size);
+  }
+
+  public getAppConfig(overwrite?: boolean) {
+    if(overwrite) {
+      this.appConfig = undefined;
+    }
+
+    if(!this.appConfig) {
+      const promise = rootScope.managers.apiManager.getAppConfig().then((appConfig) => {
+        if(this.appConfig === promise) {
+          this.appConfig = appConfig;
+        }
+
+        return appConfig;
+      });
+
+      return this.appConfig = promise;
+    }
+
+    return this.appConfig;
+  }
+
+  public isPremiumFeaturesHidden(): MaybePromise<boolean> {
+    return callbackify(this.isPremiumPurchaseBlocked(), (isPremiumPurchaseBlocked) => {
+      return isPremiumPurchaseBlocked && !rootScope.premium;
+    });
+  }
+
+  public isPremiumPurchaseBlocked(): MaybePromise<boolean> {
+    return callbackify(this.getAppConfig(), (appConfig) => {
+      return !!appConfig.premium_purchase_blocked;
+    });
   }
 
   public updateTabState<T extends keyof TabState>(key: T, value: TabState[T]) {

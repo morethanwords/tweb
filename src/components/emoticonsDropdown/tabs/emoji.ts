@@ -43,6 +43,7 @@ import {CustomEmojiRendererElement} from '../../../lib/customEmoji/renderer';
 import Icon from '../../icon';
 import {NULL_PEER_ID} from '../../../lib/mtproto/mtproto_config';
 import anchorCallback from '../../../helpers/dom/anchorCallback';
+import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 
 const loadedURLs: Set<string> = new Set();
 export function appendEmoji(emoji: string, container?: HTMLElement, prepend = false, unify = false) {
@@ -429,7 +430,9 @@ export default class EmojiTab extends EmoticonsTabC<EmojiTabCategory> {
       !this.preloaderDelay ? undefined : pause(this.preloaderDelay),
       !this.noRegularEmoji && this.managers.appEmojiManager.getRecentEmojis('native'),
       !this.isStandalone && this.managers.appEmojiManager.getRecentEmojis('custom'),
-      !this.noPacks && this.managers.appEmojiManager.getCustomEmojis(),
+      !this.noPacks && Promise.resolve(apiManagerProxy.isPremiumFeaturesHidden()).then((isPremiumPurchaseHidden) => {
+        return isPremiumPurchaseHidden ? undefined : this.managers.appEmojiManager.getCustomEmojis();
+      }),
       mainSetsResult && Promise.all(Array.isArray(mainSetsResult) ? mainSetsResult : [mainSetsResult])
     ]).then(([_, recent, recentCustom, sets, mainSets]) => {
       preloader.remove();

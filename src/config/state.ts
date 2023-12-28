@@ -15,6 +15,7 @@ import {IS_MOBILE} from '../environment/userAgent';
 import getTimeFormat from '../helpers/getTimeFormat';
 import {nextRandomUint} from '../helpers/random';
 import App from './app';
+import {MTAppConfig} from '../lib/mtproto/appConfig';
 
 const STATE_VERSION = App.version;
 const BUILD = App.build;
@@ -119,7 +120,8 @@ export type State = {
   seenTooltips: {
     storySound: boolean
   },
-  hiddenSimilarChannels: number[]
+  hiddenSimilarChannels: number[],
+  appConfig: MTAppConfig
 };
 
 // const BACKGROUND_DAY_MOBILE: Background = {
@@ -334,5 +336,6 @@ export const STATE_INIT: State = {
   seenTooltips: {
     storySound: false
   },
-  hiddenSimilarChannels: []
+  hiddenSimilarChannels: [],
+  appConfig: {} as any
 };

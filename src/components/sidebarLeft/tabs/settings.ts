@@ -245,15 +245,19 @@ export default class AppSettingsTab extends SliderSuperTab {
     const buttonsSection = new SettingSection();
     buttonsSection.content.append(buttonsDiv);
 
-    const premiumSection = new SettingSection();
-    premiumSection.content.append(this.premiumRow.container, giftPremium.container);
+    let premiumSection: SettingSection;
+    const appConfig = await this.managers.apiManager.getAppConfig();
+    if(!appConfig.premium_purchase_blocked) {
+      premiumSection = new SettingSection();
+      premiumSection.content.append(this.premiumRow.container, giftPremium.container);
+    }
 
-    this.scrollable.append(
+    this.scrollable.append(...[
       this.profile.element,
       /* profileSection.container, */
       buttonsSection.container,
       premiumSection.container
-    );
+    ].filter(Boolean));
 
     const getEditProfileArgs = () => {
       editProfileArgs = AppEditProfileTab.getInitArgs();

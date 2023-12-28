@@ -106,6 +106,8 @@ export class ApiManager extends ApiManagerMethods {
   }
 
   protected after() {
+    const result = super.after();
+
     this.apiUpdatesManager.addMultipleEventsListeners({
       updateConfig: () => {
         this.getConfig(true);
@@ -137,6 +139,8 @@ export class ApiManager extends ApiManagerMethods {
         }
       });
     });
+
+    return result;
   }
 
   // private lol = false;

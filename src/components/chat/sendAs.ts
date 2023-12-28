@@ -13,6 +13,7 @@ import {modifyAckedPromise} from '../../helpers/modifyAckedResult';
 import {AppManagers} from '../../lib/appManagers/managers';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import {i18n} from '../../lib/langPack';
+import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import {AckedResult} from '../../lib/mtproto/superMessagePort';
 import rootScope from '../../lib/rootScope';
 import {avatarNew} from '../avatarNew';
@@ -295,8 +296,15 @@ export default class ChatSendAs {
       await this.changeSendAsPeerId(sendAsPeerId, skipAnimation);
       if(!middleware()) return;
 
-      this.managers.appChatsManager.getSendAs(chatId).then((sendAsPeers) => {
+      Promise.all([
+        this.managers.appChatsManager.getSendAs(chatId),
+        apiManagerProxy.isPremiumFeaturesHidden()
+      ]).then(([sendAsPeers, isPremiumFeaturesHidden]) => {
         if(!middleware()) return;
+
+        if(isPremiumFeaturesHidden) {
+          sendAsPeers = sendAsPeers.filter((sendAsPeer) => !sendAsPeer.pFlags.premium_required);
+        }
 
         const peers: ChatSendAs['sendAsPeers'] = sendAsPeers.map((sendAsPeer) => {
           return {

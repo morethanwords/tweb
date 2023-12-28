@@ -34,7 +34,8 @@ export default async function generateTitleIcons({
 
   if(!noPremiumIcon && wrapOptions?.middleware) {
     const emojiStatus = (peer as User.user | Chat.channel).emoji_status;
-    if(emojiStatus && emojiStatus._ !== 'emojiStatusEmpty') {
+    const isPremiumFeaturesHidden = await apiManagerProxy.isPremiumFeaturesHidden();
+    if(emojiStatus && emojiStatus._ !== 'emojiStatusEmpty' && !isPremiumFeaturesHidden) {
       const {middleware} = wrapOptions;
       const container = await wrapEmojiStatus({
         emojiStatus,
@@ -43,7 +44,7 @@ export default async function generateTitleIcons({
 
       if(!middleware()) return elements;
       elements.push(container);
-    } else if((peer as User.user).pFlags.premium) {
+    } else if((peer as User.user).pFlags.premium && !isPremiumFeaturesHidden) {
       elements.push(generatePremiumIcon());
     }
   }

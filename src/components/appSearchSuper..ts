@@ -1599,9 +1599,10 @@ export default class AppSearchSuper {
       middlewareHelper.clean();
       const middleware = middlewareHelper.get();
 
-      const [messagesChats, premiumLimit] = await Promise.all([
+      const [messagesChats, premiumLimit, isPremiumFeaturesHidden] = await Promise.all([
         this.managers.appChatsManager.getChannelRecommendations(this.searchContext.peerId.toChatId()),
-        this.managers.apiManager.getLimit('recommendedChannels', true)
+        this.managers.apiManager.getLimit('recommendedChannels', true),
+        apiManagerProxy.isPremiumFeaturesHidden()
       ]);
 
       const chatlist = await renderChats(messagesChats.chats, middleware);
@@ -1613,7 +1614,7 @@ export default class AppSearchSuper {
       this.afterPerforming(1, mediaTab.contentTab);
       this.loaded[mediaTab.type] = true;
 
-      if(!isPremium) {
+      if(!isPremium && !isPremiumFeaturesHidden) {
         paywall ||= createPaywall(premiumLimit);
         mediaTab.contentTab.append(paywall);
       }

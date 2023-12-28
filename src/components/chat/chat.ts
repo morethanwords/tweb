@@ -747,9 +747,18 @@ export default class Chat extends EventListenerBase<{
     return this.type === 'chat' || this.isForum;
   }
 
-  public canGiftPremium() {
+  public async canGiftPremium() {
     const peerId = this.peerId;
-    return peerId.isUser() && this.managers.appProfileManager.canGiftPremium(this.peerId.toUserId());
+    if(!peerId.isUser()) {
+      return false;
+    }
+
+    const [canGiftPremium, isPremiumPurchaseBlocked] = await Promise.all([
+      this.managers.appProfileManager.canGiftPremium(this.peerId.toUserId()),
+      apiManagerProxy.isPremiumPurchaseBlocked()
+    ]);
+
+    return peerId.isUser() && canGiftPremium && !isPremiumPurchaseBlocked;
   }
 
   public async openWebApp(options: Partial<RequestWebViewOptions>) {

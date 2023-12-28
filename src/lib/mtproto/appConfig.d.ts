@@ -92,6 +92,8 @@ export interface MTAppConfig {
   quote_length_max?:                         number;
   recommended_channels_limit_default?:       number;
   recommended_channels_limit_premium?:       number;
+  cachedTime?:                               number;
+  hash?:                                     number;
 }
 
 export interface EmojiesSendDiceSuccess {
