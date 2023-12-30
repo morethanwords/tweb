@@ -2274,8 +2274,9 @@ export class AppMessagesManager extends AppManager {
       const items: Array<Dialog | ForumTopic> =
         (result as MessagesDialogs.messagesDialogsSlice).dialogs as Dialog[] ||
         (result as MessagesForumTopics).topics as ForumTopic[];
-      forEachReverse(items, (dialog) => {
+      forEachReverse(items, (dialog, idx, arr) => {
         if(!dialog) {
+          arr.splice(idx, 1);
           return;
         }
 
@@ -2292,8 +2293,9 @@ export class AppMessagesManager extends AppManager {
         });
 
         if(dialog.peerId === undefined) {
-          this.log.error('bugged dialog?', dialog);
-          debugger;
+          arr.splice(idx, 1);
+          // this.log.error('bugged dialog?', dialog);
+          // debugger;
           return;
         }
 
@@ -2358,7 +2360,7 @@ export class AppMessagesManager extends AppManager {
       let dialogsLength = 0;
       if(!isSearch) for(let i = 0, length = folderDialogs.length; i < length; ++i) {
         const dialog = folderDialogs[i];
-        if(getServerMessageId(dialog.top_message)) {
+        if(getServerMessageId(dialog.top_message) || dialog.draft) {
           ++dialogsLength;
         } else {
           this.log.error('something strange with dialog', dialog);
