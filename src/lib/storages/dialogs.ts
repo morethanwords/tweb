@@ -1289,10 +1289,9 @@ export default class DialogsStorage extends AppManager {
 
     const historyStorage = this.appMessagesManager.getHistoryStorage(peerId, topicId);
     const slice = historyStorage.history.slice;
-    if(!mid) {} else
-    /* if(historyStorage === undefined) { // warning
-      historyStorage.history.push(mid);
-    } else  */if(!slice.length || !slice.isEnd(SliceEnd.Bottom)) {  // * second condition will probably never happen, however, if it does, then it will fix slice with top_message
+    if(!mid) {
+
+    } else if(!slice.length || !slice.isEnd(SliceEnd.Bottom)) {  // * second condition will probably never happen, however, if it does, then it will fix slice with top_message
       historyStorage.history.unshift(mid);
       historyStorage.count ||= historyStorage.history.length;
       if(this.appMessagesManager.mergeReplyKeyboard(historyStorage, message)) {

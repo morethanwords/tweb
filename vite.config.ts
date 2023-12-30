@@ -22,11 +22,11 @@ const handlebarsPlugin = handlebars({
 });
 
 const serverOptions: ServerOptions = {
-  https: false,
   // host: '192.168.92.78',
   port: 8080
 };
 
+const USE_SSL = false;
 const NO_MINIFY = false;
 const HAS_SOLID = existsSync(resolve(rootDir, 'src/vendor/solid'));
 
@@ -47,7 +47,7 @@ export default defineConfig({
     }),
     solidPlugin(),
     handlebarsPlugin as any,
-    serverOptions.https ? basicSsl() : undefined,
+    USE_SSL ? basicSsl() : undefined,
     visualizer({
       gzipSize: true,
       template: 'treemap'

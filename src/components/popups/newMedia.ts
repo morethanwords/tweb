@@ -914,14 +914,7 @@ export default class PopupNewMedia extends PopupElement {
       if([foundPhotos, foundVideos, foundFiles].filter((n) => n > 0).length > 1) {
         key = 'PreviewSender.SendFile';
         args.push(files.length);
-      } else
-
-      /* const sum = foundPhotos + foundVideos;
-      if(sum > 1 && willAttach.group) {
-        key = 'PreviewSender.SendAlbum';
-        const albumsLength = Math.ceil(sum / 10);
-        args.push(albumsLength);
-      } else  */if(foundPhotos) {
+      } else if(foundPhotos) {
         key = 'PreviewSender.SendPhoto';
         args.push(foundPhotos);
       } else if(foundVideos) {
