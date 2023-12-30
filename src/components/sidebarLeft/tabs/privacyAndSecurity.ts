@@ -294,15 +294,15 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       };
 
       section.content.append(...[
-        numberVisibilityRow.container,
-        lastSeenTimeRow.container,
-        photoVisibilityRow.container,
-        callRow.container,
-        linkAccountRow.container,
-        groupChatsAddRow.container,
-        voicesRow.container,
-        aboutRow.container
-      ].filter(Boolean));
+        numberVisibilityRow,
+        lastSeenTimeRow,
+        photoVisibilityRow,
+        callRow,
+        linkAccountRow,
+        groupChatsAddRow,
+        voicesRow,
+        aboutRow
+      ].filter(Boolean).map((row) => row.container));
       this.scrollable.append(section.container);
 
       for(const key in rowsByKeys) {

@@ -583,7 +583,7 @@ export default class ChatContextMenu {
       text: 'ViewStatistics',
       onClick: this.onStatisticsClick,
       verify: async() => await this.managers.appPeersManager.isBroadcast(this.peerId) &&
-        this.managers.appProfileManager.canViewStatistics(this.peerId) &&
+        await this.managers.appProfileManager.canViewStatistics(this.peerId) &&
         !this.message.pFlags.is_outgoing
     }, {
       icon: 'forward',

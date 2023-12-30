@@ -31,6 +31,7 @@ import AppStickersAndEmojiTab from './stickersAndEmoji';
 import ButtonCorner from '../../buttonCorner';
 import PopupPremium from '../../popups/premium';
 import appImManager from '../../../lib/appManagers/appImManager';
+import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 
 export default class AppSettingsTab extends SliderSuperTab {
   private buttons: {
@@ -246,8 +247,7 @@ export default class AppSettingsTab extends SliderSuperTab {
     buttonsSection.content.append(buttonsDiv);
 
     let premiumSection: SettingSection;
-    const appConfig = await this.managers.apiManager.getAppConfig();
-    if(!appConfig.premium_purchase_blocked) {
+    if(!await apiManagerProxy.isPremiumPurchaseBlocked()) {
       premiumSection = new SettingSection();
       premiumSection.content.append(this.premiumRow.container, giftPremium.container);
     }
@@ -256,7 +256,7 @@ export default class AppSettingsTab extends SliderSuperTab {
       this.profile.element,
       /* profileSection.container, */
       buttonsSection.container,
-      premiumSection.container
+      premiumSection?.container
     ].filter(Boolean));
 
     const getEditProfileArgs = () => {
