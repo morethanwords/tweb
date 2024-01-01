@@ -1796,7 +1796,17 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 
 	@include respond-to(medium-screens) {
 		width: calc(100% - var(--right-column-width));
+    transition: width var(--transition-standard-in);
 	}
+
+  // fix padding when the right column is visible
+  body.is-right-column-shown & {
+    width: calc(100% - var(--right-column-width) - (var(--chat-input-padding)*2) - 11px); // 11px is tail width
+    // don't count tail width in groups
+    &.is-chat {
+      width: calc(100% - var(--right-column-width) - (var(--chat-input-padding)*2));
+    }
+  }
 
 	// @include respond-to(handhelds) {
   //   padding: 0 $chat-padding-handhelds;
