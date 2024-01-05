@@ -5,7 +5,7 @@
  */
 
 import type {MyInputMessagesFilter, MyMessage} from '../lib/appManagers/appMessagesManager';
-import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '../lib/appManagers/appDialogsManager';
+import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG, Some4, SortedDialogList} from '../lib/appManagers/appDialogsManager';
 import {logger} from '../lib/logger';
 import rootScope from '../lib/rootScope';
 import {SearchGroup, SearchGroupType} from './appSearch';
@@ -88,6 +88,7 @@ import StoriesProfileList from './stories/profileList';
 import Button from './button';
 import anchorCallback from '../helpers/dom/anchorCallback';
 import PopupPremium from './popups/premium';
+import {ChatType} from './chat/chat';
 
 // const testScroll = false;
 
@@ -106,7 +107,8 @@ export type SearchSuperContext = {
 };
 
 export type SearchSuperMediaType = 'stories' | 'members' | 'media' |
-  'files' | 'links' | 'music' | 'chats' | 'voice' | 'groups' | 'similar';
+  'files' | 'links' | 'music' | 'chats' | 'voice' | 'groups' | 'similar' |
+  'savedDialogs';
 export type SearchSuperMediaTab = {
   inputFilter: SearchSuperType,
   name: LangPackKey,
@@ -115,6 +117,14 @@ export type SearchSuperMediaTab = {
   menuTab?: HTMLElement,
   menuTabName?: HTMLElement;
   scroll?: {scrollTop: number, scrollHeight: number}
+};
+
+type SearchSuperLoadTypeOptions = {
+  mediaTab: SearchSuperMediaTab,
+  justLoad: boolean,
+  loadCount: number,
+  middleware: Middleware,
+  side: 'top' | 'bottom'
 };
 
 class SearchContextMenu {
@@ -129,6 +139,7 @@ class SearchContextMenu {
   private message: MyMessage;
   private selectedMessages: MyMessage[];
   private storyItem: StoryItem.storyItem;
+  // private isSavedDialog: boolean;
 
   constructor(
     private attachTo: HTMLElement,
@@ -169,6 +180,7 @@ class SearchContextMenu {
           this.searchSuper.selection.selectionForwardBtn.classList.contains('hide') :
           !(await this.managers.appMessagesManager.canForward(this.message)));
         this.selectedMessages = !isStory && searchSuper.selection.isSelecting ? await searchSuper.selection.getSelectedMessages() : undefined;
+        // this.isSavedDialog = !!(searchSuper.searchContext.peerId === rootScope.myId && searchSuper.searchContext.threadId);
 
         const f = await Promise.all(this.buttons.map(async(button) => {
           let good: boolean;
@@ -332,7 +344,7 @@ class SearchContextMenu {
         PopupDeleteMessages,
         this.peerId,
         [this.mid],
-        'chat'
+        ChatType.Chat
       );
     }
   };
@@ -400,6 +412,7 @@ export default class AppSearchSuper {
   private membersMiddlewareHelper: MiddlewareHelper;
 
   private _loadStories: () => Promise<void>;
+  private _loadSavedDialogs: (side: 'top' | 'bottom') => Promise<any>;
 
   private skipScroll: boolean;
 
@@ -546,10 +559,17 @@ export default class AppSearchSuper {
 
     this.searchGroupMedia = new SearchGroup(false, 'messages', true);
 
+    // this.scrollable.onScrolledTop = () => {
+    //   if(this.mediaTab.contentTab && this.canLoadMediaTab(this.mediaTab)/* && false */) {
+    //     // this.log('onScrolledTop will load media');
+    //     this.load(true, undefined, 'top');
+    //   }
+    // };
+
     this.scrollable.onScrolledBottom = () => {
       if(this.mediaTab.contentTab && this.canLoadMediaTab(this.mediaTab)/* && false */) {
         // this.log('onScrolledBottom will load media');
-        this.load(true);
+        this.load(true, undefined, 'bottom');
       }
     };
     // this.scroll.attachSentinels(undefined, 400);
@@ -1328,7 +1348,7 @@ export default class AppSearchSuper {
     } else return Promise.resolve();
   }
 
-  private async loadMembers(mediaTab: SearchSuperMediaTab) {
+  private async loadMembers({mediaTab}: SearchSuperLoadTypeOptions) {
     const chatId = mediaTab.type === 'members' ? this.searchContext.peerId.toChatId() : undefined;
     const userId = mediaTab.type === 'groups' ? this.searchContext.peerId.toUserId() : undefined;
     const middleware = this.middleware.get();
@@ -1498,7 +1518,7 @@ export default class AppSearchSuper {
     return promise;
   }
 
-  private async loadStories(mediaTab: SearchSuperMediaTab) {
+  private async loadStories({mediaTab}: SearchSuperLoadTypeOptions) {
     if(this._loadStories) {
       return this._loadStories();
     }
@@ -1547,7 +1567,7 @@ export default class AppSearchSuper {
     return promise;
   }
 
-  private async loadSimilarChannels(mediaTab: SearchSuperMediaTab) {
+  private async loadSimilarChannels({mediaTab}: SearchSuperLoadTypeOptions) {
     const middlewareHelper = this.middleware.get().create();
 
     const renderChats = async(chats: Chat[], middleware: Middleware) => {
@@ -1628,12 +1648,41 @@ export default class AppSearchSuper {
     return onPremium(rootScope.premium);
   }
 
-  private loadType(
-    mediaTab: SearchSuperMediaTab,
-    justLoad: boolean,
-    loadCount: number,
-    middleware: () => boolean
-  ) {
+  private async loadSavedDialogs({mediaTab, middleware, side}: SearchSuperLoadTypeOptions) {
+    if(this._loadSavedDialogs) {
+      return this._loadSavedDialogs(side);
+    }
+
+    const list = appDialogsManager.createChatList();
+    appDialogsManager.setListClickListener(list, undefined, true, undefined, true);
+
+    const xd = new Some4();
+    xd.scrollable = this.scrollable;
+    xd.sortedList = new SortedDialogList({
+      managers: this.managers,
+      log: this.log,
+      list,
+      indexKey: 'index_0',
+      virtualFilterId: rootScope.myId
+    });
+
+    mediaTab.contentTab.append(list);
+    this.afterPerforming(1, mediaTab.contentTab);
+
+    this._loadSavedDialogs = xd.onChatsScroll.bind(xd);
+    middleware.onClean(() => {
+      this._loadSavedDialogs = undefined;
+    });
+  }
+
+  private loadType(options: SearchSuperLoadTypeOptions) {
+    const {
+      mediaTab,
+      justLoad,
+      loadCount,
+      middleware,
+      side
+    } = options;
     const type = mediaTab.type;
     const inputFilter = mediaTab.inputFilter;
 
@@ -1643,11 +1692,13 @@ export default class AppSearchSuper {
 
     let otherPromise: Promise<void>;
     if(mediaTab.type === 'members' || mediaTab.type === 'groups') {
-      otherPromise = this.loadMembers(mediaTab);
+      otherPromise = this.loadMembers(options);
     } else if(mediaTab.type === 'stories') {
-      otherPromise = this.loadStories(mediaTab);
+      otherPromise = this.loadStories(options);
     } else if(mediaTab.type === 'similar') {
-      otherPromise = this.loadSimilarChannels(mediaTab);
+      otherPromise = this.loadSimilarChannels(options);
+    } else if(mediaTab.type === 'savedDialogs') {
+      otherPromise = this.loadSavedDialogs(options);
     }
 
     if(otherPromise) {
@@ -1801,12 +1852,14 @@ export default class AppSearchSuper {
 
     const [
       counters,
+      canViewSavedDialogs,
       canViewMembers,
       canViewGroups,
       canViewStories,
       canViewSimilar
     ] = await Promise.all([
       this.managers.appMessagesManager.getSearchCounters(peerId, filters, undefined, threadId),
+      this.canViewSavedDialogs(),
       this.canViewMembers(),
       this.canViewGroups(),
       this.canViewStories(),
@@ -1843,12 +1896,14 @@ export default class AppSearchSuper {
       }
     });
 
+    const savedDialogsTab = this.mediaTabsMap.get('savedDialogs');
     const membersTab = this.mediaTabsMap.get('members');
     const storiesTab = this.mediaTabsMap.get('stories');
     const groupsTab = this.mediaTabsMap.get('groups');
     const similarTab = this.mediaTabsMap.get('similar');
 
     const a: [SearchSuperMediaTab, boolean][] = [
+      [savedDialogsTab, canViewSavedDialogs],
       [storiesTab, canViewStories],
       [membersTab, canViewMembers],
       [groupsTab, canViewGroups],
@@ -1872,8 +1927,14 @@ export default class AppSearchSuper {
 
       const newTitle = i18n(peerId.isUser() ? 'Stories' : 'ProfileStories');
       storiesTab.menuTabName.replaceWith(storiesTab.menuTabName = newTitle);
-    } else if(canViewMembers) {
+    }
+
+    if(canViewMembers) {
       firstMediaTab = membersTab;
+    }
+
+    if(canViewSavedDialogs) {
+      firstMediaTab = savedDialogsTab;
     }
 
     this.container.classList.toggle('hide', !firstMediaTab);
@@ -1887,7 +1948,7 @@ export default class AppSearchSuper {
     }
   }
 
-  public async load(single = false, justLoad = false) {
+  public async load(single = false, justLoad = false, side: 'top' | 'bottom' = 'bottom') {
     const peerId = this.searchContext.peerId;
     this.log('load', single, peerId, this.loadPromises);
     const middleware = this.middleware.get();
@@ -1920,7 +1981,13 @@ export default class AppSearchSuper {
     const loadCount = justLoad ? 50 : Math.round((windowSize.height / 130 | 0) * 3 * 1.25); // that's good for all types
 
     const promises: Promise<any>[] = toLoad.map((mediaTab) => {
-      return this.loadType(mediaTab, justLoad, loadCount, middleware);
+      return this.loadType({
+        mediaTab,
+        justLoad,
+        loadCount,
+        middleware,
+        side
+      });
     });
 
     return Promise.all(promises).catch((err) => {
@@ -1978,6 +2045,10 @@ export default class AppSearchSuper {
     return containers[dateTimestamp];
   }
 
+  public canViewSavedDialogs() {
+    return this.searchContext.peerId === rootScope.myId && !this.searchContext.threadId;
+  }
+
   public canViewMembers() {
     const {peerId} = this.searchContext;
     const isAnyChat = peerId.isAnyChat();
@@ -2000,7 +2071,7 @@ export default class AppSearchSuper {
   }
 
   public async canViewStories() {
-    if(!this.mediaTabsMap.has('stories')) {
+    if(!this.mediaTabsMap.has('stories') || !this.onStoriesLengthChange) {
       return false;
     }
 

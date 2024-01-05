@@ -74,5 +74,19 @@ export default function getPeerIdsFromMessage(message: Message.message | Message
     peerIds.push(...recentRepliers.map((reply) => getPeerId(reply)));
   }
 
+  const savedPeerId = (message as Message.message).saved_peer_id;
+  if(savedPeerId) {
+    peerIds.push(getPeerId(savedPeerId));
+  }
+
+  const fwdHeader = (message as Message.message).fwd_from;
+  if(fwdHeader) {
+    peerIds.push(...[
+      fwdHeader.from_id,
+      fwdHeader.saved_from_id,
+      fwdHeader.saved_from_peer
+    ].filter(Boolean).map((peer) => getPeerId(peer)));
+  }
+
   return new Set(peerIds.filter(Boolean));
 }

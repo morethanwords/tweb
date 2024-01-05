@@ -4,7 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {IS_MOBILE} from '../../environment/userAgent';
 import type {MyDialogFilter} from '../storages/filters';
 
 /**
@@ -16,6 +15,7 @@ export type REAL_FOLDER_ID = 0 | 1;
 export const NULL_PEER_ID: PeerId = 0;
 export const REPLIES_PEER_ID: PeerId = 1271266957;
 export const REPLIES_HIDDEN_CHANNEL_ID: ChatId = 777;
+export const HIDDEN_PEER_ID: PeerId = 2666000;
 export const SERVICE_PEER_ID: PeerId = 777000;
 export const MUTE_UNTIL = 0x7FFFFFFF;
 export const BOT_START_PARAM = '';

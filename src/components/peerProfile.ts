@@ -23,6 +23,7 @@ import getServerMessageId from '../lib/appManagers/utils/messageId/getServerMess
 import getPeerActiveUsernames from '../lib/appManagers/utils/peers/getPeerActiveUsernames';
 import I18n, {i18n, join} from '../lib/langPack';
 import {MTAppConfig} from '../lib/mtproto/appConfig';
+import {HIDDEN_PEER_ID} from '../lib/mtproto/mtproto_config';
 import wrapRichText from '../lib/richTextProcessor/wrapRichText';
 import rootScope from '../lib/rootScope';
 import {avatarNew} from './avatarNew';
@@ -336,7 +337,7 @@ export default class PeerProfile {
     });
 
     let promise: Promise<(() => void) | void> = Promise.resolve();
-    if(!(!peerId || (rootScope.myId === peerId && this.isDialog))) {
+    if(!(!peerId || (rootScope.myId === peerId && this.isDialog)) && peerId !== HIDDEN_PEER_ID) {
       const isForum = await this.managers.appPeersManager.isForum(this.peerId);
       const middleware = this.middlewareHelper.get();
       if(isForum && this.threadId) {
@@ -392,13 +393,28 @@ export default class PeerProfile {
     this.clearSetMoreDetailsTimeout();
   }
 
+  private isSavedDialog() {
+    return !!(this.peerId === rootScope.myId && this.threadId);
+  }
+
+  private getDetailsForUse() {
+    const {peerId, threadId} = this;
+    return this.isSavedDialog() ? {
+      peerId: threadId,
+      threadId: undefined
+    } : {
+      peerId,
+      threadId
+    };
+  }
+
   private canBeDetailed() {
     return this.peerId !== rootScope.myId || !this.isDialog;
   }
 
   private async _setAvatar() {
     const middleware = this.middlewareHelper.get();
-    const {peerId} = this;
+    const {peerId, threadId} = this.getDetailsForUse();
     const isTopic = !!(this.threadId && await this.managers.appPeersManager.isForum(peerId));
     if(this.canBeDetailed() && !isTopic) {
       const photo = await this.managers.appPeersManager.getPeerPhoto(peerId);
@@ -439,7 +455,8 @@ export default class PeerProfile {
         customEmojiSize: makeMediaSize(120, 120),
         middleware
       },
-      withStories: true
+      withStories: true,
+      meAsNotes: !!(peerId === rootScope.myId && this.threadId)
     });
     avatar.node.classList.add('profile-avatar', 'avatar-120');
     const [nameCallback] = await Promise.all([
@@ -527,7 +544,7 @@ export default class PeerProfile {
   }
 
   private async fillName(middleware: Middleware, white?: boolean) {
-    const {peerId} = this;
+    const {peerId} = this.getDetailsForUse();
     const [element/* , icons */] = await Promise.all([
       wrapPeerTitle({
         peerId,
@@ -537,7 +554,8 @@ export default class PeerProfile {
         wrapOptions: {
           middleware,
           textColor: white ? 'white' : undefined
-        }
+        },
+        meAsNotes: !!(peerId === rootScope.myId && this.threadId)
       })
 
       // generateTitleIcons(peerId)

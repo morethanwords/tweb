@@ -259,6 +259,10 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     this.searchSuper = new AppSearchSuper({
       mediaTabs: [{
         inputFilter: 'inputMessagesFilterEmpty',
+        name: 'SharedMedia.SavedDialogs',
+        type: 'savedDialogs'
+      }, {
+        inputFilter: 'inputMessagesFilterEmpty',
         name: 'Stories',
         type: 'stories'
       }, {
@@ -458,7 +462,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
   }
 
   private async changeTitleKey() {
-    const isForum = this.managers.appPeersManager.isForum(this.peerId);
+    const isForum = await this.managers.appPeersManager.isForum(this.peerId);
 
     return () => {
       this.titleI18n.compareAndUpdate({key: this.threadId && isForum ? 'AccDescrTopic' : 'Profile'});

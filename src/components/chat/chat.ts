@@ -6,7 +6,7 @@
 
 import type {ChatRights} from '../../lib/appManagers/appChatsManager';
 import type {RequestWebViewOptions} from '../../lib/appManagers/appAttachMenuBotsManager';
-import type {MessageSendingParams, MessagesStorageKey} from '../../lib/appManagers/appMessagesManager';
+import type {HistoryStorageKey, MessageSendingParams, MessagesStorageKey} from '../../lib/appManagers/appMessagesManager';
 import {AppImManager, APP_TABS, ChatSetPeerOptions} from '../../lib/appManagers/appImManager';
 import EventListenerBase from '../../helpers/eventListenerBase';
 import {logger, LogTypes} from '../../lib/logger';
@@ -40,8 +40,18 @@ import animationIntersector, {AnimationItemGroup} from '../animationIntersector'
 import {getColorsFromWallPaper} from '../../helpers/color';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
+import {isDialog} from '../../lib/appManagers/utils/dialogs/isDialog';
+import getDialogKey from '../../lib/appManagers/utils/dialogs/getDialogKey';
+import getHistoryStorageKey from '../../lib/appManagers/utils/messages/getHistoryStorageKey';
 
-export type ChatType = 'chat' | 'pinned' | 'discussion' | 'scheduled' | 'stories';
+export enum ChatType {
+  Chat = 'chat',
+  Pinned = 'pinned',
+  Discussion = 'discussion',
+  Scheduled = 'scheduled',
+  Stories = 'stories',
+  Saved = 'saved'
+};
 
 export default class Chat extends EventListenerBase<{
   setPeer: (mid: number, isTopMessage: boolean) => void
@@ -67,6 +77,7 @@ export default class Chat extends EventListenerBase<{
 
   public type: ChatType;
   public messagesStorageKey: MessagesStorageKey;
+  public historyStorageKey: HistoryStorageKey;
   public isStandalone: boolean;
 
   public noForwards: boolean;
@@ -115,7 +126,7 @@ export default class Chat extends EventListenerBase<{
     // this.log = logger('CHAT', LogTypes.Warn | LogTypes.Error);
     this.log.warn('constructor');
 
-    this.type = 'chat';
+    this.type = ChatType.Chat;
     this.animationGroup = `chat-${Math.round(Math.random() * 65535)}`;
 
     if(!this.excludeParts.elements) {
@@ -357,7 +368,7 @@ export default class Chat extends EventListenerBase<{
     });
 
     this.bubbles.listenerSetter.add(rootScope)('dialog_drop', (dialog) => {
-      if(dialog.peerId === this.peerId && (dialog._ === 'dialog' || this.threadId === dialog.id)) {
+      if(dialog.peerId === this.peerId && (isDialog(dialog) || this.threadId === getDialogKey(dialog))) {
         this.appImManager.setPeer();
       }
     });
@@ -498,16 +509,17 @@ export default class Chat extends EventListenerBase<{
     this.isUserBlocked = isUserBlocked;
 
     if(threadId && !this.isForum) {
-      options.type = 'discussion';
+      options.type = options.peerId === rootScope.myId ? ChatType.Saved : ChatType.Discussion;
     }
 
-    const type = options.type ?? 'chat';
+    const type = options.type ?? ChatType.Chat;
     this.setType(type);
     if(this.selection) {
-      this.selection.isScheduled = type === 'scheduled';
+      this.selection.isScheduled = type === ChatType.Scheduled;
     }
 
-    this.messagesStorageKey = `${this.peerId}_${this.type === 'scheduled' ? 'scheduled' : 'history'}`;
+    this.messagesStorageKey = `${this.peerId}_${this.type === ChatType.Scheduled ? 'scheduled' : 'history'}`;
+    this.historyStorageKey = getHistoryStorageKey(this.threadId ? 'replies' : 'history', this.peerId, this.threadId);
 
     this.container && this.container.classList.toggle('no-forwards', this.noForwards);
 
@@ -697,6 +709,10 @@ export default class Chat extends EventListenerBase<{
   }
 
   public canSend(action?: ChatRights) {
+    if(this.type === ChatType.Saved) {
+      return Promise.resolve(false);
+    }
+
     return this.managers.appMessagesManager.canSendToPeer(this.peerId, this.threadId, action);
   }
 
@@ -735,7 +751,7 @@ export default class Chat extends EventListenerBase<{
 
   public isOutMessage(message: Message.message | Message.messageService) {
     const fwdFrom = (message as Message.message).fwd_from;
-    const isOut = this.isOurMessage(message) && (!fwdFrom || this.peerId !== rootScope.myId);
+    const isOut = this.isOurMessage(message) && (!fwdFrom || this.peerId !== rootScope.myId || this.threadId);
     return !!isOut;
   }
 
@@ -744,7 +760,7 @@ export default class Chat extends EventListenerBase<{
   }
 
   public isPinnedMessagesNeeded() {
-    return this.type === 'chat' || this.isForum;
+    return this.type === ChatType.Chat || this.type === ChatType.Saved || this.isForum;
   }
 
   public async canGiftPremium() {

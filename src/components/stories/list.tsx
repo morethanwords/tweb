@@ -30,6 +30,7 @@ import wrapPeerTitle from '../wrappers/peerTitle';
 import liteMode from '../../helpers/liteMode';
 import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
 import SwipeHandler from '../swipeHandler';
+import {ChatType} from '../chat/chat';
 
 const TEST_COUNT = 0;
 const STATE_FOLDED = 1;
@@ -544,7 +545,7 @@ function _StoriesList(props: {
         onClick: () => {
           appImManager.setInnerPeer({
             peerId: peer.peerId,
-            type: 'chat'
+            type: ChatType.Chat
           });
         },
         verify: () => !isSelf && peer.peerId.isUser()
@@ -554,7 +555,7 @@ function _StoriesList(props: {
         onClick: () => {
           appImManager.setInnerPeer({
             peerId: peer.peerId,
-            type: 'chat'
+            type: ChatType.Chat
           });
         },
         verify: () => !peer.peerId.isUser()

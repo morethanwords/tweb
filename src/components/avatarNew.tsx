@@ -11,7 +11,7 @@ import {getMiddleware, type Middleware} from '../helpers/middleware';
 import deferredPromise from '../helpers/cancellablePromise';
 import {createSignal, createEffect, createMemo, onCleanup, JSX, createRoot, Show, Accessor} from 'solid-js';
 import rootScope from '../lib/rootScope';
-import {NULL_PEER_ID, REPLIES_PEER_ID} from '../lib/mtproto/mtproto_config';
+import {NULL_PEER_ID, REPLIES_PEER_ID, HIDDEN_PEER_ID} from '../lib/mtproto/mtproto_config';
 import {Chat, ChatPhoto, User, UserProfilePhoto} from '../layer';
 import {getPeerAvatarColorByPeer} from '../lib/appManagers/utils/peers/getPeerColorById';
 import getPeerPhoto from '../lib/appManagers/utils/peers/getPeerPhoto';
@@ -190,7 +190,8 @@ export const AvatarNew = (props: {
   }>,
   peer?: Chat.channel | Chat.chat | User.user,
   isStoryFolded?: Accessor<boolean>,
-  processImageOnLoad?: (image: HTMLImageElement) => void
+  processImageOnLoad?: (image: HTMLImageElement) => void,
+  meAsNotes?: boolean
 }) => {
   const [ready, setReady] = createSignal(false);
   const [icon, setIcon] = createSignal<Icon>();
@@ -487,7 +488,7 @@ export const AvatarNew = (props: {
     const middleware = middlewareHelper.get();
     const {peerId, isDialog, withStories, storyId, isBig, peerTitle: title, threadId, wrapOptions} = props;
     if(peerId === myId && isDialog) {
-      set({icon: 'saved'});
+      set({icon: props.meAsNotes ? 'mynotes' : 'saved'});
       return;
     }
 
@@ -551,6 +552,11 @@ export const AvatarNew = (props: {
 
       if(peerId === REPLIES_PEER_ID) {
         set({color, icon: 'reply_filled'});
+        return;
+      }
+
+      if(peerId === HIDDEN_PEER_ID) {
+        set({icon: 'author_hidden'});
         return;
       }
 

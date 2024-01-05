@@ -20,6 +20,7 @@ import noop from '../../helpers/noop';
 import getMessageThreadId from '../../lib/appManagers/utils/messages/getMessageThreadId';
 import {avatarNew} from '../avatarNew';
 import {MiddlewareHelper} from '../../helpers/middleware';
+import {ChatType} from './chat';
 
 type GroupItem = {
   bubble: HTMLElement,
@@ -291,8 +292,8 @@ export default class BubbleGroups {
   public sortGroupItemsKey: Extract<keyof GroupItem, 'groupMid' | 'timestamp'>;
 
   constructor(private chat: Chat) {
-    this.sortItemsKey = chat.type === 'scheduled' ? 'timestamp' : 'mid';
-    this.sortGroupsKey = chat.type === 'scheduled' ? 'lastTimestamp' : 'lastMid';
+    this.sortItemsKey = chat.type === ChatType.Scheduled ? 'timestamp' : 'mid';
+    this.sortGroupsKey = chat.type === ChatType.Scheduled ? 'lastTimestamp' : 'lastMid';
     this.sortGroupItemsKey = /* chat.type === 'scheduled' ? 'timestamp' :  */'groupMid';
   }
 

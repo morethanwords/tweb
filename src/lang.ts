@@ -467,6 +467,13 @@ const lang = {
     'one_value': 'Subscribe to **[Telegram Premium]()** to unlock up to **%d** similar channel.',
     'other_value': 'Subscribe to **[Telegram Premium]()** to unlock up to **%d** similar channels.'
   },
+  'SharedMedia.SavedDialogs': 'Chats',
+  'AuthorHidden': 'Author Hidden',
+  'AuthorHiddenShort': 'Anonymous',
+  'MyNotes': 'My Notes',
+  'MyNotesShort': 'Notes',
+  'OpenChat': 'Open Chat',
+  'DeleteSavedDialogDescription': 'Are you sure you want to delete all saved messages from **%s**?',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -1710,6 +1717,7 @@ const lang = {
   'ChannelJoined': 'You joined this channel',
   'UnlockSimilar': 'Unlock more channels',
   'MoreSimilar': 'More Channels',
+  'MessageNotFound': 'Message doesn\'t exist',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

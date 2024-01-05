@@ -1073,7 +1073,7 @@ export class AppImManager extends EventListenerBase<{
             this.setPeer({peerId: dialog.peerId});
           }
         });
-      } else if(key === 'ArrowUp' && this.chat.type !== 'scheduled') {
+      } else if(key === 'ArrowUp' && this.chat.type !== ChatType.Scheduled) {
         if(!chat.input.editMsgId && chat.input.isInputEmpty()) {
           this.managers.appMessagesManager.getFirstMessageToEdit(chat.peerId, chat.threadId).then((message) => {
             if(message) {
@@ -1308,7 +1308,7 @@ export class AppImManager extends EventListenerBase<{
 
       return this.setInnerPeer({
         ...options,
-        type: 'discussion'
+        type: ChatType.Discussion
       });
     });
   }
@@ -2070,11 +2070,15 @@ export class AppImManager extends EventListenerBase<{
     peerId = options.peerId = await this.managers.appPeersManager.getPeerMigratedTo(peerId) || peerId;
 
     if(!options.type) {
-      if(options.threadId && !(await this.managers.appPeersManager.isForum(options.peerId))) {
-        options.type = 'discussion';
+      if(options.threadId) {
+        if(options.peerId === rootScope.myId) {
+          options.type = ChatType.Saved;
+        } else if(!(await this.managers.appPeersManager.isForum(options.peerId))) {
+          options.type = ChatType.Discussion;
+        }
       }
 
-      options.type ??= 'chat';
+      options.type ??= ChatType.Chat;
     }
 
     // * reuse current chat
@@ -2100,7 +2104,7 @@ export class AppImManager extends EventListenerBase<{
   public openScheduled(peerId: PeerId) {
     this.setInnerPeer({
       peerId,
-      type: 'scheduled'
+      type: ChatType.Scheduled
     });
   }
 

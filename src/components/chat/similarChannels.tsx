@@ -36,6 +36,8 @@ export default function SimilarChannels(props: {
   const [details, setDetails] = createSignal<Awaited<Awaited<ReturnType<typeof getDetails>>['results']>>();
   const [list, setList] = createSignal<JSX.Element>();
 
+  let {onAcked, onReady, onEmpty} = props;
+
   const canvas = document.createElement('canvas');
   canvas.width = 20;
   canvas.height = 20;
@@ -62,7 +64,8 @@ export default function SimilarChannels(props: {
     premium();
     const middleware = createMiddleware().get();
     const {cached, results} = await getDetails();
-    props.onAcked?.(cached);
+    onAcked?.(cached);
+    onAcked = undefined;
     if(!middleware()) {
       return;
     }
@@ -238,7 +241,8 @@ export default function SimilarChannels(props: {
     }
 
     setList(list);
-    props.onReady?.();
+    onReady?.();
+    onReady = undefined;
   });
 
   return (

@@ -30,6 +30,7 @@ import Scrollable from './scrollable';
 import appSidebarRight from './sidebarRight';
 import AppSharedMediaTab from './sidebarRight/tabs/sharedMedia';
 import PopupElement from './popups';
+import {ChatType} from './chat/chat';
 
 type AppMediaViewerTargetType = {
   element: HTMLElement,
@@ -207,7 +208,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       PopupDeleteMessages,
       target.peerId,
       [target.mid],
-      'chat',
+      ChatType.Chat,
       () => {
         this.target = {element: this.content.media} as any;
         this.close();
@@ -245,7 +246,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
         appImManager.setInnerPeer({
           peerId: message.peerId,
           lastMsgId: mid,
-          type: threadId ? 'discussion' : undefined,
+          type: threadId ? ChatType.Discussion : undefined,
           threadId
         });
       });

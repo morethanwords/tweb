@@ -19,7 +19,6 @@ import toggleDisability from '../../helpers/dom/toggleDisability';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import {toastNew} from '../toast';
 import setInnerHTML from '../../helpers/dom/setInnerHTML';
-import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import createStickersContextMenu from '../../helpers/dom/createStickersContextMenu';
 import attachStickerViewerListeners from '../stickerViewer';
 import {Document, StickerSet} from '../../layer';
@@ -32,6 +31,10 @@ import ButtonMenuToggle from '../buttonMenuToggle';
 import {copyTextToClipboard} from '../../helpers/clipboard';
 import wrapRichText from '../../lib/richTextProcessor/wrapRichText';
 import {onMediaCaptionClick} from '../appMediaViewer';
+import DEBUG from '../../config/debug';
+import {ButtonMenuItemOptionsVerifiable} from '../buttonMenu';
+import appDownloadManager from '../../lib/appManagers/appDownloadManager';
+import pause from '../../helpers/schedulers/pause';
 
 const ANIMATION_GROUP: AnimationItemGroup = 'STICKERS-POPUP';
 
@@ -270,17 +273,34 @@ export default class PopupStickers extends PopupElement {
       setInnerHTML(this.title, i18n('Emoji'));
     }
 
+    const buttons: ButtonMenuItemOptionsVerifiable[] = [{
+      icon: 'copy',
+      text: 'CopyLink',
+      onClick: () => {
+        const prefix = `https://t.me/${this.isEmojis ? 'addemoji' : 'addstickers'}/`;
+        const text = sets.map((set) => prefix + set.set.short_name).join('\n');
+        copyTextToClipboard(text);
+      }
+    }];
+
+    if(DEBUG) {
+      buttons.push({
+        icon: 'download',
+        text: 'MediaViewer.Context.Download',
+        onClick: async() => {
+          for(const set of sets) {
+            for(const doc of set.documents) {
+              appDownloadManager.downloadToDisc({media: doc as Document.document});
+              await pause(100);
+            }
+          }
+        }
+      });
+    }
+
     const btnMenu = ButtonMenuToggle({
       listenerSetter: this.listenerSetter,
-      buttons: [{
-        icon: 'copy',
-        text: 'CopyLink',
-        onClick: () => {
-          const prefix = `https://t.me/${this.isEmojis ? 'addemoji' : 'addstickers'}/`;
-          const text = sets.map((set) => prefix + set.set.short_name).join('\n');
-          copyTextToClipboard(text);
-        }
-      }],
+      buttons,
       direction: 'bottom-left'
     });
     this.title.after(btnMenu);

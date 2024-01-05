@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {Dialog, ForumTopic} from '../../../../layer';
+import type {Dialog, ForumTopic, SavedDialog} from '../../../../layer';
 import type {REAL_FOLDER_ID} from '../../../mtproto/mtproto_config';
 import getDialogIndexKey from './getDialogIndexKey';
 
 export default function getDialogIndex(
-  dialog: Dialog.dialog | ForumTopic.forumTopic,
+  dialog: Dialog.dialog | ForumTopic.forumTopic | SavedDialog.savedDialog,
   indexKey: ReturnType<typeof getDialogIndexKey> = getDialogIndexKey((dialog as Dialog).folder_id as REAL_FOLDER_ID)
 ) {
   return dialog?.[indexKey as 'index_0'];

@@ -6,6 +6,7 @@
 
 import appSidebarRight from '..';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
+import rootScope from '../../../lib/rootScope';
 import AppSearch, {SearchGroup} from '../../appSearch';
 import ButtonIcon from '../../buttonIcon';
 import InputSearch from '../../inputSearch';
@@ -50,7 +51,10 @@ export default class AppPrivateSearchTab extends SliderSuperTab {
       {
         messages: new SearchGroup('Chat.Search.PrivateSearch', 'messages')
       },
-      this.middlewareHelper.get()
+      this.middlewareHelper.get(),
+      undefined,
+      undefined,
+      !!(peerId === rootScope.myId && threadId)
     );
 
     if(!this.peerId) {

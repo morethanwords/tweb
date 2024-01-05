@@ -24,7 +24,7 @@ import getPeerPhoto from './utils/peers/getPeerPhoto';
 import getServerMessageId from './utils/messageId/getServerMessageId';
 import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
 
-export type PeerType = 'channel' | 'chat' | 'megagroup' | 'group' | 'saved';
+export type PeerType = 'channel' | 'chat' | 'megagroup' | 'group' | 'saved' | 'savedDialog';
 export class AppPeersManager extends AppManager {
   public get peerId() {
     return this.appUsersManager.userId.toPeerId();
@@ -154,6 +154,10 @@ export class AppPeersManager extends AppManager {
     return !!getPeerActiveUsernames(this.getPeer(peerId))[0];
   }
 
+  public isSavedDialog(peerId: PeerId, threadId?: number) {
+    return !!(peerId === this.peerId && threadId);
+  }
+
   public getRestrictionReasonText(peerId: PeerId) {
     const peer = this.getPeer(peerId) as Chat.channel | User.user;
     const reason = peer.restriction_reason ? getRestrictionReason(peer.restriction_reason) : undefined;
@@ -271,8 +275,10 @@ export class AppPeersManager extends AppManager {
     return text;
   }
 
-  public getDialogType(peerId: PeerId): PeerType {
-    if(this.isMegagroup(peerId)) {
+  public getDialogType(peerId: PeerId, threadId?: number): PeerType {
+    if(this.peerId === peerId && threadId) {
+      return 'savedDialog';
+    } else if(this.isMegagroup(peerId)) {
       return 'megagroup';
     } else if(this.isChannel(peerId)) {
       return 'channel';
