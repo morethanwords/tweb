@@ -2982,7 +2982,7 @@ export class AppDialogsManager {
       }
 
       const isForum = !!elem.querySelector('.is-forum');
-      if(isForum && !e.shiftKey && !lastMsgId) {
+      if(isForum && !e.shiftKey && !lastMsgId && peerId !== rootScope.myId) {
         this.toggleForumTabByPeerId(peerId);
         return;
       }
