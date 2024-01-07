@@ -1106,7 +1106,9 @@ export default class ChatContextMenu {
   };
 
   private onCopyAnchorLinkClick = () => {
-    copyTextToClipboard((this.target as HTMLAnchorElement).href);
+    let href = (this.target as HTMLAnchorElement).href;
+    href = href.replace(/^mailto:/, '');
+    copyTextToClipboard(href);
   };
 
   private onCopyLinkClick = () => {
