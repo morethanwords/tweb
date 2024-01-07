@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {MyInputMessagesFilter, MyMessage} from '../lib/appManagers/appMessagesManager';
+import type {AppMessagesManager, MyInputMessagesFilter, MyMessage} from '../lib/appManagers/appMessagesManager';
 import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG, Some4, SortedDialogList} from '../lib/appManagers/appDialogsManager';
 import {logger} from '../lib/logger';
 import rootScope from '../lib/rootScope';
@@ -18,14 +18,13 @@ import useHeavyAnimationCheck, {getHeavyAnimationPromise} from '../hooks/useHeav
 import I18n, {LangPackKey, i18n, join} from '../lib/langPack';
 import findUpClassName from '../helpers/dom/findUpClassName';
 import {getMiddleware, Middleware, MiddlewareHelper} from '../helpers/middleware';
-import {ChannelParticipant, Chat, ChatFull, ChatParticipant, ChatParticipants, Document, Message, MessageMedia, Photo, StoryItem, Update, User, WebPage} from '../layer';
+import {ChannelParticipant, Chat, ChatFull, ChatParticipant, Document, Message, MessageMedia, Photo, StoryItem, Update, User, WebPage} from '../layer';
 import SortedUserList from './sortedUserList';
 import findUpTag from '../helpers/dom/findUpTag';
 import appSidebarRight from './sidebarRight';
 import mediaSizes from '../helpers/mediaSizes';
 import appImManager from '../lib/appManagers/appImManager';
 import positionElementByIndex from '../helpers/dom/positionElementByIndex';
-import cleanSearchText from '../helpers/cleanSearchText';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import handleTabSwipe from '../helpers/dom/handleTabSwipe';
 import windowSize from '../helpers/windowSize';
@@ -44,7 +43,6 @@ import lockTouchScroll from '../helpers/dom/lockTouchScroll';
 import copy from '../helpers/object/copy';
 import getObjectKeysAndSort from '../helpers/object/getObjectKeysAndSort';
 import safeAssign from '../helpers/object/safeAssign';
-import escapeRegExp from '../helpers/string/escapeRegExp';
 import findAndSplice from '../helpers/array/findAndSplice';
 import {ScrollStartCallbackDimensions} from '../helpers/fastSmoothScroll';
 import setInnerHTML from '../helpers/dom/setInnerHTML';
@@ -108,9 +106,9 @@ export type SearchSuperContext = {
 
 export type SearchSuperMediaType = 'stories' | 'members' | 'media' |
   'files' | 'links' | 'music' | 'chats' | 'voice' | 'groups' | 'similar' |
-  'savedDialogs';
+  'savedDialogs' | 'saved';
 export type SearchSuperMediaTab = {
-  inputFilter: SearchSuperType,
+  inputFilter?: SearchSuperType,
   name: LangPackKey,
   type: SearchSuperMediaType,
   contentTab?: HTMLElement,
@@ -312,7 +310,7 @@ class SearchContextMenu {
     appImManager.setInnerPeer({
       peerId: this.peerId,
       lastMsgId: this.mid,
-      threadId: this.searchSuper.searchContext.threadId
+      threadId: this.searchSuper.mediaTab.type === 'saved' ? this.searchSuper.searchContext.peerId : this.searchSuper.searchContext.threadId
     });
   };
 
@@ -360,7 +358,8 @@ export type ProcessSearchSuperResult = {
   promises: Promise<any>[],
   elemsToAppend: {element: HTMLElement, message: any}[],
   inputFilter: MyInputMessagesFilter,
-  searchGroup?: SearchGroup
+  searchGroup?: SearchGroup,
+  mediaTab: SearchSuperMediaTab
 };
 
 export default class AppSearchSuper {
@@ -548,7 +547,10 @@ export default class AppSearchSuper {
 
       this.tabsContainer.append(container);
 
-      this.tabs[mediaTab.inputFilter] = content;
+      const {inputFilter} = mediaTab;
+      if(inputFilter) {
+        this.tabs[inputFilter] = content;
+      }
 
       mediaTab.contentTab = content;
     }
@@ -768,8 +770,13 @@ export default class AppSearchSuper {
     return filterMessagesByInputFilter(type, messages, messages.length);
   }
 
-  private async processEmptyFilter({message, searchGroup}: ProcessSearchSuperResult) {
+  private async processEmptyFilter({message, searchGroup, mediaTab}: ProcessSearchSuperResult) {
+    const isSaved = mediaTab.type === 'saved';
+
     let peerId = message.peerId;
+    if(isSaved) {
+      peerId = message.fromId;
+    }
     peerId = await this.managers.appPeersManager.getPeerMigratedTo(peerId) || peerId;
 
     const middleware = this.middleware.get();
@@ -777,13 +784,15 @@ export default class AppSearchSuper {
     const loadPromises: Promise<any>[] = [];
     const dialogElement = appDialogsManager.addDialogNew({
       peerId,
-      container: searchGroup.list,
+      container: searchGroup?.list || false,
       avatarSize: 'bigger',
       loadPromises,
       wrapOptions: {
         middleware
       },
-      withStories: true
+      withStories: true,
+      meAsSaved: !isSaved,
+      autonomous: isSaved
     });
 
     const setLastMessagePromise = appDialogsManager.setLastMessageN({
@@ -793,11 +802,18 @@ export default class AppSearchSuper {
       } as any,
       lastMessage: message,
       dialogElement,
-      highlightWord: this.searchContext.query
+      highlightWord: this.searchContext.query,
+      noForwardIcon: isSaved
     });
 
     loadPromises.push(setLastMessagePromise);
-    return Promise.all(loadPromises).then(noop);
+    return Promise.all(loadPromises).then(() => {
+      if(searchGroup) {
+        return;
+      }
+
+      return {element: dialogElement.container, message};
+    });
   }
 
   private async processPhotoVideoFilter({message, promises, middleware}: ProcessSearchSuperResult) {
@@ -1015,11 +1031,12 @@ export default class AppSearchSuper {
     }
   }
 
-  public async performSearchResult(messages: any[], mediaTab: SearchSuperMediaTab, append = true) {
+  public async performSearchResult(messages: (Message.message | Message.messageService)[], mediaTab: SearchSuperMediaTab, append = true) {
     const elemsToAppend: {element: HTMLElement, message: any}[] = [];
     const sharedMediaDiv: HTMLElement = mediaTab.contentTab;
     const promises: Promise<any>[] = [];
     const middleware = this.middleware.get();
+    const isSaved = mediaTab.type === 'saved';
     let inputFilter = mediaTab.inputFilter;
 
     await getHeavyAnimationPromise();
@@ -1029,7 +1046,7 @@ export default class AppSearchSuper {
       inputFilter = 'inputMessagesFilterEmpty';
       searchGroup = this.searchGroupMedia;
       sharedMediaDiv.append(searchGroup.container);
-    } else if(inputFilter === 'inputMessagesFilterEmpty') {
+    } else if(inputFilter === 'inputMessagesFilterEmpty' && !isSaved) {
       searchGroup = this.searchGroups.messages;
     }
 
@@ -1039,7 +1056,8 @@ export default class AppSearchSuper {
       message: undefined,
       middleware,
       promises,
-      searchGroup
+      searchGroup,
+      mediaTab
     };
 
     let processCallback: (options: ProcessSearchSuperResult) => any;
@@ -1080,7 +1098,7 @@ export default class AppSearchSuper {
       type K = {element: HTMLElement, message: Message.message | Message.messageService};
       const results: (Promise<K> | K)[] = messages.map(async(message) => {
         try {
-          options.message = message;
+          options.message = message as Message.message;
           return await processCallback(options);
         } catch(err) {
           this.log.error('error rendering filter', inputFilter, options, message, err);
@@ -1107,28 +1125,48 @@ export default class AppSearchSuper {
       }
     }
 
-    if(elemsToAppend.length) {
+    const length = elemsToAppend.length;
+    if(length) {
       const method = append ? 'append' : 'prepend';
+      const groupByMonth = this.groupByMonth && !isSaved;
+      const threadId = isSaved ? this.searchContext.peerId : undefined;
       elemsToAppend.forEach((details) => {
         const {element, message} = details;
         if(!message) {
           debugger;
         }
 
-        const monthContainer = this.getMonthContainerByTimestamp(this.groupByMonth ? message.date : 0, inputFilter);
+        const monthContainer = this.getMonthContainerByTimestamp(groupByMonth ? message.date : 0, inputFilter);
         element.classList.add('search-super-item');
         element.dataset.mid = '' + message.mid;
         element.dataset.peerId = '' + message.peerId;
+        threadId && (element.dataset.threadId = '' + threadId);
         monthContainer.items[method](element);
 
         if(this.selection?.isSelecting) {
           this.selection.toggleElementCheckbox(element, true);
         }
       });
+
+      if(isSaved) {
+        let chatlist = sharedMediaDiv.querySelector<HTMLElement>('.chatlist');
+        if(!chatlist) {
+          chatlist = appDialogsManager.createChatList({new: true});
+          const monthContainer = this.getMonthContainerByTimestamp(0, inputFilter).container;
+          monthContainer.replaceWith(chatlist);
+          chatlist.append(monthContainer);
+
+          appDialogsManager.setListClickListener(chatlist, () => {
+            if(this.selection.isSelecting) {
+              return false;
+            }
+          }, undefined, true, true);
+        }
+      }
     }
 
     // if(type !== 'inputMessagesFilterEmpty') {
-    this.afterPerforming(inputFilter === 'inputMessagesFilterEmpty' ? 1 : elemsToAppend.length, sharedMediaDiv);
+    this.afterPerforming(inputFilter === 'inputMessagesFilterEmpty' ? 1 : length, sharedMediaDiv);
     // }
   }
 
@@ -1683,26 +1721,25 @@ export default class AppSearchSuper {
       middleware,
       side
     } = options;
-    const type = mediaTab.type;
-    const inputFilter = mediaTab.inputFilter;
+    const {type, inputFilter} = mediaTab;
 
-    if(this.loadPromises[type]) {
-      return this.loadPromises[type];
+    let promise = this.loadPromises[type];
+    if(promise) {
+      return promise;
     }
 
-    let otherPromise: Promise<void>;
     if(mediaTab.type === 'members' || mediaTab.type === 'groups') {
-      otherPromise = this.loadMembers(options);
+      promise = this.loadMembers(options);
     } else if(mediaTab.type === 'stories') {
-      otherPromise = this.loadStories(options);
+      promise = this.loadStories(options);
     } else if(mediaTab.type === 'similar') {
-      otherPromise = this.loadSimilarChannels(options);
+      promise = this.loadSimilarChannels(options);
     } else if(mediaTab.type === 'savedDialogs') {
-      otherPromise = this.loadSavedDialogs(options);
+      promise = this.loadSavedDialogs(options);
     }
 
-    if(otherPromise) {
-      return this.loadPromises[mediaTab.type] = otherPromise.finally(() => {
+    if(promise) {
+      return this.loadPromises[mediaTab.type] = promise.finally(() => {
         if(!middleware()) {
           return;
         }
@@ -1713,7 +1750,7 @@ export default class AppSearchSuper {
 
     const history = this.historyStorage[inputFilter] ??= [];
 
-    if(inputFilter === 'inputMessagesFilterEmpty' && !history.length) {
+    if(inputFilter === 'inputMessagesFilterEmpty' && !history.length && mediaTab.type !== 'saved') {
       if(!this.loadedChats) {
         this.loadChats();
         this.loadedChats = true;
@@ -1725,7 +1762,7 @@ export default class AppSearchSuper {
       }
     }
 
-    const promise = this.loadPromises[type] = Promise.resolve().then(async() => {
+    promise = this.loadPromises[type] = Promise.resolve().then(async() => {
       // render from cache
       if(history.length && this.usedFromHistory[inputFilter] < history.length && !justLoad) {
         const messages: any[] = [];
@@ -1737,8 +1774,8 @@ export default class AppSearchSuper {
           used += ids.length;
           slicedLength += ids.length;
 
-          const promises = ids.map((m) => apiManagerProxy.getMessageByPeer(m.peerId, m.mid));
-          const notFilteredMessages = await Promise.all(promises);
+          const notFilteredMessages = ids.map((m) => apiManagerProxy.getMessageByPeer(m.peerId, m.mid));
+          // const notFilteredMessages = await Promise.all(promises);
 
           messages.push(...this.filterMessagesByType(notFilteredMessages, inputFilter));
         } while(slicedLength < loadCount && used < history.length);
@@ -1764,17 +1801,22 @@ export default class AppSearchSuper {
       const offsetId = lastItem?.mid || 0;
       const offsetPeerId = lastItem?.peerId || NULL_PEER_ID;
 
-      const value = await this.managers.appMessagesManager.getHistory({
+      const options: Parameters<AppMessagesManager['getHistory']>[0] = {
         ...this.searchContext,
         inputFilter: {_: inputFilter},
         offsetId,
         offsetPeerId,
         limit: loadCount,
-        nextRate: this.nextRates[type] ??= 0
-      });
+        nextRate: this.nextRates[type] ??= 0,
+        ...(mediaTab.type === 'saved' ? {inputFilter: undefined, peerId: rootScope.myId, threadId: this.searchContext.peerId} : {})
+      };
+      const value = await this.managers.appMessagesManager.getHistory(options);
 
-      // const messages = await Promise.all(value.history.map((mid) => this.managers.appMessagesManager.getMessageByPeer(this.searchContext.peerId, mid)));
-      const messages = value.messages;
+      let messages = value.messages;
+      if(!messages && value.history && mediaTab.type === 'saved') {
+        messages = value.history.map((mid) => apiManagerProxy.getMessageByPeer(options.peerId, mid));
+      }
+
       history.push(...messages.map((m) => ({mid: m.mid, peerId: m.peerId})));
 
       if(!middleware()) {
@@ -1847,12 +1889,13 @@ export default class AppSearchSuper {
       return;
     }
 
-    const mediaTabs = this.mediaTabs.filter((mediaTab) => mediaTab.inputFilter !== 'inputMessagesFilterEmpty');
+    const mediaTabs = this.mediaTabs.filter((mediaTab) => mediaTab.inputFilter && mediaTab.inputFilter !== 'inputMessagesFilterEmpty');
     const filters = mediaTabs.map((mediaTab) => ({_: mediaTab.inputFilter}));
 
     const [
       counters,
       canViewSavedDialogs,
+      canViewSaved,
       canViewMembers,
       canViewGroups,
       canViewStories,
@@ -1860,6 +1903,7 @@ export default class AppSearchSuper {
     ] = await Promise.all([
       this.managers.appMessagesManager.getSearchCounters(peerId, filters, undefined, threadId),
       this.canViewSavedDialogs(),
+      this.canViewSaved(),
       this.canViewMembers(),
       this.canViewGroups(),
       this.canViewStories(),
@@ -1897,6 +1941,7 @@ export default class AppSearchSuper {
     });
 
     const savedDialogsTab = this.mediaTabsMap.get('savedDialogs');
+    const savedTab = this.mediaTabsMap.get('saved');
     const membersTab = this.mediaTabsMap.get('members');
     const storiesTab = this.mediaTabsMap.get('stories');
     const groupsTab = this.mediaTabsMap.get('groups');
@@ -1904,6 +1949,7 @@ export default class AppSearchSuper {
 
     const a: [SearchSuperMediaTab, boolean][] = [
       [savedDialogsTab, canViewSavedDialogs],
+      [savedTab, canViewSaved],
       [storiesTab, canViewStories],
       [membersTab, canViewMembers],
       [groupsTab, canViewGroups],
@@ -2049,6 +2095,21 @@ export default class AppSearchSuper {
     return this.searchContext.peerId === rootScope.myId && !this.searchContext.threadId;
   }
 
+  public canViewSaved() {
+    const {peerId, threadId} = this.searchContext;
+    if(threadId || rootScope.myId === peerId) {
+      return false;
+    }
+
+    return this.managers.appMessagesManager.getHistory({
+      peerId: rootScope.myId,
+      threadId: this.searchContext.peerId,
+      limit: 50
+    }).then((historyResult) => {
+      return !!historyResult.count;
+    });
+  }
+
   public canViewMembers() {
     const {peerId} = this.searchContext;
     const isAnyChat = peerId.isAnyChat();
@@ -2112,7 +2173,12 @@ export default class AppSearchSuper {
     this.lazyLoadQueue.clear();
 
     this.mediaTabs.forEach((mediaTab) => {
-      this.usedFromHistory[mediaTab.inputFilter] = -1;
+      const {inputFilter} = mediaTab;
+      if(!inputFilter) {
+        return;
+      }
+
+      this.usedFromHistory[inputFilter] = -1;
     });
 
     if(this.selection?.isSelecting) {
@@ -2235,11 +2301,12 @@ export default class AppSearchSuper {
     this.swipeHandler?.removeListeners();
     this.selection?.cleanup();
 
-    this.scrollStartCallback = undefined;
-    this.onChangeTab = undefined;
-    this.selectTab = undefined;
-    this.searchContextMenu = undefined;
-    this.swipeHandler = undefined;
-    this.selection = undefined;
+    this.scrollStartCallback =
+      this.onChangeTab =
+      this.selectTab =
+      this.searchContextMenu =
+      this.swipeHandler =
+      this.selection =
+      undefined;
   }
 }

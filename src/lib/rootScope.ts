@@ -78,6 +78,7 @@ export type BroadcastEvents = {
   'history_update': {storageKey: MessagesStorageKey, message: MyMessage, sequential?: boolean},
   'history_reply_markup': {peerId: PeerId},
   'history_multiappend': MyMessage,
+  // 'history_delete': {peerId: PeerId, msgs: Map<number, {savedPeerId?: PeerId}>},
   'history_delete': {peerId: PeerId, msgs: Set<number>},
   'history_forbidden': PeerId,
   'history_reload': PeerId,

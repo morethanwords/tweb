@@ -240,7 +240,7 @@ export default class ChatTopbar {
           this.chat.appImManager.setInnerPeer({
             peerId,
             lastMsgId: mid,
-            type: searchContext.isScheduled ? ChatType.Scheduled : (searchContext.threadId ? ChatType.Discussion : undefined),
+            type: searchContext.isScheduled ? ChatType.Scheduled : undefined,
             threadId: searchContext.threadId
           });
         }

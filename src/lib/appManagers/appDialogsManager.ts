@@ -3083,14 +3083,16 @@ export class AppDialogsManager {
     dialogElement,
     highlightWord,
     isBatch = false,
-    setUnread = false
+    setUnread = false,
+    noForwardIcon
   }: {
     dialog: AnyDialog,
     lastMessage?: Message.message | Message.messageService,
     dialogElement?: DialogElement,
     highlightWord?: string,
     isBatch?: boolean,
-    setUnread?: boolean
+    setUnread?: boolean,
+    noForwardIcon?: boolean
   }) {
     if(!dialogElement) {
       dialogElement = this.xd.getDialogElement(dialog.peerId);
@@ -3161,7 +3163,7 @@ export class AppDialogsManager {
       let icon: Icon;
       if(draftMessage) {
 
-      } else if((lastMessage as Message.message)?.fwdFromId && !isSaved) {
+      } else if((lastMessage as Message.message)?.fwdFromId && !isSaved && !noForwardIcon) {
         icon = 'forward_filled';
       } else if((lastMessage as Message.message)?.reply_to?._ === 'messageReplyStoryHeader') {
         icon = 'storyreply';

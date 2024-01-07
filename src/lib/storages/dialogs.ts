@@ -43,6 +43,7 @@ import {logger} from '../logger';
 import getPeerId from '../appManagers/utils/peers/getPeerId';
 import {isDialog, isSavedDialog, isForumTopic} from '../appManagers/utils/dialogs/isDialog';
 import getDialogKey from '../appManagers/utils/dialogs/getDialogKey';
+import getDialogThreadId from '../appManagers/utils/dialogs/getDialogThreadId';
 
 export enum FilterType {
   Folder,
@@ -965,18 +966,17 @@ export default class DialogsStorage extends AppManager {
     ignoreOffsetDate?: boolean,
     saveGlobalOffset?: boolean
   }) {
-    const isTopic = isForumTopic(dialog);
-    const isSaved = isSavedDialog(dialog);
     const _isDialog = isDialog(dialog);
     const {peerId} = dialog;
+    const key = getDialogKey(dialog);
 
-    if(isTopic) {
+    if(_isDialog) {
+      this.dialogs[key] = dialog;
+    } else if(isForumTopic(dialog)) {
       const forumTopics = this.getForumTopicsCache(peerId);
-      forumTopics.topics.set(dialog.id, dialog);
-    } else if(isSaved) {
-      this.savedDialogs[dialog.savedPeerId] = dialog;
-    } else {
-      this.dialogs[peerId] = dialog;
+      forumTopics.topics.set(key, dialog);
+    } else if(isSavedDialog(dialog)) {
+      this.savedDialogs[key] = dialog;
     }
 
     offsetDate ??= this.getDialogOffsetDate(dialog);
@@ -998,7 +998,7 @@ export default class DialogsStorage extends AppManager {
       if(!savedOffsetDate || offsetDate < savedOffsetDate) {
         // if(pos !== -1) {
         if(!ignoreOffsetDate && !this.isDialogsLoaded(folderId)) {
-          this.dropDialog(peerId, isTopic ? getDialogKey(dialog) : undefined, true);
+          this.dropDialog(peerId, getDialogThreadId(dialog), true);
           return;
         }
 
@@ -1129,9 +1129,9 @@ export default class DialogsStorage extends AppManager {
       this.processTopics(peerId, result);
     } else if(isDialog) {
       // ! fix 'dialogFolder', maybe there is better way to do it, this only can happen by 'messages.getPinnedDialogs' by folder_id: 0
-      forEachReverse(result.dialogs, (dialog, idx) => {
+      forEachReverse(result.dialogs, (dialog, idx, arr) => {
         if(dialog._ === 'dialogFolder') {
-          result.dialogs.splice(idx, 1);
+          arr.splice(idx, 1);
         }
       });
     }

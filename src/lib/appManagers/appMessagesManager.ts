@@ -7411,10 +7411,12 @@ export class AppMessagesManager extends AppManager {
   }
 
   private handleDeletedMessages(peerId: PeerId, storage: MessagesStorage, messages: number[]) {
+    // type T = {savedPeerId?: number};
     const history: {
       count: number,
       unread: number,
       unreadMentions: number,
+      // msgs: Map<number, {savedPeerId?: number}>,
       msgs: Set<number>,
       albums?: {[groupId: string]: Set<number>},
     } = {
@@ -7445,8 +7447,14 @@ export class AppMessagesManager extends AppManager {
         }
       }
 
+      // const details: T = {};
+      // const savedPeerId = (message as Message.message).saved_peer_id;
+      // if(savedPeerId) {
+      //   details.savedPeerId = this.appPeersManager.getPeerId(savedPeerId);
+      // }
+
       ++history.count;
-      history.msgs.add(mid);
+      history.msgs.add(mid/* , details */);
 
       const groupedId = (message as Message.message).grouped_id;
       if(groupedId) {

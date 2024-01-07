@@ -474,6 +474,7 @@ const lang = {
   'MyNotesShort': 'Notes',
   'OpenChat': 'Open Chat',
   'DeleteSavedDialogDescription': 'Are you sure you want to delete all saved messages from **%s**?',
+  'SharedMedia.Saved': 'Saved',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',

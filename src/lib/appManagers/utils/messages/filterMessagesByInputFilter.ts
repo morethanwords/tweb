@@ -15,7 +15,7 @@ export default function filterMessagesByInputFilter(
   limit: number
 ) {
   if(inputFilter === 'inputMessagesFilterEmpty') {
-    return history;
+    return history.slice(0, limit);
   }
 
   const foundMsgs: MyMessage[] = [];

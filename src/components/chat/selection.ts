@@ -737,7 +737,11 @@ export class SearchSelection extends AppSelection {
           const mid = [...this.selectedMids.get(peerId)][0];
           this.cancelSelection();
 
-          appImManager.setInnerPeer({peerId, lastMsgId: mid});
+          appImManager.setInnerPeer({
+            peerId,
+            lastMsgId: mid,
+            threadId: this.searchSuper.mediaTab.type === 'saved' ? this.searchSuper.searchContext.peerId : this.searchSuper.searchContext.threadId
+          });
         }, attachClickOptions);
 
         this.selectionForwardBtn = ButtonIcon(`forward ${BASE_CLASS}-forward`);

@@ -652,6 +652,7 @@ export default class Chat extends EventListenerBase<{
 
     if(this.container) {
       this.container.dataset.type = this.type;
+      this.container.classList.toggle('can-click-date', [ChatType.Chat, ChatType.Discussion, ChatType.Saved].includes(this.type));
     }
 
     this.log.setPrefix('CHAT-' + peerId + '-' + this.type);
@@ -680,7 +681,7 @@ export default class Chat extends EventListenerBase<{
   }
 
   public getDialogOrTopic() {
-    return this.isForum && this.threadId ? this.managers.dialogsStorage.getForumTopic(this.peerId, this.threadId) : this.managers.dialogsStorage.getDialogOnly(this.peerId);
+    return this.managers.dialogsStorage.getAnyDialog(this.peerId, (this.isForum || this.type === ChatType.Saved) && this.threadId);
   }
 
   public getHistoryMaxId() {
@@ -760,7 +761,7 @@ export default class Chat extends EventListenerBase<{
   }
 
   public isPinnedMessagesNeeded() {
-    return this.type === ChatType.Chat || this.type === ChatType.Saved || this.isForum;
+    return this.type === ChatType.Chat || this.isForum;
   }
 
   public async canGiftPremium() {

@@ -246,7 +246,6 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
         appImManager.setInnerPeer({
           peerId: message.peerId,
           lastMsgId: mid,
-          type: threadId ? ChatType.Discussion : undefined,
           threadId
         });
       });

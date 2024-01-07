@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import rootScope from '../../../lib/rootScope';
+import rootScope, {BroadcastEvents} from '../../../lib/rootScope';
 import AppSearchSuper, {SearchSuperMediaTab, SearchSuperType} from '../../appSearchSuper.';
 import {SliderSuperTab} from '../../slider';
 import TransitionSlider from '../../transition';
@@ -23,6 +23,7 @@ import liteMode from '../../../helpers/liteMode';
 import AppEditBotTab from './editBot';
 import addChatUsers from '../../addChatUsers';
 import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
+import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';
 
 type SharedMediaHistoryStorage = Partial<{
   [type in SearchSuperType]: {mid: number, peerId: PeerId}[]
@@ -245,7 +246,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     });
 
     this.listenerSetter.add(rootScope)('history_delete', ({peerId, msgs}) => {
-      this.deleteDeletedMessages(peerId, Array.from(msgs));
+      this.deleteDeletedMessages(peerId, msgs);
     });
 
     // Calls when message successfully sent and we have an id
@@ -258,21 +259,22 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     let lastMediaTabType: SearchSuperMediaTab['type'];
     this.searchSuper = new AppSearchSuper({
       mediaTabs: [{
-        inputFilter: 'inputMessagesFilterEmpty',
         name: 'SharedMedia.SavedDialogs',
         type: 'savedDialogs'
       }, {
-        inputFilter: 'inputMessagesFilterEmpty',
         name: 'Stories',
         type: 'stories'
       }, {
-        inputFilter: 'inputMessagesFilterEmpty',
         name: 'PeerMedia.Members',
         type: 'members'
       }, {
         inputFilter: 'inputMessagesFilterPhotoVideo',
         name: 'SharedMediaTab2',
         type: 'media'
+      }, {
+        inputFilter: 'inputMessagesFilterEmpty',
+        name: 'SharedMedia.Saved',
+        type: 'saved'
       }, {
         inputFilter: 'inputMessagesFilterDocument',
         name: 'SharedFilesTab2',
@@ -290,11 +292,9 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         name: 'SharedVoiceTab2',
         type: 'voice'
       }, {
-        inputFilter: 'inputMessagesFilterEmpty',
         name: 'ChatList.Filter.Groups',
         type: 'groups'
       }, {
-        inputFilter: 'inputMessagesFilterEmpty',
         name: 'SimilarChannels',
         type: 'similar'
       }],
@@ -330,8 +330,8 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     // console.log('construct shared media time:', performance.now() - perf);
   }
 
-  private _renderNewMessage(message: Message.message | Message.messageService, threadId?: number) {
-    const historyStorage = historiesStorage[message.peerId]?.[threadId];
+  private _renderNewMessage(message: Message.message | Message.messageService, peerId = message.peerId, threadId?: number) {
+    const historyStorage = historiesStorage[peerId]?.[threadId];
     if(!historyStorage) return;
 
     for(const mediaTab of this.searchSuper.mediaTabs) {
@@ -341,15 +341,25 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         continue;
       }
 
-      const filtered = this.searchSuper.filterMessagesByType([message], inputFilter)
-      .filter((message) => !history.find((m) => m.mid === message.mid && m.peerId === message.peerId));
-      if(filtered.length) {
-        history.unshift(...filtered.map((message) => ({mid: message.mid, peerId: message.peerId})));
+      let filtered: (typeof message)[];
+      if(mediaTab.type === 'saved') {
+        filtered = [message].filter((message) => {
+          const savedPeerId = (message as Message.message).saved_peer_id;
+          return savedPeerId && getPeerId(savedPeerId) === this.searchSuper.searchContext.peerId && !history.some((m) => m.mid === message.mid);
+        });
+      } else {
+        filtered = this.searchSuper.filterMessagesByType([message], inputFilter)
+        .filter((message) => !history.find((m) => m.mid === message.mid && m.peerId === message.peerId));
+      }
 
-        if(this.peerId === message.peerId && this.searchSuper.usedFromHistory[inputFilter] !== -1) {
-          this.searchSuper.usedFromHistory[inputFilter] += filtered.length;
-          this.searchSuper.performSearchResult(filtered, mediaTab, false);
-        }
+      if(!filtered.length) {
+        continue;
+      }
+
+      history.unshift(...filtered.map((message) => ({mid: message.mid, peerId: message.peerId})));
+      if((mediaTab.type === 'saved' ? this.peerId === threadId : this.peerId === peerId) && this.searchSuper.usedFromHistory[inputFilter] !== -1) {
+        this.searchSuper.usedFromHistory[inputFilter] += filtered.length;
+        this.searchSuper.performSearchResult(filtered, mediaTab, false);
       }
     }
   }
@@ -363,14 +373,14 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     this._renderNewMessage(message);
     if(threadId) {
-      this._renderNewMessage(message, threadId);
+      this._renderNewMessage(message, undefined, threadId);
     }
   }
 
-  public _deleteDeletedMessages(historyStorage: SharedMediaHistoryStorage, peerId: PeerId, mids: number[]) {
+  public _deleteDeletedMessages(historyStorage: SharedMediaHistoryStorage, peerId: PeerId, mids: number[], threadId?: number) {
     for(const mid of mids) {
-      for(const type of this.searchSuper.mediaTabs) {
-        const inputFilter = type.inputFilter;
+      for(const mediaTab of this.searchSuper.mediaTabs) {
+        const inputFilter = mediaTab.inputFilter;
 
         const history = historyStorage[inputFilter];
         if(!history) continue;
@@ -382,7 +392,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
         history.splice(idx, 1);
 
-        if(this.peerId === peerId) {
+        if(mediaTab.type === 'saved' ? this.peerId === threadId : this.peerId === peerId) {
           const container = this.searchSuper.tabs[inputFilter];
           const div = container.querySelector(`[data-mid="${mid}"][data-peer-id="${peerId}"]`) as HTMLElement;
           if(div) {
@@ -404,14 +414,15 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     }
   }
 
-  public deleteDeletedMessages(peerId: PeerId, mids: number[]) {
+  public deleteDeletedMessages(peerId: PeerId, msgs: BroadcastEvents['history_delete']['msgs']) {
     if(this.init) return; // * not inited yet
 
     const h = historiesStorage[peerId];
     if(!h) return;
+    const mids = [...msgs.keys()];
 
     for(const threadId in h) {
-      this._deleteDeletedMessages(h[threadId], peerId, mids);
+      this._deleteDeletedMessages(h[threadId], peerId, mids, +threadId);
     }
 
     this.scrollable.onScroll();
@@ -438,6 +449,10 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     this.searchSuper.loadMutex = promise;
   }
 
+  private getHistoryStorage(peerId: PeerId, threadId?: number) {
+    return (historiesStorage[peerId] ??= {})[threadId] ??= {};
+  }
+
   public setPeer(peerId: PeerId, threadId?: number) {
     if(this.peerId === peerId && this.threadId === threadId) return false;
 
@@ -450,10 +465,13 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       this.init = null;
     }
 
+    const historyStorage = this.getHistoryStorage(peerId, threadId);
+    historyStorage.inputMessagesFilterEmpty = this.getHistoryStorage(rootScope.myId, peerId).inputMessagesFilterEmpty ??= [];
+
     this.searchSuper.setQuery({
       peerId,
       threadId,
-      historyStorage: (historiesStorage[peerId] ??= {})[threadId] ??= {}
+      historyStorage
     });
 
     this.profile.setPeer(peerId, threadId);

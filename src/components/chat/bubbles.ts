@@ -167,6 +167,7 @@ import anchorCallback from '../../helpers/dom/anchorCallback';
 import SimilarChannels from './similarChannels';
 import clearMessageId from '../../lib/appManagers/utils/messageId/clearMessageId';
 import {ChatType} from './chat';
+import {isSavedDialog} from '../../lib/appManagers/utils/dialogs/isDialog';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -1297,7 +1298,7 @@ export default class ChatBubbles {
         return;
       }
 
-      this.deleteMessagesByIds(Array.from(msgs));
+      this.deleteMessagesByIds([...msgs.keys()]);
     });
 
     this.listenerSetter.add(rootScope)('dialog_unread', ({peerId}) => {
@@ -3495,7 +3496,7 @@ export default class ChatBubbles {
       } else if(topMessage) {
         readMaxId = await m(this.managers.appMessagesManager.getReadMaxIdIfUnread(peerId, this.chat.threadId));
         const dialog = await m(this.chat.getDialogOrTopic());
-        if(/* dialog.unread_count */readMaxId && !samePeer && (!dialog || dialog.unread_count !== 1)) {
+        if(/* dialog.unread_count */readMaxId && !samePeer && (!dialog || (!isSavedDialog(dialog) && dialog.unread_count !== 1))) {
           const foundSlice = historyStorage.history.findSliceOffset(readMaxId);
           if(foundSlice && foundSlice.slice.isEnd(SliceEnd.Bottom)) {
             overrideAdditionMsgId = foundSlice.slice[foundSlice.offset - 25] || foundSlice.slice[0] || readMaxId;
