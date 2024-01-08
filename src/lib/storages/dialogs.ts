@@ -1734,9 +1734,9 @@ export default class DialogsStorage extends AppManager {
         this.applyDialogs(messagesForumTopics, peerId);
 
         messagesForumTopics.topics.forEach((forumTopic) => {
-          if(forumTopic._ === 'forumTopic') {
-            promises[forumTopic.id].resolve(forumTopic);
-            delete promises[peerId];
+          if(isForumTopic(forumTopic as ForumTopic)) {
+            promises[forumTopic.id].resolve(forumTopic as ForumTopic);
+            delete promises[forumTopic.id];
           }
         });
 
@@ -1777,7 +1777,7 @@ export default class DialogsStorage extends AppManager {
 
       const peer = this.appPeersManager.getOutputPeer(peerId);
       result.topics = result.topics.map((topic) => {
-        if(topic._ === 'forumTopicDeleted') {
+        if(!isForumTopic(topic as ForumTopic)) {
           return;
         }
 
