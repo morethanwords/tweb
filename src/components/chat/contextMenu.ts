@@ -1053,7 +1053,7 @@ export default class ChatContextMenu {
 
     let mids: number[];
     if(!this.chat.selection.isSelecting) {
-      mids = [this.mid];
+      mids = [this.getMessageWithText().mid];
     } else {
       mids = this.chat.selection.getSelectedMids();
     }
