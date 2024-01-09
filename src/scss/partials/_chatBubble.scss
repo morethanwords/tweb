@@ -607,6 +607,14 @@
     }
   }
 
+  &:not(.forwarded) {
+    &:not(.is-group-first) {
+      .name-first-line {
+        display: none;
+      }
+    }
+  }
+
   &.photo, 
   &.video {
     .bubble-content {

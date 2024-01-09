@@ -168,6 +168,8 @@ import SimilarChannels from './similarChannels';
 import clearMessageId from '../../lib/appManagers/utils/messageId/clearMessageId';
 import {ChatType} from './chat';
 import {isSavedDialog} from '../../lib/appManagers/utils/dialogs/isDialog';
+import getFwdFromName from '../../lib/appManagers/utils/messages/getFwdFromName';
+import isForwardOfForward from '../../lib/appManagers/utils/messages/isForwardOfForward';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -3619,11 +3621,17 @@ export default class ChatBubbles {
       this.processRanks = undefined;
       this.canShowRanks = false;
 
-      if(this.chat.isChannel) {
+      let canShowRanks = this.chat.isMegagroup, chatId = this.peerId.toChatId();
+      if(this.chat.type === ChatType.Saved && !this.chat.threadId.isUser()) {
+        const chat = apiManagerProxy.getChat(chatId = this.chat.threadId.toChatId());
+        canShowRanks = chat?._ === 'channel';
+      }
+
+      if(canShowRanks) {
         this.canShowRanks = true;
         const processRanks = this.processRanks = new Set();
 
-        const promise = this.managers.acknowledged.appProfileManager.getParticipants(this.peerId.toChatId(), {_: 'channelParticipantsAdmins'}, 100);
+        const promise = this.managers.acknowledged.appProfileManager.getParticipants(chatId, {_: 'channelParticipantsAdmins'}, 100);
         const ackedResult = await m(promise);
         const setRanksPromise = ackedResult.result.then((channelParticipants) => {
           if(this.processRanks !== processRanks) {
@@ -5321,14 +5329,17 @@ export default class ChatBubbles {
       setInnerHTML(messageDiv, richText);
     }
 
+    const isOut = this.chat.isOutMessage(message);
     const haveRTLChar = isRTL(messageMessage, true);
 
     let timeSpan: HTMLElement;
     if(!isSponsored) {
       timeSpan = MessageRender.setTime({
+        chat: this.chat,
         chatType: this.chat.type,
         message,
-        reactionsMessage
+        reactionsMessage,
+        isOut
       });
 
       messageDiv.append(timeSpan);
@@ -5484,11 +5495,15 @@ export default class ChatBubbles {
 
     const fwdFrom = isMessage && message.fwd_from;
     const fwdFromId = isMessage && message.fwdFromId;
+    const _isForwardOfForward = this.chat.isForwardOfForward(message);
 
-    const isOut = this.chat.isOutMessage(message);
     let nameContainer: HTMLElement = bubbleContainer;
 
-    const canHideNameIfMedia = !message.viaBotId && (message.fromId === rootScope.myId || !message.pFlags.out);
+    const canHideNameIfMedia = !message.viaBotId &&
+      (message.fromId === rootScope.myId || !message.pFlags.out) &&
+      !_isForwardOfForward &&
+      !fwdFromId;
+      // (!getFwdFromName(fwdFrom) || !fwdFromId);
 
     const isMessageEmpty = !messageMessage && !isSponsored/*  && (!topicNameButtonContainer || isStandaloneMedia) */;
 
@@ -6832,41 +6847,30 @@ export default class ChatBubbles {
       const peerIdForColor = message.fromId;
 
       const isForwardFromChannel = message.from_id?._ === 'peerChannel' && message.fromId === fwdFromId;
+      const fwdFromName = getFwdFromName(fwdFrom);
+      const hasTwoTitles = _isForwardOfForward && !isOut;
 
-      const mustHaveName = !!(message.viaBotId/*  || topicNameButtonContainer */) || storyFromPeerId;
-      const isHidden = fwdFrom && !fwdFrom.from_id;
+      let mustHaveName = !!(message.viaBotId/*  || topicNameButtonContainer */) || storyFromPeerId;
+      const isHidden = !!(fwdFrom && (!fwdFrom.from_id || fwdFromName));
       if(message.viaBotId) {
         titleVia = document.createElement('span');
         titleVia.innerText = '@' + (await this.managers.appPeersManager.getPeerUsername(message.viaBotId));
         titleVia.classList.add('peer-title');
       }
 
-      if(mustHaveName) {
-        bubble.classList.add('must-have-name');
+      let isForward = !!(storyFromPeerId || fwdFromId || fwdFrom);
+      if(isForward && this.chat.type === ChatType.Saved && fwdFromId === rootScope.myId) {
+        isForward = false;
       }
 
-      const isForward = storyFromPeerId || fwdFromId || fwdFrom;
-      if(isHidden) {
+      if(isHidden && !fwdFromId) {
         title = document.createElement('span');
         title.classList.add('peer-title');
-        setInnerHTML(title, wrapEmojiText(fwdFrom.from_name));
+        setInnerHTML(title, wrapEmojiText(fwdFrom.from_name || fwdFromName));
         bubble.classList.add('hidden-profile');
       } else {
         const titlePeerId = storyFromPeerId || fwdFromId || message.fromId;
-        const colorIndex = getPeerColorIndexByPeer(apiManagerProxy.getPeer(titlePeerId));
-        let textColorProperty: string;
-        if(colorIndex !== -1) {
-          textColorProperty = `peer-${colorIndex}-color-rgb`;
-        }
-
-        title = new PeerTitle({
-          peerId: titlePeerId,
-          withPremiumIcon: !isForward,
-          wrapOptions: {
-            ...wrapOptions,
-            textColor: textColorProperty
-          }
-        }).element;
+        title = this.createTitle(titlePeerId, wrapOptions, isForward).element;
       }
 
       let replyContainer: HTMLElement;
@@ -6906,7 +6910,8 @@ export default class ChatBubbles {
 
       let nameDiv: HTMLElement;
       if(isForward) {
-        if(this.peerId !== rootScope.myId && !isForwardFromChannel) {
+        const isRegularSaved = this.peerId === rootScope.myId && (!this.chat.threadId || !isForwardOfForward(message) /* !isOut || this.chat.threadId === fwdFromId */);
+        if(!isRegularSaved && !isForwardFromChannel) {
           bubble.classList.add('forwarded');
         }
 
@@ -6918,19 +6923,51 @@ export default class ChatBubbles {
         nameDiv = document.createElement('div');
         title.dataset.peerId = '' + (storyFromPeerId || fwdFromId);
 
-        if((this.peerId === rootScope.myId || this.peerId === REPLIES_PEER_ID || isForwardFromChannel) && !isStandaloneMedia && !storyFromPeerId) {
+        if((isRegularSaved || this.peerId === REPLIES_PEER_ID || isForwardFromChannel) && !isStandaloneMedia && !hasTwoTitles && !storyFromPeerId) {
           nameDiv.classList.add('colored-name');
           nameDiv.append(title);
         } else {
-          /* const fromTitle = message.fromId === this.myID || appPeersManager.isBroadcast(fwdFromId || message.fromId) ? '' : `<div class="name" data-peer-id="${message.fromId}" style="color: ${appPeersManager.getPeerColorByID(message.fromId, false)};">${appPeersManager.getPeerTitle(message.fromId)}</div>`;
-          nameDiv.innerHTML = fromTitle + 'Forwarded from ' + title; */
-          const args: FormatterArguments = [title];
+          mustHaveName ||= true;
+          const firstArgs: FormatterArguments = [title];
           if(isStandaloneMedia) {
             const br = document.createElement('br');
             br.classList.add('hide-ol');
-            args.unshift(br);
+            firstArgs.unshift(br);
           }
-          nameDiv.append(i18n(storyFromPeerId ? 'ForwardedStoryFrom' : 'ForwardedFrom', [args]));
+
+          let nameKey: LangPackKey;
+          const nameArgs: FormatterArguments = [firstArgs];
+          if(fwdFrom.post_author) {
+            nameKey = storyFromPeerId ? 'ForwardedStoryFromAuthor' : 'ForwardedFromAuthor';
+            const s = document.createElement('span');
+            s.append(wrapEmojiText(fwdFrom.post_author));
+            nameArgs.push(s);
+          } else {
+            nameKey = storyFromPeerId ? 'ForwardedStoryFrom' : 'ForwardedFrom';
+          }
+
+          nameDiv.append(i18n(nameKey, nameArgs));
+
+          if(hasTwoTitles) {
+            const title = document.createElement('span');
+            title.classList.add('peer-title');
+            if(fwdFromName) {
+              title.style.color = 'var(--message-primary-color)';
+              title.dataset.peerId = '' + NULL_PEER_ID;
+              title.append(wrapEmojiText(fwdFromName));
+            } else {
+              const peerId = getPeerId(fwdFrom.saved_from_id);
+              title.dataset.peerId = '' + peerId;
+              const {element, textColorProperty} = this.createTitle(peerId, wrapOptions, false);
+              element.style.color = `rgb(var(--${textColorProperty}))`;
+              title.append(element);
+            }
+
+            const span = document.createElement('span');
+            span.classList.add('name-first-line');
+            span.append(title, document.createElement('br'));
+            nameDiv.prepend(span);
+          }
         }
       } else if(!message.viaBotId) {
         if(!isStandaloneMedia && needName) {
@@ -7003,18 +7040,25 @@ export default class ChatBubbles {
         replyContainer.classList.add('floating-part');
       }
 
-      if(title && !isHidden && !fwdFromId && this.canShowRanks) {
+      const firstElement = nameDiv?.firstElementChild as HTMLElement || title;
+      if(
+        this.canShowRanks &&
+        title &&
+        !isHidden
+        // (!fwdFromId || (message.post_author && !this.chat.getPostAuthor(message)))
+      ) {
         const processRank = () => {
           const rank = this.ranks.get(message.fromId);
           if(!rank) {
             return;
           }
 
-          this.wrapTitleAndRank(title as HTMLElement, rank);
+          this.wrapTitleAndRank(firstElement, rank);
         };
 
-        if((message as Message.message).post_author) {
-          this.wrapTitleAndRank(title as HTMLElement, (message as Message.message).post_author);
+        const postAuthor = (message as Message.message).post_author/*  || fwdFrom?.post_author */;
+        if(postAuthor) {
+          this.wrapTitleAndRank(firstElement, postAuthor);
         } else if(this.ranks) {
           processRank();
         } else {
@@ -7026,7 +7070,7 @@ export default class ChatBubbles {
           });
         }
       } else if(isForwardFromChannel) {
-        this.wrapTitleAndRank(title as HTMLElement, 0);
+        this.wrapTitleAndRank(firstElement, 0);
       }
 
       if(topicNameButtonContainer && isStandaloneMedia) {
@@ -7036,6 +7080,10 @@ export default class ChatBubbles {
         } else {
           attachmentDiv.after(topicNameButtonContainer);
         }
+      }
+
+      if(mustHaveName) {
+        bubble.classList.add('must-have-name');
       }
     } else {
       bubble.classList.add('hide-name');
@@ -7147,9 +7195,11 @@ export default class ChatBubbles {
         let timeSpan: HTMLElement = documentMessageDiv && documentMessageDiv.querySelector('.time');
         if(!timeSpan) {
           timeSpan = MessageRender.setTime({
+            chat: this.chat,
             chatType: this.chat.type,
             message,
-            reactionsMessage
+            reactionsMessage,
+            isOut: bubble.classList.contains('is-out')
           });
         }
 
@@ -7331,6 +7381,26 @@ export default class ChatBubbles {
     span.classList.add('bubble-name-rank');
     span.append(wrapParticipantRank(rank));
     return span;
+  }
+
+  private createTitle(peerId: PeerId, wrapOptions: WrapSomethingOptions, isForward?: boolean) {
+    const colorIndex = getPeerColorIndexByPeer(apiManagerProxy.getPeer(peerId));
+    let textColorProperty: string;
+    if(colorIndex !== -1) {
+      textColorProperty = `peer-${colorIndex}-color-rgb`;
+    }
+
+    return {
+      element: new PeerTitle({
+        peerId,
+        withPremiumIcon: !isForward,
+        wrapOptions: {
+          ...wrapOptions,
+          textColor: textColorProperty
+        }
+      }).element,
+      textColorProperty
+    };
   }
 
   private prepareToSaveScroll(reverse?: boolean, sliceTop?: boolean, sliceBottom?: boolean) {

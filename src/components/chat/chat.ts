@@ -35,7 +35,7 @@ import AppSharedMediaTab from '../sidebarRight/tabs/sharedMedia';
 import noop from '../../helpers/noop';
 import middlewarePromise from '../../helpers/middlewarePromise';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import {Message, WallPaper} from '../../layer';
+import {Message, WallPaper, Chat as MTChat} from '../../layer';
 import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
 import {getColorsFromWallPaper} from '../../helpers/color';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
@@ -43,6 +43,8 @@ import deferredPromise, {CancellablePromise} from '../../helpers/cancellableProm
 import {isDialog} from '../../lib/appManagers/utils/dialogs/isDialog';
 import getDialogKey from '../../lib/appManagers/utils/dialogs/getDialogKey';
 import getHistoryStorageKey from '../../lib/appManagers/utils/messages/getHistoryStorageKey';
+import isForwardOfForward from '../../lib/appManagers/utils/messages/isForwardOfForward';
+import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 
 export enum ChatType {
   Chat = 'chat',
@@ -747,7 +749,21 @@ export default class Chat extends EventListenerBase<{
   }
 
   public isOurMessage(message: Message.message | Message.messageService) {
-    return message.fromId === rootScope.myId || (!!message.pFlags.out && this.isMegagroup);
+    if(this.isMegagroup) {
+      return !!message.pFlags.out;
+    }
+
+    if(message.fromId === rootScope.myId) {
+      return true;
+    }
+
+    if((message as Message.message).fwd_from?.pFlags?.saved_out) {
+      return true;
+      // const peer = apiManagerProxy.getPeer((message as Message.message).fwdFromId);
+      // return !(peer as MTChat.channel)?.pFlags?.broadcast;
+    }
+
+    return false;
   }
 
   public isOutMessage(message: Message.message | Message.messageService) {
@@ -762,6 +778,37 @@ export default class Chat extends EventListenerBase<{
 
   public isPinnedMessagesNeeded() {
     return this.type === ChatType.Chat || this.isForum;
+  }
+
+  public isForwardOfForward(message: Message) {
+    // return isForwardOfForward(message);
+    let is = isForwardOfForward(message);
+    const fwdFrom = (message as Message.message).fwd_from;
+    if(
+      is &&
+      fwdFrom.saved_from_id &&
+      this.type === ChatType.Saved ? getPeerId(fwdFrom.saved_from_id) === this.threadId : false
+      // getPeerId(fwdFrom.saved_from_id) === (this.type === ChatType.Saved ? this.threadId : this.peerId)
+    ) {
+      is = false;
+    }
+
+    return is;
+  }
+
+  public getPostAuthor(message: Message.message) {
+    const fwdFrom = message.fwd_from;
+    const isPost = !!(message.pFlags.post || (fwdFrom?.post_author && !this.isOutMessage(message)));
+    if(!isPost) {
+      return;
+    }
+
+    // if(isForwardOfForward(message) && !message.post_author) {
+    //   return;
+    // }
+
+    // return message.post_author || (fwdFrom && (this.type !== ChatType.Saved || message.fwdFromId !== this.threadId) && fwdFrom.post_author);
+    return message.post_author || fwdFrom?.post_author;
   }
 
   public async canGiftPremium() {

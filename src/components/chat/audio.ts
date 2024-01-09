@@ -23,6 +23,7 @@ import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import {AppManagers} from '../../lib/appManagers/managers';
 import Icon from '../icon';
 import {replaceButtonIcon} from '../button';
+import getFwdFromName from '../../lib/appManagers/utils/messages/getFwdFromName';
 
 export default class ChatAudio extends PinnedContainer {
   private toggleEl: HTMLElement;
@@ -159,7 +160,7 @@ export default class ChatAudio extends PinnedContainer {
     let title: string | HTMLElement | DocumentFragment, subtitle: string | HTMLElement | DocumentFragment;
     const isMusic = doc.type !== 'voice' && doc.type !== 'round';
     if(!isMusic) {
-      title = new PeerTitle({peerId: message.fromId, fromName: message.fwd_from?.from_name}).element;
+      title = new PeerTitle({peerId: message.fromId, fromName: getFwdFromName(message.fwd_from)}).element;
 
       // subtitle = 'Voice message';
       subtitle = formatFullSentTime(message.date);

@@ -71,6 +71,7 @@ import {isDialog, isSavedDialog, isForumTopic} from './utils/dialogs/isDialog';
 import getDialogKey from './utils/dialogs/getDialogKey';
 import getHistoryStorageKey from './utils/messages/getHistoryStorageKey';
 import {ApiLimitType} from '../mtproto/api_methods';
+import getFwdFromName from './utils/messages/getFwdFromName';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -1982,14 +1983,21 @@ export class AppMessagesManager extends AppManager {
     return pFlags;
   }
 
-  private generateForwardHeader(peerId: PeerId, originalMessage: Message.message, isReply?: boolean) {
+  private generateForwardHeader(toPeerId: PeerId, originalMessage: Message.message, isReply?: boolean) {
     if(!originalMessage) {
       return;
     }
 
-    const myId = this.appUsersManager.getSelf().id.toPeerId();
+    const myId = this.appPeersManager.peerId;
     const fromId = originalMessage.fromId;
-    if(fromId === myId && originalMessage.peerId === myId && !originalMessage.fwd_from && !isReply) {
+    const fromPeerId = originalMessage.peerId;
+    const originalFwdFrom = originalMessage.fwd_from;
+    if(
+      fromId === myId &&
+      fromPeerId === myId &&
+      !originalFwdFrom &&
+      !isReply
+    ) {
       return;
     }
 
@@ -1999,35 +2007,58 @@ export class AppMessagesManager extends AppManager {
       pFlags: {}
     };
 
-    let isUserHidden = false;
-    if(originalMessage.fwd_from) {
-      fwdHeader.from_id = originalMessage.fwd_from.from_id;
-      fwdHeader.from_name = originalMessage.fwd_from.from_name;
-      fwdHeader.channel_post = originalMessage.fwd_from.channel_post;
-      fwdHeader.post_author = originalMessage.fwd_from.post_author;
+    let privateForwardName: string;
+    if(fromId.isUser()) {
+      const userFull = this.appProfileManager.getCachedFullUser(fromId.toUserId());
+      privateForwardName = userFull?.private_forward_name;
+    }
+
+    if(originalFwdFrom) {
+      const copyKeys: (keyof MessageFwdHeader.messageFwdHeader)[] = [
+        'from_id',
+        'from_name',
+        'channel_post',
+        'post_author'
+      ];
+
+      copyKeys.forEach((key) => {
+        // @ts-ignore
+        fwdHeader[key] = originalFwdFrom[key];
+      });
     } else {
       fwdHeader.post_author = originalMessage.post_author;
 
-      if(fromId.isUser()) {
-        const userFull = this.appProfileManager.getCachedFullUser(fromId.toUserId());
-        if(userFull?.private_forward_name) {
-          fwdHeader.from_name = userFull.private_forward_name;
-          isUserHidden = true;
-        }
-      }
-
-      if(!isUserHidden) {
+      if(!privateForwardName) {
         fwdHeader.from_id = this.appPeersManager.getOutputPeer(fromId);
       }
 
-      if(this.appPeersManager.isBroadcast(originalMessage.peerId)) {
+      if(this.appPeersManager.isBroadcast(fromPeerId)) {
         fwdHeader.channel_post = originalMessage.id;
       }
     }
 
-    if(peerId === myId && !isUserHidden && !isReply) {
-      fwdHeader.saved_from_msg_id = originalMessage.id;
-      fwdHeader.saved_from_peer = this.appPeersManager.getOutputPeer(originalMessage.peerId);
+    fwdHeader.from_name ||= privateForwardName;
+
+    if(toPeerId === myId && !isReply) {
+      if(privateForwardName) {
+        if(fwdHeader.from_name) {
+          fwdHeader.saved_from_name = privateForwardName;
+        }
+      } else {
+        fwdHeader.saved_from_msg_id = originalMessage.id;
+        fwdHeader.saved_from_peer = this.appPeersManager.getOutputPeer(fromPeerId);
+        if(originalFwdFrom) {
+          fwdHeader.saved_from_id = this.appPeersManager.getOutputPeer(fromId);
+        }
+      }
+
+      if(originalMessage.pFlags.out && !this.appPeersManager.isBroadcast(fromPeerId)) {
+        fwdHeader.pFlags.saved_out = true;
+      }
+
+      if(originalFwdFrom) {
+        fwdHeader.saved_date = originalMessage.date;
+      }
     }
 
     return fwdHeader;
@@ -3503,8 +3534,6 @@ export class AppMessagesManager extends AppManager {
 
     message.peerId = peerId;
     if(peerId === myId/*  && !message.from_id && !message.fwd_from */) {
-      message.fromId = fwdHeader ? (fwdHeader.from_id ? this.appPeersManager.getPeerId(fwdHeader.from_id) : NULL_PEER_ID) : myId;
-
       if(isMessage && !message.saved_peer_id) {
         let peerId: PeerId;
         if(!fwdHeader) {
@@ -3521,6 +3550,9 @@ export class AppMessagesManager extends AppManager {
 
         message.saved_peer_id ||= this.appPeersManager.getOutputPeer(peerId);
       }
+
+      const fromId = (fwdHeader?.saved_from_id/*  && (this.appPeersManager.getPeerId(fwdHeader.saved_from_id) !== myId && fwdHeader.saved_from_id) */) || fwdHeader?.from_id;
+      message.fromId = fwdHeader ? (fromId && !getFwdFromName(fwdHeader) ? this.appPeersManager.getPeerId(fromId) : NULL_PEER_ID) : myId;
     } else {
       // message.fromId = message.pFlags.post || (!message.pFlags.out && !message.from_id) ? peerId : appPeersManager.getPeerId(message.from_id);
       message.fromId = message.pFlags.post || !message.from_id ? peerId : this.appPeersManager.getPeerId(message.from_id);

@@ -186,6 +186,8 @@ const lang = {
   'StickersTab.SearchPlaceholder': 'Search Stickers',
   'ForwardedFrom': 'Forwarded from %s',
   'ForwardedStoryFrom': 'Forwarded Story\nFrom: %s',
+  'ForwardedFromAuthor': 'Forwarded from %s (%s)',
+  'ForwardedStoryFromAuthor': 'Forwarded Story\nFrom: %s (%s)',
   'Popup.Avatar.Title': 'Drag to Reposition',
   'Popup.Unpin.AllTitle': 'Unpin all messages',
   'Popup.Unpin.HideTitle': 'Hide pinned messages',

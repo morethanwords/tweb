@@ -21,6 +21,7 @@ import getMessageThreadId from '../../lib/appManagers/utils/messages/getMessageT
 import {avatarNew} from '../avatarNew';
 import {MiddlewareHelper} from '../../helpers/middleware';
 import {ChatType} from './chat';
+import getFwdFromName from '../../lib/appManagers/utils/messages/getFwdFromName';
 
 type GroupItem = {
   bubble: HTMLElement,
@@ -60,6 +61,22 @@ export class BubbleGroup {
     this.middlewareHelper = chat.bubbles.getMiddleware().create();
   }
 
+  getAvatarOptions(message: Message.message) {
+    const fwdFrom = message.fwd_from;
+    const fwdFromId = message.fwdFromId;
+    const fwdFromName = getFwdFromName(fwdFrom);
+    const isForwardFromChannel = message.from_id && message.from_id._ === 'peerChannel' && message.fromId === fwdFromId;
+    const currentPeerId = this.chat.peerId;
+    const peerId = ((fwdFrom && (/* currentPeerId === rootScope.myId ||  */currentPeerId === REPLIES_PEER_ID) && !fwdFromName) || isForwardFromChannel ? fwdFromId : message.fromId) || NULL_PEER_ID;
+
+    return {
+      // peerId: fwdFromName ? NULL_PEER_ID : peerId,
+      peerId,
+      // peerTitle: !fwdFromId && fwdFrom && fwdFromName && peerId === NULL_PEER_ID ? /* '🔥 FF 🔥' */fwdFromName : undefined
+      peerTitle: fwdFromName
+    };
+  }
+
   createAvatar(message: Message.message | Message.messageService, options?: Partial<Parameters<typeof avatarNew>[0]>) {
     if(this.avatarLoadPromise) {
       return this.avatarLoadPromise;
@@ -71,19 +88,11 @@ export class BubbleGroup {
     this.avatarContainer.classList.add('bubbles-group-avatar-container');
     ++this.offset;
 
-    const fwdFrom = message.fwd_from;
-    const fwdFromId = message.fwdFromId;
-    const isForwardFromChannel = message.from_id && message.from_id._ === 'peerChannel' && message.fromId === fwdFromId;
-    const currentPeerId = this.chat.peerId;
-    const peerId = ((fwdFrom && (currentPeerId === rootScope.myId || currentPeerId === REPLIES_PEER_ID)) || isForwardFromChannel ? fwdFromId : message.fromId) || NULL_PEER_ID;
     this.avatar = avatarNew({
       middleware: this.middlewareHelper.get(),
       size: 40,
       lazyLoadQueue: this.chat.bubbles.lazyLoadQueue,
-      ...(options || {
-        peerId,
-        peerTitle: !fwdFromId && fwdFrom && fwdFrom.from_name && peerId === NULL_PEER_ID ? /* '🔥 FF 🔥' */fwdFrom.from_name : undefined
-      })
+      ...(options || this.getAvatarOptions(message))
     });
     this.avatar.node.classList.add('bubbles-group-avatar', 'user-avatar'/* , 'can-zoom-fade' */);
 
@@ -421,14 +430,15 @@ export default class BubbleGroups {
   }
 
   canItemsBeGrouped(item1: GroupItem, item2: GroupItem) {
+    const isOut1 = this.chat.isOutMessage(item1.message);
     return item2.fromId === item1.fromId &&
-      Math.abs(item2.timestamp - item1.timestamp) <= this.newGroupDiff &&
       item1.dateTimestamp === item2.dateTimestamp &&
+      Math.abs(item2.timestamp - item1.timestamp) <= this.newGroupDiff &&
       !item1.single &&
       !item2.single &&
-      item1.message.pFlags.out === item2.message.pFlags.out &&
+      isOut1 === this.chat.isOutMessage(item2.message) &&
       (!this.chat.isAllMessagesForum || getMessageThreadId(item1.message, true) === getMessageThreadId(item2.message, true)) &&
-      (!item1.message.pFlags.out || item1.message.fromId === rootScope.myId);
+      (!isOut1 || item1.message.fromId === rootScope.myId); // * group anonymous sending
   }
 
   getSiblingsAtIndex(itemIndex: number, items: GroupItem[]) {

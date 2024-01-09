@@ -118,6 +118,7 @@ import PopupPremium from '../popups/premium';
 import PopupPickUser from '../popups/pickUser';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import {isSavedDialog} from '../../lib/appManagers/utils/dialogs/isDialog';
+import getFwdFromName from '../../lib/appManagers/utils/messages/getFwdFromName';
 
 // console.log('Recorder', Recorder);
 
@@ -3367,8 +3368,8 @@ export default class ChatInput {
         const mids = fromPeerIdsMids[fromPeerId];
         const promises = mids.map(async(mid) => {
           const message = (await this.managers.appMessagesManager.getMessageByPeer(fromPeerId, mid)) as Message.message;
-          if(message.fwd_from?.from_name && !message.fromId && !message.fwdFromId) {
-            smth.add('N' + message.fwd_from.from_name);
+          if(getFwdFromName(message.fwd_from) && !message.fromId && !message.fwdFromId) {
+            smth.add('N' + getFwdFromName(message.fwd_from));
           } else {
             smth.add('P' + message.fromId);
           }
@@ -3505,7 +3506,7 @@ export default class ChatInput {
         title = new PeerTitle({
           peerId: message.fromId,
           dialog: false,
-          fromName: !peerId ? (message as Message.message).fwd_from?.from_name : undefined
+          fromName: !peerId ? getFwdFromName((message as Message.message).fwd_from) : undefined
         }).element;
 
         title = i18n(replyToQuote ? 'ReplyToQuote' : 'ReplyTo', [title]);
