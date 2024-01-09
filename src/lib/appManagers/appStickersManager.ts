@@ -92,9 +92,9 @@ export class AppStickersManager extends AppManager {
           this.getGreetingSticker(true);
         }, 5000);
       }
-    });
 
-    this.rootScope.addEventListener('app_config', () => this.onStickersUpdated('faved', true));
+      this.rootScope.addEventListener('app_config', () => this.onStickersUpdated('faved', true));
+    });
 
     this.apiUpdatesManager.addMultipleEventsListeners({
       updateNewStickerSet: (update) => {

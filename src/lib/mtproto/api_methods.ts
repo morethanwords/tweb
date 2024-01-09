@@ -65,7 +65,6 @@ export default abstract class ApiManagerMethods extends AppManager {
   }
 
   protected after() {
-    return;
     return this.appStateManager.getState().then((state) => {
       this.applyAppConfig(state.appConfig, false);
     });

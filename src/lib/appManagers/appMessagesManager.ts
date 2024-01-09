@@ -2431,7 +2431,7 @@ export class AppMessagesManager extends AppManager {
       let dialogsLength = 0;
       if(!isSearch) for(let i = 0, length = folderDialogs.length; i < length; ++i) {
         const dialog = folderDialogs[i];
-        if(getServerMessageId(dialog.top_message) || dialog.draft) {
+        if(getServerMessageId(dialog.top_message) || (dialog as Dialog).draft) {
           ++dialogsLength;
         } else {
           this.log.error('something strange with dialog', dialog);
