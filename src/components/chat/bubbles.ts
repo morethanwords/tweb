@@ -5502,8 +5502,8 @@ export default class ChatBubbles {
 
     const canHideNameIfMedia = !message.viaBotId &&
       (message.fromId === rootScope.myId || !message.pFlags.out) &&
-      !_isForwardOfForward &&
-      !fwdFromId;
+      !_isForwardOfForward/*  &&
+      !fwdFromId */;
       // (!getFwdFromName(fwdFrom) || !fwdFromId);
 
     const isMessageEmpty = !messageMessage && !isSponsored/*  && (!topicNameButtonContainer || isStandaloneMedia) */;
@@ -6849,7 +6849,7 @@ export default class ChatBubbles {
 
       const isForwardFromChannel = message.from_id?._ === 'peerChannel' && message.fromId === fwdFromId;
       const fwdFromName = getFwdFromName(fwdFrom);
-      const hasTwoTitles = _isForwardOfForward && !isOut;
+      const hasTwoTitles = _isForwardOfForward && !isOut && fwdFrom.from_name && fwdFrom.saved_from_name;
 
       let mustHaveName = !!(message.viaBotId/*  || topicNameButtonContainer */) || storyFromPeerId;
       const isHidden = !!(fwdFrom && (!fwdFrom.from_id || fwdFromName));
@@ -6924,7 +6924,13 @@ export default class ChatBubbles {
         nameDiv = document.createElement('div');
         title.dataset.peerId = '' + (storyFromPeerId || fwdFromId);
 
-        if((isRegularSaved || this.peerId === REPLIES_PEER_ID || isForwardFromChannel) && !isStandaloneMedia && !hasTwoTitles && !storyFromPeerId) {
+        if(
+          (isRegularSaved || this.peerId === REPLIES_PEER_ID || isForwardFromChannel) &&
+          !isStandaloneMedia &&
+          !hasTwoTitles &&
+          !_isForwardOfForward &&
+          !storyFromPeerId
+        ) {
           nameDiv.classList.add('colored-name');
           nameDiv.append(title);
         } else {
@@ -6950,24 +6956,24 @@ export default class ChatBubbles {
           nameDiv.append(i18n(nameKey, nameArgs));
 
           if(hasTwoTitles) {
-            const title = document.createElement('span');
-            title.classList.add('peer-title');
+            let title: HTMLElement;
             if(fwdFromName) {
+              title = document.createElement('span');
+              title.classList.add('peer-title');
               title.style.color = 'var(--message-primary-color)';
               title.dataset.peerId = '' + NULL_PEER_ID;
               title.append(wrapEmojiText(fwdFromName));
             } else {
               const peerId = getPeerId(fwdFrom.saved_from_id);
-              title.dataset.peerId = '' + peerId;
               const {element, textColorProperty} = this.createTitle(peerId, wrapOptions, false);
               element.style.color = `rgb(var(--${textColorProperty}))`;
-              title.append(element);
+              title = element;
             }
 
-            const span = document.createElement('span');
-            span.classList.add('name-first-line');
-            span.append(title, document.createElement('br'));
-            nameDiv.prepend(span);
+            const line = document.createElement('div');
+            line.classList.add('name-first-line');
+            line.append(title);
+            nameDiv.prepend(line);
           }
         }
       } else if(!message.viaBotId) {
@@ -7045,7 +7051,8 @@ export default class ChatBubbles {
       if(
         this.canShowRanks &&
         title &&
-        !isHidden
+        !isHidden &&
+        !fwdFromId
         // (!fwdFromId || (message.post_author && !this.chat.getPostAuthor(message)))
       ) {
         const processRank = () => {
@@ -7070,7 +7077,7 @@ export default class ChatBubbles {
             processRanks.delete(processRank);
           });
         }
-      } else if(isForwardFromChannel) {
+      } else if(this.chat.isMegagroup && !message.fromId.isUser() && (message as Message.message).views) {
         this.wrapTitleAndRank(firstElement, 0);
       }
 
