@@ -519,7 +519,7 @@ export class AppImManager extends EventListenerBase<{
         return;
       }
 
-      uiNotificationsManager.buildNotification(options);
+      uiNotificationsManager.buildNotificationQueue(options);
     });
 
     this.addEventListener('peer_changed', async({peerId}) => {

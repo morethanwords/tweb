@@ -18,7 +18,7 @@ import customProperties from '../../helpers/dom/customProperties';
 import idleController from '../../helpers/idleController';
 import deepEqual from '../../helpers/object/deepEqual';
 import tsNow from '../../helpers/tsNow';
-import {Message, MessagePeerReaction, PeerNotifySettings} from '../../layer';
+import {Message, MessagePeerReaction, PeerNotifySettings, Reaction} from '../../layer';
 import I18n, {FormatterArguments, LangPackKey} from '../langPack';
 import apiManagerProxy from '../mtproto/mtprotoworker';
 import singleInstance from '../mtproto/singleInstance';
@@ -34,6 +34,7 @@ import getMessageThreadId from './utils/messages/getMessageThreadId';
 import {getPeerAvatarColorByPeer} from './utils/peers/getPeerColorById';
 import getPeerId from './utils/peers/getPeerId';
 import {logger} from '../logger';
+import LazyLoadQueueBase from '../../components/lazyLoadQueueBase';
 
 type MyNotification = Notification & {
   hidden?: boolean,
@@ -97,10 +98,13 @@ export class UiNotificationsManager {
 
   private log: ReturnType<typeof logger>;
 
+  private notificationsQueue: LazyLoadQueueBase;
+
   construct(managers: AppManagers) {
     this.managers = managers;
 
     this.log = logger('NOTIFICATIONS');
+    this.notificationsQueue = new LazyLoadQueueBase(1);
 
     navigator.vibrate = navigator.vibrate || (navigator as any).mozVibrate || (navigator as any).webkitVibrate;
     this.setAppBadge = (navigator as any).setAppBadge?.bind(navigator);
@@ -236,6 +240,12 @@ export class UiNotificationsManager {
     });
   }
 
+  public async buildNotificationQueue(options: Parameters<UiNotificationsManager['buildNotification']>[0]) {
+    this.notificationsQueue.push({
+      load: () => this.buildNotification(options)
+    });
+  }
+
   public async buildNotification({
     message,
     fwdCount,
@@ -265,10 +275,16 @@ export class UiNotificationsManager {
         notificationMessage = await wrapMessageForReply({message, plain: true});
 
         const reaction = peerReaction?.reaction;
-        if(reaction?._ === 'reactionEmoji') {
+        if(reaction && reaction._ !== 'reactionEmpty') {
+          let emoticon = (reaction as Reaction.reactionEmoji).emoticon;
+          if(!emoticon) {
+            const doc = await this.managers.appEmojiManager.getCustomEmojiDocument((reaction as Reaction.reactionCustomEmoji).document_id);
+            emoticon = doc.stickerEmojiRaw;
+          }
+
           const langPackKey: LangPackKey = /* isAnyChat ? 'Notification.Group.Reacted' :  */'Notification.Contact.Reacted';
           const args: FormatterArguments = [
-            fixEmoji(reaction.emoticon), // can be plain heart
+            fixEmoji(emoticon), // can be plain heart
             notificationMessage
           ];
 
