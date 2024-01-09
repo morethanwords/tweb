@@ -600,8 +600,8 @@ export class AppImManager extends EventListenerBase<{
     const share = apiManagerProxy.share;
     if(share) {
       apiManagerProxy.share = undefined;
-      PopupElement.createPopup(PopupForward, undefined, async(peerId) => {
-        await this.setPeer({peerId});
+      PopupElement.createPopup(PopupForward, undefined, async(peerId, threadId) => {
+        await this.setPeer({peerId, threadId});
         if(share.files?.length) {
           const foundMedia = share.files.some((file) => MEDIA_MIME_TYPES_SUPPORTED.has(file.type));
           PopupElement.createPopup(PopupNewMedia, this.chat, share.files, foundMedia ? 'media' : 'document');
