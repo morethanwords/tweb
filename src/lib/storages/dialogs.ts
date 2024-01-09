@@ -905,12 +905,7 @@ export default class DialogsStorage extends AppManager {
     return dialog;
   } */
 
-  public setDialogToState(dialog: AnyDialog) {
-    if(!isDialog(dialog)) {
-      return;
-    }
-
-    const {peerId, pts} = dialog;
+  private getDialogMessageForState(peerId: PeerId) {
     const historyStorage = this.appMessagesManager.getHistoryStorage(peerId);
     const messagesStorage = this.appMessagesManager.getHistoryMessagesStorage(peerId);
     const history = historyStorage.history.slice;
@@ -927,6 +922,17 @@ export default class DialogsStorage extends AppManager {
         break;
       }
     }
+
+    return incomingMessage;
+  }
+
+  public setDialogToState(dialog: AnyDialog) {
+    if(!isDialog(dialog)) {
+      return;
+    }
+
+    const {peerId, pts} = dialog;
+    const incomingMessage = this.getDialogMessageForState(peerId);
 
     dialog.topMessage = incomingMessage;
 
@@ -1390,7 +1396,8 @@ export default class DialogsStorage extends AppManager {
     // * Because we saved message without dialog present
     if(!isSaved && message && message.pFlags.is_outgoing) {
       const isOut = message.pFlags.out;
-      if(mid > dialog[isOut ? 'read_outbox_max_id' : 'read_inbox_max_id']) {
+      const maxId = dialog[isOut ? 'read_outbox_max_id' : 'read_inbox_max_id'];
+      if(mid > maxId) {
         message.pFlags.unread = true;
 
         if(!dialog.unread_count && !isOut) {

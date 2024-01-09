@@ -4944,7 +4944,8 @@ export class AppMessagesManager extends AppManager {
     const message: Message.messageService = {
       _: 'messageService',
       pFlags: {
-        is_single: true
+        is_single: true,
+        out: true
       },
       id: mid,
       date,
