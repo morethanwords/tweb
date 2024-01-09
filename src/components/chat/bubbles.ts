@@ -810,6 +810,7 @@ export default class ChatBubbles {
         return;
       }
 
+      delete this.bubbles[wasMainMid];
       const mainMid = getMainMidForGrouped(mids);
       const message = messages.find((message) => message.mid === mainMid);
       this.safeRenderMessage({
