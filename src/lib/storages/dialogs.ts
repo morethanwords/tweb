@@ -1412,6 +1412,10 @@ export default class DialogsStorage extends AppManager {
       if(this.appMessagesManager.mergeReplyKeyboard(historyStorage, message)) {
         this.rootScope.dispatchEvent('history_reply_markup', {peerId});
       }
+
+      if(historyStorage.originalInsertSlice) {
+        this.appMessagesManager.insertChannelJoinedService(peerId, historyStorage, historyStorage.history.slice);
+      }
     } else if(_isDialog && !wasDialogBefore) {
       this.appMessagesManager.insertChannelJoinedService(peerId, historyStorage);
     }

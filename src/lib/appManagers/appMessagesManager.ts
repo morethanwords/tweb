@@ -4893,7 +4893,7 @@ export class AppMessagesManager extends AppManager {
     const chatId = peerId.toChatId();
     const chat = this.appChatsManager.getChat(chatId);
     const date = (chat as Chat.channel)?.date;
-    if(!date) {
+    if(!date || !this.appChatsManager.isInChat(chatId)) {
       return;
     }
 
