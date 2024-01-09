@@ -153,5 +153,8 @@ export default function createManagers(appStoragesManager: AppStoragesManager, u
     managers.apiManager.setUserAuth(userId);
   }
 
-  return Promise.all(promises).then(() => managers);
+  return Promise.all(promises).then(() => {
+    managers.rootScope.dispatchEventSingle('managers_ready');
+    return managers;
+  });
 }

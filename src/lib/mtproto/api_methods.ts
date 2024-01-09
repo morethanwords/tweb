@@ -65,9 +65,16 @@ export default abstract class ApiManagerMethods extends AppManager {
   }
 
   protected after() {
-    return this.appStateManager.getState().then((state) => {
-      this.applyAppConfig(state.appConfig, false);
+    this.rootScope.addEventListener('managers_ready', async() => {
+      const appConfig = await promise;
+      this.applyAppConfig(appConfig, false);
+    }, {once: true});
+
+    const promise = this.appStateManager.getState().then((state) => {
+      return state.appConfig;
     });
+
+    return promise;
   }
 
   abstract setUserAuth(userAuth: UserAuth | UserId): Promise<void>;

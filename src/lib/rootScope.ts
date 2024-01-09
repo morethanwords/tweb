@@ -180,7 +180,8 @@ export type BroadcastEvents = {
   'premium_toggle_private': {isNew: boolean, isPremium: boolean},
 
   'config': Config,
-  'app_config': MTAppConfig
+  'app_config': MTAppConfig,
+  'managers_ready': void // ! inner
 };
 
 export type BroadcastEventsListeners = {
