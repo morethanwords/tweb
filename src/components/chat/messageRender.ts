@@ -5,7 +5,7 @@
  */
 
 import type LazyLoadQueue from '../lazyLoadQueue';
-import {formatTime, getFullDate} from '../../helpers/date';
+import {formatFullSentTimeRaw, formatTime, getFullDate} from '../../helpers/date';
 import setInnerHTML from '../../helpers/dom/setInnerHTML';
 import {Middleware} from '../../helpers/middleware';
 import formatNumber from '../../helpers/number/formatNumber';
@@ -21,6 +21,7 @@ import wrapReply from '../wrappers/reply';
 import Chat, {ChatType} from './chat';
 import RepliesElement from './replies';
 import ChatBubbles from './bubbles';
+import getFwdFromName from '../../lib/appManagers/utils/messages/getFwdFromName';
 
 const NBSP = '&nbsp;';
 
@@ -31,6 +32,10 @@ const makeEdited = () => {
   return edited;
 };
 
+const makeTime = (date: Date, includeDate?: boolean) => {
+  return includeDate ? formatFullSentTimeRaw(date.getTime() / 1000 | 0, {combined: true}).dateEl : formatTime(date);
+};
+
 // const makeSponsored = () => i18n('SponsoredMessage');
 
 export namespace MessageRender {
@@ -39,28 +44,36 @@ export namespace MessageRender {
   }; */
 
   export const setTime = (options: {
+    chat: Chat,
     chatType: ChatType,
     message: Message.message | Message.messageService,
-    reactionsMessage?: Message.message
+    reactionsMessage?: Message.message,
+    isOut: boolean
   }) => {
     const {chatType, message} = options;
-    const date = new Date(message.date * 1000);
+    const isMessage = !('action' in message)/*  && !isSponsored */;
+    const includeDate = message.peerId === rootScope.myId && (!options.isOut || !!options.chat.threadId);
     const args: (HTMLElement | string)[] = [];
 
-    let editedSpan: HTMLElement,
-      sponsoredSpan: HTMLElement;
-      // reactionsElement: ReactionsElement,
-      // reactionsMessage: Message.message;
+    let timestamp = message.date;
+    if(includeDate && isMessage && message.fwd_from) {
+      const fwdTime = message.fwd_from.saved_date || message.fwd_from.date;
+      timestamp = fwdTime || timestamp;
+    }
+    const date = new Date(timestamp * 1000);
+
+    let editedSpan: HTMLElement;
+    // sponsoredSpan: HTMLElement;
+    // reactionsElement: ReactionsElement,
+    // reactionsMessage: Message.message;
 
     // const isSponsored = !!(message as Message.message).pFlags.sponsored;
-    const isMessage = !('action' in message)/*  && !isSponsored */;
     // let hasReactions: boolean;
 
-    const time: HTMLElement = /* isSponsored ? undefined :  */formatTime(date);
+    const fwdFrom = isMessage && message.fwd_from;
+    const time: HTMLElement = /* isSponsored ? undefined :  */makeTime(date, includeDate);
     if(isMessage) {
       if(message.views) {
-        const postAuthor = message.post_author || message.fwd_from?.post_author;
-
         const postViewsSpan = document.createElement('span');
         postViewsSpan.classList.add('post-views');
         postViewsSpan.textContent = formatNumber(message.views, 1);
@@ -68,20 +81,22 @@ export namespace MessageRender {
         const channelViews = Icon('channelviews', 'time-icon', 'time-part', 'time-icon-views');
 
         args.push(postViewsSpan, channelViews);
-        if(postAuthor) {
-          const span = document.createElement('span');
-          span.classList.add('post-author');
-          setInnerHTML(span, wrapEmojiText(postAuthor));
-          span.insertAdjacentHTML('beforeend', '<span class="post-author-comma">,' + NBSP + '</span>');
-          args.push(span);
-        }
       }
 
-      if(message.edit_date && chatType !== 'scheduled' && !message.pFlags.edit_hide) {
+      const postAuthor = options.chat.getPostAuthor(message);
+      if(postAuthor) {
+        const span = document.createElement('span');
+        span.classList.add('post-author');
+        setInnerHTML(span, wrapEmojiText(postAuthor));
+        span.insertAdjacentHTML('beforeend', '<span class="post-author-comma">,' + NBSP + '</span>');
+        args.push(span);
+      }
+
+      if(message.edit_date && chatType !== ChatType.Scheduled && !message.pFlags.edit_hide) {
         args.unshift(editedSpan = makeEdited());
       }
 
-      if(chatType !== 'pinned' && message.pFlags.pinned) {
+      if(chatType !== ChatType.Pinned && message.pFlags.pinned) {
         const i = Icon('pinnedchat', 'time-icon', 'time-pinned', 'time-part');
         args.unshift(i);
       }
@@ -103,10 +118,10 @@ export namespace MessageRender {
       args.push(time);
     }
 
-    let title = /* isSponsored ? undefined :  */getFullDate(date);
+    let title = /* isSponsored ? undefined :  */getFullDate(new Date(message.date * 1000));
     if(isMessage) {
       title += (message.edit_date && !message.pFlags.edit_hide ? `\nEdited: ${getFullDate(new Date(message.edit_date * 1000))}` : '') +
-        (message.fwd_from ? `\nOriginal: ${getFullDate(new Date(message.fwd_from.date * 1000))}` : '');
+        (fwdFrom ? `\nOriginal: ${getFullDate(new Date(fwdFrom.saved_date || fwdFrom.date * 1000))}` : '');
     }
 
     const timeSpan = document.createElement('span');
@@ -136,7 +151,7 @@ export namespace MessageRender {
         a;
     });
     if(time) {
-      clonedArgs[clonedArgs.length - 1] = formatTime(date); // clone time
+      clonedArgs[clonedArgs.length - 1] = makeTime(date, includeDate); // clone time
     }
     inner.append(...clonedArgs);
 
@@ -232,7 +247,7 @@ export namespace MessageRender {
           dialog: false,
           onlyFirstName: false,
           plainText: false,
-          fromName: replyTo.reply_from?.from_name
+          fromName: getFwdFromName(replyTo.reply_from)
         }).element;
       } else {
         needUpdate.push({replyToPeerId, replyMid: message.reply_to_mid, mid: message.mid});
@@ -253,7 +268,7 @@ export namespace MessageRender {
         dialog: false,
         onlyFirstName: false,
         plainText: false,
-        fromName: !titlePeerId ? (originalMessage as Message.message).fwd_from?.from_name : undefined
+        fromName: !titlePeerId ? getFwdFromName((originalMessage as Message.message).fwd_from) : undefined
       }).element;
     }
 

@@ -421,6 +421,13 @@
     {"name": "peer", "type": "Peer"}
   ]
 }, {
+  "predicate": "savedDialog",
+  "params": [
+    {"name": "peerId", "type": "PeerId"},
+    {"name": "index_0", "type": "number"},
+    {"name": "savedPeerId", "type": "PeerId"}
+  ]
+}, {
   "predicate": "channelParticipantsAdmins",
   "params": [
     {"name": "q", "type": "string"}

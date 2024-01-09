@@ -11,6 +11,8 @@ import replaceContent from '../helpers/dom/replaceContent';
 import {i18n, LangPackKey} from '../lib/langPack';
 import rootScope from '../lib/rootScope';
 import {getMiddleware, Middleware, MiddlewareHelper} from '../helpers/middleware';
+import getPeerId from '../lib/appManagers/utils/peers/getPeerId';
+import {Message} from '../layer';
 
 export class SearchGroup {
   container: HTMLDivElement;
@@ -101,7 +103,8 @@ export default class AppSearch {
     public searchGroups: {[group in SearchGroupType]: SearchGroup},
     middleware: Middleware,
     public onSearch?: (count: number) => void,
-    public noIcons?: boolean
+    public noIcons?: boolean,
+    private fromSavedDialog?: boolean
   ) {
     this.middlewareHelper = middleware.create();
     this.scrollable = new Scrollable(this.container);
@@ -218,7 +221,7 @@ export default class AppSearch {
         try {
           const peerId = this.peerId ? message.fromId : message.peerId;
           appDialogsManager.addDialogAndSetLastMessage({
-            peerId,
+            peerId: this.fromSavedDialog ? rootScope.myId : peerId,
             container: this.scrollable/* searchGroup.list */,
             avatarSize: 'bigger',
             meAsSaved: false,
@@ -227,7 +230,8 @@ export default class AppSearch {
             noIcons: this.noIcons,
             wrapOptions: {
               middleware
-            }
+            },
+            threadId: this.fromSavedDialog ? ((message as Message.message).saved_peer_id ? getPeerId((message as Message.message).saved_peer_id) : rootScope.myId) : undefined
           });
         } catch(err) {
           console.error('[appSearch] render search result', err);

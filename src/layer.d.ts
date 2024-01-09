@@ -921,6 +921,7 @@ export namespace Message {
     id: number,
     from_id?: Peer,
     peer_id: Peer,
+    saved_peer_id?: Peer,
     fwd_from?: MessageFwdHeader,
     via_bot_id?: string | number,
     reply_to?: MessageReplyHeader,
@@ -1038,6 +1039,9 @@ export namespace MessageMedia {
     pFlags: Partial<{
       nopremium?: true,
       spoiler?: true,
+      video?: true,
+      round?: true,
+      voice?: true,
     }>,
     document?: Document,
     alt_document?: Document,
@@ -2269,7 +2273,7 @@ export namespace MessagesFilter {
 /**
  * @link https://core.telegram.org/type/Update
  */
-export type Update = Update.updateNewMessage | Update.updateMessageID | Update.updateDeleteMessages | Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChatParticipants | Update.updateUserStatus | Update.updateUserName | Update.updateNewAuthorization | Update.updateNewEncryptedMessage | Update.updateEncryptedChatTyping | Update.updateEncryption | Update.updateEncryptedMessagesRead | Update.updateChatParticipantAdd | Update.updateChatParticipantDelete | Update.updateDcOptions | Update.updateNotifySettings | Update.updateServiceNotification | Update.updatePrivacy | Update.updateUserPhone | Update.updateReadHistoryInbox | Update.updateReadHistoryOutbox | Update.updateWebPage | Update.updateReadMessagesContents | Update.updateChannelTooLong | Update.updateChannel | Update.updateNewChannelMessage | Update.updateReadChannelInbox | Update.updateDeleteChannelMessages | Update.updateChannelMessageViews | Update.updateChatParticipantAdmin | Update.updateNewStickerSet | Update.updateStickerSetsOrder | Update.updateStickerSets | Update.updateSavedGifs | Update.updateBotInlineQuery | Update.updateBotInlineSend | Update.updateEditChannelMessage | Update.updateBotCallbackQuery | Update.updateEditMessage | Update.updateInlineBotCallbackQuery | Update.updateReadChannelOutbox | Update.updateDraftMessage | Update.updateReadFeaturedStickers | Update.updateRecentStickers | Update.updateConfig | Update.updatePtsChanged | Update.updateChannelWebPage | Update.updateDialogPinned | Update.updatePinnedDialogs | Update.updateBotWebhookJSON | Update.updateBotWebhookJSONQuery | Update.updateBotShippingQuery | Update.updateBotPrecheckoutQuery | Update.updatePhoneCall | Update.updateLangPackTooLong | Update.updateLangPack | Update.updateFavedStickers | Update.updateChannelReadMessagesContents | Update.updateContactsReset | Update.updateChannelAvailableMessages | Update.updateDialogUnreadMark | Update.updateMessagePoll | Update.updateChatDefaultBannedRights | Update.updateFolderPeers | Update.updatePeerSettings | Update.updatePeerLocated | Update.updateNewScheduledMessage | Update.updateDeleteScheduledMessages | Update.updateTheme | Update.updateGeoLiveViewed | Update.updateLoginToken | Update.updateMessagePollVote | Update.updateDialogFilter | Update.updateDialogFilterOrder | Update.updateDialogFilters | Update.updatePhoneCallSignalingData | Update.updateChannelMessageForwards | Update.updateReadChannelDiscussionInbox | Update.updateReadChannelDiscussionOutbox | Update.updatePeerBlocked | Update.updateChannelUserTyping | Update.updatePinnedMessages | Update.updatePinnedChannelMessages | Update.updateChat | Update.updateGroupCallParticipants | Update.updateGroupCall | Update.updatePeerHistoryTTL | Update.updateChatParticipant | Update.updateChannelParticipant | Update.updateBotStopped | Update.updateGroupCallConnection | Update.updateBotCommands | Update.updatePendingJoinRequests | Update.updateBotChatInviteRequester | Update.updateMessageReactions | Update.updateAttachMenuBots | Update.updateWebViewResultSent | Update.updateBotMenuButton | Update.updateSavedRingtones | Update.updateTranscribedAudio | Update.updateReadFeaturedEmojiStickers | Update.updateUserEmojiStatus | Update.updateRecentEmojiStatuses | Update.updateRecentReactions | Update.updateMoveStickerSetToTop | Update.updateMessageExtendedMedia | Update.updateChannelPinnedTopic | Update.updateChannelPinnedTopics | Update.updateUser | Update.updateAutoSaveSettings | Update.updateGroupInvitePrivacyForbidden | Update.updateStory | Update.updateReadStories | Update.updateStoryID | Update.updateStoriesStealthMode | Update.updateSentStoryReaction | Update.updateBotChatBoost | Update.updateChannelViewForumAsMessages | Update.updatePeerWallpaper | Update.updateBotMessageReaction | Update.updateBotMessageReactions | Update.updateNewDiscussionMessage | Update.updateDeleteDiscussionMessages | Update.updateChannelReload;
+export type Update = Update.updateNewMessage | Update.updateMessageID | Update.updateDeleteMessages | Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChatParticipants | Update.updateUserStatus | Update.updateUserName | Update.updateNewAuthorization | Update.updateNewEncryptedMessage | Update.updateEncryptedChatTyping | Update.updateEncryption | Update.updateEncryptedMessagesRead | Update.updateChatParticipantAdd | Update.updateChatParticipantDelete | Update.updateDcOptions | Update.updateNotifySettings | Update.updateServiceNotification | Update.updatePrivacy | Update.updateUserPhone | Update.updateReadHistoryInbox | Update.updateReadHistoryOutbox | Update.updateWebPage | Update.updateReadMessagesContents | Update.updateChannelTooLong | Update.updateChannel | Update.updateNewChannelMessage | Update.updateReadChannelInbox | Update.updateDeleteChannelMessages | Update.updateChannelMessageViews | Update.updateChatParticipantAdmin | Update.updateNewStickerSet | Update.updateStickerSetsOrder | Update.updateStickerSets | Update.updateSavedGifs | Update.updateBotInlineQuery | Update.updateBotInlineSend | Update.updateEditChannelMessage | Update.updateBotCallbackQuery | Update.updateEditMessage | Update.updateInlineBotCallbackQuery | Update.updateReadChannelOutbox | Update.updateDraftMessage | Update.updateReadFeaturedStickers | Update.updateRecentStickers | Update.updateConfig | Update.updatePtsChanged | Update.updateChannelWebPage | Update.updateDialogPinned | Update.updatePinnedDialogs | Update.updateBotWebhookJSON | Update.updateBotWebhookJSONQuery | Update.updateBotShippingQuery | Update.updateBotPrecheckoutQuery | Update.updatePhoneCall | Update.updateLangPackTooLong | Update.updateLangPack | Update.updateFavedStickers | Update.updateChannelReadMessagesContents | Update.updateContactsReset | Update.updateChannelAvailableMessages | Update.updateDialogUnreadMark | Update.updateMessagePoll | Update.updateChatDefaultBannedRights | Update.updateFolderPeers | Update.updatePeerSettings | Update.updatePeerLocated | Update.updateNewScheduledMessage | Update.updateDeleteScheduledMessages | Update.updateTheme | Update.updateGeoLiveViewed | Update.updateLoginToken | Update.updateMessagePollVote | Update.updateDialogFilter | Update.updateDialogFilterOrder | Update.updateDialogFilters | Update.updatePhoneCallSignalingData | Update.updateChannelMessageForwards | Update.updateReadChannelDiscussionInbox | Update.updateReadChannelDiscussionOutbox | Update.updatePeerBlocked | Update.updateChannelUserTyping | Update.updatePinnedMessages | Update.updatePinnedChannelMessages | Update.updateChat | Update.updateGroupCallParticipants | Update.updateGroupCall | Update.updatePeerHistoryTTL | Update.updateChatParticipant | Update.updateChannelParticipant | Update.updateBotStopped | Update.updateGroupCallConnection | Update.updateBotCommands | Update.updatePendingJoinRequests | Update.updateBotChatInviteRequester | Update.updateMessageReactions | Update.updateAttachMenuBots | Update.updateWebViewResultSent | Update.updateBotMenuButton | Update.updateSavedRingtones | Update.updateTranscribedAudio | Update.updateReadFeaturedEmojiStickers | Update.updateUserEmojiStatus | Update.updateRecentEmojiStatuses | Update.updateRecentReactions | Update.updateMoveStickerSetToTop | Update.updateMessageExtendedMedia | Update.updateChannelPinnedTopic | Update.updateChannelPinnedTopics | Update.updateUser | Update.updateAutoSaveSettings | Update.updateGroupInvitePrivacyForbidden | Update.updateStory | Update.updateReadStories | Update.updateStoryID | Update.updateStoriesStealthMode | Update.updateSentStoryReaction | Update.updateBotChatBoost | Update.updateChannelViewForumAsMessages | Update.updatePeerWallpaper | Update.updateBotMessageReaction | Update.updateBotMessageReactions | Update.updateSavedDialogPinned | Update.updatePinnedSavedDialogs | Update.updateNewDiscussionMessage | Update.updateDeleteDiscussionMessages | Update.updateChannelReload;
 
 export namespace Update {
   export type updateNewMessage = {
@@ -3152,6 +3156,21 @@ export namespace Update {
     date: number,
     reactions: Array<ReactionCount>,
     qts: number
+  };
+
+  export type updateSavedDialogPinned = {
+    _: 'updateSavedDialogPinned',
+    flags?: number,
+    pFlags: Partial<{
+      pinned?: true,
+    }>,
+    peer: DialogPeer
+  };
+
+  export type updatePinnedSavedDialogs = {
+    _: 'updatePinnedSavedDialogs',
+    flags?: number,
+    order?: Array<DialogPeer>
   };
 
   export type updateNewDiscussionMessage = {
@@ -5601,6 +5620,7 @@ export namespace MessageFwdHeader {
     flags?: number,
     pFlags: Partial<{
       imported?: true,
+      saved_out?: true,
     }>,
     from_id?: Peer,
     from_name?: string,
@@ -5609,6 +5629,9 @@ export namespace MessageFwdHeader {
     post_author?: string,
     saved_from_peer?: Peer,
     saved_from_msg_id?: number,
+    saved_from_id?: Peer,
+    saved_from_name?: string,
+    saved_date?: number,
     psa_type?: string
   };
 }
@@ -12210,6 +12233,55 @@ export namespace StoriesStoryReactionsList {
   };
 }
 
+/**
+ * @link https://core.telegram.org/type/SavedDialog
+ */
+export type SavedDialog = SavedDialog.savedDialog;
+
+export namespace SavedDialog {
+  export type savedDialog = {
+    _: 'savedDialog',
+    flags?: number,
+    pFlags: Partial<{
+      pinned?: true,
+    }>,
+    peer: Peer,
+    top_message: number,
+    peerId?: PeerId,
+    index_0?: number,
+    savedPeerId?: PeerId
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/messages.SavedDialogs
+ */
+export type MessagesSavedDialogs = MessagesSavedDialogs.messagesSavedDialogs | MessagesSavedDialogs.messagesSavedDialogsSlice | MessagesSavedDialogs.messagesSavedDialogsNotModified;
+
+export namespace MessagesSavedDialogs {
+  export type messagesSavedDialogs = {
+    _: 'messages.savedDialogs',
+    dialogs: Array<SavedDialog>,
+    messages: Array<Message>,
+    chats: Array<Chat>,
+    users: Array<User>
+  };
+
+  export type messagesSavedDialogsSlice = {
+    _: 'messages.savedDialogsSlice',
+    count: number,
+    dialogs: Array<SavedDialog>,
+    messages: Array<Message>,
+    chats: Array<Chat>,
+    users: Array<User>
+  };
+
+  export type messagesSavedDialogsNotModified = {
+    _: 'messages.savedDialogsNotModified',
+    count: number
+  };
+}
+
 export interface ConstructorDeclMap {
   'error': Error.error,
   'inputPeerEmpty': InputPeer.inputPeerEmpty,
@@ -13407,6 +13479,12 @@ export interface ConstructorDeclMap {
   'inputMediaAreaChannelPost': MediaArea.inputMediaAreaChannelPost,
   'updateBotMessageReaction': Update.updateBotMessageReaction,
   'updateBotMessageReactions': Update.updateBotMessageReactions,
+  'savedDialog': SavedDialog.savedDialog,
+  'updateSavedDialogPinned': Update.updateSavedDialogPinned,
+  'updatePinnedSavedDialogs': Update.updatePinnedSavedDialogs,
+  'messages.savedDialogs': MessagesSavedDialogs.messagesSavedDialogs,
+  'messages.savedDialogsSlice': MessagesSavedDialogs.messagesSavedDialogsSlice,
+  'messages.savedDialogsNotModified': MessagesSavedDialogs.messagesSavedDialogsNotModified,
   'messageEntityEmoji': MessageEntity.messageEntityEmoji,
   'messageEntityHighlight': MessageEntity.messageEntityHighlight,
   'messageEntityLinebreak': MessageEntity.messageEntityLinebreak,
@@ -13621,6 +13699,7 @@ export type MessagesSearch = {
   peer: InputPeer,
   q: string,
   from_id?: InputPeer,
+  saved_peer_id?: InputPeer,
   top_msg_id?: number,
   filter: MessagesFilter,
   min_date: number,
@@ -15136,6 +15215,7 @@ export type FoldersEditPeerFolders = {
 export type MessagesGetSearchCounters = {
   flags?: number,
   peer: InputPeer,
+  saved_peer_id?: InputPeer,
   top_msg_id?: number,
   filters: Array<MessagesFilter>
 };
@@ -15738,14 +15818,18 @@ export type MessagesGetMessageReadParticipants = {
 };
 
 export type MessagesGetSearchResultsCalendar = {
+  flags?: number,
   peer: InputPeer,
+  saved_peer_id?: InputPeer,
   filter: MessagesFilter,
   offset_id: number,
   offset_date: number
 };
 
 export type MessagesGetSearchResultsPositions = {
+  flags?: number,
   peer: InputPeer,
+  saved_peer_id?: InputPeer,
   filter: MessagesFilter,
   offset_id: number,
   limit: number
@@ -16702,6 +16786,51 @@ export type AccountGetChannelRestrictedStatusEmojis = {
   hash: string | number
 };
 
+export type MessagesGetSavedDialogs = {
+  flags?: number,
+  exclude_pinned?: boolean,
+  offset_date: number,
+  offset_id: number,
+  offset_peer: InputPeer,
+  limit: number,
+  hash: string | number
+};
+
+export type MessagesGetSavedHistory = {
+  peer: InputPeer,
+  offset_id: number,
+  offset_date: number,
+  add_offset: number,
+  limit: number,
+  max_id: number,
+  min_id: number,
+  hash: string | number
+};
+
+export type MessagesDeleteSavedHistory = {
+  flags?: number,
+  peer: InputPeer,
+  max_id: number,
+  min_date?: number,
+  max_date?: number
+};
+
+export type MessagesGetPinnedSavedDialogs = {
+
+};
+
+export type MessagesToggleSavedDialogPin = {
+  flags?: number,
+  pinned?: boolean,
+  peer: InputDialogPeer
+};
+
+export type MessagesReorderPinnedSavedDialogs = {
+  flags?: number,
+  force?: boolean,
+  order: Array<InputDialogPeer>
+};
+
 export interface MethodDeclMap {
   'invokeAfterMsg': {req: InvokeAfterMsg, res: any},
   'invokeAfterMsgs': {req: InvokeAfterMsgs, res: any},
@@ -17266,5 +17395,11 @@ export interface MethodDeclMap {
   'channels.updateEmojiStatus': {req: ChannelsUpdateEmojiStatus, res: Updates},
   'account.getChannelDefaultEmojiStatuses': {req: AccountGetChannelDefaultEmojiStatuses, res: AccountEmojiStatuses},
   'account.getChannelRestrictedStatusEmojis': {req: AccountGetChannelRestrictedStatusEmojis, res: EmojiList},
+  'messages.getSavedDialogs': {req: MessagesGetSavedDialogs, res: MessagesSavedDialogs},
+  'messages.getSavedHistory': {req: MessagesGetSavedHistory, res: MessagesMessages},
+  'messages.deleteSavedHistory': {req: MessagesDeleteSavedHistory, res: MessagesAffectedHistory},
+  'messages.getPinnedSavedDialogs': {req: MessagesGetPinnedSavedDialogs, res: MessagesSavedDialogs},
+  'messages.toggleSavedDialogPin': {req: MessagesToggleSavedDialogPin, res: boolean},
+  'messages.reorderPinnedSavedDialogs': {req: MessagesReorderPinnedSavedDialogs, res: boolean},
 }
 

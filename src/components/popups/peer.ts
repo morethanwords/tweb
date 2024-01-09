@@ -11,6 +11,7 @@ import setInnerHTML from '../../helpers/dom/setInnerHTML';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import {avatarNew} from '../avatarNew';
 import toggleDisability from '../../helpers/dom/toggleDisability';
+import rootScope from '../../lib/rootScope';
 
 export type PopupPeerButton = Omit<PopupButton, 'callback'> & Partial<{callback: PopupPeerButtonCallback, onlyWithCheckbox: PopupPeerCheckboxOptions}>;
 export type PopupPeerButtonCallbackCheckboxes = Set<LangPackKey>;
@@ -43,12 +44,14 @@ export default class PopupPeer extends PopupElement {
     });
 
     if(options.peerId) {
+      const isSavedDialog = !!(options.peerId === rootScope.myId && options.threadId);
       const {node} = avatarNew({
         middleware: this.middlewareHelper.get(),
         size: 32,
         isDialog: true,
-        peerId: options.peerId,
-        threadId: options.threadId
+        peerId: isSavedDialog ? options.threadId : options.peerId,
+        threadId: isSavedDialog ? undefined : options.threadId,
+        meAsNotes: isSavedDialog
       });
       this.header.prepend(node);
     }

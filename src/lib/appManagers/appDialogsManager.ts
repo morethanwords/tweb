@@ -5,9 +5,11 @@
  */
 
 import type {MyDialogFilter} from '../storages/filters';
-import type {Dialog, ForumTopic, MyMessage} from './appMessagesManager';
+import type {Dialog, ForumTopic, MyMessage, SavedDialog} from './appMessagesManager';
 import type {MyDocument} from './appDocsManager';
 import type {State} from '../../config/state';
+import type {AnyDialog} from '../storages/dialogs';
+import type {CustomEmojiRendererElement} from '../customEmoji/renderer';
 import PopupElement from '../../components/popups';
 import DialogsContextMenu from '../../components/dialogsContextMenu';
 import {horizontalMenu} from '../../components/horizontalMenu';
@@ -102,12 +104,13 @@ import showLimitPopup from '../../components/popups/limit';
 import StoriesList from '../../components/stories/list';
 import {render} from 'solid-js/web';
 import {avatarNew} from '../../components/avatarNew';
-import type {CustomEmojiRendererElement} from '../customEmoji/renderer';
 import getViewportSlice from '../../helpers/dom/getViewportSlice';
 import ScrollSaver from '../../helpers/scrollSaver';
 import Icon from '../../components/icon';
 import setBadgeContent from '../../helpers/setBadgeContent';
 import createBadge from '../../helpers/createBadge';
+import {isDialog, isForumTopic, isSavedDialog} from './utils/dialogs/isDialog';
+import {ChatType} from '../../components/chat/chat';
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 
@@ -156,13 +159,14 @@ function setPromiseMiddleware<T extends {[smth in K as K]?: CancellablePromise<v
 const BADGE_SIZE = 22;
 const BADGE_TRANSITION_TIME = 250;
 
-class SortedDialogList extends SortedList<SortedDialog> {
+export class SortedDialogList extends SortedList<SortedDialog> {
   public managers: AppManagers;
   public log: ReturnType<typeof logger>;
   public list: HTMLElement;
   public indexKey: ReturnType<typeof getDialogIndexKey>;
   public onListLengthChange: () => void;
-  public forumPeerId: PeerId;
+  public virtualFilterId: PeerId;
+  private isSavedDialogs: boolean;
 
   constructor(options: {
     managers: SortedDialogList['managers'],
@@ -170,10 +174,14 @@ class SortedDialogList extends SortedList<SortedDialog> {
     list: SortedDialogList['list'],
     indexKey: SortedDialogList['indexKey'],
     onListLengthChange?: SortedDialogList['onListLengthChange'],
-    forumPeerId?: SortedDialogList['forumPeerId']
+    virtualFilterId?: SortedDialogList['virtualFilterId']
   }) {
     super({
-      getIndex: (element) => this.managers.dialogsStorage.getDialogIndex(this.forumPeerId ?? element.id, this.indexKey, this.forumPeerId ? element.id : undefined),
+      getIndex: (element) => this.managers.dialogsStorage.getDialogIndex(
+        this.virtualFilterId ?? element.id,
+        this.indexKey,
+        this.virtualFilterId ? element.id : undefined
+      ),
       onDelete: (element) => {
         element.dialogElement.remove();
         this.onListLengthChange?.();
@@ -190,10 +198,10 @@ class SortedDialogList extends SortedList<SortedDialog> {
         const loadPromises: Promise<any>[] = [];
 
         const dialogElement = appDialogsManager.addListDialog({
-          peerId: this.forumPeerId ?? base.id,
+          peerId: this.virtualFilterId ?? base.id,
           loadPromises,
           isBatch: true,
-          threadId: this.forumPeerId ? base.id : undefined,
+          threadId: this.virtualFilterId ? base.id : undefined,
           isMainList: this.indexKey === 'index_0',
           controlled: true,
           wrapOptions: undefined
@@ -209,6 +217,8 @@ class SortedDialogList extends SortedList<SortedDialog> {
     });
 
     safeAssign(this, options);
+
+    this.isSavedDialogs = this.virtualFilterId === rootScope.myId;
   }
 
   public clear() {
@@ -288,16 +298,22 @@ export class DialogElement extends Row {
       newWrapOptions.middleware = this.middlewareHelper.get();
     }
 
-    const avatar = threadId ? undefined : avatarNew({
+    const isSavedDialog = !!threadId && peerId === rootScope.myId;
+    const isForumTopic = !!threadId && !isSavedDialog;
+
+    const usePeerId = isSavedDialog ? threadId : peerId;
+
+    const avatar = isForumTopic ? undefined : avatarNew({
       middleware: this.middlewareHelper.get(),
       size: avatarSizeMap[avatarSize],
 
       lazyLoadQueue: newWrapOptions.lazyLoadQueue,
       isDialog: !!meAsSaved,
-      peerId,
+      peerId: usePeerId,
       peerTitle: fromName,
       withStories,
-      wrapOptions: newWrapOptions
+      wrapOptions: newWrapOptions,
+      meAsNotes: isSavedDialog
     });
     loadPromises?.push(avatar?.readyThumbPromise);
     const avatarEl = avatar?.node;
@@ -315,20 +331,21 @@ export class DialogElement extends Row {
 
     const isActive = !autonomous &&
       appImManager.chat &&
-      appImManager.isSamePeer(appImManager.chat, {peerId, threadId: threadId, type: 'chat'});
+      appImManager.isSamePeer(appImManager.chat, {peerId, threadId: threadId, type: ChatType.Chat});
 
     const peerTitle = new PeerTitle();
     const peerTitlePromise = peerTitle.update({
-      peerId,
+      peerId: usePeerId,
       fromName,
       dialog: meAsSaved,
       onlyFirstName,
       withIcons: !noIcons,
-      threadId: threadId,
+      threadId: isSavedDialog ? undefined : threadId,
       wrapOptions: {
         textColor: appDialogsManager.getPrimaryColor(isActive),
         ...newWrapOptions
-      }
+      },
+      meAsNotes: isSavedDialog
     });
 
     loadPromises?.push(peerTitlePromise);
@@ -535,7 +552,7 @@ class ForumTab extends SliderSuperTabEventable {
       log: this.log,
       list,
       indexKey: 'index_0',
-      forumPeerId: this.peerId
+      virtualFilterId: this.peerId
     });
     this.xd.bindScrollable();
 
@@ -679,7 +696,7 @@ class ForumTab extends SliderSuperTabEventable {
   public getOptionsForMessages(): Parameters<AppImManager['isSamePeer']>[0] {
     return {
       peerId: this.peerId,
-      type: 'chat'
+      type: ChatType.Chat
     };
   }
 
@@ -695,7 +712,7 @@ class ForumTab extends SliderSuperTabEventable {
 const NOT_IMPLEMENTED_ERROR = new Error('not implemented');
 
 type DialogKey = Parameters<Some['sortedList']['delete']>[0];
-class Some<T extends Dialog | ForumTopic = Dialog | ForumTopic> {
+class Some<T extends AnyDialog = AnyDialog> {
   public sortedList: SortedDialogList;
   public scrollable: Scrollable;
   public loadedDialogsAtLeastOnce: boolean;
@@ -1035,7 +1052,7 @@ class Some<T extends Dialog | ForumTopic = Dialog | ForumTopic> {
     const newTypingElement = await appImManager.getPeerTyping(
       dialog.peerId,
       oldTypingElement,
-      dialog._ === 'forumTopic' ? dialog.id : undefined
+      isForumTopic(dialog) ? dialog.id : undefined
     );
     if(!oldTypingElement && newTypingElement) {
       replaceContent(dom.lastMessageSpan, newTypingElement);
@@ -1141,7 +1158,7 @@ class Some3 extends Some<ForumTopic> {
     });
 
     this.listenerSetter.add(rootScope)('dialog_unread', ({dialog}) => {
-      if(dialog?._ !== 'forumTopic' || dialog.peerId !== this.peerId) {
+      if(!isForumTopic(dialog) || dialog.peerId !== this.peerId) {
         return;
       }
 
@@ -1153,7 +1170,7 @@ class Some3 extends Some<ForumTopic> {
         return;
       }
 
-      if(dialog._ === 'dialog') {
+      if(isDialog(dialog)) {
         const all = this.sortedList.getAll();
         const entries = [...all.entries()];
         const promises = entries.map(([id]) => this.managers.dialogsStorage.getForumTopic(this.peerId, id));
@@ -1169,7 +1186,7 @@ class Some3 extends Some<ForumTopic> {
     });
 
     this.listenerSetter.add(rootScope)('dialog_drop', (dialog) => {
-      if(dialog._ !== 'forumTopic' || dialog.peerId !== this.peerId) {
+      if(!isForumTopic(dialog) || dialog.peerId !== this.peerId) {
         return;
       }
 
@@ -1177,7 +1194,7 @@ class Some3 extends Some<ForumTopic> {
     });
 
     this.listenerSetter.add(rootScope)('dialog_draft', ({dialog, drop, peerId}) => {
-      if(dialog._ !== 'forumTopic' || dialog.peerId !== this.peerId) {
+      if(!isForumTopic(dialog) || dialog.peerId !== this.peerId) {
         return;
       }
 
@@ -1306,7 +1323,7 @@ class Some2 extends Some<Dialog> {
       }
 
       for(const [peerId, {dialog, topics}] of dialogs) {
-        if(dialog?._ !== 'dialog') {
+        if(!isDialog(dialog)) {
           continue;
         }
 
@@ -1316,16 +1333,16 @@ class Some2 extends Some<Dialog> {
     });
 
     this.listenerSetter.add(rootScope)('dialog_drop', (dialog) => {
-      if(!this.isActive || dialog._ !== 'dialog') {
+      if(!this.isActive || !isDialog(dialog)) {
         return;
       }
 
-      this.deleteDialogByKey(dialog.peerId);
+      this.deleteDialogByKey(this.getDialogKey(dialog));
       appDialogsManager.processContact?.(dialog.peerId);
     });
 
     this.listenerSetter.add(rootScope)('dialog_unread', ({dialog}) => {
-      if(!this.isActive || dialog?._ !== 'dialog') {
+      if(!this.isActive || !isDialog(dialog)) {
         return;
       }
 
@@ -1333,7 +1350,7 @@ class Some2 extends Some<Dialog> {
     });
 
     this.listenerSetter.add(rootScope)('dialog_notify_settings', (dialog) => {
-      if(!this.isActive || dialog._ !== 'dialog') {
+      if(!this.isActive || !isDialog(dialog)) {
         return;
       }
 
@@ -1341,7 +1358,7 @@ class Some2 extends Some<Dialog> {
     });
 
     this.listenerSetter.add(rootScope)('dialog_draft', ({dialog, drop, peerId}) => {
-      if(!this.isActive || dialog._ === 'forumTopic') {
+      if(!this.isActive || isForumTopic(dialog)) {
         return;
       }
 
@@ -1589,6 +1606,80 @@ class Some2 extends Some<Dialog> {
 
   public getDialogFromElement(element: HTMLElement) {
     return rootScope.managers.appMessagesManager.getDialogOnly(element.dataset.peerId.toPeerId());
+  }
+}
+
+export class Some4 extends Some<SavedDialog> {
+  constructor() {
+    super();
+
+    // this.listenerSetter.add(rootScope)('dialog_flush', ({dialog}) => {
+    //   if(!dialog) {
+    //     return;
+    //   }
+
+    //   this.updateDialog(dialog);
+    // });
+
+    this.listenerSetter.add(rootScope)('dialogs_multiupdate', (dialogs) => {
+      for(const [peerId, {saved}] of dialogs) {
+        saved?.forEach((dialog) => {
+          this.updateDialog(dialog);
+        });
+      }
+    });
+
+    this.listenerSetter.add(rootScope)('dialog_drop', (dialog) => {
+      if(!isSavedDialog(dialog)) {
+        return;
+      }
+
+      this.deleteDialogByKey(this.getDialogKey(dialog));
+    });
+  }
+
+  public getRectFromForPlaceholder() {
+    return appDialogsManager.chatsContainer;
+  }
+
+  public async loadDialogsInner(side: SliceSides) {
+    const {indexKey} = this;
+    let loadCount = windowSize.height / 72 * 1.25 | 0;
+    let offsetIndex = 0;
+
+    const filterId = rootScope.myId;
+    const {index: currentOffsetIndex} = this.getOffsetIndex(side);
+    offsetIndex = currentOffsetIndex;
+    if(currentOffsetIndex) {
+      if(side === 'top') {
+        const storage = await this.managers.dialogsStorage.getFolderDialogs(filterId);
+        const index = storage.findIndex((dialog) => getDialogIndex(dialog, indexKey) <= currentOffsetIndex);
+        const needIndex = Math.max(0, index - loadCount);
+        loadCount = index - needIndex;
+        offsetIndex = getDialogIndex(storage[needIndex], indexKey) + 1;
+      } else {
+        offsetIndex = currentOffsetIndex;
+      }
+    }
+
+    return this.managers.acknowledged.dialogsStorage.getDialogs({
+      offsetIndex,
+      limit: loadCount,
+      filterId,
+      skipMigrated: true
+    });
+  }
+
+  public getDialogKey(dialog: SavedDialog) {
+    return dialog.savedPeerId;
+  }
+
+  public getDialogKeyFromElement(element: HTMLElement) {
+    return +element.dataset.peerId;
+  }
+
+  public getDialogFromElement(element: HTMLElement) {
+    return rootScope.managers.dialogsStorage.getAnyDialog(element.dataset.peerId.toPeerId(), element.dataset.threadId.toPeerId()) as Promise<SavedDialog>;
   }
 }
 
@@ -2792,7 +2883,7 @@ export class AppDialogsManager {
     if(viewAsMessages) {
       const isSamePeer = appImManager.chat?.peerId === peerId;
       appImManager[isSamePeer ? 'setPeer' : 'setInnerPeer']({
-        type: 'chat',
+        type: ChatType.Chat,
         peerId
       });
       return;
@@ -2891,7 +2982,7 @@ export class AppDialogsManager {
       }
 
       const isForum = !!elem.querySelector('.is-forum');
-      if(isForum && !e.shiftKey && !lastMsgId) {
+      if(isForum && !e.shiftKey && !lastMsgId && peerId !== rootScope.myId) {
         this.toggleForumTabByPeerId(peerId);
         return;
       }
@@ -2992,14 +3083,16 @@ export class AppDialogsManager {
     dialogElement,
     highlightWord,
     isBatch = false,
-    setUnread = false
+    setUnread = false,
+    noForwardIcon
   }: {
-    dialog: Dialog | ForumTopic,
+    dialog: AnyDialog,
     lastMessage?: Message.message | Message.messageService,
     dialogElement?: DialogElement,
     highlightWord?: string,
     isBatch?: boolean,
-    setUnread?: boolean
+    setUnread?: boolean,
+    noForwardIcon?: boolean
   }) {
     if(!dialogElement) {
       dialogElement = this.xd.getDialogElement(dialog.peerId);
@@ -3011,25 +3104,27 @@ export class AppDialogsManager {
 
     const {dom} = dialogElement;
     const {peerId} = dialog;
+    const isSaved = isSavedDialog(dialog);
 
     const {deferred: promise, middleware} = setPromiseMiddleware(dom, 'setLastMessagePromise');
 
     let draftMessage: MyDraftMessage;
     if(!lastMessage) {
+      const {draft} = dialog as Dialog;
       if(
-        dialog.draft?._ === 'draftMessage' && (
+        draft?._ === 'draftMessage' && (
           !peerId.isAnyChat() ||
-          dialog._ === 'forumTopic' ||
+          isForumTopic(dialog) ||
           !apiManagerProxy.isForum(peerId)
         )
       ) {
-        draftMessage = dialog.draft;
+        draftMessage = draft;
       }
 
       lastMessage = (dialog as Dialog).topMessage;
       if(lastMessage?.mid !== dialog.top_message) {
         const trueLastMessage = apiManagerProxy.getMessageByPeer(peerId, dialog.top_message);
-        if((trueLastMessage as Message.messageService).action?._ !== 'messageActionChannelJoined') {
+        if(trueLastMessage && (trueLastMessage as Message.messageService).action?._ !== 'messageActionChannelJoined') {
           lastMessage = trueLastMessage;
         }
       }
@@ -3068,7 +3163,7 @@ export class AppDialogsManager {
       let icon: Icon;
       if(draftMessage) {
 
-      } else if((lastMessage as Message.message)?.fwdFromId) {
+      } else if((lastMessage as Message.message)?.fwdFromId && !isSaved && !noForwardIcon) {
         icon = 'forward_filled';
       } else if((lastMessage as Message.message)?.reply_to?._ === 'messageReplyStoryHeader') {
         icon = 'storyreply';
@@ -3218,7 +3313,7 @@ export class AppDialogsManager {
     isBatch = false,
     setLastMessagePromise
   }: {
-    dialog: Dialog | ForumTopic,
+    dialog: AnyDialog,
     dialogElement: DialogElement,
     isBatch?: boolean,
     setLastMessagePromise?: Promise<void>
@@ -3229,15 +3324,16 @@ export class AppDialogsManager {
       return;
     }
 
-    const isTopic = dialog._ === 'forumTopic';
+    const isTopic = isForumTopic(dialog);
+    const isSaved = isSavedDialog(dialog);
 
     const {deferred, middleware} = setPromiseMiddleware(dom, 'setUnreadMessagePromise');
 
     const {peerId} = dialog;
     const promises = Promise.all([
       this.managers.appNotificationsManager.isPeerLocalMuted({peerId: peerId, respectType: true, threadId: isTopic ? dialog.id : undefined}),
-      dialog.draft?._ !== 'draftMessage' ? apiManagerProxy.getMessageByPeer(peerId, dialog.top_message) : undefined,
-      isTopic ? !!dialog.pFlags.pinned : this.managers.dialogsStorage.isDialogPinned(peerId, this.filterId),
+      !isSaved && dialog.draft?._ !== 'draftMessage' ? apiManagerProxy.getMessageByPeer(peerId, dialog.top_message) : undefined,
+      isTopic || isSaved ? !!dialog.pFlags.pinned : this.managers.dialogsStorage.isDialogPinned(peerId, this.filterId),
       this.managers.appMessagesManager.isDialogUnread(dialog),
       peerId.isAnyChat() && !isTopic ? this.managers.acknowledged.dialogsStorage.getForumUnreadCount(peerId).then((result) => {
         if(result.cached) {
@@ -3262,7 +3358,7 @@ export class AppDialogsManager {
       setStatusMessage = lastMessage;
     }
 
-    const unreadCount = unreadTopicsCount ?? dialog.unread_count;
+    const unreadCount = unreadTopicsCount ?? (isSaved ? 0 : dialog.unread_count);
     if(unreadTopicsCount !== undefined) {
       isDialogUnread = !!unreadCount;
     }
@@ -3323,7 +3419,7 @@ export class AppDialogsManager {
       dialogElement.createUnreadAvatarBadge();
     }
 
-    const hasMentionsBadge = dialog.unread_mentions_count && (dialog.unread_mentions_count > 1 || dialog.unread_count > 1);
+    const hasMentionsBadge = isSaved ? false : (dialog.unread_mentions_count && (dialog.unread_mentions_count > 1 || dialog.unread_count > 1));
     const isMentionsBadgeMounted = !!dom.mentionsBadge;
     if(hasMentionsBadge) {
       dialogElement.createMentionsBadge();
@@ -3350,7 +3446,7 @@ export class AppDialogsManager {
     }
 
     let isUnread = true, isMention = false, unreadBadgeText: string;
-    if(dialog.unread_mentions_count && unreadCount === 1) {
+    if(!isSaved && dialog.unread_mentions_count && unreadCount === 1) {
       unreadBadgeText = '@';
       isMention = true;
     } else if(isDialogUnread) {
@@ -3393,17 +3489,28 @@ export class AppDialogsManager {
     deferred.resolve();
   }
 
-  private async getDialog(dialog: Dialog | ForumTopic | PeerId, threadId?: number) {
+  private async getDialog(dialog: AnyDialog | PeerId, threadOrSavedId?: number) {
     if(typeof(dialog) !== 'object') {
-      let originalDialog: Dialog | ForumTopic;
-      if(threadId) {
-        originalDialog = await this.managers.dialogsStorage.getForumTopic(dialog, threadId);
-        if(!originalDialog) {
-          const peerId = dialog || NULL_PEER_ID;
-          return {
-            peerId,
-            pFlags: {}
-          } as any as ForumTopic;
+      let originalDialog: AnyDialog;
+      if(threadOrSavedId) {
+        if(dialog === rootScope.myId) {
+          originalDialog = await this.managers.dialogsStorage.getAnyDialog(dialog, threadOrSavedId);
+          if(!originalDialog) {
+            const peerId = dialog || NULL_PEER_ID;
+            return {
+              peerId,
+              pFlags: {}
+            } as any as SavedDialog;
+          }
+        } else {
+          originalDialog = await this.managers.dialogsStorage.getForumTopic(dialog, threadOrSavedId);
+          if(!originalDialog) {
+            const peerId = dialog || NULL_PEER_ID;
+            return {
+              peerId,
+              pFlags: {}
+            } as any as ForumTopic;
+          }
         }
       } else {
         originalDialog = await this.managers.appMessagesManager.getDialogOnly(dialog);
@@ -3420,7 +3527,7 @@ export class AppDialogsManager {
       return originalDialog;
     }
 
-    return dialog as Dialog | ForumTopic;
+    return dialog as AnyDialog;
   }
 
   public addListDialog(options: Parameters<AppDialogsManager['addDialogNew']>[0] & {isBatch?: boolean}) {
@@ -3435,7 +3542,7 @@ export class AppDialogsManager {
       const promise = getDialogPromise.then((dialog) => {
         const promises: (Promise<any> | void)[] = [];
         const isUser = peerId.isUser();
-        if(!isUser && dialog._ === 'dialog') {
+        if(!isUser && isDialog(dialog)) {
           promises.push(this.xd.processDialogForCallStatus(peerId, ret.dom));
         }
 

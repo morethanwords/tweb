@@ -37,7 +37,7 @@ import {onMediaCaptionClick} from '../appMediaViewer';
 import InputFieldAnimated from '../inputFieldAnimated';
 import ChatInput from '../chat/input';
 import appImManager from '../../lib/appManagers/appImManager';
-import Chat from '../chat/chat';
+import Chat, {ChatType} from '../chat/chat';
 import middlewarePromise from '../../helpers/middlewarePromise';
 import emoticonsDropdown from '../emoticonsDropdown';
 import PopupPickUser from '../popups/pickUser';
@@ -106,7 +106,7 @@ const STORY_HEADER_AVATAR_SIZE = 32;
 const STORY_SCALE_SMALL = 0.33;
 const STORIES_PRESERVE = 2;
 const STORIES_PRESERVE_HIDDEN = 2;
-const STORY_REPOST_ICON: Icon = 'reposticon';
+const STORY_REPOST_ICON: Icon = 'storyrepost';
 let CHANGELOG_PEER_ID = SERVICE_PEER_ID;
 
 rootScope.addEventListener('app_config', (appConfig) => {
@@ -535,7 +535,7 @@ const StoryInput = (props: {
   const middleware = middlewareHelper.get();
 
   const chat = new Chat(appImManager, rootScope.managers, false, {elements: true, sharedMedia: true});
-  chat.setType('stories');
+  chat.setType(ChatType.Stories);
   chat.isStandalone = true;
 
   const onReactionClick = async() => {
@@ -722,7 +722,7 @@ const StoryInput = (props: {
   chat.peerId = props.state.peerId;
   chat.onChangePeer({
     peerId: chat.peerId,
-    type: 'stories'
+    type: ChatType.Stories
   }, middlewarePromise(middleware)).then(() => {
     if(!middleware()) return;
     return chat.finishPeerChange({

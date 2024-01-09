@@ -51,6 +51,7 @@ import liteMode from '../../helpers/liteMode';
 import handleVideoLeak from '../../helpers/dom/handleVideoLeak';
 import wrapDraft from '../wrappers/draft';
 import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
+import {ChatType} from '../chat/chat';
 
 type SendFileParams = SendFileDetails & {
   file?: File,
@@ -303,7 +304,7 @@ export default class PopupNewMedia extends PopupElement {
       }
     });
 
-    if(this.chat.type !== 'scheduled') {
+    if(this.chat.type !== ChatType.Scheduled) {
       const sendMenu = new SendContextMenu({
         onSilentClick: () => {
           this.chat.input.sendSilent = true;
@@ -593,7 +594,7 @@ export default class PopupNewMedia extends PopupElement {
       return;
     }
 
-    if(this.chat.type === 'scheduled' && !force) {
+    if(this.chat.type === ChatType.Scheduled && !force) {
       this.chat.input.scheduleSending(() => {
         this.send(true);
       });

@@ -18,7 +18,7 @@ import PopupCreatePoll from '../popups/createPoll';
 import PopupForward from '../popups/forward';
 import PopupNewMedia from '../popups/newMedia';
 import {toast, toastNew} from '../toast';
-import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageReplyHeader, MessageMedia, InputReplyTo} from '../../layer';
+import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageMedia, InputReplyTo, Dialog, ForumTopic} from '../../layer';
 import StickersHelper from './stickersHelper';
 import ButtonIcon from '../buttonIcon';
 import ButtonMenuToggle from '../buttonMenuToggle';
@@ -62,9 +62,7 @@ import PopupPeer from '../popups/peer';
 import appMediaPlaybackController from '../appMediaPlaybackController';
 import {BOT_START_PARAM, GENERAL_TOPIC_ID, NULL_PEER_ID, SEND_WHEN_ONLINE_TIMESTAMP} from '../../lib/mtproto/mtproto_config';
 import setCaretAt from '../../helpers/dom/setCaretAt';
-import CheckboxField from '../checkboxField';
 import DropdownHover from '../../helpers/dropdownHover';
-import RadioForm from '../radioForm';
 import findUpTag from '../../helpers/dom/findUpTag';
 import toggleDisability from '../../helpers/dom/toggleDisability';
 import callbackify from '../../helpers/callbackify';
@@ -119,6 +117,8 @@ import MarkupTooltip from './markupTooltip';
 import PopupPremium from '../popups/premium';
 import PopupPickUser from '../popups/pickUser';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
+import {isSavedDialog} from '../../lib/appManagers/utils/dialogs/isDialog';
+import getFwdFromName from '../../lib/appManagers/utils/messages/getFwdFromName';
 
 // console.log('Recorder', Recorder);
 
@@ -140,7 +140,7 @@ type ChatSendBtnIcon = 'send' | 'record' | 'edit' | 'schedule' | 'forward';
 export type ChatInputReplyTo = Pick<MessageSendingParams, 'replyToMsgId' | 'replyToQuote' | 'replyToStoryId' | 'replyToPeerId'>;
 
 const CLASS_NAME = 'chat-input';
-const PEER_EXCEPTIONS = new Set<ChatType>(['scheduled', 'stories']);
+const PEER_EXCEPTIONS = new Set<ChatType>([ChatType.Scheduled, ChatType.Stories, ChatType.Saved]);
 
 export default class ChatInput {
   // private static AUTO_COMPLETE_REG_EXP = /(\s|^)((?::|.)(?!.*[:@]).*|(?:[@\/]\S*))$/;
@@ -248,6 +248,7 @@ export default class ChatInput {
   private hoverListenerSetter: ListenerSetter;
 
   private pinnedControlBtn: HTMLButtonElement;
+  private openChatBtn: HTMLButtonElement;
 
   private goDownBtn: HTMLButtonElement;
   private goDownUnreadBadge: HTMLElement;
@@ -350,7 +351,7 @@ export default class ChatInput {
       'rows-wrapper',
       `${CLASS_NAME}-wrapper`,
       `${className2}-wrapper`,
-      this.chat.type !== 'stories' && 'chat-rows-wrapper'
+      this.chat.type !== ChatType.Stories && 'chat-rows-wrapper'
     ].filter(Boolean));
 
     this.rowsWrapperWrapper.append(this.rowsWrapper);
@@ -1123,7 +1124,7 @@ export default class ChatInput {
       openSide: 'top-left',
       onContextElement: this.btnSend,
       onOpen: () => {
-        const good = this.chat.type !== 'scheduled' && (!this.isInputEmpty() || !!Object.keys(this.forwarding).length);
+        const good = this.chat.type !== ChatType.Scheduled && (!this.isInputEmpty() || !!Object.keys(this.forwarding).length);
         if(good) {
           this.emoticonsDropdown?.toggle(false);
         }
@@ -1205,11 +1206,8 @@ export default class ChatInput {
     attachClickEvent(this.botStartBtn, this.startBot, {listenerSetter: this.listenerSetter});
     attachClickEvent(this.unblockBtn, this.unblockUser, {listenerSetter: this.listenerSetter});
 
-    this.controlContainer.append(...[this.botStartBtn, this.unblockBtn, this.replyInTopicOverlay].filter(Boolean));
-
     // * pinned part start
     this.pinnedControlBtn = Button('btn-primary btn-transparent text-bold chat-input-control-button', {icon: 'unpin'});
-    this.controlContainer.append(this.pinnedControlBtn);
 
     this.listenerSetter.add(this.pinnedControlBtn)('click', () => {
       const peerId = this.chat.peerId;
@@ -1225,6 +1223,15 @@ export default class ChatInput {
       });
     });
     // * pinned part end
+
+    this.openChatBtn = makeControlButton('OpenChat');
+    attachClickEvent(this.openChatBtn, () => {
+      this.chat.appImManager.setInnerPeer({
+        peerId: this.chat.threadId
+      });
+    }, {listenerSetter: this.listenerSetter});
+
+    this.controlContainer.append(...[this.botStartBtn, this.unblockBtn, this.replyInTopicOverlay, this.pinnedControlBtn, this.openChatBtn].filter(Boolean));
   }
 
   private setChatListeners() {
@@ -1234,7 +1241,7 @@ export default class ChatInput {
     });
 
     this.listenerSetter.add(this.appImManager)('peer_changing', (chat) => {
-      if(this.chat === chat && (this.chat.type === 'chat' || this.chat.type === 'discussion')) {
+      if(this.chat === chat && (this.chat.type === ChatType.Chat || this.chat.type === ChatType.Discussion)) {
         this.saveDraft();
       }
     });
@@ -1248,7 +1255,7 @@ export default class ChatInput {
     });
 
     this.listenerSetter.add(rootScope)('scheduled_delete', ({peerId, mids}) => {
-      if(this.chat.type === 'scheduled' && this.chat.peerId === peerId && mids.includes(this.editMsgId)) {
+      if(this.chat.type === ChatType.Scheduled && this.chat.peerId === peerId && mids.includes(this.editMsgId)) {
         this.onMessageSent();
       }
     });
@@ -1270,7 +1277,7 @@ export default class ChatInput {
     });
 
     this.listenerSetter.add(rootScope)('dialogs_multiupdate', (dialogs) => {
-      if(dialogs.has(this.chat.peerId) && (this.chat.type === 'chat' || this.chat.type === 'discussion')) {
+      if(dialogs.has(this.chat.peerId) && (this.chat.type === ChatType.Chat || this.chat.type === ChatType.Discussion)) {
         if(this.startParam === BOT_START_PARAM) {
           this.setStartParam();
         } else { // updateNewMessage comes earlier than dialog appers
@@ -1410,7 +1417,7 @@ export default class ChatInput {
       this.chat.isForum &&
       !this.chat.isForumTopic &&
       !this.replyToMsgId &&
-      this.chat.type === 'chat';
+      this.chat.type === ChatType.Chat;
   }
 
   public async getNeededFakeContainer(startParam = this.startParam) {
@@ -1419,7 +1426,8 @@ export default class ChatInput {
     } else if(
       // startParam !== undefined || // * startParam isn't always should force control container, so it's commented
       // !(await this.chat.canSend()) || // ! WARNING, TEMPORARILY COMMENTED
-      this.chat.type === 'pinned' ||
+      this.chat.type === ChatType.Pinned ||
+      this.chat.type === ChatType.Saved ||
       await this.chat.isStartButtonNeeded() ||
       this.isReplyInTopicOverlayNeeded() ||
       (this.chat.peerId.isUser() && this.chat.isUserBlocked)
@@ -1476,7 +1484,7 @@ export default class ChatInput {
   };
 
   public getReadyToSend(callback: () => void) {
-    return this.chat.type === 'scheduled' ? (this.scheduleSending(callback), true) : (callback(), false);
+    return this.chat.type === ChatType.Scheduled ? (this.scheduleSending(callback), true) : (callback(), false);
   }
 
   public canSendWhenOnline = async() => {
@@ -1503,7 +1511,7 @@ export default class ChatInput {
     this.scheduleDate = timestamp;
     callback();
 
-    if(this.chat.type !== 'scheduled' && this.chat.type !== 'stories' && timestamp) {
+    if(this.chat.type !== ChatType.Scheduled && this.chat.type !== ChatType.Stories && timestamp) {
       setTimeout(() => { // ! need timeout here because .forwardMessages will be called after timeout
         if(!middleware()) {
           return;
@@ -1549,12 +1557,25 @@ export default class ChatInput {
       return;
     }
 
-    const dialog = await this.managers.dialogsStorage.getDialogOrTopic(this.chat.peerId, this.chat.type === 'discussion' ? undefined : this.chat.threadId);
+    const dialog = await this.managers.dialogsStorage.getAnyDialog(
+      this.chat.peerId,
+      this.chat.type === ChatType.Discussion ? undefined : this.chat.threadId
+    );
+
+    if(isSavedDialog(dialog)) {
+      return;
+    }
+
     const count = dialog?.unread_count;
     setBadgeContent(this.goDownUnreadBadge, '' + (count || ''));
-    this.goDownUnreadBadge.classList.toggle('badge-gray', await this.managers.appNotificationsManager.isPeerLocalMuted({peerId: this.chat.peerId, respectType: true, threadId: this.chat.threadId}));
+    const isPeerLocalMuted = await this.managers.appNotificationsManager.isPeerLocalMuted({
+      peerId: this.chat.peerId,
+      respectType: true,
+      threadId: this.chat.threadId
+    });
+    this.goDownUnreadBadge.classList.toggle('badge-gray', isPeerLocalMuted);
 
-    if(this.goMentionUnreadBadge && this.chat.type === 'chat') {
+    if(this.goMentionUnreadBadge && this.chat.type === ChatType.Chat) {
       const hasMentions = !!(dialog?.unread_mentions_count && dialog.unread_count);
       setBadgeContent(this.goMentionUnreadBadge, hasMentions ? '' + (dialog.unread_mentions_count) : '');
       this.goMentionBtn.classList.toggle('is-visible', hasMentions);
@@ -1735,7 +1756,7 @@ export default class ChatInput {
   private createSendAs() {
     this.sendAsPeerId = undefined;
 
-    if(this.chat && (this.chat.type === 'chat' || this.chat.type === 'discussion')) {
+    if(this.chat && (this.chat.type === ChatType.Chat || this.chat.type === ChatType.Discussion)) {
       let firstChange = true;
       this.sendAs = new ChatSendAs(
         this.managers,
@@ -1824,7 +1845,7 @@ export default class ChatInput {
         this.setUnreadCount();
       }
 
-      if(this.chat?.type === 'pinned') {
+      if(this.chat?.type === ChatType.Pinned) {
         chatInput.classList.toggle('can-pin', canPinMessage);
       }/*  else if(this.chat.type === 'chat') {
       } */
@@ -1867,8 +1888,36 @@ export default class ChatInput {
       replyKeyboard?.setPeer(peerId);
       sendMenu?.setPeerId(peerId);
 
+      let haveSomethingInControl = false;
+      if(this.chat && this.pinnedControlBtn) {
+        const good = !haveSomethingInControl && this.chat.type === ChatType.Pinned;
+        haveSomethingInControl ||= good;
+        this.pinnedControlBtn.classList.toggle('hide', !good);
+        this.pinnedControlBtn.replaceChildren(i18n(canPinMessage ? 'Chat.Input.UnpinAll' : 'Chat.Pinned.DontShow'));
+      }
+
+      if(this.chat && this.openChatBtn) {
+        const good = !haveSomethingInControl && this.chat.type === ChatType.Saved;
+        haveSomethingInControl ||= good;
+        this.openChatBtn.classList.toggle('hide', !good);
+      }
+
+      if(REPLY_IN_TOPIC && this.chat) {
+        const good = !haveSomethingInControl && this.chat.isForum && !this.chat.isForumTopic && this.chat.type === ChatType.Chat;
+        haveSomethingInControl ||= good;
+        this.replyInTopicOverlay.classList.toggle('hide', !good);
+      }
+
+      if(this.chat) {
+        const good = !haveSomethingInControl && !isBot && peerId.isUser();
+        haveSomethingInControl ||= good;
+        this.unblockBtn.classList.toggle('hide', !good);
+      }
+
+      this.botStartBtn.classList.toggle('hide', haveSomethingInControl);
+
       if(this.messageInput) {
-        this.updateMessageInput(canSend, canSendPlain, placeholderParams);
+        this.updateMessageInput(canSend || haveSomethingInControl, canSendPlain, placeholderParams);
         this.messageInput.dataset.peerId = '' + peerId;
 
         if(filteredAttachMenuButtons && attachMenu) {
@@ -1884,28 +1933,6 @@ export default class ChatInput {
       }
 
       this.messageInputField?.onFakeInput(undefined, true);
-
-      let haveSomethingInControl = false;
-      if(this.chat && this.pinnedControlBtn) {
-        const good = !haveSomethingInControl && this.chat.type === 'pinned';
-        haveSomethingInControl ||= good;
-        this.pinnedControlBtn.classList.toggle('hide', !good);
-        this.pinnedControlBtn.replaceChildren(i18n(canPinMessage ? 'Chat.Input.UnpinAll' : 'Chat.Pinned.DontShow'));
-      }
-
-      if(REPLY_IN_TOPIC && this.chat) {
-        const good = !haveSomethingInControl && this.chat.isForum && !this.chat.isForumTopic && this.chat.type === 'chat';
-        haveSomethingInControl ||= good;
-        this.replyInTopicOverlay.classList.toggle('hide', !good);
-      }
-
-      if(this.chat) {
-        const good = !haveSomethingInControl && !isBot && peerId.isUser();
-        haveSomethingInControl ||= good;
-        this.unblockBtn.classList.toggle('hide', !good);
-      }
-
-      this.botStartBtn.classList.toggle('hide', haveSomethingInControl);
 
       // * testing
       // this.startParam = this.appPeersManager.isBot(peerId) ? '123' : undefined;
@@ -2212,7 +2239,7 @@ export default class ChatInput {
       this.isFocused = true;
       // this.updateSendBtn();
 
-      if((this.chat.type === 'chat' || this.chat.type === 'discussion') &&
+      if((this.chat.type === ChatType.Chat || this.chat.type === ChatType.Discussion) &&
         this.chat.bubbles.scrollable.loadedAll.bottom) {
         this.managers.appMessagesManager.readAllHistory(this.chat.peerId, this.chat.threadId);
       }
@@ -2705,7 +2732,7 @@ export default class ChatInput {
     cancelEvent(e);
 
     const isInputEmpty = this.isInputEmpty();
-    if(this.chat.type === 'stories' && isInputEmpty && !this.freezedFocused && this.canForwardStory) {
+    if(this.chat.type === ChatType.Stories && isInputEmpty && !this.freezedFocused && this.canForwardStory) {
       this.forwardStoryCallback?.(e as MouseEvent);
       return;
     } else if(!this.recorder || this.recording || !isInputEmpty || this.forwarding || this.editMsgId) {
@@ -3076,9 +3103,9 @@ export default class ChatInput {
 
     const isInputEmpty = this.isInputEmpty();
 
-    if(this.chat.type === 'stories' && isInputEmpty && !this.freezedFocused && this.canForwardStory) icon = 'forward';
+    if(this.chat.type === ChatType.Stories && isInputEmpty && !this.freezedFocused && this.canForwardStory) icon = 'forward';
     else if(this.editMsgId) icon = 'edit';
-    else if(!this.recorder || this.recording || !isInputEmpty || this.forwarding) icon = this.chat.type === 'scheduled' ? 'schedule' : 'send';
+    else if(!this.recorder || this.recording || !isInputEmpty || this.forwarding) icon = this.chat.type === ChatType.Scheduled ? 'schedule' : 'send';
     else icon = 'record';
 
     ['send', 'record', 'edit', 'schedule', 'forward'].forEach((i) => {
@@ -3086,11 +3113,11 @@ export default class ChatInput {
     });
 
     if(this.btnScheduled) {
-      this.btnScheduled.classList.toggle('show', isInputEmpty && this.chat.type !== 'scheduled');
+      this.btnScheduled.classList.toggle('show', isInputEmpty && this.chat.type !== ChatType.Scheduled);
     }
 
     if(this.btnToggleReplyMarkup) {
-      this.btnToggleReplyMarkup.classList.toggle('show', isInputEmpty && this.chat.type !== 'scheduled');
+      this.btnToggleReplyMarkup.classList.toggle('show', isInputEmpty && this.chat.type !== ChatType.Scheduled);
     }
 
     this.onUpdateSendBtn?.(icon);
@@ -3144,7 +3171,7 @@ export default class ChatInput {
 
   public sendMessage(force = false) {
     const {editMsgId, chat} = this;
-    if(chat.type === 'scheduled' && !force && !editMsgId) {
+    if(chat.type === ChatType.Scheduled && !force && !editMsgId) {
       this.scheduleSending();
       return;
     }
@@ -3239,7 +3266,7 @@ export default class ChatInput {
       return false;
     }
 
-    if(this.chat.type === 'scheduled' && !force) {
+    if(this.chat.type === ChatType.Scheduled && !force) {
       this.scheduleSending(() => this.sendMessageWithDocument(document, true, clearDraft, silent));
       return false;
     }
@@ -3341,8 +3368,8 @@ export default class ChatInput {
         const mids = fromPeerIdsMids[fromPeerId];
         const promises = mids.map(async(mid) => {
           const message = (await this.managers.appMessagesManager.getMessageByPeer(fromPeerId, mid)) as Message.message;
-          if(message.fwd_from?.from_name && !message.fromId && !message.fwdFromId) {
-            smth.add('N' + message.fwd_from.from_name);
+          if(getFwdFromName(message.fwd_from) && !message.fromId && !message.fwdFromId) {
+            smth.add('N' + getFwdFromName(message.fwd_from));
           } else {
             smth.add('P' + message.fromId);
           }
@@ -3479,7 +3506,7 @@ export default class ChatInput {
         title = new PeerTitle({
           peerId: message.fromId,
           dialog: false,
-          fromName: !peerId ? (message as Message.message).fwd_from?.from_name : undefined
+          fromName: !peerId ? getFwdFromName((message as Message.message).fwd_from) : undefined
         }).element;
 
         title = i18n(replyToQuote ? 'ReplyToQuote' : 'ReplyTo', [title]);

@@ -30,6 +30,8 @@ import Scrollable from './scrollable';
 import appSidebarRight from './sidebarRight';
 import AppSharedMediaTab from './sidebarRight/tabs/sharedMedia';
 import PopupElement from './popups';
+import {ChatType} from './chat/chat';
+import getFwdFromName from '../lib/appManagers/utils/messages/getFwdFromName';
 
 type AppMediaViewerTargetType = {
   element: HTMLElement,
@@ -207,7 +209,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       PopupDeleteMessages,
       target.peerId,
       [target.mid],
-      'chat',
+      ChatType.Chat,
       () => {
         this.target = {element: this.content.media} as any;
         this.close();
@@ -245,7 +247,6 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
         appImManager.setInnerPeer({
           peerId: message.peerId,
           lastMsgId: mid,
-          type: threadId ? 'discussion' : undefined,
           threadId
         });
       });
@@ -305,7 +306,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     if(this.setMoverPromise) return this.setMoverPromise;
 
     const mid = message.mid;
-    const fromId = (message as Message.message).fwd_from && !message.fromId ? (message as Message.message).fwd_from.from_name : message.fromId;
+    const fromId = (message as Message.message).fwd_from && !message.fromId ? getFwdFromName((message as Message.message).fwd_from) : message.fromId;
     const media = getMediaFromMessage(message, true);
 
     const noForwards = await this.managers.appPeersManager.noForwards(message.peerId);

@@ -300,26 +300,33 @@ export default class SlicedArray<T extends ItemType> {
     return undefined;
   }
 
+  public findOffsetInSlice(maxId: T, slice: Slice<T>) {
+    for(let offset = 0; offset < slice.length; ++offset) {
+      if(compareValue(maxId, slice[offset]) >= 0) {
+        /* if(!offset) { // because can't find 3 in [[5,4], [2,1]]
+          return undefined;
+        } */
+
+        return {
+          slice,
+          offset: maxId === slice[offset] ? offset : offset - 1
+        };
+      }
+    }
+  }
+
   public findSliceOffset(maxId: T) {
     let slice: Slice<T>;
     for(let i = 0; i < this.slices.length; ++i) {
       slice = this.slices[i];
 
-      for(let offset = 0; offset < slice.length; ++offset) {
-        if(compareValue(maxId, slice[offset]) >= 0) {
-          /* if(!offset) { // because can't find 3 in [[5,4], [2,1]]
-            return undefined;
-          } */
-
-          return {
-            slice,
-            offset: maxId === slice[offset] ? offset : offset - 1
-          };
-        }
+      const found = this.findOffsetInSlice(maxId, slice);
+      if(found) {
+        return found;
       }
     }
 
-    if(slice && slice.isEnd(SliceEnd.Top)) {
+    if(slice?.isEnd(SliceEnd.Top)) {
       return {
         slice,
         offset: slice.length
@@ -388,21 +395,21 @@ export default class SlicedArray<T extends ItemType> {
       this.slices.unshift(slice);
     }
 
-    this.insertSlice(items);
+    slice.unshift(...items);
   }
 
-  public push(...items: T[]) {
-    let slice = this.last;
-    if(!slice.length) {
-      slice.setEnd(SliceEnd.Top);
-    } else if(!slice.isEnd(SliceEnd.Top)) {
-      slice = this.constructSlice();
-      slice.setEnd(SliceEnd.Top);
-      this.slices.push(slice);
-    }
+  // public push(...items: T[]) {
+  //   let slice = this.last;
+  //   if(!slice.length) {
+  //     slice.setEnd(SliceEnd.Top);
+  //   } else if(!slice.isEnd(SliceEnd.Top)) {
+  //     slice = this.constructSlice();
+  //     slice.setEnd(SliceEnd.Top);
+  //     this.slices.push(slice);
+  //   }
 
-    slice.push(...items);
-  }
+  //   slice.push(...items);
+  // }
 
   public delete(item: T) {
     const found = this.findSlice(item);

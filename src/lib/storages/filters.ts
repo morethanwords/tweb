@@ -4,8 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {ChatlistsChatlistUpdates, DialogFilter, ForumTopic, InputChatlist, InputPeer, Update, Updates} from '../../layer';
+import type {DialogFilter, InputChatlist, Update, Updates} from '../../layer';
 import type {Dialog} from '../appManagers/appMessagesManager';
+import type {AnyDialog} from './dialogs';
 import forEachReverse from '../../helpers/array/forEachReverse';
 import copy from '../../helpers/object/copy';
 import {AppManager} from '../appManagers/manager';
@@ -14,6 +15,7 @@ import assumeType from '../../helpers/assumeType';
 import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS, REAL_FOLDER_ID, START_LOCAL_ID} from '../mtproto/mtproto_config';
 import makeError from '../../helpers/makeError';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
+import {isDialog} from '../appManagers/utils/dialogs/isDialog';
 
 export type MyDialogFilter = Exclude<DialogFilter, DialogFilter.dialogFilterDefault>;
 
@@ -204,15 +206,15 @@ export default class FiltersStorage extends AppManager {
     this.appStateManager.pushToState('filtersArr', this.filtersArr);
   }
 
-  public testDialogForFilter(dialog: Dialog | ForumTopic.forumTopic, filter?: MyDialogFilter) {
-    if(!filter) {
+  public testDialogForFilter(dialog: AnyDialog, filter?: MyDialogFilter) {
+    if(!filter || !isDialog(dialog)) {
       return true;
     }
 
     const {peerId} = dialog;
 
     if(REAL_FOLDERS.has(filter.id)) {
-      return (dialog as Dialog).folder_id === filter.id && this.dialogsStorage.canSaveDialog(peerId, dialog);
+      return dialog.folder_id === filter.id && this.dialogsStorage.canSaveDialog(peerId, dialog);
     }
 
     // * check whether dialog exists
@@ -237,7 +239,7 @@ export default class FiltersStorage extends AppManager {
     }
 
     // exclude_archived
-    if(pFlags.exclude_archived && (dialog as Dialog).folder_id === FOLDER_ID_ARCHIVE) {
+    if(pFlags.exclude_archived && dialog.folder_id === FOLDER_ID_ARCHIVE) {
       return false;
     }
 

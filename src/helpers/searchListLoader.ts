@@ -9,7 +9,7 @@ import type {SearchSuperContext} from '../components/appSearchSuper.';
 import type {Message} from '../layer';
 import type {MessagesStorageKey, MyMessage} from '../lib/appManagers/appMessagesManager';
 import {AppManagers} from '../lib/appManagers/managers';
-import rootScope from '../lib/rootScope';
+import rootScope, {BroadcastEvents} from '../lib/rootScope';
 import forEachReverse from './array/forEachReverse';
 import filterChatPhotosMessages from './filterChatPhotosMessages';
 import ListLoader, {ListLoaderOptions} from './listLoader';
@@ -92,7 +92,7 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
     return filtered;
   }
 
-  protected onHistoryDelete = ({peerId, msgs}: {peerId: PeerId, msgs: Set<number>}) => {
+  protected onHistoryDelete = ({peerId, msgs}: BroadcastEvents['history_delete']) => {
     const shouldBeDeleted = (item: Item) => item.peerId === peerId && msgs.has(item.mid);
     const filter = (item: Item, idx: number, arr: Item[]) => {
       if(shouldBeDeleted(item)) {

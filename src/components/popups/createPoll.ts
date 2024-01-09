@@ -21,6 +21,7 @@ import {Poll} from '../../layer';
 import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 import confirmationPopup from '../confirmationPopup';
 import ButtonIcon from '../buttonIcon';
+import {ChatType} from '../chat/chat';
 
 const MAX_LENGTH_QUESTION = 255;
 const MAX_LENGTH_OPTION = 100;
@@ -81,7 +82,7 @@ export default class PopupCreatePoll extends PopupElement {
 
     this.optionInputFields = [];
 
-    if(this.chat.type !== 'scheduled') {
+    if(this.chat.type !== ChatType.Scheduled) {
       const sendMenu = new SendContextMenu({
         onSilentClick: () => {
           this.chat.input.sendSilent = true;
@@ -260,7 +261,7 @@ export default class PopupCreatePoll extends PopupElement {
 
     const {value: quizSolution, entities: quizSolutionEntities} = getRichValueWithCaret(this.quizSolutionField.input, true, false);
 
-    if(this.chat.type === 'scheduled' && !force) {
+    if(this.chat.type === ChatType.Scheduled && !force) {
       this.chat.input.scheduleSending(() => {
         this.send(true);
       });

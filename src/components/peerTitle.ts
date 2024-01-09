@@ -7,7 +7,7 @@
 import rootScope from '../lib/rootScope';
 import {i18n} from '../lib/langPack';
 import replaceContent from '../helpers/dom/replaceContent';
-import {NULL_PEER_ID} from '../lib/mtproto/mtproto_config';
+import {HIDDEN_PEER_ID, NULL_PEER_ID} from '../lib/mtproto/mtproto_config';
 import limitSymbols from '../helpers/string/limitSymbols';
 import setInnerHTML, {setDirection} from '../helpers/dom/setInnerHTML';
 import safeAssign from '../helpers/object/safeAssign';
@@ -26,6 +26,7 @@ export type PeerTitleOptions = {
   withIcons?: boolean,
   withPremiumIcon?: boolean,
   threadId?: number,
+  meAsNotes?: boolean,
   wrapOptions?: WrapSomethingOptions
 };
 
@@ -104,7 +105,18 @@ export default class PeerTitle {
 
     let hasInner: boolean;
     const {peerId, threadId} = this.options;
-    if(peerId !== rootScope.myId || !this.options.dialog) {
+    if(peerId === rootScope.myId && this.options.dialog) {
+      let element: HTMLElement;
+      if(this.options.meAsNotes) {
+        element = i18n(this.options.onlyFirstName ? 'MyNotesShort' : 'MyNotes');
+      } else {
+        element = i18n(this.options.onlyFirstName ? 'Saved' : 'SavedMessages');
+      }
+
+      replaceContent(this.element, element);
+    } else if(peerId === HIDDEN_PEER_ID) {
+      replaceContent(this.element, i18n(this.options.onlyFirstName ? 'AuthorHiddenShort' : 'AuthorHidden'));
+    } else {
       if(threadId) {
         const [topic, isForum] = await Promise.all([
           rootScope.managers.dialogsStorage.getForumTopic(peerId, threadId),
@@ -156,8 +168,6 @@ export default class PeerTitle {
       } else {
         setInnerHTML(this.element, title);
       }
-    } else {
-      replaceContent(this.element, i18n(this.options.onlyFirstName ? 'Saved' : 'SavedMessages'));
     }
 
     this.setHasInner(hasInner);

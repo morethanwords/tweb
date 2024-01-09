@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {ForumTopic} from '../../../../layer';
+import type {AnyDialog} from '../../../storages/dialogs';
 import type {Dialog} from '../../appMessagesManager';
 import type getDialogIndexKey from './getDialogIndexKey';
 
 export default function setDialogIndex(
-  dialog: Dialog | ForumTopic.forumTopic,
+  dialog: AnyDialog,
   indexKey: ReturnType<typeof getDialogIndexKey>,
   index: number
 ) {

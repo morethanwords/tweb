@@ -6,6 +6,7 @@
 
 import type {Dialog} from '../lib/appManagers/appMessagesManager';
 import type {ForumTopic} from '../layer';
+import type {AnyDialog} from '../lib/storages/dialogs';
 import appDialogsManager, {DIALOG_LIST_ELEMENT_TAG} from '../lib/appManagers/appDialogsManager';
 import rootScope from '../lib/rootScope';
 import {ButtonMenuItemOptionsVerifiable} from './buttonMenu';
@@ -15,7 +16,7 @@ import findUpTag from '../helpers/dom/findUpTag';
 import {toastNew} from './toast';
 import PopupMute from './popups/mute';
 import {AppManagers} from '../lib/appManagers/managers';
-import {FOLDER_ID_ARCHIVE, GENERAL_TOPIC_ID} from '../lib/mtproto/mtproto_config';
+import {FOLDER_ID_ARCHIVE, GENERAL_TOPIC_ID, REAL_FOLDERS} from '../lib/mtproto/mtproto_config';
 import showLimitPopup from './popups/limit';
 import createContextMenu from '../helpers/dom/createContextMenu';
 import PopupElement from './popups';
@@ -23,6 +24,8 @@ import cancelEvent from '../helpers/dom/cancelEvent';
 import IS_SHARED_WORKER_SUPPORTED from '../environment/sharedWorkerSupport';
 import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 import appImManager from '../lib/appManagers/appImManager';
+import assumeType from '../helpers/assumeType';
+import {isForumTopic, isSavedDialog} from '../lib/appManagers/utils/dialogs/isDialog';
 
 export default class DialogsContextMenu {
   private buttons: ButtonMenuItemOptionsVerifiable[];
@@ -30,7 +33,7 @@ export default class DialogsContextMenu {
   private peerId: PeerId;
   private filterId: number;
   private threadId: number;
-  private dialog: Dialog | ForumTopic.forumTopic;
+  private dialog: AnyDialog;
   private canManageTopics: boolean;
   private li: HTMLElement;
 
@@ -48,9 +51,9 @@ export default class DialogsContextMenu {
         li.classList.add('menu-open');
         this.peerId = li.dataset.peerId.toPeerId();
         this.threadId = +li.dataset.threadId || undefined;
-        this.dialog = await this.managers.dialogsStorage.getDialogOrTopic(this.peerId, this.threadId);
+        this.dialog = await this.managers.dialogsStorage.getAnyDialog(this.peerId, this.threadId);
         this.filterId = this.threadId ? undefined : appDialogsManager.filterId;
-        this.canManageTopics = this.threadId ? await this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'manage_topics') : undefined;
+        this.canManageTopics = isForumTopic(this.dialog) ? await this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'manage_topics') : undefined;
       },
       onOpenBefore: async() => {
         // delete button
@@ -101,6 +104,10 @@ export default class DialogsContextMenu {
       text: 'ChatList.Context.Pin',
       onClick: this.onPinClick,
       verify: async() => {
+        if(isSavedDialog(this.dialog)) {
+          return !this.dialog.pFlags.pinned;
+        }
+
         if(this.threadId && !this.canManageTopics) {
           return false;
         }
@@ -115,6 +122,10 @@ export default class DialogsContextMenu {
       text: 'ChatList.Context.Unpin',
       onClick: this.onPinClick,
       verify: async() => {
+        if(isSavedDialog(this.dialog)) {
+          return !!this.dialog.pFlags.pinned;
+        }
+
         if(this.threadId && !this.canManageTopics) {
           return false;
         }
@@ -195,6 +206,10 @@ export default class DialogsContextMenu {
       onClick: this.onDeleteClick,
       verify: () => {
         if(this.threadId) {
+          if(isSavedDialog(this.dialog)) {
+            return true;
+          }
+
           if(!this.canManageTopics) {
             return false;
           }
@@ -231,18 +246,21 @@ export default class DialogsContextMenu {
   };
 
   private onPinClick = () => {
-    const {peerId, filterId, threadId} = this;
+    const {peerId, filterId, threadId, dialog} = this;
+    const isSaved = isSavedDialog(dialog);
     this.managers.appMessagesManager.toggleDialogPin({
       peerId,
       filterId,
-      topicId: threadId
+      topicOrSavedId: threadId
     }).catch(async(err: ApiError) => {
       if(err.type === 'PINNED_DIALOGS_TOO_MUCH' || err.type === 'PINNED_TOO_MUCH') {
-        if(threadId) {
+        if(isSaved) {
+          showLimitPopup('savedPin');
+        } else if(threadId) {
           this.managers.apiManager.getLimit('topicPin').then((limit) => {
             toastNew({langPackKey: 'LimitReachedPinnedTopics', langPackArguments: [limit]});
           });
-        } else if(filterId >= 1) {
+        } else if(!REAL_FOLDERS.has(filterId)) {
           toastNew({langPackKey: 'PinFolderLimitReached'});
         } else {
           showLimitPopup('pin');
@@ -261,6 +279,7 @@ export default class DialogsContextMenu {
 
   private onUnreadClick = async() => {
     const {peerId, dialog} = this;
+    assumeType<Dialog | ForumTopic>(dialog);
     if(dialog.unread_count) {
       if(!this.threadId) {
         this.managers.appMessagesManager.markDialogUnread(peerId, true);
@@ -273,6 +292,12 @@ export default class DialogsContextMenu {
   };
 
   private onDeleteClick = () => {
-    PopupElement.createPopup(PopupDeleteDialog, this.peerId, undefined, undefined, this.threadId);
+    PopupElement.createPopup(
+      PopupDeleteDialog,
+      this.peerId,
+      undefined,
+      undefined,
+      this.threadId
+    );
   };
 }

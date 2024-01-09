@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config, Reaction, AttachMenuBot, PeerSettings, StoryItem, PeerStories} from '../layer';
+import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config, Reaction, AttachMenuBot, PeerSettings, StoryItem, PeerStories, SavedDialog} from '../layer';
 import type {Dialog, ForumTopic, MessagesStorageKey, MyMessage} from './appManagers/appMessagesManager';
 import type {MyDialogFilter} from './storages/filters';
-import type {Folder} from './storages/dialogs';
+import type {AnyDialog, Folder} from './storages/dialogs';
 import type {UserTyping} from './appManagers/appProfileManager';
 import type {MyDraftMessage} from './appManagers/appDraftsManager';
 import type {ConnectionStatusChange} from './mtproto/connectionStatus';
@@ -67,20 +67,22 @@ export type BroadcastEvents = {
   'dialog_draft': {peerId: PeerId, dialog: Dialog | ForumTopic, drop: boolean, draft: MyDraftMessage | undefined},
   'dialog_unread': {peerId: PeerId, dialog: Dialog | ForumTopic},
   'dialog_flush': {peerId: PeerId, dialog: Dialog},
-  'dialog_drop': Dialog | ForumTopic,
+  'dialog_drop': AnyDialog,
   'dialog_migrate': {migrateFrom: PeerId, migrateTo: PeerId},
   // 'dialog_top': Dialog,
   'dialog_notify_settings': Dialog | ForumTopic,
   // 'dialog_order': {dialog: Dialog, pos: number},
-  'dialogs_multiupdate': Map<PeerId, {dialog?: Dialog, topics?: Map<number, ForumTopic>}>,
+  'dialogs_multiupdate': Map<PeerId, {dialog?: Dialog, topics?: Map<number, ForumTopic>, saved?: Map<PeerId, SavedDialog>}>,
 
   'history_append': {storageKey: MessagesStorageKey, message: Message.message},
   'history_update': {storageKey: MessagesStorageKey, message: MyMessage, sequential?: boolean},
   'history_reply_markup': {peerId: PeerId},
   'history_multiappend': MyMessage,
+  // 'history_delete': {peerId: PeerId, msgs: Map<number, {savedPeerId?: PeerId}>},
   'history_delete': {peerId: PeerId, msgs: Set<number>},
   'history_forbidden': PeerId,
   'history_reload': PeerId,
+  'history_count': {historyKey: string, count: number},
   // 'history_request': void,
 
   'message_edit': {storageKey: MessagesStorageKey, peerId: PeerId, mid: number, message: MyMessage},

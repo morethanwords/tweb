@@ -6,7 +6,7 @@
 
 import type {ChatRights} from '../../lib/appManagers/appChatsManager';
 import type {RequestWebViewOptions} from '../../lib/appManagers/appAttachMenuBotsManager';
-import type {MessageSendingParams, MessagesStorageKey} from '../../lib/appManagers/appMessagesManager';
+import type {HistoryStorageKey, MessageSendingParams, MessagesStorageKey} from '../../lib/appManagers/appMessagesManager';
 import {AppImManager, APP_TABS, ChatSetPeerOptions} from '../../lib/appManagers/appImManager';
 import EventListenerBase from '../../helpers/eventListenerBase';
 import {logger, LogTypes} from '../../lib/logger';
@@ -35,13 +35,25 @@ import AppSharedMediaTab from '../sidebarRight/tabs/sharedMedia';
 import noop from '../../helpers/noop';
 import middlewarePromise from '../../helpers/middlewarePromise';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import {Message, WallPaper} from '../../layer';
+import {Message, WallPaper, Chat as MTChat} from '../../layer';
 import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
 import {getColorsFromWallPaper} from '../../helpers/color';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
+import {isDialog} from '../../lib/appManagers/utils/dialogs/isDialog';
+import getDialogKey from '../../lib/appManagers/utils/dialogs/getDialogKey';
+import getHistoryStorageKey from '../../lib/appManagers/utils/messages/getHistoryStorageKey';
+import isForwardOfForward from '../../lib/appManagers/utils/messages/isForwardOfForward';
+import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 
-export type ChatType = 'chat' | 'pinned' | 'discussion' | 'scheduled' | 'stories';
+export enum ChatType {
+  Chat = 'chat',
+  Pinned = 'pinned',
+  Discussion = 'discussion',
+  Scheduled = 'scheduled',
+  Stories = 'stories',
+  Saved = 'saved'
+};
 
 export default class Chat extends EventListenerBase<{
   setPeer: (mid: number, isTopMessage: boolean) => void
@@ -67,6 +79,7 @@ export default class Chat extends EventListenerBase<{
 
   public type: ChatType;
   public messagesStorageKey: MessagesStorageKey;
+  public historyStorageKey: HistoryStorageKey;
   public isStandalone: boolean;
 
   public noForwards: boolean;
@@ -115,7 +128,7 @@ export default class Chat extends EventListenerBase<{
     // this.log = logger('CHAT', LogTypes.Warn | LogTypes.Error);
     this.log.warn('constructor');
 
-    this.type = 'chat';
+    this.type = ChatType.Chat;
     this.animationGroup = `chat-${Math.round(Math.random() * 65535)}`;
 
     if(!this.excludeParts.elements) {
@@ -357,7 +370,7 @@ export default class Chat extends EventListenerBase<{
     });
 
     this.bubbles.listenerSetter.add(rootScope)('dialog_drop', (dialog) => {
-      if(dialog.peerId === this.peerId && (dialog._ === 'dialog' || this.threadId === dialog.id)) {
+      if(dialog.peerId === this.peerId && (isDialog(dialog) || this.threadId === getDialogKey(dialog))) {
         this.appImManager.setPeer();
       }
     });
@@ -498,16 +511,17 @@ export default class Chat extends EventListenerBase<{
     this.isUserBlocked = isUserBlocked;
 
     if(threadId && !this.isForum) {
-      options.type = 'discussion';
+      options.type = options.peerId === rootScope.myId ? ChatType.Saved : ChatType.Discussion;
     }
 
-    const type = options.type ?? 'chat';
+    const type = options.type ?? ChatType.Chat;
     this.setType(type);
     if(this.selection) {
-      this.selection.isScheduled = type === 'scheduled';
+      this.selection.isScheduled = type === ChatType.Scheduled;
     }
 
-    this.messagesStorageKey = `${this.peerId}_${this.type === 'scheduled' ? 'scheduled' : 'history'}`;
+    this.messagesStorageKey = `${this.peerId}_${this.type === ChatType.Scheduled ? 'scheduled' : 'history'}`;
+    this.historyStorageKey = getHistoryStorageKey(this.threadId ? 'replies' : 'history', this.peerId, this.threadId);
 
     this.container && this.container.classList.toggle('no-forwards', this.noForwards);
 
@@ -640,6 +654,7 @@ export default class Chat extends EventListenerBase<{
 
     if(this.container) {
       this.container.dataset.type = this.type;
+      this.container.classList.toggle('can-click-date', [ChatType.Chat, ChatType.Discussion, ChatType.Saved].includes(this.type));
     }
 
     this.log.setPrefix('CHAT-' + peerId + '-' + this.type);
@@ -668,7 +683,7 @@ export default class Chat extends EventListenerBase<{
   }
 
   public getDialogOrTopic() {
-    return this.isForum && this.threadId ? this.managers.dialogsStorage.getForumTopic(this.peerId, this.threadId) : this.managers.dialogsStorage.getDialogOnly(this.peerId);
+    return this.managers.dialogsStorage.getAnyDialog(this.peerId, (this.isForum || this.type === ChatType.Saved) && this.threadId);
   }
 
   public getHistoryMaxId() {
@@ -697,6 +712,10 @@ export default class Chat extends EventListenerBase<{
   }
 
   public canSend(action?: ChatRights) {
+    if(this.type === ChatType.Saved) {
+      return Promise.resolve(false);
+    }
+
     return this.managers.appMessagesManager.canSendToPeer(this.peerId, this.threadId, action);
   }
 
@@ -730,12 +749,26 @@ export default class Chat extends EventListenerBase<{
   }
 
   public isOurMessage(message: Message.message | Message.messageService) {
-    return message.fromId === rootScope.myId || (!!message.pFlags.out && this.isMegagroup);
+    if(this.isMegagroup) {
+      return !!message.pFlags.out;
+    }
+
+    if(message.fromId === rootScope.myId) {
+      return true;
+    }
+
+    if((message as Message.message).fwd_from?.pFlags?.saved_out) {
+      return true;
+      // const peer = apiManagerProxy.getPeer((message as Message.message).fwdFromId);
+      // return !(peer as MTChat.channel)?.pFlags?.broadcast;
+    }
+
+    return false;
   }
 
   public isOutMessage(message: Message.message | Message.messageService) {
     const fwdFrom = (message as Message.message).fwd_from;
-    const isOut = this.isOurMessage(message) && (!fwdFrom || this.peerId !== rootScope.myId);
+    const isOut = this.isOurMessage(message) && (!fwdFrom || this.peerId !== rootScope.myId || this.threadId);
     return !!isOut;
   }
 
@@ -744,7 +777,38 @@ export default class Chat extends EventListenerBase<{
   }
 
   public isPinnedMessagesNeeded() {
-    return this.type === 'chat' || this.isForum;
+    return this.type === ChatType.Chat || this.isForum;
+  }
+
+  public isForwardOfForward(message: Message) {
+    // return isForwardOfForward(message);
+    let is = isForwardOfForward(message);
+    const fwdFrom = (message as Message.message).fwd_from;
+    if(
+      is &&
+      fwdFrom.saved_from_id &&
+      this.type === ChatType.Saved ? getPeerId(fwdFrom.saved_from_id) === this.threadId : false
+      // getPeerId(fwdFrom.saved_from_id) === (this.type === ChatType.Saved ? this.threadId : this.peerId)
+    ) {
+      is = false;
+    }
+
+    return is;
+  }
+
+  public getPostAuthor(message: Message.message) {
+    const fwdFrom = message.fwd_from;
+    const isPost = !!(message.pFlags.post || (fwdFrom?.post_author && !this.isOutMessage(message)));
+    if(!isPost) {
+      return;
+    }
+
+    // if(isForwardOfForward(message) && !message.post_author) {
+    //   return;
+    // }
+
+    // return message.post_author || (fwdFrom && (this.type !== ChatType.Saved || message.fwdFromId !== this.threadId) && fwdFrom.post_author);
+    return message.post_author || fwdFrom?.post_author;
   }
 
   public async canGiftPremium() {

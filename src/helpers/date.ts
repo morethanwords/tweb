@@ -96,24 +96,34 @@ export function formatDateAccordingToTodayNew(time: Date) {
   }).element;
 }
 
+const formatTimeOptions: Intl.DateTimeFormatOptions = {
+  hour: '2-digit',
+  minute: '2-digit'
+};
+
 export function formatFullSentTimeRaw(timestamp: number, options: {
   capitalize?: boolean
-  noToday?: boolean
+  noToday?: boolean,
+  combined?: boolean
 } = {}) {
+  if(options.combined) {
+    options.noToday = true;
+  }
+
   const date = new Date();
   const time = new Date(timestamp * 1000);
   const now = date.getTime() / 1000;
 
-  const timeEl = formatTime(time);
+  const timeEl = options.combined ? undefined : formatTime(time);
 
-  let dateEl: Node | string;
+  let dateEl: HTMLElement;
   if((now - timestamp) < ONE_DAY && date.getDate() === time.getDate() && !options.noToday) { // if the same day
     dateEl = i18n(options.capitalize ? 'Date.Today' : 'Peer.Status.Today');
   } else if((now - timestamp) < (ONE_DAY * 2) && (date.getDate() - 1) === time.getDate() && !options.noToday) { // yesterday
     dateEl = i18n(options.capitalize ? 'Yesterday' : 'Peer.Status.Yesterday');
 
     if(options.capitalize) {
-      (dateEl as HTMLElement).style.textTransform = 'capitalize';
+      dateEl.style.textTransform = 'capitalize';
     }
   } else if(date.getFullYear() !== time.getFullYear()) { // different year
     dateEl = new I18n.IntlDateElement({
@@ -121,7 +131,8 @@ export function formatFullSentTimeRaw(timestamp: number, options: {
       options: {
         month: 'short',
         day: 'numeric',
-        year: 'numeric'
+        year: 'numeric',
+        ...(options.combined ? formatTimeOptions: {})
       }
     }).element;
     // dateStr = months[time.getMonth()].slice(0, 3) + ' ' + time.getDate() + ', ' + time.getFullYear();
@@ -130,7 +141,8 @@ export function formatFullSentTimeRaw(timestamp: number, options: {
       date: time,
       options: {
         month: 'short',
-        day: 'numeric'
+        day: 'numeric',
+        ...(options.combined ? formatTimeOptions: {})
       }
     }).element;
     // dateStr = months[time.getMonth()].slice(0, 3) + ' ' + time.getDate();
@@ -153,10 +165,7 @@ export function formatFullSentTime(timestamp: number, capitalize = true, noToday
 export function formatTime(date: Date) {
   return new I18n.IntlDateElement({
     date,
-    options: {
-      hour: '2-digit',
-      minute: '2-digit'
-    }
+    options: formatTimeOptions
   }).element;
 }
 

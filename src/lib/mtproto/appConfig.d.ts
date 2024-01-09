@@ -92,6 +92,8 @@ export interface MTAppConfig {
   quote_length_max?:                         number;
   recommended_channels_limit_default?:       number;
   recommended_channels_limit_premium?:       number;
+  saved_dialogs_pinned_limit_default?:       number;
+  saved_dialogs_pinned_limit_premium?:       number;
   cachedTime?:                               number;
   hash?:                                     number;
 }

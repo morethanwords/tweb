@@ -186,6 +186,8 @@ const lang = {
   'StickersTab.SearchPlaceholder': 'Search Stickers',
   'ForwardedFrom': 'Forwarded from %s',
   'ForwardedStoryFrom': 'Forwarded Story\nFrom: %s',
+  'ForwardedFromAuthor': 'Forwarded from %s (%s)',
+  'ForwardedStoryFromAuthor': 'Forwarded Story\nFrom: %s (%s)',
   'Popup.Avatar.Title': 'Drag to Reposition',
   'Popup.Unpin.AllTitle': 'Unpin all messages',
   'Popup.Unpin.HideTitle': 'Hide pinned messages',
@@ -467,6 +469,14 @@ const lang = {
     'one_value': 'Subscribe to **[Telegram Premium]()** to unlock up to **%d** similar channel.',
     'other_value': 'Subscribe to **[Telegram Premium]()** to unlock up to **%d** similar channels.'
   },
+  'SharedMedia.SavedDialogs': 'Chats',
+  'AuthorHidden': 'Author Hidden',
+  'AuthorHiddenShort': 'Anonymous',
+  'MyNotes': 'My Notes',
+  'MyNotesShort': 'Notes',
+  'OpenChat': 'Open Chat',
+  'DeleteSavedDialogDescription': 'Are you sure you want to delete all saved messages from **%s**?',
+  'SharedMedia.Saved': 'Saved',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -1710,6 +1720,7 @@ const lang = {
   'ChannelJoined': 'You joined this channel',
   'UnlockSimilar': 'Unlock more channels',
   'MoreSimilar': 'More Channels',
+  'MessageNotFound': 'Message doesn\'t exist',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

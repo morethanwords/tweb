@@ -60,6 +60,7 @@ import {ChatInputReplyTo} from './input';
 import {TEST_BUBBLES_DELETION} from './bubbles';
 import cancelSelection from '../../helpers/dom/cancelSelection';
 import AppStatisticsTab from '../sidebarRight/tabs/statistics';
+import {ChatType} from './chat';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -413,12 +414,12 @@ export default class ChatContextMenu {
       icon: 'send2',
       text: 'MessageScheduleSend',
       onClick: this.onSendScheduledClick,
-      verify: () => this.chat.type === 'scheduled' && !this.message.pFlags.is_outgoing
+      verify: () => this.chat.type === ChatType.Scheduled && !this.message.pFlags.is_outgoing
     }, {
       icon: 'send2',
       text: 'Message.Context.Selection.SendNow',
       onClick: this.onSendScheduledClick,
-      verify: () => this.chat.type === 'scheduled' &&
+      verify: () => this.chat.type === ChatType.Scheduled &&
         this.isSelected &&
         !this.chat.selection.selectionSendNowBtn.hasAttribute('disabled'),
       notDirect: () => true,
@@ -437,7 +438,7 @@ export default class ChatContextMenu {
           this.chat.input.onMessageSent(false, false);
         }, new Date(this.message.date * 1000));
       },
-      verify: () => this.chat.type === 'scheduled'
+      verify: () => this.chat.type === ChatType.Scheduled
     }, {
       icon: 'message_quote',
       text: 'Quote',
@@ -456,7 +457,7 @@ export default class ChatContextMenu {
         // await this.chat.canSend() &&
         !this.message.pFlags.is_outgoing &&
         !!this.chat.input.messageInput &&
-        this.chat.type !== 'scheduled'/* ,
+        this.chat.type !== ChatType.Scheduled/* ,
       cancelEvent: true */
     }, {
       icon: 'favourites',
@@ -497,7 +498,7 @@ export default class ChatContextMenu {
         }
 
         for(const [peerId, mids] of this.chat.selection.selectedMids) {
-          const storageKey: MessagesStorageKey = `${peerId}_${this.chat.type === 'scheduled' ? 'scheduled' : 'history'}`;
+          const storageKey: MessagesStorageKey = `${peerId}_${this.chat.type === ChatType.Scheduled ? 'scheduled' : 'history'}`;
           for(const mid of mids) {
             const message = (await this.managers.appMessagesManager.getMessageFromStorage(storageKey, mid)) as Message.message;
             if(!!message.message) {
@@ -546,7 +547,7 @@ export default class ChatContextMenu {
         this.message._ !== 'messageService' &&
         !this.message.pFlags.pinned &&
         await this.managers.appPeersManager.canPinMessage(this.peerId) &&
-        this.chat.type !== 'scheduled'
+        this.chat.type !== ChatType.Scheduled
     }, {
       icon: 'unpin',
       text: 'Message.Context.Unpin',
@@ -590,7 +591,7 @@ export default class ChatContextMenu {
       text: 'Forward',
       onClick: this.onForwardClick, // let forward the message if it's outgoing but not ours (like a changelog)
       verify: () => !this.noForwards &&
-        this.chat.type !== 'scheduled' &&
+        this.chat.type !== ChatType.Scheduled &&
         (!this.message.pFlags.is_outgoing || this.message.fromId === SERVICE_PEER_ID) &&
         this.message._ !== 'messageService'
     }, {
@@ -1023,7 +1024,7 @@ export default class ChatContextMenu {
     let threadMessage: Message.message;
     const {peerId, mid} = this;
     const threadId = this.chat.threadId;
-    if(this.chat.type === 'discussion') {
+    if(this.chat.type === ChatType.Discussion) {
       threadMessage = (await this.managers.appMessagesManager.getMessageByPeer(peerId, threadId)) as Message.message;
     }
 
@@ -1052,7 +1053,7 @@ export default class ChatContextMenu {
 
     let mids: number[];
     if(!this.chat.selection.isSelecting) {
-      mids = [this.mid];
+      mids = [this.getMessageWithText().mid];
     } else {
       mids = this.chat.selection.getSelectedMids();
     }
@@ -1105,7 +1106,9 @@ export default class ChatContextMenu {
   };
 
   private onCopyAnchorLinkClick = () => {
-    copyTextToClipboard((this.target as HTMLAnchorElement).href);
+    let href = (this.target as HTMLAnchorElement).href;
+    href = href.replace(/^mailto:/, '');
+    copyTextToClipboard(href);
   };
 
   private onCopyLinkClick = () => {

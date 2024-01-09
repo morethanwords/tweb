@@ -1,5 +1,6 @@
 import {Message} from '../../../../layer';
 import type {MyMessage} from '../../appMessagesManager';
+import getFwdFromName from './getFwdFromName';
 
 export default function getMessageSenderPeerIdOrName(message: MyMessage) {
   if(message.fromId) {
@@ -8,7 +9,7 @@ export default function getMessageSenderPeerIdOrName(message: MyMessage) {
     };
   } else {
     return {
-      fromName: (message as Message.message).fwd_from?.from_name
+      fromName: getFwdFromName((message as Message.message).fwd_from)
     };
   }
 }

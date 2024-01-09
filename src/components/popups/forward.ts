@@ -17,7 +17,8 @@ export default class PopupForward extends PopupPickUser {
   constructor(
     peerIdMids?: {[fromPeerId: PeerId]: number[]},
     onSelect?: (peerId: PeerId, threadId?: number) => Promise<void> | void,
-    chatRightsAction: ChatRights[] = ['send_plain']
+    chatRightsAction: ChatRights[] = ['send_plain'],
+    noTopics?: boolean
   ) {
     super({
       peerType: ['dialogs', 'contacts'],
@@ -54,7 +55,7 @@ export default class PopupForward extends PopupPickUser {
       placeholder: 'ShareModal.Search.ForwardPlaceholder',
       chatRightsActions: chatRightsAction,
       selfPresence: 'ChatYourSelf',
-      useTopics: !onSelect
+      useTopics: !noTopics
     });
   }
 

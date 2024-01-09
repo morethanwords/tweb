@@ -7,6 +7,7 @@
 import PopupElement from '.';
 import type {PeerType} from '../../lib/appManagers/appPeersManager';
 import {FormatterArguments, LangPackKey} from '../../lib/langPack';
+import rootScope from '../../lib/rootScope';
 import wrapPeerTitle from '../wrappers/peerTitle';
 import PopupPeer, {PopupPeerButtonCallbackCheckboxes, PopupPeerOptions} from './peer';
 
@@ -23,11 +24,21 @@ export default class PopupDeleteDialog {
 
   private async construct() {
     let {peerId, peerType, onSelect, threadId} = this;
-    const peerTitleElement = await wrapPeerTitle({peerId, threadId: threadId});
+
+    const isSavedDialog = await rootScope.managers.appPeersManager.isSavedDialog(peerId, threadId);
+    // if(isSavedDialog) {
+    //   peerId = threadId;
+    // }
+
+    const peerTitleElement = await wrapPeerTitle({
+      peerId: isSavedDialog ? threadId : peerId,
+      threadId: isSavedDialog ? undefined : threadId,
+      meAsNotes: isSavedDialog
+    });
 
     const managers = PopupElement.MANAGERS;
     if(peerType === undefined) {
-      peerType = await managers.appPeersManager.getDialogType(peerId);
+      peerType = await managers.appPeersManager.getDialogType(peerId, threadId);
     }
 
     /* const callbackFlush = (checked: PopupPeerButtonCallbackCheckboxes) => {
@@ -50,7 +61,9 @@ export default class PopupDeleteDialog {
     const callbackDelete = (e: MouseEvent, checked: PopupPeerButtonCallbackCheckboxes) => {
       let promise: Promise<any>;
 
-      if(threadId) {
+      if(isSavedDialog) {
+        promise = managers.appMessagesManager.flushHistory(peerId, false, true, threadId);
+      } else if(threadId) {
         promise = managers.appMessagesManager.flushHistory(peerId, false, true, threadId);
       } else if(peerId.isUser()) {
         promise = managers.appMessagesManager.flushHistory(peerId, false, checkboxes ? !!checked.size : undefined);
@@ -135,6 +148,19 @@ export default class PopupDeleteDialog {
       case 'saved': {
         title = 'DeleteChatUser';
         description = 'AreYouSureDeleteThisChatSavedMessages';
+        buttons = [{
+          langKey: 'DeleteChatUser',
+          isDanger: true,
+          callback: callbackDelete
+        }];
+
+        break;
+      }
+
+      case 'savedDialog': {
+        title = 'DeleteChatUser';
+        description = 'DeleteSavedDialogDescription';
+        descriptionArgs = [peerTitleElement];
         buttons = [{
           langKey: 'DeleteChatUser',
           isDanger: true,

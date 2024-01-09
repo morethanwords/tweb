@@ -166,6 +166,10 @@ import shouldDisplayGiftCodeAsGift from '../../helpers/shouldDisplayGiftCodeAsGi
 import anchorCallback from '../../helpers/dom/anchorCallback';
 import SimilarChannels from './similarChannels';
 import clearMessageId from '../../lib/appManagers/utils/messageId/clearMessageId';
+import {ChatType} from './chat';
+import {isSavedDialog} from '../../lib/appManagers/utils/dialogs/isDialog';
+import getFwdFromName from '../../lib/appManagers/utils/messages/getFwdFromName';
+import isForwardOfForward from '../../lib/appManagers/utils/messages/isForwardOfForward';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -411,7 +415,7 @@ export default class ChatBubbles {
 
     // will call when sent for update pos
     this.listenerSetter.add(rootScope)('history_update', async({storageKey, sequential, message}) => {
-      if(this.chat.messagesStorageKey !== storageKey || this.chat.type === 'scheduled') {
+      if(this.chat.messagesStorageKey !== storageKey || this.chat.type === ChatType.Scheduled) {
         return;
       }
 
@@ -550,7 +554,7 @@ export default class ChatBubbles {
 
           let status: Parameters<ChatBubbles['setBubbleSendingStatus']>[1];
           if(bubble.classList.contains('is-out')) {
-            status = (this.peerId === rootScope.myId && this.chat.type !== 'scheduled') || !this.unreadOut.has(mid) ?
+            status = (this.peerId === rootScope.myId && this.chat.type !== ChatType.Scheduled) || !this.unreadOut.has(mid) ?
               'read' :
               'sent';
           }
@@ -568,7 +572,7 @@ export default class ChatBubbles {
       }
 
       // * check timing of scheduled message
-      if(this.chat.type === 'scheduled') {
+      if(this.chat.type === ChatType.Scheduled) {
         const timestamp = Date.now() / 1000 | 0;
         const maxTimestamp = tempMessage.date - 10;
         if(timestamp >= maxTimestamp) {
@@ -806,6 +810,7 @@ export default class ChatBubbles {
         return;
       }
 
+      delete this.bubbles[wasMainMid];
       const mainMid = getMainMidForGrouped(mids);
       const message = messages.find((message) => message.mid === mainMid);
       this.safeRenderMessage({
@@ -832,7 +837,7 @@ export default class ChatBubbles {
 
     if(!DO_NOT_UPDATE_MESSAGE_REACTIONS/*  && false */) {
       this.listenerSetter.add(rootScope)('messages_reactions', async(arr) => {
-        if(this.chat.type === 'scheduled') {
+        if(this.chat.type === ChatType.Scheduled) {
           return;
         }
 
@@ -1117,7 +1122,7 @@ export default class ChatBubbles {
 
     if(!IS_MOBILE && !TEST_BUBBLES_DELETION) {
       this.listenerSetter.add(container)('dblclick', async(e) => {
-        if(this.chat.type === 'pinned' ||
+        if(this.chat.type === ChatType.Pinned ||
           this.chat.selection.isSelecting ||
           !this.chat.input.canSendPlain()) {
           return;
@@ -1163,7 +1168,7 @@ export default class ChatBubbles {
       this.replySwipeHandler = handleHorizontalSwipe({
         element: container,
         verifyTouchTarget: async(e) => {
-          if(this.chat.type === 'pinned' ||
+          if(this.chat.type === ChatType.Pinned ||
             this.chat.selection.isSelecting ||
             !(await this.chat.canSend())) {
             return false;
@@ -1269,7 +1274,7 @@ export default class ChatBubbles {
   public constructPeerHelpers() {
     // will call when message is sent (only 1)
     this.listenerSetter.add(rootScope)('history_append', async({storageKey, message}) => {
-      if(storageKey !== this.chat.messagesStorageKey || this.chat.type === 'scheduled') return;
+      if(storageKey !== this.chat.messagesStorageKey || this.chat.type === ChatType.Scheduled) return;
 
       if(liteMode.isAvailable('chat_background')) {
         this.updateGradient = true;
@@ -1287,16 +1292,16 @@ export default class ChatBubbles {
     });
 
     this.listenerSetter.add(rootScope)('history_multiappend', (message) => {
-      if(this.peerId !== message.peerId || this.chat.type === 'scheduled') return;
+      if(this.peerId !== message.peerId || this.chat.type === ChatType.Scheduled) return;
       this.renderNewMessage(message);
     });
 
     this.listenerSetter.add(rootScope)('history_delete', ({peerId, msgs}) => {
-      if((peerId !== this.peerId && !GLOBAL_MIDS) || this.chat.type === 'scheduled') {
+      if((peerId !== this.peerId && !GLOBAL_MIDS) || this.chat.type === ChatType.Scheduled) {
         return;
       }
 
-      this.deleteMessagesByIds(Array.from(msgs));
+      this.deleteMessagesByIds([...msgs.keys()]);
     });
 
     this.listenerSetter.add(rootScope)('dialog_unread', ({peerId}) => {
@@ -1310,7 +1315,7 @@ export default class ChatBubbles {
     });
 
     this.listenerSetter.add(rootScope)('dialogs_multiupdate', (dialogs) => {
-      if(!dialogs.has(this.peerId) || this.chat.type === 'scheduled') {
+      if(!dialogs.has(this.peerId) || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Saved) {
         return;
       }
 
@@ -1318,7 +1323,7 @@ export default class ChatBubbles {
     });
 
     this.listenerSetter.add(rootScope)('dialog_notify_settings', (dialog) => {
-      if(this.peerId !== dialog.peerId || this.chat.type === 'scheduled') {
+      if(this.peerId !== dialog.peerId || this.chat.type === ChatType.Scheduled || this.chat.type === ChatType.Saved) {
         return;
       }
 
@@ -1379,7 +1384,7 @@ export default class ChatBubbles {
         this.chat.input.onMessageInput();
       }
 
-      if(!!(chat as MTChat.channel).pFlags.forum !== this.chat.isForum && this.chat.type === 'chat') {
+      if(!!(chat as MTChat.channel).pFlags.forum !== this.chat.isForum && this.chat.type === ChatType.Chat) {
         this.chat.peerId = 0;
         this.chat.appImManager.setPeer({peerId});
       }
@@ -1452,7 +1457,7 @@ export default class ChatBubbles {
     });
 
     !DO_NOT_UPDATE_MESSAGE_VIEWS && this.listenerSetter.add(rootScope)('messages_views', (arr) => {
-      if(this.chat.type === 'scheduled') return;
+      if(this.chat.type === ChatType.Scheduled) return;
 
       fastRaf(() => {
         let scrollSaver: ScrollSaver;
@@ -1495,7 +1500,7 @@ export default class ChatBubbles {
 
     // * pinned part start
     this.listenerSetter.add(rootScope)('peer_pinned_messages', ({peerId, mids, pinned}) => {
-      if(this.chat.type !== 'pinned' || peerId !== this.peerId) {
+      if(this.chat.type !== ChatType.Pinned || peerId !== this.peerId) {
         return;
       }
 
@@ -1513,14 +1518,14 @@ export default class ChatBubbles {
     };
 
     this.listenerSetter.add(rootScope)('scheduled_new', (message) => {
-      if(this.chat.type !== 'scheduled' || message.peerId !== this.peerId) return;
+      if(this.chat.type !== ChatType.Scheduled || message.peerId !== this.peerId) return;
 
       this.renderNewMessage(message);
       onUpdate();
     });
 
     this.listenerSetter.add(rootScope)('scheduled_delete', ({peerId, mids}) => {
-      if(this.chat.type !== 'scheduled' || peerId !== this.peerId) return;
+      if(this.chat.type !== ChatType.Scheduled || peerId !== this.peerId) return;
 
       this.deleteMessagesByIds(mids);
       onUpdate();
@@ -1703,7 +1708,7 @@ export default class ChatBubbles {
   private onBubblesMouseMove = async(e: MouseEvent) => {
     const content = findUpClassName(e.target, 'bubble-content');
     if(!(
-      this.chat.type !== 'scheduled' &&
+      this.chat.type !== ChatType.Scheduled &&
       content &&
       !this.chat.selection.isSelecting &&
       !findUpClassName(e.target, 'service') &&
@@ -2143,7 +2148,7 @@ export default class ChatBubbles {
           this.managers.appMessagesManager.getDiscussionMessage(this.peerId, message.mid).then((message) => {
             this.chat.appImManager.setInnerPeer({
               peerId: replies.channel_id.toPeerId(true),
-              type: 'discussion',
+              type: ChatType.Discussion,
               threadId: (message as MyMessage).mid
             });
           });
@@ -2447,8 +2452,8 @@ export default class ChatBubbles {
         threadId: this.chat.threadId,
         peerId: this.peerId,
         inputFilter: {_: documentDiv ? 'inputMessagesFilterDocument' : 'inputMessagesFilterPhotoVideo'},
-        useSearch: this.chat.type !== 'scheduled' && !isSingleMedia,
-        isScheduled: this.chat.type === 'scheduled'
+        useSearch: this.chat.type !== ChatType.Scheduled && !isSingleMedia,
+        isScheduled: this.chat.type === ChatType.Scheduled
       })
       .openMedia({
         message: message,
@@ -2960,7 +2965,7 @@ export default class ChatBubbles {
   private setTopPadding(middleware = this.getMiddleware()) {
     let isPaddingNeeded = false;
     let setPaddingTo: HTMLElement;
-    if(!this.isTopPaddingSet && this.chat.type !== 'scheduled') {
+    if(!this.isTopPaddingSet && this.chat.type !== ChatType.Scheduled) {
       const {clientHeight, scrollHeight} = this.scrollable.container;
       isPaddingNeeded = clientHeight === scrollHeight;
       /* const firstEl = this.chatInner.firstElementChild as HTMLElement;
@@ -3052,7 +3057,7 @@ export default class ChatBubbles {
         // const bubble = this.bubbles[Math.max(...mids)];
 
         let bubble: HTMLElement;
-        if(this.chat.type === 'scheduled') {
+        if(this.chat.type === ChatType.Scheduled) {
           bubble = this.bubbles[message.mid];
         }
 
@@ -3216,7 +3221,7 @@ export default class ChatBubbles {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const isScheduled = this.chat.type === 'scheduled';
+    const isScheduled = this.chat.type === ChatType.Scheduled;
 
     if(today.getTime() === date.getTime()) {
       dateElement = i18n(isScheduled ? 'Chat.Date.ScheduledForToday' : 'Date.Today');
@@ -3494,7 +3499,7 @@ export default class ChatBubbles {
       } else if(topMessage) {
         readMaxId = await m(this.managers.appMessagesManager.getReadMaxIdIfUnread(peerId, this.chat.threadId));
         const dialog = await m(this.chat.getDialogOrTopic());
-        if(/* dialog.unread_count */readMaxId && !samePeer && (!dialog || dialog.unread_count !== 1)) {
+        if(/* dialog.unread_count */readMaxId && !samePeer && (!dialog || (!isSavedDialog(dialog) && dialog.unread_count !== 1))) {
           const foundSlice = historyStorage.history.findSliceOffset(readMaxId);
           if(foundSlice && foundSlice.slice.isEnd(SliceEnd.Bottom)) {
             overrideAdditionMsgId = foundSlice.slice[foundSlice.offset - 25] || foundSlice.slice[0] || readMaxId;
@@ -3617,11 +3622,17 @@ export default class ChatBubbles {
       this.processRanks = undefined;
       this.canShowRanks = false;
 
-      if(this.chat.isChannel) {
+      let canShowRanks = this.chat.isMegagroup, chatId = this.peerId.toChatId();
+      if(this.chat.type === ChatType.Saved && !this.chat.threadId.isUser()) {
+        const chat = apiManagerProxy.getChat(chatId = this.chat.threadId.toChatId());
+        canShowRanks = chat?._ === 'channel';
+      }
+
+      if(canShowRanks) {
         this.canShowRanks = true;
         const processRanks = this.processRanks = new Set();
 
-        const promise = this.managers.acknowledged.appProfileManager.getParticipants(this.peerId.toChatId(), {_: 'channelParticipantsAdmins'}, 100);
+        const promise = this.managers.acknowledged.appProfileManager.getParticipants(chatId, {_: 'channelParticipantsAdmins'}, 100);
         const ackedResult = await m(promise);
         const setRanksPromise = ackedResult.result.then((channelParticipants) => {
           if(this.processRanks !== processRanks) {
@@ -3744,6 +3755,11 @@ export default class ChatBubbles {
       this.lazyLoadQueue.unlock();
       // });
 
+      const afterSetPromise = Promise.all([
+        setPeerPromise,
+        getHeavyAnimationPromise()
+      ]);
+
       // if(dialog && lastMsgID && lastMsgID !== topMessage && (this.bubbles[lastMsgID] || this.firstUnreadBubble)) {
       if(savedPosition) {
         scrollable.setScrollPositionSilently(savedPosition.top);
@@ -3773,7 +3789,8 @@ export default class ChatBubbles {
 
         // const mountedByLastMsgId = lastMsgId ? this.getMountedBubble(lastMsgId) : {bubble: this.getLastBubble()};
         let bubble: HTMLElement = (followingUnread && this.firstUnreadBubble) || mountedByLastMsgId?.bubble;
-        if(!bubble?.parentElement) {
+        const foundTarget = !!bubble?.parentElement;
+        if(!foundTarget) {
           bubble = this.findNextMountedBubbleByMsgId(lastMsgId, false) || this.findNextMountedBubbleByMsgId(lastMsgId, true);
         }
 
@@ -3789,9 +3806,15 @@ export default class ChatBubbles {
             promise = this.scrollToBubble(bubble, position, !samePeer ? FocusDirection.Static : undefined);
           }
 
-          if(!followingUnread && isTarget) {
+          if(!followingUnread && isTarget && foundTarget) {
             this.highlightBubble(bubble);
           }
+        }
+
+        if(isTarget && !foundTarget) {
+          afterSetPromise.then(() => {
+            toastNew({langPackKey: 'MessageNotFound'});
+          });
         }
 
         if(unsetPadding) {
@@ -3811,10 +3834,6 @@ export default class ChatBubbles {
 
       this.onScroll();
 
-      const afterSetPromise = Promise.all([
-        setPeerPromise,
-        getHeavyAnimationPromise()
-      ]);
       afterSetPromise.then(() => { // check whether list isn't full
         if(!middleware()) {
           return;
@@ -4046,7 +4065,7 @@ export default class ChatBubbles {
   }
 
   public async onScrolledAllDown() {
-    if(this.chat.type === 'chat' || this.chat.type === 'discussion') {
+    if(this.chat.type === ChatType.Chat || this.chat.type === ChatType.Discussion) {
       const historyMaxId = await this.chat.getHistoryMaxId();
       this.managers.appMessagesManager.readHistory(this.peerId, historyMaxId, this.chat.threadId, true);
     }
@@ -4234,7 +4253,7 @@ export default class ChatBubbles {
   } */>) {
     let modifiedGroups: typeof groups;
 
-    if(this.chat.type === 'scheduled') {
+    if(this.chat.type === ChatType.Scheduled) {
       modifiedGroups = new Set();
       items.forEach(({bubble, message}) => {
         const item = this.bubbleGroups.getItemByBubble(bubble);
@@ -4782,7 +4801,7 @@ export default class ChatBubbles {
     let albumMids: number[], reactionsMessage: Message.message;
     const albumMessages = groupedId ? await this.managers.appMessagesManager.getMessagesByAlbum(groupedId) : undefined;
 
-    const albumMustBeRenderedFull = this.chat.type !== 'pinned';
+    const albumMustBeRenderedFull = this.chat.type !== ChatType.Pinned;
 
     if(groupedId && albumMustBeRenderedFull) { // will render only last album's message
       albumMids = albumMessages.map((message) => message.mid);
@@ -5041,6 +5060,10 @@ export default class ChatBubbles {
                 });
               },
               onEmpty: () => {
+                if(deferred.isFulfilled) {
+                  toggle(false);
+                }
+
                 deferred.resolve();
               }
             }),
@@ -5307,14 +5330,17 @@ export default class ChatBubbles {
       setInnerHTML(messageDiv, richText);
     }
 
+    const isOut = this.chat.isOutMessage(message);
     const haveRTLChar = isRTL(messageMessage, true);
 
     let timeSpan: HTMLElement;
     if(!isSponsored) {
       timeSpan = MessageRender.setTime({
+        chat: this.chat,
         chatType: this.chat.type,
         message,
-        reactionsMessage
+        reactionsMessage,
+        isOut
       });
 
       messageDiv.append(timeSpan);
@@ -5358,7 +5384,7 @@ export default class ChatBubbles {
     if(isMessage && message.views) {
       bubble.classList.add('channel-post');
 
-      if(!message.fwd_from?.saved_from_msg_id && this.chat.type !== 'pinned') {
+      if(!message.fwd_from?.saved_from_msg_id && this.chat.type !== ChatType.Pinned) {
         const forward = document.createElement('div');
         forward.classList.add('bubble-beside-button', 'with-hover', 'forward');
         forward.append(Icon('forward_filled'));
@@ -5470,11 +5496,15 @@ export default class ChatBubbles {
 
     const fwdFrom = isMessage && message.fwd_from;
     const fwdFromId = isMessage && message.fwdFromId;
+    const _isForwardOfForward = this.chat.isForwardOfForward(message);
 
-    const isOut = this.chat.isOutMessage(message);
     let nameContainer: HTMLElement = bubbleContainer;
 
-    const canHideNameIfMedia = !message.viaBotId && (message.fromId === rootScope.myId || !message.pFlags.out);
+    const canHideNameIfMedia = !message.viaBotId &&
+      (message.fromId === rootScope.myId || !message.pFlags.out) &&
+      !_isForwardOfForward/*  &&
+      !fwdFromId */;
+      // (!getFwdFromName(fwdFrom) || !fwdFromId);
 
     const isMessageEmpty = !messageMessage && !isSponsored/*  && (!topicNameButtonContainer || isStandaloneMedia) */;
 
@@ -6818,41 +6848,30 @@ export default class ChatBubbles {
       const peerIdForColor = message.fromId;
 
       const isForwardFromChannel = message.from_id?._ === 'peerChannel' && message.fromId === fwdFromId;
+      const fwdFromName = getFwdFromName(fwdFrom);
+      const hasTwoTitles = _isForwardOfForward && !isOut && fwdFrom.from_name && fwdFrom.saved_from_name;
 
-      const mustHaveName = !!(message.viaBotId/*  || topicNameButtonContainer */) || storyFromPeerId;
-      const isHidden = fwdFrom && !fwdFrom.from_id;
+      let mustHaveName = !!(message.viaBotId/*  || topicNameButtonContainer */) || storyFromPeerId;
+      const isHidden = !!(fwdFrom && (!fwdFrom.from_id || fwdFromName));
       if(message.viaBotId) {
         titleVia = document.createElement('span');
         titleVia.innerText = '@' + (await this.managers.appPeersManager.getPeerUsername(message.viaBotId));
         titleVia.classList.add('peer-title');
       }
 
-      if(mustHaveName) {
-        bubble.classList.add('must-have-name');
+      let isForward = !!(storyFromPeerId || fwdFromId || fwdFrom);
+      if(isForward && this.chat.type === ChatType.Saved && fwdFromId === rootScope.myId) {
+        isForward = false;
       }
 
-      const isForward = storyFromPeerId || fwdFromId || fwdFrom;
-      if(isHidden) {
+      if(isHidden && !fwdFromId) {
         title = document.createElement('span');
         title.classList.add('peer-title');
-        setInnerHTML(title, wrapEmojiText(fwdFrom.from_name));
+        setInnerHTML(title, wrapEmojiText(fwdFrom.from_name || fwdFromName));
         bubble.classList.add('hidden-profile');
       } else {
         const titlePeerId = storyFromPeerId || fwdFromId || message.fromId;
-        const colorIndex = getPeerColorIndexByPeer(apiManagerProxy.getPeer(titlePeerId));
-        let textColorProperty: string;
-        if(colorIndex !== -1) {
-          textColorProperty = `peer-${colorIndex}-color-rgb`;
-        }
-
-        title = new PeerTitle({
-          peerId: titlePeerId,
-          withPremiumIcon: !isForward,
-          wrapOptions: {
-            ...wrapOptions,
-            textColor: textColorProperty
-          }
-        }).element;
+        title = this.createTitle(titlePeerId, wrapOptions, isForward).element;
       }
 
       let replyContainer: HTMLElement;
@@ -6892,7 +6911,8 @@ export default class ChatBubbles {
 
       let nameDiv: HTMLElement;
       if(isForward) {
-        if(this.peerId !== rootScope.myId && !isForwardFromChannel) {
+        const isRegularSaved = this.peerId === rootScope.myId && (!this.chat.threadId || !isForwardOfForward(message) /* !isOut || this.chat.threadId === fwdFromId */);
+        if(!isRegularSaved && !isForwardFromChannel) {
           bubble.classList.add('forwarded');
         }
 
@@ -6904,19 +6924,57 @@ export default class ChatBubbles {
         nameDiv = document.createElement('div');
         title.dataset.peerId = '' + (storyFromPeerId || fwdFromId);
 
-        if((this.peerId === rootScope.myId || this.peerId === REPLIES_PEER_ID || isForwardFromChannel) && !isStandaloneMedia && !storyFromPeerId) {
+        if(
+          (isRegularSaved || this.peerId === REPLIES_PEER_ID || isForwardFromChannel) &&
+          !isStandaloneMedia &&
+          !hasTwoTitles &&
+          !_isForwardOfForward &&
+          !storyFromPeerId
+        ) {
           nameDiv.classList.add('colored-name');
           nameDiv.append(title);
         } else {
-          /* const fromTitle = message.fromId === this.myID || appPeersManager.isBroadcast(fwdFromId || message.fromId) ? '' : `<div class="name" data-peer-id="${message.fromId}" style="color: ${appPeersManager.getPeerColorByID(message.fromId, false)};">${appPeersManager.getPeerTitle(message.fromId)}</div>`;
-          nameDiv.innerHTML = fromTitle + 'Forwarded from ' + title; */
-          const args: FormatterArguments = [title];
+          mustHaveName ||= true;
+          const firstArgs: FormatterArguments = [title];
           if(isStandaloneMedia) {
             const br = document.createElement('br');
             br.classList.add('hide-ol');
-            args.unshift(br);
+            firstArgs.unshift(br);
           }
-          nameDiv.append(i18n(storyFromPeerId ? 'ForwardedStoryFrom' : 'ForwardedFrom', [args]));
+
+          let nameKey: LangPackKey;
+          const nameArgs: FormatterArguments = [firstArgs];
+          if(fwdFrom.post_author) {
+            nameKey = storyFromPeerId ? 'ForwardedStoryFromAuthor' : 'ForwardedFromAuthor';
+            const s = document.createElement('span');
+            s.append(wrapEmojiText(fwdFrom.post_author));
+            nameArgs.push(s);
+          } else {
+            nameKey = storyFromPeerId ? 'ForwardedStoryFrom' : 'ForwardedFrom';
+          }
+
+          nameDiv.append(i18n(nameKey, nameArgs));
+
+          if(hasTwoTitles) {
+            let title: HTMLElement;
+            if(fwdFromName) {
+              title = document.createElement('span');
+              title.classList.add('peer-title');
+              title.style.color = 'var(--message-primary-color)';
+              title.dataset.peerId = '' + NULL_PEER_ID;
+              title.append(wrapEmojiText(fwdFromName));
+            } else {
+              const peerId = getPeerId(fwdFrom.saved_from_id);
+              const {element, textColorProperty} = this.createTitle(peerId, wrapOptions, false);
+              element.style.color = `rgb(var(--${textColorProperty}))`;
+              title = element;
+            }
+
+            const line = document.createElement('div');
+            line.classList.add('name-first-line');
+            line.append(title);
+            nameDiv.prepend(line);
+          }
         }
       } else if(!message.viaBotId) {
         if(!isStandaloneMedia && needName) {
@@ -6989,18 +7047,26 @@ export default class ChatBubbles {
         replyContainer.classList.add('floating-part');
       }
 
-      if(title && !isHidden && !fwdFromId && this.canShowRanks) {
+      const firstElement = nameDiv?.firstElementChild as HTMLElement || title;
+      if(
+        this.canShowRanks &&
+        title &&
+        !isHidden &&
+        !fwdFromId
+        // (!fwdFromId || (message.post_author && !this.chat.getPostAuthor(message)))
+      ) {
         const processRank = () => {
           const rank = this.ranks.get(message.fromId);
           if(!rank) {
             return;
           }
 
-          this.wrapTitleAndRank(title as HTMLElement, rank);
+          this.wrapTitleAndRank(firstElement, rank);
         };
 
-        if((message as Message.message).post_author) {
-          this.wrapTitleAndRank(title as HTMLElement, (message as Message.message).post_author);
+        const postAuthor = (message as Message.message).post_author/*  || fwdFrom?.post_author */;
+        if(postAuthor) {
+          this.wrapTitleAndRank(firstElement, postAuthor);
         } else if(this.ranks) {
           processRank();
         } else {
@@ -7011,8 +7077,8 @@ export default class ChatBubbles {
             processRanks.delete(processRank);
           });
         }
-      } else if(isForwardFromChannel) {
-        this.wrapTitleAndRank(title as HTMLElement, 0);
+      } else if(this.chat.isMegagroup && !message.fromId.isUser() && (message as Message.message).views) {
+        this.wrapTitleAndRank(firstElement, 0);
       }
 
       if(topicNameButtonContainer && isStandaloneMedia) {
@@ -7023,11 +7089,15 @@ export default class ChatBubbles {
           attachmentDiv.after(topicNameButtonContainer);
         }
       }
+
+      if(mustHaveName) {
+        bubble.classList.add('must-have-name');
+      }
     } else {
       bubble.classList.add('hide-name');
     }
 
-    if(this.chat.type === 'pinned') {
+    if(this.chat.type === ChatType.Pinned) {
       savedFrom = `${this.chat.peerId}_${message.mid}`;
     }
 
@@ -7036,7 +7106,7 @@ export default class ChatBubbles {
       bubble.classList.add('is-thread-starter', 'is-group-last');
     }
 
-    if(savedFrom && (this.chat.type === 'pinned' || fwdFrom.saved_from_msg_id) && this.peerId !== REPLIES_PEER_ID) {
+    if(savedFrom && (this.chat.type === ChatType.Pinned || fwdFrom.saved_from_msg_id) && this.peerId !== REPLIES_PEER_ID) {
       const goto = document.createElement('div');
       goto.classList.add('bubble-beside-button', 'with-hover', 'goto-original');
       goto.append(Icon('arrow_next'));
@@ -7133,9 +7203,11 @@ export default class ChatBubbles {
         let timeSpan: HTMLElement = documentMessageDiv && documentMessageDiv.querySelector('.time');
         if(!timeSpan) {
           timeSpan = MessageRender.setTime({
+            chat: this.chat,
             chatType: this.chat.type,
             message,
-            reactionsMessage
+            reactionsMessage,
+            isOut: bubble.classList.contains('is-out')
           });
         }
 
@@ -7317,6 +7389,26 @@ export default class ChatBubbles {
     span.classList.add('bubble-name-rank');
     span.append(wrapParticipantRank(rank));
     return span;
+  }
+
+  private createTitle(peerId: PeerId, wrapOptions: WrapSomethingOptions, isForward?: boolean) {
+    const colorIndex = getPeerColorIndexByPeer(apiManagerProxy.getPeer(peerId));
+    let textColorProperty: string;
+    if(colorIndex !== -1) {
+      textColorProperty = `peer-${colorIndex}-color-rgb`;
+    }
+
+    return {
+      element: new PeerTitle({
+        peerId,
+        withPremiumIcon: !isForward,
+        wrapOptions: {
+          ...wrapOptions,
+          textColor: textColorProperty
+        }
+      }).element,
+      textColorProperty
+    };
   }
 
   private prepareToSaveScroll(reverse?: boolean, sliceTop?: boolean, sliceBottom?: boolean) {
@@ -7501,7 +7593,7 @@ export default class ChatBubbles {
 
   public requestHistory(offsetId: number, limit: number, backLimit: number): Promise<AckedResult<HistoryResult>>  {
     // const middleware = this.getMiddleware();
-    if(this.chat.type === 'chat' || this.chat.type === 'discussion') {
+    if(this.chat.type === ChatType.Chat || this.chat.type === ChatType.Discussion || this.chat.type === ChatType.Saved) {
       return this.managers.acknowledged.appMessagesManager.getHistory({
         peerId: this.peerId,
         offsetId,
@@ -7509,7 +7601,7 @@ export default class ChatBubbles {
         backLimit,
         threadId: this.chat.threadId
       });
-    } else if(this.chat.type === 'pinned') {
+    } else if(this.chat.type === ChatType.Pinned) {
       return this.managers.acknowledged.appMessagesManager.getHistory({
         peerId: this.peerId,
         inputFilter: {_: 'inputMessagesFilterPinned'},
@@ -7517,7 +7609,7 @@ export default class ChatBubbles {
         limit,
         backLimit
       });
-    } else if(this.chat.type === 'scheduled') {
+    } else if(this.chat.type === ChatType.Scheduled) {
       return this.managers.acknowledged.appMessagesManager.getScheduledMessages(this.peerId).then((ackedResult) => {
         return {
           cached: ackedResult.cached,
@@ -7889,11 +7981,11 @@ export default class ChatBubbles {
         method = 'prepend';
       } else if(this.chat.isAnyGroup && ((await m(this.managers.appPeersManager.getPeer(this.peerId))) as MTChat.chat).pFlags.creator) {
         renderPromise = this.renderEmptyPlaceholder('group', bubble, message, elements);
-      } else if(this.chat.type === 'scheduled') {
+      } else if(this.chat.type === ChatType.Scheduled) {
         renderPromise = this.renderEmptyPlaceholder('noScheduledMessages', bubble, message, elements);
       } else if(rootScope.myId === this.peerId) {
         renderPromise = this.renderEmptyPlaceholder('saved', bubble, message, elements);
-      } else if(this.peerId.isUser() && !isBot && await m(this.chat.canSend()) && this.chat.type === 'chat') {
+      } else if(this.peerId.isUser() && !isBot && await m(this.chat.canSend()) && this.chat.type === ChatType.Chat) {
         renderPromise = this.renderEmptyPlaceholder('greeting', bubble, message, elements);
       } else {
         renderPromise = this.renderEmptyPlaceholder('noMessages', bubble, message, elements);
@@ -7986,7 +8078,7 @@ export default class ChatBubbles {
 
   private generateLocalMessageId(addOffset = 0) {
     // const INCREMENT = 0x10;
-    const offset = (this.chat.type === 'scheduled' ? -1 : 0) + addOffset;
+    const offset = (this.chat.type === ChatType.Scheduled ? -1 : 0) + addOffset;
     // offset = generateMessageId(offset);
     // id: -Math.abs(+this.peerId * INCREMENT + offset),
     const id = -Math.abs(offset);
@@ -8244,7 +8336,7 @@ export default class ChatBubbles {
           Object.keys(this.bubbles).length &&
           !this.getRenderedLength()
         ) ||
-        (this.chat.type === 'scheduled' && !Object.keys(this.bubbles).length) ||
+        (this.chat.type === ChatType.Scheduled && !Object.keys(this.bubbles).length) ||
         !(await this.chat.getHistoryStorage()).count
       )
     ) {
@@ -8274,7 +8366,7 @@ export default class ChatBubbles {
       if(!justLoad) {
         // preload more
         // if(!isFirstMessageRender) {
-        if(this.chat.type === 'chat'/*  || this.chat.type === 'discussion' */) {
+        if(this.chat.type === ChatType.Chat/*  || this.chat.type === 'discussion' */) {
           /* const storage = this.appMessagesManager.getHistoryStorage(peerId, this.chat.threadId);
             const isMaxIdInHistory = storage.history.indexOf(maxId) !== -1;
             if(isMaxIdInHistory || true) { // * otherwise it is a search or jump */
@@ -8356,7 +8448,7 @@ export default class ChatBubbles {
 
     let additionMsgIds: number[];
     if(additionMsgId && !isBackLimit) {
-      if(this.chat.type === 'pinned') {
+      if(this.chat.type === ChatType.Pinned) {
         additionMsgIds = [additionMsgId];
       } else {
         const historyStorage = await this.chat.getHistoryStorage();
@@ -8497,7 +8589,7 @@ export default class ChatBubbles {
   }
 
   public async setUnreadDelimiter() {
-    if(!(this.chat.type === 'chat' || this.chat.type === 'discussion')) {
+    if(!(this.chat.type === ChatType.Chat || this.chat.type === ChatType.Discussion)) {
       return;
     }
 

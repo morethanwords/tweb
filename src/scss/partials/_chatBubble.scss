@@ -473,8 +473,7 @@
       }
     }
 
-    .chat[data-type="chat"] & .bubble-content,
-    .chat[data-type="discussion"] & .bubble-content {
+    .can-click-date & .bubble-content {
       cursor: pointer;
       pointer-events: all;
     }
@@ -604,6 +603,14 @@
 
       &:not(.is-message-empty):not(.is-reply) .message {
         padding-top: $message-padding-top;
+      }
+    }
+  }
+
+  &:not(.forwarded) {
+    &:not(.is-group-first) {
+      .name-first-line {
+        display: none;
       }
     }
   }

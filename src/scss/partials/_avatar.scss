@@ -65,6 +65,11 @@
     --color-bottom: var(--peer-avatar-archive-bottom);
   }
 
+  &[data-color="premium"] {
+    --color-bottom: #db5c9d;
+    --color-top: #a767ff;
+  }
+
   &-icon {
     font-size: calc(32px / var(--multiplier));
     line-height: inherit !important;
@@ -84,6 +89,11 @@
     &-deletedaccount {
       overflow: hidden;
       font-size: calc(30px / var(--multiplier));
+    }
+
+    &-author_hidden,
+    &-mynotes {
+      font-size: calc(44px / var(--multiplier));
     }
   }
 

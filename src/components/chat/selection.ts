@@ -45,6 +45,7 @@ import rootScope from '../../lib/rootScope';
 import {toastNew} from '../toast';
 import confirmationPopup from '../confirmationPopup';
 import {TEST_BUBBLES_DELETION} from './bubbles';
+import {ChatType} from './chat';
 
 const accumulateMapSet = (map: Map<any, Set<number>>) => {
   return [...map.values()].reduce((acc, v) => acc + v.size, 0);
@@ -736,7 +737,11 @@ export class SearchSelection extends AppSelection {
           const mid = [...this.selectedMids.get(peerId)][0];
           this.cancelSelection();
 
-          appImManager.setInnerPeer({peerId, lastMsgId: mid});
+          appImManager.setInnerPeer({
+            peerId,
+            lastMsgId: mid,
+            threadId: this.searchSuper.mediaTab.type === 'saved' ? this.searchSuper.searchContext.peerId : this.searchSuper.searchContext.threadId
+          });
         }, attachClickOptions);
 
         this.selectionForwardBtn = ButtonIcon(`forward ${BASE_CLASS}-forward`);
@@ -764,7 +769,7 @@ export class SearchSelection extends AppSelection {
               PopupDeleteMessages,
               peerId,
               this.getSelectedMids(),
-              'chat',
+              ChatType.Chat,
               () => {
                 this.cancelSelection();
               }
@@ -1037,7 +1042,7 @@ export default class ChatSelection extends AppSelection {
         this.selectionCountEl = document.createElement('div');
         this.selectionCountEl.classList.add('selection-container-count');
 
-        if(this.chat.type === 'scheduled') {
+        if(this.chat.type === ChatType.Scheduled) {
           this.selectionSendNowBtn = Button('btn-primary btn-transparent btn-short text-bold selection-container-send', {icon: 'send2'});
           this.selectionSendNowBtn.append(i18n('MessageScheduleSend'));
           attachClickEvent(this.selectionSendNowBtn, () => {

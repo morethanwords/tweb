@@ -45,6 +45,13 @@ const a: {[type in ApiLimitType]?: {
     descriptionPremium: 'LimitReachedSharedFolderInvitesPremium',
     descriptionLocked: 'LimitReachedSharedFolderInvitesLocked',
     icon: 'limit_link'
+  },
+  savedPin: {
+    title: 'LimitReached',
+    description: 'LimitReachedPinDialogs',
+    descriptionPremium: 'LimitReachedPinDialogsPremium',
+    descriptionLocked: 'LimitReachedPinDialogsLocked',
+    icon: 'limit_pin'
   }
 };
 
