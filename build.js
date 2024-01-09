@@ -5,7 +5,6 @@ const fs = require('fs');
 const path = require('path');
 const keepAsset = require('./keepAsset');
 const {NodeSSH} = require('node-ssh');
-const sshConfig = require('./ssh.json');
 const zlib = require('zlib');
 
 const npmCmd = /^win/.test(process.platform) ? 'npm.cmd' : 'npm';
@@ -18,6 +17,13 @@ child.stdout.on('data', (chunk) => {
 
 const publicPath = __dirname + '/public/';
 const distPath = __dirname + '/dist/';
+
+let sshConfig;
+try {
+  sshConfig = fs.readFileSync(path.join(__dirname, 'ssh.json'), 'utf8');
+} catch(err) {
+  console.log('No SSH config, skipping upload');
+}
 
 function copyFiles(source, destination) {
   if(!fs.existsSync(destination)) {
@@ -80,6 +86,10 @@ const onCompiled = async() => {
   console.log('Compiled successfully.');
   copyFiles(distPath, publicPath);
   clearOldFiles();
+
+  if(!sshConfig) {
+    return;
+  }
 
   const archiveName = 'archive.zip';
   const archivePath = path.join(__dirname, archiveName);
