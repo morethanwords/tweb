@@ -89,7 +89,7 @@ declare global {
     'PREMIUM_ACCOUNT_REQUIRED' | 'BOOST_NOT_MODIFIED' | 'PREMIUM_GIFTED_NOT_ALLOWED' | `FLOOD_WAIT_${number}` |
     'MESSAGE_NOT_MODIFIED' | 'MESSAGE_EMPTY' | 'SLUG_INVALID' | `PREMIUM_SUB_ACTIVE_UNTIL_${number}` |
     `PHONE_MIGRATE_${number}` | `NETWORK_MIGRATE_${number}` | `USER_MIGRATE_${number}` | `STATS_MIGRATE_${number}` |
-    `FILE_MIGRATE_${number}` | 'MSG_WAIT_FAILED' | 'MSG_WAIT_TIMEOUT';
+    `FILE_MIGRATE_${number}` | 'MSG_WAIT_FAILED' | 'MSG_WAIT_TIMEOUT' | 'SAVED_DIALOGS_UNSUPPORTED';
 
   type ErrorType = LocalErrorType | ServerErrorType;
 

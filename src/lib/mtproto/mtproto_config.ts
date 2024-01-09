@@ -34,3 +34,4 @@ export const REAL_FOLDERS: Set<number> = new Set([FOLDER_ID_ALL, FOLDER_ID_ARCHI
 export const START_LOCAL_ID = Math.max(...Array.from(REAL_FOLDERS)) + 1 as MyDialogFilter['localId'];
 
 export const TEST_NO_STORIES = false;
+export const TEST_NO_SAVED = false;

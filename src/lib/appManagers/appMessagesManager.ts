@@ -28,7 +28,7 @@ import {MyDocument} from './appDocsManager';
 import {MyPhoto} from './appPhotosManager';
 import DEBUG from '../../config/debug';
 import SlicedArray, {Slice, SliceEnd} from '../../helpers/slicedArray';
-import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, GENERAL_TOPIC_ID, HIDDEN_PEER_ID, MUTE_UNTIL, NULL_PEER_ID, REAL_FOLDERS, REAL_FOLDER_ID, REPLIES_HIDDEN_CHANNEL_ID, REPLIES_PEER_ID, SERVICE_PEER_ID, THUMB_TYPE_FULL} from '../mtproto/mtproto_config';
+import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, GENERAL_TOPIC_ID, HIDDEN_PEER_ID, MUTE_UNTIL, NULL_PEER_ID, REAL_FOLDERS, REAL_FOLDER_ID, REPLIES_HIDDEN_CHANNEL_ID, REPLIES_PEER_ID, SERVICE_PEER_ID, TEST_NO_SAVED, THUMB_TYPE_FULL} from '../mtproto/mtproto_config';
 import {getMiddleware} from '../../helpers/middleware';
 import assumeType from '../../helpers/assumeType';
 import copy from '../../helpers/object/copy';
@@ -6614,6 +6614,10 @@ export class AppMessagesManager extends AppManager {
         options.addOffset = -options.backLimit;
         options.limit += options.backLimit;
       }
+    }
+
+    if(TEST_NO_SAVED && options.historyType === HistoryType.Saved) {
+      throw makeError('SAVED_DIALOGS_UNSUPPORTED');
     }
 
     options.historyStorage ??= options.inputFilter ?

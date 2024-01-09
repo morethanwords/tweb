@@ -16,7 +16,7 @@ import tsNow from '../../helpers/tsNow';
 import SearchIndex from '../searchIndex';
 import {SliceEnd} from '../../helpers/slicedArray';
 import {MyDialogFilter} from './filters';
-import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, NULL_PEER_ID, REAL_FOLDERS, REAL_FOLDER_ID} from '../mtproto/mtproto_config';
+import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, NULL_PEER_ID, REAL_FOLDERS, REAL_FOLDER_ID, TEST_NO_SAVED} from '../mtproto/mtproto_config';
 import {MaybePromise, NoneToVoidFunction} from '../../types';
 import ctx from '../../environment/ctx';
 import AppStorage from '../storage';
@@ -1549,6 +1549,10 @@ export default class DialogsStorage extends AppManager {
     const indexKey = this.getDialogIndexKeyByFilterId(filterId);
     const isSearchSupported = filterType !== FilterType.Saved;
     const isServerSearchSupported = filterType === FilterType.Forum;
+
+    if(TEST_NO_SAVED && filterType === FilterType.Saved) {
+      throw makeError('SAVED_DIALOGS_UNSUPPORTED');
+    }
 
     if(query && isSearchSupported) {
       if(!limit || this.cachedResults.query !== query || this.cachedResults.folderId !== filterId || recursion) {

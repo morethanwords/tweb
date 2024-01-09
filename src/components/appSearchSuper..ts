@@ -2091,8 +2091,20 @@ export default class AppSearchSuper {
     return containers[dateTimestamp];
   }
 
-  public canViewSavedDialogs() {
-    return this.searchContext.peerId === rootScope.myId && !this.searchContext.threadId;
+  public async canViewSavedDialogs() {
+    if(this.searchContext.peerId !== rootScope.myId || this.searchContext.threadId) {
+      return false;
+    }
+
+    try {
+      await this.managers.dialogsStorage.getDialogs({
+        filterId: rootScope.myId
+      });
+
+      return true;
+    } catch(err) {
+      return false;
+    }
   }
 
   public canViewSaved() {
@@ -2107,6 +2119,8 @@ export default class AppSearchSuper {
       limit: 50
     }).then((historyResult) => {
       return !!historyResult.count;
+    }).catch(() => {
+      return false;
     });
   }
 
