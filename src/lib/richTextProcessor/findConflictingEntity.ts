@@ -10,14 +10,22 @@ import {MessageEntity} from '../../layer';
 const SINGLE_ENTITIES: Set<MessageEntity['_']> = new Set(['messageEntityPre', 'messageEntityCode']);
 
 export default function findConflictingEntity(currentEntities: MessageEntity[], newEntity: MessageEntity) {
-  let singleEnd = -1;
+  let singleStart = -1, singleEnd = -1;
   return currentEntities.find((currentEntity) => {
+    const {offset, length} = currentEntity;
     if(SINGLE_ENTITIES.has(currentEntity._)) {
-      singleEnd = currentEntity.offset + currentEntity.length;
+      singleStart = offset;
+      singleEnd = singleStart + length;
     }
 
-    if(newEntity.offset < singleEnd && !PASS_SINGLE_CONFLICTING_ENTITIES.has(newEntity._)) {
-      return true;
+    if(singleStart !== -1) {
+      if(
+        newEntity.offset >= singleStart &&
+        newEntity.offset < singleEnd &&
+        !PASS_SINGLE_CONFLICTING_ENTITIES.has(newEntity._)
+      ) {
+        return true;
+      }
     }
 
     const isConflictingTypes = newEntity._ === currentEntity._ ||
@@ -27,8 +35,8 @@ export default function findConflictingEntity(currentEntities: MessageEntity[], 
       return false;
     }
 
-    const isConflictingOffset = newEntity.offset >= currentEntity.offset &&
-      (newEntity.length + newEntity.offset) <= (currentEntity.length + currentEntity.offset);
+    const isConflictingOffset = newEntity.offset >= offset &&
+      (newEntity.length + newEntity.offset) <= (length + offset);
 
     return isConflictingOffset;
   });

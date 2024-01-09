@@ -28,6 +28,7 @@ export default function parseMarkdown(raw: string, currentEntities: MessageEntit
   let rawOffset = 0, match;
   while(match = raw.match(MARKDOWN_REG_EXP)) {
     const matchIndex = rawOffset + match.index;
+    const possibleNextRawOffset = match.index + match[0].length;
     const beforeMatch = match.index > 0 && raw.slice(0, match.index);
     beforeMatch && newTextParts.push(beforeMatch);
     const text = match[3] || match[8] || match[11] || match[13];
@@ -132,6 +133,15 @@ export default function parseMarkdown(raw: string, currentEntities: MessageEntit
 
     raw = raw.substr(match.index + match[0].length);
     rawOffset += match.index + match[0].length;
+
+    const rawOffsetDiff = rawOffset - possibleNextRawOffset;
+    if(rawOffsetDiff) {
+      currentEntities.forEach((entity) => {
+        if(entity.offset >= matchIndex) {
+          entity.offset += rawOffsetDiff;
+        }
+      });
+    }
   }
 
   raw && newTextParts.push(raw);
