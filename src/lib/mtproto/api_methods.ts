@@ -353,10 +353,9 @@ export default abstract class ApiManagerMethods extends AppManager {
         hash: this.appConfig?.hash || 0
       },
       processResult: async(helpAppConfig) => {
-        assumeType<HelpAppConfig.helpAppConfig>(helpAppConfig);
         this.requestedAppConfig = true;
-        const config = helpAppConfig.config as any as MTAppConfig;
-        config.hash = helpAppConfig.hash;
+        const config = (helpAppConfig as HelpAppConfig.helpAppConfig).config as any as MTAppConfig || this.appConfig;
+        config.hash = (helpAppConfig as HelpAppConfig.helpAppConfig).hash || config.hash;
         return this.applyAppConfig(config, true);
       },
       options: {overwrite}
