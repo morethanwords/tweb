@@ -20,7 +20,7 @@ const distPath = __dirname + '/dist/';
 
 let sshConfig;
 try {
-  sshConfig = fs.readFileSync(path.join(__dirname, 'ssh.json'), 'utf8');
+  sshConfig = JSON.parse(fs.readFileSync(path.join(__dirname, 'ssh.json'), 'utf8'));
 } catch(err) {
   console.log('No SSH config, skipping upload');
 }

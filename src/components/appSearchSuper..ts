@@ -2092,7 +2092,7 @@ export default class AppSearchSuper {
   }
 
   public async canViewSavedDialogs() {
-    if(this.searchContext.peerId !== rootScope.myId || this.searchContext.threadId) {
+    if(this.searchContext.peerId !== rootScope.myId || this.searchContext.threadId || !this.mediaTabsMap.has('savedDialogs')) {
       return false;
     }
 
