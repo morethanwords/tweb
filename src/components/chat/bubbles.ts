@@ -3514,7 +3514,16 @@ export default class ChatBubbles {
       }
     }
 
+    const isGoingToBottomEnd = lastMsgId === topMessage || (!lastMsgId && !followingUnread);
     const isJump = lastMsgId !== topMessage/*  && overrideAdditionMsgId === undefined */;
+
+    if(isGoingToBottomEnd && lastMsgId) {
+      const message = this.chat.getMessage(lastMsgId);
+      if(!message) {
+        this.log('fix going to bottom end without existing message', lastMsgId);
+        lastMsgId = 0;
+      }
+    }
 
     if(startParam === undefined && await m(this.chat.isStartButtonNeeded())) {
       startParam = BOT_START_PARAM;
@@ -7448,8 +7457,8 @@ export default class ChatBubbles {
     historyResult: HistoryResult | {history: (Message.message | Message.messageService | number)[]},
     reverse: boolean
   ) {
-    const log = false ? this.log.bindPrefix('perform-' + (Math.random() * 1000 | 0)) : undefined;
-    log?.('start', this.chatInner.parentElement);
+    const log = false || true ? this.log.bindPrefix('perform-' + (Math.random() * 1000 | 0)) : undefined;
+    log?.('start', this.chatInner.parentElement, historyResult);
 
     let history = historyResult.history;
     history = history.slice(); // need

@@ -4376,14 +4376,15 @@ export class AppMessagesManager extends AppManager {
       peer: this.appPeersManager.getInputPeerById(peerId),
       msg_id: getServerMessageId(mid)
     }).then((result) => {
-      this.appPeersManager.saveApiPeers(result);
-      this.saveMessages(result.messages);
+      this.saveApiResult(result);
 
       const message = this.getMessageWithReplies(result.messages[0] as Message.message);
       const threadKey = message.peerId + '_' + message.mid;
       const channelId = message.peerId.toChatId();
 
       // this.generateThreadServiceStartMessage(message);
+
+      this.log('got discussion message', peerId, mid, result, message.peerId, message.mid);
 
       const historyStorage = this.getHistoryStorage(message.peerId, message.mid);
       const newMaxId = result.max_id = this.appMessagesIdsManager.generateMessageId(result.max_id, channelId) || 0;
