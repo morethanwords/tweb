@@ -21,6 +21,7 @@ import {State} from '../../config/state';
 import toggleStorages from '../../helpers/toggleStorages';
 import appTabsManager from '../appManagers/appTabsManager';
 import callbackify from '../../helpers/callbackify';
+import Modes from '../../config/modes';
 
 const log = logger('MTPROTO');
 // let haveState = false;
@@ -30,7 +31,9 @@ port.addMultipleEventsListeners({
   environment: (environment) => {
     setEnvironment(environment);
 
-    transportController.waitForWebSocket();
+    if(import.meta.env.VITE_MTPROTO_AUTO && Modes.multipleTransports) {
+      transportController.waitForWebSocket();
+    }
   },
 
   crypto: ({method, args}) => {

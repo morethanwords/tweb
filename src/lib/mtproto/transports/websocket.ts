@@ -9,6 +9,8 @@ import Modes from '../../../config/modes';
 import EventListenerBase from '../../../helpers/eventListenerBase';
 import {MTConnection} from './transport';
 
+const TEST_NO_WEBSOCKET = false;
+
 // let closeSocketBefore = Date.now() + 30e3;
 // let closeSocketAfter = Date.now() + 10e3;
 
@@ -23,6 +25,10 @@ export default class Socket extends EventListenerBase<{
 
   constructor(protected dcId: number, protected url: string, logSuffix: string) {
     super();
+
+    if(TEST_NO_WEBSOCKET) {
+      this.url = url = 'wss://localhost:8081';
+    }
 
     let logTypes = LogTypes.Error | LogTypes.Log;
     if(this.debug) logTypes |= LogTypes.Debug;

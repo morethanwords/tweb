@@ -61,7 +61,7 @@ export default class TcpObfuscated implements MTTransport {
   private onOpen = async() => {
     this.connected = true;
 
-    if(import.meta.env.VITE_MTPROTO_AUTO) {
+    if(import.meta.env.VITE_MTPROTO_AUTO && Modes.multipleTransports) {
       transportController.setTransportOpened('websocket');
     }
 
@@ -153,7 +153,7 @@ export default class TcpObfuscated implements MTTransport {
   };
 
   public clear() {
-    if(import.meta.env.VITE_MTPROTO_AUTO) {
+    if(import.meta.env.VITE_MTPROTO_AUTO && Modes.multipleTransports) {
       if(this.connected) {
         transportController.setTransportClosed('websocket');
       }

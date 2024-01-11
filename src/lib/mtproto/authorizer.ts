@@ -26,6 +26,7 @@ import {bigIntFromBytes} from '../../helpers/bigInt/bigIntConversion';
 import bigInt from 'big-integer';
 import randomize from '../../helpers/array/randomize';
 import {AppManager} from '../appManagers/manager';
+import Modes from '../../config/modes';
 
 /* let fNewNonce: any = bytesFromHex('8761970c24cb2329b5b2459752c502f3057cb7e8dbab200e526e8767fdc73b3c').reverse();
 let fNonce: any = bytesFromHex('b597720d11faa5914ef485c529cde414').reverse();
@@ -578,7 +579,7 @@ export class Authorizer extends AppManager {
   }
 
   private getTransportType = () => {
-    if(!import.meta.env.VITE_MTPROTO_AUTO) {
+    if(!import.meta.env.VITE_MTPROTO_AUTO || !Modes.multipleTransports) {
       return;
     }
 
