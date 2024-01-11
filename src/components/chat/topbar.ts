@@ -1032,7 +1032,7 @@ export default class ChatTopbar {
       if(count === undefined) {
         const historyStorage = await this.chat.getHistoryStorage();
         if(!middleware()) return;
-        el.compareAndUpdate({args: [historyStorage.count]});
+        el.compareAndUpdate(historyStorage.count === null ? {key: 'Loading', args: undefined} : {args: [historyStorage.count]});
       }
 
       titleEl = el.element;
@@ -1132,7 +1132,7 @@ export default class ChatTopbar {
     const historyStorageKey = this.chat.historyStorageKey;
     const onHistoryCount: (data: BroadcastEvents['history_count']) => void = ({historyKey, count}) => {
       if(historyStorageKey === historyKey) {
-        el.compareAndUpdate({args: [count]});
+        el.compareAndUpdate({key, args: [count]});
       }
     };
 
