@@ -5,19 +5,19 @@ Based on Webogram, patched and improved. Available for everyone here: https://we
 ### Developing
 Install dependencies with:
 ```lang=bash
-npm install
+pnpm install
 ```
 This will install all the needed dependencies.
 
 
 #### Running web-server
-Just run `npm start` to start the web server and the livereload task.
+Just run `pnpm start` to start the web server and the livereload task.
 Open http://localhost:8080/ in your browser.
 
 
 #### Running in production
 
-Run `npm run build` to build the minimized production version of the app. Copy `public` folder contents to your web server.
+Run `node build` to build the minimized production version of the app. Copy `public` folder contents to your web server.
 
 
 ### Dependencies
@@ -29,6 +29,8 @@ Run `npm run build` to build the minimized production version of the app. Copy `
 * [rlottie](https://github.com/rlottie/rlottie.github.io) ([MIT License](https://github.com/Samsung/rlottie/blob/master/licenses/COPYING.MIT))
 * [fast-png](https://github.com/image-js/fast-png) ([MIT License](https://github.com/image-js/fast-png/blob/master/LICENSE))
 * [opus-recorder](https://github.com/chris-rudmin/opus-recorder) ([BSD License](https://github.com/chris-rudmin/opus-recorder/blob/master/LICENSE.md))
+* [Prism](https://github.com/PrismJS/prism) ([MIT License](https://github.com/PrismJS/prism/blob/master/LICENSE))
+* [Solid](https://github.com/solidjs/solid) ([MIT License](https://github.com/solidjs/solid/blob/main/LICENSE))
 * [libwebp.js](https://libwebpjs.appspot.com/)
 * fastBlur
 
@@ -38,7 +40,9 @@ Source maps are included in production build for your convenience.
 
 #### Additional query parameters
 * **test=1**: to use test DCs
-* **debug=1**: to use debug wherever it tests the flag
+* **debug=1**: to enable additional logging
+* **noSharedWorker=1**: to disable Shared Worker, can be useful for debugging
+* **http=1**: to force the use of HTTPS transport when connecting to Telegram servers
 
 Should be applied like that: http://localhost:8080/?test=1
 
