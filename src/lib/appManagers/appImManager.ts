@@ -302,9 +302,15 @@ export class AppImManager extends EventListenerBase<{
       });
     });
 
-    this.addEventListener('peer_changing', (chat) => {
+    const onPeerChanging = (chat: Chat) => {
       this.saveChatPosition(chat);
-    });
+    };
+
+    const onPeerChanged = () => {
+      this.addEventListener('peer_changing', onPeerChanging, {once: true});
+    };
+
+    this.addEventListener('peer_changed', onPeerChanged);
 
     rootScope.addEventListener('theme_changed', () => {
       this.applyCurrentTheme({
@@ -1492,7 +1498,7 @@ export class AppImManager extends EventListenerBase<{
   }
 
   public saveChatPosition(chat: Chat) {
-    if(!(['chat', 'discussion'] as ChatType[]).includes(chat.type) || !chat.peerId) {
+    if(!([ChatType.Chat, ChatType.Discussion, ChatType.Saved] as ChatType[]).includes(chat.type) || !chat.peerId) {
       return;
     }
 
@@ -1525,7 +1531,7 @@ export class AppImManager extends EventListenerBase<{
   }
 
   public getChatSavedPosition(chat: Chat): ChatSavedPosition {
-    if(!(['chat', 'discussion'] as ChatType[]).includes(chat.type) || !chat.peerId) {
+    if(!([ChatType.Chat, ChatType.Discussion, ChatType.Saved] as ChatType[]).includes(chat.type) || !chat.peerId) {
       return;
     }
 

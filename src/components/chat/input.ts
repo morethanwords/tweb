@@ -2040,9 +2040,9 @@ export default class ChatInput {
       await this.managers.appMessagesManager.isAnonymousSending(peerId)
     ) {
       key = 'SendAnonymously';
-    } else if(type === 'stories') {
+    } else if(type === ChatType.Stories) {
       key = 'Story.ReplyPlaceholder';
-    } else if(isForum && type === 'chat' && !threadId) {
+    } else if(isForum && type === ChatType.Chat && !threadId) {
       const topic = await this.managers.dialogsStorage.getForumTopic(peerId, GENERAL_TOPIC_ID);
       if(topic) {
         key = 'TypeMessageIn';

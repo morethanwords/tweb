@@ -37,7 +37,7 @@ export default class PopupDeleteMessages {
 
     const callback = (e: MouseEvent, checked: PopupPeerButtonCallbackCheckboxes, revoke?: boolean) => {
       onConfirm?.();
-      if(type === 'scheduled') {
+      if(type === ChatType.Scheduled) {
         managers.appMessagesManager.deleteScheduledMessages(peerId, mids);
       } else {
         managers.appMessagesManager.deleteMessages(peerId, mids, !!checked.size || revoke);
@@ -64,7 +64,7 @@ export default class PopupDeleteMessages {
       description = mids.length === 1 ? 'AreYouSureDeleteSingleMessage' : 'AreYouSureDeleteFewMessages';
     }
 
-    if(peerId === rootScope.myId || type === 'scheduled') {
+    if(peerId === rootScope.myId || type === ChatType.Scheduled) {
 
     } else {
       if(peerId.isUser()) {

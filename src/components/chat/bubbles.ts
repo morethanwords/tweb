@@ -3461,6 +3461,7 @@ export default class ChatBubbles {
     const m = middlewarePromise(middleware, PEER_CHANGED_ERROR);
 
     if(!samePeer) {
+      // await pause(2000); // * test some bugs
       await m(this.chat.onChangePeer(options, m));
     }
 
@@ -3470,12 +3471,12 @@ export default class ChatBubbles {
 
     const chatType = this.chat.type;
 
-    if(chatType === 'scheduled' || this.chat.isRestricted) {
+    if(chatType === ChatType.Scheduled || this.chat.isRestricted) {
       lastMsgId = 0;
     }
 
     const historyStorage = await m(this.chat.getHistoryStorage());
-    const topMessage = chatType === 'pinned' ? await m(this.managers.appMessagesManager.getPinnedMessagesMaxId(peerId, this.chat.threadId)) : historyStorage.maxId ?? 0;
+    const topMessage = chatType === ChatType.Pinned ? await m(this.managers.appMessagesManager.getPinnedMessagesMaxId(peerId, this.chat.threadId)) : historyStorage.maxId ?? 0;
     const isTarget = lastMsgId !== undefined;
 
     // * this one will fix topMessage for null message in history (e.g. channel comments with only 1 comment and it is a topMessage)
@@ -3582,7 +3583,7 @@ export default class ChatBubbles {
     }
 
     // add last message, bc in getHistory will load < max_id
-    const additionMsgId = overrideAdditionMsgId ?? (isJump || chatType === 'scheduled' || this.chat.isRestricted ? 0 : topMessage);
+    const additionMsgId = overrideAdditionMsgId ?? (isJump || chatType === ChatType.Scheduled || this.chat.isRestricted ? 0 : topMessage);
 
     let maxBubbleId = 0;
     if(samePeer) {
@@ -3891,7 +3892,7 @@ export default class ChatBubbles {
         }
       });
 
-      if(chatType === 'chat' && !this.chat.isForumTopic) {
+      if(chatType === ChatType.Chat && !this.chat.isForumTopic) {
         const dialog = await m(this.managers.appMessagesManager.getDialogOnly(peerId));
         if(dialog?.pFlags.unread_mark) {
           this.managers.appMessagesManager.markDialogUnread(peerId, true);
