@@ -477,6 +477,21 @@ const lang = {
   'OpenChat': 'Open Chat',
   'DeleteSavedDialogDescription': 'Are you sure you want to delete all saved messages from **%s**?',
   'SharedMedia.Saved': 'Saved',
+  'Giveaway.Prepaid': {
+    'one_value': 'Prepaid Giveaway',
+    'other_value': 'Prepaid Giveaways'
+  },
+  'Giveaway.Prepaid.Period': {
+    'other_value': '%d-month'
+  },
+  'Giveaway.Prepaid.Subtitle': {
+    'one_value': '%2$s subscription',
+    'other_value': '%2$s subscriptions'
+  },
+  'BoostsExpiration': {
+    'one_value': 'boost expires on %2$s',
+    'other_value': 'boosts expire on %2$s'
+  },
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -1721,6 +1736,29 @@ const lang = {
   'UnlockSimilar': 'Unlock more channels',
   'MoreSimilar': 'More Channels',
   'MessageNotFound': 'Message doesn\'t exist',
+  'Boosts': 'Boosts',
+  'BoostingSelectPaidGiveaway': 'Select a giveaway you already paid for to set it up.',
+  'BoostsLevel2': 'Level',
+  'PremiumSubscribers': 'Premium subscribers',
+  'BoostsExisting': 'Active Boosts',
+  'BoostsToLevel': 'Boosts to level up',
+  'NoBoostersHint': 'No users currently boost your channel',
+  'LinkForBoosting': 'Link for boosting',
+  'BoostingShareThisLink': 'Share this link with your subsсribers to get more boosts.',
+  'BoostingGetBoostsViaGifts': 'Get Boosts via Gifts',
+  'BoostingGetMoreBoosts': 'Get more boosts for your channel by gifting Premium to your subscribers.',
+  'BoostingBoostsCount': {
+    'one_value': '%1$d Boost',
+    'other_value': '%1$d Boosts'
+  },
+  'BoostingGiftsCount': {
+    'one_value': '%1$d Gift',
+    'other_value': '%1$d Gifts'
+  },
+  'BoostingUnclaimed': 'Unclaimed',
+  'BoostingToBeDistributed': 'To be distributed',
+  'BoostingShortMonths': '%1$dm',
+  'BoostingGiveaway': 'Giveaway',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

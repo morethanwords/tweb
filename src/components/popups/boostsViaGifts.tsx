@@ -43,6 +43,15 @@ import PopupPayment from './payment';
 import shake from '../../helpers/dom/shake';
 import anchorCallback from '../../helpers/dom/anchorCallback';
 
+export const BoostsBadge = (props: {boosts: number}) => {
+  return (
+    <span class="popup-boosts-badge">
+      <IconTsx icon="boost" class="popup-boosts-badge-icon" />
+      {props.boosts}
+    </span>
+  );
+};
+
 export default class PopupBoostsViaGifts extends PopupElement {
   private premiumGiftCodeOptions: PremiumGiftCodeOption[];
   private appConfig: MTAppConfig;
@@ -400,12 +409,7 @@ export default class PopupBoostsViaGifts extends PopupElement {
       <>
         <Section
           name="BoostsViaGifts.Quantity"
-          nameRight={
-            <span class="popup-boosts-badge">
-              <IconTsx icon="boost" class="popup-boosts-badge-icon" />
-              {boosts()}
-            </span>
-          }
+          nameRight={<BoostsBadge boosts={boosts()} />}
           caption="BoostsViaGifts.QuantitySubtitle"
           captionOld={true}
         >

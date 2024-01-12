@@ -43,6 +43,7 @@ import getPeerId from '../../../lib/appManagers/utils/peers/getPeerId';
 import {avatarNew} from '../../avatarNew';
 import wrapPeerTitle from '../../wrappers/peerTitle';
 import toggleDisability from '../../../helpers/dom/toggleDisability';
+import ListenerSetter from '../../../helpers/listenerSetter';
 
 const CHANNEL_GRAPHS_TITLES: {[key in keyof PickByType<StatsBroadcastStats, StatsGraph>]: LangPackKey} = {
   growth_graph: 'GrowthChartTitle',
@@ -116,7 +117,7 @@ function extractColor(color: string): string {
   return color.substring(color.indexOf('#'));
 }
 
-const makeAbsStats = (value: number, approximate?: boolean): StatsAbsValueAndPrev => {
+export const makeAbsStats = (value: number, approximate?: boolean): StatsAbsValueAndPrev => {
   return {
     _: 'statsAbsValueAndPrev',
     current: value,
@@ -125,7 +126,102 @@ const makeAbsStats = (value: number, approximate?: boolean): StatsAbsValueAndPre
   };
 };
 
-type StatisticsPublicForwards = {rendered: HTMLElement[], left: number, count: number, loadMore?: () => Promise<void>};
+export type LoadableList = {rendered: HTMLElement[], left: number, count: number, loadMore?: () => Promise<void>};
+export const createLoadableList = (props: Partial<LoadableList> = {}) => {
+  return createSignal<LoadableList>({
+    rendered: [],
+    left: 0,
+    count: 0,
+    ...props
+  }, {equals: false});
+};
+
+export const createMoreButton = (count: number, callback: (button: HTMLElement) => any, listenerSetter: ListenerSetter) => {
+  const button = Button('btn btn-primary btn-transparent primary', {icon: 'down', text: 'PollResults.LoadMore', textArgs: [count]});
+  attachClickEvent(button, () => {
+    callback(button);
+  }, {listenerSetter});
+  return button;
+};
+
+const StatisticsOverviewItem = ({
+  value,
+  title,
+  includeZeroValue,
+  describePercentage
+}: {
+  value: StatsAbsValueAndPrev | StatsPercentValue,
+  title: LangPackKey,
+  includeZeroValue?: boolean,
+  describePercentage?: boolean
+}) => {
+  const isPercentage = value._ === 'statsPercentValue';
+  let v: JSX.Element;
+  if(isPercentage) {
+    const n = (value.part / value.total * 100).toFixed(2);
+    v = `${n}%`;
+
+    if(describePercentage) {
+      v = (
+        <>
+          {`≈${value.part} `}
+          <span class="statistics-overview-item-value-description">
+            {v}
+          </span>
+        </>
+      );
+    }
+  } else {
+    v = formatNumber(value.current, 1);
+
+    if(value.approximate) {
+      v = '≈' + v;
+    }
+
+    if(!value.current && !value.previous && !includeZeroValue) {
+      return;
+    }
+
+    if(value.current !== value.previous && value.previous) {
+      const diff = value.current - value.previous;
+      const absDiff = Math.abs(diff);
+      const vv = `${diff > 0 ? '+' : '-'}${formatNumber(absDiff, 1)}`;
+      const p = +(Math.abs(1 - value.current / value.previous) * 100).toFixed(2);
+      const str = `${vv} (${p}%)`;
+      v = (
+        <>
+          {v}{' '}
+          <span
+            class={classNames('statistics-overview-item-value-description', diff > 0 ? 'green' : 'red')}
+          >
+            {str}
+          </span>
+        </>
+      );
+    }
+  }
+
+  return (
+    <div class="statistics-overview-item">
+      <div class="statistics-overview-item-value">
+        {v}
+      </div>
+      <div class="statistics-overview-item-name">
+        {i18n(title)}
+      </div>
+    </div>
+  );
+};
+
+export const StatisticsOverviewItems = (props: {
+  items: Parameters<typeof StatisticsOverviewItem>[0][]
+}) => {
+  return (
+    <div class="statistics-overview">
+      <For each={props.items}>{StatisticsOverviewItem}</For>
+    </div>
+  );
+};
 
 export default class AppStatisticsTab extends SliderSuperTabEventable {
   private chatId: ChatId;
@@ -150,7 +246,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
     topPosters: {container: HTMLElement, peerId: PeerId}[],
     topAdmins: {container: HTMLElement, peerId: PeerId}[],
     topInviters: {container: HTMLElement, peerId: PeerId}[],
-    publicForwards: Accessor<StatisticsPublicForwards>,
+    publicForwards: Accessor<LoadableList>,
     currentPost: (typeof recentPosts)[0]
   ) {
     const dateElement = new I18n.IntlDateElement({options: {}});
@@ -377,62 +473,6 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
       }), ' — ');
     };
 
-    const renderOverviewItem = ({value, title}: typeof overviewItems[0]) => {
-      const isPercentage = value._ === 'statsPercentValue';
-      let v: JSX.Element;
-      if(isPercentage) {
-        const n = (value.part / value.total * 100).toFixed(2);
-        v = `${n}%`;
-      } else {
-        v = formatNumber(value.current, 1);
-
-        if(value.approximate) {
-          v = '≈' + v;
-        }
-
-        if(!value.current && !value.previous) {
-          return;
-        }
-
-        if(value.current !== value.previous && value.previous) {
-          const diff = value.current - value.previous;
-          const absDiff = Math.abs(diff);
-          const vv = `${diff > 0 ? '+' : '-'}${formatNumber(absDiff, 1)}`;
-          const p = +(Math.abs(1 - value.current / value.previous) * 100).toFixed(2);
-          const str = `${vv} (${p}%)`;
-          v = (
-            <>
-              {v}{' '}
-              <span
-                class={classNames('statistics-overview-item-value-description', diff > 0 ? 'green' : 'red')}
-              >
-                {str}
-              </span>
-            </>
-          );
-        }
-      }
-
-      return (
-        <div class="statistics-overview-item">
-          <div class="statistics-overview-item-value">
-            {v}
-          </div>
-          <div class="statistics-overview-item-name">
-            {i18n(title)}
-          </div>
-        </div>
-      );
-    };
-
-    const createMoreButton = (count: number, callback: (button: HTMLElement) => any) => {
-      const button = Button('btn btn-primary btn-transparent primary', {icon: 'down', text: 'PollResults.LoadMore', textArgs: [count]});
-      attachClickEvent(button, () => {
-        callback(button);
-      }, {listenerSetter: this.listenerSetter});
-      return button;
-    };
-
     const period = (this.stats as StatsBroadcastStats).period;
     const topPeersTitles: [LangPackKey, LangPackKey, LangPackKey] = ['TopMembers', 'TopAdmins', 'TopInviters'];
     let postsContainer: HTMLDivElement;
@@ -440,9 +480,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
       <>
         {currentPost && <Section>{currentPost.container}</Section>}
         <Section name="StatisticOverview" nameRight={period && formatDateRange(period.min_date, period.max_date)}>
-          <div class="statistics-overview">
-            <For each={overviewItems}>{renderOverviewItem}</For>
-          </div>
+          <StatisticsOverviewItems items={overviewItems} />
         </Section>
         <For each={graphs}>{renderGraph}</For>
         {recentPosts.length && <Section ref={postsContainer} name="RecentPosts">
@@ -462,7 +500,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
             moreButton = createMoreButton(topPeers.length, () => {
               moreButton.remove();
               chatlist.append(...topPeers.map(({container}) => container));
-            });
+            }, this.listenerSetter);
           }
           return (
             <Section name={topPeersTitles[idx()]} nameRight={period && formatDateRange(period.min_date, period.max_date)}>
@@ -501,7 +539,8 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
               const toggle = toggleDisability(button, true);
               const promise = publicForwards().loadMore();
               promise.finally(() => toggle());
-            }
+            },
+            this.listenerSetter
           )}
         </Section>}
       </>
@@ -849,11 +888,7 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
       storyPromise,
       storyPublicForwardsPromise
     ]).then(async([message, messagePublicForwards, storyItem, storyPublicForwards]) => {
-      const [f, setF] = createSignal<StatisticsPublicForwards>({
-        rendered: [],
-        left: 0,
-        count: 0
-      }, {equals: false});
+      const [f, setF] = createLoadableList();
       if(!message && !storyItem) {
         return f;
       }

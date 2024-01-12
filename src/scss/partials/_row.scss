@@ -63,12 +63,18 @@ $row-border-radius: $border-radius-medium;
     align-items: center;
     padding-inline-start: 1rem !important;
 
+    &.row-with-padding {
+      grid-template-columns: 3.5rem 1fr auto;
+    }
+
     .row-title {
       grid-area: title;
+      align-self: flex-end;
     }
 
     .row-subtitle {
       grid-area: subtitle;
+      align-self: flex-start;
     }
 
     .checkbox-field {
@@ -77,6 +83,13 @@ $row-border-radius: $border-radius-medium;
       width: 3.5rem;
       position: relative !important;
     }
+
+    // .row-media {
+    //   grid-area: left;
+    //   margin-inline-start: -1rem !important;
+    //   // position: relative !important;
+    //   // inset-inline-start: auto !important;
+    // }
 
     .row-right {
       margin-inline-start: 1rem;

@@ -58,6 +58,7 @@ import createBadge from '../../helpers/createBadge';
 import PopupBoostsViaGifts from '../popups/boostsViaGifts';
 import AppStatisticsTab from '../sidebarRight/tabs/statistics';
 import {ChatType} from './chat';
+import AppBoostsTab from '../sidebarRight/tabs/boosts';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -498,6 +499,14 @@ export default class ChatTopbar {
         this.appSidebarRight.toggleSidebar(true);
       },
       verify: () => this.managers.appProfileManager.canViewStatistics(this.peerId)
+    }, {
+      icon: 'addboost',
+      text: 'Boosts',
+      onClick: () => {
+        this.appSidebarRight.createTab(AppBoostsTab).open(this.peerId);
+        this.appSidebarRight.toggleSidebar(true);
+      },
+      verify: async() => true || await this.managers.appPeersManager.isBroadcast(this.peerId) && this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'create_giveaway')
     }, {
       icon: 'addboost',
       text: 'BoostsViaGifts.Title',
