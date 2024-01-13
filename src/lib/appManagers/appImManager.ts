@@ -1520,64 +1520,7 @@ export class AppImManager extends EventListenerBase<{
           id: call.id,
           access_hash: call.access_hash
         });
-      }, 500);
-
-      /* setTimeout(() => {
-        this.managers.apiManager.invokeApi('upload.getFile', {
-          precise: true,
-          location: {
-            _: 'inputGroupCallStream',
-            call: {
-              _: 'inputGroupCall',
-              id: call.id,
-              access_hash: call.access_hash
-            },
-            time_ms: 0,
-            scale: 0,
-            // video_channel: 1,
-            video_quality: 0
-          },
-          offset: 0,
-          limit: 128 * 1024
-        }).then(console.log);
-      });
-
-      setTimeout(() => {
-        this.managers.apiManager.invokeApi('upload.getFile', {
-          precise: true,
-          location: {
-            _: 'inputGroupCallStream',
-            call: {
-              _: 'inputGroupCall',
-              id: call.id,
-              access_hash: call.access_hash
-            },
-            time_ms: 0,
-            scale: 0,
-            // video_channel: 1,
-            video_quality: 0
-          },
-          offset: 0,
-          limit: 128 * 1024
-        }).then((data: any) => {
-          const player = document.getElementById('video-player-own') as HTMLVideoElement;
-          console.log(player);
-          console.log(data);
-
-          const blob = new Blob([data.bytes], {type: 'video/mp4'});
-          const url = window.URL.createObjectURL(blob);
-          console.log(blob);
-          console.log(url);
-          player.src = url;
-          player.play();
-          /*
-          const blob = new Blob([buffer], { type: 'video/mp4' });
-            // downloadBlob(blob, 'output.webm');
-            const url = window.URL.createObjectURL(blob);
-            audioPlayer.src = url;
-           * /
-        });
-      }, 1000); */
+      }, 1500);
 
       setTimeout(() => {
         clearInterval(interval);
@@ -1586,41 +1529,13 @@ export class AppImManager extends EventListenerBase<{
           id: call.id,
           access_hash: call.access_hash
         });
-      }, 30000);
-      // groupCallsController.joinGroupCall(chatId, call.id, true, false);
-
-      /* const minTimestamp = (Date.now() / 1000 | 0) - 10;
-      await this.managers.apiManager.invokeApi('upload.getFile', {
-        location: {
-          _: 'inputGroupCallStream',
-          call: {
-            _: 'inputGroupCall',
-            id: call.id,
-            access_hash: call.access_hash
-          },
-          time_ms: minTimestamp,
-          scale: 2
-        },
-        offset: 0,
-        limit: 128 * 1024
-      }).then(console.log); */
+      }, 300000);
 
       console.log('plz');
     };
 
     next();
   };
-
-  /*
-  public getGroupCallInput(id: GroupCallId): InputGroupCall {
-    const groupCall = this.getGroupCall(id);
-    return {
-      _: 'inputGroupCall',
-      id: groupCall.id,
-      access_hash: groupCall.access_hash
-    };
-  }
-   */
 
   public async getCallInfo(call: InputGroupCall) {
     const promise = await this.managers.apiManager.invokeApi('phone.getGroupCall', {
@@ -1667,17 +1582,35 @@ export class AppImManager extends EventListenerBase<{
       offset: 0,
       limit: 128 * 1024
     }); // .then(console.log).catch(console.warn);
-    console.log(data);
+    // console.log(data);
+    // console.log(data.bytes.slice(0, 32));
+    // console.log(data.bytes.slice(32));
+    // console.warn(this.bin2String(data.bytes.slice(0, 36)));
+    // console.warn(this.bin2String(data.bytes.slice(36, 128)));
+    /* for(let i = 0; i < 40; i++) {
+      console.log(data.bytes.slice(32));
+      console.warn(this.bin2String(data.bytes.slice(i, 128)));
+    } */
+    const test = data.bytes.slice(32);
 
-    const bytes: any = []
-    data.bytes.forEach((byte: any) => {
-      bytes.push(byte.toString(16))
-    })
-    const hex = bytes.join('').toUpperCase();
-    console.log(hex);
+    this.sendToPlayer(test, 'video-player-own1', 'video/mp4');
+    this.sendToPlayer(test, 'video-player-own2', 'video/ogg');
+    this.sendToPlayer(test, 'video-player-own3', 'video/mpeg');
+    this.sendToPlayer(test, 'video-player-own4', 'video/webm');
 
-    // this.managers.apiUpdatesManager.processUpdateMessage(updates);
-    // console.log(updates);
+    const player = document.getElementById('video-player-own5') as HTMLVideoElement;
+    const blob = new Blob([test]);
+    const url = window.URL.createObjectURL(blob);
+    player.src = url;
+    player.play().then(console.log).catch(console.log);
+  }
+
+  private sendToPlayer(bytes: any, id: string, type: string) {
+    const player = document.getElementById(id) as HTMLVideoElement;
+    const blob = new Blob([bytes], {type});
+    const url = window.URL.createObjectURL(blob);
+    player.src = url;
+    player.play().then(console.log).catch(console.log);
   }
 
   public async joinGroupCall(peerId: PeerId, groupCallId?: GroupCallId) {
