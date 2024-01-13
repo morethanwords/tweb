@@ -24,6 +24,16 @@
 
   &-container {
     padding: 0 .5rem;
+    position: relative;
+  }
+
+  &-dots {
+    width: 320px !important;
+    height: 32px !important;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) !important;
+    pointer-events: none;
   }
 
   &-menu {

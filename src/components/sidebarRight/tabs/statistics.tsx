@@ -136,8 +136,13 @@ export const createLoadableList = (props: Partial<LoadableList> = {}) => {
   }, {equals: false});
 };
 
-export const createMoreButton = (count: number, callback: (button: HTMLElement) => any, listenerSetter: ListenerSetter) => {
-  const button = Button('btn btn-primary btn-transparent primary', {icon: 'down', text: 'PollResults.LoadMore', textArgs: [count]});
+export const createMoreButton = (
+  count: number,
+  callback: (button: HTMLElement) => any,
+  listenerSetter: ListenerSetter,
+  key: LangPackKey = 'PollResults.LoadMore'
+) => {
+  const button = Button('btn btn-primary btn-transparent primary', {icon: 'down', text: key, textArgs: [count]});
   attachClickEvent(button, () => {
     callback(button);
   }, {listenerSetter});

@@ -28,11 +28,17 @@ import PopupPremium from './premium';
 import confirmationPopup from '../confirmationPopup';
 import anchorCallback from '../../helpers/dom/anchorCallback';
 import wrapPeerTitle from '../wrappers/peerTitle';
+import DotRenderer from '../dotRenderer';
+import themeController from '../../helpers/themeController';
 
 export default class PopupGiftLink extends PopupElement {
-  private checkedGiftCode: PaymentsCheckedGiftCode;
+  private isInChat: boolean;
 
-  constructor(private slug: string, private stack?: ChatSetPeerOptions['stack']) {
+  constructor(
+    private slug: string,
+    private stack?: ChatSetPeerOptions['stack'],
+    private checkedGiftCode?: PaymentsCheckedGiftCode
+  ) {
     super('popup-boosts popup-gift-link', {
       closable: true,
       overlayClosable: true,
@@ -44,20 +50,31 @@ export default class PopupGiftLink extends PopupElement {
       title: true
     });
 
+    this.isInChat = !!checkedGiftCode;
     this.construct();
   }
 
-  private _construct() {
-    const titleLangKey: LangPackKey = this.checkedGiftCode.used_date ? 'BoostingUsedGiftLink' : 'BoostingGiftLink';
+  private _construct(dotsCanvas: HTMLElement) {
+    const isUsed = !!this.checkedGiftCode.used_date;
+    const titleLangKey: LangPackKey = isUsed ? 'BoostingUsedGiftLink' : 'BoostingGiftLink';
     this.title.replaceChildren(i18n(titleLangKey));
 
-    const url = 'https://t.me/giftcode/' + this.slug;
+    const url = this.isInChat && !isUsed ? '' : 'https://t.me/giftcode/' + this.slug;
 
     const inviteLink = new InviteLink({
       button: false,
       listenerSetter: this.listenerSetter,
-      url
+      url,
+      noRightButton: !url,
+      onClick: !url && (() => {
+        toastNew({langPackKey: 'BoostingOnlyRecipientCode'});
+      })
     });
+
+    if(dotsCanvas) {
+      dotsCanvas.classList.add('invite-link-dots');
+      inviteLink.container.appendChild(dotsCanvas);
+    }
 
     const makePeer = (peerId: PeerId) => {
       const avatar = AvatarNew({peerId, size: 24});
@@ -101,13 +118,14 @@ export default class PopupGiftLink extends PopupElement {
         i18n('BoostingUserWasSelected', [new PeerTitle({peerId: toPeerId}).element])
     ) : giveawayAnchor;
 
-    const content: [LangPackKey, JSX.Element][] = [
+    let content: [LangPackKey, JSX.Element][] = [
       ['BoostingFrom', makePeer(fromPeerId)],
       ['BoostingTo', toPeerId ? makePeer(toPeerId) : i18n('BoostingNoRecipient')],
       ['BoostingGift', i18n('BoostingTelegramPremiumFor', [formatMonthsDuration(this.checkedGiftCode.months)])],
-      ['BoostingReason', reasonValue],
+      !this.isInChat && ['BoostingReason', reasonValue],
       ['BoostingDate', formatFullSentTime(this.checkedGiftCode.date, undefined, true)]
     ];
+    content = content.filter(Boolean);
 
     const shareLink = anchorCallback((e) => {
       cancelEvent(e);
@@ -124,7 +142,7 @@ export default class PopupGiftLink extends PopupElement {
           <div class="popup-gift-link-title">{i18n(titleLangKey)}</div>
           <div class="popup-gift-link-subtitle">
             {
-              this.checkedGiftCode.used_date ?
+              isUsed ?
                 i18n('BoostingLinkUsed') :
                 i18n(
                   toPeerId === rootScope.myId ? 'BoostingLinkAllows' : (toPeerId ? 'BoostingLinkAllowsToUser' : 'BoostingLinkAllowsAnyone'),
@@ -146,25 +164,30 @@ export default class PopupGiftLink extends PopupElement {
             }}
           </For>
         </table>
-        <div class="popup-gift-link-share">
-          {this.checkedGiftCode.used_date ?
-            i18n('BoostingUsedLinkDate', [formatFullSentTime(this.checkedGiftCode.used_date, undefined, true)]) :
-            i18n(toPeerId ? 'Giveaway.SendLinkToFriend' : 'Giveaway.SendLinkToAnyone', [shareLink])
-          }
-        </div>
+        {(!this.isInChat || !isUsed) && (
+          <div class="popup-gift-link-share">
+            {isUsed ?
+              i18n('BoostingUsedLinkDate', [formatFullSentTime(this.checkedGiftCode.used_date, undefined, true)]) :
+              this.isInChat && !this.checkedGiftCode.slug ?
+                i18n('BoostingLinkNotActivated') :
+                i18n(toPeerId ? 'Giveaway.SendLinkToFriend' : 'Giveaway.SendLinkToAnyone', [shareLink])
+            }
+          </div>
+        )}
       </div>
     );
 
     renderImageFromUrl(img, `assets/img/premium-star${window.devicePixelRatio > 1 ? '@2x' : ''}.png`);
 
-    this.btnConfirm.append(i18n(this.checkedGiftCode.used_date ? 'OK' : 'BoostingUseLink'));
+    const canUseLink = !this.isInChat && !isUsed;
+    this.btnConfirm.append(i18n(!canUseLink ? 'OK' : 'BoostingUseLink'));
     this.btnConfirm.classList.add('popup-boosts-button');
     this.footer.append(this.btnConfirm);
     this.body.after(this.footer);
     this.footer.classList.add('abitlarger');
 
     attachClickEvent(this.btnConfirm, () => {
-      if(this.checkedGiftCode.used_date) {
+      if(!canUseLink) {
         this.hide();
         return;
       }
@@ -176,7 +199,7 @@ export default class PopupGiftLink extends PopupElement {
   }
 
   private async construct() {
-    this.checkedGiftCode = await this.managers.appPaymentsManager.checkGiftCode(this.slug);
+    this.checkedGiftCode ??= await this.managers.appPaymentsManager.checkGiftCode(this.slug);
     if(shouldDisplayGiftCodeAsGift(this.checkedGiftCode)) {
       this.destroy();
       PopupPremium.show({
@@ -186,9 +209,26 @@ export default class PopupGiftLink extends PopupElement {
       return;
     }
 
+    let dotsCanvas: HTMLElement;
+    if(this.isInChat && !this.checkedGiftCode.used_date) {
+      const {dotRenderer, readyResult} = DotRenderer.create({
+        width: 320,
+        height: 32,
+        middleware: this.middlewareHelper.get(),
+        animationGroup: 'STICKERS-POPUP',
+        config: {
+          particlesCount: 1000,
+          color: themeController.isNight() ? 0xffffff : 0x000000
+        }
+      });
+
+      await readyResult;
+      dotsCanvas = dotRenderer.canvas;
+    }
+
     const div = document.createElement('div');
     this.scrollable.append(div, this.btnConfirm);
-    const dispose = render(() => this._construct(), div);
+    const dispose = render(() => this._construct(dotsCanvas), div);
     this.addEventListener('closeAfterTimeout', dispose);
     this.show();
   }

@@ -1759,6 +1759,17 @@ const lang = {
   'BoostingToBeDistributed': 'To be distributed',
   'BoostingShortMonths': '%1$dm',
   'BoostingGiveaway': 'Giveaway',
+  'BoostingShowMoreBoosts': {
+    'one_value': 'Show %1$d More Boost',
+    'other_value': 'Show %1$d More Boosts'
+  },
+  'BoostingShowMoreGifts': {
+    'one_value': 'Show %1$d More Gifted Boost',
+    'other_value': 'Show %1$d More Gifted Boosts'
+  },
+  'BoostingRecipientWillBeSelected': 'The recipient will be selected when the giveaway ends.',
+  'BoostingLinkNotActivated': 'This link hasn\'t been activated yet.',
+  'BoostingOnlyRecipientCode': 'Only the recipient can see the link.',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

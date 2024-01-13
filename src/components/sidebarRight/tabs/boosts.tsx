@@ -8,7 +8,7 @@ import {Boost, PremiumBoostsStatus} from '../../../layer';
 import {LangPackKey, i18n, join, joinElementsWith} from '../../../lib/langPack';
 import Section from '../../section';
 import {SliderSuperTabEventable} from '../../sliderTab';
-import {Accessor, createRoot, createSignal, For} from 'solid-js';
+import {Accessor, createMemo, createRoot, createSignal, For} from 'solid-js';
 import {render} from 'solid-js/web';
 import Row from '../../row';
 import {avatarNew, AvatarNew} from '../../avatarNew';
@@ -30,9 +30,16 @@ import toggleDisability from '../../../helpers/dom/toggleDisability';
 import findUpClassName from '../../../helpers/dom/findUpClassName';
 import appImManager from '../../../lib/appManagers/appImManager';
 import rootScope from '../../../lib/rootScope';
+import PopupGiftLink from '../../popups/giftLink';
+import {toastNew} from '../../toast';
 
 const getColorByMonths = (months: number) => {
   return months === 12 ? 'red' : (months === 3 ? 'green' : 'blue');
+};
+
+const getBoostMonths = (from: number, to: number) => {
+  const days = (to - from) / 86400;
+  return Math.round(days / 30);
 };
 
 export default class AppBoostsTab extends SliderSuperTabEventable {
@@ -104,7 +111,8 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
 
     const ContentTab = (props: {
       list: LoadableList,
-      hide: boolean
+      hide: boolean,
+      moreKey: LangPackKey
     }) => {
       return (
         <div
@@ -120,7 +128,8 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
                   const promise = props.list.loadMore();
                   promise.finally(() => toggle());
                 },
-                this.listenerSetter
+                this.listenerSetter,
+                props.moreKey
               )}
             </>
           ) : noBoostersHint}
@@ -129,6 +138,8 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
     };
 
     const [tab, setTab] = createSignal(0);
+    const onlyGiftedBoosts = createMemo(() => boostsStatus.gift_boosts === boostsStatus.boosts);
+    const showGifts = createMemo(() => !onlyGiftedBoosts() && !!giftsBoostsList().count);
 
     const ret = (
       <>
@@ -179,23 +190,45 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
         <Section class="boosts-users-container">
           <div ref={tabs} class="menu-horizontal-div boosts-users-tabs">
             <MenuTab key="BoostingBoostsCount" count={boostsList().count} />
-            {giftsBoostsList().count && <MenuTab key="BoostingGiftsCount" count={giftsBoostsList().count} />}
+            {showGifts() && <MenuTab key="BoostingGiftsCount" count={giftsBoostsList().count} />}
           </div>
-          <div ref={content} class="boosts-users-contents" onClick={(e) => {
+          <div ref={content} class="boosts-users-contents" onClick={async(e) => {
             const target = findUpClassName(e.target, 'row');
             const boost = this.targets.get(target);
             if(!boost) {
               return;
             }
 
-            if(tab() === 0) {
-              appImManager.setInnerPeer({peerId: boost.user_id.toPeerId(false)});
+            const slug = boost.used_gift_slug;
+            const peerId = boost.user_id?.toPeerId(false);
+            if(peerId && peerId !== rootScope.myId) {
+              // appImManager.setInnerPeer({peerId: boost.user_id.toPeerId(false)});
+              PopupElement.createPopup(
+                PopupGiftLink,
+                slug,
+                undefined,
+                {
+                  _: 'payments.checkedGiftCode',
+                  chats: [],
+                  date: boost.date,
+                  months: getBoostMonths(boost.date, boost.expires),
+                  pFlags: {via_giveaway: boost.pFlags.giveaway || undefined},
+                  users: [],
+                  from_id: await this.managers.appPeersManager.getOutputPeer(this.peerId),
+                  giveaway_msg_id: boost.giveaway_msg_id,
+                  slug,
+                  to_id: peerId.toUserId(),
+                  used_date: slug ? 1 : undefined
+                }
+              );
+            } else if(slug) {
+              PopupElement.createPopup(PopupGiftLink, slug);
             } else {
-
+              toastNew({langPackKey: 'BoostingRecipientWillBeSelected'});
             }
           }}>
-            <ContentTab list={boostsList()} hide={tab() !== 0} />
-            {giftsBoostsList().count && <ContentTab list={giftsBoostsList()} hide={tab() !== 1} />}
+            <ContentTab list={boostsList()} hide={tab() !== 0} moreKey="BoostingShowMoreBoosts" />
+            {showGifts() && <ContentTab list={giftsBoostsList()} hide={tab() !== 1} moreKey="BoostingShowMoreGifts" />}
           </div>
         </Section>
         <Section name="LinkForBoosting" caption="BoostingShareThisLink">
@@ -218,8 +251,7 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
   private renderBoost = async(boost: Boost) => {
     console.log(boost);
     const boosts = 1 * (boost.multiplier || 1);
-    const days = (boost.expires - boost.date) / 86400;
-    const months = Math.round(days / 30);
+    const months = getBoostMonths(boost.date, boost.expires);
     let peerId = boost.user_id?.toPeerId(false);
     if(peerId === rootScope.myId) {
       peerId = undefined;
