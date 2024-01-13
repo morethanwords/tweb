@@ -1,0 +1,88 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+@use "sass:math";
+
+.popup-rtmp-setup {
+  $parent: ".popup";
+
+  #{$parent} {
+    &-header {
+      margin-bottom: 1rem;
+    }
+
+    &-info {
+      margin-bottom: 1rem;
+      padding: 8px;
+      color: var(--secondary-text-color);
+      font-size: var(--font-size-16);
+      line-height: var(--line-height);
+    }
+
+    &-data-row {
+      display: flex;
+      align-items: center;
+      padding: 8px;
+
+      .copy {
+        margin-left: auto;
+        width: 40px;
+        height: 40px;
+      }
+
+      &-info {
+        margin-left: 1.5rem;
+        max-width: calc(100% - 5rem);
+
+        .label-row {
+          display: flex;
+          align-items: center;
+          gap: 0.2rem;
+        }
+
+        .data-node {
+          display: block;
+          overflow: hidden;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+        }
+
+        .i18n {
+          color: var(--secondary-text-color);
+          font-size: var(--font-size-14);
+          line-height: var(--line-height-14);
+        }
+      }
+
+      .tgico {
+        color: var(--secondary-text-color);
+        font-size: var(--font-size-20);
+        line-height: var(--line-height-20);
+
+        &.eye {
+          font-size: var(--font-size-14);
+          line-height: var(--line-height-14);
+          pointer-events: auto;
+
+          &:hover {
+            cursor: pointer;
+          }
+        }
+      }
+    }
+
+    &-container {
+      border-radius: 16px;
+      width: 420px;
+      max-width: 420px;
+      max-height: 100%;
+
+      .sidebar-left-section-caption {
+        padding: 0;
+      }
+    }
+  }
+}

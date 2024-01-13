@@ -326,6 +326,7 @@ export class AppGroupCallsManager extends AppManager {
         source: discard
       });
     } else {
+      console.warn('HERER');
       promise = this.apiManager.invokeApi('phone.joinGroupCall', {
         call: groupCallInput,
         join_as: this.appPeersManager.getInputPeerSelf(),
@@ -346,6 +347,8 @@ export class AppGroupCallsManager extends AppManager {
   public async joinGroupCall(groupCallId: GroupCallId, params: DataJSON, options: GroupCallConnectionInstance['options']) {
     const groupCallInput = this.getGroupCallInput(groupCallId);
     let promise: Promise<Updates>;
+    console.warn(params);
+    console.warn('!!!!!!!!!!');
     if(options.type === 'main') {
       const request: PhoneJoinGroupCall = {
         call: groupCallInput,

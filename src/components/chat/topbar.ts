@@ -58,8 +58,9 @@ import createBadge from '../../helpers/createBadge';
 import PopupBoostsViaGifts from '../popups/boostsViaGifts';
 import AppStatisticsTab from '../sidebarRight/tabs/statistics';
 import {ChatType} from './chat';
+import PopupRTMPStream from '../popups/RTMPStream';
 
-type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
+type ButtonToVerify = { element?: HTMLElement, verify: () => boolean | Promise<boolean> };
 
 const PINNED_ALWAYS_FLOATING = false;
 
@@ -344,6 +345,10 @@ export default class ChatTopbar {
     return !!userFull && !!(type === 'voice' ? userFull.pFlags.phone_calls_available : userFull.pFlags.video_calls_available);
   };
 
+  private openObsStreamModal = async() => {
+    PopupElement.createPopup(PopupRTMPStream, this.chat.peerId, this.chat.appImManager).show();
+  }
+
   public constructUtils() {
     this.menuButtons = [{
       icon: 'search',
@@ -361,12 +366,20 @@ export default class ChatTopbar {
       icon: 'mute',
       text: 'ChatList.Context.Mute',
       onClick: this.onMuteClick,
-      verify: async() => this.chat.type === ChatType.Chat && rootScope.myId !== this.peerId && !(await this.managers.appNotificationsManager.isPeerLocalMuted({peerId: this.peerId, respectType: false, threadId: this.chat.threadId}))
+      verify: async() => this.chat.type === ChatType.Chat && rootScope.myId !== this.peerId && !(await this.managers.appNotificationsManager.isPeerLocalMuted({
+        peerId: this.peerId,
+        respectType: false,
+        threadId: this.chat.threadId
+      }))
     }, {
       icon: 'unmute',
       text: 'ChatList.Context.Unmute',
       onClick: this.onUnmuteClick,
-      verify: () => this.chat.type === ChatType.Chat && rootScope.myId !== this.peerId && this.managers.appNotificationsManager.isPeerLocalMuted({peerId: this.peerId, respectType: false, threadId: this.chat.threadId})
+      verify: () => this.chat.type === ChatType.Chat && rootScope.myId !== this.peerId && this.managers.appNotificationsManager.isPeerLocalMuted({
+        peerId: this.peerId,
+        respectType: false,
+        threadId: this.chat.threadId
+      })
     }, {
       icon: 'comments',
       text: 'ViewDiscussion',
@@ -403,6 +416,16 @@ export default class ChatTopbar {
       icon: 'videochat',
       text: 'PeerInfo.Action.VoiceChat',
       onClick: this.onJoinGroupCallClick,
+      verify: this.verifyVideoChatButton.bind(this, 'group')
+    }, {
+      icon: 'videochat',
+      text: 'PeerInfo.Action.RTMPStream',
+      onClick: this.openObsStreamModal,
+      verify: this.verifyVideoChatButton.bind(this, 'broadcast')
+    }, {
+      icon: 'videochat',
+      text: 'PeerInfo.Action.RTMPStream',
+      onClick: this.openObsStreamModal,
       verify: this.verifyVideoChatButton.bind(this, 'group')
     }, {
       icon: 'topics',
@@ -624,6 +647,7 @@ export default class ChatTopbar {
   }
 
   private onJoinGroupCallClick = () => {
+    console.warn('join group call please');
     this.chat.appImManager.joinGroupCall(this.peerId);
   };
 
@@ -848,8 +872,8 @@ export default class ChatTopbar {
       const useThreadId = isSaved ? undefined : threadId;
       const avatar = this.avatar;
       if(!avatar ||
-          avatar.node.dataset.peerId.toPeerId() !== usePeerId ||
-          avatar.node.dataset.threadId !== (useThreadId ? '' + useThreadId : undefined)) {
+        avatar.node.dataset.peerId.toPeerId() !== usePeerId ||
+        avatar.node.dataset.threadId !== (useThreadId ? '' + useThreadId : undefined)) {
         newAvatar = avatarNew({
           middleware: (newAvatarMiddlewareHelper = getMiddleware()).get(),
           isDialog: true,
@@ -1032,7 +1056,10 @@ export default class ChatTopbar {
       if(count === undefined) {
         const historyStorage = await this.chat.getHistoryStorage();
         if(!middleware()) return;
-        el.compareAndUpdate(historyStorage.count === null ? {key: 'Loading', args: undefined} : {args: [historyStorage.count]});
+        el.compareAndUpdate(historyStorage.count === null ? {
+          key: 'Loading',
+          args: undefined
+        } : {args: [historyStorage.count]});
       }
 
       titleEl = el.element;
@@ -1071,7 +1098,11 @@ export default class ChatTopbar {
     if(!this.btnMute) return;
 
     const peerId = this.peerId;
-    const muted = await this.managers.appNotificationsManager.isPeerLocalMuted({peerId, respectType: false, threadId: this.chat.threadId});
+    const muted = await this.managers.appNotificationsManager.isPeerLocalMuted({
+      peerId,
+      respectType: false,
+      threadId: this.chat.threadId
+    });
     const isBroadcast = await this.managers.appPeersManager.isBroadcast(peerId);
     if(isBroadcast) {
       replaceButtonIcon(this.btnMute, muted ? 'unmute' : 'mute');

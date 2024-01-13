@@ -26,7 +26,24 @@ import {MOUNT_CLASS_TO} from '../../config/debug';
 import appNavigationController from '../../components/appNavigationController';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import I18n, {i18n, join, LangPackKey} from '../langPack';
-import {ChatFull, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult, WallPaper, Config, AttachMenuBot, Peer, InputChannel, HelpPeerColors} from '../../layer';
+import {
+  ChatFull,
+  ChatParticipants,
+  Message,
+  MessageAction,
+  MessageMedia,
+  SendMessageAction,
+  User,
+  Chat as MTChat,
+  UrlAuthResult,
+  WallPaper,
+  Config,
+  AttachMenuBot,
+  Peer,
+  InputChannel,
+  HelpPeerColors,
+  Updates, Update, InputGroupCall, GroupCall
+} from '../../layer';
 import PeerTitle from '../../components/peerTitle';
 import {PopupPeerCheckboxOptions} from '../../components/popups/peer';
 import blurActiveElement from '../../helpers/dom/blurActiveElement';
@@ -116,6 +133,8 @@ import safePlay from '../../helpers/dom/safePlay';
 import {RequestWebViewOptions} from './appAttachMenuBotsManager';
 import PopupWebApp from '../../components/popups/webApp';
 import {getPeerColorIndexByPeer, getPeerColorsByPeer, setPeerColors} from './utils/peers/getPeerColorById';
+import {nextRandomUint} from '../../helpers/random';
+import {MyUploadFile} from '../mtproto/apiFileManager';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -1415,8 +1434,256 @@ export class AppImManager extends EventListenerBase<{
     }
   }
 
+  public async getRTMPCredentials(peerId: number, revoke: boolean) {
+    return this.managers.apiManager.invokeApi('phone.getGroupCallStreamRtmpUrl', {
+      peer: await this.managers.appPeersManager.getInputPeerById(peerId),
+      revoke
+    });
+  }
+
+  public async createRTMPStream(peerId: PeerId, title: string) {
+    const minTimestamp = (Date.now() / 1000 | 0) + 100;
+    const updates = await this.managers.apiManager.invokeApi('phone.createGroupCall', {
+      peer: await this.managers.appPeersManager.getInputPeerById(peerId),
+      random_id: nextRandomUint(32),
+      title,
+      schedule_date: undefined,
+      rtmp_stream: true
+    });
+
+    console.log(updates);
+
+    this.managers.apiUpdatesManager.processUpdateMessage(updates);
+
+    console.log(updates);
+
+
+    const update = (updates as Updates.updates).updates.find((update) => update._ === 'updateGroupCall') as Update.updateGroupCall;
+    return update.call;
+  }
+
+  public async joinRTMPStream(peerId: PeerId) {
+    const chatId = peerId.toChatId();
+    console.log('started RTMP');
+    console.warn(chatId);
+    console.warn(peerId);
+    const hasRights = await this.managers.appChatsManager.hasRights(chatId, 'manage_call');
+
+    console.warn(hasRights);
+    const next = async() => {
+      const chatFull = await this.managers.appProfileManager.getChatFull(chatId);
+
+      console.warn(chatFull);
+      let call: GroupCall;
+      if(!chatFull.call) {
+        if(!hasRights) {
+          return;
+        }
+
+        call = await this.createRTMPStream(peerId, 'cool stream here bro');
+
+        console.log(call);
+      } else {
+        call = chatFull.call as any;
+      }
+
+      await this.getCallInfo({
+        _: 'inputGroupCall',
+        id: call.id,
+        access_hash: call.access_hash
+      });
+
+      const promise = await this.managers.apiManager.invokeApi('phone.joinGroupCall', {
+        call: {
+          _: 'inputGroupCall',
+          id: call.id,
+          access_hash: call.access_hash
+        },
+        join_as: await this.managers.appPeersManager.getInputPeerSelf(),
+        muted: true,
+        video_stopped: true,
+        params: {
+          _: 'dataJSON',
+          data: `{"ssrc":1}`
+        }
+      }).then(console.log);
+
+      await this.getCallInfo({
+        _: 'inputGroupCall',
+        id: call.id,
+        access_hash: call.access_hash
+      });
+
+      const interval = setInterval(() => {
+        this.getRTMPStreamInfo({
+          _: 'inputGroupCall',
+          id: call.id,
+          access_hash: call.access_hash
+        });
+      }, 500);
+
+      /* setTimeout(() => {
+        this.managers.apiManager.invokeApi('upload.getFile', {
+          precise: true,
+          location: {
+            _: 'inputGroupCallStream',
+            call: {
+              _: 'inputGroupCall',
+              id: call.id,
+              access_hash: call.access_hash
+            },
+            time_ms: 0,
+            scale: 0,
+            // video_channel: 1,
+            video_quality: 0
+          },
+          offset: 0,
+          limit: 128 * 1024
+        }).then(console.log);
+      });
+
+      setTimeout(() => {
+        this.managers.apiManager.invokeApi('upload.getFile', {
+          precise: true,
+          location: {
+            _: 'inputGroupCallStream',
+            call: {
+              _: 'inputGroupCall',
+              id: call.id,
+              access_hash: call.access_hash
+            },
+            time_ms: 0,
+            scale: 0,
+            // video_channel: 1,
+            video_quality: 0
+          },
+          offset: 0,
+          limit: 128 * 1024
+        }).then((data: any) => {
+          const player = document.getElementById('video-player-own') as HTMLVideoElement;
+          console.log(player);
+          console.log(data);
+
+          const blob = new Blob([data.bytes], {type: 'video/mp4'});
+          const url = window.URL.createObjectURL(blob);
+          console.log(blob);
+          console.log(url);
+          player.src = url;
+          player.play();
+          /*
+          const blob = new Blob([buffer], { type: 'video/mp4' });
+            // downloadBlob(blob, 'output.webm');
+            const url = window.URL.createObjectURL(blob);
+            audioPlayer.src = url;
+           * /
+        });
+      }, 1000); */
+
+      setTimeout(() => {
+        clearInterval(interval);
+        this.terminateCallInfo({
+          _: 'inputGroupCall',
+          id: call.id,
+          access_hash: call.access_hash
+        });
+      }, 30000);
+      // groupCallsController.joinGroupCall(chatId, call.id, true, false);
+
+      /* const minTimestamp = (Date.now() / 1000 | 0) - 10;
+      await this.managers.apiManager.invokeApi('upload.getFile', {
+        location: {
+          _: 'inputGroupCallStream',
+          call: {
+            _: 'inputGroupCall',
+            id: call.id,
+            access_hash: call.access_hash
+          },
+          time_ms: minTimestamp,
+          scale: 2
+        },
+        offset: 0,
+        limit: 128 * 1024
+      }).then(console.log); */
+
+      console.log('plz');
+    };
+
+    next();
+  };
+
+  /*
+  public getGroupCallInput(id: GroupCallId): InputGroupCall {
+    const groupCall = this.getGroupCall(id);
+    return {
+      _: 'inputGroupCall',
+      id: groupCall.id,
+      access_hash: groupCall.access_hash
+    };
+  }
+   */
+
+  public async getCallInfo(call: InputGroupCall) {
+    const promise = await this.managers.apiManager.invokeApi('phone.getGroupCall', {
+      call,
+      limit: 100
+    });
+    console.log(promise);
+    return promise;
+  }
+
+  public async editCallTitle(call: InputGroupCall, title: string) {
+    const promise = await this.managers.apiManager.invokeApi('phone.editGroupCallTitle', {call, title});
+    console.log(promise);
+    return promise;
+  }
+
+  public async terminateCallInfo(call: InputGroupCall) {
+    const promise = await this.managers.apiManager.invokeApi('phone.discardGroupCall', {call});
+    console.log(promise);
+    return promise;
+  }
+
+  public async getRTMPStreamInfo(call: InputGroupCall) {
+    const {channels: [{last_timestamp_ms: time_ms, scale, channel: video_channel}, ...other]} = await this.managers.apiManager.invokeApi('phone.getGroupCallStreamChannels', {call});
+
+    console.log(time_ms);
+    console.log(scale);
+    // console.log(other);
+
+    const data: any = await this.managers.apiManager.invokeApi('upload.getFile', {
+      // precise: true,
+      location: {
+        _: 'inputGroupCallStream',
+        call: {
+          _: 'inputGroupCall',
+          id: call.id,
+          access_hash: call.access_hash
+        },
+        time_ms,
+        scale,
+        video_channel,
+        video_quality: 2
+      },
+      offset: 0,
+      limit: 128 * 1024
+    }); // .then(console.log).catch(console.warn);
+    console.log(data);
+
+    const bytes: any = []
+    data.bytes.forEach((byte: any) => {
+      bytes.push(byte.toString(16))
+    })
+    const hex = bytes.join('').toUpperCase();
+    console.log(hex);
+
+    // this.managers.apiUpdatesManager.processUpdateMessage(updates);
+    // console.log(updates);
+  }
+
   public async joinGroupCall(peerId: PeerId, groupCallId?: GroupCallId) {
     const chatId = peerId.toChatId();
+    console.warn(chatId);
+    console.warn(groupCallId);
     const hasRights = this.managers.appChatsManager.hasRights(chatId, 'manage_call');
     const next = async() => {
       const chatFull = await this.managers.appProfileManager.getChatFull(chatId);

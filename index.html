@@ -41,6 +41,14 @@
     <link rel="canonical" href="{{origin}}">
 
     <link rel="manifest" id="manifest">
+    <style>
+      .video-player-own-class {
+        position: fixed;
+        top: 0;
+        left: 0;
+        border: 3px solid red;
+      }
+    </style>
   </head>
   <body class="animation-level-2">
     <!--[if IE]>
@@ -152,6 +160,9 @@
       </div>
     </div>
     <div id="stories-viewer"></div>
+    <div class="video-player-own-class">
+      <video id="video-player-own" width="320" height="240" muted controls></video>
+    </div>
     <script src="src/index.ts" type="module"></script>
   </body>
 </html>
