@@ -1434,6 +1434,11 @@ export class AppImManager extends EventListenerBase<{
     }
   }
 
+  public async getChatInfoEtc(peerId: number) {
+    const chatId = peerId.toChatId();
+    return this.managers.appProfileManager.getChatFull(chatId);
+  }
+
   public async getRTMPCredentials(peerId: number, revoke: boolean) {
     return this.managers.apiManager.invokeApi('phone.getGroupCallStreamRtmpUrl', {
       peer: await this.managers.appPeersManager.getInputPeerById(peerId),
@@ -1529,7 +1534,7 @@ export class AppImManager extends EventListenerBase<{
           id: call.id,
           access_hash: call.access_hash
         });
-      }, 300000);
+      }, 8000);
 
       console.log('plz');
     };

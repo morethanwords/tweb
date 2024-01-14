@@ -259,6 +259,7 @@ export default class TopbarCall {
 
     attachClickEvent(container, () => {
       if(this.instance instanceof GroupCallInstance) {
+        // TODO: add for stream too
         if(PopupElement.getPopups(PopupGroupCall).length) {
           return;
         }

@@ -22,7 +22,7 @@ export default class PopupRTMPStream extends PopupElement {
   private savedCredentials: { key: string, url: string } = null;
   private randomHiddenKey = [...Array(10 + Math.floor(Math.random() * 20))].map(() => '.').join('');
 
-  constructor(private peerId: number, private manager: AppImManager) {
+  constructor(private peerId: number, private manager: AppImManager, private callback?: () => void) {
     super('popup-rtmp-setup', {
       closable: true,
       withConfirm: 'CreateExternalStream.StartStreaming',
@@ -32,8 +32,6 @@ export default class PopupRTMPStream extends PopupElement {
 
     void this.construct();
   }
-
-  // this.chat.appImManager.joinGroupCall(this.peerId);
 
   private async construct() {
     const btnMenu = ButtonMenuToggle({
@@ -65,8 +63,8 @@ export default class PopupRTMPStream extends PopupElement {
   }
 
   private startRMPStream() {
-    console.log('started stream');
-    this.manager.joinRTMPStream(this.peerId).then(console.warn);
+    this.hideWithCallback(this.callback);
+    // this.manager.joinRTMPStream(this.peerId).then(console.warn);
   }
 
   private getCredentials(revoke = false) {

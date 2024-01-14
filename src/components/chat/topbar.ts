@@ -59,6 +59,7 @@ import PopupBoostsViaGifts from '../popups/boostsViaGifts';
 import AppStatisticsTab from '../sidebarRight/tabs/statistics';
 import {ChatType} from './chat';
 import PopupRTMPStream from '../popups/RTMPStream';
+import RTMPStreamPlayback from '../popups/RTMPStreamPlayback';
 
 type ButtonToVerify = { element?: HTMLElement, verify: () => boolean | Promise<boolean> };
 
@@ -346,7 +347,17 @@ export default class ChatTopbar {
   };
 
   private openObsStreamModal = async() => {
-    PopupElement.createPopup(PopupRTMPStream, this.chat.peerId, this.chat.appImManager).show();
+    /*PopupElement.createPopup(PopupRTMPStream, this.chat.peerId, this.chat.appImManager, () => {
+      console.warn('started stream');
+      this.createRTMPStreamAndJoin();
+      // this.chat.appImManager.joinRTMPStream(this.peerId).then(console.warn);
+    }).show();*/
+    this.createRTMPStreamAndJoin();
+  }
+
+  // join the stream in the popup?
+  private createRTMPStreamAndJoin() {
+    PopupElement.createPopup(RTMPStreamPlayback).show();
   }
 
   public constructUtils() {
@@ -419,12 +430,12 @@ export default class ChatTopbar {
       verify: this.verifyVideoChatButton.bind(this, 'group')
     }, {
       icon: 'videochat',
-      text: 'PeerInfo.Action.RTMPStream',
+      text: 'VoiceChat.RTMP.Title',
       onClick: this.openObsStreamModal,
       verify: this.verifyVideoChatButton.bind(this, 'broadcast')
     }, {
       icon: 'videochat',
-      text: 'PeerInfo.Action.RTMPStream',
+      text: 'VoiceChat.RTMP.Title',
       onClick: this.openObsStreamModal,
       verify: this.verifyVideoChatButton.bind(this, 'group')
     }, {
@@ -656,6 +667,10 @@ export default class ChatTopbar {
   }
 
   public constructPeerHelpers() {
+    setTimeout(() => {
+      this.chat.appImManager.getChatInfoEtc(this.peerId).then(console.warn);
+    }, 200);
+
     this.subtitle = document.createElement('div');
     this.subtitle.classList.add('info');
 
@@ -663,12 +678,36 @@ export default class ChatTopbar {
 
     this.btnJoin = Button('btn-primary btn-color-primary chat-join hide');
     this.btnCall = ButtonIcon('phone');
-    this.btnGroupCall = ButtonIcon('videochat');
+    // this.btnGroupCall = ButtonIcon('videochat');
+    this.btnGroupCall = ButtonMenuToggle({
+      listenerSetter: this.listenerSetter,
+      direction: 'bottom-left',
+      icon: 'videochat',
+      buttons: [{
+        text: 'PeerInfo.Action.LiveStream',
+        onClick: this.onJoinGroupCallClick,
+        verify: this.verifyVideoChatButton.bind(this, 'broadcast')
+      }, {
+        text: 'PeerInfo.Action.VoiceChat',
+        onClick: this.onJoinGroupCallClick,
+        verify: this.verifyVideoChatButton.bind(this, 'group')
+      }, {
+        text: 'VoiceChat.RTMP.Title',
+        onClick: this.openObsStreamModal,
+        verify: this.verifyVideoChatButton.bind(this, 'broadcast')
+      }, {
+        text: 'VoiceChat.RTMP.Title',
+        onClick: this.openObsStreamModal,
+        verify: this.verifyVideoChatButton.bind(this, 'group')
+      }]
+    }) as HTMLButtonElement;
+
+
     this.btnPinned = ButtonIcon('pinlist chat-pinlist');
     this.btnMute = ButtonIcon('mute');
 
     this.attachClickEvent(this.btnCall, this.onCallClick.bind(this, 'voice'));
-    this.attachClickEvent(this.btnGroupCall, this.onJoinGroupCallClick);
+    // this.attachClickEvent(this.btnGroupCall, this.onJoinGroupCallClick);
 
     this.attachClickEvent(this.btnPinned, () => {
       this.openPinned(true);
