@@ -75,7 +75,7 @@ export default class RTMPStreamPlayback extends PopupElement {
   private btnScreen: HTMLDivElement;
 
   constructor() {
-    super('popup-group-call', {
+    super('popup-group-call popup-group-stream', {
       body: true,
       withoutOverlay: true,
       closable: true,

@@ -219,6 +219,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
   onForwardClick = () => {
     const target = this.target;
+    console.warn(target);
     if(target.mid) {
       // appSidebarRight.forwardTab.open([target.mid]);
       PopupElement.createPopup(PopupForward, {
