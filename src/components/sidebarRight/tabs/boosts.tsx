@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {Boost, PremiumBoostsStatus} from '../../../layer';
-import {LangPackKey, i18n, join, joinElementsWith} from '../../../lib/langPack';
+import {Boost, PremiumBoostsStatus, PrepaidGiveaway} from '../../../layer';
+import {LangPackKey, i18n, joinElementsWith} from '../../../lib/langPack';
 import Section from '../../section';
 import {SliderSuperTabEventable} from '../../sliderTab';
 import {Accessor, createMemo, createRoot, createSignal, For} from 'solid-js';
@@ -25,13 +25,13 @@ import classNames from '../../../helpers/string/classNames';
 import {formatFullSentTime} from '../../../helpers/date';
 import wrapPeerTitle from '../../wrappers/peerTitle';
 import Icon from '../../icon';
-import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
 import toggleDisability from '../../../helpers/dom/toggleDisability';
 import findUpClassName from '../../../helpers/dom/findUpClassName';
-import appImManager from '../../../lib/appManagers/appImManager';
 import rootScope from '../../../lib/rootScope';
 import PopupGiftLink from '../../popups/giftLink';
 import {toastNew} from '../../toast';
+import ListenerSetter from '../../../helpers/listenerSetter';
+import indexOfAndSplice from '../../../helpers/array/indexOfAndSplice';
 
 const getColorByMonths = (months: number) => {
   return months === 12 ? 'red' : (months === 3 ? 'green' : 'blue');
@@ -42,9 +42,36 @@ const getBoostMonths = (from: number, to: number) => {
   return Math.round(days / 30);
 };
 
+export const CPrepaidGiveaway = (props: {
+  giveaway: PrepaidGiveaway,
+  appConfig: MTAppConfig,
+  clickable?: true | (() => void),
+  listenerSetter?: ListenerSetter
+}) => {
+  const {quantity, months} = props.giveaway;
+  const row = new Row({
+    titleLangKey: 'BoostingGiveawayMsgInfoPlural1',
+    titleLangArgs: [quantity],
+    subtitleLangKey: 'Giveaway.Prepaid.Subtitle',
+    subtitleLangArgs: [quantity, i18n('Giveaway.Prepaid.Period', [months])],
+    clickable: props.clickable,
+    listenerSetter: props.listenerSetter,
+    rightContent: BoostsBadge({boosts: (props.appConfig.giveaway_boosts_per_premium || 1) * quantity}) as HTMLElement
+  });
+
+  row.title.classList.add('text-bold');
+  const media = row.createMedia('abitbigger');
+  const avatar = AvatarNew({size: 42});
+  avatar.set({icon: 'gift_premium', color: getColorByMonths(months)});
+  media.append(avatar.node);
+
+  return row.container;
+};
+
 export default class AppBoostsTab extends SliderSuperTabEventable {
   private peerId: PeerId;
   private targets: Map<HTMLElement, Boost>;
+  private canCreateGiveaway: boolean;
 
   private _construct(
     boostsStatus: PremiumBoostsStatus,
@@ -138,6 +165,7 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
     };
 
     const [tab, setTab] = createSignal(0);
+    const [prepaidGiveaways, setPrepaidGiveaways] = createSignal(boostsStatus.prepaid_giveaways?.slice() || [], {equals: false});
     const onlyGiftedBoosts = createMemo(() => boostsStatus.gift_boosts === boostsStatus.boosts);
     const showGifts = createMemo(() => !onlyGiftedBoosts() && !!giftsBoostsList().count);
 
@@ -163,27 +191,29 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
             value: makeAbsStats(boostsStatus.next_level_boosts - boostsStatus.boosts)
           }]} />
         </Section>
-        {boostsStatus.prepaid_giveaways?.length && (
+        {this.canCreateGiveaway && prepaidGiveaways().length && (
           <Section name="Giveaway.Prepaid" nameArgs={[1]} caption="BoostingSelectPaidGiveaway">
-            <For each={boostsStatus.prepaid_giveaways}>{(prepaidGiveaway) => {
-              const {quantity, months} = prepaidGiveaway;
-              const row = new Row({
-                titleLangKey: 'BoostingGiveawayMsgInfoPlural1',
-                titleLangArgs: [quantity],
-                subtitleLangKey: 'Giveaway.Prepaid.Subtitle',
-                subtitleLangArgs: [quantity, i18n('Giveaway.Prepaid.Period', [months])],
-                clickable: () => {},
-                listenerSetter: this.listenerSetter,
-                rightContent: BoostsBadge({boosts: (appConfig.giveaway_boosts_per_premium || 1) * quantity}) as HTMLElement
-              });
-
-              row.title.classList.add('text-bold');
-              const media = row.createMedia('abitbigger');
-              const avatar = AvatarNew({size: 42});
-              avatar.set({icon: 'gift_premium', color: getColorByMonths(months)});
-              media.append(avatar.node);
-
-              return row.container;
+            <For each={prepaidGiveaways()}>{(prepaidGiveaway) => {
+              return (
+                <CPrepaidGiveaway
+                  giveaway={prepaidGiveaway}
+                  appConfig={appConfig}
+                  clickable={() => {
+                    PopupElement.createPopup(
+                      PopupBoostsViaGifts,
+                      this.peerId,
+                      prepaidGiveaway,
+                      () => {
+                        setPrepaidGiveaways((giveaways) => {
+                          indexOfAndSplice(giveaways, prepaidGiveaway);
+                          return giveaways;
+                        });
+                      }
+                    );
+                  }}
+                  listenerSetter={this.listenerSetter}
+                />
+              );
             }}</For>
           </Section>
         )}
@@ -234,9 +264,11 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
         <Section name="LinkForBoosting" caption="BoostingShareThisLink">
           {inviteLink.container}
         </Section>
-        <Section caption="BoostingGetMoreBoosts">
-          {boostsViaGiftsButton}
-        </Section>
+        {this.canCreateGiveaway && (
+          <Section caption="BoostingGetMoreBoosts">
+            {boostsViaGiftsButton}
+          </Section>
+        )}
       </>
     );
 
@@ -376,12 +408,15 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
       return [createLoader(false), createLoader(true)]
     });
 
-    const [boostsStatus, appConfig, _, __] = await Promise.all([
+    const [boostsStatus, appConfig, _, __, canCreateGiveaway] = await Promise.all([
       this.managers.appBoostsManager.getBoostsStatus(peerId),
       this.managers.apiManager.getAppConfig(),
       boostsList().loadMore(),
-      giftsBoostsList().loadMore()
+      giftsBoostsList().loadMore(),
+      this.managers.appChatsManager.hasRights(peerId.toChatId(), 'create_giveaway')
     ]);
+
+    this.canCreateGiveaway = canCreateGiveaway;
 
     const div = document.createElement('div');
     this.scrollable.append(div);

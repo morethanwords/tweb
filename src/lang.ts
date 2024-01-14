@@ -1770,6 +1770,9 @@ const lang = {
   'BoostingRecipientWillBeSelected': 'The recipient will be selected when the giveaway ends.',
   'BoostingLinkNotActivated': 'This link hasn\'t been activated yet.',
   'BoostingOnlyRecipientCode': 'Only the recipient can see the link.',
+  'BoostingStartGiveawayConfirmTitle': 'Start Giveaway',
+  'BoostingStartGiveawayConfirmText': 'Are you sure you want to start the giveaway now?',
+  'Start': 'Start',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

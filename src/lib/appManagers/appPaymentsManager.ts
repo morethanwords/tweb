@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {HelpPremiumPromo, InputInvoice, InputPaymentCredentials, PaymentRequestedInfo, PaymentsPaymentForm} from '../../layer';
+import {HelpPremiumPromo, InputInvoice, InputPaymentCredentials, InputStorePaymentPurpose, PaymentRequestedInfo, PaymentsPaymentForm} from '../../layer';
 import {AppManager} from './manager';
 import getServerMessageId from './utils/messageId/getServerMessageId';
 
@@ -166,6 +166,20 @@ export default class AppPaymentsManager extends AppManager {
       params: {
         peer: this.appPeersManager.getInputPeerById(peerId),
         msg_id: getServerMessageId(mid)
+      }
+    });
+  }
+
+  public launchPrepaidGiveaway(peerId: PeerId, id: Long, purpose: InputStorePaymentPurpose) {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'payments.launchPrepaidGiveaway',
+      params: {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        giveaway_id: id,
+        purpose
+      },
+      processResult: (updates) => {
+        this.apiUpdatesManager.processUpdateMessage(updates);
       }
     });
   }
