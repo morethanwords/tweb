@@ -506,14 +506,7 @@ export default class ChatTopbar {
         this.appSidebarRight.createTab(AppBoostsTab).open(this.peerId);
         this.appSidebarRight.toggleSidebar(true);
       },
-      verify: async() => true || await this.managers.appPeersManager.isBroadcast(this.peerId) && this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'create_giveaway')
-    }, {
-      icon: 'addboost',
-      text: 'BoostsViaGifts.Title',
-      onClick: () => {
-        PopupElement.createPopup(PopupBoostsViaGifts, this.peerId);
-      },
-      verify: async() => await this.managers.appPeersManager.isBroadcast(this.peerId) && this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'create_giveaway')
+      verify: async() => this.managers.appProfileManager.canViewStatistics(this.peerId)
     }, {
       icon: 'bots',
       text: 'Settings',
