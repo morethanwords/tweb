@@ -284,7 +284,7 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
     const boosts = 1 * (boost.multiplier || 1);
     const months = getBoostMonths(boost.date, boost.expires);
     let peerId = boost.user_id?.toPeerId(false);
-    if(peerId === rootScope.myId) {
+    if(peerId === rootScope.myId && boost.pFlags.unclaimed) {
       peerId = undefined;
     }
 
