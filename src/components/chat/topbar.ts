@@ -506,7 +506,7 @@ export default class ChatTopbar {
         this.appSidebarRight.createTab(AppBoostsTab).open(this.peerId);
         this.appSidebarRight.toggleSidebar(true);
       },
-      verify: async() => this.managers.appProfileManager.canViewStatistics(this.peerId)
+      verify: () => this.chat.isBroadcast && this.managers.appProfileManager.canViewStatistics(this.peerId)
     }, {
       icon: 'bots',
       text: 'Settings',
