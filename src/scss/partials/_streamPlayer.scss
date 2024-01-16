@@ -1,0 +1,42 @@
+.stream-player::-webkit-media-controls-start-playback-button {
+  display: none;
+}
+
+.stream-player::-webkit-media-controls {
+  display: none;
+}
+
+.stream-player::-webkit-media-controls-panel {
+
+  display: none!important;
+
+  -webkit-appearance: none;
+
+}
+
+.stream-player::--webkit-media-controls-play-button {
+
+  display: none!important;
+
+  -webkit-appearance: none;
+
+}
+
+.stream-player::-webkit-media-controls-start-playback-button {
+
+  display: none!important;
+
+  -webkit-appearance: none;
+
+}
+
+/* Could Use thise as well for Individual Controls */
+.stream-player::-webkit-media-controls-play-button {}
+
+.stream-player::-webkit-media-controls-volume-slider {}
+
+.stream-player::-webkit-media-controls-mute-button {}
+
+.stream-player::-webkit-media-controls-timeline {}
+
+.stream-player::-webkit-media-controls-current-time-display {}

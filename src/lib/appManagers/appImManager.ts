@@ -135,6 +135,11 @@ import PopupWebApp from '../../components/popups/webApp';
 import {getPeerColorIndexByPeer, getPeerColorsByPeer, setPeerColors} from './utils/peers/getPeerColorById';
 import {nextRandomUint} from '../../helpers/random';
 import {MyUploadFile} from '../mtproto/apiFileManager';
+import audioCodec from '../../mock/webrtc/audioCodec';
+import videoCodec from '../../mock/webrtc/videoCodec';
+import filterServerCodecs from '../calls/helpers/filterServerCodecs';
+import audioMimeTypeSupport from '../../environment/audioMimeTypeSupport';
+import videoMimeTypesSupport from '../../environment/videoMimeTypesSupport';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -1467,7 +1472,7 @@ export class AppImManager extends EventListenerBase<{
     return update.call;
   }
 
-  public async joinRTMPStream(peerId: PeerId) {
+  public async joinRTMPStream(peerId: PeerId, video?: HTMLVideoElement) {
     const chatId = peerId.toChatId();
     console.log('started RTMP');
     console.warn(chatId);
@@ -1519,28 +1524,190 @@ export class AppImManager extends EventListenerBase<{
         access_hash: call.access_hash
       });
 
-      const interval = setInterval(() => {
+      const videoSource = new MediaSource();
+      const player = document.getElementById('video-player-own5') as HTMLVideoElement;
+      player.src = window.URL.createObjectURL(videoSource);
+
+      videoSource.addEventListener('sourceended', (...args) => console.log('source ended', ...args));
+      videoSource.addEventListener('sourceclose', (...args) => console.log('source closed', ...args));
+
+      videoSource.addEventListener('sourceopen', (lol) => {
+        console.log(lol);
+        const codec = 'video/mp4; codecs="avc1.64001f"; profiles="isom,iso2,avc1,mp41"';
+        // const codec = 'video/mp4; codecs="avc1.64001f"';
+        // const codec = 'audio/mp4; codecs="opus';
+        // const codec = 'video/mp4; codecs="avc1.64001f,Opus"';
+        if(MediaSource.isTypeSupported(codec)) {
+          console.log('okaybc coook');
+        } else {
+          console.log('BAD');
+        }
+        const buffer = videoSource.addSourceBuffer(codec);
+        buffer.mode = 'sequence';
+        buffer.timestampOffset = 0.0;
+        buffer.appendWindowStart = 0.0;
+        buffer.appendWindowEnd = 1000.0;
+        console.warn('MEDIA SOURCE CREATED AND INITIALIZED');
+        console.warn(videoSource);
+        console.warn(buffer);
+
         this.getRTMPStreamInfo({
           _: 'inputGroupCall',
           id: call.id,
           access_hash: call.access_hash
-        });
-      }, 1500);
+        }, player, buffer, videoSource);
 
-      setTimeout(() => {
-        clearInterval(interval);
-        this.terminateCallInfo({
-          _: 'inputGroupCall',
-          id: call.id,
-          access_hash: call.access_hash
-        });
-      }, 8000);
+        const interval = setInterval(() => {
+
+        }, 1500);
+
+        setTimeout(() => {
+          clearInterval(interval);
+          this.terminateCallInfo({
+            _: 'inputGroupCall',
+            id: call.id,
+            access_hash: call.access_hash
+          });
+        }, 150000);
+      });
 
       console.log('plz');
     };
 
     next();
   };
+
+  public async getRTMPStreamInfo(call: InputGroupCall, video?: HTMLVideoElement, mediaSource?: SourceBuffer, src?: MediaSource) {
+    const {channels: [{last_timestamp_ms: time_ms, scale, channel: video_channel}, ...other]} = await this.managers.apiManager.invokeApi('phone.getGroupCallStreamChannels', {call});
+
+    console.log(time_ms);
+    console.log(scale);
+    // console.log(other);
+
+    const data: any = await this.managers.apiManager.invokeApi('upload.getFile', {
+      precise: true,
+      location: {
+        _: 'inputGroupCallStream',
+        call: {
+          _: 'inputGroupCall',
+          id: call.id,
+          access_hash: call.access_hash
+        },
+        time_ms,
+        scale,
+        video_channel,
+        video_quality: 2
+      },
+      offset: 0,
+      limit: 512 * 1024
+    }); // .then(console.log).catch(console.warn);
+
+    console.log('????');
+    console.log(data);
+
+    const test = data.bytes; // .slice(32) as Uint8Array;
+    // console.log(this.bin2String(data.bytes.slice(0, 2048)));
+
+    const mp4boxfile = MP4Box.createFile();
+    console.log(mp4boxfile);
+
+    mp4boxfile.onReady = function (info: any) {
+      console.log(info);
+      console.log('Duration: ' + parseInt(`${info.duration / 1000}`) + 's');
+      console.log('Brands: ' + info.brands.join(','));
+      console.log('Video Metadata:  ');
+      const videoTrack = info.tracks[0];
+      console.log('Video Codec: "' + videoTrack?.codec + '"; nb_samples: ' + videoTrack.nb_samples);
+      console.log(videoTrack.name + ': size: ' + videoTrack.size + '; bitrate: ' + videoTrack.bitrate);
+      console.log('Audio Metadata');
+      const audioTrack = info.tracks[1];
+      console.log('Audio Codec: "' + audioTrack?.codec + '"; nb_samples: ' + audioTrack.nb_samples);
+      console.log(audioTrack.name + ': size: ' + audioTrack.size + '; bitrate: ' + audioTrack.bitrate);
+    }
+
+    const bf = test.buffer;
+    bf['fileStart'] = 0;
+    mp4boxfile.appendBuffer(bf);
+    // const blob = new Blob([test], {type:'video/mp4'});
+
+    /* blob.
+    const url = window.URL.createObjectURL(blob);
+    video.src = url;
+    video.play().then(console.log).catch(console.log); */
+
+    /*const player = dashjs.MediaPlayer().create();
+    console.warn(player);
+    player.initialize();
+    player.attachView(video); /* tell the player which videoElement it should use * /
+    player.attachSource(url);
+
+    setTimeout(() => {
+      video.play().then(console.log).catch(console.log);
+    }, 1500);
+
+    console.warn(player);
+
+    return;*/
+    //
+
+    /* this.sendToPlayer(test, 'video-player-own1', 'video/mp4');
+    this.sendToPlayer(test, 'video-player-own2', 'video/ogg');
+    this.sendToPlayer(test, 'video-player-own3', 'video/mpeg');
+    this.sendToPlayer(test, 'video-player-own4', 'video/webm'); */
+
+    const player = document.getElementById('video-player-own3') as HTMLVideoElement;
+
+    const blob = new Blob([data.bytes.slice(32)], {type:'video/mp4; codecs="avc1.64001f"; profiles="isom,iso2,avc1,mp41"'});
+    const url = window.URL.createObjectURL(blob);
+    player.src = url;
+    player.play().then(console.log).catch(console.log);
+
+    mediaSource.addEventListener('error', (arg1) => {
+      console.log('error', arg1);
+    });
+    mediaSource.addEventListener('abort', (...args) => console.log('abort', ...args));
+    mediaSource.addEventListener('update', (...args) => console.log('update', ...args));
+    mediaSource.addEventListener('updatestart', (...args) => console.log('start', ...args));
+    // mediaSource.addEventListener('updateend', (...args) => console.log('end', ...args));
+    mediaSource.addEventListener('updateend', function() {
+      console.log('end etc');
+      console.log(mediaSource.updating);
+      console.log(src.readyState);
+
+      if(!mediaSource.updating && src.readyState === 'open') {
+        // src.endOfStream();
+        setTimeout(() => {
+          console.warn(src);
+          console.log(src.sourceBuffers)
+          // src.setLiveSeekableRange(0, 1);
+          // src.endOfStream();
+          console.log(src.activeSourceBuffers);
+          console.log('video started play');
+
+          /* const blob = new Blob([test], {type:'video/mp4'});
+          const url = window.URL.createObjectURL(blob);
+          video.src = url; */
+          setTimeout(() => {
+            console.log('play video ok');
+            // video.load();
+            video.play().then(console.log).catch(console.log);
+          }, 1000);
+        }, 1000);
+      }
+    });
+
+    console.log('src:');
+    src.sourceBuffers.length && console.log(src.sourceBuffers[0]);
+    console.log(src.sourceBuffers);
+
+    mediaSource.appendBuffer(test.buffer);
+    try {
+      // src.endOfStream();
+      // mediaSource.changeType()
+    } catch(e) {
+      console.warn('WEEER', e);
+    }
+  }
 
   public async getCallInfo(call: InputGroupCall) {
     const promise = await this.managers.apiManager.invokeApi('phone.getGroupCall', {
@@ -1563,51 +1730,8 @@ export class AppImManager extends EventListenerBase<{
     return promise;
   }
 
-  public async getRTMPStreamInfo(call: InputGroupCall) {
-    const {channels: [{last_timestamp_ms: time_ms, scale, channel: video_channel}, ...other]} = await this.managers.apiManager.invokeApi('phone.getGroupCallStreamChannels', {call});
-
-    console.log(time_ms);
-    console.log(scale);
-    // console.log(other);
-
-    const data: any = await this.managers.apiManager.invokeApi('upload.getFile', {
-      // precise: true,
-      location: {
-        _: 'inputGroupCallStream',
-        call: {
-          _: 'inputGroupCall',
-          id: call.id,
-          access_hash: call.access_hash
-        },
-        time_ms,
-        scale,
-        video_channel,
-        video_quality: 2
-      },
-      offset: 0,
-      limit: 128 * 1024
-    }); // .then(console.log).catch(console.warn);
-    // console.log(data);
-    // console.log(data.bytes.slice(0, 32));
-    // console.log(data.bytes.slice(32));
-    // console.warn(this.bin2String(data.bytes.slice(0, 36)));
-    // console.warn(this.bin2String(data.bytes.slice(36, 128)));
-    /* for(let i = 0; i < 40; i++) {
-      console.log(data.bytes.slice(32));
-      console.warn(this.bin2String(data.bytes.slice(i, 128)));
-    } */
-    const test = data.bytes.slice(32);
-
-    this.sendToPlayer(test, 'video-player-own1', 'video/mp4');
-    this.sendToPlayer(test, 'video-player-own2', 'video/ogg');
-    this.sendToPlayer(test, 'video-player-own3', 'video/mpeg');
-    this.sendToPlayer(test, 'video-player-own4', 'video/webm');
-
-    const player = document.getElementById('video-player-own5') as HTMLVideoElement;
-    const blob = new Blob([test]);
-    const url = window.URL.createObjectURL(blob);
-    player.src = url;
-    player.play().then(console.log).catch(console.log);
+  private bin2String(array: any) {
+    return String.fromCharCode.apply(String, array);
   }
 
   private sendToPlayer(bytes: any, id: string, type: string) {

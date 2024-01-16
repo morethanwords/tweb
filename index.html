@@ -49,8 +49,14 @@
         top: 0;
         left: 0;
         border: 3px solid red;
+        /* opacity: 0.4; */
+        /* visibility: hidden; */
+        scale: 0.3;
       }
     </style>
+
+    <script src="http://s1.vued.vanthink.cn/d59f937c159f/jquery-2.2.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mp4box@0.3.19/dist/mp4box.all.js"></script>
   </head>
   <body class="animation-level-2">
     <!--[if IE]>
@@ -167,8 +173,9 @@
       <video id="video-player-own2" width="220" height="140" controls></video>
       <video id="video-player-own3" width="220" height="140" controls></video>
       <video id="video-player-own4" width="220" height="140" controls></video>
-      <video id="video-player-own5" width="220" height="140" controls></video>
+      <video id="video-player-own5" width="220" height="140" controls="true"></video>
     </div>
+    <script src="https://cdn.dashjs.org/latest/dash.all.min.js"></script>
     <script src="src/index.ts" type="module"></script>
   </body>
 </html>

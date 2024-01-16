@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {Chat as MTChat, ChatFull, Photo, RequestPeerType} from '../layer';
+import {Chat as MTChat, ChatFull, Message, Photo, RequestPeerType} from '../layer';
 import rootScope from '../lib/rootScope';
 import AppMediaViewerBase from './appMediaViewerBase';
 import animationIntersector from './animationIntersector';
 import {NULL_PEER_ID} from '../lib/mtproto/mtproto_config';
 import SwipeHandler, {ZoomDetails} from './swipeHandler';
-import {IS_MOBILE_SAFARI} from '../environment/userAgent';
+import {IS_MOBILE, IS_MOBILE_SAFARI, IS_SAFARI} from '../environment/userAgent';
 import {getMiddleware, MiddlewareHelper} from '../helpers/middleware';
 import {logger} from '../lib/logger';
 import LazyLoadQueueBase from './lazyLoadQueueBase';
@@ -39,7 +39,7 @@ import {ButtonMenuItemOptions} from './buttonMenu';
 import {avatarNew, findUpAvatar} from './avatarNew';
 import wrapPeerTitle from './wrappers/peerTitle';
 import getVisibleRect from '../helpers/dom/getVisibleRect';
-import {AppMediaPlaybackController} from './appMediaPlaybackController';
+import appMediaPlaybackController, {AppMediaPlaybackController} from './appMediaPlaybackController';
 import VideoPlayer from '../lib/mediaPlayer';
 import findUpAsChild from '../helpers/dom/findUpAsChild';
 import {replaceButtonIcon} from './button';
@@ -60,6 +60,12 @@ import getPeerActiveUsernames from '../lib/appManagers/utils/peers/getPeerActive
 import hasRights from '../lib/appManagers/utils/chats/hasRights';
 import {ChatRights} from '../lib/appManagers/appChatsManager';
 import {randomLong} from '../helpers/random';
+import setCurrentTime from '../helpers/dom/setCurrentTime';
+import appDownloadManager from '../lib/appManagers/appDownloadManager';
+import handleVideoLeak from '../helpers/dom/handleVideoLeak';
+import onMediaLoad from '../helpers/onMediaLoad';
+import {AppImManager} from '../lib/appManagers/appImManager';
+import StreamPlayer from './streamPlayer';
 
 
 /*
@@ -124,7 +130,7 @@ class AppMediaViewerStreamBase<
 
   protected highlightSwitchersTimeout: number;
 
-  protected videoPlayer: VideoPlayer;
+  protected videoPlayer: StreamPlayer;
 
   protected zoomElements: {
     container: HTMLElement,
@@ -780,7 +786,7 @@ class AppMediaViewerStreamBase<
     }
   };
 
-  protected async setMoverToTarget(target: HTMLElement, closing = false, fromRight = 0) {
+  protected async setMoverToTarget(target: HTMLElement = null, closing = false, fromRight = 0) {
     this.dispatchEvent('setMoverBefore');
 
     const mover = this.content.mover;
@@ -810,23 +816,6 @@ class AppMediaViewerStreamBase<
     let realParent: HTMLElement;
 
     let rect: DOMRect;
-    if(target) {
-      if(findUpAvatar(target) || target.classList.contains('grid-item')/*  || target.classList.contains('document-ico') */) {
-        realParent = target;
-        rect = target.getBoundingClientRect();
-      } else if(target instanceof SVGImageElement || target.parentElement instanceof SVGForeignObjectElement) {
-        realParent = findUpClassName(target, 'attachment');
-        rect = realParent.getBoundingClientRect();
-      } else if(target.classList.contains('profile-avatars-avatar')) {
-        realParent = findUpClassName(target, 'profile-avatars-container');
-        rect = realParent.getBoundingClientRect();
-
-        // * if not active avatar
-        if(closing && target.getBoundingClientRect().left !== rect.left) {
-          target = realParent = rect = undefined;
-        }
-      }
-    }
 
     if(!target) {
       target = this.content.media;
@@ -911,8 +900,13 @@ class AppMediaViewerStreamBase<
       aspecter.style.cssText = `width: ${rect.width}px; height: ${rect.height}px; transform: scale3d(${containerRect.width / rect.width}, ${containerRect.height / rect.height}, 1);`;
     }
 
-    mover.style.width = containerRect.width + 'px';
-    mover.style.height = containerRect.height + 'px';
+    console.warn('23424');
+    console.warn(containerRect);
+
+    mover.style.width = '500px';
+    mover.style.height = '100%';
+    // mover.style.width = containerRect.width + 'px';
+    // mover.style.height = containerRect.height + 'px';
 
     // const scaleX = rect.width / (containerRect.width * zoomValue);
     // const scaleY = rect.height / (containerRect.height * zoomValue);
@@ -1011,58 +1005,6 @@ class AppMediaViewerStreamBase<
       } else if(target instanceof HTMLVideoElement) {
         mediaElement = createVideo({middleware: mover.middlewareHelper.get()});
         mediaElement.src = target.src;
-      } else if(target instanceof SVGSVGElement) {
-        const clipId = target.dataset.clipId;
-        const newClipId = clipId + '-mv';
-
-        const {width, height} = containerRect;
-
-        const newSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        newSvg.setAttributeNS(null, 'width', '' + width);
-        newSvg.setAttributeNS(null, 'height', '' + height);
-
-        // нижние два свойства для масштабирования
-        newSvg.setAttributeNS(null, 'viewBox', `0 0 ${width} ${height}`);
-        newSvg.setAttributeNS(null, 'preserveAspectRatio', 'xMidYMid meet');
-
-        newSvg.insertAdjacentHTML('beforeend', target.firstElementChild.outerHTML.replace(clipId, newClipId));
-        newSvg.insertAdjacentHTML('beforeend', target.lastElementChild.outerHTML.replace(clipId, newClipId));
-
-        // теперь надо выставить новую позицию для хвостика
-        const defs = newSvg.firstElementChild;
-        const use = defs.firstElementChild.firstElementChild as SVGUseElement;
-        if(use instanceof SVGUseElement) {
-          let transform = use.getAttributeNS(null, 'transform');
-          transform = transform.replace(/translate\((.+?), (.+?)\) scale\((.+?), (.+?)\)/, (match, x, y, sX, sY) => {
-            x = +x;
-            if(x !== 2) {
-              x = width - (2 / scaleX);
-            } else {
-              x = 2 / scaleX;
-            }
-
-            y = height;
-
-            return `translate(${x}, ${y}) scale(${+sX / scaleX}, ${+sY / scaleY})`;
-          });
-          use.setAttributeNS(null, 'transform', transform);
-
-          // и новый RECT
-          path = defs.firstElementChild.lastElementChild as SVGPathElement;
-
-          // код ниже нужен только чтобы скрыть моргание до момента как сработает таймаут
-          let d: string;
-          const br: [number, number, number, number] = borderRadius.split(' ').map((v) => parseInt(v)) as any;
-          if(isOut) d = generatePathData(0, 0, width - 9 / scaleX, height, ...br);
-          else d = generatePathData(9 / scaleX, 0, width - 9 / scaleX, height, ...br);
-          path.setAttributeNS(null, 'd', d);
-        }
-
-        const foreignObject = newSvg.lastElementChild;
-        foreignObject.setAttributeNS(null, 'width', '' + containerRect.width);
-        foreignObject.setAttributeNS(null, 'height', '' + containerRect.height);
-
-        mover.prepend(newSvg);
       } else if(target instanceof HTMLCanvasElement) {
         mediaElement = target;
       }
@@ -1411,7 +1353,132 @@ class AppMediaViewerStreamBase<
     });
   }
 
-  protected async _openMedia({fromId}: {fromId: PeerId | string}) {
+  protected async _openMedia2({fromId}: {fromId: PeerId | string}) {
+    const setAuthorPromise = this.setAuthorInfo(fromId);
+    console.warn('show');
+
+    if(this.isFirstOpen) {
+      // this.targetContainer = targetContainer;
+      // this.needLoadMore = needLoadMore;
+      this.isFirstOpen = false;
+      (window as any).appMediaViewer = this;
+      // this.loadMore = loadMore;
+
+      /* if(appSidebarRight.historyTabIDs.slice(-1)[0] === AppSidebarRight.SLIDERITEMSIDS.forward) {
+        appSidebarRight.forwardTab.closeBtn.click();
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      } */
+    }
+
+
+    const container = this.content.media;
+    // const useContainerAsTarget = !target || target === container;
+    // if(useContainerAsTarget) target = container;
+
+    const tempId = ++this.tempId;
+
+    if(container.firstElementChild) {
+      container.replaceChildren();
+    }
+
+    // ok set
+    const fromRight = 0;
+    const wasActive = fromRight !== 0;
+    if(wasActive) {
+      this.moveTheMover(this.content.mover, fromRight === 1);
+      this.setNewMover();
+    } else {
+      this.navigationItem = {
+        type: 'media',
+        onPop: (canAnimate) => {
+          if(this.setMoverAnimationPromise) {
+            return false;
+          }
+
+          if(!canAnimate && IS_MOBILE_SAFARI) {
+            this.wholeDiv.remove();
+          }
+
+          this.close();
+        }
+      };
+
+      appNavigationController.pushItem(this.navigationItem);
+
+      this.toggleOverlay(true);
+      this.setGlobalListeners();
+      await setAuthorPromise;
+
+      if(!this.wholeDiv.parentElement) {
+        this.pageEl.insertBefore(this.wholeDiv, document.getElementById('main-columns'));
+        void this.wholeDiv.offsetLeft; // reflow
+      }
+
+      this.toggleWholeActive(true);
+    }
+
+    // //////this.log('wasActive:', wasActive);
+
+    const mover = this.content.mover;
+
+    const maxWidth = windowSize.width;
+    // const maxWidth = this.pageEl.scrollWidth;
+    // TODO: const maxHeight = mediaSizes.isMobile ? appPhotosManager.windowH : appPhotosManager.windowH - 100;
+    let padding = 0;
+    const windowH = windowSize.height;
+    if(windowH < 1000000 && !mediaSizes.isMobile) {
+      padding = 120;
+    }
+    const maxHeight = windowH - 120 - padding;
+    /* const size = setAttachmentSize({
+      photo: media,
+      element: container,
+      boxWidth: maxWidth,
+      boxHeight: maxHeight,
+      noZoom: mediaSizes.isMobile ? false : true,
+      pushDocumentSize: !!(isDocument && media.w && media.h)
+    }).photoSize;
+    if(useContainerAsTarget) {
+      const cacheContext = await this.managers.thumbsStorage.getCacheContext(media, size.type);
+      let img: HTMLImageElement | HTMLCanvasElement;
+      if(cacheContext.downloaded) {
+        img = new Image();
+        img.src = cacheContext.url;
+      } else {
+        const gotThumb = getMediaThumbIfNeeded({
+          photo: media,
+          cacheContext,
+          useBlur: true,
+          onlyStripped: true
+        });
+        if(gotThumb) {
+          thumbPromise = gotThumb.loadPromise;
+          img = gotThumb.image;
+        }
+      }
+
+      if(img) {
+        img.classList.add('thumbnail');
+        container.append(img);
+      }
+    }
+
+    // need after setAttachmentSize
+    /* if(useContainerAsTarget) {
+      target = target.querySelector('img, video') || target;
+    } */
+
+    /* const supportsStreaming: boolean = !!(isDocument && media.supportsStreaming);
+    const preloader = supportsStreaming ? this.preloaderStreamable : this.preloader;
+
+    const getCacheContext = (type = size?.type) => {
+      return this.managers.thumbsStorage.getCacheContext(media, type);
+    };
+    */
+    let setMoverPromise: Promise<void>;
+  }
+
+  protected async _openMedia({fromId, manager}: {fromId: PeerId | string, manager: AppImManager}) {
     if(this.setMoverPromise) return this.setMoverPromise;
 
     /* if(DEBUG) {
@@ -1496,6 +1563,130 @@ class AppMediaViewerStreamBase<
       padding = 120;
     }
     const maxHeight = windowH - 120 - padding;
+
+    const middleware = mover.middlewareHelper.get();
+    const video = createVideo({pip: true, middleware});
+    video.controls = false;
+    video.autoplay = true;
+
+    console.warn('debug 1');
+
+    const set = () => {
+      // return; // set and don't move
+      // if(wasActive) return;
+      // return;
+
+      const div = mover.firstElementChild && mover.firstElementChild.classList.contains('media-viewer-aspecter') ? mover.firstElementChild : mover;
+
+      console.warn('debug 3');
+
+      const moverVideo = mover.querySelector('video');
+      if(moverVideo) {
+        moverVideo.remove();
+      }
+
+      // video.src = '';
+
+      console.warn('debug 4');
+
+      video.setAttribute('playsinline', 'true');
+
+      setTimeout(() => {
+        /* video.src = 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4';
+        video.autoplay = true;
+        video.play(); */
+        this.vidLoad(fromId as any, video, manager);
+        video.autoplay = true;
+      })
+
+      // * fix for playing video if viewer is closed (https://contest.com/javascript-web-bonus/entry1425#issue11629)
+      video.addEventListener('timeupdate', () => {
+        if(this.tempId !== tempId) {
+          video.pause();
+        }
+      });
+
+      this.addEventListener('setMoverAfter', () => {
+        // video.src = '';
+        // video.load();
+      }, {once: true});
+
+      if(IS_SAFARI) {
+        // test stream
+        // video.controls = true;
+        video.autoplay = true;
+      }
+
+      // if(!video.parentElement) {
+
+      console.warn(video);
+      console.warn(div);
+      div.append(video);
+      // }
+
+      const canPlayThrough = new Promise((resolve) => {
+        video.addEventListener('canplay', resolve, {once: true});
+      });
+
+      const createPlayer = () => {
+        if(true) {
+          video.dataset.ckin = 'default';
+          video.dataset.overlay = '1';
+
+          const player = this.videoPlayer = new StreamPlayer({
+            video,
+            onPip: (pip) => {
+              const otherMediaViewer = (window as any).appMediaViewer;
+              if(!pip && otherMediaViewer && otherMediaViewer !== this) {
+                this.releaseSingleMedia = undefined;
+                this.close();
+                return;
+              }
+
+              const mover = this.moversContainer.lastElementChild as HTMLElement;
+              mover.classList.toggle('hiding', pip);
+              this.toggleWholeActive(!pip);
+              this.toggleOverlay(!pip);
+              this.toggleGlobalListeners(!pip);
+
+              if(this.navigationItem) {
+                if(pip) appNavigationController.removeItem(this.navigationItem);
+                else appNavigationController.pushItem(this.navigationItem);
+              }
+            },
+            onPipClose: () => {
+              // this.target = undefined;
+              // this.toggleWholeActive(false);
+              // this.toggleOverlay(false);
+              this.close();
+            }
+          });
+          player.addEventListener('toggleControls', (show) => {
+            this.wholeDiv.classList.toggle('has-video-controls', show);
+          });
+
+          this.addEventListener('setMoverBefore', () => {
+            this.wholeDiv.classList.remove('has-video-controls');
+            this.videoPlayer.cleanup();
+            this.videoPlayer = undefined;
+          }, {once: true});
+
+          if(this.isZooming) {
+            this.videoPlayer.lockControls(false);
+          }
+        }
+      };
+
+      createPlayer();
+
+      // do stuff here
+    }
+
+    console.warn('debug 2');
+
+    this.setMoverToTarget().then(() => set())
+    // setTimeout(() => set());
+
     /* const size = setAttachmentSize({
       photo: media,
       element: container,
@@ -1892,11 +2083,15 @@ class AppMediaViewerStreamBase<
       setMoverPromise = thumbPromise.then(set);
     } */
 
-    return this.setMoverPromise = setMoverPromise.catch(() => {
+    return this.setMoverPromise = (setMoverPromise || (new Promise(resolve => resolve())) ).catch(() => {
       this.setMoverAnimationPromise = null;
     }).finally(() => {
       this.setMoverPromise = null;
     });
+  }
+
+  private vidLoad(peerId: PeerId, video: HTMLVideoElement, manager: AppImManager) {
+    manager.joinRTMPStream(peerId, video).then(console.warn);
   }
 }
 
@@ -1911,8 +2106,8 @@ export default class AppMediaViewerStream extends AppMediaViewerStreamBase<'', '
   }
   // exported_invite
 
-  public async openMedia(fromId: PeerId | string) {
+  public async openMedia(fromId: PeerId | string, manager: AppImManager) {
     console.log('???');
-    super._openMedia({fromId});
+    super._openMedia({fromId, manager});
   }
 }

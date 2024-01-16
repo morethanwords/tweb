@@ -361,7 +361,7 @@ export default class ChatTopbar {
   private async createRTMPStreamAndJoin() {
     // PopupElement.createPopup(RTMPStreamPlayback).show();
     const chat = await this.chat.appImManager.getChatInfoEtc(this.peerId);
-    new AppMediaViewerStream(chat).openMedia(this.peerId);
+    new AppMediaViewerStream(chat).openMedia(this.peerId, this.chat.appImManager);
   }
 
   public constructUtils() {
