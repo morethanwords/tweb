@@ -3536,10 +3536,15 @@ export default class ChatBubbles {
       }
 
       const mounted = await m(this.getMountedBubble(lastMsgId));
-      if(mounted) {
+      let bubble = mounted?.bubble;
+      if(!bubble && this.skippedMids.has(lastMsgId)) {
+        bubble = this.findNextMountedBubbleByMsgId(lastMsgId, false) || this.findNextMountedBubbleByMsgId(lastMsgId, true);
+      }
+
+      if(bubble) {
         if(isTarget) {
-          this.scrollToBubble(mounted.bubble, 'center');
-          this.highlightBubble(mounted.bubble);
+          this.scrollToBubble(bubble, 'center');
+          this.highlightBubble(bubble);
           this.chat.dispatchEvent('setPeer', lastMsgId, false);
         } else if(topMessage && !isJump) {
           // log('will scroll down', this.scroll.scrollTop, this.scroll.scrollHeight);
@@ -4127,8 +4132,11 @@ export default class ChatBubbles {
     const changedTop = firstMid !== newFirstMid;
     const changedBottom = !!lastGroup && lastMid !== newLastMid; // if has no groups then save bottom scroll position
 
+    const firstItem = loadQueue?.[0];
+    const firstReverse = firstItem?.reverse;
+    const isOneSide = loadQueue.every(({reverse}) => reverse === firstReverse);
     // const reverse = loadQueue[0]?.reverse;
-    const reverse = changedTop && !changedBottom;
+    const reverse = isOneSide ? firstReverse : changedTop && !changedBottom;
 
     log('changed ends', changedTop, changedBottom);
 
