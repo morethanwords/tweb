@@ -95,10 +95,23 @@
   }
 
   .already {
-    --primary-color: var(--secondary-color);
+    .checkbox-field {
+      --primary-color: var(--secondary-color);
+    }
   }
 
   .selector-list-section-container .sidebar-left-section {
     min-height: auto !important;
+  }
+
+  .selector {
+    overflow: hidden;
+  }
+
+  .chatlist-container {
+    .scrollable-y {
+      height: auto;
+      border-bottom: 1px solid transparent;
+    }
   }
 }

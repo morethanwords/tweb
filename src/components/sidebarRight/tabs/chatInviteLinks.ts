@@ -10,13 +10,11 @@ import createContextMenu from '../../../helpers/dom/createContextMenu';
 import customProperties from '../../../helpers/dom/customProperties';
 import findUpClassName from '../../../helpers/dom/findUpClassName';
 import toggleDisability from '../../../helpers/dom/toggleDisability';
-import formatDuration, {DurationType} from '../../../helpers/formatDuration';
-import toHHMMSS from '../../../helpers/string/toHHMMSS';
 import tsNow from '../../../helpers/tsNow';
 import {ExportedChatInvite, MessagesExportedChatInvite, MessagesExportedChatInvites} from '../../../layer';
 import appDialogsManager from '../../../lib/appManagers/appDialogsManager';
 import getPeerActiveUsernames from '../../../lib/appManagers/utils/peers/getPeerActiveUsernames';
-import {FormatterArguments, LangPackKey, i18n, joinElementsWith} from '../../../lib/langPack';
+import {LangPackKey, i18n, joinElementsWith} from '../../../lib/langPack';
 import wrapEmojiText from '../../../lib/richTextProcessor/wrapEmojiText';
 import wrapPlainText from '../../../lib/richTextProcessor/wrapPlainText';
 import lottieLoader from '../../../lib/rlottie/lottieLoader';
@@ -26,10 +24,10 @@ import {ButtonMenuItemOptionsVerifiable} from '../../buttonMenu';
 import confirmationPopup from '../../confirmationPopup';
 import SettingSection from '../../settingSection';
 import {InviteLink} from '../../sidebarLeft/tabs/sharedFolder';
-import SliderSuperTab, {SliderSuperTabEventable} from '../../sliderTab';
+import {SliderSuperTabEventable} from '../../sliderTab';
 import {UsernameRow} from '../../usernamesSection';
 import wrapPeerTitle from '../../wrappers/peerTitle';
-import {wrapFormattedDuration} from '../../wrappers/wrapDuration';
+import {wrapLeftDuration} from '../../wrappers/wrapDuration';
 import AppChatInviteLinkTab from './chatInviteLink';
 import AppEditChatInviteLink from './editChatInviteLink';
 
@@ -533,16 +531,7 @@ export default class AppChatInviteLinksTab extends SliderSuperTabEventable {
 
         if(!invite.pFlags.revoked && expireDate) {
           if(!isExpired) {
-            const formatted = formatDuration(timeLeft, 3);
-            const args: FormatterArguments = [];
-            if(formatted[0].type <= DurationType.Hours) {
-              args.push(toHHMMSS(timeLeft, true));
-            } else {
-              formatted.splice(1, Infinity);
-              args.push(wrapFormattedDuration(formatted));
-            }
-
-            elements.push(i18n('InviteLink.Sticker.TimeLeft', args));
+            elements.push(i18n('InviteLink.Sticker.TimeLeft', [wrapLeftDuration(timeLeft)]));
           } else {
             row.container.classList.add('is-expired');
             elements.push(i18n('ExportedInvitation.Status.Expired'));

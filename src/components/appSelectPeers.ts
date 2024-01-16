@@ -146,6 +146,7 @@ export default class AppSelectPeers {
   private limitCallback: () => void;
 
   private excludePeerIds: Set<PeerId>;
+  public getPeerIdFromKey: (key: string | PeerId) => PeerId;
 
   constructor(options: {
     appendTo: AppSelectPeers['appendTo'],
@@ -185,7 +186,8 @@ export default class AppSelectPeers {
     checkboxSide?: 'right' | 'left',
     noPlaceholder?: boolean,
     excludePeerIds?: AppSelectPeers['excludePeerIds'],
-    placeholderSizes?: ConstructorParameters<typeof DialogsPlaceholder>[0]
+    placeholderSizes?: ConstructorParameters<typeof DialogsPlaceholder>[0],
+    getPeerIdFromKey?: AppSelectPeers['getPeerIdFromKey']
   }) {
     safeAssign(this, options);
 
@@ -954,9 +956,9 @@ export default class AppSelectPeers {
       });
     }
 
-    const promises = peerIds.map(async(peerId) => {
+    const promises = peerIds.map(async(key) => {
       const dialogElement = appDialogsManager.addDialogNew({
-        peerId: peerId,
+        peerId: this.getPeerIdFromKey?.(key) ?? key,
         container: this.list,
         rippleEnabled: this.rippleEnabled,
         avatarSize: this.avatarSize,
@@ -968,28 +970,32 @@ export default class AppSelectPeers {
         withStories: this.withStories
       });
 
+      if(this.getPeerIdFromKey) {
+        dialogElement.container.dataset.peerId = key as any as string;
+      }
+
       (dialogElement.container as any).dialogElement = dialogElement;
 
       const {dom} = dialogElement;
 
       if(this.multiSelect) {
-        const selected = this.selected.has(peerId);
+        const selected = this.selected.has(key);
         dom.containerEl.prepend(this.checkbox(selected));
       }
 
       let subtitleEl: HTMLElement | DocumentFragment;
       if(this.getSubtitleForElement) {
-        subtitleEl = await this.getSubtitleForElement(peerId);
+        subtitleEl = await this.getSubtitleForElement(key);
       }
 
       if(!subtitleEl) {
-        subtitleEl = await this.wrapSubtitle(peerId);
+        subtitleEl = await this.wrapSubtitle(key);
       }
 
       dom.lastMessageSpan.append(subtitleEl);
 
       if(this.processElementAfter) {
-        await this.processElementAfter(peerId, dialogElement);
+        await this.processElementAfter(key, dialogElement);
       }
     });
 
@@ -1089,7 +1095,7 @@ export default class AppSelectPeers {
     scroll?: boolean,
     fireOnChange?: boolean,
     fallbackIcon?: Icon
-  }): false | ReturnType<typeof AppSelectPeers['renderEntity']> {
+  }): boolean | ReturnType<typeof AppSelectPeers['renderEntity']> {
     if(this.limit && this.selected.size >= this.limit) {
       this.limitCallback?.();
       return false;
@@ -1100,7 +1106,7 @@ export default class AppSelectPeers {
 
     if(!this.multiSelect || !this.input) {
       fireOnChange && this.onChange?.(this.selected.size);
-      return false;
+      return !!this.multiSelect;
     }
 
     if(this.query.trim()) {

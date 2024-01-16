@@ -273,6 +273,6 @@ export default class PopupSharedFolderInvite extends PopupElement {
     //   this.selector.list.classList.add('disable-hover');
     // }
 
-    this.body.append(this.footer);
+    this.body.after(this.footer);
   }
 }

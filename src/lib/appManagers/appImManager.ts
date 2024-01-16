@@ -2511,6 +2511,14 @@ export class AppImManager extends EventListenerBase<{
     element.style.setProperty(borderBackgroundProperty, peerBorderBackgroundValue);
   }
 
+  public async initGifting() {
+    const appConfig = await this.managers.apiManager.getAppConfig();
+    const user = await this.managers.appUsersManager.resolveUsername(appConfig.premium_bot_username);
+    const peerId = user.id.toPeerId(false);
+    this.managers.appMessagesManager.sendText({peerId, text: '/gift'});
+    this.setInnerPeer({peerId});
+  }
+
   public onEmojiStickerClick = async({event, container, managers, peerId, middleware}: {
     event: Event,
     container: HTMLElement,

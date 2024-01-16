@@ -48,13 +48,17 @@ export class InviteLink {
     button,
     onButtonClick,
     listenerSetter,
-    url
+    url,
+    noRightButton,
+    onClick
   }: {
     buttons?: Parameters<typeof ButtonMenuToggle>[0]['buttons'],
     button?: HTMLButtonElement | false,
     onButtonClick?: () => void,
     listenerSetter: ListenerSetter,
-    url?: string
+    url?: string,
+    noRightButton?: boolean,
+    onClick?: () => void
   }) {
     this.onButtonClick = onButtonClick;
 
@@ -75,12 +79,12 @@ export class InviteLink {
         buttonOptions: {noRipple: true},
         listenerSetter
       });
-    } else {
+    } else if(!noRightButton) {
       rightButton = ButtonIcon('copy', {noRipple: true});
       attachClickEvent(rightButton, () => this.copyLink(), {listenerSetter});
     }
 
-    rightButton.classList.add('invite-link-menu');
+    if(rightButton) rightButton.classList.add('invite-link-menu');
 
     if(!button && button !== false) {
       button = Button('', {text: 'ShareLink'});
@@ -98,14 +102,14 @@ export class InviteLink {
 
     if(url) this.setUrl(url);
     ripple(link);
-    link.append(
+    link.append(...[
       text,
       rightButton
-    );
+    ].filter(Boolean));
 
     linkContainer.append(link, button || '');
 
-    attachClickEvent(link, () => this.copyLink(), {listenerSetter});
+    attachClickEvent(link, onClick || (() => this.copyLink()), {listenerSetter});
   }
 
   public setUrl(url: string) {

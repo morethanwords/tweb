@@ -935,7 +935,7 @@
   &-overview {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    row-gap: 1rem;
+    row-gap: 1.125rem;
     padding: 0 1rem;
     margin: 0.5rem -.5rem;
 
@@ -948,11 +948,15 @@
       min-height: 2.5rem;
 
       &-value {
+        // font-size: var(--font-size-20);
+        font-size: var(--font-size-16);
         font-weight: var(--font-weight-bold);
 
         &-description {
-          font-size: 12px;
+          // font-size: var(--font-size-14);
+          font-size: var(--font-size-12);
           font-weight: var(--font-weight-normal);
+          color: var(--secondary-text-color);
 
           &.red {
             color: var(--danger-color);
@@ -1074,5 +1078,109 @@
       align-items: center;
       gap: .5rem;
     }
+  }
+}
+
+.boosts {
+  &-container {
+    .limit-line-container {
+      margin-bottom: 1.75rem;
+    }
+  
+    .statistics-overview-item {
+      &-value {
+        font-size: var(--font-size-20);
+  
+        &-description {
+          font-size: var(--font-size-14);
+        }
+      }
+    }
+  }
+
+  &-users {
+    &-container {
+      .sidebar-left-section {
+        padding: 0 !important;
+  
+        &-content {
+          margin: 0 !important;
+        }
+      }
+    }
+
+    &-tabs {
+      justify-content: flex-start;
+      padding: 0;
+    }
+
+    &-tab {
+      flex: 0 0 auto;
+      border-radius: 0 !important;
+    }
+
+    &-content {
+      min-height: 3rem;
+      padding: .5rem;
+
+      @include respond-to(handhelds) {
+        padding-inline: 0;
+      }
+
+      &.is-empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+    }
+  }
+
+  &-user {
+    &-title {
+      display: flex;
+      align-items: center;
+      font-weight: var(--font-weight-bold);
+    }
+
+    &-badge {
+      color: var(--primary-color);
+      background-color: rgba(var(--primary-color-rgb), .2);
+      padding-inline: .25rem .5rem;
+      height: 1.25rem;
+      font-size: var(--font-size-14);
+      font-weight: var(--font-weight-bold);
+      display: inline-flex;
+      align-items: center;
+      margin-inline-start: .375rem;
+      border-radius: 1.5rem;
+      flex: 0 0 auto;
+      position: relative;
+
+      &-right {
+        height: 1.5rem;
+        padding-inline: .5rem .75rem;
+        gap: .25rem;
+
+        &.is-gift {
+          color: #d08a31;
+          background-color: rgba(208, 138, 49, .2);
+        }
+      }
+    }
+
+    &-boosts {
+      color: #fff;
+      background-color: var(--premium-color);
+    }
+
+    &-name {
+      @include text-overflow(true);
+    }
+  }
+
+  &-no-boosters {
+    color: var(--secondary-text-color);
+    font-size: var(--font-size-14);
+    text-align: center;
   }
 }

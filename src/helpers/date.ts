@@ -112,14 +112,15 @@ export function formatFullSentTimeRaw(timestamp: number, options: {
 
   const date = new Date();
   const time = new Date(timestamp * 1000);
-  const now = date.getTime() / 1000;
+  const now = date.getTime() / 1000 | 0;
+  const diff = now - timestamp;
 
   const timeEl = options.combined ? undefined : formatTime(time);
 
   let dateEl: HTMLElement;
-  if((now - timestamp) < ONE_DAY && date.getDate() === time.getDate() && !options.noToday) { // if the same day
+  if(diff < ONE_DAY && date.getDate() === time.getDate() && !options.noToday) { // if the same day
     dateEl = i18n(options.capitalize ? 'Date.Today' : 'Peer.Status.Today');
-  } else if((now - timestamp) < (ONE_DAY * 2) && (date.getDate() - 1) === time.getDate() && !options.noToday) { // yesterday
+  } else if(diff > 0 && diff < (ONE_DAY * 2) && (date.getDate() - 1) === time.getDate() && !options.noToday) { // yesterday
     dateEl = i18n(options.capitalize ? 'Yesterday' : 'Peer.Status.Yesterday');
 
     if(options.capitalize) {
