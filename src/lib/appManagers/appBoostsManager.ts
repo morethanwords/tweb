@@ -52,6 +52,16 @@ export default class AppBoostsManager extends AppManager {
     });
   }
 
+  public getMyBoosts() {
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'premium.getMyBoosts',
+      processResult: (myBoosts) => {
+        this.appPeersManager.saveApiPeers(myBoosts);
+        return myBoosts;
+      }
+    });
+  }
+
   public getBoostsStatus(peerId: PeerId) {
     return this.apiManager.invokeApiSingleProcess({
       method: 'premium.getBoostsStatus',
@@ -77,11 +87,12 @@ export default class AppBoostsManager extends AppManager {
   //   });
   // }
 
-  public applyBoost(peerId: PeerId) {
+  public applyBoost(peerId: PeerId, slots?: number[]) {
     return this.apiManager.invokeApiSingleProcess({
       method: 'premium.applyBoost',
       params: {
-        peer: this.appPeersManager.getInputPeerById(peerId)
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        slots
       }
     });
   }

@@ -296,7 +296,7 @@ export function createListTransition<T extends object>(
 }
 
 export const TransitionGroup: FlowComponent<{
-  noWait: Accessor<boolean>,
+  noWait?: Accessor<boolean>,
   transitions: WeakMap<Element, Accessor<boolean>>
 }> = (props) => {
   const observeElement = (element: Element, callback: () => void) => {

@@ -337,13 +337,12 @@ const lang = {
   'Boost.EnableStoriesFor': 'Enable Stories For',
   'Boost.DescriptionJustReachedLevel1': 'This channel reached **Level 1** and can now post stories.',
   'Boost.DescriptionJustReachedLevel': 'This channel reached **Level %1$d** and can now post %2$s per day.',
-  'Boost.DescriptionNextLevel': '%1$s needs %2$s to be able to post %3$s per day. Help make it possible!',
   'Boost.StoriesCount': {
     'one_value': '**%d** story',
     'other_value': '**%d** stories'
   },
-  'Boost.Already': 'Already Boosted',
-  'Boost.AlreadyDescription': 'You are already boosting this channel.',
+  // 'Boost.Already': 'Already Boosted',
+  // 'Boost.AlreadyDescription': 'You are already boosting this channel.',
   'Boost.Replace': 'Reassign Boost',
   'Yes': 'Yes',
   'AboveMessage': 'Show Above the Message',
@@ -492,6 +491,21 @@ const lang = {
     'one_value': 'boost expires on %2$s',
     'other_value': 'boosts expire on %2$s'
   },
+  'Boost.GetMoreBoosts': {
+    'one_value': 'To boost **%1$s**, get **%2$d** more boost by gifting **Telegram Premium** to a friend.',
+    'other_value': 'To boost **%1$s**, get **%2$d** more boosts by gifting **Telegram Premium** to a friend.'
+  },
+  'Boost.Reassign.Description': 'To boost **%1$s**, reassign a previous boost or %2$s to a friend to get %3$s.',
+  'Boost.GiftPremium': '**[gift Telegram Premium]()**',
+  'Boost.Additional': {
+    'one_value': '**%1$d** additional boost',
+    'other_value': '**%1$d** additional boosts'
+  },
+  'Boost.Reassign': {
+    'one_value': 'Reassign Boost',
+    'other_value': 'Reassign Boosts'
+  },
+  'Boost.Reassign.Wait': 'Wait until the boost is available or get %s by gifting a **[Telegram Premium]()** subscription.',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -1511,7 +1525,7 @@ const lang = {
   'HelpUpgradeChannel': 'Help upgrade this channel',
   'PremiumNeeded': 'Premium needed!',
   'PremiumNeededForBoosting': 'Only **Telegram Premium** subscribers can boost channels. Do you want to subscribe to **Telegram Premium**?',
-  'ReplaceBoostChannelDescription': 'You currently boost **%1$s**. Do you want to boost **%2$s** instead?',
+  // 'ReplaceBoostChannelDescription': 'You currently boost **%1$s**. Do you want to boost **%2$s** instead?',
   'CantBoostTooOften': 'Can\'t boost too often!',
   'CantBoostTooOftenDescription': 'You can only change the channel you boost once a day. You will be able to boost in **%s.**',
   'CantBoostWithGiftedPremium': 'Can\'t boost with gifted Premium!',
@@ -1521,7 +1535,7 @@ const lang = {
     'other_value': '**%d** more boosts'
   },
   'BoostsMaxLevelReached': 'Maximum Level Reached',
-  'YouBoostedChannel2': 'You boosted %s!',
+  'YouBoostedChannel': 'You boosted the channel',
   'BoostingGiveawayJustStarted': '%s just started a giveaway of Telegram Premium subscriptions to its followers.',
   'BoostingWinnersDate': '**Winners Selection Date**',
   'BoostingGiveawayPrizes': '**Giveaway Prizes**',
@@ -1773,6 +1787,18 @@ const lang = {
   'BoostingStartGiveawayConfirmTitle': 'Start Giveaway',
   'BoostingStartGiveawayConfirmText': 'Are you sure you want to start the giveaway now?',
   'Start': 'Start',
+  'ChannelNeedBoostsDescriptionForNewFeatures': '**%1$s** needs %2$s to unlock new features.',
+  'BoostingMoreBoostsNeeded': 'More Boosts Needed',
+  'BoostingRemoveBoostFrom': 'Remove your boost from',
+  'BoostingReassignedFromPlural': {
+    'one_value': '%1$d boost reassigned from %2$s',
+    'other_value': '%1$d boosts reassigned from %2$s'
+  },
+  'BoostingFromOtherChannel': {
+    'one_value': '%d other channel',
+    'other_value': '%d other channels'
+  },
+  'BoostingAvailableIn': 'available in %1$s',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

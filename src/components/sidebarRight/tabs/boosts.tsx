@@ -281,7 +281,6 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
   }
 
   private renderBoost = async(boost: Boost) => {
-    console.log(boost);
     const boosts = 1 * (boost.multiplier || 1);
     const months = getBoostMonths(boost.date, boost.expires);
     let peerId = boost.user_id?.toPeerId(false);
@@ -306,7 +305,7 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
 
     let subtitle: HTMLElement;
     if(peerId) {
-      subtitle = i18n('BoostsExpiration', [boosts, formatFullSentTime(boost.expires)]);
+      subtitle = i18n('BoostsExpiration', [boosts, formatFullSentTime(boost.expires, undefined, true)]);
     } else {
       subtitle = document.createElement('span');
       subtitle.append(
@@ -380,8 +379,6 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
         isFirst = false;
         const boostsList = await this.managers.appBoostsManager.getBoostsList({peerId, offset, limit, gifts});
         if(!middleware()) return;
-
-        console.log(boostsList, gifts);
 
         const promises = boostsList.boosts.map(this.renderBoost);
         const rendered = await Promise.all(promises);

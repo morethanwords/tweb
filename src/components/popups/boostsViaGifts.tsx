@@ -6,12 +6,12 @@
 
 import {render} from 'solid-js/web';
 import PopupElement from '.';
-import I18n, {_i18n, i18n, join} from '../../lib/langPack';
+import I18n, {FormatterArguments, LangPackKey, _i18n, i18n, join} from '../../lib/langPack';
 import Row from '../row';
 import CheckboxField from '../checkboxField';
 import Section from '../section';
 import RangeStepsSelector from '../rangeStepsSelector';
-import {For, JSX, createEffect, createMemo, createSignal, untrack} from 'solid-js';
+import {Accessor, For, JSX, createEffect, createMemo, createSignal, untrack} from 'solid-js';
 import tsNow from '../../helpers/tsNow';
 import PopupSchedule from './schedule';
 import {formatFullSentTime, formatMonthsDuration} from '../../helpers/date';
@@ -43,6 +43,8 @@ import PopupPayment from './payment';
 import shake from '../../helpers/dom/shake';
 import anchorCallback from '../../helpers/dom/anchorCallback';
 import {CPrepaidGiveaway} from '../sidebarRight/tabs/boosts';
+import isObject from '../../helpers/object/isObject';
+import classNames from '../../helpers/string/classNames';
 
 export const BoostsBadge = (props: {boosts: number}) => {
   return (
@@ -51,6 +53,19 @@ export const BoostsBadge = (props: {boosts: number}) => {
       {props.boosts}
     </span>
   );
+};
+
+export const BoostsConfirmButton = (props: {
+  button: HTMLElement,
+  langKey: Accessor<LangPackKey>,
+  langArgs?: Accessor<FormatterArguments>,
+  boosts: Accessor<number>
+}) => {
+  let s: HTMLSpanElement, ssss: HTMLSpanElement;
+  const ss = (<span ref={s} class="popup-boosts-button-text">{i18n(props.langKey(), props.langArgs?.())}</span>);
+  const sss = (<span ref={ssss} class={classNames('popup-boosts-button-badge', !props.boosts() && 'hide')}><IconTsx icon="boost" class="popup-boosts-button-badge-icon" />{props.boosts()}</span>);
+  props.button.classList.add('popup-boosts-button');
+  props.button.append(s, ssss);
 };
 
 export default class PopupBoostsViaGifts extends PopupElement {
@@ -413,7 +428,7 @@ export default class PopupBoostsViaGifts extends PopupElement {
           title: i18n(country.default_name as any),
           scroll
         });
-        if(ret !== false) {
+        if(isObject(ret)) {
           ret.avatar.render({peerTitle: getCountryEmoji(country.iso2)});
         }
         return ret;
@@ -617,11 +632,11 @@ export default class PopupBoostsViaGifts extends PopupElement {
 
     renderImageFromUrl(img, `assets/img/premiumboostsstar${window.devicePixelRatio > 1 ? '@2x' : ''}.png`);
 
-    let s: HTMLSpanElement, ssss: HTMLSpanElement;
-    const ss = (<span ref={s} class="popup-boosts-button-text">{i18n('BoostsViaGifts.Start')}</span>);
-    const sss = (<span ref={ssss} class="popup-boosts-button-badge"><IconTsx icon="boost" class="popup-boosts-button-badge-icon" />{boosts()}</span>);
-    this.btnConfirm.classList.add('popup-boosts-button');
-    this.btnConfirm.append(s, ssss);
+    BoostsConfirmButton({
+      button: this.btnConfirm,
+      langKey: () => 'BoostsViaGifts.Start',
+      boosts
+    });
     this.footer.append(this.btnConfirm);
     this.body.after(this.footer);
     this.footer.classList.add('abitlarger');

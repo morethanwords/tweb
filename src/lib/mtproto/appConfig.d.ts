@@ -94,6 +94,7 @@ export interface MTAppConfig {
   recommended_channels_limit_premium?:       number;
   saved_dialogs_pinned_limit_default?:       number;
   saved_dialogs_pinned_limit_premium?:       number;
+  boosts_per_sent_gift?:                     number;
   cachedTime?:                               number;
   hash?:                                     number;
 }
