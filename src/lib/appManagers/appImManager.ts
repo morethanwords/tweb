@@ -2319,36 +2319,32 @@ export class AppImManager extends EventListenerBase<{
       return {cached: true, result: Promise.resolve(typingEl)};
     }
 
-    const result = await this.managers.acknowledged.appProfileManager.getChatFull(chatId);
-    const dooo = async(chatInfo: ChatFull) => {
-      // this.chat.log('chatInfo res:', chatInfo);
+    const chatFullResult = await this.managers.acknowledged.appProfileManager.getChatFull(chatId);
+    const dooo = async(chatFull: ChatFull) => {
+      let [subtitle, onlinesResult] = await Promise.all([
+        getChatMembersString(chatId, undefined, undefined, undefined, chatFull),
+        this.managers.acknowledged.appProfileManager.getOnlines(chatId)
+      ]);
 
-      const participants_count = (chatInfo as ChatFull.channelFull).participants_count ||
-        ((chatInfo as ChatFull.chatFull).participants as ChatParticipants.chatParticipants)?.participants?.length ||
-        1;
-      // if(participants_count) {
-      let subtitle = await getChatMembersString(chatId);
+      return {
+        cached: onlinesResult.cached,
+        result: onlinesResult.result.then((onlines) => {
+          if(onlines > 1) {
+            const span = document.createElement('span');
 
-      if(participants_count < 2) {
-        return subtitle;
-      }
+            span.append(...join([subtitle, i18n('OnlineCount', [numberThousandSplitter(onlines)])], false));
+            subtitle = span;
+          }
 
-      const onlines = await this.managers.appProfileManager.getOnlines(chatId);
-      if(onlines > 1) {
-        const span = document.createElement('span');
-
-        span.append(...join([subtitle, i18n('OnlineCount', [numberThousandSplitter(onlines)])], false));
-        subtitle = span;
-      }
-
-      return subtitle;
-      // }
+          return subtitle;
+        })
+      };
     };
 
-    const promise = Promise.resolve(result.result).then(dooo);
+    const result = chatFullResult.result.then(dooo);
     return {
-      cached: result.cached,
-      result: promise
+      cached: chatFullResult.cached ? (await result).cached : chatFullResult.cached,
+      result: result.then((r) => r.result)
     };
   }
 

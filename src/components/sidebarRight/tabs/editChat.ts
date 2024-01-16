@@ -35,6 +35,7 @@ import cancelEvent from '../../../helpers/dom/cancelEvent';
 import {toastNew} from '../../toast';
 import AppChatInviteLinksTab from './chatInviteLinks';
 import AppChatRequestsTab from './chatRequests';
+import getParticipantsCount from '../../../lib/appManagers/utils/chats/getParticipantsCount';
 
 export default class AppEditChatTab extends SliderSuperTab {
   private chatNameInputField: InputField;
@@ -470,7 +471,7 @@ export default class AppEditChatTab extends SliderSuperTab {
         // membersRow.subtitle.append(i.element);
 
         const setMembersLength = () => {
-          const participants = isChannel ? (chatFull as ChatFull.channelFull).participants_count || 1 : ((chatFull as ChatFull.chatFull).participants as ChatParticipants.chatParticipants).participants.length;
+          const participants = getParticipantsCount(chatFull);
           membersRow.subtitle.textContent = numberThousandSplitter(participants);
           // i.compareAndUpdate({
           //   key: isBroadcast ? 'Subscribers' : 'Members',

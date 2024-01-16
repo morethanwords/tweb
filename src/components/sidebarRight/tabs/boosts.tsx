@@ -32,6 +32,7 @@ import PopupGiftLink from '../../popups/giftLink';
 import {toastNew} from '../../toast';
 import ListenerSetter from '../../../helpers/listenerSetter';
 import indexOfAndSplice from '../../../helpers/array/indexOfAndSplice';
+import appImManager from '../../../lib/appManagers/appImManager';
 
 const getColorByMonths = (months: number) => {
   return months === 12 ? 'red' : (months === 3 ? 'green' : 'blue');
@@ -231,8 +232,9 @@ export default class AppBoostsTab extends SliderSuperTabEventable {
 
             const slug = boost.used_gift_slug;
             const peerId = boost.user_id?.toPeerId(false);
-            if(peerId && peerId !== rootScope.myId) {
-              // appImManager.setInnerPeer({peerId: boost.user_id.toPeerId(false)});
+            if(peerId && !boost.pFlags.gift && !boost.pFlags.unclaimed && !boost.pFlags.giveaway) {
+              appImManager.setInnerPeer({peerId: boost.user_id.toPeerId(false)});
+            } else if(peerId && peerId !== rootScope.myId) {
               PopupElement.createPopup(
                 PopupGiftLink,
                 slug,

@@ -629,12 +629,14 @@ export default class Chat extends EventListenerBase<{
 
     const sharedMediaTab = this.sharedMediaTab;
 
-    const callbacksPromise = Promise.all([
+    const promises = [
       this.topbar?.finishPeerChange(options),
       this.bubbles?.finishPeerChange(),
       this.input?.finishPeerChange(options),
       sharedMediaTab?.fillProfileElements()
-    ]);
+    ];
+
+    const callbacksPromise = Promise.all(promises);
 
     const callbacks = await callbacksPromise;
     sharedMediaTab?.loadSidebarMedia(true);

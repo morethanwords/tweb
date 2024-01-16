@@ -871,6 +871,18 @@ export default class ChatTopbar {
     this.status?.destroy();
     const status = this.status = this.createStatus();
 
+    const promises = [
+      this.managers.appPeersManager.isBroadcast(peerId),
+      this.managers.appPeersManager.isAnyChat(peerId),
+      peerId.isAnyChat() ? apiManagerProxy.getChat(peerId.toChatId()) : undefined,
+      newAvatar?.readyThumbPromise,
+      this.setTitleManual(),
+      status?.prepare(true),
+      apiManagerProxy.getState(),
+      modifyAckedPromise(this.chatRequests.setPeerId(peerId)),
+      modifyAckedPromise(this.chatActions.setPeerId(peerId))
+    ] as const;
+
     const [
       isBroadcast,
       isAnyChat,
@@ -881,17 +893,7 @@ export default class ChatTopbar {
       state,
       setRequestsCallback,
       setActionsCallback
-    ] = await Promise.all([
-      this.managers.appPeersManager.isBroadcast(peerId),
-      this.managers.appPeersManager.isAnyChat(peerId),
-      peerId.isAnyChat() ? apiManagerProxy.getChat(peerId.toChatId()) : undefined,
-      newAvatar?.readyThumbPromise,
-      this.setTitleManual(),
-      status?.prepare(true),
-      apiManagerProxy.getState(),
-      modifyAckedPromise(this.chatRequests.setPeerId(peerId)),
-      modifyAckedPromise(this.chatActions.setPeerId(peerId))
-    ]);
+    ] = await Promise.all(promises);
 
     if(!middleware() && newAvatarMiddlewareHelper) {
       newAvatarMiddlewareHelper.destroy();
