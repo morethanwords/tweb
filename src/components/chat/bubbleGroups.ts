@@ -73,7 +73,7 @@ export class BubbleGroup {
       // peerId: fwdFromName ? NULL_PEER_ID : peerId,
       peerId,
       // peerTitle: !fwdFromId && fwdFrom && fwdFromName && peerId === NULL_PEER_ID ? /* '🔥 FF 🔥' */fwdFromName : undefined
-      peerTitle: fwdFromName
+      peerTitle: peerId === NULL_PEER_ID ? fwdFromName : undefined
     };
   }
 
