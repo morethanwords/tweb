@@ -319,6 +319,7 @@ ul.chatlist {
 
   .peer-typing-container {
     --color: var(--secondary-text-color);
+    @include text-overflow(true);
 
     .peer-typing-text {
       display: inline-flex;
@@ -350,7 +351,7 @@ ul.chatlist {
       &-span {
         flex: 0 0 auto;
         // flex: 0 1 auto;
-        // max-width: 100%;
+        max-width: 100%;
 
         &-overflow {
           text-overflow: ellipsis;
