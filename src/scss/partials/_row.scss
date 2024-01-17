@@ -39,7 +39,11 @@ $row-border-radius: $border-radius-medium;
     padding-bottom: 0 !important;
 
     br {
-      display: none;
+      content: " ";
+
+      &:after {
+        content: " ";
+      }
     }
   }
 
