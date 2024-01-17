@@ -35,7 +35,7 @@ import AppSharedMediaTab from '../sidebarRight/tabs/sharedMedia';
 import noop from '../../helpers/noop';
 import middlewarePromise from '../../helpers/middlewarePromise';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import {Message, WallPaper, Chat as MTChat} from '../../layer';
+import {Message, WallPaper, Chat as MTChat, Reaction, AvailableReaction} from '../../layer';
 import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
 import {getColorsFromWallPaper} from '../../helpers/color';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
@@ -45,6 +45,7 @@ import getDialogKey from '../../lib/appManagers/utils/dialogs/getDialogKey';
 import getHistoryStorageKey from '../../lib/appManagers/utils/messages/getHistoryStorageKey';
 import isForwardOfForward from '../../lib/appManagers/utils/messages/isForwardOfForward';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
+import {SendReactionOptions} from '../../lib/appManagers/appReactionsManager';
 
 export enum ChatType {
   Chat = 'chat',
@@ -831,5 +832,12 @@ export default class Chat extends EventListenerBase<{
     Object.assign(options, this.getMessageSendingParams());
     options.peerId ??= this.peerId;
     return this.appImManager.openWebApp(options);
+  }
+
+  public sendReaction(options: SendReactionOptions) {
+    return this.managers.appReactionsManager.sendReaction({
+      sendAsPeerId: this.getMessageSendingParams().sendAsPeerId,
+      ...options
+    });
   }
 }

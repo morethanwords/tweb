@@ -1810,7 +1810,10 @@ export default class ChatBubbles {
         attachClickEvent(hoverReaction, (e) => {
           cancelEvent(e); // cancel triggering selection
 
-          this.managers.appReactionsManager.sendReaction(message as Message.message, reaction);
+          this.chat.sendReaction({
+            message: message as Message.message,
+            reaction
+          });
           this.unhoverPrevious();
         }, {listenerSetter: this.listenerSetter});
       }, noop);
@@ -2105,7 +2108,7 @@ export default class ChatBubbles {
       const reactionCount = reactionsElement.getReactionCount(reactionElement);
 
       const message = reactionsElement.getMessage();
-      this.managers.appReactionsManager.sendReaction(message, reactionCount.reaction);
+      this.chat.sendReaction({message, reaction: reactionCount.reaction});
 
       return;
     }

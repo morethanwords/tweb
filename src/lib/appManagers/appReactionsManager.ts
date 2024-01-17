@@ -40,6 +40,13 @@ export type PeerAvailableReactions = {
   reactions: Reaction[]
 };
 
+export type SendReactionOptions = {
+  message: Message.message,
+  reaction?: Reaction | AvailableReaction,
+  onlyLocal?: boolean,
+  sendAsPeerId?: PeerId
+};
+
 export class AppReactionsManager extends AppManager {
   private availableReactions: AvailableReaction[];
   private sendReactionPromises: Map<string, Promise<any>>;
@@ -334,7 +341,12 @@ export class AppReactionsManager extends AppManager {
     });
   }
 
-  public async sendReaction(message: Message.message, reaction?: Reaction | AvailableReaction, onlyLocal?: boolean) {
+  public async sendReaction({
+    message,
+    reaction,
+    onlyLocal,
+    sendAsPeerId
+  }: SendReactionOptions) {
     message = this.appMessagesManager.getMessageByPeer(message.peerId, message.mid) as typeof message;
 
     if(reaction._ === 'availableReaction') {
@@ -358,7 +370,12 @@ export class AppReactionsManager extends AppManager {
     }
 
     const {peerId, mid} = message;
-    const myPeer = this.appMessagesManager.generateFromId(peerId) ?? this.appPeersManager.getOutputPeer(peerId);
+    let myPeer: Peer;
+    if(sendAsPeerId) {
+      myPeer = this.appPeersManager.getOutputPeer(sendAsPeerId);
+    } else {
+      myPeer = this.appMessagesManager.generateFromId(peerId) ?? this.appPeersManager.getOutputPeer(peerId);
+    }
     const myPeerId = this.appPeersManager.getPeerId(myPeer);
 
     const unsetReactionCount = (reactionCount: ReactionCount) => {
@@ -525,7 +542,12 @@ export class AppReactionsManager extends AppManager {
       this.apiUpdatesManager.processUpdateMessage(updates);
     }).catch((err: ApiError) => {
       if(err.type === 'REACTION_INVALID' && this.sendReactionPromises.get(promiseKey) === promise) {
-        this.sendReaction(message, chosenReactions[0]?.reaction, true);
+        this.sendReaction({
+          message,
+          reaction: chosenReactions[0]?.reaction,
+          onlyLocal: true,
+          sendAsPeerId
+        });
       }
     }).finally(() => {
       if(this.sendReactionPromises.get(promiseKey) === promise) {
