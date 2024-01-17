@@ -42,7 +42,8 @@ import {
   Peer,
   InputChannel,
   HelpPeerColors,
-  Updates, Update, InputGroupCall, GroupCall
+  Updates, Update, InputGroupCall, GroupCall,
+  GroupCallStreamChannel
 } from '../../layer';
 import PeerTitle from '../../components/peerTitle';
 import {PopupPeerCheckboxOptions} from '../../components/popups/peer';
@@ -140,6 +141,7 @@ import videoCodec from '../../mock/webrtc/videoCodec';
 import filterServerCodecs from '../calls/helpers/filterServerCodecs';
 import audioMimeTypeSupport from '../../environment/audioMimeTypeSupport';
 import videoMimeTypesSupport from '../../environment/videoMimeTypesSupport';
+import { Canvas2DRenderer, MP4Demuxer, renderFrame } from './utils/demuxer_mp4';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -1494,14 +1496,17 @@ export class AppImManager extends EventListenerBase<{
 
         console.log(call);
       } else {
+        console.log('join stream bro not create');
         call = chatFull.call as any;
       }
 
-      await this.getCallInfo({
+      const newCall: any = await this.getCallInfo({
         _: 'inputGroupCall',
         id: call.id,
         access_hash: call.access_hash
       });
+
+      const dcId = newCall.call.stream_dc_id as any as number;
 
       const promise = await this.managers.apiManager.invokeApi('phone.joinGroupCall', {
         call: {
@@ -1516,13 +1521,103 @@ export class AppImManager extends EventListenerBase<{
           _: 'dataJSON',
           data: `{"ssrc":1}`
         }
-      }).then(console.log);
+      }).then(console.warn);
 
-      await this.getCallInfo({
-        _: 'inputGroupCall',
-        id: call.id,
-        access_hash: call.access_hash
+      const canvas = document.getElementById('canvas-own') as HTMLCanvasElement;
+      const renderer = new Canvas2DRenderer(canvas);
+      const decoder = new VideoDecoder({
+        output(frame) {
+          // Update statistics.
+          /* if(startTime == null) {
+            startTime = performance.now();
+          } else {
+            const elapsed = (performance.now() - startTime) / 1000;
+            const fps = ++frameCount / elapsed;
+            setStatus('render', `${fps.toFixed(0)} fps`);
+          } */
+          // Schedule the frame to be rendered.
+          renderFrame(frame, renderer);
+        },
+        error(e) {
+          console.error('error here in frame');
+        }
       });
+
+      setInterval(() => {
+        this.getRTMPStreamToMp4Box(dcId, {
+          _: 'inputGroupCall',
+          id: call.id,
+          access_hash: call.access_hash
+        }, decoder);
+      }, 1000);
+
+      // try decoder
+      return
+
+      /* const canvas2 = document.getElementById('canvas-own') as HTMLCanvasElement;
+      const ctx = canvas.getContext('2d');
+      const pendingFrames: any[] = [];
+      let underflow = true;
+      let baseTime = 0;
+
+      function handleFrame(frame: any) {
+        pendingFrames.push(frame);
+        if(underflow) setTimeout(renderFrame, 0);
+      }
+
+      function calculateTimeUntilNextFrame(timestamp: any) {
+        if(baseTime == 0) baseTime = performance.now();
+        const mediaTime = performance.now() - baseTime;
+        return Math.max(0, timestamp / 1000 - mediaTime);
+      }
+
+      async function renderFrame() {
+        underflow = pendingFrames.length == 0;
+        if(underflow) return;
+
+        const frame = pendingFrames.shift();
+        // Based on the frame's timestamp calculate how much of real time waiting
+        // is needed before showing the next frame.
+        const timeUntilNextFrame = calculateTimeUntilNextFrame(frame.timestamp);
+        await new Promise((r) => {
+          setTimeout(r, timeUntilNextFrame);
+        });
+        ctx.drawImage(frame, 0, 0);
+        frame.close();
+        // Immediately schedule rendering of the next frame
+        setTimeout(renderFrame, 0);
+      }
+      const init = {
+        output: handleFrame,
+        error: (e: any) => {
+          console.log(e.message);
+        }
+      };
+
+      const config = {
+        codec: 'avc1.64001f',
+        codedWidth: 1280,
+        codedHeight: 720
+      };
+      const {supported} = await VideoDecoder.isConfigSupported(config);
+      if(supported) {
+        // const decoder = new VideoDecoder(init);
+        // decoder.configure(config);
+        console.log('SUPPORTED');
+        const decoder = new VideoDecoder(init);
+        decoder.configure(config);
+
+        this.getRTMPStreamToCanvas(dcId, {
+          _: 'inputGroupCall',
+          id: call.id,
+          access_hash: call.access_hash
+        }, decoder);
+      } else {
+        console.log('NOT SUPPORTED');
+        // Try another config.
+      } */
+
+      return
 
       const videoSource = new MediaSource();
       const player = document.getElementById('video-player-own5') as HTMLVideoElement;
@@ -1533,8 +1628,10 @@ export class AppImManager extends EventListenerBase<{
 
       videoSource.addEventListener('sourceopen', (lol) => {
         console.log(lol);
-        const codec = 'video/mp4; codecs="avc1.64001f"; profiles="isom,iso2,avc1,mp41"';
-        // const codec = 'video/mp4; codecs="avc1.64001f"';
+        // const codec = 'video/m4v; "';
+        // const codec = 'audio/mp4; codecs="opus"';
+        const codec = 'video/mp4; codecs="avc1.64001e"; profiles="isom,iso2,avc1,mp41"';
+        // const codec = 'video/mp4; codecs="avc1.64001e,opus"';
         // const codec = 'audio/mp4; codecs="opus';
         // const codec = 'video/mp4; codecs="avc1.64001f,Opus"';
         if(MediaSource.isTypeSupported(codec)) {
@@ -1544,31 +1641,28 @@ export class AppImManager extends EventListenerBase<{
         }
         const buffer = videoSource.addSourceBuffer(codec);
         buffer.mode = 'sequence';
-        buffer.timestampOffset = 0.0;
-        buffer.appendWindowStart = 0.0;
-        buffer.appendWindowEnd = 1000.0;
         console.warn('MEDIA SOURCE CREATED AND INITIALIZED');
         console.warn(videoSource);
         console.warn(buffer);
 
-        this.getRTMPStreamInfo({
+        this.getRTMPStreamInfo(dcId, {
           _: 'inputGroupCall',
           id: call.id,
           access_hash: call.access_hash
         }, player, buffer, videoSource);
 
         const interval = setInterval(() => {
+          // fs
+        }, 10000);
 
-        }, 1500);
-
-        setTimeout(() => {
+        /* setTimeout(() => {
           clearInterval(interval);
           this.terminateCallInfo({
             _: 'inputGroupCall',
             id: call.id,
             access_hash: call.access_hash
           });
-        }, 150000);
+        }, 150000); */
       });
 
       console.log('plz');
@@ -1577,8 +1671,343 @@ export class AppImManager extends EventListenerBase<{
     next();
   };
 
-  public async getRTMPStreamInfo(call: InputGroupCall, video?: HTMLVideoElement, mediaSource?: SourceBuffer, src?: MediaSource) {
-    const {channels: [{last_timestamp_ms: time_ms, scale, channel: video_channel}, ...other]} = await this.managers.apiManager.invokeApi('phone.getGroupCallStreamChannels', {call});
+  public getChannelInfoPleaseAudio(call: InputGroupCall, step: GroupCallStreamChannel.groupCallStreamChannel, idx: number) {
+    return new Promise<void>(async resolve => {
+      try {
+        const data: any = await this.managers.apiManager.invokeApi('upload.getFile', {
+          precise: true,
+          location: {
+            _: 'inputGroupCallStream',
+            call: {
+              _: 'inputGroupCall',
+              id: call.id,
+              access_hash: call.access_hash
+            },
+            time_ms: step.last_timestamp_ms,
+            scale: step.scale
+          },
+          offset: 0,
+          limit: 128 * 1024
+        }); // .catch(console.warn);
+
+        const bf = data.bytes.slice(32).buffer;
+        const blob = new Blob([bf], {type:'video/mpeg'});
+        const url = window.URL.createObjectURL(blob);
+        const player = document.getElementById('audio-own') as HTMLImageElement;
+        player.src = url;
+        // bf['fileStart'] = 0;
+        // mp4boxfile.appendBuffer(bf);
+      } catch(err) {
+        console.warn('Index' + idx);
+        console.warn(err);
+        resolve();
+      }
+    });
+  }
+
+  public getChannelInfoPlease(call: InputGroupCall, step: GroupCallStreamChannel.groupCallStreamChannel, idx: number) {
+    return new Promise<void>(async resolve => {
+      try {
+        const data: any = await this.managers.apiManager.invokeApi('upload.getFile', {
+          precise: true,
+          location: {
+            _: 'inputGroupCallStream',
+            call: {
+              _: 'inputGroupCall',
+              id: call.id,
+              access_hash: call.access_hash
+            },
+            time_ms: step.last_timestamp_ms,
+            scale: step.scale,
+            video_channel: step.channel,
+            video_quality: 2
+          },
+          offset: 0,
+          limit: 512 * 1024
+        }); // .catch(console.warn);
+
+        if(step.channel === 2) {
+          const test = data.bytes.slice(16) as Uint8Array;
+          console.log(this.bin2String(data.bytes.slice(16, 128)));
+          const blob = new Blob([test], {type:'image/jpeg'});
+          const url = window.URL.createObjectURL(blob);
+          const player = document.getElementById('img-own') as HTMLImageElement;
+          player.src = url;
+        }
+
+        console.log('????', step);
+        console.log(data);
+        console.log(this.bin2String(data.bytes.slice(0, 4098)));
+        console.log(this.bin2String(data.bytes.slice(data.bytes.length - 4098, data.bytes.length)));
+        const mp4boxfile = MP4Box.createFile();
+
+        mp4boxfile.onReady = function(info: any) {
+          console.warn('Index: ' + idx);
+          console.log(info);
+          console.log('Duration: ' + parseInt(`${info.duration / 1000}`) + 's');
+          console.log('Brands: ' + info.brands.join(','));
+          console.log('Video Metadata:  ');
+          const videoTrack = info.tracks[0];
+          console.log('Video Codec: "' + videoTrack?.codec + '"; nb_samples: ' + videoTrack?.nb_samples);
+          console.log(videoTrack?.name + ': size: ' + videoTrack?.size + '; bitrate: ' + videoTrack?.bitrate);
+          console.log('Audio Metadata');
+          const audioTrack = info.tracks[1];
+          console.log('Audio Codec: "' + audioTrack?.codec + '"; nb_samples: ' + audioTrack?.nb_samples);
+          console.log(audioTrack?.name + ': size: ' + audioTrack?.size + '; bitrate: ' + audioTrack?.bitrate);
+          resolve();
+        }
+
+        const bf = data.bytes.slice(32).buffer;
+        bf['fileStart'] = 0;
+        mp4boxfile.appendBuffer(bf);
+      } catch(err) {
+        console.warn('Index' + idx);
+        console.warn(err);
+        resolve();
+      }
+    });
+  }
+
+  public async getRTMPStreamToMp4Box(dcId: number, call: InputGroupCall, decoder: VideoDecoder) {
+    const strmChnl = await this.managers.apiManager.invokeApi('phone.getGroupCallStreamChannels', {call}, {dcId});
+    console.log('------------------');
+    console.dir(strmChnl.channels);
+    const {last_timestamp_ms: time_ms, scale, channel: video_channel} = strmChnl.channels[2];
+    console.log(time_ms);
+    console.log(scale);
+
+    try {
+      const data: any = await this.managers.apiManager.invokeApi('upload.getFile', {
+        precise: true,
+        location: {
+          _: 'inputGroupCallStream',
+          call: {
+            _: 'inputGroupCall',
+            id: call.id,
+            access_hash: call.access_hash
+          },
+          time_ms,
+          scale,
+          video_channel,
+          video_quality: 1
+        },
+        offset: 0,
+        limit: 512 * 1024
+      }, {dcId}); //  /* ; .then(console.log) */  .catch(console.warn);
+
+      console.log('????');
+      console.log(data);
+
+      const test = data.bytes.slice(32) as Uint8Array;
+      // console.log(this.bin2String(data.bytes.slice(0, 4096)));
+      // console.log(this.bin2String(data.bytes.slice(data.bytes.length - 4096, data.bytes.length)));
+
+      const demuxer = new MP4Demuxer(test, {
+        onConfig(config: any) {
+          // setStatus('decode', `${config.codec} @ ${config.codedWidth}x${config.codedHeight}`);
+          decoder.configure(config);
+        },
+        onChunk(chunk: any) {
+          decoder.decode(chunk);
+        },
+        setStatus: () => { }
+      });
+      console.log(decoder);
+      console.warn(demuxer);
+
+      /* setTimeout(() => {
+        // const worker = workStart({data: test, canvas});
+      }); */
+
+      /* const mp4boxfile = MP4Box.createFile();
+      console.log(mp4boxfile);
+
+      mp4boxfile.onReady = function(info: any) {
+        console.log(info);
+        console.log('Duration: ' + parseInt(`${info.duration / 1000}`) + 's');
+        console.log('Brands: ' + info.brands.join(','));
+        console.log('Video Metadata:  ');
+        const videoTrack = info.tracks[0];
+        console.log('Video Codec: "' + videoTrack?.codec + '"; nb_samples: ' + videoTrack?.nb_samples);
+        console.log(videoTrack?.name + ': size: ' + videoTrack.size + '; bitrate: ' + videoTrack.bitrate);
+
+        const track = info.videoTracks[0];
+        const initSegs = MP4Box.getInitializationSegment(track.id);
+
+        console.log(initSegs);
+
+        console.log('Audio Metadata');
+        const audioTrack = info.tracks[1];
+        console.log('Audio Codec: "' + audioTrack?.codec + '"; nb_samples: ' + audioTrack?.nb_samples);
+        console.log(audioTrack?.name + ': size: ' + audioTrack?.size + '; bitrate: ' + audioTrack?.bitrate);
+      }
+
+      const bf = test.buffer;
+      bf['fileStart'] = 0;
+      mp4boxfile.appendBuffer(bf);
+
+
+      const chunk = new EncodedVideoChunk({
+        timestamp: 0,
+        type: 'key',
+        data: test
+      });
+      decoder.decode(chunk);
+      await decoder.flush(); */
+    } catch(e: any) {
+      console.error('error here');
+      console.error(e);
+    }
+  }
+
+  public async getRTMPStreamToCanvas(dcId: number, call: InputGroupCall, decoder: VideoDecoder) {
+    const strmChnl = await this.managers.apiManager.invokeApi('phone.getGroupCallStreamChannels', {call}, {dcId});
+    console.log('------------------');
+    console.dir(strmChnl.channels);
+    const {last_timestamp_ms: time_ms, scale, channel: video_channel} = strmChnl.channels[2];
+    console.log(time_ms);
+    console.log(scale);
+
+    try {
+      const data: any = await this.managers.apiManager.invokeApi('upload.getFile', {
+        precise: true,
+        location: {
+          _: 'inputGroupCallStream',
+          call: {
+            _: 'inputGroupCall',
+            id: call.id,
+            access_hash: call.access_hash
+          },
+          time_ms,
+          scale,
+          video_channel,
+          video_quality: 2
+        },
+        offset: 0,
+        limit: 512 * 1024
+      }, {dcId}); //  /* ; .then(console.log) */  .catch(console.warn);
+
+      console.log('????');
+      console.log(data);
+
+      const test = data.bytes.slice(32) as Uint8Array;
+      console.log(this.bin2String(data.bytes.slice(0, 4096)));
+      console.log(this.bin2String(data.bytes.slice(data.bytes.length - 4096, data.bytes.length)));
+
+      const mp4boxfile = MP4Box.createFile();
+      console.log(mp4boxfile);
+
+      mp4boxfile.onReady = function(info: any) {
+        console.log(info);
+        console.log('Duration: ' + parseInt(`${info.duration / 1000}`) + 's');
+        console.log('Brands: ' + info.brands.join(','));
+        console.log('Video Metadata:  ');
+        const videoTrack = info.tracks[0];
+        console.log('Video Codec: "' + videoTrack?.codec + '"; nb_samples: ' + videoTrack?.nb_samples);
+        console.log(videoTrack?.name + ': size: ' + videoTrack.size + '; bitrate: ' + videoTrack.bitrate);
+
+        const track = info.videoTracks[0];
+        const initSegs = MP4Box.getInitializationSegment(track.id);
+
+        console.log(initSegs);
+
+        console.log('Audio Metadata');
+        const audioTrack = info.tracks[1];
+        console.log('Audio Codec: "' + audioTrack?.codec + '"; nb_samples: ' + audioTrack?.nb_samples);
+        console.log(audioTrack?.name + ': size: ' + audioTrack?.size + '; bitrate: ' + audioTrack?.bitrate);
+      }
+
+      const bf = test.buffer;
+      bf['fileStart'] = 0;
+      mp4boxfile.appendBuffer(bf);
+
+
+      const chunk = new EncodedVideoChunk({
+        timestamp: 0,
+        type: 'key',
+        data: test
+      });
+      decoder.decode(chunk);
+      await decoder.flush();
+    } catch(e: any) {
+      console.error('error here');
+      console.error(e);
+    }
+  }
+
+  public async getRTMPStreamInfo(dcId: number, call: InputGroupCall, video?: HTMLVideoElement, mediaSource?: SourceBuffer, src?: MediaSource) {
+    const strmChnl = await this.managers.apiManager.invokeApi('phone.getGroupCallStreamChannels', {call}, {dcId});
+    console.log('------------------');
+    console.dir(strmChnl.channels);
+
+    {
+      // this.getChannelInfoPleaseAudio(call, strmChnl.channels[0], 0).then(() => console.log('go'));
+    }
+
+    {
+      // this.getChannelInfoPlease(call, strmChnl.channels[0], 1).then(() => console.log('go'));
+    }
+
+    /* let i = 0;
+    for(const step of strmChnl.channels) {
+      console.warn(step);
+      this.getChannelInfoPlease(call, step, i).then(() => console.log('go'));
+      i++;
+      console.warn('--');
+    } */
+
+    /* {
+      strmChnl.channels.forEach(async step => {
+        const data: any = await this.managers.apiManager.invokeApi('upload.getFile', {
+          precise: true,
+          location: {
+            _: 'inputGroupCallStream',
+            call: {
+              _: 'inputGroupCall',
+              id: call.id,
+              access_hash: call.access_hash
+            },
+            time_ms: step.last_timestamp_ms,
+            scale: step.scale,
+            video_channel: step.channel,
+            video_quality: 1
+          },
+          offset: 0,
+          limit: 512 * 1024
+        }); // .catch(console.warn);
+
+        console.log('????', step);
+        console.log(data);
+
+        // console.log(this.bin2String(data.bytes.slice(0, 4096)));
+        // console.log(this.bin2String(data.bytes.slice(data.bytes.length - 4096, data.bytes.length)));
+
+        const mp4boxfile = MP4Box.createFile();
+
+        mp4boxfile.onReady = function(info: any) {
+          console.log(info);
+          console.log('Duration: ' + parseInt(`${info.duration / 1000}`) + 's');
+          console.log('Brands: ' + info.brands.join(','));
+          console.log('Video Metadata:  ');
+          const videoTrack = info.tracks[0];
+          console.log('Video Codec: "' + videoTrack?.codec + '"; nb_samples: ' + videoTrack?.nb_samples);
+          console.log(videoTrack.name + ': size: ' + videoTrack.size + '; bitrate: ' + videoTrack.bitrate);
+          console.log('Audio Metadata');
+          const audioTrack = info.tracks[1];
+          console.log('Audio Codec: "' + audioTrack?.codec + '"; nb_samples: ' + audioTrack?.nb_samples);
+          console.log(audioTrack.name + ': size: ' + audioTrack?.size + '; bitrate: ' + audioTrack?.bitrate);
+        }
+
+        const bf = data.bytes.buffer; // .slice(32);
+        bf['fileStart'] = 0;
+        mp4boxfile.appendBuffer(bf);
+      });
+    } */
+
+    // const chan = [strmChnl.channels[0]];
+    // const {channels: [{last_timestamp_ms: time_ms, scale, channel: video_channel}]} = chan;
+
+    const {last_timestamp_ms: time_ms, scale, channel: video_channel} = strmChnl.channels[2];
 
     console.log(time_ms);
     console.log(scale);
@@ -1600,34 +2029,40 @@ export class AppImManager extends EventListenerBase<{
       },
       offset: 0,
       limit: 512 * 1024
-    }); // .then(console.log).catch(console.warn);
+    }, {dcId}) /* ; .then(console.log) */  .catch(console.warn);
 
     console.log('????');
     console.log(data);
 
-    const test = data.bytes; // .slice(32) as Uint8Array;
-    // console.log(this.bin2String(data.bytes.slice(0, 2048)));
+    const test = data.bytes.slice(32) as Uint8Array;
+    console.log(this.bin2String(data.bytes.slice(0, 256)));
 
-    const mp4boxfile = MP4Box.createFile();
-    console.log(mp4boxfile);
+    try {
+      const mp4boxfile = MP4Box.createFile();
+      console.log(mp4boxfile);
 
-    mp4boxfile.onReady = function (info: any) {
-      console.log(info);
-      console.log('Duration: ' + parseInt(`${info.duration / 1000}`) + 's');
-      console.log('Brands: ' + info.brands.join(','));
-      console.log('Video Metadata:  ');
-      const videoTrack = info.tracks[0];
-      console.log('Video Codec: "' + videoTrack?.codec + '"; nb_samples: ' + videoTrack.nb_samples);
-      console.log(videoTrack.name + ': size: ' + videoTrack.size + '; bitrate: ' + videoTrack.bitrate);
-      console.log('Audio Metadata');
-      const audioTrack = info.tracks[1];
-      console.log('Audio Codec: "' + audioTrack?.codec + '"; nb_samples: ' + audioTrack.nb_samples);
-      console.log(audioTrack.name + ': size: ' + audioTrack.size + '; bitrate: ' + audioTrack.bitrate);
+      mp4boxfile.onReady = function(info: any) {
+        console.log(info);
+        console.log('Duration: ' + parseInt(`${info.duration / 1000}`) + 's');
+        console.log('Brands: ' + info.brands.join(','));
+        console.log('Video Metadata:  ');
+        const videoTrack = info.tracks[0];
+        console.log('Video Codec: "' + videoTrack?.codec + '"; nb_samples: ' + videoTrack?.nb_samples);
+        console.log(videoTrack?.name + ': size: ' + videoTrack.size + '; bitrate: ' + videoTrack.bitrate);
+        console.log('Audio Metadata');
+        const audioTrack = info.tracks[1];
+        console.log('Audio Codec: "' + audioTrack?.codec + '"; nb_samples: ' + audioTrack?.nb_samples);
+        console.log(audioTrack?.name + ': size: ' + audioTrack?.size + '; bitrate: ' + audioTrack?.bitrate);
+      }
+
+      const bf = test.buffer;
+      bf['fileStart'] = 0;
+      mp4boxfile.appendBuffer(bf);
+    } catch(err) {
+      console.warn('NEW ERROR HERE');
+      console.warn(err);
     }
 
-    const bf = test.buffer;
-    bf['fileStart'] = 0;
-    mp4boxfile.appendBuffer(bf);
     // const blob = new Blob([test], {type:'video/mp4'});
 
     /* blob.
@@ -1635,7 +2070,7 @@ export class AppImManager extends EventListenerBase<{
     video.src = url;
     video.play().then(console.log).catch(console.log); */
 
-    /*const player = dashjs.MediaPlayer().create();
+    /* const player = dashjs.MediaPlayer().create();
     console.warn(player);
     player.initialize();
     player.attachView(video); /* tell the player which videoElement it should use * /
@@ -1647,20 +2082,30 @@ export class AppImManager extends EventListenerBase<{
 
     console.warn(player);
 
-    return;*/
+    return; */
     //
 
     /* this.sendToPlayer(test, 'video-player-own1', 'video/mp4');
     this.sendToPlayer(test, 'video-player-own2', 'video/ogg');
     this.sendToPlayer(test, 'video-player-own3', 'video/mpeg');
     this.sendToPlayer(test, 'video-player-own4', 'video/webm'); */
+    {
+      const player = document.getElementById('video-player-own3') as HTMLVideoElement;
+      const blob = new Blob([test], {type:'video/mp4; codecs="avc1.64001e,opus"'});
+      const url = window.URL.createObjectURL(blob);
+      // player.src = url;
+      // player.play().then(console.log).catch(console.log);
+    }
 
-    const player = document.getElementById('video-player-own3') as HTMLVideoElement;
+    {
+      const player = document.getElementById('video-player-own2') as HTMLVideoElement;
+      const blob = new Blob([test], {type:'video/m4v'});
+      const url = window.URL.createObjectURL(blob);
+      player.src = url;
+      player.play().then(console.log).catch(console.log);
+    }
 
-    const blob = new Blob([data.bytes.slice(32)], {type:'video/mp4; codecs="avc1.64001f"; profiles="isom,iso2,avc1,mp41"'});
-    const url = window.URL.createObjectURL(blob);
-    player.src = url;
-    player.play().then(console.log).catch(console.log);
+    // return;
 
     mediaSource.addEventListener('error', (arg1) => {
       console.log('error', arg1);
@@ -1675,11 +2120,11 @@ export class AppImManager extends EventListenerBase<{
       console.log(src.readyState);
 
       if(!mediaSource.updating && src.readyState === 'open') {
-        // src.endOfStream();
+        src.endOfStream();
         setTimeout(() => {
           console.warn(src);
           console.log(src.sourceBuffers)
-          // src.setLiveSeekableRange(0, 1);
+          src.setLiveSeekableRange(0, 1);
           // src.endOfStream();
           console.log(src.activeSourceBuffers);
           console.log('video started play');
@@ -1700,6 +2145,9 @@ export class AppImManager extends EventListenerBase<{
     src.sourceBuffers.length && console.log(src.sourceBuffers[0]);
     console.log(src.sourceBuffers);
 
+    // mediaSource.timestampOffset = 0;
+    console.log(mediaSource);
+    console.log('appended buffer');
     mediaSource.appendBuffer(test.buffer);
     try {
       // src.endOfStream();
@@ -1714,7 +2162,7 @@ export class AppImManager extends EventListenerBase<{
       call,
       limit: 100
     });
-    console.log(promise);
+    console.warn(promise);
     return promise;
   }
 

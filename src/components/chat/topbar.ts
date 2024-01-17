@@ -436,12 +436,12 @@ export default class ChatTopbar {
       icon: 'videochat',
       text: 'VoiceChat.RTMP.Title',
       onClick: this.openObsStreamModal,
-      verify: this.verifyVideoChatButton.bind(this, 'broadcast')
+      // verify: this.verifyVideoChatButton.bind(this, 'broadcast')
     }, {
       icon: 'videochat',
       text: 'VoiceChat.RTMP.Title',
       onClick: this.openObsStreamModal,
-      verify: this.verifyVideoChatButton.bind(this, 'group')
+      // verify: this.verifyVideoChatButton.bind(this, 'group')
     }, {
       icon: 'topics',
       text: 'TopicViewAsTopics',

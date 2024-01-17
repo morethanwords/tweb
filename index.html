@@ -51,7 +51,12 @@
         border: 3px solid red;
         /* opacity: 0.4; */
         /* visibility: hidden; */
-        scale: 0.3;
+        /* scale: 0.3; */
+      }
+
+      #canvas-own {
+        width: 600px;
+        height: 400px;
       }
     </style>
 
@@ -169,11 +174,14 @@
     </div>
     <div id="stories-viewer"></div>
     <div class="video-player-own-class">
-      <video id="video-player-own1" width="220" height="140" controls></video>
+      <!-- video id="video-player-own1" width="220" height="140" controls></video -->
+      <canvas id="canvas-own"></canvas>
       <video id="video-player-own2" width="220" height="140" controls></video>
       <video id="video-player-own3" width="220" height="140" controls></video>
       <video id="video-player-own4" width="220" height="140" controls></video>
       <video id="video-player-own5" width="220" height="140" controls="true"></video>
+      <img id="img-own" width="220" height="140"></img>
+      <audio id="audio-own" controls></audio>
     </div>
     <script src="https://cdn.dashjs.org/latest/dash.all.min.js"></script>
     <script src="src/index.ts" type="module"></script>
