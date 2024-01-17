@@ -138,6 +138,12 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
       return;
     }
 
+    // * it can be already added because of `message_sent`
+    const allTargets = this.previous.concat(this.next, this.current ? [this.current] : []);
+    if(allTargets.some((item) => item?.mid === message.mid)) {
+      return;
+    }
+
     if(!this.current) {
       this.previous.push(...targets);
     } else {
