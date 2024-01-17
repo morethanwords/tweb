@@ -677,10 +677,6 @@ const StoryInput = (props: {
   input.messageInput.dataset.textColor = 'white';
 
   createEffect(() => {
-    input.replyToStoryId = props.currentStory().id;
-  });
-
-  createEffect(() => {
     if(props.isActive()) {
       const onOpen = (): void => (onMenuToggle(true)/* , setFocused(true) */, undefined);
       const onClose = (): void => (onMenuToggle(false)/* , setFocused(false) */, undefined);
@@ -719,6 +715,8 @@ const StoryInput = (props: {
     input.chatInput.classList.toggle('is-focused', _focused);
   });
 
+  const owner = getOwner();
+
   chat.peerId = props.state.peerId;
   chat.onChangePeer({
     peerId: chat.peerId,
@@ -732,6 +730,14 @@ const StoryInput = (props: {
   }).then(() => {
     if(!middleware()) return;
     props.setInputReady(true);
+
+    runWithOwner(owner, () => {
+      createEffect(() => {
+        input.setReplyTo({
+          replyToStoryId: props.currentStory().id
+        });
+      });
+    });
   });
 
   onCleanup(() => {
@@ -3703,13 +3709,13 @@ export default function StoriesViewer(props: {
   });
 
   let deferred: CancellablePromise<void> = deferredPromise<void>();
-  dispatchHeavyAnimationEvent(deferred, 1000);
 
   let animating = true;
   return (
     <Show when={wasShown()} fallback={ret}>
       <Transition
         onEnter={(el, done) => {
+          dispatchHeavyAnimationEvent(deferred, 1000);
           document.body.addEventListener('keydown', onKeyDown);
           toggleOverlay(true);
           animate(el, true, done);
