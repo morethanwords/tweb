@@ -2371,6 +2371,10 @@ export default class ChatBubbles {
 
       const targets: {element: HTMLElement, mid: number, peerId: PeerId}[] = [];
       const ids = isSingleMedia ? [messageId] : (Object.keys(this.bubbles).map((k) => +k).map((mid) => {
+        const bubble = this.bubbles[mid];
+        if(!isSingleMedia && bubble.classList.contains(SINGLE_MEDIA_CLASSNAME)) {
+          return;
+        }
         /* if(isSingleMedia && !this.bubbles[id].classList.contains(SINGLE_MEDIA_CLASSNAME)) {
           return false;
         }  */
@@ -2401,8 +2405,8 @@ export default class ChatBubbles {
         } else {
           const withTail = bubble.classList.contains('with-media-tail');
           // selector = '.album-item video, .album-item img, .preview video, .preview img, ';
-          // selector = '.album-item, .webpage-preview, ';
-          selector = '.album-item, ';
+          selector = '.album-item, .webpage-preview, ';
+          // selector = '.album-item, ';
           if(withTail) {
             selector += '.bubble__media-container';
           } else {
