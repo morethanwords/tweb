@@ -448,6 +448,10 @@ export class AppReactionsManager extends AppManager {
         }
       }
 
+      if(!reactions.results.length && peerId === this.appPeersManager.peerId) {
+        reactions.pFlags.reactions_as_tags = true;
+      }
+
       let reactionCountIdx = reactions.results.findIndex((reactionCount) => reactionsEqual(reactionCount.reaction, reaction as Reaction));
       let reactionCount = reactionCountIdx !== -1 && reactions.results[reactionCountIdx];
       if(!reactionCount) {

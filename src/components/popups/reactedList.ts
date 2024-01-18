@@ -13,7 +13,7 @@ import ScrollableLoader from '../../helpers/scrollableLoader';
 import appDialogsManager, {DialogDom, DialogElement} from '../../lib/appManagers/appDialogsManager';
 import replaceContent from '../../helpers/dom/replaceContent';
 import wrapSticker from '../wrappers/sticker';
-import ReactionElement from '../chat/reaction';
+import ReactionElement, {ReactionLayoutType} from '../chat/reaction';
 import getUserStatusString from '../wrappers/getUserStatusString';
 import {MediaSize, makeMediaSize} from '../../helpers/mediaSize';
 import wrapCustomEmoji from '../wrappers/customEmoji';
@@ -125,7 +125,7 @@ export default class PopupReactedList extends PopupElement {
 
     reactionsElement.init({
       message: newMessage,
-      type: 'block',
+      type: ReactionLayoutType.Block,
       middleware: this.middlewareHelper.get()
     });
     reactionsElement.render();
@@ -266,7 +266,7 @@ export default class PopupReactedList extends PopupElement {
 
   private createFakeReaction(icon: Icon, count: number) {
     const reaction = new ReactionElement();
-    reaction.init('block', this.middlewareHelper.get());
+    reaction.init(ReactionLayoutType.Block, this.middlewareHelper.get());
     reaction.reactionCount = {
       _: 'reactionCount',
       count: count,

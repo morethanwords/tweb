@@ -33,6 +33,7 @@
     align-items: center;
     justify-content: center;
     pointer-events: none;
+    overflow: hidden;
     
     &-activate {
       position: absolute;
@@ -84,25 +85,18 @@
   &-block {
     --additional-height: .5rem;
     // --padding-horizontal: .5rem;
-    --margin: .375rem;
     // --reaction-size: 1.0625rem;
     --reaction-size: 1.375rem;
     --reaction-offset: -.5625rem;
     --background-color: var(--message-highlighting-color);
-    --chosen-background-color: var(--message-primary-color);
     --counter-color: #fff;
     --reaction-total-size: calc(var(--reaction-size) + var(--additional-height));
-    height: var(--reaction-total-size);
     border-radius: var(--reaction-total-size);
     // padding: 0 .375rem 0 .625rem;
     // padding: 0 var(--padding-horizontal) 0 calc(var(--padding-horizontal) + var(--reaction-size));
     // padding: 0 var(--padding-horizontal);
     padding: 0 .5rem;
     background-color: var(--background-color);
-    cursor: pointer;
-    position: relative;
-    margin-top: var(--margin);
-    margin-right: var(--margin);
     color: var(--counter-color);
 
     @include hover() {
@@ -119,10 +113,6 @@
     .reaction-sticker,
     .reaction-counter {
       z-index: 1;
-    }
-
-    &.is-last {
-      margin-inline-end: 0;
     }
 
     &:before {
@@ -183,5 +173,48 @@
     margin-inline: .375rem .0625rem;
     line-height: 1.125rem;
     position: relative;
+  }
+
+  &-like-block {
+    --chosen-background-color: var(--message-primary-color);
+    height: var(--reaction-total-size);
+    margin-top: var(--margin-vertical);
+    margin-inline-end: var(--margin-horizontal);
+    cursor: pointer;
+    position: relative;
+
+    &.is-last {
+      margin-inline-end: 0 !important;
+    }
+  }
+
+  &-tag {
+    --additional-height: .5rem;
+    --reaction-size: 1.25rem;
+    --reaction-offset: -.5625rem;
+    --reaction-total-size: calc(var(--reaction-size) + var(--additional-height));
+    width: 2.875rem;
+    padding-inline-start: .4375rem;
+
+    &-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      fill: var(--chosen-background-color);
+    }
+
+    &-dot {
+      position: absolute;
+      right: .4375rem;
+      width: .375rem;
+      height: .375rem;
+      background-color: var(--message-reaction-tag-dot-color);
+      border-radius: 50%;
+    }
+
+    // .reaction-sticker {
+    //   z-index: 1;
+    // }
   }
 }

@@ -557,10 +557,6 @@
 
       @include text-overflow(true);
     }
-
-    & + .reactions-block {
-      margin-top: .375rem;
-    }
   }
 
   @include hover() {
@@ -1705,14 +1701,16 @@
     }
 
     &:not(.emoji-big) {
-      .reactions-block {
+      .reactions-like-block {
         max-width: fit-content;
       }
     }
 
-    .reaction-block {
+    .reaction-like-block {
       --chosen-background-color: var(--primary-color);
+    }
 
+    .reaction-block {
       &:not(.is-chosen) {
         @include hover() {
           &:after {
@@ -2188,7 +2186,7 @@
       }
     }
 
-    .reactions-block {
+    .reactions-like-block {
       .time {
         position: unset !important;
         right: auto !important;
@@ -3180,6 +3178,7 @@
   --link-color: var(--message-primary-color);
   --peer-color-rgb: var(--message-primary-color-rgb);
   --peer-border-background: var(--message-out-peer-border-background);
+  --message-reaction-tag-dot-color: var(--message-out-reaction-tag-dot-color);
 
   .bubble-content {
     margin-left: auto;
@@ -3335,26 +3334,26 @@
   }
 
   &.is-message-empty {
-    .reactions-block {
+    .reactions-like-block {
+      --margin-horizontal: .25rem;
       justify-content: flex-end;
       position: relative;
+      margin-top: unset;
     }
 
     .reactions-renderer {
       inset: 0 !important;
     }
 
-    .reaction-block {
-      margin-right: .25rem;
-
+    .reaction-like-block {
       &.is-chosen {
         --chosen-background-color: var(--surface-color);
       }
     }
 
     &:not(.emoji-big) {
-      .reactions-block {
-        margin-left: auto;
+      .reactions-like-block {
+        margin-inline-start: auto;
       }
     }
   }

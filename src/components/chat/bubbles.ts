@@ -170,6 +170,7 @@ import {ChatType} from './chat';
 import {isSavedDialog} from '../../lib/appManagers/utils/dialogs/isDialog';
 import getFwdFromName from '../../lib/appManagers/utils/messages/getFwdFromName';
 import isForwardOfForward from '../../lib/appManagers/utils/messages/isForwardOfForward';
+import {ReactionLayoutType} from './reaction';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -7219,7 +7220,7 @@ export default class ChatBubbles {
     const reactionsElement = new ReactionsElement();
     reactionsElement.init({
       message: reactionsMessage,
-      type: 'block',
+      type: ReactionLayoutType.Block,
       middleware: bubble.middlewareHelper.get(),
       animationGroup: this.chat.animationGroup,
       lazyLoadQueue: this.lazyLoadQueue

@@ -31,13 +31,23 @@ import Scrollable from '../scrollable';
 
 const CLASS_NAME = 'reaction';
 const TAG_NAME = CLASS_NAME + '-element';
-const REACTION_INLINE_SIZE = 14;
-export const REACTION_BLOCK_SIZE = 22;
 
-export const REACTION_DISPLAY_INLINE_COUNTER_AT = 2;
-export const REACTION_DISPLAY_BLOCK_COUNTER_AT = 4;
+export enum ReactionLayoutType {
+  Inline = 'inline',
+  Block = 'block',
+  Tag = 'tag'
+};
 
-export type ReactionLayoutType = 'block' | 'inline';
+export const REACTIONS_SIZE: {[key in ReactionLayoutType]: number} = {
+  [ReactionLayoutType.Inline]: 14,
+  [ReactionLayoutType.Block]: 22,
+  [ReactionLayoutType.Tag]: 22
+};
+
+export const REACTIONS_DISPLAY_COUNTER_AT: {[key in ReactionLayoutType]?: number} = {
+  [ReactionLayoutType.Inline]: 2,
+  [ReactionLayoutType.Block]: 4
+};
 
 const defaultBezier = (val: number) => val;
 type Position = [number, number, number];
@@ -268,7 +278,20 @@ export default class ReactionElement extends HTMLElement {
   public init(type: ReactionLayoutType, middleware: Middleware) {
     this.type = type;
     this.classList.add(CLASS_NAME + '-' + type);
+    this.classList.toggle(CLASS_NAME + '-like-block', type === ReactionLayoutType.Block || type === ReactionLayoutType.Tag);
     this.middleware = middleware;
+
+    if(type === ReactionLayoutType.Tag) {
+      this.insertAdjacentHTML('beforeend', `
+        <svg class="reaction-tag-svg" width="120px" height="72px" viewBox="0 0 120 72" xmlns="http://www.w3.org/2000/svg">
+          <path class="reaction-tag-svg-path" d="M18,0 L92.8308192,0 C96.662849,-5.73462801e-15 100.218707,1.99424846 102.216919,5.2640499 L117.813361,30.7854999 C119.769603,33.9866235 119.769603,38.0133765 117.813361,41.2145001 L102.216919,66.7359501 C100.218707,70.0057515 96.662849,72 92.8308192,72 L18,72 C8.0588745,72 1.21743675e-15,63.9411255 0,54 L0,18 C-1.21743675e-15,8.0588745 8.0588745,1.82615513e-15 18,0 Z" />
+        </svg>
+      `);
+
+      const dot = document.createElement('div');
+      dot.classList.add('reaction-tag-dot');
+      this.append(dot);
+    }
   }
 
   public setCanRenderAvatars(canRenderAvatars: boolean) {
@@ -286,56 +309,58 @@ export default class ReactionElement extends HTMLElement {
     }
 
     const reactionCount = this.reactionCount;
-    if(!doNotRenderSticker && !hadStickerContainer) {
-      const reaction = reactionCount.reaction;
-      if(reaction._ === 'reactionEmoji') {
-        const availableReaction = apiManagerProxy.getReaction(reaction.emoticon);
-        return callbackify(availableReaction, (availableReaction) => {
-          if(!availableReaction.center_icon) {
-            this.stickerContainer.classList.add('is-static');
-          } else {
-            this.stickerContainer.classList.add('is-regular');
-          }
+    if(doNotRenderSticker || hadStickerContainer) {
+      return;
+    }
 
-          if(availableReaction.pFlags.inactive) {
-            this.classList.add('is-inactive');
-          }
-
-          const doc = availableReaction.center_icon ?? availableReaction.static_icon;
-          this.renderDoc(doc);
-
-          // customEmojiElement.static = true;
-          // customEmojiElement.docId = doc.id;
-          // return customEmojiElement;
-        });
-      } else if(reaction._ === 'reactionCustomEmoji') {
-        this.stickerContainer.classList.add('is-custom');
-        // const wrapped = wrapCustomEmoji({
-        //   docIds: [reaction.document_id],
-        //   customEmojiSize: makeMediaSize(REACTION_BLOCK_SIZE, REACTION_BLOCK_SIZE)
-        // });
-
-        // this.stickerContainer.append(wrapped);
-
-        if(!this.customEmojiElement) {
-          this.customEmojiElement = CustomEmojiElement.create();
-          const wrapPromise = this.wrapStickerPromise = this.customEmojiElement.readyPromise = deferredPromise();
-          this.wrapStickerPromise.finally(() => {
-            if(this.wrapStickerPromise === wrapPromise) {
-              this.wrapStickerPromise = undefined;
-            }
-          });
-          this.stickerContainer.append(this.customEmojiElement);
+    const reaction = reactionCount.reaction;
+    if(reaction._ === 'reactionEmoji') {
+      const availableReaction = apiManagerProxy.getReaction(reaction.emoticon);
+      return callbackify(availableReaction, (availableReaction) => {
+        if(!availableReaction.center_icon) {
+          this.stickerContainer.classList.add('is-static');
+        } else {
+          this.stickerContainer.classList.add('is-regular');
         }
 
-        this.customEmojiElement.docId = reaction.document_id;
-        return this.customEmojiElement;
+        if(availableReaction.pFlags.inactive) {
+          this.classList.add('is-inactive');
+        }
+
+        const doc = availableReaction.center_icon ?? availableReaction.static_icon;
+        this.renderDoc(doc);
+
+        // customEmojiElement.static = true;
+        // customEmojiElement.docId = doc.id;
+        // return customEmojiElement;
+      });
+    } else if(reaction._ === 'reactionCustomEmoji') {
+      this.stickerContainer.classList.add('is-custom');
+      // const wrapped = wrapCustomEmoji({
+      //   docIds: [reaction.document_id],
+      //   customEmojiSize: makeMediaSize(REACTION_BLOCK_SIZE, REACTION_BLOCK_SIZE)
+      // });
+
+      // this.stickerContainer.append(wrapped);
+
+      if(!this.customEmojiElement) {
+        this.customEmojiElement = CustomEmojiElement.create();
+        const wrapPromise = this.wrapStickerPromise = this.customEmojiElement.readyPromise = deferredPromise();
+        this.wrapStickerPromise.finally(() => {
+          if(this.wrapStickerPromise === wrapPromise) {
+            this.wrapStickerPromise = undefined;
+          }
+        });
+        this.stickerContainer.append(this.customEmojiElement);
       }
+
+      this.customEmojiElement.docId = reaction.document_id;
+      return this.customEmojiElement;
     }
   }
 
   private renderDoc(doc: Document.document) {
-    const size = this.type === 'inline' ? REACTION_INLINE_SIZE : REACTION_BLOCK_SIZE;
+    const size = REACTIONS_SIZE[this.type];
     const wrapPromise = this.wrapStickerPromise = wrapSticker({
       div: this.stickerContainer,
       doc,
@@ -353,11 +378,12 @@ export default class ReactionElement extends HTMLElement {
   }
 
   public renderCounter() {
+    const displayOn = REACTIONS_DISPLAY_COUNTER_AT[this.type];
+    if(displayOn === undefined) return;
     const reactionCount = this.reactionCount;
-    const displayOn = this.type === 'inline' ? REACTION_DISPLAY_INLINE_COUNTER_AT : REACTION_DISPLAY_BLOCK_COUNTER_AT;
-    if(reactionCount.count >= displayOn || (this.type === 'block' && !this.canRenderAvatars)) {
+    if(reactionCount.count >= displayOn || (this.type === ReactionLayoutType.Block && !this.canRenderAvatars)) {
       if(!this.counter) {
-        this.counter = document.createElement(this.type === 'inline' ? 'i' : 'span');
+        this.counter = document.createElement(this.type === ReactionLayoutType.Inline ? 'i' : 'span');
         this.counter.classList.add(CLASS_NAME + '-counter');
       }
 
@@ -376,11 +402,11 @@ export default class ReactionElement extends HTMLElement {
   }
 
   public renderAvatars(recentReactions: MessagePeerReaction[]) {
-    if(this.type === 'inline') {
+    if(this.type !== ReactionLayoutType.Block) {
       return;
     }
 
-    if(this.reactionCount.count >= REACTION_DISPLAY_BLOCK_COUNTER_AT || !this.canRenderAvatars) {
+    if(this.reactionCount.count >= REACTIONS_DISPLAY_COUNTER_AT[this.type] || !this.canRenderAvatars) {
       if(this.stackedAvatars) {
         this.stackedAvatars.container.remove();
         this.stackedAvatars = undefined;
@@ -402,7 +428,7 @@ export default class ReactionElement extends HTMLElement {
   }
 
   public setIsChosen(isChosen = this.reactionCount.chosen_order !== undefined) {
-    if(this.type === 'inline') return;
+    if(this.type !== ReactionLayoutType.Block) return;
     const wasChosen = this.classList.contains('is-chosen') && !this.classList.contains('backwards');
     if(wasChosen !== isChosen) {
       SetTransition({
@@ -415,6 +441,13 @@ export default class ReactionElement extends HTMLElement {
   }
 
   public fireAroundAnimation(waitPromise?: Promise<any>) {
+    let add = 0;
+    if(this.type === ReactionLayoutType.Inline) {
+      add = 14;
+    } else if(this.type === ReactionLayoutType.Block || this.type === ReactionLayoutType.Tag) {
+      add = 18;
+    }
+
     return ReactionElement?.fireAroundAnimation({
       waitPromise,
       cache: this,
@@ -425,7 +458,7 @@ export default class ReactionElement extends HTMLElement {
       sizes: {
         genericEffect: 26,
         genericEffectSize: 100,
-        size: this.type === 'inline' ? REACTION_INLINE_SIZE + 14 : REACTION_BLOCK_SIZE + 18,
+        size: REACTIONS_SIZE[this.type] + add,
         effectSize: 80
       },
       scrollable: appImManager.chat.bubbles.scrollable

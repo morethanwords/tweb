@@ -17,7 +17,7 @@ import {CustomEmojiRendererElement} from '../../lib/customEmoji/renderer';
 import rootScope from '../../lib/rootScope';
 import {AnimationItemGroup} from '../animationIntersector';
 import LazyLoadQueue from '../lazyLoadQueue';
-import ReactionElement, {ReactionLayoutType, REACTION_DISPLAY_BLOCK_COUNTER_AT, REACTION_BLOCK_SIZE} from './reaction';
+import ReactionElement, {ReactionLayoutType, REACTIONS_DISPLAY_COUNTER_AT, REACTIONS_SIZE} from './reaction';
 
 const CLASS_NAME = 'reactions';
 const TAG_NAME = CLASS_NAME + '-element';
@@ -78,6 +78,19 @@ export default class ReactionsElement extends HTMLElement {
     return this.message;
   }
 
+  public shouldUseTagsForMessage(message: Message.message) {
+    if(message.peerId !== rootScope.myId) {
+      return false;
+    }
+
+    const reactions = message.reactions;
+    if(!reactions || reactions.pFlags.reactions_as_tags) {
+      return true;
+    }
+
+    return !reactions.results.length;
+  }
+
   public init({
     message,
     type,
@@ -110,12 +123,28 @@ export default class ReactionsElement extends HTMLElement {
     this.animationGroup = animationGroup;
     this.lazyLoadQueue = lazyLoadQueue;
 
-    if(this.type !== type) {
-      this.type = type;
-      this.classList.add(CLASS_NAME + '-' + type);
-    }
+    this.setType(type);
 
     this.connectedCallback();
+  }
+
+  public setType(type: ReactionLayoutType) {
+    if(type === ReactionLayoutType.Block && this.shouldUseTagsForMessage(this.message)) {
+      type = ReactionLayoutType.Tag;
+    }
+
+    if(this.type === type) {
+      return;
+    }
+
+    this.type = type;
+
+    for(const type in ReactionLayoutType) {
+      this.classList.remove(CLASS_NAME + '-' + type);
+    }
+
+    this.classList.add(CLASS_NAME + '-' + type);
+    this.classList.toggle(CLASS_NAME + '-like-block', type === ReactionLayoutType.Block || type === ReactionLayoutType.Tag);
   }
 
   public changeMessage(message: Message.message) {
@@ -169,7 +198,7 @@ export default class ReactionsElement extends HTMLElement {
     const totalReactions = counts.reduce((acc, c) => acc + c.count, 0);
     const canRenderAvatars = reactions &&
       (!!reactions.pFlags.can_see_list || this.message.peerId.isUser()) &&
-      totalReactions < REACTION_DISPLAY_BLOCK_COUNTER_AT;
+      totalReactions < REACTIONS_DISPLAY_COUNTER_AT[this.type];
     const customEmojiElements: ReturnType<ReactionElement['render']>[] = new Array(counts.length);
     this.sorted = counts.map((reactionCount, idx, arr) => {
       let reactionElement: ReactionElement = this.sorted.find((reactionElement) => reactionsEqual(reactionElement.reactionCount.reaction, reactionCount.reaction));
@@ -221,10 +250,11 @@ export default class ReactionsElement extends HTMLElement {
       }
 
       if(!this.customEmojiRenderer) {
+        const size = REACTIONS_SIZE[this.type];
         this.customEmojiRendererMiddlewareHelper = this.middleware.create();
         this.customEmojiRenderer = CustomEmojiRendererElement.create({
           animationGroup: this.animationGroup,
-          customEmojiSize: makeMediaSize(REACTION_BLOCK_SIZE, REACTION_BLOCK_SIZE),
+          customEmojiSize: makeMediaSize(size, size),
           middleware: this.customEmojiRendererMiddlewareHelper.get(),
           lazyLoadQueue: this.lazyLoadQueue,
           observeResizeElement: this

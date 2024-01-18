@@ -5,9 +5,12 @@
  */
 
 .reactions {
-  &-block {
+  &-like-block {
+    --margin-vertical: .375rem;
+    --margin-horizontal: .375rem;
     display: flex;
     flex-wrap: wrap;
+    margin-top: calc(var(--margin-vertical) / -2);
 
     &.has-no-reactions {
       display: unset;
