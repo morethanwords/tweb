@@ -1447,7 +1447,6 @@ export class AppImManager extends EventListenerBase<{
   }
 
   public async createRTMPStream(peerId: PeerId, title: string) {
-    const minTimestamp = (Date.now() / 1000 | 0) + 100;
     const updates = await this.managers.apiManager.invokeApi('phone.createGroupCall', {
       peer: await this.managers.appPeersManager.getInputPeerById(peerId),
       random_id: nextRandomUint(32),
@@ -1489,7 +1488,6 @@ export class AppImManager extends EventListenerBase<{
 
         console.log(call);
       } else {
-        console.log('join stream bro not create');
         call = chatFull.call as any;
       }
 
@@ -1501,7 +1499,7 @@ export class AppImManager extends EventListenerBase<{
 
       const dcId = newCall.call.stream_dc_id as any as number;
 
-      const promise = await this.managers.apiManager.invokeApi('phone.joinGroupCall', {
+      await this.managers.apiManager.invokeApi('phone.joinGroupCall', {
         call: {
           _: 'inputGroupCall',
           id: call.id,
@@ -1531,13 +1529,14 @@ export class AppImManager extends EventListenerBase<{
         videoBuffer.mode = 'sequence';
         audioBuffer.mode = 'sequence';
 
+        // call this but start video after 3-5 seconds
         const interval = setInterval(() => {
           this.getRTMPStreamInfo(dcId, {
             _: 'inputGroupCall',
             id: call.id,
             access_hash: call.access_hash
           }, videoBuffer, audioBuffer);
-        }, 1350);
+        }, 1200);
       });
     };
 
