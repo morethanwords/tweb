@@ -135,7 +135,6 @@ import {RequestWebViewOptions} from './appAttachMenuBotsManager';
 import PopupWebApp from '../../components/popups/webApp';
 import {getPeerColorIndexByPeer, getPeerColorsByPeer, setPeerColors} from './utils/peers/getPeerColorById';
 import {nextRandomUint} from '../../helpers/random';
-import { bin2String22, indexOfSubArray } from './utils/demuxer_mp4';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -1550,6 +1549,20 @@ export class AppImManager extends EventListenerBase<{
     {codec: 'audio/mp4; codecs="opus"', samples: 50}
   ];
 
+  private indexOfSubArray(buffer: Uint8Array, subArray: number[]) {
+    for(let i = 0; i <= buffer.length - subArray.length; i++) {
+      let found = true;
+      for(let j = 0; j < subArray.length; j++) {
+        if(buffer[i + j] !== subArray[j]) {
+          found = false;
+          break;
+        }
+      }
+      if(found) return i;
+    }
+    return -1; // Not found
+  }
+
   public createBuffer(i: number, buffer: any, sourceBuffer?: SourceBuffer) {
     const mp4boxfile = MP4Box.createFile();
     let tempBuffer: ArrayBuffer;
@@ -1558,21 +1571,16 @@ export class AppImManager extends EventListenerBase<{
       const res = mp4boxfile.initializeSegmentation();
       res.forEach((segment: any) => {
         tempBuffer = segment.buffer as ArrayBuffer;
-        console.log(bin2String22(new Uint8Array(tempBuffer)));
-        console.log(segment.buffer);
       });
       mp4boxfile.start();
     }
 
-    mp4boxfile.onSegment = (id, user, segmentBuffer, sampleNum) => {
+    mp4boxfile.onSegment = (id: number, user: unknown, segmentBuffer: ArrayBuffer, sampleNum: number) => {
       try {
         if(sampleNum === (this.metadata[i].samples)) {
           const newBuf = new Uint8Array(tempBuffer.byteLength + segmentBuffer.byteLength);
           newBuf.set(new Uint8Array(tempBuffer), 0);
           newBuf.set(new Uint8Array(segmentBuffer), tempBuffer.byteLength);
-
-          console.log(bin2String22(newBuf.slice(0, 8092)))
-  
           sourceBuffer.addEventListener('updateend', (wh) => {
             console.log('update end');
             console.log(wh);
@@ -1608,8 +1616,8 @@ export class AppImManager extends EventListenerBase<{
       offset: 0,
       limit: 512 * 1024
     }, {dcId});
-    const test = (data.bytes.slice(32) as Uint8Array); 
-    const index = indexOfSubArray(test, [100, 79, 112, 115]);
+    const test = (data.bytes.slice(32) as Uint8Array);
+    const index = this.indexOfSubArray(test, [100, 79, 112, 115]);
     const datArr = test.subarray(index);
     datArr[5] = 1;
     try {
