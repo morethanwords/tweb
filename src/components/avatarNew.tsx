@@ -556,7 +556,7 @@ export const AvatarNew = (props: {
       }
 
       if(peerId === HIDDEN_PEER_ID) {
-        set({color: 'premium', icon: 'author_hidden'});
+        set({color: 'violet', icon: 'author_hidden'});
         return;
       }
 

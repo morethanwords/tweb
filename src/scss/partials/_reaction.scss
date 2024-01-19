@@ -189,12 +189,12 @@
   }
 
   &-tag {
-    --additional-height: .5rem;
+    --additional-height: .625rem;
     --reaction-size: 1.25rem;
     --reaction-offset: -.5625rem;
     --reaction-total-size: calc(var(--reaction-size) + var(--additional-height));
-    width: 2.875rem;
-    padding-inline-start: .4375rem;
+    min-width: 2.6875rem;
+    padding-inline-start: .375rem;
 
     &-svg {
       position: absolute;
@@ -202,16 +202,20 @@
       width: 100%;
       height: 100%;
       fill: var(--chosen-background-color);
+
+      &-circle {
+        fill: var(--message-reaction-tag-dot-color);
+      }
     }
 
-    &-dot {
-      position: absolute;
-      right: .4375rem;
-      width: .375rem;
-      height: .375rem;
-      background-color: var(--message-reaction-tag-dot-color);
-      border-radius: 50%;
-    }
+    // &-dot {
+    //   position: absolute;
+    //   right: .4375rem;
+    //   width: .375rem;
+    //   height: .375rem;
+    //   background-color: var(--message-reaction-tag-dot-color);
+    //   border-radius: 50%;
+    // }
 
     // .reaction-sticker {
     //   z-index: 1;

@@ -283,14 +283,15 @@ export default class ReactionElement extends HTMLElement {
 
     if(type === ReactionLayoutType.Tag) {
       this.insertAdjacentHTML('beforeend', `
-        <svg class="reaction-tag-svg" width="120px" height="72px" viewBox="0 0 120 72" xmlns="http://www.w3.org/2000/svg">
-          <path class="reaction-tag-svg-path" d="M18,0 L92.8308192,0 C96.662849,-5.73462801e-15 100.218707,1.99424846 102.216919,5.2640499 L117.813361,30.7854999 C119.769603,33.9866235 119.769603,38.0133765 117.813361,41.2145001 L102.216919,66.7359501 C100.218707,70.0057515 96.662849,72 92.8308192,72 L18,72 C8.0588745,72 1.21743675e-15,63.9411255 0,54 L0,18 C-1.21743675e-15,8.0588745 8.0588745,1.82615513e-15 18,0 Z" />
+        <svg class="reaction-tag-svg" width="43" height="30" viewBox="0 0 43 30" xmlns="http://www.w3.org/2000/svg">
+          <path class="reaction-tag-svg-path" d="M40.8317 12.0432L34.9967 4.08636C33.1129 1.51761 30.1181 0 26.9326 0H7C3.13401 0 0 3.13401 0 7V23C0 26.866 3.13401 30 7 30H26.9326C30.1181 30 33.1129 28.4824 34.9967 25.9136L40.8317 17.9568C42.1223 16.1969 42.1223 13.8031 40.8317 12.0432Z" />
+          <circle class="reaction-tag-svg-circle" cx="34" cy="15" r="3" />
         </svg>
       `);
 
-      const dot = document.createElement('div');
-      dot.classList.add('reaction-tag-dot');
-      this.append(dot);
+      // const dot = document.createElement('div');
+      // dot.classList.add('reaction-tag-dot');
+      // this.append(dot);
     }
   }
 
