@@ -59,7 +59,6 @@ import PopupBoostsViaGifts from '../popups/boostsViaGifts';
 import AppStatisticsTab from '../sidebarRight/tabs/statistics';
 import {ChatType} from './chat';
 import PopupRTMPStream from '../popups/RTMPStream';
-import RTMPStreamPlayback from '../popups/RTMPStreamPlayback';
 import AppMediaViewerAvatar from '../appMediaViewerAvatar';
 import AppMediaViewerStream from '../appMediaViewerStream';
 
@@ -349,18 +348,19 @@ export default class ChatTopbar {
   };
 
   private openObsStreamModal = async() => {
-    /* PopupElement.createPopup(PopupRTMPStream, this.chat.peerId, this.chat.appImManager, () => {
+    PopupElement.createPopup(PopupRTMPStream, this.chat.peerId, this.chat.appImManager, () => {
       console.warn('started stream');
       this.createRTMPStreamAndJoin();
       // this.chat.appImManager.joinRTMPStream(this.peerId).then(console.warn);
-    }).show(); */
-    this.createRTMPStreamAndJoin();
+    }).show();
+    // this.createRTMPStreamAndJoin();
   }
 
   // join the stream in the popup?
   private async createRTMPStreamAndJoin() {
     // PopupElement.createPopup(RTMPStreamPlayback).show();
     const chat = await this.chat.appImManager.getChatInfoEtc(this.peerId);
+    // i think need to open but the screen should not be shown immediately of the video player, only the bg ?
     new AppMediaViewerStream(chat).openMedia(this.peerId, this.chat.appImManager);
   }
 
@@ -435,12 +435,12 @@ export default class ChatTopbar {
     }, {
       icon: 'videochat',
       text: 'VoiceChat.RTMP.Title',
-      onClick: this.openObsStreamModal,
+      onClick: this.openObsStreamModal
       // verify: this.verifyVideoChatButton.bind(this, 'broadcast')
     }, {
       icon: 'videochat',
       text: 'VoiceChat.RTMP.Title',
-      onClick: this.openObsStreamModal,
+      onClick: this.openObsStreamModal
       // verify: this.verifyVideoChatButton.bind(this, 'group')
     }, {
       icon: 'topics',

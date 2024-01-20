@@ -21,6 +21,8 @@ import safePlay from '../helpers/dom/safePlay';
 import ButtonIcon from '../components/buttonIcon';
 import Icon from '../components/icon';
 import createBadge from '../helpers/createBadge';
+import PopupElement from './popups';
+import PopupRTMPStream from './popups/RTMPStream';
 
 export default class StreamPlayer extends ControlsHover {
   private static PLAYBACK_RATES = [0.5, 1, 1.5, 2];
@@ -36,12 +38,14 @@ export default class StreamPlayer extends ControlsHover {
   protected onPlaybackRackMenuToggle?: (open: boolean) => void;
   protected onPip?: (pip: boolean) => void;
   protected onPipClose?: () => void;
+  protected onSettings?: () => void;
 
-  constructor({video, onPlaybackRackMenuToggle, onPip, onPipClose}: {
+  constructor({video, onPlaybackRackMenuToggle, onPip, onPipClose, onSettings}: {
     video: HTMLVideoElement,
     onPlaybackRackMenuToggle?: StreamPlayer['onPlaybackRackMenuToggle'],
     onPip?: StreamPlayer['onPip'],
-    onPipClose?: StreamPlayer['onPipClose']
+    onPipClose?: StreamPlayer['onPipClose'],
+    onSettings?: StreamPlayer['onSettings'],
   }) {
     super();
 
@@ -52,6 +56,7 @@ export default class StreamPlayer extends ControlsHover {
     this.onPlaybackRackMenuToggle = onPlaybackRackMenuToggle;
     this.onPip = onPip;
     this.onPipClose = onPipClose;
+    this.onSettings = onSettings;
 
     this.listenerSetter = new ListenerSetter();
 
@@ -263,7 +268,7 @@ export default class StreamPlayer extends ControlsHover {
   }
 
   protected setBtnMenuToggle() {
-    const buttons = StreamPlayer.PLAYBACK_RATES.map((rate, idx) => {
+    /* const buttons = StreamPlayer.PLAYBACK_RATES.map((rate, idx) => {
       const buttonOptions: Parameters<typeof ButtonMenuSync>[0]['buttons'][0] = {
         // icon: VideoPlayer.PLAYBACK_RATES_ICONS[idx],
         regularText: rate + 'x',
@@ -273,7 +278,32 @@ export default class StreamPlayer extends ControlsHover {
       };
 
       return buttonOptions;
-    });
+    }); */
+
+    const buttons: Parameters<typeof ButtonMenuSync>[0]['buttons'][0][] = [
+      {
+        regularText: 'Output Device',
+        onClick: () => {
+          // dfd
+        }
+      },
+      {
+        regularText: 'Start Recording',
+        onClick: () => {
+          // dfd
+        }
+      },
+      {
+        regularText: 'Stream Settings',
+        onClick: () => this.onSettings()
+      },
+      {
+        regularText: 'End Live Stream',
+        onClick: () => {
+          // dfd
+        }
+      }
+    ];
     const btnMenu = ButtonMenuSync({buttons});
     btnMenu.classList.add('top-left');
     ButtonMenuToggleHandler({

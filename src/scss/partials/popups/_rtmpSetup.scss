@@ -9,6 +9,19 @@
 .popup-rtmp-setup {
   $parent: ".popup";
 
+  .popup-confirm {
+    margin-top: 1rem;
+
+    &.on-stream {
+      margin-top: 1.3rem;
+      background: var(--danger-color) !important;
+
+      &:hover {
+        background: var(--danger-color) !important;
+      }
+    }
+  }
+
   #{$parent} {
     &-header {
       margin-bottom: 1rem;
@@ -27,6 +40,14 @@
       align-items: center;
       padding: 8px;
 
+      .revoke-icon {
+        pointer-events: auto;
+
+        &:hover {
+          cursor: pointer;
+        }
+      }
+
       .copy {
         margin-left: auto;
         width: 40px;
@@ -35,7 +56,7 @@
 
       &-info {
         margin-left: 1.5rem;
-        max-width: calc(100% - 5rem);
+        max-width: calc(100% - 5.5rem);
 
         .label-row {
           display: flex;
@@ -50,7 +71,7 @@
           text-overflow: ellipsis;
         }
 
-        .i18n {
+        .i18n:not(.danger) {
           color: var(--secondary-text-color);
           font-size: var(--font-size-14);
           line-height: var(--line-height-14);

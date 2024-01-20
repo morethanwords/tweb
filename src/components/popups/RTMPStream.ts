@@ -22,12 +22,12 @@ export default class PopupRTMPStream extends PopupElement {
   private savedCredentials: { key: string, url: string } = null;
   private randomHiddenKey = [...Array(10 + Math.floor(Math.random() * 20))].map(() => '.').join('');
 
-  constructor(private peerId: number, private manager: AppImManager, private callback?: () => void) {
+  constructor(private peerId: number, private manager: AppImManager, private callback?: () => void, private onStream = false) {
     super('popup-rtmp-setup', {
       closable: true,
-      withConfirm: 'CreateExternalStream.StartStreaming',
+      withConfirm: onStream ? 'VoiceChat.EndLiveStream' : 'CreateExternalStream.StartStreaming',
       body: true,
-      title: 'VoiceChat.RTMP.Title'
+      title: onStream ? 'VoiceChat.RTMP.Settings' : 'VoiceChat.RTMP.Title'
     });
 
     void this.construct();
@@ -39,7 +39,7 @@ export default class PopupRTMPStream extends PopupElement {
       direction: 'bottom-left',
       buttons: [{
         icon: 'flip',
-        text: 'VoiceChat.RTMP.StreamKey.Revoke',
+        text: 'VoiceChat.RTMP.Revoke',
         onClick: () => this.getCredentials(true)
       }]
     });
@@ -49,22 +49,17 @@ export default class PopupRTMPStream extends PopupElement {
     this.addText('VoiceChat.RTMP.Info', 'VoiceChat.RTMP.Desc');
 
     this.urlNode = this.addDataRow('link', 'VoiceChat.RTMP.ServerURL');
-    this.keyNode = this.addDataRow('lock', 'VoiceChat.RTMP.StreamKey', true);
-
-    this.addText('CreateExternalStream.StartStreamingInfo');
-
-    this.btnConfirm.classList.add('popup-confirm')
+    this.keyNode = this.addDataRow('lock', 'VoiceChat.RTMP.StreamKey', {password: true});
+    this.onStream && this.addDataRow('flip', 'VoiceChat.RTMP.Revoke', {callback: () => this.getCredentials(true)});
+    this.onStream || this.addText('CreateExternalStream.StartStreamingInfo');
+    this.btnConfirm.classList.add('popup-confirm');
+    this.onStream && this.btnConfirm.classList.add('on-stream');
     this.body.append(this.btnConfirm);
 
-    attachClickEvent(this.btnConfirm, () => this.startRMPStream(), {listenerSetter: this.listenerSetter});
+    attachClickEvent(this.btnConfirm, () => this.hideWithCallback(this.callback), {listenerSetter: this.listenerSetter});
 
     this.getCredentials();
     currentPopup = this;
-  }
-
-  private startRMPStream() {
-    this.hideWithCallback(this.callback);
-    // this.manager.joinRTMPStream(this.peerId).then(console.warn);
   }
 
   private getCredentials(revoke = false) {
@@ -86,39 +81,44 @@ export default class PopupRTMPStream extends PopupElement {
     this.body.append(node);
   }
 
-  private addDataRow(icon: Icon, key: LangPackKey, password = false): HTMLSpanElement {
+  private addDataRow(icon: Icon, key: LangPackKey, params: {password?: boolean, callback?: () => void} = {password: false}): HTMLSpanElement {
+    const node = document.createElement('section');
+    node.classList.add('popup-data-row');
     const iconNode = Icon(icon);
-    const copyNode = ButtonIcon('copy', {asDiv: true});
-    copyNode.classList.add('copy');
-    copyNode.addEventListener('click', () => {
-      copyTextToClipboard(password ? this.savedCredentials.key : this.savedCredentials.url);
-    });
-    const eyeNode = Icon('eye1', 'eye'); // eye2
-    eyeNode.addEventListener('click', () => {
-      this.hidden = !this.hidden;
-      const tempEye = Icon(this.hidden ? 'eye1' : 'eye2');
-      eyeNode.innerHTML = tempEye.innerHTML;
-      this.renderCredentials();
-    })
-    const middle = document.createElement('div');
-    middle.classList.add('popup-data-row-info');
-    const dataNode = document.createElement('span');
-    dataNode.classList.add('data-node')
-    dataNode.append('-');
-    middle.append(dataNode);
     const label = document.createElement('div');
     label.classList.add('label-row');
     label.append(i18n(key));
-    if(password) {
-      label.append(eyeNode);
-    }
+    const middle = document.createElement('div');
+    middle.classList.add('popup-data-row-info');
+    const dataNode = document.createElement('span');
+    dataNode.classList.add('data-node');
+    const copyNode = ButtonIcon('copy', {asDiv: true});
     middle.append(label);
-
-    const node = document.createElement('section');
-    node.classList.add('popup-data-row');
     node.append(iconNode);
     node.append(middle);
-    node.append(copyNode);
+    if(params.callback) {
+      label.firstElementChild.classList.add('danger');
+      iconNode.classList.add('revoke-icon', 'danger');
+      iconNode.addEventListener('click', params.callback);
+    } else {
+      copyNode.classList.add('copy');
+      copyNode.addEventListener('click', () => {
+        copyTextToClipboard(params.password ? this.savedCredentials.key : this.savedCredentials.url);
+      });
+      const eyeNode = Icon('eye1', 'eye');
+      eyeNode.addEventListener('click', () => {
+        this.hidden = !this.hidden;
+        const tempEye = Icon(this.hidden ? 'eye1' : 'eye2');
+        eyeNode.innerHTML = tempEye.innerHTML;
+        this.renderCredentials();
+      })
+      dataNode.append('-');
+      middle.append(dataNode);
+      if(params.password) {
+        label.append(eyeNode);
+      }
+      node.append(copyNode);
+    }
     this.body.append(node);
     return dataNode;
   }

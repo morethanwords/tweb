@@ -135,6 +135,7 @@ import {RequestWebViewOptions} from './appAttachMenuBotsManager';
 import PopupWebApp from '../../components/popups/webApp';
 import {getPeerColorIndexByPeer, getPeerColorsByPeer, setPeerColors} from './utils/peers/getPeerColorById';
 import {nextRandomUint} from '../../helpers/random';
+import appStreamManager from './appStreamManager';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -1539,6 +1540,9 @@ export class AppImManager extends EventListenerBase<{
         }, 1200);
       });
     };
+
+    const man = appStreamManager;
+    console.log(man);
 
     next();
   };

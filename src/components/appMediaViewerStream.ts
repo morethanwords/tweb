@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {Chat as MTChat, ChatFull, Message, Photo, RequestPeerType} from '../layer';
+import {ChatFull, Message, Photo, RequestPeerType} from '../layer';
 import rootScope from '../lib/rootScope';
 import AppMediaViewerBase from './appMediaViewerBase';
 import animationIntersector from './animationIntersector';
@@ -66,6 +66,8 @@ import handleVideoLeak from '../helpers/dom/handleVideoLeak';
 import onMediaLoad from '../helpers/onMediaLoad';
 import {AppImManager} from '../lib/appManagers/appImManager';
 import StreamPlayer from './streamPlayer';
+import PopupRTMPStream from './popups/RTMPStream';
+import Chat from './chat/chat';
 
 
 /*
@@ -163,7 +165,7 @@ class AppMediaViewerStreamBase<
 
   protected middlewareHelper: MiddlewareHelper;
 
-  constructor(private chat: ChatFull) {
+  constructor(private chat: Chat) {
     super(false);
 
     this.managers = rootScope.managers;
@@ -262,7 +264,7 @@ class AppMediaViewerStreamBase<
       multiSelect: true,
       titleLangKey: 'RequestPeer.Title.Users'
     });
-    const invite = this.chat.exported_invite;
+    /* const invite = this.chat.exported_invite;
     if('link' in invite) {
       const promises = requestedPeerIds.map(async peerId => {
         this.managers.apiManager.invokeApi('messages.sendMessage', {
@@ -272,7 +274,9 @@ class AppMediaViewerStreamBase<
         })
       });
       Promise.all(promises).then(() => toastNew({langPackKey: 'LinkCopied'}));
-    }
+    } */
+
+    console.log('??ssfsf');
   };
 
   protected setListeners() {
@@ -1659,6 +1663,14 @@ class AppMediaViewerStreamBase<
               // this.toggleWholeActive(false);
               // this.toggleOverlay(false);
               this.close();
+            },
+            onSettings: () => {
+              PopupElement.createPopup(PopupRTMPStream, this.chat.peerId, this.chat.appImManager, () => {
+                console.warn('Ended stream');
+                // close the modal and end stream
+                // this.createRTMPStreamAndJoin();
+                // this.chat.appImManager.joinRTMPStream(this.peerId).then(console.warn);
+              }, true).show();
             }
           });
           player.addEventListener('toggleControls', (show) => {
@@ -2099,7 +2111,7 @@ type AppMediaViewerAvatarTargetType = {element: HTMLElement, photoId: Photo.phot
 export default class AppMediaViewerStream extends AppMediaViewerStreamBase<'', '', AppMediaViewerAvatarTargetType> {
   public peerId: PeerId;
 
-  constructor(chat: ChatFull) {
+  constructor(chat: Chat) {
     super(chat);
 
     this.setListeners();

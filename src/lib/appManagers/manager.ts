@@ -53,6 +53,7 @@ import type AppBotsManager from './appBotsManager';
 import type AppBoostsManager from './appBoostsManager';
 import type AppStatisticsManager from './appStatisticsManager';
 import type {AppManagers} from './managers';
+import { AppStreamManager } from './appStreamManager';
 
 export class AppManager {
   protected appPeersManager: AppPeersManager;
@@ -104,6 +105,7 @@ export class AppManager {
   protected appBotsManager: AppBotsManager;
   protected appBoostsManager: AppBoostsManager;
   protected appStatisticsManager: AppStatisticsManager;
+  protected appStreamManager: AppStreamManager;
 
   public clear: (init?: boolean) => void;
 
