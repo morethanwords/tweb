@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {ChatFull, Message, Photo, RequestPeerType} from '../layer';
+import {ChatFull, Message, Peer, Photo, RequestPeerType} from '../layer';
 import rootScope from '../lib/rootScope';
 import AppMediaViewerBase from './appMediaViewerBase';
 import animationIntersector from './animationIntersector';
@@ -68,6 +68,7 @@ import {AppImManager} from '../lib/appManagers/appImManager';
 import StreamPlayer from './streamPlayer';
 import PopupRTMPStream from './popups/RTMPStream';
 import Chat from './chat/chat';
+import PopupOutputDevice from './popups/outputDevice';
 
 
 /*
@@ -165,7 +166,7 @@ class AppMediaViewerStreamBase<
 
   protected middlewareHelper: MiddlewareHelper;
 
-  constructor(private chat: Chat) {
+  constructor(private chat: ChatFull) {
     super(false);
 
     this.managers = rootScope.managers;
@@ -1665,12 +1666,17 @@ class AppMediaViewerStreamBase<
               this.close();
             },
             onSettings: () => {
-              PopupElement.createPopup(PopupRTMPStream, this.chat.peerId, this.chat.appImManager, () => {
+              PopupElement.createPopup(PopupRTMPStream, fromId as PeerId, manager, () => {
                 console.warn('Ended stream');
                 // close the modal and end stream
                 // this.createRTMPStreamAndJoin();
                 // this.chat.appImManager.joinRTMPStream(this.peerId).then(console.warn);
               }, true).show();
+            },
+            onOutput: () => {
+              PopupElement.createPopup(PopupOutputDevice, val => {
+                console.log(val);
+              });
             }
           });
           player.addEventListener('toggleControls', (show) => {
@@ -2111,7 +2117,7 @@ type AppMediaViewerAvatarTargetType = {element: HTMLElement, photoId: Photo.phot
 export default class AppMediaViewerStream extends AppMediaViewerStreamBase<'', '', AppMediaViewerAvatarTargetType> {
   public peerId: PeerId;
 
-  constructor(chat: Chat) {
+  constructor(chat: ChatFull) {
     super(chat);
 
     this.setListeners();

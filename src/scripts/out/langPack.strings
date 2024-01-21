@@ -8,6 +8,16 @@
 "CreateExternalStream.StartStreaming" = "Start streaming",
 "VoiceChat.RTMP.Settings" = "Stream Settings",
 "VoiceChat.EndLiveStream" = "End live stream",
+"CallSettings.Output.Text" = "Output Device",
+"CallSettings.Device.Default" = "Default",
+"VoiceChat.StartRecording" = "Start Recording",
+"VoiceChat.StopRecording" = "Stop Recording",
+"VoiceChat.RTMP.Record.Stream.Title" = "Recording Title",
+"VoiceChat.RTMP.Record.Stream" = "Record this stream and save the result into an file?",
+"VoiceChat.RTMP.Record.Stream.Participants.Info" = "Participants will see that the chat is being recorded.",
+"VoiceChat.RTMP.Record.Stream.Also.Video" = "Also Record Video",
+"VoiceChat.RTMP.Record.Stream.Audio" = "This chat will be recorded into an audio file",
+"VoiceChat.RTMP.Record.Stream.Choose.Orientation" = "Choose video orientation",
 "Animations" = "Animations";
 "AttachAlbum" = "Album";
 "Appearance.Color.Hex" = "HEX";

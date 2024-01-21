@@ -1585,8 +1585,8 @@ export class AppImManager extends EventListenerBase<{
           newBuf.set(new Uint8Array(tempBuffer), 0);
           newBuf.set(new Uint8Array(segmentBuffer), tempBuffer.byteLength);
           sourceBuffer.addEventListener('updateend', (wh) => {
-            console.log('update end');
-            console.log(wh);
+            // console.log('update end');
+            // console.log(wh);
           });
           sourceBuffer.appendBuffer(newBuf.buffer);
         }

@@ -61,6 +61,7 @@ import {ChatType} from './chat';
 import PopupRTMPStream from '../popups/RTMPStream';
 import AppMediaViewerAvatar from '../appMediaViewerAvatar';
 import AppMediaViewerStream from '../appMediaViewerStream';
+import PopupRecordStream from '../popups/recordStream';
 
 type ButtonToVerify = { element?: HTMLElement, verify: () => boolean | Promise<boolean> };
 
@@ -348,11 +349,19 @@ export default class ChatTopbar {
   };
 
   private openObsStreamModal = async() => {
-    PopupElement.createPopup(PopupRTMPStream, this.chat.peerId, this.chat.appImManager, () => {
+    PopupElement.createPopup(PopupRecordStream, this.chat.peerId, this.chat.appImManager, params => {
+      console.warn('started stream');
+      // this.createRTMPStreamAndJoin();
+      console.log(params);
+      // this.chat.appImManager.joinRTMPStream(this.peerId).then(console.warn);
+    }).show()
+
+
+    /* PopupElement.createPopup(PopupRTMPStream, this.chat.peerId, this.chat.appImManager, () => {
       console.warn('started stream');
       this.createRTMPStreamAndJoin();
       // this.chat.appImManager.joinRTMPStream(this.peerId).then(console.warn);
-    }).show();
+    }).show(); */
     // this.createRTMPStreamAndJoin();
   }
 

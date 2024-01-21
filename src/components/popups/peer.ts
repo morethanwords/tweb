@@ -30,7 +30,8 @@ export type PopupPeerOptions = Omit<PopupOptions, 'buttons' | 'title'> & Partial
   descriptionLangKey: LangPackKey,
   descriptionLangArgs: any[],
   buttons: Array<PopupPeerButton>,
-  checkboxes: Array<PopupPeerCheckboxOptions>
+  checkboxes: Array<PopupPeerCheckboxOptions>,
+  noCancel: boolean
 }>;
 export default class PopupPeer extends PopupElement {
   protected description: HTMLParagraphElement;
@@ -40,7 +41,8 @@ export default class PopupPeer extends PopupElement {
       overlayClosable: true,
       ...options,
       title: true,
-      buttons: options.buttons && addCancelButton(options.buttons)
+      ...(options.noCancel && {buttons: options.buttons}),
+      ...(!options.noCancel && {buttons: options.buttons && addCancelButton(options.buttons)})
     });
 
     if(options.peerId) {

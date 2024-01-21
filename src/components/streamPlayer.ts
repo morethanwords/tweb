@@ -39,13 +39,15 @@ export default class StreamPlayer extends ControlsHover {
   protected onPip?: (pip: boolean) => void;
   protected onPipClose?: () => void;
   protected onSettings?: () => void;
+  protected onOutput?: () => void;
 
-  constructor({video, onPlaybackRackMenuToggle, onPip, onPipClose, onSettings}: {
+  constructor({video, onPlaybackRackMenuToggle, onPip, onPipClose, onSettings, onOutput}: {
     video: HTMLVideoElement,
     onPlaybackRackMenuToggle?: StreamPlayer['onPlaybackRackMenuToggle'],
     onPip?: StreamPlayer['onPip'],
     onPipClose?: StreamPlayer['onPipClose'],
     onSettings?: StreamPlayer['onSettings'],
+    onOutput?: StreamPlayer['onOutput']
   }) {
     super();
 
@@ -57,6 +59,7 @@ export default class StreamPlayer extends ControlsHover {
     this.onPip = onPip;
     this.onPipClose = onPipClose;
     this.onSettings = onSettings;
+    this.onOutput = onOutput;
 
     this.listenerSetter = new ListenerSetter();
 
@@ -282,22 +285,24 @@ export default class StreamPlayer extends ControlsHover {
 
     const buttons: Parameters<typeof ButtonMenuSync>[0]['buttons'][0][] = [
       {
+        icon: 'speaker',
         regularText: 'Output Device',
-        onClick: () => {
-          // dfd
-        }
+        onClick: () => this.onOutput()
       },
       {
+        icon: 'radioon',
         regularText: 'Start Recording',
         onClick: () => {
           // dfd
         }
       },
       {
+        icon: 'settings',
         regularText: 'Stream Settings',
         onClick: () => this.onSettings()
       },
       {
+        icon: 'crossround',
         regularText: 'End Live Stream',
         onClick: () => {
           // dfd

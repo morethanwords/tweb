@@ -23,6 +23,7 @@ export default class RadioField {
     stateKey?: string,
     alignRight?: boolean
   }) {
+    console.log(options);
     const label = this.label = document.createElement('label');
     label.classList.add('radio-field');
 
@@ -66,7 +67,6 @@ export default class RadioField {
     } else if(options.langKey) {
       _i18n(main, options.langKey);
     }
-
     label.append(input, main);
   }
 
