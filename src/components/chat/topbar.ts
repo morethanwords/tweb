@@ -64,6 +64,7 @@ import AppMediaViewerStream from '../appMediaViewerStream';
 import PopupRecordStream from '../popups/recordStream';
 import ReplyContainer from './replyContainer';
 import appStreamManager from '../../lib/appManagers/appStreamManager';
+import AppBoostsTab from '../sidebarRight/tabs/boosts';
 
 type ButtonToVerify = { element?: HTMLElement, verify: () => boolean | Promise<boolean> };
 
@@ -564,11 +565,12 @@ export default class ChatTopbar {
       verify: () => this.managers.appProfileManager.canViewStatistics(this.peerId)
     }, {
       icon: 'addboost',
-      text: 'BoostsViaGifts.Title',
+      text: 'Boosts',
       onClick: () => {
-        PopupElement.createPopup(PopupBoostsViaGifts, this.peerId);
+        this.appSidebarRight.createTab(AppBoostsTab).open(this.peerId);
+        this.appSidebarRight.toggleSidebar(true);
       },
-      verify: async() => await this.managers.appPeersManager.isBroadcast(this.peerId) && this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'create_giveaway')
+      verify: () => this.chat.isBroadcast && this.managers.appProfileManager.canViewStatistics(this.peerId)
     }, {
       icon: 'bots',
       text: 'Settings',
@@ -1010,6 +1012,18 @@ export default class ChatTopbar {
     this.status?.destroy();
     const status = this.status = this.createStatus();
 
+    const promises = [
+      this.managers.appPeersManager.isBroadcast(peerId),
+      this.managers.appPeersManager.isAnyChat(peerId),
+      peerId.isAnyChat() ? apiManagerProxy.getChat(peerId.toChatId()) : undefined,
+      newAvatar?.readyThumbPromise,
+      this.setTitleManual(),
+      status?.prepare(true),
+      apiManagerProxy.getState(),
+      modifyAckedPromise(this.chatRequests.setPeerId(peerId)),
+      modifyAckedPromise(this.chatActions.setPeerId(peerId))
+    ] as const;
+
     const [
       isBroadcast,
       isAnyChat,
@@ -1020,17 +1034,7 @@ export default class ChatTopbar {
       state,
       setRequestsCallback,
       setActionsCallback
-    ] = await Promise.all([
-      this.managers.appPeersManager.isBroadcast(peerId),
-      this.managers.appPeersManager.isAnyChat(peerId),
-      peerId.isAnyChat() ? apiManagerProxy.getChat(peerId.toChatId()) : undefined,
-      newAvatar?.readyThumbPromise,
-      this.setTitleManual(),
-      status?.prepare(true),
-      apiManagerProxy.getState(),
-      modifyAckedPromise(this.chatRequests.setPeerId(peerId)),
-      modifyAckedPromise(this.chatActions.setPeerId(peerId))
-    ]);
+    ] = await Promise.all(promises);
 
     if(!middleware() && newAvatarMiddlewareHelper) {
       newAvatarMiddlewareHelper.destroy();

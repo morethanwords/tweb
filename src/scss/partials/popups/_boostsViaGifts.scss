@@ -86,9 +86,12 @@
     height: 2rem;
     padding-inline: .5rem .75rem;
     border-radius: 2rem;
-    background-color: var(--light-filled-primary-color);
+    background-color: rgba(var(--primary-color-rgb), #{$hover-alpha});
     font-weight: var(--font-weight-bold);
     font-size: var(--font-size-14);
+    color: var(--primary-color);
+    position: relative;
+    pointer-events: none;
 
     &-icon {
       font-size: 1.125rem;

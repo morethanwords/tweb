@@ -118,7 +118,7 @@ export default class LimitLine {
     const set = (value: number) => {
       this.container.style.setProperty('--limit-progress', value * 100 + '%');
       if(this.hint) {
-        const t = 0.10;
+        const t = 0.1;
         if(this.hintNoStartEnd) {
           this.hint.style.setProperty('--limit-progress', clamp(value, t, 1 - t) * 100 + '%')
         } else {

@@ -1810,7 +1810,10 @@ export default class ChatBubbles {
         attachClickEvent(hoverReaction, (e) => {
           cancelEvent(e); // cancel triggering selection
 
-          this.managers.appReactionsManager.sendReaction(message as Message.message, reaction);
+          this.chat.sendReaction({
+            message: message as Message.message,
+            reaction
+          });
           this.unhoverPrevious();
         }, {listenerSetter: this.listenerSetter});
       }, noop);
@@ -2105,7 +2108,7 @@ export default class ChatBubbles {
       const reactionCount = reactionsElement.getReactionCount(reactionElement);
 
       const message = reactionsElement.getMessage();
-      this.managers.appReactionsManager.sendReaction(message, reactionCount.reaction);
+      this.chat.sendReaction({message, reaction: reactionCount.reaction});
 
       return;
     }
@@ -2368,6 +2371,10 @@ export default class ChatBubbles {
 
       const targets: {element: HTMLElement, mid: number, peerId: PeerId}[] = [];
       const ids = isSingleMedia ? [messageId] : (Object.keys(this.bubbles).map((k) => +k).map((mid) => {
+        const bubble = this.bubbles[mid];
+        if(!isSingleMedia && bubble.classList.contains(SINGLE_MEDIA_CLASSNAME)) {
+          return;
+        }
         /* if(isSingleMedia && !this.bubbles[id].classList.contains(SINGLE_MEDIA_CLASSNAME)) {
           return false;
         }  */
@@ -2399,6 +2406,7 @@ export default class ChatBubbles {
           const withTail = bubble.classList.contains('with-media-tail');
           // selector = '.album-item video, .album-item img, .preview video, .preview img, ';
           selector = '.album-item, .webpage-preview, ';
+          // selector = '.album-item, ';
           if(withTail) {
             selector += '.bubble__media-container';
           } else {
@@ -2431,6 +2439,14 @@ export default class ChatBubbles {
               peerId: this.peerId
             });
           });
+        }
+      });
+
+      // * filter duplicates (can have them in grouped documents)
+      forEachReverse(targets, (target, idx, arr) => {
+        const foundIndex = arr.findIndex((t) => t.element === target.element);
+        if(foundIndex !== idx) {
+          arr.splice(foundIndex, 1);
         }
       });
 
@@ -3536,10 +3552,15 @@ export default class ChatBubbles {
       }
 
       const mounted = await m(this.getMountedBubble(lastMsgId));
-      if(mounted) {
+      let bubble = mounted?.bubble;
+      if(!bubble && this.skippedMids.has(lastMsgId)) {
+        bubble = this.findNextMountedBubbleByMsgId(lastMsgId, false) || this.findNextMountedBubbleByMsgId(lastMsgId, true);
+      }
+
+      if(bubble) {
         if(isTarget) {
-          this.scrollToBubble(mounted.bubble, 'center');
-          this.highlightBubble(mounted.bubble);
+          this.scrollToBubble(bubble, 'center');
+          this.highlightBubble(bubble);
           this.chat.dispatchEvent('setPeer', lastMsgId, false);
         } else if(topMessage && !isJump) {
           // log('will scroll down', this.scroll.scrollTop, this.scroll.scrollHeight);
@@ -4127,8 +4148,11 @@ export default class ChatBubbles {
     const changedTop = firstMid !== newFirstMid;
     const changedBottom = !!lastGroup && lastMid !== newLastMid; // if has no groups then save bottom scroll position
 
+    const firstItem = loadQueue?.[0];
+    const firstReverse = firstItem?.reverse;
+    const isOneSide = loadQueue.every(({reverse}) => reverse === firstReverse);
     // const reverse = loadQueue[0]?.reverse;
-    const reverse = changedTop && !changedBottom;
+    const reverse = isOneSide ? firstReverse : changedTop && !changedBottom;
 
     log('changed ends', changedTop, changedBottom);
 

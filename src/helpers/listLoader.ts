@@ -172,7 +172,7 @@ export default class ListLoader<T extends {}, P extends {}> {
       }
 
       const processedArr: (Promise<any> | any)[] = [];
-      const method = older ? result.items.forEach.bind(result.items) : forEachReverse.bind(null, result.items);
+      const method = older && !this.reverse ? result.items.forEach.bind(result.items) : forEachReverse.bind(null, result.items);
       method((item: any) => {
         const processed = this.processItem ? this.processItem(item) : item;
 

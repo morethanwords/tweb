@@ -23,6 +23,7 @@ import assumeType from '../../helpers/assumeType';
 import makeError from '../../helpers/makeError';
 import callbackify from '../../helpers/callbackify';
 import getPeerActiveUsernames from './utils/peers/getPeerActiveUsernames';
+import getParticipantsCount from './utils/chats/getParticipantsCount';
 
 export type UserTyping = Partial<{userId: UserId, action: SendMessageAction, timeout: number}>;
 
@@ -704,33 +705,42 @@ export class AppProfileManager extends AppManager {
     }, 0);
   }
 
-  public async getOnlines(id: ChatId): Promise<number> {
+  public getOnlines(id: ChatId): MaybePromise<number> {
     const minOnline = 1;
     if(this.appChatsManager.isBroadcast(id)) {
       return minOnline;
     }
 
-    const chatInfo = await this.getChatFull(id);
-    if(this.appChatsManager.isMegagroup(id)) {
-      if((chatInfo as ChatFull.channelFull).participants_count <= 100) {
-        const channelParticipants = await this.getChannelParticipants(id, {_: 'channelParticipantsRecent'}, 100);
-        return this.reduceParticipantsForOnlineCount(channelParticipants.participants as ChannelParticipant.channelParticipant[]);
+    return callbackify(this.getChatFull(id), (chatFull) => {
+      if(getParticipantsCount(chatFull) < 2) {
+        return minOnline;
       }
 
-      const res = await this.apiManager.invokeApiCacheable('messages.getOnlines', {
-        peer: this.appChatsManager.getChannelInputPeer(id)
-      }, {cacheSeconds: 60});
+      if(this.appChatsManager.isMegagroup(id)) {
+        if((chatFull as ChatFull.channelFull).participants_count <= 100) {
+          const channelParticipantsResult = this.getChannelParticipants(id, {_: 'channelParticipantsRecent'}, 100);
+          return callbackify(channelParticipantsResult, (channelParticipants) => {
+            return this.reduceParticipantsForOnlineCount(channelParticipants.participants as ChannelParticipant.channelParticipant[]);
+          });
+        }
 
-      const onlines = res.onlines ?? minOnline;
-      return onlines;
-    }
+        const chatOnlinesResult = this.apiManager.invokeApiCacheable('messages.getOnlines', {
+          peer: this.appChatsManager.getChannelInputPeer(id)
+        }, {cacheSeconds: 60, syncIfHasResult: true});
 
-    const _participants = (chatInfo as ChatFull.chatFull).participants as ChatParticipants.chatParticipants;
-    if(_participants?.participants) {
-      return this.reduceParticipantsForOnlineCount(_participants.participants);
-    } else {
-      return minOnline;
-    }
+        return callbackify(chatOnlinesResult, (chatOnlines) => {
+          const onlines = chatOnlines.onlines ?? minOnline;
+          return onlines;
+        });
+      }
+
+      const _participants = (chatFull as ChatFull.chatFull).participants as ChatParticipants.chatParticipants;
+      if(_participants?.participants) {
+        return this.reduceParticipantsForOnlineCount(_participants.participants);
+      } else {
+        return minOnline;
+      }
+    });
   }
 
   private getTypingsKey(peerId: PeerId, threadId?: number) {
