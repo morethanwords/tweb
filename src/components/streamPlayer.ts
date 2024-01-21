@@ -23,6 +23,7 @@ import Icon from '../components/icon';
 import createBadge from '../helpers/createBadge';
 import PopupElement from './popups';
 import PopupRTMPStream from './popups/RTMPStream';
+import { HtmlAttributes } from 'csstype';
 
 export default class StreamPlayer extends ControlsHover {
   private static PLAYBACK_RATES = [0.5, 1, 1.5, 2];
@@ -40,14 +41,21 @@ export default class StreamPlayer extends ControlsHover {
   protected onPipClose?: () => void;
   protected onSettings?: () => void;
   protected onOutput?: () => void;
+  protected onRecord?: () => void;
+  protected onStopRecord?: () => void;
 
-  constructor({video, onPlaybackRackMenuToggle, onPip, onPipClose, onSettings, onOutput}: {
+  private recordMenuItem: HTMLElement;
+  private recordAction: () => void;
+
+  constructor({video, onPlaybackRackMenuToggle, onPip, onPipClose, onSettings, onOutput, onRecord, onStopRecord}: {
     video: HTMLVideoElement,
     onPlaybackRackMenuToggle?: StreamPlayer['onPlaybackRackMenuToggle'],
     onPip?: StreamPlayer['onPip'],
     onPipClose?: StreamPlayer['onPipClose'],
     onSettings?: StreamPlayer['onSettings'],
-    onOutput?: StreamPlayer['onOutput']
+    onOutput?: StreamPlayer['onOutput'],
+    onRecord?: StreamPlayer['onRecord'],
+    onStopRecord?: StreamPlayer['onStopRecord']
   }) {
     super();
 
@@ -60,6 +68,9 @@ export default class StreamPlayer extends ControlsHover {
     this.onPipClose = onPipClose;
     this.onSettings = onSettings;
     this.onOutput = onOutput;
+    this.onRecord = onRecord;
+    this.onStopRecord = onStopRecord;
+    this.recordAction = this.onRecord;
 
     this.listenerSetter = new ListenerSetter();
 
@@ -270,19 +281,13 @@ export default class StreamPlayer extends ControlsHover {
     }
   }
 
+  public updateToggle(startRecord: boolean) {
+    this.recordAction = startRecord ? this.onRecord : this.onStopRecord;
+    this.recordMenuItem.children.item(0).replaceChildren(Icon(startRecord ? 'radioon' : 'radiooff'));
+    (this.recordMenuItem.children.item(1) as HTMLElement).innerText = startRecord ? 'Start Recording' : 'Stop Recording';
+  }
+
   protected setBtnMenuToggle() {
-    /* const buttons = StreamPlayer.PLAYBACK_RATES.map((rate, idx) => {
-      const buttonOptions: Parameters<typeof ButtonMenuSync>[0]['buttons'][0] = {
-        // icon: VideoPlayer.PLAYBACK_RATES_ICONS[idx],
-        regularText: rate + 'x',
-        onClick: () => {
-          appMediaPlaybackController.playbackRate = rate;
-        }
-      };
-
-      return buttonOptions;
-    }); */
-
     const buttons: Parameters<typeof ButtonMenuSync>[0]['buttons'][0][] = [
       {
         icon: 'speaker',
@@ -292,9 +297,7 @@ export default class StreamPlayer extends ControlsHover {
       {
         icon: 'radioon',
         regularText: 'Start Recording',
-        onClick: () => {
-          // dfd
-        }
+        onClick: () => this.recordAction()
       },
       {
         icon: 'settings',
@@ -320,6 +323,7 @@ export default class StreamPlayer extends ControlsHover {
         this.onPlaybackRackMenuToggle(false);
       } : undefined
     });
+    this.recordMenuItem = btnMenu.children.item(1) as HTMLElement;
     this.playbackRateButton.append(btnMenu);
   }
 

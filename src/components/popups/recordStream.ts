@@ -20,7 +20,7 @@ let currentPopup: PopupRecordStream;
 export default class PopupRecordStream extends PopupElement {
   private video = true;
   private videoMode: 'landscape' | 'portrait' = 'landscape';
-  constructor(private peerId: number, private manager: AppImManager, private callback?: (params: { title: string, video: boolean, videoMode?: 'landscape' | 'portrait' }) => void) {
+  constructor(private callback?: (params: { title: string, video: boolean, videoMode?: 'landscape' | 'portrait' }) => void) {
     super('popup-rtmp-record-setup', {
       closable: true,
       withConfirm: 'VoiceChat.StartRecording',

@@ -69,6 +69,7 @@ import StreamPlayer from './streamPlayer';
 import PopupRTMPStream from './popups/RTMPStream';
 import Chat from './chat/chat';
 import PopupOutputDevice from './popups/outputDevice';
+import PopupRecordStream from './popups/recordStream';
 
 
 /*
@@ -1677,6 +1678,17 @@ class AppMediaViewerStreamBase<
               PopupElement.createPopup(PopupOutputDevice, val => {
                 console.log(val);
               });
+            },
+            onRecord: () => {
+              PopupElement.createPopup(PopupRecordStream, params => {
+                console.warn('started record stream');
+                console.log(params);
+                this.videoPlayer.updateToggle(false);
+              }).show()
+            },
+            onStopRecord: () => {
+              this.videoPlayer.updateToggle(true);
+              console.log('stop record');
             }
           });
           player.addEventListener('toggleControls', (show) => {

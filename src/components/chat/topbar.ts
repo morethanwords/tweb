@@ -349,19 +349,19 @@ export default class ChatTopbar {
   };
 
   private openObsStreamModal = async() => {
-    PopupElement.createPopup(PopupRecordStream, this.chat.peerId, this.chat.appImManager, params => {
+    /* PopupElement.createPopup(PopupRecordStream, this.chat.peerId, this.chat.appImManager, params => {
       console.warn('started stream');
       // this.createRTMPStreamAndJoin();
       console.log(params);
       // this.chat.appImManager.joinRTMPStream(this.peerId).then(console.warn);
-    }).show()
+    }).show() */
 
 
-    /* PopupElement.createPopup(PopupRTMPStream, this.chat.peerId, this.chat.appImManager, () => {
+    PopupElement.createPopup(PopupRTMPStream, this.chat.peerId, this.chat.appImManager, () => {
       console.warn('started stream');
       this.createRTMPStreamAndJoin();
       // this.chat.appImManager.joinRTMPStream(this.peerId).then(console.warn);
-    }).show(); */
+    }).show();
     // this.createRTMPStreamAndJoin();
   }
 
