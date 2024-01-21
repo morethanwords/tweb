@@ -70,6 +70,7 @@ import PopupRTMPStream from './popups/RTMPStream';
 import Chat from './chat/chat';
 import PopupOutputDevice from './popups/outputDevice';
 import PopupRecordStream from './popups/recordStream';
+import { AppStreamManager } from '../lib/appManagers/appStreamManager';
 
 
 /*
@@ -1484,7 +1485,7 @@ class AppMediaViewerStreamBase<
     let setMoverPromise: Promise<void>;
   }
 
-  protected async _openMedia({fromId, manager}: {fromId: PeerId | string, manager: AppImManager}) {
+  protected async _openMedia({fromId, manager}: {fromId: PeerId | string, manager: AppStreamManager}) {
     if(this.setMoverPromise) return this.setMoverPromise;
 
     /* if(DEBUG) {
@@ -2120,7 +2121,7 @@ class AppMediaViewerStreamBase<
     });
   }
 
-  private vidLoad(peerId: PeerId, video: HTMLVideoElement, manager: AppImManager) {
+  private vidLoad(peerId: PeerId, video: HTMLVideoElement, manager: AppStreamManager) {
     manager.joinRTMPStream(peerId, video).then(console.warn);
   }
 }
@@ -2136,7 +2137,7 @@ export default class AppMediaViewerStream extends AppMediaViewerStreamBase<'', '
   }
   // exported_invite
 
-  public async openMedia(fromId: PeerId | string, manager: AppImManager) {
+  public async openMedia(fromId: PeerId | string, manager: AppStreamManager) {
     console.log('???');
     super._openMedia({fromId, manager});
   }

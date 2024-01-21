@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import { c } from 'vitest/dist/reporters-5f784f42';
 import {IS_SAFARI} from '../../environment/userAgent';
 import {IS_H265_SUPPORTED} from '../../environment/videoSupport';
 import {animateSingle} from '../../helpers/animation';
@@ -594,6 +595,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
       const onMediaLoadPromise = onMediaLoad(video);
       const videoLeakPromise = handleVideoLeak(video, onMediaLoadPromise);
       videoLeakPromise.catch(onError);
+      console.log('NOT CATCHED HERE');
       onMediaLoadPromise.then(() => {
         if(group) {
           animationIntersector.addAnimation({
@@ -628,6 +630,7 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
           {context: cacheContext, type: 'video/mp4; codecs="hev1"', width: doc.w},
           {context: altCacheContext, type: 'video/mp4; codecs="avc1.64001E"', width: altDoc.w}
         ].map(({context, type, width}) => {
+          console.log('context', context);
           const source = document.createElement('source');
           source.src = context.url;
           // source.type = type;

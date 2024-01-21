@@ -307,6 +307,7 @@ export default class StreamPlayer extends ControlsHover {
       {
         icon: 'crossround',
         regularText: 'End Live Stream',
+        className: 'danger',
         onClick: () => {
           // dfd
         }

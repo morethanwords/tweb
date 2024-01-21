@@ -65,6 +65,109 @@ body.is-right-column-shown {
   }
 }
 
+.topbar-stream-container {
+	// min-width: 100%;
+	width: 100%;
+	--topbar-height: 3.5rem;
+	position: relative;
+	min-height: var(--topbar-height) !important;
+	max-height: var(--topbar-height) !important;
+	background-color: var(--surface-color);
+
+	border-top: 1px solid var(--border-color);
+	border-bottom: 1px solid var(--border-color);
+	align-self: flex-start;
+
+	
+	padding: 0 1rem;
+
+	display: flex;
+	align-items: center;
+	justify-content: center;
+
+	max-width: 100%;
+	transition: max-width 0.3s ease;
+
+	@include respond-to(medium-screens) {
+		body.is-right-column-shown & {
+			max-width: calc(100% - var(--right-column-width));
+		}
+	}
+
+	.join-stream {
+		position: relative;
+		width: 100%;
+		--pink-color-rgb: 223, 105, 209;
+		background: linear-gradient(90deg, rgba(var(--primary-color-rgb), 0.1) 0%, rgba(var(--pink-color-rgb), 0.2) 100%);
+
+		.reply-title {
+			font-weight: 500;
+		}
+
+		.reply-subtitle {
+			color: var(--primary-color);
+		}
+
+		.stream-join-badge {
+			pointer-events: auto;
+			width: 50px;
+			height: 26px;
+			border-radius: 16px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			position: absolute;
+			background-repeat:no-repeat;
+			background: linear-gradient(90deg,rgb(var(--pink-color-rgb)), rgb(var(--pink-color-rgb)), #ffffff, #ffffff, rgb(var(--pink-color-rgb)), rgb(var(--pink-color-rgb)), rgb(var(--pink-color-rgb)));
+			background-size: 200% 200%;
+			right: 10px;
+			top: calc(50% - 13px);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			background-position: 0 0;
+			animation: border-highlight 2s ease forwards, shake 0.4s cubic-bezier(.36,.07,.19,.97) 0.5s both;
+			
+			@keyframes border-highlight { 
+				0%{background-position: 150% 0%}
+				100%{ background-position: -70% 0%}
+			}
+
+			@keyframes shake {
+				10%, 90% {
+				  transform: translate3d(-1px, 0, 0);
+				}
+				
+				20%, 80% {
+				  transform: translate3d(1px, 0, 0);
+				}
+			  
+				30%, 50%, 70% {
+				  transform: translate3d(-1px, 0, 0);
+				}
+			  
+				40%, 60% {
+				  transform: translate3d(1px, 0, 0);
+				}
+			  }
+			
+
+			span {
+				font-weight: var(--font-weight-bold);
+				color: var(--light-filled-primary-color);
+				font-size: 0.875rem;
+				width: 44px;
+				height: 20px;
+				border-radius: 13px;
+				background-color: rgb(var(--pink-color-rgb));
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+		}
+	}
+}
+
 .topbar {
   --topbar-height: 3.5rem;
   

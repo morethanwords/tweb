@@ -62,6 +62,8 @@ import PopupRTMPStream from '../popups/RTMPStream';
 import AppMediaViewerAvatar from '../appMediaViewerAvatar';
 import AppMediaViewerStream from '../appMediaViewerStream';
 import PopupRecordStream from '../popups/recordStream';
+import ReplyContainer from './replyContainer';
+import appStreamManager from '../../lib/appManagers/appStreamManager';
 
 type ButtonToVerify = { element?: HTMLElement, verify: () => boolean | Promise<boolean> };
 
@@ -348,7 +350,7 @@ export default class ChatTopbar {
     return !!userFull && !!(type === 'voice' ? userFull.pFlags.phone_calls_available : userFull.pFlags.video_calls_available);
   };
 
-  private openObsStreamModal = async() => {
+  private openRTMPStreamModal = async() => {
     /* PopupElement.createPopup(PopupRecordStream, this.chat.peerId, this.chat.appImManager, params => {
       console.warn('started stream');
       // this.createRTMPStreamAndJoin();
@@ -367,10 +369,11 @@ export default class ChatTopbar {
 
   // join the stream in the popup?
   private async createRTMPStreamAndJoin() {
+    appStreamManager.init(this.chat.appImManager);
     // PopupElement.createPopup(RTMPStreamPlayback).show();
-    const chat = await this.chat.appImManager.getChatInfoEtc(this.peerId);
+    const chat = await this.managers.appProfileManager.getChatFull(this.peerId.toChatId());
     // i think need to open but the screen should not be shown immediately of the video player, only the bg ?
-    new AppMediaViewerStream(chat).openMedia(this.peerId, this.chat.appImManager);
+    new AppMediaViewerStream(chat).openMedia(this.peerId, appStreamManager);
   }
 
   public constructUtils() {
@@ -444,12 +447,12 @@ export default class ChatTopbar {
     }, {
       icon: 'videochat',
       text: 'VoiceChat.RTMP.Title',
-      onClick: this.openObsStreamModal
+      onClick: this.openRTMPStreamModal
       // verify: this.verifyVideoChatButton.bind(this, 'broadcast')
     }, {
       icon: 'videochat',
       text: 'VoiceChat.RTMP.Title',
-      onClick: this.openObsStreamModal
+      onClick: this.openRTMPStreamModal
       // verify: this.verifyVideoChatButton.bind(this, 'group')
     }, {
       icon: 'topics',
@@ -679,11 +682,52 @@ export default class ChatTopbar {
     return this.chat.peerId;
   }
 
-  public constructPeerHelpers() {
-    setTimeout(() => {
-      this.chat.appImManager.getChatInfoEtc(this.peerId).then(console.warn);
-    }, 200);
+  private streamActive = false;
+  private joinStreamContainer: HTMLElement;
 
+  private async constructJoinStreamPanel(activeCall: boolean) {
+    if(!activeCall) {
+      this.streamActive = false;
+      this.container.parentElement.removeChild(this.joinStreamContainer);
+      return;
+    }
+    const fullChat = await this.managers.appProfileManager.getChatFull(this.peerId.toChatId());
+    const call = await this.chat.appImManager.getCallInfo({
+      _: 'inputGroupCall',
+      id: fullChat.call.id,
+      access_hash: fullChat.call.access_hash
+    });
+    if((call.call as GroupCall.groupCall).pFlags.rtmp_stream) {
+      if(!this.streamActive) {
+        this.streamActive = true;
+        console.log(call);
+        const callDiv = this.joinStreamContainer = document.createElement('div');
+        callDiv.classList.add('topbar-stream-container');
+        const replyContainer = new ReplyContainer('reply');
+
+        replyContainer.title.append('Live stream');
+        replyContainer.subtitle.append(`${call.participants.length} watching`);
+
+        const liveBadge = document.createElement('div');
+        liveBadge.classList.add('stream-join-badge');
+        const badgeInner = document.createElement('span');
+        badgeInner.innerText = 'JOIN';
+        liveBadge.append(badgeInner);
+        replyContainer.content.append(liveBadge);
+
+        liveBadge.addEventListener('click', () => this.createRTMPStreamAndJoin());
+
+        replyContainer.container.classList.add('join-stream', 'quote-like', 'quote-like-border');
+        callDiv.append(replyContainer.container);
+        this.container.insertAdjacentElement('afterend', callDiv);
+      }
+    } else {
+      this.streamActive = false;
+      this.container.parentElement.removeChild(this.joinStreamContainer);
+    }
+  }
+
+  public constructPeerHelpers() {
     this.subtitle = document.createElement('div');
     this.subtitle.classList.add('info');
 
@@ -706,11 +750,11 @@ export default class ChatTopbar {
         verify: this.verifyVideoChatButton.bind(this, 'group')
       }, {
         text: 'VoiceChat.RTMP.Title',
-        onClick: this.openObsStreamModal,
+        onClick: this.openRTMPStreamModal,
         verify: this.verifyVideoChatButton.bind(this, 'broadcast')
       }, {
         text: 'VoiceChat.RTMP.Title',
-        onClick: this.openObsStreamModal,
+        onClick: this.openRTMPStreamModal,
         verify: this.verifyVideoChatButton.bind(this, 'group')
       }]
     }) as HTMLButtonElement;
@@ -771,9 +815,12 @@ export default class ChatTopbar {
       if(this.peerId === chatId.toPeerId(true)) {
         const chat = apiManagerProxy.getChat(chatId) as Channel/*  | Chat */;
 
+        console.warn(chat);
+
         this.btnJoin.classList.toggle('hide', !(chat as Channel)?.pFlags?.left);
         this.setUtilsWidth();
         this.verifyButtons();
+        this.constructJoinStreamPanel(chat.pFlags.call_active);
       }
     });
 
