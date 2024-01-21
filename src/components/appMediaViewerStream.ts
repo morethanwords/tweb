@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {ChatFull, Message, Peer, Photo, RequestPeerType} from '../layer';
+import {ChatFull, InputGroupCall, Message, Peer, PhoneGroupCall, Photo, RequestPeerType} from '../layer';
 import rootScope from '../lib/rootScope';
 import AppMediaViewerBase from './appMediaViewerBase';
 import animationIntersector from './animationIntersector';
@@ -282,10 +282,15 @@ class AppMediaViewerStreamBase<
     console.log('??ssfsf');
   };
 
+  private leaveCall: () => void;
+
   protected setListeners() {
     attachClickEvent(this.buttons.forward, this.onForwardClick);
     [this.buttons.close, this.buttons['mobile-close'], this.preloaderStreamable.preloader].forEach((el) => {
-      attachClickEvent(el, this.close.bind(this));
+      attachClickEvent(el, () => {
+        this.leaveCall?.();
+        this.close();
+      });
     });
 
     // ! cannot use the function because it'll cancel slide event on touch devices
@@ -910,11 +915,8 @@ class AppMediaViewerStreamBase<
     console.warn('23424');
     console.warn(containerRect);
 
-    mover.style.width = '500px';
-    mover.style.height = '100%';
-    // mover.style.width = containerRect.width + 'px';
-    // mover.style.height = containerRect.height + 'px';
-
+    mover.style.width = 'calc(100% - 15rem)';
+    mover.style.aspectRatio = '16 / 9';
     // const scaleX = rect.width / (containerRect.width * zoomValue);
     // const scaleY = rect.height / (containerRect.height * zoomValue);
     const scaleX = rect.width / containerRect.width;
@@ -1485,7 +1487,10 @@ class AppMediaViewerStreamBase<
     let setMoverPromise: Promise<void>;
   }
 
-  protected async _openMedia({fromId, manager}: {fromId: PeerId | string, manager: AppStreamManager}) {
+  protected async _openMedia({call, fromId, manager}: {call: InputGroupCall, fromId: PeerId | string, manager: AppStreamManager}) {
+    this.leaveCall = () => {
+      manager.leaveStream(call);
+    }
     if(this.setMoverPromise) return this.setMoverPromise;
 
     /* if(DEBUG) {
@@ -1678,6 +1683,7 @@ class AppMediaViewerStreamBase<
             onOutput: () => {
               PopupElement.createPopup(PopupOutputDevice, val => {
                 console.log(val);
+                video.setSinkId(val).catch(console.warn);
               });
             },
             onRecord: () => {
@@ -1685,11 +1691,22 @@ class AppMediaViewerStreamBase<
                 console.warn('started record stream');
                 console.log(params);
                 this.videoPlayer.updateToggle(false);
-              }).show()
+                manager.toggleRecord(call, {
+                  start: true,
+                  title: params.title,
+                  video: params.video,
+                  video_portrait: params.videoMode === 'portrait'
+                });
+              }).show();
             },
             onStopRecord: () => {
               this.videoPlayer.updateToggle(true);
+              manager.toggleRecord(call, {start: false});
               console.log('stop record');
+            },
+            onEndStream: () => {
+              manager.terminateCallInfo(call);
+              this.close();
             }
           });
           player.addEventListener('toggleControls', (show) => {
@@ -1709,410 +1726,10 @@ class AppMediaViewerStreamBase<
       };
 
       createPlayer();
-
-      // do stuff here
     }
-
-    console.warn('debug 2');
 
     this.setMoverToTarget().then(() => set())
-    // setTimeout(() => set());
-
-    /* const size = setAttachmentSize({
-      photo: media,
-      element: container,
-      boxWidth: maxWidth,
-      boxHeight: maxHeight,
-      noZoom: mediaSizes.isMobile ? false : true,
-      pushDocumentSize: !!(isDocument && media.w && media.h)
-    }).photoSize;
-    if(useContainerAsTarget) {
-      const cacheContext = await this.managers.thumbsStorage.getCacheContext(media, size.type);
-      let img: HTMLImageElement | HTMLCanvasElement;
-      if(cacheContext.downloaded) {
-        img = new Image();
-        img.src = cacheContext.url;
-      } else {
-        const gotThumb = getMediaThumbIfNeeded({
-          photo: media,
-          cacheContext,
-          useBlur: true,
-          onlyStripped: true
-        });
-        if(gotThumb) {
-          thumbPromise = gotThumb.loadPromise;
-          img = gotThumb.image;
-        }
-      }
-
-      if(img) {
-        img.classList.add('thumbnail');
-        container.append(img);
-      }
-    }
-
-    // need after setAttachmentSize
-    /* if(useContainerAsTarget) {
-      target = target.querySelector('img, video') || target;
-    } */
-
-    /* const supportsStreaming: boolean = !!(isDocument && media.supportsStreaming);
-    const preloader = supportsStreaming ? this.preloaderStreamable : this.preloader;
-
-    const getCacheContext = (type = size?.type) => {
-      return this.managers.thumbsStorage.getCacheContext(media, type);
-    };
-    */
     let setMoverPromise: Promise<void>;
-
-    /*
-    const isVideo = false;
-    if(isVideo) {
-      // //////this.log('will wrap video', media, size);
-
-      const middleware = mover.middlewareHelper.get();
-      // потому что для safari нужно создать элемент из event'а
-      const useController = message && media.type !== 'gif';
-      const video = createVideo({pip: useController, middleware});
-
-      if(this.wholeDiv.classList.contains('no-forwards')) {
-        video.addEventListener('contextmenu', cancelEvent);
-      }
-
-      const set = () => this.setMoverToTarget(target, false, fromRight).then(({onAnimationEnd}) => {
-        // return; // set and don't move
-        // if(wasActive) return;
-        // return;
-
-        const div = mover.firstElementChild && mover.firstElementChild.classList.contains('media-viewer-aspecter') ? mover.firstElementChild : mover;
-
-        const moverVideo = mover.querySelector('video');
-        if(moverVideo) {
-          moverVideo.remove();
-        }
-
-        // video.src = '';
-
-        video.setAttribute('playsinline', 'true');
-
-        // * fix for playing video if viewer is closed (https://contest.com/javascript-web-bonus/entry1425#issue11629)
-        video.addEventListener('timeupdate', () => {
-          if(this.tempId !== tempId) {
-            video.pause();
-          }
-        });
-
-        this.addEventListener('setMoverAfter', () => {
-          video.src = '';
-          video.load();
-        }, {once: true});
-
-        if(IS_SAFARI) {
-          // test stream
-          // video.controls = true;
-          video.autoplay = true;
-        }
-
-        if(media.type === 'gif') {
-          video.muted = true;
-          video.autoplay = true;
-          video.loop = true;
-        } else if(media.duration < 60) {
-          video.loop = true;
-        }
-
-        if(mediaTimestamp !== undefined) {
-          setCurrentTime(video, mediaTimestamp);
-        }
-
-        // if(!video.parentElement) {
-        div.append(video);
-        // }
-
-        const canPlayThrough = new Promise((resolve) => {
-          video.addEventListener('canplay', resolve, {once: true});
-        });
-
-        const createPlayer = () => {
-          if(media.type !== 'gif') {
-            video.dataset.ckin = 'default';
-            video.dataset.overlay = '1';
-
-            Promise.all([canPlayThrough, onAnimationEnd]).then(() => {
-              if(this.tempId !== tempId) {
-                return;
-              }
-
-              // const play = useController ? appMediaPlaybackController.willBePlayedMedia === video : true;
-              const play = true;
-              const player = this.videoPlayer = new VideoPlayer({
-                video,
-                play,
-                streamable: supportsStreaming,
-                onPlaybackRackMenuToggle: (open) => {
-                  this.wholeDiv.classList.toggle('hide-caption', !!open);
-                },
-                onPip: (pip) => {
-                  const otherMediaViewer = (window as any).appMediaViewer;
-                  if(!pip && otherMediaViewer && otherMediaViewer !== this) {
-                    this.releaseSingleMedia = undefined;
-                    this.close();
-                    return;
-                  }
-
-                  const mover = this.moversContainer.lastElementChild as HTMLElement;
-                  mover.classList.toggle('hiding', pip);
-                  this.toggleWholeActive(!pip);
-                  this.toggleOverlay(!pip);
-                  this.toggleGlobalListeners(!pip);
-
-                  if(this.navigationItem) {
-                    if(pip) appNavigationController.removeItem(this.navigationItem);
-                    else appNavigationController.pushItem(this.navigationItem);
-                  }
-
-                  if(useController) {
-                    if(pip) {
-                      // appMediaPlaybackController.toggleSwitchers(true);
-
-                      this.releaseSingleMedia(false);
-                      this.releaseSingleMedia = undefined;
-
-                      appMediaPlaybackController.setPictureInPicture(video);
-                    } else {
-                      this.releaseSingleMedia = appMediaPlaybackController.setSingleMedia(video, message as Message.message);
-                    }
-                  }
-                },
-                onPipClose: () => {
-                  // this.target = undefined;
-                  // this.toggleWholeActive(false);
-                  // this.toggleOverlay(false);
-                  this.close();
-                }
-              });
-              player.addEventListener('toggleControls', (show) => {
-                this.wholeDiv.classList.toggle('has-video-controls', show);
-              });
-
-              this.addEventListener('setMoverBefore', () => {
-                this.wholeDiv.classList.remove('has-video-controls');
-                this.videoPlayer.cleanup();
-                this.videoPlayer = undefined;
-              }, {once: true});
-
-              if(this.isZooming) {
-                this.videoPlayer.lockControls(false);
-              }
-
-            });
-          }
-        };
-
-        if(supportsStreaming) {
-          onAnimationEnd.then(() => {
-            if(video.readyState < video.HAVE_FUTURE_DATA) {
-              // console.log('ppp 1');
-              preloader.attach(mover, true);
-            }
-
-
-          });
-
-          const attachCanPlay = () => {
-            video.addEventListener('canplay', () => {
-              // console.log('ppp 2');
-              preloader.detach();
-              video.parentElement.classList.remove('is-buffering');
-            }, {once: true});
-          };
-
-          video.addEventListener('waiting', () => {
-            const loading = video.networkState === video.NETWORK_LOADING;
-            const isntEnoughData = video.readyState < video.HAVE_FUTURE_DATA;
-
-            // this.log('video waiting for progress', loading, isntEnoughData);
-            if(loading && isntEnoughData) {
-              attachCanPlay();
-
-              // console.log('ppp 3');
-              preloader.attach(mover, true);
-
-              // поставлю класс для плеера, чтобы убрать большую иконку пока прелоадер на месте
-              video.parentElement.classList.add('is-buffering');
-            }
-          });
-
-          if(this.wholeDiv.classList.contains('no-forwards')) {
-            video.addEventListener('contextmenu', (e) => {
-              cancelEvent(e);
-            });
-          }
-
-          attachCanPlay();
-        }
-
-        // if(!video.src || media.url !== video.src) {
-        const load = async() => {
-
-          const promise: Promise<any> = supportsStreaming ? Promise.resolve() : appDownloadManager.downloadMediaURL({media});
-
-          if(!supportsStreaming) {
-            onAnimationEnd.then(async() => {
-              if(!(await getCacheContext()).url) {
-                // console.log('ppp 4');
-                preloader.attach(mover, true, promise);
-              }
-            });
-          }
-
-          Promise.all([promise, onAnimationEnd]).then(async() => {
-            if(this.tempId !== tempId) {
-              this.log.warn('media viewer changed video');
-              return;
-            }
-
-            const url = (await getCacheContext()).url;
-
-            const onUnsupported = () => {
-              toastNew({
-                langPackKey: IS_MOBILE ? 'Video.Unsupported.Mobile' : 'Video.Unsupported.Desktop'
-              });
-
-              const error = video.error;
-              if(error && error.code !== 4) {
-                this.log.error('Error ' + error.code + '; details: ' + error.message);
-              }
-
-              preloader?.detach();
-            };
-
-            handleVideoLeak(video, onMediaLoad(video)).catch(onUnsupported);
-            video.addEventListener('error', onUnsupported, {once: true});
-            middleware.onClean(() => {
-              video.removeEventListener('error', onUnsupported);
-            });
-
-            if(target instanceof SVGSVGElement) { // if video exists
-              // if(!video.parentElement) {
-              div.firstElementChild.lastElementChild.append(video);
-              // }
-            } else {
-              renderImageFromUrl(video, url);
-            }
-
-            // * have to set options (especially playbackRate) after src
-            // * https://github.com/videojs/video.js/issues/2516
-            if(useController) {
-              this.releaseSingleMedia = appMediaPlaybackController.setSingleMedia(video, message as Message.message);
-
-              this.addEventListener('setMoverBefore', () => {
-                if(this.releaseSingleMedia) {
-                  this.releaseSingleMedia();
-                  this.releaseSingleMedia = undefined;
-                }
-              }, {once: true});
-            }
-
-            this.updateMediaSource(target, url, 'video');
-
-            createPlayer();
-          });
-
-          return promise;
-        };
-
-        this.lazyLoadQueue.unshift({load});
-        // } else createPlayer();
-      });
-
-      setMoverPromise = thumbPromise.then(set);
-    } else {
-      const set = () => this.setMoverToTarget(target, false, fromRight).then(({onAnimationEnd}) => {
-        // return; // set and don't move
-        // if(wasActive) return;
-        // return;
-
-        const load = async() => {
-          const cancellablePromise = isDocument ? appDownloadManager.downloadMediaURL({media}) : appDownloadManager.downloadMediaURL({media, thumb: size});
-
-          const photoSizes = !isDocument && media.sizes.slice().filter((size) => (size as PhotoSize.photoSize).w) as PhotoSize.photoSize[];
-          photoSizes && photoSizes.sort((a, b) => b.size - a.size);
-          const fullPhotoSize = photoSizes?.[0];
-          const cancellableFullPromise = !isDocument && fullPhotoSize !== size && appDownloadManager.downloadMediaURL({media, thumb: fullPhotoSize});
-
-          onAnimationEnd.then(async() => {
-            if(!(await getCacheContext()).url) {
-              this.preloader.attachPromise(cancellablePromise);
-              // this.preloader.attach(mover, true, cancellablePromise);
-            }
-          });
-
-          Promise.all([onAnimationEnd, cancellablePromise]).then(async() => {
-            if(this.tempId !== tempId) {
-              this.log.warn('media viewer changed photo');
-              return;
-            }
-
-            const url = (await getCacheContext()).url;
-            if(target instanceof SVGSVGElement) {
-              this.updateMediaSource(target, url, 'img');
-              this.updateMediaSource(mover, url, 'img');
-
-              if(mediaSizes.isMobile) {
-                const imgs = mover.querySelectorAll('img');
-                imgs.forEach((img) => {
-                  img.classList.remove('thumbnail'); // может здесь это вообще не нужно
-                });
-              }
-            } else {
-              const div = mover.firstElementChild && mover.firstElementChild.classList.contains('media-viewer-aspecter') ? mover.firstElementChild : mover;
-              const haveImage = ['CANVAS', 'IMG'].includes(div.firstElementChild?.tagName) ? div.firstElementChild as HTMLElement : null;
-              if((haveImage as HTMLImageElement)?.src !== url)  {
-                const image = new Image();
-                image.classList.add('thumbnail');
-
-                renderImageFromUrl(image, url, () => {
-                  fastRaf(() => {
-                    this.updateMediaSource(target, url, 'img');
-
-                    if(haveImage) {
-                      fastRaf(() => {
-                        haveImage.remove();
-                      });
-                    }
-
-                    div.append(image);
-                  });
-                }, false);
-
-                cancellableFullPromise && cancellableFullPromise.then((url) => {
-                  const fullImage = new Image();
-                  fullImage.classList.add('thumbnail');
-                  renderImageFromUrl(fullImage, url, () => {
-                    fastRaf(() => {
-                      image.replaceWith(fullImage);
-                    });
-                  }, false);
-                });
-              }
-            }
-
-            // this.preloader.detach();
-          }).catch((err) => {
-            this.log.error(err);
-            this.preloader.attach(mover);
-            this.preloader.setManual();
-          });
-
-          return cancellablePromise;
-        };
-
-        this.lazyLoadQueue.unshift({load});
-      });
-
-      setMoverPromise = thumbPromise.then(set);
-    } */
 
     return this.setMoverPromise = (setMoverPromise || (new Promise(resolve => resolve())) ).catch(() => {
       this.setMoverAnimationPromise = null;
@@ -2122,7 +1739,9 @@ class AppMediaViewerStreamBase<
   }
 
   private vidLoad(peerId: PeerId, video: HTMLVideoElement, manager: AppStreamManager) {
-    manager.joinRTMPStream(peerId, video).then(console.warn);
+    manager.joinRTMPStream(peerId, video, (count: number) => {
+      this.videoPlayer?.updateViewCount(count);
+    }).then(console.warn);
   }
 }
 
@@ -2135,10 +1754,9 @@ export default class AppMediaViewerStream extends AppMediaViewerStreamBase<'', '
 
     this.setListeners();
   }
-  // exported_invite
 
-  public async openMedia(fromId: PeerId | string, manager: AppStreamManager) {
+  public async openMedia(call: InputGroupCall, fromId: PeerId | string, manager: AppStreamManager) {
     console.log('???');
-    super._openMedia({fromId, manager});
+    super._openMedia({call, fromId, manager});
   }
 }

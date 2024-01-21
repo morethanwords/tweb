@@ -12,6 +12,7 @@ import {AppImManager} from '../../lib/appManagers/appImManager';
 import ButtonIcon from '../buttonIcon';
 import {copyTextToClipboard} from '../../helpers/clipboard';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import { AppStreamManager } from '../../lib/appManagers/appStreamManager';
 
 let currentPopup: PopupRTMPStream;
 
@@ -22,7 +23,7 @@ export default class PopupRTMPStream extends PopupElement {
   private savedCredentials: { key: string, url: string } = null;
   private randomHiddenKey = [...Array(10 + Math.floor(Math.random() * 20))].map(() => '.').join('');
 
-  constructor(private peerId: number, private manager: AppImManager, private callback?: () => void, private onStream = false) {
+  constructor(private peerId: number, private streamManager: AppStreamManager, private callback?: () => void, private onStream = false) {
     super('popup-rtmp-setup', {
       closable: true,
       withConfirm: onStream ? 'VoiceChat.EndLiveStream' : 'CreateExternalStream.StartStreaming',
@@ -63,7 +64,7 @@ export default class PopupRTMPStream extends PopupElement {
   }
 
   private getCredentials(revoke = false) {
-    this.manager.getRTMPCredentials(this.peerId, revoke).then(({key, url}) => {
+    this.streamManager.getRTMPCredentials(this.peerId, revoke).then(({key, url}) => {
       this.savedCredentials = {url, key};
       this.renderCredentials();
     });

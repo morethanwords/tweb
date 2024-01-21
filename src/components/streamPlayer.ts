@@ -43,11 +43,16 @@ export default class StreamPlayer extends ControlsHover {
   protected onOutput?: () => void;
   protected onRecord?: () => void;
   protected onStopRecord?: () => void;
+  protected onEndStream?: () => void;
 
   private recordMenuItem: HTMLElement;
   private recordAction: () => void;
 
-  constructor({video, onPlaybackRackMenuToggle, onPip, onPipClose, onSettings, onOutput, onRecord, onStopRecord}: {
+  public placeholderElement: HTMLElement;
+
+  public timeElapsed: HTMLElement;
+
+  constructor({video, onPlaybackRackMenuToggle, onPip, onPipClose, onSettings, onOutput, onRecord, onStopRecord, onEndStream}: {
     video: HTMLVideoElement,
     onPlaybackRackMenuToggle?: StreamPlayer['onPlaybackRackMenuToggle'],
     onPip?: StreamPlayer['onPip'],
@@ -55,14 +60,15 @@ export default class StreamPlayer extends ControlsHover {
     onSettings?: StreamPlayer['onSettings'],
     onOutput?: StreamPlayer['onOutput'],
     onRecord?: StreamPlayer['onRecord'],
-    onStopRecord?: StreamPlayer['onStopRecord']
+    onStopRecord?: StreamPlayer['onStopRecord'],
+    onEndStream?: StreamPlayer['onEndStream']
   }) {
     super();
 
     this.video = video;
     this.wrapper = document.createElement('div');
     this.wrapper.classList.add('ckin__player');
-
+    
     this.onPlaybackRackMenuToggle = onPlaybackRackMenuToggle;
     this.onPip = onPip;
     this.onPipClose = onPipClose;
@@ -70,6 +76,7 @@ export default class StreamPlayer extends ControlsHover {
     this.onOutput = onOutput;
     this.onRecord = onRecord;
     this.onStopRecord = onStopRecord;
+    this.onEndStream = onEndStream;
     this.recordAction = this.onRecord;
 
     this.listenerSetter = new ListenerSetter();
@@ -108,6 +115,10 @@ export default class StreamPlayer extends ControlsHover {
     this.wrapper.classList.toggle('is-playing', isPlaying);
   }
 
+  public updateViewCount(val: number) {
+    this.timeElapsed.innerText = `${val.toLocaleString()} watching`;
+  }
+
   private stylePlayer() {
     const {wrapper, video, skin, listenerSetter} = this;
 
@@ -117,12 +128,8 @@ export default class StreamPlayer extends ControlsHover {
 
     if(skin === 'default') {
       // remove
-      const timeElapsed = wrapper.querySelector('.time') as HTMLElement;
-      let i = 28305;
-      setInterval(() => {
-        timeElapsed.innerText = `${i.toLocaleString()} watching`;
-        i += 1;
-      }, 2000);
+      this.timeElapsed = wrapper.querySelector('.time') as HTMLElement;
+      // this.timeElapsed = wrapper.querySelector('.time') as HTMLElement;
 
       const leftControls = wrapper.querySelector('.left-controls') as HTMLElement;
       const rightControls = wrapper.querySelector('.right-controls') as HTMLElement;
@@ -137,12 +144,15 @@ export default class StreamPlayer extends ControlsHover {
       liveBadge.classList.add('stream-live-badge');
       liveBadge.classList.remove('is-badge-empty');
       liveBadge.innerText = 'LIVE';
-      leftControls.insertBefore(liveBadge, timeElapsed);
+      leftControls.insertBefore(liveBadge, this.timeElapsed);
 
       const volumeSelector = new VolumeSelector(listenerSetter);
-
       volumeSelector.btn.classList.remove('btn-icon');
-      leftControls.insertBefore(volumeSelector.btn, timeElapsed);
+      leftControls.insertBefore(volumeSelector.btn, this.timeElapsed);
+
+      volumeSelector.setHandlers({
+        onScrub: val => video.volume = val
+      });
 
       if(this.pipButton) {
         attachClickEvent(this.pipButton, () => {
@@ -308,9 +318,7 @@ export default class StreamPlayer extends ControlsHover {
         icon: 'crossround',
         regularText: 'End Live Stream',
         className: 'danger',
-        onClick: () => {
-          // dfd
-        }
+        onClick: () => this.onEndStream()
       }
     ];
     const btnMenu = ButtonMenuSync({buttons});

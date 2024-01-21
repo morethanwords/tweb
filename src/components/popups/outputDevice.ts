@@ -14,7 +14,7 @@ export default class PopupOutput extends PopupPeer {
     super('popup-output-device', {
       titleLangKey: 'CallSettings.Output.Text',
       buttons: [{
-        langKey: 'ChatList.Context.Mute',
+        langKey: 'OK',
         callback: () => callback(this.id)
       }],
       body: true,

@@ -351,29 +351,23 @@ export default class ChatTopbar {
   };
 
   private openRTMPStreamModal = async() => {
-    /* PopupElement.createPopup(PopupRecordStream, this.chat.peerId, this.chat.appImManager, params => {
-      console.warn('started stream');
-      // this.createRTMPStreamAndJoin();
-      console.log(params);
-      // this.chat.appImManager.joinRTMPStream(this.peerId).then(console.warn);
-    }).show() */
+    appStreamManager.init(this.chat.appImManager);
 
-
-    PopupElement.createPopup(PopupRTMPStream, this.chat.peerId, this.chat.appImManager, () => {
+    PopupElement.createPopup(PopupRTMPStream, this.chat.peerId, appStreamManager, async() => {
       console.warn('started stream');
+      await appStreamManager.createRTMPStream(this.peerId, apiManagerProxy.getChat(this.peerId.toChatId()).title);
       this.createRTMPStreamAndJoin();
-      // this.chat.appImManager.joinRTMPStream(this.peerId).then(console.warn);
     }).show();
-    // this.createRTMPStreamAndJoin();
   }
 
-  // join the stream in the popup?
   private async createRTMPStreamAndJoin() {
     appStreamManager.init(this.chat.appImManager);
-    // PopupElement.createPopup(RTMPStreamPlayback).show();
-    const chat = await this.managers.appProfileManager.getChatFull(this.peerId.toChatId());
-    // i think need to open but the screen should not be shown immediately of the video player, only the bg ?
-    new AppMediaViewerStream(chat).openMedia(this.peerId, appStreamManager);
+    const fullChat = await this.managers.appProfileManager.getChatFull(this.peerId.toChatId());
+    new AppMediaViewerStream(fullChat).openMedia({
+      _: 'inputGroupCall',
+      id: fullChat.call.id,
+      access_hash: fullChat.call.access_hash
+    }, this.peerId, appStreamManager);
   }
 
   public constructUtils() {

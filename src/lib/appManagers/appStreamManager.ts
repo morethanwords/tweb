@@ -1,3 +1,4 @@
+import { info } from 'autoprefixer';
 import {nextRandomUint} from '../../helpers/random';
 import {GroupCall, InputGroupCall, Update, Updates} from '../../layer';
 import {AppImManager} from './appImManager';
@@ -5,6 +6,8 @@ import {AppImManager} from './appImManager';
 export class AppStreamManager {
   private appImManager: AppImManager;
   private videoElement: HTMLVideoElement;
+  private interval: unknown;
+  private ssrc: number;
 
   constructor() {
     console.warn('AppStreamManager constructor');
@@ -45,7 +48,7 @@ export class AppStreamManager {
     return update.call;
   }
 
-  public async joinRTMPStream(peerId: PeerId, video?: HTMLVideoElement) {
+  public async joinRTMPStream(peerId: PeerId, player: HTMLVideoElement, updCount: (val: number) => void) {
     const chatId = peerId.toChatId();
     console.log('started RTMP');
     console.warn(chatId);
@@ -78,6 +81,7 @@ export class AppStreamManager {
 
       const dcId = newCall.call.stream_dc_id as any as number;
 
+      this.ssrc = nextRandomUint(32);
       await this.managers.apiManager.invokeApi('phone.joinGroupCall', {
         call: {
           _: 'inputGroupCall',
@@ -89,12 +93,11 @@ export class AppStreamManager {
         video_stopped: true,
         params: {
           _: 'dataJSON',
-          data: `{"ssrc":1}`
+          data: `{"ssrc":${this.ssrc}}`
         }
       }).then(console.warn);
 
       const mediaSource = new MediaSource();
-      const player = document.getElementById('video-player-own5') as HTMLVideoElement;
       player.src = window.URL.createObjectURL(mediaSource);
 
       mediaSource.addEventListener('sourceended', (...args) => console.log('source ended', ...args));
@@ -109,12 +112,14 @@ export class AppStreamManager {
         audioBuffer.mode = 'sequence';
 
         // call this but start video after 3-5 seconds
-        const interval = setInterval(() => {
-          this.getRTMPStreamInfo(dcId, {
-            _: 'inputGroupCall',
+        this.interval = setInterval(() => {
+          const input = {
+            _: 'inputGroupCall' as const,
             id: call.id,
             access_hash: call.access_hash
-          }, videoBuffer, audioBuffer);
+          };
+          this.getRTMPStreamInfo(dcId, input, videoBuffer, audioBuffer);
+          this.getCallInfo(input).then(call => updCount((call.call as GroupCall.groupCall).participants_count || 1));
         }, 1200);
       });
     };
@@ -221,6 +226,18 @@ export class AppStreamManager {
     return promise;
   }
 
+  public async getInvite(call: InputGroupCall) {
+    const promise = await this.managers.apiManager.invokeApi('phone.exportGroupCallInvite', {call});
+    console.log(promise);
+    return promise;
+  }
+
+  public async toggleRecord(call: InputGroupCall, options: {start: boolean, video?: boolean, title?: string, video_portrait?: boolean}) {
+    const promise = await this.managers.apiManager.invokeApi('phone.toggleGroupCallRecord', {call, ...options});
+    console.log(promise);
+    return promise;
+  }
+
   public async editCallTitle(call: InputGroupCall, title: string) {
     const promise = await this.managers.apiManager.invokeApi('phone.editGroupCallTitle', {call, title});
     console.log(promise);
@@ -228,7 +245,15 @@ export class AppStreamManager {
   }
 
   public async terminateCallInfo(call: InputGroupCall) {
+    clearInterval(this.interval as any);
     const promise = await this.managers.apiManager.invokeApi('phone.discardGroupCall', {call});
+    console.log(promise);
+    return promise;
+  }
+
+  public async leaveStream(call: InputGroupCall) {
+    clearInterval(this.interval as any);
+    const promise = await this.managers.apiManager.invokeApi('phone.leaveGroupCall', {call, source: this.ssrc});
     console.log(promise);
     return promise;
   }

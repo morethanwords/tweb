@@ -34,8 +34,7 @@ export default class PopupRecordStream extends PopupElement {
   private async construct() {
     const titleInputField = new InputField({
       label: 'VoiceChat.RTMP.Record.Stream.Title',
-      name: 'create-record-title',
-      required: true
+      name: 'create-record-title'
     });
     this.body.append(titleInputField.container);
 
