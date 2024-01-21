@@ -70,7 +70,7 @@ import PopupRTMPStream from './popups/RTMPStream';
 import Chat from './chat/chat';
 import PopupOutputDevice from './popups/outputDevice';
 import PopupRecordStream from './popups/recordStream';
-import { AppStreamManager } from '../lib/appManagers/appStreamManager';
+import {AppStreamManager} from '../lib/appManagers/appStreamManager';
 
 
 /*
@@ -1487,7 +1487,7 @@ class AppMediaViewerStreamBase<
     let setMoverPromise: Promise<void>;
   }
 
-  protected async _openMedia({call, fromId, manager}: {call: InputGroupCall, fromId: PeerId | string, manager: AppStreamManager}) {
+  protected async _openMedia({call, fromId, manager, hasRights}: {call: InputGroupCall, fromId: PeerId | string, manager: AppStreamManager, hasRights: boolean}) {
     this.leaveCall = () => {
       manager.leaveStream(call);
     }
@@ -1647,6 +1647,7 @@ class AppMediaViewerStreamBase<
 
           const player = this.videoPlayer = new StreamPlayer({
             video,
+            hasRights,
             onPip: (pip) => {
               const otherMediaViewer = (window as any).appMediaViewer;
               if(!pip && otherMediaViewer && otherMediaViewer !== this) {
@@ -1683,7 +1684,7 @@ class AppMediaViewerStreamBase<
             onOutput: () => {
               PopupElement.createPopup(PopupOutputDevice, val => {
                 console.log(val);
-                video.setSinkId(val).catch(console.warn);
+                (video as unknown as {setSinkId: (val: unknown) => Promise<unknown>})?.['setSinkId']?.(val).catch(console.warn);
               });
             },
             onRecord: () => {
@@ -1755,8 +1756,8 @@ export default class AppMediaViewerStream extends AppMediaViewerStreamBase<'', '
     this.setListeners();
   }
 
-  public async openMedia(call: InputGroupCall, fromId: PeerId | string, manager: AppStreamManager) {
+  public async openMedia(call: InputGroupCall, fromId: PeerId | string, manager: AppStreamManager, hasRights: boolean) {
     console.log('???');
-    super._openMedia({call, fromId, manager});
+    super._openMedia({call, fromId, manager, hasRights});
   }
 }

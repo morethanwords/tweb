@@ -5,7 +5,7 @@
  */
 
 import appMediaPlaybackController from '../components/appMediaPlaybackController';
-import {IS_APPLE_MOBILE, IS_MOBILE} from '../environment/userAgent';
+import {IS_APPLE_MOBILE, IS_MOBILE, IS_SAFARI} from '../environment/userAgent';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import cancelEvent from '../helpers/dom/cancelEvent';
 import ListenerSetter, {Listener} from '../helpers/listenerSetter';
@@ -21,9 +21,6 @@ import safePlay from '../helpers/dom/safePlay';
 import ButtonIcon from '../components/buttonIcon';
 import Icon from '../components/icon';
 import createBadge from '../helpers/createBadge';
-import PopupElement from './popups';
-import PopupRTMPStream from './popups/RTMPStream';
-import { HtmlAttributes } from 'csstype';
 
 export default class StreamPlayer extends ControlsHover {
   private static PLAYBACK_RATES = [0.5, 1, 1.5, 2];
@@ -52,7 +49,7 @@ export default class StreamPlayer extends ControlsHover {
 
   public timeElapsed: HTMLElement;
 
-  constructor({video, onPlaybackRackMenuToggle, onPip, onPipClose, onSettings, onOutput, onRecord, onStopRecord, onEndStream}: {
+  constructor({video, onPlaybackRackMenuToggle, onPip, onPipClose, onSettings, onOutput, onRecord, onStopRecord, onEndStream, hasRights}: {
     video: HTMLVideoElement,
     onPlaybackRackMenuToggle?: StreamPlayer['onPlaybackRackMenuToggle'],
     onPip?: StreamPlayer['onPip'],
@@ -61,14 +58,14 @@ export default class StreamPlayer extends ControlsHover {
     onOutput?: StreamPlayer['onOutput'],
     onRecord?: StreamPlayer['onRecord'],
     onStopRecord?: StreamPlayer['onStopRecord'],
-    onEndStream?: StreamPlayer['onEndStream']
+    onEndStream?: StreamPlayer['onEndStream'],
+    hasRights: boolean
   }) {
     super();
 
     this.video = video;
     this.wrapper = document.createElement('div');
     this.wrapper.classList.add('ckin__player');
-    
     this.onPlaybackRackMenuToggle = onPlaybackRackMenuToggle;
     this.onPip = onPip;
     this.onPipClose = onPipClose;
@@ -96,7 +93,7 @@ export default class StreamPlayer extends ControlsHover {
 
     this.skin = 'default';
 
-    this.stylePlayer();
+    this.stylePlayer(hasRights);
     this.setBtnMenuToggle();
 
     const promise = video.play();
@@ -119,7 +116,7 @@ export default class StreamPlayer extends ControlsHover {
     this.timeElapsed.innerText = `${val.toLocaleString()} watching`;
   }
 
-  private stylePlayer() {
+  private stylePlayer(hasRights: boolean) {
     const {wrapper, video, skin, listenerSetter} = this;
 
     wrapper.classList.add(skin);
@@ -134,6 +131,9 @@ export default class StreamPlayer extends ControlsHover {
       const leftControls = wrapper.querySelector('.left-controls') as HTMLElement;
       const rightControls = wrapper.querySelector('.right-controls') as HTMLElement;
       this.playbackRateButton = ButtonIcon(`more ${skin}__button btn-menu-toggle`, {noRipple: true});
+      if(!hasRights) {
+        this.playbackRateButton.style.display = 'none';
+      }
       if(!IS_MOBILE && document.pictureInPictureEnabled) {
         this.pipButton = ButtonIcon(`pip ${skin}__button`, {noRipple: true});
       }

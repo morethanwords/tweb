@@ -53,7 +53,7 @@ import type AppBotsManager from './appBotsManager';
 import type AppBoostsManager from './appBoostsManager';
 import type AppStatisticsManager from './appStatisticsManager';
 import type {AppManagers} from './managers';
-import { AppStreamManager } from './appStreamManager';
+import {AppStreamManager} from './appStreamManager';
 
 export class AppManager {
   protected appPeersManager: AppPeersManager;

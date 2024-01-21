@@ -1,4 +1,3 @@
-import { info } from 'autoprefixer';
 import {nextRandomUint} from '../../helpers/random';
 import {GroupCall, InputGroupCall, Update, Updates} from '../../layer';
 import {AppImManager} from './appImManager';
@@ -150,7 +149,7 @@ export class AppStreamManager {
   }
 
   public createBuffer(i: number, buffer: any, sourceBuffer?: SourceBuffer) {
-    const mp4boxfile = MP4Box.createFile();
+    const mp4boxfile = (window as unknown as {MP4Box: {createFile: () => any}})['MP4Box'].createFile();
     let tempBuffer: ArrayBuffer;
     mp4boxfile.onReady = (info: any) => {
       mp4boxfile.setSegmentOptions(info.tracks[i].id, null, {nbSamples: this.metadata[i].samples});

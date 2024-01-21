@@ -4,7 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { c } from 'vitest/dist/reporters-5f784f42';
 import {IS_SAFARI} from '../../environment/userAgent';
 import {IS_H265_SUPPORTED} from '../../environment/videoSupport';
 import {animateSingle} from '../../helpers/animation';

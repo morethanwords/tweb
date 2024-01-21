@@ -322,6 +322,26 @@ export default class ChatTopbar {
     r();
   };
 
+  private verifyStreamButton = async(type?: 'group' | 'broadcast') => {
+    if(!IS_GROUP_CALL_SUPPORTED || this.peerId.isUser() || this.chat.type !== ChatType.Chat || this.chat.threadId) return false;
+
+    const currentGroupCall = groupCallsController.groupCall;
+    const chatId = this.peerId.toChatId();
+    if(currentGroupCall?.chatId === chatId) {
+      return false;
+    }
+
+    if(type) {
+      if(((await this.managers.appPeersManager.isBroadcast(this.peerId)) && type === 'group') ||
+        ((await this.managers.appPeersManager.isAnyGroup(this.peerId)) && type === 'broadcast')) {
+        return false;
+      }
+    }
+
+    const chat = apiManagerProxy.getChat(chatId);
+    return hasRights(chat, 'delete_chat');
+  };
+
   private verifyVideoChatButton = async(type?: 'group' | 'broadcast') => {
     if(!IS_GROUP_CALL_SUPPORTED || this.peerId.isUser() || this.chat.type !== ChatType.Chat || this.chat.threadId) return false;
 
@@ -356,18 +376,18 @@ export default class ChatTopbar {
     PopupElement.createPopup(PopupRTMPStream, this.chat.peerId, appStreamManager, async() => {
       console.warn('started stream');
       await appStreamManager.createRTMPStream(this.peerId, apiManagerProxy.getChat(this.peerId.toChatId()).title);
-      this.createRTMPStreamAndJoin();
+      this.createRTMPStreamAndJoin(true);
     }).show();
   }
 
-  private async createRTMPStreamAndJoin() {
+  private async createRTMPStreamAndJoin(rights = false) {
     appStreamManager.init(this.chat.appImManager);
     const fullChat = await this.managers.appProfileManager.getChatFull(this.peerId.toChatId());
     new AppMediaViewerStream(fullChat).openMedia({
       _: 'inputGroupCall',
       id: fullChat.call.id,
       access_hash: fullChat.call.access_hash
-    }, this.peerId, appStreamManager);
+    }, this.peerId, appStreamManager, rights);
   }
 
   public constructUtils() {
@@ -441,13 +461,13 @@ export default class ChatTopbar {
     }, {
       icon: 'videochat',
       text: 'VoiceChat.RTMP.Title',
-      onClick: this.openRTMPStreamModal
-      // verify: this.verifyVideoChatButton.bind(this, 'broadcast')
+      onClick: this.openRTMPStreamModal,
+      verify: this.verifyStreamButton.bind(this, 'broadcast')
     }, {
       icon: 'videochat',
       text: 'VoiceChat.RTMP.Title',
-      onClick: this.openRTMPStreamModal
-      // verify: this.verifyVideoChatButton.bind(this, 'group')
+      onClick: this.openRTMPStreamModal,
+      verify: this.verifyStreamButton.bind(this, 'group')
     }, {
       icon: 'topics',
       text: 'TopicViewAsTopics',
@@ -709,7 +729,11 @@ export default class ChatTopbar {
         liveBadge.append(badgeInner);
         replyContainer.content.append(liveBadge);
 
-        liveBadge.addEventListener('click', () => this.createRTMPStreamAndJoin());
+        liveBadge.addEventListener('click', () => {
+          const chat = apiManagerProxy.getChat(this.peerId.toChatId());
+          const rights = hasRights(chat, 'delete_chat');
+          this.createRTMPStreamAndJoin(rights);
+        });
 
         replyContainer.container.classList.add('join-stream', 'quote-like', 'quote-like-border');
         callDiv.append(replyContainer.container);
@@ -745,11 +769,11 @@ export default class ChatTopbar {
       }, {
         text: 'VoiceChat.RTMP.Title',
         onClick: this.openRTMPStreamModal,
-        verify: this.verifyVideoChatButton.bind(this, 'broadcast')
+        verify: this.verifyStreamButton.bind(this, 'broadcast')
       }, {
         text: 'VoiceChat.RTMP.Title',
         onClick: this.openRTMPStreamModal,
-        verify: this.verifyVideoChatButton.bind(this, 'group')
+        verify: this.verifyStreamButton.bind(this, 'group')
       }]
     }) as HTMLButtonElement;
 

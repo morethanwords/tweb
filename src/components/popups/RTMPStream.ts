@@ -12,7 +12,7 @@ import {AppImManager} from '../../lib/appManagers/appImManager';
 import ButtonIcon from '../buttonIcon';
 import {copyTextToClipboard} from '../../helpers/clipboard';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
-import { AppStreamManager } from '../../lib/appManagers/appStreamManager';
+import {AppStreamManager} from '../../lib/appManagers/appStreamManager';
 
 let currentPopup: PopupRTMPStream;
 

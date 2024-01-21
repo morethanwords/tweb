@@ -55,8 +55,6 @@ import AppBotsManager from './appBotsManager';
 import AppBoostsManager from './appBoostsManager';
 import AppStatisticsManager from './appStatisticsManager';
 import appStreamManager from './appStreamManager';
-import { A } from '../../mock/srp';
-import { logger } from '../logger';
 
 export default function createManagers(appStoragesManager: AppStoragesManager, userId: UserId) {
   const managers = {
