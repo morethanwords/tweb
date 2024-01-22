@@ -286,9 +286,12 @@ class ApiManagerProxy extends MTProtoMessagePort {
     });
     this.updateTabStateIdle(idleController.isIdle);
 
+    // this.sendState();
+  }
+
+  public sendEnvironment() {
     this.log('Passing environment:', ENVIRONMENT);
     this.invoke('environment', ENVIRONMENT);
-    // this.sendState();
   }
 
   public pingServiceWorkerWithIframe() {

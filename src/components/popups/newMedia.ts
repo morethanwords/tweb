@@ -26,7 +26,7 @@ import {makeMediaSize, MediaSize} from '../../helpers/mediaSize';
 import {ThumbCache} from '../../lib/storages/thumbs';
 import onMediaLoad from '../../helpers/onMediaLoad';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
-import {SEND_WHEN_ONLINE_TIMESTAMP, THUMB_TYPE_FULL} from '../../lib/mtproto/mtproto_config';
+import {SEND_WHEN_ONLINE_TIMESTAMP, SERVER_IMAGE_MIME_TYPES, THUMB_TYPE_FULL} from '../../lib/mtproto/mtproto_config';
 import wrapDocument from '../wrappers/document';
 import createContextMenu from '../../helpers/dom/createContextMenu';
 import findUpClassName from '../../helpers/dom/findUpClassName';
@@ -651,16 +651,16 @@ export default class PopupNewMedia extends PopupElement {
     this.hide();
   }
 
-  private modifyMimeTypeForTelegram(mimeType: string) {
-    return mimeType === 'image/webp' ? 'image/jpeg' : mimeType;
+  private modifyMimeTypeForTelegram(mimeType: MTMimeType): MTMimeType {
+    return SERVER_IMAGE_MIME_TYPES.has(mimeType) ? 'image/jpeg' : mimeType;
   }
 
-  private async scaleImageForTelegram(image: HTMLImageElement, mimeType: string, convertWebp?: boolean) {
+  private async scaleImageForTelegram(image: HTMLImageElement, mimeType: MTMimeType, convertIncompatible?: boolean) {
     const PHOTO_SIDE_LIMIT = 2560;
     let url = image.src, scaledBlob: Blob;
     if(
       mimeType !== 'image/gif' &&
-      (Math.max(image.naturalWidth, image.naturalHeight) > PHOTO_SIDE_LIMIT || (convertWebp && mimeType === 'image/webp'))
+      (Math.max(image.naturalWidth, image.naturalHeight) > PHOTO_SIDE_LIMIT || (convertIncompatible && !SERVER_IMAGE_MIME_TYPES.has(mimeType)))
     ) {
       const {blob} = await scaleMediaElement({
         media: image,
@@ -730,7 +730,7 @@ export default class PopupNewMedia extends PopupElement {
       const url = params.objectURL = await apiManagerProxy.invoke('createObjectURL', file);
 
       await renderImageFromUrlPromise(img, url);
-      const mimeType = params.file.type;
+      const mimeType = params.file.type as MTMimeType;
       const scaled = await this.scaleImageForTelegram(img, mimeType, true);
       if(scaled) {
         params.objectURL = scaled.url;
@@ -776,7 +776,7 @@ export default class PopupNewMedia extends PopupElement {
     if(isPhoto && params.objectURL) {
       img = new Image();
       await renderImageFromUrlPromise(img, params.objectURL);
-      const scaled = await this.scaleImageForTelegram(img, params.file.type);
+      const scaled = await this.scaleImageForTelegram(img, params.file.type as MTMimeType);
       if(scaled) {
         params.objectURL = scaled.url;
       }

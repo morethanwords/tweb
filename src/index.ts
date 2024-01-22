@@ -37,7 +37,19 @@ import cacheInstallPrompt from './helpers/dom/installPrompt';
 import {fillLocalizedDates} from './helpers/date';
 import {nextRandomUint} from './helpers/random';
 import {IS_OVERLAY_SCROLL_SUPPORTED, USE_CUSTOM_SCROLL, USE_NATIVE_SCROLL} from './environment/overlayScrollSupport';
+import IMAGE_MIME_TYPES_SUPPORTED, {IMAGE_MIME_TYPES_SUPPORTED_PROMISE} from './environment/imageMimeTypesSupport';
+import MEDIA_MIME_TYPES_SUPPORTED from './environment/mediaMimeTypesSupport';
 // import appNavigationController from './components/appNavigationController';
+
+IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
+  mimeTypes.forEach((mimeType) => {
+    IMAGE_MIME_TYPES_SUPPORTED.add(mimeType);
+    MEDIA_MIME_TYPES_SUPPORTED.add(mimeType);
+  });
+
+  console.log('Supported image mime types', IMAGE_MIME_TYPES_SUPPORTED);
+  apiManagerProxy.sendEnvironment();
+});
 
 /* false &&  */document.addEventListener('DOMContentLoaded', async() => {
   // * Randomly choose a version if user came from google
@@ -333,6 +345,8 @@ import {IS_OVERLAY_SCROLL_SUPPORTED, USE_CUSTOM_SCROLL, USE_NATIVE_SCROLL} from 
   }
 
   console.log('got state, time:', performance.now() - perf);
+
+  await IMAGE_MIME_TYPES_SUPPORTED_PROMISE;
 
   if(langPack.lang_code === 'ar' || langPack.lang_code === 'fa' && IS_BETA && false) {
     document.documentElement.classList.add('is-rtl');

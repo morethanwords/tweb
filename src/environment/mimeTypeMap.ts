@@ -14,7 +14,10 @@ export const EXTENSION_MIME_TYPE_MAP: {[ext in MTFileExtension]: MTMimeType} = {
   mp4: 'video/mp4',
   webm: 'video/webm',
   mov: 'video/quicktime',
-  svg: 'image/svg+xml'
+  svg: 'image/svg+xml',
+  avif: 'image/avif',
+  jxl: 'image/jxl',
+  bmp: 'image/bmp'
 };
 
 export const MIME_TYPE_EXTENSION_MAP: {[mimeType in MTMimeType]?: MTFileExtension} = {};

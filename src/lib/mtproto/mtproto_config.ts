@@ -27,6 +27,7 @@ export const MESSAGE_ID_OFFSET = 0x100000000;
 export const GENERAL_TOPIC_ID = MESSAGE_ID_OFFSET + 1;
 export const T_ME_PREFIXES = new Set(['web', 'k', 'z', 'a']);
 export const SEND_WHEN_ONLINE_TIMESTAMP = 0x7FFFFFFE;
+export const SERVER_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/bmp', 'image/gif']);
 
 export const FOLDER_ID_ALL: REAL_FOLDER_ID = 0;
 export const FOLDER_ID_ARCHIVE: REAL_FOLDER_ID = 1;
