@@ -3591,6 +3591,7 @@ export class AppMessagesManager extends AppManager {
     // * exclude from state
     // defineNotNumerableProperties(message, ['rReply', 'mid', 'savedFrom', 'fwdFromId', 'fromId', 'peerId', 'reply_to_mid', 'viaBotId']);
 
+    const overwriting = !!message.peerId;
     const peerId = this.getMessagePeer(message);
     const storage = options.storage || this.getHistoryMessagesStorage(peerId);
     const isChannel = message.peer_id._ === 'peerChannel';
@@ -3652,7 +3653,6 @@ export class AppMessagesManager extends AppManager {
       if(replies.read_max_id) replies.read_max_id = this.appMessagesIdsManager.generateMessageId(replies.read_max_id, replies.channel_id);
     }
 
-    const overwriting = !!peerId;
     if(!overwriting) {
       message.date -= this.timeManager.getServerTimeOffset();
     }

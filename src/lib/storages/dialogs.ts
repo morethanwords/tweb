@@ -915,10 +915,6 @@ export default class DialogsStorage extends AppManager {
       const message: MyMessage = this.appMessagesManager.getMessageFromStorage(messagesStorage, mid);
       if(message && !message.pFlags.is_outgoing/*  || peerId === SERVICE_PEER_ID */) {
         incomingMessage = message;
-
-        const peerIds = getPeerIdsFromMessage(message);
-        this.peersStorage.requestPeersForKey(peerIds, `topMessage_${peerId}`);
-
         break;
       }
     }
@@ -933,6 +929,10 @@ export default class DialogsStorage extends AppManager {
 
     const {peerId, pts} = dialog;
     const incomingMessage = this.getDialogMessageForState(peerId);
+    if(incomingMessage) {
+      const peerIds = getPeerIdsFromMessage(incomingMessage);
+      this.peersStorage.requestPeersForKey(peerIds, `topMessage_${peerId}`);
+    }
 
     dialog.topMessage = incomingMessage;
 
@@ -1230,7 +1230,7 @@ export default class DialogsStorage extends AppManager {
 
   // ! do not use draft here, empty dialogs with drafts are excluded from .getDialogs response
   private getDialogOffsetDate(dialog: AnyDialog) {
-    const message = this.appMessagesManager.getMessageByPeer(dialog.peerId, dialog.top_message);
+    const message = this.getDialogMessageForState(dialog.peerId);
     return message?.date || 0;
   }
 
@@ -1459,7 +1459,6 @@ export default class DialogsStorage extends AppManager {
 
     this.pushDialog({
       dialog,
-      offsetDate: message?.date,
       ignoreOffsetDate,
       saveGlobalOffset
     });
