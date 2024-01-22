@@ -6,6 +6,7 @@
 
 import isObject from '../helpers/object/isObject';
 import {Photo, MessageAction, Message} from '../layer';
+import apiManagerProxy from '../lib/mtproto/mtprotoworker';
 import rootScope from '../lib/rootScope';
 import AppMediaViewer from './appMediaViewer';
 import AppMediaViewerAvatar from './appMediaViewerAvatar';
@@ -38,7 +39,8 @@ export default async function openAvatarViewer(
         offsetId: 0,
         limit: 1
       }).then((value) => {
-        return value.messages[0] as Message.messageService;
+        const mid = value.history[0];
+        return apiManagerProxy.getMessageByPeer(peerId, mid) as Message.messageService;
       });
 
       if(!middleware()) {

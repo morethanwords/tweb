@@ -9,6 +9,7 @@ import type {SearchSuperContext} from '../components/appSearchSuper.';
 import type {Message} from '../layer';
 import type {MessagesStorageKey, MyMessage} from '../lib/appManagers/appMessagesManager';
 import {AppManagers} from '../lib/appManagers/managers';
+import apiManagerProxy from '../lib/mtproto/mtprotoworker';
 import rootScope, {BroadcastEvents} from '../lib/rootScope';
 import forEachReverse from './array/forEachReverse';
 import filterChatPhotosMessages from './filterChatPhotosMessages';
@@ -54,6 +55,10 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
 
           if(value.nextRate) {
             this.searchContext.nextRate = value.nextRate;
+          }
+
+          if(!value.messages) {
+            value.messages = value.history.map((mid) => apiManagerProxy.getMessageByPeer(peerId, mid));
           }
 
           return {count: value.count, items: value.messages};

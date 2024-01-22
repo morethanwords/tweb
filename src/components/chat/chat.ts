@@ -522,7 +522,7 @@ export default class Chat extends EventListenerBase<{
     }
 
     this.messagesStorageKey = `${this.peerId}_${this.type === ChatType.Scheduled ? 'scheduled' : 'history'}`;
-    this.historyStorageKey = getHistoryStorageKey(this.threadId ? 'replies' : 'history', this.peerId, this.threadId);
+    this.historyStorageKey = getHistoryStorageKey({type: this.threadId ? 'replies' : 'history', peerId: this.peerId, threadId: this.threadId});
 
     this.container && this.container.classList.toggle('no-forwards', this.noForwards);
 

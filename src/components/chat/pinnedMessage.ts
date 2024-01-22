@@ -448,7 +448,8 @@ export default class ChatPinnedMessage {
           offsetId: mid,
           limit: ChatPinnedMessage.LOAD_COUNT,
           backLimit: ChatPinnedMessage.LOAD_COUNT,
-          threadId: this.chat.threadId
+          threadId: this.chat.threadId,
+          needRealOffsetIdOffset: true
         }).then((r) => {
           gotRest = true;
           return r;
@@ -478,17 +479,17 @@ export default class ChatPinnedMessage {
 
       const result = (await Promise.all(promises))[0];
 
-      const messages = result.messages;
+      const history = result.history;
 
-      let backLimited = messages.findIndex((message) => message.mid <= mid);
+      let backLimited = history.findIndex((_mid) => _mid <= mid);
       if(backLimited === -1) {
-        backLimited = messages.length;
+        backLimited = history.length;
       }/*  else {
         backLimited -= 1;
       } */
 
-      this.offsetIndex = result.offsetIdOffset ? result.offsetIdOffset - backLimited : 0;
-      this.mids = messages.map((message) => message.mid).slice();
+      this.offsetIndex = Math.max(0, result.offsetIdOffset) ? result.offsetIdOffset - backLimited : 0;
+      this.mids = history.slice();
       this.count = result.count;
 
       if(!this.count) {

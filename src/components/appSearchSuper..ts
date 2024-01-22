@@ -767,7 +767,7 @@ export default class AppSearchSuper {
   };
 
   public filterMessagesByType(messages: MyMessage[], type: SearchSuperType): MyMessage[] {
-    return filterMessagesByInputFilter(type, messages, messages.length);
+    return filterMessagesByInputFilter({inputFilter: type, messages: messages, limit: messages.length});
   }
 
   private async processEmptyFilter({message, searchGroup, mediaTab}: ProcessSearchSuperResult) {
@@ -1813,7 +1813,7 @@ export default class AppSearchSuper {
       const value = await this.managers.appMessagesManager.getHistory(options);
 
       let messages = value.messages;
-      if(!messages && value.history && mediaTab.type === 'saved') {
+      if(!messages && value.history/*  && mediaTab.type === 'saved' */) {
         messages = value.history.map((mid) => apiManagerProxy.getMessageByPeer(options.peerId, mid));
       }
 

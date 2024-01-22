@@ -143,3 +143,88 @@ describe('Slicing', () => {
     expect([...result.slice]).toEqual([]);
   });
 });
+
+describe('offsetIdOffset', () => {
+  const sliced = new SlicedArray<number>();
+  const values = [5, 4, 3, 2, 1];
+  const slice = sliced.insertSlice(values);
+  slice.setEnd(SliceEnd.Both);
+
+  describe('No addOffset', () => {
+    test('Hit', () => {
+      const result = sliced.sliceMe(slice[1], 0, 2);
+      expect(result.offsetIdOffset).toEqual(2);
+      expect([...result.slice]).toEqual(values.slice(2, 2 + 2));
+    });
+
+    test('Hit start', () => {
+      const result = sliced.sliceMe(slice[0], 0, 2);
+      expect(result.offsetIdOffset).toEqual(1);
+      expect([...result.slice]).toEqual(values.slice(1, 1 + 2));
+    });
+
+    test('Hit end', () => {
+      const result = sliced.sliceMe(slice[sliced.length - 1], 0, 2);
+      expect(result.offsetIdOffset).toEqual(slice.length);
+      expect([...result.slice]).toEqual(values.slice(slice.length, slice.length + 2));
+    });
+
+    test('No hit', () => {
+      const result = sliced.sliceMe(slice[1] + 0.1, 0, 2);
+      expect(result.offsetIdOffset).toEqual(1);
+      expect([...result.slice]).toEqual(values.slice(1, 1 + 2));
+    });
+
+    test('No hit start', () => {
+      const result = sliced.sliceMe(slice[0] + 0.1, 0, 2);
+      expect(result.offsetIdOffset).toEqual(0);
+      expect([...result.slice]).toEqual(values.slice(0, 0 + 2));
+    });
+
+    test('No hit end', () => {
+      const result = sliced.sliceMe(slice[sliced.length - 1] - 0.1, 0, 2);
+      expect(result.offsetIdOffset).toEqual(slice.length);
+      expect([...result.slice]).toEqual(values.slice(slice.length, slice.length + 2));
+    });
+  });
+
+  describe('Positive addOffset', () => {
+    test('Hit', () => {
+      const result = sliced.sliceMe(slice[1], 1, 2);
+      expect(result.offsetIdOffset).toEqual(2);
+      expect([...result.slice]).toEqual(values.slice(3, 3 + 2));
+    });
+
+    test('No hit', () => {
+      const result = sliced.sliceMe(slice[1] + 0.1, 1, 2);
+      expect(result.offsetIdOffset).toEqual(1);
+      expect([...result.slice]).toEqual(values.slice(2, 2 + 2));
+    });
+  });
+
+  describe('Negative addOffset', () => {
+    test('Hit', () => {
+      const result = sliced.sliceMe(slice[1], -1, 2);
+      expect(result.offsetIdOffset).toEqual(2);
+      expect([...result.slice]).toEqual(values.slice(1, 1 + 2));
+    });
+
+    test('Hit start', () => {
+      const result = sliced.sliceMe(slice[0], -1, 2);
+      expect(result.offsetIdOffset).toEqual(1);
+      expect([...result.slice]).toEqual(values.slice(0, 0 + 2));
+    });
+
+    test('No hit', () => {
+      const result = sliced.sliceMe(slice[1] + 0.1, -1, 2);
+      expect(result.offsetIdOffset).toEqual(1);
+      expect([...result.slice]).toEqual(values.slice(0, 0 + 2));
+    });
+
+    test('No hit start', () => {
+      const result = sliced.sliceMe(slice[0] + 0.1, -1, 2);
+      expect(result.offsetIdOffset).toEqual(0);
+      expect([...result.slice]).toEqual(values.slice(0, 0 + 1));
+    });
+  });
+});

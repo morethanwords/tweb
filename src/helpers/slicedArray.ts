@@ -300,16 +300,17 @@ export default class SlicedArray<T extends ItemType> {
     return undefined;
   }
 
-  public findOffsetInSlice(maxId: T, slice: Slice<T>) {
+  // * offset will be exclusive, so if offsetId is in slice, then offset will be +1
+  public findOffsetInSlice(offsetId: T, slice: Slice<T>) {
     for(let offset = 0; offset < slice.length; ++offset) {
-      if(compareValue(maxId, slice[offset]) >= 0) {
+      if(compareValue(offsetId, slice[offset]) >= 0) {
         /* if(!offset) { // because can't find 3 in [[5,4], [2,1]]
           return undefined;
         } */
 
         return {
           slice,
-          offset: maxId === slice[offset] ? offset : offset - 1
+          offset: offsetId === slice[offset] ? offset + 1 : offset
         };
       }
     }
@@ -351,9 +352,9 @@ export default class SlicedArray<T extends ItemType> {
       slice = pos.slice;
       offset = sliceOffset = pos.offset;
 
-      if(slice.includes(offsetId)) {
-        sliceOffset += 1;
-      }
+      // if(slice.includes(offsetId)) {
+      //   sliceOffset += 1;
+      // }
 
       /* if(slice.includes(offsetId) && add_offset < 0) {
         add_offset += 1;
@@ -398,18 +399,18 @@ export default class SlicedArray<T extends ItemType> {
     slice.unshift(...items);
   }
 
-  // public push(...items: T[]) {
-  //   let slice = this.last;
-  //   if(!slice.length) {
-  //     slice.setEnd(SliceEnd.Top);
-  //   } else if(!slice.isEnd(SliceEnd.Top)) {
-  //     slice = this.constructSlice();
-  //     slice.setEnd(SliceEnd.Top);
-  //     this.slices.push(slice);
-  //   }
+  public push(...items: T[]) {
+    let slice = this.last;
+    if(!slice.length) {
+      slice.setEnd(SliceEnd.Top);
+    } else if(!slice.isEnd(SliceEnd.Top)) {
+      slice = this.constructSlice();
+      slice.setEnd(SliceEnd.Top);
+      this.slices.push(slice);
+    }
 
-  //   slice.push(...items);
-  // }
+    slice.push(...items);
+  }
 
   public delete(item: T) {
     const found = this.findSlice(item);

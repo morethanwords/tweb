@@ -24,6 +24,7 @@ import SwipeHandler from './swipeHandler';
 import wrapPhoto from './wrappers/photo';
 import openAvatarViewer from './openAvatarViewer';
 import Icon from './icon';
+import apiManagerProxy from '../lib/mtproto/mtprotoworker';
 
 const LOAD_NEAREST = 3;
 export const SHOW_NO_AVATAR = false;
@@ -295,11 +296,16 @@ export default class PeerProfileAvatars {
           return Promise.all(promises).then(async(result) => {
             const value = result.pop() as typeof result[1];
 
+            let {messages, history} = value;
+            if(!messages) {
+              messages = value.messages = history.map((mid) => apiManagerProxy.getMessageByPeer(peerId, mid));
+            }
+
             filterChatPhotosMessages(value);
 
             if(!listLoader.current) {
               const chatFull = result[0];
-              const message = findAndSplice(value.messages, (message) => {
+              const message = findAndSplice(messages, (message) => {
                 return ((message as Message.messageService).action as MessageAction.messageActionChannelEditPhoto).photo.id === chatFull.chat_photo.id;
               }) as Message.messageService;
 
@@ -309,7 +315,7 @@ export default class PeerProfileAvatars {
             // console.log('avatars loaded:', value);
             return {
               count: value.count,
-              items: value.messages
+              items: messages
             };
           });
         }

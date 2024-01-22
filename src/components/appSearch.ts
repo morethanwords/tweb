@@ -13,6 +13,7 @@ import rootScope from '../lib/rootScope';
 import {getMiddleware, Middleware, MiddlewareHelper} from '../helpers/middleware';
 import getPeerId from '../lib/appManagers/utils/peers/getPeerId';
 import {Message} from '../layer';
+import apiManagerProxy from '../lib/mtproto/mtprotoworker';
 
 export class SearchGroup {
   container: HTMLDivElement;
@@ -209,7 +210,11 @@ export default class AppSearch {
 
       // console.log('input search result:', this.peerId, query, null, maxId, 20, res);
 
-      const {count, messages} = res;
+      let {count, messages, history} = res;
+
+      if(!messages) {
+        messages = res.messages = history.map((mid) => apiManagerProxy.getMessageByPeer(this.peerId, mid));
+      }
 
       if(messages.length && messages[0].mid === this.minMsgId) {
         messages.shift();
