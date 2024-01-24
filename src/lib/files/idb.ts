@@ -406,7 +406,8 @@ export default class IDBStorage<T extends Database<any>, StoreName extends strin
           return;
         } */
 
-        const transaction = db.transaction([storeName], mode);
+        // * https://developer.chrome.com/blog/indexeddb-durability-mode-now-defaults-to-relaxed
+        const transaction = db.transaction([storeName], mode, {durability: 'relaxed'});
 
         const onError = () => {
           clearTimeout(timeout);
