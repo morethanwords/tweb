@@ -36,7 +36,7 @@ export default class AppPrivateSearchTab extends SliderSuperTab {
   ) {
     this.container.id = 'search-private-container';
     this.container.classList.add('chatlist-container');
-    this.inputSearch = new InputSearch('Search');
+    this.inputSearch = new InputSearch({placeholder: 'Search'});
     this.title.replaceWith(this.inputSearch.container);
 
     this.btnPickDate = ButtonIcon('calendar sidebar-header-right');

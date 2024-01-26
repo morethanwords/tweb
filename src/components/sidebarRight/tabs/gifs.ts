@@ -34,9 +34,12 @@ export default class AppGifsTab extends SliderSuperTab {
   public init() {
     this.container.id = 'search-gifs-container';
 
-    this.inputSearch = new InputSearch('SearchGifsTitle', (value) => {
-      this.reset();
-      this.search(value);
+    this.inputSearch = new InputSearch({
+      placeholder: 'SearchGifsTitle',
+      onChange: (value) => {
+        this.reset();
+        this.search(value);
+      }
     });
 
     this.title.replaceWith(this.inputSearch.container);

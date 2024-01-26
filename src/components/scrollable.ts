@@ -375,9 +375,10 @@ export default class Scrollable extends ScrollableBase {
     el?: HTMLElement,
     logPrefix = '',
     public onScrollOffset = 300,
-    withPaddingContainer?: boolean
+    withPaddingContainer?: boolean,
+    container?: HTMLElement
   ) {
-    super(el, logPrefix);
+    super(el, logPrefix, container);
 
     // withPaddingContainer = true;
     // if(withPaddingContainer) {

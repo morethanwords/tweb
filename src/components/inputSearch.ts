@@ -4,10 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {LangPackKey} from '../lib/langPack';
+import {attachClickEvent} from '../helpers/dom/clickEvent';
+import ListenerSetter from '../helpers/listenerSetter';
+import {LangPackKey, i18n} from '../lib/langPack';
 import ButtonIcon from './buttonIcon';
+import ConnectionStatusComponent from './connectionStatus';
 import Icon from './icon';
 import InputField from './inputField';
+import ProgressivePreloader from './preloader';
+import SetTransition from './singleTransition';
 
 export default class InputSearch {
   public container: HTMLElement;
@@ -21,31 +26,114 @@ export default class InputSearch {
   public onChange: (value: string) => void;
   public onClear: () => void;
 
-  constructor(placeholder?: LangPackKey, onChange?: (value: string) => void) {
+  private statusPreloader: ProgressivePreloader;
+  private currentLangPackKey: LangPackKey;
+  private currentPlaceholder: HTMLElement;
+
+  private listenerSetter: ListenerSetter;
+
+  constructor(options: {
+    placeholder?: LangPackKey,
+    onChange?: (value: string) => void,
+    onClear?: () => void,
+    onFocusChange?: (isFocused: boolean) => void,
+    alwaysShowClear?: boolean,
+    noBorder?: boolean
+  } = {}) {
     this.inputField = new InputField({
-      placeholder,
+      // placeholder,
       plainText: true,
-      withBorder: true
+      withBorder: !options.noBorder
     });
 
+    this.listenerSetter = new ListenerSetter();
     this.container = this.inputField.container;
     this.container.classList.remove('input-field');
     this.container.classList.add('input-search');
 
-    this.onChange = onChange;
+    this.onChange = options.onChange;
+    this.onClear = options.onClear;
 
-    this.input = this.inputField.input;
-    this.input.classList.add('input-search-input');
+    const input = this.input = this.inputField.input;
+    input.classList.add('input-search-input');
 
     const searchIcon = this.searchIcon = Icon('search', 'input-search-icon', 'input-search-part');
+    const clearBtn = this.clearBtn = ButtonIcon('close input-search-clear input-search-part', {noRipple: true});
+    clearBtn.classList.toggle('always-visible', !!options.alwaysShowClear);
 
-    this.clearBtn = ButtonIcon('close input-search-clear input-search-part');
+    this.listenerSetter.add(input)('input', this.onInput);
+    attachClickEvent(clearBtn, this.onClearClick, {listenerSetter: this.listenerSetter});
 
-    this.input.addEventListener('input', this.onInput);
-    this.clearBtn.addEventListener('click', this.onClearClick);
+    if(options.placeholder) {
+      (input as HTMLInputElement).placeholder = ' ';
+      this.setPlaceholder(options.placeholder);
+    }
 
-    this.container.append(searchIcon, this.clearBtn);
+    if(options.onFocusChange) {
+      this.listenerSetter.add(input)('focusin', () => {
+        options.onFocusChange?.(true);
+      });
+
+      this.listenerSetter.add(input)('focusout', () => {
+        options.onFocusChange?.(false);
+      });
+    }
+
+    this.container.append(searchIcon, clearBtn);
   }
+
+  public isLoading() {
+    return this.container.classList.contains('is-connecting');
+  }
+
+  public toggleLoading(loading: boolean) {
+    if(!this.statusPreloader) {
+      this.statusPreloader = new ProgressivePreloader({cancelable: false});
+      this.statusPreloader.constructContainer({color: 'transparent', bold: true});
+      this.statusPreloader.construct?.();
+      this.statusPreloader.preloader.classList.add('is-visible', 'will-animate');
+      this.searchIcon.classList.add('will-animate');
+    }
+
+    if(loading && !this.statusPreloader.preloader.parentElement) {
+      this.container.append(this.statusPreloader.preloader);
+    }
+
+    this.statusPreloader.preloader.classList.toggle('is-hiding', !loading);
+    this.searchIcon.classList.toggle('is-hiding', loading);
+    SetTransition({
+      element: this.container,
+      className: 'is-connecting',
+      forwards: loading,
+      duration: ConnectionStatusComponent.ANIMATION_DURATION,
+      onTransitionEnd: loading ? undefined : () => {
+        this.statusPreloader.preloader.remove();
+      }
+      // useRafs: this.statusPreloader.preloader.isConnected ? 0 : 2
+    });
+  }
+
+  public setPlaceholder = (langPackKey: LangPackKey, args?: any[]) => {
+    if(this.currentLangPackKey === langPackKey) return;
+    this.currentLangPackKey = langPackKey;
+
+    const oldPlaceholder = this.currentPlaceholder;
+    if(oldPlaceholder) {
+      SetTransition({
+        element: oldPlaceholder,
+        className: 'is-hiding',
+        forwards: true,
+        duration: ConnectionStatusComponent.ANIMATION_DURATION,
+        onTransitionEnd: () => {
+          oldPlaceholder.remove();
+        }
+      });
+    }
+
+    this.currentPlaceholder = i18n(langPackKey, args);
+    this.currentPlaceholder.classList.add('input-search-placeholder', 'will-animate');
+    this.container.append(this.currentPlaceholder);
+  };
 
   onInput = () => {
     if(!this.onChange) return;
@@ -79,7 +167,6 @@ export default class InputSearch {
 
   public remove() {
     clearTimeout(this.timeout);
-    this.input.removeEventListener('input', this.onInput);
-    this.clearBtn.removeEventListener('click', this.onClearClick);
+    this.listenerSetter.removeAll();
   }
 }

@@ -21,17 +21,27 @@ export type ListNavigationOptions = {
   list: HTMLElement,
   type: 'xy' | 'x' | 'y',
   onSelect: (target: Element) => void | boolean | Promise<boolean>,
-  once: boolean,
-  waitForKey?: string[]
+  once?: boolean,
+  waitForKey?: string[],
+  activeClassName?: string,
+  cancelMouseDown?: boolean
 };
 
-export default function attachListNavigation({list, type, onSelect, once, waitForKey}: ListNavigationOptions) {
+export default function attachListNavigation({
+  list,
+  type,
+  onSelect,
+  once,
+  waitForKey,
+  activeClassName = ACTIVE_CLASS_NAME,
+  cancelMouseDown
+}: ListNavigationOptions) {
   let waitForKeySet = waitForKey?.length ? new Set(waitForKey) : undefined;
   const keyNames = new Set(type === 'xy' ? AXIS_Y_KEYS.concat(AXIS_X_KEYS) : (type === 'x' ? AXIS_X_KEYS : AXIS_Y_KEYS));
 
   let target: Element;
   const getCurrentTarget = () => {
-    return target || list.querySelector('.' + ACTIVE_CLASS_NAME) || list.firstElementChild;
+    return target || list.querySelector('.' + activeClassName) || list.firstElementChild;
   };
 
   const setCurrentTarget = (_target: Element, scrollTo: boolean) => {
@@ -42,12 +52,12 @@ export default function attachListNavigation({list, type, onSelect, once, waitFo
     let hadTarget = false;
     if(target) {
       hadTarget = true;
-      target.classList.remove(ACTIVE_CLASS_NAME);
+      target.classList.remove(activeClassName);
     }
 
     target = _target;
     if(!target) return;
-    target.classList.add(ACTIVE_CLASS_NAME);
+    target.classList.add(activeClassName);
 
     if(hadTarget && scrollable && scrollTo) {
       fastSmoothScroll({
@@ -155,7 +165,8 @@ export default function attachListNavigation({list, type, onSelect, once, waitFo
     // input.addEventListener(HANDLE_EVENT, onKeyDown, {capture: true, passive: false});
     document.addEventListener(HANDLE_EVENT, onKeyDown, {capture: true, passive: false});
     list.addEventListener('mousemove', onMouseMove, {passive: true});
-    detachClickEvent = attachClickEvent(list, onClick);
+    if(cancelMouseDown) list.addEventListener('mousedown', cancelEvent);
+    detachClickEvent = attachClickEvent(list, onClick, {ignoreMove: cancelMouseDown});
   };
 
   const detach = () => {
@@ -164,6 +175,7 @@ export default function attachListNavigation({list, type, onSelect, once, waitFo
     // input.removeEventListener(HANDLE_EVENT, onKeyDown, {capture: true});
     document.removeEventListener(HANDLE_EVENT, onKeyDown, {capture: true});
     list.removeEventListener('mousemove', onMouseMove);
+    if(cancelMouseDown) list.removeEventListener('mousedown', cancelEvent);
     detachClickEvent();
     detachClickEvent = undefined;
   };

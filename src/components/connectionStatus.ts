@@ -6,13 +6,9 @@
 
 import App from '../config/app';
 import DEBUG from '../config/debug';
-import replaceContent from '../helpers/dom/replaceContent';
-import {LangPackKey, i18n, langPack} from '../lib/langPack';
+import {LangPackKey, i18n} from '../lib/langPack';
 import {logger} from '../lib/logger';
 import rootScope from '../lib/rootScope';
-import Button from './button';
-import ProgressivePreloader from './preloader';
-import SetTransition from './singleTransition';
 import sessionStorage from '../lib/sessionStorage';
 import {ConnectionStatus} from '../lib/mtproto/connectionStatus';
 import cancelEvent from '../helpers/dom/cancelEvent';
@@ -30,12 +26,8 @@ export default class ConnectionStatusComponent {
   public static INITIAL_DELAY = 2000;
   public static ANIMATION_DURATION = 250;
 
-  private statusContainer: HTMLElement;
-  private statusEl: HTMLElement;
-  private statusPreloader: ProgressivePreloader;
-
-  private currentLangPackKey: LangPackKey;
-  private currentPlaceholder: HTMLElement;
+  // private statusContainer: HTMLElement;
+  // private statusEl: HTMLElement;
 
   private hadConnect = false;
   private retryAt: number;
@@ -60,17 +52,12 @@ export default class ConnectionStatusComponent {
     this.managers = managers;
     this.inputSearch = inputSearch;
     this.log = logger('CS', undefined, undefined);
-    this.statusContainer = document.createElement('div');
-    this.statusContainer.classList.add('connection-status'/* , 'hide' */);
+    // this.statusContainer = document.createElement('div');
+    // this.statusContainer.classList.add('connection-status'/* , 'hide' */);
 
-    this.statusEl = Button('btn-primary bg-warning connection-status-button', {noRipple: true});
-    this.statusPreloader = new ProgressivePreloader({cancelable: false});
-    this.statusPreloader.constructContainer({color: 'transparent', bold: true});
-    this.statusPreloader.construct?.();
-    this.statusPreloader.preloader.classList.add('is-visible', 'will-animate');
-    this.statusContainer.append(this.statusEl);
-    inputSearch.searchIcon.classList.add('will-animate');
-    this.setStatusText('Search');
+    // this.statusEl = Button('btn-primary bg-warning connection-status-button', {noRipple: true});
+    // this.statusContainer.append(this.statusEl);
+    this.inputSearch.setPlaceholder('Search');
 
     // chatsContainer.prepend(this.statusContainer);
 
@@ -151,31 +138,9 @@ export default class ConnectionStatusComponent {
     });
   };
 
-  private setStatusText = (langPackKey: LangPackKey, args?: any[]) => {
-    if(this.currentLangPackKey === langPackKey) return;
-    this.currentLangPackKey = langPackKey;
-
-    const oldPlaceholder = this.currentPlaceholder;
-    if(oldPlaceholder) {
-      SetTransition({
-        element: oldPlaceholder,
-        className: 'is-hiding',
-        forwards: true,
-        duration: ConnectionStatusComponent.ANIMATION_DURATION,
-        onTransitionEnd: () => {
-          oldPlaceholder.remove();
-        }
-      });
-    }
-
-    this.currentPlaceholder = i18n(langPackKey, args);
-    this.currentPlaceholder.classList.add('input-search-placeholder', 'will-animate');
-    this.inputSearch.container.append(this.currentPlaceholder);
-  };
-
-  private wrapSetStatusText = (...args: Parameters<ConnectionStatusComponent['setStatusText']>) => {
+  private wrapSetStatusText = (...args: Parameters<InputSearch['setPlaceholder']>) => {
     return () => {
-      return this.setStatusText(...args);
+      return this.inputSearch.setPlaceholder(...args);
     };
   };
 
@@ -240,7 +205,7 @@ export default class ConnectionStatusComponent {
       this.rAF = 0;
       if(this.setStateTimeout) clearTimeout(this.setStateTimeout);
 
-      const wasVisible = this.inputSearch.container.classList.contains('is-connecting');
+      const wasVisible = this.inputSearch.isLoading();
       const cb = () => {
         if(NO_STATUS) {
           return;
@@ -248,23 +213,7 @@ export default class ConnectionStatusComponent {
 
         setText();
         const isConnecting = this.connecting || this.updating;
-        if(isConnecting && !this.statusPreloader.preloader.parentElement) {
-          this.inputSearch.container.append(this.statusPreloader.preloader);
-        }
-
-        this.statusPreloader.preloader.classList.toggle('is-hiding', !isConnecting);
-        this.inputSearch.searchIcon.classList.toggle('is-hiding', isConnecting);
-
-        SetTransition({
-          element: this.inputSearch.container,
-          className: 'is-connecting',
-          forwards: isConnecting,
-          duration: ConnectionStatusComponent.ANIMATION_DURATION,
-          onTransitionEnd: isConnecting ? undefined : () => {
-            this.statusPreloader.preloader.remove();
-          }
-          // useRafs: this.statusPreloader.preloader.isConnected ? 0 : 2
-        });
+        this.inputSearch.toggleLoading(isConnecting);
         this.setStateTimeout = 0;
         DEBUG && this.log('setState: isShown:', isConnecting);
       };

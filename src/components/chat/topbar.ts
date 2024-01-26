@@ -221,6 +221,10 @@ export default class ChatTopbar {
     this.listenerSetter.add(mediaSizes)('changeScreen', this.onChangeScreen);
 
     attachClickEvent(this.container, (e) => {
+      if(findUpClassName(e.target, 'topbar-search-container')) {
+        return;
+      }
+
       const container = findUpClassName(e.target, 'pinned-container');
       blurActiveElement();
       if(container) {

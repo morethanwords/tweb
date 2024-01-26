@@ -356,6 +356,7 @@ button:focus {
   --height: 42px;
   --border-radius: 22px;
   --padding-horizontal: calc(var(--height) + 3px - var(--border-width));
+  --icon-left-offset: .8125rem;
   position: relative;
   width: 100%;
   margin-inline: .4375rem;
@@ -464,7 +465,7 @@ button:focus {
       color: #909192 !important;
     } */
 
-    &.is-empty ~ .input-search-clear,
+    &.is-empty ~ .input-search-clear:not(.always-visible),
     &:not(.is-empty) ~ .input-search-placeholder {
       display: none;
     }
@@ -495,7 +496,7 @@ button:focus {
   .preloader-container {
     width: 1.5rem;
     height: 1.5rem;
-    inset-inline-start: .8125rem;
+    inset-inline-start: var(--icon-left-offset);
     pointer-events: none;
   }
 
@@ -513,10 +514,9 @@ button:focus {
   }
 
   &-clear {
-    inset-inline-end: 0px;
+    inset-inline-end: calc((var(--height) - 2.25rem) / 2);
     z-index: 1;
-    width: 42px;
-    height: 42px;
+    padding: .375rem !important;
   }
 }
 

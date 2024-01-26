@@ -1,0 +1,201 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+.topbar-search {
+  &-container {
+    display: flex;
+    position: absolute;
+    align-items: center;
+    inset-block: 0;
+    inset-inline-start: 4.4375rem;
+    inset-inline-end: .5rem;
+    gap: .5rem;
+    z-index: 1;
+
+    @include respond-to(medium-screens) {
+      transition: padding-inline-end var(--transition-standard-out);
+  
+      body.is-right-column-shown & {
+        padding-inline-end: var(--right-column-width);
+        transition: padding-inline-end var(--transition-standard-in);
+      }
+  
+      body.animation-level-0 & {
+        transition: none;
+      }
+    }
+  }
+
+  &-left {
+    &-container {
+      --border-radius: 21px;
+      --height: 42px;
+      flex: 1 1 auto;
+      align-self: flex-start;
+      margin-top: 7px;
+      position: relative;
+      max-width: 100%;
+      width: 1px; // fix max-width
+      // max-height: 313px;
+      // height: var(--height);
+
+      // @include animation-level(2) {
+      //   transition: height var(--transition-standard-in);
+      // }
+    }
+
+    &-background {
+      position: absolute;
+      inset: 0;
+      box-shadow: 0px 0px 10px 0px #00000000;
+      // opacity: 0;
+      border-radius: var(--border-radius);
+      background-color: var(--old-input-background-color);
+
+      @include animation-level(2) {
+        transition: box-shadow var(--transition-standard-in), background-color var(--transition-standard-in);
+      }
+
+      .is-focused & {
+        box-shadow: 0px 0px 10px 0px #00000040;
+        background-color: var(--surface-color);
+      }
+
+      // @include respond-to(medium-screens) {
+      //   transform-origin: var(--transform-origin-left-center);
+      //   transform: scaleX(var(--topbar-floating-scaleX));
+      //   transition: box-shadow var(--transition-standard-in), background-color var(--transition-standard-in), transform var(--transition-standard-out), border-radius var(--transition-standard-out);
+    
+      //   body.is-right-column-shown & {
+      //     border-radius: calc(var(--border-radius) * (2 - var(--topbar-floating-scaleX)));
+      //     transition: box-shadow var(--transition-standard-in), background-color var(--transition-standard-in), transform var(--transition-standard-in), border-radius var(--transition-standard-in);
+      //   }
+    
+      //   body.animation-level-0 & {
+      //     transition: none;
+      //   }
+      // }
+
+      // @include animation-level(2) {
+      //   transition: opacity var(--transition-standard-in);
+      // }
+    }
+
+    &-delimiter {
+      height: 1px;
+      margin: 0 .5rem .5rem;
+      background-color: var(--border-color);
+      border-radius: 1px;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    &-chatlist {
+      background: none;
+      padding: 0 .5rem;
+      position: absolute;
+      border-radius: $border-radius-medium;
+
+      .navigable-list {
+        border-radius: inherit;
+      }
+    }
+
+    &-results {
+      max-height: 271px;
+      height: 0px;
+      overflow: hidden;
+      max-width: 100%;
+      border-bottom-left-radius: 22px;
+      border-bottom-right-radius: 22px;
+      position: relative;
+
+      @include animation-level(2) {
+        transition: height var(--transition-standard-in);
+      }
+
+      &-padding {
+        height: 8px;
+      }
+
+      &-empty {
+        text-align: center;
+        font-size: var(--font-size-16);
+        color: var(--secondary-text-color);
+        line-height: 25px;
+
+        @include text-overflow(true);
+      }
+    }
+  }
+
+  &-right {
+    &-container {
+      display: flex;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+      flex: 0 0 auto;
+
+      // @include sidebar-transform();
+    }
+  }
+
+  &-input {
+    border: none;
+    background: none;
+    padding-inline-start: var(--padding-horizontal-start);
+
+    @include animation-level(2) {
+      transition: padding-inline-start .2s ease-in-out;
+    }
+
+    &-container {
+      --icon-left-offset: 1rem;
+      --border-width: 0px;
+      --padding-horizontal: calc(var(--height) + 8px);
+      --padding-horizontal-start: calc(var(--padding-horizontal) + var(--padding-placeholder, 0px) + var(--padding-sender, 0px));
+      border-radius: var(--border-radius);
+      margin: 0;
+
+      .input-search-placeholder {
+        inset-inline-start: var(--padding-horizontal-start);
+
+        @include animation-level(2) {
+          transition: inset-inline-start .2s ease-in-out;
+        }
+      }
+
+      .input-search-part {
+        --max-opacity: .6 !important;
+        color: var(--secondary-text-color) !important;
+      }
+
+      .input-search-clear {
+        margin-inline-end: .4375rem;
+      }
+    }
+
+    &-arrow {
+      margin: 0 !important;
+    }
+
+    &-tools {
+      position: absolute;
+      inset-inline-end: 0;
+      height: var(--height);
+      z-index: 1;
+      display: flex;
+      align-items: center;
+
+      .input-search-part {
+        position: relative;
+      }
+      // @include sidebar-transform();
+    }
+  }
+}

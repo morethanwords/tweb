@@ -39,8 +39,11 @@ export default class AppContactsTab extends SliderSuperTab {
       PopupElement.createPopup(PopupCreateContact);
     }, {listenerSetter: this.listenerSetter});
 
-    this.inputSearch = new InputSearch('Search', (value) => {
-      this.openContacts(value);
+    this.inputSearch = new InputSearch({
+      placeholder: 'Search',
+      onChange: (value) => {
+        this.openContacts(value);
+      }
     });
 
     this.listenerSetter.add(rootScope)('contacts_update', async(userId) => {

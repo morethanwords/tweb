@@ -46,6 +46,10 @@ import getHistoryStorageKey from '../../lib/appManagers/utils/messages/getHistor
 import isForwardOfForward from '../../lib/appManagers/utils/messages/isForwardOfForward';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import {SendReactionOptions} from '../../lib/appManagers/appReactionsManager';
+import {MiddlewareHelper, getMiddleware} from '../../helpers/middleware';
+import {createEffect, createRoot} from 'solid-js';
+import TopbarSearch from './topbarSearch';
+import createUnifiedSignal from '../../helpers/solid/createUnifiedSignal';
 
 export enum ChatType {
   Chat = 'chat',
@@ -104,6 +108,7 @@ export default class Chat extends EventListenerBase<{
   public isChannel: boolean;
   public isBroadcast: boolean;
   public isAnyGroup: boolean;
+  public isRealGroup: boolean;
   public isMegagroup: boolean;
   public isForum: boolean;
   public isAllMessagesForum: boolean;
@@ -113,6 +118,10 @@ export default class Chat extends EventListenerBase<{
   public animationGroup: AnimationItemGroup;
 
   public destroyPromise: CancellablePromise<void>;
+
+  public middlewareHelper: MiddlewareHelper;
+
+  public searchSignal: ReturnType<typeof createUnifiedSignal<string>>;
 
   constructor(
     public appImManager: AppImManager,
@@ -131,6 +140,7 @@ export default class Chat extends EventListenerBase<{
 
     this.type = ChatType.Chat;
     this.animationGroup = `chat-${Math.round(Math.random() * 65535)}`;
+    this.middlewareHelper = getMiddleware();
 
     if(!this.excludeParts.elements) {
       this.container = document.createElement('div');
@@ -411,6 +421,61 @@ export default class Chat extends EventListenerBase<{
     this.bubbles.listenerSetter.add(this.appImManager)('tab_changing', (tabId) => {
       freezeObservers(this.appImManager.chat !== this || (tabId !== APP_TABS.CHAT && mediaSizes.activeScreen === ScreenSize.mobile));
     });
+
+    this.searchSignal = createUnifiedSignal();
+    const middleware = this.middlewareHelper.get();
+    createRoot((dispose) => {
+      middleware.onDestroy(dispose);
+
+      const animateElements = async(visible: boolean) => {
+        const keyframes: Keyframe[] = [{opacity: 0}, {opacity: 1}];
+        const options: KeyframeAnimationOptions = {fill: 'forwards', duration: 200, easing: 'ease-in-out'};
+        if(!visible) {
+          keyframes.reverse();
+        }
+
+        const elements = this.topbar.container.querySelectorAll<HTMLElement>('.content, .chat-utils');
+
+        const promises: Promise<any>[] = [];
+        const promise = topbarSearch.animate(keyframes, options).finished;
+        keyframes.reverse();
+        const otherPromises = Array.from(elements).map((element) => element.animate(keyframes, options).finished);
+        promises.push(promise, ...otherPromises);
+        return Promise.all(promises);
+      };
+
+      let topbarSearch: HTMLElement;
+      createEffect(() => {
+        const query = this.searchSignal();
+        if(query === undefined) {
+          if(!topbarSearch) {
+            return;
+          }
+
+          const _topbarSearch = topbarSearch;
+          animateElements(false).then(() => {
+            _topbarSearch.remove();
+          });
+          topbarSearch = undefined;
+          return;
+        }
+
+        topbarSearch = TopbarSearch({
+          peerId: this.peerId,
+          threadId: this.threadId,
+          canFilterSender: this.isRealGroup,
+          query,
+          onClose: () => {
+            this.searchSignal(undefined);
+          },
+          onDatePick: (timestamp) => {
+            this.bubbles.onDatePick(timestamp);
+          }
+        }) as HTMLElement;
+        this.topbar.container.append(topbarSearch);
+        animateElements(true);
+      });
+    });
   }
 
   public beforeDestroy() {
@@ -472,6 +537,7 @@ export default class Chat extends EventListenerBase<{
       noForwards,
       isRestricted,
       isAnyGroup,
+      isRealGroup,
       _,
       isMegagroup,
       isBroadcast,
@@ -484,6 +550,7 @@ export default class Chat extends EventListenerBase<{
       this.managers.appPeersManager.noForwards(peerId),
       this.managers.appPeersManager.isPeerRestricted(peerId),
       this._isAnyGroup(peerId),
+      this.managers.appPeersManager.isAnyGroup(peerId),
       this.setAutoDownloadMedia(),
       this.managers.appPeersManager.isMegagroup(peerId),
       this.managers.appPeersManager.isBroadcast(peerId),
@@ -502,6 +569,7 @@ export default class Chat extends EventListenerBase<{
     this.noForwards = noForwards;
     this.isRestricted = isRestricted;
     this.isAnyGroup = isAnyGroup;
+    this.isRealGroup = isRealGroup;
     this.isMegagroup = isMegagroup;
     this.isBroadcast = isBroadcast;
     this.isChannel = isChannel;
@@ -554,6 +622,7 @@ export default class Chat extends EventListenerBase<{
       this.appImManager.dispatchEvent('peer_changing', this);
       this.peerId = peerId || NULL_PEER_ID;
       this.threadId = threadId;
+      this.middlewareHelper.clean();
     } else if(this.setPeerPromise) {
       return;
     }
@@ -707,10 +776,11 @@ export default class Chat extends EventListenerBase<{
         this.search.setQuery(query);
       }
     } else {
-      let tab = appSidebarRight.getTab(AppPrivateSearchTab);
-      tab ||= appSidebarRight.createTab(AppPrivateSearchTab);
+      this.searchSignal(query || '');
+      // let tab = appSidebarRight.getTab(AppPrivateSearchTab);
+      // tab ||= appSidebarRight.createTab(AppPrivateSearchTab);
 
-      tab.open(this.peerId, this.threadId, this.bubbles.onDatePick, query);
+      // tab.open(this.peerId, this.threadId, this.bubbles.onDatePick, query);
     }
   }
 

@@ -33,8 +33,11 @@ export default class AppStickersTab extends SliderSuperTab {
 
     this.lazyLoadQueue = new LazyLoadQueue();
 
-    this.inputSearch = new InputSearch('StickersTab.SearchPlaceholder', (value) => {
-      this.search(value);
+    this.inputSearch = new InputSearch({
+      placeholder: 'StickersTab.SearchPlaceholder',
+      onChange: (value) => {
+        this.search(value);
+      }
     });
 
     this.title.replaceWith(this.inputSearch.container);

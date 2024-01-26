@@ -5,7 +5,7 @@
  */
 
 export default function whichChild(elem: Node, countNonElements?: boolean) {
-  if(!elem.parentNode) {
+  if(!elem?.parentNode) {
     return -1;
   }
 

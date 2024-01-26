@@ -126,10 +126,11 @@ export const makeAbsStats = (value: number, approximate?: boolean): StatsAbsValu
   };
 };
 
-export type LoadableList = {rendered: HTMLElement[], left: number, count: number, loadMore?: () => Promise<void>};
-export const createLoadableList = (props: Partial<LoadableList> = {}) => {
-  return createSignal<LoadableList>({
+export type LoadableList<T extends any = any> = {rendered: HTMLElement[], values: T[], left: number, count: number, loadMore?: () => Promise<void>};
+export const createLoadableList = <T extends any = any>(props: Partial<LoadableList<T>> = {}) => {
+  return createSignal<LoadableList<T>>({
     rendered: [],
+    values: [],
     left: 0,
     count: 0,
     ...props

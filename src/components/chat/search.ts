@@ -67,7 +67,7 @@ export default class ChatSearch {
       this.destroy();
     });
 
-    this.inputSearch = new InputSearch('Search');
+    this.inputSearch = new InputSearch({placeholder: 'Search'});
 
     // Results
     this.results = document.createElement('div');

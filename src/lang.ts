@@ -506,6 +506,8 @@ const lang = {
     'other_value': 'Reassign Boosts'
   },
   'Boost.Reassign.Wait': 'Wait until the boost is available or get %s by gifting a **[Telegram Premium]()** subscription.',
+  'Search.Empty': 'There were no results for "**%@**". Try a new search.',
+  'Search.From': 'From: ',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
