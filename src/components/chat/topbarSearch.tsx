@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {createEffect, createSignal, onCleanup, JSX, createMemo, onMount, splitProps, on} from 'solid-js';
+import {createEffect, createSignal, onCleanup, JSX, createMemo, onMount, splitProps, on, untrack, batch} from 'solid-js';
 import InputSearch from '../inputSearch';
 import {ButtonIconTsx, createListTransition, createMiddleware} from '../stories/viewer';
 import classNames from '../../helpers/string/classNames';
@@ -13,7 +13,7 @@ import PopupDatePicker from '../popups/datePicker';
 import rootScope from '../../lib/rootScope';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import appDialogsManager from '../../lib/appManagers/appDialogsManager';
-import {Message} from '../../layer';
+import {ChannelsChannelParticipants, Message} from '../../layer';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import Scrollable from '../scrollable';
 import {resolveElements} from '@solid-primitives/refs';
@@ -32,6 +32,14 @@ import stringMiddleOverflow from '../../helpers/string/stringMiddleOverflow';
 import appNavigationController, {NavigationItem} from '../appNavigationController';
 import getTextWidth from '../../helpers/canvas/getTextWidth';
 import {FontFull} from '../../config/font';
+import Row from '../row';
+import wrapPeerTitle from '../wrappers/peerTitle';
+import getParticipantPeerId from '../../lib/appManagers/utils/chats/getParticipantPeerId';
+import {avatarNew} from '../avatarNew';
+import getPeerActiveUsernames from '../../lib/appManagers/utils/peers/getPeerActiveUsernames';
+import cancelEvent from '../../helpers/dom/cancelEvent';
+import {attachClickEvent} from '../../helpers/dom/clickEvent';
+import AppSelectPeers from '../appSelectPeers';
 
 export const ScrollableYTsx = (props: {
   children: JSX.Element,
@@ -99,11 +107,13 @@ export function AnimationList(props: {
   return transitionList;
 }
 
-const renderHistoryResult = ({middleware, peerId, fromSavedDialog, messages, query}: {middleware: Middleware, peerId: PeerId, fromSavedDialog: boolean, messages: (Message.message | Message.messageService)[], query: string}) => {
+type LoadOptions = {middleware: Middleware, peerId: PeerId, threadId: number, query: string, fromPeerId?: PeerId};
+
+const renderHistoryResult = ({middleware, peerId, fromSavedDialog, messages, query, fromPeerId}: LoadOptions & {fromSavedDialog: boolean, messages: (Message.message | Message.messageService)[]}) => {
   const promises = messages.map(async(message) => {
     const loadPromises: Promise<any>[] = [];
     const {dom} = appDialogsManager.addDialogAndSetLastMessage({
-      peerId: fromSavedDialog ? rootScope.myId : peerId,
+      peerId: fromSavedDialog ? rootScope.myId : (fromPeerId || peerId),
       container: false,
       avatarSize: 'abitbigger',
       meAsSaved: false,
@@ -125,6 +135,125 @@ const renderHistoryResult = ({middleware, peerId, fromSavedDialog, messages, que
   return Promise.all(promises);
 };
 
+const createSearchLoader = (options: LoadOptions) => {
+  const {middleware, peerId, threadId, query, fromPeerId} = options;
+  const fromSavedDialog = !!(peerId === rootScope.myId && threadId);
+  let lastMessage: Message.message | Message.messageService, loading = false;
+  const loadMore = async() => {
+    if(loading) {
+      return;
+    }
+    loading = true;
+
+    const offsetId = lastMessage?.mid || 0;
+    const offsetPeerId = lastMessage?.peerId || NULL_PEER_ID;
+    const result = await rootScope.managers.appMessagesManager.getHistory({
+      peerId,
+      threadId,
+      query,
+      inputFilter: {_: 'inputMessagesFilterEmpty'},
+      offsetId,
+      offsetPeerId,
+      limit: 30,
+      fromPeerId
+    });
+    if(!middleware()) {
+      return;
+    }
+
+    const messages = result.history.map((mid) => apiManagerProxy.getMessageByPeer(peerId, mid));
+    const rendered = await renderHistoryResult({...options, fromSavedDialog, messages});
+    if(!middleware()) {
+      return;
+    }
+
+    setF((value) => {
+      value.count = result.count;
+      value.values.push(...messages);
+      lastMessage = messages[messages.length - 1];
+      if(result.isEnd.top) {
+        value.loadMore = undefined;
+      }
+
+      value.rendered.push(...rendered);
+      return value;
+    });
+    loading = false;
+  };
+
+  const [f, setF] = createLoadableList<Message.message | Message.messageService>({loadMore});
+  return f;
+};
+
+const createParticipantsLoader = (options: LoadOptions) => {
+  const {middleware, peerId, query} = options;
+  let loading = false, offset = 0;
+  const loadMore = async() => {
+    if(loading) {
+      return;
+    }
+    loading = true;
+
+    const result = await rootScope.managers.appProfileManager.getParticipants({
+      id: peerId.toChatId(),
+      filter: {_: 'channelParticipantsSearch', q: query},
+      limit: 30,
+      offset,
+      forMessagesSearch: true
+    });
+    if(!middleware()) {
+      return;
+    }
+
+    console.log(result);
+
+    const peerIds = result.participants.map(getParticipantPeerId);
+    const promises = peerIds.map(async(peerId) => {
+      const title = await wrapPeerTitle({peerId});
+      const peer = apiManagerProxy.getPeer(peerId);
+      const username = getPeerActiveUsernames(peer)[0];
+      const row = new Row({
+        title: (
+          <span>
+            <b>{title}</b> {username && <span class="secondary">{`@${username}`}</span>}
+          </span>
+        ) as HTMLElement,
+        clickable: true
+      });
+
+      row.container.classList.add('topbar-search-left-sender');
+
+      const size = 40;
+      const avatar = avatarNew({peerId, size, middleware});
+      row.createMedia(`${size}`).append(avatar.node);
+      await avatar.readyThumbPromise;
+
+      return row.container;
+    });
+
+    const rendered = await Promise.all(promises);
+    if(!middleware()) {
+      return;
+    }
+
+    setF((value) => {
+      value.count = (result as ChannelsChannelParticipants.channelsChannelParticipants).count ?? peerIds.length;
+      const newLength = value.values.push(...peerIds);
+      offset = newLength;
+      if(true) {
+        value.loadMore = undefined;
+      }
+
+      value.rendered.push(...rendered);
+      return value;
+    });
+    loading = false;
+  };
+
+  const [f, setF] = createLoadableList<PeerId>({loadMore});
+  return f;
+};
+
 export default function TopbarSearch(props: {
   peerId: PeerId,
   threadId?: number,
@@ -138,12 +267,14 @@ export default function TopbarSearch(props: {
   const [isInputFocused, setIsInputFocused] = createSignal(false);
   const [value, setValue] = createSignal(query);
   const [count, setCount] = createSignal<number>();
-  const [list, setList] = createSignal<HTMLElement>();
+  const [list, setList] = createSignal<{element: HTMLElement, type: 'messages' | 'senders'}>();
   const [messages, setMessages] = createSignal<(Message.message | Message.messageService)[]>();
+  const [sendersPeerIds, setSendersPeerIds] = createSignal<PeerId[]>();
   const [loadMore, setLoadMore] = createSignal<() => Promise<void>>();
-  const [target, setTarget] = createSignal<HTMLElement>();
+  const [target, setTarget] = createSignal<HTMLElement>(undefined, {equals: false});
   const [filteringSender, setFilteringSender] = createSignal<boolean>(false);
   const [filterPeerId, setFilterPeerId] = createSignal<PeerId>();
+  const [senderInputEntity, setSenderInputEntity] = createSignal<HTMLElement>();
   const isActive = createMemo(() => /* true ||  */isInputFocused());
   const shouldHaveListNavigation = createMemo(() => (isInputFocused() && count() && list()) || undefined);
 
@@ -151,25 +282,28 @@ export default function TopbarSearch(props: {
     placeCaretAtEnd(inputSearch.input);
   });
 
-  let detachListNavigation: () => void;
-  createEffect(() => {
-    if(shouldHaveListNavigation()) {
-      const {detach} = attachListNavigation({
-        list: shouldHaveListNavigation().firstElementChild as HTMLElement,
-        type: 'y',
-        onSelect: (target) => {
-          setTarget(target as HTMLElement);
-          blurActiveElement();
-        },
-        activeClassName: 'menu-open',
-        cancelMouseDown: true
-      });
-
-      detachListNavigation = detach;
-    } else {
-      detachListNavigation?.();
-      detachListNavigation = undefined;
+  createEffect<() => void>((_detach) => {
+    _detach?.();
+    const {element} = shouldHaveListNavigation() || {};
+    if(!element) {
+      return;
     }
+
+    const {detach} = attachListNavigation({
+      list: element.firstElementChild as HTMLElement,
+      type: 'y',
+      onSelect: (target) => {
+        const shouldBlur = !!(!filteringSender() || filterPeerId());
+        setTarget(target as HTMLElement);
+        if(shouldBlur) {
+          blurActiveElement();
+        }
+      },
+      activeClassName: 'menu-open',
+      cancelMouseDown: true
+    });
+
+    return detach;
   });
 
   const navigationItem: NavigationItem = {
@@ -193,8 +327,15 @@ export default function TopbarSearch(props: {
     onChange: (value) => {
       setValue(value);
     },
-    onClear: () => {
+    onClear: (e) => {
+      if(filterPeerId()) {
+        cancelEvent(e);
+        setFilterPeerId(undefined);
+        return;
+      }
+
       if(filteringSender()) {
+        cancelEvent(e);
         setFilteringSender(false);
         return;
       }
@@ -214,8 +355,55 @@ export default function TopbarSearch(props: {
 
   const fromText = I18n.format('Search.From', true);
   const fromWidth = getTextWidth(fromText, FontFull);
-  createEffect(() => {
-    inputSearch.container.style.setProperty('--padding-placeholder', (filteringSender() ? fromWidth : 0) + 'px');
+  const fromSpan = (<span class={classNames('topbar-search-input-from', filteringSender() && 'is-visible')}>{fromText}</span>);
+  inputSearch.container.append(fromSpan as HTMLElement);
+  createEffect<HTMLElement>((_element) => {
+    const filtering = filteringSender();
+    if(_element) {
+      _element.classList.remove('scale-in');
+      void _element.offsetWidth;
+      _element.classList.add('scale-out');
+      setTimeout(() => {
+        _element.remove();
+      }, 200);
+    }
+
+    const element = senderInputEntity();
+    if(element) {
+      element.classList.add('topbar-search-input-entity', 'scale-in');
+      const detach = attachClickEvent(element, (e) => {
+        cancelEvent(e);
+        setFilterPeerId();
+      }, {cancelMouseDown: true});
+      onCleanup(detach);
+      inputSearch.container.append(element);
+    }
+
+    inputSearch.container.style.setProperty('--padding-placeholder', (filtering ? fromWidth : 0) + 'px');
+    inputSearch.container.style.setProperty('--padding-sender', (element ? element.offsetWidth + 6 : 0) + 'px');
+    inputSearch.setPlaceholder(filtering && !element ? 'Search.Member' : 'Search');
+    return element;
+  });
+
+  createEffect(async() => {
+    const peerId = filterPeerId();
+    const middleware = createMiddleware().get();
+    let element: HTMLElement;
+    if(peerId) {
+      const entity = untrack(() => AppSelectPeers.renderEntity({
+        key: peerId,
+        middleware,
+        avatarSize: 30,
+        meAsSaved: false
+      }));
+      element = entity.element;
+      await Promise.all(entity.promises);
+      if(!middleware()) {
+        return;
+      }
+    }
+
+    setSenderInputEntity(element);
   });
 
   const inputSearchTools = document.createElement('div');
@@ -226,7 +414,11 @@ export default function TopbarSearch(props: {
     return (
       <ButtonIconTsx
         icon={direction}
-        class={classNames('input-search-part', 'topbar-search-input-arrow', !count() && 'hide')}
+        class={classNames(
+          'input-search-part',
+          'topbar-search-input-arrow',
+          (!count() || (filteringSender() && !filterPeerId())) && 'hide'
+        )}
         noRipple
         onClick={() => {
           let _target = target();
@@ -259,53 +451,18 @@ export default function TopbarSearch(props: {
 
   createEffect(() => {
     const {peerId, threadId} = props;
-    const fromSavedDialog = !!(peerId === rootScope.myId && threadId);
     const query = value();
+    const fromPeerId = filterPeerId();
+    const isSender = filteringSender() && !fromPeerId;
     const middleware = createMiddleware().get();
 
-    let lastMessage: Message.message | Message.messageService, loading = false;
-    const loadMore = async() => {
-      if(loading) {
-        return;
-      }
-      loading = true;
-
-      const offsetId = lastMessage?.mid || 0;
-      const offsetPeerId = lastMessage?.peerId || NULL_PEER_ID;
-      const result = await rootScope.managers.appMessagesManager.getHistory({
-        peerId,
-        threadId,
-        query,
-        inputFilter: {_: 'inputMessagesFilterEmpty'},
-        offsetId,
-        offsetPeerId,
-        limit: 30
-      });
-      if(!middleware()) {
-        return;
-      }
-
-      const messages = result.history.map((mid) => apiManagerProxy.getMessageByPeer(peerId, mid));
-      const rendered = await renderHistoryResult({middleware, peerId, fromSavedDialog, messages, query});
-      if(!middleware()) {
-        return;
-      }
-
-      setF((value) => {
-        value.count = result.count;
-        value.values.push(...messages);
-        lastMessage = messages[messages.length - 1];
-        if(result.isEnd.top) {
-          value.loadMore = undefined;
-        }
-
-        value.rendered.push(...rendered);
-        return value;
-      });
-      loading = false;
-    };
-
-    const [f, setF] = createLoadableList<Message.message | Message.messageService>({loadMore});
+    const loader = (isSender ? createParticipantsLoader : createSearchLoader)({
+      middleware,
+      peerId,
+      threadId,
+      query,
+      fromPeerId
+    });
 
     let ref: HTMLDivElement;
     const list = (
@@ -320,9 +477,9 @@ export default function TopbarSearch(props: {
         ) : (
           <>
             <div>
-              {f().rendered}
+              {loader().rendered}
             </div>
-            {f().rendered && <div class="topbar-search-left-results-padding" />}
+            {loader().rendered && <div class="topbar-search-left-results-padding" />}
           </>
         )}
       </div>
@@ -330,26 +487,34 @@ export default function TopbarSearch(props: {
 
     setLoadMore(() => undefined);
     setMessages();
+    setSendersPeerIds();
 
     let first = true;
+    const onLoad = () => {
+      if(first) {
+        inputSearch.toggleLoading(false);
+        setList({element: ref, type: isSender ? 'senders' : 'messages'});
+        scrollableDiv.scrollTop = 0;
+        first = false;
+      }
+    };
+
     createEffect(
       on(
-        () => f(),
+        () => loader(),
         ({rendered, values, loadMore}) => {
           setCount(rendered.length);
           setLoadMore(() => loadMore);
-          setMessages(values);
-          if(first) {
-            setList(ref);
-            scrollableDiv.scrollTop = 0;
-            first = false;
-          }
+          if(isSender) setSendersPeerIds(values as any);
+          else setMessages(values as any);
+          onLoad();
         },
         {defer: true}
       )
     );
 
-    loadMore();
+    inputSearch.toggleLoading(true);
+    untrack(() => loader().loadMore());
   });
 
   createEffect(
@@ -358,6 +523,15 @@ export default function TopbarSearch(props: {
       (target) => {
         const idx = whichChild(target);
         if(idx === -1) {
+          return;
+        }
+
+        if(filteringSender() && !filterPeerId()) {
+          const peerId = sendersPeerIds()[idx];
+          batch(() => {
+            setFilterPeerId(peerId);
+            inputSearch.onChange(inputSearch.value = '');
+          });
           return;
         }
 
@@ -385,14 +559,17 @@ export default function TopbarSearch(props: {
       return;
     }
 
-    const delimiter = 2;
+    const paddingVertical = 8 * 2;
+    let height: number;
     if(length === 0) {
-      return delimiter + 41;
+      height = 43;
+    } else if(list().type === 'senders') {
+      height = 1 + paddingVertical + length * 48;
+    } else {
+      height = 1 + paddingVertical + length * 56;
     }
 
-    const paddingVertical = 8 * 2;
-    return Math.min(271, delimiter + paddingVertical + length * 56);
-    // return 42 + 1 + 8 * 2 + length * 56;
+    return Math.min(271, height);
   });
 
   let scrollableDiv: HTMLDivElement;
@@ -420,7 +597,7 @@ export default function TopbarSearch(props: {
             keyframes={[{opacity: 0}, {opacity: 1}]}
             animateOnlyReplacement
           >
-            {list()}
+            {list()?.element}
           </AnimationList>
         </ScrollableYTsx>
       </div>
@@ -428,8 +605,14 @@ export default function TopbarSearch(props: {
         {props.canFilterSender && !filteringSender() && (
           <ButtonIconTsx
             icon="newprivate"
-            onClick={() => {
-              setFilteringSender(true);
+            ref={(element) => {
+              const detach = attachClickEvent(element, (e) => {
+                cancelEvent(e);
+                inputSearch.onChange(inputSearch.value = '');
+                setFilteringSender(true);
+                placeCaretAtEnd(inputSearch.input, true);
+              }, {cancelMouseDown: true});
+              onCleanup(detach);
             }}
           />
         )}

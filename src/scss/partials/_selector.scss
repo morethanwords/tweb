@@ -5,11 +5,13 @@
  */
 
 @keyframes scaleIn {
-  0% {
+  from {
+    opacity: 0;
     transform: scale(.2);
   }
 
   to {
+    opacity: 1;
     transform: scale(1);
   }
 }
@@ -103,14 +105,15 @@
     @include text-overflow();
 
     @include animation-level(2) {
-      transition: .2s opacity, .2s transform, .2s background-color;
+      transform-origin: var(--transform-origin-left-center);
+      transition: .15s opacity, .15s transform, .15s background-color;
 
       &.scale-in {
         animation: scaleIn .15s ease forwards;
       }
   
       &.scale-out {
-        animation: scaleIn .1s ease forwards;
+        animation: scaleIn .15s ease forwards;
         animation-direction: reverse;
       }
     }
@@ -160,6 +163,7 @@
         border-radius: 50% !important;
         color: #fff;
         flex: 0 0 auto;
+        pointer-events: none;
   
         html.is-safari & {
           -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%); // fix safari overflow
@@ -168,6 +172,7 @@
     }
 
     &-title {
+      pointer-events: none;
       @include text-overflow();
     }
   }

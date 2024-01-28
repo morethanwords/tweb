@@ -24,7 +24,7 @@ export default class InputSearch {
   public prevValue = '';
   public timeout = 0;
   public onChange: (value: string) => void;
-  public onClear: () => void;
+  public onClear: (e?: MouseEvent) => void;
 
   private statusPreloader: ProgressivePreloader;
   private currentLangPackKey: LangPackKey;
@@ -35,7 +35,7 @@ export default class InputSearch {
   constructor(options: {
     placeholder?: LangPackKey,
     onChange?: (value: string) => void,
-    onClear?: () => void,
+    onClear?: InputSearch['onClear'],
     onFocusChange?: (isFocused: boolean) => void,
     alwaysShowClear?: boolean,
     noBorder?: boolean
@@ -62,7 +62,7 @@ export default class InputSearch {
     clearBtn.classList.toggle('always-visible', !!options.alwaysShowClear);
 
     this.listenerSetter.add(input)('input', this.onInput);
-    attachClickEvent(clearBtn, this.onClearClick, {listenerSetter: this.listenerSetter});
+    attachClickEvent(clearBtn, this.onClearClick, {listenerSetter: this.listenerSetter, cancelMouseDown: true});
 
     if(options.placeholder) {
       (input as HTMLInputElement).placeholder = ' ';
@@ -149,10 +149,10 @@ export default class InputSearch {
     }
   };
 
-  onClearClick = () => {
+  onClearClick = (e?: MouseEvent) => {
     this.value = '';
     this.onChange?.('');
-    this.onClear?.();
+    this.onClear?.(e);
   };
 
   get value() {

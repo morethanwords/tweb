@@ -1522,7 +1522,12 @@ export default class AppSearchSuper {
       });
     } else if(await this.managers.appChatsManager.isChannel(chatId)) {
       const LOAD_COUNT = !this.membersList ? 50 : 200;
-      promise = this.managers.appProfileManager.getChannelParticipants(chatId, undefined, LOAD_COUNT, this.nextRates[mediaTab.type]).then((participants) => {
+      promise = this.managers.appProfileManager.getChannelParticipants({
+        id: chatId,
+        filter: undefined,
+        limit: LOAD_COUNT,
+        offset: this.nextRates[mediaTab.type]
+      }).then((participants) => {
         if(!middleware()) {
           return;
         }

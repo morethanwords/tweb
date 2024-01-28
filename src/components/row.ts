@@ -32,7 +32,7 @@ const setContent = (element: HTMLElement, content: K) => {
   }
 };
 
-export type RowMediaSizeType = 'small' | 'medium' | 'big' | 'abitbigger' | 'bigger';
+export type RowMediaSizeType = 'small' | 'medium' | 'big' | 'abitbigger' | 'bigger' | '40';
 
 type ConstructorP<T> = T extends {
   new (...args: any[]): infer U;

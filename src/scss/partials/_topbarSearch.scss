@@ -131,6 +131,10 @@
         @include text-overflow(true);
       }
     }
+
+    &-sender {
+      border-radius: $border-radius-medium;
+    }
   }
 
   &-right {
@@ -178,6 +182,36 @@
       .input-search-clear {
         margin-inline-end: .4375rem;
       }
+
+      .preloader-path-new {
+        stroke: var(--secondary-text-color) !important;
+        opacity: .6;
+      }
+    }
+
+    &-from {
+      position: absolute;
+      inset-inline-start: var(--padding-horizontal);
+      color: var(--primary-text-color);
+      pointer-events: none;
+      opacity: 0;
+
+      @include animation-level(2) {
+        transition: opacity .2s ease-in-out;
+      }
+
+      &.is-visible {
+        opacity: 1;
+      }
+    }
+
+    &-entity {
+      position: absolute;
+      inset-inline-start: calc(var(--padding-horizontal) + var(--padding-placeholder));
+      margin: 0;
+      // margin-inline-start: .25rem;
+      pointer-events: all;
+      z-index: 1;
     }
 
     &-arrow {

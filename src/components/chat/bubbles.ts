@@ -3664,7 +3664,11 @@ export default class ChatBubbles {
         this.canShowRanks = true;
         const processRanks = this.processRanks = new Set();
 
-        const promise = this.managers.acknowledged.appProfileManager.getParticipants(chatId, {_: 'channelParticipantsAdmins'}, 100);
+        const promise = this.managers.acknowledged.appProfileManager.getParticipants({
+          id: chatId,
+          filter: {_: 'channelParticipantsAdmins'},
+          limit: 100
+        });
         const ackedResult = await m(promise);
         const setRanksPromise = ackedResult.result.then((channelParticipants) => {
           if(this.processRanks !== processRanks) {

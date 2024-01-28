@@ -11,6 +11,9 @@ import simulateEvent from './dispatchEvent';
 let lastMouseDownElement: HTMLElement;
 document.addEventListener('mousedown', (e) => {
   lastMouseDownElement = e.target as HTMLElement;
+  if((lastMouseDownElement as any)?.cancelMouseDown) {
+    e.preventDefault();
+  }
 });
 
 export function hasMouseMovedSinceDown(e: Event) {
@@ -20,7 +23,7 @@ export function hasMouseMovedSinceDown(e: Event) {
 }
 
 export const CLICK_EVENT_NAME: 'mousedown' /* | 'touchend' */ | 'click' = (IS_TOUCH_SUPPORTED ? 'mousedown' : 'click') as any;
-export type AttachClickOptions = AddEventListenerOptions & Partial<{listenerSetter: ListenerSetter, touchMouseDown: true, ignoreMove: boolean}>;
+export type AttachClickOptions = AddEventListenerOptions & Partial<{listenerSetter: ListenerSetter, cancelMouseDown?: boolean, touchMouseDown: boolean, ignoreMove: boolean}>;
 export function attachClickEvent(elem: HTMLElement | Window, callback: (e: /* TouchEvent |  */MouseEvent) => void, options: AttachClickOptions = {}) {
   const add = options.listenerSetter ? options.listenerSetter.add(elem) : elem.addEventListener.bind(elem);
   const remove = options.listenerSetter ? options.listenerSetter.removeManual.bind(options.listenerSetter, elem) : elem.removeEventListener.bind(elem);
@@ -53,6 +56,10 @@ export function attachClickEvent(elem: HTMLElement | Window, callback: (e: /* To
   } else {
     add(CLICK_EVENT_NAME, callback, options);
   } */
+
+  if(options.cancelMouseDown) {
+    (elem as any).cancelMouseDown = true;
+  }
 
   if(CLICK_EVENT_NAME === 'click' && !options.ignoreMove) {
     const cb = callback;

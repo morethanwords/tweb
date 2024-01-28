@@ -239,6 +239,7 @@ export type RequestHistoryOptions = {
   maxDate?: number,
   savedReaction?: (Reaction.reactionCustomEmoji | Reaction.reactionEmoji)[],
   needRealOffsetIdOffset?: boolean,
+  fromPeerId?: PeerId,
   recursion?: boolean,                  // ! FOR INNER USE ONLY
   historyType?: HistoryType,            // ! FOR INNER USE ONLY
   searchType?: 'cached' | 'uncached'    // ! FOR INNER USE ONLY
@@ -6757,7 +6758,7 @@ export class AppMessagesManager extends AppManager {
       return;
     }
 
-    return options.query || !options.peerId ? 'uncached' : 'cached';
+    return options.query || !options.peerId || options.fromPeerId ? 'uncached' : 'cached';
   }
 
   public getHistoryType(peerId: PeerId, threadId?: number) {
@@ -7252,7 +7253,8 @@ export class AppMessagesManager extends AppManager {
     inputFilter,
     minDate,
     maxDate,
-    historyType = this.getHistoryType(peerId, threadId)
+    historyType = this.getHistoryType(peerId, threadId),
+    fromPeerId
   }: RequestHistoryOptions) {
     const offsetMessage = offsetId && this.getMessageByPeer(offsetPeerId || peerId, offsetId);
     offsetPeerId ??= offsetMessage?.peerId;
@@ -7284,7 +7286,8 @@ export class AppMessagesManager extends AppManager {
         min_date: minDate,
         max_date: maxDate,
         top_msg_id: historyType === HistoryType.Saved ? undefined : threadId,
-        saved_peer_id: historyType === HistoryType.Saved ? this.appPeersManager.getInputPeerById(threadId) : undefined
+        saved_peer_id: historyType === HistoryType.Saved ? this.appPeersManager.getInputPeerById(threadId) : undefined,
+        from_id: fromPeerId ? this.appPeersManager.getInputPeerById(fromPeerId) : undefined
       };
 
       method = 'messages.search';

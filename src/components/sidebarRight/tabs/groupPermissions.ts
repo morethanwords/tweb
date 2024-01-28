@@ -462,12 +462,12 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
         loader = new ScrollableLoader({
           scrollable: this.scrollable,
           getPromise: () => {
-            return this.managers.appProfileManager.getChannelParticipants(
-              this.chatId,
-              {_: 'channelParticipantsBanned', q: ''},
-              LOAD_COUNT,
-              list.childElementCount
-            ).then((res) => {
+            return this.managers.appProfileManager.getChannelParticipants({
+              id: this.chatId,
+              filter: {_: 'channelParticipantsBanned', q: ''},
+              limit: LOAD_COUNT,
+              offset: list.childElementCount
+            }).then((res) => {
               for(const participant of res.participants) {
                 add(participant as ChannelParticipant.channelParticipantBanned, true);
               }

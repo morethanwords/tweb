@@ -762,12 +762,12 @@ export default class AppSelectPeers {
     }
 
     const {middleware} = this.getTempId('channelParticipants');
-    const promise = this.managers.appProfileManager.getParticipants(
-      this.peerId.toChatId(),
+    const promise = this.managers.appProfileManager.getParticipants({
+      id: this.peerId.toChatId(),
       filter,
-      pageCount,
-      this.list.childElementCount
-    );
+      limit: pageCount,
+      offset: this.list.childElementCount
+    });
 
     promise.catch(() => {
       if(!middleware()) {
@@ -1052,16 +1052,19 @@ export default class AppSelectPeers {
     avatarContainer.append(avatarEl.node, avatarClose);
 
     div.dataset.key = '' + key;
+    const promises: Promise<any>[] = [];
     if(key.isPeerId()) {
       if(title === undefined) {
         const peerTitle = new PeerTitle();
-        peerTitle.update({peerId: key.toPeerId(), dialog: meAsSaved});
+        promises.push(peerTitle.update({peerId: key.toPeerId(), dialog: meAsSaved}));
         title = peerTitle.element;
       }
 
       avatarEl.render({
         peerId: key as PeerId
       });
+
+      promises.push(avatarEl.readyThumbPromise);
     } else if(fallbackIcon) {
       avatarEl.setIcon(fallbackIcon);
     }
@@ -1080,7 +1083,7 @@ export default class AppSelectPeers {
 
     div.insertAdjacentElement('afterbegin', avatarContainer);
 
-    return {element: div, avatar: avatarEl};
+    return {element: div, avatar: avatarEl, promises};
   }
 
   public add({

@@ -12,7 +12,7 @@
 import deepEqual from '../../helpers/object/deepEqual';
 import isObject from '../../helpers/object/isObject';
 import safeReplaceObject from '../../helpers/object/safeReplaceObject';
-import {ChannelParticipant, ChannelsCreateChannel, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatInvite, ChatParticipant, ChatPhoto, ChatReactions, EmojiStatus, InputChannel, InputChatPhoto, InputFile, InputPeer, MessagesChats, MessagesSponsoredMessages, Peer, SponsoredMessage, Update, Updates} from '../../layer';
+import {ChannelParticipant, ChannelsCreateChannel, ChannelsSendAsPeers, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatInvite, ChatParticipant, ChatPhoto, ChatReactions, EmojiStatus, InputChannel, InputChatPhoto, InputFile, InputPeer, MessagesChats, MessagesSponsoredMessages, Peer, SponsoredMessage, Update, Updates} from '../../layer';
 import {AppManager} from './manager';
 import hasRights from './utils/chats/hasRights';
 import getParticipantPeerId from './utils/chats/getParticipantPeerId';
@@ -23,6 +23,7 @@ import tsNow from '../../helpers/tsNow';
 import getPeerActiveUsernames from './utils/peers/getPeerActiveUsernames';
 import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
 import getPeerId from './utils/peers/getPeerId';
+import callbackify from '../../helpers/callbackify';
 
 export type Channel = Chat.channel;
 export type ChatRights = keyof ChatBannedRights['pFlags'] | keyof ChatAdminRights['pFlags'] |
@@ -747,18 +748,18 @@ export class AppChatsManager extends AppManager {
   }
 
   public getSendAs(channelId: ChatId) {
-    return this.apiManager.invokeApiSingleProcess({
-      method: 'channels.getSendAs',
-      params: {
-        peer: this.getChannelInputPeer(channelId)
-      },
-      processResult: (sendAsPeers) => {
-        this.appUsersManager.saveApiUsers(sendAsPeers.users);
-        this.saveApiChats(sendAsPeers.chats);
+    const onResult = (sendAsPeers: ChannelsSendAsPeers) => {
+      this.appUsersManager.saveApiUsers(sendAsPeers.users);
+      this.saveApiChats(sendAsPeers.chats);
 
-        return sendAsPeers.peers;
-      }
-    });
+      return sendAsPeers.peers;
+    };
+
+    const inputPeer = this.getChannelInputPeer(channelId);
+    const result = this.apiManager.invokeApiCacheable('channels.getSendAs', {
+      peer: inputPeer
+    }, {cacheSeconds: 60, syncIfHasResult: true});
+    return callbackify(result, onResult);
   }
 
   public checkUsername(chatId: ChatId, username: string) {

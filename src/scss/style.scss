@@ -686,6 +686,10 @@ input:-webkit-autofill:active {
   transition: background-color 5000s ease-in-out 0s;
 } */
 
+.secondary {
+  color: var(--secondary-text-color);
+}
+
 .subtitle {
   /* font-weight: 500; */
   color: var(--secondary-text-color);

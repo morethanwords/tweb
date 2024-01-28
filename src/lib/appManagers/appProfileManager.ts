@@ -24,10 +24,25 @@ import makeError from '../../helpers/makeError';
 import callbackify from '../../helpers/callbackify';
 import getPeerActiveUsernames from './utils/peers/getPeerActiveUsernames';
 import getParticipantsCount from './utils/chats/getParticipantsCount';
+import callbackifyAll from '../../helpers/callbackifyAll';
 
 export type UserTyping = Partial<{userId: UserId, action: SendMessageAction, timeout: number}>;
 
 const PEER_FULL_TTL = 3 * 60e3;
+
+type GetChannelParticipantsOptions = {
+  id: ChatId,
+  filter?: ChannelParticipantsFilter,
+  limit?: number,
+  offset?: number,
+  forMessagesSearch?: boolean
+};
+
+const defaultGetChannelParticipantsOptions: Partial<GetChannelParticipantsOptions> = {
+  filter: {_: 'channelParticipantsRecent'},
+  limit: 200,
+  offset: 0
+};
 
 export class AppProfileManager extends AppManager {
   // private botInfos: any = {};
@@ -322,14 +337,11 @@ export class AppProfileManager extends AppManager {
     return filteredParticipants;
   }
 
-  public getParticipants(
-    id: ChatId,
-    filter: ChannelParticipantsFilter = {_: 'channelParticipantsRecent'},
-    limit = 200,
-    offset = 0
-  ) {
+  public getParticipants(options: GetChannelParticipantsOptions) {
+    options = {...defaultGetChannelParticipantsOptions, ...options};
+    const {id, filter} = options;
     if(this.appChatsManager.isChannel(id)) {
-      return this.getChannelParticipants(id, filter, limit, offset);
+      return this.getChannelParticipants(options);
     }
 
     return callbackify(this.getChatFull(id), (chatFull) => {
@@ -354,7 +366,7 @@ export class AppProfileManager extends AppManager {
       return this.getChannelParticipant(id, peerId);
     }
 
-    return Promise.resolve(this.getParticipants(id)).then((chatParticipants) => {
+    return Promise.resolve(this.getParticipants({id})).then((chatParticipants) => {
       assumeType<ChatParticipants.chatParticipants>(chatParticipants);
       const found = chatParticipants.participants.find((chatParticipant) => {
         if(getParticipantPeerId(chatParticipant) === peerId) {
@@ -370,12 +382,9 @@ export class AppProfileManager extends AppManager {
     });
   }
 
-  public getChannelParticipants(
-    id: ChatId,
-    filter: ChannelParticipantsFilter = {_: 'channelParticipantsRecent'},
-    limit = 200,
-    offset = 0
-  ) {
+  public getChannelParticipants(options: GetChannelParticipantsOptions) {
+    options = {...defaultGetChannelParticipantsOptions, ...options};
+    const {id, filter, offset, limit} = options;
     if(!this.appChatsManager.hasRights(id, 'view_participants')) {
       throw makeError('CHAT_ADMIN_REQUIRED');
     }
@@ -392,7 +401,9 @@ export class AppProfileManager extends AppManager {
       hash: '0'
     }, {cacheSeconds: 60, syncIfHasResult: true});
 
-    return callbackify(result, (result) => {
+    const sendAsPeersResult = options.forMessagesSearch ? this.appChatsManager.getSendAs(id) : undefined;
+
+    return callbackifyAll([result, sendAsPeersResult], ([result, sendAsPeers]) => {
       this.appUsersManager.saveApiUsers((result as ChannelsChannelParticipants.channelsChannelParticipants).users);
       this.appChatsManager.saveApiChats((result as ChannelsChannelParticipants.channelsChannelParticipants).chats);
 
@@ -512,11 +523,16 @@ export class AppProfileManager extends AppManager {
 
     let promise: Promise<PeerId[]>;
     if(this.appChatsManager.isChannel(chatId)) {
-      promise = Promise.resolve(this.getChannelParticipants(chatId, {
-        _: 'channelParticipantsMentions',
-        q: query,
-        top_msg_id: getServerMessageId(threadId)
-      }, 50, 0)).then((cP) => {
+      promise = Promise.resolve(this.getChannelParticipants({
+        id: chatId,
+        filter: {
+          _: 'channelParticipantsMentions',
+          q: query,
+          top_msg_id: getServerMessageId(threadId)
+        },
+        limit: 50,
+        offset: 0
+      })).then((cP) => {
         return cP.participants.map((p) => getParticipantPeerId(p));
       });
     } else if(chatId) {
@@ -718,7 +734,11 @@ export class AppProfileManager extends AppManager {
 
       if(this.appChatsManager.isMegagroup(id)) {
         if((chatFull as ChatFull.channelFull).participants_count <= 100) {
-          const channelParticipantsResult = this.getChannelParticipants(id, {_: 'channelParticipantsRecent'}, 100);
+          const channelParticipantsResult = this.getChannelParticipants({
+            id,
+            filter: {_: 'channelParticipantsRecent'},
+            limit: 100
+          });
           return callbackify(channelParticipantsResult, (channelParticipants) => {
             return this.reduceParticipantsForOnlineCount(channelParticipants.participants as ChannelParticipant.channelParticipant[]);
           });

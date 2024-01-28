@@ -1164,7 +1164,11 @@ export default class ChatContextMenu {
     const {fromId, mid} = message;
     const chatId = peerId.isUser() ? undefined : peerId.toChatId();
     if(chatId && await this.managers.appChatsManager.isMegagroup(chatId) && !message.pFlags.out) {
-      const participants = await this.managers.appProfileManager.getParticipants(chatId, {_: 'channelParticipantsAdmins'}, 100);
+      const participants = await this.managers.appProfileManager.getParticipants({
+        id: chatId,
+        filter: {_: 'channelParticipantsAdmins'},
+        limit: 100
+      });
       const foundAdmin = participants.participants.some((participant) => getParticipantPeerId(participant) === fromId);
       if(!foundAdmin) {
         const [banUser, reportSpam, deleteAll] = await confirmationPopup({
