@@ -205,8 +205,6 @@ const createParticipantsLoader = (options: LoadOptions) => {
       return;
     }
 
-    console.log(result);
-
     const peerIds = result.participants.map(getParticipantPeerId);
     const promises = peerIds.map(async(peerId) => {
       const title = await wrapPeerTitle({peerId});
@@ -240,7 +238,7 @@ const createParticipantsLoader = (options: LoadOptions) => {
       value.count = (result as ChannelsChannelParticipants.channelsChannelParticipants).count ?? peerIds.length;
       const newLength = value.values.push(...peerIds);
       offset = newLength;
-      if(true) {
+      if(newLength >= value.count) {
         value.loadMore = undefined;
       }
 

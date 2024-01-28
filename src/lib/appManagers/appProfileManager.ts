@@ -11,7 +11,7 @@
 
 import type {MyTopPeer} from './appUsersManager';
 import tsNow from '../../helpers/tsNow';
-import {ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticipant, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, SendMessageAction, Update, UserFull, Photo, PhotoSize, Updates, ChatParticipant, PeerSettings} from '../../layer';
+import {ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticipant, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, SendMessageAction, Update, UserFull, Photo, PhotoSize, Updates, ChatParticipant, PeerSettings, SendAsPeer} from '../../layer';
 import SearchIndex from '../searchIndex';
 import {AppManager} from './manager';
 import getServerMessageId from './utils/messageId/getServerMessageId';
@@ -25,6 +25,7 @@ import callbackify from '../../helpers/callbackify';
 import getPeerActiveUsernames from './utils/peers/getPeerActiveUsernames';
 import getParticipantsCount from './utils/chats/getParticipantsCount';
 import callbackifyAll from '../../helpers/callbackifyAll';
+import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 
 export type UserTyping = Partial<{userId: UserId, action: SendMessageAction, timeout: number}>;
 
@@ -321,11 +322,11 @@ export class AppProfileManager extends AppManager {
     });
   }
 
-  private filterParticipantsByQuery(participants: (ChannelParticipant | ChatParticipant)[], q: string) {
+  private filterParticipantsByQuery<T extends Array<ChannelParticipant | ChatParticipant>>(participants: T, q: string): T {
     const index = this.appUsersManager.createSearchIndex();
     participants.forEach((chatParticipant) => {
       const peerId = getParticipantPeerId(chatParticipant);
-      index.indexObject(peerId, this.appUsersManager.getUserSearchText(peerId));
+      index.indexObject(peerId, this.appPeersManager.getPeerSearchText(peerId));
     });
 
     const found = index.search(q);
@@ -334,7 +335,7 @@ export class AppProfileManager extends AppManager {
       return found.has(peerId);
     });
 
-    return filteredParticipants;
+    return filteredParticipants as T;
   }
 
   public getParticipants(options: GetChannelParticipantsOptions) {
@@ -401,17 +402,81 @@ export class AppProfileManager extends AppManager {
       hash: '0'
     }, {cacheSeconds: 60, syncIfHasResult: true});
 
-    const sendAsPeersResult = options.forMessagesSearch ? this.appChatsManager.getSendAs(id) : undefined;
+    let sendAsPeersResult: MaybePromise<SendAsPeer[]>;
+    if(options.forMessagesSearch) {
+      try {
+        sendAsPeersResult = this.appChatsManager.getSendAs(id);
+        if(sendAsPeersResult instanceof Promise) {
+          sendAsPeersResult = sendAsPeersResult.catch(() => undefined);
+        }
+      } catch(err) {
+
+      }
+    }
 
     return callbackifyAll([result, sendAsPeersResult], ([result, sendAsPeers]) => {
-      this.appUsersManager.saveApiUsers((result as ChannelsChannelParticipants.channelsChannelParticipants).users);
-      this.appChatsManager.saveApiChats((result as ChannelsChannelParticipants.channelsChannelParticipants).chats);
+      this.appPeersManager.saveApiPeers(result as ChannelsChannelParticipants.channelsChannelParticipants);
 
       const q = (filter as ChannelParticipantsFilter.channelParticipantsAdmins).q;
+      if(sendAsPeers) { // * insert group and self if have send as peers
+        const sendAsParticipants: ChannelParticipant.channelParticipant[] = sendAsPeers.map((sendAsPeer) => {
+          return {
+            _: 'channelParticipant',
+            date: 0,
+            user_id: 0,
+            peer: sendAsPeer.peer
+          };
+        });
+
+        const peerId = id.toPeerId(true);
+        const channelParticipant: ChannelParticipant.channelParticipant = {
+          _: 'channelParticipant',
+          date: 0,
+          user_id: 0,
+          peer: this.appPeersManager.getOutputPeer(peerId)
+        };
+
+        const myPeerId = this.appPeersManager.peerId;
+        const myParticipant: ChannelParticipant.channelParticipant = {
+          _: 'channelParticipant',
+          date: 0,
+          user_id: myPeerId.toUserId()
+        };
+
+        sendAsParticipants.unshift(channelParticipant, myParticipant);
+
+        const participants = (result as ChannelsChannelParticipants.channelsChannelParticipants).participants.slice();
+        const sendAsFiltered = this.filterParticipantsByQuery(sendAsParticipants, q);
+        if(
+          (sendAsFiltered.includes(channelParticipant) || !q?.trim()) &&
+          !participants.some((p) => getParticipantPeerId(p) === peerId)
+        ) {
+          indexOfAndSplice(sendAsFiltered, channelParticipant);
+          participants.unshift(channelParticipant);
+        }
+
+        for(const participant of sendAsFiltered) {
+          const peerId = getParticipantPeerId(participant);
+          if(!participants.some((p) => getParticipantPeerId(p) === peerId) ||
+            !participants.some((p) => getParticipantPeerId(p) === myPeerId)) {
+            participants.unshift(myParticipant);
+            break;
+          }
+        }
+
+        return {
+          ...result,
+          participants
+        } as ChannelsChannelParticipants.channelsChannelParticipants;
+      }
+
       if(MANUALLY_FILTER.has(filter._) && q?.trim()) {
         return {
           ...result,
-          participants: this.filterParticipantsByQuery((result as ChannelsChannelParticipants.channelsChannelParticipants).participants, q)
+          participants: this.filterParticipantsByQuery(
+            (result as ChannelsChannelParticipants.channelsChannelParticipants).participants,
+            q
+          )
         } as ChannelsChannelParticipants.channelsChannelParticipants;
       }
 

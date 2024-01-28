@@ -1524,7 +1524,6 @@ export default class AppSearchSuper {
       const LOAD_COUNT = !this.membersList ? 50 : 200;
       promise = this.managers.appProfileManager.getChannelParticipants({
         id: chatId,
-        filter: undefined,
         limit: LOAD_COUNT,
         offset: this.nextRates[mediaTab.type]
       }).then((participants) => {

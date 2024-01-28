@@ -433,6 +433,11 @@
     {"name": "q", "type": "string"}
   ]
 }, {
+  "predicate": "channelParticipant",
+  "params": [
+    {"name": "peer", "type": "Peer"}
+  ]
+}, {
   "predicate": "sponsoredMessage",
   "params": [
     {"name": "viewed", "type": "boolean"}
