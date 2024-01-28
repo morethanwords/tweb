@@ -24,7 +24,7 @@ export default class InputSearch {
   public prevValue = '';
   public timeout = 0;
   public onChange: (value: string) => void;
-  public onClear: (e?: MouseEvent) => void;
+  public onClear: (e?: MouseEvent, wasEmpty?: boolean) => void;
 
   private statusPreloader: ProgressivePreloader;
   private currentLangPackKey: LangPackKey;
@@ -150,9 +150,10 @@ export default class InputSearch {
   };
 
   onClearClick = (e?: MouseEvent) => {
+    const isEmpty = this.inputField.isEmpty();
     this.value = '';
     this.onChange?.('');
-    this.onClear?.(e);
+    this.onClear?.(e, isEmpty);
   };
 
   get value() {

@@ -255,6 +255,7 @@ const createParticipantsLoader = (options: LoadOptions) => {
 export default function TopbarSearch(props: {
   peerId: PeerId,
   threadId?: number,
+  filterPeerId?: PeerId,
   canFilterSender?: boolean,
   query?: string,
   onClose?: () => void,
@@ -270,8 +271,8 @@ export default function TopbarSearch(props: {
   const [sendersPeerIds, setSendersPeerIds] = createSignal<PeerId[]>();
   const [loadMore, setLoadMore] = createSignal<() => Promise<void>>();
   const [target, setTarget] = createSignal<HTMLElement>(undefined, {equals: false});
-  const [filteringSender, setFilteringSender] = createSignal<boolean>(false);
-  const [filterPeerId, setFilterPeerId] = createSignal<PeerId>();
+  const [filteringSender, setFilteringSender] = createSignal<boolean>(!!props.filterPeerId);
+  const [filterPeerId, setFilterPeerId] = createSignal<PeerId>(props.filterPeerId);
   const [senderInputEntity, setSenderInputEntity] = createSignal<HTMLElement>();
   const isActive = createMemo(() => /* true ||  */isInputFocused());
   const shouldHaveListNavigation = createMemo(() => (isInputFocused() && count() && list()) || undefined);
@@ -320,26 +321,28 @@ export default function TopbarSearch(props: {
     appNavigationController.removeItem(navigationItem);
   });
 
+  const onInputClear: (e?: MouseEvent, wasEmpty?: boolean) => void = (e, wasEmpty = inputSearch.inputField.isEmpty()) => {
+    if(filterPeerId()) {
+      e && cancelEvent(e);
+      wasEmpty && setFilterPeerId(undefined);
+      return;
+    }
+
+    if(filteringSender()) {
+      e && cancelEvent(e);
+      wasEmpty && setFilteringSender(false);
+      return;
+    }
+
+    props.onClose?.();
+  };
+
   const inputSearch = new InputSearch({
     placeholder: 'Search',
     onChange: (value) => {
       setValue(value);
     },
-    onClear: (e) => {
-      if(filterPeerId()) {
-        cancelEvent(e);
-        setFilterPeerId(undefined);
-        return;
-      }
-
-      if(filteringSender()) {
-        cancelEvent(e);
-        setFilteringSender(false);
-        return;
-      }
-
-      props.onClose?.();
-    },
+    onClear: onInputClear,
     onFocusChange: setIsInputFocused,
     alwaysShowClear: true,
     noBorder: true

@@ -121,7 +121,7 @@ export default class Chat extends EventListenerBase<{
 
   public middlewareHelper: MiddlewareHelper;
 
-  public searchSignal: ReturnType<typeof createUnifiedSignal<string>>;
+  public searchSignal: ReturnType<typeof createUnifiedSignal<{query?: string, filterPeerId?: PeerId}>>;
 
   constructor(
     public appImManager: AppImManager,
@@ -446,7 +446,7 @@ export default class Chat extends EventListenerBase<{
 
       let topbarSearch: HTMLElement;
       createEffect(() => {
-        const query = this.searchSignal();
+        const {query, filterPeerId} = this.searchSignal() || {};
         if(query === undefined) {
           if(!topbarSearch) {
             return;
@@ -465,6 +465,7 @@ export default class Chat extends EventListenerBase<{
           threadId: this.threadId,
           canFilterSender: this.isRealGroup,
           query,
+          filterPeerId,
           onClose: () => {
             this.searchSignal(undefined);
           },
@@ -766,7 +767,7 @@ export default class Chat extends EventListenerBase<{
     return peerId === rootScope.myId || peerId === REPLIES_PEER_ID || this.managers.appPeersManager.isAnyGroup(peerId);
   }
 
-  public initSearch(query?: string) {
+  public initSearch(query?: string, filterPeerId?: PeerId) {
     if(!this.peerId) return;
 
     if(mediaSizes.isMobile) {
@@ -776,7 +777,7 @@ export default class Chat extends EventListenerBase<{
         this.search.setQuery(query);
       }
     } else {
-      this.searchSignal(query || '');
+      this.searchSignal({query: query || '', filterPeerId});
       // let tab = appSidebarRight.getTab(AppPrivateSearchTab);
       // tab ||= appSidebarRight.createTab(AppPrivateSearchTab);
 

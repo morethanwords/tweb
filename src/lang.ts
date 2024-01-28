@@ -509,6 +509,7 @@ const lang = {
   'Search.Empty': 'There were no results for "**%@**". Try a new search.',
   'Search.From': 'From: ',
   'Search.Member': 'Search Member',
+  'Chat.SearchSelected': 'Search Selected Text',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',

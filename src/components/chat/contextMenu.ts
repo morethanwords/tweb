@@ -391,6 +391,13 @@ export default class ChatContextMenu {
           this.chat.input.mentionUser(this.avatarPeerId.toUserId(), false);
         },
         verify: () => /* this.avatarPeerId.isUser() &&  */this.chat.canSend('send_plain')
+      }, {
+        icon: 'search',
+        text: 'Search',
+        onClick: () => {
+          this.chat.initSearch('', this.avatarPeerId);
+        },
+        verify: () => true
       }];
       return;
     }
@@ -488,6 +495,14 @@ export default class ChatContextMenu {
       text: 'Chat.CopySelectedText',
       onClick: this.onCopyClick,
       verify: () => !this.noForwards && !!(this.message as Message.message).message && this.isTextSelected
+    }, {
+      icon: 'search',
+      text: 'Chat.SearchSelected',
+      onClick: () => {
+        const selection = document.getSelection();
+        this.chat.initSearch(selection.toString());
+      },
+      verify: () => !!(this.message as Message.message).message && this.isTextSelected
     }, {
       icon: 'copy',
       text: 'Message.Context.Selection.Copy',

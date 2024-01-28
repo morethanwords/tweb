@@ -455,7 +455,7 @@ export default class InputField {
         // console.log('input');
         // return;
         // * because if delete all characters there will br left
-        const isEmpty = isInputEmpty(input);
+        const isEmpty = this.isEmpty();
         if(isEmpty) {
           // const textNode = Array.from(input.childNodes).find((node) => node.nodeType === node.TEXT_NODE) || document.createTextNode('');
           input.replaceChildren();
@@ -638,11 +638,15 @@ export default class InputField {
     this.setEmpty();
   }
 
-  private setEmpty = (empty = isInputEmpty(this.input)) => {
+  private setEmpty = (empty = this.isEmpty()) => {
     [this.input, this.placeholder].filter(Boolean).forEach((el) => {
       el.classList.toggle('is-empty', empty);
     });
   };
+
+  public isEmpty() {
+    return isInputEmpty(this.input);
+  }
 
   public isChanged() {
     return this.value !== this.originalValue;
@@ -651,7 +655,7 @@ export default class InputField {
   public isValid() {
     return !this.input.classList.contains('error') &&
       (!this.validate || this.validate()) &&
-      (!this.required || !isInputEmpty(this.input));
+      (!this.required || !this.isEmpty());
   }
 
   public isValidToChange() {
