@@ -201,8 +201,13 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       const lastSeenTimeRow = rowsByKeys['inputPrivacyKeyStatusTimestamp'] = new Row({
         titleLangKey: 'LastSeenTitle',
         subtitleLangKey: SUBTITLE,
-        clickable: () => {
-          this.slider.createTab(AppPrivacyLastSeenTab).open();
+        clickable: async() => {
+          const globalPrivacy = await p.globalPrivacy;
+          const tab = this.slider.createTab(AppPrivacyLastSeenTab);
+          tab.open(globalPrivacy);
+          tab.eventListener.addEventListener('privacy', (privacy) => {
+            p.globalPrivacy = privacy;
+          });
         },
         listenerSetter: this.listenerSetter
       });
@@ -325,12 +330,13 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       section.content.append(row.container);
 
       let enabled: boolean, destroyed: boolean;
-      this.eventListener.addEventListener('destroy', () => {
+      this.eventListener.addEventListener('destroy', async() => {
         destroyed = true;
         if(enabled === undefined || enabled === checkboxField.checked) return;
         return this.managers.appPrivacyManager.setGlobalPrivacySettings({
           _: 'globalPrivacySettings',
           pFlags: {
+            ...(await p.globalPrivacy).pFlags,
             archive_and_mute_new_noncontact_peers: checkboxField.checked || undefined
           }
         });

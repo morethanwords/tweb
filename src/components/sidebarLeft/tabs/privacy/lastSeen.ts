@@ -6,10 +6,20 @@
 
 import {SliderSuperTabEventable} from '../../../sliderTab';
 import PrivacySection from '../../../privacySection';
-import {LangPackKey} from '../../../../lib/langPack';
+import {LangPackKey, i18n} from '../../../../lib/langPack';
+import Row from '../../../row';
+import CheckboxField from '../../../checkboxField';
+import SettingSection from '../../../settingSection';
+import Button from '../../../button';
+import rootScope from '../../../../lib/rootScope';
+import {attachClickEvent} from '../../../../helpers/dom/clickEvent';
+import PopupPremium from '../../../popups/premium';
+import {GlobalPrivacySettings} from '../../../../layer';
 
-export default class AppPrivacyLastSeenTab extends SliderSuperTabEventable {
-  public init() {
+export default class AppPrivacyLastSeenTab extends SliderSuperTabEventable<{
+  privacy: (globalPrivacy: Promise<GlobalPrivacySettings>) => void
+}> {
+  public init(globalPrivacy: GlobalPrivacySettings) {
     this.container.classList.add('privacy-tab', 'privacy-last-seen');
     this.setTitle('PrivacyLastSeen');
 
@@ -23,5 +33,65 @@ export default class AppPrivacyLastSeenTab extends SliderSuperTabEventable {
       appendTo: this.scrollable,
       managers: this.managers
     });
+
+    {
+      const section = new SettingSection({
+        caption: 'HideReadTimeInfo'
+      });
+
+      const row = new Row({
+        titleLangKey: 'HideReadTime',
+        checkboxField: new CheckboxField({toggle: true, checked: !!globalPrivacy.pFlags.hide_read_marks}),
+        listenerSetter: this.listenerSetter
+      });
+
+      this.eventListener.addEventListener('destroy', () => {
+        const hide = row.checkboxField.checked;
+        if(!!globalPrivacy.pFlags.hide_read_marks === hide) {
+          return;
+        }
+
+        const promise = this.managers.appPrivacyManager.setGlobalPrivacySettings({
+          _: 'globalPrivacySettings',
+          pFlags: {
+            ...globalPrivacy.pFlags,
+            hide_read_marks: hide || undefined
+          }
+        });
+        this.eventListener.dispatchEvent('privacy', promise);
+        return promise;
+      });
+
+      section.content.append(row.container);
+      this.scrollable.append(section.container);
+    }
+
+    {
+      const section = new SettingSection({
+        caption: true
+      });
+
+      const createButton = () => {
+        const btn = Button('btn-primary btn-transparent primary', {
+          text: rootScope.premium ? 'PrivacyLastSeenPremiumForPremium' : 'PrivacyLastSeenPremium'
+        });
+
+        attachClickEvent(btn, () => {
+          PopupPremium.show();
+        }, {listenerSetter: this.listenerSetter});
+
+        return btn;
+      };
+
+      const onPremium = () => {
+        section.content.replaceChildren(createButton());
+        section.caption.replaceChildren(i18n(rootScope.premium ? 'PrivacyLastSeenPremiumInfoForPremium' : 'PrivacyLastSeenPremiumInfo'));
+      };
+
+      onPremium();
+      this.listenerSetter.add(rootScope)('premium_toggle', onPremium);
+
+      this.scrollable.append(section.container);
+    }
   }
 }

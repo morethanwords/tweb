@@ -1804,6 +1804,12 @@ const lang = {
     'other_value': '%d other channels'
   },
   'BoostingAvailableIn': 'available in %1$s',
+  'HideReadTime': 'Hide Read Time',
+  'HideReadTimeInfo': 'Hide the time when you read messages from people who can’t see your last seen. If you turn this on, their read time will also be hidden from you (unless you are a Premium user).\n\nThis setting does not affect group chats.',
+  'PrivacyLastSeenPremium': 'Subscribe to Telegram Premium',
+  'PrivacyLastSeenPremiumInfo': 'If you subscribe to Premium, you will see other users’ last seen and read time even if you hid yours from them (unless they specifically restricted it).',
+  'PrivacyLastSeenPremiumForPremium': 'Subscribed to Telegram Premium',
+  'PrivacyLastSeenPremiumInfoForPremium': 'Because you are a Telegram Premium subscriber, you will see the last seen and read time of all users who are sharing it with you – even if you are hiding yours.',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
