@@ -53,7 +53,7 @@ export default function wrapAlbum({messages, attachmentDiv, middleware, uploadin
     items: items.map((i) => ({w: i.size.w, h: i.size.h})),
     maxWidth: mediaSizes.active.album.width,
     minWidth: 100,
-    spacing: 2,
+    spacing: 1,
     forMedia: true
   });
 

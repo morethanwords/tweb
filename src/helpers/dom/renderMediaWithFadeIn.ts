@@ -46,11 +46,13 @@ export default function renderMediaWithFadeIn({
           sequentialDom.mutate(() => {
             fadeInElement.classList.remove('fade-in');
             UNMOUNT_THUMBS && thumbImage?.remove();
+            container.classList.add('no-background');
             onRenderFinish?.();
           });
         }, {once: true});
       } else {
         UNMOUNT_THUMBS && thumbImage?.remove();
+        container.classList.add('no-background');
         onRender?.();
         onRenderFinish?.();
       }

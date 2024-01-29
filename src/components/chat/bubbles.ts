@@ -5334,6 +5334,7 @@ export default class ChatBubbles {
     const richText = messageMessage ? wrapRichText(messageMessage, getRichTextOptions(totalEntities)) : undefined;
 
     let canHaveTail = true;
+    let canHavePlainMediaTail = false;
     let isStandaloneMedia = false;
     let attachmentDiv: HTMLElement;
     if(bigEmojis) {
@@ -5570,7 +5571,7 @@ export default class ChatBubbles {
           const photo = messageMedia.photo;
 
           if(isMessageEmpty) {
-            canHaveTail = false;
+            canHavePlainMediaTail = true;
           }
 
           if(canHideNameIfMedia) {
@@ -6105,8 +6106,10 @@ export default class ChatBubbles {
               isStandaloneMedia = true;
             }
 
-            if(isRound || isMessageEmpty) {
+            if(isRound/*  || isMessageEmpty */) {
               canHaveTail = false;
+            } else if(isMessageEmpty) {
+              canHavePlainMediaTail = true;
             }
 
             if(canHideNameIfMedia) {
@@ -6839,6 +6842,10 @@ export default class ChatBubbles {
         if(width) {
           bubbleContainer.style.maxWidth = width;
         }
+      }
+
+      if(canHavePlainMediaTail && !withReplies) {
+        bubble.classList.add('has-plain-media-tail');
       }
 
       /* if(bubble.classList.contains('is-message-empty') && (bubble.classList.contains('photo') || bubble.classList.contains('video'))) {
