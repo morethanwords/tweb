@@ -47,9 +47,10 @@ import isForwardOfForward from '../../lib/appManagers/utils/messages/isForwardOf
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import {SendReactionOptions} from '../../lib/appManagers/appReactionsManager';
 import {MiddlewareHelper, getMiddleware} from '../../helpers/middleware';
-import {createEffect, createRoot} from 'solid-js';
+import {createEffect, createRoot, createSignal} from 'solid-js';
 import TopbarSearch from './topbarSearch';
 import createUnifiedSignal from '../../helpers/solid/createUnifiedSignal';
+import liteMode from '../../helpers/liteMode';
 
 export enum ChatType {
   Chat = 'chat',
@@ -427,9 +428,10 @@ export default class Chat extends EventListenerBase<{
     createRoot((dispose) => {
       middleware.onDestroy(dispose);
 
-      const animateElements = async(visible: boolean) => {
+      const animateElements = async(topbarSearch: HTMLElement, visible: boolean) => {
+        const animate = liteMode.isAvailable('animations')/*  && !this.setPeerPromise */;
         const keyframes: Keyframe[] = [{opacity: 0}, {opacity: 1}];
-        const options: KeyframeAnimationOptions = {fill: 'forwards', duration: 200, easing: 'ease-in-out'};
+        const options: KeyframeAnimationOptions = {fill: 'forwards', duration: animate ? 200 : 0, easing: 'ease-in-out'};
         if(!visible) {
           keyframes.reverse();
         }
@@ -444,19 +446,18 @@ export default class Chat extends EventListenerBase<{
         return Promise.all(promises);
       };
 
-      let topbarSearch: HTMLElement;
-      createEffect(() => {
-        const {query, filterPeerId} = this.searchSignal() || {};
-        if(query === undefined) {
+      const [needSearch, setNeedSearch] = createSignal(false);
+      const [query, setQuery] = createSignal('', {equals: false});
+      const [filterPeerId, setFilterPeerId] = createSignal<PeerId>(undefined, {equals: false});
+      createEffect<HTMLElement>((topbarSearch) => {
+        if(!needSearch()) {
           if(!topbarSearch) {
             return;
           }
 
-          const _topbarSearch = topbarSearch;
-          animateElements(false).then(() => {
-            _topbarSearch.remove();
+          animateElements(topbarSearch, false).then(() => {
+            topbarSearch.remove();
           });
-          topbarSearch = undefined;
           return;
         }
 
@@ -474,7 +475,15 @@ export default class Chat extends EventListenerBase<{
           }
         }) as HTMLElement;
         this.topbar.container.append(topbarSearch);
-        animateElements(true);
+        animateElements(topbarSearch, true);
+        return topbarSearch;
+      });
+
+      createEffect(() => {
+        const s = this.searchSignal();
+        setQuery(s?.query);
+        setFilterPeerId(s?.filterPeerId);
+        setNeedSearch(!!s);
       });
     });
   }
@@ -520,6 +529,7 @@ export default class Chat extends EventListenerBase<{
     this.input?.cleanup(helperToo);
     this.topbar?.cleanup();
     this.selection?.cleanup();
+    this.searchSignal?.(undefined);
   }
 
   public get isForumTopic() {

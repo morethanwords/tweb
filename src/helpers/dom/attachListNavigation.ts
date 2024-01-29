@@ -24,7 +24,8 @@ export type ListNavigationOptions = {
   once?: boolean,
   waitForKey?: string[],
   activeClassName?: string,
-  cancelMouseDown?: boolean
+  cancelMouseDown?: boolean,
+  target?: Element
 };
 
 export default function attachListNavigation({
@@ -34,12 +35,12 @@ export default function attachListNavigation({
   once,
   waitForKey,
   activeClassName = ACTIVE_CLASS_NAME,
-  cancelMouseDown
+  cancelMouseDown,
+  target
 }: ListNavigationOptions) {
   let waitForKeySet = waitForKey?.length ? new Set(waitForKey) : undefined;
   const keyNames = new Set(type === 'xy' ? AXIS_Y_KEYS.concat(AXIS_X_KEYS) : (type === 'x' ? AXIS_X_KEYS : AXIS_Y_KEYS));
 
-  let target: Element;
   const getCurrentTarget = () => {
     return target || list.querySelector('.' + activeClassName) || list.firstElementChild;
   };
@@ -199,7 +200,7 @@ export default function attachListNavigation({
         resetTarget();
       }
     };
-  } else {
+  } else if(!target) {
     resetTarget();
   }
 

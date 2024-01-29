@@ -507,6 +507,7 @@ const lang = {
   },
   'Boost.Reassign.Wait': 'Wait until the boost is available or get %s by gifting a **[Telegram Premium]()** subscription.',
   'Search.Empty': 'There were no results for "**%@**". Try a new search.',
+  'Search.EmptyFrom': 'There were no messages from **%@**.',
   'Search.From': 'From: ',
   'Search.Member': 'Search Member',
   'Chat.SearchSelected': 'Search Selected Text',

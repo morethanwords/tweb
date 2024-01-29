@@ -20,9 +20,12 @@ type GetPeerTitleOptions = {
   threadId?: number
 } & Pick<WrapSomethingOptions, 'managers'>;
 
-export default async function getPeerTitle<T extends GetPeerTitleOptions>(
+export default async function getPeerTitle<
+  T extends GetPeerTitleOptions,
+  R = T['plainText'] extends true ? string : DocumentFragment
+>(
   options: T
-): Promise<T['plainText'] extends true ? string : DocumentFragment> {
+): Promise<R> {
   const {
     peerId = rootScope.myId,
     plainText,

@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {createEffect, createSignal, onCleanup, JSX, createMemo, onMount, splitProps, on, untrack, batch} from 'solid-js';
+import {createEffect, createSignal, onCleanup, JSX, createMemo, onMount, splitProps, on, untrack, batch, Accessor} from 'solid-js';
 import InputSearch from '../inputSearch';
 import {ButtonIconTsx, createListTransition, createMiddleware} from '../stories/viewer';
 import classNames from '../../helpers/string/classNames';
@@ -40,6 +40,7 @@ import getPeerActiveUsernames from '../../lib/appManagers/utils/peers/getPeerAct
 import cancelEvent from '../../helpers/dom/cancelEvent';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import AppSelectPeers from '../appSelectPeers';
+import PeerTitle from '../peerTitle';
 
 export const ScrollableYTsx = (props: {
   children: JSX.Element,
@@ -255,30 +256,35 @@ const createParticipantsLoader = (options: LoadOptions) => {
 export default function TopbarSearch(props: {
   peerId: PeerId,
   threadId?: number,
-  filterPeerId?: PeerId,
+  filterPeerId?: Accessor<PeerId>,
   canFilterSender?: boolean,
-  query?: string,
+  query?: Accessor<string>,
   onClose?: () => void,
   onDatePick?: (timestamp: number) => void
 }) {
-  const query = props.query || 'pizza';
-
   const [isInputFocused, setIsInputFocused] = createSignal(false);
-  const [value, setValue] = createSignal(query);
+  const [value, setValue] = createSignal<string>('');
   const [count, setCount] = createSignal<number>();
   const [list, setList] = createSignal<{element: HTMLElement, type: 'messages' | 'senders'}>();
   const [messages, setMessages] = createSignal<(Message.message | Message.messageService)[]>();
   const [sendersPeerIds, setSendersPeerIds] = createSignal<PeerId[]>();
   const [loadMore, setLoadMore] = createSignal<() => Promise<void>>();
   const [target, setTarget] = createSignal<HTMLElement>(undefined, {equals: false});
-  const [filteringSender, setFilteringSender] = createSignal<boolean>(!!props.filterPeerId);
-  const [filterPeerId, setFilterPeerId] = createSignal<PeerId>(props.filterPeerId);
+  const [filteringSender, setFilteringSender] = createSignal<boolean>(false);
+  const [filterPeerId, setFilterPeerId] = createSignal<PeerId>();
   const [senderInputEntity, setSenderInputEntity] = createSignal<HTMLElement>();
   const isActive = createMemo(() => /* true ||  */isInputFocused());
   const shouldHaveListNavigation = createMemo(() => (isInputFocused() && count() && list()) || undefined);
 
-  onMount(() => {
-    placeCaretAtEnd(inputSearch.input);
+  // full search replacement
+  createEffect(() => {
+    inputSearch.onChange(inputSearch.value = props.query());
+    setFilteringSender(!!props.filterPeerId());
+    setFilterPeerId(props.filterPeerId());
+
+    onMount(() => {
+      placeCaretAtEnd(inputSearch.input);
+    });
   });
 
   createEffect<() => void>((_detach) => {
@@ -288,8 +294,12 @@ export default function TopbarSearch(props: {
       return;
     }
 
+    const list = element.firstElementChild as HTMLElement;
+    const activeClassName = 'menu-open';
+    const el = list.querySelector(`.${activeClassName}`);
+    el && el.classList.remove(activeClassName);
     const {detach} = attachListNavigation({
-      list: element.firstElementChild as HTMLElement,
+      list,
       type: 'y',
       onSelect: (target) => {
         const shouldBlur = !!(!filteringSender() || filterPeerId());
@@ -298,8 +308,9 @@ export default function TopbarSearch(props: {
           blurActiveElement();
         }
       },
-      activeClassName: 'menu-open',
-      cancelMouseDown: true
+      activeClassName,
+      cancelMouseDown: true,
+      target: target()
     });
 
     return detach;
@@ -352,7 +363,6 @@ export default function TopbarSearch(props: {
   onCleanup(() => {
     inputSearch.remove();
   });
-  inputSearch.value = query;
 
   const fromText = I18n.format('Search.From', true);
   const fromWidth = getTextWidth(fromText, FontFull);
@@ -456,6 +466,11 @@ export default function TopbarSearch(props: {
     const fromPeerId = filterPeerId();
     const isSender = filteringSender() && !fromPeerId;
     const middleware = createMiddleware().get();
+    const isEmptyQuery = !query.trim();
+
+    setLoadMore(() => undefined);
+    setMessages();
+    setSendersPeerIds();
 
     const loader = (isSender ? createParticipantsLoader : createSearchLoader)({
       middleware,
@@ -473,7 +488,13 @@ export default function TopbarSearch(props: {
       >
         {count() === 0 ? (
           <div class="topbar-search-left-results-empty">
-            {i18n('Search.Empty', [wrapEmojiText(stringMiddleOverflow(query, 18))])}
+            {isEmptyQuery && fromPeerId ?
+              i18n('Search.EmptyFrom', [(() => {
+                const peerTitle = new PeerTitle({peerId: fromPeerId});
+                return peerTitle.element;
+              })()]) :
+              i18n('Search.Empty', [wrapEmojiText(stringMiddleOverflow(query, 18))])
+            }
           </div>
         ) : (
           <>
@@ -486,10 +507,6 @@ export default function TopbarSearch(props: {
       </div>
     );
 
-    setLoadMore(() => undefined);
-    setMessages();
-    setSendersPeerIds();
-
     let first = true;
     const onLoad = () => {
       if(first) {
@@ -499,6 +516,12 @@ export default function TopbarSearch(props: {
         first = false;
       }
     };
+
+    if(!isSender && !fromPeerId && isEmptyQuery) {
+      setCount();
+      onLoad();
+      return;
+    }
 
     createEffect(
       on(
@@ -603,19 +626,22 @@ export default function TopbarSearch(props: {
         </ScrollableYTsx>
       </div>
       <div class="topbar-search-right-container">
-        {props.canFilterSender && !filteringSender() && (
-          <ButtonIconTsx
-            icon="newprivate"
-            ref={(element) => {
-              const detach = attachClickEvent(element, (e) => {
-                cancelEvent(e);
-                inputSearch.onChange(inputSearch.value = '');
-                setFilteringSender(true);
-                placeCaretAtEnd(inputSearch.input, true);
-              }, {cancelMouseDown: true});
-              onCleanup(detach);
-            }}
-          />
+        {props.canFilterSender && (
+          <div class={classNames('topbar-search-right-filter', filteringSender() && 'is-hidden')}>
+            <ButtonIconTsx
+              class="topbar-search-right-filter-button"
+              icon="newprivate"
+              ref={(element) => {
+                const detach = attachClickEvent(element, (e) => {
+                  cancelEvent(e);
+                  inputSearch.onChange(inputSearch.value = '');
+                  setFilteringSender(true);
+                  placeCaretAtEnd(inputSearch.input, true);
+                }, {cancelMouseDown: true});
+                onCleanup(detach);
+              }}
+            />
+          </div>
         )}
         {props.onDatePick && (
           <ButtonIconTsx

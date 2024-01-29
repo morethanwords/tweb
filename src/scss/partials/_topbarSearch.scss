@@ -10,8 +10,8 @@
     position: absolute;
     align-items: center;
     inset-block: 0;
-    inset-inline-start: 4.4375rem;
-    inset-inline-end: .5rem;
+    inset-inline-start: 7.3125rem;
+    inset-inline-end: 1rem;
     gap: .5rem;
     z-index: 1;
 
@@ -147,12 +147,36 @@
 
       // @include sidebar-transform();
     }
+
+    &-filter {
+      width: 3rem;
+      height: 2.5rem;
+      opacity: 1;
+      position: relative;
+      // margin-inline-end: .5rem;
+
+      @include animation-level(2) {
+        transition: width var(--transition-standard-in), opacity var(--transition-standard-in);
+      }
+
+      &.is-hidden {
+        width: 0;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      &-button {
+        position: absolute;
+        inset-inline-end: .5rem;
+      }
+    }
   }
 
   &-input {
     border: none;
     background: none;
     padding-inline-start: var(--padding-horizontal-start);
+    padding-inline-end: 136px;
 
     @include animation-level(2) {
       transition: padding-inline-start .2s ease-in-out;
