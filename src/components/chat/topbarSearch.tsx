@@ -310,7 +310,7 @@ export default function TopbarSearch(props: {
       },
       activeClassName,
       cancelMouseDown: true,
-      target: target()
+      target: untrack(target)
     });
 
     return detach;
@@ -362,7 +362,19 @@ export default function TopbarSearch(props: {
   });
   inputSearch.container.classList.add('topbar-search-input-container');
   inputSearch.input.classList.add('topbar-search-input');
+  const onKeyDown = (e: KeyboardEvent) => {
+    if(e.key !== 'Backspace') {
+      return;
+    }
+
+    const isEmpty = inputSearch.inputField.isEmpty();
+    if(isEmpty && (filterPeerId() || filteringSender())) {
+      onInputClear(undefined, isEmpty);
+    }
+  };
+  inputSearch.input.addEventListener('keydown', onKeyDown);
   onCleanup(() => {
+    inputSearch.input.removeEventListener('keydown', onKeyDown);
     inputSearch.remove();
   });
 
@@ -423,6 +435,8 @@ export default function TopbarSearch(props: {
   inputSearchTools.classList.add('topbar-search-input-tools');
   inputSearch.clearBtn.replaceWith(inputSearchTools);
 
+  const MAX_HEIGHT = 271;
+
   const arrowButton = (direction: 'up' | 'down') => {
     return (
       <ButtonIconTsx
@@ -434,6 +448,7 @@ export default function TopbarSearch(props: {
         )}
         noRipple
         onClick={() => {
+          // let _target = scrollableDiv.querySelector<HTMLElement>('.active');
           let _target = target();
           if(!_target) {
             _target = scrollableDiv.querySelector<HTMLElement>('.chatlist-chat');
@@ -450,6 +465,11 @@ export default function TopbarSearch(props: {
           if(!_target || !_target.classList.contains('chatlist-chat')) {
             return;
           }
+
+          // set scroll position to center
+          const top = _target.offsetTop;
+          const clientHeight = MAX_HEIGHT;
+          scrollableDiv.scrollTop = top - clientHeight / 2 + _target.clientHeight / 2;
 
           setTarget(_target);
         }}
@@ -473,6 +493,7 @@ export default function TopbarSearch(props: {
     setLoadMore(() => undefined);
     setMessages();
     setSendersPeerIds();
+    setTarget();
 
     const loader = (isSender ? createParticipantsLoader : createSearchLoader)({
       middleware,
@@ -595,7 +616,7 @@ export default function TopbarSearch(props: {
       height = 1 + paddingVertical + length * 56;
     }
 
-    return Math.min(271, height);
+    return Math.min(MAX_HEIGHT, height);
   });
 
   let scrollableDiv: HTMLDivElement;
