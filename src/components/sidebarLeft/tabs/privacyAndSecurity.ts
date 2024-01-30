@@ -38,6 +38,7 @@ import PopupElement from '../../popups';
 import AppPrivacyAboutTab from './privacy/about';
 import PopupPremium from '../../popups/premium';
 import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
+import Icon from '../../icon';
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;
@@ -248,23 +249,25 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         listenerSetter: this.listenerSetter
       });
 
+      const createPremiumTitle = (langKey: LangPackKey) => {
+        const fragment = document.createDocumentFragment();
+        const icon = Icon('star', 'privacy-premium-icon');
+        fragment.append(i18n(langKey), icon);
+        const onPremium = () => {
+          icon.classList.toggle('hide', !rootScope.premium);
+        };
+        onPremium();
+        this.listenerSetter.add(rootScope)('premium_toggle', onPremium);
+        return fragment;
+      };
+
       const isPremiumFeaturesHidden = await apiManagerProxy.isPremiumFeaturesHidden();
       let voicesRow: Row;
       if(!isPremiumFeaturesHidden) voicesRow = rowsByKeys['inputPrivacyKeyVoiceMessages'] = new Row({
-        titleLangKey: 'PrivacyVoiceMessagesTitle',
+        title: createPremiumTitle('PrivacyVoiceMessagesTitle'),
         subtitleLangKey: SUBTITLE,
         clickable: () => {
-          if(!rootScope.premium) {
-            const a = document.createElement('a');
-            a.onclick = () => {
-              hideToast();
-              a.onclick = undefined;
-              PopupPremium.show();
-            };
-            toastNew({langPackKey: 'PrivacySettings.Voice.PremiumError', langPackArguments: [a]});
-          } else {
-            this.slider.createTab(AppPrivacyVoicesTab).open();
-          }
+          this.slider.createTab(AppPrivacyVoicesTab).open();
         },
         listenerSetter: this.listenerSetter
       });

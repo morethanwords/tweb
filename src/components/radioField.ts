@@ -9,11 +9,13 @@ import getDeepProperty from '../helpers/object/getDeepProperty';
 import {LangPackKey, _i18n} from '../lib/langPack';
 import apiManagerProxy from '../lib/mtproto/mtprotoworker';
 import rootScope from '../lib/rootScope';
+import Icon from './icon';
 
 export default class RadioField {
   public input: HTMLInputElement;
   public label: HTMLLabelElement;
   public main: HTMLElement;
+  public lockIcon: HTMLElement;
 
   constructor(options: {
     text?: string,
@@ -52,7 +54,7 @@ export default class RadioField {
     main.classList.add('radio-field-main');
 
     if(options.text) {
-      main.innerHTML = options.text;
+      main.textContent = options.text;
       /* const caption = document.createElement('div');
       caption.classList.add('radio-field-main-caption');
       caption.innerHTML = text;
@@ -79,7 +81,27 @@ export default class RadioField {
     simulateEvent(this.input, 'change');
   }
 
+  get locked() {
+    return !!this.lockIcon;
+  }
+
+  set locked(locked: boolean) {
+    if(!locked) {
+      this.lockIcon?.remove();
+      this.lockIcon = undefined;
+      this.main.classList.remove('is-locked');
+      return;
+    }
+
+    if(this.lockIcon) {
+      return;
+    }
+
+    this.main.prepend(this.lockIcon = Icon('premium_lock', 'radio-field-lock'));
+    this.main.classList.add('is-locked');
+  }
+
   public setValueSilently(checked: boolean) {
     this.input.checked = checked;
   }
-};
+}

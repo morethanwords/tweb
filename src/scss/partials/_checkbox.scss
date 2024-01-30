@@ -245,10 +245,26 @@
       }
     }
 
+    &.is-locked {
+      &:before,
+      &:after {
+        display: none;
+      }
+    }
+
     /* &-subtitle {
       color: var(--secondary-text-color) !important;
       font-size: 14px !important;
     } */
+  }
+
+  &-lock {
+    position: absolute;
+    inset-inline-start: var(--offset-left);
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--secondary-text-color);
+    font-size: 1.5rem;
   }
 
   &.radio-field-right {

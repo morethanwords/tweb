@@ -6,7 +6,9 @@
 
 import {SliderSuperTabEventable} from '../../../sliderTab';
 import PrivacySection from '../../../privacySection';
-import {LangPackKey} from '../../../../lib/langPack';
+import {LangPackKey, i18n} from '../../../../lib/langPack';
+import anchorCallback from '../../../../helpers/dom/anchorCallback';
+import PopupPremium from '../../../popups/premium';
 
 export default class AppPrivacyVoicesTab extends SliderSuperTabEventable {
   public init() {
@@ -21,7 +23,11 @@ export default class AppPrivacyVoicesTab extends SliderSuperTabEventable {
       captions: [caption, caption, caption],
       exceptionTexts: ['PrivacySettingsController.NeverAllow', 'PrivacySettingsController.AlwaysAllow'],
       appendTo: this.scrollable,
-      managers: this.managers
+      managers: this.managers,
+      premiumOnly: true,
+      premiumCaption: i18n('Privacy.VoiceMessagesPremiumCaption', [anchorCallback(() => {
+        PopupPremium.show();
+      })])
     });
   }
 }
