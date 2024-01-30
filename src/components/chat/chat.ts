@@ -115,6 +115,7 @@ export default class Chat extends EventListenerBase<{
   public isAllMessagesForum: boolean;
   public isAnonymousSending: boolean;
   public isUserBlocked: boolean;
+  public isPremiumRequired: boolean;
 
   public animationGroup: AnimationItemGroup;
 
@@ -556,7 +557,8 @@ export default class Chat extends EventListenerBase<{
       isBot,
       isForum,
       isAnonymousSending,
-      isUserBlocked
+      isUserBlocked,
+      isPremiumRequired
     ] = await m(Promise.all([
       this.managers.appPeersManager.noForwards(peerId),
       this.managers.appPeersManager.isPeerRestricted(peerId),
@@ -569,7 +571,8 @@ export default class Chat extends EventListenerBase<{
       this.managers.appPeersManager.isBot(peerId),
       this.managers.appPeersManager.isForum(peerId),
       this.managers.appMessagesManager.isAnonymousSending(peerId),
-      peerId.isUser() && this.managers.appProfileManager.isCachedUserBlocked(peerId)
+      peerId.isUser() && this.managers.appProfileManager.isCachedUserBlocked(peerId),
+      peerId.isUser() && this.managers.appUsersManager.isPremiumRequiredToContact(peerId.toUserId(), true)
     ]));
 
     // ! WARNING: TEMPORARY, HAVE TO GET TOPIC
@@ -589,6 +592,7 @@ export default class Chat extends EventListenerBase<{
     this.isAllMessagesForum = isForum && !threadId;
     this.isAnonymousSending = isAnonymousSending;
     this.isUserBlocked = isUserBlocked;
+    this.isPremiumRequired = isPremiumRequired;
 
     if(threadId && !this.isForum) {
       options.type = options.peerId === rootScope.myId ? ChatType.Saved : ChatType.Discussion;
@@ -816,6 +820,14 @@ export default class Chat extends EventListenerBase<{
 
       return (!dialog && !historyStorage.history.length) || isUserBlocked;
     });
+  }
+
+  public isPremiumRequiredToContact() {
+    if(!this.peerId.isUser()) {
+      return Promise.resolve(false);
+    }
+
+    return this.managers.appUsersManager.isPremiumRequiredToContact(this.peerId.toUserId(), true);
   }
 
   public getMessageSendingParams(): MessageSendingParams {

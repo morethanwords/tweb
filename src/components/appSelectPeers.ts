@@ -45,6 +45,11 @@ import ListenerSetter from '../helpers/listenerSetter';
 import {avatarNew} from './avatarNew';
 import Icon from './icon';
 import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
+import apiManagerProxy from '../lib/mtproto/mtprotoworker';
+import {hideToast, toastNew} from './toast';
+import wrapPeerTitle from './wrappers/peerTitle';
+import anchorCallback from '../helpers/dom/anchorCallback';
+import PopupPremium from './popups/premium';
 
 export type SelectSearchPeerType = 'contacts' | 'dialogs' | 'channelParticipants' | 'custom';
 export type FilterPeerTypeByFunc = (peer: ReturnType<AppPeersManager['getPeer']>) => boolean;
@@ -270,6 +275,24 @@ export default class AppSelectPeers {
       if(!this.promise) {
         this.processPlaceholderOnResults();
       }
+
+      if(this.chatRightsActions?.some((action) => action.startsWith('send_'))) {
+        filterAsync(peerIds, async(peerId) => {
+          const userId = peerId.toUserId();
+          return this.managers.appUsersManager.isPremiumRequiredToContact(userId);
+        }).then((userIds) => {
+          for(const userId of userIds) {
+            const element = this.getElementByPeerId(userId.toPeerId(false));
+            if(!element) {
+              continue;
+            }
+
+            const lock = Icon('premium_lock', 'selector-premium-lock');
+            element.append(lock);
+            element.classList.add('is-premium-locked');
+          }
+        });
+      }
     };
 
     if(!this.noSearch) {
@@ -353,6 +376,22 @@ export default class AppSelectPeers {
 
       let key: PeerId | string = target.dataset.peerId;
       key = key.isPeerId() ? key.toPeerId() : key;
+
+      if(key.isPeerId() && target.classList.contains('is-premium-locked')) {
+        wrapPeerTitle({peerId: key, onlyFirstName: true}).then((title) => {
+          toastNew({
+            langPackKey: 'OnlyPremiumCanMessage',
+            langPackArguments: [
+              title,
+              anchorCallback(() => {
+                hideToast();
+                PopupPremium.show();
+              })
+            ]
+          });
+        });
+        return;
+      }
 
       if(this.onSelect) {
         this.onSelect(key);
@@ -663,7 +702,7 @@ export default class AppSelectPeers {
   }
 
   private async filterByRights(peerId: PeerId) {
-    const peer: User | Chat = await this.managers.appPeersManager.getPeer(peerId);
+    const peer = apiManagerProxy.getPeer(peerId);
     if(peerId.isUser()) {
       return this.chatRightsActions[0] !== 'send_plain' || canSendToUser(peer as User.user);
     } else if(this.chatRightsActions.every((action) => hasRights(peer as Chat.chat, action))) {

@@ -30,6 +30,7 @@ import getPeerActiveUsernames from './utils/peers/getPeerActiveUsernames';
 import callbackify from '../../helpers/callbackify';
 import {NULL_PEER_ID, TEST_NO_STORIES} from '../mtproto/mtproto_config';
 import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
+import pause from '../../helpers/schedulers/pause';
 
 export type User = MTUser.user;
 export type TopPeerType = 'correspondents' | 'bots_inline';
@@ -56,6 +57,9 @@ export class AppUsersManager extends AppManager {
 
   private defaultEmojiStatuses: MaybePromise<AccountEmojiStatuses>;
   private recentEmojiStatuses: MaybePromise<AccountEmojiStatuses>;
+
+  private isPremiumRequiredToContactUserIds: Map<UserId, CancellablePromise<boolean>>;
+  private isPremiumRequiredToContactUserIdsProcessing: boolean;
 
   protected after() {
     this.clear(true);
@@ -235,6 +239,8 @@ export class AppUsersManager extends AppManager {
     } else {
       this.users = {};
       this.usernames = {};
+      this.isPremiumRequiredToContactUserIds = new Map();
+      this.isPremiumRequiredToContactUserIdsProcessing = false;
     }
 
     this.getTopPeersPromises = {};
@@ -1206,6 +1212,61 @@ export class AppUsersManager extends AppManager {
     return this.recentEmojiStatuses ??= this.apiManager.invokeApiSingleProcess({
       method: 'account.getRecentEmojiStatuses',
       processResult: (emojiStatuses) => this.recentEmojiStatuses = emojiStatuses
+    });
+  }
+
+  public isPremiumRequiredToContact(userId: UserId, onlyCached?: boolean) {
+    const user = this.getUser(userId);
+    if(!user || this.rootScope.premium || !user.pFlags.contact_require_premium) {
+      return false;
+    }
+
+    const userFull = this.appProfileManager.getCachedFullUser(userId);
+    if(userFull?.pFlags?.contact_require_premium) {
+      return true;
+    }
+
+    const historyStorage = this.appMessagesManager.getHistoryStorage(userId.toPeerId(false));
+    if(historyStorage.count) {
+      return false;
+    }
+
+    if(onlyCached) {
+      return;
+    }
+
+    let promise = this.isPremiumRequiredToContactUserIds.get(userId);
+    if(!promise) {
+      this.isPremiumRequiredToContactUserIds.set(userId, promise = deferredPromise());
+    }
+
+    this.getIsPremiumRequiredToContact();
+    return promise;
+  }
+
+  private getIsPremiumRequiredToContact() {
+    if(this.isPremiumRequiredToContactUserIdsProcessing) {
+      return;
+    }
+
+    this.isPremiumRequiredToContactUserIdsProcessing = true;
+    pause(0).then(() => {
+      const userIds = [...this.isPremiumRequiredToContactUserIds.keys()];
+      this.apiManager.invokeApi('users.getIsPremiumRequiredToContact', {
+        id: userIds.map((userId) => this.getUserInput(userId))
+      }).then((result) => {
+        result.forEach((isPremiumRequired, index) => {
+          const userId = userIds[index];
+          const promise = this.isPremiumRequiredToContactUserIds.get(userId);
+          promise.resolve(isPremiumRequired);
+          this.isPremiumRequiredToContactUserIds.delete(userId);
+        });
+      }).finally(() => {
+        this.isPremiumRequiredToContactUserIdsProcessing = false;
+        if(this.isPremiumRequiredToContactUserIds.size) {
+          this.getIsPremiumRequiredToContact();
+        }
+      });
     });
   }
 }

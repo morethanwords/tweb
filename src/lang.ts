@@ -517,6 +517,10 @@ const lang = {
   'Privacy.ContactsAndPremium': 'Contacts and Premium',
   'Privacy.MessagesCaption': 'Change who can send you messages.',
   'PrivacySettings.Messages.PremiumError': 'Only subscribers of [Telegram Premium]() can restrict receiving messages.',
+  'Chat.PremiumRequired': 'Subscribe to **Premium** to message **%s**.',
+  'Chat.PremiumRequiredButton': 'Get Premium',
+  'Chat.Input.PremiumRequiredButton': 'Only Premium users can message %s.\n[Learn more...]()',
+  'OnlyPremiumCanMessage': '**%s** only accepts messages from contacts and **[Telegram Premium]()** subscribers.',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',

@@ -1347,12 +1347,29 @@ export default class ChatBubbles {
       }
 
       const middleware = this.getMiddleware();
-      const isUserBlocked = await this.managers.appProfileManager.isCachedUserBlocked(userId);
+      const [isUserBlocked, isPremiumRequired] = await Promise.all([
+        this.managers.appProfileManager.isCachedUserBlocked(userId),
+        this.chat.isPremiumRequiredToContact()
+      ]);
       if(!middleware()) return;
+
       const wasUserBlocked = this.chat.isUserBlocked;
+      const wasPremiumRequired = this.chat.isPremiumRequired;
+      let refreshing = false;
       // do not refresh if had no status since input is shown by default
       if(wasUserBlocked === undefined ? isUserBlocked : wasUserBlocked !== isUserBlocked) {
         this.chat.isUserBlocked = isUserBlocked;
+        refreshing = true;
+      }
+
+      if(wasPremiumRequired === undefined ? isPremiumRequired : wasPremiumRequired !== isPremiumRequired) {
+        this.chat.isPremiumRequired = isPremiumRequired;
+        refreshing = true;
+        this.cleanupPlaceholders();
+        this.checkIfEmptyPlaceholderNeeded();
+      }
+
+      if(refreshing) {
         refreshInput();
       }
     });
@@ -7830,7 +7847,7 @@ export default class ChatBubbles {
   }
 
   private async renderEmptyPlaceholder(
-    type: 'group' | 'saved' | 'noMessages' | 'noScheduledMessages' | 'greeting' | 'restricted',
+    type: 'group' | 'saved' | 'noMessages' | 'noScheduledMessages' | 'greeting' | 'restricted' | 'premiumRequired',
     bubble: HTMLElement,
     message: any,
     elements: (Node | string)[]
@@ -7847,9 +7864,11 @@ export default class ChatBubbles {
       title = document.createElement('span');
       title.innerText = await this.managers.appPeersManager.getRestrictionReasonText(this.peerId);
     }
-    title.classList.add('center', BASE_CLASS + '-title');
 
-    elements.push(title);
+    if(title) {
+      title.classList.add('center', BASE_CLASS + '-title');
+      elements.push(title);
+    }
 
     let listElements: HTMLElement[];
     if(type === 'group') {
@@ -7913,6 +7932,20 @@ export default class ChatBubbles {
       // });
 
       elements.push(subtitle, stickerDiv);
+    } else if(type === 'premiumRequired') {
+      const stickerDiv = document.createElement('div');
+      stickerDiv.classList.add(BASE_CLASS + '-sticker');
+      stickerDiv.append(Icon('premium_restrict'));
+
+      const subtitle = i18n('Chat.PremiumRequired', [await wrapPeerTitle({peerId: this.peerId, onlyFirstName: true})]);
+      subtitle.classList.add('center', BASE_CLASS + '-subtitle');
+
+      const button = Button('bubble-service-button', {noRipple: true, text: 'Chat.PremiumRequiredButton'});
+      attachClickEvent(button, () => {
+        PopupPremium.show();
+      });
+
+      elements.push(stickerDiv, subtitle, button);
     }
 
     if(listElements) {
@@ -8025,14 +8058,18 @@ export default class ChatBubbles {
         elements.push(b, '\n\n');
         appendTo = this.chatInner;
         method = 'prepend';
-      } else if(this.chat.isAnyGroup && ((await m(this.managers.appPeersManager.getPeer(this.peerId))) as MTChat.chat).pFlags.creator) {
+      } else if(this.chat.isAnyGroup && (apiManagerProxy.getPeer(this.peerId) as MTChat.chat).pFlags.creator) {
         renderPromise = this.renderEmptyPlaceholder('group', bubble, message, elements);
       } else if(this.chat.type === ChatType.Scheduled) {
         renderPromise = this.renderEmptyPlaceholder('noScheduledMessages', bubble, message, elements);
       } else if(rootScope.myId === this.peerId) {
         renderPromise = this.renderEmptyPlaceholder('saved', bubble, message, elements);
       } else if(this.peerId.isUser() && !isBot && await m(this.chat.canSend()) && this.chat.type === ChatType.Chat) {
-        renderPromise = this.renderEmptyPlaceholder('greeting', bubble, message, elements);
+        if(await this.managers.appUsersManager.isPremiumRequiredToContact(this.peerId.toUserId())) {
+          renderPromise = this.renderEmptyPlaceholder('premiumRequired', bubble, message, elements);
+        } else {
+          renderPromise = this.renderEmptyPlaceholder('greeting', bubble, message, elements);
+        }
       } else {
         renderPromise = this.renderEmptyPlaceholder('noMessages', bubble, message, elements);
       }
@@ -8549,7 +8586,7 @@ export default class ChatBubbles {
 
     const processResult = async(historyResult: Awaited<typeof result['result']>) => {
       if((historyResult as HistoryResult).isEnd?.top) {
-        // synchronize bot placeholder appearance
+        // * synchronize bot placeholder & user premium appearance
         await this.managers.appProfileManager.getProfileByPeerId(peerId);
 
         // await this.setLoaded('top', true);

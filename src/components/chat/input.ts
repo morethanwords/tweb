@@ -268,6 +268,8 @@ export default class ChatInput {
 
   private botStartBtn: HTMLButtonElement;
   private unblockBtn: HTMLButtonElement;
+  private onlyPremiumBtn: HTMLButtonElement;
+  private onlyPremiumBtnText: I18n.IntlElement;
   private rowsWrapperWrapper: HTMLDivElement;
   private controlContainer: HTMLElement;
   private fakeSelectionWrapper: HTMLDivElement;
@@ -1194,17 +1196,22 @@ export default class ChatInput {
 
     this.saveDraftDebounced = debounce(() => this.saveDraft(), 2500, false, true);
 
-    const makeControlButton = (langKey: LangPackKey) => {
+    const makeControlButton = (langKey: LangPackKey | HTMLElement) => {
       const button = Button('btn-primary btn-transparent text-bold chat-input-control-button');
-      button.append(i18n(langKey));
+      button.append(langKey instanceof HTMLElement ? langKey : i18n(langKey));
       return button;
     };
 
     this.botStartBtn = makeControlButton('BotStart');
     this.unblockBtn = makeControlButton('Unblock');
+    this.onlyPremiumBtnText = new I18n.IntlElement({key: 'Chat.Input.PremiumRequiredButton', args: [0, document.createElement('a')]});
+    this.onlyPremiumBtn = makeControlButton(this.onlyPremiumBtnText.element);
 
     attachClickEvent(this.botStartBtn, this.startBot, {listenerSetter: this.listenerSetter});
     attachClickEvent(this.unblockBtn, this.unblockUser, {listenerSetter: this.listenerSetter});
+    attachClickEvent(this.onlyPremiumBtn, () => {
+      PopupPremium.show();
+    }, {listenerSetter: this.listenerSetter});
 
     // * pinned part start
     this.pinnedControlBtn = Button('btn-primary btn-transparent text-bold chat-input-control-button', {icon: 'unpin'});
@@ -1231,7 +1238,7 @@ export default class ChatInput {
       });
     }, {listenerSetter: this.listenerSetter});
 
-    this.controlContainer.append(...[this.botStartBtn, this.unblockBtn, this.replyInTopicOverlay, this.pinnedControlBtn, this.openChatBtn].filter(Boolean));
+    this.controlContainer.append(...[this.botStartBtn, this.unblockBtn, this.onlyPremiumBtn, this.replyInTopicOverlay, this.pinnedControlBtn, this.openChatBtn].filter(Boolean));
   }
 
   private setChatListeners() {
@@ -1430,7 +1437,7 @@ export default class ChatInput {
       this.chat.type === ChatType.Saved ||
       await this.chat.isStartButtonNeeded() ||
       this.isReplyInTopicOverlayNeeded() ||
-      (this.chat.peerId.isUser() && this.chat.isUserBlocked)
+      (this.chat.peerId.isUser() && (this.chat.isUserBlocked || this.chat.isPremiumRequired))
     ) {
       return this.controlContainer;
     }
@@ -1817,7 +1824,9 @@ export default class ChatInput {
       neededFakeContainer,
       ackedPeerFull,
       ackedScheduledMids,
-      setSendAsCallback
+      setSendAsCallback,
+      peerTitleShort,
+      isPremiumRequired
     ] = await Promise.all([
       this.managers.appPeersManager.isBroadcast(peerId),
       this.managers.appPeersManager.canPinMessage(peerId),
@@ -1827,7 +1836,9 @@ export default class ChatInput {
       this.getNeededFakeContainer(startParam),
       modifyAckedPromise(this.managers.acknowledged.appProfileManager.getProfileByPeerId(peerId)),
       btnScheduled ? modifyAckedPromise(this.managers.acknowledged.appMessagesManager.getScheduledMessages(peerId)) : undefined,
-      sendAs ? (sendAs.setPeerId(peerId), sendAs.updateManual(true)) : undefined
+      sendAs ? (sendAs.setPeerId(peerId), sendAs.updateManual(true)) : undefined,
+      wrapPeerTitle({peerId, onlyFirstName: true}),
+      this.chat.isPremiumRequiredToContact()
     ]);
 
     const placeholderParams = this.messageInput ? await this.getPlaceholderParams(canSendPlain) : undefined;
@@ -1906,6 +1917,15 @@ export default class ChatInput {
         const good = !haveSomethingInControl && this.chat.isForum && !this.chat.isForumTopic && this.chat.type === ChatType.Chat;
         haveSomethingInControl ||= good;
         this.replyInTopicOverlay.classList.toggle('hide', !good);
+      }
+
+      if(this.chat && this.onlyPremiumBtn && isPremiumRequired) {
+        const good = !haveSomethingInControl && !isBot && peerId.isUser();
+        haveSomethingInControl ||= good;
+        this.onlyPremiumBtnText.compareAndUpdate({
+          args: [peerTitleShort, this.onlyPremiumBtnText.args[1]]
+        });
+        this.onlyPremiumBtn.classList.toggle('hide', !good);
       }
 
       if(this.chat) {

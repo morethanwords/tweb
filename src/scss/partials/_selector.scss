@@ -347,4 +347,19 @@
   &-forum-topic {
     font-weight: var(--font-weight-bold);
   }
+
+  &-premium-lock {
+    border: 2px solid var(--surface-color);
+    position: absolute;
+    color: #fff;
+    font-size: 1rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    background-color: var(--premium-color);
+    border-radius: 50%;
+    text-align: center;
+    line-height: 1.25rem;
+    inset-inline-start: 2.25rem;
+    top: 2rem;
+  }
 }
