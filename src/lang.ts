@@ -511,6 +511,12 @@ const lang = {
   'Search.From': 'From: ',
   'Search.Member': 'Search Member',
   'Chat.SearchSelected': 'Search Selected Text',
+  'Privacy.VoiceMessagesPremiumCaption': 'Subscribe to Telegram Premium to restrict who can send you voice or video messages.\n\n**[What is Telegram Premium?]()**',
+  'Privacy.MessagesInfo': 'You can restrict messages from users who are not in your contacts and don\'t have Premium.\n\n**[What is Telegram Premium?]()**',
+  'Privacy.BioRow': 'Who can see my bio?',
+  'Privacy.ContactsAndPremium': 'Contacts and Premium',
+  'Privacy.MessagesCaption': 'Change who can send you messages.',
+  'PrivacySettings.Messages.PremiumError': 'Only subscribers of [Telegram Premium]() can restrict receiving messages.',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -1810,6 +1816,9 @@ const lang = {
   'PrivacyLastSeenPremiumInfo': 'If you subscribe to Premium, you will see other users’ last seen and read time even if you hid yours from them (unless they specifically restricted it).',
   'PrivacyLastSeenPremiumForPremium': 'Subscribed to Telegram Premium',
   'PrivacyLastSeenPremiumInfoForPremium': 'Because you are a Telegram Premium subscriber, you will see the last seen and read time of all users who are sharing it with you – even if you are hiding yours.',
+  'PrivacyMessagesContactsAndPremium': 'My Contacts and Premium users',
+  'PrivacyMessages': 'Messages',
+  'PrivacyMessagesTitle': 'Who can send me messages?',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

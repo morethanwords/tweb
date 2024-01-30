@@ -10,7 +10,7 @@ import cancelEvent from '../helpers/dom/cancelEvent';
 import {attachClickEvent} from '../helpers/dom/clickEvent';
 import replaceContent from '../helpers/dom/replaceContent';
 import {randomLong} from '../helpers/random';
-import {InputPrivacyKey, InputPrivacyRule} from '../layer';
+import {GlobalPrivacySettings, InputPrivacyKey, InputPrivacyRule} from '../layer';
 import {AppManagers} from '../lib/appManagers/managers';
 import getPrivacyRulesDetails from '../lib/appManagers/utils/privacy/getPrivacyRulesDetails';
 import PrivacyType from '../lib/appManagers/utils/privacy/privacyType';
@@ -24,6 +24,8 @@ import SettingSection, {generateSection} from './settingSection';
 import AppAddMembersTab from './sidebarLeft/tabs/addMembers';
 import {SliderSuperTabEventable} from './sliderTab';
 import {hideToast, toastNew} from './toast';
+
+type PrivacyKey = InputPrivacyKey['_'];
 
 export type PrivacySectionStr = LangPackKey | '' | HTMLElement;
 export default class PrivacySection {
@@ -47,8 +49,8 @@ export default class PrivacySection {
   constructor(public options: {
     tab: SliderSuperTabEventable,
     title: LangPackKey,
-    inputKey: InputPrivacyKey['_'],
-    captions?: [PrivacySectionStr, PrivacySectionStr, PrivacySectionStr],
+    inputKey?: PrivacyKey,
+    captions?: [PrivacySectionStr, PrivacySectionStr, PrivacySectionStr, PrivacySectionStr?],
     appendTo?: Scrollable,
     noExceptions?: boolean,
     onRadioChange?: (value: number) => any,
@@ -56,7 +58,10 @@ export default class PrivacySection {
     exceptionTexts?: [LangPackKey, LangPackKey],
     managers: AppManagers,
     premiumOnly?: boolean,
-    premiumCaption?: PrivacySectionStr
+    premiumCaption?: PrivacySectionStr,
+    premiumError?: LangPackKey,
+    myContactsAndPremium?: boolean,
+    privacyType?: PrivacyType
   }) {
     if(options.captions) {
       options.captions.reverse();
@@ -79,6 +84,11 @@ export default class PrivacySection {
       langKey: 'PrivacySettingsController.Nobody'
     }];
 
+    if(options.myContactsAndPremium) {
+      const rr = r.find((r) => r.type === PrivacyType.Contacts);
+      rr.langKey = 'PrivacyMessagesContactsAndPremium';
+    }
+
     if(options.skipTypes) {
       r = r.filter((r) => !options.skipTypes.includes(r.type));
     }
@@ -95,7 +105,7 @@ export default class PrivacySection {
           if(row.radioField.locked) {
             cancelEvent(e);
             toastNew({
-              langPackKey: 'PrivacySettings.Voice.PremiumError',
+              langPackKey: options.premiumError,
               langPackArguments: [
                 anchorCallback(() => {
                   hideToast();
@@ -176,9 +186,10 @@ export default class PrivacySection {
       this.setRadio(PrivacyType.Contacts);
     }, 0); */
 
-    const promise = managers.appPrivacyManager.getPrivacy(options.inputKey).then((rules) => {
-      const details = getPrivacyRulesDetails(rules);
-      this.setRadio(this.isLocked() ? PrivacyType.Everybody : details.type);
+    const promise = (options.inputKey ? managers.appPrivacyManager.getPrivacy(options.inputKey) : Promise.resolve()).then((rules) => {
+      const details = rules ? getPrivacyRulesDetails(rules) : undefined;
+      const originalType = options.privacyType || details?.type;
+      this.setRadio(this.isLocked() ? PrivacyType.Everybody : originalType);
 
       if(options.premiumOnly) {
         const toggleLock = () => {
@@ -191,7 +202,7 @@ export default class PrivacySection {
             row.radioField.locked = locked;
           });
 
-          this.setRadio(this.isLocked() ? PrivacyType.Everybody : details.type);
+          this.setRadio(this.isLocked() ? PrivacyType.Everybody : originalType);
           if(this.exceptionsSection) {
             this.exceptionsSection.container.classList.toggle('hide', locked);
           }
@@ -225,6 +236,10 @@ export default class PrivacySection {
 
   public onTabDestroy = async() => {
     if(this.isLocked()) {
+      return;
+    }
+
+    if(!this.options.inputKey) {
       return;
     }
 

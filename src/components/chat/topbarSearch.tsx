@@ -345,7 +345,9 @@ export default function TopbarSearch(props: {
       return;
     }
 
-    props.onClose?.();
+    if(wasEmpty) {
+      props.onClose?.();
+    }
   };
 
   const inputSearch = new InputSearch({

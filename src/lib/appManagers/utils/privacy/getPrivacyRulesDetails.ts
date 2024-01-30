@@ -15,13 +15,13 @@ export default function getPrivacyRulesDetails(rules: PrivacyRule[]) {
   rules.forEach((rule) => {
     switch(rule._) {
       case 'privacyValueAllowAll':
-        types.push(2);
+        types.push(PrivacyType.Everybody);
         break;
       case 'privacyValueDisallowAll':
-        types.push(0);
+        types.push(PrivacyType.Nobody);
         break;
       case 'privacyValueAllowContacts':
-        types.push(1);
+        types.push(PrivacyType.Contacts);
         break;
       /* case 'privacyValueDisallowContacts':
         types.push('Except My Contacts');

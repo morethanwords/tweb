@@ -397,7 +397,7 @@ export default class ChatContextMenu {
         onClick: () => {
           this.chat.initSearch('', this.avatarPeerId);
         },
-        verify: () => true
+        verify: () => this.chat.isRealGroup
       }];
       return;
     }

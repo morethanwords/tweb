@@ -6,7 +6,7 @@
 
 import SliderSuperTab, {SliderSuperTabEventable} from '../../sliderTab';
 import Row from '../../row';
-import {AccountPassword, Authorization, InputPrivacyKey, Updates, WebAuthorization} from '../../../layer';
+import {AccountPassword, Authorization, GlobalPrivacySettings, InputPrivacyKey, Updates, WebAuthorization} from '../../../layer';
 import AppPrivacyPhoneNumberTab from './privacy/phoneNumber';
 import AppTwoStepVerificationTab from './2fa';
 import AppTwoStepVerificationEnterPasswordTab from './2fa/enterPassword';
@@ -39,6 +39,7 @@ import AppPrivacyAboutTab from './privacy/about';
 import PopupPremium from '../../popups/premium';
 import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 import Icon from '../../icon';
+import AppPrivacyMessagesTab from './privacy/messages';
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;
@@ -182,13 +183,29 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
     }
 
     {
-      const section = new SettingSection({name: 'PrivacyTitle', caption: 'GroupsAndChannelsHelp'});
+      const isPremiumFeaturesHidden = await apiManagerProxy.isPremiumFeaturesHidden();
+      const section = new SettingSection({name: 'PrivacyTitle', caption: isPremiumFeaturesHidden ? 'GroupsAndChannelsHelp' : 'Privacy.MessagesCaption'});
 
       section.content.classList.add('privacy-navigation-container');
 
+      type RowKey = InputPrivacyKey['_'] | (keyof GlobalPrivacySettings['pFlags']);
+
       const rowsByKeys: Partial<{
-        [key in InputPrivacyKey['_']]: Row
+        [key in RowKey]: Row
       }> = {};
+
+      const openTabWithGlobalPrivacy = async(
+        constructor: typeof AppPrivacyLastSeenTab | typeof AppPrivacyMessagesTab,
+        key: RowKey
+      ) => {
+        const globalPrivacy = await p.globalPrivacy;
+        const tab = this.slider.createTab(constructor);
+        tab.open(globalPrivacy);
+        tab.eventListener.addEventListener('privacy', (privacy) => {
+          p.globalPrivacy = privacy;
+          updatePrivacyRow(key);
+        });
+      };
 
       const numberVisibilityRow = rowsByKeys['inputPrivacyKeyPhoneNumber'] = new Row({
         titleLangKey: 'PrivacyPhoneTitle',
@@ -202,13 +219,8 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       const lastSeenTimeRow = rowsByKeys['inputPrivacyKeyStatusTimestamp'] = new Row({
         titleLangKey: 'LastSeenTitle',
         subtitleLangKey: SUBTITLE,
-        clickable: async() => {
-          const globalPrivacy = await p.globalPrivacy;
-          const tab = this.slider.createTab(AppPrivacyLastSeenTab);
-          tab.open(globalPrivacy);
-          tab.eventListener.addEventListener('privacy', (privacy) => {
-            p.globalPrivacy = privacy;
-          });
+        clickable: () => {
+          openTabWithGlobalPrivacy(AppPrivacyLastSeenTab, 'inputPrivacyKeyStatusTimestamp');
         },
         listenerSetter: this.listenerSetter
       });
@@ -218,6 +230,15 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         subtitleLangKey: SUBTITLE,
         clickable: () => {
           this.slider.createTab(AppPrivacyProfilePhotoTab).open();
+        },
+        listenerSetter: this.listenerSetter
+      });
+
+      const aboutRow = rowsByKeys['inputPrivacyKeyAbout'] = new Row({
+        titleLangKey: 'Privacy.BioRow',
+        subtitleLangKey: SUBTITLE,
+        clickable: () => {
+          this.slider.createTab(AppPrivacyAboutTab).open();
         },
         listenerSetter: this.listenerSetter
       });
@@ -261,7 +282,6 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         return fragment;
       };
 
-      const isPremiumFeaturesHidden = await apiManagerProxy.isPremiumFeaturesHidden();
       let voicesRow: Row;
       if(!isPremiumFeaturesHidden) voicesRow = rowsByKeys['inputPrivacyKeyVoiceMessages'] = new Row({
         title: createPremiumTitle('PrivacyVoiceMessagesTitle'),
@@ -272,24 +292,39 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         listenerSetter: this.listenerSetter
       });
 
-      const aboutRow = rowsByKeys['inputPrivacyKeyAbout'] = new Row({
-        titleLangKey: 'UserBio',
+      let messagesRow: Row;
+      if(!isPremiumFeaturesHidden) messagesRow = rowsByKeys['new_noncontact_peers_require_premium'] = new Row({
+        title: createPremiumTitle('PrivacyMessagesTitle'),
         subtitleLangKey: SUBTITLE,
         clickable: () => {
-          this.slider.createTab(AppPrivacyAboutTab).open();
+          openTabWithGlobalPrivacy(AppPrivacyMessagesTab, 'new_noncontact_peers_require_premium');
         },
         listenerSetter: this.listenerSetter
       });
 
-      const updatePrivacyRow = (key: InputPrivacyKey['_']) => {
+      const updatePrivacyRow = (key: RowKey) => {
         const row = rowsByKeys[key];
         if(!row) {
           return;
         }
 
-        this.managers.appPrivacyManager.getPrivacy(key).then((rules) => {
+        const map: {[key in PrivacyType]: LangPackKey} = {
+          [PrivacyType.Everybody]: 'PrivacySettingsController.Everbody',
+          [PrivacyType.Contacts]: 'PrivacySettingsController.MyContacts',
+          [PrivacyType.Nobody]: 'PrivacySettingsController.Nobody'
+        };
+
+        if(!key.startsWith('inputPrivacy')) {
+          p.globalPrivacy.then((globalPrivacy) => {
+            const langKey = globalPrivacy.pFlags.new_noncontact_peers_require_premium ? 'Privacy.ContactsAndPremium' : map[PrivacyType.Everybody];
+            row.subtitle.replaceChildren(i18n(langKey));
+          });
+          return;
+        }
+
+        this.managers.appPrivacyManager.getPrivacy(key as InputPrivacyKey['_']).then((rules) => {
           const details = getPrivacyRulesDetails(rules);
-          const langKey = details.type === PrivacyType.Everybody ? 'PrivacySettingsController.Everbody' : (details.type === PrivacyType.Contacts ? 'PrivacySettingsController.MyContacts' : 'PrivacySettingsController.Nobody');
+          const langKey = map[details.type];
           const disallowLength = details.disallowPeers.users.length + details.disallowPeers.chats.length;
           const allowLength = details.allowPeers.users.length + details.allowPeers.chats.length;
 
@@ -305,11 +340,12 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         numberVisibilityRow,
         lastSeenTimeRow,
         photoVisibilityRow,
+        aboutRow,
         callRow,
         linkAccountRow,
         groupChatsAddRow,
         voicesRow,
-        aboutRow
+        messagesRow
       ].filter(Boolean).map((row) => row.container));
       this.scrollable.append(section.container);
 

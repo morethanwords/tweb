@@ -27,7 +27,8 @@ export default class AppPrivacyVoicesTab extends SliderSuperTabEventable {
       premiumOnly: true,
       premiumCaption: i18n('Privacy.VoiceMessagesPremiumCaption', [anchorCallback(() => {
         PopupPremium.show();
-      })])
+      })]),
+      premiumError: 'PrivacySettings.Voice.PremiumError'
     });
   }
 }
