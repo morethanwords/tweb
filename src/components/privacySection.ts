@@ -168,6 +168,7 @@ export default class PrivacySection {
                 _peerIds.length = 0;
                 _peerIds.push(...newPeerIds);
                 exception.row.subtitle.replaceChildren(...this.generateStr(this.splitPeersByType(newPeerIds)));
+                this.onRadioChange(this.type);
               },
               selectedPeerIds: _peerIds
             });
@@ -189,7 +190,20 @@ export default class PrivacySection {
     const promise = (options.inputKey ? managers.appPrivacyManager.getPrivacy(options.inputKey) : Promise.resolve()).then((rules) => {
       const details = rules ? getPrivacyRulesDetails(rules) : undefined;
       const originalType = options.privacyType || details?.type;
-      this.setRadio(this.isLocked() ? PrivacyType.Everybody : originalType);
+
+      if(this.exceptions) {
+        this.peerIds = {};
+        ['allow' as const, 'disallow' as const].forEach((k) => {
+          const arr = [];
+          const from = k === 'allow' ? details.allowPeers : details.disallowPeers;
+          arr.push(...from.users.map((id) => id.toPeerId()));
+          arr.push(...from.chats.map((id) => id.toPeerId(true)));
+          this.peerIds[k] = arr;
+          const s = this.exceptions.get(k).row.subtitle;
+          s.replaceChildren();
+          s.append(...this.generateStr(from));
+        });
+      }
 
       if(options.premiumOnly) {
         const toggleLock = () => {
@@ -210,20 +224,8 @@ export default class PrivacySection {
 
         toggleLock();
         options.tab.listenerSetter.add(rootScope)('premium_toggle', toggleLock);
-      }
-
-      if(this.exceptions) {
-        this.peerIds = {};
-        ['allow' as const, 'disallow' as const].forEach((k) => {
-          const arr = [];
-          const from = k === 'allow' ? details.allowPeers : details.disallowPeers;
-          arr.push(...from.users.map((id) => id.toPeerId()));
-          arr.push(...from.chats.map((id) => id.toPeerId(true)));
-          this.peerIds[k] = arr;
-          const s = this.exceptions.get(k).row.subtitle;
-          s.replaceChildren();
-          s.append(...this.generateStr(from));
-        });
+      } else {
+        this.setRadio(this.isLocked() ? PrivacyType.Everybody : originalType);
       }
 
       options.tab.eventListener.addEventListener('destroy', this.onTabDestroy, {once: true});

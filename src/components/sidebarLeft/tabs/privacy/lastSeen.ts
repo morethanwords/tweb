@@ -15,6 +15,7 @@ import rootScope from '../../../../lib/rootScope';
 import {attachClickEvent} from '../../../../helpers/dom/clickEvent';
 import PopupPremium from '../../../popups/premium';
 import {GlobalPrivacySettings} from '../../../../layer';
+import PrivacyType from '../../../../lib/appManagers/utils/privacy/privacyType';
 
 export default class AppPrivacyLastSeenTab extends SliderSuperTabEventable<{
   privacy: (globalPrivacy: Promise<GlobalPrivacySettings>) => void
@@ -23,19 +24,29 @@ export default class AppPrivacyLastSeenTab extends SliderSuperTabEventable<{
     this.container.classList.add('privacy-tab', 'privacy-last-seen');
     this.setTitle('PrivacyLastSeen');
 
+    const canHideReadTime = () => {
+      return privacySection.type !== PrivacyType.Everybody || !!privacySection.peerIds.disallow.length;
+    };
+
     const caption: LangPackKey = 'PrivacySettingsController.LastSeenDescription';
-    new PrivacySection({
+    const privacySection = new PrivacySection({
       tab: this,
       title: 'LastSeenTitle',
       inputKey: 'inputPrivacyKeyStatusTimestamp',
       captions: [caption, caption, caption],
       exceptionTexts: ['PrivacySettingsController.NeverShare', 'PrivacySettingsController.AlwaysShare'],
       appendTo: this.scrollable,
+      onRadioChange: () => {
+        [hideReadTimeSection, premiumSection].forEach((section) => {
+          section.container.classList.toggle('hide', !canHideReadTime());
+        });
+      },
       managers: this.managers
     });
 
+    let hideReadTimeSection: SettingSection;
     {
-      const section = new SettingSection({
+      const section = hideReadTimeSection = new SettingSection({
         caption: 'HideReadTimeInfo'
       });
 
@@ -46,7 +57,7 @@ export default class AppPrivacyLastSeenTab extends SliderSuperTabEventable<{
       });
 
       this.eventListener.addEventListener('destroy', () => {
-        const hide = row.checkboxField.checked;
+        const hide = row.checkboxField.checked && canHideReadTime();
         if(!!globalPrivacy.pFlags.hide_read_marks === hide) {
           return;
         }
@@ -66,8 +77,9 @@ export default class AppPrivacyLastSeenTab extends SliderSuperTabEventable<{
       this.scrollable.append(section.container);
     }
 
+    let premiumSection: SettingSection;
     {
-      const section = new SettingSection({
+      const section = premiumSection = new SettingSection({
         caption: true
       });
 
