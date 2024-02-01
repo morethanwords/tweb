@@ -77,15 +77,7 @@ export class AppUsersManager extends AppManager {
         }
 
         user.status = update.status;
-        if(user.status) {
-          if('expires' in user.status) {
-            user.status.expires -= this.timeManager.getServerTimeOffset();
-          }
-
-          if('was_online' in user.status) {
-            user.status.was_online -= this.timeManager.getServerTimeOffset();
-          }
-        }
+        this.saveUserStatus(user.status);
 
         // user.sortStatus = this.getUserStatusForSort(user.status);
         this.rootScope.dispatchEvent('user_update', userId);
@@ -536,6 +528,23 @@ export class AppUsersManager extends AppManager {
     return false;
   }
 
+  private saveUserStatus(userStatus: UserStatus) {
+    if(!userStatus) {
+      return;
+    }
+
+    const saved = (userStatus as any).saved;
+    if((userStatus as UserStatus.userStatusOnline).expires && !saved) {
+      (userStatus as UserStatus.userStatusOnline).expires -= this.timeManager.getServerTimeOffset();
+    }
+
+    if((userStatus as UserStatus.userStatusOffline).was_online && !saved) {
+      (userStatus as UserStatus.userStatusOffline).was_online -= this.timeManager.getServerTimeOffset();
+    }
+
+    (userStatus as any).saved = true;
+  }
+
   public saveApiUser(user: MTUser, override?: boolean) {
     if(!user || user._ === 'userEmpty') return;
 
@@ -570,15 +579,7 @@ export class AppUsersManager extends AppManager {
       user.sortName = oldUser.sortName;
     }
 
-    if(user.status) {
-      if((user.status as UserStatus.userStatusOnline).expires) {
-        (user.status as UserStatus.userStatusOnline).expires -= this.timeManager.getServerTimeOffset();
-      }
-
-      if((user.status as UserStatus.userStatusOffline).was_online) {
-        (user.status as UserStatus.userStatusOffline).was_online -= this.timeManager.getServerTimeOffset();
-      }
-    }
+    this.saveUserStatus(user.status);
 
     if((user as User).photo?._ === 'userProfilePhotoEmpty') {
       delete (user as User).photo;
@@ -735,6 +736,15 @@ export class AppUsersManager extends AppManager {
 
   public getUserStatus(id: UserId) {
     return this.isRegularUser(id) && !this.users[id].pFlags.self && this.users[id].status;
+  }
+
+  public getApiUsers(userIds: UserId[]) {
+    return this.apiManager.invokeApi('users.getUsers', {
+      id: userIds.map((userId) => this.getUserInput(userId))
+    }).then((users) => {
+      this.saveApiUsers(users);
+      return users;
+    });
   }
 
   public async getUserPhone(id: UserId) {

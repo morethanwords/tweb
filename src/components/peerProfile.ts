@@ -8,7 +8,8 @@ import IS_PARALLAX_SUPPORTED from '../environment/parallaxSupport';
 import deferredPromise from '../helpers/cancellablePromise';
 import {copyTextToClipboard} from '../helpers/clipboard';
 import anchorCopy from '../helpers/dom/anchorCopy';
-import {simulateClickEvent} from '../helpers/dom/clickEvent';
+import cancelEvent from '../helpers/dom/cancelEvent';
+import {attachClickEvent, simulateClickEvent} from '../helpers/dom/clickEvent';
 import replaceContent from '../helpers/dom/replaceContent';
 import setInnerHTML from '../helpers/dom/setInnerHTML';
 import ListenerSetter from '../helpers/listenerSetter';
@@ -16,7 +17,7 @@ import makeError from '../helpers/makeError';
 import {makeMediaSize} from '../helpers/mediaSize';
 import {getMiddleware, Middleware, MiddlewareHelper} from '../helpers/middleware';
 import middlewarePromise from '../helpers/middlewarePromise';
-import {Chat, ChatFull, User, UserFull} from '../layer';
+import {Chat, ChatFull, User, UserFull, UserStatus} from '../layer';
 import appImManager from '../lib/appManagers/appImManager';
 import {AppManagers} from '../lib/appManagers/managers';
 import getServerMessageId from '../lib/appManagers/utils/messageId/getServerMessageId';
@@ -24,12 +25,15 @@ import getPeerActiveUsernames from '../lib/appManagers/utils/peers/getPeerActive
 import I18n, {i18n, join} from '../lib/langPack';
 import {MTAppConfig} from '../lib/mtproto/appConfig';
 import {HIDDEN_PEER_ID} from '../lib/mtproto/mtproto_config';
+import apiManagerProxy from '../lib/mtproto/mtprotoworker';
 import wrapRichText from '../lib/richTextProcessor/wrapRichText';
 import rootScope from '../lib/rootScope';
 import {avatarNew} from './avatarNew';
 import CheckboxField from './checkboxField';
 import {generateDelimiter} from './generateDelimiter';
 import PeerProfileAvatars, {SHOW_NO_AVATAR} from './peerProfileAvatars';
+import PopupElement from './popups';
+import PopupToggleReadDate from './popups/toggleReadDate';
 import Row from './row';
 import Scrollable from './scrollable';
 import SettingSection from './settingSection';
@@ -322,6 +326,20 @@ export default class PeerProfile {
       }
     });
 
+    const refreshCurrentUser = () => {
+      if(this.peerId.isUser()) {
+        this.managers.appUsersManager.getApiUsers([this.peerId.toUserId()]);
+      }
+    };
+
+    // * refresh user online status
+    listenerSetter.add(rootScope)('premium_toggle', refreshCurrentUser);
+    listenerSetter.add(rootScope)('privacy_update', (updatePrivacy) => {
+      if(updatePrivacy.key._ === 'privacyKeyStatusTimestamp') {
+        refreshCurrentUser();
+      }
+    });
+
     this.setPeerStatusInterval = window.setInterval(() => this.setPeerStatus(), 60e3);
   }
 
@@ -334,6 +352,18 @@ export default class PeerProfile {
     const callbacks: Array<() => void> = [];
     callbacks.push(() => {
       this.element.classList.toggle('is-me', peerId === rootScope.myId);
+      if(peerId.isUser()) {
+        const user = apiManagerProxy.getUser(peerId.toUserId());
+        if((user.status as UserStatus.userStatusRecently)?.pFlags?.by_me) {
+          const when = i18n('StatusHiddenShow');
+          when.classList.add('show-when');
+          attachClickEvent(when, (e) => {
+            cancelEvent(e);
+            PopupElement.createPopup(PopupToggleReadDate, peerId, 'lastSeen');
+          });
+          this.subtitle.append(when);
+        }
+      }
     });
 
     let promise: Promise<(() => void) | void> = Promise.resolve();
@@ -360,7 +390,7 @@ export default class PeerProfile {
         });
       }
 
-      promise.then((callback) => callback && callbacks.push(callback));
+      promise.then((callback) => callback && callbacks.unshift(callback));
     }
 
     const callback = () => callbacks.forEach((callback) => callback());

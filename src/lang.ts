@@ -521,6 +521,7 @@ const lang = {
   'Chat.PremiumRequiredButton': 'Get Premium',
   'Chat.Input.PremiumRequiredButton': 'Only Premium users can message %s.\n[Learn more...]()',
   'OnlyPremiumCanMessage': '**%s** only accepts messages from contacts and **[Telegram Premium]()** subscribers.',
+  'Chat.ContextMenu.Read': 'Read',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -1823,6 +1824,25 @@ const lang = {
   'PrivacyMessagesContactsAndPremium': 'My Contacts and Premium users',
   'PrivacyMessages': 'Messages',
   'PrivacyMessagesTitle': 'Who can send me messages?',
+  'PmReadShowWhen': 'show when',
+  'PremiumReadHeader1': 'Show Your Read Date',
+  'PremiumReadText1': 'To see when **%s** read the message, either start showing your own read time...',
+  'PremiumReadText1Locked': 'To see when **%s** read the message, start showing your own read time.',
+  'PremiumReadButton1': 'Show My Read Time',
+  'PremiumReadHeader2': 'Upgrade to Premium',
+  'PremiumReadText2': 'Subscribing will let you see **%s’s** read time without showing yours.',
+  'PremiumReadButton2': 'Subscribe to Telegram Premium',
+  'PremiumLastSeenHeader1': 'Show Your Last Seen',
+  'PremiumLastSeenText1': 'To see **%s** Last Seen time, either start showing your own Last Seen time...',
+  'PremiumLastSeenText1Locked': 'To see **%s** Last Seen time, start showing your own Last Seen time.',
+  'PremiumLastSeenButton1': 'Show My Last Seen',
+  'PremiumOr': 'or',
+  'PremiumLastSeenHeader2': 'Upgrade to Premium',
+  'PremiumLastSeenText2': 'Subscribing will let you see **%s’s** Last Seen status without showing yours.',
+  'PremiumLastSeenButton2': 'Subscribe to Telegram Premium',
+  'StatusHiddenShow': 'when?',
+  'PremiumLastSeenSet': 'Your last seen time is now visible.',
+  'PremiumReadSet': 'Your read times are now visible.',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

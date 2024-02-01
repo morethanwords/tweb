@@ -61,6 +61,8 @@ import {TEST_BUBBLES_DELETION} from './bubbles';
 import cancelSelection from '../../helpers/dom/cancelSelection';
 import AppStatisticsTab from '../sidebarRight/tabs/statistics';
 import {ChatType} from './chat';
+import {formatFullSentTime} from '../../helpers/date';
+import PopupToggleReadDate from '../popups/toggleReadDate';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -107,6 +109,8 @@ export default class ChatContextMenu {
 
   private isLegacy: boolean;
   private messagePeerId: number;
+
+  private canViewReadTime: boolean;
 
   constructor(
     private chat: Chat,
@@ -418,6 +422,19 @@ export default class ChatContextMenu {
     };
 
     this.buttons = [{
+      // secondary: true,
+      onClick: () => {
+        if(this.canViewReadTime === false) {
+          PopupElement.createPopup(PopupToggleReadDate, this.peerId, 'readTime');
+        }
+      },
+      verify: () => this.peerId.isUser() && this.managers.appMessagesManager.canViewMessageReadParticipants(this.message),
+      notDirect: () => true,
+      localName: 'views',
+      checkForClose: () => {
+        return this.canViewReadTime !== undefined;
+      }
+    }, {
       icon: 'send2',
       text: 'MessageScheduleSend',
       onClick: this.onSendScheduledClick,
@@ -805,7 +822,43 @@ export default class ChatContextMenu {
     element.classList.add('contextmenu');
 
     const viewsButton = filteredButtons.find((button) => button.localName === 'views');
-    if(viewsButton) {
+    if(viewsButton && this.peerId.isUser()) {
+      viewsButton.element.prepend(Icon('checks', 'btn-menu-item-icon'));
+      const loader = document.createElement('div');
+      loader.classList.add('btn-menu-item-loader', 'shimmer');
+      viewsButton.textElement.append(loader);
+      // viewsButton.element.classList.add('is-smaller');
+
+      viewsButton.element.after(document.createElement('hr'));
+      const delimiter = viewsButton.element.nextElementSibling;
+
+      const middleware = this.middleware.get();
+      this.managers.appMessagesManager.getOutboxReadDate(this.message.peerId, this.message.mid).then((outboxReadDate) => {
+        if(!middleware()) {
+          return;
+        }
+
+        this.canViewReadTime = true;
+        // loader.replaceWith(i18n('PmRead'), ' ', formatFullSentTime(outboxReadDate.date, false, false));
+        // loader.replaceWith(i18n('Chat.ContextMenu.Read'), ' ', formatFullSentTime(outboxReadDate.date, false, false));
+        loader.replaceWith(formatFullSentTime(outboxReadDate.date, true, false));
+      }, (err) => {
+        if(!middleware()) {
+          return;
+        }
+
+        if((err as ApiError).type !== 'YOUR_PRIVACY_RESTRICTED') {
+          delimiter.remove();
+          viewsButton.element.remove();
+          return;
+        }
+
+        this.canViewReadTime = false;
+        const when = i18n('PmReadShowWhen');
+        when.classList.add('show-when');
+        loader.replaceWith(i18n('Chat.ContextMenu.Read'), ' ', when);
+      });
+    } else if(viewsButton) {
       const reactions = (this.message as Message.message).reactions;
       const recentReactions = reactions?.recent_reactions;
       const isViewingReactions = !!recentReactions?.length;

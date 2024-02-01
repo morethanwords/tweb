@@ -97,6 +97,7 @@ export interface MTAppConfig {
   boosts_per_sent_gift?:                     number;
   cachedTime?:                               number;
   hash?:                                     number;
+  pm_read_date_expire_period?:               number;
 }
 
 export interface EmojiesSendDiceSuccess {

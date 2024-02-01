@@ -34,6 +34,16 @@ export function getGiftAssetName(months: number) {
   return durationAssetMap[clamp(months, 3, 12)];
 }
 
+export function DelimiterWithText(props: {langKey: LangPackKey}) {
+  return (
+    <span class="delimiter-with-text">
+      <span class="delimiter-with-text-stripe" />
+      {i18n(props.langKey)}
+      <span class="delimiter-with-text-stripe" />
+    </span>
+  );
+}
+
 export async function onGiveawayClick(message: Message.message) {
   const giveaway = message.media as MessageMedia.messageMediaGiveaway | MessageMedia.messageMediaGiveawayResults;
   const giveawayInfo = await rootScope.managers.appPaymentsManager.getGiveawayInfo(message.peerId, message.mid);
@@ -217,7 +227,7 @@ export default function Giveaway(props: {
       <>
         <b>{`${quantity} `}</b>
         {wrapEmojiText(giveaway.prize_description)}
-        <span class="bubble-giveaway-with">{i18n('Giveaway.With')}</span>
+        <DelimiterWithText langKey="Giveaway.With" />
         {i18n(quantity > 1 ? 'Giveaway.WithSubscriptionsPlural' : 'Giveaway.WithSubscriptionsSingle', [headerDuration])}
       </>
     ) : (

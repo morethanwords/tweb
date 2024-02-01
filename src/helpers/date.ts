@@ -118,9 +118,9 @@ export function formatFullSentTimeRaw(timestamp: number, options: {
   const timeEl = options.combined ? undefined : formatTime(time);
 
   let dateEl: HTMLElement;
-  if(diff < ONE_DAY && date.getDate() === time.getDate() && !options.noToday) { // if the same day
+  if(!options.noToday && diff < ONE_DAY && date.getDate() === time.getDate()) { // if the same day
     dateEl = i18n(options.capitalize ? 'Date.Today' : 'Peer.Status.Today');
-  } else if(diff > 0 && diff < (ONE_DAY * 2) && (date.getDate() - 1) === time.getDate() && !options.noToday) { // yesterday
+  } else if(!options.noToday && diff > 0 && diff < (ONE_DAY * 2) && new Date(date.getTime() - ONE_DAY * 1000).getDate() === time.getDate()) { // yesterday
     dateEl = i18n(options.capitalize ? 'Yesterday' : 'Peer.Status.Yesterday');
 
     if(options.capitalize) {

@@ -111,6 +111,10 @@
         text-align: start;
       }
 
+      .show-when {
+        background-color: rgba(255, 255, 255, .2);
+      }
+
       .topic-name-button {
         --primary-color: #fff;
       }
@@ -352,6 +356,12 @@
 
     .online {
       color: var(--primary-color);
+    }
+
+    .show-when {
+      margin-inline-start: .25rem;
+      cursor: pointer;
+      pointer-events: all;
     }
   }
 

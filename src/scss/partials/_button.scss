@@ -401,6 +401,15 @@ $btn-menu-z-index: 4;
       pointer-events: none !important;
     }
 
+    &-loader {
+      height: 8px;
+      border-radius: 8px;
+      width: 100px;
+      background-color: var(--secondary-color);
+      overflow: hidden;
+      position: relative;
+    }
+
     .stacked-avatars {
       --margin-right: -.6875rem;
       flex: 0 0 auto;
@@ -434,8 +443,14 @@ $btn-menu-z-index: 4;
     }
 
     &.is-secondary {
+      // --icon-margin: .5rem;
       font-size: .75rem;
     }
+
+    // &.is-smaller {
+    //   --icon-margin: .5rem;
+    //   font-size: .75rem;
+    // }
 
     .checkbox-field-toggle {
       padding: 0;

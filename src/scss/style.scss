@@ -471,6 +471,7 @@
 @import "partials/popups/premium";
 @import "partials/popups/boost";
 @import "partials/popups/giftLink";
+@import "partials/popups/toggleReadDate";
 
 @import "partials/pages/pages";
 @import "partials/pages/authCode";
@@ -2314,4 +2315,31 @@ hr {
   color: var(--primary-color);
   font-size: 1.125rem;
   margin-inline-start: .25rem;
+}
+
+.show-when {
+  background: rgba(0, 0, 0, $hover-alpha);
+  border-radius: 12px;
+  padding: 0 6px;
+  display: inline-block;
+}
+
+.delimiter-with-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  opacity: .4;
+  gap: .5rem;
+  flex: 0 0 auto;
+  padding: 0 .25rem;
+
+  &-stripe {
+    display: block;
+    height: .0625rem;
+    background-color: currentColor;
+    flex: 1 1 auto;
+    border-radius: 1px;
+    opacity: .5;
+  }
 }

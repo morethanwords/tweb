@@ -997,6 +997,26 @@
         }
       }
 
+      &-premiumRequired {
+        .service-msg {
+          max-width: 200px;
+        }
+
+        .empty-bubble-placeholder-sticker {
+          width: 8rem !important;
+          height: 8rem !important;
+          margin-left: auto;
+          margin-right: auto;
+          font-size: 128px;
+          border-radius: 50%;
+          background-color: rgba(var(--message-highlighting-color-rgb), 0.8);
+        }
+
+        .bubble-service-button {
+          margin: 0 auto;
+        }
+      }
+
       .empty-bubble-placeholder-sticker {
         margin-top: .75rem !important;
         position: relative;
@@ -2197,9 +2217,11 @@
       }
     }
 
-    .reactions-like-block {
+    .reactions-tag {
       margin-bottom: 3px;
+    }
 
+    .reactions-like-block {
       .time {
         position: unset !important;
         right: auto !important;
@@ -2490,31 +2512,12 @@
       }
     }
 
-    &-with {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      opacity: .4;
-      gap: .5rem;
-      flex: 0 0 auto;
-      padding: 0 .25rem;
-      margin-top: .125rem;
-
-      &:before,
-      &:after {
-        content: " ";
-        display: block;
-        height: .0625rem;
-        background-color: currentColor;
-        flex: 1 1 auto;
-        border-radius: 1px;
-        opacity: .5;
-      }
-    }
-
     &-and-more {
       margin-top: .375rem;
+    }
+
+    .delimiter-with-text {
+      margin-top: .125rem;
     }
   }
 

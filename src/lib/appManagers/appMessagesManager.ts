@@ -6573,20 +6573,35 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
+  public getOutboxReadDate(peerId: PeerId, mid: number) {
+    return this.apiManager.invokeApiSingle('messages.getOutboxReadDate', {
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      msg_id: getServerMessageId(mid)
+    });
+  }
+
   public async canViewMessageReadParticipants(message: Message) {
     if(
       message?._ !== 'message' ||
       message.pFlags.is_outgoing ||
       !message.pFlags.out ||
-      !this.appPeersManager.isAnyGroup(message.peerId)
+      message.pFlags.unread ||
+      message.peerId === this.appPeersManager.peerId ||
+      this.appPeersManager.isBroadcast(message.peerId)
     ) {
       return false;
     }
 
-    const chat = this.appChatsManager.getChat(message.peerId.toChatId()) as Chat.chat | Chat.channel;
     const appConfig = await this.apiManager.getAppConfig();
+    const diff = tsNow(true) - message.date;
+    if(message.peerId.isUser()) {
+      const userFull = await this.appProfileManager.getProfile(message.peerId.toUserId());
+      return diff < appConfig.pm_read_date_expire_period && !userFull.pFlags.read_dates_private;
+    }
+
+    const chat = this.appChatsManager.getChat(message.peerId.toChatId()) as Chat.chat | Chat.channel;
     return chat.participants_count <= appConfig.chat_read_mark_size_threshold &&
-      (tsNow(true) - message.date) < appConfig.chat_read_mark_expire_period;
+      diff < appConfig.chat_read_mark_expire_period;
   }
 
   public incrementMessageViews(peerId: PeerId, mids: number[]) {
