@@ -1919,8 +1919,8 @@ export default class ChatInput {
         this.replyInTopicOverlay.classList.toggle('hide', !good);
       }
 
-      if(this.chat && this.onlyPremiumBtn && isPremiumRequired) {
-        const good = !haveSomethingInControl && !isBot && peerId.isUser();
+      if(this.chat && this.onlyPremiumBtn) {
+        const good = !haveSomethingInControl && !isBot && peerId.isUser() && isPremiumRequired;
         haveSomethingInControl ||= good;
         this.onlyPremiumBtnText.compareAndUpdate({
           args: [peerTitleShort, this.onlyPremiumBtnText.args[1]]

@@ -539,6 +539,7 @@ export namespace User {
       close_friend?: true,
       stories_hidden?: true,
       stories_unavailable?: true,
+      contact_require_premium?: true,
     }>,
     flags2?: number,
     id: string | number,
@@ -606,15 +607,27 @@ export namespace UserStatus {
   };
 
   export type userStatusRecently = {
-    _: 'userStatusRecently'
+    _: 'userStatusRecently',
+    flags?: number,
+    pFlags: Partial<{
+      by_me?: true,
+    }>
   };
 
   export type userStatusLastWeek = {
-    _: 'userStatusLastWeek'
+    _: 'userStatusLastWeek',
+    flags?: number,
+    pFlags: Partial<{
+      by_me?: true,
+    }>
   };
 
   export type userStatusLastMonth = {
-    _: 'userStatusLastMonth'
+    _: 'userStatusLastMonth',
+    flags?: number,
+    pFlags: Partial<{
+      by_me?: true,
+    }>
   };
 }
 
@@ -1951,6 +1964,8 @@ export namespace UserFull {
       stories_pinned_available?: true,
       blocked_my_stories_from?: true,
       wallpaper_overridden?: true,
+      contact_require_premium?: true,
+      read_dates_private?: true,
     }>,
     id: string | number,
     about?: string,
@@ -2273,7 +2288,7 @@ export namespace MessagesFilter {
 /**
  * @link https://core.telegram.org/type/Update
  */
-export type Update = Update.updateNewMessage | Update.updateMessageID | Update.updateDeleteMessages | Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChatParticipants | Update.updateUserStatus | Update.updateUserName | Update.updateNewAuthorization | Update.updateNewEncryptedMessage | Update.updateEncryptedChatTyping | Update.updateEncryption | Update.updateEncryptedMessagesRead | Update.updateChatParticipantAdd | Update.updateChatParticipantDelete | Update.updateDcOptions | Update.updateNotifySettings | Update.updateServiceNotification | Update.updatePrivacy | Update.updateUserPhone | Update.updateReadHistoryInbox | Update.updateReadHistoryOutbox | Update.updateWebPage | Update.updateReadMessagesContents | Update.updateChannelTooLong | Update.updateChannel | Update.updateNewChannelMessage | Update.updateReadChannelInbox | Update.updateDeleteChannelMessages | Update.updateChannelMessageViews | Update.updateChatParticipantAdmin | Update.updateNewStickerSet | Update.updateStickerSetsOrder | Update.updateStickerSets | Update.updateSavedGifs | Update.updateBotInlineQuery | Update.updateBotInlineSend | Update.updateEditChannelMessage | Update.updateBotCallbackQuery | Update.updateEditMessage | Update.updateInlineBotCallbackQuery | Update.updateReadChannelOutbox | Update.updateDraftMessage | Update.updateReadFeaturedStickers | Update.updateRecentStickers | Update.updateConfig | Update.updatePtsChanged | Update.updateChannelWebPage | Update.updateDialogPinned | Update.updatePinnedDialogs | Update.updateBotWebhookJSON | Update.updateBotWebhookJSONQuery | Update.updateBotShippingQuery | Update.updateBotPrecheckoutQuery | Update.updatePhoneCall | Update.updateLangPackTooLong | Update.updateLangPack | Update.updateFavedStickers | Update.updateChannelReadMessagesContents | Update.updateContactsReset | Update.updateChannelAvailableMessages | Update.updateDialogUnreadMark | Update.updateMessagePoll | Update.updateChatDefaultBannedRights | Update.updateFolderPeers | Update.updatePeerSettings | Update.updatePeerLocated | Update.updateNewScheduledMessage | Update.updateDeleteScheduledMessages | Update.updateTheme | Update.updateGeoLiveViewed | Update.updateLoginToken | Update.updateMessagePollVote | Update.updateDialogFilter | Update.updateDialogFilterOrder | Update.updateDialogFilters | Update.updatePhoneCallSignalingData | Update.updateChannelMessageForwards | Update.updateReadChannelDiscussionInbox | Update.updateReadChannelDiscussionOutbox | Update.updatePeerBlocked | Update.updateChannelUserTyping | Update.updatePinnedMessages | Update.updatePinnedChannelMessages | Update.updateChat | Update.updateGroupCallParticipants | Update.updateGroupCall | Update.updatePeerHistoryTTL | Update.updateChatParticipant | Update.updateChannelParticipant | Update.updateBotStopped | Update.updateGroupCallConnection | Update.updateBotCommands | Update.updatePendingJoinRequests | Update.updateBotChatInviteRequester | Update.updateMessageReactions | Update.updateAttachMenuBots | Update.updateWebViewResultSent | Update.updateBotMenuButton | Update.updateSavedRingtones | Update.updateTranscribedAudio | Update.updateReadFeaturedEmojiStickers | Update.updateUserEmojiStatus | Update.updateRecentEmojiStatuses | Update.updateRecentReactions | Update.updateMoveStickerSetToTop | Update.updateMessageExtendedMedia | Update.updateChannelPinnedTopic | Update.updateChannelPinnedTopics | Update.updateUser | Update.updateAutoSaveSettings | Update.updateGroupInvitePrivacyForbidden | Update.updateStory | Update.updateReadStories | Update.updateStoryID | Update.updateStoriesStealthMode | Update.updateSentStoryReaction | Update.updateBotChatBoost | Update.updateChannelViewForumAsMessages | Update.updatePeerWallpaper | Update.updateBotMessageReaction | Update.updateBotMessageReactions | Update.updateSavedDialogPinned | Update.updatePinnedSavedDialogs | Update.updateNewDiscussionMessage | Update.updateDeleteDiscussionMessages | Update.updateChannelReload;
+export type Update = Update.updateNewMessage | Update.updateMessageID | Update.updateDeleteMessages | Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChatParticipants | Update.updateUserStatus | Update.updateUserName | Update.updateNewAuthorization | Update.updateNewEncryptedMessage | Update.updateEncryptedChatTyping | Update.updateEncryption | Update.updateEncryptedMessagesRead | Update.updateChatParticipantAdd | Update.updateChatParticipantDelete | Update.updateDcOptions | Update.updateNotifySettings | Update.updateServiceNotification | Update.updatePrivacy | Update.updateUserPhone | Update.updateReadHistoryInbox | Update.updateReadHistoryOutbox | Update.updateWebPage | Update.updateReadMessagesContents | Update.updateChannelTooLong | Update.updateChannel | Update.updateNewChannelMessage | Update.updateReadChannelInbox | Update.updateDeleteChannelMessages | Update.updateChannelMessageViews | Update.updateChatParticipantAdmin | Update.updateNewStickerSet | Update.updateStickerSetsOrder | Update.updateStickerSets | Update.updateSavedGifs | Update.updateBotInlineQuery | Update.updateBotInlineSend | Update.updateEditChannelMessage | Update.updateBotCallbackQuery | Update.updateEditMessage | Update.updateInlineBotCallbackQuery | Update.updateReadChannelOutbox | Update.updateDraftMessage | Update.updateReadFeaturedStickers | Update.updateRecentStickers | Update.updateConfig | Update.updatePtsChanged | Update.updateChannelWebPage | Update.updateDialogPinned | Update.updatePinnedDialogs | Update.updateBotWebhookJSON | Update.updateBotWebhookJSONQuery | Update.updateBotShippingQuery | Update.updateBotPrecheckoutQuery | Update.updatePhoneCall | Update.updateLangPackTooLong | Update.updateLangPack | Update.updateFavedStickers | Update.updateChannelReadMessagesContents | Update.updateContactsReset | Update.updateChannelAvailableMessages | Update.updateDialogUnreadMark | Update.updateMessagePoll | Update.updateChatDefaultBannedRights | Update.updateFolderPeers | Update.updatePeerSettings | Update.updatePeerLocated | Update.updateNewScheduledMessage | Update.updateDeleteScheduledMessages | Update.updateTheme | Update.updateGeoLiveViewed | Update.updateLoginToken | Update.updateMessagePollVote | Update.updateDialogFilter | Update.updateDialogFilterOrder | Update.updateDialogFilters | Update.updatePhoneCallSignalingData | Update.updateChannelMessageForwards | Update.updateReadChannelDiscussionInbox | Update.updateReadChannelDiscussionOutbox | Update.updatePeerBlocked | Update.updateChannelUserTyping | Update.updatePinnedMessages | Update.updatePinnedChannelMessages | Update.updateChat | Update.updateGroupCallParticipants | Update.updateGroupCall | Update.updatePeerHistoryTTL | Update.updateChatParticipant | Update.updateChannelParticipant | Update.updateBotStopped | Update.updateGroupCallConnection | Update.updateBotCommands | Update.updatePendingJoinRequests | Update.updateBotChatInviteRequester | Update.updateMessageReactions | Update.updateAttachMenuBots | Update.updateWebViewResultSent | Update.updateBotMenuButton | Update.updateSavedRingtones | Update.updateTranscribedAudio | Update.updateReadFeaturedEmojiStickers | Update.updateUserEmojiStatus | Update.updateRecentEmojiStatuses | Update.updateRecentReactions | Update.updateMoveStickerSetToTop | Update.updateMessageExtendedMedia | Update.updateChannelPinnedTopic | Update.updateChannelPinnedTopics | Update.updateUser | Update.updateAutoSaveSettings | Update.updateGroupInvitePrivacyForbidden | Update.updateStory | Update.updateReadStories | Update.updateStoryID | Update.updateStoriesStealthMode | Update.updateSentStoryReaction | Update.updateBotChatBoost | Update.updateChannelViewForumAsMessages | Update.updatePeerWallpaper | Update.updateBotMessageReaction | Update.updateBotMessageReactions | Update.updateSavedDialogPinned | Update.updatePinnedSavedDialogs | Update.updateSavedReactionTags | Update.updateNewDiscussionMessage | Update.updateDeleteDiscussionMessages | Update.updateChannelReload;
 
 export namespace Update {
   export type updateNewMessage = {
@@ -3171,6 +3186,10 @@ export namespace Update {
     _: 'updatePinnedSavedDialogs',
     flags?: number,
     order?: Array<DialogPeer>
+  };
+
+  export type updateSavedReactionTags = {
+    _: 'updateSavedReactionTags'
   };
 
   export type updateNewDiscussionMessage = {
@@ -5136,7 +5155,8 @@ export namespace ChannelParticipant {
   export type channelParticipant = {
     _: 'channelParticipant',
     user_id: string | number,
-    date: number
+    date: number,
+    peer?: Peer
   };
 
   export type channelParticipantSelf = {
@@ -9416,6 +9436,8 @@ export namespace GlobalPrivacySettings {
       archive_and_mute_new_noncontact_peers?: true,
       keep_archived_unmuted?: true,
       keep_archived_folders?: true,
+      hide_read_marks?: true,
+      new_noncontact_peers_require_premium?: true,
     }>
   };
 }
@@ -10227,6 +10249,7 @@ export namespace MessageReactions {
     pFlags: Partial<{
       min?: true,
       can_see_list?: true,
+      reactions_as_tags?: true,
     }>,
     results: Array<ReactionCount>,
     recent_reactions?: Array<MessagePeerReaction>
@@ -12282,6 +12305,50 @@ export namespace MessagesSavedDialogs {
   };
 }
 
+/**
+ * @link https://core.telegram.org/type/SavedReactionTag
+ */
+export type SavedReactionTag = SavedReactionTag.savedReactionTag;
+
+export namespace SavedReactionTag {
+  export type savedReactionTag = {
+    _: 'savedReactionTag',
+    flags?: number,
+    reaction: Reaction,
+    title?: string,
+    count: number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/messages.SavedReactionTags
+ */
+export type MessagesSavedReactionTags = MessagesSavedReactionTags.messagesSavedReactionTagsNotModified | MessagesSavedReactionTags.messagesSavedReactionTags;
+
+export namespace MessagesSavedReactionTags {
+  export type messagesSavedReactionTagsNotModified = {
+    _: 'messages.savedReactionTagsNotModified'
+  };
+
+  export type messagesSavedReactionTags = {
+    _: 'messages.savedReactionTags',
+    tags: Array<SavedReactionTag>,
+    hash: string | number
+  };
+}
+
+/**
+ * @link https://core.telegram.org/type/OutboxReadDate
+ */
+export type OutboxReadDate = OutboxReadDate.outboxReadDate;
+
+export namespace OutboxReadDate {
+  export type outboxReadDate = {
+    _: 'outboxReadDate',
+    date: number
+  };
+}
+
 export interface ConstructorDeclMap {
   'error': Error.error,
   'inputPeerEmpty': InputPeer.inputPeerEmpty,
@@ -13485,6 +13552,11 @@ export interface ConstructorDeclMap {
   'messages.savedDialogs': MessagesSavedDialogs.messagesSavedDialogs,
   'messages.savedDialogsSlice': MessagesSavedDialogs.messagesSavedDialogsSlice,
   'messages.savedDialogsNotModified': MessagesSavedDialogs.messagesSavedDialogsNotModified,
+  'savedReactionTag': SavedReactionTag.savedReactionTag,
+  'messages.savedReactionTagsNotModified': MessagesSavedReactionTags.messagesSavedReactionTagsNotModified,
+  'messages.savedReactionTags': MessagesSavedReactionTags.messagesSavedReactionTags,
+  'updateSavedReactionTags': Update.updateSavedReactionTags,
+  'outboxReadDate': OutboxReadDate.outboxReadDate,
   'messageEntityEmoji': MessageEntity.messageEntityEmoji,
   'messageEntityHighlight': MessageEntity.messageEntityHighlight,
   'messageEntityLinebreak': MessageEntity.messageEntityLinebreak,
@@ -13700,6 +13772,7 @@ export type MessagesSearch = {
   q: string,
   from_id?: InputPeer,
   saved_peer_id?: InputPeer,
+  saved_reaction?: Array<Reaction>,
   top_msg_id?: number,
   filter: MessagesFilter,
   min_date: number,
@@ -16831,6 +16904,29 @@ export type MessagesReorderPinnedSavedDialogs = {
   order: Array<InputDialogPeer>
 };
 
+export type MessagesGetSavedReactionTags = {
+  hash: string | number
+};
+
+export type MessagesUpdateSavedReactionTag = {
+  flags?: number,
+  reaction: Reaction,
+  title?: string
+};
+
+export type MessagesGetDefaultTagReactions = {
+  hash: string | number
+};
+
+export type MessagesGetOutboxReadDate = {
+  peer: InputPeer,
+  msg_id: number
+};
+
+export type UsersGetIsPremiumRequiredToContact = {
+  id: Array<InputUser>
+};
+
 export interface MethodDeclMap {
   'invokeAfterMsg': {req: InvokeAfterMsg, res: any},
   'invokeAfterMsgs': {req: InvokeAfterMsgs, res: any},
@@ -17401,5 +17497,10 @@ export interface MethodDeclMap {
   'messages.getPinnedSavedDialogs': {req: MessagesGetPinnedSavedDialogs, res: MessagesSavedDialogs},
   'messages.toggleSavedDialogPin': {req: MessagesToggleSavedDialogPin, res: boolean},
   'messages.reorderPinnedSavedDialogs': {req: MessagesReorderPinnedSavedDialogs, res: boolean},
+  'messages.getSavedReactionTags': {req: MessagesGetSavedReactionTags, res: MessagesSavedReactionTags},
+  'messages.updateSavedReactionTag': {req: MessagesUpdateSavedReactionTag, res: boolean},
+  'messages.getDefaultTagReactions': {req: MessagesGetDefaultTagReactions, res: MessagesReactions},
+  'messages.getOutboxReadDate': {req: MessagesGetOutboxReadDate, res: OutboxReadDate},
+  'users.getIsPremiumRequiredToContact': {req: UsersGetIsPremiumRequiredToContact, res: Array<boolean>},
 }
 
