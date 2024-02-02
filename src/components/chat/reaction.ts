@@ -28,6 +28,7 @@ import BezierEasing from '../../vendor/bezierEasing';
 import safePlay from '../../helpers/dom/safePlay';
 import lottieLoader from '../../lib/rlottie/lottieLoader';
 import Scrollable from '../scrollable';
+import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 
 const CLASS_NAME = 'reaction';
 const TAG_NAME = CLASS_NAME + '-element';
@@ -282,16 +283,19 @@ export default class ReactionElement extends HTMLElement {
     this.middleware = middleware;
 
     if(type === ReactionLayoutType.Tag) {
+      // this.insertAdjacentHTML('beforeend', `
+      //   <svg class="reaction-tag-svg" width="43" height="30" viewBox="0 0 43 30" xmlns="http://www.w3.org/2000/svg">
+      //     <path class="reaction-tag-svg-path" d="M40.8317 12.0432L34.9967 4.08636C33.1129 1.51761 30.1181 0 26.9326 0H7C3.13401 0 0 3.13401 0 7V23C0 26.866 3.13401 30 7 30H26.9326C30.1181 30 33.1129 28.4824 34.9967 25.9136L40.8317 17.9568C42.1223 16.1969 42.1223 13.8031 40.8317 12.0432Z" />
+      //     <circle class="reaction-tag-svg-circle" cx="34" cy="15" r="3" />
+      //   </svg>
+      // `);
       this.insertAdjacentHTML('beforeend', `
+        <div class="reaction-tag-background"></div>
         <svg class="reaction-tag-svg" width="43" height="30" viewBox="0 0 43 30" xmlns="http://www.w3.org/2000/svg">
           <path class="reaction-tag-svg-path" d="M40.8317 12.0432L34.9967 4.08636C33.1129 1.51761 30.1181 0 26.9326 0H7C3.13401 0 0 3.13401 0 7V23C0 26.866 3.13401 30 7 30H26.9326C30.1181 30 33.1129 28.4824 34.9967 25.9136L40.8317 17.9568C42.1223 16.1969 42.1223 13.8031 40.8317 12.0432Z" />
-          <circle class="reaction-tag-svg-circle" cx="34" cy="15" r="3" />
         </svg>
+        <div class="reaction-tag-dot"></div>
       `);
-
-      // const dot = document.createElement('div');
-      // dot.classList.add('reaction-tag-dot');
-      // this.append(dot);
     }
   }
 
@@ -378,18 +382,23 @@ export default class ReactionElement extends HTMLElement {
     });
   }
 
-  public renderCounter() {
+  public renderCounter(force?: boolean) {
     const displayOn = REACTIONS_DISPLAY_COUNTER_AT[this.type];
-    if(displayOn === undefined) return;
+    if(displayOn === undefined && !force) return;
     const reactionCount = this.reactionCount;
-    if(reactionCount.count >= displayOn || (this.type === ReactionLayoutType.Block && !this.canRenderAvatars)) {
+    if(force || reactionCount.count >= displayOn || (this.type === ReactionLayoutType.Block && !this.canRenderAvatars)) {
       if(!this.counter) {
         this.counter = document.createElement(this.type === ReactionLayoutType.Inline ? 'i' : 'span');
         this.counter.classList.add(CLASS_NAME + '-counter');
       }
 
       const formatted = formatNumber(reactionCount.count);
-      if(this.counter.textContent !== formatted) {
+      if(reactionCount.title) {
+        const title = document.createElement('span');
+        title.classList.add(CLASS_NAME + '-counter-title');
+        title.append(wrapEmojiText(reactionCount.title));
+        this.counter.replaceChildren(title, ' ', formatted);
+      } else if(this.counter.textContent !== formatted) {
         this.counter.textContent = formatted;
       }
 
@@ -429,7 +438,7 @@ export default class ReactionElement extends HTMLElement {
   }
 
   public setIsChosen(isChosen = this.reactionCount.chosen_order !== undefined) {
-    if(this.type !== ReactionLayoutType.Block) return;
+    if(this.type === ReactionLayoutType.Inline) return;
     const wasChosen = this.classList.contains('is-chosen') && !this.classList.contains('backwards');
     if(wasChosen !== isChosen) {
       SetTransition({

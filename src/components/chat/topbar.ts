@@ -221,7 +221,7 @@ export default class ChatTopbar {
     this.listenerSetter.add(mediaSizes)('changeScreen', this.onChangeScreen);
 
     attachClickEvent(this.container, (e) => {
-      if(findUpClassName(e.target, 'topbar-search-container')) {
+      if(findUpClassName(e.target, 'topbar-search-container') || !(e.target as HTMLElement).isConnected) {
         return;
       }
 

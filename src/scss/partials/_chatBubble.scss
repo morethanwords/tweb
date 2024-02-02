@@ -1737,6 +1737,10 @@
       --chosen-background-color: var(--primary-color);
     }
 
+    .reaction-tag-dot {
+      background-color: var(--message-highlighting-color) !important;
+    }
+
     .reaction-block {
       &:not(.is-chosen) {
         @include hover() {

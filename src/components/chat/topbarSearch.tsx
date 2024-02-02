@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type {ReactionsContext} from '../../lib/appManagers/appReactionsManager';
 import {createEffect, createSignal, onCleanup, JSX, createMemo, onMount, splitProps, on, untrack, batch, Accessor} from 'solid-js';
 import InputSearch from '../inputSearch';
 import {ButtonIconTsx, createListTransition, createMiddleware} from '../stories/viewer';
@@ -13,14 +14,14 @@ import PopupDatePicker from '../popups/datePicker';
 import rootScope from '../../lib/rootScope';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import appDialogsManager from '../../lib/appManagers/appDialogsManager';
-import {ChannelsChannelParticipants, Message} from '../../layer';
+import {ChannelsChannelParticipants, Message, MessageReactions, Reaction, ReactionCount, SavedReactionTag} from '../../layer';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import Scrollable from '../scrollable';
 import {resolveElements} from '@solid-primitives/refs';
 import liteMode from '../../helpers/liteMode';
 import placeCaretAtEnd from '../../helpers/dom/placeCaretAtEnd';
 import {createLoadableList} from '../sidebarRight/tabs/statistics';
-import {Middleware} from '../../helpers/middleware';
+import {Middleware, getMiddleware} from '../../helpers/middleware';
 import {NULL_PEER_ID} from '../../lib/mtproto/mtproto_config';
 import whichChild from '../../helpers/dom/whichChild';
 import appImManager from '../../lib/appManagers/appImManager';
@@ -41,6 +42,12 @@ import cancelEvent from '../../helpers/dom/cancelEvent';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import AppSelectPeers from '../appSelectPeers';
 import PeerTitle from '../peerTitle';
+import ReactionsElement from './reactions';
+import ReactionElement, {ReactionLayoutType} from './reaction';
+import {ScrollableXTsx} from '../stories/list';
+import pause from '../../helpers/schedulers/pause';
+import reactionsEqual from '../../lib/appManagers/utils/reactions/reactionsEqual';
+import findUpClassName from '../../helpers/dom/findUpClassName';
 
 export const ScrollableYTsx = (props: {
   children: JSX.Element,
@@ -108,7 +115,14 @@ export function AnimationList(props: {
   return transitionList;
 }
 
-type LoadOptions = {middleware: Middleware, peerId: PeerId, threadId: number, query: string, fromPeerId?: PeerId};
+type LoadOptions = {
+  middleware: Middleware,
+  peerId: PeerId,
+  threadId: number,
+  query: string,
+  fromPeerId?: PeerId,
+  reaction?: Reaction
+};
 
 const renderHistoryResult = ({middleware, peerId, fromSavedDialog, messages, query, fromPeerId}: LoadOptions & {fromSavedDialog: boolean, messages: (Message.message | Message.messageService)[]}) => {
   const promises = messages.map(async(message) => {
@@ -137,7 +151,7 @@ const renderHistoryResult = ({middleware, peerId, fromSavedDialog, messages, que
 };
 
 const createSearchLoader = (options: LoadOptions) => {
-  const {middleware, peerId, threadId, query, fromPeerId} = options;
+  const {middleware, peerId, threadId, query, fromPeerId, reaction} = options;
   const fromSavedDialog = !!(peerId === rootScope.myId && threadId);
   let lastMessage: Message.message | Message.messageService, loading = false;
   const loadMore = async() => {
@@ -156,7 +170,8 @@ const createSearchLoader = (options: LoadOptions) => {
       offsetId,
       offsetPeerId,
       limit: 30,
-      fromPeerId
+      fromPeerId,
+      savedReaction: reaction ? [reaction as Reaction.reactionEmoji] : undefined
     });
     if(!middleware()) {
       return;
@@ -259,6 +274,7 @@ export default function TopbarSearch(props: {
   filterPeerId?: Accessor<PeerId>,
   canFilterSender?: boolean,
   query?: Accessor<string>,
+  reaction?: Accessor<Reaction>,
   onClose?: () => void,
   onDatePick?: (timestamp: number) => void
 }) {
@@ -273,14 +289,24 @@ export default function TopbarSearch(props: {
   const [filteringSender, setFilteringSender] = createSignal<boolean>(false);
   const [filterPeerId, setFilterPeerId] = createSignal<PeerId>();
   const [senderInputEntity, setSenderInputEntity] = createSignal<HTMLElement>();
-  const isActive = createMemo(() => /* true ||  */isInputFocused());
-  const shouldHaveListNavigation = createMemo(() => (isInputFocused() && count() && list()) || undefined);
+  const [savedReactionTags, setSavedReactionTags] = createSignal<SavedReactionTag[]>();
+  const [reactionsElement, setReactionsElement] = createSignal<ReactionsElement>();
+  const [reaction, setReaction] = createSignal<Reaction>();
+  const shouldShowResults = isInputFocused;
+  const shouldHaveListNavigation = createMemo(() => (shouldShowResults() && count() && list()) || undefined);
+  const shouldShowReactions = createMemo(() => {
+    const element = reactionsElement();
+    const tags = savedReactionTags();
+    return !!(element && tags?.length);
+  });
+  const isActive = createMemo(() => shouldShowReactions() || shouldShowResults());
 
   // full search replacement
   createEffect(() => {
     inputSearch.onChange(inputSearch.value = props.query());
     setFilteringSender(!!props.filterPeerId());
     setFilterPeerId(props.filterPeerId());
+    setReaction(props.reaction());
 
     onMount(() => {
       placeCaretAtEnd(inputSearch.input);
@@ -319,7 +345,7 @@ export default function TopbarSearch(props: {
   const navigationItem: NavigationItem = {
     type: 'topbar-search',
     onPop: () => {
-      if(isActive()) {
+      if(isInputFocused()) {
         blurActiveElement();
         return false;
       }
@@ -500,7 +526,8 @@ export default function TopbarSearch(props: {
       peerId,
       threadId,
       query,
-      fromPeerId
+      fromPeerId,
+      reaction: !isSender ? reaction() : undefined
     });
 
     let ref: HTMLDivElement;
@@ -596,14 +623,113 @@ export default function TopbarSearch(props: {
     )
   );
 
-  const calculateHeight = createMemo(() => {
-    if(!isActive()) {
+  const tagToReactionCount = (tag: SavedReactionTag): ReactionCount => {
+    return {
+      _: 'reactionCount',
+      count: tag.count,
+      reaction: tag.reaction,
+      title: tag.title
+    };
+  };
+
+  const tagsToMessageReactions = (tags: SavedReactionTag[]): MessageReactions => {
+    return {
+      _: 'messageReactions',
+      pFlags: {reactions_as_tags: true},
+      results: tags.map(tagToReactionCount)
+    };
+  };
+
+  // * render saved reaction tags
+  createEffect(() => {
+    const tags = savedReactionTags();
+    const element = reactionsElement();
+    if(!tags || !element) {
       return;
+    }
+
+    const reactionsContext: ReactionsContext = {
+      ...element.getContext(),
+      reactions: tagsToMessageReactions(tags)
+    };
+
+    // * set active
+    const _reaction = reaction();
+    if(_reaction) {
+      const reactionCount = reactionsContext.reactions.results.find((reactionCount) => reactionsEqual(reactionCount.reaction, _reaction));
+      if(reactionCount) {
+        reactionCount.chosen_order = 0;
+      }
+    }
+
+    element.update(reactionsContext);
+
+    console.log('savedReactionTags', reactionsContext, element);
+  });
+
+  // * load saved reaction tags
+  createEffect(() => {
+    if(props.peerId !== rootScope.myId) {
+      setReactionsElement();
+      setSavedReactionTags();
+      return;
+    }
+
+    const realMiddleware = createMiddleware().get();
+    const middlewareHelper = getMiddleware();
+    onCleanup(() => {
+      setTimeout(() => {
+        middlewareHelper.destroy();
+      }, 400);
+    });
+    const reactionsElement = new ReactionsElement();
+    reactionsElement.init({
+      context: {peerId: props.peerId, mid: 0, reactions: tagsToMessageReactions([])},
+      type: ReactionLayoutType.Block,
+      middleware: middlewareHelper.get(),
+      forceCounter: true
+    });
+    reactionsElement.classList.remove('has-no-reactions');
+    reactionsElement.classList.add('topbar-search-left-reactions');
+
+    // * reactions listener
+    const detach = attachClickEvent(reactionsElement, (e) => {
+      const reactionElement = findUpClassName(e.target, 'reaction-tag') as ReactionElement;
+      if(!reactionElement) {
+        return;
+      }
+
+      const {reactionCount} = reactionElement;
+      const {reaction} = reactionCount;
+      setReaction((prev) => {
+        if(reactionsEqual(prev, reaction)) {
+          return;
+        }
+
+        return reaction;
+      });
+    }, {cancelMouseDown: true});
+    onCleanup(detach);
+
+    rootScope.managers.appReactionsManager.getSavedReactionTags(props.threadId).then((tags) => {
+      // await pause(1000);
+      if(!realMiddleware()) {
+        return;
+      }
+
+      setReactionsElement(reactionsElement);
+      setSavedReactionTags(tags);
+    });
+  });
+
+  const calculateResultsHeight = createMemo(() => {
+    if(!shouldShowResults()) {
+      return 0;
     }
 
     const length = count();
     if(length === undefined) {
-      return;
+      return 0;
     }
 
     const paddingVertical = 8 * 2;
@@ -619,6 +745,14 @@ export default function TopbarSearch(props: {
     return Math.min(MAX_HEIGHT, height);
   });
 
+  const calculateReactionsHeight = createMemo(() => {
+    if(!isActive()) {
+      return 0;
+    }
+
+    return shouldShowReactions() ? 62 : 0;
+  });
+
   let scrollableDiv: HTMLDivElement;
   return (
     <div class="topbar-search-container">
@@ -630,10 +764,23 @@ export default function TopbarSearch(props: {
           {/* <div class="topbar-search-left-background-shadow"></div> */}
         </div>
         {inputSearch.container}
+        {/* shouldShowReactions() &&  */(
+          <div
+            class="topbar-search-left-reactions-container topbar-search-left-collapsable"
+            style={calculateReactionsHeight() ? {height: calculateReactionsHeight() + 'px'} : undefined}
+          >
+            <div class="topbar-search-left-delimiter"></div>
+            <ScrollableXTsx class="topbar-search-left-reactions-scrollable">
+              <div class="topbar-search-left-reactions-padding"></div>
+              {reactionsElement()}
+              <div class="topbar-search-left-reactions-padding"></div>
+            </ScrollableXTsx>
+          </div>
+        )}
         <ScrollableYTsx
           ref={scrollableDiv}
-          class="topbar-search-left-results"
-          style={calculateHeight() ? {height: calculateHeight() + 'px'} : undefined}
+          class="topbar-search-left-results topbar-search-left-collapsable"
+          style={calculateResultsHeight() ? {height: calculateResultsHeight() + 'px'} : undefined}
           onScrolledBottom={() => {
             loadMore()?.();
           }}

@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {MessagesReactions, type AvailableReaction, type Message, type MessagePeerReaction, type MessagesAvailableReactions, type Reaction, type ReactionCount, type Update, type Updates, ChatReactions, Peer, Document} from '../../layer';
+import {MessagesReactions, type AvailableReaction, type Message, type MessagePeerReaction, type MessagesAvailableReactions, type Reaction, type ReactionCount, type Update, type Updates, ChatReactions, Peer, Document, MessagesSavedReactionTags, SavedReactionTag} from '../../layer';
 import findAndSplice from '../../helpers/array/findAndSplice';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import assumeType from '../../helpers/assumeType';
@@ -41,22 +41,23 @@ export type PeerAvailableReactions = {
 };
 
 export type SendReactionOptions = {
-  message: Message.message,
+  message: Message.message | ReactionsContext,
   reaction?: Reaction | AvailableReaction,
   onlyLocal?: boolean,
   sendAsPeerId?: PeerId
 };
+
+export type ReactionsContext = Pick<Message.message, 'peerId' | 'mid' | 'reactions'>;
 
 export class AppReactionsManager extends AppManager {
   private availableReactions: AvailableReaction[];
   private sendReactionPromises: Map<string, Promise<any>>;
   private lastSendingTimes: Map<string, number>;
   private reactions: {[key in 'recent' | 'top']?: Reaction[]};
+  private savedReactionsTags: Map<PeerId, SavedReactionTag[]>;
 
   protected after() {
-    this.sendReactionPromises = new Map();
-    this.lastSendingTimes = new Map();
-    this.reactions = {};
+    this.clear(true);
 
     this.rootScope.addEventListener('user_auth', () => {
       setTimeout(() => {
@@ -82,6 +83,16 @@ export class AppReactionsManager extends AppManager {
       }, 7.5e3);
     });
   }
+
+  public clear = (init = false) => {
+    if(init) {
+      this.sendReactionPromises = new Map();
+      this.lastSendingTimes = new Map();
+      this.reactions = {};
+    }
+
+    this.savedReactionsTags = new Map();
+  };
 
   public resetAvailableReactions() {
     this.availableReactions = undefined;
@@ -347,7 +358,7 @@ export class AppReactionsManager extends AppManager {
     onlyLocal,
     sendAsPeerId
   }: SendReactionOptions) {
-    message = this.appMessagesManager.getMessageByPeer(message.peerId, message.mid) as typeof message;
+    message = this.appMessagesManager.getMessageByPeer(message.peerId, message.mid) as Message.message;
 
     if(reaction._ === 'availableReaction') {
       reaction = {
@@ -509,14 +520,14 @@ export class AppReactionsManager extends AppManager {
 
     if(onlyLocal) {
       message.reactions = reactions;
-      this.rootScope.dispatchEvent('messages_reactions', [{message, changedResults: []}]);
+      this.rootScope.dispatchEvent('messages_reactions', [{message: message as Message.message, changedResults: []}]);
       return Promise.resolve();
     }
 
     this.apiUpdatesManager.processLocalUpdate({
       _: 'updateMessageReactions',
-      peer: message.peer_id,
-      msg_id: message.id,
+      peer: (message as Message.message).peer_id,
+      msg_id: (message as Message.message).id,
       reactions: reactions,
       local: true
     });
@@ -572,6 +583,27 @@ export class AppReactionsManager extends AppManager {
 
       const document = messagesStickerSet.documents[Math.floor(Math.random() * length)];
       return document as Document.document;
+    });
+  }
+
+  public getSavedReactionTags(peerId?: PeerId) {
+    const {savedReactionsTags} = this;
+    const cache = savedReactionsTags.get(peerId);
+    if(cache) {
+      return cache;
+    }
+
+    return this.apiManager.invokeApiSingleProcess({
+      method: 'messages.getSavedReactionTags',
+      params: {
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        hash: 0
+      },
+      processResult: (messagesSavedReactionTags) => {
+        const tags = (messagesSavedReactionTags as MessagesSavedReactionTags.messagesSavedReactionTags).tags;
+        savedReactionsTags.set(peerId, tags);
+        return tags;
+      }
     });
   }
 }

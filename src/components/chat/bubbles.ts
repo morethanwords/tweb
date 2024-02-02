@@ -607,7 +607,7 @@ export default class ChatBubbles {
       const reactionsElements = Array.from(_bubble.querySelectorAll('reactions-element')) as ReactionsElement[];
       if(reactionsElements.length) {
         reactionsElements.forEach((reactionsElement) => {
-          reactionsElement.changeMessage(message as Message.message);
+          reactionsElement.changeContext(message as Message.message);
         });
       }
 
@@ -2125,8 +2125,12 @@ export default class ChatBubbles {
       const reactionsElement = reactionElement.parentElement as ReactionsElement;
       const reactionCount = reactionsElement.getReactionCount(reactionElement);
 
-      const message = reactionsElement.getMessage();
-      this.chat.sendReaction({message, reaction: reactionCount.reaction});
+      if(reactionsElement.getType() === ReactionLayoutType.Tag) {
+        this.chat.initSearch({reaction: reactionCount.reaction});
+      } else {
+        const message = reactionsElement.getContext();
+        this.chat.sendReaction({message, reaction: reactionCount.reaction});
+      }
 
       return;
     }
@@ -7247,7 +7251,7 @@ export default class ChatBubbles {
 
     const reactionsElement = new ReactionsElement();
     reactionsElement.init({
-      message: reactionsMessage,
+      context: reactionsMessage,
       type: ReactionLayoutType.Block,
       middleware: bubble.middlewareHelper.get(),
       animationGroup: this.chat.animationGroup,

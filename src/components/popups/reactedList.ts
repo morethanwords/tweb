@@ -124,7 +124,7 @@ export default class PopupReactedList extends PopupElement {
     });
 
     reactionsElement.init({
-      message: newMessage,
+      context: newMessage,
       type: ReactionLayoutType.Block,
       middleware: this.middlewareHelper.get()
     });

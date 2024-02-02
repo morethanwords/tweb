@@ -6800,6 +6800,12 @@ export class AppMessagesManager extends AppManager {
     options.offsetId ??= 0;
     options.historyType ??= this.getHistoryType(options.peerId, options.threadId);
     options.searchType ??= this.getSearchType(options);
+    if(options.savedReaction) {
+      options.savedReaction = options.savedReaction.filter(Boolean);
+      if(!options.savedReaction.length) {
+        delete options.savedReaction;
+      }
+    }
 
     if(options.addOffset === undefined) {
       options.addOffset = 0;
@@ -7269,7 +7275,8 @@ export class AppMessagesManager extends AppManager {
     minDate,
     maxDate,
     historyType = this.getHistoryType(peerId, threadId),
-    fromPeerId
+    fromPeerId,
+    savedReaction
   }: RequestHistoryOptions) {
     const offsetMessage = offsetId && this.getMessageByPeer(offsetPeerId || peerId, offsetId);
     offsetPeerId ??= offsetMessage?.peerId;
@@ -7302,7 +7309,8 @@ export class AppMessagesManager extends AppManager {
         max_date: maxDate,
         top_msg_id: historyType === HistoryType.Saved ? undefined : threadId,
         saved_peer_id: historyType === HistoryType.Saved ? this.appPeersManager.getInputPeerById(threadId) : undefined,
-        from_id: fromPeerId ? this.appPeersManager.getInputPeerById(fromPeerId) : undefined
+        from_id: fromPeerId ? this.appPeersManager.getInputPeerById(fromPeerId) : undefined,
+        saved_reaction: savedReaction
       };
 
       method = 'messages.search';

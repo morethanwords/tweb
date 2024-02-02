@@ -105,11 +105,9 @@
       }
     }
 
-    &-results {
-      max-height: 271px;
+    &-collapsable {
       height: 0px;
       overflow: hidden;
-      max-width: 100%;
       border-bottom-left-radius: 22px;
       border-bottom-right-radius: 22px;
       position: relative;
@@ -117,6 +115,11 @@
       @include animation-level(2) {
         transition: height var(--transition-standard-in);
       }
+    }
+
+    &-results {
+      max-height: 271px;
+      max-width: 100%;
 
       &-padding {
         height: 8px;
@@ -134,6 +137,29 @@
 
     &-sender {
       border-radius: $border-radius-medium;
+    }
+
+    &-reactions {
+      --margin-vertical: .5rem;
+      --margin-horizontal: .5625rem;
+      padding: .5rem 0 1rem;
+      margin-top: calc(var(--margin-vertical) * -1);
+      flex-wrap: nowrap;
+      flex: 0 0 auto;
+
+      &-padding {
+        width: 1rem;
+      }
+
+      &-scrollable {
+        position: relative;
+        display: flex;
+      }
+
+      &-padding,
+      .reaction-tag {
+        flex: 0 0 auto;
+      }
     }
   }
 

@@ -123,7 +123,7 @@ export default class Chat extends EventListenerBase<{
 
   public middlewareHelper: MiddlewareHelper;
 
-  public searchSignal: ReturnType<typeof createUnifiedSignal<{query?: string, filterPeerId?: PeerId}>>;
+  public searchSignal: ReturnType<typeof createUnifiedSignal<Parameters<Chat['initSearch']>[0]>>;
 
   constructor(
     public appImManager: AppImManager,
@@ -450,6 +450,7 @@ export default class Chat extends EventListenerBase<{
       const [needSearch, setNeedSearch] = createSignal(false);
       const [query, setQuery] = createSignal('', {equals: false});
       const [filterPeerId, setFilterPeerId] = createSignal<PeerId>(undefined, {equals: false});
+      const [reaction, setReaction] = createSignal<Reaction>(undefined, {equals: false});
       createEffect<HTMLElement>((topbarSearch) => {
         if(!needSearch()) {
           if(!topbarSearch) {
@@ -468,6 +469,7 @@ export default class Chat extends EventListenerBase<{
           canFilterSender: this.isRealGroup,
           query,
           filterPeerId,
+          reaction,
           onClose: () => {
             this.searchSignal(undefined);
           },
@@ -484,6 +486,7 @@ export default class Chat extends EventListenerBase<{
         const s = this.searchSignal();
         setQuery(s?.query);
         setFilterPeerId(s?.filterPeerId);
+        setReaction(s?.reaction);
         setNeedSearch(!!s);
       });
     });
@@ -605,7 +608,11 @@ export default class Chat extends EventListenerBase<{
     }
 
     this.messagesStorageKey = `${this.peerId}_${this.type === ChatType.Scheduled ? 'scheduled' : 'history'}`;
-    this.historyStorageKey = getHistoryStorageKey({type: this.threadId ? 'replies' : 'history', peerId: this.peerId, threadId: this.threadId});
+    this.historyStorageKey = getHistoryStorageKey({
+      type: this.threadId ? 'replies' : 'history',
+      peerId: this.peerId,
+      threadId: this.threadId
+    });
 
     this.container && this.container.classList.toggle('no-forwards', this.noForwards);
 
@@ -781,8 +788,9 @@ export default class Chat extends EventListenerBase<{
     return peerId === rootScope.myId || peerId === REPLIES_PEER_ID || this.managers.appPeersManager.isAnyGroup(peerId);
   }
 
-  public initSearch(query?: string, filterPeerId?: PeerId) {
+  public initSearch(options: {query?: string, filterPeerId?: PeerId, reaction?: Reaction} = {}) {
     if(!this.peerId) return;
+    const {query} = options;
 
     if(mediaSizes.isMobile) {
       if(!this.search) {
@@ -791,7 +799,8 @@ export default class Chat extends EventListenerBase<{
         this.search.setQuery(query);
       }
     } else {
-      this.searchSignal({query: query || '', filterPeerId});
+      options.query ||= '';
+      this.searchSignal(options);
       // let tab = appSidebarRight.getTab(AppPrivateSearchTab);
       // tab ||= appSidebarRight.createTab(AppPrivateSearchTab);
 

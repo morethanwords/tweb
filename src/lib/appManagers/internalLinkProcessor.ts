@@ -90,7 +90,7 @@ export class InternalLinkProcessor {
           return;
         }
 
-        return appImManager.chat.initSearch('#' + hashtag + ' ');
+        return appImManager.chat.initSearch({query: '#' + hashtag + ' '});
       }
     });
 

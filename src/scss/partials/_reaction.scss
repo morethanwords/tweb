@@ -194,31 +194,95 @@
     --reaction-offset: -.5625rem;
     --reaction-total-size: calc(var(--reaction-size) + var(--additional-height));
     min-width: 2.6875rem;
-    padding-inline-start: .375rem;
+    padding-inline: .375rem;
 
-    &-svg {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      fill: var(--chosen-background-color);
+    &.is-chosen {
+      &:not(.backwards) {
+        .reaction-tag-svg {
+          fill: var(--chosen-background-color);
+        }
+  
+        // .reaction-tag-svg-circle {
+        //   fill: var(--message-reaction-tag-dot-color);
+        // }
+  
+        .reaction-tag-dot {
+          background-color: var(--message-reaction-tag-dot-color);
+        }
+  
+        .reaction-tag-background {
+          background-color: var(--chosen-background-color);
+        }
+  
+        .reaction-counter {
+          color: #fff;
+        }
+      }
 
-      &-circle {
-        fill: var(--message-reaction-tag-dot-color);
+      &.animating {
+        .reaction-tag-svg {
+          transition: fill var(--transition-standard-in)
+        }
+
+        .reaction-tag-dot,
+        .reaction-tag-background {
+          transition: background-color var(--transition-standard-in);
+        }
+
+        .reaction-counter {
+          transition: color var(--transition-standard-in);
+          // transition: color 1s linear;
+        }
       }
     }
 
-    // &-dot {
-    //   position: absolute;
-    //   right: .4375rem;
-    //   width: .375rem;
-    //   height: .375rem;
-    //   background-color: var(--message-reaction-tag-dot-color);
-    //   border-radius: 50%;
-    // }
+    &-svg {
+      position: absolute;
+      top: 0;
+      inset-inline-end: 0;
+      width: 43px;
+      height: 30px;
+      fill: var(--old-input-background-color);
+
+      // &-circle {
+      //   fill: rgba(155, 160, 165, .4);
+      // }
+    }
+
+    &-dot {
+      position: relative;
+      margin-left: 5px;
+      width: .375rem;
+      height: .375rem;
+      background-color: rgba(155, 160, 165, .4);
+      border-radius: 50%;
+      order: 999;
+    }
+
+    &-background {
+      position: absolute;
+      inset: 0;
+      background-color: var(--old-input-background-color);
+      border-radius: inherit;
+      margin-inline-end: 18px;
+      border-radius: 7px;
+    }
 
     // .reaction-sticker {
     //   z-index: 1;
+    // }
+  }
+
+  &-tag &-counter {
+    font-size: var(--font-size-16) !important;
+    font-weight: var(--font-weight-bold);
+    margin-inline: .3125rem .0625rem;
+    line-height: 21px;
+    position: relative;
+    color: #9BA0A5;
+
+    // &-title {
+    //   font-size: var(--font-size-14);
     // }
   }
 }

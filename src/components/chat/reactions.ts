@@ -4,12 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type {ReactionsContext} from '../../lib/appManagers/appReactionsManager';
 import forEachReverse from '../../helpers/array/forEachReverse';
 import callbackifyAll from '../../helpers/callbackifyAll';
 import positionElementByIndex from '../../helpers/dom/positionElementByIndex';
 import {makeMediaSize} from '../../helpers/mediaSize';
 import {Middleware, MiddlewareHelper} from '../../helpers/middleware';
-import {Message, ReactionCount} from '../../layer';
+import {ReactionCount} from '../../layer';
 import appImManager from '../../lib/appManagers/appImManager';
 import {AppManagers} from '../../lib/appManagers/managers';
 import reactionsEqual from '../../lib/appManagers/utils/reactions/reactionsEqual';
@@ -26,7 +27,7 @@ const REACTIONS_ELEMENTS: Map<string, Set<ReactionsElement>> = new Map();
 export {REACTIONS_ELEMENTS};
 
 export default class ReactionsElement extends HTMLElement {
-  private message: Message.message;
+  private context: ReactionsContext;
   private key: string;
   private isPlaceholder: boolean;
   private type: ReactionLayoutType;
@@ -39,6 +40,7 @@ export default class ReactionsElement extends HTMLElement {
   private customEmojiRendererMiddlewareHelper: MiddlewareHelper;
   private animationGroup: AnimationItemGroup;
   private lazyLoadQueue: LazyLoadQueue;
+  private forceCounter: boolean;
 
   constructor() {
     super();
@@ -70,20 +72,24 @@ export default class ReactionsElement extends HTMLElement {
     }
   }
 
+  public getType() {
+    return this.type;
+  }
+
   public getReactionCount(reactionElement: ReactionElement) {
     return this.sorted[this.sorted.indexOf(reactionElement)].reactionCount;
   }
 
-  public getMessage() {
-    return this.message;
+  public getContext() {
+    return this.context;
   }
 
-  public shouldUseTagsForMessage(message: Message.message) {
-    if(message.peerId !== rootScope.myId) {
+  public shouldUseTagsForContext(context: ReactionsElement['context']) {
+    if(context.peerId !== rootScope.myId) {
       return false;
     }
 
-    const reactions = message.reactions;
+    const reactions = context.reactions;
     if(!reactions || reactions.pFlags.reactions_as_tags) {
       return true;
     }
@@ -92,19 +98,21 @@ export default class ReactionsElement extends HTMLElement {
   }
 
   public init({
-    message,
+    context,
     type,
     middleware,
     isPlaceholder = this.isPlaceholder,
     animationGroup,
-    lazyLoadQueue
+    lazyLoadQueue,
+    forceCounter
   }: {
-    message: Message.message,
+    context: ReactionsContext,
     type: ReactionLayoutType,
     middleware: Middleware,
     isPlaceholder?: boolean,
     animationGroup?: AnimationItemGroup,
-    lazyLoadQueue?: LazyLoadQueue
+    lazyLoadQueue?: LazyLoadQueue,
+    forceCounter?: boolean
   }) {
     if(this.key !== undefined) {
       this.disconnectedCallback();
@@ -116,12 +124,13 @@ export default class ReactionsElement extends HTMLElement {
       });
     }
 
-    this.message = message;
-    this.key = this.message.peerId + '_' + this.message.mid;
+    this.context = context;
+    this.key = this.context.peerId + '_' + this.context.mid;
     this.middleware = middleware;
     this.isPlaceholder = isPlaceholder;
     this.animationGroup = animationGroup;
     this.lazyLoadQueue = lazyLoadQueue;
+    this.forceCounter = forceCounter;
 
     this.setType(type);
 
@@ -129,7 +138,7 @@ export default class ReactionsElement extends HTMLElement {
   }
 
   public setType(type: ReactionLayoutType) {
-    if(type === ReactionLayoutType.Block && this.shouldUseTagsForMessage(this.message)) {
+    if(type === ReactionLayoutType.Block && this.shouldUseTagsForContext(this.context)) {
       type = ReactionLayoutType.Tag;
     }
 
@@ -147,21 +156,21 @@ export default class ReactionsElement extends HTMLElement {
     this.classList.toggle(CLASS_NAME + '-like-block', type === ReactionLayoutType.Block || type === ReactionLayoutType.Tag);
   }
 
-  public changeMessage(message: Message.message) {
+  public changeContext(context: ReactionsContext) {
     return this.init({
-      message,
+      context,
       type: this.type,
       middleware: this.middleware
     });
   }
 
-  public update(message: Message.message, changedResults?: ReactionCount[], waitPromise?: Promise<any>) {
-    this.message = message;
+  public update(context: ReactionsContext, changedResults?: ReactionCount[], waitPromise?: Promise<any>) {
+    this.context = context;
     this.render(changedResults, waitPromise);
   }
 
   public render(changedResults?: ReactionCount[], waitPromise?: Promise<any>) {
-    const reactions = this.message.reactions;
+    const reactions = this.context.reactions;
     const hasReactions = !!(reactions && reactions.results.length);
     this.classList.toggle('has-no-reactions', !hasReactions);
     if(!hasReactions && !this.sorted.length) return;
@@ -177,7 +186,7 @@ export default class ReactionsElement extends HTMLElement {
         //   })
       ) : [];
 
-    // if(this.message.peerId.isUser()) {
+    // if(this.context.peerId.isUser()) {
     //   counts.sort((a, b) => (b.count - a.count) || ((b.chosen_order ?? 0) - (a.chosen_order ?? 0)));
     // } else {
     counts.sort((a, b) => (b.count - a.count) || ((a.chosen_order ?? 0) - (b.chosen_order ?? 0)));
@@ -197,7 +206,7 @@ export default class ReactionsElement extends HTMLElement {
 
     const totalReactions = counts.reduce((acc, c) => acc + c.count, 0);
     const canRenderAvatars = reactions &&
-      (!!reactions.pFlags.can_see_list || this.message.peerId.isUser()) &&
+      (!!reactions.pFlags.can_see_list || this.context.peerId.isUser()) &&
       totalReactions < REACTIONS_DISPLAY_COUNTER_AT[this.type];
     const customEmojiElements: ReturnType<ReactionElement['render']>[] = new Array(counts.length);
     this.sorted = counts.map((reactionCount, idx, arr) => {
@@ -218,7 +227,7 @@ export default class ReactionsElement extends HTMLElement {
       reactionElement.reactionCount = {...reactionCount};
       reactionElement.setCanRenderAvatars(canRenderAvatars);
       const customEmojiElement = reactionElement.render(this.isPlaceholder);
-      reactionElement.renderCounter();
+      reactionElement.renderCounter(this.forceCounter);
       reactionElement.renderAvatars(recentReactions);
       reactionElement.setIsChosen();
 
@@ -309,7 +318,7 @@ export default class ReactionsElement extends HTMLElement {
 
   private handleChangedResults(changedResults: ReactionCount[], waitPromise?: Promise<any>) {
     // ! temp
-    if(this.message.peerId !== appImManager.chat.peerId) return;
+    if(this.context.peerId !== appImManager.chat.peerId) return;
 
     changedResults.forEach((reactionCount) => {
       const reactionElement = this.sorted.find((reactionElement) => {

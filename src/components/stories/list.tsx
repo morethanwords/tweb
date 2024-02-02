@@ -38,10 +38,11 @@ const STATE_UNFOLDED = 0;
 
 export const ScrollableXTsx = (props: {
   children: JSX.Element
-}) => {
+} & JSX.HTMLAttributes<HTMLDivElement>) => {
+  const [, rest] = splitProps(props, []);
   let container: HTMLDivElement;
   const ret = (
-    <div ref={container}>
+    <div ref={container} {...rest}>
       {props.children}
     </div>
   );

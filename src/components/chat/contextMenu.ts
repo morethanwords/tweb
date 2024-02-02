@@ -399,7 +399,7 @@ export default class ChatContextMenu {
         icon: 'search',
         text: 'Search',
         onClick: () => {
-          this.chat.initSearch('', this.avatarPeerId);
+          this.chat.initSearch({filterPeerId: this.avatarPeerId});
         },
         verify: () => this.chat.isRealGroup
       }];
@@ -517,7 +517,7 @@ export default class ChatContextMenu {
       text: 'Chat.SearchSelected',
       onClick: () => {
         const selection = document.getSelection();
-        this.chat.initSearch(selection.toString());
+        this.chat.initSearch({query: selection.toString()});
       },
       verify: () => !!(this.message as Message.message).message && this.isTextSelected
     }, {
