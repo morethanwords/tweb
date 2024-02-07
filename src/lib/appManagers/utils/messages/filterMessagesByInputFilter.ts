@@ -21,7 +21,7 @@ export default function filterMessagesByInputFilter({
   limit: number,
   savedReaction?: (Reaction.reactionEmoji | Reaction.reactionCustomEmoji)[]
 }) {
-  if(inputFilter === 'inputMessagesFilterEmpty') {
+  if(inputFilter === 'inputMessagesFilterEmpty' && !savedReaction) {
     return messages.slice(0, limit);
   }
 

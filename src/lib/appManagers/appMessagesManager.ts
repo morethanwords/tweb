@@ -108,6 +108,7 @@ export type SendFileDetails = {
 
 export type HistoryStorageKey = `${HistoryStorage['type']}_${PeerId}` | `replies_${PeerId}_${number}` | `search_${PeerId}_${SearchStorageFilterKey}_${number}`;
 export type HistoryStorage = {
+  _maxId: number,
   _count: number | null,
   count: number | null,
   history: SlicedArray<number>,
@@ -1767,12 +1768,10 @@ export class AppMessagesManager extends AppManager {
       const storages: HistoryStorage[] = [
         this.getHistoryStorage(peerId),
         options.threadId ? this.getHistoryStorage(peerId, options.threadId) : undefined
-      ];
+      ].filter(Boolean);
 
       for(const storage of storages) {
-        if(storage) {
-          storage.history.unshift(messageId);
-        }
+        storage.history.unshift(messageId);
       }
 
       this.saveMessages([message], {storage, isOutgoing: true});
@@ -1787,6 +1786,9 @@ export class AppMessagesManager extends AppManager {
 
       callbacks.push(() => {
         this.rootScope.dispatchEvent('history_append', {storageKey: storage.key, message});
+        // storages.forEach((historyStorage) => {
+        //   this.rootScope.dispatchEvent('history_append', {storageKey: historyStorage.key, message});
+        // });
       });
     }
 
@@ -5187,6 +5189,7 @@ export class AppMessagesManager extends AppManager {
       history: new SlicedArray(),
       type: options.type,
       key: getHistoryStorageKey(options),
+      _maxId: undefined,
       _count: null,
       get count() {
         return this._count;
@@ -5196,6 +5199,20 @@ export class AppMessagesManager extends AppManager {
         if(self.historyMaxIdSubscribed.has(this.key)) {
           self.rootScope.dispatchEvent('history_count', {historyKey: this.key, count});
         }
+      },
+      get maxId() {
+        const maxId = this._maxId;
+        if(maxId) {
+          return maxId;
+        }
+
+        const first = this.history.first;
+        if(first.isEnd(SliceEnd.Bottom)) {
+          return first[0];
+        }
+      },
+      set maxId(maxId) {
+        this._maxId = maxId;
       }
     };
   }
@@ -5209,8 +5226,12 @@ export class AppMessagesManager extends AppManager {
     return this.historiesStorage[peerId] ??= this.processNewHistoryStorage(peerId, this.createHistoryStorage({type: 'history', peerId}));
   }
 
-  public getHistoryStorageTransferable(peerId: PeerId, threadId?: number) {
-    const historyStorage = this.getHistoryStorage(peerId, threadId);
+  public getHistoryStorageTransferable(options: RequestHistoryOptions & {
+    backLimit?: number,
+    historyStorage?: HistoryStorage
+  }) {
+    this.processRequestHistoryOptions(options);
+    const historyStorage = options.historyStorage;
     const {
       count,
       history,
@@ -6790,13 +6811,7 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
-  /**
-   * * https://core.telegram.org/api/offsets, offset_id is inclusive
-   */
-  public getHistory(options: RequestHistoryOptions & {
-    backLimit?: number,
-    historyStorage?: HistoryStorage
-  }): Promise<HistoryResult> | HistoryResult {
+  public processRequestHistoryOptions(options: RequestHistoryOptions & {backLimit?: number, historyStorage?: HistoryStorage}) {
     options.offsetId ??= 0;
     options.historyType ??= this.getHistoryType(options.peerId, options.threadId);
     options.searchType ??= this.getSearchType(options);
@@ -6804,6 +6819,8 @@ export class AppMessagesManager extends AppManager {
       options.savedReaction = options.savedReaction.filter(Boolean);
       if(!options.savedReaction.length) {
         delete options.savedReaction;
+      } else {
+        options.inputFilter ??= {_: 'inputMessagesFilterEmpty'};
       }
     }
 
@@ -6823,6 +6840,18 @@ export class AppMessagesManager extends AppManager {
     options.historyStorage ??= options.searchType ?
       this.getSearchStorage(options) :
       this.getHistoryStorage(options.peerId, options.threadId);
+
+    return options;
+  }
+
+  /**
+   * * https://core.telegram.org/api/offsets, offset_id is inclusive
+   */
+  public getHistory(options: RequestHistoryOptions & {
+    backLimit?: number,
+    historyStorage?: HistoryStorage
+  }): Promise<HistoryResult> | HistoryResult {
+    this.processRequestHistoryOptions(options);
 
     const {historyStorage, limit, addOffset, offsetId, needRealOffsetIdOffset} = options;
 
@@ -7300,6 +7329,10 @@ export class AppMessagesManager extends AppManager {
       hash: 0
     };
 
+    if(savedReaction) {
+      inputFilter ??= {_: 'inputMessagesFilterEmpty'};
+    }
+
     if(inputFilter && peerId && !nextRate && folderId === undefined/*  || !query */) {
       const searchOptions: MessagesSearch = {
         ...commonOptions,
@@ -7739,6 +7772,16 @@ export class AppMessagesManager extends AppManager {
 
       if(shouldClearContexts) {
         this.updateMessageContextForDeletion(message, true);
+
+        // * it should have a better place :(
+        const reactions = (message as Message.message).reactions;
+        if(reactions && reactions.pFlags.reactions_as_tags) {
+          this.appReactionsManager.processMessageReactionsChanges({
+            message: message as Message.message,
+            changedResults: [],
+            removedResults: reactions.results
+          });
+        }
       }
 
       this.deleteMessageFromStorage(storage, mid);
@@ -7853,7 +7896,7 @@ export class AppMessagesManager extends AppManager {
   };
 
   private batchUpdateReactions = (batch: Map<string, MessageReactions>) => {
-    const toDispatch: {message: Message.message, changedResults: ReactionCount.reactionCount[]}[] = [];
+    const toDispatch: BroadcastEvents['messages_reactions'] = [];
 
     const map = this.getMessagesFromMap(batch);
     for(const [message, previousReactions] of map) {
@@ -7874,7 +7917,11 @@ export class AppMessagesManager extends AppManager {
         );
       });
 
-      toDispatch.push({message, changedResults});
+      const removedResults = previousResults.filter((reactionCount) => {
+        return !results.some((_reactionCount) => reactionsEqual(_reactionCount.reaction, reactionCount.reaction));
+      });
+
+      toDispatch.push({message, changedResults, removedResults});
     }
 
     return toDispatch;

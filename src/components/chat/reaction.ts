@@ -29,6 +29,8 @@ import safePlay from '../../helpers/dom/safePlay';
 import lottieLoader from '../../lib/rlottie/lottieLoader';
 import Scrollable from '../scrollable';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
+import {savedReactionTags} from './reactions';
+import reactionsEqual from '../../lib/appManagers/utils/reactions/reactionsEqual';
 
 const CLASS_NAME = 'reaction';
 const TAG_NAME = CLASS_NAME + '-element';
@@ -382,22 +384,37 @@ export default class ReactionElement extends HTMLElement {
     });
   }
 
+  private findTitle() {
+    let title: string;
+    if(this.type === ReactionLayoutType.Tag) {
+      const tag = savedReactionTags.find((tag) => reactionsEqual(tag.reaction, this.reactionCount.reaction));
+      title = tag?.title;
+    }
+
+    return title;
+  }
+
   public renderCounter(force?: boolean) {
+    const title = this.findTitle();
     const displayOn = REACTIONS_DISPLAY_COUNTER_AT[this.type];
-    if(displayOn === undefined && !force) return;
+    if(displayOn === undefined && !force && !title) return;
     const reactionCount = this.reactionCount;
-    if(force || reactionCount.count >= displayOn || (this.type === ReactionLayoutType.Block && !this.canRenderAvatars)) {
+
+    if(force || title || reactionCount.count >= displayOn || (this.type === ReactionLayoutType.Block && !this.canRenderAvatars)) {
       if(!this.counter) {
         this.counter = document.createElement(this.type === ReactionLayoutType.Inline ? 'i' : 'span');
         this.counter.classList.add(CLASS_NAME + '-counter');
       }
 
       const formatted = formatNumber(reactionCount.count);
-      if(reactionCount.title) {
-        const title = document.createElement('span');
-        title.classList.add(CLASS_NAME + '-counter-title');
-        title.append(wrapEmojiText(reactionCount.title));
-        this.counter.replaceChildren(title, ' ', formatted);
+      if(title) {
+        const span = document.createElement('span');
+        span.classList.add(CLASS_NAME + '-counter-title');
+        span.append(wrapEmojiText(title));
+        this.counter.replaceChildren(span);
+        if(force) {
+          this.counter.append(' ', formatted);
+        }
       } else if(this.counter.textContent !== formatted) {
         this.counter.textContent = formatted;
       }

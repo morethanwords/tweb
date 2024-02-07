@@ -20,6 +20,12 @@ import reactionsEqual from './utils/reactions/reactionsEqual';
 import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
 import availableReactionToReaction from './utils/reactions/availableReactionToReaction';
 import {NULL_PEER_ID} from '../mtproto/mtproto_config';
+import insertInDescendSortedArray from '../../helpers/array/insertInDescendSortedArray';
+import {BroadcastEvents} from '../rootScope';
+import {md5} from 'js-md5';
+import bytesFromHex from '../../helpers/bytes/bytesFromHex';
+import {bigIntFromBytes} from '../../helpers/bigInt/bigIntConversion';
+import bigInt from 'big-integer';
 
 const SAVE_DOC_KEYS = [
   'static_icon' as const,
@@ -54,7 +60,7 @@ export class AppReactionsManager extends AppManager {
   private sendReactionPromises: Map<string, Promise<any>>;
   private lastSendingTimes: Map<string, number>;
   private reactions: {[key in 'recent' | 'top']?: Reaction[]};
-  private savedReactionsTags: Map<PeerId, SavedReactionTag[]>;
+  private savedReactionsTags: Map<PeerId, MaybePromise<SavedReactionTag[]>>;
 
   protected after() {
     this.clear(true);
@@ -81,6 +87,30 @@ export class AppReactionsManager extends AppManager {
 
         this.getTopReactions();
       }, 7.5e3);
+
+      this.getSavedReactionTags();
+    });
+
+    this.apiUpdatesManager.addMultipleEventsListeners({
+      updateSavedReactionTags: ({tags, savedPeerId}) => {
+        if(!tags) {
+          if(this.savedReactionsTags.get(savedPeerId)) {
+            Promise.resolve(this.getSavedReactionTags(savedPeerId, true)).then((tags) => {
+              this.apiUpdatesManager.processLocalUpdate({_: 'updateSavedReactionTags', tags, savedPeerId});
+            });
+          }
+
+          return;
+        }
+
+        this.setSavedReactionTags(savedPeerId, tags);
+      }
+    });
+
+    this.rootScope.addEventListener('messages_reactions', (arr) => {
+      for(const item of arr) {
+        this.processMessageReactionsChanges(item);
+      }
     });
   }
 
@@ -520,7 +550,7 @@ export class AppReactionsManager extends AppManager {
 
     if(onlyLocal) {
       message.reactions = reactions;
-      this.rootScope.dispatchEvent('messages_reactions', [{message: message as Message.message, changedResults: []}]);
+      this.rootScope.dispatchEvent('messages_reactions', [{message: message as Message.message, changedResults: [], removedResults: []}]);
       return Promise.resolve();
     }
 
@@ -586,24 +616,136 @@ export class AppReactionsManager extends AppManager {
     });
   }
 
-  public getSavedReactionTags(peerId?: PeerId) {
+  private setSavedReactionTags(savedPeerId: PeerId, tags: SavedReactionTag[]) {
+    this.savedReactionsTags.set(savedPeerId, tags);
+    this.rootScope.dispatchEvent('saved_tags', {savedPeerId, tags});
+  }
+
+  public getSavedReactionTags(savedPeerId?: PeerId, overwrite?: boolean): MaybePromise<SavedReactionTag[]> {
     const {savedReactionsTags} = this;
-    const cache = savedReactionsTags.get(peerId);
-    if(cache) {
+    const cache = savedReactionsTags.get(savedPeerId);
+    if(cache && !overwrite) {
       return cache;
     }
 
-    return this.apiManager.invokeApiSingleProcess({
-      method: 'messages.getSavedReactionTags',
-      params: {
-        peer: this.appPeersManager.getInputPeerById(peerId),
-        hash: 0
-      },
-      processResult: (messagesSavedReactionTags) => {
-        const tags = (messagesSavedReactionTags as MessagesSavedReactionTags.messagesSavedReactionTags).tags;
-        savedReactionsTags.set(peerId, tags);
-        return tags;
+    const promise = this.apiManager.invokeApi('messages.getSavedReactionTags', {
+      peer: savedPeerId ? this.appPeersManager.getInputPeerById(savedPeerId) : undefined,
+      hash: 0
+    }).then((messagesSavedReactionTags) => {
+      const tags = (messagesSavedReactionTags as MessagesSavedReactionTags.messagesSavedReactionTags).tags || [];
+      if(savedReactionsTags.get(savedPeerId) === promise) {
+        // for(const tag of tags) {
+        //   const {historyStorage} = this.appMessagesManager.processRequestHistoryOptions({
+        //     peerId: peerId || this.appPeersManager.peerId,
+        //     savedReaction: [tag.reaction as Reaction.reactionCustomEmoji]
+        //   });
+
+        //   historyStorage.count = tag.count;
+        // }
+
+        this.setSavedReactionTags(savedPeerId, tags);
       }
+
+      return this.getSavedReactionTags(savedPeerId);
+    });
+
+    savedReactionsTags.set(savedPeerId, promise);
+    return promise;
+  }
+
+  public processMessageReactionsChanges({message, changedResults, removedResults, savedPeerId}: BroadcastEvents['messages_reactions'][0] & {savedPeerId?: PeerId}) {
+    if(message.peerId !== this.appPeersManager.peerId) {
+      return;
+    }
+
+    const {reactions} = message;
+    if(reactions && !reactions.pFlags.reactions_as_tags) {
+      return;
+    }
+
+    if(savedPeerId === undefined) {
+      this.processMessageReactionsChanges({
+        message,
+        changedResults,
+        removedResults,
+        savedPeerId: this.appPeersManager.getPeerId(message.saved_peer_id)
+      });
+    }
+
+    const tags = this.savedReactionsTags.get(savedPeerId);
+    if(!tags) {
+      return;
+    }
+
+    if(tags instanceof Promise) {
+      this.apiUpdatesManager.processLocalUpdate({_: 'updateSavedReactionTags', savedPeerId});
+      return;
+    }
+
+    assumeType<SavedReactionTag[]>(tags);
+
+    const getTagLongId = (tag: SavedReactionTag) => {
+      const docId = (tag.reaction as Reaction.reactionCustomEmoji).document_id;
+      if(docId) {
+        return bigInt('' + docId, 10);
+      }
+
+      return bigIntFromBytes(bytesFromHex(md5((tag.reaction as Reaction.reactionEmoji).emoticon).slice(0, 16)));
+    };
+
+    const insert = (tag: SavedReactionTag) => {
+      const cmp = (tag1: SavedReactionTag, tag2: SavedReactionTag) => {
+        const diff = tag1.count - tag2.count;
+        if(diff) {
+          return diff;
+        }
+
+        const tag1LongId = getTagLongId(tag1);
+        const tag2LongId = getTagLongId(tag2);
+        return tag1LongId.compare(tag2LongId);
+      };
+
+      insertInDescendSortedArray(
+        tags,
+        tag,
+        ((tag: any) => tag) as any,
+        undefined,
+        cmp as any
+      );
+    };
+
+    for(const reactionCount of removedResults) {
+      const index = tags.findIndex((tag) => reactionsEqual(tag.reaction, reactionCount.reaction));
+      const tag = tags[index];
+      if(!tag) {
+        continue;
+      }
+
+      if(!--tag.count) {
+        tags.splice(index, 1);
+      } else {
+        insert(tag);
+      }
+    }
+
+    for(const reactionCount of changedResults) {
+      let tag = tags.find((tag) => reactionsEqual(tag.reaction, reactionCount.reaction));
+      if(!tag) {
+        tag = {
+          _: 'savedReactionTag',
+          count: 0,
+          reaction: reactionCount.reaction
+        };
+      }
+
+      ++tag.count;
+      insert(tag);
+    }
+
+    this.apiUpdatesManager.processLocalUpdate({
+      _: 'updateSavedReactionTags',
+      tags,
+      savedPeerId
     });
   }
 }

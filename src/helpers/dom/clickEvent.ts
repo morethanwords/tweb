@@ -11,7 +11,8 @@ import simulateEvent from './dispatchEvent';
 let lastMouseDownElement: HTMLElement;
 document.addEventListener('mousedown', (e) => {
   lastMouseDownElement = e.target as HTMLElement;
-  if((lastMouseDownElement as any)?.cancelMouseDown) {
+  // if((lastMouseDownElement as any)?.cancelMouseDown) {
+  if(lastMouseDownElement?.closest('[cancel-mouse-down]')) {
     e.preventDefault();
   }
 });
@@ -58,7 +59,8 @@ export function attachClickEvent(elem: HTMLElement | Window, callback: (e: /* To
   } */
 
   if(options.cancelMouseDown) {
-    (elem as any).cancelMouseDown = true;
+    (elem as HTMLElement).setAttribute('cancel-mouse-down', '');
+    // (elem as any).cancelMouseDown = true;
   }
 
   if(CLICK_EVENT_NAME === 'click' && !options.ignoreMove) {

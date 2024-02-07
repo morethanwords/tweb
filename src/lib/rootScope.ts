@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config, Reaction, AttachMenuBot, PeerSettings, StoryItem, PeerStories, SavedDialog} from '../layer';
+import type {Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, ReactionCount, MessagePeerReaction, PhoneCall, Config, Reaction, AttachMenuBot, PeerSettings, StoryItem, PeerStories, SavedDialog, SavedReactionTag} from '../layer';
 import type {Dialog, ForumTopic, MessagesStorageKey, MyMessage} from './appManagers/appMessagesManager';
 import type {MyDialogFilter} from './storages/filters';
 import type {AnyDialog, Folder} from './storages/dialogs';
@@ -90,7 +90,7 @@ export type BroadcastEvents = {
   'message_error': {storageKey: MessagesStorageKey, tempId: number, error: ApiError},
   'message_transcribed': {peerId: PeerId, mid: number, text: string, pending?: boolean},
   'messages_views': {peerId: PeerId, mid: number, views: number}[],
-  'messages_reactions': {message: Message.message, changedResults: ReactionCount[]}[],
+  'messages_reactions': {message: Message.message, changedResults: ReactionCount[], removedResults: ReactionCount[]}[],
   'messages_pending': void,
   'messages_read': void,
   'messages_downloaded': {peerId: PeerId, mids: number[]},
@@ -178,6 +178,8 @@ export type BroadcastEvents = {
 
   'premium_toggle': boolean,
   'premium_toggle_private': {isNew: boolean, isPremium: boolean},
+
+  'saved_tags': {savedPeerId: PeerId, tags: SavedReactionTag[]},
 
   'config': Config,
   'app_config': MTAppConfig,

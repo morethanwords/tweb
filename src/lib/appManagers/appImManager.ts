@@ -26,7 +26,7 @@ import {MOUNT_CLASS_TO} from '../../config/debug';
 import appNavigationController from '../../components/appNavigationController';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import I18n, {i18n, join, LangPackKey} from '../langPack';
-import {ChatFull, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult, WallPaper, Config, AttachMenuBot, Peer, InputChannel, HelpPeerColors} from '../../layer';
+import {ChatFull, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult, WallPaper, Config, AttachMenuBot, Peer, InputChannel, HelpPeerColors, Reaction} from '../../layer';
 import PeerTitle from '../../components/peerTitle';
 import {PopupPeerCheckboxOptions} from '../../components/popups/peer';
 import blurActiveElement from '../../helpers/dom/blurActiveElement';
@@ -116,6 +116,8 @@ import safePlay from '../../helpers/dom/safePlay';
 import {RequestWebViewOptions} from './appAttachMenuBotsManager';
 import PopupWebApp from '../../components/popups/webApp';
 import {getPeerColorIndexByPeer, getPeerColorsByPeer, setPeerColors} from './utils/peers/getPeerColorById';
+import deepEqual from '../../helpers/object/deepEqual';
+import {savedReactionTags} from '../../components/chat/reactions';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -130,7 +132,8 @@ export type ChatSetPeerOptions = {
   stack?: {peerId: PeerId, mid: number, message?: Message.message, isOut?: boolean},
   commentId?: number,
   type?: ChatType,
-  mediaTimestamp?: number
+  mediaTimestamp?: number,
+  savedReaction?: Reaction[]
 };
 
 export type ChatSetInnerPeerOptions = Modify<ChatSetPeerOptions, {
@@ -593,6 +596,10 @@ export class AppImManager extends EventListenerBase<{
 
     setInterval(setAuthorized, ONE_DAY);
     setAuthorized();
+
+    this.managers.appReactionsManager.getSavedReactionTags().then((tags) => {
+      savedReactionTags.splice(0, savedReactionTags.length, ...tags);
+    });
 
     this.onHashChange(true);
     this.attachKeydownListener();

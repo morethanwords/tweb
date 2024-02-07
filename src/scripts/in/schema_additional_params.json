@@ -479,4 +479,15 @@
   "params": [
     {"name": "slug", "type": "string"}
   ]
+}, {
+  "predicate": "reactionCount",
+  "params": [
+    {"name": "title", "type": "string"}
+  ]
+}, {
+  "predicate": "updateSavedReactionTags",
+  "params": [
+    {"name": "tags", "type": "SavedReactionTag[]"},
+    {"name": "savedPeerId", "type": "PeerId"}
+  ]
 }]

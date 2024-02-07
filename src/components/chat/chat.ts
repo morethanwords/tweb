@@ -6,7 +6,7 @@
 
 import type {ChatRights} from '../../lib/appManagers/appChatsManager';
 import type {RequestWebViewOptions} from '../../lib/appManagers/appAttachMenuBotsManager';
-import type {HistoryStorageKey, MessageSendingParams, MessagesStorageKey} from '../../lib/appManagers/appMessagesManager';
+import type {HistoryStorageKey, MessageSendingParams, MessagesStorageKey, RequestHistoryOptions} from '../../lib/appManagers/appMessagesManager';
 import {AppImManager, APP_TABS, ChatSetPeerOptions} from '../../lib/appManagers/appImManager';
 import EventListenerBase from '../../helpers/eventListenerBase';
 import {logger, LogTypes} from '../../lib/logger';
@@ -51,6 +51,7 @@ import {createEffect, createRoot, createSignal} from 'solid-js';
 import TopbarSearch from './topbarSearch';
 import createUnifiedSignal from '../../helpers/solid/createUnifiedSignal';
 import liteMode from '../../helpers/liteMode';
+import deepEqual from '../../helpers/object/deepEqual';
 
 export enum ChatType {
   Chat = 'chat',
@@ -78,6 +79,7 @@ export default class Chat extends EventListenerBase<{
   // public initPeerId = 0;
   public peerId: PeerId;
   public threadId: number;
+  public savedReaction: Reaction[];
   public setPeerPromise: Promise<void>;
   public peerChanged: boolean;
 
@@ -124,6 +126,8 @@ export default class Chat extends EventListenerBase<{
   public middlewareHelper: MiddlewareHelper;
 
   public searchSignal: ReturnType<typeof createUnifiedSignal<Parameters<Chat['initSearch']>[0]>>;
+
+  public requestHistoryOptionsPart: RequestHistoryOptions;
 
   constructor(
     public appImManager: AppImManager,
@@ -608,11 +612,6 @@ export default class Chat extends EventListenerBase<{
     }
 
     this.messagesStorageKey = `${this.peerId}_${this.type === ChatType.Scheduled ? 'scheduled' : 'history'}`;
-    this.historyStorageKey = getHistoryStorageKey({
-      type: this.threadId ? 'replies' : 'history',
-      peerId: this.peerId,
-      threadId: this.threadId
-    });
 
     this.container && this.container.classList.toggle('no-forwards', this.noForwards);
 
@@ -652,7 +651,7 @@ export default class Chat extends EventListenerBase<{
     if(!peerId) {
       appSidebarRight.toggleSidebar(false);
       this.cleanup(true);
-      this.bubbles.setPeer({samePeer: false, peerId});
+      this.bubbles.setPeer({peerId, samePeer: false, sameReactions: false});
       this.peerId = 0;
       this.appImManager.dispatchEvent('peer_changed', this);
 
@@ -667,7 +666,21 @@ export default class Chat extends EventListenerBase<{
 
     this.peerChanged = samePeer;
 
-    const bubblesSetPeerPromise = this.bubbles.setPeer({...options, samePeer});
+    const sameReactions = deepEqual(this.savedReaction, options.savedReaction);
+    if(!samePeer || options.hasOwnProperty('savedReaction')) {
+      this.savedReaction = options.savedReaction;
+    }
+    this.requestHistoryOptionsPart = {
+      peerId: this.peerId,
+      threadId: this.threadId,
+      savedReaction: this.savedReaction as any
+    };
+    this.historyStorageKey = getHistoryStorageKey({
+      type: this.threadId ? 'replies' : 'history',
+      ...this.requestHistoryOptionsPart
+    });
+
+    const bubblesSetPeerPromise = this.bubbles.setPeer({...options, samePeer, sameReactions});
     const setPeerPromise = this.setPeerPromise = bubblesSetPeerPromise.then((result) => {
       return result.promise;
     }).catch(noop).finally(() => {
@@ -692,12 +705,13 @@ export default class Chat extends EventListenerBase<{
     this.autoDownload = await getAutoDownloadSettingsByPeerId(this.peerId);
   }
 
-  public setMessageId(messageId?: number, mediaTimestamp?: number) {
+  public setMessageId(messageId?: number, mediaTimestamp?: number, savedReaction?: Reaction[]) {
     return this.setPeer({
       peerId: this.peerId,
       threadId: this.threadId,
       lastMsgId: messageId,
-      mediaTimestamp
+      mediaTimestamp,
+      savedReaction
     });
   }
 
@@ -767,8 +781,10 @@ export default class Chat extends EventListenerBase<{
   }
 
   public getHistoryStorage(ignoreThreadId?: boolean) {
-    return this.managers.appMessagesManager.getHistoryStorageTransferable(this.peerId, ignoreThreadId ? undefined : this.threadId)
-    .then((historyStorageTransferable) => {
+    return this.managers.appMessagesManager.getHistoryStorageTransferable({
+      ...this.requestHistoryOptionsPart,
+      threadId: ignoreThreadId ? undefined : this.threadId
+    }).then((historyStorageTransferable) => {
       return {
         ...historyStorageTransferable,
         history: SlicedArray.fromJSON<number>(historyStorageTransferable.historySerialized)

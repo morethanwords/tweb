@@ -10,7 +10,7 @@ import callbackifyAll from '../../helpers/callbackifyAll';
 import positionElementByIndex from '../../helpers/dom/positionElementByIndex';
 import {makeMediaSize} from '../../helpers/mediaSize';
 import {Middleware, MiddlewareHelper} from '../../helpers/middleware';
-import {ReactionCount} from '../../layer';
+import {ReactionCount, SavedReactionTag} from '../../layer';
 import appImManager from '../../lib/appManagers/appImManager';
 import {AppManagers} from '../../lib/appManagers/managers';
 import reactionsEqual from '../../lib/appManagers/utils/reactions/reactionsEqual';
@@ -25,6 +25,24 @@ const TAG_NAME = CLASS_NAME + '-element';
 
 const REACTIONS_ELEMENTS: Map<string, Set<ReactionsElement>> = new Map();
 export {REACTIONS_ELEMENTS};
+
+export const savedReactionTags: SavedReactionTag[] = [];
+rootScope.addEventListener('saved_tags', ({savedPeerId, tags}) => {
+  if(savedPeerId) {
+    return;
+  }
+
+  savedReactionTags.splice(0, savedReactionTags.length, ...tags);
+
+  REACTIONS_ELEMENTS.forEach((set) => {
+    set.forEach((reactionsElement) => {
+      const context = reactionsElement.getContext();
+      if(context.peerId === rootScope.myId && reactionsElement.getType() === ReactionLayoutType.Tag) {
+        reactionsElement.render();
+      }
+    });
+  });
+});
 
 export default class ReactionsElement extends HTMLElement {
   private context: ReactionsContext;
@@ -82,6 +100,10 @@ export default class ReactionsElement extends HTMLElement {
 
   public getContext() {
     return this.context;
+  }
+
+  public getSorted() {
+    return this.sorted;
   }
 
   public shouldUseTagsForContext(context: ReactionsElement['context']) {

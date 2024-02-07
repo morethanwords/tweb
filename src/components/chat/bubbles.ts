@@ -3477,8 +3477,8 @@ export default class ChatBubbles {
     });
   }
 
-  public async setPeer(options: ChatSetPeerOptions & {samePeer: boolean}): Promise<{cached?: boolean, promise: Chat['setPeerPromise']}> {
-    const {samePeer, peerId, stack} = options;
+  public async setPeer(options: ChatSetPeerOptions & {samePeer: boolean, sameReactions: boolean}): Promise<{cached?: boolean, promise: Chat['setPeerPromise']}> {
+    const {samePeer, sameReactions, peerId, stack} = options;
     let {lastMsgId, startParam} = options;
     const tempId = ++this.setPeerTempId;
 
@@ -3535,10 +3535,20 @@ export default class ChatBubbles {
 
       if(savedPosition) {
 
-      } else if(topMessage) {
-        readMaxId = await m(this.managers.appMessagesManager.getReadMaxIdIfUnread(peerId, this.chat.threadId));
-        const dialog = await m(this.chat.getDialogOrTopic());
-        if(/* dialog.unread_count */readMaxId && !samePeer && (!dialog || (!isSavedDialog(dialog) && dialog.unread_count !== 1))) {
+      } if(topMessage) {
+        let dialog: Awaited<ReturnType<Chat['getDialogOrTopic']>>;
+        if(!options.savedReaction) {
+          [readMaxId, dialog] = await m(Promise.all([
+            this.managers.appMessagesManager.getReadMaxIdIfUnread(peerId, this.chat.threadId),
+            this.chat.getDialogOrTopic()
+          ]));
+        }
+
+        if(/* dialog.unread_count */
+          readMaxId &&
+          !samePeer &&
+          (!dialog || (!isSavedDialog(dialog) && dialog.unread_count !== 1))
+        ) {
           const foundSlice = historyStorage.history.findSliceOffset(readMaxId);
           if(foundSlice && foundSlice.slice.isEnd(SliceEnd.Bottom)) {
             overrideAdditionMsgId = foundSlice.slice[foundSlice.offset - 25] || foundSlice.slice[0] || readMaxId;
@@ -3568,7 +3578,7 @@ export default class ChatBubbles {
       startParam = BOT_START_PARAM;
     }
 
-    if(samePeer) {
+    if(samePeer && sameReactions) {
       if(stack && lastMsgId) {
         this.followStack.push(stack.mid);
       }
@@ -3657,11 +3667,12 @@ export default class ChatBubbles {
 
     this.lazyLoadQueue.lock();
 
+    const canScroll = samePeer && sameReactions;
     // const haveToScrollToBubble = (topMessage && (isJump || samePeer)) || isTarget;
-    const haveToScrollToBubble = samePeer || (topMessage && isJump) || isTarget;
+    const haveToScrollToBubble = canScroll || (topMessage && isJump) || isTarget;
     const fromUp = maxBubbleId > 0 && (!lastMsgId || maxBubbleId < lastMsgId || lastMsgId < 0);
-    const scrollFromDown = !fromUp && samePeer;
-    const scrollFromUp = !scrollFromDown && fromUp/*  && (samePeer || forwardingUnread) */;
+    const scrollFromDown = !fromUp && canScroll;
+    const scrollFromUp = !scrollFromDown && fromUp && canScroll/*  && (samePeer || forwardingUnread) */;
     this.willScrollOnLoad = scrollFromDown || scrollFromUp;
 
     this.setPeerOptions = {
@@ -4406,8 +4417,13 @@ export default class ChatBubbles {
       return;
     }
 
-    const middlewareHelper = this.getMiddleware().create();
+    const middlewareHelper = getMiddleware();
     const middleware = middlewareHelper.get();
+    this.getMiddleware().onClean(() => {
+      (this.chat.destroyPromise || this.chat.setPeerPromise || Promise.resolve()).then(() => {
+        middlewareHelper.destroy();
+      });
+    });
 
     let result: Awaited<ReturnType<ChatBubbles['renderMessage']>> & {
       updatePosition: typeof updatePosition,
@@ -7379,9 +7395,7 @@ export default class ChatBubbles {
 
   private wrapSomeSolid(func: () => JSX.Element, container: HTMLElement, middleware: Middleware) {
     const dispose = render(func, container);
-    middleware.onClean(() => {
-      (this.chat.destroyPromise || this.chat.setPeerPromise || Promise.resolve()).then(dispose);
-    });
+    middleware.onClean(dispose);
   }
 
   private wrapStory({
@@ -7639,12 +7653,11 @@ export default class ChatBubbles {
   public onDatePick = (timestamp: number) => {
     const peerId = this.peerId;
     this.managers.appMessagesManager.requestHistory({
-      peerId,
+      ...this.chat.requestHistoryOptionsPart,
       offsetId: 0,
       limit: 2,
       addOffset: -1,
-      offsetDate: timestamp,
-      threadId: this.chat.threadId
+      offsetDate: timestamp
     }).then((history) => {
       if(!history?.messages?.length) {
         this.log.error('no history!');
@@ -7662,11 +7675,10 @@ export default class ChatBubbles {
     // const middleware = this.getMiddleware();
     if(this.chat.type === ChatType.Chat || this.chat.type === ChatType.Discussion || this.chat.type === ChatType.Saved) {
       return this.managers.acknowledged.appMessagesManager.getHistory({
-        peerId: this.peerId,
+        ...this.chat.requestHistoryOptionsPart,
         offsetId,
         limit,
-        backLimit,
-        threadId: this.chat.threadId
+        backLimit
       });
     } else if(this.chat.type === ChatType.Pinned) {
       return this.managers.acknowledged.appMessagesManager.getHistory({

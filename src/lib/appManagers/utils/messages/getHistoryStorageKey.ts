@@ -12,14 +12,15 @@ export function getSearchStorageFilterKey({
   savedReaction,
   query
 }: Parameters<typeof getHistoryStorageKey>[0]): SearchStorageFilterKey {
-  const filter: SearchStorageFilterKey = inputFilter?._;
   let reactionsPart: string;
   if(savedReaction) {
     const part = savedReaction.map((reaction) => {
       return (reaction as Reaction.reactionCustomEmoji).document_id || (reaction as Reaction.reactionEmoji).emoticon;
     }).join(',');
     reactionsPart = `tag-${part}`;
+    inputFilter ??= {_: 'inputMessagesFilterEmpty'};
   }
 
+  const filter: SearchStorageFilterKey = inputFilter?._;
   return [filter, query, reactionsPart].filter(Boolean).join('_');
 }

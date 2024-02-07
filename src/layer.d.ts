@@ -3189,7 +3189,9 @@ export namespace Update {
   };
 
   export type updateSavedReactionTags = {
-    _: 'updateSavedReactionTags'
+    _: 'updateSavedReactionTags',
+    tags?: SavedReactionTag[],
+    savedPeerId?: PeerId
   };
 
   export type updateNewDiscussionMessage = {
@@ -10233,7 +10235,8 @@ export namespace ReactionCount {
     flags?: number,
     chosen_order?: number,
     reaction: Reaction,
-    count: number
+    count: number,
+    title?: string
   };
 }
 
@@ -13601,6 +13604,8 @@ export type AuthSendCode = {
 };
 
 export type AuthSignUp = {
+  flags?: number,
+  no_joined_notifications?: boolean,
   phone_number: string,
   phone_code_hash: string,
   first_name: string,
@@ -16905,6 +16910,8 @@ export type MessagesReorderPinnedSavedDialogs = {
 };
 
 export type MessagesGetSavedReactionTags = {
+  flags?: number,
+  peer?: InputPeer,
   hash: string | number
 };
 

@@ -1738,7 +1738,8 @@
     }
 
     .reaction-tag-dot {
-      background-color: var(--message-highlighting-color) !important;
+      background-color: var(--counter-color) !important;
+      opacity: .4;
     }
 
     .reaction-block {
@@ -3380,6 +3381,7 @@
     .reaction-like-block {
       &.is-chosen {
         --chosen-background-color: var(--surface-color);
+        --counter-color: var(--primary-color);
       }
     }
 

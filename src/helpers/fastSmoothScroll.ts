@@ -9,7 +9,6 @@
 import {dispatchHeavyAnimationEvent} from '../hooks/useHeavyAnimationCheck';
 import {fastRafPromise} from './schedulers';
 import {animateSingle, cancelAnimationByKey} from './animation';
-import rootScope from '../lib/rootScope';
 import isInDOM from './dom/isInDOM';
 import liteMode from './liteMode';
 

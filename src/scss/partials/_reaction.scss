@@ -113,6 +113,7 @@
     .reaction-sticker,
     .reaction-counter {
       z-index: 1;
+      pointer-events: none;
     }
 
     &:before {
@@ -193,11 +194,14 @@
     --reaction-size: 1.25rem;
     --reaction-offset: -.5625rem;
     --reaction-total-size: calc(var(--reaction-size) + var(--additional-height));
+    --counter-color: #9BA0A5;
     min-width: 2.6875rem;
     padding-inline: .375rem;
 
     &.is-chosen {
       &:not(.backwards) {
+        --counter-color: var(--message-icon-text-color);
+
         .reaction-tag-svg {
           fill: var(--chosen-background-color);
         }
@@ -212,10 +216,6 @@
   
         .reaction-tag-background {
           background-color: var(--chosen-background-color);
-        }
-  
-        .reaction-counter {
-          color: #fff;
         }
       }
 
@@ -268,6 +268,12 @@
       border-radius: 7px;
     }
 
+    &-svg,
+    &-dot,
+    &-background {
+      pointer-events: none;
+    }
+
     // .reaction-sticker {
     //   z-index: 1;
     // }
@@ -279,7 +285,8 @@
     margin-inline: .3125rem .0625rem;
     line-height: 21px;
     position: relative;
-    color: #9BA0A5;
+    color: var(--counter-color);
+    pointer-events: none;
 
     // &-title {
     //   font-size: var(--font-size-14);

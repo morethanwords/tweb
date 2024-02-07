@@ -11,7 +11,7 @@ import {ButtonIconTsx, createListTransition, createMiddleware} from '../stories/
 import classNames from '../../helpers/string/classNames';
 import PopupElement from '../popups';
 import PopupDatePicker from '../popups/datePicker';
-import rootScope from '../../lib/rootScope';
+import rootScope, {BroadcastEvents} from '../../lib/rootScope';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import appDialogsManager from '../../lib/appManagers/appDialogsManager';
 import {ChannelsChannelParticipants, Message, MessageReactions, Reaction, ReactionCount, SavedReactionTag} from '../../layer';
@@ -48,6 +48,7 @@ import {ScrollableXTsx} from '../stories/list';
 import pause from '../../helpers/schedulers/pause';
 import reactionsEqual from '../../lib/appManagers/utils/reactions/reactionsEqual';
 import findUpClassName from '../../helpers/dom/findUpClassName';
+import fastSmoothScroll from '../../helpers/fastSmoothScroll';
 
 export const ScrollableYTsx = (props: {
   children: JSX.Element,
@@ -289,9 +290,9 @@ export default function TopbarSearch(props: {
   const [filteringSender, setFilteringSender] = createSignal<boolean>(false);
   const [filterPeerId, setFilterPeerId] = createSignal<PeerId>();
   const [senderInputEntity, setSenderInputEntity] = createSignal<HTMLElement>();
-  const [savedReactionTags, setSavedReactionTags] = createSignal<SavedReactionTag[]>();
+  const [savedReactionTags, setSavedReactionTags] = createSignal<SavedReactionTag[]>(undefined, {equals: false});
   const [reactionsElement, setReactionsElement] = createSignal<ReactionsElement>();
-  const [reaction, setReaction] = createSignal<Reaction>();
+  const [reaction, setReaction] = createSignal<Reaction>(undefined, {equals: false});
   const shouldShowResults = isInputFocused;
   const shouldHaveListNavigation = createMemo(() => (shouldShowResults() && count() && list()) || undefined);
   const shouldShowReactions = createMemo(() => {
@@ -515,6 +516,7 @@ export default function TopbarSearch(props: {
     const isSender = filteringSender() && !fromPeerId;
     const middleware = createMiddleware().get();
     const isEmptyQuery = !query.trim();
+    const _reaction = !isSender && reaction();
 
     setLoadMore(() => undefined);
     setMessages();
@@ -527,7 +529,7 @@ export default function TopbarSearch(props: {
       threadId,
       query,
       fromPeerId,
-      reaction: !isSender ? reaction() : undefined
+      reaction: _reaction
     });
 
     let ref: HTMLDivElement;
@@ -567,7 +569,7 @@ export default function TopbarSearch(props: {
       }
     };
 
-    if(!isSender && !fromPeerId && isEmptyQuery) {
+    if(!isSender && !fromPeerId && !_reaction && isEmptyQuery) {
       setCount();
       onLoad();
       return;
@@ -640,6 +642,18 @@ export default function TopbarSearch(props: {
     };
   };
 
+  const onSavedTags = ({savedPeerId, tags}: BroadcastEvents['saved_tags']) => {
+    if(savedPeerId !== props.threadId) {
+      return;
+    }
+
+    setSavedReactionTags(tags);
+  };
+  rootScope.addEventListener('saved_tags', onSavedTags);
+  onCleanup(() => {
+    rootScope.removeEventListener('saved_tags', onSavedTags);
+  });
+
   // * render saved reaction tags
   createEffect(() => {
     const tags = savedReactionTags();
@@ -655,16 +669,26 @@ export default function TopbarSearch(props: {
 
     // * set active
     const _reaction = reaction();
+    let chosenReactionCount: ReactionCount;
     if(_reaction) {
       const reactionCount = reactionsContext.reactions.results.find((reactionCount) => reactionsEqual(reactionCount.reaction, _reaction));
       if(reactionCount) {
+        chosenReactionCount = reactionCount;
         reactionCount.chosen_order = 0;
       }
     }
 
     element.update(reactionsContext);
 
-    console.log('savedReactionTags', reactionsContext, element);
+    if(chosenReactionCount) {
+      const reactionElement = element.getSorted().find((element) => reactionsEqual(element.reactionCount.reaction, _reaction));
+      fastSmoothScroll({
+        container: reactionsScrollableDiv,
+        element: reactionElement,
+        position: 'center',
+        axis: 'x'
+      });
+    }
   });
 
   // * load saved reaction tags
@@ -722,6 +746,32 @@ export default function TopbarSearch(props: {
     });
   });
 
+  // * handle reaction changing
+  let first = true;
+  createEffect(on(
+    reaction,
+    (reaction) => {
+      if(first) {
+        first = false;
+
+        if(!reaction) {
+          return;
+        }
+      }
+
+      appImManager.chat.setMessageId(
+        undefined,
+        undefined,
+        reaction ? [reaction] : undefined
+      );
+    }
+  ));
+
+  // * reset reaction on close
+  onCleanup(() => {
+    appImManager.chat.setMessageId(undefined, undefined, undefined);
+  });
+
   const calculateResultsHeight = createMemo(() => {
     if(!shouldShowResults()) {
       return 0;
@@ -753,7 +803,7 @@ export default function TopbarSearch(props: {
     return shouldShowReactions() ? 62 : 0;
   });
 
-  let scrollableDiv: HTMLDivElement;
+  let scrollableDiv: HTMLDivElement, reactionsScrollableDiv: HTMLDivElement;
   return (
     <div class="topbar-search-container">
       <div
@@ -770,7 +820,7 @@ export default function TopbarSearch(props: {
             style={calculateReactionsHeight() ? {height: calculateReactionsHeight() + 'px'} : undefined}
           >
             <div class="topbar-search-left-delimiter"></div>
-            <ScrollableXTsx class="topbar-search-left-reactions-scrollable">
+            <ScrollableXTsx ref={reactionsScrollableDiv} class="topbar-search-left-reactions-scrollable">
               <div class="topbar-search-left-reactions-padding"></div>
               {reactionsElement()}
               <div class="topbar-search-left-reactions-padding"></div>

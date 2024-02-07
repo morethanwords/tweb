@@ -77,6 +77,9 @@ devDependencies:
   http-proxy:
     specifier: ^1.18.1
     version: 1.18.1
+  js-md5:
+    specifier: ^0.8.3
+    version: 0.8.3
   jsdom:
     specifier: ^22.1.0
     version: 22.1.0
@@ -3723,6 +3726,10 @@ packages:
 
   /isexe@2.0.0:
     resolution: {integrity: sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw==}
+    dev: true
+
+  /js-md5@0.8.3:
+    resolution: {integrity: sha512-qR0HB5uP6wCuRMrWPTrkMaev7MJZwJuuw4fnwAzRgP4J4/F8RwtodOKpGp4XpqsLBFzzgqIO42efFAyz2Et6KQ==}
     dev: true
 
   /js-tokens@4.0.0:
