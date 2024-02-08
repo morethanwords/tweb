@@ -1937,6 +1937,7 @@ export default class ChatBubbles {
     const middleware = this.getMiddleware();
     this.readPromise = idleController.getFocusPromise().then(async() => {
       if(!middleware()) return;
+      const {peerId, threadId} = this.chat;
       let maxId = Math.max(...Array.from(this.unreadedSeen));
 
       // ? if message with maxId is not rendered ?
@@ -1944,6 +1945,7 @@ export default class ChatBubbles {
         const bubblesMaxId = Math.max(...Object.keys(this.bubbles).map((i) => +i));
         if(maxId >= bubblesMaxId) {
           maxId = Math.max((await this.chat.getHistoryMaxId()) || 0, maxId);
+          if(!middleware()) return;
         }
       }
 
@@ -1961,7 +1963,7 @@ export default class ChatBubbles {
         }
       }
 
-      this.managers.appMessagesManager.readMessages(this.peerId, readContents);
+      this.managers.appMessagesManager.readMessages(peerId, readContents);
 
       this.unreadedSeen.clear();
 
@@ -1970,11 +1972,11 @@ export default class ChatBubbles {
       }
 
       // const promise = Promise.resolve();
-      const promise = this.managers.appMessagesManager.readHistory(this.peerId, maxId, this.chat.threadId);
+      const promise = this.managers.appMessagesManager.readHistory(peerId, maxId, threadId);
 
       return promise.catch((err: any) => {
         this.log.error('readHistory err:', err);
-        this.managers.appMessagesManager.readHistory(this.peerId, maxId, this.chat.threadId);
+        this.managers.appMessagesManager.readHistory(peerId, maxId, threadId);
       }).finally(() => {
         if(!middleware()) return;
         this.readPromise = undefined;
@@ -4134,8 +4136,9 @@ export default class ChatBubbles {
 
   public async onScrolledAllDown() {
     if(this.chat.type === ChatType.Chat || this.chat.type === ChatType.Discussion) {
+      const {peerId, threadId} = this.chat;
       const historyMaxId = await this.chat.getHistoryMaxId();
-      this.managers.appMessagesManager.readHistory(this.peerId, historyMaxId, this.chat.threadId, true);
+      this.managers.appMessagesManager.readHistory(peerId, historyMaxId, threadId, true);
     }
   }
 
