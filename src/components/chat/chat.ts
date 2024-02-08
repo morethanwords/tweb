@@ -127,7 +127,7 @@ export default class Chat extends EventListenerBase<{
 
   public searchSignal: ReturnType<typeof createUnifiedSignal<Parameters<Chat['initSearch']>[0]>>;
 
-  public requestHistoryOptionsPart: RequestHistoryOptions;
+  // public requestHistoryOptionsPart: RequestHistoryOptions;
 
   constructor(
     public appImManager: AppImManager,
@@ -625,6 +625,14 @@ export default class Chat extends EventListenerBase<{
     this.selection?.cleanup(); // TODO: REFACTOR !!!!!!
   }
 
+  public get requestHistoryOptionsPart(): RequestHistoryOptions {
+    return {
+      peerId: this.peerId,
+      threadId: this.threadId,
+      savedReaction: this.savedReaction as any
+    };
+  }
+
   public setPeer(options: ChatSetPeerOptions) {
     const {peerId, threadId} = options;
     if(!peerId) {
@@ -670,11 +678,11 @@ export default class Chat extends EventListenerBase<{
     if(!samePeer || options.hasOwnProperty('savedReaction')) {
       this.savedReaction = options.savedReaction;
     }
-    this.requestHistoryOptionsPart = {
-      peerId: this.peerId,
-      threadId: this.threadId,
-      savedReaction: this.savedReaction as any
-    };
+    // this.requestHistoryOptionsPart = {
+    //   peerId: this.peerId,
+    //   threadId: this.threadId,
+    //   savedReaction: this.savedReaction as any
+    // };
     this.historyStorageKey = getHistoryStorageKey({
       type: this.threadId ? 'replies' : 'history',
       ...this.requestHistoryOptionsPart
@@ -705,13 +713,11 @@ export default class Chat extends EventListenerBase<{
     this.autoDownload = await getAutoDownloadSettingsByPeerId(this.peerId);
   }
 
-  public setMessageId(messageId?: number, mediaTimestamp?: number, savedReaction?: Reaction[]) {
+  public setMessageId(options: Partial<{lastMsgId: number, mediaTimestamp: number, savedReaction: Reaction[]}> = {}) {
     return this.setPeer({
       peerId: this.peerId,
       threadId: this.threadId,
-      lastMsgId: messageId,
-      mediaTimestamp,
-      savedReaction
+      ...options
     });
   }
 

@@ -580,7 +580,7 @@ export default class ChatPinnedMessage {
       return;
     }
 
-    this.chat.setMessageId(mid);
+    this.chat.setMessageId({lastMsgId: mid});
     (this.chat.setPeerPromise || Promise.resolve()).then(() => { // * debounce fast clicker
       this.handleFollowingPinnedMessage();
       this.testMid(this.pinnedIndex >= (this.count - 1) ? this.pinnedMaxMid : mid - 1);

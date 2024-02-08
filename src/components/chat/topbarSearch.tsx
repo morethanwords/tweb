@@ -314,8 +314,7 @@ export default function TopbarSearch(props: {
     });
   });
 
-  createEffect<() => void>((_detach) => {
-    _detach?.();
+  createEffect(() => {
     const {element} = shouldHaveListNavigation() || {};
     if(!element) {
       return;
@@ -340,7 +339,9 @@ export default function TopbarSearch(props: {
       target: untrack(target)
     });
 
-    return detach;
+    onCleanup(() => {
+      detach();
+    });
   });
 
   const navigationItem: NavigationItem = {
@@ -619,7 +620,7 @@ export default function TopbarSearch(props: {
         target.classList.add('active');
 
         const message = messages()[idx];
-        appImManager.chat.setMessageId(message.mid);
+        appImManager.chat.setMessageId({lastMsgId: message.mid});
       },
       {defer: true}
     )
@@ -760,16 +761,13 @@ export default function TopbarSearch(props: {
       }
 
       appImManager.chat.setMessageId(
-        undefined,
-        undefined,
-        reaction ? [reaction] : undefined
-      );
+        {lastMsgId: undefined, mediaTimestamp: undefined, savedReaction: reaction ? [reaction] : undefined}      );
     }
   ));
 
   // * reset reaction on close
   onCleanup(() => {
-    appImManager.chat.setMessageId(undefined, undefined, undefined);
+    appImManager.chat.setMessageId({lastMsgId: undefined, mediaTimestamp: undefined, savedReaction: undefined});
   });
 
   const calculateResultsHeight = createMemo(() => {

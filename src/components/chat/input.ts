@@ -679,7 +679,7 @@ export default class ChatInput {
         }
 
         if(mid) {
-          this.chat.setMessageId(mid);
+          this.chat.setMessageId({lastMsgId: mid});
         }
       });
     }, {listenerSetter: this.listenerSetter});
@@ -3009,10 +3009,10 @@ export default class ChatInput {
     if(this.helperType === 'forward') {
       possibleBtnMenuContainer = this.forwardElements?.container;
     } else if(this.helperType === 'reply') {
-      this.chat.setMessageId(this.replyToMsgId);
+      this.chat.setMessageId({lastMsgId: this.replyToMsgId});
       possibleBtnMenuContainer = this.replyElements?.menuContainer;
     } else if(this.helperType === 'edit') {
-      this.chat.setMessageId(this.editMsgId);
+      this.chat.setMessageId({lastMsgId: this.editMsgId});
     } else if(!this.helperType) {
       possibleBtnMenuContainer = this.webPageElements?.container;
     }

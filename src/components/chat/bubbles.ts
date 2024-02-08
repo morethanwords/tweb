@@ -2549,7 +2549,7 @@ export default class ChatBubbles {
     this.followStack.sort((a, b) => b - a);
 
     const mid = this.followStack.pop();
-    this.chat.setMessageId(mid);
+    this.chat.setMessageId({lastMsgId: mid});
   }
 
   public getBubbleByPoint(verticalSide: 'top' | 'bottom') {
@@ -4015,7 +4015,7 @@ export default class ChatBubbles {
     const replyToMid = +bubble.dataset.replyToMid;
     if(replyToPeerId && replyToMid) {
       if(replyToPeerId === this.peerId) {
-        this.chat.setMessageId(replyToMid, timestamp);
+        this.chat.setMessageId({lastMsgId: replyToMid, mediaTimestamp: timestamp});
       } else {
         this.chat.appImManager.setInnerPeer({
           peerId: replyToPeerId,
@@ -7669,7 +7669,7 @@ export default class ChatBubbles {
         return;
       }
 
-      this.chat.setMessageId((history.messages[0] as MyMessage).mid);
+      this.chat.setMessageId({lastMsgId: (history.messages[0] as MyMessage).mid});
       // console.log('got history date:', history);
     });
   };
