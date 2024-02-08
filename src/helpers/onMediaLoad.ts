@@ -1,16 +1,44 @@
 import {IS_APPLE_MOBILE} from '../environment/userAgent';
+import rootScope from '../lib/rootScope';
+import callbackify from './callbackify';
+import isCrbug1250841Error from './fixChromiumMp4.constants';
 
 export function shouldIgnoreVideoError(e: ErrorEvent) {
   try {
     const target = e.target as HTMLVideoElement;
-    const shouldIgnore = target.error.message.includes('URL safety check');
-    if(shouldIgnore) {
+    const error = target.error;
+
+    if(!error || error.message.includes('URL safety check')) {
       console.warn('will ignore video error', e);
+      return true;
     }
-    return shouldIgnore;
-  } catch(err) {
-    return false;
-  }
+
+    const isChromeBug = isCrbug1250841Error(error);
+    if(isChromeBug && !(target as any).triedFixingChromeBug) {
+      let srcPromise: MaybePromise<string>;
+      const originalSrc = target.src;
+      if(originalSrc.includes('/stream/')) {
+        srcPromise = originalSrc + '?_crbug1250841';
+      } else {
+        srcPromise = rootScope.managers.appDocsManager.fixChromiumMp4(originalSrc);
+      }
+
+      callbackify(srcPromise, (src) => {
+        (target as any).triedFixingChromeBug = true;
+        if(target.src === src) {
+          return;
+        }
+
+        target.src = src;
+        target.load();
+      });
+      return true;
+    } else {
+      console.error('chrome video error', e);
+    }
+  } catch(err) {}
+
+  return false;
 }
 
 export default function onMediaLoad(media: HTMLMediaElement, readyState = media.HAVE_METADATA, useCanplayOnIos?: boolean) {

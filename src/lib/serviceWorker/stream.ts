@@ -6,6 +6,7 @@
 
 import readBlobAsUint8Array from '../../helpers/blob/readBlobAsUint8Array';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
+import tryPatchMp4 from '../../helpers/fixChromiumMp4';
 import debounce from '../../helpers/schedulers/debounce';
 import pause from '../../helpers/schedulers/pause';
 import {InputFileLocation} from '../../layer';
@@ -76,6 +77,7 @@ class Stream {
   private id: StreamId;
   private limitPart: number;
   private loadedOffsets: Set<number> = new Set();
+  private shouldPatchMp4: boolean | number;
 
   constructor(private info: DownloadOptions) {
     this.id = Stream.getId(info);
@@ -238,6 +240,15 @@ class Stream {
         ab = ab.slice(offset - alignedOffset, end - alignedOffset + 1);
       }
 
+      if(this.shouldPatchMp4 === true || this.shouldPatchMp4 === alignedOffset) {
+        if(tryPatchMp4(ab)) {
+          this.shouldPatchMp4 = alignedOffset;
+        }
+      }
+      // if(this.shouldPatchMp4) {
+      //   tryPatchMp4(ab);
+      // }
+
       const headers: Record<string, string> = {
         'Accept-Ranges': 'bytes',
         'Content-Range': `bytes ${offset}-${offset + ab.byteLength - 1}/${this.info.size || '*'}`,
@@ -263,6 +274,10 @@ class Stream {
     return this.id + '?offset=' + alignedOffset + '&limit=' + limit;
   }
 
+  public patchChromiumMp4() {
+    this.shouldPatchMp4 = true;
+  }
+
   public static get(info: DownloadOptions) {
     return streams.get(this.getId(info)) ?? new Stream(info);
   }
@@ -272,10 +287,14 @@ class Stream {
   }
 }
 
-export default function onStreamFetch(event: FetchEvent, params: string) {
+export default function onStreamFetch(event: FetchEvent, params: string, search: string) {
   const range = parseRange(event.request.headers.get('Range'));
   const info: DownloadOptions = JSON.parse(decodeURIComponent(params));
   const stream = Stream.get(info);
+
+  if(search === '_crbug1250841') {
+    stream.patchChromiumMp4();
+  }
 
   // log.debug('[stream]', url, offset, end);
 

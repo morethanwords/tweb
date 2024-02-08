@@ -27,6 +27,7 @@ import {EXTENSION_MIME_TYPE_MAP} from '../../environment/mimeTypeMap';
 import {THUMB_TYPE_FULL} from '../mtproto/mtproto_config';
 import tsNow from '../../helpers/tsNow';
 import appManagersManager from './appManagersManager';
+import tryPatchMp4 from '../../helpers/fixChromiumMp4';
 
 export type MyDocument = Document.document;
 
@@ -48,9 +49,12 @@ export class AppDocsManager extends AppManager {
     }
   };
 
+  private fixingChromiumMp4: {[src: string]: MaybePromise<string>};
+
   protected after() {
     this.docs = {};
     this.uploadingWallPapers = {};
+    this.fixingChromiumMp4 = {};
 
     MTProtoMessagePort.getInstance<false>().addEventListener('serviceWorkerOnline', (online) => {
       if(!online) {
@@ -374,5 +378,15 @@ export class AppDocsManager extends AppManager {
     const doc = this.getDoc(docId);
     if(!doc) return Promise.reject(makeError('NO_DOC'));
     return this.apiFileManager.requestFilePart(dcId, getDocumentInputFileLocation(doc), offset, limit);
+  }
+
+  public fixChromiumMp4(src: string) {
+    return this.fixingChromiumMp4[src] ??= fetch(src)
+    .then((response) => response.arrayBuffer())
+    .then((ab) => {
+      const u8 = new Uint8Array(ab);
+      tryPatchMp4(u8);
+      return this.fixingChromiumMp4[src] = URL.createObjectURL(new Blob([u8]));
+    });
   }
 }

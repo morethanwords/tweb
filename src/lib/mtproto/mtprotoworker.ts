@@ -45,6 +45,8 @@ import callbackify from '../../helpers/callbackify';
 import isLegacyMessageId from '../appManagers/utils/messageId/isLegacyMessageId';
 import {MTAppConfig} from './appConfig';
 
+const TEST_NO_STREAMING = false;
+
 export type Mirrors = {
   state: State,
   thumbs: ThumbsStorage['thumbsCache'],
@@ -345,6 +347,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
       ServiceWorkerURL,
       {type: 'module', scope: './'}
     ).then((registration) => {
+      if(TEST_NO_STREAMING) {
+        throw 1;
+      }
+
       this.log('SW registered', registration);
 
       const url = new URL(window.location.href);

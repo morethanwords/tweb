@@ -43,17 +43,22 @@ export async function testVideoLeak(
 }
 
 // * fix new memory leak of chrome
-export default async function handleVideoLeak(video: HTMLVideoElement, loadPromise?: Promise<any>) {
+export default async function handleVideoLeak(
+  video: HTMLVideoElement,
+  loadPromise?: Promise<any>
+) {
   if(!USE_FIX) {
     return loadPromise;
   }
 
-  const onTimeUpdate = () => {
-    testVideoLeak(video).then(
+  const bindPromise = (promise: Promise<any>) => {
+    promise.then(
       deferred.resolve.bind(deferred),
       deferred.reject.bind(deferred)
     );
   };
+
+  const onTimeUpdate = () => bindPromise(testVideoLeak(video));
 
   const deferred = deferredPromise<void>();
   try {
@@ -67,6 +72,7 @@ export default async function handleVideoLeak(video: HTMLVideoElement, loadPromi
     video.getVideoPlaybackQuality().totalVideoFrames ||
     video.readyState > video.HAVE_METADATA // * video can lose metadata on timeupdate if has no next chunk
   ) {
+    deferred.resolve();
     return;
   }
 

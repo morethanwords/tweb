@@ -60,7 +60,7 @@ import findUpAsChild from '../helpers/dom/findUpAsChild';
 import liteMode from '../helpers/liteMode';
 import {avatarNew, findUpAvatar} from './avatarNew';
 import {MiddlewareHelper, getMiddleware} from '../helpers/middleware';
-import onMediaLoad from '../helpers/onMediaLoad';
+import onMediaLoad, {shouldIgnoreVideoError} from '../helpers/onMediaLoad';
 import handleVideoLeak from '../helpers/dom/handleVideoLeak';
 import Icon from './icon';
 import {replaceButtonIcon} from './button';
@@ -1706,11 +1706,11 @@ export default class AppMediaViewerBase<
           video.load();
         }, {once: true});
 
-        if(IS_SAFARI) {
-          // test stream
-          // video.controls = true;
-          video.autoplay = true;
-        }
+        // if(IS_SAFARI) {
+        // test stream
+        // video.controls = true;
+        video.autoplay = true;
+        // }
 
         if(media.type === 'gif') {
           video.muted = true;
@@ -1732,81 +1732,82 @@ export default class AppMediaViewerBase<
           video.addEventListener('canplay', resolve, {once: true});
         });
 
-        const createPlayer = () => {
-          if(media.type !== 'gif') {
-            video.dataset.ckin = 'default';
-            video.dataset.overlay = '1';
+        const createPlayer = async() => {
+          if(media.type === 'gif') {
+            return;
+          }
 
-            Promise.all([canPlayThrough, onAnimationEnd]).then(() => {
-              if(this.tempId !== tempId) {
+          video.dataset.ckin = 'default';
+          video.dataset.overlay = '1';
+
+          await Promise.all([canPlayThrough, onAnimationEnd]);
+          if(this.tempId !== tempId) {
+            return;
+          }
+
+          // const play = useController ? appMediaPlaybackController.willBePlayedMedia === video : true;
+          const play = true;
+          const player = this.videoPlayer = new VideoPlayer({
+            video,
+            play,
+            streamable: supportsStreaming,
+            onPlaybackRackMenuToggle: (open) => {
+              this.wholeDiv.classList.toggle('hide-caption', !!open);
+            },
+            onPip: (pip) => {
+              const otherMediaViewer = (window as any).appMediaViewer;
+              if(!pip && otherMediaViewer && otherMediaViewer !== this) {
+                this.releaseSingleMedia = undefined;
+                this.close();
                 return;
               }
 
-              // const play = useController ? appMediaPlaybackController.willBePlayedMedia === video : true;
-              const play = true;
-              const player = this.videoPlayer = new VideoPlayer({
-                video,
-                play,
-                streamable: supportsStreaming,
-                onPlaybackRackMenuToggle: (open) => {
-                  this.wholeDiv.classList.toggle('hide-caption', !!open);
-                },
-                onPip: (pip) => {
-                  const otherMediaViewer = (window as any).appMediaViewer;
-                  if(!pip && otherMediaViewer && otherMediaViewer !== this) {
-                    this.releaseSingleMedia = undefined;
-                    this.close();
-                    return;
-                  }
+              const mover = this.moversContainer.lastElementChild as HTMLElement;
+              mover.classList.toggle('hiding', pip);
+              this.toggleWholeActive(!pip);
+              this.toggleOverlay(!pip);
+              this.toggleGlobalListeners(!pip);
 
-                  const mover = this.moversContainer.lastElementChild as HTMLElement;
-                  mover.classList.toggle('hiding', pip);
-                  this.toggleWholeActive(!pip);
-                  this.toggleOverlay(!pip);
-                  this.toggleGlobalListeners(!pip);
-
-                  if(this.navigationItem) {
-                    if(pip) appNavigationController.removeItem(this.navigationItem);
-                    else appNavigationController.pushItem(this.navigationItem);
-                  }
-
-                  if(useController) {
-                    if(pip) {
-                      // appMediaPlaybackController.toggleSwitchers(true);
-
-                      this.releaseSingleMedia(false);
-                      this.releaseSingleMedia = undefined;
-
-                      appMediaPlaybackController.setPictureInPicture(video);
-                    } else {
-                      this.releaseSingleMedia = appMediaPlaybackController.setSingleMedia(video, message as Message.message);
-                    }
-                  }
-                },
-                onPipClose: () => {
-                  // this.target = undefined;
-                  // this.toggleWholeActive(false);
-                  // this.toggleOverlay(false);
-                  this.close();
-                }
-              });
-              player.addEventListener('toggleControls', (show) => {
-                this.wholeDiv.classList.toggle('has-video-controls', show);
-              });
-
-              this.addEventListener('setMoverBefore', () => {
-                this.wholeDiv.classList.remove('has-video-controls');
-                this.videoPlayer.cleanup();
-                this.videoPlayer = undefined;
-              }, {once: true});
-
-              if(this.isZooming) {
-                this.videoPlayer.lockControls(false);
+              if(this.navigationItem) {
+                if(pip) appNavigationController.removeItem(this.navigationItem);
+                else appNavigationController.pushItem(this.navigationItem);
               }
-              /* div.append(video);
-              mover.append(player.wrapper); */
-            });
+
+              if(useController) {
+                if(pip) {
+                  // appMediaPlaybackController.toggleSwitchers(true);
+
+                  this.releaseSingleMedia(false);
+                  this.releaseSingleMedia = undefined;
+
+                  appMediaPlaybackController.setPictureInPicture(video);
+                } else {
+                  this.releaseSingleMedia = appMediaPlaybackController.setSingleMedia(video, message as Message.message);
+                }
+              }
+            },
+            onPipClose: () => {
+              // this.target = undefined;
+              // this.toggleWholeActive(false);
+              // this.toggleOverlay(false);
+              this.close();
+            }
+          });
+          player.addEventListener('toggleControls', (show) => {
+            this.wholeDiv.classList.toggle('has-video-controls', show);
+          });
+
+          this.addEventListener('setMoverBefore', () => {
+            this.wholeDiv.classList.remove('has-video-controls');
+            this.videoPlayer.cleanup();
+            this.videoPlayer = undefined;
+          }, {once: true});
+
+          if(this.isZooming) {
+            this.videoPlayer.lockControls(false);
           }
+          /* div.append(video);
+          mover.append(player.wrapper); */
         };
 
         if(supportsStreaming) {
@@ -1879,7 +1880,11 @@ export default class AppMediaViewerBase<
 
             const url = (await getCacheContext()).url;
 
-            const onUnsupported = () => {
+            const onError = (e: ErrorEvent) => {
+              if(shouldIgnoreVideoError(e)) {
+                return;
+              }
+
               toastNew({
                 langPackKey: IS_MOBILE ? 'Video.Unsupported.Mobile' : 'Video.Unsupported.Desktop'
               });
@@ -1892,10 +1897,11 @@ export default class AppMediaViewerBase<
               preloader?.detach();
             };
 
-            handleVideoLeak(video, onMediaLoad(video)).catch(onUnsupported);
-            video.addEventListener('error', onUnsupported, {once: true});
+            const onMediaLoadPromise = onMediaLoad(video);
+            handleVideoLeak(video, onMediaLoadPromise).catch(onError);
+            video.addEventListener('error', onError, {once: true});
             middleware.onClean(() => {
-              video.removeEventListener('error', onUnsupported);
+              video.removeEventListener('error', onError);
             });
 
             if(target instanceof SVGSVGElement/*  && (video.parentElement || !isSafari) */) { // if video exists
@@ -1921,7 +1927,9 @@ export default class AppMediaViewerBase<
 
             this.updateMediaSource(target, url, 'video');
 
-            createPlayer();
+            onMediaLoadPromise.then(() => {
+              createPlayer();
+            });
           });
 
           return promise;

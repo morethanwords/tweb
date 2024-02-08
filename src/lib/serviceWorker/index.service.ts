@@ -132,13 +132,14 @@ const onFetch = (event: FetchEvent): void => {
 
   try {
     // const [, url, scope, params] = /http[:s]+\/\/.*?(\/(.*?)(?:$|\/(.*)$))/.exec(event.request.url) || [];
-    const [scope, params] = event.request.url.split('/').slice(-2);
+    const [scope, _params] = event.request.url.split('/').slice(-2);
+    const [params, search] = _params.split('?');
 
     // log.debug('[fetch]:', event);
 
     switch(scope) {
       case 'stream': {
-        onStreamFetch(event, params);
+        onStreamFetch(event, params, search);
         break;
       }
 
