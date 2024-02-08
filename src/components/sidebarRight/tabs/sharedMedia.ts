@@ -107,7 +107,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     transitionStories.title.append(i18n('PublicStories'));
 
     const transitionMembers = makeTransitionItem();
-    transitionMembers.title.append(i18n('Members'));
+    transitionMembers.title.append(i18n('GroupMembers'));
 
     const transitionGroups = makeTransitionItem();
     transitionGroups.title.append(i18n('Groups'));

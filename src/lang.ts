@@ -509,7 +509,7 @@ const lang = {
   'Search.Empty': 'There were no results for "**%@**". Try a new search.',
   'Search.EmptyFrom': 'There were no messages from **%@**.',
   'Search.From': 'From: ',
-  'Search.Member': 'Search Member',
+  'Search.Member': 'Search Members',
   'Chat.SearchSelected': 'Search Selected Text',
   'Privacy.VoiceMessagesPremiumCaption': 'Subscribe to Telegram Premium to restrict who can send you voice or video messages.\n\n**[What is Telegram Premium?]()**',
   'Privacy.MessagesInfo': 'You can restrict messages from users who are not in your contacts and don\'t have Premium.\n\n**[What is Telegram Premium?]()**',

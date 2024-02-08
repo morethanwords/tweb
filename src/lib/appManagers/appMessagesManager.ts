@@ -2854,11 +2854,12 @@ export class AppMessagesManager extends AppManager {
           searchStorage.history.push(mid);
         } else {
           const found = searchStorage.history.findSliceOffset(mid);
-          const lowerIndex = found.slice.findIndex((_mid) => mid > _mid);
-          const lowerValue = found.slice[lowerIndex];
-          const higherValue = found.slice[lowerIndex - 1];
+          const slice = found?.slice || [] as number[];
+          const lowerIndex = slice.findIndex((_mid) => mid > _mid);
+          const lowerValue = slice[lowerIndex];
+          const higherValue = slice[lowerIndex - 1];
           if(lowerValue && higherValue) {
-            found.slice.splice(lowerIndex, 0, mid);
+            slice.splice(lowerIndex, 0, mid);
           } else {
             inserted = false;
             this.log.error('cannot insert message for search filter', message, found, searchStorage);
