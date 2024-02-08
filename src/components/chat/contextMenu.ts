@@ -63,6 +63,7 @@ import AppStatisticsTab from '../sidebarRight/tabs/statistics';
 import {ChatType} from './chat';
 import {formatFullSentTime} from '../../helpers/date';
 import PopupToggleReadDate from '../popups/toggleReadDate';
+import rootScope from '../../lib/rootScope';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -969,7 +970,8 @@ export default class ChatContextMenu {
       !this.chat.selection.isSelecting &&
       !this.message.pFlags.is_outgoing &&
       !this.message.pFlags.is_scheduled &&
-      !this.message.pFlags.local
+      !this.message.pFlags.local &&
+      this.message.peerId !== rootScope.myId
     ) {
       const reactionsMessage = await this.managers.appMessagesManager.getGroupsFirstMessage(this.message);
       reactionsMenuPosition = (IS_APPLE || IS_TOUCH_SUPPORTED) || true/*  && false */ ? 'horizontal' : 'vertical';

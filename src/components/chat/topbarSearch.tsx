@@ -693,7 +693,7 @@ export default function TopbarSearch(props: {
 
   // * load saved reaction tags
   createEffect(() => {
-    if(props.peerId !== rootScope.myId) {
+    if(props.peerId !== rootScope.myId || !rootScope.premium) {
       setReactionsElement();
       setSavedReactionTags();
       return;

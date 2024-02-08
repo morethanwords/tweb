@@ -2127,7 +2127,7 @@ export default class ChatBubbles {
       const reactionsElement = reactionElement.parentElement as ReactionsElement;
       const reactionCount = reactionsElement.getReactionCount(reactionElement);
 
-      if(reactionsElement.getType() === ReactionLayoutType.Tag) {
+      if(reactionsElement.getType() === ReactionLayoutType.Tag && rootScope.premium) {
         this.chat.initSearch({reaction: reactionCount.reaction});
       } else {
         const message = reactionsElement.getContext();
