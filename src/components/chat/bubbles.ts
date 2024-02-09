@@ -5582,6 +5582,7 @@ export default class ChatBubbles {
 
     const canHideNameIfMedia = !message.viaBotId &&
       (message.fromId === rootScope.myId || !message.pFlags.out) &&
+      !(message as Message.message).post_author &&
       !_isForwardOfForward/*  &&
       !fwdFromId */;
       // (!getFwdFromName(fwdFrom) || !fwdFromId);
