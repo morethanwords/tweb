@@ -7053,7 +7053,7 @@ export default class ChatBubbles {
 
           let nameKey: LangPackKey;
           const nameArgs: FormatterArguments = [firstArgs];
-          if(fwdFrom.post_author) {
+          if(fwdFrom?.post_author) {
             nameKey = storyFromPeerId ? 'ForwardedStoryFromAuthor' : 'ForwardedFromAuthor';
             const s = document.createElement('span');
             s.append(wrapEmojiText(fwdFrom.post_author));
