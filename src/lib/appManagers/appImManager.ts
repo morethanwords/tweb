@@ -1516,7 +1516,11 @@ export class AppImManager extends EventListenerBase<{
     const chatBubbles = chat.bubbles;
     const key = chat.peerId + (chat.threadId ? '_' + chat.threadId : '');
     const chatPositions = stateStorage.getFromCache('chatPositions');
-    if(!(chatBubbles.scrollable.getDistanceToEnd() <= 16 && chatBubbles.scrollable.loadedAll.bottom) && chatBubbles.getRenderedLength()) {
+    if(
+      !(chatBubbles.scrollable.getDistanceToEnd() <= 16 && chatBubbles.scrollable.loadedAll.bottom) &&
+      chatBubbles.getRenderedLength() &&
+      !chat.savedReaction
+    ) {
       chatBubbles.sliceViewport(true);
       const top = chatBubbles.scrollable.scrollPosition;
 
