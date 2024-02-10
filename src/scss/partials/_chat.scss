@@ -816,6 +816,17 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
     margin-bottom: 1.25rem;
   }
 
+  &.is-search-active {
+    .bubbles-inner:before {
+      content: " ";
+      height: 3.75rem;
+    }
+
+    .is-date {
+      top: 3.75rem;
+    }
+  }
+
   // .contextmenu {
     // box-shadow: none !important;
     // filter: drop-shadow(0 .125rem .5rem var(--menu-box-shadow-color));

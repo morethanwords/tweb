@@ -64,6 +64,8 @@ import {ChatType} from './chat';
 import {formatFullSentTime} from '../../helpers/date';
 import PopupToggleReadDate from '../popups/toggleReadDate';
 import rootScope from '../../lib/rootScope';
+import ReactionElement from './reaction';
+import InputField from '../inputField';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -87,6 +89,8 @@ export default class ChatContextMenu {
   private isUsernameTarget: boolean;
   private isSponsored: boolean;
   private isOverBubble: boolean;
+  private isTag: boolean;
+  private reactionElement: ReactionElement;
   private peerId: PeerId;
   private mid: number;
   private message: Message.message | Message.messageService;
@@ -166,7 +170,7 @@ export default class ChatContextMenu {
     });
   }
 
-  private onContextMenu = (e: MouseEvent | Touch | TouchEvent) => {
+  public onContextMenu = (e: MouseEvent | Touch | TouchEvent) => {
     let bubble: HTMLElement, contentWrapper: HTMLElement, avatar: HTMLElement;
 
     try {
@@ -195,6 +199,8 @@ export default class ChatContextMenu {
       return;
     }
 
+    const tagReactionElement = findUpClassName(e.target, 'reaction-tag');
+
     const r = async() => {
       const isSponsored = this.isSponsored = mid < 0;
       this.isSelectable = this.chat.selection.canSelectBubble(bubble);
@@ -208,6 +214,13 @@ export default class ChatContextMenu {
         this.target.classList.contains('anchor-url')
       );
       this.isUsernameTarget = this.target.tagName === 'A' && this.target.classList.contains('mention');
+      this.isTag = !!tagReactionElement;
+      this.reactionElement = tagReactionElement as ReactionElement;
+
+      if(this.isTag && !rootScope.premium) {
+        PopupPremium.show({feature: 'saved_tags'});
+        return;
+      }
 
       if(this.isTextSelected) {
         const range = document.getSelection().getRangeAt(0);
@@ -288,15 +301,18 @@ export default class ChatContextMenu {
       }
 
       if(reactionsMenu) {
+        const container = reactionsMenu.widthContainer;
         if(!IS_MOBILE) {
           const i = document.createElement('div');
           i.classList.add('btn-menu-items', 'btn-menu-transition');
           i.append(...Array.from(element.childNodes));
           element.classList.add('has-items-wrapper');
-          element.append(reactionsMenu.widthContainer, i);
+          element.append(container, i);
         } else {
-          element.prepend(reactionsMenu.widthContainer);
+          element.prepend(container);
         }
+
+        container.style.setProperty('--height', container.offsetHeight + 'px');
       }
 
       const side: 'left' | 'right' = !bubble || bubble.classList.contains('is-in') ? 'left' : 'right';
@@ -370,6 +386,65 @@ export default class ChatContextMenu {
   }
 
   private setButtons() {
+    if(this.isTag) {
+      const tagTitle = this.reactionElement.findTitle();
+      const reactionCount = this.reactionElement.reactionCount;
+      const renameTitle: LangPackKey = tagTitle ? 'SavedTagRenameTag' : 'SavedTagLabelTag';
+      this.buttons = [{
+        icon: 'search',
+        text: 'SavedTagFilterByTag',
+        onClick: () => {
+          this.chat.initSearch({reaction: reactionCount.reaction});
+        },
+        verify: () => true
+      }, {
+        icon: 'edit',
+        text: renameTitle,
+        onClick: async() => {
+          const inputField = new InputField({
+            maxLength: 12,
+            label: 'SavedTagLabelPlaceholder'
+          });
+
+          tagTitle && inputField.setOriginalValue(tagTitle);
+
+          await confirmationPopup({
+            titleLangKey: renameTitle,
+            descriptionLangKey: 'SavedTagLabelTagText',
+            button: {
+              langKey: 'Save'
+            },
+            inputField
+          });
+
+          this.managers.appReactionsManager.updateSavedReactionTag(
+            reactionCount.reaction,
+            inputField.value
+          );
+        },
+        verify: () => true
+      }, {
+        icon: 'delete',
+        text: 'SavedTagRemoveTag',
+        onClick: () => {
+          this.chat.sendReaction({message: this.message, reaction: reactionCount.reaction});
+        },
+        verify: () => true,
+        danger: true
+      }, {
+        // icon: 'smile',
+        text: 'Loading',
+        onClick: () => {
+          this.emojiInputsPromise.then((inputs) => {
+            PopupElement.createPopup(PopupStickers, inputs, true).show();
+          });
+        },
+        verify: () => reactionCount.reaction._ === 'reactionCustomEmoji',
+        localName: 'emojis'
+      }];
+      return;
+    }
+
     if(this.avatarPeerId !== undefined) {
       const openPeer = () => {
         this.chat.appImManager.setInnerPeer({peerId: this.avatarPeerId});
@@ -971,8 +1046,10 @@ export default class ChatContextMenu {
       !this.message.pFlags.is_outgoing &&
       !this.message.pFlags.is_scheduled &&
       !this.message.pFlags.local &&
-      this.message.peerId !== rootScope.myId
+      !this.reactionElement
     ) {
+      const reactions = this.message.reactions;
+      const tags = this.message.peerId === rootScope.myId && (!reactions || reactions.pFlags.reactions_as_tags);
       const reactionsMessage = await this.managers.appMessagesManager.getGroupsFirstMessage(this.message);
       reactionsMenuPosition = (IS_APPLE || IS_TOUCH_SUPPORTED) || true/*  && false */ ? 'horizontal' : 'vertical';
       reactionsMenu = this.reactionsMenu = new ChatReactionsMenu({
@@ -986,6 +1063,11 @@ export default class ChatContextMenu {
             return;
           }
 
+          if(!rootScope.premium && tags) {
+            PopupPremium.show({feature: 'saved_tags'});
+            return;
+          }
+
           this.chat.sendReaction({message: reactionsMessage, reaction});
         },
         getOpenPosition: (hasMenu) => {
@@ -995,7 +1077,8 @@ export default class ChatContextMenu {
           newRect.top -= 121 / 2;
           if(!hasMenu) newRect.top += 37;
           return newRect;
-        }
+        },
+        tags
       });
       await reactionsMenu.init(reactionsMessage);
       // element.prepend(reactionsMenu.widthContainer);
@@ -1029,7 +1112,9 @@ export default class ChatContextMenu {
         menuPadding.bottom = 24;
       };
 
-      const docIds = this.getUniqueCustomEmojisFromMessage();
+      const docIds = this.reactionElement ?
+        [(this.reactionElement.reactionCount.reaction as Reaction.reactionCustomEmoji).document_id] :
+        this.getUniqueCustomEmojisFromMessage();
       const inputsPromise = this.emojiInputsPromise = deferredPromise();
 
       await this.managers.appEmojiManager.getCachedCustomEmojiDocuments(docIds).then(async(docs) => {
@@ -1048,7 +1133,10 @@ export default class ChatContextMenu {
           if(s.size === 1) {
             const result = await this.managers.acknowledged.appStickersManager.getStickerSet(inputs[0]);
             const promise = result.result.then((set) => {
-              const el = i18n('MessageContainsEmojiPack', [wrapEmojiText(set.set.title)]);
+              const el = i18n(
+                this.isTag ? 'Reaction.Tag.From' : (this.reactionElement ? 'MessageContainsReactionPack' : 'MessageContainsEmojiPack'),
+                [wrapEmojiText(set.set.title)]
+              );
               replaceContent(emojisButton.textElement, el);
             });
 

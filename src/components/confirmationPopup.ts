@@ -10,7 +10,8 @@ import PopupPeer, {PopupPeerCheckboxOptions, PopupPeerOptions} from './popups/pe
 // type PopupConfirmationOptions = Pick<PopupPeerOptions, 'titleLangKey'>;
 export type PopupConfirmationOptions = PopupPeerOptions & {
   button: PopupPeerOptions['buttons'][0],
-  checkbox?: PopupPeerOptions['checkboxes'][0]
+  checkbox?: PopupPeerOptions['checkboxes'][0],
+  inputField?: PopupPeerOptions['inputField']
 };
 
 export default function confirmationPopup<T extends PopupConfirmationOptions>(

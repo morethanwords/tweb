@@ -52,6 +52,7 @@ import TopbarSearch from './topbarSearch';
 import createUnifiedSignal from '../../helpers/solid/createUnifiedSignal';
 import liteMode from '../../helpers/liteMode';
 import deepEqual from '../../helpers/object/deepEqual';
+import getSearchType from '../../lib/appManagers/utils/messages/getSearchType';
 
 export enum ChatType {
   Chat = 'chat',
@@ -479,6 +480,9 @@ export default class Chat extends EventListenerBase<{
           },
           onDatePick: (timestamp) => {
             this.bubbles.onDatePick(timestamp);
+          },
+          onActive: (active, showingReactions) => {
+            this.container.classList.toggle('is-search-active', !!(active && showingReactions));
           }
         }) as HTMLElement;
         this.topbar.container.append(topbarSearch);
@@ -674,19 +678,18 @@ export default class Chat extends EventListenerBase<{
 
     this.peerChanged = samePeer;
 
-    const sameReactions = deepEqual(this.savedReaction, options.savedReaction);
+    let sameReactions = true;
     if(!samePeer || options.hasOwnProperty('savedReaction')) {
       this.savedReaction = options.savedReaction;
+      sameReactions = false;
     }
-    // this.requestHistoryOptionsPart = {
-    //   peerId: this.peerId,
-    //   threadId: this.threadId,
-    //   savedReaction: this.savedReaction as any
-    // };
+
+    this.managers.appMessagesManager.toggleHistoryMaxIdSubscription(this.historyStorageKey, false);
     this.historyStorageKey = getHistoryStorageKey({
-      type: this.threadId ? 'replies' : 'history',
+      type: getSearchType(this.requestHistoryOptionsPart) ? 'search' : (this.threadId ? 'replies' : 'history'),
       ...this.requestHistoryOptionsPart
     });
+    this.managers.appMessagesManager.toggleHistoryMaxIdSubscription(this.historyStorageKey, true);
 
     const bubblesSetPeerPromise = this.bubbles.setPeer({...options, samePeer, sameReactions});
     const setPeerPromise = this.setPeerPromise = bubblesSetPeerPromise.then((result) => {
@@ -831,7 +834,7 @@ export default class Chat extends EventListenerBase<{
   }
 
   public canSend(action?: ChatRights) {
-    if(this.type === ChatType.Saved) {
+    if(this.type === ChatType.Saved && this.threadId !== this.peerId) {
       return Promise.resolve(false);
     }
 

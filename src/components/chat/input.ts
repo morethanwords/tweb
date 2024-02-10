@@ -1434,7 +1434,7 @@ export default class ChatInput {
       // startParam !== undefined || // * startParam isn't always should force control container, so it's commented
       // !(await this.chat.canSend()) || // ! WARNING, TEMPORARILY COMMENTED
       this.chat.type === ChatType.Pinned ||
-      this.chat.type === ChatType.Saved ||
+      (this.chat.type === ChatType.Saved && this.chat.threadId !== this.chat.peerId) ||
       await this.chat.isStartButtonNeeded() ||
       this.isReplyInTopicOverlayNeeded() ||
       (this.chat.peerId.isUser() && (this.chat.isUserBlocked || this.chat.isPremiumRequired))
@@ -2051,7 +2051,7 @@ export default class ChatInput {
     let key: LangPackKey, args: FormatterArguments;
     if(!canSend) {
       key = 'Channel.Persmission.MessageBlock';
-    } else if(threadId && !isForum) {
+    } else if(threadId && !isForum && !peerId.isUser()) {
       key = 'Comment';
     } else if(await this.managers.appPeersManager.isBroadcast(peerId)) {
       key = 'ChannelBroadcast';

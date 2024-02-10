@@ -54,7 +54,8 @@ declare global {
   type PremiumPromoFeatureType = 'stories' | 'double_limits' | 'voice_to_text' | 'faster_download' |
     'translations' | 'animated_emoji' | 'more_upload' | 'emoji_status' | 'profile_badge' |
     'advanced_chat_management' | 'no_ads' | 'app_icons' | 'infinite_reactions' |
-    'animated_userpics' | 'premium_stickers' | 'peer_colors' | 'wallpapers';
+    'animated_userpics' | 'premium_stickers' | 'peer_colors' | 'wallpapers' |
+    'saved_tags' | 'last_seen' | 'message_privacy';
 
   type MTMimeType = 'video/quicktime' | 'image/gif' | 'image/jpeg' | 'application/pdf' |
     'video/mp4' | 'image/webp' | 'audio/mpeg' | 'audio/ogg' | 'application/octet-stream' |

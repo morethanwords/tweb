@@ -518,9 +518,9 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
         {publicForwards().count && <Section name="PublicSharesCount" nameArgs={[publicForwards().count]}>
           <div
             ref={(el) => {
-              appDialogsManager.setListClickListener(
-                el,
-                (target) => {
+              appDialogsManager.setListClickListener({
+                list: el,
+                onFound: (target) => {
                   const storyId = target.dataset.storyId;
                   if(storyId) {
                     createStoriesViewerWithPeer({
@@ -531,10 +531,10 @@ export default class AppStatisticsTab extends SliderSuperTabEventable {
                     return false;
                   }
                 },
-                undefined,
-                undefined,
-                true
-              );
+                withContext: undefined,
+                autonomous: undefined,
+                openInner: true
+              });
             }}
           >
             {publicForwards().rendered}

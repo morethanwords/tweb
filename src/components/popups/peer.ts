@@ -12,6 +12,7 @@ import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import {avatarNew} from '../avatarNew';
 import toggleDisability from '../../helpers/dom/toggleDisability';
 import rootScope from '../../lib/rootScope';
+import InputField from '../inputField';
 
 export type PopupPeerButton = Omit<PopupButton, 'callback'> & Partial<{callback: PopupPeerButtonCallback, onlyWithCheckbox: PopupPeerCheckboxOptions}>;
 export type PopupPeerButtonCallbackCheckboxes = Set<LangPackKey>;
@@ -30,7 +31,8 @@ export type PopupPeerOptions = Omit<PopupOptions, 'buttons' | 'title'> & Partial
   descriptionLangKey: LangPackKey,
   descriptionLangArgs: any[],
   buttons: Array<PopupPeerButton>,
-  checkboxes: Array<PopupPeerCheckboxOptions>
+  checkboxes: Array<PopupPeerCheckboxOptions>,
+  inputField: InputField
 }>;
 export default class PopupPeer extends PopupElement {
   protected description: HTMLParagraphElement;
@@ -76,6 +78,10 @@ export default class PopupPeer extends PopupElement {
       fragment.append(p);
     }
 
+    if(options.inputField) {
+      fragment.append(options.inputField.container);
+    }
+
     if(options.checkboxes) {
       this.container.classList.add('have-checkbox');
 
@@ -108,6 +114,13 @@ export default class PopupPeer extends PopupElement {
           this.listenerSetter.add(checkbox.checkboxField.input)('change', onChange);
           onChange();
         }
+      });
+    }
+
+    if(options.inputField) {
+      const button = options.buttons.find((button) => !button.isCancel);
+      this.listenerSetter.add(options.inputField.input)('input', () => {
+        toggleDisability([button.element], !options.inputField.isValid());
       });
     }
 

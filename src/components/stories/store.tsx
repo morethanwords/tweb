@@ -20,6 +20,7 @@ import {AnyFunction} from '../../types';
 import findAndSplice from '../../helpers/array/findAndSplice';
 import forEachReverse from '../../helpers/array/forEachReverse';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
+import AppStoriesManager from '../../lib/appManagers/appStoriesManager';
 
 export type NextPrevStory = () => void;
 export type ChangeStoryParams = {
@@ -31,7 +32,8 @@ export type StoriesContextPeerState = {
   peerId: PeerId,
   stories: Array<StoryItem>,
   maxReadId?: number,
-  index?: number
+  index?: number,
+  count: number
 };
 
 export type StoriesSortingFreezeType = 'list' | 'viewer';
@@ -59,7 +61,7 @@ export type StoriesContextState = {
   peers: StoriesContextPeerState[],
   peer: StoriesContextPeerState,
   freezedSorting: Set<StoriesSortingFreezeType>,
-  getNearestStory: (next: boolean, loop?: boolean, offsetIndex?: number, offsetPeer?: StoriesContextPeerState) => ChangeStoryParams,
+  getNearestStory: (next: boolean, loop?: boolean, offsetIndex?: number, offsetPeer?: StoriesContextPeerState) => ChangeStoryParams
 };
 
 export type StoriesContextActions = {
@@ -241,24 +243,26 @@ const createStoriesStore = (props: {
         const {peer} = state;
         const offsetId = peer ? peer.stories[peer.stories.length - 1].id : 0;
         const loadCount = 30;
-        let promise: Promise<StoryItem.storyItem[]>;
+        let promise: ReturnType<AppStoriesManager['getPinnedStories']>;
         if(pinned) {
           promise = rootScope.managers.appStoriesManager.getPinnedStories(peerId, loadCount, offsetId);
         } else {
           promise = rootScope.managers.appStoriesManager.getStoriesArchive(peerId, loadCount, offsetId);
         }
-        return promise.then((storyItems) => {
+        return promise.then(({count, stories: storyItems}) => {
           if(!offsetId) {
             const peer: StoriesContextPeerState = {
               index: 0,
               peerId,
-              stories: storyItems
+              stories: storyItems,
+              count
             };
 
             addPeers([peer]);
             setState({ready: true});
           } else {
             setState('peers', 0, 'stories', (stories) => [...stories, ...storyItems]);
+            setState('peers', 0, 'count', count);
           }
 
           return loaded = storyItems.length < loadCount;
@@ -481,7 +485,8 @@ const createStoriesStore = (props: {
       // index: 0,
       peerId: getPeerId(peerStories.peer),
       stories: peerStories.stories,
-      maxReadId: peerStories.max_read_id
+      maxReadId: peerStories.max_read_id,
+      count: peerStories.stories.length
     };
 
     peer.index = getPeerInitialIndex(peer);
@@ -637,7 +642,8 @@ const createStoriesStore = (props: {
       const peer: StoriesContextPeerState = {
         peerId,
         stories: [story],
-        maxReadId
+        maxReadId,
+        count: 1
       };
       peer.index = getPeerInitialIndex(peer);
       addPeers([peer]);
@@ -660,6 +666,8 @@ const createStoriesStore = (props: {
         insertedAt = insertStory(stories, story, cacheType);
         return stories;
       });
+
+      setState('peers', peerIndex, 'count', (count) => count + 1);
 
       if(insertedAt <= currentStoryIndex) {
         setState('peers', peerIndex, 'index', (index) => index + 1);
@@ -695,6 +703,8 @@ const createStoriesStore = (props: {
         stories.splice(storyIndex, 1);
         return stories;
       });
+
+      setState('peers', peerIndex, 'count', (count) => count - 1);
 
       if(peer.index >= storyIndex) {
         setState('peers', peerIndex, 'index', peer.index - 1);

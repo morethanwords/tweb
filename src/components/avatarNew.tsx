@@ -9,7 +9,7 @@ import type {PeerPhotoSize} from '../lib/appManagers/appAvatarsManager';
 import type {StoriesSegment, StoriesSegments} from '../lib/appManagers/appStoriesManager';
 import {getMiddleware, type Middleware} from '../helpers/middleware';
 import deferredPromise from '../helpers/cancellablePromise';
-import {createSignal, createEffect, createMemo, onCleanup, JSX, createRoot, Show, Accessor} from 'solid-js';
+import {createSignal, createEffect, createMemo, onCleanup, JSX, createRoot, Show, Accessor, on} from 'solid-js';
 import rootScope from '../lib/rootScope';
 import {NULL_PEER_ID, REPLIES_PEER_ID, HIDDEN_PEER_ID} from '../lib/mtproto/mtproto_config';
 import {Chat, ChatPhoto, User, UserProfilePhoto} from '../layer';
@@ -32,6 +32,7 @@ import callbackify from '../helpers/callbackify';
 import Icon from './icon';
 import wrapPhoto from './wrappers/photo';
 import customProperties from '../helpers/dom/customProperties';
+import {appState} from '../stores/appState';
 
 const FADE_IN_DURATION = 200;
 const TEST_SWAPPING = 0;
@@ -488,7 +489,22 @@ export const AvatarNew = (props: {
     const middleware = middlewareHelper.get();
     const {peerId, isDialog, withStories, storyId, isBig, peerTitle: title, threadId, wrapOptions} = props;
     if(peerId === myId && isDialog) {
-      set({icon: props.meAsNotes ? 'mynotes' : 'saved'});
+      set({
+        icon: props.meAsNotes ? 'mynotes' : 'saved',
+        isForum: !props.meAsNotes && appState.settings.savedAsForum
+      });
+
+      !props.meAsNotes && createRoot((dispose) => {
+        createEffect(
+          on(
+            () => appState.settings.savedAsForum,
+            setIsForum,
+            {defer: true}
+          )
+        );
+
+        middleware.onDestroy(dispose);
+      });
       return;
     }
 

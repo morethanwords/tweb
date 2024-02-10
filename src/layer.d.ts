@@ -10235,8 +10235,7 @@ export namespace ReactionCount {
     flags?: number,
     chosen_order?: number,
     reaction: Reaction,
-    count: number,
-    title?: string
+    count: number
   };
 }
 

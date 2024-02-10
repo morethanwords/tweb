@@ -331,7 +331,7 @@ export class DialogElement extends Row {
 
     const isActive = !autonomous &&
       appImManager.chat &&
-      appImManager.isSamePeer(appImManager.chat, {peerId, threadId: threadId, type: ChatType.Chat});
+      appImManager.isSamePeer(appImManager.chat, {peerId, threadId: threadId, type: isSavedDialog ? ChatType.Saved : ChatType.Chat});
 
     const peerTitle = new PeerTitle();
     const peerTitlePromise = peerTitle.update({
@@ -542,7 +542,7 @@ class ForumTab extends SliderSuperTabEventable {
     this.rows.append(this.title, this.subtitle);
 
     const list = appDialogsManager.createChatList();
-    appDialogsManager.setListClickListener(list, null, true);
+    appDialogsManager.setListClickListener({list, onFound: null, withContext: true});
     this.scrollable.append(list);
 
     this.xd = new Some3(this.peerId, isFloating ? 80 : 0);
@@ -562,13 +562,8 @@ class ForumTab extends SliderSuperTabEventable {
       buttons: [{
         icon: 'info',
         text: 'ForumTopic.Context.Info',
-        onClick: async() => {
-          const tab = appSidebarLeft.createTab(AppSharedMediaTab, true);
-          tab.isFirst = true;
-          tab.setPeer(this.peerId);
-          (await tab.fillProfileElements())();
-          tab.loadSidebarMedia(true);
-          tab.open();
+        onClick: () => {
+          AppSharedMediaTab.open(appSidebarLeft, this.peerId);
         }
       }, {
         icon: 'message',
@@ -1610,6 +1605,8 @@ class Some2 extends Some<Dialog> {
 }
 
 export class Some4 extends Some<SavedDialog> {
+  public onAnyUpdate: () => void;
+
   constructor() {
     super();
 
@@ -1627,6 +1624,8 @@ export class Some4 extends Some<SavedDialog> {
           this.updateDialog(dialog);
         });
       }
+
+      this.onAnyUpdate?.();
     });
 
     this.listenerSetter.add(rootScope)('dialog_drop', (dialog) => {
@@ -1635,6 +1634,7 @@ export class Some4 extends Some<SavedDialog> {
       }
 
       this.deleteDialogByKey(this.getDialogKey(dialog));
+      this.onAnyUpdate?.();
     });
   }
 
@@ -2063,7 +2063,7 @@ export class AppDialogsManager {
     });
 
     appImManager.addEventListener('peer_changed', ({peerId, threadId, isForum}) => {
-      const options: Parameters<AppImManager['isSamePeer']>[0] = {peerId, threadId: isForum ? threadId : undefined};
+      const options: Parameters<AppImManager['isSamePeer']>[0] = {peerId, threadId: isForum || rootScope.myId ? threadId : undefined};
       // const perf = performance.now();
       for(const element of this.lastActiveElements) {
         const elementThreadId = +element.dataset.threadId || undefined;
@@ -2370,7 +2370,7 @@ export class AppDialogsManager {
     const ul = this.createChatList();
     const xd = this.xds[filter.id] = new Some2(filter.id);
     const scrollable = xd.generateScrollable(ul, filter);
-    this.setListClickListener(ul, null, true);
+    this.setListClickListener({list: ul, onFound: null, withContext: true});
 
     return {ul, xd, scrollable};
   }
@@ -2784,7 +2784,7 @@ export class AppDialogsManager {
 
       const list = sortedUserList.list;
       list.classList.add('chatlist-new');
-      this.setListClickListener(list);
+      this.setListClickListener({list});
       section.content.append(list);
 
       ready = true;
@@ -2874,6 +2874,21 @@ export class AppDialogsManager {
   }
 
   public async toggleForumTabByPeerId(peerId: PeerId, show?: boolean) {
+    if(peerId === rootScope.myId) {
+      const tab = appSidebarLeft.getTab(AppSharedMediaTab);
+      if(show === true || (show === undefined && !tab)) {
+        AppSharedMediaTab.open(appSidebarLeft, peerId, true);
+      } else {
+        if(tab?.peerId === peerId) {
+          tab.close();
+        }
+
+        appImManager.setPeer({peerId});
+      }
+
+      return;
+    }
+
     const {managers} = this;
     const history = appSidebarLeft.getHistory();
     const lastTab = history[history.length - 1];
@@ -2941,13 +2956,19 @@ export class AppDialogsManager {
     window.open(url, '_blank');
   }
 
-  public setListClickListener(
-    list: HTMLElement,
-    onFound?: (target: HTMLElement) => void | boolean,
+  public setListClickListener({
+    list,
+    onFound,
     withContext = false,
     autonomous = false,
     openInner = false
-  ) {
+  }: {
+    list: HTMLElement,
+    onFound?: (target: HTMLElement) => void | boolean,
+    withContext?: boolean,
+    autonomous?: boolean,
+    openInner?: boolean
+  }) {
     let lastActiveListElement: HTMLElement;
 
     const setPeerFunc = (openInner ? appImManager.setInnerPeer : appImManager.setPeer).bind(appImManager);
@@ -2982,7 +3003,7 @@ export class AppDialogsManager {
       }
 
       const isForum = !!elem.querySelector('.is-forum');
-      if(isForum && !e.shiftKey && !lastMsgId && peerId !== rootScope.myId) {
+      if(isForum && !e.shiftKey && !lastMsgId) {
         this.toggleForumTabByPeerId(peerId);
         return;
       }

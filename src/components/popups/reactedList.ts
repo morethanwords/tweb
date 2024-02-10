@@ -187,9 +187,15 @@ export default class PopupReactedList extends PopupElement {
         dialogSize: 72
       });
 
-      appDialogsManager.setListClickListener(chatlist, () => {
-        this.hide();
-      }, undefined, false, true);
+      appDialogsManager.setListClickListener({
+        list: chatlist,
+        onFound: () => {
+          this.hide();
+        },
+        withContext: undefined,
+        autonomous: false,
+        openInner: true
+      });
 
       section.content.append(chatlist);
       scrollable.append(section.container);

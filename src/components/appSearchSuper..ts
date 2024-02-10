@@ -18,7 +18,7 @@ import useHeavyAnimationCheck, {getHeavyAnimationPromise} from '../hooks/useHeav
 import I18n, {LangPackKey, i18n, join} from '../lib/langPack';
 import findUpClassName from '../helpers/dom/findUpClassName';
 import {getMiddleware, Middleware, MiddlewareHelper} from '../helpers/middleware';
-import {ChannelParticipant, Chat, ChatFull, ChatParticipant, Document, Message, MessageMedia, Photo, StoryItem, Update, User, WebPage} from '../layer';
+import {ChannelParticipant, Chat, ChatFull, ChatParticipant, Document, Message, MessageMedia, MessagesChats, Photo, StoryItem, Update, User, WebPage} from '../layer';
 import SortedUserList from './sortedUserList';
 import findUpTag from '../helpers/dom/findUpTag';
 import appSidebarRight from './sidebarRight';
@@ -87,6 +87,7 @@ import Button from './button';
 import anchorCallback from '../helpers/dom/anchorCallback';
 import PopupPremium from './popups/premium';
 import {ChatType} from './chat/chat';
+import getFwdFromName from '../lib/appManagers/utils/messages/getFwdFromName';
 
 // const testScroll = false;
 
@@ -382,7 +383,7 @@ export default class AppSearchSuper {
   public usedFromHistory: Partial<{[type in SearchSuperType]: number}> = {};
 
   public searchContext: SearchSuperContext;
-  public loadMutex: Promise<any> = Promise.resolve();
+  public loadMutex: Promise<any>;
 
   private nextRates: Partial<{[type in SearchSuperMediaType]: number}> = {};
   private loadPromises: Partial<{[type in SearchSuperMediaType]: Promise<void>}> = {};
@@ -439,6 +440,11 @@ export default class AppSearchSuper {
   public onStoriesLengthChange: (length: number) => void;
   public storiesArchive: boolean;
 
+  public counters: Partial<{[type in SearchSuperMediaType]: number}> = {};
+  public onLengthChange: (type: SearchSuperMediaType, length: number) => void;
+
+  public openSavedDialogsInner: boolean;
+
   constructor(options: Pick<
     AppSearchSuper,
     'mediaTabs' |
@@ -450,7 +456,7 @@ export default class AppSearchSuper {
     'onChangeTab' |
     'showSender' |
     'managers'
-  > & Partial<Pick<AppSearchSuper, 'storiesArchive'>>) {
+  > & Partial<Pick<AppSearchSuper, 'storiesArchive' | 'onLengthChange' | 'openSavedDialogsInner'>>) {
     safeAssign(this, options);
 
     this.container = document.createElement('div');
@@ -766,6 +772,11 @@ export default class AppSearchSuper {
     this.container.classList.remove('sliding');
   };
 
+  public setCounter(type: SearchSuperMediaType, count: number) {
+    this.counters[type] = count;
+    this.onLengthChange?.(type, count);
+  }
+
   public filterMessagesByType(messages: MyMessage[], type: SearchSuperType): MyMessage[] {
     return filterMessagesByInputFilter({inputFilter: type, messages: messages, limit: messages.length});
   }
@@ -792,7 +803,8 @@ export default class AppSearchSuper {
       },
       withStories: true,
       meAsSaved: !isSaved,
-      autonomous: isSaved
+      autonomous: isSaved,
+      fromName: !peerId ? getFwdFromName(message.fwd_from) : undefined
     });
 
     const setLastMessagePromise = appDialogsManager.setLastMessageN({
@@ -1156,11 +1168,17 @@ export default class AppSearchSuper {
           monthContainer.replaceWith(chatlist);
           chatlist.append(monthContainer);
 
-          appDialogsManager.setListClickListener(chatlist, () => {
-            if(this.selection.isSelecting) {
-              return false;
-            }
-          }, undefined, true, true);
+          appDialogsManager.setListClickListener({
+            list: chatlist,
+            onFound: () => {
+              if(this.selection.isSelecting) {
+                return false;
+              }
+            },
+            withContext: undefined,
+            autonomous: true,
+            openInner: true
+          });
         }
       }
     }
@@ -1451,8 +1469,10 @@ export default class AppSearchSuper {
             if(!update.new_participant || (update.new_participant as ChannelParticipant.channelParticipantBanned).pFlags?.left) {
               membersList.delete(peerId);
               membersParticipantMap.delete(peerId);
+              this.setCounter(mediaTab.type, this.counters[mediaTab.type] - 1);
             } else if(!update.prev_participant && update.new_participant) {
               renderParticipants([update.new_participant]);
+              this.setCounter(mediaTab.type, this.counters[mediaTab.type] + 1);
             }
           };
 
@@ -1510,6 +1530,11 @@ export default class AppSearchSuper {
           return;
         }
 
+        const count = (messagesChats as MessagesChats.messagesChatsSlice).count ?? messagesChats.chats.length;
+        if(!this.counters[mediaTab.type]) {
+          this.setCounter(mediaTab.type, count);
+        }
+
         // const list = mediaTab.contentTab.firstElementChild as HTMLUListElement;
         const lastChat = messagesChats.chats[messagesChats.chats.length - 1];
         this.nextRates[mediaTab.type] = lastChat?.id as number;
@@ -1538,6 +1563,8 @@ export default class AppSearchSuper {
           this.loaded[mediaTab.type] = true;
         }
 
+        this.setCounter(mediaTab.type, participants.count);
+
         return renderParticipants(participants.participants);
       });
     } else {
@@ -1552,6 +1579,8 @@ export default class AppSearchSuper {
         if(participants._ === 'chatParticipantsForbidden') {
           return;
         }
+
+        this.setCounter(mediaTab.type, participants.participants.length);
 
         return renderParticipants(participants.participants);
       });
@@ -1600,6 +1629,7 @@ export default class AppSearchSuper {
         },
         onLengthChange: (length) => {
           this.onStoriesLengthChange?.(length);
+          this.setCounter(mediaTab.type, length);
         },
         selection: this.selection
       });
@@ -1676,6 +1706,9 @@ export default class AppSearchSuper {
       this.afterPerforming(1, mediaTab.contentTab);
       this.loaded[mediaTab.type] = true;
 
+      const count = (messagesChats as MessagesChats.messagesChatsSlice).count ?? messagesChats.chats.length;
+      this.setCounter(mediaTab.type, count);
+
       if(!isPremium && !isPremiumFeaturesHidden) {
         paywall ||= createPaywall(premiumLimit);
         mediaTab.contentTab.append(paywall);
@@ -1696,7 +1729,11 @@ export default class AppSearchSuper {
     }
 
     const list = appDialogsManager.createChatList();
-    appDialogsManager.setListClickListener(list, undefined, true, undefined, true);
+    appDialogsManager.setListClickListener({
+      list,
+      withContext: true,
+      openInner: this.openSavedDialogsInner
+    });
 
     const xd = new Some4();
     xd.scrollable = this.scrollable;
@@ -1708,13 +1745,29 @@ export default class AppSearchSuper {
       virtualFilterId: rootScope.myId
     });
 
+    const getCount = async() => {
+      const result = await this.managers.dialogsStorage.getDialogs({filterId: rootScope.myId});
+      return result.count;
+    };
+
+    const onAnyUpdate = xd.onAnyUpdate = async() => {
+      if(!middleware()) return;
+      const count = await getCount();
+      this.setCounter(mediaTab.type, count);
+    };
+
+    onAnyUpdate();
+
     mediaTab.contentTab.append(list);
     this.afterPerforming(1, mediaTab.contentTab);
 
     this._loadSavedDialogs = xd.onChatsScroll.bind(xd);
     middleware.onClean(() => {
+      xd.destroy();
       this._loadSavedDialogs = undefined;
     });
+
+    return xd.onChatsScroll();
   }
 
   private loadType(options: SearchSuperLoadTypeOptions) {
@@ -1732,29 +1785,29 @@ export default class AppSearchSuper {
       return promise;
     }
 
-    if(mediaTab.type === 'members' || mediaTab.type === 'groups') {
+    if(type === 'members' || type === 'groups') {
       promise = this.loadMembers(options);
-    } else if(mediaTab.type === 'stories') {
+    } else if(type === 'stories') {
       promise = this.loadStories(options);
-    } else if(mediaTab.type === 'similar') {
+    } else if(type === 'similar') {
       promise = this.loadSimilarChannels(options);
-    } else if(mediaTab.type === 'savedDialogs') {
+    } else if(type === 'savedDialogs') {
       promise = this.loadSavedDialogs(options);
     }
 
     if(promise) {
-      return this.loadPromises[mediaTab.type] = promise.finally(() => {
+      return this.loadPromises[type] = promise.finally(() => {
         if(!middleware()) {
           return;
         }
 
-        this.loadPromises[mediaTab.type] = null;
+        this.loadPromises[type] = null;
       });
     }
 
     const history = this.historyStorage[inputFilter] ??= [];
 
-    if(inputFilter === 'inputMessagesFilterEmpty' && !history.length && mediaTab.type !== 'saved') {
+    if(inputFilter === 'inputMessagesFilterEmpty' && !history.length && type !== 'saved') {
       if(!this.loadedChats) {
         this.loadChats();
         this.loadedChats = true;
@@ -1812,7 +1865,7 @@ export default class AppSearchSuper {
         offsetPeerId,
         limit: loadCount,
         nextRate: this.nextRates[type] ??= 0,
-        ...(mediaTab.type === 'saved' ? {inputFilter: undefined, peerId: rootScope.myId, threadId: this.searchContext.peerId} : {})
+        ...(type === 'saved' ? {inputFilter: undefined, peerId: rootScope.myId, threadId: this.searchContext.peerId} : {})
       };
       const value = await this.managers.appMessagesManager.getHistory(options);
 
@@ -1822,6 +1875,10 @@ export default class AppSearchSuper {
       }
 
       history.push(...messages.map((m) => ({mid: m.mid, peerId: m.peerId})));
+
+      if(!this.counters[type]) {
+        this.setCounter(type, value.count);
+      }
 
       if(!middleware()) {
         // this.log.warn('peer changed');
@@ -1934,6 +1991,8 @@ export default class AppSearchSuper {
       mediaTab.menuTab.classList.toggle('hide', !counter.count);
       mediaTab.menuTab.classList.remove('active');
       // mediaTab.contentTab.classList.toggle('hide', !counter.count);
+
+      this.setCounter(mediaTab.type, counter.count);
 
       if(counter.count) {
         if(firstMediaTab === undefined) {
@@ -2150,16 +2209,16 @@ export default class AppSearchSuper {
   }
 
   public async canViewStories() {
-    if(!this.mediaTabsMap.has('stories') || !this.onStoriesLengthChange) {
+    const {peerId, threadId} = this.searchContext;
+    if(!this.mediaTabsMap.has('stories') || threadId/*  || !this.onStoriesLengthChange */) {
       return false;
     }
 
-    const {peerId} = this.searchContext;
     if(peerId.isUser()) {
       const promise = this.storiesArchive ?
         this.managers.appStoriesManager.getStoriesArchive(peerId, 1) :
         this.managers.appStoriesManager.getPinnedStories(peerId, 1);
-      return promise.then((storyItems) => !!storyItems.length).catch(() => false);
+      return promise.then(({count}) => !!count).catch(() => false);
     }
 
     const chatFull = await this.managers.appProfileManager.getChatFull(peerId.toChatId());
@@ -2187,6 +2246,7 @@ export default class AppSearchSuper {
     this.nextRates = {};
     this.firstLoad = true;
     this.prevTabId = -1;
+    this.counters = {};
 
     this.lazyLoadQueue.clear();
 

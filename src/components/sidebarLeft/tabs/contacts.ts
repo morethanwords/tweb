@@ -74,9 +74,14 @@ export default class AppContactsTab extends SliderSuperTab {
     const list = sortedUserList.list;
     list.id = 'contacts';
     list.classList.add('contacts-container');
-    appDialogsManager.setListClickListener(list, () => {
-      this.close();
-    }, undefined, true);
+    appDialogsManager.setListClickListener({
+      list,
+      onFound: () => {
+        this.close();
+      },
+      withContext: undefined,
+      autonomous: true
+    });
     return sortedUserList;
   }
 

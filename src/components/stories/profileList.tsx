@@ -39,6 +39,10 @@ function _StoriesProfileList(props: {
       props.onLengthChange?.(length);
     });
 
+    props.onLengthChange && createEffect(() => {
+      props.onLengthChange(stories.peer?.count);
+    });
+
     props.onReady?.();
   };
 

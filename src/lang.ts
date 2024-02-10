@@ -522,6 +522,17 @@ const lang = {
   'Chat.Input.PremiumRequiredButton': 'Only Premium users can message %s.\n[Learn more...]()',
   'OnlyPremiumCanMessage': '**%s** only accepts messages from contacts and **[Telegram Premium]()** subscribers.',
   'Chat.ContextMenu.Read': 'Read',
+  'MediaFiles': {
+    'one_value': '%d media file',
+    'other_value': '%d media files'
+  },
+  'SimilarChannelsCount': {
+    'one_value': '%d similar channel',
+    'other_value': '%d similar channels'
+  },
+  'Reactions.Tag.Description': 'Tag the message with an emoji for quick search',
+  'Reaction.Tag.From': 'This tag is from **%s pack.**',
+  'Reactions.Tag.PremiumHint': 'Organize your Saved Messages with tags\nfor quicker access. **[Learn more…]()**',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -1843,6 +1854,54 @@ const lang = {
   'StatusHiddenShow': 'when?',
   'PremiumLastSeenSet': 'Your last seen time is now visible.',
   'PremiumReadSet': 'Your read times are now visible.',
+  'SavedViewAsChats': 'View as Chats',
+  'SavedViewAsMessages': 'View as Messages',
+  'SavedDialogsTabCount': {
+    'one_value': '%d chat',
+    'other_value': '%d chats'
+  },
+  'Files': {
+    'one_value': '%d file',
+    'other_value': '%d files'
+  },
+  'MusicFiles': {
+    'one_value': '%d music file',
+    'other_value': '%d music files'
+  },
+  'Voice': {
+    'one_value': '%d voice message',
+    'other_value': '%d voice messages'
+  },
+  'Links': {
+    'one_value': '%d link',
+    'other_value': '%d links'
+  },
+  'GIFs': {
+    'one_value': '%d GIF',
+    'other_value': '%d GIFs'
+  },
+  'CommonGroups': {
+    'one_value': '%1$d group in common',
+    'other_value': '%1$d groups in common'
+  },
+  'SavedMessagesCount': {
+    'one_value': '%d saved message',
+    'other_value': '%d saved messages'
+  },
+  'PremiumPreviewLastSeen': 'Last Seen Times',
+  'PremiumPreviewLastSeenDescription': 'View the last seen and read times of others even if you hide yours.',
+  'PremiumPreviewMessagePrivacy': 'Message Privacy',
+  'PremiumPreviewMessagePrivacyDescription': 'Restrict people you don\'t know from sending you messages.',
+  'PremiumPreviewTags': 'Tags for Messages',
+  'PremiumPreviewTagsDescription2': 'Organize your Saved Messages with tags for quicker access.',
+  'MessageContainsReactionPack': 'This reaction is an emoji from %s pack.',
+  'SavedTagFilterByTag': 'Filter by Tag',
+  'SavedTagRemoveTag': 'Remove Tag',
+  'SavedTagLabelTag': 'Add Name',
+  'SavedTagRenameTag': 'Edit Name',
+  'SavedTagLabelTagText': 'You can label your emoji tag with a text name.',
+  'SavedTagLabelPlaceholder': 'Name',
+  'Unlock': 'Unlock',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

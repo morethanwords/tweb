@@ -42,7 +42,8 @@ type StoriesPeerCache = {
   dispatchStoriesEvent?: boolean,
   pinnedLoadedAll?: boolean,
   archiveLoadedAll?: boolean,
-  position?: StoriesListPosition
+  position?: StoriesListPosition,
+  count?: number
 };
 
 type ExpiringItem = {peerId: PeerId, id: number, timestamp: number};
@@ -664,20 +665,21 @@ export default class AppStoriesManager extends AppManager {
       cache,
       pinned ? StoriesCacheType.Pinned : StoriesCacheType.Archive
     );
+    cache.count = storiesStories.count;
     const array = pinned ? cache.pinnedStories : cache.archiveStories;
     if(array.length === storiesStories.count || length < limit) {
       if(pinned) cache.pinnedLoadedAll = true;
       else cache.archiveLoadedAll = true;
     }
 
-    return storyItems;
+    return {count: storiesStories.count, stories: storyItems};
   }
 
   public getPinnedStories(peerId: PeerId, limit: number, offsetId: number = 0) {
     const cache = this.getPeerStoriesCache(peerId);
     const slice = this.getCachedStories(cache, true, limit, offsetId);
     if(slice) {
-      return slice;
+      return {count: cache.count, stories: slice};
     }
 
     return this.apiManager.invokeApiSingleProcess({
@@ -695,7 +697,7 @@ export default class AppStoriesManager extends AppManager {
     const cache = this.getPeerStoriesCache(peerId);
     const slice = this.getCachedStories(cache, false, limit, offsetId);
     if(slice) {
-      return slice;
+      return {count: cache.count, stories: slice};
     }
 
     return this.apiManager.invokeApiSingleProcess({

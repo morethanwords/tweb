@@ -26,6 +26,7 @@ import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 import appImManager from '../lib/appManagers/appImManager';
 import assumeType from '../helpers/assumeType';
 import {isForumTopic, isSavedDialog} from '../lib/appManagers/utils/dialogs/isDialog';
+import {appState} from '../stores/appState';
 
 export default class DialogsContextMenu {
   private buttons: ButtonMenuItemOptionsVerifiable[];
@@ -86,9 +87,23 @@ export default class DialogsContextMenu {
       icon: 'topics',
       text: 'TopicViewAsTopics',
       onClick: () => {
-        appImManager.disableViewAsMessages(this.peerId);
+        appImManager.toggleViewAsMessages(this.peerId, false);
       },
       verify: () => !!(this.dialog && (this.dialog as Dialog).pFlags.view_forum_as_messages)
+    }, {
+      icon: 'topics',
+      text: 'SavedViewAsChats',
+      onClick: () => {
+        appImManager.toggleViewAsMessages(this.peerId, false);
+      },
+      verify: () => this.peerId === rootScope.myId && !appState.settings.savedAsForum && !this.threadId
+    }, {
+      icon: 'message',
+      text: 'SavedViewAsMessages',
+      onClick: () => {
+        appImManager.toggleViewAsMessages(this.peerId, true);
+      },
+      verify: () => this.peerId === rootScope.myId && appState.settings.savedAsForum && !this.threadId
     }, {
       icon: 'unread',
       text: 'MarkAsUnread',

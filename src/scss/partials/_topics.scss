@@ -61,33 +61,14 @@
     .sidebar-header {
       padding: 0 .75rem;
 
+      &__title,
+      &__subtitle {
+        padding-inline-start: .5rem;
+      }
+
       // .btn-icon {
       //   padding: .375rem;
       // }
-
-      &__rows {
-        overflow: hidden;
-        flex: 1 1 auto;
-        padding-inline-start: .5rem;
-  
-        .sidebar-header__title {
-          padding-inline-start: 0 !important;
-          font-size: var(--font-size-16);
-          line-height: var(--line-height-16);
-          margin-bottom: .125rem;
-        }
-      }
-
-      &__title,
-      &__subtitle {
-        @include text-overflow(true);
-      }
-
-      &__subtitle {
-        color: var(--secondary-text-color);
-        font-size: var(--font-size-14);
-        line-height: var(--line-height-14);
-      }
     }
 
     .chatlist-chat {

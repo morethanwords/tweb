@@ -59,7 +59,7 @@ export class AppReactionsManager extends AppManager {
   private availableReactions: AvailableReaction[];
   private sendReactionPromises: Map<string, Promise<any>>;
   private lastSendingTimes: Map<string, number>;
-  private reactions: {[key in 'recent' | 'top']?: Reaction[]};
+  private reactions: {[key in 'recent' | 'top' | 'tags']?: Reaction[]};
   private savedReactionsTags: Map<PeerId, MaybePromise<SavedReactionTag[]>>;
 
   protected after() {
@@ -112,6 +112,10 @@ export class AppReactionsManager extends AppManager {
         this.processMessageReactionsChanges(item);
       }
     });
+
+    setInterval(() => {
+      this.savedReactionsTags.clear();
+    }, 10 * 60e3);
   }
 
   public clear = (init = false) => {
@@ -234,13 +238,22 @@ export class AppReactionsManager extends AppManager {
     });
   }
 
-  public getReactions(type: 'recent' | 'top') {
+  public getReactions(type: 'recent' | 'top' | 'tags') {
     if(this.reactions[type]) {
       return this.reactions[type];
     }
 
+    let method: 'messages.getRecentReactions' | 'messages.getTopReactions' | 'messages.getDefaultTagReactions';
+    if(type === 'recent') {
+      method = 'messages.getRecentReactions';
+    } else if(type === 'top') {
+      method = 'messages.getTopReactions';
+    } else {
+      method = 'messages.getDefaultTagReactions';
+    }
+
     return this.apiManager.invokeApiHashable({
-      method: type === 'recent' ? 'messages.getRecentReactions' : 'messages.getTopReactions',
+      method,
       params: {
         limit: 75
       },
@@ -298,6 +311,16 @@ export class AppReactionsManager extends AppManager {
         message.fromId === message.fwdFromId &&
         message.fromId
       ) || message.peerId;
+    }
+
+    if(peerId === this.appPeersManager.peerId) {
+      const {reactions} = message;
+      if(!reactions || reactions.pFlags.reactions_as_tags) {
+        return callbackify(this.getReactions('tags'), (reactions) => {
+          const p: PeerAvailableReactions = {type: 'chatReactionsAll', reactions};
+          return p;
+        });
+      }
     }
 
     return this.getAvailableReactionsForPeer(peerId, unshiftQuickReaction);
@@ -651,6 +674,15 @@ export class AppReactionsManager extends AppManager {
 
     savedReactionsTags.set(savedPeerId, promise);
     return promise;
+  }
+
+  public async updateSavedReactionTag(reaction: Reaction, title?: string) {
+    await this.apiManager.invokeApi('messages.updateSavedReactionTag', {reaction, title});
+    const tags = await this.getSavedReactionTags();
+    const tag = tags.find((tag) => reactionsEqual(tag.reaction, reaction));
+    if(title) tag.title = title;
+    else delete tag.title;
+    this.apiUpdatesManager.processLocalUpdate({_: 'updateSavedReactionTags', tags});
   }
 
   public processMessageReactionsChanges({message, changedResults, removedResults, savedPeerId}: BroadcastEvents['messages_reactions'][0] & {savedPeerId?: PeerId}) {

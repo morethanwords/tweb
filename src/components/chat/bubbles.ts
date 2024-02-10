@@ -171,6 +171,7 @@ import {isSavedDialog} from '../../lib/appManagers/utils/dialogs/isDialog';
 import getFwdFromName from '../../lib/appManagers/utils/messages/getFwdFromName';
 import isForwardOfForward from '../../lib/appManagers/utils/messages/isForwardOfForward';
 import {ReactionLayoutType} from './reaction';
+import reactionsEqual from '../../lib/appManagers/utils/reactions/reactionsEqual';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -1305,6 +1306,14 @@ export default class ChatBubbles {
       this.deleteMessagesByIds([...msgs.keys()]);
     });
 
+    this.listenerSetter.add(rootScope)('history_delete_key', ({historyKey, mid}) => {
+      if(this.chat.historyStorageKey !== historyKey) {
+        return;
+      }
+
+      this.deleteMessagesByIds([mid]);
+    });
+
     this.listenerSetter.add(rootScope)('dialog_unread', ({peerId}) => {
       if(peerId === this.peerId) {
         this.chat.input.setUnreadCount();
@@ -1730,7 +1739,8 @@ export default class ChatBubbles {
       content &&
       !this.chat.selection.isSelecting &&
       !findUpClassName(e.target, 'service') &&
-      !findUpClassName(e.target, 'bubble-beside-button')
+      !findUpClassName(e.target, 'bubble-beside-button') &&
+      this.peerId !== rootScope.myId
     )) {
       this.unhoverPrevious();
       return;
@@ -2126,12 +2136,24 @@ export default class ChatBubbles {
 
       const reactionsElement = reactionElement.parentElement as ReactionsElement;
       const reactionCount = reactionsElement.getReactionCount(reactionElement);
+      const {reaction} = reactionCount;
 
-      if(reactionsElement.getType() === ReactionLayoutType.Tag && rootScope.premium) {
-        this.chat.initSearch({reaction: reactionCount.reaction});
+      if(reactionsElement.getType() === ReactionLayoutType.Tag) {
+        if(!rootScope.premium) {
+          PopupPremium.show({feature: 'saved_tags'});
+          return;
+        }
+
+        const search = this.chat.searchSignal();
+        if(reactionsEqual(search?.reaction, reaction)) {
+          this.chat.contextMenu.onContextMenu(e as MouseEvent);
+          return;
+        }
+
+        this.chat.initSearch({reaction: reaction});
       } else {
         const message = reactionsElement.getContext();
-        this.chat.sendReaction({message, reaction: reactionCount.reaction});
+        this.chat.sendReaction({message, reaction: reaction});
       }
 
       return;

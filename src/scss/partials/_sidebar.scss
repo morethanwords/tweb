@@ -29,13 +29,38 @@
     top: 0;
     z-index: 1; */
 
+    &__rows {
+      overflow: hidden;
+      flex: 1 1 auto;
+
+      .sidebar-header__title {
+        font-size: var(--font-size-16);
+        line-height: var(--line-height-16);
+        // margin-bottom: .125rem;
+      }
+    }
+
     &__title {
       flex: 1;
       font-weight: var(--font-weight-bold);
       padding-inline-start: 1.5rem;
       font-size: 1.25rem;
       color: var(--primary-text-color);
+    }
 
+    &__subtitle {
+      color: var(--secondary-text-color);
+      font-size: var(--font-size-14);
+      line-height: 20px;
+      padding-inline-start: 1.5rem;
+
+      .transition {
+        height: 20px;
+      }
+    }
+
+    &__title,
+    &__subtitle {
       @include text-overflow(true);
     }
 

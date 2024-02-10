@@ -59,6 +59,7 @@ import PopupBoostsViaGifts from '../popups/boostsViaGifts';
 import AppStatisticsTab from '../sidebarRight/tabs/statistics';
 import {ChatType} from './chat';
 import AppBoostsTab from '../sidebarRight/tabs/boosts';
+import {appState} from '../../stores/appState';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -413,12 +414,19 @@ export default class ChatTopbar {
       icon: 'topics',
       text: 'TopicViewAsTopics',
       onClick: () => {
-        this.chat.appImManager.disableViewAsMessages(this.peerId);
+        this.chat.appImManager.toggleViewAsMessages(this.peerId, false);
       },
       verify: async() => {
         const dialog = await this.managers.appMessagesManager.getDialogOnly(this.peerId);
         return !!(dialog && (dialog as Dialog.dialog).pFlags.view_forum_as_messages);
       }
+    }, {
+      icon: 'topics',
+      text: 'SavedViewAsChats',
+      onClick: () => {
+        this.chat.appImManager.toggleViewAsMessages(this.peerId, false);
+      },
+      verify: () => this.peerId === rootScope.myId && !this.chat.threadId && !appState.settings.savedAsForum
     }, {
       icon: 'select',
       text: 'Chat.Menu.SelectMessages',
@@ -855,7 +863,8 @@ export default class ChatTopbar {
       const avatar = this.avatar;
       if(!avatar ||
           avatar.node.dataset.peerId.toPeerId() !== usePeerId ||
-          avatar.node.dataset.threadId !== (useThreadId ? '' + useThreadId : undefined)) {
+          avatar.node.dataset.threadId !== (useThreadId ? '' + useThreadId : undefined) ||
+          peerId === rootScope.myId) {
         newAvatar = avatarNew({
           middleware: (newAvatarMiddlewareHelper = getMiddleware()).get(),
           isDialog: true,

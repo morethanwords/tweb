@@ -259,6 +259,7 @@ export default class ReactionElement extends HTMLElement {
   public middleware: Middleware;
   private customEmojiElement: CustomEmojiElement;
   public hasAroundAnimation: Promise<void>;
+  private hasTitle: boolean;
 
   constructor() {
     super();
@@ -384,7 +385,7 @@ export default class ReactionElement extends HTMLElement {
     });
   }
 
-  private findTitle() {
+  public findTitle() {
     let title: string;
     if(this.type === ReactionLayoutType.Tag) {
       const tag = savedReactionTags.find((tag) => reactionsEqual(tag.reaction, this.reactionCount.reaction));
@@ -394,12 +395,12 @@ export default class ReactionElement extends HTMLElement {
     return title;
   }
 
-  public renderCounter(force?: boolean) {
-    const title = this.findTitle();
+  public renderCounter(force?: boolean, title: string | HTMLElement = this.findTitle()) {
     const displayOn = REACTIONS_DISPLAY_COUNTER_AT[this.type];
-    if(displayOn === undefined && !force && !title) return;
+    if(displayOn === undefined && !force && !title && !this.hasTitle) return;
     const reactionCount = this.reactionCount;
 
+    let setTitle = false;
     if(force || title || reactionCount.count >= displayOn || (this.type === ReactionLayoutType.Block && !this.canRenderAvatars)) {
       if(!this.counter) {
         this.counter = document.createElement(this.type === ReactionLayoutType.Inline ? 'i' : 'span');
@@ -410,8 +411,9 @@ export default class ReactionElement extends HTMLElement {
       if(title) {
         const span = document.createElement('span');
         span.classList.add(CLASS_NAME + '-counter-title');
-        span.append(wrapEmojiText(title));
+        span.append(typeof(title) === 'string' ? wrapEmojiText(title) : title);
         this.counter.replaceChildren(span);
+        setTitle = true;
         if(force) {
           this.counter.append(' ', formatted);
         }
@@ -426,6 +428,8 @@ export default class ReactionElement extends HTMLElement {
       this.counter.remove();
       this.counter = undefined;
     }
+
+    this.hasTitle = setTitle;
   }
 
   public renderAvatars(recentReactions: MessagePeerReaction[]) {

@@ -52,7 +52,7 @@ export namespace MessageRender {
   }) => {
     const {chatType, message} = options;
     const isMessage = !('action' in message)/*  && !isSponsored */;
-    const includeDate = message.peerId === rootScope.myId && (!options.isOut || !!options.chat.threadId);
+    const includeDate = message.peerId === rootScope.myId && (!options.isOut/*  || !!options.chat.threadId */);
     const args: (HTMLElement | string)[] = [];
 
     let timestamp = message.date;

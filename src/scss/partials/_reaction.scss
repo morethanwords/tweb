@@ -195,33 +195,25 @@
     --reaction-offset: -.5625rem;
     --reaction-total-size: calc(var(--reaction-size) + var(--additional-height));
     --counter-color: #9BA0A5;
+    --background-color: var(--old-input-background-color);
+    --dot-color: rgba(155, 160, 165, .4);
     min-width: 2.6875rem;
     padding-inline: .375rem;
 
     &.is-chosen {
       &:not(.backwards) {
         --counter-color: var(--message-icon-text-color);
-
-        .reaction-tag-svg {
-          fill: var(--chosen-background-color);
-        }
+        --background-color: var(--chosen-background-color);
+        --dot-color: var(--message-reaction-tag-dot-color);
   
         // .reaction-tag-svg-circle {
         //   fill: var(--message-reaction-tag-dot-color);
         // }
-  
-        .reaction-tag-dot {
-          background-color: var(--message-reaction-tag-dot-color);
-        }
-  
-        .reaction-tag-background {
-          background-color: var(--chosen-background-color);
-        }
       }
 
       &.animating {
         .reaction-tag-svg {
-          transition: fill var(--transition-standard-in)
+          transition: fill var(--transition-standard-in);
         }
 
         .reaction-tag-dot,
@@ -242,7 +234,7 @@
       inset-inline-end: 0;
       width: 43px;
       height: 30px;
-      fill: var(--old-input-background-color);
+      fill: var(--background-color);
 
       // &-circle {
       //   fill: rgba(155, 160, 165, .4);
@@ -254,7 +246,7 @@
       margin-left: 5px;
       width: .375rem;
       height: .375rem;
-      background-color: rgba(155, 160, 165, .4);
+      background-color: var(--dot-color);
       border-radius: 50%;
       order: 999;
     }
@@ -262,7 +254,7 @@
     &-background {
       position: absolute;
       inset: 0;
-      background-color: var(--old-input-background-color);
+      background-color: var(--background-color);
       border-radius: inherit;
       margin-inline-end: 18px;
       border-radius: 7px;
@@ -272,6 +264,18 @@
     &-dot,
     &-background {
       pointer-events: none;
+    }
+
+    &-lock {
+      --background-color: var(--light-filled-primary-color);
+      --dot-color: rgba(var(--primary-color-rgb), .4);
+      --counter-color: currentColor;
+      color: var(--primary-color);
+      opacity: 1 !important;
+
+      .reaction-sticker-icon {
+        font-size: 1.25rem;
+      }
     }
 
     // .reaction-sticker {
@@ -287,6 +291,7 @@
     position: relative;
     color: var(--counter-color);
     pointer-events: none;
+    white-space: nowrap;
 
     // &-title {
     //   font-size: var(--font-size-14);

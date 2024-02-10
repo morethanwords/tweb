@@ -60,9 +60,14 @@ export default class AppPollResultsTab extends SliderSuperTab {
       const list = appDialogsManager.createChatList();
       list.classList.add('poll-results-voters');
 
-      appDialogsManager.setListClickListener(list, () => {
-        appSidebarRight.onCloseBtnClick();
-      }, undefined, true);
+      appDialogsManager.setListClickListener({
+        list,
+        onFound: () => {
+          appSidebarRight.onCloseBtnClick();
+        },
+        withContext: undefined,
+        autonomous: true
+      });
 
       list.style.minHeight = Math.min(result.voters, 4) * 48 + 'px';
 

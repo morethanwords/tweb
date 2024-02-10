@@ -49,6 +49,9 @@ import pause from '../../helpers/schedulers/pause';
 import reactionsEqual from '../../lib/appManagers/utils/reactions/reactionsEqual';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import fastSmoothScroll from '../../helpers/fastSmoothScroll';
+import Icon from '../icon';
+import PopupPremium from '../popups/premium';
+import usePremium from '../../stores/premium';
 
 export const ScrollableYTsx = (props: {
   children: JSX.Element,
@@ -277,7 +280,8 @@ export default function TopbarSearch(props: {
   query?: Accessor<string>,
   reaction?: Accessor<Reaction>,
   onClose?: () => void,
-  onDatePick?: (timestamp: number) => void
+  onDatePick?: (timestamp: number) => void,
+  onActive?: (active: boolean, showingReactions: boolean) => void
 }) {
   const [isInputFocused, setIsInputFocused] = createSignal(false);
   const [value, setValue] = createSignal<string>('');
@@ -301,6 +305,17 @@ export default function TopbarSearch(props: {
     return !!(element && tags?.length);
   });
   const isActive = createMemo(() => shouldShowReactions() || shouldShowResults());
+  const isPremium = usePremium();
+
+  if(props.onActive) {
+    createEffect(() => {
+      props.onActive(isActive(), shouldShowReactions());
+    });
+
+    onCleanup(() => {
+      props.onActive(false, false);
+    });
+  }
 
   // full search replacement
   createEffect(() => {
@@ -630,8 +645,7 @@ export default function TopbarSearch(props: {
     return {
       _: 'reactionCount',
       count: tag.count,
-      reaction: tag.reaction,
-      title: tag.title
+      reaction: tag.reaction
     };
   };
 
@@ -656,11 +670,11 @@ export default function TopbarSearch(props: {
   });
 
   // * render saved reaction tags
-  createEffect(() => {
+  createEffect<HTMLElement>((previousLock) => {
     const tags = savedReactionTags();
     const element = reactionsElement();
     if(!tags || !element) {
-      return;
+      return previousLock;
     }
 
     const reactionsContext: ReactionsContext = {
@@ -679,6 +693,7 @@ export default function TopbarSearch(props: {
       }
     }
 
+    previousLock?.remove();
     element.update(reactionsContext);
 
     if(chosenReactionCount) {
@@ -690,11 +705,35 @@ export default function TopbarSearch(props: {
         axis: 'x'
       });
     }
+
+    const premium = isPremium();
+    element.classList.toggle('is-locked', !premium);
+    if(!premium) {
+      const icon: Icon = 'premium_lock';
+      const reaction = new ReactionElement();
+      reaction.init(ReactionLayoutType.Tag, createMiddleware().get());
+      reaction.reactionCount = {
+        _: 'reactionCount',
+        count: 1,
+        reaction: icon as any
+      };
+      reaction.setCanRenderAvatars(false);
+      reaction.renderCounter(undefined, i18n('Unlock'));
+      reaction.classList.add('reaction-tag-lock');
+
+      const allReactionsSticker = document.createElement('div');
+      allReactionsSticker.classList.add('reaction-sticker', 'reaction-sticker-icon');
+      allReactionsSticker.append(Icon(icon));
+      reaction.lastElementChild.before(allReactionsSticker);
+
+      element.prepend(reaction);
+      return reaction;
+    }
   });
 
   // * load saved reaction tags
   createEffect(() => {
-    if(props.peerId !== rootScope.myId || !rootScope.premium) {
+    if(props.peerId !== rootScope.myId) {
       setReactionsElement();
       setSavedReactionTags();
       return;
@@ -724,6 +763,11 @@ export default function TopbarSearch(props: {
         return;
       }
 
+      if(!isPremium()) {
+        PopupPremium.show({feature: 'saved_tags'});
+        return;
+      }
+
       const {reactionCount} = reactionElement;
       const {reaction} = reactionCount;
       setReaction((prev) => {
@@ -733,6 +777,8 @@ export default function TopbarSearch(props: {
 
         return reaction;
       });
+
+      placeCaretAtEnd(inputSearch.input);
     }, {cancelMouseDown: true});
     onCleanup(detach);
 
@@ -760,13 +806,20 @@ export default function TopbarSearch(props: {
         }
       }
 
-      appImManager.chat.setMessageId(
-        {lastMsgId: undefined, mediaTimestamp: undefined, savedReaction: reaction ? [reaction] : undefined}      );
+      appImManager.chat.setMessageId({
+        lastMsgId: undefined,
+        mediaTimestamp: undefined,
+        savedReaction: reaction ? [reaction] : undefined
+      });
     }
   ));
 
   // * reset reaction on close
   onCleanup(() => {
+    if(!reaction()) {
+      return;
+    }
+
     appImManager.chat.setMessageId({lastMsgId: undefined, mediaTimestamp: undefined, savedReaction: undefined});
   });
 

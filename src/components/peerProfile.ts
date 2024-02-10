@@ -486,7 +486,7 @@ export default class PeerProfile {
         middleware
       },
       withStories: true,
-      meAsNotes: !!(peerId === rootScope.myId && threadId)
+      meAsNotes: !!(peerId === rootScope.myId && this.threadId)
     });
     avatar.node.classList.add('profile-avatar', 'avatar-120');
     const [nameCallback] = await Promise.all([

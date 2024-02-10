@@ -1581,7 +1581,7 @@ const Stories = (props: {
       }
     });
 
-    apiManagerProxy.getState().then((state) => {
+    if(!untrack(noSound)) apiManagerProxy.getState().then((state) => {
       if(!cleaned && !state.seenTooltips.storySound) {
         runWithOwner(owner, () => {
           const playingMemo = createMemo((prev) => prev || (isActive() && stories.startTime));
@@ -3778,7 +3778,8 @@ export const createStoriesViewerWithStory = (
     peers: [{
       peerId: props.peerId,
       stories: [props.storyItem],
-      index: 0
+      index: 0,
+      count: 1
     }],
     index: 0
   });
@@ -3818,7 +3819,8 @@ export const createStoriesViewerWithPeer = async(
       peerId: props.peerId,
       stories: peerStories.stories,
       maxReadId: peerStories.max_read_id,
-      index: storyIndex
+      index: storyIndex,
+      count: peerStories.stories.length
     }],
     index: 0
   });

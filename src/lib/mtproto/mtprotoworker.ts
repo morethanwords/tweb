@@ -44,6 +44,7 @@ import getStickerThumbKey from '../storages/utils/thumbs/getStickerThumbKey';
 import callbackify from '../../helpers/callbackify';
 import isLegacyMessageId from '../appManagers/utils/messageId/isLegacyMessageId';
 import {MTAppConfig} from './appConfig';
+import {setAppStateSilent} from '../../stores/appState';
 
 const TEST_NO_STREAMING = false;
 
@@ -157,6 +158,14 @@ class ApiManagerProxy extends MTProtoMessagePort {
           }
         } else {
           map.set(mid, message);
+        }
+      },
+
+      state: (payload) => {
+        if(payload.key) {
+          setAppStateSilent({[payload.key]: payload.value});
+        } else {
+          console.error(payload);
         }
       }
     };
@@ -555,6 +564,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
         this.newVersion = stateResult.newVersion;
         this.oldVersion = stateResult.oldVersion;
         this.mirrors['state'] = stateResult.state;
+        setAppStateSilent(stateResult.state);
         return stateResult;
       })
       // loadStorages(createStorages()),

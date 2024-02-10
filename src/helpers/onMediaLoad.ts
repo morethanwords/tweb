@@ -33,7 +33,7 @@ export function shouldIgnoreVideoError(e: ErrorEvent) {
         target.load();
       });
       return true;
-    } else {
+    } else if(isChromeBug) {
       console.error('chrome video error', e);
     }
   } catch(err) {}

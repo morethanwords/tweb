@@ -73,6 +73,7 @@ import getHistoryStorageKey, {getSearchStorageFilterKey} from './utils/messages/
 import {ApiLimitType} from '../mtproto/api_methods';
 import getFwdFromName from './utils/messages/getFwdFromName';
 import filterUnique from '../../helpers/array/filterUnique';
+import getSearchType from './utils/messages/getSearchType';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -2799,11 +2800,14 @@ export class AppMessagesManager extends AppManager {
       return;
     }
 
+    let deleted = false;
     const {searchStorages} = context;
     searchStorages?.forEach((searchStorage) => {
       if(!deletion && searchStorage.filterMessage(message)) {
         return;
       }
+
+      deleted = true;
 
       searchStorage.history.delete(message.mid);
       if(searchStorage.count) {
@@ -2811,7 +2815,15 @@ export class AppMessagesManager extends AppManager {
       }
 
       searchStorages.delete(searchStorage);
+
+      if(this.historyMaxIdSubscribed.has(searchStorage.key)) {
+        this.rootScope.dispatchEvent('history_delete_key', {historyKey: searchStorage.key, mid: message.mid});
+      }
     });
+
+    if(!deleted) {
+      return;
+    }
 
     if(searchStorages && !searchStorages.size) {
       delete context.searchStorages;
@@ -4418,7 +4430,7 @@ export class AppMessagesManager extends AppManager {
 
   public getSearchStorage(options: RequestHistoryOptions) {
     const o: Parameters<typeof getSearchStorageFilterKey>[0] = {...options, type: 'search'};
-    if(this.getSearchType(options) === 'uncached') {
+    if(getSearchType(options) === 'uncached') {
       const historyStorage = this.createHistoryStorage(o);
       return historyStorage;
     }
@@ -5063,6 +5075,10 @@ export class AppMessagesManager extends AppManager {
   }
 
   public toggleHistoryMaxIdSubscription(historyKey: HistoryStorageKey, subscribe: boolean) {
+    if(!historyKey) {
+      return;
+    }
+
     const previous = this.historyMaxIdSubscribed.get(historyKey) || 0;
     if(subscribe) {
       this.historyMaxIdSubscribed.set(historyKey, previous + 1);
@@ -6787,17 +6803,6 @@ export class AppMessagesManager extends AppManager {
     return next || prev ? {next, prev} : undefined;
   }
 
-  public getSearchType(options: RequestHistoryOptions): RequestHistoryOptions['searchType'] {
-    // return 'uncached';
-
-    const isSearch = !!(options.inputFilter || options.savedReaction || options.query);
-    if(!isSearch) {
-      return;
-    }
-
-    return options.query || !options.peerId || options.fromPeerId ? 'uncached' : 'cached';
-  }
-
   public getHistoryType(peerId: PeerId, threadId?: number) {
     if(threadId) {
       if(peerId.isUser()) {
@@ -6815,7 +6820,7 @@ export class AppMessagesManager extends AppManager {
   public processRequestHistoryOptions(options: RequestHistoryOptions & {backLimit?: number, historyStorage?: HistoryStorage}) {
     options.offsetId ??= 0;
     options.historyType ??= this.getHistoryType(options.peerId, options.threadId);
-    options.searchType ??= this.getSearchType(options);
+    options.searchType ??= getSearchType(options);
     if(options.savedReaction) {
       options.savedReaction = options.savedReaction.filter(Boolean);
       if(!options.savedReaction.length) {

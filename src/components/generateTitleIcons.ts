@@ -28,6 +28,10 @@ export default async function generateTitleIcons({
 }) {
   peer ??= apiManagerProxy.getPeer(peerId);
   const elements: HTMLElement[] = [];
+  if(!peer) {
+    return elements;
+  }
+
   if(((peer as Chat.channel).pFlags.fake || (peer as User.user).pFlags.scam) && !noFakeIcon) {
     elements.push(generateFakeIcon((peer as User.user).pFlags.scam));
   }

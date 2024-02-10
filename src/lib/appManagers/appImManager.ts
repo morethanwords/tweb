@@ -118,6 +118,7 @@ import PopupWebApp from '../../components/popups/webApp';
 import {getPeerColorIndexByPeer, getPeerColorsByPeer, setPeerColors} from './utils/peers/getPeerColorById';
 import deepEqual from '../../helpers/object/deepEqual';
 import {savedReactionTags} from '../../components/chat/reactions';
+import {setAppState} from '../../stores/appState';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -2121,10 +2122,15 @@ export class AppImManager extends EventListenerBase<{
     });
   }
 
-  public async disableViewAsMessages(peerId: PeerId) {
-    await this.managers.appChatsManager.toggleViewForumAsMessages(peerId.toChatId(), false);
+  public async toggleViewAsMessages(peerId: PeerId, enabled: boolean) {
+    if(peerId === rootScope.myId) {
+      setAppState('settings', 'savedAsForum', !enabled);
+    } else {
+      await this.managers.appChatsManager.toggleViewForumAsMessages(peerId.toChatId(), enabled);
+    }
+
     this.selectTab(APP_TABS.CHATLIST);
-    appDialogsManager.toggleForumTabByPeerId(peerId, true);
+    appDialogsManager.toggleForumTabByPeerId(peerId, !enabled);
   }
 
   private getTypingElement(action: SendMessageAction) {

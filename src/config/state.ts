@@ -108,7 +108,8 @@ export type State = {
     },
     nightTheme?: boolean, // ! DEPRECATED
     timeFormat: 'h12' | 'h23',
-    liteMode: {[key in LiteModeKey]: boolean}
+    liteMode: {[key in LiteModeKey]: boolean},
+    savedAsForum: boolean
   },
   playbackParams: ReturnType<AppMediaPlaybackController['getPlaybackParams']>,
   keepSigned: boolean,
@@ -313,7 +314,8 @@ export const STATE_INIT: State = {
       stickers_chat: false,
       stickers_panel: false,
       video: false
-    }
+    },
+    savedAsForum: false
   },
   playbackParams: {
     volume: 1,

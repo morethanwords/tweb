@@ -83,6 +83,7 @@ export type BroadcastEvents = {
   'history_forbidden': PeerId,
   'history_reload': PeerId,
   'history_count': {historyKey: string, count: number},
+  'history_delete_key': {historyKey: string, mid: number},
   // 'history_request': void,
 
   'message_edit': {storageKey: MessagesStorageKey, peerId: PeerId, mid: number, message: MyMessage},

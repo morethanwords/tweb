@@ -242,8 +242,7 @@ export const PREMIUM_FEATURES: {[type in PremiumPromoFeatureType]?: PremiumPromo
     icon: 'premium_colors',
     titleLangKey: 'Premium.Promo.Colors.Title',
     subtitleLangKey: 'Premium.Promo.Colors.Subtitle',
-    videoPosition: 'top',
-    new: true
+    videoPosition: 'top'
   },
   wallpapers: {
     feature: 'wallpapers',
@@ -297,5 +296,25 @@ export const PREMIUM_FEATURES: {[type in PremiumPromoFeatureType]?: PremiumPromo
     subtitleLangKey: 'Premium.Boarding.Stickers.Info',
     // actionIcon: 'premium_unlock',
     type: 'premium-stickers'
+  },
+  last_seen: {
+    feature: 'last_seen',
+    icon: 'premium_stickers',
+    titleLangKey: 'PremiumPreviewLastSeen',
+    subtitleLangKey: 'PremiumPreviewLastSeenDescription',
+    new: true
+  },
+  message_privacy: {
+    feature: 'message_privacy',
+    icon: 'premium_stickers',
+    titleLangKey: 'PremiumPreviewMessagePrivacy',
+    subtitleLangKey: 'PremiumPreviewMessagePrivacyDescription',
+    new: true
+  },
+  saved_tags: {
+    feature: 'saved_tags',
+    icon: 'star_filled',
+    titleLangKey: 'PremiumPreviewTags',
+    subtitleLangKey: 'PremiumPreviewTagsDescription2'
   }
 };

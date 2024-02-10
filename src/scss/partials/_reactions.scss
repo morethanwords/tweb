@@ -29,6 +29,14 @@
     }
   }
 
+  &-tag {
+    &.is-locked {
+      .reaction-tag {
+        opacity: .6;
+      }
+    }
+  }
+
   // &-inline {
   //   display: inline-flex;
 

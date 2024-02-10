@@ -48,7 +48,7 @@ export class SearchGroup {
     this.container.style.display = 'none';
 
     if(clickable) {
-      appDialogsManager.setListClickListener(this.list, onFound, undefined, autonomous);
+      appDialogsManager.setListClickListener({list: this.list, onFound, withContext: undefined, autonomous});
     }
   }
 

@@ -30,6 +30,10 @@ import ButtonIcon from '../buttonIcon';
 import {EmoticonsDropdown} from '../emoticonsDropdown';
 import EmojiTab from '../emoticonsDropdown/tabs/emoji';
 import wrapSticker from '../wrappers/sticker';
+import {i18n} from '../../lib/langPack';
+import anchorCallback from '../../helpers/dom/anchorCallback';
+import PopupPremium from '../popups/premium';
+import contextMenuController from '../../helpers/contextMenuController';
 
 const REACTIONS_CLASS_NAME = 'btn-menu-reactions';
 const REACTION_CLASS_NAME = REACTIONS_CLASS_NAME + '-reaction';
@@ -62,6 +66,7 @@ export class ChatReactionsMenu {
   private openSide: 'top' | 'bottom';
   private getOpenPosition: (hasMenu: boolean) => DOMRectEditable;
   private noMoreButton: boolean;
+  private tags: boolean;
   public inited: boolean;
 
   constructor(options: {
@@ -72,7 +77,8 @@ export class ChatReactionsMenu {
     size?: ChatReactionsMenu['size'],
     openSide?: ChatReactionsMenu['openSide'],
     getOpenPosition: ChatReactionsMenu['getOpenPosition'],
-    noMoreButton?: boolean
+    noMoreButton?: boolean,
+    tags?: boolean
   }) {
     this.managers = options.managers;
     this.middlewareHelper = options.middleware ? options.middleware.create() : getMiddleware();
@@ -82,6 +88,7 @@ export class ChatReactionsMenu {
     this.openSide = options.openSide ?? 'bottom';
     this.getOpenPosition = options.getOpenPosition;
     this.noMoreButton = options.noMoreButton;
+    this.tags = options.tags;
 
     this.middlewareHelper.get().onDestroy(() => {
       this.listenerSetter.removeAll();
@@ -93,6 +100,21 @@ export class ChatReactionsMenu {
       REACTIONS_CLASS_NAME + '-container-' + options.type,
       'btn-menu-transition'
     );
+
+    if(this.tags) {
+      widthContainer.classList.add(REACTIONS_CLASS_NAME + '-container-' + 'tags');
+      const description = i18n(
+        rootScope.premium ? 'Reactions.Tag.Description' : 'Reactions.Tag.PremiumHint',
+        [
+          anchorCallback(() => {
+            contextMenuController.close();
+            PopupPremium.show({feature: 'saved_tags'});
+          })
+        ]
+      );
+      description.classList.add(REACTIONS_CLASS_NAME + '-description');
+      widthContainer.append(description);
+    }
 
     const reactionsContainer = this.container = document.createElement('div');
     reactionsContainer.classList.add(REACTIONS_CLASS_NAME/* , 'btn-menu-transition' */);
@@ -144,6 +166,8 @@ export class ChatReactionsMenu {
       {type, reactions}: PeerAvailableReactions,
       availableReactions: AvailableReaction[]
     ) => {
+      // this.widthContainer.classList.add('is-visible');
+      // return;
       const maxLength = 7;
       // const filtered = reactions.filter((reaction) => !reaction.pFlags.premium || rootScope.premium);
       const filtered = reactions;
@@ -183,7 +207,12 @@ export class ChatReactionsMenu {
             noRegularEmoji: true,
             noPacks,
             managers: rootScope.managers,
-            mainSets: () => {
+            mainSets: this.tags ? () => {
+              const reactionsPromise = Promise.resolve(this.managers.appReactionsManager.getReactions('tags'))
+              // const topReactionsPromise = this.managers.appReactionsManager.getTopReactions()
+              .then(reactionsToDocIds);
+              return [reactionsPromise];
+            } : () => {
               const topReactionsPromise = Promise.resolve(reactions)
               // const topReactionsPromise = this.managers.appReactionsManager.getTopReactions()
               .then(reactionsToDocIds);
