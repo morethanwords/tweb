@@ -280,7 +280,7 @@ export const AvatarNew = (props: {
     canvas.style.setProperty('--offset', `${(dimensions.totalSvgSize - dimensions.size) / -2}px`);
     canvas.classList.add('avatar-stories-svg');
 
-    createEffect(() => {
+    const render = () => {
       const segments = storiesSegments();
       const firstCloseSegment = segments.find((segment) => segment.type === 'close');
       let sections = segments.map((segment) => segmentToSection(segment, !!firstCloseSegment));
@@ -293,7 +293,16 @@ export const AvatarNew = (props: {
       }
 
       dashedCircle.render(sections);
-    });
+    };
+
+    createEffect(render);
+
+    const onThemeChange = () => {
+      unreadGradient = closeGradient = undefined;
+      render();
+    };
+    rootScope.addEventListener('theme_changed', onThemeChange);
+    onCleanup(() => rootScope.removeEventListener('theme_changed', onThemeChange));
 
     return simple ? (
       <>

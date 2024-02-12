@@ -215,6 +215,8 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
           break;
         }
 
+        // @ts-ignore
+        case 'inputMediaWebPage':
         case 'messageMediaPhotoExternal':
         case 'messageMediaDocumentExternal':
         case 'messageMediaWebPage': {

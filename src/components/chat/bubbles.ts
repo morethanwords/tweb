@@ -1133,7 +1133,8 @@ export default class ChatBubbles {
         if(findUpClassName(e.target, 'attachment') ||
           findUpClassName(e.target, 'audio') ||
           findUpClassName(e.target, 'document') ||
-          findUpClassName(e.target, 'contact')) {
+          findUpClassName(e.target, 'contact') ||
+          findUpClassName(e.target, 'time')) {
           return;
         }
 
@@ -2242,7 +2243,8 @@ export default class ChatBubbles {
           } else {
             this.chat.appImManager.setInnerPeer({
               peerId: peerId.toPeerId(),
-              lastMsgId: +mid
+              lastMsgId: +mid,
+              stack: this.chat.appImManager.getStackFromElement(target)
             });
           }
         } else {
@@ -2348,15 +2350,32 @@ export default class ChatBubbles {
           return;
         }
 
-        const replyToMid = replyTo.reply_to_msg_id;
+        let replyToMid = replyTo.reply_to_msg_id;
         if(!replyToMid) {
           toastNew({langPackKey: replyTo.pFlags.quote ? 'QuotePrivate' : 'ReplyPrivate'});
           return;
         }
 
+        let replyToPeerId = replyTo.reply_to_peer_id ? getPeerId(replyTo.reply_to_peer_id) : this.peerId;
+        if(this.chat.type === ChatType.Discussion && !this.chat.isForum) {
+          const historyResult = await this.managers.appMessagesManager.getHistory({
+            peerId: this.chat.peerId,
+            threadId: this.chat.threadId,
+            limit: 1,
+            offsetId: 1,
+            addOffset: -1
+          });
+
+          const message = this.chat.getMessage(historyResult.history[0]) as Message.message;
+          const fwdFrom = message.fwd_from;
+          if(fwdFrom.channel_post === replyToMid) {
+            replyToMid = message.mid;
+            replyToPeerId = this.peerId;
+          }
+        }
+
         this.followStack.push(bubbleMid);
 
-        const replyToPeerId = replyTo.reply_to_peer_id ? getPeerId(replyTo.reply_to_peer_id) : this.peerId;
         this.chat.appImManager.setInnerPeer({
           peerId: replyToPeerId,
           lastMsgId: replyToMid,
@@ -3089,6 +3108,18 @@ export default class ChatBubbles {
 
     if(this.chat.threadId && getMessageThreadId(message, this.chat.isForum) !== this.chat.threadId) {
       return;
+    }
+
+    const {savedReaction} = this.chat;
+    if(savedReaction?.length) {
+      const {reactions} = message as Message.message;
+      const foundReaction = reactions?.results && savedReaction.every((reaction) => {
+        return reactions.results.some((reactionCount) => reactionsEqual(reactionCount.reaction, reaction));
+      });
+
+      if(!foundReaction) {
+        return;
+      }
     }
 
     if(this.bubbles[message.mid]) {
@@ -5335,7 +5366,17 @@ export default class ChatBubbles {
 
     let bigEmojis = 0, customEmojiSize: MediaSize;
     if(totalEntities && !messageMedia) {
-      const emojiEntities = totalEntities.filter((e) => e._ === 'messageEntityEmoji'/*  || e._ === 'messageEntityCustomEmoji' */);
+      const emojiEntities: (MessageEntity.messageEntityCustomEmoji | MessageEntity.messageEntityEmoji)[] = [];
+      for(let i = 0, length = totalEntities.length; i < length; ++i) {
+        const entity = totalEntities[i];
+        if(entity._ === 'messageEntityCustomEmoji') {
+          ++i;
+          emojiEntities.push(entity);
+        } else if(entity._ === 'messageEntityEmoji') {
+          emojiEntities.push(entity);
+        }
+      }
+
       const strLength = messageMessage.replace(/\s/g, '').length;
       const emojiStrLength = emojiEntities.reduce((acc, curr) => acc + curr.length, 0);
 

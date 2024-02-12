@@ -183,6 +183,7 @@
     margin-inline-end: var(--margin-horizontal);
     cursor: pointer;
     position: relative;
+    user-select: none !important;
 
     &.is-last {
       margin-inline-end: 0 !important;

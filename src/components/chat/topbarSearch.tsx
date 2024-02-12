@@ -782,14 +782,22 @@ export default function TopbarSearch(props: {
     }, {cancelMouseDown: true});
     onCleanup(detach);
 
-    rootScope.managers.appReactionsManager.getSavedReactionTags(props.threadId).then((tags) => {
-      // await pause(1000);
-      if(!realMiddleware()) {
-        return;
-      }
+    const get = () => {
+      rootScope.managers.appReactionsManager.getSavedReactionTags(props.threadId).then((tags) => {
+        // await pause(1000);
+        if(!realMiddleware()) {
+          return;
+        }
 
-      setReactionsElement(reactionsElement);
-      setSavedReactionTags(tags);
+        setReactionsElement(reactionsElement);
+        setSavedReactionTags(tags);
+      });
+    };
+
+    get();
+    rootScope.addEventListener('saved_tags_clear', get);
+    onCleanup(() => {
+      rootScope.removeEventListener('saved_tags_clear', get);
     });
   });
 

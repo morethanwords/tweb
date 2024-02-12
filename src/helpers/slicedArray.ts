@@ -316,7 +316,7 @@ export default class SlicedArray<T extends ItemType> {
     }
   }
 
-  public findSliceOffset(maxId: T) {
+  public findSliceOffset(maxId: T): ReturnType<SlicedArray<T>['findOffsetInSlice']> {
     let slice: Slice<T>;
     for(let i = 0; i < this.slices.length; ++i) {
       slice = this.slices[i];
@@ -333,8 +333,6 @@ export default class SlicedArray<T extends ItemType> {
         offset: slice.length
       };
     }
-
-    return undefined;
   }
 
   // * https://core.telegram.org/api/offsets
@@ -346,7 +344,7 @@ export default class SlicedArray<T extends ItemType> {
     if(offsetId) {
       const pos = this.findSliceOffset(offsetId);
       if(!pos) {
-        return undefined;
+        return;
       }
 
       slice = pos.slice;
@@ -359,6 +357,8 @@ export default class SlicedArray<T extends ItemType> {
       /* if(slice.includes(offsetId) && add_offset < 0) {
         add_offset += 1;
       } */
+    } else if(!slice.isEnd(SliceEnd.Bottom)) {
+      return;
     }
 
     const sliceStart = Math.max(sliceOffset + addOffset, 0);

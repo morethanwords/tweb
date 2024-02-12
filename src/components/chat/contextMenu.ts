@@ -1377,12 +1377,14 @@ export default class ChatContextMenu {
   };
 
   private onQuoteClick = async() => {
-    const {mid, peerId} = this;
+    const {peerId} = this;
     const selection = document.getSelection();
     const range = selection.getRangeAt(0);
     const {startContainer, startOffset, endContainer, endOffset} = range;
     const startValue = startContainer.nodeValue;
     const endValue = endContainer.nodeValue;
+    const messageWithText = this.getMessageWithText();
+    const {mid} = messageWithText;
 
     // * find the index
     const needle = '\x02';
@@ -1454,7 +1456,11 @@ export default class ChatContextMenu {
     }
 
     const appConfig = await this.managers.apiManager.getAppConfig();
-    const maxLength = appConfig.quote_length_max ?? 1024;
+    let maxLength = appConfig.quote_length_max ?? 1024;
+    const whitespaceLength = value.length - value.trimEnd().length;
+    if(whitespaceLength) { // * fix whitespace
+      maxLength = Math.min(value.length - whitespaceLength, maxLength);
+    }
     if(value.length > maxLength) { // * fix overflow
       value = value.slice(0, maxLength);
       entities = entities // * fix length for entities

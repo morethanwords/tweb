@@ -3394,7 +3394,11 @@ export default class ChatInput {
             smth.add('P' + message.fromId);
           }
 
-          if(message.media && message.message) {
+          if(
+            message.media &&
+            !(['messageMediaWebPage'] as MessageMedia['_'][]).includes(message.media._) &&
+            message.message
+          ) {
             ++messagesWithCaptionsLength;
           }
         });
@@ -3530,7 +3534,6 @@ export default class ChatInput {
         }).element;
 
         title = i18n(replyToQuote ? 'ReplyToQuote' : 'ReplyTo', [title]);
-        subtitle = (message && !replyToQuote && (message as Message.message)?.message) || undefined;
       }
 
       const newReply = this.setTopInfo({

@@ -10,7 +10,8 @@
     position: absolute;
     align-items: center;
     inset-block: 0;
-    inset-inline-start: 7.3125rem;
+    // inset-inline-start: 7.3125rem;
+    inset-inline-start: calc(var(--topbar-close-active-size) + var(--topbar-avatar-active-size) + var(--topbar-avatar-close-gap) + 1.8125rem);
     inset-inline-end: 1rem;
     gap: .5rem;
     z-index: 1;

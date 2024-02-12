@@ -41,6 +41,9 @@ const REFERENCE_CONTEXT: ReferenceContext = {
   type: 'reactions'
 };
 
+const REFRESH_TAGS_INTERVAL = 10 * 60e3;
+// const REFRESH_TAGS_INTERVAL = 15e3;
+
 export type PeerAvailableReactions = {
   type: ChatReactions['_'],
   reactions: Reaction[]
@@ -114,8 +117,13 @@ export class AppReactionsManager extends AppManager {
     });
 
     setInterval(() => {
+      if(!this.savedReactionsTags.size) {
+        return;
+      }
+
       this.savedReactionsTags.clear();
-    }, 10 * 60e3);
+      this.rootScope.dispatchEvent('saved_tags_clear');
+    }, REFRESH_TAGS_INTERVAL);
   }
 
   public clear = (init = false) => {

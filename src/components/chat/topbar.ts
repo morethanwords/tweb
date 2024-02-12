@@ -944,6 +944,7 @@ export default class ChatTopbar {
 
         this.avatar = newAvatar;
         this.avatarMiddlewareHelper = newAvatarMiddlewareHelper;
+        this.container.classList.toggle('has-avatar', !!newAvatar);
       }
 
       this.setUtilsWidth();

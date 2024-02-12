@@ -422,6 +422,8 @@ async function loadStateInner() {
       }
     }
 
+    state.appConfig = copy(STATE_INIT.appConfig);
+
     if(compareVersion(state.version, STATE_VERSION) !== 0) {
       newVersion = STATE_VERSION;
       oldVersion = state.version;

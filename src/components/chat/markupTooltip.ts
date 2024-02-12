@@ -17,7 +17,7 @@ import getVisibleRect from '../../helpers/dom/getVisibleRect';
 import clamp from '../../helpers/number/clamp';
 import matchUrl from '../../lib/richTextProcessor/matchUrl';
 import matchUrlProtocol from '../../lib/richTextProcessor/matchUrlProtocol';
-import hasMarkupInSelection from '../../helpers/dom/hasMarkupInSelection';
+import getMarkupInSelection from '../../helpers/dom/getMarkupInSelection';
 import {applyMarkdown} from '../../helpers/dom/markdown';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import overlayCounter from '../../helpers/overlayCounter';
@@ -174,9 +174,10 @@ export default class MarkupTooltip {
     const selection = document.getSelection();
     this.savedRange = selection.getRangeAt(0);
 
+    const markup = getMarkupInSelection(['link']);
+    const anchor = markup['link'].elements.find((element) => element.tagName === 'A') as HTMLAnchorElement;
+
     if(button.classList.contains('active')) {
-      const startContainer = this.savedRange.startContainer;
-      const anchor = startContainer.parentElement as HTMLAnchorElement;
       this.linkInput.value = anchor.href;
     } else {
       this.linkInput.value = '';
@@ -253,9 +254,9 @@ export default class MarkupTooltip {
     // });
 
     const types = Object.keys(this.buttons) as TooltipTypes[];
-    const markup = hasMarkupInSelection(types);
+    const markup = getMarkupInSelection(types);
     types.forEach((type) => {
-      if(markup[type]) {
+      if(markup[type].active) {
         currentMarkups.add(this.buttons[type as TooltipTypes]);
       }
     });

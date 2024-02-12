@@ -171,6 +171,14 @@ export default class DialogsStorage extends AppManager {
       this.processChangedUnreadOrUnmuted(peerId);
     });
 
+    this.rootScope.addEventListener('user_auth', () => {
+      this.rootScope.addEventListener('premium_toggle', () => {
+        [FOLDER_ID_ALL, FOLDER_ID_ARCHIVE].forEach((folderId) => {
+          this.apiUpdatesManager.processLocalUpdate({_: 'updatePinnedDialogs', folder_id: folderId});
+        });
+      });
+    });
+
     this.apiUpdatesManager.addMultipleEventsListeners({
       updateFolderPeers: this.onUpdateFolderPeers,
 
@@ -1245,7 +1253,7 @@ export default class DialogsStorage extends AppManager {
       // ! chatForbidden stays for chat where you're kicked
       if(
         chat._ === 'channelForbidden' ||
-        (chat as Chat.chat).pFlags.deactivated ||
+        // (chat as Chat.chat).pFlags.deactivated || // ! deactivated means migrated, must save them
         // || chat._ === 'chatForbidden'
         (chat as Chat.chat).pFlags.left
         // || (chat as any).pFlags.kicked

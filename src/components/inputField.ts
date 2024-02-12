@@ -512,7 +512,14 @@ export default class InputField {
       input = this.container.firstElementChild as HTMLElement;
       // input.addEventListener('input', () => checkAndSetRTL(input));
 
-      onInputCallbacks.push(this.setEmpty);
+      onInputCallbacks.push(() => {
+        const isEmpty = this.isEmpty();
+        if(isEmpty) {
+          (input as HTMLInputElement).value = '';
+        }
+
+        this.setEmpty(isEmpty);
+      });
     }
 
     setDirection(input);

@@ -104,7 +104,8 @@ describe('Slicing', () => {
     values[i] = i + INCREMENTOR * i;
   }
   values.sort((a, b) => b - a);
-  sliced.insertSlice(values);
+  const slice = sliced.insertSlice(values);
+  slice.setEnd(SliceEnd.Bottom);
 
   const addOffset = 40;
   const limit = 40;

@@ -503,6 +503,7 @@ export default class Chat extends EventListenerBase<{
   public beforeDestroy() {
     this.destroyPromise = deferredPromise();
     this.bubbles.cleanup();
+    this.searchSignal?.(undefined);
   }
 
   private cleanupBackground() {

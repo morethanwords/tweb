@@ -181,6 +181,7 @@ export type BroadcastEvents = {
   'premium_toggle_private': {isNew: boolean, isPremium: boolean},
 
   'saved_tags': {savedPeerId: PeerId, tags: SavedReactionTag[]},
+  'saved_tags_clear': void,
 
   'config': Config,
   'app_config': MTAppConfig,
@@ -211,7 +212,9 @@ export class RootScope extends EventListenerBase<BroadcastEventsListeners> {
 
     this.addEventListener('premium_toggle_private', ({isNew, isPremium}) => {
       this.premium = isPremium;
-      this.dispatchEventSingle('premium_toggle', isPremium);
+      if(!isNew) { // * only on change
+        this.dispatchEventSingle('premium_toggle', isPremium);
+      }
     });
 
     this.addEventListener('connection_status_change', (status) => {

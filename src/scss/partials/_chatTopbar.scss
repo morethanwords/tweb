@@ -67,6 +67,9 @@ body.is-right-column-shown {
 
 .topbar {
   --topbar-height: 3.5rem;
+  --topbar-avatar-active-size: 0px;
+  --topbar-close-active-size: 2.5rem;
+  --topbar-avatar-close-gap: 0px;
   
   --pinned-floating-audio-height: 0px;
   --pinned-floating-message-height: 0px;
@@ -148,6 +151,9 @@ body.is-right-column-shown {
 
 	@include respond-to(no-floating-left-sidebar) {
 		.chat:first-child & {
+      --topbar-close-active-size: 0px;
+      --topbar-avatar-close-gap: 0px;
+
 			.sidebar-close-button {
 				display: none;
 			}
@@ -156,11 +162,16 @@ body.is-right-column-shown {
 				padding-inline-start: .1875rem;
 			}
 
-      .topbar-search-container {
-        inset-inline-start: 4.4375rem;
-      }
+      // .topbar-search-container {
+      //   inset-inline-start: 4.4375rem;
+      // }
 		}
 	}
+
+  &.has-avatar {
+    --topbar-avatar-active-size: 2.625rem;
+    --topbar-avatar-close-gap: 6px;
+  }
 
 	.pinned-container-wrapper-utils {
 		@include sidebar-transform();

@@ -11,7 +11,7 @@ import cancelEvent from './cancelEvent';
 import simulateEvent from './dispatchEvent';
 import getCharAfterRange from './getCharAfterRange';
 import {MarkdownType} from './getRichElementValue';
-import hasMarkupInSelection from './hasMarkupInSelection';
+import getMarkupInSelection from './getMarkupInSelection';
 import isSelectionEmpty from './isSelectionEmpty';
 import RichInputHandler from './richInputHandler';
 import {setDirection} from './setInnerHTML';
@@ -121,7 +121,7 @@ export function applyMarkdown(input: HTMLElement, type: MarkdownType, href?: str
 
   const c = (type: MarkdownType) => {
     commandsMap[type] = () => {
-      const k = (canCombine.includes(type) ? canCombine : [type]).filter((type) => hasMarkup[type]);
+      const k = (canCombine.includes(type) ? canCombine : [type]).filter((type) => hasMarkup[type]?.active);
       if(!indexOfAndSplice(k, type)) {
         k.push(type);
       }
@@ -228,7 +228,7 @@ export function applyMarkdown(input: HTMLElement, type: MarkdownType, href?: str
 
   executed.push(document.execCommand('styleWithCSS', false, 'true'));
 
-  const hasMarkup = hasMarkupInSelection(Object.keys(commandsMap) as (typeof type)[]);
+  const hasMarkup = getMarkupInSelection(Object.keys(commandsMap) as (typeof type)[]);
 
   // * monospace can't be combined with different types
   /* if(type === 'monospace' || type === 'spoiler') {
@@ -247,7 +247,7 @@ export function applyMarkdown(input: HTMLElement, type: MarkdownType, href?: str
       executed.push(typeof(command) === 'function' ? command() : document.execCommand(command, false, null));
     }
   } else  */{
-    if(hasMarkup['monospace'] && type === 'link') {
+    if(hasMarkup['monospace']?.active && type === 'link') {
       executed.push(resetCurrentFormatting());
     }
 
