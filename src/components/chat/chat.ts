@@ -885,7 +885,8 @@ export default class Chat extends EventListenerBase<{
         scheduleDate: this.input.scheduleDate,
         silent: this.input.sendSilent,
         sendAsPeerId: this.input.sendAsPeerId
-      })
+      }),
+      savedReaction: this.savedReaction
     };
   }
 

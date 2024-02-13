@@ -866,6 +866,11 @@ export default class ChatBubbles {
             scrollSaver.save();
           }
 
+          if(bubble.dataset.ignoreReactions) {
+            delete bubble.dataset.ignoreReactions;
+            changedResults = [];
+          }
+
           const key = message.peerId + '_' + message.mid;
           const set = REACTIONS_ELEMENTS.get(key);
           if(set) {
@@ -5637,6 +5642,9 @@ export default class ChatBubbles {
 
     if(isOutgoing && !message.error) {
       bubble.classList.add('is-outgoing');
+      if((message as Message.message).reactions) {
+        bubble.dataset.ignoreReactions = '1';
+      }
     }
 
     const messageWithReplies = isMessage && await this.managers.appMessagesManager.getMessageWithCommentReplies(message);

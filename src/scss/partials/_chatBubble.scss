@@ -2039,6 +2039,12 @@
     }
   }
 
+  &.is-outgoing {
+    .reactions {
+      pointer-events: none;
+    }
+  }
+
   .bubble-tail {
     display: none;
   }

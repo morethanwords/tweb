@@ -210,7 +210,8 @@ export type MessageSendingParams = {
   scheduleDate?: number,
   silent?: boolean,
   sendAsPeerId?: number,
-  updateStickersetOrder?: boolean
+  updateStickersetOrder?: boolean,
+  savedReaction?: Reaction[]
 };
 
 export type MessageForwardParams = MessageSendingParams & {
@@ -1743,7 +1744,7 @@ export class AppMessagesManager extends AppManager {
     // }
   }
 
-  private beforeMessageSending(message: Message.message, options: Pick<MessageSendingParams, 'threadId'> & Partial<{
+  private beforeMessageSending(message: Message.message, options: Pick<MessageSendingParams, 'threadId' | 'savedReaction'> & Partial<{
     isGroupedItem: boolean,
     isScheduled: boolean,
     clearDraft: boolean,
@@ -1777,6 +1778,7 @@ export class AppMessagesManager extends AppManager {
 
       this.saveMessages([message], {storage, isOutgoing: true});
       this.setDialogTopMessage(message);
+      this.updateMessageContextForInserting(message);
 
       if(options.threadId) {
         const dialog = this.dialogsStorage.getAnyDialog(peerId, options.threadId);
@@ -1810,6 +1812,17 @@ export class AppMessagesManager extends AppManager {
           this.pendingTopMsgs[`${peerId}_${options.threadId}`] = messageId;
         }
       }
+    }
+
+    if(message.reactions) {
+      const reaction = message.reactions.results[0].reaction;
+      this.invokeAfterMessageIsSent(
+        messageId,
+        'reactions',
+        (message) => {
+          return this.appReactionsManager.sendReaction({message, reaction});
+        }
+      );
     }
 
     if(!options.isGroupedItem && message.send) {
@@ -1882,6 +1895,23 @@ export class AppMessagesManager extends AppManager {
     defineNotNumerableProperties(message, ['send', 'promise']);
     if(options.groupId === undefined) {
       message.promise = deferredPromise();
+    }
+
+    if(options.savedReaction) {
+      message.reactions = {
+        _: 'messageReactions',
+        pFlags: {
+          reactions_as_tags: true
+        },
+        results: options.savedReaction.map((reaction) => {
+          return {
+            _: 'reactionCount',
+            count: 1,
+            reaction,
+            chosen_order: 0
+          };
+        })
+      };
     }
 
     return message;
@@ -2794,7 +2824,7 @@ export class AppMessagesManager extends AppManager {
     this.setMessageToStorage(storage ?? this.getHistoryMessagesStorage(message.peerId), message);
   }
 
-  public updateMessageContextForDeletion(message: MyMessage, deletion?: boolean) {
+  public updateMessageContextForDeletion(message: MyMessage, deletion?: boolean, newMid?: number) {
     const context = this.getReferenceContextByMessage(message, true);
     if(!context) {
       return;
@@ -2816,7 +2846,7 @@ export class AppMessagesManager extends AppManager {
 
       searchStorages.delete(searchStorage);
 
-      if(this.historyMaxIdSubscribed.has(searchStorage.key)) {
+      if(this.historyMaxIdSubscribed.has(searchStorage.key) && !newMid) {
         this.rootScope.dispatchEvent('history_delete_key', {historyKey: searchStorage.key, mid: message.mid});
       }
     });
@@ -6448,6 +6478,7 @@ export class AppMessagesManager extends AppManager {
 
     const tempMessage: MyMessage = this.getMessageFromStorage(storage, tempId);
     if(tempMessage) {
+      this.updateMessageContextForDeletion(tempMessage, true, finalMessage.mid);
       delete finalMessage.pFlags.is_outgoing;
       delete finalMessage.pending;
       delete finalMessage.error;
@@ -7409,9 +7440,7 @@ export class AppMessagesManager extends AppManager {
 
       const {messages} = historyResult;
 
-      this.appUsersManager.saveApiUsers(historyResult.users);
-      this.appChatsManager.saveApiChats(historyResult.chats);
-      this.saveMessages(messages);
+      this.saveApiResult(historyResult);
 
       if('pts' in historyResult) {
         this.apiUpdatesManager.addChannelState(peerId.toChatId(), historyResult.pts);
@@ -7485,9 +7514,8 @@ export class AppMessagesManager extends AppManager {
         const after = promise.then((getMessagesResult) => {
           assumeType<Exclude<MessagesMessages.messagesMessages, MessagesMessages.messagesMessagesNotModified>>(getMessagesResult);
 
-          this.appUsersManager.saveApiUsers(getMessagesResult.users);
-          this.appChatsManager.saveApiChats(getMessagesResult.chats);
-          const messages = this.saveMessages(getMessagesResult.messages);
+          this.saveApiResult(getMessagesResult);
+          const {messages} = getMessagesResult;
 
           for(let i = 0; i < messages.length; ++i) {
             const message = messages[i];
@@ -7497,7 +7525,7 @@ export class AppMessagesManager extends AppManager {
 
             const mid = this.appMessagesIdsManager.generateMessageId(message.id, channelId);
             const promise = map.get(mid);
-            promise.resolve(message);
+            promise.resolve(message as MyMessage);
             map.delete(mid);
           }
 
