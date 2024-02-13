@@ -208,8 +208,7 @@ export class ChatReactionsMenu {
             noPacks,
             managers: rootScope.managers,
             mainSets: this.tags ? () => {
-              const reactionsPromise = Promise.resolve(this.managers.appReactionsManager.getReactions('tags'))
-              // const topReactionsPromise = this.managers.appReactionsManager.getTopReactions()
+              const reactionsPromise = this.managers.appReactionsManager.getTagReactions()
               .then(reactionsToDocIds);
               return [reactionsPromise];
             } : () => {
@@ -373,6 +372,7 @@ export class ChatReactionsMenu {
       loadPromises
     };
 
+    this.container.append(reactionDiv);
     if(!this.canUseAnimations() || !availableReaction) {
       delete options.needFadeIn;
       delete options.withThumb;
@@ -447,7 +447,6 @@ export class ChatReactionsMenu {
     selectWrapper && scaleContainer.append(selectWrapper);
     reactionDiv.append(scaleContainer);
     // this.scrollable.append(reactionDiv);
-    this.container.append(reactionDiv);
 
     return Promise.all(loadPromises);
   }

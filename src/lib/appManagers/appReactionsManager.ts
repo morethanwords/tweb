@@ -26,6 +26,7 @@ import {md5} from 'js-md5';
 import bytesFromHex from '../../helpers/bytes/bytesFromHex';
 import {bigIntFromBytes} from '../../helpers/bigInt/bigIntConversion';
 import bigInt from 'big-integer';
+import forEachReverse from '../../helpers/array/forEachReverse';
 
 const SAVE_DOC_KEYS = [
   'static_icon' as const,
@@ -280,6 +281,23 @@ export class AppReactionsManager extends AppManager {
     return this.getReactions('recent');
   }
 
+  public getTagReactions(peerId?: PeerId) {
+    return callbackifyAll([
+      this.getReactions('tags'),
+      this.getSavedReactionTags(peerId)
+    ], ([reactions, tags]) => {
+      reactions = reactions.slice();
+      forEachReverse(tags, (tag) => {
+        const reaction = findAndSplice(reactions, (reaction) => reactionsEqual(reaction, tag.reaction));
+        if(reaction) {
+          reactions.unshift(reaction);
+        }
+      });
+
+      return reactions;
+    });
+  }
+
   private unshiftQuickReactionInner(peerAvailableReactions: PeerAvailableReactions, quickReaction: Reaction | AvailableReaction) {
     if(quickReaction._ === 'availableReaction') {
       quickReaction = availableReactionToReaction(quickReaction);
@@ -324,7 +342,7 @@ export class AppReactionsManager extends AppManager {
     if(peerId === this.appPeersManager.peerId) {
       const {reactions} = message;
       if(!reactions || reactions.pFlags.reactions_as_tags) {
-        return callbackify(this.getReactions('tags'), (reactions) => {
+        return callbackify(this.getTagReactions(), (reactions) => {
           const p: PeerAvailableReactions = {type: 'chatReactionsAll', reactions};
           return p;
         });
