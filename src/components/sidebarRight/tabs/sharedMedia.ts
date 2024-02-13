@@ -60,6 +60,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
   private btnMenu: HTMLElement;
 
   public init() {
+    this.init = null;
     // const perf = performance.now();
 
     this.container.classList.add('shared-media-container', 'profile-container');
@@ -290,9 +291,9 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     });
 
     // Calls when message successfully sent and we have an id
-    this.listenerSetter.add(rootScope)('message_sent', ({message}) => {
-      this.renderNewMessage(message);
-    });
+    // this.listenerSetter.add(rootScope)('message_sent', ({message}) => {
+    //   this.renderNewMessage(message);
+    // });
 
     // this.container.prepend(this.closeBtn.parentElement);
 
@@ -398,19 +399,28 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       if(mediaTab.type === 'saved') {
         filtered = [message].filter((message) => {
           const savedPeerId = (message as Message.message).saved_peer_id;
-          return savedPeerId && getPeerId(savedPeerId) === this.searchSuper.searchContext.peerId && !history.some((m) => m.mid === message.mid);
+          return savedPeerId &&
+            getPeerId(savedPeerId) === this.searchSuper.searchContext.peerId &&
+            !history.some((m) => m.mid === message.mid);
         });
       } else {
-        filtered = this.searchSuper.filterMessagesByType([message], inputFilter)
-        .filter((message) => !history.find((m) => m.mid === message.mid && m.peerId === message.peerId));
+        filtered = this.searchSuper.filterMessagesByType([message], inputFilter);
       }
 
       if(!filtered.length) {
         continue;
       }
 
-      history.unshift(...filtered.map((message) => ({mid: message.mid, peerId: message.peerId})));
-      if((mediaTab.type === 'saved' ? this.peerId === threadId : this.peerId === peerId) && this.searchSuper.usedFromHistory[inputFilter] !== -1) {
+      const toInsert = filtered
+      .filter((message) => !history.find((m) => m.mid === message.mid && m.peerId === message.peerId))
+      .map((message) => ({mid: message.mid, peerId: message.peerId}));
+      history.unshift(...toInsert);
+
+      if(
+        (mediaTab.type === 'saved' ? this.peerId === threadId : this.peerId === peerId) &&
+        this.searchSuper.usedFromHistory[inputFilter] !== -1 &&
+        this.threadId === threadId
+      ) {
         this.searchSuper.usedFromHistory[inputFilter] += filtered.length;
         this.searchSuper.performSearchResult(filtered, mediaTab, false);
         this.searchSuper.setCounter(mediaTab.type, this.searchSuper.counters[mediaTab.type] + filtered.length);
@@ -439,17 +449,17 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         const history = historyStorage[inputFilter];
         if(!history) continue;
 
-        const isGood = mediaTab.type === 'saved' ? this.peerId === threadId : this.peerId === peerId;
+        const isGood = mediaTab.type === 'saved' ?
+          this.peerId === threadId :
+          this.peerId === peerId && this.threadId === threadId;
         if(isGood) {
           this.searchSuper.setCounter(mediaTab.type, this.searchSuper.counters[mediaTab.type] - mids.length);
         }
 
         const idx = history.findIndex((m) => m.mid === mid);
         if(idx === -1) {
-          continue;
+          history.splice(idx, 1);
         }
-
-        history.splice(idx, 1);
 
         if(isGood) {
           const container = this.searchSuper.tabs[inputFilter];
@@ -459,11 +469,13 @@ export default class AppSharedMediaTab extends SliderSuperTab {
               this.searchSuper.selection.toggleByElement(div);
             }
 
+            const divs = container.querySelectorAll<HTMLElement>('[data-mid][data-peer-id]');
+            const idx = Array.from(divs).indexOf(div);
             div.remove();
-          }
 
-          if(this.searchSuper.usedFromHistory[inputFilter] >= (idx + 1)) {
-            --this.searchSuper.usedFromHistory[inputFilter];
+            if(idx !== -1 && this.searchSuper.usedFromHistory[inputFilter] >= (idx + 1)) {
+              --this.searchSuper.usedFromHistory[inputFilter];
+            }
           }
         }
 
@@ -481,7 +493,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     const mids = [...msgs.keys()];
 
     for(const threadId in h) {
-      this._deleteDeletedMessages(h[threadId], peerId, mids, +threadId);
+      this._deleteDeletedMessages(h[threadId], peerId, mids, isNaN(+threadId) ? undefined : +threadId);
     }
 
     this.scrollable.onScroll();
@@ -521,7 +533,6 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     if(this.init) {
       this.init();
-      this.init = null;
     }
 
     const historyStorage = this.getHistoryStorage(peerId, threadId);

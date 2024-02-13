@@ -5579,7 +5579,9 @@ export class AppMessagesManager extends AppManager {
 
     // commented to render the message if it's been sent faster than history_append came to main thread
     // if(!pendingMessage) {
-    this.handleNewMessage(message);
+    if(!isLocalThreadUpdate) {
+      this.handleNewMessage(message);
+    }
     // }
 
     const isTopic = isForumTopic(dialog);
