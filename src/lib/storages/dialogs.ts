@@ -118,7 +118,7 @@ export default class DialogsStorage extends AppManager {
       const dialogs = this.getCachedDialogs(false);
       // const indexKeys: ReturnType<DialogsStorage['getDialogIndexKey']>[] = [];
       for(const filterId in this.folders) {
-        if(+filterId > 1) {
+        if(!this.isVirtualFilter(+filterId)) {
           delete this.folders[filterId];
         }
 
