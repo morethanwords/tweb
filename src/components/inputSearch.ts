@@ -145,7 +145,7 @@ export default class InputSearch {
       clearTimeout(this.timeout);
       this.timeout = window.setTimeout(() => {
         this.onChange(value);
-      }, 200);
+      }, 300);
     }
   };
 

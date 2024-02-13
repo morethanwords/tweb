@@ -128,8 +128,9 @@ type LoadOptions = {
   reaction?: Reaction
 };
 
-const renderHistoryResult = ({middleware, peerId, fromSavedDialog, messages, query, fromPeerId}: LoadOptions & {fromSavedDialog: boolean, messages: (Message.message | Message.messageService)[]}) => {
+const renderHistoryResult = ({middleware, peerId, fromSavedDialog, messages, query/* , fromPeerId */}: LoadOptions & {fromSavedDialog: boolean, messages: (Message.message | Message.messageService)[]}) => {
   const promises = messages.map(async(message) => {
+    const fromPeerId = message.fromId;
     const loadPromises: Promise<any>[] = [];
     const {dom} = appDialogsManager.addDialogAndSetLastMessage({
       peerId: fromSavedDialog ? rootScope.myId : (fromPeerId || peerId),
@@ -362,7 +363,7 @@ export default function TopbarSearch(props: {
   const navigationItem: NavigationItem = {
     type: 'topbar-search',
     onPop: () => {
-      if(isInputFocused()) {
+      if(isInputFocused() && value()) {
         blurActiveElement();
         return false;
       }
@@ -421,7 +422,7 @@ export default function TopbarSearch(props: {
     inputSearch.remove();
   });
 
-  const fromText = I18n.format('Search.From', true);
+  const fromText = I18n.format('Search.From', true) + ' ';
   const fromWidth = getTextWidth(fromText, FontFull);
   const fromSpan = (<span class={classNames('topbar-search-input-from', filteringSender() && 'is-visible')}>{fromText}</span>);
   inputSearch.container.append(fromSpan as HTMLElement);

@@ -428,7 +428,7 @@ button:focus {
     max-height: var(--height) !important;
     //line-height: calc(var(--height) + 2px - var(--border-width) * 2);
     border-color: var(--input-search-border-color);
-    line-height: var(--height);
+    line-height: var(--line-height-16);
     
     @include animation-level(2) {
       transition: /* background-color .2s ease-in-out,  */border-color .2s ease-in-out;
@@ -516,6 +516,9 @@ button:focus {
   &-clear {
     inset-inline-end: calc((var(--height) - 2.25rem) / 2);
     z-index: 1;
+  }
+
+  .btn-icon {
     padding: .375rem !important;
   }
 }
