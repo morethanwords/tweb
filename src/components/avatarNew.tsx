@@ -496,7 +496,13 @@ export const AvatarNew = (props: {
 
   const _render = async(onlyThumb?: boolean) => {
     const middleware = middlewareHelper.get();
-    const {peerId, isDialog, withStories, storyId, isBig, peerTitle: title, threadId, wrapOptions} = props;
+    const {isDialog, withStories, storyId, isBig, peerTitle: title, threadId, wrapOptions} = props;
+
+    let {peerId} = props;
+    if(title !== undefined) {
+      peerId = NULL_PEER_ID;
+    }
+
     if(peerId === myId && isDialog) {
       set({
         icon: props.meAsNotes ? 'mynotes' : 'saved',

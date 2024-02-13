@@ -540,12 +540,13 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
   private async changeTitleKey() {
     const {peerId, threadId} = this;
+    const isSavedDialog = !!(peerId === rootScope.myId && threadId);
     const [isForum, peerTitle] = await Promise.all([
       this.managers.appPeersManager.isForum(peerId),
       wrapPeerTitle({
-        peerId: peerId,
-        threadId: threadId,
-        meAsNotes: !!(peerId === rootScope.myId && threadId),
+        peerId: isSavedDialog ? threadId : peerId,
+        threadId: isSavedDialog ? undefined : threadId,
+        meAsNotes: isSavedDialog && threadId === rootScope.myId,
         dialog: true
       })
     ]);

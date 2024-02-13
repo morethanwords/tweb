@@ -309,7 +309,7 @@ export class DialogElement extends Row {
 
       lazyLoadQueue: newWrapOptions.lazyLoadQueue,
       isDialog: !!meAsSaved,
-      peerId: usePeerId,
+      peerId: fromName ? NULL_PEER_ID : usePeerId,
       peerTitle: fromName,
       withStories,
       wrapOptions: newWrapOptions,
