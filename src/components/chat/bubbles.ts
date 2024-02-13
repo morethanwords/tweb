@@ -4237,7 +4237,14 @@ export default class ChatBubbles {
 
     const {firstGroup: newFirstGroup, lastGroup: newLastGroup} = this.bubbleGroups;
     const newFirstMid = newFirstGroup?.firstMid;
-    const newLastMid = newLastGroup?.lastMid;
+    let newLastMid = newLastGroup?.lastMid;
+
+    // * fix slicing sponsored before render
+    const sponsoredItem = loadQueue.find(({message}) => (message as Message.message).pFlags.sponsored);
+    if(sponsoredItem) {
+      newLastMid = sponsoredItem.message.mid;
+    }
+
     const changedTop = firstMid !== newFirstMid;
     const changedBottom = !!lastGroup && lastMid !== newLastMid; // if has no groups then save bottom scroll position
 
@@ -4282,9 +4289,10 @@ export default class ChatBubbles {
     promises.push(...avatarPromises);
     // promises.push(pause(200));
 
-    // * это нужно для того, чтобы если захочет подгрузить reply или какое-либо сообщение, то скролл не прервался
+    // * это нужно для того, чтобы если захочет подгрузить reply или какое-либо сообщение, то скролл не прервался и не сдвинулся
     // * если добавить этот промис - в таком случае нужно сделать, чтобы скроллило к последнему сообщению после рендера
-    // promises.push(getHeavyAnimationPromise());
+    // * например, к рекламе
+    promises.push(getHeavyAnimationPromise());
 
     log('media promises to call', promises, loadQueue, this.isHeavyAnimationInProgress);
     await m(Promise.all([...promises, this.setUnreadDelimiter()]).catch(noop)); // не нашёл места лучше
@@ -4475,7 +4483,8 @@ export default class ChatBubbles {
 
     const middlewareHelper = getMiddleware();
     const middleware = middlewareHelper.get();
-    this.getMiddleware().onClean(() => {
+    const realMiddleware = this.getMiddleware();
+    realMiddleware.onClean(() => {
       (this.chat.destroyPromise || this.chat.setPeerPromise || Promise.resolve()).then(() => {
         middlewareHelper.destroy();
       });
@@ -4519,12 +4528,12 @@ export default class ChatBubbles {
         originalPromise = processResult(originalPromise, bubble);
       }
 
-      const promise = originalPromise.then((r) => ((r && middleware() ? {...r, updatePosition, canAnimateLadder} : undefined) as typeof result));
+      const promise = originalPromise.then((r) => ((r && realMiddleware() ? {...r, updatePosition, canAnimateLadder} : undefined) as typeof result));
 
       this.renderMessagesQueue(promise.catch(() => undefined));
 
       result = await promise;
-      if(!middleware()) {
+      if(!realMiddleware()) {
         return;
       }
 
@@ -4535,7 +4544,7 @@ export default class ChatBubbles {
       this.log.error('renderMessage error:', err);
     }
 
-    if(!middleware()) {
+    if(!realMiddleware()) {
       return;
     }
 
@@ -8065,17 +8074,23 @@ export default class ChatBubbles {
 
   private async processLocalMessageRender(
     message: Message.message | Message.messageService,
-    animate?: boolean,
-    middleware = this.getMiddleware()
+    animate?: boolean
   ) {
     const isSponsored = !!(message as Message.message).pFlags.sponsored;
-    const m = middlewarePromise(middleware);
+
+    const onClearedBefore = () => {
+      this.log.warn('local message was cleared before render', message);
+    };
 
     const p: Parameters<ChatBubbles['safeRenderMessage']>[0]['processResult'] = async(result) => {
-      const {bubble} = await m(result);
+      const {bubble} = await result;
       if(!bubble) {
+        onClearedBefore();
         return result;
       }
+
+      const middleware = bubble.middlewareHelper.get();
+      const m = middlewarePromise(middleware);
 
       (bubble as any).message = message;
 
@@ -8084,6 +8099,11 @@ export default class ChatBubbles {
       const updatePosition = () => {
         if(this.updatePlaceholderPosition === updatePosition) {
           this.updatePlaceholderPosition = undefined;
+        }
+
+        if(!middleware() || this.bubbles[bubble.dataset.mid] !== bubble) {
+          onClearedBefore();
+          return;
         }
 
         appendTo[method](appendWhat);
@@ -8384,8 +8404,8 @@ export default class ChatBubbles {
   }
 
   private async toggleSponsoredMessage(value: boolean) {
-    const log = this.log.bindPrefix('sponsored');
-    log('checking');
+    const log = this.log.bindPrefix('sponsored-' + (Math.random() * 1000 | 0));
+    log('checking', value);
     const {mid} = this.generateLocalMessageId(SPONSORED_MESSAGE_ID_OFFSET);
     if(value) {
       const middleware = this.getMiddleware(() => {
@@ -8393,7 +8413,7 @@ export default class ChatBubbles {
       });
 
       const promise = this.getSponsoredMessagePromise = this.managers.appChatsManager.getSponsoredMessage(this.peerId.toChatId())
-      .then(async(sponsoredMessages) => {
+      .then((sponsoredMessages) => {
         if(!middleware() || sponsoredMessages._ === 'messages.sponsoredMessagesEmpty') {
           return;
         }
@@ -8446,7 +8466,7 @@ export default class ChatBubbles {
     } else {
       log('clearing rendered', mid);
       this.getSponsoredMessagePromise = undefined;
-      this.deleteMessagesByIds([mid]);
+      this.deleteMessagesByIds([mid], false);
     }
   }
 
