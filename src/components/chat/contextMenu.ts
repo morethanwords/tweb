@@ -391,14 +391,14 @@ export default class ChatContextMenu {
       const reactionCount = this.reactionElement.reactionCount;
       const renameTitle: LangPackKey = tagTitle ? 'SavedTagRenameTag' : 'SavedTagLabelTag';
       this.buttons = [{
-        icon: 'search',
+        icon: 'tag_filter',
         text: 'SavedTagFilterByTag',
         onClick: () => {
           this.chat.initSearch({reaction: reactionCount.reaction});
         },
         verify: () => true
       }, {
-        icon: 'edit',
+        icon: 'tag_name',
         text: renameTitle,
         onClick: async() => {
           const inputField = new InputField({
@@ -424,7 +424,7 @@ export default class ChatContextMenu {
         },
         verify: () => true
       }, {
-        icon: 'delete',
+        icon: 'tag_crossed',
         text: 'SavedTagRemoveTag',
         onClick: () => {
           this.chat.sendReaction({message: this.message, reaction: reactionCount.reaction});

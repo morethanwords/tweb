@@ -299,21 +299,21 @@ export const PREMIUM_FEATURES: {[type in PremiumPromoFeatureType]?: PremiumPromo
   },
   last_seen: {
     feature: 'last_seen',
-    icon: 'premium_stickers',
+    icon: 'premium_lastseen',
     titleLangKey: 'PremiumPreviewLastSeen',
     subtitleLangKey: 'PremiumPreviewLastSeenDescription',
     new: true
   },
   message_privacy: {
     feature: 'message_privacy',
-    icon: 'premium_stickers',
+    icon: 'premium_privacy',
     titleLangKey: 'PremiumPreviewMessagePrivacy',
     subtitleLangKey: 'PremiumPreviewMessagePrivacyDescription',
     new: true
   },
   saved_tags: {
     feature: 'saved_tags',
-    icon: 'star_filled',
+    icon: 'premium_tags',
     titleLangKey: 'PremiumPreviewTags',
     subtitleLangKey: 'PremiumPreviewTagsDescription2'
   }

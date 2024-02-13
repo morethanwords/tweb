@@ -40,7 +40,7 @@ function moveFiles(outPath) {
   const jsVariables = {}, o = [];
   variables.forEach((line) => {
     if(!line.trim()) return;
-    const match = line.match(/\$tgico-(.+?): "(.+?)"/);
+    const match = line.match(/\$tgico-(.+?): .+(\\e.+?)[\\"]/);
     // @ts-ignore
     jsVariables[match[1]] = match[2];
     // @ts-ignore
