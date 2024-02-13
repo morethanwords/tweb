@@ -1569,7 +1569,7 @@ export default class ChatBubbles {
     return this.batchProcessor.queuePromise;
   }
 
-  private createScrollSaver(reverse = true) {
+  public createScrollSaver(reverse = true) {
     const scrollSaver = new ScrollSaver(this.scrollable, '.bubble:not(.is-date)', reverse);
     return scrollSaver;
   }

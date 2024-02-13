@@ -482,7 +482,17 @@ export default class Chat extends EventListenerBase<{
             this.bubbles.onDatePick(timestamp);
           },
           onActive: (active, showingReactions) => {
-            this.container.classList.toggle('is-search-active', !!(active && showingReactions));
+            const className = 'is-search-active';
+            const isActive = !!(active && showingReactions);
+            const wasActive = this.container.classList.contains(className);
+            if(wasActive === isActive) {
+              return;
+            }
+
+            const scrollSaver = this.bubbles.createScrollSaver();
+            scrollSaver.save();
+            this.container.classList.toggle(className, isActive);
+            scrollSaver.restore();
           }
         }) as HTMLElement;
         this.topbar.container.append(topbarSearch);
