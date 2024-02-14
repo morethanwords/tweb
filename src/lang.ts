@@ -1902,6 +1902,11 @@ const lang = {
   'SavedTagLabelTagText': 'You can label your emoji tag with a text name.',
   'SavedTagLabelPlaceholder': 'Name',
   'Unlock': 'Unlock',
+  'ChannelSettingsJoinTitle': 'Who can send messages?',
+  'ChannelSettingsJoinToSend': 'Only members',
+  'ChannelSettingsJoinToSendInfo': 'Turn this on if you expect users to join your group before being able to send messages.',
+  'ChannelSettingsJoinRequest': 'Approve new members',
+  'ChannelSettingsJoinRequestInfo': 'Turn this on if you want users to join only after they are approved by an admin.',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

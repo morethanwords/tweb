@@ -505,17 +505,6 @@ export class AppChatsManager extends AppManager {
     return this.refreshChatAfterRequest(id, promise, doNotRefresh);
   }
 
-  public async toggleParticipantsHidden(id: ChatId, hidden: boolean) {
-    id = await this.migrateChat(id);
-
-    const updates = await this.apiManager.invokeApi('channels.toggleParticipantsHidden', {
-      channel: this.getChannelInput(id),
-      enabled: hidden
-    });
-
-    return this.onChatUpdatedForce(id, updates);
-  }
-
   public editAdmin(
     id: ChatId,
     participant: PeerId | ChannelParticipant | ChatParticipant,
@@ -711,29 +700,6 @@ export class AppChatsManager extends AppManager {
     });
   }
 
-  public togglePreHistoryHidden(id: ChatId, enabled: boolean) {
-    return this.migrateChat(id).then((channelId) => {
-      return this.apiManager.invokeApi('channels.togglePreHistoryHidden', {
-        channel: this.getChannelInput(channelId),
-        enabled
-      }).then(this.onChatUpdated.bind(this, channelId));
-    });
-  }
-
-  public toggleSignatures(id: ChatId, enabled: boolean) {
-    return this.apiManager.invokeApi('channels.toggleSignatures', {
-      channel: this.getChannelInput(id),
-      enabled
-    }).then(this.onChatUpdated.bind(this, id));
-  }
-
-  public toggleNoForwards(id: ChatId, enabled: boolean) {
-    return this.apiManager.invokeApi('messages.toggleNoForwards', {
-      peer: this.getInputPeer(id),
-      enabled
-    }).then(this.onChatUpdated.bind(this, id));
-  }
-
   public setChatAvailableReactions(id: ChatId, reactions: ChatReactions) {
     const chatFull = this.appProfileManager.getCachedFullChat(id);
     if(chatFull) {
@@ -912,13 +878,63 @@ export class AppChatsManager extends AppManager {
     });
   }
 
-  public toggleForum(chatId: ChatId, enabled: boolean) {
+  public toggleSomething(
+    chatId: ChatId,
+    what: 'toggleJoinToSend' | 'toggleJoinRequest' | 'toggleForum' | 'togglePreHistoryHidden' | 'toggleSignatures' | 'toggleAntiSpam' | 'toggleViewForumAsMessages' | 'toggleParticipantsHidden',
+    enabled: boolean,
+    forceInvalidation?: boolean
+  ) {
     return this.migrateChat(chatId).then((channelId) => {
-      return this.apiManager.invokeApi('channels.toggleForum', {
+      return this.apiManager.invokeApi(`channels.${what}`, {
         channel: this.getChannelInput(channelId),
         enabled
-      }).then(this.onChatUpdated.bind(this, channelId));
+      }).then((forceInvalidation ? this.onChatUpdatedForce : this.onChatUpdated).bind(this, channelId));
     });
+  }
+
+  public toggleParticipantsHidden(id: ChatId, enabled: boolean) {
+    return this.toggleSomething(id, 'toggleParticipantsHidden', enabled, true);
+  }
+
+  public togglePreHistoryHidden(id: ChatId, enabled: boolean) {
+    return this.toggleSomething(id, 'togglePreHistoryHidden', enabled);
+  }
+
+  public toggleSignatures(id: ChatId, enabled: boolean) {
+    return this.toggleSomething(id, 'toggleSignatures', enabled);
+  }
+
+  public toggleNoForwards(id: ChatId, enabled: boolean) {
+    return this.apiManager.invokeApi('messages.toggleNoForwards', {
+      peer: this.getInputPeer(id),
+      enabled
+    }).then(this.onChatUpdated.bind(this, id));
+  }
+
+  public toggleJoinToSend(chatId: ChatId, enabled: boolean) {
+    return this.toggleSomething(chatId, 'toggleJoinToSend', enabled);
+  }
+
+  public toggleJoinRequest(chatId: ChatId, enabled: boolean) {
+    return this.toggleSomething(chatId, 'toggleJoinRequest', enabled);
+  }
+
+  public toggleForum(chatId: ChatId, enabled: boolean) {
+    return this.toggleSomething(chatId, 'toggleForum', enabled);
+  }
+
+  public toggleAntiSpam(id: ChatId, enabled: boolean) {
+    return this.toggleSomething(id, 'toggleAntiSpam', enabled);
+  }
+
+  public toggleViewForumAsMessages(chatId: ChatId, enabled: boolean) {
+    this.apiUpdatesManager.processLocalUpdate({
+      _: 'updateChannelViewForumAsMessages',
+      channel_id: chatId,
+      enabled
+    });
+
+    return this.toggleSomething(chatId, 'toggleViewForumAsMessages', enabled);
   }
 
   public editForumTopic(options: {
@@ -1013,17 +1029,6 @@ export class AppChatsManager extends AppManager {
     });
   }
 
-  public async toggleAntiSpam(id: ChatId, enabled: boolean) {
-    if(!this.isChannel(id)) {
-      id = await this.migrateChat(id);
-    }
-
-    return this.apiManager.invokeApi('channels.toggleAntiSpam', {
-      channel: this.getChannelInput(id),
-      enabled
-    }).then(this.onChatUpdated.bind(this, id));
-  }
-
   public hideChatJoinRequest(chatId: ChatId, userId: UserId, approved: boolean) {
     return this.apiManager.invokeApi('messages.hideChatJoinRequest', {
       peer: this.appChatsManager.getInputPeer(chatId),
@@ -1031,21 +1036,6 @@ export class AppChatsManager extends AppManager {
       approved
     }).then((updates) => {
       return this.onChatUpdated(chatId, updates, true);
-    });
-  }
-
-  public toggleViewForumAsMessages(chatId: ChatId, enabled: boolean) {
-    this.apiUpdatesManager.processLocalUpdate({
-      _: 'updateChannelViewForumAsMessages',
-      channel_id: chatId,
-      enabled
-    });
-
-    this.apiManager.invokeApi('channels.toggleViewForumAsMessages', {
-      channel: this.getChannelInput(chatId),
-      enabled
-    }).then((updates) => {
-      this.apiUpdatesManager.processUpdateMessage(updates);
     });
   }
 
