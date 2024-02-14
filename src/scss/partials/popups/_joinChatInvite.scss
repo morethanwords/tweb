@@ -23,6 +23,8 @@
     font-weight: var(--font-weight-bold);
     margin: .75rem 0 .25rem;
     line-height: var(--line-height);
+    text-align: center;
+    @include text-overflow(false);
   }
 
   .chat-participants-count {
