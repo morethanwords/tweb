@@ -43,7 +43,7 @@ export default class AppEditChatInviteLink extends SliderSuperTabEventable<{
 }> {
   private confirmBtn: HTMLButtonElement;
 
-  public init({chatId, invite}: {
+  public async init({chatId, invite}: {
     chatId: ChatId,
     invite?: ChatInvite
   }) {
@@ -110,7 +110,7 @@ export default class AppEditChatInviteLink extends SliderSuperTabEventable<{
     }
 
     let approveNewMembersCheckboxField: CheckboxField;
-    {
+    if(await this.managers.appChatsManager.isBroadcast(chatId)) {
       const section = new SettingSection({caption: 'ApproveNewMembersDescription'});
 
       const row = new Row({
@@ -298,12 +298,14 @@ export default class AppEditChatInviteLink extends SliderSuperTabEventable<{
       this.scrollable.append(section.container);
     }
 
-    this.listenerSetter.add(approveNewMembersCheckboxField.input)('change', () => {
-      usersLimitSection.container.classList.toggle('hide', approveNewMembersCheckboxField.checked);
-    });
+    if(approveNewMembersCheckboxField) {
+      this.listenerSetter.add(approveNewMembersCheckboxField.input)('change', () => {
+        usersLimitSection.container.classList.toggle('hide', approveNewMembersCheckboxField.checked);
+      });
 
-    if(invite) {
-      approveNewMembersCheckboxField.checked = invite?.pFlags?.request_needed;
+      if(invite) {
+        approveNewMembersCheckboxField.checked = invite?.pFlags?.request_needed;
+      }
     }
   }
 }
