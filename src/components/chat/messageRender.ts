@@ -209,7 +209,7 @@ export namespace MessageRender {
     const isStoryReply = replyTo._ === 'messageReplyStoryHeader';
 
     const replyToPeerId = isStoryReply ?
-      replyTo.user_id.toPeerId(false) :
+      getPeerId(replyTo.peer) :
       (
         replyTo.reply_to_peer_id ?
           getPeerId(replyTo.reply_to_peer_id) :

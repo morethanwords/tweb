@@ -92,7 +92,7 @@ declare global {
     'MESSAGE_NOT_MODIFIED' | 'MESSAGE_EMPTY' | 'SLUG_INVALID' | `PREMIUM_SUB_ACTIVE_UNTIL_${number}` |
     `PHONE_MIGRATE_${number}` | `NETWORK_MIGRATE_${number}` | `USER_MIGRATE_${number}` | `STATS_MIGRATE_${number}` |
     `FILE_MIGRATE_${number}` | 'MSG_WAIT_FAILED' | 'MSG_WAIT_TIMEOUT' | 'SAVED_DIALOGS_UNSUPPORTED' |
-    'YOUR_PRIVACY_RESTRICTED';
+    'YOUR_PRIVACY_RESTRICTED' | 'INVITE_REQUEST_SENT';
 
   type ErrorType = LocalErrorType | ServerErrorType;
 

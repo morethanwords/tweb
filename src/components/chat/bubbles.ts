@@ -2346,7 +2346,7 @@ export default class ChatBubbles {
 
         if(replyTo._ === 'messageReplyStoryHeader') {
           const target = bubble.querySelector('.reply-media');
-          const peerId = replyTo.user_id.toPeerId(false);
+          const peerId = getPeerId(replyTo.peer);
           createStoriesViewerWithPeer({
             target: () => target,
             peerId,
@@ -5431,7 +5431,7 @@ export default class ChatBubbles {
         }
       }
     } else if(replyTo) {
-      bubble.dataset.replyToPeerId = '' + replyTo.user_id.toPeerId(false);
+      bubble.dataset.replyToPeerId = '' + getPeerId(replyTo.peer);
       bubble.dataset.replyToStoryId = '' + replyTo.story_id;
     }
 
