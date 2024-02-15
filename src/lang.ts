@@ -1907,6 +1907,8 @@ const lang = {
   'ChannelSettingsJoinToSendInfo': 'Turn this on if you expect users to join your group before being able to send messages.',
   'ChannelSettingsJoinRequest': 'Approve new members',
   'ChannelSettingsJoinRequestInfo': 'Turn this on if you want users to join only after they are approved by an admin.',
+  'ChannelJoinRequest': 'APPLY TO JOIN GROUP',
+  // 'ChannelJoinRequestSent': 'JOIN REQUEST SENT',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
@@ -2476,7 +2478,8 @@ const lang = {
   'Premium.Offset.AlreadyHave': 'You already have Telegram Premium.',
   'GiftLink.UseSuccess': 'You successfully activated gift link.',
   'Giveaway.Type.Specific.Modal.SelectUsers': 'Select Users',
-  'GroupStats.Title': 'Group Statistics'
+  'GroupStats.Title': 'Group Statistics',
+  'Chat.SendJoinRequest.Info': 'You will be able to send messages once the admins approve your request.'
 };
 
 export default lang;

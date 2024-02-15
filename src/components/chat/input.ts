@@ -18,7 +18,7 @@ import PopupCreatePoll from '../popups/createPoll';
 import PopupForward from '../popups/forward';
 import PopupNewMedia from '../popups/newMedia';
 import {toast, toastNew} from '../toast';
-import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageMedia, InputReplyTo, Dialog, ForumTopic} from '../../layer';
+import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageMedia, InputReplyTo, Chat as MTChat} from '../../layer';
 import StickersHelper from './stickersHelper';
 import ButtonIcon from '../buttonIcon';
 import ButtonMenuToggle from '../buttonMenuToggle';
@@ -119,6 +119,7 @@ import PopupPickUser from '../popups/pickUser';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import {isSavedDialog} from '../../lib/appManagers/utils/dialogs/isDialog';
 import getFwdFromName from '../../lib/appManagers/utils/messages/getFwdFromName';
+import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 
 // console.log('Recorder', Recorder);
 
@@ -270,6 +271,7 @@ export default class ChatInput {
   private unblockBtn: HTMLButtonElement;
   private onlyPremiumBtn: HTMLButtonElement;
   private onlyPremiumBtnText: I18n.IntlElement;
+  private joinBtn: HTMLButtonElement;
   private rowsWrapperWrapper: HTMLDivElement;
   private controlContainer: HTMLElement;
   private fakeSelectionWrapper: HTMLDivElement;
@@ -1204,6 +1206,7 @@ export default class ChatInput {
 
     this.botStartBtn = makeControlButton('BotStart');
     this.unblockBtn = makeControlButton('Unblock');
+    this.joinBtn = makeControlButton('ChannelJoin');
     this.onlyPremiumBtnText = new I18n.IntlElement({key: 'Chat.Input.PremiumRequiredButton', args: [0, document.createElement('a')]});
     this.onlyPremiumBtn = makeControlButton(this.onlyPremiumBtnText.element);
 
@@ -1212,6 +1215,7 @@ export default class ChatInput {
     attachClickEvent(this.onlyPremiumBtn, () => {
       PopupPremium.show();
     }, {listenerSetter: this.listenerSetter});
+    attachClickEvent(this.joinBtn, this.chat.topbar.onJoinClick.bind(this.chat.topbar, this.joinBtn), {listenerSetter: this.listenerSetter});
 
     // * pinned part start
     this.pinnedControlBtn = Button('btn-primary btn-transparent text-bold chat-input-control-button', {icon: 'unpin'});
@@ -1238,7 +1242,15 @@ export default class ChatInput {
       });
     }, {listenerSetter: this.listenerSetter});
 
-    this.controlContainer.append(...[this.botStartBtn, this.unblockBtn, this.onlyPremiumBtn, this.replyInTopicOverlay, this.pinnedControlBtn, this.openChatBtn].filter(Boolean));
+    this.controlContainer.append(...[
+      this.botStartBtn,
+      this.unblockBtn,
+      this.joinBtn,
+      this.onlyPremiumBtn,
+      this.replyInTopicOverlay,
+      this.pinnedControlBtn,
+      this.openChatBtn
+    ].filter(Boolean));
   }
 
   private setChatListeners() {
@@ -1427,6 +1439,26 @@ export default class ChatInput {
       this.chat.type === ChatType.Chat;
   }
 
+  public getJoinButtonType() {
+    const {peerId, threadId} = this.chat;
+    if(peerId.isUser()) {
+      return;
+    }
+
+    const chat = apiManagerProxy.getChat(peerId.toChatId());
+    if(!chat || !(chat as MTChat.channel).pFlags.left || (chat as MTChat.channel).pFlags.broadcast) {
+      return;
+    }
+
+    if((chat as MTChat.channel).pFlags.join_request) {
+      return 'request';
+    }
+
+    if((chat as MTChat.channel).pFlags.join_to_send || !threadId) {
+      return 'join';
+    }
+  }
+
   public async getNeededFakeContainer(startParam = this.startParam) {
     if(this.chat.selection?.isSelecting) {
       return this.fakeSelectionWrapper;
@@ -1437,7 +1469,8 @@ export default class ChatInput {
       (this.chat.type === ChatType.Saved && this.chat.threadId !== this.chat.peerId) ||
       await this.chat.isStartButtonNeeded() ||
       this.isReplyInTopicOverlayNeeded() ||
-      (this.chat.peerId.isUser() && (this.chat.isUserBlocked || this.chat.isPremiumRequired))
+      (this.chat.peerId.isUser() && (this.chat.isUserBlocked || this.chat.isPremiumRequired)) ||
+      this.getJoinButtonType()
     ) {
       return this.controlContainer;
     }
@@ -1900,6 +1933,14 @@ export default class ChatInput {
       sendMenu?.setPeerId(peerId);
 
       let haveSomethingInControl = false;
+      if(this.chat) {
+        const type = this.getJoinButtonType();
+        const good = !haveSomethingInControl && !!type;
+        haveSomethingInControl ||= good;
+        this.joinBtn.classList.toggle('hide', !good);
+        this.joinBtn.replaceChildren(i18n(type === 'request' ? 'ChannelJoinRequest' : 'ChannelJoin'));
+      }
+
       if(this.chat && this.pinnedControlBtn) {
         const good = !haveSomethingInControl && this.chat.type === ChatType.Pinned;
         haveSomethingInControl ||= good;

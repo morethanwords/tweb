@@ -76,9 +76,9 @@ export default function hasRights(
     case 'send_voices':
     case 'send_docs':
     case 'send_plain': {
-      if(!isThread && chat.pFlags.left) {
-        return false;
-      }
+      // if(!isThread && chat.pFlags.left) {
+      //   return false;
+      // }
 
       if(!isAdmin && myFlags[action]) {
         return false;

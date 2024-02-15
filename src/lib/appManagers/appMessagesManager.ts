@@ -1713,7 +1713,7 @@ export class AppMessagesManager extends AppManager {
       return {
         _: 'inputReplyToStory',
         story_id: options.replyToStoryId,
-        user_id: this.appUsersManager.getUserInput(options.peerId.toUserId())
+        peer: this.appPeersManager.getInputPeerById(options.peerId)
       };
     } else if(options.replyToMsgId) {
       return {
@@ -1926,7 +1926,7 @@ export class AppMessagesManager extends AppManager {
       return {
         _: 'messageReplyStoryHeader',
         story_id: replyTo.story_id,
-        user_id: this.appUsersManager.getUserId(replyTo.user_id)
+        peer: this.appPeersManager.getOutputPeer(this.appPeersManager.getPeerId(replyTo.peer))
       };
     }
 
@@ -3588,15 +3588,18 @@ export class AppMessagesManager extends AppManager {
   }
 
   public generateTempMessageId(peerId: PeerId, topMessage?: number) {
-    const dialog = topMessage ? undefined : this.getDialogOnly(peerId);
-    const channelId = this.appPeersManager.isChannel(peerId) ? peerId.toChatId() : undefined;
+    if(!topMessage) {
+      const dialog = this.getDialogOnly(peerId);
+      const historyStorage = this.historiesStorage[peerId];
+      topMessage = (dialog?.top_message ?? historyStorage?.maxId) || 0;
+    }
 
-    topMessage ??= dialog?.top_message || 0;
     const tempMid = this.tempMids[peerId];
     if(tempMid && tempMid > topMessage) {
       topMessage = tempMid;
     }
 
+    const channelId = this.appPeersManager.isChannel(peerId) ? peerId.toChatId() : undefined;
     const newMid = this.appMessagesIdsManager.generateTempMessageId(topMessage, channelId);
     if(!tempMid || newMid > tempMid) {
       this.tempMids[peerId] = newMid;
@@ -5122,14 +5125,14 @@ export class AppMessagesManager extends AppManager {
   }
 
   public getDetailsForChannelJoinedService(peerId: PeerId, historyStorage: HistoryStorage, slice?: SlicedArray<number>['slice']) {
-    if(historyStorage.channelJoinedMid) {
+    if(peerId.isUser() || historyStorage.channelJoinedMid) {
       return;
     }
 
     const chatId = peerId.toChatId();
     const chat = this.appChatsManager.getChat(chatId);
     const date = (chat as Chat.channel)?.date;
-    if(!date || !this.appChatsManager.isInChat(chatId)) {
+    if(!date || !this.appChatsManager.isInChat(chatId) || !(chat as Chat.channel).pFlags.broadcast) {
       return;
     }
 
@@ -6450,10 +6453,7 @@ export class AppMessagesManager extends AppManager {
         }
       }
 
-      // const isChannel = appPeersManager.isChannel(peerId);
-      const chat = this.appChatsManager.getChat(chatId) as Chat.chat;
-      const hasRights = /* isChannel &&  */this.appChatsManager.hasRights(chatId, action, undefined, !!threadId);
-      return /* !isChannel ||  */hasRights && (!chat.pFlags.left || !!threadId);
+      return this.appChatsManager.hasRights(chatId, action, undefined, !!threadId);
     } else {
       return this.appUsersManager.canSendToUser(peerId);
     }
@@ -7639,7 +7639,7 @@ export class AppMessagesManager extends AppManager {
     if(!message.reply_to) return Promise.resolve(this.generateEmptyMessage(0));
     const replyTo = message.reply_to;
     if(replyTo._ === 'messageReplyStoryHeader') {
-      const result = this.appStoriesManager.getStoryById(replyTo.user_id.toPeerId(false), replyTo.story_id);
+      const result = this.appStoriesManager.getStoryById(this.appPeersManager.getPeerId(replyTo.peer), replyTo.story_id);
       return callbackify(result, (story) => {
         // if(!story) {
         //   this.clearMessageReplyTo(message);

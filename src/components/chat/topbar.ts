@@ -60,6 +60,7 @@ import AppStatisticsTab from '../sidebarRight/tabs/statistics';
 import {ChatType} from './chat';
 import AppBoostsTab from '../sidebarRight/tabs/boosts';
 import {appState} from '../../stores/appState';
+import assumeType from '../../helpers/assumeType';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -673,26 +674,7 @@ export default class ChatTopbar {
       }
     });
 
-    this.attachClickEvent(this.btnJoin, async() => {
-      const middleware = this.chat.bubbles.getMiddleware();
-      this.btnJoin.setAttribute('disabled', 'true');
-
-      const chatId = this.peerId.toChatId();
-      let promise: Promise<any>;
-      if(await this.managers.appChatsManager.isChannel(chatId)) {
-        promise = this.managers.appChatsManager.joinChannel(chatId);
-      } else {
-        promise = this.managers.appChatsManager.addChatUser(chatId, rootScope.myId);
-      }
-
-      promise.finally(() => {
-        if(!middleware()) {
-          return;
-        }
-
-        this.btnJoin.removeAttribute('disabled');
-      });
-    });
+    this.attachClickEvent(this.btnJoin, this.onJoinClick.bind(this, this.btnJoin));
 
     this.listenerSetter.add(rootScope)('folder_unread', (folder) => {
       if(folder.id !== FOLDER_ID_ALL) {
@@ -708,6 +690,9 @@ export default class ChatTopbar {
     this.listenerSetter.add(rootScope)('chat_update', (chatId) => {
       if(this.peerId === chatId.toPeerId(true)) {
         const chat = apiManagerProxy.getChat(chatId) as Channel/*  | Chat */;
+        if(!chat.pFlags.broadcast) {
+          return;
+        }
 
         this.btnJoin.classList.toggle('hide', !(chat as Channel)?.pFlags?.left);
         this.setUtilsWidth();
@@ -792,6 +777,37 @@ export default class ChatTopbar {
       type: ChatType.Pinned
     });
   }
+
+  public onJoinClick = async(button: HTMLElement) => {
+    const middleware = this.chat.bubbles.getMiddleware();
+    button.setAttribute('disabled', 'true');
+
+    const chatId = this.peerId.toChatId();
+    let promise: Promise<any>;
+    if(await this.managers.appChatsManager.isChannel(chatId)) {
+      promise = this.managers.appChatsManager.joinChannel(chatId);
+    } else {
+      promise = this.managers.appChatsManager.addChatUser(chatId, rootScope.myId);
+    }
+
+    promise.catch((err) => {
+      assumeType<ApiError>(err);
+      switch(err.type) {
+        case 'INVITE_REQUEST_SENT': {
+          toastNew({langPackKey: 'Chat.SendJoinRequest.Info'});
+          return;
+        }
+      }
+
+      throw err;
+    }).finally(() => {
+      if(!middleware()) {
+        return;
+      }
+
+      button.removeAttribute('disabled');
+    });
+  };
 
   private onMuteClick = () => {
     PopupElement.createPopup(PopupMute, this.peerId);
@@ -916,7 +932,7 @@ export default class ChatTopbar {
       const canHaveSomeButtons = !(this.chat.type === ChatType.Pinned || this.chat.type === ChatType.Scheduled);
       this.btnMute && this.btnMute.classList.toggle('hide', !isBroadcast || !canHaveSomeButtons);
       if(this.btnJoin) {
-        if(isAnyChat && !this.chat.isRestricted && canHaveSomeButtons) {
+        if(isBroadcast && !this.chat.isRestricted && canHaveSomeButtons) {
           replaceContent(this.btnJoin, i18n(isBroadcast ? 'Chat.Subscribe' : 'ChannelJoin'));
           this.btnJoin.classList.toggle('hide', !(chat as MTChat.chat)?.pFlags?.left);
         } else {
