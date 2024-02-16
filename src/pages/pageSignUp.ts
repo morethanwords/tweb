@@ -122,12 +122,12 @@ const onFirstMount = async() => {
     const preloader = putPreloader(this);
 
     rootScope.managers.apiManager.invokeApi('auth.signUp', params)
-    .then((response) => {
+    .then(async(response) => {
       // console.log('auth.signUp response:', response);
 
       switch(response._) {
         case 'auth.authorization': // success
-          rootScope.managers.apiManager.setUser(response.user);
+          await rootScope.managers.apiManager.setUser(response.user);
 
           sendAvatar().finally(() => {
             import('./pageIm').then((m) => {

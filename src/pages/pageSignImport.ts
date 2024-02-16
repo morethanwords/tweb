@@ -25,7 +25,7 @@ const importWebToken = async() => {
     }, {dcId, ignoreErrors: true});
 
     if(authorization._ === 'auth.authorization') {
-      rootScope.managers.apiManager.setUser(authorization.user);
+      await rootScope.managers.apiManager.setUser(authorization.user);
       mountPageAfter = import('./pageIm');
       // return;
     }

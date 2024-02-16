@@ -495,11 +495,11 @@ export default class SuperMessagePort<
     let isPromise: boolean;
     try {
       const listeners = this.listeners[innerTask.type];
-      if(!listeners?.length) {
+      if(!listeners?.size) {
         throw new Error('no listener');
       }
 
-      const listener = listeners[0];
+      const listener = listeners.values().next().value;
 
       // @ts-ignore
       let result = this.invokeListenerCallback(innerTask.type, listener, innerTask.payload, source, event);

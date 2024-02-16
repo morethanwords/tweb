@@ -160,13 +160,13 @@ const onFirstMount = () => {
         pFlags: {}
       }
       // lang_code: navigator.language || 'en'
-    }).then((code) => {
+    }).then(async(code) => {
       // console.log('got code', code);
 
       if(code._ === 'auth.sentCodeSuccess') {
         const {authorization} = code;
         if(authorization._ === 'auth.authorization') {
-          rootScope.managers.apiManager.setUser(authorization.user);
+          await rootScope.managers.apiManager.setUser(authorization.user);
 
           import('./pageIm').then((m) => {
             m.default.mount();

@@ -31,10 +31,9 @@ export class CryptoMessagePort<Master extends boolean = false> extends SuperMess
   }): Promise<Awaited<ReturnType<CryptoMethods[T]>>> {
     const payload = {method, args};
     const listeners = this.listeners['invoke'];
-    if(listeners?.length) { // already in worker
+    if(listeners?.size) { // already in worker
       // try {
-      // @ts-ignore
-      let result: any = listeners[0].callback(payload);
+      let result: any = listeners.values().next().value.callback(payload);
       if(!IS_WORKER && !(result instanceof Promise)) {
         result = Promise.resolve(result);
       }

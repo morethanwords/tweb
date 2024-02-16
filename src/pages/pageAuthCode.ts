@@ -46,12 +46,12 @@ const submitCode = (code: string) => {
   // console.log('invoking auth.signIn with params:', params);
 
   rootScope.managers.apiManager.invokeApi('auth.signIn', params, {ignoreErrors: true})
-  .then((response) => {
+  .then(async(response) => {
     // console.log('auth.signIn response:', response);
 
     switch(response._) {
       case 'auth.authorization':
-        rootScope.managers.apiManager.setUser(response.user);
+        await rootScope.managers.apiManager.setUser(response.user);
 
         import('./pageIm').then((m) => {
           m.default.mount();

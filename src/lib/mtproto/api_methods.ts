@@ -80,7 +80,7 @@ export default abstract class ApiManagerMethods extends AppManager {
   abstract setUserAuth(userAuth: UserAuth | UserId): Promise<void>;
 
   public setUser(user: User) {
-    // appUsersManager.saveApiUser(user);
+    this.appUsersManager.saveApiUser(user);
     return this.setUserAuth(user.id);
   }
 
