@@ -53,10 +53,10 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
 
   const parts: (Node | string)[] = [];
 
-  let hasAlbumKey = false;
+  let hasGroupedKey = false;
   const addPart = (langKey: LangPackKey, part?: string | HTMLElement | DocumentFragment, args?: FormatterArguments) => {
     if(langKey) {
-      if(part === undefined && hasAlbumKey) {
+      if(part === undefined && hasGroupedKey) {
         return;
       }
 
@@ -81,37 +81,37 @@ export default async function wrapMessageForReply<T extends WrapMessageForReplyO
   let entities = (message as Message.message).totalEntities ?? (message as DraftMessage.draftMessage).entities;
   if((message as Message.message).media && !isRestricted) {
     assumeType<Message.message>(message);
-    let usingFullAlbum = true;
+    let usingFullGrouepd = true;
     if(message.grouped_id) {
       if(usingMids) {
         const mids = await appMessagesManager.getMidsByMessage(message);
         if(usingMids.length === mids.length) {
           for(const mid of mids) {
             if(!usingMids.includes(mid)) {
-              usingFullAlbum = false;
+              usingFullGrouepd = false;
               break;
             }
           }
         } else {
-          usingFullAlbum = false;
+          usingFullGrouepd = false;
         }
       }
 
-      if(usingFullAlbum) {
-        const albumText = await appMessagesManager.getAlbumText(message.grouped_id);
-        options.text = albumText?.message || '';
-        entities = albumText?.totalEntities || [];
+      if(usingFullGrouepd) {
+        const groupedText = await appMessagesManager.getGroupedText(message.grouped_id);
+        options.text = groupedText?.message || '';
+        entities = groupedText?.totalEntities || [];
 
         if(!withoutMediaType) {
           addPart('AttachAlbum');
-          hasAlbumKey = true;
+          hasGroupedKey = true;
         }
       }
     } else {
-      usingFullAlbum = false;
+      usingFullGrouepd = false;
     }
 
-    if((!usingFullAlbum && !withoutMediaType) || !options.text) {
+    if((!usingFullGrouepd && !withoutMediaType) || !options.text) {
       const media = message.media;
       switch(media?._) {
         case 'messageMediaPhoto':

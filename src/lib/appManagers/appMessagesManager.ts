@@ -51,7 +51,7 @@ import getFileNameForUpload from '../../helpers/getFileNameForUpload';
 import noop from '../../helpers/noop';
 import appTabsManager from './appTabsManager';
 import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
-import getAlbumText from './utils/messages/getAlbumText';
+import getGroupedText from './utils/messages/getGroupedText';
 import pause from '../../helpers/schedulers/pause';
 import makeError from '../../helpers/makeError';
 import getStickerEffectThumb from './utils/stickers/getStickerEffectThumb';
@@ -74,6 +74,7 @@ import {ApiLimitType} from '../mtproto/api_methods';
 import getFwdFromName from './utils/messages/getFwdFromName';
 import filterUnique from '../../helpers/array/filterUnique';
 import getSearchType from './utils/messages/getSearchType';
+import getMainGroupedMessage from './utils/messages/getMainGroupedMessage';
 
 // console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -1310,7 +1311,7 @@ export class AppMessagesManager extends AppManager {
     return ret;
   }
 
-  public async sendAlbum(options: MessageSendingParams & {
+  public async sendGrouped(options: MessageSendingParams & {
     isMedia?: boolean,
     entities?: MessageEntity[],
     caption?: string,
@@ -1337,7 +1338,7 @@ export class AppMessagesManager extends AppManager {
       sendEntities = undefined;
     }
 
-    const log = this.log.bindPrefix('sendAlbum');
+    const log = this.log.bindPrefix('sendGrouped');
     log(options);
 
     const groupId = '' + ++this.groupedTempId;
@@ -3534,9 +3535,9 @@ export class AppMessagesManager extends AppManager {
     });
   }
 
-  public getAlbumText(grouped_id: string) {
+  public getGroupedText(grouped_id: string) {
     const group = this.groupedMessagesStorage[grouped_id];
-    return getAlbumText(Array.from(group.values()) as Message.message[]);
+    return getGroupedText(Array.from(group.values()) as Message.message[]);
   }
 
   public getGroupsFirstMessage(message: Message.message) {
@@ -3553,19 +3554,19 @@ export class AppMessagesManager extends AppManager {
     return this.getMessageFromStorage(storage, minMid) as Message.message;
   }
 
-  public getMidsByAlbum(groupedId: string, sort: 'asc' | 'desc' = 'asc') {
+  public getMidsByGroupedId(groupedId: string, sort: 'asc' | 'desc' = 'asc') {
     return getObjectKeysAndSort(this.groupedMessagesStorage[groupedId], sort);
   }
 
-  public getMessagesByAlbum(groupedId: string) {
-    const mids = this.getMidsByAlbum(groupedId, 'asc');
+  public getMessagesByGroupedId(groupedId: string) {
+    const mids = this.getMidsByGroupedId(groupedId, 'asc');
     const storage = this.groupedMessagesStorage[groupedId];
     return mids.map((mid) => this.getMessageFromStorage(storage, mid) as Message.message);
   }
 
   public getMidsByMessage(message: Message) {
     if(!message) return [];
-    else if((message as Message.message).grouped_id) return this.getMidsByAlbum((message as Message.message).grouped_id);
+    else if((message as Message.message).grouped_id) return this.getMidsByGroupedId((message as Message.message).grouped_id);
     else return [message.mid];
   }
 
@@ -6785,7 +6786,7 @@ export class AppMessagesManager extends AppManager {
   }
 
   public getMessageWithReplies(message: Message.message) {
-    return this.filterMessages(message, (message) => !!(message as Message.message).replies)[0] as any;
+    return getMainGroupedMessage(this.filterMessages(message, (message) => !!(message as Message.message).replies) as Message.message[]);
   }
 
   public getMessageWithCommentReplies(message: Message.message) {
@@ -7194,7 +7195,7 @@ export class AppMessagesManager extends AppManager {
       }
     }
 
-    // * load album missing messages
+    // * load grouped missing messages
     const firstMessage = messages[0] as Message.message;
     const lastMessage = messages[messages.length - 1] as Message.message;
 
@@ -7223,7 +7224,7 @@ export class AppMessagesManager extends AppManager {
         return;
       }
     }
-    // * album end
+    // * grouped end
 
     if(options.threadId) {
       if(isTopEnd && options.historyType === HistoryType.Thread) {
@@ -7323,6 +7324,22 @@ export class AppMessagesManager extends AppManager {
       return;
     }
     // * migration end
+
+    // * fill grouped messages when loading tags history
+    if(inputFilter && options.savedReaction) {
+      const differentGroupedMessages = historyResult.messages.filter((message) => (message as Message.message).grouped_id) as Message.message[];
+      await Promise.all(differentGroupedMessages.map((message) => {
+        return this.getHistory({
+          peerId: message.peerId,
+          offsetId: message.mid,
+          limit: 20,
+          addOffset: -10
+        });
+      }));
+      if(!middleware()) {
+        return;
+      }
+    }
 
     return historyResult;
   }
@@ -7750,7 +7767,7 @@ export class AppMessagesManager extends AppManager {
       unreadMentions: number,
       // msgs: Map<number, {savedPeerId?: number}>,
       msgs: Set<number>,
-      albums?: {[groupId: string]: Set<number>},
+      grouped?: {[groupId: string]: Set<number>},
     } = {
       count: 0,
       unread: 0,
@@ -7796,11 +7813,11 @@ export class AppMessagesManager extends AppManager {
         if(groupedStorage) {
           this.deleteMessageFromStorage(groupedStorage, mid);
 
-          if(!history.albums) history.albums = {};
-          (history.albums[groupedId] || (history.albums[groupedId] = new Set())).add(mid);
+          if(!history.grouped) history.grouped = {};
+          (history.grouped[groupedId] || (history.grouped[groupedId] = new Set())).add(mid);
 
           if(!groupedStorage.size) {
-            delete history.albums;
+            delete history.grouped;
             delete this.groupedMessagesStorage[groupedId];
           }
         }
@@ -7823,9 +7840,9 @@ export class AppMessagesManager extends AppManager {
       this.deleteMessageFromStorage(storage, mid);
     }
 
-    if(history.albums) {
-      for(const groupedId in history.albums) {
-        this.dispatchAlbumEdit(groupedId, storage, [...history.albums[groupedId]]);
+    if(history.grouped) {
+      for(const groupedId in history.grouped) {
+        this.dispatchGroupedEdit(groupedId, storage, [...history.grouped[groupedId]]);
         /* const mids = this.getMidsByAlbum(groupId);
         if(mids.length) {
           const mid = Math.max(...mids);
@@ -7846,15 +7863,15 @@ export class AppMessagesManager extends AppManager {
 
       const groupedId = oldMessage.grouped_id;
       if(groupedId) {
-        this.dispatchAlbumEdit(groupedId, storage, []);
+        this.dispatchGroupedEdit(groupedId, storage, []);
       }
     }
   }
 
-  private dispatchAlbumEdit(groupedId: string, storage: MessagesStorage, deletedMids?: number[]) {
-    const mids = this.getMidsByAlbum(groupedId);
+  private dispatchGroupedEdit(groupedId: string, storage: MessagesStorage, deletedMids?: number[]) {
+    const mids = this.getMidsByGroupedId(groupedId);
     const messages = mids.map((mid) => this.getMessageFromStorage(storage, mid)) as Message.message[];
-    this.rootScope.dispatchEvent('album_edit', {peerId: messages[0].peerId, groupId: groupedId, deletedMids: deletedMids || [], messages});
+    this.rootScope.dispatchEvent('grouped_edit', {peerId: messages[0].peerId, groupedId, deletedMids: deletedMids || [], messages});
   }
 
   public getDialogUnreadCount(dialog: Dialog | ForumTopic) {

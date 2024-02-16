@@ -3483,24 +3483,24 @@ export default class ChatInput {
         senderTitles.append(peerTitles[0], i18n('AndOther', [peerTitles.length - 1]));
       }
 
-      let firstMessage: Message.message, usingFullAlbum: boolean;
+      let firstMessage: Message.message, usingFullGrouped: boolean;
       if(fromPeerIds.length === 1) {
         const fromPeerId = fromPeerIds[0];
         const mids = fromPeerIdsMids[fromPeerId];
         firstMessage = (await this.managers.appMessagesManager.getMessageByPeer(fromPeerId, mids[0])) as Message.message;
 
-        usingFullAlbum = !!firstMessage.grouped_id;
-        if(usingFullAlbum) {
-          const albumMids = await this.managers.appMessagesManager.getMidsByMessage(firstMessage);
-          if(albumMids.length !== length || albumMids.find((mid) => !mids.includes(mid))) {
-            usingFullAlbum = false;
+        usingFullGrouped = !!firstMessage.grouped_id;
+        if(usingFullGrouped) {
+          const groupedMids = await this.managers.appMessagesManager.getMidsByMessage(firstMessage);
+          if(groupedMids.length !== length || groupedMids.find((mid) => !mids.includes(mid))) {
+            usingFullGrouped = false;
           }
         }
       }
 
       const subtitleFragment = document.createDocumentFragment();
       const delimiter = ': ';
-      if(usingFullAlbum || length === 1) {
+      if(usingFullGrouped || length === 1) {
         const mids = fromPeerIdsMids[fromPeerIds[0]];
         const replyFragment = await wrapMessageForReply({message: firstMessage, usingMids: mids});
         subtitleFragment.append(

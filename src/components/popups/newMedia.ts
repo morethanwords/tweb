@@ -629,7 +629,7 @@ export default class PopupNewMedia extends PopupElement {
         sendFileDetails: d
       };
 
-      this.managers.appMessagesManager.sendAlbum({
+      this.managers.appMessagesManager.sendGrouped({
         ...sendingParams,
         caption,
         entities,

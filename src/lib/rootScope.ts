@@ -111,7 +111,7 @@ export type BroadcastEvents = {
   'scheduled_new': Message.message,
   'scheduled_delete': {peerId: PeerId, mids: number[]},
 
-  'album_edit': {peerId: PeerId, groupId: string, deletedMids: number[], messages: Message.message[]},
+  'grouped_edit': {peerId: PeerId, groupedId: string, deletedMids: number[], messages: Message.message[]},
 
   'stickers_installed': StickerSet.stickerSet,
   'stickers_deleted': StickerSet.stickerSet,

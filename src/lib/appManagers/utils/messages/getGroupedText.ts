@@ -1,7 +1,7 @@
 import assumeType from '../../../../helpers/assumeType';
 import {Message} from '../../../../layer';
 
-export default function getAlbumText(messages: Message.message[]) {
+export default function getGroupedText(messages: Message.message[]) {
   let foundMessages = 0, message: Message.message;
   for(const m of messages) {
     assumeType<Message.message>(m);

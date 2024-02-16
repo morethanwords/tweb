@@ -101,7 +101,7 @@ import {AckedResult} from '../../lib/mtproto/superMessagePort';
 import middlewarePromise from '../../helpers/middlewarePromise';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import noop from '../../helpers/noop';
-import getAlbumText from '../../lib/appManagers/utils/messages/getAlbumText';
+import getGroupedText from '../../lib/appManagers/utils/messages/getGroupedText';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
 import PopupPayment from '../popups/payment';
 import isInDOM from '../../helpers/dom/isInDOM';
@@ -172,6 +172,7 @@ import getFwdFromName from '../../lib/appManagers/utils/messages/getFwdFromName'
 import isForwardOfForward from '../../lib/appManagers/utils/messages/isForwardOfForward';
 import {ReactionLayoutType} from './reaction';
 import reactionsEqual from '../../lib/appManagers/utils/reactions/reactionsEqual';
+import getMainGroupedMessage from '../../lib/appManagers/utils/messages/getMainGroupedMessage';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -247,7 +248,7 @@ type Bubble = {
 type MyHistoryResult = HistoryResult | {history: number[]};
 
 function getMainMidForGrouped(mids: number[]) {
-  return Math.max(...mids);
+  return Math.min(...mids);
 }
 
 const getSponsoredPhoto = (sponsoredMessage: SponsoredMessage) => {
@@ -589,7 +590,7 @@ export default class ChatBubbles {
       let messages: (Message.message | Message.messageService)[], tempIds: number[];
       const groupedId = (message as Message.message).grouped_id;
       if(groupedId) {
-        messages = await this.managers.appMessagesManager.getMessagesByAlbum(groupedId);
+        messages = await this.managers.appMessagesManager.getMessagesByGroupedId(groupedId);
         const mids = messages.map(({mid}) => mid);
         if(!mids.length || getMainMidForGrouped(mids) !== mid || bubbles[mid] !== _bubble) {
           return;
@@ -801,7 +802,7 @@ export default class ChatBubbles {
       // scrollSaver.restore();
     });
 
-    this.listenerSetter.add(rootScope)('album_edit', ({peerId, messages, deletedMids}) => {
+    this.listenerSetter.add(rootScope)('grouped_edit', ({peerId, messages, deletedMids}) => {
       if(peerId !== this.peerId) return;
 
       const mids = messages.map(({mid}) => mid);
@@ -2605,7 +2606,7 @@ export default class ChatBubbles {
   }
 
   public async getGroupedBubble(groupId: string) {
-    const mids = await this.managers.appMessagesManager.getMidsByAlbum(groupId);
+    const mids = await this.managers.appMessagesManager.getMidsByGroupedId(groupId);
     for(const mid of mids) {
       if(this.bubbles[mid] && !this.skippedMids.has(mid)) {
         // const maxId = Math.max(...mids); // * because in scheduled album can be rendered by lowest mid during sending
@@ -4051,11 +4052,11 @@ export default class ChatBubbles {
   public playMediaWithTimestamp(element: HTMLElement, timestamp: number) {
     const bubble = findUpClassName(element, 'bubble');
     const groupedItem = findUpClassName(element, 'grouped-item');
-    const albumItemMid = groupedItem ? +groupedItem.dataset.mid : +bubble.dataset.textMid;
+    const groupedItemMid = groupedItem ? +groupedItem.dataset.mid : +bubble.dataset.textMid;
     let attachment = bubble.querySelector<HTMLElement>('.attachment');
     if(attachment) {
-      if(albumItemMid) {
-        attachment = attachment.querySelector(`[data-mid="${albumItemMid}"]`);
+      if(groupedItemMid) {
+        attachment = attachment.querySelector(`[data-mid="${groupedItemMid}"]`);
       }
 
       const media = attachment.querySelector<HTMLElement>('img, video, canvas');
@@ -4944,21 +4945,23 @@ export default class ChatBubbles {
 
     const isMessage = message._ === 'message';
     const groupedId = isMessage && message.grouped_id;
-    let albumMids: number[], reactionsMessage: Message.message;
-    const albumMessages = groupedId ? await this.managers.appMessagesManager.getMessagesByAlbum(groupedId) : undefined;
+    let groupedMids: number[], reactionsMessage: Message.message;
+    const groupedMessages = groupedId ? await this.managers.appMessagesManager.getMessagesByGroupedId(groupedId) : undefined;
 
-    const albumMustBeRenderedFull = this.chat.type !== ChatType.Pinned;
+    const groupedMustBeRenderedFull = this.chat.type !== ChatType.Pinned;
 
-    if(groupedId && albumMustBeRenderedFull) { // will render only last album's message
-      albumMids = albumMessages.map((message) => message.mid);
-      const mainMid = getMainMidForGrouped(albumMids);
-      if(message.mid !== mainMid) {
+    if(groupedId && groupedMustBeRenderedFull) { // will render only first album's message
+      groupedMids = groupedMessages.map((message) => message.mid);
+      const mainMessage = getMainGroupedMessage(groupedMessages);
+      if(message.mid !== mainMessage.mid) {
         return;
       }
     }
 
+    const maxBubbleMid = groupedMids ? Math.max(...groupedMids) : message.mid;
+
     if(isMessage) {
-      reactionsMessage = groupedId ? albumMessages[0] : message;
+      reactionsMessage = groupedId ? getMainGroupedMessage(groupedMessages) : message;
     }
 
     // * can't use 'message.pFlags.out' here because this check will be used to define side of message (left-right)
@@ -4986,7 +4989,7 @@ export default class ChatBubbles {
 
     if(!isInUnread && this.chat.peerId.isAnyChat()) {
       const readMaxId = await this.managers.appMessagesManager.getReadMaxIdIfUnread(this.chat.peerId, this.chat.threadId);
-      if(readMaxId !== undefined && readMaxId < message.mid) {
+      if(readMaxId !== undefined && readMaxId < maxBubbleMid) {
         isInUnread = true;
       }
     }
@@ -5330,7 +5333,7 @@ export default class ChatBubbles {
     const setUnreadObserver = isInUnread && this.observer ? (element: HTMLElement = bubble) => {
       // this.log('not our message', message, message.pFlags.unread);
       this.observer.observe(element, this.unreadedObserverCallback);
-      this.unreaded.set(element, message.mid);
+      this.unreaded.set(element, maxBubbleMid);
     } : undefined;
 
     const isBroadcast = this.chat.isBroadcast;
@@ -5348,10 +5351,10 @@ export default class ChatBubbles {
 
     let messageMedia: MessageMedia = isMessage && message.media;
     let needToSetHTML = true;
-    let messageMessage: string, totalEntities: MessageEntity[], albumTextMessage: Message.message;
+    let messageMessage: string, totalEntities: MessageEntity[], groupedTextMessage: Message.message;
     if(isMessage) {
-      if(groupedId && albumMustBeRenderedFull) {
-        const t = albumTextMessage = getAlbumText(albumMessages);
+      if(groupedId && groupedMustBeRenderedFull) {
+        const t = groupedTextMessage = getGroupedText(groupedMessages);
         messageMessage = t?.message || '';
         // totalEntities = t.entities;
         totalEntities = t?.totalEntities || [];
@@ -5409,9 +5412,9 @@ export default class ChatBubbles {
 
     customEmojiSize ??= this.chat.appImManager.customEmojiSize;
 
-    let maxMediaTimestamp = getMediaDurationFromMessage(albumTextMessage || message as Message.message);
-    if(albumTextMessage && needToSetHTML) {
-      bubble.dataset.textMid = '' + albumTextMessage.mid;
+    let maxMediaTimestamp = getMediaDurationFromMessage(groupedTextMessage || message as Message.message);
+    if(groupedTextMessage && needToSetHTML) {
+      bubble.dataset.textMid = '' + groupedTextMessage.mid;
     }
 
     let replyTo = message.reply_to;
@@ -5701,10 +5704,10 @@ export default class ChatBubbles {
 
           bubble.classList.add('photo');
 
-          if(albumMustBeRenderedFull && groupedId && albumMids.length !== 1) {
+          if(groupedMustBeRenderedFull && groupedId && groupedMids.length !== 1) {
             bubble.classList.add('is-album', 'is-grouped');
             wrapAlbum({
-              messages: albumMessages,
+              messages: groupedMessages,
               attachmentDiv,
               middleware: this.getMiddleware(),
               isOut: our,
@@ -6238,11 +6241,11 @@ export default class ChatBubbles {
             }
 
             bubble.classList.add(isRound ? 'round' : 'video');
-            if(albumMustBeRenderedFull && groupedId && albumMids.length !== 1) {
+            if(groupedMustBeRenderedFull && groupedId && groupedMids.length !== 1) {
               bubble.classList.add('is-album', 'is-grouped');
 
               wrapAlbum({
-                messages: albumMessages,
+                messages: groupedMessages,
                 attachmentDiv,
                 middleware,
                 isOut: our,
@@ -6289,7 +6292,7 @@ export default class ChatBubbles {
             }
           } else {
             const newNameContainer = await wrapGroupedDocuments({
-              albumMustBeRenderedFull,
+              albumMustBeRenderedFull: groupedMustBeRenderedFull,
               message,
               bubble,
               messageDiv,

@@ -47,7 +47,7 @@ import deferredPromise, {CancellablePromise} from '../../helpers/cancellableProm
 import PopupStickers from '../popups/stickers';
 import getMediaFromMessage from '../../lib/appManagers/utils/messages/getMediaFromMessage';
 import canSaveMessageMedia from '../../lib/appManagers/utils/messages/canSaveMessageMedia';
-import getAlbumText from '../../lib/appManagers/utils/messages/getAlbumText';
+import getGroupedText from '../../lib/appManagers/utils/messages/getGroupedText';
 import PopupElement from '../popups';
 import getParticipantPeerId from '../../lib/appManagers/utils/chats/getParticipantPeerId';
 import confirmationPopup from '../confirmationPopup';
@@ -66,6 +66,7 @@ import PopupToggleReadDate from '../popups/toggleReadDate';
 import rootScope from '../../lib/rootScope';
 import ReactionElement from './reaction';
 import InputField from '../inputField';
+import getMainGroupedMessage from '../../lib/appManagers/utils/messages/getMainGroupedMessage';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
   verify: () => boolean | Promise<boolean>,
@@ -106,7 +107,7 @@ export default class ChatContextMenu {
   private canOpenReactedList: boolean;
 
   private emojiInputsPromise: CancellablePromise<InputStickerSet.inputStickerSetID[]>;
-  private albumMessages: Message.message[];
+  private groupedMessages: Message.message[];
   private linkToMessage: Awaited<ReturnType<ChatContextMenu['getUrlToMessage']>>;
   private selectedMessagesText: string;
   private selectedMessages: MyMessage[];
@@ -263,8 +264,8 @@ export default class ChatContextMenu {
       this.isLegacy = this.messagePeerId && this.messagePeerId !== this.peerId;
       this.isSelected = this.chat.selection.isMidSelected(this.messagePeerId, this.mid);
       this.message = avatar ? undefined : (bubble as any).message || this.chat.getMessage(this.mid);
-      this.albumMessages = (this.message as Message.message)?.grouped_id ? await this.managers.appMessagesManager.getMessagesByAlbum((this.message as Message.message).grouped_id) : undefined;
-      if(!groupedItem && this.albumMessages) this.message = this.albumMessages[0];
+      this.groupedMessages = (this.message as Message.message)?.grouped_id ? await this.managers.appMessagesManager.getMessagesByGroupedId((this.message as Message.message).grouped_id) : undefined;
+      if(!groupedItem && this.groupedMessages) this.message = getMainGroupedMessage(this.groupedMessages);
       this.noForwards = this.message && !isSponsored && !(await this.managers.appMessagesManager.canForward(this.message));
       this.viewerPeerId = undefined;
       this.canOpenReactedList = undefined;
@@ -858,7 +859,7 @@ export default class ChatContextMenu {
   }
 
   private getMessageWithText() {
-    return (this.albumMessages && getAlbumText(this.albumMessages)) || this.message;
+    return (this.groupedMessages && getGroupedText(this.groupedMessages)) || this.message;
   }
 
   private getUniqueCustomEmojisFromMessage() {

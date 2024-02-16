@@ -107,12 +107,12 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
 
   const autoDownloadSize = autoDownload?.video;
   let noAutoDownload = autoDownloadSize === 0;
-  const isAlbumItem = !(boxWidth && boxHeight);
+  const isGroupedItem = !(boxWidth && boxHeight);
   canAutoplay ??= /* doc.sticker ||  */(
     (
       doc.type !== 'video' || (
         doc.size <= MAX_VIDEO_AUTOPLAY_SIZE &&
-        !isAlbumItem
+        !isGroupedItem
       )
     ) && (doc.type === 'gif' ? liteMode.isAvailable('gif') : liteMode.isAvailable('video'))
   );
