@@ -74,9 +74,7 @@ export default class TcpObfuscated implements MTTransport {
 
     if(this.networker) {
       this.pending.length = 0; // ! clear queue and reformat messages to container, because if sending simultaneously 10+ messages, connection will die
-      this.networker.setConnectionStatus(ConnectionStatus.Connected);
-      this.networker.cleanupSent();
-      this.networker.resend();
+      this.networker.onTransportOpen();
     }/*  else {
       for(const pending of this.pending) {
         if(pending.encoded && pending.body) {
@@ -93,26 +91,14 @@ export default class TcpObfuscated implements MTTransport {
   private onMessage = async(buffer: ArrayBuffer) => {
     // networkStats.addReceived(this.dcId, buffer.byteLength);
 
+    const time = Date.now();
     let data = await this.obfuscation.decode(new Uint8Array(buffer));
     data = this.codec.readPacket(data);
 
     if(this.networker) { // authenticated!
       // this.pending = this.pending.filter((p) => p.body); // clear pending
 
-      this.debug && this.log.debug('redirecting to networker', data.length);
-      this.networker.parseResponse(data).then((response) => {
-        this.debug && this.log.debug('redirecting to networker response:', response);
-
-        try {
-          this.networker.processMessage(response.response, response.messageId, response.sessionId);
-        } catch(err) {
-          this.log.error('handleMessage networker processMessage error', err);
-        }
-
-        // this.releasePending();
-      }).catch((err) => {
-        this.log.error('handleMessage networker parseResponse error', err);
-      });
+      this.networker.onTransportData(data, time);
 
       // this.dd();
       return;

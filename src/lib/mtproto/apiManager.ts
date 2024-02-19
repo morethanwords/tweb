@@ -48,6 +48,7 @@ import MTTransport from './transports/transport';
 
 const PREMIUM_FILE_NETWORKERS_COUNT = 6;
 const REGULAR_FILE_NETWORKERS_COUNT = 3;
+const DESTROY_NETWORKERS = true;
 
 export class ApiManager extends ApiManagerMethods {
   private cachedNetworkers: {
@@ -351,16 +352,30 @@ export class ApiManager extends ApiManagerMethods {
     // @ts-ignore
     const maxNetworkers = connectionType === 'client' || transportType === 'https' ? 1 : (this.rootScope.premium ? PREMIUM_FILE_NETWORKERS_COUNT : REGULAR_FILE_NETWORKERS_COUNT);
     if(networkers.length >= maxNetworkers) {
-      let i = maxNetworkers - 1, found = false;
-      for(; i >= 0; --i) {
-        if(networkers[i].isOnline) {
-          found = true;
-          break;
+      let networker = networkers[0];
+      if(maxNetworkers > 1) {
+        let foundRequests = Infinity, foundNetworker: MTPNetworker, foundIndex: number;
+        for(let i = maxNetworkers - 1; i >= 0; --i) {
+          const networker = networkers[i];
+          const {activeRequests, isOnline} = networker;
+          if(activeRequests < foundRequests && isOnline) {
+            foundRequests = foundRequests;
+            foundNetworker = networker;
+            foundIndex = i;
+          }
+        }
+
+        if(foundNetworker) {
+          networker = foundNetworker;
+        } else {
+          foundIndex = maxNetworkers - 1;
+        }
+
+        if(foundIndex) {
+          networkers.unshift(networker = networkers.splice(foundIndex, 1)[0]);
         }
       }
 
-      const networker = networkers.splice(found ? i : maxNetworkers - 1, 1)[0];
-      networkers.unshift(networker);
       return Promise.resolve(networker);
     }
 
@@ -465,7 +480,7 @@ export class ApiManager extends ApiManagerMethods {
   }
 
   public setOnDrainIfNeeded(networker: MTPNetworker) {
-    if(networker.onDrain) {
+    if(!DESTROY_NETWORKERS || networker.onDrain) {
       return;
     }
 

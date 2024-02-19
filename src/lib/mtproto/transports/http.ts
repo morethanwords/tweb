@@ -4,14 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import pause from '../../../helpers/schedulers/pause';
-import {DcId} from '../../../types';
-import {logger, LogTypes} from '../../logger';
 import type MTPNetworker from '../networker';
+import type {DcId, TrueDcId} from '../../../types';
+import pause from '../../../helpers/schedulers/pause';
+import {logger, LogTypes} from '../../logger';
 import MTTransport from './transport';
 import Modes from '../../../config/modes';
 import transportController from './controller';
 // import networkStats from '../networkStats';
+
+const TEST_DROPPING_REQUESTS: TrueDcId = undefined;
 
 export default class HTTP implements MTTransport {
   public networker: MTPNetworker;
@@ -41,11 +43,13 @@ export default class HTTP implements MTTransport {
   }
 
   public _send(body: Uint8Array, mode?: RequestMode) {
-    const length = body.length;
-    this.debug && this.log.debug('-> body length to send:', length);
+    this.debug && this.log.debug('-> body length to send:', body.length);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30e3);
 
     // networkStats.addSent(this.dcId, length);
-    return fetch(this.url, {method: 'POST', body, mode}).then((response) => {
+    return fetch(this.url, {method: 'POST', body, mode, signal: controller.signal}).then(async(response) => {
       if(response.status !== 200 && !mode) {
         response.arrayBuffer().then((buffer) => {
           this.log.error('not 200',
@@ -58,17 +62,19 @@ export default class HTTP implements MTTransport {
       this.setConnected(true);
 
       // * test resending by dropping random request
-      // if(Math.random() > .5) {
-      //   throw 'asd';
-      // }
+      if(TEST_DROPPING_REQUESTS && this.dcId === TEST_DROPPING_REQUESTS && Math.random() > .5) {
+        controller.abort();
+        throw 'test';
+      }
 
-      return response.arrayBuffer().then((buffer) => {
-        // networkStats.addReceived(this.dcId, buffer.byteLength);
-        return new Uint8Array(buffer);
-      });
-    }, (err) => {
+      const buffer = await response.arrayBuffer();
+      // networkStats.addReceived(this.dcId, buffer.byteLength);
+      return new Uint8Array(buffer);
+    }).catch((err) => {
       this.setConnected(false);
       throw err;
+    }).finally(() => {
+      clearTimeout(timeout);
     });
   }
 

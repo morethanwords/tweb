@@ -39,16 +39,10 @@ import makeError from '../../helpers/makeError';
 import readBlobAsUint8Array from '../../helpers/blob/readBlobAsUint8Array';
 import DownloadStorage from '../files/downloadStorage';
 import copy from '../../helpers/object/copy';
-import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import {EXTENSION_MIME_TYPE_MAP, MIME_TYPE_EXTENSION_MAP} from '../../environment/mimeTypeMap';
 import isWebFileLocation from '../appManagers/utils/webFiles/isWebFileLocation';
 import appManagersManager from '../appManagers/appManagersManager';
-
-type Delayed = {
-  offset: number,
-  writePromise: CancellablePromise<void>,
-  writeDeferred: CancellablePromise<void>
-};
+import clamp from '../../helpers/number/clamp';
 
 export type DownloadOptions = {
   dcId: DcId,
@@ -91,7 +85,7 @@ const PREPARE_CACHE = false;
 
 const MAX_DOWNLOAD_FILE_PART_SIZE = 1 * 1024 * 1024;
 const MAX_UPLOAD_FILE_PART_SIZE = 512 * 1024;
-const MIN_PART_SIZE = 128 * 1024;
+const MIN_PART_SIZE = 64 * 1024;
 const AVG_PART_SIZE = 512 * 1024;
 
 const REGULAR_DOWNLOAD_DELTA = (9 * 512 * 1024) / MIN_PART_SIZE;
@@ -507,31 +501,17 @@ export class ApiFileManager extends AppManager {
     return {mimeType, process};
   }
 
-  private allocateDeferredPromises(startOffset: number, size: number, limitPart: number) {
-    const delayed: Delayed[] = [];
-    let offset = startOffset;
-    let writePromise: CancellablePromise<void> = Promise.resolve(),
-      writeDeferred: CancellablePromise<void>;
-    do {
-      writeDeferred = deferredPromise<void>();
-      delayed.push({offset, writePromise, writeDeferred});
-      writePromise = writeDeferred;
-      offset += limitPart;
-    } while(offset < size);
-
-    return delayed;
-  }
-
   private isLocalWebFile(url: string) {
     return url?.startsWith('assets/');
   }
 
   public download(options: DownloadOptions): DownloadPromise {
+    const log = this.log.bindPrefix('download');
     const size = options.size ?? 0;
     const {dcId, location} = options;
     let {downloadId} = options;
     if(downloadId && !appManagersManager.getServiceMessagePort()) {
-      this.log.error('download fallback to blob', options);
+      log.error('fallback to blob', options);
       downloadId = undefined;
     }
 
@@ -546,7 +526,7 @@ export class ApiFileManager extends AppManager {
     const downloadStorage: FileStorage = downloadId ? this.downloadStorage : undefined;
     let deferred: DownloadPromise = downloadId ? undefined : this.downloadPromises[fileName];
 
-    this.debug && this.log('downloadFile', fileName, options);
+    log('start', fileName, options, size);
 
     if(deferred) {
       return deferred;
@@ -556,7 +536,7 @@ export class ApiFileManager extends AppManager {
     //   if(size) {
     //     return deferred.then(async(blob) => {
     //       if(blob instanceof Blob && blob.size < size) {
-    //         this.debug && this.log('downloadFile need to deleteFile, wrong size:', blob.size, size);
+    //         log('downloadFile need to deleteFile, wrong size:', blob.size, size);
 
     //         try {
     //           await this.delete(fileName);
@@ -711,8 +691,6 @@ export class ApiFileManager extends AppManager {
         checkCancel();
       }
 
-      const delayed = this.allocateDeferredPromises(0, size, limitPart);
-
       const progress: Progress = {done: 0, offset: 0, total: size, fileName};
       const dispatchProgress = () => {
         try {
@@ -725,23 +703,30 @@ export class ApiFileManager extends AppManager {
       const throttledDispatchProgress = throttle(dispatchProgress, 50, true);
 
       let done = 0;
+      let _writePromise: CancellablePromise<void> = Promise.resolve(),
+        _offset = 0;
       const superpuper = async() => {
-        const {offset, writePromise, writeDeferred} = delayed.shift();
+        if(_offset && _offset > size) {
+          return;
+        }
+
+        const writeDeferred = deferredPromise<void>();
+        const writePromise = _writePromise;
+        const offset = _offset;
+        _writePromise = writeDeferred;
+        _offset += limitPart;
         try {
           checkCancel();
 
           const requestPerf = performance.now();
           const result = await requestPart(dcId, location as any, offset, limitPart, id, options.queueId, checkCancel);
+          checkCancel();
           const requestTime = performance.now() - requestPerf;
 
           const bytes = result.bytes;
 
-          if(delayed.length) {
-            superpuper();
-          }
-
           const byteLength = bytes.byteLength;
-          this.debug && this.log('downloadFile requestFilePart result:', fileName, result);
+          log('requestPart result', fileName, result);
           const isFinal = (offset + limitPart) >= size || !byteLength;
           if(byteLength) {
             done += byteLength;
@@ -749,6 +734,7 @@ export class ApiFileManager extends AppManager {
             if(isFinal) {
               dispatchProgress();
             } else {
+              superpuper();
               throttledDispatchProgress();
             }
 
@@ -760,7 +746,7 @@ export class ApiFileManager extends AppManager {
             const perf = performance.now();
             await Promise.all(prepared.map(({writer}) => writer?.write(bytes, offset)));
             checkCancel();
-            // downloadId && this.log('write time', performance.now() - perf, 'request time', requestTime, 'queue time', writeQueueTime);
+            downloadId && log('write time', performance.now() - perf, 'request time', requestTime, 'queue time', writeQueueTime);
           }
 
           if(isFinal) {
@@ -798,10 +784,11 @@ export class ApiFileManager extends AppManager {
           }
         } catch(err) {
           errorHandler(null, err as ApiError);
+          writeDeferred.resolve();
         }
       };
 
-      for(let i = 0, length = Math.min(maxRequests, delayed.length); i < length; ++i) {
+      for(let i = 0, length = clamp(size / limitPart, 1, maxRequests); i < length; ++i) {
         superpuper();
       }
     }).catch(noop);
@@ -899,7 +886,7 @@ export class ApiFileManager extends AppManager {
     let canceled = false, resolved = false;
     let errorHandler = (error: ApiError) => {
       if(error?.type !== 'UPLOAD_CANCELED') {
-        this.log.error('Up Error', error);
+        this.log.error('up error', error);
       }
 
       deferred.reject(error);

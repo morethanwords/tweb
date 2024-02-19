@@ -151,8 +151,9 @@ export function logger(prefix: string, type: LogTypes = LogTypes.Log | LogTypes.
     type = LOG_LEVELS.slice(0, level + 1).reduce((acc, v) => acc | v, 0) as any;
   };
 
+  const prefixCache: {[prefix: string]: Logger} = {};
   log.bindPrefix = function(prefix: string, _type = type) {
-    return logger(`${originalPrefix}] [${prefix}`, _type, ignoreDebugReset, originalStyle);
+    return prefixCache[prefix] ??= logger(`${originalPrefix}] [${prefix}`, _type, ignoreDebugReset, originalStyle);
   };
 
   return log;
