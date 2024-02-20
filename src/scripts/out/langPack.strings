@@ -420,7 +420,7 @@
 "Boost.Reassign.Wait" = "Wait until the boost is available or get %s by gifting a **[Telegram Premium]()** subscription.";
 "Search.Empty" = "There were no results for \"**%@**\". Try a new search.";
 "Search.EmptyFrom" = "There were no messages from **%@**.";
-"Search.From" = "From: ";
+"Search.From" = "From:";
 "Search.Member" = "Search Members";
 "Chat.SearchSelected" = "Search Selected Text";
 "Privacy.VoiceMessagesPremiumCaption" = "Subscribe to Telegram Premium to restrict who can send you voice or video messages.\n\n**[What is Telegram Premium?]()**";
@@ -439,8 +439,13 @@
 "SimilarChannelsCount_one" = "%d similar channel";
 "SimilarChannelsCount_other" = "%d similar channels";
 "Reactions.Tag.Description" = "Tag the message with an emoji for quick search";
-"Reaction.Tag.From" = "This tag is from **%s pack.**";
+"Reaction.Tag.From" = "This tag is from **%s pack**.";
 "Reactions.Tag.PremiumHint" = "Organize your Saved Messages with tags\nfor quicker access. **[Learn more…]()**";
+"Profile.Info.Bot" = "Bot Info";
+"Profile.Info.User" = "User Info";
+"Profile.Info.Topic" = "Topic Info";
+"Profile.Info.Group" = "Group Info";
+"Profile.Info.Channel" = "Channel Info";
 "GroupsAndChannelsLimitTitle" = "Groups and Channels";
 "GroupsAndChannelsLimitSubtitle" = "Join up to %d channels and large groups";
 "PinChatsLimitTitle" = "Pinned Chats";
@@ -602,7 +607,7 @@
 "PrivacyForwardsTitle" = "Who can add a link to my account when forwarding my messages?";
 "Reminders" = "Reminders";
 "ScheduledMessages" = "Scheduled Messages";
-"LastSeenTitle" = "Who can see your Last Seen time?";
+"LastSeenTitle" = "Who can see my Last Seen time?";
 "SessionsTitle" = "Active Sessions";
 "CurrentSession" = "This device";
 "TerminateAllSessions" = "Terminate All Other Sessions";
@@ -1370,7 +1375,7 @@
 "BoostChannel" = "Boost Channel";
 "ChannelNeedBoostsDescriptionLevel1" = "This channel needs %s to enable stories. Help make it possible!";
 "HelpUpgradeChannel" = "Help upgrade this channel";
-"PremiumNeeded" = "Premium needed!";
+"PremiumNeeded" = "Premium needed";
 "PremiumNeededForBoosting" = "Only **Telegram Premium** subscribers can boost channels. Do you want to subscribe to **Telegram Premium**?";
 "CantBoostTooOften" = "Can't boost too often!";
 "CantBoostTooOftenDescription" = "You can only change the channel you boost once a day. You will be able to boost in **%s.**";
@@ -1408,7 +1413,7 @@
 "BoostingGiveawayNotEligibleCountry" = "You are not eligible to participate in this giveaway, because your country is not included in the terms of the giveaway.";
 "BoostingGiveawayUsedLinksPlural_other" = "**%1$d** of the winners already used their gift links.";
 "BoostingGiveawayViewPrize" = "View my prize";
-"BoostingGiveawayCanceledByPayment" = "The channel cancelled the prizes by reversing the payment for them.";
+"BoostingGiveawayCanceledByPayment" = "The channel canceled the prizes by reversing the payment for them.";
 "BoostingGiveawayEnd" = "Giveaway ended";
 "BoostingCongratulations" = "Congratulations!";
 "BoostingReceivedPrizeFrom" = "You won a prize in a giveaway organized by **%s**.";
@@ -1649,6 +1654,14 @@
 "SavedTagLabelTagText" = "You can label your emoji tag with a text name.";
 "SavedTagLabelPlaceholder" = "Name";
 "Unlock" = "Unlock";
+"ChannelSettingsJoinTitle" = "Who can send messages?";
+"ChannelSettingsJoinToSend" = "Only members";
+"ChannelSettingsJoinToSendInfo" = "Turn this on if you expect users to join your group before being able to send messages.";
+"ChannelSettingsJoinRequest" = "Approve new members";
+"ChannelSettingsJoinRequestInfo" = "Turn this on if you want users to join only after they are approved by an admin.";
+"ChannelJoinRequest" = "APPLY TO JOIN GROUP";
+"ManageTopicsPermission" = "Manage topics";
+"CreateTopicsPermission" = "Create topics";
 "AccountSettings.Filters" = "Chat Folders";
 "AccountSettings.Notifications" = "Notifications and Sounds";
 "AccountSettings.PrivacyAndSecurity" = "Privacy and Security";
@@ -1848,7 +1861,6 @@
 "ChatList.Mute.Forever" = "Forever";
 "Channel.EditAdmin.ManageCalls" = "Manage Video Chats";
 "Channel.EditAdmin.PermissionInviteSubscribers" = "Add Subscribers";
-"Channel.EditAdmin.ManageTopics" = "Manage Topics";
 "Channel.Admin.Dismiss" = "Dismiss Admin";
 "Channel.Admin.AdminAccess" = "This admin will be able to add new admins with equal or fewer rights.";
 "Channel.Admin.AdminRestricted" = "This admin will not be able to add new admins.";
@@ -2008,7 +2020,7 @@
 "PrivacySettingsController.P2p.Desc" = "Disabling peer-to-peer will relay all calls through Telegram servers to avoid revealing your IP address, but may slightly decrease audio and video quality.";
 "PrivacySettingsController.PhoneCallDescription" = "You can restrict who can call you with granular precision.";
 "PrivacySettingsController.ProfilePhoto.CustomHelp" = "You can restrict who can see your profile photo with granular precision.";
-"PrivacySettingsController.LastSeenDescription" = "You won't see Last Seen or Online statuses for people with whom you don't share yours. Approximate times will be shown instead (recently, within a week, within a month).";
+"PrivacySettingsController.LastSeenDescription" = "Unless you are a Premium user, you won't see Last Seen or Online statuses for people with whom you don't share yours. Approximate times will be shown instead (recently, within a week, within a month).";
 "PrivacySettingsController.PeerInfo" = "You can add users or entire groups as exceptions that will override the settings above.";
 "PrivacySettingsController.Everbody" = "Everybody";
 "PrivacySettingsController.MyContacts" = "My Contacts";
@@ -2150,6 +2162,7 @@
 "GiftLink.UseSuccess" = "You successfully activated gift link.";
 "Giveaway.Type.Specific.Modal.SelectUsers" = "Select Users";
 "GroupStats.Title" = "Group Statistics";
+"Chat.SendJoinRequest.Info" = "You will be able to send messages once the admins approve your request.";
 "Login.Title" = "Sign in to Telegram";
 "Login.PhoneLabel" = "Phone Number";
 "Login.PhoneLabelInvalid" = "Phone Number Invalid";
