@@ -1661,7 +1661,7 @@ export default class DialogsStorage extends AppManager {
         count: result.count ?? curDialogStorage.length,
         isTopEnd: curDialogStorage.length && ((dialogs[0] && dialogs[0] === curDialogStorage[0]) || this.getDialogIndex(curDialogStorage[0], indexKey) < offsetIndex),
         // isEnd: this.isDialogsLoaded(realFolderId) && (offset + limit) >= curDialogStorage.length
-        isEnd: result.isEnd
+        isEnd: result.isEnd && curDialogStorage[curDialogStorage.length - 1] === dialogs[dialogs.length - 1]
       };
     });
   }

@@ -2358,7 +2358,7 @@ export class AppMessagesManager extends AppManager {
       offsetDate += this.timeManager.getServerTimeOffset();
     }
 
-    const useLimit = filterType === FilterType.Saved ? 20 : 100;
+    const useLimit = 100;
     const middleware = this.middleware.get();
     const isSearch = !!query;
     const peerId = this.dialogsStorage.isVirtualFilter(folderId) ? folderId : undefined;
