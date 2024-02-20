@@ -260,6 +260,7 @@ export class ScrollableBase {
     const maxValue = clientSize - thumbSize;
     if(clientSize < scrollSize) {
       this.thumb.style.height = thumbSize + 'px';
+      // this.thumb.style.top = `${Math.min(maxValue, value - thumbSize * b)}px`;
       this.thumb.style.transform = `translateY(${Math.min(maxValue, value - thumbSize * b)}px)`;
     } else {
       this.thumb.style.height = '0px';

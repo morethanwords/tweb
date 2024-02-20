@@ -99,8 +99,8 @@ html.custom-scroll {
   &.scrollable-y {
     overflow-y: auto;
     overflow-y: overlay;
-    scrollbar-width: none; // Firefox only
-    // scrollbar-color: rgba(0, 0, 0, 0) rgba(0, 0, 0, 0);
+    scrollbar-width: thin; // Firefox only
+    scrollbar-color: rgba(0, 0, 0, 0) rgba(0, 0, 0, 0);
     -ms-overflow-style: none;
 
     @if $use-acceleration {

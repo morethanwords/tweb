@@ -155,7 +155,7 @@ export function logger(prefix: string, type: LogTypes = LogTypes.Log | LogTypes.
   log.bindPrefix = function(prefix: string, _type = type) {
     return prefixCache[prefix] ??= logger(
       // `${originalPrefix}] ${LOGGER_STYLES.fg.magenta}[${prefix}`,
-      `${originalPrefix}] ${LOGGER_STYLES.reset}[${prefix}`,
+      `${originalPrefix}] ${STYLES_SUPPORTED && originalStyle ? LOGGER_STYLES.reset : ''}[${prefix}`,
       // `${originalPrefix}] [${prefix}`,
       _type,
       ignoreDebugReset,
