@@ -358,7 +358,8 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
         item[2].compareAndUpdate({key: item[1], args: [length]});
       },
-      openSavedDialogsInner: !this.isFirst
+      openSavedDialogsInner: !this.isFirst,
+      slider: this.slider
     });
 
     this.searchSuper.scrollStartCallback = () => {
@@ -603,7 +604,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       const chatId = peerId.toChatId();
       const isTopic = this.threadId && apiManagerProxy.isForum(peerId);
       if(isTopic) {
-        show = await this.managers.appChatsManager.hasRights(chatId, 'manage_topics');
+        show = await this.managers.dialogsStorage.canManageTopic(await this.managers.dialogsStorage.getForumTopic(peerId, this.threadId));
       } else {
         const chat = apiManagerProxy.getChat(chatId);
         show = !!(chat as Chat.channel).admin_rights || await this.managers.appChatsManager.hasRights(chatId, 'change_info');

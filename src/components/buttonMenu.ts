@@ -42,6 +42,7 @@ export type ButtonMenuItemOptions = {
   noCheckboxClickListener?: boolean,
   keepOpen?: boolean,
   separator?: boolean | HTMLElement,
+  separatorDown?: boolean,
   multiline?: boolean,
   secondary?: boolean,
   loadPromise?: Promise<any>,
@@ -193,7 +194,7 @@ function ButtonMenuItem(options: ButtonMenuItemOptions) {
     el.append(checkboxField.label);
   }
 
-  if(options.separator === true) {
+  if(options.separator === true || options.separatorDown) {
     options.separator = document.createElement('hr');
   }
 
@@ -212,7 +213,13 @@ function ButtonMenuItem(options: ButtonMenuItemOptions) {
     (el as any).inner = options.inner;
   }
 
-  return [options.separator as HTMLElement, options.element = el].filter(Boolean);
+  const ret: HTMLElement[] = [options.element = el];
+
+  if(options.separator) {
+    ret[options.separatorDown ? 'push' : 'unshift'](options.separator as HTMLElement);
+  }
+
+  return ret.filter(Boolean);
 }
 
 export function ButtonMenuSync({listenerSetter, buttons, radioGroups}: {

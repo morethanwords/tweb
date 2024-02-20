@@ -88,6 +88,7 @@ import anchorCallback from '../helpers/dom/anchorCallback';
 import PopupPremium from './popups/premium';
 import {ChatType} from './chat/chat';
 import getFwdFromName from '../lib/appManagers/utils/messages/getFwdFromName';
+import SidebarSlider from './slider';
 
 // const testScroll = false;
 
@@ -445,6 +446,8 @@ export default class AppSearchSuper {
 
   public openSavedDialogsInner: boolean;
 
+  public slider: SidebarSlider;
+
   constructor(options: Pick<
     AppSearchSuper,
     'mediaTabs' |
@@ -456,8 +459,10 @@ export default class AppSearchSuper {
     'onChangeTab' |
     'showSender' |
     'managers'
-  > & Partial<Pick<AppSearchSuper, 'storiesArchive' | 'onLengthChange' | 'openSavedDialogsInner'>>) {
+  > & Partial<Pick<AppSearchSuper, 'storiesArchive' | 'onLengthChange' | 'openSavedDialogsInner' | 'slider'>>) {
     safeAssign(this, options);
+
+    this.slider ??= appSidebarRight;
 
     this.container = document.createElement('div');
     this.container.classList.add('search-super');
@@ -1443,8 +1448,8 @@ export default class AppSearchSuper {
 
           const peerId = li.dataset.peerId.toPeerId();
           let promise: Promise<any> = Promise.resolve();
-          if(mediaSizes.isMobile) {
-            promise = appSidebarRight.toggleSidebar(false);
+          if(this.slider === appSidebarRight && mediaSizes.isMobile) {
+            promise = (this.slider as typeof appSidebarRight).toggleSidebar(false);
           }
 
           promise.then(() => {
@@ -1460,17 +1465,21 @@ export default class AppSearchSuper {
             chatId,
             listenTo: membersList.list,
             participants: this.membersParticipantMap,
-            slider: appSidebarRight,
+            slider: this.slider,
             middleware
           });
 
           const onParticipantUpdate = (update: Update.updateChannelParticipant) => {
             const peerId = getParticipantPeerId(update.prev_participant || update.new_participant);
-            if(!update.new_participant || (update.new_participant as ChannelParticipant.channelParticipantBanned).pFlags?.left) {
+            const wasRendered = membersList.has(peerId);
+            if(wasRendered || (update.new_participant as ChannelParticipant.channelParticipantBanned).pFlags?.left) {
+              membersList.ranks.delete(peerId);
               membersList.delete(peerId);
               membersParticipantMap.delete(peerId);
               this.setCounter(mediaTab.type, this.counters[mediaTab.type] - 1);
-            } else if(!update.prev_participant && update.new_participant) {
+            }
+
+            if((!update.prev_participant || wasRendered) && update.new_participant) {
               renderParticipants([update.new_participant]);
               this.setCounter(mediaTab.type, this.counters[mediaTab.type] + 1);
             }

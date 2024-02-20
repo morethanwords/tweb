@@ -1854,6 +1854,15 @@ export default class DialogsStorage extends AppManager {
     });
   }
 
+  public canManageTopic(forumTopic: ForumTopic) {
+    if(forumTopic.pFlags.my) {
+      return true;
+    }
+
+    const chatId = forumTopic.peerId.toChatId();
+    return ((this.appChatsManager.getChat(chatId) as Chat.channel).admin_rights ? this.appChatsManager.hasRights(forumTopic.peerId.toChatId(), 'manage_topics') : false);
+  }
+
   // * FORUMS SECTION END
 
   // * SAVED SECTION

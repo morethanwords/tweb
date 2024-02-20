@@ -111,6 +111,7 @@ import setBadgeContent from '../../helpers/setBadgeContent';
 import createBadge from '../../helpers/createBadge';
 import {isDialog, isForumTopic, isSavedDialog} from './utils/dialogs/isDialog';
 import {ChatType} from '../../components/chat/chat';
+import PopupDeleteDialog from '../../components/popups/deleteDialog';
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 
@@ -560,6 +561,14 @@ class ForumTab extends SliderSuperTabEventable {
       listenerSetter: this.listenerSetter,
       direction: 'bottom-left',
       buttons: [{
+        icon: 'add',
+        text: 'ForumTopic.Context.New',
+        onClick: () => {
+          appSidebarLeft.createTab(AppEditTopicTab).open(this.peerId);
+        },
+        separatorDown: true,
+        verify: () => this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'manage_topics')
+      }, {
         icon: 'info',
         text: 'ForumTopic.Context.Info',
         onClick: () => {
@@ -579,13 +588,16 @@ class ForumTab extends SliderSuperTabEventable {
         onClick: () => {},
         verify: () => false && this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'invite_users')
       }, {
-        icon: 'add',
-        text: 'ForumTopic.Context.New',
+        icon: 'logout',
+        danger: true,
+        text: 'LeaveMegaMenu',
         onClick: () => {
-          appSidebarLeft.createTab(AppEditTopicTab).open(this.peerId);
+          PopupElement.createPopup(PopupDeleteDialog, this.peerId, undefined, (promise) => {
+            this._close();
+          });
         },
         separator: true,
-        verify: () => this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'manage_topics')
+        verify: async() => !!(await this.managers.appMessagesManager.getDialogOnly(this.peerId))
       }]
     });
 

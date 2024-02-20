@@ -1914,6 +1914,8 @@ const lang = {
   'ChannelSettingsJoinRequestInfo': 'Turn this on if you want users to join only after they are approved by an admin.',
   'ChannelJoinRequest': 'APPLY TO JOIN GROUP',
   // 'ChannelJoinRequestSent': 'JOIN REQUEST SENT',
+  'ManageTopicsPermission': 'Manage topics',
+  'CreateTopicsPermission': 'Create topics',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',
@@ -2147,7 +2149,6 @@ const lang = {
   'ChatList.Mute.Forever': 'Forever',
   'Channel.EditAdmin.ManageCalls': 'Manage Video Chats',
   'Channel.EditAdmin.PermissionInviteSubscribers': 'Add Subscribers',
-  'Channel.EditAdmin.ManageTopics': 'Manage Topics',
   'Channel.Admin.Dismiss': 'Dismiss Admin',
   'Channel.Admin.AdminAccess': 'This admin will be able to add new admins with equal or fewer rights.',
   'Channel.Admin.AdminRestricted': 'This admin will not be able to add new admins.',

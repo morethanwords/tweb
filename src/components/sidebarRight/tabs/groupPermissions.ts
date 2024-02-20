@@ -28,6 +28,7 @@ import AppUserPermissionsTab from './userPermissions';
 import CheckboxFields, {CheckboxFieldsField} from '../../checkboxFields';
 import PopupElement from '../../popups';
 import wrapPeerTitle from '../../wrappers/peerTitle';
+import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
 
 type PermissionsCheckboxFieldsField = CheckboxFieldsField & {
   flags: ChatRights[],
@@ -61,7 +62,9 @@ export class ChatPermissions extends CheckboxFields<PermissionsCheckboxFieldsFie
 
   public async construct() {
     const options = this.options;
-    const chat = this.chat = await this.managers.appChatsManager.getChat(options.chatId) as Chat.chat | Chat.channel;
+    const peerId = options.chatId.toPeerId(true);
+    const chat = this.chat = apiManagerProxy.getChat(options.chatId) as Chat.chat | Chat.channel;
+    const isForum = apiManagerProxy.isForum(peerId);
     const defaultBannedRights = this.defaultBannedRights = chat.default_banned_rights;
     const rights = this.rights = options.participant ? combineParticipantBannedRights(chat as Chat.channel, options.participant.banned_rights) : defaultBannedRights;
 
@@ -77,13 +80,15 @@ export class ChatPermissions extends CheckboxFields<PermissionsCheckboxFieldsFie
       {flags: ['send_polls'], text: 'UserRestrictionsSendPolls', exceptionText: 'UserRestrictionsNoSendPolls'}
     ];
 
-    const v: PermissionsCheckboxFieldsField[] = [
+    let v: PermissionsCheckboxFieldsField[] = [
       {flags: ['send_plain'], text: 'UserRestrictionsSend', exceptionText: 'UserRestrictionsNoSend'},
       {flags: ['send_media'], text: 'UserRestrictionsSendMedia', exceptionText: 'UserRestrictionsNoSendMedia', nested: mediaNested},
       {flags: ['invite_users'], text: 'UserRestrictionsInviteUsers', exceptionText: 'UserRestrictionsNoInviteUsers'},
       {flags: ['pin_messages'], text: 'UserRestrictionsPinMessages', exceptionText: 'UserRestrictionsNoPinMessages'},
+      isForum && {flags: ['manage_topics'], text: 'CreateTopicsPermission', exceptionText: 'UserRestrictionsNoChangeInfo'},
       {flags: ['change_info'], text: 'UserRestrictionsChangeInfo', exceptionText: 'UserRestrictionsNoChangeInfo'}
     ];
+    v = v.filter(Boolean);
 
 
     const map: {[action in ChatRights]?: PermissionsCheckboxFieldsField} = {};
@@ -200,7 +205,7 @@ export class ChatAdministratorRights extends CheckboxFields<AdministratorRightsC
       !isBroadcast && {flags: ['ban_users'], text: 'EditAdminBanUsers'},
       !isBroadcast && {flags: ['invite_users'], text: 'EditAdminAddUsersViaLink'},
       !isBroadcast && {flags: ['pin_messages'], text: 'EditAdminPinMessages'},
-      isForum && {flags: ['manage_topics'], text: 'Channel.EditAdmin.ManageTopics'},
+      isForum && {flags: ['manage_topics'], text: 'ManageTopicsPermission'},
       {flags: ['manage_call'], text: isBroadcast ? 'StartVoipChatPermission' : 'Channel.EditAdmin.ManageCalls'},
       isBroadcast && {flags: ['invite_users'], text: 'Channel.EditAdmin.PermissionInviteSubscribers'},
       !isBroadcast && {flags: ['anonymous'], text: 'EditAdminSendAnonymously', checked: rights ? undefined : false},

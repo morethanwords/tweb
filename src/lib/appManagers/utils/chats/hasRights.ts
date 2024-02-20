@@ -28,7 +28,7 @@ export default function hasRights(
   }
 
   const isCheckingRightsForSelf = rights === undefined;
-  if((chat as Chat.chat).pFlags.creator && isCheckingRightsForSelf && action !== 'anonymous') {
+  if((chat as Chat.chat).pFlags.creator && isCheckingRightsForSelf/*  && action !== 'anonymous' */) {
     return true;
   }
 
@@ -132,8 +132,7 @@ export default function hasRights(
     case 'add_admins':
     case 'anonymous':
     case 'post_messages':
-    case 'edit_messages':
-    case 'manage_topics': {
+    case 'edit_messages': {
       return isAdmin && !!myFlags[action];
     }
 
@@ -148,6 +147,12 @@ export default function hasRights(
 
     case 'create_giveaway': {
       return isAdmin && !!myFlags['post_messages'];
+    }
+
+    // * regular user can only create a new topic and manage their own topics (so this will only say whether user is eligible to create a new topic)
+    // * admin can manage all topics
+    case 'manage_topics': {
+      return isAdmin ? !!myFlags[action] : !myFlags[action];
     }
 
     // case 'view_statistics': {

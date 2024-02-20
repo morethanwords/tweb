@@ -445,7 +445,7 @@ export default class PeerProfile {
   private async _setAvatar() {
     const middleware = this.middlewareHelper.get();
     const {peerId, threadId} = this.getDetailsForUse();
-    const isTopic = !!(!threadId && await this.managers.appPeersManager.isForum(peerId));
+    const isTopic = !!(threadId && await this.managers.appPeersManager.isForum(peerId));
     if(this.canBeDetailed() && !isTopic) {
       const photo = await this.managers.appPeersManager.getPeerPhoto(peerId);
 

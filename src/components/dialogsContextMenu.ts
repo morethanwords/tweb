@@ -54,7 +54,7 @@ export default class DialogsContextMenu {
         this.threadId = +li.dataset.threadId || undefined;
         this.dialog = await this.managers.dialogsStorage.getAnyDialog(this.peerId, this.threadId);
         this.filterId = this.threadId ? undefined : appDialogsManager.filterId;
-        this.canManageTopics = isForumTopic(this.dialog) ? await this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'manage_topics') : undefined;
+        this.canManageTopics = isForumTopic(this.dialog) ? await this.managers.dialogsStorage.canManageTopic(this.dialog) : undefined;
       },
       onOpenBefore: async() => {
         // delete button

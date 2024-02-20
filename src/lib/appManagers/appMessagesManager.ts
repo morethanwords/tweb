@@ -6453,7 +6453,7 @@ export class AppMessagesManager extends AppManager {
       const chatId = peerId.toChatId();
       if(threadId) {
         const topic = this.dialogsStorage.getForumTopic(peerId, threadId);
-        if(topic?.pFlags?.closed && !this.appChatsManager.hasRights(chatId, 'manage_topics')) {
+        if(topic?.pFlags?.closed && !this.dialogsStorage.canManageTopic(topic)) {
           return false;
         }
       }
