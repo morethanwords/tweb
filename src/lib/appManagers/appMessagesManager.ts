@@ -2345,6 +2345,7 @@ export class AppMessagesManager extends AppManager {
     offsetTopicId?: ForumTopic['id'],
     filterType?: FilterType
   }) {
+    const log = this.log.bindPrefix('getTopMessages');
     // const dialogs = this.dialogsStorage.getFolder(folderId);
     const offsetId = 0;
     let offsetPeerId: PeerId;
@@ -2357,7 +2358,7 @@ export class AppMessagesManager extends AppManager {
       offsetDate += this.timeManager.getServerTimeOffset();
     }
 
-    const useLimit = 100;
+    const useLimit = filterType === FilterType.Saved ? 20 : 100;
     const middleware = this.middleware.get();
     const isSearch = !!query;
     const peerId = this.dialogsStorage.isVirtualFilter(folderId) ? folderId : undefined;
@@ -2365,9 +2366,7 @@ export class AppMessagesManager extends AppManager {
     const processResult = (result: MessagesDialogs | MessagesForumTopics | MessagesSavedDialogs) => {
       if(!middleware() || result._ === 'messages.dialogsNotModified' || result._ === 'messages.savedDialogsNotModified') return null;
 
-      if(DEBUG) {
-        this.log('messages.getDialogs result:', result);
-      }
+      log('result', result);
 
       // can reset pinned order here
       if(
@@ -2377,17 +2376,19 @@ export class AppMessagesManager extends AppManager {
         !offsetPeerId &&
         folderId !== GLOBAL_FOLDER_ID
       ) {
+        log('resetting pinned order', folderId);
         this.dialogsStorage.resetPinnedOrder(folderId);
       }
 
       if(!peerId && !offsetDate) {
+        log('adding missed dialogs');
         // telegramMeWebManager.setAuthorized(true);
         this.appDraftsManager.addMissedDialogs();
       }
 
       this.saveApiResult(result);
 
-      let maxSeenIdIncremented = offsetDate ? true : false;
+      let maxSeenIdIncremented = !!offsetDate;
       let hasPrepend = false;
       const noIdsDialogs: BroadcastEvents['dialogs_multiupdate'] = new Map();
       const setFolderId: REAL_FOLDER_ID = folderId === GLOBAL_FOLDER_ID ? FOLDER_ID_ALL : folderId as REAL_FOLDER_ID;
@@ -2395,6 +2396,7 @@ export class AppMessagesManager extends AppManager {
       const items: Array<Dialog | ForumTopic | SavedDialog> =
         (result as MessagesDialogs.messagesDialogsSlice).dialogs as Dialog[] ||
         (result as MessagesForumTopics).topics as ForumTopic[];
+      log('saving', {setFolderId, saveGlobalOffset, noIdsDialogs, isSearch});
       forEachReverse(items, (dialog, idx, arr) => {
         if(!dialog) {
           arr.splice(idx, 1);
@@ -2511,11 +2513,13 @@ export class AppMessagesManager extends AppManager {
         this.rootScope.dispatchEvent('dialogs_multiupdate', new Map());
       }
 
+      log('end', {isEnd, hasPrepend, offsetDate: this.dialogsStorage.getOffsetDate(folderId)});
+
       const dialogs = items;
       const slicedDialogs = limit === useLimit ? dialogs : dialogs.slice(0, limit);
       return {
         isEnd: isEnd && slicedDialogs[slicedDialogs.length - 1] === dialogs[dialogs.length - 1],
-        count,
+        count: count ?? items.length,
         dialogs: slicedDialogs
       };
     };
@@ -2525,10 +2529,10 @@ export class AppMessagesManager extends AppManager {
       noErrorBox: true
     };
 
-    let promise: Promise<ReturnType<typeof processResult>>, params: any;
+    let promise: Promise<ReturnType<typeof processResult>>, method: string, params: any;
     if(filterType === FilterType.Forum) {
       promise = this.apiManager.invokeApiSingleProcess({
-        method: 'channels.getForumTopics',
+        method: method = 'channels.getForumTopics',
         params: params = {
           channel: this.appChatsManager.getChannelInput(peerId.toChatId()),
           limit: useLimit,
@@ -2545,7 +2549,7 @@ export class AppMessagesManager extends AppManager {
       });
     } else if(filterType === FilterType.Saved) {
       promise = this.apiManager.invokeApiSingleProcess({
-        method: 'messages.getSavedDialogs',
+        method: method = 'messages.getSavedDialogs',
         params: params = {
           offset_date: offsetDate,
           offset_id: offsetId,
@@ -2554,16 +2558,14 @@ export class AppMessagesManager extends AppManager {
           hash: '0'
         },
         options: requestOptions,
-        processResult: (result) => {
-          return processResult(result);
-        }
+        processResult
       });
     } else {
       // ! ВНИМАНИЕ: ОЧЕНЬ СЛОЖНАЯ ЛОГИКА:
       // ! если делать запрос сначала по папке 0, потом по папке 1, по индексу 0 в массиве будет один и тот же диалог, с dialog.pFlags.pinned, ЛОЛ???
       // ! т.е., с запросом folder_id: 1, и exclude_pinned: 0, в результате будут ещё и закреплённые с папки 0
       promise = this.apiManager.invokeApiSingleProcess({
-        method: 'messages.getDialogs',
+        method: method = 'messages.getDialogs',
         params: params = {
           folder_id: folderId,
           offset_date: offsetDate,
@@ -2576,6 +2578,8 @@ export class AppMessagesManager extends AppManager {
         processResult
       });
     }
+
+    log('invoke', method, params);
 
     return promise;
   }

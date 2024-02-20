@@ -23,7 +23,10 @@ const handlebarsPlugin = handlebars({
 
 const serverOptions: ServerOptions = {
   // host: '192.168.92.78',
-  port: 8080
+  port: 8080,
+  sourcemapIgnoreList(sourcePath, sourcemapPath) {
+    return sourcePath.includes('node_modules') || sourcePath.includes('logger');
+  }
 };
 
 const USE_SSL = false;
@@ -88,13 +91,16 @@ export default defineConfig({
     assetsDir: '',
     copyPublicDir: false,
     emptyOutDir: true,
-    minify: NO_MINIFY ? false : undefined
-    // rollupOptions: {
-    //   input: {
-    //     main: './index.html',
-    //     sw: './src/index.service.ts'
-    //   }
-    // }
+    minify: NO_MINIFY ? false : undefined,
+    rollupOptions: {
+      output: {
+        sourcemapIgnoreList: serverOptions.sourcemapIgnoreList
+      }
+      // input: {
+      //   main: './index.html',
+      //   sw: './src/index.service.ts'
+      // }
+    }
     // cssCodeSplit: true
   },
   worker: {

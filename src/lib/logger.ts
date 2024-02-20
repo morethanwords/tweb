@@ -153,7 +153,16 @@ export function logger(prefix: string, type: LogTypes = LogTypes.Log | LogTypes.
 
   const prefixCache: {[prefix: string]: Logger} = {};
   log.bindPrefix = function(prefix: string, _type = type) {
-    return prefixCache[prefix] ??= logger(`${originalPrefix}] [${prefix}`, _type, ignoreDebugReset, originalStyle);
+    return prefixCache[prefix] ??= logger(
+      // `${originalPrefix}] ${LOGGER_STYLES.fg.magenta}[${prefix}`,
+      `${originalPrefix}] ${LOGGER_STYLES.reset}[${prefix}`,
+      // `${originalPrefix}] [${prefix}`,
+      _type,
+      ignoreDebugReset,
+      // originalStyle || LOGGER_STYLES.reset
+      originalStyle
+      // LOGGER_STYLES.reset
+    );
   };
 
   return log;

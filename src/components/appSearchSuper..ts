@@ -2214,6 +2214,10 @@ export default class AppSearchSuper {
       return false;
     }
 
+    if(peerId === rootScope.myId && !this.onStoriesLengthChange) {
+      return false;
+    }
+
     if(peerId.isUser()) {
       const promise = this.storiesArchive ?
         this.managers.appStoriesManager.getStoriesArchive(peerId, 1) :

@@ -406,7 +406,7 @@ export default class MTPNetworker {
       humanReadable: method
     };
 
-    log(method, message, params, options);
+    log('call', method, message, params, options);
 
     return this.pushMessage(message, options);
   }
@@ -956,6 +956,14 @@ export default class MTPNetworker {
       log('deleting container', messageId);
       delete this.sentMessages[messageId];
     } else {
+      if(
+        this.pendingMessages[messageId] !== undefined &&
+        this.pendingMessages[messageId] <= value
+      ) {
+        log('already pending', messageId);
+        return;
+      }
+
       this.pendingMessages[messageId] = value;
     }
 
@@ -963,7 +971,7 @@ export default class MTPNetworker {
       log.error('acked message?', sentMessage);
     }
 
-    log(messageId, sentMessage, delay);
+    log('push', sentMessage, delay);
 
     this.scheduleRequest(delay);
   }

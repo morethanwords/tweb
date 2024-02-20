@@ -1206,7 +1206,7 @@ export default class ChatInput {
 
     this.botStartBtn = makeControlButton('BotStart');
     this.unblockBtn = makeControlButton('Unblock');
-    this.joinBtn = makeControlButton('ChannelJoin');
+    this.joinBtn = this.chat.topbar && makeControlButton('ChannelJoin');
     this.onlyPremiumBtnText = new I18n.IntlElement({key: 'Chat.Input.PremiumRequiredButton', args: [0, document.createElement('a')]});
     this.onlyPremiumBtn = makeControlButton(this.onlyPremiumBtnText.element);
 
@@ -1215,7 +1215,7 @@ export default class ChatInput {
     attachClickEvent(this.onlyPremiumBtn, () => {
       PopupPremium.show();
     }, {listenerSetter: this.listenerSetter});
-    attachClickEvent(this.joinBtn, this.chat.topbar.onJoinClick.bind(this.chat.topbar, this.joinBtn), {listenerSetter: this.listenerSetter});
+    this.joinBtn && attachClickEvent(this.joinBtn, this.chat.topbar.onJoinClick.bind(this.chat.topbar, this.joinBtn), {listenerSetter: this.listenerSetter});
 
     // * pinned part start
     this.pinnedControlBtn = Button('btn-primary btn-transparent text-bold chat-input-control-button', {icon: 'unpin'});
@@ -1933,7 +1933,7 @@ export default class ChatInput {
       sendMenu?.setPeerId(peerId);
 
       let haveSomethingInControl = false;
-      if(this.chat) {
+      if(this.chat && this.joinBtn) {
         const type = this.getJoinButtonType();
         const good = !haveSomethingInControl && !!type;
         haveSomethingInControl ||= good;

@@ -297,7 +297,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     // this.container.prepend(this.closeBtn.parentElement);
 
-    let lastMediaTabType: SearchSuperMediaTab['type'];
+    // let lastMediaTabType: SearchSuperMediaTab['type'];
     this.searchSuper = new AppSearchSuper({
       mediaTabs: [{
         name: 'SharedMedia.SavedDialogs',
@@ -341,7 +341,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       }],
       scrollable: this.scrollable,
       onChangeTab: (mediaTab) => {
-        lastMediaTabType = mediaTab.type;
+        // lastMediaTabType = mediaTab.type;
         transitionSubtitle(c.findIndex((item) => item[0] === mediaTab.type));
 
         const timeout = mediaTab.type === 'members' && liteMode.isAvailable('animations') ? 250 : 0;
@@ -529,6 +529,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     this.peerId = peerId;
     this.threadId = threadId;
+    this.noProfile ??= peerId === rootScope.myId;
     this.peerChanged = true;
 
     if(this.init) {
@@ -552,8 +553,10 @@ export default class AppSharedMediaTab extends SliderSuperTab {
   private async changeTitleKey() {
     const {peerId, threadId} = this;
     const isSavedDialog = !!(peerId === rootScope.myId && threadId);
-    const [isForum, peerTitle] = await Promise.all([
+    const [isForum, isBroadcast, isBot, peerTitle] = await Promise.all([
       this.managers.appPeersManager.isForum(peerId),
+      this.managers.appPeersManager.isBroadcast(peerId),
+      this.managers.appPeersManager.isBot(peerId),
       wrapPeerTitle({
         peerId: isSavedDialog ? threadId : peerId,
         threadId: isSavedDialog ? undefined : threadId,
@@ -563,7 +566,9 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     ]);
 
     return () => {
-      this.titleI18n.compareAndUpdate({key: threadId && isForum ? 'AccDescrTopic' : 'Profile'});
+      this.titleI18n.compareAndUpdate({
+        key: isBot ? 'Profile.Info.Bot' : (isBroadcast ? 'Profile.Info.Channel' : (threadId && isForum ? 'Profile.Info.Topic' : (peerId.isUser() ? 'Profile.Info.User' : 'Profile.Info.Group')))
+      });
       this.sharedMediaTitle.replaceChildren(peerTitle);
       this.btnMenu.classList.toggle('hide', !this.isFirst || peerId !== rootScope.myId);
     };

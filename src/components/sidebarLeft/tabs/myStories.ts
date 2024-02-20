@@ -75,7 +75,7 @@ export default class AppMyStoriesTab extends SliderSuperTab {
       direction: 'bottom-left',
       buttons: [{
         icon: 'archive',
-        text: 'Archive',
+        text: 'MyStories.ShowArchive',
         onClick: openArchive,
         verify: () => !this.isArchive
       }, {

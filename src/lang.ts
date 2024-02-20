@@ -533,6 +533,11 @@ const lang = {
   'Reactions.Tag.Description': 'Tag the message with an emoji for quick search',
   'Reaction.Tag.From': 'This tag is from **%s pack.**',
   'Reactions.Tag.PremiumHint': 'Organize your Saved Messages with tags\nfor quicker access. **[Learn more…]()**',
+  'Profile.Info.Bot': 'Bot Info',
+  'Profile.Info.User': 'User Info',
+  'Profile.Info.Topic': 'Topic Info',
+  'Profile.Info.Group': 'Group Info',
+  'Profile.Info.Channel': 'Channel Info',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',

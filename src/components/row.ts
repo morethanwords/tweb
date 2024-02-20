@@ -93,7 +93,8 @@ export default class Row<T extends SliderSuperTabEventableConstructable = any> {
     rightTextContent?: string,
     asLink: boolean,
     contextMenu: Omit<Parameters<typeof createContextMenu>[0], 'findElement' | 'listenTo' | 'listenerSetter'>,
-    asLabel: boolean
+    asLabel: boolean,
+    checkboxKeys: [LangPackKey, LangPackKey],
   }> = {}) {
     if(options.checkboxFieldOptions) {
       options.checkboxField = new CheckboxField({
@@ -153,8 +154,10 @@ export default class Row<T extends SliderSuperTabEventableConstructable = any> {
         }
 
         if(options.withCheckboxSubtitle && !isToggle) {
+          options.checkboxKeys ??= ['Checkbox.Enabled', 'Checkbox.Disabled'];
+          const [enabledKey, disabledKey] = options.checkboxKeys;
           const onChange = () => {
-            replaceContent(this.subtitle, i18n(this.checkboxField.checked ? 'Checkbox.Enabled' : 'Checkbox.Disabled'));
+            replaceContent(this.subtitle, i18n(this.checkboxField.checked ? enabledKey : disabledKey));
           };
 
           if(options.listenerSetter) options.listenerSetter.add(this.checkboxField.input)('change', onChange);
