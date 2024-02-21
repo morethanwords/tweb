@@ -23,7 +23,7 @@
       padding: 0 1rem;
 
       @include respond-to(handhelds) {
-        padding-left: .8125rem;
+        padding-inline-start: .8125rem;
       }
 
       // .btn-primary {
@@ -47,7 +47,7 @@
 
     &-close {
       @include respond-to(handhelds) {
-        margin-inline-end: 0;
+        margin-inline-end: 1.1875rem;
       }
     }
   }

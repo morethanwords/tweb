@@ -34,7 +34,7 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
     const Session = (auth: Authorization.authorization) => {
       const row = new Row({
         title: [auth.app_name, auth.app_version].join(' '),
-        subtitle: [auth.ip, auth.country].join(' - '),
+        subtitle: [auth.ip, auth.country].filter(Boolean).join(' - '),
         clickable: true,
         titleRight: auth.pFlags.current ? undefined : formatDateAccordingToTodayNew(new Date(Math.max(auth.date_active, auth.date_created) * 1000))
       });

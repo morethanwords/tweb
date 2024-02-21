@@ -434,6 +434,7 @@ $btn-menu-z-index: 4;
       .btn-menu-item-text {
         white-space: pre-wrap;
         width: fit-content;
+        word-break: break-word;
       }
     }
 

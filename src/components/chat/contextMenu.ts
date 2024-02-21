@@ -154,7 +154,8 @@ export default class ChatContextMenu {
           '.reply-markup-button',
           '.bubble-view-button',
           '.webpage',
-          '.bubbles-group-avatar'
+          '.bubbles-group-avatar',
+          '.bubble-service-button'
         ];
         const good = !(e.target as HTMLElement).closest(badSelectors.join(', '));
         if(good) {
