@@ -3596,7 +3596,7 @@ export default class ChatBubbles {
 
       if(savedPosition) {
 
-      } if(topMessage) {
+      } else if(topMessage) {
         let dialog: Awaited<ReturnType<Chat['getDialogOrTopic']>>;
         if(!options.savedReaction) {
           [readMaxId, dialog] = await m(Promise.all([
