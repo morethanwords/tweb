@@ -317,7 +317,8 @@ export type InputFieldOptions = {
   inputMode?: 'tel' | 'numeric',
   withLinebreaks?: boolean,
   autocomplete?: string,
-  withBorder?: boolean
+  withBorder?: boolean,
+  allowStartingSpace?: boolean
 };
 
 function createCustomEmojiRendererForInput(textColor?: string, animationGroup?: AnimationItemGroup) {
@@ -395,6 +396,8 @@ export default class InputField {
   public required: boolean;
   public validate: () => boolean;
 
+  public allowStartingSpace: boolean;
+
   constructor(public options: InputFieldOptions = {}) {
     this.container = document.createElement('div');
     this.container.classList.add('input-field');
@@ -406,8 +409,9 @@ export default class InputField {
       options.showLengthOn = Math.min(40, Math.round(options.maxLength / 3));
     }
 
-    const {placeholder, maxLength, showLengthOn, name, plainText, canBeEdited = true, autocomplete, withBorder} = options;
+    const {placeholder, maxLength, showLengthOn, name, plainText, canBeEdited = true, autocomplete, withBorder, allowStartingSpace} = options;
     const label = options.label || options.labelText;
+    this.allowStartingSpace = allowStartingSpace;
 
     const onInputCallbacks: Array<() => void> = [];
     let input: HTMLElement;
@@ -652,7 +656,7 @@ export default class InputField {
   };
 
   public isEmpty() {
-    return isInputEmpty(this.input);
+    return isInputEmpty(this.input, this.allowStartingSpace);
   }
 
   public isChanged() {

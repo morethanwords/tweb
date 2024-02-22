@@ -61,6 +61,7 @@ export default class PasswordInputField extends InputField {
   constructor(options: InputFieldOptions = {}) {
     super({
       plainText: true,
+      allowStartingSpace: true,
       ...options
     });
 

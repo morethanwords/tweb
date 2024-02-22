@@ -4,14 +4,24 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-export default function isInputEmpty(element: HTMLElement) {
+export default function isInputEmpty(element: HTMLElement, allowStartingSpace?: boolean) {
+  let value: string;
   if(element.isContentEditable || element.tagName !== 'INPUT') {
+    if(element.querySelector('.emoji, .custom-emoji, .custom-emoji-placeholder')) {
+      return false;
+    }
     /* const value = element.innerText;
 
     return !value.trim() && !serializeNodes(Array.from(element.childNodes)).trim(); */
     // return !getRichValueWithCaret(element, false, false).value.trim();
-    return !element.textContent.trim() && !element.querySelector('.emoji, .custom-emoji, .custom-emoji-placeholder');
+    value = element.textContent;
   } else {
-    return !(element as HTMLInputElement).value.trim();
+    value = (element as HTMLInputElement).value;
   }
+
+  if(!allowStartingSpace) {
+    return !value.trim();
+  }
+
+  return !value;
 }
