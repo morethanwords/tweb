@@ -8,6 +8,8 @@ import setCurrentTime from './setCurrentTime';
 
 const USE_FIX = IS_CHROMIUM;
 
+export const SHOULD_HANDLE_VIDEO_LEAK = USE_FIX;
+
 export async function onVideoLeak(video: HTMLVideoElement) {
   // console.error('video is stuck', video.src, video, video.paused, videoPlaybackQuality);
   const firstElementChild = video.firstElementChild as HTMLSourceElement;
@@ -92,67 +94,87 @@ const eventsOrderLength = eventsOrder.length;
 
 const sawEvents = new WeakMap<HTMLElement, {events: Set<string>}>();
 export const leakVideoFallbacks = new WeakMap<HTMLElement, () => void>();
-USE_FIX && eventsOrder.forEach((event) => {
-  document.addEventListener(event, (e) => {
-    const target = e.target;
-    if(
-      !(target instanceof HTMLVideoElement) ||
-      target.readyState > target.HAVE_METADATA ||
-      target.isSeeking
-    ) {
+
+function onVideoLeakListener(e: Event) {
+  const {type, target} = e;
+  if(
+    !(target instanceof HTMLVideoElement) ||
+    target.readyState > target.HAVE_METADATA ||
+    target.isSeeking
+  ) {
+    return;
+  }
+
+  // const needLog = target.parentElement.dataset.docId === '';
+  // if(needLog) {
+  //   console.log('video event', event/* , target */, target.currentTime, target.duration);
+  // }
+
+  let cache = sawEvents.get(target);
+  if(!cache) {
+    sawEvents.set(target, cache = {events: new Set()});
+  }
+
+  if(cache.events.has(type)) {
+    return;
+  }
+
+  cache.events.add(type);
+
+  if(cache.events.size === eventsOrderLength/*  && event == eventsOrder[eventsOrderLength - 1] */) {
+    const events = Array.from(cache.events);
+    const index = eventsOrder.indexOf(events[0]);
+    const normalized = eventsOrder.slice(index).concat(eventsOrder.slice(0, index));
+    if(!deepEqual(events, normalized)) {
       return;
     }
 
-    // const needLog = target.parentElement.dataset.docId === '';
-    // if(needLog) {
-    //   console.log('video event', event/* , target */, target.currentTime, target.duration);
-    // }
+    // console.log('bad video', target.currentTime, target.duration);
 
-    let cache = sawEvents.get(target);
-    if(!cache) {
-      sawEvents.set(target, cache = {events: new Set()});
+    const fallbackCallback = leakVideoFallbacks.get(target);
+    if(fallbackCallback) {
+      fallbackCallback();
+      leakVideoFallbacks.delete(target);
+    } else {
+      onVideoLeak(target).catch(noop);
     }
+  }
 
-    if(cache.events.has(event)) {
-      return;
-    }
+  // const lastEvent = sawEvents.get(target);
+  // if(!lastEvent) {
+  //   if(eventsOrder[0] === event) {
+  //     sawEvents.set(target, event);
+  //   }
+  // } else if(lastEvent !== event) {
+  //   const lastEventIndex = eventsOrder.indexOf(lastEvent);
+  //   const shouldBeEvent = eventsOrder[lastEventIndex + 1];
+  //   if(shouldBeEvent === event) { // save event for next check
+  //     sawEvents.set(target, event);
+  //   } else if(!shouldBeEvent) { // saw all events
+  //     onVideoLeak(target).catch(noop);
+  //   } else { // wrong event
+  //     sawEvents.delete(target);
+  //   }
+  // }
+}
 
-    cache.events.add(event);
+function attachVideoLeakListener(element: HTMLElement | Document, event: string) {
+  element.addEventListener(event, onVideoLeakListener, true);
+  return () => element.removeEventListener(event, onVideoLeakListener, true);
+}
 
-    if(cache.events.size === eventsOrderLength/*  && event == eventsOrder[eventsOrderLength - 1] */) {
-      const events = Array.from(cache.events);
-      const index = eventsOrder.indexOf(events[0]);
-      const normalized = eventsOrder.slice(index).concat(eventsOrder.slice(0, index));
-      if(!deepEqual(events, normalized)) {
-        return;
-      }
+export function attachVideoLeakListeners(element: HTMLElement | Document) {
+  if(!USE_FIX) {
+    return;
+  }
 
-      // console.log('bad video', target.currentTime, target.duration);
+  const callbacks = eventsOrder.map((event) => {
+    return attachVideoLeakListener(element, event);
+  });
 
-      const fallbackCallback = leakVideoFallbacks.get(target);
-      if(fallbackCallback) {
-        fallbackCallback();
-        leakVideoFallbacks.delete(target);
-      } else {
-        onVideoLeak(target).catch(noop);
-      }
-    }
+  return () => {
+    callbacks.forEach((callback) => callback());
+  };
+}
 
-    // const lastEvent = sawEvents.get(target);
-    // if(!lastEvent) {
-    //   if(eventsOrder[0] === event) {
-    //     sawEvents.set(target, event);
-    //   }
-    // } else if(lastEvent !== event) {
-    //   const lastEventIndex = eventsOrder.indexOf(lastEvent);
-    //   const shouldBeEvent = eventsOrder[lastEventIndex + 1];
-    //   if(shouldBeEvent === event) { // save event for next check
-    //     sawEvents.set(target, event);
-    //   } else if(!shouldBeEvent) { // saw all events
-    //     onVideoLeak(target).catch(noop);
-    //   } else { // wrong event
-    //     sawEvents.delete(target);
-    //   }
-    // }
-  }, true);
-});
+attachVideoLeakListeners(document);

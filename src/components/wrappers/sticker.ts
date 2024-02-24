@@ -41,7 +41,7 @@ import liteMode, {LiteModeKey} from '../../helpers/liteMode';
 import Scrollable from '../scrollable';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import Icon from '../icon';
-import {leakVideoFallbacks, onVideoLeak} from '../../helpers/dom/handleVideoLeak';
+import {SHOULD_HANDLE_VIDEO_LEAK, attachVideoLeakListeners, leakVideoFallbacks, onVideoLeak} from '../../helpers/dom/handleVideoLeak';
 import noop from '../../helpers/noop';
 
 // https://github.com/telegramdesktop/tdesktop/blob/master/Telegram/SourceFiles/history/view/media/history_view_sticker.cpp#L40
@@ -548,10 +548,15 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
                 video.removeEventListener('timeupdate', onTimeupdate);
               }
 
+              (this as any).timeUpdatedTimes = ((this as any).timeUpdatedTimes || 0) + 1;
+
               previousTime = this.currentTime;
             }
 
             video.addEventListener('timeupdate', onTimeupdate);
+            middleware.onClean(() => {
+              video.removeEventListener('timeupdate', onTimeupdate);
+            });
           }
         }
 
@@ -626,7 +631,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
                 return;
               }
 
-              if(isVideo) {
+              if(isVideo && SHOULD_HANDLE_VIDEO_LEAK) {
                 leakVideoFallbacks.set(media, () => {
                   const reset = () => {
                     onVideoLeak(media).catch(noop);
@@ -656,6 +661,12 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
                     reset();
                   }
                 });
+
+                if(media.duration < 1 ||
+                  media.getVideoPlaybackQuality().totalVideoFrames < 10) {
+                  const detach = attachVideoLeakListeners(media);
+                  middleware.onClean(detach);
+                }
               }
 
               div.append(media);
