@@ -1,7 +1,7 @@
 import {getHeavyAnimationPromise} from '../../hooks/useHeavyAnimationCheck';
 import {Middleware} from '../middleware';
 
-const createdVideos: Set<HTMLVideoElement> = new Set();
+// const createdVideos: Set<HTMLVideoElement> = new Set();
 export default function createVideo({
   pip,
   middleware
@@ -12,10 +12,10 @@ export default function createVideo({
   const video = document.createElement('video');
   if(!pip) video.disablePictureInPicture = true;
   video.setAttribute('playsinline', 'true');
-  createdVideos.add(video);
+  // createdVideos.add(video);
 
   middleware?.onDestroy(async() => {
-    createdVideos.delete(video);
+    // createdVideos.delete(video);
     await getHeavyAnimationPromise();
     video.src = '';
     video.load();
@@ -24,4 +24,4 @@ export default function createVideo({
   return video;
 }
 
-(window as any).createdVideos = createdVideos;
+// (window as any).createdVideos = createdVideos;
