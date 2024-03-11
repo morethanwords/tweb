@@ -72,6 +72,7 @@ import {Middleware, MiddlewareHelper} from '../../helpers/middleware';
 import wrapEmojiStatus from '../wrappers/emojiStatus';
 import {makeMediaSize} from '../../helpers/mediaSize';
 import ReactionElement from '../chat/reaction';
+import setBlankToAnchor from '../../lib/richTextProcessor/setBlankToAnchor';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -227,7 +228,7 @@ export class AppSidebarLeft extends SidebarSlider {
       text: 'ReportBug',
       onClick: () => {
         const a = document.createElement('a');
-        a.target = '_blank';
+        setBlankToAnchor(a);
         a.href = 'https://bugs.telegram.org/?tag_ids=40&sort=time';
         document.body.append(a);
         a.click();
@@ -302,8 +303,7 @@ export class AppSidebarLeft extends SidebarSlider {
       onOpen: (e, btnMenu) => {
         const btnMenuFooter = document.createElement('a');
         btnMenuFooter.href = 'https://github.com/morethanwords/tweb/blob/master/CHANGELOG.md';
-        btnMenuFooter.target = '_blank';
-        btnMenuFooter.rel = 'noopener noreferrer';
+        setBlankToAnchor(btnMenuFooter);
         btnMenuFooter.classList.add('btn-menu-footer');
         btnMenuFooter.addEventListener(CLICK_EVENT_NAME, (e) => {
           e.stopPropagation();

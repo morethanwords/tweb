@@ -19,6 +19,7 @@ import capitalizeFirstLetter from '../helpers/string/capitalizeFirstLetter';
 import matchUrlProtocol from './richTextProcessor/matchUrlProtocol';
 import wrapUrl from './richTextProcessor/wrapUrl';
 import {setDirection} from '../helpers/dom/setInnerHTML';
+import setBlankToAnchor from './richTextProcessor/setBlankToAnchor';
 
 export const langPack: {[actionType: string]: LangPackKey} = {
   'messageActionChatCreate': 'ActionCreateGroup',
@@ -401,7 +402,7 @@ namespace I18n {
           const wrappedUrl = wrapUrl(url);
           a.href = wrappedUrl.url;
           if(wrappedUrl.onclick) a.setAttribute('onclick', wrappedUrl.onclick + '(this)');
-          a.target = '_blank';
+          setBlankToAnchor(a);
         } else {
           a = args[indexHolder.i++] as HTMLAnchorElement;
 

@@ -89,6 +89,7 @@ import PopupPremium from './popups/premium';
 import {ChatType} from './chat/chat';
 import getFwdFromName from '../lib/appManagers/utils/messages/getFwdFromName';
 import SidebarSlider from './slider';
+import setBlankToAnchor from '../lib/richTextProcessor/setBlankToAnchor';
 
 // const testScroll = false;
 
@@ -1038,7 +1039,9 @@ export default class AppSearchSuper {
     if(aIsAnchor) {
       (row.container as HTMLAnchorElement).href = a.href;
       row.container.setAttribute('onclick', a.getAttribute('onclick'));
-      (row.container as HTMLAnchorElement).target = a.target;
+      if(a.target === '_blank') {
+        setBlankToAnchor(a);
+      }
     }
 
     row.applyMediaElement(previewDiv, 'big');
