@@ -25,6 +25,7 @@ import PopupPeer, {PopupPeerOptions} from './peer';
 import {LangPackKey} from '../../lib/langPack';
 import PopupPickUser from './pickUser';
 import {calculateLuminance, calculateOpacity, getTextColor, hexToRgb, rgbaToRgb} from '../../helpers/color';
+import safeWindowOpen from '../../helpers/dom/safeWindowOpen';
 
 const SANDBOX_ATTRIBUTES = [
   'allow-scripts',
@@ -412,7 +413,7 @@ export default class PopupWebApp extends PopupElement<{
         this.forceHide();
       },
       web_app_open_link: ({url}) => {
-        window.open(url, '_blank');
+        safeWindowOpen(url);
       },
       web_app_open_tg_link: ({path_full}) => {
         appImManager.openUrl('https://t.me' + path_full);

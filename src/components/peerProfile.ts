@@ -11,6 +11,7 @@ import anchorCopy from '../helpers/dom/anchorCopy';
 import cancelEvent from '../helpers/dom/cancelEvent';
 import {attachClickEvent, simulateClickEvent} from '../helpers/dom/clickEvent';
 import replaceContent from '../helpers/dom/replaceContent';
+import safeWindowOpen from '../helpers/dom/safeWindowOpen';
 import setInnerHTML from '../helpers/dom/setInnerHTML';
 import ListenerSetter from '../helpers/listenerSetter';
 import makeError from '../helpers/makeError';
@@ -183,7 +184,7 @@ export default class PeerProfile {
             return a;
           })()],
           onClick: () => {
-            window.open('https://fragment.com/numbers', '_blank');
+            safeWindowOpen('https://fragment.com/numbers');
           },
           separator: true,
           secondary: true,

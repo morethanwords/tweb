@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import safeWindowOpen from '../../helpers/dom/safeWindowOpen';
 import I18n, {i18n} from '../../lib/langPack';
 import PopupPeer from './peer';
 
@@ -19,7 +20,7 @@ export default class PopupSponsored extends PopupPeer {
       }, {
         langKey: 'Chat.Message.Ad.ReadMore',
         callback: () => {
-          window.open(I18n.format('Chat.Message.Sponsored.Link', true));
+          safeWindowOpen(I18n.format('Chat.Message.Sponsored.Link', true));
         },
         isCancel: true
       }],
