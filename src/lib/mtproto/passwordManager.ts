@@ -66,6 +66,7 @@ export class PasswordManager extends AppManager {
         params.password = hashes[0];
         params.new_settings.new_algo = newAlgo;
         params.new_settings.new_password_hash = hashes[1];
+        params.new_settings.hint ??= '';
 
         return this.apiManager.invokeApi('account.updatePasswordSettings', params);
       });

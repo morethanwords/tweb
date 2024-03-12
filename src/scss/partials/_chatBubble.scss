@@ -729,6 +729,7 @@
     .attachment {
       max-width: var(--round-video-size) !important;
       max-height: var(--round-video-size) !important;
+      border-radius: 50%;
       // width: var(--round-video-size) !important;
       // height: var(--round-video-size) !important;
     }

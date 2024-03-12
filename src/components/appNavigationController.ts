@@ -237,7 +237,7 @@ export class AppNavigationController {
     });
   }
 
-  private pushState() {
+  public pushState() {
     this.debug && this.log('push');
     this.manual = false;
     history.pushState(this.id, '');

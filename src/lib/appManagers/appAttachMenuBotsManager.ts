@@ -86,9 +86,11 @@ export default class AppAttachMenuBotsManager extends AppManager {
   public saveAttachMenuBot(attachMenuBot: AttachMenuBot) {
     this.attachMenuBots.set(attachMenuBot.bot_id, attachMenuBot);
     const menuBotIcon = getAttachMenuBotIcon(attachMenuBot);
-    menuBotIcon.icon = this.appDocsManager.saveDoc(menuBotIcon.icon, {type: 'attachMenuBotIcon', botId: attachMenuBot.bot_id});
+    if(menuBotIcon) {
+      menuBotIcon.icon = this.appDocsManager.saveDoc(menuBotIcon.icon, {type: 'attachMenuBotIcon', botId: attachMenuBot.bot_id});
+      this.apiFileManager.downloadMedia({media: menuBotIcon.icon});
+    }
     this.rootScope.dispatchEvent('attach_menu_bot', attachMenuBot);
-    this.apiFileManager.downloadMedia({media: menuBotIcon.icon});
     return attachMenuBot;
   }
 
