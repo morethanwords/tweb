@@ -7,7 +7,8 @@
 import type {ReactionsContext} from '../../lib/appManagers/appReactionsManager';
 import {createEffect, createSignal, onCleanup, JSX, createMemo, onMount, splitProps, on, untrack, batch, Accessor} from 'solid-js';
 import InputSearch from '../inputSearch';
-import {ButtonIconTsx, createListTransition, createMiddleware} from '../stories/viewer';
+import {createListTransition, createMiddleware} from '../stories/viewer';
+import {ButtonIconTsx} from '../buttonIconTsx';
 import classNames from '../../helpers/string/classNames';
 import PopupElement from '../popups';
 import PopupDatePicker from '../popups/datePicker';

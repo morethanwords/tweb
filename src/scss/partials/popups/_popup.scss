@@ -33,6 +33,7 @@ $popup-footer-abitlarger-padding: 1rem;
   display: flex;
   user-select: none;
   color: var(--primary-text-color);
+  font-size: 1rem;
 
   &.no-overlay {
     padding: 0;

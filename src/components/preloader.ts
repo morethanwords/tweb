@@ -28,6 +28,7 @@ export default class ProgressivePreloader {
   public isUpload = false;
   private cancelable = true;
   private streamable = false;
+  private rtmp = false;
   private tryAgainOnFail = true;
   private attachMethod: 'append' | 'prepend' = 'append';
 
@@ -39,6 +40,7 @@ export default class ProgressivePreloader {
     isUpload: ProgressivePreloader['isUpload'],
     cancelable: ProgressivePreloader['cancelable'],
     streamable: ProgressivePreloader['streamable'],
+    rtmp: ProgressivePreloader['rtmp'],
     tryAgainOnFail: ProgressivePreloader['tryAgainOnFail'],
     attachMethod: ProgressivePreloader['attachMethod']
   }>) {
@@ -57,7 +59,11 @@ export default class ProgressivePreloader {
   }> = {}) {
     if(!this.preloader) {
       this.preloader = document.createElement('div');
-      this.preloader.classList.add('preloader-container');
+      if(this.rtmp) {
+        this.preloader.classList.add('preloader-container-rtmp');
+      } else {
+        this.preloader.classList.add('preloader-container');
+      }
 
       if(options.color) {
         this.preloader.classList.add('preloader-' + options.color);
@@ -82,12 +88,22 @@ export default class ProgressivePreloader {
 
     this.constructContainer();
 
-    this.preloader.innerHTML = `
-    <div class="you-spin-me-round">
-    <svg xmlns="http://www.w3.org/2000/svg" class="preloader-circular" viewBox="${this.streamable ? '25 25 50 50' : '27 27 54 54'}">
-    <circle class="preloader-path-new" cx="${this.streamable ? '50' : '54'}" cy="${this.streamable ? '50' : '54'}" r="${this.streamable ? 19 : 24}" fill="none" stroke-miterlimit="10"/>
-    </svg>
-    </div>`;
+    if(this.rtmp) {
+      this.preloader.innerHTML = `
+      <div class="loading-wrap is-loading">
+        <div class="loading"></div>
+        <div class="loading_bezel-wrap">
+          <div class="loading"></div>
+        </div>
+      </div>`;
+    } else {
+      this.preloader.innerHTML = `
+      <div class="you-spin-me-round">
+      <svg xmlns="http://www.w3.org/2000/svg" class="preloader-circular" viewBox="${this.streamable ? '25 25 50 50' : '27 27 54 54'}">
+      <circle class="preloader-path-new" cx="${this.streamable ? '50' : '54'}" cy="${this.streamable ? '50' : '54'}" r="${this.streamable ? 19 : 24}" fill="none" stroke-miterlimit="10"/>
+      </svg>
+      </div>`;
+    }
 
     if(this.streamable) {
       this.totalLength = 118.61124420166016;
@@ -209,6 +225,10 @@ export default class ProgressivePreloader {
   }
 
   public attach(elem: Element, reset = false, promise?: CancellablePromise<any>) {
+    if(!this.detached) {
+      return;
+    }
+
     this.construct?.();
 
     if(this.preloader.parentElement) {

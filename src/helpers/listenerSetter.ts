@@ -16,7 +16,7 @@ export type Listener = {
   onceCallback?: () => void,
 };
 
-export type ListenerElement = Window | Document | HTMLElement | Element | EventListenerBase<any>;
+export type ListenerElement = Window | Document | HTMLElement | Element | EventListenerBase<any> | EventTarget;
 export type ListenerEvent = string;
 export type ListenerCallback = Function;
 export type ListenerOptions = AddEventListenerOptions;

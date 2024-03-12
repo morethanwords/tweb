@@ -9,7 +9,18 @@ import type {PeerPhotoSize} from '../lib/appManagers/appAvatarsManager';
 import type {StoriesSegment, StoriesSegments} from '../lib/appManagers/appStoriesManager';
 import {getMiddleware, type Middleware} from '../helpers/middleware';
 import deferredPromise from '../helpers/cancellablePromise';
-import {createSignal, createEffect, createMemo, onCleanup, JSX, createRoot, Show, Accessor, on} from 'solid-js';
+import {
+  createSignal,
+  createEffect,
+  createMemo,
+  onCleanup,
+  JSX,
+  createRoot,
+  Show,
+  Accessor,
+  on,
+  splitProps, onMount
+} from 'solid-js';
 import rootScope from '../lib/rootScope';
 import {NULL_PEER_ID, REPLIES_PEER_ID, HIDDEN_PEER_ID} from '../lib/mtproto/mtproto_config';
 import {Chat, ChatPhoto, User, UserProfilePhoto} from '../layer';
@@ -839,4 +850,36 @@ export function avatarNew(props: {
     (props.wrapOptions ??= {}).middleware = props.middleware;
     return AvatarNew(props);
   });
+}
+
+export type AvatarTsxProps = Parameters<typeof AvatarNew>[0] & {
+  class?: string
+}
+
+export const AvatarTsx = (props: AvatarTsxProps) => {
+  const [inner, rest] = splitProps(props, ['class', 'peerId'])
+  const obj = AvatarNew(rest);
+
+  createEffect(on(
+    () => inner.peerId,
+    (peerId) => obj.render({peerId}),
+    {defer: true}
+  ))
+
+  createEffect(on(
+    () => inner.class,
+    (value, prevValue) => {
+      if(value === prevValue) return
+      obj.node.classList.add(value)
+      obj.node.classList.remove(prevValue)
+    }
+  ))
+
+  onMount(() => {
+    if(inner.peerId) {
+      obj.render({peerId: inner.peerId})
+    }
+  })
+
+  return obj.element
 }

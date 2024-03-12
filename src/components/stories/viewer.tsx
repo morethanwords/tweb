@@ -100,6 +100,8 @@ import appSidebarRight from '../sidebarRight';
 import AppStatisticsTab from '../sidebarRight/tabs/statistics';
 import getStoryRepostInfo from '../../lib/appManagers/utils/stories/repostInfo';
 import anchorCallback from '../../helpers/dom/anchorCallback';
+import {ButtonIconTsx} from '../buttonIconTsx';
+import {IconTsx} from '../iconTsx';
 
 export const STORY_DURATION = 5e3;
 const STORY_HEADER_AVATAR_SIZE = 32;
@@ -126,24 +128,6 @@ export const createMiddleware = () => {
   const middleware = getMiddleware();
   onCleanup(() => middleware.destroy());
   return middleware;
-};
-
-export const ButtonIconTsx = (props: {icon?: Icon, noRipple?: boolean} & JSX.HTMLAttributes<HTMLButtonElement>) => {
-  const [, rest] = splitProps(props, ['icon', 'noRipple']);
-  return (
-    <button {...rest} class={classNames('btn-icon', props.class)} tabIndex={-1}>
-      {props.icon ? Icon(props.icon) : props.children}
-    </button>
-  );
-};
-
-export const IconTsx = (props: {icon: Icon} & JSX.HTMLAttributes<HTMLSpanElement>) => {
-  const [, rest] = splitProps(props, ['icon']);
-  return (
-    <span {...rest} class={classNames('tgico', props.class)}>
-      {getIconContent(props.icon)}
-    </span>
-  );
 };
 
 const MessageInputField = (props: {}) => {

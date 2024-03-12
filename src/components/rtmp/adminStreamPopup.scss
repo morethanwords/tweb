@@ -1,0 +1,49 @@
+.rtmp-player-empty {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 430px;
+}
+
+.rtmp-player-empty-text {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.rtmp-player-empty-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+.rtmp-player-empty-loader {
+  animation: loader-spin 1s linear infinite;
+}
+
+.rtmp-player-empty-title {
+  color: #FFF;
+  font-size: 20px;
+  line-height: 24px;
+}
+
+@keyframes loader-spin {
+  0% {
+      transform: rotate(0deg);
+  }
+  100% {
+      transform: rotate(360deg);
+  }
+}
+
+.rtmp-player-empty-text-inner {
+  color: #FFF;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 22px;
+  margin-bottom: 2px;
+}

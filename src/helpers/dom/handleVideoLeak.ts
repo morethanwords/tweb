@@ -100,7 +100,8 @@ function onVideoLeakListener(e: Event) {
   if(
     !(target instanceof HTMLVideoElement) ||
     target.readyState > target.HAVE_METADATA ||
-    target.isSeeking
+    target.isSeeking ||
+    target.ignoreLeak
   ) {
     return;
   }

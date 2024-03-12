@@ -18,9 +18,8 @@ import {BoostsConfirmButton} from './boostsViaGifts';
 import PopupPeer from './peer';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import toggleDisability from '../../helpers/dom/toggleDisability';
-import {AvatarNew, avatarNew} from '../avatarNew';
-import Icon from '../icon';
-import {IconTsx, TransitionGroup, createListTransition} from '../stories/viewer';
+import {AvatarNew} from '../avatarNew';
+import {createListTransition} from '../stories/viewer';
 import classNames from '../../helpers/string/classNames';
 import filterUnique from '../../helpers/array/filterUnique';
 import {resolveElements} from '@solid-primitives/refs';
@@ -29,6 +28,7 @@ import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import {hideToast, toastNew} from '../toast';
 import tsNow from '../../helpers/tsNow';
 import {wrapLeftDuration} from '../wrappers/wrapDuration';
+import {IconTsx} from '../iconTsx';
 
 const className = 'popup-boost';
 

@@ -318,7 +318,8 @@ export type InputFieldOptions = {
   withLinebreaks?: boolean,
   autocomplete?: string,
   withBorder?: boolean,
-  allowStartingSpace?: boolean
+  allowStartingSpace?: boolean,
+  onRawInput?: (value: string) => void
 };
 
 function createCustomEmojiRendererForInput(textColor?: string, animationGroup?: AnimationItemGroup) {
@@ -590,6 +591,12 @@ export default class InputField {
           e.preventDefault();
           return false;
         }
+      });
+    }
+
+    if(options.onRawInput) {
+      onInputCallbacks.push(() => {
+        options.onRawInput(this.value)
       });
     }
 

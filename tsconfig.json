@@ -83,6 +83,7 @@
     "src/scripts",
     "src/solid",
     "src/opus-recorder",
+    "src/vendor/**/*.js",
     "*.js",
     "*.cjs",
     "tweb-design",

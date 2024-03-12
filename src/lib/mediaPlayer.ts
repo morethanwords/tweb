@@ -9,10 +9,10 @@ import {IS_APPLE_MOBILE, IS_MOBILE} from '../environment/userAgent';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import cancelEvent from '../helpers/dom/cancelEvent';
 import ListenerSetter, {Listener} from '../helpers/listenerSetter';
-import {ButtonMenuSync} from '../components/buttonMenu';
-import {ButtonMenuToggleHandler} from '../components/buttonMenuToggle';
+import {ButtonMenuItemOptionsVerifiable, ButtonMenuSync} from '../components/buttonMenu';
+import ButtonMenuToggle, {ButtonMenuToggleHandler} from '../components/buttonMenuToggle';
 import ControlsHover from '../helpers/dom/controlsHover';
-import {addFullScreenListener, cancelFullScreen, isFullScreen, requestFullScreen} from '../helpers/dom/fullScreen';
+import {addFullScreenListener, cancelFullScreen, getFullScreenElement, isFullScreen, requestFullScreen} from '../helpers/dom/fullScreen';
 import toHHMMSS from '../helpers/string/toHHMMSS';
 import MediaProgressLine from '../components/mediaProgressLine';
 import VolumeSelector from '../components/volumeSelector';
@@ -25,20 +25,26 @@ import ButtonIcon from '../components/buttonIcon';
 import Button from '../components/button';
 import Icon from '../components/icon';
 import setCurrentTime from '../helpers/dom/setCurrentTime';
+import {i18n} from './langPack';
+import {numberThousandSplitterForWatching} from '../helpers/number/numberThousandSplitter';
+import createCanvasStream from '../helpers/canvas/createCanvasStream';
 
 export default class VideoPlayer extends ControlsHover {
   private static PLAYBACK_RATES = [0.5, 1, 1.5, 2];
   private static PLAYBACK_RATES_ICONS: Icon[] = ['playback_05', 'playback_1x', 'playback_15', 'playback_2x'];
 
-  protected video: HTMLVideoElement;
+  public video: HTMLVideoElement;
   protected wrapper: HTMLDivElement;
   protected progress: MediaProgressLine;
   protected skin: 'default';
+  protected live: boolean;
 
   protected listenerSetter: ListenerSetter;
   protected playbackRateButton: HTMLElement;
   protected pipButton: HTMLElement;
+  protected liveMenuButton: HTMLElement;
   protected toggles: HTMLElement[];
+  public liveEl: HTMLElement;
 
   /* protected videoParent: HTMLElement;
   protected videoWhichChild: number; */
@@ -47,11 +53,27 @@ export default class VideoPlayer extends ControlsHover {
   protected onPip?: (pip: boolean) => void;
   protected onPipClose?: () => void;
 
+  protected canPause: boolean;
+  protected canSeek: boolean;
+
+  protected _inPip = false;
+
+  protected _width: number;
+  protected _height: number;
+
+  protected emptyPipVideo: HTMLVideoElement;
+  protected debouncedPip: (pip: boolean) => void;
+  protected debouncePipTime: number;
+  public emptyPipVideoSource: CanvasImageSource;
+
   constructor({
     video,
     play = false,
     streamable = false,
     duration,
+    live,
+    width,
+    height,
     onPlaybackRackMenuToggle,
     onPip,
     onPipClose
@@ -60,6 +82,9 @@ export default class VideoPlayer extends ControlsHover {
     play?: boolean,
     streamable?: boolean,
     duration?: number,
+    live?: boolean,
+    width?: number,
+    height?: number,
     onPlaybackRackMenuToggle?: VideoPlayer['onPlaybackRackMenuToggle'],
     onPip?: VideoPlayer['onPip'],
     onPipClose?: VideoPlayer['onPipClose']
@@ -67,8 +92,14 @@ export default class VideoPlayer extends ControlsHover {
     super();
 
     this.video = video;
+    this.video.classList.add('ckin__video');
     this.wrapper = document.createElement('div');
     this.wrapper.classList.add('ckin__player');
+    this.live = live;
+    this.canPause = !live;
+    this.canSeek = !live;
+    this._width = width;
+    this._height = height;
 
     this.onPlaybackRackMenuToggle = onPlaybackRackMenuToggle;
     this.onPip = onPip;
@@ -94,7 +125,7 @@ export default class VideoPlayer extends ControlsHover {
     this.stylePlayer(duration);
     this.setBtnMenuToggle();
 
-    if(this.skin === 'default') {
+    if(this.skin === 'default' && !live) {
       const controls = this.wrapper.querySelector('.default__controls.ckin__controls') as HTMLDivElement;
       this.progress = new MediaProgressLine({
         onSeekStart: () => {
@@ -113,8 +144,7 @@ export default class VideoPlayer extends ControlsHover {
     }
 
     if(play/*  && video.paused */) {
-      const promise = video.play();
-      promise.catch((err: Error) => {
+      video.play().catch((err: Error) => {
         if(err.name === 'NotAllowedError') {
           video.muted = true;
           video.autoplay = true;
@@ -126,6 +156,14 @@ export default class VideoPlayer extends ControlsHover {
     }
   }
 
+  public get width() {
+    return this.video.videoWidth || this._width;
+  }
+
+  public get height() {
+    return this.video.videoHeight || this._height;
+  }
+
   private setIsPlaing(isPlaying: boolean) {
     this.wrapper.classList.toggle('is-playing', isPlaying);
     this.toggles.forEach((toggle) => {
@@ -134,87 +172,73 @@ export default class VideoPlayer extends ControlsHover {
   }
 
   private stylePlayer(initDuration: number) {
-    const {wrapper, video, skin, listenerSetter} = this;
+    const {wrapper, video, skin, listenerSetter, live} = this;
 
     wrapper.classList.add(skin);
+    if(live) wrapper.classList.add(`${skin}-live`);
 
     const html = this.buildControls();
     wrapper.insertAdjacentHTML('beforeend', html);
     let timeDuration: HTMLElement;
 
     if(skin === 'default') {
-      const mainToggle = Button(`${skin}__button--big toggle`, {noRipple: true, icon: 'play'});
-      wrapper.firstElementChild.after(mainToggle);
+      if(this.canPause) {
+        const mainToggle = Button(`${skin}__button--big toggle`, {noRipple: true, icon: 'play'});
+        wrapper.firstElementChild.after(mainToggle);
+      }
 
       const leftControls = wrapper.querySelector('.left-controls') as HTMLElement;
-      const leftToggle = ButtonIcon(` ${skin}__button toggle`, {noRipple: true});
-      leftControls.prepend(leftToggle);
+      if(live) {
+        this.toggles = [];
+      } else {
+        const leftToggle = ButtonIcon(` ${skin}__button toggle`, {noRipple: true});
+        leftControls.prepend(leftToggle);
+        this.toggles = [leftToggle];
+      }
 
       const rightControls = wrapper.querySelector('.right-controls') as HTMLElement;
-      this.playbackRateButton = ButtonIcon(` ${skin}__button btn-menu-toggle night`, {noRipple: true});
+      if(!live) {
+        this.playbackRateButton = ButtonIcon(` ${skin}__button btn-menu-toggle`, {noRipple: true});
+      }
       if(!IS_MOBILE && document.pictureInPictureEnabled) {
         this.pipButton = ButtonIcon(`pip ${skin}__button`, {noRipple: true});
       }
       const fullScreenButton = ButtonIcon(` ${skin}__button`, {noRipple: true});
       rightControls.append(...[this.playbackRateButton, this.pipButton, fullScreenButton].filter(Boolean));
 
-      const toggles = this.toggles = [leftToggle];
       const timeElapsed = wrapper.querySelector('#time-elapsed');
       timeDuration = wrapper.querySelector('#time-duration') as HTMLElement;
-      timeDuration.textContent = toHHMMSS(video.duration | 0);
 
       const volumeSelector = new VolumeSelector(listenerSetter);
 
       volumeSelector.btn.classList.remove('btn-icon');
-      leftControls.insertBefore(volumeSelector.btn, timeElapsed.parentElement);
+      if(timeElapsed) {
+        timeElapsed.parentElement.before(volumeSelector.btn);
+      } else {
+        leftControls.lastElementChild.before(volumeSelector.btn);
+      }
 
-      toggles.forEach((button) => {
+      this.toggles.forEach((button) => {
         attachClickEvent(button, () => {
           this.togglePlay();
         }, {listenerSetter: this.listenerSetter});
       });
 
       if(this.pipButton) {
-        attachClickEvent(this.pipButton, () => {
-          this.video.requestPictureInPicture();
-        }, {listenerSetter: this.listenerSetter});
+        attachClickEvent(this.pipButton, this.requestPictureInPicture, {listenerSetter: this.listenerSetter});
 
-        const onPip = (pip: boolean) => {
-          this.wrapper.style.visibility = pip ? 'hidden': '';
-          if(this.onPip) {
-            this.onPip(pip);
-          }
-        };
+        this.debouncePipTime = 20;
+        this.debouncedPip = debounce(this._onPip, this.debouncePipTime, false, true);
 
-        const debounceTime = 20;
-        const debouncedPip = debounce(onPip, debounceTime, false, true);
-
-        listenerSetter.add(video)('enterpictureinpicture', () => {
-          debouncedPip(true);
-
-          listenerSetter.add(video)('leavepictureinpicture', () => {
-            const onPause = () => {
-              clearTimeout(timeout);
-              if(this.onPipClose) {
-                this.onPipClose();
-              }
-            };
-            const listener = listenerSetter.add(video)('pause', onPause, {once: true}) as any as Listener;
-            const timeout = setTimeout(() => {
-              listenerSetter.remove(listener);
-            }, debounceTime);
-          }, {once: true});
-        });
-
-        listenerSetter.add(video)('leavepictureinpicture', () => {
-          debouncedPip(false);
-        });
+        this.addPipListeners(video);
       }
 
       if(!IS_TOUCH_SUPPORTED) {
-        attachClickEvent(video, () => {
-          this.togglePlay();
-        }, {listenerSetter: this.listenerSetter});
+        if(this.canPause) {
+          attachClickEvent(video, () => {
+            this.togglePlay();
+          }, {listenerSetter: this.listenerSetter});
+        }
 
         listenerSetter.add(document)('keydown', (e: KeyboardEvent) => {
           if(overlayCounter.overlaysActive > 1 || document.pictureInPictureElement === video) { // forward popup is active, etc
@@ -228,9 +252,9 @@ export default class VideoPlayer extends ControlsHover {
             this.toggleFullScreen();
           } else if(code === 'KeyM') {
             appMediaPlaybackController.muted = !appMediaPlaybackController.muted;
-          } else if(code === 'Space') {
+          } else if(code === 'Space' && this.canPause) {
             this.togglePlay();
-          } else if(e.altKey && (code === 'Equal' || code === 'Minus')) {
+          } else if(e.altKey && (code === 'Equal' || code === 'Minus') && this.canSeek) {
             const add = code === 'Equal' ? 1 : -1;
             const playbackRate = appMediaPlaybackController.playbackRate;
             const idx = VideoPlayer.PLAYBACK_RATES.indexOf(playbackRate);
@@ -238,7 +262,7 @@ export default class VideoPlayer extends ControlsHover {
             if(nextIdx >= 0 && nextIdx < VideoPlayer.PLAYBACK_RATES.length) {
               appMediaPlaybackController.playbackRate = VideoPlayer.PLAYBACK_RATES[nextIdx];
             }
-          } else if(wrapper.classList.contains('ckin__fullscreen') && (key === 'ArrowLeft' || key === 'ArrowRight')) {
+          } else if(wrapper.classList.contains('ckin__fullscreen') && (key === 'ArrowLeft' || key === 'ArrowRight') && this.canSeek) {
             if(key === 'ArrowLeft') appMediaPlaybackController.seekBackward({action: 'seekbackward'});
             else appMediaPlaybackController.seekForward({action: 'seekforward'});
           } else {
@@ -265,16 +289,20 @@ export default class VideoPlayer extends ControlsHover {
       addFullScreenListener(wrapper, this.onFullScreen.bind(this, fullScreenButton), listenerSetter);
       this.onFullScreen(fullScreenButton);
 
-      listenerSetter.add(video)('timeupdate', () => {
-        timeElapsed.textContent = toHHMMSS(video.currentTime | 0);
-      });
+      if(timeElapsed) {
+        listenerSetter.add(video)('timeupdate', () => {
+          timeElapsed.textContent = toHHMMSS(video.currentTime | 0);
+        });
+      }
 
       listenerSetter.add(video)('play', () => {
         wrapper.classList.add('played');
 
         if(!IS_TOUCH_SUPPORTED) {
           listenerSetter.add(video)('play', () => {
-            this.hideControls(true);
+            if(!live) {
+              this.hideControls(true);
+            }
           });
         }
       }, {once: true});
@@ -286,24 +314,95 @@ export default class VideoPlayer extends ControlsHover {
       listenerSetter.add(appMediaPlaybackController)('playbackParams', () => {
         this.setPlaybackRateIcon();
       });
+
+      if(live) {
+        this.liveEl = i18n('Rtmp.MediaViewer.Live');
+        this.liveEl.classList.add('controls-live');
+        leftControls.prepend(this.liveEl);
+      }
     }
 
     listenerSetter.add(video)('play', () => {
       this.setIsPlaing(true);
     });
 
-    listenerSetter.add(video)('pause', () => {
-      this.setIsPlaing(false);
-    });
-
-    if(video.duration || initDuration) {
-      timeDuration.textContent = toHHMMSS(Math.round(video.duration || initDuration));
-    } else {
-      onMediaLoad(video).then(() => {
-        timeDuration.textContent = toHHMMSS(Math.round(video.duration));
+    if(!live) {
+      listenerSetter.add(video)('pause', () => {
+        this.setIsPlaing(false);
       });
     }
+
+    if(timeDuration) {
+      if(video.duration || initDuration) {
+        timeDuration.textContent = toHHMMSS(Math.round(video.duration || initDuration));
+      } else {
+        onMediaLoad(video).then(() => {
+          timeDuration.textContent = toHHMMSS(Math.round(video.duration));
+        });
+      }
+    }
   }
+
+  protected _onPip = (pip: boolean) => {
+    this._inPip = pip;
+    this.wrapper.style.visibility = pip ? 'hidden': '';
+    this.onPip?.(pip);
+  };
+
+  protected onEnterPictureInPictureLeave = (e: Event) => {
+    const onPause = () => {
+      clearTimeout(timeout);
+      this.onPipClose?.();
+    };
+    const listener = this.listenerSetter.add(e.target)('pause', onPause, {once: true}) as any as Listener;
+    const timeout = setTimeout(() => {
+      this.listenerSetter.remove(listener);
+    }, this.debouncePipTime);
+  };
+
+  protected onEnterPictureInPicture = (e: Event) => {
+    this.debouncedPip(true);
+    this.listenerSetter.add(e.target)('leavepictureinpicture', this.onEnterPictureInPictureLeave, {once: true});
+  };
+
+  protected onLeavePictureInPicture = () => {
+    this.debouncedPip(false);
+  };
+
+  protected addPipListeners(video: HTMLVideoElement) {
+    this.listenerSetter.add(video)('enterpictureinpicture', this.onEnterPictureInPicture);
+    this.listenerSetter.add(video)('leavepictureinpicture', this.onLeavePictureInPicture);
+  }
+
+  public requestPictureInPicture = async() => {
+    if(this.video.duration) {
+      this.video.requestPictureInPicture();
+      return;
+    }
+
+    if(!this.emptyPipVideo) {
+      const {width, height} = this;
+      this.emptyPipVideo = document.createElement('video');
+      // this.emptyPipVideo.autoplay = true;
+      // this.emptyPipVideo.muted = true;
+      // this.emptyPipVideo.playsInline = true;
+      // this.emptyPipVideo.style.position = 'absolute';
+      // this.emptyPipVideo.style.visibility = 'hidden';
+      // document.body.prepend(this.emptyPipVideo);
+      this.emptyPipVideo.srcObject = createCanvasStream({width, height, image: this.emptyPipVideoSource});
+      this.addPipListeners(this.emptyPipVideo);
+    }
+
+    await onMediaLoad(this.emptyPipVideo);
+    this.emptyPipVideo.requestPictureInPicture();
+
+    onMediaLoad(this.video).then(() => {
+      if(document.pictureInPictureElement === this.emptyPipVideo) {
+        document.exitPictureInPicture();
+        this.video.requestPictureInPicture();
+      }
+    });
+  };
 
   protected togglePlay(isPaused = this.video.paused) {
     this.video[isPaused ? 'play' : 'pause']();
@@ -311,16 +410,23 @@ export default class VideoPlayer extends ControlsHover {
 
   private buildControls() {
     const skin = this.skin;
+
     if(skin === 'default') {
+      const time = this.live ? `
+      <span class="left-controls-watching"></span>
+      ` : `
+      <time id="time-elapsed">0:00</time>
+      <span> / </span>
+      <time id="time-duration">0:00</time>
+      `
+
       return `
       <div class="${skin}__gradient-bottom ckin__controls"></div>
-      <div class="${skin}__controls ckin__controls">
+      <div class="${skin}__controls ckin__controls night">
         <div class="bottom-controls">
           <div class="left-controls">
             <div class="time">
-              <time id="time-elapsed">0:00</time>
-              <span> / </span>
-              <time id="time-duration">0:00</time>
+              ${time}
             </div>
           </div>
           <div class="right-controls"></div>
@@ -330,6 +436,7 @@ export default class VideoPlayer extends ControlsHover {
   }
 
   protected setBtnMenuToggle() {
+    if(!this.playbackRateButton) return;
     const buttons = VideoPlayer.PLAYBACK_RATES.map((rate, idx) => {
       const buttonOptions: Parameters<typeof ButtonMenuSync>[0]['buttons'][0] = {
         // icon: VideoPlayer.PLAYBACK_RATES_ICONS[idx],
@@ -357,6 +464,7 @@ export default class VideoPlayer extends ControlsHover {
   }
 
   protected setPlaybackRateIcon() {
+    if(!this.playbackRateButton) return;
     const playbackRateButton = this.playbackRateButton;
 
     let idx = VideoPlayer.PLAYBACK_RATES.indexOf(appMediaPlaybackController.playbackRate);
@@ -367,6 +475,12 @@ export default class VideoPlayer extends ControlsHover {
       playbackRateButton.firstElementChild.replaceWith(icon);
     } else {
       playbackRateButton.append(icon);
+    }
+  }
+
+  public cancelFullScreen() {
+    if(getFullScreenElement() === this.wrapper) {
+      this.toggleFullScreen();
     }
   }
 
@@ -422,6 +536,10 @@ export default class VideoPlayer extends ControlsHover {
     }
   }
 
+  public dimBackground() {
+    this.wrapper.classList.add('dim-background');
+  }
+
   public setTimestamp(timestamp: number) {
     setCurrentTime(this.video, timestamp);
     this.togglePlay(true);
@@ -430,7 +548,26 @@ export default class VideoPlayer extends ControlsHover {
   public cleanup() {
     super.cleanup();
     this.listenerSetter.removeAll();
-    this.progress.removeListeners();
+    this.progress?.removeListeners();
     this.onPlaybackRackMenuToggle = this.onPip = undefined;
+  }
+
+  public setupLiveMenu(buttons: ButtonMenuItemOptionsVerifiable[]) {
+    this.liveMenuButton = ButtonMenuToggle({
+      direction: 'top-left',
+      buttons: buttons,
+      buttonOptions: {
+        noRipple: true
+      }
+    });
+    this.wrapper.querySelector('.right-controls').prepend(this.liveMenuButton);
+  }
+
+  public updateLiveViewersCount(count: number) {
+    this.wrapper.querySelector('.left-controls-watching').replaceChildren(i18n('Rtmp.Watching', [numberThousandSplitterForWatching(Math.max(1, count))]));
+  }
+
+  get inPip() {
+    return this._inPip;
   }
 }

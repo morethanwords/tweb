@@ -129,8 +129,11 @@ export default class ControlsHover extends EventListenerBase<{
   };
 
   public lockControls(visible: boolean) {
-    this.controlsLocked = visible;
+    if(this.controlsLocked === visible) {
+      return;
+    }
 
+    this.controlsLocked = visible;
     this.element.classList.toggle('disable-hover', visible === false);
     this.toggleControls(visible);
   }

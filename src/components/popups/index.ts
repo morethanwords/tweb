@@ -26,7 +26,7 @@ import Icon from '../icon';
 import toggleDisability from '../../helpers/dom/toggleDisability';
 
 export type PopupButton = {
-  text?: HTMLElement | DocumentFragment,
+  text?: HTMLElement | DocumentFragment | Text,
   callback?: (e: MouseEvent) => void | MaybePromise<boolean>,
   langKey?: LangPackKey,
   langArgs?: any[],

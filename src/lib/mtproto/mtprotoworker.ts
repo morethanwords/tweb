@@ -102,7 +102,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
   public share: ShareData;
 
-  private serviceMessagePort: ServiceMessagePort<true>;
+  public serviceMessagePort: ServiceMessagePort<true>;
   private lastServiceWorker: ServiceWorker;
 
   private pingServiceWorkerPromise: CancellablePromise<void>;
@@ -345,9 +345,9 @@ class ApiManagerProxy extends MTProtoMessagePort {
   }
 
   private _registerServiceWorker() {
-    if(import.meta.env.DEV && IS_SAFARI) {
-      return;
-    }
+    // if(import.meta.env.DEV && IS_SAFARI) {
+    //   return;
+    // }
 
     navigator.serviceWorker.register(
       // * doesn't work

@@ -25,6 +25,7 @@ import EventListenerBase from '../helpers/eventListenerBase';
 import {MOUNT_CLASS_TO} from '../config/debug';
 import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
 import {IS_WORKER} from '../helpers/context';
+import {RtmpCallInstance} from './calls/rtmpCallsController';
 
 export type BroadcastEvents = {
   'chat_full_update': ChatId,
@@ -166,6 +167,8 @@ export type BroadcastEvents = {
 
   'call_update': PhoneCall,
   'call_signaling': {callId: CallId, data: Uint8Array},
+
+  'rtmp_call_update': RtmpCallInstance,
 
   'quick_reaction': Reaction,
 

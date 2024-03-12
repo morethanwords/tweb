@@ -349,7 +349,7 @@ export default class ChatPinnedMessage {
   }
 
   public destroy() {
-    this.pinnedMessageContainer.divAndCaption.container.remove();
+    this.pinnedMessageContainer.container.remove();
     this.pinnedMessageContainer.toggle(true);
     this.listenerSetter.removeAll();
     this.unsetScrollDownListener(false);
@@ -635,7 +635,7 @@ export default class ChatPinnedMessage {
 
       await Promise.all(loadPromises);
 
-      this.pinnedMessageContainer.divAndCaption.container.classList.toggle('is-media', isMediaSet);
+      this.pinnedMessageContainer.container.classList.toggle('is-media', isMediaSet);
 
       // if(this.wasPinnedIndex !== this.pinnedIndex) {
       this.animatedSubtitle.animate(pinnedIndex, this.wasPinnedIndex);
@@ -649,13 +649,13 @@ export default class ChatPinnedMessage {
 
       this.pinnedMessageBorder.render(count, count - pinnedIndex - 1);
       this.wasPinnedIndex = pinnedIndex;
-      this.pinnedMessageContainer.divAndCaption.container.dataset.mid = '' + message.mid;
+      this.pinnedMessageContainer.container.dataset.mid = '' + message.mid;
     } else {
       this.pinnedMessageContainer.toggle(true);
       this.wasPinnedIndex = 0;
     }
 
-    this.pinnedMessageContainer.divAndCaption.container.classList.toggle('is-many', this.count > 1);
+    this.pinnedMessageContainer.container.classList.toggle('is-many', this.count > 1);
     // });
   }
 }
