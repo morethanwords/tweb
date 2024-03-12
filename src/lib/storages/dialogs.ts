@@ -16,7 +16,7 @@ import tsNow from '../../helpers/tsNow';
 import SearchIndex from '../searchIndex';
 import {SliceEnd} from '../../helpers/slicedArray';
 import {MyDialogFilter} from './filters';
-import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, NULL_PEER_ID, REAL_FOLDERS, REAL_FOLDER_ID, TEST_NO_SAVED} from '../mtproto/mtproto_config';
+import {CAN_HIDE_TOPIC, FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, NULL_PEER_ID, REAL_FOLDERS, REAL_FOLDER_ID, TEST_NO_SAVED} from '../mtproto/mtproto_config';
 import {MaybePromise, NoneToVoidFunction} from '../../types';
 import ctx from '../../environment/ctx';
 import AppStorage from '../storage';
@@ -841,7 +841,7 @@ export default class DialogsStorage extends AppManager {
     const isTopic = isForumTopic(dialog);
     const _isDialog = isDialog(dialog);
     let topDate = 0, isPinned: boolean;
-    if(isTopic && dialog.pFlags.hidden) { // general topic must be first
+    if(isTopic && dialog.pFlags.hidden && CAN_HIDE_TOPIC) { // general topic must be first
       topDate = this.generateDialogPinnedDateByIndex(0xFFF);
       isPinned = true;
     } else if(dialog.pFlags.pinned && !noPinnedOrderUpdate) {

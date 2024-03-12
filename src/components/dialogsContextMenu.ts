@@ -16,7 +16,7 @@ import findUpTag from '../helpers/dom/findUpTag';
 import {toastNew} from './toast';
 import PopupMute from './popups/mute';
 import {AppManagers} from '../lib/appManagers/managers';
-import {FOLDER_ID_ARCHIVE, GENERAL_TOPIC_ID, REAL_FOLDERS} from '../lib/mtproto/mtproto_config';
+import {CAN_HIDE_TOPIC, FOLDER_ID_ARCHIVE, GENERAL_TOPIC_ID, REAL_FOLDERS} from '../lib/mtproto/mtproto_config';
 import showLimitPopup from './popups/limit';
 import createContextMenu from '../helpers/dom/createContextMenu';
 import PopupElement from './popups';
@@ -75,7 +75,7 @@ export default class DialogsContextMenu {
   }
 
   private getButtons() {
-    return this.buttons ??= [{
+    this.buttons ??= [{
       icon: 'newtab',
       text: 'OpenInNewTab',
       onClick: (e) => {
@@ -174,14 +174,14 @@ export default class DialogsContextMenu {
       text: 'Unarchive',
       onClick: this.onArchiveClick,
       verify: () => this.filterId === FOLDER_ID_ARCHIVE && this.peerId !== rootScope.myId
-    }, {
+    }, CAN_HIDE_TOPIC ? {
       icon: 'hide',
       text: 'Hide',
       onClick: this.onHideTopicClick,
       verify: () => {
         return this.canManageTopics && (this.dialog as ForumTopic.forumTopic).id === GENERAL_TOPIC_ID;
       }
-    }, {
+    } : undefined, {
       icon: 'lock',
       text: 'CloseTopic',
       onClick: this.onToggleTopicClick,
@@ -235,6 +235,8 @@ export default class DialogsContextMenu {
         return true;
       }
     }];
+
+    return this.buttons = this.buttons.filter(Boolean);
   }
 
   private onArchiveClick = async() => {

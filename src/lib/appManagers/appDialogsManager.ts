@@ -45,7 +45,7 @@ import isInDOM from '../../helpers/dom/isInDOM';
 import {setSendingStatus} from '../../components/sendingStatus';
 import SortedList, {SortedElementBase} from '../../helpers/sortedList';
 import debounce from '../../helpers/schedulers/debounce';
-import {FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, NULL_PEER_ID, REAL_FOLDERS} from '../mtproto/mtproto_config';
+import {CAN_HIDE_TOPIC, FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, NULL_PEER_ID, REAL_FOLDERS} from '../mtproto/mtproto_config';
 import groupCallActiveIcon from '../../components/groupCallActiveIcon';
 import {Chat, ChatlistsChatlistUpdates, DialogFilter, Message, MessageReplyHeader} from '../../layer';
 import IS_GROUP_CALL_SUPPORTED from '../../environment/groupCallSupport';
@@ -1269,7 +1269,7 @@ class Some3 extends Some<ForumTopic> {
       offsetIndex,
       limit: loadCount,
       filterId,
-      skipMigrated: true
+      skipMigrated: !!CAN_HIDE_TOPIC
     });
   }
 }
