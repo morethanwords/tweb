@@ -6277,7 +6277,7 @@ export default class ChatBubbles {
                   useSearch: !(message as Message.message).pFlags.is_scheduled,
                   isScheduled: (message as Message.message).pFlags.is_scheduled
                 } : undefined,
-                noInfo: message.mid < 0,
+                noInfo: message.mid <= 0,
                 noAutoplayAttribute: !!messageMedia.pFlags.spoiler
               });
 

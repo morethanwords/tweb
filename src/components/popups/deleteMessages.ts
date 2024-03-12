@@ -32,7 +32,7 @@ export default class PopupDeleteMessages {
     mids = mids.slice();
 
     const managers = PopupElement.MANAGERS;
-    const peerTitleElement = await wrapPeerTitle({peerId, threadId});
+    const peerTitleElement = await wrapPeerTitle({peerId, threadId, onlyFirstName: true});
     const messages = await Promise.all(mids.map((mid) => managers.appMessagesManager.getMessageByPeer(peerId, mid)));
 
     const callback = (e: MouseEvent, checked: PopupPeerButtonCallbackCheckboxes, revoke?: boolean) => {
