@@ -7,7 +7,7 @@
 import type AppAttachMenuBotsManager from '../../lib/appManagers/appAttachMenuBotsManager';
 import PopupElement from '.';
 import safeAssign from '../../helpers/object/safeAssign';
-import {AttachMenuBot, DataJSON, WebViewResult} from '../../layer';
+import {AttachMenuBot, DataJSON, Document, WebViewResult} from '../../layer';
 import appImManager from '../../lib/appManagers/appImManager';
 import ButtonMenuToggle from '../buttonMenuToggle';
 import TelegramWebView from '../telegramWebView';
@@ -26,6 +26,8 @@ import {LangPackKey} from '../../lib/langPack';
 import PopupPickUser from './pickUser';
 import {calculateLuminance, calculateOpacity, getTextColor, hexToRgb, rgbaToRgb} from '../../helpers/color';
 import safeWindowOpen from '../../helpers/dom/safeWindowOpen';
+import wrapAttachBotIcon from '../wrappers/attachBotIcon';
+import getAttachMenuBotIcon from '../../lib/appManagers/utils/attachMenuBots/getAttachMenuBotIcon';
 
 const SANDBOX_ATTRIBUTES = [
   'allow-scripts',
@@ -49,6 +51,7 @@ export default class PopupWebApp extends PopupElement<{
   private showSettingsButton: boolean;
   private readyResult: TelegramWebViewEventMap['iframe_ready'];
   private reloadTimeout: number;
+  private iconElement: HTMLElement;
   // private mainButtonText: HTMLElement;
 
   constructor(options: {
@@ -83,6 +86,8 @@ export default class PopupWebApp extends PopupElement<{
     safeAssign(this, options);
     const botId = this.webViewOptions.botId;
     const botPeerId = botId.toPeerId();
+
+    console.log(this);
 
     const btnMenu = ButtonMenuToggle({
       listenerSetter: this.listenerSetter,
@@ -386,9 +391,19 @@ export default class PopupWebApp extends PopupElement<{
     const telegramWebView = this.telegramWebView = new TelegramWebView({
       url: this.webViewResultUrl.url,
       sandbox: SANDBOX_ATTRIBUTES,
-      allow: 'camera; microphone; geolocation;'
+      allow: 'camera; microphone; geolocation;',
+      onLoad: () => {
+        if(this.iconElement) {
+          this.iconElement.style.opacity = '0';
+        }
+
+        telegramWebView.iframe.style.opacity = '1';
+        telegramWebView.iframe.classList.remove('disable-hover');
+      }
     });
 
+    telegramWebView.iframe.style.opacity = '0';
+    telegramWebView.iframe.classList.add('disable-hover');
     telegramWebView.iframe.allowFullscreen = true;
 
     telegramWebView.addMultipleEventsListeners({
@@ -533,10 +548,36 @@ export default class PopupWebApp extends PopupElement<{
       this.title.append(await wrapPeerTitle({peerId: this.webViewOptions.botId.toPeerId()}));
     }
 
+    let hasIcon = false;
+    this.iconElement = document.createElement('span');
+    /* if(this.webViewOptions.app) {
+
+    } else  */try {
+      const attachMenuBot = this.attachMenuBot ?? await this.managers.appAttachMenuBotsManager.getAttachMenuBot(this.webViewOptions.botId);
+      const icon = getAttachMenuBotIcon(attachMenuBot);
+      if(icon) {
+        await wrapAttachBotIcon({
+          element: this.iconElement,
+          doc: icon.icon as Document.document,
+          size: 80,
+          textColor: () => 'secondary-text-color',
+          strokeWidth: () => .5
+        });
+
+        hasIcon = true;
+      }
+    } catch(err) {}
+
+    if(hasIcon) {
+      this.iconElement.classList.add('popup-web-app-icon');
+    } else {
+      this.iconElement = undefined;
+    }
+
     const telegramWebView = this.createWebView();
     this.setBodyColor(this.getThemeParams().bg_color);
     this.setHeaderColor({color_key: 'bg_color'});
-    this.body.prepend(telegramWebView.iframe);
+    this.body.prepend(...[this.iconElement, telegramWebView.iframe].filter(Boolean));
     this.show();
     telegramWebView.onMount();
 

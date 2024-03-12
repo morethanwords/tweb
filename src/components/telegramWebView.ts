@@ -23,10 +23,13 @@ export default class TelegramWebView extends EventListenerBase<{
   public iframe: HTMLIFrameElement;
   public lastDispatchedWebViewEvent: {type: keyof TelegramWebViewSendEventMap, count: number};
 
-  constructor({url, sandbox, allow}: {
+  private onLoad: () => void;
+
+  constructor({url, sandbox, allow, onLoad}: {
     url: string,
     sandbox?: string,
-    allow?: string
+    allow?: string,
+    onLoad?: () => void
   }) {
     super(false);
 
@@ -34,6 +37,11 @@ export default class TelegramWebView extends EventListenerBase<{
     iframe.src = url;
     if(sandbox) iframe.setAttribute('sandbox', sandbox);
     if(allow) iframe.allow = allow;
+
+    if(onLoad) {
+      this.onLoad = onLoad;
+      iframe.addEventListener('load', onLoad, {once: true});
+    }
   }
 
   public onMount() {
@@ -43,6 +51,7 @@ export default class TelegramWebView extends EventListenerBase<{
   public destroy() {
     this.cleanup();
     weakMap.delete(this.iframe.contentWindow);
+    this.iframe.removeEventListener('load', this.onLoad);
   }
 
   private onTelegramWebViewEvent = ({eventType, eventData}: TelegramWebViewEvent) => {

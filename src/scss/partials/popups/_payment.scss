@@ -92,6 +92,10 @@
     max-height: 100%;
     border: none;
     flex: 1 1 auto;
+
+    @include animation-level(2) {
+      transition: opacity var(--transition-standard-in);
+    }
   }
 
   .row {

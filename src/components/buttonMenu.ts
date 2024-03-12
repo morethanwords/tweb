@@ -14,14 +14,11 @@ import ListenerSetter from '../helpers/listenerSetter';
 import {_i18n, FormatterArguments, i18n, LangPackKey} from '../lib/langPack';
 import CheckboxField from './checkboxField';
 import {Document} from '../layer';
-import wrapPhoto from './wrappers/photo';
-import textToSvgURL from '../helpers/textToSvgURL';
-import customProperties from '../helpers/dom/customProperties';
 import {IS_MOBILE} from '../environment/userAgent';
 import ripple from './ripple';
 import Icon from './icon';
 import RadioForm from './radioForm';
-import rootScope from '../lib/rootScope';
+import wrapAttachBotIcon from './wrappers/attachBotIcon';
 
 type ButtonMenuItemInner = Omit<Parameters<typeof ButtonMenuSync>[0], 'listenerSetter'>;
 export type ButtonMenuItemOptions = {
@@ -56,8 +53,6 @@ export type ButtonMenuItemOptionsVerifiable = ButtonMenuItemOptions & {
   verify?: () => boolean | Promise<boolean>
 };
 
-let addedThemeListener = false;
-
 function ButtonMenuItem(options: ButtonMenuItemOptions) {
   if(options.element) return [options.separator as HTMLElement, options.element].filter(Boolean);
 
@@ -88,59 +83,17 @@ function ButtonMenuItem(options: ButtonMenuItemOptions) {
 
   if(iconDoc) {
     const iconElement = document.createElement('span');
-    iconElement.classList.add('btn-menu-item-icon', 'is-external');
+    iconElement.classList.add('btn-menu-item-icon');
     el.append(iconElement);
 
-    if(!addedThemeListener) {
-      addedThemeListener = true;
+    const isMobile = () => document.documentElement.classList.contains('is-mobile');
 
-      rootScope.addEventListener('theme_changed', () => {
-        const elements = document.querySelectorAll<HTMLElement>('.btn-menu-item-icon.is-external');
-        elements.forEach((element) => {
-          const set = (element as any).set;
-          set?.(true);
-        });
-      });
-    }
-
-    const set = async(manual?: boolean) => {
-      const isMobile = document.documentElement.classList.contains('is-mobile');
-      const svg: SVGSVGElement = (iconElement as any).svg;
-      const color = customProperties.getProperty(isMobile ? 'secondary-text-color' : 'primary-text-color');
-      svg.querySelectorAll('path').forEach((path) => {
-        path.setAttributeNS(null, 'fill', color);
-        path.style.stroke = color;
-        path.style.strokeWidth = (isMobile ? .625 : .375) + 'px';
-      });
-
-      const url = await textToSvgURL(svg.outerHTML);
-      if(!manual) {
-        return url;
-      }
-
-      ((iconElement as any).image as HTMLImageElement).src = url;
-    };
-
-    options.loadPromise = wrapPhoto({
-      container: iconElement,
-      photo: iconDoc,
-      boxWidth: 24,
-      boxHeight: 24,
-      withoutPreloader: true,
-      noFadeIn: true,
-      noBlur: true,
-      processUrl: async(url) => {
-        const text = await (await fetch(url)).text();
-        const doc = new DOMParser().parseFromString(text, 'image/svg+xml');
-        const svg = doc.firstElementChild as HTMLElement;
-        (iconElement as any).svg = svg;
-        (iconElement as any).set = set;
-        return set();
-      }
-    }).then((ret) => {
-      iconElement.style.width = iconElement.style.height = '';
-      (iconElement as any).image = ret.images.full;
-      return ret.loadPromises.thumb;
+    options.loadPromise = wrapAttachBotIcon({
+      doc: iconDoc,
+      element: iconElement,
+      size: 24,
+      textColor: () => isMobile() ? 'secondary-text-color' : 'primary-text-color',
+      strokeWidth: () => isMobile() ? .625 : .375
     });
   }
 
