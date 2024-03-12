@@ -239,7 +239,7 @@ export default class Chat extends EventListenerBase<{
           //   };
           // }
         } else {
-          item.classList.add('is-image');
+          item.classList.add('is-image', 'chat-background-item-scalable');
         }
       } else {
         item.classList.add('is-color');
@@ -253,6 +253,7 @@ export default class Chat extends EventListenerBase<{
       gradientRenderer = this.gradientRenderer = _gradientRenderer;
       gradientCanvas = this.gradientCanvas = canvas;
       gradientCanvas.classList.add('chat-background-item-canvas', 'chat-background-item-color-canvas');
+      gradientCanvas.classList.add('chat-background-item-scalable');
 
       // if(liteMode.isAvailable('animations')) {
       //   gradientRenderer.scrollAnimate(true);

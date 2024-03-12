@@ -11,6 +11,8 @@ import mediaSizes, {ScreenSize} from '../../helpers/mediaSizes';
 import windowSize from '../../helpers/windowSize';
 import IS_IMAGE_BITMAP_SUPPORTED from '../../environment/imageBitmapSupport';
 
+const SCALE_PATTERN = false;
+
 type ChatBackgroundPatternRendererInitOptions = {
   url: string,
   width: number,
@@ -200,7 +202,7 @@ export default class ChatBackgroundPatternRenderer {
 
     canvas.dpr = devicePixelRatio;
     canvas.dataset.originalHeight = '' + height;
-    if(mediaSizes.activeScreen === ScreenSize.large) height *= 1.5;
+    if(mediaSizes.activeScreen === ScreenSize.large && SCALE_PATTERN) height *= 1.5;
     canvas.width = width;
     canvas.height = height;
   }
