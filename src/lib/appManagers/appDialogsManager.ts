@@ -112,6 +112,7 @@ import createBadge from '../../helpers/createBadge';
 import {isDialog, isForumTopic, isSavedDialog} from './utils/dialogs/isDialog';
 import {ChatType} from '../../components/chat/chat';
 import PopupDeleteDialog from '../../components/popups/deleteDialog';
+import rtmpCallsController from '../calls/rtmpCallsController';
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 
@@ -2009,6 +2010,7 @@ export class AppDialogsManager {
     groupCallsController.construct(managers);
     callsController.construct(managers);
     appImManager.construct(managers);
+    rtmpCallsController.construct(managers);
     new ConnectionStatusComponent().construct(managers, this.chatsContainer, appSidebarLeft.inputSearch);
 
     // start

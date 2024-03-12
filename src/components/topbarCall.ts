@@ -29,6 +29,11 @@ import {AppManagers} from '../lib/appManagers/managers';
 import groupCallsController from '../lib/calls/groupCallsController';
 import StreamManager from '../lib/calls/streamManager';
 import callsController from '../lib/calls/callsController';
+import rtmpCallsController, {RtmpCallInstance} from '../lib/calls/rtmpCallsController';
+import {AppMediaViewerRtmp} from './appMediaViewerRtmp';
+import {AnyClass} from '../types';
+import RtmpDescriptionElement from './rtmp/description';
+import RTMP_STATE from '../lib/calls/rtmpState';
 
 function convertCallStateToGroupState(state: CALL_STATE, isMuted: boolean) {
   switch(state) {
@@ -42,6 +47,18 @@ function convertCallStateToGroupState(state: CALL_STATE, isMuted: boolean) {
   }
 }
 
+function convertRtmpStateToGroupState(state: RTMP_STATE) {
+  switch(state) {
+    case RTMP_STATE.CLOSED:
+      return GROUP_CALL_STATE.CLOSED;
+    case RTMP_STATE.CONNECTING:
+    case RTMP_STATE.BUFFERING:
+      return GROUP_CALL_STATE.CONNECTING;
+    default:
+      return GROUP_CALL_STATE.MUTED_BY_ADMIN;
+  }
+}
+
 const CLASS_NAME = 'topbar-call';
 
 export default class TopbarCall {
@@ -49,14 +66,17 @@ export default class TopbarCall {
   private listenerSetter: ListenerSetter;
   private weave: TopbarWeave;
   private center: HTMLDivElement;
+  private muteButton: HTMLButtonElement;
+  private endButton: HTMLButtonElement;
   private groupCallTitle: GroupCallTitleElement;
   private groupCallDescription: GroupCallDescriptionElement;
   private groupCallMicrophoneIconMini: GroupCallMicrophoneIconMini;
   private callDescription: CallDescriptionElement;
+  private rtmpDescription: RtmpDescriptionElement;
 
-  private currentDescription: GroupCallDescriptionElement | CallDescriptionElement;
+  private currentDescription: GroupCallDescriptionElement | CallDescriptionElement | RtmpDescriptionElement;
 
-  private instance: GroupCallInstance | any/* CallInstance */;
+  private instance: GroupCallInstance | CallInstance | RtmpCallInstance;
   private instanceListenerSetter: ListenerSetter;
 
   constructor(
@@ -87,6 +107,10 @@ export default class TopbarCall {
       }
     });
 
+    listenerSetter.add(rtmpCallsController)('currentCallChanged', (call) => {
+      this.updateInstance(call);
+    });
+
     listenerSetter.add(StreamManager.ANALYSER_LISTENER)('amplitude', ({amplitudes, type}) => {
       const {weave} = this;
       if(!amplitudes.length || !weave/*  || type !== 'input' */) return;
@@ -107,7 +131,7 @@ export default class TopbarCall {
 
   private clearCurrentInstance() {
     if(!this.instance) return;
-    this.center.textContent = '';
+    this.center.replaceChildren();
 
     if(this.currentDescription) {
       this.currentDescription.detach();
@@ -124,6 +148,12 @@ export default class TopbarCall {
       this.construct = undefined;
     }
 
+    const c: [string, AnyClass][] = [
+      ['group-call', GroupCallInstance],
+      ['call', CallInstance],
+      ['rtmp', RtmpCallInstance]
+    ];
+
     const isChangingInstance = this.instance !== instance;
     if(isChangingInstance) {
       this.clearCurrentInstance();
@@ -131,23 +161,37 @@ export default class TopbarCall {
       this.instance = instance;
       this.instanceListenerSetter = new ListenerSetter();
 
-      this.instanceListenerSetter.add(instance as GroupCallInstance)('state', this.onState);
+      if(instance) {
+        this.instanceListenerSetter.add(instance as GroupCallInstance)('state', this.onState);
 
-      if(instance instanceof GroupCallInstance) {
-        this.currentDescription = this.groupCallDescription;
-      } else {
-        this.currentDescription = this.callDescription;
-        this.instanceListenerSetter.add(instance)('muted', this.onState);
+        if(instance instanceof GroupCallInstance) {
+          this.currentDescription = this.groupCallDescription;
+        } else if(instance instanceof CallInstance) {
+          this.currentDescription = this.callDescription;
+          this.instanceListenerSetter.add(instance)('muted', this.onState);
+        } else if(instance instanceof RtmpCallInstance) {
+          this.currentDescription = this.rtmpDescription;
+        }
+
+        c.forEach(([className, _class]) => {
+          const good = instance instanceof _class;
+          this.container.classList.toggle(`is-${className}`, good);
+
+          if(good) {
+            document.documentElement.style.setProperty('--topbar-call-height', `var(--topbar-call-${className}-height)`);
+          }
+        });
       }
-
-      this.container.classList.toggle('is-call', !(instance instanceof GroupCallInstance));
     }
 
-    const isMuted = this.instance.isMuted;
-    const state = instance instanceof GroupCallInstance ? instance.state : convertCallStateToGroupState(instance.connectionState, isMuted);
+    const isMuted = instance instanceof RtmpCallInstance ? undefined : !instance || (this.instance as GroupCallInstance).isMuted;
+    let state: GROUP_CALL_STATE;
+    if(!instance) state = GROUP_CALL_STATE.CLOSED;
+    else if(instance instanceof GroupCallInstance) state = instance.state;
+    else if(instance instanceof RtmpCallInstance) state = convertRtmpStateToGroupState(instance.state);
+    else state = convertCallStateToGroupState(instance.connectionState, isMuted);
 
     const {weave} = this;
-
     weave.componentDidMount();
 
     const isClosed = state === GROUP_CALL_STATE.CLOSED;
@@ -173,7 +217,11 @@ export default class TopbarCall {
       return;
     }
 
-    weave.setCurrentState(state, true);
+    weave.setCurrentState(
+      instance instanceof RtmpCallInstance ? 'rtmp' : 'group',
+      instance instanceof RtmpCallInstance ? instance.state : state,
+      true
+    );
     // if(state === GROUP_CALL_STATE.CONNECTING) {
     //   weave.setCurrentState(state, true);
     // } else {
@@ -190,7 +238,11 @@ export default class TopbarCall {
 
     this.setTitle(instance);
     this.setDescription(instance);
-    this.groupCallMicrophoneIconMini.setState(!isMuted);
+    this.muteButton.classList.toggle('hide', isMuted === undefined);
+    if(isMuted !== undefined) {
+      this.groupCallMicrophoneIconMini.setState(!isMuted);
+    }
+    this.endButton.classList.toggle('hide', instance instanceof RtmpCallInstance);
   }
 
   private setDescription(instance: TopbarCall['instance']) {
@@ -198,7 +250,9 @@ export default class TopbarCall {
   }
 
   private setTitle(instance: TopbarCall['instance']) {
-    if(instance instanceof GroupCallInstance) {
+    if(instance instanceof RtmpCallInstance) {
+      replaceContent(this.center, new PeerTitle({peerId: instance.peerId}).element);
+    } else if(instance instanceof GroupCallInstance) {
       return this.groupCallTitle.update(instance);
     } else {
       replaceContent(this.center, new PeerTitle({peerId: instance.interlocutorUserId.toPeerId()}).element);
@@ -215,12 +269,12 @@ export default class TopbarCall {
 
     const groupCallMicrophoneIconMini = this.groupCallMicrophoneIconMini = new GroupCallMicrophoneIconMini();
 
-    const mute = ButtonIcon();
+    const mute = this.muteButton = ButtonIcon();
     mute.append(groupCallMicrophoneIconMini.container);
     left.append(mute);
 
     const throttledMuteClick = throttle(() => {
-      this.instance.toggleMuted();
+      (this.instance as GroupCallInstance | CallInstance).toggleMuted();
     }, 600, true);
 
     attachClickEvent(mute, (e) => {
@@ -236,10 +290,12 @@ export default class TopbarCall {
 
     this.callDescription = new CallDescriptionElement(left);
 
+    this.rtmpDescription = new RtmpDescriptionElement(center, left);
+
     const right = document.createElement('div');
     right.classList.add(CLASS_NAME + '-right');
 
-    const end = ButtonIcon('endcall_filled');
+    const end = this.endButton = ButtonIcon('endcall_filled');
     right.append(end);
 
     attachClickEvent(end, (e) => {
@@ -250,7 +306,9 @@ export default class TopbarCall {
         return;
       }
 
-      if(instance instanceof GroupCallInstance) {
+      if(instance instanceof RtmpCallInstance) {
+        rtmpCallsController.leaveCall();
+      } else if(instance instanceof GroupCallInstance) {
         instance.hangUp();
       } else {
         instance.hangUp('phoneCallDiscardReasonHangup');
@@ -258,7 +316,9 @@ export default class TopbarCall {
     }, {listenerSetter});
 
     attachClickEvent(container, () => {
-      if(this.instance instanceof GroupCallInstance) {
+      if(this.instance instanceof RtmpCallInstance) {
+        AppMediaViewerRtmp.closeActivePip();
+      } else if(this.instance instanceof GroupCallInstance) {
         if(PopupElement.getPopups(PopupGroupCall).length) {
           return;
         }

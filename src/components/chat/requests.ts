@@ -137,7 +137,8 @@ export default class ChatRequests extends PinnedContainer {
     });
   }
 
-  public destroy() {
-    // this.middlewareHelper.destroy();
-  }
+  // public destroy() {
+  //   super.destroy();
+  //   this.middlewareHelper.destroy();
+  // }
 }

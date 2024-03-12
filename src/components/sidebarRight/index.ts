@@ -90,8 +90,11 @@ export class AppSidebarRight extends SidebarSlider {
   }
 
   private setColumnProportion() {
-    const proportion = this.sidebarEl.scrollWidth / this.sidebarEl.previousElementSibling.scrollWidth;
+    const middleWidth = this.sidebarEl.previousElementSibling.scrollWidth;
+    const proportion = this.sidebarEl.scrollWidth / middleWidth;
     document.documentElement.style.setProperty('--right-column-proportion', '' + proportion);
+    document.documentElement.style.setProperty('--middle-column-width', middleWidth + 'px');
+    document.documentElement.style.setProperty('--middle-column-width-value', '' + middleWidth);
     // this.rect = this.sidebarEl.getBoundingClientRect();
   }
 

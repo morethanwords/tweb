@@ -199,7 +199,8 @@ export default class ChatActions extends PinnedContainer {
     });
   }
 
-  public destroy() {
-    // this.middlewareHelper.destroy();
-  }
+  // public destroy() {
+  //   super.destroy();
+  //   this.middlewareHelper.destroy();
+  // }
 }

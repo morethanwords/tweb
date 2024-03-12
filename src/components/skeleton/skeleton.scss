@@ -1,0 +1,29 @@
+.skeleton {
+  background: var(--light-primary-color);
+  height: 1em;
+  min-height: 10px;
+  margin: 2px 0;
+  display: block;
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+
+  &:before {
+    content: "";
+    display: block;
+    position: absolute;
+    inset: 0;
+
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.5) 50%, transparent 100%);
+    animation: skeleton-animation 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+@keyframes skeleton-animation {
+  0% {
+    transform: translateX(-125%) skewX(-45deg);
+  }
+  40%, 100% {
+    transform: translateX(125%) skewX(-45deg);
+  }
+}

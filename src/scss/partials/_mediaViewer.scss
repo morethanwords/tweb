@@ -63,9 +63,9 @@ $inactive-opacity: .4;
     display: flex;
     flex-flow: row nowrap;
     padding: .5rem .75rem;
+    gap: .25rem;
 
     .btn-icon {
-      margin: 0 .25rem;
       transition: var(--open-duration);
 
       @include hover() {
@@ -291,17 +291,14 @@ $inactive-opacity: .4;
     }
 
     .ckin__player {
-      width: 100%;
-      height: 100%;
       position: absolute;
-      left: 0;
-      top: 0;
+      inset: 0;
     }
 
-    > svg {
-      width: 100%;
-      height: 100%;
-    }
+    // > svg {
+    //   width: 100%;
+    //   height: 100%;
+    // }
 
     img,
     video,
@@ -314,7 +311,7 @@ $inactive-opacity: .4;
       object-fit: cover;
       //object-fit: contain;
       opacity: 1;
-      transition: var(--open-duration) opacity;
+      transition: opacity var(--transition-standard-in);
 
       /* border-radius: inherit;
       transition: var(--open-duration) border-radius; */
@@ -325,20 +322,32 @@ $inactive-opacity: .4;
       //}
     }
 
-    // !SAFARI
-    svg {
-      img,
-      video {
-        position: unset;
-      }
+    .thumbnail-avatar {
+      user-select: none;
+      opacity: 1;
+      transition: opacity var(--transition-standard-in);
     }
 
+    .canvas-thumbnail.hide-thumbnail,
+    .thumbnail-avatar.hide-thumbnail {
+      opacity: 0;
+      transition: opacity var(--transition-standard-out);
+    }
+
+    // !SAFARI
+    // svg {
+    //   img,
+    //   video {
+    //     position: unset;
+    //   }
+    // }
+
     &.active {
-      transition: transform var(--open-duration), border-radius var(--open-duration), opacity var(--open-duration) calc(var(--open-duration) / 8);
+      transition: transform var(--open-duration), border-radius var(--open-duration), opacity var(--open-duration);
     }
 
     &.active.opening {
-      transition: transform var(--open-duration), border-radius var(--open-duration), opacity var(--open-duration) 0s;
+      transition: transform var(--open-duration), border-radius var(--open-duration), opacity var(--open-duration);
     }
 
     &.moving {
@@ -359,13 +368,13 @@ $inactive-opacity: .4;
       transform: translate3d(-50%, -50%, 0) !important;
       max-width: 100vw;
       // max-height: calc((var(--vh, 1vh) * 100) - 120px);
-      max-height: calc((var(--vh, 1vh) * 100) - 15rem);
+      max-height: calc((var(--vh, 1vh) * 100) - var(--padding-vertical));
 
       @include respond-to(handhelds) {
+        --padding-vertical: 7.5rem;
         width: 100% !important;
         height: 100% !important;
         max-width: 100vw !important;
-        max-height: calc((var(--vh, 1vh) * 100) - 120px);
         // max-height: 100vh !important;
         // TODO: max-height: calc((var(--vh, 1vh) * 100));
         //height: calc(100% - 100px) !important;
@@ -414,10 +423,11 @@ $inactive-opacity: .4;
       }
     }
 
-    &.hiding {
+    &.in-pip {
       img,
       video,
-      .canvas-thumbnail {
+      .canvas-thumbnail,
+      .thumbnail-avatar {
         opacity: 0;
       }
     }
@@ -496,10 +506,8 @@ $inactive-opacity: .4;
   &-whole {
     --open-duration: .2s;
     --move-duration: .35s;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    --padding-vertical: 15rem;
+    inset: 0;
     position: fixed!important;
     display: block;
     z-index: 4;
@@ -575,7 +583,8 @@ $inactive-opacity: .4;
 
     &.no-forwards {
       img,
-      .canvas-thumbnail {
+      .canvas-thumbnail,
+      .thumbnail-avatar {
         pointer-events: none;
       }
 
@@ -697,4 +706,60 @@ $inactive-opacity: .4;
   opacity: 0;
   visibility: hidden;
   transition: opacity var(--open-duration) 0s, visibility 0s var(--open-duration);
+}
+
+.media-viewer-whole.live {
+  --padding-vertical: 7.5rem;
+
+  .media-viewer-topbar {
+    padding: 0 .75rem;
+  }
+
+  .media-viewer-userpic {
+    margin-right: 1.125rem;
+    --size: 42px;
+  }
+
+  .media-viewer-topbar .btn-icon,
+  .media-viewer-topbar .media-viewer-author {
+    opacity: 1;
+  }
+
+  .media-viewer-author-right {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .media-viewer-name {
+    margin: 0;
+  }
+
+  .media-viewer-date {
+    color: rgba(255, 255, 255, .5);
+    line-height: 20px;
+  }
+
+  .media-viewer-buttons {
+    padding: .5rem;
+  }
+
+  .thumbnail-avatar {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    border-radius: inherit !important;
+    pointer-events: none;
+
+    img {
+      object-fit: cover;
+    }
+  }
+
+  .canvas-thumbnail {
+    object-fit: cover;
+    position: relative;
+    border-radius: inherit;
+    pointer-events: none;
+  }
 }

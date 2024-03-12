@@ -58,6 +58,45 @@ $transition: .2s ease-in-out;
       }
     }
   }
+
+  &-container-rtmp {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+    backdrop-filter: blur(0px) brightness(1.0);
+    border-radius: inherit;
+
+    body:not(.animation-level-0) & {
+      transition: opacity $transition, backdrop-filter $transition;
+    }
+
+    &.is-visible {
+      &:not(.backwards) {
+        opacity: 1;
+      }
+    }
+  }
+}
+
+.preloader-template {
+  border-radius: inherit;
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+}
+
+.ckin__player.is-buffering.default-live {
+  .preloader {
+    &-container-rtmp {
+      &.is-visible {
+        &:not(.backwards) {
+          backdrop-filter: blur(10px) brightness(0.8);
+        }
+      }
+    }
+  }
 }
 
 .preloader-container {

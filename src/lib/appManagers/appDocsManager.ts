@@ -377,7 +377,12 @@ export class AppDocsManager extends AppManager {
   public requestDocPart(docId: DocId, dcId: number, offset: number, limit: number) {
     const doc = this.getDoc(docId);
     if(!doc) return Promise.reject(makeError('NO_DOC'));
-    return this.apiFileManager.requestFilePart(dcId, getDocumentInputFileLocation(doc), offset, limit);
+    return this.apiFileManager.requestFilePart({
+      dcId,
+      location: getDocumentInputFileLocation(doc),
+      offset,
+      limit
+    });
   }
 
   public fixChromiumMp4(src: string) {

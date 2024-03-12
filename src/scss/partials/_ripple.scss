@@ -35,10 +35,7 @@
 .c-ripple {
   //display: none !important;
   position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  right: 0;
+  inset: 0;
   // pointer-events: none;
 
   // ! with these rules ripple lags
@@ -54,7 +51,7 @@
   }
 
   &__circle {
-    opacity: 1;
+    opacity: var(--ripple-max-opacity, 1);
     background-color: var(--ripple-color);
     display: block;
     position: absolute;

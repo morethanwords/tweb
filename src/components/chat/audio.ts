@@ -132,9 +132,8 @@ export default class ChatAudio extends PinnedContainer {
   }
 
   public destroy() {
-    if(this.progressLine) {
-      this.progressLine.removeListeners();
-    }
+    super.destroy();
+    this.progressLine?.removeListeners();
   }
 
   private onPlaybackParams = (playbackParams: ReturnType<AppMediaPlaybackController['getPlaybackParams']>) => {

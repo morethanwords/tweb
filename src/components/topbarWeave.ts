@@ -9,45 +9,69 @@
  * https://github.com/evgeny-nadymov/telegram-react/blob/master/LICENSE
  */
 
+import CALL_STATE from '../lib/calls/callState';
 import GROUP_CALL_STATE from '../lib/calls/groupCallState';
+import RTMP_STATE from '../lib/calls/rtmpState';
 import LineBlobDrawable from './lineBlobDrawable';
+
+type WeavingCallType = 'group' | 'call' | 'rtmp';
+type WeavingCallState = GROUP_CALL_STATE | CALL_STATE | RTMP_STATE;
 
 export class WeavingState {
   public shader: (ctx: CanvasRenderingContext2D, left: number, top: number, right: number, bottom: number) => void;
 
-  constructor(public stateId: GROUP_CALL_STATE) {
-    this.createGradient(stateId);
+  constructor(public type: WeavingCallType, public state: WeavingCallState) {
+    this.createGradient();
   }
 
-  public createGradient(stateId: GROUP_CALL_STATE) {
+  private createGradient() {
     this.shader = (ctx, left, top, right, bottom) => {
-      ctx.fillStyle = WeavingState.getGradientFromType(ctx, stateId, left, top, right, bottom);
+      ctx.fillStyle = WeavingState.getGradientFromType(ctx, this.type, this.state, left, top, right, bottom);
     };
-  }
-
-  // Android colors
-  static getGradientFromType(ctx: CanvasRenderingContext2D, type: GROUP_CALL_STATE, x0: number, y0: number, x1: number, y1: number) {
-    const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
-    if(type === GROUP_CALL_STATE.MUTED_BY_ADMIN) {
-      gradient.addColorStop(0, '#F05459');
-      gradient.addColorStop(.4, '#766EE9');
-      gradient.addColorStop(1, '#57A4FE');
-    } else if(type === GROUP_CALL_STATE.UNMUTED) {
-      gradient.addColorStop(0, '#52CE5D');
-      gradient.addColorStop(1, '#00B1C0');
-    } else if(type === GROUP_CALL_STATE.MUTED) {
-      gradient.addColorStop(0, '#0976E3');
-      gradient.addColorStop(1, '#2BCEFF');
-    } else if(type === GROUP_CALL_STATE.CONNECTING) {
-      gradient.addColorStop(0, '#8599aa');
-      gradient.addColorStop(1, '#8599aa');
-    }
-
-    return gradient;
   }
 
   update(height: number, width: number, dt: number, amplitude: number) {
     // TODO: move gradient here
+  }
+
+  public static createStates(type: WeavingCallType, states: WeavingCallState[]) {
+    return states.map((state) => [state, new WeavingState(type, state)] as const);
+  }
+
+  public static getGradientFromType(ctx: CanvasRenderingContext2D, type: WeavingCallType, state: WeavingCallState, x0: number, y0: number, x1: number, y1: number) {
+    const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
+
+    type ColorStop = [offset: number, color: string];
+    type ColorStops = ColorStop[];
+
+    const MUTED_BY_ADMIN_STOPS: ColorStops = [[0, '#F05459'], [.4, '#766EE9'], [1, '#57A4FE']];
+    const UNMUTED_STOPS: ColorStops = [[0, '#52CE5D'], [1, '#00B1C0']];
+    const MUTED_STOPS: ColorStops = [[0, '#0976E3'], [1, '#2BCEFF']];
+    const CONNECTING_STOPS: ColorStops = [[0, '#8599aa'], [1, '#8599aa']];
+    const RTMP_STOPS: ColorStops = [[0, '#4588E3'], [.5, '#976FFF'], [1, '#E46ACE']];
+
+    const map: {[key in WeavingCallType]?: [states: WeavingCallState[], stops: ColorStops][]} = {
+      group: [
+        [[GROUP_CALL_STATE.MUTED_BY_ADMIN], MUTED_BY_ADMIN_STOPS],
+        [[GROUP_CALL_STATE.UNMUTED], UNMUTED_STOPS],
+        [[GROUP_CALL_STATE.MUTED], MUTED_STOPS],
+        [[GROUP_CALL_STATE.CONNECTING], CONNECTING_STOPS]
+      ],
+      rtmp: [
+        [[RTMP_STATE.PLAYING], RTMP_STOPS],
+        [[RTMP_STATE.BUFFERING, RTMP_STATE.CONNECTING], CONNECTING_STOPS]
+      ]
+    };
+
+    const a = map[type];
+    for(const [states, colors] of a) {
+      if(states.includes(state)) {
+        for(const [offset, color] of colors) {
+          gradient.addColorStop(offset, color);
+        }
+        return gradient;
+      }
+    }
   }
 }
 
@@ -58,7 +82,8 @@ export default class TopbarWeave {
   private amplitude: number;
   private amplitude2: number;
 
-  private states: Map<GROUP_CALL_STATE, WeavingState>;
+  private allStates: Map<WeavingCallType, Map<WeavingCallState, WeavingState>>;
+  private type: WeavingCallType;
   private previousState: WeavingState;
   private currentState: WeavingState;
   private progressToState: number;
@@ -93,15 +118,30 @@ export default class TopbarWeave {
     this.amplitude = 0.0;
     this.amplitude2 = 0.0;
 
-    this.states = new Map([
-      [GROUP_CALL_STATE.UNMUTED, new WeavingState(GROUP_CALL_STATE.UNMUTED)],
-      [GROUP_CALL_STATE.MUTED, new WeavingState(GROUP_CALL_STATE.MUTED)],
-      [GROUP_CALL_STATE.MUTED_BY_ADMIN, new WeavingState(GROUP_CALL_STATE.MUTED_BY_ADMIN)],
-      [GROUP_CALL_STATE.CONNECTING, new WeavingState(GROUP_CALL_STATE.CONNECTING)]
-    ]);
+    const s: [WeavingCallType, WeavingCallState[]][] = [
+      ['group', [
+        GROUP_CALL_STATE.UNMUTED,
+        GROUP_CALL_STATE.MUTED,
+        GROUP_CALL_STATE.MUTED_BY_ADMIN,
+        GROUP_CALL_STATE.CONNECTING
+      ]],
+      ['rtmp', [
+        RTMP_STATE.PLAYING,
+        RTMP_STATE.BUFFERING,
+        RTMP_STATE.CONNECTING
+      ]]
+    ];
+
+    this.allStates = new Map(s.map(([type, states]) => [type, new Map(WeavingState.createStates(type, states))]));
+
+    this.type = 'group';
     this.previousState = null;
     this.currentState = this.states.get(GROUP_CALL_STATE.CONNECTING);
     this.progressToState = 1.0;
+  }
+
+  private get states() {
+    return this.allStates.get(this.type);
   }
 
   public componentDidMount() {
@@ -132,7 +172,7 @@ export default class TopbarWeave {
     // window.removeEventListener('blur', this.handleBlur);
     // window.removeEventListener('focus', this.handleFocus);
     window.removeEventListener('resize', this.handleResize);
-    this.media.addEventListener('change', this.handleDevicePixelRatioChanged);
+    this.media.removeEventListener('change', this.handleDevicePixelRatioChanged);
 
     const {canvas} = this;
     const ctx = canvas.getContext('2d');
@@ -273,7 +313,7 @@ export default class TopbarWeave {
       }
 
       let alpha = 1;
-      let state: WeavingState = null;
+      let state: WeavingState;
       if(i === 0) {
         alpha = 1 - progressToState;
         state = previousState;
@@ -304,15 +344,16 @@ export default class TopbarWeave {
     }
   };
 
-  public setCurrentState = (stateId: GROUP_CALL_STATE, animated: boolean) => {
-    const {currentState, states} = this;
+  public setCurrentState = (type: WeavingCallType, state: WeavingCallState, animated: boolean) => {
+    const {currentState} = this;
 
-    if(currentState?.stateId === stateId) {
+    if(currentState?.state === state && currentState.type === type) {
       return;
     }
 
+    this.type = type;
     this.previousState = animated ? currentState : null;
-    this.currentState = states.get(stateId);
+    this.currentState = this.states.get(state);
     this.progressToState = this.previousState ? 0.0 : 1.0;
   };
 

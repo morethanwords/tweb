@@ -43,6 +43,7 @@ import {EXTENSION_MIME_TYPE_MAP, MIME_TYPE_EXTENSION_MAP} from '../../environmen
 import isWebFileLocation from '../appManagers/utils/webFiles/isWebFileLocation';
 import appManagersManager from '../appManagers/appManagersManager';
 import clamp from '../../helpers/number/clamp';
+import insertInDescendSortedArray from '../../helpers/array/insertInDescendSortedArray';
 
 export type DownloadOptions = {
   dcId: DcId,
@@ -119,12 +120,13 @@ export class ApiFileManager extends AppManager {
     [dcId: string]: Array<{
       id: number,
       queueId: number,
-      cb: () => Promise<MyUploadFile | void>,
+      cb: () => any,
       deferred: {
         resolve: (...args: any[]) => void,
         reject: (...args: any[]) => void
       },
-      activeDelta: number
+      activeDelta: number,
+      priority: number
     }>
   } = {};
   private downloadActives: {[dcId: string]: number} = {};
@@ -191,9 +193,21 @@ export class ApiFileManager extends AppManager {
     }
   }
 
-  private downloadRequest(dcId: 'upload', id: number, cb: () => Promise<void>, activeDelta: number, queueId?: number): Promise<void>;
-  private downloadRequest(dcId: number, id: number, cb: () => Promise<MyUploadFile>, activeDelta: number, queueId?: number): Promise<MyUploadFile>;
-  private downloadRequest(dcId: number | string, id: number, cb: () => Promise<MyUploadFile | void>, activeDelta: number, queueId: number = 0) {
+  private downloadRequest<DcId extends 'upload' | number, R>({
+    dcId,
+    id,
+    cb,
+    activeDelta,
+    queueId = 0,
+    priority = 0
+  }: {
+    dcId: DcId,
+    id: number,
+    cb: () => R,
+    activeDelta: number,
+    queueId?: number,
+    priority?: number
+  }): R {
     if(this.downloadPulls[dcId] === undefined) {
       this.downloadPulls[dcId] = [];
       this.downloadActives[dcId] = 0;
@@ -201,15 +215,16 @@ export class ApiFileManager extends AppManager {
 
     const downloadPull = this.downloadPulls[dcId];
 
-    const promise = new Promise<MyUploadFile | void>((resolve, reject) => {
-      downloadPull.push({id, queueId, cb, deferred: {resolve, reject}, activeDelta});
+    const promise = new Promise((resolve, reject) => {
+      const element: typeof downloadPull[0] = {id, queueId, cb, deferred: {resolve, reject}, activeDelta, priority};
+      insertInDescendSortedArray(downloadPull, element, 'priority', -1);
     });
 
-    setTimeout(() => {
-      this.downloadCheck(dcId);
-    }, 0);
+    // setTimeout(() => {
+    this.downloadCheck(dcId);
+    // }, 0);
 
-    return promise;
+    return promise as R;
   }
 
   private downloadCheck(dcId: string | number) {
@@ -222,7 +237,7 @@ export class ApiFileManager extends AppManager {
     }
 
     // const data = downloadPull.shift();
-    const data = findAndSplice(downloadPull, (d) => d.queueId === 0) || findAndSplice(downloadPull, (d) => d.queueId === this.queueId) || downloadPull.shift();
+    const data = downloadPull[0].priority ? downloadPull.shift() : findAndSplice(downloadPull, (d) => d.queueId === 0) || findAndSplice(downloadPull, (d) => d.queueId === this.queueId) || downloadPull.shift();
     const activeDelta = data.activeDelta || 1;
 
     this.downloadActives[dcId] += activeDelta;
@@ -274,100 +289,135 @@ export class ApiFileManager extends AppManager {
     return canceled;
   }
 
-  public requestWebFilePart(
+  public requestWebFilePart({
+    dcId,
+    location,
+    offset,
+    limit,
+    id,
+    queueId,
+    checkCancel
+  }: {
     dcId: DcId,
     location: InputWebFileLocation,
     offset: number,
     limit: number,
-    id = 0,
-    queueId = 0,
+    id?: number,
+    queueId?: number,
     checkCancel?: () => void
-  ) {
-    return this.downloadRequest(this.webFileDcId, id, async() => { // do not remove async, because checkCancel will throw an error
-      checkCancel?.();
+  }) {
+    return this.downloadRequest({
+      dcId: this.webFileDcId,
+      id,
+      cb: async() => { // do not remove async, because checkCancel will throw an error
+        checkCancel?.();
 
-      if('url' in location) {
-        const url = location.url;
-        if(this.isLocalWebFile(url)) {
-          return fetch(url)
-          .then((response) => response.arrayBuffer())
-          .then((arrayBuffer) => {
-            const extension = url.split('.').pop() as MTFileExtension;
-            const mimeType = EXTENSION_MIME_TYPE_MAP[extension] || 'application/octet-stream';
-            return {
-              _: 'upload.webFile',
-              size: arrayBuffer.byteLength,
-              mime_type: mimeType,
-              file_type: {_: 'storage.fileUnknown'},
-              mtime: 0,
-              bytes: new Uint8Array(arrayBuffer)
-            };
-          });
+        if('url' in location) {
+          const url = location.url;
+          if(this.isLocalWebFile(url)) {
+            return fetch(url)
+            .then((response) => response.arrayBuffer())
+            .then((arrayBuffer) => {
+              const extension = url.split('.').pop() as MTFileExtension;
+              const mimeType = EXTENSION_MIME_TYPE_MAP[extension] || 'application/octet-stream';
+              const ret: UploadWebFile.uploadWebFile = {
+                _: 'upload.webFile',
+                size: arrayBuffer.byteLength,
+                mime_type: mimeType,
+                file_type: {_: 'storage.fileUnknown'},
+                mtime: 0,
+                bytes: new Uint8Array(arrayBuffer)
+              };
+              return ret;
+            });
+          }
         }
-      }
 
-      return this.apiManager.invokeApi('upload.getWebFile', {
-        location,
-        offset,
-        limit
-      }, {
-        dcId: this.webFileDcId,
-        fileDownload: true
-      });
-    }, this.getDelta(limit), queueId);
-  }
-
-  public requestFilePart(
-    dcId: DcId,
-    location: InputFileLocation,
-    offset: number,
-    limit: number,
-    id = 0,
-    queueId = 0,
-    checkCancel?: () => void
-  ) {
-    return this.downloadRequest(dcId, id, async() => { // do not remove async, because checkCancel will throw an error
-      checkCancel?.();
-
-      const invoke = async(): Promise<MyUploadFile> => {
-        checkCancel?.(); // do not remove async, because checkCancel will throw an error
-
-        // * IMPORTANT: reference can be changed in previous request
-        const reference = (location as InputFileLocation.inputDocumentFileLocation).file_reference?.slice();
-
-        const promise = // pause(offset > (100 * 1024 * 1024) ? 10000000 : 0).then(() =>
-        this.apiManager.invokeApi('upload.getFile', {
+        return this.apiManager.invokeApi('upload.getWebFile', {
           location,
           offset,
           limit
         }, {
-          dcId,
+          dcId: this.webFileDcId,
           fileDownload: true
-        }) as Promise<MyUploadFile>/* ) */;
-
-        return promise.catch((err: ApiError) => {
-          checkCancel?.();
-
-          if(err.type === 'FILE_REFERENCE_EXPIRED') {
-            return this.refreshReference(location as InputFileLocation.inputDocumentFileLocation, reference).then(invoke);
-          }
-
-          throw err;
         });
-      };
+      },
+      activeDelta: this.getDelta(limit),
+      queueId
+    });
+  }
 
-      assumeType<InputFileLocation.inputDocumentFileLocation>(location);
-      const reference = location.file_reference;
-      if(reference && !location.checkedReference) { // check stream's location because it's new every call
-        location.checkedReference = true;
-        const hex = bytesToHex(reference);
-        if(this.refreshReferencePromises[hex]) {
-          return this.refreshReference(location, reference).then(invoke);
+  public requestFilePart({
+    dcId,
+    location,
+    offset,
+    limit,
+    id,
+    queueId,
+    checkCancel,
+    floodMaxTimeout,
+    priority
+  }: {
+    dcId: DcId,
+    location: InputFileLocation,
+    offset: number,
+    limit: number,
+    id?: number,
+    queueId?: number,
+    checkCancel?: () => void,
+    floodMaxTimeout?: number,
+    priority?: number
+  }) {
+    return this.downloadRequest({
+      dcId,
+      id,
+      cb: async() => { // do not remove async, because checkCancel will throw an error
+        checkCancel?.();
+
+        const invoke = async(): Promise<MyUploadFile> => {
+          checkCancel?.(); // do not remove async, because checkCancel will throw an error
+
+          // * IMPORTANT: reference can be changed in previous request
+          const reference = (location as InputFileLocation.inputDocumentFileLocation).file_reference?.slice();
+
+          const promise = // pause(offset > (100 * 1024 * 1024) ? 10000000 : 0).then(() =>
+          this.apiManager.invokeApi('upload.getFile', {
+            location,
+            offset,
+            limit
+          }, {
+            dcId,
+            fileDownload: true,
+            floodMaxTimeout
+          }) as Promise<MyUploadFile>/* ) */;
+
+          return promise.catch((err: ApiError) => {
+            checkCancel?.();
+
+            if(err.type === 'FILE_REFERENCE_EXPIRED') {
+              return this.refreshReference(location as InputFileLocation.inputDocumentFileLocation, reference).then(invoke);
+            }
+
+            throw err;
+          });
+        };
+
+        assumeType<InputFileLocation.inputDocumentFileLocation>(location);
+        const reference = location.file_reference;
+        if(reference && !location.checkedReference) { // check stream's location because it's new every call
+          location.checkedReference = true;
+          const hex = bytesToHex(reference);
+          if(this.refreshReferencePromises[hex]) {
+            return this.refreshReference(location, reference).then(invoke);
+          }
         }
-      }
 
-      return invoke();
-    }, this.getDelta(limit), queueId);
+        return invoke();
+      },
+      activeDelta: this.getDelta(limit),
+      queueId,
+      priority
+    });
   }
 
   /* private convertBlobToBytes(blob: Blob) {
@@ -719,7 +769,15 @@ export class ApiFileManager extends AppManager {
           checkCancel();
 
           const requestPerf = performance.now();
-          const result = await requestPart(dcId, location as any, offset, limitPart, id, options.queueId, checkCancel);
+          const result = await requestPart({
+            dcId,
+            location: location as never,
+            offset,
+            limit: limitPart,
+            id,
+            queueId: options.queueId,
+            checkCancel
+          });
           checkCancel();
           const requestTime = performance.now() - requestPerf;
 
@@ -902,51 +960,43 @@ export class ApiFileManager extends AppManager {
       let _part = 0, doneParts = 0;
       for(let offset = 0; offset < fileSize; offset += partSize) {
         const part = _part++; // 0, 1
-        yield self.downloadRequest('upload', id, async() => {
-          checkCancel();
+        yield self.downloadRequest({
+          dcId: 'upload',
+          id,
+          cb: async() => {
+            checkCancel();
 
-          const blob = file.slice(offset, offset + partSize);
-          const buffer = await readBlobAsArrayBuffer(blob);
-          checkCancel();
+            const blob = file.slice(offset, offset + partSize);
+            const buffer = await readBlobAsArrayBuffer(blob);
+            checkCancel();
 
-          self.debug && self.log('Upload file part, isBig:', isBigFile, part, buffer.byteLength, new Uint8Array(buffer).length, new Uint8Array(buffer).slice().length);
+            self.debug && self.log('Upload file part, isBig:', isBigFile, part, buffer.byteLength, new Uint8Array(buffer).length, new Uint8Array(buffer).slice().length);
 
-          return self.apiManager.invokeApi(method, {
-            file_id: fileId,
-            file_part: part,
-            file_total_parts: totalParts,
-            bytes: buffer
-          } as any, {
-            fileUpload: true
-          }).then(() => {
-            if(canceled) {
-              return;
-            }
+            return self.apiManager.invokeApi(method, {
+              file_id: fileId,
+              file_part: part,
+              file_total_parts: totalParts,
+              bytes: buffer
+            } as any, {
+              fileUpload: true
+            }).then(() => {
+              if(canceled) {
+                return;
+              }
 
-            ++doneParts;
-            const progress: Progress = {done: doneParts * partSize, offset, total: fileSize, fileName};
-            deferred.notify(progress);
+              ++doneParts;
+              const progress: Progress = {done: doneParts * partSize, offset, total: fileSize, fileName};
+              deferred.notify(progress);
 
-            if(doneParts >= totalParts) {
-              deferred.resolve(resultInputFile);
-              resolved = true;
-            }
-          }, errorHandler);
-        }, activeDelta).catch(errorHandler);
+              if(doneParts >= totalParts) {
+                deferred.resolve(resultInputFile);
+                resolved = true;
+              }
+            }, errorHandler);
+          },
+          activeDelta
+        }).catch(errorHandler);
       }
-    }
-
-    const it = generator();
-    const process = () => {
-      if(canceled) return;
-      const r = it.next();
-      if(r.done || canceled) return;
-      (r.value as Promise<void>).then(process);
-    };
-
-    const maxRequests = Infinity;
-    for(let i = 0, length = Math.min(maxRequests, totalParts); i < length; ++i) {
-      process();
     }
 
     const checkCancel = () => {
@@ -972,6 +1022,21 @@ export class ApiFileManager extends AppManager {
       }
     });
 
-    return this.uploadPromises[fileName] = deferred;
+    this.uploadPromises[fileName] = deferred;
+
+    const it = generator();
+    const process = () => {
+      if(canceled) return;
+      const r = it.next();
+      if(r.done || canceled) return;
+      (r.value as Promise<void>).then(process);
+    };
+
+    const maxRequests = Infinity;
+    for(let i = 0, length = Math.min(maxRequests, totalParts); i < length; ++i) {
+      process();
+    }
+
+    return deferred;
   }
 }

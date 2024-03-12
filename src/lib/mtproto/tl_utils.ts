@@ -418,7 +418,7 @@ class TLDeserialization<FetchLongAs extends Long> {
       this.byteView = new Uint8Array(this.buffer);
     } else {
       this.buffer = buffer.buffer;
-      this.intView = new Int32Array(buffer.buffer);
+      this.intView = new Int32Array(buffer.buffer, buffer.byteOffset, buffer.byteLength / 4);
       this.byteView = buffer;
     }
 

@@ -19,6 +19,7 @@ export default class RadioField {
 
   constructor(options: {
     text?: string,
+    textElement?: HTMLElement | DocumentFragment,
     langKey?: LangPackKey,
     name: string,
     value?: string,
@@ -53,7 +54,9 @@ export default class RadioField {
     const main = this.main = document.createElement('div');
     main.classList.add('radio-field-main');
 
-    if(options.text) {
+    if(options.textElement) {
+      main.append(options.textElement);
+    } else if(options.text) {
       main.textContent = options.text;
       /* const caption = document.createElement('div');
       caption.classList.add('radio-field-main-caption');

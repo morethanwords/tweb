@@ -1,0 +1,29 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+@mixin sidebar-transform($centered: 0, $transform: true) {
+	@include respond-to(medium-screens) {
+		transition: transform var(--transition-standard-out);
+
+		body.is-right-column-shown & {
+      @if $transform {
+        @if $centered != 0 {
+          transform: translate3d(calc(var(--right-column-width) * #{$centered} * -.5 * var(--reflect)), 0, 0);
+        } @else {
+          transform: translate3d(calc(var(--right-column-width) * -1 * var(--reflect)), 0, 0);
+        }
+      }
+
+			transition: transform var(--transition-standard-in);
+		}
+
+		body.animation-level-0 & {
+			transition: none;
+		}
+
+		@content;
+	}
+}

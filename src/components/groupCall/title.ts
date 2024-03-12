@@ -7,6 +7,7 @@
 import setInnerHTML from '../../helpers/dom/setInnerHTML';
 import {GroupCall} from '../../layer';
 import GroupCallInstance from '../../lib/calls/groupCallInstance';
+import {NULL_PEER_ID} from '../../lib/mtproto/mtproto_config';
 import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
 import PeerTitle from '../peerTitle';
 
@@ -14,7 +15,7 @@ export default class GroupCallTitleElement {
   private peerTitle: PeerTitle;
 
   constructor(private appendTo: HTMLElement) {
-    this.peerTitle = new PeerTitle({peerId: 0});
+    this.peerTitle = new PeerTitle({peerId: NULL_PEER_ID});
   }
 
   public update(instance: GroupCallInstance) {

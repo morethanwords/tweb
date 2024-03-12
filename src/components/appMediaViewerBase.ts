@@ -25,7 +25,7 @@ import ProgressivePreloader from './preloader';
 import SwipeHandler, {ZoomDetails} from './swipeHandler';
 import {formatFullSentTime} from '../helpers/date';
 import appNavigationController, {NavigationItem} from './appNavigationController';
-import {Message, PhotoSize} from '../layer';
+import {InputGroupCall, Message, PhotoSize} from '../layer';
 import findUpClassName from '../helpers/dom/findUpClassName';
 import renderImageFromUrl, {renderImageFromUrlPromise} from '../helpers/dom/renderImageFromUrl';
 import getVisibleRect from '../helpers/dom/getVisibleRect';
@@ -65,11 +65,19 @@ import handleVideoLeak from '../helpers/dom/handleVideoLeak';
 import Icon from './icon';
 import {replaceButtonIcon} from './button';
 import setCurrentTime from '../helpers/dom/setCurrentTime';
+import {MediaSize} from '../helpers/mediaSize';
+import {getRtmpStreamUrl} from '../lib/rtmp/url';
+import boxBlurCanvasRGB from '../vendor/fastBlur';
+import {i18n} from '../lib/langPack';
+import createCanvasStream from '../helpers/canvas/createCanvasStream';
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
 const ZOOM_MIN_VALUE = 0.5;
 const ZOOM_MAX_VALUE = 4;
+
+const OPEN_TRANSITION_TIME = 200;
+const MOVE_TRANSITION_TIME = 350;
 
 export const MEDIA_VIEWER_CLASSNAME = 'media-viewer';
 
@@ -118,11 +126,16 @@ export default class AppMediaViewerBase<
 
   protected highlightSwitchersTimeout: number;
 
+  protected streamEnded: boolean = false;
+
   protected onDownloadClick: (e: MouseEvent) => void;
   protected onPrevClick: (target: TargetType) => void;
   protected onNextClick: (target: TargetType) => void;
 
+  protected disposeSolid?: () => void;
+
   protected videoPlayer: VideoPlayer;
+  protected adminPanel: HTMLDivElement;
 
   protected zoomElements: {
     container: HTMLElement,
@@ -136,6 +149,7 @@ export default class AppMediaViewerBase<
   protected isZoomingNow: boolean;
   protected draggingType: 'wheel' | 'touchmove' | 'mousemove';
   protected initialContentRect: DOMRect;
+  protected live: boolean;
 
   protected ctrlKeyDown: boolean;
   protected releaseSingleMedia: ReturnType<AppMediaPlaybackController['setSingleMedia']>;
@@ -154,6 +168,8 @@ export default class AppMediaViewerBase<
   protected ignoreNextClick: boolean;
 
   protected middlewareHelper: MiddlewareHelper;
+
+  protected overlayActive: boolean;
 
   get target() {
     return this.listLoader.current;
@@ -187,6 +203,7 @@ export default class AppMediaViewerBase<
 
     this.overlaysDiv = document.createElement('div');
     this.overlaysDiv.classList.add('overlays');
+    this.overlayActive = false;
 
     const mainDiv = document.createElement('div');
     mainDiv.classList.add(MEDIA_VIEWER_CLASSNAME);
@@ -203,6 +220,7 @@ export default class AppMediaViewerBase<
     this.author.container = document.createElement('div');
     this.author.container.classList.add(MEDIA_VIEWER_CLASSNAME + '-author', 'no-select');
     const authorRight = document.createElement('div');
+    authorRight.classList.add(MEDIA_VIEWER_CLASSNAME + '-author-right');
 
     this.author.nameEl = document.createElement('div');
     this.author.nameEl.classList.add(MEDIA_VIEWER_CLASSNAME + '-name');
@@ -704,8 +722,14 @@ export default class AppMediaViewerBase<
   }
 
   public close(e?: MouseEvent) {
+    this.disposeSolid?.();
+
     if(e) {
       cancelEvent(e);
+    }
+
+    if(this.closing) {
+      return this.setMoverAnimationPromise;
     }
 
     if(this.setMoverAnimationPromise) return Promise.reject();
@@ -748,6 +772,11 @@ export default class AppMediaViewerBase<
   }
 
   protected toggleOverlay(active: boolean) {
+    if(this.overlayActive === active) {
+      return;
+    }
+
+    this.overlayActive = active;
     overlayCounter.isDarkOverlayActive = active;
     animationIntersector.checkAnimations2(active);
   }
@@ -772,6 +801,11 @@ export default class AppMediaViewerBase<
   }
 
   onClick = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if(findUpClassName(target, 'popup')) { // target could be inside a popup
+      return;
+    }
+
     if(this.ignoreNextClick) {
       this.ignoreNextClick = undefined;
       return;
@@ -779,9 +813,10 @@ export default class AppMediaViewerBase<
 
     if(this.setMoverAnimationPromise) return;
 
-    const target = e.target as HTMLElement;
     if(target.tagName === 'A') return;
-    cancelEvent(e);
+    if(!findUpClassName(target, 'admin-popup-container')) {
+      cancelEvent(e);
+    }
 
     if(IS_TOUCH_SUPPORTED) {
       if(this.highlightSwitchersTimeout) {
@@ -803,20 +838,18 @@ export default class AppMediaViewerBase<
     }
 
     const isZooming = this.isZooming && false;
-    let mover: HTMLElement = null;
-    const classNames = ['ckin__player', 'media-viewer-buttons', 'media-viewer-author', 'media-viewer-caption', 'zoom-container'];
+    const classNames = ['admin-popup-container', 'ckin__player', 'media-viewer-buttons', 'media-viewer-author', 'media-viewer-caption', 'zoom-container'];
     if(isZooming) {
       classNames.push('media-viewer-movers');
     }
 
-    classNames.find((s) => {
-      try {
-        mover = findUpClassName(target, s);
-        if(mover) return true;
-      } catch(err) {return false;}
-    });
+    const hasClickedSomething = classNames.some((s) => !!findUpClassName(target, s));
+    if(!hasClickedSomething && this.live && document.pictureInPictureEnabled) {
+      this.videoPlayer.requestPictureInPicture();
+      return;
+    }
 
-    if(/* target === this.mediaViewerDiv */!mover || (!isZooming && (target.tagName === 'IMG' || target.tagName === 'image'))) {
+    if(/* target === this.mediaViewerDiv */!hasClickedSomething || (!isZooming && (target.tagName === 'IMG' || target.tagName === 'image'))) {
       this.close();
     }
   };
@@ -877,10 +910,14 @@ export default class AppMediaViewerBase<
 
     const zoomValue = this.isZooming && closing /* && false */ ? this.transform.scale : ZOOM_INITIAL_VALUE;
     /* if(!(zoomValue > 1 && closing)) */ this.removeCenterFromMover(mover);
+    if(closing) {
+      void mover.offsetLeft; // reflow
+      await doubleRaf();
+    }
 
     const wasActive = fromRight !== 0;
 
-    const delay = liteMode.isAvailable('animations') ? (wasActive ? 350 : 200) : 0;
+    const delay = liteMode.isAvailable('animations') ? (wasActive ? MOVE_TRANSITION_TIME : OPEN_TRANSITION_TIME) : 0;
     // let delay = wasActive ? 350 : 10000;
 
     /* if(wasActive) {
@@ -923,11 +960,13 @@ export default class AppMediaViewerBase<
     }
 
     let needOpacity = false;
-    if(target !== this.content.media && !target.classList.contains('profile-avatars-avatar')) {
+    if(target === this.content.media) {
+      needOpacity = true;
+    } else if(!target.classList.contains('profile-avatars-avatar')) {
       const overflowElement = findUpClassName(realParent, 'scrollable');
       const visibleRect = getVisibleRect(realParent, overflowElement, true);
 
-      if(closing && (!visibleRect || visibleRect.overflow.vertical === 2 || visibleRect.overflow.horizontal === 2)) {
+      if(closing && visibleRect && (visibleRect.overflow.vertical === 2 || visibleRect.overflow.horizontal === 2)) {
         target = this.content.media;
         realParent = target.parentElement as HTMLElement;
         rect = target.getBoundingClientRect();
@@ -975,10 +1014,12 @@ export default class AppMediaViewerBase<
         aspecter = mover.firstElementChild as HTMLDivElement;
 
         const player = aspecter.querySelector('.ckin__player');
-        if(player) {
-          const video = player.firstElementChild as HTMLVideoElement;
-          aspecter.append(video);
-          player.remove();
+        if(player && !needOpacity) {
+          const video = player.querySelector('video');
+          if(video) {
+            video.pause();
+            player.replaceWith(video);
+          }
         }
 
         if(!aspecter.style.cssText) { // всё из-за видео, элементы управления скейлятся, так бы можно было этого не делать
@@ -1076,6 +1117,9 @@ export default class AppMediaViewerBase<
 
         canvas.className = 'canvas-thumbnail thumbnail media-photo';
         context.drawImage(target as HTMLImageElement | HTMLCanvasElement, 0, 0);
+        if(this.live) {
+          boxBlurCanvasRGB(context, 0, 0, canvas.width, canvas.height, 100);
+        }
         target = canvas;
       }
       // }
@@ -1087,6 +1131,13 @@ export default class AppMediaViewerBase<
           mediaElement = new Image();
           src = image.src;
           mover.append(mediaElement);
+        } else {
+          const el = target.querySelector('.avatar[data-color]');
+          if(el) {
+            const el2 = el.cloneNode(true);
+            el2.textContent = '';
+            aspecter.append(el2);
+          }
         }
         /* mediaElement = new Image();
         src = target.style.backgroundImage.slice(5, -2); */
@@ -1198,10 +1249,6 @@ export default class AppMediaViewerBase<
         if(path) {
           this.sizeTailPath(path, containerRect, scaleX, delay, false, isOut, borderRadius);
         }
-      }
-
-      if(target.classList.contains('media-viewer-media')) {
-        mover.classList.add('hiding');
       }
 
       this.toggleWholeActive(false);
@@ -1435,7 +1482,7 @@ export default class AppMediaViewerBase<
         }
       }
 
-      if((el as HTMLImageElement).src !== url) {
+      if((el as HTMLImageElement).getAttribute('src') !== url) {
         renderImageFromUrl(el, url);
       }
 
@@ -1480,7 +1527,7 @@ export default class AppMediaViewerBase<
       newAvatar.readyThumbPromise,
       wrapTitlePromise
     ]).then(([_, title]) => {
-      replaceContent(this.author.date, formatFullSentTime(timestamp));
+      replaceContent(this.author.date, this.live ? i18n('Rtmp.MediaViewer.Streaming') : formatFullSentTime(timestamp));
       replaceContent(this.author.nameEl, title);
 
       if(oldAvatar?.node && oldAvatar.node.parentElement) {
@@ -1496,8 +1543,14 @@ export default class AppMediaViewerBase<
     });
   }
 
+  protected get mediaBoxSize(): MediaSize {
+    const {width, height} = windowSize;
+    return new MediaSize(width, height - 120 - (mediaSizes.isMobile || this.live ? 0 : 120));
+  }
+
   protected async _openMedia({
     media,
+    mediaThumbnail,
     timestamp,
     fromId,
     fromRight,
@@ -1506,9 +1559,14 @@ export default class AppMediaViewerBase<
     prevTargets = [],
     nextTargets = [],
     message,
-    mediaTimestamp
+    mediaTimestamp,
+    setupPlayer,
+    onCanPlay,
+    onMoverSet,
+    onBuffering
   }: {
-    media: MyDocument | MyPhoto,
+    media: MyDocument | MyPhoto | InputGroupCall,
+    mediaThumbnail?: string,
     timestamp: number,
     fromId: PeerId | string,
     fromRight: number,
@@ -1517,19 +1575,24 @@ export default class AppMediaViewerBase<
     prevTargets?: TargetType[],
     nextTargets?: TargetType[],
     message?: MyMessage,
-    mediaTimestamp?: number
+    mediaTimestamp?: number,
+    setupPlayer?: (video: VideoPlayer, readyPromise: Promise<any>) => void,
+    onCanPlay?: () => void,
+    onMoverSet?: () => void,
+    onBuffering?: () => void
     /* , needLoadMore = true */
   }) {
     if(this.setMoverPromise) return this.setMoverPromise;
 
-    /* if(DEBUG) {
-      this.log('openMedia:', media, fromId, prevTargets, nextTargets);
-    } */
-
     const setAuthorPromise = this.setAuthorInfo(fromId, timestamp);
 
+    const isLiveStream = media._ === 'inputGroupCall';
     const isDocument = media._ === 'document';
     const isVideo = isDocument && media.mime_type && ((['video', 'gif'] as MyDocument['type'][]).includes(media.type) || media.mime_type.indexOf('video/') === 0);
+
+    this.log('openMedia', media, fromId, prevTargets, nextTargets, isLiveStream, isDocument, isVideo);
+
+    this.live = isLiveStream;
 
     if(this.isFirstOpen) {
       // this.targetContainer = targetContainer;
@@ -1538,11 +1601,6 @@ export default class AppMediaViewerBase<
       this.listLoader.setTargets(prevTargets, nextTargets, reverse);
       (window as any).appMediaViewer = this;
       // this.loadMore = loadMore;
-
-      /* if(appSidebarRight.historyTabIDs.slice(-1)[0] === AppSidebarRight.SLIDERITEMSIDS.forward) {
-        appSidebarRight.forwardTab.closeBtn.click();
-        await new Promise((resolve) => setTimeout(resolve, 200));
-      } */
     }
 
     if(this.listLoader.next.length < 10) {
@@ -1604,30 +1662,26 @@ export default class AppMediaViewerBase<
       this.toggleWholeActive(true);
     }
 
-    // //////this.log('wasActive:', wasActive);
-
     const mover = this.content.mover;
 
-    const maxWidth = windowSize.width;
-    // const maxWidth = this.pageEl.scrollWidth;
-    // TODO: const maxHeight = mediaSizes.isMobile ? appPhotosManager.windowH : appPhotosManager.windowH - 100;
-    let padding = 0;
-    const windowH = windowSize.height;
-    if(windowH < 1000000 && !mediaSizes.isMobile) {
-      padding = 120;
-    }
-    const maxHeight = windowH - 120 - padding;
+    const mediaBoxSize = this.mediaBoxSize;
+    const mediaSize: MediaSize = isLiveStream ? new MediaSize(1080, 608) : undefined;
     let thumbPromise: Promise<any> = Promise.resolve();
-    const size = setAttachmentSize({
+    const size = setAttachmentSize(isLiveStream ? {
+      boxWidth: mediaBoxSize.width,
+      boxHeight: mediaBoxSize.height,
+      element: container,
+      size: mediaSize
+    } : {
       photo: media,
       element: container,
-      boxWidth: maxWidth,
-      boxHeight: maxHeight,
+      boxWidth: mediaBoxSize.width,
+      boxHeight: mediaBoxSize.height,
       noZoom: mediaSizes.isMobile ? false : true,
       pushDocumentSize: !!(isDocument && media.w && media.h)
     }).photoSize;
-    if(useContainerAsTarget) {
-      const cacheContext = await this.managers.thumbsStorage.getCacheContext(media, size.type);
+    if(useContainerAsTarget && !isLiveStream) {
+      const cacheContext = await this.managers.thumbsStorage.getCacheContext(media, size?.type);
       let img: HTMLImageElement | HTMLCanvasElement;
       if(cacheContext.downloaded) {
         img = new Image();
@@ -1651,30 +1705,51 @@ export default class AppMediaViewerBase<
       }
     }
 
+    if(isLiveStream) {
+      if(mediaThumbnail) {
+        const img = new Image();
+        img.classList.add('thumbnail');
+        container.append(img);
+        await renderImageFromUrlPromise(img, mediaThumbnail, false);
+      } else {
+        const avatar = avatarNew({
+          middleware: this.middlewareHelper.get(),
+          peerId: fromId.toPeerId(),
+          size: 'full'
+        });
+        avatar.node.classList.add('thumbnail-avatar');
+        container.append(avatar.node);
+        await avatar.readyThumbPromise;
+      }
+    }
+
     // need after setAttachmentSize
     /* if(useContainerAsTarget) {
       target = target.querySelector('img, video') || target;
     } */
 
     const supportsStreaming: boolean = !!(isDocument && media.supportsStreaming);
-    const preloader = supportsStreaming ? this.preloaderStreamable : this.preloader;
+    const preloader = isLiveStream ? undefined : supportsStreaming ? this.preloaderStreamable : this.preloader;
 
     const getCacheContext = (type = size?.type) => {
+      if(isLiveStream) return {url: getRtmpStreamUrl(media)};
       return this.managers.thumbsStorage.getCacheContext(media, type);
     };
 
     let setMoverPromise: Promise<void>;
-    if(isVideo) {
-      // //////this.log('will wrap video', media, size);
-
+    if(isVideo || isLiveStream) {
       const middleware = mover.middlewareHelper.get();
       // потому что для safari нужно создать элемент из event'а
-      const useController = message && media.type !== 'gif';
+      const useController = isLiveStream || message && media.type !== 'gif';
       const video = /* useController ?
         appMediaPlaybackController.addMedia(message, false, true) as HTMLVideoElement :
          */createVideo({pip: useController, middleware});
 
-      if(this.wholeDiv.classList.contains('no-forwards')) {
+      if(isLiveStream) {
+        video.ignoreLeak = true;
+      }
+
+      if(this.wholeDiv.classList.contains('no-forwards') || isLiveStream) {
         video.addEventListener('contextmenu', cancelEvent);
       }
 
@@ -1683,28 +1758,14 @@ export default class AppMediaViewerBase<
       // if(wasActive) return;
         // return;
 
+        onMoverSet?.();
+
         const div = mover.firstElementChild && mover.firstElementChild.classList.contains('media-viewer-aspecter') ? mover.firstElementChild : mover;
 
-        const moverVideo = mover.querySelector('video');
-        if(moverVideo) {
-          moverVideo.remove();
-        }
-
-        // video.src = '';
+        const moverThumbVideo = mover.querySelector('video');
+        moverThumbVideo?.remove();
 
         video.setAttribute('playsinline', 'true');
-
-        // * fix for playing video if viewer is closed (https://contest.com/javascript-web-bonus/entry1425#issue11629)
-        video.addEventListener('timeupdate', () => {
-          if(this.tempId !== tempId) {
-            video.pause();
-          }
-        });
-
-        this.addEventListener('setMoverAfter', () => {
-          video.src = '';
-          video.load();
-        }, {once: true});
 
         // if(IS_SAFARI) {
         // test stream
@@ -1712,7 +1773,9 @@ export default class AppMediaViewerBase<
         video.autoplay = true;
         // }
 
-        if(media.type === 'gif') {
+        if(media._ === 'inputGroupCall') {
+          video.autoplay = true;
+        } else if(media.type === 'gif') {
           video.muted = true;
           video.autoplay = true;
           video.loop = true;
@@ -1724,33 +1787,43 @@ export default class AppMediaViewerBase<
           setCurrentTime(video, mediaTimestamp);
         }
 
-        // if(!video.parentElement) {
+        // * don't remove
         div.append(video);
-        // }
 
         const canPlayThrough = new Promise((resolve) => {
           video.addEventListener('canplay', resolve, {once: true});
         });
 
+        const setSingleMedia = () => {
+          // if(isLiveStream) {
+          //   this.releaseSingleMedia = appMediaPlaybackController.setSingleMedia();
+          // } else {
+          this.releaseSingleMedia = appMediaPlaybackController.setSingleMedia(video, message as Message.message);
+          // }
+        };
+
         const createPlayer = async() => {
-          if(media.type === 'gif') {
+          if((media as MyDocument).type === 'gif') {
             return;
           }
 
-          video.dataset.ckin = 'default';
-          video.dataset.overlay = '1';
-
-          await Promise.all([canPlayThrough, onAnimationEnd]);
-          if(this.tempId !== tempId) {
-            return;
+          const readyPromise = Promise.all([canPlayThrough, onAnimationEnd]);
+          if(!isLiveStream) { // should display interface for live streams instantly
+            await readyPromise;
+            if(this.tempId !== tempId) {
+              return;
+            }
           }
 
           // const play = useController ? appMediaPlaybackController.willBePlayedMedia === video : true;
-          const play = true;
+          const play = !isLiveStream;
           const player = this.videoPlayer = new VideoPlayer({
             video,
             play,
             streamable: supportsStreaming,
+            live: isLiveStream,
+            width: mediaSize?.width,
+            height: mediaSize?.height,
             onPlaybackRackMenuToggle: (open) => {
               this.wholeDiv.classList.toggle('hide-caption', !!open);
             },
@@ -1763,7 +1836,7 @@ export default class AppMediaViewerBase<
               }
 
               const mover = this.moversContainer.lastElementChild as HTMLElement;
-              mover.classList.toggle('hiding', pip);
+              mover.classList.toggle('in-pip', pip);
               this.toggleWholeActive(!pip);
               this.toggleOverlay(!pip);
               this.toggleGlobalListeners(!pip);
@@ -1782,7 +1855,7 @@ export default class AppMediaViewerBase<
 
                   appMediaPlaybackController.setPictureInPicture(video);
                 } else {
-                  this.releaseSingleMedia = appMediaPlaybackController.setSingleMedia(video, message as Message.message);
+                  setSingleMedia();
                 }
               }
             },
@@ -1805,28 +1878,52 @@ export default class AppMediaViewerBase<
 
           if(this.isZooming) {
             this.videoPlayer.lockControls(false);
+          } else if(isLiveStream) {
+            this.videoPlayer.lockControls(true);
           }
-          /* div.append(video);
-          mover.append(player.wrapper); */
+
+          setupPlayer?.(this.videoPlayer, readyPromise);
         };
 
-        if(supportsStreaming) {
-          onAnimationEnd.then(() => {
-            if(video.readyState < video.HAVE_FUTURE_DATA) {
-              // console.log('ppp 1');
-              preloader.attach(mover, true);
+        if(supportsStreaming || isLiveStream) {
+          let attachedCanPlay = false, buffering = false;
+
+          const _onBuffering = (noCanPlay?: boolean) => {
+            if(buffering) {
+              return;
             }
 
-            /* canPlayThrough.then(() => {
-              preloader.detach();
-            }); */
+            buffering = true;
+            onBuffering?.();
+            !noCanPlay && attachCanPlay();
+            preloader?.attach(mover, true);
+
+            // поставлю класс для плеера, чтобы убрать большую иконку пока прелоадер на месте
+            video.parentElement.classList.add('is-buffering');
+          };
+
+          onAnimationEnd.then(() => {
+            if(video.readyState < video.HAVE_FUTURE_DATA) {
+              _onBuffering(true);
+            }
           });
 
           const attachCanPlay = () => {
+            if(attachedCanPlay) {
+              return;
+            }
+
+            attachedCanPlay = true;
             video.addEventListener('canplay', () => {
-              // console.log('ppp 2');
-              preloader.detach();
+              attachedCanPlay = false;
+              buffering = false;
+              onCanPlay?.();
+              preloader?.detach();
               video.parentElement.classList.remove('is-buffering');
+
+              if(!this.isZooming) {
+                this.videoPlayer.lockControls(undefined);
+              }
             }, {once: true});
           };
 
@@ -1836,13 +1933,7 @@ export default class AppMediaViewerBase<
 
             // this.log('video waiting for progress', loading, isntEnoughData);
             if(loading && isntEnoughData) {
-              attachCanPlay();
-
-              // console.log('ppp 3');
-              preloader.attach(mover, true);
-
-              // поставлю класс для плеера, чтобы убрать большую иконку пока прелоадер на месте
-              video.parentElement.classList.add('is-buffering');
+              _onBuffering();
             }
           });
 
@@ -1861,18 +1952,20 @@ export default class AppMediaViewerBase<
               appMediaPlaybackController.resolveWaitingForLoadMedia(message.peerId, message.mid, message.pFlags.is_scheduled);
             } */
 
-          const promise: Promise<any> = supportsStreaming ? Promise.resolve() : appDownloadManager.downloadMediaURL({media});
+          const promise: Promise<any> = supportsStreaming || isLiveStream ? Promise.resolve() : appDownloadManager.downloadMediaURL({media});
 
           if(!supportsStreaming) {
             onAnimationEnd.then(async() => {
               if(!(await getCacheContext()).url) {
-                // console.log('ppp 4');
-                preloader.attach(mover, true, promise);
+                preloader?.attach(mover, true, promise);
               }
             });
           }
 
-          Promise.all([promise, onAnimationEnd]).then(async() => {
+          Promise.all([
+            promise,
+            isLiveStream ? undefined : onAnimationEnd
+          ]).then(async() => {
             if(this.tempId !== tempId) {
               this.log.warn('media viewer changed video');
               return;
@@ -1881,7 +1974,7 @@ export default class AppMediaViewerBase<
             const url = (await getCacheContext()).url;
 
             const onError = (e: ErrorEvent) => {
-              if(shouldIgnoreVideoError(e)) {
+              if(shouldIgnoreVideoError(e) || isLiveStream) {
                 return;
               }
 
@@ -1898,7 +1991,10 @@ export default class AppMediaViewerBase<
             };
 
             const onMediaLoadPromise = onMediaLoad(video);
-            handleVideoLeak(video, onMediaLoadPromise).catch(onError);
+            if(!isLiveStream) {
+              handleVideoLeak(video, onMediaLoadPromise).catch(onError);
+            }
+
             video.addEventListener('error', onError, {once: true});
             middleware.onClean(() => {
               video.removeEventListener('error', onError);
@@ -1915,7 +2011,7 @@ export default class AppMediaViewerBase<
             // * have to set options (especially playbackRate) after src
             // * https://github.com/videojs/video.js/issues/2516
             if(useController) {
-              this.releaseSingleMedia = appMediaPlaybackController.setSingleMedia(video, message as Message.message);
+              setSingleMedia();
 
               this.addEventListener('setMoverBefore', () => {
                 if(this.releaseSingleMedia) {
@@ -1927,7 +2023,9 @@ export default class AppMediaViewerBase<
 
             this.updateMediaSource(target, url, 'video');
 
-            onMediaLoadPromise.then(() => {
+            if(isLiveStream) {
+              createPlayer();
+            } else onMediaLoadPromise.then(() => {
               createPlayer();
             });
           });
