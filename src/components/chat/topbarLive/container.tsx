@@ -7,13 +7,13 @@ import rootScope from '../../../lib/rootScope';
 import rtmpCallsController from '../../../lib/calls/rtmpCallsController';
 import {useCurrentRtmpCall} from '../../rtmp/hooks';
 import {AppMediaViewerRtmp} from '../../appMediaViewerRtmp';
-import {toastNew} from '../../toast';
 import PinnedContainer from '../pinnedContainer';
 import {AppManagers} from '../../../lib/appManagers/managers';
 import Chat from '../chat';
 import ChatTopbar from '../topbar';
 import {NULL_PEER_ID} from '../../../lib/mtproto/mtproto_config';
 import {Chat as MTChat} from '../../../layer';
+import appImManager from '../../../lib/appManagers/appImManager';
 
 export default class ChatLive extends PinnedContainer {
   private dispose: () => void;
@@ -40,10 +40,10 @@ export default class ChatLive extends PinnedContainer {
     const chat = useChat(() => peerId().toChatId());
     const currentCall = useCurrentRtmpCall();
     const isGroupCallActive = createMemo(() => {
-      if(peerId().isUser()) return false;
       const _chat = chat();
 
       return !!(
+        _chat &&
         (_chat as MTChat.channel).pFlags.broadcast &&
         (_chat as MTChat.channel).pFlags.call_active &&
         (_chat as MTChat.channel).pFlags.call_not_empty
@@ -64,7 +64,7 @@ export default class ChatLive extends PinnedContainer {
     });
 
     createEffect(() => {
-      if(!peerId()) {
+      if(!chat() || !(chat() as MTChat.channel).pFlags.broadcast) {
         return;
       }
 
@@ -109,15 +109,8 @@ export default class ChatLive extends PinnedContainer {
         isAdmin: currentCall.call().admin
       });
     };
-    const onJoinClicked = async() => {
-      if(rtmpCallsController.currentCall) return;
-
-      await rtmpCallsController.joinCall(peerId().toChatId()).catch((err) => {
-        console.error(err);
-        toastNew({
-          langPackKey: 'Error.AnError'
-        });
-      });
+    const onJoinClicked = () => {
+      appImManager.joinLiveStream(peerId());
     };
 
     return (

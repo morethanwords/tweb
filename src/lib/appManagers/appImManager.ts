@@ -119,6 +119,7 @@ import {getPeerColorIndexByPeer, getPeerColorsByPeer, setPeerColors} from './uti
 import deepEqual from '../../helpers/object/deepEqual';
 import {savedReactionTags} from '../../components/chat/reactions';
 import {setAppState} from '../../stores/appState';
+import rtmpCallsController, {RtmpCallInstance} from '../calls/rtmpCallsController';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -559,7 +560,7 @@ export class AppImManager extends EventListenerBase<{
         const popup = PopupElement.createPopup(PopupCall, instance);
 
         instance.addEventListener('acceptCallOverride', () => {
-          return this.discardCurrentCall(instance.interlocutorUserId.toPeerId(), undefined, instance)
+          return this.discardCurrentCall(instance.interlocutorUserId.toPeerId(), 'Call', undefined, instance)
           .then(() => {
             callsController.dispatchEvent('accepting', instance);
             return true;
@@ -1366,33 +1367,49 @@ export class AppImManager extends EventListenerBase<{
       return;
     }
 
-    await this.discardCurrentCall(userId.toPeerId());
+    await this.discardCurrentCall(userId.toPeerId(), 'Call');
 
     callsController.startCallInternal(userId, type === 'video');
   }
 
-  private discardCurrentCall(toPeerId: PeerId, ignoreGroupCall?: GroupCallInstance, ignoreCall?: CallInstance) {
-    if(groupCallsController.groupCall && groupCallsController.groupCall !== ignoreGroupCall) return this.discardGroupCallConfirmation(toPeerId);
-    else if(callsController.currentCall && callsController.currentCall !== ignoreCall) return this.discardCallConfirmation(toPeerId);
+  private discardCurrentCall(toPeerId: PeerId, toType: 'Live' | 'Voice' | 'Call', ignoreGroupCall?: GroupCallInstance, ignoreCall?: CallInstance, ignoreLive?: RtmpCallInstance): Promise<void> {
+    if(groupCallsController.groupCall && groupCallsController.groupCall !== ignoreGroupCall) return this.discardGroupCallConfirmation(toPeerId, toType);
+    else if(callsController.currentCall && callsController.currentCall !== ignoreCall) return this.discardCallConfirmation(toPeerId, toType);
+    else if(rtmpCallsController.currentCall && rtmpCallsController.currentCall !== ignoreLive) return this.discardLiveConfirmation(toPeerId, toType);
     else return Promise.resolve();
   }
 
-  private async discardCallConfirmation(toPeerId: PeerId) {
+  private async discardAnyCallConfirmation(fromPeerId: PeerId, toPeerId: PeerId, fromType: Parameters<AppImManager['discardCurrentCall']>[1], toType: Parameters<AppImManager['discardCurrentCall']>[1]) {
+    await Promise.all([
+      wrapPeerTitle({peerId: fromPeerId}),
+      wrapPeerTitle({peerId: toPeerId})
+    ]).then(([title1, title2]) => {
+      return confirmationPopup({
+        titleLangKey: `Call.Confirm.Discard.${fromType}.Header`,
+        descriptionLangKey: `Call.Confirm.Discard.${fromType}.To${toType}.Text`,
+        descriptionLangArgs: [title1, title2],
+        button: {
+          langKey: 'OK'
+        }
+      });
+    });
+  }
+
+  private async discardGroupCallConfirmation(toPeerId: PeerId, toType: Parameters<AppImManager['discardCurrentCall']>[1]) {
+    const currentCall = groupCallsController.groupCall;
+    if(currentCall) {
+      await this.discardAnyCallConfirmation(currentCall.chatId.toPeerId(true), toPeerId, 'Voice', toType);
+
+      if(groupCallsController.groupCall === currentCall) {
+        await currentCall.hangUp();
+      }
+    }
+  }
+
+  private async discardCallConfirmation(toPeerId: PeerId, toType: Parameters<AppImManager['discardCurrentCall']>[1]) {
     const currentCall = callsController.currentCall;
     if(currentCall) {
-      await Promise.all([
-        wrapPeerTitle({peerId: currentCall.interlocutorUserId.toPeerId(false)}),
-        wrapPeerTitle({peerId: toPeerId})
-      ]).then(([title1, title2]) => {
-        return confirmationPopup({
-          titleLangKey: 'Call.Confirm.Discard.Call.Header',
-          descriptionLangKey: toPeerId.isUser() ? 'Call.Confirm.Discard.Call.ToCall.Text' : 'Call.Confirm.Discard.Call.ToVoice.Text',
-          descriptionLangArgs: [title1, title2],
-          button: {
-            langKey: 'OK'
-          }
-        });
-      });
+      await this.discardAnyCallConfirmation(currentCall.interlocutorUserId.toPeerId(false), toPeerId, 'Call', toType);
 
       if(!currentCall.isClosing) {
         await currentCall.hangUp('phoneCallDiscardReasonDisconnect');
@@ -1400,25 +1417,13 @@ export class AppImManager extends EventListenerBase<{
     }
   }
 
-  private async discardGroupCallConfirmation(toPeerId: PeerId) {
-    const currentGroupCall = groupCallsController.groupCall;
-    if(currentGroupCall) {
-      await Promise.all([
-        wrapPeerTitle({peerId: currentGroupCall.chatId.toPeerId(true)}),
-        wrapPeerTitle({peerId: toPeerId})
-      ]).then(([title1, title2]) => {
-        return confirmationPopup({
-          titleLangKey: 'Call.Confirm.Discard.Voice.Header',
-          descriptionLangKey: toPeerId.isUser() ? 'Call.Confirm.Discard.Voice.ToCall.Text' : 'Call.Confirm.Discard.Voice.ToVoice.Text',
-          descriptionLangArgs: [title1, title2],
-          button: {
-            langKey: 'OK'
-          }
-        });
-      });
+  private async discardLiveConfirmation(toPeerId: PeerId, toType: Parameters<AppImManager['discardCurrentCall']>[1]) {
+    const currentCall = rtmpCallsController.currentCall;
+    if(currentCall) {
+      await this.discardAnyCallConfirmation(currentCall.chatId.toPeerId(true), toPeerId, 'Live', toType);
 
-      if(groupCallsController.groupCall === currentGroupCall) {
-        await currentGroupCall.hangUp();
+      if(rtmpCallsController.currentCall === currentCall) {
+        await rtmpCallsController.leaveCall();
       }
     }
   }
@@ -1462,10 +1467,21 @@ export class AppImManager extends EventListenerBase<{
       }
     }
 
-    // await this.discardCurrentCall(peerId);
+    await this.discardCurrentCall(peerId, 'Voice');
 
     next();
-  };
+  }
+
+  public async joinLiveStream(peerId: PeerId) {
+    await this.discardCurrentCall(peerId, 'Live');
+
+    await rtmpCallsController.joinCall(peerId.toChatId()).catch((err) => {
+      console.error(err);
+      toastNew({
+        langPackKey: 'Error.AnError'
+      });
+    });
+  }
 
   public setCurrentBackground(broadcastEvent = false, skipAnimation?: boolean): ReturnType<AppImManager['setBackground']> {
     const theme = themeController.getTheme();

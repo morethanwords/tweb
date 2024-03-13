@@ -196,13 +196,11 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
 
         const adminPanelContainer = document.createElement('div');
         adminPanelContainer.classList.add('admin-popup-container');
-        adminPanelContainer.style.position = 'absolute';
 
         this.adminPanel = adminPanelContainer;
         this.adminPanel.classList.add('admin-hidden');
 
         this.disposeSolid = render(() => AdminStreamPopup({peerId: params.peerId}), this.adminPanel);
-        this.content.mover.insertAdjacentElement('beforeend', this.adminPanel);
       },
       onCanPlay: () => {
         // this.showLoader();
@@ -267,7 +265,7 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
       }
     }
 
-    this.videoPlayer?.lockControls(!visible);
+    this.videoPlayer?.lockControls(visible ? true : undefined);
     SetTransition({
       element: this.adminPanel,
       className: 'admin-hidden',
@@ -281,7 +279,7 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
 
     if(!this.preloaderTemplate.parentElement) {
       const thumbnail = this.content.mover.querySelector('canvas.canvas-thumbnail, .thumbnail-avatar') as HTMLElement;
-      thumbnail.after(this.preloaderTemplate);
+      thumbnail.after(this.preloaderTemplate, this.adminPanel);
     }
 
     this.preloaderRtmp.attach(this.preloaderTemplate, true);

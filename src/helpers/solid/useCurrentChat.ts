@@ -26,7 +26,7 @@ export function useChat(chatId: () => ChatId) {
   const [chat, setChat] = createSignal(apiManagerProxy.getChat(chatId()));
 
   const onUpdate = (_chatId: ChatId) => {
-    if(chatId() === _chatId.toPeerId(true)) {
+    if(chatId() === _chatId) {
       setChat(apiManagerProxy.getChat(_chatId));
     }
   };

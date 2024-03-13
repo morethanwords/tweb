@@ -581,6 +581,12 @@ const lang = {
   'Rtmp.RecordPopup.RecordAudioHint': 'This chat will be recorded into an audio file',
   'Rtmp.RecordPopup.RecordVideoHint': 'Choose video orientation',
   'Rtmp.RecordPopup.ButtonRecord': 'START RECORDING',
+  'Call.Confirm.Discard.Live.Header': 'Live Stream in Progress',
+  'Call.Confirm.Discard.Live.ToVoice.Text': 'Leave live stream in "%1$@" and start a video chat in "%2$@"?',
+  'Call.Confirm.Discard.Live.ToCall.Text': 'Leave live stream in "%1$@" and start a call with "%2$@"?',
+  'Call.Confirm.Discard.Live.ToLive.Text': 'Leave live stream in "%1$@" and start a new one in "%2$@"?',
+  'Call.Confirm.Discard.Voice.ToLive.Text': 'Leave video chat in "%1$@" and start a live stream in "%2$@"?',
+  'Call.Confirm.Discard.Call.ToLive.Text': 'End call with "%1$@" and start a live stream in "%2$@"?',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
