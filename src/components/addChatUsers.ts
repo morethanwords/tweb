@@ -4,15 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {LangPackKey, i18n} from '../lib/langPack';
+import {FormatterArguments, LangPackKey, i18n, join} from '../lib/langPack';
 import rootScope from '../lib/rootScope';
-import PeerTitle from './peerTitle';
 import PopupElement from './popups';
 import PopupPeer, {PopupPeerButtonCallbackCheckboxes, PopupPeerCheckboxOptions} from './popups/peer';
 import PopupPickUser from './popups/pickUser';
 import AppAddMembersTab from './sidebarLeft/tabs/addMembers';
 import SidebarSlider from './slider';
 import {toastNew} from './toast';
+import wrapPeerTitle from './wrappers/peerTitle';
 
 export default async function addChatUsers({
   peerId,
@@ -25,20 +25,23 @@ export default async function addChatUsers({
   const isChannel = await rootScope.managers.appChatsManager.isChannel(id);
   const isBroadcast = await rootScope.managers.appChatsManager.isBroadcast(id);
 
-  const showConfirmation = (peerIds: PeerId[], callback: (e: MouseEvent, checked: PopupPeerButtonCallbackCheckboxes) => void) => {
-    let titleLangKey: LangPackKey, titleLangArgs: any[],
-      descriptionLangKey: LangPackKey, descriptionLangArgs: any[],
+  const showConfirmation = async(peerIds: PeerId[], callback: (e: MouseEvent, checked: PopupPeerButtonCallbackCheckboxes) => void) => {
+    let titleLangKey: LangPackKey, titleLangArgs: FormatterArguments,
+      descriptionLangKey: LangPackKey, descriptionLangArgs: FormatterArguments,
       checkboxes: PopupPeerCheckboxOptions[];
 
     if(peerIds.length > 1) {
+      const titles = await Promise.all(peerIds.map(async(peerId) => {
+        const b = document.createElement('b');
+        b.append(await wrapPeerTitle({peerId}));
+        return b;
+      }));
       titleLangKey = 'AddMembersAlertTitle';
       titleLangArgs = [i18n(isBroadcast ? 'Subscribers' : 'Members', [peerIds.length])];
       descriptionLangKey = 'AddMembersAlertCountText';
-      descriptionLangArgs = peerIds.map((peerId) => {
-        const b = document.createElement('b');
-        b.append(new PeerTitle({peerId}).element);
-        return b;
-      });
+      descriptionLangArgs = [
+        join(titles)
+      ];
 
       if(!isChannel) {
         checkboxes = [{
@@ -50,27 +53,24 @@ export default async function addChatUsers({
       titleLangKey = 'AddOneMemberAlertTitle';
       descriptionLangKey = 'AddMembersAlertNamesText';
       const b = document.createElement('b');
-      b.append(new PeerTitle({
-        peerId: peerIds[0]
-      }).element);
+      b.append(await wrapPeerTitle({peerId: peerIds[0]}));
       descriptionLangArgs = [b];
 
       if(!isChannel) {
         checkboxes = [{
           text: 'AddOneMemberForwardMessages',
-          textArgs: [new PeerTitle({peerId: peerIds[0]}).element],
+          textArgs: [await wrapPeerTitle({peerId: peerIds[0]})],
           checked: true
         }];
       }
     }
 
-    descriptionLangArgs.push(new PeerTitle({
-      peerId
-    }).element);
+    descriptionLangArgs.push(await wrapPeerTitle({peerId}));
 
     PopupElement.createPopup(PopupPeer, 'popup-add-members', {
       peerId,
       titleLangKey,
+      titleLangArgs,
       descriptionLangKey,
       descriptionLangArgs,
       buttons: [{
