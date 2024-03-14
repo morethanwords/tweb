@@ -33,6 +33,10 @@ const USE_SSL = false;
 const NO_MINIFY = false;
 const HAS_SOLID = existsSync(resolve(rootDir, 'src/vendor/solid'));
 
+const ADDITIONAL_ALIASES = {
+  'solid-transition-group': resolve(rootDir, 'src/vendor/solid-transition-group')
+};
+
 console.log('has built solid', HAS_SOLID);
 
 export default defineConfig({
@@ -121,7 +125,8 @@ export default defineConfig({
       'solid-js/jsx-runtime': resolve(rootDir, 'src/vendor/solid/jsx'),
       'solid-js/web': resolve(rootDir, 'src/vendor/solid/web'),
       'solid-js/store': resolve(rootDir, 'src/vendor/solid/store'),
-      'solid-js': resolve(rootDir, 'src/vendor/solid')
-    } : undefined
+      'solid-js': resolve(rootDir, 'src/vendor/solid'),
+      ...ADDITIONAL_ALIASES
+    } : ADDITIONAL_ALIASES
   }
 });

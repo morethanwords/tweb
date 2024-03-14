@@ -104,9 +104,6 @@ devDependencies:
   sass:
     specifier: ^1.69.6
     version: 1.69.6
-  solid-transition-group:
-    specifier: ^0.2.3
-    version: 0.2.3(solid-js@1.8.7)
   typescript:
     specifier: ^4.9.5
     version: 4.9.5
@@ -4608,17 +4605,6 @@ packages:
       '@babel/generator': 7.23.6
       '@babel/helper-module-imports': 7.22.15
       '@babel/types': 7.23.6
-      solid-js: 1.8.7
-    dev: true
-
-  /solid-transition-group@0.2.3(solid-js@1.8.7):
-    resolution: {integrity: sha512-iB72c9N5Kz9ykRqIXl0lQohOau4t0dhel9kjwFvx81UZJbVwaChMuBuyhiZmK24b8aKEK0w3uFM96ZxzcyZGdg==}
-    engines: {node: '>=18.0.0', pnpm: '>=8.6.0'}
-    peerDependencies:
-      solid-js: ^1.6.12
-    dependencies:
-      '@solid-primitives/refs': 1.0.5(solid-js@1.8.7)
-      '@solid-primitives/transition-group': 1.0.3(solid-js@1.8.7)
       solid-js: 1.8.7
     dev: true
 
