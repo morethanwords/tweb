@@ -22,7 +22,7 @@ export default class DownloadStorage implements FileStorage {
     size: number
   }) {
     const headers = {
-      'Content-Type': 'application/octet-stream; charset=utf-8',
+      // 'Content-Type': 'application/octet-stream; charset=utf-8',
       'Content-Disposition': 'attachment; filename*=UTF-8\'\'' + fileNameRFC(fileName),
       ...(size ? {'Content-Length': size} : {})
     };

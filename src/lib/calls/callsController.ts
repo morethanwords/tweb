@@ -139,7 +139,7 @@ export class CallsController extends EventListenerBase<{
   }
 
   public get currentCall() {
-    return this.sortedInstances[0];
+    return this.sortedInstances?.[0];
   }
 
   public getCallByUserId(userId: UserId) {
