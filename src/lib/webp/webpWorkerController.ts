@@ -21,7 +21,7 @@ export class WebpWorkerController {
   private convertPromises: {[fileName: string]: CancellablePromise<Uint8Array>} = {};
 
   private init() {
-    this.worker = new Worker(new URL('./webp.worker.ts', import.meta.url));
+    this.worker = new Worker(new URL('./webp.worker.ts', import.meta.url), {type: 'module'});
     this.worker.addEventListener('message', (e) => {
       const task = e.data as ConvertWebPTask;
       const payload = task.payload;

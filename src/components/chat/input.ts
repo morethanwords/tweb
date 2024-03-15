@@ -18,7 +18,7 @@ import PopupCreatePoll from '../popups/createPoll';
 import PopupForward from '../popups/forward';
 import PopupNewMedia from '../popups/newMedia';
 import {toast, toastNew} from '../toast';
-import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageMedia, InputReplyTo, Chat as MTChat} from '../../layer';
+import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageMedia, InputReplyTo, Chat as MTChat, User} from '../../layer';
 import StickersHelper from './stickersHelper';
 import ButtonIcon from '../buttonIcon';
 import ButtonMenuToggle from '../buttonMenuToggle';
@@ -1951,6 +1951,13 @@ export default class ChatInput {
       if(this.chat && this.openChatBtn) {
         const good = !haveSomethingInControl && this.chat.type === ChatType.Saved;
         haveSomethingInControl ||= good;
+        if(good) {
+          const savedPeerId = this.chat.threadId;
+          const peer = apiManagerProxy.getPeer(savedPeerId);
+          const key: LangPackKey = (peer as MTChat.channel).pFlags.broadcast ? 'OpenChannel2' : (savedPeerId.isUser() ? ((peer as User.user).pFlags.bot ? 'BotWebViewOpenBot' : 'OpenChat') : 'OpenGroup2');
+          const span = i18n(key);
+          this.openChatBtn.querySelector('.i18n').replaceWith(span);
+        }
         this.openChatBtn.classList.toggle('hide', !good);
       }
 

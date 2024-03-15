@@ -21,7 +21,6 @@ import styles from './viewer.module.scss';
 import {createSignal, createEffect, JSX, For, Accessor, onCleanup, createMemo, mergeProps, createContext, useContext, Context, ParentComponent, splitProps, untrack, on, getOwner, runWithOwner, createRoot, ParentProps, Suspense, batch, Signal, onMount, Setter, createReaction, Show, FlowComponent, useTransition, $TRACK, Owner, createRenderEffect} from 'solid-js';
 import {unwrap} from 'solid-js/store';
 import {assign, isServer, Portal} from 'solid-js/web';
-import {Transition} from 'solid-transition-group';
 import rootScope from '../../lib/rootScope';
 import ListenerSetter from '../../helpers/listenerSetter';
 import {Middleware, getMiddleware} from '../../helpers/middleware';
@@ -102,6 +101,7 @@ import getStoryRepostInfo from '../../lib/appManagers/utils/stories/repostInfo';
 import anchorCallback from '../../helpers/dom/anchorCallback';
 import {ButtonIconTsx} from '../buttonIconTsx';
 import {IconTsx} from '../iconTsx';
+import {Transition} from 'solid-transition-group';
 
 export const STORY_DURATION = 5e3;
 const STORY_HEADER_AVATAR_SIZE = 32;

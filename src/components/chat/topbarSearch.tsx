@@ -476,13 +476,9 @@ export default function TopbarSearch(props: {
     setSenderInputEntity(element);
   });
 
-  const inputSearchTools = document.createElement('div');
-  inputSearchTools.classList.add('topbar-search-input-tools');
-  inputSearch.clearBtn.replaceWith(inputSearchTools);
-
   const MAX_HEIGHT = 271;
 
-  const arrowButton = (direction: 'up' | 'down') => {
+  const ArrowButton = ({direction}: {direction: 'up' | 'down'}) => {
     return (
       <ButtonIconTsx
         icon={direction}
@@ -522,10 +518,14 @@ export default function TopbarSearch(props: {
     );
   };
 
-  const inputUpButton = arrowButton('up');
-  const inputDownButton = arrowButton('down');
-
-  inputSearchTools.append(inputUpButton as HTMLElement, inputDownButton as HTMLElement, inputSearch.clearBtn);
+  const b = inputSearch.clearBtn.previousSibling;
+  let inputSearchTools: HTMLDivElement;
+  (<div ref={inputSearchTools} class="topbar-search-input-tools">
+    <ArrowButton direction="up" />
+    <ArrowButton direction="down" />
+    {inputSearch.clearBtn}
+  </div>);
+  b.after(inputSearchTools);
 
   createEffect(() => {
     const {peerId, threadId} = props;

@@ -120,6 +120,7 @@ import deepEqual from '../../helpers/object/deepEqual';
 import {savedReactionTags} from '../../components/chat/reactions';
 import {setAppState} from '../../stores/appState';
 import rtmpCallsController, {RtmpCallInstance} from '../calls/rtmpCallsController';
+import {AppMediaViewerRtmp} from '../../components/appMediaViewerRtmp';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -1480,6 +1481,18 @@ export class AppImManager extends EventListenerBase<{
       toastNew({
         langPackKey: 'Error.AnError'
       });
+    });
+
+    this.openLiveStreamPlayer(peerId);
+  }
+
+  private async openLiveStreamPlayer(peerId: PeerId) {
+    if(AppMediaViewerRtmp.activeInstance) return;
+
+    const shareUrl = await AppMediaViewerRtmp.getShareUrl(peerId.toChatId());
+    new AppMediaViewerRtmp(shareUrl).openMedia({
+      peerId,
+      isAdmin: rtmpCallsController.currentCall.admin
     });
   }
 

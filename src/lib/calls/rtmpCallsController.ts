@@ -54,8 +54,7 @@ export class RtmpCallInstance extends EventListenerBase<{
 
 export class RtmpCallsController extends EventListenerBase<{
   startedJoining: (peerId: PeerId) => void,
-  currentCallChanged: (call: RtmpCallInstance) => void,
-  pipToggled: (enabled: boolean) => void
+  currentCallChanged: (call: RtmpCallInstance) => void
 }> {
   private managers: AppManagers;
 

@@ -4,9 +4,7 @@ import {TopbarLive} from './topbarLive';
 import {useChat} from '../../../helpers/solid/useCurrentChat';
 import {subscribeOn} from '../../../helpers/solid/subscribeOn';
 import rootScope from '../../../lib/rootScope';
-import rtmpCallsController from '../../../lib/calls/rtmpCallsController';
 import {useCurrentRtmpCall} from '../../rtmp/hooks';
-import {AppMediaViewerRtmp} from '../../appMediaViewerRtmp';
 import PinnedContainer from '../pinnedContainer';
 import {AppManagers} from '../../../lib/appManagers/managers';
 import Chat from '../chat';
@@ -36,7 +34,7 @@ export default class ChatLive extends PinnedContainer {
   private init() {
     const {peerId} = this;
 
-    const [watching, setWatching] = createSignal<number | undefined>(undefined);
+    const [watching, setWatching] = createSignal<number>();
     const chat = useChat(() => peerId().toChatId());
     const currentCall = useCurrentRtmpCall();
     const isGroupCallActive = createMemo(() => {
@@ -63,12 +61,14 @@ export default class ChatLive extends PinnedContainer {
       setWatching(call.participants_count);
     });
 
-    createEffect(() => {
+    createEffect<PeerId>((wasPeerId) => {
       if(!chat() || !(chat() as MTChat.channel).pFlags.broadcast) {
         return;
       }
 
-      setWatching();
+      if(wasPeerId !== peerId()) {
+        setWatching();
+      }
 
       createEffect(async() => {
         if(!isGroupCallActive()) {
@@ -83,32 +83,14 @@ export default class ChatLive extends PinnedContainer {
 
         setWatching(call.participants_count);
       });
-    });
 
-    subscribeOn(rtmpCallsController)('currentCallChanged', (call) => {
-      if(call?.peerId === peerId()) {
-        openPlayer();
-      }
-    });
-
-    subscribeOn(rtmpCallsController)('pipToggled', (enabled) => {
-      if(!enabled) {
-        openPlayer();
-      }
+      return peerId();
     });
 
     createEffect(() => {
       this.toggle(!shouldShow());
     });
 
-    const openPlayer = () => {
-      if(AppMediaViewerRtmp.activeInstance) return;
-
-      new AppMediaViewerRtmp().openMedia({
-        peerId: peerId(),
-        isAdmin: currentCall.call().admin
-      });
-    };
     const onJoinClicked = () => {
       appImManager.joinLiveStream(peerId());
     };

@@ -5,6 +5,7 @@ import {RtmpData} from './rtmpData';
 import rootScope from '../../lib/rootScope';
 import {toastNew} from '../toast';
 import {i18n} from '../../lib/langPack';
+import pause from '../../helpers/schedulers/pause';
 
 const cnPlayer = (className = '') => `rtmp-player${className}`;
 
@@ -14,7 +15,7 @@ export const AdminStreamPopup = ({peerId}: {peerId: PeerId}) => {
   const [rtmpDataLoading, setRtmpDataLoading] = createSignal(true);
 
   onMount(() => {
-    rootScope.managers.appGroupCallsManager.fetchRtmpUrl(peerId).then((data) => {
+    rootScope.managers.appGroupCallsManager.fetchRtmpUrl(peerId).then(async(data) => {
       setRtmpUrl(data.url);
       setRtmpKey(data.key);
       setRtmpDataLoading(false);
@@ -46,4 +47,4 @@ export const AdminStreamPopup = ({peerId}: {peerId: PeerId}) => {
       </div>
     </div>
   );
-}
+};

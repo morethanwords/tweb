@@ -22,6 +22,7 @@ const pendingStreams: Map<string, RtmpStream> = new Map();
 // сафари прекрасный браузер - перезагружает плейлист даже после ENDLIST
 // костыль чтобы не было проблем с перезагрузкой мертвого стрима
 const lastKnownTime = new Map<Long, bigInt.BigInteger>();
+const floodRelease = new Map<Long, number>();
 
 const BUFFER_MS_MIN = 8000;
 const BUFFER_MS_MAX = 10000;
@@ -95,7 +96,8 @@ class RtmpStream {
 
   constructor(readonly call: InputGroupCall) {
     this.decodeOpus = this.decodeOpus.bind(this);
-    this._log = logger('RTMP-' + (call.id + '').slice(-3));
+    this._log = logger('RTMP-' + (Date.now() + '').slice(-2));
+    this._log('constructor', call.id);
   }
 
   private updateRtt(rtt: number) {
@@ -223,7 +225,7 @@ class RtmpStream {
   }
 
   private hasEnoughBuffer() {
-    return !!this._initChunk/*  && this._bufferSize && this._buffer.length >= this._bufferSize */;
+    return !!this._initChunk && this._bufferSize && this._buffer.some((chunk) => !!chunk.segment);
   }
 
   private sendBufferToController(controller: ReadableStreamDefaultController<Uint8Array>) {
@@ -277,6 +279,13 @@ class RtmpStream {
         } catch(e) {
           assumeType<ApiError>(e);
           log('error', e.type, nextTime.toString());
+
+          const retry = async(delay: number) => {
+            await pause(delay);
+            if(shouldSkip()) return;
+            return fetchChunk(true);
+          };
+
           if(e.type === 'TIME_TOO_BIG') { // * can happen when we're ahead or the stream is ended
             if(ignoreRequestedTime) { // * we already tried to refetch it
               throw new Error('stream ended');
@@ -290,10 +299,15 @@ class RtmpStream {
               throw new Error('stream ended');
             }
 
-            await pause(delay);
-            if(shouldSkip()) return;
-            return fetchChunk(true);
-          } else {
+            return retry(delay);
+          }/*  else if(e.type.startsWith('FLOOD_WAIT_')) {
+            const wait = +e.type.split('_').pop();
+            if(wait > 10) {
+              throw e;
+            }
+
+            return retry(wait * 1000);
+          } */ else {
             throw e;
           }
         }
@@ -496,10 +510,16 @@ class RtmpStream {
     this._replenishTempId = 0;
     this._lastReplenishingPromise = Promise.resolve();
     this._rtts = [];
-    ++this._generation;
+    const generation = ++this._generation;
+    const check = () => this._generation === generation && !this._destroyed;
 
-    const state = await this.fetchState();
-    if(this._destroyed) return;
+    const [state] = await Promise.all([
+      this.fetchState(),
+      floodRelease.get(this.call.id) && pause(Math.max(0, floodRelease.get(this.call.id) - Date.now()))
+    ]);
+    if(!check()) return;
+
+    floodRelease.delete(this.call.id);
 
     // state.channels = [{
     //   '_': 'groupCallStreamChannel',
@@ -558,10 +578,14 @@ class RtmpStream {
 
     if(typeof(error) === 'object' && error && typeof(error.type) === 'string') {
       assumeType<ApiError>(error);
-      if(error.type.startsWith('FLOOD_WAIT_') ||
-        error.type === 'TIME_TOO_SMALL' ||
-        error.type === 'TIME_INVALID'
-      ) {
+      if(error.type.startsWith('FLOOD_WAIT')) {
+        const wait = +error.type.split('_').pop();
+        floodRelease.set(this.call.id, Date.now() + wait * 1000);
+        this.start();
+        return true;
+      }
+
+      if(error.type === 'TIME_TOO_SMALL' || error.type === 'TIME_INVALID') {
         log('rtmp stream need resync', error);
         this.start();
         return true;
@@ -605,9 +629,7 @@ class RtmpStream {
     this._destroyed = true;
     this._generation = 0;
 
-    if(IS_SAFARI) {
-      invokeVoidAll('rtmpStreamDestroyed', this.call.id);
-    }
+    invokeVoidAll('rtmpStreamDestroyed', this.call.id);
   };
 
   public createStream() {
@@ -780,10 +802,10 @@ export function onRtmpFetch(event: FetchEvent, params: string, search: string) {
 
   const isHls = search?.startsWith('hls=');
 
-  if(pending && !isHls) {
-    pending.destroy();
-    pending = undefined;
-  }
+  // if(pending && !isHls) {
+  //   pending.destroy();
+  //   pending = undefined;
+  // }
 
   if(!pending) {
     log('creating rtmp stream', call.id);

@@ -8,18 +8,18 @@ import Scrollable from '../components/scrollable';
 import {MOUNT_CLASS_TO} from '../config/debug';
 import {IS_SAFARI} from '../environment/userAgent';
 import getVisibleRect from './dom/getVisibleRect';
-import reflowScrollableElement from './dom/reflowScrollableElement';
+import {fastRaf} from './schedulers';
 
-let USE_REFLOW = false;
-if(IS_SAFARI) {
-  try {
-    // throw '';
-    const match = navigator.userAgent.match(/Version\/(.+?) /);
-    USE_REFLOW = +match[1] < 15.4;
-  } catch(err) {
-    USE_REFLOW = true;
-  }
-}
+// let USE_REFLOW = false;
+// if(IS_SAFARI) {
+//   try {
+//     // throw '';
+//     const match = navigator.userAgent.match(/Version\/(.+?) /);
+//     USE_REFLOW = +match[1] < 15.4;
+//   } catch(err) {
+//     USE_REFLOW = true;
+//   }
+// }
 
 export default class ScrollSaver {
   private scrollHeight: number;
@@ -121,9 +121,9 @@ export default class ScrollSaver {
   }
 
   private onRestore(useReflow?: boolean) {
-    if(USE_REFLOW && useReflow/*  && !isAppleMobile */) { // * fix blinking and jumping
-      reflowScrollableElement(this.container);
-    }
+    // if(USE_REFLOW && useReflow/*  && !isAppleMobile */) { // * fix blinking and jumping
+    //   reflowScrollableElement(this.container);
+    // }
 
     this.scrollable.onSizeChange();
   }
@@ -134,6 +134,14 @@ export default class ScrollSaver {
     this.scrollable.setScrollPositionSilently(this.scrollTop = newScrollTop);
     // container.scrollTop = scrollHeight;
     // isTouchSupported && isApple && (container.container.style.overflow = '');
+
+    if(IS_SAFARI) {
+      fastRaf(() => {
+        if(this.scrollTop === newScrollTop) {
+          this.scrollable.setScrollPositionSilently(this.scrollTop = newScrollTop);
+        }
+      });
+    }
 
     this.onRestore(useReflow);
   }

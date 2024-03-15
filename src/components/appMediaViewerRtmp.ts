@@ -1,5 +1,4 @@
 import {IS_SAFARI} from '../environment/userAgent';
-import {copyTextToClipboard} from '../helpers/clipboard';
 import {attachClickEvent} from '../helpers/dom/clickEvent';
 import {videoToImage} from '../helpers/dom/videoToImage';
 import ListLoader from '../helpers/listLoader';
@@ -20,6 +19,11 @@ import {render} from 'solid-js/web';
 import {AdminStreamPopup} from './rtmp/adminStreamPopup';
 import ProgressivePreloader from './preloader';
 import RTMP_STATE from '../lib/calls/rtmpState';
+import getPeerActiveUsernames from '../lib/appManagers/utils/peers/getPeerActiveUsernames';
+import {ExportedChatInvite} from '../layer';
+import rootScope from '../lib/rootScope';
+import PopupPickUser from './popups/pickUser';
+import wrapPeerTitle from './wrappers/peerTitle';
 
 const REJOIN_INTERVAL = 15000;
 
@@ -31,12 +35,13 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
   private peerId: PeerId;
   private listenerSetter = new ListenerSetter();
   private retryTimeout?: number;
+  private retryTempId?: number;
   private rejoinInterval?: number;
 
   private preloaderRtmp: ProgressivePreloader;
   private preloaderTemplate: HTMLElement;
 
-  constructor() {
+  constructor(private shareUrl: string) {
     super(new ListLoader({
       loadMore: async() => {
         return {
@@ -44,7 +49,7 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
           items: []
         };
       }
-    }), ['forward']);
+    }), shareUrl ? ['forward'] : []);
 
     this.preloaderRtmp = new ProgressivePreloader({
       cancelable: false,
@@ -54,9 +59,9 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
     this.preloaderTemplate = document.createElement('div');
     this.preloaderTemplate.classList.add('preloader-template');
 
-    this.onForward = this.onForward.bind(this);
+    this.retryTempId = 0;
 
-    this.setBtnMenuToggle([{
+    if(this.shareUrl) this.setBtnMenuToggle([{
       icon: 'forward',
       text: 'Forward',
       onClick: this.onForward
@@ -77,16 +82,21 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
 
     this.listenerSetter.add(apiManagerProxy.serviceMessagePort)('rtmpStreamDestroyed', (callId) => {
       if(rtmpCallsController.currentCall?.call.id === callId) {
-        this.retryLoadStream(this.videoPlayer.video);
+        this.retryLoadStream(this.videoPlayer.video, 'was destroyed');
       }
     });
   }
 
-  private onForward = () => {
-    const url = getRtmpShareUrl(this.peerId);
-    copyTextToClipboard(url);
+  private onForward = async() => {
+    const peerId = await PopupPickUser.createSharingPicker2();
+    rootScope.managers.appMessagesManager.sendText({
+      peerId,
+      text: this.shareUrl
+    });
+
     toastNew({
-      langPackKey: 'LinkCopied'
+      langPackKey: 'InviteLinkSentSingle',
+      langPackArguments: [await wrapPeerTitle({peerId, dialog: true})]
     });
   };
 
@@ -94,16 +104,25 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
     peerId: PeerId,
     isAdmin: boolean
   }) {
+    const chatId = params.peerId.toChatId();
     if(!rtmpCallsController.currentCall || rtmpCallsController.currentCall.peerId !== params.peerId) {
       if(rtmpCallsController.currentCall) {
         await rtmpCallsController.leaveCall();
       }
 
-      await rtmpCallsController.joinCall(params.peerId.toChatId());
+      await rtmpCallsController.joinCall(chatId);
     }
 
     AppMediaViewerRtmp.activeInstance = this;
     this.peerId = params.peerId;
+
+    const chat = apiManagerProxy.getChat(chatId);
+    if(!getPeerActiveUsernames(chat)[0]) {
+      const chatFull = await this.managers.appProfileManager.getChatFull(chatId);
+      this.shareUrl = (chatFull.exported_invite as ExportedChatInvite.chatInviteExported)?.link;
+    } else {
+      this.shareUrl = getRtmpShareUrl(this.peerId);
+    }
 
     await this._openMedia({
       media: rtmpCallsController.currentCall.inputCall,
@@ -159,14 +178,14 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
           }]);
         }
 
-        const onEnded = () => {
-          this.retryLoadStream(video);
-        };
+        // const onEnded = () => {
+        //   this.retryLoadStream(video, 'video ended');
+        // };
 
-        const onError = () => {
-          if(!video.error) return;
-          this.retryLoadStream(video);
-        };
+        // const onError = () => {
+        //   if(!video.error) return;
+        //   this.retryLoadStream(video, 'video error=' + video.error.message);
+        // };
 
         const onPause = () => {
           if(!video.error && !video.ended) {
@@ -175,8 +194,8 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
         };
 
         this.listenerSetter.add(video)('pause', onPause);
-        this.listenerSetter.add(video)('error', onError);
-        this.listenerSetter.add(video)('ended', onEnded);
+        // this.listenerSetter.add(video)('error', onError);
+        // this.listenerSetter.add(video)('ended', onEnded);
 
         const selector = 'canvas.canvas-thumbnail, .thumbnail-avatar';
         const thumbnail = this.content.mover.querySelector(selector) as HTMLElement;
@@ -290,7 +309,9 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
     rtmpCallsController.currentCall.state = RTMP_STATE.BUFFERING;
   };
 
-  private retryLoadStream(video: HTMLVideoElement) {
+  private retryLoadStream(video: HTMLVideoElement, reason: string) {
+    const tempId = ++this.retryTempId;
+    const log = this.log.bindPrefix(`retryLoadStream-${tempId}-${reason}`);
     const myCallId = rtmpCallsController.currentCall?.call.id;
     if(!myCallId) {
       this.close(undefined, true);
@@ -301,15 +322,22 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
     let checkJoined = true;
     let errors = 0;
 
+    const check = () => tempId === this.retryTempId;
+
     const retry = () => {
+      if(!check()) {
+        return;
+      }
+
       clearTimeout(this.retryTimeout);
+
       rtmpCallsController.isCurrentCallDead(checkJoined).then((empty) => {
-        if(rtmpCallsController.currentCall?.call.id !== myCallId) {
+        if(rtmpCallsController.currentCall?.call.id !== myCallId || !check()) {
           // destroyed
           return;
         }
 
-        this.log('empty', empty, isFirst, checkJoined);
+        log('empty', empty, isFirst, checkJoined);
         checkJoined = empty === 'dying';
 
         if(empty === 'dead' || empty === 'dying') {
@@ -339,12 +367,13 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
           safePlay(video);
         }
       }).catch((err) => {
-        if(rtmpCallsController.currentCall?.call.id !== myCallId) {
+        if(rtmpCallsController.currentCall?.call.id !== myCallId || !check()) {
           // destroyed
           return;
         }
 
         if(++errors > 5) {
+          log.error(err);
           toastNew({
             langPackKey: 'Error.AnError'
           });
@@ -368,6 +397,11 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
 
   public async close(e?: MouseEvent, end = false) {
     const hadPip = this.videoPlayer?.inPip;
+
+    clearTimeout(this.retryTimeout);
+    clearTimeout(this.rejoinInterval);
+    ++this.retryTempId;
+
     if(this.videoPlayer) {
       try {
         const capturedBlob = await videoToImage(this.videoPlayer.video);
@@ -378,8 +412,6 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
         AppMediaViewerRtmp.previousPeerId = this.peerId;
       } catch(e) {}
     }
-    clearTimeout(this.retryTimeout);
-    clearTimeout(this.rejoinInterval);
 
     super.close(e);
     AppMediaViewerRtmp.activeInstance = undefined;
@@ -399,6 +431,16 @@ export class AppMediaViewerRtmp extends AppMediaViewerBase<never, 'forward', nev
 
     if(AppMediaViewerRtmp.activeInstance.videoPlayer?.inPip) {
       document.exitPictureInPicture();
+    }
+  }
+
+  public static async getShareUrl(chatId: ChatId) {
+    const chat = apiManagerProxy.getChat(chatId);
+    if(!getPeerActiveUsernames(chat)[0]) {
+      const chatFull = await rootScope.managers.appProfileManager.getChatFull(chatId);
+      return (chatFull.exported_invite as ExportedChatInvite.chatInviteExported)?.link;
+    } else {
+      return getRtmpShareUrl(chatId.toPeerId(true));
     }
   }
 }

@@ -327,7 +327,7 @@ export class AppUsersManager extends AppManager {
     };
   }
 
-  public resolveUsername(username: string): Promise<Chat | User> | Chat | User {
+  public resolveUsername(username: string) {
     if(username[0] === '@') {
       username = username.slice(1);
     }
@@ -355,7 +355,7 @@ export class AppUsersManager extends AppManager {
     this.saveApiUsers(resolvedPeer.users);
     this.appChatsManager.saveApiChats(resolvedPeer.chats);
 
-    return this.appPeersManager.getPeer(getPeerId(resolvedPeer.peer)) as Chat | User;
+    return this.appPeersManager.getPeer(getPeerId(resolvedPeer.peer));
   }
 
   public resolvePhone(phone: string) {

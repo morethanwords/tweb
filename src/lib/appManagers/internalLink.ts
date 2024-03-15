@@ -74,14 +74,15 @@ export namespace InternalLink {
     invite: string
   }
 
-  /**
-   * LOCAL LINK
-   */
   export interface InternalLinkVoiceChat {
     _: INTERNAL_LINK_TYPE.VOICE_CHAT,
-    id: string,
-    access_hash: string,
-    chat_id: string
+    id?: string,
+    access_hash?: string,
+    chat_id?: string,
+    domain?: string,
+    livestream?: string,
+    videochat?: string,
+    voicechat?: string
   }
 
   export interface InternalLinkUserPhoneNumber {

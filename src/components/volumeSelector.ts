@@ -20,7 +20,11 @@ export default class VolumeSelector extends RangeSelector {
   public btn: HTMLElement;
   protected icon: HTMLSpanElement;
 
-  constructor(protected listenerSetter: ListenerSetter, protected vertical = false) {
+  constructor(
+    protected listenerSetter: ListenerSetter,
+    protected vertical = false,
+    protected media?: HTMLMediaElement
+  ) {
     super({
       step: 0.01,
       min: 0,
@@ -82,6 +86,11 @@ export default class VolumeSelector extends RangeSelector {
 
     const newIcon = replaceButtonIcon(this.btn, VolumeSelector.ICONS[iconIndex]);
     newIcon.classList.add(className + '__icon');
+
+    if(this.media) {
+      this.media.volume = volume;
+      this.media.muted = muted;
+    }
 
     if(!this.mousedown) {
       this.setProgress(muted ? 0 : volume);

@@ -69,7 +69,6 @@ import {MediaSize} from '../helpers/mediaSize';
 import {getRtmpStreamUrl} from '../lib/rtmp/url';
 import boxBlurCanvasRGB from '../vendor/fastBlur';
 import {i18n} from '../lib/langPack';
-import createCanvasStream from '../helpers/canvas/createCanvasStream';
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
@@ -1118,7 +1117,7 @@ export default class AppMediaViewerBase<
         canvas.className = 'canvas-thumbnail thumbnail media-photo';
         context.drawImage(target as HTMLImageElement | HTMLCanvasElement, 0, 0);
         if(this.live) {
-          boxBlurCanvasRGB(context, 0, 0, canvas.width, canvas.height, 100);
+          boxBlurCanvasRGB(context, 0, 0, canvas.width, canvas.height, 8, 2);
         }
         target = canvas;
       }
@@ -1740,10 +1739,10 @@ export default class AppMediaViewerBase<
     if(isVideo || isLiveStream) {
       const middleware = mover.middlewareHelper.get();
       // потому что для safari нужно создать элемент из event'а
-      const useController = isLiveStream || message && media.type !== 'gif';
+      const useController = /* isLiveStream ||  */message && (media as MyDocument).type !== 'gif';
       const video = /* useController ?
         appMediaPlaybackController.addMedia(message, false, true) as HTMLVideoElement :
-         */createVideo({pip: useController, middleware});
+         */createVideo({pip: useController || isLiveStream, middleware});
 
       if(isLiveStream) {
         video.ignoreLeak = true;
@@ -1795,11 +1794,11 @@ export default class AppMediaViewerBase<
         });
 
         const setSingleMedia = () => {
-          // if(isLiveStream) {
-          //   this.releaseSingleMedia = appMediaPlaybackController.setSingleMedia();
-          // } else {
-          this.releaseSingleMedia = appMediaPlaybackController.setSingleMedia(video, message as Message.message);
-          // }
+          if(isLiveStream) {
+            // this.releaseSingleMedia = appMediaPlaybackController.setSingleMedia();
+          } else {
+            this.releaseSingleMedia = appMediaPlaybackController.setSingleMedia(video, message as Message.message);
+          }
         };
 
         const createPlayer = async() => {
@@ -1850,7 +1849,7 @@ export default class AppMediaViewerBase<
                 if(pip) {
                   // appMediaPlaybackController.toggleSwitchers(true);
 
-                  this.releaseSingleMedia(false);
+                  this.releaseSingleMedia?.(false);
                   this.releaseSingleMedia = undefined;
 
                   appMediaPlaybackController.setPictureInPicture(video);
@@ -1922,7 +1921,7 @@ export default class AppMediaViewerBase<
               video.parentElement.classList.remove('is-buffering');
 
               if(!this.isZooming) {
-                this.videoPlayer.lockControls(undefined);
+                this.videoPlayer?.lockControls(undefined);
               }
             }, {once: true});
           };
@@ -2014,10 +2013,8 @@ export default class AppMediaViewerBase<
               setSingleMedia();
 
               this.addEventListener('setMoverBefore', () => {
-                if(this.releaseSingleMedia) {
-                  this.releaseSingleMedia();
-                  this.releaseSingleMedia = undefined;
-                }
+                this.releaseSingleMedia?.();
+                this.releaseSingleMedia = undefined;
               }, {once: true});
             }
 

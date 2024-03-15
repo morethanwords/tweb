@@ -207,6 +207,7 @@ export class InternalLinkProcessor {
     type K4 = {startapp?: string};
     type K5 = {story?: string};
     type K6 = {boost?: string};
+    type K7 = {voicechat?: string, videochat?: string, livestream?: string};
 
     addAnchorListener<{
     //   pathnameParams: ['c', string, string],
@@ -220,7 +221,14 @@ export class InternalLinkProcessor {
       name: 'im',
       callback: async({pathnameParams, uriParams}, element, masked) => {
         let link: InternalLink;
-        if('boost' in uriParams || pathnameParams?.[0] === 'boost') {
+        if('voicechat' in uriParams || 'videochat' in uriParams || 'livestream' in uriParams) {
+          assumeType<K7>(uriParams);
+          link = {
+            _: INTERNAL_LINK_TYPE.VOICE_CHAT,
+            domain: pathnameParams[0],
+            ...uriParams
+          };
+        } else if('boost' in uriParams || pathnameParams?.[0] === 'boost') {
           const channel = pathnameParams?.[0] === 'c' ? pathnameParams[1] : (uriParams as any).c;
           link = {
             _: INTERNAL_LINK_TYPE.BOOST,
@@ -305,6 +313,8 @@ export class InternalLinkProcessor {
         startgroup?: string,
         game?: string,
         voicechat?: string,
+        videochat?: string,
+        livestream?: string,
         post?: string,
         thread?: string,
         comment?: string,
@@ -322,7 +332,9 @@ export class InternalLinkProcessor {
       protocol: 'tg',
       callback: ({uriParams}, element, masked) => {
         let link: InternalLink;
-        if(uriParams.story) {
+        if(uriParams.voicechat !== undefined || uriParams.videochat !== undefined || uriParams.livestream !== undefined) {
+          link = this.makeLink(INTERNAL_LINK_TYPE.VOICE_CHAT, uriParams as Required<typeof uriParams>);
+        } else if(uriParams.story) {
           link = this.makeLink(INTERNAL_LINK_TYPE.STORY, uriParams as Required<typeof uriParams>);
         } else if(uriParams.phone) {
           link = this.makeLink(INTERNAL_LINK_TYPE.USER_PHONE_NUMBER, uriParams as Required<typeof uriParams>);
@@ -555,9 +567,28 @@ export class InternalLinkProcessor {
     });
   };
 
-  public processVoiceChatLink = (link: InternalLink.InternalLinkVoiceChat) => {
-    if(IS_GROUP_CALL_SUPPORTED) {
-      return appImManager.joinGroupCall(link.chat_id.toPeerId(true), link.id);
+  public processVoiceChatLink = async(link: InternalLink.InternalLinkVoiceChat) => {
+    const openPeerId = (peerId: PeerId) => {
+      if(appImManager.chat.peerId !== peerId) {
+        return appImManager.setInnerPeer({peerId});
+      }
+    };
+
+    if(link.livestream !== undefined) {
+      const peer = await this.managers.appUsersManager.resolveUsername(link.domain);
+      const peerId = peer.id.toPeerId(true);
+      await openPeerId(peerId);
+      return appImManager.joinLiveStream(peerId);
+    }
+
+    if(!IS_GROUP_CALL_SUPPORTED) {
+      return;
+    }
+
+    if(link.id) {
+      const peerId = link.chat_id.toPeerId(true);
+      await openPeerId(peerId);
+      return appImManager.joinGroupCall(peerId, link.id);
     }
   };
 

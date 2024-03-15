@@ -453,6 +453,7 @@ export class AppGroupCallsManager extends AppManager {
   }
 
   public fetchRtmpPart(location: InputFileLocation.inputGroupCallStream, dcId: number) {
+    // return Promise.reject(makeError('TIME_TOO_BIG'));
     return this.apiFileManager.requestFilePart({
       dcId,
       location,

@@ -209,7 +209,7 @@ export default class VideoPlayer extends ControlsHover {
       const timeElapsed = wrapper.querySelector('#time-elapsed');
       timeDuration = wrapper.querySelector('#time-duration') as HTMLElement;
 
-      const volumeSelector = new VolumeSelector(listenerSetter);
+      const volumeSelector = new VolumeSelector(listenerSetter, false, video);
 
       volumeSelector.btn.classList.remove('btn-icon');
       if(timeElapsed) {
@@ -383,12 +383,12 @@ export default class VideoPlayer extends ControlsHover {
     if(!this.emptyPipVideo) {
       const {width, height} = this;
       this.emptyPipVideo = document.createElement('video');
-      // this.emptyPipVideo.autoplay = true;
-      // this.emptyPipVideo.muted = true;
-      // this.emptyPipVideo.playsInline = true;
-      // this.emptyPipVideo.style.position = 'absolute';
-      // this.emptyPipVideo.style.visibility = 'hidden';
-      // document.body.prepend(this.emptyPipVideo);
+      this.emptyPipVideo.autoplay = true;
+      this.emptyPipVideo.muted = true;
+      this.emptyPipVideo.playsInline = true;
+      this.emptyPipVideo.style.position = 'absolute';
+      this.emptyPipVideo.style.visibility = 'hidden';
+      document.body.prepend(this.emptyPipVideo);
       this.emptyPipVideo.srcObject = createCanvasStream({width, height, image: this.emptyPipVideoSource});
       this.addPipListeners(this.emptyPipVideo);
     }

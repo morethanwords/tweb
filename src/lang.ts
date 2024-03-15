@@ -1965,6 +1965,8 @@ const lang = {
   // 'ChannelJoinRequestSent': 'JOIN REQUEST SENT',
   'ManageTopicsPermission': 'Manage topics',
   'CreateTopicsPermission': 'Create topics',
+  'VoipChannelJoinVoiceChatUrl': 'Join Live Stream',
+  'InviteLinkSentSingle': 'Invite link sent to **%s**.',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

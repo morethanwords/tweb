@@ -236,7 +236,12 @@ const webPageTypes: {[type in WebPage.webPage['type']]?: LangPackKey} = {
   telegram_story: 'OpenStory',
   telegram_channel_boost: 'BoostLinkButton',
   telegram_giftcode: 'Open',
-  telegram_chat: 'OpenGroup'
+  telegram_chat: 'OpenGroup',
+  telegram_livestream: 'VoipChannelJoinVoiceChatUrl'
+};
+
+const webPageTypesSiteNames: {[type in WebPage.webPage['type']]?: LangPackKey} = {
+  telegram_livestream: 'PeerInfo.Action.LiveStream'
 };
 
 type Bubble = {
@@ -5972,6 +5977,8 @@ export default class ChatBubbles {
             if(sponsoredMessage) {
               strong.append(i18n(sponsoredMessage.pFlags.recommended ? 'SponsoredMessageRecommended' : 'SponsoredMessage'));
               strong.classList.add('text-capitalize');
+            } else if(webPageTypesSiteNames[webPage.type]) {
+              strong.append(i18n(webPageTypesSiteNames[webPage.type]));
             } else {
               strong.append(wrapEmojiText(webPage.site_name));
             }

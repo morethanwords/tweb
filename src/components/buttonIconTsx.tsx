@@ -4,10 +4,10 @@ import Icon from './icon';
 import ripple from './ripple';
 
 export const ButtonIconTsx = (props: {icon?: Icon, noRipple?: boolean} & JSX.ButtonHTMLAttributes<HTMLButtonElement>) => {
-  const [, rest] = splitProps(props, ['icon', 'noRipple', 'onClick']);
+  const [, rest] = splitProps(props, ['icon', 'noRipple']);
 
   const btn = (
-    <button on:click={props.onClick as any}
+    <button
       {...rest}
       class={classNames('btn-icon', props.class)}
       tabIndex={-1}
