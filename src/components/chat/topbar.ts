@@ -63,6 +63,7 @@ import {RtmpStartStreamPopup} from '../rtmp/adminPopup';
 import {appState} from '../../stores/appState';
 import assumeType from '../../helpers/assumeType';
 import PinnedContainer from './pinnedContainer';
+import IS_LIVE_STREAM_SUPPORTED from '../../environment/liveStreamSupport';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -169,7 +170,7 @@ export default class ChatTopbar {
     this.chatAudio = new ChatAudio(this, this.chat, this.managers);
     this.chatRequests = new ChatRequests(this, this.chat, this.managers);
     this.chatActions = new ChatActions(this, this.chat, this.managers);
-    this.chatLive = new ChatLive(this, this.chat, this.managers);
+    if(IS_LIVE_STREAM_SUPPORTED) this.chatLive = new ChatLive(this, this.chat, this.managers);
 
     if(this.menuButtons.length) {
       this.btnMore = ButtonMenuToggle({
@@ -344,15 +345,15 @@ export default class ChatTopbar {
 
     const chat = apiManagerProxy.getChat(chatId);
     if(hasRights(chat, 'manage_call')) {
-      if(type === 'admin') return !(chat as MTChat.chat).pFlags?.call_active
+      if(type === 'admin') return !(chat as MTChat.chat).pFlags?.call_active;
     }
-    if(!(chat as MTChat.chat).pFlags?.call_active) return false
+    if(!(chat as MTChat.chat).pFlags?.call_active) return false;
 
     const fullChat = await this.managers.appProfileManager.getChatFull(chatId);
     const groupCall = await this.managers.appGroupCallsManager.getGroupCallFull(fullChat.call.id);
-    if(groupCall?._ !== 'groupCall') return false
+    if(groupCall?._ !== 'groupCall') return false;
 
-    return !groupCall.pFlags.rtmp_stream
+    return !groupCall.pFlags.rtmp_stream;
   };
 
   private verifyCallButton = async(type?: CallType) => {
@@ -679,7 +680,8 @@ export default class ChatTopbar {
         text: 'Rtmp.Topbar.StreamWith',
         onClick: () => {
           PopupElement.createPopup(RtmpStartStreamPopup, {peerId: this.peerId}).show();
-        }
+        },
+        verify: () => IS_LIVE_STREAM_SUPPORTED
       }],
       icon: 'videochat'
     });

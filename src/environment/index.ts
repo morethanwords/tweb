@@ -17,6 +17,7 @@ import * as userAgent from './userAgent';
 import IS_OPUS_SUPPORTED from './opusSupport';
 import IS_SHARED_WORKER_SUPPORTED from './sharedWorkerSupport';
 import IS_APPLE_MX from './appleMx';
+import IS_LIVE_STREAM_SUPPORTED from './liveStreamSupport';
 import * as IS_VIDEO_SUPPORTED from './videoSupport';
 
 const ENVIRONMENT = {
@@ -36,6 +37,7 @@ const ENVIRONMENT = {
   IS_SHARED_WORKER_SUPPORTED,
   IS_WEBP_SUPPORTED,
   IS_WEBRTC_SUPPORTED,
+  IS_LIVE_STREAM_SUPPORTED,
   IMAGE_MIME_TYPES_SUPPORTED,
   MEDIA_MIME_TYPES_SUPPORTED,
   VIDEO_MIME_TYPES_SUPPORTED,
