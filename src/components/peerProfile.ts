@@ -73,9 +73,10 @@ export default class PeerProfile {
 
   constructor(
     private managers: AppManagers,
-    public scrollable: Scrollable,
+    private scrollable: Scrollable,
     private listenerSetter?: ListenerSetter,
-    private isDialog = true
+    private isDialog = true,
+    private setCollapsedOn?: HTMLElement
   ) {
     if(!IS_PARALLAX_SUPPORTED) {
       this.scrollable.container.classList.add('no-parallax');
@@ -91,7 +92,6 @@ export default class PeerProfile {
   public init() {
     this.init = null;
 
-
     this.element = document.createElement('div');
     this.element.classList.add('profile-content');
 
@@ -104,6 +104,8 @@ export default class PeerProfile {
 
     this.subtitle = document.createElement('div');
     this.subtitle.classList.add('profile-subtitle');
+
+    this.setCollapsedOn.classList.add('profile-container');
 
     this.bio = new Row({
       title: ' ',
@@ -447,12 +449,12 @@ export default class PeerProfile {
     const middleware = this.middlewareHelper.get();
     const {peerId, threadId} = this.getDetailsForUse();
     const isTopic = !!(threadId && await this.managers.appPeersManager.isForum(peerId));
-    if(this.canBeDetailed() && !isTopic) {
+    if(/* this.canBeDetailed() &&  */!isTopic) {
       const photo = await this.managers.appPeersManager.getPeerPhoto(peerId);
 
       if(photo || SHOW_NO_AVATAR) {
         const oldAvatars = this.avatars;
-        this.avatars = new PeerProfileAvatars(this.scrollable, this.managers);
+        this.avatars = new PeerProfileAvatars(this.scrollable, this.managers, this.setCollapsedOn);
         const [nameCallback] = await Promise.all([
           this.fillName(middleware, true),
           this.avatars.setPeer(peerId)

@@ -7006,12 +7006,12 @@ export default class ChatBubbles {
     let savedFrom = '';
 
     if(isStandaloneMedia || !isOut || (message as Message.message).fwdFromId) {
-      this.chat.appImManager.setPeerColorToElement(
-        (message as Message.message).fwdFromId || message.fromId,
-        bubble,
-        isStandaloneMedia,
-        isOut
-      );
+      this.chat.appImManager.setPeerColorToElement({
+        peerId: (message as Message.message).fwdFromId || message.fromId,
+        element: bubble,
+        messageHighlighting: isStandaloneMedia,
+        colorAsOut: isOut
+      });
     }
 
     // const needName = ((peerId.isAnyChat() && (peerId !== message.fromId || our)) && message.fromId !== rootScope.myId) || message.viaBotId;

@@ -121,6 +121,7 @@ import {savedReactionTags} from '../../components/chat/reactions';
 import {setAppState} from '../../stores/appState';
 import rtmpCallsController, {RtmpCallInstance} from '../calls/rtmpCallsController';
 import {AppMediaViewerRtmp} from '../../components/appMediaViewerRtmp';
+import useProfileColors from '../../hooks/useProfileColors';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -983,6 +984,11 @@ export class AppImManager extends EventListenerBase<{
     };
     rootScope.addEventListener('theme_changed', () => onHelpPeerColors());
     this.managers.apiManager.getPeerColors().then(onHelpPeerColors);
+
+    const [_, setProfileColors] = useProfileColors();
+    this.managers.apiManager.getPeerProfileColors().then((helpPeerColors) => {
+      setProfileColors(helpPeerColors.colors);
+    });
   }
 
   public clickIfSponsoredMessage(message: Message.message) {
@@ -2515,12 +2521,17 @@ export class AppImManager extends EventListenerBase<{
     });
   }
 
-  public setPeerColorToElement(
+  public setPeerColorToElement({
+    peerId,
+    element,
+    messageHighlighting,
+    colorAsOut
+  }: {
     peerId: PeerId,
     element: HTMLElement,
     messageHighlighting?: boolean,
     colorAsOut?: boolean
-  ) {
+  }) {
     const colorProperty = '--peer-color-rgb';
     const borderBackgroundProperty = '--peer-border-background';
     // if(!peerId) {

@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {hexToRgb, mixColors, rgbaToHsla} from '../../../helpers/color';
+import {hexToRgb, hslaToString, mixColors, rgbaToHsla} from '../../../helpers/color';
 import {attachClickEvent} from '../../../helpers/dom/clickEvent';
 import createContextMenu from '../../../helpers/dom/createContextMenu';
 import customProperties from '../../../helpers/dom/customProperties';
@@ -549,7 +549,7 @@ export default class AppChatInviteLinksTab extends SliderSuperTabEventable {
           const mixedColor = mixColors(color2, color1, progress);
           const hsla = rgbaToHsla(...mixedColor);
           hsla.s = Math.max(55, hsla.s);
-          row.media.style.setProperty('--color', `hsla(${hsla.h}, ${hsla.s}%, ${hsla.l}%, 1)`);
+          row.media.style.setProperty('--color', hslaToString(hsla));
 
           if(circle) {
             totalLength ??= circle.getTotalLength();

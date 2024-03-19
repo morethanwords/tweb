@@ -23,7 +23,7 @@ import {
 } from 'solid-js';
 import rootScope from '../lib/rootScope';
 import {NULL_PEER_ID, REPLIES_PEER_ID, HIDDEN_PEER_ID} from '../lib/mtproto/mtproto_config';
-import {Chat, ChatPhoto, User, UserProfilePhoto} from '../layer';
+import {Chat, ChatPhoto, PhotoSize, User, UserProfilePhoto} from '../layer';
 import {getPeerAvatarColorByPeer} from '../lib/appManagers/utils/peers/getPeerColorById';
 import getPeerPhoto from '../lib/appManagers/utils/peers/getPeerPhoto';
 import wrapAbbreviation from '../lib/richTextProcessor/wrapAbbreviation';
@@ -44,6 +44,7 @@ import Icon from './icon';
 import wrapPhoto from './wrappers/photo';
 import customProperties from '../helpers/dom/customProperties';
 import {appState} from '../stores/appState';
+import useIsNightTheme from '../hooks/useIsNightTheme';
 
 const FADE_IN_DURATION = 200;
 const TEST_SWAPPING = 0;
@@ -157,14 +158,20 @@ const calculateSegmentsDimensions = (s: number) => {
   };
 };
 
-export function wrapPhotoToAvatar(avatarElem: ReturnType<typeof avatarNew>, photo: Parameters<typeof wrapPhoto>[0]['photo']) {
+export function wrapPhotoToAvatar(
+  avatarElem: ReturnType<typeof avatarNew>,
+  photo: Parameters<typeof wrapPhoto>[0]['photo'],
+  boxSize: number = 100,
+  photoSize?: PhotoSize
+) {
   return wrapPhoto({
     container: avatarElem.node,
     message: null,
     photo,
-    boxHeight: 100,
-    boxWidth: 100,
-    withoutPreloader: true
+    boxHeight: boxSize,
+    boxWidth: boxSize,
+    withoutPreloader: true,
+    size: photoSize
   }).then((result) => {
     avatarElem.node.classList.replace('media-container', 'avatar-relative');
     avatarElem.node.style.width = avatarElem.node.style.height = '';
@@ -184,35 +191,13 @@ export function wrapPhotoToAvatar(avatarElem: ReturnType<typeof avatarNew>, phot
   });
 }
 
-export const AvatarNew = (props: {
-  peerId?: PeerId,
-  threadId?: number,
-  isDialog?: boolean,
-  isBig?: boolean,
-  peerTitle?: string,
-  lazyLoadQueue?: LazyLoadQueue | false,
-  wrapOptions?: WrapSomethingOptions,
-  withStories?: boolean,
-  storyId?: number,
-  useCache?: boolean,
-  size: number | 'full',
-  props?: JSX.HTMLAttributes<HTMLDivElement>,
-  storyColors?: Partial<{
+export function StoriesSegments(props: {
+  size: number,
+  colors: Partial<{
     read: string
   }>,
-  peer?: Chat.channel | Chat.chat | User.user,
   isStoryFolded?: Accessor<boolean>,
-  processImageOnLoad?: (image: HTMLImageElement) => void,
-  meAsNotes?: boolean
-}) => {
-  const [ready, setReady] = createSignal(false);
-  const [icon, setIcon] = createSignal<Icon>();
-  const [media, setMedia] = createSignal<JSX.Element>();
-  const [thumb, setThumb] = createSignal<JSX.Element>();
-  const [abbreviature, setAbbreviature] = createSignal<JSX.Element>();
-  const [color, setColor] = createSignal<string>();
-  const [isForum, setIsForum] = createSignal(false);
-  const [isTopic, setIsTopic] = createSignal(false);
+}) {
   const [storiesSegments, setStoriesSegments] = createSignal<StoriesSegments>();
   const storyDimensions: Accessor<ReturnType<typeof calculateSegmentsDimensions>> = createMemo((previousDimensions) => {
     if(storiesSegments() === undefined) {
@@ -257,7 +242,7 @@ export const AvatarNew = (props: {
     const segmentToSection = (segment: StoriesSegment, unreadAsClose?: boolean): DashedCircleSection => {
       if(segment.type === 'read') {
         return {
-          color: props.storyColors?.read || customProperties.getProperty('avatar-color-story-read'),
+          color: props.colors?.read || customProperties.getProperty('avatar-color-story-read'),
           length: segment.length,
           lineWidth: dimensions.strokeWidth / 2
         };
@@ -306,14 +291,14 @@ export const AvatarNew = (props: {
       dashedCircle.render(sections);
     };
 
-    createEffect(render);
-
-    const onThemeChange = () => {
-      unreadGradient = closeGradient = undefined;
-      render();
-    };
-    rootScope.addEventListener('theme_changed', onThemeChange);
-    onCleanup(() => rootScope.removeEventListener('theme_changed', onThemeChange));
+    const isNightTheme = useIsNightTheme();
+    createEffect(on(
+      isNightTheme,
+      () => {
+        unreadGradient = closeGradient = undefined;
+        render();
+      }
+    ));
 
     return simple ? (
       <>
@@ -321,6 +306,42 @@ export const AvatarNew = (props: {
         {simple}
       </>
     ) : canvas;
+  });
+
+  return {setStoriesSegments, storyDimensions, storiesCircle};
+}
+
+export const AvatarNew = (props: {
+  peerId?: PeerId,
+  threadId?: number,
+  isDialog?: boolean,
+  isBig?: boolean,
+  peerTitle?: string,
+  lazyLoadQueue?: LazyLoadQueue | false,
+  wrapOptions?: WrapSomethingOptions,
+  withStories?: boolean,
+  storyId?: number,
+  useCache?: boolean,
+  size: number | 'full',
+  props?: JSX.HTMLAttributes<HTMLDivElement>,
+  storyColors?: Parameters<typeof StoriesSegments>[0]['colors'],
+  peer?: Chat.channel | Chat.chat | User.user,
+  isStoryFolded?: Accessor<boolean>,
+  processImageOnLoad?: (image: HTMLImageElement) => void,
+  meAsNotes?: boolean
+}) => {
+  const [ready, setReady] = createSignal(false);
+  const [icon, setIcon] = createSignal<Icon>();
+  const [media, setMedia] = createSignal<JSX.Element>();
+  const [thumb, setThumb] = createSignal<JSX.Element>();
+  const [abbreviature, setAbbreviature] = createSignal<JSX.Element>();
+  const [color, setColor] = createSignal<string>();
+  const [isForum, setIsForum] = createSignal(false);
+  const [isTopic, setIsTopic] = createSignal(false);
+  const {setStoriesSegments, storyDimensions, storiesCircle} = StoriesSegments({
+    size: props.size as number,
+    colors: props.storyColors,
+    isStoryFolded: props.isStoryFolded
   });
 
   const readyPromise = deferredPromise<void>();

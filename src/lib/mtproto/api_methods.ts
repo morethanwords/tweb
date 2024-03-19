@@ -396,6 +396,10 @@ export default abstract class ApiManagerMethods extends AppManager {
     return this.apiManager.invokeApiCacheable('help.getPeerColors', {hash: 0}) as Promise<HelpPeerColors.helpPeerColors>;
   }
 
+  public getPeerProfileColors() {
+    return this.apiManager.invokeApiCacheable('help.getPeerProfileColors', {hash: 0}) as Promise<HelpPeerColors.helpPeerColors>;
+  }
+
   public setThemeParams(themeParams: DataJSON) {
     this.themeParams = themeParams;
   }

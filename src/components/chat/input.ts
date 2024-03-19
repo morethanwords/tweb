@@ -3727,7 +3727,7 @@ export default class ChatInput {
       quote
     });
 
-    this.appImManager.setPeerColorToElement(setColorPeerId, replyParent);
+    this.appImManager.setPeerColorToElement({peerId: setColorPeerId, element: replyParent});
 
     if(haveReply) {
       oldReply.replaceWith(container);

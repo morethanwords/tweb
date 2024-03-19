@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {JSX, createSignal, For, createEffect, createResource, SuspenseList, Suspense, getOwner, runWithOwner, ParentComponent, Accessor, createRoot, untrack, onMount, createMemo, Owner, splitProps, onCleanup, on, Show} from 'solid-js';
+import {JSX, createSignal, For, createEffect, createResource, Accessor, onMount, createMemo, splitProps, on, Show} from 'solid-js';
 import {ScrollableX} from '../scrollable';
 import {createMiddleware, createStoriesViewer} from './viewer';
 import styles from './list.module.scss';
@@ -13,10 +13,6 @@ import mediaSizes from '../../helpers/mediaSizes';
 import rootScope from '../../lib/rootScope';
 import fastSmoothScroll from '../../helpers/fastSmoothScroll';
 import cancelEvent from '../../helpers/dom/cancelEvent';
-import {animateSingle, cancelAnimationByKey} from '../../helpers/animation';
-import {CancellablePromise} from '../../helpers/cancellablePromise';
-import clamp from '../../helpers/number/clamp';
-import debounce from '../../helpers/schedulers/debounce';
 import {AvatarNew} from '../avatarNew';
 import I18n, {i18n} from '../../lib/langPack';
 import createContextMenu from '../../helpers/dom/createContextMenu';
@@ -27,14 +23,11 @@ import appSidebarLeft from '../sidebarLeft';
 import AppMyStoriesTab from '../sidebarLeft/tabs/myStories';
 import {toastNew} from '../toast';
 import wrapPeerTitle from '../wrappers/peerTitle';
-import liteMode from '../../helpers/liteMode';
-import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
-import SwipeHandler from '../swipeHandler';
 import {ChatType} from '../chat/chat';
+import {subscribeOn} from '../../helpers/solid/subscribeOn';
+import {useCollapsable} from '../../hooks/useCollapsable';
 
 const TEST_COUNT = 0;
-const STATE_FOLDED = 1;
-const STATE_UNFOLDED = 0;
 
 export const ScrollableXTsx = (props: {
   children: JSX.Element
@@ -87,11 +80,7 @@ function _StoriesList(props: {
   type PeerStories = typeof stories['peers'][0];
   const [stories, actions] = useStories();
   const [viewerPeer, setViewerPeer] = createSignal<PeerStories>();
-  const [progress, _setProgress] = createSignal(STATE_FOLDED);
   const [containerRect, setContainerRect] = createSignal<DOMRect>();
-  const [isTransition, setIsTransition] = createSignal(false);
-  const folded = createMemo(() => progress() === STATE_FOLDED);
-  const shouldStoriesSegmentsBeFolded = createMemo(() => progress() !== STATE_UNFOLDED);
   const peers = createMemo(() => {
     const peers = stories.peers;
     if(TEST_COUNT) {
@@ -99,10 +88,6 @@ function _StoriesList(props: {
     }
     return peers;
   });
-  const setProgress = (progress: number, skipAnimation?: boolean) => {
-    if(liteMode.isAvailable('animations') && !skipAnimation) setIsTransition(true);
-    _setProgress(progress);
-  };
 
   let toRect: DOMRect, fromRect: DOMRect;
   const myIndex = createMemo(() => peers().findIndex((peer) => peer.peerId === rootScope.myId));
@@ -117,145 +102,7 @@ function _StoriesList(props: {
   const items = new WeakMap<PeerStories, HTMLDivElement>();
   const itemsTarget = new WeakMap<HTMLDivElement, PeerStories>();
 
-  const scrollTo = (wasProgress: number, open?: boolean) => {
-    const startTime = Date.now();
-    const _animation = animation = animateSingle(() => {
-      const value = clamp((Date.now() - startTime) / 125, 0, 1);
-
-      let progress = wasProgress;
-      if((wasProgress > 0.5 || open === false) && open !== true) {
-        progress += (1 - wasProgress) * value;
-        animationOpening = false;
-      } else {
-        animationOpening = true;
-        progress -= wasProgress * value;
-      }
-
-      setProgress(progress);
-      return value < 1;
-    }, container).finally(() => {
-      if(_animation === animation) {
-        animation = undefined;
-      }
-    });
-  };
-
-  const clearAnimation = () => {
-    cancelAnimationByKey(container);
-  };
-
-  const onContainerClick = (e: MouseEvent) => {
-    const wasProgress = progress();
-    if(wasProgress !== STATE_UNFOLDED) {
-      // scrollTo(wasProgress, true);
-      clearAnimation();
-      setProgress(STATE_UNFOLDED);
-      cancelEvent(e);
-    }
-  };
-
-  let animation: CancellablePromise<void>, animationOpening: boolean;
-  const onScrolled = () => {
-    return;
-
-    const wasProgress = progress();
-    if(wasProgress >= 1 || wasProgress <= 0) {
-      return;
-    }
-
-    scrollTo(wasProgress);
-  };
-
-  const debounced = debounce(onScrolled, 75, false, true);
-
-  const onMove = (delta: number, e?: WheelEvent | TouchEvent) => {
-    const scrollTop = props.getScrollable().scrollTop;
-    const isWheel = e instanceof WheelEvent;
-    if(isWheel || true) {
-      const newState = delta < 0 ? STATE_UNFOLDED : STATE_FOLDED;
-      if((scrollTop && progress() !== STATE_UNFOLDED) || debounced.isDebounced()) {
-        debounced();
-        return;
-      }
-
-      if(progress() === newState) {
-        return;
-      }
-
-      e && cancelEvent(e);
-      setProgress(newState);
-      return;
-    }
-
-    const wasProgress = progress();
-    container.classList.add(styles.skipAnimation);
-
-    // if user starts to scroll down when it's being opened
-    if(delta > 0 && animation && animationOpening) {
-      debounced.clearTimeout();
-      scrollTo(wasProgress, false);
-      return;
-    }
-
-    if(
-      animation ||
-      (wasProgress >= STATE_FOLDED && delta > 0) ||
-      (wasProgress <= STATE_UNFOLDED && delta <= 0)/*  ||
-      (scrollTop && progress() !== STATE_UNFOLDED) */
-    ) {
-      return;
-    }
-
-    // if(animation) {
-    //   cancelEvent(e);
-    //   return;
-    // }
-
-    let value = delta / 600;
-    value = clamp(wasProgress + value, 0, 1);
-    console.log('value', value);
-    setProgress(value);
-    if(value >= 1 || value <= 0) {
-      debounced.clearTimeout();
-      onScrolled();
-    } else {
-      e && cancelEvent(e);
-      debounced();
-    }
-  };
-
-  const onWheel = (e: WheelEvent) => {
-    if(!peers().length) {
-      return;
-    }
-
-    const wheelDeltaY = (e as any).wheelDeltaY as number;
-    const delta: number = -wheelDeltaY;
-    onMove(delta, e);
-  };
-  props.listenWheelOn.addEventListener('wheel', onWheel, {passive: false});
-  onCleanup(() => {
-    props.listenWheelOn.removeEventListener('wheel', onWheel);
-  });
-
-  if(IS_TOUCH_SUPPORTED) {
-    const swipeHandler = new SwipeHandler({
-      element: props.listenWheelOn,
-      onSwipe: (xDiff, yDiff, e) => {
-        const delta = -yDiff;
-        onMove(delta, e as any as TouchEvent);
-      },
-      cancelEvent: false,
-      cursor: '',
-      verifyTouchTarget: (e) => {
-        return e instanceof TouchEvent && peers().length && !findUpClassName(e.target, 'folders-tabs-scrollable');
-      }
-    });
-
-    onCleanup(() => {
-      swipeHandler.removeListeners();
-    });
-  }
+  const onContainerClick = (e: MouseEvent) => unfold(e);
 
   createEffect(() => {
     const peer = viewerPeer();
@@ -436,7 +283,7 @@ function _StoriesList(props: {
       () => peers().length,
       (length) => {
         if(!length) {
-          scrollTo(progress(), false);
+          fold();
         }
       },
       {defer: true}
@@ -450,10 +297,7 @@ function _StoriesList(props: {
     if(folded() || isTransition()) {
       const onWheel = cancelEvent;
       const scrollableX = getMenuScrollable();
-      scrollableX.addEventListener('wheel', onWheel, {capture: true});
-      onCleanup(() => {
-        scrollableX.removeEventListener('wheel', onWheel, {capture: true});
-      });
+      subscribeOn(scrollableX)('wheel', onWheel, {capture: true});
     }
   });
 
@@ -470,25 +314,25 @@ function _StoriesList(props: {
     fromRect = props.foldInto.parentElement.getBoundingClientRect();
     setContainerRect(props.foldInto.parentElement.parentElement.getBoundingClientRect());
   };
-  mediaSizes.addEventListener('resize', onResize);
-  onCleanup(() => {
-    mediaSizes.removeEventListener('resize', onResize);
-  });
+  subscribeOn(mediaSizes)('resize', onResize);
   onResize();
   props.resizeCallback?.(onResize);
 
   let container: HTMLDivElement;
+
+  const {folded, unfold, fold, isTransition, progress, STATE_UNFOLDED} = useCollapsable({
+    scrollable: props.getScrollable,
+    container: () => container,
+    listenWheelOn: props.listenWheelOn,
+    shouldIgnore: () => !peers().length,
+    disableHoverWhenFolded: true
+  });
+
   const r = (
     <div
       ref={container}
       class={styles.ListContainer}
-      classList={{
-        'disable-hover': folded() || isTransition(),
-        [styles.skipAnimation]: folded() && !isTransition()
-      }}
       style={calculateMovement()}
-      onTransitionStart={(e) => e.target === container && setIsTransition(true)}
-      onTransitionEnd={(e) => e.target === container && setIsTransition(false)}
     >
       <ScrollableXTsx>
         <div
@@ -597,6 +441,8 @@ function _StoriesList(props: {
       }
     });
   });
+
+  const shouldStoriesSegmentsBeFolded = createMemo(() => progress() !== STATE_UNFOLDED);
 
   return (
     <>

@@ -247,7 +247,7 @@ export default function Giveaway(props: {
       meAsSaved: false
     });
 
-    appImManager.setPeerColorToElement(peerId, entity.element);
+    appImManager.setPeerColorToElement({peerId, element: entity.element});
 
     entity.element.classList.add('bubble-giveaway-channel', 'hover-primary');
 

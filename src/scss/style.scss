@@ -196,11 +196,12 @@
 
   @include respond-to(not-handhelds) {
     --right-column-width: calc(#{$large-screen} / 4);
+    // --right-column-width: calc(400px);
 
     --chat-input-size: #{$chat-input-size};
     --chat-input-padding: #{$chat-padding};
     --chat-input-inner-padding: #{$chat-input-inner-padding};
-  }
+}
 
   @include respond-to(esg-bottom) {
     --chat-input-size: #{$chat-input-handhelds-size};

@@ -79,6 +79,10 @@ export function rgbaToHsla(r: number, g: number, b: number, a: number = 1): Colo
   };
 }
 
+export function hslaToString(hsla: ColorHsla) {
+  return `hsla(${hsla.h}, ${hsla.s}%, ${hsla.l}%, ${hsla.a})`;
+}
+
 // * https://stackoverflow.com/a/9493060/6758968
 /**
  * Converts an HSL color value to RGB. Conversion formula

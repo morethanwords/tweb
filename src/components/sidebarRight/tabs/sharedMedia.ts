@@ -63,7 +63,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     this.init = null;
     // const perf = performance.now();
 
-    this.container.classList.add('shared-media-container', 'profile-container');
+    this.container.classList.add('shared-media-container');
 
     // * header
     const newCloseBtn = Button('btn-icon sidebar-close-button', {noRipple: true});
@@ -170,7 +170,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     // * body
 
     if(!this.noProfile) {
-      this.profile = new PeerProfile(this.managers, this.scrollable, this.listenerSetter);
+      this.profile = new PeerProfile(this.managers, this.scrollable, this.listenerSetter, true, this.container);
       this.profile.init();
       this.scrollable.append(this.profile.element);
     }
@@ -232,6 +232,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
         if(!this.isFirst) {
           animatedCloseIcon.classList.remove('state-back');
+          this.container.classList.remove('header-filled');
         }
       } else if(!this.scrollable.isHeavyAnimationInProgress) {
         this.slider.onCloseBtnClick();
@@ -364,6 +365,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     this.searchSuper.scrollStartCallback = () => {
       setIsSharedMedia(true);
+      this.container.classList.add('header-filled');
     };
 
     if(this.profile) {

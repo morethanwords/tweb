@@ -101,7 +101,7 @@ export default class PopupJoinChatInvite extends PopupPeer {
 
     appChatsManager.saveApiChat(fakeChat); */
 
-    const {chatInvite, managers, hash} = this;
+    const {chatInvite} = this;
 
     const avatarElem = avatarNew({
       middleware: this.middlewareHelper.get(),
@@ -109,7 +109,6 @@ export default class PopupJoinChatInvite extends PopupPeer {
       isDialog: false
     });
     if(chatInvite.photo?._ === 'photo') {
-      chatInvite.photo = await managers.appPhotosManager.savePhoto(chatInvite.photo);
       await wrapPhotoToAvatar(avatarElem, chatInvite.photo);
     } else {
       avatarElem.render({
