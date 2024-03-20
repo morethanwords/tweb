@@ -328,7 +328,8 @@ export const AvatarNew = (props: {
   peer?: Chat.channel | Chat.chat | User.user,
   isStoryFolded?: Accessor<boolean>,
   processImageOnLoad?: (image: HTMLImageElement) => void,
-  meAsNotes?: boolean
+  meAsNotes?: boolean,
+  onStoriesStatus?: (has: boolean) => void
 }) => {
   const [ready, setReady] = createSignal(false);
   const [icon, setIcon] = createSignal<Icon>();
@@ -763,6 +764,12 @@ export const AvatarNew = (props: {
 
     return processResult(result);
   };
+
+  if(props.onStoriesStatus) {
+    createEffect(() => {
+      props.onStoriesStatus(!!storyDimensions());
+    });
+  }
 
   const innerClassList = (): JSX.CustomAttributes<HTMLDivElement>['classList'] => {
     return {

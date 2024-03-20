@@ -25,14 +25,17 @@ import wrapPhoto from './wrappers/photo';
 import openAvatarViewer from './openAvatarViewer';
 import Icon from './icon';
 import apiManagerProxy from '../lib/mtproto/mtprotoworker';
-import {createEffect, createRoot} from 'solid-js';
+import {createEffect, createRoot, on} from 'solid-js';
 import {usePeerProfileAppearance} from '../hooks/useProfileColors';
 import {getHexColorFromTelegramColor} from '../helpers/color';
 import wrapEmojiPattern from './wrappers/emojiPattern';
 import {useCollapsable} from '../hooks/useCollapsable';
+import deferredPromise from '../helpers/cancellablePromise';
+import useIsNightTheme from '../hooks/useIsNightTheme';
+import customProperties from '../helpers/dom/customProperties';
 
 const LOAD_NEAREST = 3;
-export const SHOW_NO_AVATAR = false;
+export const SHOW_NO_AVATAR = true;
 
 export default class PeerProfileAvatars {
   private static BASE_CLASS = 'profile-avatars';
@@ -56,6 +59,8 @@ export default class PeerProfileAvatars {
   private hasBackgroundColor: boolean;
   private emojiPatternCanvas: HTMLCanvasElement;
   private unfold: (e?: MouseEvent) => void;
+  private fakeAvatar: ReturnType<typeof avatarNew>;
+  private hasNoPhoto: boolean;
 
   constructor(
     private scrollable: Scrollable,
@@ -125,6 +130,10 @@ export default class PeerProfileAvatars {
         return;
       }
 
+      if(this.hasNoPhoto) {
+        return;
+      }
+
       if(this.isCollapsed() && this.unfold) {
         this.unfold(_e);
         return;
@@ -167,21 +176,12 @@ export default class PeerProfileAvatars {
         const centerX = rect.right - (rect.width / 2);
         const toRight = x > centerX;
 
-        // this.avatars.classList.remove('no-transition');
-        // fastRaf(() => {
-        this.avatars.classList.add('no-transition');
-        void this.avatars.offsetLeft; // reflow
-
         let distance: number;
         if(this.listLoader.index === 0 && !toRight) distance = this.listLoader.count - 1;
         else if(this.listLoader.index === (this.listLoader.count - 1) && toRight) distance = -(this.listLoader.count - 1);
         else distance = toRight ? 1 : -1;
-        this.listLoader.go(distance);
 
-        fastRaf(() => {
-          this.avatars.classList.remove('no-transition');
-        });
-        // });
+        this.goWithoutTransition(distance);
       }
     }, {listenerSetter: this.listenerSetter});
 
@@ -209,9 +209,11 @@ export default class PeerProfileAvatars {
         return false;
       },
       verifyTouchTarget: (e) => {
-        if(!checkScrollTop() || this.isCollapsed()) {
+        if(!checkScrollTop()) {
           cancelNextClick();
           cancelEvent(e as any as Event);
+          return false;
+        } else if(this.isCollapsed()) {
           return false;
         } else if(this.container.classList.contains('is-single') || freeze) {
           return false;
@@ -305,131 +307,49 @@ export default class PeerProfileAvatars {
     }); */
   }
 
+  public goWithoutTransition(distance: number) {
+    this.avatars.classList.add('no-transition');
+    void this.avatars.offsetLeft; // reflow
+
+    this.listLoader.go(distance);
+
+    fastRaf(() => {
+      this.avatars.classList.remove('no-transition');
+    });
+  }
+
   public async setPeer(peerId: PeerId) {
     this.peerId = peerId;
     this.middlewareHelper.clean();
-
-    const middleware = this.middlewareHelper.get();
 
     const photo = await this.managers.appPeersManager.getPeerPhoto(peerId);
     if(!photo && !SHOW_NO_AVATAR) {
       return;
     }
 
-    createRoot((dispose) => {
-      middleware.onDestroy(dispose);
+    this.hasNoPhoto = !photo;
 
-      const renderBackgroundEmoji = (docId: DocId, hasBgColor: boolean) => {
-        this.emojiPatternCanvas?.remove();
-        this.emojiPatternCanvas = undefined;
+    await this.applyAppearance();
 
-        if(!docId) {
-          return;
-        }
-
-        const CANVAS_WIDTH = 393;
-        const CANVAS_HEIGHT = 258;
-
-        const canvas = this.emojiPatternCanvas = document.createElement('canvas');
-        canvas.classList.add('profile-avatars-pattern');
-        const ctx = canvas.getContext('2d');
-
-        const dpr = window.devicePixelRatio;
-        canvas.width = CANVAS_WIDTH * dpr;
-        canvas.height = CANVAS_HEIGHT * dpr;
-        canvas.style.width = `${CANVAS_WIDTH}px`;
-        canvas.style.height = `${CANVAS_HEIGHT}px`;
-
-        const drawHalo = () => {
-          const centerX = canvas.width / 2;
-          const centerY = canvas.height / 2;
-
-          const radius = 140 * dpr;
-
-          const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
-          gradient.addColorStop(0, 'rgba(255, 255, 255, 0.18)');
-          gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-
-          ctx.fillStyle = gradient;
-
-          ctx.beginPath();
-          ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-          ctx.fill();
-        };
-
-        if(hasBgColor) {
-          drawHalo();
-        } else {
-          canvas.style.mixBlendMode = 'unset';
-        }
-
-        const MIN_SIZE = 18;
-        const MIDDLE_SIZE = 20;
-        const MAX_SIZE = 24;
-        const MIN_OPACITY = .16;
-        const MIDDLE_OPACITY = .2;
-        wrapEmojiPattern({
-          docId,
-          canvasWidth: CANVAS_WIDTH,
-          canvasHeight: CANVAS_HEIGHT,
-          emojiSize: 24,
-          middleware,
-          positions: [
-            [307, 155, MIN_SIZE, MIN_OPACITY],
-            [68, 155, MIN_SIZE, MIN_OPACITY],
-            [317, 95, MIN_SIZE, MIN_OPACITY],
-            [58, 95, MIN_SIZE, MIN_OPACITY],
-            [292, 52, MIN_SIZE, MIN_OPACITY],
-            [83, 52, MIN_SIZE, MIN_OPACITY],
-            [213, 195, MIN_SIZE, MIDDLE_OPACITY],
-            [162, 195, MIN_SIZE, MIDDLE_OPACITY],
-            [273, 204, MIN_SIZE, MIN_OPACITY],
-            [102, 204, MIN_SIZE, MIN_OPACITY],
-            [253, 163, MIDDLE_SIZE, MIDDLE_OPACITY],
-            [120, 163, MIDDLE_SIZE, MIDDLE_OPACITY],
-            [258, 75, MIN_SIZE, MIDDLE_OPACITY],
-            [117, 75, MIN_SIZE, MIDDLE_OPACITY],
-            [269, 113, MAX_SIZE, MIDDLE_OPACITY],
-            [100, 113, MAX_SIZE, MIDDLE_OPACITY],
-            [230, 44, MIDDLE_SIZE, MIDDLE_OPACITY],
-            [143, 44, MIDDLE_SIZE, MIDDLE_OPACITY],
-            [187.5, 34, MIN_SIZE, MIDDLE_OPACITY]
-          ],
-          color: '#000000'
-        }).then((_canvas) => {
-          if(!middleware()) return;
-
-          ctx.drawImage(_canvas, 0, 0);
-        });
-
-        this.container.prepend(this.emojiPatternCanvas);
-      };
-
-      const setBackgroundColors = (bgColors: number[]) => {
-        let backgroundStr: string;
-        if(bgColors) {
-          const colors = bgColors.map((color) => getHexColorFromTelegramColor(color));
-          if(colors.length === 1) {
-            backgroundStr = colors[0];
-          } else {
-            backgroundStr = `linear-gradient(180deg, ${colors.join(', ')})`;
-          }
-        }
-        this.container.style.background = backgroundStr;
-        this.hasBackgroundColor = !!backgroundStr;
-      };
-
-      const {colorSet, backgroundEmojiId} = usePeerProfileAppearance(peerId);
-      createEffect(() => {
-        const bgColors = colorSet()?.bg_colors;
-        // const docId = backgroundEmojiId();
-        const docId = '5301072507598550489';
-
-        setBackgroundColors(bgColors);
-        renderBackgroundEmoji(docId, !!bgColors);
-        this.setCollapsed(this.isCollapsed());
-      });
+    if(this.fakeAvatar) {
+      this.fakeAvatar.node.remove();
+    }
+    this.fakeAvatar = avatarNew({
+      peerId,
+      isBig: true,
+      middleware: this.middlewareHelper.get(),
+      size: 120,
+      withStories: true,
+      onStoriesStatus: (has) => {
+        this.container.classList.toggle('has-stories', has);
+      },
+      storyColors: {
+        read: 'rgba(255, 255, 255, .3)'
+      }
     });
+    this.fakeAvatar.node.classList.add('profile-avatars-avatar-fake');
+    await this.fakeAvatar.readyThumbPromise;
+    this.avatars.before(this.fakeAvatar.node);
 
     const listLoader: PeerProfileAvatars['listLoader'] = this.listLoader = new ListLoader({
       loadCount: 50,
@@ -516,6 +436,150 @@ export default class PeerProfileAvatars {
     listLoader.load(true);
   }
 
+  private _applyAppearance() {
+    const middleware = this.middlewareHelper.get();
+    const renderBackgroundEmoji = (docId: DocId, hasBgColor: boolean) => {
+      this.emojiPatternCanvas?.remove();
+      this.emojiPatternCanvas = undefined;
+
+      if(!docId) {
+        return;
+      }
+
+      const CANVAS_WIDTH = 393;
+      const CANVAS_HEIGHT = 258;
+
+      const canvas = this.emojiPatternCanvas = document.createElement('canvas');
+      canvas.classList.add('profile-avatars-pattern');
+      const ctx = canvas.getContext('2d');
+
+      const dpr = window.devicePixelRatio;
+      canvas.width = CANVAS_WIDTH * dpr;
+      canvas.height = CANVAS_HEIGHT * dpr;
+      canvas.style.width = `${CANVAS_WIDTH}px`;
+      canvas.style.height = `${CANVAS_HEIGHT}px`;
+
+      const drawHalo = () => {
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+
+        const radius = 140 * dpr;
+
+        const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 0.18)');
+        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+        ctx.fillStyle = gradient;
+
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+        ctx.fill();
+      };
+
+      if(hasBgColor) {
+        drawHalo();
+      } else {
+        canvas.style.mixBlendMode = 'unset';
+      }
+
+      const deferred = deferredPromise<void>();
+      const MIN_SIZE = 18;
+      const MIDDLE_SIZE = 20;
+      const MAX_SIZE = 24;
+      const MIN_OPACITY = .16;
+      const MIDDLE_OPACITY = .2;
+      const promise = wrapEmojiPattern({
+        docId,
+        canvasWidth: CANVAS_WIDTH,
+        canvasHeight: CANVAS_HEIGHT,
+        emojiSize: 24,
+        middleware,
+        positions: [
+          [307, 155, MIN_SIZE, MIN_OPACITY],
+          [68, 155, MIN_SIZE, MIN_OPACITY],
+          [317, 95, MIN_SIZE, MIN_OPACITY],
+          [58, 95, MIN_SIZE, MIN_OPACITY],
+          [292, 52, MIN_SIZE, MIN_OPACITY],
+          [83, 52, MIN_SIZE, MIN_OPACITY],
+          [213, 195, MIN_SIZE, MIDDLE_OPACITY],
+          [162, 195, MIN_SIZE, MIDDLE_OPACITY],
+          [273, 204, MIN_SIZE, MIN_OPACITY],
+          [102, 204, MIN_SIZE, MIN_OPACITY],
+          [253, 163, MIDDLE_SIZE, MIDDLE_OPACITY],
+          [120, 163, MIDDLE_SIZE, MIDDLE_OPACITY],
+          [258, 75, MIN_SIZE, MIDDLE_OPACITY],
+          [117, 75, MIN_SIZE, MIDDLE_OPACITY],
+          [269, 113, MAX_SIZE, MIDDLE_OPACITY],
+          [100, 113, MAX_SIZE, MIDDLE_OPACITY],
+          [230, 44, MIDDLE_SIZE, MIDDLE_OPACITY],
+          [143, 44, MIDDLE_SIZE, MIDDLE_OPACITY],
+          [187.5, 34, MIN_SIZE, MIDDLE_OPACITY]
+        ],
+        color: customProperties.getProperty('primary-text-color'),
+        onCacheStatus: (cached) => {
+          if(cached) {
+            promise.then(deferred.resolve.bind(deferred));
+          } else {
+            deferred.resolve();
+          }
+        }
+      }).then((_canvas) => {
+        if(!middleware()) return;
+
+        ctx.drawImage(_canvas, 0, 0);
+      });
+
+      this.container.prepend(this.emojiPatternCanvas);
+
+      return deferred;
+    };
+
+    const setBackgroundColors = (bgColors: number[]) => {
+      let backgroundStr: string;
+      if(bgColors) {
+        const colors = bgColors.map((color) => getHexColorFromTelegramColor(color));
+        if(colors.length === 1) {
+          backgroundStr = colors[0];
+        } else {
+          backgroundStr = `linear-gradient(180deg, ${colors.join(', ')})`;
+        }
+      }
+      this.container.style.background = backgroundStr;
+      this.hasBackgroundColor = !!backgroundStr;
+    };
+
+    const {colorSet, backgroundEmojiId} = usePeerProfileAppearance(this.peerId);
+    const deferred = deferredPromise<void>();
+    createEffect(() => {
+      const bgColors = colorSet()?.bg_colors;
+      const docId = backgroundEmojiId();
+      // const docId = '5301072507598550489';
+
+      setBackgroundColors(bgColors);
+      this.setCollapsed(this.isCollapsed());
+
+      const isNightTheme = useIsNightTheme();
+      createEffect(on(
+        isNightTheme,
+        () => {
+          const promise = renderBackgroundEmoji(docId, !!bgColors);
+          if(promise) promise.then(deferred.resolve.bind(deferred));
+          else deferred.resolve();
+        }
+      ));
+    });
+
+    return deferred;
+  }
+
+  private applyAppearance() {
+    const middleware = this.middlewareHelper.get();
+    return createRoot((dispose) => {
+      middleware.onDestroy(dispose);
+      return this._applyAppearance();
+    });
+  }
+
   public addTab() {
     const tab = document.createElement('div');
     tab.classList.add(PeerProfileAvatars.BASE_CLASS + '-tab');
@@ -533,6 +597,7 @@ export default class PeerProfileAvatars {
     const avatar = document.createElement('div');
     avatar.classList.add(PeerProfileAvatars.BASE_CLASS + '-avatar', 'media-container', 'hide');
 
+    const isFirst = this.avatars.childElementCount === 0;
     this.avatars.append(avatar);
 
     let photo: Photo.photo;
@@ -548,7 +613,13 @@ export default class PeerProfileAvatars {
         size: 'full',
         isDialog: false,
         isBig: true
+        // size: isFirst ? 120 : 'full',
+        // withStories: isFirst
       });
+
+      if(isFirst) {
+        avatarElem.node.classList.add('profile-avatars-avatar-first');
+      }
 
       if(photo) {
         const boxSize = 420;
@@ -623,6 +694,11 @@ export default class PeerProfileAvatars {
   }
 
   private setCollapsed(collapsed: boolean) {
+    // * go to the first avatar
+    if(!this.isCollapsed() && collapsed && this.listLoader?.index) {
+      this.goWithoutTransition(-this.listLoader.index);
+    }
+
     this.setCollapsedOn.classList.toggle('is-collapsed', collapsed);
     this.setCollapsedOn.classList.toggle('need-white', this.hasBackgroundColor || !collapsed);
     this.updateHeaderFilled();

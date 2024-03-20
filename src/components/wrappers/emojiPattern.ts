@@ -22,7 +22,8 @@ export default async function wrapEmojiPattern({
   positions,
   canvasWidth,
   canvasHeight,
-  emojiSize
+  emojiSize,
+  onCacheStatus: onCacheStatus
 }: {
   docId: DocId,
   middleware: Middleware,
@@ -34,8 +35,11 @@ export default async function wrapEmojiPattern({
   canvasWidth: number,
   canvasHeight: number,
   emojiSize: number,
+  onCacheStatus?: (cached: boolean) => void
 }) {
-  const doc = await rootScope.managers.appEmojiManager.getCustomEmojiDocument(docId);
+  const result = await rootScope.managers.acknowledged.appEmojiManager.getCustomEmojiDocument(docId);
+  if(!result.cached) onCacheStatus?.(false);
+  const doc = await result.result;
   const d = document.createElement('div');
   return wrapSticker({
     doc,
@@ -45,12 +49,16 @@ export default async function wrapEmojiPattern({
     height: emojiSize,
     // onlyThumb: true,
     static: true,
-    withThumb: false
-  }).then(({render}) => {
-    return render;
+    withThumb: false,
+    exportLoad: 2,
+    useCache: false
+  }).then(({load, downloaded}) => {
+    onCacheStatus?.(downloaded);
+    return load();
   }).then((result) => {
     const image = (result as HTMLImageElement[])[0];
     if(!image.naturalWidth) {
+      console.warn('should wait for image size', image);
       return pause(100).then(() => image);
     }
     return image;

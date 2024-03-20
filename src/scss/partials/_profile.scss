@@ -15,6 +15,8 @@
       cursor: pointer;
       user-select: none;
       background-color: var(--surface-color);
+      z-index: 1;
+      min-height: 276px;
 
       @include animation-level(2) {
         transition: padding-bottom var(--transition-standard-in);
@@ -42,6 +44,12 @@
       &.is-swiping {
         .profile-avatars-arrow {
           opacity: 0 !important;
+        }
+      }
+
+      &.has-stories {
+        .profile-avatars-avatar-fake {
+          visibility: visible;
         }
       }
     }
@@ -78,7 +86,7 @@
       min-width: 100%;
       // min-height: 100%;
       display: flex;
-      background-color: #000;
+      // background-color: #000;
       position: relative;
 
       &.active {
@@ -90,7 +98,7 @@
       }
 
       .avatar-full {
-        --multiplier: 0.2;
+        --multiplier: calc(54 / 420);
       }
 
       .avatar {
@@ -102,6 +110,29 @@
         height: 100% !important;
         object-fit: cover;
         pointer-events: none;
+      }
+
+      // &-first {
+      //   transform: scale(calc(1 / (120 / 420)));
+      //   transform-origin: left top;
+      // }
+
+      .has-stories &-first {
+        opacity: 1;
+        transition-delay: 0s, 0s;
+        transform: scale(1);
+
+        @include animation-level(2) {
+          transition: opacity .05s, transform var(--transition-standard-in);
+        }
+      }
+
+      &-fake {
+        position: absolute !important;
+        left: 50%;
+        top: 48%;
+        transform: translate(-50%, -50%);
+        visibility: hidden;
       }
     }
 
@@ -116,7 +147,8 @@
 
       @include animation-level(2) {
         opacity: 1;
-        transition: opacity var(--transition-standard-in);
+        transition: opacity var(--transition-standard-easing) calc(var(--transition-standard-in-time) / 2);
+        transition-delay: calc(var(--transition-standard-in-time) / 2);
       }
 
       &-top {
@@ -336,7 +368,7 @@
   &-container {
     &.is-collapsed {
       .profile-avatars-container {
-        padding-bottom: 69%;
+        padding-bottom: 66%;
       }
 
       .profile-avatars-avatar.active {
@@ -350,14 +382,24 @@
         opacity: 0 !important;
       }
 
+      .profile-avatars-gradient {
+        transition-delay: 0s;
+      }
+
       .profile-avatars-info {
-        transform: translateY(-38%);
+        transform: translateY(-42%);
 
         .profile-name,
         .profile-subtitle {
           inset-inline-start: 50%;
           transform: translateX(-50%);
         }
+      }
+
+      .has-stories .profile-avatars-avatar-first {
+        opacity: 0;
+        transform: scale(.8916666667);
+        transition-delay: calc(var(--transition-standard-in-time) - .05s), 0s;
       }
     }
 
@@ -371,6 +413,14 @@
         }
       }
     }
+
+    // &:not(.is-collapsed) {
+      // .profile-avatars-avatar-first {
+      //   .avatar-stories-svg {
+      //     opacity: 0;
+      //   }
+      // }
+    // }
 
     &.need-white {
       .profile-avatars-info,
@@ -416,6 +466,9 @@
 
       &.need-white {
         .sidebar-header {
+          --light-secondary-text-color: rgba(255, 255, 255, #{$hover-alpha});
+          --ripple-color: var(--light-secondary-text-color);
+
           .sidebar-header__title,
           .btn-icon {
             color: #fff;

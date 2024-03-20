@@ -79,7 +79,7 @@ const getThumbFromContainer = (container: HTMLElement) => {
   return element;
 };
 
-export default async function wrapSticker({doc, div, middleware, loadStickerMiddleware, lazyLoadQueue, exportLoad, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn, needUpscale, skipRatio, static: asStatic, managers = rootScope.managers, fullThumb, isOut, noPremium, withLock, relativeEffect, loopEffect, isCustomEmoji, syncedVideo, liteModeKey, isEffect, textColor, scrollable, showPremiumInfo}: {
+export default async function wrapSticker({doc, div, middleware, loadStickerMiddleware, lazyLoadQueue, exportLoad, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn, needUpscale, skipRatio, static: asStatic, managers = rootScope.managers, fullThumb, isOut, noPremium, withLock, relativeEffect, loopEffect, isCustomEmoji, syncedVideo, liteModeKey, isEffect, textColor, scrollable, showPremiumInfo, useCache}: {
   doc: MyDocument,
   div: HTMLElement | HTMLElement[],
   middleware?: Middleware,
@@ -112,7 +112,8 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
   isEffect?: boolean,
   textColor?: WrapSomethingOptions['textColor'],
   scrollable?: Scrollable
-  showPremiumInfo?: () => void
+  showPremiumInfo?: () => void,
+  useCache?: boolean
 }) {
   const options = arguments[0];
   div = Array.isArray(div) ? div : [div];
@@ -237,7 +238,8 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
     render: undefined as typeof loadPromise,
     load: undefined as typeof load,
     width,
-    height
+    height,
+    downloaded
   };
   let loadThumbPromise = deferredPromise<void>();
   let haveThumbCached = false;
@@ -334,7 +336,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
           (div as HTMLElement[]).forEach((div) => {
             const thumbImage = new Image();
             const url = getPreviewURLFromThumb(doc, thumb as PhotoSize.photoStrippedSize, true);
-            renderImageFromUrl(thumbImage, url, () => afterRender(div, thumbImage));
+            renderImageFromUrl(thumbImage, url, () => afterRender(div, thumbImage), useCache);
           });
         };
 
@@ -371,7 +373,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
           }
 
           if(!url) afterRender(div, thumbImage);
-          else renderImageFromUrl(thumbImage, url, () => afterRender(div, thumbImage));
+          else renderImageFromUrl(thumbImage, url, () => afterRender(div, thumbImage), useCache);
         };
 
         getCacheContext();
@@ -703,7 +705,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
           (div as HTMLElement[]).forEach((div, idx) => {
             const _media = media[idx];
             const cb = () => onLoad(div, _media, thumbImage[idx]);
-            if(_media) lastPromise = renderImageFromUrlPromise(_media, cacheContext.url);
+            if(_media) lastPromise = renderImageFromUrlPromise(_media, cacheContext.url, useCache);
             lastPromise.then(cb);
           });
         };
