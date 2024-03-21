@@ -368,6 +368,9 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       this.container.classList.add('header-filled');
     };
 
+    // * fix scroll position to media tab because of absolute header
+    this.searchSuper.scrollOffset = 56;
+
     if(this.profile) {
       this.profile.element.append(this.searchSuper.container);
     } else {

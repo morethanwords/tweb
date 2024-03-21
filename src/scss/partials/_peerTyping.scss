@@ -38,7 +38,7 @@
       width: 6px;
       height: 6px;
       border-radius: 50%;
-      background-color: var(--color);
+      background-color: currentColor;
       margin: 0 .5px;
       display: inline-block;
       vertical-align: middle;
@@ -71,7 +71,7 @@
       content: " ";
       position: absolute;
       inset: 0;
-      background-color: var(--color);
+      background-color: currentColor;
       border-radius: inherit;
     }
 
@@ -93,7 +93,7 @@
       width: 6px;
       height: 6px;
       border-radius: 50%;
-      background-color: var(--color);
+      background-color: currentColor;
       animation: recordBlink 1.25s infinite;
     }
   }
@@ -111,7 +111,7 @@
       border-radius: 50%;
       display: inline-block;
       vertical-align: middle;
-      border: 1px solid var(--color);
+      border: 1px solid currentColor;
       margin: 0 .0625rem;
       position: relative;
       animation: eye 1.8s ease-in-out infinite;
@@ -121,7 +121,7 @@
         display: block;
         width: .25rem;
         height: .25rem;
-        background-color: var(--color);
+        background-color: currentColor;
         border-radius: 50%;
         position: absolute;
         // left: 50%;

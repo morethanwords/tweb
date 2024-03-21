@@ -432,6 +432,7 @@ export default class AppSearchSuper {
   public selection: SearchSelection;
 
   public scrollStartCallback: (dimensions: ScrollStartCallbackDimensions) => void;
+  public scrollOffset: number;
 
   public managers: AppManagers;
   private loadFirstTimePromise: Promise<void>;
@@ -590,11 +591,7 @@ export default class AppSearchSuper {
 
     this.selectTab = horizontalMenu(this.tabsMenu, this.tabsContainer, (id, tabContent, animate) => {
       if(this.prevTabId === id && !this.skipScroll) {
-        this.scrollable.scrollIntoViewNew({
-          element: this.container,
-          position: 'start',
-          startCallback: this.scrollStartCallback
-        });
+        this.scrollToStart();
         return;
       }
 
@@ -615,14 +612,10 @@ export default class AppSearchSuper {
       if(this.skipScroll) {
         this.skipScroll = false;
       } else {
-        const offsetTop = this.container.offsetTop;
+        const offsetTop = this.container.offsetTop - (this.scrollOffset || 0);
         let scrollTop = this.scrollable.scrollPosition;
         if(scrollTop < offsetTop) {
-          this.scrollable.scrollIntoViewNew({
-            element: this.container,
-            position: 'start',
-            startCallback: this.scrollStartCallback
-          });
+          this.scrollToStart();
           scrollTop = offsetTop;
         }
 
@@ -768,6 +761,15 @@ export default class AppSearchSuper {
     }, () => {
       this.lazyLoadQueue.unlockAndRefresh(); // ! maybe not so efficient
     }, this.listenerSetter);
+  }
+
+  private scrollToStart() {
+    this.scrollable.scrollIntoViewNew({
+      element: this.container,
+      position: 'start',
+      startCallback: this.scrollStartCallback,
+      getElementPosition: this.scrollOffset ? ({elementPosition}) => Math.max(0, elementPosition - this.scrollOffset) : undefined
+    });
   }
 
   private onTransitionStart = () => {

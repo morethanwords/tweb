@@ -455,10 +455,8 @@ export default class PeerProfile {
       if(photo || SHOW_NO_AVATAR) {
         const oldAvatars = this.avatars;
         this.avatars = new PeerProfileAvatars(this.scrollable, this.managers, this.setCollapsedOn);
-        const [nameCallback] = await Promise.all([
-          this.fillName(middleware, true),
-          this.avatars.setPeer(peerId)
-        ]);
+        await this.avatars.setPeer(peerId);
+        const nameCallback = await this.fillName(middleware, this.setCollapsedOn.classList.contains('need-white'));
 
         return () => {
           nameCallback();

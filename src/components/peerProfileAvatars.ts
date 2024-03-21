@@ -9,7 +9,7 @@ import IS_PARALLAX_SUPPORTED from '../environment/parallaxSupport';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import findAndSplice from '../helpers/array/findAndSplice';
 import cancelEvent from '../helpers/dom/cancelEvent';
-import {attachClickEvent} from '../helpers/dom/clickEvent';
+import {attachClickEvent, simulateClickEvent} from '../helpers/dom/clickEvent';
 import filterChatPhotosMessages from '../helpers/filterChatPhotosMessages';
 import ListenerSetter from '../helpers/listenerSetter';
 import ListLoader from '../helpers/listLoader';
@@ -33,6 +33,8 @@ import {useCollapsable} from '../hooks/useCollapsable';
 import deferredPromise from '../helpers/cancellablePromise';
 import useIsNightTheme from '../hooks/useIsNightTheme';
 import customProperties from '../helpers/dom/customProperties';
+import findUpClassName from '../helpers/dom/findUpClassName';
+import {changeTitleEmojiColor} from './peerTitle';
 
 const LOAD_NEAREST = 3;
 export const SHOW_NO_AVATAR = true;
@@ -135,6 +137,12 @@ export default class PeerProfileAvatars {
       }
 
       if(this.isCollapsed() && this.unfold) {
+        if(findUpClassName(_e.target, 'avatar') && this.container.classList.contains('has-stories')) {
+          cancel = true;
+          simulateClickEvent(this.fakeAvatar.node);
+          return;
+        }
+
         this.unfold(_e);
         return;
       }
@@ -278,7 +286,7 @@ export default class PeerProfileAvatars {
         this.unfold = undefined;
       });
 
-      const {folded, unfold} = useCollapsable({
+      const {folded, unfold, fold} = useCollapsable({
         container: () => this.container,
         listenWheelOn: this.setCollapsedOn,
         scrollable: () => scrollable.container,
@@ -288,6 +296,11 @@ export default class PeerProfileAvatars {
       this.unfold = unfold;
 
       createEffect(() => {
+        if(this.hasNoPhoto && !folded()) {
+          fold();
+          return;
+        }
+
         this.setCollapsed(folded());
       });
     });
@@ -700,7 +713,11 @@ export default class PeerProfileAvatars {
     }
 
     this.setCollapsedOn.classList.toggle('is-collapsed', collapsed);
-    this.setCollapsedOn.classList.toggle('need-white', this.hasBackgroundColor || !collapsed);
+    const needWhite = this.hasBackgroundColor || !collapsed;
+    if(this.setCollapsedOn.classList.contains('need-white') !== needWhite) {
+      this.setCollapsedOn.classList.toggle('need-white', needWhite);
+      changeTitleEmojiColor(this.info, needWhite ? 'white' : 'primary-color');
+    }
     this.updateHeaderFilled();
   }
 

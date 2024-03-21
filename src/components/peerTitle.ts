@@ -15,6 +15,7 @@ import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 import getPeerTitle from './wrappers/getPeerTitle';
 import generateTitleIcons from './generateTitleIcons';
 import {wrapTopicIcon} from './wrappers/messageActionTextNewUnsafe';
+import lottieLoader from '../lib/rlottie/lottieLoader';
 
 export type PeerTitleOptions = {
   peerId?: PeerId,
@@ -171,5 +172,13 @@ export default class PeerTitle {
     }
 
     this.setHasInner(hasInner);
+  }
+}
+
+export function changeTitleEmojiColor(element: HTMLElement, color: string) {
+  const emojiStatus = element.querySelector<HTMLElement>('.emoji-status-text-color');
+  const player = emojiStatus && lottieLoader.getAnimation(emojiStatus);
+  if(player) {
+    player.setColor(color, true);
   }
 }

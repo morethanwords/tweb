@@ -24,7 +24,7 @@ import Button from '../../components/button';
 import SetTransition from '../../components/singleTransition';
 import {MyDraftMessage} from './appDraftsManager';
 import {MOUNT_CLASS_TO} from '../../config/debug';
-import PeerTitle from '../../components/peerTitle';
+import PeerTitle, {changeTitleEmojiColor} from '../../components/peerTitle';
 import I18n, {FormatterArguments, i18n, LangPackKey, _i18n} from '../langPack';
 import findUpTag from '../../helpers/dom/findUpTag';
 import lottieLoader from '../rlottie/lottieLoader';
@@ -2188,11 +2188,7 @@ export class AppDialogsManager {
       customEmojiRenderer.textColor = this.getTextColor(active);
     });
 
-    const emojiStatus = listEl.querySelector<HTMLElement>('.emoji-status-text-color');
-    const player = emojiStatus && lottieLoader.getAnimation(emojiStatus);
-    if(player) {
-      player.setColor(this.getPrimaryColor(active), true);
-    }
+    changeTitleEmojiColor(listEl, this.getPrimaryColor(active));
   }
 
   public setDialogActive(listEl: HTMLElement, active: boolean) {
