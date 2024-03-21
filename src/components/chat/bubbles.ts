@@ -173,6 +173,7 @@ import isForwardOfForward from '../../lib/appManagers/utils/messages/isForwardOf
 import {ReactionLayoutType} from './reaction';
 import reactionsEqual from '../../lib/appManagers/utils/reactions/reactionsEqual';
 import getMainGroupedMessage from '../../lib/appManagers/utils/messages/getMainGroupedMessage';
+import cancelNextClickIfNotClick from '../../helpers/dom/cancelNextClickIfNotClick';
 
 export const USER_REACTIONS_INLINE = false;
 export const TEST_BUBBLES_DELETION = false;
@@ -2295,7 +2296,8 @@ export default class ChatBubbles {
       return;
     }
 
-    if(await this.checkTargetForMediaViewer(target, e)) {
+    if(this.checkTargetForMediaViewer(target, e)) {
+      cancelNextClickIfNotClick(e);
       return;
     }
 
@@ -2397,7 +2399,7 @@ export default class ChatBubbles {
     }
   };
 
-  public async checkTargetForMediaViewer(target: HTMLElement, e?: Event, mediaTimestamp?: number) {
+  public checkTargetForMediaViewer(target: HTMLElement, e?: Event, mediaTimestamp?: number) {
     const bubble = findUpClassName(target, 'bubble');
     const documentDiv = findUpClassName(target, 'document-with-thumb');
 
