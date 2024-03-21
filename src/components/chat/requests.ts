@@ -47,7 +47,8 @@ export default class ChatRequests extends PinnedContainer {
           this.managers.appStateManager.pushToState('hideChatJoinRequests', state.hideChatJoinRequests);
         });
       },
-      floating: true
+      floating: true,
+      height: 52
     });
 
     // this.middlewareHelper = getMiddleware();

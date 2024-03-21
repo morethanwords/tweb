@@ -285,7 +285,8 @@ export default class ChatPinnedMessage {
 
         return false;
       },
-      floating: ALWAYS_FLOATING
+      floating: ALWAYS_FLOATING,
+      height: 52
     });
 
     this.pinnedMessageBorder = new PinnedMessageBorder();

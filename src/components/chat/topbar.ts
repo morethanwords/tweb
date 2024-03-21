@@ -854,7 +854,6 @@ export default class ChatTopbar {
 
   private onChangeScreen = (from: ScreenSize, to: ScreenSize) => {
     const isFloating = to === ScreenSize.mobile || PINNED_ALWAYS_FLOATING;
-    this.container.classList.toggle('is-pinned-floating', mediaSizes.isMobile || isFloating);
     // this.chatAudio && this.chatAudio.divAndCaption.container.classList.toggle('is-floating', to === ScreenSize.mobile);
     this.pinnedMessage && this.pinnedMessage.pinnedMessageContainer.container.classList.toggle('is-floating', isFloating);
     this.onResize();
@@ -1173,6 +1172,7 @@ export default class ChatTopbar {
       ...(this.pinnedContainers || []),
       this.pinnedMessage?.pinnedMessageContainer
     ].filter(Boolean);
+    let top = 56, floatingHeight = 0;
     const count = containers.reduce((acc, container) => {
       const isFloating = container.isFloating();
       this.container.classList.toggle(`is-pinned-${container.className}-floating`, isFloating);
@@ -1181,9 +1181,18 @@ export default class ChatTopbar {
         return acc;
       }
 
+      if(isFloating) {
+        floatingHeight += container.height;
+        container.container.style.top = top + 'px';
+        top += container.height;
+      } else {
+        container.container.style.top = '';
+      }
+
       return acc + +isFloating;
     }, 0);
     this.container.dataset.floating = '' + count;
+    this.container.style.setProperty('--pinned-floating-height', `calc(${floatingHeight}px + var(--topbar-floating-call-height)`);
   };
 
   private messagesCounter(middleware: Middleware, key: LangPackKey) {

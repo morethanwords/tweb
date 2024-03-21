@@ -18,7 +18,6 @@ import ButtonIcon from '../buttonIcon';
 
 const classNames: string[] = ['is-pinned-message-shown', 'is-pinned-audio-shown'];
 const CLASSNAME_BASE = 'pinned-container';
-const HEIGHT = 52;
 
 export type WrapPinnedContainerOptions = {
   title: string | HTMLElement | DocumentFragment,
@@ -43,6 +42,8 @@ export default class PinnedContainer {
 
   public onClose?: () => void | Promise<boolean>;
 
+  public height: number;
+
   constructor(options: {
     topbar: PinnedContainer['topbar'],
     chat: PinnedContainer['chat'],
@@ -50,7 +51,8 @@ export default class PinnedContainer {
     className: PinnedContainer['className'],
     divAndCaption?: PinnedContainer['divAndCaption'],
     onClose?: PinnedContainer['onClose'],
-    floating?: PinnedContainer['floating']
+    floating?: PinnedContainer['floating'],
+    height: number
   }) {
     safeAssign(this, options);
 
@@ -114,7 +116,6 @@ export default class PinnedContainer {
     this.container.classList.toggle('is-floating', isFloating);
     this.container.classList.toggle('hide', hide);
 
-    this.topbar.container.classList.toggle('is-pinned-floating', isFloating);
     this.topbar.container.classList.toggle(`is-pinned-${this.className}-shown`, !hide);
 
     // const active = classNames.filter((className) => this.topbar.container.classList.contains(className));

@@ -24,7 +24,8 @@ export default class ChatLive extends PinnedContainer {
       chat,
       listenerSetter: topbar.listenerSetter,
       className: 'live',
-      floating: true
+      floating: true,
+      height: 56
     });
 
     [this.peerId, this.setPeerId] = createSignal<PeerId>(NULL_PEER_ID);

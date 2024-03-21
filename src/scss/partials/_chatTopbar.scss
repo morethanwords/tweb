@@ -47,17 +47,11 @@ body.is-right-column-shown {
   --topbar-close-active-size: 2.5rem;
   --topbar-avatar-close-gap: 0px;
   
-  --pinned-floating-audio-height: 0px;
-  --pinned-floating-message-height: 0px;
-  --pinned-floating-requests-height: 0px;
-  --pinned-floating-actions-height: 0px;
-  --pinned-floating-live-height: 0px;
-	--pinned-floating-height: calc(var(--pinned-floating-audio-height) + var(--pinned-floating-message-height) + var(--pinned-floating-requests-height) + var(--pinned-floating-actions-height) + var(--pinned-floating-live-height) + var(--topbar-floating-call-height));
-  
   --pinned-container-height: 3.25rem;
 	--pinned-audio-height: var(--pinned-container-height);
 	--pinned-message-height: var(--pinned-container-height);
   --pinned-live-height: 3.5rem;
+  --pinned-floating-height: 0px;
 
 	width: 100%;
 	z-index: 2;
@@ -78,44 +72,10 @@ body.is-right-column-shown {
 		pointer-events: none;
 	}
 
-	&.is-pinned-audio-floating {
-		--pinned-floating-audio-height: var(--pinned-audio-height);
-	}
-
-	&.is-pinned-message-floating {
-		--pinned-floating-message-height: var(--pinned-message-height);
-	}
-
-  &.is-pinned-requests-floating {
-    --pinned-floating-requests-height: var(--pinned-container-height);
-  }
-
-  &.is-pinned-actions-floating {
-    --pinned-floating-actions-height: var(--pinned-container-height);
-  }
-
-  &.is-pinned-live-floating {
-    --pinned-floating-live-height: var(--pinned-live-height);
-  }
-
 	&:not(.is-pinned-message-floating) {
 		.chat-utils {
 			position: relative;
 			z-index: 1;
-		}
-	}
-
-	&.is-pinned-audio-floating.is-pinned-message-floating {
-		.pinned-message {
-			top: calc(var(--topbar-height) + var(--pinned-audio-height));
-
-			&:before {
-				border-top: none;
-			}
-
-			/* &:before {
-				box-shadow: none;
-			} */
 		}
 	}
 
