@@ -38,6 +38,8 @@ export function enterTransition(
 ) {
   const {onBeforeEnter, onEnter, onAfterEnter} = events;
 
+  let timeout: number;
+
   // before the elements are added to the DOM
   onBeforeEnter?.(el);
 
@@ -54,7 +56,6 @@ export function enterTransition(
     onEnter?.(el, () => endTransition());
   });
 
-  let timeout: number;
   nextFrame(() => {
     el.classList.remove(...classes.enter);
     el.classList.add(...classes.enterTo);
@@ -98,6 +99,8 @@ export function exitTransition(
   // This can happen when elements are changed under Suspense
   if(!el.parentNode) return done?.();
 
+  let timeout: number;
+
   onBeforeExit?.(el);
 
   el.classList.add(...classes.exit);
@@ -105,7 +108,6 @@ export function exitTransition(
 
   onExit?.(el, () => endTransition());
 
-  let timeout: number;
   nextFrame(() => {
     el.classList.remove(...classes.exit);
     el.classList.add(...classes.exitTo);
