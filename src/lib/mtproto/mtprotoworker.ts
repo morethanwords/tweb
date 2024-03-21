@@ -204,7 +204,11 @@ class ApiManagerProxy extends MTProtoMessagePort {
         return (sessionStorage[storageTask.type] as any)(...storageTask.args);
       },
 
-      mirror: this.onMirrorTask
+      mirror: this.onMirrorTask,
+
+      receivedServiceMessagePort: () => {
+        this.log.warn('mtproto worker received service message port');
+      }
 
       // hello: () => {
       //   this.log.error('time hello', performance.now() - perf);
@@ -313,6 +317,8 @@ class ApiManagerProxy extends MTProtoMessagePort {
     const promise = this.pingServiceWorkerPromise = deferredPromise<void>();
     const iframe = document.createElement('iframe');
     iframe.hidden = true;
+    // const now = Date.now();
+    // const minWait = 2000;
     const onLoad = () => {
       setTimeout(() => { // ping once in 10 seconds
         this.pingServiceWorkerPromise = undefined;
@@ -323,6 +329,12 @@ class ApiManagerProxy extends MTProtoMessagePort {
       iframe.removeEventListener('load', onLoad);
       iframe.removeEventListener('error', onLoad);
       promise.resolve();
+      // const elapsedTime = Date.now() - now;
+      // if(elapsedTime > minWait) {
+      //   promise.resolve();
+      // } else {
+      //   setTimeout(() => promise.resolve(), minWait - elapsedTime);
+      // }
     };
     iframe.addEventListener('load', onLoad);
     iframe.addEventListener('error', onLoad);
@@ -434,6 +446,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
       this.serviceMessagePort.attachListenPort(worker);
       this.serviceMessagePort.addMultipleEventsListeners({
         port: (payload, source, event) => {
+          this.log.warn('got service worker port');
           this.invokeVoid('serviceWorkerPort', undefined, undefined, [event.ports[0]]);
         },
 

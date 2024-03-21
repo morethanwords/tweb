@@ -38,6 +38,7 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   localStorageProxy: (payload: LocalStorageProxyTask['payload']) => Promise<any>,
   mirror: (payload: MirrorTaskPayload) => void,
   notificationBuild: (payload: NotificationBuildTaskPayload) => void,
+  receivedServiceMessagePort: (payload: void) => void,
   // hello: () => void
 } & MTProtoBroadcastEvent, Master> {
   private static INSTANCE: MTProtoMessagePort;

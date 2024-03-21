@@ -225,7 +225,7 @@ export default class ProgressivePreloader {
   }
 
   public attach(elem: Element, reset = false, promise?: CancellablePromise<any>) {
-    if(!this.detached) {
+    if(!this.detached && (!this.preloader || !this.preloader.classList.contains('manual'))) {
       return;
     }
 

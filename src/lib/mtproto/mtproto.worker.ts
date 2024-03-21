@@ -77,6 +77,7 @@ port.addMultipleEventsListeners({
 
   serviceWorkerPort: (payload, source, event) => {
     appManagersManager.onServiceWorkerPort(event);
+    port.invokeVoid('receivedServiceMessagePort', undefined, source);
   },
 
   createObjectURL: (blob) => {

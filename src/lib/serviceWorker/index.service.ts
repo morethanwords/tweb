@@ -154,6 +154,7 @@ const onFetch = (event: FetchEvent): void => {
         break;
       }
 
+      case 'd':
       case 'download': {
         onDownloadFetch(event, params);
         break;

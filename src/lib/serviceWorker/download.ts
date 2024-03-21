@@ -9,9 +9,12 @@ import type ServiceMessagePort from './serviceMessagePort';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import makeError from '../../helpers/makeError';
 import pause from '../../helpers/schedulers/pause';
+import {logger} from '../logger';
+import {log} from './index.service';
 
 type DownloadType = Uint8Array;
 type DownloadItem = ServiceDownloadTaskPayload & {
+  log: ReturnType<typeof logger>,
   // transformStream: TransformStream<DownloadType, DownloadType>,
   readableStream: ReadableStream<DownloadType>,
   // writableStream: WritableStream<DownloadType>,
@@ -36,6 +39,9 @@ const events: A = {
     if(downloadMap.has(id)) {
       return Promise.reject(DOWNLOAD_ERROR);
     }
+
+    const log = logger('DOWNLOAD-' + id);
+    log('prepare');
 
     // const y = (20 * 1024 * 1024) / payload.limitPart;
     // const strategy = new ByteLengthQueuingStrategy({highWaterMark: y});
@@ -66,6 +72,7 @@ const events: A = {
       },
 
       cancel: (reason) => {
+        log('cancel', id, reason);
         promise.reject(DOWNLOAD_ERROR);
       }
     }, strategy);
@@ -84,7 +91,8 @@ const events: A = {
       // writer,
       // downloadPromise,
       promise,
-      controller
+      controller,
+      log
     };
 
     downloadMap.set(id, item);
@@ -99,6 +107,8 @@ const events: A = {
       return Promise.reject();
     }
 
+    // log('got chunk', id, chunk.length);
+
     // return item.controller.enqueue(chunk);
     // return item.writer.write(chunk);
     // @ts-ignore
@@ -111,6 +121,8 @@ const events: A = {
       return Promise.reject();
     }
 
+    item.log('finalize');
+
     item.promise.resolve();
     // return item.controller.terminate();
     // return item.writer.close();
@@ -122,6 +134,8 @@ const events: A = {
     if(!item) {
       return;
     }
+
+    item.log('cancel');
 
     item.promise.reject();
     // return item.controller.error();
@@ -143,12 +157,14 @@ function onDownloadFetch(event: FetchEvent, params: string) {
   const promise = pause(100).then(() => {
     const item = downloadMap.get(params);
     if(!item || (item.used && !DOWNLOAD_TEST)) {
+      log.warn('no such download', params);
       return;
     }
 
+    item.log('fetch');
     item.used = true;
     const stream = item.readableStream;
-    const response = new Response(stream, {headers: item.headers});
+    const response = new Response(stream, {headers: item.headers, status: 200});
     return response;
   });
 
@@ -156,6 +172,7 @@ function onDownloadFetch(event: FetchEvent, params: string) {
 }
 
 function cancelAllDownloads() {
+  log('cancelling all downloads');
   if(downloadMap.size) {
     for(const [id, item] of downloadMap) {
       // item.writer.abort().catch(noop);

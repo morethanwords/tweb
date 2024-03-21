@@ -23,6 +23,7 @@ import {getFileNameByLocation} from '../../helpers/fileName';
 import getDocumentDownloadOptions from './utils/docs/getDocumentDownloadOptions';
 import getPhotoDownloadOptions from './utils/photos/getPhotoDownloadOptions';
 import apiManagerProxy from '../mtproto/mtprotoworker';
+import {IS_MOBILE_SAFARI} from '../../environment/userAgent';
 
 export type ResponseMethodBlob = 'blob';
 export type ResponseMethodJson = 'json';
@@ -236,6 +237,16 @@ export class AppDownloadManager {
       options.thumb = (media as Photo.photo).sizes.slice().pop() as PhotoSize.photoSize;
     }
 
+    const USE_SW = !IS_MOBILE_SAFARI;
+    // const USE_SW = true;
+
+    const getOutFileName = () => {
+      const downloadOptions = isDocument ?
+        getDocumentDownloadOptions(media) :
+        getPhotoDownloadOptions(media as any, options.thumb as PhotoSize.photoSize);
+      return (options.media as MyDocument).file_name || getFileNameByLocation(downloadOptions.location);
+    };
+
     // const {fileName: cacheFileName} = getDownloadMediaDetails(options);
     // if(justAttach) {
     //   const promise = this.downloadsToDisc[cacheFileName];
@@ -246,12 +257,15 @@ export class AppDownloadManager {
 
     // const {downloadOptions, fileName} = getDownloadMediaDetails(options);
     // if(downloadOptions.size && downloadOptions.size > MAX_FILE_SAVE_SIZE) {
-    const id = '' + (Math.random() * 0x7FFFFFFF | 0);
-    // const id = 'test';
-    const url = `download/${id}`;
-    options.downloadId = id;
+    let url: string, pingPromise: Promise<any>;
+    if(USE_SW) {
+      const id = '' + (Math.random() * 0x7FFFFFFF | 0);
+      // const id = 'test';
+      url = `d/${id}`;
+      options.downloadId = id;
 
-    const pingPromise = apiManagerProxy.pingServiceWorkerWithIframe();
+      pingPromise = apiManagerProxy.pingServiceWorkerWithIframe();
+    }
 
     const promise = this.downloadMedia(options, 'disc', pingPromise);
     // this.downloadsToDisc[cacheFileName] = promise;
@@ -260,28 +274,16 @@ export class AppDownloadManager {
       return promise;
     }
 
-    const iframe = document.createElement('iframe');
-    iframe.hidden = true;
+    let iframe: HTMLIFrameElement;
+    if(USE_SW) {
+      iframe = document.createElement('iframe');
+      iframe.hidden = true;
 
-    pingPromise.then(() => {
-      iframe.src = url;
-      document.body.append(iframe);
-    });
-
-    // createDownloadAnchor(url, 'asd.txt');
-
-    // const events = [
-    //   'emptied',
-    //   'abort',
-    //   'suspend',
-    //   'reset',
-    //   'error',
-    //   'ended',
-    //   'load'
-    // ].forEach((event) => {
-    //   iframe.addEventListener(event, () => alert(event));
-    //   iframe.contentWindow.addEventListener(event, () => alert(event));
-    // });
+      pingPromise.then(() => {
+        iframe.src = url;
+        document.body.append(iframe);
+      });
+    }
 
     let element: HTMLElement, hadProgress = false;
     const onProgress = () => {
@@ -302,11 +304,7 @@ export class AppDownloadManager {
       }
 
       const url = URL.createObjectURL(blob);
-      const downloadOptions = isDocument ?
-        getDocumentDownloadOptions(media) :
-        getPhotoDownloadOptions(media as any, options.thumb as PhotoSize.photoSize);
-      const fileName = (options.media as MyDocument).file_name || getFileNameByLocation(downloadOptions.location);
-      createDownloadAnchor(url, downloadOptions.fileName || fileName, () => {
+      createDownloadAnchor(url, getOutFileName(), () => {
         URL.revokeObjectURL(url);
       });
     }).catch(noop).finally(() => {

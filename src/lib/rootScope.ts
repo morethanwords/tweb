@@ -122,8 +122,8 @@ export type BroadcastEvents = {
   'sticker_updated': {type: 'recent' | 'faved', document: MyDocument, faved: boolean},
 
   'state_cleared': void,
-  'state_synchronized': ChatId | void,
-  'state_synchronizing': ChatId | void,
+  'state_synchronized': void,
+  'state_synchronizing': void,
 
   'contacts_update': UserId,
   'avatar_update': {peerId: PeerId, threadId?: number},

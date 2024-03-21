@@ -428,11 +428,11 @@ class ApiUpdatesManager {
 
   private justAName(state: UpdatesState, promise: UpdatesState['syncLoading'], channelId?: ChatId) {
     state.syncLoading = promise;
-    this.rootScope.dispatchEvent('state_synchronizing', channelId);
+    !channelId && this.rootScope.dispatchEvent('state_synchronizing');
 
     promise.then(() => {
       state.syncLoading = null;
-      this.rootScope.dispatchEvent('state_synchronized', channelId);
+      !channelId && this.rootScope.dispatchEvent('state_synchronized');
     }, () => {
       state.syncLoading = null;
     });

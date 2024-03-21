@@ -67,21 +67,17 @@ export default class ConnectionStatusComponent {
       this.setConnectionStatus();
     });
 
-    rootScope.addEventListener('state_synchronizing', (channelId) => {
-      if(!channelId) {
-        this.updating = true;
-        DEBUG && this.log('updating', this.updating);
-        this.setState();
-      }
+    rootScope.addEventListener('state_synchronizing', () => {
+      this.updating = true;
+      DEBUG && this.log('updating', this.updating);
+      this.setState();
     });
 
-    rootScope.addEventListener('state_synchronized', (channelId) => {
-      DEBUG && this.log('state_synchronized', channelId);
-      if(!channelId) {
-        this.updating = false;
-        DEBUG && this.log('updating', this.updating);
-        this.setState();
-      }
+    rootScope.addEventListener('state_synchronized', () => {
+      DEBUG && this.log('state_synchronized');
+      this.updating = false;
+      DEBUG && this.log('updating', this.updating);
+      this.setState();
     });
 
     this.setFirstConnectionTimeout = window.setTimeout(
