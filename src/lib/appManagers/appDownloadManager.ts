@@ -237,7 +237,7 @@ export class AppDownloadManager {
       options.thumb = (media as Photo.photo).sizes.slice().pop() as PhotoSize.photoSize;
     }
 
-    const USE_SW = !IS_MOBILE_SAFARI;
+    const USE_SW = !IS_MOBILE_SAFARI && !!apiManagerProxy.serviceMessagePort;
     // const USE_SW = true;
 
     const getOutFileName = () => {
