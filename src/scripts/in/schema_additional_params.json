@@ -485,4 +485,11 @@
     {"name": "tags", "type": "SavedReactionTag[]"},
     {"name": "savedPeerId", "type": "PeerId"}
   ]
+}, {
+  "predicate": "updatePts",
+  "params": [
+    {"name": "pts", "type": "number"},
+    {"name": "pts_count", "type": "number"}
+  ],
+  "type": "Update"
 }]

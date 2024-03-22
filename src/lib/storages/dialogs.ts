@@ -758,7 +758,7 @@ export default class DialogsStorage extends AppManager {
     const {peerId} = dialog;
     const isForum = this.appPeersManager.isForum(peerId);
     const isTopic = isForumTopic(dialog);
-    if(isForum && !isTopic) {
+    if(isForum && !isTopic && !(dialog as Dialog).pFlags.view_forum_as_messages) {
       const forumUnreadCount = this.getForumUnreadCount(peerId);
       if(forumUnreadCount instanceof Promise) {
         forumUnreadCount.then(({count, hasUnmuted}) => {
@@ -1832,9 +1832,16 @@ export default class DialogsStorage extends AppManager {
     }) as any;
   }
 
-  public getForumUnreadCount(peerId: PeerId) {
+  public getForumUnreadCount(peerId: PeerId, ignoreIfAsMessages?: boolean) {
     if(!this.appPeersManager.isForum(peerId)) {
       return;
+    }
+
+    if(ignoreIfAsMessages) {
+      const dialog = this.getDialogOnly(peerId);
+      if(dialog && dialog.pFlags.view_forum_as_messages) {
+        return;
+      }
     }
 
     const folder = this.getFolder(peerId);

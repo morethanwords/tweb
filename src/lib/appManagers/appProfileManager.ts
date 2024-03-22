@@ -532,22 +532,21 @@ export class AppProfileManager extends AppManager {
       processError: (error) => {
         switch(error.type) {
           case 'CHANNEL_PRIVATE':
-            const channel = this.appChatsManager.getChat(id) as Chat.channel | Chat.channelForbidden;
-            this.apiUpdatesManager.processUpdateMessage({
-              _: 'updates',
-              updates: [{
-                _: 'updateChannel',
-                channel_id: id
-              }],
-              chats: [channel._ === 'channelForbidden' ? channel : {
+            const chat = this.appChatsManager.getChat(id) as Chat.channel | Chat.channelForbidden;
+            if(chat._ !== 'channelForbidden') {
+              this.appChatsManager.saveApiChats([{
                 _: 'channelForbidden',
                 id,
-                access_hash: channel.access_hash,
-                title: channel.title,
-                pFlags: channel.pFlags
-              }],
-              users: []
-            } as Updates.updates);
+                access_hash: chat.access_hash,
+                title: chat.title,
+                pFlags: chat.pFlags
+              }]);
+            }
+
+            this.apiUpdatesManager.processLocalUpdate({
+              _: 'updateChannel',
+              channel_id: id
+            });
             break;
         }
 

@@ -2888,7 +2888,7 @@ export class AppDialogsManager {
     dispatchHeavyAnimationEvent(deferred, duration).then(() => deferred.resolve());
   }
 
-  public async toggleForumTabByPeerId(peerId: PeerId, show?: boolean) {
+  public async toggleForumTabByPeerId(peerId: PeerId, show?: boolean, asInnerIfAsMessages?: boolean) {
     if(peerId === rootScope.myId) {
       const tab = appSidebarLeft.getTab(AppSharedMediaTab);
       if(show === true || (show === undefined && !tab)) {
@@ -2912,7 +2912,7 @@ export class AppDialogsManager {
     const viewAsMessages = dialog && !!dialog.pFlags.view_forum_as_messages;
     if(viewAsMessages) {
       const isSamePeer = appImManager.chat?.peerId === peerId;
-      appImManager[isSamePeer ? 'setPeer' : 'setInnerPeer']({
+      appImManager[isSamePeer || !asInnerIfAsMessages ? 'setPeer' : 'setInnerPeer']({
         type: ChatType.Chat,
         peerId
       });
@@ -3019,7 +3019,7 @@ export class AppDialogsManager {
 
       const isForum = !!elem.querySelector('.is-forum');
       if(isForum && !e.shiftKey && !lastMsgId) {
-        this.toggleForumTabByPeerId(peerId);
+        this.toggleForumTabByPeerId(peerId, undefined, false);
         return;
       }
 
@@ -3377,7 +3377,7 @@ export class AppDialogsManager {
       !isSaved ? this.getLastMessageForDialog(dialog) : undefined,
       isTopic || isSaved ? !!dialog.pFlags.pinned : this.managers.dialogsStorage.isDialogPinned(peerId, this.filterId),
       this.managers.appMessagesManager.isDialogUnread(dialog),
-      peerId.isAnyChat() && !isTopic ? this.managers.acknowledged.dialogsStorage.getForumUnreadCount(peerId).then((result) => {
+      peerId.isAnyChat() && !isTopic ? this.managers.acknowledged.dialogsStorage.getForumUnreadCount(peerId, true).then((result) => {
         if(result.cached) {
           return result.result;
         } else {

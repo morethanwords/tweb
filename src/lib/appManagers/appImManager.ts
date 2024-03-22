@@ -1251,7 +1251,7 @@ export class AppImManager extends EventListenerBase<{
 
     // open forum tab
     if(!commentId && !threadId && !lastMsgId && isForum) {
-      appDialogsManager.toggleForumTabByPeerId(peerId, true);
+      appDialogsManager.toggleForumTabByPeerId(peerId, true, true);
       return;
     }
 
@@ -2169,7 +2169,7 @@ export class AppImManager extends EventListenerBase<{
     }
 
     this.selectTab(APP_TABS.CHATLIST);
-    appDialogsManager.toggleForumTabByPeerId(peerId, !enabled);
+    appDialogsManager.toggleForumTabByPeerId(peerId, !enabled, false);
   }
 
   private getTypingElement(action: SendMessageAction) {
