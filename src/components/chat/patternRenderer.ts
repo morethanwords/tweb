@@ -12,6 +12,7 @@ import windowSize from '../../helpers/windowSize';
 import IS_IMAGE_BITMAP_SUPPORTED from '../../environment/imageBitmapSupport';
 
 const SCALE_PATTERN = false;
+const USE_BITMAP = IS_IMAGE_BITMAP_SUPPORTED && false;
 
 type ChatBackgroundPatternRendererInitOptions = {
   url: string,
@@ -24,7 +25,7 @@ export default class ChatBackgroundPatternRenderer {
   private static INSTANCES: ChatBackgroundPatternRenderer[] = [];
 
   // private pattern: CanvasPattern;
-  private objectUrl: string;
+  // private objectUrl: string;
   private options: ChatBackgroundPatternRendererInitOptions;
   private canvases: Set<HTMLCanvasElement>;
   // private createCanvasPatternPromise: Promise<CanvasPattern>;
@@ -79,7 +80,7 @@ export default class ChatBackgroundPatternRenderer {
     const img = this.image = document.createElement('img');
     img.crossOrigin = 'anonymous';
     return this.renderImageFromUrlPromise = renderImageFromUrlPromise(img, url, false).then(() => {
-      if(!IS_IMAGE_BITMAP_SUPPORTED) {
+      if(!IS_IMAGE_BITMAP_SUPPORTED || !USE_BITMAP) {
         return img;
       }
 
@@ -131,10 +132,10 @@ export default class ChatBackgroundPatternRenderer {
     if(!this.canvases.size) {
       indexOfAndSplice(ChatBackgroundPatternRenderer.INSTANCES, this);
 
-      if(this.objectUrl) {
-        this.imageBitmap?.close();
-        URL.revokeObjectURL(this.objectUrl);
-      }
+      this.imageBitmap?.close();
+      // if(this.objectUrl) {
+      //   URL.revokeObjectURL(this.objectUrl);
+      // }
     }
   }
 

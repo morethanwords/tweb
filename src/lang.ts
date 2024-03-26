@@ -1967,6 +1967,15 @@ const lang = {
   'CreateTopicsPermission': 'Create topics',
   'VoipChannelJoinVoiceChatUrl': 'Join Live Stream',
   'InviteLinkSentSingle': 'Invite link sent to **%s**.',
+  'ActionSetWallpaperForThisChatSelf': 'You set a new wallpaper for this chat',
+  'ActionSetWallpaperForThisChannel': 'Channel set a new wallpaper',
+  'ActionSetWallpaperForThisGroup': 'Group set a new wallpaper',
+  'ActionSetWallpaperForThisGroupByUser': '%s set a new wallpaper',
+  'ActionSetSameWallpaperForThisChatSelf': 'You set the same wallpaper as your chat partner',
+  'ActionSetWallpaperForThisChat': '%s set a new wallpaper for this chat',
+  'ActionSetWallpaperForThisChatBoth': '%s set a new wallpaper for this chat',
+  'ActionSetSameWallpaperForThisChat': '%s set your wallpaper as their own for this chat',
+  'ActionSetWallpaperForThisChatSelfBoth': 'You set a new wallpaper for %s and you',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

@@ -35,11 +35,11 @@ import AppSharedMediaTab from '../sidebarRight/tabs/sharedMedia';
 import noop from '../../helpers/noop';
 import middlewarePromise from '../../helpers/middlewarePromise';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import {Message, WallPaper, Chat as MTChat, Reaction, AvailableReaction} from '../../layer';
+import {Message, WallPaper, Chat as MTChat, Reaction, AvailableReaction, ChatFull} from '../../layer';
 import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
 import {getColorsFromWallPaper} from '../../helpers/color';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
-import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
+import deferredPromise, {CancellablePromise, bindPromiseToDeferred} from '../../helpers/cancellablePromise';
 import {isDialog} from '../../lib/appManagers/utils/dialogs/isDialog';
 import getDialogKey from '../../lib/appManagers/utils/dialogs/getDialogKey';
 import getHistoryStorageKey from '../../lib/appManagers/utils/messages/getHistoryStorageKey';
@@ -47,12 +47,19 @@ import isForwardOfForward from '../../lib/appManagers/utils/messages/isForwardOf
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import {SendReactionOptions} from '../../lib/appManagers/appReactionsManager';
 import {MiddlewareHelper, getMiddleware} from '../../helpers/middleware';
-import {createEffect, createRoot, createSignal} from 'solid-js';
+import {createEffect, createRoot, createSignal, on} from 'solid-js';
 import TopbarSearch from './topbarSearch';
 import createUnifiedSignal from '../../helpers/solid/createUnifiedSignal';
 import liteMode from '../../helpers/liteMode';
 import deepEqual from '../../helpers/object/deepEqual';
 import getSearchType from '../../lib/appManagers/utils/messages/getSearchType';
+import {useFullPeer} from '../../stores/fullPeers';
+import {useAppState} from '../../stores/appState';
+import {unwrap} from 'solid-js/store';
+import {averageColorFromCanvas, averageColorFromImage} from '../../helpers/averageColor';
+import highlightingColor from '../../helpers/highlightingColor';
+import callbackify from '../../helpers/callbackify';
+import useIsNightTheme from '../../hooks/useIsNightTheme';
 
 export enum ChatType {
   Chat = 'chat',
@@ -106,7 +113,6 @@ export default class Chat extends EventListenerBase<{
   public setBackgroundPromise: Promise<void>;
   public sharedMediaTab: AppSharedMediaTab;
   public sharedMediaTabs: AppSharedMediaTab[];
-  // public renderDarkPattern: () => Promise<void>;
 
   public isBot: boolean;
   public isChannel: boolean;
@@ -127,6 +133,9 @@ export default class Chat extends EventListenerBase<{
   public middlewareHelper: MiddlewareHelper;
 
   public searchSignal: ReturnType<typeof createUnifiedSignal<Parameters<Chat['initSearch']>[0]>>;
+
+  public theme: Parameters<typeof themeController['getThemeSettings']>[0];
+  public wallPaper: WallPaper;
 
   // public requestHistoryOptionsPart: RequestHistoryOptions;
 
@@ -165,39 +174,103 @@ export default class Chat extends EventListenerBase<{
     this.sharedMediaTabs = [];
   }
 
-  public setBackground(url: string, skipAnimation?: boolean): Promise<void> {
-    const theme = themeController.getTheme();
-    const themeSettings = theme.settings;
-    const wallPaper = themeSettings.wallpaper;
-    const colors = getColorsFromWallPaper(wallPaper);
+  public hasBackgroundSet() {
+    return !!(this.theme || this.wallPaper);
+  }
 
-    let item: HTMLElement;
-    const isColorBackground = !!colors && !(wallPaper as WallPaper.wallPaper).slug && !wallPaper.settings.intensity;
+  public async setBackground({
+    url,
+    theme,
+    wallPaper,
+    skipAnimation,
+    manual,
+    onCachedStatus
+  }: {
+    url?: string,
+    theme?: Chat['theme'],
+    wallPaper?: Chat['wallPaper'],
+    skipAnimation?: boolean,
+    manual?: boolean,
+    onCachedStatus?: (cached: boolean) => void
+  }): Promise<() => void> {
+    const log = this.log.bindPrefix('setBackground');
+    log('start');
+    const isGlobalTheme = !theme;
+    const globalTheme = themeController.getTheme();
+    const globalWallPaper = themeController.getThemeSettings(globalTheme).wallpaper;
+    const newTheme = theme ?? globalTheme;
+    const shouldComputeHighlightingColor = !!(newTheme || !isGlobalTheme || wallPaper);
+    if(!wallPaper) {
+      const themeSettings = themeController.getThemeSettings(newTheme);
+      wallPaper = themeSettings.wallpaper;
+    }
+
+    const colors = getColorsFromWallPaper(wallPaper);
+    const slug = (wallPaper as WallPaper.wallPaper)?.slug;
+
+    let item: HTMLElement, image: HTMLImageElement;
+    const isColorBackground = !!colors && !slug && !wallPaper.settings.intensity;
     if(
       isColorBackground &&
       document.documentElement.style.cursor === 'grabbing' &&
       this.gradientRenderer &&
       !this.patternRenderer
     ) {
+      log('just changing color');
       this.gradientCanvas.dataset.colors = colors;
       this.gradientRenderer.init(this.gradientCanvas);
-      return Promise.resolve();
+      onCachedStatus?.(true);
+      return;
     }
 
     const tempId = ++this.backgroundTempId;
+
+    if(!url && !isColorBackground) {
+      const settings = wallPaper.settings;
+      const r = this.appImManager.getBackground({
+        slug,
+        canDownload: true,
+        blur: settings && settings.pFlags.blur
+      });
+
+      const cached = !(r instanceof Promise);
+      log('getting background, cached', cached);
+      onCachedStatus?.(cached);
+      skipAnimation ??= cached;
+      if(!cached) manual = undefined;
+      url = await r;
+      if(this.backgroundTempId !== tempId) {
+        return;
+      }
+    } else {
+      log('global background');
+      onCachedStatus?.(true);
+    }
 
     const previousGradientRenderer = this.gradientRenderer;
     const previousPatternRenderer = this.patternRenderer;
     const previousGradientCanvas = this.gradientCanvas;
     const previousPatternCanvas = this.patternCanvas;
+    const previousTheme = this.theme;
+    const previousWallPaper = this.wallPaper;
 
     this.gradientRenderer =
       this.patternRenderer =
       this.gradientCanvas =
       this.patternCanvas =
-      // this.renderDarkPattern =
+      this.theme =
+      this.wallPaper =
       undefined;
 
+    if(newTheme !== globalTheme) {
+      this.theme = theme;
+    }
+
+    if(wallPaper !== globalWallPaper) {
+      this.wallPaper = wallPaper;
+    }
+
+    const isPattern = !!(wallPaper as WallPaper.wallPaper).pFlags.pattern;
     const intensity = wallPaper.settings?.intensity && wallPaper.settings.intensity / 100;
     const isDarkPattern = !!intensity && intensity < 0;
 
@@ -209,7 +282,7 @@ export default class Chat extends EventListenerBase<{
       item.classList.add('chat-background-item');
 
       if(url) {
-        if(intensity) {
+        if(isPattern) {
           item.classList.add('is-pattern');
 
           const rect = this.appImManager.chatsContainer.getBoundingClientRect();
@@ -226,20 +299,11 @@ export default class Chat extends EventListenerBase<{
           if(isDarkPattern) {
             item.classList.add('is-dark');
           }
-
-          // if(isDarkPattern) {
-          //   this.renderDarkPattern = () => {
-          //     return patternRenderer.exportCanvasPatternToImage(patternCanvas).then((url) => {
-          //       if(this.backgroundTempId !== tempId) {
-          //         return;
-          //       }
-
-          //       gradientCanvas.style.webkitMaskImage = `url(${url})`;
-          //     });
-          //   };
-          // }
         } else {
+          image = document.createElement('img');
+          image.classList.add('chat-background-item-image');
           item.classList.add('is-image', 'chat-background-item-scalable');
+          item.append(image);
         }
       } else {
         item.classList.add('is-color');
@@ -273,30 +337,35 @@ export default class Chat extends EventListenerBase<{
       setOpacityTo.style.setProperty('--opacity-max', '' + opacityMax);
     }
 
-    const promise = new Promise<void>((resolve) => {
+    const promise = new Promise<() => void>((resolve) => {
       const cb = () => {
         if(this.backgroundTempId !== tempId) {
-          if(patternRenderer) {
-            patternRenderer.cleanup(patternCanvas);
-          }
-
-          if(gradientRenderer) {
-            gradientRenderer.cleanup();
-          }
-
+          patternRenderer?.cleanup(patternCanvas);
+          gradientRenderer?.cleanup();
           return;
         }
 
         const prev = this.backgroundEl.lastElementChild as HTMLElement;
-
         if(prev === item) {
-          resolve();
           return;
         }
 
+        const getHighlightningColor = () => {
+          const perf = performance.now();
+          let pixel: Uint8ClampedArray;
+          if(image) {
+            pixel = averageColorFromImage(image);
+          } else {
+            pixel = averageColorFromCanvas(gradientCanvas);
+          }
+
+          const hsla = highlightingColor(Array.from(pixel) as any);
+          log('getHighlightningColor', hsla, performance.now() - perf);
+          return hsla;
+        };
+
         const append = [
           gradientCanvas,
-          // isDarkPattern && this.renderDarkPattern ? undefined : patternCanvas
           patternCanvas
         ].filter(Boolean);
         if(append.length) {
@@ -310,6 +379,17 @@ export default class Chat extends EventListenerBase<{
           className: 'is-visible',
           forwards: true,
           duration: !skipAnimation ? 200 : 0,
+          onTransitionStart: () => {
+            const perf = performance.now();
+            if(newTheme) {
+              themeController.applyTheme(newTheme, this.container);
+            }
+
+            if(shouldComputeHighlightingColor) {
+              themeController.applyHighlightingColor({hsla: getHighlightningColor(), element: this.container});
+            }
+            log('transition start time', performance.now() - perf);
+          },
           onTransitionEnd: prev ? () => {
             previousPatternRenderer?.cleanup(previousPatternCanvas);
             previousGradientRenderer?.cleanup();
@@ -318,38 +398,133 @@ export default class Chat extends EventListenerBase<{
           } : null,
           useRafs: 2
         });
-
-        resolve();
       };
 
-      if(patternRenderer) {
-        const renderPatternPromise = patternRenderer.renderToCanvas(patternCanvas);
-        renderPatternPromise.then(() => {
-          if(this.backgroundTempId !== tempId) {
-            return;
-          }
-
-          // let promise: Promise<any>;
-          // if(isDarkPattern && this.renderDarkPattern) {
-          //   promise = this.renderDarkPattern();
-          // } else {
-          // const promise = Promise.resolve();
-          // }
-
-          // promise.then(cb);
+      const wrappedCallback = () => {
+        log('background is ready', performance.now() - perf);
+        if(manual) {
+          resolve(cb);
+        } else {
           cb();
-        });
+          resolve(undefined);
+        }
+      };
+
+      const perf = performance.now();
+      if(patternRenderer) {
+        patternRenderer.renderToCanvas(patternCanvas).then(wrappedCallback);
       } else if(url) {
-        renderImageFromUrl(item, url, cb);
+        renderImageFromUrl(image, url, wrappedCallback, false);
       } else {
-        cb();
+        wrappedCallback();
       }
     });
+
+    if(manual) {
+      return promise;
+    }
 
     return this.setBackgroundPromise = Promise.race([
       pause(500),
       promise
-    ]);
+    ]).then(() => {}) as any;
+  }
+
+  public setBackgroundIfNotSet(options: Parameters<Chat['setBackground']>[0]) {
+    if(this.hasBackgroundSet()) {
+      return;
+    }
+
+    return this.setBackground(options);
+  }
+
+  private _handleBackgrounds() {
+    const log = this.log.bindPrefix('handleBackgrounds');
+    const deferred = deferredPromise<() => void>();
+    let manual = true;
+
+    const setBackground = (options: Partial<Parameters<Chat['setBackground']>[0]>) => {
+      const promise = this.setBackground({
+        manual,
+        onCachedStatus: (cached) => {
+          if(!cached) {
+            deferred.resolve(undefined);
+          }
+        },
+        ...options
+      });
+
+      bindPromiseToDeferred(promise, deferred);
+      return promise;
+    };
+
+    const getThemeByEmoticon = (emoticon: string) => {
+      if(!emoticon) {
+        return;
+      }
+
+      const {accountThemes} = appState;
+      return accountThemes.themes?.find((theme) => theme.emoticon === emoticon);
+    };
+
+    const maybeResetBackground = () => {
+      if(!this.hasBackgroundSet()) {
+        log('no background');
+        deferred.resolve(undefined);
+        return;
+      }
+
+      log('resetting background');
+      setBackground(this.getResetBackgroundOptions());
+    };
+
+    const update = () => {
+      const _fullPeer = fullPeer();
+      if(!_fullPeer) {
+        maybeResetBackground();
+        return;
+      }
+
+      let wallPaper = unwrap((_fullPeer as ChatFull.channelFull).wallpaper);
+      const emoticon = _fullPeer.theme_emoticon || (wallPaper && wallPaper.settings?.emoticon);
+
+      const theme = unwrap(getThemeByEmoticon(emoticon));
+      if(!theme && !wallPaper) {
+        maybeResetBackground();
+        return;
+      }
+
+      // * handle case when theme is in wallpaper
+      if(emoticon && theme) {
+        wallPaper = undefined;
+      }
+
+      log('updating', _fullPeer, theme, wallPaper);
+
+      setBackground({
+        theme,
+        wallPaper
+      });
+
+      const isNightTheme = useIsNightTheme();
+      createEffect(on(isNightTheme, update, {defer: true}));
+    };
+
+    const fullPeer = useFullPeer(() => this.peerId);
+    const appState = useAppState();
+    createEffect(() => {
+      update();
+      manual = false;
+    });
+
+    return deferred;
+  }
+
+  private handleBackgrounds() {
+    return createRoot((dispose) => {
+      this.middlewareHelper.get().onClean(dispose);
+      return this._handleBackgrounds();
+    });
   }
 
   public setType(type: ChatType) {
@@ -673,17 +848,25 @@ export default class Chat extends EventListenerBase<{
     }
 
     if(!peerId) {
-      appSidebarRight.toggleSidebar(false);
-      this.cleanup(true);
-      this.bubbles.setPeer({peerId, samePeer: false, sameReactions: false});
       this.peerId = 0;
-      this.appImManager.dispatchEvent('peer_changed', this);
+      let promise: Promise<any>;
 
-      if(!this.excludeParts.sharedMedia) {
-        appSidebarRight.replaceSharedMediaTab();
-        this.destroySharedMediaTab();
-        this.sharedMediaTab = undefined;
+      if(this.hasBackgroundSet() && this === this.appImManager.chats[0]) {
+        promise = this.setBackground(this.getResetBackgroundOptions());
       }
+
+      callbackify(promise, () => {
+        appSidebarRight.toggleSidebar(false);
+        this.cleanup(true);
+        this.bubbles.setPeer({peerId, samePeer: false, sameReactions: false});
+        this.appImManager.dispatchEvent('peer_changed', this);
+
+        if(!this.excludeParts.sharedMedia) {
+          appSidebarRight.replaceSharedMediaTab();
+          this.destroySharedMediaTab();
+          this.sharedMediaTab = undefined;
+        }
+      });
 
       return;
     }
@@ -713,6 +896,13 @@ export default class Chat extends EventListenerBase<{
     });
 
     return bubblesSetPeerPromise;
+  }
+
+  private getResetBackgroundOptions(): Partial<Parameters<Chat['setBackground']>[0]> {
+    return {
+      url: this.appImManager.lastBackgroundUrl,
+      skipAnimation: true
+    };
   }
 
   public destroySharedMediaTab(tab = this.sharedMediaTab) {
@@ -760,7 +950,8 @@ export default class Chat extends EventListenerBase<{
       this.topbar?.finishPeerChange(options),
       this.bubbles?.finishPeerChange(),
       this.input?.finishPeerChange(options),
-      sharedMediaTab?.fillProfileElements()
+      sharedMediaTab?.fillProfileElements(),
+      this.handleBackgrounds()
     ];
 
     const callbacksPromise = Promise.all(promises);

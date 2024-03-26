@@ -163,6 +163,8 @@ export class AppProfileManager extends AppManager {
           userFull.profile_photo = this.appPhotosManager.savePhoto(userFull.profile_photo, {type: 'profilePhoto', peerId});
         }
 
+        userFull.wallpaper = this.appThemesManager.saveWallPaper(userFull.wallpaper);
+
         const botInfo = userFull.bot_info;
         if(botInfo) {
           const referenceContext: ReferenceContext = {type: 'userFull', userId: id};
@@ -513,6 +515,8 @@ export class AppProfileManager extends AppManager {
           fullChannel.chat_photo = this.appPhotosManager.savePhoto(fullChannel.chat_photo, {type: 'profilePhoto', peerId});
           // appPhotosManager.savePhoto(fullChannel.chat_photo);
         }
+
+        fullChannel.wallpaper = this.appThemesManager.saveWallPaper(fullChannel.wallpaper);
 
         if(fullChannel.call) {
           this.appGroupCallsManager.saveGroupCall(fullChannel.call, id);

@@ -12,12 +12,24 @@ type WallPaperId = WallPaper['id'];
 
 export default class AppThemesManager extends AppManager {
   private wallPapers: {[id: WallPaperId]: WallPaper};
+  private wallPapersBySlug: {[slug: string]: WallPaper};
 
   protected after() {
     this.wallPapers = {};
+    this.wallPapersBySlug = {};
+
+    this.rootScope.addEventListener('user_auth', () => {
+      this.getThemes();
+    });
+
+    return this.appStateManager.getState().then((state) => {
+      try {
+        this.saveAccountThemes(state.accountThemes);
+      } catch(err) {}
+    });
   }
 
-  private saveWallPaper(wallPaper: WallPaper) {
+  public saveWallPaper(wallPaper: WallPaper) {
     if(!wallPaper) {
       return wallPaper;
     }
@@ -28,7 +40,9 @@ export default class AppThemesManager extends AppManager {
     //   console.log('rewrite', {...oldWallPaper}, {...wallPaper});
     // }
 
+    let slug: string;
     if(wallPaper._ !== 'wallPaperNoFile') {
+      slug = wallPaper.slug;
       wallPaper.document = this.appDocsManager.saveDoc(wallPaper.document, {type: 'wallPaper', wallPaperId: wallPaper.id});
     }
 
@@ -37,6 +51,10 @@ export default class AppThemesManager extends AppManager {
     // } else {
     this.wallPapers[wallPaper.id] = wallPaper;
     // }
+
+    if(slug) {
+      this.wallPapersBySlug[slug] = wallPaper;
+    }
 
     return wallPaper;
   }
@@ -66,23 +84,40 @@ export default class AppThemesManager extends AppManager {
     return this.getWallPaper(this.getInputWallPaper(wallPaper));
   }
 
-  public getThemes() {
+  public getWallPaperBySlug(slug: string) {
+    const wallPaper = this.wallPapersBySlug[slug];
+    if(wallPaper) {
+      return wallPaper;
+    }
+
+    return this.getWallPaper(this.getInputWallPaper(slug));
+  }
+
+  private saveAccountThemes(accountThemes: AccountThemes.accountThemes) {
+    accountThemes.themes?.forEach((theme) => {
+      if(!theme.settings) {
+        return;
+      }
+
+      theme.settings.forEach((themeSettings) => {
+        themeSettings.wallpaper = this.saveWallPaper(themeSettings.wallpaper);
+      });
+    });
+  }
+
+  public async getThemes() {
+    const state = await this.appStateManager.getState();
+    const oldAccountThemes = state.accountThemes;
     return this.apiManager.invokeApiSingleProcess({
       method: 'account.getThemes',
-      params: {format: 'macos', hash: 0},
-      processResult: (accountThemes) => {
-        assumeType<AccountThemes.accountThemes>(accountThemes);
+      params: {format: 'macos', hash: oldAccountThemes?.hash ?? 0},
+      processResult: async(accountThemes) => {
+        if(accountThemes._ === 'account.themesNotModified') {
+          return oldAccountThemes.themes;
+        }
 
-        accountThemes.themes.forEach((theme) => {
-          if(!theme.settings) {
-            return;
-          }
-
-          theme.settings.forEach((themeSettings) => {
-            themeSettings.wallpaper = this.saveWallPaper(themeSettings.wallpaper);
-          });
-        });
-
+        this.saveAccountThemes(accountThemes);
+        await this.appStateManager.pushToState('accountThemes', accountThemes);
         return accountThemes.themes;
       }
     });

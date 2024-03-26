@@ -402,16 +402,6 @@ export default class AppBackgroundTab extends SliderSuperTab {
       download = Promise.resolve();
     }
 
-    const saveToCache = (slug: string, url: string) => {
-      if(!slug || slug === DEFAULT_BACKGROUND_SLUG) {
-        return;
-      }
-
-      fetch(url).then((response) => {
-        appImManager.cacheStorage.save('backgrounds/' + slug, response);
-      });
-    };
-
     download.then(async() => {
       if(!middleware()) {
         deferred.resolve();
@@ -433,7 +423,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
         const slug = (wallPaper as WallPaper.wallPaper).slug;
         Promise.all([
           getPixelPromise,
-          saveToCache(slug, url)
+          appImManager.saveWallPaperToCache(slug, url)
         ]).then(([pixel]) => {
           if(!middleware()) {
             deferred.resolve();
@@ -465,14 +455,13 @@ export default class AppBackgroundTab extends SliderSuperTab {
       const cacheContext = await rootScope.managers.thumbsStorage.getCacheContext(doc);
       if(needBlur(wallPaper)) {
         setTimeout(() => {
-          const {canvas, promise} = blur(cacheContext.url, 12, 4);
-          promise.then(() => {
+          appImManager.blurWallPaperImage(cacheContext.url).then((url) => {
             if(!middleware()) {
               deferred.resolve();
               return;
             }
 
-            onReady(canvas.toDataURL());
+            onReady(url);
           });
         }, 200);
       } else if(middleware()) {

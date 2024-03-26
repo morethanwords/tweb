@@ -26,6 +26,7 @@ import {WrapMessageActionTextOptions} from './messageActionTextNew';
 import wrapMessageForReply, {WrapMessageForReplyOptions} from './messageForReply';
 import wrapPeerTitle from './peerTitle';
 import shouldDisplayGiftCodeAsGift from '../../helpers/shouldDisplayGiftCodeAsGift';
+import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 
 async function wrapLinkToMessage(options: WrapMessageForReplyOptions) {
   const wrapped = await wrapMessageForReply(options);
@@ -576,6 +577,45 @@ export default async function wrapMessageActionTextNewUnsafe(options: WrapMessag
         const r = wrapMessageGiveawayResults(action, plain);
         langPackKey = r.langPackKey;
         args = r.args;
+        break;
+      }
+
+      case 'messageActionSetChatWallPaper': {
+        const isUser = message.peerId.isUser();
+        args = [
+          getNameDivHTML(isUser ? message.peerId : message.fromId, plain)
+        ];
+
+        if(isUser) {
+          if(message.pFlags.out) {
+            langPackKey = action.pFlags.for_both ?
+              'ActionSetWallpaperForThisChatSelfBoth' : (
+                action.pFlags.same ?
+                  'ActionSetSameWallpaperForThisChatSelf' :
+                  'ActionSetWallpaperForThisChatSelf'
+              );
+          } else {
+            langPackKey = action.pFlags.for_both ?
+              'ActionSetWallpaperForThisChatBoth' : (
+                action.pFlags.same ?
+                  'ActionSetSameWallpaperForThisChat' :
+                  'ActionSetWallpaperForThisChat'
+              );
+          }
+
+          break;
+        }
+
+        const isBroadcast = await managers.appPeersManager.isBroadcast(message.peerId);
+        if(isBroadcast) {
+          langPackKey = 'ActionSetWallpaperForThisChannel';
+          break;
+        }
+
+        langPackKey = message.fromId === message.peerId ?
+          'ActionSetWallpaperForThisGroup' :
+          'ActionSetWallpaperForThisGroupByUser';
+
         break;
       }
 

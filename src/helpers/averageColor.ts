@@ -48,9 +48,12 @@ export function averageColorFromImageSource(imageSource: CanvasImageSource, widt
   return averageColorFromCanvas(canvas);
 }
 
-export function averageColor(imageUrl: string) {
+export function averageColorFromImage(image: HTMLImageElement) {
+  return averageColorFromImageSource(image, image.naturalWidth, image.naturalHeight);
+}
+
+export async function averageColor(imageUrl: string) {
   const img = document.createElement('img');
-  return renderImageFromUrlPromise(img, imageUrl, false).then(() => {
-    return averageColorFromImageSource(img, img.naturalWidth, img.naturalHeight);
-  });
+  await renderImageFromUrlPromise(img, imageUrl, false);
+  return averageColorFromImage(img);
 };

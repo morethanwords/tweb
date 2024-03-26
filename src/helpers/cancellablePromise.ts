@@ -82,4 +82,8 @@ export default function deferredPromise<T>() {
   return deferred;
 }
 
+export function bindPromiseToDeferred<T>(promise: Promise<T>, deferred: CancellablePromise<T>) {
+  promise.then(deferred.resolve.bind(deferred), deferred.reject.bind(deferred));
+}
+
 (self as any).deferredPromise = deferredPromise;

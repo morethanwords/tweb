@@ -181,17 +181,25 @@ export class ThemeController {
     }
   }
 
-  public applyHighlightingColor() {
-    let hsla = 'hsla(85.5319, 36.9171%, 40.402%, .4)';
-    const theme = this.getTheme();
-    if(theme.settings?.highlightingColor) {
-      hsla = theme.settings.highlightingColor;
+  public applyHighlightingColor({
+    hsla,
+    element = document.documentElement
+  }: {
+    hsla?: string,
+    element?: HTMLElement
+  } = {}) {
+    if(!hsla) {
+      hsla = 'hsla(85.5319, 36.9171%, 40.402%, .4)';
+      const theme = this.getTheme();
+      if(theme.settings?.highlightingColor) {
+        hsla = theme.settings.highlightingColor;
+      }
     }
 
     const highlightingRgba = hslaStringToRgba(hsla);
-    document.documentElement.style.setProperty('--message-highlighting-color', hsla);
-    document.documentElement.style.setProperty('--message-highlighting-color-rgb', highlightingRgba.slice(0, 3).join(','));
-    document.documentElement.style.setProperty('--message-highlighting-alpha', '' + highlightingRgba[3] / 255);
+    element.style.setProperty('--message-highlighting-color', hsla);
+    element.style.setProperty('--message-highlighting-color-rgb', highlightingRgba.slice(0, 3).join(','));
+    element.style.setProperty('--message-highlighting-alpha', '' + highlightingRgba[3] / 255);
 
     if(!IS_TOUCH_SUPPORTED && hsla) {
       this.themeColor = hslaStringToHex(hsla);
@@ -391,11 +399,17 @@ export class ThemeController {
     return (theme as AppTheme).name === 'night' || this.isNight();
   }
 
-  public applyTheme(theme: Theme | AppTheme, element = document.documentElement, saveToCache?: boolean) {
-    const isNight = this.isNightTheme(theme);
+  public getThemeSettings(theme: Theme | AppTheme, isNight?: boolean) {
+    isNight ??= this.isNightTheme(theme);
     const themeSettings = Array.isArray(theme.settings) ?
       theme.settings.find((settings) => settings.base_theme._ === (isNight ? 'baseThemeNight' : 'baseThemeClassic')) :
       theme.settings;
+    return themeSettings;
+  }
+
+  public applyTheme(theme: Theme | AppTheme, element = document.documentElement, saveToCache?: boolean) {
+    const isNight = this.isNightTheme(theme);
+    const themeSettings = this.getThemeSettings(theme, isNight);
     const baseColors = colorMap[isNight ? 'night' : 'day'];
 
     let hsvTemp1 = rgbToHsv(...hexToRgb(baseColors['primary-color'])); // primary base

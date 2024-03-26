@@ -686,7 +686,7 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
       user-select: none !important;
     }
   }
-	
+
 	&-background {
 		overflow: hidden;
 		background-color: #e6ebee;
@@ -713,13 +713,6 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 		}
 
 		&-item {
-      &.is-image {
-        background-image: url('assets/img/bg.jpeg');
-        background-position: center center;
-        background-color: inherit;
-        background-size: cover;
-      }
-
       &.is-pattern {
         // margin: 0 !important;
         background-image: none !important;
@@ -789,6 +782,12 @@ $time-margin-left: math.div($message-padding-horizontal, -2) + 1px;
 
         mask-size: cover;
         mask-position: center;
+      }
+
+      &-image {
+        object-fit: cover;
+        width: 100%;
+        height: 100%;
       }
 		}
 	}

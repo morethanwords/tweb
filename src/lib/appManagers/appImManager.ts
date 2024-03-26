@@ -26,7 +26,7 @@ import {MOUNT_CLASS_TO} from '../../config/debug';
 import appNavigationController from '../../components/appNavigationController';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import I18n, {i18n, join, LangPackKey} from '../langPack';
-import {ChatFull, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult, WallPaper, Config, AttachMenuBot, Peer, InputChannel, HelpPeerColors, Reaction} from '../../layer';
+import {ChatFull, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult, WallPaper, Config, AttachMenuBot, Peer, InputChannel, HelpPeerColors, Reaction, Document} from '../../layer';
 import PeerTitle from '../../components/peerTitle';
 import {PopupPeerCheckboxOptions} from '../../components/popups/peer';
 import blurActiveElement from '../../helpers/dom/blurActiveElement';
@@ -122,6 +122,8 @@ import {setAppState} from '../../stores/appState';
 import rtmpCallsController, {RtmpCallInstance} from '../calls/rtmpCallsController';
 import {AppMediaViewerRtmp} from '../../components/appMediaViewerRtmp';
 import useProfileColors from '../../hooks/useProfileColors';
+import {DEFAULT_BACKGROUND_SLUG} from '../../config/app';
+import blur from '../../helpers/blur';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -174,11 +176,11 @@ export class AppImManager extends EventListenerBase<{
   private prevTab: HTMLElement;
   private chatsSelectTabDebounced: () => void;
 
-  private backgroundPromises: {[slug: string]: Promise<string>};
+  private backgroundPromises: {[url: string]: MaybePromise<string>};
 
   private topbarCall: TopbarCall;
 
-  private lastBackgroundUrl: string;
+  public lastBackgroundUrl: string;
 
   public managers: AppManagers;
 
@@ -222,7 +224,7 @@ export class AppImManager extends EventListenerBase<{
       }
 
       const url = 'assets/img/' + slug + '.svg' + (IS_FIREFOX ? '?1' : '');
-      this.backgroundPromises[slug] = Promise.resolve(url);
+      this.setBackgroundUrlToCache({slug, url})
     });
 
     this.selectTab(APP_TABS.CHATLIST);
@@ -1512,7 +1514,7 @@ export class AppImManager extends EventListenerBase<{
       // slug === defaultslug;
 
       // if(!isDefaultBackground) {
-      return this.getBackground(slug).then((url) => {
+      return Promise.resolve(this.getBackground({slug})).then((url) => {
         return this.setBackground(url, broadcastEvent, skipAnimation);
       }, () => { // * if NO_ENTRY_FOUND
         theme.settings = copy(defaultTheme.settings); // * reset background
@@ -1524,15 +1526,65 @@ export class AppImManager extends EventListenerBase<{
     return this.setBackground('', broadcastEvent, skipAnimation);
   }
 
-  private getBackground(slug: string) {
-    return this.backgroundPromises[slug] ||= this.cacheStorage.getFile('backgrounds/' + slug).then((blob) => {
-      return URL.createObjectURL(blob);
+  private getWallPaperStorageUrl(slug: string, blur?: boolean) {
+    return `backgrounds/${slug}${blur ? '?blur' : ''}`;
+  }
+
+  public saveWallPaperToCache(slug: string, url: string, blur?: boolean) {
+    if(!slug || slug === DEFAULT_BACKGROUND_SLUG) {
+      return;
+    }
+
+    return fetch(url).then((response) => {
+      return appImManager.cacheStorage.save(this.getWallPaperStorageUrl(slug, blur), response);
     });
+  }
+
+  public blurWallPaperImage(url: string) {
+    const {canvas, promise} = blur(url, 12, 4);
+    return promise.then(() => {
+      return canvas.toDataURL();
+    });
+  }
+
+  public setBackgroundUrlToCache({slug, url, blur}: {slug: string, url: string, blur?: boolean}) {
+    this.backgroundPromises[this.getWallPaperStorageUrl(slug, blur)] = url;
+  }
+
+  public getBackground({
+    slug,
+    canDownload,
+    blur
+  }: {
+    slug: string,
+    canDownload?: boolean,
+    blur?: boolean
+  }) {
+    const storageUrl = this.getWallPaperStorageUrl(slug, blur);
+    return this.backgroundPromises[storageUrl] ||= this.cacheStorage.getFile(storageUrl).then((blob) => {
+      return this.backgroundPromises[storageUrl] = URL.createObjectURL(blob);
+    }, canDownload ? async(err) => {
+      if((err as ApiError).type !== 'NO_ENTRY_FOUND') {
+        throw err;
+      }
+
+      const wallPaper = await this.managers.appThemesManager.getWallPaperBySlug(slug);
+      let url = await appDownloadManager.downloadMediaURL({
+        media: (wallPaper as WallPaper.wallPaper).document as Document.document
+      });
+
+      if(blur) {
+        url = await this.blurWallPaperImage(url);
+      }
+
+      this.saveWallPaperToCache(slug, url, blur);
+      return this.backgroundPromises[storageUrl] = url;
+    } : undefined);
   }
 
   public setBackground(url: string, broadcastEvent = true, skipAnimation?: boolean): Promise<void> {
     this.lastBackgroundUrl = url;
-    const promises = this.chats.map((chat) => chat.setBackground(url, skipAnimation));
+    const promises = this.chats.map((chat) => chat.setBackgroundIfNotSet({url, skipAnimation}));
     return promises[promises.length - 1].then(() => {
       if(broadcastEvent) {
         rootScope.dispatchEvent('background_change');
@@ -1601,7 +1653,7 @@ export class AppImManager extends EventListenerBase<{
     skipAnimation?: boolean
   } = {}) {
     if(backgroundUrl) {
-      this.backgroundPromises[slug] = Promise.resolve(backgroundUrl);
+      this.setBackgroundUrlToCache({slug, url: backgroundUrl});
     }
 
     !noSetTheme && themeController.setTheme();
@@ -1982,9 +2034,9 @@ export class AppImManager extends EventListenerBase<{
 
     this.chatsContainer.append(chat.container);
 
-    if(this.chats.length) {
-      chat.setBackground(this.lastBackgroundUrl, true);
-    }
+    // if(this.chats.length) {
+    //   chat.setBackground({url: this.lastBackgroundUrl, skipAnimation: true});
+    // }
 
     this.chats.push(chat);
 

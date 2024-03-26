@@ -7,7 +7,7 @@
 import type {LiteModeKey} from '../helpers/liteMode';
 import type {AppMediaPlaybackController} from '../components/appMediaPlaybackController';
 import type {TopPeerType, MyTopPeer} from '../lib/appManagers/appUsersManager';
-import type {AutoDownloadSettings, BaseTheme, NotifyPeer, PeerNotifySettings, Theme, ThemeSettings, WallPaper} from '../layer';
+import type {AccountThemes, AutoDownloadSettings, BaseTheme, NotifyPeer, PeerNotifySettings, Theme, ThemeSettings, WallPaper} from '../layer';
 import type DialogsStorage from '../lib/storages/dialogs';
 import type FiltersStorage from '../lib/storages/filters';
 import type {AuthState, Modify} from '../types';
@@ -122,7 +122,8 @@ export type State = {
     storySound: boolean
   },
   hiddenSimilarChannels: number[],
-  appConfig: MTAppConfig
+  appConfig: MTAppConfig,
+  accountThemes: AccountThemes.accountThemes
 };
 
 // const BACKGROUND_DAY_MOBILE: Background = {
@@ -339,5 +340,6 @@ export const STATE_INIT: State = {
     storySound: false
   },
   hiddenSimilarChannels: [],
-  appConfig: {} as any
+  appConfig: {} as any,
+  accountThemes: {} as any
 };

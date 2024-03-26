@@ -81,8 +81,6 @@
   --message-beside-button-size: 2.375rem;
   --message-beside-button-margin: calc((var(--message-beside-button-size) + .5rem) * -1);
   --message-time-background: rgba(0, 0, 0, .35);
-  --message-highlighting-color: hsla(85.5319, 36.9171%, 40.402%, .4);//rgba(77, 142, 80, .4);
-  --message-highlighting-hover-color: rgba(var(--message-highlighting-color-rgb), calc(var(--message-highlighting-alpha) + .24));
   --messages-container-width: #{$messages-container-width};
   --messages-text-size: 16px;
   --messages-line-height: 1.3125;
@@ -281,27 +279,6 @@
   --old-input-background-color: #F1F3F5;
   --premium-color: #9275ff;
 
-  --message-time-color: var(--secondary-text-color);
-  --message-checkbox-color: #61c642;
-  --message-checkbox-border-color: #fff;
-  --message-primary-color: var(--primary-color);
-  --message-primary-color-rgb: var(--primary-color-rgb);
-  --light-filled-message-primary-color: var(--light-filled-primary-color);
-  --message-status-color: var(--secondary-text-color);
-  --message-secondary-color: var(--secondary-color);
-  --message-error-color: var(--danger-color);
-  --message-icon-text-color: #fff;
-  --message-empty-primary-color: #fff;
-  --message-empty-primary-color-rgb: 255,255,255;
-  --message-reaction-tag-dot-color: rgba(255, 255, 255, .4);
-
-  --message-out-link-color: var(--link-color);
-  --message-out-status-color: var(--message-out-primary-color);
-  --message-out-time-color: var(--message-out-status-color);
-  --message-out-icon-text-color: #fff;
-  --message-out-selection-background-color: var(--selection-background-color);
-  --message-out-reaction-tag-dot-color: var(--message-reaction-tag-dot-color);
-
   --gc-background-color: #212121;
   --gc-button-leave-color: rgba(255, 89, 90, .3);
   --gc-button-unmuted-color: rgba(1, 200, 80, .2);
@@ -359,6 +336,36 @@
   --limit-line-empty-background: var(--light-filled-secondary-text-color);
   --old-input-background-color: var(--background-color-true);
 
+  // * Night theme end
+}
+
+.chat {
+  --message-highlighting-color: hsla(85.5319, 36.9171%, 40.402%, .4);//rgba(77, 142, 80, .4);
+  --message-highlighting-hover-color: rgba(var(--message-highlighting-color-rgb), calc(var(--message-highlighting-alpha) + .24));
+
+  --message-time-color: var(--secondary-text-color);
+  --message-checkbox-color: #61c642;
+  --message-checkbox-border-color: #fff;
+  --message-primary-color: var(--primary-color);
+  --message-primary-color-rgb: var(--primary-color-rgb);
+  --light-filled-message-primary-color: var(--light-filled-primary-color);
+  --message-status-color: var(--secondary-text-color);
+  --message-secondary-color: var(--secondary-color);
+  --message-error-color: var(--danger-color);
+  --message-icon-text-color: #fff;
+  --message-empty-primary-color: #fff;
+  --message-empty-primary-color-rgb: 255,255,255;
+  --message-reaction-tag-dot-color: rgba(255, 255, 255, .4);
+
+  --message-out-link-color: var(--link-color);
+  --message-out-status-color: var(--message-out-primary-color);
+  --message-out-time-color: var(--message-out-status-color);
+  --message-out-icon-text-color: #fff;
+  --message-out-selection-background-color: var(--selection-background-color);
+  --message-out-reaction-tag-dot-color: var(--message-reaction-tag-dot-color);
+}
+
+.night .chat {
   --message-time-color: var(--secondary-text-color);
   --message-checkbox-color: var(--primary-color);
   --message-checkbox-border-color: #fff;
@@ -374,7 +381,6 @@
   --message-out-selection-background-color: rgba(var(--surface-color-rgb), .4);
   // --message-out-reaction-tag-dot-color: rgba(var(--message-out-background-color-rgb), 1);
   --message-out-reaction-tag-dot-color: var(--message-out-background-color);
-  // * Night theme end
 }
 
 @import "components/prism";
