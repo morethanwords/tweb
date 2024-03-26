@@ -11,6 +11,12 @@
 
 import type {TrueDcId} from '../types';
 
+/**
+ * SPIKE - https://github.com/Clearly-Defined-Concepts/our-telegram-web/issues/1
+ *
+ * This is probably where we will inject our own domain to be used in the app
+**/
+
 export const MAIN_DOMAINS = ['web.telegram.org', 'webk.telegram.org'];
 export const DEFAULT_BACKGROUND_SLUG = 'pattern';
 
