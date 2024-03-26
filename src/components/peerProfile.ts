@@ -358,6 +358,11 @@ export default class PeerProfile {
       if(peerId.isUser()) {
         const user = apiManagerProxy.getUser(peerId.toUserId());
         if((user.status as UserStatus.userStatusRecently)?.pFlags?.by_me) {
+          // Don't append the when element if it's already been added
+          if(this.subtitle.querySelector('.show-when')) {
+            return;
+          }
+
           const when = i18n('StatusHiddenShow');
           when.classList.add('show-when');
           attachClickEvent(when, (e) => {
