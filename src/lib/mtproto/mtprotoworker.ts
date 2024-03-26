@@ -733,6 +733,11 @@ class ApiManagerProxy extends MTProtoMessagePort {
       return this.appConfig = promise;
     }
 
+    /**
+     * Good place to look into what we pass as configuration
+     */
+
+    console.log(this.appConfig);
     return this.appConfig;
   }
 
