@@ -16962,6 +16962,10 @@ export type ChannelsSetEmojiStickers = {
   stickerset: InputStickerSet
 };
 
+/**
+ * Spike - https://github.com/Clearly-Defined-Concepts/our-telegram-web/issues/1
+ * Definitive list of the methods available
+ */
 export interface MethodDeclMap {
   'invokeAfterMsg': {req: InvokeAfterMsg, res: any},
   'invokeAfterMsgs': {req: InvokeAfterMsgs, res: any},
