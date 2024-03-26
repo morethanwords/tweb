@@ -161,7 +161,7 @@ const onFirstMount = () => {
       }
       // lang_code: navigator.language || 'en'
     }).then(async(code) => {
-      // console.log('got code', code);
+      console.log('got code', code);
 
       if(code._ === 'auth.sentCodeSuccess') {
         const {authorization} = code;
