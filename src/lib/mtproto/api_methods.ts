@@ -4,6 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+/**
+ * Spike - https://github.com/Clearly-Defined-Concepts/our-telegram-web/issues/1
+ * Here is probably where we could manage to reverse engineer the backend contract
+ */
+
 import ctx from '../../environment/ctx';
 import assumeType from '../../helpers/assumeType';
 import callbackify from '../../helpers/callbackify';

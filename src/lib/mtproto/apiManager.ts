@@ -9,6 +9,11 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
+/**
+ * Spike - https://github.com/Clearly-Defined-Concepts/our-telegram-web/issues/1
+ * Here is probably where we could manage to reverse engineer the backend contract
+ */
+
 import type {UserAuth} from './mtproto_config';
 import type {DcAuthKey, DcId, DcServerSalt, InvokeApiOptions} from '../../types';
 import type {MethodDeclMap} from '../../layer';
