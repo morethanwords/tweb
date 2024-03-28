@@ -182,6 +182,7 @@
         inset-inline-start: 0;
         transform: translateX(0);
         position: relative;
+        white-space: nowrap;
 
         @include animation-level(2) {
           transition: inset-inline-start var(--transition-standard-in), transform var(--transition-standard-in);
