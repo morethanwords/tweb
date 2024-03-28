@@ -51,6 +51,7 @@ export default class ServiceMessagePort<Master extends boolean = false> extends 
   hello: (payload: void, source: MessageEventSource, event: MessageEvent) => void,
   shownNotification: (payload: string) => void,
   leaveRtmpCall: (payload: [Long, boolean]) => void,
+  toggleStreamInUse: (payload: {url: string, inUse: boolean}) => void,
 
   // from mtproto worker
   download: (payload: ServiceDownloadTaskPayload) => void,
@@ -67,8 +68,9 @@ export default class ServiceMessagePort<Master extends boolean = false> extends 
 
   // to mtproto worker
   requestFilePart: (payload: ServiceRequestFilePartTaskPayload) => MaybePromise<MyUploadFile>,
+  cancelFilePartRequests: (payload: DocId) => void,
   requestRtmpState: (payload: InputGroupCall) => MaybePromise<GroupCallRtmpState>,
-  requestRtmpPart: (payload: ServiceRequestRtmpPartTaskPayload) => MaybePromise<MyUploadFile>
+  requestRtmpPart: (payload: ServiceRequestRtmpPartTaskPayload) => MaybePromise<MyUploadFile>,
 } & ServiceEvent, Master> {
   constructor() {
     super('SERVICE');

@@ -1,5 +1,12 @@
 import {getHeavyAnimationPromise} from '../../hooks/useHeavyAnimationCheck';
+import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import {Middleware} from '../middleware';
+
+function updateStreamInUse(url: string, inUse: boolean) {
+  if(url.includes('stream/')) {
+    apiManagerProxy.serviceMessagePort.invokeVoid('toggleStreamInUse', {url, inUse});
+  }
+}
 
 // const createdVideos: Set<HTMLVideoElement> = new Set();
 export default function createVideo({
@@ -19,6 +26,21 @@ export default function createVideo({
     await getHeavyAnimationPromise();
     video.src = '';
     video.load();
+  });
+
+  let originalSrc = video.src;
+  Object.defineProperty(video, 'src', {
+    get: () => {
+      return originalSrc;
+    },
+    set: (newValue) => {
+      updateStreamInUse(originalSrc, false);
+      updateStreamInUse(newValue, true);
+
+      originalSrc = newValue;
+
+      video.setAttribute('src', newValue);
+    }
   });
 
   return video;

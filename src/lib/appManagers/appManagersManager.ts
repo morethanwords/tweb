@@ -125,6 +125,11 @@ export class AppManagersManager {
             return managers.appDocsManager.requestDocPart(docId, dcId, offset, limit);
           });
         },
+        cancelFilePartRequests: (docId) => {
+          return callbackify(appManagersManager.getManagers(), (managers) => {
+            return managers.appDocsManager.cancelDocPartsRequests(docId);
+          });
+        },
         requestRtmpState(call) {
           return callbackify(appManagersManager.getManagers(), (managers) => {
             return managers.appGroupCallsManager.fetchRtmpState(call);

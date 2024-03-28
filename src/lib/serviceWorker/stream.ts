@@ -4,10 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import ctx from '../../environment/ctx';
 import readBlobAsUint8Array from '../../helpers/blob/readBlobAsUint8Array';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import tryPatchMp4 from '../../helpers/fixChromiumMp4';
-import debounce from '../../helpers/schedulers/debounce';
+import debounce, {DebounceReturnType} from '../../helpers/schedulers/debounce';
 import pause from '../../helpers/schedulers/pause';
 import {InputFileLocation} from '../../layer';
 import CacheStorageController from '../files/cacheStorage';
@@ -22,6 +23,7 @@ const CHUNK_TTL = 86400;
 const CHUNK_CACHED_TIME_HEADER = 'Time-Cached';
 const USE_CACHE = true;
 const TEST_SLOW = false;
+const PRELOAD_SIZE = 20 * 1024 * 1024;
 
 const clearOldChunks = () => {
   return cacheStorage.timeoutOperation((cache) => {
@@ -72,16 +74,19 @@ setInterval(() => {
 type StreamRange = [number, number];
 type StreamId = DocId;
 const streams: Map<StreamId, Stream> = new Map();
+(ctx as any).streams = streams;
 class Stream {
-  private destroyDebounced: () => void;
+  private destroyDebounced: DebounceReturnType<() => void>;
   private id: StreamId;
   private limitPart: number;
   private loadedOffsets: Set<number> = new Set();
   private shouldPatchMp4: boolean | number;
+  private inUse: number;
 
   constructor(private info: DownloadOptions) {
     this.id = Stream.getId(info);
     streams.set(this.id, this);
+    this.inUse = 0;
 
     // ! если грузить очень большое видео чанками по 512Кб в мобильном Safari, то стрим не запустится
     this.limitPart = info.size > (75 * 1024 * 1024) ? STREAM_CHUNK_UPPER_LIMIT : STREAM_CHUNK_MIDDLE_LIMIT;
@@ -89,7 +94,16 @@ class Stream {
   }
 
   private destroy = () => {
+    this.destroyDebounced.clearTimeout();
     streams.delete(this.id);
+    serviceMessagePort.invokeVoid('cancelFilePartRequests', this.id, getMtprotoMessagePort());
+  };
+
+  public toggleInUse = (inUse: boolean) => {
+    this.inUse += inUse ? 1 : -1;
+    if(!this.inUse) {
+      this.destroy();
+    }
   };
 
   private async requestFilePartFromWorker(alignedOffset: number, limit: number, fromPreload = false) {
@@ -132,7 +146,7 @@ class Stream {
 
     if(USE_CACHE) {
       this.saveChunkToCache(bytesPromise, alignedOffset, limit);
-      !fromPreload && this.preloadChunks(alignedOffset, alignedOffset + (this.limitPart * 15));
+      !fromPreload && this.preloadChunks(alignedOffset, PRELOAD_SIZE);
     }
 
     return bytesPromise;
@@ -287,9 +301,13 @@ class Stream {
   }
 }
 
+function parseInfo(params: string) {
+  return JSON.parse(decodeURIComponent(params)) as DownloadOptions;
+}
+
 export default function onStreamFetch(event: FetchEvent, params: string, search: string) {
   const range = parseRange(event.request.headers.get('Range'));
-  const info: DownloadOptions = JSON.parse(decodeURIComponent(params));
+  const info = parseInfo(params);
   const stream = Stream.get(info);
 
   if(search === '_crbug1250841') {
@@ -302,6 +320,14 @@ export default function onStreamFetch(event: FetchEvent, params: string, search:
     timeout(45 * 1000),
     stream.requestRange(range)
   ]));
+}
+
+export function toggleStreamInUse({url, inUse}: {url: string, inUse: boolean}) {
+  const needle = 'stream/';
+  const index = url.indexOf(needle);
+  const info = parseInfo(url.slice(index + needle.length));
+  const stream = Stream.get(info);
+  stream.toggleInUse(inUse);
 }
 
 function responseForSafariFirstRange(range: StreamRange, mimeType: string, size: number): Response {
