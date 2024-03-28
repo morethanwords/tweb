@@ -97,7 +97,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     if(!row) {
       const isSuggested = dialogFilter._ === 'dialogFilterSuggested';
       row = new Row({
-        title: filter.id === FOLDER_ID_ALL ? i18n('FilterAllChats') : wrapEmojiText(filter.title),
+        title: filter.id === FOLDER_ID_ALL && !isSuggested ? i18n('FilterAllChats') : wrapEmojiText(filter.title),
         subtitle: description,
         clickable: true,
         buttonRightLangKey: isSuggested ? 'Add' : undefined

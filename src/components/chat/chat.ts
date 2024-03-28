@@ -468,7 +468,7 @@ export default class Chat extends EventListenerBase<{
     };
 
     const maybeResetBackground = () => {
-      if(!this.hasBackgroundSet()) {
+      if(!this.hasBackgroundSet() && !manual) {
         log('no background');
         deferred.resolve(undefined);
         return;
