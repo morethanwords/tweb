@@ -521,6 +521,10 @@ export default class Chat extends EventListenerBase<{
   }
 
   private handleBackgrounds() {
+    if(this.type === ChatType.Stories) {
+      return Promise.resolve(noop);
+    }
+
     return createRoot((dispose) => {
       this.middlewareHelper.get().onClean(dispose);
       return this._handleBackgrounds();
