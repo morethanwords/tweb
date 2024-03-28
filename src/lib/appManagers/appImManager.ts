@@ -1585,7 +1585,7 @@ export class AppImManager extends EventListenerBase<{
   public setBackground(url: string, broadcastEvent = true, skipAnimation?: boolean): Promise<void> {
     this.lastBackgroundUrl = url;
     const promises = this.chats.map((chat) => chat.setBackgroundIfNotSet({url, skipAnimation}));
-    return promises[promises.length - 1].then(() => {
+    return Promise.resolve(promises[promises.length - 1]).then(() => {
       if(broadcastEvent) {
         rootScope.dispatchEvent('background_change');
       }
