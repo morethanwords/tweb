@@ -2327,7 +2327,8 @@ export class AppMessagesManager extends AppManager {
       return !message?.pFlags?.out && readMaxId < historyStorage.maxId ? readMaxId : 0;
     } else {
       const message = this.getMessageByPeer(peerId, historyStorage.maxId);
-      const readMaxId = peerId.isUser() ? Math.max(historyStorage.readMaxId, historyStorage.readOutboxMaxId) : historyStorage.readMaxId;
+      // const readMaxId = peerId.isUser() ? Math.max(historyStorage.readMaxId, historyStorage.readOutboxMaxId) : historyStorage.readMaxId;
+      const readMaxId = historyStorage.readMaxId;
       // readMaxId can be 4294967295 (0)
       return !message?.pFlags?.out && readMaxId < historyStorage.maxId && getServerMessageId(readMaxId) ? readMaxId : 0;
     }
