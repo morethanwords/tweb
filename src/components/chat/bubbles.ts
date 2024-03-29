@@ -537,7 +537,7 @@ export default class ChatBubbles {
     });
 
     // Calls when message successfully sent and we have an id
-    this.listenerSetter.add(rootScope)('message_sent', async(e) => {
+    this.listenerSetter.add(rootScope)('message_sent', (e) => {
       const {storageKey, tempId, tempMessage, mid, message} = e;
 
       // ! can't use peerId to validate here, because id can be the same in 'scheduled' and 'chat' types
@@ -546,7 +546,7 @@ export default class ChatBubbles {
       }
 
       const bubbles = this.bubbles;
-      const _bubble = bubbles[tempId];
+      let _bubble = bubbles[tempId];
       if(_bubble) {
         const bubble = bubbles[tempId];
         bubbles[mid] = bubble;
@@ -589,33 +589,32 @@ export default class ChatBubbles {
         }
       }
 
-      if(!_bubble) {
-        return;
-      }
-
       let messages: (Message.message | Message.messageService)[], tempIds: number[];
       const groupedId = (message as Message.message).grouped_id;
       if(groupedId) {
-        messages = await this.managers.appMessagesManager.getMessagesByGroupedId(groupedId);
+        messages = apiManagerProxy.getMessagesByGroupedId(groupedId);
         const mids = messages.map(({mid}) => mid);
-        if(!mids.length || getMainMidForGrouped(mids) !== mid || bubbles[mid] !== _bubble) {
+        const lastMid = mids[mids.length - 1];
+        if(lastMid !== mid) {
           return;
         }
 
-        if(bubbles[mid] !== _bubble) {
-          return;
-        }
-
+        _bubble = bubbles[getMainMidForGrouped(mids)];
         tempIds = (Array.from(_bubble.querySelectorAll('.grouped-item')) as HTMLElement[]).map((el) => +el.dataset.mid);
       } else {
         messages = [message];
         tempIds = [tempId];
       }
 
+      if(!_bubble) {
+        return;
+      }
+
       const reactionsElements = Array.from(_bubble.querySelectorAll('reactions-element')) as ReactionsElement[];
       if(reactionsElements.length) {
+        const mainMessage = apiManagerProxy.getGroupsFirstMessage(message as Message.message);
         reactionsElements.forEach((reactionsElement) => {
-          reactionsElement.changeContext(message as Message.message);
+          reactionsElement.changeContext(mainMessage);
         });
       }
 
@@ -695,7 +694,8 @@ export default class ChatBubbles {
 
         // set new mids to album items for mediaViewer
         if(groupedId) {
-          const item = (bubble.querySelector(`.grouped-item[data-mid="${tempId}"]`) as HTMLElement) || bubble; // * it can be .document-container
+          const item = (bubble.querySelector(`.grouped-item[data-mid="${tempId}"]`) as HTMLElement) ||
+            (bubble.classList.contains('document-container') ? bubble : undefined);
           if(item) {
             item.dataset.mid = '' + mid;
           }
@@ -4953,7 +4953,7 @@ export default class ChatBubbles {
     const isMessage = message._ === 'message';
     const groupedId = isMessage && message.grouped_id;
     let groupedMids: number[], reactionsMessage: Message.message;
-    const groupedMessages = groupedId ? await this.managers.appMessagesManager.getMessagesByGroupedId(groupedId) : undefined;
+    const groupedMessages = groupedId ? apiManagerProxy.getMessagesByGroupedId(groupedId) : undefined;
 
     const groupedMustBeRenderedFull = this.chat.type !== ChatType.Pinned;
 

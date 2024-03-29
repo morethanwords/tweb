@@ -45,6 +45,7 @@ import callbackify from '../../helpers/callbackify';
 import isLegacyMessageId from '../appManagers/utils/messageId/isLegacyMessageId';
 import {MTAppConfig} from './appConfig';
 import {setAppStateSilent} from '../../stores/appState';
+import getObjectKeysAndSort from '../../helpers/object/getObjectKeysAndSort';
 
 const TEST_NO_STREAMING = false;
 
@@ -661,6 +662,17 @@ class ApiManagerProxy extends MTProtoMessagePort {
     }
 
     return storage.get(minMid);
+  }
+
+  public getMidsByGroupedId(groupedId: string, sort: 'asc' | 'desc' = 'asc') {
+    return getObjectKeysAndSort(this.mirrors.groupedMessages[groupedId], sort);
+  }
+
+  public getMessagesByGroupedId(groupedId: string) {
+    const mids = this.getMidsByGroupedId(groupedId, 'asc');
+    const storage = this.mirrors.groupedMessages[groupedId];
+    // return mids.map((mid) => this.getMessageFromStorage(storage, mid) as Message.message);
+    return mids.map((mid) => storage.get(mid) as Message.message);
   }
 
   public getHistoryMessagesStorage(peerId: PeerId): MessagesStorageKey {
