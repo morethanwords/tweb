@@ -122,6 +122,7 @@ $row-border-radius: $border-radius-medium;
   &-subtitle-row,
   & > &-subtitle {
     order: 1;
+    text-align: left;
   }
 
   // &-title,
