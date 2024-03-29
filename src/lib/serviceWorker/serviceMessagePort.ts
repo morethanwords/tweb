@@ -65,6 +65,7 @@ export default class ServiceMessagePort<Master extends boolean = false> extends 
   share: (payload: ShareData) => void,
   rtmpStreamTime: (payload: {callId: Long, time: string}) => void,
   rtmpStreamDestroyed: (payload: Long) => void,
+  downloadRequestReceived: (payload: string) => void,
 
   // to mtproto worker
   requestFilePart: (payload: ServiceRequestFilePartTaskPayload) => MaybePromise<MyUploadFile>,

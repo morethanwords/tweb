@@ -10,7 +10,7 @@ import deferredPromise, {CancellablePromise} from '../../helpers/cancellableProm
 import makeError from '../../helpers/makeError';
 import pause from '../../helpers/schedulers/pause';
 import {logger} from '../logger';
-import {log} from './index.service';
+import {invokeVoidAll, log} from './index.service';
 
 type DownloadType = Uint8Array;
 type DownloadItem = ServiceDownloadTaskPayload & {
@@ -154,6 +154,8 @@ export default function handleDownload(serviceMessagePort: ServiceMessagePort<fa
 }
 
 function onDownloadFetch(event: FetchEvent, params: string) {
+  invokeVoidAll('downloadRequestReceived', params);
+
   const promise = pause(100).then(() => {
     const item = downloadMap.get(params);
     if(!item || (item.used && !DOWNLOAD_TEST)) {

@@ -148,7 +148,7 @@ const onFetch = (event: FetchEvent): void => {
     const [scope, _params] = event.request.url.split('/').slice(-2);
     const [params, search] = _params.split('?');
 
-    // log.debug('[fetch]:', event);
+    // log.debug('[fetch]', event, event.request.url);
 
     switch(scope) {
       case 'stream': {

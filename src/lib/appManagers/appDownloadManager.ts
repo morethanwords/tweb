@@ -188,7 +188,12 @@ export class AppDownloadManager {
       }
 
       if(promiseBefore) {
-        return promiseBefore.then(() => cb(options));
+        return promiseBefore.then(() => {
+          return cb(options);
+        }, () => {
+          delete options.downloadId;
+          return cb(options);
+        });
       }
 
       return cb(options);
@@ -257,7 +262,7 @@ export class AppDownloadManager {
 
     // const {downloadOptions, fileName} = getDownloadMediaDetails(options);
     // if(downloadOptions.size && downloadOptions.size > MAX_FILE_SAVE_SIZE) {
-    let url: string, pingPromise: Promise<any>;
+    let url: string, pingPromise: Promise<any>, iframe: HTMLIFrameElement;
     if(USE_SW) {
       const id = '' + (Math.random() * 0x7FFFFFFF | 0);
       // const id = 'test';
@@ -265,6 +270,45 @@ export class AppDownloadManager {
       options.downloadId = id;
 
       pingPromise = apiManagerProxy.pingServiceWorkerWithIframe();
+
+      if(!justAttach) {
+        const {iframe: _iframe, onSuccess, onError} = this.createDownloadIframe(url);
+        iframe = _iframe;
+
+        // * 1. make sure that SW is alive with a ping
+        // * 2. send download request and wait for a pong (downloadRequestReceived)
+        // * 3. if pong is missing (something with request and can't handle it with iframe events),
+        // *    fallback to regular download
+        pingPromise = pingPromise.then(() => {
+          const deferred = deferredPromise<void>();
+
+          const onFinish = (good: boolean) => {
+            clearTimeout(timeout);
+            apiManagerProxy.serviceMessagePort.removeEventListener('downloadRequestReceived', onDownloadRequestReceived);
+            if(good) deferred.resolve();
+            else deferred.reject();
+          };
+
+          const onDownloadRequestReceived = (downloadId: string) => {
+            if(downloadId === id) {
+              onFinish(true);
+            }
+          };
+
+          apiManagerProxy.serviceMessagePort.addEventListener('downloadRequestReceived', onDownloadRequestReceived);
+
+          const timeout = window.setTimeout(() => {
+            onFinish(false);
+          }, 1500);
+
+          onSuccess();
+
+          return deferred;
+        }, (err) => {
+          onError();
+          throw err;
+        });
+      }
     }
 
     const promise = this.downloadMedia(options, 'disc', pingPromise);
@@ -272,17 +316,6 @@ export class AppDownloadManager {
 
     if(justAttach) {
       return promise;
-    }
-
-    let iframe: HTMLIFrameElement;
-    if(USE_SW) {
-      iframe = document.createElement('iframe');
-      iframe.hidden = true;
-
-      pingPromise.then(() => {
-        iframe.src = url;
-        document.body.append(iframe);
-      });
     }
 
     let element: HTMLElement, hadProgress = false;
@@ -322,6 +355,39 @@ export class AppDownloadManager {
     });
 
     return promise;
+  }
+
+  private createDownloadIframe(url: string) {
+    const iframe = document.createElement('iframe');
+    iframe.hidden = true;
+
+    return {
+      iframe,
+      onSuccess: () => {
+        // const removeListeners = () => {
+        //   iframe.removeEventListener('load', onLoad);
+        //   iframe.removeEventListener('error', onError);
+        //   console.error('event', window.event);
+        // };
+
+        // const onLoad = () => {
+        //   removeListeners();
+        // };
+
+        // const onError = () => {
+        //   removeListeners();
+        // };
+
+        // iframe.addEventListener('load', onLoad);
+        // iframe.addEventListener('error', onError);
+
+        iframe.src = url;
+        document.body.append(iframe);
+      },
+      onError: () => {
+        console.error('falling back to normal download');
+      }
+    };
   }
 }
 

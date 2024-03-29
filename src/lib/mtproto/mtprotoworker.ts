@@ -318,31 +318,30 @@ class ApiManagerProxy extends MTProtoMessagePort {
     const promise = this.pingServiceWorkerPromise = deferredPromise<void>();
     const iframe = document.createElement('iframe');
     iframe.hidden = true;
-    // const now = Date.now();
-    // const minWait = 2000;
-    const onLoad = () => {
+    const onFinish = () => {
+      clearTimeout(timeout);
       setTimeout(() => { // ping once in 10 seconds
         this.pingServiceWorkerPromise = undefined;
       }, 10e3);
 
-      clearTimeout(timeout);
-      iframe.remove();
       iframe.removeEventListener('load', onLoad);
-      iframe.removeEventListener('error', onLoad);
+      iframe.removeEventListener('error', onError);
+      iframe.remove();
+    };
+    const onLoad = () => {
+      onFinish();
       promise.resolve();
-      // const elapsedTime = Date.now() - now;
-      // if(elapsedTime > minWait) {
-      //   promise.resolve();
-      // } else {
-      //   setTimeout(() => promise.resolve(), minWait - elapsedTime);
-      // }
+    };
+    const onError = () => {
+      onFinish();
+      promise.reject();
     };
     iframe.addEventListener('load', onLoad);
-    iframe.addEventListener('error', onLoad);
+    iframe.addEventListener('error', onError);
     iframe.src = 'ping/' + (Math.random() * 0xFFFFFFFF | 0) + '.nocache';
     document.body.append(iframe);
 
-    const timeout = window.setTimeout(onLoad, 1e3);
+    const timeout = window.setTimeout(onError, 1500);
     return promise;
   }
 
