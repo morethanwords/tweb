@@ -136,6 +136,7 @@ export default class Chat extends EventListenerBase<{
 
   public theme: Parameters<typeof themeController['getThemeSettings']>[0];
   public wallPaper: WallPaper;
+  public hadAnyBackground: boolean;
 
   // public requestHistoryOptionsPart: RequestHistoryOptions;
 
@@ -157,6 +158,8 @@ export default class Chat extends EventListenerBase<{
     this.type = ChatType.Chat;
     this.animationGroup = `chat-${Math.round(Math.random() * 65535)}`;
     this.middlewareHelper = getMiddleware();
+
+    this.hadAnyBackground = false;
 
     if(!this.excludeParts.elements) {
       this.container = document.createElement('div');
@@ -193,6 +196,7 @@ export default class Chat extends EventListenerBase<{
     manual?: boolean,
     onCachedStatus?: (cached: boolean) => void
   }): Promise<() => void> {
+    this.hadAnyBackground = true;
     const log = this.log.bindPrefix('setBackground');
     log('start');
     const isGlobalTheme = !theme;
@@ -203,6 +207,12 @@ export default class Chat extends EventListenerBase<{
     if(!wallPaper) {
       const themeSettings = themeController.getThemeSettings(newTheme);
       wallPaper = themeSettings.wallpaper;
+    }
+
+    if(this.wallPaper === wallPaper && this.theme === newTheme) {
+      log('same background');
+      onCachedStatus?.(true);
+      return;
     }
 
     const colors = getColorsFromWallPaper(wallPaper);
@@ -468,7 +478,7 @@ export default class Chat extends EventListenerBase<{
     };
 
     const maybeResetBackground = () => {
-      if(!this.hasBackgroundSet() && !manual) {
+      if(!this.hasBackgroundSet() && this.hadAnyBackground) {
         log('no background');
         deferred.resolve(undefined);
         return;
@@ -503,7 +513,8 @@ export default class Chat extends EventListenerBase<{
 
       setBackground({
         theme,
-        wallPaper
+        wallPaper,
+        skipAnimation: manual
       });
 
       const isNightTheme = useIsNightTheme();
