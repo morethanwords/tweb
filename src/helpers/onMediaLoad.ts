@@ -17,7 +17,7 @@ export function shouldIgnoreVideoError(e: ErrorEvent) {
     if(isChromeBug && !(target as any).triedFixingChromeBug) {
       let srcPromise: MaybePromise<string>;
       const originalSrc = target.src;
-      if(originalSrc.includes('/stream/')) {
+      if(originalSrc.includes('stream/')) {
         srcPromise = originalSrc + '?_crbug1250841';
       } else {
         srcPromise = rootScope.managers.appDocsManager.fixChromiumMp4(originalSrc);
