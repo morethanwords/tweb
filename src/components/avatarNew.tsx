@@ -293,7 +293,7 @@ export function StoriesSegments(props: {
 
     const isNightTheme = useIsNightTheme();
     createEffect(on(
-      isNightTheme,
+      [isNightTheme, storiesSegments],
       () => {
         unreadGradient = closeGradient = undefined;
         render();
