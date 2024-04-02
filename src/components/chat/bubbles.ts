@@ -8001,8 +8001,7 @@ export default class ChatBubbles {
         i18n('ChatYourSelfDescription4')
       ];
     } else if(type === 'greeting') {
-      const subtitle = i18n('NoMessagesGreetingsDescription');
-      subtitle.classList.add('center', BASE_CLASS + '-subtitle');
+      let subtitle = i18n('NoMessagesGreetingsDescription');
 
       // findAndSplice(this.messagesQueue, q => q.bubble === bubble);
 
@@ -8011,8 +8010,50 @@ export default class ChatBubbles {
 
       const middleware = this.getMiddleware();
 
-      await this.managers.appStickersManager.getGreetingSticker().then(async(doc) => {
+      const promises = Promise.all([
+        this.managers.appStickersManager.getGreetingSticker(),
+        this.managers.appProfileManager.getProfile(message.peerId.toUserId())
+      ]);
+      await promises.then(async([doc, userFull]) => {
         if(!middleware()) return;
+
+        const intro = userFull.business_intro;
+        if(intro) {
+          if(intro.title) {
+            const _title = document.createElement('span');
+            _title.append(wrapEmojiText(intro.title));
+            _title.className = title.className;
+            elements[elements.indexOf(title)] = _title;
+          }
+
+          if(intro.description) {
+            subtitle = document.createElement('span');
+            subtitle.append(wrapEmojiText(intro.description));
+          }
+
+          if(intro.sticker) {
+            doc = intro.sticker as MyDocument;
+          }
+
+          const bubbleContainer = bubble.querySelector('.bubble-content');
+          const content = bubbleContainer.cloneNode(false) as HTMLElement;
+          const service = bubbleContainer.querySelector('.service-msg').cloneNode(false) as HTMLElement;
+
+          service.append(i18n(
+            intro.title || intro.description ? 'ChatEmpty.BusinessIntro.How' : 'ChatEmpty.BusinessIntro.Sticker.How',
+            [
+              await wrapPeerTitle({peerId: message.peerId, onlyFirstName: true}),
+              anchorCallback(() => {
+                PopupPremium.show();
+              })
+            ]
+          ));
+
+          content.classList.add('has-service-before');
+          content.append(service);
+          bubbleContainer.after(content);
+          bubble.classList.add('wider');
+        }
 
         const loadPromises: Promise<any>[] = [];
         await wrapSticker({
@@ -8032,7 +8073,7 @@ export default class ChatBubbles {
 
         attachClickEvent(stickerDiv, (e) => {
           cancelEvent(e);
-          this.chat.input.emoticonsDropdown.onMediaClick({target: e.target});
+          this.chat.input.emoticonsDropdown.onMediaClick({target: e.target}, undefined, undefined, true);
         });
 
         return Promise.all(loadPromises);
@@ -8044,6 +8085,8 @@ export default class ChatBubbles {
       //   reverse: false,
       //   promises: [loadPromise]
       // });
+
+      subtitle.classList.add('center', BASE_CLASS + '-subtitle');
 
       elements.push(subtitle, stickerDiv);
     } else if(type === 'premiumRequired') {

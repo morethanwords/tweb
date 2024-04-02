@@ -176,6 +176,8 @@ export class AppProfileManager extends AppManager {
           botInfo.description_photo = this.appPhotosManager.savePhoto(botInfo.description_photo, referenceContext);
         }
 
+        userFull.business_intro = this.appBusinessManager.saveBusinessIntro(id, userFull.business_intro);
+
         this.appNotificationsManager.savePeerSettings({
           peerId,
           settings: userFull.notify_settings

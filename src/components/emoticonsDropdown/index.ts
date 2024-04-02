@@ -626,18 +626,18 @@ export class EmoticonsDropdown extends DropdownHover {
     return {stickyIntersector, setActive, setActiveStatic};
   };
 
-  public onMediaClick = async(e: {target: EventTarget | Element}, clearDraft = false, silent?: boolean) => {
+  public onMediaClick = async(e: {target: EventTarget | Element}, clearDraft = false, silent?: boolean, ignoreNoPremium?: boolean) => {
     const target = findUpTag(e.target as HTMLElement, 'DIV');
     if(!target) return false;
 
     const docId = target.dataset.docId;
     if(!docId) return false;
 
-    return this.sendDocId(docId, clearDraft, silent, target);
+    return this.sendDocId({document: docId, clearDraft, silent, target, ignoreNoPremium});
   };
 
-  public async sendDocId(docId: DocId, clearDraft?: boolean, silent?: boolean, target?: HTMLElement) {
-    if(await this.chatInput.sendMessageWithDocument({document: docId, clearDraft, silent, target})) {
+  public async sendDocId(options: Parameters<ChatInput['sendMessageWithDocument']>[0]) {
+    if(await this.chatInput.sendMessageWithDocument(options)) {
       /* dropdown.classList.remove('active');
       toggleEl.classList.remove('active'); */
       if(emoticonsDropdown.container) {
@@ -648,7 +648,7 @@ export class EmoticonsDropdown extends DropdownHover {
 
       return true;
     } else {
-      console.warn('got no doc by id:', docId);
+      console.warn('got no doc by id:', document);
       return false;
     }
   }

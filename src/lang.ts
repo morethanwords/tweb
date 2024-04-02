@@ -587,6 +587,7 @@ const lang = {
   'Call.Confirm.Discard.Live.ToLive.Text': 'Leave live stream in "%1$@" and start a new one in "%2$@"?',
   'Call.Confirm.Discard.Voice.ToLive.Text': 'Leave video chat in "%1$@" and start a live stream in "%2$@"?',
   'Call.Confirm.Discard.Call.ToLive.Text': 'End call with "%1$@" and start a live stream in "%2$@"?',
+  'ChatEmpty.BusinessIntro.Sticker.How': '**%@** set the sticker above for all empty chats. [How?]()',
 
   // * android
   'GroupsAndChannelsLimitTitle': 'Groups and Channels',
@@ -2556,7 +2557,8 @@ const lang = {
   'GiftLink.UseSuccess': 'You successfully activated gift link.',
   'Giveaway.Type.Specific.Modal.SelectUsers': 'Select Users',
   'GroupStats.Title': 'Group Statistics',
-  'Chat.SendJoinRequest.Info': 'You will be able to send messages once the admins approve your request.'
+  'Chat.SendJoinRequest.Info': 'You will be able to send messages once the admins approve your request.',
+  'ChatEmpty.BusinessIntro.How': '**%@** added the message above for all empty chats. [How?]()'
 };
 
 export default lang;

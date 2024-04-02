@@ -989,12 +989,28 @@
       }
 
       &.empty-bubble-placeholder-greeting {
+        &.wider {
+          .service-msg {
+            max-width: 272px;
+          }
+        }
+
         .service-msg {
           max-width: 232px;
         }
 
         .empty-bubble-placeholder-subtitle {
           margin-top: .25rem !important;
+        }
+
+        .has-service-before {
+          margin-top: .5rem;
+          border-radius: .875rem !important;
+
+          .service-msg {
+            max-width: 252px !important;
+            padding: 0.28125rem 0.625rem !important;
+          }
         }
       }
 
@@ -1020,6 +1036,7 @@
 
       .empty-bubble-placeholder-sticker {
         margin-top: .75rem !important;
+        margin-inline: auto;
         position: relative;
         width: 200px;
         height: 200px;

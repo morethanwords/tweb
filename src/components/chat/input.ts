@@ -3449,13 +3449,15 @@ export default class ChatInput {
     force = false,
     clearDraft = false,
     silent = false,
-    target
+    target,
+    ignoreNoPremium
   }: {
     document: MyDocument | DocId,
     force?: boolean,
     clearDraft?: boolean,
     silent?: boolean,
-    target?: HTMLElement
+    target?: HTMLElement,
+    ignoreNoPremium?: boolean
   }) {
     document = await this.managers.appDocsManager.getDoc(document);
 
@@ -3474,7 +3476,7 @@ export default class ChatInput {
       return false;
     }
 
-    if(document.sticker && getStickerEffectThumb(document) && !rootScope.premium) {
+    if(document.sticker && getStickerEffectThumb(document) && !rootScope.premium && !ignoreNoPremium) {
       PopupPremium.show({feature: 'premium_stickers'});
       return false;
     }

@@ -4,11 +4,20 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {MessageEntity} from '../../layer';
+import {BusinessIntro, MessageEntity} from '../../layer';
 import {AppManager} from './manager';
 import getPeerId from './utils/peers/getPeerId';
 
 export default class AppBusinessManager extends AppManager {
+  public saveBusinessIntro(userId: UserId, intro: BusinessIntro) {
+    if(!intro) {
+      return;
+    }
+
+    intro.sticker = this.appDocsManager.saveDoc(intro.sticker, {type: 'userFull', userId});
+    return intro;
+  }
+
   public resolveBusinessChatLink(slug: string) {
     return this.apiManager.invokeApiSingleProcess({
       method: 'account.resolveBusinessChatLink',
