@@ -169,9 +169,9 @@ export class AppDocsManager extends AppManager {
             doc.type = 'sticker';
             doc.sticker = 1;
           } else if(doc.mime_type === EXTENSION_MIME_TYPE_MAP.webm) {
-            if(!getEnvironment().IS_WEBM_SUPPORTED) {
-              break;
-            }
+            // if(!getEnvironment().IS_WEBM_SUPPORTED) {
+            //   break;
+            // }
 
             doc.type = 'sticker';
             doc.sticker = 3;

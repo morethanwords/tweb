@@ -37,9 +37,9 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
         const downloadOptions = await managers.appStickersManager.getStickerSetThumbDownloadOptions(set);
         const promise = appDownloadManager.download(downloadOptions);
 
-        if(set.pFlags.animated && !set.pFlags.videos) {
-          return promise
-          .then((blob) => {
+        const isLottie = downloadOptions.mimeType === 'application/x-tgsticker';
+        if(isLottie) {
+          return promise.then((blob) => {
             lottieLoader.loadAnimationWorker({
               container,
               loop: true,
@@ -54,8 +54,9 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
             });
           });
         } else {
+          const isVideo = set.thumbs?.some((thumb) => thumb.type === 'v');
           let media: HTMLElement;
-          if(set.pFlags.videos) {
+          if(isVideo) {
             media = createVideo({middleware});
             (media as HTMLVideoElement).autoplay = true;
             (media as HTMLVideoElement).muted = true;
@@ -70,7 +71,7 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
             renderImageFromUrl(media, URL.createObjectURL(blob), () => {
               container.append(media);
 
-              if(set.pFlags.videos) {
+              if(isVideo) {
                 animationIntersector.addAnimation({
                   animation: media as HTMLVideoElement,
                   group,

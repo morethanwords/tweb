@@ -43,6 +43,7 @@ import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
 import Icon from '../icon';
 import {SHOULD_HANDLE_VIDEO_LEAK, attachVideoLeakListeners, leakVideoFallbacks, onVideoLeak} from '../../helpers/dom/handleVideoLeak';
 import noop from '../../helpers/noop';
+import {IS_WEBM_SUPPORTED} from '../../environment/videoSupport';
 
 // https://github.com/telegramdesktop/tdesktop/blob/master/Telegram/SourceFiles/history/view/media/history_view_sticker.cpp#L40
 export const STICKER_EFFECT_MULTIPLIER = 1 + 0.245 * 2;
@@ -125,7 +126,7 @@ export default async function wrapSticker({doc, div, middleware, loadStickerMidd
   }
 
   const stickerType = doc.sticker;
-  if(stickerType === 1) {
+  if(stickerType === 1 || (stickerType === 3 && !IS_WEBM_SUPPORTED)) {
     asStatic = true;
   }
 

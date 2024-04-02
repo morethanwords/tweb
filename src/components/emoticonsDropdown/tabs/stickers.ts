@@ -85,6 +85,8 @@ export class SuperStickerRenderer {
       }
     }
 
+    element.middlewareHelper ??= getMiddleware();
+
     // * This will wrap only a thumb
     /* !doc.animated &&  */wrapSticker({
       doc,
@@ -93,6 +95,7 @@ export class SuperStickerRenderer {
       group: this.group,
       onlyThumb: doc.animated,
       loadPromises,
+      middleware: element.middlewareHelper.get(),
       ...(doc.animated ? {} : this.visibleRenderOptions || {})
     });
 
@@ -130,6 +133,9 @@ export class SuperStickerRenderer {
 
     const size = mediaSizes.active.esgSticker.width;
 
+    element.middlewareHelper ??= getMiddleware();
+    element.middlewareHelper.clean();
+
     // console.log('processVisibleDiv:', element);
 
     const promise = wrapSticker({
@@ -143,6 +149,7 @@ export class SuperStickerRenderer {
       play: true,
       loop: true,
       withLock: true,
+      middleware: element.middlewareHelper.get(),
       ...(this.visibleRenderOptions || {})
     }).then(({render}) => render);
 
@@ -166,6 +173,7 @@ export class SuperStickerRenderer {
 
     this.checkAnimationContainer(element, false);
 
+    element.middlewareHelper?.clean();
     element.replaceChildren();
     this.renderSticker(doc, element as HTMLDivElement);
   };

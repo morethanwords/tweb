@@ -481,7 +481,8 @@ export class AppStickersManager extends AppManager {
     const thumb = stickerSet.thumbs.find((thumb) => thumb._ === 'photoSize') as PhotoSize.photoSize;
     const dcId = stickerSet.thumb_dc_id;
 
-    const isAnimated = stickerSet.pFlags?.animated;
+    const isLottie = thumb.type === 'a';
+    const isVideo = thumb.type === 'v';
 
     const input: InputFileLocation.inputStickerSetThumb = {
       _: 'inputStickerSetThumb',
@@ -489,7 +490,12 @@ export class AppStickersManager extends AppManager {
       thumb_version: stickerSet.thumb_version
     };
 
-    return {dcId, location: input, size: thumb.size, mimeType: isAnimated ? 'application/x-tgsticker' : 'image/webp'};
+    return {
+      dcId,
+      location: input,
+      size: thumb.size,
+      mimeType: isLottie ? 'application/x-tgsticker' : (isVideo && getEnvironment().IS_WEBM_SUPPORTED ? 'video/webm' : 'image/webp')
+    };
   }
 
   /* public getStickerSetThumbURL(stickerSet: MTStickerSet) {
@@ -536,11 +542,11 @@ export class AppStickersManager extends AppManager {
       processResult: (res) => {
         assumeType<MessagesFeaturedStickers.messagesFeaturedStickers>(res);
 
-        forEachReverse(res.sets, (covered, idx, arr) => {
-          if(covered.set.pFlags.videos && !getEnvironment().IS_WEBM_SUPPORTED) {
-            arr.splice(idx, 1);
-          }
-        });
+        // forEachReverse(res.sets, (covered, idx, arr) => {
+        //   if(covered.set.pFlags.videos && !getEnvironment().IS_WEBM_SUPPORTED) {
+        //     arr.splice(idx, 1);
+        //   }
+        // });
 
         res.sets.forEach((covered) => {
           this.saveStickerSet({set: covered.set, documents: [], packs: [], keywords: []}, covered.set.id);
@@ -664,11 +670,11 @@ export class AppStickersManager extends AppManager {
       processResult: (res) => {
         assumeType<MessagesFoundStickerSets.messagesFoundStickerSets>(res);
 
-        forEachReverse(res.sets, (covered, idx, arr) => {
-          if(covered.set.pFlags.videos && !getEnvironment().IS_WEBM_SUPPORTED) {
-            arr.splice(idx, 1);
-          }
-        });
+        // forEachReverse(res.sets, (covered, idx, arr) => {
+        //   if(covered.set.pFlags.videos && !getEnvironment().IS_WEBM_SUPPORTED) {
+        //     arr.splice(idx, 1);
+        //   }
+        // });
 
         res.sets.forEach((covered) => {
           this.saveStickerSet({set: covered.set, documents: [], packs: [], keywords: []}, covered.set.id);
@@ -694,11 +700,11 @@ export class AppStickersManager extends AppManager {
   private processAllStickersResult = (allStickers: MessagesAllStickers) => {
     assumeType<MessagesAllStickers.messagesAllStickers>(allStickers);
 
-    forEachReverse(allStickers.sets, (stickerSet, idx, arr) => {
-      if(stickerSet.pFlags.videos && !getEnvironment().IS_WEBM_SUPPORTED) {
-        arr.splice(idx, 1);
-      }
-    });
+    // forEachReverse(allStickers.sets, (stickerSet, idx, arr) => {
+    //   if(stickerSet.pFlags.videos && !getEnvironment().IS_WEBM_SUPPORTED) {
+    //     arr.splice(idx, 1);
+    //   }
+    // });
 
     return allStickers;
   };
