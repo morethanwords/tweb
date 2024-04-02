@@ -977,8 +977,8 @@ export default class AppStoriesManager extends AppManager {
       return this.appUsersManager.isContact(peerId.toUserId());
     } else {
       const chatId = peerId.toChatId();
-      const chat = this.appChatsManager.getChat(chatId) as Chat.channel;
-      return this.appChatsManager.isBroadcast(chatId) && !chat.pFlags.left;
+      return (this.appChatsManager.isBroadcast(chatId) || this.appChatsManager.isMegagroup(chatId)) &&
+        this.appChatsManager.isInChat(chatId);
     }
   }
 

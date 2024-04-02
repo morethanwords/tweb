@@ -484,8 +484,8 @@ export default class FiltersStorage extends AppManager {
       return keys.map((filterId) => this.filters[filterId]).sort((a, b) => a.localId - b.localId);
     }
 
-    const filters = await this.apiManager.invokeApiSingle('messages.getDialogFilters');
-    const prepended = this.prependFilters(filters);
+    const messagesDialogFilters = await this.apiManager.invokeApiSingle('messages.getDialogFilters');
+    const prepended = this.prependFilters(messagesDialogFilters.filters);
     return prepended.map((filter) => this.saveDialogFilter(filter, overwrite)).filter(Boolean);
   }
 
