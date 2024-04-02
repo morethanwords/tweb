@@ -67,7 +67,7 @@ export default class AppGifsTab extends SliderSuperTab {
     if(!target) return;
 
     const fileId = target.dataset.docId;
-    if(await appImManager.chat.input.sendMessageWithDocument(fileId)) {
+    if(await appImManager.chat.input.sendMessageWithDocument({document: fileId, target})) {
       if(mediaSizes.isMobile) {
         appSidebarRight.onCloseBtnClick();
       }

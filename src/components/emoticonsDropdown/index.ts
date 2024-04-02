@@ -633,11 +633,11 @@ export class EmoticonsDropdown extends DropdownHover {
     const docId = target.dataset.docId;
     if(!docId) return false;
 
-    return this.sendDocId(docId, clearDraft, silent);
+    return this.sendDocId(docId, clearDraft, silent, target);
   };
 
-  public async sendDocId(docId: DocId, clearDraft?: boolean, silent?: boolean) {
-    if(await this.chatInput.sendMessageWithDocument(docId, undefined, clearDraft, silent)) {
+  public async sendDocId(docId: DocId, clearDraft?: boolean, silent?: boolean, target?: HTMLElement) {
+    if(await this.chatInput.sendMessageWithDocument({document: docId, clearDraft, silent, target})) {
       /* dropdown.classList.remove('active');
       toggleEl.classList.remove('active'); */
       if(emoticonsDropdown.container) {

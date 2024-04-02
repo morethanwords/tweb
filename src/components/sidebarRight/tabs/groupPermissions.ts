@@ -29,6 +29,9 @@ import CheckboxFields, {CheckboxFieldsField} from '../../checkboxFields';
 import PopupElement from '../../popups';
 import wrapPeerTitle from '../../wrappers/peerTitle';
 import apiManagerProxy from '../../../lib/mtproto/mtprotoworker';
+import RangeStepsSelector from '../../rangeStepsSelector';
+import formatDuration from '../../../helpers/formatDuration';
+import {wrapFormattedDuration} from '../../wrappers/wrapDuration';
 
 type PermissionsCheckboxFieldsField = CheckboxFieldsField & {
   flags: ChatRights[],
@@ -304,6 +307,67 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
 
       this.eventListener.addEventListener('destroy', () => {
         this.managers.appChatsManager.editChatDefaultBannedRights(this.chatId, chatPermissions.takeOut());
+      }, {once: true});
+
+      this.scrollable.append(section.container);
+    }
+
+    {
+      const section = new SettingSection({
+        name: 'Slowmode',
+        caption: true
+      });
+
+      const chatFull = await this.managers.appProfileManager.getChannelFull(this.chatId);
+
+      let lastValue: number;
+      const range: RangeStepsSelector<number> = new RangeStepsSelector({
+        generateStep: (value) => {
+          let t: HTMLElement;
+          if(!value) {
+            t = i18n('SlowmodeOff');
+          } else {
+            const hours = Math.floor(value / 3600);
+            const minutes = Math.floor(value / 60) % 60;
+            const seconds = value % 60;
+            if(hours) {
+              t = i18n('SlowmodeHours', [hours]);
+            } else if(minutes) {
+              t = i18n('SlowmodeMinutes', [minutes]);
+            } else {
+              t = i18n('SlowmodeSeconds', [seconds]);
+            }
+          }
+
+          return [t, value];
+        },
+        onValue: (value) => {
+          if(lastValue === value) {
+            return;
+          }
+
+          lastValue = value;
+          if(value) {
+            section.caption.replaceChildren(i18n('SlowmodeInfoSelected', [wrapFormattedDuration(formatDuration(value, 1))]));
+          } else {
+            section.caption.replaceChildren(i18n('SlowmodeInfoOff'));
+          }
+        },
+        middleware: this.middlewareHelper.get()
+      });
+
+      const values = [0, 10, 30, 60, 300, 900, 3600];
+      const steps = range.generateSteps(values);
+      const initialValue = chatFull.slowmode_seconds || 0;
+      range.setSteps(steps, values.indexOf(initialValue));
+
+      section.content.append(range.container);
+
+      this.eventListener.addEventListener('destroy', () => {
+        const {value} = range;
+        if(value !== initialValue) {
+          this.managers.appChatsManager.toggleSlowMode(this.chatId, range.value);
+        }
       }, {once: true});
 
       this.scrollable.append(section.container);

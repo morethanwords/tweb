@@ -1029,6 +1029,14 @@ export class AppChatsManager extends AppManager {
     });
   }
 
+  public async toggleSlowMode(id: ChatId, seconds: number) {
+    id = await this.migrateChat(id);
+    return this.apiManager.invokeApi('channels.toggleSlowMode', {
+      channel: this.getChannelInput(id),
+      seconds
+    }).then(this.onChatUpdated.bind(this, id));
+  }
+
   public hideChatJoinRequest(chatId: ChatId, userId: UserId, approved: boolean) {
     return this.apiManager.invokeApi('messages.hideChatJoinRequest', {
       peer: this.appChatsManager.getInputPeer(chatId),

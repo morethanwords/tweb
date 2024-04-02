@@ -52,7 +52,7 @@ export default class AppStickersTab extends SliderSuperTab {
       const sticker = findUpClassName(e.target, 'sticker-set-sticker');
       if(sticker) {
         const docId = sticker.dataset.docId;
-        appImManager.chat.input.sendMessageWithDocument(docId);
+        appImManager.chat.input.sendMessageWithDocument({document: docId, target: sticker});
         return;
       }
 

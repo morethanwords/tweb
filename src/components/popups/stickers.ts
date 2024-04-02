@@ -143,7 +143,7 @@ export default class PopupStickers extends PopupElement {
     if(!target) return;
 
     const docId = target.dataset.docId;
-    if(await appImManager.chat.input.sendMessageWithDocument(docId)) {
+    if(await appImManager.chat.input.sendMessageWithDocument({document: docId, target})) {
       this.hide();
     }
   };

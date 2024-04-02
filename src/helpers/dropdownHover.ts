@@ -19,7 +19,7 @@ const KEEP_OPEN = false;
 const TOGGLE_TIMEOUT = 200;
 const ANIMATION_DURATION = 200;
 
-export type IgnoreMouseOutType = 'click' | 'menu' | 'popup';
+export type IgnoreMouseOutType = 'click' | 'menu' | 'popup' | 'tooltip';
 type DropdownHoverTimeoutType = 'toggle' | 'done';
 
 export default class DropdownHover extends EventListenerBase<{

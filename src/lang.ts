@@ -1976,6 +1976,17 @@ const lang = {
   'ActionSetWallpaperForThisChatBoth': '%s set a new wallpaper for this chat',
   'ActionSetSameWallpaperForThisChat': '%s set your wallpaper as their own for this chat',
   'ActionSetWallpaperForThisChatSelfBoth': 'You set a new wallpaper for %s and you',
+  'SlowModeHint': 'Slow Mode is active. You can send\nyour next message in %1$s.',
+  'SlowmodeSendError': 'Slow Mode is active. You can\'t send more than one message at once.',
+  'SlowmodeSelectSendError': 'Slow Mode is enabled. You can\'t select more items.',
+  'SlowmodeSendErrorTooLong': 'This text is too long to send as one message.\n\nSlow Mode is active. You can\'t send more than one message at once.',
+  'Slowmode': 'Slow Mode',
+  'SlowmodeInfoOff': 'Choose how long each member must wait before sending their next message.',
+  'SlowmodeInfoSelected': 'Members will be able to send only one message every %1$s.',
+  'SlowmodeOff': 'Off',
+  'SlowmodeSeconds': '%1$ds',
+  'SlowmodeMinutes': '%1$dm',
+  'SlowmodeHours': '%1$dh',
 
   // * macos
   'AccountSettings.Filters': 'Chat Folders',

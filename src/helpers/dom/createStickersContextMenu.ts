@@ -68,13 +68,13 @@ export default function createStickersContextMenu(options: {
       text: 'Chat.Send.WithoutSound',
       onClick: () => {
         onSend?.();
-        return appImManager.chat.input.emoticonsDropdown.sendDocId(doc.id, false, true);
+        return appImManager.chat.input.emoticonsDropdown.sendDocId(doc.id, false, true, target);
       },
       verify: () => !!(appImManager.chat.peerId && appImManager.chat.peerId !== rootScope.myId)
     }, {
       icon: 'schedule',
       text: 'Chat.Send.ScheduledMessage',
-      onClick: () => appImManager.chat.input.scheduleSending(() => appImManager.chat.input.sendMessageWithDocument(doc)),
+      onClick: () => appImManager.chat.input.scheduleSending(() => appImManager.chat.input.sendMessageWithDocument({document: doc, target})),
       verify: () => !!appImManager.chat.peerId
     }]
   });

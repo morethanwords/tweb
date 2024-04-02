@@ -155,6 +155,13 @@ export default class PopupNewMedia extends PopupElement {
       listenerSetter: this.listenerSetter,
       direction: 'bottom-left',
       buttons: [{
+        icon: 'plusround',
+        text: 'Add',
+        onClick: () => {
+          this.chat.input.onAttachClick(false, false, false);
+        },
+        verify: () => true
+      }, {
         icon: 'image',
         text: 'Popup.Attach.AsMedia',
         onClick: () => this.changeType('media'),
@@ -442,10 +449,21 @@ export default class PopupNewMedia extends PopupElement {
   }
 
   private partition(mimeTypes = MEDIA_MIME_TYPES_SUPPORTED) {
-    const [media, files] = partition(this.willAttach.sendFileDetails, (d) => mimeTypes.has(d.file.type));
+    const media: SendFileParams[] = [], files: SendFileParams[] = [], audio: SendFileParams[] = [];
+    this.willAttach.sendFileDetails.forEach((d) => {
+      if(mimeTypes.has(d.file.type)) {
+        media.push(d);
+      } else if(AUDIO_MIME_TYPES_SUPPORTED.has(d.file.type as any)) {
+        audio.push(d);
+      } else {
+        files.push(d);
+      }
+    });
+
     return {
       media,
-      files
+      files,
+      audio
     };
   }
 
@@ -457,9 +475,18 @@ export default class PopupNewMedia extends PopupElement {
     return this.mediaCount() > 0;
   }
 
+  private messagesCount() {
+    let count = 0;
+    this.iterate(() => {
+      ++count;
+    });
+
+    return count;
+  }
+
   private canGroupSomething() {
-    const {media, files} = this.partition();
-    return media.length > 1 || files.length > 1;
+    const {media, files, audio} = this.partition();
+    return media.length > 1 || files.length > 1 || audio.length > 1;
   }
 
   private canToggleSpoilers(toggle: boolean, single: boolean) {
@@ -535,6 +562,14 @@ export default class PopupNewMedia extends PopupElement {
     let {value: caption, entities} = getRichValueWithCaret(this.messageInputField.input, true, false);
     if(caption.length > this.captionLengthMax) {
       toast(I18n.format('Error.PreviewSender.CaptionTooLong', true));
+      return;
+    }
+
+    if(await this.chat.input.showSlowModeTooltipIfNeeded({
+      sendingFew: this.messagesCount() > 1,
+      container: this.btnConfirm.parentElement,
+      element: this.btnConfirm
+    })) {
       return;
     }
 
@@ -947,10 +982,12 @@ export default class PopupNewMedia extends PopupElement {
     const length = sendFileDetails.length;
     for(let i = 0; i < length;) {
       const firstType = sendFileDetails[i].file.type;
-      let k = 0;
+      let k = 0, isAudio: boolean;
       for(; k < 10 && i < length; ++i, ++k) {
         const type = sendFileDetails[i].file.type;
-        if(this.shouldCompress(firstType) !== this.shouldCompress(type)) {
+        const _isAudio = AUDIO_MIME_TYPES_SUPPORTED.has(type as any);
+        isAudio ??= _isAudio;
+        if(_isAudio !== isAudio || this.shouldCompress(firstType) !== this.shouldCompress(type)) {
           break;
         }
       }

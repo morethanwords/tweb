@@ -45,3 +45,12 @@ export function wrapLeftDuration(timeLeft: number) {
     return wrapFormattedDuration(formatted);
   }
 }
+
+export function wrapSlowModeLeftDuration(timeLeft: number) {
+  const formatted = formatDuration(timeLeft, 3);
+  if(formatted[0].type === DurationType.Seconds) {
+    return wrapFormattedDuration(formatted);
+  } else {
+    return toHHMMSS(timeLeft, true);
+  }
+}

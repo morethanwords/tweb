@@ -119,6 +119,10 @@ export class AppProfileManager extends AppManager {
       this.invalidateChannelParticipants(chatId);
     });
 
+    this.rootScope.addEventListener('peer_bio_edit', (peerId) => {
+      this.rootScope.dispatchEvent('user_full_update', peerId.toUserId());
+    });
+
     this.typingsInPeer = {};
     this.peerSettings = {};
   }

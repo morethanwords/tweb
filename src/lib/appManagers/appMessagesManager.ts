@@ -2818,7 +2818,7 @@ export class AppMessagesManager extends AppManager {
       }, undefined, true);
 
       if(error) {
-        this.rootScope.dispatchEvent('message_error', {storageKey: message.storageKey, tempId: message.mid, error});
+        this.rootScope.dispatchEvent('message_error', {storageKey: message.storageKey, peerId: message.peerId, tempId: message.mid, error});
 
         const dialog = this.getDialogOnly(message.peerId);
         if(dialog) {
@@ -5380,6 +5380,29 @@ export class AppMessagesManager extends AppManager {
     this.scheduleHandleNewDialogs(peerId, threadOrSavedId);
   }
 
+  private updateSlowModeOnNewMessage(message: MyMessage) {
+    const {peerId} = message;
+    if(message.pFlags.out && !peerId.isUser()) {
+      const chatId = peerId.toChatId();
+      const chatFull = this.appProfileManager.getCachedFullChat(chatId) as ChatFull.channelFull;
+      const chat = this.appChatsManager.getChat(chatId) as Chat.channel;
+      if(chatFull?.slowmode_seconds && !chat.admin_rights) {
+        chatFull.slowmode_next_send_date = message.date + chatFull.slowmode_seconds;
+        this.rootScope.dispatchEvent('chat_full_update', chatId);
+      }
+    }
+  }
+
+  public hasOutgoingMessage(peerId: PeerId) {
+    for(const randomId in this.pendingByRandomId) {
+      if(this.pendingByRandomId[randomId].peerId === peerId) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   private onUpdateMessageId = (update: Update.updateMessageID) => {
     const randomId = update.random_id;
     const pendingData = this.pendingByRandomId[randomId];
@@ -5590,6 +5613,10 @@ export class AppMessagesManager extends AppManager {
       }
 
       this.apiUpdatesManager.processLocalUpdate(update);
+    }
+
+    if(!isLocalThreadUpdate) {
+      this.updateSlowModeOnNewMessage(message);
     }
 
     // commented to render the message if it's been sent faster than history_append came to main thread

@@ -778,7 +778,8 @@ export const showTooltip = ({
   paddingX = 0,
   centerVertically,
   onClose,
-  icon
+  icon,
+  auto
 }: {
   element: HTMLElement,
   container?: HTMLElement,
@@ -788,7 +789,8 @@ export const showTooltip = ({
   paddingX?: number,
   centerVertically?: boolean,
   onClose?: () => void,
-  icon?: Icon
+  icon?: Icon,
+  auto?: boolean
 }) => {
   const containerRect = container.getBoundingClientRect();
   const elementRect = element.getBoundingClientRect();
@@ -884,10 +886,12 @@ export const showTooltip = ({
       tooltipOverlayClickHandler.close();
     };
 
-    const timeout = KEEP_TOOLTIP ? 0 : window.setTimeout(close, 3000);
+    const timeout = KEEP_TOOLTIP && !auto ? 0 : window.setTimeout(close, 3000);
 
-    tooltipOverlayClickHandler.open(mountOn);
-    tooltipOverlayClickHandler.addEventListener('toggle', onToggle, {once: true});
+    Promise.resolve().then(() => {
+      tooltipOverlayClickHandler.open(mountOn);
+      tooltipOverlayClickHandler.addEventListener('toggle', onToggle, {once: true});
+    });
   });
 
   return {close};

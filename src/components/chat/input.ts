@@ -16,9 +16,9 @@ import {ButtonMenuItemOptions, ButtonMenuItemOptionsVerifiable, ButtonMenuSync} 
 import emoticonsDropdown, {EmoticonsDropdown} from '../emoticonsDropdown';
 import PopupCreatePoll from '../popups/createPoll';
 import PopupForward from '../popups/forward';
-import PopupNewMedia from '../popups/newMedia';
+import PopupNewMedia, {getCurrentNewMediaPopup} from '../popups/newMedia';
 import {toast, toastNew} from '../toast';
-import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageMedia, InputReplyTo, Chat as MTChat, User} from '../../layer';
+import {MessageEntity, DraftMessage, WebPage, Message, UserFull, AttachMenuPeerType, BotMenuButton, MessageMedia, InputReplyTo, Chat as MTChat, User, ChatFull} from '../../layer';
 import StickersHelper from './stickersHelper';
 import ButtonIcon from '../buttonIcon';
 import ButtonMenuToggle from '../buttonMenuToggle';
@@ -120,6 +120,9 @@ import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
 import {isSavedDialog} from '../../lib/appManagers/utils/dialogs/isDialog';
 import getFwdFromName from '../../lib/appManagers/utils/messages/getFwdFromName';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
+import {showTooltip} from '../stories/viewer';
+import eachSecond from '../../helpers/eachSecond';
+import {wrapCallDuration, wrapLeftDuration, wrapSlowModeLeftDuration} from '../wrappers/wrapDuration';
 
 // console.log('Recorder', Recorder);
 
@@ -167,7 +170,7 @@ export default class ChatInput {
 
   private replyKeyboard: ReplyKeyboard;
 
-  private attachMenu: HTMLElement;
+  public attachMenu: HTMLElement;
   private attachMenuButtons: ButtonMenuItemOptionsVerifiable[];
 
   private sendMenu: SendMenu;
@@ -324,6 +327,8 @@ export default class ChatInput {
   private hasOffset: {type: 'commands' | 'as', forwards: boolean};
   private canForwardStory: boolean;
   private processingDraftMessage: DraftMessage.draftMessage;
+
+  private fileSelectionPromise: CancellablePromise<File[]>;
 
   constructor(
     public chat: Chat,
@@ -913,53 +918,10 @@ export default class ChatInput {
 
     // const getSendMediaRights = () => Promise.all([this.chat.canSend('send_photos'), this.chat.canSend('send_videos')]).then(([photos, videos]) => ({photos, videos}));
 
-    let fileSelectionPromise: CancellablePromise<File[]>;
-    const onAttachClick = (documents?: boolean, photos?: boolean, videos?: boolean) => {
-      const promise = fileSelectionPromise = deferredPromise();
-      this.fileInput.value = '';
-
-      promise.finally(() => {
-        idleController.removeEventListener('change', onIdleChange);
-        if(promise !== fileSelectionPromise) {
-          return;
-        }
-      });
-
-      const onIdleChange = (idle: boolean) => {
-        if(promise !== fileSelectionPromise) {
-          promise.reject();
-          return;
-        }
-
-        if(!idle) {
-          setTimeout(() => {
-            promise.reject();
-          }, 1000);
-        }
-      };
-      idleController.addEventListener('change', onIdleChange);
-
-      if(documents) {
-        this.fileInput.removeAttribute('accept');
-        this.willAttachType = 'document';
-      } else {
-        const accept = [
-          ...(photos ? IMAGE_MIME_TYPES_SUPPORTED : []),
-          ...(videos ? VIDEO_MIME_TYPES_SUPPORTED : [])
-        ].join(', ');
-
-        this.fileInput.setAttribute('accept', accept);
-        this.willAttachType = 'media';
-      }
-
-      this.fileInput.click();
-      this.onFileSelection?.(fileSelectionPromise);
-    };
-
     this.attachMenuButtons = [{
       icon: 'image',
       text: 'Chat.Input.Attach.PhotoOrVideo',
-      onClick: () => onAttachClick(false, true, true)
+      onClick: () => this.onAttachClick(false, true, true)
       // verify: () => getSendMediaRights().then(({photos, videos}) => photos && videos)
     }, /* {
       icon: 'image',
@@ -974,7 +936,7 @@ export default class ChatInput {
     }, */ {
       icon: 'document',
       text: 'Chat.Input.Attach.Document',
-      onClick: () => onAttachClick(true)
+      onClick: () => this.onAttachClick(true)
       // verify: () => this.chat.canSend('send_docs')
     }, {
       icon: 'gift',
@@ -1185,12 +1147,18 @@ export default class ChatInput {
     this.listenerSetter.add(this.fileInput)('change', (e) => {
       const fileList = (e.target as HTMLInputElement & EventTarget).files;
       const files = Array.from(fileList).slice();
-      fileSelectionPromise.resolve(files);
+      this.fileSelectionPromise.resolve(files);
       if(!files.length) {
         return;
       }
 
-      PopupElement.createPopup(PopupNewMedia, this.chat, files, this.willAttachType);
+      const newMediaPopup = getCurrentNewMediaPopup();
+      if(newMediaPopup) {
+        newMediaPopup.addFiles(files);
+      } else {
+        PopupElement.createPopup(PopupNewMedia, this.chat, files, this.willAttachType);
+      }
+
       this.fileInput.value = '';
     }, false);
 
@@ -1305,6 +1273,54 @@ export default class ChatInput {
       }
     });
   }
+
+  public onAttachClick = async(documents?: boolean, photos?: boolean, videos?: boolean) => {
+    if(await this.showSlowModeTooltipIfNeeded({
+      element: this.attachMenu
+    })) {
+      return;
+    }
+
+    const promise = this.fileSelectionPromise = deferredPromise();
+    this.fileInput.value = '';
+
+    promise.finally(() => {
+      idleController.removeEventListener('change', onIdleChange);
+      if(promise !== this.fileSelectionPromise) {
+        return;
+      }
+    });
+
+    const onIdleChange = (idle: boolean) => {
+      if(promise !== this.fileSelectionPromise) {
+        promise.reject();
+        return;
+      }
+
+      if(!idle) {
+        setTimeout(() => {
+          promise.reject();
+        }, 1000);
+      }
+    };
+    idleController.addEventListener('change', onIdleChange);
+
+    if(documents) {
+      this.fileInput.removeAttribute('accept');
+      this.willAttachType = 'document';
+    } else {
+      const accept = [
+        ...(photos ? IMAGE_MIME_TYPES_SUPPORTED : []),
+        ...(videos ? VIDEO_MIME_TYPES_SUPPORTED : [])
+      ].join(', ');
+
+      this.fileInput.setAttribute('accept', accept || '*/*');
+      this.willAttachType = 'media';
+    }
+
+    this.fileInput.click();
+    this.onFileSelection?.(this.fileSelectionPromise);
+  };
 
   public _center(neededFakeContainer: HTMLElement, animate?: boolean) {
     if(!neededFakeContainer && !this.inputContainer.classList.contains('is-centering')) {
@@ -2796,6 +2812,73 @@ export default class ChatInput {
     this.updateSendBtn();
   }
 
+  public async showSlowModeTooltipIfNeeded({
+    container,
+    element,
+    sendingFew,
+    textOverflow
+  }: {
+    container?: HTMLElement,
+    element?: HTMLElement,
+    sendingFew?: boolean,
+    textOverflow?: boolean
+  } = {}) {
+    const {peerId} = this.chat;
+    if(peerId.isUser()) {
+      return false;
+    }
+
+    const chatId = peerId.toChatId();
+    const chat = apiManagerProxy.getChat(chatId) as MTChat.channel;
+    if(!chat.pFlags.slowmode_enabled) {
+      return false;
+    }
+
+    let textElement: HTMLElement, onClose: () => void;
+    if(textOverflow) {
+      textElement = i18n('SlowmodeSendErrorTooLong');
+    } else if(sendingFew) {
+      textElement = i18n('SlowmodeSendError');
+    } else if(await this.managers.appMessagesManager.hasOutgoingMessage(peerId)) {
+      textElement = i18n('SlowmodeSendError');
+    } else {
+      const chatFull = await this.managers.appProfileManager.getChatFull(chatId) as ChatFull.channelFull;
+
+      const getLeftDuration = () => Math.max(0, (chatFull.slowmode_next_send_date || 0) - tsNow(true));
+      if(!getLeftDuration()) {
+        return false;
+      }
+
+      const s = document.createElement('span');
+      onClose = eachSecond(() => {
+        const leftDuration = getLeftDuration();
+        s.replaceChildren(wrapSlowModeLeftDuration(leftDuration));
+
+        if(!leftDuration) {
+          close();
+        }
+      }, true);
+
+      textElement = i18n('SlowModeHint', [s]);
+    }
+
+    const {close} = showTooltip({
+      element: element || this.btnSendContainer,
+      vertical: 'top',
+      container: container || this.btnSendContainer.parentElement,
+      textElement,
+      onClose: () => {
+        onClose?.();
+        this.emoticonsDropdown.setIgnoreMouseOut('tooltip', false);
+      },
+      auto: true
+    });
+
+    this.emoticonsDropdown.setIgnoreMouseOut('tooltip', true);
+
+    return true;
+  }
+
   private onBtnSendClick = async(e: Event) => {
     cancelEvent(e);
 
@@ -2818,6 +2901,10 @@ export default class ChatInput {
       const flag: ChatRights = 'send_voices';
       if(isAnyChat && !(await this.chat.canSend(flag))) {
         toastNew({langPackKey: POSTING_NOT_ALLOWED_MAP[flag]});
+        return;
+      }
+
+      if(await this.showSlowModeTooltipIfNeeded()) {
         return;
       }
 
@@ -3237,7 +3324,7 @@ export default class ChatInput {
     this.onMessageSent2?.();
   }
 
-  public sendMessage(force = false) {
+  public async sendMessage(force = false) {
     const {editMsgId, chat} = this;
     if(chat.type === ChatType.Scheduled && !force && !editMsgId) {
       this.scheduleSending();
@@ -3249,11 +3336,37 @@ export default class ChatInput {
     const sendingParams = this.chat.getMessageSendingParams();
 
     const {value, entities} = getRichValueWithCaret(this.messageInputField.input, true, false);
+    const trimmedValue = value.trim();
+
+    if(chat.type !== ChatType.Scheduled && !editMsgId) {
+      let count = 0;
+      if(this.forwarding) {
+        for(const fromPeerId in this.forwarding) {
+          count += this.forwarding[fromPeerId].length;
+        }
+      }
+
+      count += +!!trimmedValue;
+
+      const config = await this.managers.apiManager.getConfig();
+      const MAX_LENGTH = config.message_length_max;
+      const textOverflow = value.length > MAX_LENGTH;
+      if(textOverflow) {
+        ++count;
+      }
+
+      if(await this.showSlowModeTooltipIfNeeded({
+        sendingFew: count > 1,
+        textOverflow
+      })) {
+        return;
+      }
+    }
 
     // return;
     if(editMsgId) {
       const message = this.editMessage;
-      if(value.trim() || message.media) {
+      if(trimmedValue || message.media) {
         this.managers.appMessagesManager.editMessage(
           message,
           value,
@@ -3271,7 +3384,7 @@ export default class ChatInput {
 
         return;
       }
-    } else if(value.trim()) {
+    } else if(trimmedValue) {
       this.managers.appMessagesManager.sendText({
         ...sendingParams,
         text: value,
@@ -3320,12 +3433,19 @@ export default class ChatInput {
     // this.onMessageSent();
   }
 
-  public async sendMessageWithDocument(
-    document: MyDocument | DocId,
+  public async sendMessageWithDocument({
+    document,
     force = false,
     clearDraft = false,
-    silent = false
-  ) {
+    silent = false,
+    target
+  }: {
+    document: MyDocument | DocId,
+    force?: boolean,
+    clearDraft?: boolean,
+    silent?: boolean,
+    target?: HTMLElement
+  }) {
     document = await this.managers.appDocsManager.getDoc(document);
 
     const flag = document.type === 'sticker' ? 'send_stickers' : (document.type === 'gif' ? 'send_gifs' : 'send_media');
@@ -3335,7 +3455,7 @@ export default class ChatInput {
     }
 
     if(this.chat.type === ChatType.Scheduled && !force) {
-      this.scheduleSending(() => this.sendMessageWithDocument(document, true, clearDraft, silent));
+      this.scheduleSending(() => this.sendMessageWithDocument({document, force: true, clearDraft, silent, target}));
       return false;
     }
 
@@ -3345,6 +3465,10 @@ export default class ChatInput {
 
     if(document.sticker && getStickerEffectThumb(document) && !rootScope.premium) {
       PopupPremium.show({feature: 'premium_stickers'});
+      return false;
+    }
+
+    if(await this.showSlowModeTooltipIfNeeded({element: target})) {
       return false;
     }
 

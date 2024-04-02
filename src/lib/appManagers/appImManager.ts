@@ -124,6 +124,7 @@ import {AppMediaViewerRtmp} from '../../components/appMediaViewerRtmp';
 import useProfileColors from '../../hooks/useProfileColors';
 import {DEFAULT_BACKGROUND_SLUG} from '../../config/app';
 import blur from '../../helpers/blur';
+import {wrapSlowModeLeftDuration} from '../../components/wrappers/wrapDuration';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -371,6 +372,22 @@ export class AppImManager extends EventListenerBase<{
             emoticon: action.emoticon
           });
         }
+      }
+    });
+
+    rootScope.addEventListener('message_error', ({peerId, error}) => {
+      if(error.type.includes('SLOWMODE_WAIT')) {
+        const time = +error.type.split('_').pop();
+        confirmationPopup({
+          titleLangKey: 'Slowmode',
+          peerId,
+          descriptionLangKey: 'SlowModeHint',
+          descriptionLangArgs: [wrapSlowModeLeftDuration(time)],
+          button: {
+            langKey: 'OK',
+            isCancel: true
+          }
+        });
       }
     });
 
@@ -1918,7 +1935,16 @@ export class AppImManager extends EventListenerBase<{
   private async canDrag() {
     const chat = this.chat;
     const peerId = chat?.peerId;
-    return !(!peerId || overlayCounter.isOverlayActive || !(await chat.canSend('send_media')));
+    const good = !(!peerId || overlayCounter.isOverlayActive || !(await chat.canSend('send_media')));
+    if(good) {
+      if(await this.chat.input.showSlowModeTooltipIfNeeded({
+        element: this.chat.input.attachMenu
+      })) {
+        return false;
+      }
+    }
+
+    return good;
   }
 
   private onDocumentPaste = async(e: ClipboardEvent | DragEvent, attachType?: 'media' | 'document') => {
