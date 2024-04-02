@@ -4082,7 +4082,7 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
-  private wrapMessageEntities(_message: Message.message) {
+  public wrapMessageEntities(_message: {message: string, entities?: MessageEntity[], totalEntities?: MessageEntity[]}) {
     const {message, totalEntities} = wrapMessageEntities(_message.message, _message.entities);
     _message.message = message;
     _message.totalEntities = totalEntities;

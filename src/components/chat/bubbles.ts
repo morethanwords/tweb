@@ -3829,7 +3829,8 @@ export default class ChatBubbles {
       lastMsgId,
       startParam,
       middleware,
-      text: options.text
+      text: options.text,
+      entities: options.entities
     };
 
     if(!cached && !samePeer) {

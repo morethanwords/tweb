@@ -21,7 +21,8 @@ export enum INTERNAL_LINK_TYPE {
   STORY,
   BOOST,
   PREMIUM_FEATURES,
-  GIFT_CODE
+  GIFT_CODE,
+  BUSINESS_CHAT
 };
 
 export type InternalLink =
@@ -39,7 +40,8 @@ export type InternalLink =
   InternalLink.InternalLinkStory |
   InternalLink.InternalLinkBoost |
   InternalLink.InternalLinkPremiumFeatures |
-  InternalLink.InternalLinkGiftCode;
+  InternalLink.InternalLinkGiftCode |
+  InternalLink.InternalLinkBusinessChat;
 
 export namespace InternalLink {
   export interface InternalLinkMessage {
@@ -146,6 +148,11 @@ export namespace InternalLink {
     slug: string,
     stack?: ChatSetPeerOptions['stack'] // local
   }
+
+  export interface InternalLinkBusinessChat {
+    _: INTERNAL_LINK_TYPE.BUSINESS_CHAT,
+    slug: string
+  }
 }
 
 export type InternalLinkTypeMap = {
@@ -164,4 +171,5 @@ export type InternalLinkTypeMap = {
   [INTERNAL_LINK_TYPE.BOOST]: InternalLink.InternalLinkBoost,
   [INTERNAL_LINK_TYPE.PREMIUM_FEATURES]: InternalLink.InternalLinkPremiumFeatures,
   [INTERNAL_LINK_TYPE.GIFT_CODE]: InternalLink.InternalLinkGiftCode,
+  [INTERNAL_LINK_TYPE.BUSINESS_CHAT]: InternalLink.InternalLinkBusinessChat
 };

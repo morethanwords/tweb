@@ -35,7 +35,7 @@ import AppSharedMediaTab from '../sidebarRight/tabs/sharedMedia';
 import noop from '../../helpers/noop';
 import middlewarePromise from '../../helpers/middlewarePromise';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import {Message, WallPaper, Chat as MTChat, Reaction, AvailableReaction, ChatFull} from '../../layer';
+import {Message, WallPaper, Chat as MTChat, Reaction, AvailableReaction, ChatFull, MessageEntity} from '../../layer';
 import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
 import {getColorsFromWallPaper} from '../../helpers/color';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
@@ -948,7 +948,8 @@ export default class Chat extends EventListenerBase<{
     lastMsgId?: number,
     startParam?: string,
     middleware: () => boolean,
-    text?: string
+    text?: string,
+    entities?: MessageEntity[]
   }) {
     if(this.peerChanged) return;
 

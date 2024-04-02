@@ -26,7 +26,7 @@ import {MOUNT_CLASS_TO} from '../../config/debug';
 import appNavigationController from '../../components/appNavigationController';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import I18n, {i18n, join, LangPackKey} from '../langPack';
-import {ChatFull, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult, WallPaper, Config, AttachMenuBot, Peer, InputChannel, HelpPeerColors, Reaction, Document} from '../../layer';
+import {ChatFull, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction, User, Chat as MTChat, UrlAuthResult, WallPaper, Config, AttachMenuBot, Peer, InputChannel, HelpPeerColors, Reaction, Document, MessageEntity} from '../../layer';
 import PeerTitle from '../../components/peerTitle';
 import {PopupPeerCheckboxOptions} from '../../components/popups/peer';
 import blurActiveElement from '../../helpers/dom/blurActiveElement';
@@ -142,6 +142,7 @@ export type ChatSetPeerOptions = {
   mediaTimestamp?: number,
   savedReaction?: Reaction[],
   text?: string
+  entities?: MessageEntity[]
 };
 
 export type ChatSetInnerPeerOptions = Modify<ChatSetPeerOptions, {

@@ -2005,7 +2005,8 @@ export default class ChatInput {
           canSend || haveSomethingInControl,
           canSendPlain,
           placeholderParams,
-          peerId.isUser() ? options.text : undefined
+          peerId.isUser() ? options.text : undefined,
+          peerId.isUser() ? options.entities : undefined
         );
         this.messageInput.dataset.peerId = '' + peerId;
 
@@ -2172,7 +2173,8 @@ export default class ChatInput {
     canSend: boolean,
     canSendPlain: boolean,
     placeholderParams: Parameters<ChatInput['updateMessageInputPlaceholder']>[0],
-    text?: string
+    text?: string,
+    entities?: MessageEntity[]
   ) {
     const {chatInput, messageInput} = this;
     const isHidden = chatInput.classList.contains('is-hidden');
@@ -2203,7 +2205,7 @@ export default class ChatInput {
       this.restoreInputLock = undefined;
       messageInput.contentEditable = 'true';
       if(text) {
-        this.managers.appDraftsManager.setDraft(this.chat.peerId, undefined, text);
+        this.managers.appDraftsManager.setDraft(this.chat.peerId, undefined, text, entities);
       }
       this.setDraft(undefined, false);
 
