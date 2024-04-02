@@ -15,13 +15,16 @@ import PrivacyType from '../../../../lib/appManagers/utils/privacy/privacyType';
 export default class AppPrivacyMessagesTab extends SliderSuperTabEventable<{
   privacy: (globalPrivacy: Promise<GlobalPrivacySettings>) => void
 }> {
-  public init(globalPrivacy: GlobalPrivacySettings) {
+  public async init(globalPrivacy: GlobalPrivacySettings) {
     this.container.classList.add('privacy-tab', 'privacy-messages');
     this.setTitle('PrivacyMessages');
 
     const caption = i18n('Privacy.MessagesInfo', [anchorCallback(() => {
       PopupPremium.show();
     })]);
+
+    const appConfig = await this.managers.apiManager.getAppConfig();
+    const premiumOnly = !appConfig.new_noncontact_peers_require_premium_without_ownpremium;
 
     const privacySection = new PrivacySection({
       tab: this,
@@ -32,7 +35,7 @@ export default class AppPrivacyMessagesTab extends SliderSuperTabEventable<{
       managers: this.managers,
       skipTypes: [PrivacyType.Nobody],
       myContactsAndPremium: true,
-      premiumOnly: true,
+      premiumOnly,
       premiumCaption: caption,
       premiumError: 'PrivacySettings.Messages.PremiumError',
       privacyType: globalPrivacy.pFlags.new_noncontact_peers_require_premium ? PrivacyType.Contacts : PrivacyType.Everybody

@@ -98,6 +98,7 @@ export interface MTAppConfig {
   cachedTime?:                               number;
   hash?:                                     number;
   pm_read_date_expire_period?:               number;
+  new_noncontact_peers_require_premium_without_ownpremium?: boolean;
 }
 
 export interface EmojiesSendDiceSuccess {
