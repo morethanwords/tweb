@@ -51,6 +51,7 @@ export namespace InternalLink {
     start?: string,
     t?: string, // media timestamp
     single?: string,
+    text?: string,
     stack?: ChatSetPeerOptions['stack'] // local
   }
 
@@ -87,7 +88,8 @@ export namespace InternalLink {
 
   export interface InternalLinkUserPhoneNumber {
     _: INTERNAL_LINK_TYPE.USER_PHONE_NUMBER,
-    phone: string
+    phone: string,
+    text?: string
   }
 
   export interface InternalLinkInvoice {

@@ -2001,7 +2001,12 @@ export default class ChatInput {
       this.botStartBtn.classList.toggle('hide', haveSomethingInControl);
 
       if(this.messageInput) {
-        this.updateMessageInput(canSend || haveSomethingInControl, canSendPlain, placeholderParams);
+        this.updateMessageInput(
+          canSend || haveSomethingInControl,
+          canSendPlain,
+          placeholderParams,
+          peerId.isUser() ? options.text : undefined
+        );
         this.messageInput.dataset.peerId = '' + peerId;
 
         if(filteredAttachMenuButtons && attachMenu) {
@@ -2166,7 +2171,8 @@ export default class ChatInput {
   public updateMessageInput(
     canSend: boolean,
     canSendPlain: boolean,
-    placeholderParams: Parameters<ChatInput['updateMessageInputPlaceholder']>[0]
+    placeholderParams: Parameters<ChatInput['updateMessageInputPlaceholder']>[0],
+    text?: string
   ) {
     const {chatInput, messageInput} = this;
     const isHidden = chatInput.classList.contains('is-hidden');
@@ -2196,6 +2202,9 @@ export default class ChatInput {
     } else {
       this.restoreInputLock = undefined;
       messageInput.contentEditable = 'true';
+      if(text) {
+        this.managers.appDraftsManager.setDraft(this.chat.peerId, undefined, text);
+      }
       this.setDraft(undefined, false);
 
       if(!messageInput.innerHTML) {

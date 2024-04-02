@@ -202,12 +202,13 @@ export class InternalLinkProcessor {
     }
 
     type K1 = {thread?: string, comment?: string, t?: string};
-    type K2 = {thread?: string, comment?: string, start?: string, t?: string};
+    type K2 = {thread?: string, comment?: string, start?: string, t?: string, text?: string};
     type K3 = {startattach?: string, attach?: string, choose?: TelegramChoosePeerType};
     type K4 = {startapp?: string};
     type K5 = {story?: string};
     type K6 = {boost?: string};
     type K7 = {voicechat?: string, videochat?: string, livestream?: string};
+    type K8 = {text?: string};
 
     addAnchorListener<{
     //   pathnameParams: ['c', string, string],
@@ -216,7 +217,7 @@ export class InternalLinkProcessor {
     //   pathnameParams: [string, string?],
     //   uriParams: {comment?: number}
       pathnameParams: ['c', string, string] | [string, string?],
-      uriParams: K1 | K2 | K3 | K4 | K5 | K6
+      uriParams: K1 | K2 | K3 | K4 | K5 | K6 | K7 | K8
     }>({
       name: 'im',
       callback: async({pathnameParams, uriParams}, element, masked) => {
@@ -244,7 +245,8 @@ export class InternalLinkProcessor {
         } else if(PHONE_NUMBER_REG_EXP.test(pathnameParams[0])) {
           link = {
             _: INTERNAL_LINK_TYPE.USER_PHONE_NUMBER,
-            phone: pathnameParams[0].slice(1)
+            phone: pathnameParams[0].slice(1),
+            text: (uriParams as K8).text
           };
         } else if(pathnameParams[0] === 'c') {
           assumeType<K1>(uriParams);
@@ -279,7 +281,8 @@ export class InternalLinkProcessor {
             comment: uriParams.comment,
             start: 'start' in uriParams ? uriParams.start : undefined,
             stack: appImManager.getStackFromElement(element),
-            t: uriParams.t
+            t: uriParams.t,
+            text: uriParams.text
           };
         }
 
@@ -512,7 +515,8 @@ export class InternalLinkProcessor {
       startParam: link.start,
       stack: link.stack,
       threadId,
-      mediaTimestamp: link.t && +link.t
+      mediaTimestamp: link.t && +link.t,
+      text: link.text
     });
   };
 
@@ -595,7 +599,8 @@ export class InternalLinkProcessor {
   public processUserPhoneNumberLink = (link: InternalLink.InternalLinkUserPhoneNumber) => {
     return this.managers.appUsersManager.resolvePhone(link.phone).then((user) => {
       return appImManager.setInnerPeer({
-        peerId: user.id.toPeerId(false)
+        peerId: user.id.toPeerId(false),
+        text: link.text
       });
     }).catch((err: ApiError) => {
       if(err.type === 'PHONE_NOT_OCCUPIED') {

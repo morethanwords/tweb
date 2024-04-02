@@ -140,7 +140,8 @@ export type ChatSetPeerOptions = {
   commentId?: number,
   type?: ChatType,
   mediaTimestamp?: number,
-  savedReaction?: Reaction[]
+  savedReaction?: Reaction[],
+  text?: string
 };
 
 export type ChatSetInnerPeerOptions = Modify<ChatSetPeerOptions, {

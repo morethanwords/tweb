@@ -3828,7 +3828,8 @@ export default class ChatBubbles {
       isJump,
       lastMsgId,
       startParam,
-      middleware
+      middleware,
+      text: options.text
     };
 
     if(!cached && !samePeer) {

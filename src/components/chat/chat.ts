@@ -947,7 +947,8 @@ export default class Chat extends EventListenerBase<{
     isJump?: boolean,
     lastMsgId?: number,
     startParam?: string,
-    middleware: () => boolean
+    middleware: () => boolean,
+    text?: string
   }) {
     if(this.peerChanged) return;
 
